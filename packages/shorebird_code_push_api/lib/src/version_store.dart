@@ -8,20 +8,9 @@ int _compareVersions(String a, String b) {
 }
 
 class VersionStore {
-  const VersionStore._({required this.cachePath});
-
-  static void init({required String cachePath}) {
-    _instance ??= VersionStore._(cachePath: cachePath);
-  }
+  const VersionStore({required this.cachePath});
 
   final String cachePath;
-
-  static VersionStore? _instance;
-
-  // ignore: prefer_constructors_over_static_methods
-  static VersionStore get instance {
-    return _instance ??= const VersionStore._(cachePath: 'cache');
-  }
 
   // Should take an api key/product name, etc.
   String getNextVersion() {

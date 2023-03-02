@@ -2,7 +2,8 @@ import 'dart:convert';
 import 'dart:io';
 
 import 'package:shelf/shelf.dart';
-import 'package:shorebird_code_push_api/src/check_for_updates/check_for_updates.dart';
+import 'package:shorebird_code_push_api/src/provider.dart';
+import 'package:shorebird_code_push_api/src/routes/check_for_updates/check_for_updates.dart';
 import 'package:shorebird_code_push_api/src/version_store.dart';
 
 Future<Response> checkForUpdatesHandler(Request request) async {
@@ -18,7 +19,8 @@ Future<Response> checkForUpdatesHandler(Request request) async {
     );
   }
 
-  final latestVersion = VersionStore.instance.latestVersionForClient(
+  final store = request.lookup<VersionStore>();
+  final latestVersion = store.latestVersionForClient(
     checkForUpdatesRequest.clientId,
     currentVersion: checkForUpdatesRequest.version,
   );

@@ -3,9 +3,8 @@ import 'dart:io';
 import 'package:shelf/shelf.dart';
 import 'package:shelf/shelf_io.dart' as shelf_io;
 import 'package:shelf_router/shelf_router.dart' as shelf_router;
-import 'package:shorebird_code_push_api/src/check_for_updates/check_for_updates.dart';
-import 'package:shorebird_code_push_api/src/download_release/download_release.dart';
-import 'package:shorebird_code_push_api/src/upload_release/upload_release.dart';
+import 'package:shorebird_code_push_api/src/middleware/middleware.dart';
+import 'package:shorebird_code_push_api/src/routes/routes.dart';
 
 Future<void> main() async {
   final port = int.parse(Platform.environment['PORT'] ?? '8080');
@@ -15,8 +14,12 @@ Future<void> main() async {
     ..get('/api/v1/releases/<version>', downloadReleaseHandler)
     ..post('/api/v1/releases', uploadReleaseHandler);
 
+  final handler = const Pipeline()
+      .addMiddleware(versionStoreProvider)
+      .addHandler(router.call);
+
   final server = await shelf_io.serve(
-    logRequests().addHandler(router.call),
+    logRequests().addHandler(handler),
     InternetAddress.anyIPv4,
     port,
   );
