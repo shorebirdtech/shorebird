@@ -57,5 +57,7 @@ class VersionStore {
     return versions.last;
   }
 
-  String filePathForVersion(String version) => '$cachePath/$version.txt';
+  String filePathForVersion(String version) {
+    return p.join(Directory.current.path, '$cachePath/$version.txt');
+  }
 }

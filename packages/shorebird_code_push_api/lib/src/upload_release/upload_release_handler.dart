@@ -1,5 +1,6 @@
 import 'dart:io';
 
+import 'package:path/path.dart' as p;
 import 'package:shelf/shelf.dart';
 import 'package:shelf_multipart/form_data.dart';
 import 'package:shelf_multipart/multipart.dart';
@@ -15,7 +16,9 @@ Future<Response> uploadReleaseHandler(Request request) async {
     return Response.badRequest(body: 'Expected multipart form request');
   }
 
-  Directory(config.cachePath).createSync(recursive: true);
+  Directory(
+    p.join(Directory.current.path, config.cachePath),
+  ).createSync(recursive: true);
 
   final store = VersionStore.instance;
   final nextVersion = store.getNextVersion();
