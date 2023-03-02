@@ -1,0 +1,28 @@
+name: shorebird_code_push_api
+
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+on:
+  pull_request:
+    paths:
+      - ".github/workflows/shorebird_code_push_api.yaml"
+      - "packages/shorebird_code_push_api/lib/**"
+      - "packages/shorebird_code_push_api/test/**"
+      - "packages/shorebird_code_push_api/pubspec.yaml"
+  push:
+    branches:
+      - main
+    paths:
+      - ".github/workflows/shorebird_code_push_api.yaml"
+      - "packages/shorebird_code_push_api/lib/**"
+      - "packages/shorebird_code_push_api/test/**"
+      - "packages/shorebird_code_push_api/pubspec.yaml"
+
+jobs:
+  semantic-pull-request:
+    uses: VeryGoodOpenSource/very_good_workflows/.github/workflows/semantic_pull_request.yml@v1
+
+  build:
+    uses: VeryGoodOpenSource/very_good_workflows/.github/workflows/dart_package.yml@v1
