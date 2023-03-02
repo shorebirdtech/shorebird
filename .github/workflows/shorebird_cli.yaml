@@ -26,9 +26,21 @@ jobs:
 
   build:
     uses: VeryGoodOpenSource/very_good_workflows/.github/workflows/dart_package.yml@v1
+    with:
+      working_directory: packages/shorebird_cli
+
+  pana:
+    uses: VeryGoodOpenSource/very_good_workflows/.github/workflows/pana.yml@v1
+    with:
+      working_directory: packages/shorebird_cli
 
   verify-version:
+    defaults:
+      run:
+        working-directory: packages/shorebird_cli
+
     runs-on: ubuntu-latest
+
     steps:
       - name: 📚 Git Checkout
         uses: actions/checkout@v2
