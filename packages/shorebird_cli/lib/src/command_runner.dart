@@ -1,6 +1,7 @@
 import 'package:args/args.dart';
 import 'package:args/command_runner.dart';
 import 'package:cli_completion/cli_completion.dart';
+import 'package:http/http.dart' as http;
 import 'package:mason_logger/mason_logger.dart';
 import 'package:pub_updater/pub_updater.dart';
 import 'package:shorebird_cli/src/commands/commands.dart';
@@ -21,6 +22,7 @@ class ShorebirdCliCommandRunner extends CompletionCommandRunner<int> {
   /// {@macro shorebird_cli_command_runner}
   ShorebirdCliCommandRunner({
     Logger? logger,
+    http.Client? httpClient,
     PubUpdater? pubUpdater,
   })  : _logger = logger ?? Logger(),
         _pubUpdater = pubUpdater ?? PubUpdater(),
@@ -39,7 +41,7 @@ class ShorebirdCliCommandRunner extends CompletionCommandRunner<int> {
       );
 
     // Add sub commands
-    addCommand(PublishCommand(logger: _logger));
+    addCommand(PublishCommand(logger: _logger, httpClient: httpClient));
     addCommand(UpdateCommand(logger: _logger, pubUpdater: _pubUpdater));
   }
 
@@ -83,27 +85,6 @@ class ShorebirdCliCommandRunner extends CompletionCommandRunner<int> {
     if (topLevelResults.command?.name == 'completion') {
       await super.runCommand(topLevelResults);
       return ExitCode.success.code;
-    }
-
-    // Verbose logs
-    _logger
-      ..detail('Argument information:')
-      ..detail('  Top level options:');
-    for (final option in topLevelResults.options) {
-      if (topLevelResults.wasParsed(option)) {
-        _logger.detail('  - $option: ${topLevelResults[option]}');
-      }
-    }
-    if (topLevelResults.command != null) {
-      final commandResult = topLevelResults.command!;
-      _logger
-        ..detail('  Command: ${commandResult.name}')
-        ..detail('    Command options:');
-      for (final option in commandResult.options) {
-        if (commandResult.wasParsed(option)) {
-          _logger.detail('    - $option: ${commandResult[option]}');
-        }
-      }
     }
 
     // Run the command or show version
