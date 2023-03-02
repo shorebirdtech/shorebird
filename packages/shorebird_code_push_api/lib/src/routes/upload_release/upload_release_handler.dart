@@ -1,10 +1,8 @@
 import 'dart:io';
 
-import 'package:path/path.dart' as p;
 import 'package:shelf/shelf.dart';
 import 'package:shelf_multipart/form_data.dart';
 import 'package:shelf_multipart/multipart.dart';
-import 'package:shorebird_code_push_api/src/config.dart' as config;
 import 'package:shorebird_code_push_api/src/provider.dart';
 import 'package:shorebird_code_push_api/src/version_store.dart';
 
@@ -17,11 +15,10 @@ Future<Response> uploadReleaseHandler(Request request) async {
     return Response.badRequest(body: 'Expected multipart form request');
   }
 
-  Directory(
-    p.join(Directory.current.path, config.cachePath),
-  ).createSync(recursive: true);
-
   final store = request.lookup<VersionStore>();
+
+  store.cacheDir.createSync(recursive: true);
+
   final nextVersion = store.getNextVersion();
   final path = store.filePathForVersion(nextVersion);
 

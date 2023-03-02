@@ -12,6 +12,10 @@ class VersionStore {
 
   final String cachePath;
 
+  Directory get cacheDir {
+    return Directory(p.join(Directory.current.path, cachePath));
+  }
+
   // Should take an api key/product name, etc.
   String getNextVersion() {
     final latest = latestVersionForClient('client') ?? '0.0.0';
@@ -20,7 +24,7 @@ class VersionStore {
   }
 
   void addVersion(String version, List<int> bytes) {
-    Directory(cachePath).createSync(recursive: true);
+    cacheDir.createSync(recursive: true);
     final path = filePathForVersion(version);
     File(path).writeAsBytesSync(bytes);
   }
@@ -29,7 +33,7 @@ class VersionStore {
     // This should use the clientId to get a productId and look up the versions
     // based on productId/architecture, etc.
     try {
-      final dir = Directory(cachePath);
+      final dir = cacheDir;
       final files = dir.listSync();
       return files.map((e) => p.basenameWithoutExtension(e.path));
     } catch (e) {
@@ -47,6 +51,6 @@ class VersionStore {
   }
 
   String filePathForVersion(String version) {
-    return p.join(Directory.current.path, '$cachePath/$version.txt');
+    return p.join(cacheDir.path, '$version.txt');
   }
 }
