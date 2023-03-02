@@ -1,4 +1,4 @@
-name: ci
+name: shorebird_cli
 
 concurrency:
   group: ${{ github.workflow }}-${{ github.ref }}
@@ -8,17 +8,17 @@ on:
   pull_request:
     paths:
       - ".github/workflows/shorebird_cli.yaml"
-      - "lib/**"
-      - "test/**"
-      - "pubspec.yaml"
+      - "packages/shorebird_cli/lib/**"
+      - "packages/shorebird_cli/test/**"
+      - "packages/shorebird_cli/pubspec.yaml"
   push:
     branches:
       - main
     paths:
       - ".github/workflows/shorebird_cli.yaml"
-      - "lib/**"
-      - "test/**"
-      - "pubspec.yaml"
+      - "packages/shorebird_cli/lib/**"
+      - "packages/shorebird_cli/test/**"
+      - "packages/shorebird_cli/pubspec.yaml"
 
 jobs:
   semantic-pull-request:

@@ -1,3 +1,5 @@
-## shorebird_cli
+## shorebird
 
-The Shorebird command-line tool.
+Home of the Shorebird Tools 🐦
+
+🚧 Under construction... 🚧
