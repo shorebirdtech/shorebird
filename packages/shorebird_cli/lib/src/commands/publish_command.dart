@@ -39,20 +39,20 @@ class PublishCommand extends Command<int> {
 
     final request = http.MultipartRequest(
       'POST',
-      Uri.parse('http://localhost:8080/deploy'),
+      Uri.parse('http://localhost:8080/api/v1/releases'),
     );
     final file = await http.MultipartFile.fromPath('file', artifact.path);
     request.files.add(file);
     final response = await _httpClient.send(request);
 
-    if (response.statusCode != HttpStatus.ok) {
+    if (response.statusCode != HttpStatus.created) {
       _logger.err(
-        'Deploy failed: ${response.statusCode} ${response.reasonPhrase}',
+        'Failed to deploy: ${response.statusCode} ${response.reasonPhrase}',
       );
       return ExitCode.software.code;
     }
 
-    _logger.success('Deployed ${artifact.path} successfully!');
+    _logger.success('Deployed ${artifact.path}!');
 
     return ExitCode.success.code;
   }
