@@ -20,6 +20,11 @@ on:
       - "packages/shorebird_code_push_api/test/**"
       - "packages/shorebird_code_push_api/pubspec.yaml"
 
+env:
+  PROJECT_ID: shorebird-code-push-api
+  SERVICE: shorebird-code-push-api
+  REGION: us-central1
+
 jobs:
   semantic-pull-request:
     uses: VeryGoodOpenSource/very_good_workflows/.github/workflows/semantic_pull_request.yml@v1
@@ -33,3 +38,46 @@ jobs:
     uses: VeryGoodOpenSource/very_good_workflows/.github/workflows/pana.yml@v1
     with:
       working_directory: packages/shorebird_code_push_api
+
+  deploy:
+    needs: build
+
+    defaults:
+      run:
+        working-directory: packages/shorebird_code_push_api
+
+    runs-on: ubuntu-latest
+
+    if: ${{ github.event_name == 'push' && github.ref == 'refs/heads/main' }}
+
+    steps:
+      - uses: actions/checkout@v2
+
+      - name: Setup Cloud SDK
+        uses: google-github-actions/setup-gcloud@v0.2.0
+        with:
+          project_id: ${{ env.PROJECT_ID }}
+          service_account_key: ${{ secrets.CLOUD_RUN_SA }}
+          export_default_credentials: true
+
+      - name: Authorize Docker Push
+        run: gcloud auth configure-docker
+
+      - name: Build and Push Container
+        run: |-
+          docker build -t gcr.io/${{ env.PROJECT_ID }}/${{ env.SERVICE }}:${{ github.sha }} .
+          docker push gcr.io/${{ env.PROJECT_ID }}/${{ env.SERVICE }}:${{ github.sha }}
+
+      - name: Deploy to Cloud Run
+        id: deploy
+        uses: google-github-actions/deploy-cloudrun@v0.4.0
+        with:
+          service: ${{ env.SERVICE }}
+          image: gcr.io/${{ env.PROJECT_ID }}/${{ env.SERVICE }}:${{ github.sha }}
+          region: ${{ env.REGION }}
+
+      - name: Show Output
+        run: echo ${{ steps.deploy.outputs.url }}
+
+      - name: Ping
+        run: curl "${{ steps.deploy.outputs.url }}"
