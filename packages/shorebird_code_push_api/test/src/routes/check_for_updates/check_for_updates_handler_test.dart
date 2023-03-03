@@ -87,7 +87,7 @@ void main() {
       expect(
         body,
         equals(
-          '{"update_available":true,"update":{"version":"1.0.1","hash":"","download_url":"http://localhost:8080/releases/1.0.1.txt"}}',
+          '{"update_available":true,"update":{"version":"1.0.1","hash":"","download_url":"https://shorebird-code-push-api-cypqazu4da-uc.a.run.app/api/v1/releases/1.0.1.txt"}}',
         ),
       );
     });
