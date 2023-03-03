@@ -30,6 +30,6 @@ class Update {
   }
 
   String downloadUrlForVersion(String version) {
-    return 'http://localhost:8080/releases/$version.txt';
+    return 'https://shorebird-code-push-api-cypqazu4da-uc.a.run.app/api/v1/releases/$version.txt';
   }
 }
