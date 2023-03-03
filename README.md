@@ -5,7 +5,7 @@ Home of the Shorebird Tools 🐦
 ## Status
 
 We're in the process of converting the quick demos written by one person, into a
-multi-contributor project usable by others.  Previous demo code can be found at:
+multi-contributor project usable by others. Previous demo code can be found at:
 https://github.com/shorebirdtech/old_repo
 
 ## Usage
