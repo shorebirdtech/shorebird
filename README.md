@@ -3,7 +3,7 @@
 [![Discord](https://dcbadge.vercel.app/api/server/9hKJcWGcaB)](https://discord.gg/9hKJcWGcaB)
 
 [![License: MIT](https://img.shields.io/badge/license-MIT-blue.svg)](./LICENSE-MIT)
-[![License: APACHE](https://img.shields.io/badge/license-APACHE-orange.svg)](./LICENSE-APACHE)
+[![License: Apache](https://img.shields.io/badge/license-Apache-orange.svg)](./LICENSE-APACHE)
 
 Home of the Shorebird Tools
 
