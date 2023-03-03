@@ -15,6 +15,15 @@ class CheckForUpdatesRequest {
     );
   }
 
+  Map<String, dynamic> toJson() {
+    return {
+      'version': version,
+      'platform': platform,
+      'arch': arch,
+      'client_id': clientId,
+    };
+  }
+
   final String version;
   final String platform;
   final String arch;

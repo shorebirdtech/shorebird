@@ -10,7 +10,7 @@ class CheckForUpdatesResponse {
   Map<String, dynamic> toJson() {
     return <String, dynamic>{
       'update_available': updateAvailable,
-      'update': update?.toJson(),
+      if (update != null) 'update': update!.toJson(),
     };
   }
 }

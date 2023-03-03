@@ -5,3 +5,5 @@
 .packages
 build/
 pubspec.lock
+coverage/
+cache/
