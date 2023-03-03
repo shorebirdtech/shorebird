@@ -7,11 +7,7 @@ import 'package:shorebird_code_push_api/src/provider.dart';
 import 'package:shorebird_code_push_api/src/version_store.dart';
 
 Future<Response> uploadReleaseHandler(Request request) async {
-  if (!request.isMultipart) {
-    return Response.badRequest(body: 'Expected multipart request');
-  }
-
-  if (!request.isMultipartForm) {
+  if (!request.isMultipart || !request.isMultipartForm) {
     return Response.badRequest(body: 'Expected multipart form request');
   }
 

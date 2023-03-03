@@ -29,20 +29,8 @@ class VersionStore {
     File(path).writeAsBytesSync(bytes);
   }
 
-  Iterable<String> versionsForClientId(String clientId) {
-    // This should use the clientId to get a productId and look up the versions
-    // based on productId/architecture, etc.
-    try {
-      final dir = cacheDir;
-      final files = dir.listSync();
-      return files.map((e) => p.basenameWithoutExtension(e.path));
-    } catch (e) {
-      return [];
-    }
-  }
-
   String? latestVersionForClient(String clientId, {String? currentVersion}) {
-    final versions = versionsForClientId(clientId).toList()
+    final versions = _versionsForClientId(clientId).toList()
       ..sort(_compareVersions);
     if (versions.isEmpty) return null;
     if (versions.last == currentVersion) return null;
@@ -52,5 +40,17 @@ class VersionStore {
 
   String filePathForVersion(String version) {
     return p.join(cacheDir.path, '$version.txt');
+  }
+
+  Iterable<String> _versionsForClientId(String clientId) {
+    // This should use the clientId to get a productId and look up the versions
+    // based on productId/architecture, etc.
+    try {
+      final dir = cacheDir;
+      final files = dir.listSync();
+      return files.map((e) => p.basenameWithoutExtension(e.path));
+    } catch (e) {
+      return [];
+    }
   }
 }

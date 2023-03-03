@@ -29,10 +29,10 @@ jobs:
   semantic-pull-request:
     uses: VeryGoodOpenSource/very_good_workflows/.github/workflows/semantic_pull_request.yml@v1
 
-  # build:
-  #   uses: VeryGoodOpenSource/very_good_workflows/.github/workflows/dart_package.yml@v1
-  #   with:
-  #     working_directory: packages/shorebird_code_push_api
+  build:
+    uses: VeryGoodOpenSource/very_good_workflows/.github/workflows/dart_package.yml@v1
+    with:
+      working_directory: packages/shorebird_code_push_api
 
   pana:
     uses: VeryGoodOpenSource/very_good_workflows/.github/workflows/pana.yml@v1
@@ -40,7 +40,7 @@ jobs:
       working_directory: packages/shorebird_code_push_api
 
   deploy:
-    # needs: build
+    needs: build
 
     defaults:
       run:
@@ -48,7 +48,7 @@ jobs:
 
     runs-on: ubuntu-latest
 
-    # if: ${{ github.event_name == 'push' && github.ref == 'refs/heads/main' }}
+    if: ${{ github.event_name == 'push' && github.ref == 'refs/heads/main' }}
 
     steps:
       - uses: actions/checkout@v2
