@@ -1,6 +1,6 @@
-## shorebird
+## Shorebird 🐦
 
-Home of the Shorebird Tools 🐦
+Home of the Shorebird Tools
 
 ## Status
 
@@ -8,9 +8,19 @@ We're in the process of converting the quick demos written by one person, into a
 multi-contributor project usable by others. Previous demo code can be found at:
 https://github.com/shorebirdtech/old_repo
 
-## Usage
+## Overview
 
-Instructions coming soon.
+This repository is a monorepo containing the following packages:
+
+| Package                                                                             |
+| ----------------------------------------------------------------------------------- |
+| [shorebird_cli](packages/shorebird_cli/README.md)                                   |
+| [shorebird_code_push_api](packages/shorebird_code_push_api/README.md)               |
+| [shorebird_code_push_api_client](packages/shorebird_code_push_api_client/README.md) |
+
+For more information, please refer to the documentation for each package.
+
+**❗️ Note: This project is under heavy development and things will change frequently. We will do our best to keep the documentation up-to-date.**
 
 ## Contributing
 
