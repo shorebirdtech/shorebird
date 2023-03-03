@@ -1,5 +1,10 @@
 ## Shorebird 🐦
 
+[![Discord](https://dcbadge.vercel.app/api/server/9hKJcWGcaB)](https://discord.gg/9hKJcWGcaB)
+
+[![License: MIT](https://img.shields.io/badge/license-MIT-blue.svg)](./LICENSE-MIT)
+[![License: APACHE](https://img.shields.io/badge/license-APACHE-orange.svg)](./LICENSE-APACHE)
+
 Home of the Shorebird Tools
 
 ## Status
@@ -20,7 +25,7 @@ This repository is a monorepo containing the following packages:
 
 For more information, please refer to the documentation for each package.
 
-**❗️ Note: This project is under heavy development and things will change frequently. We will do our best to keep the documentation up-to-date.**
+**❗️ Note: This project is under heavy development. Things will change frequently and none of the code is ready for production use. We will do our best to keep the documentation up-to-date.**
 
 ## Contributing
 
