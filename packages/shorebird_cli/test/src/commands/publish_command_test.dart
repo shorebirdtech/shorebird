@@ -1,34 +1,27 @@
-import 'dart:io';
-
-import 'package:http/http.dart' as http;
 import 'package:mason_logger/mason_logger.dart';
 import 'package:mocktail/mocktail.dart';
 import 'package:path/path.dart' as p;
 import 'package:shorebird_cli/src/command_runner.dart';
+import 'package:shorebird_code_push_api_client/shorebird_code_push_api_client.dart';
 import 'package:test/test.dart';
 
 class _MockLogger extends Mock implements Logger {}
 
-class _MockHttpClient extends Mock implements http.Client {}
-
-class _FakeBaseRequest extends Fake implements http.BaseRequest {}
+class _MockShorebirdCodePushApiClient extends Mock
+    implements ShorebirdCodePushApiClient {}
 
 void main() {
   group('publish', () {
     late Logger logger;
-    late http.Client httpClient;
+    late _MockShorebirdCodePushApiClient codePushApiClient;
     late ShorebirdCliCommandRunner commandRunner;
-
-    setUpAll(() {
-      registerFallbackValue(_FakeBaseRequest());
-    });
 
     setUp(() {
       logger = _MockLogger();
-      httpClient = _MockHttpClient();
+      codePushApiClient = _MockShorebirdCodePushApiClient();
       commandRunner = ShorebirdCliCommandRunner(
         logger: logger,
-        httpClient: httpClient,
+        codePushApiClient: codePushApiClient,
       );
     });
 
@@ -58,30 +51,18 @@ void main() {
     });
 
     test('throws error when release fails.', () async {
-      const statusCode = HttpStatus.internalServerError;
-      const reasonPhrase = 'something went wrong';
-      when(() => httpClient.send(any())).thenAnswer(
-        (_) async => http.StreamedResponse(
-          const Stream.empty(),
-          statusCode,
-          reasonPhrase: reasonPhrase,
-        ),
-      );
+      const error = 'something went wrong';
+      when(() => codePushApiClient.createRelease(any())).thenThrow(error);
       final release = p.join('test', 'fixtures', 'release.txt');
       final exitCode = await commandRunner.run(['publish', release]);
-      verify(
-        () => logger.err('Failed to deploy: $statusCode $reasonPhrase'),
-      ).called(1);
+      verify(() => logger.err('Failed to deploy: $error')).called(1);
       expect(exitCode, ExitCode.software.code);
     });
 
     test('succeeds when release is successful.', () async {
-      when(() => httpClient.send(any())).thenAnswer(
-        (_) async => http.StreamedResponse(
-          const Stream.empty(),
-          HttpStatus.created,
-        ),
-      );
+      when(
+        () => codePushApiClient.createRelease(any()),
+      ).thenAnswer((_) async {});
       final release = p.join('test', 'fixtures', 'release.txt');
       final exitCode = await commandRunner.run(['publish', release]);
       verify(() => logger.success('Deployed $release!')).called(1);

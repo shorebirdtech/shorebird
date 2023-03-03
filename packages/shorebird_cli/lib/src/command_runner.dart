@@ -1,11 +1,11 @@
 import 'package:args/args.dart';
 import 'package:args/command_runner.dart';
 import 'package:cli_completion/cli_completion.dart';
-import 'package:http/http.dart' as http;
 import 'package:mason_logger/mason_logger.dart';
 import 'package:pub_updater/pub_updater.dart';
 import 'package:shorebird_cli/src/commands/commands.dart';
 import 'package:shorebird_cli/src/version.dart';
+import 'package:shorebird_code_push_api_client/shorebird_code_push_api_client.dart';
 
 const executableName = 'shorebird';
 const packageName = 'shorebird_cli';
@@ -22,7 +22,7 @@ class ShorebirdCliCommandRunner extends CompletionCommandRunner<int> {
   /// {@macro shorebird_cli_command_runner}
   ShorebirdCliCommandRunner({
     Logger? logger,
-    http.Client? httpClient,
+    ShorebirdCodePushApiClient? codePushApiClient,
     PubUpdater? pubUpdater,
   })  : _logger = logger ?? Logger(),
         _pubUpdater = pubUpdater ?? PubUpdater(),
@@ -41,7 +41,9 @@ class ShorebirdCliCommandRunner extends CompletionCommandRunner<int> {
       );
 
     // Add sub commands
-    addCommand(PublishCommand(logger: _logger, httpClient: httpClient));
+    addCommand(
+      PublishCommand(logger: _logger, codePushApiClient: codePushApiClient),
+    );
     addCommand(UpdateCommand(logger: _logger, pubUpdater: _pubUpdater));
   }
 
