@@ -1,19 +1,21 @@
 import 'dart:io';
 
 import 'package:args/command_runner.dart';
-import 'package:http/http.dart' as http;
 import 'package:mason_logger/mason_logger.dart';
+import 'package:shorebird_code_push_api_client/shorebird_code_push_api_client.dart';
 
-/// {@template sample_command}
+/// {@template publish_command}
 ///
-/// `shorebird sample`
-/// A [Command] to exemplify a sub command
+/// `shorebird publish <path/to/artifact>`
+/// Publish new releases to the Shorebird CodePush server.
 /// {@endtemplate}
 class PublishCommand extends Command<int> {
-  /// {@macro sample_command}
-  PublishCommand({required Logger logger, http.Client? httpClient})
-      : _logger = logger,
-        _httpClient = httpClient ?? http.Client();
+  /// {@macro publish_command}
+  PublishCommand({
+    required Logger logger,
+    ShorebirdCodePushApiClient? codePushApiClient,
+  })  : _logger = logger,
+        _codePushApiClient = codePushApiClient ?? ShorebirdCodePushApiClient();
 
   @override
   String get description => 'Publish an update.';
@@ -22,7 +24,7 @@ class PublishCommand extends Command<int> {
   String get name => 'publish';
 
   final Logger _logger;
-  final http.Client _httpClient;
+  final ShorebirdCodePushApiClient _codePushApiClient;
 
   @override
   Future<int> run() async {
@@ -37,23 +39,14 @@ class PublishCommand extends Command<int> {
       return ExitCode.noInput.code;
     }
 
-    final request = http.MultipartRequest(
-      'POST',
-      Uri.parse('http://localhost:8080/api/v1/releases'),
-    );
-    final file = await http.MultipartFile.fromPath('file', artifact.path);
-    request.files.add(file);
-    final response = await _httpClient.send(request);
-
-    if (response.statusCode != HttpStatus.created) {
-      _logger.err(
-        'Failed to deploy: ${response.statusCode} ${response.reasonPhrase}',
-      );
+    try {
+      await _codePushApiClient.createRelease(artifact.path);
+    } catch (error) {
+      _logger.err('Failed to deploy: $error');
       return ExitCode.software.code;
     }
 
     _logger.success('Deployed ${artifact.path}!');
-
     return ExitCode.success.code;
   }
 }
