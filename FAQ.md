@@ -5,7 +5,7 @@ Maintained by @eseidel
 If you have questions not answered here, please ask (either by filing an issue
 or asking on [Discord](https://discord.gg/9hKJcWGcaB)).
 
-# What is "code push"?
+### What is "code push"?
 
 Code push, also referred to as "over the air updates" (OTA) is a cloud service
 we are building to enable Flutter developers to deploy updates directly to
@@ -21,14 +21,14 @@ differentiate it.  "Code Push" is a reference to the name of a deploy feature
 used by the React Native community from [Microsoft](appcenter.ms) and
 [Expo](appcenter.ms), neither of which support Flutter.
 
-# What is the status of code push?
+### What is the status of code push?
 
 As of March 4th, 2023 we've built [a
 demo](https://www.youtube.com/watch?v=mmKvs0_Zu14&ab_channel=Shorebird) and have
 the prototype working on multiple machines and Android phones.
 
 
-# What is the roadmap?
+### What is the roadmap?
 
 First we're trying to get something working into user's hands.  Our current
 prototype is not ready to support multiple users, but we're working to address
@@ -39,20 +39,20 @@ Eric intends to send out a survey to the mailing list -- sign-up at
 [Discord](https://discord.gg/9hKJcWGcaB) the week of March 6th, 2023 from which
 we will find users to work with us on a first version.
 
-# How does this relate to Firebase Remote Config or Launch Darkly?
+### How does this relate to Firebase Remote Config or Launch Darkly?
 
 Code push allows adding new code / replacing code on the device.  Firebase
 Remote Config and Launch Darkly are both configuration systems.  They allow you
 to change the configuration of your app without having to ship a new version.
 They are not intended to replace code.
 
-# How big of a dependency footprint does this add?
+### How big of a dependency footprint does this add?
 
 We don't know yet.  We expect the code push library to add less than one
 megabyte to Flutter apps.
 
 
-# How does this relate to Flutter Hot Reload?
+### How does this relate to Flutter Hot Reload?
 
 Flutter's Hot reload is a development-time-only feature.  Code push is for
 production.
@@ -66,7 +66,7 @@ production.  We will use a variety of different techniques to make this possible
 depending on the platform.  Current demos execute ahead-of-time compiled Dart
 code and do not require a JIT Dart compiler.
 
-# Does this support Flutter Web?
+### Does this support Flutter Web?
 
 Code push isn't needed for Flutter web as the web already works this way.  When
 a user opens a web app it downloads the latest version from the server if
@@ -74,7 +74,7 @@ needed.
 
 If you have a use case for code push with Fluter web, we'd love to know!
 
-# Will this work on iOS, Android, Mac, Windows, Linux, etc?
+### Will this work on iOS, Android, Mac, Windows, Linux, etc?
 
 Yes.
 
@@ -87,7 +87,7 @@ There are different technical restrictions on some platforms (e.g. iOS) relative
 to Android, but we have several approaches we can use to solve them (Dart is an
 incredibly flexible language).
 
-# How does this relate to the App/Play Store review process or policies?
+### How does this relate to the App/Play Store review process or policies?
 
 Developers are bound by their agreements with store providers when they choose
 to use those stores.  Code push is designed to allow developers to update their
@@ -98,14 +98,14 @@ variety of commercial products available to do so with React Native (e.g.
 We will include more instructions and guidelines about how to both use code push
 and comply with store guidelines as we get closer to a public launch.
 
-# Does code push require the internet to work?
+### Does code push require the internet to work?
 
 Yes.  One could imagine running a server to distribute the updates separately
 from the general internet, but some form of network connectivity is required to
 transport updates to the devices.
 
 
-# What happens if a user doesn't update for a long time and misses an update?
+### What happens if a user doesn't update for a long time and misses an update?
 
 Our current designs for code push send the current app version & code signature
 as part of the update request.  Thus the update server could be written to
