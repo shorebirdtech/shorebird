@@ -10,7 +10,7 @@ extension ProvideExtension on Request {
     if (value == null) {
       throw StateError(
         '''
-request.lookup<$T>() called with a request request that does not contain a $T.
+request.lookup<$T>() called with a request that does not contain a $T.
 ''',
       );
     }
