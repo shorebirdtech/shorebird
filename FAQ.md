@@ -18,8 +18,8 @@ video](https://www.youtube.com/watch?v=mmKvs0_Zu14&ab_channel=Shorebird).
 
 Code push is a working title.  We'll probably come up with some name to help
 differentiate it.  "Code Push" is a reference to the name of a deploy feature
-used by the React Native community from [Microsoft](appcenter.ms) and
-[Expo](appcenter.ms), neither of which support Flutter.
+used by the React Native community from [Microsoft](https://appcenter.ms) and
+[Expo](https://expo.dev), neither of which support Flutter.
 
 ### What is the status of code push?
 
