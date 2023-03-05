@@ -112,3 +112,11 @@ as part of the update request.  Thus the update server could be written to
 respond with either the next incremental version or the latest version depending
 on your application's needs.  The current demo always sends the latest version
 but this logic would not be hard to add.
+
+# Why are some parts of the code push library written in Rust?
+
+Parts of the code push ("updater") system are written in Rust:
+1. Avoids starting two Dart VMs (one for the updater and one for the app).
+2. Allows accessing the updater code from multiple languages (e.g. both the C++ engine as well as a Dart/Flutter application, or even Kotlin/Swift "native" code if needed)
+
+See our [Languages Philosophy](https://github.com/shorebirdtech/handbook/blob/main/engineering.md#languages) for more information as to why we chose Rust.
