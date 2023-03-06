@@ -22,6 +22,7 @@ jobs:
 
     steps:
       - uses: dorny/paths-filter@v2
+        name: Pana Detection
         id: needs_pana
         with:
           filters: |
@@ -36,6 +37,7 @@ jobs:
               - packages/shorebird_code_push_api_client/**
 
       - uses: dorny/paths-filter@v2
+        name: Build Detection
         id: needs_build
         with:
           filters: |
@@ -51,6 +53,7 @@ jobs:
               - packages/shorebird_code_push_api_client/**
 
       - uses: dorny/paths-filter@v2
+        name: Verify Detection
         id: needs_verify
         with:
           filters: |
@@ -74,7 +77,7 @@ jobs:
       - name: 📚 Git Checkout
         uses: actions/checkout@v3
 
-      - name: 📊 Verify Pana Score (${{ matrix.package }})
+      - name: 📊 Pana ${{ matrix.package }}
         uses: ./.github/actions/pana
         with:
           working_directory: packages/${{ matrix.package }}
@@ -93,7 +96,7 @@ jobs:
       - name: 📚 Git Checkout
         uses: actions/checkout@v3
 
-      - name: 🎯 Dart Format, Analyze and Test (${{ matrix.package }})
+      - name: 🎯 Build ${{ matrix.package }}
         uses: ./.github/actions/dart_package
         with:
           working_directory: packages/${{ matrix.package }}
@@ -112,7 +115,7 @@ jobs:
       - name: 📚 Git Checkout
         uses: actions/checkout@v3
 
-      - name: 🔎 Verify (${{ matrix.package }})
+      - name: 🔎 Verify ${{ matrix.package }}
         uses: ./.github/actions/verify_version
         with:
           working_directory: packages/${{ matrix.package }}
