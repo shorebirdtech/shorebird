@@ -13,6 +13,8 @@ class _FakeBaseRequest extends Fake implements http.BaseRequest {}
 
 void main() {
   group('ShorebirdCodePushApiClient', () {
+    const apiKey = 'api-key';
+
     late http.Client httpClient;
     late ShorebirdCodePushApiClient shorebirdCodePushApiClient;
 
@@ -23,12 +25,13 @@ void main() {
     setUp(() {
       httpClient = _MockHttpClient();
       shorebirdCodePushApiClient = ShorebirdCodePushApiClient(
+        apiKey: apiKey,
         httpClient: httpClient,
       );
     });
 
     test('can be instantiated', () {
-      expect(ShorebirdCodePushApiClient(), isNotNull);
+      expect(ShorebirdCodePushApiClient(apiKey: apiKey), isNotNull);
     });
 
     group('createRelease', () {
@@ -67,6 +70,45 @@ void main() {
           request.url,
           Uri.parse(
             'https://shorebird-code-push-api-cypqazu4da-uc.a.run.app/api/v1/releases',
+          ),
+        );
+      });
+    });
+
+    group('downloadEngine', () {
+      const engineRevision = 'engine-revision';
+      test('throws an exception if the http request fails', () async {
+        when(() => httpClient.send(any())).thenAnswer((_) async {
+          return http.StreamedResponse(
+            Stream.empty(),
+            400,
+          );
+        });
+
+        expect(
+          shorebirdCodePushApiClient.downloadEngine(engineRevision),
+          throwsA(isA<Exception>()),
+        );
+      });
+
+      test('sends a request to the correct url', () async {
+        when(() => httpClient.send(any())).thenAnswer((_) async {
+          return http.StreamedResponse(
+            Stream.empty(),
+            HttpStatus.ok,
+          );
+        });
+
+        await shorebirdCodePushApiClient.downloadEngine(engineRevision);
+
+        final request = verify(() => httpClient.send(captureAny()))
+            .captured
+            .single as http.Request;
+
+        expect(
+          request.url,
+          Uri.parse(
+            'https://shorebird-code-push-api-cypqazu4da-uc.a.run.app/api/v1/engines/$engineRevision',
           ),
         );
       });

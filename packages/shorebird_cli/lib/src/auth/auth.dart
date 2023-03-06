@@ -52,14 +52,9 @@ class Auth {
     final shorebirdConfigDir = _shorebirdConfigDir;
     if (shorebirdConfigDir == null) return;
 
-    final sessionFile = File(p.join(shorebirdConfigDir, _sessionFileName))
-      ..createSync(recursive: true);
-
-    if (!sessionFile.existsSync()) {
-      sessionFile.createSync(recursive: true);
-    }
-
-    sessionFile.writeAsStringSync(json.encode(session.toJson()));
+    File(p.join(shorebirdConfigDir, _sessionFileName))
+      ..createSync(recursive: true)
+      ..writeAsStringSync(json.encode(session.toJson()));
   }
 
   void _clearSession() {
