@@ -7,6 +7,7 @@ on:
 
 jobs:
   semantic_pull_request:
+    name: ✅ Semantic Pull Request
     uses: VeryGoodOpenSource/very_good_workflows/.github/workflows/semantic_pull_request.yml@v1
 
   changes:
@@ -19,6 +20,8 @@ jobs:
       needs_build: ${{ steps.needs_build.outputs.changes }}
       needs_pana: ${{ steps.needs_pana.outputs.changes }}
       needs_verify: ${{ steps.needs_verify.outputs.changes }}
+
+    name: 👀 Detect Changes
 
     steps:
       - uses: dorny/paths-filter@v2
