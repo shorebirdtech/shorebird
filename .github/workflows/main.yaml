@@ -1,0 +1,129 @@
+name: ci
+
+on:
+  pull_request:
+    branches:
+      - main
+
+jobs:
+  semantic_pull_request:
+    uses: VeryGoodOpenSource/very_good_workflows/.github/workflows/semantic_pull_request.yml@v1
+
+  changes:
+    runs-on: ubuntu-latest
+
+    permissions:
+      pull-requests: read
+
+    outputs:
+      needs_build: ${{ steps.needs_build.outputs.changes }}
+      needs_pana: ${{ steps.needs_pana.outputs.changes }}
+      needs_verify: ${{ steps.needs_verify.outputs.changes }}
+
+    steps:
+      - uses: dorny/paths-filter@v2
+        id: needs_pana
+        with:
+          filters: |
+            shorebird_cli:
+              - ./.github/actions/dart_package
+              - packages/shorebird_cli/**
+            shorebird_code_push_api:
+              - ./.github/actions/dart_package
+              - packages/shorebird_code_push_api/**
+            shorebird_code_push_api_client:
+              - ./.github/actions/dart_package
+              - packages/shorebird_code_push_api_client/**
+
+      - uses: dorny/paths-filter@v2
+        id: needs_build
+        with:
+          filters: |
+            shorebird_cli:
+              - ./.github/actions/dart_package
+              - packages/shorebird_cli/**
+            shorebird_code_push_api:
+              - ./.github/actions/dart_package
+              - packages/shorebird_code_push_api/**
+            shorebird_code_push_api_client:
+              - ./.github/actions/dart_package
+              - packages/shorebird_code_push_api_client/**
+
+      - uses: dorny/paths-filter@v2
+        id: needs_verify
+        with:
+          filters: |
+            shorebird_cli:
+              - ./.github/actions/dart_package
+              - packages/shorebird_cli/**
+
+  pana_packages:
+    needs: changes
+    if: ${{ needs.changes.outputs.needs_pana != '[]' }}
+
+    continue-on-error: true
+
+    strategy:
+      matrix:
+        package: ${{ fromJSON(needs.changes.outputs.needs_pana) }}
+
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: 📚 Git Checkout
+        uses: actions/checkout@v3
+
+      - name: 📊 Verify Pana Score (${{ matrix.package }})
+        uses: ./.github/actions/pana
+        with:
+          working_directory: packages/${{ matrix.package }}
+
+  build_packages:
+    needs: changes
+    if: ${{ needs.changes.outputs.needs_build != '[]' }}
+
+    strategy:
+      matrix:
+        package: ${{ fromJSON(needs.changes.outputs.needs_build) }}
+
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: 📚 Git Checkout
+        uses: actions/checkout@v3
+
+      - name: 🎯 Dart Format, Analyze and Test (${{ matrix.package }})
+        uses: ./.github/actions/dart_package
+        with:
+          working_directory: packages/${{ matrix.package }}
+
+  verify_packages:
+    needs: changes
+    if: ${{ needs.changes.outputs.needs_verify != '[]' }}
+
+    strategy:
+      matrix:
+        package: ${{ fromJSON(needs.changes.outputs.needs_verify) }}
+
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: 📚 Git Checkout
+        uses: actions/checkout@v3
+
+      - name: 🔎 Verify (${{ matrix.package }})
+        uses: ./.github/actions/verify_version
+        with:
+          working_directory: packages/${{ matrix.package }}
+
+  ci:
+    needs:
+      [semantic_pull_request, pana_packages, build_packages, verify_packages]
+    if: ${{ always() }}
+
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: exit(1) on failure
+        if: ${{ contains(join(needs.*.result, ','), 'failure') }}
+        run: exit 1

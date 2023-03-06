@@ -1,4 +1,4 @@
-name: shorebird_code_push_api
+name: deploy_shorebird_code_push_api
 
 concurrency:
   group: ${{ github.workflow }}-${{ github.ref }}
@@ -7,7 +7,7 @@ concurrency:
 on:
   pull_request:
     paths:
-      - ".github/workflows/shorebird_code_push_api.yaml"
+      - ".github/workflows/deploy_shorebird_code_push_api.yaml"
       - "packages/shorebird_code_push_api/lib/**"
       - "packages/shorebird_code_push_api/test/**"
       - "packages/shorebird_code_push_api/pubspec.yaml"
@@ -15,7 +15,7 @@ on:
     branches:
       - main
     paths:
-      - ".github/workflows/shorebird_code_push_api.yaml"
+      - ".github/workflows/deploy_shorebird_code_push_api.yaml"
       - "packages/shorebird_code_push_api/lib/**"
       - "packages/shorebird_code_push_api/test/**"
       - "packages/shorebird_code_push_api/pubspec.yaml"
@@ -26,16 +26,8 @@ env:
   REGION: us-central1
 
 jobs:
-  semantic-pull-request:
-    uses: VeryGoodOpenSource/very_good_workflows/.github/workflows/semantic_pull_request.yml@v1
-
   build:
     uses: VeryGoodOpenSource/very_good_workflows/.github/workflows/dart_package.yml@v1
-    with:
-      working_directory: packages/shorebird_code_push_api
-
-  pana:
-    uses: VeryGoodOpenSource/very_good_workflows/.github/workflows/pana.yml@v1
     with:
       working_directory: packages/shorebird_code_push_api
 
