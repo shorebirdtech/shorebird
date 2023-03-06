@@ -1,0 +1,1 @@
+Command line application to test ffi wrapping of updater library.
