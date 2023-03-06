@@ -60,6 +60,13 @@ class ShorebirdCliCommandRunner extends CompletionCommandRunner<int> {
         logger: _logger,
       ),
     );
+    addCommand(
+      RunCommand(
+        auth: authentication,
+        codePushApiClientBuilder: buildCodePushApiClient,
+        logger: _logger,
+      ),
+    );
     addCommand(UpdateCommand(logger: _logger, pubUpdater: _pubUpdater));
   }
 
