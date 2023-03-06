@@ -20,7 +20,7 @@ void main() {
 
     test('returns 401 if key is invalid', () async {
       final handler = const Pipeline()
-          .addMiddleware(apiKeyVerifier(keys: keys))
+          .addMiddleware(apiKeyVerifier(keys))
           .addHandler((_) => Response.ok('OK'));
 
       final request = Request(
@@ -34,7 +34,7 @@ void main() {
 
     test('returns 200 if key is valid', () async {
       final handler = const Pipeline()
-          .addMiddleware(apiKeyVerifier(keys: keys))
+          .addMiddleware(apiKeyVerifier(keys))
           .addHandler((_) => Response.ok('OK'));
 
       final request = Request(

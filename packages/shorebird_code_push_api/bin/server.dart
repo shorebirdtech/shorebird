@@ -24,7 +24,7 @@ Future<void> main() async {
   final handler = const Pipeline()
       .addMiddleware(versionStoreProvider)
       .addMiddleware(httpClientProvider(gcpKey))
-      .addMiddleware(apiKeyVerifier(keys: apiKeys))
+      .addMiddleware(apiKeyVerifier(apiKeys))
       .addHandler(router.call);
 
   final server = await shelf_io.serve(

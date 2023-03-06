@@ -13,7 +13,6 @@ on:
       - "packages/shorebird_code_push_api/lib/**"
       - "packages/shorebird_code_push_api/test/**"
       - "packages/shorebird_code_push_api/pubspec.yaml"
-  pull_request:
 
 env:
   PROJECT_ID: shorebird-code-push-api

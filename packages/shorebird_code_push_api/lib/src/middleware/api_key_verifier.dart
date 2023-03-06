@@ -2,7 +2,7 @@ import 'dart:io';
 
 import 'package:shelf/shelf.dart';
 
-Middleware apiKeyVerifier({List<String> keys = const []}) {
+Middleware apiKeyVerifier([List<String> keys = const []]) {
   return (handler) {
     return (request) async {
       final apiKey = request.headers['x-api-key'];
