@@ -1,4 +1,4 @@
-## Shorebird CLI
+## Shorebird CLI!
 
 **🚧 This project is under heavy development 🚧**
 
