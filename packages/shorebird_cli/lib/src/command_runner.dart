@@ -50,6 +50,7 @@ class ShorebirdCliCommandRunner extends CompletionCommandRunner<int> {
     final buildCodePushApiClient =
         codePushApiClientBuilder ?? ShorebirdCodePushApiClient.new;
 
+    addCommand(LoginCommand(auth: authentication, logger: _logger));
     addCommand(
       PublishCommand(
         auth: authentication,
