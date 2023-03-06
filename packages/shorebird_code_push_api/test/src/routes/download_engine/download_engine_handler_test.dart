@@ -9,13 +9,15 @@ import 'package:test/test.dart';
 
 class _MockHttpClient extends Mock implements http.Client {}
 
+class _FakeBaseRequest extends Fake implements http.BaseRequest {}
+
 void main() {
   group('downloadEngineHandler', () {
     final uri = Uri.parse('http://localhost/');
     late http.Client httpClient;
 
     setUpAll(() {
-      registerFallbackValue(Uri());
+      registerFallbackValue(_FakeBaseRequest());
     });
 
     setUp(() {
@@ -24,8 +26,13 @@ void main() {
 
     test('returns error on failure', () async {
       when(
-        () => httpClient.get(any(), headers: any(named: 'headers')),
-      ).thenAnswer((_) async => http.Response('oops', HttpStatus.unauthorized));
+        () => httpClient.send(any()),
+      ).thenAnswer((_) async {
+        return http.StreamedResponse(
+          const Stream.empty(),
+          HttpStatus.unauthorized,
+        );
+      });
       final request = Request('GET', uri).provide(() async => httpClient);
 
       final response = await downloadEngineHandler(request, 'revision');
@@ -34,8 +41,13 @@ void main() {
 
     test('returns bytes on success', () async {
       when(
-        () => httpClient.get(any(), headers: any(named: 'headers')),
-      ).thenAnswer((_) async => http.Response('OK', HttpStatus.ok));
+        () => httpClient.send(any()),
+      ).thenAnswer((_) async {
+        return http.StreamedResponse(
+          const Stream.empty(),
+          HttpStatus.ok,
+        );
+      });
       final request = Request('GET', uri).provide(() async => httpClient);
 
       final response = await downloadEngineHandler(request, 'revision');
