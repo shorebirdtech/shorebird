@@ -16,6 +16,9 @@ Future<void> main() async {
     ..post('/api/v1/releases', uploadReleaseHandler)
     ..get('/api/v1/engines/<revision>', downloadEngineHandler);
 
+  print(Platform.environment['CODE_PUSH_API_KEYS'] ?? '[]');
+  print(Platform.environment['GCP_SA'] ?? '');
+
   final apiKeys = json.decode(
     Platform.environment['CODE_PUSH_API_KEYS'] ?? '[]',
   ) as List;
