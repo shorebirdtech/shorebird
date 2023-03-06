@@ -55,7 +55,7 @@ class RunCommand extends Command<int> {
     }
 
     // This will likely change in the future as each Flutter application
-    // will not need to cache it's own copy of the Shorebird engine.
+    // will not need to cache its own copy of the Shorebird engine.
     final shorebirdEnginePath = p.join(
       Directory.current.path,
       '.shorebird',
