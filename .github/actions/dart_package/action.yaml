@@ -1,0 +1,65 @@
+name: Dart Package Workflow
+
+inputs:
+  concurrency:
+    required: false
+    type: number
+    default: 4
+  coverage_excludes:
+    required: false
+    type: string
+    default: ""
+  dart_sdk:
+    required: false
+    type: string
+    default: "stable"
+  working_directory:
+    required: false
+    type: string
+    default: "."
+  min_coverage:
+    required: false
+    type: number
+    default: 100
+  analyze_directories:
+    required: false
+    type: string
+    default: "lib test"
+  report_on:
+    required: false
+    type: string
+    default: "lib"
+  platform:
+    required: false
+    type: string
+    default: "vm" 
+
+runs:
+  using: "composite"
+  steps:
+    - uses: dart-lang/setup-dart@v1
+      with:
+        sdk: ${{inputs.dart_sdk}}
+
+    - working-directory: ${{ inputs.working_directory }}
+      shell: ${{ inputs.shell }}
+      run: dart pub get
+
+    - working-directory: ${{ inputs.working_directory }}
+      shell: ${{ inputs.shell }}
+      run: dart format --set-exit-if-changed .
+
+    - working-directory: ${{ inputs.working_directory }}
+      shell: ${{ inputs.shell }}
+      run: dart analyze --fatal-infos --fatal-warnings ${{inputs.analyze_directories}}
+
+    - working-directory: ${{ inputs.working_directory }}
+      shell: ${{ inputs.shell }}
+      run: |
+        dart pub global activate coverage
+        dart test -j ${{inputs.concurrency}} --coverage=coverage --platform=${{inputs.platform}} && dart pub global run coverage:format_coverage --lcov --in=coverage --out=coverage/lcov.info --packages=.dart_tool/package_config.json --report-on=${{inputs.report_on}} --check-ignore
+    - uses: VeryGoodOpenSource/very_good_coverage@v2
+      with:
+        path: ${{inputs.working_directory}}/coverage/lcov.info
+        exclude: ${{inputs.coverage_excludes}}
+        min_coverage: ${{inputs.min_coverage}}
