@@ -5,7 +5,6 @@ import 'package:shelf/shelf.dart';
 import 'package:shelf/shelf_io.dart' as shelf_io;
 import 'package:shelf_router/shelf_router.dart' as shelf_router;
 import 'package:shorebird_code_push_api/src/middleware/middleware.dart';
-import 'package:shorebird_code_push_api/src/routes/download_engine/download_engine.dart';
 import 'package:shorebird_code_push_api/src/routes/routes.dart';
 
 Future<void> main() async {
