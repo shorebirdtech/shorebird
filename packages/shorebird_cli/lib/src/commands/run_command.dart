@@ -108,10 +108,13 @@ class RunCommand extends Command<int> {
       'flutter',
       [
         'run',
+        // Eventually we should support running in both debug and release mode.
         '--release',
         '--local-engine-src-path',
         shorebirdEnginePath,
         '--local-engine',
+        // This is temporary because the Shorebird engine currently
+        // only supports Android arm64.
         'android_release_arm64',
         if (argResults?.rest != null) ...argResults!.rest
       ],
