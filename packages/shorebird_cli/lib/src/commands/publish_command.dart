@@ -2,7 +2,9 @@ import 'dart:io';
 
 import 'package:args/command_runner.dart';
 import 'package:mason_logger/mason_logger.dart';
-import 'package:shorebird_code_push_api_client/shorebird_code_push_api_client.dart';
+import 'package:path/path.dart' as p;
+import 'package:shorebird_cli/src/auth/auth.dart';
+import 'package:shorebird_cli/src/command_runner.dart';
 
 /// {@template publish_command}
 ///
@@ -13,9 +15,11 @@ class PublishCommand extends Command<int> {
   /// {@macro publish_command}
   PublishCommand({
     required Logger logger,
-    ShorebirdCodePushApiClient? codePushApiClient,
-  })  : _logger = logger,
-        _codePushApiClient = codePushApiClient ?? ShorebirdCodePushApiClient();
+    required Auth auth,
+    required ShorebirdCodePushApiClientBuilder codePushApiClientBuilder,
+  })  : _auth = auth,
+        _buildCodePushApiClient = codePushApiClientBuilder,
+        _logger = logger;
 
   @override
   String get description => 'Publish an update.';
@@ -23,24 +27,49 @@ class PublishCommand extends Command<int> {
   @override
   String get name => 'publish';
 
+  final Auth _auth;
+  final ShorebirdCodePushApiClientBuilder _buildCodePushApiClient;
   final Logger _logger;
-  final ShorebirdCodePushApiClient _codePushApiClient;
 
   @override
   Future<int> run() async {
+    final session = _auth.currentSession;
+    if (session == null) {
+      _logger.err('You must be logged in to publish.');
+      return ExitCode.noUser.code;
+    }
+
     final args = argResults!.rest;
-    if (args.isEmpty || args.length > 1) {
+    if (args.length > 1) {
       usageException('A single file path must be specified.');
     }
 
-    final artifact = File(args.first);
+    final releasePath = args.isEmpty
+        ? p.join(
+            Directory.current.path,
+            'build',
+            'app',
+            'intermediates',
+            'stripped_native_libs',
+            'release',
+            'out',
+            'lib',
+            'arm64-v8a',
+            'libapp.so',
+          )
+        : args.first;
+
+    final artifact = File(releasePath);
     if (!artifact.existsSync()) {
       _logger.err('File not found: ${artifact.path}');
       return ExitCode.noInput.code;
     }
 
     try {
-      await _codePushApiClient.createRelease(artifact.path);
+      final codePushApiClient = _buildCodePushApiClient(
+        apiKey: session.apiKey,
+      );
+      await codePushApiClient.createRelease(artifact.path);
     } catch (error) {
       _logger.err('Failed to deploy: $error');
       return ExitCode.software.code;

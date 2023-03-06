@@ -3,9 +3,15 @@ import 'package:args/command_runner.dart';
 import 'package:cli_completion/cli_completion.dart';
 import 'package:mason_logger/mason_logger.dart';
 import 'package:pub_updater/pub_updater.dart';
+import 'package:shorebird_cli/src/auth/auth.dart';
 import 'package:shorebird_cli/src/commands/commands.dart';
 import 'package:shorebird_cli/src/version.dart';
 import 'package:shorebird_code_push_api_client/shorebird_code_push_api_client.dart';
+
+typedef ShorebirdCodePushApiClientBuilder = ShorebirdCodePushApiClient
+    Function({
+  required String apiKey,
+});
 
 const executableName = 'shorebird';
 const packageName = 'shorebird_cli';
@@ -21,13 +27,13 @@ const description = 'The shorebird command-line tool';
 class ShorebirdCliCommandRunner extends CompletionCommandRunner<int> {
   /// {@macro shorebird_cli_command_runner}
   ShorebirdCliCommandRunner({
-    Logger? logger,
-    ShorebirdCodePushApiClient? codePushApiClient,
+    Auth? auth,
+    ShorebirdCodePushApiClientBuilder? codePushApiClientBuilder,
     PubUpdater? pubUpdater,
+    Logger? logger,
   })  : _logger = logger ?? Logger(),
         _pubUpdater = pubUpdater ?? PubUpdater(),
         super(executableName, description) {
-    // Add root options and flags
     argParser
       ..addFlag(
         'version',
@@ -40,9 +46,16 @@ class ShorebirdCliCommandRunner extends CompletionCommandRunner<int> {
         help: 'Noisy logging, including all shell commands executed.',
       );
 
-    // Add sub commands
+    final authentication = auth ?? Auth();
+    final buildCodePushApiClient =
+        codePushApiClientBuilder ?? ShorebirdCodePushApiClient.new;
+
     addCommand(
-      PublishCommand(logger: _logger, codePushApiClient: codePushApiClient),
+      PublishCommand(
+        auth: authentication,
+        codePushApiClientBuilder: buildCodePushApiClient,
+        logger: _logger,
+      ),
     );
     addCommand(UpdateCommand(logger: _logger, pubUpdater: _pubUpdater));
   }
