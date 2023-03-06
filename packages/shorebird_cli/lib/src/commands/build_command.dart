@@ -75,12 +75,18 @@ class BuildCommand extends Command<int> {
     const executable = 'flutter';
     final arguments = [
       'build',
+      // This is temporary because the Shorebird engine currently
+      // only supports Android.
       'apk',
       '--release',
+      // This is temporary because the Shorebird engine currently
+      // does not support tree-shaking icons.
       '--no-tree-shake-icons',
       '--local-engine-src-path',
       shorebirdEnginePath,
       '--local-engine',
+      // This is temporary because the Shorebird engine currently
+      // only supports Android arm64.
       'android_release_arm64',
     ];
 
