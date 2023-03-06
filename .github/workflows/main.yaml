@@ -73,6 +73,8 @@ jobs:
 
     runs-on: ubuntu-latest
 
+    name: 📊 Pana ${{ matrix.package }}
+
     steps:
       - name: 📚 Git Checkout
         uses: actions/checkout@v3
@@ -91,6 +93,8 @@ jobs:
         package: ${{ fromJSON(needs.changes.outputs.needs_build) }}
 
     runs-on: ubuntu-latest
+
+    name: 🎯 Build ${{ matrix.package }}
 
     steps:
       - name: 📚 Git Checkout
@@ -111,6 +115,8 @@ jobs:
 
     runs-on: ubuntu-latest
 
+    name: 🔎 Verify ${{ matrix.package }}
+
     steps:
       - name: 📚 Git Checkout
         uses: actions/checkout@v3
@@ -128,6 +134,6 @@ jobs:
     runs-on: ubuntu-latest
 
     steps:
-      - name: exit(1) on failure
+      - name: ⛔️ exit(1) on failure
         if: ${{ contains(join(needs.*.result, ','), 'failure') }}
         run: exit 1
