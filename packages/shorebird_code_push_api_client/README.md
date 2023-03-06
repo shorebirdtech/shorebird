@@ -1,4 +1,4 @@
-## Shorebird CodePush API Client!
+## Shorebird CodePush API Client
 
 The Shorebird CodePush API Client is a Dart library which allows Dart applications to interact with the ShoreBird CodePush API.
 
