@@ -10,17 +10,18 @@ final _engineUrl = Uri.parse(
 
 Future<Response> downloadEngineHandler(Request request, String revision) async {
   final httpClient = await request.lookup<Future<http.Client>>();
-  final response = await httpClient.get(
-    _engineUrl,
-    headers: {
+  final req = http.Request('GET', _engineUrl);
+  req.headers.addAll(
+    {
       'Content-Type': 'application/octet-stream',
-      'Connection': 'close'
+      'Connection': 'close',
     },
   );
+  final response = await httpClient.send(req);
 
   if (response.statusCode != HttpStatus.ok) {
-    return Response(response.statusCode, body: response.body);
+    return Response(response.statusCode, body: response.stream);
   }
 
-  return Response.ok(response.bodyBytes);
+  return Response.ok(response.stream);
 }
