@@ -18,8 +18,8 @@ runs:
 
     - name: 📦 Install Dependencies
       shell: ${{ inputs.shell }}
-      run: |
-        dart pub get
+      run: dart pub get
+      working-directory: ${{ inputs.working_directory }}
 
     - name: 🔎 Verify version
       shell: ${{ inputs.shell }}
