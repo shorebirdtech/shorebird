@@ -14,8 +14,6 @@ on:
       - "packages/shorebird_code_push_api/test/**"
       - "packages/shorebird_code_push_api/pubspec.yaml"
   pull_request:
-    branches:
-      - fix/api-secrets-access
 
 env:
   PROJECT_ID: shorebird-code-push-api
