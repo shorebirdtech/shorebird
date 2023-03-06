@@ -1,15 +1,29 @@
-This Week's Demo
+## A reminder why
+* We're here to make multi-platform the default.
+* We believe Flutter is that default, but has missing pieces for enterprises.
+* The first hole we're filling is the ability to push updates to Flutter apps.
+
+
+## This Week's Demo
 * Platform support (e.g. push to both arm7 and arm64)
-* API Keys (allows multiple users)
-* Separate product ids (allows multiple users)
+* API Keys and/or product ids (allows multiple users)
+* Teach the server how to decline to update (e.g. platform/version mismatch).
 * Instructions on how to build/use.
 
-User journey, someone can:
+## User journey
+Someone can:
 * download and install Shorebird.
 * `shorebird build` their existing Flutter app.
 * Push an update to their app.
 
-Later
+## Shipping to users (first, do no harm)
+* Need a way to know if the update failed (and both report it and roll back?)
+* Need to not send updates to incompatible devices or base versions.
+* Do we need to worry about different chipsets?
+* How do we educate users/developers about data storage updates (e.g. updating a database schema locally) and how that affects version compatibility / ability to roll back?
+* How does the Dart code know that it's running a patched version?
+
+## Later
 * Way to see what builds have been published so far.
 * See what % of devices are running what builds.
 * Make package:updater API work from Dart
