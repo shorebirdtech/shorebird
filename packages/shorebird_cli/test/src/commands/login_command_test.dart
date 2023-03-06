@@ -12,7 +12,7 @@ class _MockLogger extends Mock implements Logger {}
 class _MockProgress extends Mock implements Progress {}
 
 void main() {
-  group('LoginCommand', () {
+  group('login', () {
     const apiKey = 'test-api-key';
     const projectId = 'example';
     const session = Session(apiKey: apiKey, projectId: projectId);

@@ -12,7 +12,7 @@ class _MockAuth extends Mock implements Auth {}
 class _MockProgress extends Mock implements Progress {}
 
 void main() {
-  group('LogoutCommand', () {
+  group('logout', () {
     late Logger logger;
     late Auth auth;
     late LogoutCommand logoutCommand;
