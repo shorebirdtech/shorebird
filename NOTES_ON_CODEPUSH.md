@@ -12,5 +12,7 @@ Just place to keep running notes about our development of codepush for Flutter.
 * https://github.com/google/omaha
 * http://code.google.com/p/update-engine/
 * https://sparkle-project.org/
+* https://learn.microsoft.com/en-us/windows/msix/overview
+* https://hydraulic.software/
 
 Did we forget some?  Patches welcome!
