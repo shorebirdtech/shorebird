@@ -1,6 +1,8 @@
 name: shorebird_code_push_api
-description: The Shorebird CodePush API
+description: Server which exposes endpoints to support CodePush for Flutter applications
 version: 0.1.0+1
+repository: https://github.com/shorebirdtech/shorebird
+
 publish_to: none
 
 environment:
