@@ -8,7 +8,6 @@ import 'package:shorebird_code_push_api/src/middleware/middleware.dart';
 import 'package:shorebird_code_push_api/src/routes/routes.dart';
 
 Future<void> main() async {
-  final gcpKey = Platform.environment['GCP_SA']!;
   final apiKeys =
       (json.decode(Platform.environment['CODE_PUSH_API_KEYS']!) as List)
           .cast<String>();
@@ -28,7 +27,7 @@ Future<void> main() async {
 
   final handler = const Pipeline()
       .addMiddleware(versionStoreProvider)
-      .addMiddleware(httpClientProvider(gcpKey))
+      .addMiddleware(httpClientProvider())
       .addHandler(router.call);
 
   final server = await shelf_io.serve(

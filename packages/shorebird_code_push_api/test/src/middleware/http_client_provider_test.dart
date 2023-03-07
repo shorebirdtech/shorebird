@@ -7,11 +7,11 @@ import 'package:test/test.dart';
 void main() {
   group('httpClientProvider', () {
     test('provides an http client instance', () async {
-      Future<http.Client>? client;
+      http.Client? client;
 
-      final handler = httpClientProvider('')(
+      final handler = httpClientProvider()(
         (req) async {
-          client = req.lookup<Future<http.Client>>();
+          client = req.lookup<http.Client>();
           return Response.ok('');
         },
       );
