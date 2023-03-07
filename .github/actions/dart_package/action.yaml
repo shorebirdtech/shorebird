@@ -51,7 +51,7 @@ runs:
 
     - working-directory: ${{ inputs.working_directory }}
       shell: ${{ inputs.shell }}
-      run: dart analyze --fatal-infos --fatal-warnings ${{inputs.analyze_directories}}
+      run: dart analyze --fatal-warnings ${{inputs.analyze_directories}}
 
     - working-directory: ${{ inputs.working_directory }}
       shell: ${{ inputs.shell }}

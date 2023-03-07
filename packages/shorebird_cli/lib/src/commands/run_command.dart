@@ -95,6 +95,7 @@ class RunCommand extends Command<int> {
         await _extractShorebirdEngine(
           shorebirdEngineCache.path,
           shorebirdEngine.path,
+          _startProcess,
         );
         buildingEngine.complete();
       } catch (error) {
@@ -150,6 +151,7 @@ Future<void> _downloadShorebirdEngine(
 Future<void> _extractShorebirdEngine(
   String archivePath,
   String targetPath,
+  StartProcess startProcess,
 ) async {
   final targetDirectory = Directory(targetPath);
 
@@ -164,4 +166,23 @@ Future<void> _extractShorebirdEngine(
       extractArchiveToDisk(archive, targetPath);
     },
   );
+
+  const executables = [
+    'flutter/prebuilts/macos-x64/dart-sdk/bin/dart',
+    'flutter/prebuilts/macos-x64/dart-sdk/bin/dartaotruntime',
+    'out/android_release_arm64/clang_x64/gen_snapshot',
+    'out/android_release_arm64/clang_x64/gen_snapshot_arm64',
+    'out/android_release_arm64/clang_x64/impellerc',
+  ];
+
+  // TODO(felangel): verify whether additional steps are necessary on Windows.
+  if (Platform.isMacOS || Platform.isLinux) {
+    for (final executable in executables) {
+      final process = await startProcess(
+        'chmod',
+        ['+x', p.join(targetPath, executable)],
+      );
+      await process.exitCode;
+    }
+  }
 }
