@@ -1,17 +1,14 @@
-import 'package:args/command_runner.dart';
 import 'package:mason_logger/mason_logger.dart';
-import 'package:shorebird_cli/src/auth/auth.dart';
+import 'package:shorebird_cli/src/command.dart';
 
 /// {@template login_command}
 ///
 /// `shorebird login`
 /// Login as a new Shorebird user.
 /// {@endtemplate}
-class LoginCommand extends Command<int> {
+class LoginCommand extends ShorebirdCommand {
   /// {@macro login_command}
-  LoginCommand({required Auth auth, required Logger logger})
-      : _auth = auth,
-        _logger = logger;
+  LoginCommand({super.auth, super.logger});
 
   @override
   String get description => 'Login as a new Shorebird user.';
@@ -19,31 +16,28 @@ class LoginCommand extends Command<int> {
   @override
   String get name => 'login';
 
-  final Auth _auth;
-  final Logger _logger;
-
   @override
   Future<int> run() async {
-    final session = _auth.currentSession;
+    final session = auth.currentSession;
     if (session != null) {
-      _logger
+      logger
         ..info('You are already logged in.')
         ..info("Run 'shorebird logout' to log out and try again.");
       return ExitCode.success.code;
     }
 
-    final apiKey = _logger.prompt(
+    final apiKey = logger.prompt(
       '${lightGreen.wrap('?')} Please enter your API Key:',
     );
-    final loginProgress = _logger.progress('Logging into shorebird.dev');
+    final loginProgress = logger.progress('Logging into shorebird.dev');
     try {
-      _auth.login(projectId: 'example', apiKey: apiKey);
+      auth.login(projectId: 'example', apiKey: apiKey);
       loginProgress.complete();
-      _logger.success('You are now logged in.');
+      logger.success('You are now logged in.');
       return ExitCode.success.code;
     } catch (error) {
       loginProgress.fail();
-      _logger.err(error.toString());
+      logger.err(error.toString());
       return ExitCode.software.code;
     }
   }

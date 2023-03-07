@@ -1,9 +1,8 @@
 import 'dart:io';
 
-import 'package:args/command_runner.dart';
 import 'package:mason_logger/mason_logger.dart';
-import 'package:path/path.dart' as p;
-import 'package:shorebird_cli/src/auth/auth.dart';
+import 'package:shorebird_cli/src/command.dart';
+import 'package:shorebird_cli/src/shorebird_engine_mixin.dart';
 
 typedef RunProcess = Future<ProcessResult> Function(
   String executable,
@@ -16,15 +15,14 @@ typedef RunProcess = Future<ProcessResult> Function(
 /// `shorebird build`
 /// Build a new release of your application.
 /// {@endtemplate}
-class BuildCommand extends Command<int> {
+class BuildCommand extends ShorebirdCommand with ShorebirdEngineMixin {
   /// {@macro build_command}
   BuildCommand({
-    required Auth auth,
-    required Logger logger,
-    RunProcess? runProcess,
-  })  : _auth = auth,
-        _logger = logger,
-        _runProcess = runProcess ?? Process.run;
+    super.auth,
+    super.buildCodePushClient,
+    super.logger,
+    super.runProcess,
+  });
 
   @override
   String get description => 'Build a new release of your application.';
@@ -32,36 +30,25 @@ class BuildCommand extends Command<int> {
   @override
   String get name => 'build';
 
-  final Auth _auth;
-  final Logger _logger;
-  final RunProcess _runProcess;
-
   @override
   Future<int> run() async {
-    final session = _auth.currentSession;
-    if (session == null) {
-      _logger
+    if (auth.currentSession == null) {
+      logger
         ..err('You must be logged in to build.')
         ..err("Run 'shorebird login' to log in and try again.");
       return ExitCode.noUser.code;
     }
 
-    final shorebirdEnginePath = p.join(
-      Directory.current.path,
-      '.shorebird',
-      'engine',
-    );
-    final shorebirdEngineDir = Directory(shorebirdEnginePath);
-    if (!shorebirdEngineDir.existsSync()) {
-      _logger.err(
-        'Shorebird engine not found. Run `shorebird run` to download it.',
-      );
+    try {
+      await ensureEngineExists();
+    } catch (error) {
+      logger.err(error.toString());
       return ExitCode.software.code;
     }
 
-    final buildProgress = _logger.progress('Building release ');
+    final buildProgress = logger.progress('Building release ');
     try {
-      await _build(_runProcess, shorebirdEnginePath);
+      await _build(shorebirdEnginePath);
       buildProgress.complete();
     } on ProcessException catch (error) {
       buildProgress.fail('Failed to build: ${error.message}');
@@ -71,7 +58,7 @@ class BuildCommand extends Command<int> {
     return ExitCode.success.code;
   }
 
-  Future<void> _build(RunProcess runProcess, String shorebirdEnginePath) async {
+  Future<void> _build(String shorebirdEnginePath) async {
     const executable = 'flutter';
     final arguments = [
       'build',

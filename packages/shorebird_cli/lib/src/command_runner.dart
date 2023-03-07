@@ -3,15 +3,8 @@ import 'package:args/command_runner.dart';
 import 'package:cli_completion/cli_completion.dart';
 import 'package:mason_logger/mason_logger.dart';
 import 'package:pub_updater/pub_updater.dart';
-import 'package:shorebird_cli/src/auth/auth.dart';
 import 'package:shorebird_cli/src/commands/commands.dart';
 import 'package:shorebird_cli/src/version.dart';
-import 'package:shorebird_code_push_api_client/shorebird_code_push_api_client.dart';
-
-typedef ShorebirdCodePushApiClientBuilder = ShorebirdCodePushApiClient
-    Function({
-  required String apiKey,
-});
 
 const executableName = 'shorebird';
 const packageName = 'shorebird_cli';
@@ -26,12 +19,8 @@ const description = 'The shorebird command-line tool';
 /// {@endtemplate}
 class ShorebirdCliCommandRunner extends CompletionCommandRunner<int> {
   /// {@macro shorebird_cli_command_runner}
-  ShorebirdCliCommandRunner({
-    Auth? auth,
-    ShorebirdCodePushApiClientBuilder? codePushApiClientBuilder,
-    PubUpdater? pubUpdater,
-    Logger? logger,
-  })  : _logger = logger ?? Logger(),
+  ShorebirdCliCommandRunner({PubUpdater? pubUpdater, Logger? logger})
+      : _logger = logger ?? Logger(),
         _pubUpdater = pubUpdater ?? PubUpdater(),
         super(executableName, description) {
     argParser
@@ -46,28 +35,12 @@ class ShorebirdCliCommandRunner extends CompletionCommandRunner<int> {
         help: 'Noisy logging, including all shell commands executed.',
       );
 
-    final authentication = auth ?? Auth();
-    final buildCodePushApiClient =
-        codePushApiClientBuilder ?? ShorebirdCodePushApiClient.new;
-
-    addCommand(BuildCommand(auth: authentication, logger: _logger));
-    addCommand(LoginCommand(auth: authentication, logger: _logger));
-    addCommand(LogoutCommand(auth: authentication, logger: _logger));
-    addCommand(
-      PublishCommand(
-        auth: authentication,
-        codePushApiClientBuilder: buildCodePushApiClient,
-        logger: _logger,
-      ),
-    );
-    addCommand(
-      RunCommand(
-        auth: authentication,
-        codePushApiClientBuilder: buildCodePushApiClient,
-        logger: _logger,
-      ),
-    );
-    addCommand(UpdateCommand(logger: _logger, pubUpdater: _pubUpdater));
+    addCommand(BuildCommand());
+    addCommand(LoginCommand());
+    addCommand(LogoutCommand());
+    addCommand(PublishCommand());
+    addCommand(RunCommand());
+    addCommand(UpdateCommand(logger: logger, pubUpdater: pubUpdater));
   }
 
   @override
