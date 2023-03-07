@@ -1,5 +1,6 @@
 import 'dart:convert';
 import 'dart:io';
+import 'dart:isolate';
 
 import 'package:archive/archive_io.dart';
 import 'package:args/command_runner.dart';
@@ -7,7 +8,6 @@ import 'package:mason_logger/mason_logger.dart';
 import 'package:path/path.dart' as p;
 import 'package:shorebird_cli/src/auth/auth.dart';
 import 'package:shorebird_cli/src/command_runner.dart';
-import 'package:shorebird_cli/src/compute.dart';
 import 'package:shorebird_code_push_api_client/shorebird_code_push_api_client.dart';
 
 typedef StartProcess = Future<Process> Function(
@@ -157,12 +157,11 @@ Future<void> _extractShorebirdEngine(
 
   targetDirectory.createSync(recursive: true);
 
-  await compute(
-    (path) async {
-      final inputStream = InputFileStream(path);
+  await Isolate.run(
+    () async {
+      final inputStream = InputFileStream(archivePath);
       final archive = ZipDecoder().decodeBuffer(inputStream);
       extractArchiveToDisk(archive, targetPath);
     },
-    archivePath,
   );
 }
