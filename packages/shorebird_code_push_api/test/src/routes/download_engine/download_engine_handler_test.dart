@@ -33,7 +33,7 @@ void main() {
           HttpStatus.unauthorized,
         );
       });
-      final request = Request('GET', uri).provide(() async => httpClient);
+      final request = Request('GET', uri).provide(() => httpClient);
 
       final response = await downloadEngineHandler(request, 'revision');
       expect(response.statusCode, equals(HttpStatus.unauthorized));
@@ -48,7 +48,7 @@ void main() {
           HttpStatus.ok,
         );
       });
-      final request = Request('GET', uri).provide(() async => httpClient);
+      final request = Request('GET', uri).provide(() => httpClient);
 
       final response = await downloadEngineHandler(request, 'revision');
       expect(response.statusCode, equals(HttpStatus.ok));

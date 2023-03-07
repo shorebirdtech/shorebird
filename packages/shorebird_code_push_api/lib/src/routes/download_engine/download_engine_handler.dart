@@ -9,7 +9,7 @@ final _engineUrl = Uri.parse(
 );
 
 Future<Response> downloadEngineHandler(Request request, String revision) async {
-  final httpClient = await request.lookup<Future<http.Client>>();
+  final httpClient = request.lookup<http.Client>();
   final req = http.Request('GET', _engineUrl);
   req.headers.addAll(
     {
