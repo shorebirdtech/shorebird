@@ -8,23 +8,27 @@ import 'package:shorebird_code_push_api/src/middleware/middleware.dart';
 import 'package:shorebird_code_push_api/src/routes/routes.dart';
 
 Future<void> main() async {
-  final port = int.parse(Platform.environment['PORT'] ?? '8080');
-  final router = shelf_router.Router()
-    ..all('/', (_) => Response(HttpStatus.noContent))
-    ..post('/api/v1/updates', checkForUpdatesHandler)
-    ..get('/api/v1/releases/<version>', downloadReleaseHandler)
-    ..post('/api/v1/releases', uploadReleaseHandler)
-    ..get('/api/v1/engines/<revision>', downloadEngineHandler);
-
   final gcpKey = Platform.environment['GCP_SA']!;
   final apiKeys =
       (json.decode(Platform.environment['CODE_PUSH_API_KEYS']!) as List)
           .cast<String>();
 
+  final port = int.parse(Platform.environment['PORT'] ?? '8080');
+  final router = shelf_router.Router()
+    ..all('/', (_) => Response(HttpStatus.noContent))
+    ..post('/api/v1/updates', checkForUpdatesHandler)
+    ..get('/api/v1/releases/<version>', downloadReleaseHandler)
+    ..post(
+      '/api/v1/releases',
+      const Pipeline()
+          .addMiddleware(apiKeyVerifier(apiKeys))
+          .addHandler(uploadReleaseHandler),
+    )
+    ..get('/api/v1/engines/<revision>', downloadEngineHandler);
+
   final handler = const Pipeline()
       .addMiddleware(versionStoreProvider)
       .addMiddleware(httpClientProvider(gcpKey))
-      .addMiddleware(apiKeyVerifier(apiKeys))
       .addHandler(router.call);
 
   final server = await shelf_io.serve(
