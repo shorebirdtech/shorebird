@@ -169,15 +169,15 @@ Future<void> _extractShorebirdEngine(
 
   // TODO(felangel): support windows and linux
   // https://github.com/shorebirdtech/shorebird/issues/37
-  const executables = [
-    'flutter/prebuilts/macos-x64/dart-sdk/bin/dart',
-    'flutter/prebuilts/macos-x64/dart-sdk/bin/dartaotruntime',
-    'out/android_release_arm64/clang_x64/gen_snapshot',
-    'out/android_release_arm64/clang_x64/gen_snapshot_arm64',
-    'out/android_release_arm64/clang_x64/impellerc',
-  ];
-
   if (Platform.isMacOS) {
+    const executables = [
+      'flutter/prebuilts/macos-x64/dart-sdk/bin/dart',
+      'flutter/prebuilts/macos-x64/dart-sdk/bin/dartaotruntime',
+      'out/android_release_arm64/clang_x64/gen_snapshot',
+      'out/android_release_arm64/clang_x64/gen_snapshot_arm64',
+      'out/android_release_arm64/clang_x64/impellerc',
+    ];
+
     for (final executable in executables) {
       final process = await startProcess(
         'chmod',
