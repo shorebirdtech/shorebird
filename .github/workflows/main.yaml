@@ -18,27 +18,11 @@ jobs:
 
     outputs:
       needs_build: ${{ steps.needs_build.outputs.changes }}
-      needs_pana: ${{ steps.needs_pana.outputs.changes }}
       needs_verify: ${{ steps.needs_verify.outputs.changes }}
 
     name: 👀 Detect Changes
 
     steps:
-      - uses: dorny/paths-filter@v2
-        name: Pana Detection
-        id: needs_pana
-        with:
-          filters: |
-            shorebird_cli:
-              - ./.github/actions/dart_package
-              - packages/shorebird_cli/**
-            shorebird_code_push_api:
-              - ./.github/actions/dart_package
-              - packages/shorebird_code_push_api/**
-            shorebird_code_push_api_client:
-              - ./.github/actions/dart_package
-              - packages/shorebird_code_push_api_client/**
-
       - uses: dorny/paths-filter@v2
         name: Build Detection
         id: needs_build
@@ -63,29 +47,6 @@ jobs:
             shorebird_cli:
               - ./.github/actions/dart_package
               - packages/shorebird_cli/**
-
-  pana_packages:
-    needs: changes
-    if: ${{ needs.changes.outputs.needs_pana != '[]' }}
-
-    continue-on-error: true
-
-    strategy:
-      matrix:
-        package: ${{ fromJSON(needs.changes.outputs.needs_pana) }}
-
-    runs-on: ubuntu-latest
-
-    name: 📊 Pana ${{ matrix.package }}
-
-    steps:
-      - name: 📚 Git Checkout
-        uses: actions/checkout@v3
-
-      - name: 📊 Pana ${{ matrix.package }}
-        uses: ./.github/actions/pana
-        with:
-          working_directory: packages/${{ matrix.package }}
 
   build_packages:
     needs: changes
@@ -130,8 +91,7 @@ jobs:
           working_directory: packages/${{ matrix.package }}
 
   ci:
-    needs:
-      [semantic_pull_request, pana_packages, build_packages, verify_packages]
+    needs: [semantic_pull_request, build_packages, verify_packages]
     if: ${{ always() }}
 
     runs-on: ubuntu-latest
