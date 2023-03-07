@@ -29,11 +29,11 @@ mixin ShorebirdEngineMixin on ShorebirdCommand {
         'Downloading shorebird engine',
       );
       try {
-        final codePushApiClient = buildCodePushClient(
+        final codePushClient = buildCodePushClient(
           apiKey: auth.currentSession!.apiKey,
         );
         await _downloadShorebirdEngine(
-          codePushApiClient,
+          codePushClient,
           shorebirdEngineCache.path,
         );
         downloadEngineProgress.complete();

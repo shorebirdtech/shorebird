@@ -54,8 +54,8 @@ class PublishCommand extends ShorebirdCommand {
     }
 
     try {
-      final codePushApiClient = buildCodePushClient(apiKey: session.apiKey);
-      await codePushApiClient.createRelease(artifact.path);
+      final codePushClient = buildCodePushClient(apiKey: session.apiKey);
+      await codePushClient.createRelease(artifact.path);
     } catch (error) {
       logger.err('Failed to deploy: $error');
       return ExitCode.software.code;
