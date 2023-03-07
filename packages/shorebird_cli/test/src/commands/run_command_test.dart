@@ -4,6 +4,7 @@ import 'dart:io';
 import 'dart:typed_data';
 
 import 'package:archive/archive_io.dart';
+import 'package:args/args.dart';
 import 'package:mason_logger/mason_logger.dart';
 import 'package:mocktail/mocktail.dart';
 import 'package:path/path.dart' as p;
@@ -12,6 +13,8 @@ import 'package:shorebird_cli/src/auth/session.dart';
 import 'package:shorebird_cli/src/commands/run_command.dart';
 import 'package:shorebird_code_push_api_client/shorebird_code_push_api_client.dart';
 import 'package:test/test.dart';
+
+class _MockArgResults extends Mock implements ArgResults {}
 
 class _MockAuth extends Mock implements Auth {}
 
@@ -31,28 +34,31 @@ void main() {
       projectId: 'test-project-id',
     );
 
+    late ArgResults argResults;
     late Auth auth;
     late Logger logger;
     late Process process;
-    late ShorebirdCodePushApiClient codePushApiClient;
+    late ShorebirdCodePushApiClient codePushClient;
     late RunCommand runCommand;
 
     setUp(() {
+      argResults = _MockArgResults();
       auth = _MockAuth();
       logger = _MockLogger();
       process = _MockProcess();
-      codePushApiClient = _MockShorebirdCodePushApiClient();
+      codePushClient = _MockShorebirdCodePushApiClient();
       runCommand = RunCommand(
         auth: auth,
         logger: logger,
-        codePushApiClientBuilder: ({required String apiKey}) {
-          return codePushApiClient;
+        buildCodePushClient: ({required String apiKey}) {
+          return codePushClient;
         },
         startProcess: (executable, arguments, {bool runInShell = false}) async {
           return process;
         },
-      );
+      )..testArgResults = argResults;
 
+      when(() => argResults.rest).thenReturn([]);
       when(() => logger.progress(any())).thenReturn(_MockProgress());
     });
 
@@ -72,7 +78,7 @@ void main() {
       final error = Exception('oops');
       when(() => auth.currentSession).thenReturn(session);
       when(
-        () => codePushApiClient.downloadEngine(any()),
+        () => codePushClient.downloadEngine(any()),
       ).thenThrow(error);
       final progress = _MockProgress();
       when(() => logger.progress(any())).thenReturn(progress);
@@ -80,19 +86,23 @@ void main() {
       final result = await runCommand.run();
       expect(result, equals(ExitCode.software.code));
 
+      verify(progress.fail).called(1);
       verify(
-        () => progress.fail('Failed to download shorebird engine: $error'),
+        () => logger.err(
+          'Exception: Failed to download shorebird engine: $error',
+        ),
       ).called(1);
     });
 
     test('exits with code 70 when building the engine fails', () async {
       final tempDir = Directory.systemTemp.createTempSync();
-      Directory(p.join(tempDir.path, '.shorebird', 'cache'))
-          .createSync(recursive: true);
+      Directory(
+        p.join(tempDir.path, '.shorebird', 'cache'),
+      ).createSync(recursive: true);
 
       when(() => auth.currentSession).thenReturn(session);
       when(
-        () => codePushApiClient.downloadEngine(any()),
+        () => codePushClient.downloadEngine(any()),
       ).thenAnswer((_) async => Uint8List(0));
       final progress = _MockProgress();
       when(() => logger.progress(any())).thenReturn(progress);
@@ -103,8 +113,9 @@ void main() {
       );
       expect(result, equals(ExitCode.software.code));
 
+      verify(progress.fail).called(1);
       verify(
-        () => progress.fail(
+        () => logger.err(
           any(that: contains('Failed to build shorebird engine:')),
         ),
       ).called(1);
@@ -122,7 +133,7 @@ void main() {
 
       when(() => auth.currentSession).thenReturn(session);
       when(
-        () => codePushApiClient.downloadEngine(any()),
+        () => codePushClient.downloadEngine(any()),
       ).thenAnswer((_) async => Uint8List(0));
 
       final progress = _MockProgress();
@@ -156,7 +167,7 @@ void main() {
           .createSync(recursive: true);
       when(() => auth.currentSession).thenReturn(session);
       when(
-        () => codePushApiClient.downloadEngine(any()),
+        () => codePushClient.downloadEngine(any()),
       ).thenAnswer((_) async => Uint8List(0));
 
       final progress = _MockProgress();

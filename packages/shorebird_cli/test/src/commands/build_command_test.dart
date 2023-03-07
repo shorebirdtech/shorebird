@@ -1,10 +1,12 @@
 import 'dart:io';
+import 'dart:typed_data';
 
 import 'package:mason_logger/mason_logger.dart';
 import 'package:mocktail/mocktail.dart';
 import 'package:shorebird_cli/src/auth/auth.dart';
 import 'package:shorebird_cli/src/auth/session.dart';
 import 'package:shorebird_cli/src/commands/build_command.dart';
+import 'package:shorebird_code_push_api_client/shorebird_code_push_api_client.dart';
 import 'package:test/test.dart';
 
 class _MockAuth extends Mock implements Auth {}
@@ -15,6 +17,9 @@ class _MockProgress extends Mock implements Progress {}
 
 class _MockProcessResult extends Mock implements ProcessResult {}
 
+class _MockShorebirdCodePushApiClient extends Mock
+    implements ShorebirdCodePushApiClient {}
+
 void main() {
   group('build', () {
     const session = Session(
@@ -23,22 +28,28 @@ void main() {
     );
 
     late Auth auth;
+    late ShorebirdCodePushApiClient codePushClient;
     late Logger logger;
     late ProcessResult processResult;
     late BuildCommand buildCommand;
 
     setUp(() {
       auth = _MockAuth();
+      codePushClient = _MockShorebirdCodePushApiClient();
       logger = _MockLogger();
       processResult = _MockProcessResult();
       buildCommand = BuildCommand(
         auth: auth,
+        buildCodePushClient: ({required String apiKey}) => codePushClient,
         logger: logger,
         runProcess: (executable, arguments, {bool runInShell = false}) async {
           return processResult;
         },
       );
 
+      when(
+        () => codePushClient.downloadEngine(any()),
+      ).thenAnswer((_) async => Uint8List.fromList([]));
       when(() => logger.progress(any())).thenReturn(_MockProgress());
     });
 
@@ -54,17 +65,15 @@ void main() {
       ).called(1);
     });
 
-    test('exits with code 70 when engine is not found', () async {
+    test('exits with code 70 when pulling engine fails', () async {
+      when(
+        () => codePushClient.downloadEngine(any()),
+      ).thenThrow(Exception('oops'));
       when(() => auth.currentSession).thenReturn(session);
 
       final result = await buildCommand.run();
-      expect(result, equals(ExitCode.software.code));
 
-      verify(
-        () => logger.err(
-          'Shorebird engine not found. Run `shorebird run` to download it.',
-        ),
-      ).called(1);
+      expect(result, equals(ExitCode.software.code));
     });
 
     test('exits with code 70 when building fails', () async {
@@ -86,8 +95,12 @@ void main() {
     test('exits with code 0 when building succeeds', () async {
       when(() => processResult.exitCode).thenReturn(ExitCode.success.code);
       final tempDir = Directory.systemTemp.createTempSync();
-      Directory('${tempDir.path}/.shorebird/engine')
-          .createSync(recursive: true);
+      Directory(
+        '${tempDir.path}/.shorebird/engine',
+      ).createSync(recursive: true);
+      when(
+        () => codePushClient.downloadEngine(any()),
+      ).thenAnswer((_) async => Uint8List.fromList([]));
       when(() => auth.currentSession).thenReturn(session);
 
       final result = await IOOverrides.runZoned(

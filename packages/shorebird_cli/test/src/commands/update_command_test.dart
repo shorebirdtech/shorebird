@@ -23,7 +23,7 @@ void main() {
     late PubUpdater pubUpdater;
     late Logger logger;
     late ProcessResult processResult;
-    late ShorebirdCliCommandRunner commandRunner;
+    late UpdateCommand command;
 
     setUp(() {
       final progress = _MockProgress();
@@ -31,7 +31,7 @@ void main() {
       pubUpdater = _MockPubUpdater();
       logger = _MockLogger();
       processResult = _MockProcessResult();
-      commandRunner = ShorebirdCliCommandRunner(
+      command = UpdateCommand(
         logger: logger,
         pubUpdater: pubUpdater,
       );
@@ -70,7 +70,7 @@ void main() {
         when(
           () => pubUpdater.getLatestVersion(any()),
         ).thenThrow(Exception('oops'));
-        final result = await commandRunner.run(['update']);
+        final result = await command.run();
         expect(result, equals(ExitCode.software.code));
         verify(() => logger.progress('Checking for updates')).called(1);
         verify(() => logger.err('Exception: oops'));
@@ -95,7 +95,7 @@ void main() {
             versionConstraint: any(named: 'versionConstraint'),
           ),
         ).thenThrow(Exception('oops'));
-        final result = await commandRunner.run(['update']);
+        final result = await command.run();
         expect(result, equals(ExitCode.software.code));
         verify(() => logger.progress('Checking for updates')).called(1);
         verify(() => logger.err('Exception: oops'));
@@ -124,7 +124,7 @@ void main() {
         ),
       ).thenAnswer((_) async => processResult);
 
-      final result = await commandRunner.run(['update']);
+      final result = await command.run();
 
       expect(result, equals(ExitCode.software.code));
       verify(() => logger.progress('Checking for updates')).called(1);
@@ -150,7 +150,7 @@ void main() {
           ),
         ).thenAnswer((_) async => processResult);
         when(() => logger.progress(any())).thenReturn(_MockProgress());
-        final result = await commandRunner.run(['update']);
+        final result = await command.run();
         expect(result, equals(ExitCode.success.code));
         verify(() => logger.progress('Checking for updates')).called(1);
         verify(() => logger.progress('Updating to $latestVersion')).called(1);
@@ -170,7 +170,7 @@ void main() {
           () => pubUpdater.getLatestVersion(any()),
         ).thenAnswer((_) async => packageVersion);
         when(() => logger.progress(any())).thenReturn(_MockProgress());
-        final result = await commandRunner.run(['update']);
+        final result = await command.run();
         expect(result, equals(ExitCode.success.code));
         verify(
           () => logger.info('CLI is already at the latest version.'),
