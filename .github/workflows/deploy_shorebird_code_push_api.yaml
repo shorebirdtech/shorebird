@@ -10,6 +10,7 @@ on:
       - main
     paths:
       - ".github/workflows/deploy_shorebird_code_push_api.yaml"
+      - "packages/shorebird_code_push_api/bin/**"
       - "packages/shorebird_code_push_api/lib/**"
       - "packages/shorebird_code_push_api/test/**"
       - "packages/shorebird_code_push_api/pubspec.yaml"
