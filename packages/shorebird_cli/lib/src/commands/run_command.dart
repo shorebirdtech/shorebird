@@ -169,6 +169,7 @@ Future<void> _extractShorebirdEngine(
 
   // TODO(felangel): support windows and linux
   // https://github.com/shorebirdtech/shorebird/issues/37
+  // coverage:ignore-start
   if (Platform.isMacOS) {
     const executables = [
       'flutter/prebuilts/macos-x64/dart-sdk/bin/dart',
@@ -186,4 +187,5 @@ Future<void> _extractShorebirdEngine(
       await process.exitCode;
     }
   }
+  // coverage:ignore-end
 }
