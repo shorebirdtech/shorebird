@@ -14,6 +14,10 @@ We're in the process of converting the quick demos written by one person, into a
 multi-contributor project usable by others. Previous demo code can be found at:
 https://github.com/shorebirdtech/old_repo
 
+## Getting Started
+
+Refer to [shorebird/install](https://github.com/shorebirdtech/install) for installation instructions.
+
 ## Packages
 
 This repository is a monorepo containing the following packages:
