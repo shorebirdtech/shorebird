@@ -1,4 +1,3 @@
-// This eventually moves to its own package.
 import 'dart:ffi' as ffi;
 import 'dart:io';
 
@@ -85,33 +84,27 @@ class Updater {
     return bindings.update();
   }
 
-  String? activeVersion() {
-    ffi.Pointer<Utf8> cVersion = ffi.Pointer<Utf8>.fromAddress(0);
+  String? _returnsMaybeString(ffi.Pointer<Utf8> Function() f) {
+    ffi.Pointer<Utf8> cString = ffi.Pointer<Utf8>.fromAddress(0);
+    cString = f();
+    if (cString.address == 0) {
+      return null;
+    }
     try {
-      cVersion = bindings.activeVersion();
-      if (cVersion.address == 0) {
-        return null;
-      }
-      return cVersion.toDartString();
+      return cString.toDartString();
     } finally {
-      // Can toDartString ever throw an exception, such that this finally
-      // block is necessary?
-      bindings.freeString(cVersion);
+      // Using finally for two reasons:
+      // 1. it runs after the return (saving us a local)
+      // 2. it runs even if toDartString throws (which it shouldn't)
+      bindings.freeString(cString);
     }
   }
 
+  String? activeVersion() {
+    return _returnsMaybeString(bindings.activeVersion);
+  }
+
   String? activePath() {
-    ffi.Pointer<Utf8> cVersion = ffi.Pointer<Utf8>.fromAddress(0);
-    try {
-      cVersion = bindings.activePath();
-      if (cVersion.address == 0) {
-        return null;
-      }
-      return cVersion.toDartString();
-    } finally {
-      // Can toDartString ever throw an exception, such that this finally
-      // block is necessary?
-      bindings.freeString(cVersion);
-    }
+    return _returnsMaybeString(bindings.activePath);
   }
 }

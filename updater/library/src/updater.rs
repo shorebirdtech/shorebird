@@ -1,4 +1,4 @@
-// This file's job is to be the Rust
+// This file's job is to be the Rust API for the updater.
 
 use std::fmt::{Display, Formatter};
 
