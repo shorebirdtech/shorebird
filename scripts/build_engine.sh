@@ -1,4 +1,4 @@
-#! /bin/sh -x
+#!/bin/sh
 
 # Given a path to a Flutter engine, generate a shorebird version of it.
 # This is done by removing all the files that are not needed for the
