@@ -2,10 +2,8 @@
 // Probably https://pub.dev/packages/ffigen would work.
 
 import 'dart:ffi' as ffi;
-import 'dart:io' show Directory, Platform;
 
 import 'package:ffi/ffi.dart';
-import 'package:path/path.dart' as path;
 
 // This must be kept in sync with the C struct in updater.h.
 // Including *in the same order* as the C struct.
@@ -88,15 +86,22 @@ class UpdaterBindings {
   late GetVoid update;
 
   UpdaterBindings(this.library) {
-    init = library.lookupFunction<_SBInitFunc, SBInit>('shorebird_init');
-    activeVersion = library
-        .lookupFunction<_GetStringFunc, GetString>('shorebird_active_version');
-    activePath = library
-        .lookupFunction<_GetStringFunc, GetString>('shorebird_active_path');
-    freeString = library
-        .lookupFunction<_FreeStringFunc, FreeString>('shorebird_free_string');
-    checkForUpdate = library
-        .lookupFunction<_GetBoolFunc, GetBool>('shorebird_check_for_update');
-    update = library.lookupFunction<_GetVoidFunc, GetVoid>('shorebird_update');
+    // None of these call back into Dart, so they're all safely "isLeaf: true".
+    init = library.lookupFunction<_SBInitFunc, SBInit>('shorebird_init',
+        isLeaf: true);
+    activeVersion = library.lookupFunction<_GetStringFunc, GetString>(
+        'shorebird_active_version',
+        isLeaf: true);
+    activePath = library.lookupFunction<_GetStringFunc, GetString>(
+        'shorebird_active_path',
+        isLeaf: true);
+    freeString = library.lookupFunction<_FreeStringFunc, FreeString>(
+        'shorebird_free_string',
+        isLeaf: true);
+    checkForUpdate = library.lookupFunction<_GetBoolFunc, GetBool>(
+        'shorebird_check_for_update',
+        isLeaf: true);
+    update = library.lookupFunction<_GetVoidFunc, GetVoid>('shorebird_update',
+        isLeaf: true);
   }
 }

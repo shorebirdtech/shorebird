@@ -5,7 +5,8 @@ void main() {
   Updater.loadFlutterLibrary();
   var updater = Updater();
   // Just to prove the bindings work at all:
-  print(updater.activeVersion());
+  print("active version: ${updater.activeVersion()}");
+  print("active path: ${updater.activePath()}");
   runApp(const MyApp());
 }
 
