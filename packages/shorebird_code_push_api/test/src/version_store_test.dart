@@ -42,6 +42,20 @@ void main() {
           equals('0.0.2'),
         );
       });
+
+      test('returns null when current version is the latest version', () {
+        final tempDir = Directory.systemTemp.createTempSync();
+        final store = VersionStore(cachePath: tempDir.path)
+          ..addVersion('0.0.1', [])
+          ..addVersion('0.0.2', []);
+        expect(
+          store.latestVersionForClient(
+            'empty-client-id',
+            currentVersion: '0.0.2',
+          ),
+          isNull,
+        );
+      });
     });
   });
 }
