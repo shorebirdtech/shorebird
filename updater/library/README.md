@@ -17,3 +17,13 @@ rustup +beta target add \
     i686-linux-android
 cargo +beta ndk --target aarch64-linux-android build --release
 ```
+
+
+Uses cbindgen to generate the header file.
+
+It isn't currently wired into the build process, so you'll need to run it manually if you change the API.
+
+```
+cargo install cbindgen
+cbindgen --config cbindgen.toml --crate updater --output library/include/updater.h
+```

@@ -2,16 +2,25 @@ import 'dart:convert';
 import 'dart:io';
 
 import 'package:args/command_runner.dart';
-import 'package:dart_cli/updater.dart';
+import 'package:dart_bindings/updater.dart';
+import 'package:path/path.dart' as path;
 
 void main(List<String> args) async {
-  // This might pass a path or flavor (debug/release) later.
-  Updater.loadLibrary();
+  var directory = path.join(Directory.current.path, 'target', 'debug');
+  Updater.loadLibrary(directory: directory, name: "updater");
 
-  var clientId = 'my-client-id';
-  var cacheDir = 'updater_cache';
-  var updater = Updater(clientId, cacheDir);
+  Updater.initUpdaterLibrary(
+    clientId: 'my-client-id',
+    productId: 'product',
+    version: '1.0.0',
+    channel: 'stable',
+    updateUrl: null,
+    baseLibraryPath: 'libapp.so',
+    vmPath: Platform.executable,
+    cacheDir: 'updater_cache',
+  );
 
+  var updater = Updater();
   final runner = CommandRunner<void>('updater', 'Updater CLI')
     ..addCommand(CheckForUpdate(updater))
     ..addCommand(PrintVersion(updater))

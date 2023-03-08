@@ -2,14 +2,15 @@ name: dart_cli
 description: A sample command-line application.
 version: 1.0.0
 # repository: https://github.com/my_org/my_repo
+publish_to: 'none'
 
 environment:
   sdk: ">=2.19.0 <4.0.0"
 
 dependencies:
   args: ^2.4.0
-  ffi: ^2.0.1
-  path: ^1.8.3
+  dart_bindings:
+   path: ../dart_bindings
 
 dev_dependencies:
   lints: ^2.0.0
