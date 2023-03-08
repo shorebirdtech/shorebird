@@ -5,7 +5,7 @@ import 'package:shelf/shelf.dart';
 import 'package:shorebird_code_push_api/src/provider.dart';
 
 final _engineUrl = Uri.parse(
-  'https://storage.googleapis.com/download/storage/v1/b/shorebird-code-push-api.appspot.com/o/${Uri.encodeComponent('engines/engine.zip')}?alt=media',
+  'https://storage.googleapis.com/download/storage/v1/b/shorebird-code-push-api.appspot.com/o/${Uri.encodeComponent('engines/dev/engine.zip')}?alt=media',
 );
 
 Future<Response> downloadEngineHandler(Request request, String revision) async {

@@ -66,9 +66,6 @@ class BuildCommand extends ShorebirdCommand with ShorebirdEngineMixin {
       // only supports Android.
       'apk',
       '--release',
-      // This is temporary because the Shorebird engine currently
-      // does not support tree-shaking icons.
-      '--no-tree-shake-icons',
       '--local-engine-src-path',
       shorebirdEnginePath,
       '--local-engine',

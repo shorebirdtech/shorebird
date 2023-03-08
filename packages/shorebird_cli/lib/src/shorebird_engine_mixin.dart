@@ -101,6 +101,9 @@ mixin ShorebirdEngineMixin on ShorebirdCommand {
         'out/android_release_arm64/clang_x64/gen_snapshot',
         'out/android_release_arm64/clang_x64/gen_snapshot_arm64',
         'out/android_release_arm64/clang_x64/impellerc',
+        'out/android_release_arm64/clang_x64/impellerc',
+        'out/host_release/gen/const_finder.dart.snapshot',
+        'out/host_release/font-subset',
       ];
 
       for (final executable in executables) {
