@@ -37,6 +37,3 @@ dev_dependencies:
 
 executables:
   shorebird:
-flutter:
-  assets:
-    - shorebird.yaml
