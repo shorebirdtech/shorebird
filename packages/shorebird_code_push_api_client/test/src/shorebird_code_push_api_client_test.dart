@@ -74,9 +74,7 @@ void main() {
             .single as http.MultipartRequest;
         expect(
           request.url,
-          Uri.parse(
-            'https://code-push-server-kmdbqkx7rq-uc.a.run.app/api/v1/patches',
-          ),
+          shorebirdCodePushApiClient.hostedUri.replace(path: '/api/v1/patches'),
         );
       });
     });

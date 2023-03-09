@@ -14,12 +14,14 @@ class ShorebirdCodePushApiClient {
     Uri? hostedUri,
   })  : _apiKey = apiKey,
         _httpClient = httpClient ?? http.Client(),
-        _hostedUri =
+        hostedUri =
             hostedUri ?? Uri.https('code-push-server-kmdbqkx7rq-uc.a.run.app');
 
   final String _apiKey;
   final http.Client _httpClient;
-  final Uri _hostedUri;
+
+  /// The hosted uri for the Shorebird CodePush API.
+  final Uri hostedUri;
 
   Map<String, String> get _apiKeyHeader => {'x-api-key': _apiKey};
 
@@ -32,7 +34,7 @@ class ShorebirdCodePushApiClient {
   }) async {
     final request = http.MultipartRequest(
       'POST',
-      Uri.parse('$_hostedUri/api/v1/patches'),
+      Uri.parse('$hostedUri/api/v1/patches'),
     );
     final file = await http.MultipartFile.fromPath('file', artifactPath);
     request.files.add(file);
