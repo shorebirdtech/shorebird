@@ -44,7 +44,7 @@ class PublishCommand extends ShorebirdCommand {
 
     late final Pubspec? pubspecYaml;
     try {
-      pubspecYaml = readPubspecYaml();
+      pubspecYaml = _readPubspecYaml();
       if (pubspecYaml == null) {
         logger.err('Could not find a "pubspec.yaml".');
         return ExitCode.noInput.code;
@@ -57,7 +57,7 @@ class PublishCommand extends ShorebirdCommand {
     late final String productId;
     late final ShorebirdYaml? shorebirdYaml;
     try {
-      shorebirdYaml = readShorebirdYaml();
+      shorebirdYaml = _readShorebirdYaml();
     } catch (error) {
       logger.err('Error parsing "shorebird.yaml": $error');
       return ExitCode.software.code;
@@ -122,14 +122,14 @@ product_id: $productId
     return ExitCode.success.code;
   }
 
-  ShorebirdYaml? readShorebirdYaml() {
+  ShorebirdYaml? _readShorebirdYaml() {
     final file = File(p.join(Directory.current.path, 'shorebird.yaml'));
     if (!file.existsSync()) return null;
     final yaml = file.readAsStringSync();
     return checkedYamlDecode(yaml, (m) => ShorebirdYaml.fromJson(m!));
   }
 
-  Pubspec? readPubspecYaml() {
+  Pubspec? _readPubspecYaml() {
     final file = File(p.join(Directory.current.path, 'pubspec.yaml'));
     if (!file.existsSync()) return null;
     final yaml = file.readAsStringSync();
