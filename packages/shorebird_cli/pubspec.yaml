@@ -15,7 +15,6 @@ dependencies:
   cli_completion: ^0.3.0
   cli_util: ^0.4.0
   json_annotation: ^4.8.0
-  mason: ^0.1.0-dev.47
   mason_logger: ^0.2.4
   meta: ^1.9.0
   path: ^1.8.3

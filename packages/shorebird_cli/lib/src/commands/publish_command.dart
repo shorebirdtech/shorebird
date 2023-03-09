@@ -1,7 +1,7 @@
 import 'dart:io';
 
 import 'package:checked_yaml/checked_yaml.dart';
-import 'package:mason/mason.dart';
+import 'package:mason_logger/mason_logger.dart';
 import 'package:path/path.dart' as p;
 import 'package:pubspec_parse/pubspec_parse.dart';
 import 'package:shorebird_cli/src/command.dart';
@@ -62,11 +62,15 @@ class PublishCommand extends ShorebirdCommand {
     }
 
     if (shorebirdYaml == null) {
-      final progress = logger.progress('Generating a shorebird.yaml');
       productId = buildUuid();
-      final generator = _ShorebirdYamlGenerator(productId: productId);
-      await generator.generate(DirectoryGeneratorTarget(Directory.current));
-      progress.complete();
+      File(
+        p.join(Directory.current.path, 'shorebird.yaml'),
+      ).writeAsStringSync('''
+# This file is used to configure the Shorebird CLI.
+# Learn more at https://shorebird.dev
+product_id: $productId
+''');
+      logger.success('Generated a "shorebird.yaml".');
     } else {
       productId = shorebirdYaml.productId;
     }
@@ -125,22 +129,4 @@ class PublishCommand extends ShorebirdCommand {
     final yaml = file.readAsStringSync();
     return Pubspec.parse(yaml);
   }
-}
-
-/// Generate for the `shorebird.yaml` file.
-class _ShorebirdYamlGenerator extends MasonGenerator {
-  _ShorebirdYamlGenerator({required String productId})
-      : super(
-          '__shorebird_yaml__',
-          'Generate a new shorebird.yaml file.',
-          files: [
-            TemplateFile('shorebird.yaml', _shorebirdYamlContent(productId))
-          ],
-        );
-
-  static String _shorebirdYamlContent(String productId) => '''
-# This file is used to configure the Shorebird CLI.
-# Learn more at https://shorebird.dev
-product_id: $productId
-''';
 }
