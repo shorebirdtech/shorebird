@@ -7,6 +7,12 @@
 #include <stdbool.h>
 #include <stdint.h>
 #include <stdlib.h>
+#ifdef _WIN32
+#define SHOREBIRD_EXPORT __declspec(dllexport)
+#else
+#define SHOREBIRD_EXPORT __attribute__((visibility("default")))
+#endif
+
 
 /**
  * Struct containing configuration parameters for the updater.
@@ -61,33 +67,33 @@ typedef struct AppParameters {
 extern "C" {
 #endif // __cplusplus
 
-void shorebird_init(const struct AppParameters *c_params);
+SHOREBIRD_EXPORT void shorebird_init(const struct AppParameters *c_params);
 
 /**
  * Return the active version of the app, or NULL if there is no active version.
  */
-char *shorebird_active_version(void);
+SHOREBIRD_EXPORT char *shorebird_active_version(void);
 
 /**
  * Return the path to the active version of the app, or NULL if there is no
  * active version.
  */
-char *shorebird_active_path(void);
+SHOREBIRD_EXPORT char *shorebird_active_path(void);
 
 /**
  * Free a string returned by the updater library.
  */
-void shorebird_free_string(char *c_string);
+SHOREBIRD_EXPORT void shorebird_free_string(char *c_string);
 
 /**
  * Check for an update.  Returns true if an update is available.
  */
-bool shorebird_check_for_update(void);
+SHOREBIRD_EXPORT bool shorebird_check_for_update(void);
 
 /**
  * Synchronously download an update if one is available.
  */
-void shorebird_update(void);
+SHOREBIRD_EXPORT void shorebird_update(void);
 
 #ifdef __cplusplus
 } // extern "C"

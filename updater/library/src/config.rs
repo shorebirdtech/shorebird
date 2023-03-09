@@ -1,38 +1,38 @@
 // This file handles the global config for the updater library.
 
-use std::cell::RefCell;
+use std::sync::Mutex;
 
 use crate::updater::AppConfig;
+use once_cell::sync::OnceCell;
 
+// cbindgen looks for const, ignore these so it doesn't warn about them.
+
+/// cbindgen:ignore
 const DEFAULT_BASE_URL: &'static str = "https://shorebird-code-push-api-cypqazu4da-uc.a.run.app";
+/// cbindgen:ignore
 const DEFAULT_CHANNEL: &'static str = "stable";
 
-thread_local!(static CONFIG: RefCell<Option<ResolvedConfig>> = RefCell::new(None));
+fn global_config() -> &'static Mutex<ResolvedConfig> {
+    static INSTANCE: OnceCell<Mutex<ResolvedConfig>> = OnceCell::new();
+    INSTANCE.get_or_init(|| Mutex::new(ResolvedConfig::empty()))
+}
 
 pub fn with_config<F, R>(f: F) -> R
 where
     F: FnOnce(&ResolvedConfig) -> R,
 {
-    CONFIG
-        .try_with(|config| {
-            let config = config.borrow();
-            let config = config
-                .as_ref()
-                .expect("Must call updater_init before using the updater library.");
-            return f(config);
-        })
-        .expect("Must call updater_init before using the updater library.")
-}
+    let lock = global_config()
+        .lock()
+        .expect("Failed to acquire updater lock.");
 
-pub fn set_config(config: AppConfig) {
-    let config = resolve_config(config);
-    CONFIG.with(|c| {
-        let mut c = c.borrow_mut();
-        *c = Some(config);
-    });
+    if !lock.is_initialized {
+        panic!("Must call shorebird_init() before using the updater.");
+    }
+    return f(&lock);
 }
 
 pub struct ResolvedConfig {
+    is_initialized: bool,
     pub cache_dir: String,
     pub channel: String,
     pub client_id: String,
@@ -43,26 +43,43 @@ pub struct ResolvedConfig {
     pub base_url: String,
 }
 
-fn resolve_config(config: AppConfig) -> ResolvedConfig {
-    // Resolve the config
+impl ResolvedConfig {
+    pub fn empty() -> Self {
+        Self {
+            is_initialized: false,
+            cache_dir: String::new(),
+            channel: String::new(),
+            client_id: String::new(),
+            product_id: String::new(),
+            base_version: String::new(),
+            original_libapp_path: String::new(),
+            vm_path: String::new(),
+            base_url: String::new(),
+        }
+    }
+}
+
+pub fn set_config(config: AppConfig) {
     // If there is no base_url, use the default.
     // If there is no channel, use the default.
-    return ResolvedConfig {
-        client_id: config.client_id.to_string(),
-        base_url: config
-            .base_url
-            .as_deref()
-            .unwrap_or(DEFAULT_BASE_URL)
-            .to_owned(),
-        cache_dir: config.cache_dir.to_string(),
-        channel: config
-            .channel
-            .as_deref()
-            .unwrap_or(DEFAULT_CHANNEL)
-            .to_owned(),
-        product_id: config.product_id.to_string(),
-        base_version: config.base_version.to_string(),
-        original_libapp_path: config.original_libapp_path.to_string(),
-        vm_path: config.vm_path.to_string(),
-    };
+    let mut lock = global_config()
+        .lock()
+        .expect("Failed to acquire updater lock.");
+    lock.base_url = config
+        .base_url
+        .as_deref()
+        .unwrap_or(DEFAULT_BASE_URL)
+        .to_owned();
+    lock.channel = config
+        .channel
+        .as_deref()
+        .unwrap_or(DEFAULT_CHANNEL)
+        .to_owned();
+    lock.cache_dir = config.cache_dir.to_string();
+    lock.client_id = config.client_id.to_string();
+    lock.product_id = config.product_id.to_string();
+    lock.base_version = config.base_version.to_string();
+    lock.original_libapp_path = config.original_libapp_path.to_string();
+    lock.vm_path = config.vm_path.to_string();
+    lock.is_initialized = true;
 }

@@ -1,13 +1,12 @@
 #[cfg(target_os = "android")]
 pub fn init_logging() {
-    use android_logger::Config;
-    use log::LevelFilter;
+    log_panics::init();
 
     android_logger::init_once(
-        Config::default()
+        android_logger::Config::default()
             // `flutter` tool ignores non-flutter tagged logs.
             .with_tag("flutter")
-            .with_max_level(LevelFilter::Debug),
+            .with_max_level(log::LevelFilter::Debug),
     );
     debug!("Logging initialized");
 }
