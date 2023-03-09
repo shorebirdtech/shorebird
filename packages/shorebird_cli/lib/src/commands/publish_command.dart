@@ -98,7 +98,7 @@ product_id: $productId
 
     final artifact = File(artifactPath);
     if (!artifact.existsSync()) {
-      logger.err('File not found: ${artifact.path}');
+      logger.err('Artifact not found: "${artifact.path}"');
       return ExitCode.noInput.code;
     }
 

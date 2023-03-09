@@ -84,21 +84,6 @@ environment:
       await expectLater(command.run, throwsA(isA<UsageException>()));
     });
 
-    test('throws no input error when file is not found (default).', () async {
-      final exitCode = await command.run();
-      verify(
-        () => logger.err(any(that: contains('File not found: '))),
-      ).called(1);
-      expect(exitCode, ExitCode.noInput.code);
-    });
-
-    test('throws no input error when file is not found (custom).', () async {
-      when(() => argResults.rest).thenReturn(['missing.txt']);
-      final exitCode = await command.run();
-      verify(() => logger.err('File not found: missing.txt')).called(1);
-      expect(exitCode, ExitCode.noInput.code);
-    });
-
     test('throws no input error when pubspec.yaml is not found.', () async {
       final tempDir = Directory.systemTemp.createTempSync();
       final exitCode = await IOOverrides.runZoned(
@@ -138,6 +123,50 @@ environment:
         ),
       ).called(1);
       expect(exitCode, ExitCode.software.code);
+    });
+
+    test('throws no input error when artifact is not found (default).',
+        () async {
+      final tempDir = Directory.systemTemp.createTempSync();
+      File(
+        p.join(tempDir.path, 'pubspec.yaml'),
+      ).writeAsStringSync(pubspecYamlContent);
+      File(
+        p.join(tempDir.path, 'shorebird.yaml'),
+      ).writeAsStringSync('product_id: $productId');
+      final exitCode = await IOOverrides.runZoned(
+        command.run,
+        getCurrentDirectory: () => tempDir,
+      );
+      verify(
+        () => logger.err(any(that: contains('Artifact not found:'))),
+      ).called(1);
+      expect(exitCode, ExitCode.noInput.code);
+    });
+
+    test('throws no input error when artifact is not found (custom).',
+        () async {
+      final tempDir = Directory.systemTemp.createTempSync();
+      final artifact = File(p.join(tempDir.path, 'patch.txt'));
+      when(() => argResults.rest).thenReturn([artifact.path]);
+      File(
+        p.join(tempDir.path, 'pubspec.yaml'),
+      ).writeAsStringSync(pubspecYamlContent);
+      File(
+        p.join(tempDir.path, 'shorebird.yaml'),
+      ).writeAsStringSync('product_id: $productId');
+      final exitCode = await IOOverrides.runZoned(
+        command.run,
+        getCurrentDirectory: () => tempDir,
+      );
+      verify(
+        () => logger.err(
+          any(
+            that: contains('Artifact not found: "${artifact.path}"'),
+          ),
+        ),
+      ).called(1);
+      expect(exitCode, ExitCode.noInput.code);
     });
 
     test('throws error when publish fails.', () async {
