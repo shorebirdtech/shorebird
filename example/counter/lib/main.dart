@@ -1,3 +1,4 @@
+// ignore_for_file: avoid_print
 import 'package:dart_bindings/updater.dart';
 import 'package:flutter/material.dart';
 

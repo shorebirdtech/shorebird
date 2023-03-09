@@ -11,6 +11,7 @@ dependencies:
   args: ^2.4.0
   dart_bindings:
    path: ../dart_bindings
+  path: ^1.8.3
 
 dev_dependencies:
   lints: ^2.0.0
