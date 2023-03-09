@@ -23,6 +23,8 @@ dependencies:
   shorebird_code_push_api_client:
     path: ../shorebird_code_push_api_client
   uuid: ^3.0.7
+  yaml: ^3.1.1
+  yaml_edit: ^2.1.0
 
 dev_dependencies:
   build_runner: ^2.0.0
@@ -35,3 +37,6 @@ dev_dependencies:
 
 executables:
   shorebird:
+flutter:
+  assets:
+    - shorebird.yaml
