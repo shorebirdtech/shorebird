@@ -34,7 +34,7 @@ void main() {
       expect(ShorebirdCodePushApiClient(apiKey: apiKey), isNotNull);
     });
 
-    group('createRelease', () {
+    group('createPatch', () {
       test('throws an exception if the http request fails', () async {
         when(() => httpClient.send(any())).thenAnswer((_) async {
           return http.StreamedResponse(
@@ -44,8 +44,11 @@ void main() {
         });
 
         expect(
-          shorebirdCodePushApiClient.createRelease(
-            path.join('test', 'fixtures', 'release.txt'),
+          shorebirdCodePushApiClient.createPatch(
+            artifactPath: path.join('test', 'fixtures', 'release.txt'),
+            baseVersion: '1.0.0',
+            productId: 'shorebird-example',
+            channel: 'stable',
           ),
           throwsA(isA<Exception>()),
         );
@@ -59,8 +62,11 @@ void main() {
           );
         });
 
-        await shorebirdCodePushApiClient.createRelease(
-          path.join('test', 'fixtures', 'release.txt'),
+        await shorebirdCodePushApiClient.createPatch(
+          artifactPath: path.join('test', 'fixtures', 'release.txt'),
+          baseVersion: '1.0.0',
+          productId: 'shorebird-example',
+          channel: 'stable',
         );
 
         final request = verify(() => httpClient.send(captureAny()))
@@ -68,9 +74,7 @@ void main() {
             .single as http.MultipartRequest;
         expect(
           request.url,
-          Uri.parse(
-            'https://shorebird-code-push-api-cypqazu4da-uc.a.run.app/api/v1/releases',
-          ),
+          shorebirdCodePushApiClient.hostedUri.replace(path: '/api/v1/patches'),
         );
       });
     });
@@ -108,7 +112,7 @@ void main() {
         expect(
           request.url,
           Uri.parse(
-            'https://shorebird-code-push-api-cypqazu4da-uc.a.run.app/api/v1/engines/$engineRevision',
+            'https://storage.googleapis.com/code-push-dev.appspot.com/engines/dev/engine.zip',
           ),
         );
       });

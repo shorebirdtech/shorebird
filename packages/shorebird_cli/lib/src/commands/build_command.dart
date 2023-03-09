@@ -18,9 +18,9 @@ typedef RunProcess = Future<ProcessResult> Function(
 class BuildCommand extends ShorebirdCommand with ShorebirdEngineMixin {
   /// {@macro build_command}
   BuildCommand({
+    required super.logger,
     super.auth,
     super.buildCodePushClient,
-    super.logger,
     super.runProcess,
   });
 

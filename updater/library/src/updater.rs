@@ -8,7 +8,7 @@ use crate::cache::{
 };
 use crate::config::{set_config, with_config, ResolvedConfig};
 use crate::logging::init_logging;
-use crate::network::send_update_request;
+use crate::network::send_patch_check_request;
 
 pub enum UpdateStatus {
     NoUpdate,
@@ -56,14 +56,14 @@ pub fn check_for_update_internal(config: &ResolvedConfig) -> bool {
     // Check the current slot.
     let patch = current_patch_internal(&state);
     // Send info from app + current slot to server.
-    let response_result = send_update_request(&config, patch);
+    let response_result = send_patch_check_request(&config, patch);
     match response_result {
         Err(err) => {
             error!("Failed update check: {err}");
             return false;
         }
         Ok(response) => {
-            return response.update_available;
+            return response.patch_available;
         }
     }
 }
@@ -77,8 +77,8 @@ fn update_internal(config: &ResolvedConfig) -> anyhow::Result<UpdateStatus> {
     let mut state = load_state(&config.cache_dir).unwrap_or_default();
     let version = current_patch_internal(&state);
     // Check for update.
-    let response = send_update_request(&config, version)?;
-    if !response.update_available {
+    let response = send_patch_check_request(&config, version)?;
+    if !response.patch_available {
         return Ok(UpdateStatus::NoUpdate);
     }
     // If needed, download the new version.

@@ -9,28 +9,28 @@ use serde::Deserialize;
 use crate::cache::PatchInfo;
 use crate::config::ResolvedConfig;
 
-fn updates_url(base_url: &str) -> String {
-    return format!("{}/api/v1/updates", base_url);
+fn patches_check_url(base_url: &str) -> String {
+    return format!("{}/api/v1/patches/check", base_url);
 }
 
 #[derive(Deserialize)]
-pub struct Update {
+pub struct Patch {
     pub version: String,
     pub hash: String,
     pub download_url: String,
 }
 
 #[derive(Deserialize)]
-pub struct UpdateResponse {
-    pub update_available: bool,
+pub struct PatchCheckResponse {
+    pub patch_available: bool,
     #[serde(default)]
-    pub update: Option<Update>,
+    pub patch: Option<Patch>,
 }
 
-pub fn send_update_request(
+pub fn send_patch_check_request(
     config: &ResolvedConfig,
     patch: Option<PatchInfo>,
-) -> anyhow::Result<UpdateResponse> {
+) -> anyhow::Result<PatchCheckResponse> {
     #[cfg(target_os = "macos")]
     static PLATFORM: &str = "macos";
     #[cfg(target_os = "linux")]
@@ -61,7 +61,7 @@ pub fn send_update_request(
     body.insert("platform", PLATFORM.to_string());
     body.insert("arch", ARCH.to_string());
     let response = client
-        .post(&updates_url(&config.base_url))
+        .post(&patches_check_url(&config.base_url))
         .json(&body)
         .send()?
         .json()?;

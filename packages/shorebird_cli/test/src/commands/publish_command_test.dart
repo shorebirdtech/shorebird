@@ -1,3 +1,5 @@
+import 'dart:io';
+
 import 'package:args/args.dart';
 import 'package:args/command_runner.dart';
 import 'package:mason_logger/mason_logger.dart';
@@ -31,6 +33,13 @@ void main() {
       projectId: 'test-project-id',
       apiKey: 'test-api-key',
     );
+    const productId = 'test-product-id';
+    const version = '1.2.3';
+    const pubspecYamlContent = '''
+name: example
+version: $version
+environment:
+  sdk: ">=2.19.0 <3.0.0"''';
 
     late ArgResults argResults;
     late Auth auth;
@@ -51,7 +60,17 @@ void main() {
         ..testArgResults = argResults
         ..testCommandRunner = _FakeCommandRunner();
 
+      when(() => argResults.rest).thenReturn([]);
+      when(() => auth.currentSession).thenReturn(session);
       when(() => logger.progress(any())).thenReturn(_MockProgress());
+      when(
+        () => codePushClient.createPatch(
+          baseVersion: any(named: 'baseVersion'),
+          artifactPath: any(named: 'artifactPath'),
+          channel: any(named: 'channel'),
+          productId: any(named: 'productId'),
+        ),
+      ).thenAnswer((_) async {});
     });
 
     test('throws no user error when session does not exist', () async {
@@ -61,48 +80,248 @@ void main() {
     });
 
     test('throws usage error when multiple args are passed.', () async {
-      when(() => auth.currentSession).thenReturn(session);
       when(() => argResults.rest).thenReturn(['arg1', 'arg2']);
       await expectLater(command.run, throwsA(isA<UsageException>()));
     });
 
-    test('throws no input error when file is not found (default).', () async {
-      when(() => auth.currentSession).thenReturn(session);
-      when(() => argResults.rest).thenReturn([]);
-      final exitCode = await command.run();
+    test('throws no input error when pubspec.yaml is not found.', () async {
+      final tempDir = Directory.systemTemp.createTempSync();
+      final exitCode = await IOOverrides.runZoned(
+        command.run,
+        getCurrentDirectory: () => tempDir,
+      );
+      verify(() => logger.err('Could not find a "pubspec.yaml".')).called(1);
+      expect(exitCode, ExitCode.noInput.code);
+    });
+
+    test('throws software error when pubspec.yaml is malformed.', () async {
+      final tempDir = Directory.systemTemp.createTempSync();
+      File(p.join(tempDir.path, 'pubspec.yaml')).createSync();
+      final exitCode = await IOOverrides.runZoned(
+        command.run,
+        getCurrentDirectory: () => tempDir,
+      );
       verify(
-        () => logger.err(any(that: contains('File not found: '))),
+        () => logger.err(any(that: contains('Error parsing "pubspec.yaml":'))),
+      ).called(1);
+      expect(exitCode, ExitCode.software.code);
+    });
+
+    test('throws software error when shorebird.yaml is malformed.', () async {
+      final tempDir = Directory.systemTemp.createTempSync();
+      File(
+        p.join(tempDir.path, 'pubspec.yaml'),
+      ).writeAsStringSync(pubspecYamlContent);
+      File(p.join(tempDir.path, 'shorebird.yaml')).createSync();
+      final exitCode = await IOOverrides.runZoned(
+        command.run,
+        getCurrentDirectory: () => tempDir,
+      );
+      verify(
+        () => logger.err(
+          any(that: contains('Error parsing "shorebird.yaml":')),
+        ),
+      ).called(1);
+      expect(exitCode, ExitCode.software.code);
+    });
+
+    test('throws no input error when artifact is not found (default).',
+        () async {
+      final tempDir = Directory.systemTemp.createTempSync();
+      File(
+        p.join(tempDir.path, 'pubspec.yaml'),
+      ).writeAsStringSync(pubspecYamlContent);
+      File(
+        p.join(tempDir.path, 'shorebird.yaml'),
+      ).writeAsStringSync('product_id: $productId');
+      final exitCode = await IOOverrides.runZoned(
+        command.run,
+        getCurrentDirectory: () => tempDir,
+      );
+      verify(
+        () => logger.err(any(that: contains('Artifact not found:'))),
       ).called(1);
       expect(exitCode, ExitCode.noInput.code);
     });
 
-    test('throws no input error when file is not found (custom).', () async {
-      when(() => auth.currentSession).thenReturn(session);
-      when(() => argResults.rest).thenReturn(['missing.txt']);
-      final exitCode = await command.run();
-      verify(() => logger.err('File not found: missing.txt')).called(1);
+    test('throws no input error when artifact is not found (custom).',
+        () async {
+      final tempDir = Directory.systemTemp.createTempSync();
+      final artifact = File(p.join(tempDir.path, 'patch.txt'));
+      when(() => argResults.rest).thenReturn([artifact.path]);
+      File(
+        p.join(tempDir.path, 'pubspec.yaml'),
+      ).writeAsStringSync(pubspecYamlContent);
+      File(
+        p.join(tempDir.path, 'shorebird.yaml'),
+      ).writeAsStringSync('product_id: $productId');
+      final exitCode = await IOOverrides.runZoned(
+        command.run,
+        getCurrentDirectory: () => tempDir,
+      );
+      verify(
+        () => logger.err(
+          any(
+            that: contains('Artifact not found: "${artifact.path}"'),
+          ),
+        ),
+      ).called(1);
       expect(exitCode, ExitCode.noInput.code);
     });
 
-    test('throws error when release fails.', () async {
-      when(() => auth.currentSession).thenReturn(session);
+    test('throws error when publish fails.', () async {
       const error = 'something went wrong';
-      when(() => codePushClient.createRelease(any())).thenThrow(error);
-      final release = p.join('test', 'fixtures', 'release.txt');
-      when(() => argResults.rest).thenReturn([release]);
-      final exitCode = await command.run();
+      when(
+        () => codePushClient.createPatch(
+          baseVersion: any(named: 'baseVersion'),
+          artifactPath: any(named: 'artifactPath'),
+          channel: any(named: 'channel'),
+          productId: any(named: 'productId'),
+        ),
+      ).thenThrow(error);
+      final tempDir = Directory.systemTemp.createTempSync();
+      final artifact = File(p.join(tempDir.path, 'patch.txt'))..createSync();
+      when(() => argResults.rest).thenReturn([artifact.path]);
+      File(
+        p.join(tempDir.path, 'pubspec.yaml'),
+      ).writeAsStringSync(pubspecYamlContent);
+      File(
+        p.join(tempDir.path, 'shorebird.yaml'),
+      ).writeAsStringSync('product_id: $productId');
+      final exitCode = await IOOverrides.runZoned(
+        command.run,
+        getCurrentDirectory: () => tempDir,
+      );
       verify(() => logger.err('Failed to deploy: $error')).called(1);
       expect(exitCode, ExitCode.software.code);
     });
 
-    test('succeeds when release is successful.', () async {
-      when(() => auth.currentSession).thenReturn(session);
-      when(() => codePushClient.createRelease(any())).thenAnswer((_) async {});
-      final release = p.join('test', 'fixtures', 'release.txt');
-      when(() => argResults.rest).thenReturn([release]);
-      final exitCode = await command.run();
-      verify(() => logger.success('Deployed $release!')).called(1);
+    test('succeeds when publish is successful using existing product id',
+        () async {
+      final tempDir = Directory.systemTemp.createTempSync();
+      final artifact = File(p.join(tempDir.path, 'patch.txt'))..createSync();
+      when(() => argResults.rest).thenReturn([artifact.path]);
+      File(
+        p.join(tempDir.path, 'pubspec.yaml'),
+      ).writeAsStringSync(pubspecYamlContent);
+      File(
+        p.join(tempDir.path, 'shorebird.yaml'),
+      ).writeAsStringSync('product_id: $productId');
+      final exitCode = await IOOverrides.runZoned(
+        command.run,
+        getCurrentDirectory: () => tempDir,
+      );
+      verify(() => logger.success('Deployed ${artifact.path}!')).called(1);
+      verify(
+        () => codePushClient.createPatch(
+          baseVersion: version,
+          productId: productId,
+          artifactPath: artifact.path,
+          channel: 'stable',
+        ),
+      ).called(1);
       expect(exitCode, ExitCode.success.code);
+    });
+
+    test('succeeds when publish is successful using newly generated product id',
+        () async {
+      final tempDir = Directory.systemTemp.createTempSync();
+      final artifact = File(p.join(tempDir.path, 'patch.txt'))..createSync();
+      when(() => argResults.rest).thenReturn([artifact.path]);
+      File(
+        p.join(tempDir.path, 'pubspec.yaml'),
+      ).writeAsStringSync(pubspecYamlContent);
+      final exitCode = await IOOverrides.runZoned(
+        command.run,
+        getCurrentDirectory: () => tempDir,
+      );
+      verify(() => logger.success('Deployed ${artifact.path}!')).called(1);
+      verify(
+        () => codePushClient.createPatch(
+          baseVersion: version,
+          productId: any(named: 'productId', that: isNotEmpty),
+          artifactPath: artifact.path,
+          channel: 'stable',
+        ),
+      ).called(1);
+      expect(
+        File(p.join(tempDir.path, 'shorebird.yaml')).existsSync(),
+        isTrue,
+      );
+      expect(exitCode, ExitCode.success.code);
+    });
+
+    test('creates flutter.assets and adds shorebird.yaml', () async {
+      final tempDir = Directory.systemTemp.createTempSync();
+      final artifact = File(p.join(tempDir.path, 'patch.txt'))..createSync();
+      when(() => argResults.rest).thenReturn([artifact.path]);
+      File(
+        p.join(tempDir.path, 'pubspec.yaml'),
+      ).writeAsStringSync(pubspecYamlContent);
+      await IOOverrides.runZoned(
+        command.run,
+        getCurrentDirectory: () => tempDir,
+      );
+      expect(
+        File(p.join(tempDir.path, 'pubspec.yaml')).readAsStringSync(),
+        equals('''
+$pubspecYamlContent
+flutter:
+  assets:
+    - shorebird.yaml
+'''),
+      );
+    });
+
+    test('creates assets and adds shorebird.yaml', () async {
+      final tempDir = Directory.systemTemp.createTempSync();
+      final artifact = File(p.join(tempDir.path, 'patch.txt'))..createSync();
+      when(() => argResults.rest).thenReturn([artifact.path]);
+      File(p.join(tempDir.path, 'pubspec.yaml')).writeAsStringSync('''
+$pubspecYamlContent
+flutter:
+  uses-material-design: true
+''');
+      await IOOverrides.runZoned(
+        command.run,
+        getCurrentDirectory: () => tempDir,
+      );
+      expect(
+        File(p.join(tempDir.path, 'pubspec.yaml')).readAsStringSync(),
+        equals('''
+$pubspecYamlContent
+flutter:
+  assets:
+    - shorebird.yaml
+  uses-material-design: true
+'''),
+      );
+    });
+
+    test('adds shorebird.yaml to assets', () async {
+      final tempDir = Directory.systemTemp.createTempSync();
+      final artifact = File(p.join(tempDir.path, 'patch.txt'))..createSync();
+      when(() => argResults.rest).thenReturn([artifact.path]);
+      File(p.join(tempDir.path, 'pubspec.yaml')).writeAsStringSync('''
+$pubspecYamlContent
+flutter:
+  assets: 
+    - some/asset.txt
+''');
+      await IOOverrides.runZoned(
+        command.run,
+        getCurrentDirectory: () => tempDir,
+      );
+      expect(
+        File(p.join(tempDir.path, 'pubspec.yaml')).readAsStringSync(),
+        equals('''
+$pubspecYamlContent
+flutter:
+  assets: 
+    - some/asset.txt
+    - shorebird.yaml
+'''),
+      );
     });
   });
 }

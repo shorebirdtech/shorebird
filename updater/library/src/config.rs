@@ -8,7 +8,7 @@ use once_cell::sync::OnceCell;
 // cbindgen looks for const, ignore these so it doesn't warn about them.
 
 /// cbindgen:ignore
-const DEFAULT_BASE_URL: &'static str = "https://shorebird-code-push-api-cypqazu4da-uc.a.run.app";
+const DEFAULT_BASE_URL: &'static str = "https://code-push-server-kmdbqkx7rq-uc.a.run.app";
 /// cbindgen:ignore
 const DEFAULT_CHANNEL: &'static str = "stable";
 

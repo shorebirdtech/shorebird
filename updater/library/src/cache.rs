@@ -6,7 +6,7 @@ use std::path::{Path, PathBuf};
 
 use serde::{Deserialize, Serialize};
 
-use crate::network::UpdateResponse;
+use crate::network::PatchCheckResponse;
 
 pub struct PatchInfo {
     pub path: String,
@@ -114,18 +114,18 @@ pub fn download_file_to_path(url: &str, path: &PathBuf) -> anyhow::Result<()> {
 
 pub fn download_into_unused_slot(
     cache_dir: &str,
-    update_response: &UpdateResponse,
+    patch_check_response: &PatchCheckResponse,
     state: &mut UpdaterState,
 ) -> anyhow::Result<usize> {
     // Download the new version into the unused slot.
     let slot_index = unused_slot(state);
-    download_into_slot(cache_dir, update_response, state, slot_index)?;
+    download_into_slot(cache_dir, patch_check_response, state, slot_index)?;
     Ok(slot_index)
 }
 
 fn download_into_slot(
     cache_dir: &str,
-    update_response: &UpdateResponse,
+    patch_check_response: &PatchCheckResponse,
     state: &mut UpdaterState,
     slot_index: usize,
 ) -> anyhow::Result<()> {
@@ -136,14 +136,14 @@ fn download_into_slot(
         .join("libapp.txt");
 
     // TODO: Shouldn't crash on malformed response.
-    let update = update_response.update.as_ref().unwrap();
+    let patch = patch_check_response.patch.as_ref().unwrap();
 
     // We should download into a separate place and move into place.
     // That would allow us to check the hash before moving into place.
     // Would also allow the move/state update to be "atomic" or at least allow
     // us to carefully guard against state corruption.
     // Would also let us support when we need to allow the system to download for us (e.g. iOS).
-    download_file_to_path(&update.download_url, &path)?;
+    download_file_to_path(&patch.download_url, &path)?;
     // Check the hash against the download?
 
     // Update the state to include the new version.
@@ -152,8 +152,8 @@ fn download_into_slot(
         slot_index,
         Slot {
             path: path.to_str().unwrap().to_string(),
-            version: update.version.clone(),
-            hash: update.hash.clone(),
+            version: patch.version.clone(),
+            hash: patch.hash.clone(),
         },
     );
     save_state(&state, cache_dir)?;
