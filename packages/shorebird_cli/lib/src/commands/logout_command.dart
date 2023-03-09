@@ -8,7 +8,7 @@ import 'package:shorebird_cli/src/command.dart';
 /// {@endtemplate}
 class LogoutCommand extends ShorebirdCommand {
   /// {@macro logout_command}
-  LogoutCommand({super.auth, super.logger});
+  LogoutCommand({required super.logger, super.auth});
 
   @override
   String get description => 'Logout of the current Shorebird user';

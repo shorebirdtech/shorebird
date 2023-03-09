@@ -12,7 +12,7 @@ import 'package:shorebird_cli/src/version.dart';
 class UpdateCommand extends ShorebirdCommand {
   /// {@macro update_command}
   UpdateCommand({
-    super.logger,
+    required super.logger,
     PubUpdater? pubUpdater,
   }) : _pubUpdater = pubUpdater ?? PubUpdater();
 

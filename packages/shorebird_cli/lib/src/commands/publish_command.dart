@@ -1,8 +1,11 @@
 import 'dart:io';
 
-import 'package:mason_logger/mason_logger.dart';
+import 'package:checked_yaml/checked_yaml.dart';
+import 'package:mason/mason.dart';
 import 'package:path/path.dart' as p;
+import 'package:pubspec_parse/pubspec_parse.dart';
 import 'package:shorebird_cli/src/command.dart';
+import 'package:shorebird_cli/src/config/shorebird_yaml.dart';
 
 /// {@template publish_command}
 ///
@@ -11,7 +14,12 @@ import 'package:shorebird_cli/src/command.dart';
 /// {@endtemplate}
 class PublishCommand extends ShorebirdCommand {
   /// {@macro publish_command}
-  PublishCommand({super.auth, super.buildCodePushClient, super.logger});
+  PublishCommand({
+    required super.logger,
+    super.auth,
+    super.buildCodePushClient,
+    super.buildUuid,
+  });
 
   @override
   String get description => 'Publish an update.';
@@ -32,7 +40,38 @@ class PublishCommand extends ShorebirdCommand {
       usageException('A single file path must be specified.');
     }
 
-    final releasePath = args.isEmpty
+    late final Pubspec? pubspecYaml;
+    try {
+      pubspecYaml = readPubspecYaml();
+      if (pubspecYaml == null) {
+        logger.err('Could not find a "pubspec.yaml".');
+        return ExitCode.noInput.code;
+      }
+    } catch (error) {
+      logger.err('Error parsing "pubspec.yaml": $error');
+      return ExitCode.software.code;
+    }
+
+    late final String productId;
+    late final ShorebirdYaml? shorebirdYaml;
+    try {
+      shorebirdYaml = readShorebirdYaml();
+    } catch (error) {
+      logger.err('Error parsing "shorebird.yaml": $error');
+      return ExitCode.software.code;
+    }
+
+    if (shorebirdYaml == null) {
+      final progress = logger.progress('Generating a shorebird.yaml');
+      productId = buildUuid();
+      final generator = _ShorebirdYamlGenerator(productId: productId);
+      await generator.generate(DirectoryGeneratorTarget(Directory.current));
+      progress.complete();
+    } else {
+      productId = shorebirdYaml.productId;
+    }
+
+    final artifactPath = args.isEmpty
         ? p.join(
             Directory.current.path,
             'build',
@@ -47,7 +86,7 @@ class PublishCommand extends ShorebirdCommand {
           )
         : args.first;
 
-    final artifact = File(releasePath);
+    final artifact = File(artifactPath);
     if (!artifact.existsSync()) {
       logger.err('File not found: ${artifact.path}');
       return ExitCode.noInput.code;
@@ -55,7 +94,15 @@ class PublishCommand extends ShorebirdCommand {
 
     try {
       final codePushClient = buildCodePushClient(apiKey: session.apiKey);
-      await codePushClient.createRelease(artifact.path);
+      logger.detail(
+        'Deploying ${artifact.path} to $productId (${pubspecYaml.version})',
+      );
+      await codePushClient.createPatch(
+        artifactPath: artifact.path,
+        baseVersion: pubspecYaml.version.toString(),
+        productId: productId,
+        channel: 'stable',
+      );
     } catch (error) {
       logger.err('Failed to deploy: $error');
       return ExitCode.software.code;
@@ -64,4 +111,36 @@ class PublishCommand extends ShorebirdCommand {
     logger.success('Deployed ${artifact.path}!');
     return ExitCode.success.code;
   }
+
+  ShorebirdYaml? readShorebirdYaml() {
+    final file = File(p.join(Directory.current.path, 'shorebird.yaml'));
+    if (!file.existsSync()) return null;
+    final yaml = file.readAsStringSync();
+    return checkedYamlDecode(yaml, (m) => ShorebirdYaml.fromJson(m!));
+  }
+
+  Pubspec? readPubspecYaml() {
+    final file = File(p.join(Directory.current.path, 'pubspec.yaml'));
+    if (!file.existsSync()) return null;
+    final yaml = file.readAsStringSync();
+    return Pubspec.parse(yaml);
+  }
+}
+
+/// Generate for the `shorebird.yaml` file.
+class _ShorebirdYamlGenerator extends MasonGenerator {
+  _ShorebirdYamlGenerator({required String productId})
+      : super(
+          '__shorebird_yaml__',
+          'Generate a new shorebird.yaml file.',
+          files: [
+            TemplateFile('shorebird.yaml', _shorebirdYamlContent(productId))
+          ],
+        );
+
+  static String _shorebirdYamlContent(String productId) => '''
+# This file is used to configure the Shorebird CLI.
+# Learn more at https://shorebird.dev
+product_id: $productId
+''';
 }

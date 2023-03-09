@@ -1,6 +1,6 @@
 // ignore_for_file: unused_local_variable
 
-import 'package:shorebird_code_push_api_client/src/shorebird_code_push_api_client.dart';
+import 'package:shorebird_code_push_api_client/shorebird_code_push_api_client.dart';
 
 Future<void> main() async {
   final client = ShorebirdCodePushApiClient(apiKey: '<API KEY>');
@@ -8,6 +8,11 @@ Future<void> main() async {
   // Download the latest engine revision.
   final engine = await client.downloadEngine('latest');
 
-  // Create a new release.
-  await client.createRelease('path/to/release/libapp.so');
+  // Create a new patch.
+  await client.createPatch(
+    artifactPath: '<PATH TO ARTIFACT>', // e.g. 'libapp.so'
+    baseVersion: '<BASE VERSION>', // e.g. '1.0.0'
+    productId: '<PRODUCT ID>', // e.g. 'shorebird-example'
+    channel: '<CHANNEL>', // e.g. 'stable'
+  );
 }

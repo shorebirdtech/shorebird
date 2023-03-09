@@ -11,19 +11,25 @@ environment:
 dependencies:
   archive: ^3.3.6
   args: ^2.3.1
+  checked_yaml: ^2.0.2
   cli_completion: ^0.3.0
   cli_util: ^0.4.0
+  json_annotation: ^4.8.0
+  mason: ^0.1.0-dev.47
   mason_logger: ^0.2.4
   meta: ^1.9.0
   path: ^1.8.3
   pub_updater: ^0.2.4
+  pubspec_parse: ^1.2.2
   shorebird_code_push_api_client:
     path: ../shorebird_code_push_api_client
+  uuid: ^3.0.7
 
 dev_dependencies:
   build_runner: ^2.0.0
   build_verify: ^3.0.0
   build_version: ^2.0.0
+  json_serializable: ^6.6.1
   mocktail: ^0.3.0
   test: ^1.19.2
   very_good_analysis: ^4.0.0

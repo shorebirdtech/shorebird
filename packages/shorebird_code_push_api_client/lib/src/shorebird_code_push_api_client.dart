@@ -14,8 +14,8 @@ class ShorebirdCodePushApiClient {
     Uri? hostedUri,
   })  : _apiKey = apiKey,
         _httpClient = httpClient ?? http.Client(),
-        _hostedUri = hostedUri ??
-            Uri.https('shorebird-code-push-api-cypqazu4da-uc.a.run.app');
+        _hostedUri =
+            hostedUri ?? Uri.https('code-push-server-kmdbqkx7rq-uc.a.run.app');
 
   final String _apiKey;
   final http.Client _httpClient;
@@ -23,15 +23,24 @@ class ShorebirdCodePushApiClient {
 
   Map<String, String> get _apiKeyHeader => {'x-api-key': _apiKey};
 
-  /// Upload the artifact at [path] to the
-  /// Shorebird CodePush API as a new release.
-  Future<void> createRelease(String path) async {
+  /// Create a new patch.
+  Future<void> createPatch({
+    required String baseVersion,
+    required String productId,
+    required String channel,
+    required String artifactPath,
+  }) async {
     final request = http.MultipartRequest(
       'POST',
-      Uri.parse('$_hostedUri/api/v1/releases'),
+      Uri.parse('$_hostedUri/api/v1/patches'),
     );
-    final file = await http.MultipartFile.fromPath('file', path);
+    final file = await http.MultipartFile.fromPath('file', artifactPath);
     request.files.add(file);
+    request.fields.addAll({
+      'base_version': baseVersion,
+      'product_id': productId,
+      'channel': channel,
+    });
     request.headers.addAll(_apiKeyHeader);
     final response = await _httpClient.send(request);
 
@@ -44,7 +53,10 @@ class ShorebirdCodePushApiClient {
   Future<Uint8List> downloadEngine(String revision) async {
     final request = http.Request(
       'GET',
-      Uri.parse('$_hostedUri/api/v1/engines/$revision'),
+      Uri.parse(
+        // TODO(felangel): use the revision instead of hardcoded "dev".
+        'https://storage.googleapis.com/code-push-dev.appspot.com/engines/dev/engine.zip',
+      ),
     );
     request.headers.addAll(_apiKeyHeader);
 

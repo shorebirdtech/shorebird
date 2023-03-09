@@ -1,3 +1,5 @@
+import 'dart:io';
+
 import 'package:args/args.dart';
 import 'package:args/command_runner.dart';
 import 'package:mason_logger/mason_logger.dart';
@@ -31,6 +33,7 @@ void main() {
       projectId: 'test-project-id',
       apiKey: 'test-api-key',
     );
+    const productId = 'test-product-id';
 
     late ArgResults argResults;
     late Auth auth;
@@ -84,24 +87,165 @@ void main() {
       expect(exitCode, ExitCode.noInput.code);
     });
 
-    test('throws error when release fails.', () async {
+    test('throws no input error when pubspec.yaml is not found.', () async {
       when(() => auth.currentSession).thenReturn(session);
+      when(() => argResults.rest).thenReturn([]);
+      final tempDir = Directory.systemTemp.createTempSync();
+      final exitCode = await IOOverrides.runZoned(
+        command.run,
+        getCurrentDirectory: () => tempDir,
+      );
+      verify(() => logger.err('Could not find a "pubspec.yaml".')).called(1);
+      expect(exitCode, ExitCode.noInput.code);
+    });
+
+    test('throws software error when pubspec.yaml is malformed.', () async {
+      when(() => auth.currentSession).thenReturn(session);
+      when(() => argResults.rest).thenReturn([]);
+      final tempDir = Directory.systemTemp.createTempSync();
+      File(p.join(tempDir.path, 'pubspec.yaml')).createSync();
+      final exitCode = await IOOverrides.runZoned(
+        command.run,
+        getCurrentDirectory: () => tempDir,
+      );
+      verify(
+        () => logger.err(any(that: contains('Error parsing "pubspec.yaml":'))),
+      ).called(1);
+      expect(exitCode, ExitCode.software.code);
+    });
+
+    test('throws software error when shorebird.yaml is malformed.', () async {
+      when(() => auth.currentSession).thenReturn(session);
+      when(() => argResults.rest).thenReturn([]);
+      final tempDir = Directory.systemTemp.createTempSync();
+      File(p.join(tempDir.path, 'pubspec.yaml')).writeAsStringSync('''
+name: example
+version: 0.0.1
+environment:
+  sdk: ">=2.19.0 <3.0.0"
+''');
+      File(p.join(tempDir.path, 'shorebird.yaml')).createSync();
+      final exitCode = await IOOverrides.runZoned(
+        command.run,
+        getCurrentDirectory: () => tempDir,
+      );
+      verify(
+        () => logger.err(
+          any(that: contains('Error parsing "shorebird.yaml":')),
+        ),
+      ).called(1);
+      expect(exitCode, ExitCode.software.code);
+    });
+
+    test('throws error when publish fails.', () async {
       const error = 'something went wrong';
-      when(() => codePushClient.createRelease(any())).thenThrow(error);
-      final release = p.join('test', 'fixtures', 'release.txt');
-      when(() => argResults.rest).thenReturn([release]);
-      final exitCode = await command.run();
+      when(() => auth.currentSession).thenReturn(session);
+      when(
+        () => codePushClient.createPatch(
+          baseVersion: any(named: 'baseVersion'),
+          artifactPath: any(named: 'artifactPath'),
+          channel: any(named: 'channel'),
+          productId: any(named: 'productId'),
+        ),
+      ).thenThrow(error);
+      final tempDir = Directory.systemTemp.createTempSync();
+      final artifact = File(p.join(tempDir.path, 'patch.txt'))..createSync();
+      when(() => argResults.rest).thenReturn([artifact.path]);
+      File(p.join(tempDir.path, 'pubspec.yaml')).writeAsStringSync('''
+name: example
+version: 0.0.1
+environment:
+  sdk: ">=2.19.0 <3.0.0"
+''');
+      File(
+        p.join(tempDir.path, 'shorebird.yaml'),
+      ).writeAsStringSync('product_id: $productId');
+      final exitCode = await IOOverrides.runZoned(
+        command.run,
+        getCurrentDirectory: () => tempDir,
+      );
       verify(() => logger.err('Failed to deploy: $error')).called(1);
       expect(exitCode, ExitCode.software.code);
     });
 
-    test('succeeds when release is successful.', () async {
+    test('succeeds when publish is successful using existing product id',
+        () async {
       when(() => auth.currentSession).thenReturn(session);
-      when(() => codePushClient.createRelease(any())).thenAnswer((_) async {});
-      final release = p.join('test', 'fixtures', 'release.txt');
-      when(() => argResults.rest).thenReturn([release]);
-      final exitCode = await command.run();
-      verify(() => logger.success('Deployed $release!')).called(1);
+      const version = '1.2.3';
+      when(
+        () => codePushClient.createPatch(
+          baseVersion: any(named: 'baseVersion'),
+          artifactPath: any(named: 'artifactPath'),
+          channel: any(named: 'channel'),
+          productId: any(named: 'productId'),
+        ),
+      ).thenAnswer((_) async {});
+      final tempDir = Directory.systemTemp.createTempSync();
+      final artifact = File(p.join(tempDir.path, 'patch.txt'))..createSync();
+      when(() => argResults.rest).thenReturn([artifact.path]);
+      File(p.join(tempDir.path, 'pubspec.yaml')).writeAsStringSync('''
+name: example
+version: $version
+environment:
+  sdk: ">=2.19.0 <3.0.0"
+''');
+      File(
+        p.join(tempDir.path, 'shorebird.yaml'),
+      ).writeAsStringSync('product_id: $productId');
+      final exitCode = await IOOverrides.runZoned(
+        command.run,
+        getCurrentDirectory: () => tempDir,
+      );
+      verify(() => logger.success('Deployed ${artifact.path}!')).called(1);
+      verify(
+        () => codePushClient.createPatch(
+          baseVersion: version,
+          productId: productId,
+          artifactPath: artifact.path,
+          channel: 'stable',
+        ),
+      ).called(1);
+      expect(exitCode, ExitCode.success.code);
+    });
+
+    test('succeeds when publish is successful using newly generated product id',
+        () async {
+      const version = '1.2.3';
+      when(() => auth.currentSession).thenReturn(session);
+      when(
+        () => codePushClient.createPatch(
+          baseVersion: any(named: 'baseVersion'),
+          artifactPath: any(named: 'artifactPath'),
+          channel: any(named: 'channel'),
+          productId: any(named: 'productId'),
+        ),
+      ).thenAnswer((_) async {});
+      final tempDir = Directory.systemTemp.createTempSync();
+      final artifact = File(p.join(tempDir.path, 'patch.txt'))..createSync();
+      when(() => argResults.rest).thenReturn([artifact.path]);
+      File(p.join(tempDir.path, 'pubspec.yaml')).writeAsStringSync('''
+name: example
+version: $version
+environment:
+  sdk: ">=2.19.0 <3.0.0"
+''');
+      final exitCode = await IOOverrides.runZoned(
+        command.run,
+        getCurrentDirectory: () => tempDir,
+      );
+      verify(() => logger.success('Deployed ${artifact.path}!')).called(1);
+      verify(
+        () => codePushClient.createPatch(
+          baseVersion: version,
+          productId: any(named: 'productId', that: isNotEmpty),
+          artifactPath: artifact.path,
+          channel: 'stable',
+        ),
+      ).called(1);
+      expect(
+        File(p.join(tempDir.path, 'shorebird.yaml')).existsSync(),
+        isTrue,
+      );
       expect(exitCode, ExitCode.success.code);
     });
   });
