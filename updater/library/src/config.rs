@@ -32,6 +32,7 @@ where
     return f(&lock);
 }
 
+#[derive(Debug)]
 pub struct ResolvedConfig {
     is_initialized: bool,
     pub cache_dir: String,
@@ -80,4 +81,5 @@ pub fn set_config(config: AppConfig, yaml: YamlConfig) {
     lock.original_libapp_path = config.original_libapp_path.to_string();
     lock.vm_path = config.vm_path.to_string();
     lock.is_initialized = true;
+    info!("Updater configured with: {:?}", lock);
 }
