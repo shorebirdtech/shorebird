@@ -23,10 +23,13 @@ used by the React Native community from [Microsoft](https://appcenter.ms) and
 
 ### What is the status of code push?
 
+As of March 10th, 2023 we have our serving architecture built out enough to
+service more than one simultaneous customer, we're working towards issuing
+our first API keys by March 17th, with a ~50% confidence on that date.
+
 As of March 4th, 2023 we've built [a
 demo](https://www.youtube.com/watch?v=mmKvs0_Zu14&ab_channel=Shorebird) and have
 the prototype working on multiple machines and Android phones.
-
 
 ### What is the roadmap?
 
@@ -113,7 +116,7 @@ respond with either the next incremental version or the latest version depending
 on your application's needs.  The current demo always sends the latest version
 but this logic would not be hard to add.
 
-# Why are some parts of the code push library written in Rust?
+### Why are some parts of the code push library written in Rust?
 
 Parts of the code push ("updater") system are written in Rust:
 1. Avoids starting two Dart VMs (one for the updater and one for the app).
