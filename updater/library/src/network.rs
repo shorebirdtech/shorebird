@@ -6,7 +6,7 @@ use std::string::ToString;
 
 use serde::Deserialize;
 
-use crate::cache::PatchInfo;
+use crate::cache::{client_id, current_patch, UpdaterState};
 use crate::config::ResolvedConfig;
 
 fn patches_check_url(base_url: &str) -> String {
@@ -29,7 +29,7 @@ pub struct PatchCheckResponse {
 
 pub fn send_patch_check_request(
     config: &ResolvedConfig,
-    patch: Option<PatchInfo>,
+    state: &UpdaterState,
 ) -> anyhow::Result<PatchCheckResponse> {
     #[cfg(target_os = "macos")]
     static PLATFORM: &str = "macos";
@@ -47,10 +47,12 @@ pub fn send_patch_check_request(
     #[cfg(target_arch = "aarch64")]
     static ARCH: &str = "aarch64";
 
+    let patch = current_patch(state);
+
     // Send the request to the server.
     let client = reqwest::blocking::Client::new();
     let mut body = HashMap::new();
-    body.insert("client_id", config.client_id.clone());
+    body.insert("client_id", client_id(state));
     body.insert("product_id", config.product_id.clone());
     body.insert("channel", config.channel.clone());
     body.insert("base_version", config.base_version.clone());

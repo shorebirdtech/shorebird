@@ -11,6 +11,7 @@ mod config;
 mod logging;
 mod network;
 mod updater;
+mod yaml;
 
 // Take all public items from the updater namespace and make them public.
 pub use self::updater::*;

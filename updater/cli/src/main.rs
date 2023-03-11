@@ -20,16 +20,17 @@ fn main() {
     let cli = Cli::parse();
 
     let config = updater::AppConfig {
-        client_id: "demo".to_string(),
         cache_dir: "updater_cache".to_owned(),
-        base_url: Some("http://localhost:8000".to_owned()),
-        channel: Some("stable".to_owned()),
-        product_id: "demo".to_owned(),
         base_version: "0.1.0".to_owned(),
         original_libapp_path: "libapp.so".to_owned(),
         vm_path: "libflutter.so".to_owned(),
     };
-    updater::init(config);
+    let yaml_str = "
+product_id: demo
+channel: stable
+base_url: http://localhost:8000
+";
+    updater::init(config, yaml_str);
 
     // You can check for the existence of subcommands, and if found use their
     // matches just as you would the top level cmd

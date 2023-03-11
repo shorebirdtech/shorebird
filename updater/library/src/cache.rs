@@ -3,6 +3,7 @@
 use std::fs::File;
 use std::io::{BufReader, BufWriter, Write};
 use std::path::{Path, PathBuf};
+use uuid::Uuid;
 
 use serde::{Deserialize, Serialize};
 
@@ -25,6 +26,12 @@ struct Slot {
 // anything inside should be done via the functions below.
 #[derive(Deserialize, Serialize)]
 pub struct UpdaterState {
+    // The purpose of the client_id is to allow for staged rollouts
+    // the server needs some sort of per-client number, so that it can bucket
+    // and say "this client is in the 10% bucket, so it gets the new version".
+    // It might be better for this to just be a number 0-100?
+    #[serde(default = "Uuid::new_v4")]
+    client_id: Uuid,
     current_slot_index: usize,
     slots: Vec<Slot>,
     // Add file path or FD so modifying functions can save it to disk?
@@ -33,6 +40,7 @@ pub struct UpdaterState {
 impl Default for UpdaterState {
     fn default() -> Self {
         Self {
+            client_id: Uuid::new_v4(),
             current_slot_index: 0,
             slots: Vec::new(),
         }
@@ -44,6 +52,8 @@ pub fn load_state(cache_dir: &str) -> anyhow::Result<UpdaterState> {
     let path = Path::new(cache_dir).join("state.json");
     let file = File::open(path)?;
     let reader = BufReader::new(file);
+    // TODO: Now that we depend on serde_yaml for shorebird.yaml
+    // we could use yaml here instead of json.
     let state = serde_json::from_reader(reader)?;
     Ok(state)
 }
@@ -58,7 +68,11 @@ pub fn save_state(state: &UpdaterState, cache_dir: &str) -> anyhow::Result<()> {
     Ok(())
 }
 
-pub fn current_patch_internal(state: &UpdaterState) -> Option<PatchInfo> {
+pub fn client_id(state: &UpdaterState) -> String {
+    state.client_id.to_string()
+}
+
+pub fn current_patch(state: &UpdaterState) -> Option<PatchInfo> {
     // If there is no state, return None.
     if state.slots.is_empty() {
         return None;

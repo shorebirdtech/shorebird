@@ -3,6 +3,7 @@
 use std::sync::Mutex;
 
 use crate::updater::AppConfig;
+use crate::yaml::YamlConfig;
 use once_cell::sync::OnceCell;
 
 // cbindgen looks for const, ignore these so it doesn't warn about them.
@@ -31,11 +32,11 @@ where
     return f(&lock);
 }
 
+#[derive(Debug)]
 pub struct ResolvedConfig {
     is_initialized: bool,
     pub cache_dir: String,
     pub channel: String,
-    pub client_id: String,
     pub product_id: String,
     pub base_version: String,
     pub original_libapp_path: String,
@@ -49,7 +50,6 @@ impl ResolvedConfig {
             is_initialized: false,
             cache_dir: String::new(),
             channel: String::new(),
-            client_id: String::new(),
             product_id: String::new(),
             base_version: String::new(),
             original_libapp_path: String::new(),
@@ -59,27 +59,27 @@ impl ResolvedConfig {
     }
 }
 
-pub fn set_config(config: AppConfig) {
+pub fn set_config(config: AppConfig, yaml: YamlConfig) {
     // If there is no base_url, use the default.
     // If there is no channel, use the default.
     let mut lock = global_config()
         .lock()
         .expect("Failed to acquire updater lock.");
-    lock.base_url = config
+    lock.base_url = yaml
         .base_url
         .as_deref()
         .unwrap_or(DEFAULT_BASE_URL)
         .to_owned();
-    lock.channel = config
+    lock.channel = yaml
         .channel
         .as_deref()
         .unwrap_or(DEFAULT_CHANNEL)
         .to_owned();
     lock.cache_dir = config.cache_dir.to_string();
-    lock.client_id = config.client_id.to_string();
-    lock.product_id = config.product_id.to_string();
+    lock.product_id = yaml.product_id.to_string();
     lock.base_version = config.base_version.to_string();
     lock.original_libapp_path = config.original_libapp_path.to_string();
     lock.vm_path = config.vm_path.to_string();
     lock.is_initialized = true;
+    info!("Updater configured with: {:?}", lock);
 }

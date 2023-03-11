@@ -3,12 +3,12 @@
 use std::fmt::{Display, Formatter};
 
 use crate::cache::{
-    current_patch_internal, download_into_unused_slot, load_state, save_state, set_current_slot,
-    PatchInfo,
+    current_patch, download_into_unused_slot, load_state, save_state, set_current_slot, PatchInfo,
 };
 use crate::config::{set_config, with_config, ResolvedConfig};
 use crate::logging::init_logging;
 use crate::network::send_patch_check_request;
+use crate::yaml::YamlConfig;
 
 pub enum UpdateStatus {
     NoUpdate,
@@ -35,28 +35,28 @@ impl Display for UpdateStatus {
 // but making &str from CStr* is a bit of a pain.
 pub struct AppConfig {
     pub cache_dir: String,
-    pub channel: Option<String>, // If None, use the 'stable'.
-    pub client_id: String,
-    pub product_id: String,
     pub base_version: String,
     pub original_libapp_path: String,
     pub vm_path: String,
-    pub base_url: Option<String>, // If None, use the default.
 }
 
-pub fn init(app_config: AppConfig) {
+/// Initialize the updater library.
+/// Takes a AppConfig struct and a yaml string.
+/// The yaml string is the contents of the shorebird.yaml file.
+/// The AppConfig struct is information about the running app and where
+/// the updater should keep its cache.
+pub fn init(app_config: AppConfig, yaml: &str) {
     init_logging();
-    set_config(app_config);
+    let config = YamlConfig::from_yaml(&yaml).unwrap();
+    set_config(app_config, config);
 }
 
-pub fn check_for_update_internal(config: &ResolvedConfig) -> bool {
+fn check_for_update_internal(config: &ResolvedConfig) -> bool {
     // Load UpdaterState from disk
     // If there is no state, make an empty state.
     let state = load_state(&config.cache_dir).unwrap_or_default();
-    // Check the current slot.
-    let patch = current_patch_internal(&state);
     // Send info from app + current slot to server.
-    let response_result = send_patch_check_request(&config, patch);
+    let response_result = send_patch_check_request(&config, &state);
     match response_result {
         Err(err) => {
             error!("Failed update check: {err}");
@@ -68,6 +68,7 @@ pub fn check_for_update_internal(config: &ResolvedConfig) -> bool {
     }
 }
 
+/// Synchronously checks for an update and returns true if an update is available.
 pub fn check_for_update() -> bool {
     return with_config(check_for_update_internal);
 }
@@ -75,9 +76,8 @@ pub fn check_for_update() -> bool {
 fn update_internal(config: &ResolvedConfig) -> anyhow::Result<UpdateStatus> {
     // Load the state from disk.
     let mut state = load_state(&config.cache_dir).unwrap_or_default();
-    let version = current_patch_internal(&state);
     // Check for update.
-    let response = send_patch_check_request(&config, version)?;
+    let response = send_patch_check_request(&config, &state)?;
     if !response.patch_available {
         return Ok(UpdateStatus::NoUpdate);
     }
@@ -90,13 +90,15 @@ fn update_internal(config: &ResolvedConfig) -> anyhow::Result<UpdateStatus> {
     return Ok(UpdateStatus::UpdateInstalled);
 }
 
+/// Reads the current patch from the cache and returns it.
 pub fn active_patch() -> Option<PatchInfo> {
     return with_config(|config| {
         let state = load_state(&config.cache_dir).unwrap_or_default();
-        return current_patch_internal(&state);
+        return current_patch(&state);
     });
 }
 
+/// Synchronously checks for an update and downloads and installs it if available.
 pub fn update() -> UpdateStatus {
     return with_config(|config| {
         let result = update_internal(&config);
