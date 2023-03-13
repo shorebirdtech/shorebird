@@ -62,6 +62,7 @@ pub fn send_patch_check_request(
     }
     body.insert("platform", PLATFORM.to_string());
     body.insert("arch", ARCH.to_string());
+    info!("Sending patch check request: {:?}", body);
     let response = client
         .post(&patches_check_url(&config.base_url))
         .json(&body)
