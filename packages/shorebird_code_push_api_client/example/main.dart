@@ -9,7 +9,7 @@ Future<void> main() async {
   final engine = await client.downloadEngine('latest');
 
   // Create a new Shorebird application.
-  await client.createApp(productId: '<PRODUCT-ID>');
+  await client.createApp(productId: '<PRODUCT ID>');
 
   // Create a new patch.
   await client.createPatch(
