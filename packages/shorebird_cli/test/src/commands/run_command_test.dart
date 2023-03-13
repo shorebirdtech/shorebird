@@ -5,13 +5,13 @@ import 'dart:typed_data';
 
 import 'package:archive/archive_io.dart';
 import 'package:args/args.dart';
+import 'package:code_push_server/client.dart';
 import 'package:mason_logger/mason_logger.dart';
 import 'package:mocktail/mocktail.dart';
 import 'package:path/path.dart' as p;
 import 'package:shorebird_cli/src/auth/auth.dart';
 import 'package:shorebird_cli/src/auth/session.dart';
 import 'package:shorebird_cli/src/commands/run_command.dart';
-import 'package:shorebird_code_push_api_client/shorebird_code_push_api_client.dart';
 import 'package:test/test.dart';
 
 class _MockArgResults extends Mock implements ArgResults {}
@@ -24,8 +24,7 @@ class _MockProgress extends Mock implements Progress {}
 
 class _MockProcess extends Mock implements Process {}
 
-class _MockShorebirdCodePushApiClient extends Mock
-    implements ShorebirdCodePushApiClient {}
+class _MockCodePushClient extends Mock implements CodePushClient {}
 
 void main() {
   group('run', () {
@@ -38,7 +37,7 @@ void main() {
     late Auth auth;
     late Logger logger;
     late Process process;
-    late ShorebirdCodePushApiClient codePushClient;
+    late CodePushClient codePushClient;
     late RunCommand runCommand;
 
     setUp(() {
@@ -46,7 +45,7 @@ void main() {
       auth = _MockAuth();
       logger = _MockLogger();
       process = _MockProcess();
-      codePushClient = _MockShorebirdCodePushApiClient();
+      codePushClient = _MockCodePushClient();
       runCommand = RunCommand(
         auth: auth,
         logger: logger,

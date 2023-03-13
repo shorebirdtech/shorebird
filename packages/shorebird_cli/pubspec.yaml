@@ -14,14 +14,16 @@ dependencies:
   checked_yaml: ^2.0.2
   cli_completion: ^0.3.0
   cli_util: ^0.4.0
+  code_push_server:
+    git:
+      url: https://github.com/shorebirdtech/code_push_server
+      ref: 9ac4de5e7c73a4536f579337b305043265993ffc
   json_annotation: ^4.8.0
   mason_logger: ^0.2.4
   meta: ^1.9.0
   path: ^1.8.3
   pub_updater: ^0.2.4
   pubspec_parse: ^1.2.2
-  shorebird_code_push_api_client:
-    path: ../shorebird_code_push_api_client
   uuid: ^3.0.7
   yaml: ^3.1.1
   yaml_edit: ^2.1.0
