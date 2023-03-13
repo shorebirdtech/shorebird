@@ -33,6 +33,10 @@ inputs:
     required: false
     type: string
     default: "vm" 
+  ssh_key:
+    required: false
+    type: string
+    default: ""
 
 runs:
   using: "composite"
@@ -40,6 +44,13 @@ runs:
     - uses: dart-lang/setup-dart@v1
       with:
         sdk: ${{inputs.dart_sdk}}
+
+    - working-directory: ${{ inputs.working_directory }}
+      if: ${{ inputs.ssh_key != ''}}
+      shell: ${{ inputs.shell }}
+      run: |
+        eval `ssh-agent -s`
+        ssh-add - <<< '${{ inputs.ssh_key }}'
 
     - working-directory: ${{ inputs.working_directory }}
       shell: ${{ inputs.shell }}

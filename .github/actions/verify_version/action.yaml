@@ -1,6 +1,10 @@
 name: Verify Version Workflow
 
 inputs:
+  ssh_key:
+    required: false
+    type: string
+    default: ""
   working_directory:
     required: false
     type: string
@@ -15,6 +19,14 @@ runs:
 
     - name: 🎯 Setup Dart
       uses: dart-lang/setup-dart@v1
+
+    - name: 🤖 Configure SSH Agent
+      working-directory: ${{ inputs.working_directory }}
+      if: ${{ inputs.ssh_key != ''}}
+      shell: ${{ inputs.shell }}
+      run: |
+        eval `ssh-agent -s`
+        ssh-add - <<< '${{ inputs.ssh_key }}'
 
     - name: 📦 Install Dependencies
       shell: ${{ inputs.shell }}

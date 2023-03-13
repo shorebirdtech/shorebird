@@ -57,12 +57,11 @@ jobs:
     steps:
       - name: 📚 Git Checkout
         uses: actions/checkout@v3
-        with:
-          ssh-key: ${{ secrets.SSH_PRIVATE_KEY }}
 
       - name: 🎯 Build ${{ matrix.package }}
         uses: ./.github/actions/dart_package
         with:
+          ssh_key: ${{ secrets.SSH_PRIVATE_KEY }}
           working_directory: packages/${{ matrix.package }}
 
   verify_packages:
@@ -80,12 +79,11 @@ jobs:
     steps:
       - name: 📚 Git Checkout
         uses: actions/checkout@v3
-        with:
-          ssh-key: ${{ secrets.SSH_PRIVATE_KEY }}
 
       - name: 🔎 Verify ${{ matrix.package }}
         uses: ./.github/actions/verify_version
         with:
+          ssh_key: ${{ secrets.SSH_PRIVATE_KEY }}
           working_directory: packages/${{ matrix.package }}
 
   ci:
