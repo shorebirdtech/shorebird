@@ -1,3 +1,4 @@
+import 'dart:convert';
 import 'dart:io';
 import 'dart:typed_data';
 
@@ -25,6 +26,19 @@ class ShorebirdCodePushApiClient {
 
   Map<String, String> get _apiKeyHeader => {'x-api-key': _apiKey};
 
+  /// Create a new app with the provided [productId].
+  Future<void> createApp({required String productId}) async {
+    final response = await _httpClient.post(
+      Uri.parse('$hostedUri/api/v1/apps'),
+      headers: _apiKeyHeader,
+      body: json.encode({'product_id': productId}),
+    );
+
+    if (response.statusCode != HttpStatus.created) {
+      throw Exception('${response.statusCode} ${response.reasonPhrase}');
+    }
+  }
+
   /// Create a new patch.
   Future<void> createPatch({
     required String baseVersion,
@@ -51,6 +65,18 @@ class ShorebirdCodePushApiClient {
     }
   }
 
+  /// Delete the app with the provided [productId].
+  Future<void> deleteApp({required String productId}) async {
+    final response = await _httpClient.delete(
+      Uri.parse('$hostedUri/api/v1/apps/$productId'),
+      headers: _apiKeyHeader,
+    );
+
+    if (response.statusCode != HttpStatus.noContent) {
+      throw Exception('${response.statusCode} ${response.reasonPhrase}');
+    }
+  }
+
   /// Download the specified revision of the shorebird engine.
   Future<Uint8List> downloadEngine(String revision) async {
     final request = http.Request(
@@ -70,4 +96,7 @@ class ShorebirdCodePushApiClient {
 
     return response.stream.toBytes();
   }
+
+  /// Closes the client.
+  void close() => _httpClient.close();
 }
