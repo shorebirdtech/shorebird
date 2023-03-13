@@ -8,6 +8,9 @@ Future<void> main() async {
   // Download the latest engine revision.
   final engine = await client.downloadEngine('latest');
 
+  // Create a new Shorebird application.
+  await client.createApp(productId: '<PRODUCT-ID>');
+
   // Create a new patch.
   await client.createPatch(
     artifactPath: '<PATH TO ARTIFACT>', // e.g. 'libapp.so'
@@ -15,4 +18,7 @@ Future<void> main() async {
     productId: '<PRODUCT ID>', // e.g. 'shorebird-example'
     channel: '<CHANNEL>', // e.g. 'stable'
   );
+
+  // Close the client.
+  client.close();
 }
