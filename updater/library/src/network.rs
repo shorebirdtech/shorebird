@@ -7,7 +7,7 @@ use std::string::ToString;
 use serde::Deserialize;
 
 use crate::cache::{client_id, current_patch, UpdaterState};
-use crate::config::ResolvedConfig;
+use crate::config::{current_arch, current_platform, ResolvedConfig};
 
 fn patches_check_url(base_url: &str) -> String {
     return format!("{}/api/v1/patches/check", base_url);
@@ -31,22 +31,6 @@ pub fn send_patch_check_request(
     config: &ResolvedConfig,
     state: &UpdaterState,
 ) -> anyhow::Result<PatchCheckResponse> {
-    #[cfg(target_os = "macos")]
-    static PLATFORM: &str = "macos";
-    #[cfg(target_os = "linux")]
-    static PLATFORM: &str = "linux";
-    #[cfg(target_os = "windows")]
-    static PLATFORM: &str = "windows";
-    #[cfg(target_os = "android")]
-    static PLATFORM: &str = "android";
-
-    #[cfg(target_arch = "x86")]
-    static ARCH: &str = "x86";
-    #[cfg(target_arch = "x86_64")]
-    static ARCH: &str = "x86_64";
-    #[cfg(target_arch = "aarch64")]
-    static ARCH: &str = "aarch64";
-
     let patch = current_patch(state);
 
     // Send the request to the server.
@@ -60,8 +44,8 @@ pub fn send_patch_check_request(
         body.insert("patch_version", patch.version);
         body.insert("patch_hash", patch.hash);
     }
-    body.insert("platform", PLATFORM.to_string());
-    body.insert("arch", ARCH.to_string());
+    body.insert("platform", current_platform().to_string());
+    body.insert("arch", current_arch().to_string());
     info!("Sending patch check request: {:?}", body);
     let response = client
         .post(&patches_check_url(&config.base_url))

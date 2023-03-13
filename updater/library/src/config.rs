@@ -83,3 +83,25 @@ pub fn set_config(config: AppConfig, yaml: YamlConfig) {
     lock.is_initialized = true;
     info!("Updater configured with: {:?}", lock);
 }
+
+pub fn current_arch() -> &'static str {
+    #[cfg(target_arch = "x86")]
+    static ARCH: &str = "x86";
+    #[cfg(target_arch = "x86_64")]
+    static ARCH: &str = "x86_64";
+    #[cfg(target_arch = "aarch64")]
+    static ARCH: &str = "aarch64";
+    return ARCH;
+}
+
+pub fn current_platform() -> &'static str {
+    #[cfg(target_os = "macos")]
+    static PLATFORM: &str = "macos";
+    #[cfg(target_os = "linux")]
+    static PLATFORM: &str = "linux";
+    #[cfg(target_os = "windows")]
+    static PLATFORM: &str = "windows";
+    #[cfg(target_os = "android")]
+    static PLATFORM: &str = "android";
+    return PLATFORM;
+}
