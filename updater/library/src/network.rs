@@ -13,14 +13,14 @@ fn patches_check_url(base_url: &str) -> String {
     return format!("{}/api/v1/patches/check", base_url);
 }
 
-#[derive(Deserialize)]
+#[derive(Debug, Deserialize)]
 pub struct Patch {
     pub version: String,
     pub hash: String,
     pub download_url: String,
 }
 
-#[derive(Deserialize)]
+#[derive(Debug, Deserialize)]
 pub struct PatchCheckResponse {
     pub patch_available: bool,
     #[serde(default)]
@@ -67,5 +67,6 @@ pub fn send_patch_check_request(
         .json(&body)
         .send()?
         .json()?;
+    info!("Patch check response: {:?}", response);
     return Ok(response);
 }
