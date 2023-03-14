@@ -35,6 +35,7 @@ class ShorebirdCliCommandRunner extends CompletionCommandRunner<int> {
         help: 'Noisy logging, including all shell commands executed.',
       );
 
+    addCommand(AppsCommand(logger: _logger));
     addCommand(BuildCommand(logger: _logger));
     addCommand(LoginCommand(logger: _logger));
     addCommand(LogoutCommand(logger: _logger));
