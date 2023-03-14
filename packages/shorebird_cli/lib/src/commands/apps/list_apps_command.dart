@@ -19,7 +19,7 @@ class ListAppsCommand extends ShorebirdCommand {
   });
 
   @override
-  String get description => 'List all Shorebird apps.';
+  String get description => 'List all apps using Shorebird.';
 
   @override
   String get name => 'list';
@@ -31,7 +31,7 @@ class ListAppsCommand extends ShorebirdCommand {
   Future<int>? run() async {
     final session = auth.currentSession;
     if (session == null) {
-      logger.err('You must be logged in to publish.');
+      logger.err('You must be logged in.');
       return ExitCode.noUser.code;
     }
 

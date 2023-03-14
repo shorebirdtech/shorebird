@@ -39,7 +39,7 @@ void main() {
     });
 
     test('description is correct', () {
-      expect(command.description, equals('List all Shorebird apps.'));
+      expect(command.description, equals('List all apps using Shorebird.'));
     });
 
     test('returns ExitCode.noUser when not logged in', () async {
