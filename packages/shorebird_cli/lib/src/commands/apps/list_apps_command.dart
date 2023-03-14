@@ -8,7 +8,7 @@ import 'package:shorebird_code_push_client/shorebird_code_push_client.dart';
 /// {@template list_apps_command}
 ///
 /// `shorebird apps list`
-/// List all Shorebird apps.
+/// List all apps using Shorebird.
 /// {@endtemplate}
 class ListAppsCommand extends ShorebirdCommand {
   /// {@macro list_apps_command}
@@ -19,7 +19,7 @@ class ListAppsCommand extends ShorebirdCommand {
   });
 
   @override
-  String get description => 'List all Shorebird apps.';
+  String get description => 'List all apps using Shorebird.';
 
   @override
   String get name => 'list';
@@ -31,7 +31,7 @@ class ListAppsCommand extends ShorebirdCommand {
   Future<int>? run() async {
     final session = auth.currentSession;
     if (session == null) {
-      logger.err('You must be logged in to publish.');
+      logger.err('You must be logged in.');
       return ExitCode.noUser.code;
     }
 
