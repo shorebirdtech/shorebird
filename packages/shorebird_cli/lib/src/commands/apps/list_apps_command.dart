@@ -8,7 +8,7 @@ import 'package:shorebird_code_push_client/shorebird_code_push_client.dart';
 /// {@template list_apps_command}
 ///
 /// `shorebird apps list`
-/// List all Shorebird apps.
+/// List all apps using Shorebird.
 /// {@endtemplate}
 class ListAppsCommand extends ShorebirdCommand {
   /// {@macro list_apps_command}
