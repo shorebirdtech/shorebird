@@ -98,6 +98,26 @@ pub fn active_patch() -> Option<PatchInfo> {
     });
 }
 
+pub fn report_failed_launch() {
+    with_config(|config| {
+        let mut state = load_state(&config.cache_dir).unwrap_or_default();
+
+        let patch = current_patch(&state).unwrap();
+        state.mark_patch_as_bad(&patch);
+        save_state(&state, &config.cache_dir).unwrap();
+    });
+}
+
+pub fn report_successful_launch() {
+    with_config(|config| {
+        let mut state = load_state(&config.cache_dir).unwrap_or_default();
+
+        let patch = current_patch(&state).unwrap();
+        state.mark_patch_as_good(&patch);
+        save_state(&state, &config.cache_dir).unwrap();
+    });
+}
+
 /// Synchronously checks for an update and downloads and installs it if available.
 pub fn update() -> UpdateStatus {
     return with_config(|config| {

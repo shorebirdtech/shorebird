@@ -50,7 +50,6 @@ base_url: http://localhost:8000
             match version {
                 Some(v) => {
                     println!("path: {:?}", v.path);
-                    println!("hash: {:?}", v.hash);
                     println!("version: {:?}", v.version);
                 }
                 None => {

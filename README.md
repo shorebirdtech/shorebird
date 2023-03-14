@@ -38,6 +38,26 @@ For more information, please refer to the documentation for each package.
 If you're interested in contributing, please join us on
 [Discord](https://discord.gg/9hKJcWGcaB).
 
+### Environment setup
+
+Working on Shorebird requires Dart and Rust.
+
+We currently assume the Dart from the Flutter SDK on the 'stable' channel. Due
+to the way the Dart compiler works, Shorebird requires an exact version of
+Flutter/Dart to operate correctly today.
+
+We currently assume Rust 1.67.0 or later, although the code is unlikely to be
+sensitive to the exact version of Rust.
+
+Once both are installed, `./scripts/bootstrap.sh` will run `pub get`
+and `cargo check` for all packages in the repository.
+
+### Running tests
+
+We don't yet have a script to run tests locally. For now, you can run tests
+manually by running `cargo test` in a Rust package directory or `dart test` in
+a Dart package directory.
+
 ## License
 
 Shorebird projects are licensed for use under either Apache License, Version 2.0

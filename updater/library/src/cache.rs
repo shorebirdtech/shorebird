@@ -12,14 +12,14 @@ use crate::network::PatchCheckResponse;
 pub struct PatchInfo {
     pub path: String,
     pub version: String,
-    pub hash: String,
 }
 
 #[derive(Deserialize, Serialize, Default, Clone)]
 struct Slot {
+    /// Path to the slot directory.
     path: String,
-    version: String,
-    hash: String,
+    /// Version of the patch in this slot.
+    patch_version: String,
 }
 
 // This struct is public, as callers can have a handle to it, but modifying
@@ -31,8 +31,16 @@ pub struct UpdaterState {
     // and say "this client is in the 10% bucket, so it gets the new version".
     // It might be better for this to just be a number 0-100?
     #[serde(default = "Uuid::new_v4")]
+    /// ID generated for this device/client used for staged rollouts.
     client_id: Uuid,
+    /// List of patches that failed to boot.  We will never attempt these again.
+    failed_patches: Vec<String>,
+    /// List of patches that successfully booted. We will never rollback past
+    /// one of these for this device.
+    successful_patches: Vec<String>,
+    /// Currently selected slot.
     current_slot_index: usize,
+    /// List of slots.
     slots: Vec<Slot>,
     // Add file path or FD so modifying functions can save it to disk?
 }
@@ -42,8 +50,44 @@ impl Default for UpdaterState {
         Self {
             client_id: Uuid::new_v4(),
             current_slot_index: 0,
+            failed_patches: Vec::new(),
+            successful_patches: Vec::new(),
             slots: Vec::new(),
         }
+    }
+}
+
+impl UpdaterState {
+    pub fn is_known_good_patch(&self, patch: &PatchInfo) -> bool {
+        self.successful_patches.iter().any(|v| v == &patch.version)
+    }
+
+    pub fn is_known_bad_patch(&self, patch: &PatchInfo) -> bool {
+        self.failed_patches.iter().any(|v| v == &patch.version)
+    }
+
+    pub fn mark_patch_as_bad(&mut self, patch: &PatchInfo) {
+        if self.is_known_good_patch(patch) {
+            warn!("Tried to report failed launch for a known good patch.  Ignoring.");
+            return;
+        }
+
+        if self.is_known_bad_patch(patch) {
+            return;
+        }
+        self.failed_patches.push(patch.version.clone());
+    }
+
+    pub fn mark_patch_as_good(&mut self, patch: &PatchInfo) {
+        if self.is_known_bad_patch(patch) {
+            warn!("Tried to report successful launch for a known bad patch.  Ignoring.");
+            return;
+        }
+
+        if self.is_known_good_patch(patch) {
+            return;
+        }
+        self.successful_patches.push(patch.version.clone());
     }
 }
 
@@ -81,8 +125,7 @@ pub fn current_patch(state: &UpdaterState) -> Option<PatchInfo> {
     // Otherwise return the version info from the current slot.
     return Some(PatchInfo {
         path: slot.path.clone(),
-        version: slot.version.clone(),
-        hash: slot.hash.clone(),
+        version: slot.patch_version.clone(),
     });
 }
 
@@ -166,8 +209,7 @@ fn download_into_slot(
         slot_index,
         Slot {
             path: path.to_str().unwrap().to_string(),
-            version: patch.version.clone(),
-            hash: patch.hash.clone(),
+            patch_version: patch.version.clone(),
         },
     );
     save_state(&state, cache_dir)?;

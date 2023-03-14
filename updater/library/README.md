@@ -48,6 +48,19 @@ and there could be thread safety issues in the library.
 * src/logging.rs - Logging configuration (for platforms that need it)
 * src/network.rs - Logic dealing with network requests and updater server
 
+## Rust
+We use normal rust idioms (e.g. Result) inside the library and then bridge those
+to C via an explicit stable C API (explicit enums, null pointers for optional
+arguments, etc).  The reason for this is that it lets the Rust code feel natural
+and also gives us maximum flexibility in the future for exposing more in the C
+API without having to refactor the internals of the library.
+
+https://docs.rust-embedded.org/book/interoperability/rust-with-c.html
+are docs on how to use Rust from C (what we're doing).
+
+https://github.com/RubberDuckEng/safe_wren has an example of building in Rust
+and exposing it with a C api.
+
 ## Integration
 
 The updater library is built as a static library, and is linked into the
@@ -83,3 +96,60 @@ It isn't currently wired into the build process, so you'll need to run it manual
 cargo install cbindgen
 cbindgen --config cbindgen.toml --crate updater --output library/include/updater.h
 ```
+
+## Imagined Architecture (not all implemented)
+
+### Assumptions (not all enforced yet)
+* Updater library is never allowed to crash, except on bad parameters from C.
+* Network and Disk are untrusted.
+* Running code is trusted.
+* Store-installed bundle is trusted (e.g. APK).
+* Updates are signed by a trusted key.
+* Updates must be applied in order.
+* Updates are applied in a single transaction.
+
+### Update State Machine
+* Server is authoritative, regarding current update/patch state.  Client can
+  cache state in memory.  Not written to disk.
+* Patches are downloaded to a temporary location on disk.
+* Update State Machine:
+  * `ready`: Just woke up, ready to check for updates.
+  * `checking`: Checking for updates.
+  * `update_available`: Update or rollback is available.
+  * `no_update_available`: No update is available.
+  * `downloading`: Downloading an update.
+  * `downloaded`: Downloaded an update.
+* Client keeps on disk:
+  * cache of patches in "slots"
+  * cache of in-progress download state.
+  * Last booted patch (may not have been successful).
+  * Last successful patch (never rolled back from unless becomes invalid).
+* Boot State Machine:
+  * `ready`: Just woke up, ready to boot.
+  * `booting`: Booting a patch.
+  * `booted`: Patch is booted, we will not go back from here.
+
+### Slot State Machine
+* Patches are cached on disk in "slots".
+* There is a currently active slot (the one that is booted).
+* Patches are identified by base revision + patch number.
+* A given slot is:
+  * `empty`: No update is installed.
+  * `pending`: An update is installed but has not been validated.
+  * `valid`: An update is installed and has been validated.
+* Validation is a temporary state.  Patches/slots are revalidated on boot.
+
+### Trust model
+* Network and Disk are untrusted.
+* Running software (including apk service) is trusted.
+* Patch contents are signed, public key is included in the APK.
+
+## TODO:
+* Add an async API.
+* Write tests for state management.
+* Make state management/filesystem management atomic (and tested).
+* Support validating patches/slots (hashes, signatures, etc).
+
+## Later-stage update system design docs
+* https://theupdateframework.io/
+* https://fuchsia.dev/fuchsia-src/concepts/packages/software_update_system

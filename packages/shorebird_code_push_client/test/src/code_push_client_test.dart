@@ -6,7 +6,6 @@ import 'package:http/http.dart' as http;
 import 'package:mocktail/mocktail.dart';
 import 'package:path/path.dart' as path;
 import 'package:shorebird_code_push_client/shorebird_code_push_client.dart';
-import 'package:shorebird_code_push_protocol/shorebird_code_push_protocol.dart';
 import 'package:test/test.dart';
 
 class _MockHttpClient extends Mock implements http.Client {}

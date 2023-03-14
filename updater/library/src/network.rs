@@ -42,7 +42,6 @@ pub fn send_patch_check_request(
     body.insert("base_version", config.base_version.clone());
     if let Some(patch) = patch {
         body.insert("patch_version", patch.version);
-        body.insert("patch_hash", patch.hash);
     }
     body.insert("platform", current_platform().to_string());
     body.insert("arch", current_arch().to_string());
