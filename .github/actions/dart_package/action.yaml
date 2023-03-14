@@ -32,7 +32,7 @@ inputs:
   platform:
     required: false
     type: string
-    default: "vm" 
+    default: "vm"
 
 runs:
   using: "composite"
@@ -41,23 +41,33 @@ runs:
       with:
         sdk: ${{inputs.dart_sdk}}
 
-    - working-directory: ${{ inputs.working_directory }}
+    - name: Install Dependencies
+      working-directory: ${{ inputs.working_directory }}
       shell: ${{ inputs.shell }}
       run: dart pub get
 
-    - working-directory: ${{ inputs.working_directory }}
+    - name: Format
+      working-directory: ${{ inputs.working_directory }}
       shell: ${{ inputs.shell }}
       run: dart format --set-exit-if-changed .
 
-    - working-directory: ${{ inputs.working_directory }}
+    - name: Analyze
+      working-directory: ${{ inputs.working_directory }}
       shell: ${{ inputs.shell }}
       run: dart analyze --fatal-warnings ${{inputs.analyze_directories}}
 
-    - working-directory: ${{ inputs.working_directory }}
+    - name: Test
+      working-directory: ${{ inputs.working_directory }}
       shell: ${{ inputs.shell }}
       run: |
-        dart pub global activate coverage
-        dart test -j ${{inputs.concurrency}} --coverage=coverage --platform=${{inputs.platform}} && dart pub global run coverage:format_coverage --lcov --in=coverage --out=coverage/lcov.info --packages=.dart_tool/package_config.json --report-on=${{inputs.report_on}} --check-ignore
+        directory="./test"
+        if [ -d $directory ]; then
+          dart pub global activate coverage
+          dart test -j ${{inputs.concurrency}} --coverage=coverage --platform=${{inputs.platform}} && dart pub global run coverage:format_coverage --lcov --in=coverage --out=coverage/lcov.info --packages=.dart_tool/package_config.json --report-on=${{inputs.report_on}} --check-ignore
+        else
+          echo "no tests detected...skipping."
+        fi
+
     - uses: VeryGoodOpenSource/very_good_coverage@v2
       with:
         path: ${{inputs.working_directory}}/coverage/lcov.info
