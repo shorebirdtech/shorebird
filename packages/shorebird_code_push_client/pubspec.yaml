@@ -1,4 +1,4 @@
-name: shorebird_code_push_api_client
+name: shorebird_code_push_client
 description: Library which allows Dart applications to interact with the ShoreBird CodePush API
 version: 0.1.0+1
 repository: https://github.com/shorebirdtech/shorebird
@@ -10,6 +10,8 @@ environment:
 
 dependencies:
   http: ^0.13.5
+  shorebird_code_push_protocol:
+    path: ../shorebird_code_push_protocol
 
 dev_dependencies:
   mocktail: ^0.3.0

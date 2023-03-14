@@ -5,7 +5,7 @@ import 'dart:isolate';
 import 'package:archive/archive_io.dart';
 import 'package:path/path.dart' as p;
 import 'package:shorebird_cli/src/command.dart';
-import 'package:shorebird_code_push_api_client/shorebird_code_push_api_client.dart';
+import 'package:shorebird_code_push_client/shorebird_code_push_client.dart';
 
 mixin ShorebirdEngineMixin on ShorebirdCommand {
   String get shorebirdEnginePath {
@@ -60,7 +60,7 @@ mixin ShorebirdEngineMixin on ShorebirdCommand {
   }
 
   Future<void> _downloadShorebirdEngine(
-    ShorebirdCodePushApiClient codePushClient,
+    CodePushClient codePushClient,
     String path,
   ) async {
     final engine = await codePushClient.downloadEngine('latest');

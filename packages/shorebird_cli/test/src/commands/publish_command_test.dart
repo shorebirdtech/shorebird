@@ -8,7 +8,7 @@ import 'package:path/path.dart' as p;
 import 'package:shorebird_cli/src/auth/auth.dart';
 import 'package:shorebird_cli/src/auth/session.dart';
 import 'package:shorebird_cli/src/commands/publish_command.dart';
-import 'package:shorebird_code_push_api_client/shorebird_code_push_api_client.dart';
+import 'package:shorebird_code_push_client/shorebird_code_push_client.dart';
 import 'package:test/test.dart';
 
 class _MockArgResults extends Mock implements ArgResults {}
@@ -19,8 +19,7 @@ class _MockLogger extends Mock implements Logger {}
 
 class _MockProgress extends Mock implements Progress {}
 
-class _MockShorebirdCodePushApiClient extends Mock
-    implements ShorebirdCodePushApiClient {}
+class _MockCodePushClient extends Mock implements CodePushClient {}
 
 class _FakeCommandRunner extends Fake implements CommandRunner<int> {
   @override
@@ -44,14 +43,14 @@ environment:
     late ArgResults argResults;
     late Auth auth;
     late Logger logger;
-    late _MockShorebirdCodePushApiClient codePushClient;
+    late CodePushClient codePushClient;
     late PublishCommand command;
 
     setUp(() {
       argResults = _MockArgResults();
       auth = _MockAuth();
       logger = _MockLogger();
-      codePushClient = _MockShorebirdCodePushApiClient();
+      codePushClient = _MockCodePushClient();
       command = PublishCommand(
         auth: auth,
         buildCodePushClient: ({required String apiKey}) => codePushClient,
