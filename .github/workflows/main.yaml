@@ -23,6 +23,9 @@ jobs:
     name: 👀 Detect Changes
 
     steps:
+      - name: 📚 Git Checkout
+        uses: actions/checkout@v3
+
       - uses: dorny/paths-filter@v2
         name: Build Detection
         id: needs_build
