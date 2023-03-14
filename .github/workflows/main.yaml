@@ -38,6 +38,9 @@ jobs:
             shorebird_code_push_api_client:
               - ./.github/actions/dart_package
               - packages/shorebird_code_push_api_client/**
+            shorebird_code_push_protocol:
+              - ./.github/actions/dart_package
+              - packages/shorebird_code_push_protocol/**
 
       - uses: dorny/paths-filter@v2
         name: Verify Detection
