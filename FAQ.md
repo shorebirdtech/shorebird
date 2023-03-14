@@ -23,9 +23,12 @@ used by the React Native community from [Microsoft](https://appcenter.ms) and
 
 ### What is the status of code push?
 
-As of March 10th, 2023 we have our serving architecture built out enough to
-service more than one simultaneous customer, we're working towards issuing
-our first API keys by March 17th, with a ~50% confidence on that date.
+As of March 13th, 2023 we have a basic serving architecture in production and
+built out enough to service multiple simultaneous customers.  We've also
+validated basic on-device support.  We're working towards issuing our first
+API keys by March 20th as part of a trusted-tester program.  We have an ~80%
+confidence on that date.
+You can watch our [March 13th demo](https://www.youtube.com/watch?v=oZ9fa-kob_U).
 
 As of March 4th, 2023 we've built [a
 demo](https://www.youtube.com/watch?v=mmKvs0_Zu14&ab_channel=Shorebird) and have
@@ -33,14 +36,14 @@ the prototype working on multiple machines and Android phones.
 
 ### What is the roadmap?
 
-First we're trying to get something working into user's hands.  Our current
-prototype is not ready to support multiple users, but we're working to address
-that.
+First we're trying to get something working into user's hands.  You can follow
+our day-to-day progress on our project board:
+https://github.com/orgs/shorebirdtech/projects/1/views/1
 
-Eric intends to send out a survey to the mailing list -- sign-up at
-[shorebird.dev](https://shorebird.dev) -- and
-[Discord](https://discord.gg/9hKJcWGcaB) the week of March 6th, 2023 from which
-we will find users to work with us on a first version.
+Eric intends to send out a survey to the mailing list on March 17th from which
+we will select the first participants in our trusted tester program beginning
+March 20th.  You can sign-up at [shorebird.dev](https://shorebird.dev) -- and
+[Discord](https://discord.gg/9hKJcWGcaB).
 
 ### How does this relate to Firebase Remote Config or Launch Darkly?
 
