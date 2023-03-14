@@ -3,13 +3,14 @@ import 'dart:io';
 import 'dart:typed_data';
 
 import 'package:http/http.dart' as http;
+import 'package:shorebird_code_push_protocol/shorebird_code_push_protocol.dart';
 
-/// {@template shorebird_code_push_api_client}
-/// The Shorebird CodePush API Client
+/// {@template code_push_client}
+/// Dart client for the Shorebird CodePush API.
 /// {@endtemplate}
-class ShorebirdCodePushApiClient {
-  /// {@macro shorebird_code_push_api_client}
-  ShorebirdCodePushApiClient({
+class CodePushClient {
+  /// {@macro code_push_client}
+  CodePushClient({
     required String apiKey,
     http.Client? httpClient,
     Uri? hostedUri,
@@ -95,6 +96,23 @@ class ShorebirdCodePushApiClient {
     }
 
     return response.stream.toBytes();
+  }
+
+  /// List all apps for the current account.
+  Future<List<App>> getApps() async {
+    final response = await _httpClient.get(
+      Uri.parse('$hostedUri/api/v1/apps'),
+      headers: _apiKeyHeader,
+    );
+
+    if (response.statusCode != HttpStatus.ok) {
+      throw Exception('${response.statusCode} ${response.reasonPhrase}');
+    }
+
+    final apps = json.decode(response.body) as List;
+    return apps
+        .map((app) => App.fromJson(app as Map<String, dynamic>))
+        .toList();
   }
 
   /// Closes the client.

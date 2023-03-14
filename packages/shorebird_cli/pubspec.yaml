@@ -20,8 +20,8 @@ dependencies:
   path: ^1.8.3
   pub_updater: ^0.2.4
   pubspec_parse: ^1.2.2
-  shorebird_code_push_api_client:
-    path: ../shorebird_code_push_api_client
+  shorebird_code_push_client:
+    path: ../shorebird_code_push_client
   uuid: ^3.0.7
   yaml: ^3.1.1
   yaml_edit: ^2.1.0
