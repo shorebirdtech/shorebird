@@ -14,12 +14,14 @@ class _FakeBaseRequest extends Fake implements http.BaseRequest {}
 void main() {
   group('ShorebirdCodePushApiClient', () {
     const apiKey = 'api-key';
+    const productId = 'shorebird-example';
 
     late http.Client httpClient;
     late ShorebirdCodePushApiClient shorebirdCodePushApiClient;
 
     setUpAll(() {
       registerFallbackValue(_FakeBaseRequest());
+      registerFallbackValue(Uri());
     });
 
     setUp(() {
@@ -32,6 +34,48 @@ void main() {
 
     test('can be instantiated', () {
       expect(ShorebirdCodePushApiClient(apiKey: apiKey), isNotNull);
+    });
+
+    group('createApp', () {
+      test('throws an exception if the http request fails', () async {
+        when(
+          () => httpClient.post(
+            any(),
+            headers: any(named: 'headers'),
+            body: any(named: 'body'),
+          ),
+        ).thenAnswer((_) async => http.Response('', HttpStatus.badRequest));
+
+        expect(
+          shorebirdCodePushApiClient.createApp(productId: productId),
+          throwsA(isA<Exception>()),
+        );
+      });
+
+      test('completes when request succeeds', () async {
+        when(
+          () => httpClient.post(
+            any(),
+            headers: any(named: 'headers'),
+            body: any(named: 'body'),
+          ),
+        ).thenAnswer((_) async => http.Response('', HttpStatus.created));
+
+        await shorebirdCodePushApiClient.createApp(productId: productId);
+
+        final uri = verify(
+          () => httpClient.post(
+            captureAny(),
+            headers: any(named: 'headers'),
+            body: any(named: 'body'),
+          ),
+        ).captured.single as Uri;
+
+        expect(
+          uri,
+          shorebirdCodePushApiClient.hostedUri.replace(path: '/api/v1/apps'),
+        );
+      });
     });
 
     group('createPatch', () {
@@ -79,6 +123,44 @@ void main() {
       });
     });
 
+    group('deleteApp', () {
+      test('throws an exception if the http request fails', () async {
+        when(
+          () => httpClient.delete(any(), headers: any(named: 'headers')),
+        ).thenAnswer((_) async => http.Response('', HttpStatus.badRequest));
+
+        expect(
+          shorebirdCodePushApiClient.deleteApp(productId: productId),
+          throwsA(isA<Exception>()),
+        );
+      });
+
+      test('completes when request succeeds', () async {
+        when(
+          () => httpClient.delete(
+            any(),
+            headers: any(named: 'headers'),
+          ),
+        ).thenAnswer((_) async => http.Response('', HttpStatus.noContent));
+
+        await shorebirdCodePushApiClient.deleteApp(productId: productId);
+
+        final uri = verify(
+          () => httpClient.delete(
+            captureAny(),
+            headers: any(named: 'headers'),
+          ),
+        ).captured.single as Uri;
+
+        expect(
+          uri,
+          shorebirdCodePushApiClient.hostedUri.replace(
+            path: '/api/v1/apps/$productId',
+          ),
+        );
+      });
+    });
+
     group('downloadEngine', () {
       const engineRevision = 'engine-revision';
       test('throws an exception if the http request fails', () async {
@@ -115,6 +197,13 @@ void main() {
             'https://storage.googleapis.com/code-push-dev.appspot.com/engines/dev/engine.zip',
           ),
         );
+      });
+    });
+
+    group('close', () {
+      test('closes the underlying client', () {
+        shorebirdCodePushApiClient.close();
+        verify(() => httpClient.close()).called(1);
       });
     });
   });

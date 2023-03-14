@@ -118,7 +118,7 @@ product_id: $productId
       return ExitCode.software.code;
     }
 
-    logger.success('Deployed ${artifact.path}!');
+    logger.success('Successfully deployed.');
     return ExitCode.success.code;
   }
 

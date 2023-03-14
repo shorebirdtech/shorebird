@@ -211,7 +211,7 @@ environment:
         command.run,
         getCurrentDirectory: () => tempDir,
       );
-      verify(() => logger.success('Deployed ${artifact.path}!')).called(1);
+      verify(() => logger.success('Successfully deployed.')).called(1);
       verify(
         () => codePushClient.createPatch(
           baseVersion: version,
@@ -235,7 +235,7 @@ environment:
         command.run,
         getCurrentDirectory: () => tempDir,
       );
-      verify(() => logger.success('Deployed ${artifact.path}!')).called(1);
+      verify(() => logger.success('Successfully deployed.')).called(1);
       verify(
         () => codePushClient.createPatch(
           baseVersion: version,
