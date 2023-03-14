@@ -107,9 +107,10 @@ product_id: $productId
       logger.detail(
         'Deploying ${artifact.path} to $productId (${pubspecYaml.version})',
       );
+      final version = pubspecYaml.version!;
       await codePushClient.createPatch(
         artifactPath: artifact.path,
-        baseVersion: pubspecYaml.version.toString(),
+        baseVersion: '${version.major}.${version.minor}.${version.patch}',
         productId: productId,
         channel: 'stable',
       );

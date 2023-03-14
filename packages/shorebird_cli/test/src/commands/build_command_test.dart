@@ -1,6 +1,7 @@
 import 'dart:io';
 import 'dart:typed_data';
 
+import 'package:args/args.dart';
 import 'package:mason_logger/mason_logger.dart';
 import 'package:mocktail/mocktail.dart';
 import 'package:shorebird_cli/src/auth/auth.dart';
@@ -8,6 +9,8 @@ import 'package:shorebird_cli/src/auth/session.dart';
 import 'package:shorebird_cli/src/commands/build_command.dart';
 import 'package:shorebird_code_push_client/shorebird_code_push_client.dart';
 import 'package:test/test.dart';
+
+class _MockArgResults extends Mock implements ArgResults {}
 
 class _MockAuth extends Mock implements Auth {}
 
@@ -26,6 +29,7 @@ void main() {
       projectId: 'test-project-id',
     );
 
+    late ArgResults argResults;
     late Auth auth;
     late CodePushClient codePushClient;
     late Logger logger;
@@ -33,6 +37,7 @@ void main() {
     late BuildCommand buildCommand;
 
     setUp(() {
+      argResults = _MockArgResults();
       auth = _MockAuth();
       codePushClient = _MockCodePushClient();
       logger = _MockLogger();
@@ -44,8 +49,9 @@ void main() {
         runProcess: (executable, arguments, {bool runInShell = false}) async {
           return processResult;
         },
-      );
+      )..testArgResults = argResults;
 
+      when(() => argResults.rest).thenReturn([]);
       when(
         () => codePushClient.downloadEngine(any()),
       ).thenAnswer((_) async => Uint8List.fromList([]));

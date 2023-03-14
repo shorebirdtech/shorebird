@@ -64,7 +64,7 @@ class BuildCommand extends ShorebirdCommand with ShorebirdEngineMixin {
       'build',
       // This is temporary because the Shorebird engine currently
       // only supports Android.
-      'apk',
+      'appbundle',
       '--release',
       '--local-engine-src-path',
       shorebirdEnginePath,
@@ -72,6 +72,7 @@ class BuildCommand extends ShorebirdCommand with ShorebirdEngineMixin {
       // This is temporary because the Shorebird engine currently
       // only supports Android arm64.
       'android_release_arm64',
+      ...results.rest,
     ];
 
     final result = await runProcess(
