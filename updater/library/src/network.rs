@@ -8,10 +8,6 @@ use std::io::Write;
 use std::path::PathBuf;
 use std::string::ToString;
 
-use std::fs::File;
-use std::io::Write;
-use std::path::PathBuf;
-
 use crate::cache::UpdaterState;
 use crate::config::{current_arch, current_platform, ResolvedConfig};
 
