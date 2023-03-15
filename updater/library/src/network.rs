@@ -6,6 +6,10 @@ use std::string::ToString;
 
 use serde::Deserialize;
 
+use std::fs::File;
+use std::io::Write;
+use std::path::PathBuf;
+
 use crate::cache::{client_id, current_patch, UpdaterState};
 use crate::config::{current_arch, current_platform, ResolvedConfig};
 
@@ -53,4 +57,18 @@ pub fn send_patch_check_request(
         .json()?;
     info!("Patch check response: {:?}", response);
     return Ok(response);
+}
+
+pub fn download_file_to_path(url: &str, path: &PathBuf) -> anyhow::Result<()> {
+    // Download the file at the given url to the given path.
+    let client = reqwest::blocking::Client::new();
+    let response = client.get(url).send()?;
+    let mut bytes = response.bytes()?;
+
+    // Ensure the download directory exists.
+    std::fs::create_dir_all(path.parent().unwrap())?;
+
+    let mut file = File::create(path)?;
+    file.write_all(&mut bytes)?;
+    Ok(())
 }
