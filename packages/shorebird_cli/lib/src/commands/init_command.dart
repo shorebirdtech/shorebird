@@ -76,7 +76,7 @@ Reference the following commands to get started:
 📦 To build your project use: "${lightCyan.wrap('shorebird build')}".
 🚀 To publish a new update use: "${lightCyan.wrap('shorebird publish')}".
 
-For more information, visit ${link(uri: Uri.parse('https://shorebird.dev'))}''',
+For more information about Shorebird, visit ${link(uri: Uri.parse('https://shorebird.dev'))}''',
     );
     return ExitCode.success.code;
   }
