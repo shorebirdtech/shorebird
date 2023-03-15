@@ -28,10 +28,7 @@ class _FakeCommandRunner extends Fake implements CommandRunner<int> {
 
 void main() {
   group('publish', () {
-    const session = Session(
-      projectId: 'test-project-id',
-      apiKey: 'test-api-key',
-    );
+    const session = Session(apiKey: 'test-api-key');
     const productId = 'test-product-id';
     const version = '1.2.3';
     const pubspecYamlContent = '''

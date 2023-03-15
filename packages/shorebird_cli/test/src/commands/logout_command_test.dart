@@ -35,7 +35,7 @@ void main() {
     });
 
     test('exits with code 0 when logged out successfully', () async {
-      const session = Session(apiKey: 'test-api-key', projectId: 'example');
+      const session = Session(apiKey: 'test-api-key');
       when(() => auth.currentSession).thenReturn(session);
 
       final progress = _MockProgress();

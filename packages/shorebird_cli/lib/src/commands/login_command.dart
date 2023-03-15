@@ -31,7 +31,7 @@ class LoginCommand extends ShorebirdCommand {
     );
     final loginProgress = logger.progress('Logging into shorebird.dev');
     try {
-      auth.login(projectId: 'example', apiKey: apiKey);
+      auth.login(apiKey: apiKey);
       loginProgress.complete();
       logger.success('You are now logged in.');
       return ExitCode.success.code;

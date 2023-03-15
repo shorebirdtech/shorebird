@@ -13,8 +13,8 @@ class Auth {
   static const _applicationName = 'shorebird';
   static const _sessionFileName = 'shorebird-session.json';
 
-  void login({required String projectId, required String apiKey}) {
-    _session = Session(projectId: projectId, apiKey: apiKey);
+  void login({required String apiKey}) {
+    _session = Session(apiKey: apiKey);
     _flushSession(_session!);
   }
 
