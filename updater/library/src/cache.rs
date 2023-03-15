@@ -1,13 +1,13 @@
 // This file deals with the cache / state management for the updater.
 
 use std::fs::File;
-use std::io::{BufReader, BufWriter, Write};
-use std::path::{Path, PathBuf};
+use std::io::{BufReader, BufWriter};
+use std::path::Path;
 use uuid::Uuid;
 
 use serde::{Deserialize, Serialize};
 
-use crate::network::PatchCheckResponse;
+use crate::network::{download_file_to_path, PatchCheckResponse};
 
 pub struct PatchInfo {
     pub path: String,
@@ -155,20 +155,6 @@ pub fn set_current_slot(state: &mut UpdaterState, index: usize) {
     // This does not implicitly save the state, but maybe should?
 }
 
-pub fn download_file_to_path(url: &str, path: &PathBuf) -> anyhow::Result<()> {
-    // Download the file at the given url to the given path.
-    let client = reqwest::blocking::Client::new();
-    let response = client.get(url).send()?;
-    let mut bytes = response.bytes()?;
-
-    // Ensure the download directory exists.
-    std::fs::create_dir_all(path.parent().unwrap())?;
-
-    let mut file = File::create(path)?;
-    file.write_all(&mut bytes)?;
-    Ok(())
-}
-
 pub fn download_into_unused_slot(
     cache_dir: &str,
     patch_check_response: &PatchCheckResponse,
@@ -187,10 +173,9 @@ fn download_into_slot(
     slot_index: usize,
 ) -> anyhow::Result<()> {
     // Download the new version into the given slot.
-    // TODO: Give it a name other than libapp.txt.
     let path = Path::new(cache_dir)
         .join(format!("slot_{}", slot_index))
-        .join("libapp.txt");
+        .join("dlc.vmcode");
 
     // TODO: Shouldn't crash on malformed response.
     let patch = patch_check_response.patch.as_ref().unwrap();
