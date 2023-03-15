@@ -13,10 +13,10 @@ mixin ShorebirdConfigMixin on ShorebirdCommand {
   bool get hasPubspecYaml => getPubspecYaml() != null;
 
   bool get isShorebirdInitialized {
-    return hasShorebirdYaml && pubspecContainsShoreBirdYaml;
+    return hasShorebirdYaml && pubspecContainsShorebirdYaml;
   }
 
-  bool get pubspecContainsShoreBirdYaml {
+  bool get pubspecContainsShorebirdYaml {
     final file = File(p.join(Directory.current.path, 'pubspec.yaml'));
     final pubspecContents = file.readAsStringSync();
     final yaml = loadYaml(pubspecContents, sourceUrl: file.uri) as Map;

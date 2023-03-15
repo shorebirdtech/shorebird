@@ -54,7 +54,7 @@ class InitCommand extends ShorebirdCommand with ShorebirdConfigMixin {
 
     progress.update('Adding "shorebird.yaml" to "pubspec.yaml" assets');
 
-    if (pubspecContainsShoreBirdYaml) {
+    if (pubspecContainsShorebirdYaml) {
       progress.update('"shorebird.yaml" already in "pubspec.yaml" assets.');
     } else {
       _addShorebirdYamlToPubspecAssets();

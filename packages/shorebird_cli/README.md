@@ -86,8 +86,8 @@ shorebird apps list
 
 ```
 shorebird apps list
-shorebird-counter: v1.0.0 (patch #1)
-shorebird-example: v2.1.0 (patch #2)
+my-counter: v1.0.0 (patch #1)
+my-example: v2.1.0 (patch #2)
 ```
 
 ### Run
