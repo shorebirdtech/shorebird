@@ -22,6 +22,26 @@ Get started by initializing shorebird in your current project.
 shorebird init
 ```
 
+**Sample**
+
+```
+shorebird init
+✓ Initialized Shorebird (27ms)
+
+🐦 Shorebird initialized successfully!
+
+✅ A "shorebird.yaml" has been created.
+✅ The "pubspec.yaml" has been updated to include "shorebird.yaml" as an asset.
+
+Reference the following commands to get started:
+
+🚙 To run your project use: "shorebird run".
+📦 To build your project use: "shorebird build".
+🚀 To publish a new update use: "shorebird publish".
+
+For more information, visit https://shorebird.dev
+```
+
 ### Login
 
 Request an API key and use `shorebird login` to authenticate:
