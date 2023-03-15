@@ -10,6 +10,7 @@ class AppsCommand extends ShorebirdCommand {
   /// {@macro apps_command}
   AppsCommand({required super.logger}) {
     addSubcommand(CreateAppCommand(logger: logger));
+    addSubcommand(DeleteAppCommand(logger: logger));
     addSubcommand(ListAppsCommand(logger: logger));
   }
 
