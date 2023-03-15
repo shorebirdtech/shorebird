@@ -14,13 +14,15 @@ ENGINE_PATH=$1
 # The path where the shorebird engine will be generated.
 OUTPUT_PATH=$2
 
+cd $ENGINE_PATH
+
 # Build the engine in release mode for android arm64.
-$ENGINE_PATH/src/flutter/tools/gn --android --android-cpu arm64 --runtime-mode=release
-ninja -C $ENGINE_PATH/src/out/android_release_arm64
+./src/flutter/tools/gn --android --android-cpu arm64 --runtime-mode=release
+ninja -C ./src/out/android_release_arm64
 
 # Build the the host_release output.
-$ENGINE_PATH/src/flutter/tools/gn --runtime-mode release
-ninja -C $ENGINE_PATH/src/out/host_release
+./src/flutter/tools/gn --runtime-mode release
+ninja -C ./src/out/host_release
 
 # List of all files to keep.
 KEEP_FILES=(
@@ -58,11 +60,28 @@ KEEP_FILES=(
   "flutter/prebuilts/macos-x64/dart-sdk/revision"
 )
 
-# Copy all files to keep to the output path.
-mkdir -p $OUTPUT_PATH
+cd -
 
+TEMP_DIR=`mktemp -d`
+
+# Copy all files to temp directory.
 for file in "${KEEP_FILES[@]}"
 do
-  mkdir -p $OUTPUT_PATH/$(dirname $file)
-  cp -r $ENGINE_PATH/src/$file $OUTPUT_PATH/$file
+  mkdir -p $TEMP_DIR/$(dirname $file)
+  cp -r $ENGINE_PATH/src/$file $TEMP_DIR/$file
 done
+
+
+cd $TEMP_DIR
+
+# Zip the output.
+zip -r -X engine.zip *
+
+cd -
+
+# Create the output directory.
+mkdir -p $OUTPUT_PATH
+cp $TEMP_DIR/engine.zip $OUTPUT_PATH/engine.zip
+
+# Clean up.
+rm -rf $TEMP_DIR
