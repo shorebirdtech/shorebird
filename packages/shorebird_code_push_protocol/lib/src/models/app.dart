@@ -9,7 +9,7 @@ part 'app.g.dart';
 @JsonSerializable()
 class App {
   /// {@macro app}
-  App({required this.productId, List<Release>? releases})
+  App({required this.appId, List<Release>? releases})
       : releases = releases ?? [];
 
   /// Converts a Map<String, dynamic> to an [App]
@@ -18,8 +18,8 @@ class App {
   /// Converts a [App] to a Map<String, dynamic>
   Map<String, dynamic> toJson() => _$AppToJson(this);
 
-  /// The product ID of the app.
-  final String productId;
+  /// The ID of the app.
+  final String appId;
 
   /// List of releases associated with this app.
   final List<Release> releases;

@@ -71,13 +71,13 @@ class PublishCommand extends ShorebirdCommand with ShorebirdConfigMixin {
       final shorebirdYaml = getShorebirdYaml()!;
       final codePushClient = buildCodePushClient(apiKey: session.apiKey);
       logger.detail(
-        '''Deploying ${artifact.path} to ${shorebirdYaml.productId} (${pubspecYaml.version})''',
+        '''Deploying ${artifact.path} to ${shorebirdYaml.appId} (${pubspecYaml.version})''',
       );
       final version = pubspecYaml.version!;
       await codePushClient.createPatch(
         artifactPath: artifact.path,
         baseVersion: '${version.major}.${version.minor}.${version.patch}',
-        productId: shorebirdYaml.productId,
+        appId: shorebirdYaml.appId,
         channel: 'stable',
       );
     } catch (error) {

@@ -18,7 +18,7 @@ class _MockLogger extends Mock implements Logger {}
 void main() {
   group('create', () {
     const apiKey = 'test-api-key';
-    const productId = 'example';
+    const appId = 'example';
     const session = Session(apiKey: apiKey);
 
     late ArgResults argResults;
@@ -52,32 +52,32 @@ void main() {
     });
 
     test('prompts for app-id when not provided', () async {
-      when(() => logger.prompt(any())).thenReturn(productId);
+      when(() => logger.prompt(any())).thenReturn(appId);
       await command.run();
       verify(() => logger.prompt(any())).called(1);
-      verify(() => codePushClient.createApp(productId: productId)).called(1);
+      verify(() => codePushClient.createApp(appId: appId)).called(1);
     });
 
     test('uses provided app-id when provided', () async {
-      when(() => argResults['app-id']).thenReturn(productId);
+      when(() => argResults['app-id']).thenReturn(appId);
       await command.run();
       verifyNever(() => logger.prompt(any()));
-      verify(() => codePushClient.createApp(productId: productId)).called(1);
+      verify(() => codePushClient.createApp(appId: appId)).called(1);
     });
 
     test('returns success when app is created', () async {
-      when(() => argResults['app-id']).thenReturn(productId);
+      when(() => argResults['app-id']).thenReturn(appId);
       when(
-        () => codePushClient.createApp(productId: productId),
+        () => codePushClient.createApp(appId: appId),
       ).thenAnswer((_) async {});
       final result = await command.run();
       expect(result, ExitCode.success.code);
     });
 
     test('returns software error when app creation fails', () async {
-      when(() => argResults['app-id']).thenReturn(productId);
+      when(() => argResults['app-id']).thenReturn(appId);
       when(
-        () => codePushClient.createApp(productId: productId),
+        () => codePushClient.createApp(appId: appId),
       ).thenThrow(Exception());
       final result = await command.run();
       expect(result, ExitCode.software.code);

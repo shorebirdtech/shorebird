@@ -13,7 +13,7 @@ App _$AppFromJson(Map<String, dynamic> json) => $checkedCreate(
       json,
       ($checkedConvert) {
         final val = App(
-          productId: $checkedConvert('product_id', (v) => v as String),
+          appId: $checkedConvert('app_id', (v) => v as String),
           releases: $checkedConvert(
               'releases',
               (v) => (v as List<dynamic>?)
@@ -22,10 +22,10 @@ App _$AppFromJson(Map<String, dynamic> json) => $checkedCreate(
         );
         return val;
       },
-      fieldKeyMap: const {'productId': 'product_id'},
+      fieldKeyMap: const {'appId': 'app_id'},
     );
 
 Map<String, dynamic> _$AppToJson(App instance) => <String, dynamic>{
-      'product_id': instance.productId,
+      'app_id': instance.appId,
       'releases': instance.releases.map((e) => e.toJson()).toList(),
     };

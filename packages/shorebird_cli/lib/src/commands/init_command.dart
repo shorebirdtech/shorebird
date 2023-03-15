@@ -83,7 +83,7 @@ For more information about Shorebird, visit ${link(uri: Uri.parse('https://shore
   }
 
   ShorebirdYaml _addShorebirdYamlToProject() {
-    final productId = buildUuid();
+    final appId = buildUuid();
     File(
       p.join(Directory.current.path, 'shorebird.yaml'),
     ).writeAsStringSync('''
@@ -91,10 +91,10 @@ For more information about Shorebird, visit ${link(uri: Uri.parse('https://shore
 # Learn more at https://shorebird.dev
 
 # This is the unique identifier for your app.
-product_id: $productId
+app_id: $appId
 ''');
 
-    return ShorebirdYaml(productId: productId);
+    return ShorebirdYaml(appId: appId);
   }
 
   void _addShorebirdYamlToPubspecAssets() {

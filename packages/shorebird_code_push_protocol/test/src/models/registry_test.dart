@@ -10,7 +10,7 @@ void main() {
             apiKey: 'api_key1',
             apps: [
               App(
-                productId: 'app1',
+                appId: 'app1',
                 releases: [
                   Release(
                     version: '1.0.0',
@@ -44,14 +44,14 @@ void main() {
                   Release(version: '1.0.1'),
                 ],
               ),
-              App(productId: 'app2'),
+              App(appId: 'app2'),
             ],
           ),
           Account(
             apiKey: 'api_key2',
             apps: [
               App(
-                productId: 'app2',
+                appId: 'app2',
                 releases: [
                   Release(
                     version: '1.0.0',

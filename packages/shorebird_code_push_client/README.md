@@ -26,7 +26,7 @@ Future<void> main() async {
   final engine = await client.downloadEngine('latest');
 
   // Create a new Shorebird application.
-  await client.createApp(productId: '<PRODUCT ID>');
+  await client.createApp(appId: '<APP ID>');
 
   // List all apps.
   final apps = await client.getApps();
@@ -35,7 +35,7 @@ Future<void> main() async {
   await client.createPatch(
     artifactPath: '<PATH TO ARTIFACT>', // e.g. 'libapp.so'
     baseVersion: '<BASE VERSION>', // e.g. '1.0.0'
-    productId: '<PRODUCT ID>', // e.g. 'shorebird-example'
+    appId: '<APP ID>', // e.g. 'shorebird-example'
     channel: '<CHANNEL>', // e.g. 'stable'
   );
 

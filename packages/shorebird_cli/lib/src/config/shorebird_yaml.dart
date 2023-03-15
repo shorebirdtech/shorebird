@@ -8,10 +8,10 @@ part 'shorebird_yaml.g.dart';
   createToJson: false,
 )
 class ShorebirdYaml {
-  const ShorebirdYaml({required this.productId});
+  const ShorebirdYaml({required this.appId});
 
   factory ShorebirdYaml.fromJson(Map<dynamic, dynamic> json) =>
       _$ShorebirdYamlFromJson(json);
 
-  final String productId;
+  final String appId;
 }

@@ -20,7 +20,7 @@ class DeleteAppCommand extends ShorebirdCommand with ShorebirdConfigMixin {
       'app-id',
       help: '''
 The unique application identifier.
-Defaults to the product_id in "shorebird.yaml".''',
+Defaults to the app_id in "shorebird.yaml".''',
     );
   }
 
@@ -38,21 +38,21 @@ Defaults to the product_id in "shorebird.yaml".''',
       return ExitCode.noUser.code;
     }
 
-    final appId = results['app-id'] as String?;
-    late final String productId;
+    final appIdArg = results['app-id'] as String?;
+    late final String appId;
 
-    if (appId == null) {
-      String? defaultProductId;
+    if (appIdArg == null) {
+      String? defaultAppId;
       try {
-        defaultProductId = getShorebirdYaml()?.productId;
+        defaultAppId = getShorebirdYaml()?.appId;
       } catch (_) {}
 
-      productId = logger.prompt(
+      appId = logger.prompt(
         '${lightGreen.wrap('?')} Enter the App ID',
-        defaultValue: defaultProductId,
+        defaultValue: defaultAppId,
       );
     } else {
-      productId = appId;
+      appId = appIdArg;
     }
 
     final client = buildCodePushClient(apiKey: session.apiKey);
@@ -64,14 +64,14 @@ Defaults to the product_id in "shorebird.yaml".''',
     }
 
     try {
-      await client.deleteApp(productId: productId);
+      await client.deleteApp(appId: appId);
     } catch (error) {
       logger.err('Unable to delete app\n$error');
       return ExitCode.software.code;
     }
 
     logger.info(
-      '${lightGreen.wrap('Deleted app: ${cyan.wrap(productId)}')}',
+      '${lightGreen.wrap('Deleted app: ${cyan.wrap(appId)}')}',
     );
 
     return ExitCode.success.code;

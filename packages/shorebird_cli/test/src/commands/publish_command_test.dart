@@ -29,7 +29,7 @@ class _FakeCommandRunner extends Fake implements CommandRunner<int> {
 void main() {
   group('publish', () {
     const session = Session(apiKey: 'test-api-key');
-    const productId = 'test-product-id';
+    const appId = 'test-app-id';
     const version = '1.2.3';
     const pubspecYamlContent = '''
 name: example
@@ -54,7 +54,7 @@ flutter:
       ).writeAsStringSync(pubspecYamlContent);
       File(
         p.join(tempDir.path, 'shorebird.yaml'),
-      ).writeAsStringSync('product_id: $productId');
+      ).writeAsStringSync('app_id: $appId');
       return tempDir;
     }
 
@@ -79,7 +79,7 @@ flutter:
           baseVersion: any(named: 'baseVersion'),
           artifactPath: any(named: 'artifactPath'),
           channel: any(named: 'channel'),
-          productId: any(named: 'productId'),
+          appId: any(named: 'appId'),
         ),
       ).thenAnswer((_) async {});
     });
@@ -159,7 +159,7 @@ flutter:
           baseVersion: any(named: 'baseVersion'),
           artifactPath: any(named: 'artifactPath'),
           channel: any(named: 'channel'),
-          productId: any(named: 'productId'),
+          appId: any(named: 'appId'),
         ),
       ).thenThrow(error);
       final tempDir = setUpTempDir();
@@ -173,8 +173,7 @@ flutter:
       expect(exitCode, ExitCode.software.code);
     });
 
-    test('succeeds when publish is successful using existing product id',
-        () async {
+    test('succeeds when publish is successful using existing app id', () async {
       final tempDir = setUpTempDir();
       final artifact = File(p.join(tempDir.path, 'patch.txt'))..createSync();
       when(() => argResults.rest).thenReturn([artifact.path]);
@@ -186,7 +185,7 @@ flutter:
       verify(
         () => codePushClient.createPatch(
           baseVersion: version,
-          productId: productId,
+          appId: appId,
           artifactPath: artifact.path,
           channel: 'stable',
         ),
