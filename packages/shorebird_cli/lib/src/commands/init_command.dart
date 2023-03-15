@@ -61,6 +61,23 @@ class InitCommand extends ShorebirdCommand with ShorebirdConfigMixin {
     }
 
     progress.complete('Initialized Shorebird');
+
+    logger.info(
+      '''
+
+${lightGreen.wrap('🐦 Shorebird initialized successfully!')}
+
+✅ A "shorebird.yaml" has been created.
+✅ The "pubspec.yaml" has been updated to include "shorebird.yaml" as an asset.
+
+Reference the following commands to get started:
+
+🚙 To run your project use: "${lightCyan.wrap('shorebird run')}".
+📦 To build your project use: "${lightCyan.wrap('shorebird build')}".
+🚀 To publish a new update use: "${lightCyan.wrap('shorebird publish')}".
+
+For more information, visit ${link(uri: Uri.parse('https://shorebird.dev'))}''',
+    );
     return ExitCode.success.code;
   }
 
