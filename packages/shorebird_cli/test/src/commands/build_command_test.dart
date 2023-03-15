@@ -24,10 +24,7 @@ class _MockCodePushClient extends Mock implements CodePushClient {}
 
 void main() {
   group('build', () {
-    const session = Session(
-      apiKey: 'test-api-key',
-      projectId: 'test-project-id',
-    );
+    const session = Session(apiKey: 'test-api-key');
 
     late ArgResults argResults;
     late Auth auth;

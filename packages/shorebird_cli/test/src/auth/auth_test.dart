@@ -5,7 +5,6 @@ import 'package:test/test.dart';
 void main() {
   group('Auth', () {
     const apiKey = 'test-api-key';
-    const projectId = 'test-project-id';
 
     late Auth auth;
 
@@ -15,30 +14,24 @@ void main() {
 
     group('login', () {
       test('should set the current session', () {
-        auth.login(apiKey: apiKey, projectId: projectId);
+        auth.login(apiKey: apiKey);
         expect(
           auth.currentSession,
-          isA<Session>()
-              .having((s) => s.apiKey, 'apiKey', apiKey)
-              .having((s) => s.projectId, 'projectId', projectId),
+          isA<Session>().having((s) => s.apiKey, 'apiKey', apiKey),
         );
         expect(
           Auth().currentSession,
-          isA<Session>()
-              .having((s) => s.apiKey, 'apiKey', apiKey)
-              .having((s) => s.projectId, 'projectId', projectId),
+          isA<Session>().having((s) => s.apiKey, 'apiKey', apiKey),
         );
       });
     });
 
     group('logout', () {
       test('clears session and wipes state', () {
-        auth.login(apiKey: apiKey, projectId: projectId);
+        auth.login(apiKey: apiKey);
         expect(
           auth.currentSession,
-          isA<Session>()
-              .having((s) => s.apiKey, 'apiKey', apiKey)
-              .having((s) => s.projectId, 'projectId', projectId),
+          isA<Session>().having((s) => s.apiKey, 'apiKey', apiKey),
         );
 
         auth.logout();

@@ -72,9 +72,10 @@ ${lightGreen.wrap('🐦 Shorebird initialized successfully!')}
 
 Reference the following commands to get started:
 
+✨ To create a new app use: "${lightCyan.wrap('shorebird apps create')}".
 🚙 To run your project use: "${lightCyan.wrap('shorebird run')}".
 📦 To build your project use: "${lightCyan.wrap('shorebird build')}".
-🚀 To publish a new update use: "${lightCyan.wrap('shorebird publish')}".
+🚀 To publish an update use: "${lightCyan.wrap('shorebird publish')}".
 
 For more information about Shorebird, visit ${link(uri: Uri.parse('https://shorebird.dev'))}''',
     );

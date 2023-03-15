@@ -14,10 +14,7 @@ class _MockLogger extends Mock implements Logger {}
 
 void main() {
   group('list', () {
-    const session = Session(
-      projectId: 'test-project-id',
-      apiKey: 'test-api-key',
-    );
+    const session = Session(apiKey: 'test-api-key');
 
     late Auth auth;
     late CodePushClient codePushClient;

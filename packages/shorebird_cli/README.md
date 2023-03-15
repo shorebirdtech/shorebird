@@ -74,6 +74,26 @@ shorebird logout
 ✓ Logging out of shorebird.dev (1ms)
 ```
 
+### Create App
+
+To create an app use the `shorebird apps create` command. An app-id can be specified as a CLI option but shorebird will default to the product_id defined in the `shorebird.yaml`
+
+```bash
+# Create an app using default app id
+shorebird apps create
+
+# Create an app using an explicit app id
+shorebird apps create --app-id "my-app-id"
+```
+
+**Sample**
+
+```
+shorebird apps create
+? Enter the App ID (default-id) my-app-id
+Created new app: my-app-id
+```
+
 ### List Apps
 
 List all existing apps in Shorebird using the `shorebird apps list` command:
