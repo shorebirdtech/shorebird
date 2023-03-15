@@ -26,7 +26,7 @@ fn main() {
         vm_path: "libflutter.so".to_owned(),
     };
     let yaml_str = "
-product_id: demo
+app_id: demo
 channel: stable
 base_url: http://localhost:8000
 ";

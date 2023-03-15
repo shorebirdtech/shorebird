@@ -27,12 +27,12 @@ class CodePushClient {
 
   Map<String, String> get _apiKeyHeader => {'x-api-key': _apiKey};
 
-  /// Create a new app with the provided [productId].
-  Future<void> createApp({required String productId}) async {
+  /// Create a new app with the provided [appId].
+  Future<void> createApp({required String appId}) async {
     final response = await _httpClient.post(
       Uri.parse('$hostedUri/api/v1/apps'),
       headers: _apiKeyHeader,
-      body: json.encode({'product_id': productId}),
+      body: json.encode({'app_id': appId}),
     );
 
     if (response.statusCode != HttpStatus.created) {
@@ -43,7 +43,7 @@ class CodePushClient {
   /// Create a new patch.
   Future<void> createPatch({
     required String baseVersion,
-    required String productId,
+    required String appId,
     required String channel,
     required String artifactPath,
   }) async {
@@ -55,7 +55,7 @@ class CodePushClient {
     request.files.add(file);
     request.fields.addAll({
       'base_version': baseVersion,
-      'product_id': productId,
+      'app_id': appId,
       'channel': channel,
     });
     request.headers.addAll(_apiKeyHeader);
@@ -66,10 +66,10 @@ class CodePushClient {
     }
   }
 
-  /// Delete the app with the provided [productId].
-  Future<void> deleteApp({required String productId}) async {
+  /// Delete the app with the provided [appId].
+  Future<void> deleteApp({required String appId}) async {
     final response = await _httpClient.delete(
-      Uri.parse('$hostedUri/api/v1/apps/$productId'),
+      Uri.parse('$hostedUri/api/v1/apps/$appId'),
       headers: _apiKeyHeader,
     );
 

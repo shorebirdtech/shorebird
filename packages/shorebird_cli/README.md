@@ -76,7 +76,7 @@ shorebird logout
 
 ### Create App
 
-To create an app use the `shorebird apps create` command. An app-id can be specified as a CLI option but shorebird will default to the product_id defined in the `shorebird.yaml`
+To create an app use the `shorebird apps create` command. An app-id can be specified as a CLI option but shorebird will default to the app_id defined in the `shorebird.yaml`
 
 ```bash
 # Create an app using default app id
@@ -96,7 +96,7 @@ Created new app: my-app-id
 
 ### Delete App
 
-To delete an existing app on Shorebird, use the `shorebird apps delete` command. An app-id can be specified as a CLI option but shorebird will default to the product_id defined in the `shorebird.yaml`
+To delete an existing app on Shorebird, use the `shorebird apps delete` command. An app-id can be specified as a CLI option but shorebird will default to the app_id defined in the `shorebird.yaml`
 
 ```bash
 # Create an app using default app id

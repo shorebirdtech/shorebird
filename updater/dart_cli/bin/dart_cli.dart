@@ -11,7 +11,7 @@ void main(List<String> args) async {
 
   Updater.initUpdaterLibrary(
     clientId: 'my-client-id',
-    productId: 'product',
+    appId: 'demo',
     version: '1.0.0',
     channel: 'stable',
     updateUrl: null,

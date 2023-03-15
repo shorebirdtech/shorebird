@@ -51,7 +51,7 @@ class Updater {
   // inside a Flutter app.
   static void initUpdaterLibrary({
     required String clientId,
-    required String productId,
+    required String appId,
     required String version,
     required String channel,
     required String? updateUrl,
@@ -60,7 +60,7 @@ class Updater {
     required String cacheDir,
   }) {
     var config = AppParameters.allocate(
-      productId: productId,
+      appId: appId,
       version: version,
       channel: channel,
       updateUrl: updateUrl,

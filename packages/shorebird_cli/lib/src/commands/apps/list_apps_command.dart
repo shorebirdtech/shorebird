@@ -67,6 +67,6 @@ extension on App {
     final latestPatchPart =
         latestPatch != null ? '(patch #${latestPatch.number})' : '';
 
-    return '$productId: $latestReleasePart $latestPatchPart';
+    return '$id: $latestReleasePart $latestPatchPart';
   }
 }

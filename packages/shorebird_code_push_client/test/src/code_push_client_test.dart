@@ -15,7 +15,7 @@ class _FakeBaseRequest extends Fake implements http.BaseRequest {}
 void main() {
   group('CodePushClient', () {
     const apiKey = 'api-key';
-    const productId = 'shorebird-example';
+    const appId = 'shorebird-example';
 
     late http.Client httpClient;
     late CodePushClient codePushClient;
@@ -48,7 +48,7 @@ void main() {
         ).thenAnswer((_) async => http.Response('', HttpStatus.badRequest));
 
         expect(
-          codePushClient.createApp(productId: productId),
+          codePushClient.createApp(appId: appId),
           throwsA(isA<Exception>()),
         );
       });
@@ -62,7 +62,7 @@ void main() {
           ),
         ).thenAnswer((_) async => http.Response('', HttpStatus.created));
 
-        await codePushClient.createApp(productId: productId);
+        await codePushClient.createApp(appId: appId);
 
         final uri = verify(
           () => httpClient.post(
@@ -96,7 +96,7 @@ void main() {
           codePushClient.createPatch(
             artifactPath: fixture.path,
             baseVersion: '1.0.0',
-            productId: 'shorebird-example',
+            appId: 'shorebird-example',
             channel: 'stable',
           ),
           throwsA(isA<Exception>()),
@@ -117,7 +117,7 @@ void main() {
         await codePushClient.createPatch(
           artifactPath: fixture.path,
           baseVersion: '1.0.0',
-          productId: 'shorebird-example',
+          appId: 'shorebird-example',
           channel: 'stable',
         );
 
@@ -139,7 +139,7 @@ void main() {
         ).thenAnswer((_) async => http.Response('', HttpStatus.badRequest));
 
         expect(
-          codePushClient.deleteApp(productId: productId),
+          codePushClient.deleteApp(appId: appId),
           throwsA(isA<Exception>()),
         );
       });
@@ -152,7 +152,7 @@ void main() {
           ),
         ).thenAnswer((_) async => http.Response('', HttpStatus.noContent));
 
-        await codePushClient.deleteApp(productId: productId);
+        await codePushClient.deleteApp(appId: appId);
 
         final uri = verify(
           () => httpClient.delete(
@@ -164,7 +164,7 @@ void main() {
         expect(
           uri,
           codePushClient.hostedUri.replace(
-            path: '/api/v1/apps/$productId',
+            path: '/api/v1/apps/$appId',
           ),
         );
       });
@@ -241,7 +241,7 @@ void main() {
       test('completes when request succeeds (populated)', () async {
         final expected = [
           App(
-            productId: 'shorebird-example',
+            id: 'shorebird-example',
             releases: [
               Release(
                 version: '1.0.0',
@@ -276,7 +276,7 @@ void main() {
             ],
           ),
           App(
-            productId: 'shorebird-counter',
+            id: 'shorebird-counter',
             releases: [
               Release(
                 version: '1.0.0',

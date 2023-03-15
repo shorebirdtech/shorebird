@@ -18,7 +18,7 @@ name: example
 version: $version
 environment:
   sdk: ">=2.19.0 <3.0.0"''';
-    const productId = 'test-product-id';
+    const appId = 'test-app-id';
 
     late Logger logger;
     late Progress progress;
@@ -27,10 +27,7 @@ environment:
     setUp(() {
       logger = _MockLogger();
       progress = _MockProgress();
-      command = InitCommand(
-        logger: logger,
-        buildUuid: () => productId,
-      );
+      command = InitCommand(logger: logger, buildUuid: () => appId);
 
       when(() => logger.progress(any())).thenReturn(progress);
     });
@@ -77,21 +74,21 @@ environment:
     });
 
     test('detects existing shorebird.yaml', () async {
-      const existingProductId = 'existing-product-id';
+      const existingAppId = 'existing-app-id';
       final tempDir = Directory.systemTemp.createTempSync();
       File(
         p.join(tempDir.path, 'pubspec.yaml'),
       ).writeAsStringSync(pubspecYamlContent);
       File(
         p.join(tempDir.path, 'shorebird.yaml'),
-      ).writeAsStringSync('product_id: $existingProductId');
+      ).writeAsStringSync('app_id: $existingAppId');
       await IOOverrides.runZoned(
         command.run,
         getCurrentDirectory: () => tempDir,
       );
       expect(
         File(p.join(tempDir.path, 'shorebird.yaml')).readAsStringSync(),
-        contains('product_id: $existingProductId'),
+        contains('app_id: $existingAppId'),
       );
       verify(() => progress.update('"shorebird.yaml" already exists.'));
     });
@@ -107,7 +104,7 @@ environment:
       );
       expect(
         File(p.join(tempDir.path, 'shorebird.yaml')).readAsStringSync(),
-        contains('product_id: $productId'),
+        contains('app_id: $appId'),
       );
     });
 
@@ -127,7 +124,7 @@ flutter:
       );
       expect(
         File(p.join(tempDir.path, 'shorebird.yaml')).readAsStringSync(),
-        contains('product_id: $productId'),
+        contains('app_id: $appId'),
       );
       verify(
         () => progress.update(

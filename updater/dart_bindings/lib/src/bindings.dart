@@ -12,7 +12,7 @@ class AppParameters extends ffi.Struct {
   // ignore: non_constant_identifier_names
   external ffi.Pointer<Utf8> client_id;
   // ignore: non_constant_identifier_names
-  external ffi.Pointer<Utf8> product_id;
+  external ffi.Pointer<Utf8> app_id;
   // ignore: non_constant_identifier_names
   external ffi.Pointer<Utf8> base_version;
   // ignore: non_constant_identifier_names
@@ -26,7 +26,7 @@ class AppParameters extends ffi.Struct {
 
   static ffi.Pointer<AppParameters> allocate(
       {required String clientId,
-      required String productId,
+      required String appId,
       required String version,
       required String channel,
       required String? updateUrl,
@@ -35,7 +35,7 @@ class AppParameters extends ffi.Struct {
       required String cacheDir}) {
     var config = calloc<AppParameters>();
     config.ref.client_id = clientId.toNativeUtf8();
-    config.ref.product_id = productId.toNativeUtf8();
+    config.ref.app_id = appId.toNativeUtf8();
     config.ref.base_version = version.toNativeUtf8();
     config.ref.channel = channel.toNativeUtf8();
     if (updateUrl != null) {
@@ -49,7 +49,7 @@ class AppParameters extends ffi.Struct {
 
   static void free(ffi.Pointer<AppParameters> config) {
     calloc.free(config.ref.client_id);
-    calloc.free(config.ref.product_id);
+    calloc.free(config.ref.app_id);
     calloc.free(config.ref.base_version);
     calloc.free(config.ref.channel);
     calloc.free(config.ref.update_url);

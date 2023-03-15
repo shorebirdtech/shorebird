@@ -14,12 +14,12 @@ ShorebirdYaml _$ShorebirdYamlFromJson(Map json) => $checkedCreate(
       ($checkedConvert) {
         $checkKeys(
           json,
-          allowedKeys: const ['product_id'],
+          allowedKeys: const ['app_id'],
         );
         final val = ShorebirdYaml(
-          productId: $checkedConvert('product_id', (v) => v as String),
+          appId: $checkedConvert('app_id', (v) => v as String),
         );
         return val;
       },
-      fieldKeyMap: const {'productId': 'product_id'},
+      fieldKeyMap: const {'appId': 'app_id'},
     );

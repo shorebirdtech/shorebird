@@ -18,7 +18,7 @@ class _MockLogger extends Mock implements Logger {}
 void main() {
   group('delete', () {
     const apiKey = 'test-api-key';
-    const productId = 'example';
+    const appId = 'example';
     const session = Session(apiKey: apiKey);
 
     late ArgResults argResults;
@@ -56,32 +56,32 @@ void main() {
 
     test('prompts for app-id when not provided', () async {
       when(() => logger.confirm(any())).thenReturn(false);
-      when(() => logger.prompt(any())).thenReturn(productId);
+      when(() => logger.prompt(any())).thenReturn(appId);
       await command.run();
       verify(() => logger.prompt(any())).called(1);
     });
 
     test('uses provided app-id when provided', () async {
       when(() => logger.confirm(any())).thenReturn(false);
-      when(() => argResults['app-id']).thenReturn(productId);
+      when(() => argResults['app-id']).thenReturn(appId);
       await command.run();
       verifyNever(() => logger.prompt(any()));
     });
 
     test('aborts when user does not confirm', () async {
       when(() => logger.confirm(any())).thenReturn(false);
-      when(() => argResults['app-id']).thenReturn(productId);
+      when(() => argResults['app-id']).thenReturn(appId);
       final result = await command.run();
       expect(result, ExitCode.success.code);
-      verifyNever(() => codePushClient.deleteApp(productId: productId));
+      verifyNever(() => codePushClient.deleteApp(appId: appId));
       verify(() => logger.info('Aborted.')).called(1);
     });
 
     test('returns success when app is deleted', () async {
       when(() => logger.confirm(any())).thenReturn(true);
-      when(() => argResults['app-id']).thenReturn(productId);
+      when(() => argResults['app-id']).thenReturn(appId);
       when(
-        () => codePushClient.deleteApp(productId: productId),
+        () => codePushClient.deleteApp(appId: appId),
       ).thenAnswer((_) async {});
       final result = await command.run();
       expect(result, ExitCode.success.code);
@@ -89,9 +89,9 @@ void main() {
 
     test('returns software error when app deletion fails', () async {
       when(() => logger.confirm(any())).thenReturn(true);
-      when(() => argResults['app-id']).thenReturn(productId);
+      when(() => argResults['app-id']).thenReturn(appId);
       when(
-        () => codePushClient.deleteApp(productId: productId),
+        () => codePushClient.deleteApp(appId: appId),
       ).thenThrow(Exception());
       final result = await command.run();
       expect(result, ExitCode.software.code);
