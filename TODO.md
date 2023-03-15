@@ -4,21 +4,6 @@
 - We believe Flutter is that default, but has missing pieces for enterprises.
 - The first hole we're filling is the ability to push updates to Flutter apps.
 
-## This Week's Demo
-
-- Platform support (e.g. push to both arm7 and arm64)
-- API Keys and/or app ids (allows multiple users)
-- Teach the server how to decline to update (e.g. platform/version mismatch).
-- Instructions on how to build/use.
-
-## User journey
-
-Someone can:
-
-- download and install Shorebird.
-- `shorebird build` their existing Flutter app.
-- Push an update to their app.
-
 ## Shipping to users (first, do no harm)
 
 - Need a way to know if the update failed (and both report it and roll back?)
