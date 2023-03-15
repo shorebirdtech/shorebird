@@ -89,70 +89,70 @@ impl UpdaterState {
         }
         self.successful_patches.push(patch.version.clone());
     }
-}
 
-pub fn load_state(cache_dir: &str) -> anyhow::Result<UpdaterState> {
-    // Load UpdaterState from disk
-    let path = Path::new(cache_dir).join("state.json");
-    let file = File::open(path)?;
-    let reader = BufReader::new(file);
-    // TODO: Now that we depend on serde_yaml for shorebird.yaml
-    // we could use yaml here instead of json.
-    let state = serde_json::from_reader(reader)?;
-    Ok(state)
-}
-
-pub fn save_state(state: &UpdaterState, cache_dir: &str) -> anyhow::Result<()> {
-    // Save UpdaterState to disk
-    std::fs::create_dir_all(cache_dir)?;
-    let path = Path::new(cache_dir).join("state.json");
-    let file = File::create(path)?;
-    let writer = BufWriter::new(file);
-    serde_json::to_writer_pretty(writer, &state)?;
-    Ok(())
-}
-
-pub fn client_id(state: &UpdaterState) -> String {
-    state.client_id.to_string()
-}
-
-pub fn current_patch(state: &UpdaterState) -> Option<PatchInfo> {
-    // If there is no state, return None.
-    if state.slots.is_empty() {
-        return None;
+    pub fn load(cache_dir: &str) -> anyhow::Result<Self> {
+        // Load UpdaterState from disk
+        let path = Path::new(cache_dir).join("state.json");
+        let file = File::open(path)?;
+        let reader = BufReader::new(file);
+        // TODO: Now that we depend on serde_yaml for shorebird.yaml
+        // we could use yaml here instead of json.
+        let state = serde_json::from_reader(reader)?;
+        Ok(state)
     }
-    let slot = &state.slots[state.current_slot_index];
-    // Otherwise return the version info from the current slot.
-    return Some(PatchInfo {
-        path: slot.path.clone(),
-        version: slot.patch_version.clone(),
-    });
-}
 
-fn unused_slot(state: &UpdaterState) -> usize {
-    // Assume we only use two slots and pick the one that's not current.
-    if state.slots.is_empty() {
+    pub fn save(&self, cache_dir: &str) -> anyhow::Result<()> {
+        // Save UpdaterState to disk
+        std::fs::create_dir_all(cache_dir)?;
+        let path = Path::new(cache_dir).join("state.json");
+        let file = File::create(path)?;
+        let writer = BufWriter::new(file);
+        serde_json::to_writer_pretty(writer, self)?;
+        Ok(())
+    }
+
+    pub fn client_id(&self) -> String {
+        self.client_id.to_string()
+    }
+
+    pub fn current_patch(&self) -> Option<PatchInfo> {
+        // If there is no state, return None.
+        if self.slots.is_empty() {
+            return None;
+        }
+        let slot = &self.slots[self.current_slot_index];
+        // Otherwise return the version info from the current slot.
+        return Some(PatchInfo {
+            path: slot.path.clone(),
+            version: slot.patch_version.clone(),
+        });
+    }
+
+    fn unused_slot(&self) -> usize {
+        // Assume we only use two slots and pick the one that's not current.
+        if self.slots.is_empty() {
+            return 0;
+        }
+        if self.current_slot_index == 0 {
+            return 1;
+        }
         return 0;
     }
-    if state.current_slot_index == 0 {
-        return 1;
-    }
-    return 0;
-}
 
-fn set_slot(state: &mut UpdaterState, index: usize, slot: Slot) {
-    if state.slots.len() < index + 1 {
-        // Make sure we're not filling with empty slots.
-        assert!(state.slots.len() == index);
-        state.slots.resize(index + 1, Slot::default());
+    fn set_slot(&mut self, index: usize, slot: Slot) {
+        if self.slots.len() < index + 1 {
+            // Make sure we're not filling with empty slots.
+            assert!(self.slots.len() == index);
+            self.slots.resize(index + 1, Slot::default());
+        }
+        // Set the given slot to the given version.
+        self.slots[index] = slot
     }
-    // Set the given slot to the given version.
-    state.slots[index] = slot
-}
 
-pub fn set_current_slot(state: &mut UpdaterState, index: usize) {
-    state.current_slot_index = index;
-    // This does not implicitly save the state, but maybe should?
+    pub fn set_current_slot(&mut self, index: usize) {
+        self.current_slot_index = index;
+        // This does not implicitly save the state, but maybe should?
+    }
 }
 
 pub fn download_into_unused_slot(
@@ -161,7 +161,7 @@ pub fn download_into_unused_slot(
     state: &mut UpdaterState,
 ) -> anyhow::Result<usize> {
     // Download the new version into the unused slot.
-    let slot_index = unused_slot(state);
+    let slot_index = state.unused_slot();
     download_into_slot(cache_dir, patch_check_response, state, slot_index)?;
     Ok(slot_index)
 }
@@ -189,15 +189,14 @@ fn download_into_slot(
     // Check the hash against the download?
 
     // Update the state to include the new version.
-    set_slot(
-        state,
+    state.set_slot(
         slot_index,
         Slot {
             path: path.to_str().unwrap().to_string(),
             patch_version: patch.version.clone(),
         },
     );
-    save_state(&state, cache_dir)?;
+    state.save(cache_dir)?;
 
     return Ok(());
 }

@@ -2,9 +2,7 @@
 
 use std::fmt::{Display, Formatter};
 
-use crate::cache::{
-    current_patch, download_into_unused_slot, load_state, save_state, set_current_slot, PatchInfo,
-};
+use crate::cache::{download_into_unused_slot, PatchInfo, UpdaterState};
 use crate::config::{set_config, with_config, ResolvedConfig};
 use crate::logging::init_logging;
 use crate::network::send_patch_check_request;
@@ -54,7 +52,7 @@ pub fn init(app_config: AppConfig, yaml: &str) {
 fn check_for_update_internal(config: &ResolvedConfig) -> bool {
     // Load UpdaterState from disk
     // If there is no state, make an empty state.
-    let state = load_state(&config.cache_dir).unwrap_or_default();
+    let state = UpdaterState::load(&config.cache_dir).unwrap_or_default();
     // Send info from app + current slot to server.
     let response_result = send_patch_check_request(&config, &state);
     match response_result {
@@ -75,7 +73,7 @@ pub fn check_for_update() -> bool {
 
 fn update_internal(config: &ResolvedConfig) -> anyhow::Result<UpdateStatus> {
     // Load the state from disk.
-    let mut state = load_state(&config.cache_dir).unwrap_or_default();
+    let mut state = UpdaterState::load(&config.cache_dir).unwrap_or_default();
     // Check for update.
     let response = send_patch_check_request(&config, &state)?;
     if !response.patch_available {
@@ -84,8 +82,8 @@ fn update_internal(config: &ResolvedConfig) -> anyhow::Result<UpdateStatus> {
     // If needed, download the new version.
     let slot = download_into_unused_slot(&config.cache_dir, &response, &mut state)?;
     // Install the new version.
-    set_current_slot(&mut state, slot);
-    save_state(&state, &config.cache_dir)?;
+    state.set_current_slot(slot);
+    state.save(&config.cache_dir)?;
     // Set the state to "restart required".
     return Ok(UpdateStatus::UpdateInstalled);
 }
@@ -93,28 +91,28 @@ fn update_internal(config: &ResolvedConfig) -> anyhow::Result<UpdateStatus> {
 /// Reads the current patch from the cache and returns it.
 pub fn active_patch() -> Option<PatchInfo> {
     return with_config(|config| {
-        let state = load_state(&config.cache_dir).unwrap_or_default();
-        return current_patch(&state);
+        let state = UpdaterState::load(&config.cache_dir).unwrap_or_default();
+        return state.current_patch();
     });
 }
 
 pub fn report_failed_launch() {
     with_config(|config| {
-        let mut state = load_state(&config.cache_dir).unwrap_or_default();
+        let mut state = UpdaterState::load(&config.cache_dir).unwrap_or_default();
 
-        let patch = current_patch(&state).unwrap();
+        let patch = state.current_patch().unwrap();
         state.mark_patch_as_bad(&patch);
-        save_state(&state, &config.cache_dir).unwrap();
+        state.save(&config.cache_dir).unwrap();
     });
 }
 
 pub fn report_successful_launch() {
     with_config(|config| {
-        let mut state = load_state(&config.cache_dir).unwrap_or_default();
+        let mut state = UpdaterState::load(&config.cache_dir).unwrap_or_default();
 
-        let patch = current_patch(&state).unwrap();
+        let patch = state.current_patch().unwrap();
         state.mark_patch_as_good(&patch);
-        save_state(&state, &config.cache_dir).unwrap();
+        state.save(&config.cache_dir).unwrap();
     });
 }
 
