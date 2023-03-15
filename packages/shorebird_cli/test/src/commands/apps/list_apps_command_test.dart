@@ -58,7 +58,7 @@ void main() {
     test('returns ExitCode.success when apps are not empty', () async {
       final apps = [
         App(
-          id: 'shorebird-counter',
+          appId: 'shorebird-counter',
           releases: [
             Release(
               version: '1.0.0',

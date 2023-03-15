@@ -241,7 +241,7 @@ void main() {
       test('completes when request succeeds (populated)', () async {
         final expected = [
           App(
-            id: 'shorebird-example',
+            appId: 'shorebird-example',
             releases: [
               Release(
                 version: '1.0.0',
@@ -276,7 +276,7 @@ void main() {
             ],
           ),
           App(
-            id: 'shorebird-counter',
+            appId: 'shorebird-counter',
             releases: [
               Release(
                 version: '1.0.0',
