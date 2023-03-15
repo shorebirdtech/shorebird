@@ -10,7 +10,6 @@ void main(List<String> args) async {
   Updater.loadLibrary(directory: directory, name: "updater");
 
   Updater.initUpdaterLibrary(
-    clientId: 'my-client-id',
     appId: 'demo',
     version: '1.0.0',
     channel: 'stable',

@@ -3,7 +3,6 @@
 use std::fs::File;
 use std::io::{BufReader, BufWriter};
 use std::path::Path;
-use uuid::Uuid;
 
 use serde::{Deserialize, Serialize};
 
@@ -26,13 +25,6 @@ struct Slot {
 // anything inside should be done via the functions below.
 #[derive(Deserialize, Serialize)]
 pub struct UpdaterState {
-    // The purpose of the client_id is to allow for staged rollouts
-    // the server needs some sort of per-client number, so that it can bucket
-    // and say "this client is in the 10% bucket, so it gets the new version".
-    // It might be better for this to just be a number 0-100?
-    #[serde(default = "Uuid::new_v4")]
-    /// ID generated for this device/client used for staged rollouts.
-    client_id: Uuid,
     /// List of patches that failed to boot.  We will never attempt these again.
     failed_patches: Vec<String>,
     /// List of patches that successfully booted. We will never rollback past
@@ -48,7 +40,6 @@ pub struct UpdaterState {
 impl Default for UpdaterState {
     fn default() -> Self {
         Self {
-            client_id: Uuid::new_v4(),
             current_slot_index: 0,
             failed_patches: Vec::new(),
             successful_patches: Vec::new(),
@@ -109,10 +100,6 @@ impl UpdaterState {
         let writer = BufWriter::new(file);
         serde_json::to_writer_pretty(writer, self)?;
         Ok(())
-    }
-
-    pub fn client_id(&self) -> String {
-        self.client_id.to_string()
     }
 
     pub fn current_patch(&self) -> Option<PatchInfo> {

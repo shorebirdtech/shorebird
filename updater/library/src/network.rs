@@ -38,7 +38,6 @@ pub fn send_patch_check_request(
     // Send the request to the server.
     let client = reqwest::blocking::Client::new();
     let mut body = HashMap::new();
-    body.insert("client_id", state.client_id());
     body.insert("app_id", config.app_id.clone());
     body.insert("channel", config.channel.clone());
     body.insert("base_version", config.base_version.clone());
