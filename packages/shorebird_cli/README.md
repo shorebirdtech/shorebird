@@ -14,9 +14,17 @@ dart pub global activate --source git https://github.com/shorebirdtech/shorebird
 
 ## Commands
 
+### Init
+
+Get started by initializing shorebird in your current project.
+
+```bash
+shorebird init
+```
+
 ### Login
 
-Get started by requesting an API key and using `shorebird login` to authenticate:
+Request an API key and use `shorebird login` to authenticate:
 
 ```bash
 shorebird login
@@ -24,7 +32,7 @@ shorebird login
 
 **Sample**
 
-```bash
+```
 shorebird login
 ? Please enter your API Key: <API-KEY>
 ✓ Logging into shorebird.dev (7ms)
@@ -41,9 +49,25 @@ shorebird logout
 
 **Sample**
 
-```bash
+```
 shorebird logout
 ✓ Logging out of shorebird.dev (1ms)
+```
+
+### List Apps
+
+List all existing apps in Shorebird using the `shorebird apps list` command:
+
+```bash
+shorebird apps list
+```
+
+**Sample**
+
+```
+shorebird apps list
+shorebird-counter: v1.0.0 (patch #1)
+shorebird-example: v2.1.0 (patch #2)
 ```
 
 ### Run
@@ -54,7 +78,7 @@ Run an existing application using the Shorebird Engine via the `shorebird run` c
 shorebird run
 ```
 
-**❗️Note**: If it's the first time, `shorebird run` will download and build the shorebird engine which may take some time. The shorebird engine will be cached for subsequent runs.
+**❗️Note**: If it's the first time using shorebird, `shorebird run` will download and build the shorebird engine which may take some time. The shorebird engine will be cached for subsequent runs.
 
 ### Build
 
@@ -63,6 +87,8 @@ Build a new release of your application using the `shorebird build` command:
 ```bash
 shorebird build
 ```
+
+**❗️Note**: If it's the first time using shorebird, `shorebird build` will download and build the shorebird engine which may take some time. The shorebird engine will be cached for subsequent runs.
 
 ### Publish
 
@@ -89,7 +115,9 @@ Global options:
     --[no-]verbose    Noisy logging, including all shell commands executed.
 
 Available commands:
+  apps      Manage your Shorebird apps.
   build     Build a new release of your application.
+  init      Initialize Shorebird.
   login     Login as a new Shorebird user.
   logout    Logout of the current Shorebird user
   publish   Publish an update.
