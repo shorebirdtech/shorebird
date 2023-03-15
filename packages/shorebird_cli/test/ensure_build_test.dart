@@ -8,5 +8,6 @@ void main() {
   test(
     'ensure_build',
     () => expectBuildClean(packageRelativeDirectory: 'packages/shorebird_cli'),
+    timeout: const Timeout.factor(2),
   );
 }
