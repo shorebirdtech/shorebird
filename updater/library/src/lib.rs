@@ -19,3 +19,6 @@ pub use self::updater::*;
 // Exposes error!(), info!(), etc macros.
 #[macro_use]
 extern crate log;
+
+#[cfg(test)]
+extern crate tempdir;
