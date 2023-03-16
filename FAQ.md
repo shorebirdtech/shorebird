@@ -21,6 +21,16 @@ differentiate it.  "Code Push" is a reference to the name of a deploy feature
 used by the React Native community from [Microsoft](https://appcenter.ms) and
 [Expo](https://expo.dev), neither of which support Flutter.
 
+### How do I use/install Shorebird?
+
+As of March 16th, 2023, unless you're part of the trusted tester group, there
+isn't anything to use or install at this time.  We're focused on making sure
+a small group of users is successful with the product before opening it up
+to general availability (targeting April 2023).
+
+If you'd like to become part of the trusted testing group, please join our
+mailinglist (linked from shorebird.dev) we send information on how to join there.
+
 ### What is the status of code push?
 
 As of March 13th, 2023 we have a basic serving architecture in production and
