@@ -8,6 +8,7 @@ use serde::{Deserialize, Serialize};
 
 use crate::network::{download_file_to_path, PatchCheckResponse};
 
+#[derive(PartialEq, Debug)]
 pub struct PatchInfo {
     pub path: String,
     pub version: String,
@@ -103,8 +104,7 @@ impl UpdaterState {
     }
 
     pub fn current_patch(&self) -> Option<PatchInfo> {
-        // If there is no state, return None.
-        if self.slots.is_empty() {
+        if self.slots.is_empty() || self.current_slot_index >= self.slots.len() {
             return None;
         }
         let slot = &self.slots[self.current_slot_index];
@@ -186,4 +186,19 @@ fn download_into_slot(
     state.save(cache_dir)?;
 
     return Ok(());
+}
+
+#[cfg(test)]
+mod tests {
+
+    #[test]
+    fn current_patch_does_not_crash() {
+        let mut state = super::UpdaterState::default();
+        assert_eq!(state.current_patch(), None);
+        state.current_slot_index = 3;
+        assert_eq!(state.current_patch(), None);
+        state.slots.push(super::Slot::default());
+        // This used to crash, where index was bad, but slots were not empty.
+        assert_eq!(state.current_patch(), None);
+    }
 }
