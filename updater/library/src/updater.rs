@@ -1,6 +1,5 @@
 // This file's job is to be the Rust API for the updater.
 
-use std::fmt;
 use std::fmt::{Display, Formatter};
 
 use crate::cache::{download_into_unused_slot, PatchInfo, UpdaterState};
@@ -38,7 +37,7 @@ pub enum UpdateError {
 impl std::error::Error for UpdateError {}
 
 impl Display for UpdateError {
-    fn fmt(&self, f: &mut Formatter) -> fmt::Result {
+    fn fmt(&self, f: &mut Formatter) -> std::fmt::Result {
         match self {
             UpdateError::InvalidArgument(name, value) => {
                 write!(f, "Invalid Argument: {} -> {}", name, value)
@@ -131,13 +130,16 @@ pub fn report_failed_launch() -> Result<(), UpdateError> {
     });
 }
 
-pub fn report_successful_launch() {
-    with_config(|config| {
+pub fn report_successful_launch() -> Result<(), UpdateError> {
+    return with_config(|config| {
         let mut state = UpdaterState::load(&config.cache_dir).unwrap_or_default();
 
-        let patch = state.current_patch().unwrap();
+        let patch = state
+            .current_patch()
+            .ok_or(UpdateError::InvalidState("No current patch".to_string()))?;
         state.mark_patch_as_good(&patch);
         state.save(&config.cache_dir).unwrap();
+        Ok(())
     });
 }
 
@@ -197,10 +199,16 @@ mod tests {
     }
 
     #[test]
-    fn report_failure_with_no_current() {
+    fn report_launch_result_with_no_current_patch() {
         init_for_testing();
         assert_eq!(
             crate::report_failed_launch(),
+            Err(crate::UpdateError::InvalidState(
+                "No current patch".to_string()
+            ))
+        );
+        assert_eq!(
+            crate::report_successful_launch(),
             Err(crate::UpdateError::InvalidState(
                 "No current patch".to_string()
             ))

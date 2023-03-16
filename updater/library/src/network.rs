@@ -63,7 +63,9 @@ pub fn download_file_to_path(url: &str, path: &PathBuf) -> anyhow::Result<()> {
     let mut bytes = response.bytes()?;
 
     // Ensure the download directory exists.
-    std::fs::create_dir_all(path.parent().unwrap())?;
+    if let Some(parent) = path.parent() {
+        std::fs::create_dir_all(parent)?;
+    }
 
     let mut file = File::create(path)?;
     file.write_all(&mut bytes)?;
