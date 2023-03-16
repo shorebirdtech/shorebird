@@ -30,7 +30,7 @@ app_id: demo
 channel: stable
 base_url: http://localhost:8000
 ";
-    updater::init(config, yaml_str);
+    updater::init(config, yaml_str).expect("init failed");
 
     // You can check for the existence of subcommands, and if found use their
     // matches just as you would the top level cmd

@@ -1,5 +1,6 @@
 // This file's job is to be the Rust API for the updater.
 
+use std::fmt;
 use std::fmt::{Display, Formatter};
 
 use crate::cache::{download_into_unused_slot, PatchInfo, UpdaterState};
@@ -28,6 +29,25 @@ impl Display for UpdateStatus {
     }
 }
 
+#[derive(Debug, PartialEq)]
+pub enum UpdateError {
+    InvalidArgument(String, String),
+    InvalidState(String),
+}
+
+impl std::error::Error for UpdateError {}
+
+impl Display for UpdateError {
+    fn fmt(&self, f: &mut Formatter) -> fmt::Result {
+        match self {
+            UpdateError::InvalidArgument(name, value) => {
+                write!(f, "Invalid Argument: {} -> {}", name, value)
+            }
+            UpdateError::InvalidState(msg) => write!(f, "Invalid State: {}", msg),
+        }
+    }
+}
+
 // AppConfig is the rust API.  ResolvedConfig is the internal storage.
 // However rusty api would probably used &str instead of String,
 // but making &str from CStr* is a bit of a pain.
@@ -43,10 +63,12 @@ pub struct AppConfig {
 /// The yaml string is the contents of the shorebird.yaml file.
 /// The AppConfig struct is information about the running app and where
 /// the updater should keep its cache.
-pub fn init(app_config: AppConfig, yaml: &str) {
+pub fn init(app_config: AppConfig, yaml: &str) -> Result<(), UpdateError> {
     init_logging();
-    let config = YamlConfig::from_yaml(&yaml).unwrap();
+    let config = YamlConfig::from_yaml(&yaml)
+        .map_err(|err| UpdateError::InvalidArgument("yaml".to_string(), err.to_string()))?;
     set_config(app_config, config);
+    Ok(())
 }
 
 fn check_for_update_internal(config: &ResolvedConfig) -> bool {
@@ -96,13 +118,16 @@ pub fn active_patch() -> Option<PatchInfo> {
     });
 }
 
-pub fn report_failed_launch() {
-    with_config(|config| {
+pub fn report_failed_launch() -> Result<(), UpdateError> {
+    return with_config(|config| {
         let mut state = UpdaterState::load(&config.cache_dir).unwrap_or_default();
 
-        let patch = state.current_patch().unwrap();
+        let patch = state
+            .current_patch()
+            .ok_or(UpdateError::InvalidState("No current patch".to_string()))?;
         state.mark_patch_as_bad(&patch);
         state.save(&config.cache_dir).unwrap();
+        Ok(())
     });
 }
 
@@ -129,4 +154,56 @@ pub fn update() -> UpdateStatus {
             Ok(status) => status,
         }
     });
+}
+
+#[cfg(test)]
+mod tests {
+    use tempdir::TempDir;
+
+    fn init_for_testing() {
+        let tmp_dir = TempDir::new("example").unwrap();
+        let cache_dir = tmp_dir.path().to_str().unwrap().to_string();
+        crate::init(
+            crate::AppConfig {
+                cache_dir: cache_dir.clone(),
+                base_version: "1.0.0".to_string(),
+                original_libapp_path: "original_libapp_path".to_string(),
+                vm_path: "vm_path".to_string(),
+            },
+            "app_id: 1234",
+        )
+        .unwrap();
+    }
+
+    #[test]
+    fn init_missing_yaml() {
+        let tmp_dir = TempDir::new("example").unwrap();
+        let cache_dir = tmp_dir.path().to_str().unwrap().to_string();
+        assert_eq!(
+            crate::init(
+                crate::AppConfig {
+                    cache_dir: cache_dir.clone(),
+                    base_version: "1.0.0".to_string(),
+                    original_libapp_path: "original_libapp_path".to_string(),
+                    vm_path: "vm_path".to_string(),
+                },
+                "",
+            ),
+            Err(crate::UpdateError::InvalidArgument(
+                "yaml".to_string(),
+                "missing field `app_id`".to_string()
+            ))
+        );
+    }
+
+    #[test]
+    fn report_failure_with_no_current() {
+        init_for_testing();
+        assert_eq!(
+            crate::report_failed_launch(),
+            Err(crate::UpdateError::InvalidState(
+                "No current patch".to_string()
+            ))
+        );
+    }
 }

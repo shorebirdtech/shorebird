@@ -57,7 +57,13 @@ pub extern "C" fn shorebird_init(c_params: *const AppParameters, c_yaml: *const 
     let config = app_config_from_c(c_params);
 
     let yaml_string = to_rust(c_yaml);
-    updater::init(config, &yaml_string);
+    let result = updater::init(config, &yaml_string);
+    match result {
+        Ok(_) => {}
+        Err(e) => {
+            error!("Error initializing updater: {:?}", e);
+        }
+    }
 }
 
 /// Return the active version of the app, or NULL if there is no active version.
