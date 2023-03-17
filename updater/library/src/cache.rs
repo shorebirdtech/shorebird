@@ -180,7 +180,7 @@ fn download_into_slot(
         slot_index,
         Slot {
             path: path.to_str().unwrap().to_string(),
-            patch_number: patch.patch_number.clone(),
+            patch_number: patch.number.clone(),
         },
     );
     state.save(cache_dir)?;

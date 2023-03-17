@@ -17,7 +17,7 @@ fn patches_check_url(base_url: &str) -> String {
 
 #[derive(Debug, Deserialize)]
 pub struct Patch {
-    pub patch_number: usize,
+    pub number: usize,
     pub hash: String,
     pub download_url: String,
 }
