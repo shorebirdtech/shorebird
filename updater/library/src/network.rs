@@ -56,7 +56,7 @@ pub fn send_patch_check_request(
     return Ok(response);
 }
 
-pub fn download_file_to_path(url: &str, path: &PathBuf) -> anyhow::Result<()> {
+pub fn download_to_path(url: &str, path: &PathBuf) -> anyhow::Result<()> {
     // Download the file at the given url to the given path.
     let client = reqwest::blocking::Client::new();
     let response = client.get(url).send()?;

@@ -36,6 +36,7 @@ where
 pub struct ResolvedConfig {
     is_initialized: bool,
     pub cache_dir: String,
+    pub download_dir: String,
     pub channel: String,
     pub app_id: String,
     pub release_version: String,
@@ -49,6 +50,7 @@ impl ResolvedConfig {
         Self {
             is_initialized: false,
             cache_dir: String::new(),
+            download_dir: String::new(),
             channel: String::new(),
             app_id: String::new(),
             release_version: String::new(),
@@ -76,6 +78,9 @@ pub fn set_config(config: AppConfig, yaml: YamlConfig) {
         .unwrap_or(DEFAULT_CHANNEL)
         .to_owned();
     lock.cache_dir = config.cache_dir.to_string();
+    let mut cache_path = std::path::PathBuf::from(config.cache_dir);
+    cache_path.push("downloads");
+    lock.download_dir = cache_path.to_str().unwrap().to_string();
     lock.app_id = yaml.app_id.to_string();
     lock.release_version = config.release_version.to_string();
     lock.original_libapp_path = config.original_libapp_path.to_string();

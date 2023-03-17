@@ -2,11 +2,12 @@
 
 use std::fmt::{Display, Formatter};
 
-use crate::cache::{download_into_unused_slot, PatchInfo, UpdaterState};
+use crate::cache::{PatchInfo, UpdaterState};
 use crate::config::{set_config, with_config, ResolvedConfig};
 use crate::logging::init_logging;
-use crate::network::send_patch_check_request;
+use crate::network::{download_to_path, send_patch_check_request};
 use crate::yaml::YamlConfig;
+use std::path::PathBuf;
 
 pub enum UpdateStatus {
     NoUpdate,
@@ -32,6 +33,8 @@ impl Display for UpdateStatus {
 pub enum UpdateError {
     InvalidArgument(String, String),
     InvalidState(String),
+    BadServerResponse,
+    FailedToSaveState,
 }
 
 impl std::error::Error for UpdateError {}
@@ -43,6 +46,8 @@ impl Display for UpdateError {
                 write!(f, "Invalid Argument: {} -> {}", name, value)
             }
             UpdateError::InvalidState(msg) => write!(f, "Invalid State: {}", msg),
+            UpdateError::FailedToSaveState => write!(f, "Failed to save state"),
+            UpdateError::BadServerResponse => write!(f, "Bad server response"),
         }
     }
 }
@@ -73,7 +78,7 @@ pub fn init(app_config: AppConfig, yaml: &str) -> Result<(), UpdateError> {
 fn check_for_update_internal(config: &ResolvedConfig) -> bool {
     // Load UpdaterState from disk
     // If there is no state, make an empty state.
-    let state = UpdaterState::load(&config.cache_dir).unwrap_or_default();
+    let state = UpdaterState::load_or_new_on_error(&config.cache_dir);
     // Send info from app + current slot to server.
     let response_result = send_patch_check_request(&config, &state);
     match response_result {
@@ -94,17 +99,28 @@ pub fn check_for_update() -> bool {
 
 fn update_internal(config: &ResolvedConfig) -> anyhow::Result<UpdateStatus> {
     // Load the state from disk.
-    let mut state = UpdaterState::load(&config.cache_dir).unwrap_or_default();
+    let mut state = UpdaterState::load_or_new_on_error(&config.cache_dir);
     // Check for update.
     let response = send_patch_check_request(&config, &state)?;
     if !response.patch_available {
         return Ok(UpdateStatus::NoUpdate);
     }
-    // If needed, download the new version.
-    let slot = download_into_unused_slot(&config.cache_dir, &response, &mut state)?;
-    // Install the new version.
-    state.set_current_slot(slot);
-    state.save(&config.cache_dir)?;
+
+    let patch = response.patch.ok_or(UpdateError::BadServerResponse)?;
+
+    let download_dir = PathBuf::from(&config.cache_dir);
+    let download_path = download_dir.join(patch.number.to_string());
+    download_to_path(&patch.download_url, &download_path)?;
+    // Check the hash before moving into place.
+    // Move/state update should be "atomic".
+    // Consider supporting allowing the system to download for us (e.g. iOS).
+
+    let patch_info = PatchInfo {
+        path: download_path.to_str().unwrap().to_string(),
+        number: patch.number,
+    };
+    state.install_patch(patch_info)?;
+
     // Set the state to "restart required".
     return Ok(UpdateStatus::UpdateInstalled);
 }
@@ -112,35 +128,33 @@ fn update_internal(config: &ResolvedConfig) -> anyhow::Result<UpdateStatus> {
 /// Reads the current patch from the cache and returns it.
 pub fn active_patch() -> Option<PatchInfo> {
     return with_config(|config| {
-        let state = UpdaterState::load(&config.cache_dir).unwrap_or_default();
+        let state = UpdaterState::load_or_new_on_error(&config.cache_dir);
         return state.current_patch();
     });
 }
 
 pub fn report_failed_launch() -> Result<(), UpdateError> {
-    return with_config(|config| {
-        let mut state = UpdaterState::load(&config.cache_dir).unwrap_or_default();
+    with_config(|config| {
+        let mut state = UpdaterState::load_or_new_on_error(&config.cache_dir);
 
         let patch = state
             .current_patch()
             .ok_or(UpdateError::InvalidState("No current patch".to_string()))?;
         state.mark_patch_as_bad(&patch);
-        state.save(&config.cache_dir).unwrap();
-        Ok(())
-    });
+        state.activate_latest_bootable_patch()
+    })
 }
 
 pub fn report_successful_launch() -> Result<(), UpdateError> {
-    return with_config(|config| {
-        let mut state = UpdaterState::load(&config.cache_dir).unwrap_or_default();
+    with_config(|config| {
+        let mut state = UpdaterState::load_or_new_on_error(&config.cache_dir);
 
         let patch = state
             .current_patch()
             .ok_or(UpdateError::InvalidState("No current patch".to_string()))?;
         state.mark_patch_as_good(&patch);
-        state.save(&config.cache_dir).unwrap();
-        Ok(())
-    });
+        state.save().map_err(|_| UpdateError::FailedToSaveState)
+    })
 }
 
 /// Synchronously checks for an update and downloads and installs it if available.
@@ -213,5 +227,40 @@ mod tests {
                 "No current patch".to_string()
             ))
         );
+    }
+
+    #[test]
+    fn ignore_version_after_marked_bad() {
+        init_for_testing();
+
+        use crate::cache::{PatchInfo, UpdaterState};
+        use crate::config::with_config;
+
+        // Install a fake patch.
+        with_config(|config| {
+            let download_dir = std::path::PathBuf::from(&config.download_dir);
+            let artifact_path = download_dir.join("1");
+            println!("artifact_path: {:?}", artifact_path);
+            std::fs::create_dir_all(&download_dir).unwrap();
+            std::fs::write(&artifact_path, "hello").unwrap();
+
+            let mut state = UpdaterState::load_or_new_on_error(&config.cache_dir);
+            state
+                .install_patch(PatchInfo {
+                    path: artifact_path.to_str().unwrap().to_string(),
+                    number: 1,
+                })
+                .expect("move failed");
+            state.save().expect("save failed");
+        });
+        assert!(crate::active_patch().is_some());
+        // pretend we booted from it
+        crate::report_successful_launch().unwrap();
+        assert!(crate::active_patch().is_some());
+        // mark it bad.
+        crate::report_failed_launch().unwrap();
+        // Technically might need to "reload"
+        // ask for current patch (should get none).
+        assert!(crate::active_patch().is_none());
     }
 }

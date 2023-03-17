@@ -57,7 +57,7 @@ void main() {
 
     test('returns ExitCode.success when apps are not empty', () async {
       final apps = [
-        App(
+        const App(
           appId: 'shorebird-counter',
           latestReleaseVersion: '1.0.0',
           latestPatchNumber: 1,
