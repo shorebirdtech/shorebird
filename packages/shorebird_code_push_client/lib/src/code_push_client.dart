@@ -42,7 +42,7 @@ class CodePushClient {
 
   /// Create a new patch.
   Future<void> createPatch({
-    required String baseVersion,
+    required String releaseVersion,
     required String appId,
     required String channel,
     required String artifactPath,
@@ -54,7 +54,7 @@ class CodePushClient {
     final file = await http.MultipartFile.fromPath('file', artifactPath);
     request.files.add(file);
     request.fields.addAll({
-      'base_version': baseVersion,
+      'release_version': releaseVersion,
       'app_id': appId,
       'channel': channel,
     });
