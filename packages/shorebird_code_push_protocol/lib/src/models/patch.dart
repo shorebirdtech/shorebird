@@ -19,6 +19,7 @@ class Patch {
   /// The unique patch identifier.
   final int id;
 
-  /// The patch number (newer patches are larger).
+  /// The patch number.
+  /// A larger number equates to a newer patch.
   final int number;
 }
