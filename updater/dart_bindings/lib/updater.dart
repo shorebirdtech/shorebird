@@ -49,7 +49,7 @@ class Updater {
   // This is only used when called from a Dart command line.
   // Shorebird will have initialized the library already for you when
   // inside a Flutter app.
-  static void initUpdaterLibrary({    
+  static void initUpdaterLibrary({
     required String appId,
     required String version,
     required String channel,
@@ -64,7 +64,7 @@ class Updater {
       channel: channel,
       updateUrl: updateUrl,
       libappPath: baseLibraryPath,
-      libflutterPath: vmPath,      
+      libflutterPath: vmPath,
       cacheDir: cacheDir,
     );
     try {
