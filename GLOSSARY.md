@@ -48,4 +48,4 @@ An artifact contains metadata about the contents of a specific patch for a speci
 
 **Example**
 
-Once a new patch is published, on the next launch the application will be notified of the new available patch and will download the artifact associated with that patch for the specific platform and architecture (e.g. 'android', 'aarm64').
+Once a new patch is published, on the next launch the application will be notified of the new available patch and will download the artifact associated with that patch for the specific platform and architecture (e.g. 'android', 'aarch64').
