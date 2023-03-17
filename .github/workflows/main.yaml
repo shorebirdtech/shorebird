@@ -101,7 +101,7 @@ jobs:
       - name: 🦀 Build ${{ matrix.package }}
         uses: ./.github/actions/rust
         with:
-          working_directory: packages/${{ matrix.package }}
+          working_directory: ${{ matrix.package }}
 
   verify_packages:
     needs: changes
@@ -125,7 +125,8 @@ jobs:
           working_directory: packages/${{ matrix.package }}
 
   ci:
-    needs: [semantic_pull_request, build_dart_packages, verify_packages]
+    needs:
+      [semantic_pull_request, build_dart_packages, build_rust, verify_packages]
     if: ${{ always() }}
 
     runs-on: ubuntu-latest
