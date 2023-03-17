@@ -17,7 +17,8 @@ jobs:
       pull-requests: read
 
     outputs:
-      needs_build: ${{ steps.needs_build.outputs.changes }}
+      needs_dart_build: ${{ steps.needs_dart_build.outputs.changes }}
+      needs_rust_build: ${{ steps.needs_rust_build.outputs.changes }}
       needs_verify: ${{ steps.needs_verify.outputs.changes }}
 
     name: 👀 Detect Changes
@@ -28,7 +29,7 @@ jobs:
 
       - uses: dorny/paths-filter@v2
         name: Build Detection
-        id: needs_build
+        id: needs_dart_build
         with:
           filters: |
             shorebird_cli:
@@ -43,6 +44,15 @@ jobs:
               - packages/shorebird_code_push_protocol/**
 
       - uses: dorny/paths-filter@v2
+        name: Build Detection
+        id: needs_rust_build
+        with:
+          filters: |
+            updater:
+              - ./.github/actions/rust
+              - updater/**
+
+      - uses: dorny/paths-filter@v2
         name: Verify Detection
         id: needs_verify
         with:
@@ -51,13 +61,13 @@ jobs:
               - ./.github/actions/dart_package
               - packages/shorebird_cli/**
 
-  build_packages:
+  build_dart_packages:
     needs: changes
-    if: ${{ needs.changes.outputs.needs_build != '[]' }}
+    if: ${{ needs.changes.outputs.needs_dart_build != '[]' }}
 
     strategy:
       matrix:
-        package: ${{ fromJSON(needs.changes.outputs.needs_build) }}
+        package: ${{ fromJSON(needs.changes.outputs.needs_dart_build) }}
 
     runs-on: ubuntu-latest
 
@@ -69,6 +79,27 @@ jobs:
 
       - name: 🎯 Build ${{ matrix.package }}
         uses: ./.github/actions/dart_package
+        with:
+          working_directory: packages/${{ matrix.package }}
+
+  build_rust:
+    needs: changes
+    if: ${{ needs.changes.outputs.needs_rust_build != '[]' }}
+
+    strategy:
+      matrix:
+        package: ${{ fromJSON(needs.changes.outputs.needs_rust_build) }}
+
+    runs-on: ubuntu-latest
+
+    name: 🦀 Build ${{ matrix.package }}
+
+    steps:
+      - name: 📚 Git Checkout
+        uses: actions/checkout@v3
+
+      - name: 🦀 Build ${{ matrix.package }}
+        uses: ./.github/actions/rust
         with:
           working_directory: packages/${{ matrix.package }}
 
@@ -94,7 +125,7 @@ jobs:
           working_directory: packages/${{ matrix.package }}
 
   ci:
-    needs: [semantic_pull_request, build_packages, verify_packages]
+    needs: [semantic_pull_request, build_dart_packages, verify_packages]
     if: ${{ always() }}
 
     runs-on: ubuntu-latest
