@@ -95,7 +95,7 @@ application/developer to pull updates from.
 your `pubspec.yaml` file, which will ensure that the file is included in your
 app's assets.
 
-You can go ahead an commit these changes, they will be innocuous even if you
+You can go ahead and commit these changes, they will be innocuous even if you
 don't end up using Shorebird with this application.
 
 2.  Typical development usage will involve normal `flutter` commands.  Only
