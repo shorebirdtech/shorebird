@@ -26,11 +26,11 @@ When we run a `shorebird build ...` or `flutter build ...` we are creating a rel
 
 **Definition**
 
-An over the air update which is applied to a specific release.
+An over the air update which is applied to a specific release. All patches have a patch number (auto-incrementing integer) and multiple patches can be published for a given app release version.
 
 **Example**
 
-If we had an existing `1.0.0` release of `time_shift` available, we could publish a patch to `version 1.0.0`. All patches have a patch number (auto-incrementing integer) and multiple patches can be published for a given app release version.
+If we had an existing `1.0.0` release of `time_shift` available, we could publish a patch to `version 1.0.0`. This would result in "patch #1", there can be many patches to a given release, typically the latest is active and applied to devices in the field.
 
 ### Channel
 
