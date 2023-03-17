@@ -26,6 +26,7 @@ pub struct PatchCheckRequest {
     pub app_id: String,
     pub channel: String,
     pub release_version: String,
+    #[serde(skip_serializing_if = "Option::is_none")]
     pub patch_number: Option<usize>,
     pub platform: String,
     pub arch: String,
@@ -101,6 +102,7 @@ mod tests {
 
         assert!(response.patch_available == true);
         assert!(response.patch.is_some());
+        
         let patch = response.patch.unwrap();
         assert_eq!(patch.number, 1);
         assert_eq!(patch.download_url, "https://storage.googleapis.com/patch_artifacts/17a28ec1-00cf-452d-bdf9-dbb9acb78600/dlc.vmcode");
