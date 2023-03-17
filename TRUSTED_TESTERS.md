@@ -104,3 +104,90 @@ the `shorebird` command-line tool.
 
 
 // More here.
+
+
+## Update behavior
+
+The Shorebird updater is currently hard-coded to update synchronously on
+launch.  This means that when you push a new version of your app, all users
+will update on next launch.  This is not ideal, but it's the simplest thing to
+do for now.
+
+We expect to add more control over update behavior in the future, including
+async updates and percentage based rollouts.  Please let us know if these
+are important to you and we are happy to prioritize them!
+
+The Shorebird updater is designed such that when the network is not available,
+or the server is down or otherwise unreachable, the app will continue to run
+as normal.  Should you ever chose to delete an update from our servers, all your
+clients will continue to run as normal.
+
+We have not yet added the ability to rollback patches, but it's on our todo
+list and happy to prioritize it if it's important to you.  For now, the simplest
+thing is to simply push a new patch that reverts the changes you want to undo.
+
+## Releasing with Shorebird
+
+Shorebird code push requires the Network permission to be added to your
+`AndroidManifest.xml` file.  This is required for the app to be able to
+communicate with the Shorebird servers.
+
+```xml
+<manifest ...>
+    <uses-permission android:name="android.permission.INTERNET" />
+    <uses-permission android:name="android.permission.ACCESS_NETWORK_STATE" />
+    ...
+</manifest>
+```
+
+## Play Store
+
+Although Shorebird connects to the network, it does not send any personally
+identifiable information.  Including Shorebird should not affect your
+declarations for the Play Store.
+
+Requests sent from the app to Shorebird servers include:
+* app_id (specified `shorebird.yaml`)
+* channel (optional in `shorebird.yaml`)
+* release_version (versionName from AndroidManifest.xml)
+* patch_number (generated as part of `shorebird publish`)
+* arch (e.g. 'aarch64', needed to send down the right patch)
+* platform (e.g. 'android', needed to send down the right patch)
+That's it.  The code for this is in `updater/library/src/network.rs`
+
+
+## Play Store Guidelines
+
+Shorebird is designed to be compatible with the Play Store guidelines. However
+Shorebird is a tool, and as with any tool, can be abused.  Deliberately abusing
+Shorebird to violate Play Store guidelines is in violation of the Shorebird
+[Terms of Service](shorebird.dev/terms.html) and can result in termination of
+your account.
+
+Examples of guidelines you should be aware of, include "Deceptive Behavior" and
+"Unwanted Software".  Please be clear with your users about what you are
+providing with your application and do not violate their expectations with
+significant behavioral changes through the use of Shorebird.
+
+Code push services are widely used in the industry (all of the large apps
+I'm aware of use them) and there are multiple other code push services
+publicly available (e.g. expo.dev & appcenter.ms).  This is a well trodden path.
+
+
+## Disabling Shorebird
+
+_First, do no harm_
+
+Shorebird is designed to be a drop-in replacement for the stock Flutter engine,
+and can be disabled at any time with no affect on your users.
+
+Building with `shorebird build` will include Shorebird code push in your app.
+Building with `flutter build --release` will not include Shorebird in your app.
+At any time you can simply drop back to `flutter build` and things will work
+as they did before.
+
+We have not yet added the ability to delete your account from Shorebird from
+the command line, however reach out to us via Discord or email and we are
+happy to help you immediately delete your account and disable all updates
+for your app(s) deployed with Shorebird.  We anticipate adding this ability
+to the command line in the near future.
