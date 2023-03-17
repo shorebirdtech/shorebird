@@ -1,4 +1,4 @@
 export 'app.dart';
-export 'artifact.dart';
 export 'patch.dart';
+export 'patch_artifact.dart';
 export 'user.dart';
