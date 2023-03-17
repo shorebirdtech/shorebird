@@ -1,5 +1,5 @@
 name: Rust Crate Workflow
-description: Build and Test your rust crate
+description: Build and test your Rust crate
 
 inputs:
   working_directory:

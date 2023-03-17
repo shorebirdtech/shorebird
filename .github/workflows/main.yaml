@@ -82,24 +82,24 @@ jobs:
         with:
           working_directory: packages/${{ matrix.package }}
 
-  build_rust:
+  build_rust_crates:
     needs: changes
     if: ${{ needs.changes.outputs.needs_rust_build != '[]' }}
 
     strategy:
       matrix:
-        package: ${{ fromJSON(needs.changes.outputs.needs_rust_build) }}
+        crate: ${{ fromJSON(needs.changes.outputs.needs_rust_build) }}
 
     runs-on: ubuntu-latest
 
-    name: 🦀 Build ${{ matrix.package }}
+    name: 🦀 Build ${{ matrix.crate }}
 
     steps:
       - name: 📚 Git Checkout
         uses: actions/checkout@v3
 
       - name: 🦀 Build ${{ matrix.package }}
-        uses: ./.github/actions/rust
+        uses: ./.github/actions/rust_crate
         with:
           working_directory: ${{ matrix.package }}
 
@@ -126,7 +126,7 @@ jobs:
 
   ci:
     needs:
-      [semantic_pull_request, build_dart_packages, build_rust, verify_packages]
+      [semantic_pull_request, build_dart_packages, build_rust_crates, verify_packages]
     if: ${{ always() }}
 
     runs-on: ubuntu-latest

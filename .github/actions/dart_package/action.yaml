@@ -1,5 +1,5 @@
 name: Dart Package Workflow
-description: Build and Test your Dart packages.
+description: Build and test your Dart packages.
 
 inputs:
   concurrency:
