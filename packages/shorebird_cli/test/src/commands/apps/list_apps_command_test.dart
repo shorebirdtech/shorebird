@@ -59,17 +59,8 @@ void main() {
       final apps = [
         App(
           appId: 'shorebird-counter',
-          releases: [
-            Release(
-              version: '1.0.0',
-              patches: [
-                const Patch(
-                  number: 1,
-                  channels: ['stable'],
-                )
-              ],
-            ),
-          ],
+          latestReleaseVersion: '1.0.0',
+          latestPatchNumber: 1,
         ),
       ];
       when(() => codePushClient.getApps()).thenAnswer((_) async => apps);
