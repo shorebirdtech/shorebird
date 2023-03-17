@@ -1,10 +1,11 @@
 name: Rust Crate Workflow
+description: Build and Test your rust crate
 
 inputs:
   working_directory:
     required: false
-    type: string
     default: "."
+    description: The working directory for this workflow.
 
 runs:
   using: "composite"
@@ -12,9 +13,9 @@ runs:
     - name: Build
       working-directory: ${{ inputs.working_directory }}
       shell: ${{ inputs.shell }}
-      run: cargo build
+      run: cargo build --verbose
 
     - name: Test
       working-directory: ${{ inputs.working_directory }}
       shell: ${{ inputs.shell }}
-      run: cargo test
+      run: cargo test --verbose
