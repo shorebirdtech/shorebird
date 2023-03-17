@@ -1,6 +1,5 @@
 import 'dart:async';
 
-import 'package:collection/collection.dart';
 import 'package:mason_logger/mason_logger.dart';
 import 'package:shorebird_cli/src/command.dart';
 import 'package:shorebird_code_push_client/shorebird_code_push_client.dart';
@@ -60,13 +59,10 @@ class ListAppsCommand extends ShorebirdCommand {
 
 extension on App {
   String prettyPrint() {
-    final latestRelease = releases.lastOrNull;
-    final latestPatch = latestRelease?.patches.lastOrNull;
     final latestReleasePart =
-        latestRelease != null ? 'v${latestRelease.version}' : '(empty)';
+        latestReleaseVersion != null ? 'v$latestReleaseVersion' : '(empty)';
     final latestPatchPart =
-        latestPatch != null ? '(patch #${latestPatch.number})' : '';
-
+        latestPatchNumber != null ? '(patch #$latestPatchNumber)' : '';
     return '$appId: $latestReleasePart $latestPatchPart';
   }
 }
