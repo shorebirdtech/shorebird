@@ -1,7 +1,5 @@
 ## Glossary
 
-Before getting started, we recommend familiarizing yourslef with the following terms and their definitions within the Shorebird ecosystem.
-
 ### App
 
 **Definition**
