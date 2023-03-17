@@ -76,7 +76,7 @@ class PublishCommand extends ShorebirdCommand with ShorebirdConfigMixin {
       final version = pubspecYaml.version!;
       await codePushClient.createPatch(
         artifactPath: artifact.path,
-        baseVersion: '${version.major}.${version.minor}.${version.patch}',
+        releaseVersion: '${version.major}.${version.minor}.${version.patch}',
         appId: shorebirdYaml.appId,
         channel: 'stable',
       );

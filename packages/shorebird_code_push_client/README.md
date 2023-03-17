@@ -34,7 +34,7 @@ Future<void> main() async {
   // Create a new patch.
   await client.createPatch(
     artifactPath: '<PATH TO ARTIFACT>', // e.g. 'libapp.so'
-    baseVersion: '<BASE VERSION>', // e.g. '1.0.0'
+    releaseVersion: '<RELEASE VERSION>', // e.g. '1.0.0'
     appId: '<APP ID>', // e.g. 'shorebird-example'
     channel: '<CHANNEL>', // e.g. 'stable'
   );

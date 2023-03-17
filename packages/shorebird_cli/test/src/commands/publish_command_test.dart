@@ -76,7 +76,7 @@ flutter:
       when(() => logger.progress(any())).thenReturn(_MockProgress());
       when(
         () => codePushClient.createPatch(
-          baseVersion: any(named: 'baseVersion'),
+          releaseVersion: any(named: 'releaseVersion'),
           artifactPath: any(named: 'artifactPath'),
           channel: any(named: 'channel'),
           appId: any(named: 'appId'),
@@ -156,7 +156,7 @@ flutter:
       const error = 'something went wrong';
       when(
         () => codePushClient.createPatch(
-          baseVersion: any(named: 'baseVersion'),
+          releaseVersion: any(named: 'releaseVersion'),
           artifactPath: any(named: 'artifactPath'),
           channel: any(named: 'channel'),
           appId: any(named: 'appId'),
@@ -184,7 +184,7 @@ flutter:
       verify(() => logger.success('Successfully deployed.')).called(1);
       verify(
         () => codePushClient.createPatch(
-          baseVersion: version,
+          releaseVersion: version,
           appId: appId,
           artifactPath: artifact.path,
           channel: 'stable',

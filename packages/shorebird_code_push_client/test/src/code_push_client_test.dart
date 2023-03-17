@@ -95,7 +95,7 @@ void main() {
         expect(
           codePushClient.createPatch(
             artifactPath: fixture.path,
-            baseVersion: '1.0.0',
+            releaseVersion: '1.0.0',
             appId: 'shorebird-example',
             channel: 'stable',
           ),
@@ -116,7 +116,7 @@ void main() {
 
         await codePushClient.createPatch(
           artifactPath: fixture.path,
-          baseVersion: '1.0.0',
+          releaseVersion: '1.0.0',
           appId: 'shorebird-example',
           channel: 'stable',
         );
