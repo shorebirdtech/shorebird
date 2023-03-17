@@ -18,7 +18,7 @@ pub struct PatchInfo {
 struct Slot {
     /// Path to the slot directory.
     path: String,
-    /// Version of the patch in this slot.
+    /// Patch number for the patch in this slot.
     patch_number: usize,
 }
 
