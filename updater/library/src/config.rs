@@ -38,7 +38,7 @@ pub struct ResolvedConfig {
     pub cache_dir: String,
     pub channel: String,
     pub app_id: String,
-    pub base_version: String,
+    pub release_version: String,
     pub original_libapp_path: String,
     pub vm_path: String,
     pub base_url: String,
@@ -51,7 +51,7 @@ impl ResolvedConfig {
             cache_dir: String::new(),
             channel: String::new(),
             app_id: String::new(),
-            base_version: String::new(),
+            release_version: String::new(),
             original_libapp_path: String::new(),
             vm_path: String::new(),
             base_url: String::new(),
@@ -77,7 +77,7 @@ pub fn set_config(config: AppConfig, yaml: YamlConfig) {
         .to_owned();
     lock.cache_dir = config.cache_dir.to_string();
     lock.app_id = yaml.app_id.to_string();
-    lock.base_version = config.base_version.to_string();
+    lock.release_version = config.release_version.to_string();
     lock.original_libapp_path = config.original_libapp_path.to_string();
     lock.vm_path = config.vm_path.to_string();
     lock.is_initialized = true;

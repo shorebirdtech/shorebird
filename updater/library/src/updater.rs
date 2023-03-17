@@ -52,7 +52,7 @@ impl Display for UpdateError {
 // but making &str from CStr* is a bit of a pain.
 pub struct AppConfig {
     pub cache_dir: String,
-    pub base_version: String,
+    pub release_version: String,
     pub original_libapp_path: String,
     pub vm_path: String,
 }
@@ -168,7 +168,7 @@ mod tests {
         crate::init(
             crate::AppConfig {
                 cache_dir: cache_dir.clone(),
-                base_version: "1.0.0".to_string(),
+                release_version: "1.0.0".to_string(),
                 original_libapp_path: "original_libapp_path".to_string(),
                 vm_path: "vm_path".to_string(),
             },
@@ -185,7 +185,7 @@ mod tests {
             crate::init(
                 crate::AppConfig {
                     cache_dir: cache_dir.clone(),
-                    base_version: "1.0.0".to_string(),
+                    release_version: "1.0.0".to_string(),
                     original_libapp_path: "original_libapp_path".to_string(),
                     vm_path: "vm_path".to_string(),
                 },

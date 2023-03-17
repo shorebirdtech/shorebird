@@ -17,7 +17,7 @@ fn patches_check_url(base_url: &str) -> String {
 
 #[derive(Debug, Deserialize)]
 pub struct Patch {
-    pub version: String,
+    pub number: usize,
     pub hash: String,
     pub download_url: String,
 }
@@ -40,9 +40,9 @@ pub fn send_patch_check_request(
     let mut body = HashMap::new();
     body.insert("app_id", config.app_id.clone());
     body.insert("channel", config.channel.clone());
-    body.insert("base_version", config.base_version.clone());
+    body.insert("release_version", config.release_version.clone());
     if let Some(patch) = patch {
-        body.insert("patch_version", patch.version);
+        body.insert("patch_number", patch.number.to_string());
     }
     body.insert("platform", current_platform().to_string());
     body.insert("arch", current_arch().to_string());

@@ -1,38 +1,39 @@
 name: Dart Package Workflow
+description: Build and test your Dart packages.
 
 inputs:
   concurrency:
     required: false
-    type: number
-    default: 4
+    default: "4"
+    description: The value of the concurrency flag (-j) used when running tests
   coverage_excludes:
     required: false
-    type: string
     default: ""
+    description: Globs to exclude from coverage
   dart_sdk:
     required: false
-    type: string
     default: "stable"
+    description: "The dart sdk version to use"
   working_directory:
     required: false
-    type: string
     default: "."
+    description: The working directory for this workflow
   min_coverage:
     required: false
-    type: number
-    default: 100
+    default: "100"
+    description: The minimum coverage percentage value
   analyze_directories:
     required: false
-    type: string
     default: "lib test"
+    description: Directories to analyze
   report_on:
     required: false
-    type: string
     default: "lib"
+    description: Directories to report on when collecting coverage
   platform:
     required: false
-    type: string
     default: "vm"
+    description: Platform to use when running tests
 
 runs:
   using: "composite"

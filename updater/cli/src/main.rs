@@ -21,7 +21,7 @@ fn main() {
 
     let config = updater::AppConfig {
         cache_dir: "updater_cache".to_owned(),
-        base_version: "0.1.0".to_owned(),
+        release_version: "0.1.0".to_owned(),
         original_libapp_path: "libapp.so".to_owned(),
         vm_path: "libflutter.so".to_owned(),
     };
@@ -50,7 +50,7 @@ base_url: http://localhost:8000
             match version {
                 Some(v) => {
                     println!("path: {:?}", v.path);
-                    println!("version: {:?}", v.version);
+                    println!("number: {:?}", v.number);
                 }
                 None => {
                     println!("None");
