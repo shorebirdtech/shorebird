@@ -21,10 +21,10 @@
  */
 typedef struct AppParameters {
   /**
-   * base_version, required.  Named version of the app, off of which updates
+   * release_version, required.  Named version of the app, off of which updates
    * are based.  Can be either a version number or a hash.
    */
-  const char *base_version;
+  const char *release_version;
   /**
    * Path to the original aot library, required.  For Flutter apps this
    * is the path to the bundled libapp.so.  May be used for compression

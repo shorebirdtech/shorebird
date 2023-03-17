@@ -14,9 +14,9 @@ use crate::updater;
 /// NOTE: If this struct is changed all language bindings must be updated.
 #[repr(C)]
 pub struct AppParameters {
-    /// base_version, required.  Named version of the app, off of which updates
+    /// release_version, required.  Named version of the app, off of which updates
     /// are based.  Can be either a version number or a hash.
-    pub base_version: *const libc::c_char,
+    pub release_version: *const libc::c_char,
 
     /// Path to the original aot library, required.  For Flutter apps this
     /// is the path to the bundled libapp.so.  May be used for compression
@@ -43,7 +43,7 @@ fn app_config_from_c(c_params: *const AppParameters) -> updater::AppConfig {
 
     updater::AppConfig {
         cache_dir: to_rust(c_params_ref.cache_dir),
-        base_version: to_rust(c_params_ref.base_version),
+        release_version: to_rust(c_params_ref.release_version),
         original_libapp_path: to_rust(c_params_ref.original_libapp_path),
         vm_path: to_rust(c_params_ref.vm_path),
     }
@@ -67,13 +67,14 @@ pub extern "C" fn shorebird_init(c_params: *const AppParameters, c_yaml: *const 
 }
 
 /// Return the active version of the app, or NULL if there is no active version.
+// TODO: This should probably be renamed to `shorebird_active_patch_number`.
 #[no_mangle]
 pub extern "C" fn shorebird_active_version() -> *mut c_char {
-    let version = updater::active_patch();
-    match version {
+    let patch = updater::active_patch();
+    match patch {
         Some(v) => {
-            let c_version = CString::new(v.version).unwrap();
-            c_version.into_raw()
+            let c_patch = CString::new(v.number.to_string()).unwrap();
+            c_patch.into_raw()
         }
         None => std::ptr::null_mut(),
     }

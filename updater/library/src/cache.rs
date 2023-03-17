@@ -11,7 +11,7 @@ use crate::network::{download_file_to_path, PatchCheckResponse};
 #[derive(PartialEq, Debug)]
 pub struct PatchInfo {
     pub path: String,
-    pub version: String,
+    pub number: usize,
 }
 
 #[derive(Deserialize, Serialize, Default, Clone)]
@@ -19,7 +19,7 @@ struct Slot {
     /// Path to the slot directory.
     path: String,
     /// Version of the patch in this slot.
-    patch_version: String,
+    patch_number: usize,
 }
 
 // This struct is public, as callers can have a handle to it, but modifying
@@ -27,10 +27,10 @@ struct Slot {
 #[derive(Deserialize, Serialize)]
 pub struct UpdaterState {
     /// List of patches that failed to boot.  We will never attempt these again.
-    failed_patches: Vec<String>,
+    failed_patches: Vec<usize>,
     /// List of patches that successfully booted. We will never rollback past
     /// one of these for this device.
-    successful_patches: Vec<String>,
+    successful_patches: Vec<usize>,
     /// Currently selected slot.
     current_slot_index: usize,
     /// List of slots.
@@ -51,11 +51,11 @@ impl Default for UpdaterState {
 
 impl UpdaterState {
     pub fn is_known_good_patch(&self, patch: &PatchInfo) -> bool {
-        self.successful_patches.iter().any(|v| v == &patch.version)
+        self.successful_patches.iter().any(|v| v == &patch.number)
     }
 
     pub fn is_known_bad_patch(&self, patch: &PatchInfo) -> bool {
-        self.failed_patches.iter().any(|v| v == &patch.version)
+        self.failed_patches.iter().any(|v| v == &patch.number)
     }
 
     pub fn mark_patch_as_bad(&mut self, patch: &PatchInfo) {
@@ -67,7 +67,7 @@ impl UpdaterState {
         if self.is_known_bad_patch(patch) {
             return;
         }
-        self.failed_patches.push(patch.version.clone());
+        self.failed_patches.push(patch.number.clone());
     }
 
     pub fn mark_patch_as_good(&mut self, patch: &PatchInfo) {
@@ -79,7 +79,7 @@ impl UpdaterState {
         if self.is_known_good_patch(patch) {
             return;
         }
-        self.successful_patches.push(patch.version.clone());
+        self.successful_patches.push(patch.number.clone());
     }
 
     pub fn load(cache_dir: &str) -> anyhow::Result<Self> {
@@ -111,7 +111,7 @@ impl UpdaterState {
         // Otherwise return the version info from the current slot.
         return Some(PatchInfo {
             path: slot.path.clone(),
-            version: slot.patch_version.clone(),
+            number: slot.patch_number.clone(),
         });
     }
 
@@ -180,7 +180,7 @@ fn download_into_slot(
         slot_index,
         Slot {
             path: path.to_str().unwrap().to_string(),
-            patch_version: patch.version.clone(),
+            patch_number: patch.patch_number.clone(),
         },
     );
     state.save(cache_dir)?;
