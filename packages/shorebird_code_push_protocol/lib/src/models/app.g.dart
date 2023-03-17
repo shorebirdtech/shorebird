@@ -14,18 +14,22 @@ App _$AppFromJson(Map<String, dynamic> json) => $checkedCreate(
       ($checkedConvert) {
         final val = App(
           appId: $checkedConvert('app_id', (v) => v as String),
-          releases: $checkedConvert(
-              'releases',
-              (v) => (v as List<dynamic>?)
-                  ?.map((e) => Release.fromJson(e as Map<String, dynamic>))
-                  .toList()),
+          latestReleaseVersion:
+              $checkedConvert('latest_release_version', (v) => v as String?),
+          latestPatchNumber:
+              $checkedConvert('latest_patch_number', (v) => v as int?),
         );
         return val;
       },
-      fieldKeyMap: const {'appId': 'app_id'},
+      fieldKeyMap: const {
+        'appId': 'app_id',
+        'latestReleaseVersion': 'latest_release_version',
+        'latestPatchNumber': 'latest_patch_number'
+      },
     );
 
 Map<String, dynamic> _$AppToJson(App instance) => <String, dynamic>{
       'app_id': instance.appId,
-      'releases': instance.releases.map((e) => e.toJson()).toList(),
+      'latest_release_version': instance.latestReleaseVersion,
+      'latest_patch_number': instance.latestPatchNumber,
     };
