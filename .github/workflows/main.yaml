@@ -101,7 +101,7 @@ jobs:
       - name: 🦀 Build ${{ matrix.package }}
         uses: ./.github/actions/rust_crate
         with:
-          working_directory: ${{ matrix.package }}
+          working_directory: ${{ matrix.crate }}
 
   verify_packages:
     needs: changes
