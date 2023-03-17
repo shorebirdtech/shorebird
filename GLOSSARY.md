@@ -10,7 +10,7 @@ The application downloaded and run on various devices/platforms. All application
 
 **Example**
 
-The [`time_shift`](https://github.com/shorebirdtech/time_shift) app is an example of an application. See the `shorebird.yaml` for the `app_id`.
+The [`time_shift`](https://github.com/shorebirdtech/time_shift) app is an example of an application. The corresponding `app_id` can be found in the `shorebird.yaml` file at the root of the project.
 
 ### Release
 
@@ -36,7 +36,7 @@ If we had an existing `1.0.0` release of `time_shift` available, we could publis
 
 **Definition**
 
-A tag used to manage the subset of applications that receive a patch. By default, a "stable" channel is created and used when .
+A tag used to manage the subset of applications that receive a patch. By default, a "stable" channel is created and used by devices to query for available patches.
 
 **Example**
 
