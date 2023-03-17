@@ -1,5 +1,4 @@
 import 'package:json_annotation/json_annotation.dart';
-import 'package:shorebird_code_push_protocol/shorebird_code_push_protocol.dart';
 
 part 'app.g.dart';
 
@@ -9,8 +8,11 @@ part 'app.g.dart';
 @JsonSerializable()
 class App {
   /// {@macro app}
-  App({required this.appId, List<Release>? releases})
-      : releases = releases ?? [];
+  const App({
+    required this.appId,
+    this.latestReleaseVersion,
+    this.latestPatchNumber,
+  });
 
   /// Converts a Map<String, dynamic> to an [App]
   factory App.fromJson(Map<String, dynamic> json) => _$AppFromJson(json);
@@ -21,6 +23,9 @@ class App {
   /// The ID of the app.
   final String appId;
 
-  /// List of releases associated with this app.
-  final List<Release> releases;
+  /// The latest release version of the app.
+  final String? latestReleaseVersion;
+
+  /// The latest patch number of the app.
+  final int? latestPatchNumber;
 }
