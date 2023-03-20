@@ -84,6 +84,8 @@ SHOREBIRD_EXPORT bool shorebird_check_for_update(void);
  */
 SHOREBIRD_EXPORT void shorebird_update(void);
 
+SHOREBIRD_EXPORT void shorebird_report_failed_launch(void);
+
 #ifdef __cplusplus
 } // extern "C"
 #endif // __cplusplus

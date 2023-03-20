@@ -1,7 +1,7 @@
 // This file deals with the cache / state management for the updater.
 
 use std::fs::File;
-use std::io::{BufReader, BufWriter};
+use std::io::{BufReader, BufWriter, Write};
 use std::path::{Path, PathBuf};
 
 use anyhow::Ok;
@@ -15,7 +15,7 @@ pub struct PatchInfo {
     pub number: usize,
 }
 
-#[derive(Deserialize, Serialize, Default, Clone)]
+#[derive(Deserialize, Serialize, Default, Clone, Debug)]
 struct Slot {
     /// Path to the slot directory.
     path: String,
@@ -62,6 +62,17 @@ impl UpdaterState {
     }
 }
 
+// fn compute_hash(path: &Path) -> anyhow::Result<String> {
+//     use sha2::{Digest, Sha256};
+//     use std::{fs, io};
+
+//     let mut file = fs::File::open(&path)?;
+//     let mut hasher = Sha256::new();
+//     let n = io::copy(&mut file, &mut hasher)?;
+//     let hash = hasher.finalize();
+//     Ok(format!("{:x}", hash))
+// }
+
 impl UpdaterState {
     pub fn is_known_good_patch(&self, patch: &PatchInfo) -> bool {
         self.successful_patches.iter().any(|v| v == &patch.number)
@@ -80,6 +91,7 @@ impl UpdaterState {
         if self.is_known_bad_patch(patch) {
             return;
         }
+        info!("Marking patch {} as bad", patch.number);
         self.failed_patches.push(patch.number.clone());
     }
 
@@ -95,7 +107,7 @@ impl UpdaterState {
         self.successful_patches.push(patch.number.clone());
     }
 
-    pub fn load(cache_dir: &str) -> anyhow::Result<Self> {
+    fn load(cache_dir: &str) -> anyhow::Result<Self> {
         // Load UpdaterState from disk
         let path = Path::new(cache_dir).join("state.json");
         let file = File::open(path)?;
@@ -150,6 +162,13 @@ impl UpdaterState {
             return true;
         }
         // TODO: This should also check if the hash matches?
+        // let hash = compute_hash(&PathBuf::from(&slot.path));
+        // if let Ok(hash) = hash {
+        //     if hash == slot.hash {
+        //         return true;
+        //     }
+        //     error!("Hash mismatch for slot: {:?}", slot);
+        // }
         false
     }
 
