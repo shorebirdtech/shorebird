@@ -16,8 +16,7 @@ class CodePushClient {
     Uri? hostedUri,
   })  : _apiKey = apiKey,
         _httpClient = httpClient ?? http.Client(),
-        hostedUri =
-            hostedUri ?? Uri.https('code-push-server-fa3667rxya-uc.a.run.app');
+        hostedUri = hostedUri ?? Uri.https('api.shorebird.dev');
 
   final String _apiKey;
   final http.Client _httpClient;
