@@ -17,8 +17,12 @@ mixin ShorebirdConfigMixin on ShorebirdCommand {
   }
 
   Uri? get hostedUri {
-    final baseUrl = getShorebirdYaml()?.baseUrl;
-    return baseUrl == null ? null : Uri.tryParse(baseUrl);
+    try {
+      final baseUrl = getShorebirdYaml()?.baseUrl;
+      return baseUrl == null ? null : Uri.tryParse(baseUrl);
+    } catch (_) {
+      return null;
+    }
   }
 
   bool get pubspecContainsShorebirdYaml {
