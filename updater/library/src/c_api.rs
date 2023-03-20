@@ -117,3 +117,17 @@ pub extern "C" fn shorebird_check_for_update() -> bool {
 pub extern "C" fn shorebird_update() {
     updater::update();
 }
+
+/// Report that the app failed to launch.  This will cause the updater to
+/// attempt to roll back to the previous version if this version has not
+/// been launched successfully before.
+#[no_mangle]
+pub extern "C" fn shorebird_report_failed_launch() {
+    let result = updater::report_failed_launch();
+    match result {
+        Ok(_) => {}
+        Err(e) => {
+            error!("Error recording launch failure: {:?}", e);
+        }
+    }
+}

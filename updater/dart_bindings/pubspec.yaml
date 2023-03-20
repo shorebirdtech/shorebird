@@ -8,7 +8,8 @@ environment:
 # Add regular dependencies here.
 dependencies:
   ffi: ^2.0.1
-  path: ^1.8.3
+  # path version must match that depended on by Flutter SDK.
+  path: ^1.8.2
 
 dev_dependencies:
   lints: ^2.0.0
