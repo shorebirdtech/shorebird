@@ -17,7 +17,7 @@ class CodePushClient {
   })  : _apiKey = apiKey,
         _httpClient = httpClient ?? http.Client(),
         hostedUri =
-            hostedUri ?? Uri.https('code-push-server-kmdbqkx7rq-uc.a.run.app');
+            hostedUri ?? Uri.https('code-push-server-fa3667rxya-uc.a.run.app');
 
   final String _apiKey;
   final http.Client _httpClient;
