@@ -16,7 +16,6 @@ class PublishCommand extends ShorebirdCommand with ShorebirdConfigMixin {
     required super.logger,
     super.auth,
     super.buildCodePushClient,
-    super.buildUuid,
   });
 
   @override

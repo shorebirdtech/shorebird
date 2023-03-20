@@ -15,7 +15,7 @@ import 'package:yaml_edit/yaml_edit.dart';
 /// {@endtemplate}
 class InitCommand extends ShorebirdCommand with ShorebirdConfigMixin {
   /// {@macro init_command}
-  InitCommand({required super.logger, super.buildUuid});
+  InitCommand({required super.logger});
 
   @override
   String get description => 'Initialize Shorebird.';
@@ -26,7 +26,6 @@ class InitCommand extends ShorebirdCommand with ShorebirdConfigMixin {
   @override
   Future<int> run() async {
     final progress = logger.progress('Initializing Shorebird');
-
     try {
       if (!hasPubspecYaml) {
         logger.err('Could not find a "pubspec.yaml".');
@@ -43,7 +42,8 @@ class InitCommand extends ShorebirdCommand with ShorebirdConfigMixin {
       if (hasShorebirdYaml) {
         progress.update('"shorebird.yaml" already exists.');
       } else {
-        _addShorebirdYamlToProject();
+        final pubspecYaml = getPubspecYaml()!;
+        _addShorebirdYamlToProject(pubspecYaml.name);
         progress.update('Generated a "shorebird.yaml".');
       }
     } catch (error) {
@@ -82,8 +82,7 @@ For more information about Shorebird, visit ${link(uri: Uri.parse('https://shore
     return ExitCode.success.code;
   }
 
-  ShorebirdYaml _addShorebirdYamlToProject() {
-    final appId = buildUuid();
+  ShorebirdYaml _addShorebirdYamlToProject(String appId) {
     File(
       p.join(Directory.current.path, 'shorebird.yaml'),
     ).writeAsStringSync('''

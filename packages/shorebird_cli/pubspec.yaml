@@ -23,7 +23,6 @@ dependencies:
   pubspec_parse: ^1.2.2
   shorebird_code_push_client:
     path: ../shorebird_code_push_client
-  uuid: ^3.0.7
   yaml: ^3.1.1
   yaml_edit: ^2.1.0
 

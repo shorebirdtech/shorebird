@@ -13,12 +13,12 @@ class _MockProgress extends Mock implements Progress {}
 void main() {
   group('init', () {
     const version = '1.2.3';
+    const appId = 'test_app_id';
     const pubspecYamlContent = '''
-name: example
+name: $appId
 version: $version
 environment:
   sdk: ">=2.19.0 <3.0.0"''';
-    const appId = 'test-app-id';
 
     late Logger logger;
     late Progress progress;
@@ -27,7 +27,7 @@ environment:
     setUp(() {
       logger = _MockLogger();
       progress = _MockProgress();
-      command = InitCommand(logger: logger, buildUuid: () => appId);
+      command = InitCommand(logger: logger);
 
       when(() => logger.progress(any())).thenReturn(progress);
     });
