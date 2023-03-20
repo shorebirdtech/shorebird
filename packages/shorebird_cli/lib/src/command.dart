@@ -5,19 +5,15 @@ import 'package:args/command_runner.dart';
 import 'package:mason_logger/mason_logger.dart';
 import 'package:meta/meta.dart';
 import 'package:shorebird_cli/src/auth/auth.dart';
+import 'package:shorebird_cli/src/command_runner.dart';
 import 'package:shorebird_code_push_client/shorebird_code_push_client.dart';
 
 typedef CodePushClientBuilder = CodePushClient Function({
   required String apiKey,
+  Uri? hostedUri,
 });
 
 typedef StartProcess = Future<Process> Function(
-  String executable,
-  List<String> arguments, {
-  bool runInShell,
-});
-
-typedef RunProcess = Future<ProcessResult> Function(
   String executable,
   List<String> arguments, {
   bool runInShell,

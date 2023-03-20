@@ -16,6 +16,11 @@ mixin ShorebirdConfigMixin on ShorebirdCommand {
     return hasShorebirdYaml && pubspecContainsShorebirdYaml;
   }
 
+  Uri? get hostedUri {
+    final baseUrl = getShorebirdYaml()?.baseUrl;
+    return baseUrl == null ? null : Uri.tryParse(baseUrl);
+  }
+
   bool get pubspecContainsShorebirdYaml {
     final file = File(p.join(Directory.current.path, 'pubspec.yaml'));
     final pubspecContents = file.readAsStringSync();

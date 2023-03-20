@@ -46,7 +46,7 @@ void main() {
       runCommand = RunCommand(
         auth: auth,
         logger: logger,
-        buildCodePushClient: ({required String apiKey}) {
+        buildCodePushClient: ({required String apiKey, Uri? hostedUri}) {
           return codePushClient;
         },
         startProcess: (executable, arguments, {bool runInShell = false}) async {

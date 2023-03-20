@@ -55,7 +55,10 @@ Defaults to the app_id in "shorebird.yaml".''',
       appId = appIdArg;
     }
 
-    final client = buildCodePushClient(apiKey: session.apiKey);
+    final client = buildCodePushClient(
+      apiKey: session.apiKey,
+      hostedUri: hostedUri,
+    );
 
     final confirm = logger.confirm('Deleting an app is permanent. Continue?');
     if (!confirm) {

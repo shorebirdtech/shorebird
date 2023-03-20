@@ -3,6 +3,7 @@ import 'dart:io';
 
 import 'package:mason_logger/mason_logger.dart';
 import 'package:shorebird_cli/src/command.dart';
+import 'package:shorebird_cli/src/shorebird_config_mixin.dart';
 import 'package:shorebird_cli/src/shorebird_engine_mixin.dart';
 
 typedef StartProcess = Future<Process> Function(
@@ -16,7 +17,8 @@ typedef StartProcess = Future<Process> Function(
 /// `shorebird run`
 /// Run the Flutter application.
 /// {@endtemplate}
-class RunCommand extends ShorebirdCommand with ShorebirdEngineMixin {
+class RunCommand extends ShorebirdCommand
+    with ShorebirdConfigMixin, ShorebirdEngineMixin {
   /// {@macro run_command}
   RunCommand({
     required super.logger,
