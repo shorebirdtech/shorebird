@@ -9,7 +9,11 @@ The Shorebird command-line allows developers to interact with various Shorebird 
 ## Installing
 
 ```sh
-dart pub global activate --source git https://github.com/shorebirdtech/shorebird --git-path packages/shorebird_cli
+# Clone Shorebird
+git clone https://github.com/shorebirdtech/shorebird
+
+# Activate the Shorebird CLI
+dart pub global activate --source path shorebird/packages/shorebird_cli
 ```
 
 ## Commands
@@ -76,7 +80,7 @@ shorebird logout
 
 ### Create App
 
-To create an app use the `shorebird apps create` command. An app-id can be specified as a CLI option but shorebird will default to the app_id defined in the `shorebird.yaml`
+To create an app use the `shorebird apps create` command. An app id can be specified as a CLI option but shorebird will default to the `app_id` defined in the `shorebird.yaml`
 
 ```bash
 # Create an app using default app id
@@ -90,8 +94,8 @@ shorebird apps create --app-id "my-app-id"
 
 ```
 shorebird apps create
-? Enter the App ID (default-id) my-app-id
-Created new app: my-app-id
+? Enter the App ID (default_id) my_app_id
+Created new app: my_app_id
 ```
 
 ### Delete App
@@ -110,9 +114,9 @@ shorebird apps delete --app-id "my-app-id"
 
 ```
 shorebird apps delete
-? Enter the App ID (default-id) my-app-id
+? Enter the App ID (default_id) my_app_id
 Deleting an app is permanent. Continue? (y/N) Yes
-Deleted app: my-app-id
+Deleted app: my_app_id
 ```
 
 ### List Apps
@@ -127,8 +131,8 @@ shorebird apps list
 
 ```
 shorebird apps list
-my-counter: v1.0.0 (patch #1)
-my-example: v2.1.0 (patch #2)
+my_counter: v1.0.0 (patch #1)
+my_example: v2.1.0 (patch #2)
 ```
 
 ### Run
