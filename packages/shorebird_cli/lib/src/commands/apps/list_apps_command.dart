@@ -2,6 +2,7 @@ import 'dart:async';
 
 import 'package:mason_logger/mason_logger.dart';
 import 'package:shorebird_cli/src/command.dart';
+import 'package:shorebird_cli/src/shorebird_config_mixin.dart';
 import 'package:shorebird_code_push_client/shorebird_code_push_client.dart';
 
 /// {@template list_apps_command}
@@ -9,7 +10,7 @@ import 'package:shorebird_code_push_client/shorebird_code_push_client.dart';
 /// `shorebird apps list`
 /// List all apps using Shorebird.
 /// {@endtemplate}
-class ListAppsCommand extends ShorebirdCommand {
+class ListAppsCommand extends ShorebirdCommand with ShorebirdConfigMixin {
   /// {@macro list_apps_command}
   ListAppsCommand({
     required super.logger,
@@ -34,7 +35,10 @@ class ListAppsCommand extends ShorebirdCommand {
       return ExitCode.noUser.code;
     }
 
-    final client = buildCodePushClient(apiKey: session.apiKey);
+    final client = buildCodePushClient(
+      apiKey: session.apiKey,
+      hostedUri: hostedUri,
+    );
 
     late final List<App> apps;
     try {

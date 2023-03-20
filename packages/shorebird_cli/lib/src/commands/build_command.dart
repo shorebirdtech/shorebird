@@ -2,6 +2,7 @@ import 'dart:io';
 
 import 'package:mason_logger/mason_logger.dart';
 import 'package:shorebird_cli/src/command.dart';
+import 'package:shorebird_cli/src/shorebird_config_mixin.dart';
 import 'package:shorebird_cli/src/shorebird_engine_mixin.dart';
 
 typedef RunProcess = Future<ProcessResult> Function(
@@ -15,7 +16,8 @@ typedef RunProcess = Future<ProcessResult> Function(
 /// `shorebird build`
 /// Build a new release of your application.
 /// {@endtemplate}
-class BuildCommand extends ShorebirdCommand with ShorebirdEngineMixin {
+class BuildCommand extends ShorebirdCommand
+    with ShorebirdConfigMixin, ShorebirdEngineMixin {
   /// {@macro build_command}
   BuildCommand({
     required super.logger,

@@ -34,7 +34,9 @@ void main() {
       codePushClient = _MockCodePushClient();
       command = DeleteAppCommand(
         auth: auth,
-        buildCodePushClient: ({required String apiKey}) => codePushClient,
+        buildCodePushClient: ({required String apiKey, Uri? hostedUri}) {
+          return codePushClient;
+        },
         logger: logger,
       )..testArgResults = argResults;
 

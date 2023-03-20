@@ -46,6 +46,7 @@ flutter:
     late Logger logger;
     late CodePushClient codePushClient;
     late PublishCommand command;
+    late Uri? capturedHostedUri;
 
     Directory setUpTempDir() {
       final tempDir = Directory.systemTemp.createTempSync();
@@ -65,7 +66,10 @@ flutter:
       codePushClient = _MockCodePushClient();
       command = PublishCommand(
         auth: auth,
-        buildCodePushClient: ({required String apiKey}) => codePushClient,
+        buildCodePushClient: ({required String apiKey, Uri? hostedUri}) {
+          capturedHostedUri = hostedUri;
+          return codePushClient;
+        },
         logger: logger,
       )
         ..testArgResults = argResults
@@ -191,6 +195,26 @@ flutter:
         ),
       ).called(1);
       expect(exitCode, ExitCode.success.code);
+      expect(capturedHostedUri, isNull);
+    });
+
+    test('succeeds when publish is successful using custom base_url', () async {
+      final tempDir = setUpTempDir();
+      const baseUrl = 'https://example.com';
+      File(
+        p.join(tempDir.path, 'shorebird.yaml'),
+      ).writeAsStringSync(
+        '''
+app_id: $appId
+base_url: $baseUrl''',
+      );
+      final artifact = File(p.join(tempDir.path, 'patch.txt'))..createSync();
+      when(() => argResults.rest).thenReturn([artifact.path]);
+      await IOOverrides.runZoned(
+        command.run,
+        getCurrentDirectory: () => tempDir,
+      );
+      expect(capturedHostedUri, equals(Uri.parse(baseUrl)));
     });
   });
 }

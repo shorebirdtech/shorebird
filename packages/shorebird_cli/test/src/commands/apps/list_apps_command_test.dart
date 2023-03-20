@@ -28,7 +28,9 @@ void main() {
       logger = _MockLogger();
       command = ListAppsCommand(
         auth: auth,
-        buildCodePushClient: ({required String apiKey}) => codePushClient,
+        buildCodePushClient: ({required String apiKey, Uri? hostedUri}) {
+          return codePushClient;
+        },
         logger: logger,
       );
 

@@ -5,9 +5,10 @@ import 'dart:isolate';
 import 'package:archive/archive_io.dart';
 import 'package:path/path.dart' as p;
 import 'package:shorebird_cli/src/command.dart';
+import 'package:shorebird_cli/src/shorebird_config_mixin.dart';
 import 'package:shorebird_code_push_client/shorebird_code_push_client.dart';
 
-mixin ShorebirdEngineMixin on ShorebirdCommand {
+mixin ShorebirdEngineMixin on ShorebirdConfigMixin {
   String get shorebirdEnginePath {
     return p.join(
       Directory.current.path,
@@ -31,6 +32,7 @@ mixin ShorebirdEngineMixin on ShorebirdCommand {
       try {
         final codePushClient = buildCodePushClient(
           apiKey: auth.currentSession!.apiKey,
+          hostedUri: hostedUri,
         );
         await _downloadShorebirdEngine(
           codePushClient,

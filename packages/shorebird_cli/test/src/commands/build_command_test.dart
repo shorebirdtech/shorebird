@@ -41,7 +41,9 @@ void main() {
       processResult = _MockProcessResult();
       buildCommand = BuildCommand(
         auth: auth,
-        buildCodePushClient: ({required String apiKey}) => codePushClient,
+        buildCodePushClient: ({required String apiKey, Uri? hostedUri}) {
+          return codePushClient;
+        },
         logger: logger,
         runProcess: (executable, arguments, {bool runInShell = false}) async {
           return processResult;

@@ -68,7 +68,10 @@ class PublishCommand extends ShorebirdCommand with ShorebirdConfigMixin {
     try {
       final pubspecYaml = getPubspecYaml()!;
       final shorebirdYaml = getShorebirdYaml()!;
-      final codePushClient = buildCodePushClient(apiKey: session.apiKey);
+      final codePushClient = buildCodePushClient(
+        apiKey: session.apiKey,
+        hostedUri: hostedUri,
+      );
       logger.detail(
         '''Deploying ${artifact.path} to ${shorebirdYaml.appId} (${pubspecYaml.version})''',
       );
