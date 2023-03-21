@@ -23,12 +23,20 @@ pub struct Patch {
 
 #[derive(Debug, Serialize)]
 pub struct PatchCheckRequest {
+    /// The Shorebird app_id built into the shorebird.yaml in the app.
     pub app_id: String,
+    /// The Shorebird channel built into the shorebird.yaml in the app.
     pub channel: String,
+    /// The release version from AndroidManifest.xml, Info.plist in the app.
     pub release_version: String,
+    /// The latest patch number that the client has downloaded.
+    /// Not necessarily the one it's running (if some have been marked bad).
+    /// We could rename this to be more clear.
     #[serde(skip_serializing_if = "Option::is_none")]
     pub patch_number: Option<usize>,
+    /// Platform (e.g. "android", "ios", "windows", "macos", "linux").
     pub platform: String,
+    /// Architecture we're running (e.g. "aarch64", "x86", "x86_64").
     pub arch: String,
 }
 
@@ -43,7 +51,7 @@ pub fn send_patch_check_request(
     config: &ResolvedConfig,
     state: &UpdaterState,
 ) -> anyhow::Result<PatchCheckResponse> {
-    let patch = state.current_patch();
+    let latest_patch_number = state.latest_patch_number();
 
     // Send the request to the server.
     let client = reqwest::blocking::Client::new();
@@ -51,7 +59,7 @@ pub fn send_patch_check_request(
         app_id: config.app_id.clone(),
         channel: config.channel.clone(),
         release_version: config.release_version.clone(),
-        patch_number: patch.map(|p| p.number),
+        patch_number: latest_patch_number,
         platform: current_platform().to_string(),
         arch: current_arch().to_string(),
     };
@@ -102,7 +110,7 @@ mod tests {
 
         assert!(response.patch_available == true);
         assert!(response.patch.is_some());
-        
+
         let patch = response.patch.unwrap();
         assert_eq!(patch.number, 1);
         assert_eq!(patch.download_url, "https://storage.googleapis.com/patch_artifacts/17a28ec1-00cf-452d-bdf9-dbb9acb78600/dlc.vmcode");

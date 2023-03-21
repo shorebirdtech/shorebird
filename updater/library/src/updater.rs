@@ -78,7 +78,7 @@ pub fn init(app_config: AppConfig, yaml: &str) -> Result<(), UpdateError> {
 fn check_for_update_internal(config: &ResolvedConfig) -> bool {
     // Load UpdaterState from disk
     // If there is no state, make an empty state.
-    let state = UpdaterState::load_or_new_on_error(&config.cache_dir);
+    let state = UpdaterState::load_or_new_on_error(&config.cache_dir, &config.release_version);
     // Send info from app + current slot to server.
     let response_result = send_patch_check_request(&config, &state);
     match response_result {
@@ -99,7 +99,7 @@ pub fn check_for_update() -> bool {
 
 fn update_internal(config: &ResolvedConfig) -> anyhow::Result<UpdateStatus> {
     // Load the state from disk.
-    let mut state = UpdaterState::load_or_new_on_error(&config.cache_dir);
+    let mut state = UpdaterState::load_or_new_on_error(&config.cache_dir, &config.release_version);
     // Check for update.
     let response = send_patch_check_request(&config, &state)?;
     if !response.patch_available {
@@ -128,14 +128,16 @@ fn update_internal(config: &ResolvedConfig) -> anyhow::Result<UpdateStatus> {
 /// Reads the current patch from the cache and returns it.
 pub fn active_patch() -> Option<PatchInfo> {
     return with_config(|config| {
-        let state = UpdaterState::load_or_new_on_error(&config.cache_dir);
+        let state = UpdaterState::load_or_new_on_error(&config.cache_dir, &config.release_version);
         return state.current_patch();
     });
 }
 
 pub fn report_failed_launch() -> Result<(), UpdateError> {
+    info!("Reporting failed launch.");
     with_config(|config| {
-        let mut state = UpdaterState::load_or_new_on_error(&config.cache_dir);
+        let mut state =
+            UpdaterState::load_or_new_on_error(&config.cache_dir, &config.release_version);
 
         let patch = state
             .current_patch()
@@ -147,7 +149,8 @@ pub fn report_failed_launch() -> Result<(), UpdateError> {
 
 pub fn report_successful_launch() -> Result<(), UpdateError> {
     with_config(|config| {
-        let mut state = UpdaterState::load_or_new_on_error(&config.cache_dir);
+        let mut state =
+            UpdaterState::load_or_new_on_error(&config.cache_dir, &config.release_version);
 
         let patch = state
             .current_patch()
@@ -176,8 +179,7 @@ pub fn update() -> UpdateStatus {
 mod tests {
     use tempdir::TempDir;
 
-    fn init_for_testing() {
-        let tmp_dir = TempDir::new("example").unwrap();
+    fn init_for_testing(tmp_dir: &TempDir) {
         let cache_dir = tmp_dir.path().to_str().unwrap().to_string();
         crate::init(
             crate::AppConfig {
@@ -214,7 +216,8 @@ mod tests {
 
     #[test]
     fn report_launch_result_with_no_current_patch() {
-        init_for_testing();
+        let tmp_dir = TempDir::new("example").unwrap();
+        init_for_testing(&tmp_dir);
         assert_eq!(
             crate::report_failed_launch(),
             Err(crate::UpdateError::InvalidState(
@@ -231,7 +234,8 @@ mod tests {
 
     #[test]
     fn ignore_version_after_marked_bad() {
-        init_for_testing();
+        let tmp_dir = TempDir::new("example").unwrap();
+        init_for_testing(&tmp_dir);
 
         use crate::cache::{PatchInfo, UpdaterState};
         use crate::config::with_config;
@@ -244,7 +248,8 @@ mod tests {
             std::fs::create_dir_all(&download_dir).unwrap();
             std::fs::write(&artifact_path, "hello").unwrap();
 
-            let mut state = UpdaterState::load_or_new_on_error(&config.cache_dir);
+            let mut state =
+                UpdaterState::load_or_new_on_error(&config.cache_dir, &config.release_version);
             state
                 .install_patch(PatchInfo {
                     path: artifact_path.to_str().unwrap().to_string(),
