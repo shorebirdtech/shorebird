@@ -17,12 +17,16 @@ OUTPUT_PATH=$2
 cd $ENGINE_PATH
 
 # Build the engine in release mode for android arm64.
-./src/flutter/tools/gn --android --android-cpu arm64 --runtime-mode=release
+./src/flutter/tools/gn --android --android-cpu=arm64 --runtime-mode=release
 ninja -C ./src/out/android_release_arm64
 
 # Build the the host_release output.
-./src/flutter/tools/gn --runtime-mode release
+./src/flutter/tools/gn --runtime-mode=release
 ninja -C ./src/out/host_release
+
+# Build the the host_release arm64 output.
+./src/flutter/tools/gn --runtime-mode=release --mac-cpu=arm64
+ninja -C ./src/out/host_release_arm64
 
 # List of all files to keep.
 KEEP_FILES=(
@@ -30,9 +34,9 @@ KEEP_FILES=(
   "out/android_release_arm64/arm64_v8a_release.pom"
   "out/android_release_arm64/flutter_embedding_release.jar"
   "out/android_release_arm64/flutter_patched_sdk/platform_strong.dill"
-  "out/android_release_arm64/clang_x64/impellerc"
-  "out/android_release_arm64/clang_x64/gen_snapshot_arm64"
-  "out/android_release_arm64/clang_x64/gen_snapshot"
+  "out/android_release_arm64/clang_arm64/impellerc"
+  "out/android_release_arm64/clang_arm64/gen_snapshot_arm64"
+  "out/android_release_arm64/clang_arm64/gen_snapshot"
   "out/android_release_arm64/arm64_v8a_release.jar"
   "out/android_release_arm64/flutter_embedding_release.pom"
   "out/android_release_arm64/flutter_embedding_release.maven-metadata.xml"
@@ -40,6 +44,8 @@ KEEP_FILES=(
   "out/android_release_arm64/arm64_v8a_release.maven-metadata.xml"
   "out/host_release/gen/const_finder.dart.snapshot"
   "out/host_release/font-subset"
+  "out/host_release_arm64/gen/const_finder.dart.snapshot"
+  "out/host_release_arm64/font-subset"
   "flutter/prebuilts/macos-x64/dart-sdk/LICENSE"
   "flutter/prebuilts/macos-x64/dart-sdk/bin/dartaotruntime"
   "flutter/prebuilts/macos-x64/dart-sdk/bin/snapshots/analysis_server.dart.snapshot"
