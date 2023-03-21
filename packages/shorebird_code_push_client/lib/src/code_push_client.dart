@@ -55,14 +55,7 @@ class CodePushClient {
     );
 
     if (response.statusCode != HttpStatus.created) {
-      final ErrorResponse error;
-      try {
-        final body = json.decode(response.body) as Map<String, dynamic>;
-        error = ErrorResponse.fromJson(body);
-      } catch (_) {
-        throw const CodePushException(message: unknownErrorMessage);
-      }
-      throw CodePushException(message: error.message, details: error.details);
+      throw _parseErrorResponse(response.body);
     }
   }
 
@@ -88,21 +81,11 @@ class CodePushClient {
     final response = await _httpClient.send(request);
 
     if (response.statusCode != HttpStatus.created) {
-      final ErrorResponse error;
-      try {
-        final requestBody = await response.stream.fold(
-          <int>[],
-          (previous, element) => previous..addAll(element),
-        );
-
-        final body = json.decode(
-          utf8.decode(requestBody),
-        ) as Map<String, dynamic>;
-        error = ErrorResponse.fromJson(body);
-      } catch (_) {
-        throw const CodePushException(message: unknownErrorMessage);
-      }
-      throw CodePushException(message: error.message, details: error.details);
+      final body = await response.stream.fold(
+        <int>[],
+        (previous, element) => previous..addAll(element),
+      );
+      throw _parseErrorResponse(utf8.decode(body));
     }
   }
 
@@ -114,14 +97,7 @@ class CodePushClient {
     );
 
     if (response.statusCode != HttpStatus.noContent) {
-      final ErrorResponse error;
-      try {
-        final body = json.decode(response.body) as Map<String, dynamic>;
-        error = ErrorResponse.fromJson(body);
-      } catch (_) {
-        throw const CodePushException(message: unknownErrorMessage);
-      }
-      throw CodePushException(message: error.message, details: error.details);
+      throw _parseErrorResponse(response.body);
     }
   }
 
@@ -150,14 +126,7 @@ class CodePushClient {
     );
 
     if (response.statusCode != HttpStatus.ok) {
-      final ErrorResponse error;
-      try {
-        final body = json.decode(response.body) as Map<String, dynamic>;
-        error = ErrorResponse.fromJson(body);
-      } catch (_) {
-        throw const CodePushException(message: unknownErrorMessage);
-      }
-      throw CodePushException(message: error.message, details: error.details);
+      throw _parseErrorResponse(response.body);
     }
 
     final apps = json.decode(response.body) as List;
@@ -168,4 +137,15 @@ class CodePushClient {
 
   /// Closes the client.
   void close() => _httpClient.close();
+
+  CodePushException _parseErrorResponse(String response) {
+    final ErrorResponse error;
+    try {
+      final body = json.decode(response) as Map<String, dynamic>;
+      error = ErrorResponse.fromJson(body);
+    } catch (_) {
+      throw const CodePushException(message: unknownErrorMessage);
+    }
+    return CodePushException(message: error.message, details: error.details);
+  }
 }
