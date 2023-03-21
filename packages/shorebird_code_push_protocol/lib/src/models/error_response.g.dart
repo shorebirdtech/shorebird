@@ -21,3 +21,10 @@ ErrorResponse _$ErrorResponseFromJson(Map<String, dynamic> json) =>
         return val;
       },
     );
+
+Map<String, dynamic> _$ErrorResponseToJson(ErrorResponse instance) =>
+    <String, dynamic>{
+      'code': instance.code,
+      'message': instance.message,
+      'details': instance.details,
+    };

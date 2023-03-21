@@ -5,7 +5,7 @@ part 'error_response.g.dart';
 /// {@template error_response}
 /// Standard error response body from the Shorebird Code Push API.
 /// {@endtemplate}
-@JsonSerializable(createToJson: false)
+@JsonSerializable()
 class ErrorResponse {
   /// {@macro error_response}
   const ErrorResponse({
@@ -17,6 +17,9 @@ class ErrorResponse {
   /// Converts a [Map] to [ErrorResponse].
   factory ErrorResponse.fromJson(Map<String, dynamic> json) =>
       _$ErrorResponseFromJson(json);
+
+  /// Converts a [ErrorResponse] to [Map].
+  Map<String, dynamic> toJson() => _$ErrorResponseToJson(this);
 
   /// The unique error code.
   final String code;
