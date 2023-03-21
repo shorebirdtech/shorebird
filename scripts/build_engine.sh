@@ -77,6 +77,8 @@ do
   cp -r $ENGINE_PATH/src/$file $TEMP_DIR/$file
 done
 
+# Add .gitkeep to empty directories.
+find $TEMP_DIR -type d -empty -exec touch {}/.gitkeep \;
 
 cd $TEMP_DIR
 
