@@ -5,6 +5,23 @@ import 'dart:typed_data';
 import 'package:http/http.dart' as http;
 import 'package:shorebird_code_push_protocol/shorebird_code_push_protocol.dart';
 
+/// {@template code_push_exception}
+/// Base class for all CodePush exceptions.
+/// {@endtemplate}
+class CodePushException implements Exception {
+  /// {@macro code_push_exception}
+  const CodePushException({required this.message, this.details});
+
+  /// The message associated with the exception.
+  final String message;
+
+  /// The details associated with the exception.
+  final String? details;
+
+  @override
+  String toString() => '$message${details != null ? '\n$details' : ''}';
+}
+
 /// {@template code_push_client}
 /// Dart client for the Shorebird CodePush API.
 /// {@endtemplate}
@@ -17,6 +34,9 @@ class CodePushClient {
   })  : _apiKey = apiKey,
         _httpClient = httpClient ?? http.Client(),
         hostedUri = hostedUri ?? Uri.https('api.shorebird.dev');
+
+  /// The default error message to use when an unknown error occurs.
+  static const unknownErrorMessage = 'An unknown error occurred.';
 
   final String _apiKey;
   final http.Client _httpClient;
@@ -35,7 +55,14 @@ class CodePushClient {
     );
 
     if (response.statusCode != HttpStatus.created) {
-      throw Exception('${response.statusCode} ${response.reasonPhrase}');
+      final ErrorResponse error;
+      try {
+        final body = json.decode(response.body) as Map<String, dynamic>;
+        error = ErrorResponse.fromJson(body);
+      } catch (_) {
+        throw const CodePushException(message: unknownErrorMessage);
+      }
+      throw CodePushException(message: error.message, details: error.details);
     }
   }
 
@@ -61,7 +88,21 @@ class CodePushClient {
     final response = await _httpClient.send(request);
 
     if (response.statusCode != HttpStatus.created) {
-      throw Exception('${response.statusCode} ${response.reasonPhrase}');
+      final ErrorResponse error;
+      try {
+        final requestBody = await response.stream.fold(
+          <int>[],
+          (previous, element) => previous..addAll(element),
+        );
+
+        final body = json.decode(
+          utf8.decode(requestBody),
+        ) as Map<String, dynamic>;
+        error = ErrorResponse.fromJson(body);
+      } catch (_) {
+        throw const CodePushException(message: unknownErrorMessage);
+      }
+      throw CodePushException(message: error.message, details: error.details);
     }
   }
 
@@ -73,7 +114,14 @@ class CodePushClient {
     );
 
     if (response.statusCode != HttpStatus.noContent) {
-      throw Exception('${response.statusCode} ${response.reasonPhrase}');
+      final ErrorResponse error;
+      try {
+        final body = json.decode(response.body) as Map<String, dynamic>;
+        error = ErrorResponse.fromJson(body);
+      } catch (_) {
+        throw const CodePushException(message: unknownErrorMessage);
+      }
+      throw CodePushException(message: error.message, details: error.details);
     }
   }
 
@@ -102,7 +150,14 @@ class CodePushClient {
     );
 
     if (response.statusCode != HttpStatus.ok) {
-      throw Exception('${response.statusCode} ${response.reasonPhrase}');
+      final ErrorResponse error;
+      try {
+        final body = json.decode(response.body) as Map<String, dynamic>;
+        error = ErrorResponse.fromJson(body);
+      } catch (_) {
+        throw const CodePushException(message: unknownErrorMessage);
+      }
+      throw CodePushException(message: error.message, details: error.details);
     }
 
     final apps = json.decode(response.body) as List;

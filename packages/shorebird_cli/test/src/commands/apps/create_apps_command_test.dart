@@ -77,15 +77,12 @@ void main() {
     });
 
     test('returns software error when app creation fails', () async {
+      final error = Exception('oops');
       when(() => argResults['app-id']).thenReturn(appId);
-      when(
-        () => codePushClient.createApp(appId: appId),
-      ).thenThrow(Exception());
+      when(() => codePushClient.createApp(appId: appId)).thenThrow(error);
       final result = await command.run();
       expect(result, ExitCode.software.code);
-      verify(
-        () => logger.err(any(that: contains('Unable to create app'))),
-      ).called(1);
+      verify(() => logger.err('$error')).called(1);
     });
   });
 }
