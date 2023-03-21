@@ -5,6 +5,7 @@ import 'dart:isolate';
 import 'package:archive/archive_io.dart';
 import 'package:path/path.dart' as p;
 import 'package:shorebird_cli/src/command.dart';
+import 'package:shorebird_cli/src/flutter_engine_revision.dart';
 import 'package:shorebird_cli/src/shorebird_config_mixin.dart';
 import 'package:shorebird_code_push_client/shorebird_code_push_client.dart';
 
@@ -65,7 +66,9 @@ mixin ShorebirdEngineMixin on ShorebirdConfigMixin {
     CodePushClient codePushClient,
     String path,
   ) async {
-    final engine = await codePushClient.downloadEngine('latest');
+    final engine = await codePushClient.downloadEngine(
+      requiredFlutterEngineRevision,
+    );
     final targetFile = File(path);
 
     if (targetFile.existsSync()) targetFile.deleteSync(recursive: true);
