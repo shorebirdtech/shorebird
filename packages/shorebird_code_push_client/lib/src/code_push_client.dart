@@ -81,10 +81,7 @@ class CodePushClient {
   Future<Uint8List> downloadEngine(String revision) async {
     final request = http.Request(
       'GET',
-      Uri.parse(
-        // TODO(felangel): use the revision instead of hardcoded "dev".
-        'https://storage.googleapis.com/code-push-dev.appspot.com/engines/dev/engine.zip',
-      ),
+      Uri.parse('$hostedUri/api/v1/engines/$revision'),
     );
     request.headers.addAll(_apiKeyHeader);
 
