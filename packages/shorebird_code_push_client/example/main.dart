@@ -5,8 +5,8 @@ import 'package:shorebird_code_push_client/shorebird_code_push_client.dart';
 Future<void> main() async {
   final client = CodePushClient(apiKey: '<API KEY>');
 
-  // Download the latest engine revision.
-  final engine = await client.downloadEngine('latest');
+  // Download the latest stable engine revision.
+  final engine = await client.downloadEngine('1837b5be5f');
 
   // Create a new Shorebird application.
   await client.createApp(appId: '<APP ID>');

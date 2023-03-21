@@ -176,7 +176,7 @@ void main() {
         when(() => httpClient.send(any())).thenAnswer((_) async {
           return http.StreamedResponse(
             Stream.empty(),
-            400,
+            HttpStatus.badRequest,
           );
         });
 
@@ -202,8 +202,10 @@ void main() {
 
         expect(
           request.url,
-          Uri.parse(
-            'https://storage.googleapis.com/code-push-dev.appspot.com/engines/dev/engine.zip',
+          equals(
+            codePushClient.hostedUri.replace(
+              path: '/api/v1/engines/$engineRevision',
+            ),
           ),
         );
       });
