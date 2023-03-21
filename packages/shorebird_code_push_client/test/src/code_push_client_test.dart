@@ -419,13 +419,3 @@ void main() {
     });
   });
 }
-
-extension on ErrorResponse {
-  Map<String, dynamic> toJson() {
-    return {
-      'code': code,
-      'message': message,
-      'details': details,
-    };
-  }
-}
