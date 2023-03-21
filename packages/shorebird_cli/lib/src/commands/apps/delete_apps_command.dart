@@ -69,7 +69,7 @@ Defaults to the app_id in "shorebird.yaml".''',
     try {
       await client.deleteApp(appId: appId);
     } catch (error) {
-      logger.err('Unable to delete app\n$error');
+      logger.err('$error');
       return ExitCode.software.code;
     }
 

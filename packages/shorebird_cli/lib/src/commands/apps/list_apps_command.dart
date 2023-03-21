@@ -44,7 +44,7 @@ class ListAppsCommand extends ShorebirdCommand with ShorebirdConfigMixin {
     try {
       apps = await client.getApps();
     } catch (error) {
-      logger.err('Unable to get apps: $error');
+      logger.err('$error');
       return ExitCode.software.code;
     }
 

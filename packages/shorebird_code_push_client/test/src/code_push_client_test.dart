@@ -16,6 +16,11 @@ void main() {
   group('CodePushClient', () {
     const apiKey = 'api-key';
     const appId = 'shorebird-example';
+    const errorResponse = ErrorResponse(
+      code: 'test_code',
+      message: 'test message',
+      details: 'test details',
+    );
 
     late http.Client httpClient;
     late CodePushClient codePushClient;
@@ -37,8 +42,21 @@ void main() {
       expect(CodePushClient(apiKey: apiKey), isNotNull);
     });
 
+    group('CodePushException', () {
+      test('toString is correct', () {
+        const exceptionWithDetails = CodePushException(
+          message: 'message',
+          details: 'details',
+        );
+        const exceptionWithoutDetails = CodePushException(message: 'message');
+
+        expect(exceptionWithDetails.toString(), 'message\ndetails');
+        expect(exceptionWithoutDetails.toString(), 'message');
+      });
+    });
+
     group('createApp', () {
-      test('throws an exception if the http request fails', () async {
+      test('throws an exception if the http request fails (unknown)', () async {
         when(
           () => httpClient.post(
             any(),
@@ -49,7 +67,39 @@ void main() {
 
         expect(
           codePushClient.createApp(appId: appId),
-          throwsA(isA<Exception>()),
+          throwsA(
+            isA<CodePushException>().having(
+              (e) => e.message,
+              'message',
+              CodePushClient.unknownErrorMessage,
+            ),
+          ),
+        );
+      });
+
+      test('throws an exception if the http request fails', () async {
+        when(
+          () => httpClient.post(
+            any(),
+            headers: any(named: 'headers'),
+            body: any(named: 'body'),
+          ),
+        ).thenAnswer(
+          (_) async => http.Response(
+            json.encode(errorResponse.toJson()),
+            HttpStatus.failedDependency,
+          ),
+        );
+
+        expect(
+          codePushClient.createApp(appId: appId),
+          throwsA(
+            isA<CodePushException>().having(
+              (e) => e.message,
+              'message',
+              errorResponse.message,
+            ),
+          ),
         );
       });
 
@@ -80,7 +130,7 @@ void main() {
     });
 
     group('createPatch', () {
-      test('throws an exception if the http request fails', () async {
+      test('throws an exception if the http request fails (unknown)', () async {
         final tempDir = Directory.systemTemp.createTempSync();
         final fixture = File(path.join(tempDir.path, 'release.txt'))
           ..createSync();
@@ -88,7 +138,7 @@ void main() {
         when(() => httpClient.send(any())).thenAnswer((_) async {
           return http.StreamedResponse(
             Stream.empty(),
-            400,
+            HttpStatus.failedDependency,
           );
         });
 
@@ -99,7 +149,42 @@ void main() {
             appId: 'shorebird-example',
             channel: 'stable',
           ),
-          throwsA(isA<Exception>()),
+          throwsA(
+            isA<CodePushException>().having(
+              (e) => e.message,
+              'message',
+              CodePushClient.unknownErrorMessage,
+            ),
+          ),
+        );
+      });
+
+      test('throws an exception if the http request fails', () async {
+        final tempDir = Directory.systemTemp.createTempSync();
+        final fixture = File(path.join(tempDir.path, 'release.txt'))
+          ..createSync();
+
+        when(() => httpClient.send(any())).thenAnswer((_) async {
+          return http.StreamedResponse(
+            Stream.value(utf8.encode(json.encode(errorResponse.toJson()))),
+            HttpStatus.failedDependency,
+          );
+        });
+
+        expect(
+          codePushClient.createPatch(
+            artifactPath: fixture.path,
+            releaseVersion: '1.0.0',
+            appId: 'shorebird-example',
+            channel: 'stable',
+          ),
+          throwsA(
+            isA<CodePushException>().having(
+              (e) => e.message,
+              'message',
+              errorResponse.message,
+            ),
+          ),
         );
       });
 
@@ -133,14 +218,44 @@ void main() {
     });
 
     group('deleteApp', () {
-      test('throws an exception if the http request fails', () async {
+      test('throws an exception if the http request fails (unknown)', () async {
         when(
           () => httpClient.delete(any(), headers: any(named: 'headers')),
-        ).thenAnswer((_) async => http.Response('', HttpStatus.badRequest));
+        ).thenAnswer(
+          (_) async => http.Response('', HttpStatus.failedDependency),
+        );
 
         expect(
           codePushClient.deleteApp(appId: appId),
-          throwsA(isA<Exception>()),
+          throwsA(
+            isA<CodePushException>().having(
+              (e) => e.message,
+              'message',
+              CodePushClient.unknownErrorMessage,
+            ),
+          ),
+        );
+      });
+
+      test('throws an exception if the http request fails', () async {
+        when(
+          () => httpClient.delete(any(), headers: any(named: 'headers')),
+        ).thenAnswer(
+          (_) async => http.Response(
+            json.encode(errorResponse.toJson()),
+            HttpStatus.failedDependency,
+          ),
+        );
+
+        expect(
+          codePushClient.deleteApp(appId: appId),
+          throwsA(
+            isA<CodePushException>().having(
+              (e) => e.message,
+              'message',
+              errorResponse.message,
+            ),
+          ),
         );
       });
 
@@ -212,17 +327,53 @@ void main() {
     });
 
     group('getApps', () {
+      test('throws an exception if the http request fails (unknown)', () async {
+        when(
+          () => httpClient.get(
+            any(),
+            headers: any(named: 'headers'),
+          ),
+        ).thenAnswer(
+          (_) async => http.Response(
+            '',
+            HttpStatus.failedDependency,
+          ),
+        );
+
+        expect(
+          codePushClient.getApps(),
+          throwsA(
+            isA<CodePushException>().having(
+              (e) => e.message,
+              'message',
+              CodePushClient.unknownErrorMessage,
+            ),
+          ),
+        );
+      });
+
       test('throws an exception if the http request fails', () async {
         when(
           () => httpClient.get(
             any(),
             headers: any(named: 'headers'),
           ),
-        ).thenAnswer((_) async => http.Response('', HttpStatus.badRequest));
+        ).thenAnswer(
+          (_) async => http.Response(
+            json.encode(errorResponse.toJson()),
+            HttpStatus.failedDependency,
+          ),
+        );
 
         expect(
           codePushClient.getApps(),
-          throwsA(isA<Exception>()),
+          throwsA(
+            isA<CodePushException>().having(
+              (e) => e.message,
+              'message',
+              errorResponse.message,
+            ),
+          ),
         );
       });
 
@@ -267,4 +418,14 @@ void main() {
       });
     });
   });
+}
+
+extension on ErrorResponse {
+  Map<String, dynamic> toJson() {
+    return {
+      'code': code,
+      'message': message,
+      'details': details,
+    };
+  }
 }

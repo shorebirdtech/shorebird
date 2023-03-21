@@ -63,7 +63,7 @@ Defaults to the app_id in "shorebird.yaml".''',
     try {
       await client.createApp(appId: appId);
     } catch (error) {
-      logger.err('Unable to create app\n$error');
+      logger.err('$error');
       return ExitCode.software.code;
     }
 

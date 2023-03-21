@@ -173,7 +173,7 @@ flutter:
         command.run,
         getCurrentDirectory: () => tempDir,
       );
-      verify(() => logger.err('Failed to deploy: $error')).called(1);
+      verify(() => logger.err(error)).called(1);
       expect(exitCode, ExitCode.software.code);
     });
 

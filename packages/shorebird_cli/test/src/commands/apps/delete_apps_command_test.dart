@@ -90,16 +90,13 @@ void main() {
     });
 
     test('returns software error when app deletion fails', () async {
+      final error = Exception('oops');
       when(() => logger.confirm(any())).thenReturn(true);
       when(() => argResults['app-id']).thenReturn(appId);
-      when(
-        () => codePushClient.deleteApp(appId: appId),
-      ).thenThrow(Exception());
+      when(() => codePushClient.deleteApp(appId: appId)).thenThrow(error);
       final result = await command.run();
       expect(result, ExitCode.software.code);
-      verify(
-        () => logger.err(any(that: contains('Unable to delete app'))),
-      ).called(1);
+      verify(() => logger.err('$error')).called(1);
     });
   });
 }

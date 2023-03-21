@@ -83,7 +83,7 @@ class PublishCommand extends ShorebirdCommand with ShorebirdConfigMixin {
         channel: 'stable',
       );
     } catch (error) {
-      logger.err('Failed to deploy: $error');
+      logger.err('$error');
       return ExitCode.software.code;
     }
 
