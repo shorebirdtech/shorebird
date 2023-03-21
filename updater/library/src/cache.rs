@@ -1,7 +1,7 @@
 // This file deals with the cache / state management for the updater.
 
 use std::fs::File;
-use std::io::{BufReader, BufWriter, Write};
+use std::io::{BufReader, BufWriter};
 use std::path::{Path, PathBuf};
 
 use anyhow::Ok;
@@ -38,6 +38,12 @@ impl Slot {
 pub struct UpdaterState {
     /// Where this writes to disk.
     cache_dir: String,
+    /// The release version this cache corresponds to.
+    /// If this does not match the release version we're booting from we will
+    /// clear the cache.
+    release_version: String,
+    /// The patch number of the patch that was last downloaded.
+    latest_downloaded_patch: Option<usize>,
     /// List of patches that failed to boot.  We will never attempt these again.
     failed_patches: Vec<usize>,
     /// List of patches that successfully booted. We will never rollback past
@@ -51,10 +57,12 @@ pub struct UpdaterState {
 }
 
 impl UpdaterState {
-    fn new(cache_dir: String) -> Self {
+    fn new(cache_dir: String, release_version: String) -> Self {
         Self {
             cache_dir,
+            release_version,
             current_slot_index: None,
+            latest_downloaded_patch: None,
             failed_patches: Vec::new(),
             successful_patches: Vec::new(),
             slots: Vec::new(),
@@ -118,11 +126,17 @@ impl UpdaterState {
         Ok(state)
     }
 
-    pub fn load_or_new_on_error(cache_dir: &str) -> Self {
-        Self::load(cache_dir).unwrap_or_else(|e| {
+    pub fn load_or_new_on_error(cache_dir: &str, release_version: &str) -> Self {
+        let loaded = Self::load(cache_dir).unwrap_or_else(|e| {
             warn!("Failed to load updater state: {}", e);
-            Self::new(cache_dir.to_owned())
-        })
+            Self::new(cache_dir.to_owned(), release_version.to_owned())
+        });
+        if loaded.release_version != release_version {
+            warn!("Release version changed, clearing updater state");
+            Self::new(cache_dir.to_owned(), release_version.to_owned())
+        } else {
+            loaded
+        }
     }
 
     pub fn save(&self) -> anyhow::Result<()> {
@@ -213,6 +227,7 @@ impl UpdaterState {
     }
 
     fn set_slot(&mut self, index: usize, slot: Slot) {
+        info!("Setting slot {} to {:?}", index, slot);
         if self.slots.len() < index + 1 {
             // Make sure we're not filling with empty slots.
             assert!(self.slots.len() == index);
@@ -243,6 +258,14 @@ impl UpdaterState {
         }
         std::fs::create_dir_all(&slot_dir)?;
 
+        if self.is_known_bad_patch(&patch) {
+            return Err(UpdateError::InvalidArgument(
+                "patch".to_owned(),
+                format!("Refusing to install known bad patch: {:?}", patch),
+            )
+            .into());
+        }
+
         // Move the patch into the slot.
         let artifact_path = slot_dir.join("dlc.vmcode");
         std::fs::rename(&patch.path, &artifact_path)?;
@@ -256,6 +279,17 @@ impl UpdaterState {
             },
         );
         self.set_current_slot(Some(slot_index));
+
+        if (self.latest_downloaded_patch.is_none())
+            || (self.latest_downloaded_patch.unwrap() < patch.number)
+        {
+            self.latest_downloaded_patch = Some(patch.number);
+        } else {
+            warn!(
+                "Installed patch {} but latest downloaded patch is {:?}",
+                patch.number, self.latest_downloaded_patch
+            );
+        }
         self.save()?;
         Ok(())
     }
@@ -263,26 +297,77 @@ impl UpdaterState {
     pub fn set_current_slot(&mut self, maybe_index: Option<usize>) {
         self.current_slot_index = maybe_index;
     }
+    pub fn latest_patch_number(&self) -> Option<usize> {
+        self.latest_downloaded_patch
+    }
 }
 
 #[cfg(test)]
 mod tests {
+    use std::path::PathBuf;
     use tempdir::TempDir;
 
-    fn test_state() -> super::UpdaterState {
-        let tmp_dir = TempDir::new("example").unwrap();
+    use crate::cache::{PatchInfo, UpdaterState};
+
+    fn test_state(tmp_dir: &TempDir) -> UpdaterState {
         let cache_dir = tmp_dir.path().to_str().unwrap().to_string();
-        super::UpdaterState::new(cache_dir)
+        UpdaterState::new(cache_dir, "1.0.0".to_string())
+    }
+
+    fn fake_patch(tmp_dir: &TempDir, number: usize) -> super::PatchInfo {
+        let path = PathBuf::from(tmp_dir.path()).join(format!("patch_{}", number));
+        std::fs::write(&path, "fake patch").unwrap();
+        PatchInfo {
+            number,
+            path: path.to_str().unwrap().to_owned(),
+        }
     }
 
     #[test]
     fn current_patch_does_not_crash() {
-        let mut state = test_state();
+        let tmp_dir = TempDir::new("example").unwrap();
+        let mut state = test_state(&tmp_dir);
         assert_eq!(state.current_patch(), None);
         state.current_slot_index = Some(3);
         assert_eq!(state.current_patch(), None);
         state.slots.push(super::Slot::default());
         // This used to crash, where index was bad, but slots were not empty.
         assert_eq!(state.current_patch(), None);
+    }
+
+    #[test]
+    fn release_version_changed() {
+        let tmp_dir = TempDir::new("example").unwrap();
+        let mut state = test_state(&tmp_dir);
+        state.latest_downloaded_patch = Some(1);
+        state.save().unwrap();
+        let loaded = UpdaterState::load_or_new_on_error(&state.cache_dir, &state.release_version);
+        assert_eq!(loaded.latest_downloaded_patch, Some(1));
+
+        let loaded_after_version_change =
+            UpdaterState::load_or_new_on_error(&state.cache_dir, "1.0.1");
+        assert_eq!(loaded_after_version_change.latest_downloaded_patch, None);
+    }
+
+    #[test]
+    fn latest_downloaded_patch() {
+        let tmp_dir = TempDir::new("example").unwrap();
+        let mut state = test_state(&tmp_dir);
+        assert_eq!(state.latest_downloaded_patch, None);
+        state.install_patch(fake_patch(&tmp_dir, 1)).unwrap();
+        assert_eq!(state.latest_downloaded_patch, Some(1));
+        state.install_patch(fake_patch(&tmp_dir, 2)).unwrap();
+        assert_eq!(state.latest_downloaded_patch, Some(2));
+        state.install_patch(fake_patch(&tmp_dir, 1)).unwrap();
+        assert_eq!(state.latest_downloaded_patch, Some(2));
+    }
+
+    #[test]
+    fn dont_install_known_bad_patch() {
+        let tmp_dir = TempDir::new("example").unwrap();
+        let mut state = test_state(&tmp_dir);
+        let bad_patch = fake_patch(&tmp_dir, 1);
+        state.mark_patch_as_bad(&bad_patch);
+        assert!(state.install_patch(bad_patch).is_err());
     }
 }
