@@ -9,7 +9,6 @@ If you'd like to be a part of the program, please join our mailing list
 (linked from shorebird.dev), we will send out information there as we're ready.
 
 
-
 ## Welcome!
 
 If you're joining the trusted tester program, welcome!  Thank you for your help
@@ -27,14 +26,13 @@ already a default-public company, but we intend to be even more open with you
 and will be shipping your regular updates during the program, responding to
 your feedback.
 
-Our guiding principle in creating v1 is "first, do no harm".  It should be the
-case that using Shorebird is never worse than not using Shorebird.  We've worked
-hard to find and remove breaking bugs.
+Our guiding principle in creating v1 has been "first, do no harm".  It should be
+the case that using Shorebird is never worse than not using Shorebird.  We've
+worked hard to find and remove breaking bugs, but I'm sure we've missed some.
 
-It is still possible using Shorebird
-may break your app in the wild.  Thankfully this is no worse than any other
-change to your app, and you can always push a new version via the store should
-Shorebird break users in the wild.
+It is still possible using Shorebird may break your app in the wild.  Thankfully
+this is no worse than any other change to your app, and you can always push a
+new version via the store should Shorebird break users in the wild.
 
 ## What works today
 You can build and deploy new (release) versions of your app to all Android arm64
@@ -44,9 +42,11 @@ All users will synchronously update to the new version on next launch
 (no control over this behavior yet).
 
 Basic access to the updater through package:dart_bindings (unpublished).
+https://github.com/shorebirdtech/shorebird/tree/main/updater/dart_bindings
 
 Shorebird command line can show a list of what apps and app versions you've
 associated with your account and what patches you've pushed to those apps.
+https://github.com/shorebirdtech/shorebird/tree/main/packages/shorebird_cli
 
 Updates are currently typically a few MBs in size and include all Dart code that
 your app uses (we can make this much smaller, but haven't yet).
@@ -60,27 +60,35 @@ Limited platform support:
 No support for:
 * Flutter channels (only latest stable is supported)
 * Rollbacks
-* Channels
+* Shorebird channels (staged rollouts of patches)
 * Percentage based rollouts
-* Async updates
+* Async updates / downloads
 * Analytics
 * Web interface
-* CI/CD (GitHub Actions, etc.)
+* CI/CD (GitHub Actions, etc.) integration
 * Patch signing
-* OAuth (or associating with any other accounts)
+* Sign-in via something other than an API key (e.g. OAuth)
 
-## Getting started
+## Installing Shorebird command line
 
 The first thing you'll want to do is install the `shorebird` command-line tool.
 
-// Insert instructions here.
+```bash
+# Clone the Shorebird repo
+git clone https://github.com/shorebirdtech/shorebird
+
+# Activate the Shorebird CLI
+dart pub global activate --source path shorebird/packages/shorebird_cli
+```
+
+More information: https://github.com/shorebirdtech/install/blob/main/README.md
 
 Currently we assume you have `flutter` installed and working.  We also require
 that `flutter` be set to the latest stable channel.  The `shorebird` tool should
 enforce this (and show errors if your `flutter` is not set up as expected).
 
 
-## What next?
+## Using Shorebird code push
 
 The first use-case we're targeting is one of deploying updates to a small
 set of users.  If you already have a Flutter app with a small install base, you
@@ -102,16 +110,36 @@ don't end up using Shorebird with this application.
 when you go to build the final release version of you app, do you need to use
 the `shorebird` command-line tool.
 
+## Building a release version of your app
 
-// More here.
+When you're ready to publish your app (either to a store or just side-loaded
+onto your local Android device) use `shorebird build` to build a release version
+of your app including the Shorebird updater.
 
+You can also use `shorebird run` to build and run your app on a connected
+Android device, again in release mode.
+
+To publish a patch to your app, use `shorebird publish`.  This will take the
+currently build version of your app and upload it to the Shorebird servers for
+distribution to all other copies of your app.
+
+The current `shorebird publish` flow is not how we envison Shorebird being used
+longer term (e.g one might push a git hash to a CI/CD system, which would
+then publish it to Shorebird).  However, it's the simplest thing to do for now.
+
+Note that you can only publish a patch to an app that you have already told
+shorebird about:
+https://github.com/shorebirdtech/shorebird/tree/main/packages/shorebird_cli#create-app
+
+Your applications in the wild will query for updates with their app_id
+(which comes from shorebird.yaml) and their release version (which comes from
+AndroidManifest.xml, which in turn is generated from pubspec.yaml).
 
 ## Update behavior
 
 The Shorebird updater is currently hard-coded to update synchronously on
 launch.  This means that when you push a new version of your app, all users
-will update on next launch.  This is not ideal, but it's the simplest thing to
-do for now.
+will update on next launch.
 
 We expect to add more control over update behavior in the future, including
 async updates and percentage based rollouts.  Please let us know if these
@@ -126,7 +154,7 @@ We have not yet added the ability to rollback patches, but it's on our todo
 list and happy to prioritize it if it's important to you.  For now, the simplest
 thing is to simply push a new patch that reverts the changes you want to undo.
 
-## Releasing with Shorebird
+## Permissions needed for Shorebird
 
 Shorebird code push requires the Network permission to be added to your
 `AndroidManifest.xml` file.  This is required for the app to be able to
