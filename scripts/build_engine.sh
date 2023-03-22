@@ -24,10 +24,6 @@ ninja -C ./src/out/android_release_arm64
 ./src/flutter/tools/gn --runtime-mode=release
 ninja -C ./src/out/host_release
 
-# Build the the host_release arm64 output.
-./src/flutter/tools/gn --runtime-mode=release --mac-cpu=arm64
-ninja -C ./src/out/host_release_arm64
-
 # List of all files to keep.
 KEEP_FILES=(
   "out/android_release_arm64/libflutter.so"
@@ -42,8 +38,8 @@ KEEP_FILES=(
   "out/android_release_arm64/flutter_embedding_release.maven-metadata.xml"
   "out/android_release_arm64/flutter_embedding_release-sources.jar"
   "out/android_release_arm64/arm64_v8a_release.maven-metadata.xml"  
-  "out/host_release_arm64/gen/const_finder.dart.snapshot"
-  "out/host_release_arm64/font-subset"
+  "out/host_release/gen/const_finder.dart.snapshot"
+  "out/host_release/font-subset"
   "flutter/prebuilts/macos-x64/dart-sdk/LICENSE"
   "flutter/prebuilts/macos-x64/dart-sdk/bin/dartaotruntime"
   "flutter/prebuilts/macos-x64/dart-sdk/bin/snapshots/analysis_server.dart.snapshot"
@@ -74,9 +70,6 @@ do
   mkdir -p $TEMP_DIR/$(dirname $file)
   cp -r $ENGINE_PATH/src/$file $TEMP_DIR/$file
 done
-
-# Rename host_release_arm64 to host_release
-mv -p $TEMP_DIR/out/host_release_arm64/ $TEMP_DIR/out/host_release/
 
 cd $TEMP_DIR
 
