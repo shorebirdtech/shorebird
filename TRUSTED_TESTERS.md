@@ -225,3 +225,6 @@ the command line, however reach out to us via Discord or email and we are
 happy to help you immediately delete your account and disable all updates
 for your app(s) deployed with Shorebird.  We anticipate adding this ability
 to the command line in the near future.
+
+You can remove `shorebird` from your path by deactivating the package with pub:
+`dart pub global deactivate shorebird_cli`
