@@ -6,6 +6,7 @@ import 'package:mason_logger/mason_logger.dart';
 import 'package:mocktail/mocktail.dart';
 import 'package:pub_updater/pub_updater.dart';
 import 'package:shorebird_cli/src/command_runner.dart';
+import 'package:shorebird_cli/src/flutter_engine_revision.dart';
 import 'package:shorebird_cli/src/version.dart';
 import 'package:test/test.dart';
 
@@ -42,12 +43,7 @@ void main() {
       processResult = _MockProcessResult();
       when(() => processResult.exitCode).thenReturn(ExitCode.success.code);
       when(() => processResult.stdout).thenReturn(
-        '''
-Flutter 3.7.7 • channel stable • git@github.com:flutter/flutter.git
-Framework • revision 2ad6cd72c0 (12 days ago) • 2023-03-08 09:41:59 -0800
-Engine • revision 1837b5be5f
-Tools • Dart 2.19.4 • DevTools 2.20.1
-''',
+        'Engine • revision $requiredFlutterEngineRevision',
       );
 
       commandRunner = ShorebirdCliCommandRunner(
