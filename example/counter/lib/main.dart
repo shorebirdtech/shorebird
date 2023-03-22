@@ -44,30 +44,31 @@ class MyHomePage extends StatefulWidget {
   State<MyHomePage> createState() => _MyHomePageState();
 }
 
+// Stub until https://github.com/shorebirdtech/shorebird/issues/123 is resolved.
 class Update {
   const Update(this.version, this.bytes);
 
   final String version;
   final int bytes;
-
-  String fileSizeString() {
-    const suffixes = ["b", "kb", "mb", "gb"];
-    var i = (log(bytes) / log(1024)).floor();
-    return ((bytes / pow(1024, i)).toStringAsFixed(1)) + suffixes[i];
-  }
 }
 
 class _MyHomePageState extends State<MyHomePage> {
+  String _fileSizeString(int bytes) {
+    const suffixes = ["b", "kb", "mb", "gb"];
+    final i = (log(bytes) / log(1024)).floor();
+    return ((bytes / pow(1024, i)).toStringAsFixed(1)) + suffixes[i];
+  }
+
   void _showUpdateBanner() {
     const update = Update("1.2.3", 1234567);
 
     ScaffoldMessenger.of(context).showMaterialBanner(MaterialBanner(
       padding: const EdgeInsets.all(20),
       content: Text('A new version (${update.version}) is available.\n'
-          'Download size: ${update.fileSizeString()}'),
+          'Download size: ${_fileSizeString(update.bytes)}'),
       leading: const Icon(Icons.update),
       backgroundColor: Colors.green,
-      // Android button oder appears to be "negative", "neutral", "positive".
+      // Android button order appears to be "negative", "neutral", "positive".
       actions: <Widget>[
         TextButton(
           onPressed: () {
@@ -95,7 +96,6 @@ class _MyHomePageState extends State<MyHomePage> {
       ),
       leading: const Icon(Icons.update),
       backgroundColor: Colors.green,
-      // Android button oder appears to be "negative", "neutral", "positive".
       actions: <Widget>[
         TextButton(
           onPressed: () {
@@ -116,7 +116,7 @@ class _MyHomePageState extends State<MyHomePage> {
       content: const Text('Restart to apply update.'),
       leading: const Icon(Icons.update),
       backgroundColor: Colors.green,
-      // Android button oder appears to be "negative", "neutral", "positive".
+      // Android button order appears to be "negative", "neutral", "positive".
       actions: <Widget>[
         TextButton(
           onPressed: () {
@@ -127,6 +127,8 @@ class _MyHomePageState extends State<MyHomePage> {
         TextButton(
           onPressed: () {
             ScaffoldMessenger.of(context).hideCurrentMaterialBanner();
+            // Need a restart API.
+            // https://github.com/shorebirdtech/shorebird/issues/117
           },
           child: const Text('RESTART'),
         ),
