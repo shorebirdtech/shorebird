@@ -204,8 +204,9 @@ thing is to simply push a new patch that reverts the changes you want to undo.
 ## Permissions needed for Shorebird
 
 Shorebird code push requires the Network permission to be added to your
-`AndroidManifest.xml` file.  This is required for the app to be able to
-communicate with the Shorebird servers.
+`AndroidManifest.xml` file.  (Which in Flutter is located in
+`android/app/src/main/AndroidManifest.xml`.)  This is required for the
+app to be able to communicate with the Shorebird servers to pull new patches.
 
 ```xml
 <manifest ...>
