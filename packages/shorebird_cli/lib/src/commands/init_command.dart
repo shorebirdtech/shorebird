@@ -107,7 +107,7 @@ For more information about Shorebird, visit ${link(uri: Uri.parse('https://shore
 # Learn more at https://shorebird.dev
 
 # This is the unique identifier assigned to your app.
-# It is sent to the Shorebird servers and used to identify your app.
+# It is used by your app to request the correct patches from the Shorebird servers.
 app_id: $appId
 ''');
 
