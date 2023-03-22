@@ -5,9 +5,8 @@ void main() {
   group('App', () {
     test('can be (de)serialized', () {
       const app = App(
-        appId: 'my_app',
-        latestReleaseVersion: '1.0.0',
-        latestPatchNumber: 1,
+        id: '30370f27-dbf1-4673-8b20-fb096e38dffa',
+        displayName: 'My App',
       );
       expect(App.fromJson(app.toJson()).toJson(), equals(app.toJson()));
     });

@@ -40,7 +40,7 @@ class ListAppsCommand extends ShorebirdCommand with ShorebirdConfigMixin {
       hostedUri: hostedUri,
     );
 
-    late final List<App> apps;
+    late final List<AppMetadata> apps;
     try {
       apps = await client.getApps();
     } catch (error) {
@@ -61,12 +61,12 @@ class ListAppsCommand extends ShorebirdCommand with ShorebirdConfigMixin {
   }
 }
 
-extension on App {
+extension on AppMetadata {
   String prettyPrint() {
     final latestReleasePart =
         latestReleaseVersion != null ? 'v$latestReleaseVersion' : '(empty)';
     final latestPatchPart =
-        latestPatchNumber != null ? '(patch #$latestPatchNumber)' : '';
-    return '$appId: $latestReleasePart $latestPatchPart';
+        latestPatchNumber != null ? ' (patch #$latestPatchNumber)' : '';
+    return '$displayName: $latestReleasePart$latestPatchPart ($appId)';
   }
 }
