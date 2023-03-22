@@ -135,6 +135,7 @@ including the default Flutter counter works too, e.g.
 flutter create shorebird_test
 cd shorebird_test
 % shorebird init
+? How should we refer to this app? (shorebird_test) shorebird_test
 ✓ Initialized Shorebird (38ms)
 
 🐦 Shorebird initialized successfully!
