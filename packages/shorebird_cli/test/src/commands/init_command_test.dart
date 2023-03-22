@@ -29,8 +29,6 @@ name: $appName
 version: $version
 environment:
   sdk: ">=2.19.0 <3.0.0"''';
-    const shorebirdYamlContent = '''
-app_id: $appId''';
     const session = Session(apiKey: apiKey);
 
     late Auth auth;
