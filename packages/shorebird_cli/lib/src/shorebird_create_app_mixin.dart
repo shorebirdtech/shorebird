@@ -12,7 +12,7 @@ mixin ShorebirdCreateAppMixin on ShorebirdConfigMixin {
       } catch (_) {}
 
       displayName = logger.prompt(
-        '${lightGreen.wrap('?')} What is your app name?',
+        '${lightGreen.wrap('?')} How should we refer to this app?',
         defaultValue: defaultAppName,
       );
     } else {
