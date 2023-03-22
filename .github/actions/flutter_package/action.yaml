@@ -42,10 +42,7 @@ runs:
 
     - working-directory: ${{ inputs.working_directory }}
       shell: ${{ inputs.shell }}
-      run: |
-        flutter pub global activate very_good_cli
-        very_good --analytics false
-        very_good packages get --recursive
+      run: flutter packages get
 
     - working-directory: ${{ inputs.working_directory }}
       shell: ${{ inputs.shell }}
@@ -57,7 +54,7 @@ runs:
 
     - working-directory: ${{ inputs.working_directory }}
       shell: ${{ inputs.shell }}
-      run: very_good test -j ${{inputs.concurrency}} --coverage --test-randomize-ordering-seed random
+      run: flutter test -j ${{inputs.concurrency}} --coverage --test-randomize-ordering-seed random
 
     - uses: VeryGoodOpenSource/very_good_coverage@v2
       with:
