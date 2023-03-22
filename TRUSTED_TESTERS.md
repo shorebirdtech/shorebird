@@ -38,7 +38,7 @@ the wild.  If you believe that's the case, please reach out, we're here to help.
 ## What works today
 You can build and deploy new (release) versions of your app to all Android arm64
 users ([issue](https://github.com/shorebirdtech/shorebird/issues/119)) via 
-`shorebird` command line from a Mac (
+`shorebird` command line from an arm64 Mac (M1 or M2, 
 [issue](https://github.com/shorebirdtech/shorebird/issues/37)) 
 computer.
 
