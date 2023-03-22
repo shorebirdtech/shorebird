@@ -107,10 +107,16 @@ The first use-case we're targeting is one of deploying updates to a small
 set of users.  If you already have a Flutter app with a small install base, you
 can convert it to Shorebird in a few steps:
 
-1. Use `shorebird init` to add a `shorebird.yaml` file to your project.
-`shorebird.yaml` contains the app_id for your app, which is just a unique
-identifier the app will be able to send to Shorebird servers to identify which
-application/developer to pull updates from.
+1. The first step to using Shorebird is to login.  `shorebird login` will prompt
+for your API key, which you should have recieved in email.  Many `shorebird`
+commands do not require login, but it's best to just do it first to avoid
+unexpected errors later.  Your login credentials are stored in
+`~/Library/Application Support/shorebird/shorebird-session.json`.
+
+2. Once you're logged in, you can use `shorebird init` to add a `shorebird.yaml`
+file to your project. `shorebird.yaml` contains the app_id for your app, which
+is just a unique identifier the app will be able to send to Shorebird servers
+to identify which application/developer to pull updates from.
 
 `shorebird init` will also add the `shorebird.yaml` to the assets section of
 your `pubspec.yaml` file, which will ensure that the file is included in your
@@ -119,8 +125,8 @@ app's assets.
 You can go ahead and commit these changes, they will be innocuous even if you
 don't end up using Shorebird with this application.
 
-If you don't want to try this on your main application yet, the flutter counter
-works too, e.g.
+If you don't want to try this on your main application yet, any Flutter app,
+including the default Flutter counter works too, e.g.
 ```
 flutter create shorebird_test
 cd shorebird_test
@@ -142,7 +148,7 @@ Reference the following commands to get started:
 For more information about Shorebird, visit https://shorebird.dev
 ```
 
-2.  Typical development usage will involve normal `flutter` commands.  Only
+3.  Typical development usage will involve normal `flutter` commands.  Only
 when you go to build the final release version of you app, do you need to use
 the `shorebird` command-line tool.
 
