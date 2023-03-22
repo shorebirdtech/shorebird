@@ -117,7 +117,7 @@ unexpected errors later.  Your login credentials are stored in
 2. Once you're logged in, you can use `shorebird init`.
 
 `shorebird init` does three things:
-  1. Tells Shorebird that you app exists (e.g. so it can hold patches to it
+  1. Tells Shorebird that your app exists (e.g. so it can hold patches to it
     and vend them to devices when asked).
   2. Creates a `shorebird.yaml` file to your project. `shorebird.yaml` contains
     the app_id for your app, which the unique identifier the app will send to
