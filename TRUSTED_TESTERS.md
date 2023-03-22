@@ -87,6 +87,13 @@ git clone https://github.com/shorebirdtech/shorebird
 dart pub global activate --source path shorebird/packages/shorebird_cli
 ```
 
+You will also need to add the pub global bin to your $PATH.  On Mac that means
+adding: 
+```zshrc
+export PATH=$HOME/.pub-cache/bin:$PATH
+```
+to your .zshrc file.
+
 More information: https://github.com/shorebirdtech/install/blob/main/README.md
 
 Currently we assume you have `flutter` installed and working.  We also require
