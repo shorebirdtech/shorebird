@@ -157,6 +157,7 @@ jobs:
       [
         semantic_pull_request,
         build_dart_packages,
+        build_flutter_packages,
         build_rust_crates,
         verify_packages,
       ]
