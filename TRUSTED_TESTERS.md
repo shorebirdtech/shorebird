@@ -270,11 +270,13 @@ longer term (e.g one might push a git hash to a CI/CD system, which would
 then publish it to Shorebird).  However, it's the simplest thing to do for now.
 
 Note that you can only publish a patch to an app that you have already told
-shorebird about:
+shorebird about.  This is normally done by `shorebird init`, but if needed
+can also be done with `shorebird apps create` and modifying `shorebird.yaml`
+directly yourself, see:
 https://github.com/shorebirdtech/shorebird/tree/main/packages/shorebird_cli#create-app
 
 Your applications in the wild will query for updates with their app_id
-(which comes from shorebird.yaml) and their release version (which comes from
+(which comes from `shorebird.yaml`) and their release version (which comes from
 AndroidManifest.xml, which in turn is generated from pubspec.yaml).
 
 ## Update behavior
