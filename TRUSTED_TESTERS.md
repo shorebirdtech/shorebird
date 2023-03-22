@@ -120,7 +120,7 @@ unexpected errors later.  Your login credentials are stored in
   1. Tells Shorebird that your app exists (e.g. so it can hold patches to it
     and vend them to devices when asked).
   2. Creates a `shorebird.yaml` file to your project. `shorebird.yaml` contains
-    the app_id for your app, which the unique identifier the app will send to
+    the app_id for your app, which is the unique identifier the app will send to
     Shorebird servers to identify which application to pull updates for.
   3. Finally, `shorebird init` also adds the `shorebird.yaml` to the assets
     section of your `pubspec.yaml` file, ensuring `shorebird.yaml` is bundled
@@ -154,7 +154,7 @@ For more information about Shorebird, visit https://shorebird.dev
 ```
 
 3.  Typical development usage will involve normal `flutter` commands.  Only
-when you go to build the final release version of you app, do you need to use
+when you go to build the final release version of your app, do you need to use
 the `shorebird` command-line tool.
 
 ## Permissions needed for Shorebird
@@ -256,7 +256,7 @@ to your app, as I had forgotten when running my example above.
 ## Publishing patches to your app
 
 To publish a patch to your app, use `shorebird publish`.  This will take the
-currently build version of your app and upload it to the Shorebird servers for
+currently built version of your app and upload it to the Shorebird servers for
 distribution to all other copies of your app.
 
 For example, you could try `shorebird run` to run and install your app, and then
@@ -265,7 +265,7 @@ app again directly (by clicking on it, without using `shorebird run`) and you
 should notice that it updates to the latest built and published version rather
 than using the previously installed version.
 
-The current `shorebird publish` flow is not how we envison Shorebird being used
+The current `shorebird publish` flow is not how we envision Shorebird being used
 longer term (e.g one might push a git hash to a CI/CD system, which would
 then publish it to Shorebird).  However, it's the simplest thing to do for now.
 
@@ -291,7 +291,7 @@ are important to you and we are happy to prioritize them!
 
 The Shorebird updater is designed such that when the network is not available,
 or the server is down or otherwise unreachable, the app will continue to run
-as normal.  Should you ever chose to delete an update from our servers, all your
+as normal.  Should you ever choose to delete an update from our servers, all your
 clients will continue to run as normal.
 
 We have not yet added the ability to rollback patches, but it's on our todo
@@ -337,7 +337,7 @@ publicly available (e.g. expo.dev & appcenter.ms).  This is a well trodden path.
 _First, do no harm_
 
 Shorebird is designed to be a drop-in replacement for the stock Flutter engine,
-and can be disabled at any time with no affect on your users.
+and can be disabled at any time with no effect on your users.
 
 Building with `shorebird build` will include Shorebird code push in your app.
 Building with `flutter build --release` will not include Shorebird in your app.
