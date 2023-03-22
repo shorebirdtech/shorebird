@@ -6,7 +6,8 @@ number of users to ensure that we're building the right thing and that it's
 stable for general use.
 
 If you'd like to be a part of the program, please join our mailing list
-(linked from shorebird.dev), we will send out information there as we're ready.
+(linked from [shorebird.dev](https://shorebird.dev/), we will send out
+information there as we're ready to add more testers.
 
 
 ## Welcome!
