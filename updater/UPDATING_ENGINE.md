@@ -27,4 +27,4 @@ Where we are looking for the buildroot hash: https://github.com/flutter/engine/b
 e.g. `git rebase --onto 8747bce41d0dc6d9dc45c4d1b46d2100bb9ee688 93f7f85422a8604bdc44ef76c3f105ead65e8c1c`
 Where as that should be `--onto new_base_revision previous_base_revision`.  The base revision is the git id *before* we started making changes.
 1. Once you've successfully rebased the buildroot, you then need to change the buildroot id in our fork of the engine (so that when others use `gclient sync` it pulls our modified buildroot rather than an unmodified one.
-
+1. Finally, update the [Shorebird CLI flutterEngineRevision](https://github.com/shorebirdtech/shorebird/blob/main/packages/shorebird_cli/lib/src/flutter_engine_revision.dart#L3) to the new Flutter engine revision
