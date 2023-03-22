@@ -119,6 +119,29 @@ app's assets.
 You can go ahead and commit these changes, they will be innocuous even if you
 don't end up using Shorebird with this application.
 
+If you don't want to try this on your main application yet, the flutter counter
+works too, e.g.
+```
+flutter create shorebird_test
+cd shorebird_test
+% shorebird init
+✓ Initialized Shorebird (38ms)
+
+🐦 Shorebird initialized successfully!
+
+✅ A "shorebird.yaml" has been created.
+✅ The "pubspec.yaml" has been updated to include "shorebird.yaml" as an asset.
+
+Reference the following commands to get started:
+
+✨ To create a new app use: "shorebird apps create".
+🚙 To run your project use: "shorebird run".
+📦 To build your project use: "shorebird build".
+🚀 To publish an update use: "shorebird publish".
+
+For more information about Shorebird, visit https://shorebird.dev
+```
+
 2.  Typical development usage will involve normal `flutter` commands.  Only
 when you go to build the final release version of you app, do you need to use
 the `shorebird` command-line tool.
