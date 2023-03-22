@@ -41,9 +41,7 @@ KEEP_FILES=(
   "out/android_release_arm64/flutter_embedding_release.pom"
   "out/android_release_arm64/flutter_embedding_release.maven-metadata.xml"
   "out/android_release_arm64/flutter_embedding_release-sources.jar"
-  "out/android_release_arm64/arm64_v8a_release.maven-metadata.xml"
-  "out/host_release/gen/const_finder.dart.snapshot"
-  "out/host_release/font-subset"
+  "out/android_release_arm64/arm64_v8a_release.maven-metadata.xml"  
   "out/host_release_arm64/gen/const_finder.dart.snapshot"
   "out/host_release_arm64/font-subset"
   "flutter/prebuilts/macos-x64/dart-sdk/LICENSE"
@@ -77,8 +75,8 @@ do
   cp -r $ENGINE_PATH/src/$file $TEMP_DIR/$file
 done
 
-# Add .gitkeep to empty directories.
-find $TEMP_DIR -type d -empty -exec touch {}/.gitkeep \;
+# Rename host_release_arm64 to host_release
+mv -p $TEMP_DIR/out/host_release_arm64/ $TEMP_DIR/out/host_release/
 
 cd $TEMP_DIR
 
