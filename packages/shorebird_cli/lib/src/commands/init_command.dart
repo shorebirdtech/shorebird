@@ -45,21 +45,30 @@ class InitCommand extends ShorebirdCommand
       return ExitCode.software.code;
     }
 
-    late final App app;
+    late final String appId;
     try {
-      app = await createApp();
-    } catch (error) {
-      logger.err('$error');
+      if (!hasShorebirdYaml) {
+        try {
+          final app = await createApp();
+          appId = app.id;
+        } catch (error) {
+          logger.err('$error');
+          return ExitCode.software.code;
+        }
+      } else {
+        appId = getShorebirdYaml()!.appId;
+      }
+    } catch (_) {
+      logger.err('Error parsing "shorebird.yaml".');
       return ExitCode.software.code;
     }
-
-    progress.update('Creating "shorebird.yaml"');
 
     try {
       if (hasShorebirdYaml) {
         progress.update('"shorebird.yaml" already exists.');
       } else {
-        _addShorebirdYamlToProject(app.id);
+        progress.update('Creating "shorebird.yaml"');
+        _addShorebirdYamlToProject(appId);
         progress.update('Generated a "shorebird.yaml".');
       }
     } catch (error) {
@@ -83,6 +92,7 @@ class InitCommand extends ShorebirdCommand
 
 ${lightGreen.wrap('🐦 Shorebird initialized successfully!')}
 
+✅ A shorebird app has been created.
 ✅ A "shorebird.yaml" has been created.
 ✅ The "pubspec.yaml" has been updated to include "shorebird.yaml" as an asset.
 

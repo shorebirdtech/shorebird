@@ -29,6 +29,8 @@ name: $appName
 version: $version
 environment:
   sdk: ">=2.19.0 <3.0.0"''';
+    const shorebirdYamlContent = '''
+app_id: $appId''';
     const session = Session(apiKey: apiKey);
 
     late Auth auth;
@@ -43,11 +45,12 @@ environment:
       logger = _MockLogger();
       progress = _MockProgress();
       command = InitCommand(
-          auth: auth,
-          buildCodePushClient: ({required String apiKey, Uri? hostedUri}) {
-            return codePushClient;
-          },
-          logger: logger);
+        auth: auth,
+        buildCodePushClient: ({required String apiKey, Uri? hostedUri}) {
+          return codePushClient;
+        },
+        logger: logger,
+      );
 
       when(() => auth.currentSession).thenReturn(session);
       when(
@@ -94,7 +97,6 @@ environment:
       File(
         p.join(tempDir.path, 'pubspec.yaml'),
       ).writeAsStringSync(pubspecYamlContent);
-      File(p.join(tempDir.path, 'shorebird.yaml')).createSync();
       when(
         () => codePushClient.createApp(displayName: any(named: 'displayName')),
       ).thenThrow(error);
@@ -120,9 +122,7 @@ environment:
         getCurrentDirectory: () => tempDir,
       );
       verify(
-        () => logger.err(
-          any(that: contains('Error creating "shorebird.yaml".')),
-        ),
+        () => logger.err('Error parsing "shorebird.yaml".'),
       ).called(1);
       expect(exitCode, ExitCode.software.code);
     });
