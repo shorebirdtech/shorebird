@@ -157,18 +157,113 @@ For more information about Shorebird, visit https://shorebird.dev
 when you go to build the final release version of you app, do you need to use
 the `shorebird` command-line tool.
 
+## Permissions needed for Shorebird
+
+Shorebird code push requires the Network permission to be added to your
+`AndroidManifest.xml` file.  (Which in Flutter is located in
+`android/app/src/main/AndroidManifest.xml`.)  This is required for the
+app to be able to communicate with the Shorebird servers to pull new patches.
+
+```xml
+<manifest ...>
+    <uses-permission android:name="android.permission.INTERNET" />
+    <uses-permission android:name="android.permission.ACCESS_NETWORK_STATE" />
+    ...
+</manifest>
+```
+
 ## Building a release version of your app
 
 When you're ready to publish your app (either to a store or just side-loaded
 onto your local Android device) use `shorebird build` to build a release version
 of your app including the Shorebird updater.
 
-You can also use `shorebird run` to build and run your app on a connected
-Android device, again in release mode.
+Success should look like this:
+```
+% shorebird build
+✓ Downloading shorebird engine (9.7s)
+✓ Building shorebird engine (8.0s)
+✓ Building release  (6.4s)
+```
+The first time you run `shorebird build` it will need to download the Shorebird
+engine into the `.shorebird` directory within your project.  This is about
+~200mb in download (we can make it much smaller, just haven't yet) and can take
+several seconds depending on your internet connection.
+
+## Running your Shorebird-built app
+
+You can use `shorebird run` to build and run your app on a connected
+Android device.  This is similar to `flutter run --release` just with
+Shorebird's fork of the Flutter engine that includes the Shorebird updater.
+
+During this trusted tester period, you will likely see several logs from the
+shorebird updater.  These are for debugging in case you have trouble
+and will be removed/silenced in future iterations.
+
+Example:
+
+```
+eseidel@erics-mbp test_counter % shorebird run
+Running app...
+Using hardware rendering with device sdk gphone64 arm64. If you notice graphics artifacts, consider enabling software rendering with "--enable-software-rendering".
+
+Launching lib/main.dart on sdk gphone64 arm64 in release mode...
+
+Running Gradle task 'assembleRelease'...                        
+   17.6s
+
+✓  Built build/app/outputs/flutter-apk/app-release.apk (8.5MB).
+
+Installing build/app/outputs/flutter-apk/app-release.apk...     
+   375ms
+
+
+
+Flutter run key commands.
+
+h List all available interactive commands.
+
+c Clear the screen
+
+q Quit (terminate the application on the device).
+
+W/FlutterJNI( 7283): shorebird.yaml: app_id: 4f636c95-f859-4de3-a730-dde1c099cd53
+
+D/flutter ( 7283): updater::logging: Logging initialized
+
+I/flutter ( 7283): updater::config: Updater configured with: ResolvedConfig { is_initialized: true, cache_dir: "/data/user/0/com.example.test_counter/code_cache/shorebird_updater", download_dir: "/data/user/0/com.example.test_counter/code_cache/shorebird_updater/downloads", channel: "stable", app_id: "4f636c95-f859-4de3-a730-dde1c099cd53", release_version: "1.0.0", original_libapp_path: "libapp.so", vm_path: "libflutter.so", base_url: "https://api.shorebird.dev" }
+
+I/flutter ( 7283): [INFO:flutter_main.cc(108)] Starting Shorebird update
+W/flutter ( 7283): updater::cache: Failed to load updater state: No such file or directory (os error 2)
+
+I/flutter ( 7283): updater::network: Sending patch check request: PatchCheckRequest { app_id: "4f636c95-f859-4de3-a730-dde1c099cd53", channel: "stable", release_version: "1.0.0", patch_number: None, platform: "android", arch: "aarch64" }
+D/flutter ( 7283): reqwest::connect: starting new connection: https://api.shorebird.dev/
+
+E/flutter ( 7283): updater::updater: Problem updating: error sending request for url (https://api.shorebird.dev/api/v1/patches/check): error trying to connect: dns error: failed to lookup address information: No address associated with hostname
+
+E/flutter ( 7283): updater::updater: disabled backtrace
+W/flutter ( 7283): updater::cache: Failed to load updater state: No such file or directory (os error 2)
+E/flutter ( 7283): [ERROR:flutter/shell/platform/android/flutter_main.cc(127)] Shorebird updater: no active path.
+```
+
+If you see messages like
+```
+E/flutter ( 7283): updater::updater: Problem updating: error sending request for url (https://api.shorebird.dev/api/v1/patches/check): error trying to connect: dns error: failed to lookup address information: No address associated with hostname
+```
+That indicates you have not yet added the network permissions (see above)
+to your app, as I had forgotten when running my example above.
+
+## Publishing patches to your app
 
 To publish a patch to your app, use `shorebird publish`.  This will take the
 currently build version of your app and upload it to the Shorebird servers for
 distribution to all other copies of your app.
+
+For example, you could try `shorebird run` to run and install your app, and then
+stop it.  Make edits, `shorebird build` and `shorebird publish` and then run the
+app again directly (by clicking on it, without using `shorebird run`) and you
+should notice that it updates to the latest built and published version rather
+than using the previously installed version.
 
 The current `shorebird publish` flow is not how we envison Shorebird being used
 longer term (e.g one might push a git hash to a CI/CD system, which would
@@ -200,21 +295,6 @@ clients will continue to run as normal.
 We have not yet added the ability to rollback patches, but it's on our todo
 list and happy to prioritize it if it's important to you.  For now, the simplest
 thing is to simply push a new patch that reverts the changes you want to undo.
-
-## Permissions needed for Shorebird
-
-Shorebird code push requires the Network permission to be added to your
-`AndroidManifest.xml` file.  (Which in Flutter is located in
-`android/app/src/main/AndroidManifest.xml`.)  This is required for the
-app to be able to communicate with the Shorebird servers to pull new patches.
-
-```xml
-<manifest ...>
-    <uses-permission android:name="android.permission.INTERNET" />
-    <uses-permission android:name="android.permission.ACCESS_NETWORK_STATE" />
-    ...
-</manifest>
-```
 
 ## Play Store
 
