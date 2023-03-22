@@ -46,17 +46,20 @@ class CodePushClient {
 
   Map<String, String> get _apiKeyHeader => {'x-api-key': _apiKey};
 
-  /// Create a new app with the provided [appId].
-  Future<void> createApp({required String appId}) async {
+  /// Create a new app with the provided [displayName].
+  /// Returns the newly created app.
+  Future<App> createApp({required String displayName}) async {
     final response = await _httpClient.post(
       Uri.parse('$hostedUri/api/v1/apps'),
       headers: _apiKeyHeader,
-      body: json.encode({'app_id': appId}),
+      body: json.encode({'display_name': displayName}),
     );
 
-    if (response.statusCode != HttpStatus.created) {
+    if (response.statusCode != HttpStatus.ok) {
       throw _parseErrorResponse(response.body);
     }
+    final body = json.decode(response.body) as Map<String, dynamic>;
+    return App.fromJson(body);
   }
 
   /// Create a new patch.
@@ -119,7 +122,7 @@ class CodePushClient {
   }
 
   /// List all apps for the current account.
-  Future<List<App>> getApps() async {
+  Future<List<AppMetadata>> getApps() async {
     final response = await _httpClient.get(
       Uri.parse('$hostedUri/api/v1/apps'),
       headers: _apiKeyHeader,
@@ -131,7 +134,7 @@ class CodePushClient {
 
     final apps = json.decode(response.body) as List;
     return apps
-        .map((app) => App.fromJson(app as Map<String, dynamic>))
+        .map((app) => AppMetadata.fromJson(app as Map<String, dynamic>))
         .toList();
   }
 

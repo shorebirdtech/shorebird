@@ -18,7 +18,8 @@ class _MockLogger extends Mock implements Logger {}
 void main() {
   group('create', () {
     const apiKey = 'test-api-key';
-    const appId = 'example';
+    const appId = 'app-id';
+    const displayName = 'Example App';
     const session = Session(apiKey: apiKey);
 
     late ArgResults argResults;
@@ -53,33 +54,43 @@ void main() {
       expect(result, ExitCode.noUser.code);
     });
 
-    test('prompts for app-id when not provided', () async {
-      when(() => logger.prompt(any())).thenReturn(appId);
+    test('prompts for app name when not provided', () async {
+      when(
+        () => logger.prompt(any(), defaultValue: any(named: 'defaultValue')),
+      ).thenReturn(displayName);
       await command.run();
-      verify(() => logger.prompt(any())).called(1);
-      verify(() => codePushClient.createApp(appId: appId)).called(1);
+      verify(
+        () => logger.prompt(any(), defaultValue: any(named: 'defaultValue')),
+      ).called(1);
+      verify(
+        () => codePushClient.createApp(displayName: displayName),
+      ).called(1);
     });
 
-    test('uses provided app-id when provided', () async {
-      when(() => argResults['app-id']).thenReturn(appId);
+    test('uses provided app name when provided', () async {
+      when(() => argResults['app-name']).thenReturn(displayName);
       await command.run();
       verifyNever(() => logger.prompt(any()));
-      verify(() => codePushClient.createApp(appId: appId)).called(1);
+      verify(
+        () => codePushClient.createApp(displayName: displayName),
+      ).called(1);
     });
 
     test('returns success when app is created', () async {
-      when(() => argResults['app-id']).thenReturn(appId);
+      when(() => argResults['app-name']).thenReturn(displayName);
       when(
-        () => codePushClient.createApp(appId: appId),
-      ).thenAnswer((_) async {});
+        () => codePushClient.createApp(displayName: displayName),
+      ).thenAnswer((_) async => const App(id: appId, displayName: displayName));
       final result = await command.run();
       expect(result, ExitCode.success.code);
     });
 
     test('returns software error when app creation fails', () async {
       final error = Exception('oops');
-      when(() => argResults['app-id']).thenReturn(appId);
-      when(() => codePushClient.createApp(appId: appId)).thenThrow(error);
+      when(() => argResults['app-name']).thenReturn(displayName);
+      when(
+        () => codePushClient.createApp(displayName: displayName),
+      ).thenThrow(error);
       final result = await command.run();
       expect(result, ExitCode.software.code);
       verify(() => logger.err('$error')).called(1);

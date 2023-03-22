@@ -15,7 +15,8 @@ class _FakeBaseRequest extends Fake implements http.BaseRequest {}
 void main() {
   group('CodePushClient', () {
     const apiKey = 'api-key';
-    const appId = 'shorebird-example';
+    const appId = 'app-id';
+    const displayName = 'shorebird-example';
     const errorResponse = ErrorResponse(
       code: 'test_code',
       message: 'test message',
@@ -66,7 +67,7 @@ void main() {
         ).thenAnswer((_) async => http.Response('', HttpStatus.badRequest));
 
         expect(
-          codePushClient.createApp(appId: appId),
+          codePushClient.createApp(displayName: displayName),
           throwsA(
             isA<CodePushException>().having(
               (e) => e.message,
@@ -92,7 +93,7 @@ void main() {
         );
 
         expect(
-          codePushClient.createApp(appId: appId),
+          codePushClient.createApp(displayName: displayName),
           throwsA(
             isA<CodePushException>().having(
               (e) => e.message,
@@ -110,9 +111,23 @@ void main() {
             headers: any(named: 'headers'),
             body: any(named: 'body'),
           ),
-        ).thenAnswer((_) async => http.Response('', HttpStatus.created));
+        ).thenAnswer(
+          (_) async => http.Response(
+            json.encode(App(id: appId, displayName: displayName)),
+            HttpStatus.ok,
+          ),
+        );
 
-        await codePushClient.createApp(appId: appId);
+        await expectLater(
+          codePushClient.createApp(displayName: displayName),
+          completion(
+            equals(
+              isA<App>()
+                  .having((a) => a.id, 'id', appId)
+                  .having((a) => a.displayName, 'displayName', displayName),
+            ),
+          ),
+        );
 
         final uri = verify(
           () => httpClient.post(
@@ -393,8 +408,8 @@ void main() {
 
       test('completes when request succeeds (populated)', () async {
         final expected = [
-          App(appId: 'shorebird-example'),
-          App(appId: 'shorebird-counter'),
+          AppMetadata(appId: '1', displayName: 'Shorebird Example'),
+          AppMetadata(appId: '2', displayName: 'Shorebird Clock'),
         ];
 
         when(

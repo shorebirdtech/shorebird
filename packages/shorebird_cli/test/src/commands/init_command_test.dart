@@ -3,8 +3,15 @@ import 'dart:io';
 import 'package:mason_logger/mason_logger.dart';
 import 'package:mocktail/mocktail.dart';
 import 'package:path/path.dart' as p;
+import 'package:shorebird_cli/src/auth/auth.dart';
+import 'package:shorebird_cli/src/auth/session.dart';
 import 'package:shorebird_cli/src/commands/init_command.dart';
+import 'package:shorebird_code_push_client/shorebird_code_push_client.dart';
 import 'package:test/test.dart';
+
+class _MockAuth extends Mock implements Auth {}
+
+class _MockCodePushClient extends Mock implements CodePushClient {}
 
 class _MockLogger extends Mock implements Logger {}
 
@@ -12,24 +19,50 @@ class _MockProgress extends Mock implements Progress {}
 
 void main() {
   group('init', () {
+    const apiKey = 'test-api-key';
     const version = '1.2.3';
     const appId = 'test_app_id';
+    const appName = 'test_app_name';
+    const app = App(id: appId, displayName: appName);
     const pubspecYamlContent = '''
-name: $appId
+name: $appName
 version: $version
 environment:
   sdk: ">=2.19.0 <3.0.0"''';
+    const session = Session(apiKey: apiKey);
 
+    late Auth auth;
+    late CodePushClient codePushClient;
     late Logger logger;
     late Progress progress;
     late InitCommand command;
 
     setUp(() {
+      auth = _MockAuth();
+      codePushClient = _MockCodePushClient();
       logger = _MockLogger();
       progress = _MockProgress();
-      command = InitCommand(logger: logger);
+      command = InitCommand(
+          auth: auth,
+          buildCodePushClient: ({required String apiKey, Uri? hostedUri}) {
+            return codePushClient;
+          },
+          logger: logger);
 
+      when(() => auth.currentSession).thenReturn(session);
+      when(
+        () => codePushClient.createApp(displayName: any(named: 'displayName')),
+      ).thenAnswer((_) async => app);
       when(() => logger.progress(any())).thenReturn(progress);
+      when(
+        () => logger.prompt(any(), defaultValue: any(named: 'defaultValue')),
+      ).thenReturn(appName);
+    });
+
+    test('returns no user error when not logged in', () async {
+      when(() => auth.currentSession).thenReturn(null);
+      final result = await command.run();
+      expect(result, ExitCode.noUser.code);
     });
 
     test('throws no input error when pubspec.yaml is not found.', () async {
@@ -52,6 +85,24 @@ environment:
       verify(
         () => logger.err(any(that: contains('Error parsing "pubspec.yaml":'))),
       ).called(1);
+      expect(exitCode, ExitCode.software.code);
+    });
+
+    test('throws software error when error occurs creating app.', () async {
+      final error = Exception('oops');
+      final tempDir = Directory.systemTemp.createTempSync();
+      File(
+        p.join(tempDir.path, 'pubspec.yaml'),
+      ).writeAsStringSync(pubspecYamlContent);
+      File(p.join(tempDir.path, 'shorebird.yaml')).createSync();
+      when(
+        () => codePushClient.createApp(displayName: any(named: 'displayName')),
+      ).thenThrow(error);
+      final exitCode = await IOOverrides.runZoned(
+        command.run,
+        getCurrentDirectory: () => tempDir,
+      );
+      verify(() => logger.err('$error')).called(1);
       expect(exitCode, ExitCode.software.code);
     });
 

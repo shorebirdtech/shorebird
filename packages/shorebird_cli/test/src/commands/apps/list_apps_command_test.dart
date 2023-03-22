@@ -59,8 +59,9 @@ void main() {
 
     test('returns ExitCode.success when apps are not empty', () async {
       final apps = [
-        const App(
-          appId: 'shorebird-counter',
+        const AppMetadata(
+          appId: '30370f27-dbf1-4673-8b20-fb096e38dffa',
+          displayName: 'Shorebird Counter',
           latestReleaseVersion: '1.0.0',
           latestPatchNumber: 1,
         ),
@@ -68,7 +69,9 @@ void main() {
       when(() => codePushClient.getApps()).thenAnswer((_) async => apps);
       expect(await command.run(), ExitCode.success.code);
       verify(
-        () => logger.info('shorebird-counter: v1.0.0 (patch #1)'),
+        () => logger.info(
+          '''Shorebird Counter: v1.0.0 (patch #1) (30370f27-dbf1-4673-8b20-fb096e38dffa)''',
+        ),
       ).called(1);
     });
   });

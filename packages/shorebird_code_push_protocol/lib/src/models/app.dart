@@ -9,9 +9,8 @@ part 'app.g.dart';
 class App {
   /// {@macro app}
   const App({
-    required this.appId,
-    this.latestReleaseVersion,
-    this.latestPatchNumber,
+    required this.id,
+    required this.displayName,
   });
 
   /// Converts a Map<String, dynamic> to an [App]
@@ -21,11 +20,8 @@ class App {
   Map<String, dynamic> toJson() => _$AppToJson(this);
 
   /// The ID of the app.
-  final String appId;
+  final String id;
 
-  /// The latest release version of the app.
-  final String? latestReleaseVersion;
-
-  /// The latest patch number of the app.
-  final int? latestPatchNumber;
+  /// The display name of the app.
+  final String displayName;
 }

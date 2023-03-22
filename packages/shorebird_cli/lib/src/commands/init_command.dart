@@ -5,6 +5,8 @@ import 'package:path/path.dart' as p;
 import 'package:shorebird_cli/src/command.dart';
 import 'package:shorebird_cli/src/config/config.dart';
 import 'package:shorebird_cli/src/shorebird_config_mixin.dart';
+import 'package:shorebird_cli/src/shorebird_create_app_mixin.dart';
+import 'package:shorebird_code_push_client/shorebird_code_push_client.dart';
 import 'package:yaml/yaml.dart';
 import 'package:yaml_edit/yaml_edit.dart';
 
@@ -13,9 +15,10 @@ import 'package:yaml_edit/yaml_edit.dart';
 /// `shorebird init`
 /// Initialize Shorebird.
 /// {@endtemplate}
-class InitCommand extends ShorebirdCommand with ShorebirdConfigMixin {
+class InitCommand extends ShorebirdCommand
+    with ShorebirdConfigMixin, ShorebirdCreateAppMixin {
   /// {@macro init_command}
-  InitCommand({required super.logger});
+  InitCommand({required super.logger, super.auth, super.buildCodePushClient});
 
   @override
   String get description => 'Initialize Shorebird.';
@@ -25,6 +28,12 @@ class InitCommand extends ShorebirdCommand with ShorebirdConfigMixin {
 
   @override
   Future<int> run() async {
+    final session = auth.currentSession;
+    if (session == null) {
+      logger.err('You must be logged in.');
+      return ExitCode.noUser.code;
+    }
+
     final progress = logger.progress('Initializing Shorebird');
     try {
       if (!hasPubspecYaml) {
@@ -36,14 +45,22 @@ class InitCommand extends ShorebirdCommand with ShorebirdConfigMixin {
       return ExitCode.software.code;
     }
 
+    late final App app;
+    try {
+      final pubspecYaml = getPubspecYaml()!;
+      app = await createApp(appName: pubspecYaml.name);
+    } catch (error) {
+      logger.err('$error');
+      return ExitCode.software.code;
+    }
+
     progress.update('Creating "shorebird.yaml"');
 
     try {
       if (hasShorebirdYaml) {
         progress.update('"shorebird.yaml" already exists.');
       } else {
-        final pubspecYaml = getPubspecYaml()!;
-        _addShorebirdYamlToProject(pubspecYaml.name);
+        _addShorebirdYamlToProject(app.id);
         progress.update('Generated a "shorebird.yaml".');
       }
     } catch (error) {
@@ -72,7 +89,6 @@ ${lightGreen.wrap('🐦 Shorebird initialized successfully!')}
 
 Reference the following commands to get started:
 
-✨ To create a new app use: "${lightCyan.wrap('shorebird apps create')}".
 🚙 To run your project use: "${lightCyan.wrap('shorebird run')}".
 📦 To build your project use: "${lightCyan.wrap('shorebird build')}".
 🚀 To publish an update use: "${lightCyan.wrap('shorebird publish')}".
@@ -89,7 +105,8 @@ For more information about Shorebird, visit ${link(uri: Uri.parse('https://shore
 # This file is used to configure the Shorebird CLI.
 # Learn more at https://shorebird.dev
 
-# This is the unique identifier for your app.
+# This is the unique identifier assigned to your app.
+# It is used by your app to request the correct patches from the Shorebird servers.
 app_id: $appId
 ''');
 

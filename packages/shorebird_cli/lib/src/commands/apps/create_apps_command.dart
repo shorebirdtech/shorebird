@@ -3,13 +3,16 @@ import 'dart:async';
 import 'package:mason_logger/mason_logger.dart';
 import 'package:shorebird_cli/src/command.dart';
 import 'package:shorebird_cli/src/shorebird_config_mixin.dart';
+import 'package:shorebird_cli/src/shorebird_create_app_mixin.dart';
+import 'package:shorebird_code_push_client/shorebird_code_push_client.dart';
 
 /// {@template create_app_command}
 ///
 /// `shorebird apps create`
 /// Create a new app on Shorebird.
 /// {@endtemplate}
-class CreateAppCommand extends ShorebirdCommand with ShorebirdConfigMixin {
+class CreateAppCommand extends ShorebirdCommand
+    with ShorebirdConfigMixin, ShorebirdCreateAppMixin {
   /// {@macro create_app_command}
   CreateAppCommand({
     required super.logger,
@@ -17,10 +20,10 @@ class CreateAppCommand extends ShorebirdCommand with ShorebirdConfigMixin {
     super.auth,
   }) {
     argParser.addOption(
-      'app-id',
+      'app-name',
       help: '''
-The unique application identifier.
-Defaults to the app_id in "shorebird.yaml".''',
+The display name of your application.
+Defaults to the name in "pubspec.yaml".''',
     );
   }
 
@@ -38,37 +41,17 @@ Defaults to the app_id in "shorebird.yaml".''',
       return ExitCode.noUser.code;
     }
 
-    final appIdArg = results['app-id'] as String?;
-    late final String appId;
-
-    if (appIdArg == null) {
-      String? defaultAppId;
-      try {
-        defaultAppId = getShorebirdYaml()?.appId;
-      } catch (_) {}
-
-      appId = logger.prompt(
-        '${lightGreen.wrap('?')} Enter the App ID',
-        defaultValue: defaultAppId,
-      );
-    } else {
-      appId = appIdArg;
-    }
-
-    final client = buildCodePushClient(
-      apiKey: session.apiKey,
-      hostedUri: hostedUri,
-    );
-
+    final appName = results['app-name'] as String?;
+    late final App app;
     try {
-      await client.createApp(appId: appId);
+      app = await createApp(appName: appName);
     } catch (error) {
       logger.err('$error');
       return ExitCode.software.code;
     }
 
     logger.info(
-      '${lightGreen.wrap('Created new app: ${cyan.wrap(appId)}')}',
+      '''${lightGreen.wrap('Created ${cyan.wrap(app.displayName)} ${styleDim.wrap(cyan.wrap('(${app.id})'))}')}''',
     );
 
     return ExitCode.success.code;
