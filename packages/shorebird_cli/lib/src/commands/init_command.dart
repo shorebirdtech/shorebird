@@ -46,23 +46,24 @@ class InitCommand extends ShorebirdCommand
     }
 
     late final bool shorebirdYamlExists;
-    late final String appId;
     try {
       shorebirdYamlExists = hasShorebirdYaml;
-      if (!shorebirdYamlExists) {
-        try {
-          final app = await createApp();
-          appId = app.id;
-        } catch (error) {
-          logger.err('$error');
-          return ExitCode.software.code;
-        }
-      } else {
-        appId = getShorebirdYaml()!.appId;
-      }
     } catch (_) {
       logger.err('Error parsing "shorebird.yaml".');
       return ExitCode.software.code;
+    }
+
+    late final String appId;
+    if (!shorebirdYamlExists) {
+      try {
+        final app = await createApp();
+        appId = app.id;
+      } catch (error) {
+        logger.err('$error');
+        return ExitCode.software.code;
+      }
+    } else {
+      appId = getShorebirdYaml()!.appId;
     }
 
     if (shorebirdYamlExists) {
