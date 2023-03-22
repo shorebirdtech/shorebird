@@ -99,7 +99,7 @@ jobs:
 
     runs-on: ubuntu-latest
 
-    name: 🎯 Build ${{ matrix.package }}
+    name: 🐦 Build ${{ matrix.package }}
 
     steps:
       - name: 📚 Git Checkout
