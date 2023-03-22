@@ -6,7 +6,8 @@ number of users to ensure that we're building the right thing and that it's
 stable for general use.
 
 If you'd like to be a part of the program, please join our mailing list
-(linked from shorebird.dev), we will send out information there as we're ready.
+(linked from [shorebird.dev](https://shorebird.dev/), we will send out
+information there as we're ready to add more testers.
 
 
 ## Welcome!
@@ -26,20 +27,24 @@ already a default-public company, but we intend to be even more open with you
 and will be shipping your regular updates during the program, responding to
 your feedback.
 
-Our guiding principle in creating v1 has been "first, do no harm".  It should be
-the case that using Shorebird is never worse than not using Shorebird.  We've
-worked hard to find and remove breaking bugs, but I'm sure we've missed some.
+Filing [issues](https://github.com/shorebirdtech/shorebird/issues) is a good way
+to provide feedback.  Feedback via Discord is also welcome.
 
-It is still possible using Shorebird may break your app in the wild.  Thankfully
-this is no worse than any other change to your app, and you can always push a
-new version via the store should Shorebird break users in the wild.
+Our guiding principle in creating this first release has been "first, do no harm".
+It should be the case that using Shorebird is never worse than not using Shorebird.
+It is still possible using this early version of Shorebird could break your app in
+the wild.  If you believe that's the case, please reach out, we're here to help.
 
 ## What works today
 You can build and deploy new (release) versions of your app to all Android arm64
-users via Shorebird command line from a Mac computer.
+users ([issue](https://github.com/shorebirdtech/shorebird/issues/119)) via 
+`shorebird` command line from a Mac (
+[issue](https://github.com/shorebirdtech/shorebird/issues/37)) 
+computer.
 
 All users will synchronously update to the new version on next launch
-(no control over this behavior yet).
+(no control over this behavior yet,
+[issue](https://github.com/shorebirdtech/shorebird/issues/127)).
 
 Basic access to the updater through package:dart_bindings (unpublished).
 https://github.com/shorebirdtech/shorebird/tree/main/updater/dart_bindings
@@ -49,25 +54,26 @@ associated with your account and what patches you've pushed to those apps.
 https://github.com/shorebirdtech/shorebird/tree/main/packages/shorebird_cli
 
 Updates are currently typically a few MBs in size and include all Dart code that
-your app uses (we can make this much smaller, but haven't yet).
+your app uses (we can make this much smaller,
+[issue](https://github.com/shorebirdtech/shorebird/issues/132)).
 
 ## What doesn't yet
 
 Limited platform support:
 * Only Arm64 platform, no non-Android or non-arm64 support.
-* Windows, Linux
+* Windows, Linux ([issue](https://github.com/shorebirdtech/shorebird/issues/37))
 
 No support for:
 * Flutter channels (only latest stable is supported)
-* Rollbacks
-* Shorebird channels (staged rollouts of patches)
+* Rollbacks ([issue](https://github.com/shorebirdtech/shorebird/issues/126))
+* Shorebird channels (staged rollouts of patches) [issue](https://github.com/shorebirdtech/shorebird/issues/110)
 * Percentage based rollouts
-* Async updates / downloads
+* Async updates / downloads [issue](https://github.com/shorebirdtech/shorebird/issues/123)
 * Analytics
 * Web interface
 * CI/CD (GitHub Actions, etc.) integration
-* Patch signing
-* Sign-in via something other than an API key (e.g. OAuth)
+* Patch signing [issue](https://github.com/shorebirdtech/shorebird/issues/112)
+* Sign-in via something other than an API key (e.g. OAuth) [issue](https://github.com/shorebirdtech/shorebird/issues/133)
 
 ## Installing Shorebird command line
 
@@ -80,6 +86,13 @@ git clone https://github.com/shorebirdtech/shorebird
 # Activate the Shorebird CLI
 dart pub global activate --source path shorebird/packages/shorebird_cli
 ```
+
+You will also need to add the pub global bin to your $PATH.  On Mac that means
+adding: 
+```zshrc
+export PATH=$HOME/.pub-cache/bin:$PATH
+```
+to your .zshrc file.
 
 More information: https://github.com/shorebirdtech/install/blob/main/README.md
 
@@ -94,10 +107,16 @@ The first use-case we're targeting is one of deploying updates to a small
 set of users.  If you already have a Flutter app with a small install base, you
 can convert it to Shorebird in a few steps:
 
-1. Use `shorebird init` to add a `shorebird.yaml` file to your project.
-`shorebird.yaml` contains the app_id for your app, which is just a unique
-identifier the app will be able to send to Shorebird servers to identify which
-application/developer to pull updates from.
+1. The first step to using Shorebird is to login.  `shorebird login` will prompt
+for your API key, which you should have recieved in email.  Many `shorebird`
+commands do not require login, but it's best to just do it first to avoid
+unexpected errors later.  Your login credentials are stored in
+`~/Library/Application Support/shorebird/shorebird-session.json`.
+
+2. Once you're logged in, you can use `shorebird init` to add a `shorebird.yaml`
+file to your project. `shorebird.yaml` contains the app_id for your app, which
+is just a unique identifier the app will be able to send to Shorebird servers
+to identify which application/developer to pull updates from.
 
 `shorebird init` will also add the `shorebird.yaml` to the assets section of
 your `pubspec.yaml` file, which will ensure that the file is included in your
@@ -106,7 +125,30 @@ app's assets.
 You can go ahead and commit these changes, they will be innocuous even if you
 don't end up using Shorebird with this application.
 
-2.  Typical development usage will involve normal `flutter` commands.  Only
+If you don't want to try this on your main application yet, any Flutter app,
+including the default Flutter counter works too, e.g.
+```
+flutter create shorebird_test
+cd shorebird_test
+% shorebird init
+✓ Initialized Shorebird (38ms)
+
+🐦 Shorebird initialized successfully!
+
+✅ A "shorebird.yaml" has been created.
+✅ The "pubspec.yaml" has been updated to include "shorebird.yaml" as an asset.
+
+Reference the following commands to get started:
+
+✨ To create a new app use: "shorebird apps create".
+🚙 To run your project use: "shorebird run".
+📦 To build your project use: "shorebird build".
+🚀 To publish an update use: "shorebird publish".
+
+For more information about Shorebird, visit https://shorebird.dev
+```
+
+3.  Typical development usage will involve normal `flutter` commands.  Only
 when you go to build the final release version of you app, do you need to use
 the `shorebird` command-line tool.
 
@@ -219,3 +261,6 @@ the command line, however reach out to us via Discord or email and we are
 happy to help you immediately delete your account and disable all updates
 for your app(s) deployed with Shorebird.  We anticipate adding this ability
 to the command line in the near future.
+
+You can remove `shorebird` from your path by deactivating the package with pub:
+`dart pub global deactivate shorebird_cli`
