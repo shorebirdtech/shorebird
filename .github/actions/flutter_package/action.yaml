@@ -1,0 +1,66 @@
+name: Flutter Package Workflow
+description: Build and test your Flutter packages.
+
+inputs:
+  concurrency:
+    required: false
+    default: "4"
+    description: The value of the concurrency flag (-j) used when running tests
+  coverage_excludes:
+    required: false
+    default: ""
+    description: Globs to exclude from coverage
+  flutter_channel:
+    required: false
+    default: "stable"
+    description: "The flutter channel to use"
+  flutter_version:
+    required: false
+    default: ""
+    description: "The flutter version to use"
+  working_directory:
+    required: false
+    default: "."
+    description: The working directory for this workflow
+  min_coverage:
+    required: false
+    default: "100"
+    description: The minimum coverage percentage value
+  shell:
+    description: "The shell to use for the docs job"
+    required: false
+    default: bash
+
+runs:
+  using: "composite"
+  steps:
+    - uses: subosito/flutter-action@v2
+      with:
+        flutter-version: ${{inputs.flutter_version}}
+        channel: ${{inputs.flutter_channel}}
+        cache: true
+
+    - working-directory: ${{ inputs.working_directory }}
+      shell: ${{ inputs.shell }}
+      run: |
+        flutter pub global activate very_good_cli
+        very_good --analytics false
+        very_good packages get --recursive
+
+    - working-directory: ${{ inputs.working_directory }}
+      shell: ${{ inputs.shell }}
+      run: dart format --set-exit-if-changed lib test
+
+    - working-directory: ${{ inputs.working_directory }}
+      shell: ${{ inputs.shell }}
+      run: flutter analyze lib test
+
+    - working-directory: ${{ inputs.working_directory }}
+      shell: ${{ inputs.shell }}
+      run: very_good test -j ${{inputs.concurrency}} --coverage --test-randomize-ordering-seed random
+
+    - uses: VeryGoodOpenSource/very_good_coverage@v2
+      with:
+        path: ${{inputs.working_directory}}/coverage/lcov.info
+        exclude: ${{inputs.coverage_excludes}}
+        min_coverage: ${{inputs.min_coverage}}

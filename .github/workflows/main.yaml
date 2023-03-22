@@ -18,6 +18,7 @@ jobs:
 
     outputs:
       needs_dart_build: ${{ steps.needs_dart_build.outputs.changes }}
+      needs_flutter_build: ${{ steps.needs_flutter_build.outputs.changes }}
       needs_rust_build: ${{ steps.needs_rust_build.outputs.changes }}
       needs_verify: ${{ steps.needs_verify.outputs.changes }}
 
@@ -32,16 +33,22 @@ jobs:
         id: needs_dart_build
         with:
           filters: |
-            shorebird_cli:
-              - ./.github/actions/dart_package
-              - packages/shorebird_cli/**
-              - packages/shorebird_code_push_client/**            
             shorebird_code_push_client:
               - ./.github/actions/dart_package
               - packages/shorebird_code_push_client/**
             shorebird_code_push_protocol:
               - ./.github/actions/dart_package
               - packages/shorebird_code_push_protocol/**
+
+      - uses: dorny/paths-filter@v2
+        name: Build Detection
+        id: needs_flutter_build
+        with:
+          filters: |
+            shorebird_cli:
+              - ./.github/actions/dart_package
+              - packages/shorebird_cli/**
+              - packages/shorebird_code_push_client/**
 
       - uses: dorny/paths-filter@v2
         name: Build Detection
@@ -79,6 +86,27 @@ jobs:
 
       - name: 🎯 Build ${{ matrix.package }}
         uses: ./.github/actions/dart_package
+        with:
+          working_directory: packages/${{ matrix.package }}
+
+  build_flutter_packages:
+    needs: changes
+    if: ${{ needs.changes.outputs.needs_flutter_build != '[]' }}
+
+    strategy:
+      matrix:
+        package: ${{ fromJSON(needs.changes.outputs.needs_flutter_build) }}
+
+    runs-on: ubuntu-latest
+
+    name: 🎯 Build ${{ matrix.package }}
+
+    steps:
+      - name: 📚 Git Checkout
+        uses: actions/checkout@v3
+
+      - name: 🐦 Build ${{ matrix.package }}
+        uses: ./.github/actions/flutter_package
         with:
           working_directory: packages/${{ matrix.package }}
 
@@ -126,7 +154,12 @@ jobs:
 
   ci:
     needs:
-      [semantic_pull_request, build_dart_packages, build_rust_crates, verify_packages]
+      [
+        semantic_pull_request,
+        build_dart_packages,
+        build_rust_crates,
+        verify_packages,
+      ]
     if: ${{ always() }}
 
     runs-on: ubuntu-latest
