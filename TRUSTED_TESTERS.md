@@ -84,8 +84,9 @@ The first thing you'll want to do is install the `shorebird` command-line tool.
 git clone https://github.com/shorebirdtech/shorebird
 
 # Activate the Shorebird CLI
-dart pub global activate --source path shorebird/packages/shorebird_cli
+dart pub global activate --source path shorebird/packages/shorebird_cli --overwrite
 ```
+`--overwrite` is just there in case you're previously installed shorebird.
 
 You will also need to add the pub global bin to your $PATH.  On Mac that means
 adding: 
@@ -113,14 +114,17 @@ commands do not require login, but it's best to just do it first to avoid
 unexpected errors later.  Your login credentials are stored in
 `~/Library/Application Support/shorebird/shorebird-session.json`.
 
-2. Once you're logged in, you can use `shorebird init` to add a `shorebird.yaml`
-file to your project. `shorebird.yaml` contains the app_id for your app, which
-is just a unique identifier the app will be able to send to Shorebird servers
-to identify which application/developer to pull updates from.
+2. Once you're logged in, you can use `shorebird init`.
 
-`shorebird init` will also add the `shorebird.yaml` to the assets section of
-your `pubspec.yaml` file, which will ensure that the file is included in your
-app's assets.
+`shorebird init` does three things:
+  a. Tells Shorebird that you app exists (e.g. so it can hold patches to it
+  and vend them to devices when asked).
+  b. Creates a `shorebird.yaml` file to your project. `shorebird.yaml` contains
+  the app_id for your app, which the unique identifier the app will send to
+  Shorebird servers to identify which application to pull updates for.
+  c. Finally, `shorebird init` also adds the `shorebird.yaml` to the assets
+  section of your `pubspec.yaml` file, ensuring `shorebird.yaml` is bundled
+  into your app's assets.
 
 You can go ahead and commit these changes, they will be innocuous even if you
 don't end up using Shorebird with this application.
