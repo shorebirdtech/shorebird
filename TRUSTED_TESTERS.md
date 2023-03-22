@@ -27,20 +27,24 @@ already a default-public company, but we intend to be even more open with you
 and will be shipping your regular updates during the program, responding to
 your feedback.
 
-Our guiding principle in creating v1 has been "first, do no harm".  It should be
-the case that using Shorebird is never worse than not using Shorebird.  We've
-worked hard to find and remove breaking bugs, but I'm sure we've missed some.
+Filing [issues](https://github.com/shorebirdtech/shorebird/issues) is a good way
+to provide feedback.  Feedback via Discord is also welcome.
 
-It is still possible using Shorebird may break your app in the wild.  Thankfully
-this is no worse than any other change to your app, and you can always push a
-new version via the store should Shorebird break users in the wild.
+Our guiding principle in creating this first release has been "first, do no harm".
+It should be the case that using Shorebird is never worse than not using Shorebird.
+It is still possible using this early version of Shorebird could break your app in
+the wild.  If you believe that's the case, please reach out, we're here to help.
 
 ## What works today
 You can build and deploy new (release) versions of your app to all Android arm64
-users via Shorebird command line from a Mac computer.
+users ([issue](https://github.com/shorebirdtech/shorebird/issues/119)) via 
+`shorebird` command line from a Mac (
+[issue](https://github.com/shorebirdtech/shorebird/issues/37)) 
+computer.
 
 All users will synchronously update to the new version on next launch
-(no control over this behavior yet).
+(no control over this behavior yet,
+[issue](https://github.com/shorebirdtech/shorebird/issues/127)).
 
 Basic access to the updater through package:dart_bindings (unpublished).
 https://github.com/shorebirdtech/shorebird/tree/main/updater/dart_bindings
@@ -50,25 +54,26 @@ associated with your account and what patches you've pushed to those apps.
 https://github.com/shorebirdtech/shorebird/tree/main/packages/shorebird_cli
 
 Updates are currently typically a few MBs in size and include all Dart code that
-your app uses (we can make this much smaller, but haven't yet).
+your app uses (we can make this much smaller,
+[issue](https://github.com/shorebirdtech/shorebird/issues/132)).
 
 ## What doesn't yet
 
 Limited platform support:
 * Only Arm64 platform, no non-Android or non-arm64 support.
-* Windows, Linux
+* Windows, Linux ([issue](https://github.com/shorebirdtech/shorebird/issues/37))
 
 No support for:
 * Flutter channels (only latest stable is supported)
-* Rollbacks
-* Shorebird channels (staged rollouts of patches)
+* Rollbacks ([issue](https://github.com/shorebirdtech/shorebird/issues/126))
+* Shorebird channels (staged rollouts of patches) [issue](https://github.com/shorebirdtech/shorebird/issues/110)
 * Percentage based rollouts
-* Async updates / downloads
+* Async updates / downloads [issue](https://github.com/shorebirdtech/shorebird/issues/123)
 * Analytics
 * Web interface
 * CI/CD (GitHub Actions, etc.) integration
-* Patch signing
-* Sign-in via something other than an API key (e.g. OAuth)
+* Patch signing [issue](https://github.com/shorebirdtech/shorebird/issues/112)
+* Sign-in via something other than an API key (e.g. OAuth) [issue](https://github.com/shorebirdtech/shorebird/issues/133)
 
 ## Installing Shorebird command line
 
