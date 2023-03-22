@@ -102,6 +102,9 @@ environment:
         command.run,
         getCurrentDirectory: () => tempDir,
       );
+      verify(
+        () => logger.prompt(any(), defaultValue: any(named: 'defaultValue')),
+      ).called(1);
       verify(() => logger.err('$error')).called(1);
       expect(exitCode, ExitCode.software.code);
     });

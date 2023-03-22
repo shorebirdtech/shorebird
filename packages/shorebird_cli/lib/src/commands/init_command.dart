@@ -47,8 +47,7 @@ class InitCommand extends ShorebirdCommand
 
     late final App app;
     try {
-      final pubspecYaml = getPubspecYaml()!;
-      app = await createApp(appName: pubspecYaml.name);
+      app = await createApp();
     } catch (error) {
       logger.err('$error');
       return ExitCode.software.code;
