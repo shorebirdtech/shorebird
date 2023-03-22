@@ -28,6 +28,12 @@ class InitCommand extends ShorebirdCommand
 
   @override
   Future<int> run() async {
+    final session = auth.currentSession;
+    if (session == null) {
+      logger.err('You must be logged in.');
+      return ExitCode.noUser.code;
+    }
+
     final progress = logger.progress('Initializing Shorebird');
     try {
       if (!hasPubspecYaml) {

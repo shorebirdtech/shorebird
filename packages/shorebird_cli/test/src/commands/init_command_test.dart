@@ -59,6 +59,12 @@ environment:
       ).thenReturn(appName);
     });
 
+    test('returns no user error when not logged in', () async {
+      when(() => auth.currentSession).thenReturn(null);
+      final result = await command.run();
+      expect(result, ExitCode.noUser.code);
+    });
+
     test('throws no input error when pubspec.yaml is not found.', () async {
       final tempDir = Directory.systemTemp.createTempSync();
       final exitCode = await IOOverrides.runZoned(
