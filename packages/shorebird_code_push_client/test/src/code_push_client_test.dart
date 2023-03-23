@@ -56,6 +56,131 @@ void main() {
       });
     });
 
+    group('createArtifact', () {
+      const patchId = 0;
+      const arch = 'aarch64';
+      const platform = 'android';
+      const hash = 'test-hash';
+
+      test('throws an exception if the http request fails (unknown)', () async {
+        when(() => httpClient.send(any())).thenAnswer((_) async {
+          return http.StreamedResponse(
+            Stream.empty(),
+            HttpStatus.failedDependency,
+          );
+        });
+
+        final tempDir = Directory.systemTemp.createTempSync();
+        final fixture = File(path.join(tempDir.path, 'release.txt'))
+          ..createSync();
+
+        expect(
+          codePushClient.createArtifact(
+            artifactPath: fixture.path,
+            patchId: patchId,
+            arch: arch,
+            platform: platform,
+            hash: hash,
+          ),
+          throwsA(
+            isA<CodePushException>().having(
+              (e) => e.message,
+              'message',
+              CodePushClient.unknownErrorMessage,
+            ),
+          ),
+        );
+      });
+
+      test('throws an exception if the http request fails', () async {
+        when(() => httpClient.send(any())).thenAnswer((_) async {
+          return http.StreamedResponse(
+            Stream.value(utf8.encode(json.encode(errorResponse.toJson()))),
+            HttpStatus.failedDependency,
+          );
+        });
+
+        final tempDir = Directory.systemTemp.createTempSync();
+        final fixture = File(path.join(tempDir.path, 'release.txt'))
+          ..createSync();
+
+        expect(
+          codePushClient.createArtifact(
+            artifactPath: fixture.path,
+            patchId: patchId,
+            arch: arch,
+            platform: platform,
+            hash: hash,
+          ),
+          throwsA(
+            isA<CodePushException>().having(
+              (e) => e.message,
+              'message',
+              errorResponse.message,
+            ),
+          ),
+        );
+      });
+
+      test('completes when request succeeds', () async {
+        const artifactId = 0;
+        const artifactUrl = 'https://example.com/artifact.zip';
+        when(() => httpClient.send(any())).thenAnswer((_) async {
+          return http.StreamedResponse(
+            Stream.value(
+              utf8.encode(
+                json.encode(
+                  Artifact(
+                    id: artifactId,
+                    url: artifactUrl,
+                    patchId: patchId,
+                    arch: arch,
+                    platform: platform,
+                    hash: hash,
+                  ),
+                ),
+              ),
+            ),
+            HttpStatus.ok,
+          );
+        });
+
+        final tempDir = Directory.systemTemp.createTempSync();
+        final fixture = File(path.join(tempDir.path, 'release.txt'))
+          ..createSync();
+
+        await expectLater(
+          codePushClient.createArtifact(
+            artifactPath: fixture.path,
+            patchId: patchId,
+            arch: arch,
+            platform: platform,
+            hash: hash,
+          ),
+          completion(
+            equals(
+              isA<Artifact>()
+                  .having((a) => a.id, 'id', artifactId)
+                  .having((a) => a.patchId, 'patchId', patchId)
+                  .having((a) => a.arch, 'arch', arch)
+                  .having((a) => a.platform, 'platform', platform)
+                  .having((a) => a.hash, 'hash', hash)
+                  .having((a) => a.url, 'artifactUrl', artifactUrl),
+            ),
+          ),
+        );
+
+        final request = verify(() => httpClient.send(captureAny()))
+            .captured
+            .single as http.MultipartRequest;
+
+        expect(
+          request.url,
+          codePushClient.hostedUri.replace(path: '/api/v1/artifacts'),
+        );
+      });
+    });
+
     group('createApp', () {
       test('throws an exception if the http request fails (unknown)', () async {
         when(
@@ -144,25 +269,204 @@ void main() {
       });
     });
 
-    group('createPatch', () {
+    group('createChannel', () {
+      const channel = 'stable';
       test('throws an exception if the http request fails (unknown)', () async {
-        final tempDir = Directory.systemTemp.createTempSync();
-        final fixture = File(path.join(tempDir.path, 'release.txt'))
-          ..createSync();
-
-        when(() => httpClient.send(any())).thenAnswer((_) async {
-          return http.StreamedResponse(
-            Stream.empty(),
-            HttpStatus.failedDependency,
-          );
-        });
+        when(
+          () => httpClient.post(
+            any(),
+            headers: any(named: 'headers'),
+            body: any(named: 'body'),
+          ),
+        ).thenAnswer((_) async => http.Response('', HttpStatus.badRequest));
 
         expect(
-          codePushClient.createPatch(
-            artifactPath: fixture.path,
-            releaseVersion: '1.0.0',
-            appId: 'shorebird-example',
-            channel: 'stable',
+          codePushClient.createChannel(appId: appId, channel: channel),
+          throwsA(
+            isA<CodePushException>().having(
+              (e) => e.message,
+              'message',
+              CodePushClient.unknownErrorMessage,
+            ),
+          ),
+        );
+      });
+
+      test('throws an exception if the http request fails', () async {
+        when(
+          () => httpClient.post(
+            any(),
+            headers: any(named: 'headers'),
+            body: any(named: 'body'),
+          ),
+        ).thenAnswer(
+          (_) async => http.Response(
+            json.encode(errorResponse.toJson()),
+            HttpStatus.failedDependency,
+          ),
+        );
+
+        expect(
+          codePushClient.createChannel(appId: appId, channel: channel),
+          throwsA(
+            isA<CodePushException>().having(
+              (e) => e.message,
+              'message',
+              errorResponse.message,
+            ),
+          ),
+        );
+      });
+
+      test('completes when request succeeds', () async {
+        const channelId = 0;
+        when(
+          () => httpClient.post(
+            any(),
+            headers: any(named: 'headers'),
+            body: any(named: 'body'),
+          ),
+        ).thenAnswer(
+          (_) async => http.Response(
+            json.encode(Channel(id: channelId, appId: appId, name: channel)),
+            HttpStatus.ok,
+          ),
+        );
+
+        await expectLater(
+          codePushClient.createChannel(appId: appId, channel: channel),
+          completion(
+            equals(
+              isA<Channel>()
+                  .having((c) => c.id, 'id', channelId)
+                  .having((c) => c.appId, 'appId', appId)
+                  .having((c) => c.name, 'name', channel),
+            ),
+          ),
+        );
+
+        final uri = verify(
+          () => httpClient.post(
+            captureAny(),
+            headers: any(named: 'headers'),
+            body: any(named: 'body'),
+          ),
+        ).captured.single as Uri;
+
+        expect(
+          uri,
+          codePushClient.hostedUri.replace(path: '/api/v1/channels'),
+        );
+      });
+    });
+
+    group('createPatch', () {
+      const releaseId = 0;
+      test('throws an exception if the http request fails (unknown)', () async {
+        when(
+          () => httpClient.post(
+            any(),
+            headers: any(named: 'headers'),
+            body: any(named: 'body'),
+          ),
+        ).thenAnswer((_) async => http.Response('', HttpStatus.badRequest));
+
+        expect(
+          codePushClient.createPatch(releaseId: releaseId),
+          throwsA(
+            isA<CodePushException>().having(
+              (e) => e.message,
+              'message',
+              CodePushClient.unknownErrorMessage,
+            ),
+          ),
+        );
+      });
+
+      test('throws an exception if the http request fails', () async {
+        when(
+          () => httpClient.post(
+            any(),
+            headers: any(named: 'headers'),
+            body: any(named: 'body'),
+          ),
+        ).thenAnswer(
+          (_) async => http.Response(
+            json.encode(errorResponse.toJson()),
+            HttpStatus.failedDependency,
+          ),
+        );
+
+        expect(
+          codePushClient.createPatch(releaseId: releaseId),
+          throwsA(
+            isA<CodePushException>().having(
+              (e) => e.message,
+              'message',
+              errorResponse.message,
+            ),
+          ),
+        );
+      });
+
+      test('completes when request succeeds', () async {
+        const patchId = 0;
+        const patchNumber = 1;
+        when(
+          () => httpClient.post(
+            any(),
+            headers: any(named: 'headers'),
+            body: any(named: 'body'),
+          ),
+        ).thenAnswer(
+          (_) async => http.Response(
+            json.encode(Patch(id: patchId, number: patchNumber)),
+            HttpStatus.ok,
+          ),
+        );
+
+        await expectLater(
+          codePushClient.createPatch(releaseId: releaseId),
+          completion(
+            equals(
+              isA<Patch>()
+                  .having((c) => c.id, 'id', patchId)
+                  .having((c) => c.number, 'number', patchNumber),
+            ),
+          ),
+        );
+
+        final uri = verify(
+          () => httpClient.post(
+            captureAny(),
+            headers: any(named: 'headers'),
+            body: any(named: 'body'),
+          ),
+        ).captured.single as Uri;
+
+        expect(
+          uri,
+          codePushClient.hostedUri.replace(path: '/api/v1/patches'),
+        );
+      });
+    });
+
+    group('createRelease', () {
+      const version = '1.0.0';
+      test('throws an exception if the http request fails (unknown)', () async {
+        when(
+          () => httpClient.post(
+            any(),
+            headers: any(named: 'headers'),
+            body: any(named: 'body'),
+          ),
+        ).thenAnswer((_) async => http.Response('', HttpStatus.badRequest));
+
+        expect(
+          codePushClient.createRelease(
+            appId: appId,
+            version: version,
+            displayName: displayName,
           ),
           throwsA(
             isA<CodePushException>().having(
@@ -175,23 +479,24 @@ void main() {
       });
 
       test('throws an exception if the http request fails', () async {
-        final tempDir = Directory.systemTemp.createTempSync();
-        final fixture = File(path.join(tempDir.path, 'release.txt'))
-          ..createSync();
-
-        when(() => httpClient.send(any())).thenAnswer((_) async {
-          return http.StreamedResponse(
-            Stream.value(utf8.encode(json.encode(errorResponse.toJson()))),
+        when(
+          () => httpClient.post(
+            any(),
+            headers: any(named: 'headers'),
+            body: any(named: 'body'),
+          ),
+        ).thenAnswer(
+          (_) async => http.Response(
+            json.encode(errorResponse.toJson()),
             HttpStatus.failedDependency,
-          );
-        });
+          ),
+        );
 
         expect(
-          codePushClient.createPatch(
-            artifactPath: fixture.path,
-            releaseVersion: '1.0.0',
-            appId: 'shorebird-example',
-            channel: 'stable',
+          codePushClient.createRelease(
+            appId: appId,
+            version: version,
+            displayName: displayName,
           ),
           throwsA(
             isA<CodePushException>().having(
@@ -203,31 +508,56 @@ void main() {
         );
       });
 
-      test('sends a multipart request to the correct url', () async {
-        final tempDir = Directory.systemTemp.createTempSync();
-        final fixture = File(path.join(tempDir.path, 'release.txt'))
-          ..createSync();
-        when(() => httpClient.send(any())).thenAnswer((_) async {
-          return http.StreamedResponse(
-            Stream.empty(),
-            HttpStatus.created,
-          );
-        });
-
-        await codePushClient.createPatch(
-          artifactPath: fixture.path,
-          releaseVersion: '1.0.0',
-          appId: 'shorebird-example',
-          channel: 'stable',
+      test('completes when request succeeds', () async {
+        const releaseId = 0;
+        when(
+          () => httpClient.post(
+            any(),
+            headers: any(named: 'headers'),
+            body: any(named: 'body'),
+          ),
+        ).thenAnswer(
+          (_) async => http.Response(
+            json.encode(
+              Release(
+                id: releaseId,
+                appId: appId,
+                version: version,
+                displayName: displayName,
+              ),
+            ),
+            HttpStatus.ok,
+          ),
         );
 
-        final request = verify(() => httpClient.send(captureAny()))
-            .captured
-            .single as http.MultipartRequest;
+        await expectLater(
+          codePushClient.createRelease(
+            appId: appId,
+            version: version,
+            displayName: displayName,
+          ),
+          completion(
+            equals(
+              isA<Release>()
+                  .having((r) => r.id, 'id', releaseId)
+                  .having((r) => r.appId, 'appId', appId)
+                  .having((r) => r.version, 'version', version)
+                  .having((r) => r.displayName, 'displayName', displayName),
+            ),
+          ),
+        );
+
+        final uri = verify(
+          () => httpClient.post(
+            captureAny(),
+            headers: any(named: 'headers'),
+            body: any(named: 'body'),
+          ),
+        ).captured.single as Uri;
 
         expect(
-          request.url,
-          codePushClient.hostedUri.replace(path: '/api/v1/patches'),
+          uri,
+          codePushClient.hostedUri.replace(path: '/api/v1/releases'),
         );
       });
     });
@@ -423,6 +753,87 @@ void main() {
 
         final actual = await codePushClient.getApps();
         expect(json.encode(actual), equals(json.encode(expected)));
+      });
+    });
+
+    group('promotePatch', () {
+      const patchId = 0;
+      const channelId = 0;
+      test('throws an exception if the http request fails (unknown)', () async {
+        when(
+          () => httpClient.post(
+            any(),
+            headers: any(named: 'headers'),
+            body: any(named: 'body'),
+          ),
+        ).thenAnswer((_) async => http.Response('', HttpStatus.badRequest));
+
+        expect(
+          codePushClient.promotePatch(patchId: patchId, channelId: channelId),
+          throwsA(
+            isA<CodePushException>().having(
+              (e) => e.message,
+              'message',
+              CodePushClient.unknownErrorMessage,
+            ),
+          ),
+        );
+      });
+
+      test('throws an exception if the http request fails', () async {
+        when(
+          () => httpClient.post(
+            any(),
+            headers: any(named: 'headers'),
+            body: any(named: 'body'),
+          ),
+        ).thenAnswer(
+          (_) async => http.Response(
+            json.encode(errorResponse.toJson()),
+            HttpStatus.failedDependency,
+          ),
+        );
+
+        expect(
+          codePushClient.promotePatch(patchId: patchId, channelId: channelId),
+          throwsA(
+            isA<CodePushException>().having(
+              (e) => e.message,
+              'message',
+              errorResponse.message,
+            ),
+          ),
+        );
+      });
+
+      test('completes when request succeeds', () async {
+        when(
+          () => httpClient.post(
+            any(),
+            headers: any(named: 'headers'),
+            body: any(named: 'body'),
+          ),
+        ).thenAnswer(
+          (_) async => http.Response('', HttpStatus.created),
+        );
+
+        await expectLater(
+          codePushClient.promotePatch(patchId: patchId, channelId: channelId),
+          completes,
+        );
+
+        final uri = verify(
+          () => httpClient.post(
+            captureAny(),
+            headers: any(named: 'headers'),
+            body: any(named: 'body'),
+          ),
+        ).captured.single as Uri;
+
+        expect(
+          uri,
+          codePushClient.hostedUri.replace(path: '/api/v1/patches/promote'),
+        );
       });
     });
 
