@@ -3,7 +3,9 @@ import 'package:json_annotation/json_annotation.dart';
 part 'channel.g.dart';
 
 /// {@template channel}
-/// A release channel for an app
+/// A tag used to manage the subset of applications that receive a patch.
+/// By default, a "stable" channel is created and
+/// used by devices to query for available patches.
 /// {@endtemplate}
 @JsonSerializable()
 class Channel {

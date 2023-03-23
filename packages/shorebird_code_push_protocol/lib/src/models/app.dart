@@ -3,7 +3,7 @@ import 'package:json_annotation/json_annotation.dart';
 part 'app.g.dart';
 
 /// {@template app}
-/// A single app which contains zero or more releases.
+/// The application downloaded and run on various devices/platforms.
 /// {@endtemplate}
 @JsonSerializable()
 class App {

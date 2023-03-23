@@ -3,7 +3,8 @@ import 'package:json_annotation/json_annotation.dart';
 part 'artifact.g.dart';
 
 /// {@template artifact}
-/// A single patch which contains zero or more artifacts.
+/// An artifact contains metadata about the contents of a specific patch
+/// for a specific platform and architecture.
 /// {@endtemplate}
 @JsonSerializable()
 class Artifact {

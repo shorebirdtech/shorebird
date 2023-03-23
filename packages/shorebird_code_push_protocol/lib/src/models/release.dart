@@ -3,7 +3,8 @@ import 'package:json_annotation/json_annotation.dart';
 part 'release.g.dart';
 
 /// {@template release}
-/// An app release.
+/// A release build of an application that is distributed to devices.
+/// A release can have zero or more patches applied to it.
 /// {@endtemplate}
 @JsonSerializable()
 class Release {

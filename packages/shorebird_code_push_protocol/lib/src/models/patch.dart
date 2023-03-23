@@ -3,7 +3,9 @@ import 'package:json_annotation/json_annotation.dart';
 part 'patch.g.dart';
 
 /// {@template patch}
-/// A single patch which contains zero or more artifacts.
+/// An over the air update which is applied to a specific release.
+/// All patches have a patch number (auto-incrementing integer) and
+/// multiple patches can be published for a given app release version.
 /// {@endtemplate}
 @JsonSerializable()
 class Patch {
