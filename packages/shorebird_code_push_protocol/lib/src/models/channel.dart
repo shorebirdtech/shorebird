@@ -17,7 +17,7 @@ class Channel {
   /// Converts a [Channel] to a Map<String, dynamic>
   Map<String, dynamic> toJson() => _$ChannelToJson(this);
 
-  /// The ID of the artifact;
+  /// The ID of the channel;
   final int id;
 
   /// The ID of the app.
