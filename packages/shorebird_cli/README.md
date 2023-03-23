@@ -23,6 +23,9 @@ dart pub global activate --source path shorebird/packages/shorebird_cli
 Get started by initializing shorebird in your current project.
 
 ```bash
+# 1. Creates a new app (if one doesn't exist) with a stable channel.
+# 2. Generates a shorebird.yaml (if one doesn't exist).
+# 3. Adds the shorebird.yaml to the pubspec.yaml flutter assets.
 shorebird init
 ```
 
@@ -34,6 +37,7 @@ shorebird init
 
 🐦 Shorebird initialized successfully!
 
+✅ A shorebird app has been created.
 ✅ A "shorebird.yaml" has been created.
 ✅ The "pubspec.yaml" has been updated to include "shorebird.yaml" as an asset.
 
@@ -160,11 +164,32 @@ shorebird build
 The publish command allows developers to publish new releases of their Flutter application to the Shorebird CodePush API. These updates are then pushed directly to users' devices.
 
 ```bash
-# Publish the default release
+# Publish the artifacts
+# 1. Builds the artifacts (equivalent to a shorebird build)
+# 2. Creates a release if one does not exist
+# 3. Creates a new patch if one does not exist
+# 4. Uploads the artifacts as part of the patch
+# 5. Promotes the patch as "stable"
 shorebird publish
 
-# Publish a specific release
-shorebird publish <path/to/libapp.so>
+# Optionally specify options via command-line args...
+shorebird publish --release-version "1.0.0" --patch-number "2"
+```
+
+**Sample**
+
+```
+shorebird publish
+[✓] Generated Artifacts
+
+Ready to publish the following patch:
+App: My App (6c93cbd7-0738-4745-baf5-e1d02e91114c)
+Release: 1.0.0
+Patch Number: [NEW]
+
+Confirm? (y/N) y
+
+[✓] Published Patch
 ```
 
 ### Usage
