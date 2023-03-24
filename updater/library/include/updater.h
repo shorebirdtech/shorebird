@@ -59,13 +59,13 @@ void shorebird_init(const struct AppParameters *c_params,
                     const char *c_yaml);
 
 /**
- * Return the active version of the app, or NULL if there is no active version.
+ * Return the active patch number, or NULL if there is no active patch.
  */
 SHOREBIRD_EXPORT char *shorebird_active_patch_number(void);
 
 /**
- * Return the path to the active version of the app, or NULL if there is no
- * active version.
+ * Return the path to the active patch for the app, or NULL if there is no
+ * active patch.
  */
 SHOREBIRD_EXPORT char *shorebird_active_path(void);
 

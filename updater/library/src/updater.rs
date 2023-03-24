@@ -148,9 +148,14 @@ fn inflate(patch_path: &Path, base_path: &Path, output_path: &Path) -> anyhow::R
     let compressed_patch_r = BufReader::new(File::open(patch_path)?);
     let output_file_w = File::create(&output_path)?;
 
+    // Set up a pipe to connect the writing from the decompression thread
+    // to the reading of the decompressed patch data on this thread.
     let (patch_r, patch_w) = pipe::pipe();
 
     let decompress = ZstdDecompressor::new();
+    // Spawn a thread to run the decompression in parallel to the patching.
+    // decompress.copy will block on the pipe being full (I think) and then
+    // when it returns the thread will exit.
     std::thread::spawn(move || {
         let result = decompress.copy(compressed_patch_r, patch_w);
         // If this thread fails, undoubtedly the main thread will fail too.
@@ -160,8 +165,10 @@ fn inflate(patch_path: &Path, base_path: &Path, output_path: &Path) -> anyhow::R
         }
     });
 
+    // Do the patch, using the uncompressed patch data from the pipe.
     let mut fresh_r = bipatch::Reader::new(patch_r, base_r)?;
 
+    // Write out the resulting patched file to the new location.
     let mut output_w = BufWriter::new(output_file_w);
     std::io::copy(&mut fresh_r, &mut output_w)?;
     Ok(())
