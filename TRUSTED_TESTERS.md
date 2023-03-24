@@ -259,6 +259,7 @@ shorebird publish
 
 📱 App: My App (28f5d0d9-158a-4401-8f19-cd19b90d6414)
 📦 Release Version: 1.0.0
+#️⃣ Hash: cfe26dddf8aff17131042f9dfad409c83eb130c5a9f2fd6f77325b2388062265
 
 Would you like to continue? (y/N) Yes
 ✓ Fetching releases (76ms)
