@@ -30,11 +30,11 @@ class InitCommand extends ShorebirdCommand
     final progress = logger.progress('Initializing Shorebird');
     try {
       if (!hasPubspecYaml) {
-        logger.err('Could not find a "pubspec.yaml".');
+        progress.fail('Could not find a "pubspec.yaml".');
         return ExitCode.noInput.code;
       }
     } catch (error) {
-      logger.err('Error parsing "pubspec.yaml": $error');
+      progress.fail('Error parsing "pubspec.yaml": $error');
       return ExitCode.software.code;
     }
 
@@ -42,7 +42,7 @@ class InitCommand extends ShorebirdCommand
     try {
       shorebirdYamlExists = hasShorebirdYaml;
     } catch (_) {
-      logger.err('Error parsing "shorebird.yaml".');
+      progress.fail('Error parsing "shorebird.yaml".');
       return ExitCode.software.code;
     }
 
@@ -52,7 +52,7 @@ class InitCommand extends ShorebirdCommand
         final app = await createApp();
         appId = app.id;
       } catch (error) {
-        logger.err('$error');
+        progress.fail('$error');
         return ExitCode.software.code;
       }
     } else {
