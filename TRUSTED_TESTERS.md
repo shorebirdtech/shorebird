@@ -5,9 +5,8 @@ generally available. We're running a trusted tester program with a limited
 number of users to ensure that we're building the right thing and that it's
 stable for general use.
 
-If you'd like to be a part of the program, please join our mailing list
-(linked from [shorebird.dev](https://shorebird.dev/), we will send out
-information there as we're ready to add more testers.
+If you'd like to be a part of the program, please fill out this form:
+https://forms.gle/T7x5h5bb6bMBB7hUA
 
 
 ## Welcome!
@@ -77,7 +76,17 @@ No support for:
 
 ## Installing Shorebird command line
 
-The first thing you'll want to do is install the `shorebird` command-line tool.
+These instructions assume you already have Flutter installed on the machine
+and `flutter` and `dart` in your path:
+https://docs.flutter.dev/get-started/install
+
+Shorebird also currently only works with the latest Flutter stable version:
+```
+flutter channel stable
+flutter upgrade
+```
+
+Once you have Flutter installed, the next is to install the `shorebird` command-line tool.
 
 ```bash
 # Clone the Shorebird repo
@@ -97,10 +106,6 @@ to your .zshrc file.
 
 More information: https://github.com/shorebirdtech/install/blob/main/README.md
 
-Currently we assume you have `flutter` installed and working.  We also require
-that `flutter` be set to the latest stable channel.  The `shorebird` tool should
-enforce this (and show errors if your `flutter` is not set up as expected).
-
 
 ## Using Shorebird code push
 
@@ -114,7 +119,9 @@ commands do not require login, but it's best to just do it first to avoid
 unexpected errors later.  Your login credentials are stored in
 `~/Library/Application Support/shorebird/shorebird-session.json`.
 
-2. Once you're logged in, you can use `shorebird init`.
+2. Once you're logged in, you can use `shorebird init`.  This needs to be run
+   within the directory of your Flutter app, it reads and writes your pubspec.yaml
+   and will write out a new shorebird.yaml file.
 
 `shorebird init` does three things:
   1. Tells Shorebird that your app exists (e.g. so it can hold patches to it
@@ -178,6 +185,12 @@ When you're ready to publish your app (either to a store or just side-loaded
 onto your local Android device) use `shorebird build` to build a release version
 of your app including the Shorebird updater.
 
+`shorebird build` wraps `flutter build` and can take any argument `flutter build`
+can.  To pass arguments to the underlying `flutter build` you need
+to put `flutter build` arguments *after* a `--` separator.  For example:
+`shorebird build -- --dart-define="foo=bar"` will define the "foo" environment
+variable inside Dart as you might have done with `flutter build` directly.
+
 Success should look like this:
 ```
 % shorebird build
@@ -195,6 +208,10 @@ several seconds depending on your internet connection.
 You can use `shorebird run` to build and run your app on a connected
 Android device.  This is similar to `flutter run --release` just with
 Shorebird's fork of the Flutter engine that includes the Shorebird updater.
+
+`shorebird run` wraps `flutter run` and can take any argument `flutter run` can.
+To pass arguments to the underlying `flutter run` use a `--` separator.  For example:
+`shorebird run -- -d my_device` will run on a specific device.
 
 During this trusted tester period, you will likely see several logs from the
 shorebird updater.  These are for debugging in case you have trouble
