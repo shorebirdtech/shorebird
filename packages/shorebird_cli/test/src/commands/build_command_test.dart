@@ -52,7 +52,7 @@ void main() {
 
       when(() => argResults.rest).thenReturn([]);
       when(
-        () => codePushClient.downloadEngine(any()),
+        () => codePushClient.downloadEngine(revision: any(named: 'revision')),
       ).thenAnswer((_) async => Uint8List.fromList([]));
       when(() => logger.progress(any())).thenReturn(_MockProgress());
     });
@@ -71,7 +71,7 @@ void main() {
 
     test('exits with code 70 when pulling engine fails', () async {
       when(
-        () => codePushClient.downloadEngine(any()),
+        () => codePushClient.downloadEngine(revision: any(named: 'revision')),
       ).thenThrow(Exception('oops'));
       when(() => auth.currentSession).thenReturn(session);
 
@@ -103,7 +103,7 @@ void main() {
         '${tempDir.path}/.shorebird/engine',
       ).createSync(recursive: true);
       when(
-        () => codePushClient.downloadEngine(any()),
+        () => codePushClient.downloadEngine(revision: any(named: 'revision')),
       ).thenAnswer((_) async => Uint8List.fromList([]));
       when(() => auth.currentSession).thenReturn(session);
 

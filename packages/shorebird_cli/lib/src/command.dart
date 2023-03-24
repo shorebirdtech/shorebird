@@ -43,11 +43,4 @@ abstract class ShorebirdCommand extends Command<int> {
 
   /// [ArgResults] for the current command.
   ArgResults get results => testArgResults ?? argResults!;
-
-  /// [CommandRunner] used for testing purposes only.
-  @visibleForTesting
-  CommandRunner<int>? testCommandRunner;
-
-  @override
-  CommandRunner<int>? get runner => testCommandRunner ?? super.runner;
 }
