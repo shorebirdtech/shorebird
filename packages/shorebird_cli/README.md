@@ -166,30 +166,35 @@ The publish command allows developers to publish new releases of their Flutter a
 ```bash
 # Publish the artifacts
 # 1. Builds the artifacts (equivalent to a shorebird build)
-# 2. Creates a release if one does not exist
-# 3. Creates a new patch if one does not exist
-# 4. Uploads the artifacts as part of the patch
-# 5. Promotes the patch as "stable"
+# 2. Creates a new app if one does not exist
+# 3. Creates a release if one does not exist
+# 4. Creates a new patch if one does not exist
+# 5. Uploads the artifacts as part of the patch
+# 6. Promotes the patch as "stable"
 shorebird publish
-
-# Optionally specify options via command-line args...
-shorebird publish --release-version "1.0.0" --patch-number "2"
 ```
 
 **Sample**
 
 ```
 shorebird publish
-[✓] Generated Artifacts
+✓ Building release (5.5s)
+✓ Fetching apps (0.2s)
 
-Ready to publish the following patch:
-App: My App (6c93cbd7-0738-4745-baf5-e1d02e91114c)
-Release: 1.0.0
-Patch Number: [NEW]
+🚀 Ready to publish a new patch!
 
-Confirm? (y/N) y
+📱 App: Time Shift (28f5d0d9-158a-4401-8f19-cd19b90d6414)
+📦 Release Version: 1.0.0
 
-[✓] Published Patch
+Would you like to continue? (y/N) Yes
+✓ Fetching releases (76ms)
+✓ Creating release (85ms)
+✓ Creating patch (79ms)
+✓ Creating artifact (0.7s)
+✓ Fetching channels (75ms)
+✓ Publishing patch (75ms)
+
+✅ Published Successfully!
 ```
 
 ### Usage
