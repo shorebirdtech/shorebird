@@ -80,7 +80,13 @@ These instructions assume you already have Flutter installed on the machine
 and `flutter` and `dart` in your path:
 https://docs.flutter.dev/get-started/install
 
-The first thing you'll want to do is install the `shorebird` command-line tool.
+Shorebird also currently only works with the latest Flutter stable version:
+```
+flutter channel stable
+flutter upgrade
+```
+
+Once you have Flutter installed, the next is to install the `shorebird` command-line tool.
 
 ```bash
 # Clone the Shorebird repo
@@ -99,10 +105,6 @@ export PATH=$HOME/.pub-cache/bin:$PATH
 to your .zshrc file.
 
 More information: https://github.com/shorebirdtech/install/blob/main/README.md
-
-Currently we assume you have `flutter` installed and working.  We also require
-that `flutter` be set to the latest stable channel.  The `shorebird` tool should
-enforce this (and show errors if your `flutter` is not set up as expected).
 
 
 ## Using Shorebird code push
