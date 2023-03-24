@@ -198,7 +198,7 @@ class CodePushClient {
   Future<List<Release>> getReleases({required String appId}) async {
     final response = await _httpClient.get(
       Uri.parse('$hostedUri/api/v1/releases').replace(
-        queryParameters: {'app-id': appId},
+        queryParameters: {'appId': appId},
       ),
       headers: _apiKeyHeader,
     );
