@@ -7,7 +7,7 @@ use crate::config::{set_config, with_config, ResolvedConfig};
 use crate::logging::init_logging;
 use crate::network::{download_to_path, send_patch_check_request};
 use crate::yaml::YamlConfig;
-use std::path::PathBuf;
+use std::path::{Path, PathBuf};
 
 pub enum UpdateStatus {
     NoUpdate,
@@ -109,8 +109,17 @@ fn update_internal(config: &ResolvedConfig) -> anyhow::Result<UpdateStatus> {
     let patch = response.patch.ok_or(UpdateError::BadServerResponse)?;
 
     let download_dir = PathBuf::from(&config.cache_dir);
-    let download_path = download_dir.join(patch.number.to_string());
+    let mut download_path = download_dir.join(patch.number.to_string());
     download_to_path(&patch.download_url, &download_path)?;
+
+    // Inflate the patch from a diff if needed.
+    if patch.is_diff {
+        let base_path = PathBuf::from(&config.original_libapp_path);
+        let output_path = download_dir.join(format!("{}.full", patch.number.to_string()));
+        inflate(&download_path, &base_path, &output_path)?;
+        download_path = output_path;
+    }
+
     // Check the hash before moving into place.
     // Move/state update should be "atomic".
     // Consider supporting allowing the system to download for us (e.g. iOS).
@@ -123,6 +132,39 @@ fn update_internal(config: &ResolvedConfig) -> anyhow::Result<UpdateStatus> {
 
     // Set the state to "restart required".
     return Ok(UpdateStatus::UpdateInstalled);
+}
+
+fn inflate(patch_path: &Path, base_path: &Path, output_path: &Path) -> anyhow::Result<()> {
+    info!("Patch is compressed, inflating...");
+    use comde::de::Decompressor;
+    use comde::zstd::ZstdDecompressor;
+    use std::fs::File;
+    use std::io::{BufReader, BufWriter};
+
+    // Open all our files first for error clarity.  Otherwise we might see
+    // PipeReader/Writer errors instead of file open errors.
+    info!("Reading base file: {:?}", base_path);
+    let base_r = File::open(base_path)?;
+    let compressed_patch_r = BufReader::new(File::open(patch_path)?);
+    let output_file_w = File::create(&output_path)?;
+
+    let (patch_r, patch_w) = pipe::pipe();
+
+    let decompress = ZstdDecompressor::new();
+    std::thread::spawn(move || {
+        let result = decompress.copy(compressed_patch_r, patch_w);
+        // If this thread fails, undoubtedly the main thread will fail too.
+        // Most important is to not crash.
+        if let Err(err) = result {
+            error!("Decompression thread failed: {err}");
+        }
+    });
+
+    let mut fresh_r = bipatch::Reader::new(patch_r, base_r)?;
+
+    let mut output_w = BufWriter::new(output_file_w);
+    std::io::copy(&mut fresh_r, &mut output_w)?;
+    Ok(())
 }
 
 /// Reads the current patch from the cache and returns it.

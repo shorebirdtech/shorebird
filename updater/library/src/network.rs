@@ -4,7 +4,7 @@
 use serde::{Deserialize, Serialize};
 use std::fs::File;
 use std::io::Write;
-use std::path::PathBuf;
+use std::path::Path;
 use std::string::ToString;
 
 use crate::cache::UpdaterState;
@@ -16,9 +16,17 @@ fn patches_check_url(base_url: &str) -> String {
 
 #[derive(Debug, Deserialize)]
 pub struct Patch {
+    /// The patch number.  Starts at 1 for each new release and increases
+    /// monotonically.
     pub number: usize,
+    /// The hash of the final uncompressed patch file.
     pub hash: String,
+    /// The URL to download the patch file from.
     pub download_url: String,
+    /// Whether the artifact is a diff (modern) or full (legacy) artifact.
+    /// Will eventually be removed once we no longer support legacy artifacts.
+    #[serde(default)]
+    pub is_diff: bool,
 }
 
 #[derive(Debug, Serialize)]
@@ -74,7 +82,7 @@ pub fn send_patch_check_request(
     return Ok(response);
 }
 
-pub fn download_to_path(url: &str, path: &PathBuf) -> anyhow::Result<()> {
+pub fn download_to_path(url: &str, path: &Path) -> anyhow::Result<()> {
     // Download the file at the given url to the given path.
     let client = reqwest::blocking::Client::new();
     let response = client.get(url).send()?;

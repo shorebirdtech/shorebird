@@ -61,7 +61,7 @@ void shorebird_init(const struct AppParameters *c_params,
 /**
  * Return the active version of the app, or NULL if there is no active version.
  */
-SHOREBIRD_EXPORT char *shorebird_active_version(void);
+SHOREBIRD_EXPORT char *shorebird_active_patch_number(void);
 
 /**
  * Return the path to the active version of the app, or NULL if there is no
@@ -84,6 +84,11 @@ SHOREBIRD_EXPORT bool shorebird_check_for_update(void);
  */
 SHOREBIRD_EXPORT void shorebird_update(void);
 
+/**
+ * Report that the app failed to launch.  This will cause the updater to
+ * attempt to roll back to the previous version if this version has not
+ * been launched successfully before.
+ */
 SHOREBIRD_EXPORT void shorebird_report_failed_launch(void);
 
 #ifdef __cplusplus
