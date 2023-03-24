@@ -641,7 +641,7 @@ void main() {
         });
 
         expect(
-          codePushClient.downloadEngine(engineRevision),
+          codePushClient.downloadEngine(revision: engineRevision),
           throwsA(isA<Exception>()),
         );
       });
@@ -654,7 +654,7 @@ void main() {
           );
         });
 
-        await codePushClient.downloadEngine(engineRevision);
+        await codePushClient.downloadEngine(revision: engineRevision);
 
         final request = verify(() => httpClient.send(captureAny()))
             .captured
@@ -752,6 +752,92 @@ void main() {
         );
 
         final actual = await codePushClient.getApps();
+        expect(json.encode(actual), equals(json.encode(expected)));
+      });
+    });
+
+    group('getReleases', () {
+      const appId = 'test-app-id';
+      test('throws an exception if the http request fails (unknown)', () async {
+        when(
+          () => httpClient.get(
+            any(),
+            headers: any(named: 'headers'),
+          ),
+        ).thenAnswer(
+          (_) async => http.Response(
+            '',
+            HttpStatus.failedDependency,
+          ),
+        );
+
+        expect(
+          codePushClient.getReleases(appId: appId),
+          throwsA(
+            isA<CodePushException>().having(
+              (e) => e.message,
+              'message',
+              CodePushClient.unknownErrorMessage,
+            ),
+          ),
+        );
+      });
+
+      test('throws an exception if the http request fails', () async {
+        when(
+          () => httpClient.get(
+            any(),
+            headers: any(named: 'headers'),
+          ),
+        ).thenAnswer(
+          (_) async => http.Response(
+            json.encode(errorResponse.toJson()),
+            HttpStatus.failedDependency,
+          ),
+        );
+
+        expect(
+          codePushClient.getReleases(appId: appId),
+          throwsA(
+            isA<CodePushException>().having(
+              (e) => e.message,
+              'message',
+              errorResponse.message,
+            ),
+          ),
+        );
+      });
+
+      test('completes when request succeeds (empty)', () async {
+        when(
+          () => httpClient.get(
+            any(),
+            headers: any(named: 'headers'),
+          ),
+        ).thenAnswer(
+          (_) async => http.Response(json.encode([]), HttpStatus.ok),
+        );
+
+        final apps = await codePushClient.getReleases(appId: appId);
+        expect(apps, isEmpty);
+      });
+
+      test('completes when request succeeds (populated)', () async {
+        final expected = [
+          Release(id: 0, appId: '1', version: '1.0.0', displayName: 'v1.0.0'),
+          Release(id: 1, appId: '2', version: '1.0.1', displayName: 'v1.0.1'),
+        ];
+
+        when(
+          () => httpClient.get(
+            any(),
+            headers: any(named: 'headers'),
+          ),
+        ).thenAnswer(
+          (_) async => http.Response(json.encode(expected), HttpStatus.ok),
+        );
+
+        final actual = await codePushClient.getReleases(appId: appId);
         expect(json.encode(actual), equals(json.encode(expected)));
       });
     });
