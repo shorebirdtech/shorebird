@@ -1,6 +1,7 @@
 import 'dart:io';
 
 import 'package:collection/collection.dart';
+import 'package:crypto/crypto.dart';
 import 'package:mason_logger/mason_logger.dart';
 import 'package:path/path.dart' as p;
 import 'package:shorebird_cli/src/command.dart';
@@ -9,6 +10,9 @@ import 'package:shorebird_cli/src/shorebird_config_mixin.dart';
 import 'package:shorebird_cli/src/shorebird_create_app_mixin.dart';
 import 'package:shorebird_cli/src/shorebird_engine_mixin.dart';
 import 'package:shorebird_code_push_client/shorebird_code_push_client.dart';
+
+/// Signature for a function which takes a list of bytes and returns a hash.
+typedef HashFunction = String Function(List<int> bytes);
 
 /// {@template publish_command}
 ///
@@ -27,7 +31,8 @@ class PublishCommand extends ShorebirdCommand
     super.auth,
     super.buildCodePushClient,
     super.runProcess,
-  });
+    HashFunction? hashFn,
+  }) : _hashFn = hashFn ?? ((m) => sha256.convert(m).toString());
 
   @override
   String get description => 'Publish an update.';
@@ -39,6 +44,8 @@ class PublishCommand extends ShorebirdCommand
   static const String _arch = 'aarch64';
   static const String _platform = 'android';
   static const String _channel = 'stable';
+
+  final HashFunction _hashFn;
 
   @override
   Future<int> run() async {
@@ -91,6 +98,7 @@ class PublishCommand extends ShorebirdCommand
       return ExitCode.software.code;
     }
 
+    final hash = _hashFn(await artifact.readAsBytes());
     final pubspecYaml = getPubspecYaml()!;
     final shorebirdYaml = getShorebirdYaml()!;
     final codePushClient = buildCodePushClient(
@@ -141,6 +149,7 @@ ${styleBold.wrap(lightGreen.wrap('🚀 Ready to publish a new patch!'))}
 
 📱 App: ${lightCyan.wrap(app.displayName)} ${lightCyan.wrap('(${app.id})')}
 📦 Release Version: ${lightCyan.wrap(versionString)}
+#️⃣ Hash: ${lightCyan.wrap(hash)}
 ''',
     );
 
@@ -198,7 +207,7 @@ ${styleBold.wrap(lightGreen.wrap('🚀 Ready to publish a new patch!'))}
         artifactPath: artifact.path,
         arch: _arch,
         platform: _platform,
-        hash: '#',
+        hash: hash,
       );
       createArtifactProgress.complete();
     } catch (error) {
