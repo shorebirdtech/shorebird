@@ -76,6 +76,10 @@ No support for:
 
 ## Installing Shorebird command line
 
+These instructions assume you already have Flutter installed on the machine
+and `flutter` and `dart` in your path:
+https://docs.flutter.dev/get-started/install
+
 The first thing you'll want to do is install the `shorebird` command-line tool.
 
 ```bash
