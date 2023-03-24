@@ -127,8 +127,7 @@ ${lightGreen.wrap('🐦 Shorebird initialized successfully!')}
 
 ✅ A shorebird app has been created.
 ✅ A "shorebird.yaml" has been created.
-✅ The "pubspec.yaml" has been updated to include "shorebird.yaml" as an asset.
-''');
+✅ The "pubspec.yaml" has been updated to include "shorebird.yaml" as an asset.''');
       } catch (error) {
         logger.err('$error');
         return ExitCode.software.code;
@@ -156,7 +155,7 @@ ${styleBold.wrap(lightGreen.wrap('🚀 Ready to publish a new patch!'))}
     final fetchReleasesProgress = logger.progress('Fetching releases');
     try {
       releases = await codePushClient.getReleases(
-        appId: shorebirdYaml.appId,
+        appId: app.id,
       );
       fetchReleasesProgress.complete();
     } catch (error) {
@@ -172,7 +171,7 @@ ${styleBold.wrap(lightGreen.wrap('🚀 Ready to publish a new patch!'))}
       final createReleaseProgress = logger.progress('Creating release');
       try {
         release = await codePushClient.createRelease(
-          appId: shorebirdYaml.appId,
+          appId: app.id,
           version: versionString,
         );
         createReleaseProgress.complete();
@@ -210,9 +209,7 @@ ${styleBold.wrap(lightGreen.wrap('🚀 Ready to publish a new patch!'))}
     Channel? channel;
     final fetchChannelsProgress = logger.progress('Fetching channels');
     try {
-      final channels = await codePushClient.getChannels(
-        appId: shorebirdYaml.appId,
-      );
+      final channels = await codePushClient.getChannels(appId: app.id);
       channel = channels.firstWhereOrNull(
         (channel) => channel.name == _channel,
       );
@@ -226,7 +223,7 @@ ${styleBold.wrap(lightGreen.wrap('🚀 Ready to publish a new patch!'))}
       final createChannelProgress = logger.progress('Creating channel');
       try {
         channel = await codePushClient.createChannel(
-          appId: shorebirdYaml.appId,
+          appId: app.id,
           channel: _channel,
         );
         createChannelProgress.complete();
