@@ -33,7 +33,7 @@ class CodePushClient {
     Uri? hostedUri,
   })  : _apiKey = apiKey,
         _httpClient = httpClient ?? http.Client(),
-        hostedUri = hostedUri ?? Uri.https('api.shorebird.dev');
+        hostedUri = hostedUri ?? Uri.http('localhost:8080');
 
   /// The default error message to use when an unknown error occurs.
   static const unknownErrorMessage = 'An unknown error occurred.';
@@ -161,7 +161,7 @@ class CodePushClient {
   }
 
   /// Download the specified revision of the shorebird engine.
-  Future<Uint8List> downloadEngine(String revision) async {
+  Future<Uint8List> downloadEngine({required String revision}) async {
     final request = http.Request(
       'GET',
       Uri.parse('$hostedUri/api/v1/engines/$revision'),
@@ -191,6 +191,25 @@ class CodePushClient {
     final apps = json.decode(response.body) as List;
     return apps
         .map((app) => AppMetadata.fromJson(app as Map<String, dynamic>))
+        .toList();
+  }
+
+  /// List all release for the provided [appId].
+  Future<List<Release>> getReleases({required String appId}) async {
+    final response = await _httpClient.get(
+      Uri.parse('$hostedUri/api/v1/releases').replace(
+        queryParameters: {'app-id': appId},
+      ),
+      headers: _apiKeyHeader,
+    );
+
+    if (response.statusCode != HttpStatus.ok) {
+      throw _parseErrorResponse(response.body);
+    }
+
+    final releases = json.decode(response.body) as List;
+    return releases
+        .map((release) => Release.fromJson(release as Map<String, dynamic>))
         .toList();
   }
 
