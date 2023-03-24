@@ -19,7 +19,8 @@ pub struct Patch {
     /// The patch number.  Starts at 1 for each new release and increases
     /// monotonically.
     pub number: usize,
-    /// The hash of the final uncompressed patch file.
+    /// The hex-encoded sha256 hash of the final uncompressed patch file.
+    /// Legacy: originally "#" before we implemented hash checks (remove).
     pub hash: String,
     /// The URL to download the patch file from.
     pub download_url: String,

@@ -70,17 +70,6 @@ impl UpdaterState {
     }
 }
 
-// fn compute_hash(path: &Path) -> anyhow::Result<String> {
-//     use sha2::{Digest, Sha256};
-//     use std::{fs, io};
-
-//     let mut file = fs::File::open(&path)?;
-//     let mut hasher = Sha256::new();
-//     let n = io::copy(&mut file, &mut hasher)?;
-//     let hash = hasher.finalize();
-//     Ok(format!("{:x}", hash))
-// }
-
 impl UpdaterState {
     pub fn is_known_good_patch(&self, patch: &PatchInfo) -> bool {
         self.successful_patches.iter().any(|v| v == &patch.number)
