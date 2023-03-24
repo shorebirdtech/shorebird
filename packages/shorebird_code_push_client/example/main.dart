@@ -7,7 +7,7 @@ Future<void> main() async {
 
   // Download the latest stable engine revision.
   final engine = await client.downloadEngine(
-    '<ENGINE REVISION>', // e.g. '9aa7816315'
+    revision: '<ENGINE REVISION>', // e.g. '9aa7816315'
   );
 
   // List all apps.
