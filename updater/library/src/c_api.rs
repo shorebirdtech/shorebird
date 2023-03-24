@@ -66,10 +66,9 @@ pub extern "C" fn shorebird_init(c_params: *const AppParameters, c_yaml: *const 
     }
 }
 
-/// Return the active version of the app, or NULL if there is no active version.
-// TODO: This should probably be renamed to `shorebird_active_patch_number`.
+/// Return the active patch number, or NULL if there is no active patch.
 #[no_mangle]
-pub extern "C" fn shorebird_active_version() -> *mut c_char {
+pub extern "C" fn shorebird_active_patch_number() -> *mut c_char {
     let patch = updater::active_patch();
     match patch {
         Some(v) => {
@@ -80,8 +79,8 @@ pub extern "C" fn shorebird_active_version() -> *mut c_char {
     }
 }
 
-/// Return the path to the active version of the app, or NULL if there is no
-/// active version.
+/// Return the path to the active patch for the app, or NULL if there is no
+/// active patch.
 #[no_mangle]
 // rename to shorebird_patch_path
 pub extern "C" fn shorebird_active_path() -> *mut c_char {

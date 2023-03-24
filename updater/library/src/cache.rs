@@ -266,7 +266,7 @@ impl UpdaterState {
             .into());
         }
 
-        // Move the patch into the slot.
+        // Move the artifact into the slot.
         let artifact_path = slot_dir.join("dlc.vmcode");
         std::fs::rename(&patch.path, &artifact_path)?;
 
@@ -363,7 +363,7 @@ mod tests {
     }
 
     #[test]
-    fn dont_install_known_bad_patch() {
+    fn do_not_install_known_bad_patch() {
         let tmp_dir = TempDir::new("example").unwrap();
         let mut state = test_state(&tmp_dir);
         let bad_patch = fake_patch(&tmp_dir, 1);
