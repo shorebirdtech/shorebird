@@ -30,6 +30,11 @@ class PublishCommand extends ShorebirdCommand
   @override
   String get name => 'publish';
 
+  // TODO(felangel): make these configurable.
+  static const String _arch = 'aarch64';
+  static const String _platform = 'android';
+  static const String _channel = 'stable';
+
   @override
   Future<int> run() async {
     if (!isShorebirdInitialized) {
@@ -151,13 +156,54 @@ Patch Number: [NEW]
       await codePushClient.createArtifact(
         patchId: patch.id,
         artifactPath: artifact.path,
-        arch: 'aarch64',
-        platform: 'android',
+        arch: _arch,
+        platform: _platform,
         hash: '#',
       );
       createArtifactProgress.complete();
     } catch (error) {
       createArtifactProgress.fail('$error');
+      return ExitCode.software.code;
+    }
+
+    Channel? channel;
+    final fetchChannelsProgress = logger.progress('Fetching channels');
+    try {
+      final channels = await codePushClient.getChannels(
+        appId: shorebirdYaml.appId,
+      );
+      channel = channels.firstWhereOrNull(
+        (channel) => channel.name == _channel,
+      );
+      fetchChannelsProgress.complete();
+    } catch (error) {
+      fetchChannelsProgress.fail('$error');
+      return ExitCode.software.code;
+    }
+
+    if (channel == null) {
+      final createChannelProgress = logger.progress('Creating channel');
+      try {
+        channel = await codePushClient.createChannel(
+          appId: shorebirdYaml.appId,
+          channel: _channel,
+        );
+        createChannelProgress.complete();
+      } catch (error) {
+        createChannelProgress.fail('$error');
+        return ExitCode.software.code;
+      }
+    }
+
+    final publishPatchProgress = logger.progress('Publishing patch');
+    try {
+      await codePushClient.promotePatch(
+        patchId: patch.id,
+        channelId: channel.id,
+      );
+      publishPatchProgress.complete();
+    } catch (error) {
+      publishPatchProgress.fail('$error');
       return ExitCode.software.code;
     }
 
