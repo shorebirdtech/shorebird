@@ -756,6 +756,92 @@ void main() {
       });
     });
 
+    group('getChannels', () {
+      const appId = 'test-app-id';
+      test('throws an exception if the http request fails (unknown)', () async {
+        when(
+          () => httpClient.get(
+            any(),
+            headers: any(named: 'headers'),
+          ),
+        ).thenAnswer(
+          (_) async => http.Response(
+            '',
+            HttpStatus.failedDependency,
+          ),
+        );
+
+        expect(
+          codePushClient.getChannels(appId: appId),
+          throwsA(
+            isA<CodePushException>().having(
+              (e) => e.message,
+              'message',
+              CodePushClient.unknownErrorMessage,
+            ),
+          ),
+        );
+      });
+
+      test('throws an exception if the http request fails', () async {
+        when(
+          () => httpClient.get(
+            any(),
+            headers: any(named: 'headers'),
+          ),
+        ).thenAnswer(
+          (_) async => http.Response(
+            json.encode(errorResponse.toJson()),
+            HttpStatus.failedDependency,
+          ),
+        );
+
+        expect(
+          codePushClient.getChannels(appId: appId),
+          throwsA(
+            isA<CodePushException>().having(
+              (e) => e.message,
+              'message',
+              errorResponse.message,
+            ),
+          ),
+        );
+      });
+
+      test('completes when request succeeds (empty)', () async {
+        when(
+          () => httpClient.get(
+            any(),
+            headers: any(named: 'headers'),
+          ),
+        ).thenAnswer(
+          (_) async => http.Response(json.encode([]), HttpStatus.ok),
+        );
+
+        final apps = await codePushClient.getChannels(appId: appId);
+        expect(apps, isEmpty);
+      });
+
+      test('completes when request succeeds (populated)', () async {
+        final expected = [
+          Channel(id: 0, appId: '1', name: 'stable'),
+          Channel(id: 1, appId: '2', name: 'development'),
+        ];
+
+        when(
+          () => httpClient.get(
+            any(),
+            headers: any(named: 'headers'),
+          ),
+        ).thenAnswer(
+          (_) async => http.Response(json.encode(expected), HttpStatus.ok),
+        );
+
+        final actual = await codePushClient.getChannels(appId: appId);
+        expect(json.encode(actual), equals(json.encode(expected)));
+      });
+    });
+
     group('getReleases', () {
       const appId = 'test-app-id';
       test('throws an exception if the http request fails (unknown)', () async {

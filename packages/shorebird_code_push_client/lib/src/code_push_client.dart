@@ -194,6 +194,25 @@ class CodePushClient {
         .toList();
   }
 
+  /// List all channels for the provided [appId].
+  Future<List<Channel>> getChannels({required String appId}) async {
+    final response = await _httpClient.get(
+      Uri.parse('$hostedUri/api/v1/channels').replace(
+        queryParameters: {'appId': appId},
+      ),
+      headers: _apiKeyHeader,
+    );
+
+    if (response.statusCode != HttpStatus.ok) {
+      throw _parseErrorResponse(response.body);
+    }
+
+    final channels = json.decode(response.body) as List;
+    return channels
+        .map((channel) => Channel.fromJson(channel as Map<String, dynamic>))
+        .toList();
+  }
+
   /// List all release for the provided [appId].
   Future<List<Release>> getReleases({required String appId}) async {
     final response = await _httpClient.get(
