@@ -299,9 +299,7 @@ AndroidManifest.xml, which in turn is generated from pubspec.yaml).
 
 ## Building a release version of your app
 
-When you're ready to publish your app (either to a store or just side-loaded
-onto your local Android device) use `shorebird build` to build a release version
-of your app including the Shorebird updater.
+You can use `shorebird build` to build a release version of your app including the Shorebird updater.
 
 `shorebird build` wraps `flutter build` and can take any argument `flutter build`
 can.  To pass arguments to the underlying `flutter build` you need
