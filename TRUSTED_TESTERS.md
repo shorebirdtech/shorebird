@@ -147,12 +147,12 @@ cd shorebird_test
 
 🐦 Shorebird initialized successfully!
 
+✅ A shorebird app has been created.
 ✅ A "shorebird.yaml" has been created.
 ✅ The "pubspec.yaml" has been updated to include "shorebird.yaml" as an asset.
 
 Reference the following commands to get started:
 
-✨ To create a new app use: "shorebird apps create".
 🚙 To run your project use: "shorebird run".
 📦 To build your project use: "shorebird build".
 🚀 To publish an update use: "shorebird publish".
@@ -178,30 +178,6 @@ app to be able to communicate with the Shorebird servers to pull new patches.
     ...
 </manifest>
 ```
-
-## Building a release version of your app
-
-When you're ready to publish your app (either to a store or just side-loaded
-onto your local Android device) use `shorebird build` to build a release version
-of your app including the Shorebird updater.
-
-`shorebird build` wraps `flutter build` and can take any argument `flutter build`
-can.  To pass arguments to the underlying `flutter build` you need
-to put `flutter build` arguments *after* a `--` separator.  For example:
-`shorebird build -- --dart-define="foo=bar"` will define the "foo" environment
-variable inside Dart as you might have done with `flutter build` directly.
-
-Success should look like this:
-```
-% shorebird build
-✓ Downloading shorebird engine (9.7s)
-✓ Building shorebird engine (8.0s)
-✓ Building release  (6.4s)
-```
-The first time you run `shorebird build` it will need to download the Shorebird
-engine into the `.shorebird` directory within your project.  This is about
-~200mb in download (we can make it much smaller, just haven't yet) and can take
-several seconds depending on your internet connection.
 
 ## Running your Shorebird-built app
 
@@ -272,12 +248,36 @@ to your app, as I had forgotten when running my example above.
 
 ## Publishing patches to your app
 
-To publish a patch to your app, use `shorebird publish`.  This will take the
-currently built version of your app and upload it to the Shorebird servers for
-distribution to all other copies of your app.
+To publish a patch to your app, use `shorebird publish`. It should look like:
 
-For example, you could try `shorebird run` to run and install your app, and then
-stop it.  Make edits, `shorebird build` and `shorebird publish` and then run the
+```
+shorebird publish
+✓ Building release (5.5s)
+✓ Fetching apps (0.2s)
+
+🚀 Ready to publish a new patch!
+
+📱 App: My App (28f5d0d9-158a-4401-8f19-cd19b90d6414)
+📦 Release Version: 1.0.0
+
+Would you like to continue? (y/N) Yes
+✓ Fetching releases (76ms)
+✓ Creating release (85ms)
+✓ Creating patch (79ms)
+✓ Creating artifact (0.7s)
+✓ Fetching channels (75ms)
+✓ Publishing patch (75ms)
+
+✅ Published Successfully!
+```
+
+The first time you run `shorebird publish` it will need to download the Shorebird
+engine into the `.shorebird` directory within your project.  This is about
+~200mb in download (we can make it much smaller, just haven't yet) and can take
+several seconds depending on your internet connection.
+
+This will generate a new build of your app and upload it to the Shorebird servers for distribution to all other copies of your app. For example, you could try `shorebird run` to run and install your app, and then
+stop it.  Make edits and `shorebird publish` and then run the
 app again directly (by clicking on it, without using `shorebird run`) and you
 should notice that it updates to the latest built and published version rather
 than using the previously installed version.
@@ -295,6 +295,26 @@ https://github.com/shorebirdtech/shorebird/tree/main/packages/shorebird_cli#crea
 Your applications in the wild will query for updates with their app_id
 (which comes from `shorebird.yaml`) and their release version (which comes from
 AndroidManifest.xml, which in turn is generated from pubspec.yaml).
+
+## Building a release version of your app
+
+When you're ready to publish your app (either to a store or just side-loaded
+onto your local Android device) use `shorebird build` to build a release version
+of your app including the Shorebird updater.
+
+`shorebird build` wraps `flutter build` and can take any argument `flutter build`
+can.  To pass arguments to the underlying `flutter build` you need
+to put `flutter build` arguments *after* a `--` separator.  For example:
+`shorebird build -- --dart-define="foo=bar"` will define the "foo" environment
+variable inside Dart as you might have done with `flutter build` directly.
+
+Success should look like this:
+```
+% shorebird build
+✓ Downloading shorebird engine (9.7s)
+✓ Building shorebird engine (8.0s)
+✓ Building release  (6.4s)
+```
 
 ## Update behavior
 
