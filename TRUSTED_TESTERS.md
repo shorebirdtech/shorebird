@@ -119,7 +119,9 @@ commands do not require login, but it's best to just do it first to avoid
 unexpected errors later.  Your login credentials are stored in
 `~/Library/Application Support/shorebird/shorebird-session.json`.
 
-2. Once you're logged in, you can use `shorebird init`.
+2. Once you're logged in, you can use `shorebird init`.  This needs to be run
+   within the directory of your Flutter app, it reads and writes your pubspec.yaml
+   and will write out a new shorebird.yaml file.
 
 `shorebird init` does three things:
   1. Tells Shorebird that your app exists (e.g. so it can hold patches to it
