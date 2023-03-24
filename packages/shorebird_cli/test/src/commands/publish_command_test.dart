@@ -43,6 +43,7 @@ void main() {
       displayName: '1.2.3',
     );
     const patch = Patch(id: 0, number: 1);
+    const channel = Channel(id: 0, appId: appId, name: 'stable');
     const pubspecYamlContent = '''
 name: example
 version: $version
@@ -101,8 +102,17 @@ flutter:
         () => codePushClient.downloadEngine(revision: any(named: 'revision')),
       ).thenAnswer((_) async => Uint8List.fromList([]));
       when(
+        () => codePushClient.getChannels(appId: any(named: 'appId')),
+      ).thenAnswer((_) async => [channel]);
+      when(
         () => codePushClient.getReleases(appId: any(named: 'appId')),
       ).thenAnswer((_) async => [release]);
+      when(
+        () => codePushClient.createChannel(
+          appId: any(named: 'appId'),
+          channel: any(named: 'channel'),
+        ),
+      ).thenAnswer((_) async => channel);
       when(
         () => codePushClient.createRelease(
           appId: any(named: 'appId'),
@@ -121,6 +131,12 @@ flutter:
           hash: any(named: 'hash'),
         ),
       ).thenAnswer((_) async => artifact);
+      when(
+        () => codePushClient.promotePatch(
+          patchId: any(named: 'patchId'),
+          channelId: any(named: 'channelId'),
+        ),
+      ).thenAnswer((_) async {});
     });
 
     test('throws config error when shorebird is not initialized', () async {
@@ -350,6 +366,117 @@ flutter:
           arch: any(named: 'arch'),
           platform: any(named: 'platform'),
           hash: any(named: 'hash'),
+        ),
+      ).thenThrow(error);
+      final tempDir = setUpTempDir();
+      Directory(
+        '${tempDir.path}/.shorebird/engine',
+      ).createSync(recursive: true);
+      Directory(
+        '${tempDir.path}/.shorebird/cache',
+      ).createSync(recursive: true);
+      final artifactPath = p.join(
+        tempDir.path,
+        'build',
+        'app',
+        'intermediates',
+        'stripped_native_libs',
+        'release',
+        'out',
+        'lib',
+        'arm64-v8a',
+        'libapp.so',
+      );
+      File(artifactPath).createSync(recursive: true);
+      final exitCode = await IOOverrides.runZoned(
+        command.run,
+        getCurrentDirectory: () => tempDir,
+      );
+      verify(() => progress.fail(error)).called(1);
+      expect(exitCode, ExitCode.software.code);
+    });
+
+    test('throws error when fetching channels fails.', () async {
+      const error = 'something went wrong';
+      when(
+        () => codePushClient.getChannels(appId: any(named: 'appId')),
+      ).thenThrow(error);
+      final tempDir = setUpTempDir();
+      Directory(
+        '${tempDir.path}/.shorebird/engine',
+      ).createSync(recursive: true);
+      Directory(
+        '${tempDir.path}/.shorebird/cache',
+      ).createSync(recursive: true);
+      final artifactPath = p.join(
+        tempDir.path,
+        'build',
+        'app',
+        'intermediates',
+        'stripped_native_libs',
+        'release',
+        'out',
+        'lib',
+        'arm64-v8a',
+        'libapp.so',
+      );
+      File(artifactPath).createSync(recursive: true);
+      final exitCode = await IOOverrides.runZoned(
+        command.run,
+        getCurrentDirectory: () => tempDir,
+      );
+      verify(() => progress.fail(error)).called(1);
+      expect(exitCode, ExitCode.software.code);
+    });
+
+    test('throws error when creating channel fails.', () async {
+      const error = 'something went wrong';
+      when(
+        () => codePushClient.getChannels(appId: any(named: 'appId')),
+      ).thenAnswer((_) async => []);
+      when(
+        () => codePushClient.createChannel(
+          appId: any(named: 'appId'),
+          channel: any(named: 'channel'),
+        ),
+      ).thenThrow(error);
+      final tempDir = setUpTempDir();
+      Directory(
+        '${tempDir.path}/.shorebird/engine',
+      ).createSync(recursive: true);
+      Directory(
+        '${tempDir.path}/.shorebird/cache',
+      ).createSync(recursive: true);
+      final artifactPath = p.join(
+        tempDir.path,
+        'build',
+        'app',
+        'intermediates',
+        'stripped_native_libs',
+        'release',
+        'out',
+        'lib',
+        'arm64-v8a',
+        'libapp.so',
+      );
+      File(artifactPath).createSync(recursive: true);
+      final exitCode = await IOOverrides.runZoned(
+        command.run,
+        getCurrentDirectory: () => tempDir,
+      );
+      verify(() => progress.fail(error)).called(1);
+      expect(exitCode, ExitCode.software.code);
+    });
+
+    test('throws error when promoting patch fails.', () async {
+      const error = 'something went wrong';
+      when(
+        () => codePushClient.getChannels(appId: any(named: 'appId')),
+      ).thenAnswer((_) async => []);
+      when(
+        () => codePushClient.promotePatch(
+          patchId: any(named: 'patchId'),
+          channelId: any(named: 'channelId'),
         ),
       ).thenThrow(error);
       final tempDir = setUpTempDir();
