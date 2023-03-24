@@ -72,7 +72,7 @@ environment:
         command.run,
         getCurrentDirectory: () => tempDir,
       );
-      verify(() => logger.err('Could not find a "pubspec.yaml".')).called(1);
+      verify(() => progress.fail('Could not find a "pubspec.yaml".')).called(1);
       expect(exitCode, ExitCode.noInput.code);
     });
 
@@ -84,7 +84,7 @@ environment:
         getCurrentDirectory: () => tempDir,
       );
       verify(
-        () => logger.err(any(that: contains('Error parsing "pubspec.yaml":'))),
+        () => progress.fail(any(that: contains('Error parsing "pubspec.yaml":'))),
       ).called(1);
       expect(exitCode, ExitCode.software.code);
     });
@@ -105,7 +105,7 @@ environment:
       verify(
         () => logger.prompt(any(), defaultValue: any(named: 'defaultValue')),
       ).called(1);
-      verify(() => logger.err('$error')).called(1);
+      verify(() => progress.fail('$error')).called(1);
       expect(exitCode, ExitCode.software.code);
     });
 
@@ -120,7 +120,7 @@ environment:
         getCurrentDirectory: () => tempDir,
       );
       verify(
-        () => logger.err('Error parsing "shorebird.yaml".'),
+        () => progress.fail('Error parsing "shorebird.yaml".'),
       ).called(1);
       expect(exitCode, ExitCode.software.code);
     });
