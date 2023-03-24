@@ -74,7 +74,7 @@ void main() {
       final error = Exception('oops');
       when(() => auth.currentSession).thenReturn(session);
       when(
-        () => codePushClient.downloadEngine(any()),
+        () => codePushClient.downloadEngine(revision: any(named: 'revision')),
       ).thenThrow(error);
       final progress = _MockProgress();
       when(() => logger.progress(any())).thenReturn(progress);
@@ -98,7 +98,7 @@ void main() {
 
       when(() => auth.currentSession).thenReturn(session);
       when(
-        () => codePushClient.downloadEngine(any()),
+        () => codePushClient.downloadEngine(revision: any(named: 'revision')),
       ).thenAnswer((_) async => Uint8List(0));
       final progress = _MockProgress();
       when(() => logger.progress(any())).thenReturn(progress);
@@ -129,7 +129,7 @@ void main() {
 
       when(() => auth.currentSession).thenReturn(session);
       when(
-        () => codePushClient.downloadEngine(any()),
+        () => codePushClient.downloadEngine(revision: any(named: 'revision')),
       ).thenAnswer((_) async => Uint8List(0));
 
       final progress = _MockProgress();
@@ -163,7 +163,7 @@ void main() {
           .createSync(recursive: true);
       when(() => auth.currentSession).thenReturn(session);
       when(
-        () => codePushClient.downloadEngine(any()),
+        () => codePushClient.downloadEngine(revision: any(named: 'revision')),
       ).thenAnswer((_) async => Uint8List(0));
 
       final progress = _MockProgress();

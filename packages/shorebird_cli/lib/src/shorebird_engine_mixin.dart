@@ -67,7 +67,7 @@ mixin ShorebirdEngineMixin on ShorebirdConfigMixin {
     String path,
   ) async {
     final engine = await codePushClient.downloadEngine(
-      requiredFlutterEngineRevision,
+      revision: requiredFlutterEngineRevision,
     );
     final targetFile = File(path);
 
