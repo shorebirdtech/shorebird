@@ -97,6 +97,39 @@ pub fn check_for_update() -> bool {
     return with_config(check_for_update_internal);
 }
 
+fn check_hash(path: &Path, expected_string: &str) -> anyhow::Result<bool> {
+    let result = hex::decode(expected_string);
+    // Remove this legacy behavior.
+    if result.is_err() {
+        warn!("Failed to decode hash from server, allowing: {expected_string}");
+        return Ok(true);
+    }
+    let expected = result.unwrap();
+
+    use sha2::{Digest, Sha256};
+    use std::{fs, io};
+    // Based on guidance from:
+    // https://github.com/RustCrypto/hashes#hashing-readable-objects
+
+    let mut file = fs::File::open(&path)?;
+    let mut hasher = Sha256::new();
+    io::copy(&mut file, &mut hasher)?;
+    // Check that the length from copy is the same as the file size?
+    let hash = hasher.finalize();
+    let hash_matches = hash.as_slice() == expected;
+    if !hash_matches {
+        warn!(
+            "Hash mismatch: {:?}, expected: {}, got: {:?}",
+            path,
+            expected_string,
+            hex::encode(hash)
+        );
+    } else {
+        info!("Hash match: {:?}", path);
+    }
+    return Ok(hash_matches);
+}
+
 fn update_internal(config: &ResolvedConfig) -> anyhow::Result<UpdateStatus> {
     // Load the state from disk.
     let mut state = UpdaterState::load_or_new_on_error(&config.cache_dir, &config.release_version);
@@ -121,6 +154,10 @@ fn update_internal(config: &ResolvedConfig) -> anyhow::Result<UpdateStatus> {
     }
 
     // Check the hash before moving into place.
+    let hash_ok = check_hash(&download_path, &patch.hash)?;
+    if !hash_ok {
+        return Err(UpdateError::InvalidState("Hash mismatch".to_string()).into());
+    }
     // Move/state update should be "atomic".
     // Consider supporting allowing the system to download for us (e.g. iOS).
 
@@ -129,6 +166,7 @@ fn update_internal(config: &ResolvedConfig) -> anyhow::Result<UpdateStatus> {
         number: patch.number,
     };
     state.install_patch(patch_info)?;
+    info!("Patch {} successfully installed.", patch.number);
 
     // Set the state to "restart required".
     return Ok(UpdateStatus::UpdateInstalled);
@@ -316,5 +354,29 @@ mod tests {
         // Technically might need to "reload"
         // ask for current patch (should get none).
         assert!(crate::active_patch().is_none());
+    }
+
+    #[test]
+    fn hash_matches() {
+        let tmp_dir = TempDir::new("example").unwrap();
+
+        let input_path = tmp_dir.path().join("input");
+        std::fs::write(&input_path, "hello world").unwrap();
+
+        let expected = "b94d27b9934d3e08a52e52d7da7dabfac484efe37a5380ee9088f7ace2efcde9";
+        assert!(super::check_hash(&input_path, expected).unwrap());
+
+        // modify hash to not match
+        let expected = "a94d27b9934d3e08a52e52d7da7dabfac484efe37a5380ee9088f7ace2efcde9";
+        assert_eq!(super::check_hash(&input_path, expected).unwrap(), false);
+
+        // invalid hashes should not match either
+        // Except for now they do (legacy behavior).
+        let expected = "foo";
+        assert_eq!(super::check_hash(&input_path, expected).unwrap(), true);
+
+        // Remove this case when legacy clients are gone.
+        let expected = "#";
+        assert!(super::check_hash(&input_path, expected).unwrap());
     }
 }

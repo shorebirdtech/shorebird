@@ -149,7 +149,7 @@ ${styleBold.wrap(lightGreen.wrap('🚀 Ready to publish a new patch!'))}
 
 📱 App: ${lightCyan.wrap(app.displayName)} ${lightCyan.wrap('(${app.id})')}
 📦 Release Version: ${lightCyan.wrap(versionString)}
-#️⃣ Hash: ${lightCyan.wrap(hash)}
+#️⃣  Hash: ${lightCyan.wrap(hash)}
 ''',
     );
 
