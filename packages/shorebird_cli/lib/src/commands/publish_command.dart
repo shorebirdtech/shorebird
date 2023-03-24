@@ -1,21 +1,27 @@
 import 'dart:io';
 
+import 'package:collection/collection.dart';
 import 'package:mason_logger/mason_logger.dart';
 import 'package:path/path.dart' as p;
 import 'package:shorebird_cli/src/command.dart';
+import 'package:shorebird_cli/src/shorebird_build_mixin.dart';
 import 'package:shorebird_cli/src/shorebird_config_mixin.dart';
+import 'package:shorebird_cli/src/shorebird_engine_mixin.dart';
+import 'package:shorebird_code_push_client/shorebird_code_push_client.dart';
 
 /// {@template publish_command}
 ///
 /// `shorebird publish <path/to/artifact>`
 /// Publish new releases to the Shorebird CodePush server.
 /// {@endtemplate}
-class PublishCommand extends ShorebirdCommand with ShorebirdConfigMixin {
+class PublishCommand extends ShorebirdCommand
+    with ShorebirdConfigMixin, ShorebirdEngineMixin, ShorebirdBuildMixin {
   /// {@macro publish_command}
   PublishCommand({
     required super.logger,
     super.auth,
     super.buildCodePushClient,
+    super.runProcess,
   });
 
   @override
@@ -39,55 +45,123 @@ class PublishCommand extends ShorebirdCommand with ShorebirdConfigMixin {
       return ExitCode.noUser.code;
     }
 
-    final args = results.rest;
-    if (args.length > 1) {
-      usageException('A single file path must be specified.');
-    }
-
-    final artifactPath = args.isEmpty
-        ? p.join(
-            Directory.current.path,
-            'build',
-            'app',
-            'intermediates',
-            'stripped_native_libs',
-            'release',
-            'out',
-            'lib',
-            'arm64-v8a',
-            'libapp.so',
-          )
-        : args.first;
-
-    final artifact = File(artifactPath);
-    if (!artifact.existsSync()) {
-      logger.err('Artifact not found: "${artifact.path}"');
-      return ExitCode.noInput.code;
-    }
-
     try {
-      final pubspecYaml = getPubspecYaml()!;
-      final shorebirdYaml = getShorebirdYaml()!;
-      final codePushClient = buildCodePushClient(
-        apiKey: session.apiKey,
-        hostedUri: hostedUri,
-      );
-      logger.detail(
-        '''Deploying ${artifact.path} to ${shorebirdYaml.appId} (${pubspecYaml.version})''',
-      );
-      final version = pubspecYaml.version!;
-      await codePushClient.createPatch(
-        artifactPath: artifact.path,
-        releaseVersion: '${version.major}.${version.minor}.${version.patch}',
-        appId: shorebirdYaml.appId,
-        channel: 'stable',
-      );
+      await ensureEngineExists();
     } catch (error) {
-      logger.err('$error');
+      logger.err(error.toString());
       return ExitCode.software.code;
     }
 
-    logger.success('Successfully deployed.');
+    final buildProgress = logger.progress('Building release');
+    try {
+      await buildRelease();
+      buildProgress.complete();
+    } on ProcessException catch (error) {
+      buildProgress.fail('Failed to build: ${error.message}');
+      return ExitCode.software.code;
+    }
+
+    final artifactPath = p.join(
+      Directory.current.path,
+      'build',
+      'app',
+      'intermediates',
+      'stripped_native_libs',
+      'release',
+      'out',
+      'lib',
+      'arm64-v8a',
+      'libapp.so',
+    );
+
+    final artifact = File(artifactPath);
+
+    if (!artifact.existsSync()) {
+      logger.err('Artifact not found: "${artifact.path}"');
+      return ExitCode.software.code;
+    }
+
+    final pubspecYaml = getPubspecYaml()!;
+    final shorebirdYaml = getShorebirdYaml()!;
+    final codePushClient = buildCodePushClient(
+      apiKey: session.apiKey,
+      hostedUri: hostedUri,
+    );
+    final version = pubspecYaml.version!;
+    final versionString = '${version.major}.${version.minor}.${version.patch}';
+
+    logger.info(
+      '''
+Ready to publish the following patch:
+App: ${pubspecYaml.name} (${shorebirdYaml.appId})
+Release Version: $versionString
+Patch Number: [NEW]
+''',
+    );
+
+    final confirm = logger.confirm('Are you sure you want to continue?');
+
+    if (!confirm) {
+      logger.info('Aborting.');
+      return ExitCode.success.code;
+    }
+
+    late final List<Release> releases;
+    final fetchReleasesProgress = logger.progress('Fetching releases');
+    try {
+      releases = await codePushClient.getReleases(
+        appId: shorebirdYaml.appId,
+      );
+      fetchReleasesProgress.complete();
+    } catch (error) {
+      fetchReleasesProgress.fail('$error');
+      return ExitCode.software.code;
+    }
+
+    var release = releases.firstWhereOrNull(
+      (r) => r.version == versionString,
+    );
+
+    if (release == null) {
+      final createReleaseProgress = logger.progress('Creating release');
+      try {
+        release = await codePushClient.createRelease(
+          appId: shorebirdYaml.appId,
+          version: versionString,
+        );
+        createReleaseProgress.complete();
+      } catch (error) {
+        createReleaseProgress.fail('$error');
+        return ExitCode.software.code;
+      }
+    }
+
+    late final Patch patch;
+    final createPatchProgress = logger.progress('Creating patch');
+    try {
+      patch = await codePushClient.createPatch(releaseId: release.id);
+      createPatchProgress.complete();
+    } catch (error) {
+      createPatchProgress.fail('$error');
+      return ExitCode.software.code;
+    }
+
+    final createArtifactProgress = logger.progress('Creating artifact');
+    try {
+      await codePushClient.createArtifact(
+        patchId: patch.id,
+        artifactPath: artifact.path,
+        arch: 'aarch64',
+        platform: 'android',
+        hash: '#',
+      );
+      createArtifactProgress.complete();
+    } catch (error) {
+      createArtifactProgress.fail('$error');
+      return ExitCode.software.code;
+    }
+
+    logger.success('Published!');
     return ExitCode.success.code;
   }
 }
