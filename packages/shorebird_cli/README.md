@@ -23,6 +23,9 @@ dart pub global activate --source path shorebird/packages/shorebird_cli
 Get started by initializing shorebird in your current project.
 
 ```bash
+# 1. Creates a new app (if one doesn't exist) with a stable channel.
+# 2. Generates a shorebird.yaml (if one doesn't exist).
+# 3. Adds the shorebird.yaml to the pubspec.yaml flutter assets.
 shorebird init
 ```
 
@@ -34,6 +37,7 @@ shorebird init
 
 🐦 Shorebird initialized successfully!
 
+✅ A shorebird app has been created.
 ✅ A "shorebird.yaml" has been created.
 ✅ The "pubspec.yaml" has been updated to include "shorebird.yaml" as an asset.
 
@@ -160,11 +164,37 @@ shorebird build
 The publish command allows developers to publish new releases of their Flutter application to the Shorebird CodePush API. These updates are then pushed directly to users' devices.
 
 ```bash
-# Publish the default release
+# Publish the artifacts
+# 1. Builds the artifacts (equivalent to a shorebird build)
+# 2. Creates a new app if one does not exist
+# 3. Creates a release if one does not exist
+# 4. Creates a new patch if one does not exist
+# 5. Uploads the artifacts as part of the patch
+# 6. Promotes the patch as "stable"
 shorebird publish
+```
 
-# Publish a specific release
-shorebird publish <path/to/libapp.so>
+**Sample**
+
+```
+shorebird publish
+✓ Building release (5.5s)
+✓ Fetching apps (0.2s)
+
+🚀 Ready to publish a new patch!
+
+📱 App: Time Shift (28f5d0d9-158a-4401-8f19-cd19b90d6414)
+📦 Release Version: 1.0.0
+
+Would you like to continue? (y/N) Yes
+✓ Fetching releases (76ms)
+✓ Creating release (85ms)
+✓ Creating patch (79ms)
+✓ Creating artifact (0.7s)
+✓ Fetching channels (75ms)
+✓ Publishing patch (75ms)
+
+✅ Published Successfully!
 ```
 
 ### Usage

@@ -2,6 +2,7 @@ import 'dart:io';
 
 import 'package:mason_logger/mason_logger.dart';
 import 'package:shorebird_cli/src/command.dart';
+import 'package:shorebird_cli/src/shorebird_build_mixin.dart';
 import 'package:shorebird_cli/src/shorebird_config_mixin.dart';
 import 'package:shorebird_cli/src/shorebird_engine_mixin.dart';
 
@@ -17,7 +18,7 @@ typedef RunProcess = Future<ProcessResult> Function(
 /// Build a new release of your application.
 /// {@endtemplate}
 class BuildCommand extends ShorebirdCommand
-    with ShorebirdConfigMixin, ShorebirdEngineMixin {
+    with ShorebirdConfigMixin, ShorebirdEngineMixin, ShorebirdBuildMixin {
   /// {@macro build_command}
   BuildCommand({
     required super.logger,
@@ -50,7 +51,7 @@ class BuildCommand extends ShorebirdCommand
 
     final buildProgress = logger.progress('Building release ');
     try {
-      await _build(shorebirdEnginePath);
+      await buildRelease();
       buildProgress.complete();
     } on ProcessException catch (error) {
       buildProgress.fail('Failed to build: ${error.message}');
@@ -58,38 +59,5 @@ class BuildCommand extends ShorebirdCommand
     }
 
     return ExitCode.success.code;
-  }
-
-  Future<void> _build(String shorebirdEnginePath) async {
-    const executable = 'flutter';
-    final arguments = [
-      'build',
-      // This is temporary because the Shorebird engine currently
-      // only supports Android.
-      'appbundle',
-      '--release',
-      '--local-engine-src-path',
-      shorebirdEnginePath,
-      '--local-engine',
-      // This is temporary because the Shorebird engine currently
-      // only supports Android arm64.
-      'android_release_arm64',
-      ...results.rest,
-    ];
-
-    final result = await runProcess(
-      executable,
-      arguments,
-      runInShell: true,
-    );
-
-    if (result.exitCode != ExitCode.success.code) {
-      throw ProcessException(
-        'flutter',
-        arguments,
-        result.stderr.toString(),
-        result.exitCode,
-      );
-    }
   }
 }

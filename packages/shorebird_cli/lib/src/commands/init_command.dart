@@ -1,13 +1,7 @@
-import 'dart:io';
-
 import 'package:mason_logger/mason_logger.dart';
-import 'package:path/path.dart' as p;
 import 'package:shorebird_cli/src/command.dart';
-import 'package:shorebird_cli/src/config/config.dart';
 import 'package:shorebird_cli/src/shorebird_config_mixin.dart';
 import 'package:shorebird_cli/src/shorebird_create_app_mixin.dart';
-import 'package:yaml/yaml.dart';
-import 'package:yaml_edit/yaml_edit.dart';
 
 /// {@template init_command}
 ///
@@ -69,7 +63,7 @@ class InitCommand extends ShorebirdCommand
       progress.update('"shorebird.yaml" already exists.');
     } else {
       progress.update('Creating "shorebird.yaml"');
-      _addShorebirdYamlToProject(appId);
+      addShorebirdYamlToProject(appId);
       progress.update('Generated a "shorebird.yaml".');
     }
 
@@ -78,7 +72,7 @@ class InitCommand extends ShorebirdCommand
     if (pubspecContainsShorebirdYaml) {
       progress.update('"shorebird.yaml" already in "pubspec.yaml" assets.');
     } else {
-      _addShorebirdYamlToPubspecAssets();
+      addShorebirdYamlToPubspecAssets();
     }
 
     progress.complete('Initialized Shorebird');
@@ -101,49 +95,5 @@ Reference the following commands to get started:
 For more information about Shorebird, visit ${link(uri: Uri.parse('https://shorebird.dev'))}''',
     );
     return ExitCode.success.code;
-  }
-
-  ShorebirdYaml _addShorebirdYamlToProject(String appId) {
-    File(
-      p.join(Directory.current.path, 'shorebird.yaml'),
-    ).writeAsStringSync('''
-# This file is used to configure the Shorebird CLI.
-# Learn more at https://shorebird.dev
-
-# This is the unique identifier assigned to your app.
-# It is used by your app to request the correct patches from the Shorebird servers.
-app_id: $appId
-''');
-
-    return ShorebirdYaml(appId: appId);
-  }
-
-  void _addShorebirdYamlToPubspecAssets() {
-    final pubspecFile = File(p.join(Directory.current.path, 'pubspec.yaml'));
-    final pubspecContents = pubspecFile.readAsStringSync();
-    final yaml = loadYaml(pubspecContents, sourceUrl: pubspecFile.uri) as Map;
-    final editor = YamlEditor(pubspecContents);
-
-    if (!yaml.containsKey('flutter')) {
-      editor.update(
-        ['flutter'],
-        {
-          'assets': ['shorebird.yaml']
-        },
-      );
-    } else {
-      if (!(yaml['flutter'] as Map).containsKey('assets')) {
-        editor.update(['flutter', 'assets'], ['shorebird.yaml']);
-      } else {
-        final assets = (yaml['flutter'] as Map)['assets'] as List;
-        if (!assets.contains('shorebird.yaml')) {
-          editor.update(['flutter', 'assets'], [...assets, 'shorebird.yaml']);
-        }
-      }
-    }
-
-    if (editor.edits.isEmpty) return;
-
-    pubspecFile.writeAsStringSync(editor.toString());
   }
 }

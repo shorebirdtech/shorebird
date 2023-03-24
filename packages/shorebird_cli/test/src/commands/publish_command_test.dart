@@ -1,7 +1,7 @@
 import 'dart:io';
+import 'dart:typed_data';
 
 import 'package:args/args.dart';
-import 'package:args/command_runner.dart';
 import 'package:mason_logger/mason_logger.dart';
 import 'package:mocktail/mocktail.dart';
 import 'package:path/path.dart' as p;
@@ -19,18 +19,34 @@ class _MockLogger extends Mock implements Logger {}
 
 class _MockProgress extends Mock implements Progress {}
 
-class _MockCodePushClient extends Mock implements CodePushClient {}
+class _MockProcessResult extends Mock implements ProcessResult {}
 
-class _FakeCommandRunner extends Fake implements CommandRunner<int> {
-  @override
-  String get executableName => 'shorebird_test';
-}
+class _MockCodePushClient extends Mock implements CodePushClient {}
 
 void main() {
   group('publish', () {
     const session = Session(apiKey: 'test-api-key');
     const appId = 'test-app-id';
     const version = '1.2.3';
+    const appDisplayName = 'Test App';
+    const app = App(id: appId, displayName: appDisplayName);
+    const appMetadata = AppMetadata(appId: appId, displayName: appDisplayName);
+    const artifact = Artifact(
+      id: 0,
+      patchId: 0,
+      arch: 'aarch64',
+      platform: 'android',
+      hash: '#',
+      url: 'https://example.com',
+    );
+    const release = Release(
+      id: 0,
+      appId: appId,
+      version: version,
+      displayName: '1.2.3',
+    );
+    const patch = Patch(id: 0, number: 1);
+    const channel = Channel(id: 0, appId: appId, name: 'stable');
     const pubspecYamlContent = '''
 name: example
 version: $version
@@ -43,7 +59,9 @@ flutter:
 
     late ArgResults argResults;
     late Auth auth;
+    late Progress progress;
     late Logger logger;
+    late ProcessResult processResult;
     late CodePushClient codePushClient;
     late PublishCommand command;
     late Uri? capturedHostedUri;
@@ -62,7 +80,9 @@ flutter:
     setUp(() {
       argResults = _MockArgResults();
       auth = _MockAuth();
+      progress = _MockProgress();
       logger = _MockLogger();
+      processResult = _MockProcessResult();
       codePushClient = _MockCodePushClient();
       command = PublishCommand(
         auth: auth,
@@ -70,20 +90,60 @@ flutter:
           capturedHostedUri = hostedUri;
           return codePushClient;
         },
+        runProcess: (executable, arguments, {bool runInShell = false}) async {
+          return processResult;
+        },
         logger: logger,
-      )
-        ..testArgResults = argResults
-        ..testCommandRunner = _FakeCommandRunner();
+      )..testArgResults = argResults;
 
       when(() => argResults.rest).thenReturn([]);
       when(() => auth.currentSession).thenReturn(session);
-      when(() => logger.progress(any())).thenReturn(_MockProgress());
+      when(() => logger.progress(any())).thenReturn(progress);
+      when(() => logger.confirm(any())).thenReturn(true);
+      when(() => processResult.exitCode).thenReturn(ExitCode.success.code);
       when(
-        () => codePushClient.createPatch(
-          releaseVersion: any(named: 'releaseVersion'),
-          artifactPath: any(named: 'artifactPath'),
-          channel: any(named: 'channel'),
+        () => codePushClient.downloadEngine(revision: any(named: 'revision')),
+      ).thenAnswer((_) async => Uint8List.fromList([]));
+      when(
+        () => codePushClient.getApps(),
+      ).thenAnswer((_) async => [appMetadata]);
+      when(
+        () => codePushClient.getChannels(appId: any(named: 'appId')),
+      ).thenAnswer((_) async => [channel]);
+      when(
+        () => codePushClient.getReleases(appId: any(named: 'appId')),
+      ).thenAnswer((_) async => [release]);
+      when(
+        () => codePushClient.createApp(displayName: any(named: 'displayName')),
+      ).thenAnswer((_) async => app);
+      when(
+        () => codePushClient.createChannel(
           appId: any(named: 'appId'),
+          channel: any(named: 'channel'),
+        ),
+      ).thenAnswer((_) async => channel);
+      when(
+        () => codePushClient.createRelease(
+          appId: any(named: 'appId'),
+          version: any(named: 'version'),
+        ),
+      ).thenAnswer((_) async => release);
+      when(
+        () => codePushClient.createPatch(releaseId: any(named: 'releaseId')),
+      ).thenAnswer((_) async => patch);
+      when(
+        () => codePushClient.createArtifact(
+          artifactPath: any(named: 'artifactPath'),
+          patchId: any(named: 'patchId'),
+          arch: any(named: 'arch'),
+          platform: any(named: 'platform'),
+          hash: any(named: 'hash'),
+        ),
+      ).thenAnswer((_) async => artifact);
+      when(
+        () => codePushClient.promotePatch(
+          patchId: any(named: 'patchId'),
+          channelId: any(named: 'channelId'),
         ),
       ).thenAnswer((_) async {});
     });
@@ -112,21 +172,48 @@ flutter:
       expect(exitCode, equals(ExitCode.noUser.code));
     });
 
-    test('throws usage error when multiple args are passed.', () async {
-      when(() => argResults.rest).thenReturn(['arg1', 'arg2']);
+    test('exits with code 70 when pulling engine fails', () async {
+      when(
+        () => codePushClient.downloadEngine(revision: any(named: 'revision')),
+      ).thenThrow(Exception('oops'));
+      when(() => auth.currentSession).thenReturn(session);
       final tempDir = setUpTempDir();
-      await expectLater(
-        IOOverrides.runZoned(
-          () => command.run(),
-          getCurrentDirectory: () => tempDir,
-        ),
-        throwsA(isA<UsageException>()),
+      final exitCode = await IOOverrides.runZoned(
+        command.run,
+        getCurrentDirectory: () => tempDir,
       );
+      expect(exitCode, equals(ExitCode.software.code));
     });
 
-    test('throws no input error when artifact is not found (default).',
+    test('exits with code 70 when building fails', () async {
+      when(() => processResult.exitCode).thenReturn(1);
+      when(() => processResult.stderr).thenReturn('oops');
+      when(() => auth.currentSession).thenReturn(session);
+
+      final tempDir = setUpTempDir();
+      Directory(
+        '${tempDir.path}/.shorebird/engine',
+      ).createSync(recursive: true);
+      Directory(
+        '${tempDir.path}/.shorebird/cache',
+      ).createSync(recursive: true);
+      final exitCode = await IOOverrides.runZoned(
+        () async => command.run(),
+        getCurrentDirectory: () => tempDir,
+      );
+
+      expect(exitCode, equals(ExitCode.software.code));
+    });
+
+    test('throws software error when artifact is not found (default).',
         () async {
       final tempDir = setUpTempDir();
+      Directory(
+        '${tempDir.path}/.shorebird/engine',
+      ).createSync(recursive: true);
+      Directory(
+        '${tempDir.path}/.shorebird/cache',
+      ).createSync(recursive: true);
       final exitCode = await IOOverrides.runZoned(
         command.run,
         getCurrentDirectory: () => tempDir,
@@ -134,41 +221,71 @@ flutter:
       verify(
         () => logger.err(any(that: contains('Artifact not found:'))),
       ).called(1);
-      expect(exitCode, ExitCode.noInput.code);
+      expect(exitCode, ExitCode.software.code);
     });
 
-    test('throws no input error when artifact is not found (custom).',
-        () async {
+    test('throws error when fetching apps fails.', () async {
+      const error = 'something went wrong';
+      when(
+        () => codePushClient.getApps(),
+      ).thenThrow(error);
       final tempDir = setUpTempDir();
-      final artifact = File(p.join(tempDir.path, 'patch.txt'));
-      when(() => argResults.rest).thenReturn([artifact.path]);
+      Directory(
+        '${tempDir.path}/.shorebird/engine',
+      ).createSync(recursive: true);
+      Directory(
+        '${tempDir.path}/.shorebird/cache',
+      ).createSync(recursive: true);
+      final artifactPath = p.join(
+        tempDir.path,
+        'build',
+        'app',
+        'intermediates',
+        'stripped_native_libs',
+        'release',
+        'out',
+        'lib',
+        'arm64-v8a',
+        'libapp.so',
+      );
+      File(artifactPath).createSync(recursive: true);
       final exitCode = await IOOverrides.runZoned(
         command.run,
         getCurrentDirectory: () => tempDir,
       );
-      verify(
-        () => logger.err(
-          any(
-            that: contains('Artifact not found: "${artifact.path}"'),
-          ),
-        ),
-      ).called(1);
-      expect(exitCode, ExitCode.noInput.code);
+      verify(() => progress.fail(error)).called(1);
+      expect(exitCode, ExitCode.software.code);
     });
 
-    test('throws error when publish fails.', () async {
+    test('throws error when creating apps fails.', () async {
       const error = 'something went wrong';
       when(
-        () => codePushClient.createPatch(
-          releaseVersion: any(named: 'releaseVersion'),
-          artifactPath: any(named: 'artifactPath'),
-          channel: any(named: 'channel'),
-          appId: any(named: 'appId'),
-        ),
+        () => logger.prompt(any(), defaultValue: any(named: 'defaultValue')),
+      ).thenReturn(appDisplayName);
+      when(() => codePushClient.getApps()).thenAnswer((_) async => []);
+      when(
+        () => codePushClient.createApp(displayName: any(named: 'displayName')),
       ).thenThrow(error);
       final tempDir = setUpTempDir();
-      final artifact = File(p.join(tempDir.path, 'patch.txt'))..createSync();
-      when(() => argResults.rest).thenReturn([artifact.path]);
+      Directory(
+        '${tempDir.path}/.shorebird/engine',
+      ).createSync(recursive: true);
+      Directory(
+        '${tempDir.path}/.shorebird/cache',
+      ).createSync(recursive: true);
+      final artifactPath = p.join(
+        tempDir.path,
+        'build',
+        'app',
+        'intermediates',
+        'stripped_native_libs',
+        'release',
+        'out',
+        'lib',
+        'arm64-v8a',
+        'libapp.so',
+      );
+      File(artifactPath).createSync(recursive: true);
       final exitCode = await IOOverrides.runZoned(
         command.run,
         getCurrentDirectory: () => tempDir,
@@ -177,23 +294,328 @@ flutter:
       expect(exitCode, ExitCode.software.code);
     });
 
-    test('succeeds when publish is successful using existing app id', () async {
+    test('aborts when user opts out', () async {
+      when(() => logger.confirm(any())).thenReturn(false);
+      when(
+        () => logger.prompt(any(), defaultValue: any(named: 'defaultValue')),
+      ).thenReturn(appDisplayName);
+      when(() => codePushClient.getApps()).thenAnswer((_) async => []);
       final tempDir = setUpTempDir();
-      final artifact = File(p.join(tempDir.path, 'patch.txt'))..createSync();
-      when(() => argResults.rest).thenReturn([artifact.path]);
+      Directory(
+        '${tempDir.path}/.shorebird/engine',
+      ).createSync(recursive: true);
+      Directory(
+        '${tempDir.path}/.shorebird/cache',
+      ).createSync(recursive: true);
+      final artifactPath = p.join(
+        tempDir.path,
+        'build',
+        'app',
+        'intermediates',
+        'stripped_native_libs',
+        'release',
+        'out',
+        'lib',
+        'arm64-v8a',
+        'libapp.so',
+      );
+      File(artifactPath).createSync(recursive: true);
       final exitCode = await IOOverrides.runZoned(
         command.run,
         getCurrentDirectory: () => tempDir,
       );
-      verify(() => logger.success('Successfully deployed.')).called(1);
-      verify(
-        () => codePushClient.createPatch(
-          releaseVersion: version,
-          appId: appId,
-          artifactPath: artifact.path,
-          channel: 'stable',
+      expect(exitCode, ExitCode.success.code);
+      verify(() => logger.info('Aborting.')).called(1);
+    });
+
+    test('throws error when fetching releases fails.', () async {
+      const error = 'something went wrong';
+      when(
+        () => codePushClient.getReleases(appId: any(named: 'appId')),
+      ).thenThrow(error);
+      final tempDir = setUpTempDir();
+      Directory(
+        '${tempDir.path}/.shorebird/engine',
+      ).createSync(recursive: true);
+      Directory(
+        '${tempDir.path}/.shorebird/cache',
+      ).createSync(recursive: true);
+      final artifactPath = p.join(
+        tempDir.path,
+        'build',
+        'app',
+        'intermediates',
+        'stripped_native_libs',
+        'release',
+        'out',
+        'lib',
+        'arm64-v8a',
+        'libapp.so',
+      );
+      File(artifactPath).createSync(recursive: true);
+      final exitCode = await IOOverrides.runZoned(
+        command.run,
+        getCurrentDirectory: () => tempDir,
+      );
+      verify(() => progress.fail(error)).called(1);
+      expect(exitCode, ExitCode.software.code);
+    });
+
+    test('throws error when creating release fails.', () async {
+      const error = 'something went wrong';
+      when(
+        () => codePushClient.getReleases(appId: any(named: 'appId')),
+      ).thenAnswer((_) async => []);
+      when(
+        () => codePushClient.createRelease(
+          appId: any(named: 'appId'),
+          version: any(named: 'version'),
+          displayName: any(named: 'displayName'),
         ),
-      ).called(1);
+      ).thenThrow(error);
+      final tempDir = setUpTempDir();
+      Directory(
+        '${tempDir.path}/.shorebird/engine',
+      ).createSync(recursive: true);
+      Directory(
+        '${tempDir.path}/.shorebird/cache',
+      ).createSync(recursive: true);
+      final artifactPath = p.join(
+        tempDir.path,
+        'build',
+        'app',
+        'intermediates',
+        'stripped_native_libs',
+        'release',
+        'out',
+        'lib',
+        'arm64-v8a',
+        'libapp.so',
+      );
+      File(artifactPath).createSync(recursive: true);
+      final exitCode = await IOOverrides.runZoned(
+        command.run,
+        getCurrentDirectory: () => tempDir,
+      );
+      verify(() => progress.fail(error)).called(1);
+      expect(exitCode, ExitCode.software.code);
+    });
+
+    test('throws error when creating patch fails.', () async {
+      const error = 'something went wrong';
+      when(
+        () => codePushClient.getReleases(appId: any(named: 'appId')),
+      ).thenAnswer((_) async => []);
+      when(
+        () => codePushClient.createPatch(releaseId: any(named: 'releaseId')),
+      ).thenThrow(error);
+      final tempDir = setUpTempDir();
+      Directory(
+        '${tempDir.path}/.shorebird/engine',
+      ).createSync(recursive: true);
+      Directory(
+        '${tempDir.path}/.shorebird/cache',
+      ).createSync(recursive: true);
+      final artifactPath = p.join(
+        tempDir.path,
+        'build',
+        'app',
+        'intermediates',
+        'stripped_native_libs',
+        'release',
+        'out',
+        'lib',
+        'arm64-v8a',
+        'libapp.so',
+      );
+      File(artifactPath).createSync(recursive: true);
+      final exitCode = await IOOverrides.runZoned(
+        command.run,
+        getCurrentDirectory: () => tempDir,
+      );
+      verify(() => progress.fail(error)).called(1);
+      expect(exitCode, ExitCode.software.code);
+    });
+
+    test('throws error when uploading artifact fails.', () async {
+      const error = 'something went wrong';
+      when(
+        () => codePushClient.getReleases(appId: any(named: 'appId')),
+      ).thenAnswer((_) async => []);
+      when(
+        () => codePushClient.createArtifact(
+          artifactPath: any(named: 'artifactPath'),
+          patchId: any(named: 'patchId'),
+          arch: any(named: 'arch'),
+          platform: any(named: 'platform'),
+          hash: any(named: 'hash'),
+        ),
+      ).thenThrow(error);
+      final tempDir = setUpTempDir();
+      Directory(
+        '${tempDir.path}/.shorebird/engine',
+      ).createSync(recursive: true);
+      Directory(
+        '${tempDir.path}/.shorebird/cache',
+      ).createSync(recursive: true);
+      final artifactPath = p.join(
+        tempDir.path,
+        'build',
+        'app',
+        'intermediates',
+        'stripped_native_libs',
+        'release',
+        'out',
+        'lib',
+        'arm64-v8a',
+        'libapp.so',
+      );
+      File(artifactPath).createSync(recursive: true);
+      final exitCode = await IOOverrides.runZoned(
+        command.run,
+        getCurrentDirectory: () => tempDir,
+      );
+      verify(() => progress.fail(error)).called(1);
+      expect(exitCode, ExitCode.software.code);
+    });
+
+    test('throws error when fetching channels fails.', () async {
+      const error = 'something went wrong';
+      when(
+        () => codePushClient.getChannels(appId: any(named: 'appId')),
+      ).thenThrow(error);
+      final tempDir = setUpTempDir();
+      Directory(
+        '${tempDir.path}/.shorebird/engine',
+      ).createSync(recursive: true);
+      Directory(
+        '${tempDir.path}/.shorebird/cache',
+      ).createSync(recursive: true);
+      final artifactPath = p.join(
+        tempDir.path,
+        'build',
+        'app',
+        'intermediates',
+        'stripped_native_libs',
+        'release',
+        'out',
+        'lib',
+        'arm64-v8a',
+        'libapp.so',
+      );
+      File(artifactPath).createSync(recursive: true);
+      final exitCode = await IOOverrides.runZoned(
+        command.run,
+        getCurrentDirectory: () => tempDir,
+      );
+      verify(() => progress.fail(error)).called(1);
+      expect(exitCode, ExitCode.software.code);
+    });
+
+    test('throws error when creating channel fails.', () async {
+      const error = 'something went wrong';
+      when(
+        () => codePushClient.getChannels(appId: any(named: 'appId')),
+      ).thenAnswer((_) async => []);
+      when(
+        () => codePushClient.createChannel(
+          appId: any(named: 'appId'),
+          channel: any(named: 'channel'),
+        ),
+      ).thenThrow(error);
+      final tempDir = setUpTempDir();
+      Directory(
+        '${tempDir.path}/.shorebird/engine',
+      ).createSync(recursive: true);
+      Directory(
+        '${tempDir.path}/.shorebird/cache',
+      ).createSync(recursive: true);
+      final artifactPath = p.join(
+        tempDir.path,
+        'build',
+        'app',
+        'intermediates',
+        'stripped_native_libs',
+        'release',
+        'out',
+        'lib',
+        'arm64-v8a',
+        'libapp.so',
+      );
+      File(artifactPath).createSync(recursive: true);
+      final exitCode = await IOOverrides.runZoned(
+        command.run,
+        getCurrentDirectory: () => tempDir,
+      );
+      verify(() => progress.fail(error)).called(1);
+      expect(exitCode, ExitCode.software.code);
+    });
+
+    test('throws error when promoting patch fails.', () async {
+      const error = 'something went wrong';
+      when(
+        () => codePushClient.getChannels(appId: any(named: 'appId')),
+      ).thenAnswer((_) async => []);
+      when(
+        () => codePushClient.promotePatch(
+          patchId: any(named: 'patchId'),
+          channelId: any(named: 'channelId'),
+        ),
+      ).thenThrow(error);
+      final tempDir = setUpTempDir();
+      Directory(
+        '${tempDir.path}/.shorebird/engine',
+      ).createSync(recursive: true);
+      Directory(
+        '${tempDir.path}/.shorebird/cache',
+      ).createSync(recursive: true);
+      final artifactPath = p.join(
+        tempDir.path,
+        'build',
+        'app',
+        'intermediates',
+        'stripped_native_libs',
+        'release',
+        'out',
+        'lib',
+        'arm64-v8a',
+        'libapp.so',
+      );
+      File(artifactPath).createSync(recursive: true);
+      final exitCode = await IOOverrides.runZoned(
+        command.run,
+        getCurrentDirectory: () => tempDir,
+      );
+      verify(() => progress.fail(error)).called(1);
+      expect(exitCode, ExitCode.software.code);
+    });
+
+    test('succeeds when publish is successful', () async {
+      final tempDir = setUpTempDir();
+      Directory(
+        '${tempDir.path}/.shorebird/engine',
+      ).createSync(recursive: true);
+      Directory(
+        '${tempDir.path}/.shorebird/cache',
+      ).createSync(recursive: true);
+      final artifactPath = p.join(
+        tempDir.path,
+        'build',
+        'app',
+        'intermediates',
+        'stripped_native_libs',
+        'release',
+        'out',
+        'lib',
+        'arm64-v8a',
+        'libapp.so',
+      );
+      File(artifactPath).createSync(recursive: true);
+      final exitCode = await IOOverrides.runZoned(
+        command.run,
+        getCurrentDirectory: () => tempDir,
+      );
+      verify(() => logger.success('\n✅ Published Successfully!')).called(1);
       expect(exitCode, ExitCode.success.code);
       expect(capturedHostedUri, isNull);
     });
@@ -208,8 +630,25 @@ flutter:
 app_id: $appId
 base_url: $baseUrl''',
       );
-      final artifact = File(p.join(tempDir.path, 'patch.txt'))..createSync();
-      when(() => argResults.rest).thenReturn([artifact.path]);
+      Directory(
+        '${tempDir.path}/.shorebird/engine',
+      ).createSync(recursive: true);
+      Directory(
+        '${tempDir.path}/.shorebird/cache',
+      ).createSync(recursive: true);
+      final artifactPath = p.join(
+        tempDir.path,
+        'build',
+        'app',
+        'intermediates',
+        'stripped_native_libs',
+        'release',
+        'out',
+        'lib',
+        'arm64-v8a',
+        'libapp.so',
+      );
+      File(artifactPath).createSync(recursive: true);
       await IOOverrides.runZoned(
         command.run,
         getCurrentDirectory: () => tempDir,

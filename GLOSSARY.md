@@ -34,7 +34,7 @@ If we had an existing `1.0.0` release of `time_shift` available, we could publis
 
 **Definition**
 
-A tag used to manage the subset of applications that receive a patch. By default, a "stable" channel is created and used by devices to query for available patches.
+A tag used to manage the subset of installs that receive a patch. By default, a "stable" channel is created and used by devices to query for available patches.
 
 **Example**
 
