@@ -5,9 +5,8 @@ generally available. We're running a trusted tester program with a limited
 number of users to ensure that we're building the right thing and that it's
 stable for general use.
 
-If you'd like to be a part of the program, please join our mailing list
-(linked from [shorebird.dev](https://shorebird.dev/), we will send out
-information there as we're ready to add more testers.
+If you'd like to be a part of the program, please fill out this form:
+https://forms.gle/T7x5h5bb6bMBB7hUA
 
 
 ## Welcome!
