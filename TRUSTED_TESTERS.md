@@ -185,6 +185,12 @@ When you're ready to publish your app (either to a store or just side-loaded
 onto your local Android device) use `shorebird build` to build a release version
 of your app including the Shorebird updater.
 
+`shorebird build` wraps `flutter build` and can take any argument `flutter build`
+can.  To pass arguments to the underlying `flutter build` you need
+to put `flutter build` arguments *after* a `--` separator.  For example:
+`shorebird build -- --dart-define="foo=bar"` will define the "foo" environment
+variable inside Dart as you might have done with `flutter build` directly.
+
 Success should look like this:
 ```
 % shorebird build
@@ -202,6 +208,10 @@ several seconds depending on your internet connection.
 You can use `shorebird run` to build and run your app on a connected
 Android device.  This is similar to `flutter run --release` just with
 Shorebird's fork of the Flutter engine that includes the Shorebird updater.
+
+`shorebird run` wraps `flutter run` and can take any argument `flutter run` can.
+To pass arguments to the underlying `flutter run` use a `--` separator.  For example:
+`shorebird run -- -d my_device` will run on a specific device.
 
 During this trusted tester period, you will likely see several logs from the
 shorebird updater.  These are for debugging in case you have trouble
