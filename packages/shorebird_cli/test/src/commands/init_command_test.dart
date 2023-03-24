@@ -72,7 +72,14 @@ environment:
         command.run,
         getCurrentDirectory: () => tempDir,
       );
-      verify(() => progress.fail('Could not find a "pubspec.yaml".')).called(1);
+      verify(
+        () => progress.fail(
+          '''
+Could not find a "pubspec.yaml".
+Please make sure you are running "shorebird init" from the root of your Flutter project.
+''',
+        ),
+      ).called(1);
       expect(exitCode, ExitCode.noInput.code);
     });
 

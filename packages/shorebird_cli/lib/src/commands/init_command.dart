@@ -30,7 +30,10 @@ class InitCommand extends ShorebirdCommand
     final progress = logger.progress('Initializing Shorebird');
     try {
       if (!hasPubspecYaml) {
-        progress.fail('Could not find a "pubspec.yaml".');
+        progress.fail('''
+Could not find a "pubspec.yaml".
+Please make sure you are running "shorebird init" from the root of your Flutter project.
+''');
         return ExitCode.noInput.code;
       }
     } catch (error) {
