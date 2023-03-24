@@ -6,6 +6,7 @@ import 'package:path/path.dart' as p;
 import 'package:shorebird_cli/src/command.dart';
 import 'package:shorebird_cli/src/shorebird_build_mixin.dart';
 import 'package:shorebird_cli/src/shorebird_config_mixin.dart';
+import 'package:shorebird_cli/src/shorebird_create_app_mixin.dart';
 import 'package:shorebird_cli/src/shorebird_engine_mixin.dart';
 import 'package:shorebird_code_push_client/shorebird_code_push_client.dart';
 
@@ -15,7 +16,11 @@ import 'package:shorebird_code_push_client/shorebird_code_push_client.dart';
 /// Publish new releases to the Shorebird CodePush server.
 /// {@endtemplate}
 class PublishCommand extends ShorebirdCommand
-    with ShorebirdConfigMixin, ShorebirdEngineMixin, ShorebirdBuildMixin {
+    with
+        ShorebirdConfigMixin,
+        ShorebirdEngineMixin,
+        ShorebirdBuildMixin,
+        ShorebirdCreateAppMixin {
   /// {@macro publish_command}
   PublishCommand({
     required super.logger,
@@ -95,16 +100,52 @@ class PublishCommand extends ShorebirdCommand
     final version = pubspecYaml.version!;
     final versionString = '${version.major}.${version.minor}.${version.patch}';
 
+    late final List<App> apps;
+    final fetchAppsProgress = logger.progress('Fetching apps');
+    try {
+      apps = (await codePushClient.getApps())
+          .map((a) => App(id: a.appId, displayName: a.displayName))
+          .toList();
+      fetchAppsProgress.complete();
+    } catch (error) {
+      fetchAppsProgress.fail('$error');
+      return ExitCode.software.code;
+    }
+
+    var app = apps.firstWhereOrNull((a) => a.id == shorebirdYaml.appId);
+    if (app == null) {
+      logger.info(
+        lightCyan.wrap("\nIt looks like this is a new app. Let's get started!"),
+      );
+      try {
+        app = await createApp();
+        addShorebirdYamlToProject(app.id);
+        addShorebirdYamlToPubspecAssets();
+        logger.info('''
+
+${lightGreen.wrap('🐦 Shorebird initialized successfully!')}
+
+✅ A shorebird app has been created.
+✅ A "shorebird.yaml" has been created.
+✅ The "pubspec.yaml" has been updated to include "shorebird.yaml" as an asset.
+''');
+      } catch (error) {
+        logger.err('$error');
+        return ExitCode.software.code;
+      }
+    }
+
     logger.info(
       '''
-Ready to publish the following patch:
-App: ${pubspecYaml.name} (${shorebirdYaml.appId})
-Release Version: $versionString
-Patch Number: [NEW]
+
+${styleBold.wrap(lightGreen.wrap('🚀 Ready to publish a new patch!'))}
+
+📱 App: ${lightCyan.wrap(app.displayName)} ${lightCyan.wrap('(${app.id})')}
+📦 Release Version: ${lightCyan.wrap(versionString)}
 ''',
     );
 
-    final confirm = logger.confirm('Are you sure you want to continue?');
+    final confirm = logger.confirm('Would you like to continue?');
 
     if (!confirm) {
       logger.info('Aborting.');
@@ -207,7 +248,7 @@ Patch Number: [NEW]
       return ExitCode.software.code;
     }
 
-    logger.success('Published!');
+    logger.success('\n✅ Published Successfully!');
     return ExitCode.success.code;
   }
 }

@@ -28,6 +28,9 @@ void main() {
     const session = Session(apiKey: 'test-api-key');
     const appId = 'test-app-id';
     const version = '1.2.3';
+    const appDisplayName = 'Test App';
+    const app = App(id: appId, displayName: appDisplayName);
+    const appMetadata = AppMetadata(appId: appId, displayName: appDisplayName);
     const artifact = Artifact(
       id: 0,
       patchId: 0,
@@ -102,11 +105,17 @@ flutter:
         () => codePushClient.downloadEngine(revision: any(named: 'revision')),
       ).thenAnswer((_) async => Uint8List.fromList([]));
       when(
+        () => codePushClient.getApps(),
+      ).thenAnswer((_) async => [appMetadata]);
+      when(
         () => codePushClient.getChannels(appId: any(named: 'appId')),
       ).thenAnswer((_) async => [channel]);
       when(
         () => codePushClient.getReleases(appId: any(named: 'appId')),
       ).thenAnswer((_) async => [release]);
+      when(
+        () => codePushClient.createApp(displayName: any(named: 'displayName')),
+      ).thenAnswer((_) async => app);
       when(
         () => codePushClient.createChannel(
           appId: any(named: 'appId'),
@@ -215,8 +224,82 @@ flutter:
       expect(exitCode, ExitCode.software.code);
     });
 
+    test('throws error when fetching apps fails.', () async {
+      const error = 'something went wrong';
+      when(
+        () => codePushClient.getApps(),
+      ).thenThrow(error);
+      final tempDir = setUpTempDir();
+      Directory(
+        '${tempDir.path}/.shorebird/engine',
+      ).createSync(recursive: true);
+      Directory(
+        '${tempDir.path}/.shorebird/cache',
+      ).createSync(recursive: true);
+      final artifactPath = p.join(
+        tempDir.path,
+        'build',
+        'app',
+        'intermediates',
+        'stripped_native_libs',
+        'release',
+        'out',
+        'lib',
+        'arm64-v8a',
+        'libapp.so',
+      );
+      File(artifactPath).createSync(recursive: true);
+      final exitCode = await IOOverrides.runZoned(
+        command.run,
+        getCurrentDirectory: () => tempDir,
+      );
+      verify(() => progress.fail(error)).called(1);
+      expect(exitCode, ExitCode.software.code);
+    });
+
+    test('throws error when creating apps fails.', () async {
+      const error = 'something went wrong';
+      when(
+        () => logger.prompt(any(), defaultValue: any(named: 'defaultValue')),
+      ).thenReturn(appDisplayName);
+      when(() => codePushClient.getApps()).thenAnswer((_) async => []);
+      when(
+        () => codePushClient.createApp(displayName: any(named: 'displayName')),
+      ).thenThrow(error);
+      final tempDir = setUpTempDir();
+      Directory(
+        '${tempDir.path}/.shorebird/engine',
+      ).createSync(recursive: true);
+      Directory(
+        '${tempDir.path}/.shorebird/cache',
+      ).createSync(recursive: true);
+      final artifactPath = p.join(
+        tempDir.path,
+        'build',
+        'app',
+        'intermediates',
+        'stripped_native_libs',
+        'release',
+        'out',
+        'lib',
+        'arm64-v8a',
+        'libapp.so',
+      );
+      File(artifactPath).createSync(recursive: true);
+      final exitCode = await IOOverrides.runZoned(
+        command.run,
+        getCurrentDirectory: () => tempDir,
+      );
+      verify(() => logger.err(error)).called(1);
+      expect(exitCode, ExitCode.software.code);
+    });
+
     test('aborts when user opts out', () async {
       when(() => logger.confirm(any())).thenReturn(false);
+      when(
+        () => logger.prompt(any(), defaultValue: any(named: 'defaultValue')),
+      ).thenReturn(appDisplayName);
+      when(() => codePushClient.getApps()).thenAnswer((_) async => []);
       final tempDir = setUpTempDir();
       Directory(
         '${tempDir.path}/.shorebird/engine',
@@ -532,7 +615,7 @@ flutter:
         command.run,
         getCurrentDirectory: () => tempDir,
       );
-      verify(() => logger.success('Published!')).called(1);
+      verify(() => logger.success('\n✅ Published Successfully!')).called(1);
       expect(exitCode, ExitCode.success.code);
       expect(capturedHostedUri, isNull);
     });
