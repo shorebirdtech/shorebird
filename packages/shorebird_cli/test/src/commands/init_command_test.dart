@@ -84,7 +84,9 @@ environment:
         getCurrentDirectory: () => tempDir,
       );
       verify(
-        () => progress.fail(any(that: contains('Error parsing "pubspec.yaml":'))),
+        () => progress.fail(
+          any(that: contains('Error parsing "pubspec.yaml":')),
+        ),
       ).called(1);
       expect(exitCode, ExitCode.software.code);
     });
