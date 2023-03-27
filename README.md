@@ -14,7 +14,7 @@ We're in the process of converting the quick demos written by one person, into a
 multi-contributor project usable by others. Previous demo code can be found at:
 https://github.com/shorebirdtech/old_repo
 
-## Getting Started 🚀
+## Getting Started
 
 1. 🔑 Request an API Key
 1. 🐦 Install the Shorebird CLI
