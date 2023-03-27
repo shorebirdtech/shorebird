@@ -1,16 +1,15 @@
 import 'dart:convert';
 import 'dart:io';
 
-import 'package:cli_util/cli_util.dart';
 import 'package:path/path.dart' as p;
 import 'package:shorebird_cli/src/auth/session.dart';
+import 'package:shorebird_cli/src/config/config.dart';
 
 class Auth {
   Auth() {
     _loadSession();
   }
 
-  static const _applicationName = 'shorebird';
   static const _sessionFileName = 'shorebird-session.json';
 
   void login({required String apiKey}) {
@@ -20,22 +19,11 @@ class Auth {
 
   void logout() => _clearSession();
 
-  late final String? _shorebirdConfigDir = () {
-    try {
-      return applicationConfigHome(_applicationName);
-    } catch (_) {
-      return null;
-    }
-  }();
-
   Session? _session;
 
   Session? get currentSession => _session;
 
   void _loadSession() {
-    final shorebirdConfigDir = _shorebirdConfigDir;
-    if (shorebirdConfigDir == null) return;
-
     final sessionFile = File(p.join(shorebirdConfigDir, _sessionFileName));
 
     if (sessionFile.existsSync()) {
@@ -49,9 +37,6 @@ class Auth {
   }
 
   void _flushSession(Session session) {
-    final shorebirdConfigDir = _shorebirdConfigDir;
-    if (shorebirdConfigDir == null) return;
-
     File(p.join(shorebirdConfigDir, _sessionFileName))
       ..createSync(recursive: true)
       ..writeAsStringSync(json.encode(session.toJson()));
@@ -59,9 +44,6 @@ class Auth {
 
   void _clearSession() {
     _session = null;
-
-    final shorebirdConfigDir = _shorebirdConfigDir;
-    if (shorebirdConfigDir == null) return;
 
     final sessionFile = File(p.join(shorebirdConfigDir, _sessionFileName));
     if (sessionFile.existsSync()) {

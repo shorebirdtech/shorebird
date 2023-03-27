@@ -5,6 +5,7 @@ import 'dart:isolate';
 import 'package:archive/archive_io.dart';
 import 'package:path/path.dart' as p;
 import 'package:shorebird_cli/src/command.dart';
+import 'package:shorebird_cli/src/config/config.dart';
 import 'package:shorebird_cli/src/flutter_engine_revision.dart';
 import 'package:shorebird_cli/src/shorebird_config_mixin.dart';
 import 'package:shorebird_code_push_client/shorebird_code_push_client.dart';
@@ -12,9 +13,9 @@ import 'package:shorebird_code_push_client/shorebird_code_push_client.dart';
 mixin ShorebirdEngineMixin on ShorebirdConfigMixin {
   String get shorebirdEnginePath {
     return p.join(
-      Directory.current.path,
-      '.shorebird',
-      'engine',
+      shorebirdConfigDir,
+      'engines',
+      requiredFlutterEngineRevision,
     );
   }
 
@@ -22,35 +23,29 @@ mixin ShorebirdEngineMixin on ShorebirdConfigMixin {
   // will not need to cache its own copy of the Shorebird engine.
   Future<void> ensureEngineExists() async {
     final shorebirdEngine = Directory(shorebirdEnginePath);
-    final shorebirdEngineCache = File(
-      p.join(Directory.current.path, '.shorebird', 'cache', 'engine.zip'),
-    );
 
-    if (!shorebirdEngineCache.existsSync()) {
+    if (!shorebirdEngine.existsSync()) {
       final downloadEngineProgress = logger.progress(
         'Downloading shorebird engine',
       );
+      final tempDir = Directory.systemTemp.createTempSync();
+      final engineArchivePath = p.join(tempDir.path, 'engine.zip');
       try {
         final codePushClient = buildCodePushClient(
           apiKey: auth.currentSession!.apiKey,
           hostedUri: hostedUri,
         );
-        await _downloadShorebirdEngine(
-          codePushClient,
-          shorebirdEngineCache.path,
-        );
+        await _downloadShorebirdEngine(codePushClient, engineArchivePath);
         downloadEngineProgress.complete();
       } catch (error) {
         downloadEngineProgress.fail();
         throw Exception('Failed to download shorebird engine: $error');
       }
-    }
 
-    if (!shorebirdEngine.existsSync()) {
       final buildingEngine = logger.progress('Building shorebird engine');
       try {
         await _extractShorebirdEngine(
-          shorebirdEngineCache.path,
+          engineArchivePath,
           shorebirdEngine.path,
           startProcess,
         );

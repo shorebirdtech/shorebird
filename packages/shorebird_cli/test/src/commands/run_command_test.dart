@@ -11,6 +11,7 @@ import 'package:path/path.dart' as p;
 import 'package:shorebird_cli/src/auth/auth.dart';
 import 'package:shorebird_cli/src/auth/session.dart';
 import 'package:shorebird_cli/src/commands/run_command.dart';
+import 'package:shorebird_cli/src/config/config.dart';
 import 'package:shorebird_code_push_client/shorebird_code_push_client.dart';
 import 'package:test/test.dart';
 
@@ -31,6 +32,7 @@ void main() {
     const session = Session(apiKey: 'test-api-key');
 
     late ArgResults argResults;
+    late Directory applicationConfigHome;
     late Auth auth;
     late Logger logger;
     late Process process;
@@ -39,6 +41,7 @@ void main() {
 
     setUp(() {
       argResults = _MockArgResults();
+      applicationConfigHome = Directory.systemTemp.createTempSync();
       auth = _MockAuth();
       logger = _MockLogger();
       process = _MockProcess();
@@ -53,6 +56,8 @@ void main() {
           return process;
         },
       )..testArgResults = argResults;
+
+      testApplicationConfigHome = (_) => applicationConfigHome.path;
 
       when(() => argResults.rest).thenReturn([]);
       when(() => logger.progress(any())).thenReturn(_MockProgress());
@@ -92,9 +97,6 @@ void main() {
 
     test('exits with code 70 when building the engine fails', () async {
       final tempDir = Directory.systemTemp.createTempSync();
-      Directory(
-        p.join(tempDir.path, '.shorebird', 'cache'),
-      ).createSync(recursive: true);
 
       when(() => auth.currentSession).thenReturn(session);
       when(
@@ -119,12 +121,9 @@ void main() {
 
     test('exits with code when running the app fails', () async {
       final tempDir = Directory.systemTemp.createTempSync();
-      final engineCacheDir = Directory(
-        p.join(tempDir.path, '.shorebird', 'cache'),
-      )..createSync(recursive: true);
 
       ZipFileEncoder()
-        ..create(p.join(engineCacheDir.path, 'engine.zip'))
+        ..create(p.join(runCommand.shorebirdEnginePath, 'engine.zip'))
         ..close();
 
       when(() => auth.currentSession).thenReturn(session);
@@ -157,14 +156,10 @@ void main() {
 
     test('exits with code 0 when running the app succeeds', () async {
       final tempDir = Directory.systemTemp.createTempSync();
-      Directory(p.join(tempDir.path, '.shorebird', 'cache'))
-          .createSync(recursive: true);
-      Directory(p.join(tempDir.path, '.shorebird', 'engine'))
-          .createSync(recursive: true);
+      Directory(
+        p.join(runCommand.shorebirdEnginePath, 'engine'),
+      ).createSync(recursive: true);
       when(() => auth.currentSession).thenReturn(session);
-      when(
-        () => codePushClient.downloadEngine(revision: any(named: 'revision')),
-      ).thenAnswer((_) async => Uint8List(0));
 
       final progress = _MockProgress();
       when(() => logger.progress(any())).thenReturn(progress);
