@@ -62,13 +62,6 @@ ninja -C ./src/out/android_release_arm64
 # Build the the host_release output.
 ./src/flutter/tools/gn --runtime-mode=release --no-goma
 ninja -C ./src/out/host_release
-# Arm64 version for when we need it:
-# ./src/flutter/tools/gn --runtime-mode=release --mac-cpu=arm64
-# ninja -C ./src/out/host_release_arm64
-
-# Hack around host_release builds being broken on 3.7.8 stable.
-# cp ./src/out/host_release_arm64/gen/const_finder.dart.snapshot ./src/out/host_release/gen/const_finder.dart.snapshot
-# cp ./src/out/host_release_arm64/font-subset ./src/out/host_release/font-subset
 
 # List of all files to keep.
 KEEP_FILES=(
