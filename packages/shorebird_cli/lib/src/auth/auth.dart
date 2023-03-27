@@ -11,6 +11,7 @@ class Auth {
   }
 
   static const _sessionFileName = 'shorebird-session.json';
+  final sessionFilePath = p.join(shorebirdConfigDir, _sessionFileName);
 
   void login({required String apiKey}) {
     _session = Session(apiKey: apiKey);
@@ -24,7 +25,7 @@ class Auth {
   Session? get currentSession => _session;
 
   void _loadSession() {
-    final sessionFile = File(p.join(shorebirdConfigDir, _sessionFileName));
+    final sessionFile = File(sessionFilePath);
 
     if (sessionFile.existsSync()) {
       try {
@@ -37,7 +38,7 @@ class Auth {
   }
 
   void _flushSession(Session session) {
-    File(p.join(shorebirdConfigDir, _sessionFileName))
+    File(sessionFilePath)
       ..createSync(recursive: true)
       ..writeAsStringSync(json.encode(session.toJson()));
   }
@@ -45,7 +46,7 @@ class Auth {
   void _clearSession() {
     _session = null;
 
-    final sessionFile = File(p.join(shorebirdConfigDir, _sessionFileName));
+    final sessionFile = File(sessionFilePath);
     if (sessionFile.existsSync()) {
       sessionFile.deleteSync(recursive: true);
     }

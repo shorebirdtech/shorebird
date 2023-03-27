@@ -1,8 +1,12 @@
+import 'dart:io';
+
 import 'package:mason_logger/mason_logger.dart';
 import 'package:mocktail/mocktail.dart';
+import 'package:path/path.dart' as p;
 import 'package:shorebird_cli/src/auth/auth.dart';
 import 'package:shorebird_cli/src/auth/session.dart';
 import 'package:shorebird_cli/src/commands/login_command.dart';
+import 'package:shorebird_cli/src/config/config.dart';
 import 'package:test/test.dart';
 
 class _MockAuth extends Mock implements Auth {}
@@ -16,16 +20,23 @@ void main() {
     const apiKey = 'test-api-key';
     const session = Session(apiKey: apiKey);
 
+    late Directory applicationConfigHome;
     late Logger logger;
     late Auth auth;
     late LoginCommand loginCommand;
 
     setUp(() {
+      applicationConfigHome = Directory.systemTemp.createTempSync();
       logger = _MockLogger();
       auth = _MockAuth();
       loginCommand = LoginCommand(auth: auth, logger: logger);
 
+      testApplicationConfigHome = (_) => applicationConfigHome.path;
+
       when(() => logger.progress(any())).thenReturn(_MockProgress());
+      when(() => auth.sessionFilePath).thenReturn(
+        p.join(applicationConfigHome.path, 'shorebird-session.json'),
+      );
     });
 
     test('exits with code 0 when already logged in', () async {
@@ -69,7 +80,7 @@ void main() {
       verify(() => logger.progress('Logging into shorebird.dev')).called(1);
       verify(() => auth.login(apiKey: apiKey)).called(1);
       verify(
-        () => logger.success('You are now logged in.'),
+        () => logger.info(any(that: contains('You are now logged in.'))),
       ).called(1);
     });
   });
