@@ -1,6 +1,7 @@
 import 'dart:io';
 import 'dart:typed_data';
 
+import 'package:archive/archive.dart';
 import 'package:args/args.dart';
 import 'package:mason_logger/mason_logger.dart';
 import 'package:mocktail/mocktail.dart';
@@ -8,6 +9,7 @@ import 'package:path/path.dart' as p;
 import 'package:shorebird_cli/src/auth/auth.dart';
 import 'package:shorebird_cli/src/auth/session.dart';
 import 'package:shorebird_cli/src/commands/publish_command.dart';
+import 'package:shorebird_cli/src/config/config.dart';
 import 'package:shorebird_code_push_client/shorebird_code_push_client.dart';
 import 'package:test/test.dart';
 
@@ -58,6 +60,7 @@ flutter:
     - shorebird.yaml''';
 
     late ArgResults argResults;
+    late Directory applicationConfigHome;
     late Auth auth;
     late Progress progress;
     late Logger logger;
@@ -79,6 +82,7 @@ flutter:
 
     setUp(() {
       argResults = _MockArgResults();
+      applicationConfigHome = Directory.systemTemp.createTempSync();
       auth = _MockAuth();
       progress = _MockProgress();
       logger = _MockLogger();
@@ -95,6 +99,7 @@ flutter:
         },
         logger: logger,
       )..testArgResults = argResults;
+      testApplicationConfigHome = (_) => applicationConfigHome.path;
 
       when(() => argResults.rest).thenReturn([]);
       when(() => auth.currentSession).thenReturn(session);
@@ -190,13 +195,13 @@ flutter:
       when(() => processResult.stderr).thenReturn('oops');
       when(() => auth.currentSession).thenReturn(session);
 
+      when(
+        () => codePushClient.downloadEngine(revision: any(named: 'revision')),
+      ).thenAnswer(
+        (_) async => Uint8List.fromList(ZipEncoder().encode(Archive())!),
+      );
+
       final tempDir = setUpTempDir();
-      Directory(
-        '${tempDir.path}/.shorebird/engine',
-      ).createSync(recursive: true);
-      Directory(
-        '${tempDir.path}/.shorebird/cache',
-      ).createSync(recursive: true);
       final exitCode = await IOOverrides.runZoned(
         () async => command.run(),
         getCurrentDirectory: () => tempDir,
@@ -209,10 +214,7 @@ flutter:
         () async {
       final tempDir = setUpTempDir();
       Directory(
-        '${tempDir.path}/.shorebird/engine',
-      ).createSync(recursive: true);
-      Directory(
-        '${tempDir.path}/.shorebird/cache',
+        p.join(command.shorebirdEnginePath, 'engine'),
       ).createSync(recursive: true);
       final exitCode = await IOOverrides.runZoned(
         command.run,
@@ -226,15 +228,10 @@ flutter:
 
     test('throws error when fetching apps fails.', () async {
       const error = 'something went wrong';
-      when(
-        () => codePushClient.getApps(),
-      ).thenThrow(error);
+      when(() => codePushClient.getApps()).thenThrow(error);
       final tempDir = setUpTempDir();
       Directory(
-        '${tempDir.path}/.shorebird/engine',
-      ).createSync(recursive: true);
-      Directory(
-        '${tempDir.path}/.shorebird/cache',
+        p.join(command.shorebirdEnginePath, 'engine'),
       ).createSync(recursive: true);
       final artifactPath = p.join(
         tempDir.path,
@@ -268,10 +265,7 @@ flutter:
       ).thenThrow(error);
       final tempDir = setUpTempDir();
       Directory(
-        '${tempDir.path}/.shorebird/engine',
-      ).createSync(recursive: true);
-      Directory(
-        '${tempDir.path}/.shorebird/cache',
+        p.join(command.shorebirdEnginePath, 'engine'),
       ).createSync(recursive: true);
       final artifactPath = p.join(
         tempDir.path,
@@ -302,10 +296,7 @@ flutter:
       when(() => codePushClient.getApps()).thenAnswer((_) async => []);
       final tempDir = setUpTempDir();
       Directory(
-        '${tempDir.path}/.shorebird/engine',
-      ).createSync(recursive: true);
-      Directory(
-        '${tempDir.path}/.shorebird/cache',
+        p.join(command.shorebirdEnginePath, 'engine'),
       ).createSync(recursive: true);
       final artifactPath = p.join(
         tempDir.path,
@@ -335,10 +326,7 @@ flutter:
       ).thenThrow(error);
       final tempDir = setUpTempDir();
       Directory(
-        '${tempDir.path}/.shorebird/engine',
-      ).createSync(recursive: true);
-      Directory(
-        '${tempDir.path}/.shorebird/cache',
+        p.join(command.shorebirdEnginePath, 'engine'),
       ).createSync(recursive: true);
       final artifactPath = p.join(
         tempDir.path,
@@ -375,10 +363,7 @@ flutter:
       ).thenThrow(error);
       final tempDir = setUpTempDir();
       Directory(
-        '${tempDir.path}/.shorebird/engine',
-      ).createSync(recursive: true);
-      Directory(
-        '${tempDir.path}/.shorebird/cache',
+        p.join(command.shorebirdEnginePath, 'engine'),
       ).createSync(recursive: true);
       final artifactPath = p.join(
         tempDir.path,
@@ -411,10 +396,7 @@ flutter:
       ).thenThrow(error);
       final tempDir = setUpTempDir();
       Directory(
-        '${tempDir.path}/.shorebird/engine',
-      ).createSync(recursive: true);
-      Directory(
-        '${tempDir.path}/.shorebird/cache',
+        p.join(command.shorebirdEnginePath, 'engine'),
       ).createSync(recursive: true);
       final artifactPath = p.join(
         tempDir.path,
@@ -453,10 +435,7 @@ flutter:
       ).thenThrow(error);
       final tempDir = setUpTempDir();
       Directory(
-        '${tempDir.path}/.shorebird/engine',
-      ).createSync(recursive: true);
-      Directory(
-        '${tempDir.path}/.shorebird/cache',
+        p.join(command.shorebirdEnginePath, 'engine'),
       ).createSync(recursive: true);
       final artifactPath = p.join(
         tempDir.path,
@@ -486,10 +465,7 @@ flutter:
       ).thenThrow(error);
       final tempDir = setUpTempDir();
       Directory(
-        '${tempDir.path}/.shorebird/engine',
-      ).createSync(recursive: true);
-      Directory(
-        '${tempDir.path}/.shorebird/cache',
+        p.join(command.shorebirdEnginePath, 'engine'),
       ).createSync(recursive: true);
       final artifactPath = p.join(
         tempDir.path,
@@ -525,10 +501,7 @@ flutter:
       ).thenThrow(error);
       final tempDir = setUpTempDir();
       Directory(
-        '${tempDir.path}/.shorebird/engine',
-      ).createSync(recursive: true);
-      Directory(
-        '${tempDir.path}/.shorebird/cache',
+        p.join(command.shorebirdEnginePath, 'engine'),
       ).createSync(recursive: true);
       final artifactPath = p.join(
         tempDir.path,
@@ -564,10 +537,7 @@ flutter:
       ).thenThrow(error);
       final tempDir = setUpTempDir();
       Directory(
-        '${tempDir.path}/.shorebird/engine',
-      ).createSync(recursive: true);
-      Directory(
-        '${tempDir.path}/.shorebird/cache',
+        p.join(command.shorebirdEnginePath, 'engine'),
       ).createSync(recursive: true);
       final artifactPath = p.join(
         tempDir.path,
@@ -593,10 +563,7 @@ flutter:
     test('succeeds when publish is successful', () async {
       final tempDir = setUpTempDir();
       Directory(
-        '${tempDir.path}/.shorebird/engine',
-      ).createSync(recursive: true);
-      Directory(
-        '${tempDir.path}/.shorebird/cache',
+        p.join(command.shorebirdEnginePath, 'engine'),
       ).createSync(recursive: true);
       final artifactPath = p.join(
         tempDir.path,
@@ -631,10 +598,7 @@ app_id: $appId
 base_url: $baseUrl''',
       );
       Directory(
-        '${tempDir.path}/.shorebird/engine',
-      ).createSync(recursive: true);
-      Directory(
-        '${tempDir.path}/.shorebird/cache',
+        p.join(command.shorebirdEnginePath, 'engine'),
       ).createSync(recursive: true);
       final artifactPath = p.join(
         tempDir.path,
