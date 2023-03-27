@@ -27,7 +27,7 @@ This repository is a monorepo containing the following packages:
 | [shorebird_cli](packages/shorebird_cli/README.md)                               | Command-line which allows developers to interact with various Shorebird services        |
 | [shorebird_code_push_client](packages/shorebird_code_push_client/README.md)     | Dart library which allows Dart applications to interact with the ShoreBird CodePush API |
 | [shorebird_code_push_protocol](packages/shorebird_code_push_protocol/README.md) | Dart library which contains common interfaces used by Shorebird CodePush                |
-| [shorebird_code_push_updater](updater/README.md)                                | Rust library which handles the CodePush logic and does the real update work             |
+| [updater](updater/README.md)                                | Rust library which handles the CodePush logic and does the real update work             |
 
 For more information, please refer to the documentation for each package.
 
