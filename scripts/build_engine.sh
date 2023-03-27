@@ -1,4 +1,4 @@
-#!/bin/sh
+#!/bin/sh -e
 
 # Given a path to a Flutter engine, generate a shorebird version of it.
 # This is done by removing all the files that are not needed for the
@@ -8,21 +8,67 @@
 # Usage:
 # ./build_engine <path-to-engine> <output-directory>
 
+# The path to the shorebird checkout.
+SHOREBIRD_PATH=$(dirname $(dirname $(realpath $0)))
+
 # The path to the Flutter engine.
-ENGINE_PATH=$1
+ENGINE_PATH=$(realpath $1)
 
 # The path where the shorebird engine will be generated.
 OUTPUT_PATH=$2
 
+if [[ "$OUTPUT_PATH" = /* ]]
+then
+   : # Absolute path
+else
+   :
+    echo "Output path must be absolute"
+    exit 1
+fi
+
+echo "Building engine from $ENGINE_PATH to $OUTPUT_PATH"
+
+# Assume cargo-ndk is already installed:
+# cargo install cargo-ndk
+
+# Assume the toolchains are already installed
+# rustup target add \
+#     aarch64-linux-android \
+#     armv7-linux-androideabi \
+#     x86_64-linux-android \
+#     i686-linux-android
+
+# Build the Rust library.
+cd $SHOREBIRD_PATH/updater/library
+# Build both the arm64 and armv7 versions of the library.
+cargo ndk \
+  --target aarch64-linux-android \
+  --target armv7-linux-androideabi \
+  build --release
+
+# We assume the engine has symlinks set up for now (we should not rely on this).
+
+# Build the patch tool.
+cd $SHOREBIRD_PATH/updater/patch
+cargo build --release
+
+# Build the engine
 cd $ENGINE_PATH
 
 # Build the engine in release mode for android arm64.
-./src/flutter/tools/gn --android --android-cpu=arm64 --runtime-mode=release
+./src/flutter/tools/gn --android --android-cpu=arm64 --runtime-mode=release --no-goma
 ninja -C ./src/out/android_release_arm64
 
 # Build the the host_release output.
-./src/flutter/tools/gn --runtime-mode=release
+./src/flutter/tools/gn --runtime-mode=release --no-goma
 ninja -C ./src/out/host_release
+# Arm64 version for when we need it:
+# ./src/flutter/tools/gn --runtime-mode=release --mac-cpu=arm64
+# ninja -C ./src/out/host_release_arm64
+
+# Hack around host_release builds being broken on 3.7.8 stable.
+# cp ./src/out/host_release_arm64/gen/const_finder.dart.snapshot ./src/out/host_release/gen/const_finder.dart.snapshot
+# cp ./src/out/host_release_arm64/font-subset ./src/out/host_release/font-subset
 
 # List of all files to keep.
 KEEP_FILES=(
@@ -51,7 +97,7 @@ KEEP_FILES=(
   "flutter/prebuilts/macos-x64/dart-sdk/bin/snapshots/kernel_worker.dart.snapshot"
   "flutter/prebuilts/macos-x64/dart-sdk/bin/snapshots/dartdev.dill"
   "flutter/prebuilts/macos-x64/dart-sdk/bin/snapshots/frontend_server.dart.snapshot"
-  "flutter/prebuilts/macos-x64/dart-sdk/bin/snapshots/dart2wasm_product.snapshot"
+  # "flutter/prebuilts/macos-x64/dart-sdk/bin/snapshots/dart2wasm_product.snapshot"
   "flutter/prebuilts/macos-x64/dart-sdk/bin/snapshots/dds.dart.snapshot"
   "flutter/prebuilts/macos-x64/dart-sdk/bin/dart"
   "flutter/prebuilts/macos-x64/dart-sdk/bin/utils/gen_snapshot"
@@ -70,6 +116,8 @@ do
   mkdir -p $TEMP_DIR/$(dirname $file)
   cp -r $ENGINE_PATH/src/$file $TEMP_DIR/$file
 done
+
+cp $SHOREBIRD_PATH/updater/target/release/patch $TEMP_DIR/patch
 
 cd $TEMP_DIR
 
