@@ -10,6 +10,7 @@ void main() {
         arch: 'aarch64',
         platform: 'android',
         url: 'https://example.com',
+        size: 42,
         hash: 'sha256:1234567890',
       );
       expect(
