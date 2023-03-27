@@ -65,6 +65,7 @@ class CodePushClient {
       'arch': arch,
       'platform': platform,
       'hash': hash,
+      'size': '${file.length}',
     });
     request.headers.addAll(_apiKeyHeader);
     final response = await _httpClient.send(request);

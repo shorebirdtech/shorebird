@@ -61,6 +61,7 @@ void main() {
       const arch = 'aarch64';
       const platform = 'android';
       const hash = 'test-hash';
+      const size = 42;
 
       test('throws an exception if the http request fails (unknown)', () async {
         when(() => httpClient.send(any())).thenAnswer((_) async {
@@ -137,6 +138,7 @@ void main() {
                     arch: arch,
                     platform: platform,
                     hash: hash,
+                    size: size,
                   ),
                 ),
               ),
