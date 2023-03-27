@@ -96,6 +96,8 @@ pub fn current_arch() -> &'static str {
     static ARCH: &str = "x86_64";
     #[cfg(target_arch = "aarch64")]
     static ARCH: &str = "aarch64";
+    #[cfg(target_arch = "arm")]
+    static ARCH: &str = "arm";
     return ARCH;
 }
 
