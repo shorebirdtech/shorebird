@@ -15,6 +15,7 @@ class Artifact {
     required this.arch,
     required this.platform,
     required this.hash,
+    required this.size,
     required this.url,
   });
 
@@ -39,6 +40,9 @@ class Artifact {
 
   /// The hash of the artifact.
   final String hash;
+
+  /// The size of the artifact in bytes.
+  final int size;
 
   /// The url of the artifact.
   final String url;
