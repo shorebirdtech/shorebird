@@ -18,6 +18,7 @@ Artifact _$ArtifactFromJson(Map<String, dynamic> json) => $checkedCreate(
           arch: $checkedConvert('arch', (v) => v as String),
           platform: $checkedConvert('platform', (v) => v as String),
           hash: $checkedConvert('hash', (v) => v as String),
+          size: $checkedConvert('size', (v) => v as int),
           url: $checkedConvert('url', (v) => v as String),
         );
         return val;
@@ -31,5 +32,6 @@ Map<String, dynamic> _$ArtifactToJson(Artifact instance) => <String, dynamic>{
       'arch': instance.arch,
       'platform': instance.platform,
       'hash': instance.hash,
+      'size': instance.size,
       'url': instance.url,
     };
