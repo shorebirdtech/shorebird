@@ -39,6 +39,7 @@ void main() {
       arch: 'aarch64',
       platform: 'android',
       hash: '#',
+      size: 42,
       url: 'https://example.com',
     );
     const release = Release(
