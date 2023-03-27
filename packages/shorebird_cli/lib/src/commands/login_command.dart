@@ -33,7 +33,12 @@ class LoginCommand extends ShorebirdCommand {
     try {
       auth.login(apiKey: apiKey);
       loginProgress.complete();
-      logger.success('You are now logged in.');
+      logger.info('''
+
+🎉 ${lightGreen.wrap('Welcome to Shorebird! You are now logged in.')}
+
+🔑 Credentials are stored in ${lightCyan.wrap(auth.sessionFilePath)}.
+🚪 To logout use: "${lightCyan.wrap('shorebird logout')}".''');
       return ExitCode.success.code;
     } catch (error) {
       loginProgress.fail();

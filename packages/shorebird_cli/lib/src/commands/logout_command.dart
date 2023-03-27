@@ -28,6 +28,8 @@ class LogoutCommand extends ShorebirdCommand {
     auth.logout();
     logoutProgress.complete();
 
+    logger.info('${lightGreen.wrap('You are now logged out.')}');
+
     return ExitCode.success.code;
   }
 }
