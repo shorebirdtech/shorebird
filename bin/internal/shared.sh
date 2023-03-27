@@ -72,7 +72,7 @@ function _lock () {
 # them). The "schlock" and "flock" commands are more reliable than the mkdir
 # method, however, or we would use mkdir in all cases.
 #
-# The upgrade_flutter function calling _wait_for_lock is executed in a subshell
+# The upgrade_shorebird function calling _wait_for_lock is executed in a subshell
 # with a redirect that pipes the source of this script into file descriptor 7.
 # A flock lock is released when this subshell exits and file descriptor 7 is
 # closed. The mkdir lock is released via an exit trap from the subshell that
@@ -130,7 +130,7 @@ function upgrade_shorebird () (
 
     # Prepare packages...
     if [[ "$CI" == "true" || "$BOT" == "true" || "$CONTINUOUS_INTEGRATION" == "true" || "$CHROME_HEADLESS" == "1" ]]; then
-      PUB_ENVIRONMENT="$PUB_ENVIRONMENT:flutter_bot"
+      PUB_ENVIRONMENT="$PUB_ENVIRONMENT:shorebird_bot"
     else
       export PUB_SUMMARY_ONLY=1
     fi
@@ -139,7 +139,7 @@ function upgrade_shorebird () (
     pub_upgrade_with_retry
 
     # Move the old snapshot - we can't just overwrite it as the VM might currently have it
-    # memory mapped (e.g. on flutter upgrade). For downloading a new dart sdk the folder is moved,
+    # memory mapped (e.g. on shorebird upgrade). For downloading a new dart sdk the folder is moved,
     # so we take the same approach of moving the file here.
     SNAPSHOT_PATH_OLD="$SNAPSHOT_PATH.old"
     if [ -f "$SNAPSHOT_PATH" ]; then
