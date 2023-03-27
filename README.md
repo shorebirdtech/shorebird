@@ -14,9 +14,20 @@ We're in the process of converting the quick demos written by one person, into a
 multi-contributor project usable by others. Previous demo code can be found at:
 https://github.com/shorebirdtech/old_repo
 
-## Getting Started
+## Getting Started 🚀
 
-Refer to [shorebird/install](https://github.com/shorebirdtech/install) for installation instructions.
+1. 🔑 Request an API Key
+1. 🐦 Install the Shorebird CLI
+
+   ```
+   # Clone Shorebird
+   git clone https://github.com/shorebirdtech/shorebird -b stable
+
+   # Add Shorebird to your path
+   export PATH="$PATH:`pwd`/shorebird/bin"
+   ```
+
+📚 Refer to the [Shorebird CLI Documentation](./packages/shorebird_cli/README.md) for more information.
 
 ## Packages
 
@@ -27,7 +38,7 @@ This repository is a monorepo containing the following packages:
 | [shorebird_cli](packages/shorebird_cli/README.md)                               | Command-line which allows developers to interact with various Shorebird services        |
 | [shorebird_code_push_client](packages/shorebird_code_push_client/README.md)     | Dart library which allows Dart applications to interact with the ShoreBird CodePush API |
 | [shorebird_code_push_protocol](packages/shorebird_code_push_protocol/README.md) | Dart library which contains common interfaces used by Shorebird CodePush                |
-| [updater](updater/README.md)                                | Rust library which handles the CodePush logic and does the real update work             |
+| [updater](updater/README.md)                                                    | Rust library which handles the CodePush logic and does the real update work             |
 
 For more information, please refer to the documentation for each package.
 
