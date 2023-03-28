@@ -23,11 +23,7 @@ pub struct Patch {
     /// Legacy: originally "#" before we implemented hash checks (remove).
     pub hash: String,
     /// The URL to download the patch file from.
-    pub download_url: String,
-    /// Whether the artifact is a diff (modern) or full (legacy) artifact.
-    /// Will eventually be removed once we no longer support legacy artifacts.
-    #[serde(default)]
-    pub is_diff: bool,
+    pub download_url: String,    
 }
 
 #[derive(Debug, Serialize)]

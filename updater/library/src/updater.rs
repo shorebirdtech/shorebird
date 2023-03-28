@@ -146,13 +146,11 @@ fn update_internal(config: &ResolvedConfig) -> anyhow::Result<UpdateStatus> {
     download_to_path(&patch.download_url, &download_path)?;
 
     // Inflate the patch from a diff if needed.
-    if patch.is_diff {
-        let base_path = PathBuf::from(&config.original_libapp_path);
-        let output_path = download_dir.join(format!("{}.full", patch.number.to_string()));
-        inflate(&download_path, &base_path, &output_path)?;
-        download_path = output_path;
-    }
-
+    let base_path = PathBuf::from(&config.original_libapp_path);
+    let output_path = download_dir.join(format!("{}.full", patch.number.to_string()));
+    inflate(&download_path, &base_path, &output_path)?;
+    download_path = output_path;
+    
     // Check the hash before moving into place.
     let hash_ok = check_hash(&download_path, &patch.hash)?;
     if !hash_ok {
