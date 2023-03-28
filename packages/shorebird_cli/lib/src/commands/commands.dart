@@ -3,7 +3,7 @@ export 'build_command.dart';
 export 'init_command.dart';
 export 'login_command.dart';
 export 'logout_command.dart';
-export 'patch.dart';
+export 'patch_command.dart';
 export 'release_command.dart';
 export 'run_command.dart';
 export 'upgrade_command.dart';

@@ -3,15 +3,18 @@ import 'dart:typed_data';
 
 import 'package:archive/archive.dart';
 import 'package:args/args.dart';
+import 'package:http/http.dart' as http;
 import 'package:mason_logger/mason_logger.dart';
 import 'package:mocktail/mocktail.dart';
 import 'package:path/path.dart' as p;
 import 'package:shorebird_cli/src/auth/auth.dart';
 import 'package:shorebird_cli/src/auth/session.dart';
-import 'package:shorebird_cli/src/commands/patch.dart';
+import 'package:shorebird_cli/src/commands/patch_command.dart';
 import 'package:shorebird_cli/src/config/config.dart';
 import 'package:shorebird_code_push_client/shorebird_code_push_client.dart';
 import 'package:test/test.dart';
+
+class _FakeBaseRequest extends Fake implements http.BaseRequest {}
 
 class _MockArgResults extends Mock implements ArgResults {}
 
@@ -22,6 +25,8 @@ class _MockLogger extends Mock implements Logger {}
 class _MockProgress extends Mock implements Progress {}
 
 class _MockProcessResult extends Mock implements ProcessResult {}
+
+class _MockHttpClient extends Mock implements http.Client {}
 
 class _MockCodePushClient extends Mock implements CodePushClient {}
 
@@ -38,6 +43,15 @@ void main() {
     const patchArtifact = PatchArtifact(
       id: 0,
       patchId: 0,
+      arch: arch,
+      platform: platform,
+      hash: '#',
+      size: 42,
+      url: 'https://example.com',
+    );
+    const releaseArtifact = ReleaseArtifact(
+      id: 0,
+      releaseId: 0,
       arch: arch,
       platform: platform,
       hash: '#',
@@ -67,7 +81,9 @@ flutter:
     late Auth auth;
     late Progress progress;
     late Logger logger;
-    late ProcessResult processResult;
+    late ProcessResult flutterBuildProcessResult;
+    late ProcessResult patchProcessResult;
+    late http.Client httpClient;
     late CodePushClient codePushClient;
     late PatchCommand command;
     late Uri? capturedHostedUri;
@@ -83,13 +99,19 @@ flutter:
       return tempDir;
     }
 
+    setUpAll(() {
+      registerFallbackValue(_FakeBaseRequest());
+    });
+
     setUp(() {
       argResults = _MockArgResults();
       applicationConfigHome = Directory.systemTemp.createTempSync();
       auth = _MockAuth();
       progress = _MockProgress();
       logger = _MockLogger();
-      processResult = _MockProcessResult();
+      flutterBuildProcessResult = _MockProcessResult();
+      patchProcessResult = _MockProcessResult();
+      httpClient = _MockHttpClient();
       codePushClient = _MockCodePushClient();
       command = PatchCommand(
         auth: auth,
@@ -103,9 +125,12 @@ flutter:
           bool runInShell = false,
           String? workingDirectory,
         }) async {
-          return processResult;
+          if (executable == 'flutter') return flutterBuildProcessResult;
+          if (executable.endsWith('patch')) return patchProcessResult;
+          return _MockProcessResult();
         },
         logger: logger,
+        httpClient: httpClient,
       )..testArgResults = argResults;
       testApplicationConfigHome = (_) => applicationConfigHome.path;
 
@@ -119,7 +144,13 @@ flutter:
         () => logger.prompt(any(), defaultValue: any(named: 'defaultValue')),
       ).thenReturn(version);
       when(() => logger.confirm(any())).thenReturn(true);
-      when(() => processResult.exitCode).thenReturn(ExitCode.success.code);
+      when(
+        () => flutterBuildProcessResult.exitCode,
+      ).thenReturn(ExitCode.success.code);
+      when(() => patchProcessResult.exitCode).thenReturn(ExitCode.success.code);
+      when(() => httpClient.send(any())).thenAnswer(
+        (_) async => http.StreamedResponse(const Stream.empty(), HttpStatus.ok),
+      );
       when(
         () => codePushClient.downloadEngine(revision: any(named: 'revision')),
       ).thenAnswer((_) async => Uint8List.fromList([]));
@@ -132,6 +163,13 @@ flutter:
       when(
         () => codePushClient.getReleases(appId: any(named: 'appId')),
       ).thenAnswer((_) async => [release]);
+      when(
+        () => codePushClient.getReleaseArtifact(
+          releaseId: any(named: 'releaseId'),
+          arch: any(named: 'arch'),
+          platform: any(named: 'platform'),
+        ),
+      ).thenAnswer((_) async => releaseArtifact);
       when(
         () => codePushClient.createChannel(
           appId: any(named: 'appId'),
@@ -196,8 +234,8 @@ flutter:
     });
 
     test('exits with code 70 when building fails', () async {
-      when(() => processResult.exitCode).thenReturn(1);
-      when(() => processResult.stderr).thenReturn('oops');
+      when(() => flutterBuildProcessResult.exitCode).thenReturn(1);
+      when(() => flutterBuildProcessResult.stderr).thenReturn('oops');
       when(() => auth.currentSession).thenReturn(session);
 
       when(
@@ -389,6 +427,117 @@ Patches can only be published for existing releases.
 Please create a release using "shorebird release" and try again.
 ''',
         ),
+      ).called(1);
+      expect(exitCode, ExitCode.software.code);
+    });
+
+    test('throws error when release artifact cannot be retrieved.', () async {
+      const error = 'something went wrong';
+      when(
+        () => codePushClient.getReleases(appId: any(named: 'appId')),
+      ).thenAnswer((_) async => [release]);
+      when(
+        () => codePushClient.getReleaseArtifact(
+          releaseId: any(named: 'releaseId'),
+          arch: any(named: 'arch'),
+          platform: any(named: 'platform'),
+        ),
+      ).thenThrow(error);
+      final tempDir = setUpTempDir();
+      Directory(
+        p.join(command.shorebirdEnginePath, 'engine'),
+      ).createSync(recursive: true);
+      final artifactPath = p.join(
+        tempDir.path,
+        'build',
+        'app',
+        'intermediates',
+        'stripped_native_libs',
+        'release',
+        'out',
+        'lib',
+        'arm64-v8a',
+        'libapp.so',
+      );
+      File(artifactPath).createSync(recursive: true);
+      final exitCode = await IOOverrides.runZoned(
+        command.run,
+        getCurrentDirectory: () => tempDir,
+      );
+      verify(() => progress.fail(error)).called(1);
+      expect(exitCode, ExitCode.software.code);
+    });
+
+    test('throws error when release artifact does not exist.', () async {
+      when(
+        () => codePushClient.getReleases(appId: any(named: 'appId')),
+      ).thenAnswer((_) async => [release]);
+      when(() => httpClient.send(any())).thenAnswer(
+        (_) async => http.StreamedResponse(
+          const Stream.empty(),
+          HttpStatus.notFound,
+          reasonPhrase: 'Not Found',
+        ),
+      );
+      final tempDir = setUpTempDir();
+      Directory(
+        p.join(command.shorebirdEnginePath, 'engine'),
+      ).createSync(recursive: true);
+      final artifactPath = p.join(
+        tempDir.path,
+        'build',
+        'app',
+        'intermediates',
+        'stripped_native_libs',
+        'release',
+        'out',
+        'lib',
+        'arm64-v8a',
+        'libapp.so',
+      );
+      File(artifactPath).createSync(recursive: true);
+      final exitCode = await IOOverrides.runZoned(
+        command.run,
+        getCurrentDirectory: () => tempDir,
+      );
+      verify(
+        () => progress.fail(
+          'Exception: Failed to download release artifact: 404 Not Found',
+        ),
+      ).called(1);
+      expect(exitCode, ExitCode.software.code);
+    });
+
+    test('throws error when creating diff fails', () async {
+      const error = 'oops something went wrong';
+      when(
+        () => codePushClient.getReleases(appId: any(named: 'appId')),
+      ).thenAnswer((_) async => [release]);
+      when(() => patchProcessResult.exitCode).thenReturn(1);
+      when(() => patchProcessResult.stderr).thenReturn(error);
+      final tempDir = setUpTempDir();
+      Directory(
+        p.join(command.shorebirdEnginePath, 'engine'),
+      ).createSync(recursive: true);
+      final artifactPath = p.join(
+        tempDir.path,
+        'build',
+        'app',
+        'intermediates',
+        'stripped_native_libs',
+        'release',
+        'out',
+        'lib',
+        'arm64-v8a',
+        'libapp.so',
+      );
+      File(artifactPath).createSync(recursive: true);
+      final exitCode = await IOOverrides.runZoned(
+        command.run,
+        getCurrentDirectory: () => tempDir,
+      );
+      verify(
+        () => progress.fail('Exception: Failed to create diff: $error'),
       ).called(1);
       expect(exitCode, ExitCode.software.code);
     });
