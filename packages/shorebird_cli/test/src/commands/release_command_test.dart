@@ -8,7 +8,7 @@ import 'package:mocktail/mocktail.dart';
 import 'package:path/path.dart' as p;
 import 'package:shorebird_cli/src/auth/auth.dart';
 import 'package:shorebird_cli/src/auth/session.dart';
-import 'package:shorebird_cli/src/commands/publish_command.dart';
+import 'package:shorebird_cli/src/commands/commands.dart';
 import 'package:shorebird_cli/src/config/config.dart';
 import 'package:shorebird_code_push_client/shorebird_code_push_client.dart';
 import 'package:test/test.dart';
@@ -26,29 +26,30 @@ class _MockProcessResult extends Mock implements ProcessResult {}
 class _MockCodePushClient extends Mock implements CodePushClient {}
 
 void main() {
-  group('publish', () {
+  group('release', () {
     const session = Session(apiKey: 'test-api-key');
     const appId = 'test-app-id';
     const version = '1.2.3';
     const appDisplayName = 'Test App';
+    const arch = 'aarch64';
+    const platform = 'android';
     const appMetadata = AppMetadata(appId: appId, displayName: appDisplayName);
-    const patchArtifact = PatchArtifact(
-      id: 0,
-      patchId: 0,
-      arch: 'aarch64',
-      platform: 'android',
-      hash: '#',
-      size: 42,
-      url: 'https://example.com',
-    );
     const release = Release(
       id: 0,
       appId: appId,
       version: version,
       displayName: '1.2.3',
     );
-    const patch = Patch(id: 0, number: 1);
-    const channel = Channel(id: 0, appId: appId, name: 'stable');
+    const releaseArtifact = ReleaseArtifact(
+      id: 0,
+      releaseId: 0,
+      arch: arch,
+      platform: platform,
+      hash: '#',
+      size: 42,
+      url: 'https://example.com',
+    );
+
     const pubspecYamlContent = '''
 name: example
 version: $version
@@ -66,7 +67,7 @@ flutter:
     late Logger logger;
     late ProcessResult processResult;
     late CodePushClient codePushClient;
-    late PublishCommand command;
+    late ReleaseCommand command;
     late Uri? capturedHostedUri;
 
     Directory setUpTempDir() {
@@ -88,7 +89,7 @@ flutter:
       logger = _MockLogger();
       processResult = _MockProcessResult();
       codePushClient = _MockCodePushClient();
-      command = PublishCommand(
+      command = ReleaseCommand(
         auth: auth,
         buildCodePushClient: ({required String apiKey, Uri? hostedUri}) {
           capturedHostedUri = hostedUri;
@@ -107,9 +108,14 @@ flutter:
       testApplicationConfigHome = (_) => applicationConfigHome.path;
 
       when(() => argResults.rest).thenReturn([]);
+      when(() => argResults['arch']).thenReturn(arch);
+      when(() => argResults['platform']).thenReturn(platform);
       when(() => auth.currentSession).thenReturn(session);
       when(() => logger.progress(any())).thenReturn(progress);
       when(() => logger.confirm(any())).thenReturn(true);
+      when(
+        () => logger.prompt(any(), defaultValue: any(named: 'defaultValue')),
+      ).thenReturn(version);
       when(() => processResult.exitCode).thenReturn(ExitCode.success.code);
       when(
         () => codePushClient.downloadEngine(revision: any(named: 'revision')),
@@ -118,35 +124,23 @@ flutter:
         () => codePushClient.getApps(),
       ).thenAnswer((_) async => [appMetadata]);
       when(
-        () => codePushClient.getChannels(appId: any(named: 'appId')),
-      ).thenAnswer((_) async => [channel]);
-      when(
         () => codePushClient.getReleases(appId: any(named: 'appId')),
       ).thenAnswer((_) async => [release]);
       when(
-        () => codePushClient.createChannel(
+        () => codePushClient.createRelease(
           appId: any(named: 'appId'),
-          channel: any(named: 'channel'),
+          version: any(named: 'version'),
         ),
-      ).thenAnswer((_) async => channel);
+      ).thenAnswer((_) async => release);
       when(
-        () => codePushClient.createPatch(releaseId: any(named: 'releaseId')),
-      ).thenAnswer((_) async => patch);
-      when(
-        () => codePushClient.createPatchArtifact(
+        () => codePushClient.createReleaseArtifact(
           artifactPath: any(named: 'artifactPath'),
-          patchId: any(named: 'patchId'),
+          releaseId: any(named: 'releaseId'),
           arch: any(named: 'arch'),
           platform: any(named: 'platform'),
           hash: any(named: 'hash'),
         ),
-      ).thenAnswer((_) async => patchArtifact);
-      when(
-        () => codePushClient.promotePatch(
-          patchId: any(named: 'patchId'),
-          channelId: any(named: 'channelId'),
-        ),
-      ).thenAnswer((_) async {});
+      ).thenAnswer((_) async => releaseArtifact);
     });
 
     test('throws config error when shorebird is not initialized', () async {
@@ -250,7 +244,7 @@ flutter:
       expect(exitCode, ExitCode.software.code);
     });
 
-    test('throws error when app does not exist fails.', () async {
+    test('throws error when app does not exist.', () async {
       when(
         () => logger.prompt(any(), defaultValue: any(named: 'defaultValue')),
       ).thenReturn(appDisplayName);
@@ -346,48 +340,17 @@ Did you forget to run "shorebird init"?''',
       expect(exitCode, ExitCode.software.code);
     });
 
-    test('throws error when release does not exist.', () async {
+    test('throws error when creating release fails.', () async {
+      const error = 'something went wrong';
       when(
         () => codePushClient.getReleases(appId: any(named: 'appId')),
       ).thenAnswer((_) async => []);
-      final tempDir = setUpTempDir();
-      Directory(
-        p.join(command.shorebirdEnginePath, 'engine'),
-      ).createSync(recursive: true);
-      final artifactPath = p.join(
-        tempDir.path,
-        'build',
-        'app',
-        'intermediates',
-        'stripped_native_libs',
-        'release',
-        'out',
-        'lib',
-        'arm64-v8a',
-        'libapp.so',
-      );
-      File(artifactPath).createSync(recursive: true);
-      final exitCode = await IOOverrides.runZoned(
-        command.run,
-        getCurrentDirectory: () => tempDir,
-      );
-      verify(
-        () => logger.err(
-          '''
-Release not found: "$version"
-
-Patches can only be published for existing releases.
-Please create a release using "shorebird release" and try again.
-''',
-        ),
-      ).called(1);
-      expect(exitCode, ExitCode.software.code);
-    });
-
-    test('throws error when creating patch fails.', () async {
-      const error = 'something went wrong';
       when(
-        () => codePushClient.createPatch(releaseId: any(named: 'releaseId')),
+        () => codePushClient.createRelease(
+          appId: any(named: 'appId'),
+          version: any(named: 'version'),
+          displayName: any(named: 'displayName'),
+        ),
       ).thenThrow(error);
       final tempDir = setUpTempDir();
       Directory(
@@ -414,12 +377,15 @@ Please create a release using "shorebird release" and try again.
       expect(exitCode, ExitCode.software.code);
     });
 
-    test('throws error when uploading patch artifact fails.', () async {
+    test('throws error when uploading release artifact fails.', () async {
       const error = 'something went wrong';
       when(
-        () => codePushClient.createPatchArtifact(
+        () => codePushClient.getReleases(appId: any(named: 'appId')),
+      ).thenAnswer((_) async => []);
+      when(
+        () => codePushClient.createReleaseArtifact(
           artifactPath: any(named: 'artifactPath'),
-          patchId: any(named: 'patchId'),
+          releaseId: any(named: 'releaseId'),
           arch: any(named: 'arch'),
           platform: any(named: 'platform'),
           hash: any(named: 'hash'),
@@ -450,11 +416,7 @@ Please create a release using "shorebird release" and try again.
       expect(exitCode, ExitCode.software.code);
     });
 
-    test('throws error when fetching channels fails.', () async {
-      const error = 'something went wrong';
-      when(
-        () => codePushClient.getChannels(appId: any(named: 'appId')),
-      ).thenThrow(error);
+    test('succeeds when release is successful', () async {
       final tempDir = setUpTempDir();
       Directory(
         p.join(command.shorebirdEnginePath, 'engine'),
@@ -476,140 +438,9 @@ Please create a release using "shorebird release" and try again.
         command.run,
         getCurrentDirectory: () => tempDir,
       );
-      verify(() => progress.fail(error)).called(1);
-      expect(exitCode, ExitCode.software.code);
-    });
-
-    test('throws error when creating channel fails.', () async {
-      const error = 'something went wrong';
-      when(
-        () => codePushClient.getChannels(appId: any(named: 'appId')),
-      ).thenAnswer((_) async => []);
-      when(
-        () => codePushClient.createChannel(
-          appId: any(named: 'appId'),
-          channel: any(named: 'channel'),
-        ),
-      ).thenThrow(error);
-      final tempDir = setUpTempDir();
-      Directory(
-        p.join(command.shorebirdEnginePath, 'engine'),
-      ).createSync(recursive: true);
-      final artifactPath = p.join(
-        tempDir.path,
-        'build',
-        'app',
-        'intermediates',
-        'stripped_native_libs',
-        'release',
-        'out',
-        'lib',
-        'arm64-v8a',
-        'libapp.so',
-      );
-      File(artifactPath).createSync(recursive: true);
-      final exitCode = await IOOverrides.runZoned(
-        command.run,
-        getCurrentDirectory: () => tempDir,
-      );
-      verify(() => progress.fail(error)).called(1);
-      expect(exitCode, ExitCode.software.code);
-    });
-
-    test('throws error when promoting patch fails.', () async {
-      const error = 'something went wrong';
-      when(
-        () => codePushClient.getChannels(appId: any(named: 'appId')),
-      ).thenAnswer((_) async => []);
-      when(
-        () => codePushClient.promotePatch(
-          patchId: any(named: 'patchId'),
-          channelId: any(named: 'channelId'),
-        ),
-      ).thenThrow(error);
-      final tempDir = setUpTempDir();
-      Directory(
-        p.join(command.shorebirdEnginePath, 'engine'),
-      ).createSync(recursive: true);
-      final artifactPath = p.join(
-        tempDir.path,
-        'build',
-        'app',
-        'intermediates',
-        'stripped_native_libs',
-        'release',
-        'out',
-        'lib',
-        'arm64-v8a',
-        'libapp.so',
-      );
-      File(artifactPath).createSync(recursive: true);
-      final exitCode = await IOOverrides.runZoned(
-        command.run,
-        getCurrentDirectory: () => tempDir,
-      );
-      verify(() => progress.fail(error)).called(1);
-      expect(exitCode, ExitCode.software.code);
-    });
-
-    test('succeeds when publish is successful', () async {
-      final tempDir = setUpTempDir();
-      Directory(
-        p.join(command.shorebirdEnginePath, 'engine'),
-      ).createSync(recursive: true);
-      final artifactPath = p.join(
-        tempDir.path,
-        'build',
-        'app',
-        'intermediates',
-        'stripped_native_libs',
-        'release',
-        'out',
-        'lib',
-        'arm64-v8a',
-        'libapp.so',
-      );
-      File(artifactPath).createSync(recursive: true);
-      final exitCode = await IOOverrides.runZoned(
-        command.run,
-        getCurrentDirectory: () => tempDir,
-      );
-      verify(() => logger.success('\n✅ Published Successfully!')).called(1);
+      verify(() => logger.success('\n✅ Released Successfully!')).called(1);
       expect(exitCode, ExitCode.success.code);
       expect(capturedHostedUri, isNull);
-    });
-
-    test('succeeds when publish is successful using custom base_url', () async {
-      final tempDir = setUpTempDir();
-      const baseUrl = 'https://example.com';
-      File(
-        p.join(tempDir.path, 'shorebird.yaml'),
-      ).writeAsStringSync(
-        '''
-app_id: $appId
-base_url: $baseUrl''',
-      );
-      Directory(
-        p.join(command.shorebirdEnginePath, 'engine'),
-      ).createSync(recursive: true);
-      final artifactPath = p.join(
-        tempDir.path,
-        'build',
-        'app',
-        'intermediates',
-        'stripped_native_libs',
-        'release',
-        'out',
-        'lib',
-        'arm64-v8a',
-        'libapp.so',
-      );
-      File(artifactPath).createSync(recursive: true);
-      await IOOverrides.runZoned(
-        command.run,
-        getCurrentDirectory: () => tempDir,
-      );
-      expect(capturedHostedUri, equals(Uri.parse(baseUrl)));
     });
   });
 }

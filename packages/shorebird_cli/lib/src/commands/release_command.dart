@@ -11,36 +11,54 @@ import 'package:shorebird_cli/src/shorebird_create_app_mixin.dart';
 import 'package:shorebird_cli/src/shorebird_engine_mixin.dart';
 import 'package:shorebird_code_push_client/shorebird_code_push_client.dart';
 
-/// {@template publish_command}
-///
-/// `shorebird publish <path/to/artifact>`
-/// Publish new releases to the Shorebird CodePush server.
+/// {@template release_command}
+/// `shorebird release`
+/// Create new app releases.
 /// {@endtemplate}
-class PublishCommand extends ShorebirdCommand
+class ReleaseCommand extends ShorebirdCommand
     with
         ShorebirdConfigMixin,
         ShorebirdEngineMixin,
         ShorebirdBuildMixin,
         ShorebirdCreateAppMixin {
-  /// {@macro publish_command}
-  PublishCommand({
+  /// {@macro release_command}
+  ReleaseCommand({
     required super.logger,
     super.auth,
     super.buildCodePushClient,
     super.runProcess,
     HashFunction? hashFn,
-  }) : _hashFn = hashFn ?? ((m) => sha256.convert(m).toString());
+  }) : _hashFn = hashFn ?? ((m) => sha256.convert(m).toString()) {
+    argParser
+      ..addOption(
+        'release-version',
+        help: 'The version of the release (e.g. "1.0.0").',
+      )
+      ..addOption(
+        'platform',
+        help: 'The platform of the release (e.g. "android").',
+        allowed: ['android'],
+        allowedHelp: {'android': 'The Android platform.'},
+        defaultsTo: 'android',
+      )
+      ..addOption(
+        'arch',
+        help: 'The architecture of the release (e.g. "aarch64").',
+        allowed: ['aarch64'],
+        allowedHelp: {'aarch64': 'The 64-bit ARM architecture.'},
+        defaultsTo: 'aarch64',
+      );
+  }
 
   @override
-  String get description => 'Publish an update.';
+  String get description => '''
+Builds and submits your app to Shorebird.
+Shorebird saves the compiled Dart code from your application in order to
+make smaller updates to your app.
+''';
 
   @override
-  String get name => 'publish';
-
-  // TODO(felangel): make these configurable.
-  static const String _arch = 'aarch64';
-  static const String _platform = 'android';
-  static const String _channel = 'stable';
+  String get name => 'release';
 
   final HashFunction _hashFn;
 
@@ -55,7 +73,7 @@ class PublishCommand extends ShorebirdCommand
 
     final session = auth.currentSession;
     if (session == null) {
-      logger.err('You must be logged in to publish.');
+      logger.err('You must be logged in to release.');
       return ExitCode.noUser.code;
     }
 
@@ -127,14 +145,34 @@ Did you forget to run "shorebird init"?''',
       return ExitCode.software.code;
     }
 
+    final releaseVersionArg = results['release-version'] as String?;
+    final pubspecVersion = pubspecYaml.version!;
+    final pubspecVersionString =
+        '''${pubspecVersion.major}.${pubspecVersion.minor}.${pubspecVersion.patch}''';
+    final releaseVersion = releaseVersionArg ??
+        logger.prompt(
+          '\nWhat is the version of this release?',
+          defaultValue: pubspecVersionString,
+        );
+    final arch = results['arch'] as String;
+    final platform = results['platform'] as String;
+
     logger.info(
       '''
 
-${styleBold.wrap(lightGreen.wrap('🚀 Ready to publish a new patch!'))}
+${styleBold.wrap(lightGreen.wrap('🚀 Ready to create a new release!'))}
 
 📱 App: ${lightCyan.wrap(app.displayName)} ${lightCyan.wrap('(${app.id})')}
-📦 Release Version: ${lightCyan.wrap(versionString)}
+📦 Release Version: ${lightCyan.wrap(releaseVersion)}
+⚙️  Architecture: ${lightCyan.wrap(arch)}
+🕹️  Platform: ${lightCyan.wrap(platform)}
 #️⃣  Hash: ${lightCyan.wrap(hash)}
+
+Your next step is to upload the release artifact to the Play Store.
+${lightCyan.wrap(artifactPath)}
+
+See the following link for more information:    
+${link(uri: Uri.parse('https://support.google.com/googleplay/android-developer/answer/9859152?hl=en'))}
 ''',
     );
 
@@ -148,48 +186,35 @@ ${styleBold.wrap(lightGreen.wrap('🚀 Ready to publish a new patch!'))}
     late final List<Release> releases;
     final fetchReleasesProgress = logger.progress('Fetching releases');
     try {
-      releases = await codePushClient.getReleases(
-        appId: app.id,
-      );
+      releases = await codePushClient.getReleases(appId: app.id);
       fetchReleasesProgress.complete();
     } catch (error) {
       fetchReleasesProgress.fail('$error');
       return ExitCode.software.code;
     }
 
-    final release = releases.firstWhereOrNull(
-      (r) => r.version == versionString,
-    );
-
+    var release = releases.firstWhereOrNull((r) => r.version == versionString);
     if (release == null) {
-      logger.err(
-        '''
-Release not found: "$versionString"
-
-Patches can only be published for existing releases.
-Please create a release using "shorebird release" and try again.
-''',
-      );
-      return ExitCode.software.code;
-    }
-
-    late final Patch patch;
-    final createPatchProgress = logger.progress('Creating patch');
-    try {
-      patch = await codePushClient.createPatch(releaseId: release.id);
-      createPatchProgress.complete();
-    } catch (error) {
-      createPatchProgress.fail('$error');
-      return ExitCode.software.code;
+      final createReleaseProgress = logger.progress('Creating release');
+      try {
+        release = await codePushClient.createRelease(
+          appId: app.id,
+          version: versionString,
+        );
+        createReleaseProgress.complete();
+      } catch (error) {
+        createReleaseProgress.fail('$error');
+        return ExitCode.software.code;
+      }
     }
 
     final createArtifactProgress = logger.progress('Creating artifact');
     try {
-      await codePushClient.createPatchArtifact(
-        patchId: patch.id,
+      await codePushClient.createReleaseArtifact(
+        releaseId: release.id,
         artifactPath: artifact.path,
-        arch: _arch,
-        platform: _platform,
+        arch: arch,
+        platform: platform,
         hash: hash,
       );
       createArtifactProgress.complete();
@@ -198,46 +223,7 @@ Please create a release using "shorebird release" and try again.
       return ExitCode.software.code;
     }
 
-    Channel? channel;
-    final fetchChannelsProgress = logger.progress('Fetching channels');
-    try {
-      final channels = await codePushClient.getChannels(appId: app.id);
-      channel = channels.firstWhereOrNull(
-        (channel) => channel.name == _channel,
-      );
-      fetchChannelsProgress.complete();
-    } catch (error) {
-      fetchChannelsProgress.fail('$error');
-      return ExitCode.software.code;
-    }
-
-    if (channel == null) {
-      final createChannelProgress = logger.progress('Creating channel');
-      try {
-        channel = await codePushClient.createChannel(
-          appId: app.id,
-          channel: _channel,
-        );
-        createChannelProgress.complete();
-      } catch (error) {
-        createChannelProgress.fail('$error');
-        return ExitCode.software.code;
-      }
-    }
-
-    final publishPatchProgress = logger.progress('Publishing patch');
-    try {
-      await codePushClient.promotePatch(
-        patchId: patch.id,
-        channelId: channel.id,
-      );
-      publishPatchProgress.complete();
-    } catch (error) {
-      publishPatchProgress.fail('$error');
-      return ExitCode.software.code;
-    }
-
-    logger.success('\n✅ Published Successfully!');
+    logger.success('\n✅ Released Successfully!');
     return ExitCode.success.code;
   }
 }
