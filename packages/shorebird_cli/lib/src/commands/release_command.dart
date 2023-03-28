@@ -223,7 +223,7 @@ ${link(uri: Uri.parse('https://support.google.com/googleplay/android-developer/a
       return ExitCode.software.code;
     }
 
-    logger.success('\n✅ Released Successfully!');
+    logger.success('\n✅ Published Release!');
     return ExitCode.success.code;
   }
 }

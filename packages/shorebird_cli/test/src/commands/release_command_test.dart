@@ -438,7 +438,7 @@ Did you forget to run "shorebird init"?''',
         command.run,
         getCurrentDirectory: () => tempDir,
       );
-      verify(() => logger.success('\n✅ Released Successfully!')).called(1);
+      verify(() => logger.success('\n✅ Published Release!')).called(1);
       expect(exitCode, ExitCode.success.code);
       expect(capturedHostedUri, isNull);
     });

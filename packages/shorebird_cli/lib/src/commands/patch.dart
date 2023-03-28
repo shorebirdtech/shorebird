@@ -11,36 +11,60 @@ import 'package:shorebird_cli/src/shorebird_create_app_mixin.dart';
 import 'package:shorebird_cli/src/shorebird_engine_mixin.dart';
 import 'package:shorebird_code_push_client/shorebird_code_push_client.dart';
 
-/// {@template publish_command}
-///
-/// `shorebird publish <path/to/artifact>`
-/// Publish new releases to the Shorebird CodePush server.
+/// {@template patch_command}
+/// `shorebird patch`
+/// Publish new patches for a specific release to the Shorebird CodePush server.
 /// {@endtemplate}
-class PublishCommand extends ShorebirdCommand
+class PatchCommand extends ShorebirdCommand
     with
         ShorebirdConfigMixin,
         ShorebirdEngineMixin,
         ShorebirdBuildMixin,
         ShorebirdCreateAppMixin {
-  /// {@macro publish_command}
-  PublishCommand({
+  /// {@macro patch_command}
+  PatchCommand({
     required super.logger,
     super.auth,
     super.buildCodePushClient,
     super.runProcess,
     HashFunction? hashFn,
-  }) : _hashFn = hashFn ?? ((m) => sha256.convert(m).toString());
+  }) : _hashFn = hashFn ?? ((m) => sha256.convert(m).toString()) {
+    argParser
+      ..addOption(
+        'release-version',
+        help: 'The version of the release (e.g. "1.0.0").',
+      )
+      ..addOption(
+        'platform',
+        help: 'The platform of the release (e.g. "android").',
+        allowed: ['android'],
+        allowedHelp: {'android': 'The Android platform.'},
+        defaultsTo: 'android',
+      )
+      ..addOption(
+        'arch',
+        help: 'The architecture of the release (e.g. "aarch64").',
+        allowed: ['aarch64'],
+        allowedHelp: {'aarch64': 'The 64-bit ARM architecture.'},
+        defaultsTo: 'aarch64',
+      )
+      ..addOption(
+        'channel',
+        help: 'The channel the patch should be promoted to (e.g. "stable").',
+        allowed: ['stable'],
+        allowedHelp: {
+          'stable': 'The stable channel which is consumed by production apps.'
+        },
+        defaultsTo: 'stable',
+      );
+  }
 
   @override
-  String get description => 'Publish an update.';
+  String get description =>
+      'Publish new patches for a specific release to Shorebird.';
 
   @override
-  String get name => 'publish';
-
-  // TODO(felangel): make these configurable.
-  static const String _arch = 'aarch64';
-  static const String _platform = 'android';
-  static const String _channel = 'stable';
+  String get name => 'patch';
 
   final HashFunction _hashFn;
 
@@ -127,13 +151,29 @@ Did you forget to run "shorebird init"?''',
       return ExitCode.software.code;
     }
 
+    final releaseVersionArg = results['release-version'] as String?;
+    final pubspecVersion = pubspecYaml.version!;
+    final pubspecVersionString =
+        '''${pubspecVersion.major}.${pubspecVersion.minor}.${pubspecVersion.patch}''';
+    final releaseVersion = releaseVersionArg ??
+        logger.prompt(
+          '\nWhat is the version of this release?',
+          defaultValue: pubspecVersionString,
+        );
+    final arch = results['arch'] as String;
+    final platform = results['platform'] as String;
+    final channelArg = results['channel'] as String;
+
     logger.info(
       '''
 
 ${styleBold.wrap(lightGreen.wrap('🚀 Ready to publish a new patch!'))}
 
 📱 App: ${lightCyan.wrap(app.displayName)} ${lightCyan.wrap('(${app.id})')}
-📦 Release Version: ${lightCyan.wrap(versionString)}
+📦 Release Version: ${lightCyan.wrap(releaseVersion)}
+⚙️  Architecture: ${lightCyan.wrap(arch)}
+🕹️  Platform: ${lightCyan.wrap(platform)}
+📺 Channel: ${lightCyan.wrap(channelArg)}
 #️⃣  Hash: ${lightCyan.wrap(hash)}
 ''',
     );
@@ -188,8 +228,8 @@ Please create a release using "shorebird release" and try again.
       await codePushClient.createPatchArtifact(
         patchId: patch.id,
         artifactPath: artifact.path,
-        arch: _arch,
-        platform: _platform,
+        arch: arch,
+        platform: platform,
         hash: hash,
       );
       createArtifactProgress.complete();
@@ -203,7 +243,7 @@ Please create a release using "shorebird release" and try again.
     try {
       final channels = await codePushClient.getChannels(appId: app.id);
       channel = channels.firstWhereOrNull(
-        (channel) => channel.name == _channel,
+        (channel) => channel.name == channelArg,
       );
       fetchChannelsProgress.complete();
     } catch (error) {
@@ -216,7 +256,7 @@ Please create a release using "shorebird release" and try again.
       try {
         channel = await codePushClient.createChannel(
           appId: app.id,
-          channel: _channel,
+          channel: channelArg,
         );
         createChannelProgress.complete();
       } catch (error) {
@@ -237,7 +277,7 @@ Please create a release using "shorebird release" and try again.
       return ExitCode.software.code;
     }
 
-    logger.success('\n✅ Published Successfully!');
+    logger.success('\n✅ Published Patch!');
     return ExitCode.success.code;
   }
 }
