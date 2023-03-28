@@ -185,6 +185,135 @@ void main() {
       });
     });
 
+    group('createReleaseArtifact', () {
+      const releaseId = 0;
+      const arch = 'aarch64';
+      const platform = 'android';
+      const hash = 'test-hash';
+      const size = 42;
+
+      test('throws an exception if the http request fails (unknown)', () async {
+        when(() => httpClient.send(any())).thenAnswer((_) async {
+          return http.StreamedResponse(
+            Stream.empty(),
+            HttpStatus.failedDependency,
+          );
+        });
+
+        final tempDir = Directory.systemTemp.createTempSync();
+        final fixture = File(path.join(tempDir.path, 'release.txt'))
+          ..createSync();
+
+        expect(
+          codePushClient.createReleaseArtifact(
+            artifactPath: fixture.path,
+            releaseId: releaseId,
+            arch: arch,
+            platform: platform,
+            hash: hash,
+          ),
+          throwsA(
+            isA<CodePushException>().having(
+              (e) => e.message,
+              'message',
+              CodePushClient.unknownErrorMessage,
+            ),
+          ),
+        );
+      });
+
+      test('throws an exception if the http request fails', () async {
+        when(() => httpClient.send(any())).thenAnswer((_) async {
+          return http.StreamedResponse(
+            Stream.value(utf8.encode(json.encode(errorResponse.toJson()))),
+            HttpStatus.failedDependency,
+          );
+        });
+
+        final tempDir = Directory.systemTemp.createTempSync();
+        final fixture = File(path.join(tempDir.path, 'release.txt'))
+          ..createSync();
+
+        expect(
+          codePushClient.createReleaseArtifact(
+            artifactPath: fixture.path,
+            releaseId: releaseId,
+            arch: arch,
+            platform: platform,
+            hash: hash,
+          ),
+          throwsA(
+            isA<CodePushException>().having(
+              (e) => e.message,
+              'message',
+              errorResponse.message,
+            ),
+          ),
+        );
+      });
+
+      test('completes when request succeeds', () async {
+        const artifactId = 0;
+        const artifactUrl = 'https://example.com/artifact.zip';
+        when(() => httpClient.send(any())).thenAnswer((_) async {
+          return http.StreamedResponse(
+            Stream.value(
+              utf8.encode(
+                json.encode(
+                  ReleaseArtifact(
+                    id: artifactId,
+                    url: artifactUrl,
+                    releaseId: releaseId,
+                    arch: arch,
+                    platform: platform,
+                    hash: hash,
+                    size: size,
+                  ),
+                ),
+              ),
+            ),
+            HttpStatus.ok,
+          );
+        });
+
+        final tempDir = Directory.systemTemp.createTempSync();
+        final fixture = File(path.join(tempDir.path, 'release.txt'))
+          ..createSync();
+
+        await expectLater(
+          codePushClient.createReleaseArtifact(
+            artifactPath: fixture.path,
+            releaseId: releaseId,
+            arch: arch,
+            platform: platform,
+            hash: hash,
+          ),
+          completion(
+            equals(
+              isA<ReleaseArtifact>()
+                  .having((a) => a.id, 'id', artifactId)
+                  .having((a) => a.releaseId, 'releaseId', releaseId)
+                  .having((a) => a.arch, 'arch', arch)
+                  .having((a) => a.platform, 'platform', platform)
+                  .having((a) => a.hash, 'hash', hash)
+                  .having((a) => a.url, 'artifactUrl', artifactUrl),
+            ),
+          ),
+        );
+
+        final request = verify(() => httpClient.send(captureAny()))
+            .captured
+            .single as http.MultipartRequest;
+
+        expect(
+          request.url,
+          codePushClient.hostedUri.replace(
+            path: '/api/v1/releases/$releaseId/artifacts',
+          ),
+        );
+      });
+    });
+
     group('createApp', () {
       test('throws an exception if the http request fails (unknown)', () async {
         when(
