@@ -151,7 +151,7 @@ fn update_internal(config: &ResolvedConfig) -> anyhow::Result<UpdateStatus> {
     inflate(&download_path, &base_path, &output_path)?;    
     
     // Check the hash before moving into place.
-    let hash_ok = check_hash(&download_path, &patch.hash)?;
+    let hash_ok = check_hash(&output_path, &patch.hash)?;
     if !hash_ok {
         return Err(UpdateError::InvalidState("Hash mismatch".to_string()).into());
     }
