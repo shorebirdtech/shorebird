@@ -8,6 +8,9 @@ import 'package:shorebird_cli/src/auth/auth.dart';
 import 'package:shorebird_cli/src/command_runner.dart';
 import 'package:shorebird_code_push_client/shorebird_code_push_client.dart';
 
+/// Signature for a function which takes a list of bytes and returns a hash.
+typedef HashFunction = String Function(List<int> bytes);
+
 typedef CodePushClientBuilder = CodePushClient Function({
   required String apiKey,
   Uri? hostedUri,

@@ -52,6 +52,7 @@ class ShorebirdCliCommandRunner extends CompletionCommandRunner<int> {
     addCommand(LoginCommand(logger: _logger));
     addCommand(LogoutCommand(logger: _logger));
     addCommand(PublishCommand(logger: _logger));
+    addCommand(ReleaseCommand(logger: _logger));
     addCommand(RunCommand(logger: _logger));
     addCommand(UpgradeCommand(logger: _logger));
   }
