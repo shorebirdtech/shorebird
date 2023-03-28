@@ -116,11 +116,13 @@ Detected engine revision: "$flutterEngineRevision"''',
 
   @override
   Future<int?> runCommand(ArgResults topLevelResults) async {
+    // coverage:ignore-start
     // Fast track completion command
     if (topLevelResults.command?.name == 'completion') {
       await super.runCommand(topLevelResults);
       return ExitCode.success.code;
     }
+    // coverage:ignore-end
 
     // Run the command or show version
     final int? exitCode;
