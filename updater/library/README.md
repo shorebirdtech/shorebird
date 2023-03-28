@@ -76,21 +76,41 @@ The best way I found was to install:
 https://github.com/bbqsrc/cargo-ndk
 
 ```
-rustup install beta
-cargo +beta install cargo-ndk
-rustup +beta target add \
+cargo install cargo-ndk
+rustup target add \
     aarch64-linux-android \
     armv7-linux-androideabi \
     x86_64-linux-android \
     i686-linux-android
-cargo +beta ndk --target aarch64-linux-android build --release
+cargo ndk -t armeabi-v7a -t arm64-v8a build --release
+```
+
+When building to include with libflutter.so, you need to build with the same
+version of the ndk as Flutter is using:
+
+You'll need to have a Flutter engine checkout already setup and synced.
+As part of `gclient sync` the Flutter engine repo will pull down a copy of the
+ndk into `src/third_party/android_tools/ndk`.
+
+Then you can set the NDK_HOME environment variable to point to that directory.
+e.g.:
+```
+NDK_HOME=$HOME/Documents/GitHub/engine/src/third_party/android_tools/ndk
+```
+
+Then you can build the updater library as above.  If you don't want to change
+your NDK_HOME, you can also set the environment variable for just the one call:
+```
+NDK_HOME=$HOME/Documents/GitHub/engine/src/third_party/android_tools/ndk cargo ndk -t armeabi-v7a -t arm64-v8a build --release
 ```
 
 ## Development
 
 Uses cbindgen to generate the header file.
 
-It isn't currently wired into the build process, so you'll need to run it manually if you change the API.
+It isn't currently wired into the build process, so you'll need to run it
+manually if you change the API.
+https://github.com/shorebirdtech/shorebird/issues/121
 
 ```
 cargo install cbindgen
