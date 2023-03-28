@@ -100,9 +100,9 @@ class UpgradeCommand extends ShorebirdCommand {
     return '${result.stdout}'.trim();
   }
 
-  /// Returns the local HEAD flutter version.
+  /// Returns the local HEAD shorebird version.
   ///
-  /// Exits tool if HEAD isn't pointing to a branch, or there is no upstream.
+  /// Exits if HEAD isn't pointing to a branch, or there is no upstream.
   Future<String> fetchCurrentVersion({
     required String workingDirectory,
   }) async {
