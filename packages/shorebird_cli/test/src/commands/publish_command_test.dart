@@ -33,7 +33,7 @@ void main() {
     const appDisplayName = 'Test App';
     const app = App(id: appId, displayName: appDisplayName);
     const appMetadata = AppMetadata(appId: appId, displayName: appDisplayName);
-    const artifact = Artifact(
+    const patchArtifact = PatchArtifact(
       id: 0,
       patchId: 0,
       arch: 'aarch64',
@@ -143,14 +143,14 @@ flutter:
         () => codePushClient.createPatch(releaseId: any(named: 'releaseId')),
       ).thenAnswer((_) async => patch);
       when(
-        () => codePushClient.createArtifact(
+        () => codePushClient.createPatchArtifact(
           artifactPath: any(named: 'artifactPath'),
           patchId: any(named: 'patchId'),
           arch: any(named: 'arch'),
           platform: any(named: 'platform'),
           hash: any(named: 'hash'),
         ),
-      ).thenAnswer((_) async => artifact);
+      ).thenAnswer((_) async => patchArtifact);
       when(
         () => codePushClient.promotePatch(
           patchId: any(named: 'patchId'),
@@ -425,13 +425,13 @@ flutter:
       expect(exitCode, ExitCode.software.code);
     });
 
-    test('throws error when uploading artifact fails.', () async {
+    test('throws error when uploading patch artifact fails.', () async {
       const error = 'something went wrong';
       when(
         () => codePushClient.getReleases(appId: any(named: 'appId')),
       ).thenAnswer((_) async => []);
       when(
-        () => codePushClient.createArtifact(
+        () => codePushClient.createPatchArtifact(
           artifactPath: any(named: 'artifactPath'),
           patchId: any(named: 'patchId'),
           arch: any(named: 'arch'),

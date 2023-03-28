@@ -56,7 +56,7 @@ void main() {
       });
     });
 
-    group('createArtifact', () {
+    group('createPatchArtifact', () {
       const patchId = 0;
       const arch = 'aarch64';
       const platform = 'android';
@@ -76,7 +76,7 @@ void main() {
           ..createSync();
 
         expect(
-          codePushClient.createArtifact(
+          codePushClient.createPatchArtifact(
             artifactPath: fixture.path,
             patchId: patchId,
             arch: arch,
@@ -106,7 +106,7 @@ void main() {
           ..createSync();
 
         expect(
-          codePushClient.createArtifact(
+          codePushClient.createPatchArtifact(
             artifactPath: fixture.path,
             patchId: patchId,
             arch: arch,
@@ -131,7 +131,7 @@ void main() {
             Stream.value(
               utf8.encode(
                 json.encode(
-                  Artifact(
+                  PatchArtifact(
                     id: artifactId,
                     url: artifactUrl,
                     patchId: patchId,
@@ -152,7 +152,7 @@ void main() {
           ..createSync();
 
         await expectLater(
-          codePushClient.createArtifact(
+          codePushClient.createPatchArtifact(
             artifactPath: fixture.path,
             patchId: patchId,
             arch: arch,
@@ -161,7 +161,7 @@ void main() {
           ),
           completion(
             equals(
-              isA<Artifact>()
+              isA<PatchArtifact>()
                   .having((a) => a.id, 'id', artifactId)
                   .having((a) => a.patchId, 'patchId', patchId)
                   .having((a) => a.arch, 'arch', arch)
@@ -178,7 +178,9 @@ void main() {
 
         expect(
           request.url,
-          codePushClient.hostedUri.replace(path: '/api/v1/artifacts'),
+          codePushClient.hostedUri.replace(
+            path: '/api/v1/patches/$patchId/artifacts',
+          ),
         );
       });
     });

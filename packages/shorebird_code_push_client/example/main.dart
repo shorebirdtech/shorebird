@@ -34,8 +34,8 @@ Future<void> main() async {
   // Create a new patch.
   final patch = await client.createPatch(releaseId: release.id);
 
-  // Create an artifact.
-  final artifact = await client.createArtifact(
+  // Create a patch artifact.
+  final patchArtifact = await client.createPatchArtifact(
     patchId: patch.id,
     artifactPath: '<PATH TO ARTIFACT>', // e.g. 'libapp.so'
     platform: '<PLATFORM>', // e.g. 'android'

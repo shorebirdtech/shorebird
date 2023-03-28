@@ -202,7 +202,7 @@ ${styleBold.wrap(lightGreen.wrap('🚀 Ready to publish a new patch!'))}
 
     final createArtifactProgress = logger.progress('Creating artifact');
     try {
-      await codePushClient.createArtifact(
+      await codePushClient.createPatchArtifact(
         patchId: patch.id,
         artifactPath: artifact.path,
         arch: _arch,

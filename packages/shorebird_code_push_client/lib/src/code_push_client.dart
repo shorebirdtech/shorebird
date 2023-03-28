@@ -47,7 +47,7 @@ class CodePushClient {
   Map<String, String> get _apiKeyHeader => {'x-api-key': _apiKey};
 
   /// Create a new artifact for a specific [patchId].
-  Future<Artifact> createArtifact({
+  Future<PatchArtifact> createPatchArtifact({
     required String artifactPath,
     required int patchId,
     required String arch,
@@ -56,12 +56,11 @@ class CodePushClient {
   }) async {
     final request = http.MultipartRequest(
       'POST',
-      Uri.parse('$hostedUri/api/v1/artifacts'),
+      Uri.parse('$hostedUri/api/v1/patches/$patchId/artifacts'),
     );
     final file = await http.MultipartFile.fromPath('file', artifactPath);
     request.files.add(file);
     request.fields.addAll({
-      'patch_id': '$patchId',
       'arch': arch,
       'platform': platform,
       'hash': hash,
@@ -73,7 +72,7 @@ class CodePushClient {
 
     if (response.statusCode != HttpStatus.ok) throw _parseErrorResponse(body);
 
-    return Artifact.fromJson(json.decode(body) as Map<String, dynamic>);
+    return PatchArtifact.fromJson(json.decode(body) as Map<String, dynamic>);
   }
 
   /// Create a new app with the provided [displayName].
