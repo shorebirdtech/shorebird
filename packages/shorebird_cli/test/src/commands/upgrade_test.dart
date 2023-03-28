@@ -144,9 +144,7 @@ void main() {
         final result = await command.run();
         expect(result, equals(ExitCode.success.code));
         verify(() => logger.progress('Checking for updates')).called(1);
-        verify(
-          () => logger.progress('Updating to $newerShorebirdRevision'),
-        ).called(1);
+        verify(() => logger.progress('Updating')).called(1);
       },
     );
 

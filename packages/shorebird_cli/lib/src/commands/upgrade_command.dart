@@ -55,7 +55,7 @@ class UpgradeCommand extends ShorebirdCommand {
       return ExitCode.success.code;
     }
 
-    final updateProgress = logger.progress('Updating to $latestVersion');
+    final updateProgress = logger.progress('Updating');
 
     try {
       await attemptReset(
@@ -68,7 +68,7 @@ class UpgradeCommand extends ShorebirdCommand {
       return ExitCode.software.code;
     }
 
-    updateProgress.complete('Updated to $latestVersion');
+    updateProgress.complete('Updated successfully.');
 
     return ExitCode.success.code;
   }
