@@ -73,7 +73,9 @@ class UpgradeCommand extends ShorebirdCommand {
     return ExitCode.success.code;
   }
 
-  /// Returns the remote stable shorebird version.
+  /// Returns the remote HEAD shorebird version.
+  ///
+  /// Exits if HEAD isn't pointing to a branch, or there is no upstream.
   Future<String> fetchLatestVersion({required String workingDirectory}) async {
     // Fetch upstream branch's commits and tags
     await runProcess(
@@ -81,8 +83,8 @@ class UpgradeCommand extends ShorebirdCommand {
       ['fetch', '--tags'],
       workingDirectory: workingDirectory,
     );
-    // Get the latest commit revision of the stable branch
-    return _gitRevParse('origin/stable', workingDirectory: workingDirectory);
+    // Get the latest commit revision of the upstream
+    return _gitRevParse('@{upstream}', workingDirectory: workingDirectory);
   }
 
   /// Returns the local HEAD shorebird version.
