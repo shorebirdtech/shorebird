@@ -142,14 +142,13 @@ fn update_internal(config: &ResolvedConfig) -> anyhow::Result<UpdateStatus> {
     let patch = response.patch.ok_or(UpdateError::BadServerResponse)?;
 
     let download_dir = PathBuf::from(&config.cache_dir);
-    let mut download_path = download_dir.join(patch.number.to_string());
+    let download_path = download_dir.join(patch.number.to_string());
     download_to_path(&patch.download_url, &download_path)?;
 
-    // Inflate the patch from a diff if needed.
+    // Inflate the patch from a diff.
     let base_path = PathBuf::from(&config.original_libapp_path);
-    let output_path = download_dir.join(format!("{}.full", patch.number.to_string()));
-    inflate(&download_path, &base_path, &output_path)?;
-    download_path = output_path;
+    let diff_path = download_dir.join(format!("{}.full", patch.number.to_string()));
+    inflate(&download_path, &base_path, &diff_path)?;    
     
     // Check the hash before moving into place.
     let hash_ok = check_hash(&download_path, &patch.hash)?;
@@ -160,7 +159,7 @@ fn update_internal(config: &ResolvedConfig) -> anyhow::Result<UpdateStatus> {
     // Consider supporting allowing the system to download for us (e.g. iOS).
 
     let patch_info = PatchInfo {
-        path: download_path.to_str().unwrap().to_string(),
+        path: diff_path.to_str().unwrap().to_string(),
         number: patch.number,
     };
     state.install_patch(patch_info)?;
