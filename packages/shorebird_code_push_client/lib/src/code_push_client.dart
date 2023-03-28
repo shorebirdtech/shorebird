@@ -75,6 +75,35 @@ class CodePushClient {
     return PatchArtifact.fromJson(json.decode(body) as Map<String, dynamic>);
   }
 
+  /// Create a new artifact for a specific [releaseId].
+  Future<ReleaseArtifact> createReleaseArtifact({
+    required String artifactPath,
+    required int releaseId,
+    required String arch,
+    required String platform,
+    required String hash,
+  }) async {
+    final request = http.MultipartRequest(
+      'POST',
+      Uri.parse('$hostedUri/api/v1/releases/$releaseId/artifacts'),
+    );
+    final file = await http.MultipartFile.fromPath('file', artifactPath);
+    request.files.add(file);
+    request.fields.addAll({
+      'arch': arch,
+      'platform': platform,
+      'hash': hash,
+      'size': '${file.length}',
+    });
+    request.headers.addAll(_apiKeyHeader);
+    final response = await _httpClient.send(request);
+    final body = await response.stream.bytesToString();
+
+    if (response.statusCode != HttpStatus.ok) throw _parseErrorResponse(body);
+
+    return ReleaseArtifact.fromJson(json.decode(body) as Map<String, dynamic>);
+  }
+
   /// Create a new app with the provided [displayName].
   /// Returns the newly created app.
   Future<App> createApp({required String displayName}) async {
