@@ -186,19 +186,14 @@ ${link(uri: Uri.parse('https://support.google.com/googleplay/android-developer/a
     late final List<Release> releases;
     final fetchReleasesProgress = logger.progress('Fetching releases');
     try {
-      releases = await codePushClient.getReleases(
-        appId: app.id,
-      );
+      releases = await codePushClient.getReleases(appId: app.id);
       fetchReleasesProgress.complete();
     } catch (error) {
       fetchReleasesProgress.fail('$error');
       return ExitCode.software.code;
     }
 
-    var release = releases.firstWhereOrNull(
-      (r) => r.version == versionString,
-    );
-
+    var release = releases.firstWhereOrNull((r) => r.version == versionString);
     if (release == null) {
       final createReleaseProgress = logger.progress('Creating release');
       try {
