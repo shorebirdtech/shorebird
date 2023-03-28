@@ -8,7 +8,7 @@ import 'package:mocktail/mocktail.dart';
 import 'package:path/path.dart' as p;
 import 'package:shorebird_cli/src/auth/auth.dart';
 import 'package:shorebird_cli/src/auth/session.dart';
-import 'package:shorebird_cli/src/commands/publish_command.dart';
+import 'package:shorebird_cli/src/commands/patch.dart';
 import 'package:shorebird_cli/src/config/config.dart';
 import 'package:shorebird_code_push_client/shorebird_code_push_client.dart';
 import 'package:test/test.dart';
@@ -26,17 +26,20 @@ class _MockProcessResult extends Mock implements ProcessResult {}
 class _MockCodePushClient extends Mock implements CodePushClient {}
 
 void main() {
-  group('publish', () {
+  group('patch', () {
     const session = Session(apiKey: 'test-api-key');
     const appId = 'test-app-id';
     const version = '1.2.3';
+    const arch = 'aarch64';
+    const platform = 'android';
+    const channelName = 'stable';
     const appDisplayName = 'Test App';
     const appMetadata = AppMetadata(appId: appId, displayName: appDisplayName);
     const patchArtifact = PatchArtifact(
       id: 0,
       patchId: 0,
-      arch: 'aarch64',
-      platform: 'android',
+      arch: arch,
+      platform: platform,
       hash: '#',
       size: 42,
       url: 'https://example.com',
@@ -48,7 +51,7 @@ void main() {
       displayName: '1.2.3',
     );
     const patch = Patch(id: 0, number: 1);
-    const channel = Channel(id: 0, appId: appId, name: 'stable');
+    const channel = Channel(id: 0, appId: appId, name: channelName);
     const pubspecYamlContent = '''
 name: example
 version: $version
@@ -66,7 +69,7 @@ flutter:
     late Logger logger;
     late ProcessResult processResult;
     late CodePushClient codePushClient;
-    late PublishCommand command;
+    late PatchCommand command;
     late Uri? capturedHostedUri;
 
     Directory setUpTempDir() {
@@ -88,7 +91,7 @@ flutter:
       logger = _MockLogger();
       processResult = _MockProcessResult();
       codePushClient = _MockCodePushClient();
-      command = PublishCommand(
+      command = PatchCommand(
         auth: auth,
         buildCodePushClient: ({required String apiKey, Uri? hostedUri}) {
           capturedHostedUri = hostedUri;
@@ -107,8 +110,14 @@ flutter:
       testApplicationConfigHome = (_) => applicationConfigHome.path;
 
       when(() => argResults.rest).thenReturn([]);
+      when(() => argResults['arch']).thenReturn(arch);
+      when(() => argResults['platform']).thenReturn(platform);
+      when(() => argResults['channel']).thenReturn(channelName);
       when(() => auth.currentSession).thenReturn(session);
       when(() => logger.progress(any())).thenReturn(progress);
+      when(
+        () => logger.prompt(any(), defaultValue: any(named: 'defaultValue')),
+      ).thenReturn(version);
       when(() => logger.confirm(any())).thenReturn(true);
       when(() => processResult.exitCode).thenReturn(ExitCode.success.code);
       when(
@@ -552,7 +561,7 @@ Please create a release using "shorebird release" and try again.
       expect(exitCode, ExitCode.software.code);
     });
 
-    test('succeeds when publish is successful', () async {
+    test('succeeds when patch is successful', () async {
       final tempDir = setUpTempDir();
       Directory(
         p.join(command.shorebirdEnginePath, 'engine'),
@@ -574,12 +583,12 @@ Please create a release using "shorebird release" and try again.
         command.run,
         getCurrentDirectory: () => tempDir,
       );
-      verify(() => logger.success('\n✅ Published Successfully!')).called(1);
+      verify(() => logger.success('\n✅ Published Patch!')).called(1);
       expect(exitCode, ExitCode.success.code);
       expect(capturedHostedUri, isNull);
     });
 
-    test('succeeds when publish is successful using custom base_url', () async {
+    test('succeeds when patch is successful using custom base_url', () async {
       final tempDir = setUpTempDir();
       const baseUrl = 'https://example.com';
       File(
