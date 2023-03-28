@@ -15,7 +15,7 @@ mixin ShorebirdEngineMixin on ShorebirdConfigMixin {
     return p.join(
       shorebirdConfigDir,
       'engines',
-      requiredFlutterEngineRevision,
+      shorebirdEngineRevision,
     );
   }
 
