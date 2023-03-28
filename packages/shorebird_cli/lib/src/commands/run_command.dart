@@ -13,7 +13,6 @@ typedef StartProcess = Future<Process> Function(
 });
 
 /// {@template run_command}
-///
 /// `shorebird run`
 /// Run the Flutter application.
 /// {@endtemplate}
