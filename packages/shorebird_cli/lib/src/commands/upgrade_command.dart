@@ -84,20 +84,7 @@ class UpgradeCommand extends ShorebirdCommand {
       workingDirectory: workingDirectory,
     );
     // Get the latest commit revision of the upstream
-    final result = await runProcess(
-      'git',
-      ['rev-parse', '--verify', '@{upstream}'],
-      workingDirectory: workingDirectory,
-    );
-    if (result.exitCode != 0) {
-      throw ProcessException(
-        'git',
-        ['rev-parse', '--verify', '@{upstream}'],
-        '${result.stderr}',
-        result.exitCode,
-      );
-    }
-    return '${result.stdout}'.trim();
+    return _gitRevParse('@{upstream}', workingDirectory: workingDirectory);
   }
 
   /// Returns the local HEAD shorebird version.
@@ -107,15 +94,23 @@ class UpgradeCommand extends ShorebirdCommand {
     required String workingDirectory,
   }) async {
     // Get the commit revision of HEAD
+    return _gitRevParse('HEAD', workingDirectory: workingDirectory);
+  }
+
+  Future<String> _gitRevParse(
+    String revision, {
+    String? workingDirectory,
+  }) async {
+// Get the commit revision of HEAD
     final result = await runProcess(
       'git',
-      ['rev-parse', '--verify', 'HEAD'],
+      ['rev-parse', '--verify', revision],
       workingDirectory: workingDirectory,
     );
     if (result.exitCode != 0) {
       throw ProcessException(
         'git',
-        ['rev-parse', '--verify', 'HEAD'],
+        ['rev-parse', '--verify', revision],
         '${result.stderr}',
         result.exitCode,
       );
