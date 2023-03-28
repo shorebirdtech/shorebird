@@ -12,7 +12,6 @@ import 'package:shorebird_cli/src/shorebird_engine_mixin.dart';
 import 'package:shorebird_code_push_client/shorebird_code_push_client.dart';
 
 /// {@template release_command}
-///
 /// `shorebird release`
 /// Create new app releases.
 /// {@endtemplate}
