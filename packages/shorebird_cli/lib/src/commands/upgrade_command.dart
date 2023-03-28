@@ -49,7 +49,7 @@ class UpgradeCommand extends ShorebirdCommand {
 
     final isUpToDate = currentVersion == latestVersion;
     if (isUpToDate) {
-      logger.info('CLI is already at the latest version.');
+      logger.info('Shorebird is already at the latest version.');
       return ExitCode.success.code;
     }
 

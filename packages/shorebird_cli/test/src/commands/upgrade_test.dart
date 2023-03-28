@@ -157,7 +157,7 @@ void main() {
         final result = await command.run();
         expect(result, equals(ExitCode.success.code));
         verify(
-          () => logger.info('CLI is already at the latest version.'),
+          () => logger.info('Shorebird is already at the latest version.'),
         ).called(1);
       },
     );
