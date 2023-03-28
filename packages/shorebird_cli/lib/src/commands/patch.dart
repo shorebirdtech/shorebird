@@ -157,7 +157,7 @@ Did you forget to run "shorebird init"?''',
         '''${pubspecVersion.major}.${pubspecVersion.minor}.${pubspecVersion.patch}''';
     final releaseVersion = releaseVersionArg ??
         logger.prompt(
-          '\nWhat is the version of this release?',
+          '\nWhich release is this patch for?',
           defaultValue: pubspecVersionString,
         );
     final arch = results['arch'] as String;
