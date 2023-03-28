@@ -49,7 +49,12 @@ void main() {
           return codePushClient;
         },
         logger: logger,
-        runProcess: (executable, arguments, {bool runInShell = false}) async {
+        runProcess: (
+          executable,
+          arguments, {
+          bool runInShell = false,
+          String? workingDirectory,
+        }) async {
           return processResult;
         },
       )..testArgResults = argResults;

@@ -4,7 +4,6 @@ import 'package:args/args.dart';
 import 'package:args/command_runner.dart';
 import 'package:cli_completion/cli_completion.dart';
 import 'package:mason_logger/mason_logger.dart';
-import 'package:pub_updater/pub_updater.dart';
 import 'package:shorebird_cli/src/commands/commands.dart';
 import 'package:shorebird_cli/src/flutter_engine_revision.dart';
 import 'package:shorebird_cli/src/version.dart';
@@ -17,6 +16,7 @@ typedef RunProcess = Future<ProcessResult> Function(
   String executable,
   List<String> arguments, {
   bool runInShell,
+  String? workingDirectory,
 });
 
 /// {@template shorebird_cli_command_runner}
@@ -29,11 +29,9 @@ typedef RunProcess = Future<ProcessResult> Function(
 class ShorebirdCliCommandRunner extends CompletionCommandRunner<int> {
   /// {@macro shorebird_cli_command_runner}
   ShorebirdCliCommandRunner({
-    PubUpdater? pubUpdater,
     Logger? logger,
     RunProcess? runProcess,
   })  : _logger = logger ?? Logger(),
-        _pubUpdater = pubUpdater ?? PubUpdater(),
         _runProcess = runProcess ?? Process.run,
         super(executableName, description) {
     argParser
@@ -55,14 +53,13 @@ class ShorebirdCliCommandRunner extends CompletionCommandRunner<int> {
     addCommand(LogoutCommand(logger: _logger));
     addCommand(PublishCommand(logger: _logger));
     addCommand(RunCommand(logger: _logger));
-    addCommand(UpdateCommand(logger: _logger, pubUpdater: pubUpdater));
+    addCommand(UpgradeCommand(logger: _logger));
   }
 
   @override
   void printUsage() => _logger.info(usage);
 
   final Logger _logger;
-  final PubUpdater _pubUpdater;
   final RunProcess _runProcess;
 
   @override
@@ -134,11 +131,6 @@ Detected engine revision: "$flutterEngineRevision"''',
       exitCode = await super.runCommand(topLevelResults);
     }
 
-    // Check for updates
-    if (topLevelResults.command?.name != UpdateCommand.commandName) {
-      await _checkForUpdates();
-    }
-
     return exitCode;
   }
 
@@ -157,24 +149,5 @@ Detected engine revision: "$flutterEngineRevision"''',
       throw Exception('Unable to determine the Flutter engine revision.');
     }
     return flutterEngineRevision;
-  }
-
-  /// Checks if the current version (set by the build runner on the
-  /// version.dart file) is the most recent one. If not, show a prompt to the
-  /// user.
-  Future<void> _checkForUpdates() async {
-    try {
-      final latestVersion = await _pubUpdater.getLatestVersion(packageName);
-      final isUpToDate = packageVersion == latestVersion;
-      if (!isUpToDate) {
-        _logger
-          ..info('')
-          ..info(
-            '''
-${lightYellow.wrap('Update available!')} ${lightCyan.wrap(packageVersion)} \u2192 ${lightCyan.wrap(latestVersion)}
-Run ${lightCyan.wrap('$executableName update')} to update''',
-          );
-      }
-    } catch (_) {}
   }
 }

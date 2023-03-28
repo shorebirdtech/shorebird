@@ -95,7 +95,12 @@ flutter:
           capturedHostedUri = hostedUri;
           return codePushClient;
         },
-        runProcess: (executable, arguments, {bool runInShell = false}) async {
+        runProcess: (
+          executable,
+          arguments, {
+          bool runInShell = false,
+          String? workingDirectory,
+        }) async {
           return processResult;
         },
         logger: logger,
