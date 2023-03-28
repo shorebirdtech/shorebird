@@ -31,6 +31,15 @@ Future<void> main() async {
     displayName: '<DISPLAY NAME>', // e.g. 'v1.0.0'
   );
 
+  // Create a release artifact.
+  final releaseArtifact = await client.createReleaseArtifact(
+    releaseId: release.id,
+    artifactPath: '<PATH TO ARTIFACT>', // e.g. 'libapp.so'
+    platform: '<PLATFORM>', // e.g. 'android'
+    arch: '<ARCHITECTURE>', // e.g. 'aarch64'
+    hash: '<HASH>', // 'sha256 hash of the artifact'
+  );
+
   // Create a new patch.
   final patch = await client.createPatch(releaseId: release.id);
 
