@@ -261,6 +261,30 @@ class CodePushClient {
         .toList();
   }
 
+  /// Get a release artifact for a specific [releaseId], [arch], and [platform].
+  Future<ReleaseArtifact> getReleaseArtifact({
+    required int releaseId,
+    required String arch,
+    required String platform,
+  }) async {
+    final response = await _httpClient.get(
+      Uri.parse('$hostedUri/api/v1/releases/$releaseId/artifacts').replace(
+        queryParameters: {
+          'arch': arch,
+          'platform': platform,
+        },
+      ),
+      headers: _apiKeyHeader,
+    );
+
+    if (response.statusCode != HttpStatus.ok) {
+      throw _parseErrorResponse(response.body);
+    }
+
+    final body = json.decode(response.body) as Map<String, dynamic>;
+    return ReleaseArtifact.fromJson(body);
+  }
+
   /// Promote the [patchId] to the [channelId].
   Future<void> promotePatch({
     required int patchId,
