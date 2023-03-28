@@ -6,7 +6,7 @@ import 'package:archive/archive_io.dart';
 import 'package:path/path.dart' as p;
 import 'package:shorebird_cli/src/command.dart';
 import 'package:shorebird_cli/src/config/config.dart';
-import 'package:shorebird_cli/src/flutter_engine_revision.dart';
+import 'package:shorebird_cli/src/engine_revision.dart';
 import 'package:shorebird_cli/src/shorebird_config_mixin.dart';
 import 'package:shorebird_code_push_client/shorebird_code_push_client.dart';
 
@@ -15,7 +15,7 @@ mixin ShorebirdEngineMixin on ShorebirdConfigMixin {
     return p.join(
       shorebirdConfigDir,
       'engines',
-      requiredFlutterEngineRevision,
+      shorebirdEngineRevision,
     );
   }
 
@@ -62,7 +62,7 @@ mixin ShorebirdEngineMixin on ShorebirdConfigMixin {
     String path,
   ) async {
     final engine = await codePushClient.downloadEngine(
-      revision: requiredFlutterEngineRevision,
+      revision: shorebirdEngineRevision,
     );
     final targetFile = File(path);
 
@@ -108,6 +108,7 @@ mixin ShorebirdEngineMixin on ShorebirdConfigMixin {
         'out/android_release_arm64/clang_arm64/impellerc',
         'out/host_release/gen/const_finder.dart.snapshot',
         'out/host_release/font-subset',
+        'patch',
       ];
 
       for (final executable in executables) {

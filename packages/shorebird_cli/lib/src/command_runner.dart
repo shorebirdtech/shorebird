@@ -5,7 +5,7 @@ import 'package:args/command_runner.dart';
 import 'package:cli_completion/cli_completion.dart';
 import 'package:mason_logger/mason_logger.dart';
 import 'package:shorebird_cli/src/commands/commands.dart';
-import 'package:shorebird_cli/src/flutter_engine_revision.dart';
+import 'package:shorebird_cli/src/engine_revision.dart';
 import 'package:shorebird_cli/src/version.dart';
 
 const executableName = 'shorebird';
