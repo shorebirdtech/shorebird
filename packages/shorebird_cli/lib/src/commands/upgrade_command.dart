@@ -23,8 +23,9 @@ class UpgradeCommand extends ShorebirdCommand {
   @override
   Future<int> run() async {
     final updateCheckProgress = logger.progress('Checking for updates');
-    late final String currentVersion;
     final workingDirectory = p.dirname(Platform.script.toFilePath());
+
+    late final String currentVersion;
     try {
       currentVersion = await fetchCurrentVersion(
         workingDirectory: workingDirectory,
