@@ -2,17 +2,18 @@
 
 // ignore_for_file: implicit_dynamic_parameter, require_trailing_commas, cast_nullable_to_non_nullable, lines_longer_than_80_chars
 
-part of 'artifact.dart';
+part of 'patch_artifact.dart';
 
 // **************************************************************************
 // JsonSerializableGenerator
 // **************************************************************************
 
-Artifact _$ArtifactFromJson(Map<String, dynamic> json) => $checkedCreate(
-      'Artifact',
+PatchArtifact _$PatchArtifactFromJson(Map<String, dynamic> json) =>
+    $checkedCreate(
+      'PatchArtifact',
       json,
       ($checkedConvert) {
-        final val = Artifact(
+        final val = PatchArtifact(
           id: $checkedConvert('id', (v) => v as int),
           patchId: $checkedConvert('patch_id', (v) => v as int),
           arch: $checkedConvert('arch', (v) => v as String),
@@ -26,7 +27,8 @@ Artifact _$ArtifactFromJson(Map<String, dynamic> json) => $checkedCreate(
       fieldKeyMap: const {'patchId': 'patch_id'},
     );
 
-Map<String, dynamic> _$ArtifactToJson(Artifact instance) => <String, dynamic>{
+Map<String, dynamic> _$PatchArtifactToJson(PatchArtifact instance) =>
+    <String, dynamic>{
       'id': instance.id,
       'patch_id': instance.patchId,
       'arch': instance.arch,

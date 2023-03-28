@@ -1,15 +1,15 @@
 import 'package:json_annotation/json_annotation.dart';
 
-part 'artifact.g.dart';
+part 'patch_artifact.g.dart';
 
-/// {@template artifact}
+/// {@template patch_artifact}
 /// An artifact contains metadata about the contents of a specific patch
 /// for a specific platform and architecture.
 /// {@endtemplate}
 @JsonSerializable()
-class Artifact {
-  /// {@macro artifact}
-  const Artifact({
+class PatchArtifact {
+  /// {@macro patch_artifact}
+  const PatchArtifact({
     required this.id,
     required this.patchId,
     required this.arch,
@@ -19,12 +19,12 @@ class Artifact {
     required this.url,
   });
 
-  /// Converts a Map<String, dynamic> to a [Artifact]
-  factory Artifact.fromJson(Map<String, dynamic> json) =>
-      _$ArtifactFromJson(json);
+  /// Converts a Map<String, dynamic> to a [PatchArtifact]
+  factory PatchArtifact.fromJson(Map<String, dynamic> json) =>
+      _$PatchArtifactFromJson(json);
 
-  /// Converts a [Artifact] to a Map<String, dynamic>
-  Map<String, dynamic> toJson() => _$ArtifactToJson(this);
+  /// Converts a [PatchArtifact] to a Map<String, dynamic>
+  Map<String, dynamic> toJson() => _$PatchArtifactToJson(this);
 
   /// The ID of the artifact;
   final int id;
