@@ -147,8 +147,8 @@ fn update_internal(config: &ResolvedConfig) -> anyhow::Result<UpdateStatus> {
 
     // Inflate the patch from a diff.
     let base_path = PathBuf::from(&config.original_libapp_path);
-    let diff_path = download_dir.join(format!("{}.full", patch.number.to_string()));
-    inflate(&download_path, &base_path, &diff_path)?;    
+    let output_path = download_dir.join(format!("{}.full", patch.number.to_string()));
+    inflate(&download_path, &base_path, &output_path)?;    
     
     // Check the hash before moving into place.
     let hash_ok = check_hash(&download_path, &patch.hash)?;
@@ -159,7 +159,7 @@ fn update_internal(config: &ResolvedConfig) -> anyhow::Result<UpdateStatus> {
     // Consider supporting allowing the system to download for us (e.g. iOS).
 
     let patch_info = PatchInfo {
-        path: diff_path.to_str().unwrap().to_string(),
+        path: output_path.to_str().unwrap().to_string(),
         number: patch.number,
     };
     state.install_patch(patch_info)?;
