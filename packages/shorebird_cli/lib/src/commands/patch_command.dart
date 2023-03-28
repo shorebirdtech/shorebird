@@ -2,6 +2,7 @@ import 'dart:io';
 
 import 'package:collection/collection.dart';
 import 'package:crypto/crypto.dart';
+import 'package:http/http.dart' as http;
 import 'package:mason_logger/mason_logger.dart';
 import 'package:path/path.dart' as p;
 import 'package:shorebird_cli/src/command.dart';
@@ -28,7 +29,9 @@ class PatchCommand extends ShorebirdCommand
     super.buildCodePushClient,
     super.runProcess,
     HashFunction? hashFn,
-  }) : _hashFn = hashFn ?? ((m) => sha256.convert(m).toString()) {
+    http.Client? httpClient,
+  })  : _hashFn = hashFn ?? ((m) => sha256.convert(m).toString()),
+        _httpClient = httpClient ?? http.Client() {
     argParser
       ..addOption(
         'release-version',
@@ -67,6 +70,7 @@ class PatchCommand extends ShorebirdCommand
   String get name => 'patch';
 
   final HashFunction _hashFn;
+  final http.Client _httpClient;
 
   @override
   Future<int> run() async {
@@ -90,7 +94,7 @@ class PatchCommand extends ShorebirdCommand
       return ExitCode.software.code;
     }
 
-    final buildProgress = logger.progress('Building release');
+    final buildProgress = logger.progress('Building patch');
     try {
       await buildRelease();
       buildProgress.complete();
@@ -99,7 +103,7 @@ class PatchCommand extends ShorebirdCommand
       return ExitCode.software.code;
     }
 
-    final artifactPath = p.join(
+    final patchArtifactPath = p.join(
       Directory.current.path,
       'build',
       'app',
@@ -112,14 +116,14 @@ class PatchCommand extends ShorebirdCommand
       'libapp.so',
     );
 
-    final artifact = File(artifactPath);
+    final patchArtifact = File(patchArtifactPath);
 
-    if (!artifact.existsSync()) {
-      logger.err('Artifact not found: "${artifact.path}"');
+    if (!patchArtifact.existsSync()) {
+      logger.err('Artifact not found: "${patchArtifact.path}"');
       return ExitCode.software.code;
     }
 
-    final hash = _hashFn(await artifact.readAsBytes());
+    final hash = _hashFn(await patchArtifact.readAsBytes());
     final pubspecYaml = getPubspecYaml()!;
     final shorebirdYaml = getShorebirdYaml()!;
     final codePushClient = buildCodePushClient(
@@ -213,6 +217,49 @@ Please create a release using "shorebird release" and try again.
       return ExitCode.software.code;
     }
 
+    late final ReleaseArtifact releaseArtifact;
+    final fetchReleaseArtifactProgress = logger.progress(
+      'Fetching release artifact',
+    );
+    try {
+      releaseArtifact = await codePushClient.getReleaseArtifact(
+        releaseId: release.id,
+        arch: arch,
+        platform: platform,
+      );
+      fetchReleaseArtifactProgress.complete();
+    } catch (error) {
+      fetchReleaseArtifactProgress.fail('$error');
+      return ExitCode.software.code;
+    }
+
+    late final String releaseArtifactPath;
+    final downloadReleaseArtifactProgress = logger.progress(
+      'Downloading release artifact',
+    );
+    try {
+      releaseArtifactPath = await _downloadReleaseArtifact(
+        Uri.parse(releaseArtifact.url),
+      );
+      downloadReleaseArtifactProgress.complete();
+    } catch (error) {
+      downloadReleaseArtifactProgress.fail('$error');
+      return ExitCode.software.code;
+    }
+
+    late final String diffPath;
+    final createDiffProgress = logger.progress('Creating diff');
+    try {
+      diffPath = await _createDiff(
+        releaseArtifactPath: releaseArtifactPath,
+        patchArtifactPath: patchArtifactPath,
+      );
+      createDiffProgress.complete();
+    } catch (error) {
+      createDiffProgress.fail('$error');
+      return ExitCode.software.code;
+    }
+
     late final Patch patch;
     final createPatchProgress = logger.progress('Creating patch');
     try {
@@ -227,7 +274,7 @@ Please create a release using "shorebird release" and try again.
     try {
       await codePushClient.createPatchArtifact(
         patchId: patch.id,
-        artifactPath: artifact.path,
+        artifactPath: diffPath,
         arch: arch,
         platform: platform,
         hash: hash,
@@ -279,5 +326,49 @@ Please create a release using "shorebird release" and try again.
 
     logger.success('\n✅ Published Patch!');
     return ExitCode.success.code;
+  }
+
+  Future<String> _downloadReleaseArtifact(Uri uri) async {
+    final request = http.Request('GET', uri);
+    final response = await _httpClient.send(request);
+
+    if (response.statusCode != HttpStatus.ok) {
+      throw Exception(
+        '''Failed to download release artifact: ${response.statusCode} ${response.reasonPhrase}''',
+      );
+    }
+
+    final tempDir = await Directory.systemTemp.createTemp();
+    final releaseArtifact = File(p.join(tempDir.path, 'artifact.so'));
+    await releaseArtifact.openWrite().addStream(response.stream);
+
+    return releaseArtifact.path;
+  }
+
+  Future<String> _createDiff({
+    required String releaseArtifactPath,
+    required String patchArtifactPath,
+  }) async {
+    final tempDir = await Directory.systemTemp.createTemp();
+    final diffPath = p.join(tempDir.path, 'diff.patch');
+
+    final diffExecutable = p.join(shorebirdEnginePath, 'patch');
+    final diffArguments = [
+      releaseArtifactPath,
+      patchArtifactPath,
+      diffPath,
+    ];
+
+    final result = await runProcess(
+      diffExecutable,
+      diffArguments,
+      runInShell: true,
+    );
+
+    if (result.exitCode != 0) {
+      throw Exception('Failed to create diff: ${result.stderr}');
+    }
+
+    return diffPath;
   }
 }
