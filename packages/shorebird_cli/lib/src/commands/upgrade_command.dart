@@ -1,6 +1,7 @@
 import 'dart:io';
 
 import 'package:mason_logger/mason_logger.dart';
+import 'package:path/path.dart' as p;
 import 'package:shorebird_cli/src/command.dart';
 
 /// {@template upgrade_command}
@@ -23,7 +24,7 @@ class UpgradeCommand extends ShorebirdCommand {
   Future<int> run() async {
     final updateCheckProgress = logger.progress('Checking for updates');
     late final String currentVersion;
-    final workingDirectory = Platform.script.toFilePath();
+    final workingDirectory = p.dirname(Platform.script.toFilePath());
     try {
       currentVersion = await fetchCurrentVersion(
         workingDirectory: workingDirectory,
