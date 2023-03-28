@@ -146,5 +146,12 @@ Tools • Dart 2.19.4 • DevTools 2.20.1
         expect(result, equals(ExitCode.success.code));
       });
     });
+
+    group('completion', () {
+      test('fast tracks completion', () async {
+        final result = await commandRunner.run(['completion']);
+        expect(result, equals(ExitCode.success.code));
+      });
+    });
   });
 }
