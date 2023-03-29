@@ -12,10 +12,6 @@ The Shorebird command-line allows developers to interact with various Shorebird 
 curl --proto '=https' --tlsv1.2 https://raw.githubusercontent.com/shorebirdtech/install/main/install.sh -sSf | sh
 ```
 
-## Quick Start
-
-Run `shorebird init` from the root of a Flutter project to initialize Shorebird. This will generate
-
 ## Commands
 
 ### Init
