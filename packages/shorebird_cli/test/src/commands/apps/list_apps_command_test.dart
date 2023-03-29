@@ -65,12 +65,23 @@ void main() {
           latestReleaseVersion: '1.0.0',
           latestPatchNumber: 1,
         ),
+        const AppMetadata(
+          appId: '05b45471-a5f3-48cd-b26a-da29d95914a7',
+          displayName: 'Shorebird Clock',
+        ),
       ];
       when(() => codePushClient.getApps()).thenAnswer((_) async => apps);
       expect(await command.run(), ExitCode.success.code);
       verify(
         () => logger.info(
-          '''Shorebird Counter: v1.0.0 (patch #1) (30370f27-dbf1-4673-8b20-fb096e38dffa)''',
+          '''
+┌──────────────────────────────────────┬───────────────────┬─────────┬───────┐
+│ ID                                   │ Name              │ Release │ Patch │
+├──────────────────────────────────────┼───────────────────┼─────────┼───────┤
+│ 30370f27-dbf1-4673-8b20-fb096e38dffa │ Shorebird Counter │ 1.0.0   │ 1     │
+├──────────────────────────────────────┼───────────────────┼─────────┼───────┤
+│ 05b45471-a5f3-48cd-b26a-da29d95914a7 │ Shorebird Clock   │ --      │ --    │
+└──────────────────────────────────────┴───────────────────┴─────────┴───────┘''',
         ),
       ).called(1);
     });
