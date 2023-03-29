@@ -148,8 +148,8 @@ fn update_internal(config: &ResolvedConfig) -> anyhow::Result<UpdateStatus> {
     // Inflate the patch from a diff.
     let base_path = PathBuf::from(&config.original_libapp_path);
     let output_path = download_dir.join(format!("{}.full", patch.number.to_string()));
-    inflate(&download_path, &base_path, &output_path)?;    
-    
+    inflate(&download_path, &base_path, &output_path)?;
+
     // Check the hash before moving into place.
     let hash_ok = check_hash(&output_path, &patch.hash)?;
     if !hash_ok {
@@ -171,6 +171,7 @@ fn update_internal(config: &ResolvedConfig) -> anyhow::Result<UpdateStatus> {
 
 fn inflate(patch_path: &Path, base_path: &Path, output_path: &Path) -> anyhow::Result<()> {
     info!("Patch is compressed, inflating...");
+    use anyhow::Context;
     use comde::de::Decompressor;
     use comde::zstd::ZstdDecompressor;
     use std::fs::File;
@@ -179,8 +180,13 @@ fn inflate(patch_path: &Path, base_path: &Path, output_path: &Path) -> anyhow::R
     // Open all our files first for error clarity.  Otherwise we might see
     // PipeReader/Writer errors instead of file open errors.
     info!("Reading base file: {:?}", base_path);
-    let base_r = File::open(base_path)?;
-    let compressed_patch_r = BufReader::new(File::open(patch_path)?);
+    let base_r =
+        File::open(base_path).context(format!("Failed to open base file: {:?}", base_path))?;
+
+    info!("Reading patch file: {:?}", patch_path);
+    let compressed_patch_r = BufReader::new(
+        File::open(patch_path).context(format!("Failed to open patch file: {:?}", patch_path))?,
+    );
     let output_file_w = File::create(&output_path)?;
 
     // Set up a pipe to connect the writing from the decompression thread
@@ -375,5 +381,21 @@ mod tests {
         // Remove this case when legacy clients are gone.
         let expected = "#";
         assert!(super::check_hash(&input_path, expected).unwrap());
+    }
+
+    #[test]
+    fn inflate_missing_files() {
+        let tmp_dir = TempDir::new("example").unwrap();
+        let missing_file = tmp_dir.path().join("missing_file");
+        let existing_file = tmp_dir.path().join("existing_file");
+        std::fs::write(&existing_file, "hello world").unwrap();
+
+        let mut result = super::inflate(&missing_file, &missing_file, &missing_file);
+        let mut error = result.unwrap_err();
+        assert!(format!("{}", error).starts_with("Failed to open base file:"));
+
+        result = super::inflate(&missing_file, &existing_file, &missing_file);
+        error = result.unwrap_err();
+        assert!(format!("{}", error).starts_with("Failed to open patch file:"));
     }
 }
