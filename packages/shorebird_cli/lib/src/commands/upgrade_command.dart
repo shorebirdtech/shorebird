@@ -83,8 +83,8 @@ class UpgradeCommand extends ShorebirdCommand {
       ['fetch', '--tags'],
       workingDirectory: workingDirectory,
     );
-    // Get the latest commit revision of the upstream
-    return _gitRevParse('@{upstream}', workingDirectory: workingDirectory);
+    // Get the latest commit revision of the stable branch
+    return _gitRevParse('origin/stable', workingDirectory: workingDirectory);
   }
 
   /// Returns the local HEAD shorebird version.
@@ -101,7 +101,7 @@ class UpgradeCommand extends ShorebirdCommand {
     String revision, {
     String? workingDirectory,
   }) async {
-// Get the commit revision of HEAD
+    // Get the commit revision of HEAD
     final result = await runProcess(
       'git',
       ['rev-parse', '--verify', revision],

@@ -51,7 +51,7 @@ void main() {
               return fetchTagsResult;
             }
 
-            const revParseUpstream = ['rev-parse', '--verify', '@{upstream}'];
+            const revParseUpstream = ['rev-parse', '--verify', 'origin/stable'];
             if (arguments.every((arg) => revParseUpstream.contains(arg))) {
               return fetchLatestVersionResult;
             }
