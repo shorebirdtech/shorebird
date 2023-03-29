@@ -72,10 +72,7 @@ Please make sure you are running "shorebird init" from the root of your Flutter 
         return ExitCode.software.code;
       }
 
-      final app = apps.firstWhereOrNull(
-        (a) => a.id == getShorebirdYaml()!.appId,
-      );
-
+      final app = apps.firstWhereOrNull((a) => a.id == shorebirdYaml!.appId);
       appId = app?.id;
     }
 
