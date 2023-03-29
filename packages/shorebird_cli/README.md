@@ -169,9 +169,9 @@ What is the version of this release? (0.1.0) 0.1.0
 
 📱 App: My App (61fc9c16-3c4a-4825-a155-9765993614aa)
 📦 Release Version: 0.1.0
-⚙️  Architecture: aarch64
-🕹️  Platform: android
-#️⃣  Hash: cfe26dddf8aff17131042f9dfad409c83eb130c5a9f2fd6f77325b2388062265
+⚙️ Architecture: aarch64
+🕹️ Platform: android
+#️⃣ Hash: cfe26dddf8aff17131042f9dfad409c83eb130c5a9f2fd6f77325b2388062265
 
 Your next step is to upload the release artifact to the Play Store.
 /my_app/build/app/intermediates/stripped_native_libs/release/out/lib/arm64-v8a/libapp.so
@@ -213,10 +213,10 @@ Which release is this patch for? (0.1.0) 0.1.0
 
 📱 App: My App (61fc9c16-3c4a-4825-a155-9765993614aa)
 📦 Release Version: 0.1.0
-⚙️  Architecture: aarch64
-🕹️  Platform: android
+⚙️ Architecture: aarch64
+🕹️ Platform: android
 📺 Channel: stable
-#️⃣  Hash: cfe26dddf8aff17131042f9dfad409c83eb130c5a9f2fd6f77325b2388062265
+#️⃣ Hash: cfe26dddf8aff17131042f9dfad409c83eb130c5a9f2fd6f77325b2388062265
 
 Would you like to continue? (y/N) Yes
 ✓ Fetching releases (41ms)
