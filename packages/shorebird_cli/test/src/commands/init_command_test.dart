@@ -139,7 +139,6 @@ Please make sure you are running "shorebird init" from the root of your Flutter 
     });
 
     test('throws software error when unable to fetch apps.', () async {
-      const existingAppId = 'existing-app-id';
       const error = 'oops something went wrong';
       final tempDir = Directory.systemTemp.createTempSync();
       when(() => codePushClient.getApps()).thenThrow(error);
@@ -148,7 +147,7 @@ Please make sure you are running "shorebird init" from the root of your Flutter 
       ).writeAsStringSync(pubspecYamlContent);
       File(
         p.join(tempDir.path, 'shorebird.yaml'),
-      ).writeAsStringSync('app_id: $existingAppId');
+      ).writeAsStringSync('app_id: $appId');
       final exitCode = await IOOverrides.runZoned(
         command.run,
         getCurrentDirectory: () => tempDir,
