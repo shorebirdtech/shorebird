@@ -133,10 +133,17 @@ Tools • Dart 2.19.4 • DevTools 2.20.1
     });
 
     group('--version', () {
-      test('outputs current version', () async {
+      test('outputs current version and engine revisions', () async {
         final result = await commandRunner.run(['--version']);
         expect(result, equals(ExitCode.success.code));
-        verify(() => logger.info(packageVersion)).called(1);
+        verify(
+          () => logger.info(
+            '''
+Shorebird $packageVersion
+Flutter Engine • revision $requiredFlutterEngineRevision
+Shorebird Engine • revision ${shorebirdEngineRevision.substring(0, 10)}''',
+          ),
+        ).called(1);
       });
     });
 
