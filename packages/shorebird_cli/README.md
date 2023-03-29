@@ -239,6 +239,29 @@ Build a new release of your application using the `shorebird build` command:
 shorebird build
 ```
 
+### List Channels
+
+See all available channels for your application using the `shorebird channels list` command:
+
+```bash
+shorebird channels list
+```
+
+**Sample**
+
+```
+shorebird channels list
+📱 App ID: 61fc9c16-3c4a-4825-a155-9765993614aa
+📺 Channels
+┌────┬─────────────┐
+│ ID │ Name        │
+├────┼─────────────┤
+│ 0  │ stable      │
+├────┼─────────────┤
+│ 1  │ development │
+└────┴─────────────┘
+```
+
 ### Usage
 
 ```
@@ -252,15 +275,16 @@ Global options:
     --[no-]verbose    Noisy logging, including all shell commands executed.
 
 Available commands:
-  apps      Manage your Shorebird apps.
-  build     Build a new release of your application.
-  init      Initialize Shorebird.
-  login     Login as a new Shorebird user.
-  logout    Logout of the current Shorebird user
-  patch     Publish new patches for a specific release to Shorebird.
-  release   Builds and submits your app to Shorebird.
-  run       Run the Flutter application.
-  upgrade   Upgrade your copy of Shorebird.
+  apps       Manage your Shorebird apps.
+  build      Build a new release of your application.
+  channels   Manage the channels for your Shorebird app.
+  init       Initialize Shorebird.
+  login      Login as a new Shorebird user.
+  logout     Logout of the current Shorebird user
+  patch      Publish new patches for a specific release to Shorebird.
+  release    Builds and submits your app to Shorebird.
+  run        Run the Flutter application.
+  upgrade    Upgrade your copy of Shorebird.
 
 Run "shorebird help <command>" for more information about a command.
 ```
