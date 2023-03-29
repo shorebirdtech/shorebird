@@ -168,7 +168,7 @@ ${styleBold.wrap(lightGreen.wrap('🚀 Ready to create a new release!'))}
 #️⃣  Hash: ${lightCyan.wrap(hash)}
 
 Your next step is to upload the release artifact to the Play Store.
-${lightCyan.wrap(artifactPath)}
+${lightCyan.wrap("./build/app/outputs/bundle/release/app-release.aab")}
 
 See the following link for more information:    
 ${link(uri: Uri.parse('https://support.google.com/googleplay/android-developer/answer/9859152?hl=en'))}

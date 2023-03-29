@@ -261,7 +261,7 @@ What is the version of this release? (0.1.0) 0.1.0
 #️⃣  Hash: cfe26dddf8aff17131042f9dfad409c83eb130c5a9f2fd6f77325b2388062265
 
 Your next step is to upload the release artifact to the Play Store.
-/my_app/build/app/intermediates/stripped_native_libs/release/out/lib/arm64-v8a/libapp.so
+./build/app/outputs/bundle/release/app-release.aab
 
 See the following link for more information:
 https://support.google.com/googleplay/android-developer/answer/9859152?hl=en
