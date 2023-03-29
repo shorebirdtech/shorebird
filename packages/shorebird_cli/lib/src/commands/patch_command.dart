@@ -170,7 +170,6 @@ Did you forget to run "shorebird init"?''',
 
     logger.info(
       '''
-
 ${styleBold.wrap(lightGreen.wrap('🚀 Ready to publish a new patch!'))}
 
 📱 App: ${lightCyan.wrap(app.displayName)} ${lightCyan.wrap('(${app.id})')}

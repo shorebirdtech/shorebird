@@ -8,12 +8,8 @@ The Shorebird command-line allows developers to interact with various Shorebird 
 
 ## Installing
 
-```sh
-# Clone Shorebird
-git clone https://github.com/shorebirdtech/shorebird
-
-# Activate the Shorebird CLI
-dart pub global activate --source path shorebird/packages/shorebird_cli
+```
+curl --proto '=https' --tlsv1.2 https://raw.githubusercontent.com/shorebirdtech/install/main/install.sh -sSf | sh
 ```
 
 ## Commands
@@ -45,7 +41,7 @@ Reference the following commands to get started:
 
 🚙 To run your project use: "shorebird run".
 📦 To build your project use: "shorebird build".
-🚀 To publish a new update use: "shorebird publish".
+🚀 To push a new update use: "shorebird patch".
 
 For more information, visit https://shorebird.dev
 ```
@@ -149,52 +145,98 @@ shorebird run
 
 **❗️Note**: If it's the first time using shorebird, `shorebird run` will download and build the shorebird engine which may take some time. The shorebird engine will be cached for subsequent runs.
 
+### Release
+
+Builds and submits your app to Shorebird. Shorebird saves the compiled Dart code from your application in order to make smaller updates to your app.
+
+```bash
+# 1. Generate a release build.
+# 2. Create a release in Shorebird
+# 3. Upload the release artifact to Shorebird.
+shorebird release
+```
+
+**Sample**
+
+```
+shorebird release
+✓ Building release (17.9s)
+✓ Fetching apps (0.1s)
+
+What is the version of this release? (0.1.0) 0.1.0
+
+🚀 Ready to create a new release!
+
+📱 App: My App (61fc9c16-3c4a-4825-a155-9765993614aa)
+📦 Release Version: 0.1.0
+⚙️ Architecture: aarch64
+🕹️ Platform: android
+#️⃣ Hash: cfe26dddf8aff17131042f9dfad409c83eb130c5a9f2fd6f77325b2388062265
+
+Your next step is to upload the release artifact to the Play Store.
+./build/app/outputs/bundle/release/app-release.aab
+
+See the following link for more information:
+https://support.google.com/googleplay/android-developer/answer/9859152?hl=en
+
+Would you like to continue? (y/N) Yes
+✓ Fetching releases (55ms)
+✓ Creating release (45ms)
+✓ Creating artifact (1.8s)
+
+✅ Published Release!
+```
+
+### Patch
+
+The patch command allows developers to upload new patches (updates) of their Flutter application to the Shorebird CodePush API. These updates are then pushed directly to users' devices.
+
+```bash
+# Publish the artifacts
+# 1. Builds the artifacts (equivalent to a shorebird build)
+# 2. Creates a new patch if one does not exist
+# 3. Uploads the artifacts as part of the patch
+# 4. Promotes the patch to the "stable" channel
+shorebird patch
+```
+
+**Sample**
+
+```
+shorebird patch
+✓ Building patch (16.2s)
+✓ Fetching apps (0.1s)
+
+Which release is this patch for? (0.1.0) 0.1.0
+
+🚀 Ready to publish a new patch!
+
+📱 App: My App (61fc9c16-3c4a-4825-a155-9765993614aa)
+📦 Release Version: 0.1.0
+⚙️ Architecture: aarch64
+🕹️ Platform: android
+📺 Channel: stable
+#️⃣ Hash: cfe26dddf8aff17131042f9dfad409c83eb130c5a9f2fd6f77325b2388062265
+
+Would you like to continue? (y/N) Yes
+✓ Fetching releases (41ms)
+✓ Fetching release artifact (43ms)
+✓ Downloading release artifact (0.2s)
+✓ Creating diff (0.1s)
+✓ Creating patch (64ms)
+✓ Creating artifact (0.3s)
+✓ Fetching channels (40ms)
+✓ Publishing patch (43ms)
+
+✅ Published Patch!
+```
+
 ### Build
 
 Build a new release of your application using the `shorebird build` command:
 
 ```bash
 shorebird build
-```
-
-**❗️Note**: If it's the first time using shorebird, `shorebird build` will download and build the shorebird engine which may take some time. The shorebird engine will be cached for subsequent runs.
-
-### Publish
-
-The publish command allows developers to publish new releases of their Flutter application to the Shorebird CodePush API. These updates are then pushed directly to users' devices.
-
-```bash
-# Publish the artifacts
-# 1. Builds the artifacts (equivalent to a shorebird build)
-# 2. Creates a new app if one does not exist
-# 3. Creates a release if one does not exist
-# 4. Creates a new patch if one does not exist
-# 5. Uploads the artifacts as part of the patch
-# 6. Promotes the patch as "stable"
-shorebird publish
-```
-
-**Sample**
-
-```
-shorebird publish
-✓ Building release (5.5s)
-✓ Fetching apps (0.2s)
-
-🚀 Ready to publish a new patch!
-
-📱 App: Time Shift (28f5d0d9-158a-4401-8f19-cd19b90d6414)
-📦 Release Version: 1.0.0
-
-Would you like to continue? (y/N) Yes
-✓ Fetching releases (76ms)
-✓ Creating release (85ms)
-✓ Creating patch (79ms)
-✓ Creating artifact (0.7s)
-✓ Fetching channels (75ms)
-✓ Publishing patch (75ms)
-
-✅ Published Successfully!
 ```
 
 ### Usage
@@ -215,9 +257,10 @@ Available commands:
   init      Initialize Shorebird.
   login     Login as a new Shorebird user.
   logout    Logout of the current Shorebird user
-  publish   Publish an update.
+  patch     Publish new patches for a specific release to Shorebird.
+  release   Builds and submits your app to Shorebird.
   run       Run the Flutter application.
-  update    Update the CLI.
+  upgrade   Upgrade your copy of Shorebird.
 
 Run "shorebird help <command>" for more information about a command.
 ```
