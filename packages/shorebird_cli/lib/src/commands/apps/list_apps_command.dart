@@ -78,8 +78,8 @@ extension on List<AppMetadata> {
         rows: [
           Row(
             cells: [
-              Cell('ID'),
               Cell('Name'),
+              Cell('ID'),
               Cell('Release'),
               Cell('Patch'),
             ],
@@ -91,8 +91,8 @@ extension on List<AppMetadata> {
           for (final app in this)
             Row(
               cells: [
-                Cell(app.appId),
                 Cell(app.displayName),
+                Cell(app.appId),
                 Cell(app.latestReleaseVersion ?? '--'),
                 Cell(app.latestPatchNumber?.toString() ?? '--'),
               ],
