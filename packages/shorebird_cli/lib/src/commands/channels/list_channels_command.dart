@@ -18,10 +18,12 @@ class ListChannelsCommand extends ShorebirdCommand with ShorebirdConfigMixin {
     super.auth,
   }) {
     argParser.addOption(
-      'app-id',
+      _appIdOption,
       help: 'The app id to list channels for.',
     );
   }
+
+  static const String _appIdOption = 'app-id';
 
   @override
   String get description => 'List all channels for a Shorebird app.';
@@ -45,13 +47,13 @@ class ListChannelsCommand extends ShorebirdCommand with ShorebirdConfigMixin {
       hostedUri: hostedUri,
     );
 
-    final appId = results['app-id'] as String? ?? getShorebirdYaml()?.appId;
+    final appId = results[_appIdOption] as String? ?? getShorebirdYaml()?.appId;
     if (appId == null) {
       logger.err(
         '''
-Could not find an app-id.
+Could not find an app id.
 
-You must either specify an app id via the --app-id flag or run this command from within a directory with a valid "shorebird.yaml" file.''',
+You must either specify an app id via the "--$_appIdOption" flag or run this command from within a directory with a valid "shorebird.yaml" file.''',
       );
       return ExitCode.usage.code;
     }
@@ -95,18 +97,12 @@ extension on List<Channel> {
       cellStyle: cellStyle,
       header: const TableSection(
         rows: [
-          Row(cells: [Cell('ID'), Cell('Name')])
+          Row(cells: [Cell('Name')])
         ],
       ),
       body: TableSection(
         rows: [
-          for (final channel in this)
-            Row(
-              cells: [
-                Cell(channel.id.toString()),
-                Cell(channel.name),
-              ],
-            ),
+          for (final channel in this) Row(cells: [Cell(channel.name)]),
         ],
       ),
     ).render();
