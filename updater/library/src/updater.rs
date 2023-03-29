@@ -180,13 +180,12 @@ fn inflate(patch_path: &Path, base_path: &Path, output_path: &Path) -> anyhow::R
     // Open all our files first for error clarity.  Otherwise we might see
     // PipeReader/Writer errors instead of file open errors.
     info!("Reading base file: {:?}", base_path);
-    let base_r = File::open(base_path)
-        .with_context(|| format!("Failed to open base file: {:?}", base_path))?;
+    let base_r =
+        File::open(base_path).context(format!("Failed to open base file: {:?}", base_path))?;
 
     info!("Reading patch file: {:?}", patch_path);
     let compressed_patch_r = BufReader::new(
-        File::open(patch_path)
-            .with_context(|| format!("Failed to open patch file: {:?}", patch_path))?,
+        File::open(patch_path).context(format!("Failed to open patch file: {:?}", patch_path))?,
     );
     let output_file_w = File::create(&output_path)?;
 
