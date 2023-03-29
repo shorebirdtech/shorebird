@@ -149,9 +149,12 @@ Did you forget to run "shorebird init"?''',
     final pubspecVersion = pubspecYaml.version!;
     final pubspecVersionString =
         '''${pubspecVersion.major}.${pubspecVersion.minor}.${pubspecVersion.patch}''';
+
+    if (releaseVersionArg == null) logger.info('');
+
     final releaseVersion = releaseVersionArg ??
         logger.prompt(
-          '\nWhat is the version of this release?',
+          'What is the version of this release?',
           defaultValue: pubspecVersionString,
         );
     final arch = results['arch'] as String;
