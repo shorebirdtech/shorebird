@@ -101,7 +101,7 @@ class UpgradeCommand extends ShorebirdCommand {
     String revision, {
     String? workingDirectory,
   }) async {
-// Get the commit revision of HEAD
+    // Get the commit revision of HEAD
     final result = await runProcess(
       'git',
       ['rev-parse', '--verify', revision],
