@@ -44,7 +44,7 @@ Please make sure you are running "shorebird init" from the root of your Flutter 
       return ExitCode.software.code;
     }
 
-    late final ShorebirdYaml? shorebirdYaml;
+    final ShorebirdYaml? shorebirdYaml;
     try {
       shorebirdYaml = getShorebirdYaml();
     } catch (_) {
@@ -60,7 +60,7 @@ Please make sure you are running "shorebird init" from the root of your Flutter 
         hostedUri: hostedUri,
       );
 
-      late final List<App> apps;
+      final List<App> apps;
       final fetchAppsProgress = logger.progress('Fetching apps');
       try {
         apps = (await codePushClient.getApps())
