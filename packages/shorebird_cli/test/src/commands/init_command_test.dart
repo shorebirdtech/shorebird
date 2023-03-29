@@ -24,6 +24,7 @@ void main() {
     const appId = 'test_app_id';
     const appName = 'test_app_name';
     const app = App(id: appId, displayName: appName);
+    const appMetadata = AppMetadata(appId: appId, displayName: appName);
     const pubspecYamlContent = '''
 name: $appName
 version: $version
@@ -54,6 +55,9 @@ environment:
       when(
         () => codePushClient.createApp(displayName: any(named: 'displayName')),
       ).thenAnswer((_) async => app);
+      when(
+        () => codePushClient.getApps(),
+      ).thenAnswer((_) async => [appMetadata]);
       when(() => logger.progress(any())).thenReturn(progress);
       when(
         () => logger.prompt(any(), defaultValue: any(named: 'defaultValue')),
@@ -134,24 +138,64 @@ Please make sure you are running "shorebird init" from the root of your Flutter 
       expect(exitCode, ExitCode.software.code);
     });
 
-    test('detects existing shorebird.yaml', () async {
-      const existingAppId = 'existing-app-id';
+    test('throws software error when unable to fetch apps.', () async {
+      const error = 'oops something went wrong';
+      final tempDir = Directory.systemTemp.createTempSync();
+      when(() => codePushClient.getApps()).thenThrow(error);
+      File(
+        p.join(tempDir.path, 'pubspec.yaml'),
+      ).writeAsStringSync(pubspecYamlContent);
+      File(
+        p.join(tempDir.path, 'shorebird.yaml'),
+      ).writeAsStringSync('app_id: $appId');
+      final exitCode = await IOOverrides.runZoned(
+        command.run,
+        getCurrentDirectory: () => tempDir,
+      );
+      verify(() => progress.fail(error)).called(1);
+      expect(exitCode, ExitCode.software.code);
+    });
+
+    test('detects existing shorebird.yaml with existing app_id', () async {
       final tempDir = Directory.systemTemp.createTempSync();
       File(
         p.join(tempDir.path, 'pubspec.yaml'),
       ).writeAsStringSync(pubspecYamlContent);
       File(
         p.join(tempDir.path, 'shorebird.yaml'),
-      ).writeAsStringSync('app_id: $existingAppId');
+      ).writeAsStringSync('app_id: $appId');
+      await IOOverrides.runZoned(
+        command.run,
+        getCurrentDirectory: () => tempDir,
+      );
+      verifyNever(
+        () => codePushClient.createApp(displayName: any(named: 'displayName')),
+      );
+      verify(() => progress.update('Updating "shorebird.yaml"'));
+    });
+
+    test('detects existing shorebird.yaml with non-existent app_id', () async {
+      const nonExisting = 'non-existing-app-id';
+      when(() => codePushClient.getApps()).thenAnswer((_) async => []);
+      final tempDir = Directory.systemTemp.createTempSync();
+      File(
+        p.join(tempDir.path, 'pubspec.yaml'),
+      ).writeAsStringSync(pubspecYamlContent);
+      File(
+        p.join(tempDir.path, 'shorebird.yaml'),
+      ).writeAsStringSync('app_id: $nonExisting');
       await IOOverrides.runZoned(
         command.run,
         getCurrentDirectory: () => tempDir,
       );
       expect(
         File(p.join(tempDir.path, 'shorebird.yaml')).readAsStringSync(),
-        contains('app_id: $existingAppId'),
+        contains('app_id: $appId'),
       );
-      verify(() => progress.update('"shorebird.yaml" already exists.'));
+      verify(
+        () => codePushClient.createApp(displayName: any(named: 'displayName')),
+      ).called(1);
+      verify(() => progress.update('Updating "shorebird.yaml"'));
     });
 
     test('creates shorebird.yaml', () async {

@@ -1,7 +1,10 @@
+import 'package:collection/collection.dart';
 import 'package:mason_logger/mason_logger.dart';
 import 'package:shorebird_cli/src/command.dart';
+import 'package:shorebird_cli/src/config/config.dart';
 import 'package:shorebird_cli/src/shorebird_config_mixin.dart';
 import 'package:shorebird_cli/src/shorebird_create_app_mixin.dart';
+import 'package:shorebird_code_push_client/shorebird_code_push_client.dart';
 
 /// {@template init_command}
 ///
@@ -41,16 +44,39 @@ Please make sure you are running "shorebird init" from the root of your Flutter 
       return ExitCode.software.code;
     }
 
-    late final bool shorebirdYamlExists;
+    final ShorebirdYaml? shorebirdYaml;
     try {
-      shorebirdYamlExists = hasShorebirdYaml;
+      shorebirdYaml = getShorebirdYaml();
     } catch (_) {
       progress.fail('Error parsing "shorebird.yaml".');
       return ExitCode.software.code;
     }
 
-    late final String appId;
-    if (!shorebirdYamlExists) {
+    String? appId;
+
+    if (shorebirdYaml != null) {
+      final codePushClient = buildCodePushClient(
+        apiKey: session.apiKey,
+        hostedUri: hostedUri,
+      );
+
+      final List<App> apps;
+      final fetchAppsProgress = logger.progress('Fetching apps');
+      try {
+        apps = (await codePushClient.getApps())
+            .map((a) => App(id: a.appId, displayName: a.displayName))
+            .toList();
+        fetchAppsProgress.complete();
+      } catch (error) {
+        fetchAppsProgress.fail('$error');
+        return ExitCode.software.code;
+      }
+
+      final app = apps.firstWhereOrNull((a) => a.id == shorebirdYaml!.appId);
+      appId = app?.id;
+    }
+
+    if (appId == null) {
       try {
         final app = await createApp();
         appId = app.id;
@@ -58,17 +84,15 @@ Please make sure you are running "shorebird init" from the root of your Flutter 
         progress.fail('$error');
         return ExitCode.software.code;
       }
-    } else {
-      appId = getShorebirdYaml()!.appId;
     }
 
-    if (shorebirdYamlExists) {
-      progress.update('"shorebird.yaml" already exists.');
+    if (shorebirdYaml != null) {
+      progress.update('Updating "shorebird.yaml"');
     } else {
       progress.update('Creating "shorebird.yaml"');
-      addShorebirdYamlToProject(appId);
-      progress.update('Generated a "shorebird.yaml".');
     }
+
+    addShorebirdYamlToProject(appId);
 
     progress.update('Adding "shorebird.yaml" to "pubspec.yaml" assets');
 
