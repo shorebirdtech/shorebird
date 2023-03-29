@@ -11,6 +11,7 @@ environment:
 dependencies:
   archive: ^3.3.6
   args: ^2.3.1
+  barbecue: ^0.4.0
   checked_yaml: ^2.0.2
   cli_completion: ^0.3.0
   cli_util: ^0.4.0
