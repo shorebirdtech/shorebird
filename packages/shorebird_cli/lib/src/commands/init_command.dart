@@ -93,7 +93,7 @@ Reference the following commands to get started:
 
 🚙 To run your project use: "${lightCyan.wrap('shorebird run')}".
 📦 To build your project use: "${lightCyan.wrap('shorebird build')}".
-🚀 To publish an update use: "${lightCyan.wrap('shorebird publish')}".
+🚀 To push an update use: "${lightCyan.wrap('shorebird patch')}".
 
 For more information about Shorebird, visit ${link(uri: Uri.parse('https://shorebird.dev'))}''',
     );
