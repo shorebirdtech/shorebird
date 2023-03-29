@@ -156,7 +156,7 @@ Please make sure you are running "shorebird init" from the root of your Flutter 
       expect(exitCode, ExitCode.software.code);
     });
 
-    test('detects existing shorebird.yaml (existing app)', () async {
+    test('detects existing shorebird.yaml with existing app_id', () async {
       final tempDir = Directory.systemTemp.createTempSync();
       File(
         p.join(tempDir.path, 'pubspec.yaml'),
@@ -174,7 +174,7 @@ Please make sure you are running "shorebird init" from the root of your Flutter 
       verify(() => progress.update('Updating "shorebird.yaml"'));
     });
 
-    test('detects existing shorebird.yaml (non-existent app)', () async {
+    test('detects existing shorebird.yaml with non-existent app_id', () async {
       const nonExisting = 'non-existing-app-id';
       when(() => codePushClient.getApps()).thenAnswer((_) async => []);
       final tempDir = Directory.systemTemp.createTempSync();
