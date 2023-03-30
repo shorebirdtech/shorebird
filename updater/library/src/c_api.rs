@@ -22,6 +22,9 @@ pub struct AppParameters {
     /// these are the paths to the bundled libapp.so.  May be used for compression downloaded artifacts.
     pub original_libapp_paths: *const *const libc::c_char,
 
+    /// Length of the original_libapp_paths array.
+    pub original_libapp_paths_size: libc::c_int,
+
     /// Path to the app's libflutter.so, required.  May be used for ensuring
     /// downloaded artifacts are compatible with the Flutter/Dart versions
     /// used by the app.  For Flutter apps this should be the path to the
@@ -37,14 +40,14 @@ fn to_rust(c_string: *const libc::c_char) -> String {
     unsafe { CStr::from_ptr(c_string).to_str().unwrap() }.to_string()
 }
 
-fn to_rust_vector(c_array: *const *const libc::c_char) -> Vec<String> {
+fn to_rust_vector(c_array: *const *const libc::c_char, size: libc::c_int) -> Vec<String> {
     let mut result = Vec::new();
     let mut i = 0;
     loop {
-        let c_string = unsafe { *c_array.offset(i) };
-        if c_string.is_null() {
+        if i >= size {
             break;
         }
+        let c_string = unsafe { *c_array.offset(i as isize) };
         result.push(to_rust(c_string));
         i += 1;
     }
@@ -57,7 +60,10 @@ fn app_config_from_c(c_params: *const AppParameters) -> updater::AppConfig {
     updater::AppConfig {
         cache_dir: to_rust(c_params_ref.cache_dir),
         release_version: to_rust(c_params_ref.release_version),
-        original_libapp_paths: to_rust_vector(c_params_ref.original_libapp_paths),
+        original_libapp_paths: to_rust_vector(
+            c_params_ref.original_libapp_paths,
+            c_params_ref.original_libapp_paths_size,
+        ),
         vm_path: to_rust(c_params_ref.vm_path),
     }
 }

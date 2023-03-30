@@ -31,6 +31,10 @@ typedef struct AppParameters {
    */
   const char *const *original_libapp_paths;
   /**
+   * Length of the original_libapp_paths array.
+   */
+  int original_libapp_paths_size;
+  /**
    * Path to the app's libflutter.so, required.  May be used for ensuring
    * downloaded artifacts are compatible with the Flutter/Dart versions
    * used by the app.  For Flutter apps this should be the path to the

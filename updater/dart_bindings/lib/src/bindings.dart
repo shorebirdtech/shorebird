@@ -17,6 +17,9 @@ class AppParameters extends ffi.Struct {
   external ffi.Pointer<Utf8> update_url;
   // ignore: non_constant_identifier_names
   external ffi.Pointer<ffi.Pointer<Utf8>> original_libapp_paths;
+  @ffi.Int8()
+  // ignore: non_constant_identifier_names
+  external int original_libapp_paths_size;
   // ignore: non_constant_identifier_names
   external ffi.Pointer<Utf8> vm_path;
   // ignore: non_constant_identifier_names
@@ -38,7 +41,10 @@ class AppParameters extends ffi.Struct {
     if (updateUrl != null) {
       config.ref.update_url = updateUrl.toNativeUtf8();
     }
-    config.ref.original_libapp_paths = calloc<ffi.Pointer<Utf8>>();
+    config.ref.original_libapp_paths = calloc<ffi.Pointer<Utf8>>(
+      libappPaths.length + 1, // +1 for the null terminator.
+    );
+
     for (var i = 0; i < libappPaths.length; i++) {
       config.ref.original_libapp_paths[i] = libappPaths[i].toNativeUtf8();
     }
@@ -54,6 +60,7 @@ class AppParameters extends ffi.Struct {
     calloc.free(config.ref.update_url);
     // Free all paths in original_libapp_path.
     var i = 0;
+    for (var i = 0; i < config.ref.original_libapp_paths_size; i++) {}
     while (config.ref.original_libapp_paths[i].address != 0) {
       calloc.free(config.ref.original_libapp_paths[i]);
       i++;
