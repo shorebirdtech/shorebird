@@ -42,14 +42,9 @@ fn to_rust(c_string: *const libc::c_char) -> String {
 
 fn to_rust_vector(c_array: *const *const libc::c_char, size: libc::c_int) -> Vec<String> {
     let mut result = Vec::new();
-    let mut i = 0;
-    loop {
-        if i >= size {
-            break;
-        }
+    for i in 0..size {
         let c_string = unsafe { *c_array.offset(i as isize) };
         result.push(to_rust(c_string));
-        i += 1;
     }
     result
 }

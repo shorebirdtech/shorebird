@@ -42,7 +42,7 @@ class AppParameters extends ffi.Struct {
       config.ref.update_url = updateUrl.toNativeUtf8();
     }
     config.ref.original_libapp_paths = calloc<ffi.Pointer<Utf8>>(
-      libappPaths.length + 1, // +1 for the null terminator.
+      libappPaths.length,
     );
 
     for (var i = 0; i < libappPaths.length; i++) {
@@ -59,11 +59,8 @@ class AppParameters extends ffi.Struct {
     calloc.free(config.ref.channel);
     calloc.free(config.ref.update_url);
     // Free all paths in original_libapp_path.
-    var i = 0;
-    for (var i = 0; i < config.ref.original_libapp_paths_size; i++) {}
-    while (config.ref.original_libapp_paths[i].address != 0) {
+    for (var i = 0; i < config.ref.original_libapp_paths_size; i++) {
       calloc.free(config.ref.original_libapp_paths[i]);
-      i++;
     }
     calloc.free(config.ref.original_libapp_paths);
     calloc.free(config.ref.vm_path);
