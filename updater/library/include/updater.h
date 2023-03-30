@@ -74,6 +74,11 @@ SHOREBIRD_EXPORT char *shorebird_active_path(void);
 SHOREBIRD_EXPORT void shorebird_free_string(char *c_string);
 
 /**
+ * Free an array returned by the updater library.
+ */
+SHOREBIRD_EXPORT void shorebird_free_array(char **c_array);
+
+/**
  * Check for an update.  Returns true if an update is available.
  */
 SHOREBIRD_EXPORT bool shorebird_check_for_update(void);
