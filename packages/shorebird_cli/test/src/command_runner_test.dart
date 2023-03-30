@@ -141,7 +141,7 @@ Tools • Dart 2.19.4 • DevTools 2.20.1
             '''
 Shorebird $packageVersion
 Flutter Engine • revision $requiredFlutterEngineRevision
-Shorebird Engine • revision ${shorebirdEngineRevision.substring(0, 10)}''',
+Shorebird Engine • revision $shorebirdEngineRevision''',
           ),
         ).called(1);
       });

@@ -131,7 +131,7 @@ Detected engine revision: "$flutterEngineRevision"''',
         '''
 Shorebird $packageVersion
 Flutter Engine • revision $requiredFlutterEngineRevision
-Shorebird Engine • revision ${shorebirdEngineRevision.substring(0, 10)}''',
+Shorebird Engine • revision $shorebirdEngineRevision''',
       );
       exitCode = ExitCode.success.code;
     } else {
