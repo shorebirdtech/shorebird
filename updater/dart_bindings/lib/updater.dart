@@ -54,7 +54,7 @@ class Updater {
     required String version,
     required String channel,
     required String? updateUrl,
-    required String baseLibraryPath,
+    required List<String> baseLibraryPaths,
     required String vmPath,
     required String cacheDir,
   }) {
@@ -63,7 +63,7 @@ class Updater {
       version: version,
       channel: channel,
       updateUrl: updateUrl,
-      libappPath: baseLibraryPath,
+      libappPaths: baseLibraryPaths,
       libflutterPath: vmPath,
       cacheDir: cacheDir,
     );

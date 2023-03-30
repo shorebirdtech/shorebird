@@ -22,7 +22,7 @@ fn main() {
     let config = updater::AppConfig {
         cache_dir: "updater_cache".to_owned(),
         release_version: "0.1.0".to_owned(),
-        original_libapp_path: "libapp.so".to_owned(),
+        original_libapp_paths: vec!["libapp.so".to_owned()],
         vm_path: "libflutter.so".to_owned(),
     };
     let yaml_str = "
