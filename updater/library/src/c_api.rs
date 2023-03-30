@@ -118,22 +118,6 @@ pub extern "C" fn shorebird_free_string(c_string: *mut c_char) {
     }
 }
 
-/// Free an array returned by the updater library.
-#[no_mangle]
-pub extern "C" fn shorebird_free_array(c_array: *mut *mut c_char) {
-    unsafe {
-        let mut i = 0;
-        loop {
-            let c_string = *c_array.offset(i);
-            if c_string.is_null() {
-                break;
-            }
-            drop(CString::from_raw(c_string));
-            i += 1;
-        }
-    }
-}
-
 /// Check for an update.  Returns true if an update is available.
 #[no_mangle]
 pub extern "C" fn shorebird_check_for_update() -> bool {
