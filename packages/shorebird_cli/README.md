@@ -268,6 +268,30 @@ shorebird channels list
 └─────────────┘
 ```
 
+### Create Channels
+
+Create a new channel for your application using the `shorebird channels create` command:
+
+```bash
+shorebird channels create --name MyChannel
+```
+
+**Sample**
+
+```
+shorebird channels create --name MyChannel  
+
+🚀 Ready to create a new channel!
+
+📱 App ID: 485df03f-f522-4242-bf3d-31c0869bacac
+📺 Channel: MyChannel
+
+Would you like to continue? (y/N) Yes
+✓ Creating channel (0.2s)
+
+✅ New Channel Created!
+```
+
 ### Usage
 
 ```
