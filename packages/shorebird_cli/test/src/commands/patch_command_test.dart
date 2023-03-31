@@ -235,20 +235,6 @@ flutter:
       expect(exitCode, equals(ExitCode.software.code));
     });
 
-    test(
-        'exits with usage code when '
-        'both --dry-run and --force are specified', () async {
-      when(() => argResults['dry-run']).thenReturn(true);
-      when(() => argResults['force']).thenReturn(true);
-      when(() => auth.currentSession).thenReturn(session);
-      final tempDir = setUpTempDir();
-      final exitCode = await IOOverrides.runZoned(
-        command.run,
-        getCurrentDirectory: () => tempDir,
-      );
-      expect(exitCode, equals(ExitCode.software.code));
-    });
-
     test('exits with code 70 when building fails', () async {
       when(() => flutterBuildProcessResult.exitCode).thenReturn(1);
       when(() => flutterBuildProcessResult.stderr).thenReturn('oops');
@@ -267,6 +253,23 @@ flutter:
       );
 
       expect(exitCode, equals(ExitCode.software.code));
+    });
+
+    test(
+        'exits with usage code when '
+        'both --dry-run and --force are specified', () async {
+      when(() => argResults['dry-run']).thenReturn(true);
+      when(() => argResults['force']).thenReturn(true);
+      when(() => auth.currentSession).thenReturn(session);
+      final tempDir = setUpTempDir();
+      Directory(
+        p.join(command.shorebirdEnginePath, 'engine'),
+      ).createSync(recursive: true);
+      final exitCode = await IOOverrides.runZoned(
+        command.run,
+        getCurrentDirectory: () => tempDir,
+      );
+      expect(exitCode, equals(ExitCode.usage.code));
     });
 
     test('throws software error when artifact is not found (default).',
