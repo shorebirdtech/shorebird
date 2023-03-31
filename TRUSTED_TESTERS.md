@@ -386,6 +386,15 @@ Code push services are widely used in the industry (all of the large apps
 I'm aware of use them) and there are multiple other code push services
 publicly available (e.g. expo.dev & appcenter.ms). This is a well trodden path.
 
+## What about iOS?
+
+Current Shorebird is Android-only.  We have plans to add iOS, but not yet
+implemented.  Using Shorebird for your Android builds does not affect
+your iOS builds.  You can successfully ship a Shorebird-built appbundle
+to Google Play and contintue to ship a Flutter-built ipa to the App Store.
+The difference will be that you will be able to update your Android users
+sooner than you will your iOS users for now.
+
 ## Disabling Shorebird
 
 _First, do no harm_
