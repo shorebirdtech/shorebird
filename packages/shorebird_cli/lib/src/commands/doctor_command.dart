@@ -6,7 +6,7 @@ import 'package:shorebird_cli/src/command.dart';
 import 'package:shorebird_cli/src/shorebird_version_mixin.dart';
 import 'package:shorebird_cli/src/version.dart';
 
-/// {@template init_command}
+/// {@template doctor_command}
 ///
 /// `shorebird doctor`
 /// A command that checks for potential issues with the current shorebird
