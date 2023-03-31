@@ -588,6 +588,7 @@ Please create a release using "shorebird release" and try again.
       verifyNever(
         () => codePushClient.createPatch(releaseId: any(named: 'releaseId')),
       );
+      verify(() => logger.info('No issues detected.')).called(1);
     });
 
     test('does not prompt on --force', () async {
