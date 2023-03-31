@@ -153,7 +153,7 @@ class PatchCommand extends ShorebirdCommand
     final version = pubspecYaml.version!;
     final versionString = '${version.major}.${version.minor}.${version.patch}';
 
-    late final List<App> apps;
+    final List<App> apps;
     final fetchAppsProgress = logger.progress('Fetching apps');
     try {
       apps = (await codePushClient.getApps())
@@ -222,7 +222,7 @@ ${styleBold.wrap(lightGreen.wrap('🚀 Ready to publish a new patch!'))}
       }
     }
 
-    late final List<Release> releases;
+    final List<Release> releases;
     final fetchReleasesProgress = logger.progress('Fetching releases');
     try {
       releases = await codePushClient.getReleases(
@@ -250,7 +250,7 @@ Please create a release using "shorebird release" and try again.
       return ExitCode.software.code;
     }
 
-    late final ReleaseArtifact releaseArtifact;
+    final ReleaseArtifact releaseArtifact;
     final fetchReleaseArtifactProgress = logger.progress(
       'Fetching release artifact',
     );
@@ -266,7 +266,7 @@ Please create a release using "shorebird release" and try again.
       return ExitCode.software.code;
     }
 
-    late final String releaseArtifactPath;
+    final String releaseArtifactPath;
     final downloadReleaseArtifactProgress = logger.progress(
       'Downloading release artifact',
     );
@@ -280,7 +280,7 @@ Please create a release using "shorebird release" and try again.
       return ExitCode.software.code;
     }
 
-    late final String diffPath;
+    final String diffPath;
     final createDiffProgress = logger.progress('Creating diff');
     try {
       diffPath = await _createDiff(
@@ -293,7 +293,7 @@ Please create a release using "shorebird release" and try again.
       return ExitCode.software.code;
     }
 
-    late final Patch patch;
+    final Patch patch;
     final createPatchProgress = logger.progress('Creating patch');
     try {
       patch = await codePushClient.createPatch(releaseId: release.id);
