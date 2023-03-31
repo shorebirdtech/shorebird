@@ -72,7 +72,6 @@ class PatchCommand extends ShorebirdCommand
         negatable: false,
         help: 'Validate but do not upload the patch.',
       );
-    ;
   }
 
   @override
