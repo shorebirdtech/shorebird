@@ -59,7 +59,20 @@ class PatchCommand extends ShorebirdCommand
           'stable': 'The stable channel which is consumed by production apps.'
         },
         defaultsTo: 'stable',
+      )
+      ..addFlag(
+        'force',
+        abbr: 'f',
+        help: 'Patch without confirmation if there are no errors.',
+        negatable: false,
+      )
+      ..addFlag(
+        'dry-run',
+        abbr: 'n',
+        negatable: false,
+        help: 'Validate but do not upload the patch.',
       );
+    ;
   }
 
   @override
@@ -92,6 +105,14 @@ class PatchCommand extends ShorebirdCommand
     } catch (error) {
       logger.err(error.toString());
       return ExitCode.software.code;
+    }
+
+    final force = results['force'] == true;
+    final dryRun = results['dry-run'] == true;
+
+    if (force && dryRun) {
+      logger.err('Cannot use both --force and --dry-run.');
+      return ExitCode.usage.code;
     }
 
     final buildProgress = logger.progress('Building patch');
@@ -160,6 +181,13 @@ Did you forget to run "shorebird init"?''',
     final pubspecVersionString =
         '''${pubspecVersion.major}.${pubspecVersion.minor}.${pubspecVersion.patch}''';
 
+    if (dryRun) {
+      logger
+        ..info('No issues detected.')
+        ..info('The server may enforce additional checks.');
+      return ExitCode.success.code;
+    }
+
     if (releaseVersionArg == null) logger.info('');
 
     final releaseVersion = releaseVersionArg ??
@@ -185,11 +213,14 @@ ${styleBold.wrap(lightGreen.wrap('🚀 Ready to publish a new patch!'))}
 ''',
     );
 
-    final confirm = logger.confirm('Would you like to continue?');
+    final needsConfirmation = !force;
+    if (needsConfirmation) {
+      final confirm = logger.confirm('Would you like to continue?');
 
-    if (!confirm) {
-      logger.info('Aborting.');
-      return ExitCode.success.code;
+      if (!confirm) {
+        logger.info('Aborting.');
+        return ExitCode.success.code;
+      }
     }
 
     late final List<Release> releases;

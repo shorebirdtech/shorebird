@@ -138,6 +138,8 @@ flutter:
       when(() => argResults['arch']).thenReturn(arch);
       when(() => argResults['platform']).thenReturn(platform);
       when(() => argResults['channel']).thenReturn(channelName);
+      when(() => argResults['dry-run']).thenReturn(false);
+      when(() => argResults['force']).thenReturn(false);
       when(() => auth.currentSession).thenReturn(session);
       when(() => logger.progress(any())).thenReturn(progress);
       when(
@@ -224,6 +226,20 @@ flutter:
       when(
         () => codePushClient.downloadEngine(revision: any(named: 'revision')),
       ).thenThrow(Exception('oops'));
+      when(() => auth.currentSession).thenReturn(session);
+      final tempDir = setUpTempDir();
+      final exitCode = await IOOverrides.runZoned(
+        command.run,
+        getCurrentDirectory: () => tempDir,
+      );
+      expect(exitCode, equals(ExitCode.software.code));
+    });
+
+    test(
+        'exits with usage code when '
+        'both --dry-run and --force are specified', () async {
+      when(() => argResults['dry-run']).thenReturn(true);
+      when(() => argResults['force']).thenReturn(true);
       when(() => auth.currentSession).thenReturn(session);
       final tempDir = setUpTempDir();
       final exitCode = await IOOverrides.runZoned(
@@ -540,6 +556,68 @@ Please create a release using "shorebird release" and try again.
         () => progress.fail('Exception: Failed to create diff: $error'),
       ).called(1);
       expect(exitCode, ExitCode.software.code);
+    });
+
+    test('does not create patch on --dry-run', () async {
+      when(() => argResults['dry-run']).thenReturn(true);
+      when(
+        () => codePushClient.getReleases(appId: any(named: 'appId')),
+      ).thenAnswer((_) async => [release]);
+      final tempDir = setUpTempDir();
+      Directory(
+        p.join(command.shorebirdEnginePath, 'engine'),
+      ).createSync(recursive: true);
+      final artifactPath = p.join(
+        tempDir.path,
+        'build',
+        'app',
+        'intermediates',
+        'stripped_native_libs',
+        'release',
+        'out',
+        'lib',
+        'arm64-v8a',
+        'libapp.so',
+      );
+      File(artifactPath).createSync(recursive: true);
+      final exitCode = await IOOverrides.runZoned(
+        command.run,
+        getCurrentDirectory: () => tempDir,
+      );
+      expect(exitCode, equals(ExitCode.success.code));
+      verifyNever(
+        () => codePushClient.createPatch(releaseId: any(named: 'releaseId')),
+      );
+    });
+
+    test('does not prompt on --force', () async {
+      when(() => argResults['force']).thenReturn(true);
+      final tempDir = setUpTempDir();
+      Directory(
+        p.join(command.shorebirdEnginePath, 'engine'),
+      ).createSync(recursive: true);
+      final artifactPath = p.join(
+        tempDir.path,
+        'build',
+        'app',
+        'intermediates',
+        'stripped_native_libs',
+        'release',
+        'out',
+        'lib',
+        'arm64-v8a',
+        'libapp.so',
+      );
+      File(artifactPath).createSync(recursive: true);
+      final exitCode = await IOOverrides.runZoned(
+        command.run,
+        getCurrentDirectory: () => tempDir,
+      );
+      expect(exitCode, equals(ExitCode.success.code));
+      verifyNever(() => logger.confirm(any()));
+      verify(
+        () => codePushClient.createPatch(releaseId: any(named: 'releaseId')),
+      ).called(1);
     });
 
     test('throws error when creating patch fails.', () async {
