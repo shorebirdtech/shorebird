@@ -8,6 +8,7 @@ import 'package:shorebird_cli/src/commands/commands.dart';
 class ChannelsCommand extends ShorebirdCommand {
   /// {@macro channels_command}
   ChannelsCommand({required super.logger}) {
+    addSubcommand(CreateChannelsCommand(logger: logger));
     addSubcommand(ListChannelsCommand(logger: logger));
   }
 
