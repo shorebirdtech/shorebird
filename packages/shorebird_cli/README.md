@@ -78,6 +78,25 @@ shorebird logout
 ✓ Logging out of shorebird.dev (1ms)
 ```
 
+### Doctor
+
+To check your environment for common issues, use the `shorebird doctor` command.
+
+```bash
+shorebird doctor
+```
+
+**Sample**
+
+```
+$ shorebird doctor
+Doctor summary
+
+Shorebird v0.0.3
+
+No issues detected!
+```
+
 ### Create App
 
 To create an app use the `shorebird apps create` command. An app id can be specified as a CLI option but shorebird will default to the `app_id` defined in the `shorebird.yaml`
@@ -308,6 +327,7 @@ Available commands:
   apps       Manage your Shorebird apps.
   build      Build a new release of your application.
   channels   Manage the channels for your Shorebird app.
+  doctor     Show information about the installed tooling.
   init       Initialize Shorebird.
   login      Login as a new Shorebird user.
   logout     Logout of the current Shorebird user
