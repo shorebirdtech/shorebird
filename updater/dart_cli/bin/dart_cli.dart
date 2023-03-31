@@ -14,7 +14,7 @@ void main(List<String> args) async {
     version: '1.0.0',
     channel: 'stable',
     updateUrl: null,
-    baseLibraryPath: 'libapp.so',
+    baseLibraryPaths: ['libapp.so'],
     vmPath: Platform.executable,
     cacheDir: 'updater_cache',
   );

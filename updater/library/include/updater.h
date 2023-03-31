@@ -26,11 +26,14 @@ typedef struct AppParameters {
    */
   const char *release_version;
   /**
-   * Path to the original aot library, required.  For Flutter apps this
-   * is the path to the bundled libapp.so.  May be used for compression
-   * downloaded artifacts.
+   * Array of paths to the original aot library, required.  For Flutter apps
+   * these are the paths to the bundled libapp.so.  May be used for compression downloaded artifacts.
    */
-  const char *original_libapp_path;
+  const char *const *original_libapp_paths;
+  /**
+   * Length of the original_libapp_paths array.
+   */
+  int original_libapp_paths_size;
   /**
    * Path to the app's libflutter.so, required.  May be used for ensuring
    * downloaded artifacts are compatible with the Flutter/Dart versions

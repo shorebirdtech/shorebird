@@ -16,7 +16,10 @@ class AppParameters extends ffi.Struct {
   // ignore: non_constant_identifier_names
   external ffi.Pointer<Utf8> update_url;
   // ignore: non_constant_identifier_names
-  external ffi.Pointer<Utf8> original_libapp_path;
+  external ffi.Pointer<ffi.Pointer<Utf8>> original_libapp_paths;
+  @ffi.Int8()
+  // ignore: non_constant_identifier_names
+  external int original_libapp_paths_size;
   // ignore: non_constant_identifier_names
   external ffi.Pointer<Utf8> vm_path;
   // ignore: non_constant_identifier_names
@@ -27,7 +30,7 @@ class AppParameters extends ffi.Struct {
     required String version,
     required String channel,
     required String? updateUrl,
-    required String libappPath,
+    required List<String> libappPaths,
     required String libflutterPath,
     required String cacheDir,
   }) {
@@ -38,7 +41,13 @@ class AppParameters extends ffi.Struct {
     if (updateUrl != null) {
       config.ref.update_url = updateUrl.toNativeUtf8();
     }
-    config.ref.original_libapp_path = libappPath.toNativeUtf8();
+    config.ref.original_libapp_paths = calloc<ffi.Pointer<Utf8>>(
+      libappPaths.length,
+    );
+
+    for (var i = 0; i < libappPaths.length; i++) {
+      config.ref.original_libapp_paths[i] = libappPaths[i].toNativeUtf8();
+    }
     config.ref.vm_path = libflutterPath.toNativeUtf8();
     config.ref.cache_dir = cacheDir.toNativeUtf8();
     return config;
@@ -49,7 +58,11 @@ class AppParameters extends ffi.Struct {
     calloc.free(config.ref.base_version);
     calloc.free(config.ref.channel);
     calloc.free(config.ref.update_url);
-    calloc.free(config.ref.original_libapp_path);
+    // Free all paths in original_libapp_path.
+    for (var i = 0; i < config.ref.original_libapp_paths_size; i++) {
+      calloc.free(config.ref.original_libapp_paths[i]);
+    }
+    calloc.free(config.ref.original_libapp_paths);
     calloc.free(config.ref.vm_path);
     calloc.free(config.ref.cache_dir);
     calloc.free(config);

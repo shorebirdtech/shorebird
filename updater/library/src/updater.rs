@@ -58,7 +58,7 @@ impl Display for UpdateError {
 pub struct AppConfig {
     pub cache_dir: String,
     pub release_version: String,
-    pub original_libapp_path: String,
+    pub original_libapp_paths: Vec<String>,
     pub vm_path: String,
 }
 
@@ -145,8 +145,7 @@ fn update_internal(config: &ResolvedConfig) -> anyhow::Result<UpdateStatus> {
     let download_path = download_dir.join(patch.number.to_string());
     download_to_path(&patch.download_url, &download_path)?;
 
-    // Inflate the patch from a diff.
-    let base_path = PathBuf::from(&config.original_libapp_path);
+    let base_path = get_base_path(&config.original_libapp_paths)?;
     let output_path = download_dir.join(format!("{}.full", patch.number.to_string()));
     inflate(&download_path, &base_path, &output_path)?;
 
@@ -167,6 +166,17 @@ fn update_internal(config: &ResolvedConfig) -> anyhow::Result<UpdateStatus> {
 
     // Set the state to "restart required".
     return Ok(UpdateStatus::UpdateInstalled);
+}
+
+fn get_base_path(original_lib_app_paths: &Vec<String>) -> anyhow::Result<PathBuf> {
+    // Iterate through the paths and find the first one that exists.
+    for path in original_lib_app_paths {
+        let path = PathBuf::from(path);
+        if path.exists() {
+            return Ok(path);
+        }
+    }
+    return Err(UpdateError::InvalidState("No base file found".to_string()).into());
 }
 
 fn inflate(patch_path: &Path, base_path: &Path, output_path: &Path) -> anyhow::Result<()> {
@@ -275,7 +285,7 @@ mod tests {
             crate::AppConfig {
                 cache_dir: cache_dir.clone(),
                 release_version: "1.0.0".to_string(),
-                original_libapp_path: "original_libapp_path".to_string(),
+                original_libapp_paths: vec!["original_libapp_path".to_string()],
                 vm_path: "vm_path".to_string(),
             },
             "app_id: 1234",
@@ -292,7 +302,7 @@ mod tests {
                 crate::AppConfig {
                     cache_dir: cache_dir.clone(),
                     release_version: "1.0.0".to_string(),
-                    original_libapp_path: "original_libapp_path".to_string(),
+                    original_libapp_paths: vec!["original_libapp_path".to_string()],
                     vm_path: "vm_path".to_string(),
                 },
                 "",
@@ -397,5 +407,48 @@ mod tests {
         result = super::inflate(&missing_file, &existing_file, &missing_file);
         error = result.unwrap_err();
         assert!(format!("{}", error).starts_with("Failed to open patch file:"));
+    }
+
+    #[test]
+    fn get_base_path_uses_correct_path() {
+        let tmp_dir = TempDir::new("example").unwrap();
+        let missing_file = tmp_dir.path().join("missing_file");
+        let existing_file = tmp_dir.path().join("existing_file");
+        std::fs::write(&existing_file, "hello world").unwrap();
+
+        // Should use first file since it exists.
+        let mut base_paths = vec![
+            existing_file.as_path().to_str().unwrap().to_string(),
+            missing_file.as_path().to_str().unwrap().to_string(),
+        ];
+
+        let mut result = super::get_base_path(&base_paths);
+
+        assert_eq!(result.unwrap(), existing_file.as_path());
+
+        // Should skip first file since it is missing.
+        base_paths = vec![
+            missing_file.as_path().to_str().unwrap().to_string(),
+            existing_file.as_path().to_str().unwrap().to_string(),
+        ];
+
+        result = super::get_base_path(&base_paths);
+
+        assert_eq!(result.unwrap(), existing_file.as_path());
+
+        // Should error since all files are missing.
+        base_paths = vec![
+            missing_file.as_path().to_str().unwrap().to_string(),
+            missing_file.as_path().to_str().unwrap().to_string(),
+        ];
+
+        result = super::get_base_path(&base_paths);
+
+        let error = result.unwrap_err();
+
+        assert_eq!(
+            format!("{}", error),
+            "Invalid State: No base file found".to_string()
+        );
     }
 }
