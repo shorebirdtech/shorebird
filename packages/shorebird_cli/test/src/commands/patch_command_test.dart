@@ -450,9 +450,6 @@ Please create a release using "shorebird release" and try again.
     test('throws error when release artifact cannot be retrieved.', () async {
       const error = 'something went wrong';
       when(
-        () => codePushClient.getReleases(appId: any(named: 'appId')),
-      ).thenAnswer((_) async => [release]);
-      when(
         () => codePushClient.getReleaseArtifact(
           releaseId: any(named: 'releaseId'),
           arch: any(named: 'arch'),
@@ -485,9 +482,6 @@ Please create a release using "shorebird release" and try again.
     });
 
     test('throws error when release artifact does not exist.', () async {
-      when(
-        () => codePushClient.getReleases(appId: any(named: 'appId')),
-      ).thenAnswer((_) async => [release]);
       when(() => httpClient.send(any())).thenAnswer(
         (_) async => http.StreamedResponse(
           const Stream.empty(),
@@ -526,9 +520,6 @@ Please create a release using "shorebird release" and try again.
 
     test('throws error when creating diff fails', () async {
       const error = 'oops something went wrong';
-      when(
-        () => codePushClient.getReleases(appId: any(named: 'appId')),
-      ).thenAnswer((_) async => [release]);
       when(() => patchProcessResult.exitCode).thenReturn(1);
       when(() => patchProcessResult.stderr).thenReturn(error);
       final tempDir = setUpTempDir();
@@ -560,9 +551,6 @@ Please create a release using "shorebird release" and try again.
 
     test('does not create patch on --dry-run', () async {
       when(() => argResults['dry-run']).thenReturn(true);
-      when(
-        () => codePushClient.getReleases(appId: any(named: 'appId')),
-      ).thenAnswer((_) async => [release]);
       final tempDir = setUpTempDir();
       Directory(
         p.join(command.shorebirdEnginePath, 'engine'),
