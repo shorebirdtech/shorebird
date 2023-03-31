@@ -59,6 +59,18 @@ class PatchCommand extends ShorebirdCommand
           'stable': 'The stable channel which is consumed by production apps.'
         },
         defaultsTo: 'stable',
+      )
+      ..addFlag(
+        'force',
+        abbr: 'f',
+        help: 'Patch without confirmation if there are no errors.',
+        negatable: false,
+      )
+      ..addFlag(
+        'dry-run',
+        abbr: 'n',
+        negatable: false,
+        help: 'Validate but do not upload the patch.',
       );
   }
 
@@ -92,6 +104,14 @@ class PatchCommand extends ShorebirdCommand
     } catch (error) {
       logger.err(error.toString());
       return ExitCode.software.code;
+    }
+
+    final force = results['force'] == true;
+    final dryRun = results['dry-run'] == true;
+
+    if (force && dryRun) {
+      logger.err('Cannot use both --force and --dry-run.');
+      return ExitCode.usage.code;
     }
 
     final buildProgress = logger.progress('Building patch');
@@ -133,7 +153,7 @@ class PatchCommand extends ShorebirdCommand
     final version = pubspecYaml.version!;
     final versionString = '${version.major}.${version.minor}.${version.patch}';
 
-    late final List<App> apps;
+    final List<App> apps;
     final fetchAppsProgress = logger.progress('Fetching apps');
     try {
       apps = (await codePushClient.getApps())
@@ -160,6 +180,13 @@ Did you forget to run "shorebird init"?''',
     final pubspecVersionString =
         '''${pubspecVersion.major}.${pubspecVersion.minor}.${pubspecVersion.patch}''';
 
+    if (dryRun) {
+      logger
+        ..info('No issues detected.')
+        ..info('The server may enforce additional checks.');
+      return ExitCode.success.code;
+    }
+
     if (releaseVersionArg == null) logger.info('');
 
     final releaseVersion = releaseVersionArg ??
@@ -185,14 +212,17 @@ ${styleBold.wrap(lightGreen.wrap('🚀 Ready to publish a new patch!'))}
 ''',
     );
 
-    final confirm = logger.confirm('Would you like to continue?');
+    final needsConfirmation = !force;
+    if (needsConfirmation) {
+      final confirm = logger.confirm('Would you like to continue?');
 
-    if (!confirm) {
-      logger.info('Aborting.');
-      return ExitCode.success.code;
+      if (!confirm) {
+        logger.info('Aborting.');
+        return ExitCode.success.code;
+      }
     }
 
-    late final List<Release> releases;
+    final List<Release> releases;
     final fetchReleasesProgress = logger.progress('Fetching releases');
     try {
       releases = await codePushClient.getReleases(
@@ -220,7 +250,7 @@ Please create a release using "shorebird release" and try again.
       return ExitCode.software.code;
     }
 
-    late final ReleaseArtifact releaseArtifact;
+    final ReleaseArtifact releaseArtifact;
     final fetchReleaseArtifactProgress = logger.progress(
       'Fetching release artifact',
     );
@@ -236,7 +266,7 @@ Please create a release using "shorebird release" and try again.
       return ExitCode.software.code;
     }
 
-    late final String releaseArtifactPath;
+    final String releaseArtifactPath;
     final downloadReleaseArtifactProgress = logger.progress(
       'Downloading release artifact',
     );
@@ -250,7 +280,7 @@ Please create a release using "shorebird release" and try again.
       return ExitCode.software.code;
     }
 
-    late final String diffPath;
+    final String diffPath;
     final createDiffProgress = logger.progress('Creating diff');
     try {
       diffPath = await _createDiff(
@@ -263,7 +293,7 @@ Please create a release using "shorebird release" and try again.
       return ExitCode.software.code;
     }
 
-    late final Patch patch;
+    final Patch patch;
     final createPatchProgress = logger.progress('Creating patch');
     try {
       patch = await codePushClient.createPatch(releaseId: release.id);
