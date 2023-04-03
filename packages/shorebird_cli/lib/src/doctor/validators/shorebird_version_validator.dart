@@ -10,10 +10,10 @@ class ShorebirdVersionValidator extends DoctorValidator {
   final Future<bool> Function({required String workingDirectory})
       isShorebirdVersionCurrent;
 
-  // coverage: ignore-start
+  // coverage:ignore-start
   @override
   String get description => 'Shorebird is up-to-date';
-  // coverage: ignore-end
+  // coverage:ignore-end
 
   @override
   Future<List<ValidationIssue>> validate() async {
