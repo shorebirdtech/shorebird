@@ -172,8 +172,18 @@ fn get_base_path(original_lib_app_paths: &Vec<String>) -> anyhow::Result<PathBuf
     // Iterate through the paths and find the first one that exists.
     for path in original_lib_app_paths {
         let path = PathBuf::from(path);
-        if path.try_exists()? {
-            return Ok(path);
+        match path.try_exists() {
+            Ok(true) => {
+                return Ok(path);
+            }
+            Ok(false) => {
+                info!("File does not exist: {:?}", path);
+                continue;
+            }
+            Err(err) => {
+                info!("Failed to check for file: {:?}, err: {err}", path);
+                continue;
+            }
         }
     }
     return Err(UpdateError::InvalidState("No base file found".to_string()).into());
