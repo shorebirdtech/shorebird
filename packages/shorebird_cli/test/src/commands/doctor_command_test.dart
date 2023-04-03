@@ -70,9 +70,13 @@ void main() {
       ).thenAnswer(
         (_) async => [
           const ValidationIssue(
-            severity: ValidationIssueSeverity.error,
+            severity: ValidationIssueSeverity.warning,
             message: 'oh no!',
-          )
+          ),
+          const ValidationIssue(
+            severity: ValidationIssueSeverity.error,
+            message: 'OH NO!',
+          ),
         ],
       );
 
@@ -85,7 +89,7 @@ void main() {
       verify(
         () => logger.info(
           captureAny(
-            that: contains('1 issue detected.'),
+            that: contains('2 issues detected.'),
           ),
         ),
       ).called(1);
