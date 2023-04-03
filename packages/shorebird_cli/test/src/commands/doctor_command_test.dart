@@ -64,7 +64,7 @@ void main() {
       ).called(1);
     });
 
-    test('prints "x issues found" when warnings or errors found', () async {
+    test('prints messages when warnings or errors found', () async {
       when(
         () => androidInternetPermissionValidator.validate(),
       ).thenAnswer(
@@ -85,6 +85,22 @@ void main() {
       for (final validator in command.validators) {
         verify(validator.validate).called(1);
       }
+
+      verify(
+        () => logger.info(
+          captureAny(
+            that: contains('[!] oh no!'),
+          ),
+        ),
+      ).called(1);
+
+      verify(
+        () => logger.info(
+          captureAny(
+            that: contains('[✗] OH NO!'),
+          ),
+        ),
+      ).called(1);
 
       verify(
         () => logger.info(
