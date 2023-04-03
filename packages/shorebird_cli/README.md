@@ -316,7 +316,7 @@ shorebird channels create --name MyChannel
 **Sample**
 
 ```
-shorebird channels create --name MyChannel  
+shorebird channels create --name MyChannel
 
 🚀 Ready to create a new channel!
 
