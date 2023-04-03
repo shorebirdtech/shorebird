@@ -1,8 +1,7 @@
-import 'dart:io';
-
 import 'package:mason_logger/mason_logger.dart';
-import 'package:path/path.dart' as p;
 import 'package:shorebird_cli/src/command.dart';
+import 'package:shorebird_cli/src/doctor/doctor_validator.dart';
+import 'package:shorebird_cli/src/doctor/validators/validators.dart';
 import 'package:shorebird_cli/src/shorebird_version_mixin.dart';
 import 'package:shorebird_cli/src/version.dart';
 
@@ -14,7 +13,19 @@ import 'package:shorebird_cli/src/version.dart';
 /// {@endtemplate}
 class DoctorCommand extends ShorebirdCommand with ShorebirdVersionMixin {
   /// {@macro doctor_command}
-  DoctorCommand({required super.logger, super.runProcess});
+  DoctorCommand({
+    required super.logger,
+    List<DoctorValidator>? validators,
+    super.runProcess,
+  }) {
+    this.validators = validators ??
+        <DoctorValidator>[
+          ShorebirdVersionValidator(doctorCommand: this),
+          AndroidInternetPermissionValidator(),
+        ];
+  }
+
+  late final List<DoctorValidator> validators;
 
   @override
   String get name => 'doctor';
@@ -24,25 +35,28 @@ class DoctorCommand extends ShorebirdCommand with ShorebirdVersionMixin {
 
   @override
   Future<int> run() async {
-    var numIssues = 0;
-    final workingDirectory = p.dirname(Platform.script.toFilePath());
     logger.info('''
-Doctor summary
 
 Shorebird v$packageVersion
 ''');
 
-    final isShorebirdUpToDate = await isShorebirdVersionCurrent(
-      workingDirectory: workingDirectory,
-    );
+    var numIssues = 0;
+    for (final validator in validators) {
+      final progress = logger.progress(validator.description);
+      final issues = await validator.validate();
+      numIssues += issues.length;
+      if (issues.isEmpty) {
+        progress.complete();
+      } else {
+        progress.fail();
 
-    if (!isShorebirdUpToDate) {
-      numIssues += 1;
-      logger.info('''
-A new version of shorebird is available!
-Run `shorebird upgrade` to upgrade.
-''');
+        for (final issue in issues) {
+          logger.info('  ${issue.displayMessage}');
+        }
+      }
     }
+
+    logger.info('');
 
     if (numIssues == 0) {
       logger.info('No issues detected!');
