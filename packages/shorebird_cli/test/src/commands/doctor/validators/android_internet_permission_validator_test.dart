@@ -43,8 +43,6 @@ void main() {
           .writeAsStringSync(manifestContents);
     }
 
-    setUp(() {});
-
     test(
       'returns successful result if all AndroidManifest.xml files have the '
       'INTERNET permission',
