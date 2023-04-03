@@ -9,9 +9,11 @@ import 'package:xml/xml.dart';
 ///
 /// See https://github.com/shorebirdtech/shorebird/issues/160.
 class AndroidInternetPermissionValidator extends DoctorValidator {
+  // coverage: ignore-start
   @override
   String get description =>
       'AndroidManifest.xml files contain INTERNET permission';
+  // coverage: ignore-end
 
   @override
   Future<List<ValidationIssue>> validate() async {

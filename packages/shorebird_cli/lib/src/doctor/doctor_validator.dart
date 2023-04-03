@@ -38,8 +38,10 @@ class ValidationIssue {
     return '${severity.leading} $message';
   }
 
+  // coverage:ignore-start
   @override
   String toString() => '$severity $message';
+  // coverage:ignore-end
 
   @override
   bool operator ==(Object other) {
@@ -50,8 +52,10 @@ class ValidationIssue {
         other.message == message;
   }
 
+  // coverage:ignore-start
   @override
   int get hashCode => Object.hashAll([severity, message]);
+  // coverage:ignore-end
 }
 
 /// Checks for a specific issue with either the Shorebird installation or the
