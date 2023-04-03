@@ -50,7 +50,9 @@ void main() {
         },
       );
 
-      validator = ShorebirdVersionValidator(doctorCommand: command);
+      validator = ShorebirdVersionValidator(
+        isShorebirdVersionCurrent: command.isShorebirdVersionCurrent,
+      );
 
       when(
         () => fetchCurrentVersionResult.exitCode,

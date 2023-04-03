@@ -20,7 +20,9 @@ class DoctorCommand extends ShorebirdCommand with ShorebirdVersionMixin {
   }) {
     this.validators = validators ??
         <DoctorValidator>[
-          ShorebirdVersionValidator(doctorCommand: this),
+          ShorebirdVersionValidator(
+            isShorebirdVersionCurrent: isShorebirdVersionCurrent,
+          ),
           AndroidInternetPermissionValidator(),
         ];
   }
