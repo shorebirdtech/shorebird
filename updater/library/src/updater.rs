@@ -172,7 +172,7 @@ fn get_base_path(original_lib_app_paths: &Vec<String>) -> anyhow::Result<PathBuf
     // Iterate through the paths and find the first one that exists.
     for path in original_lib_app_paths {
         let path = PathBuf::from(path);
-        if path.exists() {
+        if path.try_exists()? {
             return Ok(path);
         }
     }
