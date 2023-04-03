@@ -51,7 +51,7 @@ class ValidationIssue {
   }
 
   @override
-  int get hashCode => severity.hashCode ^ message.hashCode;
+  int get hashCode => Object.hashAll(severity, message);
 }
 
 /// Checks for a specific issue with either the Shorebird installation or the
