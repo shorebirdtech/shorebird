@@ -9,7 +9,7 @@ class _MockHttpClient extends Mock implements http.Client {}
 void main() {
   group('Auth', () {
     final credentials = AccessCredentials(
-      AccessToken('bearer', 'token', DateTime.now().toUtc()),
+      AccessToken('Bearer', 'token', DateTime.now().toUtc()),
       'refreshToken',
       [],
     );
@@ -25,6 +25,25 @@ void main() {
           return credentials;
         },
       )..logout();
+    });
+
+    group('client', () {
+      test(
+          'returns an auto-refreshing client '
+          'when credentials are present.', () async {
+        await auth.login((_) {});
+        final client = auth.client;
+        expect(client, isA<http.Client>());
+        expect(client, isA<AutoRefreshingAuthClient>());
+      });
+
+      test(
+          'returns a plain http client '
+          'when credentials are not present.', () async {
+        final client = auth.client;
+        expect(client, isA<http.Client>());
+        expect(client, isNot(isA<AutoRefreshingAuthClient>()));
+      });
     });
 
     group('login', () {
