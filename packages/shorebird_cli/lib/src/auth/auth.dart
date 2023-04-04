@@ -15,6 +15,13 @@ final _clientId = ClientId(
   /// Shorebird CLI's OAuth 2.0 secret.
   ///
   /// This isn't actually meant to be kept secret.
+  /// There is no way to properly secure a secret for installed/console applications.
+  /// Fortunately the OAuth2 flow used in this case assumes that the app cannot
+  /// keep secrets so this particular secret DOES NOT need to be kept secret.
+  /// You should however make sure not to re-use the same secret
+  /// anywhere secrecy is required.
+  ///
+  /// For more info see: https://developers.google.com/identity/protocols/oauth2/native-app
   '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',
 );
 final _scopes = ['openid', 'https://www.googleapis.com/auth/userinfo.email'];
