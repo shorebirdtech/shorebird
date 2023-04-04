@@ -13,8 +13,6 @@ import 'package:shorebird_cli/src/config/config.dart';
 import 'package:shorebird_code_push_client/shorebird_code_push_client.dart';
 import 'package:test/test.dart';
 
-class _MockAccessCredentials extends Mock implements AccessCredentials {}
-
 class _MockArgResults extends Mock implements ArgResults {}
 
 class _MockHttpClient extends Mock implements http.Client {}
@@ -62,8 +60,6 @@ environment:
 flutter:
   assets:
     - shorebird.yaml''';
-
-    final credentials = _MockAccessCredentials();
 
     late ArgResults argResults;
     late Directory applicationConfigHome;
@@ -120,7 +116,7 @@ flutter:
       when(() => argResults.rest).thenReturn([]);
       when(() => argResults['arch']).thenReturn(arch);
       when(() => argResults['platform']).thenReturn(platform);
-      when(() => auth.credentials).thenReturn(credentials);
+      when(() => auth.isAuthenticated).thenReturn(true);
       when(() => auth.client).thenReturn(httpClient);
       when(() => logger.progress(any())).thenReturn(progress);
       when(() => logger.confirm(any())).thenReturn(true);
@@ -168,8 +164,8 @@ flutter:
       expect(exitCode, ExitCode.config.code);
     });
 
-    test('throws no user error when session does not exist', () async {
-      when(() => auth.credentials).thenReturn(null);
+    test('throws no user error when user is not logged in', () async {
+      when(() => auth.isAuthenticated).thenReturn(false);
       final tempDir = setUpTempDir();
       final exitCode = await IOOverrides.runZoned(
         () => command.run(),

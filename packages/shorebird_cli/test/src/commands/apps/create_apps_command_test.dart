@@ -17,13 +17,10 @@ class _MockCodePushClient extends Mock implements CodePushClient {}
 
 class _MockLogger extends Mock implements Logger {}
 
-class _MockAccessCredentials extends Mock implements AccessCredentials {}
-
 void main() {
   group('create', () {
     const appId = 'app-id';
     const displayName = 'Example App';
-    final credentials = _MockAccessCredentials();
 
     late ArgResults argResults;
     late http.Client httpClient;
@@ -49,7 +46,7 @@ void main() {
         logger: logger,
       )..testArgResults = argResults;
 
-      when(() => auth.credentials).thenReturn(credentials);
+      when(() => auth.isAuthenticated).thenReturn(true);
       when(() => auth.client).thenReturn(httpClient);
     });
 
@@ -58,7 +55,7 @@ void main() {
     });
 
     test('returns no user error when not logged in', () async {
-      when(() => auth.credentials).thenReturn(null);
+      when(() => auth.isAuthenticated).thenReturn(false);
       final result = await command.run();
       expect(result, ExitCode.noUser.code);
     });

@@ -18,7 +18,7 @@ class LogoutCommand extends ShorebirdCommand {
 
   @override
   Future<int> run() async {
-    if (auth.credentials == null) {
+    if (!auth.isAuthenticated) {
       logger.info('You are already logged out.');
       return ExitCode.success.code;
     }

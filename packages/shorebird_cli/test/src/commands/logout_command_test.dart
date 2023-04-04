@@ -4,8 +4,6 @@ import 'package:shorebird_cli/src/auth/auth.dart';
 import 'package:shorebird_cli/src/commands/logout_command.dart';
 import 'package:test/test.dart';
 
-class _MockAccessCredentials extends Mock implements AccessCredentials {}
-
 class _MockLogger extends Mock implements Logger {}
 
 class _MockAuth extends Mock implements Auth {}
@@ -27,6 +25,7 @@ void main() {
     });
 
     test('exits with code 0 when already logged out', () async {
+      when(() => auth.isAuthenticated).thenReturn(false);
       final result = await logoutCommand.run();
       expect(result, equals(ExitCode.success.code));
 
@@ -36,8 +35,7 @@ void main() {
     });
 
     test('exits with code 0 when logged out successfully', () async {
-      final credentials = _MockAccessCredentials();
-      when(() => auth.credentials).thenReturn(credentials);
+      when(() => auth.isAuthenticated).thenReturn(true);
 
       final progress = _MockProgress();
       when(() => progress.complete(any())).thenAnswer((invocation) {});

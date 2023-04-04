@@ -93,7 +93,7 @@ class PatchCommand extends ShorebirdCommand
       return ExitCode.config.code;
     }
 
-    if (auth.credentials == null) {
+    if (!auth.isAuthenticated) {
       logger.err('You must be logged in to publish.');
       return ExitCode.noUser.code;
     }

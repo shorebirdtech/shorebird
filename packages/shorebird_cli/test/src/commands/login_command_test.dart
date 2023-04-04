@@ -8,15 +8,13 @@ import 'package:shorebird_cli/src/commands/login_command.dart';
 import 'package:shorebird_cli/src/config/config.dart';
 import 'package:test/test.dart';
 
-class _MockAccessCredentials extends Mock implements AccessCredentials {}
-
 class _MockAuth extends Mock implements Auth {}
 
 class _MockLogger extends Mock implements Logger {}
 
 void main() {
   group('login', () {
-    final credentials = _MockAccessCredentials();
+    const user = User(email: 'test@email.com');
 
     late Directory applicationConfigHome;
     late Logger logger;
@@ -34,15 +32,19 @@ void main() {
       when(() => auth.credentialsFilePath).thenReturn(
         p.join(applicationConfigHome.path, 'credentials.json'),
       );
+      when(() => auth.isAuthenticated).thenReturn(false);
     });
 
     test('exits with code 0 when already logged in', () async {
-      when(() => auth.credentials).thenReturn(credentials);
+      when(() => auth.isAuthenticated).thenReturn(true);
+      when(() => auth.user).thenReturn(user);
 
       final result = await loginCommand.run();
       expect(result, equals(ExitCode.success.code));
 
-      verify(() => logger.info('You are already logged in.')).called(1);
+      verify(
+        () => logger.info('You are already logged in as <${user.email}>.'),
+      ).called(1);
       verify(
         () => logger.info("Run 'shorebird logout' to log out and try again."),
       ).called(1);
@@ -61,13 +63,16 @@ void main() {
 
     test('exits with code 0 when logged in successfully', () async {
       when(() => auth.login(any())).thenAnswer((_) async {});
+      when(() => auth.user).thenReturn(user);
 
       final result = await loginCommand.run();
       expect(result, equals(ExitCode.success.code));
 
       verify(() => auth.login(any())).called(1);
       verify(
-        () => logger.info(any(that: contains('You are now logged in.'))),
+        () => logger.info(
+          any(that: contains('You are now logged in as <${user.email}>.')),
+        ),
       ).called(1);
     });
 

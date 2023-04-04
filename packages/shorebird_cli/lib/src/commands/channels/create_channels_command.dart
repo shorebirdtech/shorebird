@@ -37,7 +37,7 @@ class CreateChannelsCommand extends ShorebirdCommand with ShorebirdConfigMixin {
 
   @override
   Future<int>? run() async {
-    if (auth.credentials == null) {
+    if (!auth.isAuthenticated) {
       logger.err('You must be logged in to view channels.');
       return ExitCode.noUser.code;
     }
