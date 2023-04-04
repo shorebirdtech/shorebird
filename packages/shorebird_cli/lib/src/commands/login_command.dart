@@ -18,8 +18,7 @@ class LoginCommand extends ShorebirdCommand {
 
   @override
   Future<int> run() async {
-    final credentials = auth.credentials;
-    if (credentials != null) {
+    if (auth.isAuthenticated) {
       logger
         ..info('You are already logged in.')
         ..info("Run 'shorebird logout' to log out and try again.");
@@ -30,7 +29,7 @@ class LoginCommand extends ShorebirdCommand {
       await auth.login(prompt);
       logger.info('''
 
-🎉 ${lightGreen.wrap('Welcome to Shorebird! You are now logged in.')}
+🎉 ${lightGreen.wrap('Welcome to Shorebird! You are now logged in as <${auth.user!.email}>.')}
 
 🔑 Credentials are stored in ${lightCyan.wrap(auth.credentialsFilePath)}.
 🚪 To logout use: "${lightCyan.wrap('shorebird logout')}".''');

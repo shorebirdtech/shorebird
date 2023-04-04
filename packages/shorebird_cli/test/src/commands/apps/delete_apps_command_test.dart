@@ -7,8 +7,6 @@ import 'package:shorebird_cli/src/commands/commands.dart';
 import 'package:shorebird_code_push_client/shorebird_code_push_client.dart';
 import 'package:test/test.dart';
 
-class _MockAccessCredentials extends Mock implements AccessCredentials {}
-
 class _MockArgResults extends Mock implements ArgResults {}
 
 class _MockHttpClient extends Mock implements http.Client {}
@@ -22,7 +20,6 @@ class _MockLogger extends Mock implements Logger {}
 void main() {
   group('delete', () {
     const appId = 'example';
-    final credentials = _MockAccessCredentials();
 
     late ArgResults argResults;
     late http.Client httpClient;
@@ -48,7 +45,7 @@ void main() {
         logger: logger,
       )..testArgResults = argResults;
 
-      when(() => auth.credentials).thenReturn(credentials);
+      when(() => auth.isAuthenticated).thenReturn(true);
       when(() => auth.client).thenReturn(httpClient);
     });
 
@@ -60,7 +57,7 @@ void main() {
     });
 
     test('returns no user error when not logged in', () async {
-      when(() => auth.credentials).thenReturn(null);
+      when(() => auth.isAuthenticated).thenReturn(false);
       final result = await command.run();
       expect(result, ExitCode.noUser.code);
     });

@@ -8,10 +8,14 @@ class _MockHttpClient extends Mock implements http.Client {}
 
 void main() {
   group('Auth', () {
+    const idToken =
+        '''eyJhbGciOiJSUzI1NiIsImN0eSI6IkpXVCJ9.eyJlbWFpbCI6InRlc3RAZW1haWwuY29tIn0.pD47BhF3MBLyIpfsgWCzP9twzC1HJxGukpcR36DqT6yfiOMHTLcjDbCjRLAnklWEHiT0BQTKTfhs8IousU90Fm5bVKObudfKu8pP5iZZ6Ls4ohDjTrXky9j3eZpZjwv8CnttBVgRfMJG-7YASTFRYFcOLUpnb4Zm5R6QdoCDUYg''';
+    const email = 'test@email.com';
     final credentials = AccessCredentials(
-      AccessToken('Bearer', 'token', DateTime.now().toUtc()),
+      AccessToken('Bearer', 'accessToken', DateTime.now().toUtc()),
       'refreshToken',
       [],
+      idToken: idToken,
     );
 
     late http.Client httpClient;
@@ -47,42 +51,29 @@ void main() {
     });
 
     group('login', () {
-      test('should set the credentials', () async {
+      test('should set the user', () async {
         await auth.login((_) {});
+        expect(auth.user, isA<User>().having((u) => u.email, 'email', email));
+        expect(auth.isAuthenticated, isTrue);
         expect(
-          auth.credentials,
-          isA<AccessCredentials>().having(
-            (c) => c.accessToken.data,
-            'accessToken',
-            credentials.accessToken.data,
-          ),
+          Auth().user,
+          isA<User>().having((u) => u.email, 'email', email),
         );
-        expect(
-          Auth().credentials,
-          isA<AccessCredentials>().having(
-            (c) => c.accessToken.data,
-            'accessToken',
-            credentials.accessToken.data,
-          ),
-        );
+        expect(Auth().isAuthenticated, isTrue);
       });
     });
 
     group('logout', () {
       test('clears session and wipes state', () async {
         await auth.login((_) {});
-        expect(
-          auth.credentials,
-          isA<AccessCredentials>().having(
-            (c) => c.accessToken.data,
-            'accessToken',
-            credentials.accessToken.data,
-          ),
-        );
+        expect(auth.user, isA<User>().having((u) => u.email, 'email', email));
+        expect(auth.isAuthenticated, isTrue);
 
         auth.logout();
-        expect(auth.credentials, isNull);
-        expect(Auth().credentials, isNull);
+        expect(auth.user, isNull);
+        expect(auth.isAuthenticated, isFalse);
+        expect(Auth().user, isNull);
+        expect(Auth().isAuthenticated, isFalse);
       });
     });
 

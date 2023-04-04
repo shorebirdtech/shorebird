@@ -8,16 +8,12 @@ import 'package:shorebird_cli/src/commands/login_command.dart';
 import 'package:shorebird_cli/src/config/config.dart';
 import 'package:test/test.dart';
 
-class _MockAccessCredentials extends Mock implements AccessCredentials {}
-
 class _MockAuth extends Mock implements Auth {}
 
 class _MockLogger extends Mock implements Logger {}
 
 void main() {
   group('login', () {
-    final credentials = _MockAccessCredentials();
-
     late Directory applicationConfigHome;
     late Logger logger;
     late Auth auth;
@@ -34,10 +30,11 @@ void main() {
       when(() => auth.credentialsFilePath).thenReturn(
         p.join(applicationConfigHome.path, 'credentials.json'),
       );
+      when(() => auth.isAuthenticated).thenReturn(false);
     });
 
     test('exits with code 0 when already logged in', () async {
-      when(() => auth.credentials).thenReturn(credentials);
+      when(() => auth.isAuthenticated).thenReturn(true);
 
       final result = await loginCommand.run();
       expect(result, equals(ExitCode.success.code));

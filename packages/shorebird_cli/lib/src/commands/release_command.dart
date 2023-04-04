@@ -71,7 +71,7 @@ make smaller updates to your app.
       return ExitCode.config.code;
     }
 
-    if (auth.credentials == null) {
+    if (!auth.isAuthenticated) {
       logger.err('You must be logged in to release.');
       return ExitCode.noUser.code;
     }
