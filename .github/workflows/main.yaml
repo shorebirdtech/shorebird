@@ -42,6 +42,9 @@ jobs:
             shorebird_code_push_protocol:
               - ./.github/actions/dart_package
               - packages/shorebird_code_push_protocol/**
+            jwt:
+              - ./.github/actions/dart_package
+              - packages/jwt/**
 
       - uses: dorny/paths-filter@v2
         name: Build Detection
