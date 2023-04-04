@@ -77,7 +77,7 @@ void main() {
 
       verify(
         () => logger.info('''
-Shorebird needs your authorization to manage apps, releases, and patches on your behalf.
+The Shorebird CLI needs your authorization to manage apps, releases, and patches on your behalf.
 
 In a browser, visit this URL to log in:
 
