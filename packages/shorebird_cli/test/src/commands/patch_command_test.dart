@@ -8,11 +8,12 @@ import 'package:mason_logger/mason_logger.dart';
 import 'package:mocktail/mocktail.dart';
 import 'package:path/path.dart' as p;
 import 'package:shorebird_cli/src/auth/auth.dart';
-import 'package:shorebird_cli/src/auth/session.dart';
 import 'package:shorebird_cli/src/commands/patch_command.dart';
 import 'package:shorebird_cli/src/config/config.dart';
 import 'package:shorebird_code_push_client/shorebird_code_push_client.dart';
 import 'package:test/test.dart';
+
+class _MockAccessCredentials extends Mock implements AccessCredentials {}
 
 class _FakeBaseRequest extends Fake implements http.BaseRequest {}
 
@@ -32,7 +33,6 @@ class _MockCodePushClient extends Mock implements CodePushClient {}
 
 void main() {
   group('patch', () {
-    const session = Session(apiKey: 'test-api-key');
     const appId = 'test-app-id';
     const version = '1.2.3';
     const arch = 'aarch64';
@@ -76,6 +76,8 @@ flutter:
   assets:
     - shorebird.yaml''';
 
+    final credentials = _MockAccessCredentials();
+
     late ArgResults argResults;
     late Directory applicationConfigHome;
     late Auth auth;
@@ -115,7 +117,10 @@ flutter:
       codePushClient = _MockCodePushClient();
       command = PatchCommand(
         auth: auth,
-        buildCodePushClient: ({required String apiKey, Uri? hostedUri}) {
+        buildCodePushClient: ({
+          required http.Client httpClient,
+          Uri? hostedUri,
+        }) {
           capturedHostedUri = hostedUri;
           return codePushClient;
         },
@@ -140,7 +145,8 @@ flutter:
       when(() => argResults['channel']).thenReturn(channelName);
       when(() => argResults['dry-run']).thenReturn(false);
       when(() => argResults['force']).thenReturn(false);
-      when(() => auth.currentSession).thenReturn(session);
+      when(() => auth.credentials).thenReturn(credentials);
+      when(() => auth.client).thenReturn(httpClient);
       when(() => logger.progress(any())).thenReturn(progress);
       when(
         () => logger.prompt(any(), defaultValue: any(named: 'defaultValue')),
@@ -213,7 +219,7 @@ flutter:
     });
 
     test('throws no user error when session does not exist', () async {
-      when(() => auth.currentSession).thenReturn(null);
+      when(() => auth.credentials).thenReturn(null);
       final tempDir = setUpTempDir();
       final exitCode = await IOOverrides.runZoned(
         () => command.run(),
@@ -226,7 +232,6 @@ flutter:
       when(
         () => codePushClient.downloadEngine(revision: any(named: 'revision')),
       ).thenThrow(Exception('oops'));
-      when(() => auth.currentSession).thenReturn(session);
       final tempDir = setUpTempDir();
       final exitCode = await IOOverrides.runZoned(
         command.run,
@@ -238,7 +243,6 @@ flutter:
     test('exits with code 70 when building fails', () async {
       when(() => flutterBuildProcessResult.exitCode).thenReturn(1);
       when(() => flutterBuildProcessResult.stderr).thenReturn('oops');
-      when(() => auth.currentSession).thenReturn(session);
 
       when(
         () => codePushClient.downloadEngine(revision: any(named: 'revision')),
@@ -260,7 +264,6 @@ flutter:
         'both --dry-run and --force are specified', () async {
       when(() => argResults['dry-run']).thenReturn(true);
       when(() => argResults['force']).thenReturn(true);
-      when(() => auth.currentSession).thenReturn(session);
       final tempDir = setUpTempDir();
       Directory(
         p.join(command.shorebirdEnginePath, 'engine'),

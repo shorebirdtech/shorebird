@@ -24,8 +24,7 @@ class InitCommand extends ShorebirdCommand
 
   @override
   Future<int> run() async {
-    final session = auth.currentSession;
-    if (session == null) {
+    if (auth.credentials == null) {
       logger.err('You must be logged in.');
       return ExitCode.noUser.code;
     }
@@ -56,7 +55,7 @@ Please make sure you are running "shorebird init" from the root of your Flutter 
 
     if (shorebirdYaml != null) {
       final codePushClient = buildCodePushClient(
-        apiKey: session.apiKey,
+        httpClient: auth.client,
         hostedUri: hostedUri,
       );
 

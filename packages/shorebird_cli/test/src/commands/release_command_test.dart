@@ -3,17 +3,21 @@ import 'dart:typed_data';
 
 import 'package:archive/archive.dart';
 import 'package:args/args.dart';
+import 'package:http/http.dart' as http;
 import 'package:mason_logger/mason_logger.dart';
 import 'package:mocktail/mocktail.dart';
 import 'package:path/path.dart' as p;
 import 'package:shorebird_cli/src/auth/auth.dart';
-import 'package:shorebird_cli/src/auth/session.dart';
 import 'package:shorebird_cli/src/commands/commands.dart';
 import 'package:shorebird_cli/src/config/config.dart';
 import 'package:shorebird_code_push_client/shorebird_code_push_client.dart';
 import 'package:test/test.dart';
 
+class _MockAccessCredentials extends Mock implements AccessCredentials {}
+
 class _MockArgResults extends Mock implements ArgResults {}
+
+class _MockHttpClient extends Mock implements http.Client {}
 
 class _MockAuth extends Mock implements Auth {}
 
@@ -27,7 +31,6 @@ class _MockCodePushClient extends Mock implements CodePushClient {}
 
 void main() {
   group('release', () {
-    const session = Session(apiKey: 'test-api-key');
     const appId = 'test-app-id';
     const version = '1.2.3';
     const appDisplayName = 'Test App';
@@ -60,8 +63,11 @@ flutter:
   assets:
     - shorebird.yaml''';
 
+    final credentials = _MockAccessCredentials();
+
     late ArgResults argResults;
     late Directory applicationConfigHome;
+    late http.Client httpClient;
     late Auth auth;
     late Progress progress;
     late Logger logger;
@@ -84,6 +90,7 @@ flutter:
     setUp(() {
       argResults = _MockArgResults();
       applicationConfigHome = Directory.systemTemp.createTempSync();
+      httpClient = _MockHttpClient();
       auth = _MockAuth();
       progress = _MockProgress();
       logger = _MockLogger();
@@ -91,7 +98,10 @@ flutter:
       codePushClient = _MockCodePushClient();
       command = ReleaseCommand(
         auth: auth,
-        buildCodePushClient: ({required String apiKey, Uri? hostedUri}) {
+        buildCodePushClient: ({
+          required http.Client httpClient,
+          Uri? hostedUri,
+        }) {
           capturedHostedUri = hostedUri;
           return codePushClient;
         },
@@ -110,7 +120,8 @@ flutter:
       when(() => argResults.rest).thenReturn([]);
       when(() => argResults['arch']).thenReturn(arch);
       when(() => argResults['platform']).thenReturn(platform);
-      when(() => auth.currentSession).thenReturn(session);
+      when(() => auth.credentials).thenReturn(credentials);
+      when(() => auth.client).thenReturn(httpClient);
       when(() => logger.progress(any())).thenReturn(progress);
       when(() => logger.confirm(any())).thenReturn(true);
       when(
@@ -158,7 +169,7 @@ flutter:
     });
 
     test('throws no user error when session does not exist', () async {
-      when(() => auth.currentSession).thenReturn(null);
+      when(() => auth.credentials).thenReturn(null);
       final tempDir = setUpTempDir();
       final exitCode = await IOOverrides.runZoned(
         () => command.run(),
@@ -171,7 +182,6 @@ flutter:
       when(
         () => codePushClient.downloadEngine(revision: any(named: 'revision')),
       ).thenThrow(Exception('oops'));
-      when(() => auth.currentSession).thenReturn(session);
       final tempDir = setUpTempDir();
       final exitCode = await IOOverrides.runZoned(
         command.run,
@@ -183,8 +193,6 @@ flutter:
     test('exits with code 70 when building fails', () async {
       when(() => processResult.exitCode).thenReturn(1);
       when(() => processResult.stderr).thenReturn('oops');
-      when(() => auth.currentSession).thenReturn(session);
-
       when(
         () => codePushClient.downloadEngine(revision: any(named: 'revision')),
       ).thenAnswer(

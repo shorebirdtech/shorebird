@@ -14,7 +14,6 @@ class _FakeBaseRequest extends Fake implements http.BaseRequest {}
 
 void main() {
   group('CodePushClient', () {
-    const apiKey = 'api-key';
     const appId = 'app-id';
     const displayName = 'shorebird-example';
     const errorResponse = ErrorResponse(
@@ -33,14 +32,11 @@ void main() {
 
     setUp(() {
       httpClient = _MockHttpClient();
-      codePushClient = CodePushClient(
-        apiKey: apiKey,
-        httpClient: httpClient,
-      );
+      codePushClient = CodePushClient(httpClient: httpClient);
     });
 
     test('can be instantiated', () {
-      expect(CodePushClient(apiKey: apiKey), isNotNull);
+      expect(CodePushClient(), isNotNull);
     });
 
     group('CodePushException', () {

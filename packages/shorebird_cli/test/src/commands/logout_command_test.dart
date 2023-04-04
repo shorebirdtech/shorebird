@@ -1,9 +1,10 @@
 import 'package:mason_logger/mason_logger.dart';
 import 'package:mocktail/mocktail.dart';
 import 'package:shorebird_cli/src/auth/auth.dart';
-import 'package:shorebird_cli/src/auth/session.dart';
 import 'package:shorebird_cli/src/commands/logout_command.dart';
 import 'package:test/test.dart';
+
+class _MockAccessCredentials extends Mock implements AccessCredentials {}
 
 class _MockLogger extends Mock implements Logger {}
 
@@ -35,8 +36,8 @@ void main() {
     });
 
     test('exits with code 0 when logged out successfully', () async {
-      const session = Session(apiKey: 'test-api-key');
-      when(() => auth.currentSession).thenReturn(session);
+      final credentials = _MockAccessCredentials();
+      when(() => auth.credentials).thenReturn(credentials);
 
       final progress = _MockProgress();
       when(() => progress.complete(any())).thenAnswer((invocation) {});

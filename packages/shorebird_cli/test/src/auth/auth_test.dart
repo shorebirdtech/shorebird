@@ -1,42 +1,76 @@
+import 'package:googleapis_auth/googleapis_auth.dart';
+import 'package:http/http.dart' as http;
+import 'package:mocktail/mocktail.dart';
 import 'package:shorebird_cli/src/auth/auth.dart';
-import 'package:shorebird_cli/src/auth/session.dart';
 import 'package:test/test.dart';
+
+class _MockHttpClient extends Mock implements http.Client {}
 
 void main() {
   group('Auth', () {
-    const apiKey = 'test-api-key';
+    final credentials = AccessCredentials(
+      AccessToken('bearer', 'token', DateTime.now().toUtc()),
+      'refreshToken',
+      [],
+    );
 
+    late http.Client httpClient;
     late Auth auth;
 
     setUp(() {
-      auth = Auth()..logout();
+      httpClient = _MockHttpClient();
+      auth = Auth(
+        httpClient: httpClient,
+        obtainAccessCredentials: (clientId, scopes, client, userPrompt) async {
+          return credentials;
+        },
+      )..logout();
     });
 
     group('login', () {
-      test('should set the current session', () {
-        auth.login(apiKey: apiKey);
+      test('should set the credentials', () async {
+        await auth.login((_) {});
         expect(
-          auth.currentSession,
-          isA<Session>().having((s) => s.apiKey, 'apiKey', apiKey),
+          auth.credentials,
+          isA<AccessCredentials>().having(
+            (c) => c.accessToken.data,
+            'accessToken',
+            credentials.accessToken.data,
+          ),
         );
         expect(
-          Auth().currentSession,
-          isA<Session>().having((s) => s.apiKey, 'apiKey', apiKey),
+          Auth().credentials,
+          isA<AccessCredentials>().having(
+            (c) => c.accessToken.data,
+            'accessToken',
+            credentials.accessToken.data,
+          ),
         );
       });
     });
 
     group('logout', () {
-      test('clears session and wipes state', () {
-        auth.login(apiKey: apiKey);
+      test('clears session and wipes state', () async {
+        await auth.login((_) {});
         expect(
-          auth.currentSession,
-          isA<Session>().having((s) => s.apiKey, 'apiKey', apiKey),
+          auth.credentials,
+          isA<AccessCredentials>().having(
+            (c) => c.accessToken.data,
+            'accessToken',
+            credentials.accessToken.data,
+          ),
         );
 
         auth.logout();
-        expect(auth.currentSession, isNull);
-        expect(Auth().currentSession, isNull);
+        expect(auth.credentials, isNull);
+        expect(Auth().credentials, isNull);
+      });
+    });
+
+    group('close', () {
+      test('closes the underlying httpClient', () {
+        auth.close();
+        verify(() => httpClient.close()).called(1);
       });
     });
   });

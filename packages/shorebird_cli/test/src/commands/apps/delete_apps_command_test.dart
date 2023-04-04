@@ -1,13 +1,17 @@
 import 'package:args/args.dart';
+import 'package:http/http.dart' as http;
 import 'package:mason_logger/mason_logger.dart';
 import 'package:mocktail/mocktail.dart';
 import 'package:shorebird_cli/src/auth/auth.dart';
-import 'package:shorebird_cli/src/auth/session.dart';
 import 'package:shorebird_cli/src/commands/commands.dart';
 import 'package:shorebird_code_push_client/shorebird_code_push_client.dart';
 import 'package:test/test.dart';
 
+class _MockAccessCredentials extends Mock implements AccessCredentials {}
+
 class _MockArgResults extends Mock implements ArgResults {}
+
+class _MockHttpClient extends Mock implements http.Client {}
 
 class _MockAuth extends Mock implements Auth {}
 
@@ -17,11 +21,11 @@ class _MockLogger extends Mock implements Logger {}
 
 void main() {
   group('delete', () {
-    const apiKey = 'test-api-key';
     const appId = 'example';
-    const session = Session(apiKey: apiKey);
+    final credentials = _MockAccessCredentials();
 
     late ArgResults argResults;
+    late http.Client httpClient;
     late Auth auth;
     late Logger logger;
     late CodePushClient codePushClient;
@@ -29,18 +33,23 @@ void main() {
 
     setUp(() {
       argResults = _MockArgResults();
+      httpClient = _MockHttpClient();
       auth = _MockAuth();
       logger = _MockLogger();
       codePushClient = _MockCodePushClient();
       command = DeleteAppCommand(
         auth: auth,
-        buildCodePushClient: ({required String apiKey, Uri? hostedUri}) {
+        buildCodePushClient: ({
+          required http.Client httpClient,
+          Uri? hostedUri,
+        }) {
           return codePushClient;
         },
         logger: logger,
       )..testArgResults = argResults;
 
-      when(() => auth.currentSession).thenReturn(session);
+      when(() => auth.credentials).thenReturn(credentials);
+      when(() => auth.client).thenReturn(httpClient);
     });
 
     test('returns correct description', () {
@@ -51,7 +60,7 @@ void main() {
     });
 
     test('returns no user error when not logged in', () async {
-      when(() => auth.currentSession).thenReturn(null);
+      when(() => auth.credentials).thenReturn(null);
       final result = await command.run();
       expect(result, ExitCode.noUser.code);
     });

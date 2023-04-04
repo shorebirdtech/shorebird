@@ -35,8 +35,7 @@ Defaults to the name in "pubspec.yaml".''',
 
   @override
   Future<int>? run() async {
-    final session = auth.currentSession;
-    if (session == null) {
+    if (auth.credentials == null) {
       logger.err('You must be logged in.');
       return ExitCode.noUser.code;
     }

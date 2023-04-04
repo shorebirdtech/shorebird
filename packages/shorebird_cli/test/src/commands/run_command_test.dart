@@ -5,17 +5,21 @@ import 'dart:typed_data';
 
 import 'package:archive/archive_io.dart';
 import 'package:args/args.dart';
+import 'package:http/http.dart' as http;
 import 'package:mason_logger/mason_logger.dart';
 import 'package:mocktail/mocktail.dart';
 import 'package:path/path.dart' as p;
 import 'package:shorebird_cli/src/auth/auth.dart';
-import 'package:shorebird_cli/src/auth/session.dart';
 import 'package:shorebird_cli/src/commands/run_command.dart';
 import 'package:shorebird_cli/src/config/config.dart';
 import 'package:shorebird_code_push_client/shorebird_code_push_client.dart';
 import 'package:test/test.dart';
 
+class _MockAccessCredentials extends Mock implements AccessCredentials {}
+
 class _MockArgResults extends Mock implements ArgResults {}
+
+class _MockHttpClient extends Mock implements http.Client {}
 
 class _MockAuth extends Mock implements Auth {}
 
@@ -29,10 +33,11 @@ class _MockCodePushClient extends Mock implements CodePushClient {}
 
 void main() {
   group('run', () {
-    const session = Session(apiKey: 'test-api-key');
+    final credentials = _MockAccessCredentials();
 
     late ArgResults argResults;
     late Directory applicationConfigHome;
+    late http.Client httpClient;
     late Auth auth;
     late Logger logger;
     late Process process;
@@ -42,6 +47,7 @@ void main() {
     setUp(() {
       argResults = _MockArgResults();
       applicationConfigHome = Directory.systemTemp.createTempSync();
+      httpClient = _MockHttpClient();
       auth = _MockAuth();
       logger = _MockLogger();
       process = _MockProcess();
@@ -49,7 +55,10 @@ void main() {
       runCommand = RunCommand(
         auth: auth,
         logger: logger,
-        buildCodePushClient: ({required String apiKey, Uri? hostedUri}) {
+        buildCodePushClient: ({
+          required http.Client httpClient,
+          Uri? hostedUri,
+        }) {
           return codePushClient;
         },
         startProcess: (executable, arguments, {bool runInShell = false}) async {
@@ -60,11 +69,13 @@ void main() {
       testApplicationConfigHome = (_) => applicationConfigHome.path;
 
       when(() => argResults.rest).thenReturn([]);
+      when(() => auth.credentials).thenReturn(credentials);
+      when(() => auth.client).thenReturn(httpClient);
       when(() => logger.progress(any())).thenReturn(_MockProgress());
     });
 
     test('exits with no user when not logged in', () async {
-      when(() => auth.currentSession).thenReturn(null);
+      when(() => auth.credentials).thenReturn(null);
 
       final result = await runCommand.run();
       expect(result, equals(ExitCode.noUser.code));
@@ -77,7 +88,6 @@ void main() {
 
     test('exits with code 70 when downloading engine fails', () async {
       final error = Exception('oops');
-      when(() => auth.currentSession).thenReturn(session);
       when(
         () => codePushClient.downloadEngine(revision: any(named: 'revision')),
       ).thenThrow(error);
@@ -98,7 +108,6 @@ void main() {
     test('exits with code 70 when building the engine fails', () async {
       final tempDir = Directory.systemTemp.createTempSync();
 
-      when(() => auth.currentSession).thenReturn(session);
       when(
         () => codePushClient.downloadEngine(revision: any(named: 'revision')),
       ).thenAnswer((_) async => Uint8List(0));
@@ -126,7 +135,6 @@ void main() {
         ..create(p.join(runCommand.shorebirdEnginePath, 'engine.zip'))
         ..close();
 
-      when(() => auth.currentSession).thenReturn(session);
       when(
         () => codePushClient.downloadEngine(revision: any(named: 'revision')),
       ).thenAnswer((_) async => Uint8List(0));
@@ -159,7 +167,6 @@ void main() {
       Directory(
         p.join(runCommand.shorebirdEnginePath, 'engine'),
       ).createSync(recursive: true);
-      when(() => auth.currentSession).thenReturn(session);
 
       final progress = _MockProgress();
       when(() => logger.progress(any())).thenReturn(progress);

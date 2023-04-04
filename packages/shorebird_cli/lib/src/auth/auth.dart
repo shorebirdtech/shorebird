@@ -1,54 +1,104 @@
 import 'dart:convert';
 import 'dart:io';
 
+import 'package:googleapis_auth/auth_io.dart';
+import 'package:http/http.dart' as http;
 import 'package:path/path.dart' as p;
-import 'package:shorebird_cli/src/auth/session.dart';
 import 'package:shorebird_cli/src/config/config.dart';
 
+export 'package:googleapis_auth/googleapis_auth.dart' show AccessCredentials;
+
+final _clientId = ClientId(
+  /// Shorebird CLI's OAuth 2.0 identifier.
+  '30552215580-6kgm623s9l4te0rd63r18c5u6b6gkts5.apps.googleusercontent.com',
+
+  /// Shorebird CLI's OAuth 2.0 secret.
+  ///
+  /// This isn't actually meant to be kept secret.
+  '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',
+);
+final _scopes = ['openid', 'https://www.googleapis.com/auth/userinfo.email'];
+
+typedef ObtainAccessCredentials = Future<AccessCredentials> Function(
+  ClientId clientId,
+  List<String> scopes,
+  http.Client client,
+  void Function(String) userPrompt,
+);
+
 class Auth {
-  Auth() {
-    _loadSession();
+  Auth({
+    http.Client? httpClient,
+    ObtainAccessCredentials? obtainAccessCredentials,
+  })  : _httpClient = httpClient ?? http.Client(),
+        _obtainAccessCredentials =
+            obtainAccessCredentials ?? obtainAccessCredentialsViaUserConsent {
+    _loadCredentials();
   }
 
-  static const _sessionFileName = 'shorebird-session.json';
-  final sessionFilePath = p.join(shorebirdConfigDir, _sessionFileName);
+  static const _credentialsFileName = 'credentials.json';
 
-  void login({required String apiKey}) {
-    _session = Session(apiKey: apiKey);
-    _flushSession(_session!);
+  final http.Client _httpClient;
+  final ObtainAccessCredentials _obtainAccessCredentials;
+  final credentialsFilePath = p.join(shorebirdConfigDir, _credentialsFileName);
+
+  http.Client get client {
+    if (credentials == null) return _httpClient;
+    return autoRefreshingClient(_clientId, credentials!, _httpClient);
   }
 
-  void logout() => _clearSession();
+  Future<void> login(void Function(String) prompt) async {
+    if (credentials != null) return;
 
-  Session? _session;
+    final client = http.Client();
+    try {
+      _credentials = await _obtainAccessCredentials(
+        _clientId,
+        _scopes,
+        client,
+        prompt,
+      );
+      _flushCredentials(_credentials!);
+    } finally {
+      client.close();
+    }
+  }
 
-  Session? get currentSession => _session;
+  void logout() => _clearCredentials();
 
-  void _loadSession() {
-    final sessionFile = File(sessionFilePath);
+  AccessCredentials? _credentials;
 
-    if (sessionFile.existsSync()) {
+  AccessCredentials? get credentials => _credentials;
+
+  void _loadCredentials() {
+    final credentialsFile = File(credentialsFilePath);
+
+    if (credentialsFile.existsSync()) {
       try {
-        final contents = sessionFile.readAsStringSync();
-        _session = Session.fromJson(
+        final contents = credentialsFile.readAsStringSync();
+        _credentials = AccessCredentials.fromJson(
           json.decode(contents) as Map<String, dynamic>,
         );
       } catch (_) {}
     }
   }
 
-  void _flushSession(Session session) {
-    File(sessionFilePath)
+  void _flushCredentials(AccessCredentials credentials) {
+    File(credentialsFilePath)
       ..createSync(recursive: true)
-      ..writeAsStringSync(json.encode(session.toJson()));
+      ..writeAsStringSync(json.encode(credentials.toJson()));
   }
 
-  void _clearSession() {
-    _session = null;
+  void _clearCredentials() {
+    _credentials = null;
 
-    final sessionFile = File(sessionFilePath);
-    if (sessionFile.existsSync()) {
-      sessionFile.deleteSync(recursive: true);
+    final credentialsFile = File(credentialsFilePath);
+    if (credentialsFile.existsSync()) {
+      credentialsFile.deleteSync(recursive: true);
     }
+  }
+
+  void close() {
+    _httpClient.close();
   }
 }

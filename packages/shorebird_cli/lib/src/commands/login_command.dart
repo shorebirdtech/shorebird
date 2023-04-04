@@ -18,32 +18,37 @@ class LoginCommand extends ShorebirdCommand {
 
   @override
   Future<int> run() async {
-    final session = auth.currentSession;
-    if (session != null) {
+    final credentials = auth.credentials;
+    if (credentials != null) {
       logger
         ..info('You are already logged in.')
         ..info("Run 'shorebird logout' to log out and try again.");
       return ExitCode.success.code;
     }
 
-    final apiKey = logger.prompt(
-      '${lightGreen.wrap('?')} Please enter your API Key:',
-    );
-    final loginProgress = logger.progress('Logging into shorebird.dev');
     try {
-      auth.login(apiKey: apiKey);
-      loginProgress.complete();
+      await auth.login(_prompt);
       logger.info('''
 
 🎉 ${lightGreen.wrap('Welcome to Shorebird! You are now logged in.')}
 
-🔑 Credentials are stored in ${lightCyan.wrap(auth.sessionFilePath)}.
+🔑 Credentials are stored in ${lightCyan.wrap(auth.credentialsFilePath)}.
 🚪 To logout use: "${lightCyan.wrap('shorebird logout')}".''');
       return ExitCode.success.code;
     } catch (error) {
-      loginProgress.fail();
       logger.err(error.toString());
       return ExitCode.software.code;
     }
+  }
+
+  void _prompt(String url) {
+    logger.info('''
+Shorebird needs your authorization to manage apps, releases, and patches on your behalf.
+
+In a browser, visit this URL to log in:
+
+${styleBold.wrap(styleUnderlined.wrap(lightCyan.wrap(url)))}
+
+Waiting for your authorization...''');
   }
 }

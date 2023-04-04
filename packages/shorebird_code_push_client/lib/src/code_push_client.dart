@@ -28,23 +28,18 @@ class CodePushException implements Exception {
 class CodePushClient {
   /// {@macro code_push_client}
   CodePushClient({
-    required String apiKey,
     http.Client? httpClient,
     Uri? hostedUri,
-  })  : _apiKey = apiKey,
-        _httpClient = httpClient ?? http.Client(),
+  })  : _httpClient = httpClient ?? http.Client(),
         hostedUri = hostedUri ?? Uri.https('api.shorebird.dev');
 
   /// The default error message to use when an unknown error occurs.
   static const unknownErrorMessage = 'An unknown error occurred.';
 
-  final String _apiKey;
   final http.Client _httpClient;
 
   /// The hosted uri for the Shorebird CodePush API.
   final Uri hostedUri;
-
-  Map<String, String> get _apiKeyHeader => {'x-api-key': _apiKey};
 
   /// Create a new artifact for a specific [patchId].
   Future<PatchArtifact> createPatchArtifact({
@@ -66,7 +61,6 @@ class CodePushClient {
       'hash': hash,
       'size': '${file.length}',
     });
-    request.headers.addAll(_apiKeyHeader);
     final response = await _httpClient.send(request);
     final body = await response.stream.bytesToString();
 
@@ -95,7 +89,6 @@ class CodePushClient {
       'hash': hash,
       'size': '${file.length}',
     });
-    request.headers.addAll(_apiKeyHeader);
     final response = await _httpClient.send(request);
     final body = await response.stream.bytesToString();
 
@@ -109,7 +102,6 @@ class CodePushClient {
   Future<App> createApp({required String displayName}) async {
     final response = await _httpClient.post(
       Uri.parse('$hostedUri/api/v1/apps'),
-      headers: _apiKeyHeader,
       body: json.encode({'display_name': displayName}),
     );
 
@@ -127,7 +119,6 @@ class CodePushClient {
   }) async {
     final response = await _httpClient.post(
       Uri.parse('$hostedUri/api/v1/channels'),
-      headers: _apiKeyHeader,
       body: json.encode({'app_id': appId, 'channel': channel}),
     );
 
@@ -142,7 +133,6 @@ class CodePushClient {
   Future<Patch> createPatch({required int releaseId}) async {
     final response = await _httpClient.post(
       Uri.parse('$hostedUri/api/v1/patches'),
-      headers: _apiKeyHeader,
       body: json.encode({'release_id': releaseId}),
     );
 
@@ -162,7 +152,6 @@ class CodePushClient {
   }) async {
     final response = await _httpClient.post(
       Uri.parse('$hostedUri/api/v1/releases'),
-      headers: _apiKeyHeader,
       body: json.encode({
         'app_id': appId,
         'version': version,
@@ -181,7 +170,6 @@ class CodePushClient {
   Future<void> deleteApp({required String appId}) async {
     final response = await _httpClient.delete(
       Uri.parse('$hostedUri/api/v1/apps/$appId'),
-      headers: _apiKeyHeader,
     );
 
     if (response.statusCode != HttpStatus.noContent) {
@@ -195,7 +183,6 @@ class CodePushClient {
       'GET',
       Uri.parse('$hostedUri/api/v1/engines/$revision'),
     );
-    request.headers.addAll(_apiKeyHeader);
 
     final response = await _httpClient.send(request);
 
@@ -208,10 +195,7 @@ class CodePushClient {
 
   /// List all apps for the current account.
   Future<List<AppMetadata>> getApps() async {
-    final response = await _httpClient.get(
-      Uri.parse('$hostedUri/api/v1/apps'),
-      headers: _apiKeyHeader,
-    );
+    final response = await _httpClient.get(Uri.parse('$hostedUri/api/v1/apps'));
 
     if (response.statusCode != HttpStatus.ok) {
       throw _parseErrorResponse(response.body);
@@ -229,7 +213,6 @@ class CodePushClient {
       Uri.parse('$hostedUri/api/v1/channels').replace(
         queryParameters: {'appId': appId},
       ),
-      headers: _apiKeyHeader,
     );
 
     if (response.statusCode != HttpStatus.ok) {
@@ -248,7 +231,6 @@ class CodePushClient {
       Uri.parse('$hostedUri/api/v1/releases').replace(
         queryParameters: {'appId': appId},
       ),
-      headers: _apiKeyHeader,
     );
 
     if (response.statusCode != HttpStatus.ok) {
@@ -274,7 +256,6 @@ class CodePushClient {
           'platform': platform,
         },
       ),
-      headers: _apiKeyHeader,
     );
 
     if (response.statusCode != HttpStatus.ok) {
@@ -292,7 +273,6 @@ class CodePushClient {
   }) async {
     final response = await _httpClient.post(
       Uri.parse('$hostedUri/api/v1/patches/promote'),
-      headers: _apiKeyHeader,
       body: json.encode({'patch_id': patchId, 'channel_id': channelId}),
     );
 

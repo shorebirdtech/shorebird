@@ -1,13 +1,17 @@
 import 'package:args/args.dart';
+import 'package:http/http.dart' as http;
 import 'package:mason_logger/mason_logger.dart';
 import 'package:mocktail/mocktail.dart';
 import 'package:shorebird_cli/src/auth/auth.dart';
-import 'package:shorebird_cli/src/auth/session.dart';
 import 'package:shorebird_cli/src/commands/commands.dart';
 import 'package:shorebird_code_push_client/shorebird_code_push_client.dart';
 import 'package:test/test.dart';
 
+class _MockAccessCredentials extends Mock implements AccessCredentials {}
+
 class _MockArgResults extends Mock implements ArgResults {}
+
+class _MockHttpClient extends Mock implements http.Client {}
 
 class _MockAuth extends Mock implements Auth {}
 
@@ -19,12 +23,14 @@ class _MockProgress extends Mock implements Progress {}
 
 void main() {
   group('create', () {
-    const session = Session(apiKey: 'test-api-key');
     const appId = 'test-app-id';
     const channelName = 'my-channel';
     const channel = Channel(id: 0, appId: appId, name: channelName);
 
+    final credentials = _MockAccessCredentials();
+
     late ArgResults argResults;
+    late http.Client httpClient;
     late Auth auth;
     late CodePushClient codePushClient;
     late Logger logger;
@@ -33,13 +39,17 @@ void main() {
 
     setUp(() {
       argResults = _MockArgResults();
+      httpClient = _MockHttpClient();
       auth = _MockAuth();
       codePushClient = _MockCodePushClient();
       logger = _MockLogger();
       progress = _MockProgress();
       command = CreateChannelsCommand(
         auth: auth,
-        buildCodePushClient: ({required String apiKey, Uri? hostedUri}) {
+        buildCodePushClient: ({
+          required http.Client httpClient,
+          Uri? hostedUri,
+        }) {
           return codePushClient;
         },
         logger: logger,
@@ -47,7 +57,8 @@ void main() {
 
       when(() => argResults['app-id']).thenReturn(appId);
       when(() => argResults['name']).thenReturn(channelName);
-      when(() => auth.currentSession).thenReturn(session);
+      when(() => auth.credentials).thenReturn(credentials);
+      when(() => auth.client).thenReturn(httpClient);
       when(() => logger.confirm(any())).thenReturn(true);
       when(() => logger.progress(any())).thenReturn(progress);
     });
@@ -60,7 +71,7 @@ void main() {
     });
 
     test('returns ExitCode.noUser when not logged in', () async {
-      when(() => auth.currentSession).thenReturn(null);
+      when(() => auth.credentials).thenReturn(null);
       expect(await command.run(), ExitCode.noUser.code);
     });
 

@@ -2,6 +2,7 @@ import 'dart:io';
 
 import 'package:args/args.dart';
 import 'package:args/command_runner.dart';
+import 'package:http/http.dart' as http;
 import 'package:mason_logger/mason_logger.dart';
 import 'package:meta/meta.dart';
 import 'package:shorebird_cli/src/auth/auth.dart';
@@ -12,7 +13,7 @@ import 'package:shorebird_code_push_client/shorebird_code_push_client.dart';
 typedef HashFunction = String Function(List<int> bytes);
 
 typedef CodePushClientBuilder = CodePushClient Function({
-  required String apiKey,
+  required http.Client httpClient,
   Uri? hostedUri,
 });
 
