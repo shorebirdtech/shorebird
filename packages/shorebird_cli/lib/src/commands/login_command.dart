@@ -20,7 +20,7 @@ class LoginCommand extends ShorebirdCommand {
   Future<int> run() async {
     if (auth.isAuthenticated) {
       logger
-        ..info('You are already logged in.')
+        ..info('You are already logged in as <${auth.user!.email}>.')
         ..info("Run 'shorebird logout' to log out and try again.");
       return ExitCode.success.code;
     }
