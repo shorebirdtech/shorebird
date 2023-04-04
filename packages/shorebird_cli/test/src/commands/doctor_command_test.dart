@@ -60,7 +60,7 @@ void main() {
         verify(validator.validate).called(1);
       }
       verify(
-        () => logger.info(captureAny(that: contains('No issues detected'))),
+        () => logger.info(any(that: contains('No issues detected'))),
       ).called(1);
     });
 
@@ -87,27 +87,15 @@ void main() {
       }
 
       verify(
-        () => logger.info(
-          captureAny(
-            that: contains('[!] oh no!'),
-          ),
-        ),
+        () => logger.info(any(that: contains('${yellow.wrap('[!]')} oh no!'))),
       ).called(1);
 
       verify(
-        () => logger.info(
-          captureAny(
-            that: contains('[✗] OH NO!'),
-          ),
-        ),
+        () => logger.info(any(that: contains('${red.wrap('[✗]')} OH NO!'))),
       ).called(1);
 
       verify(
-        () => logger.info(
-          captureAny(
-            that: contains('2 issues detected.'),
-          ),
-        ),
+        () => logger.info(any(that: contains('2 issues detected.'))),
       ).called(1);
     });
   });

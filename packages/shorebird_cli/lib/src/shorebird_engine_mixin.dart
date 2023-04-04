@@ -32,7 +32,7 @@ mixin ShorebirdEngineMixin on ShorebirdConfigMixin {
       final engineArchivePath = p.join(tempDir.path, 'engine.zip');
       try {
         final codePushClient = buildCodePushClient(
-          apiKey: auth.currentSession!.apiKey,
+          httpClient: auth.client,
           hostedUri: hostedUri,
         );
         await _downloadShorebirdEngine(codePushClient, engineArchivePath);

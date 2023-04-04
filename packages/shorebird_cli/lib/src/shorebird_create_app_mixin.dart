@@ -20,7 +20,7 @@ mixin ShorebirdCreateAppMixin on ShorebirdConfigMixin {
     }
 
     final client = buildCodePushClient(
-      apiKey: auth.currentSession!.apiKey,
+      httpClient: auth.client,
       hostedUri: hostedUri,
     );
 

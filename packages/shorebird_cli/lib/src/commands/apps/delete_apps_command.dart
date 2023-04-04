@@ -32,8 +32,7 @@ Defaults to the app_id in "shorebird.yaml".''',
 
   @override
   Future<int>? run() async {
-    final session = auth.currentSession;
-    if (session == null) {
+    if (auth.credentials == null) {
       logger.err('You must be logged in.');
       return ExitCode.noUser.code;
     }
@@ -56,7 +55,7 @@ Defaults to the app_id in "shorebird.yaml".''',
     }
 
     final client = buildCodePushClient(
-      apiKey: session.apiKey,
+      httpClient: auth.client,
       hostedUri: hostedUri,
     );
 

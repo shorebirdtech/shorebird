@@ -3,16 +3,20 @@ import 'dart:typed_data';
 
 import 'package:archive/archive_io.dart';
 import 'package:args/args.dart';
+import 'package:http/http.dart' as http;
 import 'package:mason_logger/mason_logger.dart';
 import 'package:mocktail/mocktail.dart';
 import 'package:shorebird_cli/src/auth/auth.dart';
-import 'package:shorebird_cli/src/auth/session.dart';
 import 'package:shorebird_cli/src/commands/build_command.dart';
 import 'package:shorebird_cli/src/config/config.dart';
 import 'package:shorebird_code_push_client/shorebird_code_push_client.dart';
 import 'package:test/test.dart';
 
 class _MockArgResults extends Mock implements ArgResults {}
+
+class _MockAccessCredentials extends Mock implements AccessCredentials {}
+
+class _MockHttpClient extends Mock implements http.Client {}
 
 class _MockAuth extends Mock implements Auth {}
 
@@ -26,10 +30,11 @@ class _MockCodePushClient extends Mock implements CodePushClient {}
 
 void main() {
   group('build', () {
-    const session = Session(apiKey: 'test-api-key');
+    final credentials = _MockAccessCredentials();
 
     late ArgResults argResults;
     late Directory applicationConfigHome;
+    late http.Client httpClient;
     late Auth auth;
     late CodePushClient codePushClient;
     late Logger logger;
@@ -39,13 +44,17 @@ void main() {
     setUp(() {
       applicationConfigHome = Directory.systemTemp.createTempSync();
       argResults = _MockArgResults();
+      httpClient = _MockHttpClient();
       auth = _MockAuth();
       codePushClient = _MockCodePushClient();
       logger = _MockLogger();
       processResult = _MockProcessResult();
       buildCommand = BuildCommand(
         auth: auth,
-        buildCodePushClient: ({required String apiKey, Uri? hostedUri}) {
+        buildCodePushClient: ({
+          required http.Client httpClient,
+          Uri? hostedUri,
+        }) {
           return codePushClient;
         },
         logger: logger,
@@ -61,6 +70,8 @@ void main() {
       testApplicationConfigHome = (_) => applicationConfigHome.path;
 
       when(() => argResults.rest).thenReturn([]);
+      when(() => auth.credentials).thenReturn(credentials);
+      when(() => auth.client).thenReturn(httpClient);
       when(
         () => codePushClient.downloadEngine(revision: any(named: 'revision')),
       ).thenAnswer((_) async => Uint8List.fromList([]));
@@ -68,7 +79,7 @@ void main() {
     });
 
     test('exits with no user when not logged in', () async {
-      when(() => auth.currentSession).thenReturn(null);
+      when(() => auth.credentials).thenReturn(null);
 
       final result = await buildCommand.run();
       expect(result, equals(ExitCode.noUser.code));
@@ -83,7 +94,6 @@ void main() {
       when(
         () => codePushClient.downloadEngine(revision: any(named: 'revision')),
       ).thenThrow(Exception('oops'));
-      when(() => auth.currentSession).thenReturn(session);
 
       final result = await buildCommand.run();
 
@@ -94,7 +104,6 @@ void main() {
       when(() => processResult.exitCode).thenReturn(1);
       when(() => processResult.stderr).thenReturn('oops');
       final tempDir = Directory.systemTemp.createTempSync();
-      when(() => auth.currentSession).thenReturn(session);
       when(
         () => codePushClient.downloadEngine(revision: any(named: 'revision')),
       ).thenAnswer(
@@ -117,7 +126,6 @@ void main() {
       ).thenAnswer(
         (_) async => Uint8List.fromList(ZipEncoder().encode(Archive())!),
       );
-      when(() => auth.currentSession).thenReturn(session);
 
       final result = await IOOverrides.runZoned(
         () async => buildCommand.run(),

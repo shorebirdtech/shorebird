@@ -71,8 +71,7 @@ make smaller updates to your app.
       return ExitCode.config.code;
     }
 
-    final session = auth.currentSession;
-    if (session == null) {
+    if (auth.credentials == null) {
       logger.err('You must be logged in to release.');
       return ExitCode.noUser.code;
     }
@@ -117,7 +116,7 @@ make smaller updates to your app.
     final pubspecYaml = getPubspecYaml()!;
     final shorebirdYaml = getShorebirdYaml()!;
     final codePushClient = buildCodePushClient(
-      apiKey: session.apiKey,
+      httpClient: auth.client,
       hostedUri: hostedUri,
     );
     final version = pubspecYaml.version!;

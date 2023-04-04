@@ -4,21 +4,19 @@ import 'package:mason_logger/mason_logger.dart';
 import 'package:mocktail/mocktail.dart';
 import 'package:path/path.dart' as p;
 import 'package:shorebird_cli/src/auth/auth.dart';
-import 'package:shorebird_cli/src/auth/session.dart';
 import 'package:shorebird_cli/src/commands/login_command.dart';
 import 'package:shorebird_cli/src/config/config.dart';
 import 'package:test/test.dart';
+
+class _MockAccessCredentials extends Mock implements AccessCredentials {}
 
 class _MockAuth extends Mock implements Auth {}
 
 class _MockLogger extends Mock implements Logger {}
 
-class _MockProgress extends Mock implements Progress {}
-
 void main() {
   group('login', () {
-    const apiKey = 'test-api-key';
-    const session = Session(apiKey: apiKey);
+    final credentials = _MockAccessCredentials();
 
     late Directory applicationConfigHome;
     late Logger logger;
@@ -33,14 +31,13 @@ void main() {
 
       testApplicationConfigHome = (_) => applicationConfigHome.path;
 
-      when(() => logger.progress(any())).thenReturn(_MockProgress());
-      when(() => auth.sessionFilePath).thenReturn(
-        p.join(applicationConfigHome.path, 'shorebird-session.json'),
+      when(() => auth.credentialsFilePath).thenReturn(
+        p.join(applicationConfigHome.path, 'credentials.json'),
       );
     });
 
     test('exits with code 0 when already logged in', () async {
-      when(() => auth.currentSession).thenReturn(session);
+      when(() => auth.credentials).thenReturn(credentials);
 
       final result = await loginCommand.run();
       expect(result, equals(ExitCode.success.code));
@@ -53,34 +50,40 @@ void main() {
 
     test('exits with code 70 when error occurs', () async {
       final error = Exception('oops something went wrong!');
-      when(() => logger.prompt(any())).thenReturn(apiKey);
-      when(() => auth.currentSession).thenReturn(null);
-      when(
-        () => auth.login(apiKey: any(named: 'apiKey')),
-      ).thenThrow(error);
+      when(() => auth.login(any())).thenThrow(error);
 
       final result = await loginCommand.run();
       expect(result, equals(ExitCode.software.code));
 
-      verify(() => logger.progress('Logging into shorebird.dev')).called(1);
-      verify(() => auth.login(apiKey: apiKey)).called(1);
+      verify(() => auth.login(any())).called(1);
       verify(() => logger.err(error.toString())).called(1);
     });
 
     test('exits with code 0 when logged in successfully', () async {
-      when(() => logger.prompt(any())).thenReturn(apiKey);
-      when(() => auth.currentSession).thenReturn(null);
-      when(
-        () => auth.login(apiKey: any(named: 'apiKey')),
-      ).thenAnswer((_) async {});
+      when(() => auth.login(any())).thenAnswer((_) async {});
 
       final result = await loginCommand.run();
       expect(result, equals(ExitCode.success.code));
 
-      verify(() => logger.progress('Logging into shorebird.dev')).called(1);
-      verify(() => auth.login(apiKey: apiKey)).called(1);
+      verify(() => auth.login(any())).called(1);
       verify(
         () => logger.info(any(that: contains('You are now logged in.'))),
+      ).called(1);
+    });
+
+    test('prompt is correct', () {
+      const url = 'http://example.com';
+      loginCommand.prompt(url);
+
+      verify(
+        () => logger.info('''
+The Shorebird CLI needs your authorization to manage apps, releases, and patches on your behalf.
+
+In a browser, visit this URL to log in:
+
+${styleBold.wrap(styleUnderlined.wrap(lightCyan.wrap(url)))}
+
+Waiting for your authorization...'''),
       ).called(1);
     });
   });

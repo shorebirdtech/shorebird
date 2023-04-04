@@ -17,6 +17,7 @@ dependencies:
   cli_util: ^0.4.0
   collection: ^1.17.1
   crypto: ^3.0.2
+  googleapis_auth: ^1.4.0
   http: ^0.13.5
   json_annotation: ^4.8.0
   mason_logger: ^0.2.4

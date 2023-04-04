@@ -3,7 +3,7 @@
 import 'package:shorebird_code_push_client/shorebird_code_push_client.dart';
 
 Future<void> main() async {
-  final client = CodePushClient(apiKey: '<API KEY>');
+  final client = CodePushClient();
 
   // Download the latest stable engine revision.
   final engine = await client.downloadEngine(

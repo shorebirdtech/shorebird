@@ -36,14 +36,13 @@ class ListChannelsCommand extends ShorebirdCommand with ShorebirdConfigMixin {
 
   @override
   Future<int>? run() async {
-    final session = auth.currentSession;
-    if (session == null) {
+    if (auth.credentials == null) {
       logger.err('You must be logged in to view channels.');
       return ExitCode.noUser.code;
     }
 
     final client = buildCodePushClient(
-      apiKey: session.apiKey,
+      httpClient: auth.client,
       hostedUri: hostedUri,
     );
 

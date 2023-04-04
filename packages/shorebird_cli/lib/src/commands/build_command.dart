@@ -35,7 +35,7 @@ class BuildCommand extends ShorebirdCommand
 
   @override
   Future<int> run() async {
-    if (auth.currentSession == null) {
+    if (auth.credentials == null) {
       logger
         ..err('You must be logged in to build.')
         ..err("Run 'shorebird login' to log in and try again.");
