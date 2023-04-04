@@ -70,5 +70,21 @@ void main() {
         () => logger.info(any(that: contains('You are now logged in.'))),
       ).called(1);
     });
+
+    test('prompt is correct', () {
+      const url = 'http://example.com';
+      loginCommand.prompt(url);
+
+      verify(
+        () => logger.info('''
+Shorebird needs your authorization to manage apps, releases, and patches on your behalf.
+
+In a browser, visit this URL to log in:
+
+${styleBold.wrap(styleUnderlined.wrap(lightCyan.wrap(url)))}
+
+Waiting for your authorization...'''),
+      ).called(1);
+    });
   });
 }

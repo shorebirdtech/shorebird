@@ -27,7 +27,7 @@ class LoginCommand extends ShorebirdCommand {
     }
 
     try {
-      await auth.login(_prompt);
+      await auth.login(prompt);
       logger.info('''
 
 🎉 ${lightGreen.wrap('Welcome to Shorebird! You are now logged in.')}
@@ -41,7 +41,7 @@ class LoginCommand extends ShorebirdCommand {
     }
   }
 
-  void _prompt(String url) {
+  void prompt(String url) {
     logger.info('''
 Shorebird needs your authorization to manage apps, releases, and patches on your behalf.
 
