@@ -18,7 +18,7 @@ JwtPayload _$JwtPayloadFromJson(Map<String, dynamic> json) => $checkedCreate(
           aud: $checkedConvert('aud', (v) => v as String),
           iss: $checkedConvert('iss', (v) => v as String),
           sub: $checkedConvert('sub', (v) => v as String),
-          authTime: $checkedConvert('auth_time', (v) => v as int),
+          authTime: $checkedConvert('auth_time', (v) => v as int?),
         );
         return val;
       },

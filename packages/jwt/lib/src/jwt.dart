@@ -149,9 +149,13 @@ void _verifyPayload(JwtPayload payload, String issuer, String audience) {
     throw const JwtVerificationFailure('Token issued at a future time.');
   }
 
-  final authTime = DateTime.fromMillisecondsSinceEpoch(payload.authTime * 1000);
-  if (authTime.isAfter(now)) {
-    throw const JwtVerificationFailure('Authenticated at a future time.');
+  if (payload.authTime != null) {
+    final authTime = DateTime.fromMillisecondsSinceEpoch(
+      payload.authTime! * 1000,
+    );
+    if (authTime.isAfter(now)) {
+      throw const JwtVerificationFailure('Authenticated at a future time.');
+    }
   }
 
   if (payload.aud != audience) {

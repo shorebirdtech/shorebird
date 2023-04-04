@@ -14,7 +14,7 @@ class JwtPayload {
     required this.aud,
     required this.iss,
     required this.sub,
-    required this.authTime,
+    this.authTime,
   });
 
   /// Decode a [JwtPayload] from a `Map<String, dynamic>`.
@@ -38,5 +38,5 @@ class JwtPayload {
   final String sub;
 
   /// Time when authentication occurred.
-  final int authTime;
+  final int? authTime;
 }
