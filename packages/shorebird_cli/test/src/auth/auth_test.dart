@@ -74,7 +74,16 @@ void main() {
           obtainAccessCredentials:
               (clientId, scopes, client, userPrompt) async => accessCredentials,
         );
-        await expectLater(auth.login((_) {}), throwsA(isException));
+        await expectLater(
+          auth.login((_) {}),
+          throwsA(
+            isA<Exception>().having(
+              (e) => '$e',
+              'description',
+              'Exception: Missing JWT',
+            ),
+          ),
+        );
         expect(auth.user, isNull);
         expect(auth.isAuthenticated, isFalse);
       });
@@ -86,7 +95,16 @@ void main() {
           obtainAccessCredentials:
               (clientId, scopes, client, userPrompt) async => accessCredentials,
         );
-        await expectLater(auth.login((_) {}), throwsA(isException));
+        await expectLater(
+          auth.login((_) {}),
+          throwsA(
+            isA<Exception>().having(
+              (e) => '$e',
+              'description',
+              'Exception: Invalid JWT',
+            ),
+          ),
+        );
         expect(auth.user, isNull);
         expect(auth.isAuthenticated, isFalse);
       });
@@ -100,7 +118,16 @@ void main() {
           obtainAccessCredentials:
               (clientId, scopes, client, userPrompt) async => accessCredentials,
         );
-        await expectLater(auth.login((_) {}), throwsA(isException));
+        await expectLater(
+          auth.login((_) {}),
+          throwsA(
+            isA<Exception>().having(
+              (e) => '$e',
+              'description',
+              'Exception: Malformed claims',
+            ),
+          ),
+        );
         expect(auth.user, isNull);
         expect(auth.isAuthenticated, isFalse);
       });

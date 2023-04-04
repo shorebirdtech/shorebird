@@ -121,7 +121,11 @@ class Auth {
 
 extension on AccessCredentials {
   User toUser() {
-    final claims = Jwt.decodeClaims(idToken ?? '');
+    final token = idToken;
+
+    if (token == null) throw Exception('Missing JWT');
+
+    final claims = Jwt.decodeClaims(token);
 
     if (claims == null) throw Exception('Invalid JWT');
 
