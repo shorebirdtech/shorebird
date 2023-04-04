@@ -10,7 +10,7 @@ export 'package:googleapis_auth/googleapis_auth.dart' show AccessCredentials;
 
 final _clientId = ClientId(
   /// Shorebird CLI's OAuth 2.0 identifier.
-  '30552215580-6kgm623s9l4te0rd63r18c5u6b6gkts5.apps.googleusercontent.com',
+  '523302233293-eia5antm0tgvek240t46orctktiabrek.apps.googleusercontent.com',
 
   /// Shorebird CLI's OAuth 2.0 secret.
   ///
@@ -22,7 +22,7 @@ final _clientId = ClientId(
   /// anywhere secrecy is required.
   ///
   /// For more info see: https://developers.google.com/identity/protocols/oauth2/native-app
-  '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',
+  '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',
 );
 final _scopes = ['openid', 'https://www.googleapis.com/auth/userinfo.email'];
 
