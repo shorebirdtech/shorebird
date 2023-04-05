@@ -1,5 +1,3 @@
-import 'dart:io';
-
 import 'package:args/args.dart';
 import 'package:args/command_runner.dart';
 import 'package:cli_completion/cli_completion.dart';
@@ -12,13 +10,6 @@ const executableName = 'shorebird';
 const packageName = 'shorebird_cli';
 const description = 'The shorebird command-line tool';
 
-typedef RunProcess = Future<ProcessResult> Function(
-  String executable,
-  List<String> arguments, {
-  bool runInShell,
-  String? workingDirectory,
-});
-
 /// {@template shorebird_cli_command_runner}
 /// A [CommandRunner] for the CLI.
 ///
@@ -30,9 +21,7 @@ class ShorebirdCliCommandRunner extends CompletionCommandRunner<int> {
   /// {@macro shorebird_cli_command_runner}
   ShorebirdCliCommandRunner({
     Logger? logger,
-    RunProcess? runProcess,
   })  : _logger = logger ?? Logger(),
-        _runProcess = runProcess ?? Process.run,
         super(executableName, description) {
     argParser
       ..addFlag(
@@ -63,7 +52,6 @@ class ShorebirdCliCommandRunner extends CompletionCommandRunner<int> {
   void printUsage() => _logger.info(usage);
 
   final Logger _logger;
-  final RunProcess _runProcess;
 
   @override
   Future<int> run(Iterable<String> args) async {
@@ -71,29 +59,6 @@ class ShorebirdCliCommandRunner extends CompletionCommandRunner<int> {
       final topLevelResults = parse(args);
       if (topLevelResults['verbose'] == true) {
         _logger.level = Level.verbose;
-      }
-
-      try {
-        final flutterEngineRevision = await _getFlutterEngineRevision();
-        if (flutterEngineRevision != requiredFlutterEngineRevision) {
-          _logger.err(
-            '''
-Shorebird only works with the latest stable channel at this time.
-
-To use the latest stable channel, run:
-  flutter channel stable
-  flutter upgrade
-
-If you believe you're already on the latest stable channel, please ask on Discord, we're happy to help!
-
-Required engine revision: "$requiredFlutterEngineRevision"
-Detected engine revision: "$flutterEngineRevision"''',
-          );
-          return ExitCode.software.code;
-        }
-      } catch (error) {
-        _logger.err('Failed to get Flutter engine revision.\n$error');
-        return ExitCode.software.code;
       }
 
       return await runCommand(topLevelResults) ?? ExitCode.success.code;
@@ -140,22 +105,5 @@ Shorebird Engine • revision $shorebirdEngineRevision''',
     }
 
     return exitCode;
-  }
-
-  Future<String> _getFlutterEngineRevision() async {
-    final result = await _runProcess(
-      'flutter',
-      ['--version'],
-      runInShell: true,
-    );
-    if (result.exitCode != 0) throw Exception('${result.stderr}');
-
-    final output = result.stdout as String;
-    final regexp = RegExp(r'Engine • revision (.*?$)', multiLine: true);
-    final flutterEngineRevision = regexp.firstMatch(output)?.group(1);
-    if (flutterEngineRevision == null) {
-      throw Exception('Unable to determine the Flutter engine revision.');
-    }
-    return flutterEngineRevision;
   }
 }

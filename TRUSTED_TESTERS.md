@@ -74,18 +74,7 @@ No support for:
 
 ## Installing Shorebird command line
 
-These instructions assume you already have Flutter installed on the machine
-and `flutter` and `dart` in your path:
-https://docs.flutter.dev/get-started/install
-
-Shorebird also currently only works with the latest Flutter stable version:
-
-```
-flutter channel stable
-flutter upgrade
-```
-
-Once you have Flutter installed, the next is to install the `shorebird` command-line tool.
+Install the `shorebird` command-line tool by running the following command:
 
 ```bash
 curl --proto '=https' --tlsv1.2 https://raw.githubusercontent.com/shorebirdtech/install/main/install.sh -sSf | sh

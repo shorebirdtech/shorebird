@@ -1,16 +1,9 @@
 import 'dart:convert';
-import 'dart:io';
 
 import 'package:mason_logger/mason_logger.dart';
 import 'package:shorebird_cli/src/command.dart';
 import 'package:shorebird_cli/src/shorebird_config_mixin.dart';
 import 'package:shorebird_cli/src/shorebird_engine_mixin.dart';
-
-typedef StartProcess = Future<Process> Function(
-  String executable,
-  List<String> arguments, {
-  bool runInShell,
-});
 
 /// {@template run_command}
 /// `shorebird run`
