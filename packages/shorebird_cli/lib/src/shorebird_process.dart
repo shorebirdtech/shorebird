@@ -57,9 +57,11 @@ abstract class ShorebirdProcess {
   }
 }
 
+// coverage:ignore-start
 @visibleForTesting
 class ProcessWrapper {
   RunProcess get run => Process.run;
 
   StartProcess get start => Process.start;
 }
+// coverage:ignore-end
