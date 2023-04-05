@@ -78,10 +78,7 @@ nothing to commit, working tree clean
     });
 
     test('returns no issues when the Flutter install is good', () async {
-      final results = await IOOverrides.runZoned(
-        () async => validator.validate(),
-        getCurrentDirectory: () => tempDir,
-      );
+      final results = await validator.validate();
 
       expect(results, isEmpty);
     });
@@ -100,10 +97,7 @@ nothing to commit, working tree clean
       when(() => gitStatusProcessResult.stdout)
           .thenReturn('Changes not staged for commit');
 
-      final results = await IOOverrides.runZoned(
-        () async => validator.validate(),
-        getCurrentDirectory: () => tempDir,
-      );
+      final results = await validator.validate();
 
       expect(results, hasLength(1));
       expect(results.first.severity, ValidationIssueSeverity.warning);
@@ -116,10 +110,7 @@ nothing to commit, working tree clean
   stable
 ''');
 
-      final results = await IOOverrides.runZoned(
-        () async => validator.validate(),
-        getCurrentDirectory: () => tempDir,
-      );
+      final results = await validator.validate();
 
       expect(results, hasLength(1));
       expect(results.first.severity, ValidationIssueSeverity.warning);
