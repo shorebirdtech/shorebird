@@ -28,71 +28,7 @@ void main() {
         'Engine • revision $requiredFlutterEngineRevision',
       );
 
-      commandRunner = ShorebirdCliCommandRunner(
-        logger: logger,
-        runProcess: (
-          executable,
-          arguments, {
-          bool runInShell = false,
-          String? workingDirectory,
-        }) async {
-          return processResult;
-        },
-      );
-    });
-
-    test('exits when Flutter is not installed', () async {
-      const error = 'oops something went wrong';
-      when(() => processResult.exitCode).thenReturn(1);
-      when(() => processResult.stderr).thenReturn(error);
-
-      final result = await commandRunner.run(['--version']);
-      expect(result, equals(ExitCode.software.code));
-      verify(() => logger.err(any(that: contains(error)))).called(1);
-    });
-
-    test('exits when unable to detect the Flutter engine revision', () async {
-      when(() => processResult.exitCode).thenReturn(0);
-      when(() => processResult.stdout).thenReturn(
-        '''
-Flutter 3.7.7 • channel stable •
-Framework • revision 2ad6cd72c0 (12 days ago) • 2023-03-08 09:41:59 -0800
-Tools • Dart 2.19.4 • DevTools 2.20.1
-''',
-      );
-
-      final result = await commandRunner.run(['--version']);
-      expect(result, equals(ExitCode.software.code));
-      verify(
-        () => logger.err(
-          any(
-            that: contains('Unable to determine the Flutter engine revision.'),
-          ),
-        ),
-      ).called(1);
-    });
-
-    test('exits when there is an incompatible Flutter engine', () async {
-      when(() => processResult.stdout).thenReturn(
-        '''
-Flutter 3.7.7 • channel stable •
-Framework • revision 2ad6cd72c0 (12 days ago) • 2023-03-08 09:41:59 -0800
-Engine • revision 639e313f99
-Tools • Dart 2.19.4 • DevTools 2.20.1
-''',
-      );
-
-      final result = await commandRunner.run(['--version']);
-      expect(result, equals(ExitCode.software.code));
-      verify(
-        () => logger.err(
-          any(
-            that: contains(
-              '''Shorebird only works with the latest stable channel at this time.''',
-            ),
-          ),
-        ),
-      ).called(1);
+      commandRunner = ShorebirdCliCommandRunner(logger: logger);
     });
 
     test('can be instantiated without an explicit analytics/logger instance',

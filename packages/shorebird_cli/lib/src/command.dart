@@ -6,7 +6,7 @@ import 'package:http/http.dart' as http;
 import 'package:mason_logger/mason_logger.dart';
 import 'package:meta/meta.dart';
 import 'package:shorebird_cli/src/auth/auth.dart';
-import 'package:shorebird_cli/src/command_runner.dart';
+import 'package:shorebird_cli/src/shorebird_process.dart';
 import 'package:shorebird_code_push_client/shorebird_code_push_client.dart';
 
 /// Signature for a function which takes a list of bytes and returns a hash.
@@ -32,8 +32,8 @@ abstract class ShorebirdCommand extends Command<int> {
     StartProcess? startProcess,
   })  : auth = auth ?? Auth(),
         buildCodePushClient = buildCodePushClient ?? CodePushClient.new,
-        runProcess = runProcess ?? Process.run,
-        startProcess = startProcess ?? Process.start;
+        runProcess = runProcess ?? ShorebirdProcess.run,
+        startProcess = startProcess ?? ShorebirdProcess.start;
 
   final Auth auth;
   final CodePushClientBuilder buildCodePushClient;

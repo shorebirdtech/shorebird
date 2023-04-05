@@ -8,6 +8,17 @@ set -e
 # Needed because if it is set, cd may print the path it changed to.
 unset CDPATH
 
+# Either clones or pulls the Shorebird Flutter repository, depending on whether FLUTTER_PATH exists.
+function update_flutter {
+  # TODO(bryanoltman): add doctor check that we're on stable
+  # TODO(bryanoltman): add doctor check for modified files
+  if [[ -d "$FLUTTER_PATH" ]]; then
+    git --git-dir="$FLUTTER_PATH/.git" pull
+  else
+    git clone --filter=tree:0 https://github.com/shorebirdtech/flutter.git -b stable "$FLUTTER_PATH"
+  fi
+}
+
 function pub_upgrade_with_retry {
   local total_tries="10"
   local remaining_tries=$((total_tries - 1))
@@ -126,6 +137,9 @@ function upgrade_shorebird () (
       exit $?
     fi
 
+    >&2 echo Updating Flutter...
+    update_flutter
+
     >&2 echo Building Shorebird...
 
     # Prepare packages...
@@ -170,6 +184,7 @@ function shared::execute() {
   SNAPSHOT_PATH="$SHOREBIRD_ROOT/bin/cache/shorebird.snapshot"
   STAMP_PATH="$SHOREBIRD_ROOT/bin/cache/shorebird.stamp"
   SCRIPT_PATH="$SHOREBIRD_CLI_DIR/bin/shorebird.dart"
+  FLUTTER_PATH="$SHOREBIRD_ROOT/bin/cache/flutter"
 
   # Test if running as superuser – but don't warn if running within Docker or CI.
   if [[ "$EUID" == "0" && ! -f /.dockerenv && "$CI" != "true" && "$BOT" != "true" && "$CONTINUOUS_INTEGRATION" != "true" ]]; then
