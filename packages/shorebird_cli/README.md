@@ -78,6 +78,21 @@ shorebird logout
 ✓ Logging out of shorebird.dev (1ms)
 ```
 
+### Account
+
+To see information about your Shorebird account, use the `shorebird account` command.
+
+```bash
+shorebird account
+```
+
+**Sample**
+
+```
+$ shorebird account
+You are logged in as <bryan@shorebird.dev>
+```
+
 ### Doctor
 
 To check your environment for common issues, use the `shorebird doctor` command.
@@ -90,9 +105,12 @@ shorebird doctor
 
 ```
 $ shorebird doctor
-Doctor summary
 
 Shorebird v0.0.3
+
+✓ Shorebird is up-to-date (0.7s)
+✓ Flutter install is correct (0.1s)
+✓ AndroidManifest.xml files contain INTERNET permission (26ms)
 
 No issues detected!
 ```
