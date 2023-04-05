@@ -7,8 +7,10 @@ class ShorebirdFlutterValidator extends DoctorValidator {
 
   final RunProcess runProcess;
 
+  // coverage:ignore-start
   @override
   String get description => 'Flutter install is correct';
+  // coverage:ignore-end
 
   @override
   Future<List<ValidationIssue>> validate() async {
