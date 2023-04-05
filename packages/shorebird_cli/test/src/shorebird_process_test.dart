@@ -47,31 +47,58 @@ void main() {
 
     group('run', () {
       test('forwards non-flutter executables to Process.run', () async {
-        await ShorebirdProcess.run('git', ['pull']);
+        await ShorebirdProcess.run(
+          'git',
+          ['pull'],
+          runInShell: true,
+          workingDirectory: '~',
+        );
 
-        verify(() => processWrapper.run('git', ['pull'])).called(1);
+        verify(
+          () => processWrapper.run(
+            'git',
+            ['pull'],
+            runInShell: true,
+            workingDirectory: '~',
+          ),
+        ).called(1);
       });
 
       test('replaces "flutter" with our local flutter', () async {
-        await ShorebirdProcess.run('flutter', ['--version']);
+        await ShorebirdProcess.run(
+          'flutter',
+          ['--version'],
+          runInShell: true,
+          workingDirectory: '~',
+        );
 
-        verify(() => processWrapper.run('flutter/bin/flutter', ['--version']))
-            .called(1);
+        verify(
+          () => processWrapper.run(
+            'flutter/bin/flutter',
+            ['--version'],
+            runInShell: true,
+            workingDirectory: '~',
+          ),
+        ).called(1);
       });
     });
 
     group('start', () {
       test('forwards non-flutter executables to Process.run', () async {
-        await ShorebirdProcess.start('git', ['pull']);
+        await ShorebirdProcess.start('git', ['pull'], runInShell: true);
 
-        verify(() => processWrapper.start('git', ['pull'])).called(1);
+        verify(() => processWrapper.start('git', ['pull'], runInShell: true))
+            .called(1);
       });
 
       test('replaces "flutter" with our local flutter', () async {
-        await ShorebirdProcess.start('flutter', ['run']);
+        await ShorebirdProcess.start('flutter', ['run'], runInShell: true);
 
-        verify(() => processWrapper.start('flutter/bin/flutter', ['run']))
-            .called(1);
+        verify(() => processWrapper.start(
+              'flutter/bin/flutter',
+              ['run'],
+              runInShell: true,
+            )).called(1);
       });
     });
   });
