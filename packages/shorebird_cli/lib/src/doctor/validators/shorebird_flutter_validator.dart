@@ -1,5 +1,3 @@
-import 'dart:io';
-
 import 'package:shorebird_cli/src/doctor/doctor_validator.dart';
 import 'package:shorebird_cli/src/shorebird_paths.dart';
 import 'package:shorebird_cli/src/shorebird_process.dart';
