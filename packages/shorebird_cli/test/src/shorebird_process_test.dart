@@ -21,7 +21,7 @@ void main() {
       runProcessResult = _MockProcessResult();
       startProcess = _MockProcess();
 
-      ShorebirdProcess.processWrapper = _MockProcessWrapper();
+      ShorebirdProcess.processWrapper = processWrapper;
 
       when(() => processWrapper.run).thenReturn(
         (
