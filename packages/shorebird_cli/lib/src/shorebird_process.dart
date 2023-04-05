@@ -50,7 +50,7 @@ abstract class ShorebirdProcess {
 
   static String _resolveExecutable(String executable) {
     if (executable == 'flutter') {
-      return ShorebirdPaths.flutterBinaryPath;
+      return ShorebirdPaths.flutterBinaryFile.path;
     }
 
     return executable;

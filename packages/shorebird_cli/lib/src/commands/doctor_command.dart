@@ -23,6 +23,7 @@ class DoctorCommand extends ShorebirdCommand with ShorebirdVersionMixin {
           ShorebirdVersionValidator(
             isShorebirdVersionCurrent: isShorebirdVersionCurrent,
           ),
+          ShorebirdFlutterValidator(runProcess: runProcess),
           AndroidInternetPermissionValidator(),
         ];
   }

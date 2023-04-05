@@ -94,11 +94,13 @@ void main() {
       test('replaces "flutter" with our local flutter', () async {
         await ShorebirdProcess.start('flutter', ['run'], runInShell: true);
 
-        verify(() => processWrapper.start(
-              'flutter/bin/flutter',
-              ['run'],
-              runInShell: true,
-            )).called(1);
+        verify(
+          () => processWrapper.start(
+            'flutter/bin/flutter',
+            ['run'],
+            runInShell: true,
+          ),
+        ).called(1);
       });
     });
   });
