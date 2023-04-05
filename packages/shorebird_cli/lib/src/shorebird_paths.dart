@@ -11,7 +11,7 @@ abstract class ShorebirdPaths {
   /// The root directory of the Shorebird install.
   ///
   /// Assumes we are running from $ROOT/bin/cache.
-  static Directory shorebirdRoot =
+  static Directory get shorebirdRoot =>
       File(platform.script.toFilePath()).parent.parent.parent;
 
   /// The root of the Shorebird-vended Flutter git checkout.
