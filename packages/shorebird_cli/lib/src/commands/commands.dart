@@ -1,3 +1,4 @@
+export 'account_command.dart';
 export 'apps/apps.dart';
 export 'build_command.dart';
 export 'channels/channels.dart';
