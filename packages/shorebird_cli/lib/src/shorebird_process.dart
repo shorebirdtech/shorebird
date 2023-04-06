@@ -53,13 +53,22 @@ abstract class ShorebirdProcess {
   static Future<Process> start(
     String executable,
     List<String> argument, {
+    Map<String, String>? environment,
     bool runInShell = false,
     bool useVendedFlutter = true,
   }) {
+    final resolvedEnvironment = environment ?? {};
+    if (useVendedFlutter) {
+      resolvedEnvironment.addAll(
+        _environmentOverrides(executable: executable),
+      );
+    }
+
     return processWrapper.start(
       useVendedFlutter ? _resolveExecutable(executable) : executable,
       argument,
       runInShell: runInShell,
+      environment: resolvedEnvironment,
     );
   }
 
