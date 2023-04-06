@@ -114,27 +114,21 @@ on top of old_* to be on top of new_*.  e.g.
 `git rebase --onto new_flutter old_flutter stable_codepush`
 
 In addition to doing the rebasing we also need to go through and update the version
-numbers in the various places.  e.g. in the engine repo, we need to update
-the new forked buildroot version number in `DEPS`, similarly in the flutter
-repo we need to update the engine version number in `bin/internal/engine.version`
-and finally in the shorebird CLI we need to update the version number in
-https://github.com/shorebirdtech/shorebird/blob/main/packages/shorebird_cli/lib/src/engine_revision.dart
+numbers in the various places.  We can do both in a single pass.
 
-We can do both in a single pass.
-
-8. Based on the above, we don't need to do anything for buildroot this time,
+8. buildroot: Based on the above, we don't need to do anything for buildroot this time,
 but do need to rebase the engine and flutter repos.
 
-9. But we do need to move our engine fork:
+9. engine: But we do need to move our engine fork:
 `git rebase --onto 3.7.10 3.7.8 stable_codepush`
 And save off that hash:
 `git rev-parse stable_codepush`
 978a56f2d97f9ce24a2b6bc22c9bbceaaba0343c
 
 We do not need to update our engine fork commits at this time since it already
-pointed to the (unchanged) forked buildroot in DEPS.
+pointed to the (unchanged) forked buildroot in `DEPS`.
 
-10. Then we need to move our flutter fork.
+10. flutter: Then we need to move our flutter fork.
 Our flutter fork currently uses the `stable` channel instead of stable_codepush
 we should eventually standardize on across all the repos on something.
 
@@ -154,22 +148,26 @@ Again we should save off our new hash:
 `git rev-parse stable`
 7712d0d30a6e85eace6c1a886d4ae4f7938c3d6e
 
-11.  Finally we need to update the shorebird cli itself.
+11.  Finally we need to update the shorebird cli itself.  Currently located at:
+https://github.com/shorebirdtech/shorebird/blob/main/packages/shorebird_cli/lib/src/engine_revision.dart
 
+12. If there were changes to the `patch` binary in the `updater` library we
+will need to tigger github actions before we can publish the new version of
+the shorebird engine.
 
-
-Before we can publish the new version of Shorebird, we need to build the
+13. Before we can publish the new version of Shorebird, we need to build the
 engine for all the platforms we support.  We do that by running the
-`build_and_upload.sh` script in the build_engine repo.  That script should
-be run in the cloud, but right now I've not figured that out yet, so we run
-it locally on an arm64 Mac.
+`build_and_upload.sh` script in the build_engine repo.
 
-Once we've built all artifacts we need to teach the artifact_proxy how to
+```
+./build_engine/build_engine/build_and_upload.sh ./engine 978a56f2d97f9ce24a2b6bc22c9bbceaaba0343c  
+```
+
+That script should be run in the cloud, but right now I've not figured that out
+yet, so we run it locally on an arm64 Mac.
+
+13. Once we've built all artifacts we need to teach the artifact_proxy how to
 serve them.  We do that by adding entries to:
 https://github.com/shorebirdtech/shorebird/blob/main/packages/artifact_proxy/lib/config.dart
-
-Additionally, that script currently depends on the `updater` repo already
-having published the new version of the `patch` binaries as it will download
-those from GitHub releases.
 
 Obviously all this needs to be made better/automated.
