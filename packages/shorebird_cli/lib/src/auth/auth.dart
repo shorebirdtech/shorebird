@@ -36,8 +36,8 @@ typedef ObtainAccessCredentials = Future<AccessCredentials> Function(
 );
 
 class AuthenticatedClient extends http.BaseClient {
-  AuthenticatedClient({required this.token, http.Client? httpClient})
-      : _baseClient = httpClient ?? http.Client();
+  AuthenticatedClient({required this.token, required http.Client httpClient})
+      : _baseClient = httpClient;
 
   final http.Client _baseClient;
   final String token;
