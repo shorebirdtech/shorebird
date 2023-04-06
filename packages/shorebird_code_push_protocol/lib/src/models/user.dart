@@ -8,7 +8,7 @@ part 'user.g.dart';
 @JsonSerializable()
 class User {
   /// {@macro user}
-  const User({required this.id});
+  const User({required this.id, this.hasActiveSubscription = false});
 
   /// Converts a Map<String, dynamic> to a [User]
   factory User.fromJson(Map<String, dynamic> json) => _$UserFromJson(json);
@@ -18,4 +18,7 @@ class User {
 
   /// The unique user identifier.
   final int id;
+
+  /// Whether the user has an active subscription.
+  final bool hasActiveSubscription;
 }
