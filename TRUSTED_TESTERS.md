@@ -13,9 +13,6 @@ https://forms.gle/T7x5h5bb6bMBB7hUA
 If you're joining the trusted tester program, welcome! Thank you for your help
 making Shorebird a reality.
 
-You should have received an API key in the mail. You will need it as part
-of the login process for the `shorebird` command-line tool to work.
-
 ## Our goal
 
 Our goal with this Trusted Tester program is to shake out bugs and ensure that
@@ -28,18 +25,15 @@ your feedback.
 Filing [issues](https://github.com/shorebirdtech/shorebird/issues) is a good way
 to provide feedback. Feedback via Discord is also welcome.
 
-Our guiding principle in creating this first release has been "first, do no harm".
+Our guiding principle for these early days is "first, do no harm".
 It should be the case that using Shorebird is never worse than not using Shorebird.
-It is still possible using this early version of Shorebird could break your app in
+It is still possible using early versions of Shorebird could break your app in
 the wild. If you believe that's the case, please reach out, we're here to help.
 
 ## What works today
 
-You can build and deploy new (release) versions of your app to all Android arm64
-users ([issue](https://github.com/shorebirdtech/shorebird/issues/119)) via
-`shorebird` command line from an arm64 Mac (M1 or M2,
-[issue](https://github.com/shorebirdtech/shorebird/issues/37))
-computer.
+You can build and deploy new (release) versions of your app to all Android
+users via `shorebird` command line from a Mac, Linux or Windows host.
 
 All users will synchronously update to the new version on next launch
 (no control over this behavior yet,
@@ -54,14 +48,9 @@ https://github.com/shorebirdtech/shorebird/tree/main/packages/shorebird_cli
 
 ## What doesn't yet
 
-Limited platform support:
-
-- Only Arm64 platform, no non-Android or non-arm64 support.
-- Windows, Linux ([issue](https://github.com/shorebirdtech/shorebird/issues/37))
-
 No support for:
 
-- Flutter channels (only latest stable is supported)
+- Flutter channels (only latest stable 3.7.10 is supported)
 - Rollbacks ([issue](https://github.com/shorebirdtech/shorebird/issues/126))
 - Shorebird channels (staged rollouts of patches) [issue](https://github.com/shorebirdtech/shorebird/issues/110)
 - Percentage based rollouts
@@ -70,7 +59,6 @@ No support for:
 - Web interface
 - CI/CD (GitHub Actions, etc.) integration
 - Patch signing [issue](https://github.com/shorebirdtech/shorebird/issues/112)
-- Sign-in via something other than an API key (e.g. OAuth) [issue](https://github.com/shorebirdtech/shorebird/issues/133)
 
 ## Installing Shorebird command line
 
@@ -80,19 +68,23 @@ Install the `shorebird` command-line tool by running the following command:
 curl --proto '=https' --tlsv1.2 https://raw.githubusercontent.com/shorebirdtech/install/main/install.sh -sSf | sh
 ```
 
+This installs `shorebird` into `~/.shorebird/bin` and adds it to your path.
+It also installs a copy of Flutter and Dart inside `~/.shorebird/bin/cache/flutter`.
+These versions are not intended to be used for development (yet), you can
+continue to use the versions of Flutter and Dart you already have installed.
+
+The total install is about 300mb.
+
 More information: https://github.com/shorebirdtech/install/blob/main/README.md
 
 ## Using Shorebird code push
 
-The first use-case we're targeting is one of deploying updates to a small
-set of users. If you already have a Flutter app with a small install base, you
-can convert it to Shorebird in a few steps:
+If you already have a Flutter app, you can build it with Shorebird in a few steps:
 
-1. The first step to using Shorebird is to login. `shorebird login` will prompt
-   for your API key, which you should have recieved in email. Many `shorebird`
-   commands do not require login, but it's best to just do it first to avoid
-   unexpected errors later. Your login credentials are stored in
-   `~/Library/Application Support/shorebird/shorebird-session.json`.
+1. The first step is to login. `shorebird login` will prompt you with a Google
+   OAuth sign-in link.  Not all `shorebird`
+   commands require login, but it's best to just do it first to avoid
+   unexpected errors later.
 
 2. Once you're logged in, you can use `shorebird init`. This needs to be run
    within the directory of your Flutter app, it reads and writes your `pubspec.yaml`
@@ -116,8 +108,8 @@ If you don't want to try this on your main application yet, any Flutter app,
 including the default Flutter counter works too, e.g.
 
 ```
-flutter create shorebird_test
-cd shorebird_test
+% flutter create shorebird_test
+% cd shorebird_test
 % shorebird init
 ? How should we refer to this app? (shorebird_test) shorebird_test
 ✓ Initialized Shorebird (38ms)
@@ -156,6 +148,25 @@ app to be able to communicate with the Shorebird servers to pull new patches.
 </manifest>
 ```
 
+Running `shorbird doctor` will check that your `AndroidManifest.xml` file
+is set up correctly.
+
+## Shorebird's fork of Flutter
+
+`shorebird` uses a fork of Flutter that includes the Shorebird updater.
+This fork is currently based on Flutter 3.7.10.
+We replace a few of the Flutter engine files with our own.  To do that, we use
+FLUTTER_STORAGE_BASE_URL to point to download.shorebird.dev instead of
+download.flutter.dev.  We pass through unmodified output from the `flutter`
+tool so you will see a warning from Flutter:
+
+```
+Flutter assets will be downloaded from http://download.shorebird.dev. Make sure you trust this source!
+```
+
+For more information about why we had to fork Flutter see:
+(FORKING_FLUTTER.md)[FORKING_FLUTTER.md].
+
 ## Running your Shorebird-built app
 
 You can use `shorebird run` to build and run your app on a connected
@@ -169,9 +180,6 @@ To pass arguments to the underlying `flutter run` use a `--` separator. For exam
 During this trusted tester period, you will likely see several logs from the
 shorebird updater. These are for debugging in case you have trouble
 and will be removed/silenced in future iterations.
-
-Note: The first time you run `shorebird run` it will need to download the Shorebird
-engine into `Library/Application Support/shorebird/engines` directory within your project. This is about ~200mb in download (we can make it much smaller, just haven't yet) and can take several seconds depending on your internet connection.
 
 Example:
 
@@ -230,7 +238,10 @@ to your app, as I had forgotten when running my example above.
 
 ## Creating a release
 
-Before you can start uploading patches, you will need to create a release. Creating a release builds and submits your app to Shorebird. Shorebird saves the compiled Dart code from your application in order to make patches smaller in size.
+Before you can start uploading patches, you will need to create a release.
+Creating a release builds and submits your app to Shorebird. Shorebird saves the
+compiled Dart code from your application in order to make patches smaller in
+size.
 
 Example:
 
@@ -296,18 +307,32 @@ Would you like to continue? (y/N) Yes
 ✅ Published Patch!
 ```
 
-This will generate a new patch for your app and upload it to the Shorebird servers for distribution to all other copies of your app. For example, you could try `shorebird run` to run and install your app, and then stop it. Make edits and `shorebird patch` and then run the app again directly (by clicking on it, without using `shorebird run`) and you should notice that it updates to the latest built and published version rather than using the previously installed version.
+This will generate a new patch for your app and upload it to the Shorebird
+servers for distribution to all other copies of your app. For example, you could
+try `shorebird run` to run and install your app, and then stop it. Make edits
+and `shorebird patch` and then run the app again directly (by clicking on it,
+without using `shorebird run`) and you should notice that it updates to the
+latest built and published version rather than using the previously installed
+version.
 
-The current `shorebird patch` flow is not how we envision Shorebird being used longer term (e.g one might push a git hash to a CI/CD system, which would then publish it to Shorebird). However, it's the simplest thing to do for now.
+The current `shorebird patch` flow is not how we envision Shorebird being used
+longer term (e.g one might push a git hash to a CI/CD system, which would then
+publish it to Shorebird). However, it's the simplest thing to do for now.
 
 Note that you can only publish a patch to an app that you have already told
-shorebird about. This is normally done by `shorebird init` + `shorebird release`. If needed you can also create an app via `shorebird apps create` and modify the `shorebird.yaml` directly yourself, see: https://github.com/shorebirdtech/shorebird/tree/main/packages/shorebird_cli#create-app
+shorebird about. This is normally done by `shorebird init` + `shorebird
+release`. If needed you can also create an app via `shorebird apps create` and
+modify the `shorebird.yaml` directly yourself, see:
+https://github.com/shorebirdtech/shorebird/tree/main/packages/shorebird_cli#create-app
 
-Your applications in the wild will query for updates with their `app_id` (which comes from `shorebird.yaml`) and their release version (which comes from AndroidManifest.xml, which in turn is generated from pubspec.yaml).
+Your applications in the wild will query for updates with their `app_id` (which
+comes from `shorebird.yaml`) and their release version (which comes from
+AndroidManifest.xml, which in turn is generated from pubspec.yaml).
 
 ## Building a release version of your app
 
-You can use `shorebird build` to build a release version of your app including the Shorebird updater.
+You can use `shorebird build` to build a release version of your app including
+the Shorebird updater.
 
 `shorebird build` wraps `flutter build` and can take any argument `flutter build`
 can. To pass arguments to the underlying `flutter build` you need
@@ -402,4 +427,5 @@ happy to help you immediately delete your account and disable all updates
 for your app(s) deployed with Shorebird. We anticipate adding this ability
 to the command line in the near future.
 
-You can remove `shorebird` from your path by removing it from your `.bashrc` or `.zshrc` and deleting the `.shorebird` directory located in `~/.shorebird`.
+You can remove `shorebird` from your path by removing it from your `.bashrc` or
+`.zshrc` and deleting the `.shorebird` directory located in `~/.shorebird`.
