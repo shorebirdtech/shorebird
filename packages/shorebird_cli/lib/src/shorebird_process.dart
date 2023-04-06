@@ -16,6 +16,7 @@ typedef StartProcess = Future<Process> Function(
   String executable,
   List<String> arguments, {
   bool runInShell,
+  Map<String, String>? environment,
 });
 
 /// A wrapper around [Process] that replaces executables to Shorebird-vended
@@ -32,10 +33,12 @@ abstract class ShorebirdProcess {
     String? workingDirectory,
     bool resolveExecutables = true,
   }) {
-    final resolvedEnvironment = (environment ?? {})
-      ..addAll(
+    final resolvedEnvironment = environment ?? {};
+    if (resolveExecutables) {
+      resolvedEnvironment.addAll(
         _environmentOverrides(executable: executable),
       );
+    }
 
     return processWrapper.run(
       resolveExecutables ? _resolveExecutable(executable) : executable,

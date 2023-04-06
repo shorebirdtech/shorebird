@@ -41,6 +41,7 @@ void main() {
           executable,
           arguments, {
           bool runInShell = false,
+          Map<String, String>? environment,
         }) async {
           return startProcess;
         },
@@ -104,6 +105,54 @@ void main() {
           ),
         ).called(1);
       });
+
+      test('Updates environment if resolveExecutables is true', () async {
+        await ShorebirdProcess.run(
+          'flutter',
+          ['--version'],
+          runInShell: true,
+          workingDirectory: '~',
+          resolveExecutables: false,
+          environment: {'ENV_VAR': 'asdfasdf'},
+        );
+
+        verify(
+          () => processWrapper.run(
+            'flutter',
+            ['--version'],
+            runInShell: true,
+            workingDirectory: '~',
+            environment: {
+              'ENV_VAR': 'asdfasdf',
+              'FLUTTER_STORAGE_BASE_URL': 'https://download.shorebird.dev/',
+            },
+          ),
+        ).called(1);
+      });
+
+      test(
+        'Makes no changes to environment if resolveExecutables is false',
+        () async {
+          await ShorebirdProcess.run(
+            'flutter',
+            ['--version'],
+            runInShell: true,
+            workingDirectory: '~',
+            resolveExecutables: false,
+            environment: {'ENV_VAR': 'asdfasdf'},
+          );
+
+          verify(
+            () => processWrapper.run(
+              'flutter',
+              ['--version'],
+              runInShell: true,
+              workingDirectory: '~',
+              environment: {'ENV_VAR': 'asdfasdf'},
+            ),
+          ).called(1);
+        },
+      );
     });
 
     group('start', () {
@@ -145,5 +194,46 @@ void main() {
         ).called(1);
       });
     });
+
+    test('Updates environment if resolveExecutables is true', () async {
+      await ShorebirdProcess.start(
+        'flutter',
+        ['--version'],
+        runInShell: true,
+      );
+
+      verify(
+        () => processWrapper.start(
+          'flutter',
+          ['--version'],
+          runInShell: true,
+          environment: {
+            'ENV_VAR': 'asdfasdf',
+            'FLUTTER_STORAGE_BASE_URL': 'https://download.shorebird.dev/',
+          },
+        ),
+      ).called(1);
+    });
+
+    test(
+      'Makes no changes to environment if resolveExecutables is false',
+      () async {
+        await ShorebirdProcess.start(
+          'flutter',
+          ['--version'],
+          runInShell: true,
+          resolveExecutables: false,
+        );
+
+        verify(
+          () => processWrapper.start(
+            'flutter',
+            ['--version'],
+            runInShell: true,
+            environment: null,
+          ),
+        ).called(1);
+      },
+    );
   });
 }
