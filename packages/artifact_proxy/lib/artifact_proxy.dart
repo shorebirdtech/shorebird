@@ -5,9 +5,7 @@ import 'package:shelf/shelf.dart';
 
 /// A [Handler] that proxies artifact requests to the correct location.
 /// This is determined based on the [config].
-Handler artifactProxyHandler({
-  required Map<dynamic, dynamic> config,
-}) {
+Handler artifactProxyHandler({required Map<dynamic, dynamic> config}) {
   final engineMappings = config['engine_mappings'] as Map;
   final shorebirdEngineRevisions = engineMappings.keys.cast<String>();
 
