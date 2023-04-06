@@ -50,7 +50,8 @@ abstract class ShorebirdProcess {
 
   static String _resolveExecutable(String executable) {
     if (executable == 'flutter') {
-      return ShorebirdPaths.flutterBinaryFile.path;
+      return 'FLUTTER_STORAGE_BASE_URL="https://download.shorebird.dev/" '
+          '${ShorebirdPaths.flutterBinaryFile.path}';
     }
 
     return executable;
