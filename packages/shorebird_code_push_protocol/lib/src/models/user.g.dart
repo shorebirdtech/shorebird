@@ -14,11 +14,15 @@ User _$UserFromJson(Map<String, dynamic> json) => $checkedCreate(
       ($checkedConvert) {
         final val = User(
           id: $checkedConvert('id', (v) => v as int),
+          hasActiveSubscription: $checkedConvert(
+              'has_active_subscription', (v) => v as bool? ?? false),
         );
         return val;
       },
+      fieldKeyMap: const {'hasActiveSubscription': 'has_active_subscription'},
     );
 
 Map<String, dynamic> _$UserToJson(User instance) => <String, dynamic>{
       'id': instance.id,
+      'has_active_subscription': instance.hasActiveSubscription,
     };
