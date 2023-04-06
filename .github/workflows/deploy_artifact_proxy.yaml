@@ -1,4 +1,4 @@
-name: Deploy Artifacts Proxy
+name: Deploy Artifact Proxy
 
 on:
   workflow_dispatch:
@@ -6,12 +6,12 @@ on:
     branches:
       - main
     paths:
-      - .github/workflows/deploy_artifacts_proxy.yaml
-      - packages/artifacts_proxy/**"
+      - .github/workflows/deploy_artifact_proxy.yaml
+      - packages/artifact_proxy/**"
 
 env:
   PROJECT_ID: code-push-prod
-  SERVICE: artifacts-proxy
+  SERVICE: artifact-proxy
   REGION: us-central1
 
 jobs:
@@ -20,9 +20,9 @@ jobs:
 
     defaults:
       run:
-        working-directory: packages/artifacts_proxy
+        working-directory: packages/artifact_proxy
 
-    name: ☁️ Artifacts Proxy
+    name: ☁️ Artifact Proxy
 
     steps:
       - name: 📚 Git Checkout
