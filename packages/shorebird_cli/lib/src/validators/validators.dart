@@ -1,6 +1,10 @@
 import 'package:mason_logger/mason_logger.dart';
 import 'package:meta/meta.dart';
 
+export 'android_internet_permission_validator.dart';
+export 'shorebird_flutter_validator.dart';
+export 'shorebird_version_validator.dart';
+
 /// Severity level of a [ValidationIssue].
 ///
 /// [error]s should be fixed before continuing development.
@@ -60,7 +64,7 @@ class ValidationIssue {
 
 /// Checks for a specific issue with either the Shorebird installation or the
 /// current Shorebird project.
-abstract class DoctorValidator {
+abstract class Validator {
   /// A one-sentence explanation of what this validator is checking.
   String get description;
 

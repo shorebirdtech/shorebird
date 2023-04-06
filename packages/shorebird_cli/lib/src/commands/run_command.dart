@@ -2,6 +2,7 @@ import 'dart:convert';
 
 import 'package:mason_logger/mason_logger.dart';
 import 'package:shorebird_cli/src/command.dart';
+import 'package:shorebird_cli/src/flutter_validation_mixin.dart';
 import 'package:shorebird_cli/src/shorebird_config_mixin.dart';
 import 'package:shorebird_cli/src/shorebird_engine_mixin.dart';
 
@@ -10,13 +11,14 @@ import 'package:shorebird_cli/src/shorebird_engine_mixin.dart';
 /// Run the Flutter application.
 /// {@endtemplate}
 class RunCommand extends ShorebirdCommand
-    with ShorebirdConfigMixin, ShorebirdEngineMixin {
+    with FlutterValidationMixin, ShorebirdConfigMixin, ShorebirdEngineMixin {
   /// {@macro run_command}
   RunCommand({
     required super.logger,
     super.auth,
     super.buildCodePushClient,
     super.startProcess,
+    super.flutterValidator,
   });
 
   @override
@@ -40,6 +42,8 @@ class RunCommand extends ShorebirdCommand
       logger.err(error.toString());
       return ExitCode.software.code;
     }
+
+    await logFlutterValidationIssues();
 
     logger.info('Running app...');
     final process = await startProcess(
