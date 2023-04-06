@@ -32,10 +32,8 @@ class ReleaseCommand extends ShorebirdCommand
       HashFunction? hashFn,
       ShorebirdFlutterValidator? flutterValidator})
       : _hashFn = hashFn ?? ((m) => sha256.convert(m).toString()) {
-    this.flutterValidator = flutterValidator ??
-        ShorebirdFlutterValidator(
-          runProcess: runProcess,
-        );
+    this.flutterValidator =
+        flutterValidator ?? ShorebirdFlutterValidator(runProcess: runProcess);
     argParser
       ..addOption(
         'release-version',

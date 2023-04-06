@@ -35,10 +35,8 @@ class PatchCommand extends ShorebirdCommand
     ShorebirdFlutterValidator? flutterValidator,
   })  : _hashFn = hashFn ?? ((m) => sha256.convert(m).toString()),
         _httpClient = httpClient ?? http.Client() {
-    this.flutterValidator = flutterValidator ??
-        ShorebirdFlutterValidator(
-          runProcess: runProcess,
-        );
+    this.flutterValidator =
+        flutterValidator ?? ShorebirdFlutterValidator(runProcess: runProcess);
 
     argParser
       ..addOption(
