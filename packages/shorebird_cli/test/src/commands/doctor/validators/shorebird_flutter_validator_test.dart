@@ -167,5 +167,12 @@ Tools • Dart 2.19.6 • DevTools 2.20.1
         );
       },
     );
+
+    test('throws exception if flutter version output is malformed', () async {
+      when(() => pathFlutterVersionProcessResult.stdout)
+          .thenReturn('OH NO THERE IS NO FLUTTER VERSION HERE');
+
+      expect(() async => validator.validate(), throwsException);
+    });
   });
 }
