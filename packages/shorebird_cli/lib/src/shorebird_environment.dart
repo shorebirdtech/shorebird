@@ -4,9 +4,12 @@ import 'package:meta/meta.dart';
 import 'package:path/path.dart' as p;
 import 'package:platform/platform.dart';
 
-abstract class ShorebirdPaths {
+abstract class ShorebirdEnvironment {
   @visibleForTesting
   static Platform platform = const LocalPlatform();
+
+  /// Environment variables from [Platform.environment].
+  static Map<String, String> get environment => platform.environment;
 
   /// The root directory of the Shorebird install.
   ///

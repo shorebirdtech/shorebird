@@ -38,6 +38,7 @@ void main() {
           executable,
           arguments, {
           bool runInShell = false,
+          Map<String, String>? environment,
           workingDirectory,
           bool resolveExecutables = true,
         }) async {

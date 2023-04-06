@@ -1,4 +1,4 @@
-import 'package:shorebird_cli/src/shorebird_paths.dart';
+import 'package:shorebird_cli/src/shorebird_environment.dart';
 import 'package:shorebird_cli/src/shorebird_process.dart';
 import 'package:shorebird_cli/src/validators/validators.dart';
 
@@ -17,9 +17,9 @@ class ShorebirdFlutterValidator extends Validator {
   Future<List<ValidationIssue>> validate() async {
     final issues = <ValidationIssue>[];
 
-    if (!ShorebirdPaths.flutterDirectory.existsSync()) {
-      final message =
-          'No Flutter directory found at ${ShorebirdPaths.flutterDirectory}';
+    if (!ShorebirdEnvironment.flutterDirectory.existsSync()) {
+      final message = 'No Flutter directory found at '
+          '${ShorebirdEnvironment.flutterDirectory}';
       issues.add(
         ValidationIssue(
           severity: ValidationIssueSeverity.error,
@@ -32,14 +32,16 @@ class ShorebirdFlutterValidator extends Validator {
       issues.add(
         ValidationIssue(
           severity: ValidationIssueSeverity.warning,
-          message: '${ShorebirdPaths.flutterDirectory} has local modifications',
+          message: '${ShorebirdEnvironment.flutterDirectory} has local '
+              'modifications',
         ),
       );
     }
 
     if (!await _flutterDirectoryTracksStable()) {
       final message =
-          '${ShorebirdPaths.flutterDirectory} is not on the "stable" branch';
+          '${ShorebirdEnvironment.flutterDirectory} is not on the "stable" '
+          'branch';
       issues.add(
         ValidationIssue(
           severity: ValidationIssueSeverity.warning,
@@ -66,6 +68,19 @@ This can cause unexpected behavior if the version gap is wide. If you're seeing 
       );
     }
 
+    final flutterStorageEnvironmentValue =
+        ShorebirdEnvironment.environment['FLUTTER_STORAGE_BASE_URL'];
+    if (flutterStorageEnvironmentValue != null &&
+        flutterStorageEnvironmentValue.isNotEmpty) {
+      issues.add(
+        const ValidationIssue(
+          severity: ValidationIssueSeverity.warning,
+          message: 'Shorebird does not respect the FLUTTER_STORAGE_BASE_URL '
+              'environment variable at this time',
+        ),
+      );
+    }
+
     return issues;
   }
 
@@ -73,7 +88,7 @@ This can cause unexpected behavior if the version gap is wide. If you're seeing 
     final result = await runProcess(
       'git',
       ['status'],
-      workingDirectory: ShorebirdPaths.flutterDirectory.path,
+      workingDirectory: ShorebirdEnvironment.flutterDirectory.path,
     );
     return result.stdout
         .toString()
@@ -84,7 +99,7 @@ This can cause unexpected behavior if the version gap is wide. If you're seeing 
     final result = await runProcess(
       'git',
       ['--no-pager', 'branch'],
-      workingDirectory: ShorebirdPaths.flutterDirectory.path,
+      workingDirectory: ShorebirdEnvironment.flutterDirectory.path,
     );
     return result.stdout.toString().contains('* stable');
   }

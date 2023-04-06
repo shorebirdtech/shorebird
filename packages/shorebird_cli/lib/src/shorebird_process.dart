@@ -1,12 +1,13 @@
 import 'dart:io';
 
 import 'package:meta/meta.dart';
-import 'package:shorebird_cli/src/shorebird_paths.dart';
+import 'package:shorebird_cli/src/shorebird_environment.dart';
 
 typedef RunProcess = Future<ProcessResult> Function(
   String executable,
   List<String> arguments, {
   bool runInShell,
+  Map<String, String>? environment,
   String? workingDirectory,
   bool resolveExecutables,
 });
@@ -27,14 +28,21 @@ abstract class ShorebirdProcess {
     String executable,
     List<String> arguments, {
     bool runInShell = false,
+    Map<String, String>? environment,
     String? workingDirectory,
     bool resolveExecutables = true,
   }) {
+    final resolvedEnvironment = (environment ?? {})
+      ..addAll(
+        _environmentOverrides(executable: executable),
+      );
+
     return processWrapper.run(
       resolveExecutables ? _resolveExecutable(executable) : executable,
       arguments,
       runInShell: runInShell,
       workingDirectory: workingDirectory,
+      environment: resolvedEnvironment,
     );
   }
 
@@ -53,10 +61,20 @@ abstract class ShorebirdProcess {
 
   static String _resolveExecutable(String executable) {
     if (executable == 'flutter') {
-      return ShorebirdPaths.flutterBinaryFile.path;
+      return ShorebirdEnvironment.flutterBinaryFile.path;
     }
 
     return executable;
+  }
+
+  static Map<String, String> _environmentOverrides({
+    required String executable,
+  }) {
+    if (executable == 'flutter') {
+      return {'FLUTTER_STORAGE_BASE_URL': 'https://download.shorebird.dev/'};
+    }
+
+    return {};
   }
 }
 
@@ -67,12 +85,14 @@ class ProcessWrapper {
         String executable,
         List<String> arguments, {
         bool runInShell = false,
+        Map<String, String>? environment,
         String? workingDirectory,
         bool resolveExecutables = true,
       }) =>
           Process.run(
             executable,
             arguments,
+            environment: environment,
             runInShell: runInShell,
             workingDirectory: workingDirectory,
           );

@@ -4,7 +4,7 @@ import 'package:collection/collection.dart';
 import 'package:mocktail/mocktail.dart';
 import 'package:path/path.dart' as p;
 import 'package:platform/platform.dart';
-import 'package:shorebird_cli/src/shorebird_paths.dart';
+import 'package:shorebird_cli/src/shorebird_environment.dart';
 import 'package:shorebird_cli/src/validators/validators.dart';
 import 'package:test/test.dart';
 
@@ -63,9 +63,10 @@ Tools • Dart 2.19.6 • DevTools 2.20.1
     setUp(() {
       tempDir = setupTempDirectory();
 
-      ShorebirdPaths.platform = _MockPlatform();
-      when(() => ShorebirdPaths.platform.script)
+      ShorebirdEnvironment.platform = _MockPlatform();
+      when(() => ShorebirdEnvironment.platform.script)
           .thenReturn(shorebirdScriptFile(tempDir).uri);
+      when(() => ShorebirdEnvironment.platform.environment).thenReturn({});
 
       pathFlutterVersionProcessResult = _MockProcessResult();
       shorebirdFlutterVersionProcessResult = _MockProcessResult();
@@ -77,6 +78,7 @@ Tools • Dart 2.19.6 • DevTools 2.20.1
           executable,
           arguments, {
           bool runInShell = false,
+          Map<String, String>? environment,
           workingDirectory,
           bool resolveExecutables = true,
         }) async {
@@ -163,6 +165,27 @@ Tools • Dart 2.19.6 • DevTools 2.20.1
           results.first.message,
           contains('Shorebird Flutter and the Flutter on your path are'
               ' different versions'),
+        );
+      },
+    );
+
+    test(
+      'warns if FLUTTER_STORAGE_BASE_URL has a non-empty value',
+      () async {
+        when(() => ShorebirdEnvironment.platform.environment).thenReturn(
+          {'FLUTTER_STORAGE_BASE_URL': 'https://storage.flutter-io.cn'},
+        );
+
+        final results = await validator.validate();
+
+        expect(results, hasLength(1));
+        expect(results.first.severity, ValidationIssueSeverity.warning);
+        expect(
+          results.first.message,
+          contains(
+            'Shorebird does not respect the FLUTTER_STORAGE_BASE_URL '
+            'environment variable',
+          ),
         );
       },
     );
