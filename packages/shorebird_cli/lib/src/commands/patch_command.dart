@@ -107,6 +107,8 @@ class PatchCommand extends ShorebirdCommand
       return ExitCode.usage.code;
     }
 
+    await cache.updateAll();
+
     final buildProgress = logger.progress('Building patch');
     try {
       await buildRelease();
@@ -377,8 +379,10 @@ Please create a release using "shorebird release" and try again.
   }) async {
     final tempDir = await Directory.systemTemp.createTemp();
     final diffPath = p.join(tempDir.path, 'diff.patch');
-
-    final diffExecutable = p.join('patch');
+    final diffExecutable = p.join(
+      cache.getArtifactDirectory('patch').path,
+      'patch',
+    );
     final diffArguments = [
       releaseArtifactPath,
       patchArtifactPath,
