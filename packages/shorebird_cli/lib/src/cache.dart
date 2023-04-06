@@ -2,7 +2,7 @@ import 'dart:io' hide Platform;
 import 'dart:isolate';
 
 import 'package:archive/archive_io.dart';
-import 'package:http/http.dart';
+import 'package:http/http.dart' as http;
 import 'package:path/path.dart' as p;
 import 'package:platform/platform.dart';
 import 'package:shorebird_cli/src/engine_revision.dart';
@@ -47,9 +47,11 @@ class Cache {
 }
 
 abstract class CachedArtifact {
-  const CachedArtifact({required this.cache});
+  CachedArtifact({required this.cache, http.Client? httpClient})
+      : _httpClient = httpClient ?? http.Client();
 
   final Cache cache;
+  final http.Client _httpClient;
 
   String get name;
 
@@ -63,11 +65,8 @@ abstract class CachedArtifact {
 
   Future<void> download() async {
     final url = '${cache.storageBaseUrl}/${cache.storageBucket}/$storagePath';
-    final client = Client();
-    final request = Request('GET', Uri.parse(url));
-    final response = await client.send(request);
-    client.close();
-
+    final request = http.Request('GET', Uri.parse(url));
+    final response = await _httpClient.send(request);
     final tempDir = Directory.systemTemp.createTempSync();
     final archivePath = p.join(tempDir.path, '$name.zip');
     await response.stream.pipe(File(archivePath).openWrite());
