@@ -69,7 +69,7 @@ curl --proto '=https' --tlsv1.2 https://raw.githubusercontent.com/shorebirdtech/
 ```
 
 This installs `shorebird` into `~/.shorebird/bin` and adds it to your path.
-It also installs a copy of Flutter and Dart inside `~/.shorebird/flutter`.
+It also installs a copy of Flutter and Dart inside `~/.shorebird/bin/cache/flutter`.
 These versions are not intended to be used for development (yet), you can
 continue to use the versions of Flutter and Dart you already have installed.
 
