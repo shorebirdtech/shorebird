@@ -19,6 +19,6 @@ class User {
   /// The unique user identifier.
   final int id;
 
-  /// Whether the user has an active subscription.
+  /// Whether the user is currently a paying customer.
   final bool hasActiveSubscription;
 }
