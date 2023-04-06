@@ -7,7 +7,7 @@ on:
       - main
     paths:
       - .github/workflows/deploy_artifact_proxy.yaml
-      - packages/artifact_proxy/**"
+      - "packages/artifact_proxy/**"
 
 env:
   PROJECT_ID: code-push-prod
