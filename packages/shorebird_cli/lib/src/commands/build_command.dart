@@ -1,7 +1,6 @@
 import 'dart:io';
 
 import 'package:mason_logger/mason_logger.dart';
-import 'package:meta/meta.dart';
 import 'package:shorebird_cli/src/command.dart';
 import 'package:shorebird_cli/src/shorebird_build_mixin.dart';
 import 'package:shorebird_cli/src/shorebird_config_mixin.dart';
@@ -23,12 +22,11 @@ class BuildCommand extends ShorebirdCommand
     super.runProcess,
     ShorebirdFlutterValidator? flutterValidator,
   }) {
-    this.flutterValidator =
+    _flutterValidator =
         flutterValidator ?? ShorebirdFlutterValidator(runProcess: runProcess);
   }
 
-  @visibleForTesting
-  late final ShorebirdFlutterValidator flutterValidator;
+  late final ShorebirdFlutterValidator _flutterValidator;
 
   @override
   String get description => 'Build a new release of your application.';
@@ -52,7 +50,7 @@ class BuildCommand extends ShorebirdCommand
       return ExitCode.software.code;
     }
 
-    final flutterValidationIssues = await flutterValidator.validate();
+    final flutterValidationIssues = await _flutterValidator.validate();
     if (flutterValidationIssues.isNotEmpty) {
       for (final issue in flutterValidationIssues) {
         logger.info(issue.displayMessage);

@@ -3,7 +3,6 @@ import 'dart:io';
 import 'package:collection/collection.dart';
 import 'package:crypto/crypto.dart';
 import 'package:mason_logger/mason_logger.dart';
-import 'package:meta/meta.dart';
 import 'package:path/path.dart' as p;
 import 'package:shorebird_cli/src/command.dart';
 import 'package:shorebird_cli/src/shorebird_build_mixin.dart';
@@ -32,7 +31,7 @@ class ReleaseCommand extends ShorebirdCommand
     HashFunction? hashFn,
     ShorebirdFlutterValidator? flutterValidator,
   }) : _hashFn = hashFn ?? ((m) => sha256.convert(m).toString()) {
-    this.flutterValidator =
+    _flutterValidator =
         flutterValidator ?? ShorebirdFlutterValidator(runProcess: runProcess);
     argParser
       ..addOption(
@@ -55,8 +54,7 @@ class ReleaseCommand extends ShorebirdCommand
       );
   }
 
-  @visibleForTesting
-  late final ShorebirdFlutterValidator flutterValidator;
+  late final ShorebirdFlutterValidator _flutterValidator;
 
   @override
   String get description => '''
@@ -91,7 +89,7 @@ make smaller updates to your app.
       return ExitCode.software.code;
     }
 
-    final flutterValidationIssues = await flutterValidator.validate();
+    final flutterValidationIssues = await _flutterValidator.validate();
     if (flutterValidationIssues.isNotEmpty) {
       for (final issue in flutterValidationIssues) {
         logger.info(issue.displayMessage);

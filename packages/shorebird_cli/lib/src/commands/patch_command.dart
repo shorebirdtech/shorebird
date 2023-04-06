@@ -4,7 +4,6 @@ import 'package:collection/collection.dart';
 import 'package:crypto/crypto.dart';
 import 'package:http/http.dart' as http;
 import 'package:mason_logger/mason_logger.dart';
-import 'package:meta/meta.dart';
 import 'package:path/path.dart' as p;
 import 'package:shorebird_cli/src/command.dart';
 import 'package:shorebird_cli/src/shorebird_build_mixin.dart';
@@ -35,7 +34,7 @@ class PatchCommand extends ShorebirdCommand
     ShorebirdFlutterValidator? flutterValidator,
   })  : _hashFn = hashFn ?? ((m) => sha256.convert(m).toString()),
         _httpClient = httpClient ?? http.Client() {
-    this.flutterValidator =
+    _flutterValidator =
         flutterValidator ?? ShorebirdFlutterValidator(runProcess: runProcess);
 
     argParser
@@ -89,9 +88,7 @@ class PatchCommand extends ShorebirdCommand
 
   final HashFunction _hashFn;
   final http.Client _httpClient;
-
-  @visibleForTesting
-  late final ShorebirdFlutterValidator flutterValidator;
+  late final ShorebirdFlutterValidator _flutterValidator;
 
   @override
   Future<int> run() async {
@@ -114,7 +111,7 @@ class PatchCommand extends ShorebirdCommand
       return ExitCode.software.code;
     }
 
-    final flutterValidationIssues = await flutterValidator.validate();
+    final flutterValidationIssues = await _flutterValidator.validate();
     if (flutterValidationIssues.isNotEmpty) {
       for (final issue in flutterValidationIssues) {
         logger.info(issue.displayMessage);
