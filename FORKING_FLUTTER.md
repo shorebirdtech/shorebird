@@ -128,6 +128,13 @@ And save off that hash:
 We do not need to update our engine fork commits at this time since it already
 pointed to the (unchanged) forked buildroot in `DEPS`.
 
+Because this kind of rebase is a non-fastforward commit, we will need to
+force push to our fork.  A better solution will be for us to tag or branch
+each of these releases instead of keeping a single release branch.
+```
+git push origin --force
+```
+
 10. flutter: Then we need to move our flutter fork.
 Our flutter fork currently uses the `stable` channel instead of stable_codepush
 we should eventually standardize on across all the repos on something.
@@ -140,13 +147,18 @@ fork is one changing engine.version, we can just replace the commit:
 ```
 git fetch upstream
 git reset --hard 3.7.10
-cat '978a56f2d97f9ce24a2b6bc22c9bbceaaba0343c' > bin/internal/engine.version
+echo '978a56f2d97f9ce24a2b6bc22c9bbceaaba0343c' > bin/internal/engine.version
 git add bin/internal/engine.version
 git commit -a -m 'chore: Update engine version to shorebird-3.7.10'
 ```
 Again we should save off our new hash:
 `git rev-parse stable`
-7712d0d30a6e85eace6c1a886d4ae4f7938c3d6e
+c2185f5f6cce5c6c47e7f71c682ecae1e3817d18
+
+This will need a similar force push:
+```
+git push origin --force
+```
 
 11.  Finally we need to update the shorebird cli itself.  Currently located at:
 https://github.com/shorebirdtech/shorebird/blob/main/packages/shorebird_cli/lib/src/engine_revision.dart
