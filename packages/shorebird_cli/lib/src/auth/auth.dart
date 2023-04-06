@@ -35,6 +35,20 @@ typedef ObtainAccessCredentials = Future<AccessCredentials> Function(
   void Function(String) userPrompt,
 );
 
+class AuthenticatedClient extends http.BaseClient {
+  AuthenticatedClient({required this.token, http.Client? httpClient})
+      : _baseClient = httpClient ?? http.Client();
+
+  final http.Client _baseClient;
+  final String token;
+
+  @override
+  Future<http.StreamedResponse> send(http.BaseRequest request) {
+    request.headers['Authorization'] = 'Bearer $token';
+    return _baseClient.send(request);
+  }
+}
+
 class Auth {
   Auth({
     http.Client? httpClient,
@@ -52,8 +66,9 @@ class Auth {
   final credentialsFilePath = p.join(shorebirdConfigDir, _credentialsFileName);
 
   http.Client get client {
-    if (_credentials == null) return _httpClient;
-    return autoRefreshingClient(_clientId, _credentials!, _httpClient);
+    final token = _credentials?.idToken;
+    if (token == null) return _httpClient;
+    return AuthenticatedClient(token: token, httpClient: _httpClient);
   }
 
   Future<void> login(void Function(String) prompt) async {
