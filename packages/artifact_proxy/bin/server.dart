@@ -2,45 +2,22 @@
 
 import 'dart:io';
 
-import 'package:args/args.dart';
 import 'package:artifact_proxy/artifact_proxy.dart';
 import 'package:shelf/shelf.dart';
 import 'package:shelf/shelf_io.dart' as shelf_io;
 import 'package:shelf_hotreload/shelf_hotreload.dart';
 import 'package:yaml/yaml.dart';
 
-Future<void> main(List<String> args) async {
-  final parser = ArgParser()
-    ..addOption(
-      'config',
-      defaultsTo: 'config.yaml',
-      help: 'Path to config file.',
-    )
-    ..addFlag(
-      'record',
-      help: 'Record requests into config file.',
-    )
-    ..addFlag(
-      'watch',
-      help: 'Whether to watch for changes and hot-reload.',
-    );
-
-  final results = parser.parse(args);
-
-  if (results.rest.isNotEmpty) {
-    print(parser.usage);
-    exit(1);
-  }
-
-  final shouldWatch = results['watch'] as bool;
-  final configPath = results['config'] as String;
+Future<void> main() async {
+  const configPath = 'config.yaml';
+  final isDev = Platform.environment['DEV'] == 'true';
   final config = loadYaml(File(configPath).readAsStringSync()) as Map;
   final handler = artifactProxyHandler(config: config);
   final ip = InternetAddress.anyIPv6;
   final port = int.parse(Platform.environment['PORT'] ?? '8080');
 
-  // Hot-reload is enabled when the `--watch` flag is passed.
-  if (shouldWatch) return withHotreload(() => serve(handler, ip, port));
+  // Hot-reload is enabled when the DEBUG environment variable is set to true.
+  if (isDev) return withHotreload(() => serve(handler, ip, port));
 
   await serve(handler, ip, port);
 }

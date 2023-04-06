@@ -13,7 +13,7 @@ Uses `config.yaml` to configure the engine revisions and artifact overrides.
 
 ```bash
 # Run locally with hot-reload enabled.
-dart --enable-vm-service run bin/server.dart --watch
+DEV=true dart --enable-vm-service run bin/server.dart
 ```
 
 And then in a separate terminal:
