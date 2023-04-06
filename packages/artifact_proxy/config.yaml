@@ -1,10 +1,23 @@
 engine_mappings:
-  ff32625d5bda6d3eb2eb131e30a4c26ed4960002:
-    flutter_engine_revision: ec975089acb540fc60752606a3d3ba809dd1528b
+  79f4c5321a581f580a9bda01ec372cbf4a53aa53:
+    flutter_engine_revision: 9aa7816315095c86410527932918c718cb35e7d6
     shorebird_storage_bucket: download.shorebird.dev
     shorebird_artifact_overrides:
+      # android-x64 artifacts.zip
       - flutter_infra_release/flutter/$engine/android-x64-release/artifacts.zip
+
+      # embedding release
       - download.flutter.io/io/flutter/flutter_embedding_release/1.0.0-$engine/flutter_embedding_release-1.0.0-$engine.pom
       - download.flutter.io/io/flutter/flutter_embedding_release/1.0.0-$engine/flutter_embedding_release-1.0.0-$engine.jar
+
+      # arm64_v8a release
       - download.flutter.io/io/flutter/arm64_v8a_release/1.0.0-$engine/arm64_v8a_release-1.0.0-$engine.pom
       - download.flutter.io/io/flutter/arm64_v8a_release/1.0.0-$engine/arm64_v8a_release-1.0.0-$engine.jar
+
+      # armeabi_v7a release
+      - download.flutter.io/io/flutter/armeabi_v7a_release/1.0.0-$engine/armeabi_v7a_release-1.0.0-$engine.pom
+      - download.flutter.io/io/flutter/armeabi_v7a_release/1.0.0-$engine/armeabi_v7a_release-1.0.0-$engine.jar
+
+      # x86_64 release
+      - download.flutter.io/io/flutter/x86_64_release/1.0.0-$engine/x86_64_release-1.0.0-$engine.pom
+      - download.flutter.io/io/flutter/x86_64_release/1.0.0-$engine/x86_64_release-1.0.0-$engine.jar
