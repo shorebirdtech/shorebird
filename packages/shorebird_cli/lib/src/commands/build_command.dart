@@ -2,10 +2,10 @@ import 'dart:io';
 
 import 'package:mason_logger/mason_logger.dart';
 import 'package:shorebird_cli/src/command.dart';
+import 'package:shorebird_cli/src/flutter_validation_mixin.dart';
 import 'package:shorebird_cli/src/shorebird_build_mixin.dart';
 import 'package:shorebird_cli/src/shorebird_config_mixin.dart';
 import 'package:shorebird_cli/src/shorebird_engine_mixin.dart';
-import 'package:shorebird_cli/src/validators/shorebird_flutter_validator.dart';
 
 /// {@template build_command}
 ///
@@ -13,20 +13,19 @@ import 'package:shorebird_cli/src/validators/shorebird_flutter_validator.dart';
 /// Build a new release of your application.
 /// {@endtemplate}
 class BuildCommand extends ShorebirdCommand
-    with ShorebirdConfigMixin, ShorebirdEngineMixin, ShorebirdBuildMixin {
+    with
+        FlutterValidationMixin,
+        ShorebirdConfigMixin,
+        ShorebirdEngineMixin,
+        ShorebirdBuildMixin {
   /// {@macro build_command}
   BuildCommand({
     required super.logger,
     super.auth,
     super.buildCodePushClient,
     super.runProcess,
-    ShorebirdFlutterValidator? flutterValidator,
-  }) {
-    _flutterValidator =
-        flutterValidator ?? ShorebirdFlutterValidator(runProcess: runProcess);
-  }
-
-  late final ShorebirdFlutterValidator _flutterValidator;
+    super.flutterValidator,
+  });
 
   @override
   String get description => 'Build a new release of your application.';
@@ -50,12 +49,7 @@ class BuildCommand extends ShorebirdCommand
       return ExitCode.software.code;
     }
 
-    final flutterValidationIssues = await _flutterValidator.validate();
-    if (flutterValidationIssues.isNotEmpty) {
-      for (final issue in flutterValidationIssues) {
-        logger.info(issue.displayMessage);
-      }
-    }
+    await logFlutterValidationIssues();
 
     final buildProgress = logger.progress('Building release ');
     try {

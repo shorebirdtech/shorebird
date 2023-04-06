@@ -52,10 +52,11 @@ class ShorebirdFlutterValidator extends Validator {
     final pathFlutterVersion = await _pathFlutterVersion();
 
     if (shorebirdFlutterVersion != pathFlutterVersion) {
-      final message = '''
+      final message = """
 Shorebird Flutter and the Flutter on your path are different versions.
 \tShorebird Flutter: $shorebirdFlutterVersion
-\tSystem Flutter:    $pathFlutterVersion''';
+\tSystem Flutter:    $pathFlutterVersion'''
+This can cause unexpected behavior if the version gap is wide. If you're seeing this unexpectedly, please let us know on Shorebird discord!""";
 
       issues.add(
         ValidationIssue(

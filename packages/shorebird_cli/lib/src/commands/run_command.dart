@@ -2,29 +2,24 @@ import 'dart:convert';
 
 import 'package:mason_logger/mason_logger.dart';
 import 'package:shorebird_cli/src/command.dart';
+import 'package:shorebird_cli/src/flutter_validation_mixin.dart';
 import 'package:shorebird_cli/src/shorebird_config_mixin.dart';
 import 'package:shorebird_cli/src/shorebird_engine_mixin.dart';
-import 'package:shorebird_cli/src/validators/shorebird_flutter_validator.dart';
 
 /// {@template run_command}
 /// `shorebird run`
 /// Run the Flutter application.
 /// {@endtemplate}
 class RunCommand extends ShorebirdCommand
-    with ShorebirdConfigMixin, ShorebirdEngineMixin {
+    with FlutterValidationMixin, ShorebirdConfigMixin, ShorebirdEngineMixin {
   /// {@macro run_command}
   RunCommand({
     required super.logger,
     super.auth,
     super.buildCodePushClient,
     super.startProcess,
-    ShorebirdFlutterValidator? flutterValidator,
-  }) {
-    _flutterValidator =
-        flutterValidator ?? ShorebirdFlutterValidator(runProcess: runProcess);
-  }
-
-  late final ShorebirdFlutterValidator _flutterValidator;
+    super.flutterValidator,
+  });
 
   @override
   String get description => 'Run the Flutter application.';
@@ -48,12 +43,7 @@ class RunCommand extends ShorebirdCommand
       return ExitCode.software.code;
     }
 
-    final flutterValidationIssues = await _flutterValidator.validate();
-    if (flutterValidationIssues.isNotEmpty) {
-      for (final issue in flutterValidationIssues) {
-        logger.info(issue.displayMessage);
-      }
-    }
+    await logFlutterValidationIssues();
 
     logger.info('Running app...');
     final process = await startProcess(

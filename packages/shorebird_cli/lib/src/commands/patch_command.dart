@@ -6,6 +6,7 @@ import 'package:http/http.dart' as http;
 import 'package:mason_logger/mason_logger.dart';
 import 'package:path/path.dart' as p;
 import 'package:shorebird_cli/src/command.dart';
+import 'package:shorebird_cli/src/flutter_validation_mixin.dart';
 import 'package:shorebird_cli/src/shorebird_build_mixin.dart';
 import 'package:shorebird_cli/src/shorebird_config_mixin.dart';
 import 'package:shorebird_cli/src/shorebird_create_app_mixin.dart';
@@ -19,6 +20,7 @@ import 'package:shorebird_code_push_client/shorebird_code_push_client.dart';
 /// {@endtemplate}
 class PatchCommand extends ShorebirdCommand
     with
+        FlutterValidationMixin,
         ShorebirdConfigMixin,
         ShorebirdEngineMixin,
         ShorebirdBuildMixin,
@@ -29,14 +31,11 @@ class PatchCommand extends ShorebirdCommand
     super.auth,
     super.buildCodePushClient,
     super.runProcess,
+    super.flutterValidator,
     HashFunction? hashFn,
     http.Client? httpClient,
-    ShorebirdFlutterValidator? flutterValidator,
   })  : _hashFn = hashFn ?? ((m) => sha256.convert(m).toString()),
         _httpClient = httpClient ?? http.Client() {
-    _flutterValidator =
-        flutterValidator ?? ShorebirdFlutterValidator(runProcess: runProcess);
-
     argParser
       ..addOption(
         'release-version',
@@ -88,7 +87,6 @@ class PatchCommand extends ShorebirdCommand
 
   final HashFunction _hashFn;
   final http.Client _httpClient;
-  late final ShorebirdFlutterValidator _flutterValidator;
 
   @override
   Future<int> run() async {
@@ -111,12 +109,7 @@ class PatchCommand extends ShorebirdCommand
       return ExitCode.software.code;
     }
 
-    final flutterValidationIssues = await _flutterValidator.validate();
-    if (flutterValidationIssues.isNotEmpty) {
-      for (final issue in flutterValidationIssues) {
-        logger.info(issue.displayMessage);
-      }
-    }
+    await logFlutterValidationIssues();
 
     final force = results['force'] == true;
     final dryRun = results['dry-run'] == true;

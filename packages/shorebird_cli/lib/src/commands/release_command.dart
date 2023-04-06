@@ -5,11 +5,11 @@ import 'package:crypto/crypto.dart';
 import 'package:mason_logger/mason_logger.dart';
 import 'package:path/path.dart' as p;
 import 'package:shorebird_cli/src/command.dart';
+import 'package:shorebird_cli/src/flutter_validation_mixin.dart';
 import 'package:shorebird_cli/src/shorebird_build_mixin.dart';
 import 'package:shorebird_cli/src/shorebird_config_mixin.dart';
 import 'package:shorebird_cli/src/shorebird_create_app_mixin.dart';
 import 'package:shorebird_cli/src/shorebird_engine_mixin.dart';
-import 'package:shorebird_cli/src/validators/shorebird_flutter_validator.dart';
 import 'package:shorebird_code_push_client/shorebird_code_push_client.dart';
 
 /// {@template release_command}
@@ -18,6 +18,7 @@ import 'package:shorebird_code_push_client/shorebird_code_push_client.dart';
 /// {@endtemplate}
 class ReleaseCommand extends ShorebirdCommand
     with
+        FlutterValidationMixin,
         ShorebirdConfigMixin,
         ShorebirdEngineMixin,
         ShorebirdBuildMixin,
@@ -28,11 +29,9 @@ class ReleaseCommand extends ShorebirdCommand
     super.auth,
     super.buildCodePushClient,
     super.runProcess,
+    super.flutterValidator,
     HashFunction? hashFn,
-    ShorebirdFlutterValidator? flutterValidator,
   }) : _hashFn = hashFn ?? ((m) => sha256.convert(m).toString()) {
-    _flutterValidator =
-        flutterValidator ?? ShorebirdFlutterValidator(runProcess: runProcess);
     argParser
       ..addOption(
         'release-version',
@@ -53,8 +52,6 @@ class ReleaseCommand extends ShorebirdCommand
         defaultsTo: 'aarch64',
       );
   }
-
-  late final ShorebirdFlutterValidator _flutterValidator;
 
   @override
   String get description => '''
@@ -89,12 +86,7 @@ make smaller updates to your app.
       return ExitCode.software.code;
     }
 
-    final flutterValidationIssues = await _flutterValidator.validate();
-    if (flutterValidationIssues.isNotEmpty) {
-      for (final issue in flutterValidationIssues) {
-        logger.info(issue.displayMessage);
-      }
-    }
+    await logFlutterValidationIssues();
 
     final buildProgress = logger.progress('Building release');
     try {
