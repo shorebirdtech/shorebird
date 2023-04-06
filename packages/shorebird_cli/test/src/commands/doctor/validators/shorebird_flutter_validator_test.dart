@@ -4,9 +4,8 @@ import 'package:collection/collection.dart';
 import 'package:mocktail/mocktail.dart';
 import 'package:path/path.dart' as p;
 import 'package:platform/platform.dart';
-import 'package:shorebird_cli/src/doctor/doctor_validator.dart';
-import 'package:shorebird_cli/src/doctor/validators/validators.dart';
 import 'package:shorebird_cli/src/shorebird_paths.dart';
+import 'package:shorebird_cli/src/validators/validators.dart';
 import 'package:test/test.dart';
 
 class _MockProcessResult extends Mock implements ProcessResult {}

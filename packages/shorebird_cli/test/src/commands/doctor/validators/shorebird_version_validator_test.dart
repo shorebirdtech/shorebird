@@ -3,8 +3,7 @@ import 'dart:io';
 import 'package:mason_logger/mason_logger.dart';
 import 'package:mocktail/mocktail.dart';
 import 'package:shorebird_cli/src/commands/doctor_command.dart';
-import 'package:shorebird_cli/src/doctor/doctor_validator.dart';
-import 'package:shorebird_cli/src/doctor/validators/shorebird_version_validator.dart';
+import 'package:shorebird_cli/src/validators/validators.dart';
 import 'package:test/test.dart';
 
 class _MockLogger extends Mock implements Logger {}

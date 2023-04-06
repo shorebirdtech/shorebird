@@ -1,6 +1,10 @@
 import 'package:mason_logger/mason_logger.dart';
 import 'package:meta/meta.dart';
 
+export 'android_internet_permission_validator.dart';
+export 'shorebird_flutter_validator.dart';
+export 'shorebird_version_validator.dart';
+
 /// Severity level of a [ValidationIssue].
 ///
 /// [error]s should be fixed before continuing development.

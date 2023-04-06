@@ -1,8 +1,7 @@
 import 'package:mason_logger/mason_logger.dart';
 import 'package:mocktail/mocktail.dart';
 import 'package:shorebird_cli/src/commands/commands.dart';
-import 'package:shorebird_cli/src/doctor/doctor_validator.dart';
-import 'package:shorebird_cli/src/doctor/validators/validators.dart';
+import 'package:shorebird_cli/src/validators/validators.dart';
 import 'package:test/test.dart';
 
 class _MockShorebirdVersionValidator extends Mock

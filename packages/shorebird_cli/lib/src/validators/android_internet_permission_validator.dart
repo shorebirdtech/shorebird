@@ -1,7 +1,7 @@
 import 'dart:io';
 
 import 'package:path/path.dart' as p;
-import 'package:shorebird_cli/src/doctor/doctor_validator.dart';
+import 'package:shorebird_cli/src/validators/validators.dart';
 import 'package:xml/xml.dart';
 
 /// Checks that all AndroidManifest.xml files in android/app/src/{flavor}/
