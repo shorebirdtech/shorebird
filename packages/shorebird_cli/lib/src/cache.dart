@@ -69,13 +69,14 @@ abstract class CachedArtifact {
     final response = await _httpClient.send(request);
     final tempDir = Directory.systemTemp.createTempSync();
     final archivePath = p.join(tempDir.path, '$name.zip');
+    final outputPath = location.path;
     await response.stream.pipe(File(archivePath).openWrite());
 
     await Isolate.run(
       () async {
         final inputStream = InputFileStream(archivePath);
         final archive = ZipDecoder().decodeBuffer(inputStream);
-        extractArchiveToDisk(archive, location.path);
+        extractArchiveToDisk(archive, outputPath);
       },
     );
 

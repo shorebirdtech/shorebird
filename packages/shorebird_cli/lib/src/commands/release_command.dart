@@ -77,6 +77,8 @@ make smaller updates to your app.
       return ExitCode.noUser.code;
     }
 
+    await logFlutterValidationIssues();
+
     final buildProgress = logger.progress('Building release');
     try {
       await buildRelease();

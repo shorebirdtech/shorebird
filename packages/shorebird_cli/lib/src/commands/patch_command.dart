@@ -107,6 +107,8 @@ class PatchCommand extends ShorebirdCommand
       return ExitCode.usage.code;
     }
 
+    await logFlutterValidationIssues();
+
     await cache.updateAll();
 
     final buildProgress = logger.progress('Building patch');

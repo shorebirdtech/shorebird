@@ -35,6 +35,8 @@ class RunCommand extends ShorebirdCommand
       return ExitCode.noUser.code;
     }
 
+    await logFlutterValidationIssues();
+
     logger.info('Running app...');
     final process = await startProcess(
       'flutter',
