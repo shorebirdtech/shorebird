@@ -10,7 +10,6 @@ import 'package:shorebird_cli/src/flutter_validation_mixin.dart';
 import 'package:shorebird_cli/src/shorebird_build_mixin.dart';
 import 'package:shorebird_cli/src/shorebird_config_mixin.dart';
 import 'package:shorebird_cli/src/shorebird_create_app_mixin.dart';
-import 'package:shorebird_cli/src/shorebird_engine_mixin.dart';
 import 'package:shorebird_code_push_client/shorebird_code_push_client.dart';
 
 /// {@template patch_command}
@@ -21,7 +20,6 @@ class PatchCommand extends ShorebirdCommand
     with
         FlutterValidationMixin,
         ShorebirdConfigMixin,
-        ShorebirdEngineMixin,
         ShorebirdBuildMixin,
         ShorebirdCreateAppMixin {
   /// {@macro patch_command}
@@ -100,15 +98,6 @@ class PatchCommand extends ShorebirdCommand
       logger.err('You must be logged in to publish.');
       return ExitCode.noUser.code;
     }
-
-    try {
-      await ensureEngineExists();
-    } catch (error) {
-      logger.err(error.toString());
-      return ExitCode.software.code;
-    }
-
-    await logFlutterValidationIssues();
 
     final force = results['force'] == true;
     final dryRun = results['dry-run'] == true;
@@ -389,7 +378,7 @@ Please create a release using "shorebird release" and try again.
     final tempDir = await Directory.systemTemp.createTemp();
     final diffPath = p.join(tempDir.path, 'diff.patch');
 
-    final diffExecutable = p.join(shorebirdEnginePath, 'patch');
+    final diffExecutable = p.join('patch');
     final diffArguments = [
       releaseArtifactPath,
       patchArtifactPath,

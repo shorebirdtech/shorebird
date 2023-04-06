@@ -31,7 +31,7 @@ class CodePushClient {
     http.Client? httpClient,
     Uri? hostedUri,
   })  : _httpClient = httpClient ?? http.Client(),
-        hostedUri = hostedUri ?? Uri.https('api.shorebird.dev');
+        hostedUri = hostedUri ?? Uri.https('api-dev.shorebird.dev');
 
   /// The default error message to use when an unknown error occurs.
   static const unknownErrorMessage = 'An unknown error occurred.';
@@ -175,22 +175,6 @@ class CodePushClient {
     if (response.statusCode != HttpStatus.noContent) {
       throw _parseErrorResponse(response.body);
     }
-  }
-
-  /// Download the specified revision of the shorebird engine.
-  Future<Uint8List> downloadEngine({required String revision}) async {
-    final request = http.Request(
-      'GET',
-      Uri.parse('$hostedUri/api/v1/engines/$revision'),
-    );
-
-    final response = await _httpClient.send(request);
-
-    if (response.statusCode != HttpStatus.ok) {
-      throw Exception('${response.statusCode} ${response.reasonPhrase}');
-    }
-
-    return response.stream.toBytes();
   }
 
   /// List all apps for the current account.

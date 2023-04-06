@@ -1,7 +1,5 @@
 import 'dart:io';
-import 'dart:typed_data';
 
-import 'package:archive/archive.dart';
 import 'package:args/args.dart';
 import 'package:http/http.dart' as http;
 import 'package:mason_logger/mason_logger.dart';
@@ -134,9 +132,6 @@ flutter:
       ).thenReturn(version);
       when(() => processResult.exitCode).thenReturn(ExitCode.success.code);
       when(
-        () => codePushClient.downloadEngine(revision: any(named: 'revision')),
-      ).thenAnswer((_) async => Uint8List.fromList([]));
-      when(
         () => codePushClient.getApps(),
       ).thenAnswer((_) async => [appMetadata]);
       when(
@@ -184,42 +179,9 @@ flutter:
       expect(exitCode, equals(ExitCode.noUser.code));
     });
 
-    test('exits with code 70 when pulling engine fails', () async {
-      when(
-        () => codePushClient.downloadEngine(revision: any(named: 'revision')),
-      ).thenThrow(Exception('oops'));
-      final tempDir = setUpTempDir();
-      final exitCode = await IOOverrides.runZoned(
-        command.run,
-        getCurrentDirectory: () => tempDir,
-      );
-      expect(exitCode, equals(ExitCode.software.code));
-    });
-
-    test('exits with code 70 when building fails', () async {
-      when(() => processResult.exitCode).thenReturn(1);
-      when(() => processResult.stderr).thenReturn('oops');
-      when(
-        () => codePushClient.downloadEngine(revision: any(named: 'revision')),
-      ).thenAnswer(
-        (_) async => Uint8List.fromList(ZipEncoder().encode(Archive())!),
-      );
-
-      final tempDir = setUpTempDir();
-      final exitCode = await IOOverrides.runZoned(
-        () async => command.run(),
-        getCurrentDirectory: () => tempDir,
-      );
-
-      expect(exitCode, equals(ExitCode.software.code));
-    });
-
     test('throws software error when artifact is not found (default).',
         () async {
       final tempDir = setUpTempDir();
-      Directory(
-        p.join(command.shorebirdEnginePath, 'engine'),
-      ).createSync(recursive: true);
       final exitCode = await IOOverrides.runZoned(
         command.run,
         getCurrentDirectory: () => tempDir,
@@ -234,9 +196,6 @@ flutter:
       const error = 'something went wrong';
       when(() => codePushClient.getApps()).thenThrow(error);
       final tempDir = setUpTempDir();
-      Directory(
-        p.join(command.shorebirdEnginePath, 'engine'),
-      ).createSync(recursive: true);
       final artifactPath = p.join(
         tempDir.path,
         'build',
@@ -264,9 +223,6 @@ flutter:
       ).thenReturn(appDisplayName);
       when(() => codePushClient.getApps()).thenAnswer((_) async => []);
       final tempDir = setUpTempDir();
-      Directory(
-        p.join(command.shorebirdEnginePath, 'engine'),
-      ).createSync(recursive: true);
       final artifactPath = p.join(
         tempDir.path,
         'build',
@@ -300,9 +256,6 @@ Did you forget to run "shorebird init"?''',
         () => logger.prompt(any(), defaultValue: any(named: 'defaultValue')),
       ).thenReturn(appDisplayName);
       final tempDir = setUpTempDir();
-      Directory(
-        p.join(command.shorebirdEnginePath, 'engine'),
-      ).createSync(recursive: true);
       final artifactPath = p.join(
         tempDir.path,
         'build',
@@ -330,9 +283,6 @@ Did you forget to run "shorebird init"?''',
         () => codePushClient.getReleases(appId: any(named: 'appId')),
       ).thenThrow(error);
       final tempDir = setUpTempDir();
-      Directory(
-        p.join(command.shorebirdEnginePath, 'engine'),
-      ).createSync(recursive: true);
       final artifactPath = p.join(
         tempDir.path,
         'build',
@@ -367,9 +317,6 @@ Did you forget to run "shorebird init"?''',
         ),
       ).thenThrow(error);
       final tempDir = setUpTempDir();
-      Directory(
-        p.join(command.shorebirdEnginePath, 'engine'),
-      ).createSync(recursive: true);
       final artifactPath = p.join(
         tempDir.path,
         'build',
@@ -406,9 +353,6 @@ Did you forget to run "shorebird init"?''',
         ),
       ).thenThrow(error);
       final tempDir = setUpTempDir();
-      Directory(
-        p.join(command.shorebirdEnginePath, 'engine'),
-      ).createSync(recursive: true);
       final artifactPath = p.join(
         tempDir.path,
         'build',
@@ -432,9 +376,6 @@ Did you forget to run "shorebird init"?''',
 
     test('succeeds when release is successful', () async {
       final tempDir = setUpTempDir();
-      Directory(
-        p.join(command.shorebirdEnginePath, 'engine'),
-      ).createSync(recursive: true);
       final artifactPath = p.join(
         tempDir.path,
         'build',
