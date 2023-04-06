@@ -3,15 +3,13 @@
 import 'dart:io';
 
 import 'package:artifact_proxy/artifact_proxy.dart';
+import 'package:artifact_proxy/config.dart';
 import 'package:shelf/shelf.dart';
 import 'package:shelf/shelf_io.dart' as shelf_io;
 import 'package:shelf_hotreload/shelf_hotreload.dart';
-import 'package:yaml/yaml.dart';
 
 Future<void> main() async {
-  const configPath = 'config.yaml';
   final isDev = Platform.environment['DEV'] == 'true';
-  final config = loadYaml(File(configPath).readAsStringSync()) as Map;
   final handler = artifactProxyHandler(config: config);
   final ip = InternetAddress.anyIPv6;
   final port = int.parse(Platform.environment['PORT'] ?? '8080');

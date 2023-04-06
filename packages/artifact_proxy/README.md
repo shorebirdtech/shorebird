@@ -9,7 +9,7 @@ Storage (either Shorebird's bucket or the official Flutter buckets).
 
 ## Usage
 
-Uses `config.yaml` to configure the engine revisions and artifact overrides.
+Uses `config.dart` to configure the engine revisions and artifact overrides.
 
 ```bash
 # Run locally with hot-reload enabled.
