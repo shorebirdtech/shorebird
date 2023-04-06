@@ -36,17 +36,20 @@ Future<void> main(List<String> args) async {
   final configPath = results['config'] as String;
   final config = loadYaml(File(configPath).readAsStringSync()) as Map;
   final handler = artifactProxyHandler(config: config);
+  final ip = InternetAddress.anyIPv6;
+  final port = int.parse(Platform.environment['PORT'] ?? '8080');
 
   // Hot-reload is enabled when the `--watch` flag is passed.
-  if (shouldWatch) return withHotreload(() => createServer(handler));
+  if (shouldWatch) return withHotreload(() => serve(handler, ip, port));
 
-  await createServer(handler);
+  await serve(handler, ip, port);
 }
 
-Future<HttpServer> createServer(Handler proxy) async {
-  final handler =
-      const Pipeline().addMiddleware(logRequests()).addHandler(proxy);
-  final server = await shelf_io.serve(handler, 'localhost', 8080);
+Future<HttpServer> serve(Handler proxy, InternetAddress ip, int port) async {
+  const pipeline = Pipeline();
+  final handler = pipeline.addMiddleware(logRequests()).addHandler(proxy);
+  final server = await shelf_io.serve(handler, ip, port);
+  print('Serving at http://localhost:${server.port}');
   server.autoCompress = true;
   return server;
 }
