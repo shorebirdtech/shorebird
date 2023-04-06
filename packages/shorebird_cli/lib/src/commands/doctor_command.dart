@@ -14,11 +14,11 @@ class DoctorCommand extends ShorebirdCommand with ShorebirdVersionMixin {
   /// {@macro doctor_command}
   DoctorCommand({
     required super.logger,
-    List<DoctorValidator>? validators,
+    List<Validator>? validators,
     super.runProcess,
   }) {
     this.validators = validators ??
-        <DoctorValidator>[
+        <Validator>[
           ShorebirdVersionValidator(
             isShorebirdVersionCurrent: isShorebirdVersionCurrent,
           ),
@@ -27,7 +27,7 @@ class DoctorCommand extends ShorebirdCommand with ShorebirdVersionMixin {
         ];
   }
 
-  late final List<DoctorValidator> validators;
+  late final List<Validator> validators;
 
   @override
   String get name => 'doctor';

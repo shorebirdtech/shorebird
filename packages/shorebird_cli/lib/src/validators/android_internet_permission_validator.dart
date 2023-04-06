@@ -8,7 +8,7 @@ import 'package:xml/xml.dart';
 /// contain the INTERNET permission, which is required for Shorebird to work.
 ///
 /// See https://github.com/shorebirdtech/shorebird/issues/160.
-class AndroidInternetPermissionValidator extends DoctorValidator {
+class AndroidInternetPermissionValidator extends Validator {
   // coverage:ignore-start
   @override
   String get description =>

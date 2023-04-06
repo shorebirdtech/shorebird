@@ -2,7 +2,7 @@ import 'package:shorebird_cli/src/shorebird_paths.dart';
 import 'package:shorebird_cli/src/shorebird_process.dart';
 import 'package:shorebird_cli/src/validators/validators.dart';
 
-class ShorebirdFlutterValidator extends DoctorValidator {
+class ShorebirdFlutterValidator extends Validator {
   ShorebirdFlutterValidator({required this.runProcess});
 
   final RunProcess runProcess;
