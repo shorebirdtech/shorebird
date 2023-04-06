@@ -8,17 +8,17 @@ void main() {
   const shorebirdEngineRevision = 'ff32625d5bda6d3eb2eb131e30a4c26ed4960002';
   const flutterEngineRevision = 'ec975089acb540fc60752606a3d3ba809dd1528b';
   const shorebirdStorageBucket = 'download.shorebird.dev';
-  const config = {
-    'engine_mappings': {
-      shorebirdEngineRevision: {
-        'flutter_engine_revision': flutterEngineRevision,
-        'shorebird_storage_bucket': shorebirdStorageBucket,
-        'shorebird_artifact_overrides': [
+  const config = ProxyConfig(
+    engineMappings: {
+      shorebirdEngineRevision: EngineMapping(
+        flutterEngineRevision: flutterEngineRevision,
+        shorebirdStorageBucket: shorebirdStorageBucket,
+        shorebirdArtifactOverrides: {
           r'flutter_infra_release/flutter/$engine/android-x64-release/artifacts.zip'
-        ]
-      }
-    }
-  };
+        },
+      ),
+    },
+  );
 
   Request buildRequest(String path) {
     return Request('GET', Uri.parse('http://localhost').replace(path: path));
