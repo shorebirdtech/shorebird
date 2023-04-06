@@ -4,8 +4,10 @@ import 'package:collection/collection.dart';
 import 'package:crypto/crypto.dart';
 import 'package:http/http.dart' as http;
 import 'package:mason_logger/mason_logger.dart';
+import 'package:meta/meta.dart';
 import 'package:path/path.dart' as p;
 import 'package:shorebird_cli/src/command.dart';
+import 'package:shorebird_cli/src/doctor/validators/shorebird_flutter_validator.dart';
 import 'package:shorebird_cli/src/shorebird_build_mixin.dart';
 import 'package:shorebird_cli/src/shorebird_config_mixin.dart';
 import 'package:shorebird_cli/src/shorebird_create_app_mixin.dart';
@@ -30,8 +32,14 @@ class PatchCommand extends ShorebirdCommand
     super.runProcess,
     HashFunction? hashFn,
     http.Client? httpClient,
+    ShorebirdFlutterValidator? flutterValidator,
   })  : _hashFn = hashFn ?? ((m) => sha256.convert(m).toString()),
         _httpClient = httpClient ?? http.Client() {
+    this.flutterValidator = flutterValidator ??
+        ShorebirdFlutterValidator(
+          runProcess: runProcess,
+        );
+
     argParser
       ..addOption(
         'release-version',
@@ -84,6 +92,9 @@ class PatchCommand extends ShorebirdCommand
   final HashFunction _hashFn;
   final http.Client _httpClient;
 
+  @visibleForTesting
+  late final ShorebirdFlutterValidator flutterValidator;
+
   @override
   Future<int> run() async {
     if (!isShorebirdInitialized) {
@@ -103,6 +114,13 @@ class PatchCommand extends ShorebirdCommand
     } catch (error) {
       logger.err(error.toString());
       return ExitCode.software.code;
+    }
+
+    final flutterValidationIssues = await flutterValidator.validate();
+    if (flutterValidationIssues.isNotEmpty) {
+      for (final issue in flutterValidationIssues) {
+        logger.info(issue.displayMessage);
+      }
     }
 
     final force = results['force'] == true;

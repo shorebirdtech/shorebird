@@ -10,6 +10,8 @@ import 'package:path/path.dart' as p;
 import 'package:shorebird_cli/src/auth/auth.dart';
 import 'package:shorebird_cli/src/commands/patch_command.dart';
 import 'package:shorebird_cli/src/config/config.dart';
+import 'package:shorebird_cli/src/doctor/doctor_validator.dart';
+import 'package:shorebird_cli/src/doctor/validators/shorebird_flutter_validator.dart';
 import 'package:shorebird_code_push_client/shorebird_code_push_client.dart';
 import 'package:test/test.dart';
 
@@ -28,6 +30,9 @@ class _MockProcessResult extends Mock implements ProcessResult {}
 class _MockHttpClient extends Mock implements http.Client {}
 
 class _MockCodePushClient extends Mock implements CodePushClient {}
+
+class _MockShorebirdFlutterValidator extends Mock
+    implements ShorebirdFlutterValidator {}
 
 void main() {
   group('patch', () {
@@ -85,6 +90,7 @@ flutter:
     late CodePushClient codePushClient;
     late PatchCommand command;
     late Uri? capturedHostedUri;
+    late ShorebirdFlutterValidator flutterValidator;
 
     Directory setUpTempDir() {
       final tempDir = Directory.systemTemp.createTempSync();
@@ -111,6 +117,7 @@ flutter:
       patchProcessResult = _MockProcessResult();
       httpClient = _MockHttpClient();
       codePushClient = _MockCodePushClient();
+      flutterValidator = _MockShorebirdFlutterValidator();
       command = PatchCommand(
         auth: auth,
         buildCodePushClient: ({
@@ -125,6 +132,7 @@ flutter:
           arguments, {
           bool runInShell = false,
           String? workingDirectory,
+          bool resolveExecutables = true,
         }) async {
           if (executable == 'flutter') return flutterBuildProcessResult;
           if (executable.endsWith('patch')) return patchProcessResult;
@@ -132,6 +140,7 @@ flutter:
         },
         logger: logger,
         httpClient: httpClient,
+        flutterValidator: flutterValidator,
       )..testArgResults = argResults;
       testApplicationConfigHome = (_) => applicationConfigHome.path;
 
@@ -198,6 +207,7 @@ flutter:
           channelId: any(named: 'channelId'),
         ),
       ).thenAnswer((_) async {});
+      when(() => flutterValidator.validate()).thenAnswer((_) async => []);
     });
 
     test('throws config error when shorebird is not initialized', () async {
@@ -837,6 +847,51 @@ base_url: $baseUrl''',
         getCurrentDirectory: () => tempDir,
       );
       expect(capturedHostedUri, equals(Uri.parse(baseUrl)));
+    });
+
+    test('prints flutter validation warnings', () async {
+      final tempDir = setUpTempDir();
+      Directory(
+        p.join(command.shorebirdEnginePath, 'engine'),
+      ).createSync(recursive: true);
+      final artifactPath = p.join(
+        tempDir.path,
+        'build',
+        'app',
+        'intermediates',
+        'stripped_native_libs',
+        'release',
+        'out',
+        'lib',
+        'arm64-v8a',
+        'libapp.so',
+      );
+      File(artifactPath).createSync(recursive: true);
+      when(() => flutterValidator.validate()).thenAnswer(
+        (_) async => [
+          const ValidationIssue(
+            severity: ValidationIssueSeverity.warning,
+            message: 'Flutter issue 1',
+          ),
+          const ValidationIssue(
+            severity: ValidationIssueSeverity.warning,
+            message: 'Flutter issue 2',
+          ),
+        ],
+      );
+
+      final exitCode = await IOOverrides.runZoned(
+        command.run,
+        getCurrentDirectory: () => tempDir,
+      );
+
+      expect(exitCode, equals(ExitCode.success.code));
+      verify(
+        () => logger.info(any(that: contains('Flutter issue 1'))),
+      ).called(1);
+      verify(
+        () => logger.info(any(that: contains('Flutter issue 2'))),
+      ).called(1);
     });
   });
 }

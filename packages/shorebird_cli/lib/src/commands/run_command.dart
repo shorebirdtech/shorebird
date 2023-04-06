@@ -1,7 +1,9 @@
 import 'dart:convert';
 
 import 'package:mason_logger/mason_logger.dart';
+import 'package:meta/meta.dart';
 import 'package:shorebird_cli/src/command.dart';
+import 'package:shorebird_cli/src/doctor/validators/shorebird_flutter_validator.dart';
 import 'package:shorebird_cli/src/shorebird_config_mixin.dart';
 import 'package:shorebird_cli/src/shorebird_engine_mixin.dart';
 
@@ -17,7 +19,14 @@ class RunCommand extends ShorebirdCommand
     super.auth,
     super.buildCodePushClient,
     super.startProcess,
-  });
+    ShorebirdFlutterValidator? flutterValidator,
+  }) {
+    this.flutterValidator =
+        flutterValidator ?? ShorebirdFlutterValidator(runProcess: runProcess);
+  }
+
+  @visibleForTesting
+  late final ShorebirdFlutterValidator flutterValidator;
 
   @override
   String get description => 'Run the Flutter application.';
@@ -39,6 +48,13 @@ class RunCommand extends ShorebirdCommand
     } catch (error) {
       logger.err(error.toString());
       return ExitCode.software.code;
+    }
+
+    final flutterValidationIssues = await flutterValidator.validate();
+    if (flutterValidationIssues.isNotEmpty) {
+      for (final issue in flutterValidationIssues) {
+        logger.info(issue.displayMessage);
+      }
     }
 
     logger.info('Running app...');

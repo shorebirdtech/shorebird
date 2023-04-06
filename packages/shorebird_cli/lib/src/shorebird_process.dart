@@ -8,6 +8,7 @@ typedef RunProcess = Future<ProcessResult> Function(
   List<String> arguments, {
   bool runInShell,
   String? workingDirectory,
+  bool resolveExecutables,
 });
 
 typedef StartProcess = Future<Process> Function(
@@ -27,9 +28,10 @@ abstract class ShorebirdProcess {
     List<String> arguments, {
     bool runInShell = false,
     String? workingDirectory,
+    bool resolveExecutables = true,
   }) {
     return processWrapper.run(
-      _resolveExecutable(executable),
+      resolveExecutables ? _resolveExecutable(executable) : executable,
       arguments,
       runInShell: runInShell,
       workingDirectory: workingDirectory,
@@ -40,9 +42,10 @@ abstract class ShorebirdProcess {
     String executable,
     List<String> argument, {
     bool runInShell = false,
+    bool resolveExecutables = true,
   }) {
     return processWrapper.start(
-      _resolveExecutable(executable),
+      resolveExecutables ? _resolveExecutable(executable) : executable,
       argument,
       runInShell: runInShell,
     );
@@ -60,7 +63,19 @@ abstract class ShorebirdProcess {
 // coverage:ignore-start
 @visibleForTesting
 class ProcessWrapper {
-  RunProcess get run => Process.run;
+  RunProcess get run => (
+        String executable,
+        List<String> arguments, {
+        bool runInShell = false,
+        String? workingDirectory,
+        bool resolveExecutables = true,
+      }) =>
+          Process.run(
+            executable,
+            arguments,
+            runInShell: runInShell,
+            workingDirectory: workingDirectory,
+          );
 
   StartProcess get start => Process.start;
 }

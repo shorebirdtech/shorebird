@@ -39,6 +39,7 @@ void main() {
           arguments, {
           bool runInShell = false,
           workingDirectory,
+          bool resolveExecutables = true,
         }) async {
           if (executable == 'git') {
             const revParseHead = ['rev-parse', '--verify', 'HEAD'];

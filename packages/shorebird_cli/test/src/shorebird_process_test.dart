@@ -29,6 +29,7 @@ void main() {
           arguments, {
           bool runInShell = false,
           String? workingDirectory,
+          bool resolveExecutables = true,
         }) async {
           return runProcessResult;
         },
@@ -81,6 +82,27 @@ void main() {
           ),
         ).called(1);
       });
+
+      test(
+          'does not replace flutter with our local flutter if'
+          ' resolveExecutables is false', () async {
+        await ShorebirdProcess.run(
+          'flutter',
+          ['--version'],
+          runInShell: true,
+          workingDirectory: '~',
+          resolveExecutables: false,
+        );
+
+        verify(
+          () => processWrapper.run(
+            'flutter',
+            ['--version'],
+            runInShell: true,
+            workingDirectory: '~',
+          ),
+        ).called(1);
+      });
     });
 
     group('start', () {
@@ -98,6 +120,25 @@ void main() {
           () => processWrapper.start(
             'flutter/bin/flutter',
             ['run'],
+            runInShell: true,
+          ),
+        ).called(1);
+      });
+
+      test(
+          'does not replace flutter with our local flutter if'
+          ' resolveExecutables is false', () async {
+        await ShorebirdProcess.start(
+          'flutter',
+          ['--version'],
+          runInShell: true,
+          resolveExecutables: false,
+        );
+
+        verify(
+          () => processWrapper.start(
+            'flutter',
+            ['--version'],
             runInShell: true,
           ),
         ).called(1);

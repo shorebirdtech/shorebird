@@ -27,8 +27,24 @@ nothing to commit, working tree clean
 * stable
 ''';
 
+    const pathFlutterVersionMessage = '''
+Flutter 3.7.9 • channel unknown • unknown source
+Framework • revision 62bd79521d (7 days ago) • 2023-03-30 10:59:36 -0700
+Engine • revision ec975089ac
+Tools • Dart 2.19.6 • DevTools 2.20.1
+''';
+
+    const shorebirdFlutterVersionMessage = '''
+Flutter 3.7.9 • channel stable • https://github.com/shorebirdtech/flutter.git
+Framework • revision 62bd79521d (7 days ago) • 2023-03-30 10:59:36 -0700
+Engine • revision ec975089ac
+Tools • Dart 2.19.6 • DevTools 2.20.1
+''';
+
     late ShorebirdFlutterValidator validator;
     late Directory tempDir;
+    late ProcessResult pathFlutterVersionProcessResult;
+    late ProcessResult shorebirdFlutterVersionProcessResult;
     late ProcessResult gitBranchProcessResult;
     late ProcessResult gitStatusProcessResult;
 
@@ -52,6 +68,8 @@ nothing to commit, working tree clean
       when(() => ShorebirdPaths.platform.script)
           .thenReturn(shorebirdScriptFile(tempDir).uri);
 
+      pathFlutterVersionProcessResult = _MockProcessResult();
+      shorebirdFlutterVersionProcessResult = _MockProcessResult();
       gitBranchProcessResult = _MockProcessResult();
       gitStatusProcessResult = _MockProcessResult();
 
@@ -61,6 +79,7 @@ nothing to commit, working tree clean
           arguments, {
           bool runInShell = false,
           workingDirectory,
+          bool resolveExecutables = true,
         }) async {
           if (executable == 'git') {
             if (arguments.equals(['status'])) {
@@ -68,11 +87,23 @@ nothing to commit, working tree clean
             } else if (arguments.equals(['--no-pager', 'branch'])) {
               return gitBranchProcessResult;
             }
+          } else if (executable == 'flutter') {
+            if (arguments.equals(['--version'])) {
+              if (resolveExecutables) {
+                return shorebirdFlutterVersionProcessResult;
+              } else {
+                return pathFlutterVersionProcessResult;
+              }
+            }
           }
           return _MockProcessResult();
         },
       );
 
+      when(() => pathFlutterVersionProcessResult.stdout)
+          .thenReturn(pathFlutterVersionMessage);
+      when(() => shorebirdFlutterVersionProcessResult.stdout)
+          .thenReturn(shorebirdFlutterVersionMessage);
       when(() => gitBranchProcessResult.stdout).thenReturn(gitBranchMessage);
       when(() => gitStatusProcessResult.stdout).thenReturn(gitStatusMessage);
     });
@@ -116,5 +147,25 @@ nothing to commit, working tree clean
       expect(results.first.severity, ValidationIssueSeverity.warning);
       expect(results.first.message, contains('is not on the "stable" branch'));
     });
+
+    test(
+      'warns when path flutter version does not match shorebird flutter'
+      ' version',
+      () async {
+        when(() => pathFlutterVersionProcessResult.stdout).thenReturn(
+          pathFlutterVersionMessage.replaceAll('3.7.9', '3.7.10'),
+        );
+
+        final results = await validator.validate();
+
+        expect(results, hasLength(1));
+        expect(results.first.severity, ValidationIssueSeverity.warning);
+        expect(
+          results.first.message,
+          contains('Shorebird Flutter and the Flutter on your path are'
+              ' different versions'),
+        );
+      },
+    );
   });
 }

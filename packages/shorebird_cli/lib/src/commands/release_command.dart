@@ -3,8 +3,10 @@ import 'dart:io';
 import 'package:collection/collection.dart';
 import 'package:crypto/crypto.dart';
 import 'package:mason_logger/mason_logger.dart';
+import 'package:meta/meta.dart';
 import 'package:path/path.dart' as p;
 import 'package:shorebird_cli/src/command.dart';
+import 'package:shorebird_cli/src/doctor/validators/shorebird_flutter_validator.dart';
 import 'package:shorebird_cli/src/shorebird_build_mixin.dart';
 import 'package:shorebird_cli/src/shorebird_config_mixin.dart';
 import 'package:shorebird_cli/src/shorebird_create_app_mixin.dart';
@@ -22,13 +24,18 @@ class ReleaseCommand extends ShorebirdCommand
         ShorebirdBuildMixin,
         ShorebirdCreateAppMixin {
   /// {@macro release_command}
-  ReleaseCommand({
-    required super.logger,
-    super.auth,
-    super.buildCodePushClient,
-    super.runProcess,
-    HashFunction? hashFn,
-  }) : _hashFn = hashFn ?? ((m) => sha256.convert(m).toString()) {
+  ReleaseCommand(
+      {required super.logger,
+      super.auth,
+      super.buildCodePushClient,
+      super.runProcess,
+      HashFunction? hashFn,
+      ShorebirdFlutterValidator? flutterValidator})
+      : _hashFn = hashFn ?? ((m) => sha256.convert(m).toString()) {
+    this.flutterValidator = flutterValidator ??
+        ShorebirdFlutterValidator(
+          runProcess: runProcess,
+        );
     argParser
       ..addOption(
         'release-version',
@@ -49,6 +56,9 @@ class ReleaseCommand extends ShorebirdCommand
         defaultsTo: 'aarch64',
       );
   }
+
+  @visibleForTesting
+  late final ShorebirdFlutterValidator flutterValidator;
 
   @override
   String get description => '''
@@ -81,6 +91,13 @@ make smaller updates to your app.
     } catch (error) {
       logger.err(error.toString());
       return ExitCode.software.code;
+    }
+
+    final flutterValidationIssues = await flutterValidator.validate();
+    if (flutterValidationIssues.isNotEmpty) {
+      for (final issue in flutterValidationIssues) {
+        logger.info(issue.displayMessage);
+      }
     }
 
     final buildProgress = logger.progress('Building release');
