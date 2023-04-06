@@ -132,7 +132,7 @@ flutter:
           bool runInShell = false,
           Map<String, String>? environment,
           String? workingDirectory,
-          bool resolveExecutables = true,
+          bool useVendedFlutter = true,
         }) async {
           if (executable == 'flutter') return flutterBuildProcessResult;
           if (executable.endsWith('patch')) return patchProcessResult;

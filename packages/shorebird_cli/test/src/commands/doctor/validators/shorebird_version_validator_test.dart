@@ -34,7 +34,7 @@ void main() {
           bool runInShell = false,
           Map<String, String>? environment,
           workingDirectory,
-          bool resolveExecutables = true,
+          bool useVendedFlutter = true,
         }) async {
           if (executable == 'git') {
             const revParseHead = ['rev-parse', '--verify', 'HEAD'];

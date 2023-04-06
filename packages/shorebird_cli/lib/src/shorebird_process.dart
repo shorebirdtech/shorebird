@@ -9,7 +9,7 @@ typedef RunProcess = Future<ProcessResult> Function(
   bool runInShell,
   Map<String, String>? environment,
   String? workingDirectory,
-  bool resolveExecutables,
+  bool useVendedFlutter,
 });
 
 typedef StartProcess = Future<Process> Function(
@@ -17,6 +17,7 @@ typedef StartProcess = Future<Process> Function(
   List<String> arguments, {
   bool runInShell,
   Map<String, String>? environment,
+  bool useVendedFlutter,
 });
 
 /// A wrapper around [Process] that replaces executables to Shorebird-vended
@@ -31,17 +32,17 @@ abstract class ShorebirdProcess {
     bool runInShell = false,
     Map<String, String>? environment,
     String? workingDirectory,
-    bool resolveExecutables = true,
+    bool useVendedFlutter = true,
   }) {
     final resolvedEnvironment = environment ?? {};
-    if (resolveExecutables) {
+    if (useVendedFlutter) {
       resolvedEnvironment.addAll(
         _environmentOverrides(executable: executable),
       );
     }
 
     return processWrapper.run(
-      resolveExecutables ? _resolveExecutable(executable) : executable,
+      useVendedFlutter ? _resolveExecutable(executable) : executable,
       arguments,
       runInShell: runInShell,
       workingDirectory: workingDirectory,
@@ -53,10 +54,10 @@ abstract class ShorebirdProcess {
     String executable,
     List<String> argument, {
     bool runInShell = false,
-    bool resolveExecutables = true,
+    bool useVendedFlutter = true,
   }) {
     return processWrapper.start(
-      resolveExecutables ? _resolveExecutable(executable) : executable,
+      useVendedFlutter ? _resolveExecutable(executable) : executable,
       argument,
       runInShell: runInShell,
     );
@@ -90,7 +91,7 @@ class ProcessWrapper {
         bool runInShell = false,
         Map<String, String>? environment,
         String? workingDirectory,
-        bool resolveExecutables = true,
+        bool useVendedFlutter = true,
       }) =>
           Process.run(
             executable,
@@ -100,6 +101,18 @@ class ProcessWrapper {
             workingDirectory: workingDirectory,
           );
 
-  StartProcess get start => Process.start;
+  StartProcess get start => (
+        String executable,
+        List<String> arguments, {
+        bool runInShell = false,
+        Map<String, String>? environment,
+        bool useVendedFlutter = true,
+      }) =>
+          Process.start(
+            executable,
+            arguments,
+            runInShell: runInShell,
+            environment: environment,
+          );
 }
 // coverage:ignore-end

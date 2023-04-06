@@ -118,7 +118,7 @@ This can cause unexpected behavior if the version gap is wide. If you're seeing 
     final result = await runProcess(
       'flutter',
       ['--version'],
-      resolveExecutables: !checkPathFlutter,
+      useVendedFlutter: !checkPathFlutter,
     );
     final output = result.stdout.toString();
 

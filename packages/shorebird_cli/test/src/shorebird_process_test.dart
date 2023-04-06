@@ -30,7 +30,7 @@ void main() {
           bool runInShell = false,
           Map<String, String>? environment,
           String? workingDirectory,
-          bool resolveExecutables = true,
+          bool useVendedFlutter = true,
         }) async {
           return runProcessResult;
         },
@@ -42,6 +42,7 @@ void main() {
           arguments, {
           bool runInShell = false,
           Map<String, String>? environment,
+          bool useVendedFlutter = true,
         }) async {
           return startProcess;
         },
@@ -87,13 +88,13 @@ void main() {
 
       test(
           'does not replace flutter with our local flutter if'
-          ' resolveExecutables is false', () async {
+          ' useVendedFlutter is false', () async {
         await ShorebirdProcess.run(
           'flutter',
           ['--version'],
           runInShell: true,
           workingDirectory: '~',
-          resolveExecutables: false,
+          useVendedFlutter: false,
         );
 
         verify(
@@ -106,13 +107,13 @@ void main() {
         ).called(1);
       });
 
-      test('Updates environment if resolveExecutables is true', () async {
+      test('Updates environment if useVendedFlutter is true', () async {
         await ShorebirdProcess.run(
           'flutter',
           ['--version'],
           runInShell: true,
           workingDirectory: '~',
-          resolveExecutables: false,
+          useVendedFlutter: false,
           environment: {'ENV_VAR': 'asdfasdf'},
         );
 
@@ -131,14 +132,14 @@ void main() {
       });
 
       test(
-        'Makes no changes to environment if resolveExecutables is false',
+        'Makes no changes to environment if useVendedFlutter is false',
         () async {
           await ShorebirdProcess.run(
             'flutter',
             ['--version'],
             runInShell: true,
             workingDirectory: '~',
-            resolveExecutables: false,
+            useVendedFlutter: false,
             environment: {'ENV_VAR': 'asdfasdf'},
           );
 
@@ -177,12 +178,12 @@ void main() {
 
       test(
           'does not replace flutter with our local flutter if'
-          ' resolveExecutables is false', () async {
+          ' useVendedFlutter is false', () async {
         await ShorebirdProcess.start(
           'flutter',
           ['--version'],
           runInShell: true,
-          resolveExecutables: false,
+          useVendedFlutter: false,
         );
 
         verify(
@@ -195,7 +196,7 @@ void main() {
       });
     });
 
-    test('Updates environment if resolveExecutables is true', () async {
+    test('Updates environment if useVendedFlutter is true', () async {
       await ShorebirdProcess.start(
         'flutter',
         ['--version'],
@@ -216,13 +217,13 @@ void main() {
     });
 
     test(
-      'Makes no changes to environment if resolveExecutables is false',
+      'Makes no changes to environment if useVendedFlutter is false',
       () async {
         await ShorebirdProcess.start(
           'flutter',
           ['--version'],
           runInShell: true,
-          resolveExecutables: false,
+          useVendedFlutter: false,
         );
 
         verify(

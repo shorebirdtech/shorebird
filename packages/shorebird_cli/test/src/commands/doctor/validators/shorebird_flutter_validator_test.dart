@@ -80,7 +80,7 @@ Tools • Dart 2.19.6 • DevTools 2.20.1
           bool runInShell = false,
           Map<String, String>? environment,
           workingDirectory,
-          bool resolveExecutables = true,
+          bool useVendedFlutter = true,
         }) async {
           if (executable == 'git') {
             if (arguments.equals(['status'])) {
@@ -90,7 +90,7 @@ Tools • Dart 2.19.6 • DevTools 2.20.1
             }
           } else if (executable == 'flutter') {
             if (arguments.equals(['--version'])) {
-              if (resolveExecutables) {
+              if (useVendedFlutter) {
                 return shorebirdFlutterVersionProcessResult;
               } else {
                 return pathFlutterVersionProcessResult;

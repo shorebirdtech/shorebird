@@ -66,7 +66,7 @@ void main() {
           bool runInShell = false,
           Map<String, String>? environment,
           String? workingDirectory,
-          bool resolveExecutables = true,
+          bool useVendedFlutter = true,
         }) async {
           return processResult;
         },
