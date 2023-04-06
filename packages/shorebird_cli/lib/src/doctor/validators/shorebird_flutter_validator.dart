@@ -15,11 +15,12 @@ class ShorebirdFlutterValidator extends DoctorValidator {
   @override
   Future<List<ValidationIssue>> validate() async {
     if (!ShorebirdPaths.flutterDirectory.existsSync()) {
+      final message =
+          'No Flutter directory found at ${ShorebirdPaths.flutterDirectory}';
       return [
         ValidationIssue(
           severity: ValidationIssueSeverity.error,
-          message:
-              'No Flutter directory found at ${ShorebirdPaths.flutterDirectory}',
+          message: message,
         ),
       ];
     }
@@ -34,11 +35,12 @@ class ShorebirdFlutterValidator extends DoctorValidator {
     }
 
     if (!await _flutterDirectoryTracksStable()) {
+      final message =
+          '${ShorebirdPaths.flutterDirectory} is not on the "stable" branch';
       return [
         ValidationIssue(
           severity: ValidationIssueSeverity.warning,
-          message:
-              '${ShorebirdPaths.flutterDirectory} is not on the "stable" branch',
+          message: message,
         ),
       ];
     }
