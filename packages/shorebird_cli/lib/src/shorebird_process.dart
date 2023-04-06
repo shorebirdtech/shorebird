@@ -36,6 +36,7 @@ abstract class ShorebirdProcess {
   }) {
     final resolvedEnvironment = environment ?? {};
     if (useVendedFlutter) {
+      // Note: this will overwrite existing environment values.
       resolvedEnvironment.addAll(
         _environmentOverrides(executable: executable),
       );
@@ -59,6 +60,7 @@ abstract class ShorebirdProcess {
   }) {
     final resolvedEnvironment = environment ?? {};
     if (useVendedFlutter) {
+      // Note: this will overwrite existing environment values.
       resolvedEnvironment.addAll(
         _environmentOverrides(executable: executable),
       );
