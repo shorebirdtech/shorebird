@@ -24,14 +24,14 @@ class ReleaseCommand extends ShorebirdCommand
         ShorebirdBuildMixin,
         ShorebirdCreateAppMixin {
   /// {@macro release_command}
-  ReleaseCommand(
-      {required super.logger,
-      super.auth,
-      super.buildCodePushClient,
-      super.runProcess,
-      HashFunction? hashFn,
-      ShorebirdFlutterValidator? flutterValidator})
-      : _hashFn = hashFn ?? ((m) => sha256.convert(m).toString()) {
+  ReleaseCommand({
+    required super.logger,
+    super.auth,
+    super.buildCodePushClient,
+    super.runProcess,
+    HashFunction? hashFn,
+    ShorebirdFlutterValidator? flutterValidator,
+  }) : _hashFn = hashFn ?? ((m) => sha256.convert(m).toString()) {
     this.flutterValidator =
         flutterValidator ?? ShorebirdFlutterValidator(runProcess: runProcess);
     argParser
