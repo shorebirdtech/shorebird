@@ -103,6 +103,10 @@ engine for all the platforms we support.  We do that by running the
 be run in the cloud, but right now I've not figured that out yet, so we run
 it locally on an arm64 Mac.
 
+Once we've built all artifacts we need to teach the artifact_proxy how to
+serve them.  We do that by adding entries to:
+https://github.com/shorebirdtech/shorebird/blob/main/packages/artifact_proxy/lib/config.dart
+
 Additionally, that script currently depends on the `updater` repo already
 having published the new version of the `patch` binaries as it will download
 those from GitHub releases.
