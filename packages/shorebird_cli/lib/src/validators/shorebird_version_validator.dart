@@ -1,10 +1,10 @@
 import 'dart:io';
 
 import 'package:path/path.dart' as p;
-import 'package:shorebird_cli/src/doctor/doctor_validator.dart';
+import 'package:shorebird_cli/src/validators/validators.dart';
 
 /// Verifies that the currently installed version of Shorebird is the latest.
-class ShorebirdVersionValidator extends DoctorValidator {
+class ShorebirdVersionValidator extends Validator {
   ShorebirdVersionValidator({required this.isShorebirdVersionCurrent});
 
   final Future<bool> Function({required String workingDirectory})

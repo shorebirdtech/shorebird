@@ -2,6 +2,7 @@ import 'dart:io';
 
 import 'package:mason_logger/mason_logger.dart';
 import 'package:shorebird_cli/src/command.dart';
+import 'package:shorebird_cli/src/flutter_validation_mixin.dart';
 import 'package:shorebird_cli/src/shorebird_build_mixin.dart';
 import 'package:shorebird_cli/src/shorebird_config_mixin.dart';
 import 'package:shorebird_cli/src/shorebird_engine_mixin.dart';
@@ -12,13 +13,18 @@ import 'package:shorebird_cli/src/shorebird_engine_mixin.dart';
 /// Build a new release of your application.
 /// {@endtemplate}
 class BuildCommand extends ShorebirdCommand
-    with ShorebirdConfigMixin, ShorebirdEngineMixin, ShorebirdBuildMixin {
+    with
+        FlutterValidationMixin,
+        ShorebirdConfigMixin,
+        ShorebirdEngineMixin,
+        ShorebirdBuildMixin {
   /// {@macro build_command}
   BuildCommand({
     required super.logger,
     super.auth,
     super.buildCodePushClient,
     super.runProcess,
+    super.flutterValidator,
   });
 
   @override
@@ -42,6 +48,8 @@ class BuildCommand extends ShorebirdCommand
       logger.err(error.toString());
       return ExitCode.software.code;
     }
+
+    await logFlutterValidationIssues();
 
     final buildProgress = logger.progress('Building release ');
     try {
