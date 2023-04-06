@@ -1,8 +1,7 @@
 import 'package:mason_logger/mason_logger.dart';
 import 'package:shorebird_cli/src/command.dart';
-import 'package:shorebird_cli/src/doctor/doctor_validator.dart';
-import 'package:shorebird_cli/src/doctor/validators/validators.dart';
 import 'package:shorebird_cli/src/shorebird_version_mixin.dart';
+import 'package:shorebird_cli/src/validators/validators.dart';
 import 'package:shorebird_cli/src/version.dart';
 
 /// {@template doctor_command}
@@ -15,11 +14,11 @@ class DoctorCommand extends ShorebirdCommand with ShorebirdVersionMixin {
   /// {@macro doctor_command}
   DoctorCommand({
     required super.logger,
-    List<DoctorValidator>? validators,
+    List<Validator>? validators,
     super.runProcess,
   }) {
     this.validators = validators ??
-        <DoctorValidator>[
+        <Validator>[
           ShorebirdVersionValidator(
             isShorebirdVersionCurrent: isShorebirdVersionCurrent,
           ),
@@ -28,7 +27,7 @@ class DoctorCommand extends ShorebirdCommand with ShorebirdVersionMixin {
         ];
   }
 
-  late final List<DoctorValidator> validators;
+  late final List<Validator> validators;
 
   @override
   String get name => 'doctor';
