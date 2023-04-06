@@ -23,6 +23,7 @@ void main() {
 
       ShorebirdProcess.processWrapper = processWrapper;
 
+      // TODO(bryanoltman): this method of mocking processWrappper is not correctly matching arguments
       when(() => processWrapper.run).thenReturn(
         (
           executable,
