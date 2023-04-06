@@ -3,7 +3,9 @@ engine_mappings:
     flutter_engine_revision: 9aa7816315095c86410527932918c718cb35e7d6
     shorebird_storage_bucket: download.shorebird.dev
     shorebird_artifact_overrides:
-      # android-x64 artifacts.zip
+      # artifacts.zip
+      - flutter_infra_release/flutter/$engine/android-arm-64-release/artifacts.zip
+      - flutter_infra_release/flutter/$engine/android-arm-release/artifacts.zip
       - flutter_infra_release/flutter/$engine/android-x64-release/artifacts.zip
 
       # embedding release

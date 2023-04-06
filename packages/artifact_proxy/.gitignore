@@ -2,8 +2,5 @@
 # Created by `dart pub`
 .dart_tool/
 
-# Used for local testing of artifact_proxy.
-artifacts/
-
 # Test related files
 coverage/
