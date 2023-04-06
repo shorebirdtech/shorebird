@@ -11,7 +11,7 @@ const config = ProxyConfig(
 /// Flutter 3.7.10
 const flutter_3_7_10 = {
   '978a56f2d97f9ce24a2b6bc22c9bbceaaba0343c': EngineMapping(
-    flutterEngineRevision: '978a56f2d97f9ce24a2b6bc22c9bbceaaba0343c',
+    flutterEngineRevision: 'ec975089acb540fc60752606a3d3ba809dd1528b',
     shorebirdStorageBucket: 'download.shorebird.dev',
     shorebirdArtifactOverrides: {
       // artifacts.zip
