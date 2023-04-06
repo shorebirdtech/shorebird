@@ -412,9 +412,6 @@ Did you forget to run "shorebird init"?''',
         ],
       );
       final tempDir = setUpTempDir();
-      Directory(
-        p.join(command.shorebirdEnginePath, 'engine'),
-      ).createSync(recursive: true);
       final artifactPath = p.join(
         tempDir.path,
         'build',

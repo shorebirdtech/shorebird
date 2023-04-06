@@ -6,7 +6,7 @@ import 'package:http/http.dart';
 import 'package:path/path.dart' as p;
 import 'package:platform/platform.dart';
 import 'package:shorebird_cli/src/engine_revision.dart';
-import 'package:shorebird_cli/src/shorebird_paths.dart';
+import 'package:shorebird_cli/src/shorebird_environment.dart';
 
 class Cache {
   Cache({Platform platform = const LocalPlatform()}) {
@@ -34,7 +34,7 @@ class Cache {
   /// The Shorebird cached artifacts directory.
   static Directory get shorebirdArtifactsDirectory => Directory(
         p.join(
-          ShorebirdPaths.shorebirdCacheDirectory.path,
+          ShorebirdEnvironment.shorebirdCacheDirectory.path,
           'artifacts',
         ),
       );

@@ -758,9 +758,6 @@ base_url: $baseUrl''',
 
     test('prints flutter validation warnings', () async {
       final tempDir = setUpTempDir();
-      Directory(
-        p.join(command.shorebirdEnginePath, 'engine'),
-      ).createSync(recursive: true);
       final artifactPath = p.join(
         tempDir.path,
         'build',

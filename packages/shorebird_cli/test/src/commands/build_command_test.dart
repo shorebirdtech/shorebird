@@ -117,11 +117,6 @@ void main() {
         ],
       );
       when(() => processResult.exitCode).thenReturn(ExitCode.success.code);
-      when(
-        () => codePushClient.downloadEngine(revision: any(named: 'revision')),
-      ).thenAnswer(
-        (_) async => Uint8List.fromList(ZipEncoder().encode(Archive())!),
-      );
 
       final result = await buildCommand.run();
 

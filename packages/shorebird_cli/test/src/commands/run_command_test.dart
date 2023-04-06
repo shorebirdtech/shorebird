@@ -151,9 +151,6 @@ void main() {
         ],
       );
       final tempDir = Directory.systemTemp.createTempSync();
-      Directory(
-        p.join(runCommand.shorebirdEnginePath, 'engine'),
-      ).createSync(recursive: true);
 
       final progress = _MockProgress();
       when(() => logger.progress(any())).thenReturn(progress);
