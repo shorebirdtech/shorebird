@@ -63,7 +63,7 @@ void main() {
         startProcess: (executable, arguments, {bool runInShell = false}) async {
           return process;
         },
-        flutterValidator: flutterValidator,
+        validators: [flutterValidator],
       )..testArgResults = argResults;
 
       testApplicationConfigHome = (_) => applicationConfigHome.path;

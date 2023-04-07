@@ -135,7 +135,7 @@ flutter:
           return processResult;
         },
         logger: logger,
-        flutterValidator: flutterValidator,
+        validators: [flutterValidator],
       )..testArgResults = argResults;
       testApplicationConfigHome = (_) => applicationConfigHome.path;
 

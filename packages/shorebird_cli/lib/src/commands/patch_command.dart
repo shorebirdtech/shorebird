@@ -29,7 +29,7 @@ class PatchCommand extends ShorebirdCommand
     super.buildCodePushClient,
     super.cache,
     super.runProcess,
-    super.flutterValidator,
+    super.validators,
     HashFunction? hashFn,
     http.Client? httpClient,
   })  : _hashFn = hashFn ?? ((m) => sha256.convert(m).toString()),
@@ -108,7 +108,7 @@ class PatchCommand extends ShorebirdCommand
       return ExitCode.usage.code;
     }
 
-    await logFlutterValidationIssues();
+    await logValidationIssues();
 
     await cache.updateAll();
 

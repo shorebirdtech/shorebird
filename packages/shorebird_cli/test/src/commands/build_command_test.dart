@@ -68,7 +68,7 @@ void main() {
         }) async {
           return processResult;
         },
-        flutterValidator: flutterValidator,
+        validators: [flutterValidator],
       )..testArgResults = argResults;
       testApplicationConfigHome = (_) => applicationConfigHome.path;
 

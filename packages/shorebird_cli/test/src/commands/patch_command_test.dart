@@ -144,7 +144,7 @@ flutter:
         },
         logger: logger,
         httpClient: httpClient,
-        flutterValidator: flutterValidator,
+        validators: [flutterValidator],
       )..testArgResults = argResults;
       testApplicationConfigHome = (_) => applicationConfigHome.path;
 

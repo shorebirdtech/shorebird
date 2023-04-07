@@ -27,7 +27,7 @@ class ReleaseCommand extends ShorebirdCommand
     super.auth,
     super.buildCodePushClient,
     super.runProcess,
-    super.flutterValidator,
+    super.validators,
     HashFunction? hashFn,
   }) : _hashFn = hashFn ?? ((m) => sha256.convert(m).toString()) {
     argParser
@@ -70,7 +70,7 @@ make smaller updates to your app.
       return ExitCode.noUser.code;
     }
 
-    await logFlutterValidationIssues();
+    await logValidationIssues();
 
     final buildProgress = logger.progress('Building release');
     try {

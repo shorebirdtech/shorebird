@@ -10,6 +10,9 @@ class _MockShorebirdVersionValidator extends Mock
 class _MockAndroidInternetPermissionValidator extends Mock
     implements AndroidInternetPermissionValidator {}
 
+class _MockShorebirdFlutterValidator extends Mock
+    implements ShorebirdFlutterValidator {}
+
 class _MockLogger extends Mock implements Logger {}
 
 class _MockProgress extends Mock implements Progress {}
@@ -21,36 +24,49 @@ void main() {
     late DoctorCommand command;
     late AndroidInternetPermissionValidator androidInternetPermissionValidator;
     late ShorebirdVersionValidator shorebirdVersionValidator;
+    late ShorebirdFlutterValidator shorebirdFlutterValidator;
 
     setUp(() {
       logger = _MockLogger();
       progress = _MockProgress();
 
+      when(() => logger.progress(any())).thenReturn(progress);
+      when(() => logger.info(any())).thenReturn(null);
+
       androidInternetPermissionValidator =
           _MockAndroidInternetPermissionValidator();
       shorebirdVersionValidator = _MockShorebirdVersionValidator();
+      shorebirdFlutterValidator = _MockShorebirdFlutterValidator();
+
+      when(() => androidInternetPermissionValidator.id)
+          .thenReturn('$AndroidInternetPermissionValidator');
+      when(() => androidInternetPermissionValidator.description)
+          .thenReturn('Android');
+      when(() => androidInternetPermissionValidator.validate())
+          .thenAnswer((_) async => []);
+
+      when(() => shorebirdVersionValidator.id)
+          .thenReturn('$ShorebirdVersionValidator');
+      when(() => shorebirdVersionValidator.description)
+          .thenReturn('Shorebird Version');
+      when(() => shorebirdVersionValidator.validate())
+          .thenAnswer((_) async => []);
+
+      when(() => shorebirdFlutterValidator.id)
+          .thenReturn('$ShorebirdFlutterValidator');
+      when(() => shorebirdFlutterValidator.description)
+          .thenReturn('Shorebird Flutter');
+      when(() => shorebirdFlutterValidator.validate())
+          .thenAnswer((_) async => []);
 
       command = DoctorCommand(
         logger: logger,
         validators: [
           androidInternetPermissionValidator,
           shorebirdVersionValidator,
+          shorebirdFlutterValidator,
         ],
       );
-
-      when(() => logger.progress(any())).thenReturn(progress);
-
-      when(() => logger.info(any())).thenReturn(null);
-
-      when(() => androidInternetPermissionValidator.description)
-          .thenReturn('Android');
-      when(() => androidInternetPermissionValidator.validate())
-          .thenAnswer((_) async => []);
-
-      when(() => shorebirdVersionValidator.description)
-          .thenReturn('Shorebird Version');
-      when(() => shorebirdVersionValidator.validate())
-          .thenAnswer((_) async => []);
     });
 
     test('prints "no issues" when everything is OK', () async {
