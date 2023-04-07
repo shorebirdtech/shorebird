@@ -41,21 +41,23 @@ typedef RefreshCredentials = Future<oauth2.AccessCredentials> Function(
   http.Client client,
 );
 
-typedef OnRefreshCallback = void Function(oauth2.AccessCredentials credentials);
+typedef OnRefreshCredentials = void Function(
+  oauth2.AccessCredentials credentials,
+);
 
 class AuthenticatedClient extends http.BaseClient {
   AuthenticatedClient({
     required oauth2.AccessCredentials credentials,
     required http.Client httpClient,
-    required OnRefreshCallback onRefreshCallback,
+    required OnRefreshCredentials onRefreshCredentials,
     RefreshCredentials refreshCredentials = oauth2.refreshCredentials,
   })  : _credentials = credentials,
         _baseClient = httpClient,
-        _onRefreshCallback = onRefreshCallback,
+        _onRefreshCredentials = onRefreshCredentials,
         _refreshCredentials = refreshCredentials;
 
   final http.Client _baseClient;
-  final OnRefreshCallback _onRefreshCallback;
+  final OnRefreshCredentials _onRefreshCredentials;
   final RefreshCredentials _refreshCredentials;
   oauth2.AccessCredentials _credentials;
 
@@ -67,7 +69,7 @@ class AuthenticatedClient extends http.BaseClient {
         _credentials,
         _baseClient,
       );
-      _onRefreshCallback(_credentials);
+      _onRefreshCredentials(_credentials);
     }
     final token = _credentials.idToken;
     request.headers['Authorization'] = 'Bearer $token';
@@ -97,7 +99,7 @@ class Auth {
     return AuthenticatedClient(
       credentials: credentials,
       httpClient: _httpClient,
-      onRefreshCallback: _flushCredentials,
+      onRefreshCredentials: _flushCredentials,
     );
   }
 

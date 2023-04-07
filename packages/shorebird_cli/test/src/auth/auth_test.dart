@@ -57,7 +57,7 @@ void main() {
           ),
         );
 
-        final refreshCallbacks = <AccessCredentials>[];
+        final onRefreshCredentialsCalls = <AccessCredentials>[];
         final expiredCredentials = AccessCredentials(
           AccessToken(
             'Bearer',
@@ -72,7 +72,7 @@ void main() {
         final client = AuthenticatedClient(
           credentials: expiredCredentials,
           httpClient: httpClient,
-          onRefreshCallback: refreshCallbacks.add,
+          onRefreshCredentials: onRefreshCredentialsCalls.add,
           refreshCredentials: (clientId, credentials, client) async =>
               validCredentials,
         );
@@ -80,7 +80,7 @@ void main() {
         await client.get(Uri.parse('https://example.com'));
 
         expect(
-          refreshCallbacks,
+          onRefreshCredentialsCalls,
           equals([
             isA<AccessCredentials>().having((c) => c.idToken, 'token', idToken)
           ]),
@@ -98,16 +98,16 @@ void main() {
             HttpStatus.ok,
           ),
         );
-        final refreshCallbacks = <AccessCredentials>[];
+        final onRefreshCredentialsCalls = <AccessCredentials>[];
         final client = AuthenticatedClient(
           credentials: validCredentials,
           httpClient: httpClient,
-          onRefreshCallback: refreshCallbacks.add,
+          onRefreshCredentials: onRefreshCredentialsCalls.add,
         );
 
         await client.get(Uri.parse('https://example.com'));
 
-        expect(refreshCallbacks, isEmpty);
+        expect(onRefreshCredentialsCalls, isEmpty);
         final captured = verify(() => httpClient.send(captureAny())).captured;
         expect(captured, hasLength(1));
         final request = captured.first as http.BaseRequest;
