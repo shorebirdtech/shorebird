@@ -18,7 +18,7 @@ import 'package:shorebird_code_push_client/shorebird_code_push_client.dart';
 /// {@endtemplate}
 class PatchCommand extends ShorebirdCommand
     with
-        FlutterValidationMixin,
+        ShorebirdValidationMixin,
         ShorebirdConfigMixin,
         ShorebirdBuildMixin,
         ShorebirdCreateAppMixin {

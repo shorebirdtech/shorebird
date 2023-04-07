@@ -1,10 +1,9 @@
 import 'package:collection/collection.dart';
 import 'package:shorebird_cli/src/command.dart';
-import 'package:shorebird_cli/src/validators/shorebird_flutter_validator.dart';
+import 'package:shorebird_cli/src/validators/validators.dart';
 
-mixin FlutterValidationMixin on ShorebirdCommand {
-  /// Runs [ShorebirdFlutterValidator.validate] and writes validation issues to
-  /// stdout.
+mixin ShorebirdValidationMixin on ShorebirdCommand {
+  /// Runs [Validator.validate] on all [validators] and writes issues to stdout.
   Future<void> logValidationIssues() async {
     final validationIssues = (await Future.wait(
       validators.map((v) => v.validate()),
