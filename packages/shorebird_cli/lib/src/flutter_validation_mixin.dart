@@ -1,5 +1,4 @@
 import 'package:collection/collection.dart';
-import 'package:mason_logger/mason_logger.dart';
 import 'package:shorebird_cli/src/command.dart';
 import 'package:shorebird_cli/src/validators/shorebird_flutter_validator.dart';
 
@@ -12,20 +11,9 @@ mixin FlutterValidationMixin on ShorebirdCommand {
     ))
         .flattened;
     if (validationIssues.isNotEmpty) {
-      logger.info(
-        yellow.wrap('!!! Potential issues found !!!\n'),
-      );
-
       for (final issue in validationIssues) {
         logger.info(issue.displayMessage);
       }
-
-      logger.info(
-        yellow.wrap(
-          '\nThese may cause serious issues with shorebird functionality if '
-          'not addressed.\n',
-        ),
-      );
     }
   }
 }
