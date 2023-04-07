@@ -48,7 +48,8 @@ void main() {
     });
 
     group('AuthenticatedClient', () {
-      test('when credentials are present and expired.', () async {
+      test('refreshes and uses new token when credentials are expired.',
+          () async {
         when(() => httpClient.send(any())).thenAnswer(
           (_) async => http.StreamedResponse(
             const Stream.empty(),
@@ -90,7 +91,7 @@ void main() {
         expect(request.headers['Authorization'], equals('Bearer $idToken'));
       });
 
-      test('when credentials are present and valid.', () async {
+      test('uses valid token when credentials valid.', () async {
         when(() => httpClient.send(any())).thenAnswer(
           (_) async => http.StreamedResponse(
             const Stream.empty(),
