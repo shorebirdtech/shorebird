@@ -1,6 +1,2 @@
-/// The hash of the Flutter engine required by Shorebird.
-/// Currently, Shorebird only supports the latest stable Flutter channel.
-const requiredFlutterEngineRevision = '9aa7816315';
-
 /// The hash of the Shorebird engine used by this version of Shorebird CLI.
-const shorebirdEngineRevision = 'ff32625d5b';
+const shorebirdEngineRevision = '978a56f2d97f9ce24a2b6bc22c9bbceaaba0343c';

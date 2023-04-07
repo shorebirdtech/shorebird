@@ -2,21 +2,22 @@ import 'dart:convert';
 
 import 'package:mason_logger/mason_logger.dart';
 import 'package:shorebird_cli/src/command.dart';
+import 'package:shorebird_cli/src/flutter_validation_mixin.dart';
 import 'package:shorebird_cli/src/shorebird_config_mixin.dart';
-import 'package:shorebird_cli/src/shorebird_engine_mixin.dart';
 
 /// {@template run_command}
 /// `shorebird run`
 /// Run the Flutter application.
 /// {@endtemplate}
 class RunCommand extends ShorebirdCommand
-    with ShorebirdConfigMixin, ShorebirdEngineMixin {
+    with FlutterValidationMixin, ShorebirdConfigMixin {
   /// {@macro run_command}
   RunCommand({
     required super.logger,
     super.auth,
     super.buildCodePushClient,
     super.startProcess,
+    super.flutterValidator,
   });
 
   @override
@@ -34,12 +35,7 @@ class RunCommand extends ShorebirdCommand
       return ExitCode.noUser.code;
     }
 
-    try {
-      await ensureEngineExists();
-    } catch (error) {
-      logger.err(error.toString());
-      return ExitCode.software.code;
-    }
+    await logFlutterValidationIssues();
 
     logger.info('Running app...');
     final process = await startProcess(
@@ -48,12 +44,6 @@ class RunCommand extends ShorebirdCommand
         'run',
         // Eventually we should support running in both debug and release mode.
         '--release',
-        '--local-engine-src-path',
-        shorebirdEnginePath,
-        '--local-engine',
-        // This is temporary because the Shorebird engine currently
-        // only supports Android arm64.
-        'android_release_arm64',
         ...results.rest
       ],
       runInShell: true,

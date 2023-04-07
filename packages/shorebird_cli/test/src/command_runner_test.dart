@@ -24,10 +24,6 @@ void main() {
 
       processResult = _MockProcessResult();
       when(() => processResult.exitCode).thenReturn(ExitCode.success.code);
-      when(() => processResult.stdout).thenReturn(
-        'Engine • revision $requiredFlutterEngineRevision',
-      );
-
       commandRunner = ShorebirdCliCommandRunner(logger: logger);
     });
 
@@ -76,7 +72,6 @@ void main() {
           () => logger.info(
             '''
 Shorebird $packageVersion
-Flutter Engine • revision $requiredFlutterEngineRevision
 Shorebird Engine • revision $shorebirdEngineRevision''',
           ),
         ).called(1);

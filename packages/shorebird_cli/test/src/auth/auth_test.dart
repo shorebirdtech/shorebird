@@ -1,8 +1,12 @@
+import 'dart:io';
+
 import 'package:googleapis_auth/googleapis_auth.dart';
 import 'package:http/http.dart' as http;
 import 'package:mocktail/mocktail.dart';
 import 'package:shorebird_cli/src/auth/auth.dart';
 import 'package:test/test.dart';
+
+class _FakeBaseRequest extends Fake implements http.BaseRequest {}
 
 class _MockHttpClient extends Mock implements http.Client {}
 
@@ -24,6 +28,10 @@ void main() {
     late AccessCredentials accessCredentials;
     late Auth auth;
 
+    setUpAll(() {
+      registerFallbackValue(_FakeBaseRequest());
+    });
+
     setUp(() {
       httpClient = _MockHttpClient();
       accessCredentials = _MockAccessCredentials();
@@ -37,12 +45,25 @@ void main() {
 
     group('client', () {
       test(
-          'returns an auto-refreshing client '
+          'returns an authenticated client '
           'when credentials are present.', () async {
+        when(() => httpClient.send(any())).thenAnswer(
+          (_) async => http.StreamedResponse(
+            const Stream.empty(),
+            HttpStatus.ok,
+          ),
+        );
         await auth.login((_) {});
         final client = auth.client;
         expect(client, isA<http.Client>());
-        expect(client, isA<AutoRefreshingAuthClient>());
+        expect(client, isA<AuthenticatedClient>());
+
+        await client.get(Uri.parse('https://example.com'));
+
+        final captured = verify(() => httpClient.send(captureAny())).captured;
+        expect(captured, hasLength(1));
+        final request = captured.first as http.BaseRequest;
+        expect(request.headers['Authorization'], equals('Bearer $idToken'));
       });
 
       test(

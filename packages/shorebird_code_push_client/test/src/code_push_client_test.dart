@@ -759,47 +759,6 @@ void main() {
       });
     });
 
-    group('downloadEngine', () {
-      const engineRevision = 'engine-revision';
-      test('throws an exception if the http request fails', () async {
-        when(() => httpClient.send(any())).thenAnswer((_) async {
-          return http.StreamedResponse(
-            Stream.empty(),
-            HttpStatus.badRequest,
-          );
-        });
-
-        expect(
-          codePushClient.downloadEngine(revision: engineRevision),
-          throwsA(isA<Exception>()),
-        );
-      });
-
-      test('sends a request to the correct url', () async {
-        when(() => httpClient.send(any())).thenAnswer((_) async {
-          return http.StreamedResponse(
-            Stream.empty(),
-            HttpStatus.ok,
-          );
-        });
-
-        await codePushClient.downloadEngine(revision: engineRevision);
-
-        final request = verify(() => httpClient.send(captureAny()))
-            .captured
-            .single as http.Request;
-
-        expect(
-          request.url,
-          equals(
-            codePushClient.hostedUri.replace(
-              path: '/api/v1/engines/$engineRevision',
-            ),
-          ),
-        );
-      });
-    });
-
     group('getApps', () {
       test('throws an exception if the http request fails (unknown)', () async {
         when(

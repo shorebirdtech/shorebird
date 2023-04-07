@@ -32,10 +32,13 @@ jobs:
         id: needs_dart_build
         with:
           filters: |
+            artifact_proxy:
+              - ./.github/actions/dart_package
+              - packages/artifact_proxy/**
             shorebird_cli:
               - ./.github/actions/dart_package
               - packages/shorebird_cli/**
-              - packages/shorebird_code_push_client/**            
+              - packages/shorebird_code_push_client/**
             shorebird_code_push_client:
               - ./.github/actions/dart_package
               - packages/shorebird_code_push_client/**

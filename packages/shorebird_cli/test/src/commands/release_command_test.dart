@@ -1,7 +1,5 @@
 import 'dart:io';
-import 'dart:typed_data';
 
-import 'package:archive/archive.dart';
 import 'package:args/args.dart';
 import 'package:http/http.dart' as http;
 import 'package:mason_logger/mason_logger.dart';
@@ -10,6 +8,7 @@ import 'package:path/path.dart' as p;
 import 'package:shorebird_cli/src/auth/auth.dart';
 import 'package:shorebird_cli/src/commands/commands.dart';
 import 'package:shorebird_cli/src/config/config.dart';
+import 'package:shorebird_cli/src/validators/validators.dart';
 import 'package:shorebird_code_push_client/shorebird_code_push_client.dart';
 import 'package:test/test.dart';
 
@@ -26,6 +25,9 @@ class _MockProgress extends Mock implements Progress {}
 class _MockProcessResult extends Mock implements ProcessResult {}
 
 class _MockCodePushClient extends Mock implements CodePushClient {}
+
+class _MockShorebirdFlutterValidator extends Mock
+    implements ShorebirdFlutterValidator {}
 
 void main() {
   group('release', () {
@@ -71,6 +73,7 @@ flutter:
     late CodePushClient codePushClient;
     late ReleaseCommand command;
     late Uri? capturedHostedUri;
+    late ShorebirdFlutterValidator flutterValidator;
 
     Directory setUpTempDir() {
       final tempDir = Directory.systemTemp.createTempSync();
@@ -92,6 +95,7 @@ flutter:
       logger = _MockLogger();
       processResult = _MockProcessResult();
       codePushClient = _MockCodePushClient();
+      flutterValidator = _MockShorebirdFlutterValidator();
       command = ReleaseCommand(
         auth: auth,
         buildCodePushClient: ({
@@ -105,11 +109,14 @@ flutter:
           executable,
           arguments, {
           bool runInShell = false,
+          Map<String, String>? environment,
           String? workingDirectory,
+          bool useVendedFlutter = true,
         }) async {
           return processResult;
         },
         logger: logger,
+        flutterValidator: flutterValidator,
       )..testArgResults = argResults;
       testApplicationConfigHome = (_) => applicationConfigHome.path;
 
@@ -124,9 +131,6 @@ flutter:
         () => logger.prompt(any(), defaultValue: any(named: 'defaultValue')),
       ).thenReturn(version);
       when(() => processResult.exitCode).thenReturn(ExitCode.success.code);
-      when(
-        () => codePushClient.downloadEngine(revision: any(named: 'revision')),
-      ).thenAnswer((_) async => Uint8List.fromList([]));
       when(
         () => codePushClient.getApps(),
       ).thenAnswer((_) async => [appMetadata]);
@@ -148,6 +152,7 @@ flutter:
           hash: any(named: 'hash'),
         ),
       ).thenAnswer((_) async => releaseArtifact);
+      when(() => flutterValidator.validate()).thenAnswer((_) async => []);
     });
 
     test('throws config error when shorebird is not initialized', () async {
@@ -174,26 +179,9 @@ flutter:
       expect(exitCode, equals(ExitCode.noUser.code));
     });
 
-    test('exits with code 70 when pulling engine fails', () async {
-      when(
-        () => codePushClient.downloadEngine(revision: any(named: 'revision')),
-      ).thenThrow(Exception('oops'));
-      final tempDir = setUpTempDir();
-      final exitCode = await IOOverrides.runZoned(
-        command.run,
-        getCurrentDirectory: () => tempDir,
-      );
-      expect(exitCode, equals(ExitCode.software.code));
-    });
-
     test('exits with code 70 when building fails', () async {
       when(() => processResult.exitCode).thenReturn(1);
       when(() => processResult.stderr).thenReturn('oops');
-      when(
-        () => codePushClient.downloadEngine(revision: any(named: 'revision')),
-      ).thenAnswer(
-        (_) async => Uint8List.fromList(ZipEncoder().encode(Archive())!),
-      );
 
       final tempDir = setUpTempDir();
       final exitCode = await IOOverrides.runZoned(
@@ -207,9 +195,6 @@ flutter:
     test('throws software error when artifact is not found (default).',
         () async {
       final tempDir = setUpTempDir();
-      Directory(
-        p.join(command.shorebirdEnginePath, 'engine'),
-      ).createSync(recursive: true);
       final exitCode = await IOOverrides.runZoned(
         command.run,
         getCurrentDirectory: () => tempDir,
@@ -224,9 +209,6 @@ flutter:
       const error = 'something went wrong';
       when(() => codePushClient.getApps()).thenThrow(error);
       final tempDir = setUpTempDir();
-      Directory(
-        p.join(command.shorebirdEnginePath, 'engine'),
-      ).createSync(recursive: true);
       final artifactPath = p.join(
         tempDir.path,
         'build',
@@ -254,9 +236,6 @@ flutter:
       ).thenReturn(appDisplayName);
       when(() => codePushClient.getApps()).thenAnswer((_) async => []);
       final tempDir = setUpTempDir();
-      Directory(
-        p.join(command.shorebirdEnginePath, 'engine'),
-      ).createSync(recursive: true);
       final artifactPath = p.join(
         tempDir.path,
         'build',
@@ -290,9 +269,6 @@ Did you forget to run "shorebird init"?''',
         () => logger.prompt(any(), defaultValue: any(named: 'defaultValue')),
       ).thenReturn(appDisplayName);
       final tempDir = setUpTempDir();
-      Directory(
-        p.join(command.shorebirdEnginePath, 'engine'),
-      ).createSync(recursive: true);
       final artifactPath = p.join(
         tempDir.path,
         'build',
@@ -320,9 +296,6 @@ Did you forget to run "shorebird init"?''',
         () => codePushClient.getReleases(appId: any(named: 'appId')),
       ).thenThrow(error);
       final tempDir = setUpTempDir();
-      Directory(
-        p.join(command.shorebirdEnginePath, 'engine'),
-      ).createSync(recursive: true);
       final artifactPath = p.join(
         tempDir.path,
         'build',
@@ -357,9 +330,6 @@ Did you forget to run "shorebird init"?''',
         ),
       ).thenThrow(error);
       final tempDir = setUpTempDir();
-      Directory(
-        p.join(command.shorebirdEnginePath, 'engine'),
-      ).createSync(recursive: true);
       final artifactPath = p.join(
         tempDir.path,
         'build',
@@ -396,9 +366,6 @@ Did you forget to run "shorebird init"?''',
         ),
       ).thenThrow(error);
       final tempDir = setUpTempDir();
-      Directory(
-        p.join(command.shorebirdEnginePath, 'engine'),
-      ).createSync(recursive: true);
       final artifactPath = p.join(
         tempDir.path,
         'build',
@@ -422,9 +389,6 @@ Did you forget to run "shorebird init"?''',
 
     test('succeeds when release is successful', () async {
       final tempDir = setUpTempDir();
-      Directory(
-        p.join(command.shorebirdEnginePath, 'engine'),
-      ).createSync(recursive: true);
       final artifactPath = p.join(
         tempDir.path,
         'build',
@@ -445,6 +409,48 @@ Did you forget to run "shorebird init"?''',
       verify(() => logger.success('\n✅ Published Release!')).called(1);
       expect(exitCode, ExitCode.success.code);
       expect(capturedHostedUri, isNull);
+    });
+
+    test('prints flutter validation warnings', () async {
+      when(() => flutterValidator.validate()).thenAnswer(
+        (_) async => [
+          const ValidationIssue(
+            severity: ValidationIssueSeverity.warning,
+            message: 'Flutter issue 1',
+          ),
+          const ValidationIssue(
+            severity: ValidationIssueSeverity.warning,
+            message: 'Flutter issue 2',
+          ),
+        ],
+      );
+      final tempDir = setUpTempDir();
+      final artifactPath = p.join(
+        tempDir.path,
+        'build',
+        'app',
+        'intermediates',
+        'stripped_native_libs',
+        'release',
+        'out',
+        'lib',
+        'arm64-v8a',
+        'libapp.so',
+      );
+      File(artifactPath).createSync(recursive: true);
+      final exitCode = await IOOverrides.runZoned(
+        command.run,
+        getCurrentDirectory: () => tempDir,
+      );
+      verify(() => logger.success('\n✅ Published Release!')).called(1);
+      expect(exitCode, ExitCode.success.code);
+      expect(capturedHostedUri, isNull);
+      verify(
+        () => logger.info(any(that: contains('Flutter issue 1'))),
+      ).called(1);
+      verify(
+        () => logger.info(any(that: contains('Flutter issue 2'))),
+      ).called(1);
     });
   });
 }
