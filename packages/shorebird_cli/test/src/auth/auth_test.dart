@@ -17,8 +17,12 @@ void main() {
     const idToken =
         '''eyJhbGciOiJSUzI1NiIsImN0eSI6IkpXVCJ9.eyJlbWFpbCI6InRlc3RAZW1haWwuY29tIn0.pD47BhF3MBLyIpfsgWCzP9twzC1HJxGukpcR36DqT6yfiOMHTLcjDbCjRLAnklWEHiT0BQTKTfhs8IousU90Fm5bVKObudfKu8pP5iZZ6Ls4ohDjTrXky9j3eZpZjwv8CnttBVgRfMJG-7YASTFRYFcOLUpnb4Zm5R6QdoCDUYg''';
     const email = 'test@email.com';
-    final credentials = AccessCredentials(
-      AccessToken('Bearer', 'accessToken', DateTime.now().toUtc()),
+    final validCredentials = AccessCredentials(
+      AccessToken(
+        'Bearer',
+        'accessToken',
+        DateTime.now().add(const Duration(minutes: 10)).toUtc(),
+      ),
       '',
       [],
       idToken: idToken,
@@ -38,9 +42,76 @@ void main() {
       auth = Auth(
         httpClient: httpClient,
         obtainAccessCredentials: (clientId, scopes, client, userPrompt) async {
-          return credentials;
+          return validCredentials;
         },
       )..logout();
+    });
+
+    group('AuthenticatedClient', () {
+      test('when credentials are present and expired.', () async {
+        when(() => httpClient.send(any())).thenAnswer(
+          (_) async => http.StreamedResponse(
+            const Stream.empty(),
+            HttpStatus.ok,
+          ),
+        );
+
+        final refreshCallbacks = <AccessCredentials>[];
+        final expiredCredentials = AccessCredentials(
+          AccessToken(
+            'Bearer',
+            'accessToken',
+            DateTime.now().subtract(const Duration(minutes: 1)).toUtc(),
+          ),
+          '',
+          [],
+          idToken: 'expiredIdToken',
+        );
+
+        final client = AuthenticatedClient(
+          credentials: expiredCredentials,
+          httpClient: httpClient,
+          onRefreshCallback: refreshCallbacks.add,
+          refreshCredentials: (clientId, credentials, client) async =>
+              validCredentials,
+        );
+
+        await client.get(Uri.parse('https://example.com'));
+
+        expect(
+          refreshCallbacks,
+          equals([
+            isA<AccessCredentials>().having((c) => c.idToken, 'token', idToken)
+          ]),
+        );
+        final captured = verify(() => httpClient.send(captureAny())).captured;
+        expect(captured, hasLength(1));
+        final request = captured.first as http.BaseRequest;
+        expect(request.headers['Authorization'], equals('Bearer $idToken'));
+      });
+
+      test('when credentials are present and valid.', () async {
+        when(() => httpClient.send(any())).thenAnswer(
+          (_) async => http.StreamedResponse(
+            const Stream.empty(),
+            HttpStatus.ok,
+          ),
+        );
+        final refreshCallbacks = <AccessCredentials>[];
+        final client = AuthenticatedClient(
+          credentials: validCredentials,
+          httpClient: httpClient,
+          onRefreshCallback: refreshCallbacks.add,
+        );
+
+        await client.get(Uri.parse('https://example.com'));
+
+        expect(refreshCallbacks, isEmpty);
+        final captured = verify(() => httpClient.send(captureAny())).captured;
+        expect(captured, hasLength(1));
+        final request = captured.first as http.BaseRequest;
+        expect(request.headers['Authorization'], equals('Bearer $idToken'));
+      });
     });
 
     group('client', () {
