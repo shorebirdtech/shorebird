@@ -96,34 +96,34 @@ abstract class ShorebirdProcess {
 // coverage:ignore-start
 @visibleForTesting
 class ProcessWrapper {
-  RunProcess get run => (
-        String executable,
-        List<String> arguments, {
-        bool runInShell = false,
-        Map<String, String>? environment,
-        String? workingDirectory,
-        bool useVendedFlutter = true,
-      }) =>
-          Process.run(
-            executable,
-            arguments,
-            environment: environment,
-            runInShell: runInShell,
-            workingDirectory: workingDirectory,
-          );
+  Future<ProcessResult> run(
+    String executable,
+    List<String> arguments, {
+    bool runInShell = false,
+    Map<String, String>? environment,
+    String? workingDirectory,
+  }) {
+    return Process.run(
+      executable,
+      arguments,
+      environment: environment,
+      runInShell: runInShell,
+      workingDirectory: workingDirectory,
+    );
+  }
 
-  StartProcess get start => (
-        String executable,
-        List<String> arguments, {
-        bool runInShell = false,
-        Map<String, String>? environment,
-        bool useVendedFlutter = true,
-      }) =>
-          Process.start(
-            executable,
-            arguments,
-            runInShell: runInShell,
-            environment: environment,
-          );
+  Future<Process> start(
+    String executable,
+    List<String> arguments, {
+    bool runInShell = false,
+    Map<String, String>? environment,
+  }) {
+    return Process.start(
+      executable,
+      arguments,
+      runInShell: runInShell,
+      environment: environment,
+    );
+  }
 }
 // coverage:ignore-end
