@@ -69,9 +69,10 @@ class Cache {
 }
 
 abstract class CachedArtifact {
-  CachedArtifact({required this.cache});
+  CachedArtifact({required this.cache, required this.platform});
 
   final Cache cache;
+  final Platform platform;
 
   String get name;
 
@@ -93,6 +94,8 @@ abstract class CachedArtifact {
     await response.stream.pipe(File(archivePath).openWrite());
     await cache.extractArchive(archivePath, outputPath);
 
+    if (platform.isWindows) return;
+
     for (final executable in executables) {
       final process = await Process.start(
         'chmod',
@@ -104,9 +107,7 @@ abstract class CachedArtifact {
 }
 
 class PatchArtifact extends CachedArtifact {
-  PatchArtifact({required super.cache, required this.platform});
-
-  final Platform platform;
+  PatchArtifact({required super.cache, required super.platform});
 
   @override
   String get name => 'patch';

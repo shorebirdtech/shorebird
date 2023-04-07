@@ -17,7 +17,7 @@ class _MockHttpClient extends Mock implements http.Client {}
 class _MockPlatform extends Mock implements Platform {}
 
 class TestCachedArtifact extends CachedArtifact {
-  TestCachedArtifact({required super.cache});
+  TestCachedArtifact({required super.cache, required super.platform});
 
   @override
   String get name => 'test';
@@ -76,7 +76,7 @@ void main() {
       late CachedArtifact artifact;
 
       setUp(() {
-        artifact = TestCachedArtifact(cache: cache);
+        artifact = TestCachedArtifact(cache: cache, platform: platform);
       });
 
       test('has empty executables by default', () {
