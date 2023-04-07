@@ -65,6 +65,9 @@ class ValidationIssue {
 /// Checks for a specific issue with either the Shorebird installation or the
 /// current Shorebird project.
 abstract class Validator {
+  /// The short name of this validator.
+  String get name => '$runtimeType';
+
   /// A one-sentence explanation of what this validator is checking.
   String get description;
 

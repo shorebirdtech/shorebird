@@ -1,3 +1,4 @@
+import 'package:collection/collection.dart';
 import 'package:mason_logger/mason_logger.dart';
 import 'package:shorebird_cli/src/command.dart';
 import 'package:shorebird_cli/src/shorebird_version_mixin.dart';
@@ -14,20 +15,19 @@ class DoctorCommand extends ShorebirdCommand with ShorebirdVersionMixin {
   /// {@macro doctor_command}
   DoctorCommand({
     required super.logger,
-    List<Validator>? validators,
+    super.validators,
     super.runProcess,
   }) {
-    this.validators = validators ??
-        <Validator>[
-          ShorebirdVersionValidator(
-            isShorebirdVersionCurrent: isShorebirdVersionCurrent,
-          ),
-          ShorebirdFlutterValidator(runProcess: runProcess),
-          AndroidInternetPermissionValidator(),
-        ];
+    validators = _allValidators(baseValidators: validators);
   }
 
-  late final List<Validator> validators;
+  late final List<Validator> _doctorValidators = [
+    ShorebirdVersionValidator(
+      isShorebirdVersionCurrent: isShorebirdVersionCurrent,
+    ),
+    ShorebirdFlutterValidator(runProcess: runProcess),
+    AndroidInternetPermissionValidator(),
+  ];
 
   @override
   String get name => 'doctor';
@@ -67,5 +67,21 @@ Shorebird v$packageVersion
     }
 
     return ExitCode.success.code;
+  }
+
+  /// Creates a list that is the union of [baseValidators] and
+  /// [_doctorValidators].
+  List<Validator> _allValidators({
+    required List<Validator> baseValidators,
+  }) {
+    final missingValidators = _doctorValidators
+        .where(
+          (defaultValidator) => baseValidators.none(
+            (baseValidator) => baseValidator.name == defaultValidator.name,
+          ),
+        )
+        .toList();
+
+    return baseValidators + missingValidators;
   }
 }

@@ -17,7 +17,7 @@ class RunCommand extends ShorebirdCommand
     super.auth,
     super.buildCodePushClient,
     super.startProcess,
-    super.flutterValidator,
+    super.validators,
   });
 
   @override
@@ -35,7 +35,7 @@ class RunCommand extends ShorebirdCommand
       return ExitCode.noUser.code;
     }
 
-    await logFlutterValidationIssues();
+    await logValidationIssues();
 
     logger.info('Running app...');
     final process = await startProcess(

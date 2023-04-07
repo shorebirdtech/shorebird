@@ -19,7 +19,7 @@ class BuildCommand extends ShorebirdCommand
     super.auth,
     super.buildCodePushClient,
     super.runProcess,
-    super.flutterValidator,
+    super.validators,
   });
 
   @override
@@ -37,7 +37,7 @@ class BuildCommand extends ShorebirdCommand
       return ExitCode.noUser.code;
     }
 
-    await logFlutterValidationIssues();
+    await logValidationIssues();
 
     final buildProgress = logger.progress('Building release ');
     try {
