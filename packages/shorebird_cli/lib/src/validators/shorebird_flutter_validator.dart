@@ -120,8 +120,15 @@ This can cause unexpected behavior if the version gap is wide. If you're seeing 
       ['--version'],
       useVendedFlutter: !checkPathFlutter,
     );
-    final output = result.stdout.toString();
 
+    if (result.exitCode != 0) {
+      throw Exception(
+        'Flutter version check did not complete successfully.'
+        '\n${result.stderr}',
+      );
+    }
+
+    final output = result.stdout.toString();
     final match = _flutterVersionRegex.firstMatch(output);
     if (match == null) {
       throw Exception('Could not find version match in $output');
