@@ -10,7 +10,6 @@ import 'package:shorebird_cli/src/flutter_validation_mixin.dart';
 import 'package:shorebird_cli/src/shorebird_build_mixin.dart';
 import 'package:shorebird_cli/src/shorebird_config_mixin.dart';
 import 'package:shorebird_cli/src/shorebird_create_app_mixin.dart';
-import 'package:shorebird_cli/src/shorebird_engine_mixin.dart';
 import 'package:shorebird_code_push_client/shorebird_code_push_client.dart';
 
 /// {@template patch_command}
@@ -21,7 +20,6 @@ class PatchCommand extends ShorebirdCommand
     with
         FlutterValidationMixin,
         ShorebirdConfigMixin,
-        ShorebirdEngineMixin,
         ShorebirdBuildMixin,
         ShorebirdCreateAppMixin {
   /// {@macro patch_command}
@@ -29,6 +27,7 @@ class PatchCommand extends ShorebirdCommand
     required super.logger,
     super.auth,
     super.buildCodePushClient,
+    super.cache,
     super.runProcess,
     super.flutterValidator,
     HashFunction? hashFn,
@@ -101,15 +100,6 @@ class PatchCommand extends ShorebirdCommand
       return ExitCode.noUser.code;
     }
 
-    try {
-      await ensureEngineExists();
-    } catch (error) {
-      logger.err(error.toString());
-      return ExitCode.software.code;
-    }
-
-    await logFlutterValidationIssues();
-
     final force = results['force'] == true;
     final dryRun = results['dry-run'] == true;
 
@@ -117,6 +107,10 @@ class PatchCommand extends ShorebirdCommand
       logger.err('Cannot use both --force and --dry-run.');
       return ExitCode.usage.code;
     }
+
+    await logFlutterValidationIssues();
+
+    await cache.updateAll();
 
     final buildProgress = logger.progress('Building patch');
     try {
@@ -388,8 +382,10 @@ Please create a release using "shorebird release" and try again.
   }) async {
     final tempDir = await Directory.systemTemp.createTemp();
     final diffPath = p.join(tempDir.path, 'diff.patch');
-
-    final diffExecutable = p.join(shorebirdEnginePath, 'patch');
+    final diffExecutable = p.join(
+      cache.getArtifactDirectory('patch').path,
+      'patch',
+    );
     final diffArguments = [
       releaseArtifactPath,
       patchArtifactPath,

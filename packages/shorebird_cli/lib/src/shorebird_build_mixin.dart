@@ -1,9 +1,9 @@
 import 'dart:io';
 
 import 'package:mason_logger/mason_logger.dart';
-import 'package:shorebird_cli/src/shorebird_engine_mixin.dart';
+import 'package:shorebird_cli/src/command.dart';
 
-mixin ShorebirdBuildMixin on ShorebirdEngineMixin {
+mixin ShorebirdBuildMixin on ShorebirdCommand {
   Future<void> buildRelease() async {
     const executable = 'flutter';
     final arguments = [
@@ -12,12 +12,6 @@ mixin ShorebirdBuildMixin on ShorebirdEngineMixin {
       // only supports Android.
       'appbundle',
       '--release',
-      '--local-engine-src-path',
-      shorebirdEnginePath,
-      '--local-engine',
-      // This is temporary because the Shorebird engine currently
-      // only supports Android arm64.
-      'android_release_arm64',
       ...results.rest,
     ];
 
