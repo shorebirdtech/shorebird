@@ -9,8 +9,9 @@ const config = ProxyConfig(
 );
 
 // On the assumption artifact layouts don't change very often for Flutter.
-class _EngineMapping37 extends EngineMapping {
-  const _EngineMapping37({
+// ignore: camel_case_types
+class _EngineMapping3_7 extends EngineMapping {
+  const _EngineMapping3_7({
     required super.flutterEngineRevision,
   }) : super(
           shorebirdStorageBucket: 'download.shorebird.dev',
@@ -41,17 +42,17 @@ class _EngineMapping37 extends EngineMapping {
 
 /// Flutter 3.7.10
 const flutter_3_7_10 = {
-  '978a56f2d97f9ce24a2b6bc22c9bbceaaba0343c': _EngineMapping37(
+  '978a56f2d97f9ce24a2b6bc22c9bbceaaba0343c': _EngineMapping3_7(
     flutterEngineRevision: 'ec975089acb540fc60752606a3d3ba809dd1528b',
   ),
-  '7aa5c44764e10722d188ece75819f7d10f5269a3': _EngineMapping37(
+  '7aa5c44764e10722d188ece75819f7d10f5269a3': _EngineMapping3_7(
     flutterEngineRevision: 'ec975089acb540fc60752606a3d3ba809dd1528b',
   ),
 };
 
 /// Flutter 3.7.8
 const flutter_3_7_8 = {
-  '79f4c5321a581f580a9bda01ec372cbf4a53aa53': _EngineMapping37(
+  '79f4c5321a581f580a9bda01ec372cbf4a53aa53': _EngineMapping3_7(
     flutterEngineRevision: '9aa7816315095c86410527932918c718cb35e7d6',
   ),
 };
