@@ -97,7 +97,6 @@ class ShorebirdCliCommandRunner extends CompletionCommandRunner<int> {
       _logger.info(
         '''
 Shorebird $packageVersion
-Flutter Engine • revision $requiredFlutterEngineRevision
 Shorebird Engine • revision $shorebirdEngineRevision''',
       );
       exitCode = ExitCode.success.code;

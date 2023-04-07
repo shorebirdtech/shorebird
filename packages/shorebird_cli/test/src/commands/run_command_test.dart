@@ -1,14 +1,11 @@
 import 'dart:async';
 import 'dart:convert';
 import 'dart:io';
-import 'dart:typed_data';
 
-import 'package:archive/archive_io.dart';
 import 'package:args/args.dart';
 import 'package:http/http.dart' as http;
 import 'package:mason_logger/mason_logger.dart';
 import 'package:mocktail/mocktail.dart';
-import 'package:path/path.dart' as p;
 import 'package:shorebird_cli/src/auth/auth.dart';
 import 'package:shorebird_cli/src/commands/run_command.dart';
 import 'package:shorebird_cli/src/config/config.dart';
@@ -90,58 +87,8 @@ void main() {
       ).called(1);
     });
 
-    test('exits with code 70 when downloading engine fails', () async {
-      final error = Exception('oops');
-      when(
-        () => codePushClient.downloadEngine(revision: any(named: 'revision')),
-      ).thenThrow(error);
-      final progress = _MockProgress();
-      when(() => logger.progress(any())).thenReturn(progress);
-
-      final result = await runCommand.run();
-      expect(result, equals(ExitCode.software.code));
-
-      verify(progress.fail).called(1);
-      verify(
-        () => logger.err(
-          'Exception: Failed to download shorebird engine: $error',
-        ),
-      ).called(1);
-    });
-
-    test('exits with code 70 when building the engine fails', () async {
-      final tempDir = Directory.systemTemp.createTempSync();
-
-      when(
-        () => codePushClient.downloadEngine(revision: any(named: 'revision')),
-      ).thenAnswer((_) async => Uint8List(0));
-      final progress = _MockProgress();
-      when(() => logger.progress(any())).thenReturn(progress);
-
-      final result = await IOOverrides.runZoned(
-        () => runCommand.run(),
-        getCurrentDirectory: () => tempDir,
-      );
-      expect(result, equals(ExitCode.software.code));
-
-      verify(progress.fail).called(1);
-      verify(
-        () => logger.err(
-          any(that: contains('Failed to build shorebird engine:')),
-        ),
-      ).called(1);
-    });
-
     test('exits with code when running the app fails', () async {
       final tempDir = Directory.systemTemp.createTempSync();
-
-      ZipFileEncoder()
-        ..create(p.join(runCommand.shorebirdEnginePath, 'engine.zip'))
-        ..close();
-
-      when(
-        () => codePushClient.downloadEngine(revision: any(named: 'revision')),
-      ).thenAnswer((_) async => Uint8List(0));
 
       final progress = _MockProgress();
       when(() => logger.progress(any())).thenReturn(progress);
@@ -168,9 +115,6 @@ void main() {
 
     test('exits with code 0 when running the app succeeds', () async {
       final tempDir = Directory.systemTemp.createTempSync();
-      Directory(
-        p.join(runCommand.shorebirdEnginePath, 'engine'),
-      ).createSync(recursive: true);
 
       final progress = _MockProgress();
       when(() => logger.progress(any())).thenReturn(progress);
@@ -207,9 +151,6 @@ void main() {
         ],
       );
       final tempDir = Directory.systemTemp.createTempSync();
-      Directory(
-        p.join(runCommand.shorebirdEnginePath, 'engine'),
-      ).createSync(recursive: true);
 
       final progress = _MockProgress();
       when(() => logger.progress(any())).thenReturn(progress);

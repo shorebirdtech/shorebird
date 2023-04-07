@@ -5,7 +5,6 @@ import 'package:shorebird_cli/src/command.dart';
 import 'package:shorebird_cli/src/flutter_validation_mixin.dart';
 import 'package:shorebird_cli/src/shorebird_build_mixin.dart';
 import 'package:shorebird_cli/src/shorebird_config_mixin.dart';
-import 'package:shorebird_cli/src/shorebird_engine_mixin.dart';
 
 /// {@template build_command}
 ///
@@ -13,11 +12,7 @@ import 'package:shorebird_cli/src/shorebird_engine_mixin.dart';
 /// Build a new release of your application.
 /// {@endtemplate}
 class BuildCommand extends ShorebirdCommand
-    with
-        FlutterValidationMixin,
-        ShorebirdConfigMixin,
-        ShorebirdEngineMixin,
-        ShorebirdBuildMixin {
+    with FlutterValidationMixin, ShorebirdConfigMixin, ShorebirdBuildMixin {
   /// {@macro build_command}
   BuildCommand({
     required super.logger,
@@ -40,13 +35,6 @@ class BuildCommand extends ShorebirdCommand
         ..err('You must be logged in to build.')
         ..err("Run 'shorebird login' to log in and try again.");
       return ExitCode.noUser.code;
-    }
-
-    try {
-      await ensureEngineExists();
-    } catch (error) {
-      logger.err(error.toString());
-      return ExitCode.software.code;
     }
 
     await logFlutterValidationIssues();

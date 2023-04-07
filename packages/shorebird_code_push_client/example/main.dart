@@ -5,11 +5,6 @@ import 'package:shorebird_code_push_client/shorebird_code_push_client.dart';
 Future<void> main() async {
   final client = CodePushClient();
 
-  // Download the latest stable engine revision.
-  final engine = await client.downloadEngine(
-    revision: '<ENGINE REVISION>', // e.g. '9aa7816315'
-  );
-
   // List all apps.
   final apps = await client.getApps();
 

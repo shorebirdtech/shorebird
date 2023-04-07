@@ -11,7 +11,7 @@ unset CDPATH
 # Either clones or pulls the Shorebird Flutter repository, depending on whether FLUTTER_PATH exists.
 function update_flutter {
   if [[ -d "$FLUTTER_PATH" ]]; then
-    git --git-dir="$FLUTTER_PATH/.git" pull
+    git --git-dir="$FLUTTER_PATH/.git" --work-tree="$FLUTTER_PATH" pull
   else
     git clone --filter=tree:0 https://github.com/shorebirdtech/flutter.git -b stable "$FLUTTER_PATH"
   fi

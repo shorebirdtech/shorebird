@@ -9,7 +9,6 @@ import 'package:shorebird_cli/src/flutter_validation_mixin.dart';
 import 'package:shorebird_cli/src/shorebird_build_mixin.dart';
 import 'package:shorebird_cli/src/shorebird_config_mixin.dart';
 import 'package:shorebird_cli/src/shorebird_create_app_mixin.dart';
-import 'package:shorebird_cli/src/shorebird_engine_mixin.dart';
 import 'package:shorebird_code_push_client/shorebird_code_push_client.dart';
 
 /// {@template release_command}
@@ -20,7 +19,6 @@ class ReleaseCommand extends ShorebirdCommand
     with
         FlutterValidationMixin,
         ShorebirdConfigMixin,
-        ShorebirdEngineMixin,
         ShorebirdBuildMixin,
         ShorebirdCreateAppMixin {
   /// {@macro release_command}
@@ -77,13 +75,6 @@ make smaller updates to your app.
     if (!auth.isAuthenticated) {
       logger.err('You must be logged in to release.');
       return ExitCode.noUser.code;
-    }
-
-    try {
-      await ensureEngineExists();
-    } catch (error) {
-      logger.err(error.toString());
-      return ExitCode.software.code;
     }
 
     await logFlutterValidationIssues();

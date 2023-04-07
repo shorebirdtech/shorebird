@@ -6,6 +6,7 @@ import 'package:http/http.dart' as http;
 import 'package:mason_logger/mason_logger.dart';
 import 'package:meta/meta.dart';
 import 'package:shorebird_cli/src/auth/auth.dart';
+import 'package:shorebird_cli/src/cache.dart';
 import 'package:shorebird_cli/src/shorebird_process.dart';
 import 'package:shorebird_cli/src/validators/validators.dart';
 import 'package:shorebird_code_push_client/shorebird_code_push_client.dart';
@@ -28,11 +29,13 @@ abstract class ShorebirdCommand extends Command<int> {
   ShorebirdCommand({
     required this.logger,
     Auth? auth,
+    Cache? cache,
     CodePushClientBuilder? buildCodePushClient,
     RunProcess? runProcess,
     StartProcess? startProcess,
     ShorebirdFlutterValidator? flutterValidator,
   })  : auth = auth ?? Auth(),
+        cache = cache ?? Cache(),
         buildCodePushClient = buildCodePushClient ?? CodePushClient.new,
         runProcess = runProcess ?? ShorebirdProcess.run,
         startProcess = startProcess ?? ShorebirdProcess.start {
@@ -41,6 +44,7 @@ abstract class ShorebirdCommand extends Command<int> {
   }
 
   final Auth auth;
+  final Cache cache;
   final CodePushClientBuilder buildCodePushClient;
   final Logger logger;
   final RunProcess runProcess;
