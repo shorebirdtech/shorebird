@@ -30,7 +30,7 @@ class PatchArtifactBundle {
 /// {@endtemplate}
 class PatchCommand extends ShorebirdCommand
     with
-        FlutterValidationMixin,
+        ShorebirdValidationMixin,
         ShorebirdConfigMixin,
         ShorebirdBuildMixin,
         ShorebirdCreateAppMixin {

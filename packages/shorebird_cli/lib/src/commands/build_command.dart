@@ -12,7 +12,7 @@ import 'package:shorebird_cli/src/shorebird_config_mixin.dart';
 /// Build a new release of your application.
 /// {@endtemplate}
 class BuildCommand extends ShorebirdCommand
-    with FlutterValidationMixin, ShorebirdConfigMixin, ShorebirdBuildMixin {
+    with ShorebirdValidationMixin, ShorebirdConfigMixin, ShorebirdBuildMixin {
   /// {@macro build_command}
   BuildCommand({
     required super.logger,
