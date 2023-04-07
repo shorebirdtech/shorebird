@@ -143,7 +143,6 @@ app to be able to communicate with the Shorebird servers to pull new patches.
 ```xml
 <manifest ...>
     <uses-permission android:name="android.permission.INTERNET" />
-    <uses-permission android:name="android.permission.ACCESS_NETWORK_STATE" />
     ...
 </manifest>
 ```
