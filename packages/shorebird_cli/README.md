@@ -202,32 +202,30 @@ shorebird release
 **Sample**
 
 ```
-shorebird release
-✓ Building release (17.9s)
-✓ Fetching apps (0.1s)
+$ shorebird release
+✓ Building release (5.1s)
+✓ Fetching apps (0.2s)
 
-What is the version of this release? (0.1.0) 0.1.0
+What is the version of this release? (1.0.0) 1.0.0
 
 🚀 Ready to create a new release!
 
-📱 App: My App (61fc9c16-3c4a-4825-a155-9765993614aa)
-📦 Release Version: 0.1.0
-⚙️ Architecture: aarch64
-🕹️ Platform: android
-#️⃣ Hash: cfe26dddf8aff17131042f9dfad409c83eb130c5a9f2fd6f77325b2388062265
-
-Your next step is to upload the release artifact to the Play Store.
-./build/app/outputs/bundle/release/app-release.aab
-
-See the following link for more information:
-https://support.google.com/googleplay/android-developer/answer/9859152?hl=en
+📱 App: My App (30370f27-dbf1-4673-8b20-fb096e38dffa)
+📦 Release Version: 1.0.0
+🕹️ Platform: android (arm64, arm32, x86)
 
 Would you like to continue? (y/N) Yes
 ✓ Fetching releases (55ms)
 ✓ Creating release (45ms)
-✓ Creating artifact (1.8s)
+✓ Creating artifacts (4.6s)
 
 ✅ Published Release!
+
+Your next step is to upload the app bundle to the Play Store.
+./build/app/outputs/bundle/release/app-release.aab
+
+See the following link for more information:
+https://support.google.com/googleplay/android-developer/answer/9859152?hl=en
 ```
 
 ### Patch
