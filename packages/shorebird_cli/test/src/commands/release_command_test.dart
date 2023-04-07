@@ -179,6 +179,19 @@ flutter:
       expect(exitCode, equals(ExitCode.noUser.code));
     });
 
+    test('exits with code 70 when building fails', () async {
+      when(() => processResult.exitCode).thenReturn(1);
+      when(() => processResult.stderr).thenReturn('oops');
+
+      final tempDir = setUpTempDir();
+      final exitCode = await IOOverrides.runZoned(
+        () async => command.run(),
+        getCurrentDirectory: () => tempDir,
+      );
+
+      expect(exitCode, equals(ExitCode.software.code));
+    });
+
     test('throws software error when artifact is not found (default).',
         () async {
       final tempDir = setUpTempDir();

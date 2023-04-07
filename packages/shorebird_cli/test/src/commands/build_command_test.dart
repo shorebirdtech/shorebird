@@ -92,6 +92,19 @@ void main() {
       ).called(1);
     });
 
+    test('exits with code 70 when building fails', () async {
+      when(() => processResult.exitCode).thenReturn(1);
+      when(() => processResult.stderr).thenReturn('oops');
+      final tempDir = Directory.systemTemp.createTempSync();
+
+      final result = await IOOverrides.runZoned(
+        () async => buildCommand.run(),
+        getCurrentDirectory: () => tempDir,
+      );
+
+      expect(result, equals(ExitCode.software.code));
+    });
+
     test('exits with code 0 when building succeeds', () async {
       when(() => processResult.exitCode).thenReturn(ExitCode.success.code);
       final tempDir = Directory.systemTemp.createTempSync();

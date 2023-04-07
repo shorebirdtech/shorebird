@@ -8,10 +8,18 @@ import 'package:platform/platform.dart';
 import 'package:shorebird_cli/src/engine_revision.dart';
 import 'package:shorebird_cli/src/shorebird_environment.dart';
 
+typedef ArchiveExtracter = void Function(String archivePath, String outputPath);
+
+void _defaultArchiveExtractor(String archivePath, String outputPath) {
+  final inputStream = InputFileStream(archivePath);
+  final archive = ZipDecoder().decodeBuffer(inputStream);
+  extractArchiveToDisk(archive, outputPath);
+}
+
 class Cache {
   Cache({
     http.Client? httpClient,
-    this.extractArchive = extractArchiveToDisk,
+    this.extractArchive = _defaultArchiveExtractor,
     Platform platform = const LocalPlatform(),
   }) : httpClient = httpClient ?? http.Client() {
     registerArtifact(PatchArtifact(cache: this, platform: platform));
@@ -55,8 +63,6 @@ class Cache {
   String get storageBucket => 'download.shorebird.dev';
 }
 
-typedef ArchiveExtracter = void Function(Archive, String);
-
 abstract class CachedArtifact {
   CachedArtifact({required this.cache});
 
@@ -81,13 +87,7 @@ abstract class CachedArtifact {
     final outputPath = location.path;
     await response.stream.pipe(File(archivePath).openWrite());
 
-    await Isolate.run(
-      () async {
-        final inputStream = InputFileStream(archivePath);
-        final archive = ZipDecoder().decodeBuffer(inputStream);
-        cache.extractArchive(archive, outputPath);
-      },
-    );
+    await Isolate.run(() => cache.extractArchive(archivePath, outputPath));
 
     for (final executable in executables) {
       final process = await Process.start(
