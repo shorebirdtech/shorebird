@@ -8,12 +8,17 @@ import 'package:platform/platform.dart';
 import 'package:shorebird_cli/src/engine_revision.dart';
 import 'package:shorebird_cli/src/shorebird_environment.dart';
 
-typedef ArchiveExtracter = void Function(String archivePath, String outputPath);
+typedef ArchiveExtracter = Future<void> Function(
+  String archivePath,
+  String outputPath,
+);
 
-void _defaultArchiveExtractor(String archivePath, String outputPath) {
-  final inputStream = InputFileStream(archivePath);
-  final archive = ZipDecoder().decodeBuffer(inputStream);
-  extractArchiveToDisk(archive, outputPath);
+Future<void> _defaultArchiveExtractor(String archivePath, String outputPath) {
+  return Isolate.run(() {
+    final inputStream = InputFileStream(archivePath);
+    final archive = ZipDecoder().decodeBuffer(inputStream);
+    extractArchiveToDisk(archive, outputPath);
+  });
 }
 
 class Cache {
@@ -86,8 +91,7 @@ abstract class CachedArtifact {
     final archivePath = p.join(tempDir.path, '$name.zip');
     final outputPath = location.path;
     await response.stream.pipe(File(archivePath).openWrite());
-
-    await Isolate.run(() => cache.extractArchive(archivePath, outputPath));
+    await cache.extractArchive(archivePath, outputPath);
 
     for (final executable in executables) {
       final process = await Process.start(
