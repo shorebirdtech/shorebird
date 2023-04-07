@@ -26,15 +26,38 @@ class AndroidInternetPermissionValidator extends Validator {
         'src',
       ),
     );
-    final manifestsWithoutInternetPermission = androidSrcDir
+
+    if (!androidSrcDir.existsSync()) {
+      return [
+        const ValidationIssue(
+          severity: ValidationIssueSeverity.error,
+          message: 'No Android project found',
+        ),
+      ];
+    }
+
+    final manifestFiles = androidSrcDir
         .listSync()
         .whereType<Directory>()
-        .where((dir) {
-          return dir.listSync().whereType<File>().any(
-                (file) => p.basename(file.path) == 'AndroidManifest.xml',
-              );
-        })
-        .map((e) => p.join(e.path, manifestFileName))
+        .where(
+          (dir) => dir
+              .listSync()
+              .whereType<File>()
+              .any((file) => p.basename(file.path) == 'AndroidManifest.xml'),
+        )
+        .map((e) => p.join(e.path, manifestFileName));
+
+    if (manifestFiles.isEmpty) {
+      return [
+        ValidationIssue(
+          severity: ValidationIssueSeverity.error,
+          message:
+              'No AndroidManifest.xml files found in ${androidSrcDir.path}',
+        ),
+      ];
+    }
+
+    final manifestsWithoutInternetPermission = manifestFiles
         .where((manifest) => !_androidManifestHasInternetPermission(manifest));
 
     if (manifestsWithoutInternetPermission.isNotEmpty) {

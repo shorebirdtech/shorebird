@@ -18,9 +18,20 @@ class ShorebirdVersionValidator extends Validator {
   @override
   Future<List<ValidationIssue>> validate() async {
     final workingDirectory = p.dirname(Platform.script.toFilePath());
-    final isShorebirdUpToDate = await isShorebirdVersionCurrent(
-      workingDirectory: workingDirectory,
-    );
+    final bool isShorebirdUpToDate;
+
+    try {
+      isShorebirdUpToDate = await isShorebirdVersionCurrent(
+        workingDirectory: workingDirectory,
+      );
+    } on ProcessException catch (e) {
+      return [
+        ValidationIssue(
+          severity: ValidationIssueSeverity.error,
+          message: 'Failed to get shorebird version. Error: ${e.message}',
+        ),
+      ];
+    }
 
     if (!isShorebirdUpToDate) {
       return [
