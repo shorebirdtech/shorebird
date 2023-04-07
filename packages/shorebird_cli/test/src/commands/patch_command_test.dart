@@ -6,6 +6,7 @@ import 'package:mason_logger/mason_logger.dart';
 import 'package:mocktail/mocktail.dart';
 import 'package:path/path.dart' as p;
 import 'package:shorebird_cli/src/auth/auth.dart';
+import 'package:shorebird_cli/src/cache.dart' show Cache;
 import 'package:shorebird_cli/src/commands/patch_command.dart';
 import 'package:shorebird_cli/src/config/config.dart';
 import 'package:shorebird_cli/src/validators/validators.dart';
@@ -17,6 +18,8 @@ class _FakeBaseRequest extends Fake implements http.BaseRequest {}
 class _MockArgResults extends Mock implements ArgResults {}
 
 class _MockAuth extends Mock implements Auth {}
+
+class _MockCache extends Mock implements Cache {}
 
 class _MockLogger extends Mock implements Logger {}
 
@@ -85,6 +88,7 @@ flutter:
     late ProcessResult patchProcessResult;
     late http.Client httpClient;
     late CodePushClient codePushClient;
+    late Cache cache;
     late PatchCommand command;
     late Uri? capturedHostedUri;
     late ShorebirdFlutterValidator flutterValidator;
@@ -115,6 +119,7 @@ flutter:
       httpClient = _MockHttpClient();
       codePushClient = _MockCodePushClient();
       flutterValidator = _MockShorebirdFlutterValidator();
+      cache = _MockCache();
       command = PatchCommand(
         auth: auth,
         buildCodePushClient: ({
@@ -124,6 +129,7 @@ flutter:
           capturedHostedUri = hostedUri;
           return codePushClient;
         },
+        cache: cache,
         runProcess: (
           executable,
           arguments, {
@@ -203,6 +209,10 @@ flutter:
         ),
       ).thenAnswer((_) async {});
       when(() => flutterValidator.validate()).thenAnswer((_) async => []);
+      when(() => cache.updateAll()).thenAnswer((_) async => {});
+      when(
+        () => cache.getArtifactDirectory(any()),
+      ).thenReturn(Directory.systemTemp.createTempSync());
     });
 
     test('throws config error when shorebird is not initialized', () async {

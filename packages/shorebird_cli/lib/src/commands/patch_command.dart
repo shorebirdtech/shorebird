@@ -27,6 +27,7 @@ class PatchCommand extends ShorebirdCommand
     required super.logger,
     super.auth,
     super.buildCodePushClient,
+    super.cache,
     super.runProcess,
     super.flutterValidator,
     HashFunction? hashFn,

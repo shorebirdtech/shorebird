@@ -9,16 +9,16 @@ import 'package:shorebird_cli/src/engine_revision.dart';
 import 'package:shorebird_cli/src/shorebird_environment.dart';
 
 class Cache {
-  Cache({http.Client? httpClient, Platform platform = const LocalPlatform()}) {
-    final client = httpClient ?? http.Client();
-    registerArtifact(
-      PatchArtifact(
-        cache: this,
-        platform: platform,
-        httpClient: client,
-      ),
-    );
+  Cache({
+    http.Client? httpClient,
+    this.extractArchive = extractArchiveToDisk,
+    Platform platform = const LocalPlatform(),
+  }) : httpClient = httpClient ?? http.Client() {
+    registerArtifact(PatchArtifact(cache: this, platform: platform));
   }
+
+  final http.Client httpClient;
+  final ArchiveExtracter extractArchive;
 
   void registerArtifact(CachedArtifact artifact) => _artifacts.add(artifact);
 
@@ -28,7 +28,7 @@ class Cache {
         continue;
       }
 
-      await artifact.download();
+      await artifact.update();
     }
   }
 
@@ -55,12 +55,12 @@ class Cache {
   String get storageBucket => 'download.shorebird.dev';
 }
 
+typedef ArchiveExtracter = void Function(Archive, String);
+
 abstract class CachedArtifact {
-  CachedArtifact({required this.cache, http.Client? httpClient})
-      : _httpClient = httpClient ?? http.Client();
+  CachedArtifact({required this.cache});
 
   final Cache cache;
-  final http.Client _httpClient;
 
   String get name;
 
@@ -72,10 +72,10 @@ abstract class CachedArtifact {
 
   Future<bool> isUpToDate() async => location.existsSync();
 
-  Future<void> download() async {
+  Future<void> update() async {
     final url = '${cache.storageBaseUrl}/${cache.storageBucket}/$storagePath';
     final request = http.Request('GET', Uri.parse(url));
-    final response = await _httpClient.send(request);
+    final response = await cache.httpClient.send(request);
     final tempDir = Directory.systemTemp.createTempSync();
     final archivePath = p.join(tempDir.path, '$name.zip');
     final outputPath = location.path;
@@ -85,7 +85,7 @@ abstract class CachedArtifact {
       () async {
         final inputStream = InputFileStream(archivePath);
         final archive = ZipDecoder().decodeBuffer(inputStream);
-        extractArchiveToDisk(archive, outputPath);
+        cache.extractArchive(archive, outputPath);
       },
     );
 
@@ -100,11 +100,7 @@ abstract class CachedArtifact {
 }
 
 class PatchArtifact extends CachedArtifact {
-  PatchArtifact({
-    required super.cache,
-    required this.platform,
-    super.httpClient,
-  });
+  PatchArtifact({required super.cache, required this.platform});
 
   final Platform platform;
 
