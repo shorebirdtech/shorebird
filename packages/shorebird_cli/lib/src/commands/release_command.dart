@@ -155,8 +155,7 @@ Did you forget to run "shorebird init"?''',
     final arch = results['arch'] as String;
     final platform = results['platform'] as String;
 
-    logger.info(
-      '''
+    logger.info('''
 
 ${styleBold.wrap(lightGreen.wrap('🚀 Ready to create a new release!'))}
 
@@ -165,14 +164,7 @@ ${styleBold.wrap(lightGreen.wrap('🚀 Ready to create a new release!'))}
 ⚙️  Architecture: ${lightCyan.wrap(arch)}
 🕹️  Platform: ${lightCyan.wrap(platform)}
 #️⃣  Hash: ${lightCyan.wrap(hash)}
-
-Your next step is to upload the release artifact to the Play Store.
-${lightCyan.wrap("./build/app/outputs/bundle/release/app-release.aab")}
-
-See the following link for more information:    
-${link(uri: Uri.parse('https://support.google.com/googleplay/android-developer/answer/9859152?hl=en'))}
-''',
-    );
+''');
 
     final confirm = logger.confirm('Would you like to continue?');
 
@@ -221,7 +213,17 @@ ${link(uri: Uri.parse('https://support.google.com/googleplay/android-developer/a
       return ExitCode.software.code;
     }
 
-    logger.success('\n✅ Published Release!');
+    logger
+      ..success('\n✅ Published Release!')
+      ..info('''
+
+Your next step is to upload the release artifact to the Play Store.
+${lightCyan.wrap("./build/app/outputs/bundle/release/app-release.aab")}
+
+See the following link for more information:    
+${link(uri: Uri.parse('https://support.google.com/googleplay/android-developer/answer/9859152?hl=en'))}
+''');
+
     return ExitCode.success.code;
   }
 }
