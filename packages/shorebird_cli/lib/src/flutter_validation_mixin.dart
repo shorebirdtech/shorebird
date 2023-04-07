@@ -13,12 +13,13 @@ mixin FlutterValidationMixin on ShorebirdCommand {
         .flattened;
     if (validationIssues.isNotEmpty) {
       logger.info(
-        yellow.wrap('\n!!! Potential issues found !!!\n'),
+        yellow.wrap('!!! Potential issues found !!!\n'),
       );
 
       for (final issue in validationIssues) {
         logger.info(issue.displayMessage);
       }
+
       logger.info(
         yellow.wrap(
           '\nThese may cause serious issues with shorebird functionality if '
