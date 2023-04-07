@@ -255,16 +255,15 @@ Which release is this patch for? (0.1.0) 0.1.0
 📱 App: My App (61fc9c16)
 📦 Release Version: 0.1.0
 📺 Channel: stable
-🕹️ Platform: android (arm64, arm32, x86)  
+🕹️ Platform: android (arm64, arm32, x86)
 
 Would you like to continue? (y/N) Yes
 ✓ Fetching release (41ms)
 ✓ Fetching release artifacts (43ms)
 ✓ Downloading release artifacts (0.2s)
-✓ Creating diffs (0.1s)
 ✓ Creating artifacts (0.3s)
-✓ Fetching channels (40ms)
 ✓ Uploading artifacts (43ms)
+✓ Fetching channels (40ms)
 ✓ Promoting patch to stable (43ms)
 
 ✅ Published Patch!

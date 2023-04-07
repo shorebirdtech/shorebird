@@ -242,7 +242,7 @@ Please create a release using "shorebird release" and try again.
     downloadReleaseArtifactProgress.complete();
 
     final patchArtifactBundles = <Arch, PatchArtifactBundle>{};
-    final createDiffProgress = logger.progress('Creating diffs');
+    final createDiffProgress = logger.progress('Creating artifacts');
 
     for (final releaseArtifactPath in releaseArtifactPaths.entries) {
       final archMetadata =
