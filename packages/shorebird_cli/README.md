@@ -252,22 +252,19 @@ Which release is this patch for? (0.1.0) 0.1.0
 
 🚀 Ready to publish a new patch!
 
-📱 App: My App (61fc9c16-3c4a-4825-a155-9765993614aa)
+📱 App: My App (61fc9c16)
 📦 Release Version: 0.1.0
-⚙️ Architecture: aarch64
-🕹️ Platform: android
 📺 Channel: stable
-#️⃣ Hash: cfe26dddf8aff17131042f9dfad409c83eb130c5a9f2fd6f77325b2388062265
+🕹️ Platform: android (arm64, arm32, x86)
 
 Would you like to continue? (y/N) Yes
-✓ Fetching releases (41ms)
-✓ Fetching release artifact (43ms)
-✓ Downloading release artifact (0.2s)
-✓ Creating diff (0.1s)
-✓ Creating patch (64ms)
-✓ Creating artifact (0.3s)
+✓ Fetching release (41ms)
+✓ Fetching release artifacts (43ms)
+✓ Downloading release artifacts (0.2s)
+✓ Creating artifacts (0.3s)
+✓ Uploading artifacts (43ms)
 ✓ Fetching channels (40ms)
-✓ Publishing patch (43ms)
+✓ Promoting patch to stable (43ms)
 
 ✅ Published Patch!
 ```
