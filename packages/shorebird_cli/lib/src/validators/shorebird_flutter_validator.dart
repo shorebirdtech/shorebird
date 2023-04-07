@@ -123,8 +123,9 @@ This can cause unexpected behavior if the version gap is wide. If you're seeing 
 
     if (result.exitCode != 0) {
       throw Exception(
-        'Flutter version check did not complete successfully.'
-        '\n${result.stderr}',
+        '''
+        Flutter version check did not complete successfully.
+        ${result.stderr}''',
       );
     }
 
