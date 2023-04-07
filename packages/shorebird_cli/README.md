@@ -212,7 +212,7 @@ What is the version of this release? (1.0.0) 1.0.0
 
 📱 App: My App (30370f27-dbf1-4673-8b20-fb096e38dffa)
 📦 Release Version: 1.0.0
-🕹️  Platform: android (arm64, arm32, x86)
+🕹️ Platform: android (arm64, arm32, x86)
 
 Would you like to continue? (y/N) Yes
 ✓ Fetching releases (55ms)
