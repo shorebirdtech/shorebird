@@ -27,6 +27,9 @@ class _MockProcess extends Mock implements Process {}
 
 class _MockCodePushClient extends Mock implements CodePushClient {}
 
+class _MockAndroidInternetPermissionValidator extends Mock
+    implements AndroidInternetPermissionValidator {}
+
 class _MockShorebirdFlutterValidator extends Mock
     implements ShorebirdFlutterValidator {}
 
@@ -40,6 +43,7 @@ void main() {
     late Process process;
     late CodePushClient codePushClient;
     late RunCommand runCommand;
+    late AndroidInternetPermissionValidator androidInternetPermissionValidator;
     late ShorebirdFlutterValidator flutterValidator;
 
     setUp(() {
@@ -50,6 +54,8 @@ void main() {
       logger = _MockLogger();
       process = _MockProcess();
       codePushClient = _MockCodePushClient();
+      androidInternetPermissionValidator =
+          _MockAndroidInternetPermissionValidator();
       flutterValidator = _MockShorebirdFlutterValidator();
       runCommand = RunCommand(
         auth: auth,
@@ -63,7 +69,10 @@ void main() {
         startProcess: (executable, arguments, {bool runInShell = false}) async {
           return process;
         },
-        validators: [flutterValidator],
+        validators: [
+          androidInternetPermissionValidator,
+          flutterValidator,
+        ],
       )..testArgResults = argResults;
 
       testApplicationConfigHome = (_) => applicationConfigHome.path;
@@ -72,6 +81,8 @@ void main() {
       when(() => auth.isAuthenticated).thenReturn(true);
       when(() => auth.client).thenReturn(httpClient);
       when(() => logger.progress(any())).thenReturn(_MockProgress());
+      when(() => androidInternetPermissionValidator.validate())
+          .thenAnswer((_) async => []);
       when(() => flutterValidator.validate()).thenAnswer((_) async => []);
     });
 
@@ -137,16 +148,20 @@ void main() {
       verify(() => logger.info(output)).called(1);
     });
 
-    test('prints flutter validation warnings', () async {
+    test('prints validation warnings', () async {
       when(() => flutterValidator.validate()).thenAnswer(
         (_) async => [
           const ValidationIssue(
             severity: ValidationIssueSeverity.warning,
-            message: 'Flutter issue 1',
+            message: 'Flutter issue',
           ),
+        ],
+      );
+      when(() => androidInternetPermissionValidator.validate()).thenAnswer(
+        (_) async => [
           const ValidationIssue(
-            severity: ValidationIssueSeverity.warning,
-            message: 'Flutter issue 2',
+            severity: ValidationIssueSeverity.error,
+            message: 'Android issue',
           ),
         ],
       );
@@ -172,10 +187,10 @@ void main() {
       await expectLater(result, equals(ExitCode.success.code));
       verify(() => logger.info(output)).called(1);
       verify(
-        () => logger.info(any(that: contains('Flutter issue 1'))),
+        () => logger.info(any(that: contains('Flutter issue'))),
       ).called(1);
       verify(
-        () => logger.info(any(that: contains('Flutter issue 2'))),
+        () => logger.info(any(that: contains('Android issue'))),
       ).called(1);
     });
   });

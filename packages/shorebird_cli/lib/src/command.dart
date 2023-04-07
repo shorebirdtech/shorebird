@@ -39,8 +39,11 @@ abstract class ShorebirdCommand extends Command<int> {
         buildCodePushClient = buildCodePushClient ?? CodePushClient.new,
         runProcess = runProcess ?? ShorebirdProcess.run,
         startProcess = startProcess ?? ShorebirdProcess.start {
-    this.validators =
-        validators ?? [ShorebirdFlutterValidator(runProcess: this.runProcess)];
+    this.validators = validators ??
+        [
+          ShorebirdFlutterValidator(runProcess: this.runProcess),
+          AndroidInternetPermissionValidator(),
+        ];
   }
 
   final Auth auth;

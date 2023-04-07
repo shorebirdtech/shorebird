@@ -10,7 +10,7 @@ import 'package:shorebird_cli/src/shorebird_config_mixin.dart';
 /// Run the Flutter application.
 /// {@endtemplate}
 class RunCommand extends ShorebirdCommand
-    with FlutterValidationMixin, ShorebirdConfigMixin {
+    with ShorebirdValidationMixin, ShorebirdConfigMixin {
   /// {@macro run_command}
   RunCommand({
     required super.logger,
