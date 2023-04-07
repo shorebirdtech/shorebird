@@ -33,14 +33,17 @@ abstract class ShorebirdCommand extends Command<int> {
     CodePushClientBuilder? buildCodePushClient,
     RunProcess? runProcess,
     StartProcess? startProcess,
-    ShorebirdFlutterValidator? flutterValidator,
+    List<Validator>? validators,
   })  : auth = auth ?? Auth(),
         cache = cache ?? Cache(),
         buildCodePushClient = buildCodePushClient ?? CodePushClient.new,
         runProcess = runProcess ?? ShorebirdProcess.run,
         startProcess = startProcess ?? ShorebirdProcess.start {
-    this.flutterValidator = flutterValidator ??
-        ShorebirdFlutterValidator(runProcess: this.runProcess);
+    this.validators = validators ??
+        [
+          ShorebirdFlutterValidator(runProcess: this.runProcess),
+          AndroidInternetPermissionValidator(),
+        ];
   }
 
   final Auth auth;
@@ -49,7 +52,9 @@ abstract class ShorebirdCommand extends Command<int> {
   final Logger logger;
   final RunProcess runProcess;
   final StartProcess startProcess;
-  late final ShorebirdFlutterValidator flutterValidator;
+
+  /// Checks that the Shorebird install and project are in a good state.
+  late List<Validator> validators;
 
   /// [ArgResults] used for testing purposes only.
   @visibleForTesting

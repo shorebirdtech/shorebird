@@ -12,14 +12,14 @@ import 'package:shorebird_cli/src/shorebird_config_mixin.dart';
 /// Build a new release of your application.
 /// {@endtemplate}
 class BuildCommand extends ShorebirdCommand
-    with FlutterValidationMixin, ShorebirdConfigMixin, ShorebirdBuildMixin {
+    with ShorebirdValidationMixin, ShorebirdConfigMixin, ShorebirdBuildMixin {
   /// {@macro build_command}
   BuildCommand({
     required super.logger,
     super.auth,
     super.buildCodePushClient,
     super.runProcess,
-    super.flutterValidator,
+    super.validators,
   });
 
   @override
@@ -37,7 +37,7 @@ class BuildCommand extends ShorebirdCommand
       return ExitCode.noUser.code;
     }
 
-    await logFlutterValidationIssues();
+    await logValidationIssues();
 
     final buildProgress = logger.progress('Building release ');
     try {

@@ -17,7 +17,7 @@ import 'package:shorebird_code_push_client/shorebird_code_push_client.dart';
 /// {@endtemplate}
 class ReleaseCommand extends ShorebirdCommand
     with
-        FlutterValidationMixin,
+        ShorebirdValidationMixin,
         ShorebirdConfigMixin,
         ShorebirdBuildMixin,
         ShorebirdCreateAppMixin {
@@ -27,7 +27,7 @@ class ReleaseCommand extends ShorebirdCommand
     super.auth,
     super.buildCodePushClient,
     super.runProcess,
-    super.flutterValidator,
+    super.validators,
     HashFunction? hashFn,
   }) : _hashFn = hashFn ?? ((m) => sha256.convert(m).toString()) {
     argParser
@@ -41,13 +41,6 @@ class ReleaseCommand extends ShorebirdCommand
         allowed: ['android'],
         allowedHelp: {'android': 'The Android platform.'},
         defaultsTo: 'android',
-      )
-      ..addOption(
-        'arch',
-        help: 'The architecture of the release (e.g. "aarch64").',
-        allowed: ['aarch64'],
-        allowedHelp: {'aarch64': 'The 64-bit ARM architecture.'},
-        defaultsTo: 'aarch64',
       );
   }
 
@@ -77,7 +70,7 @@ make smaller updates to your app.
       return ExitCode.noUser.code;
     }
 
-    await logFlutterValidationIssues();
+    await logValidationIssues();
 
     final buildProgress = logger.progress('Building release');
     try {
@@ -88,27 +81,6 @@ make smaller updates to your app.
       return ExitCode.software.code;
     }
 
-    final artifactPath = p.join(
-      Directory.current.path,
-      'build',
-      'app',
-      'intermediates',
-      'stripped_native_libs',
-      'release',
-      'out',
-      'lib',
-      'arm64-v8a',
-      'libapp.so',
-    );
-
-    final artifact = File(artifactPath);
-
-    if (!artifact.existsSync()) {
-      logger.err('Artifact not found: "${artifact.path}"');
-      return ExitCode.software.code;
-    }
-
-    final hash = _hashFn(await artifact.readAsBytes());
     final pubspecYaml = getPubspecYaml()!;
     final shorebirdYaml = getShorebirdYaml()!;
     final codePushClient = buildCodePushClient(
@@ -152,27 +124,20 @@ Did you forget to run "shorebird init"?''',
           'What is the version of this release?',
           defaultValue: pubspecVersionString,
         );
-    final arch = results['arch'] as String;
-    final platform = results['platform'] as String;
 
-    logger.info(
-      '''
+    final platform = results['platform'] as String;
+    final archNames = ShorebirdBuildMixin.architectures.keys.map(
+      (arch) => arch.name,
+    );
+
+    logger.info('''
 
 ${styleBold.wrap(lightGreen.wrap('🚀 Ready to create a new release!'))}
 
 📱 App: ${lightCyan.wrap(app.displayName)} ${lightCyan.wrap('(${app.id})')}
 📦 Release Version: ${lightCyan.wrap(releaseVersion)}
-⚙️  Architecture: ${lightCyan.wrap(arch)}
-🕹️  Platform: ${lightCyan.wrap(platform)}
-#️⃣  Hash: ${lightCyan.wrap(hash)}
-
-Your next step is to upload the release artifact to the Play Store.
-${lightCyan.wrap("./build/app/outputs/bundle/release/app-release.aab")}
-
-See the following link for more information:    
-${link(uri: Uri.parse('https://support.google.com/googleplay/android-developer/answer/9859152?hl=en'))}
-''',
-    );
+🕹️  Platform: ${lightCyan.wrap(platform)} ${lightCyan.wrap('(${archNames.join(', ')})')}
+''');
 
     final confirm = logger.confirm('Would you like to continue?');
 
@@ -206,22 +171,50 @@ ${link(uri: Uri.parse('https://support.google.com/googleplay/android-developer/a
       }
     }
 
-    final createArtifactProgress = logger.progress('Creating artifact');
-    try {
-      await codePushClient.createReleaseArtifact(
-        releaseId: release.id,
-        artifactPath: artifact.path,
-        arch: arch,
-        platform: platform,
-        hash: hash,
+    final createArtifactProgress = logger.progress('Creating artifacts');
+    for (final archMetadata in ShorebirdBuildMixin.architectures.values) {
+      final artifactPath = p.join(
+        Directory.current.path,
+        'build',
+        'app',
+        'intermediates',
+        'stripped_native_libs',
+        'release',
+        'out',
+        'lib',
+        archMetadata.path,
+        'libapp.so',
       );
-      createArtifactProgress.complete();
-    } catch (error) {
-      createArtifactProgress.fail('$error');
-      return ExitCode.software.code;
+      final artifact = File(artifactPath);
+      final hash = _hashFn(await artifact.readAsBytes());
+
+      try {
+        await codePushClient.createReleaseArtifact(
+          releaseId: release.id,
+          artifactPath: artifact.path,
+          arch: archMetadata.arch,
+          platform: platform,
+          hash: hash,
+        );
+      } catch (error) {
+        createArtifactProgress.fail('$error');
+        return ExitCode.software.code;
+      }
     }
 
-    logger.success('\n✅ Published Release!');
+    createArtifactProgress.complete();
+
+    logger
+      ..success('\n✅ Published Release!')
+      ..info('''
+
+Your next step is to upload the app bundle to the Play Store.
+${lightCyan.wrap("./build/app/outputs/bundle/release/app-release.aab")}
+
+See the following link for more information:    
+${link(uri: Uri.parse('https://support.google.com/googleplay/android-developer/answer/9859152?hl=en'))}
+''');
+
     return ExitCode.success.code;
   }
 }

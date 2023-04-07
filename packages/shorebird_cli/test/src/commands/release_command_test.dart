@@ -8,6 +8,7 @@ import 'package:path/path.dart' as p;
 import 'package:shorebird_cli/src/auth/auth.dart';
 import 'package:shorebird_cli/src/commands/commands.dart';
 import 'package:shorebird_cli/src/config/config.dart';
+import 'package:shorebird_cli/src/shorebird_build_mixin.dart';
 import 'package:shorebird_cli/src/validators/validators.dart';
 import 'package:shorebird_code_push_client/shorebird_code_push_client.dart';
 import 'package:test/test.dart';
@@ -86,6 +87,24 @@ flutter:
       return tempDir;
     }
 
+    void setUpTempArtifacts(Directory dir) {
+      for (final archMetadata in ShorebirdBuildMixin.architectures.values) {
+        final artifactPath = p.join(
+          dir.path,
+          'build',
+          'app',
+          'intermediates',
+          'stripped_native_libs',
+          'release',
+          'out',
+          'lib',
+          archMetadata.path,
+          'libapp.so',
+        );
+        File(artifactPath).createSync(recursive: true);
+      }
+    }
+
     setUp(() {
       argResults = _MockArgResults();
       applicationConfigHome = Directory.systemTemp.createTempSync();
@@ -116,7 +135,7 @@ flutter:
           return processResult;
         },
         logger: logger,
-        flutterValidator: flutterValidator,
+        validators: [flutterValidator],
       )..testArgResults = argResults;
       testApplicationConfigHome = (_) => applicationConfigHome.path;
 
@@ -192,36 +211,12 @@ flutter:
       expect(exitCode, equals(ExitCode.software.code));
     });
 
-    test('throws software error when artifact is not found (default).',
-        () async {
-      final tempDir = setUpTempDir();
-      final exitCode = await IOOverrides.runZoned(
-        command.run,
-        getCurrentDirectory: () => tempDir,
-      );
-      verify(
-        () => logger.err(any(that: contains('Artifact not found:'))),
-      ).called(1);
-      expect(exitCode, ExitCode.software.code);
-    });
-
     test('throws error when fetching apps fails.', () async {
       const error = 'something went wrong';
       when(() => codePushClient.getApps()).thenThrow(error);
       final tempDir = setUpTempDir();
-      final artifactPath = p.join(
-        tempDir.path,
-        'build',
-        'app',
-        'intermediates',
-        'stripped_native_libs',
-        'release',
-        'out',
-        'lib',
-        'arm64-v8a',
-        'libapp.so',
-      );
-      File(artifactPath).createSync(recursive: true);
+      setUpTempArtifacts(tempDir);
+
       final exitCode = await IOOverrides.runZoned(
         command.run,
         getCurrentDirectory: () => tempDir,
@@ -236,19 +231,7 @@ flutter:
       ).thenReturn(appDisplayName);
       when(() => codePushClient.getApps()).thenAnswer((_) async => []);
       final tempDir = setUpTempDir();
-      final artifactPath = p.join(
-        tempDir.path,
-        'build',
-        'app',
-        'intermediates',
-        'stripped_native_libs',
-        'release',
-        'out',
-        'lib',
-        'arm64-v8a',
-        'libapp.so',
-      );
-      File(artifactPath).createSync(recursive: true);
+      setUpTempArtifacts(tempDir);
       final exitCode = await IOOverrides.runZoned(
         command.run,
         getCurrentDirectory: () => tempDir,
@@ -269,19 +252,7 @@ Did you forget to run "shorebird init"?''',
         () => logger.prompt(any(), defaultValue: any(named: 'defaultValue')),
       ).thenReturn(appDisplayName);
       final tempDir = setUpTempDir();
-      final artifactPath = p.join(
-        tempDir.path,
-        'build',
-        'app',
-        'intermediates',
-        'stripped_native_libs',
-        'release',
-        'out',
-        'lib',
-        'arm64-v8a',
-        'libapp.so',
-      );
-      File(artifactPath).createSync(recursive: true);
+      setUpTempArtifacts(tempDir);
       final exitCode = await IOOverrides.runZoned(
         command.run,
         getCurrentDirectory: () => tempDir,
@@ -296,19 +267,7 @@ Did you forget to run "shorebird init"?''',
         () => codePushClient.getReleases(appId: any(named: 'appId')),
       ).thenThrow(error);
       final tempDir = setUpTempDir();
-      final artifactPath = p.join(
-        tempDir.path,
-        'build',
-        'app',
-        'intermediates',
-        'stripped_native_libs',
-        'release',
-        'out',
-        'lib',
-        'arm64-v8a',
-        'libapp.so',
-      );
-      File(artifactPath).createSync(recursive: true);
+      setUpTempArtifacts(tempDir);
       final exitCode = await IOOverrides.runZoned(
         command.run,
         getCurrentDirectory: () => tempDir,
@@ -330,19 +289,7 @@ Did you forget to run "shorebird init"?''',
         ),
       ).thenThrow(error);
       final tempDir = setUpTempDir();
-      final artifactPath = p.join(
-        tempDir.path,
-        'build',
-        'app',
-        'intermediates',
-        'stripped_native_libs',
-        'release',
-        'out',
-        'lib',
-        'arm64-v8a',
-        'libapp.so',
-      );
-      File(artifactPath).createSync(recursive: true);
+      setUpTempArtifacts(tempDir);
       final exitCode = await IOOverrides.runZoned(
         command.run,
         getCurrentDirectory: () => tempDir,
@@ -366,19 +313,7 @@ Did you forget to run "shorebird init"?''',
         ),
       ).thenThrow(error);
       final tempDir = setUpTempDir();
-      final artifactPath = p.join(
-        tempDir.path,
-        'build',
-        'app',
-        'intermediates',
-        'stripped_native_libs',
-        'release',
-        'out',
-        'lib',
-        'arm64-v8a',
-        'libapp.so',
-      );
-      File(artifactPath).createSync(recursive: true);
+      setUpTempArtifacts(tempDir);
       final exitCode = await IOOverrides.runZoned(
         command.run,
         getCurrentDirectory: () => tempDir,
@@ -389,19 +324,7 @@ Did you forget to run "shorebird init"?''',
 
     test('succeeds when release is successful', () async {
       final tempDir = setUpTempDir();
-      final artifactPath = p.join(
-        tempDir.path,
-        'build',
-        'app',
-        'intermediates',
-        'stripped_native_libs',
-        'release',
-        'out',
-        'lib',
-        'arm64-v8a',
-        'libapp.so',
-      );
-      File(artifactPath).createSync(recursive: true);
+      setUpTempArtifacts(tempDir);
       final exitCode = await IOOverrides.runZoned(
         command.run,
         getCurrentDirectory: () => tempDir,
@@ -425,19 +348,7 @@ Did you forget to run "shorebird init"?''',
         ],
       );
       final tempDir = setUpTempDir();
-      final artifactPath = p.join(
-        tempDir.path,
-        'build',
-        'app',
-        'intermediates',
-        'stripped_native_libs',
-        'release',
-        'out',
-        'lib',
-        'arm64-v8a',
-        'libapp.so',
-      );
-      File(artifactPath).createSync(recursive: true);
+      setUpTempArtifacts(tempDir);
       final exitCode = await IOOverrides.runZoned(
         command.run,
         getCurrentDirectory: () => tempDir,

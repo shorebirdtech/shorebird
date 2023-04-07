@@ -30,7 +30,7 @@ class CodePushClient {
     http.Client? httpClient,
     Uri? hostedUri,
   })  : _httpClient = httpClient ?? http.Client(),
-        hostedUri = hostedUri ?? Uri.https('api-dev.shorebird.dev');
+        hostedUri = hostedUri ?? Uri.https('api.shorebird.dev');
 
   /// The default error message to use when an unknown error occurs.
   static const unknownErrorMessage = 'An unknown error occurred.';

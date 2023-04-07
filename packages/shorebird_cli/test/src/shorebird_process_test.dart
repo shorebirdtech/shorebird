@@ -23,31 +23,24 @@ void main() {
 
       ShorebirdProcess.processWrapper = processWrapper;
 
-      // TODO(bryanoltman): this method of mocking processWrappper is not correctly matching arguments
-      when(() => processWrapper.run).thenReturn(
-        (
-          executable,
-          arguments, {
-          bool runInShell = false,
-          Map<String, String>? environment,
-          String? workingDirectory,
-          bool useVendedFlutter = true,
-        }) async {
-          return runProcessResult;
-        },
-      );
+      when(
+        () => processWrapper.run(
+          any(),
+          any(),
+          runInShell: any(named: 'runInShell'),
+          environment: any(named: 'environment'),
+          workingDirectory: any(named: 'workingDirectory'),
+        ),
+      ).thenAnswer((_) async => runProcessResult);
 
-      when(() => processWrapper.start).thenReturn(
-        (
-          executable,
-          arguments, {
-          bool runInShell = false,
-          Map<String, String>? environment,
-          bool useVendedFlutter = true,
-        }) async {
-          return startProcess;
-        },
-      );
+      when(
+        () => processWrapper.start(
+          any(),
+          any(),
+          environment: any(named: 'environment'),
+          runInShell: any(named: 'runInShell'),
+        ),
+      ).thenAnswer((_) async => startProcess);
     });
 
     group('run', () {
@@ -64,6 +57,7 @@ void main() {
             'git',
             ['pull'],
             runInShell: true,
+            environment: {},
             workingDirectory: '~',
           ),
         ).called(1);
@@ -79,9 +73,12 @@ void main() {
 
         verify(
           () => processWrapper.run(
-            'flutter/bin/flutter',
+            any(that: contains('bin/cache/flutter/bin/flutter')),
             ['--version'],
             runInShell: true,
+            environment: {
+              'FLUTTER_STORAGE_BASE_URL': 'https://download.shorebird.dev/',
+            },
             workingDirectory: '~',
           ),
         ).called(1);
@@ -103,6 +100,7 @@ void main() {
             'flutter',
             ['--version'],
             runInShell: true,
+            environment: {},
             workingDirectory: '~',
           ),
         ).called(1);
@@ -124,10 +122,7 @@ void main() {
             ['--version'],
             runInShell: true,
             workingDirectory: '~',
-            environment: {
-              'ENV_VAR': 'asdfasdf',
-              'FLUTTER_STORAGE_BASE_URL': 'https://download.shorebird.dev/',
-            },
+            environment: {'ENV_VAR': 'asdfasdf'},
           ),
         ).called(1);
       });
@@ -161,8 +156,14 @@ void main() {
       test('forwards non-flutter executables to Process.run', () async {
         await ShorebirdProcess.start('git', ['pull'], runInShell: true);
 
-        verify(() => processWrapper.start('git', ['pull'], runInShell: true))
-            .called(1);
+        verify(
+          () => processWrapper.start(
+            'git',
+            ['pull'],
+            runInShell: true,
+            environment: {},
+          ),
+        ).called(1);
       });
 
       test('replaces "flutter" with our local flutter', () async {
@@ -170,9 +171,12 @@ void main() {
 
         verify(
           () => processWrapper.start(
-            'flutter/bin/flutter',
+            any(that: contains('bin/cache/flutter/bin/flutter')),
             ['run'],
             runInShell: true,
+            environment: {
+              'FLUTTER_STORAGE_BASE_URL': 'https://download.shorebird.dev/',
+            },
           ),
         ).called(1);
       });
@@ -192,6 +196,7 @@ void main() {
             'flutter',
             ['--version'],
             runInShell: true,
+            environment: {},
           ),
         ).called(1);
       });
@@ -202,11 +207,12 @@ void main() {
         'flutter',
         ['--version'],
         runInShell: true,
+        environment: {'ENV_VAR': 'asdfasdf'},
       );
 
       verify(
         () => processWrapper.start(
-          'flutter',
+          any(that: contains('bin/cache/flutter/bin/flutter')),
           ['--version'],
           runInShell: true,
           environment: {
@@ -225,6 +231,7 @@ void main() {
           ['--version'],
           runInShell: true,
           useVendedFlutter: false,
+          environment: {'hello': 'world'},
         );
 
         verify(
@@ -232,7 +239,7 @@ void main() {
             'flutter',
             ['--version'],
             runInShell: true,
-            environment: null,
+            environment: {'hello': 'world'},
           ),
         ).called(1);
       },

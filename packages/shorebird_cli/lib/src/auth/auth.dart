@@ -1,7 +1,7 @@
 import 'dart:convert';
 import 'dart:io';
 
-import 'package:googleapis_auth/auth_io.dart';
+import 'package:googleapis_auth/auth_io.dart' as oauth2;
 import 'package:http/http.dart' as http;
 import 'package:path/path.dart' as p;
 import 'package:shorebird_cli/src/auth/jwt.dart';
@@ -10,7 +10,7 @@ import 'package:shorebird_cli/src/config/config.dart';
 
 export 'package:shorebird_cli/src/auth/models/models.dart' show User;
 
-final _clientId = ClientId(
+final _clientId = oauth2.ClientId(
   /// Shorebird CLI's OAuth 2.0 identifier.
   '523302233293-eia5antm0tgvek240t46orctktiabrek.apps.googleusercontent.com',
 
@@ -28,22 +28,50 @@ final _clientId = ClientId(
 );
 final _scopes = ['openid', 'https://www.googleapis.com/auth/userinfo.email'];
 
-typedef ObtainAccessCredentials = Future<AccessCredentials> Function(
-  ClientId clientId,
+typedef ObtainAccessCredentials = Future<oauth2.AccessCredentials> Function(
+  oauth2.ClientId clientId,
   List<String> scopes,
   http.Client client,
   void Function(String) userPrompt,
 );
 
+typedef RefreshCredentials = Future<oauth2.AccessCredentials> Function(
+  oauth2.ClientId clientId,
+  oauth2.AccessCredentials credentials,
+  http.Client client,
+);
+
+typedef OnRefreshCredentials = void Function(
+  oauth2.AccessCredentials credentials,
+);
+
 class AuthenticatedClient extends http.BaseClient {
-  AuthenticatedClient({required this.token, required http.Client httpClient})
-      : _baseClient = httpClient;
+  AuthenticatedClient({
+    required oauth2.AccessCredentials credentials,
+    required http.Client httpClient,
+    required OnRefreshCredentials onRefreshCredentials,
+    RefreshCredentials refreshCredentials = oauth2.refreshCredentials,
+  })  : _credentials = credentials,
+        _baseClient = httpClient,
+        _onRefreshCredentials = onRefreshCredentials,
+        _refreshCredentials = refreshCredentials;
 
   final http.Client _baseClient;
-  final String token;
+  final OnRefreshCredentials _onRefreshCredentials;
+  final RefreshCredentials _refreshCredentials;
+  oauth2.AccessCredentials _credentials;
 
   @override
-  Future<http.StreamedResponse> send(http.BaseRequest request) {
+  Future<http.StreamedResponse> send(http.BaseRequest request) async {
+    if (_credentials.accessToken.hasExpired) {
+      _credentials = await _refreshCredentials(
+        _clientId,
+        _credentials,
+        _baseClient,
+      );
+      _onRefreshCredentials(_credentials);
+    }
+    final token = _credentials.idToken;
     request.headers['Authorization'] = 'Bearer $token';
     return _baseClient.send(request);
   }
@@ -54,8 +82,8 @@ class Auth {
     http.Client? httpClient,
     ObtainAccessCredentials? obtainAccessCredentials,
   })  : _httpClient = httpClient ?? http.Client(),
-        _obtainAccessCredentials =
-            obtainAccessCredentials ?? obtainAccessCredentialsViaUserConsent {
+        _obtainAccessCredentials = obtainAccessCredentials ??
+            oauth2.obtainAccessCredentialsViaUserConsent {
     _loadCredentials();
   }
 
@@ -66,9 +94,13 @@ class Auth {
   final credentialsFilePath = p.join(shorebirdConfigDir, _credentialsFileName);
 
   http.Client get client {
-    final token = _credentials?.idToken;
-    if (token == null) return _httpClient;
-    return AuthenticatedClient(token: token, httpClient: _httpClient);
+    final credentials = _credentials;
+    if (credentials == null) return _httpClient;
+    return AuthenticatedClient(
+      credentials: credentials,
+      httpClient: _httpClient,
+      onRefreshCredentials: _flushCredentials,
+    );
   }
 
   Future<void> login(void Function(String) prompt) async {
@@ -91,7 +123,7 @@ class Auth {
 
   void logout() => _clearCredentials();
 
-  AccessCredentials? _credentials;
+  oauth2.AccessCredentials? _credentials;
 
   User? _user;
 
@@ -105,7 +137,7 @@ class Auth {
     if (credentialsFile.existsSync()) {
       try {
         final contents = credentialsFile.readAsStringSync();
-        _credentials = AccessCredentials.fromJson(
+        _credentials = oauth2.AccessCredentials.fromJson(
           json.decode(contents) as Map<String, dynamic>,
         );
         _user = _credentials?.toUser();
@@ -113,7 +145,7 @@ class Auth {
     }
   }
 
-  void _flushCredentials(AccessCredentials credentials) {
+  void _flushCredentials(oauth2.AccessCredentials credentials) {
     File(credentialsFilePath)
       ..createSync(recursive: true)
       ..writeAsStringSync(json.encode(credentials.toJson()));
@@ -134,7 +166,7 @@ class Auth {
   }
 }
 
-extension on AccessCredentials {
+extension on oauth2.AccessCredentials {
   User toUser() {
     final token = idToken;
 
