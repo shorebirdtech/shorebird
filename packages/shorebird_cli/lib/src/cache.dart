@@ -9,8 +9,15 @@ import 'package:shorebird_cli/src/engine_revision.dart';
 import 'package:shorebird_cli/src/shorebird_environment.dart';
 
 class Cache {
-  Cache({Platform platform = const LocalPlatform()}) {
-    registerArtifact(PatchArtifact(cache: this, platform: platform));
+  Cache({http.Client? httpClient, Platform platform = const LocalPlatform()}) {
+    final client = httpClient ?? http.Client();
+    registerArtifact(
+      PatchArtifact(
+        cache: this,
+        platform: platform,
+        httpClient: client,
+      ),
+    );
   }
 
   void registerArtifact(CachedArtifact artifact) => _artifacts.add(artifact);
@@ -31,12 +38,14 @@ class Cache {
     return Directory(p.join(shorebirdArtifactsDirectory.path, name));
   }
 
+  /// The Shorebird cache directory.
+  static Directory get shorebirdCacheDirectory => Directory(
+        p.join(ShorebirdEnvironment.shorebirdRoot.path, 'bin', 'cache'),
+      );
+
   /// The Shorebird cached artifacts directory.
   static Directory get shorebirdArtifactsDirectory => Directory(
-        p.join(
-          ShorebirdEnvironment.shorebirdCacheDirectory.path,
-          'artifacts',
-        ),
+        p.join(shorebirdCacheDirectory.path, 'artifacts'),
       );
 
   final List<CachedArtifact> _artifacts = [];
@@ -91,7 +100,11 @@ abstract class CachedArtifact {
 }
 
 class PatchArtifact extends CachedArtifact {
-  PatchArtifact({required super.cache, required this.platform});
+  PatchArtifact({
+    required super.cache,
+    required this.platform,
+    super.httpClient,
+  });
 
   final Platform platform;
 

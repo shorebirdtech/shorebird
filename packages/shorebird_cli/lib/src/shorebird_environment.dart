@@ -27,11 +27,6 @@ abstract class ShorebirdEnvironment {
         ),
       );
 
-  /// The Shorebird cache directory.
-  static Directory get shorebirdCacheDirectory => Directory(
-        p.join(shorebirdRoot.path, 'bin', 'cache'),
-      );
-
   /// The Shorebird-vended Flutter binary.
   static File get flutterBinaryFile => File(
         p.join(
