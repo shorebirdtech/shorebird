@@ -12,6 +12,7 @@ import 'package:shorebird_cli/src/shorebird_config_mixin.dart';
 import 'package:shorebird_cli/src/shorebird_create_app_mixin.dart';
 import 'package:shorebird_code_push_client/shorebird_code_push_client.dart';
 
+/// Metadata about a patch artifact that we are about to upload.
 class PatchArtifactBundle {
   const PatchArtifactBundle({
     required this.arch,
@@ -19,8 +20,13 @@ class PatchArtifactBundle {
     required this.hash,
   });
 
+  /// The corresponding architecture.
   final String arch;
+
+  /// The path to the artifact.
   final String path;
+
+  /// The artifact hash.
   final String hash;
 }
 
@@ -180,12 +186,12 @@ Did you forget to run "shorebird init"?''',
     final channelArg = results['channel'] as String;
 
     final List<Release> releases;
-    final fetchReleasesProgress = logger.progress('Fetching release');
+    final fetchReleaseProgress = logger.progress('Fetching release');
     try {
       releases = await codePushClient.getReleases(appId: app.id);
-      fetchReleasesProgress.complete();
+      fetchReleaseProgress.complete();
     } catch (error) {
-      fetchReleasesProgress.fail('$error');
+      fetchReleaseProgress.fail('$error');
       return ExitCode.software.code;
     }
 
