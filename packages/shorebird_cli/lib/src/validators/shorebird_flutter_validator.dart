@@ -2,6 +2,13 @@ import 'package:shorebird_cli/src/shorebird_environment.dart';
 import 'package:shorebird_cli/src/shorebird_process.dart';
 import 'package:shorebird_cli/src/validators/validators.dart';
 
+class FlutterValidationException implements Exception {
+  const FlutterValidationException(this.message);
+
+  /// The message associated with the exception.
+  final String message;
+}
+
 class ShorebirdFlutterValidator extends Validator {
   ShorebirdFlutterValidator({required this.runProcess});
 
@@ -120,11 +127,21 @@ This can cause unexpected behavior if the version gap is wide. If you're seeing 
       ['--version'],
       useVendedFlutter: !checkPathFlutter,
     );
-    final output = result.stdout.toString();
 
+    if (result.exitCode != 0) {
+      throw FlutterValidationException(
+        '''
+        Flutter version check did not complete successfully.
+        ${result.stderr}''',
+      );
+    }
+
+    final output = result.stdout.toString();
     final match = _flutterVersionRegex.firstMatch(output);
     if (match == null) {
-      throw Exception('Could not find version match in $output');
+      throw FlutterValidationException(
+        'Could not find version match in $output',
+      );
     }
 
     return match.group(1)!;

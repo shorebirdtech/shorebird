@@ -103,8 +103,12 @@ Tools • Dart 2.19.6 • DevTools 2.20.1
 
       when(() => pathFlutterVersionProcessResult.stdout)
           .thenReturn(pathFlutterVersionMessage);
+      when(() => pathFlutterVersionProcessResult.stderr).thenReturn('');
+      when(() => pathFlutterVersionProcessResult.exitCode).thenReturn(0);
       when(() => shorebirdFlutterVersionProcessResult.stdout)
           .thenReturn(shorebirdFlutterVersionMessage);
+      when(() => shorebirdFlutterVersionProcessResult.stderr).thenReturn('');
+      when(() => shorebirdFlutterVersionProcessResult.exitCode).thenReturn(0);
       when(() => gitBranchProcessResult.stdout).thenReturn(gitBranchMessage);
       when(() => gitStatusProcessResult.stdout).thenReturn(gitStatusMessage);
     });
@@ -195,6 +199,23 @@ Tools • Dart 2.19.6 • DevTools 2.20.1
           .thenReturn('OH NO THERE IS NO FLUTTER VERSION HERE');
 
       expect(() async => validator.validate(), throwsException);
+    });
+
+    test('prints stderr output and throws if version check fails', () async {
+      when(() => pathFlutterVersionProcessResult.exitCode).thenReturn(1);
+      when(() => pathFlutterVersionProcessResult.stderr)
+          .thenReturn('error getting Flutter version');
+
+      expect(
+        () async => validator.validate(),
+        throwsA(
+          isA<FlutterValidationException>().having(
+            (e) => e.message,
+            'message',
+            contains('error getting Flutter version'),
+          ),
+        ),
+      );
     });
   });
 }
