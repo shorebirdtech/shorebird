@@ -77,7 +77,7 @@ Shorebird v$packageVersion
     final missingValidators = _doctorValidators
         .where(
           (doctorValidator) => baseValidators.none(
-            (baseValidator) => baseValidator.name == doctorValidator.name,
+            (baseValidator) => baseValidator.id == doctorValidator.id,
           ),
         )
         .toList();

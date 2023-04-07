@@ -38,21 +38,21 @@ void main() {
       shorebirdVersionValidator = _MockShorebirdVersionValidator();
       shorebirdFlutterValidator = _MockShorebirdFlutterValidator();
 
-      when(() => androidInternetPermissionValidator.name)
+      when(() => androidInternetPermissionValidator.id)
           .thenReturn('$AndroidInternetPermissionValidator');
       when(() => androidInternetPermissionValidator.description)
           .thenReturn('Android');
       when(() => androidInternetPermissionValidator.validate())
           .thenAnswer((_) async => []);
 
-      when(() => shorebirdVersionValidator.name)
+      when(() => shorebirdVersionValidator.id)
           .thenReturn('$ShorebirdVersionValidator');
       when(() => shorebirdVersionValidator.description)
           .thenReturn('Shorebird Version');
       when(() => shorebirdVersionValidator.validate())
           .thenAnswer((_) async => []);
 
-      when(() => shorebirdFlutterValidator.name)
+      when(() => shorebirdFlutterValidator.id)
           .thenReturn('$ShorebirdFlutterValidator');
       when(() => shorebirdFlutterValidator.description)
           .thenReturn('Shorebird Flutter');
