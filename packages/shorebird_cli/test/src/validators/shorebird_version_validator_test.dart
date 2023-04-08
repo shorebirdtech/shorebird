@@ -87,5 +87,29 @@ void main() {
         contains('A new version of shorebird is available!'),
       );
     });
+
+    test(
+      'returns an error on failure to retrieve shorebird version',
+      () async {
+        when(
+          () => fetchLatestVersionResult.stdout,
+        ).thenThrow(
+          const ProcessException(
+            'git',
+            ['--rev'],
+            'Some error',
+          ),
+        );
+
+        final results = await validator.validate();
+
+        expect(results, hasLength(1));
+        expect(results.first.severity, ValidationIssueSeverity.error);
+        expect(
+          results.first.message,
+          'Failed to get shorebird version. Error: Some error',
+        );
+      },
+    );
   });
 }
