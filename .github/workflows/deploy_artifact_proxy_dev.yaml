@@ -1,4 +1,4 @@
-name: Deploy Artifact Proxy
+name: Deploy Artifact Proxy Dev
 
 on:
   workflow_dispatch:
@@ -10,7 +10,7 @@ on:
       - "packages/artifact_proxy/**"
 
 env:
-  PROJECT_ID: code-push-prod
+  PROJECT_ID: code-push-dev
   SERVICE: artifact-proxy
   REGION: us-central1
 
@@ -36,7 +36,7 @@ jobs:
         uses: google-github-actions/setup-gcloud@v0.2.0
         with:
           project_id: ${{ env.PROJECT_ID }}
-          service_account_key: ${{ secrets.CLOUD_RUN_SA_PROD }}
+          service_account_key: ${{ secrets.CLOUD_RUN_SA_DEV  }}
           export_default_credentials: true
 
       - name: Authorize Docker Push
