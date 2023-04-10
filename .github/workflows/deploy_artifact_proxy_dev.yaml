@@ -5,6 +5,7 @@ on:
   push:
     branches:
       - main
+      - ci/artifact-proxy-dev-deployment
     paths:
       - .github/workflows/deploy_artifact_proxy.yaml
       - "packages/artifact_proxy/**"
