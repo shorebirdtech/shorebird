@@ -4,10 +4,11 @@ on:
   workflow_dispatch:
   push:
     branches:
-      - main
+      - main      
     paths:
       - .github/workflows/deploy_artifact_proxy.yaml
       - "packages/artifact_proxy/**"
+  pull_request:
 
 env:
   PROJECT_ID: code-push-dev
