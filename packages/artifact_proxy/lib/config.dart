@@ -13,6 +13,8 @@ const config = ProxyConfig(
 class _EngineMapping3_7 extends EngineMapping {
   const _EngineMapping3_7({
     required super.flutterEngineRevision,
+    // https://github.com/dart-lang/sdk/issues/52016
+    // ignore: unused_element
     super.shorebirdStorageBucket = 'download.shorebird.dev',
   }) : super(
           shorebirdArtifactOverrides: const {
@@ -43,8 +45,8 @@ class _EngineMapping3_7 extends EngineMapping {
 /// Flutter 3.7.10
 const flutter_3_7_10 = {
   // Attempt to fix https://github.com/shorebirdtech/shorebird/issues/235
-  'f68335f3f6afdb1595420b1c3b5a16c8da75a1cf': _EngineMapping3_7(
-    shorebirdStorageBucket: 'download-dev.shorebird.dev',
+  'adb70a20d4718b5ce60cdd99ad81d8de54afcb35': _EngineMapping3_7(
+    // shorebirdStorageBucket: 'download-dev.shorebird.dev',
     flutterEngineRevision: 'ec975089acb540fc60752606a3d3ba809dd1528b',
   ),
   '978a56f2d97f9ce24a2b6bc22c9bbceaaba0343c': _EngineMapping3_7(
