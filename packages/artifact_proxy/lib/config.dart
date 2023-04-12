@@ -13,10 +13,8 @@ const config = ProxyConfig(
 class _EngineMapping3_7 extends EngineMapping {
   const _EngineMapping3_7({
     required super.flutterEngineRevision,
-    // https://github.com/dart-lang/sdk/issues/52016
-    // ignore: unused_element
-    super.shorebirdStorageBucket = 'download.shorebird.dev',
   }) : super(
+          shorebirdStorageBucket: 'download.shorebird.dev',
           shorebirdArtifactOverrides: const {
             // artifacts.zip
             r'flutter_infra_release/flutter/$engine/android-arm-64-release/artifacts.zip',
