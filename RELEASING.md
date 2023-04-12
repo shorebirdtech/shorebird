@@ -1,0 +1,43 @@
+# Releasing
+
+Attempting to write down all the steps to releasing a new version of `shorebird`.
+
+See also https://github.com/shorebirdtech/shorebird/blob/main/FORKING_FLUTTER.md
+which lists some of these steps from the vantage point of updating our forks.
+
+
+When you have the code all ready you need to build the engine artifacts:
+
+1. https://github.com/shorebirdtech/build_engine/blob/main/build_engine/build_and_upload.sh
+   is the combined script.  Before you run it you want to make sure your local gcloud
+   is already authorized.
+
+You run it like:
+```
+./build_engine/build_engine/build_and_upload.sh /Users/eseidel/Documents/GitHub/engine e6a2a5a43973430d9f038cd81cb1779b6b404909
+```
+
+If it fails for any reason, there are separate scripts `build.sh` and `upload.sh`
+which you can use to run only parts of the process.  The whole process should be
+repeatable without error (ninja null builds are quick, gcloud upload will recognize
+identical objects, etc.)
+
+The process must currently be run from an arm64 Mac as we depend on that for
+uploading the `patch` artifact.  We build patch artifacts from GitHub Actions
+for other platforms.
+
+2.  Once artifacts are built, you can now make a change to our branch of `flutter`.
+(See also FORKING_FLUTTER.md).
+
+3. Once the change to `flutter` is made, we *should* update `shorebird_cli` dependencies
+but that's not wired up yet.  Currently we instead push to the stable channel on
+`shorebirdtech/flutter`.  https://github.com/shorebirdtech/shorebird/issues/282. But
+I don't think we want to do that push yet?
+
+4.  Once our forked flutter is pushed, we also need to update shorebird_cli to match
+  the correct engine revision (this will go away when https://github.com/shorebirdtech/shorebird/issues/282
+  is fixed).
+
+5.  Also need to update our artifact_proxy?
+
+Anything else?
