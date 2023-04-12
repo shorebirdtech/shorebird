@@ -36,14 +36,14 @@ Middleware _cloudLogger(String projectId) {
         zoneValues: {loggerKey: CloudLogger(currentZone, traceValue)},
         specification: ZoneSpecification(
           handleUncaughtError: (self, parent, zone, error, stackTrace) {
-            final logContentString = createErrorLogEntry(
+            final entry = createErrorLogEntry(
               error,
               traceValue,
               stackTrace,
               LogSeverity.error,
             );
 
-            parent.print(self, logContentString);
+            parent.print(self, entry);
 
             if (completer.isCompleted) return;
 
