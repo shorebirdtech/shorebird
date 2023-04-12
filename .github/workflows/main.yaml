@@ -35,6 +35,9 @@ jobs:
             artifact_proxy:
               - ./.github/actions/dart_package
               - packages/artifact_proxy/**
+            cloud_logger:
+              - ./.github/actions/dart_package
+              - packages/cloud_logger/**
             shorebird_cli:
               - ./.github/actions/dart_package
               - packages/shorebird_cli/**
