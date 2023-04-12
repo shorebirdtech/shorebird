@@ -49,6 +49,10 @@ void main() {
       when(() => auth.client).thenReturn(httpClient);
     });
 
+    test('returns a non-empty description', () {
+      expect(command.description, isNotEmpty);
+    });
+
     test('prints an error if the user is not logged in', () async {
       when(() => auth.isAuthenticated).thenReturn(false);
 
