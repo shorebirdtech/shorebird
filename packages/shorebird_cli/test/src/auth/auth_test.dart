@@ -151,12 +151,9 @@ void main() {
       test('should set the user when claims are valid', () async {
         when(() => accessCredentials.idToken).thenReturn(idToken);
         await auth.login((_) {});
-        expect(auth.user, isA<User>().having((u) => u.email, 'email', email));
+        expect(auth.email, email);
         expect(auth.isAuthenticated, isTrue);
-        expect(
-          Auth().user,
-          isA<User>().having((u) => u.email, 'email', email),
-        );
+        expect(Auth().email, email);
         expect(Auth().isAuthenticated, isTrue);
       });
 
@@ -177,7 +174,7 @@ void main() {
             ),
           ),
         );
-        expect(auth.user, isNull);
+        expect(auth.email, isNull);
         expect(auth.isAuthenticated, isFalse);
       });
 
@@ -198,7 +195,7 @@ void main() {
             ),
           ),
         );
-        expect(auth.user, isNull);
+        expect(auth.email, isNull);
         expect(auth.isAuthenticated, isFalse);
       });
 
@@ -221,7 +218,7 @@ void main() {
             ),
           ),
         );
-        expect(auth.user, isNull);
+        expect(auth.email, isNull);
         expect(auth.isAuthenticated, isFalse);
       });
     });
@@ -229,13 +226,13 @@ void main() {
     group('logout', () {
       test('clears session and wipes state', () async {
         await auth.login((_) {});
-        expect(auth.user, isA<User>().having((u) => u.email, 'email', email));
+        expect(auth.email, email);
         expect(auth.isAuthenticated, isTrue);
 
         auth.logout();
-        expect(auth.user, isNull);
+        expect(auth.email, isNull);
         expect(auth.isAuthenticated, isFalse);
-        expect(Auth().user, isNull);
+        expect(Auth().email, isNull);
         expect(Auth().isAuthenticated, isFalse);
       });
     });
