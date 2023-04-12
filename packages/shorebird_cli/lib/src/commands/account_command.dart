@@ -22,7 +22,7 @@ class AccountCommand extends ShorebirdCommand {
       return ExitCode.success.code;
     }
 
-    logger.info('You are logged in as <${auth.user!.email}>');
+    logger.info('You are logged in as <${auth.email}>');
 
     return ExitCode.success.code;
   }
