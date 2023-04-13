@@ -1249,11 +1249,18 @@ void main() {
       });
 
       test('completes when request succeeds', () async {
-        when(() => httpClient.delete(uri))
-            .thenAnswer((_) async => http.Response('', HttpStatus.noContent));
+        const timestamp = 1681455600;
 
-        await codePushClient.cancelSubscription();
+        when(() => httpClient.delete(uri)).thenAnswer(
+          (_) async => http.Response(
+            jsonEncode({'expiration_date': 1681455600}),
+            HttpStatus.ok,
+          ),
+        );
 
+        final response = await codePushClient.cancelSubscription();
+
+        expect(response.millisecondsSinceEpoch, timestamp * 1000);
         verify(() => httpClient.delete(uri)).called(1);
       });
     });
