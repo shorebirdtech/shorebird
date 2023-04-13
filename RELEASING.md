@@ -37,6 +37,8 @@ separate script that promotes from dev to prod?)
 teach artifact_proxy that they exist:
 https://github.com/shorebirdtech/shorebird/blob/main/packages/artifact_proxy/lib/config.dart
 
+e.g. https://github.com/shorebirdtech/shorebird/pull/286
+
 Once that's made and commited, it should automatically push to dev via GitHub
 actions:
 https://github.com/shorebirdtech/shorebird/actions/workflows/deploy_artifact_proxy_dev.yaml
@@ -74,9 +76,19 @@ change, but that's not wired up yet.
     the `version.dart`
     https://github.com/shorebirdtech/shorebird/blob/05fd2f9ef0bcc1fd16e431029278f02001d5dbc9/packages/shorebird_cli/lib/src/version.dart#L2
 
+e.g.  https://github.com/shorebirdtech/shorebird/pull/287
+
 1.  To deploy the backend to production, navigate to the GitHub Actions at https://github.com/shorebirdtech/_shorebird/actions and select the Prod Deploy action (https://github.com/shorebirdtech/_shorebird/actions/workflows/deploy_prod.yaml). Click "Run workflow" and select the branch from the drop-down (we have been promoting from main but should probably switch to a release branch or tags?).
 
-1. Once all these changes are done, we push a new version of the CLI by pushing
-to the `stable` branch on `shorebird`.  We also currently need to push our
+1. We also currently need to push our
 forked version of `shorebirdtech/flutter` to `stable` as well, that step should
 be removed soon: https://github.com/shorebirdtech/shorebird/issues/282.
+
+e.g. https://github.com/shorebirdtech/flutter/pull/2
+
+1. Once all these changes are done, we push a new version of the CLI by pushing
+to the `stable` branch on `shorebird`.
+
+
+
+
