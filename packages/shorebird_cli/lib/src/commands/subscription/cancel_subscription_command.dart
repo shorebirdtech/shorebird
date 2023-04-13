@@ -53,7 +53,7 @@ class CancelSubscriptionCommand extends ShorebirdCommand
       return ExitCode.success.code;
     }
 
-    final progress = logger.progress('Canceling your subscription...');
+    final progress = logger.progress('Canceling your subscription');
 
     final DateTime cancellationDate;
     try {
