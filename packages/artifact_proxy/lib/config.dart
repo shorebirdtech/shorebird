@@ -42,9 +42,12 @@ class _EngineMapping3_7 extends EngineMapping {
 
 /// Flutter 3.7.10
 const flutter_3_7_10 = {
+  // Shorebird v0.0.5
+  'e6a2a5a43973430d9f038cd81cb1779b6b404909': _EngineMapping3_7(
+    flutterEngineRevision: 'ec975089acb540fc60752606a3d3ba809dd1528b',
+  ),
   // Attempt to fix https://github.com/shorebirdtech/shorebird/issues/235
   'adb70a20d4718b5ce60cdd99ad81d8de54afcb35': _EngineMapping3_7(
-    // shorebirdStorageBucket: 'download-dev.shorebird.dev',
     flutterEngineRevision: 'ec975089acb540fc60752606a3d3ba809dd1528b',
   ),
   '978a56f2d97f9ce24a2b6bc22c9bbceaaba0343c': _EngineMapping3_7(
