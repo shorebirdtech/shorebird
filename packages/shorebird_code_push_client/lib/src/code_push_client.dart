@@ -278,14 +278,18 @@ class CodePushClient {
   }
 
   /// Cancels the current user's subscription.
-  Future<void> cancelSubscription() async {
+  Future<DateTime> cancelSubscription() async {
     final response = await _httpClient.delete(
       Uri.parse('$hostedUri/api/v1/subscriptions'),
     );
 
-    if (response.statusCode != HttpStatus.noContent) {
+    if (response.statusCode != HttpStatus.ok) {
       throw _parseErrorResponse(response.body);
     }
+
+    final json = jsonDecode(response.body) as Map<String, dynamic>;
+    final timestamp = json['expiration_date'] as int;
+    return DateTime.fromMillisecondsSinceEpoch(timestamp * 1000);
   }
 
   /// Closes the client.

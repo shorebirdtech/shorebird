@@ -14,6 +14,8 @@ class _MockHttpClient extends Mock implements http.Client {}
 
 class _MockLogger extends Mock implements Logger {}
 
+class _MockProgress extends Mock implements Progress {}
+
 void main() {
   group('CancelSubscriptionCommand', () {
     const noSubscriptionUser = User(id: 1, email: 'tester1@shorebird.dev');
@@ -27,6 +29,7 @@ void main() {
     late CodePushClient codePushClient;
     late http.Client httpClient;
     late Logger logger;
+    late Progress progress;
 
     late CancelSubscriptionCommand command;
 
@@ -35,6 +38,7 @@ void main() {
       codePushClient = _MockCodePushClient();
       httpClient = _MockHttpClient();
       logger = _MockLogger();
+      progress = _MockProgress();
 
       command = CancelSubscriptionCommand(
         logger: logger,
@@ -47,6 +51,8 @@ void main() {
       );
 
       when(() => auth.client).thenReturn(httpClient);
+
+      when(() => logger.progress(any())).thenReturn(progress);
     });
 
     test('returns a non-empty description', () {
@@ -137,13 +143,16 @@ void main() {
 
       expect(result, ExitCode.software.code);
       verify(
-        () => logger.err(
+        () => progress.fail(
           any(that: contains('an error occurred')),
         ),
       ).called(1);
     });
 
     test('exits successfully on subscription cancellation', () async {
+      // Fri Apr 14 2023 07:00:00 GMT+0000
+      const cancellationTimestamp = 1681455600;
+
       when(() => auth.isAuthenticated).thenReturn(true);
       when(() => codePushClient.getCurrentUser())
           .thenAnswer((_) async => subscriptionUser);
@@ -157,14 +166,25 @@ void main() {
         ),
       ).thenReturn(true);
 
-      when(() => codePushClient.cancelSubscription())
-          .thenAnswer((_) async => {});
+      when(() => codePushClient.cancelSubscription()).thenAnswer(
+        (_) async => DateTime.fromMillisecondsSinceEpoch(
+          cancellationTimestamp * 1000,
+        ),
+      );
 
       final result = await command.run();
 
       expect(result, ExitCode.success.code);
+
       verify(
-        () => logger.info('Your subscription has been canceled.'),
+        () => progress.complete(
+          any(
+            that: stringContainsInOrder([
+              'Your subscription has been canceled.',
+              'Your access to Shorebird will continue until April 14, 2023'
+            ]),
+          ),
+        ),
       ).called(1);
     });
   });

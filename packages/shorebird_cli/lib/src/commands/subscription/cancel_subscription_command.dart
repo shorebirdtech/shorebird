@@ -1,5 +1,6 @@
 import 'dart:async';
 
+import 'package:intl/intl.dart';
 import 'package:mason_logger/mason_logger.dart';
 import 'package:shorebird_cli/src/command.dart';
 import 'package:shorebird_cli/src/shorebird_config_mixin.dart';
@@ -52,14 +53,25 @@ class CancelSubscriptionCommand extends ShorebirdCommand
       return ExitCode.success.code;
     }
 
+    final progress = logger.progress('Canceling your subscription...');
+
+    final DateTime cancellationDate;
     try {
-      await client.cancelSubscription();
+      cancellationDate = await client.cancelSubscription();
     } catch (error) {
-      logger.err(error.toString());
+      progress.fail('Failed to cancel subscription. Error: $error');
       return ExitCode.software.code;
     }
 
-    logger.info('Your subscription has been canceled.');
+    final formattedDate = DateFormat.yMMMMd().format(cancellationDate);
+    progress.complete(
+      '''
+Your subscription has been canceled.
+
+Note: Your access to Shorebird will continue until $formattedDate, after which all data stored with Shorebird will be deleted as per our privacy policy: https://shorebird.dev/privacy.html.
+
+Apps on devices you've built with Shorebird will continue to function normally, but will not receive further updates.''',
+    );
 
     return ExitCode.success.code;
   }
