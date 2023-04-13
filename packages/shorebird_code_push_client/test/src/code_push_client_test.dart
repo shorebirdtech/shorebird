@@ -52,6 +52,42 @@ void main() {
       });
     });
 
+    group('getCurrentUser', () {
+      const user = User(id: 123, email: 'tester@shorebird.dev');
+
+      late Uri uri;
+      setUp(() {
+        uri = Uri.parse('${codePushClient.hostedUri}/api/v1/users/me');
+      });
+
+      test('throws exception if the http request fails', () {
+        when(() => httpClient.get(uri))
+            .thenAnswer((_) async => http.Response('', HttpStatus.badRequest));
+
+        expect(
+          codePushClient.getCurrentUser(),
+          throwsA(
+            isA<CodePushException>().having(
+              (e) => e.message,
+              'message',
+              CodePushClient.unknownErrorMessage,
+            ),
+          ),
+        );
+      });
+
+      test('returns a deserialize user if the request succeeds', () async {
+        when(() => httpClient.get(uri)).thenAnswer(
+          (_) async => http.Response(jsonEncode(user.toJson()), HttpStatus.ok),
+        );
+
+        final repsonseUser = await codePushClient.getCurrentUser();
+        expect(repsonseUser.id, user.id);
+        expect(repsonseUser.email, user.email);
+        expect(repsonseUser.hasActiveSubscription, user.hasActiveSubscription);
+      });
+    });
+
     group('createPatchArtifact', () {
       const patchId = 0;
       const arch = 'aarch64';
@@ -1186,6 +1222,46 @@ void main() {
           uri,
           codePushClient.hostedUri.replace(path: '/api/v1/patches/promote'),
         );
+      });
+    });
+
+    group('cancelSubscription', () {
+      late Uri uri;
+
+      setUp(() {
+        uri = Uri.parse('${codePushClient.hostedUri}/api/v1/subscriptions');
+      });
+
+      test('throws an exception if the http request fails', () {
+        when(() => httpClient.delete(uri))
+            .thenAnswer((_) async => http.Response('', HttpStatus.badRequest));
+
+        expect(
+          codePushClient.cancelSubscription(),
+          throwsA(
+            isA<CodePushException>().having(
+              (e) => e.message,
+              'message',
+              CodePushClient.unknownErrorMessage,
+            ),
+          ),
+        );
+      });
+
+      test('completes when request succeeds', () async {
+        const timestamp = 1681455600;
+
+        when(() => httpClient.delete(uri)).thenAnswer(
+          (_) async => http.Response(
+            jsonEncode({'expiration_date': 1681455600}),
+            HttpStatus.ok,
+          ),
+        );
+
+        final response = await codePushClient.cancelSubscription();
+
+        expect(response.millisecondsSinceEpoch, timestamp * 1000);
+        verify(() => httpClient.delete(uri)).called(1);
       });
     });
 

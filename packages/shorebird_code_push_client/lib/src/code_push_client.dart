@@ -40,6 +40,19 @@ class CodePushClient {
   /// The hosted uri for the Shorebird CodePush API.
   final Uri hostedUri;
 
+  /// Fetches the currently logged-in user.
+  Future<User> getCurrentUser() async {
+    final uri = Uri.parse('$hostedUri/api/v1/users/me');
+    final response = await _httpClient.get(uri);
+
+    if (response.statusCode != HttpStatus.ok) {
+      throw _parseErrorResponse(response.body);
+    }
+
+    final json = jsonDecode(response.body) as Map<String, dynamic>;
+    return User.fromJson(json);
+  }
+
   /// Create a new artifact for a specific [patchId].
   Future<PatchArtifact> createPatchArtifact({
     required String artifactPath,
@@ -262,6 +275,21 @@ class CodePushClient {
     if (response.statusCode != HttpStatus.created) {
       throw _parseErrorResponse(response.body);
     }
+  }
+
+  /// Cancels the current user's subscription.
+  Future<DateTime> cancelSubscription() async {
+    final response = await _httpClient.delete(
+      Uri.parse('$hostedUri/api/v1/subscriptions'),
+    );
+
+    if (response.statusCode != HttpStatus.ok) {
+      throw _parseErrorResponse(response.body);
+    }
+
+    final json = jsonDecode(response.body) as Map<String, dynamic>;
+    final timestamp = json['expiration_date'] as int;
+    return DateTime.fromMillisecondsSinceEpoch(timestamp * 1000);
   }
 
   /// Closes the client.
