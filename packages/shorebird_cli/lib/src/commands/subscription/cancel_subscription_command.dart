@@ -68,7 +68,7 @@ class CancelSubscriptionCommand extends ShorebirdCommand
       '''
 Your subscription has been canceled.
 
-Note: Your access to Shorebird will continue until $formattedDate, after which all data stored with Shorebird will be deleted as per our privacy policy: https://shorebird.dev/privacy.html.
+Note: Your access to Shorebird will continue until $formattedDate, after which all data stored by Shorebird will be deleted as per our privacy policy: https://shorebird.dev/privacy.html.
 
 Apps on devices you've built with Shorebird will continue to function normally, but will not receive further updates.''',
     );
