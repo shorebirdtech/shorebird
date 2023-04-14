@@ -12,16 +12,20 @@ void main() {
   group('cache clean', () {
     late Cache cache;
     late Logger logger;
-    late CleanCacheCommand cacheCleanCommand;
+    late CleanCacheCommand command;
 
     setUp(() {
       cache = _MockCache();
       logger = _MockLogger();
-      cacheCleanCommand = CleanCacheCommand(cache: cache, logger: logger);
+      command = CleanCacheCommand(cache: cache, logger: logger);
+    });
+
+    test('has a description', () {
+      expect(command.description, isNotEmpty);
     });
 
     test('clears the cache', () async {
-      final result = await cacheCleanCommand.run();
+      final result = await command.run();
       expect(result, equals(ExitCode.success.code));
       verify(() => logger.success('✅ Cleared Cache!')).called(1);
       verify(cache.clear).called(1);

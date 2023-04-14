@@ -6,7 +6,7 @@ import 'package:shorebird_cli/src/shorebird_config_mixin.dart';
 
 /// {@template clean_cache_command}
 /// `shorebird cache clean`
-/// Deletes Shorebird's cached data when using the CLI.
+/// Clears the Shorebird cache directory.
 /// {@endtemplate}
 class CleanCacheCommand extends ShorebirdCommand with ShorebirdConfigMixin {
   /// {@macro clean_cache_command}
@@ -17,6 +17,9 @@ class CleanCacheCommand extends ShorebirdCommand with ShorebirdConfigMixin {
 
   @override
   String get name => 'clean';
+
+  @override
+  List<String> get aliases => ['clear'];
 
   @override
   Future<int> run() async {
