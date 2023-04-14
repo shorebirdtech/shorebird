@@ -10,4 +10,5 @@ export 'logout_command.dart';
 export 'patch_command.dart';
 export 'release_command.dart';
 export 'run_command.dart';
+export 'subscription/subscription_command.dart';
 export 'upgrade_command.dart';

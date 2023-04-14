@@ -1,2 +1,2 @@
 /// The hash of the Shorebird engine used by this version of Shorebird CLI.
-const shorebirdEngineRevision = '7aa5c44764e10722d188ece75819f7d10f5269a3';
+const shorebirdEngineRevision = 'e6a2a5a43973430d9f038cd81cb1779b6b404909';

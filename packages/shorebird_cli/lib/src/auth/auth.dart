@@ -5,10 +5,7 @@ import 'package:googleapis_auth/auth_io.dart' as oauth2;
 import 'package:http/http.dart' as http;
 import 'package:path/path.dart' as p;
 import 'package:shorebird_cli/src/auth/jwt.dart';
-import 'package:shorebird_cli/src/auth/models/models.dart';
 import 'package:shorebird_cli/src/config/config.dart';
-
-export 'package:shorebird_cli/src/auth/models/models.dart' show User;
 
 final _clientId = oauth2.ClientId(
   /// Shorebird CLI's OAuth 2.0 identifier.
@@ -114,7 +111,7 @@ class Auth {
         client,
         prompt,
       );
-      _user = _credentials?.toUser();
+      _email = _credentials?.email;
       _flushCredentials(_credentials!);
     } finally {
       client.close();
@@ -125,11 +122,11 @@ class Auth {
 
   oauth2.AccessCredentials? _credentials;
 
-  User? _user;
+  String? _email;
 
-  User? get user => _user;
+  String? get email => _email;
 
-  bool get isAuthenticated => _user != null;
+  bool get isAuthenticated => _email != null;
 
   void _loadCredentials() {
     final credentialsFile = File(credentialsFilePath);
@@ -140,7 +137,7 @@ class Auth {
         _credentials = oauth2.AccessCredentials.fromJson(
           json.decode(contents) as Map<String, dynamic>,
         );
-        _user = _credentials?.toUser();
+        _email = _credentials?.email;
       } catch (_) {}
     }
   }
@@ -153,7 +150,7 @@ class Auth {
 
   void _clearCredentials() {
     _credentials = null;
-    _user = null;
+    _email = null;
 
     final credentialsFile = File(credentialsFilePath);
     if (credentialsFile.existsSync()) {
@@ -167,7 +164,7 @@ class Auth {
 }
 
 extension on oauth2.AccessCredentials {
-  User toUser() {
+  String get email {
     final token = idToken;
 
     if (token == null) throw Exception('Missing JWT');
@@ -177,7 +174,7 @@ extension on oauth2.AccessCredentials {
     if (claims == null) throw Exception('Invalid JWT');
 
     try {
-      return User(email: claims['email'] as String);
+      return claims['email'] as String;
     } catch (_) {
       throw Exception('Malformed claims');
     }

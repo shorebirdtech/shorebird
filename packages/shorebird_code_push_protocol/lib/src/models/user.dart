@@ -8,7 +8,11 @@ part 'user.g.dart';
 @JsonSerializable()
 class User {
   /// {@macro user}
-  const User({required this.id, this.hasActiveSubscription = false});
+  const User({
+    required this.id,
+    required this.email,
+    this.hasActiveSubscription = false,
+  });
 
   /// Converts a Map<String, dynamic> to a [User]
   factory User.fromJson(Map<String, dynamic> json) => _$UserFromJson(json);
@@ -18,6 +22,9 @@ class User {
 
   /// The unique user identifier.
   final int id;
+
+  /// The user's email address, as provided by the user during signup.
+  final String email;
 
   /// Whether the user is currently a paying customer.
   final bool hasActiveSubscription;

@@ -324,6 +324,22 @@ Would you like to continue? (y/N) Yes
 ✅ New Channel Created!
 ```
 
+### Cancel Subscription
+
+Cancel your Shorebird subscription using `shorebird subscription cancel` command:
+
+```bash
+shoreburd subscription cancel
+```
+
+**Sample**
+
+```bash
+$ shorebird subscription cancel
+This will cancel your Shorebird subscription. Are you sure? (y/N) Yes
+Your subscription has been canceled.
+```
+
 ### Usage
 
 ```

@@ -65,6 +65,33 @@ void main() {
       },
     );
 
+    test('returns an error if no android project is found', () async {
+      final results = await AndroidInternetPermissionValidator().validate();
+
+      expect(results, hasLength(1));
+      expect(results.first.severity, ValidationIssueSeverity.error);
+      expect(results.first.message, 'No Android project found');
+    });
+
+    test('returns an error if no AndroidManifest.xml files are found',
+        () async {
+      final tempDirectory = createTempDir();
+      Directory(p.join(tempDirectory.path, 'android', 'app', 'src', 'debug'))
+          .createSync(recursive: true);
+
+      final results = await IOOverrides.runZoned(
+        () => AndroidInternetPermissionValidator().validate(),
+        getCurrentDirectory: () => tempDirectory,
+      );
+
+      expect(results, hasLength(1));
+      expect(results.first.severity, ValidationIssueSeverity.error);
+      expect(
+        results.first.message,
+        startsWith('No AndroidManifest.xml files found in'),
+      );
+    });
+
     test(
       'returns separate errors for all AndroidManifest.xml files without the '
       'INTERNET permission',

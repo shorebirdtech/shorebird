@@ -10,7 +10,7 @@ class _MockLogger extends Mock implements Logger {}
 
 void main() {
   group('AccountCommand', () {
-    const user = User(email: 'hello@shorebird.dev');
+    const email = 'hello@shorebird.dev';
 
     late Auth auth;
     late Logger logger;
@@ -22,7 +22,7 @@ void main() {
       accountCommand = AccountCommand(logger: logger, auth: auth);
 
       when(() => auth.isAuthenticated).thenReturn(true);
-      when(() => auth.user).thenReturn(user);
+      when(() => auth.email).thenReturn(email);
     });
 
     test("doesn't do anything if no user is logged in", () async {

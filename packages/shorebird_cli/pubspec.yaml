@@ -1,6 +1,6 @@
 name: shorebird_cli
 description: The Shorebird command-line allows developers to interact with various Shorebird services.
-version: 0.0.4
+version: 0.0.5
 repository: https://github.com/shorebirdtech/shorebird
 
 publish_to: none
@@ -19,6 +19,7 @@ dependencies:
   crypto: ^3.0.2
   googleapis_auth: ^1.4.0
   http: ^0.13.5
+  intl: ^0.18.0
   json_annotation: ^4.8.0
   mason_logger: ^0.2.4
   meta: ^1.9.0

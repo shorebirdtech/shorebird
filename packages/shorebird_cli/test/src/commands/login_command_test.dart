@@ -14,7 +14,7 @@ class _MockLogger extends Mock implements Logger {}
 
 void main() {
   group('login', () {
-    const user = User(email: 'test@email.com');
+    const email = 'test@email.com';
 
     late Directory applicationConfigHome;
     late Logger logger;
@@ -37,13 +37,13 @@ void main() {
 
     test('exits with code 0 when already logged in', () async {
       when(() => auth.isAuthenticated).thenReturn(true);
-      when(() => auth.user).thenReturn(user);
+      when(() => auth.email).thenReturn(email);
 
       final result = await loginCommand.run();
       expect(result, equals(ExitCode.success.code));
 
       verify(
-        () => logger.info('You are already logged in as <${user.email}>.'),
+        () => logger.info('You are already logged in as <$email>.'),
       ).called(1);
       verify(
         () => logger.info("Run 'shorebird logout' to log out and try again."),
@@ -63,7 +63,7 @@ void main() {
 
     test('exits with code 0 when logged in successfully', () async {
       when(() => auth.login(any())).thenAnswer((_) async {});
-      when(() => auth.user).thenReturn(user);
+      when(() => auth.email).thenReturn(email);
 
       final result = await loginCommand.run();
       expect(result, equals(ExitCode.success.code));
@@ -71,7 +71,7 @@ void main() {
       verify(() => auth.login(any())).called(1);
       verify(
         () => logger.info(
-          any(that: contains('You are now logged in as <${user.email}>.')),
+          any(that: contains('You are now logged in as <$email>.')),
         ),
       ).called(1);
     });
