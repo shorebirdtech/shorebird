@@ -7,7 +7,6 @@ import 'package:mocktail/mocktail.dart';
 import 'package:path/path.dart' as p;
 import 'package:shorebird_cli/src/auth/auth.dart';
 import 'package:shorebird_cli/src/commands/commands.dart';
-import 'package:shorebird_cli/src/config/config.dart';
 import 'package:shorebird_cli/src/shorebird_build_mixin.dart';
 import 'package:shorebird_cli/src/validators/validators.dart';
 import 'package:shorebird_code_push_client/shorebird_code_push_client.dart';
@@ -65,7 +64,6 @@ flutter:
     - shorebird.yaml''';
 
     late ArgResults argResults;
-    late Directory applicationConfigHome;
     late http.Client httpClient;
     late Auth auth;
     late Progress progress;
@@ -107,7 +105,6 @@ flutter:
 
     setUp(() {
       argResults = _MockArgResults();
-      applicationConfigHome = Directory.systemTemp.createTempSync();
       httpClient = _MockHttpClient();
       auth = _MockAuth();
       progress = _MockProgress();
@@ -137,7 +134,6 @@ flutter:
         logger: logger,
         validators: [flutterValidator],
       )..testArgResults = argResults;
-      testApplicationConfigHome = (_) => applicationConfigHome.path;
 
       when(() => argResults.rest).thenReturn([]);
       when(() => argResults['arch']).thenReturn(arch);

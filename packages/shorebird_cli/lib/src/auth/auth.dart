@@ -1,11 +1,12 @@
 import 'dart:convert';
 import 'dart:io';
 
+import 'package:cli_util/cli_util.dart';
 import 'package:googleapis_auth/auth_io.dart' as oauth2;
 import 'package:http/http.dart' as http;
 import 'package:path/path.dart' as p;
 import 'package:shorebird_cli/src/auth/jwt.dart';
-import 'package:shorebird_cli/src/config/config.dart';
+import 'package:shorebird_cli/src/command_runner.dart';
 
 final _clientId = oauth2.ClientId(
   /// Shorebird CLI's OAuth 2.0 identifier.
@@ -77,18 +78,23 @@ class AuthenticatedClient extends http.BaseClient {
 class Auth {
   Auth({
     http.Client? httpClient,
+    String? credentialsDir,
     ObtainAccessCredentials? obtainAccessCredentials,
   })  : _httpClient = httpClient ?? http.Client(),
+        _credentialsDir =
+            credentialsDir ?? applicationConfigHome(executableName),
         _obtainAccessCredentials = obtainAccessCredentials ??
             oauth2.obtainAccessCredentialsViaUserConsent {
     _loadCredentials();
   }
 
-  static const _credentialsFileName = 'credentials.json';
-
   final http.Client _httpClient;
+  final String _credentialsDir;
   final ObtainAccessCredentials _obtainAccessCredentials;
-  final credentialsFilePath = p.join(shorebirdConfigDir, _credentialsFileName);
+
+  String get credentialsFilePath {
+    return p.join(_credentialsDir, 'credentials.json');
+  }
 
   http.Client get client {
     final credentials = _credentials;
