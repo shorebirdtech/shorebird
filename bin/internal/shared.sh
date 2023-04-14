@@ -15,6 +15,8 @@ function update_flutter {
   else
     git clone --filter=tree:0 https://github.com/shorebirdtech/flutter.git -b stable "$FLUTTER_PATH"
   fi
+  # Install Shorebird Flutter Artifacts
+  FLUTTER_STORAGE_BASE_URL=https://download.shorebird.dev/ $FLUTTER_PATH/bin/flutter --version  
 }
 
 function pub_upgrade_with_retry {
