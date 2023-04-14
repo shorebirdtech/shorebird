@@ -1,5 +1,21 @@
 ## Glossary
 
+### User
+
+An individual who has signed up on the Shorebird platform. Users must have an `id` which uniquely identifies them in Shorebird. In addition, users must have an `email` address and an optional `display name`.
+
+**Example**
+
+When Jane Doe signs up for Shorebird using jane.doe@gmail.com she is now a registered user within Shorebird.
+
+### Customer
+
+An individual who is paying for the Shorebird platform. All `customers` are associated with a `user` but not all `users` are `customers`.
+
+**Example**
+
+When Jane Doe pays for a Shorebird subscription, she is also a `customer`.
+
 ### App
 
 **Definition**
