@@ -5,7 +5,6 @@ import 'package:mocktail/mocktail.dart';
 import 'package:path/path.dart' as p;
 import 'package:shorebird_cli/src/auth/auth.dart';
 import 'package:shorebird_cli/src/commands/login_command.dart';
-import 'package:shorebird_cli/src/config/config.dart';
 import 'package:test/test.dart';
 
 class _MockAuth extends Mock implements Auth {}
@@ -26,8 +25,6 @@ void main() {
       logger = _MockLogger();
       auth = _MockAuth();
       loginCommand = LoginCommand(auth: auth, logger: logger);
-
-      testApplicationConfigHome = (_) => applicationConfigHome.path;
 
       when(() => auth.credentialsFilePath).thenReturn(
         p.join(applicationConfigHome.path, 'credentials.json'),

@@ -8,7 +8,6 @@ import 'package:mason_logger/mason_logger.dart';
 import 'package:mocktail/mocktail.dart';
 import 'package:shorebird_cli/src/auth/auth.dart';
 import 'package:shorebird_cli/src/commands/run_command.dart';
-import 'package:shorebird_cli/src/config/config.dart';
 import 'package:shorebird_cli/src/validators/validators.dart';
 import 'package:shorebird_code_push_client/shorebird_code_push_client.dart';
 import 'package:test/test.dart';
@@ -36,7 +35,6 @@ class _MockShorebirdFlutterValidator extends Mock
 void main() {
   group('run', () {
     late ArgResults argResults;
-    late Directory applicationConfigHome;
     late http.Client httpClient;
     late Auth auth;
     late Logger logger;
@@ -48,7 +46,6 @@ void main() {
 
     setUp(() {
       argResults = _MockArgResults();
-      applicationConfigHome = Directory.systemTemp.createTempSync();
       httpClient = _MockHttpClient();
       auth = _MockAuth();
       logger = _MockLogger();
@@ -75,14 +72,13 @@ void main() {
         ],
       )..testArgResults = argResults;
 
-      testApplicationConfigHome = (_) => applicationConfigHome.path;
-
       when(() => argResults.rest).thenReturn([]);
       when(() => auth.isAuthenticated).thenReturn(true);
       when(() => auth.client).thenReturn(httpClient);
       when(() => logger.progress(any())).thenReturn(_MockProgress());
-      when(() => androidInternetPermissionValidator.validate())
-          .thenAnswer((_) async => []);
+      when(
+        () => androidInternetPermissionValidator.validate(),
+      ).thenAnswer((_) async => []);
       when(() => flutterValidator.validate()).thenAnswer((_) async => []);
     });
 

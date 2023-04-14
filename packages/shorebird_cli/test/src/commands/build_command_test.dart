@@ -6,7 +6,6 @@ import 'package:mason_logger/mason_logger.dart';
 import 'package:mocktail/mocktail.dart';
 import 'package:shorebird_cli/src/auth/auth.dart';
 import 'package:shorebird_cli/src/commands/build_command.dart';
-import 'package:shorebird_cli/src/config/config.dart';
 import 'package:shorebird_cli/src/validators/validators.dart';
 import 'package:shorebird_code_push_client/shorebird_code_push_client.dart';
 import 'package:test/test.dart';
@@ -31,7 +30,6 @@ class _MockShorebirdFlutterValidator extends Mock
 void main() {
   group('build', () {
     late ArgResults argResults;
-    late Directory applicationConfigHome;
     late http.Client httpClient;
     late Auth auth;
     late CodePushClient codePushClient;
@@ -41,7 +39,6 @@ void main() {
     late ShorebirdFlutterValidator flutterValidator;
 
     setUp(() {
-      applicationConfigHome = Directory.systemTemp.createTempSync();
       argResults = _MockArgResults();
       httpClient = _MockHttpClient();
       auth = _MockAuth();
@@ -70,7 +67,6 @@ void main() {
         },
         validators: [flutterValidator],
       )..testArgResults = argResults;
-      testApplicationConfigHome = (_) => applicationConfigHome.path;
 
       when(() => argResults.rest).thenReturn([]);
       when(() => auth.isAuthenticated).thenReturn(true);
