@@ -84,6 +84,21 @@ void main() {
       });
     });
 
+    group('clear', () {
+      test('deletes the cache directory', () async {
+        Cache.shorebirdCacheDirectory.createSync(recursive: true);
+        expect(Cache.shorebirdCacheDirectory.existsSync(), isTrue);
+        cache.clear();
+        expect(Cache.shorebirdCacheDirectory.existsSync(), isFalse);
+      });
+
+      test('does nothing if directory does not exist', () {
+        expect(Cache.shorebirdCacheDirectory.existsSync(), isFalse);
+        cache.clear();
+        expect(Cache.shorebirdCacheDirectory.existsSync(), isFalse);
+      });
+    });
+
     group('updateAll', () {
       group('patch', () {
         test('downloads correct artifacts', () async {

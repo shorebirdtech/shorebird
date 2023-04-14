@@ -1,6 +1,7 @@
 export 'account_command.dart';
 export 'apps/apps.dart';
 export 'build_command.dart';
+export 'cache/cache.dart';
 export 'channels/channels.dart';
 export 'doctor_command.dart';
 export 'init_command.dart';

@@ -52,20 +52,31 @@ class Cache {
   }
 
   /// The Shorebird cache directory.
-  static Directory get shorebirdCacheDirectory => Directory(
-        p.join(ShorebirdEnvironment.shorebirdRoot.path, 'bin', 'cache'),
-      );
+  static Directory get shorebirdCacheDirectory {
+    return Directory(
+      p.join(ShorebirdEnvironment.shorebirdRoot.path, 'bin', 'cache'),
+    );
+  }
 
   /// The Shorebird cached artifacts directory.
-  static Directory get shorebirdArtifactsDirectory => Directory(
-        p.join(shorebirdCacheDirectory.path, 'artifacts'),
-      );
+  static Directory get shorebirdArtifactsDirectory {
+    return Directory(
+      p.join(shorebirdCacheDirectory.path, 'artifacts'),
+    );
+  }
 
   final List<CachedArtifact> _artifacts = [];
 
   String get storageBaseUrl => 'https://storage.googleapis.com';
 
   String get storageBucket => 'download.shorebird.dev';
+
+  void clear() {
+    final cacheDir = shorebirdCacheDirectory;
+    if (cacheDir.existsSync()) {
+      cacheDir.deleteSync(recursive: true);
+    }
+  }
 }
 
 abstract class CachedArtifact {
