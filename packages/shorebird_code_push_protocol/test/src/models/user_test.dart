@@ -10,5 +10,17 @@ void main() {
         equals(user.toJson()),
       );
     });
+
+    test('can be (de)serialized with Stripe customer id', () {
+      const user = User(
+        id: 1,
+        email: 'test@shorebird.dev',
+        stripeCustomerId: 'cus_1234',
+      );
+      expect(
+        User.fromJson(user.toJson()).toJson(),
+        equals(user.toJson()),
+      );
+    });
   });
 }
