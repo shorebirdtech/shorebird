@@ -25,6 +25,13 @@ typedef StartProcess = Future<Process> Function(
   bool runInShell,
 });
 
+List<Validator> _defaultValidators({required RunProcess runProcess}) {
+  return [
+    ShorebirdFlutterValidator(runProcess: runProcess),
+    AndroidInternetPermissionValidator(),
+  ];
+}
+
 abstract class ShorebirdCommand extends Command<int> {
   ShorebirdCommand({
     required this.logger,
@@ -39,11 +46,8 @@ abstract class ShorebirdCommand extends Command<int> {
         buildCodePushClient = buildCodePushClient ?? CodePushClient.new,
         runProcess = runProcess ?? ShorebirdProcess.run,
         startProcess = startProcess ?? ShorebirdProcess.start {
-    this.validators = validators ??
-        [
-          ShorebirdFlutterValidator(runProcess: this.runProcess),
-          AndroidInternetPermissionValidator(),
-        ];
+    this.validators =
+        validators ?? _defaultValidators(runProcess: this.runProcess);
   }
 
   final Auth auth;
