@@ -88,7 +88,7 @@ make smaller updates to your app.
       hostedUri: hostedUri,
     );
     final version = pubspecYaml.version!;
-    final versionString = '${version.major}.${version.minor}.${version.patch}';
+    final versionString = version.toString();
 
     late final List<App> apps;
     final fetchAppsProgress = logger.progress('Fetching apps');
@@ -113,16 +113,13 @@ Did you forget to run "shorebird init"?''',
     }
 
     final releaseVersionArg = results['release-version'] as String?;
-    final pubspecVersion = pubspecYaml.version!;
-    final pubspecVersionString =
-        '''${pubspecVersion.major}.${pubspecVersion.minor}.${pubspecVersion.patch}''';
 
     if (releaseVersionArg == null) logger.info('');
 
     final releaseVersion = releaseVersionArg ??
         logger.prompt(
           'What is the version of this release?',
-          defaultValue: pubspecVersionString,
+          defaultValue: versionString,
         );
 
     final platform = results['platform'] as String;

@@ -139,7 +139,7 @@ class PatchCommand extends ShorebirdCommand
       hostedUri: hostedUri,
     );
     final version = pubspecYaml.version!;
-    final versionString = '${version.major}.${version.minor}.${version.patch}';
+    final versionString = version.toString();
 
     final List<App> apps;
     final fetchAppsProgress = logger.progress('Fetching apps');
@@ -164,9 +164,6 @@ Did you forget to run "shorebird init"?''',
     }
 
     final releaseVersionArg = results['release-version'] as String?;
-    final pubspecVersion = pubspecYaml.version!;
-    final pubspecVersionString =
-        '''${pubspecVersion.major}.${pubspecVersion.minor}.${pubspecVersion.patch}''';
 
     if (dryRun) {
       logger
@@ -180,7 +177,7 @@ Did you forget to run "shorebird init"?''',
     final releaseVersion = releaseVersionArg ??
         logger.prompt(
           'Which release is this patch for?',
-          defaultValue: pubspecVersionString,
+          defaultValue: versionString,
         );
     final platform = results['platform'] as String;
     final channelArg = results['channel'] as String;

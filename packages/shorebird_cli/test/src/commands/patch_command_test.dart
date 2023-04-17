@@ -37,7 +37,7 @@ class _MockShorebirdFlutterValidator extends Mock
 void main() {
   group('patch', () {
     const appId = 'test-app-id';
-    const version = '1.2.3';
+    const version = '1.2.3+1';
     const arch = 'aarch64';
     const platform = 'android';
     const channelName = 'stable';
@@ -65,7 +65,7 @@ void main() {
       id: 0,
       appId: appId,
       version: version,
-      displayName: '1.2.3',
+      displayName: '1.2.3+1',
     );
     const patch = Patch(id: 0, number: 1);
     const channel = Channel(id: 0, appId: appId, name: channelName);
