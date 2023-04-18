@@ -38,24 +38,21 @@ abstract class ShorebirdCommand extends Command<int> {
     Auth? auth,
     Cache? cache,
     CodePushClientBuilder? buildCodePushClient,
-    RunProcess? runProcess,
-    StartProcess? startProcess,
     List<Validator>? validators,
+    ShorebirdProcess? process,
   })  : auth = auth ?? Auth(),
         cache = cache ?? Cache(),
         buildCodePushClient = buildCodePushClient ?? CodePushClient.new,
-        runProcess = runProcess ?? ShorebirdProcess.run,
-        startProcess = startProcess ?? ShorebirdProcess.start {
+        process = process ?? ShorebirdProcess() {
     this.validators =
-        validators ?? _defaultValidators(runProcess: this.runProcess);
+        validators ?? _defaultValidators(runProcess: this.process.run);
   }
 
   final Auth auth;
   final Cache cache;
   final CodePushClientBuilder buildCodePushClient;
   final Logger logger;
-  final RunProcess runProcess;
-  final StartProcess startProcess;
+  final ShorebirdProcess process;
 
   /// Checks that the Shorebird install and project are in a good state.
   late List<Validator> validators;

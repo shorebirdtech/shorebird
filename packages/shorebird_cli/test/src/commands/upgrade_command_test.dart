@@ -3,6 +3,7 @@ import 'dart:io';
 import 'package:mason_logger/mason_logger.dart';
 import 'package:mocktail/mocktail.dart';
 import 'package:shorebird_cli/src/commands/commands.dart';
+import 'package:shorebird_cli/src/shorebird_process.dart';
 import 'package:test/test.dart';
 
 class _MockLogger extends Mock implements Logger {}
@@ -10,6 +11,8 @@ class _MockLogger extends Mock implements Logger {}
 class _MockProcessResult extends Mock implements ProcessResult {}
 
 class _MockProgress extends Mock implements Progress {}
+
+class _MockShorebirdProcess extends Mock implements ShorebirdProcess {}
 
 void main() {
   const currentShorebirdRevision = 'revision-1';
@@ -22,6 +25,7 @@ void main() {
     late ProcessResult fetchLatestVersionResult;
     late ProcessResult hardResetResult;
     late UpgradeCommand command;
+    late ShorebirdProcess shorebirdProcess;
 
     setUp(() {
       final progress = _MockProgress();
@@ -32,40 +36,40 @@ void main() {
       fetchTagsResult = _MockProcessResult();
       fetchLatestVersionResult = _MockProcessResult();
       hardResetResult = _MockProcessResult();
+      shorebirdProcess = _MockShorebirdProcess();
       command = UpgradeCommand(
         logger: logger,
-        runProcess: (
-          executable,
-          arguments, {
-          bool runInShell = false,
-          Map<String, String>? environment,
-          workingDirectory,
-          bool useVendedFlutter = true,
-        }) async {
-          if (executable == 'git') {
-            const revParseHead = ['rev-parse', '--verify', 'HEAD'];
-            if (arguments.every((arg) => revParseHead.contains(arg))) {
-              return fetchCurrentVersionResult;
-            }
-
-            const fetchTags = ['fetch', '--tags'];
-            if (arguments.every((arg) => fetchTags.contains(arg))) {
-              return fetchTagsResult;
-            }
-
-            const revParseUpstream = ['rev-parse', '--verify', '@{upstream}'];
-            if (arguments.every((arg) => revParseUpstream.contains(arg))) {
-              return fetchLatestVersionResult;
-            }
-
-            const resetHard = ['reset', '--hard', newerShorebirdRevision];
-            if (arguments.every((arg) => resetHard.contains(arg))) {
-              return hardResetResult;
-            }
-          }
-          return _MockProcessResult();
-        },
+        process: shorebirdProcess,
       );
+
+      when(
+        () => shorebirdProcess.run(
+          'git',
+          ['rev-parse', '--verify', 'HEAD'],
+          workingDirectory: any(named: 'workingDirectory'),
+        ),
+      ).thenAnswer((_) async => fetchCurrentVersionResult);
+      when(
+        () => shorebirdProcess.run(
+          'git',
+          ['fetch', '--tags'],
+          workingDirectory: any(named: 'workingDirectory'),
+        ),
+      ).thenAnswer((_) async => fetchTagsResult);
+      when(
+        () => shorebirdProcess.run(
+          'git',
+          ['rev-parse', '--verify', '@{upstream}'],
+          workingDirectory: any(named: 'workingDirectory'),
+        ),
+      ).thenAnswer((_) async => fetchLatestVersionResult);
+      when(
+        () => shorebirdProcess.run(
+          'git',
+          ['reset', '--hard', newerShorebirdRevision],
+          workingDirectory: any(named: 'workingDirectory'),
+        ),
+      ).thenAnswer((_) async => hardResetResult);
 
       when(
         () => fetchCurrentVersionResult.exitCode,

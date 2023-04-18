@@ -17,7 +17,7 @@ class DoctorCommand extends ShorebirdCommand with ShorebirdVersionMixin {
   DoctorCommand({
     required super.logger,
     super.validators,
-    super.runProcess,
+    super.process,
   }) {
     validators = _allValidators(baseValidators: validators);
   }
@@ -26,7 +26,7 @@ class DoctorCommand extends ShorebirdCommand with ShorebirdVersionMixin {
     ShorebirdVersionValidator(
       isShorebirdVersionCurrent: isShorebirdVersionCurrent,
     ),
-    ShorebirdFlutterValidator(runProcess: runProcess),
+    ShorebirdFlutterValidator(runProcess: process.run),
     AndroidInternetPermissionValidator(),
   ];
 

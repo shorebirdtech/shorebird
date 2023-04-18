@@ -8,6 +8,7 @@ import 'package:mason_logger/mason_logger.dart';
 import 'package:mocktail/mocktail.dart';
 import 'package:shorebird_cli/src/auth/auth.dart';
 import 'package:shorebird_cli/src/commands/run_command.dart';
+import 'package:shorebird_cli/src/shorebird_process.dart';
 import 'package:shorebird_cli/src/validators/validators.dart';
 import 'package:shorebird_code_push_client/shorebird_code_push_client.dart';
 import 'package:test/test.dart';
@@ -32,6 +33,8 @@ class _MockAndroidInternetPermissionValidator extends Mock
 class _MockShorebirdFlutterValidator extends Mock
     implements ShorebirdFlutterValidator {}
 
+class _MockShorebirdProcess extends Mock implements ShorebirdProcess {}
+
 void main() {
   group('run', () {
     late ArgResults argResults;
@@ -43,6 +46,7 @@ void main() {
     late RunCommand runCommand;
     late AndroidInternetPermissionValidator androidInternetPermissionValidator;
     late ShorebirdFlutterValidator flutterValidator;
+    late ShorebirdProcess shorebirdProcess;
 
     setUp(() {
       argResults = _MockArgResults();
@@ -50,6 +54,7 @@ void main() {
       auth = _MockAuth();
       logger = _MockLogger();
       process = _MockProcess();
+      shorebirdProcess = _MockShorebirdProcess();
       codePushClient = _MockCodePushClient();
       androidInternetPermissionValidator =
           _MockAndroidInternetPermissionValidator();
@@ -63,15 +68,20 @@ void main() {
         }) {
           return codePushClient;
         },
-        startProcess: (executable, arguments, {bool runInShell = false}) async {
-          return process;
-        },
+        process: shorebirdProcess,
         validators: [
           androidInternetPermissionValidator,
           flutterValidator,
         ],
       )..testArgResults = argResults;
 
+      when(
+        () => shorebirdProcess.start(
+          any(),
+          any(),
+          runInShell: any(named: 'runInShell'),
+        ),
+      ).thenAnswer((_) async => process);
       when(() => argResults.rest).thenReturn([]);
       when(() => auth.isAuthenticated).thenReturn(true);
       when(() => auth.client).thenReturn(httpClient);

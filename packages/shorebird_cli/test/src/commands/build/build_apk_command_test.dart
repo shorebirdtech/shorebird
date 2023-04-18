@@ -6,6 +6,7 @@ import 'package:mason_logger/mason_logger.dart';
 import 'package:mocktail/mocktail.dart';
 import 'package:shorebird_cli/src/auth/auth.dart';
 import 'package:shorebird_cli/src/commands/build/build.dart';
+import 'package:shorebird_cli/src/shorebird_process.dart';
 import 'package:shorebird_cli/src/validators/validators.dart';
 import 'package:test/test.dart';
 
@@ -24,6 +25,8 @@ class _MockProcessResult extends Mock implements ProcessResult {}
 class _MockShorebirdFlutterValidator extends Mock
     implements ShorebirdFlutterValidator {}
 
+class _MockShorebirdProcess extends Mock implements ShorebirdProcess {}
+
 void main() {
   group('build apk', () {
     late ArgResults argResults;
@@ -33,6 +36,7 @@ void main() {
     late ProcessResult processResult;
     late BuildApkCommand command;
     late ShorebirdFlutterValidator flutterValidator;
+    late ShorebirdProcess shorebirdProcess;
 
     String? processExecutable;
     List<String>? processArguments;
@@ -42,6 +46,7 @@ void main() {
       httpClient = _MockHttpClient();
       auth = _MockAuth();
       logger = _MockLogger();
+      shorebirdProcess = _MockShorebirdProcess();
       processResult = _MockProcessResult();
       flutterValidator = _MockShorebirdFlutterValidator();
       processExecutable = null;
@@ -49,21 +54,20 @@ void main() {
       command = BuildApkCommand(
         auth: auth,
         logger: logger,
-        runProcess: (
-          executable,
-          arguments, {
-          bool runInShell = false,
-          Map<String, String>? environment,
-          String? workingDirectory,
-          bool useVendedFlutter = true,
-        }) async {
-          processExecutable = executable;
-          processArguments = arguments;
-          return processResult;
-        },
+        process: shorebirdProcess,
         validators: [flutterValidator],
       )..testArgResults = argResults;
 
+      when(
+        () => shorebirdProcess.run(
+          any(),
+          any(),
+          runInShell: any(named: 'runInShell'),
+          environment: any(named: 'environment'),
+          workingDirectory: any(named: 'workingDirectory'),
+          useVendedFlutter: any(named: 'useVendedFlutter'),
+        ),
+      ).thenAnswer((_) async => processResult);
       when(() => argResults.rest).thenReturn([]);
       when(() => auth.isAuthenticated).thenReturn(true);
       when(() => auth.client).thenReturn(httpClient);

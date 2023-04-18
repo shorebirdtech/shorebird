@@ -16,8 +16,8 @@ class RunCommand extends ShorebirdCommand
     required super.logger,
     super.auth,
     super.buildCodePushClient,
-    super.startProcess,
     super.validators,
+    super.process,
   });
 
   @override
@@ -38,7 +38,7 @@ class RunCommand extends ShorebirdCommand
     await logValidationIssues();
 
     logger.info('Running app...');
-    final process = await startProcess(
+    final flutter = await process.start(
       'flutter',
       [
         'run',
@@ -49,13 +49,13 @@ class RunCommand extends ShorebirdCommand
       runInShell: true,
     );
 
-    process.stdout.listen((event) {
+    flutter.stdout.listen((event) {
       logger.info(utf8.decode(event));
     });
-    process.stderr.listen((event) {
+    flutter.stderr.listen((event) {
       logger.err(utf8.decode(event));
     });
 
-    return process.exitCode;
+    return flutter.exitCode;
   }
 }

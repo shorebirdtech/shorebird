@@ -3,12 +3,15 @@ import 'dart:io';
 import 'package:mason_logger/mason_logger.dart';
 import 'package:mocktail/mocktail.dart';
 import 'package:shorebird_cli/src/commands/doctor_command.dart';
+import 'package:shorebird_cli/src/shorebird_process.dart';
 import 'package:shorebird_cli/src/validators/validators.dart';
 import 'package:test/test.dart';
 
 class _MockLogger extends Mock implements Logger {}
 
 class _MockProcessResult extends Mock implements ProcessResult {}
+
+class _MockShorebirdProcess extends Mock implements ShorebirdProcess {}
 
 void main() {
   const currentShorebirdRevision = 'revision-1';
@@ -20,40 +23,44 @@ void main() {
     late DoctorCommand command;
     late ProcessResult fetchCurrentVersionResult;
     late ProcessResult fetchLatestVersionResult;
+    late ShorebirdProcess shorebirdProcess;
 
     setUp(() {
       logger = _MockLogger();
       fetchCurrentVersionResult = _MockProcessResult();
       fetchLatestVersionResult = _MockProcessResult();
+      shorebirdProcess = _MockShorebirdProcess();
 
       command = DoctorCommand(
         logger: logger,
-        runProcess: (
-          executable,
-          arguments, {
-          bool runInShell = false,
-          Map<String, String>? environment,
-          workingDirectory,
-          bool useVendedFlutter = true,
-        }) async {
-          if (executable == 'git') {
-            const revParseHead = ['rev-parse', '--verify', 'HEAD'];
-            if (arguments.every((arg) => revParseHead.contains(arg))) {
-              return fetchCurrentVersionResult;
-            }
-
-            const revParseUpstream = ['rev-parse', '--verify', '@{upstream}'];
-            if (arguments.every((arg) => revParseUpstream.contains(arg))) {
-              return fetchLatestVersionResult;
-            }
-          }
-          return _MockProcessResult();
-        },
+        process: shorebirdProcess,
       );
 
       validator = ShorebirdVersionValidator(
         isShorebirdVersionCurrent: command.isShorebirdVersionCurrent,
       );
+
+      when(
+        () => shorebirdProcess.run(
+          'git',
+          ['rev-parse', '--verify', 'HEAD'],
+          workingDirectory: any(named: 'workingDirectory'),
+        ),
+      ).thenAnswer((_) async => fetchCurrentVersionResult);
+      when(
+        () => shorebirdProcess.run(
+          'git',
+          ['rev-parse', '--verify', '@{upstream}'],
+          workingDirectory: any(named: 'workingDirectory'),
+        ),
+      ).thenAnswer((_) async => fetchLatestVersionResult);
+      when(
+        () => shorebirdProcess.run(
+          'git',
+          ['fetch', '--tags'],
+          workingDirectory: any(named: 'workingDirectory'),
+        ),
+      ).thenAnswer((_) async => _MockProcessResult());
 
       when(
         () => fetchCurrentVersionResult.exitCode,

@@ -46,8 +46,8 @@ class PatchCommand extends ShorebirdCommand
     super.auth,
     super.buildCodePushClient,
     super.cache,
-    super.runProcess,
     super.validators,
+    super.process,
     HashFunction? hashFn,
     http.Client? httpClient,
   })  : _hashFn = hashFn ?? ((m) => sha256.convert(m).toString()),
@@ -215,7 +215,7 @@ Please create a release using "shorebird release" and try again.
     final fetchReleaseArtifactProgress = logger.progress(
       'Fetching release artifacts',
     );
-    for (final entry in ShorebirdBuildMixin.architectures.entries) {
+    for (final entry in architectures.entries) {
       try {
         final releaseArtifact = await codePushClient.getReleaseArtifact(
           releaseId: release.id,
@@ -251,8 +251,7 @@ Please create a release using "shorebird release" and try again.
     final createDiffProgress = logger.progress('Creating artifacts');
 
     for (final releaseArtifactPath in releaseArtifactPaths.entries) {
-      final archMetadata =
-          ShorebirdBuildMixin.architectures[releaseArtifactPath.key]!;
+      final archMetadata = architectures[releaseArtifactPath.key]!;
       final patchArtifactPath = p.join(
         Directory.current.path,
         'build',
@@ -413,7 +412,7 @@ ${styleBold.wrap(lightGreen.wrap('🚀 Ready to publish a new patch!'))}
       diffPath,
     ];
 
-    final result = await runProcess(
+    final result = await process.run(
       diffExecutable,
       diffArguments,
       runInShell: true,

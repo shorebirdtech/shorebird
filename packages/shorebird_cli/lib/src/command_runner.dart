@@ -33,6 +33,18 @@ class ShorebirdCliCommandRunner extends CompletionCommandRunner<int> {
       ..addFlag(
         'verbose',
         help: 'Noisy logging, including all shell commands executed.',
+      )
+      ..addOption(
+        'local-engine-src-path',
+        hide: true,
+        help: 'Path to your engine src directory, if you are building Flutter '
+            'locally.',
+      )
+      ..addOption(
+        'local-engine',
+        hide: true,
+        help: 'Name of a build output within the engine out directory, if you '
+            'are building Flutter locally.',
       );
 
     addCommand(AccountCommand(logger: _logger));

@@ -22,11 +22,15 @@ typedef StartProcess = Future<Process> Function(
 
 /// A wrapper around [Process] that replaces executables to Shorebird-vended
 /// versions.
-abstract class ShorebirdProcess {
-  @visibleForTesting
-  static ProcessWrapper processWrapper = ProcessWrapper();
+// This may need a better name, since it returns "Process" it's more a
+// "ProcessFactory" than a "Process".
+class ShorebirdProcess {
+  ShorebirdProcess([ProcessWrapper? processWrapper])
+      : processWrapper = processWrapper ?? ProcessWrapper();
 
-  static Future<ProcessResult> run(
+  ProcessWrapper processWrapper;
+
+  Future<ProcessResult> run(
     String executable,
     List<String> arguments, {
     bool runInShell = false,
@@ -44,16 +48,16 @@ abstract class ShorebirdProcess {
 
     return processWrapper.run(
       useVendedFlutter ? _resolveExecutable(executable) : executable,
-      arguments,
+      useVendedFlutter ? _resolveArguments(executable, arguments) : arguments,
       runInShell: runInShell,
       workingDirectory: workingDirectory,
       environment: resolvedEnvironment,
     );
   }
 
-  static Future<Process> start(
+  Future<Process> start(
     String executable,
-    List<String> argument, {
+    List<String> arguments, {
     Map<String, String>? environment,
     bool runInShell = false,
     bool useVendedFlutter = true,
@@ -68,13 +72,13 @@ abstract class ShorebirdProcess {
 
     return processWrapper.start(
       useVendedFlutter ? _resolveExecutable(executable) : executable,
-      argument,
+      useVendedFlutter ? _resolveArguments(executable, arguments) : arguments,
       runInShell: runInShell,
       environment: resolvedEnvironment,
     );
   }
 
-  static String _resolveExecutable(String executable) {
+  String _resolveExecutable(String executable) {
     if (executable == 'flutter') {
       return ShorebirdEnvironment.flutterBinaryFile.path;
     }
@@ -82,7 +86,21 @@ abstract class ShorebirdProcess {
     return executable;
   }
 
-  static Map<String, String> _environmentOverrides({
+  List<String> _resolveArguments(
+    String executable,
+    List<String> arguments,
+  ) {
+    if (executable == 'flutter') {
+      return [
+        '--local-engine-src-path=/Users/eseidel/Documents/GitHub/engine/src',
+        '--local-engine=android_release_arm64',
+        ...arguments
+      ];
+    }
+    return arguments;
+  }
+
+  Map<String, String> _environmentOverrides({
     required String executable,
   }) {
     if (executable == 'flutter') {

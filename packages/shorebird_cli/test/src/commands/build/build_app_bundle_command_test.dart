@@ -49,18 +49,6 @@ void main() {
       command = BuildAppBundleCommand(
         auth: auth,
         logger: logger,
-        runProcess: (
-          executable,
-          arguments, {
-          bool runInShell = false,
-          Map<String, String>? environment,
-          String? workingDirectory,
-          bool useVendedFlutter = true,
-        }) async {
-          processExecutable = executable;
-          processArguments = arguments;
-          return processResult;
-        },
         validators: [flutterValidator],
       )..testArgResults = argResults;
 

@@ -15,13 +15,13 @@ void main() {
     late ProcessWrapper processWrapper;
     late Process startProcess;
     late ProcessResult runProcessResult;
+    late ShorebirdProcess shorebirdProcess;
 
     setUp(() {
       processWrapper = _MockProcessWrapper();
       runProcessResult = _MockProcessResult();
       startProcess = _MockProcess();
-
-      ShorebirdProcess.processWrapper = processWrapper;
+      shorebirdProcess = ShorebirdProcess(processWrapper);
 
       when(
         () => processWrapper.run(
@@ -45,7 +45,7 @@ void main() {
 
     group('run', () {
       test('forwards non-flutter executables to Process.run', () async {
-        await ShorebirdProcess.run(
+        await shorebirdProcess.run(
           'git',
           ['pull'],
           runInShell: true,
@@ -64,7 +64,7 @@ void main() {
       });
 
       test('replaces "flutter" with our local flutter', () async {
-        await ShorebirdProcess.run(
+        await shorebirdProcess.run(
           'flutter',
           ['--version'],
           runInShell: true,
@@ -87,7 +87,7 @@ void main() {
       test(
           'does not replace flutter with our local flutter if'
           ' useVendedFlutter is false', () async {
-        await ShorebirdProcess.run(
+        await shorebirdProcess.run(
           'flutter',
           ['--version'],
           runInShell: true,
@@ -107,7 +107,7 @@ void main() {
       });
 
       test('Updates environment if useVendedFlutter is true', () async {
-        await ShorebirdProcess.run(
+        await shorebirdProcess.run(
           'flutter',
           ['--version'],
           runInShell: true,
@@ -130,7 +130,7 @@ void main() {
       test(
         'Makes no changes to environment if useVendedFlutter is false',
         () async {
-          await ShorebirdProcess.run(
+          await shorebirdProcess.run(
             'flutter',
             ['--version'],
             runInShell: true,
@@ -154,7 +154,7 @@ void main() {
 
     group('start', () {
       test('forwards non-flutter executables to Process.run', () async {
-        await ShorebirdProcess.start('git', ['pull'], runInShell: true);
+        await shorebirdProcess.start('git', ['pull'], runInShell: true);
 
         verify(
           () => processWrapper.start(
@@ -167,7 +167,7 @@ void main() {
       });
 
       test('replaces "flutter" with our local flutter', () async {
-        await ShorebirdProcess.start('flutter', ['run'], runInShell: true);
+        await shorebirdProcess.start('flutter', ['run'], runInShell: true);
 
         verify(
           () => processWrapper.start(
@@ -184,7 +184,7 @@ void main() {
       test(
           'does not replace flutter with our local flutter if'
           ' useVendedFlutter is false', () async {
-        await ShorebirdProcess.start(
+        await shorebirdProcess.start(
           'flutter',
           ['--version'],
           runInShell: true,
@@ -203,7 +203,7 @@ void main() {
     });
 
     test('Updates environment if useVendedFlutter is true', () async {
-      await ShorebirdProcess.start(
+      await shorebirdProcess.start(
         'flutter',
         ['--version'],
         runInShell: true,
@@ -226,7 +226,7 @@ void main() {
     test(
       'Makes no changes to environment if useVendedFlutter is false',
       () async {
-        await ShorebirdProcess.start(
+        await shorebirdProcess.start(
           'flutter',
           ['--version'],
           runInShell: true,

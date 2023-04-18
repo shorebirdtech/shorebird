@@ -17,8 +17,9 @@ class BuildApkCommand extends ShorebirdCommand
   BuildApkCommand({
     required super.logger,
     super.auth,
-    super.runProcess,
+    super.buildCodePushClient,
     super.validators,
+    super.process,
   });
 
   @override
