@@ -8,4 +8,3 @@ export 'create_payment_link/create_payment_link_response.dart';
 export 'create_release/create_release.dart';
 export 'create_release_artifact/create_release_artifact.dart';
 export 'promote_patch/promote_patch.dart';
-export 'stripe/stripe.dart';
