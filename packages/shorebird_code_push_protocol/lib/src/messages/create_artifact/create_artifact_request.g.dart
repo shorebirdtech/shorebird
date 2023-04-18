@@ -24,3 +24,12 @@ CreateArtifactRequest _$CreateArtifactRequestFromJson(
         return val;
       },
     );
+
+Map<String, dynamic> _$CreateArtifactRequestToJson(
+        CreateArtifactRequest instance) =>
+    <String, dynamic>{
+      'arch': instance.arch,
+      'platform': instance.platform,
+      'hash': instance.hash,
+      'size': CreateArtifactRequest._parseIntToString(instance.size),
+    };

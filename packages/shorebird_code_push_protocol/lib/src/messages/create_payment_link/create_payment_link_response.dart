@@ -11,6 +11,10 @@ class CreatePaymentLinkResponse {
   /// {@macro create_payment_link_response}
   CreatePaymentLinkResponse({required this.paymentLink});
 
+  /// Converts a JSON object to a [CreatePaymentLinkResponse].
+  factory CreatePaymentLinkResponse.fromJson(Map<String, dynamic> json) =>
+      _$CreatePaymentLinkResponseFromJson(json);
+
   /// Converts a [CreatePaymentLinkResponse] to a JSON object.
   Json toJson() => _$CreatePaymentLinkResponseToJson(this);
 

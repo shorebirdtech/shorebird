@@ -24,3 +24,12 @@ CreateReleaseArtifactRequest _$CreateReleaseArtifactRequestFromJson(
         return val;
       },
     );
+
+Map<String, dynamic> _$CreateReleaseArtifactRequestToJson(
+        CreateReleaseArtifactRequest instance) =>
+    <String, dynamic>{
+      'arch': instance.arch,
+      'platform': instance.platform,
+      'hash': instance.hash,
+      'size': CreateReleaseArtifactRequest._parseIntToString(instance.size),
+    };
