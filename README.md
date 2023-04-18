@@ -56,6 +56,17 @@ packages in the repository.
 We don't yet have a script to run tests locally. For now, you can run tests
 manually by running `dart test` in a Dart package directory.
 
+### Tracking coverage
+
+The following command will generate a coverage report for the Dart packages:
+
+```bash
+dart test --coverage=coverage && dart pub global run coverage:format_coverage --lcov --in=coverage --out=coverage/lcov.info --packages=.dart_tool/package_config.json --check-ignore
+```
+
+We don't yet have a recommended way to view the coverage report but there are
+several extensions available in VSCode.
+
 ## License
 
 Shorebird projects are licensed for use under either Apache License, Version 2.0
