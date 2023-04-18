@@ -1,6 +1,5 @@
 import 'package:json_annotation/json_annotation.dart';
 import 'package:shorebird_code_push_protocol/shorebird_code_push_protocol.dart';
-import 'package:shorebird_code_push_protocol/src/converters/converters.dart';
 
 part 'cancel_subscription_response.g.dart';
 
