@@ -3,7 +3,7 @@
 This is an attempt to sketch out some high-level milestones for discussion.
 
 Currently we have a trusted tester program ongoing, where we've been targeting
-getting 5 devs able to use Shorebird to push to small usage apps (e.g. 100 users).
+getting devs able to use Shorebird to push to small usage apps (e.g. 10k users).
 https://github.com/shorebirdtech/shorebird/blob/main/TRUSTED_TESTERS.md
 
 ## Where we are today
@@ -32,28 +32,21 @@ towards and then we will hack and slash our way there.
 
 Milestones are roughly ordered how I expect us to approach them:
 
-## 1k user apps & 10 devs using
-Goal: make the current trusted tester builds more real-world usable.
-https://github.com/orgs/shorebirdtech/projects/2/views/1
-* Make it possible to ship new versions of shorebird to devs.
-* Make updates smaller
-* Validate hashes of updates on device.
-
-## 10k user apps in production
-Goal: Don't be afraid to ship updates to 10k users.
-* Async updates / make updates only download on WiFi?
-* Android ARM32 support
-
 ## 100k user apps
-* Some kind of promotion mechanism
-* Some kind of analytics
+* Async updates / make updates only download on WiFi?
+* Ability to upgrade Flutter in < 1hr
+* Ability to ship updates to `shorebird` in < 1hr
+* `shorebird` assets built reliably in the cloud.
+* Ability to patch/test an app built with earlier Shorebird?
+* Some kind of promotion mechanism (e.g. channels)
+* Some kind of analytics (how many updates were served for a given app)
 * Dart access to updater API for control of updates?
 
 ## 1m user apps
 * Anti-DDoS (some sort of update rate limiting)
-* CDN for Updates
+* CDN for Updates?
 
-## 1000 devs
-* CLI support for Windows (and Linux?)
-* OAuth
+## Open Sign-ups
+* CLI support for Windows
 * Publicly available sign-up flow (including billing)
+* Ability 
