@@ -74,7 +74,7 @@ make smaller updates to your app.
 
     final buildProgress = logger.progress('Building release');
     try {
-      await buildRelease();
+      await buildAppBundle();
       buildProgress.complete();
     } on ProcessException catch (error) {
       buildProgress.fail('Failed to build: ${error.message}');

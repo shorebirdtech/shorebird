@@ -6,27 +6,26 @@ import 'package:shorebird_cli/src/flutter_validation_mixin.dart';
 import 'package:shorebird_cli/src/shorebird_build_mixin.dart';
 import 'package:shorebird_cli/src/shorebird_config_mixin.dart';
 
-/// {@template build_command}
+/// {@template build_app_bundle_command}
 ///
-/// `shorebird build`
-/// Build a new release of your application.
+/// `shorebird build appbundle`
+/// Build an Android App Bundle file from your app.
 /// {@endtemplate}
-class BuildCommand extends ShorebirdCommand
+class BuildAppBundleCommand extends ShorebirdCommand
     with ShorebirdValidationMixin, ShorebirdConfigMixin, ShorebirdBuildMixin {
-  /// {@macro build_command}
-  BuildCommand({
+  /// {@macro build_app_bundle_command}
+  BuildAppBundleCommand({
     required super.logger,
     super.auth,
-    super.buildCodePushClient,
     super.runProcess,
     super.validators,
   });
 
   @override
-  String get description => 'Build a new release of your application.';
+  String get description => 'Build an Android App Bundle file from your app.';
 
   @override
-  String get name => 'build';
+  String get name => 'appbundle';
 
   @override
   Future<int> run() async {
@@ -39,9 +38,9 @@ class BuildCommand extends ShorebirdCommand
 
     await logValidationIssues();
 
-    final buildProgress = logger.progress('Building release ');
+    final buildProgress = logger.progress('Building appbundle');
     try {
-      await buildRelease();
+      await buildAppBundle();
       buildProgress.complete();
     } on ProcessException catch (error) {
       buildProgress.fail('Failed to build: ${error.message}');

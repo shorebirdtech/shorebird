@@ -5,9 +5,8 @@ import 'package:http/http.dart' as http;
 import 'package:mason_logger/mason_logger.dart';
 import 'package:mocktail/mocktail.dart';
 import 'package:shorebird_cli/src/auth/auth.dart';
-import 'package:shorebird_cli/src/commands/build_command.dart';
+import 'package:shorebird_cli/src/commands/build/build.dart';
 import 'package:shorebird_cli/src/validators/validators.dart';
-import 'package:shorebird_code_push_client/shorebird_code_push_client.dart';
 import 'package:test/test.dart';
 
 class _MockArgResults extends Mock implements ArgResults {}
@@ -22,38 +21,33 @@ class _MockProgress extends Mock implements Progress {}
 
 class _MockProcessResult extends Mock implements ProcessResult {}
 
-class _MockCodePushClient extends Mock implements CodePushClient {}
-
 class _MockShorebirdFlutterValidator extends Mock
     implements ShorebirdFlutterValidator {}
 
 void main() {
-  group('build', () {
+  group('build apk', () {
     late ArgResults argResults;
     late http.Client httpClient;
     late Auth auth;
-    late CodePushClient codePushClient;
     late Logger logger;
     late ProcessResult processResult;
-    late BuildCommand buildCommand;
+    late BuildApkCommand command;
     late ShorebirdFlutterValidator flutterValidator;
+
+    String? processExecutable;
+    List<String>? processArguments;
 
     setUp(() {
       argResults = _MockArgResults();
       httpClient = _MockHttpClient();
       auth = _MockAuth();
-      codePushClient = _MockCodePushClient();
       logger = _MockLogger();
       processResult = _MockProcessResult();
       flutterValidator = _MockShorebirdFlutterValidator();
-      buildCommand = BuildCommand(
+      processExecutable = null;
+      processArguments = null;
+      command = BuildApkCommand(
         auth: auth,
-        buildCodePushClient: ({
-          required http.Client httpClient,
-          Uri? hostedUri,
-        }) {
-          return codePushClient;
-        },
         logger: logger,
         runProcess: (
           executable,
@@ -63,6 +57,8 @@ void main() {
           String? workingDirectory,
           bool useVendedFlutter = true,
         }) async {
+          processExecutable = executable;
+          processArguments = arguments;
           return processResult;
         },
         validators: [flutterValidator],
@@ -79,7 +75,7 @@ void main() {
     test('exits with no user when not logged in', () async {
       when(() => auth.isAuthenticated).thenReturn(false);
 
-      final result = await buildCommand.run();
+      final result = await command.run();
       expect(result, equals(ExitCode.noUser.code));
 
       verify(() => logger.err('You must be logged in to build.')).called(1);
@@ -88,28 +84,32 @@ void main() {
       ).called(1);
     });
 
-    test('exits with code 70 when building fails', () async {
+    test('exits with code 70 when building apk fails', () async {
       when(() => processResult.exitCode).thenReturn(1);
       when(() => processResult.stderr).thenReturn('oops');
       final tempDir = Directory.systemTemp.createTempSync();
 
       final result = await IOOverrides.runZoned(
-        () async => buildCommand.run(),
+        () async => command.run(),
         getCurrentDirectory: () => tempDir,
       );
 
       expect(result, equals(ExitCode.software.code));
+      expect(processExecutable, equals('flutter'));
+      expect(processArguments, equals(['build', 'apk', '--release']));
     });
 
-    test('exits with code 0 when building succeeds', () async {
+    test('exits with code 0 when building apk succeeds', () async {
       when(() => processResult.exitCode).thenReturn(ExitCode.success.code);
       final tempDir = Directory.systemTemp.createTempSync();
       final result = await IOOverrides.runZoned(
-        () async => buildCommand.run(),
+        () async => command.run(),
         getCurrentDirectory: () => tempDir,
       );
 
       expect(result, equals(ExitCode.success.code));
+      expect(processExecutable, equals('flutter'));
+      expect(processArguments, equals(['build', 'apk', '--release']));
     });
 
     test('prints flutter validation warnings', () async {
@@ -127,7 +127,7 @@ void main() {
       );
       when(() => processResult.exitCode).thenReturn(ExitCode.success.code);
 
-      final result = await buildCommand.run();
+      final result = await command.run();
 
       expect(result, equals(ExitCode.success.code));
       verify(
