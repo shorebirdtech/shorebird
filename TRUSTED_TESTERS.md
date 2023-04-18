@@ -123,7 +123,7 @@ including the default Flutter counter works too, e.g.
 Reference the following commands to get started:
 
 🚙 To run your project use: "shorebird run".
-📦 To build your project use: "shorebird build".
+📦 To create a new release use: "shorebird release".
 🚀 To push an update use: "shorebird patch".
 
 For more information about Shorebird, visit https://shorebird.dev
