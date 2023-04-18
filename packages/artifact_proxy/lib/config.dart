@@ -42,6 +42,10 @@ class _EngineMapping3_7 extends EngineMapping {
 
 /// Flutter 3.7.10
 const flutter_3_7_10 = {
+  // Shorebird v0.0.6
+  '8b89f8bd9fc6982aa9c4557fd0e5e89db1ff9986': _EngineMapping3_7(
+    flutterEngineRevision: 'ec975089acb540fc60752606a3d3ba809dd1528b',
+  ),
   // Shorebird v0.0.5
   'e6a2a5a43973430d9f038cd81cb1779b6b404909': _EngineMapping3_7(
     flutterEngineRevision: 'ec975089acb540fc60752606a3d3ba809dd1528b',

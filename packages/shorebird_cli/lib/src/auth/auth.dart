@@ -6,7 +6,9 @@ import 'package:googleapis_auth/auth_io.dart' as oauth2;
 import 'package:http/http.dart' as http;
 import 'package:path/path.dart' as p;
 import 'package:shorebird_cli/src/auth/jwt.dart';
+import 'package:shorebird_cli/src/command.dart';
 import 'package:shorebird_cli/src/command_runner.dart';
+import 'package:shorebird_code_push_client/shorebird_code_push_client.dart';
 
 final _clientId = oauth2.ClientId(
   /// Shorebird CLI's OAuth 2.0 identifier.
@@ -80,17 +82,20 @@ class Auth {
     http.Client? httpClient,
     String? credentialsDir,
     ObtainAccessCredentials? obtainAccessCredentials,
+    CodePushClientBuilder? buildCodePushClient,
   })  : _httpClient = httpClient ?? http.Client(),
         _credentialsDir =
             credentialsDir ?? applicationConfigHome(executableName),
         _obtainAccessCredentials = obtainAccessCredentials ??
-            oauth2.obtainAccessCredentialsViaUserConsent {
+            oauth2.obtainAccessCredentialsViaUserConsent,
+        _buildCodePushClient = buildCodePushClient ?? CodePushClient.new {
     _loadCredentials();
   }
 
   final http.Client _httpClient;
   final String _credentialsDir;
   final ObtainAccessCredentials _obtainAccessCredentials;
+  final CodePushClientBuilder _buildCodePushClient;
 
   String get credentialsFilePath {
     return p.join(_credentialsDir, 'credentials.json');
@@ -117,7 +122,12 @@ class Auth {
         client,
         prompt,
       );
-      _email = _credentials?.email;
+
+      final codePushClient = _buildCodePushClient(httpClient: this.client);
+
+      final user = await codePushClient.getCurrentUser();
+
+      _email = user.email;
       _flushCredentials(_credentials!);
     } finally {
       client.close();
@@ -170,19 +180,15 @@ class Auth {
 }
 
 extension on oauth2.AccessCredentials {
-  String get email {
+  String? get email {
     final token = idToken;
 
-    if (token == null) throw Exception('Missing JWT');
+    if (token == null) return null;
 
     final claims = Jwt.decodeClaims(token);
 
-    if (claims == null) throw Exception('Invalid JWT');
+    if (claims == null) return null;
 
-    try {
-      return claims['email'] as String;
-    } catch (_) {
-      throw Exception('Malformed claims');
-    }
+    return claims['email'] as String?;
   }
 }

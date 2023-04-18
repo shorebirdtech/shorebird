@@ -4,17 +4,21 @@ import 'package:googleapis_auth/googleapis_auth.dart';
 import 'package:http/http.dart' as http;
 import 'package:mocktail/mocktail.dart';
 import 'package:shorebird_cli/src/auth/auth.dart';
+import 'package:shorebird_code_push_client/shorebird_code_push_client.dart';
 import 'package:test/test.dart';
 
 class _FakeBaseRequest extends Fake implements http.BaseRequest {}
 
 class _MockHttpClient extends Mock implements http.Client {}
 
+class _MockCodePushClient extends Mock implements CodePushClient {}
+
 void main() {
   group('Auth', () {
     const idToken =
         '''eyJhbGciOiJSUzI1NiIsImN0eSI6IkpXVCJ9.eyJlbWFpbCI6InRlc3RAZW1haWwuY29tIn0.pD47BhF3MBLyIpfsgWCzP9twzC1HJxGukpcR36DqT6yfiOMHTLcjDbCjRLAnklWEHiT0BQTKTfhs8IousU90Fm5bVKObudfKu8pP5iZZ6Ls4ohDjTrXky9j3eZpZjwv8CnttBVgRfMJG-7YASTFRYFcOLUpnb4Zm5R6QdoCDUYg''';
     const email = 'test@email.com';
+    const user = User(id: 42, email: email);
     const refreshToken = '';
     const scopes = <String>[];
     final accessToken = AccessToken(
@@ -32,18 +36,22 @@ void main() {
 
     late String credentialsDir;
     late http.Client httpClient;
+    late CodePushClient codePushClient;
     late Auth auth;
 
     setUpAll(() {
       registerFallbackValue(_FakeBaseRequest());
     });
 
-    Auth buildAuth({AccessCredentials? credentials}) {
+    Auth buildAuth() {
       return Auth(
         credentialsDir: credentialsDir,
         httpClient: httpClient,
+        buildCodePushClient: ({Uri? hostedUri, http.Client? httpClient}) {
+          return codePushClient;
+        },
         obtainAccessCredentials: (clientId, scopes, client, userPrompt) async {
-          return credentials ?? accessCredentials;
+          return accessCredentials;
         },
       );
     }
@@ -51,7 +59,10 @@ void main() {
     setUp(() {
       credentialsDir = Directory.systemTemp.createTempSync().path;
       httpClient = _MockHttpClient();
+      codePushClient = _MockCodePushClient();
       auth = buildAuth();
+
+      when(() => codePushClient.getCurrentUser()).thenAnswer((_) async => user);
     });
 
     group('AuthenticatedClient', () {
@@ -155,7 +166,9 @@ void main() {
     });
 
     group('login', () {
-      test('should set the user when claims are valid', () async {
+      test(
+          'should set the email when claims are valid '
+          'and current user exists', () async {
         await auth.login((_) {});
         expect(auth.email, email);
         expect(auth.isAuthenticated, isTrue);
@@ -163,68 +176,10 @@ void main() {
         expect(buildAuth().isAuthenticated, isTrue);
       });
 
-      test('should not set the user when token is null', () async {
-        final credentialsWithNoIdToken = AccessCredentials(
-          accessToken,
-          refreshToken,
-          scopes,
-        );
-        auth = buildAuth(credentials: credentialsWithNoIdToken);
-        await expectLater(
-          auth.login((_) {}),
-          throwsA(
-            isA<Exception>().having(
-              (e) => '$e',
-              'description',
-              'Exception: Missing JWT',
-            ),
-          ),
-        );
-        expect(auth.email, isNull);
-        expect(auth.isAuthenticated, isFalse);
-      });
-
-      test('should not set the user when token is empty', () async {
-        final credentialsWithEmptyIdToken = AccessCredentials(
-          accessToken,
-          refreshToken,
-          scopes,
-          idToken: '',
-        );
-        auth = buildAuth(credentials: credentialsWithEmptyIdToken);
-        await expectLater(
-          auth.login((_) {}),
-          throwsA(
-            isA<Exception>().having(
-              (e) => '$e',
-              'description',
-              'Exception: Invalid JWT',
-            ),
-          ),
-        );
-        expect(auth.email, isNull);
-        expect(auth.isAuthenticated, isFalse);
-      });
-
-      test('should not set the user when token claims are malformed', () async {
-        final credentialsWithMalformedIdToken = AccessCredentials(
-          accessToken,
-          refreshToken,
-          scopes,
-          idToken:
-              '''eyJhbGciOiJSUzI1NiIsImN0eSI6IkpXVCJ9.eyJmb28iOiJiYXIifQ.LaR0JfOiDrS1AuABC38kzxpSjRLJ_OtfOkZ8hL6I1GPya-cJYwsmqhi5eMBwEbpYHcJhguG5l56XM6dW8xjdK7JbUN6_53gHBosSnL-Ccf29oW71Ado9sxO17YFQyihyMofJ_v78BPVy2H5O10hNjRn_M0JnnAe0Fvd2VrInlIE''',
-        );
-        auth = buildAuth(credentials: credentialsWithMalformedIdToken);
-        await expectLater(
-          auth.login((_) {}),
-          throwsA(
-            isA<Exception>().having(
-              (e) => '$e',
-              'description',
-              'Exception: Malformed claims',
-            ),
-          ),
-        );
+      test('should not set the email when user does not exist', () async {
+        const exception = CodePushException(message: 'oops');
+        when(() => codePushClient.getCurrentUser()).thenThrow(exception);
+        await expectLater(auth.login((_) {}), throwsA(exception));
         expect(auth.email, isNull);
         expect(auth.isAuthenticated, isFalse);
       });
