@@ -37,8 +37,6 @@ mixin ShorebirdBuildMixin on ShorebirdCommand {
     const executable = 'flutter';
     final arguments = [
       'build',
-      // This is temporary because the Shorebird engine currently
-      // only supports Android.
       'appbundle',
       '--release',
       ...results.rest,
@@ -64,8 +62,6 @@ mixin ShorebirdBuildMixin on ShorebirdCommand {
     const executable = 'flutter';
     final arguments = [
       'build',
-      // This is temporary because the Shorebird engine currently
-      // only supports Android.
       'apk',
       '--release',
       ...results.rest,

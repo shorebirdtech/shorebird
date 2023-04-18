@@ -72,6 +72,10 @@ void main() {
       when(() => flutterValidator.validate()).thenAnswer((_) async => []);
     });
 
+    test('has correct description', () {
+      expect(command.description, isNotEmpty);
+    });
+
     test('exits with no user when not logged in', () async {
       when(() => auth.isAuthenticated).thenReturn(false);
 
