@@ -3,12 +3,13 @@ import 'package:test/test.dart';
 
 void main() {
   group(CancelSubscriptionResponse, () {
-    test('can be serialized to json', () {
-      final time = DateTime.now();
-      final response = CancelSubscriptionResponse(expirationDate: time);
+    test('can be (de)serialized', () {
+      final response = CancelSubscriptionResponse(
+        expirationDate: DateTime.now(),
+      );
       expect(
-        response.toJson(),
-        {'expiration_date': time.millisecondsSinceEpoch ~/ 1000},
+        CancelSubscriptionResponse.fromJson(response.toJson()).toJson(),
+        equals(response.toJson()),
       );
     });
   });

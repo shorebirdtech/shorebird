@@ -6,10 +6,14 @@ part 'cancel_subscription_response.g.dart';
 /// {@template cancel_subscription_response}
 /// The request body for DELETE /api/v1/subscriptions.
 /// {@endtemplate}
-@JsonSerializable(createFactory: false)
+@JsonSerializable()
 class CancelSubscriptionResponse {
   /// {@macro cancel_subscription_response}
   CancelSubscriptionResponse({required this.expirationDate});
+
+  /// Converts a JSON object to a [CancelSubscriptionResponse].
+  factory CancelSubscriptionResponse.fromJson(Json json) =>
+      _$CancelSubscriptionResponseFromJson(json);
 
   /// Converts a [CancelSubscriptionResponse] to a JSON object.
   Json toJson() => _$CancelSubscriptionResponseToJson(this);
