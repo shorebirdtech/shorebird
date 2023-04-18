@@ -342,7 +342,7 @@ variable inside Dart as you might have done with `flutter build` directly.
 Success should look like this:
 
 ```
-% shorebird build
+% shorebird build appbundle
 ✓ Building shorebird engine (8.0s)
 ✓ Building release  (6.4s)
 ```
