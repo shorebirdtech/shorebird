@@ -9,6 +9,7 @@ BIN_DIR=$(cd "$(dirname "$BASH_SOURCE")"; cd -P "$(dirname "$(readlink "$BASH_SO
 PROG_NAME="$BIN_DIR/$(basename "$BASH_SOURCE")"
 OS="$(uname -s)"
 
+FLUTTER_VERSION=`cat "$BIN_DIR/internal/flutter.version"`
 source "$BIN_DIR/../third_party/flutter/bin/internal/shared.sh"
 
 # We currently depend on a forked (3.7.8 stable) Flutter shared.sh script

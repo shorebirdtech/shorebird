@@ -11,10 +11,12 @@ unset CDPATH
 # Either clones or pulls the Shorebird Flutter repository, depending on whether FLUTTER_PATH exists.
 function update_flutter {
   if [[ -d "$FLUTTER_PATH" ]]; then
-    git --git-dir="$FLUTTER_PATH/.git" --work-tree="$FLUTTER_PATH" pull
+    git -C "$FLUTTER_PATH" fetch
   else
-    git clone --filter=tree:0 https://github.com/shorebirdtech/flutter.git -b stable "$FLUTTER_PATH"
+    git clone --filter=tree:0 https://github.com/shorebirdtech/flutter.git --no-checkout "$FLUTTER_PATH"
   fi
+  # -c to avoid printing a warning about being in a detached head state.
+  git -C "$FLUTTER_PATH" -c advice.detachedHead=false checkout "$FLUTTER_VERSION"
   # Install Shorebird Flutter Artifacts
   FLUTTER_STORAGE_BASE_URL=https://download.shorebird.dev/ $FLUTTER_PATH/bin/flutter --version  
 }
@@ -161,6 +163,7 @@ function upgrade_shorebird () (
     fi
 
     # Compile...
+    # FIXME: This should use the Dart SDK from the Shorebird Flutter cache.
     dart --verbosity=error --disable-dart-dev --snapshot="$SNAPSHOT_PATH" --snapshot-kind="app-jit" --packages="$SHOREBIRD_CLI_DIR/.dart_tool/package_config.json" --no-enable-mirrors "$SCRIPT_PATH" > /dev/null
     echo "$compilekey" > "$STAMP_PATH"
 
@@ -227,6 +230,7 @@ function shared::execute() {
   BIN_NAME="$(basename "$PROG_NAME")"
   case "$BIN_NAME" in    
     shorebird*)
+    # FIXME: This should use the Dart SDK from the Shorebird Flutter cache.
       exec "dart" "$SNAPSHOT_PATH" "$@"
       ;;
     *)
