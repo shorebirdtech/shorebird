@@ -27,7 +27,6 @@ class ReleaseCommand extends ShorebirdCommand
     super.auth,
     super.buildCodePushClient,
     super.validators,
-    super.process,
     HashFunction? hashFn,
   }) : _hashFn = hashFn ?? ((m) => sha256.convert(m).toString()) {
     argParser

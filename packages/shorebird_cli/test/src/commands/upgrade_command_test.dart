@@ -39,8 +39,7 @@ void main() {
       shorebirdProcess = _MockShorebirdProcess();
       command = UpgradeCommand(
         logger: logger,
-        process: shorebirdProcess,
-      );
+      )..testProcess = shorebirdProcess;
 
       when(
         () => shorebirdProcess.run(

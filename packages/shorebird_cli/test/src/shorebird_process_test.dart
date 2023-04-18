@@ -21,7 +21,10 @@ void main() {
       processWrapper = _MockProcessWrapper();
       runProcessResult = _MockProcessResult();
       startProcess = _MockProcess();
-      shorebirdProcess = ShorebirdProcess(processWrapper);
+      shorebirdProcess = ShorebirdProcess(
+        processWrapper: processWrapper,
+        engineConfig: EngineConfig(localEngine: null, localEngineSrcPath: null),
+      );
 
       when(
         () => processWrapper.run(

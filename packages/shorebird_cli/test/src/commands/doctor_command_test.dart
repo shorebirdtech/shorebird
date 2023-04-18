@@ -2,6 +2,7 @@ import 'package:mason_logger/mason_logger.dart';
 import 'package:mocktail/mocktail.dart';
 import 'package:shorebird_cli/src/commands/commands.dart';
 import 'package:shorebird_cli/src/shorebird_environment.dart';
+import 'package:shorebird_cli/src/shorebird_process.dart';
 import 'package:shorebird_cli/src/validators/validators.dart';
 import 'package:test/test.dart';
 
@@ -18,6 +19,8 @@ class _MockLogger extends Mock implements Logger {}
 
 class _MockProgress extends Mock implements Progress {}
 
+class _MockShorebirdProcess extends Mock implements ShorebirdProcess {}
+
 void main() {
   group('doctor', () {
     late Logger logger;
@@ -26,6 +29,7 @@ void main() {
     late AndroidInternetPermissionValidator androidInternetPermissionValidator;
     late ShorebirdVersionValidator shorebirdVersionValidator;
     late ShorebirdFlutterValidator shorebirdFlutterValidator;
+    late ShorebirdProcess shorebirdProcess;
 
     setUp(() {
       logger = _MockLogger();
@@ -40,26 +44,28 @@ void main() {
           _MockAndroidInternetPermissionValidator();
       shorebirdVersionValidator = _MockShorebirdVersionValidator();
       shorebirdFlutterValidator = _MockShorebirdFlutterValidator();
+      shorebirdProcess = _MockShorebirdProcess();
+      registerFallbackValue(shorebirdProcess);
 
       when(() => androidInternetPermissionValidator.id)
           .thenReturn('$AndroidInternetPermissionValidator');
       when(() => androidInternetPermissionValidator.description)
           .thenReturn('Android');
-      when(() => androidInternetPermissionValidator.validate())
+      when(() => androidInternetPermissionValidator.validate(any()))
           .thenAnswer((_) async => []);
 
       when(() => shorebirdVersionValidator.id)
           .thenReturn('$ShorebirdVersionValidator');
       when(() => shorebirdVersionValidator.description)
           .thenReturn('Shorebird Version');
-      when(() => shorebirdVersionValidator.validate())
+      when(() => shorebirdVersionValidator.validate(any()))
           .thenAnswer((_) async => []);
 
       when(() => shorebirdFlutterValidator.id)
           .thenReturn('$ShorebirdFlutterValidator');
       when(() => shorebirdFlutterValidator.description)
           .thenReturn('Shorebird Flutter');
-      when(() => shorebirdFlutterValidator.validate())
+      when(() => shorebirdFlutterValidator.validate(any()))
           .thenAnswer((_) async => []);
 
       command = DoctorCommand(
@@ -69,13 +75,13 @@ void main() {
           shorebirdVersionValidator,
           shorebirdFlutterValidator,
         ],
-      );
+      )..testProcess = shorebirdProcess;
     });
 
     test('prints "no issues" when everything is OK', () async {
       await command.run();
       for (final validator in command.validators) {
-        verify(validator.validate).called(1);
+        verify(() => validator.validate(shorebirdProcess)).called(1);
       }
       verify(
         () => logger.info(any(that: contains('No issues detected'))),
@@ -84,7 +90,7 @@ void main() {
 
     test('prints messages when warnings or errors found', () async {
       when(
-        () => androidInternetPermissionValidator.validate(),
+        () => androidInternetPermissionValidator.validate(any()),
       ).thenAnswer(
         (_) async => [
           const ValidationIssue(
@@ -101,7 +107,7 @@ void main() {
       await command.run();
 
       for (final validator in command.validators) {
-        verify(validator.validate).called(1);
+        verify(() => validator.validate(any())).called(1);
       }
 
       verify(

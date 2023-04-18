@@ -4,6 +4,7 @@ import 'package:cli_completion/cli_completion.dart';
 import 'package:mason_logger/mason_logger.dart';
 import 'package:shorebird_cli/src/commands/commands.dart';
 import 'package:shorebird_cli/src/shorebird_environment.dart';
+import 'package:shorebird_cli/src/shorebird_process.dart';
 import 'package:shorebird_cli/src/version.dart';
 
 const executableName = 'shorebird';
@@ -67,6 +68,8 @@ class ShorebirdCliCommandRunner extends CompletionCommandRunner<int> {
   void printUsage() => _logger.info(usage);
 
   final Logger _logger;
+  // Currently using ShorebirdCliCommandRunner as our context object.
+  late final ShorebirdProcess process;
 
   @override
   Future<int> run(Iterable<String> args) async {
@@ -75,6 +78,15 @@ class ShorebirdCliCommandRunner extends CompletionCommandRunner<int> {
       if (topLevelResults['verbose'] == true) {
         _logger.level = Level.verbose;
       }
+
+      // Set up our context before running the command.
+      process = ShorebirdProcess(
+        engineConfig: EngineConfig(
+          localEngineSrcPath:
+              topLevelResults['local-engine-src-path'] as String?,
+          localEngine: topLevelResults['local-engine'] as String?,
+        ),
+      );
 
       return await runCommand(topLevelResults) ?? ExitCode.success.code;
     } on FormatException catch (e, stackTrace) {

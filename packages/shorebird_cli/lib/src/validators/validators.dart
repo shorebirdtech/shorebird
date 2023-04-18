@@ -1,5 +1,6 @@
 import 'package:mason_logger/mason_logger.dart';
 import 'package:meta/meta.dart';
+import 'package:shorebird_cli/src/shorebird_process.dart';
 
 export 'android_internet_permission_validator.dart';
 export 'shorebird_flutter_validator.dart';
@@ -74,5 +75,6 @@ abstract class Validator {
   /// Checks for [ValidationIssue]s.
   ///
   /// Returns an empty list if no issues are found.
-  Future<List<ValidationIssue>> validate();
+  /// Not all validators use [process].
+  Future<List<ValidationIssue>> validate(ShorebirdProcess process);
 }

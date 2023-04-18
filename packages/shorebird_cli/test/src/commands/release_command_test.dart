@@ -127,10 +127,13 @@ flutter:
           capturedHostedUri = hostedUri;
           return codePushClient;
         },
-        process: shorebirdProcess,
         logger: logger,
         validators: [flutterValidator],
-      )..testArgResults = argResults;
+      )
+        ..testArgResults = argResults
+        ..testProcess = shorebirdProcess;
+
+      registerFallbackValue(shorebirdProcess);
 
       when(
         () => shorebirdProcess.run(
@@ -171,7 +174,7 @@ flutter:
           hash: any(named: 'hash'),
         ),
       ).thenAnswer((_) async => releaseArtifact);
-      when(() => flutterValidator.validate()).thenAnswer((_) async => []);
+      when(() => flutterValidator.validate(any())).thenAnswer((_) async => []);
     });
 
     test('throws config error when shorebird is not initialized', () async {
@@ -335,7 +338,7 @@ Did you forget to run "shorebird init"?''',
     });
 
     test('prints flutter validation warnings', () async {
-      when(() => flutterValidator.validate()).thenAnswer(
+      when(() => flutterValidator.validate(any())).thenAnswer(
         (_) async => [
           const ValidationIssue(
             severity: ValidationIssueSeverity.warning,

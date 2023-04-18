@@ -7,6 +7,7 @@ import 'package:mason_logger/mason_logger.dart';
 import 'package:meta/meta.dart';
 import 'package:shorebird_cli/src/auth/auth.dart';
 import 'package:shorebird_cli/src/cache.dart';
+import 'package:shorebird_cli/src/command_runner.dart';
 import 'package:shorebird_cli/src/shorebird_process.dart';
 import 'package:shorebird_cli/src/validators/validators.dart';
 import 'package:shorebird_code_push_client/shorebird_code_push_client.dart';
@@ -25,11 +26,16 @@ typedef StartProcess = Future<Process> Function(
   bool runInShell,
 });
 
-List<Validator> _defaultValidators({required RunProcess runProcess}) {
-  return [
-    ShorebirdFlutterValidator(runProcess: runProcess),
-    AndroidInternetPermissionValidator(),
-  ];
+List<Validator> _defaultValidators() => [
+      ShorebirdFlutterValidator(),
+      AndroidInternetPermissionValidator(),
+    ];
+
+class Context {
+  Context({
+    required this.process,
+  });
+  ShorebirdProcess process;
 }
 
 abstract class ShorebirdCommand extends Command<int> {
@@ -38,21 +44,31 @@ abstract class ShorebirdCommand extends Command<int> {
     Auth? auth,
     Cache? cache,
     CodePushClientBuilder? buildCodePushClient,
-    List<Validator>? validators,
-    ShorebirdProcess? process,
+    List<Validator>? validators, // For mocking.
   })  : auth = auth ?? Auth(),
         cache = cache ?? Cache(),
         buildCodePushClient = buildCodePushClient ?? CodePushClient.new,
-        process = process ?? ShorebirdProcess() {
-    this.validators =
-        validators ?? _defaultValidators(runProcess: this.process.run);
-  }
+        validators = validators ?? _defaultValidators();
 
   final Auth auth;
   final Cache cache;
   final CodePushClientBuilder buildCodePushClient;
   final Logger logger;
-  final ShorebirdProcess process;
+  // Context is set by the command runner just before run() is called.
+  late final Context context;
+
+  @override
+  ShorebirdCliCommandRunner? get runner =>
+      super.runner as ShorebirdCliCommandRunner?;
+
+  /// [ShorebirdProcess] used for testing purposes only.
+  @visibleForTesting
+  ShorebirdProcess? testProcess;
+
+  // If you hit a late initialization error here, it's because you're either
+  // using context before runCommand has been called, or you're in a test
+  // and should mock this method instead.
+  ShorebirdProcess get process => testProcess ?? runner!.process;
 
   /// Checks that the Shorebird install and project are in a good state.
   late List<Validator> validators;

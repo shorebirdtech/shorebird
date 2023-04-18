@@ -152,11 +152,14 @@ flutter:
           return codePushClient;
         },
         cache: cache,
-        process: shorebirdProcess,
         logger: logger,
         httpClient: httpClient,
         validators: [flutterValidator],
-      )..testArgResults = argResults;
+      )
+        ..testArgResults = argResults
+        ..testProcess = shorebirdProcess;
+
+      registerFallbackValue(shorebirdProcess);
 
       when(
         () => shorebirdProcess.run(
@@ -165,8 +168,13 @@ flutter:
           runInShell: any(named: 'runInShell'),
         ),
       ).thenAnswer((_) async => flutterBuildProcessResult);
-      when(() => shorebirdProcess.run(any(that: endsWith('patch')), any()))
-          .thenAnswer((_) async => flutterBuildProcessResult);
+      when(
+        () => shorebirdProcess.run(
+          any(that: endsWith('patch')),
+          any(),
+          runInShell: any(named: 'runInShell'),
+        ),
+      ).thenAnswer((_) async => patchProcessResult);
       when(() => argResults.rest).thenReturn([]);
       when(() => argResults['arch']).thenReturn(arch);
       when(() => argResults['platform']).thenReturn(platform);
@@ -227,7 +235,7 @@ flutter:
           channelId: any(named: 'channelId'),
         ),
       ).thenAnswer((_) async {});
-      when(() => flutterValidator.validate()).thenAnswer((_) async => []);
+      when(() => flutterValidator.validate(any())).thenAnswer((_) async => []);
       when(() => cache.updateAll()).thenAnswer((_) async => {});
       when(
         () => cache.getArtifactDirectory(any()),
@@ -584,7 +592,7 @@ base_url: $baseUrl''',
     test('prints flutter validation warnings', () async {
       final tempDir = setUpTempDir();
       setUpTempArtifacts(tempDir);
-      when(() => flutterValidator.validate()).thenAnswer(
+      when(() => flutterValidator.validate(any())).thenAnswer(
         (_) async => [
           const ValidationIssue(
             severity: ValidationIssueSeverity.warning,

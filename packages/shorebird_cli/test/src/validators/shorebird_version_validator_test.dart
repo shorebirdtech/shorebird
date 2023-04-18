@@ -33,8 +33,7 @@ void main() {
 
       command = DoctorCommand(
         logger: logger,
-        process: shorebirdProcess,
-      );
+      )..testProcess = shorebirdProcess;
 
       validator = ShorebirdVersionValidator(
         isShorebirdVersionCurrent: command.isShorebirdVersionCurrent,
@@ -77,7 +76,7 @@ void main() {
     });
 
     test('returns no issues when shorebird is up-to-date', () async {
-      final results = await validator.validate();
+      final results = await validator.validate(shorebirdProcess);
       expect(results, isEmpty);
     });
 
@@ -86,7 +85,7 @@ void main() {
         () => fetchLatestVersionResult.stdout,
       ).thenReturn(newerShorebirdRevision);
 
-      final results = await validator.validate();
+      final results = await validator.validate(shorebirdProcess);
       expect(results, hasLength(1));
       expect(results.first.severity, ValidationIssueSeverity.warning);
       expect(
@@ -108,7 +107,7 @@ void main() {
           ),
         );
 
-        final results = await validator.validate();
+        final results = await validator.validate(shorebirdProcess);
 
         expect(results, hasLength(1));
         expect(results.first.severity, ValidationIssueSeverity.error);

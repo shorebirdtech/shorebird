@@ -3,32 +3,28 @@ import 'dart:io';
 import 'package:meta/meta.dart';
 import 'package:shorebird_cli/src/shorebird_environment.dart';
 
-typedef RunProcess = Future<ProcessResult> Function(
-  String executable,
-  List<String> arguments, {
-  bool runInShell,
-  Map<String, String>? environment,
-  String? workingDirectory,
-  bool useVendedFlutter,
-});
+class EngineConfig {
+  EngineConfig({
+    required this.localEngineSrcPath,
+    required this.localEngine,
+  });
 
-typedef StartProcess = Future<Process> Function(
-  String executable,
-  List<String> arguments, {
-  bool runInShell,
-  Map<String, String>? environment,
-  bool useVendedFlutter,
-});
+  final String? localEngineSrcPath;
+  final String? localEngine;
+}
 
 /// A wrapper around [Process] that replaces executables to Shorebird-vended
 /// versions.
 // This may need a better name, since it returns "Process" it's more a
 // "ProcessFactory" than a "Process".
 class ShorebirdProcess {
-  ShorebirdProcess([ProcessWrapper? processWrapper])
-      : processWrapper = processWrapper ?? ProcessWrapper();
+  ShorebirdProcess({
+    required this.engineConfig,
+    ProcessWrapper? processWrapper, // For mocking ShorebirdProcess.
+  }) : processWrapper = processWrapper ?? ProcessWrapper();
 
-  ProcessWrapper processWrapper;
+  final ProcessWrapper processWrapper;
+  final EngineConfig engineConfig;
 
   Future<ProcessResult> run(
     String executable,
@@ -90,10 +86,10 @@ class ShorebirdProcess {
     String executable,
     List<String> arguments,
   ) {
-    if (executable == 'flutter') {
+    if (executable == 'flutter' && engineConfig.localEngine != null) {
       return [
-        '--local-engine-src-path=/Users/eseidel/Documents/GitHub/engine/src',
-        '--local-engine=android_release_arm64',
+        '--local-engine-src-path=${engineConfig.localEngineSrcPath}',
+        '--local-engine=${engineConfig.localEngine}',
         ...arguments
       ];
     }

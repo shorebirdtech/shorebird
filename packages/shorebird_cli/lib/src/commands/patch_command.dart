@@ -47,7 +47,6 @@ class PatchCommand extends ShorebirdCommand
     super.buildCodePushClient,
     super.cache,
     super.validators,
-    super.process,
     HashFunction? hashFn,
     http.Client? httpClient,
   })  : _hashFn = hashFn ?? ((m) => sha256.convert(m).toString()),
