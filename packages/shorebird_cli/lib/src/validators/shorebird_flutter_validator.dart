@@ -10,9 +10,8 @@ class FlutterValidationException implements Exception {
 }
 
 class ShorebirdFlutterValidator extends Validator {
-  ShorebirdFlutterValidator({required this.runProcess});
+  ShorebirdFlutterValidator();
 
-  final RunProcess runProcess;
   final _flutterVersionRegex = RegExp(r'Flutter (\d+.\d+.\d+)');
 
   // coverage:ignore-start
@@ -21,7 +20,7 @@ class ShorebirdFlutterValidator extends Validator {
   // coverage:ignore-end
 
   @override
-  Future<List<ValidationIssue>> validate() async {
+  Future<List<ValidationIssue>> validate(ShorebirdProcess process) async {
     final issues = <ValidationIssue>[];
 
     if (!ShorebirdEnvironment.flutterDirectory.existsSync()) {
@@ -35,7 +34,7 @@ class ShorebirdFlutterValidator extends Validator {
       );
     }
 
-    if (!await _flutterDirectoryIsClean()) {
+    if (!await _flutterDirectoryIsClean(process)) {
       issues.add(
         ValidationIssue(
           severity: ValidationIssueSeverity.warning,
@@ -45,10 +44,9 @@ class ShorebirdFlutterValidator extends Validator {
       );
     }
 
-    if (!await _flutterDirectoryTracksStable()) {
+    if (!await _flutterDirectoryTracksCorrectRevision(process)) {
       final message =
-          '${ShorebirdEnvironment.flutterDirectory} is not on the "stable" '
-          'branch';
+          '''${ShorebirdEnvironment.flutterDirectory} is not on the correct revision''';
       issues.add(
         ValidationIssue(
           severity: ValidationIssueSeverity.warning,
@@ -57,8 +55,8 @@ class ShorebirdFlutterValidator extends Validator {
       );
     }
 
-    final shorebirdFlutterVersion = await _shorebirdFlutterVersion();
-    final pathFlutterVersion = await _pathFlutterVersion();
+    final shorebirdFlutterVersion = await _shorebirdFlutterVersion(process);
+    final pathFlutterVersion = await _pathFlutterVersion(process);
 
     if (shorebirdFlutterVersion != pathFlutterVersion) {
       final message = '''
@@ -91,8 +89,8 @@ This can cause unexpected behavior if you are switching between the tools and th
     return issues;
   }
 
-  Future<bool> _flutterDirectoryIsClean() async {
-    final result = await runProcess(
+  Future<bool> _flutterDirectoryIsClean(ShorebirdProcess process) async {
+    final result = await process.run(
       'git',
       ['status'],
       workingDirectory: ShorebirdEnvironment.flutterDirectory.path,
@@ -102,27 +100,36 @@ This can cause unexpected behavior if you are switching between the tools and th
         .contains('nothing to commit, working tree clean');
   }
 
-  Future<bool> _flutterDirectoryTracksStable() async {
-    final result = await runProcess(
+  Future<bool> _flutterDirectoryTracksCorrectRevision(
+    ShorebirdProcess process,
+  ) async {
+    final result = await process.run(
       'git',
-      ['--no-pager', 'branch'],
+      ['rev-parse', 'HEAD'],
       workingDirectory: ShorebirdEnvironment.flutterDirectory.path,
     );
-    return result.stdout.toString().contains('* stable');
+    return result.stdout
+        .toString()
+        .contains(ShorebirdEnvironment.flutterRevision);
   }
 
-  Future<String> _shorebirdFlutterVersion() => _getFlutterVersion(
+  Future<String> _shorebirdFlutterVersion(ShorebirdProcess process) =>
+      _getFlutterVersion(
+        process: process,
         checkPathFlutter: false,
       );
 
-  Future<String> _pathFlutterVersion() => _getFlutterVersion(
+  Future<String> _pathFlutterVersion(ShorebirdProcess process) =>
+      _getFlutterVersion(
+        process: process,
         checkPathFlutter: true,
       );
 
   Future<String> _getFlutterVersion({
+    required ShorebirdProcess process,
     required bool checkPathFlutter,
   }) async {
-    final result = await runProcess(
+    final result = await process.run(
       'flutter',
       ['--version'],
       useVendedFlutter: !checkPathFlutter,

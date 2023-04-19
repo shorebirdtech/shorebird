@@ -434,7 +434,20 @@ You can remove `shorebird` from your path by removing it from your `.bashrc` or
 
 # Release Notes
 
-This section contains past updates I've sent to current Trusted Testers.
+This section contains past updates we've sent to current Trusted Testers.
+
+## Announcement for 0.0.7
+
+We've just released Shorebird CLI v0.0.7 🎉 
+
+What's new:
+* Fixed our backend to not error for large app releases.
+* `shorebird build` is now split into two subcommands:
+  * `shorebird build apk` (new)
+  * `shorebird build appbundle` (previously `shorebird build`)
+
+Changelog: https://github.com/shorebirdtech/shorebird/releases/tag/v0.0.7 
+
 
 ## Announcement for 0.0.6
 

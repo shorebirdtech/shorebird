@@ -17,7 +17,6 @@ class BuildApkCommand extends ShorebirdCommand
   BuildApkCommand({
     required super.logger,
     super.auth,
-    super.runProcess,
     super.validators,
   });
 
@@ -41,11 +40,16 @@ class BuildApkCommand extends ShorebirdCommand
     final buildProgress = logger.progress('Building apk');
     try {
       await buildApk();
-      buildProgress.complete();
     } on ProcessException catch (error) {
       buildProgress.fail('Failed to build: ${error.message}');
       return ExitCode.software.code;
     }
+
+    buildProgress.complete();
+
+    logger.info('''
+📦 Generated an apk at:
+${lightCyan.wrap("./build/app/outputs/apk/release/app-release.apk")}''');
 
     return ExitCode.success.code;
   }

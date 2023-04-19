@@ -12,6 +12,7 @@ class User {
     required this.id,
     required this.email,
     this.hasActiveSubscription = false,
+    this.displayName,
   });
 
   /// Converts a Map<String, dynamic> to a [User]
@@ -25,6 +26,9 @@ class User {
 
   /// The user's email address, as provided by the user during signup.
   final String email;
+
+  /// The user's name, as provided by the user during signup.
+  final String? displayName;
 
   /// Whether the user is currently a paying customer.
   final bool hasActiveSubscription;

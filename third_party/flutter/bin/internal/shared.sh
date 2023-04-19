@@ -11,10 +11,14 @@ unset CDPATH
 # Either clones or pulls the Shorebird Flutter repository, depending on whether FLUTTER_PATH exists.
 function update_flutter {
   if [[ -d "$FLUTTER_PATH" ]]; then
-    git --git-dir="$FLUTTER_PATH/.git" --work-tree="$FLUTTER_PATH" pull
+    git -C "$FLUTTER_PATH" fetch
   else
-    git clone --filter=tree:0 https://github.com/shorebirdtech/flutter.git -b stable "$FLUTTER_PATH"
+    git clone --filter=tree:0 https://github.com/shorebirdtech/flutter.git --no-checkout "$FLUTTER_PATH"
   fi
+  # -c to avoid printing a warning about being in a detached head state.
+  git -C "$FLUTTER_PATH" -c advice.detachedHead=false checkout "$FLUTTER_VERSION"
+  SHOREBIRD_ENGINE_VERSION=`cat "$FLUTTER_PATH/bin/internal/engine.version"`
+  echo "Shorebird Engine • revision $SHOREBIRD_ENGINE_VERSION"
   # Install Shorebird Flutter Artifacts
   FLUTTER_STORAGE_BASE_URL=https://download.shorebird.dev/ $FLUTTER_PATH/bin/flutter --version  
 }
@@ -23,7 +27,7 @@ function pub_upgrade_with_retry {
   local total_tries="10"
   local remaining_tries=$((total_tries - 1))
   while [[ "$remaining_tries" -gt 0 ]]; do
-    (cd "$SHOREBIRD_CLI_DIR" && dart pub upgrade) && break
+    (cd "$SHOREBIRD_CLI_DIR" && $DART_PATH pub upgrade) && break
     >&2 echo "Error: Unable to 'pub upgrade' shorebird. Retrying in five seconds... ($remaining_tries tries left)"
     remaining_tries=$((remaining_tries - 1))
     sleep 5
@@ -161,7 +165,7 @@ function upgrade_shorebird () (
     fi
 
     # Compile...
-    dart --verbosity=error --disable-dart-dev --snapshot="$SNAPSHOT_PATH" --snapshot-kind="app-jit" --packages="$SHOREBIRD_CLI_DIR/.dart_tool/package_config.json" --no-enable-mirrors "$SCRIPT_PATH" > /dev/null
+    $DART_PATH --verbosity=error --disable-dart-dev --snapshot="$SNAPSHOT_PATH" --snapshot-kind="app-jit" --packages="$SHOREBIRD_CLI_DIR/.dart_tool/package_config.json" --no-enable-mirrors "$SCRIPT_PATH" > /dev/null
     echo "$compilekey" > "$STAMP_PATH"
 
     # Delete any temporary snapshot path.
@@ -185,6 +189,7 @@ function shared::execute() {
   STAMP_PATH="$SHOREBIRD_ROOT/bin/cache/shorebird.stamp"
   SCRIPT_PATH="$SHOREBIRD_CLI_DIR/bin/shorebird.dart"
   FLUTTER_PATH="$SHOREBIRD_ROOT/bin/cache/flutter"
+  export DART_PATH="$FLUTTER_PATH/bin/cache/dart-sdk/bin/dart"
 
   # Test if running as superuser – but don't warn if running within Docker or CI.
   if [[ "$EUID" == "0" && ! -f /.dockerenv && "$CI" != "true" && "$BOT" != "true" && "$CONTINUOUS_INTEGRATION" != "true" ]]; then
@@ -197,18 +202,6 @@ function shared::execute() {
   # Test if Git is available on the Host
   if ! hash git 2>/dev/null; then
     >&2 echo "Error: Unable to find git in your PATH."
-    exit 1
-  fi
-
-  # Test if Dart is available on the Host
-  if ! hash dart 2>/dev/null; then
-    >&2 echo "Error: Unable to find dart in your PATH."
-    exit 1
-  fi
-
-  # Test if Flutter is available on the Host
-  if ! hash flutter 2>/dev/null; then
-    >&2 echo "Error: Unable to find flutter in your PATH."
     exit 1
   fi
 
@@ -227,7 +220,7 @@ function shared::execute() {
   BIN_NAME="$(basename "$PROG_NAME")"
   case "$BIN_NAME" in    
     shorebird*)
-      exec "dart" "$SNAPSHOT_PATH" "$@"
+      exec "$DART_PATH" "$SNAPSHOT_PATH" "$@"
       ;;
     *)
       >&2 echo "Error! Executable name $BIN_NAME not recognized!"

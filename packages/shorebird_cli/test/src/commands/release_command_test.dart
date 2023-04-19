@@ -8,6 +8,7 @@ import 'package:path/path.dart' as p;
 import 'package:shorebird_cli/src/auth/auth.dart';
 import 'package:shorebird_cli/src/commands/commands.dart';
 import 'package:shorebird_cli/src/shorebird_build_mixin.dart';
+import 'package:shorebird_cli/src/shorebird_process.dart';
 import 'package:shorebird_cli/src/validators/validators.dart';
 import 'package:shorebird_code_push_client/shorebird_code_push_client.dart';
 import 'package:test/test.dart';
@@ -28,6 +29,8 @@ class _MockCodePushClient extends Mock implements CodePushClient {}
 
 class _MockShorebirdFlutterValidator extends Mock
     implements ShorebirdFlutterValidator {}
+
+class _MockShorebirdProcess extends Mock implements ShorebirdProcess {}
 
 void main() {
   group('release', () {
@@ -73,6 +76,7 @@ flutter:
     late ReleaseCommand command;
     late Uri? capturedHostedUri;
     late ShorebirdFlutterValidator flutterValidator;
+    late ShorebirdProcess shorebirdProcess;
 
     Directory setUpTempDir() {
       final tempDir = Directory.systemTemp.createTempSync();
@@ -86,7 +90,8 @@ flutter:
     }
 
     void setUpTempArtifacts(Directory dir) {
-      for (final archMetadata in ShorebirdBuildMixin.architectures.values) {
+      for (final archMetadata
+          in ShorebirdBuildMixin.allAndroidArchitectures.values) {
         final artifactPath = p.join(
           dir.path,
           'build',
@@ -112,6 +117,7 @@ flutter:
       processResult = _MockProcessResult();
       codePushClient = _MockCodePushClient();
       flutterValidator = _MockShorebirdFlutterValidator();
+      shorebirdProcess = _MockShorebirdProcess();
       command = ReleaseCommand(
         auth: auth,
         buildCodePushClient: ({
@@ -121,20 +127,22 @@ flutter:
           capturedHostedUri = hostedUri;
           return codePushClient;
         },
-        runProcess: (
-          executable,
-          arguments, {
-          bool runInShell = false,
-          Map<String, String>? environment,
-          String? workingDirectory,
-          bool useVendedFlutter = true,
-        }) async {
-          return processResult;
-        },
         logger: logger,
         validators: [flutterValidator],
-      )..testArgResults = argResults;
+      )
+        ..testArgResults = argResults
+        ..testProcess = shorebirdProcess
+        ..testEngineConfig = const EngineConfig.empty();
 
+      registerFallbackValue(shorebirdProcess);
+
+      when(
+        () => shorebirdProcess.run(
+          any(),
+          any(),
+          runInShell: any(named: 'runInShell'),
+        ),
+      ).thenAnswer((_) async => processResult);
       when(() => argResults.rest).thenReturn([]);
       when(() => argResults['arch']).thenReturn(arch);
       when(() => argResults['platform']).thenReturn(platform);
@@ -167,7 +175,7 @@ flutter:
           hash: any(named: 'hash'),
         ),
       ).thenAnswer((_) async => releaseArtifact);
-      when(() => flutterValidator.validate()).thenAnswer((_) async => []);
+      when(() => flutterValidator.validate(any())).thenAnswer((_) async => []);
     });
 
     test('throws config error when shorebird is not initialized', () async {
@@ -331,7 +339,7 @@ Did you forget to run "shorebird init"?''',
     });
 
     test('prints flutter validation warnings', () async {
-      when(() => flutterValidator.validate()).thenAnswer(
+      when(() => flutterValidator.validate(any())).thenAnswer(
         (_) async => [
           const ValidationIssue(
             severity: ValidationIssueSeverity.warning,
