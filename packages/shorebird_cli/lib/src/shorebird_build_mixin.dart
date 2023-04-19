@@ -33,13 +33,36 @@ mixin ShorebirdBuildMixin on ShorebirdCommand {
     ),
   };
 
-  Future<void> buildRelease() async {
+  Future<void> buildAppBundle() async {
     const executable = 'flutter';
     final arguments = [
       'build',
-      // This is temporary because the Shorebird engine currently
-      // only supports Android.
       'appbundle',
+      '--release',
+      ...results.rest,
+    ];
+
+    final result = await runProcess(
+      executable,
+      arguments,
+      runInShell: true,
+    );
+
+    if (result.exitCode != ExitCode.success.code) {
+      throw ProcessException(
+        'flutter',
+        arguments,
+        result.stderr.toString(),
+        result.exitCode,
+      );
+    }
+  }
+
+  Future<void> buildApk() async {
+    const executable = 'flutter';
+    final arguments = [
+      'build',
+      'apk',
       '--release',
       ...results.rest,
     ];
