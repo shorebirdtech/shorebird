@@ -62,6 +62,7 @@ jobs:
         with:
           filters: |
             updater:
+              - ./.github/workflows/main.yaml
               - ./.github/actions/rust
               - updater/**
 
