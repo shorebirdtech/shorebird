@@ -27,7 +27,7 @@ function pub_upgrade_with_retry {
   local total_tries="10"
   local remaining_tries=$((total_tries - 1))
   while [[ "$remaining_tries" -gt 0 ]]; do
-    (cd "$SHOREBIRD_CLI_DIR" && dart pub upgrade) && break
+    (cd "$SHOREBIRD_CLI_DIR" && $DART_PATH pub upgrade) && break
     >&2 echo "Error: Unable to 'pub upgrade' shorebird. Retrying in five seconds... ($remaining_tries tries left)"
     remaining_tries=$((remaining_tries - 1))
     sleep 5
@@ -202,18 +202,6 @@ function shared::execute() {
   # Test if Git is available on the Host
   if ! hash git 2>/dev/null; then
     >&2 echo "Error: Unable to find git in your PATH."
-    exit 1
-  fi
-
-  # Test if Dart is available on the Host
-  if ! hash dart 2>/dev/null; then
-    >&2 echo "Error: Unable to find dart in your PATH."
-    exit 1
-  fi
-
-  # Test if Flutter is available on the Host
-  if ! hash flutter 2>/dev/null; then
-    >&2 echo "Error: Unable to find flutter in your PATH."
     exit 1
   fi
 
