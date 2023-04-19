@@ -23,7 +23,7 @@ void main() {
       startProcess = _MockProcess();
       shorebirdProcess = ShorebirdProcess(
         processWrapper: processWrapper,
-        engineConfig: EngineConfig(localEngine: null, localEngineSrcPath: null),
+        engineConfig: const EngineConfig.empty(),
       );
 
       when(
@@ -158,7 +158,7 @@ void main() {
     test('adds local-engine arguments if set', () async {
       shorebirdProcess = ShorebirdProcess(
         processWrapper: processWrapper,
-        engineConfig: EngineConfig(
+        engineConfig: const EngineConfig(
           localEngineSrcPath: '/path/to/engine/src',
           localEngine: 'android_release_arm64',
         ),

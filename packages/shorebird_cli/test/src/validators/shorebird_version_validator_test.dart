@@ -33,7 +33,9 @@ void main() {
 
       command = DoctorCommand(
         logger: logger,
-      )..testProcess = shorebirdProcess;
+      )
+        ..testProcess = shorebirdProcess
+        ..testEngineConfig = const EngineConfig.empty();
 
       validator = ShorebirdVersionValidator(
         isShorebirdVersionCurrent: command.isShorebirdVersionCurrent,

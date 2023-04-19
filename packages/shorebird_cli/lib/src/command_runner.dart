@@ -70,6 +70,7 @@ class ShorebirdCliCommandRunner extends CompletionCommandRunner<int> {
   final Logger _logger;
   // Currently using ShorebirdCliCommandRunner as our context object.
   late final ShorebirdProcess process;
+  late final EngineConfig engineConfig;
 
   @override
   Future<int> run(Iterable<String> args) async {
@@ -80,12 +81,12 @@ class ShorebirdCliCommandRunner extends CompletionCommandRunner<int> {
       }
 
       // Set up our context before running the command.
+      engineConfig = EngineConfig(
+        localEngineSrcPath: topLevelResults['local-engine-src-path'] as String?,
+        localEngine: topLevelResults['local-engine'] as String?,
+      );
       process = ShorebirdProcess(
-        engineConfig: EngineConfig(
-          localEngineSrcPath:
-              topLevelResults['local-engine-src-path'] as String?,
-          localEngine: topLevelResults['local-engine'] as String?,
-        ),
+        engineConfig: engineConfig,
       );
 
       return await runCommand(topLevelResults) ?? ExitCode.success.code;

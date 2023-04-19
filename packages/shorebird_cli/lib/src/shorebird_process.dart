@@ -4,10 +4,14 @@ import 'package:meta/meta.dart';
 import 'package:shorebird_cli/src/shorebird_environment.dart';
 
 class EngineConfig {
-  EngineConfig({
+  const EngineConfig({
     required this.localEngineSrcPath,
     required this.localEngine,
   });
+
+  const EngineConfig.empty()
+      : localEngineSrcPath = null,
+        localEngine = null;
 
   final String? localEngineSrcPath;
   final String? localEngine;

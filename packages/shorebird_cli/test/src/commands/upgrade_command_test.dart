@@ -39,7 +39,9 @@ void main() {
       shorebirdProcess = _MockShorebirdProcess();
       command = UpgradeCommand(
         logger: logger,
-      )..testProcess = shorebirdProcess;
+      )
+        ..testProcess = shorebirdProcess
+        ..testEngineConfig = const EngineConfig.empty();
 
       when(
         () => shorebirdProcess.run(

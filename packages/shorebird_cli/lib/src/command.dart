@@ -57,9 +57,18 @@ abstract class ShorebirdCommand extends Command<int> {
   ShorebirdProcess? testProcess;
 
   // If you hit a late initialization error here, it's because you're either
-  // using context before runCommand has been called, or you're in a test
-  // and should mock this method instead.
+  // using process before runCommand has been called, or you're in a test
+  // and should set testProcess instead.
   ShorebirdProcess get process => testProcess ?? runner!.process;
+
+  /// [EngineConfig] used for testing purposes only.
+  @visibleForTesting
+  EngineConfig? testEngineConfig;
+
+  // If you hit a late initialization error here, it's because you're either
+  // using engineConfig before runCommand has been called, or you're in a test
+  // and should set testEngineConfig instead.
+  EngineConfig get engineConfig => testEngineConfig ?? process.engineConfig;
 
   /// Checks that the Shorebird install and project are in a good state.
   late List<Validator> validators;

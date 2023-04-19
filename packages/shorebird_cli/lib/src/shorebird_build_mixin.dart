@@ -1,5 +1,6 @@
 import 'dart:io';
 
+import 'package:args/args.dart';
 import 'package:collection/collection.dart';
 import 'package:mason_logger/mason_logger.dart';
 import 'package:shorebird_cli/src/command.dart';
@@ -42,12 +43,19 @@ mixin ShorebirdBuildMixin on ShorebirdCommand {
     ),
   };
 
+  ArgResults? testGlobalResults; // for mocking.
+
+  @override
+  ArgResults? get globalResults => testGlobalResults ?? super.globalResults;
+
   // TODO(felangel): extend to other platforms.
   Map<Arch, ArchMetadata> get architectures {
     // Flutter has a whole bunch of logic to parse the --local-engine flag.
     // We probably need similar.
-    if (globalResults?['local-engine'] != null) {
-      final localEngineOutName = globalResults!['local-engine'] as String;
+    // It's a bit odd to grab off the shorebird process, but it's the easiest
+    // way to have a single source of truth for the engine config for now.
+    if (engineConfig.localEngine != null) {
+      final localEngineOutName = engineConfig.localEngine;
       final metaDataEntry = allAndroidArchitectures.entries.firstWhereOrNull(
         (entry) => localEngineOutName == entry.value.enginePath,
       );

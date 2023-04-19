@@ -157,7 +157,8 @@ flutter:
         validators: [flutterValidator],
       )
         ..testArgResults = argResults
-        ..testProcess = shorebirdProcess;
+        ..testProcess = shorebirdProcess
+        ..testEngineConfig = const EngineConfig.empty();
 
       registerFallbackValue(shorebirdProcess);
 

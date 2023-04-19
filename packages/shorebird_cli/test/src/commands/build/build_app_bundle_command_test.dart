@@ -52,7 +52,8 @@ void main() {
         validators: [flutterValidator],
       )
         ..testArgResults = argResults
-        ..testProcess = shorebirdProcess;
+        ..testProcess = shorebirdProcess
+        ..testEngineConfig = const EngineConfig.empty();
 
       registerFallbackValue(shorebirdProcess);
 
@@ -123,6 +124,23 @@ void main() {
           runInShell: any(named: 'runInShell'),
         ),
       ).called(1);
+    });
+
+    test('local-engine and architectures', () async {
+      expect(command.architectures.length, greaterThan(1));
+
+      command.testEngineConfig = const EngineConfig(
+        localEngine: 'android_release_arm64',
+        localEngineSrcPath: 'path/to/engine/src',
+      );
+      expect(command.architectures.length, equals(1));
+
+      // We only support a few release configs for now.
+      command.testEngineConfig = const EngineConfig(
+        localEngine: 'android_debug_unopt',
+        localEngineSrcPath: 'path/to/engine/src',
+      );
+      expect(() => command.architectures, throwsException);
     });
 
     test('prints flutter validation warnings', () async {

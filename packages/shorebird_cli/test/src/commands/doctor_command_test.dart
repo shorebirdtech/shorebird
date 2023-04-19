@@ -75,7 +75,9 @@ void main() {
           shorebirdVersionValidator,
           shorebirdFlutterValidator,
         ],
-      )..testProcess = shorebirdProcess;
+      )
+        ..testProcess = shorebirdProcess
+        ..testEngineConfig = const EngineConfig.empty();
     });
 
     test('prints "no issues" when everything is OK', () async {
