@@ -59,6 +59,8 @@ No support for:
 - Web interface
 - CI/CD (GitHub Actions, etc.) integration
 - Patch signing [issue](https://github.com/shorebirdtech/shorebird/issues/112)
+- Asset changes (images, icons, etc.) -- currently only supports changing Dart code.
+- Plugin changes (java, kotlin, etc.) -- currently only supports changing Dart code.
 
 ## Installing Shorebird command line
 
