@@ -6,6 +6,7 @@ import 'package:mason_logger/mason_logger.dart';
 import 'package:mocktail/mocktail.dart';
 import 'package:shorebird_cli/src/auth/auth.dart';
 import 'package:shorebird_cli/src/commands/build/build.dart';
+import 'package:shorebird_cli/src/shorebird_process.dart';
 import 'package:shorebird_cli/src/validators/validators.dart';
 import 'package:test/test.dart';
 
@@ -24,6 +25,8 @@ class _MockProcessResult extends Mock implements ProcessResult {}
 class _MockShorebirdFlutterValidator extends Mock
     implements ShorebirdFlutterValidator {}
 
+class _MockShorebirdProcess extends Mock implements ShorebirdProcess {}
+
 void main() {
   group('build appbundle', () {
     late ArgResults argResults;
@@ -33,9 +36,7 @@ void main() {
     late ProcessResult processResult;
     late BuildAppBundleCommand command;
     late ShorebirdFlutterValidator flutterValidator;
-
-    String? processExecutable;
-    List<String>? processArguments;
+    late ShorebirdProcess shorebirdProcess;
 
     setUp(() {
       argResults = _MockArgResults();
@@ -44,20 +45,33 @@ void main() {
       logger = _MockLogger();
       processResult = _MockProcessResult();
       flutterValidator = _MockShorebirdFlutterValidator();
-      processExecutable = null;
-      processArguments = null;
+      shorebirdProcess = _MockShorebirdProcess();
       command = BuildAppBundleCommand(
         auth: auth,
         logger: logger,
         validators: [flutterValidator],
-      )..testArgResults = argResults;
+      )
+        ..testArgResults = argResults
+        ..testProcess = shorebirdProcess;
 
+      registerFallbackValue(shorebirdProcess);
+
+      when(
+        () => shorebirdProcess.run(
+          any(),
+          any(),
+          runInShell: any(named: 'runInShell'),
+          environment: any(named: 'environment'),
+          workingDirectory: any(named: 'workingDirectory'),
+          useVendedFlutter: any(named: 'useVendedFlutter'),
+        ),
+      ).thenAnswer((_) async => processResult);
       when(() => argResults.rest).thenReturn([]);
       when(() => auth.isAuthenticated).thenReturn(true);
       when(() => auth.client).thenReturn(httpClient);
       when(() => logger.progress(any())).thenReturn(_MockProgress());
       when(() => logger.info(any())).thenReturn(null);
-      when(() => flutterValidator.validate()).thenAnswer((_) async => []);
+      when(() => flutterValidator.validate(any())).thenAnswer((_) async => []);
     });
 
     test('has correct description', () {
@@ -87,8 +101,13 @@ void main() {
       );
 
       expect(result, equals(ExitCode.software.code));
-      expect(processExecutable, equals('flutter'));
-      expect(processArguments, equals(['build', 'appbundle', '--release']));
+      verify(
+        () => shorebirdProcess.run(
+          'flutter',
+          ['build', 'appbundle', '--release'],
+          runInShell: any(named: 'runInShell'),
+        ),
+      ).called(1);
     });
 
     test('exits with code 0 when building appbundle succeeds', () async {
@@ -100,12 +119,17 @@ void main() {
       );
 
       expect(result, equals(ExitCode.success.code));
-      expect(processExecutable, equals('flutter'));
-      expect(processArguments, equals(['build', 'appbundle', '--release']));
+      verify(
+        () => shorebirdProcess.run(
+          'flutter',
+          ['build', 'appbundle', '--release'],
+          runInShell: any(named: 'runInShell'),
+        ),
+      ).called(1);
     });
 
     test('prints flutter validation warnings', () async {
-      when(() => flutterValidator.validate()).thenAnswer(
+      when(() => flutterValidator.validate(any())).thenAnswer(
         (_) async => [
           const ValidationIssue(
             severity: ValidationIssueSeverity.warning,

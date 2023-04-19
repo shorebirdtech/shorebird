@@ -17,7 +17,6 @@ class BuildAppBundleCommand extends ShorebirdCommand
   BuildAppBundleCommand({
     required super.logger,
     super.auth,
-    super.runProcess,
     super.validators,
   });
 

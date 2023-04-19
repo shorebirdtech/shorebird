@@ -38,9 +38,6 @@ void main() {
     late ShorebirdFlutterValidator flutterValidator;
     late ShorebirdProcess shorebirdProcess;
 
-    String? processExecutable;
-    List<String>? processArguments;
-
     setUp(() {
       argResults = _MockArgResults();
       httpClient = _MockHttpClient();
@@ -49,8 +46,6 @@ void main() {
       shorebirdProcess = _MockShorebirdProcess();
       processResult = _MockProcessResult();
       flutterValidator = _MockShorebirdFlutterValidator();
-      processExecutable = null;
-      processArguments = null;
       command = BuildApkCommand(
         auth: auth,
         logger: logger,
@@ -105,8 +100,13 @@ void main() {
       );
 
       expect(result, equals(ExitCode.software.code));
-      expect(processExecutable, equals('flutter'));
-      expect(processArguments, equals(['build', 'apk', '--release']));
+      verify(
+        () => shorebirdProcess.run(
+          'flutter',
+          ['build', 'apk', '--release'],
+          runInShell: any(named: 'runInShell'),
+        ),
+      ).called(1);
     });
 
     test('exits with code 0 when building apk succeeds', () async {
@@ -118,8 +118,13 @@ void main() {
       );
 
       expect(result, equals(ExitCode.success.code));
-      expect(processExecutable, equals('flutter'));
-      expect(processArguments, equals(['build', 'apk', '--release']));
+      verify(
+        () => shorebirdProcess.run(
+          'flutter',
+          ['build', 'apk', '--release'],
+          runInShell: any(named: 'runInShell'),
+        ),
+      ).called(1);
     });
 
     test('prints flutter validation warnings', () async {

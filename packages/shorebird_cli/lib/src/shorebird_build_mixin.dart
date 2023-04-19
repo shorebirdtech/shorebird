@@ -98,7 +98,7 @@ mixin ShorebirdBuildMixin on ShorebirdCommand {
       ...results.rest,
     ];
 
-    final result = await runProcess(
+    final result = await process.run(
       executable,
       arguments,
       runInShell: true,
