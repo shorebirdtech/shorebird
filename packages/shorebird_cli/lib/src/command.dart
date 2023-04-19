@@ -48,9 +48,13 @@ abstract class ShorebirdCommand extends Command<int> {
   final CodePushClientBuilder buildCodePushClient;
   final Logger logger;
 
+  // We don't currently have a test involving both a CommandRunner
+  // and a Command, so we can't test this getter.
+  // coverage:ignore-start
   @override
   ShorebirdCliCommandRunner? get runner =>
       super.runner as ShorebirdCliCommandRunner?;
+  // coverage:ignore-end
 
   /// [ShorebirdProcess] used for testing purposes only.
   @visibleForTesting
