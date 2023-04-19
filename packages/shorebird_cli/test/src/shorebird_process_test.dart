@@ -155,6 +155,31 @@ void main() {
       );
     });
 
+    test('adds local-engine arguments if set', () async {
+      shorebirdProcess = ShorebirdProcess(
+        processWrapper: processWrapper,
+        engineConfig: EngineConfig(
+          localEngineSrcPath: '/path/to/engine/src',
+          localEngine: 'android_release_arm64',
+        ),
+      );
+
+      await shorebirdProcess.run('flutter', []);
+
+      verify(
+        () => processWrapper.run(
+          any(),
+          [
+            '--local-engine-src-path=/path/to/engine/src',
+            '--local-engine=android_release_arm64',
+          ],
+          runInShell: any(named: 'runInShell'),
+          environment: any(named: 'environment'),
+          workingDirectory: any(named: 'workingDirectory'),
+        ),
+      ).called(1);
+    });
+
     group('start', () {
       test('forwards non-flutter executables to Process.run', () async {
         await shorebirdProcess.start('git', ['pull'], runInShell: true);
