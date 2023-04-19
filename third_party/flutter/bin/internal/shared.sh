@@ -165,8 +165,7 @@ function upgrade_shorebird () (
     fi
 
     # Compile...
-    # FIXME: This should use the Dart SDK from the Shorebird Flutter cache.
-    dart --verbosity=error --disable-dart-dev --snapshot="$SNAPSHOT_PATH" --snapshot-kind="app-jit" --packages="$SHOREBIRD_CLI_DIR/.dart_tool/package_config.json" --no-enable-mirrors "$SCRIPT_PATH" > /dev/null
+    $DART_PATH --verbosity=error --disable-dart-dev --snapshot="$SNAPSHOT_PATH" --snapshot-kind="app-jit" --packages="$SHOREBIRD_CLI_DIR/.dart_tool/package_config.json" --no-enable-mirrors "$SCRIPT_PATH" > /dev/null
     echo "$compilekey" > "$STAMP_PATH"
 
     # Delete any temporary snapshot path.
@@ -190,6 +189,7 @@ function shared::execute() {
   STAMP_PATH="$SHOREBIRD_ROOT/bin/cache/shorebird.stamp"
   SCRIPT_PATH="$SHOREBIRD_CLI_DIR/bin/shorebird.dart"
   FLUTTER_PATH="$SHOREBIRD_ROOT/bin/cache/flutter"
+  export DART_PATH="$FLUTTER_PATH/bin/cache/dart-sdk/bin/dart"
 
   # Test if running as superuser – but don't warn if running within Docker or CI.
   if [[ "$EUID" == "0" && ! -f /.dockerenv && "$CI" != "true" && "$BOT" != "true" && "$CONTINUOUS_INTEGRATION" != "true" ]]; then
@@ -232,8 +232,7 @@ function shared::execute() {
   BIN_NAME="$(basename "$PROG_NAME")"
   case "$BIN_NAME" in    
     shorebird*)
-    # FIXME: This should use the Dart SDK from the Shorebird Flutter cache.
-      exec "dart" "$SNAPSHOT_PATH" "$@"
+      exec "$DART_PATH" "$SNAPSHOT_PATH" "$@"
       ;;
     *)
       >&2 echo "Error! Executable name $BIN_NAME not recognized!"
