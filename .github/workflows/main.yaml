@@ -39,9 +39,11 @@ jobs:
               - ./.github/actions/dart_package
               - packages/shorebird_cli/**
               - packages/shorebird_code_push_client/**
+              - packages/shorebird_code_push_protocol/**
             shorebird_code_push_client:
               - ./.github/actions/dart_package
               - packages/shorebird_code_push_client/**
+              - packages/shorebird_code_push_protocol/**
             shorebird_code_push_protocol:
               - ./.github/actions/dart_package
               - packages/shorebird_code_push_protocol/**
