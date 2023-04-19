@@ -41,8 +41,7 @@ class DoctorCommand extends ShorebirdCommand with ShorebirdVersionMixin {
     logger.info('''
 
 Shorebird v$packageVersion
-Shorebird Engine • revision ${ShorebirdEnvironment.shorebirdEngineRevision}
-''');
+Shorebird Engine • revision ${ShorebirdEnvironment.shorebirdEngineRevision}''');
 
     var numIssues = 0;
     for (final validator in validators) {
