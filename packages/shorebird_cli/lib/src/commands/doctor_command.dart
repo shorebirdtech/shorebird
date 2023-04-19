@@ -1,6 +1,7 @@
 import 'package:collection/collection.dart';
 import 'package:mason_logger/mason_logger.dart';
 import 'package:shorebird_cli/src/command.dart';
+import 'package:shorebird_cli/src/shorebird_environment.dart';
 import 'package:shorebird_cli/src/shorebird_version_mixin.dart';
 import 'package:shorebird_cli/src/validators/validators.dart';
 import 'package:shorebird_cli/src/version.dart';
@@ -16,7 +17,6 @@ class DoctorCommand extends ShorebirdCommand with ShorebirdVersionMixin {
   DoctorCommand({
     required super.logger,
     super.validators,
-    super.runProcess,
   }) {
     validators = _allValidators(baseValidators: validators);
   }
@@ -25,7 +25,7 @@ class DoctorCommand extends ShorebirdCommand with ShorebirdVersionMixin {
     ShorebirdVersionValidator(
       isShorebirdVersionCurrent: isShorebirdVersionCurrent,
     ),
-    ShorebirdFlutterValidator(runProcess: runProcess),
+    ShorebirdFlutterValidator(),
     AndroidInternetPermissionValidator(),
   ];
 
@@ -40,12 +40,12 @@ class DoctorCommand extends ShorebirdCommand with ShorebirdVersionMixin {
     logger.info('''
 
 Shorebird v$packageVersion
-''');
+Shorebird Engine • revision ${ShorebirdEnvironment.shorebirdEngineRevision}''');
 
     var numIssues = 0;
     for (final validator in validators) {
       final progress = logger.progress(validator.description);
-      final issues = await validator.validate();
+      final issues = await validator.validate(process);
       numIssues += issues.length;
       if (issues.isEmpty) {
         progress.complete();

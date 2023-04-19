@@ -8,6 +8,7 @@ import 'package:mason_logger/mason_logger.dart';
 import 'package:mocktail/mocktail.dart';
 import 'package:shorebird_cli/src/auth/auth.dart';
 import 'package:shorebird_cli/src/commands/run_command.dart';
+import 'package:shorebird_cli/src/shorebird_process.dart';
 import 'package:shorebird_cli/src/validators/validators.dart';
 import 'package:shorebird_code_push_client/shorebird_code_push_client.dart';
 import 'package:test/test.dart';
@@ -32,6 +33,8 @@ class _MockAndroidInternetPermissionValidator extends Mock
 class _MockShorebirdFlutterValidator extends Mock
     implements ShorebirdFlutterValidator {}
 
+class _MockShorebirdProcess extends Mock implements ShorebirdProcess {}
+
 void main() {
   group('run', () {
     late ArgResults argResults;
@@ -43,6 +46,7 @@ void main() {
     late RunCommand runCommand;
     late AndroidInternetPermissionValidator androidInternetPermissionValidator;
     late ShorebirdFlutterValidator flutterValidator;
+    late ShorebirdProcess shorebirdProcess;
 
     setUp(() {
       argResults = _MockArgResults();
@@ -50,6 +54,7 @@ void main() {
       auth = _MockAuth();
       logger = _MockLogger();
       process = _MockProcess();
+      shorebirdProcess = _MockShorebirdProcess();
       codePushClient = _MockCodePushClient();
       androidInternetPermissionValidator =
           _MockAndroidInternetPermissionValidator();
@@ -63,23 +68,32 @@ void main() {
         }) {
           return codePushClient;
         },
-        startProcess: (executable, arguments, {bool runInShell = false}) async {
-          return process;
-        },
         validators: [
           androidInternetPermissionValidator,
           flutterValidator,
         ],
-      )..testArgResults = argResults;
+      )
+        ..testArgResults = argResults
+        ..testProcess = shorebirdProcess
+        ..testEngineConfig = const EngineConfig.empty();
 
+      registerFallbackValue(shorebirdProcess);
+
+      when(
+        () => shorebirdProcess.start(
+          any(),
+          any(),
+          runInShell: any(named: 'runInShell'),
+        ),
+      ).thenAnswer((_) async => process);
       when(() => argResults.rest).thenReturn([]);
       when(() => auth.isAuthenticated).thenReturn(true);
       when(() => auth.client).thenReturn(httpClient);
       when(() => logger.progress(any())).thenReturn(_MockProgress());
       when(
-        () => androidInternetPermissionValidator.validate(),
+        () => androidInternetPermissionValidator.validate(any()),
       ).thenAnswer((_) async => []);
-      when(() => flutterValidator.validate()).thenAnswer((_) async => []);
+      when(() => flutterValidator.validate(any())).thenAnswer((_) async => []);
     });
 
     test('exits with no user when not logged in', () async {
@@ -145,7 +159,7 @@ void main() {
     });
 
     test('prints validation warnings', () async {
-      when(() => flutterValidator.validate()).thenAnswer(
+      when(() => flutterValidator.validate(any())).thenAnswer(
         (_) async => [
           const ValidationIssue(
             severity: ValidationIssueSeverity.warning,
@@ -153,7 +167,7 @@ void main() {
           ),
         ],
       );
-      when(() => androidInternetPermissionValidator.validate()).thenAnswer(
+      when(() => androidInternetPermissionValidator.validate(any())).thenAnswer(
         (_) async => [
           const ValidationIssue(
             severity: ValidationIssueSeverity.error,

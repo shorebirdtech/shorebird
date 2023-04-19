@@ -6,7 +6,6 @@ import 'package:mocktail/mocktail.dart';
 import 'package:path/path.dart' as p;
 import 'package:platform/platform.dart';
 import 'package:shorebird_cli/src/cache.dart';
-import 'package:shorebird_cli/src/engine_revision.dart';
 import 'package:shorebird_cli/src/shorebird_environment.dart';
 import 'package:test/test.dart';
 
@@ -43,6 +42,7 @@ void main() {
 
       shorebirdRoot = Directory.systemTemp.createTempSync();
       ShorebirdEnvironment.platform = platform;
+      ShorebirdEnvironment.shorebirdEngineRevision = 'test-revision';
 
       when(() => platform.isMacOS).thenReturn(true);
       when(() => platform.isWindows).thenReturn(false);
@@ -121,7 +121,7 @@ void main() {
             request.url,
             equals(
               Uri.parse(
-                '${cache.storageBaseUrl}/${cache.storageBucket}/shorebird/$shorebirdEngineRevision/patch-darwin-x64.zip',
+                '${cache.storageBaseUrl}/${cache.storageBucket}/shorebird/${ShorebirdEnvironment.shorebirdEngineRevision}/patch-darwin-x64.zip',
               ),
             ),
           );
@@ -141,7 +141,7 @@ void main() {
             request.url,
             equals(
               Uri.parse(
-                '${cache.storageBaseUrl}/${cache.storageBucket}/shorebird/$shorebirdEngineRevision/patch-windows-x64.zip',
+                '${cache.storageBaseUrl}/${cache.storageBucket}/shorebird/${ShorebirdEnvironment.shorebirdEngineRevision}/patch-windows-x64.zip',
               ),
             ),
           );
@@ -161,7 +161,7 @@ void main() {
             request.url,
             equals(
               Uri.parse(
-                '${cache.storageBaseUrl}/${cache.storageBucket}/shorebird/$shorebirdEngineRevision/patch-linux-x64.zip',
+                '${cache.storageBaseUrl}/${cache.storageBucket}/shorebird/${ShorebirdEnvironment.shorebirdEngineRevision}/patch-linux-x64.zip',
               ),
             ),
           );

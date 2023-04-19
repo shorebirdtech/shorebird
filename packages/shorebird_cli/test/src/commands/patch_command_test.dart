@@ -9,6 +9,7 @@ import 'package:shorebird_cli/src/auth/auth.dart';
 import 'package:shorebird_cli/src/cache.dart' show Cache;
 import 'package:shorebird_cli/src/commands/patch_command.dart';
 import 'package:shorebird_cli/src/shorebird_build_mixin.dart';
+import 'package:shorebird_cli/src/shorebird_process.dart';
 import 'package:shorebird_cli/src/validators/validators.dart';
 import 'package:shorebird_code_push_client/shorebird_code_push_client.dart';
 import 'package:test/test.dart';
@@ -33,6 +34,8 @@ class _MockCodePushClient extends Mock implements CodePushClient {}
 
 class _MockShorebirdFlutterValidator extends Mock
     implements ShorebirdFlutterValidator {}
+
+class _MockShorebirdProcess extends Mock implements ShorebirdProcess {}
 
 void main() {
   group('patch', () {
@@ -91,6 +94,7 @@ flutter:
     late PatchCommand command;
     late Uri? capturedHostedUri;
     late ShorebirdFlutterValidator flutterValidator;
+    late ShorebirdProcess shorebirdProcess;
 
     Directory setUpTempDir() {
       final tempDir = Directory.systemTemp.createTempSync();
@@ -104,7 +108,8 @@ flutter:
     }
 
     void setUpTempArtifacts(Directory dir) {
-      for (final archMetadata in ShorebirdBuildMixin.architectures.values) {
+      for (final archMetadata
+          in ShorebirdBuildMixin.allAndroidArchitectures.values) {
         final artifactPath = p.join(
           dir.path,
           'build',
@@ -136,6 +141,7 @@ flutter:
       codePushClient = _MockCodePushClient();
       flutterValidator = _MockShorebirdFlutterValidator();
       cache = _MockCache();
+      shorebirdProcess = _MockShorebirdProcess();
       command = PatchCommand(
         auth: auth,
         buildCodePushClient: ({
@@ -146,23 +152,30 @@ flutter:
           return codePushClient;
         },
         cache: cache,
-        runProcess: (
-          executable,
-          arguments, {
-          bool runInShell = false,
-          Map<String, String>? environment,
-          String? workingDirectory,
-          bool useVendedFlutter = true,
-        }) async {
-          if (executable == 'flutter') return flutterBuildProcessResult;
-          if (executable.endsWith('patch')) return patchProcessResult;
-          return _MockProcessResult();
-        },
         logger: logger,
         httpClient: httpClient,
         validators: [flutterValidator],
-      )..testArgResults = argResults;
+      )
+        ..testArgResults = argResults
+        ..testProcess = shorebirdProcess
+        ..testEngineConfig = const EngineConfig.empty();
 
+      registerFallbackValue(shorebirdProcess);
+
+      when(
+        () => shorebirdProcess.run(
+          'flutter',
+          any(),
+          runInShell: any(named: 'runInShell'),
+        ),
+      ).thenAnswer((_) async => flutterBuildProcessResult);
+      when(
+        () => shorebirdProcess.run(
+          any(that: endsWith('patch')),
+          any(),
+          runInShell: any(named: 'runInShell'),
+        ),
+      ).thenAnswer((_) async => patchProcessResult);
       when(() => argResults.rest).thenReturn([]);
       when(() => argResults['arch']).thenReturn(arch);
       when(() => argResults['platform']).thenReturn(platform);
@@ -223,7 +236,7 @@ flutter:
           channelId: any(named: 'channelId'),
         ),
       ).thenAnswer((_) async {});
-      when(() => flutterValidator.validate()).thenAnswer((_) async => []);
+      when(() => flutterValidator.validate(any())).thenAnswer((_) async => []);
       when(() => cache.updateAll()).thenAnswer((_) async => {});
       when(
         () => cache.getArtifactDirectory(any()),
@@ -580,7 +593,7 @@ base_url: $baseUrl''',
     test('prints flutter validation warnings', () async {
       final tempDir = setUpTempDir();
       setUpTempArtifacts(tempDir);
-      when(() => flutterValidator.validate()).thenAnswer(
+      when(() => flutterValidator.validate(any())).thenAnswer(
         (_) async => [
           const ValidationIssue(
             severity: ValidationIssueSeverity.warning,

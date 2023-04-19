@@ -26,7 +26,6 @@ class ReleaseCommand extends ShorebirdCommand
     required super.logger,
     super.auth,
     super.buildCodePushClient,
-    super.runProcess,
     super.validators,
     HashFunction? hashFn,
   }) : _hashFn = hashFn ?? ((m) => sha256.convert(m).toString()) {
@@ -74,7 +73,7 @@ make smaller updates to your app.
 
     final buildProgress = logger.progress('Building release');
     try {
-      await buildRelease();
+      await buildAppBundle();
       buildProgress.complete();
     } on ProcessException catch (error) {
       buildProgress.fail('Failed to build: ${error.message}');
@@ -123,7 +122,7 @@ Did you forget to run "shorebird init"?''',
         );
 
     final platform = results['platform'] as String;
-    final archNames = ShorebirdBuildMixin.architectures.keys.map(
+    final archNames = architectures.keys.map(
       (arch) => arch.name,
     );
 
@@ -169,7 +168,7 @@ ${styleBold.wrap(lightGreen.wrap('🚀 Ready to create a new release!'))}
     }
 
     final createArtifactProgress = logger.progress('Creating artifacts');
-    for (final archMetadata in ShorebirdBuildMixin.architectures.values) {
+    for (final archMetadata in architectures.values) {
       final artifactPath = p.join(
         Directory.current.path,
         'build',

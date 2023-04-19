@@ -6,7 +6,7 @@ mixin ShorebirdValidationMixin on ShorebirdCommand {
   /// Runs [Validator.validate] on all [validators] and writes issues to stdout.
   Future<void> logValidationIssues() async {
     final validationIssues = (await Future.wait(
-      validators.map((v) => v.validate()),
+      validators.map((v) => v.validate(process)),
     ))
         .flattened;
     if (validationIssues.isNotEmpty) {
