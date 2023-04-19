@@ -157,7 +157,7 @@ is set up correctly.
 `shorebird` uses a fork of Flutter that includes the Shorebird updater.
 This fork is currently based on Flutter 3.7.10.
 We replace a few of the Flutter engine files with our own.  To do that, we use
-FLUTTER_STORAGE_BASE_URL to point to download.shorebird.dev instead of
+`FLUTTER_STORAGE_BASE_URL` to point to download.shorebird.dev instead of
 download.flutter.dev.  We pass through unmodified output from the `flutter`
 tool so you will see a warning from Flutter:
 
@@ -166,7 +166,7 @@ Flutter assets will be downloaded from http://download.shorebird.dev. Make sure 
 ```
 
 For more information about why we had to fork Flutter see:
-(FORKING_FLUTTER.md)[FORKING_FLUTTER.md].
+[FORKING_FLUTTER.md](FORKING_FLUTTER.md).
 
 ## Running your Shorebird-built app
 
