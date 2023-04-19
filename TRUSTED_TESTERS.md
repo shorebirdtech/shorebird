@@ -59,6 +59,8 @@ No support for:
 - Web interface
 - CI/CD (GitHub Actions, etc.) integration
 - Patch signing [issue](https://github.com/shorebirdtech/shorebird/issues/112)
+- Asset changes (images, icons, etc.) -- currently only supports changing Dart code.
+- Plugin changes (java, kotlin, etc.) -- currently only supports changing Dart code.
 
 ## Installing Shorebird command line
 
@@ -155,7 +157,7 @@ is set up correctly.
 `shorebird` uses a fork of Flutter that includes the Shorebird updater.
 This fork is currently based on Flutter 3.7.10.
 We replace a few of the Flutter engine files with our own.  To do that, we use
-FLUTTER_STORAGE_BASE_URL to point to download.shorebird.dev instead of
+`FLUTTER_STORAGE_BASE_URL` to point to download.shorebird.dev instead of
 download.flutter.dev.  We pass through unmodified output from the `flutter`
 tool so you will see a warning from Flutter:
 
@@ -164,7 +166,7 @@ Flutter assets will be downloaded from http://download.shorebird.dev. Make sure 
 ```
 
 For more information about why we had to fork Flutter see:
-(FORKING_FLUTTER.md)[FORKING_FLUTTER.md].
+[FORKING_FLUTTER.md](FORKING_FLUTTER.md).
 
 ## Running your Shorebird-built app
 
@@ -432,7 +434,20 @@ You can remove `shorebird` from your path by removing it from your `.bashrc` or
 
 # Release Notes
 
-This section contains past updates I've sent to current Trusted Testers.
+This section contains past updates we've sent to current Trusted Testers.
+
+## Announcement for 0.0.7
+
+We've just released Shorebird CLI v0.0.7 🎉 
+
+What's new:
+* Fixed our backend to not error for large app releases.
+* `shorebird build` is now split into two subcommands:
+  * `shorebird build apk` (new)
+  * `shorebird build appbundle` (previously `shorebird build`)
+
+Changelog: https://github.com/shorebirdtech/shorebird/releases/tag/v0.0.7 
+
 
 ## Announcement for 0.0.6
 
