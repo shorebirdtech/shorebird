@@ -192,13 +192,13 @@ Did you forget to run "shorebird init"?''',
     }
 
     final release = releases.firstWhereOrNull(
-      (r) => r.version == versionString,
+      (r) => r.version == releaseVersion,
     );
 
     if (release == null) {
       logger.err(
         '''
-Release not found: "$versionString"
+Release not found: "$releaseVersion"
 
 Patches can only be published for existing releases.
 Please create a release using "shorebird release" and try again.

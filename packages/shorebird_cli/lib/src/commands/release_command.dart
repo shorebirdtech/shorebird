@@ -152,13 +152,13 @@ ${styleBold.wrap(lightGreen.wrap('🚀 Ready to create a new release!'))}
       return ExitCode.software.code;
     }
 
-    var release = releases.firstWhereOrNull((r) => r.version == versionString);
+    var release = releases.firstWhereOrNull((r) => r.version == releaseVersion);
     if (release == null) {
       final createReleaseProgress = logger.progress('Creating release');
       try {
         release = await codePushClient.createRelease(
           appId: app.id,
-          version: versionString,
+          version: releaseVersion,
         );
         createReleaseProgress.complete();
       } catch (error) {
