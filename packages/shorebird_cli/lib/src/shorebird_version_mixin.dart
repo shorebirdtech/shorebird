@@ -23,7 +23,7 @@ mixin ShorebirdVersionMixin on ShorebirdCommand {
   /// Exits if HEAD isn't pointing to a branch, or there is no upstream.
   Future<String> fetchLatestGitHash({required String workingDirectory}) async {
     // Fetch upstream branch's commits and tags
-    await runProcess(
+    await process.run(
       'git',
       ['fetch', '--tags'],
       workingDirectory: workingDirectory,
@@ -47,7 +47,7 @@ mixin ShorebirdVersionMixin on ShorebirdCommand {
     String? workingDirectory,
   }) async {
     // Get the commit revision of HEAD
-    final result = await runProcess(
+    final result = await process.run(
       'git',
       ['rev-parse', '--verify', revision],
       workingDirectory: workingDirectory,
@@ -72,7 +72,7 @@ mixin ShorebirdVersionMixin on ShorebirdCommand {
     required String newRevision,
     required String workingDirectory,
   }) async {
-    final result = await runProcess(
+    final result = await process.run(
       'git',
       ['reset', '--hard', newRevision],
       workingDirectory: workingDirectory,

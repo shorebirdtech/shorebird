@@ -3,30 +3,34 @@ import 'dart:io';
 import 'package:meta/meta.dart';
 import 'package:shorebird_cli/src/shorebird_environment.dart';
 
-typedef RunProcess = Future<ProcessResult> Function(
-  String executable,
-  List<String> arguments, {
-  bool runInShell,
-  Map<String, String>? environment,
-  String? workingDirectory,
-  bool useVendedFlutter,
-});
+class EngineConfig {
+  const EngineConfig({
+    required this.localEngineSrcPath,
+    required this.localEngine,
+  });
 
-typedef StartProcess = Future<Process> Function(
-  String executable,
-  List<String> arguments, {
-  bool runInShell,
-  Map<String, String>? environment,
-  bool useVendedFlutter,
-});
+  const EngineConfig.empty()
+      : localEngineSrcPath = null,
+        localEngine = null;
+
+  final String? localEngineSrcPath;
+  final String? localEngine;
+}
 
 /// A wrapper around [Process] that replaces executables to Shorebird-vended
 /// versions.
-abstract class ShorebirdProcess {
-  @visibleForTesting
-  static ProcessWrapper processWrapper = ProcessWrapper();
+// This may need a better name, since it returns "Process" it's more a
+// "ProcessFactory" than a "Process".
+class ShorebirdProcess {
+  ShorebirdProcess({
+    required this.engineConfig,
+    ProcessWrapper? processWrapper, // For mocking ShorebirdProcess.
+  }) : processWrapper = processWrapper ?? ProcessWrapper();
 
-  static Future<ProcessResult> run(
+  final ProcessWrapper processWrapper;
+  final EngineConfig engineConfig;
+
+  Future<ProcessResult> run(
     String executable,
     List<String> arguments, {
     bool runInShell = false,
@@ -44,16 +48,16 @@ abstract class ShorebirdProcess {
 
     return processWrapper.run(
       useVendedFlutter ? _resolveExecutable(executable) : executable,
-      arguments,
+      useVendedFlutter ? _resolveArguments(executable, arguments) : arguments,
       runInShell: runInShell,
       workingDirectory: workingDirectory,
       environment: resolvedEnvironment,
     );
   }
 
-  static Future<Process> start(
+  Future<Process> start(
     String executable,
-    List<String> argument, {
+    List<String> arguments, {
     Map<String, String>? environment,
     bool runInShell = false,
     bool useVendedFlutter = true,
@@ -68,13 +72,13 @@ abstract class ShorebirdProcess {
 
     return processWrapper.start(
       useVendedFlutter ? _resolveExecutable(executable) : executable,
-      argument,
+      useVendedFlutter ? _resolveArguments(executable, arguments) : arguments,
       runInShell: runInShell,
       environment: resolvedEnvironment,
     );
   }
 
-  static String _resolveExecutable(String executable) {
+  String _resolveExecutable(String executable) {
     if (executable == 'flutter') {
       return ShorebirdEnvironment.flutterBinaryFile.path;
     }
@@ -82,7 +86,21 @@ abstract class ShorebirdProcess {
     return executable;
   }
 
-  static Map<String, String> _environmentOverrides({
+  List<String> _resolveArguments(
+    String executable,
+    List<String> arguments,
+  ) {
+    if (executable == 'flutter' && engineConfig.localEngine != null) {
+      return [
+        '--local-engine-src-path=${engineConfig.localEngineSrcPath}',
+        '--local-engine=${engineConfig.localEngine}',
+        ...arguments
+      ];
+    }
+    return arguments;
+  }
+
+  Map<String, String> _environmentOverrides({
     required String executable,
   }) {
     if (executable == 'flutter') {

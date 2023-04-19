@@ -1,9 +1,13 @@
 import 'dart:io';
 
 import 'package:collection/collection.dart';
+import 'package:mocktail/mocktail.dart';
 import 'package:path/path.dart' as p;
+import 'package:shorebird_cli/src/shorebird_process.dart';
 import 'package:shorebird_cli/src/validators/validators.dart';
 import 'package:test/test.dart';
+
+class _MockShorebirdProcess extends Mock implements ShorebirdProcess {}
 
 void main() {
   const manifestWithInternetPermission = '''
@@ -34,6 +38,12 @@ void main() {
 ''';
 
   group('AndroidInternetPermissionValidator', () {
+    late ShorebirdProcess shorebirdProcess;
+
+    setUp(() {
+      shorebirdProcess = _MockShorebirdProcess();
+    });
+
     Directory createTempDir() => Directory.systemTemp.createTempSync();
 
     void writeManifestToPath(String manifestContents, String path) {
@@ -57,7 +67,7 @@ void main() {
         );
 
         final results = await IOOverrides.runZoned(
-          () => AndroidInternetPermissionValidator().validate(),
+          () => AndroidInternetPermissionValidator().validate(shorebirdProcess),
           getCurrentDirectory: () => tempDirectory,
         );
 
@@ -66,7 +76,8 @@ void main() {
     );
 
     test('returns an error if no android project is found', () async {
-      final results = await AndroidInternetPermissionValidator().validate();
+      final results =
+          await AndroidInternetPermissionValidator().validate(shorebirdProcess);
 
       expect(results, hasLength(1));
       expect(results.first.severity, ValidationIssueSeverity.error);
@@ -80,7 +91,7 @@ void main() {
           .createSync(recursive: true);
 
       final results = await IOOverrides.runZoned(
-        () => AndroidInternetPermissionValidator().validate(),
+        () => AndroidInternetPermissionValidator().validate(shorebirdProcess),
         getCurrentDirectory: () => tempDirectory,
       );
 
@@ -133,7 +144,7 @@ void main() {
         );
 
         final results = await IOOverrides.runZoned(
-          () => AndroidInternetPermissionValidator().validate(),
+          () => AndroidInternetPermissionValidator().validate(shorebirdProcess),
           getCurrentDirectory: () => tempDirectory,
         );
 

@@ -1,6 +1,7 @@
 import 'dart:io';
 
 import 'package:path/path.dart' as p;
+import 'package:shorebird_cli/src/shorebird_process.dart';
 import 'package:shorebird_cli/src/validators/validators.dart';
 import 'package:xml/xml.dart';
 
@@ -16,7 +17,7 @@ class AndroidInternetPermissionValidator extends Validator {
   // coverage:ignore-end
 
   @override
-  Future<List<ValidationIssue>> validate() async {
+  Future<List<ValidationIssue>> validate(ShorebirdProcess process) async {
     const manifestFileName = 'AndroidManifest.xml';
     final androidSrcDir = Directory(
       p.join(

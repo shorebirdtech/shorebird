@@ -17,7 +17,6 @@ class BuildCommand extends ShorebirdCommand
       BuildApkCommand(
         auth: auth,
         logger: logger,
-        runProcess: runProcess,
         validators: validators,
       ),
     );
@@ -25,7 +24,6 @@ class BuildCommand extends ShorebirdCommand
       BuildAppBundleCommand(
         auth: auth,
         logger: logger,
-        runProcess: runProcess,
         validators: validators,
       ),
     );

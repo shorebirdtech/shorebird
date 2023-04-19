@@ -16,7 +16,8 @@ https://github.com/shorebirdtech/old_repo
 
 ## Getting Started
 
-Refer to [shorebird/install](https://github.com/shorebirdtech/install) for installation instructions.
+Refer to [shorebird/install](https://github.com/shorebirdtech/install) for
+installation instructions.
 
 ## Packages
 
@@ -47,17 +48,24 @@ We currently assume the Dart from the Flutter SDK on the 'stable' channel. Due
 to the way the Dart compiler works, Shorebird requires an exact version of
 Flutter/Dart to operate correctly today.
 
-We currently assume Rust 1.67.0 or later, although the code is unlikely to be
-sensitive to the exact version of Rust.
-
-Once both are installed, `./scripts/bootstrap.sh` will run `pub get`
-and `cargo check` for all packages in the repository.
+Once both are installed, `./scripts/bootstrap.sh` will run `pub get` all
+packages in the repository.
 
 ### Running tests
 
 We don't yet have a script to run tests locally. For now, you can run tests
-manually by running `cargo test` in a Rust package directory or `dart test` in
-a Dart package directory.
+manually by running `dart test` in a Dart package directory.
+
+### Tracking coverage
+
+The following command will generate a coverage report for the Dart packages:
+
+```bash
+dart test --coverage=coverage && dart pub global run coverage:format_coverage --lcov --in=coverage --out=coverage/lcov.info --packages=.dart_tool/package_config.json --check-ignore
+```
+
+We don't yet have a recommended way to view the coverage report but there are
+several extensions available in VSCode.
 
 ## License
 

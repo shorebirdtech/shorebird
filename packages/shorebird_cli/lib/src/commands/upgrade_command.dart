@@ -11,7 +11,7 @@ import 'package:shorebird_cli/src/shorebird_version_mixin.dart';
 /// {@endtemplate}
 class UpgradeCommand extends ShorebirdCommand with ShorebirdVersionMixin {
   /// {@macro upgrade_command}
-  UpgradeCommand({required super.logger, super.runProcess});
+  UpgradeCommand({required super.logger});
 
   @override
   String get description => 'Upgrade your copy of Shorebird.';
