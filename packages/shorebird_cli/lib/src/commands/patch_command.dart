@@ -125,7 +125,7 @@ class PatchCommand extends ShorebirdCommand
 
     final buildProgress = logger.progress('Building patch');
     try {
-      await buildRelease();
+      await buildAppBundle();
       buildProgress.complete();
     } on ProcessException catch (error) {
       buildProgress.fail('Failed to build: ${error.message}');

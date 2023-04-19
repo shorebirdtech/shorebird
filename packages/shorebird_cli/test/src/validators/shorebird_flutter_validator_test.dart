@@ -167,8 +167,9 @@ Tools • Dart 2.19.6 • DevTools 2.20.1
         expect(results.first.severity, ValidationIssueSeverity.warning);
         expect(
           results.first.message,
-          contains('Shorebird Flutter and the Flutter on your path are'
-              ' different versions'),
+          contains(
+            'The version of Flutter that Shorebird includes and the Flutter on your path are different',
+          ),
         );
       },
     );
