@@ -40,11 +40,15 @@ class BuildAppBundleCommand extends ShorebirdCommand
     final buildProgress = logger.progress('Building appbundle');
     try {
       await buildAppBundle();
-      buildProgress.complete();
     } on ProcessException catch (error) {
       buildProgress.fail('Failed to build: ${error.message}');
       return ExitCode.software.code;
     }
+
+    buildProgress.complete();
+    logger.info('''
+📦 Generated an app bundle at:
+${lightCyan.wrap("./build/app/outputs/bundle/release/app-release.aab")}''');
 
     return ExitCode.success.code;
   }
