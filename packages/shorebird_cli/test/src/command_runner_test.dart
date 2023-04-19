@@ -5,7 +5,7 @@ import 'package:cli_completion/cli_completion.dart';
 import 'package:mason_logger/mason_logger.dart';
 import 'package:mocktail/mocktail.dart';
 import 'package:shorebird_cli/src/command_runner.dart';
-import 'package:shorebird_cli/src/engine_revision.dart';
+import 'package:shorebird_cli/src/shorebird_environment.dart';
 import 'package:shorebird_cli/src/version.dart';
 import 'package:test/test.dart';
 
@@ -22,6 +22,7 @@ void main() {
     setUp(() {
       logger = _MockLogger();
 
+      ShorebirdEnvironment.shorebirdEngineRevision = 'test-revision';
       processResult = _MockProcessResult();
       when(() => processResult.exitCode).thenReturn(ExitCode.success.code);
       commandRunner = ShorebirdCliCommandRunner(logger: logger);
@@ -72,7 +73,7 @@ void main() {
           () => logger.info(
             '''
 Shorebird $packageVersion
-Shorebird Engine • revision $shorebirdEngineRevision''',
+Shorebird Engine • revision ${ShorebirdEnvironment.shorebirdEngineRevision}''',
           ),
         ).called(1);
       });

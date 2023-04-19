@@ -5,7 +5,6 @@ import 'package:archive/archive_io.dart';
 import 'package:http/http.dart' as http;
 import 'package:path/path.dart' as p;
 import 'package:platform/platform.dart';
-import 'package:shorebird_cli/src/engine_revision.dart';
 import 'package:shorebird_cli/src/shorebird_environment.dart';
 
 typedef ArchiveExtracter = Future<void> Function(
@@ -137,6 +136,6 @@ class PatchArtifact extends CachedArtifact {
       artifactName += 'windows-x64.zip';
     }
 
-    return 'shorebird/$shorebirdEngineRevision/$artifactName';
+    return 'shorebird/${ShorebirdEnvironment.shorebirdEngineRevision}/$artifactName';
   }
 }

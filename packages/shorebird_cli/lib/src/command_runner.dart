@@ -3,7 +3,7 @@ import 'package:args/command_runner.dart';
 import 'package:cli_completion/cli_completion.dart';
 import 'package:mason_logger/mason_logger.dart';
 import 'package:shorebird_cli/src/commands/commands.dart';
-import 'package:shorebird_cli/src/engine_revision.dart';
+import 'package:shorebird_cli/src/shorebird_environment.dart';
 import 'package:shorebird_cli/src/version.dart';
 
 const executableName = 'shorebird';
@@ -99,7 +99,7 @@ class ShorebirdCliCommandRunner extends CompletionCommandRunner<int> {
       _logger.info(
         '''
 Shorebird $packageVersion
-Shorebird Engine • revision $shorebirdEngineRevision''',
+Shorebird Engine • revision ${ShorebirdEnvironment.shorebirdEngineRevision}''',
       );
       exitCode = ExitCode.success.code;
     } else {

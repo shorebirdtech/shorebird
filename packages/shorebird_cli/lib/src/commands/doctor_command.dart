@@ -1,6 +1,7 @@
 import 'package:collection/collection.dart';
 import 'package:mason_logger/mason_logger.dart';
 import 'package:shorebird_cli/src/command.dart';
+import 'package:shorebird_cli/src/shorebird_environment.dart';
 import 'package:shorebird_cli/src/shorebird_version_mixin.dart';
 import 'package:shorebird_cli/src/validators/validators.dart';
 import 'package:shorebird_cli/src/version.dart';
@@ -40,7 +41,7 @@ class DoctorCommand extends ShorebirdCommand with ShorebirdVersionMixin {
     logger.info('''
 
 Shorebird v$packageVersion
-''');
+Shorebird Engine • revision ${ShorebirdEnvironment.shorebirdEngineRevision}''');
 
     var numIssues = 0;
     for (final validator in validators) {

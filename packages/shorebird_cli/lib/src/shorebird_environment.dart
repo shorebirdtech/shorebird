@@ -17,6 +17,34 @@ abstract class ShorebirdEnvironment {
   static Directory get shorebirdRoot =>
       File(platform.script.toFilePath()).parent.parent.parent;
 
+  static String get shorebirdEngineRevision {
+    return _shorebirdEngineRevision ??
+        File(
+          p.join(flutterDirectory.path, 'bin', 'internal', 'engine.version'),
+        ).readAsStringSync();
+  }
+
+  static String? _shorebirdEngineRevision;
+
+  @visibleForTesting
+  static set shorebirdEngineRevision(String revision) {
+    _shorebirdEngineRevision = revision;
+  }
+
+  static String? _flutterRevision;
+
+  @visibleForTesting
+  static set flutterRevision(String revision) {
+    _flutterRevision = revision;
+  }
+
+  static String get flutterRevision {
+    return _flutterRevision ??
+        File(
+          p.join(shorebirdRoot.path, 'bin', 'internal', 'flutter.version'),
+        ).readAsStringSync();
+  }
+
   /// The root of the Shorebird-vended Flutter git checkout.
   static Directory get flutterDirectory => Directory(
         p.join(
