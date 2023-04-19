@@ -60,9 +60,6 @@ void main() {
           any(),
           any(),
           runInShell: any(named: 'runInShell'),
-          environment: any(named: 'environment'),
-          workingDirectory: any(named: 'workingDirectory'),
-          useVendedFlutter: any(named: 'useVendedFlutter'),
         ),
       ).thenAnswer((_) async => processResult);
       when(() => argResults.rest).thenReturn([]);
