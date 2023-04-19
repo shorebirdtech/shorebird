@@ -15,12 +15,10 @@ class _MockPlatform extends Mock implements Platform {}
 void main() {
   group('ShorebirdFlutterValidator', () {
     const flutterRevision = '45fc514f1a9c347a3af76b02baf980a4d88b7879';
-    const gitStatusMessage = """
-On branch stable
-Your branch is up to date with 'origin/stable'.
-
+    const gitStatusMessage = '''
+HEAD detached at 45fc514f
 nothing to commit, working tree clean
-""";
+''';
 
     const gitRevParseHeadMessage = '''
 $flutterRevision
