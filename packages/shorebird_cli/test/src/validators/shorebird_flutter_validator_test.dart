@@ -14,6 +14,7 @@ class _MockPlatform extends Mock implements Platform {}
 
 void main() {
   group('ShorebirdFlutterValidator', () {
+    const flutterRevision = '45fc514f1a9c347a3af76b02baf980a4d88b7879';
     const gitStatusMessage = """
 On branch stable
 Your branch is up to date with 'origin/stable'.
@@ -21,9 +22,8 @@ Your branch is up to date with 'origin/stable'.
 nothing to commit, working tree clean
 """;
 
-    const gitBranchMessage = '''
-  main
-* stable
+    const gitRevParseHeadMessage = '''
+$flutterRevision
 ''';
 
     const pathFlutterVersionMessage = '''
@@ -44,7 +44,7 @@ Tools • Dart 2.19.6 • DevTools 2.20.1
     late Directory tempDir;
     late ProcessResult pathFlutterVersionProcessResult;
     late ProcessResult shorebirdFlutterVersionProcessResult;
-    late ProcessResult gitBranchProcessResult;
+    late ProcessResult gitRevParseHeadProcessResult;
     late ProcessResult gitStatusProcessResult;
 
     Directory flutterDirectory(Directory root) =>
@@ -64,13 +64,14 @@ Tools • Dart 2.19.6 • DevTools 2.20.1
       tempDir = setupTempDirectory();
 
       ShorebirdEnvironment.platform = _MockPlatform();
+      ShorebirdEnvironment.flutterRevision = flutterRevision;
       when(() => ShorebirdEnvironment.platform.script)
           .thenReturn(shorebirdScriptFile(tempDir).uri);
       when(() => ShorebirdEnvironment.platform.environment).thenReturn({});
 
       pathFlutterVersionProcessResult = _MockProcessResult();
       shorebirdFlutterVersionProcessResult = _MockProcessResult();
-      gitBranchProcessResult = _MockProcessResult();
+      gitRevParseHeadProcessResult = _MockProcessResult();
       gitStatusProcessResult = _MockProcessResult();
 
       validator = ShorebirdFlutterValidator(
@@ -85,8 +86,8 @@ Tools • Dart 2.19.6 • DevTools 2.20.1
           if (executable == 'git') {
             if (arguments.equals(['status'])) {
               return gitStatusProcessResult;
-            } else if (arguments.equals(['--no-pager', 'branch'])) {
-              return gitBranchProcessResult;
+            } else if (arguments.equals(['rev-parse', 'HEAD'])) {
+              return gitRevParseHeadProcessResult;
             }
           } else if (executable == 'flutter') {
             if (arguments.equals(['--version'])) {
@@ -109,7 +110,8 @@ Tools • Dart 2.19.6 • DevTools 2.20.1
           .thenReturn(shorebirdFlutterVersionMessage);
       when(() => shorebirdFlutterVersionProcessResult.stderr).thenReturn('');
       when(() => shorebirdFlutterVersionProcessResult.exitCode).thenReturn(0);
-      when(() => gitBranchProcessResult.stdout).thenReturn(gitBranchMessage);
+      when(() => gitRevParseHeadProcessResult.stdout)
+          .thenReturn(gitRevParseHeadMessage);
       when(() => gitStatusProcessResult.stdout).thenReturn(gitStatusMessage);
     });
 
@@ -141,16 +143,15 @@ Tools • Dart 2.19.6 • DevTools 2.20.1
     });
 
     test('warns when Flutter does not track stable', () async {
-      when(() => gitBranchProcessResult.stdout).thenReturn('''
-* main
-  stable
+      when(() => gitRevParseHeadProcessResult.stdout).thenReturn('''
+62bd79521d
 ''');
 
       final results = await validator.validate();
 
       expect(results, hasLength(1));
       expect(results.first.severity, ValidationIssueSeverity.warning);
-      expect(results.first.message, contains('is not on the "stable" branch'));
+      expect(results.first.message, contains('is not on the correct revision'));
     });
 
     test(

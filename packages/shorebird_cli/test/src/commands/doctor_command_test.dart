@@ -1,6 +1,7 @@
 import 'package:mason_logger/mason_logger.dart';
 import 'package:mocktail/mocktail.dart';
 import 'package:shorebird_cli/src/commands/commands.dart';
+import 'package:shorebird_cli/src/shorebird_environment.dart';
 import 'package:shorebird_cli/src/validators/validators.dart';
 import 'package:test/test.dart';
 
@@ -29,6 +30,8 @@ void main() {
     setUp(() {
       logger = _MockLogger();
       progress = _MockProgress();
+
+      ShorebirdEnvironment.shorebirdEngineRevision = 'test-revision';
 
       when(() => logger.progress(any())).thenReturn(progress);
       when(() => logger.info(any())).thenReturn(null);

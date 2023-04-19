@@ -45,10 +45,9 @@ class ShorebirdFlutterValidator extends Validator {
       );
     }
 
-    if (!await _flutterDirectoryTracksStable()) {
+    if (!await _flutterDirectoryTracksCorrectRevision()) {
       final message =
-          '${ShorebirdEnvironment.flutterDirectory} is not on the "stable" '
-          'branch';
+          '''${ShorebirdEnvironment.flutterDirectory} is not on the correct revision''';
       issues.add(
         ValidationIssue(
           severity: ValidationIssueSeverity.warning,
@@ -102,13 +101,15 @@ This can cause unexpected behavior if the version gap is wide. If you're seeing 
         .contains('nothing to commit, working tree clean');
   }
 
-  Future<bool> _flutterDirectoryTracksStable() async {
+  Future<bool> _flutterDirectoryTracksCorrectRevision() async {
     final result = await runProcess(
       'git',
-      ['--no-pager', 'branch'],
+      ['rev-parse', 'HEAD'],
       workingDirectory: ShorebirdEnvironment.flutterDirectory.path,
     );
-    return result.stdout.toString().contains('* stable');
+    return result.stdout
+        .toString()
+        .contains(ShorebirdEnvironment.flutterRevision);
   }
 
   Future<String> _shorebirdFlutterVersion() => _getFlutterVersion(

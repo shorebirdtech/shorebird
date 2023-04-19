@@ -17,6 +17,8 @@ function update_flutter {
   fi
   # -c to avoid printing a warning about being in a detached head state.
   git -C "$FLUTTER_PATH" -c advice.detachedHead=false checkout "$FLUTTER_VERSION"
+  SHOREBIRD_ENGINE_VERSION=`cat "$FLUTTER_PATH/bin/internal/engine.version"`
+  echo "Shorebird Engine • revision $SHOREBIRD_ENGINE_VERSION"
   # Install Shorebird Flutter Artifacts
   FLUTTER_STORAGE_BASE_URL=https://download.shorebird.dev/ $FLUTTER_PATH/bin/flutter --version  
 }
