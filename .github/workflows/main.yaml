@@ -18,7 +18,6 @@ jobs:
 
     outputs:
       needs_dart_build: ${{ steps.needs_dart_build.outputs.changes }}
-      needs_rust_build: ${{ steps.needs_rust_build.outputs.changes }}
       needs_verify: ${{ steps.needs_verify.outputs.changes }}
 
     name: 👀 Detect Changes
@@ -57,16 +56,6 @@ jobs:
               - packages/jwt/**
 
       - uses: dorny/paths-filter@v2
-        name: Build Detection
-        id: needs_rust_build
-        with:
-          filters: |
-            updater:
-              - ./.github/workflows/main.yaml
-              - ./.github/actions/rust
-              - updater/**
-
-      - uses: dorny/paths-filter@v2
         name: Verify Detection
         id: needs_verify
         with:
@@ -97,27 +86,6 @@ jobs:
         with:
           working_directory: packages/${{ matrix.package }}
 
-  build_rust_crates:
-    needs: changes
-    if: ${{ needs.changes.outputs.needs_rust_build != '[]' }}
-
-    strategy:
-      matrix:
-        crate: ${{ fromJSON(needs.changes.outputs.needs_rust_build) }}
-
-    runs-on: ubuntu-latest
-
-    name: 🦀 Build ${{ matrix.crate }}
-
-    steps:
-      - name: 📚 Git Checkout
-        uses: actions/checkout@v3
-
-      - name: 🦀 Build ${{ matrix.package }}
-        uses: ./.github/actions/rust_crate
-        with:
-          working_directory: ${{ matrix.crate }}
-
   verify_packages:
     needs: changes
     if: ${{ needs.changes.outputs.needs_verify != '[]' }}
@@ -140,13 +108,7 @@ jobs:
           working_directory: packages/${{ matrix.package }}
 
   ci:
-    needs:
-      [
-        semantic_pull_request,
-        build_dart_packages,
-        build_rust_crates,
-        verify_packages,
-      ]
+    needs: [semantic_pull_request, build_dart_packages, verify_packages]
     if: ${{ always() }}
 
     runs-on: ubuntu-latest
