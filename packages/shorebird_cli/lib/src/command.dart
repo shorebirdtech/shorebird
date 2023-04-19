@@ -31,13 +31,6 @@ List<Validator> _defaultValidators() => [
       AndroidInternetPermissionValidator(),
     ];
 
-class Context {
-  Context({
-    required this.process,
-  });
-  ShorebirdProcess process;
-}
-
 abstract class ShorebirdCommand extends Command<int> {
   ShorebirdCommand({
     required this.logger,
@@ -54,8 +47,6 @@ abstract class ShorebirdCommand extends Command<int> {
   final Cache cache;
   final CodePushClientBuilder buildCodePushClient;
   final Logger logger;
-  // Context is set by the command runner just before run() is called.
-  late final Context context;
 
   @override
   ShorebirdCliCommandRunner? get runner =>
