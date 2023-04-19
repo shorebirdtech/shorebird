@@ -44,7 +44,7 @@ class ShorebirdFlutterValidator extends Validator {
       );
     }
 
-    if (!await _flutterDirectoryTracksCorrectRevision()) {
+    if (!await _flutterDirectoryTracksCorrectRevision(process)) {
       final message =
           '''${ShorebirdEnvironment.flutterDirectory} is not on the correct revision''';
       issues.add(

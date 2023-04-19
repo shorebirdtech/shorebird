@@ -77,10 +77,20 @@ Tools • Dart 2.19.6 • DevTools 2.20.1
       shorebirdProcess = _MockShorebirdProcess();
 
       validator = ShorebirdFlutterValidator();
-      when(() => shorebirdProcess.run('git', ['rev-parse', 'HEAD']))
-          .thenAnswer((_) async => gitRevParseHeadProcessResult);
-      when(() => shorebirdProcess.run('git', ['status']))
-          .thenAnswer((_) async => gitStatusProcessResult);
+      when(
+        () => shorebirdProcess.run(
+          'git',
+          ['rev-parse', 'HEAD'],
+          workingDirectory: any(named: 'workingDirectory'),
+        ),
+      ).thenAnswer((_) async => gitRevParseHeadProcessResult);
+      when(
+        () => shorebirdProcess.run(
+          'git',
+          ['status'],
+          workingDirectory: any(named: 'workingDirectory'),
+        ),
+      ).thenAnswer((_) async => gitStatusProcessResult);
       when(() => shorebirdProcess.run('flutter', ['--version']))
           .thenAnswer((_) async => shorebirdFlutterVersionProcessResult);
       when(
