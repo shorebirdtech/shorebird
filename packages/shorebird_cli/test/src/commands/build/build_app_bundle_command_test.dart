@@ -121,7 +121,15 @@ void main() {
         () => shorebirdProcess.run(
           'flutter',
           ['build', 'appbundle', '--release'],
-          runInShell: any(named: 'runInShell'),
+          runInShell: true,
+        ),
+      ).called(1);
+
+      verify(
+        () => logger.info(
+          '''
+📦 Generated an app bundle at:
+${lightCyan.wrap("./build/app/outputs/bundle/release/app-release.aab")}''',
         ),
       ).called(1);
     });
