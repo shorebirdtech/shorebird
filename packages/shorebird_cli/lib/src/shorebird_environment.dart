@@ -19,9 +19,9 @@ abstract class ShorebirdEnvironment {
 
   static String get shorebirdEngineRevision {
     return _shorebirdEngineRevision ??
-        File(
-          p.join(flutterDirectory.path, 'bin', 'internal', 'engine.version'),
-        ).readAsStringSync();
+        File(p.join(flutterDirectory.path, 'bin', 'internal', 'engine.version'))
+            .readAsStringSync()
+            .trim();
   }
 
   static String? _shorebirdEngineRevision;
