@@ -42,7 +42,9 @@ void main() {
         () => logger.info('You are already logged in as <$email>.'),
       ).called(1);
       verify(
-        () => logger.info("Run 'shorebird logout' to log out and try again."),
+        () => logger.info(
+          "Run ${lightCyan.wrap('shorebird logout')} to log out and try again.",
+        ),
       ).called(1);
     });
 
