@@ -116,11 +116,19 @@ void main() {
       );
 
       expect(result, equals(ExitCode.success.code));
+
       verify(
         () => shorebirdProcess.run(
           'flutter',
           ['build', 'apk', '--release'],
-          runInShell: any(named: 'runInShell'),
+          runInShell: true,
+        ),
+      ).called(1);
+      verify(
+        () => logger.info(
+          '''
+📦 Generated an apk at:
+${lightCyan.wrap("./build/app/outputs/apk/release/app-release.apk")}''',
         ),
       ).called(1);
     });
