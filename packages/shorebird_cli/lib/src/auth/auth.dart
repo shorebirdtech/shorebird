@@ -263,6 +263,6 @@ class UserAlreadyExistsException implements Exception {
   /// {@macro user_already_exists_exception}
   UserAlreadyExistsException(this.user);
 
-  /// The extant user.
+  /// The existing user.
   final User user;
 }
