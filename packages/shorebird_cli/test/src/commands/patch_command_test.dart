@@ -40,7 +40,7 @@ class _MockShorebirdProcess extends Mock implements ShorebirdProcess {}
 void main() {
   group('patch', () {
     const appId = 'test-app-id';
-    const version = '1.2.3';
+    const version = '1.2.3+1';
     const arch = 'aarch64';
     const platform = 'android';
     const channelName = 'stable';
@@ -68,7 +68,7 @@ void main() {
       id: 0,
       appId: appId,
       version: version,
-      displayName: '1.2.3',
+      displayName: '1.2.3+1',
     );
     const patch = Patch(id: 0, number: 1);
     const channel = Channel(id: 0, appId: appId, name: channelName);
@@ -329,9 +329,6 @@ Did you forget to run "shorebird init"?''',
 
     test('aborts when user opts out', () async {
       when(() => logger.confirm(any())).thenReturn(false);
-      when(
-        () => logger.prompt(any(), defaultValue: any(named: 'defaultValue')),
-      ).thenReturn(appDisplayName);
       final tempDir = setUpTempDir();
       setUpTempArtifacts(tempDir);
       final exitCode = await IOOverrides.runZoned(

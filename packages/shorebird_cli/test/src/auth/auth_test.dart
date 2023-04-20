@@ -1,8 +1,10 @@
+import 'dart:convert';
 import 'dart:io';
 
 import 'package:googleapis_auth/googleapis_auth.dart';
 import 'package:http/http.dart' as http;
 import 'package:mocktail/mocktail.dart';
+import 'package:path/path.dart' as p;
 import 'package:shorebird_cli/src/auth/auth.dart';
 import 'package:shorebird_code_push_client/shorebird_code_push_client.dart';
 import 'package:test/test.dart';
@@ -18,6 +20,7 @@ void main() {
     const idToken =
         '''eyJhbGciOiJSUzI1NiIsImN0eSI6IkpXVCJ9.eyJlbWFpbCI6InRlc3RAZW1haWwuY29tIn0.pD47BhF3MBLyIpfsgWCzP9twzC1HJxGukpcR36DqT6yfiOMHTLcjDbCjRLAnklWEHiT0BQTKTfhs8IousU90Fm5bVKObudfKu8pP5iZZ6Ls4ohDjTrXky9j3eZpZjwv8CnttBVgRfMJG-7YASTFRYFcOLUpnb4Zm5R6QdoCDUYg''';
     const email = 'test@email.com';
+    const name = 'Jane Doe';
     const user = User(id: 42, email: email);
     const refreshToken = '';
     const scopes = <String>[];
@@ -54,6 +57,11 @@ void main() {
           return accessCredentials;
         },
       );
+    }
+
+    void writeCredentials() {
+      File(p.join(credentialsDir, 'credentials.json'))
+          .writeAsStringSync(jsonEncode(accessCredentials.toJson()));
     }
 
     setUp(() {
@@ -176,10 +184,101 @@ void main() {
         expect(buildAuth().isAuthenticated, isTrue);
       });
 
+      test('throws UserAlreadyLoggedInException if user is authenticated',
+          () async {
+        writeCredentials();
+        auth = buildAuth();
+
+        await expectLater(
+          auth.login((_) {}),
+          throwsA(isA<UserAlreadyLoggedInException>()),
+        );
+
+        expect(auth.email, isNotNull);
+        expect(auth.isAuthenticated, isTrue);
+      });
+
       test('should not set the email when user does not exist', () async {
-        const exception = CodePushException(message: 'oops');
-        when(() => codePushClient.getCurrentUser()).thenThrow(exception);
-        await expectLater(auth.login((_) {}), throwsA(exception));
+        when(() => codePushClient.getCurrentUser())
+            .thenAnswer((_) async => null);
+
+        await expectLater(
+          auth.login((_) {}),
+          throwsA(isA<UserNotFoundException>()),
+        );
+
+        expect(auth.email, isNull);
+        expect(auth.isAuthenticated, isFalse);
+      });
+    });
+
+    group('signUp', () {
+      test(
+          'should set the email when claims are valid and user is successfully '
+          'created', () async {
+        when(() => codePushClient.getCurrentUser())
+            .thenAnswer((_) async => null);
+        when(() => codePushClient.createUser(name: any(named: 'name')))
+            .thenAnswer((_) async => user);
+
+        final newUser = await auth.signUp(
+          authPrompt: (_) {},
+          namePrompt: () => name,
+        );
+        expect(user, newUser);
+        expect(auth.email, email);
+        expect(auth.isAuthenticated, isTrue);
+        expect(buildAuth().email, email);
+        expect(buildAuth().isAuthenticated, isTrue);
+      });
+
+      test('throws UserAlreadyLoggedInException if user is authenticated',
+          () async {
+        writeCredentials();
+        auth = buildAuth();
+
+        await expectLater(
+          auth.signUp(
+            authPrompt: (_) {},
+            namePrompt: () => name,
+          ),
+          throwsA(isA<UserAlreadyLoggedInException>()),
+        );
+
+        expect(auth.email, isNotNull);
+        expect(auth.isAuthenticated, isTrue);
+      });
+
+      test('throws UserAlreadyExistsException if user already exists',
+          () async {
+        when(() => codePushClient.getCurrentUser())
+            .thenAnswer((_) async => user);
+
+        await expectLater(
+          auth.signUp(
+            authPrompt: (_) {},
+            namePrompt: () => name,
+          ),
+          throwsA(isA<UserAlreadyExistsException>()),
+        );
+        verifyNever(() => codePushClient.createUser(name: any(named: 'name')));
+        expect(auth.email, isNull);
+        expect(auth.isAuthenticated, isFalse);
+      });
+
+      test('throws exception if createUser fails', () async {
+        when(() => codePushClient.getCurrentUser())
+            .thenAnswer((_) async => null);
+        when(() => codePushClient.createUser(name: any(named: 'name')))
+            .thenThrow(Exception('oh no!'));
+
+        await expectLater(
+          auth.signUp(
+            authPrompt: (_) {},
+            namePrompt: () => name,
+          ),
+          throwsA(isA<Exception>()),
+        );
         expect(auth.email, isNull);
         expect(auth.isAuthenticated, isFalse);
       });

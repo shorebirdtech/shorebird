@@ -60,13 +60,10 @@ void main() {
         uri = Uri.parse('${codePushClient.hostedUri}/api/v1/users/me');
       });
 
-      test('throws UserNotFoundException if reponse is a 404', () async {
+      test('returns null if reponse is a 404', () async {
         when(() => httpClient.get(uri))
             .thenAnswer((_) async => http.Response('', HttpStatus.notFound));
-        expect(
-          codePushClient.getCurrentUser(),
-          throwsA(isA<UserNotFoundException>()),
-        );
+        expect(await codePushClient.getCurrentUser(), isNull);
       });
 
       test('throws exception if the http request fails', () {
@@ -90,10 +87,11 @@ void main() {
           (_) async => http.Response(jsonEncode(user.toJson()), HttpStatus.ok),
         );
 
-        final repsonseUser = await codePushClient.getCurrentUser();
-        expect(repsonseUser.id, user.id);
-        expect(repsonseUser.email, user.email);
-        expect(repsonseUser.hasActiveSubscription, user.hasActiveSubscription);
+        final responseUser = await codePushClient.getCurrentUser();
+        expect(responseUser, isNotNull);
+        expect(responseUser!.id, user.id);
+        expect(responseUser.email, user.email);
+        expect(responseUser.hasActiveSubscription, user.hasActiveSubscription);
       });
     });
 
@@ -621,49 +619,6 @@ void main() {
         expect(
           uri,
           codePushClient.hostedUri.replace(path: '/api/v1/patches'),
-        );
-      });
-    });
-
-    group('createPaymentLink', () {
-      test('throws an exception if the http request fails', () {
-        when(
-          () => httpClient.post(
-            any(),
-            headers: any(named: 'headers'),
-          ),
-        ).thenAnswer((_) async => http.Response('', HttpStatus.badRequest));
-
-        expect(
-          codePushClient.createPaymentLink(),
-          throwsA(
-            isA<CodePushException>().having(
-              (e) => e.message,
-              'message',
-              CodePushClient.unknownErrorMessage,
-            ),
-          ),
-        );
-      });
-
-      test('returns a payment link if the http request succeeds', () {
-        final link = Uri.parse('http://test.com');
-
-        when(
-          () => httpClient.post(
-            any(),
-            headers: any(named: 'headers'),
-          ),
-        ).thenAnswer(
-          (_) async => http.Response(
-            jsonEncode(CreatePaymentLinkResponse(paymentLink: link).toJson()),
-            HttpStatus.ok,
-          ),
-        );
-
-        expect(
-          codePushClient.createPaymentLink(),
-          completion(link),
         );
       });
     });
