@@ -183,6 +183,16 @@ void main() {
         expect(auth.email, isNull);
         expect(auth.isAuthenticated, isFalse);
       });
+
+      test(
+        'does not fetch current user if verifyEmail is false',
+        () async {
+          await auth.login((_) {}, verifyEmail: false);
+          verifyNever(() => codePushClient.getCurrentUser());
+          expect(buildAuth().email, email);
+          expect(buildAuth().isAuthenticated, isTrue);
+        },
+      );
     });
 
     group('logout', () {

@@ -111,7 +111,13 @@ class Auth {
     );
   }
 
-  Future<void> login(void Function(String) prompt) async {
+  /// Logs the string returned by [prompt] to the console and obtains auth
+  /// credentials. If [verifyEmail] is true, check that there is a Shorebird
+  /// user with the same email address as the newly-authenticated user.
+  Future<void> login(
+    void Function(String) prompt, {
+    bool verifyEmail = true,
+  }) async {
     if (_credentials != null) return;
 
     final client = http.Client();
@@ -123,11 +129,22 @@ class Auth {
         prompt,
       );
 
-      final codePushClient = _buildCodePushClient(httpClient: this.client);
+      if (_credentials?.email == null) {
+        throw Exception('Failed to obtain access credentials.');
+      }
 
-      final user = await codePushClient.getCurrentUser();
+      if (verifyEmail) {
+        final codePushClient = _buildCodePushClient(httpClient: this.client);
+        final user = await codePushClient.getCurrentUser();
+        if (user.email != _credentials!.email) {
+          throw Exception(
+            'The email address of the authenticated user does not match the '
+            'email address of the user in the Shorebird database.',
+          );
+        }
+      }
 
-      _email = user.email;
+      _email = _credentials!.email;
       _flushCredentials(_credentials!);
     } finally {
       client.close();

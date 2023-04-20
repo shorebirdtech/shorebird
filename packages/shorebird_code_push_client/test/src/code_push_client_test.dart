@@ -60,6 +60,15 @@ void main() {
         uri = Uri.parse('${codePushClient.hostedUri}/api/v1/users/me');
       });
 
+      test('throws UserNotFoundException if reponse is a 404', () async {
+        when(() => httpClient.get(uri))
+            .thenAnswer((_) async => http.Response('', HttpStatus.notFound));
+        expect(
+          codePushClient.getCurrentUser(),
+          throwsA(isA<UserNotFoundException>()),
+        );
+      });
+
       test('throws exception if the http request fails', () {
         when(() => httpClient.get(uri))
             .thenAnswer((_) async => http.Response('', HttpStatus.badRequest));
@@ -616,6 +625,49 @@ void main() {
       });
     });
 
+    group('createPaymentLink', () {
+      test('throws an exception if the http request fails', () {
+        when(
+          () => httpClient.post(
+            any(),
+            headers: any(named: 'headers'),
+          ),
+        ).thenAnswer((_) async => http.Response('', HttpStatus.badRequest));
+
+        expect(
+          codePushClient.createPaymentLink(),
+          throwsA(
+            isA<CodePushException>().having(
+              (e) => e.message,
+              'message',
+              CodePushClient.unknownErrorMessage,
+            ),
+          ),
+        );
+      });
+
+      test('returns a payment link if the http request succeeds', () {
+        final link = Uri.parse('http://test.com');
+
+        when(
+          () => httpClient.post(
+            any(),
+            headers: any(named: 'headers'),
+          ),
+        ).thenAnswer(
+          (_) async => http.Response(
+            jsonEncode(CreatePaymentLinkResponse(paymentLink: link).toJson()),
+            HttpStatus.ok,
+          ),
+        );
+
+        expect(
+          codePushClient.createPaymentLink(),
+          completion(link),
+        );
+      });
+    });
+
     group('createRelease', () {
       const version = '1.0.0';
       test('throws an exception if the http request fails (unknown)', () async {
@@ -724,6 +776,57 @@ void main() {
           uri,
           codePushClient.hostedUri.replace(path: '/api/v1/releases'),
         );
+      });
+    });
+
+    group('createUser', () {
+      const userName = 'Jane Doe';
+      final user = User(
+        id: 1,
+        email: 'tester@shorebird.dev',
+        displayName: userName,
+      );
+
+      test('throws an exception if the http request fails', () {
+        when(
+          () => httpClient.post(
+            any(),
+            headers: any(named: 'headers'),
+            body: any(named: 'body'),
+          ),
+        ).thenAnswer(
+          (_) async => http.Response('', HttpStatus.failedDependency),
+        );
+
+        expect(
+          codePushClient.createUser(name: userName),
+          throwsA(
+            isA<CodePushException>().having(
+              (e) => e.message,
+              'message',
+              CodePushClient.unknownErrorMessage,
+            ),
+          ),
+        );
+      });
+
+      test('returns a User when the http request succeeds', () async {
+        when(
+          () => httpClient.post(
+            any(),
+            headers: any(named: 'headers'),
+            body: any(named: 'body'),
+          ),
+        ).thenAnswer(
+          (_) async => http.Response(
+            jsonEncode(user.toJson()),
+            HttpStatus.created,
+          ),
+        );
+
+        final result = await codePushClient.createUser(name: userName);
+
+        expect(result.toJson(), user.toJson());
       });
     });
 

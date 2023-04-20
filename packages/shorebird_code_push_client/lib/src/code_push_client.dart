@@ -21,6 +21,14 @@ class CodePushException implements Exception {
   String toString() => '$message${details != null ? '\n$details' : ''}';
 }
 
+/// {@template user_not_found_exception}o
+/// Thrown when an attempt to fetch a User object results in a 404.
+/// {@endtemplate}
+class UserNotFoundException implements Exception {
+  /// {@macro user_not_found_exception}
+  UserNotFoundException();
+}
+
 /// {@template code_push_client}
 /// Dart client for the Shorebird CodePush API.
 /// {@endtemplate}
@@ -45,7 +53,9 @@ class CodePushClient {
     final uri = Uri.parse('$hostedUri/api/v1/users/me');
     final response = await _httpClient.get(uri);
 
-    if (response.statusCode != HttpStatus.ok) {
+    if (response.statusCode == HttpStatus.notFound) {
+      throw UserNotFoundException();
+    } else if (response.statusCode != HttpStatus.ok) {
       throw _parseErrorResponse(response.body);
     }
 
@@ -156,6 +166,21 @@ class CodePushClient {
     return Patch.fromJson(body);
   }
 
+  /// Generates a Stripe payment link for the current user.
+  Future<Uri> createPaymentLink() async {
+    final response = await _httpClient.post(
+      Uri.parse('$hostedUri/api/v1/subscriptions/payment_link'),
+    );
+
+    if (response.statusCode != HttpStatus.ok) {
+      throw _parseErrorResponse(response.body);
+    }
+
+    return CreatePaymentLinkResponse.fromJson(
+      json.decode(response.body) as Json,
+    ).paymentLink;
+  }
+
   /// Create a new release for the app with the provided [appId].
   Future<Release> createRelease({
     required String appId,
@@ -176,6 +201,25 @@ class CodePushClient {
     }
     final body = json.decode(response.body) as Map<String, dynamic>;
     return Release.fromJson(body);
+  }
+
+  /// Create a new Shorebird user with the provided [name].
+  ///
+  /// The email associated with the user's JWT will be used as the user's email.
+  Future<User> createUser({
+    required String name,
+  }) async {
+    final response = await _httpClient.post(
+      Uri.parse('$hostedUri/api/v1/users'),
+      body: jsonEncode(CreateUserRequest(name: name).toJson()),
+    );
+
+    if (response.statusCode != HttpStatus.created) {
+      throw _parseErrorResponse(response.body);
+    }
+
+    final body = json.decode(response.body) as Json;
+    return User.fromJson(body);
   }
 
   /// Delete the app with the provided [appId].

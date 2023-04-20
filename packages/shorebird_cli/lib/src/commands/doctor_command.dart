@@ -7,7 +7,6 @@ import 'package:shorebird_cli/src/validators/validators.dart';
 import 'package:shorebird_cli/src/version.dart';
 
 /// {@template doctor_command}
-///
 /// `shorebird doctor`
 /// A command that checks for potential issues with the current shorebird
 /// environment.

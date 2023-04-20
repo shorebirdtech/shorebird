@@ -1,8 +1,8 @@
 import 'package:mason_logger/mason_logger.dart';
 import 'package:shorebird_cli/src/command.dart';
+import 'package:shorebird_code_push_client/shorebird_code_push_client.dart';
 
 /// {@template login_command}
-///
 /// `shorebird login`
 /// Login as a new Shorebird user.
 /// {@endtemplate}
@@ -34,6 +34,13 @@ class LoginCommand extends ShorebirdCommand {
 🔑 Credentials are stored in ${lightCyan.wrap(auth.credentialsFilePath)}.
 🚪 To logout use: "${lightCyan.wrap('shorebird logout')}".''');
       return ExitCode.success.code;
+    } on UserNotFoundException {
+      logger.err(
+        """
+
+We don't recognize that email address. Run the `shorebird account create` command to create an account.""",
+      );
+      return ExitCode.software.code;
     } catch (error) {
       logger.err(error.toString());
       return ExitCode.software.code;
