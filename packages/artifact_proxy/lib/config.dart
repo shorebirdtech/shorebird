@@ -46,7 +46,7 @@ const flutter_3_7_12 = {
   'd470ae25d21f583abe128f7b838476afd5e45bde': _EngineMapping3_7(
     flutterEngineRevision: '1a65d409c7a1438a34d21b60bf30a6fd5db59314',
   ),
-}
+};
 
 /// Flutter 3.7.10
 const flutter_3_7_10 = {
