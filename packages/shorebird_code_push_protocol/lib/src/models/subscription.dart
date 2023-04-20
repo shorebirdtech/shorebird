@@ -4,7 +4,7 @@ import 'package:shorebird_code_push_protocol/shorebird_code_push_protocol.dart';
 part 'subscription.g.dart';
 
 /// {@template subscription}
-/// TODO
+/// A user's Shorebird subscription.
 /// {@endtemplate}
 @JsonSerializable()
 class Subscription {

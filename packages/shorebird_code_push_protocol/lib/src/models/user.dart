@@ -33,7 +33,6 @@ class User {
   final String? displayName;
 
   /// Whether the user is currently a paying customer.
-  /// TODO(bryanoltman): make this a computed property (subscription?.isActive ?? false).
   final bool hasActiveSubscription;
 
   /// The user's current subscription, if any.
