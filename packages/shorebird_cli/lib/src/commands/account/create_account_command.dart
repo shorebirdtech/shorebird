@@ -38,7 +38,7 @@ class CreateAccountCommand extends ShorebirdCommand with ShorebirdConfigMixin {
       // status.
       logger.info('''
 You already have an account, ${error.user.displayName}!
-To subscribe, run ${green.wrap('shorebird account subscribe')}.
+To subscribe, run ${lightCyan.wrap('shorebird account subscribe')}.
 ''');
       return ExitCode.success.code;
     } catch (error) {
