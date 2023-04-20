@@ -1,51 +1,70 @@
 // ignore_for_file: avoid_print
 
 import 'package:artifact_proxy/artifact_proxy.dart';
-import 'package:collection/collection.dart';
+import 'package:artifact_proxy/config.dart';
 import 'package:shelf/shelf.dart';
 
 /// A [Handler] that proxies artifact requests to the correct location.
-/// This is determined based on the [config].
-Handler artifactProxyHandler({required ProxyConfig config}) {
-  final engineMappings = config.engineMappings;
-  final shorebirdEngineRevisions = engineMappings.keys.cast<String>();
-
-  return (Request request) {
+Handler artifactProxyHandler({required ArtifactManifestClient client}) {
+  return (Request request) async {
     final path = request.url.path;
-    final shorebirdEngineRevision = shorebirdEngineRevisions.firstWhereOrNull(
-      path.contains,
-    );
 
-    final normalizedPath = shorebirdEngineRevision != null
-        ? path.replaceAll(shorebirdEngineRevision, r'$engine')
-        : path;
-
-    if (shorebirdEngineRevision == null) {
-      final location = getFlutterArtifactLocation(artifactPath: normalizedPath);
-      print('No engine revision detected, forwarding to: $location');
-      return Response.found(location);
+    RegExpMatch? engineArtifactMatch;
+    for (final pattern in engineArtifactPatterns) {
+      final match = RegExp(pattern).firstMatch(path);
+      if (match != null && match.group(1) != null) {
+        engineArtifactMatch = match;
+        break;
+      }
     }
 
-    final engineMapping = engineMappings[shorebirdEngineRevision]!;
-    final shorebirdOverrides = engineMapping.shorebirdArtifactOverrides;
-    final flutterEngineRevision = engineMapping.flutterEngineRevision;
-    final shorebirdStorageBucket = engineMapping.shorebirdStorageBucket;
-    final shouldOverride = shorebirdOverrides.contains(normalizedPath);
+    if (engineArtifactMatch != null) {
+      final shorebirdEngineRevision = engineArtifactMatch.group(1)!;
+      final ArtifactsManifest manifest;
+      try {
+        manifest = await client.getManifest(shorebirdEngineRevision);
+      } catch (error) {
+        return Response.notFound(
+          'Failed to fetch manifest for $shorebirdEngineRevision\n$error',
+        );
+      }
 
-    if (shouldOverride) {
-      final location = getShorebirdArtifactLocation(
-        artifactPath: normalizedPath,
-        engine: shorebirdEngineRevision,
-        bucket: shorebirdStorageBucket,
+      final normalizedPath = path.replaceAll(
+        shorebirdEngineRevision,
+        r'$engine',
       );
-      print('Shorebird artifact detected, forwarding to: $location');
+
+      final shouldOverride = manifest.artifactOverrides.contains(
+        normalizedPath,
+      );
+
+      if (shouldOverride) {
+        final location = getShorebirdArtifactLocation(
+          artifactPath: normalizedPath,
+          engine: shorebirdEngineRevision,
+          bucket: manifest.storageBucket,
+        );
+        print('Shorebird engine artifact detected, forwarding to: $location');
+        return Response.found(location);
+      }
+
+      final location = getFlutterArtifactLocation(
+        artifactPath: normalizedPath,
+        engine: manifest.flutterEngineRevision,
+      );
+      print('Flutter artifact detected, forwarding to: $location');
       return Response.found(location);
     }
 
-    final location = getFlutterArtifactLocation(
-      artifactPath: normalizedPath,
-      engine: flutterEngineRevision,
+    final isRecognizedFlutterArtifact = flutterArtifactPatterns.any(
+      (pattern) => RegExp(pattern).hasMatch(path),
     );
+
+    if (!isRecognizedFlutterArtifact) {
+      return Response.notFound('Unrecognized artifact path: $path');
+    }
+
+    final location = getFlutterArtifactLocation(artifactPath: path);
     print('Flutter artifact detected, forwarding to: $location');
     return Response.found(location);
   };
