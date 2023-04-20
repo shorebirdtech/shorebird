@@ -70,7 +70,6 @@ To subscribe, run ${green.wrap('shorebird account subscribe')}.
       final paymentLink = await client.createPaymentLink();
       progress.complete(
         '''
-
 🎉 ${lightGreen.wrap('Welcome to Shorebird, ${newUser.displayName}! You have successfully created an account as <${auth.email}>.')}
 
 🔑 Credentials are stored in ${lightCyan.wrap(auth.credentialsFilePath)}.
