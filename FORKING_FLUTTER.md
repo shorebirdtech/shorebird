@@ -128,7 +128,7 @@ And save off that hash:
 We do not need to update our engine fork commits at this time since it already
 pointed to the (unchanged) forked buildroot in `DEPS`.
 
-Because this kind of rebase is a non-fastforward commit, we will need to
+Because this kind of rebase is a non-fast-forward commit, we will need to
 force push to our fork.  A better solution will be for us to tag or branch
 each of these releases instead of keeping a single release branch.
 ```
@@ -164,7 +164,7 @@ git push origin --force
 https://github.com/shorebirdtech/shorebird/blob/main/packages/shorebird_cli/lib/src/engine_revision.dart
 
 12. If there were changes to the `patch` binary in the `updater` library we
-will need to tigger github actions before we can publish the new version of
+will need to trigger github actions before we can publish the new version of
 the shorebird engine.
 
 13. Before we can publish the new version of Shorebird, we need to build the
