@@ -12,16 +12,16 @@ class _MockLogger extends Mock implements Logger {}
 class _MockUser extends Mock implements User {}
 
 void main() {
-  const userName = 'John Doe';
-  const email = 'tester@shorebird.dev';
-
-  late Auth auth;
-  late Logger logger;
-  late User user;
-
-  late CreateAccountCommand createAccountCommand;
-
   group(CreateAccountCommand, () {
+    const userName = 'John Doe';
+    const email = 'tester@shorebird.dev';
+
+    late Auth auth;
+    late Logger logger;
+    late User user;
+
+    late CreateAccountCommand createAccountCommand;
+
     setUp(() {
       auth = _MockAuth();
       logger = _MockLogger();
