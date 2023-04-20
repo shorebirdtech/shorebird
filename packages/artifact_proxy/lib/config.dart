@@ -3,6 +3,7 @@ import 'package:artifact_proxy/artifact_proxy.dart';
 /// The proxy configuration used by the server.
 const config = ProxyConfig(
   engineMappings: {
+    ...flutter_3_7_12,
     ...flutter_3_7_10,
     ...flutter_3_7_8,
   },
@@ -39,6 +40,13 @@ class _EngineMapping3_7 extends EngineMapping {
           },
         );
 }
+
+const flutter_3_7_12 = {
+  // Shorebird v0.0.8
+  'd470ae25d21f583abe128f7b838476afd5e45bde': _EngineMapping3_7(
+    flutterEngineRevision: '1a65d409c7a1438a34d21b60bf30a6fd5db59314',
+  ),
+};
 
 /// Flutter 3.7.10
 const flutter_3_7_10 = {
