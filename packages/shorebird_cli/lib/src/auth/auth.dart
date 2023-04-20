@@ -112,7 +112,9 @@ class Auth {
   }
 
   Future<void> login(void Function(String) prompt) async {
-    if (_credentials != null) return;
+    if (_credentials != null) {
+      throw UserAlreadyLoggedInException(email: _credentials!.email!);
+    }
 
     final client = http.Client();
     try {
@@ -126,6 +128,9 @@ class Auth {
       final codePushClient = _buildCodePushClient(httpClient: this.client);
 
       final user = await codePushClient.getCurrentUser();
+      if (user == null) {
+        throw UserNotFoundException(email: _credentials!.email!);
+      }
 
       _email = user.email;
       _flushCredentials(_credentials!);
@@ -135,6 +140,42 @@ class Auth {
   }
 
   void logout() => _clearCredentials();
+
+  Future<User> signUp({
+    required void Function(String) authPrompt,
+    required String Function() namePrompt,
+  }) async {
+    if (_credentials != null) {
+      throw UserAlreadyLoggedInException(email: _credentials!.email!);
+    }
+
+    final client = http.Client();
+    final User newUser;
+    try {
+      _credentials = await _obtainAccessCredentials(
+        _clientId,
+        _scopes,
+        client,
+        authPrompt,
+      );
+
+      final codePushClient = _buildCodePushClient(httpClient: this.client);
+
+      final existingUser = await codePushClient.getCurrentUser();
+      if (existingUser != null) {
+        throw UserAlreadyExistsException(existingUser);
+      }
+
+      newUser = await codePushClient.createUser(name: namePrompt());
+
+      _email = newUser.email;
+      _flushCredentials(_credentials!);
+    } finally {
+      client.close();
+    }
+
+    return newUser;
+  }
 
   oauth2.AccessCredentials? _credentials;
 
@@ -191,4 +232,37 @@ extension on oauth2.AccessCredentials {
 
     return claims['email'] as String?;
   }
+}
+
+/// Thrown when an already authenticated user attempts to log in or sign up.
+class UserAlreadyLoggedInException implements Exception {
+  /// {@macro user_already_logged_in_exception}
+  UserAlreadyLoggedInException({required this.email});
+
+  /// The email of the already authenticated user, as derived from the stored
+  /// auth credentials.
+  final String email;
+}
+
+/// {@template user_not_found_exception}
+/// Thrown when an attempt to fetch a User object results in a 404.
+/// {@endtemplate}
+class UserNotFoundException implements Exception {
+  /// {@macro user_not_found_exception}
+  UserNotFoundException({required this.email});
+
+  /// The email used to locate the user, as derived from the stored auth
+  /// credentials.
+  final String email;
+}
+
+/// {@template user_already_exists_exception}
+/// Thrown when an attempt to create a User object results in a 409.
+/// {@endtemplate}
+class UserAlreadyExistsException implements Exception {
+  /// {@macro user_already_exists_exception}
+  UserAlreadyExistsException(this.user);
+
+  /// The existing user.
+  final User user;
 }

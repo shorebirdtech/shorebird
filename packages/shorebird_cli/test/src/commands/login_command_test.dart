@@ -29,12 +29,11 @@ void main() {
       when(() => auth.credentialsFilePath).thenReturn(
         p.join(applicationConfigHome.path, 'credentials.json'),
       );
-      when(() => auth.isAuthenticated).thenReturn(false);
     });
 
     test('exits with code 0 when already logged in', () async {
-      when(() => auth.isAuthenticated).thenReturn(true);
-      when(() => auth.email).thenReturn(email);
+      when(() => auth.login(any()))
+          .thenThrow(UserAlreadyLoggedInException(email: email));
 
       final result = await loginCommand.run();
       expect(result, equals(ExitCode.success.code));
@@ -43,7 +42,24 @@ void main() {
         () => logger.info('You are already logged in as <$email>.'),
       ).called(1);
       verify(
-        () => logger.info("Run 'shorebird logout' to log out and try again."),
+        () => logger.info(
+          "Run ${lightCyan.wrap('shorebird logout')} to log out and try again.",
+        ),
+      ).called(1);
+    });
+
+    test('exits with code 70 if no user is found', () async {
+      when(() => auth.login(any()))
+          .thenThrow(UserNotFoundException(email: email));
+
+      final result = await loginCommand.run();
+      expect(result, equals(ExitCode.software.code));
+
+      verify(
+        () => logger.err('We could not find a Shorebird account for $email.'),
+      ).called(1);
+      verify(
+        () => logger.info(any(that: contains('shorebird account create'))),
       ).called(1);
     });
 
