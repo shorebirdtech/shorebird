@@ -23,7 +23,7 @@ class LoginCommand extends ShorebirdCommand {
     } on UserAlreadyLoggedInException catch (error) {
       logger
         ..info('You are already logged in as <${error.email}>.')
-        ..info("Run 'shorebird logout' to log out and try again.");
+        ..info("Run ${lightCyan.wrap('shorebird logout')} to log out and try again.");
       return ExitCode.success.code;
     } on UserNotFoundException catch (error) {
       logger
