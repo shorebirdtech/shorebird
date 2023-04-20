@@ -86,8 +86,19 @@ Waiting for your authorization...'''),
       ).called(1);
     });
 
+    test('exits with code 0 if user is logged in', () async {
+      when(() => auth.isAuthenticated).thenReturn(true);
+
+      final result = await createAccountCommand.run();
+
+      expect(result, ExitCode.success.code);
+
+      verify(
+        () => logger.info(any(that: contains('You are already logged in '))),
+      ).called(1);
+    });
+
     test('exits with code 70 when getCredentials fails', () async {
-      when(() => auth.isAuthenticated).thenReturn(false);
       when(
         () => auth.getCredentials(any()),
       ).thenThrow(Exception('login failed'));
