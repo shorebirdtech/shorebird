@@ -625,49 +625,6 @@ void main() {
       });
     });
 
-    group('createPaymentLink', () {
-      test('throws an exception if the http request fails', () {
-        when(
-          () => httpClient.post(
-            any(),
-            headers: any(named: 'headers'),
-          ),
-        ).thenAnswer((_) async => http.Response('', HttpStatus.badRequest));
-
-        expect(
-          codePushClient.createPaymentLink(),
-          throwsA(
-            isA<CodePushException>().having(
-              (e) => e.message,
-              'message',
-              CodePushClient.unknownErrorMessage,
-            ),
-          ),
-        );
-      });
-
-      test('returns a payment link if the http request succeeds', () {
-        final link = Uri.parse('http://test.com');
-
-        when(
-          () => httpClient.post(
-            any(),
-            headers: any(named: 'headers'),
-          ),
-        ).thenAnswer(
-          (_) async => http.Response(
-            jsonEncode(CreatePaymentLinkResponse(paymentLink: link).toJson()),
-            HttpStatus.ok,
-          ),
-        );
-
-        expect(
-          codePushClient.createPaymentLink(),
-          completion(link),
-        );
-      });
-    });
-
     group('createRelease', () {
       const version = '1.0.0';
       test('throws an exception if the http request fails (unknown)', () async {
