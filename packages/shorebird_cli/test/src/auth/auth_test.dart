@@ -195,7 +195,7 @@ void main() {
           'created', () async {
         when(() => codePushClient.getCurrentUser())
             .thenAnswer((_) async => null);
-        when(() => codePushClient.createUser(name: any()))
+        when(() => codePushClient.createUser(name: any(named: 'name')))
             .thenAnswer((_) async => user);
 
         final newUser = await auth.signUp(
