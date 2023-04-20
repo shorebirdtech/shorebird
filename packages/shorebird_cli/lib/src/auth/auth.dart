@@ -6,7 +6,9 @@ import 'package:googleapis_auth/auth_io.dart' as oauth2;
 import 'package:http/http.dart' as http;
 import 'package:path/path.dart' as p;
 import 'package:shorebird_cli/src/auth/jwt.dart';
+import 'package:shorebird_cli/src/command.dart';
 import 'package:shorebird_cli/src/command_runner.dart';
+import 'package:shorebird_code_push_client/shorebird_code_push_client.dart';
 
 final _clientId = oauth2.ClientId(
   /// Shorebird CLI's OAuth 2.0 identifier.
@@ -80,17 +82,20 @@ class Auth {
     http.Client? httpClient,
     String? credentialsDir,
     ObtainAccessCredentials? obtainAccessCredentials,
+    CodePushClientBuilder? buildCodePushClient,
   })  : _httpClient = httpClient ?? http.Client(),
         _credentialsDir =
             credentialsDir ?? applicationConfigHome(executableName),
         _obtainAccessCredentials = obtainAccessCredentials ??
-            oauth2.obtainAccessCredentialsViaUserConsent {
+            oauth2.obtainAccessCredentialsViaUserConsent,
+        _buildCodePushClient = buildCodePushClient ?? CodePushClient.new {
     _loadCredentials();
   }
 
   final http.Client _httpClient;
   final String _credentialsDir;
   final ObtainAccessCredentials _obtainAccessCredentials;
+  final CodePushClientBuilder _buildCodePushClient;
 
   String get credentialsFilePath {
     return p.join(_credentialsDir, 'credentials.json');
@@ -106,8 +111,10 @@ class Auth {
     );
   }
 
-  Future<void> getCredentials(void Function(String) prompt) async {
-    if (_credentials != null) return;
+  Future<void> login(void Function(String) prompt) async {
+    if (_credentials != null) {
+      throw UserAlreadyLoggedInException(email: _credentials!.email!);
+    }
 
     final client = http.Client();
     try {
@@ -118,7 +125,14 @@ class Auth {
         prompt,
       );
 
-      _email = _credentials!.email;
+      final codePushClient = _buildCodePushClient(httpClient: this.client);
+
+      final user = await codePushClient.getCurrentUser();
+      if (user == null) {
+        throw UserNotFoundException(email: _credentials!.email!);
+      }
+
+      _email = user.email;
       _flushCredentials(_credentials!);
     } finally {
       client.close();
@@ -126,6 +140,42 @@ class Auth {
   }
 
   void logout() => _clearCredentials();
+
+  Future<User> signUp({
+    required void Function(String) authPrompt,
+    required String Function() namePrompt,
+  }) async {
+    if (_credentials != null) {
+      throw UserAlreadyLoggedInException(email: _credentials!.email!);
+    }
+
+    final client = http.Client();
+    final User newUser;
+    try {
+      _credentials = await _obtainAccessCredentials(
+        _clientId,
+        _scopes,
+        client,
+        authPrompt,
+      );
+
+      final codePushClient = _buildCodePushClient(httpClient: this.client);
+
+      final existingUser = await codePushClient.getCurrentUser();
+      if (existingUser != null) {
+        throw UserAlreadyExistsException(existingUser);
+      }
+
+      newUser = await codePushClient.createUser(name: namePrompt());
+
+      _email = newUser.email;
+      _flushCredentials(_credentials!);
+    } finally {
+      client.close();
+    }
+
+    return newUser;
+  }
 
   oauth2.AccessCredentials? _credentials;
 
@@ -144,7 +194,7 @@ class Auth {
         _credentials = oauth2.AccessCredentials.fromJson(
           json.decode(contents) as Map<String, dynamic>,
         );
-        _email = _credentials!.email;
+        _email = _credentials?.email;
       } catch (_) {}
     }
   }
@@ -182,4 +232,37 @@ extension on oauth2.AccessCredentials {
 
     return claims['email'] as String?;
   }
+}
+
+/// Thrown when an already authenticated user attempts to log in or sign up.
+class UserAlreadyLoggedInException implements Exception {
+  /// {@macro user_already_logged_in_exception}
+  UserAlreadyLoggedInException({required this.email});
+
+  /// The email of the already authenticated user, as derived from the stored
+  /// auth credentials.
+  final String email;
+}
+
+/// {@template user_not_found_exception}
+/// Thrown when an attempt to fetch a User object results in a 404.
+/// {@endtemplate}
+class UserNotFoundException implements Exception {
+  /// {@macro user_not_found_exception}
+  UserNotFoundException({required this.email});
+
+  /// The email used to locate the user, as derived from the stored auth
+  /// credentials.
+  final String email;
+}
+
+/// {@template user_already_exists_exception}
+/// Thrown when an attempt to create a User object results in a 409.
+/// {@endtemplate}
+class UserAlreadyExistsException implements Exception {
+  /// {@macro user_already_exists_exception}
+  UserAlreadyExistsException(this.user);
+
+  /// The extant user.
+  final User user;
 }

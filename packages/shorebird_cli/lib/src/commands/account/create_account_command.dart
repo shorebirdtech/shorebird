@@ -1,6 +1,7 @@
 import 'dart:async';
 
 import 'package:mason_logger/mason_logger.dart';
+import 'package:shorebird_cli/src/auth/auth.dart';
 import 'package:shorebird_cli/src/command.dart';
 import 'package:shorebird_cli/src/shorebird_config_mixin.dart';
 import 'package:shorebird_code_push_client/shorebird_code_push_client.dart';
@@ -11,11 +12,7 @@ import 'package:shorebird_code_push_client/shorebird_code_push_client.dart';
 /// {@endtemplate}
 class CreateAccountCommand extends ShorebirdCommand with ShorebirdConfigMixin {
   /// {@macro create_account_command}
-  CreateAccountCommand({
-    required super.logger,
-    super.auth,
-    super.buildCodePushClient,
-  });
+  CreateAccountCommand({required super.logger, super.auth});
 
   @override
   String get description => 'Create a new Shorebird account.';
@@ -25,59 +22,29 @@ class CreateAccountCommand extends ShorebirdCommand with ShorebirdConfigMixin {
 
   @override
   Future<int> run() async {
-    if (auth.isAuthenticated) {
+    final User newUser;
+    try {
+      newUser = await auth.signUp(
+        authPrompt: authPrompt,
+        namePrompt: namePrompt,
+      );
+    } on UserAlreadyLoggedInException catch (error) {
       logger
-        ..info('You are already logged in as <${auth.email}>.')
+        ..info('You are already logged in as <${error.email}>.')
         ..info("Run 'shorebird logout' to log out and try again.");
       return ExitCode.success.code;
-    }
-
-    try {
-      await auth.getCredentials(prompt);
-    } catch (error) {
-      logger.err(error.toString());
-      return ExitCode.software.code;
-    }
-
-    final client = buildCodePushClient(
-      httpClient: auth.client,
-      hostedUri: hostedUri,
-    );
-
-    try {
-      final user = await client.getCurrentUser();
+    } on UserAlreadyExistsException catch (error) {
       // TODO(bryanoltman): change this message based on the user's subscription
       // status.
       logger.info('''
-You already have an account, ${user.displayName}!
+You already have an account, ${error.user.displayName}!
 To subscribe, run ${green.wrap('shorebird account subscribe')}.
 ''');
-
       return ExitCode.success.code;
-    } on UserNotFoundException {
-      // Do nothing, it is expected that we don't have a user record for this
-      // email address.
     } catch (error) {
       logger.err(error.toString());
       return ExitCode.software.code;
     }
-
-    final name = logger.prompt('''
-Tell us your name to finish creating your account:''');
-
-    final progress = logger.progress('Creating account');
-    final User newUser;
-    try {
-      newUser = await client.createUser(name: name);
-    } catch (error) {
-      auth.logout();
-      progress.fail(error.toString());
-      return ExitCode.software.code;
-    }
-
-    progress.complete(
-      lightGreen.wrap('Account created for ${newUser.email}!'),
-    );
 
     logger.info(
       '''
@@ -92,7 +59,7 @@ Enjoy! Please let us know via Discord if we can help.''',
     return ExitCode.success.code;
   }
 
-  void prompt(String url) {
+  void authPrompt(String url) {
     logger.info('''
 Shorebird currently requires a Google account for authentication. If you'd like to use a different kind of auth, please let us know: ${lightCyan.wrap('https://github.com/shorebirdtech/shorebird/issues/335')}.
 
@@ -102,4 +69,7 @@ ${styleBold.wrap(styleUnderlined.wrap(lightCyan.wrap(url)))}
 
 Waiting for your authorization...''');
   }
+
+  String namePrompt() => logger.prompt('''
+Tell us your name to finish creating your account:''');
 }

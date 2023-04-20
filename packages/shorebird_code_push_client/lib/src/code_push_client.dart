@@ -21,14 +21,6 @@ class CodePushException implements Exception {
   String toString() => '$message${details != null ? '\n$details' : ''}';
 }
 
-/// {@template user_not_found_exception}o
-/// Thrown when an attempt to fetch a User object results in a 404.
-/// {@endtemplate}
-class UserNotFoundException implements Exception {
-  /// {@macro user_not_found_exception}
-  UserNotFoundException();
-}
-
 /// {@template code_push_client}
 /// Dart client for the Shorebird CodePush API.
 /// {@endtemplate}
@@ -49,12 +41,12 @@ class CodePushClient {
   final Uri hostedUri;
 
   /// Fetches the currently logged-in user.
-  Future<User> getCurrentUser() async {
+  Future<User?> getCurrentUser() async {
     final uri = Uri.parse('$hostedUri/api/v1/users/me');
     final response = await _httpClient.get(uri);
 
     if (response.statusCode == HttpStatus.notFound) {
-      throw UserNotFoundException();
+      return null;
     } else if (response.statusCode != HttpStatus.ok) {
       throw _parseErrorResponse(response.body);
     }

@@ -1,19 +1,13 @@
 import 'dart:io';
 
-import 'package:http/http.dart' as http;
 import 'package:mason_logger/mason_logger.dart';
 import 'package:mocktail/mocktail.dart';
 import 'package:path/path.dart' as p;
 import 'package:shorebird_cli/src/auth/auth.dart';
 import 'package:shorebird_cli/src/commands/login_command.dart';
-import 'package:shorebird_code_push_client/shorebird_code_push_client.dart';
 import 'package:test/test.dart';
 
 class _MockAuth extends Mock implements Auth {}
-
-class _MockHttpClient extends Mock implements http.Client {}
-
-class _MockCodePushClient extends Mock implements CodePushClient {}
 
 class _MockLogger extends Mock implements Logger {}
 
@@ -24,39 +18,22 @@ void main() {
     late Directory applicationConfigHome;
     late Logger logger;
     late Auth auth;
-    late CodePushClient codePushClient;
-    late http.Client httpClient;
     late LoginCommand loginCommand;
 
     setUp(() {
       applicationConfigHome = Directory.systemTemp.createTempSync();
-      auth = _MockAuth();
-      codePushClient = _MockCodePushClient();
-      httpClient = _MockHttpClient();
       logger = _MockLogger();
-      loginCommand = LoginCommand(
-        auth: auth,
-        logger: logger,
-        buildCodePushClient: ({required httpClient, hostedUri}) =>
-            codePushClient,
-      );
+      auth = _MockAuth();
+      loginCommand = LoginCommand(auth: auth, logger: logger);
 
-      when(() => auth.client).thenReturn(httpClient);
       when(() => auth.credentialsFilePath).thenReturn(
         p.join(applicationConfigHome.path, 'credentials.json'),
       );
-      when(() => auth.isAuthenticated).thenReturn(false);
-      when(() => auth.email).thenReturn(email);
-      when(() => auth.getCredentials(any())).thenAnswer((_) async => {});
-      when(() => auth.logout()).thenReturn(null);
-
-      when(() => codePushClient.getCurrentUser())
-          .thenAnswer((_) async => const User(id: 1, email: email));
     });
 
     test('exits with code 0 when already logged in', () async {
-      when(() => auth.isAuthenticated).thenReturn(true);
-      when(() => auth.email).thenReturn(email);
+      when(() => auth.login(any()))
+          .thenThrow(UserAlreadyLoggedInException(email: email));
 
       final result = await loginCommand.run();
       expect(result, equals(ExitCode.success.code));
@@ -69,50 +46,40 @@ void main() {
       ).called(1);
     });
 
-    test('exits with code 70 when error occurs', () async {
-      final error = Exception('oops something went wrong!');
-      when(() => auth.getCredentials(any())).thenThrow(error);
+    test('exits with code 70 if no user is found', () async {
+      when(() => auth.login(any()))
+          .thenThrow(UserNotFoundException(email: email));
 
       final result = await loginCommand.run();
       expect(result, equals(ExitCode.software.code));
 
-      verify(() => auth.getCredentials(any())).called(1);
-      verify(() => auth.logout()).called(1);
-      verify(() => logger.err(error.toString())).called(1);
-    });
-
-    test('exits with code 70 if user does not have an account', () async {
-      when(() => codePushClient.getCurrentUser())
-          .thenThrow(UserNotFoundException());
-
-      final result = await loginCommand.run();
-
-      expect(result, equals(ExitCode.software.code));
-      verify(() => auth.getCredentials(any())).called(1);
-      verify(() => auth.logout()).called(1);
       verify(
-        () => logger.err(
-          any(
-            that: stringContainsInOrder(
-              ['We could not find a Shorebird account for', email],
-            ),
-          ),
-        ),
+        () => logger.err('We could not find a Shorebird account for $email.'),
       ).called(1);
       verify(
         () => logger.info(any(that: contains('shorebird account create'))),
       ).called(1);
     });
 
+    test('exits with code 70 when error occurs', () async {
+      final error = Exception('oops something went wrong!');
+      when(() => auth.login(any())).thenThrow(error);
+
+      final result = await loginCommand.run();
+      expect(result, equals(ExitCode.software.code));
+
+      verify(() => auth.login(any())).called(1);
+      verify(() => logger.err(error.toString())).called(1);
+    });
+
     test('exits with code 0 when logged in successfully', () async {
-      when(() => auth.getCredentials(any())).thenAnswer((_) async {});
+      when(() => auth.login(any())).thenAnswer((_) async {});
       when(() => auth.email).thenReturn(email);
 
       final result = await loginCommand.run();
       expect(result, equals(ExitCode.success.code));
 
-      verify(() => auth.getCredentials(any())).called(1);
-      verifyNever(() => auth.logout());
+      verify(() => auth.login(any())).called(1);
       verify(
         () => logger.info(
           any(that: contains('You are now logged in as <$email>.')),
