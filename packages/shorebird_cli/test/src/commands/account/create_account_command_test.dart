@@ -75,6 +75,24 @@ void main() {
       when(() => user.displayName).thenReturn(userName);
     });
 
+    test('has a description', () {
+      expect(createAccountCommand.description, isNotEmpty);
+    });
+
+    test('login prompt is correct', () {
+      createAccountCommand.prompt('https://shorebird.dev');
+      verify(
+        () => logger.info('''
+Shorebird is currently only open to trusted testers. To participate, you will need a Google account for authentication.
+
+The first step is to sign in with a Google account. Please follow the sign-in link below:
+
+${styleBold.wrap(styleUnderlined.wrap(lightCyan.wrap('https://shorebird.dev')))}
+
+Waiting for your authorization...'''),
+      ).called(1);
+    });
+
     test('exits with code 70 when login fails', () async {
       when(() => auth.isAuthenticated).thenReturn(false);
       when(
