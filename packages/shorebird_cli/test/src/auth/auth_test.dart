@@ -1,8 +1,10 @@
+import 'dart:convert';
 import 'dart:io';
 
 import 'package:googleapis_auth/googleapis_auth.dart';
 import 'package:http/http.dart' as http;
 import 'package:mocktail/mocktail.dart';
+import 'package:path/path.dart' as p;
 import 'package:shorebird_cli/src/auth/auth.dart';
 import 'package:shorebird_code_push_client/shorebird_code_push_client.dart';
 import 'package:test/test.dart';
@@ -55,6 +57,11 @@ void main() {
           return accessCredentials;
         },
       );
+    }
+
+    void writeCredentials() {
+      File(p.join(credentialsDir, 'credentials.json'))
+          .writeAsStringSync(jsonEncode(accessCredentials.toJson()));
     }
 
     setUp(() {
@@ -177,13 +184,29 @@ void main() {
         expect(buildAuth().isAuthenticated, isTrue);
       });
 
+      test('throws UserAlreadyLoggedInException if user is authenticated',
+          () async {
+        writeCredentials();
+        auth = buildAuth();
+
+        await expectLater(
+          auth.login((_) {}),
+          throwsA(isA<UserAlreadyLoggedInException>()),
+        );
+
+        expect(auth.email, isNotNull);
+        expect(auth.isAuthenticated, isTrue);
+      });
+
       test('should not set the email when user does not exist', () async {
         when(() => codePushClient.getCurrentUser())
             .thenAnswer((_) async => null);
+
         await expectLater(
           auth.login((_) {}),
           throwsA(isA<UserNotFoundException>()),
         );
+
         expect(auth.email, isNull);
         expect(auth.isAuthenticated, isFalse);
       });
@@ -207,6 +230,23 @@ void main() {
         expect(auth.isAuthenticated, isTrue);
         expect(buildAuth().email, email);
         expect(buildAuth().isAuthenticated, isTrue);
+      });
+
+      test('throws UserAlreadyLoggedInException if user is authenticated',
+          () async {
+        writeCredentials();
+        auth = buildAuth();
+
+        await expectLater(
+          auth.signUp(
+            authPrompt: (_) {},
+            namePrompt: () => name,
+          ),
+          throwsA(isA<UserAlreadyLoggedInException>()),
+        );
+
+        expect(auth.email, isNotNull);
+        expect(auth.isAuthenticated, isTrue);
       });
 
       test('throws UserAlreadyExistsException if user already exists',
