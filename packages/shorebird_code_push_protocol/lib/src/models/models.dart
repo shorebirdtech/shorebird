@@ -6,4 +6,5 @@ export 'patch.dart';
 export 'patch_artifact.dart';
 export 'release.dart';
 export 'release_artifact.dart';
+export 'subscription.dart';
 export 'user.dart';

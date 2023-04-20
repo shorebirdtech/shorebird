@@ -1,4 +1,5 @@
 import 'package:json_annotation/json_annotation.dart';
+import 'package:shorebird_code_push_protocol/src/models/subscription.dart';
 
 part 'user.g.dart';
 
@@ -13,6 +14,7 @@ class User {
     required this.email,
     this.hasActiveSubscription = false,
     this.displayName,
+    this.subscription,
   });
 
   /// Converts a Map<String, dynamic> to a [User]
@@ -31,5 +33,9 @@ class User {
   final String? displayName;
 
   /// Whether the user is currently a paying customer.
+  /// TODO(bryanoltman): make this a computed property (subscription?.isActive ?? false).
   final bool hasActiveSubscription;
+
+  /// The user's current subscription, if any.
+  final Subscription? subscription;
 }
