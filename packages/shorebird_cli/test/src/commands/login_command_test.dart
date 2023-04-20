@@ -1,5 +1,6 @@
 import 'dart:io';
 
+import 'package:http/http.dart' as http;
 import 'package:mason_logger/mason_logger.dart';
 import 'package:mocktail/mocktail.dart';
 import 'package:path/path.dart' as p;
@@ -10,6 +11,10 @@ import 'package:test/test.dart';
 
 class _MockAuth extends Mock implements Auth {}
 
+class _MockHttpClient extends Mock implements http.Client {}
+
+class _MockCodePushClient extends Mock implements CodePushClient {}
+
 class _MockLogger extends Mock implements Logger {}
 
 void main() {
@@ -19,18 +24,34 @@ void main() {
     late Directory applicationConfigHome;
     late Logger logger;
     late Auth auth;
+    late CodePushClient codePushClient;
+    late http.Client httpClient;
     late LoginCommand loginCommand;
 
     setUp(() {
       applicationConfigHome = Directory.systemTemp.createTempSync();
-      logger = _MockLogger();
       auth = _MockAuth();
-      loginCommand = LoginCommand(auth: auth, logger: logger);
+      codePushClient = _MockCodePushClient();
+      httpClient = _MockHttpClient();
+      logger = _MockLogger();
+      loginCommand = LoginCommand(
+        auth: auth,
+        logger: logger,
+        buildCodePushClient: ({required httpClient, hostedUri}) =>
+            codePushClient,
+      );
 
+      when(() => auth.client).thenReturn(httpClient);
       when(() => auth.credentialsFilePath).thenReturn(
         p.join(applicationConfigHome.path, 'credentials.json'),
       );
       when(() => auth.isAuthenticated).thenReturn(false);
+      when(() => auth.email).thenReturn(email);
+      when(() => auth.getCredentials(any())).thenAnswer((_) async => {});
+      when(() => auth.logout()).thenReturn(null);
+
+      when(() => codePushClient.getCurrentUser())
+          .thenAnswer((_) async => const User(id: 1, email: email));
     });
 
     test('exits with code 0 when already logged in', () async {
@@ -50,42 +71,48 @@ void main() {
 
     test('exits with code 70 when error occurs', () async {
       final error = Exception('oops something went wrong!');
-      when(() => auth.login(any())).thenThrow(error);
+      when(() => auth.getCredentials(any())).thenThrow(error);
 
       final result = await loginCommand.run();
       expect(result, equals(ExitCode.software.code));
 
-      verify(() => auth.login(any())).called(1);
+      verify(() => auth.getCredentials(any())).called(1);
+      verify(() => auth.logout()).called(1);
       verify(() => logger.err(error.toString())).called(1);
     });
 
     test('exits with code 70 if user does not have an account', () async {
-      when(() => auth.login(any())).thenThrow(UserNotFoundException());
+      when(() => codePushClient.getCurrentUser())
+          .thenThrow(UserNotFoundException());
 
       final result = await loginCommand.run();
 
       expect(result, equals(ExitCode.software.code));
-      verify(() => auth.login(any())).called(1);
+      verify(() => auth.getCredentials(any())).called(1);
+      verify(() => auth.logout()).called(1);
       verify(
         () => logger.err(
           any(
-            that: stringContainsInOrder([
-              "We don't recognize that email address",
-              'shorebird account create',
-            ]),
+            that: stringContainsInOrder(
+              ['We could not find a Shorebird account for', email],
+            ),
           ),
         ),
+      ).called(1);
+      verify(
+        () => logger.info(any(that: contains('shorebird account create'))),
       ).called(1);
     });
 
     test('exits with code 0 when logged in successfully', () async {
-      when(() => auth.login(any())).thenAnswer((_) async {});
+      when(() => auth.getCredentials(any())).thenAnswer((_) async {});
       when(() => auth.email).thenReturn(email);
 
       final result = await loginCommand.run();
       expect(result, equals(ExitCode.success.code));
 
-      verify(() => auth.login(any())).called(1);
+      verify(() => auth.getCredentials(any())).called(1);
+      verifyNever(() => auth.logout());
       verify(
         () => logger.info(
           any(that: contains('You are now logged in as <$email>.')),

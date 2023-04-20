@@ -4,21 +4,17 @@ import 'package:googleapis_auth/googleapis_auth.dart';
 import 'package:http/http.dart' as http;
 import 'package:mocktail/mocktail.dart';
 import 'package:shorebird_cli/src/auth/auth.dart';
-import 'package:shorebird_code_push_client/shorebird_code_push_client.dart';
 import 'package:test/test.dart';
 
 class _FakeBaseRequest extends Fake implements http.BaseRequest {}
 
 class _MockHttpClient extends Mock implements http.Client {}
 
-class _MockCodePushClient extends Mock implements CodePushClient {}
-
 void main() {
   group('Auth', () {
     const idToken =
         '''eyJhbGciOiJSUzI1NiIsImN0eSI6IkpXVCJ9.eyJlbWFpbCI6InRlc3RAZW1haWwuY29tIn0.pD47BhF3MBLyIpfsgWCzP9twzC1HJxGukpcR36DqT6yfiOMHTLcjDbCjRLAnklWEHiT0BQTKTfhs8IousU90Fm5bVKObudfKu8pP5iZZ6Ls4ohDjTrXky9j3eZpZjwv8CnttBVgRfMJG-7YASTFRYFcOLUpnb4Zm5R6QdoCDUYg''';
     const email = 'test@email.com';
-    const user = User(id: 42, email: email);
     const refreshToken = '';
     const scopes = <String>[];
     final accessToken = AccessToken(
@@ -36,7 +32,6 @@ void main() {
 
     late String credentialsDir;
     late http.Client httpClient;
-    late CodePushClient codePushClient;
     late Auth auth;
 
     setUpAll(() {
@@ -47,9 +42,6 @@ void main() {
       return Auth(
         credentialsDir: credentialsDir,
         httpClient: httpClient,
-        buildCodePushClient: ({Uri? hostedUri, http.Client? httpClient}) {
-          return codePushClient;
-        },
         obtainAccessCredentials: (clientId, scopes, client, userPrompt) async {
           return accessCredentials;
         },
@@ -59,10 +51,7 @@ void main() {
     setUp(() {
       credentialsDir = Directory.systemTemp.createTempSync().path;
       httpClient = _MockHttpClient();
-      codePushClient = _MockCodePushClient();
       auth = buildAuth();
-
-      when(() => codePushClient.getCurrentUser()).thenAnswer((_) async => user);
     });
 
     group('AuthenticatedClient', () {
@@ -143,7 +132,7 @@ void main() {
             HttpStatus.ok,
           ),
         );
-        await auth.login((_) {});
+        await auth.getCredentials((_) {});
         final client = auth.client;
         expect(client, isA<http.Client>());
         expect(client, isA<AuthenticatedClient>());
@@ -165,56 +154,21 @@ void main() {
       });
     });
 
-    group('login', () {
+    group('getCredentials', () {
       test(
           'should set the email when claims are valid '
           'and current user exists', () async {
-        await auth.login((_) {});
+        await auth.getCredentials((_) {});
         expect(auth.email, email);
         expect(auth.isAuthenticated, isTrue);
         expect(buildAuth().email, email);
         expect(buildAuth().isAuthenticated, isTrue);
       });
-
-      test('should not set the email when user does not exist', () async {
-        const exception = CodePushException(message: 'oops');
-        when(() => codePushClient.getCurrentUser()).thenThrow(exception);
-        await expectLater(auth.login((_) {}), throwsA(exception));
-        expect(auth.email, isNull);
-        expect(auth.isAuthenticated, isFalse);
-      });
-
-      test(
-        "throws exception if credentials email doesn't match current user",
-        () async {
-          when(() => codePushClient.getCurrentUser()).thenAnswer(
-            (_) async => const User(
-              id: 123,
-              email: 'email@email.com',
-            ),
-          );
-
-          await expectLater(auth.login((_) {}), throwsException);
-
-          expect(auth.email, isNull);
-          expect(auth.isAuthenticated, isFalse);
-        },
-      );
-
-      test(
-        'does not fetch current user if verifyEmail is false',
-        () async {
-          await auth.login((_) {}, verifyEmail: false);
-          verifyNever(() => codePushClient.getCurrentUser());
-          expect(buildAuth().email, email);
-          expect(buildAuth().isAuthenticated, isTrue);
-        },
-      );
     });
 
     group('logout', () {
       test('clears session and wipes state', () async {
-        await auth.login((_) {});
+        await auth.getCredentials((_) {});
         expect(auth.email, email);
         expect(auth.isAuthenticated, isTrue);
 

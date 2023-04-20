@@ -6,9 +6,7 @@ import 'package:googleapis_auth/auth_io.dart' as oauth2;
 import 'package:http/http.dart' as http;
 import 'package:path/path.dart' as p;
 import 'package:shorebird_cli/src/auth/jwt.dart';
-import 'package:shorebird_cli/src/command.dart';
 import 'package:shorebird_cli/src/command_runner.dart';
-import 'package:shorebird_code_push_client/shorebird_code_push_client.dart';
 
 final _clientId = oauth2.ClientId(
   /// Shorebird CLI's OAuth 2.0 identifier.
@@ -82,20 +80,17 @@ class Auth {
     http.Client? httpClient,
     String? credentialsDir,
     ObtainAccessCredentials? obtainAccessCredentials,
-    CodePushClientBuilder? buildCodePushClient,
   })  : _httpClient = httpClient ?? http.Client(),
         _credentialsDir =
             credentialsDir ?? applicationConfigHome(executableName),
         _obtainAccessCredentials = obtainAccessCredentials ??
-            oauth2.obtainAccessCredentialsViaUserConsent,
-        _buildCodePushClient = buildCodePushClient ?? CodePushClient.new {
+            oauth2.obtainAccessCredentialsViaUserConsent {
     _loadCredentials();
   }
 
   final http.Client _httpClient;
   final String _credentialsDir;
   final ObtainAccessCredentials _obtainAccessCredentials;
-  final CodePushClientBuilder _buildCodePushClient;
 
   String get credentialsFilePath {
     return p.join(_credentialsDir, 'credentials.json');
@@ -111,13 +106,7 @@ class Auth {
     );
   }
 
-  /// Logs the string returned by [prompt] to the console and obtains auth
-  /// credentials. If [verifyEmail] is true, check that there is a Shorebird
-  /// user with the same email address as the newly-authenticated user.
-  Future<void> login(
-    void Function(String) prompt, {
-    bool verifyEmail = true,
-  }) async {
+  Future<void> getCredentials(void Function(String) prompt) async {
     if (_credentials != null) return;
 
     final client = http.Client();
@@ -128,21 +117,6 @@ class Auth {
         client,
         prompt,
       );
-
-      if (_credentials?.email == null) {
-        throw Exception('Failed to obtain access credentials.');
-      }
-
-      if (verifyEmail) {
-        final codePushClient = _buildCodePushClient(httpClient: this.client);
-        final user = await codePushClient.getCurrentUser();
-        if (user.email != _credentials!.email) {
-          throw Exception(
-            'The email address of the authenticated user does not match the '
-            'email address of the user in the Shorebird database.',
-          );
-        }
-      }
 
       _email = _credentials!.email;
       _flushCredentials(_credentials!);
@@ -170,7 +144,7 @@ class Auth {
         _credentials = oauth2.AccessCredentials.fromJson(
           json.decode(contents) as Map<String, dynamic>,
         );
-        _email = _credentials?.email;
+        _email = _credentials!.email;
       } catch (_) {}
     }
   }
