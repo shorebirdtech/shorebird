@@ -35,7 +35,7 @@ class _MockShorebirdProcess extends Mock implements ShorebirdProcess {}
 void main() {
   group('release', () {
     const appId = 'test-app-id';
-    const version = '1.2.3';
+    const version = '1.2.3+1';
     const appDisplayName = 'Test App';
     const arch = 'aarch64';
     const platform = 'android';
@@ -44,7 +44,7 @@ void main() {
       id: 0,
       appId: appId,
       version: version,
-      displayName: '1.2.3',
+      displayName: '1.2.3+1',
     );
     const releaseArtifact = ReleaseArtifact(
       id: 0,
