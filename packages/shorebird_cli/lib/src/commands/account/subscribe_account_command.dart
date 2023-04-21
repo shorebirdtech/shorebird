@@ -26,7 +26,7 @@ class SubscribeAccountCommand extends ShorebirdCommand
   @override
   String get summary => '''
 A subscription is required to use Shorebird to create and publish apps.
-Subscriptions are \$20 per month and are billed through Stripe.
+Subscriptions are currently \$20 per month and are billed through Stripe.
 Visit ${styleUnderlined.wrap(lightCyan.wrap('https://github.com/shorebirdtech/shorebird/blob/main/TRUSTED_TESTERS.md'))} to learn more.''';
 
   @override
