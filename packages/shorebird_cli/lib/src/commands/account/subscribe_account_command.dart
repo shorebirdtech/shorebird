@@ -3,6 +3,7 @@ import 'dart:async';
 import 'package:mason_logger/mason_logger.dart';
 import 'package:shorebird_cli/src/command.dart';
 import 'package:shorebird_cli/src/shorebird_config_mixin.dart';
+import 'package:shorebird_code_push_client/shorebird_code_push_client.dart';
 
 /// {@template subscribe_account_command}
 /// `shorebird account subscribe`
@@ -40,9 +41,19 @@ If you don't have a Shorebird account, run ${lightCyan.wrap('shorebird account c
       hostedUri: hostedUri,
     );
 
-    final user = await client.getCurrentUser();
-    if (user == null) {
-      logger.err('Failed to get the current user. This is probably an error');
+    final User user;
+    try {
+      final maybeUser = await client.getCurrentUser();
+      if (maybeUser == null) {
+        logger.err('''
+We're having trouble retrieving your account information.
+
+Please try logging out using ${lightCyan.wrap('shorebird logout')} and logging back in using ${lightCyan.wrap('shorebird login')}. If this problem persists, please contact us on Discord.''');
+        return ExitCode.software.code;
+      }
+      user = maybeUser;
+    } catch (error) {
+      logger.err(error.toString());
       return ExitCode.software.code;
     }
 
@@ -59,7 +70,12 @@ If you don't have a Shorebird account, run ${lightCyan.wrap('shorebird account c
       return ExitCode.software.code;
     }
 
-    logger.info('$paymentLink');
+    logger.info('''
+
+To purchase a Shorebird subscription, please visit the following link:
+${lightCyan.wrap(paymentLink.toString())}
+
+Once Stripe has processed your payment, you will be able to use Shorebird to create and publish apps.''');
 
     return ExitCode.success.code;
   }

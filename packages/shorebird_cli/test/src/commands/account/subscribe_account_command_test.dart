@@ -14,13 +14,9 @@ class _MockHttpClient extends Mock implements http.Client {}
 
 class _MockLogger extends Mock implements Logger {}
 
-class _MockProgress extends Mock implements Progress {}
-
 class _MockUser extends Mock implements User {}
 
 void main() {
-  const userName = 'John Doe';
-  const email = 'tester@shorebird.dev';
   final paymentLink = Uri.parse('https://example.com/payment-link');
 
   late Auth auth;
@@ -49,8 +45,6 @@ void main() {
       when(() => auth.client).thenReturn(httpClient);
       when(() => auth.isAuthenticated).thenReturn(true);
 
-      when(() => codePushClient.createUser(name: userName))
-          .thenAnswer((_) async => user);
       when(() => codePushClient.createPaymentLink())
           .thenAnswer((_) async => paymentLink);
       when(() => codePushClient.getCurrentUser()).thenAnswer((_) async => user);
@@ -71,8 +65,41 @@ void main() {
       final result = await subscribeAccountCommand.run();
 
       expect(result, ExitCode.software.code);
-      verify(() => logger.err(any(that: contains('You must be logged in'))))
-          .called(1);
+      verify(
+        () => logger.err(
+          any(that: contains('You must be logged in to subscribe')),
+        ),
+      ).called(1);
+      verifyNever(() => codePushClient.createPaymentLink());
+    });
+
+    test('exits with code 70 when getCurrentUser throws an exception',
+        () async {
+      when(() => codePushClient.getCurrentUser())
+          .thenThrow(Exception('oh no!'));
+
+      final result = await subscribeAccountCommand.run();
+
+      expect(result, ExitCode.software.code);
+      verify(() => logger.err(any(that: contains('oh no!')))).called(1);
+      verifyNever(() => codePushClient.createPaymentLink());
+    });
+
+    test('exits with code 70 when getCurrentUser returns null', () async {
+      when(() => codePushClient.getCurrentUser()).thenAnswer((_) async => null);
+
+      final result = await subscribeAccountCommand.run();
+
+      expect(result, ExitCode.software.code);
+      verify(
+        () => logger.err(
+          any(
+            that: contains(
+                "We're having trouble retrieving your account information"),
+          ),
+        ),
+      ).called(1);
+      verifyNever(() => codePushClient.createPaymentLink());
     });
 
     test(
@@ -87,6 +114,7 @@ void main() {
           any(that: contains('You already have an active subscription')),
         ),
       ).called(1);
+      verifyNever(() => codePushClient.createPaymentLink());
     });
 
     test('exits with code 70 and prints error if createPaymentLink fails',
@@ -106,6 +134,9 @@ void main() {
       final result = await subscribeAccountCommand.run();
 
       expect(result, ExitCode.success.code);
+      verify(
+        () => logger.info(any(that: contains(paymentLink.toString()))),
+      ).called(1);
       verify(() => codePushClient.createPaymentLink()).called(1);
     });
   });
