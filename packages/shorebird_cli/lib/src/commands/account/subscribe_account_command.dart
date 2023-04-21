@@ -29,8 +29,8 @@ class SubscribeAccountCommand extends ShorebirdCommand
 
 You must be logged in to subscribe.
 
-If you have a Shorebird account, run `shorebird login` to log in.
-If you don't have a Shorebird account, run `shorebird account create` to create one.
+If you have a Shorebird account, run ${lightCyan.wrap('shorebird login')} to log in.
+If you don't have a Shorebird account, run ${lightCyan.wrap('shorebird account create')} to create one.
 ''');
       return ExitCode.software.code;
     }
