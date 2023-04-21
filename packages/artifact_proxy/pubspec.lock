@@ -61,10 +61,10 @@ packages:
     dependency: transitive
     description:
       name: build_daemon
-      sha256: "5f02d73eb2ba16483e693f80bee4f088563a820e47d1027d4cdfe62b5bb43e65"
+      sha256: "757153e5d9cd88253cb13f28c2fb55a537dc31fefd98137549895b5beb7c6169"
       url: "https://pub.dev"
     source: hosted
-    version: "4.0.0"
+    version: "3.1.1"
   build_resolvers:
     dependency: transitive
     description:
@@ -77,10 +77,10 @@ packages:
     dependency: "direct dev"
     description:
       name: build_runner
-      sha256: "7b25ba738bc74c94187cebeb9cc29d38a32e8279ce950eabd821d3b454a5f03d"
+      sha256: b0a8a7b8a76c493e85f1b84bffa0588859a06197863dba8c9036b15581fd9727
       url: "https://pub.dev"
     source: hosted
-    version: "2.4.1"
+    version: "2.3.3"
   build_runner_core:
     dependency: transitive
     description:
@@ -570,4 +570,4 @@ packages:
     source: hosted
     version: "3.1.1"
 sdks:
-  dart: ">=3.0.0-134.0.dev <4.0.0"
+  dart: ">=2.19.5 <3.0.0"
