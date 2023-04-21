@@ -21,7 +21,13 @@ class SubscribeAccountCommand extends ShorebirdCommand
   String get name => 'subscribe';
 
   @override
-  String get description => 'Sign up for a Shorebird subscription.';
+  String get description => 'Sign up for a Shorebird subscription .';
+
+  @override
+  String get summary => '''
+A subscription is required to use Shorebird to create and publish apps.
+Subscriptions are \$20 per month and are billed through Stripe.
+Visit ${styleUnderlined.wrap(lightCyan.wrap('https://github.com/shorebirdtech/shorebird/blob/main/TRUSTED_TESTERS.md'))} to learn more.''';
 
   @override
   Future<int> run() async {

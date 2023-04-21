@@ -59,6 +59,13 @@ void main() {
       expect(subscribeAccountCommand.description, isNotEmpty);
     });
 
+    test('summary has price and link to trusted testers doc', () {
+      expect(
+        subscribeAccountCommand.summary,
+        stringContainsInOrder([r'$20', 'TRUSTED_TESTERS.md']),
+      );
+    });
+
     test('exits with code 70 when user is not logged in', () async {
       when(() => auth.isAuthenticated).thenReturn(false);
 
