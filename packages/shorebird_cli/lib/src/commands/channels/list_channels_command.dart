@@ -2,6 +2,7 @@ import 'dart:async';
 
 import 'package:barbecue/barbecue.dart';
 import 'package:mason_logger/mason_logger.dart';
+import 'package:shorebird_cli/src/auth_logger_mixin.dart';
 import 'package:shorebird_cli/src/command.dart';
 import 'package:shorebird_cli/src/shorebird_config_mixin.dart';
 import 'package:shorebird_code_push_client/shorebird_code_push_client.dart';
@@ -10,7 +11,8 @@ import 'package:shorebird_code_push_client/shorebird_code_push_client.dart';
 /// `shorebird channels list`
 /// List all channels for a Shorebird app.
 /// {@endtemplate}
-class ListChannelsCommand extends ShorebirdCommand with ShorebirdConfigMixin {
+class ListChannelsCommand extends ShorebirdCommand
+    with AuthLoggerMixin, ShorebirdConfigMixin {
   /// {@macro list_channels_command}
   ListChannelsCommand({
     required super.logger,
@@ -37,7 +39,7 @@ class ListChannelsCommand extends ShorebirdCommand with ShorebirdConfigMixin {
   @override
   Future<int>? run() async {
     if (!auth.isAuthenticated) {
-      logger.err('You must be logged in to view channels.');
+      printNeedsAuthInstructions();
       return ExitCode.noUser.code;
     }
 

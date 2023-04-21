@@ -1,6 +1,7 @@
 import 'dart:convert';
 
 import 'package:mason_logger/mason_logger.dart';
+import 'package:shorebird_cli/src/auth_logger_mixin.dart';
 import 'package:shorebird_cli/src/command.dart';
 import 'package:shorebird_cli/src/flutter_validation_mixin.dart';
 import 'package:shorebird_cli/src/shorebird_config_mixin.dart';
@@ -10,7 +11,7 @@ import 'package:shorebird_cli/src/shorebird_config_mixin.dart';
 /// Run the Flutter application.
 /// {@endtemplate}
 class RunCommand extends ShorebirdCommand
-    with ShorebirdValidationMixin, ShorebirdConfigMixin {
+    with AuthLoggerMixin, ShorebirdValidationMixin, ShorebirdConfigMixin {
   /// {@macro run_command}
   RunCommand({
     required super.logger,
@@ -28,9 +29,7 @@ class RunCommand extends ShorebirdCommand
   @override
   Future<int> run() async {
     if (!auth.isAuthenticated) {
-      logger
-        ..err('You must be logged in to run.')
-        ..err("Run 'shorebird login' to log in and try again.");
+      printNeedsAuthInstructions();
       return ExitCode.noUser.code;
     }
 

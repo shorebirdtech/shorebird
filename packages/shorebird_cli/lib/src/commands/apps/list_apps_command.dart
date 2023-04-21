@@ -2,6 +2,7 @@ import 'dart:async';
 
 import 'package:barbecue/barbecue.dart';
 import 'package:mason_logger/mason_logger.dart';
+import 'package:shorebird_cli/src/auth_logger_mixin.dart';
 import 'package:shorebird_cli/src/command.dart';
 import 'package:shorebird_cli/src/shorebird_config_mixin.dart';
 import 'package:shorebird_code_push_client/shorebird_code_push_client.dart';
@@ -11,7 +12,8 @@ import 'package:shorebird_code_push_client/shorebird_code_push_client.dart';
 /// `shorebird apps list`
 /// List all apps using Shorebird.
 /// {@endtemplate}
-class ListAppsCommand extends ShorebirdCommand with ShorebirdConfigMixin {
+class ListAppsCommand extends ShorebirdCommand
+    with AuthLoggerMixin, ShorebirdConfigMixin {
   /// {@macro list_apps_command}
   ListAppsCommand({
     required super.logger,
@@ -31,7 +33,7 @@ class ListAppsCommand extends ShorebirdCommand with ShorebirdConfigMixin {
   @override
   Future<int>? run() async {
     if (!auth.isAuthenticated) {
-      logger.err('You must be logged in.');
+      printNeedsAuthInstructions();
       return ExitCode.noUser.code;
     }
 

@@ -1,5 +1,6 @@
 import 'package:collection/collection.dart';
 import 'package:mason_logger/mason_logger.dart';
+import 'package:shorebird_cli/src/auth_logger_mixin.dart';
 import 'package:shorebird_cli/src/command.dart';
 import 'package:shorebird_cli/src/config/config.dart';
 import 'package:shorebird_cli/src/shorebird_config_mixin.dart';
@@ -12,7 +13,7 @@ import 'package:shorebird_code_push_client/shorebird_code_push_client.dart';
 /// Initialize Shorebird.
 /// {@endtemplate}
 class InitCommand extends ShorebirdCommand
-    with ShorebirdConfigMixin, ShorebirdCreateAppMixin {
+    with AuthLoggerMixin, ShorebirdConfigMixin, ShorebirdCreateAppMixin {
   /// {@macro init_command}
   InitCommand({required super.logger, super.auth, super.buildCodePushClient});
 
@@ -25,7 +26,7 @@ class InitCommand extends ShorebirdCommand
   @override
   Future<int> run() async {
     if (!auth.isAuthenticated) {
-      logger.err('You must be logged in.');
+      printNeedsAuthInstructions();
       return ExitCode.noUser.code;
     }
 

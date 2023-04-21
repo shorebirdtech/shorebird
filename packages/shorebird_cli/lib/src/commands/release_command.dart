@@ -4,6 +4,7 @@ import 'package:collection/collection.dart';
 import 'package:crypto/crypto.dart';
 import 'package:mason_logger/mason_logger.dart';
 import 'package:path/path.dart' as p;
+import 'package:shorebird_cli/src/auth_logger_mixin.dart';
 import 'package:shorebird_cli/src/command.dart';
 import 'package:shorebird_cli/src/flutter_validation_mixin.dart';
 import 'package:shorebird_cli/src/shorebird_build_mixin.dart';
@@ -17,6 +18,7 @@ import 'package:shorebird_code_push_client/shorebird_code_push_client.dart';
 /// {@endtemplate}
 class ReleaseCommand extends ShorebirdCommand
     with
+        AuthLoggerMixin,
         ShorebirdValidationMixin,
         ShorebirdConfigMixin,
         ShorebirdBuildMixin,
@@ -65,7 +67,7 @@ make smaller updates to your app.
     }
 
     if (!auth.isAuthenticated) {
-      logger.err('You must be logged in to release.');
+      printNeedsAuthInstructions();
       return ExitCode.noUser.code;
     }
 

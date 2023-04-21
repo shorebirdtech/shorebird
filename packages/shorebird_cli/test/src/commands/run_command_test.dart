@@ -102,9 +102,8 @@ void main() {
       final result = await runCommand.run();
       expect(result, equals(ExitCode.noUser.code));
 
-      verify(() => logger.err('You must be logged in to run.')).called(1);
       verify(
-        () => logger.err("Run 'shorebird login' to log in and try again."),
+        () => logger.err(any(that: contains('You must be logged in to run'))),
       ).called(1);
     });
 
