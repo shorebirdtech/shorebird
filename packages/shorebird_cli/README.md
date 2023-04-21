@@ -89,7 +89,7 @@ shorebird logout
 
 ### Create Account
 
-To create a new shorebird account use the `shorebird account create` command:
+To create a new Shorebird account use the `shorebird account create` command:
 
 ```bash
 shorebird account create
