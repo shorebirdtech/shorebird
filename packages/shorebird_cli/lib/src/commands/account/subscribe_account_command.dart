@@ -41,6 +41,11 @@ If you don't have a Shorebird account, run ${lightCyan.wrap('shorebird account c
     );
 
     final user = await client.getCurrentUser();
+    if (user == null) {
+      logger.err('Failed to get the current user. This is probably an error');
+      return ExitCode.software.code;
+    }
+
     if (user.hasActiveSubscription) {
       logger.info('You already have an active subscription. Thank you!');
       return ExitCode.success.code;
