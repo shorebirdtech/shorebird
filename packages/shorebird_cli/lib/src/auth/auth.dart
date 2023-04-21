@@ -129,6 +129,7 @@ class Auth {
         throw Exception('Failed to obtain access credentials.');
       }
 
+      final codePushClient = _buildCodePushClient(httpClient: this.client);
       final user = await codePushClient.getCurrentUser();
       if (user == null) {
         throw UserNotFoundException(email: _credentials!.email!);

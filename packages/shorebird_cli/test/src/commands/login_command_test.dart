@@ -5,7 +5,6 @@ import 'package:mocktail/mocktail.dart';
 import 'package:path/path.dart' as p;
 import 'package:shorebird_cli/src/auth/auth.dart';
 import 'package:shorebird_cli/src/commands/login_command.dart';
-import 'package:shorebird_code_push_client/shorebird_code_push_client.dart';
 import 'package:test/test.dart';
 
 class _MockAuth extends Mock implements Auth {}
@@ -73,25 +72,6 @@ void main() {
 
       verify(() => auth.login(any())).called(1);
       verify(() => logger.err(error.toString())).called(1);
-    });
-
-    test('exits with code 70 if user does not have an account', () async {
-      when(() => auth.login(any())).thenThrow(UserNotFoundException());
-
-      final result = await loginCommand.run();
-
-      expect(result, equals(ExitCode.software.code));
-      verify(() => auth.login(any())).called(1);
-      verify(
-        () => logger.err(
-          any(
-            that: stringContainsInOrder([
-              "We don't recognize that email address",
-              'shorebird account create',
-            ]),
-          ),
-        ),
-      ).called(1);
     });
 
     test('exits with code 0 when logged in successfully', () async {

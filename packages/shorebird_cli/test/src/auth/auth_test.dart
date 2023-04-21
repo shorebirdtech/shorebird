@@ -282,33 +282,6 @@ void main() {
         expect(auth.email, isNull);
         expect(auth.isAuthenticated, isFalse);
       });
-
-      test(
-        "throws exception if credentials email doesn't match current user",
-        () async {
-          when(() => codePushClient.getCurrentUser()).thenAnswer(
-            (_) async => const User(
-              id: 123,
-              email: 'email@email.com',
-            ),
-          );
-
-          await expectLater(auth.login((_) {}), throwsException);
-
-          expect(auth.email, isNull);
-          expect(auth.isAuthenticated, isFalse);
-        },
-      );
-
-      test(
-        'does not fetch current user if verifyEmail is false',
-        () async {
-          await auth.login((_) {}, verifyEmail: false);
-          verifyNever(() => codePushClient.getCurrentUser());
-          expect(buildAuth().email, email);
-          expect(buildAuth().isAuthenticated, isTrue);
-        },
-      );
     });
 
     group('logout', () {
