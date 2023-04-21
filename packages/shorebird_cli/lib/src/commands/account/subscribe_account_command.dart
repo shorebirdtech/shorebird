@@ -47,17 +47,16 @@ If you don't have a Shorebird account, run ${lightCyan.wrap('shorebird account c
       hostedUri: hostedUri,
     );
 
-    final User user;
+    final User? user;
     try {
-      final maybeUser = await client.getCurrentUser();
-      if (maybeUser == null) {
+      user = await client.getCurrentUser();
+      if (user == null) {
         logger.err('''
 We're having trouble retrieving your account information.
 
 Please try logging out using ${lightCyan.wrap('shorebird logout')} and logging back in using ${lightCyan.wrap('shorebird login')}. If this problem persists, please contact us on Discord.''');
         return ExitCode.software.code;
       }
-      user = maybeUser;
     } catch (error) {
       logger.err(error.toString());
       return ExitCode.software.code;
