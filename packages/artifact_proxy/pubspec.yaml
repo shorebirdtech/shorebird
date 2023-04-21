@@ -12,6 +12,7 @@ dependencies:
   collection: ^1.17.1
   http: ^0.13.5
   json_annotation: ^4.8.0
+  quiver: ^3.2.1
   shelf: ^1.4.0
   shelf_hotreload: ^1.4.0
 

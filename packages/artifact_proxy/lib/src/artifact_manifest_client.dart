@@ -4,6 +4,7 @@ import 'dart:io';
 import 'package:artifact_proxy/artifact_proxy.dart';
 import 'package:checked_yaml/checked_yaml.dart';
 import 'package:http/http.dart' as http;
+import 'package:quiver/collection.dart';
 
 /// {@template artifact_manifest_client}
 /// A client that fetches [ArtifactsManifest]s from the shorebird storage bucket
@@ -16,7 +17,7 @@ class ArtifactManifestClient {
 
   final http.Client _httpClient;
 
-  final _cache = <String, ArtifactsManifest>{};
+  final _cache = LruMap<String, ArtifactsManifest>(maximumSize: 1000);
 
   /// Fetches the [ArtifactsManifest] for the provided [revision] from the
   /// shorebird storage bucket.
