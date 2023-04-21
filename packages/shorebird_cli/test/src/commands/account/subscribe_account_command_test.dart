@@ -95,7 +95,8 @@ void main() {
         () => logger.err(
           any(
             that: contains(
-                "We're having trouble retrieving your account information"),
+              "We're having trouble retrieving your account information",
+            ),
           ),
         ),
       ).called(1);
