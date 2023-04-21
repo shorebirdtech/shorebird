@@ -147,7 +147,7 @@ shorebird doctor
 ```
 $ shorebird doctor
 
-Shorebird v0.0.7
+Shorebird v0.0.8
 Shorebird Engine • revision d470ae25d21f583abe128f7b838476afd5e45bde
 
 ✓ Shorebird is up-to-date (0.7s)
