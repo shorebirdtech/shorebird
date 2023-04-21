@@ -2,7 +2,7 @@
 
 **🚧 This project is under heavy development 🚧**
 
-**❗️ Currently, only Android arm64 release builds are supported but we are working on expanding to other platforms/architectures.**
+**❗️ Currently, only Android release builds are supported but we are working on expanding to other platforms/architectures.**
 
 The Shorebird command-line allows developers to interact with various Shorebird services. We're currently focusing on CodePush but the Shorebird CLI will continue to expand as we add more capabilities.
 
@@ -58,9 +58,18 @@ shorebird login
 
 ```
 shorebird login
-? Please enter your API Key: <API-KEY>
-✓ Logging into shorebird.dev (7ms)
-You are now logged in.
+The Shorebird CLI needs your authorization to manage apps, releases, and patches on your behalf.
+
+In a browser, visit this URL to log in:
+
+https://accounts.google.com/o/oauth2/v2/auth...
+
+Waiting for your authorization...
+
+🎉 Welcome to Shorebird! You are now logged in as <email>.
+
+🔑 Credentials are stored in /path/to/credentials.json.
+🚪 To logout use: "shorebird logout".
 ```
 
 ### Logout
@@ -78,19 +87,51 @@ shorebird logout
 ✓ Logging out of shorebird.dev (1ms)
 ```
 
-### Account
+### Create Account
 
-To see information about your Shorebird account, use the `shorebird account` command.
+To create a new shorebird account use the `shorebird account create` command:
 
 ```bash
-shorebird account
+shorebird account create
 ```
 
 **Sample**
 
 ```
-$ shorebird account
-You are logged in as <bryan@shorebird.dev>
+$ shorebird account create
+Shorebird currently requires a Google account for authentication. If you'd like to use a different kind of auth, please let us know: https://github.com/shorebirdtech/shorebird/issues/335.
+
+Follow the link below to authenticate:
+
+https://accounts.google.com/o/oauth2/v2/auth...
+
+Waiting for your authorization...
+Tell us your name to finish creating your account: Jane Doe
+
+🎉 Welcome to Shorebird, Jane Doe!
+🔑 Credentials are stored in ./path/to/credentials.json.
+🚪 To logout, use: "shorebird logout".
+⬆️  To upgrade your account, use: "shorebird account subscribe".
+
+Enjoy! Please let us know via Discord if we can help.
+```
+
+### Upgrade to Paid Account
+
+To use Shorebird, you must upgrade to a paid account using the `shorebird account subscribe` command. Once you have paid, your account will be automatically upgraded and you will be able to use Shorebird to build and deploy apps.
+
+**Sample**
+
+```
+$ shorebird account subscribe
+✓ Link generated! (0.8s)
+
+To purchase a Shorebird subscription, please visit the following link:
+https://buy.stripe.com/...
+
+Once Stripe has processed your payment, you will be able to use Shorebird to create and publish apps.
+
+Note: This payment link is specifically for your account. Do not share it with others.
 ```
 
 ### Doctor
@@ -106,7 +147,8 @@ shorebird doctor
 ```
 $ shorebird doctor
 
-Shorebird v0.0.3
+Shorebird v0.0.7
+Shorebird Engine • revision d470ae25d21f583abe128f7b838476afd5e45bde
 
 ✓ Shorebird is up-to-date (0.7s)
 ✓ Flutter install is correct (0.1s)
@@ -357,17 +399,20 @@ Global options:
     --[no-]verbose    Noisy logging, including all shell commands executed.
 
 Available commands:
-  apps       Manage your Shorebird apps.
-  build      Build a new release of your application.
-  channels   Manage the channels for your Shorebird app.
-  doctor     Show information about the installed tooling.
-  init       Initialize Shorebird.
-  login      Login as a new Shorebird user.
-  logout     Logout of the current Shorebird user
-  patch      Publish new patches for a specific release to Shorebird.
-  release    Builds and submits your app to Shorebird.
-  run        Run the Flutter application.
-  upgrade    Upgrade your copy of Shorebird.
+  account        Manage your Shorebird account.
+  apps           Manage your Shorebird apps.
+  build          Build a new release of your application.
+  cache          Manage the Shorebird cache.
+  channels       Manage the channels for your Shorebird app.
+  doctor         Show information about the installed tooling.
+  init           Initialize Shorebird.
+  login          Login as a new Shorebird user.
+  logout         Logout of the current Shorebird user
+  patch          Publish new patches for a specific release to Shorebird.
+  release        Builds and submits your app to Shorebird.
+  run            Run the Flutter application.
+  subscription   Manage your Shorebird subscription.
+  upgrade        Upgrade your copy of Shorebird.
 
 Run "shorebird help <command>" for more information about a command.
 ```
