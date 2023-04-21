@@ -12,6 +12,10 @@ class _MockProcessWrapper extends Mock implements ProcessWrapper {}
 
 void main() {
   group('ShorebirdProcess', () {
+    const flutterStorageBaseUrlEnv = {
+      'FLUTTER_STORAGE_BASE_URL': 'https://download.shorebird.dev',
+    };
+
     late ProcessWrapper processWrapper;
     late Process startProcess;
     late ProcessResult runProcessResult;
@@ -79,9 +83,7 @@ void main() {
             any(that: contains('bin/cache/flutter/bin/flutter')),
             ['--version'],
             runInShell: true,
-            environment: {
-              'FLUTTER_STORAGE_BASE_URL': 'https://download.shorebird.dev/',
-            },
+            environment: flutterStorageBaseUrlEnv,
             workingDirectory: '~',
           ),
         ).called(1);
@@ -202,9 +204,7 @@ void main() {
             any(that: contains('bin/cache/flutter/bin/flutter')),
             ['run'],
             runInShell: true,
-            environment: {
-              'FLUTTER_STORAGE_BASE_URL': 'https://download.shorebird.dev/',
-            },
+            environment: flutterStorageBaseUrlEnv,
           ),
         ).called(1);
       });
@@ -245,7 +245,7 @@ void main() {
           runInShell: true,
           environment: {
             'ENV_VAR': 'asdfasdf',
-            'FLUTTER_STORAGE_BASE_URL': 'https://download.shorebird.dev/',
+            ...flutterStorageBaseUrlEnv,
           },
         ),
       ).called(1);
