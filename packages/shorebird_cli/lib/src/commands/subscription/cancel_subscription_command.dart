@@ -34,7 +34,11 @@ class CancelSubscriptionCommand extends ShorebirdCommand
 
     final User user;
     try {
-      user = await client.getCurrentUser();
+      final currentUser = await client.getCurrentUser();
+      if (currentUser == null) {
+        throw Exception('Failed to retrieve user information.');
+      }
+      user = currentUser;
     } catch (error) {
       logger.err(error.toString());
       return ExitCode.software.code;

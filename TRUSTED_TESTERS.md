@@ -33,7 +33,7 @@ the wild. If you believe that's the case, please reach out, we're here to help.
 ## What works today
 
 You can build and deploy new (release) versions of your app to all Android
-users via `shorebird` command line from a Mac, Linux or Windows host.
+users via `shorebird` command line from a Mac or Linux host.
 
 All users will synchronously update to the new version on next launch
 (no control over this behavior yet,
@@ -50,16 +50,16 @@ https://github.com/shorebirdtech/shorebird/tree/main/packages/shorebird_cli
 
 No support for:
 
-- Flutter channels (only latest stable 3.7.10 is supported)
+- Windows hosts ([issue](https://github.com/shorebirdtech/shorebird/issues/37))
+- Flutter channels (only latest stable 3.7.12 is supported)
 - Rollbacks ([issue](https://github.com/shorebirdtech/shorebird/issues/126))
-- Shorebird channels (staged rollouts of patches) [issue](https://github.com/shorebirdtech/shorebird/issues/110)
-- Percentage based rollouts
+- Staged rollouts of patches (channels or percentage based) [issue](https://github.com/shorebirdtech/shorebird/issues/110)
 - Async updates / downloads [issue](https://github.com/shorebirdtech/shorebird/issues/123)
 - Analytics
 - Web interface
 - CI/CD (GitHub Actions, etc.) integration
 - Patch signing [issue](https://github.com/shorebirdtech/shorebird/issues/112)
-- Asset changes (images, icons, etc.) -- currently only supports changing Dart code.
+- Asset changes (images, icons, etc.) [issue](https://github.com/shorebirdtech/shorebird/issues/318)
 - Plugin changes (java, kotlin, etc.) -- currently only supports changing Dart code.
 
 ## Installing Shorebird command line
@@ -155,7 +155,7 @@ is set up correctly.
 ## Shorebird's fork of Flutter
 
 `shorebird` uses a fork of Flutter that includes the Shorebird updater.
-This fork is currently based on Flutter 3.7.10.
+This fork is currently based on Flutter 3.7.12.
 We replace a few of the Flutter engine files with our own.  To do that, we use
 `FLUTTER_STORAGE_BASE_URL` to point to download.shorebird.dev instead of
 download.flutter.dev.  We pass through unmodified output from the `flutter`

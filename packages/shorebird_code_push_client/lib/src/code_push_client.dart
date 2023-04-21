@@ -41,11 +41,13 @@ class CodePushClient {
   final Uri hostedUri;
 
   /// Fetches the currently logged-in user.
-  Future<User> getCurrentUser() async {
+  Future<User?> getCurrentUser() async {
     final uri = Uri.parse('$hostedUri/api/v1/users/me');
     final response = await _httpClient.get(uri);
 
-    if (response.statusCode != HttpStatus.ok) {
+    if (response.statusCode == HttpStatus.notFound) {
+      return null;
+    } else if (response.statusCode != HttpStatus.ok) {
       throw _parseErrorResponse(response.body);
     }
 
@@ -176,6 +178,25 @@ class CodePushClient {
     }
     final body = json.decode(response.body) as Map<String, dynamic>;
     return Release.fromJson(body);
+  }
+
+  /// Create a new Shorebird user with the provided [name].
+  ///
+  /// The email associated with the user's JWT will be used as the user's email.
+  Future<User> createUser({
+    required String name,
+  }) async {
+    final response = await _httpClient.post(
+      Uri.parse('$hostedUri/api/v1/users'),
+      body: jsonEncode(CreateUserRequest(name: name).toJson()),
+    );
+
+    if (response.statusCode != HttpStatus.created) {
+      throw _parseErrorResponse(response.body);
+    }
+
+    final body = json.decode(response.body) as Json;
+    return User.fromJson(body);
   }
 
   /// Delete the app with the provided [appId].

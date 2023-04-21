@@ -84,6 +84,20 @@ void main() {
       ).called(1);
     });
 
+    test('prints an error if fetch current user returns null', () async {
+      when(() => auth.isAuthenticated).thenReturn(true);
+      when(() => codePushClient.getCurrentUser()).thenAnswer((_) async => null);
+
+      final result = await command.run();
+
+      expect(result, ExitCode.software.code);
+      verify(
+        () => logger.err(
+          any(that: contains('Failed to retrieve user information')),
+        ),
+      ).called(1);
+    });
+
     test(
       'prints an error if the user does not have an active subscription',
       () async {
