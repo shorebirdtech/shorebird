@@ -68,7 +68,7 @@ Waiting for your authorization...
 
 🎉 Welcome to Shorebird! You are now logged in as <email>.
 
-🔑 Credentials are stored in /path/to/credentials.json.
+🔑 Credentials are stored in ./path/to/credentials.json.
 🚪 To logout use: "shorebird logout".
 ```
 
