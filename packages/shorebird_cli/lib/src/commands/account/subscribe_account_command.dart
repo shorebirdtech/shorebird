@@ -26,13 +26,13 @@ class SubscribeAccountCommand extends ShorebirdCommand
   @override
   Future<int> run() async {
     if (!auth.isAuthenticated) {
-      logger.err('''
-
-You must be logged in to subscribe.
+      logger
+        ..err('''
+You must be logged in to subscribe.''')
+        ..info('''
 
 If you have a Shorebird account, run ${lightCyan.wrap('shorebird login')} to log in.
-If you don't have a Shorebird account, run ${lightCyan.wrap('shorebird account create')} to create one.
-''');
+If you don't have a Shorebird account, run ${lightCyan.wrap('shorebird account create')} to create one.''');
       return ExitCode.software.code;
     }
 
