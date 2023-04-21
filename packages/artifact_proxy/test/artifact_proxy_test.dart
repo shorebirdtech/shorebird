@@ -75,7 +75,7 @@ void main() {
 
     test(
         'should proxy to Shorebird artifacts '
-        'when an engine revision is detected', () async {
+        'when an engine revision is detected with an override', () async {
       const path =
           'flutter_infra_release/flutter/$shorebirdEngineRevision/android-x64-release/artifacts.zip';
       final request = buildRequest(path);
@@ -84,6 +84,22 @@ void main() {
         response,
         isRedirectTo(
           'https://storage.googleapis.com/${manifest.storageBucket}/$path',
+        ),
+      );
+      verify(() => client.getManifest(shorebirdEngineRevision)).called(1);
+    });
+
+    test(
+        'should proxy to Flutter artifacts '
+        'when an engine revision is detected with no override', () async {
+      const path =
+          'flutter_infra_release/flutter/$shorebirdEngineRevision/windows-x64/font-subset.zip';
+      final request = buildRequest(path);
+      final response = await handler(request);
+      expect(
+        response,
+        isRedirectTo(
+          'https://storage.googleapis.com/flutter_infra_release/flutter/${manifest.flutterEngineRevision}/windows-x64/font-subset.zip',
         ),
       );
       verify(() => client.getManifest(shorebirdEngineRevision)).called(1);
