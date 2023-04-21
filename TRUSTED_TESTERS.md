@@ -51,6 +51,7 @@ https://github.com/shorebirdtech/shorebird/tree/main/packages/shorebird_cli
 No support for:
 
 - Windows hosts ([issue](https://github.com/shorebirdtech/shorebird/issues/37))
+- Teams / Organizations sharing apps [issue](https://github.com/shorebirdtech/shorebird/issues/345)
 - Flutter channels (only latest stable 3.7.12 is supported)
 - Rollbacks ([issue](https://github.com/shorebirdtech/shorebird/issues/126))
 - Staged rollouts of patches (channels or percentage based) [issue](https://github.com/shorebirdtech/shorebird/issues/110)
@@ -79,14 +80,45 @@ The total install is about 300mb.
 
 More information: https://github.com/shorebirdtech/install/blob/main/README.md
 
+## Creating your Shorebird account
+
+Once you have Shorebird installed, you need to create a Shorebird account.
+Currently Shorebird uses Google OAuth to authenticate users.  If you need other
+auth methods, please [let us
+know](https://github.com/shorebirdtech/shorebird/issues/335).
+
+```bash
+shorebird account create
+```
+
+## Subscribing to Shorebird Trusted Tester program
+
+Once you have a Shorebird account, you need to subscribe to the Trusted Tester
+program.  This will give you access to the Shorebird services.
+
+The cost during the Trusted Tester program is $20 per user per month.  You can
+release and update as many apps as you want.  We currently only support Android
+apps built from a Mac or Linux host.
+
+```bash
+shorebird account subscribe
+```
+
+This command will give you a link to Stripe where you can complete your subscription.
+Once the payment is complete, you'll be able to use the rest of Shorebird.
+
+We strongly recommend you [join us on
+Discord](https://discord.com/invite/9hKJcWGcaB) so that we can provide you live
+support.  Once you've subscribed, you can message Eric on Discord and he can add
+you to the #trusted-testers private channel.
+
 ## Using Shorebird code push
 
 If you already have a Flutter app, you can build it with Shorebird in a few steps:
 
-1. The first step is to login. `shorebird login` will prompt you with a Google
-   OAuth sign-in link.  Not all `shorebird`
-   commands require login, but it's best to just do it first to avoid
-   unexpected errors later.
+1. If you did not just create your account above, you may need to login.
+   `shorebird login` will prompt you to refresh your OAuth token if it's
+   expired.
 
 2. Once you're logged in, you can use `shorebird init`. This needs to be run
    within the directory of your Flutter app, it reads and writes your `pubspec.yaml`
