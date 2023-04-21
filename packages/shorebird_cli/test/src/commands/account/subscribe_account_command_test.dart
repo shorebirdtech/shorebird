@@ -14,6 +14,8 @@ class _MockHttpClient extends Mock implements http.Client {}
 
 class _MockLogger extends Mock implements Logger {}
 
+class _MockProgress extends Mock implements Progress {}
+
 class _MockUser extends Mock implements User {}
 
 void main() {
@@ -23,6 +25,7 @@ void main() {
   late CodePushClient codePushClient;
   late http.Client httpClient;
   late Logger logger;
+  late Progress progress;
   late User user;
 
   late SubscribeAccountCommand subscribeAccountCommand;
@@ -33,6 +36,7 @@ void main() {
       codePushClient = _MockCodePushClient();
       httpClient = _MockHttpClient();
       logger = _MockLogger();
+      progress = _MockProgress();
       user = _MockUser();
 
       subscribeAccountCommand = SubscribeAccountCommand(
@@ -51,6 +55,7 @@ void main() {
 
       when(() => logger.err(any())).thenReturn(null);
       when(() => logger.info(any())).thenReturn(null);
+      when(() => logger.progress(any())).thenReturn(progress);
 
       when(() => user.hasActiveSubscription).thenReturn(false);
     });
@@ -88,7 +93,7 @@ void main() {
       final result = await subscribeAccountCommand.run();
 
       expect(result, ExitCode.software.code);
-      verify(() => logger.err(any(that: contains('oh no!')))).called(1);
+      verify(() => progress.fail(any(that: contains('oh no!')))).called(1);
       verifyNever(() => codePushClient.createPaymentLink());
     });
 
@@ -99,7 +104,7 @@ void main() {
 
       expect(result, ExitCode.software.code);
       verify(
-        () => logger.err(
+        () => progress.fail(
           any(
             that: contains(
               "We're having trouble retrieving your account information",
@@ -118,7 +123,7 @@ void main() {
 
       expect(result, ExitCode.success.code);
       verify(
-        () => logger.info(
+        () => progress.complete(
           any(that: contains('You already have an active subscription')),
         ),
       ).called(1);
@@ -135,13 +140,14 @@ void main() {
 
       expect(result, ExitCode.software.code);
       verify(() => codePushClient.createPaymentLink()).called(1);
-      verify(() => logger.err(any(that: contains(errorMessage)))).called(1);
+      verify(() => progress.fail(any(that: contains(errorMessage)))).called(1);
     });
 
     test('exits with code 0 and prints payment link', () async {
       final result = await subscribeAccountCommand.run();
 
       expect(result, ExitCode.success.code);
+      verify(() => progress.complete('Link generated!')).called(1);
       verify(
         () => logger.info(any(that: contains(paymentLink.toString()))),
       ).called(1);

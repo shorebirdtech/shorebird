@@ -47,40 +47,48 @@ If you don't have a Shorebird account, run ${lightCyan.wrap('shorebird account c
       hostedUri: hostedUri,
     );
 
+    final progress = logger.progress('Retrieving account information');
+
     final User? user;
     try {
       user = await client.getCurrentUser();
       if (user == null) {
-        logger.err('''
+        progress.fail('''
 We're having trouble retrieving your account information.
 
 Please try logging out using ${lightCyan.wrap('shorebird logout')} and logging back in using ${lightCyan.wrap('shorebird login')}. If this problem persists, please contact us on Discord.''');
         return ExitCode.software.code;
       }
     } catch (error) {
-      logger.err(error.toString());
+      progress.fail(error.toString());
       return ExitCode.software.code;
     }
 
     if (user.hasActiveSubscription) {
-      logger.info('You already have an active subscription. Thank you!');
+      progress.complete('You already have an active subscription. Thank you!');
       return ExitCode.success.code;
+    } else {
+      progress.update('Retrieved account information, generating payment link');
     }
 
     final Uri paymentLink;
     try {
       paymentLink = await client.createPaymentLink();
     } catch (error) {
-      logger.err(error.toString());
+      progress.fail(error.toString());
       return ExitCode.software.code;
     }
+
+    progress.complete('Link generated!');
 
     logger.info('''
 
 To purchase a Shorebird subscription, please visit the following link:
 ${lightCyan.wrap(paymentLink.toString())}
 
-Once Stripe has processed your payment, you will be able to use Shorebird to create and publish apps.''');
+Once Stripe has processed your payment, you will be able to use Shorebird to create and publish apps.
+
+${styleBold.wrap(red.wrap('Note: This payment link is specifically for ${styleItalic.wrap('your account')}. Do not share it with others.'))}''');
 
     return ExitCode.success.code;
   }
