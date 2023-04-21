@@ -5,6 +5,7 @@ import 'package:crypto/crypto.dart';
 import 'package:http/http.dart' as http;
 import 'package:mason_logger/mason_logger.dart';
 import 'package:path/path.dart' as p;
+import 'package:shorebird_cli/src/auth_logger_mixin.dart';
 import 'package:shorebird_cli/src/command.dart';
 import 'package:shorebird_cli/src/flutter_validation_mixin.dart';
 import 'package:shorebird_cli/src/shorebird_build_mixin.dart';
@@ -36,6 +37,7 @@ class PatchArtifactBundle {
 /// {@endtemplate}
 class PatchCommand extends ShorebirdCommand
     with
+        AuthLoggerMixin,
         ShorebirdValidationMixin,
         ShorebirdConfigMixin,
         ShorebirdBuildMixin,
@@ -106,7 +108,7 @@ class PatchCommand extends ShorebirdCommand
     }
 
     if (!auth.isAuthenticated) {
-      logger.err('You must be logged in to publish.');
+      printNeedsAuthInstructions();
       return ExitCode.noUser.code;
     }
 

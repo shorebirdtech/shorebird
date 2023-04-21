@@ -77,10 +77,9 @@ void main() {
       final result = await subscribeAccountCommand.run();
 
       expect(result, ExitCode.software.code);
+
       verify(
-        () => logger.err(
-          any(that: contains('You must be logged in to subscribe')),
-        ),
+        () => logger.err(any(that: contains('You must be logged in to run'))),
       ).called(1);
       verifyNever(() => codePushClient.createPaymentLink());
     });

@@ -1,6 +1,7 @@
 import 'dart:async';
 
 import 'package:mason_logger/mason_logger.dart';
+import 'package:shorebird_cli/src/auth_logger_mixin.dart';
 import 'package:shorebird_cli/src/command.dart';
 import 'package:shorebird_cli/src/shorebird_config_mixin.dart';
 import 'package:shorebird_code_push_client/shorebird_code_push_client.dart';
@@ -9,7 +10,7 @@ import 'package:shorebird_code_push_client/shorebird_code_push_client.dart';
 /// `shorebird account subscribe`
 /// {@endtemplate}
 class SubscribeAccountCommand extends ShorebirdCommand
-    with ShorebirdConfigMixin {
+    with AuthLoggerMixin, ShorebirdConfigMixin {
   /// {@macro subscribe_account_command}
   SubscribeAccountCommand({
     required super.logger,
@@ -35,13 +36,7 @@ Visit ${styleUnderlined.wrap(lightCyan.wrap('https://github.com/shorebirdtech/sh
   @override
   Future<int> run() async {
     if (!auth.isAuthenticated) {
-      logger
-        ..err('''
-You must be logged in to subscribe.''')
-        ..info('''
-
-If you have a Shorebird account, run ${lightCyan.wrap('shorebird login')} to log in.
-If you don't have a Shorebird account, run ${lightCyan.wrap('shorebird account create')} to create one.''');
+      printNeedsAuthInstructions();
       return ExitCode.software.code;
     }
 

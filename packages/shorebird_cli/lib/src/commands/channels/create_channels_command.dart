@@ -1,6 +1,7 @@
 import 'dart:async';
 
 import 'package:mason_logger/mason_logger.dart';
+import 'package:shorebird_cli/src/auth_logger_mixin.dart';
 import 'package:shorebird_cli/src/command.dart';
 import 'package:shorebird_cli/src/shorebird_config_mixin.dart';
 
@@ -8,7 +9,8 @@ import 'package:shorebird_cli/src/shorebird_config_mixin.dart';
 /// `shorebird channels create`
 /// Create a new channel for a Shorebird app.
 /// {@endtemplate}
-class CreateChannelsCommand extends ShorebirdCommand with ShorebirdConfigMixin {
+class CreateChannelsCommand extends ShorebirdCommand
+    with AuthLoggerMixin, ShorebirdConfigMixin {
   /// {@macro create_channels_command}
   CreateChannelsCommand({
     required super.logger,
@@ -38,7 +40,7 @@ class CreateChannelsCommand extends ShorebirdCommand with ShorebirdConfigMixin {
   @override
   Future<int>? run() async {
     if (!auth.isAuthenticated) {
-      logger.err('You must be logged in to view channels.');
+      printNeedsAuthInstructions();
       return ExitCode.noUser.code;
     }
 
