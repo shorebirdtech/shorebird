@@ -54,9 +54,13 @@ To subscribe, run ${lightCyan.wrap('shorebird account subscribe')}.
 🎉 ${lightGreen.wrap('Welcome to Shorebird, ${newUser.displayName}!')}
 🔑 Credentials are stored in ${lightCyan.wrap(auth.credentialsFilePath)}.
 🚪 To logout, use: "${lightCyan.wrap('shorebird logout')}".
-⬆️  To upgrade your account, use: "${lightCyan.wrap('shorebird account subscribe')}".
 
-Enjoy! Please let us know via Discord if we can help.''',
+A subscription is required to use Shorebird during the Trusted Tester program.
+To subscribe, run ${lightCyan.wrap('shorebird account subscribe')}.
+
+Please let us know via Discord if we can help!
+${lightCyan.wrap('https://discord.com/invite/9hKJcWGcaB')}.
+''',
     );
     return ExitCode.success.code;
   }

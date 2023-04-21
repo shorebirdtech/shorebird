@@ -1,7 +1,6 @@
 import 'dart:io';
 
 import 'package:artifact_proxy/artifact_proxy.dart';
-import 'package:artifact_proxy/src/artifact_manifest_client.dart';
 import 'package:http/http.dart' as http;
 import 'package:mocktail/mocktail.dart';
 import 'package:test/test.dart';
