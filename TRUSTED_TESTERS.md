@@ -472,10 +472,13 @@ This section contains past updates we've sent to current Trusted Testers.
 
 We've just released Shorebird CLI v0.0.8 🎉
 
-If you're already using Shorebird there should be no change for you in
-this update.  We're just making it easier for us to add new trusted testers.
-
 What's new:
+* Updated to Flutter 3.7.12.
+* Updated Shorebird to use a specific revision of Flutter (rather than
+  "latest stable in our fork", making it possible to check out a specific
+  version of Shorebird from git and expect it to be able to build binaries
+  even months in the future).
+* Added (partial) support for Android build numbers.
 * Added `shorebird account create` and `shorebird account subscribe` to
   automate our onboarding process for new trusted testers.
 * Improved the way we proxy Flutter artifacts (via download.shorebird.dev) to
