@@ -25,9 +25,12 @@ class SubscribeAccountCommand extends ShorebirdCommand
 
   @override
   String get summary => '''
-A subscription is required to use Shorebird to create and publish apps.
-Subscriptions are currently \$20 per month and are billed through Stripe.
-Visit ${styleUnderlined.wrap(lightCyan.wrap('https://github.com/shorebirdtech/shorebird/blob/main/TRUSTED_TESTERS.md'))} to learn more.''';
+A subscription to Shorebird's Trusted Tester program is required to publish
+patches to your apps.
+
+The subscription costs \$20 USD per month per user and is billed through Stripe.
+
+Visit ${styleUnderlined.wrap(lightCyan.wrap('https://github.com/shorebirdtech/shorebird/blob/main/TRUSTED_TESTERS.md'))} for more details.''';
 
   @override
   Future<int> run() async {
@@ -88,8 +91,14 @@ ${lightCyan.wrap(paymentLink.toString())}
 
 Once Stripe has processed your payment, you will be able to use Shorebird to create and publish apps.
 
-${styleBold.wrap(red.wrap('Note: This payment link is specifically for ${styleItalic.wrap('your account')}. Do not share it with others.'))}''');
+${styleBold.wrap(red.wrap('Note: This payment link is specifically for ${styleItalic.wrap('your account')}. Do not share it with others.'))}
 
+Once you have completed your payment, please let us know on Discord or by
+replying to your invite email, so that we can add you to the Trusted Tester
+private Discord channel for live support.
+
+Thanks for you help!
+''');
     return ExitCode.success.code;
   }
 }
