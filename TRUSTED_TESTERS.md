@@ -51,9 +51,10 @@ https://github.com/shorebirdtech/shorebird/tree/main/packages/shorebird_cli
 No support for:
 
 - Windows hosts ([issue](https://github.com/shorebirdtech/shorebird/issues/37))
+- Teams / Organizations sharing apps [issue](https://github.com/shorebirdtech/shorebird/issues/345)
 - Flutter channels (only latest stable 3.7.12 is supported)
 - Rollbacks ([issue](https://github.com/shorebirdtech/shorebird/issues/126))
-- Staged rollouts of patches (channels or percentage based) [issue](https://github.com/shorebirdtech/shorebird/issues/110)
+- Staged rollout of patches (channels or percentage based) [issue](https://github.com/shorebirdtech/shorebird/issues/110)
 - Async updates / downloads [issue](https://github.com/shorebirdtech/shorebird/issues/123)
 - Analytics
 - Web interface
@@ -79,14 +80,49 @@ The total install is about 300mb.
 
 More information: https://github.com/shorebirdtech/install/blob/main/README.md
 
+## Creating your Shorebird account
+
+Once you have Shorebird installed, you need to create a Shorebird account.
+Currently Shorebird uses Google OAuth to authenticate users.  If you need other
+auth methods, please [let us
+know](https://github.com/shorebirdtech/shorebird/issues/335).
+
+```bash
+shorebird account create
+```
+
+Will prompt you with a Google OAuth link.  Once you've authenticated, it will
+create your Shorebird account for you.
+
+## Subscribing to Shorebird Trusted Tester program
+
+Once you have a Shorebird account, you need to subscribe to the Trusted Tester
+program.  This will give you access to the Shorebird services.
+
+The cost during the Trusted Tester program is $20 USD per user per month.  There
+is currently no limit on the number of apps you can release or update during
+the trusted tester program.  We currently only support Android apps built from a
+Mac or Linux host.
+
+```bash
+shorebird account subscribe
+```
+
+This command will give you a link to Stripe where you can complete your subscription.
+Once the payment is complete, you'll have access to the rest of Shorebird.
+
+We strongly recommend you [join us on
+Discord](https://discord.com/invite/9hKJcWGcaB) so that we can provide you live
+support.  Once you've subscribed, you can message Eric on Discord and he can add
+you to the #trusted-testers private channel.
+
 ## Using Shorebird code push
 
 If you already have a Flutter app, you can build it with Shorebird in a few steps:
 
-1. The first step is to login. `shorebird login` will prompt you with a Google
-   OAuth sign-in link.  Not all `shorebird`
-   commands require login, but it's best to just do it first to avoid
-   unexpected errors later.
+1. If you did not just create your account above, you may need to login.
+   `shorebird login` will prompt you to refresh your OAuth token if it's
+   expired.
 
 2. Once you're logged in, you can use `shorebird init`. This needs to be run
    within the directory of your Flutter app, it reads and writes your `pubspec.yaml`
@@ -149,7 +185,7 @@ app to be able to communicate with the Shorebird servers to pull new patches.
 </manifest>
 ```
 
-Running `shorbird doctor` will check that your `AndroidManifest.xml` file
+Running `shorebird doctor` will check that your `AndroidManifest.xml` file
 is set up correctly.
 
 ## Shorebird's fork of Flutter
@@ -185,11 +221,11 @@ and will be removed/silenced in future iterations.
 Example:
 
 ```
-eseidel@erics-mbp test_counter % shorebird run
+% shorebird run
 Running app...
-Using hardware rendering with device sdk gphone64 arm64. If you notice graphics artifacts, consider enabling software rendering with "--enable-software-rendering".
+Using hardware rendering with device sdk phone64 arm64. If you notice graphics artifacts, consider enabling software rendering with "--enable-software-rendering".
 
-Launching lib/main.dart on sdk gphone64 arm64 in release mode...
+Launching lib/main.dart on sdk phone64 arm64 in release mode...
 
 Running Gradle task 'assembleRelease'...
    17.6s
@@ -247,32 +283,30 @@ size.
 Example:
 
 ```
-shorebird release
-✓ Building release (17.9s)
-✓ Fetching apps (0.1s)
+% shorebird release
+✓ Building release (5.1s)
+✓ Fetching apps (0.2s)
 
-What is the version of this release? (0.1.0) 0.1.0
+What is the version of this release? (1.0.0) 1.0.0
 
 🚀 Ready to create a new release!
 
-📱 App: shorebird_test (4f636c95-f859-4de3-a730-dde1c099cd53)
-📦 Release Version: 0.1.0
-⚙️  Architecture: aarch64
-🕹️  Platform: android
-#️⃣  Hash: cfe26dddf8aff17131042f9dfad409c83eb130c5a9f2fd6f77325b2388062265
-
-Your next step is to upload the release artifact to the Play Store.
-./build/app/outputs/bundle/release/app-release.aab
-
-See the following link for more information:
-https://support.google.com/googleplay/android-developer/answer/9859152?hl=en
+📱 App: My App (30370f27-dbf1-4673-8b20-fb096e38dffa)
+📦 Release Version: 1.0.0
+🕹️ Platform: android (arm64, arm32, x86)
 
 Would you like to continue? (y/N) Yes
 ✓ Fetching releases (55ms)
 ✓ Creating release (45ms)
-✓ Creating artifact (1.8s)
+✓ Creating artifacts (4.6s)
 
 ✅ Published Release!
+
+Your next step is to upload the app bundle to the Play Store.
+./build/app/outputs/bundle/release/app-release.aab
+
+See the following link for more information:
+https://support.google.com/googleplay/android-developer/answer/9859152?hl=en
 ```
 
 ## Publishing patches to your app
@@ -280,7 +314,7 @@ Would you like to continue? (y/N) Yes
 To publish a patch to your app, use `shorebird patch`. It should look like:
 
 ```
-shorebird patch
+% shorebird patch
 ✓ Building patch (16.2s)
 ✓ Fetching apps (0.1s)
 
@@ -288,22 +322,19 @@ Which release is this patch for? (0.1.0) 0.1.0
 
 🚀 Ready to publish a new patch!
 
-📱 App: shorebird_test (4f636c95-f859-4de3-a730-dde1c099cd53)
+📱 App: My App (61fc9c16)
 📦 Release Version: 0.1.0
-⚙️ Architecture: aarch64
-🕹️ Platform: android
 📺 Channel: stable
-#️⃣ Hash: cfe26dddf8aff17131042f9dfad409c83eb130c5a9f2fd6f77325b2388062265
+🕹️ Platform: android (arm64, arm32, x86)
 
 Would you like to continue? (y/N) Yes
-✓ Fetching releases (41ms)
-✓ Fetching release artifact (43ms)
-✓ Downloading release artifact (0.2s)
-✓ Creating diff (0.1s)
-✓ Creating patch (64ms)
-✓ Creating artifact (0.3s)
+✓ Fetching release (41ms)
+✓ Fetching release artifacts (43ms)
+✓ Downloading release artifacts (0.2s)
+✓ Creating artifacts (0.3s)
+✓ Uploading artifacts (43ms)
 ✓ Fetching channels (40ms)
-✓ Publishing patch (43ms)
+✓ Promoting patch to stable (43ms)
 
 ✅ Published Patch!
 ```
@@ -321,9 +352,9 @@ longer term (e.g one might push a git hash to a CI/CD system, which would then
 publish it to Shorebird). However, it's the simplest thing to do for now.
 
 Note that you can only publish a patch to an app that you have already told
-shorebird about. This is normally done by `shorebird init` + `shorebird
-release`. If needed you can also create an app via `shorebird apps create` and
-modify the `shorebird.yaml` directly yourself, see:
+shorebird about. This is normally done by `shorebird init` followed by 
+`shorebird release`. If needed you can also create an app via
+`shorebird apps create` and modify the `shorebird.yaml` directly yourself, see:
 https://github.com/shorebirdtech/shorebird/tree/main/packages/shorebird_cli#create-app
 
 Your applications in the wild will query for updates with their `app_id` (which
@@ -354,10 +385,11 @@ Success should look like this:
 The Shorebird updater is currently hard-coded to update synchronously on
 launch. This means that when you push a new version of your app, all users
 will update on next launch.
+https://github.com/shorebirdtech/shorebird/issues/166
 
 We expect to add more control over update behavior in the future, including
-async updates and percentage based rollouts. Please let us know if these
-are important to you and we are happy to prioritize them!
+supporting asynchronous updates and percentage based rollout. Please let us know
+if these are important to you and we are happy to prioritize them!
 
 The Shorebird updater is designed such that when the network is not available,
 or the server is down or otherwise unreachable, the app will continue to run
@@ -406,7 +438,7 @@ publicly available (e.g. expo.dev & appcenter.ms). This is a well trodden path.
 Current Shorebird is Android-only.  We have plans to add iOS, but not yet
 implemented.  Using Shorebird for your Android builds does not affect
 your iOS builds.  You can successfully ship a Shorebird-built appbundle
-to Google Play and contintue to ship a Flutter-built ipa to the App Store.
+to Google Play and continue to ship a Flutter-built ipa to the App Store.
 The difference will be that you will be able to update your Android users
 sooner than you will your iOS users for now.
 
@@ -435,6 +467,24 @@ You can remove `shorebird` from your path by removing it from your `.bashrc` or
 # Release Notes
 
 This section contains past updates we've sent to current Trusted Testers.
+
+## Announcement for 0.0.8
+
+We've just released Shorebird CLI v0.0.8 🎉
+
+What's new:
+* Updated to Flutter 3.7.12.
+* Updated Shorebird to use a specific revision of Flutter (rather than
+  "latest stable in our fork", making it possible to check out a specific
+  version of Shorebird from git and expect it to be able to build binaries
+  even months in the future).
+* Added (partial) support for Android build numbers.
+* Added `shorebird account create` and `shorebird account subscribe` to
+  automate our onboarding process for new trusted testers.
+* Improved the way we proxy Flutter artifacts (via download.shorebird.dev) to
+  greatly improve our speed of releasing new versions of Shorebird.
+
+Let us know if you see any issues!
 
 ## Announcement for 0.0.7
 
@@ -468,7 +518,7 @@ What's new:
   caches.
 * Install script now pulls down artifacts as part of install.
 * Continued improvements to our account handling in preparation for supporting
-  self-signup.
+  self-sign-up.
 
 Known issues:
 * Shorebird is still using Flutter 3.7.10.  We will update to 3.7.11 right
