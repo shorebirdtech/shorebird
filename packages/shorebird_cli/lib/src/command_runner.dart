@@ -1,6 +1,8 @@
+import 'dart:io';
 import 'package:args/args.dart';
 import 'package:args/command_runner.dart';
 import 'package:cli_completion/cli_completion.dart';
+import 'package:collection/collection.dart';
 import 'package:mason_logger/mason_logger.dart';
 import 'package:shorebird_cli/src/commands/commands.dart';
 import 'package:shorebird_cli/src/shorebird_environment.dart';
@@ -121,10 +123,18 @@ class ShorebirdCliCommandRunner extends CompletionCommandRunner<int> {
     // Run the command or show version
     final int? exitCode;
     if (topLevelResults['version'] == true) {
+      final result = await Process.run('flutter', ['--version']);
+      final versionString = result.stdout.toString().trim();
+      final flutterVersion = versionString
+          .split('\n')
+          .firstWhereOrNull((element) => element.startsWith('Flutter'))!
+          .split('•')
+          .first;
       _logger.info(
         '''
 Shorebird $packageVersion
-Shorebird Engine • revision ${ShorebirdEnvironment.shorebirdEngineRevision}''',
+Shorebird Engine • revision ${ShorebirdEnvironment.shorebirdEngineRevision}
+Tools • $flutterVersion''',
       );
       exitCode = ExitCode.success.code;
     } else {

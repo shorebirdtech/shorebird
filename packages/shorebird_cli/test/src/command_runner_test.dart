@@ -2,6 +2,7 @@ import 'dart:io';
 
 import 'package:args/command_runner.dart';
 import 'package:cli_completion/cli_completion.dart';
+import 'package:collection/collection.dart';
 import 'package:mason_logger/mason_logger.dart';
 import 'package:mocktail/mocktail.dart';
 import 'package:shorebird_cli/src/command_runner.dart';
@@ -67,13 +68,21 @@ void main() {
 
     group('--version', () {
       test('outputs current version and engine revisions', () async {
+        final versionResult = await Process.run('flutter', ['--version']);
+        final versionString = versionResult.stdout.toString().trim();
+        final flutterVersion = versionString
+            .split('\n')
+            .firstWhereOrNull((element) => element.startsWith('Flutter'))!
+            .split('•')
+            .first;
         final result = await commandRunner.run(['--version']);
         expect(result, equals(ExitCode.success.code));
         verify(
           () => logger.info(
             '''
 Shorebird $packageVersion
-Shorebird Engine • revision ${ShorebirdEnvironment.shorebirdEngineRevision}''',
+Shorebird Engine • revision ${ShorebirdEnvironment.shorebirdEngineRevision}
+Tools • $flutterVersion''',
           ),
         ).called(1);
       });
