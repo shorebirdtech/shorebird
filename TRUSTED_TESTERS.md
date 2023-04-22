@@ -380,6 +380,27 @@ Success should look like this:
 ✓ Building release  (6.4s)
 ```
 
+## Passing additional arguments to build commands
+
+The `shorebird` command uses `flutter` to do the actual building.  For example:
+when you call `shorebird build appbundle` it calls `flutter build appbundle`.
+
+If you need to pass additional arguments to `flutter build` you can do so
+by adding a `--` after the `shorebird` arguments before any additional
+`flutter` arguments, for example:
+
+`shorebird build appbundle -- --no-tree-shake-icons` will pass
+`--no-tree-shake-icons` to the underlying `flutter build appbundle` command.
+
+This also works with `shorebird run`, `shorebird release` and `shorebird patch`
+to pass additional arguments to `flutter`.  Overtime we intend to expose
+more of these arguments directly on `shorebird` just haven't yet.  If you
+have any you need, please file an issue and we're happy to fix!
+
+This passthrough behavior is also the only way to specify a device at this time:
+`shorebird run -- -d my_device`
+https://github.com/shorebirdtech/shorebird/issues/331
+
 ## Update behavior
 
 The Shorebird updater is currently hard-coded to update synchronously on
