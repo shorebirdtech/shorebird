@@ -6,6 +6,7 @@ part 'gcp_alert.g.dart';
 /// A GCP alert notification.
 /// https://console.cloud.google.com/monitoring/alerting/notifications
 ///
+/// For more information, see https://cloud.google.com/monitoring/api/ref_v3/rest/v3/projects.alertPolicies.
 /// For sample alerts, see https://cloud.google.com/monitoring/alerts/policies-in-json.
 /// {@endtemplate}
 @JsonSerializable(createToJson: false)
