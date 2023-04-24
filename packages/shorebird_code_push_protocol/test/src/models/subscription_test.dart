@@ -1,4 +1,4 @@
-import 'package:shorebird_code_push_protocol/src/models/models.dart';
+import 'package:shorebird_code_push_protocol/shorebird_code_push_protocol.dart';
 import 'package:test/test.dart';
 
 void main() {

@@ -1,5 +1,4 @@
 import 'package:json_annotation/json_annotation.dart';
-import 'package:shorebird_code_push_protocol/src/models/subscription.dart';
 
 part 'user.g.dart';
 
