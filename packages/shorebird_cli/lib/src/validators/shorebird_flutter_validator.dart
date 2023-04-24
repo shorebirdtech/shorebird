@@ -55,10 +55,33 @@ class ShorebirdFlutterValidator extends Validator {
       );
     }
 
-    final shorebirdFlutterVersion = await _shorebirdFlutterVersion(process);
-    final pathFlutterVersion = await _pathFlutterVersion(process);
+    String? shorebirdFlutterVersion;
+    try {
+      shorebirdFlutterVersion = await _shorebirdFlutterVersion(process);
+    } catch (error) {
+      issues.add(
+        ValidationIssue(
+          severity: ValidationIssueSeverity.error,
+          message: 'Failed to determine Shorebird Flutter version. $error',
+        ),
+      );
+    }
 
-    if (shorebirdFlutterVersion != pathFlutterVersion) {
+    String? pathFlutterVersion;
+    try {
+      pathFlutterVersion = await _pathFlutterVersion(process);
+    } catch (error) {
+      issues.add(
+        ValidationIssue(
+          severity: ValidationIssueSeverity.error,
+          message: 'Failed to determine path Flutter version. $error',
+        ),
+      );
+    }
+
+    if (shorebirdFlutterVersion != null &&
+        pathFlutterVersion != null &&
+        shorebirdFlutterVersion != pathFlutterVersion) {
       final message = '''
 The version of Flutter that Shorebird includes and the Flutter on your path are different.
 \tShorebird Flutter: $shorebirdFlutterVersion
@@ -147,7 +170,7 @@ This can cause unexpected behavior if you are switching between the tools and th
     final match = _flutterVersionRegex.firstMatch(output);
     if (match == null) {
       throw FlutterValidationException(
-        'Could not find version match in $output',
+        'Could not find version number in $output',
       );
     }
 
