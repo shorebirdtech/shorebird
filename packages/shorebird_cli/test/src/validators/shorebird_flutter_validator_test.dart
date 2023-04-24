@@ -15,7 +15,7 @@ class _MockPlatform extends Mock implements Platform {}
 class _MockShorebirdProcess extends Mock implements ShorebirdProcess {}
 
 void main() {
-  group('ShorebirdFlutterValidator', () {
+  group(ShorebirdFlutterValidator, () {
     const flutterRevision = '45fc514f1a9c347a3af76b02baf980a4d88b7879';
     const gitStatusMessage = '''
 HEAD detached at 45fc514f
