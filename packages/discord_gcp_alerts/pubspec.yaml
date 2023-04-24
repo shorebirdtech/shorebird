@@ -1,5 +1,5 @@
 name: discord_gcp_alerts
-description: A server app using the shelf package and Docker.
+description: A server which proxies GCP Alert notifications to Discord.
 version: 1.0.0
 publish_to: none
 
