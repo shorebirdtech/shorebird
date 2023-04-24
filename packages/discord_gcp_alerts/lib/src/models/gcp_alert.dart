@@ -5,6 +5,8 @@ part 'gcp_alert.g.dart';
 /// {@template gcp_alert}
 /// A GCP alert notification.
 /// https://console.cloud.google.com/monitoring/alerting/notifications
+///
+/// For sample alerts, see https://cloud.google.com/monitoring/alerts/policies-in-json.
 /// {@endtemplate}
 @JsonSerializable()
 class GCPAlert {
