@@ -7,6 +7,9 @@ class FlutterValidationException implements Exception {
 
   /// The message associated with the exception.
   final String message;
+
+  @override
+  String toString() => 'FlutterValidationException: $message';
 }
 
 class ShorebirdFlutterValidator extends Validator {
