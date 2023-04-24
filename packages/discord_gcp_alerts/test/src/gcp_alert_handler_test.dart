@@ -72,7 +72,7 @@ void main() {
                   'displayName': 'Example condition',
                   'conditionThreshold': {
                     'filter':
-                        'metric.type=\"test.googleapis.com/metric\" resource.type=\"example_resource\"',
+                        'metric.type="test.googleapis.com/metric" resource.type="example_resource"',
                     'comparison': 'COMPARISON_GT',
                     'thresholdValue': 0.5,
                     'duration': '0s',
