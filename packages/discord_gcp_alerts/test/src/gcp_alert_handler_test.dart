@@ -1,4 +1,5 @@
 import 'dart:convert';
+import 'dart:io';
 
 import 'package:discord_gcp_alerts/discord_gcp_alerts.dart';
 import 'package:http/http.dart' as http;
@@ -31,7 +32,7 @@ void main() {
       await handler(
         Request(
           'POST',
-          Uri.parse('http://localhost:8080/webhook'),
+          Uri.parse('http://localhost:8080/'),
           body: json.encode(
             {
               'version': 'test',
@@ -89,7 +90,7 @@ void main() {
       verify(
         () => client.post(
           Uri.parse(webHookUrl),
-          headers: any(named: 'headers'),
+          headers: {HttpHeaders.contentTypeHeader: ContentType.json.value},
           body: json.encode({
             'embeds': [
               {

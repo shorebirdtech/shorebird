@@ -13,7 +13,7 @@ void main() async {
     exit(1);
   }
   final handler = gcpAlertHandler(webhookUrl: webhookUrl);
-  final router = Router()..post('/webhook', handler);
+  final router = Router()..post('/', handler);
   final port = int.parse(Platform.environment['PORT'] ?? '8080');
   final ip = InternetAddress.anyIPv4;
   final server = await serve(router.call, ip, port);
