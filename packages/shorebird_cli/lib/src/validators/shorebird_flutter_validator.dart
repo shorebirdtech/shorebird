@@ -163,9 +163,7 @@ This can cause unexpected behavior if you are switching between the tools and th
 
     if (result.exitCode != 0) {
       throw FlutterValidationException(
-        '''
-        Flutter version check did not complete successfully.
-        ${result.stderr}''',
+        'Flutter version check did not complete successfully. ${result.stderr}',
       );
     }
 
