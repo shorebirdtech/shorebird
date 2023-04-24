@@ -1,6 +1,7 @@
 import 'dart:async';
 
 import 'package:mason_logger/mason_logger.dart';
+import 'package:shorebird_cli/src/auth_logger_mixin.dart';
 import 'package:shorebird_cli/src/command.dart';
 import 'package:shorebird_cli/src/shorebird_config_mixin.dart';
 import 'package:shorebird_cli/src/shorebird_create_app_mixin.dart';
@@ -12,7 +13,7 @@ import 'package:shorebird_code_push_client/shorebird_code_push_client.dart';
 /// Create a new app on Shorebird.
 /// {@endtemplate}
 class CreateAppCommand extends ShorebirdCommand
-    with ShorebirdConfigMixin, ShorebirdCreateAppMixin {
+    with AuthLoggerMixin, ShorebirdConfigMixin, ShorebirdCreateAppMixin {
   /// {@macro create_app_command}
   CreateAppCommand({
     required super.logger,
@@ -36,7 +37,7 @@ Defaults to the name in "pubspec.yaml".''',
   @override
   Future<int>? run() async {
     if (!auth.isAuthenticated) {
-      logger.err('You must be logged in.');
+      printNeedsAuthInstructions();
       return ExitCode.noUser.code;
     }
 

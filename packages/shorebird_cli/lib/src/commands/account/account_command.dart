@@ -9,6 +9,7 @@ class AccountCommand extends ShorebirdCommand {
   /// {@macro account_command}
   AccountCommand({required super.logger, super.auth}) {
     addSubcommand(CreateAccountCommand(logger: logger));
+    addSubcommand(SubscribeAccountCommand(logger: logger));
   }
 
   @override

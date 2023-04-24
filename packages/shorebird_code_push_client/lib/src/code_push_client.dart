@@ -83,6 +83,21 @@ class CodePushClient {
     return PatchArtifact.fromJson(json.decode(body) as Map<String, dynamic>);
   }
 
+  /// Generates a Stripe payment link for the current user.
+  Future<Uri> createPaymentLink() async {
+    final response = await _httpClient.post(
+      Uri.parse('$hostedUri/api/v1/subscriptions/payment_link'),
+    );
+
+    if (response.statusCode != HttpStatus.ok) {
+      throw _parseErrorResponse(response.body);
+    }
+
+    return CreatePaymentLinkResponse.fromJson(
+      json.decode(response.body) as Json,
+    ).paymentLink;
+  }
+
   /// Create a new artifact for a specific [releaseId].
   Future<ReleaseArtifact> createReleaseArtifact({
     required String artifactPath,

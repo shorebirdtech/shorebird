@@ -1,6 +1,7 @@
 import 'dart:async';
 
 import 'package:mason_logger/mason_logger.dart';
+import 'package:shorebird_cli/src/auth_logger_mixin.dart';
 import 'package:shorebird_cli/src/command.dart';
 import 'package:shorebird_cli/src/shorebird_config_mixin.dart';
 
@@ -9,7 +10,8 @@ import 'package:shorebird_cli/src/shorebird_config_mixin.dart';
 /// `shorebird apps delete`
 /// Delete an existing app on Shorebird.
 /// {@endtemplate}
-class DeleteAppCommand extends ShorebirdCommand with ShorebirdConfigMixin {
+class DeleteAppCommand extends ShorebirdCommand
+    with AuthLoggerMixin, ShorebirdConfigMixin {
   /// {@macro delete_app_command}
   DeleteAppCommand({
     required super.logger,
@@ -33,7 +35,7 @@ Defaults to the app_id in "shorebird.yaml".''',
   @override
   Future<int>? run() async {
     if (!auth.isAuthenticated) {
-      logger.err('You must be logged in.');
+      printNeedsAuthInstructions();
       return ExitCode.noUser.code;
     }
 

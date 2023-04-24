@@ -1,78 +1,99 @@
-import 'package:artifact_proxy/artifact_proxy.dart';
-
-/// The proxy configuration used by the server.
-const config = ProxyConfig(
-  engineMappings: {
-    ...flutter_3_7_12,
-    ...flutter_3_7_10,
-    ...flutter_3_7_8,
-  },
-);
-
-// On the assumption artifact layouts don't change very often for Flutter.
-// ignore: camel_case_types
-class _EngineMapping3_7 extends EngineMapping {
-  const _EngineMapping3_7({
-    required super.flutterEngineRevision,
-  }) : super(
-          shorebirdStorageBucket: 'download.shorebird.dev',
-          shorebirdArtifactOverrides: const {
-            // artifacts.zip
-            r'flutter_infra_release/flutter/$engine/android-arm-64-release/artifacts.zip',
-            r'flutter_infra_release/flutter/$engine/android-arm-release/artifacts.zip',
-            r'flutter_infra_release/flutter/$engine/android-x64-release/artifacts.zip',
-
-            // embedding release
-            r'download.flutter.io/io/flutter/flutter_embedding_release/1.0.0-$engine/flutter_embedding_release-1.0.0-$engine.pom',
-            r'download.flutter.io/io/flutter/flutter_embedding_release/1.0.0-$engine/flutter_embedding_release-1.0.0-$engine.jar',
-
-            // arm64_v8a release
-            r'download.flutter.io/io/flutter/arm64_v8a_release/1.0.0-$engine/arm64_v8a_release-1.0.0-$engine.pom',
-            r'download.flutter.io/io/flutter/arm64_v8a_release/1.0.0-$engine/arm64_v8a_release-1.0.0-$engine.jar',
-
-            // armeabi_v7a release
-            r'download.flutter.io/io/flutter/armeabi_v7a_release/1.0.0-$engine/armeabi_v7a_release-1.0.0-$engine.pom',
-            r'download.flutter.io/io/flutter/armeabi_v7a_release/1.0.0-$engine/armeabi_v7a_release-1.0.0-$engine.jar',
-
-            // x86_64 release
-            r'download.flutter.io/io/flutter/x86_64_release/1.0.0-$engine/x86_64_release-1.0.0-$engine.pom',
-            r'download.flutter.io/io/flutter/x86_64_release/1.0.0-$engine/x86_64_release-1.0.0-$engine.jar',
-          },
-        );
-}
-
-const flutter_3_7_12 = {
-  // Shorebird v0.0.8
-  'd470ae25d21f583abe128f7b838476afd5e45bde': _EngineMapping3_7(
-    flutterEngineRevision: '1a65d409c7a1438a34d21b60bf30a6fd5db59314',
-  ),
+/// Patterns for all artifacts paths that Flutter
+/// requests which contain an engine revision.
+final engineArtifactPatterns = {
+  r'flutter_infra_release\/flutter\/(.*)\/windows-x64\/windows-x64-flutter\.zip',
+  r'flutter_infra_release\/flutter\/(.*)\/windows-x64\/font-subset.zip',
+  r'flutter_infra_release\/flutter\/(.*)\/windows-x64\/flutter-cpp-client-wrapper\.zip',
+  r'flutter_infra_release\/flutter\/(.*)\/windows-x64\/artifacts\.zip',
+  r'flutter_infra_release\/flutter\/(.*)\/windows-x64-release\/windows-x64-flutter\.zip',
+  r'flutter_infra_release\/flutter\/(.*)\/windows-x64-profile\/windows-x64-flutter\.zip',
+  r'flutter_infra_release\/flutter\/(.*)\/sky_engine\.zip',
+  r'flutter_infra_release\/flutter\/(.*)\/linux-arm64\/linux-arm64-flutter-gtk\.zip',
+  r'flutter_infra_release\/flutter\/(.*)\/linux-arm64\/font-subset\.zip',
+  r'flutter_infra_release\/flutter\/(.*)\/linux-arm64\/artifacts\.zip',
+  r'flutter_infra_release\/flutter\/(.*)\/linux-arm64-release\/linux-arm64-flutter-gtk\.zip',
+  r'flutter_infra_release\/flutter\/(.*)\/linux-arm64-profile\/linux-arm64-flutter-gtk\.zip',
+  r'flutter_infra_release\/flutter\/(.*)\/linux-x64\/linux-x64-flutter-gtk\.zip',
+  r'flutter_infra_release\/flutter\/(.*)\/linux-x64\/font-subset\.zip',
+  r'flutter_infra_release\/flutter\/(.*)\/linux-x64\/artifacts\.zip',
+  r'flutter_infra_release\/flutter\/(.*)\/linux-x64-release\/linux-x64-flutter-gtk\.zip',
+  r'flutter_infra_release\/flutter\/(.*)\/linux-x64-profile\/linux-x64-flutter-gtk\.zip',
+  r'flutter_infra_release\/flutter\/(.*)\/ios\/artifacts\.zip',
+  r'flutter_infra_release\/flutter\/(.*)\/ios-release\/artifacts\.zip',
+  r'flutter_infra_release\/flutter\/(.*)\/ios-profile\/artifacts\.zip',
+  r'flutter_infra_release\/flutter\/(.*)\/flutter-web-sdk-darwin-x64\.zip',
+  r'flutter_infra_release\/flutter\/(.*)\/flutter_patched_sdk\.zip',
+  r'flutter_infra_release\/flutter\/(.*)\/flutter_patched_sdk_product\.zip',
+  r'flutter_infra_release\/flutter\/(.*)\/darwin-x64\/gen_snapshot\.zip',
+  r'flutter_infra_release\/flutter\/(.*)\/darwin-x64\/FlutterMacOS.framework\.zip',
+  r'flutter_infra_release\/flutter\/(.*)\/darwin-x64-release\/gen_snapshot\.zip',
+  r'flutter_infra_release\/flutter\/(.*)\/darwin-x64-release\/FlutterMacOS.framework\.zip',
+  r'flutter_infra_release\/flutter\/(.*)\/darwin-x64-release\/artifacts\.zip',
+  r'flutter_infra_release\/flutter\/(.*)\/darwin-x64-profile\/gen_snapshot\.zip',
+  r'flutter_infra_release\/flutter\/(.*)\/darwin-x64-profile\/FlutterMacOS.framework\.zip',
+  r'flutter_infra_release\/flutter\/(.*)\/darwin-x64-profile\/artifacts\.zip',
+  r'flutter_infra_release\/flutter\/(.*)\/darwin-arm64\/font-subset\.zip',
+  r'flutter_infra_release\/flutter\/(.*)\/darwin-arm64\/artifacts\.zip',
+  r'flutter_infra_release\/flutter\/(.*)\/dart-sdk-windows-x64\.zip',
+  r'flutter_infra_release\/flutter\/(.*)\/dart-sdk-linux-x64\.zip',
+  r'flutter_infra_release\/flutter\/(.*)\/dart-sdk-darwin-x64\.zip',
+  r'flutter_infra_release\/flutter\/(.*)\/dart-sdk-darwin-arm64\.zip',
+  r'flutter_infra_release\/flutter\/(.*)\/android-x86\/artifacts\.zip',
+  r'flutter_infra_release\/flutter\/(.*)\/android-x86-jit-release\/artifacts\.zip',
+  r'flutter_infra_release\/flutter\/(.*)\/android-x64\/artifacts\.zip',
+  r'flutter_infra_release\/flutter\/(.*)\/android-x64-release\/windows-x64\.zip',
+  r'flutter_infra_release\/flutter\/(.*)\/android-x64-release\/linux-x64\.zip',
+  r'flutter_infra_release\/flutter\/(.*)\/android-x64-release\/darwin-x64\.zip',
+  r'flutter_infra_release\/flutter\/(.*)\/android-x64-release\/artifacts\.zip',
+  r'flutter_infra_release\/flutter\/(.*)\/android-x64-profile\/windows-x64\.zip',
+  r'flutter_infra_release\/flutter\/(.*)\/android-x64-profile\/linux-x64\.zip',
+  r'flutter_infra_release\/flutter\/(.*)\/android-x64-profile\/darwin-x64\.zip',
+  r'flutter_infra_release\/flutter\/(.*)\/android-x64-profile\/artifacts\.zip',
+  r'flutter_infra_release\/flutter\/(.*)\/android-arm64\/artifacts\.zip',
+  r'flutter_infra_release\/flutter\/(.*)\/android-arm64-release\/windows-x64\.zip',
+  r'flutter_infra_release\/flutter\/(.*)\/android-arm64-release\/linux-x64\.zip',
+  r'flutter_infra_release\/flutter\/(.*)\/android-arm64-release\/darwin-x64\.zip',
+  r'flutter_infra_release\/flutter\/(.*)\/android-arm64-release\/artifacts\.zip',
+  r'flutter_infra_release\/flutter\/(.*)\/android-arm64-profile\/windows-x64\.zip',
+  r'flutter_infra_release\/flutter\/(.*)\/android-arm64-profile\/linux-x64\.zip',
+  r'flutter_infra_release\/flutter\/(.*)\/android-arm64-profile\/darwin-x64\.zip',
+  r'flutter_infra_release\/flutter\/(.*)\/android-arm64-profile\/artifacts\.zip',
+  r'flutter_infra_release\/flutter\/(.*)\/android-arm\/artifacts\.zip',
+  r'flutter_infra_release\/flutter\/(.*)\/android-arm-release\/windows-x64\.zip',
+  r'flutter_infra_release\/flutter\/(.*)\/android-arm-release\/linux-x64\.zip',
+  r'flutter_infra_release\/flutter\/(.*)\/android-arm-release\/darwin-x64\.zip',
+  r'flutter_infra_release\/flutter\/(.*)\/android-arm-release\/artifacts\.zip',
+  r'flutter_infra_release\/flutter\/(.*)\/android-arm-profile\/windows-x64\.zip',
+  r'flutter_infra_release\/flutter\/(.*)\/android-arm-profile\/linux-x64\.zip',
+  r'flutter_infra_release\/flutter\/(.*)\/android-arm-profile\/darwin-x64\.zip',
+  r'flutter_infra_release\/flutter\/(.*)\/android-arm-profile\/artifacts\.zip',
+  r'flutter_infra_release\/flutter\/(.*)\/android-arm-64-release\/artifacts\.zip',
+  r'download.flutter.io\/io\/flutter\/x86_64_release\/1.0.0-(.*)\/x86_64_release-1.0.0-(.*)\.pom\.sha1',
+  r'download.flutter.io\/io\/flutter\/x86_64_release\/1.0.0-(.*)\/x86_64_release-1.0.0-(.*)\.pom',
+  r'download.flutter.io\/io\/flutter\/x86_64_release\/1.0.0-(.*)\/x86_64_release-1.0.0-(.*)\.jar\.sha1',
+  r'download.flutter.io\/io\/flutter\/x86_64_release\/1.0.0-(.*)\/x86_64_release-1.0.0-(.*)\.jar',
+  r'download.flutter.io\/io\/flutter\/flutter_embedding_release\/1.0.0-(.*)\/flutter_embedding_release-1.0.0-(.*)\.pom\.sha1',
+  r'download.flutter.io\/io\/flutter\/flutter_embedding_release\/1.0.0-(.*)\/flutter_embedding_release-1.0.0-(.*)\.pom',
+  r'download.flutter.io\/io\/flutter\/flutter_embedding_release\/1.0.0-(.*)\/flutter_embedding_release-1.0.0-(.*)\.jar\.sha1',
+  r'download.flutter.io\/io\/flutter\/flutter_embedding_release\/1.0.0-(.*)\/flutter_embedding_release-1.0.0-(.*)\.jar',
+  r'download.flutter.io\/io\/flutter\/armeabi_v7a_release\/1.0.0-(.*)\/armeabi_v7a_release-1.0.0-(.*)\.pom\.sha1',
+  r'download.flutter.io\/io\/flutter\/armeabi_v7a_release\/1.0.0-(.*)\/armeabi_v7a_release-1.0.0-(.*)\.pom',
+  r'download.flutter.io\/io\/flutter\/armeabi_v7a_release\/1.0.0-(.*)\/armeabi_v7a_release-1.0.0-(.*)\.jar\.sha1',
+  r'download.flutter.io\/io\/flutter\/armeabi_v7a_release\/1.0.0-(.*)\/armeabi_v7a_release-1.0.0-(.*)\.jar',
+  r'download.flutter.io\/io\/flutter\/arm64_v8a_release\/1.0.0-(.*)\/arm64_v8a_release-1.0.0-(.*)\.pom\.sha1',
+  r'download.flutter.io\/io\/flutter\/arm64_v8a_release\/1.0.0-(.*)\/arm64_v8a_release-1.0.0-(.*)\.pom',
+  r'download.flutter.io\/io\/flutter\/arm64_v8a_release\/1.0.0-(.*)\/arm64_v8a_release-1.0.0-(.*)\.jar\.sha1',
+  r'download.flutter.io\/io\/flutter\/arm64_v8a_release\/1.0.0-(.*)\/arm64_v8a_release-1.0.0-(.*)\.jar',
 };
 
-/// Flutter 3.7.10
-const flutter_3_7_10 = {
-  // Shorebird v0.0.6
-  '8b89f8bd9fc6982aa9c4557fd0e5e89db1ff9986': _EngineMapping3_7(
-    flutterEngineRevision: 'ec975089acb540fc60752606a3d3ba809dd1528b',
-  ),
-  // Shorebird v0.0.5
-  'e6a2a5a43973430d9f038cd81cb1779b6b404909': _EngineMapping3_7(
-    flutterEngineRevision: 'ec975089acb540fc60752606a3d3ba809dd1528b',
-  ),
-  // Attempt to fix https://github.com/shorebirdtech/shorebird/issues/235
-  'adb70a20d4718b5ce60cdd99ad81d8de54afcb35': _EngineMapping3_7(
-    flutterEngineRevision: 'ec975089acb540fc60752606a3d3ba809dd1528b',
-  ),
-  '978a56f2d97f9ce24a2b6bc22c9bbceaaba0343c': _EngineMapping3_7(
-    flutterEngineRevision: 'ec975089acb540fc60752606a3d3ba809dd1528b',
-  ),
-  '7aa5c44764e10722d188ece75819f7d10f5269a3': _EngineMapping3_7(
-    flutterEngineRevision: 'ec975089acb540fc60752606a3d3ba809dd1528b',
-  ),
-};
-
-/// Flutter 3.7.8
-const flutter_3_7_8 = {
-  '79f4c5321a581f580a9bda01ec372cbf4a53aa53': _EngineMapping3_7(
-    flutterEngineRevision: '9aa7816315095c86410527932918c718cb35e7d6',
-  ),
+/// Patterns for Flutter artifacts which don't depend on an engine revision.
+final flutterArtifactPatterns = {
+  r'flutter_infra_release\/flutter\/fonts\/(.*)\/fonts\.zip',
+  r'flutter_infra_release\/gradle-wrapper\/(.*)\/gradle-wrapper\.tgz',
+  r'flutter_infra_release\/ios-usb-dependencies\/libimobiledevice\/(.*)\/libimobiledevice\.zip',
+  r'flutter_infra_release\/ios-usb-dependencies\/usbmuxd\/(.*)\/usbmuxd\.zip',
+  r'flutter_infra_release\/ios-usb-dependencies\/libplist\/(.*)\/libplist\.zip',
+  r'flutter_infra_release\/ios-usb-dependencies\/openssl\/(.*)\/openssl\.zip',
+  r'flutter_infra_release\/ios-usb-dependencies\/ios-deploy\/(.*)\/ios-deploy\.zip',
+  r'flutter_infra_release\/cipd\/flutter\/web\/canvaskit_bundle\/\+\/(.*)',
 };

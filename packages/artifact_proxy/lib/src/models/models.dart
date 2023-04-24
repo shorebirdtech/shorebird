@@ -1,1 +1,1 @@
-export 'proxy_config.dart';
+export 'artifacts_manifest.dart';
