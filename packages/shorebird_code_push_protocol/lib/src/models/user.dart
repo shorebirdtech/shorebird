@@ -14,7 +14,6 @@ class User {
     required this.email,
     this.hasActiveSubscription = false,
     this.displayName,
-    this.subscription,
   });
 
   /// Converts a Map<String, dynamic> to a [User]
@@ -34,7 +33,4 @@ class User {
 
   /// Whether the user is currently a paying customer.
   final bool hasActiveSubscription;
-
-  /// The user's current subscription, if any.
-  final Subscription? subscription;
 }

@@ -18,11 +18,6 @@ User _$UserFromJson(Map<String, dynamic> json) => $checkedCreate(
           hasActiveSubscription: $checkedConvert(
               'has_active_subscription', (v) => v as bool? ?? false),
           displayName: $checkedConvert('display_name', (v) => v as String?),
-          subscription: $checkedConvert(
-              'subscription',
-              (v) => v == null
-                  ? null
-                  : Subscription.fromJson(v as Map<String, dynamic>)),
         );
         return val;
       },
@@ -37,5 +32,4 @@ Map<String, dynamic> _$UserToJson(User instance) => <String, dynamic>{
       'email': instance.email,
       'display_name': instance.displayName,
       'has_active_subscription': instance.hasActiveSubscription,
-      'subscription': instance.subscription?.toJson(),
     };

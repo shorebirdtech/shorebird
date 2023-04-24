@@ -4,14 +4,9 @@ import 'package:test/test.dart';
 void main() {
   group('User', () {
     test('can be (de)serialized', () {
-      final user = User(
+      const user = User(
         id: 1,
         email: 'test@shorebird.dev',
-        subscription: Subscription(
-          cost: 100,
-          paidThroughDate: DateTime.now(),
-          willRenew: true,
-        ),
       );
       expect(
         User.fromJson(user.toJson()).toJson(),
