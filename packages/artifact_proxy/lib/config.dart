@@ -1,5 +1,9 @@
-/// Patterns for all artifacts paths that Flutter
-/// requests which contain an engine revision.
+/// These are the URL patterns for all known artifact paths that Flutter
+/// downloads. If there is a Shorebird-specific override for an artifact, it
+/// will be downloaded from the shorebird servers. Otherwise, the standard
+/// Flutter version will be downloaded.
+///
+/// Patterns which contain an engine revision.
 final engineArtifactPatterns = {
   r'flutter_infra_release\/flutter\/(.*)\/windows-x64\/windows-x64-flutter\.zip',
   r'flutter_infra_release\/flutter\/(.*)\/windows-x64\/font-subset.zip',
@@ -22,6 +26,7 @@ final engineArtifactPatterns = {
   r'flutter_infra_release\/flutter\/(.*)\/ios-release\/artifacts\.zip',
   r'flutter_infra_release\/flutter\/(.*)\/ios-profile\/artifacts\.zip',
   r'flutter_infra_release\/flutter\/(.*)\/flutter-web-sdk-darwin-x64\.zip',
+  r'flutter_infra_release\/flutter\/(.*)\/flutter-web-sdk-windows-x64\.zip',
   r'flutter_infra_release\/flutter\/(.*)\/flutter_patched_sdk\.zip',
   r'flutter_infra_release\/flutter\/(.*)\/flutter_patched_sdk_product\.zip',
   r'flutter_infra_release\/flutter\/(.*)\/darwin-x64\/gen_snapshot\.zip',
@@ -84,6 +89,7 @@ final engineArtifactPatterns = {
   r'download.flutter.io\/io\/flutter\/arm64_v8a_release\/1.0.0-(.*)\/arm64_v8a_release-1.0.0-(.*)\.pom',
   r'download.flutter.io\/io\/flutter\/arm64_v8a_release\/1.0.0-(.*)\/arm64_v8a_release-1.0.0-(.*)\.jar\.sha1',
   r'download.flutter.io\/io\/flutter\/arm64_v8a_release\/1.0.0-(.*)\/arm64_v8a_release-1.0.0-(.*)\.jar',
+  r'download.flutter.io\/io\/flutter\/x86_64_release/\1.0.0-(.*)\/x86_64_release-1.0.0-(.*)\.pom',
 };
 
 /// Patterns for Flutter artifacts which don't depend on an engine revision.
