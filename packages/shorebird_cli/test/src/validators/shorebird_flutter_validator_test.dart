@@ -91,13 +91,19 @@ Tools • Dart 2.19.6 • DevTools 2.20.1
           workingDirectory: any(named: 'workingDirectory'),
         ),
       ).thenAnswer((_) async => gitStatusProcessResult);
-      when(() => shorebirdProcess.run('flutter', ['--version']))
-          .thenAnswer((_) async => shorebirdFlutterVersionProcessResult);
+      when(
+        () => shorebirdProcess.run(
+          'flutter',
+          ['--version'],
+          runInShell: any(named: 'runInShell'),
+        ),
+      ).thenAnswer((_) async => shorebirdFlutterVersionProcessResult);
       when(
         () => shorebirdProcess.run(
           'flutter',
           ['--version'],
           useVendedFlutter: false,
+          runInShell: any(named: 'runInShell'),
         ),
       ).thenAnswer((_) async => pathFlutterVersionProcessResult);
 
