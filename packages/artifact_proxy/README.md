@@ -47,6 +47,7 @@ To do so, you will need to determine the artifact URLs. Follow these steps:
         return {};
     }
     ```
+- Adjust third_party Flutter to point to http://localhost:8080 instead of https://download.shorebird.dev:
   - third_party\flutter\bin\internal\shared.sh
 
     ```diff
@@ -66,9 +67,8 @@ To do so, you will need to determine the artifact URLs. Follow these steps:
     +  FLUTTER_STORAGE_BASE_URL=http://localhost:8080 $FLUTTER_PATH/bin/flutter --version  
     }
     ```
-- Modify flutter_tool used by Shorebird to allow downloads from insecure URLs
-  - in shorebird\bin\cache\flutter\packages\flutter_tools\gradle\flutter.gradle, modify the following:
-
+- Modify flutter_tool used by Shorebird to allow downloads from insecure URLs:
+  - shorebird\bin\cache\flutter\packages\flutter_tools\gradle\flutter.gradle
     ```diff
     rootProject.allprojects {
         repositories {
@@ -79,8 +79,11 @@ To do so, you will need to determine the artifact URLs. Follow these steps:
         }
     }
     ```
-- Remove shorebird snapshot
-  - `cd bin/cache/flutter/bin/cache`
-  - `rm flutter_tools.s*`
+- Remove the flutter_tools snapshot
+
+    ```bash
+    cd bin/cache/flutter/bin/cache
+    rm flutter_tools.s*
+    ```
 - Run a shorebird command (`shorebird run` works well)
 - For each artifact that 404s, add a line to `packages\artifact_proxy\lib\config.dart`, following the conventions for capturing engine revisions and escaping relevant characters.
