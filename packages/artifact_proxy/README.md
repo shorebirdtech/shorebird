@@ -82,7 +82,7 @@ function update_flutter {
 ```
 
 - Remove shorebird snapshot
-  - cd bin/cache/flutter/bin/cache
-  - rm flutter_tools.s*
+  - `cd bin/cache/flutter/bin/cache`
+  - `rm flutter_tools.s*`
 - Run a shorebird command (`shorebird run` works well)
-- For each artifact that 404s, add a line to shorebird\packages\artifact_proxy\lib\config.dart, following the conventions for capturing engine revisions and escaping relevant characters.
+- For each artifact that 404s, add a line to `packages\artifact_proxy\lib\config.dart`, following the conventions for capturing engine revisions and escaping relevant characters.
