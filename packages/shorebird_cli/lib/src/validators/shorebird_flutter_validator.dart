@@ -159,6 +159,7 @@ This can cause unexpected behavior if you are switching between the tools and th
       'flutter',
       ['--version'],
       useVendedFlutter: !checkPathFlutter,
+      runInShell: true,
     );
 
     if (result.exitCode != 0) {

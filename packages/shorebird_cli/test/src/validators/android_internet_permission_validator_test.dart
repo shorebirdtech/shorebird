@@ -59,11 +59,11 @@ void main() {
         final tempDirectory = createTempDir();
         writeManifestToPath(
           manifestWithInternetPermission,
-          p.join(tempDirectory.path, 'android/app/src/debug'),
+          p.join(tempDirectory.path, 'android', 'app', 'src', 'debug'),
         );
         writeManifestToPath(
           manifestWithInternetPermission,
-          p.join(tempDirectory.path, 'android/app/src/main'),
+          p.join(tempDirectory.path, 'android', 'app', 'src', 'main'),
         );
 
         final results = await IOOverrides.runZoned(
@@ -157,7 +157,8 @@ void main() {
               (path) => ValidationIssue(
                 severity: ValidationIssueSeverity.error,
                 message:
-                    '$path/AndroidManifest.xml is missing the INTERNET permission.',
+                    '${p.join(path, 'AndroidManifest.xml')} is missing the '
+                    'INTERNET permission.',
               ),
             ),
           ),
