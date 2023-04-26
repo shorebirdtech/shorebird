@@ -20,7 +20,7 @@ jobs:
       - name: 📚 Git Checkout
         uses: actions/checkout@v3
 
-      - name: 🐦 Verify Shorebird Installation
+      - name: 🐦 Verify Shorebird Installation (${{ matrix.os }})
         run: |
           if ./bin/shorebird --version | grep -q '^Shorebird \d\.\d\.\d$'; then
             echo '✅ Shorebird CLI is installed!'
