@@ -1,5 +1,3 @@
-REM Borrowed from http://blog.danskingdom.com/allow-others-to-run-your-powershell-scripts-from-a-batch-file-they-will-love-you-for-it/
-
 @ECHO OFF
 
 REM Detect which PowerShell executable is available on the Host
@@ -18,4 +16,6 @@ WHERE /Q pwsh.exe && (
 SET CurrentDirectory=%~dp0
 SET PowerShellScriptPath=%CurrentDirectory%shorebird.ps1
 
+REM Pass up to four arguments to the PowerShell script
+REM This number is arbitrary and can be increased if needed
 & %powershell_executable% -NoProfile -ExecutionPolicy Bypass -Command "& '%PowerShellScriptPath%' %1% %2% %3% %4%";
