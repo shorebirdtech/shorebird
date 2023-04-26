@@ -54,11 +54,12 @@ mixin ShorebirdConfigMixin on ShorebirdCommand {
     File(
       p.join(Directory.current.path, 'shorebird.yaml'),
     ).writeAsStringSync('''
-# This file is used to configure the Shorebird CLI.
+# This file is used to configure the Shorebird updater used by your application.
 # Learn more at https://shorebird.dev
+# This file should be checked into version control.
 
 # This is the unique identifier assigned to your app.
-# It is used by your app to request the correct patches from the Shorebird servers.
+# It is used by your app to request the correct patches from Shorebird servers.
 app_id: $appId
 ''');
 
