@@ -50,6 +50,8 @@ function Update-Shorebird {
     # This git command prints the git-dir and then the hash of HEAD. We only want the hash of HEAD.
     $compileKey = (& { git rev-parse --git-dir=$gitDir HEAD } -split)[-1]
     
+    Write-Debug "Checking whether shorebird needs to be rebuilt"
+
     Write-Debug "compileKey is $compileKey"
     Write-Debug "Snapshot file exists: $($snapshotFile.Exists)"
     Write-Debug "Stamp file: $($stampFile)"
@@ -79,6 +81,8 @@ function Update-Shorebird {
 
         Write-Debug "writing $compileKey to $stampPath"
         Set-Content -Path $stampPath -Value $compileKey
+    } else {
+        Write-Debug "Shorebird is up-to-date"
     }
 }
 
