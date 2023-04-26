@@ -4,12 +4,13 @@
 # We are running from $shorebirdRootDir\bin
 $shorebirdBinDir = (Get-Item $PSScriptRoot).FullName
 $shorebirdRootDir = (Get-Item $shorebirdBinDir\..\).FullName
+$shorebirdCacheDir = [IO.Path]::Combine($shorebirdRootDir, "bin", "cache")
 $shorebirdCliDir = [IO.Path]::Combine($shorebirdRootDir, "packages", "shorebird_cli")
+$snapshotPath = [IO.Path]::Combine($shorebirdCacheDir, "shorebird.snapshot")
+$stampPath = [IO.Path]::Combine($shorebirdCacheDir, "shorebird.stamp")
+$flutterPath = [IO.Path]::Combine($shorebirdCacheDir, "flutter")
+$flutter = [IO.Path]::Combine($shorebirdCacheDir, "flutter", "bin", "flutter.bat")
 $shorebirdScript = [IO.Path]::Combine($shorebirdCliDir, "bin", "shorebird.dart")
-$snapshotPath = [IO.Path]::Combine($shorebirdRootDir, "bin", "cache", "shorebird.snapshot")
-$stampPath = [IO.Path]::Combine($shorebirdRootDir, "bin", "cache", "shorebird.stamp")
-$flutterPath = [IO.Path]::Combine($shorebirdRootDir, "bin", "cache", "flutter")
-$flutter = [IO.Path]::Combine($shorebirdRootDir, "bin", "cache", "flutter", "bin", "flutter.bat")
 $dart = [IO.Path]::Combine($flutterPath, "bin", "cache", "dart-sdk", "bin", "dart.exe")
 
 function Update-Flutter {
