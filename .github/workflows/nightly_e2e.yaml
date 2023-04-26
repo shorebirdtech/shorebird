@@ -9,7 +9,12 @@ on:
 
 jobs:
   verify_cli_installation:
-    runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        os: [macos-latest, windows-latest, ubuntu-latest]
+
+    runs-on: ${{ matrix.os }}
 
     steps:
       - name: 📚 Git Checkout
