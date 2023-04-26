@@ -7,6 +7,7 @@ import 'package:mason_logger/mason_logger.dart';
 import 'package:path/path.dart' as p;
 import 'package:shorebird_cli/src/auth_logger_mixin.dart';
 import 'package:shorebird_cli/src/command.dart';
+import 'package:shorebird_cli/src/formatters/formatters.dart';
 import 'package:shorebird_cli/src/shorebird_build_mixin.dart';
 import 'package:shorebird_cli/src/shorebird_config_mixin.dart';
 import 'package:shorebird_cli/src/shorebird_create_app_mixin.dart';
@@ -247,6 +248,7 @@ Please create a release using "shorebird release" and try again.
 
     final patchArtifactBundles = <Arch, PatchArtifactBundle>{};
     final createDiffProgress = logger.progress('Creating artifacts');
+    final sizes = <Arch, int>{};
 
     for (final releaseArtifactPath in releaseArtifactPaths.entries) {
       final archMetadata = architectures[releaseArtifactPath.key]!;
@@ -269,6 +271,7 @@ Please create a release using "shorebird release" and try again.
           releaseArtifactPath: releaseArtifactPath.value,
           patchArtifactPath: patchArtifactPath,
         );
+        sizes[releaseArtifactPath.key] = await File(diffPath).length();
         patchArtifactBundles[releaseArtifactPath.key] = PatchArtifactBundle(
           arch: archMetadata.arch,
           path: diffPath,
@@ -281,7 +284,11 @@ Please create a release using "shorebird release" and try again.
     }
     createDiffProgress.complete();
 
-    final archNames = patchArtifactBundles.keys.map((arch) => arch.name);
+    final archMetadata = patchArtifactBundles.keys.map((arch) {
+      final name = arch.name;
+      final size = formatBytes(sizes[arch]!);
+      return '$name ($size)';
+    });
 
     logger.info(
       '''
@@ -291,7 +298,7 @@ ${styleBold.wrap(lightGreen.wrap('🚀 Ready to publish a new patch!'))}
 📱 App: ${lightCyan.wrap(app.displayName)} ${lightCyan.wrap('(${app.id})')}
 📦 Release Version: ${lightCyan.wrap(releaseVersion)}
 📺 Channel: ${lightCyan.wrap(channelArg)}
-🕹️  Platform: ${lightCyan.wrap(platform)} ${lightCyan.wrap('(${archNames.join(', ')})')}
+🕹️  Platform: ${lightCyan.wrap(platform)} ${lightCyan.wrap('[${archMetadata.join(', ')}]')}
 ''',
     );
 
