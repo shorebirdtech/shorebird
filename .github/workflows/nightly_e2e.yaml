@@ -14,6 +14,10 @@ jobs:
       matrix:
         os: [macos-latest, windows-latest, ubuntu-latest]
 
+    defaults:
+      run:
+        shell: bash
+
     runs-on: ${{ matrix.os }}
 
     steps:
