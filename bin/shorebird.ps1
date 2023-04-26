@@ -55,7 +55,9 @@ function Update-Shorebird {
     Write-Debug "Stamp file exists: $($stampFile.Exists)"
     Write-Debug "pubspec.yaml file exists: $($pubspecFile.Exists)"
     Write-Debug "pubspec.lock file exists: $($pubspecLockFile.Exists)"
-    Write-Debug "contents of stamp file: $(Get-Content $stampFile)"
+    if ($stampFile.Exists) {
+        Write-Debug "contents of stamp file: $(Get-Content $stampFile)"
+    }
     
     $invalidateCache = !$snapshotFile.Exists -or `
         !$stampFile.Exists -or `
