@@ -160,11 +160,25 @@ Tools • Dart 2.19.6 • DevTools 2.20.1
     });
 
     test(
-      'warns when path flutter version does not match shorebird flutter'
-      ' version',
+      'does not warn if flutter version and shorebird flutter version have same'
+      ' major and minor but different patch versions',
       () async {
         when(() => pathFlutterVersionProcessResult.stdout).thenReturn(
           pathFlutterVersionMessage.replaceAll('3.7.9', '3.7.10'),
+        );
+
+        final results = await validator.validate(shorebirdProcess);
+
+        expect(results, isEmpty);
+      },
+    );
+
+    test(
+      'warns when path flutter version has different major or minor version '
+      'than shorebird flutter',
+      () async {
+        when(() => pathFlutterVersionProcessResult.stdout).thenReturn(
+          pathFlutterVersionMessage.replaceAll('3.7.9', '3.8.9'),
         );
 
         final results = await validator.validate(shorebirdProcess);

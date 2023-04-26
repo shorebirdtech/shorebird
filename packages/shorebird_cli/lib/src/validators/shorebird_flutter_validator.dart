@@ -1,6 +1,7 @@
 import 'package:shorebird_cli/src/shorebird_environment.dart';
 import 'package:shorebird_cli/src/shorebird_process.dart';
 import 'package:shorebird_cli/src/validators/validators.dart';
+import 'package:version/version.dart';
 
 class FlutterValidationException implements Exception {
   const FlutterValidationException(this.message);
@@ -58,9 +59,9 @@ class ShorebirdFlutterValidator extends Validator {
       );
     }
 
-    String? shorebirdFlutterVersion;
+    String? shorebirdFlutterVersionString;
     try {
-      shorebirdFlutterVersion = await _shorebirdFlutterVersion(process);
+      shorebirdFlutterVersionString = await _shorebirdFlutterVersion(process);
     } catch (error) {
       issues.add(
         ValidationIssue(
@@ -70,9 +71,9 @@ class ShorebirdFlutterValidator extends Validator {
       );
     }
 
-    String? pathFlutterVersion;
+    String? pathFlutterVersionString;
     try {
-      pathFlutterVersion = await _pathFlutterVersion(process);
+      pathFlutterVersionString = await _pathFlutterVersion(process);
     } catch (error) {
       issues.add(
         ValidationIssue(
@@ -82,21 +83,26 @@ class ShorebirdFlutterValidator extends Validator {
       );
     }
 
-    if (shorebirdFlutterVersion != null &&
-        pathFlutterVersion != null &&
-        shorebirdFlutterVersion != pathFlutterVersion) {
-      final message = '''
+    if (shorebirdFlutterVersionString != null &&
+        pathFlutterVersionString != null) {
+      final shorebirdFlutterVersion =
+          Version.parse(shorebirdFlutterVersionString);
+      final pathFlutterVersion = Version.parse(pathFlutterVersionString);
+      if (shorebirdFlutterVersion.major != pathFlutterVersion.major ||
+          shorebirdFlutterVersion.minor != pathFlutterVersion.minor) {
+        final message = '''
 The version of Flutter that Shorebird includes and the Flutter on your path are different.
-\tShorebird Flutter: $shorebirdFlutterVersion
-\tSystem Flutter:    $pathFlutterVersion
+\tShorebird Flutter: $shorebirdFlutterVersionString
+\tSystem Flutter:    $pathFlutterVersionString
 This can cause unexpected behavior if you are switching between the tools and the version gap is wide. If you have any trouble, please let us know on Shorebird discord.''';
 
-      issues.add(
-        ValidationIssue(
-          severity: ValidationIssueSeverity.warning,
-          message: message,
-        ),
-      );
+        issues.add(
+          ValidationIssue(
+            severity: ValidationIssueSeverity.warning,
+            message: message,
+          ),
+        );
+      }
     }
 
     final flutterStorageEnvironmentValue =
