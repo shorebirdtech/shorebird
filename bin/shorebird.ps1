@@ -28,7 +28,7 @@ function Update-Flutter {
     git -C "$flutterPath" -c advice.detachedHead=false checkout "$flutterVersion" *> $null
 
     # Set FLUTTER_STORAGE_BASE_URL=https://download.shorebird.dev and execute
-    # a `flutter` command to download the engine.
+    # a `flutter` command to trigger a download of Dart, etc.
     $env:FLUTTER_STORAGE_BASE_URL = 'https://download.shorebird.dev';
     & $flutter --version
     Remove-Item Env:\FLUTTER_STORAGE_BASE_URL
