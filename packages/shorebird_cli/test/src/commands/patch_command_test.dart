@@ -175,7 +175,14 @@ flutter:
           any(),
           runInShell: any(named: 'runInShell'),
         ),
-      ).thenAnswer((_) async => patchProcessResult);
+      ).thenAnswer((invocation) async {
+        final args = invocation.positionalArguments[1] as List<String>;
+        final diffPath = args[2];
+        File(diffPath)
+          ..createSync(recursive: true)
+          ..writeAsStringSync('diff');
+        return patchProcessResult;
+      });
       when(() => argResults.rest).thenReturn([]);
       when(() => argResults['arch']).thenReturn(arch);
       when(() => argResults['platform']).thenReturn(platform);
@@ -564,6 +571,15 @@ Please create a release using "shorebird release" and try again.
         command.run,
         getCurrentDirectory: () => tempDir,
       );
+      verify(
+        () => logger.info(
+          any(
+            that: contains(
+              '''🕹️  Platform: ${lightCyan.wrap(platform)} ${lightCyan.wrap('[arm64 (4 B), arm32 (4 B), x86_64 (4 B)]')}''',
+            ),
+          ),
+        ),
+      ).called(1);
       verify(() => logger.success('\n✅ Published Patch!')).called(1);
       expect(exitCode, ExitCode.success.code);
       expect(capturedHostedUri, isNull);
