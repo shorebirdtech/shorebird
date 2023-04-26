@@ -45,10 +45,10 @@ function Update-Shorebird {
     $stampFile = [System.IO.FileInfo] $stampPath
     $pubspecFile = [System.IO.FileInfo] "$shorebirdCliDir\pubspec.yaml"
     $pubspecLockFile = [System.IO.FileInfo] "$shorebirdCliDir\pubspec.lock"
-    
-    $gitDir = [IO.Path]::Combine($shorebirdRootDir, ".git")
-    # This git command prints the git-dir and then the hash of HEAD. We only want the hash of HEAD.
-    $compileKey = (& { git rev-parse --git-dir=$gitDir HEAD } -split)[-1]
+
+    Push-Location $shorebirdRootDir
+    $compileKey = & { git rev-parse HEAD } -split
+    Pop-Location
     
     Write-Debug "Checking whether shorebird needs to be rebuilt"
 
