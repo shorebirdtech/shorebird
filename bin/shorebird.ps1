@@ -73,6 +73,8 @@ function Update-Shorebird {
     if ($invalidateCache) {
         Update-Flutter
 
+        & $dart pub upgrade
+
         Write-Output "Compiling shorebird..."
 
         & $dart --verbosity=error --disable-dart-dev --snapshot="$snapshotPath" `
