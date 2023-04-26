@@ -73,7 +73,9 @@ function Update-Shorebird {
     if ($invalidateCache) {
         Update-Flutter
 
+        Push-Location $shorebirdCliDir
         & $dart pub upgrade
+        Pop-Location
 
         Write-Output "Compiling shorebird..."
 
