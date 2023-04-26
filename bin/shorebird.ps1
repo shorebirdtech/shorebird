@@ -1,48 +1,84 @@
-# This is the windows equivalent of the `shorebird` script
+# This is the windows equivalent of the `third_party/flutter/bin/internal/shared.sh` script
 # compiles `shorebird_cli/bin/shorebird_cli.dart` to `bin/cache/shorebird.shapshot`
 
-# We are running from $shorebird_root_dir\bin
-$bin_dir = (Get-Item $PSScriptRoot).FullName
-$shorebird_root_dir = (Get-Item $bin_dir\..\).FullName
-$shorebird_cli_dir = "$shorebird_root_dir\packages\shorebird_cli"
-$shorebird_script_path = "$shorebird_cli_dir/bin/shorebird.dart"
-$cache_dir = "$bin_dir\cache"
-$snapshot_path = "$cache_dir\shorebird.snapshot"
-$flutter_path = "$cache_dir\flutter"
-$flutter = "$cache_dir\flutter\bin\flutter.bat"
-$dart = "$cache_dir\flutter\bin\cache\dart-sdk\bin\dart.exe"
+# We are running from $shorebirdRootDir\bin
+$shorebirdBinDir = (Get-Item $PSScriptRoot).FullName
+$shorebirdRootDir = (Get-Item $shorebirdBinDir\..\).FullName
+$shorebirdCliDir = [IO.Path]::Combine($shorebirdRootDir, "packages", "shorebird_cli")
+$shorebirdScript = [IO.Path]::Combine($shorebirdCliDir, "bin", "shorebird.dart")
+$snapshotPath = [IO.Path]::Combine($shorebirdRootDir, "bin", "cache", "shorebird.snapshot")
+$stampPath = [IO.Path]::Combine($shorebirdRootDir, "bin", "cache", "shorebird.stamp")
+$flutterPath = [IO.Path]::Combine($shorebirdRootDir, "bin", "cache", "flutter")
+$flutter = [IO.Path]::Combine($shorebirdRootDir, "bin", "cache", "flutter", "bin", "flutter.bat")
+$dart = [IO.Path]::Combine($flutterPath, "bin", "cache", "dart-sdk", "bin", "dart.exe")
 
-# Read internal/flutter.version into a variable
-$flutter_version = Get-Content "$bin_dir\internal\flutter.version"
+function Update-Flutter {
+    if (!(Test-Path $flutterPath)) {
+        Write-Output "Cloning flutter, this may take a bit..."
+        git clone --filter=tree:0 https://github.com/shorebirdtech/flutter.git --no-checkout "$flutterPath" *> $null
+    }
+    else {
+        git -C "$flutterPath" fetch *> $null
+    }
 
-Write-Output "checking for flutter at $flutter_path"
+    $flutterVersion = Get-Content "$shorebirdBinDir\internal\flutter.version"
 
-# Check if flutter_path exists
-if (!(Test-Path $flutter_path)) {
-    # If not, clone it
-    & git clone --filter=tree:0 https://github.com/shorebirdtech/flutter.git --no-checkout "$flutter_path"
-}
-else {
-    # If it does, update it
-    & git -C "$flutter_path" fetch
-}
+    # -c to avoid printing a warning about being in a detached head state.
+    git -C "$flutterPath" -c advice.detachedHead=false checkout "$flutterVersion" *> $null
 
-# Check if shorebird snapshot exists
-if (!(Test-Path $snapshot_path)) {
-    # If not, create it
-    & $dart --verbosity=error --disable-dart-dev --snapshot="$snapshot_path" --snapshot-kind="app-jit" --packages="$shorebird_cli_dir/.dart_tool/package_config.json" --no-enable-mirrors "$shorebird_script_path" | Out-Null
-
-    # TODO
-    # echo "$compilekey" > "$STAMP_PATH"
+    # Set FLUTTER_STORAGE_BASE_URL=https://download.shorebird.dev and execute
+    # a `flutter` command to download the engine.
+    $env:FLUTTER_STORAGE_BASE_URL = 'https://download.shorebird.dev';
+    & $flutter --version
+    Remove-Item Env:\FLUTTER_STORAGE_BASE_URL
 }
 
-# -c to avoid printing a warning about being in a detached head state.
-git -C "$flutter_path" -c advice.detachedHead=false checkout "$flutter_version"
+function Update-Shorebird {
+    # Invalidate cache if:
+    #  * snapshotFile is not a file, or
+    #  * stampFile is not a file, or
+    #  * stampFile is an empty file, or
+    #  * Contents of stampFile contains a different git hash than HEAD, or
+    #  * pubspec.yaml last modified after pubspec.lock
+    $snapshotFile = [System.IO.FileInfo] $snapshotPath
+    $stampFile = [System.IO.FileInfo] $stampPath
+    $pubspecFile = [System.IO.FileInfo] "$shorebirdCliDir\pubspec.yaml"
+    $pubspecLockFile = [System.IO.FileInfo] "$shorebirdCliDir\pubspec.lock"
+    
+    $gitDir = [IO.Path]::Combine($shorebirdRootDir, ".git")
+    # This git command prints the git-dir and then the hash of HEAD. We only want the hash of HEAD.
+    $compileKey = (& { git rev-parse --git-dir=$gitDir HEAD } -split)[-1]
+    
+    Write-Debug "compileKey is $compileKey"
+    Write-Debug "Snapshot file exists: $($snapshotFile.Exists)"
+    Write-Debug "Stamp file: $($stampFile)"
+    Write-Debug "Stamp file exists: $($stampFile.Exists)"
+    Write-Debug "pubspec.yaml file exists: $($pubspecFile.Exists)"
+    Write-Debug "pubspec.lock file exists: $($pubspecLockFile.Exists)"
+    Write-Debug "contents of stamp file: $(Get-Content $stampFile)"
+    
+    $invalidateCache = !$snapshotFile.Exists -or `
+        !$stampFile.Exists -or `
+        $stampFile.Length -eq 0 -or `
+        (Get-Content $stampFile) -ne $compilekey -or `
+        $pubspecFile.LastWriteTime -gt $pubspecLockFile.LastWriteTime
+    
+    Write-Debug "Invalidate cache: $invalidateCache"
 
-# Set FLUTTER_STORAGE_BASE_URL=https://download.shorebird.dev
-# and call `flutter`
-$env:FLUTTER_STORAGE_BASE_URL = 'https://download.shorebird.dev';
-& $flutter --version
-Remove-Item Env:\FLUTTER_STORAGE_BASE_URL
+    if ($invalidateCache) {
+        Update-Flutter
 
-& $dart --disable-dart-dev --packages="$shorebird_cli_dir\.dart_tool\package_config.json" "$snapshot_path" "$args"
+        Write-Output "Compiling shorebird..."
+
+        & $dart --verbosity=error --disable-dart-dev --snapshot="$snapshotPath" `
+            --snapshot-kind="app-jit" --packages="$shorebirdCliDir/.dart_tool/package_config.json" `
+            --no-enable-mirrors "$shorebirdScript" > $null
+
+        Write-Debug "writing $compileKey to $stampPath"
+        Set-Content -Path $stampPath -Value $compileKey
+    }
+}
+
+Update-Shorebird
+
+& $dart --disable-dart-dev --packages="$shorebirdCliDir\.dart_tool\package_config.json" "$snapshotPath" $args
