@@ -1,5 +1,9 @@
 # Trusted Testers
 
+We're in the process of replacing this document with https://docs.shorebird.dev/
+please try our new docs site and let us know if we've missed anything!
+
+
 While this document is public, access to Shorebird services are not yet
 generally available. We're running a trusted tester program with a limited
 number of users to ensure that we're building the right thing and that it's
