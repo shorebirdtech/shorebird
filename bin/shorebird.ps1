@@ -65,7 +65,7 @@ function Update-Shorebird {
     $invalidateCache = !$snapshotFile.Exists -or `
         !$stampFile.Exists -or `
         $stampFile.Length -eq 0 -or `
-        (Get-Content $stampFile) -ne $compilekey -or `
+    (Get-Content $stampFile) -ne $compilekey -or `
         $pubspecFile.LastWriteTime -gt $pubspecLockFile.LastWriteTime
     
     Write-Debug "Invalidate cache: $invalidateCache"
@@ -85,7 +85,8 @@ function Update-Shorebird {
 
         Write-Debug "writing $compileKey to $stampPath"
         Set-Content -Path $stampPath -Value $compileKey
-    } else {
+    }
+    else {
         Write-Debug "Shorebird is up-to-date"
     }
 }
