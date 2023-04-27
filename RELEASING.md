@@ -30,9 +30,9 @@ uploading the `patch` artifact.  We build patch artifacts from GitHub Actions
 for other platforms.
 
 1. You can test the artifacts you built by modifying `bin/internal/flutter.version`
-   and commiting that to stable_codepush in shorebirdtech/flutter.
+   and commiting that to `codepush` branch in `shorebirdtech/flutter`.
 
-1.  Once `stable_codepush` flutter is pushed, we also need to update shorebird_cli
+1.  Once `codepush` flutter is pushed, we also need to update shorebird_cli
     to pull the correct `flutter` revision.  `bin/internal/flutter.version`.
 
 1.  We also need to bump the `shorebird_cli` version in the `pubspec.yaml` and
