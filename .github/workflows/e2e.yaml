@@ -1,6 +1,7 @@
-name: Nighty E2E
+name: e2e
 
 on:
+  pull_request:
   schedule:
     # At the end of every day
     - cron: "0 0 * * *"
