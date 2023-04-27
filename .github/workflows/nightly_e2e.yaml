@@ -1,0 +1,32 @@
+name: Nighty E2E
+
+on:
+  schedule:
+    # At the end of every day
+    - cron: "0 0 * * *"
+
+jobs:
+  verify_cli_installation:
+    strategy:
+      fail-fast: false
+      matrix:
+        os: [macos-latest, windows-latest, ubuntu-latest]
+
+    defaults:
+      run:
+        shell: bash
+
+    runs-on: ${{ matrix.os }}
+
+    steps:
+      - name: 📚 Git Checkout
+        uses: actions/checkout@v3
+
+      - name: 🐦 Verify Shorebird Installation (${{ matrix.os }})
+        run: |
+          if [[ $(./bin/shorebird --version) =~ "Shorebird Engine • revision" ]]; then          
+            echo '✅ Shorebird CLI is installed!'
+          else
+            echo '❌ Shorebird CLI is not installed.'
+          exit 1
+          fi
