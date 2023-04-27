@@ -4,3 +4,6 @@
 
 # Test related files
 coverage/
+
+# created by very_good test
+build/
