@@ -27,7 +27,6 @@ typedef StartProcess = Future<Process> Function(
 });
 
 List<Validator> _defaultValidators() => [
-      ShorebirdFlutterValidator(),
       AndroidInternetPermissionValidator(),
     ];
 

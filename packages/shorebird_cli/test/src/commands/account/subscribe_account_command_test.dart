@@ -64,10 +64,10 @@ void main() {
       expect(subscribeAccountCommand.description, isNotEmpty);
     });
 
-    test('summary has price and link to trusted testers doc', () {
+    test('summary has price and link to shorebird.dev', () {
       expect(
         subscribeAccountCommand.summary,
-        stringContainsInOrder([r'$20', 'TRUSTED_TESTERS.md']),
+        stringContainsInOrder([r'$20', 'shorebird.dev']),
       );
     });
 

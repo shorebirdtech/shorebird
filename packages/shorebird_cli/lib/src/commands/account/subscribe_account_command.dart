@@ -31,7 +31,7 @@ patches to your apps.
 
 The subscription costs \$20 USD per month per user and is billed through Stripe.
 
-Visit ${styleUnderlined.wrap(lightCyan.wrap('https://github.com/shorebirdtech/shorebird/blob/main/TRUSTED_TESTERS.md'))} for more details.''';
+Visit ${styleUnderlined.wrap(lightCyan.wrap('https://shorebird.dev'))} for more details.''';
 
   @override
   Future<int> run() async {
