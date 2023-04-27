@@ -46,3 +46,7 @@ e.g.  https://github.com/shorebirdtech/shorebird/pull/287
 
 1. Once all these changes are done, we push a new version of the CLI by pushing
 to the `stable` branch on `shorebird`.
+
+```
+git push origin main:stable
+```
