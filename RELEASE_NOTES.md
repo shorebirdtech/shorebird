@@ -2,6 +2,31 @@
 
 This section contains past updates we've sent to current Trusted Testers.
 
+## 0.0.9 - Open Beta
+
+Welcome to 0.0.9, big changes ahead!
+
+If you're already using Shorebird, you can upgrade to the latest version
+with `shorebird upgrade`.
+
+It no longer requires an invite to use Shorebird.  You can create and account
+and subscribe to the Open Beta directly from the command line.  Instructions
+are available at our new docs site: https://docs.shorebird.dev/
+
+What's new:
+ * New site: https://shorebird.dev/ and docs site: https://docs.shorebird.dev/
+ * Windows support!  https://docs.shorebird.dev now has instructions on how
+   to install Shorebird on Windows.
+ * Updates no longer block launch.  When available, updates are still applied
+   during app launch, but now on a background thread.  This means that your
+   development flow to test your patches will involve launching your app
+   letting it update in the background, and then re-launching to see the patch
+   applied.  This change was made to improve the experience for users
+   (there is no longer a synchronous network request during app startup) and
+   make apps resilient to unreliable networks during launch.
+
+As always, please let us know if you see any issues.
+
 ## Announcement for 0.0.8
 
 We've just released Shorebird CLI v0.0.8 🎉
