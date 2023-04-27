@@ -26,10 +26,9 @@ jobs:
 
       - name: 🐦 Verify Shorebird Installation (${{ matrix.os }})
         run: |
-          ./bin/shorebird --version
-          # if ./bin/shorebird --version | grep -q '^Shorebird \d\.\d\.\d$'; then
-          #   echo '✅ Shorebird CLI is installed!'
-          # else
-          #   echo '❌ Shorebird CLI is not installed.'
-          # exit 1
-          # fi
+          if ./bin/shorebird --version | grep -q '^Shorebird \d\.\d\.\d'; then
+            echo '✅ Shorebird CLI is installed!'
+          else
+            echo '❌ Shorebird CLI is not installed.'
+          exit 1
+          fi
