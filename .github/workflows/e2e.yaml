@@ -1,4 +1,4 @@
-name: Nighty E2E
+name: e2e
 
 on:
   schedule:
