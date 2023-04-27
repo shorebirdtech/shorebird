@@ -18,7 +18,13 @@ class RunCommand extends ShorebirdCommand
     super.auth,
     super.buildCodePushClient,
     super.validators,
-  });
+  }) {
+    argParser.addOption(
+      'device-id',
+      abbr: 'd',
+      help: 'Target device id or name.',
+    );
+  }
 
   @override
   String get description => 'Run the Flutter application.';
@@ -36,12 +42,15 @@ class RunCommand extends ShorebirdCommand
     await logValidationIssues();
 
     logger.info('Running app...');
+
+    final deviceId = results['device-id'] as String?;
     final flutter = await process.start(
       'flutter',
       [
         'run',
         // Eventually we should support running in both debug and release mode.
         '--release',
+        if (deviceId != null) ...['-d', deviceId],
         ...results.rest
       ],
       runInShell: true,

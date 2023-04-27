@@ -157,6 +157,41 @@ void main() {
       verify(() => logger.info(output)).called(1);
     });
 
+    test('passes device-id when specified', () async {
+      final tempDir = Directory.systemTemp.createTempSync();
+
+      final progress = _MockProgress();
+      when(() => logger.progress(any())).thenReturn(progress);
+
+      const deviceId = 'test-device-id';
+      when(() => argResults['device-id']).thenReturn(deviceId);
+
+      when(() => process.stdout).thenAnswer((_) => const Stream.empty());
+      when(() => process.stderr).thenAnswer((_) => const Stream.empty());
+      when(
+        () => process.exitCode,
+      ).thenAnswer((_) async => ExitCode.success.code);
+
+      final result = await IOOverrides.runZoned(
+        () => runCommand.run(),
+        getCurrentDirectory: () => tempDir,
+      );
+
+      final args = verify(
+        () => shorebirdProcess.start(
+          any(),
+          captureAny(),
+          runInShell: any(named: 'runInShell'),
+        ),
+      ).captured.first as List<String>;
+      expect(
+        args,
+        equals(['run', '--release', '-d', deviceId]),
+      );
+
+      await expectLater(result, equals(ExitCode.success.code));
+    });
+
     test('prints validation warnings', () async {
       when(() => flutterValidator.validate(any())).thenAnswer(
         (_) async => [
