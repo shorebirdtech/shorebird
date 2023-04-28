@@ -1,3 +1,4 @@
+import 'package:mason_logger/mason_logger.dart';
 import 'package:shorebird_cli/src/shorebird_environment.dart';
 import 'package:shorebird_cli/src/shorebird_process.dart';
 import 'package:shorebird_cli/src/validators/validators.dart';
@@ -100,6 +101,9 @@ This can cause unexpected behavior if you are switching between the tools and th
           ValidationIssue(
             severity: ValidationIssueSeverity.warning,
             message: message,
+            fixSuggestion: '''
+For now, shorebird only supports the latest version of Flutter.
+You can fix this issue by updating your system Flutter to the latest version using ${lightCyan.wrap('flutter upgrade')}.''',
           ),
         );
       }

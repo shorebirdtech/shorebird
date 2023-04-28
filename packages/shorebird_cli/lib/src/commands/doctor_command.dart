@@ -53,6 +53,14 @@ Shorebird Engine • revision ${ShorebirdEnvironment.shorebirdEngineRevision}'''
 
         for (final issue in issues) {
           logger.info('  ${issue.displayMessage}');
+          if (issue.fix != null) {
+            final shouldFix = logger.confirm(
+              ''' ${green.wrap('We can fix this for you. Would you like us to?')}''',
+            );
+            if (shouldFix) {
+              await issue.fix!();
+            }
+          }
         }
       }
     }

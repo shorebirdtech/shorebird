@@ -20,9 +20,18 @@ extension Display on ValidationIssueSeverity {
   String get leading {
     switch (this) {
       case ValidationIssueSeverity.error:
-        return red.wrap('[✗]')!;
+        return '[✗]';
       case ValidationIssueSeverity.warning:
-        return yellow.wrap('[!]')!;
+        return '[!]';
+    }
+  }
+
+  String get displayLeading {
+    switch (this) {
+      case ValidationIssueSeverity.error:
+        return red.wrap(leading)!;
+      case ValidationIssueSeverity.warning:
+        return yellow.wrap(leading)!;
     }
   }
 }
@@ -30,7 +39,12 @@ extension Display on ValidationIssueSeverity {
 /// A (potential) problem with the current Shorebird installation or project.
 @immutable
 class ValidationIssue {
-  const ValidationIssue({required this.severity, required this.message});
+  const ValidationIssue({
+    required this.severity,
+    required this.message,
+    this.fixSuggestion,
+    this.fix,
+  });
 
   /// How important it is to fix this issue.
   final ValidationIssueSeverity severity;
@@ -38,9 +52,26 @@ class ValidationIssue {
   /// A description of the issue.
   final String message;
 
+  /// A suggestion for how to fix this issue.
+  final String? fixSuggestion;
+
+  /// Fixes this issue.
+  final Future<void> Function()? fix;
+
   /// A console-friendly description of this issue.
   String? get displayMessage {
-    return '${severity.leading} $message';
+    final padding = ' ' * severity.leading.length;
+    final displayMessage =
+        _addLeadingPaddingToLines(message, skipFirstLine: true);
+    if (fixSuggestion == null) {
+      return '${severity.leading} $displayMessage';
+    }
+
+    final displayFixSuggestion = _addLeadingPaddingToLines(fixSuggestion!);
+    return '''
+${severity.displayLeading} $displayMessage
+$padding${styleBold.wrap('To fix')}:
+$displayFixSuggestion''';
   }
 
   // coverage:ignore-start
@@ -61,6 +92,15 @@ class ValidationIssue {
   @override
   int get hashCode => Object.hashAll([severity, message]);
   // coverage:ignore-end
+
+  String _addLeadingPaddingToLines(String text, {bool skipFirstLine = false}) {
+    final padding = ' ' * severity.leading.length;
+    final lines = text.split('\n');
+    final skipCount = skipFirstLine ? 1 : 0;
+    return (lines.take(skipCount).toList() +
+            lines.skip(skipCount).map((line) => '$padding$line').toList())
+        .join('\n');
+  }
 }
 
 /// Checks for a specific issue with either the Shorebird installation or the

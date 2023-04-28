@@ -67,6 +67,10 @@ class AndroidInternetPermissionValidator extends Validator {
             (String manifestPath) => ValidationIssue(
               severity: ValidationIssueSeverity.error,
               message: '$manifestPath is missing the INTERNET permission.',
+              fixSuggestion: '''
+Add <uses-permission android:name="android.permission.INTERNET" /> to $manifestPath.
+See https://developer.android.com/guide/topics/manifest/uses-permission-element for reference.''',
+              fix: () async => _addInternetPermissionToFile(manifestPath),
             ),
           )
           .toList();
@@ -89,5 +93,21 @@ class AndroidInternetPermissionValidator extends Validator {
     final attribute = element.attributes.first;
     return attribute.qualifiedName == 'android:name' &&
         attribute.value == 'android.permission.INTERNET';
+  }
+
+  void _addInternetPermissionToFile(String path) {
+    final xmlDocument = XmlDocument.parse(File(path).readAsStringSync());
+    xmlDocument.rootElement.children.add(
+      XmlElement(
+        XmlName('uses-permission'),
+        [
+          XmlAttribute(
+            XmlName('android:name'),
+            'android.permission.INTERNET',
+          ),
+        ],
+      ),
+    );
+    File(path).writeAsStringSync(xmlDocument.toXmlString(pretty: true));
   }
 }

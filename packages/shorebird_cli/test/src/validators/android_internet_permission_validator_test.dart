@@ -82,6 +82,7 @@ void main() {
       expect(results, hasLength(1));
       expect(results.first.severity, ValidationIssueSeverity.error);
       expect(results.first.message, 'No Android project found');
+      expect(results.first.fix, isNull);
     });
 
     test('returns an error if no AndroidManifest.xml files are found',
@@ -101,6 +102,7 @@ void main() {
         results.first.message,
         startsWith('No AndroidManifest.xml files found in'),
       );
+      expect(results.first.fix, isNull);
     });
 
     test(
@@ -165,5 +167,31 @@ void main() {
         );
       },
     );
+
+    test('fix() adds permission to manifest file', () async {
+      final tempDirectory = createTempDir();
+      writeManifestToPath(
+        manifestWithNonInternetPermissions,
+        p.join(tempDirectory.path, 'android', 'app', 'src', 'debug'),
+      );
+
+      var results = await IOOverrides.runZoned(
+        () => AndroidInternetPermissionValidator().validate(shorebirdProcess),
+        getCurrentDirectory: () => tempDirectory,
+      );
+      expect(results, hasLength(1));
+      expect(results.first.fix, isNotNull);
+
+      await IOOverrides.runZoned(
+        () => results.first.fix!(),
+        getCurrentDirectory: () => tempDirectory,
+      );
+
+      results = await IOOverrides.runZoned(
+        () => AndroidInternetPermissionValidator().validate(shorebirdProcess),
+        getCurrentDirectory: () => tempDirectory,
+      );
+      expect(results, isEmpty);
+    });
   });
 }
