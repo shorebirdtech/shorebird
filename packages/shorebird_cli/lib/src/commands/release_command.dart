@@ -114,7 +114,7 @@ Did you forget to run "shorebird init"?''',
       return ExitCode.software.code;
     }
 
-    final releaseVersionArg = results['release-version'] as String?;
+    var releaseVersionArg = results['release-version'] as String?;
 
     if (releaseVersionArg == null) logger.info('');
 
@@ -132,6 +132,7 @@ Did you forget to run "shorebird init"?''',
         logger.err(
           '"$releaseVersionCandidate" is not a valid version number (see https://semver.org/)',
         );
+        releaseVersionArg = null;
       }
     }
 
