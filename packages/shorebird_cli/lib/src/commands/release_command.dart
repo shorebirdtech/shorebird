@@ -11,6 +11,7 @@ import 'package:shorebird_cli/src/shorebird_config_mixin.dart';
 import 'package:shorebird_cli/src/shorebird_create_app_mixin.dart';
 import 'package:shorebird_cli/src/shorebird_validation_mixin.dart';
 import 'package:shorebird_code_push_client/shorebird_code_push_client.dart';
+import 'package:version/version.dart';
 
 /// {@template release_command}
 /// `shorebird release`
@@ -117,11 +118,22 @@ Did you forget to run "shorebird init"?''',
 
     if (releaseVersionArg == null) logger.info('');
 
-    final releaseVersion = releaseVersionArg ??
-        logger.prompt(
-          'What is the version of this release?',
-          defaultValue: versionString,
+    Version releaseVersion;
+    while (true) {
+      final releaseVersionCandidate = releaseVersionArg ??
+          logger.prompt(
+            'What is the version of this release?',
+            defaultValue: versionString,
+          );
+      try {
+        releaseVersion = Version.parse(releaseVersionCandidate);
+        break;
+      } catch (error) {
+        logger.err(
+          '"$releaseVersionCandidate" is not a valid version number (see https://semver.org/)',
         );
+      }
+    }
 
     final platform = results['platform'] as String;
     final archNames = architectures.keys.map(
@@ -133,7 +145,7 @@ Did you forget to run "shorebird init"?''',
 ${styleBold.wrap(lightGreen.wrap('🚀 Ready to create a new release!'))}
 
 📱 App: ${lightCyan.wrap(app.displayName)} ${lightCyan.wrap('(${app.id})')}
-📦 Release Version: ${lightCyan.wrap(releaseVersion)}
+📦 Release Version: ${lightCyan.wrap(releaseVersion.toString())}
 🕹️  Platform: ${lightCyan.wrap(platform)} ${lightCyan.wrap('(${archNames.join(', ')})')}
 ''');
 
@@ -154,13 +166,14 @@ ${styleBold.wrap(lightGreen.wrap('🚀 Ready to create a new release!'))}
       return ExitCode.software.code;
     }
 
-    var release = releases.firstWhereOrNull((r) => r.version == releaseVersion);
+    var release = releases
+        .firstWhereOrNull((r) => r.version == releaseVersion.toString());
     if (release == null) {
       final createReleaseProgress = logger.progress('Creating release');
       try {
         release = await codePushClient.createRelease(
           appId: app.id,
-          version: releaseVersion,
+          version: releaseVersion.toString(),
         );
         createReleaseProgress.complete();
       } catch (error) {
