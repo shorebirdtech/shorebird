@@ -114,25 +114,25 @@ Did you forget to run "shorebird init"?''',
       return ExitCode.software.code;
     }
 
-    var releaseVersionArg = results['release-version'] as String?;
+    final releaseVersionArg = results['release-version'] as String?;
 
     if (releaseVersionArg == null) logger.info('');
 
-    Version releaseVersion;
-    while (true) {
-      final releaseVersionCandidate = releaseVersionArg ??
+    Version? releaseVersion;
+    var releaseVersionInput = releaseVersionArg;
+    while (releaseVersion == null) {
+      releaseVersionInput = releaseVersionInput ??
           logger.prompt(
             'What is the version of this release?',
             defaultValue: versionString,
           );
       try {
-        releaseVersion = Version.parse(releaseVersionCandidate);
-        break;
+        releaseVersion = Version.parse(releaseVersionInput);
       } catch (error) {
         logger.err(
-          '"$releaseVersionCandidate" is not a valid version number (see https://semver.org/)',
+          '"$releaseVersionInput" is not a valid version number (see https://semver.org/)',
         );
-        releaseVersionArg = null;
+        releaseVersionInput = null;
       }
     }
 
