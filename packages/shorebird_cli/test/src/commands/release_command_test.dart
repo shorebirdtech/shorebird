@@ -292,11 +292,14 @@ Did you forget to run "shorebird init"?''',
 
         expect(exitCode, ExitCode.success.code);
         verify(
-          () =>
-              logger.err(any(that: contains('"asdf" is not a valid version'))),
+          () => logger.err(
+            any(that: contains('"asdf" is not a valid version')),
+          ),
         ).called(1);
         verify(
-          () => logger.err(any(that: contains('"y" is not a valid version'))),
+          () => logger.err(
+            any(that: contains('"y" is not a valid version')),
+          ),
         ).called(1);
       },
     );
