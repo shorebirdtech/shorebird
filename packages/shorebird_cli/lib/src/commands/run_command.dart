@@ -19,11 +19,21 @@ class RunCommand extends ShorebirdCommand
     super.buildCodePushClient,
     super.validators,
   }) {
-    argParser.addOption(
-      'device-id',
-      abbr: 'd',
-      help: 'Target device id or name.',
-    );
+    argParser
+      ..addOption(
+        'device-id',
+        abbr: 'd',
+        help: 'Target device id or name.',
+      )
+      ..addOption(
+        'target',
+        abbr: 't',
+        help: 'The main entrypoint file of the application.',
+      )
+      ..addOption(
+        'flavor',
+        help: 'The product flavor to use when building the app.',
+      );
   }
 
   @override
@@ -44,13 +54,17 @@ class RunCommand extends ShorebirdCommand
     logger.info('Running app...');
 
     final deviceId = results['device-id'] as String?;
+    final flavor = results['flavor'] as String?;
+    final target = results['target'] as String?;
     final flutter = await process.start(
       'flutter',
       [
         'run',
         // Eventually we should support running in both debug and release mode.
         '--release',
-        if (deviceId != null) ...['-d', deviceId],
+        if (deviceId != null) '--device-id=$deviceId',
+        if (flavor != null) '--flavor=$flavor',
+        if (target != null) '--target=$target',
         ...results.rest
       ],
       runInShell: true,
