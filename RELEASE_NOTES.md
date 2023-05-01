@@ -2,6 +2,32 @@
 
 This section contains past updates we've sent to current Trusted Testers.
 
+## 0.0.10
+
+We've just released Shorebird CLI v0.0.10.
+
+We discovered a bug in 0.0.9 that caused releases made from 0.0.9 with
+a version name including build number (e.g. `1.0.0+1`) to fail to update.
+
+`shorebird release` would include the build number in the version name,
+but the updater client would not include the build number in its request
+to the server.
+
+The fix was to make the updater client always also include the build number
+which will make "1.0.0+1" and "1.0.0+2" correctly different versions.
+
+What else is new:
+* `shorebird run` now supports `-d` to specify a device ID.
+* Fixed `shorebird run` on linux x64 when `web` was enabled for the project.
+* Fixed Windows install script to work even when IE was not installed.
+* Fixed Windows install to add the correct path to the PATH variable.
+
+As always, you can upgrade with `shorebird upgrade`.
+
+Please let us know if we can help!
+
+Eric
+
 ## 0.0.9 - Open Beta
 
 Welcome to 0.0.9, big changes ahead!

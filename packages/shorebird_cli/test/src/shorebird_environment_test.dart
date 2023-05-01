@@ -33,6 +33,20 @@ void main() {
           ..writeAsStringSync(revision, flush: true);
         expect(ShorebirdEnvironment.flutterRevision, equals(revision));
       });
+
+      test('trims revision file content', () {
+        const revision = '''
+
+test-revision
+
+\r\n
+''';
+        File(p.join(shorebirdRoot.path, 'bin', 'internal', 'flutter.version'))
+          ..createSync(recursive: true)
+          ..writeAsStringSync(revision, flush: true);
+
+        expect(ShorebirdEnvironment.flutterRevision, 'test-revision');
+      });
     });
 
     group('shorebirdEngineRevision', () {
