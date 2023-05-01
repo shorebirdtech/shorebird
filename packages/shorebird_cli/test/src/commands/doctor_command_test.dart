@@ -1,3 +1,4 @@
+import 'package:args/args.dart';
 import 'package:mason_logger/mason_logger.dart';
 import 'package:mocktail/mocktail.dart';
 import 'package:shorebird_cli/src/commands/commands.dart';
@@ -5,6 +6,8 @@ import 'package:shorebird_cli/src/shorebird_environment.dart';
 import 'package:shorebird_cli/src/shorebird_process.dart';
 import 'package:shorebird_cli/src/validators/validators.dart';
 import 'package:test/test.dart';
+
+class _MockArgResults extends Mock implements ArgResults {}
 
 class _MockShorebirdVersionValidator extends Mock
     implements ShorebirdVersionValidator {}
@@ -23,6 +26,7 @@ class _MockShorebirdProcess extends Mock implements ShorebirdProcess {}
 
 void main() {
   group('doctor', () {
+    late ArgResults argResults;
     late Logger logger;
     late Progress progress;
     late DoctorCommand command;
@@ -32,10 +36,13 @@ void main() {
     late ShorebirdProcess shorebirdProcess;
 
     setUp(() {
+      argResults = _MockArgResults();
       logger = _MockLogger();
       progress = _MockProgress();
 
       ShorebirdEnvironment.shorebirdEngineRevision = 'test-revision';
+
+      when(() => argResults['fix']).thenReturn(false);
 
       when(() => logger.progress(any())).thenReturn(progress);
       when(() => logger.info(any())).thenReturn(null);
@@ -76,6 +83,7 @@ void main() {
           shorebirdFlutterValidator,
         ],
       )
+        ..testArgResults = argResults
         ..testProcess = shorebirdProcess
         ..testEngineConfig = const EngineConfig.empty();
     });
@@ -113,16 +121,93 @@ void main() {
       }
 
       verify(
-        () => logger.info(any(that: contains('${yellow.wrap('[!]')} oh no!'))),
+        () => logger.info(any(that: stringContainsInOrder(['[!]', 'oh no!']))),
       ).called(1);
 
       verify(
-        () => logger.info(any(that: contains('${red.wrap('[✗]')} OH NO!'))),
+        () => logger.info(any(that: stringContainsInOrder(['[✗]', 'OH NO!']))),
       ).called(1);
 
       verify(
         () => logger.info(any(that: contains('2 issues detected.'))),
       ).called(1);
+    });
+
+    test('tells the user we can fix issues if we can', () async {
+      when(
+        () => androidInternetPermissionValidator.validate(any()),
+      ).thenAnswer(
+        (_) async => [
+          ValidationIssue(
+            severity: ValidationIssueSeverity.warning,
+            message: 'oh no!',
+            fix: () async {},
+          ),
+        ],
+      );
+
+      await command.run();
+
+      verify(
+        () => logger.info(
+          any(
+            that: stringContainsInOrder([
+              'We can fix some of these issues',
+              'shorebird doctor --fix',
+            ]),
+          ),
+        ),
+      ).called(1);
+    });
+
+    test('does not tell the user we can fix issues if we cannot', () async {
+      when(
+        () => androidInternetPermissionValidator.validate(any()),
+      ).thenAnswer(
+        (_) async => [
+          const ValidationIssue(
+            severity: ValidationIssueSeverity.warning,
+            message: 'oh no!',
+          ),
+        ],
+      );
+
+      await command.run();
+
+      verifyNever(
+        () => logger.info(
+          any(
+            that: stringContainsInOrder([
+              'We can fix some of these issues',
+              'shorebird doctor --fix',
+            ]),
+          ),
+        ),
+      );
+    });
+
+    test('fixes issues if the --fix flag is provided', () async {
+      when(() => argResults['fix']).thenReturn(true);
+
+      var fixCalled = false;
+      when(
+        () => androidInternetPermissionValidator.validate(any()),
+      ).thenAnswer(
+        (_) async => [
+          ValidationIssue(
+            severity: ValidationIssueSeverity.warning,
+            message: 'oh no!',
+            fix: () async => fixCalled = true,
+          ),
+        ],
+      );
+
+      await command.run();
+
+      expect(fixCalled, isTrue);
+      verify(
+        () => androidInternetPermissionValidator.validate(any()),
+      ).called(2);
     });
   });
 }

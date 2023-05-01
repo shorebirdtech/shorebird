@@ -18,6 +18,13 @@ class DoctorCommand extends ShorebirdCommand with ShorebirdVersionMixin {
     super.validators,
   }) {
     validators = _allValidators(baseValidators: validators);
+
+    argParser.addFlag(
+      'fix',
+      abbr: 'f',
+      help: 'Fix issues where possible.',
+      negatable: false,
+    );
   }
 
   late final List<Validator> _doctorValidators = [
@@ -36,16 +43,27 @@ class DoctorCommand extends ShorebirdCommand with ShorebirdVersionMixin {
 
   @override
   Future<int> run() async {
+    final shouldFix = results['fix'] == true;
+
     logger.info('''
 
 Shorebird v$packageVersion
 Shorebird Engine • revision ${ShorebirdEnvironment.shorebirdEngineRevision}''');
 
-    var numIssues = 0;
+    final allIssues = <ValidationIssue>[];
     for (final validator in validators) {
       final progress = logger.progress(validator.description);
-      final issues = await validator.validate(process);
-      numIssues += issues.length;
+      var issues = await validator.validate(process);
+      final fixableIssues = issues.where((issue) => issue.fix != null);
+      if (shouldFix && fixableIssues.isNotEmpty) {
+        for (final issue in fixableIssues) {
+          await issue.fix!();
+        }
+        // Re-run validator to ensure that fixes worked.
+        issues = await validator.validate(process);
+      }
+
+      allIssues.addAll(issues);
       if (issues.isEmpty) {
         progress.complete();
       } else {
@@ -53,24 +71,25 @@ Shorebird Engine • revision ${ShorebirdEnvironment.shorebirdEngineRevision}'''
 
         for (final issue in issues) {
           logger.info('  ${issue.displayMessage}');
-          if (issue.fix != null) {
-            final shouldFix = logger.confirm(
-              ''' ${green.wrap('We can fix this for you. Would you like us to?')}''',
-            );
-            if (shouldFix) {
-              await issue.fix!();
-            }
-          }
         }
       }
     }
 
     logger.info('');
 
-    if (numIssues == 0) {
+    if (allIssues.isEmpty) {
       logger.info('No issues detected!');
     } else {
+      final numIssues = allIssues.length;
       logger.info('$numIssues issue${numIssues == 1 ? '' : 's'} detected.');
+
+      final issuesWithFix = allIssues.where((issue) => issue.fix != null);
+      if (issuesWithFix.isNotEmpty && !shouldFix) {
+        logger.info(
+          '''
+We can fix some of these issues for you. Run ${lightCyan.wrap('shorebird doctor --fix')} to fix''',
+        );
+      }
     }
 
     return ExitCode.success.code;
