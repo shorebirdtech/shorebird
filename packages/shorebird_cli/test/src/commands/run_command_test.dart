@@ -157,14 +157,18 @@ void main() {
       verify(() => logger.info(output)).called(1);
     });
 
-    test('passes device-id when specified', () async {
+    test('passes additional args when specified', () async {
       final tempDir = Directory.systemTemp.createTempSync();
 
       final progress = _MockProgress();
       when(() => logger.progress(any())).thenReturn(progress);
 
       const deviceId = 'test-device-id';
+      const flavor = 'development';
+      const target = './lib/main_development.dart';
       when(() => argResults['device-id']).thenReturn(deviceId);
+      when(() => argResults['flavor']).thenReturn(flavor);
+      when(() => argResults['target']).thenReturn(target);
 
       when(() => process.stdout).thenAnswer((_) => const Stream.empty());
       when(() => process.stderr).thenAnswer((_) => const Stream.empty());
@@ -186,7 +190,13 @@ void main() {
       ).captured.first as List<String>;
       expect(
         args,
-        equals(['run', '--release', '-d', deviceId]),
+        equals([
+          'run',
+          '--release',
+          '--device-id=$deviceId',
+          '--flavor=$flavor',
+          '--target=$target',
+        ]),
       );
 
       await expectLater(result, equals(ExitCode.success.code));
