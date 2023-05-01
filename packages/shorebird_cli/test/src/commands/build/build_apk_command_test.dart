@@ -132,6 +132,44 @@ ${lightCyan.wrap("./build/app/outputs/apk/release/app-release.apk")}''',
       ).called(1);
     });
 
+    test(
+        'exits with code 0 when building apk succeeds '
+        'with flavor and target', () async {
+      const flavor = 'development';
+      const target = './lib/main_development.dart';
+      when(() => argResults['flavor']).thenReturn(flavor);
+      when(() => argResults['target']).thenReturn(target);
+      when(() => processResult.exitCode).thenReturn(ExitCode.success.code);
+      final tempDir = Directory.systemTemp.createTempSync();
+      final result = await IOOverrides.runZoned(
+        () async => command.run(),
+        getCurrentDirectory: () => tempDir,
+      );
+
+      expect(result, equals(ExitCode.success.code));
+
+      verify(
+        () => shorebirdProcess.run(
+          'flutter',
+          [
+            'build',
+            'apk',
+            '--release',
+            '--flavor=$flavor',
+            '--target=$target',
+          ],
+          runInShell: true,
+        ),
+      ).called(1);
+      verify(
+        () => logger.info(
+          '''
+📦 Generated an apk at:
+${lightCyan.wrap("./build/app/outputs/apk/$flavor/release/app-$flavor-release.apk")}''',
+        ),
+      ).called(1);
+    });
+
     test('prints flutter validation warnings', () async {
       when(() => flutterValidator.validate(any())).thenAnswer(
         (_) async => [

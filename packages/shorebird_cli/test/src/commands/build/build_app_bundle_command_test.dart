@@ -133,6 +133,44 @@ ${lightCyan.wrap("./build/app/outputs/bundle/release/app-release.aab")}''',
       ).called(1);
     });
 
+    test(
+        'exits with code 0 when building appbundle succeeds '
+        'with flavor and target', () async {
+      const flavor = 'development';
+      const target = './lib/main_development.dart';
+      when(() => argResults['flavor']).thenReturn(flavor);
+      when(() => argResults['target']).thenReturn(target);
+      when(() => processResult.exitCode).thenReturn(ExitCode.success.code);
+      final tempDir = Directory.systemTemp.createTempSync();
+      final result = await IOOverrides.runZoned(
+        () async => command.run(),
+        getCurrentDirectory: () => tempDir,
+      );
+
+      expect(result, equals(ExitCode.success.code));
+      verify(
+        () => shorebirdProcess.run(
+          'flutter',
+          [
+            'build',
+            'appbundle',
+            '--release',
+            '--flavor=$flavor',
+            '--target=$target',
+          ],
+          runInShell: true,
+        ),
+      ).called(1);
+
+      verify(
+        () => logger.info(
+          '''
+📦 Generated an app bundle at:
+${lightCyan.wrap("./build/app/outputs/bundle/${flavor}Release/app-$flavor-release.aab")}''',
+        ),
+      ).called(1);
+    });
+
     test('local-engine and architectures', () async {
       expect(command.architectures.length, greaterThan(1));
 
