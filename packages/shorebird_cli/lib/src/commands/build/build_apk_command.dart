@@ -23,7 +23,18 @@ class BuildApkCommand extends ShorebirdCommand
     required super.logger,
     super.auth,
     super.validators,
-  });
+  }) {
+    argParser
+      ..addOption(
+        'target',
+        abbr: 't',
+        help: 'The main entrypoint file of the application.',
+      )
+      ..addOption(
+        'flavor',
+        help: 'The product flavor to use when building the app.',
+      );
+  }
 
   @override
   String get description => 'Build an Android APK file from your app.';
@@ -40,9 +51,11 @@ class BuildApkCommand extends ShorebirdCommand
 
     await logValidationIssues();
 
+    final flavor = results['flavor'] as String?;
+    final target = results['target'] as String?;
     final buildProgress = logger.progress('Building apk');
     try {
-      await buildApk();
+      await buildApk(flavor: flavor, target: target);
     } on ProcessException catch (error) {
       buildProgress.fail('Failed to build: ${error.message}');
       return ExitCode.software.code;
@@ -50,9 +63,13 @@ class BuildApkCommand extends ShorebirdCommand
 
     buildProgress.complete();
 
+    final apkPath = flavor != null
+        ? './build/app/outputs/apk/$flavor/release/app-$flavor-release.apk'
+        : './build/app/outputs/apk/release/app-release.apk';
+
     logger.info('''
 📦 Generated an apk at:
-${lightCyan.wrap("./build/app/outputs/apk/release/app-release.apk")}''');
+${lightCyan.wrap(apkPath)}''');
 
     return ExitCode.success.code;
   }

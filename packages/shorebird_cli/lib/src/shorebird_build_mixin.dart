@@ -66,12 +66,14 @@ mixin ShorebirdBuildMixin on ShorebirdCommand {
     return allAndroidArchitectures;
   }
 
-  Future<void> buildAppBundle() async {
+  Future<void> buildAppBundle({String? flavor, String? target}) async {
     const executable = 'flutter';
     final arguments = [
       'build',
       'appbundle',
       '--release',
+      if (flavor != null) '--flavor=$flavor',
+      if (target != null) '--target=$target',
       ...results.rest,
     ];
 
@@ -91,12 +93,14 @@ mixin ShorebirdBuildMixin on ShorebirdCommand {
     }
   }
 
-  Future<void> buildApk() async {
+  Future<void> buildApk({String? flavor, String? target}) async {
     const executable = 'flutter';
     final arguments = [
       'build',
       'apk',
       '--release',
+      if (flavor != null) '--flavor=$flavor',
+      if (target != null) '--target=$target',
       ...results.rest,
     ];
 
