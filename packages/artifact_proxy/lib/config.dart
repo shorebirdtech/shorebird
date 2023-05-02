@@ -34,7 +34,6 @@ final engineArtifactPatterns = {
   r'flutter_infra_release\/flutter\/(.*)\/darwin-x64\/font-subset\.zip',
   r'flutter_infra_release\/flutter\/(.*)\/darwin-x64\/FlutterMacOS.framework\.zip',
   r'flutter_infra_release\/flutter\/(.*)\/darwin-x64\/artifacts\.zip',
-  r'flutter_infra_release\/flutter\/(.*)\/darwin-x64\/artifacts\.zip.',
   r'flutter_infra_release\/flutter\/(.*)\/darwin-x64-release\/gen_snapshot\.zip',
   r'flutter_infra_release\/flutter\/(.*)\/darwin-x64-release\/FlutterMacOS.framework\.zip',
   r'flutter_infra_release\/flutter\/(.*)\/darwin-x64-release\/artifacts\.zip',
