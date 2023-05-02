@@ -9,7 +9,10 @@ import 'package:yaml/yaml.dart';
 import 'package:yaml_edit/yaml_edit.dart';
 
 mixin ShorebirdConfigMixin on ShorebirdCommand {
-  bool get hasShorebirdYaml => getShorebirdYaml() != null;
+  bool get hasShorebirdYaml {
+    final file = File(p.join(Directory.current.path, 'shorebird.yaml'));
+    return file.existsSync();
+  }
 
   bool get hasPubspecYaml => getPubspecYaml() != null;
 
@@ -50,20 +53,24 @@ mixin ShorebirdConfigMixin on ShorebirdCommand {
     return Pubspec.parse(yaml);
   }
 
-  ShorebirdYaml addShorebirdYamlToProject(String appId) {
-    File(
-      p.join(Directory.current.path, 'shorebird.yaml'),
-    ).writeAsStringSync('''
+  ShorebirdYaml addShorebirdYamlToProject(AppId appId) {
+    const content = '''
 # This file is used to configure the Shorebird updater used by your application.
 # Learn more at https://shorebird.dev
 # This file should be checked into version control.
 
 # This is the unique identifier assigned to your app.
 # It is used by your app to request the correct patches from Shorebird servers.
-app_id: $appId
-''');
+app_id:
+''';
+    final yaml = File(p.join(Directory.current.path, 'shorebird.yaml'));
 
-    return ShorebirdYaml(appId: AppId(value: appId));
+    final editor = YamlEditor(content)
+      ..update(['app_id'], appId.value ?? appId.values);
+
+    yaml.writeAsStringSync(editor.toString());
+
+    return ShorebirdYaml(appId: appId);
   }
 
   void addShorebirdYamlToPubspecAssets() {

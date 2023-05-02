@@ -1,11 +1,13 @@
-import 'dart:io';
+import 'dart:io' hide Platform;
 
 import 'package:http/http.dart' as http;
 import 'package:mason_logger/mason_logger.dart';
 import 'package:mocktail/mocktail.dart';
 import 'package:path/path.dart' as p;
+import 'package:platform/platform.dart';
 import 'package:shorebird_cli/src/auth/auth.dart';
 import 'package:shorebird_cli/src/commands/init_command.dart';
+import 'package:shorebird_cli/src/shorebird_process.dart';
 import 'package:shorebird_code_push_client/shorebird_code_push_client.dart';
 import 'package:test/test.dart';
 
@@ -17,7 +19,11 @@ class _MockCodePushClient extends Mock implements CodePushClient {}
 
 class _MockLogger extends Mock implements Logger {}
 
-class _MockProgress extends Mock implements Progress {}
+class _MockProcess extends Mock implements ShorebirdProcess {}
+
+class _MockProcessResult extends Mock implements ProcessResult {}
+
+class _MockPlatform extends Mock implements Platform {}
 
 void main() {
   group('init', () {
@@ -34,17 +40,19 @@ environment:
 
     late http.Client httpClient;
     late Auth auth;
+    late ShorebirdProcess process;
+    late ProcessResult result;
     late CodePushClient codePushClient;
     late Logger logger;
-    late Progress progress;
     late InitCommand command;
 
     setUp(() {
       httpClient = _MockHttpClient();
       auth = _MockAuth();
+      process = _MockProcess();
+      result = _MockProcessResult();
       codePushClient = _MockCodePushClient();
       logger = _MockLogger();
-      progress = _MockProgress();
       command = InitCommand(
         auth: auth,
         buildCodePushClient: ({
@@ -54,7 +62,7 @@ environment:
           return codePushClient;
         },
         logger: logger,
-      );
+      )..testProcess = process;
 
       when(() => auth.isAuthenticated).thenReturn(true);
       when(() => auth.client).thenReturn(httpClient);
@@ -64,10 +72,64 @@ environment:
       when(
         () => codePushClient.getApps(),
       ).thenAnswer((_) async => [appMetadata]);
-      when(() => logger.progress(any())).thenReturn(progress);
       when(
         () => logger.prompt(any(), defaultValue: any(named: 'defaultValue')),
       ).thenReturn(appName);
+      when(
+        () => process.run(
+          any(),
+          any(),
+          runInShell: any(named: 'runInShell'),
+          workingDirectory: any(named: 'workingDirectory'),
+        ),
+      ).thenAnswer((_) async => result);
+
+      when(() => result.exitCode).thenReturn(ExitCode.success.code);
+      when(() => result.stdout).thenReturn('');
+    });
+
+    group('extractProductFlavors', () {
+      test('uses correct executable on windows', () async {
+        final platform = _MockPlatform();
+        when(() => platform.isWindows).thenReturn(true);
+        final tempDir = Directory.systemTemp.createTempSync();
+        File(
+          p.join(tempDir.path, 'pubspec.yaml'),
+        ).writeAsStringSync(pubspecYamlContent);
+        await expectLater(
+          command.extractProductFlavors(tempDir.path, platform: platform),
+          completes,
+        );
+        verify(
+          () => process.run(
+            p.join(tempDir.path, 'android', 'gradlew.bat'),
+            ['app:tasks', '--all', '--console=auto'],
+            runInShell: true,
+            workingDirectory: p.join(tempDir.path, 'android'),
+          ),
+        ).called(1);
+      });
+
+      test('uses correct executable on non-windows', () async {
+        final platform = _MockPlatform();
+        when(() => platform.isWindows).thenReturn(false);
+        final tempDir = Directory.systemTemp.createTempSync();
+        File(
+          p.join(tempDir.path, 'pubspec.yaml'),
+        ).writeAsStringSync(pubspecYamlContent);
+        await expectLater(
+          command.extractProductFlavors(tempDir.path, platform: platform),
+          completes,
+        );
+        verify(
+          () => process.run(
+            p.join(tempDir.path, 'android', 'gradlew'),
+            ['app:tasks', '--all', '--console=auto'],
+            runInShell: true,
+            workingDirectory: p.join(tempDir.path, 'android'),
+          ),
+        ).called(1);
+      });
     });
 
     test('returns no user error when not logged in', () async {
@@ -83,7 +145,7 @@ environment:
         getCurrentDirectory: () => tempDir,
       );
       verify(
-        () => progress.fail(
+        () => logger.err(
           '''
 Could not find a "pubspec.yaml".
 Please make sure you are running "shorebird init" from the root of your Flutter project.
@@ -101,10 +163,45 @@ Please make sure you are running "shorebird init" from the root of your Flutter 
         getCurrentDirectory: () => tempDir,
       );
       verify(
-        () => progress.fail(
+        () => logger.err(
           any(that: contains('Error parsing "pubspec.yaml":')),
         ),
       ).called(1);
+      expect(exitCode, ExitCode.software.code);
+    });
+
+    test('throws software error when shorebird.yaml already exists', () async {
+      final tempDir = Directory.systemTemp.createTempSync();
+      File(
+        p.join(tempDir.path, 'pubspec.yaml'),
+      ).writeAsStringSync(pubspecYamlContent);
+      File(p.join(tempDir.path, 'shorebird.yaml')).createSync();
+      final exitCode = await IOOverrides.runZoned(
+        command.run,
+        getCurrentDirectory: () => tempDir,
+      );
+      verify(
+        () => logger.err(
+          '''
+"shorebird.yaml" already exists.
+Please remove it and try again.''',
+        ),
+      ).called(1);
+      expect(exitCode, ExitCode.software.code);
+    });
+
+    test('throws when extracting flavors throws', () async {
+      when(() => result.exitCode).thenReturn(1);
+      when(() => result.stderr).thenReturn('oops');
+      final tempDir = Directory.systemTemp.createTempSync();
+      File(
+        p.join(tempDir.path, 'pubspec.yaml'),
+      ).writeAsStringSync(pubspecYamlContent);
+      final exitCode = await IOOverrides.runZoned(
+        command.run,
+        getCurrentDirectory: () => tempDir,
+      );
+      verify(() => logger.err('Exception: oops')).called(1);
       expect(exitCode, ExitCode.software.code);
     });
 
@@ -124,87 +221,11 @@ Please make sure you are running "shorebird init" from the root of your Flutter 
       verify(
         () => logger.prompt(any(), defaultValue: any(named: 'defaultValue')),
       ).called(1);
-      verify(() => progress.fail('$error')).called(1);
+      verify(() => logger.err('$error')).called(1);
       expect(exitCode, ExitCode.software.code);
     });
 
-    test('throws software error when shorebird.yaml is malformed.', () async {
-      final tempDir = Directory.systemTemp.createTempSync();
-      File(
-        p.join(tempDir.path, 'pubspec.yaml'),
-      ).writeAsStringSync(pubspecYamlContent);
-      File(p.join(tempDir.path, 'shorebird.yaml')).createSync();
-      final exitCode = await IOOverrides.runZoned(
-        command.run,
-        getCurrentDirectory: () => tempDir,
-      );
-      verify(
-        () => progress.fail('Error parsing "shorebird.yaml".'),
-      ).called(1);
-      expect(exitCode, ExitCode.software.code);
-    });
-
-    test('throws software error when unable to fetch apps.', () async {
-      const error = 'oops something went wrong';
-      final tempDir = Directory.systemTemp.createTempSync();
-      when(() => codePushClient.getApps()).thenThrow(error);
-      File(
-        p.join(tempDir.path, 'pubspec.yaml'),
-      ).writeAsStringSync(pubspecYamlContent);
-      File(
-        p.join(tempDir.path, 'shorebird.yaml'),
-      ).writeAsStringSync('app_id: $appId');
-      final exitCode = await IOOverrides.runZoned(
-        command.run,
-        getCurrentDirectory: () => tempDir,
-      );
-      verify(() => progress.fail(error)).called(1);
-      expect(exitCode, ExitCode.software.code);
-    });
-
-    test('detects existing shorebird.yaml with existing app_id', () async {
-      final tempDir = Directory.systemTemp.createTempSync();
-      File(
-        p.join(tempDir.path, 'pubspec.yaml'),
-      ).writeAsStringSync(pubspecYamlContent);
-      File(
-        p.join(tempDir.path, 'shorebird.yaml'),
-      ).writeAsStringSync('app_id: $appId');
-      await IOOverrides.runZoned(
-        command.run,
-        getCurrentDirectory: () => tempDir,
-      );
-      verifyNever(
-        () => codePushClient.createApp(displayName: any(named: 'displayName')),
-      );
-      verify(() => progress.update('Updating "shorebird.yaml"'));
-    });
-
-    test('detects existing shorebird.yaml with non-existent app_id', () async {
-      const nonExisting = 'non-existing-app-id';
-      when(() => codePushClient.getApps()).thenAnswer((_) async => []);
-      final tempDir = Directory.systemTemp.createTempSync();
-      File(
-        p.join(tempDir.path, 'pubspec.yaml'),
-      ).writeAsStringSync(pubspecYamlContent);
-      File(
-        p.join(tempDir.path, 'shorebird.yaml'),
-      ).writeAsStringSync('app_id: $nonExisting');
-      await IOOverrides.runZoned(
-        command.run,
-        getCurrentDirectory: () => tempDir,
-      );
-      expect(
-        File(p.join(tempDir.path, 'shorebird.yaml')).readAsStringSync(),
-        contains('app_id: $appId'),
-      );
-      verify(
-        () => codePushClient.createApp(displayName: any(named: 'displayName')),
-      ).called(1);
-      verify(() => progress.update('Updating "shorebird.yaml"'));
-    });
-
-    test('creates shorebird.yaml', () async {
+    test('creates shorebird.yaml for an app without flavors', () async {
       final tempDir = Directory.systemTemp.createTempSync();
       File(
         p.join(tempDir.path, 'pubspec.yaml'),
@@ -217,6 +238,44 @@ Please make sure you are running "shorebird init" from the root of your Flutter 
         File(p.join(tempDir.path, 'shorebird.yaml')).readAsStringSync(),
         contains('app_id: $appId'),
       );
+    });
+
+    test('creates shorebird.yaml for an app with flavors', () async {
+      final appIds = ['test-appId-1', 'test-appId-2', 'test-appId-3'];
+      var index = 0;
+      when(
+        () => codePushClient.createApp(displayName: any(named: 'displayName')),
+      ).thenAnswer((invocation) async {
+        final displayName = invocation.namedArguments[#displayName] as String;
+        return App(id: appIds[index++], displayName: displayName);
+      });
+      when(() => result.stdout).thenReturn(
+        File(
+          p.join('test', 'fixtures', 'gradle_app_tasks.txt'),
+        ).readAsStringSync(),
+      );
+      final tempDir = Directory.systemTemp.createTempSync();
+      File(
+        p.join(tempDir.path, 'pubspec.yaml'),
+      ).writeAsStringSync(pubspecYamlContent);
+      await IOOverrides.runZoned(
+        command.run,
+        getCurrentDirectory: () => tempDir,
+      );
+      expect(
+        File(p.join(tempDir.path, 'shorebird.yaml')).readAsStringSync(),
+        contains('''
+app_id:
+  development: ${appIds[0]}
+  production: ${appIds[1]}
+  staging: ${appIds[2]}'''),
+      );
+
+      verifyInOrder([
+        () => codePushClient.createApp(displayName: '$appName (development)'),
+        () => codePushClient.createApp(displayName: '$appName (production)'),
+        () => codePushClient.createApp(displayName: '$appName (staging)'),
+      ]);
     });
 
     test('detects existing shorebird.yaml in pubspec.yaml assets', () async {
@@ -236,11 +295,6 @@ flutter:
       expect(
         File(p.join(tempDir.path, 'shorebird.yaml')).readAsStringSync(),
         contains('app_id: $appId'),
-      );
-      verify(
-        () => progress.update(
-          '"shorebird.yaml" already in "pubspec.yaml" assets.',
-        ),
       );
     });
 
