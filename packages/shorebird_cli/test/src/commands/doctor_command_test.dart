@@ -26,6 +26,8 @@ class _MockShorebirdProcess extends Mock implements ShorebirdProcess {}
 
 void main() {
   group('doctor', () {
+    const androidValidatorDescription = 'Android';
+
     late ArgResults argResults;
     late Logger logger;
     late Progress progress;
@@ -57,7 +59,7 @@ void main() {
       when(() => androidInternetPermissionValidator.id)
           .thenReturn('$AndroidInternetPermissionValidator');
       when(() => androidInternetPermissionValidator.description)
-          .thenReturn('Android');
+          .thenReturn(androidValidatorDescription);
       when(() => androidInternetPermissionValidator.validate(any()))
           .thenAnswer((_) async => []);
 
@@ -206,7 +208,7 @@ void main() {
 
       expect(fixCalled, isFalse);
       verifyNever(() => progress.update('Fixing'));
-      verify(() => progress.fail()).called(1);
+      verify(() => progress.fail(androidValidatorDescription)).called(1);
       verify(
         () => androidInternetPermissionValidator.validate(any()),
       ).called(1);
@@ -264,13 +266,13 @@ void main() {
 
       expect(fixCalled, isTrue);
       verify(() => progress.update('Fixing')).called(1);
+      verify(() => progress.fail(androidValidatorDescription)).called(1);
       verifyNever(
         () => progress.complete(any(that: contains('fix applied'))),
       );
       verifyNever(
         () => progress.complete(any(that: contains('fixes applied'))),
       );
-      verify(() => progress.fail()).called(1);
       verify(
         () => androidInternetPermissionValidator.validate(any()),
       ).called(2);
