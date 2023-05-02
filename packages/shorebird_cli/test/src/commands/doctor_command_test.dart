@@ -186,6 +186,32 @@ void main() {
       );
     });
 
+    test('does not fix issues if --fix flag is not provided', () async {
+      when(() => argResults['fix']).thenReturn(false);
+
+      var fixCalled = false;
+      when(
+        () => androidInternetPermissionValidator.validate(any()),
+      ).thenAnswer(
+        (_) async => [
+          ValidationIssue(
+            severity: ValidationIssueSeverity.warning,
+            message: 'oh no!',
+            fix: () async => fixCalled = true,
+          ),
+        ],
+      );
+
+      await command.run();
+
+      expect(fixCalled, isFalse);
+      verifyNever(() => progress.update('Fixing'));
+      verify(() => progress.fail()).called(1);
+      verify(
+        () => androidInternetPermissionValidator.validate(any()),
+      ).called(1);
+    });
+
     test('fixes issues if the --fix flag is provided', () async {
       when(() => argResults['fix']).thenReturn(true);
 
