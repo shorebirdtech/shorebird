@@ -39,7 +39,7 @@ class ListReleasesCommand extends ShorebirdCommand
       return ExitCode.config.code;
     }
 
-    final appId = getShorebirdYaml()!.appId;
+    final appId = getShorebirdYaml()!.appId.value!;
 
     final codePushClient = buildCodePushClient(
       httpClient: auth.client,
@@ -48,13 +48,13 @@ class ListReleasesCommand extends ShorebirdCommand
 
     final List<Release> releases;
     try {
-      releases = await codePushClient.getReleases(appId: appId.value!);
+      releases = await codePushClient.getReleases(appId: appId);
     } catch (error) {
       logger.err('$error');
       return ExitCode.software.code;
     }
 
-    logger.info('🚀 Releases (${appId.value!})');
+    logger.info('🚀 Releases ($appId)');
     if (releases.isEmpty) {
       logger.info('(empty)');
       return ExitCode.success.code;
