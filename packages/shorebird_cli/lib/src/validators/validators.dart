@@ -56,11 +56,7 @@ class ValidationIssue {
 
   /// A console-friendly description of this issue.
   String? get displayMessage {
-    final displayMessage = _addLeadingPaddingToLines(
-      message,
-      skipFirstLine: true,
-    );
-    return '${severity.displayLeading} $displayMessage';
+    return '${severity.displayLeading} $message';
   }
 
   // coverage:ignore-start
@@ -81,15 +77,6 @@ class ValidationIssue {
   @override
   int get hashCode => Object.hashAll([severity, message]);
   // coverage:ignore-end
-
-  String _addLeadingPaddingToLines(String text, {bool skipFirstLine = false}) {
-    final padding = ' ' * severity.leading.length;
-    final lines = text.split('\n');
-    final skipCount = skipFirstLine ? 1 : 0;
-    return (lines.take(skipCount).toList() +
-            lines.skip(skipCount).map((line) => '$padding$line').toList())
-        .join('\n');
-  }
 }
 
 /// Checks for a specific issue with either the Shorebird installation or the
