@@ -1,3 +1,4 @@
+import 'package:args/args.dart';
 import 'package:mason_logger/mason_logger.dart';
 import 'package:mocktail/mocktail.dart';
 import 'package:shorebird_cli/src/commands/commands.dart';
@@ -5,6 +6,8 @@ import 'package:shorebird_cli/src/shorebird_environment.dart';
 import 'package:shorebird_cli/src/shorebird_process.dart';
 import 'package:shorebird_cli/src/validators/validators.dart';
 import 'package:test/test.dart';
+
+class _MockArgResults extends Mock implements ArgResults {}
 
 class _MockShorebirdVersionValidator extends Mock
     implements ShorebirdVersionValidator {}
@@ -23,6 +26,9 @@ class _MockShorebirdProcess extends Mock implements ShorebirdProcess {}
 
 void main() {
   group('doctor', () {
+    const androidValidatorDescription = 'Android';
+
+    late ArgResults argResults;
     late Logger logger;
     late Progress progress;
     late DoctorCommand command;
@@ -32,10 +38,13 @@ void main() {
     late ShorebirdProcess shorebirdProcess;
 
     setUp(() {
+      argResults = _MockArgResults();
       logger = _MockLogger();
       progress = _MockProgress();
 
       ShorebirdEnvironment.shorebirdEngineRevision = 'test-revision';
+
+      when(() => argResults['fix']).thenReturn(false);
 
       when(() => logger.progress(any())).thenReturn(progress);
       when(() => logger.info(any())).thenReturn(null);
@@ -50,7 +59,7 @@ void main() {
       when(() => androidInternetPermissionValidator.id)
           .thenReturn('$AndroidInternetPermissionValidator');
       when(() => androidInternetPermissionValidator.description)
-          .thenReturn('Android');
+          .thenReturn(androidValidatorDescription);
       when(() => androidInternetPermissionValidator.validate(any()))
           .thenAnswer((_) async => []);
 
@@ -76,6 +85,7 @@ void main() {
           shorebirdFlutterValidator,
         ],
       )
+        ..testArgResults = argResults
         ..testProcess = shorebirdProcess
         ..testEngineConfig = const EngineConfig.empty();
     });
@@ -113,15 +123,190 @@ void main() {
       }
 
       verify(
-        () => logger.info(any(that: contains('${yellow.wrap('[!]')} oh no!'))),
+        () => logger.info(any(that: stringContainsInOrder(['[!]', 'oh no!']))),
       ).called(1);
 
       verify(
-        () => logger.info(any(that: contains('${red.wrap('[✗]')} OH NO!'))),
+        () => logger.info(any(that: stringContainsInOrder(['[✗]', 'OH NO!']))),
       ).called(1);
 
       verify(
         () => logger.info(any(that: contains('2 issues detected.'))),
+      ).called(1);
+    });
+
+    test('tells the user we can fix issues if we can', () async {
+      when(
+        () => androidInternetPermissionValidator.validate(any()),
+      ).thenAnswer(
+        (_) async => [
+          ValidationIssue(
+            severity: ValidationIssueSeverity.warning,
+            message: 'oh no!',
+            fix: () async {},
+          ),
+        ],
+      );
+
+      await command.run();
+
+      verify(
+        () => logger.info(
+          any(
+            that: stringContainsInOrder([
+              '1 issue can be fixed automatically',
+              'shorebird doctor --fix',
+            ]),
+          ),
+        ),
+      ).called(1);
+    });
+
+    test('does not tell the user we can fix issues if we cannot', () async {
+      when(
+        () => androidInternetPermissionValidator.validate(any()),
+      ).thenAnswer(
+        (_) async => [
+          const ValidationIssue(
+            severity: ValidationIssueSeverity.warning,
+            message: 'oh no!',
+          ),
+        ],
+      );
+
+      await command.run();
+
+      verifyNever(
+        () => logger.info(
+          any(
+            that: stringContainsInOrder([
+              'We can fix some of these issues',
+              'shorebird doctor --fix',
+            ]),
+          ),
+        ),
+      );
+    });
+
+    test('does not fix issues if --fix flag is not provided', () async {
+      when(() => argResults['fix']).thenReturn(false);
+
+      var fixCalled = false;
+      when(
+        () => androidInternetPermissionValidator.validate(any()),
+      ).thenAnswer(
+        (_) async => [
+          ValidationIssue(
+            severity: ValidationIssueSeverity.warning,
+            message: 'oh no!',
+            fix: () => fixCalled = true,
+          ),
+        ],
+      );
+
+      await command.run();
+
+      expect(fixCalled, isFalse);
+      verifyNever(() => progress.update('Fixing'));
+      verify(() => progress.fail(androidValidatorDescription)).called(1);
+      verify(
+        () => androidInternetPermissionValidator.validate(any()),
+      ).called(1);
+    });
+
+    test('fixes issues if the --fix flag is provided', () async {
+      when(() => argResults['fix']).thenReturn(true);
+
+      var fixCalled = false;
+      final issues = [
+        ValidationIssue(
+          severity: ValidationIssueSeverity.warning,
+          message: 'oh no!',
+          fix: () => fixCalled = true,
+        ),
+      ];
+      when(
+        () => androidInternetPermissionValidator.validate(any()),
+      ).thenAnswer(
+        (_) async {
+          if (issues.isEmpty) return [];
+          return [issues.removeLast()];
+        },
+      );
+
+      await command.run();
+
+      expect(fixCalled, isTrue);
+      verify(() => progress.update('Fixing')).called(1);
+      verify(
+        () => progress.complete(any(that: contains('1 fix applied'))),
+      ).called(1);
+      verify(
+        () => androidInternetPermissionValidator.validate(any()),
+      ).called(2);
+    });
+
+    test('does not print "fixed" if fix fails', () async {
+      when(() => argResults['fix']).thenReturn(true);
+
+      var fixCalled = false;
+      when(
+        () => androidInternetPermissionValidator.validate(any()),
+      ).thenAnswer(
+        (_) async => [
+          ValidationIssue(
+            severity: ValidationIssueSeverity.warning,
+            message: 'oh no!',
+            fix: () => fixCalled = true,
+          ),
+        ],
+      );
+
+      await command.run();
+
+      expect(fixCalled, isTrue);
+      verify(() => progress.update('Fixing')).called(1);
+      verify(() => progress.fail(androidValidatorDescription)).called(1);
+      verifyNever(
+        () => progress.complete(any(that: contains('fix applied'))),
+      );
+      verifyNever(
+        () => progress.complete(any(that: contains('fixes applied'))),
+      );
+      verify(
+        () => androidInternetPermissionValidator.validate(any()),
+      ).called(2);
+    });
+
+    test('prints error and continues if fix() throws', () async {
+      when(() => argResults['fix']).thenReturn(true);
+      when(
+        () => androidInternetPermissionValidator.validate(any()),
+      ).thenAnswer(
+        (_) async => [
+          ValidationIssue(
+            severity: ValidationIssueSeverity.warning,
+            message: 'oh no!',
+            fix: () => throw Exception('oh no!'),
+          ),
+        ],
+      );
+
+      await command.run();
+
+      verify(() => progress.update('Fixing')).called(1);
+      verify(
+        () => androidInternetPermissionValidator.validate(any()),
+      ).called(2);
+      verify(
+        () => logger.err(
+          any(
+            that: stringContainsInOrder([
+              'An error occurred while attempting to fix',
+              'oh no!',
+            ]),
+          ),
+        ),
       ).called(1);
     });
   });
