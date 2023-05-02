@@ -292,7 +292,7 @@ flutter:
       File(p.join(tempDir.path, 'pubspec.yaml')).writeAsStringSync('''
 $pubspecYamlContent
 flutter:
-  assets: 
+  assets:
     - some/asset.txt
 ''');
       await IOOverrides.runZoned(
@@ -304,7 +304,7 @@ flutter:
         equals('''
 $pubspecYamlContent
 flutter:
-  assets: 
+  assets:
     - some/asset.txt
     - shorebird.yaml
 '''),
