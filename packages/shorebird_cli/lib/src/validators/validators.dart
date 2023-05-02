@@ -20,18 +20,9 @@ extension Display on ValidationIssueSeverity {
   String get leading {
     switch (this) {
       case ValidationIssueSeverity.error:
-        return '[✗]';
+        return red.wrap('[✗]')!;
       case ValidationIssueSeverity.warning:
-        return '[!]';
-    }
-  }
-
-  String get displayLeading {
-    switch (this) {
-      case ValidationIssueSeverity.error:
-        return red.wrap(leading)!;
-      case ValidationIssueSeverity.warning:
-        return yellow.wrap(leading)!;
+        return yellow.wrap('[!]')!;
     }
   }
 }
@@ -56,7 +47,7 @@ class ValidationIssue {
 
   /// A console-friendly description of this issue.
   String? get displayMessage {
-    return '${severity.displayLeading} $message';
+    return '${severity.leading} $message';
   }
 
   // coverage:ignore-start
