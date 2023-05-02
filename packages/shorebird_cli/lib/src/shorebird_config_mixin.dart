@@ -63,7 +63,7 @@ mixin ShorebirdConfigMixin on ShorebirdCommand {
 app_id: $appId
 ''');
 
-    return ShorebirdYaml(appId: appId);
+    return ShorebirdYaml(appId: AppId(value: appId));
   }
 
   void addShorebirdYamlToPubspecAssets() {
