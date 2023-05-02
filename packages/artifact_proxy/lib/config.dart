@@ -114,11 +114,4 @@ final flutterArtifactPatterns = {
   r'flutter_infra_release\/gradle-wrapper\/(.*)\/gradle-wrapper\.tgz',
   r'flutter_infra_release\/flutter\/fonts\/(.*)\/fonts\.zip',
   r'flutter_infra_release\/cipd\/flutter\/web\/canvaskit_bundle\/\+\/(.*)',
-  r'download.flutter.io\/org\/jacoco\/org.jacoco.ant\/0\.8\.3\/org.jacoco.ant-0\.8\.3\.pom',
-  r'download.flutter.io\/com\/facebook\/android\/facebook-android-sdk\/maven-metadata\.xml',
-  r'download.flutter.io\/androidx\/databinding\/databinding-runtime\/7\.1\.3\/databinding-runtime-7\.1\.3\.pom',
-  r'download.flutter.io\/androidx\/databinding\/databinding-ktx\/7\.1\.3\/databinding-ktx-7\.1\.3\.pom',
-  r'download.flutter.io\/androidx\/databinding\/databinding-compiler\/7\.1\.3\/databinding-compiler-7\.1\.3\.pom',
-  r'download.flutter.io\/androidx\/databinding\/databinding-common\/7\.1\.3\/databinding-common-7\.1\.3\.pom',
-  r'download.flutter.io\/androidx\/databinding\/databinding-adapters\/7\.1\.3\/databinding-adapters-7\.1\.3\.pom',
 };
