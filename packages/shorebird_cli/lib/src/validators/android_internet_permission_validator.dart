@@ -44,7 +44,7 @@ class AndroidInternetPermissionValidator extends Validator {
           (dir) => dir
               .listSync()
               .whereType<File>()
-              .any((file) => p.basename(file.path) == 'AndroidManifest.xml'),
+              .any((file) => p.basename(file.path) == manifestFileName),
         )
         .map((e) => p.join(e.path, manifestFileName));
 
@@ -69,7 +69,7 @@ class AndroidInternetPermissionValidator extends Validator {
               message:
                   '${p.relative(manifestPath, from: Directory.current.path)} '
                   'is missing the INTERNET permission.',
-              fix: () async => _addInternetPermissionToFile(manifestPath),
+              fix: () => _addInternetPermissionToFile(manifestPath),
             ),
           )
           .toList();

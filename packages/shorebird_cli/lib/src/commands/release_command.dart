@@ -11,6 +11,7 @@ import 'package:shorebird_cli/src/shorebird_config_mixin.dart';
 import 'package:shorebird_cli/src/shorebird_create_app_mixin.dart';
 import 'package:shorebird_cli/src/shorebird_validation_mixin.dart';
 import 'package:shorebird_code_push_client/shorebird_code_push_client.dart';
+import 'package:version/version.dart';
 
 /// {@template release_command}
 /// `shorebird release`
@@ -117,11 +118,27 @@ Did you forget to run "shorebird init"?''',
 
     if (releaseVersionArg == null) logger.info('');
 
-    final releaseVersion = releaseVersionArg ??
-        logger.prompt(
-          'What is the version of this release?',
-          defaultValue: versionString,
+    String? releaseVersion;
+    var releaseVersionInput = releaseVersionArg;
+    while (releaseVersion == null) {
+      releaseVersionInput = releaseVersionInput ??
+          logger.prompt(
+            'What is the version of this release?',
+            defaultValue: versionString,
+          );
+      try {
+        releaseVersion = Version.parse(releaseVersionInput).toString();
+      } catch (error) {
+        final shouldContinue = logger.confirm(
+          '''"$releaseVersionInput" does not look like a version number. Proceed anyways?''',
         );
+        if (shouldContinue) {
+          releaseVersion = releaseVersionInput;
+        } else {
+          releaseVersionInput = null;
+        }
+      }
+    }
 
     final platform = results['platform'] as String;
     final archNames = architectures.keys.map(
@@ -154,7 +171,8 @@ ${styleBold.wrap(lightGreen.wrap('🚀 Ready to create a new release!'))}
       return ExitCode.software.code;
     }
 
-    var release = releases.firstWhereOrNull((r) => r.version == releaseVersion);
+    var release = releases
+        .firstWhereOrNull((r) => r.version == releaseVersion.toString());
     if (release == null) {
       final createReleaseProgress = logger.progress('Creating release');
       try {

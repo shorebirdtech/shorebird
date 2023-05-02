@@ -26,6 +26,8 @@ class _MockShorebirdProcess extends Mock implements ShorebirdProcess {}
 
 void main() {
   group('doctor', () {
+    const androidValidatorDescription = 'Android';
+
     late ArgResults argResults;
     late Logger logger;
     late Progress progress;
@@ -57,7 +59,7 @@ void main() {
       when(() => androidInternetPermissionValidator.id)
           .thenReturn('$AndroidInternetPermissionValidator');
       when(() => androidInternetPermissionValidator.description)
-          .thenReturn('Android');
+          .thenReturn(androidValidatorDescription);
       when(() => androidInternetPermissionValidator.validate(any()))
           .thenAnswer((_) async => []);
 
@@ -197,7 +199,7 @@ void main() {
           ValidationIssue(
             severity: ValidationIssueSeverity.warning,
             message: 'oh no!',
-            fix: () async => fixCalled = true,
+            fix: () => fixCalled = true,
           ),
         ],
       );
@@ -206,7 +208,7 @@ void main() {
 
       expect(fixCalled, isFalse);
       verifyNever(() => progress.update('Fixing'));
-      verify(() => progress.fail()).called(1);
+      verify(() => progress.fail(androidValidatorDescription)).called(1);
       verify(
         () => androidInternetPermissionValidator.validate(any()),
       ).called(1);
@@ -220,7 +222,7 @@ void main() {
         ValidationIssue(
           severity: ValidationIssueSeverity.warning,
           message: 'oh no!',
-          fix: () async => fixCalled = true,
+          fix: () => fixCalled = true,
         ),
       ];
       when(
@@ -255,7 +257,7 @@ void main() {
           ValidationIssue(
             severity: ValidationIssueSeverity.warning,
             message: 'oh no!',
-            fix: () async => fixCalled = true,
+            fix: () => fixCalled = true,
           ),
         ],
       );
@@ -264,16 +266,48 @@ void main() {
 
       expect(fixCalled, isTrue);
       verify(() => progress.update('Fixing')).called(1);
+      verify(() => progress.fail(androidValidatorDescription)).called(1);
       verifyNever(
         () => progress.complete(any(that: contains('fix applied'))),
       );
       verifyNever(
         () => progress.complete(any(that: contains('fixes applied'))),
       );
-      verify(() => progress.fail()).called(1);
       verify(
         () => androidInternetPermissionValidator.validate(any()),
       ).called(2);
+    });
+
+    test('prints error and continues if fix() throws', () async {
+      when(() => argResults['fix']).thenReturn(true);
+      when(
+        () => androidInternetPermissionValidator.validate(any()),
+      ).thenAnswer(
+        (_) async => [
+          ValidationIssue(
+            severity: ValidationIssueSeverity.warning,
+            message: 'oh no!',
+            fix: () => throw Exception('oh no!'),
+          ),
+        ],
+      );
+
+      await command.run();
+
+      verify(() => progress.update('Fixing')).called(1);
+      verify(
+        () => androidInternetPermissionValidator.validate(any()),
+      ).called(2);
+      verify(
+        () => logger.err(
+          any(
+            that: stringContainsInOrder([
+              'An error occurred while attempting to fix',
+              'oh no!',
+            ]),
+          ),
+        ),
+      ).called(1);
     });
   });
 }

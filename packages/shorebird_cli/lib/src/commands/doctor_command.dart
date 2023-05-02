@@ -53,6 +53,7 @@ Shorebird Engine • revision ${ShorebirdEnvironment.shorebirdEngineRevision}'''
     final allIssues = <ValidationIssue>[];
     final allFixableIssues = <ValidationIssue>[];
     for (final validator in validators) {
+      final failedFixes = <ValidationIssue, dynamic>{};
       final progress = logger.progress(validator.description);
       final issues = await validator.validate(process);
       if (issues.isEmpty) {
@@ -67,7 +68,11 @@ Shorebird Engine • revision ${ShorebirdEnvironment.shorebirdEngineRevision}'''
           // If --fix flag was used and there are fixable issues, fix them.
           progress.update('Fixing');
           for (final issue in fixableIssues) {
-            await issue.fix!();
+            try {
+              await issue.fix!();
+            } catch (error) {
+              failedFixes[issue] = error;
+            }
           }
 
           // Re-run the validator to see if there are any remaining issues that
@@ -87,7 +92,13 @@ Shorebird Engine • revision ${ShorebirdEnvironment.shorebirdEngineRevision}'''
         }
       }
 
-      progress.fail();
+      progress.fail(validator.description);
+
+      for (final issue in failedFixes.keys) {
+        logger.err(
+          '''  An error occurred while attempting to fix ${issue.message}: ${failedFixes[issue]}''',
+        );
+      }
 
       for (final issue in unresolvedIssues) {
         logger.info('  ${issue.displayMessage}');
@@ -108,7 +119,7 @@ Shorebird Engine • revision ${ShorebirdEnvironment.shorebirdEngineRevision}'''
         final fixableIssueCount = allFixableIssues.length;
         logger.info(
           '''
-$fixableIssueCount issue${fixableIssueCount == 1 ? '' : 'es'} can be fixed automatically with ${lightCyan.wrap('shorebird doctor --fix')}.''',
+$fixableIssueCount issue${fixableIssueCount == 1 ? '' : 's'} can be fixed automatically with ${lightCyan.wrap('shorebird doctor --fix')}.''',
         );
       }
     }
