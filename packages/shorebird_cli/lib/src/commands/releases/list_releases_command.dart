@@ -48,13 +48,13 @@ class ListReleasesCommand extends ShorebirdCommand
 
     final List<Release> releases;
     try {
-      releases = await codePushClient.getReleases(appId: appId);
+      releases = await codePushClient.getReleases(appId: appId.value!);
     } catch (error) {
       logger.err('$error');
       return ExitCode.software.code;
     }
 
-    logger.info('🚀 Releases ($appId)');
+    logger.info('🚀 Releases (${appId.value!})');
     if (releases.isEmpty) {
       logger.info('(empty)');
       return ExitCode.success.code;
@@ -82,8 +82,8 @@ extension on List<Release> {
         rows: [
           Row(
             cells: [
-              Cell('Name'),
               Cell('Version'),
+              Cell('Name'),
             ],
           )
         ],
@@ -93,8 +93,8 @@ extension on List<Release> {
           for (final release in this)
             Row(
               cells: [
-                Cell(release.displayName ?? '--'),
                 Cell(release.version),
+                Cell(release.displayName ?? '--'),
               ],
             ),
         ],
