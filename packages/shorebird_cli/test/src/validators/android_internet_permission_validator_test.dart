@@ -82,6 +82,7 @@ void main() {
       expect(results, hasLength(1));
       expect(results.first.severity, ValidationIssueSeverity.error);
       expect(results.first.message, 'No Android project found');
+      expect(results.first.fix, isNull);
     });
 
     test('returns an error if no AndroidManifest.xml files are found',
@@ -101,6 +102,7 @@ void main() {
         results.first.message,
         startsWith('No AndroidManifest.xml files found in'),
       );
+      expect(results.first.fix, isNull);
     });
 
     test(
@@ -108,7 +110,7 @@ void main() {
       'INTERNET permission',
       () async {
         final tempDirectory = createTempDir();
-        final manifestPaths = [
+        final relativeManifestPaths = [
           'internet_permission',
           'debug',
           'main',
@@ -116,7 +118,6 @@ void main() {
         ]
             .map(
               (dir) => p.join(
-                tempDirectory.path,
                 'android',
                 'app',
                 'src',
@@ -124,23 +125,26 @@ void main() {
               ),
             )
             .toList();
-        final badManifestPaths = manifestPaths.slice(1);
+        final absoluteManifestPaths = relativeManifestPaths
+            .map((path) => p.join(tempDirectory.path, path))
+            .toList();
+        final badManifestPaths = relativeManifestPaths.slice(1);
 
         writeManifestToPath(
           manifestWithInternetPermission,
-          manifestPaths[0],
+          absoluteManifestPaths[0],
         );
         writeManifestToPath(
           manifestWithCommentedOutInternetPermission,
-          manifestPaths[1],
+          absoluteManifestPaths[1],
         );
         writeManifestToPath(
           manifestWithNonInternetPermissions,
-          manifestPaths[2],
+          absoluteManifestPaths[2],
         );
         writeManifestToPath(
           manifestWithNoPermissions,
-          manifestPaths[3],
+          absoluteManifestPaths[3],
         );
 
         final results = await IOOverrides.runZoned(
@@ -165,5 +169,31 @@ void main() {
         );
       },
     );
+
+    test('fix() adds permission to manifest file', () async {
+      final tempDirectory = createTempDir();
+      writeManifestToPath(
+        manifestWithNonInternetPermissions,
+        p.join(tempDirectory.path, 'android', 'app', 'src', 'debug'),
+      );
+
+      var results = await IOOverrides.runZoned(
+        () => AndroidInternetPermissionValidator().validate(shorebirdProcess),
+        getCurrentDirectory: () => tempDirectory,
+      );
+      expect(results, hasLength(1));
+      expect(results.first.fix, isNotNull);
+
+      await IOOverrides.runZoned(
+        () => results.first.fix!(),
+        getCurrentDirectory: () => tempDirectory,
+      );
+
+      results = await IOOverrides.runZoned(
+        () => AndroidInternetPermissionValidator().validate(shorebirdProcess),
+        getCurrentDirectory: () => tempDirectory,
+      );
+      expect(results, isEmpty);
+    });
   });
 }
