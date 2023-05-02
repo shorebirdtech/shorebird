@@ -35,6 +35,24 @@ class AppId {
     return AppId(values: (json as Map).cast<String, String>());
   }
 
+  /// A single app id.
+  ///
+  /// Will be `null` for multi-flavor apps (if [values] is not `null`).
+  ///
+  /// Example:
+  /// `"8d3155a8-a048-4820-acca-824d26c29b71"`
   final String? value;
+
+  /// A map of flavor names to app ids.
+  ///
+  /// Will be `null` for apps with no flavors (if [value] is not `null`).
+  ///
+  /// Example:
+  /// ```json
+  /// {
+  ///   "development": "8d3155a8-a048-4820-acca-824d26c29b71",
+  ///   "production": "d458e87a-7362-4386-9eeb-629db2af413a"
+  /// }
+  /// ```
   final Map<String, String>? values;
 }
