@@ -217,5 +217,37 @@ void main() {
         () => androidInternetPermissionValidator.validate(any()),
       ).called(2);
     });
+
+    test('does not print "fixed" if fix fails', () async {
+      when(() => argResults['fix']).thenReturn(true);
+
+      var fixCalled = false;
+      when(
+        () => androidInternetPermissionValidator.validate(any()),
+      ).thenAnswer(
+        (_) async => [
+          ValidationIssue(
+            severity: ValidationIssueSeverity.warning,
+            message: 'oh no!',
+            fix: () async => fixCalled = true,
+          ),
+        ],
+      );
+
+      await command.run();
+
+      expect(fixCalled, isTrue);
+      verify(() => progress.update('Fixing')).called(1);
+      verifyNever(
+        () => progress.complete(any(that: contains('fix applied'))),
+      );
+      verifyNever(
+        () => progress.complete(any(that: contains('fixes applied'))),
+      );
+      verify(() => progress.fail()).called(1);
+      verify(
+        () => androidInternetPermissionValidator.validate(any()),
+      ).called(2);
+    });
   });
 }
