@@ -1,6 +1,6 @@
 // GENERATED CODE - DO NOT MODIFY BY HAND
 
-// ignore_for_file: implicit_dynamic_parameter, require_trailing_commas, cast_nullable_to_non_nullable, lines_longer_than_80_chars, strict_raw_type
+// ignore_for_file: implicit_dynamic_parameter, require_trailing_commas, cast_nullable_to_non_nullable, lines_longer_than_80_chars, strict_raw_type, unnecessary_lambdas
 
 part of 'shorebird_yaml.dart';
 
@@ -17,7 +17,7 @@ ShorebirdYaml _$ShorebirdYamlFromJson(Map json) => $checkedCreate(
           allowedKeys: const ['app_id', 'base_url'],
         );
         final val = ShorebirdYaml(
-          appId: $checkedConvert('app_id', (v) => v as String),
+          appId: $checkedConvert('app_id', (v) => AppId.fromJson(v)),
           baseUrl: $checkedConvert('base_url', (v) => v as String?),
         );
         return val;

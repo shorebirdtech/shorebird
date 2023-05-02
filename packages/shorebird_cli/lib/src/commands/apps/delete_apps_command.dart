@@ -45,7 +45,7 @@ Defaults to the app_id in "shorebird.yaml".''',
     if (appIdArg == null) {
       String? defaultAppId;
       try {
-        defaultAppId = getShorebirdYaml()?.appId;
+        defaultAppId = getShorebirdYaml()?.appId.value;
       } catch (_) {}
 
       appId = logger.prompt(
