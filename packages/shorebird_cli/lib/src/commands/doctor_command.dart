@@ -108,7 +108,7 @@ Shorebird Engine • revision ${ShorebirdEnvironment.shorebirdEngineRevision}'''
         final fixableIssueCount = allFixableIssues.length;
         logger.info(
           '''
-$fixableIssueCount issue${fixableIssueCount == 1 ? '' : 'es'} can be fixed automatically with ${lightCyan.wrap('shorebird doctor --fix')}.''',
+$fixableIssueCount issue${fixableIssueCount == 1 ? '' : 's'} can be fixed automatically with ${lightCyan.wrap('shorebird doctor --fix')}.''',
         );
       }
     }
