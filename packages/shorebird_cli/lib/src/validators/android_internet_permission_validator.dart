@@ -44,7 +44,7 @@ class AndroidInternetPermissionValidator extends Validator {
           (dir) => dir
               .listSync()
               .whereType<File>()
-              .any((file) => p.basename(file.path) == 'AndroidManifest.xml'),
+              .any((file) => p.basename(file.path) == manifestFileName),
         )
         .map((e) => p.join(e.path, manifestFileName));
 
