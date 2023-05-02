@@ -93,7 +93,7 @@ extension on List<Release> {
           for (final release in this)
             Row(
               cells: [
-                Cell(release.displayName ?? '(no name)'),
+                Cell(release.displayName ?? '--'),
                 Cell(release.version),
               ],
             ),
