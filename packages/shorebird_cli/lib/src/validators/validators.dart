@@ -1,3 +1,5 @@
+import 'dart:async';
+
 import 'package:mason_logger/mason_logger.dart';
 import 'package:meta/meta.dart';
 import 'package:shorebird_cli/src/shorebird_process.dart';
@@ -43,7 +45,7 @@ class ValidationIssue {
   final String message;
 
   /// Fixes this issue.
-  final Future<void> Function()? fix;
+  final FutureOr<void> Function()? fix;
 
   /// A console-friendly description of this issue.
   String? get displayMessage {

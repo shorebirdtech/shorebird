@@ -197,7 +197,7 @@ void main() {
           ValidationIssue(
             severity: ValidationIssueSeverity.warning,
             message: 'oh no!',
-            fix: () async => fixCalled = true,
+            fix: () => fixCalled = true,
           ),
         ],
       );
@@ -220,7 +220,7 @@ void main() {
         ValidationIssue(
           severity: ValidationIssueSeverity.warning,
           message: 'oh no!',
-          fix: () async => fixCalled = true,
+          fix: () => fixCalled = true,
         ),
       ];
       when(
@@ -255,7 +255,7 @@ void main() {
           ValidationIssue(
             severity: ValidationIssueSeverity.warning,
             message: 'oh no!',
-            fix: () async => fixCalled = true,
+            fix: () => fixCalled = true,
           ),
         ],
       );
