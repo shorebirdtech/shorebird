@@ -43,15 +43,6 @@ class ReleaseCommand extends ShorebirdCommand
         allowed: ['android'],
         allowedHelp: {'android': 'The Android platform.'},
         defaultsTo: 'android',
-      )
-      ..addOption(
-        'target',
-        abbr: 't',
-        help: 'The main entrypoint file of the application.',
-      )
-      ..addOption(
-        'flavor',
-        help: 'The product flavor to use when building the app.',
       );
   }
 
@@ -83,11 +74,9 @@ make smaller updates to your app.
 
     await logValidationIssues();
 
-    final flavor = results['flavor'] as String?;
-    final target = results['target'] as String?;
     final buildProgress = logger.progress('Building release');
     try {
-      await buildAppBundle(flavor: flavor, target: target);
+      await buildAppBundle();
       buildProgress.complete();
     } on ProcessException catch (error) {
       buildProgress.fail('Failed to build: ${error.message}');
