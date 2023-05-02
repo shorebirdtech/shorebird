@@ -87,7 +87,7 @@ Shorebird Engine • revision ${ShorebirdEnvironment.shorebirdEngineRevision}'''
         }
       }
 
-      progress.fail();
+      progress.fail(validator.description);
 
       for (final issue in unresolvedIssues) {
         logger.info('  ${issue.displayMessage}');
