@@ -110,7 +110,7 @@ void main() {
       'INTERNET permission',
       () async {
         final tempDirectory = createTempDir();
-        final manifestPaths = [
+        final relativeManifestPaths = [
           'internet_permission',
           'debug',
           'main',
@@ -118,7 +118,6 @@ void main() {
         ]
             .map(
               (dir) => p.join(
-                tempDirectory.path,
                 'android',
                 'app',
                 'src',
@@ -126,23 +125,26 @@ void main() {
               ),
             )
             .toList();
-        final badManifestPaths = manifestPaths.slice(1);
+        final absoluteManifestPaths = relativeManifestPaths
+            .map((path) => p.join(tempDirectory.path, path))
+            .toList();
+        final badManifestPaths = relativeManifestPaths.slice(1);
 
         writeManifestToPath(
           manifestWithInternetPermission,
-          manifestPaths[0],
+          absoluteManifestPaths[0],
         );
         writeManifestToPath(
           manifestWithCommentedOutInternetPermission,
-          manifestPaths[1],
+          absoluteManifestPaths[1],
         );
         writeManifestToPath(
           manifestWithNonInternetPermissions,
-          manifestPaths[2],
+          absoluteManifestPaths[2],
         );
         writeManifestToPath(
           manifestWithNoPermissions,
-          manifestPaths[3],
+          absoluteManifestPaths[3],
         );
 
         final results = await IOOverrides.runZoned(

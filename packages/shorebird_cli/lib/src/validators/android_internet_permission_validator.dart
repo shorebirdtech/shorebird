@@ -66,7 +66,9 @@ class AndroidInternetPermissionValidator extends Validator {
           .map(
             (String manifestPath) => ValidationIssue(
               severity: ValidationIssueSeverity.error,
-              message: '$manifestPath is missing the INTERNET permission.',
+              message:
+                  '${p.relative(manifestPath, from: Directory.current.path)} '
+                  'is missing the INTERNET permission.',
               fix: () async => _addInternetPermissionToFile(manifestPath),
             ),
           )
