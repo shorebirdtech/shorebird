@@ -43,6 +43,15 @@ class ReleaseCommand extends ShorebirdCommand
         allowed: ['android'],
         allowedHelp: {'android': 'The Android platform.'},
         defaultsTo: 'android',
+      )
+      ..addOption(
+        'target',
+        abbr: 't',
+        help: 'The main entrypoint file of the application.',
+      )
+      ..addOption(
+        'flavor',
+        help: 'The product flavor to use when building the app.',
       );
   }
 
@@ -74,9 +83,11 @@ make smaller updates to your app.
 
     await logValidationIssues();
 
+    final flavor = results['flavor'] as String?;
+    final target = results['target'] as String?;
     final buildProgress = logger.progress('Building release');
     try {
-      await buildAppBundle();
+      await buildAppBundle(flavor: flavor, target: target);
       buildProgress.complete();
     } on ProcessException catch (error) {
       buildProgress.fail('Failed to build: ${error.message}');
@@ -104,11 +115,12 @@ make smaller updates to your app.
       return ExitCode.software.code;
     }
 
-    final app = apps.firstWhereOrNull((a) => a.id == shorebirdYaml.appId);
+    final appId = shorebirdYaml.appId.value;
+    final app = apps.firstWhereOrNull((a) => a.id == appId);
     if (app == null) {
       logger.err(
         '''
-Could not find app with id: "${shorebirdYaml.appId}".
+Could not find app with id: "$appId".
 Did you forget to run "shorebird init"?''',
       );
       return ExitCode.software.code;

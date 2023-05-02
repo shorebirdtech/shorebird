@@ -13,6 +13,19 @@ class ShorebirdYaml {
   factory ShorebirdYaml.fromJson(Map<dynamic, dynamic> json) =>
       _$ShorebirdYamlFromJson(json);
 
-  final String appId;
+  @JsonKey(fromJson: AppId.fromJson)
+  final AppId appId;
   final String? baseUrl;
+}
+
+class AppId {
+  const AppId({this.value, this.values});
+
+  factory AppId.fromJson(dynamic json) {
+    if (json is String) return AppId(value: json);
+    return AppId(values: (json as Map).cast<String, String>());
+  }
+
+  final String? value;
+  final Map<String, String>? values;
 }

@@ -155,11 +155,12 @@ class PatchCommand extends ShorebirdCommand
       return ExitCode.software.code;
     }
 
-    final app = apps.firstWhereOrNull((a) => a.id == shorebirdYaml.appId);
+    final appId = shorebirdYaml.appId.value;
+    final app = apps.firstWhereOrNull((a) => a.id == appId);
     if (app == null) {
       logger.err(
         '''
-Could not find app with id: "${shorebirdYaml.appId}".
+Could not find app with id: "$appId".
 Did you forget to run "shorebird init"?''',
       );
       return ExitCode.software.code;
