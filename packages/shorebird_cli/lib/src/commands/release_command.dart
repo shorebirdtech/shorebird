@@ -118,7 +118,7 @@ Did you forget to run "shorebird init"?''',
 
     if (releaseVersionArg == null) logger.info('');
 
-    Version? releaseVersion;
+    String? releaseVersion;
     var releaseVersionInput = releaseVersionArg;
     while (releaseVersion == null) {
       releaseVersionInput = releaseVersionInput ??
@@ -127,12 +127,16 @@ Did you forget to run "shorebird init"?''',
             defaultValue: versionString,
           );
       try {
-        releaseVersion = Version.parse(releaseVersionInput);
+        releaseVersion = Version.parse(releaseVersionInput).toString();
       } catch (error) {
-        logger.err(
-          '"$releaseVersionInput" is not a valid version number (see https://semver.org/)',
+        final shouldContinue = logger.confirm(
+          '''"$releaseVersionInput" does not look like a version number. Proceed anyways?''',
         );
-        releaseVersionInput = null;
+        if (shouldContinue) {
+          releaseVersion = releaseVersionInput;
+        } else {
+          releaseVersionInput = null;
+        }
       }
     }
 
@@ -146,7 +150,7 @@ Did you forget to run "shorebird init"?''',
 ${styleBold.wrap(lightGreen.wrap('🚀 Ready to create a new release!'))}
 
 📱 App: ${lightCyan.wrap(app.displayName)} ${lightCyan.wrap('(${app.id})')}
-📦 Release Version: ${lightCyan.wrap(releaseVersion.toString())}
+📦 Release Version: ${lightCyan.wrap(releaseVersion)}
 🕹️  Platform: ${lightCyan.wrap(platform)} ${lightCyan.wrap('(${archNames.join(', ')})')}
 ''');
 
@@ -174,7 +178,7 @@ ${styleBold.wrap(lightGreen.wrap('🚀 Ready to create a new release!'))}
       try {
         release = await codePushClient.createRelease(
           appId: app.id,
-          version: releaseVersion.toString(),
+          version: releaseVersion,
         );
         createReleaseProgress.complete();
       } catch (error) {

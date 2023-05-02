@@ -282,6 +282,11 @@ Did you forget to run "shorebird init"?''',
             defaultValue: any(named: 'defaultValue'),
           ),
         ).thenAnswer((_) => versionNumberResponses.removeAt(0));
+        when(
+          () => logger.confirm(
+            any(that: contains('does not look like a version')),
+          ),
+        ).thenReturn(false);
 
         final tempDir = setUpTempDir();
         setUpTempArtifacts(tempDir);
@@ -292,15 +297,59 @@ Did you forget to run "shorebird init"?''',
 
         expect(exitCode, ExitCode.success.code);
         verify(
-          () => logger.err(
-            any(that: contains('"asdf" is not a valid version')),
+          () => logger.confirm(
+            any(
+              that: contains(
+                '"asdf" does not look like a version number',
+              ),
+            ),
           ),
         ).called(1);
         verify(
-          () => logger.err(
-            any(that: contains('"y" is not a valid version')),
+          () => logger.confirm(
+            any(
+              that: contains(
+                '"y" does not look like a version number',
+              ),
+            ),
           ),
         ).called(1);
+      },
+    );
+
+    test(
+      'prompts user for version until they choose to proceed anyways',
+      () async {
+        when(
+          () => logger.prompt(
+            'What is the version of this release?',
+            defaultValue: any(named: 'defaultValue'),
+          ),
+        ).thenReturn('asdf');
+        when(
+          () => logger.confirm(
+            any(that: contains('does not look like a version number')),
+          ),
+        ).thenReturn(true);
+
+        final tempDir = setUpTempDir();
+        setUpTempArtifacts(tempDir);
+        final exitCode = await IOOverrides.runZoned(
+          command.run,
+          getCurrentDirectory: () => tempDir,
+        );
+
+        expect(exitCode, ExitCode.success.code);
+        verify(
+          () => logger.confirm(
+            any(
+              that: contains(
+                '"asdf" does not look like a version number',
+              ),
+            ),
+          ),
+        ).called(1);
+        verify(() => logger.success('\n✅ Published Release!')).called(1);
       },
     );
 
