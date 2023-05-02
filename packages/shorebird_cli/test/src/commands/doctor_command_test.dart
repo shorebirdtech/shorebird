@@ -152,7 +152,7 @@ void main() {
         () => logger.info(
           any(
             that: stringContainsInOrder([
-              'We can fix some of these issues',
+              '1 issue can be fixed automatically',
               'shorebird doctor --fix',
             ]),
           ),
@@ -190,21 +190,29 @@ void main() {
       when(() => argResults['fix']).thenReturn(true);
 
       var fixCalled = false;
+      final issues = [
+        ValidationIssue(
+          severity: ValidationIssueSeverity.warning,
+          message: 'oh no!',
+          fix: () async => fixCalled = true,
+        ),
+      ];
       when(
         () => androidInternetPermissionValidator.validate(any()),
       ).thenAnswer(
-        (_) async => [
-          ValidationIssue(
-            severity: ValidationIssueSeverity.warning,
-            message: 'oh no!',
-            fix: () async => fixCalled = true,
-          ),
-        ],
+        (_) async {
+          if (issues.isEmpty) return [];
+          return [issues.removeLast()];
+        },
       );
 
       await command.run();
 
       expect(fixCalled, isTrue);
+      verify(() => progress.update('Fixing')).called(1);
+      verify(
+        () => progress.complete(any(that: contains('1 fix applied'))),
+      ).called(1);
       verify(
         () => androidInternetPermissionValidator.validate(any()),
       ).called(2);

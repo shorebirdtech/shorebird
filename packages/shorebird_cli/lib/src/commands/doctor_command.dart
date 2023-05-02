@@ -51,28 +51,49 @@ Shorebird v$packageVersion
 Shorebird Engine • revision ${ShorebirdEnvironment.shorebirdEngineRevision}''');
 
     final allIssues = <ValidationIssue>[];
+    final allFixableIssues = <ValidationIssue>[];
     for (final validator in validators) {
       final progress = logger.progress(validator.description);
-      var issues = await validator.validate(process);
-      final fixableIssues = issues.where((issue) => issue.fix != null);
-      if (shouldFix && fixableIssues.isNotEmpty) {
-        for (final issue in fixableIssues) {
-          await issue.fix!();
-        }
-        // Re-run validator to ensure that fixes worked.
-        issues = await validator.validate(process);
-      }
-
-      allIssues.addAll(issues);
+      final issues = await validator.validate(process);
       if (issues.isEmpty) {
         progress.complete();
-      } else {
-        progress.fail();
+        continue;
+      }
 
-        for (final issue in issues) {
-          logger.info('  ${issue.displayMessage}');
+      final fixableIssues = issues.where((issue) => issue.fix != null);
+      var unresolvedIssues = issues;
+      if (fixableIssues.isNotEmpty) {
+        if (shouldFix) {
+          // If --fix flag was used and there are fixable issues, fix them.
+          progress.update('Fixing');
+          for (final issue in fixableIssues) {
+            await issue.fix!();
+          }
+
+          // Re-run the validator to see if there are any remaining issues that
+          // we couldn't fix.
+          unresolvedIssues = await validator.validate(process);
+          if (unresolvedIssues.isEmpty) {
+            final numFixed = issues.length - unresolvedIssues.length;
+            final fixAppliedMessage =
+                '($numFixed fix${numFixed == 1 ? '' : 'es'} applied)';
+            progress.complete(
+              '''${validator.description} ${green.wrap(fixAppliedMessage)}''',
+            );
+            continue;
+          }
+        } else {
+          allFixableIssues.addAll(issues);
         }
       }
+
+      progress.fail();
+
+      for (final issue in unresolvedIssues) {
+        logger.info('  ${issue.displayMessage}');
+      }
+
+      allIssues.addAll(unresolvedIssues);
     }
 
     logger.info('');
@@ -83,11 +104,11 @@ Shorebird Engine • revision ${ShorebirdEnvironment.shorebirdEngineRevision}'''
       final numIssues = allIssues.length;
       logger.info('$numIssues issue${numIssues == 1 ? '' : 's'} detected.');
 
-      final issuesWithFix = allIssues.where((issue) => issue.fix != null);
-      if (issuesWithFix.isNotEmpty && !shouldFix) {
+      if (allFixableIssues.isNotEmpty && !shouldFix) {
+        final fixableIssueCount = allFixableIssues.length;
         logger.info(
           '''
-We can fix some of these issues for you. Run ${lightCyan.wrap('shorebird doctor --fix')} to fix''',
+$fixableIssueCount issue${fixableIssueCount == 1 ? '' : 'es'} can be fixed automatically with ${lightCyan.wrap('shorebird doctor --fix')}.''',
         );
       }
     }

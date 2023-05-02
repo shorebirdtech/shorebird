@@ -42,7 +42,6 @@ class ValidationIssue {
   const ValidationIssue({
     required this.severity,
     required this.message,
-    this.fixSuggestion,
     this.fix,
   });
 
@@ -52,26 +51,16 @@ class ValidationIssue {
   /// A description of the issue.
   final String message;
 
-  /// A suggestion for how to fix this issue.
-  final String? fixSuggestion;
-
   /// Fixes this issue.
   final Future<void> Function()? fix;
 
   /// A console-friendly description of this issue.
   String? get displayMessage {
-    final padding = ' ' * severity.leading.length;
-    final displayMessage =
-        _addLeadingPaddingToLines(message, skipFirstLine: true);
-    if (fixSuggestion == null) {
-      return '${severity.leading} $displayMessage';
-    }
-
-    final displayFixSuggestion = _addLeadingPaddingToLines(fixSuggestion!);
-    return '''
-${severity.displayLeading} $displayMessage
-$padding${styleBold.wrap('To fix')}:
-$displayFixSuggestion''';
+    final displayMessage = _addLeadingPaddingToLines(
+      message,
+      skipFirstLine: true,
+    );
+    return '${severity.displayLeading} $displayMessage';
   }
 
   // coverage:ignore-start
