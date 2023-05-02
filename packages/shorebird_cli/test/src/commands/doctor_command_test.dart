@@ -275,5 +275,37 @@ void main() {
         () => androidInternetPermissionValidator.validate(any()),
       ).called(2);
     });
+
+    test('prints error and continues if fix() throws', () async {
+      when(() => argResults['fix']).thenReturn(true);
+      when(
+        () => androidInternetPermissionValidator.validate(any()),
+      ).thenAnswer(
+        (_) async => [
+          ValidationIssue(
+            severity: ValidationIssueSeverity.warning,
+            message: 'oh no!',
+            fix: () => throw Exception('oh no!'),
+          ),
+        ],
+      );
+
+      await command.run();
+
+      verify(() => progress.update('Fixing')).called(1);
+      verify(
+        () => androidInternetPermissionValidator.validate(any()),
+      ).called(2);
+      verify(
+        () => logger.err(
+          any(
+            that: stringContainsInOrder([
+              'An error occurred while attempting to fix',
+              'oh no!',
+            ]),
+          ),
+        ),
+      ).called(1);
+    });
   });
 }
