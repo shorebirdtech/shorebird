@@ -83,7 +83,7 @@ extension on List<Release> {
           Row(
             cells: [
               Cell('Name'),
-              Cell('ID'),
+              Cell('Version'),
             ],
           )
         ],
