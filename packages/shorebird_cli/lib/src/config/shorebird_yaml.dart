@@ -27,6 +27,7 @@ class ShorebirdYaml {
 /// flavor names to ids for multi-flavor apps.
 /// {@endtemplate}
 class AppId {
+  /// {@macro app_id}
   const AppId({this.value, this.values});
 
   factory AppId.fromJson(dynamic json) {
