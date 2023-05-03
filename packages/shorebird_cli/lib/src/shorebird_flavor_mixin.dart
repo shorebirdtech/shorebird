@@ -57,8 +57,8 @@ mixin ShorebirdFlavorMixin on ShorebirdCommand {
     final home = platform.environment['HOME'] ?? '~';
     if (platform.isMacOS) {
       final locations = [
-        p.join('/', 'Applications', 'Android Studio.app', 'Contents'),
         p.join(home, 'Applications', 'Android Studio.app', 'Contents'),
+        p.join('/', 'Applications', 'Android Studio.app', 'Contents'),
       ];
       return locations.firstWhereOrNull(
         (location) => Directory(location).existsSync(),

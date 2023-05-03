@@ -95,18 +95,16 @@ environment:
         when(() => platform.isWindows).thenReturn(true);
         when(() => platform.isMacOS).thenReturn(false);
         when(() => platform.isLinux).thenReturn(false);
-        when(() => platform.environment).thenReturn({
-          'PROGRAMFILES': r'C:\Program Files',
-          'PROGRAMFILES(X86)': r'C:\Program Files (x86)',
-        });
         final tempDir = Directory.systemTemp.createTempSync();
-        Directory(
-          p.join(
-            platform.environment['PROGRAMFILES']!,
-            'Android',
-            'Android Studio',
-          ),
-        ).createSync(recursive: true);
+        when(() => platform.environment).thenReturn({
+          'PROGRAMFILES': tempDir.path,
+          'PROGRAMFILES(X86)': tempDir.path,
+        });
+        final androidStudioDir = Directory(
+          p.join(tempDir.path, 'Android', 'Android Studio'),
+        )..createSync(recursive: true);
+        final jbrDir = Directory(p.join(androidStudioDir.path, 'jbr'))
+          ..createSync();
         File(
           p.join(tempDir.path, 'pubspec.yaml'),
         ).writeAsStringSync(pubspecYamlContent);
@@ -120,18 +118,29 @@ environment:
             ['app:tasks', '--all', '--console=auto'],
             runInShell: true,
             workingDirectory: p.join(tempDir.path, 'android'),
-            environment: any(named: 'environment'),
+            environment: {'JAVA_HOME': jbrDir.path},
           ),
         ).called(1);
       });
 
       test('uses correct executable on MacOS', () async {
         final platform = _MockPlatform();
-        when(() => platform.environment).thenReturn({});
         when(() => platform.isWindows).thenReturn(false);
         when(() => platform.isMacOS).thenReturn(true);
         when(() => platform.isLinux).thenReturn(false);
         final tempDir = Directory.systemTemp.createTempSync();
+        when(() => platform.environment).thenReturn({'HOME': tempDir.path});
+        final androidStudioDir = Directory(
+          p.join(
+            tempDir.path,
+            'Applications',
+            'Android Studio.app',
+            'Contents',
+          ),
+        )..createSync(recursive: true);
+        final jbrDir = Directory(
+          p.join(androidStudioDir.path, 'jbr', 'Contents', 'Home'),
+        )..createSync(recursive: true);
         File(
           p.join(tempDir.path, 'pubspec.yaml'),
         ).writeAsStringSync(pubspecYamlContent);
@@ -145,18 +154,23 @@ environment:
             ['app:tasks', '--all', '--console=auto'],
             runInShell: true,
             workingDirectory: p.join(tempDir.path, 'android'),
-            environment: any(named: 'environment'),
+            environment: {'JAVA_HOME': jbrDir.path},
           ),
         ).called(1);
       });
 
       test('uses correct executable on Linux', () async {
         final platform = _MockPlatform();
-        when(() => platform.environment).thenReturn({});
         when(() => platform.isWindows).thenReturn(false);
         when(() => platform.isMacOS).thenReturn(false);
         when(() => platform.isLinux).thenReturn(true);
         final tempDir = Directory.systemTemp.createTempSync();
+        when(() => platform.environment).thenReturn({'HOME': tempDir.path});
+        final androidStudioDir = Directory(
+          p.join(tempDir.path, '.AndroidStudio'),
+        )..createSync(recursive: true);
+        final jbrDir = Directory(p.join(androidStudioDir.path, 'jbr'))
+          ..createSync(recursive: true);
         File(
           p.join(tempDir.path, 'pubspec.yaml'),
         ).writeAsStringSync(pubspecYamlContent);
@@ -170,7 +184,7 @@ environment:
             ['app:tasks', '--all', '--console=auto'],
             runInShell: true,
             workingDirectory: p.join(tempDir.path, 'android'),
-            environment: any(named: 'environment'),
+            environment: {'JAVA_HOME': jbrDir.path},
           ),
         ).called(1);
       });
