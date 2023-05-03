@@ -22,7 +22,7 @@ Handler gcpAlertHandler({required String webhookUrl, http.Client? client}) {
     final discordPayload = {
       'embeds': [
         {
-          'title': '[GCP Alert] $policyName',
+          'title': '🚨 $policyName 🚨',
           'description': summary,
           'url': url,
           'color': 0xFF0000,

@@ -94,7 +94,7 @@ void main() {
           body: json.encode({
             'embeds': [
               {
-                'title': '[GCP Alert] projects/12345/alertPolicies/12345',
+                'title': '🚨 projects/12345/alertPolicies/12345 🚨',
                 'description': 'Test Incident',
                 'url': 'http://www.example.com',
                 'color': 16711680,
