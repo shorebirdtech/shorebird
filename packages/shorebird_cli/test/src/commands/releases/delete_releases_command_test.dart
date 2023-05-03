@@ -12,13 +12,15 @@ import 'package:test/test.dart';
 
 class _MockArgResults extends Mock implements ArgResults {}
 
-class _MockHttpClient extends Mock implements http.Client {}
-
 class _MockAuth extends Mock implements Auth {}
 
 class _MockCodePushClient extends Mock implements CodePushClient {}
 
+class _MockHttpClient extends Mock implements http.Client {}
+
 class _MockLogger extends Mock implements Logger {}
+
+class _MockProgress extends Mock implements Progress {}
 
 void main() {
   group(DeleteReleasesCommand, () {
@@ -52,6 +54,7 @@ flutter:
     late Auth auth;
     late Logger logger;
     late CodePushClient codePushClient;
+    late Progress progress;
     late DeleteReleasesCommand command;
 
     setUp(() {
@@ -60,6 +63,7 @@ flutter:
       auth = _MockAuth();
       logger = _MockLogger();
       codePushClient = _MockCodePushClient();
+      progress = _MockProgress();
       command = DeleteReleasesCommand(
         auth: auth,
         buildCodePushClient: ({
@@ -101,6 +105,7 @@ flutter:
       );
 
       when(() => logger.confirm(any())).thenReturn(true);
+      when(() => logger.progress(any())).thenReturn(progress);
     });
 
     test('returns correct description', () {
@@ -196,6 +201,24 @@ flutter:
       );
     });
 
+    test('returns software error when delete release fails', () async {
+      when(
+        () => codePushClient.deleteRelease(releaseId: any(named: 'releaseId')),
+      ).thenThrow(Exception('oops'));
+
+      final tempDir = setUpTempDir();
+      final exitCode = await IOOverrides.runZoned(
+        command.run,
+        getCurrentDirectory: () => tempDir,
+      );
+
+      expect(exitCode, ExitCode.software.code);
+      verify(() => progress.fail(any(that: contains('oops')))).called(1);
+      verify(
+        () => codePushClient.deleteRelease(releaseId: any(named: 'releaseId')),
+      ).called(1);
+    });
+
     test('returns success when release is deleted', () async {
       when(
         () => codePushClient.deleteRelease(releaseId: any(named: 'releaseId')),
@@ -210,7 +233,8 @@ flutter:
       expect(exitCode, ExitCode.success.code);
       verify(() => codePushClient.deleteRelease(releaseId: releaseId))
           .called(1);
-      verify(() => logger.info('Deleted release $versionNumber.')).called(1);
+      verify(() => progress.complete('Deleted release $versionNumber.'))
+          .called(1);
     });
   });
 }

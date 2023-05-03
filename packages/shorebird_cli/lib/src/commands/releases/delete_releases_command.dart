@@ -54,10 +54,12 @@ class DeleteReleasesCommand extends ShorebirdCommand
     );
 
     final List<Release> releases;
+    var progress = logger.progress('Fetching releases');
     try {
       releases = await codePushClient.getReleases(appId: appId);
+      progress.complete('Fetched releases.');
     } catch (error) {
-      logger.err('$error');
+      progress.fail('$error');
       return ExitCode.software.code;
     }
 
@@ -82,14 +84,16 @@ class DeleteReleasesCommand extends ShorebirdCommand
       return ExitCode.success.code;
     }
 
+    progress = logger.progress('Deleting release');
+
     try {
       await codePushClient.deleteRelease(releaseId: releaseToDelete.id);
     } catch (error) {
-      logger.err('$error');
+      progress.fail('$error');
       return ExitCode.software.code;
     }
 
-    logger.info('Deleted release ${releaseToDelete.version}.');
+    progress.complete('Deleted release ${releaseToDelete.version}.');
 
     return ExitCode.success.code;
   }
