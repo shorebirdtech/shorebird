@@ -49,15 +49,11 @@ mixin ShorebirdFlavorMixin on ShorebirdCommand {
     /// `debug`, `developmentDebug`, and `productionDebug`,
     /// then `development`, and `production` are product flavors.
     final productFlavors = <String>{};
-    for (final variant1 in variants) {
-      for (final variant2 in variants) {
-        if (variant2.startsWith(variant1) && variant2 != variant1) {
-          final buildType = variant2.substring(variant1.length);
-          if (variants.contains(buildType)) {
-            productFlavors.add(variant1);
-          }
-        }
-      }
+    for (final variant in variants) {
+      final match = variants.firstWhereOrNull(
+        (v) => v.startsWith(variant) && v != variant,
+      );
+      if (match != null) productFlavors.add(variant);
     }
     return productFlavors;
   }
