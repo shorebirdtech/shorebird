@@ -18,7 +18,7 @@ Handler gcpAlertHandler({required String webhookUrl, http.Client? client}) {
     final url = incident?.url;
     final resource = incident?.resourceName;
     final conditionName = incident?.conditionName;
-    final policyName = incident?.policyName ?? '--';
+    final policyName = incident?.policyName ?? 'GCP Alert';
     final discordPayload = {
       'embeds': [
         {
