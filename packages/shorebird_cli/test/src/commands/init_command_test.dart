@@ -250,7 +250,7 @@ Please make sure you are running "shorebird init" from the root of your Flutter 
         () => logger.err(
           '''
 A "shorebird.yaml" already exists.
-If you want to reinitialize Shorebird, please delete the "shorebird.yaml" file and run "shorebird init" again.''',
+If you want to reinitialize Shorebird, please run "shorebird init --force".''',
         ),
       ).called(1);
       expect(exitCode, ExitCode.software.code);
