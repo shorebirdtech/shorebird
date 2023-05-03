@@ -14,6 +14,8 @@ $shorebirdScript = [IO.Path]::Combine($shorebirdCliDir, "bin", "shorebird.dart")
 $dart = [IO.Path]::Combine($flutterPath, "bin", "cache", "dart-sdk", "bin", "dart.exe")
 
 function Update-Flutter {
+    Write-Output "Updating Flutter..."
+
     if (!(Test-Path $flutterPath)) {
         Write-Output "Cloning flutter, this may take a bit..."
         git clone --filter=tree:0 https://github.com/shorebirdtech/flutter.git --no-checkout "$flutterPath" *> $null
@@ -71,6 +73,8 @@ function Update-Shorebird {
     Write-Debug "Invalidate cache: $invalidateCache"
 
     if ($invalidateCache) {
+        Write-Output "Rebuilding shorebird..."
+
         Update-Flutter
 
         Push-Location $shorebirdCliDir
