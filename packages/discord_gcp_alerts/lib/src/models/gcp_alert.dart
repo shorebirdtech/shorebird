@@ -37,6 +37,7 @@ class Incident {
     this.summary,
     this.resourceName,
     this.conditionName,
+    this.policyName,
   });
 
   /// Creates an [Incident] from a JSON [Map].
@@ -51,6 +52,9 @@ class Incident {
 
   /// A summary of the incident.
   final String? summary;
+
+  /// The name of the policy associated with the incident.
+  final String? policyName;
 
   /// The name of the resource.
   final String? resourceName;
