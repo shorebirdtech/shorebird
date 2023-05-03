@@ -271,7 +271,7 @@ If you want to reinitialize Shorebird, please delete the "shorebird.yaml" file a
         () => logger.err(
           '''
 A "shorebird.yaml" already exists.
-If you want to reinitialize Shorebird, please delete the "shorebird.yaml" file and run "shorebird init" again.''',
+If you want to reinitialize Shorebird, please run "shorebird init --force".''',
         ),
       );
       expect(exitCode, ExitCode.success.code);
