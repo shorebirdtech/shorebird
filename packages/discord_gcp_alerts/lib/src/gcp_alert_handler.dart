@@ -18,10 +18,11 @@ Handler gcpAlertHandler({required String webhookUrl, http.Client? client}) {
     final url = incident?.url;
     final resource = incident?.resourceName;
     final conditionName = incident?.conditionName;
+    final policyName = incident?.policyName ?? 'GCP Alert';
     final discordPayload = {
       'embeds': [
         {
-          'title': 'GCP Alert',
+          'title': '🚨 $policyName 🚨',
           'description': summary,
           'url': url,
           'color': 0xFF0000,

@@ -33,11 +33,13 @@ Incident _$IncidentFromJson(Map<String, dynamic> json) => $checkedCreate(
           summary: $checkedConvert('summary', (v) => v as String?),
           resourceName: $checkedConvert('resource_name', (v) => v as String?),
           conditionName: $checkedConvert('condition_name', (v) => v as String?),
+          policyName: $checkedConvert('policy_name', (v) => v as String?),
         );
         return val;
       },
       fieldKeyMap: const {
         'resourceName': 'resource_name',
-        'conditionName': 'condition_name'
+        'conditionName': 'condition_name',
+        'policyName': 'policy_name'
       },
     );
