@@ -100,6 +100,13 @@ environment:
           'PROGRAMFILES(X86)': r'C:\Program Files (x86)',
         });
         final tempDir = Directory.systemTemp.createTempSync();
+        Directory(
+          p.join(
+            platform.environment['PROGRAMFILES']!,
+            'Android',
+            'Android Studio',
+          ),
+        ).createSync(recursive: true);
         File(
           p.join(tempDir.path, 'pubspec.yaml'),
         ).writeAsStringSync(pubspecYamlContent);
