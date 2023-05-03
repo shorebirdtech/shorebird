@@ -777,6 +777,76 @@ void main() {
       });
     });
 
+    group('deleteRelease', () {
+      const releaseId = 42;
+
+      test('throws an exception if the http request fails (unknown)', () async {
+        when(
+          () => httpClient.delete(any(), headers: any(named: 'headers')),
+        ).thenAnswer(
+          (_) async => http.Response('', HttpStatus.failedDependency),
+        );
+
+        expect(
+          codePushClient.deleteRelease(releaseId: releaseId),
+          throwsA(
+            isA<CodePushException>().having(
+              (e) => e.message,
+              'message',
+              CodePushClient.unknownErrorMessage,
+            ),
+          ),
+        );
+      });
+
+      test('throws an exception if the http request fails', () async {
+        when(
+          () => httpClient.delete(any(), headers: any(named: 'headers')),
+        ).thenAnswer(
+          (_) async => http.Response(
+            json.encode(errorResponse.toJson()),
+            HttpStatus.failedDependency,
+          ),
+        );
+
+        expect(
+          codePushClient.deleteRelease(releaseId: releaseId),
+          throwsA(
+            isA<CodePushException>().having(
+              (e) => e.message,
+              'message',
+              errorResponse.message,
+            ),
+          ),
+        );
+      });
+
+      test('completes when request succeeds', () async {
+        when(
+          () => httpClient.delete(
+            any(),
+            headers: any(named: 'headers'),
+          ),
+        ).thenAnswer((_) async => http.Response('', HttpStatus.noContent));
+
+        await codePushClient.deleteRelease(releaseId: releaseId);
+
+        final uri = verify(
+          () => httpClient.delete(
+            captureAny(),
+            headers: any(named: 'headers'),
+          ),
+        ).captured.single as Uri;
+
+        expect(
+          uri,
+          codePushClient.hostedUri.replace(
+            path: '/api/v1/releases/$releaseId',
+          ),
+        );
+      });
+    });
+
     group('createUser', () {
       const userName = 'Jane Doe';
       final user = User(
