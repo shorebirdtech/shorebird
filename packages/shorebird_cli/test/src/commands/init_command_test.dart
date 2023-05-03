@@ -81,6 +81,7 @@ environment:
           any(),
           runInShell: any(named: 'runInShell'),
           workingDirectory: any(named: 'workingDirectory'),
+          environment: any(named: 'environment'),
         ),
       ).thenAnswer((_) async => result);
 
@@ -92,6 +93,12 @@ environment:
       test('uses correct executable on windows', () async {
         final platform = _MockPlatform();
         when(() => platform.isWindows).thenReturn(true);
+        when(() => platform.isMacOS).thenReturn(false);
+        when(() => platform.isLinux).thenReturn(false);
+        when(() => platform.environment).thenReturn({
+          'PROGRAMFILES': r'C:\Program Files',
+          'PROGRAMFILES(X86)': r'C:\Program Files (x86)',
+        });
         final tempDir = Directory.systemTemp.createTempSync();
         File(
           p.join(tempDir.path, 'pubspec.yaml'),
@@ -106,13 +113,17 @@ environment:
             ['app:tasks', '--all', '--console=auto'],
             runInShell: true,
             workingDirectory: p.join(tempDir.path, 'android'),
+            environment: any(named: 'environment'),
           ),
         ).called(1);
       });
 
-      test('uses correct executable on non-windows', () async {
+      test('uses correct executable on MacOS', () async {
         final platform = _MockPlatform();
+        when(() => platform.environment).thenReturn({});
         when(() => platform.isWindows).thenReturn(false);
+        when(() => platform.isMacOS).thenReturn(true);
+        when(() => platform.isLinux).thenReturn(false);
         final tempDir = Directory.systemTemp.createTempSync();
         File(
           p.join(tempDir.path, 'pubspec.yaml'),
@@ -127,6 +138,32 @@ environment:
             ['app:tasks', '--all', '--console=auto'],
             runInShell: true,
             workingDirectory: p.join(tempDir.path, 'android'),
+            environment: any(named: 'environment'),
+          ),
+        ).called(1);
+      });
+
+      test('uses correct executable on Linux', () async {
+        final platform = _MockPlatform();
+        when(() => platform.environment).thenReturn({});
+        when(() => platform.isWindows).thenReturn(false);
+        when(() => platform.isMacOS).thenReturn(false);
+        when(() => platform.isLinux).thenReturn(true);
+        final tempDir = Directory.systemTemp.createTempSync();
+        File(
+          p.join(tempDir.path, 'pubspec.yaml'),
+        ).writeAsStringSync(pubspecYamlContent);
+        await expectLater(
+          command.extractProductFlavors(tempDir.path, platform: platform),
+          completes,
+        );
+        verify(
+          () => process.run(
+            p.join(tempDir.path, 'android', 'gradlew'),
+            ['app:tasks', '--all', '--console=auto'],
+            runInShell: true,
+            workingDirectory: p.join(tempDir.path, 'android'),
+            environment: any(named: 'environment'),
           ),
         ).called(1);
       });
