@@ -68,9 +68,7 @@ app_id:
     final editor = YamlEditor(content)
       ..update(['app_id'], appId.value ?? appId.values);
 
-    File(
-      p.join(Directory.current.path, 'shorebird.yaml'),
-    ).writeAsStringSync(editor.toString());
+    getShorebirdYamlFile().writeAsStringSync(editor.toString());
 
     return ShorebirdYaml(appId: appId);
   }
