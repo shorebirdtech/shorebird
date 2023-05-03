@@ -10,8 +10,7 @@ import 'package:yaml_edit/yaml_edit.dart';
 
 mixin ShorebirdConfigMixin on ShorebirdCommand {
   bool get hasShorebirdYaml {
-    final file = File(p.join(Directory.current.path, 'shorebird.yaml'));
-    return file.existsSync();
+    return File(p.join(Directory.current.path, 'shorebird.yaml')).existsSync();
   }
 
   bool get hasPubspecYaml => getPubspecYaml() != null;
@@ -63,12 +62,13 @@ mixin ShorebirdConfigMixin on ShorebirdCommand {
 # It is used by your app to request the correct patches from Shorebird servers.
 app_id:
 ''';
-    final yaml = File(p.join(Directory.current.path, 'shorebird.yaml'));
 
     final editor = YamlEditor(content)
       ..update(['app_id'], appId.value ?? appId.values);
 
-    yaml.writeAsStringSync(editor.toString());
+    File(
+      p.join(Directory.current.path, 'shorebird.yaml'),
+    ).writeAsStringSync(editor.toString());
 
     return ShorebirdYaml(appId: appId);
   }

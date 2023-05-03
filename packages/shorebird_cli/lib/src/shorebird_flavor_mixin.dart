@@ -5,7 +5,11 @@ import 'package:path/path.dart' as p;
 import 'package:platform/platform.dart';
 import 'package:shorebird_cli/src/command.dart';
 
+/// Mixin on [ShorebirdCommand] which exposes methods for extracting
+/// product flavors from the current app.
 mixin ShorebirdFlavorMixin on ShorebirdCommand {
+  /// Return the set of product flavors configured for the app at [path].
+  /// Returns an empty set for apps that do not use product flavors.
   Future<Set<String>> extractProductFlavors(
     String path, {
     Platform platform = const LocalPlatform(),
@@ -39,6 +43,11 @@ mixin ShorebirdFlavorMixin on ShorebirdCommand {
       }
     }
 
+    /// Iterate through all variants and compare them to each other. If one
+    /// variant is a prefix of another, then it is a product flavor.
+    /// For example, if the variants are:
+    /// `debug`, `developmentDebug`, and `productionDebug`,
+    /// then `development`, and `production` are product flavors.
     final productFlavors = <String>{};
     for (final variant1 in variants) {
       for (final variant2 in variants) {
@@ -56,11 +65,11 @@ mixin ShorebirdFlavorMixin on ShorebirdCommand {
   String? _getAndroidStudioPath(Platform platform) {
     final home = platform.environment['HOME'] ?? '~';
     if (platform.isMacOS) {
-      final locations = [
+      final candidateLocations = [
         p.join(home, 'Applications', 'Android Studio.app', 'Contents'),
         p.join('/', 'Applications', 'Android Studio.app', 'Contents'),
       ];
-      return locations.firstWhereOrNull(
+      return candidateLocations.firstWhereOrNull(
         (location) => Directory(location).existsSync(),
       );
     }
@@ -68,21 +77,21 @@ mixin ShorebirdFlavorMixin on ShorebirdCommand {
     if (platform.isWindows) {
       final programFiles = platform.environment['PROGRAMFILES']!;
       final programFilesx86 = platform.environment['PROGRAMFILES(X86)']!;
-      final locations = [
+      final candidateLocations = [
         p.join(programFiles, 'Android', 'Android Studio'),
         p.join(programFilesx86, 'Android', 'Android Studio'),
       ];
-      return locations.firstWhereOrNull(
+      return candidateLocations.firstWhereOrNull(
         (location) => Directory(location).existsSync(),
       );
     }
 
     if (platform.isLinux) {
-      final locations = [
+      final candidateLocations = [
         p.join(home, '.AndroidStudio'),
         p.join(home, '.cache', 'Google', 'AndroidStudio'),
       ];
-      return locations.firstWhereOrNull((location) {
+      return candidateLocations.firstWhereOrNull((location) {
         return Directory(location).existsSync();
       });
     }
@@ -92,23 +101,23 @@ mixin ShorebirdFlavorMixin on ShorebirdCommand {
 
   String? _getJavaPath(String directory, Platform platform) {
     if (platform.isMacOS) {
-      final locations = [
+      final candidateLocations = [
         p.join(directory, 'jbr', 'Contents', 'Home'),
         p.join(directory, 'jre', 'Contents', 'Home'),
         p.join(directory, 'jre', 'jdk', 'Contents', 'Home')
       ];
 
-      return locations.firstWhereOrNull(
+      return candidateLocations.firstWhereOrNull(
         (location) => Directory(location).existsSync(),
       );
     }
 
-    final locations = [
+    final candidateLocations = [
       p.join(directory, 'jbr'),
       p.join(directory, 'jre'),
     ];
 
-    return locations.firstWhereOrNull(
+    return candidateLocations.firstWhereOrNull(
       (location) => Directory(location).existsSync(),
     );
   }
