@@ -9,9 +9,7 @@ import 'package:yaml/yaml.dart';
 import 'package:yaml_edit/yaml_edit.dart';
 
 mixin ShorebirdConfigMixin on ShorebirdCommand {
-  bool get hasShorebirdYaml {
-    return File(p.join(Directory.current.path, 'shorebird.yaml')).existsSync();
-  }
+  bool get hasShorebirdYaml => getShorebirdYamlFile().existsSync();
 
   bool get hasPubspecYaml => getPubspecYaml() != null;
 
@@ -38,8 +36,12 @@ mixin ShorebirdConfigMixin on ShorebirdCommand {
     return assets.contains('shorebird.yaml');
   }
 
+  File getShorebirdYamlFile() {
+    return File(p.join(Directory.current.path, 'shorebird.yaml'));
+  }
+
   ShorebirdYaml? getShorebirdYaml() {
-    final file = File(p.join(Directory.current.path, 'shorebird.yaml'));
+    final file = getShorebirdYamlFile();
     if (!file.existsSync()) return null;
     final yaml = file.readAsStringSync();
     return checkedYamlDecode(yaml, (m) => ShorebirdYaml.fromJson(m!));

@@ -20,7 +20,14 @@ class InitCommand extends ShorebirdCommand
         ShorebirdCreateAppMixin,
         ShorebirdFlavorMixin {
   /// {@macro init_command}
-  InitCommand({required super.logger, super.auth, super.buildCodePushClient});
+  InitCommand({required super.logger, super.auth, super.buildCodePushClient}) {
+    argParser.addFlag(
+      'force',
+      abbr: 'f',
+      help: 'Initialize the app even if a "shorebird.yaml" already exists.',
+      negatable: false,
+    );
+  }
 
   @override
   String get description => 'Initialize Shorebird.';
@@ -48,10 +55,15 @@ Please make sure you are running "shorebird init" from the root of your Flutter 
       return ExitCode.software.code;
     }
 
+    final force = results['force'] == true;
+    if (force && hasShorebirdYaml) {
+      getShorebirdYamlFile().deleteSync();
+    }
+
     if (hasShorebirdYaml) {
       logger.err('''
-"shorebird.yaml" already exists.
-Please remove it and try again.''');
+A "shorebird.yaml" already exists.
+If you want to reinitialize Shorebird, please delete the "shorebird.yaml" file and run "shorebird init" again.''');
       return ExitCode.software.code;
     }
 

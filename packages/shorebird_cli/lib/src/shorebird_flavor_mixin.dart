@@ -29,7 +29,9 @@ mixin ShorebirdFlavorMixin on ShorebirdCommand {
       },
     );
 
-    if (result.exitCode != 0) throw Exception('${result.stderr}');
+    if (result.exitCode != 0) {
+      throw Exception('${result.stdout}\n${result.stderr}');
+    }
 
     final variants = <String>{};
     final assembleTaskPattern = RegExp(r'assemble(\S+)');
