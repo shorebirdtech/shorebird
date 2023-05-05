@@ -4,6 +4,7 @@ import 'package:collection/collection.dart';
 import 'package:mason_logger/mason_logger.dart';
 import 'package:shorebird_cli/src/auth_logger_mixin.dart';
 import 'package:shorebird_cli/src/command.dart';
+import 'package:shorebird_cli/src/config/shorebird_yaml.dart';
 import 'package:shorebird_cli/src/shorebird_config_mixin.dart';
 import 'package:shorebird_code_push_client/shorebird_code_push_client.dart';
 
@@ -20,10 +21,16 @@ class DeleteReleasesCommand extends ShorebirdCommand
     super.auth,
     super.buildCodePushClient,
   }) {
-    argParser.addOption(
-      'version',
-      help: 'The release version to delete.',
-    );
+    argParser
+      ..addOption(
+        'version',
+        help: 'The release version to delete.',
+      )
+      ..addOption(
+        'flavor',
+        help: 'The product flavor to use when deleting releases.',
+      );
+    ;
   }
 
   @override
@@ -46,7 +53,8 @@ class DeleteReleasesCommand extends ShorebirdCommand
       return ExitCode.config.code;
     }
 
-    final appId = getShorebirdYaml()!.appId;
+    final flavor = results['flavor'] as String?;
+    final appId = getShorebirdYaml()!.getAppId(flavor: flavor);
 
     final codePushClient = buildCodePushClient(
       httpClient: auth.client,

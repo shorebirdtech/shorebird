@@ -236,5 +236,34 @@ flutter:
       verify(() => progress.complete('Deleted release $versionNumber.'))
           .called(1);
     });
+
+    test('uses correct app_id when flavor is specified', () async {
+      const flavor = 'development';
+      when(() => argResults['flavor']).thenReturn(flavor);
+      final tempDir = setUpTempDir();
+      File(
+        p.join(tempDir.path, 'shorebird.yaml'),
+      ).writeAsStringSync('''
+app_id: productionAppId
+flavors:
+  $flavor: $appId''');
+      when(
+        () => codePushClient.deleteRelease(releaseId: any(named: 'releaseId')),
+      ).thenAnswer((_) async {});
+
+      final exitCode = await IOOverrides.runZoned(
+        command.run,
+        getCurrentDirectory: () => tempDir,
+      );
+
+      expect(exitCode, ExitCode.success.code);
+      verify(() => codePushClient.getReleases(appId: appId)).called(1);
+      verify(
+        () => codePushClient.deleteRelease(releaseId: releaseId),
+      ).called(1);
+      verify(
+        () => progress.complete('Deleted release $versionNumber.'),
+      ).called(1);
+    });
   });
 }
