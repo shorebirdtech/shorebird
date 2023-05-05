@@ -3,7 +3,6 @@ import 'dart:io';
 import 'package:mason_logger/mason_logger.dart';
 import 'package:shorebird_cli/src/auth_logger_mixin.dart';
 import 'package:shorebird_cli/src/command.dart';
-import 'package:shorebird_cli/src/config/config.dart';
 import 'package:shorebird_cli/src/shorebird_config_mixin.dart';
 import 'package:shorebird_cli/src/shorebird_create_app_mixin.dart';
 import 'package:shorebird_cli/src/shorebird_flavor_mixin.dart';
@@ -75,7 +74,8 @@ If you want to reinitialize Shorebird, please run "shorebird init --force".''');
       return ExitCode.software.code;
     }
 
-    final AppId appId;
+    final String appId;
+    Map<String, String>? flavors;
     try {
       final displayName = logger.prompt(
         '${lightGreen.wrap('?')} How should we refer to this app?',
@@ -88,16 +88,17 @@ If you want to reinitialize Shorebird, please run "shorebird init --force".''');
           values[flavor] =
               (await createApp(appName: '$displayName ($flavor)')).id;
         }
-        appId = AppId(values: values);
+        flavors = values;
+        appId = flavors.values.first;
       } else {
-        appId = AppId(value: (await createApp(appName: displayName)).id);
+        appId = (await createApp(appName: displayName)).id;
       }
     } catch (error) {
       logger.err('$error');
       return ExitCode.software.code;
     }
 
-    addShorebirdYamlToProject(appId);
+    addShorebirdYamlToProject(appId, flavors: flavors);
 
     if (!pubspecContainsShorebirdYaml) addShorebirdYamlToPubspecAssets();
 

@@ -54,7 +54,10 @@ mixin ShorebirdConfigMixin on ShorebirdCommand {
     return Pubspec.parse(yaml);
   }
 
-  ShorebirdYaml addShorebirdYamlToProject(AppId appId) {
+  ShorebirdYaml addShorebirdYamlToProject(
+    String appId, {
+    Map<String, String>? flavors,
+  }) {
     const content = '''
 # This file is used to configure the Shorebird updater used by your application.
 # Learn more at https://shorebird.dev
@@ -65,8 +68,9 @@ mixin ShorebirdConfigMixin on ShorebirdCommand {
 app_id:
 ''';
 
-    final editor = YamlEditor(content)
-      ..update(['app_id'], appId.value ?? appId.values);
+    final editor = YamlEditor(content)..update(['app_id'], appId);
+
+    if (flavors != null) editor.update(['flavors'], flavors);
 
     getShorebirdYamlFile().writeAsStringSync(editor.toString());
 

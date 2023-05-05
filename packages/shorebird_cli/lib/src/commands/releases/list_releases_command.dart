@@ -39,7 +39,7 @@ class ListReleasesCommand extends ShorebirdCommand
       return ExitCode.config.code;
     }
 
-    final appId = getShorebirdYaml()!.appId.value!;
+    final appId = getShorebirdYaml()!.appId;
 
     final codePushClient = buildCodePushClient(
       httpClient: auth.client,

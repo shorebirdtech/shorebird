@@ -4,7 +4,7 @@ import 'package:test/test.dart';
 
 void main() {
   group('ShorebirdYaml', () {
-    test('can be deserialized with single app_id', () {
+    test('can be deserialized without flavors', () {
       const yaml = '''
 app_id: test_app_id
 base_url: https://example.com
@@ -13,14 +13,15 @@ base_url: https://example.com
         yaml,
         (m) => ShorebirdYaml.fromJson(m!),
       );
-      expect(shorebirdYaml.appId.value, 'test_app_id');
-      expect(shorebirdYaml.appId.values, isNull);
+      expect(shorebirdYaml.appId, 'test_app_id');
+      expect(shorebirdYaml.flavors, isNull);
       expect(shorebirdYaml.baseUrl, 'https://example.com');
     });
 
-    test('can be deserialized with multiple app_id', () {
+    test('can be deserialized with flavors', () {
       const yaml = '''
-app_id:
+app_id: test_app_id1
+flavors:
   development: test_app_id1
   production: test_app_id2
 base_url: https://example.com
@@ -29,8 +30,8 @@ base_url: https://example.com
         yaml,
         (m) => ShorebirdYaml.fromJson(m!),
       );
-      expect(shorebirdYaml.appId.value, isNull);
-      expect(shorebirdYaml.appId.values, {
+      expect(shorebirdYaml.appId, equals('test_app_id1'));
+      expect(shorebirdYaml.flavors, {
         'development': 'test_app_id1',
         'production': 'test_app_id2',
       });

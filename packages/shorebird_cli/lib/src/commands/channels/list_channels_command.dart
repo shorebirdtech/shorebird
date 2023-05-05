@@ -48,8 +48,7 @@ class ListChannelsCommand extends ShorebirdCommand
       hostedUri: hostedUri,
     );
 
-    final appId =
-        results[_appIdOption] as String? ?? getShorebirdYaml()?.appId.value;
+    final appId = results[_appIdOption] as String? ?? getShorebirdYaml()?.appId;
     if (appId == null) {
       logger.err(
         '''
