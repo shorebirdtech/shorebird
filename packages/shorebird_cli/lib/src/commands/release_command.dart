@@ -6,6 +6,7 @@ import 'package:mason_logger/mason_logger.dart';
 import 'package:path/path.dart' as p;
 import 'package:shorebird_cli/src/auth_logger_mixin.dart';
 import 'package:shorebird_cli/src/command.dart';
+import 'package:shorebird_cli/src/config/shorebird_yaml.dart';
 import 'package:shorebird_cli/src/shorebird_build_mixin.dart';
 import 'package:shorebird_cli/src/shorebird_config_mixin.dart';
 import 'package:shorebird_cli/src/shorebird_create_app_mixin.dart';
@@ -43,6 +44,15 @@ class ReleaseCommand extends ShorebirdCommand
         allowed: ['android'],
         allowedHelp: {'android': 'The Android platform.'},
         defaultsTo: 'android',
+      )
+      ..addOption(
+        'target',
+        abbr: 't',
+        help: 'The main entrypoint file of the application.',
+      )
+      ..addOption(
+        'flavor',
+        help: 'The product flavor to use when building the app.',
       );
   }
 
@@ -74,9 +84,11 @@ make smaller updates to your app.
 
     await logValidationIssues();
 
+    final flavor = results['flavor'] as String?;
+    final target = results['target'] as String?;
     final buildProgress = logger.progress('Building release');
     try {
-      await buildAppBundle();
+      await buildAppBundle(flavor: flavor, target: target);
       buildProgress.complete();
     } on ProcessException catch (error) {
       buildProgress.fail('Failed to build: ${error.message}');
@@ -104,7 +116,7 @@ make smaller updates to your app.
       return ExitCode.software.code;
     }
 
-    final appId = shorebirdYaml.appId;
+    final appId = shorebirdYaml.getAppId(flavor: flavor);
     final app = apps.firstWhereOrNull((a) => a.id == appId);
     if (app == null) {
       logger.err(
@@ -196,7 +208,7 @@ ${styleBold.wrap(lightGreen.wrap('🚀 Ready to create a new release!'))}
         'app',
         'intermediates',
         'stripped_native_libs',
-        'release',
+        flavor != null ? '${flavor}Release' : 'release',
         'out',
         'lib',
         archMetadata.path,
@@ -221,12 +233,16 @@ ${styleBold.wrap(lightGreen.wrap('🚀 Ready to create a new release!'))}
 
     createArtifactProgress.complete();
 
+    final bundlePath = flavor != null
+        ? './build/app/outputs/bundle/${flavor}Release/app-$flavor-release.aab'
+        : './build/app/outputs/bundle/release/app-release.aab';
+
     logger
       ..success('\n✅ Published Release!')
       ..info('''
 
 Your next step is to upload the app bundle to the Play Store.
-${lightCyan.wrap("./build/app/outputs/bundle/release/app-release.aab")}
+${lightCyan.wrap(bundlePath)}
 
 See the following link for more information:    
 ${link(uri: Uri.parse('https://support.google.com/googleplay/android-developer/answer/9859152?hl=en'))}

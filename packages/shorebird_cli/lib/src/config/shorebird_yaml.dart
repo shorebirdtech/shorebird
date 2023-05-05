@@ -39,3 +39,10 @@ class ShorebirdYaml {
   /// The base url used to check for updates.
   final String? baseUrl;
 }
+
+extension AppIdExtension on ShorebirdYaml {
+  String getAppId({String? flavor}) {
+    if (flavor == null || flavors == null) return appId;
+    return flavors![flavor] ?? appId;
+  }
+}
