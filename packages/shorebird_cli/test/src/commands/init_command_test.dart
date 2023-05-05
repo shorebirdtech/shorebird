@@ -357,7 +357,8 @@ If you want to reinitialize Shorebird, please run "shorebird init --force".''',
       expect(
         File(p.join(tempDir.path, 'shorebird.yaml')).readAsStringSync(),
         contains('''
-app_id:
+app_id: ${appIds[0]}
+flavors:
   development: ${appIds[0]}
   production: ${appIds[1]}
   staging: ${appIds[2]}'''),

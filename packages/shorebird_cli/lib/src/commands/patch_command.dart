@@ -155,7 +155,7 @@ class PatchCommand extends ShorebirdCommand
       return ExitCode.software.code;
     }
 
-    final appId = shorebirdYaml.appId.value;
+    final appId = shorebirdYaml.appId;
     final app = apps.firstWhereOrNull((a) => a.id == appId);
     if (app == null) {
       logger.err(

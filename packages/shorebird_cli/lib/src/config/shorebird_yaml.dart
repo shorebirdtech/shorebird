@@ -12,40 +12,20 @@ part 'shorebird_yaml.g.dart';
 )
 class ShorebirdYaml {
   /// {@macro shorebird_yaml}
-  const ShorebirdYaml({required this.appId, this.baseUrl});
+  const ShorebirdYaml({required this.appId, this.flavors, this.baseUrl});
 
   factory ShorebirdYaml.fromJson(Map<dynamic, dynamic> json) =>
       _$ShorebirdYamlFromJson(json);
 
-  @JsonKey(fromJson: AppId.fromJson)
-  final AppId appId;
-  final String? baseUrl;
-}
-
-/// {@template app_id}
-/// The unique identifier for the app. Can be a single string or a map of
-/// flavor names to ids for multi-flavor apps.
-/// {@endtemplate}
-class AppId {
-  /// {@macro app_id}
-  const AppId({this.value, this.values});
-
-  factory AppId.fromJson(dynamic json) {
-    if (json is String) return AppId(value: json);
-    return AppId(values: (json as Map).cast<String, String>());
-  }
-
-  /// A single app id.
-  ///
-  /// Will be `null` for multi-flavor apps (if [values] is not `null`).
+  /// The base app id.
   ///
   /// Example:
   /// `"8d3155a8-a048-4820-acca-824d26c29b71"`
-  final String? value;
+  final String appId;
 
   /// A map of flavor names to app ids.
   ///
-  /// Will be `null` for apps with no flavors (if [value] is not `null`).
+  /// Will be `null` for apps with no flavors.
   ///
   /// Example:
   /// ```json
@@ -54,5 +34,8 @@ class AppId {
   ///   "production": "d458e87a-7362-4386-9eeb-629db2af413a"
   /// }
   /// ```
-  final Map<String, String>? values;
+  final Map<String, String>? flavors;
+
+  /// The base url used to check for updates.
+  final String? baseUrl;
 }

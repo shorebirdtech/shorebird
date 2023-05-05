@@ -14,10 +14,15 @@ ShorebirdYaml _$ShorebirdYamlFromJson(Map json) => $checkedCreate(
       ($checkedConvert) {
         $checkKeys(
           json,
-          allowedKeys: const ['app_id', 'base_url'],
+          allowedKeys: const ['app_id', 'flavors', 'base_url'],
         );
         final val = ShorebirdYaml(
-          appId: $checkedConvert('app_id', (v) => AppId.fromJson(v)),
+          appId: $checkedConvert('app_id', (v) => v as String),
+          flavors: $checkedConvert(
+              'flavors',
+              (v) => (v as Map?)?.map(
+                    (k, e) => MapEntry(k as String, e as String),
+                  )),
           baseUrl: $checkedConvert('base_url', (v) => v as String?),
         );
         return val;
