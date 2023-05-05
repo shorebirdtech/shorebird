@@ -7,6 +7,7 @@ import 'package:mason_logger/mason_logger.dart';
 import 'package:path/path.dart' as p;
 import 'package:shorebird_cli/src/auth_logger_mixin.dart';
 import 'package:shorebird_cli/src/command.dart';
+import 'package:shorebird_cli/src/config/shorebird_yaml.dart';
 import 'package:shorebird_cli/src/formatters/formatters.dart';
 import 'package:shorebird_cli/src/shorebird_build_mixin.dart';
 import 'package:shorebird_cli/src/shorebird_config_mixin.dart';
@@ -75,6 +76,15 @@ class PatchCommand extends ShorebirdCommand
         },
         defaultsTo: 'stable',
       )
+      ..addOption(
+        'target',
+        abbr: 't',
+        help: 'The main entrypoint file of the application.',
+      )
+      ..addOption(
+        'flavor',
+        help: 'The product flavor to use when building the app.',
+      )
       ..addFlag(
         'force',
         abbr: 'f',
@@ -125,9 +135,11 @@ class PatchCommand extends ShorebirdCommand
 
     await cache.updateAll();
 
+    final flavor = results['flavor'] as String?;
+    final target = results['target'] as String?;
     final buildProgress = logger.progress('Building patch');
     try {
-      await buildAppBundle();
+      await buildAppBundle(flavor: flavor, target: target);
       buildProgress.complete();
     } on ProcessException catch (error) {
       buildProgress.fail('Failed to build: ${error.message}');
@@ -155,7 +167,7 @@ class PatchCommand extends ShorebirdCommand
       return ExitCode.software.code;
     }
 
-    final appId = shorebirdYaml.appId;
+    final appId = shorebirdYaml.getAppId(flavor: flavor);
     final app = apps.firstWhereOrNull((a) => a.id == appId);
     if (app == null) {
       logger.err(
@@ -259,7 +271,7 @@ Please create a release using "shorebird release" and try again.
         'app',
         'intermediates',
         'stripped_native_libs',
-        'release',
+        flavor != null ? '${flavor}Release' : 'release',
         'out',
         'lib',
         archMetadata.path,
@@ -291,15 +303,20 @@ Please create a release using "shorebird release" and try again.
       return '$name ($size)';
     });
 
+    final summary = [
+      '''📱 App: ${lightCyan.wrap(app.displayName)} ${lightCyan.wrap('(${app.id})')}''',
+      if (flavor != null) '🍧 Flavor: ${lightCyan.wrap(flavor)}',
+      '📦 Release Version: ${lightCyan.wrap(releaseVersion)}',
+      '📺 Channel: ${lightCyan.wrap(channelArg)}',
+      '''🕹️  Platform: ${lightCyan.wrap(platform)} ${lightCyan.wrap('[${archMetadata.join(', ')}]')}''',
+    ];
+
     logger.info(
       '''
 
 ${styleBold.wrap(lightGreen.wrap('🚀 Ready to publish a new patch!'))}
 
-📱 App: ${lightCyan.wrap(app.displayName)} ${lightCyan.wrap('(${app.id})')}
-📦 Release Version: ${lightCyan.wrap(releaseVersion)}
-📺 Channel: ${lightCyan.wrap(channelArg)}
-🕹️  Platform: ${lightCyan.wrap(platform)} ${lightCyan.wrap('[${archMetadata.join(', ')}]')}
+${summary.join('\n')}
 ''',
     );
 
