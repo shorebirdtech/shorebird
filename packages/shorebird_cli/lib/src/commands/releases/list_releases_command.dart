@@ -21,7 +21,7 @@ class ListReleasesCommand extends ShorebirdCommand
   }) {
     argParser.addOption(
       'flavor',
-      help: 'The product flavor to use when building the app.',
+      help: 'The product flavor to use when listing releases.',
     );
   }
 
