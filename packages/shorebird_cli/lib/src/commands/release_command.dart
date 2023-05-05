@@ -157,14 +157,18 @@ Did you forget to run "shorebird init"?''',
     final archNames = architectures.keys.map(
       (arch) => arch.name,
     );
+    final summary = [
+      '''📱 App: ${lightCyan.wrap(app.displayName)} ${lightCyan.wrap('(${app.id})')}''',
+      if (flavor != null) '🍧 Flavor: ${lightCyan.wrap(flavor)}',
+      '📦 Release Version: ${lightCyan.wrap(releaseVersion)}',
+      '''🕹️  Platform: ${lightCyan.wrap(platform)} ${lightCyan.wrap('(${archNames.join(', ')})')}''',
+    ];
 
     logger.info('''
 
 ${styleBold.wrap(lightGreen.wrap('🚀 Ready to create a new release!'))}
 
-📱 App: ${lightCyan.wrap(app.displayName)} ${lightCyan.wrap('(${app.id})')}
-📦 Release Version: ${lightCyan.wrap(releaseVersion)}
-🕹️  Platform: ${lightCyan.wrap(platform)} ${lightCyan.wrap('(${archNames.join(', ')})')}
+${summary.join('\n')}
 ''');
 
     final confirm = logger.confirm('Would you like to continue?');
