@@ -1,5 +1,6 @@
 import 'dart:io';
 
+import 'package:args/args.dart';
 import 'package:http/http.dart' as http;
 import 'package:mason_logger/mason_logger.dart';
 import 'package:mocktail/mocktail.dart';
@@ -8,6 +9,8 @@ import 'package:shorebird_cli/src/auth/auth.dart';
 import 'package:shorebird_cli/src/commands/commands.dart';
 import 'package:shorebird_code_push_client/shorebird_code_push_client.dart';
 import 'package:test/test.dart';
+
+class _MockArgResults extends Mock implements ArgResults {}
 
 class _MockAuth extends Mock implements Auth {}
 
@@ -20,6 +23,7 @@ class _MockLogger extends Mock implements Logger {}
 void main() {
   group(ListReleasesCommand, () {
     const appId = 'test-app-id';
+    late ArgResults argResults;
     late Auth auth;
     late http.Client httpClient;
     late CodePushClient codePushClient;
@@ -48,6 +52,7 @@ flutter:
     }
 
     setUp(() {
+      argResults = _MockArgResults();
       auth = _MockAuth();
       codePushClient = _MockCodePushClient();
       httpClient = _MockHttpClient();
@@ -60,7 +65,7 @@ flutter:
           hostedUri,
         }) =>
             codePushClient,
-      );
+      )..testArgResults = argResults;
 
       when(() => auth.client).thenReturn(httpClient);
       when(() => auth.isAuthenticated).thenReturn(true);
@@ -116,6 +121,43 @@ flutter:
 
       expect(exitCode, ExitCode.success.code);
       verify(() => logger.info('(empty)')).called(1);
+    });
+
+    test('uses correct app_id when flavor is specified', () async {
+      const flavor = 'development';
+      when(() => argResults['flavor']).thenReturn(flavor);
+      final tempDir = setUpTempDir();
+      File(
+        p.join(tempDir.path, 'shorebird.yaml'),
+      ).writeAsStringSync('''
+app_id: productionAppId
+flavors:
+  $flavor: $appId''');
+      when(() => codePushClient.getReleases(appId: appId)).thenAnswer(
+        (_) async => [
+          const Release(
+            id: 1,
+            appId: appId,
+            version: '1.0.0',
+            displayName: 'v1.0.0 (dev)',
+          ),
+        ],
+      );
+
+      final exitCode = await IOOverrides.runZoned(
+        command.run,
+        getCurrentDirectory: () => tempDir,
+      );
+
+      expect(exitCode, ExitCode.success.code);
+      verify(
+        () => logger.info('''
+┌─────────┬──────────────┐
+│ Version │ Name         │
+├─────────┼──────────────┤
+│ 1.0.0   │ v1.0.0 (dev) │
+└─────────┴──────────────┘'''),
+      ).called(1);
     });
 
     test('returns ExitCode.success and prints releases when releases exist',
