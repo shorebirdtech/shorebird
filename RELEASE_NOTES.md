@@ -1,6 +1,20 @@
 # Release Notes
 
-This section contains past updates we've sent to current Trusted Testers.
+This section contains past updates we've sent to customers via Discord.
+
+## 0.1.0
+
+We've just released v0.1.0 of shorebird 🎉 :shorebird: 
+
+✨ Highlights include:
+
+- 🍧 Support for Flavors 
+- 🗑️ Support for deleting releases and their artifacts (shorebird releases delete)
+- 📝 Support for listing releases (shorebird releases list)
+- 🧑‍⚕️ Shorebird Doctor can now also apply fixes for some issues (shorebird doctor --fix)
+
+📚 Changelog
+https://github.com/shorebirdtech/shorebird/releases/tag/v0.1.0
 
 ## 0.0.10
 
