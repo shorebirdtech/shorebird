@@ -58,6 +58,8 @@ class UpgradeCommand extends ShorebirdCommand with ShorebirdVersionMixin {
       return ExitCode.success.code;
     }
 
+    logger.info('Updating Shorebird to $latestVersion from $currentVersion...');
+
     final updateProgress = logger.progress('Updating');
 
     try {
