@@ -2,7 +2,7 @@
 
 This section contains past updates we've sent to customers via Discord.
 
-## 0.1.0
+## 0.1.0 (May 6, 2023)
 
 We've just released v0.1.0 of shorebird 🎉 :shorebird: 
 
