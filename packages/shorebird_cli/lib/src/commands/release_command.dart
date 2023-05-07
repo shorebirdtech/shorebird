@@ -53,6 +53,12 @@ class ReleaseCommand extends ShorebirdCommand
       ..addOption(
         'flavor',
         help: 'The product flavor to use when building the app.',
+      )
+      ..addFlag(
+        'force',
+        abbr: 'f',
+        help: 'Release without confirmation if there are no errors.',
+        negatable: false,
       );
   }
 
@@ -171,11 +177,15 @@ ${styleBold.wrap(lightGreen.wrap('🚀 Ready to create a new release!'))}
 ${summary.join('\n')}
 ''');
 
-    final confirm = logger.confirm('Would you like to continue?');
+    final force = results['force'] == true;
+    final needConfirmation = !force;
+    if (needConfirmation) {
+      final confirm = logger.confirm('Would you like to continue?');
 
-    if (!confirm) {
-      logger.info('Aborting.');
-      return ExitCode.success.code;
+      if (!confirm) {
+        logger.info('Aborting.');
+        return ExitCode.success.code;
+      }
     }
 
     late final List<Release> releases;
