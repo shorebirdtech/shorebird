@@ -4,7 +4,7 @@ import 'package:shorebird_cli/src/validators/validators.dart';
 
 mixin ShorebirdValidationMixin on ShorebirdCommand {
   /// Runs [Validator.validate] on all [validators] and writes issues to stdout.
-  Future<void> logValidationIssues() async {
+  Future<List<ValidationIssue>> logAndGetValidationIssues() async {
     final validationIssues = (await Future.wait(
       validators.map((v) => v.validate(process)),
     ))
@@ -14,5 +14,7 @@ mixin ShorebirdValidationMixin on ShorebirdCommand {
         logger.info(issue.displayMessage);
       }
     }
+
+    return validationIssues.toList();
   }
 }

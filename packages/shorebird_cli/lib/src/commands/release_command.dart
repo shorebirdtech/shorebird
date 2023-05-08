@@ -88,7 +88,13 @@ make smaller updates to your app.
       return ExitCode.noUser.code;
     }
 
-    await logValidationIssues();
+    final validationIssues = await logAndGetValidationIssues();
+    if (validationIssues.isNotEmpty) {
+      logger.err(
+        '''Shorebird release cannot continue until all issues are fixed.''',
+      );
+      return ExitCode.config.code;
+    }
 
     final flavor = results['flavor'] as String?;
     final target = results['target'] as String?;

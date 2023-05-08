@@ -49,7 +49,7 @@ class BuildAppBundleCommand extends ShorebirdCommand
       return ExitCode.noUser.code;
     }
 
-    await logValidationIssues();
+    await logAndGetValidationIssues();
 
     final flavor = results['flavor'] as String?;
     final target = results['target'] as String?;

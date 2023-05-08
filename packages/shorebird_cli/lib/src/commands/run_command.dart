@@ -49,7 +49,7 @@ class RunCommand extends ShorebirdCommand
       return ExitCode.noUser.code;
     }
 
-    await logValidationIssues();
+    await logAndGetValidationIssues();
 
     logger.info('Running app...');
 
