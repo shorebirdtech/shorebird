@@ -414,6 +414,25 @@ Did you forget to run "shorebird init"?''',
       expect(exitCode, ExitCode.software.code);
     });
 
+    test(
+        'does not prompt for confirmation '
+        'when --release-version and --force are used', () async {
+      when(() => argResults['force']).thenReturn(true);
+      when(() => argResults['release-version']).thenReturn(version);
+      final tempDir = setUpTempDir();
+      setUpTempArtifacts(tempDir);
+      final exitCode = await IOOverrides.runZoned(
+        command.run,
+        getCurrentDirectory: () => tempDir,
+      );
+      verify(() => logger.success('\n✅ Published Release!')).called(1);
+      expect(exitCode, ExitCode.success.code);
+      expect(capturedHostedUri, isNull);
+      verifyNever(
+        () => logger.prompt(any(), defaultValue: any(named: 'defaultValue')),
+      );
+    });
+
     test('succeeds when release is successful', () async {
       final tempDir = setUpTempDir();
       setUpTempArtifacts(tempDir);
