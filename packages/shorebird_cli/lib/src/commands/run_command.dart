@@ -47,6 +47,13 @@ class RunCommand extends ShorebirdCommand
       return e.exitCode.code;
     }
 
+    if (!hasShorebirdYaml) {
+      logger.err(
+        '''Shorebird is not initialized. Did you run ${lightCyan.wrap('shorebird init')}?''',
+      );
+      return ExitCode.config.code;
+    }
+
     logger.info('Running app...');
 
     final deviceId = results['device-id'] as String?;
