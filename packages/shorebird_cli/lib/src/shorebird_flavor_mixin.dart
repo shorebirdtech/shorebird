@@ -8,22 +8,19 @@ import 'package:shorebird_cli/src/command.dart';
 /// Mixin on [ShorebirdCommand] which exposes methods for extracting
 /// product flavors from the current app.
 mixin ShorebirdFlavorMixin on ShorebirdCommand {
-  /// Return the set of product flavors configured for the app at [path].
+  /// Return the set of product flavors configured for the app at [appRoot].
   /// Returns an empty set for apps that do not use product flavors.
   Future<Set<String>> extractProductFlavors(
-    String path, {
+    String appRoot, {
     Platform platform = const LocalPlatform(),
   }) async {
     final executable = platform.isWindows ? 'gradlew.bat' : 'gradlew';
-    final androidStudioPath = _getAndroidStudioPath(platform);
-    final javaPath = androidStudioPath != null
-        ? _getJavaPath(androidStudioPath, platform)
-        : null;
+    final javaPath = _getJavaPath(platform: platform);
     final result = await process.run(
-      p.join(path, 'android', executable),
+      p.join(appRoot, 'android', executable),
       ['app:tasks', '--all', '--console=auto'],
       runInShell: true,
-      workingDirectory: p.join(path, 'android'),
+      workingDirectory: p.join(appRoot, 'android'),
       environment: {
         if (javaPath != null) 'JAVA_HOME': javaPath,
       },
@@ -86,6 +83,8 @@ mixin ShorebirdFlavorMixin on ShorebirdCommand {
 
     if (platform.isLinux) {
       final candidateLocations = [
+        p.join('/', 'snap', 'bin', 'android-studio'),
+        p.join('/', 'opt', 'android-studio'),
         p.join(home, '.AndroidStudio'),
         p.join(home, '.cache', 'Google', 'AndroidStudio'),
       ];
@@ -97,12 +96,18 @@ mixin ShorebirdFlavorMixin on ShorebirdCommand {
     return null;
   }
 
-  String? _getJavaPath(String directory, Platform platform) {
+  String? _getJavaPath({Platform platform = const LocalPlatform()}) {
+    if (platform.environment.containsKey('JAVA_HOME')) {
+      return platform.environment['JAVA_HOME'];
+    }
+
+    final androidStudioPath = _getAndroidStudioPath(platform);
+    if (androidStudioPath == null) return null;
     if (platform.isMacOS) {
       final candidateLocations = [
-        p.join(directory, 'jbr', 'Contents', 'Home'),
-        p.join(directory, 'jre', 'Contents', 'Home'),
-        p.join(directory, 'jre', 'jdk', 'Contents', 'Home')
+        p.join(androidStudioPath, 'jbr', 'Contents', 'Home'),
+        p.join(androidStudioPath, 'jre', 'Contents', 'Home'),
+        p.join(androidStudioPath, 'jre', 'jdk', 'Contents', 'Home')
       ];
 
       return candidateLocations.firstWhereOrNull(
@@ -111,8 +116,8 @@ mixin ShorebirdFlavorMixin on ShorebirdCommand {
     }
 
     final candidateLocations = [
-      p.join(directory, 'jbr'),
-      p.join(directory, 'jre'),
+      p.join(androidStudioPath, 'jbr'),
+      p.join(androidStudioPath, 'jre'),
     ];
 
     return candidateLocations.firstWhereOrNull(
