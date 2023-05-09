@@ -98,6 +98,28 @@ environment:
     });
 
     group('extractProductFlavors', () {
+      test('uses existing JAVA_HOME when set', () async {
+        final platform = _MockPlatform();
+        when(() => platform.isLinux).thenReturn(true);
+        when(() => platform.isMacOS).thenReturn(false);
+        when(() => platform.isWindows).thenReturn(false);
+        final tempDir = Directory.systemTemp.createTempSync();
+        const javaHome = 'test_java_home';
+        when(() => platform.environment).thenReturn({'JAVA_HOME': javaHome});
+        await expectLater(
+          command.extractProductFlavors(tempDir.path, platform: platform),
+          completes,
+        );
+        verify(
+          () => process.run(
+            p.join(tempDir.path, 'android', 'gradlew'),
+            ['app:tasks', '--all', '--console=auto'],
+            runInShell: true,
+            workingDirectory: p.join(tempDir.path, 'android'),
+            environment: {'JAVA_HOME': javaHome},
+          ),
+        ).called(1);
+      });
       test('uses correct executable on windows', () async {
         final platform = _MockPlatform();
         when(() => platform.isWindows).thenReturn(true);
@@ -281,7 +303,9 @@ If you want to reinitialize Shorebird, please run "shorebird init --force".''',
       );
     });
 
-    test('throws when extracting flavors throws', () async {
+    test(
+        'proceeds without flavors '
+        'when an error occurs while extracting flavors', () async {
       when(() => result.exitCode).thenReturn(1);
       when(() => result.stdout).thenReturn('error');
       when(() => result.stderr).thenReturn('oops');
@@ -293,8 +317,12 @@ If you want to reinitialize Shorebird, please run "shorebird init --force".''',
         command.run,
         getCurrentDirectory: () => tempDir,
       );
-      verify(() => logger.err('Exception: error\noops')).called(1);
-      expect(exitCode, ExitCode.software.code);
+      verify(
+        () => logger.detail(
+          'Unable to extract product flavors: Exception: error\noops',
+        ),
+      ).called(1);
+      expect(exitCode, ExitCode.success.code);
     });
 
     test('throws software error when error occurs creating app.', () async {

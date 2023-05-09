@@ -66,12 +66,11 @@ If you want to reinitialize Shorebird, please run "shorebird init --force".''');
       return ExitCode.software.code;
     }
 
-    final Set<String> productFlavors;
+    var productFlavors = <String>{};
     try {
       productFlavors = await extractProductFlavors(Directory.current.path);
     } catch (error) {
-      logger.err('$error');
-      return ExitCode.software.code;
+      logger.detail('Unable to extract product flavors: $error');
     }
 
     final String appId;
