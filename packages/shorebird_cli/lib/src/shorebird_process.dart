@@ -67,6 +67,31 @@ class ShorebirdProcess {
     );
   }
 
+  ProcessResult runSync(
+    String executable,
+    List<String> arguments, {
+    bool runInShell = false,
+    Map<String, String>? environment,
+    String? workingDirectory,
+    bool useVendedFlutter = true,
+  }) {
+    final resolvedEnvironment = environment ?? {};
+    if (useVendedFlutter) {
+      // Note: this will overwrite existing environment values.
+      resolvedEnvironment.addAll(
+        _environmentOverrides(executable: executable),
+      );
+    }
+
+    return processWrapper.runSync(
+      useVendedFlutter ? _resolveExecutable(executable) : executable,
+      useVendedFlutter ? _resolveArguments(executable, arguments) : arguments,
+      runInShell: runInShell,
+      workingDirectory: workingDirectory,
+      environment: resolvedEnvironment,
+    );
+  }
+
   Future<Process> start(
     String executable,
     List<String> arguments, {
@@ -165,6 +190,22 @@ class ProcessWrapper {
       exitCode: result.exitCode,
       stdout: result.stdout,
       stderr: result.stderr,
+    );
+  }
+
+  ProcessResult runSync(
+    String executable,
+    List<String> arguments, {
+    bool runInShell = false,
+    Map<String, String>? environment,
+    String? workingDirectory,
+  }) {
+    return Process.runSync(
+      executable,
+      arguments,
+      environment: environment,
+      runInShell: runInShell,
+      workingDirectory: workingDirectory,
     );
   }
 
