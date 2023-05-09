@@ -16,7 +16,7 @@ void main() {
   const shorebirdDevRevision = 'revision-2';
   const shorebirdDevVersion = 'v1.0.0-1.1.pre';
   const shorebirdNoTagRevision = 'revision-3';
-  const shorebirdNoTagVersion = 'v1.2.3-4.5.pre-6-gabc123';
+  const shorebirdNoTagVersion = 'v1.2-pre.3';
 
   group('GitTagVersion', () {
     late ShorebirdProcess shorebirdProcess;
@@ -74,7 +74,14 @@ void main() {
       when(
         () => shorebirdProcess.runSync(
           'git',
-          ['tag', '--points-at', shorebirdNoTagRevision],
+          [
+            'describe',
+            '--match',
+            '*.*.*',
+            '--long',
+            '--tags',
+            shorebirdNoTagRevision
+          ],
           workingDirectory: any(named: 'workingDirectory'),
         ),
       ).thenReturn(fetchNearestTagResult);
