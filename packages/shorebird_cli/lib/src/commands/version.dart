@@ -1,6 +1,7 @@
 import 'package:shorebird_cli/src/shorebird_process.dart';
 
 const String _unknownFrameworkVersion = '0.0.0-unknown';
+const shorebirdGit = 'https://github.com/shorebirdtech/shorebird.git';
 
 class GitTagVersion {
   const GitTagVersion({
@@ -70,7 +71,6 @@ class GitTagVersion {
       if (channel == 'dev' || channel == 'beta' || channel == 'stable') {
         // 'Skipping request to fetchTags - on well known channel $channel.'
       } else {
-        const shorebirdGit = 'https://github.com/shorebirdtech/shorebird.git';
         process.runSync(
           'git',
           ['fetch', shorebirdGit, '--tags', '-f'],

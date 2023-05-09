@@ -3,6 +3,7 @@ import 'package:mocktail/mocktail.dart';
 import 'package:scoped/scoped.dart';
 import 'package:shorebird_cli/src/commands/commands.dart';
 import 'package:shorebird_cli/src/logger.dart';
+import 'package:shorebird_cli/src/commands/version.dart';
 import 'package:shorebird_cli/src/shorebird_process.dart';
 import 'package:test/test.dart';
 
@@ -15,14 +16,20 @@ class _MockProgress extends Mock implements Progress {}
 class _MockShorebirdProcess extends Mock implements ShorebirdProcess {}
 
 void main() {
+  const currentShorebirdChannel = 'main';
   const currentShorebirdRevision = 'revision-1';
+  const currentShorebirdVersion = 'v1.0.0';
   const newerShorebirdRevision = 'revision-2';
+  const newerShorebirdVersion = 'v1.0.1';
 
   group('upgrade', () {
     late Logger logger;
+    late ShorebirdProcessResult fetchCurrentChannelResult;
     late ShorebirdProcessResult fetchCurrentVersionResult;
+    late ShorebirdProcessResult fetchCurrentTagResult;
     late ShorebirdProcessResult fetchTagsResult;
     late ShorebirdProcessResult fetchLatestVersionResult;
+    late ShorebirdProcessResult fetchLatestTagResult;
     late ShorebirdProcessResult hardResetResult;
     late ShorebirdProcessResult pruneFlutterOriginResult;
     late ShorebirdProcess shorebirdProcess;
@@ -37,9 +44,12 @@ void main() {
       final progressLogs = <String>[];
 
       logger = _MockLogger();
+      fetchCurrentChannelResult = _MockProcessResult();
       fetchCurrentVersionResult = _MockProcessResult();
+      fetchCurrentTagResult = _MockProcessResult();
       fetchTagsResult = _MockProcessResult();
       fetchLatestVersionResult = _MockProcessResult();
+      fetchLatestTagResult = _MockProcessResult();
       hardResetResult = _MockProcessResult();
       pruneFlutterOriginResult = _MockProcessResult();
       shorebirdProcess = _MockShorebirdProcess();
@@ -61,6 +71,34 @@ void main() {
           workingDirectory: any(named: 'workingDirectory'),
         ),
       ).thenAnswer((_) async => fetchTagsResult);
+      when(
+        () => shorebirdProcess.runSync(
+          'git',
+          ['rev-parse', '--abbrev-ref', 'HEAD'],
+          workingDirectory: any(named: 'workingDirectory'),
+        ),
+      ).thenReturn(fetchCurrentChannelResult);
+      when(
+        () => shorebirdProcess.runSync(
+          'git',
+          ['fetch', shorebirdGit, '--tags', '-f'],
+          workingDirectory: any(named: 'workingDirectory'),
+        ),
+      ).thenReturn(fetchTagsResult);
+      when(
+        () => shorebirdProcess.runSync(
+          'git',
+          ['tag', '--points-at', currentShorebirdRevision],
+          workingDirectory: any(named: 'workingDirectory'),
+        ),
+      ).thenReturn(fetchCurrentTagResult);
+      when(
+        () => shorebirdProcess.runSync(
+          'git',
+          ['tag', '--points-at', newerShorebirdRevision],
+          workingDirectory: any(named: 'workingDirectory'),
+        ),
+      ).thenReturn(fetchLatestTagResult);
       when(
         () => shorebirdProcess.run(
           'git',
@@ -146,6 +184,15 @@ void main() {
         when(
           () => fetchLatestVersionResult.stdout,
         ).thenReturn(newerShorebirdRevision);
+        when(
+          () => fetchCurrentChannelResult.stdout,
+        ).thenReturn(currentShorebirdChannel);
+        when(
+          () => fetchLatestTagResult.stdout,
+        ).thenReturn(newerShorebirdVersion);
+        when(
+          () => fetchCurrentTagResult.stdout,
+        ).thenReturn(currentShorebirdVersion);
         when(() => hardResetResult.exitCode).thenReturn(1);
         when(() => hardResetResult.stderr).thenReturn(errorMessage);
         final result = await runWithOverrides(command.run);
@@ -173,6 +220,15 @@ void main() {
         when(
           () => fetchLatestVersionResult.stdout,
         ).thenReturn(newerShorebirdRevision);
+        when(
+          () => fetchCurrentChannelResult.stdout,
+        ).thenReturn(currentShorebirdChannel);
+        when(
+          () => fetchLatestTagResult.stdout,
+        ).thenReturn(newerShorebirdVersion);
+        when(
+          () => fetchCurrentTagResult.stdout,
+        ).thenReturn(currentShorebirdVersion);
         when(() => logger.progress(any())).thenReturn(_MockProgress());
         final result = await runWithOverrides(command.run);
         expect(result, equals(ExitCode.success.code));
