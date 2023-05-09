@@ -4,7 +4,7 @@ import 'package:artifact_proxy/artifact_proxy.dart';
 import 'package:artifact_proxy/config.dart';
 import 'package:shelf/shelf.dart';
 
-const String explainerHtml = """
+const String _explainerHtml = """
 <html>
 <head>
 <title>Shorebird Artifact Proxy</title>
@@ -40,7 +40,10 @@ Handler artifactProxyHandler({required ArtifactManifestClient client}) {
   return (Request request) async {
     final path = request.url.path;
     if (path.isEmpty) {
-      return Response.ok(explainerHtml, headers: {'content-type': 'text/html'});
+      return Response.ok(
+        _explainerHtml,
+        headers: {'content-type': 'text/html'},
+      );
     }
 
     RegExpMatch? engineArtifactMatch;

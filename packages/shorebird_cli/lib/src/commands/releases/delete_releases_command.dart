@@ -30,7 +30,6 @@ class DeleteReleasesCommand extends ShorebirdCommand
         'flavor',
         help: 'The product flavor to use when deleting releases.',
       );
-    ;
   }
 
   @override

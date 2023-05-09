@@ -76,10 +76,10 @@ extension RepoCommands on Repo {
     return output.split('\n');
   }
 
-  Version getForkPoint() {
+  Version getForkPoint(String forkBranch) {
     final hash = runCommand(
       'git',
-      ['merge-base', '--fork-point', upstreamBranch, releaseBranch],
+      ['merge-base', '--fork-point', upstreamBranch, forkBranch],
       workingDirectory: _workingDirectory,
     );
     return versionFrom(hash);
@@ -131,8 +131,8 @@ String printLatestForBranch(Repo repo, String branch) {
 }
 
 void printVersions(VersionSet versions, int indent) {
-  print("${' ' * indent}engine    ${versions.engine}");
   print("${' ' * indent}flutter   ${versions.flutter}");
+  print("${' ' * indent}engine    ${versions.engine}");
   print("${' ' * indent}buildroot ${versions.buildroot}");
 }
 
@@ -161,24 +161,6 @@ String parseBuildRoot(String depsContents) {
     throw Exception('Failed to parse buildroot version from $buildrootLine');
   }
   return match.group(0)!;
-}
-
-VersionSet getForkpoints() {
-  final flutterForkpoint = Repo.flutter.getForkPoint();
-  // final engineForkpoint = Repo.engine.getForkPoint();
-  // final buildrootForkpoint = Repo.buildroot.getForkPoint();
-  // return VersionSet(
-  //   engine: engineForkpoint,
-  //   flutter: flutterForkpoint,
-  //   buildroot: buildrootForkpoint,
-  // );
-
-  // This is slightly error-prone in that we're assuming that our engine and
-  // buildroot forks started from the correct commit.  But I'm not sure how
-  // to determine the forkpoint otherwise.  engine and buildroot don't have
-  // a stable branch, yet they do seem to "branch" for stable releases at the
-  // x.x.0 release.
-  return getFlutterVersions(flutterForkpoint.hash);
 }
 
 /// Generate rebase commands for the repo given the version sets.
@@ -216,6 +198,7 @@ String rebaseRepo(
 void main(List<String> args) {
   config = parseArgs(args);
   if (config.doUpdate) {
+    print('Updating checkouts (use --no-update to skip)');
     for (final repo in Repo.values) {
       print('Updating ${repo.name}...');
       runCommand(
@@ -231,27 +214,30 @@ void main(List<String> args) {
   //   printLatestForBranch(repo, repo.releaseBranch);
   // }
 
-  // FIXME: This is wrong, but 0.0.7 doesn't have a flutter.version file yet.
-  final shorebirdFlutter =
-      Repo.flutter.getLatestCommit(Repo.flutter.releaseBranch);
-  // final shorebirdStable =
-  //     Repo.shorebird.getLatestCommit(Repo.shorebird.releaseBranch);
-  // final shorebirdFlutter = Repo.flutter
-  //     .contentsAtPath(shorebirdStable, 'bin/internal/flutter.version');
+  final shorebirdStable =
+      Repo.shorebird.getLatestCommit(config.shorebirdReleaseBranch);
+  final shorebirdFlutter = Repo.shorebird
+      .contentsAtPath(shorebirdStable, 'bin/internal/flutter.version');
   final shorebird = getFlutterVersions(shorebirdFlutter);
   print('Shorebird stable:');
   printVersions(shorebird, 2);
 
-  final forkpoints = getForkpoints();
+  final flutterForkpoint = Repo.flutter.getForkPoint(shorebird.flutter.hash);
+  // This is slightly error-prone in that we're assuming that our engine and
+  // buildroot forks started from the correct commit.  But I'm not sure how
+  // to determine the forkpoint otherwise.  engine and buildroot don't have
+  // a stable branch, yet they do seem to "branch" for stable releases at the
+  // x.x.0 release.
+  final forkpoints = getFlutterVersions(flutterForkpoint.hash);
   print('Forkpoints:');
   printVersions(forkpoints, 2);
 
   // Figure out the latest version of Flutter.
   final upstreamFlutter =
-      Repo.flutter.getLatestCommit(Repo.flutter.upstreamBranch);
+      Repo.flutter.getLatestCommit('upstream/${config.flutterChannel}');
   // Figure out what versions that Flutter depends on.
   final upstream = getFlutterVersions(upstreamFlutter);
-  print('Upstream stable:');
+  print('Upstream ${config.flutterChannel}:');
   printVersions(upstream, 2);
 
   Version doRebase(Repo repo) {
