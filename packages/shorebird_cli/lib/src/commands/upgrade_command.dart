@@ -58,7 +58,29 @@ class UpgradeCommand extends ShorebirdCommand with ShorebirdVersionMixin {
       return ExitCode.success.code;
     }
 
-    logger.info('Updating Shorebird to $latestVersion from $currentVersion...');
+    final latestVersionTag = GitTagVersion.determine(
+      process,
+      fetchTags: true,
+      workingDirectory: workingDirectory,
+      gitRef: latestVersion,
+    );
+
+    final latestTagVersion =
+        latestVersionTag.frameworkVersionFor(latestVersion);
+
+    final currentVersionTag = GitTagVersion.determine(
+      process,
+      fetchTags: true,
+      workingDirectory: workingDirectory,
+      gitRef: currentVersion,
+    );
+
+    final currentTagVersion =
+        currentVersionTag.frameworkVersionFor(currentVersion);
+
+    logger.info(
+      'Updating Shorebird to $latestTagVersion from $currentTagVersion...',
+    );
 
     final updateProgress = logger.progress('Updating');
 
