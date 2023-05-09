@@ -15,7 +15,7 @@ mixin ShorebirdFlavorMixin on ShorebirdCommand {
     Platform platform = const LocalPlatform(),
   }) async {
     final executable = platform.isWindows ? 'gradlew.bat' : 'gradlew';
-    final javaPath = _getJavaPath(platform: platform);
+    final javaPath = _getJavaPath(platform);
     final result = await process.run(
       p.join(appRoot, 'android', executable),
       ['app:tasks', '--all', '--console=auto'],
@@ -96,7 +96,7 @@ mixin ShorebirdFlavorMixin on ShorebirdCommand {
     return null;
   }
 
-  String? _getJavaPath({Platform platform = const LocalPlatform()}) {
+  String? _getJavaPath(Platform platform) {
     if (platform.environment.containsKey('JAVA_HOME')) {
       return platform.environment['JAVA_HOME'];
     }
