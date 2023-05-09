@@ -20,11 +20,13 @@ void main() {
     late ProcessWrapper processWrapper;
     late Process startProcess;
     late ShorebirdProcessResult runProcessResult;
+    late ShorebirdProcessResult runSyncProcessResult;
     late ShorebirdProcess shorebirdProcess;
 
     setUp(() {
       processWrapper = _MockProcessWrapper();
       runProcessResult = _MockProcessResult();
+      runSyncProcessResult = _MockProcessResult();
       startProcess = _MockProcess();
       shorebirdProcess = ShorebirdProcess(
         processWrapper: processWrapper,
@@ -40,6 +42,16 @@ void main() {
           workingDirectory: any(named: 'workingDirectory'),
         ),
       ).thenAnswer((_) async => runProcessResult);
+
+      when(
+        () => processWrapper.runSync(
+          any(),
+          any(),
+          runInShell: any(named: 'runInShell'),
+          environment: any(named: 'environment'),
+          workingDirectory: any(named: 'workingDirectory'),
+        ),
+      ).thenReturn(runSyncProcessResult);
 
       when(
         () => processWrapper.start(
@@ -169,7 +181,118 @@ void main() {
       );
     });
 
-    test('adds local-engine arguments if set', () async {
+    group('runSync', () {
+      test('forwards non-flutter executables to Process.run', () {
+        shorebirdProcess.runSync(
+          'git',
+          ['pull'],
+          runInShell: true,
+          workingDirectory: '~',
+        );
+
+        verify(
+          () => processWrapper.runSync(
+            'git',
+            ['pull'],
+            runInShell: true,
+            environment: {},
+            workingDirectory: '~',
+          ),
+        ).called(1);
+      });
+
+      test('replaces "flutter" with our local flutter', () {
+        shorebirdProcess.runSync(
+          'flutter',
+          ['--version'],
+          runInShell: true,
+          workingDirectory: '~',
+        );
+
+        verify(
+          () => processWrapper.runSync(
+            any(
+              that: contains(
+                p.join('bin', 'cache', 'flutter', 'bin', 'flutter'),
+              ),
+            ),
+            ['--version'],
+            runInShell: true,
+            environment: flutterStorageBaseUrlEnv,
+            workingDirectory: '~',
+          ),
+        ).called(1);
+      });
+
+      test(
+          'does not replace flutter with our local flutter if'
+          ' useVendedFlutter is false', () {
+        shorebirdProcess.runSync(
+          'flutter',
+          ['--version'],
+          runInShell: true,
+          workingDirectory: '~',
+          useVendedFlutter: false,
+        );
+
+        verify(
+          () => processWrapper.runSync(
+            'flutter',
+            ['--version'],
+            runInShell: true,
+            environment: {},
+            workingDirectory: '~',
+          ),
+        ).called(1);
+      });
+
+      test('Updates environment if useVendedFlutter is true', () {
+        shorebirdProcess.runSync(
+          'flutter',
+          ['--version'],
+          runInShell: true,
+          workingDirectory: '~',
+          useVendedFlutter: false,
+          environment: {'ENV_VAR': 'asdfasdf'},
+        );
+
+        verify(
+          () => processWrapper.runSync(
+            'flutter',
+            ['--version'],
+            runInShell: true,
+            workingDirectory: '~',
+            environment: {'ENV_VAR': 'asdfasdf'},
+          ),
+        ).called(1);
+      });
+
+      test(
+        'Makes no changes to environment if useVendedFlutter is false',
+        () {
+          shorebirdProcess.runSync(
+            'flutter',
+            ['--version'],
+            runInShell: true,
+            workingDirectory: '~',
+            useVendedFlutter: false,
+            environment: {'ENV_VAR': 'asdfasdf'},
+          );
+
+          verify(
+            () => processWrapper.runSync(
+              'flutter',
+              ['--version'],
+              runInShell: true,
+              workingDirectory: '~',
+              environment: {'ENV_VAR': 'asdfasdf'},
+            ),
+          ).called(1);
+        },
+      );
+    });
+
+    test('adds local-engine arguments if set', () {
       final localEngineSrcPath = p.join('path', 'to', 'engine', 'src');
       shorebirdProcess = ShorebirdProcess(
         processWrapper: processWrapper,
@@ -177,12 +300,10 @@ void main() {
           localEngineSrcPath: localEngineSrcPath,
           localEngine: 'android_release_arm64',
         ),
-      );
-
-      await shorebirdProcess.run('flutter', []);
+      )..runSync('flutter', []);
 
       verify(
-        () => processWrapper.run(
+        () => processWrapper.runSync(
           any(),
           [
             '--local-engine-src-path=$localEngineSrcPath',
