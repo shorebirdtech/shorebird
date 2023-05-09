@@ -27,11 +27,15 @@ class Config {
     required this.verbose,
     required this.dryRun,
     required this.doUpdate,
+    required this.flutterChannel,
   });
   final String checkoutsRoot;
   final bool verbose;
   final bool dryRun;
   final bool doUpdate;
+  final String flutterChannel;
+
+  final String shorebirdReleaseBranch = 'origin/stable';
 }
 
 late final Config config;
@@ -44,6 +48,11 @@ Config parseArgs(List<String> args) {
       defaultsTo: '.',
       help: 'Directory in which to find checkouts.',
     )
+    ..addOption(
+      'flutter-channel',
+      defaultsTo: 'stable',
+      help: 'Upstream channel to propose rebasing onto.',
+    )
     ..addFlag('dry-run', defaultsTo: true, help: 'Do not actually run git.')
     ..addFlag('update', defaultsTo: true, help: 'Update checkouts.');
   final results = parser.parse(args);
@@ -52,5 +61,6 @@ Config parseArgs(List<String> args) {
     checkoutsRoot: expandUser(results['root'] as String),
     dryRun: results['dry-run'] as bool,
     doUpdate: results['update'] as bool,
+    flutterChannel: results['flutter-channel'] as String,
   );
 }
