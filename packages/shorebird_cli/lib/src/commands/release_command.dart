@@ -11,6 +11,7 @@ import 'package:shorebird_cli/src/shorebird_build_mixin.dart';
 import 'package:shorebird_cli/src/shorebird_config_mixin.dart';
 import 'package:shorebird_cli/src/shorebird_create_app_mixin.dart';
 import 'package:shorebird_cli/src/shorebird_validation_mixin.dart';
+import 'package:shorebird_cli/src/validators/release_android_internet_permission_validator.dart';
 import 'package:shorebird_code_push_client/shorebird_code_push_client.dart';
 import 'package:version/version.dart';
 
@@ -61,6 +62,7 @@ class ReleaseCommand extends ShorebirdCommand
         help: 'Release without confirmation if there are no errors.',
         negatable: false,
       );
+    validators.add(ReleaseAndroidInternetPermissionValidator());
   }
 
   @override
@@ -89,12 +91,16 @@ make smaller updates to your app.
       return ExitCode.noUser.code;
     }
 
-    final criticalIssues = await logAndGetCriticalIssueCount();
-    if (criticalIssues > 0 && blockOnValidationIssues) {
-      logger.err(
-        '''Shorebird $name cannot continue until all issues are fixed.''',
-      );
-      return ExitCode.config.code;
+    final validations = await logAndGetValidationIssues();
+    if (validations.isNotEmpty && blockOnValidationIssues) {
+      for (final validation in validations.entries) {
+        if (validation.key is ReleaseAndroidInternetPermissionValidator) {
+          logger.err(
+            '''Shorebird $name cannot continue until all issues are fixed.''',
+          );
+          return ExitCode.config.code;
+        }
+      }
     }
 
     final flavor = results['flavor'] as String?;
