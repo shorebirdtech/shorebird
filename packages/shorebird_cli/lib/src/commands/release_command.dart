@@ -32,6 +32,7 @@ class ReleaseCommand extends ShorebirdCommand
     super.buildCodePushClient,
     super.validators,
     HashFunction? hashFn,
+    super.blockOnValidationIssues = true,
   }) : _hashFn = hashFn ?? ((m) => sha256.convert(m).toString()) {
     argParser
       ..addOption(
@@ -88,10 +89,10 @@ make smaller updates to your app.
       return ExitCode.noUser.code;
     }
 
-    final validationIssues = await logAndGetValidationIssues();
-    if (validationIssues.isNotEmpty) {
+    final criticalIssues = await logAndGetCriticalIssueCount();
+    if (criticalIssues > 0 && blockOnValidationIssues) {
       logger.err(
-        '''Shorebird release cannot continue until all issues are fixed.''',
+        '''Shorebird $name cannot continue until all issues are fixed.''',
       );
       return ExitCode.config.code;
     }

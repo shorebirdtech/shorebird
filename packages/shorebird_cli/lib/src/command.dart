@@ -37,6 +37,7 @@ abstract class ShorebirdCommand extends Command<int> {
     Cache? cache,
     CodePushClientBuilder? buildCodePushClient,
     List<Validator>? validators, // For mocking.
+    this.blockOnValidationIssues = false,
   })  : auth = auth ?? Auth(),
         cache = cache ?? Cache(),
         buildCodePushClient = buildCodePushClient ?? CodePushClient.new,
@@ -46,6 +47,7 @@ abstract class ShorebirdCommand extends Command<int> {
   final Cache cache;
   final CodePushClientBuilder buildCodePushClient;
   final Logger logger;
+  final bool blockOnValidationIssues;
 
   // We don't currently have a test involving both a CommandRunner
   // and a Command, so we can't test this getter.

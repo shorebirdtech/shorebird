@@ -49,7 +49,13 @@ class RunCommand extends ShorebirdCommand
       return ExitCode.noUser.code;
     }
 
-    await logAndGetValidationIssues();
+    final criticalIssues = await logAndGetCriticalIssueCount();
+    if (criticalIssues > 0 && blockOnValidationIssues) {
+      logger.err(
+        '''Shorebird $name cannot continue until all issues are fixed.''',
+      );
+      return ExitCode.config.code;
+    }
 
     logger.info('Running app...');
 

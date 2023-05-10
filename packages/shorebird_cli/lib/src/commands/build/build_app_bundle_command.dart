@@ -49,7 +49,13 @@ class BuildAppBundleCommand extends ShorebirdCommand
       return ExitCode.noUser.code;
     }
 
-    await logAndGetValidationIssues();
+    final criticalIssues = await logAndGetCriticalIssueCount();
+    if (criticalIssues > 0 && blockOnValidationIssues) {
+      logger.err(
+        '''Shorebird $name cannot continue until all issues are fixed.''',
+      );
+      return ExitCode.config.code;
+    }
 
     final flavor = results['flavor'] as String?;
     final target = results['target'] as String?;

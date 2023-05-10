@@ -131,7 +131,13 @@ class PatchCommand extends ShorebirdCommand
       return ExitCode.usage.code;
     }
 
-    await logAndGetValidationIssues();
+    final criticalIssues = await logAndGetCriticalIssueCount();
+    if (criticalIssues > 0 && blockOnValidationIssues) {
+      logger.err(
+        '''Shorebird $name cannot continue until all issues are fixed.''',
+      );
+      return ExitCode.config.code;
+    }
 
     await cache.updateAll();
 
