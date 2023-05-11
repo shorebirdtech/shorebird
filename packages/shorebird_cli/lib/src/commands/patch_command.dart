@@ -12,6 +12,8 @@ import 'package:shorebird_cli/src/formatters/formatters.dart';
 import 'package:shorebird_cli/src/shorebird_build_mixin.dart';
 import 'package:shorebird_cli/src/shorebird_config_mixin.dart';
 import 'package:shorebird_cli/src/shorebird_create_app_mixin.dart';
+import 'package:shorebird_cli/src/shorebird_java_mixin.dart';
+import 'package:shorebird_cli/src/shorebird_release_version_mixin.dart';
 import 'package:shorebird_cli/src/shorebird_validation_mixin.dart';
 import 'package:shorebird_code_push_client/shorebird_code_push_client.dart';
 
@@ -43,7 +45,9 @@ class PatchCommand extends ShorebirdCommand
         ShorebirdValidationMixin,
         ShorebirdConfigMixin,
         ShorebirdBuildMixin,
-        ShorebirdCreateAppMixin {
+        ShorebirdCreateAppMixin,
+        ShorebirdJavaMixin,
+        ShorebirdReleaseVersionMixin {
   /// {@macro patch_command}
   PatchCommand({
     required super.logger,
@@ -146,14 +150,11 @@ class PatchCommand extends ShorebirdCommand
       return ExitCode.software.code;
     }
 
-    final pubspecYaml = getPubspecYaml()!;
     final shorebirdYaml = getShorebirdYaml()!;
     final codePushClient = buildCodePushClient(
       httpClient: auth.client,
       hostedUri: hostedUri,
     );
-    final version = pubspecYaml.version!;
-    final versionString = version.toString();
 
     final List<App> apps;
     final fetchAppsProgress = logger.progress('Fetching apps');
@@ -177,8 +178,13 @@ Did you forget to run "shorebird init"?''',
       );
       return ExitCode.software.code;
     }
+    final bundlePath = flavor != null
+        ? './build/app/outputs/bundle/${flavor}Release/app-$flavor-release.aab'
+        : './build/app/outputs/bundle/release/app-release.aab';
 
     final releaseVersionArg = results['release-version'] as String?;
+    final releaseVersion = releaseVersionArg ??
+        await extractReleaseVersionFromAppBundle(bundlePath);
 
     if (dryRun) {
       logger
@@ -187,13 +193,6 @@ Did you forget to run "shorebird init"?''',
       return ExitCode.success.code;
     }
 
-    if (releaseVersionArg == null) logger.info('');
-
-    final releaseVersion = releaseVersionArg ??
-        logger.prompt(
-          'Which release is this patch for?',
-          defaultValue: versionString,
-        );
     final platform = results['platform'] as String;
     final channelArg = results['channel'] as String;
 
