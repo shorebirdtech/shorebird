@@ -50,6 +50,25 @@ We don't yet have a script to run tests locally. For now, we recommend using
 (If you run it in the root, it will find packages in bin/cache/flutter and try
 to run tests there, some of which will fail.)
 
+To generate a coverage report install `lcov`:
+
+```
+brew install lcov
+```
+
+Then run tests with the `--coverage` flag:
+
+```
+very_good test -r --coverage
+genhtml coverage/lcov.info -o coverage
+```
+
+You can view the generated coverage report via:
+
+```
+open coverage/index.html
+```
+
 ### Tracking coverage
 
 The following command will generate a coverage report for the Dart packages:
