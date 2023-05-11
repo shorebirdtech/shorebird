@@ -34,9 +34,10 @@ mixin ShorebirdReleaseVersionMixin on ShorebirdJavaMixin {
     ];
 
     final javaPath = getJavaPath();
+    final javaExecutable = getJavaExecutable() ?? 'java';
     final results = await Future.wait([
       process.run(
-        p.join(javaPath ?? '', 'java.exe'),
+        javaExecutable,
         versionNameArguments,
         runInShell: true,
         environment: {
@@ -44,7 +45,7 @@ mixin ShorebirdReleaseVersionMixin on ShorebirdJavaMixin {
         },
       ),
       process.run(
-        p.join(javaPath ?? '', 'java.exe'),
+        javaExecutable,
         versionCodeArguments,
         runInShell: true,
         environment: {

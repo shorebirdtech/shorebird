@@ -8,6 +8,16 @@ import 'package:shorebird_cli/src/command.dart';
 /// Mixin on [ShorebirdCommand] which exposes methods
 /// for determining the java path.
 mixin ShorebirdJavaMixin on ShorebirdCommand {
+  String? getJavaExecutable([Platform platform = const LocalPlatform()]) {
+    final javaPath = getJavaPath(platform);
+    if (javaPath == null) return null;
+    if (platform.isWindows) {
+      return p.join(javaPath, 'java.exe');
+    }else {}
+      return p.join(javaPath, 'java');
+    } 
+  }
+
   String? getJavaPath([Platform platform = const LocalPlatform()]) {
     if (platform.environment.containsKey('JAVA_HOME')) {
       return platform.environment['JAVA_HOME'];
