@@ -9,13 +9,11 @@ import 'package:shorebird_cli/src/command.dart';
 /// for determining the java path.
 mixin ShorebirdJavaMixin on ShorebirdCommand {
   String? getJavaExecutable([Platform platform = const LocalPlatform()]) {
+    if (!platform.isWindows) return 'java';
+
     final javaPath = getJavaPath(platform);
     if (javaPath == null) return null;
-    if (platform.isWindows) {
-      return p.join(javaPath, 'java.exe');
-    } else {
-      return p.join(javaPath, 'java');
-    }
+    return p.join(javaPath, 'java.exe');
   }
 
   String? getJavaPath([Platform platform = const LocalPlatform()]) {
