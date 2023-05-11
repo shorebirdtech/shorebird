@@ -10,7 +10,8 @@ export 'shorebird_version_validator.dart';
 
 /// Severity level of a [ValidationIssue].
 ///
-/// [error]s should be fixed before continuing development.
+/// [error]s will prevent code push from working and block releases, builds,
+///   patches, etc.
 /// [warning]s should be fixed before releasing your app, but are not as urgent.
 enum ValidationIssueSeverity {
   error,
