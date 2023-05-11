@@ -3,6 +3,28 @@ These are our old docs for our manual update process.
 `cutler` replaces some of this, but not all of it. Keeping these until
 `cutler` is fully functional.
 
+## Repository structure
+
+We maintain forks of:
+* flutter/flutter
+* flutter/engine
+* flutter/buildroot
+
+We keep our forked changes on the `main` branch of each repo which we rebase
+periodically on top of `main` from the upstream repo.
+
+When Flutter makes a release, we make a branch in each repo for the Flutter
+release and rebase necessary changes from main onto that branch.
+
+We keep channel branches (e.g. `beta`, `stable`) in the `shorebird` repo but
+do not do so in the other repos.
+
+The forked repos have branches corresponding to a Flutter release but do not
+keep branches corresponding to Shorebird or Flutter channels.
+
+`cutler` is able to print out all of the hashes in the forked repos for a given
+Shorebird hash (including any Shorebird channel or release tag).
+
 ## Keeping our fork up to date
 
 You need checkouts of all the various repos in the same directory.

@@ -1,7 +1,5 @@
 import 'dart:io';
 
-import 'package:args/args.dart';
-
 // https://github.com/dart-lang/sdk/issues/18466
 // https://github.com/dart-lang/path/issues/117#issuecomment-1034313012
 String expandUser(String path) {
@@ -39,28 +37,3 @@ class Config {
 }
 
 late final Config config;
-
-Config parseArgs(List<String> args) {
-  final parser = ArgParser()
-    ..addFlag('verbose', abbr: 'v')
-    ..addOption(
-      'root',
-      defaultsTo: '.',
-      help: 'Directory in which to find checkouts.',
-    )
-    ..addOption(
-      'flutter-channel',
-      defaultsTo: 'stable',
-      help: 'Upstream channel to propose rebasing onto.',
-    )
-    ..addFlag('dry-run', defaultsTo: true, help: 'Do not actually run git.')
-    ..addFlag('update', defaultsTo: true, help: 'Update checkouts.');
-  final results = parser.parse(args);
-  return Config(
-    verbose: results['verbose'] as bool,
-    checkoutsRoot: expandUser(results['root'] as String),
-    dryRun: results['dry-run'] as bool,
-    doUpdate: results['update'] as bool,
-    flutterChannel: results['flutter-channel'] as String,
-  );
-}

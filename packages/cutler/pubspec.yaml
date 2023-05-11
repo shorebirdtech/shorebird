@@ -12,5 +12,6 @@ dev_dependencies:
 
 dependencies:
   args: ^2.4.0
+  io: ^1.0.4
   meta: ^1.9.1
   path: ^1.8.3
