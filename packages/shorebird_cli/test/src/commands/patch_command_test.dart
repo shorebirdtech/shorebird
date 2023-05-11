@@ -658,6 +658,8 @@ base_url: $baseUrl''',
     });
 
     test('aborts if validation errors are present', () async {
+      final tempDir = setUpTempDir();
+      setUpTempArtifacts(tempDir);
       when(() => flutterValidator.validate(any())).thenAnswer(
         (_) async => [
           const ValidationIssue(
@@ -667,9 +669,12 @@ base_url: $baseUrl''',
         ],
       );
 
-      final result = await command.run();
+      final exitCode = await IOOverrides.runZoned(
+        command.run,
+        getCurrentDirectory: () => tempDir,
+      );
 
-      expect(result, equals(ExitCode.config.code));
+      expect(exitCode, equals(ExitCode.config.code));
       verify(() => logger.err('Aborting due to validation errors.')).called(1);
     });
   });

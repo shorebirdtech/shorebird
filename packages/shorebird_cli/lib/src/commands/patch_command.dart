@@ -134,7 +134,7 @@ class PatchCommand extends ShorebirdCommand
     final validationIssues = await runValidators();
     if (validationIssuesContainsError(validationIssues)) {
       logValidationFailure(issues: validationIssues);
-      return ExitCode.usage.code;
+      return ExitCode.config.code;
     }
 
     await cache.updateAll();
