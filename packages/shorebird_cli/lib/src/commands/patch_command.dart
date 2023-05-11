@@ -183,8 +183,19 @@ Did you forget to run "shorebird init"?''',
         : './build/app/outputs/bundle/release/app-release.aab';
 
     final releaseVersionArg = results['release-version'] as String?;
-    final releaseVersion = releaseVersionArg ??
-        await extractReleaseVersionFromAppBundle(bundlePath);
+    final String releaseVersion;
+
+    final detectReleaseVersionProgress = logger.progress(
+      'Detecting release version',
+    );
+    try {
+      releaseVersion = releaseVersionArg ??
+          await extractReleaseVersionFromAppBundle(bundlePath);
+      detectReleaseVersionProgress.complete();
+    } catch (error) {
+      detectReleaseVersionProgress.fail('$error');
+      return ExitCode.software.code;
+    }
 
     if (dryRun) {
       logger

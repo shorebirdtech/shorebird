@@ -35,7 +35,9 @@ class _MockShorebirdProcess extends Mock implements ShorebirdProcess {}
 void main() {
   group('release', () {
     const appId = 'test-app-id';
-    const version = '1.2.3+1';
+    const versionName = '1.2.3';
+    const versionCode = '1';
+    const version = '$versionName+$versionCode';
     const appDisplayName = 'Test App';
     const arch = 'aarch64';
     const platform = 'android';
@@ -71,7 +73,9 @@ flutter:
     late Auth auth;
     late Progress progress;
     late Logger logger;
-    late ProcessResult processResult;
+    late ProcessResult flutterBuildProcessResult;
+    late ProcessResult releaseVersionNameProcessResult;
+    late ProcessResult releaseVersionCodeProcessResult;
     late CodePushClient codePushClient;
     late ReleaseCommand command;
     late Uri? capturedHostedUri;
@@ -114,7 +118,9 @@ flutter:
       auth = _MockAuth();
       progress = _MockProgress();
       logger = _MockLogger();
-      processResult = _MockProcessResult();
+      flutterBuildProcessResult = _MockProcessResult();
+      releaseVersionNameProcessResult = _MockProcessResult();
+      releaseVersionCodeProcessResult = _MockProcessResult();
       codePushClient = _MockCodePushClient();
       flutterValidator = _MockShorebirdFlutterValidator();
       shorebirdProcess = _MockShorebirdProcess();
@@ -138,11 +144,24 @@ flutter:
 
       when(
         () => shorebirdProcess.run(
-          any(),
+          'flutter',
           any(),
           runInShell: any(named: 'runInShell'),
         ),
-      ).thenAnswer((_) async => processResult);
+      ).thenAnswer((_) async => flutterBuildProcessResult);
+      when(
+        () => shorebirdProcess.run(
+          'java',
+          any(),
+          runInShell: any(named: 'runInShell'),
+          environment: any(named: 'environment'),
+        ),
+      ).thenAnswer((invocation) async {
+        final args = invocation.positionalArguments[1] as List<String>;
+        return args.last == '/manifest/@android:versionCode'
+            ? releaseVersionCodeProcessResult
+            : releaseVersionNameProcessResult;
+      });
       when(() => argResults.rest).thenReturn([]);
       when(() => argResults['arch']).thenReturn(arch);
       when(() => argResults['platform']).thenReturn(platform);
@@ -153,7 +172,21 @@ flutter:
       when(
         () => logger.prompt(any(), defaultValue: any(named: 'defaultValue')),
       ).thenReturn(version);
-      when(() => processResult.exitCode).thenReturn(ExitCode.success.code);
+      when(
+        () => flutterBuildProcessResult.exitCode,
+      ).thenReturn(ExitCode.success.code);
+      when(
+        () => releaseVersionNameProcessResult.exitCode,
+      ).thenReturn(ExitCode.success.code);
+      when(
+        () => releaseVersionCodeProcessResult.exitCode,
+      ).thenReturn(ExitCode.success.code);
+      when(
+        () => releaseVersionNameProcessResult.stdout,
+      ).thenReturn(versionName);
+      when(
+        () => releaseVersionCodeProcessResult.stdout,
+      ).thenReturn(versionCode);
       when(
         () => codePushClient.getApps(),
       ).thenAnswer((_) async => [appMetadata]);
@@ -203,8 +236,8 @@ flutter:
     });
 
     test('exits with code 70 when building fails', () async {
-      when(() => processResult.exitCode).thenReturn(1);
-      when(() => processResult.stderr).thenReturn('oops');
+      when(() => flutterBuildProcessResult.exitCode).thenReturn(1);
+      when(() => flutterBuildProcessResult.stderr).thenReturn('oops');
 
       final tempDir = setUpTempDir();
       final exitCode = await IOOverrides.runZoned(
@@ -250,6 +283,42 @@ Did you forget to run "shorebird init"?''',
       expect(exitCode, ExitCode.software.code);
     });
 
+    test('errors when detecting release version name fails', () async {
+      const error = 'oops';
+      when(() => releaseVersionNameProcessResult.exitCode).thenReturn(1);
+      when(() => releaseVersionNameProcessResult.stderr).thenReturn(error);
+      final tempDir = setUpTempDir();
+      setUpTempArtifacts(tempDir);
+      final exitCode = await IOOverrides.runZoned(
+        command.run,
+        getCurrentDirectory: () => tempDir,
+      );
+      expect(exitCode, ExitCode.software.code);
+      verify(
+        () => progress.fail(
+          'Exception: Failed to extract version name from app bundle: $error',
+        ),
+      ).called(1);
+    });
+
+    test('errors when detecting release version code fails', () async {
+      const error = 'oops';
+      when(() => releaseVersionCodeProcessResult.exitCode).thenReturn(1);
+      when(() => releaseVersionCodeProcessResult.stderr).thenReturn(error);
+      final tempDir = setUpTempDir();
+      setUpTempArtifacts(tempDir);
+      final exitCode = await IOOverrides.runZoned(
+        command.run,
+        getCurrentDirectory: () => tempDir,
+      );
+      expect(exitCode, ExitCode.software.code);
+      verify(
+        () => progress.fail(
+          'Exception: Failed to extract version code from app bundle: $error',
+        ),
+      ).called(1);
+    });
+
     test('aborts when user opts out', () async {
       when(() => logger.confirm(any())).thenReturn(false);
       when(
@@ -267,91 +336,6 @@ Did you forget to run "shorebird init"?''',
       expect(exitCode, ExitCode.success.code);
       verify(() => logger.info('Aborting.')).called(1);
     });
-
-    test(
-      'prompts user for version until a valid version is provided',
-      () async {
-        final versionNumberResponses = [
-          'asdf',
-          'y',
-          '1.2.3',
-        ];
-        when(
-          () => logger.prompt(
-            'What is the version of this release?',
-            defaultValue: any(named: 'defaultValue'),
-          ),
-        ).thenAnswer((_) => versionNumberResponses.removeAt(0));
-        when(
-          () => logger.confirm(
-            any(that: contains('does not look like a version')),
-          ),
-        ).thenReturn(false);
-
-        final tempDir = setUpTempDir();
-        setUpTempArtifacts(tempDir);
-        final exitCode = await IOOverrides.runZoned(
-          command.run,
-          getCurrentDirectory: () => tempDir,
-        );
-
-        expect(exitCode, ExitCode.success.code);
-        verify(
-          () => logger.confirm(
-            any(
-              that: contains(
-                '"asdf" does not look like a version number',
-              ),
-            ),
-          ),
-        ).called(1);
-        verify(
-          () => logger.confirm(
-            any(
-              that: contains(
-                '"y" does not look like a version number',
-              ),
-            ),
-          ),
-        ).called(1);
-      },
-    );
-
-    test(
-      'prompts user for version until they choose to proceed anyways',
-      () async {
-        when(
-          () => logger.prompt(
-            'What is the version of this release?',
-            defaultValue: any(named: 'defaultValue'),
-          ),
-        ).thenReturn('asdf');
-        when(
-          () => logger.confirm(
-            any(that: contains('does not look like a version number')),
-          ),
-        ).thenReturn(true);
-
-        final tempDir = setUpTempDir();
-        setUpTempArtifacts(tempDir);
-        final exitCode = await IOOverrides.runZoned(
-          command.run,
-          getCurrentDirectory: () => tempDir,
-        );
-
-        expect(exitCode, ExitCode.success.code);
-        verify(
-          () => logger.confirm(
-            any(
-              that: contains(
-                '"asdf" does not look like a version number',
-              ),
-            ),
-          ),
-        ).called(1);
-        verify(() => logger.success('\n✅ Published Release!')).called(1);
-      },
-    );
 
     test('throws error when fetching releases fails.', () async {
       const error = 'something went wrong';

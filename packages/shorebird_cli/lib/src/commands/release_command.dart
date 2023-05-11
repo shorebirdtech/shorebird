@@ -133,7 +133,17 @@ Did you forget to run "shorebird init"?''',
         ? './build/app/outputs/bundle/${flavor}Release/app-$flavor-release.aab'
         : './build/app/outputs/bundle/release/app-release.aab';
 
-    final releaseVersion = await extractReleaseVersionFromAppBundle(bundlePath);
+    final String releaseVersion;
+    final detectReleaseVersionProgress = logger.progress(
+      'Detecting release version',
+    );
+    try {
+      releaseVersion = await extractReleaseVersionFromAppBundle(bundlePath);
+      detectReleaseVersionProgress.complete();
+    } catch (error) {
+      detectReleaseVersionProgress.fail('$error');
+      return ExitCode.software.code;
+    }
 
     final platform = results['platform'] as String;
     final archNames = architectures.keys.map(

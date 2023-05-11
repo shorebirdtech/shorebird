@@ -40,7 +40,9 @@ class _MockShorebirdProcess extends Mock implements ShorebirdProcess {}
 void main() {
   group('patch', () {
     const appId = 'test-app-id';
-    const version = '1.2.3+1';
+    const versionName = '1.2.3';
+    const versionCode = '1';
+    const version = '$versionName+$versionCode';
     const arch = 'aarch64';
     const platform = 'android';
     const channelName = 'stable';
@@ -88,6 +90,8 @@ flutter:
     late Logger logger;
     late ProcessResult flutterBuildProcessResult;
     late ProcessResult patchProcessResult;
+    late ProcessResult releaseVersionNameProcessResult;
+    late ProcessResult releaseVersionCodeProcessResult;
     late http.Client httpClient;
     late CodePushClient codePushClient;
     late Cache cache;
@@ -137,6 +141,8 @@ flutter:
       logger = _MockLogger();
       flutterBuildProcessResult = _MockProcessResult();
       patchProcessResult = _MockProcessResult();
+      releaseVersionNameProcessResult = _MockProcessResult();
+      releaseVersionCodeProcessResult = _MockProcessResult();
       httpClient = _MockHttpClient();
       codePushClient = _MockCodePushClient();
       flutterValidator = _MockShorebirdFlutterValidator();
@@ -183,6 +189,19 @@ flutter:
           ..writeAsStringSync('diff');
         return patchProcessResult;
       });
+      when(
+        () => shorebirdProcess.run(
+          'java',
+          any(),
+          runInShell: any(named: 'runInShell'),
+          environment: any(named: 'environment'),
+        ),
+      ).thenAnswer((invocation) async {
+        final args = invocation.positionalArguments[1] as List<String>;
+        return args.last == '/manifest/@android:versionCode'
+            ? releaseVersionCodeProcessResult
+            : releaseVersionNameProcessResult;
+      });
       when(() => argResults.rest).thenReturn([]);
       when(() => argResults['arch']).thenReturn(arch);
       when(() => argResults['platform']).thenReturn(platform);
@@ -200,6 +219,18 @@ flutter:
         () => flutterBuildProcessResult.exitCode,
       ).thenReturn(ExitCode.success.code);
       when(() => patchProcessResult.exitCode).thenReturn(ExitCode.success.code);
+      when(
+        () => releaseVersionNameProcessResult.exitCode,
+      ).thenReturn(ExitCode.success.code);
+      when(
+        () => releaseVersionCodeProcessResult.exitCode,
+      ).thenReturn(ExitCode.success.code);
+      when(
+        () => releaseVersionNameProcessResult.stdout,
+      ).thenReturn(versionName);
+      when(
+        () => releaseVersionCodeProcessResult.stdout,
+      ).thenReturn(versionCode);
       when(() => httpClient.send(any())).thenAnswer(
         (_) async => http.StreamedResponse(const Stream.empty(), HttpStatus.ok),
       );
@@ -344,6 +375,42 @@ Did you forget to run "shorebird init"?''',
       );
       expect(exitCode, ExitCode.success.code);
       verify(() => logger.info('Aborting.')).called(1);
+    });
+
+    test('errors when detecting release version name fails', () async {
+      const error = 'oops';
+      when(() => releaseVersionNameProcessResult.exitCode).thenReturn(1);
+      when(() => releaseVersionNameProcessResult.stderr).thenReturn(error);
+      final tempDir = setUpTempDir();
+      setUpTempArtifacts(tempDir);
+      final exitCode = await IOOverrides.runZoned(
+        command.run,
+        getCurrentDirectory: () => tempDir,
+      );
+      expect(exitCode, ExitCode.software.code);
+      verify(
+        () => progress.fail(
+          'Exception: Failed to extract version name from app bundle: $error',
+        ),
+      ).called(1);
+    });
+
+    test('errors when detecting release version code fails', () async {
+      const error = 'oops';
+      when(() => releaseVersionCodeProcessResult.exitCode).thenReturn(1);
+      when(() => releaseVersionCodeProcessResult.stderr).thenReturn(error);
+      final tempDir = setUpTempDir();
+      setUpTempArtifacts(tempDir);
+      final exitCode = await IOOverrides.runZoned(
+        command.run,
+        getCurrentDirectory: () => tempDir,
+      );
+      expect(exitCode, ExitCode.software.code);
+      verify(
+        () => progress.fail(
+          'Exception: Failed to extract version code from app bundle: $error',
+        ),
+      ).called(1);
     });
 
     test('throws error when fetching releases fails.', () async {
