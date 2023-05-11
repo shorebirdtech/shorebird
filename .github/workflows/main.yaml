@@ -97,7 +97,7 @@ jobs:
         uses: ./.github/actions/dart_package
         with:
           working_directory: packages/${{ matrix.package }}
-          min_coverage: ${{ matrix.package == 'cutler' && '0' || '100' }}
+          min_coverage: ${{ matrix.package == 'cutler' && '10' || '100' }}
 
   verify_packages:
     needs: changes
