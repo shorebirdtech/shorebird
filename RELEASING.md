@@ -29,47 +29,11 @@ The process must currently be run from an arm64 Mac as we depend on that for
 uploading the `patch` artifact.  We build patch artifacts from GitHub Actions
 for other platforms.
 
-(Should we change the script to upload to both dev and prod?  Just dev?  Just
-prod, e.g not bother with a separate dev for artifacts?  Should we have a
-separate script that promotes from dev to prod?)
+1. You can test the artifacts you built by modifying `bin/internal/flutter.version`
+   and commiting that to `codepush` branch in `shorebirdtech/flutter`.
 
-1. Once the artifacts for the shorebird engine are uploaded, we now need to
-teach artifact_proxy that they exist:
-https://github.com/shorebirdtech/shorebird/blob/main/packages/artifact_proxy/lib/config.dart
-
-e.g. https://github.com/shorebirdtech/shorebird/pull/286
-
-Once that's made and commited, it should automatically push to dev via GitHub
-actions:
-https://github.com/shorebirdtech/shorebird/actions/workflows/deploy_artifact_proxy_dev.yaml
-
-Currently the dev artifact proxy is:
-https://artifact-proxy-kmdbqkx7rq-uc.a.run.app/ (We should change that to be
-downloads-dev.shorebird.dev?)
-
-1. Once the dev proxy is live it's now possible to test your change locally. We
-don't currently have an easy way to point shorebird_cli at the dev proxy but you
-can modify your shorebird_cli to do so:
-https://github.com/shorebirdtech/shorebird/blob/5f435a9f0fad1a3ed308b21e5be0a9e87408d6e4/packages/shorebird_cli/lib/src/shorebird_process.dart#L89
-
-1. To test your changes you also need to modify `flutter`. (See also
-FORKING_FLUTTER.md).
-
-I recommend testing the change (and the previous changes), by changing your
-local shorebird/bin/cache/flutter/bin/internal/engine.version to your engine
-version.
-
-At this point, assuming `shorebird` in your path points to your development
-checkout you should be able to test your changes with `shorebird release` and
-`shorebird patch`?
-
-1. Once you believe your changes are working you can commit the change to
-  `flutter`. We *should* update `shorebird_cli` dependencies to reflect this
-change, but that's not wired up yet.
-
-1.  Once our forked flutter is pushed, we also need to update shorebird_cli to
-  match the correct engine revision (this will go away when
-  https://github.com/shorebirdtech/shorebird/issues/282 is fixed).
+1.  Once `codepush` flutter is pushed, we also need to update shorebird_cli
+    to pull the correct `flutter` revision.  `bin/internal/flutter.version`.
 
 1.  We also need to bump the `shorebird_cli` version in the `pubspec.yaml` and
     run `dart pub run build_runner build --delete-conflicting-outputs` to update
@@ -80,15 +44,9 @@ e.g.  https://github.com/shorebirdtech/shorebird/pull/287
 
 1.  To deploy the backend to production, navigate to the GitHub Actions at https://github.com/shorebirdtech/_shorebird/actions and select the Prod Deploy action (https://github.com/shorebirdtech/_shorebird/actions/workflows/deploy_prod.yaml). Click "Run workflow" and select the branch from the drop-down (we have been promoting from main but should probably switch to a release branch or tags?).
 
-1. We also currently need to push our
-forked version of `shorebirdtech/flutter` to `stable` as well, that step should
-be removed soon: https://github.com/shorebirdtech/shorebird/issues/282.
-
-e.g. https://github.com/shorebirdtech/flutter/pull/2
-
 1. Once all these changes are done, we push a new version of the CLI by pushing
 to the `stable` branch on `shorebird`.
 
-
-
-
+```
+git push origin main:stable
+```

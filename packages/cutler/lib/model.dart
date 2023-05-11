@@ -5,28 +5,24 @@ enum Repo {
     name: 'shorebird',
     path: '_shorebird/shorebird',
     url: 'https://github.com/shorebirdtech/shorebird.git',
-    releaseBranch: 'origin/stable',
     upstreamBranch: 'origin/main',
   ),
   flutter(
     name: 'flutter',
     path: 'flutter',
     url: 'https://github.com/shorebirdtech/flutter.git',
-    releaseBranch: 'origin/stable',
     upstreamBranch: 'upstream/stable',
   ),
   engine(
     name: 'engine',
     path: 'engine/src/flutter',
     url: 'https://github.com/shorebirdtech/engine.git',
-    releaseBranch: 'origin/stable_codepush',
     upstreamBranch: 'upstream/master',
   ),
   buildroot(
     name: 'buildroot',
     path: 'engine/src',
     url: 'https://github.com/shorebirdtech/builddoor.git',
-    releaseBranch: 'origin/stable_codepush',
     upstreamBranch: 'upstream/master',
   );
 
@@ -34,14 +30,12 @@ enum Repo {
     required this.name,
     required this.path,
     required this.url,
-    required this.releaseBranch,
     required this.upstreamBranch,
   });
 
   final String name;
   final String path;
   final String url;
-  final String releaseBranch;
   final String upstreamBranch;
 }
 

@@ -3,9 +3,9 @@ import 'dart:io';
 import 'package:mason_logger/mason_logger.dart';
 import 'package:shorebird_cli/src/auth_logger_mixin.dart';
 import 'package:shorebird_cli/src/command.dart';
-import 'package:shorebird_cli/src/flutter_validation_mixin.dart';
 import 'package:shorebird_cli/src/shorebird_build_mixin.dart';
 import 'package:shorebird_cli/src/shorebird_config_mixin.dart';
+import 'package:shorebird_cli/src/shorebird_validation_mixin.dart';
 
 /// {@template build_app_bundle_command}
 ///
@@ -23,7 +23,18 @@ class BuildAppBundleCommand extends ShorebirdCommand
     required super.logger,
     super.auth,
     super.validators,
-  });
+  }) {
+    argParser
+      ..addOption(
+        'target',
+        abbr: 't',
+        help: 'The main entrypoint file of the application.',
+      )
+      ..addOption(
+        'flavor',
+        help: 'The product flavor to use when building the app.',
+      );
+  }
 
   @override
   String get description => 'Build an Android App Bundle file from your app.';
@@ -40,18 +51,24 @@ class BuildAppBundleCommand extends ShorebirdCommand
 
     await logValidationIssues();
 
+    final flavor = results['flavor'] as String?;
+    final target = results['target'] as String?;
     final buildProgress = logger.progress('Building appbundle');
     try {
-      await buildAppBundle();
+      await buildAppBundle(flavor: flavor, target: target);
     } on ProcessException catch (error) {
       buildProgress.fail('Failed to build: ${error.message}');
       return ExitCode.software.code;
     }
 
+    final bundlePath = flavor != null
+        ? './build/app/outputs/bundle/${flavor}Release/app-$flavor-release.aab'
+        : './build/app/outputs/bundle/release/app-release.aab';
+
     buildProgress.complete();
     logger.info('''
 📦 Generated an app bundle at:
-${lightCyan.wrap("./build/app/outputs/bundle/release/app-release.aab")}''');
+${lightCyan.wrap(bundlePath)}''');
 
     return ExitCode.success.code;
   }

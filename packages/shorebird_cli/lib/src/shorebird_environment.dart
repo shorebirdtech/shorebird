@@ -42,7 +42,7 @@ abstract class ShorebirdEnvironment {
     return _flutterRevision ??
         File(
           p.join(shorebirdRoot.path, 'bin', 'internal', 'flutter.version'),
-        ).readAsStringSync();
+        ).readAsStringSync().trim();
   }
 
   /// The root of the Shorebird-vended Flutter git checkout.

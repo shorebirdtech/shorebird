@@ -1,0 +1,10 @@
+.dockerignore
+Dockerfile
+coverage/
+build/
+.dart_tool/
+.git/
+.github/
+.gitignore
+.idea/
+.packages

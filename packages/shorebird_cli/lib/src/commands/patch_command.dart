@@ -7,10 +7,12 @@ import 'package:mason_logger/mason_logger.dart';
 import 'package:path/path.dart' as p;
 import 'package:shorebird_cli/src/auth_logger_mixin.dart';
 import 'package:shorebird_cli/src/command.dart';
-import 'package:shorebird_cli/src/flutter_validation_mixin.dart';
+import 'package:shorebird_cli/src/config/shorebird_yaml.dart';
+import 'package:shorebird_cli/src/formatters/formatters.dart';
 import 'package:shorebird_cli/src/shorebird_build_mixin.dart';
 import 'package:shorebird_cli/src/shorebird_config_mixin.dart';
 import 'package:shorebird_cli/src/shorebird_create_app_mixin.dart';
+import 'package:shorebird_cli/src/shorebird_validation_mixin.dart';
 import 'package:shorebird_code_push_client/shorebird_code_push_client.dart';
 
 /// Metadata about a patch artifact that we are about to upload.
@@ -74,6 +76,15 @@ class PatchCommand extends ShorebirdCommand
         },
         defaultsTo: 'stable',
       )
+      ..addOption(
+        'target',
+        abbr: 't',
+        help: 'The main entrypoint file of the application.',
+      )
+      ..addOption(
+        'flavor',
+        help: 'The product flavor to use when building the app.',
+      )
       ..addFlag(
         'force',
         abbr: 'f',
@@ -124,9 +135,11 @@ class PatchCommand extends ShorebirdCommand
 
     await cache.updateAll();
 
+    final flavor = results['flavor'] as String?;
+    final target = results['target'] as String?;
     final buildProgress = logger.progress('Building patch');
     try {
-      await buildAppBundle();
+      await buildAppBundle(flavor: flavor, target: target);
       buildProgress.complete();
     } on ProcessException catch (error) {
       buildProgress.fail('Failed to build: ${error.message}');
@@ -154,11 +167,12 @@ class PatchCommand extends ShorebirdCommand
       return ExitCode.software.code;
     }
 
-    final app = apps.firstWhereOrNull((a) => a.id == shorebirdYaml.appId);
+    final appId = shorebirdYaml.getAppId(flavor: flavor);
+    final app = apps.firstWhereOrNull((a) => a.id == appId);
     if (app == null) {
       logger.err(
         '''
-Could not find app with id: "${shorebirdYaml.appId}".
+Could not find app with id: "$appId".
 Did you forget to run "shorebird init"?''',
       );
       return ExitCode.software.code;
@@ -247,6 +261,7 @@ Please create a release using "shorebird release" and try again.
 
     final patchArtifactBundles = <Arch, PatchArtifactBundle>{};
     final createDiffProgress = logger.progress('Creating artifacts');
+    final sizes = <Arch, int>{};
 
     for (final releaseArtifactPath in releaseArtifactPaths.entries) {
       final archMetadata = architectures[releaseArtifactPath.key]!;
@@ -256,7 +271,7 @@ Please create a release using "shorebird release" and try again.
         'app',
         'intermediates',
         'stripped_native_libs',
-        'release',
+        flavor != null ? '${flavor}Release' : 'release',
         'out',
         'lib',
         archMetadata.path,
@@ -269,6 +284,7 @@ Please create a release using "shorebird release" and try again.
           releaseArtifactPath: releaseArtifactPath.value,
           patchArtifactPath: patchArtifactPath,
         );
+        sizes[releaseArtifactPath.key] = await File(diffPath).length();
         patchArtifactBundles[releaseArtifactPath.key] = PatchArtifactBundle(
           arch: archMetadata.arch,
           path: diffPath,
@@ -281,17 +297,26 @@ Please create a release using "shorebird release" and try again.
     }
     createDiffProgress.complete();
 
-    final archNames = patchArtifactBundles.keys.map((arch) => arch.name);
+    final archMetadata = patchArtifactBundles.keys.map((arch) {
+      final name = arch.name;
+      final size = formatBytes(sizes[arch]!);
+      return '$name ($size)';
+    });
+
+    final summary = [
+      '''📱 App: ${lightCyan.wrap(app.displayName)} ${lightCyan.wrap('(${app.id})')}''',
+      if (flavor != null) '🍧 Flavor: ${lightCyan.wrap(flavor)}',
+      '📦 Release Version: ${lightCyan.wrap(releaseVersion)}',
+      '📺 Channel: ${lightCyan.wrap(channelArg)}',
+      '''🕹️  Platform: ${lightCyan.wrap(platform)} ${lightCyan.wrap('[${archMetadata.join(', ')}]')}''',
+    ];
 
     logger.info(
       '''
 
 ${styleBold.wrap(lightGreen.wrap('🚀 Ready to publish a new patch!'))}
 
-📱 App: ${lightCyan.wrap(app.displayName)} ${lightCyan.wrap('(${app.id})')}
-📦 Release Version: ${lightCyan.wrap(releaseVersion)}
-📺 Channel: ${lightCyan.wrap(channelArg)}
-🕹️  Platform: ${lightCyan.wrap(platform)} ${lightCyan.wrap('(${archNames.join(', ')})')}
+${summary.join('\n')}
 ''',
     );
 

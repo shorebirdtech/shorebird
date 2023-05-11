@@ -9,6 +9,7 @@ targets:
             - cast_nullable_to_non_nullable
             - lines_longer_than_80_chars
             - strict_raw_type
+            - unnecessary_lambdas
       json_serializable:
         options:
           field_rename: snake

@@ -107,7 +107,7 @@ flutter:
       return tempDir;
     }
 
-    void setUpTempArtifacts(Directory dir) {
+    void setUpTempArtifacts(Directory dir, {String? flavor}) {
       for (final archMetadata
           in ShorebirdBuildMixin.allAndroidArchitectures.values) {
         final artifactPath = p.join(
@@ -116,7 +116,7 @@ flutter:
           'app',
           'intermediates',
           'stripped_native_libs',
-          'release',
+          flavor != null ? '${flavor}Release' : 'release',
           'out',
           'lib',
           archMetadata.path,
@@ -175,7 +175,14 @@ flutter:
           any(),
           runInShell: any(named: 'runInShell'),
         ),
-      ).thenAnswer((_) async => patchProcessResult);
+      ).thenAnswer((invocation) async {
+        final args = invocation.positionalArguments[1] as List<String>;
+        final diffPath = args[2];
+        File(diffPath)
+          ..createSync(recursive: true)
+          ..writeAsStringSync('diff');
+        return patchProcessResult;
+      });
       when(() => argResults.rest).thenReturn([]);
       when(() => argResults['arch']).thenReturn(arch);
       when(() => argResults['platform']).thenReturn(platform);
@@ -560,6 +567,39 @@ Please create a release using "shorebird release" and try again.
     test('succeeds when patch is successful', () async {
       final tempDir = setUpTempDir();
       setUpTempArtifacts(tempDir);
+      final exitCode = await IOOverrides.runZoned(
+        command.run,
+        getCurrentDirectory: () => tempDir,
+      );
+      verify(
+        () => logger.info(
+          any(
+            that: contains(
+              '''🕹️  Platform: ${lightCyan.wrap(platform)} ${lightCyan.wrap('[arm64 (4 B), arm32 (4 B), x86_64 (4 B)]')}''',
+            ),
+          ),
+        ),
+      ).called(1);
+      verify(() => logger.success('\n✅ Published Patch!')).called(1);
+      expect(exitCode, ExitCode.success.code);
+      expect(capturedHostedUri, isNull);
+    });
+
+    test(
+        'succeeds when patch is successful '
+        'with flavors and target', () async {
+      const flavor = 'development';
+      const target = './lib/main_development.dart';
+      when(() => argResults['flavor']).thenReturn(flavor);
+      when(() => argResults['target']).thenReturn(target);
+      final tempDir = setUpTempDir();
+      File(
+        p.join(tempDir.path, 'shorebird.yaml'),
+      ).writeAsStringSync('''
+app_id: productionAppId
+flavors:
+  development: $appId''');
+      setUpTempArtifacts(tempDir, flavor: flavor);
       final exitCode = await IOOverrides.runZoned(
         command.run,
         getCurrentDirectory: () => tempDir,

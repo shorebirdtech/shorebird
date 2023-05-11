@@ -132,5 +132,15 @@ void main() {
       );
       verifyNever(() => client.getManifest(any()));
     });
+
+    test('should return explainer at /', () async {
+      const path = '/';
+      final request = buildRequest(path);
+      final response = await handler(request);
+      expect(response.statusCode, equals(HttpStatus.ok));
+      verifyNever(() => client.getManifest(any()));
+      expect(response.headers['content-type'], equals('text/html'));
+      expect(response.readAsString(), completion(contains('Shorebird')));
+    });
   });
 }

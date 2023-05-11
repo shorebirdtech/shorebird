@@ -6,11 +6,13 @@ import 'package:mason_logger/mason_logger.dart';
 import 'package:path/path.dart' as p;
 import 'package:shorebird_cli/src/auth_logger_mixin.dart';
 import 'package:shorebird_cli/src/command.dart';
-import 'package:shorebird_cli/src/flutter_validation_mixin.dart';
+import 'package:shorebird_cli/src/config/shorebird_yaml.dart';
 import 'package:shorebird_cli/src/shorebird_build_mixin.dart';
 import 'package:shorebird_cli/src/shorebird_config_mixin.dart';
 import 'package:shorebird_cli/src/shorebird_create_app_mixin.dart';
+import 'package:shorebird_cli/src/shorebird_validation_mixin.dart';
 import 'package:shorebird_code_push_client/shorebird_code_push_client.dart';
+import 'package:version/version.dart';
 
 /// {@template release_command}
 /// `shorebird release`
@@ -42,6 +44,21 @@ class ReleaseCommand extends ShorebirdCommand
         allowed: ['android'],
         allowedHelp: {'android': 'The Android platform.'},
         defaultsTo: 'android',
+      )
+      ..addOption(
+        'target',
+        abbr: 't',
+        help: 'The main entrypoint file of the application.',
+      )
+      ..addOption(
+        'flavor',
+        help: 'The product flavor to use when building the app.',
+      )
+      ..addFlag(
+        'force',
+        abbr: 'f',
+        help: 'Release without confirmation if there are no errors.',
+        negatable: false,
       );
   }
 
@@ -73,9 +90,11 @@ make smaller updates to your app.
 
     await logValidationIssues();
 
+    final flavor = results['flavor'] as String?;
+    final target = results['target'] as String?;
     final buildProgress = logger.progress('Building release');
     try {
-      await buildAppBundle();
+      await buildAppBundle(flavor: flavor, target: target);
       buildProgress.complete();
     } on ProcessException catch (error) {
       buildProgress.fail('Failed to build: ${error.message}');
@@ -103,11 +122,12 @@ make smaller updates to your app.
       return ExitCode.software.code;
     }
 
-    final app = apps.firstWhereOrNull((a) => a.id == shorebirdYaml.appId);
+    final appId = shorebirdYaml.getAppId(flavor: flavor);
+    final app = apps.firstWhereOrNull((a) => a.id == appId);
     if (app == null) {
       logger.err(
         '''
-Could not find app with id: "${shorebirdYaml.appId}".
+Could not find app with id: "$appId".
 Did you forget to run "shorebird init"?''',
       );
       return ExitCode.software.code;
@@ -117,31 +137,55 @@ Did you forget to run "shorebird init"?''',
 
     if (releaseVersionArg == null) logger.info('');
 
-    final releaseVersion = releaseVersionArg ??
-        logger.prompt(
-          'What is the version of this release?',
-          defaultValue: versionString,
+    String? releaseVersion;
+    var releaseVersionInput = releaseVersionArg;
+    while (releaseVersion == null) {
+      releaseVersionInput = releaseVersionInput ??
+          logger.prompt(
+            'What is the version of this release?',
+            defaultValue: versionString,
+          );
+      try {
+        releaseVersion = Version.parse(releaseVersionInput).toString();
+      } catch (error) {
+        final shouldContinue = logger.confirm(
+          '''"$releaseVersionInput" does not look like a version number. Proceed anyways?''',
         );
+        if (shouldContinue) {
+          releaseVersion = releaseVersionInput;
+        } else {
+          releaseVersionInput = null;
+        }
+      }
+    }
 
     final platform = results['platform'] as String;
     final archNames = architectures.keys.map(
       (arch) => arch.name,
     );
+    final summary = [
+      '''📱 App: ${lightCyan.wrap(app.displayName)} ${lightCyan.wrap('(${app.id})')}''',
+      if (flavor != null) '🍧 Flavor: ${lightCyan.wrap(flavor)}',
+      '📦 Release Version: ${lightCyan.wrap(releaseVersion)}',
+      '''🕹️  Platform: ${lightCyan.wrap(platform)} ${lightCyan.wrap('(${archNames.join(', ')})')}''',
+    ];
 
     logger.info('''
 
 ${styleBold.wrap(lightGreen.wrap('🚀 Ready to create a new release!'))}
 
-📱 App: ${lightCyan.wrap(app.displayName)} ${lightCyan.wrap('(${app.id})')}
-📦 Release Version: ${lightCyan.wrap(releaseVersion)}
-🕹️  Platform: ${lightCyan.wrap(platform)} ${lightCyan.wrap('(${archNames.join(', ')})')}
+${summary.join('\n')}
 ''');
 
-    final confirm = logger.confirm('Would you like to continue?');
+    final force = results['force'] == true;
+    final needConfirmation = !force;
+    if (needConfirmation) {
+      final confirm = logger.confirm('Would you like to continue?');
 
-    if (!confirm) {
-      logger.info('Aborting.');
-      return ExitCode.success.code;
+      if (!confirm) {
+        logger.info('Aborting.');
+        return ExitCode.success.code;
+      }
     }
 
     late final List<Release> releases;
@@ -154,7 +198,8 @@ ${styleBold.wrap(lightGreen.wrap('🚀 Ready to create a new release!'))}
       return ExitCode.software.code;
     }
 
-    var release = releases.firstWhereOrNull((r) => r.version == releaseVersion);
+    var release = releases
+        .firstWhereOrNull((r) => r.version == releaseVersion.toString());
     if (release == null) {
       final createReleaseProgress = logger.progress('Creating release');
       try {
@@ -177,7 +222,7 @@ ${styleBold.wrap(lightGreen.wrap('🚀 Ready to create a new release!'))}
         'app',
         'intermediates',
         'stripped_native_libs',
-        'release',
+        flavor != null ? '${flavor}Release' : 'release',
         'out',
         'lib',
         archMetadata.path,
@@ -202,12 +247,16 @@ ${styleBold.wrap(lightGreen.wrap('🚀 Ready to create a new release!'))}
 
     createArtifactProgress.complete();
 
+    final bundlePath = flavor != null
+        ? './build/app/outputs/bundle/${flavor}Release/app-$flavor-release.aab'
+        : './build/app/outputs/bundle/release/app-release.aab';
+
     logger
       ..success('\n✅ Published Release!')
       ..info('''
 
 Your next step is to upload the app bundle to the Play Store.
-${lightCyan.wrap("./build/app/outputs/bundle/release/app-release.aab")}
+${lightCyan.wrap(bundlePath)}
 
 See the following link for more information:    
 ${link(uri: Uri.parse('https://support.google.com/googleplay/android-developer/answer/9859152?hl=en'))}

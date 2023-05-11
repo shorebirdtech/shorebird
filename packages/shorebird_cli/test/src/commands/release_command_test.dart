@@ -89,7 +89,7 @@ flutter:
       return tempDir;
     }
 
-    void setUpTempArtifacts(Directory dir) {
+    void setUpTempArtifacts(Directory dir, {String? flavor}) {
       for (final archMetadata
           in ShorebirdBuildMixin.allAndroidArchitectures.values) {
         final artifactPath = p.join(
@@ -98,7 +98,7 @@ flutter:
           'app',
           'intermediates',
           'stripped_native_libs',
-          'release',
+          flavor != null ? '${flavor}Release' : 'release',
           'out',
           'lib',
           archMetadata.path,
@@ -253,8 +253,11 @@ Did you forget to run "shorebird init"?''',
     test('aborts when user opts out', () async {
       when(() => logger.confirm(any())).thenReturn(false);
       when(
-        () => logger.prompt(any(), defaultValue: any(named: 'defaultValue')),
-      ).thenReturn(appDisplayName);
+        () => logger.prompt(
+          'What is the version of this release?',
+          defaultValue: any(named: 'defaultValue'),
+        ),
+      ).thenAnswer((_) => '1.0.0');
       final tempDir = setUpTempDir();
       setUpTempArtifacts(tempDir);
       final exitCode = await IOOverrides.runZoned(
@@ -264,6 +267,91 @@ Did you forget to run "shorebird init"?''',
       expect(exitCode, ExitCode.success.code);
       verify(() => logger.info('Aborting.')).called(1);
     });
+
+    test(
+      'prompts user for version until a valid version is provided',
+      () async {
+        final versionNumberResponses = [
+          'asdf',
+          'y',
+          '1.2.3',
+        ];
+        when(
+          () => logger.prompt(
+            'What is the version of this release?',
+            defaultValue: any(named: 'defaultValue'),
+          ),
+        ).thenAnswer((_) => versionNumberResponses.removeAt(0));
+        when(
+          () => logger.confirm(
+            any(that: contains('does not look like a version')),
+          ),
+        ).thenReturn(false);
+
+        final tempDir = setUpTempDir();
+        setUpTempArtifacts(tempDir);
+        final exitCode = await IOOverrides.runZoned(
+          command.run,
+          getCurrentDirectory: () => tempDir,
+        );
+
+        expect(exitCode, ExitCode.success.code);
+        verify(
+          () => logger.confirm(
+            any(
+              that: contains(
+                '"asdf" does not look like a version number',
+              ),
+            ),
+          ),
+        ).called(1);
+        verify(
+          () => logger.confirm(
+            any(
+              that: contains(
+                '"y" does not look like a version number',
+              ),
+            ),
+          ),
+        ).called(1);
+      },
+    );
+
+    test(
+      'prompts user for version until they choose to proceed anyways',
+      () async {
+        when(
+          () => logger.prompt(
+            'What is the version of this release?',
+            defaultValue: any(named: 'defaultValue'),
+          ),
+        ).thenReturn('asdf');
+        when(
+          () => logger.confirm(
+            any(that: contains('does not look like a version number')),
+          ),
+        ).thenReturn(true);
+
+        final tempDir = setUpTempDir();
+        setUpTempArtifacts(tempDir);
+        final exitCode = await IOOverrides.runZoned(
+          command.run,
+          getCurrentDirectory: () => tempDir,
+        );
+
+        expect(exitCode, ExitCode.success.code);
+        verify(
+          () => logger.confirm(
+            any(
+              that: contains(
+                '"asdf" does not look like a version number',
+              ),
+            ),
+          ),
+        ).called(1);
+        verify(() => logger.success('\n✅ Published Release!')).called(1);
+      },
+    );
 
     test('throws error when fetching releases fails.', () async {
       const error = 'something went wrong';
@@ -326,9 +414,52 @@ Did you forget to run "shorebird init"?''',
       expect(exitCode, ExitCode.software.code);
     });
 
+    test(
+        'does not prompt for confirmation '
+        'when --release-version and --force are used', () async {
+      when(() => argResults['force']).thenReturn(true);
+      when(() => argResults['release-version']).thenReturn(version);
+      final tempDir = setUpTempDir();
+      setUpTempArtifacts(tempDir);
+      final exitCode = await IOOverrides.runZoned(
+        command.run,
+        getCurrentDirectory: () => tempDir,
+      );
+      verify(() => logger.success('\n✅ Published Release!')).called(1);
+      expect(exitCode, ExitCode.success.code);
+      expect(capturedHostedUri, isNull);
+      verifyNever(
+        () => logger.prompt(any(), defaultValue: any(named: 'defaultValue')),
+      );
+    });
+
     test('succeeds when release is successful', () async {
       final tempDir = setUpTempDir();
       setUpTempArtifacts(tempDir);
+      final exitCode = await IOOverrides.runZoned(
+        command.run,
+        getCurrentDirectory: () => tempDir,
+      );
+      verify(() => logger.success('\n✅ Published Release!')).called(1);
+      expect(exitCode, ExitCode.success.code);
+      expect(capturedHostedUri, isNull);
+    });
+
+    test(
+        'succeeds when release is successful '
+        'with flavors and target', () async {
+      const flavor = 'development';
+      const target = './lib/main_development.dart';
+      when(() => argResults['flavor']).thenReturn(flavor);
+      when(() => argResults['target']).thenReturn(target);
+      final tempDir = setUpTempDir();
+      File(
+        p.join(tempDir.path, 'shorebird.yaml'),
+      ).writeAsStringSync('''
+app_id: productionAppId
+flavors:
+  development: $appId''');
+      setUpTempArtifacts(tempDir, flavor: flavor);
       final exitCode = await IOOverrides.runZoned(
         command.run,
         getCurrentDirectory: () => tempDir,

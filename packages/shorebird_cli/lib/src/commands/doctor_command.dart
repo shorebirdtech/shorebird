@@ -18,6 +18,13 @@ class DoctorCommand extends ShorebirdCommand with ShorebirdVersionMixin {
     super.validators,
   }) {
     validators = _allValidators(baseValidators: validators);
+
+    argParser.addFlag(
+      'fix',
+      abbr: 'f',
+      help: 'Fix issues where possible.',
+      negatable: false,
+    );
   }
 
   late final List<Validator> _doctorValidators = [
@@ -36,33 +43,85 @@ class DoctorCommand extends ShorebirdCommand with ShorebirdVersionMixin {
 
   @override
   Future<int> run() async {
+    final shouldFix = results['fix'] == true;
+
     logger.info('''
 
 Shorebird v$packageVersion
 Shorebird Engine • revision ${ShorebirdEnvironment.shorebirdEngineRevision}''');
 
-    var numIssues = 0;
+    final allIssues = <ValidationIssue>[];
+    final allFixableIssues = <ValidationIssue>[];
     for (final validator in validators) {
+      final failedFixes = <ValidationIssue, dynamic>{};
       final progress = logger.progress(validator.description);
       final issues = await validator.validate(process);
-      numIssues += issues.length;
       if (issues.isEmpty) {
         progress.complete();
-      } else {
-        progress.fail();
+        continue;
+      }
 
-        for (final issue in issues) {
-          logger.info('  ${issue.displayMessage}');
+      final fixableIssues = issues.where((issue) => issue.fix != null);
+      var unresolvedIssues = issues;
+      if (fixableIssues.isNotEmpty) {
+        if (shouldFix) {
+          // If --fix flag was used and there are fixable issues, fix them.
+          progress.update('Fixing');
+          for (final issue in fixableIssues) {
+            try {
+              await issue.fix!();
+            } catch (error) {
+              failedFixes[issue] = error;
+            }
+          }
+
+          // Re-run the validator to see if there are any remaining issues that
+          // we couldn't fix.
+          unresolvedIssues = await validator.validate(process);
+          if (unresolvedIssues.isEmpty) {
+            final numFixed = issues.length - unresolvedIssues.length;
+            final fixAppliedMessage =
+                '($numFixed fix${numFixed == 1 ? '' : 'es'} applied)';
+            progress.complete(
+              '''${validator.description} ${green.wrap(fixAppliedMessage)}''',
+            );
+            continue;
+          }
+        } else {
+          allFixableIssues.addAll(issues);
         }
       }
+
+      progress.fail(validator.description);
+
+      for (final issue in failedFixes.keys) {
+        logger.err(
+          '''  An error occurred while attempting to fix ${issue.message}: ${failedFixes[issue]}''',
+        );
+      }
+
+      for (final issue in unresolvedIssues) {
+        logger.info('  ${issue.displayMessage}');
+      }
+
+      allIssues.addAll(unresolvedIssues);
     }
 
     logger.info('');
 
-    if (numIssues == 0) {
+    if (allIssues.isEmpty) {
       logger.info('No issues detected!');
     } else {
+      final numIssues = allIssues.length;
       logger.info('$numIssues issue${numIssues == 1 ? '' : 's'} detected.');
+
+      if (allFixableIssues.isNotEmpty && !shouldFix) {
+        final fixableIssueCount = allFixableIssues.length;
+        logger.info(
+          '''
+$fixableIssueCount issue${fixableIssueCount == 1 ? '' : 's'} can be fixed automatically with ${lightCyan.wrap('shorebird doctor --fix')}.''',
+        );
+      }
     }
 
     return ExitCode.success.code;

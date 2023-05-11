@@ -3,6 +3,7 @@
 [![Discord](https://dcbadge.vercel.app/api/server/9hKJcWGcaB)](https://discord.gg/9hKJcWGcaB)
 
 [![ci](https://github.com/shorebirdtech/shorebird/actions/workflows/main.yaml/badge.svg)](https://github.com/shorebirdtech/shorebird/actions/workflows/main.yaml)
+[![e2e](https://github.com/shorebirdtech/shorebird/actions/workflows/e2e.yaml/badge.svg)](https://github.com/shorebirdtech/shorebird/actions/workflows/e2e.yaml)
 [![License: MIT](https://img.shields.io/badge/license-MIT-blue.svg)](./LICENSE-MIT)
 [![License: Apache](https://img.shields.io/badge/license-Apache-orange.svg)](./LICENSE-APACHE)
 
@@ -10,14 +11,8 @@ Home of the Shorebird Tools
 
 ## Status
 
-We're in the process of converting the quick demos written by one person, into a
-multi-contributor project usable by others. Previous demo code can be found at:
-https://github.com/shorebirdtech/old_repo
-
-## Getting Started
-
-Refer to [shorebird/install](https://github.com/shorebirdtech/install) for
-installation instructions.
+Shorebird code push is in Open Beta!  Instructions for install and usage are at
+https://docs.shorebird.dev/
 
 ## Packages
 
@@ -28,8 +23,8 @@ This repository is a monorepo containing the following packages:
 | [shorebird_cli](packages/shorebird_cli/README.md)                               | Command-line which allows developers to interact with various Shorebird services        |
 | [shorebird_code_push_client](packages/shorebird_code_push_client/README.md)     | Dart library which allows Dart applications to interact with the ShoreBird CodePush API |
 | [shorebird_code_push_protocol](packages/shorebird_code_push_protocol/README.md) | Dart library which contains common interfaces used by Shorebird CodePush                |
+| [discord_gcp_alerts](packages/discord_gcp_alerts/README.md)                     | Dart server which forwards GCP alerts to Discord                                        |
 | [jwt](packages/jwt/README.md)                                                   | Dart library for verifying Json Web Tokens                                              |
-| [updater](updater/README.md)                                                    | Rust library which handles the CodePush logic and does the real update work             |
 
 For more information, please refer to the documentation for each package.
 
@@ -44,17 +39,16 @@ If you're interested in contributing, please join us on
 
 Working on Shorebird requires Dart and Rust.
 
-We currently assume the Dart from the Flutter SDK on the 'stable' channel. Due
-to the way the Dart compiler works, Shorebird requires an exact version of
-Flutter/Dart to operate correctly today.
-
 Once both are installed, `./scripts/bootstrap.sh` will run `pub get` all
 packages in the repository.
 
 ### Running tests
 
-We don't yet have a script to run tests locally. For now, you can run tests
-manually by running `dart test` in a Dart package directory.
+We don't yet have a script to run tests locally. For now, we recommend using
+`very_good test -r` in the packages directory to run all shorebird tests.
+
+(If you run it in the root, it will find packages in bin/cache/flutter and try
+to run tests there, some of which will fail.)
 
 ### Tracking coverage
 

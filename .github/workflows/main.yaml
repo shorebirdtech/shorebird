@@ -35,6 +35,10 @@ jobs:
               - ./.github/workflows/main.yaml
               - ./.github/actions/dart_package
               - packages/artifact_proxy/**
+            discord_gcp_alerts:
+              - ./.github/workflows/main.yaml
+              - ./.github/actions/dart_package
+              - packages/discord_gcp_alerts/**
             shorebird_cli:
               - ./.github/workflows/main.yaml
               - ./.github/actions/dart_package

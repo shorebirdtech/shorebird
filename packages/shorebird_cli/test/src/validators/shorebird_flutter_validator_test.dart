@@ -15,7 +15,7 @@ class _MockPlatform extends Mock implements Platform {}
 class _MockShorebirdProcess extends Mock implements ShorebirdProcess {}
 
 void main() {
-  group('ShorebirdFlutterValidator', () {
+  group(ShorebirdFlutterValidator, () {
     const flutterRevision = '45fc514f1a9c347a3af76b02baf980a4d88b7879';
     const gitStatusMessage = '''
 HEAD detached at 45fc514f
@@ -91,13 +91,19 @@ Tools • Dart 2.19.6 • DevTools 2.20.1
           workingDirectory: any(named: 'workingDirectory'),
         ),
       ).thenAnswer((_) async => gitStatusProcessResult);
-      when(() => shorebirdProcess.run('flutter', ['--version']))
-          .thenAnswer((_) async => shorebirdFlutterVersionProcessResult);
+      when(
+        () => shorebirdProcess.run(
+          'flutter',
+          ['--version'],
+          runInShell: any(named: 'runInShell'),
+        ),
+      ).thenAnswer((_) async => shorebirdFlutterVersionProcessResult);
       when(
         () => shorebirdProcess.run(
           'flutter',
           ['--version'],
           useVendedFlutter: false,
+          runInShell: any(named: 'runInShell'),
         ),
       ).thenAnswer((_) async => pathFlutterVersionProcessResult);
 
@@ -154,11 +160,25 @@ Tools • Dart 2.19.6 • DevTools 2.20.1
     });
 
     test(
-      'warns when path flutter version does not match shorebird flutter'
-      ' version',
+      'does not warn if flutter version and shorebird flutter version have same'
+      ' major and minor but different patch versions',
       () async {
         when(() => pathFlutterVersionProcessResult.stdout).thenReturn(
           pathFlutterVersionMessage.replaceAll('3.7.9', '3.7.10'),
+        );
+
+        final results = await validator.validate(shorebirdProcess);
+
+        expect(results, isEmpty);
+      },
+    );
+
+    test(
+      'warns when path flutter version has different major or minor version '
+      'than shorebird flutter',
+      () async {
+        when(() => pathFlutterVersionProcessResult.stdout).thenReturn(
+          pathFlutterVersionMessage.replaceAll('3.7.9', '3.8.9'),
         );
 
         final results = await validator.validate(shorebirdProcess);
@@ -196,26 +216,76 @@ Tools • Dart 2.19.6 • DevTools 2.20.1
       },
     );
 
-    test('throws exception if flutter version output is malformed', () async {
+    test('throws exception if path flutter version output is malformed',
+        () async {
       when(() => pathFlutterVersionProcessResult.stdout)
           .thenReturn('OH NO THERE IS NO FLUTTER VERSION HERE');
 
-      expect(() async => validator.validate(shorebirdProcess), throwsException);
+      final results = await validator.validate(shorebirdProcess);
+
+      expect(results, hasLength(1));
+      expect(
+        results[0],
+        isA<ValidationIssue>().having(
+          (exception) => exception.message,
+          'message',
+          contains('Failed to determine path Flutter version'),
+        ),
+      );
     });
 
-    test('prints stderr output and throws if version check fails', () async {
+    test('prints stderr output and throws if path Flutterversion check fails',
+        () async {
       when(() => pathFlutterVersionProcessResult.exitCode).thenReturn(1);
       when(() => pathFlutterVersionProcessResult.stderr)
           .thenReturn('error getting Flutter version');
 
+      final results = await validator.validate(shorebirdProcess);
+
+      expect(results, hasLength(1));
       expect(
-        () async => validator.validate(shorebirdProcess),
-        throwsA(
-          isA<FlutterValidationException>().having(
-            (e) => e.message,
-            'message',
-            contains('error getting Flutter version'),
-          ),
+        results[0],
+        isA<ValidationIssue>().having(
+          (exception) => exception.message,
+          'message',
+          contains('Failed to determine path Flutter version'),
+        ),
+      );
+    });
+
+    test('throws exception if shorebird flutter version output is malformed',
+        () async {
+      when(() => shorebirdFlutterVersionProcessResult.stdout)
+          .thenReturn('OH NO THERE IS NO FLUTTER VERSION HERE');
+
+      final results = await validator.validate(shorebirdProcess);
+
+      expect(results, hasLength(1));
+      expect(
+        results[0],
+        isA<ValidationIssue>().having(
+          (exception) => exception.message,
+          'message',
+          contains('Failed to determine Shorebird Flutter version'),
+        ),
+      );
+    });
+
+    test('prints stderr output and throws if path Flutterversion check fails',
+        () async {
+      when(() => shorebirdFlutterVersionProcessResult.exitCode).thenReturn(1);
+      when(() => shorebirdFlutterVersionProcessResult.stderr)
+          .thenReturn('error getting Flutter version');
+
+      final results = await validator.validate(shorebirdProcess);
+
+      expect(results, hasLength(1));
+      expect(
+        results[0],
+        isA<ValidationIssue>().having(
+          (exception) => exception.message,
+          'message',
+          contains('Failed to determine Shorebird Flutter version'),
         ),
       );
     });

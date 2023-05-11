@@ -1,3 +1,5 @@
+import 'dart:async';
+
 import 'package:mason_logger/mason_logger.dart';
 import 'package:meta/meta.dart';
 import 'package:shorebird_cli/src/shorebird_process.dart';
@@ -30,13 +32,20 @@ extension Display on ValidationIssueSeverity {
 /// A (potential) problem with the current Shorebird installation or project.
 @immutable
 class ValidationIssue {
-  const ValidationIssue({required this.severity, required this.message});
+  const ValidationIssue({
+    required this.severity,
+    required this.message,
+    this.fix,
+  });
 
   /// How important it is to fix this issue.
   final ValidationIssueSeverity severity;
 
   /// A description of the issue.
   final String message;
+
+  /// Fixes this issue.
+  final FutureOr<void> Function()? fix;
 
   /// A console-friendly description of this issue.
   String? get displayMessage {

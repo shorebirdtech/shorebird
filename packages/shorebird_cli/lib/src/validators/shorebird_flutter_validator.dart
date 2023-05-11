@@ -1,12 +1,16 @@
 import 'package:shorebird_cli/src/shorebird_environment.dart';
 import 'package:shorebird_cli/src/shorebird_process.dart';
 import 'package:shorebird_cli/src/validators/validators.dart';
+import 'package:version/version.dart';
 
 class FlutterValidationException implements Exception {
   const FlutterValidationException(this.message);
 
   /// The message associated with the exception.
   final String message;
+
+  @override
+  String toString() => 'FlutterValidationException: $message';
 }
 
 class ShorebirdFlutterValidator extends Validator {
@@ -55,22 +59,50 @@ class ShorebirdFlutterValidator extends Validator {
       );
     }
 
-    final shorebirdFlutterVersion = await _shorebirdFlutterVersion(process);
-    final pathFlutterVersion = await _pathFlutterVersion(process);
-
-    if (shorebirdFlutterVersion != pathFlutterVersion) {
-      final message = '''
-The version of Flutter that Shorebird includes and the Flutter on your path are different.
-\tShorebird Flutter: $shorebirdFlutterVersion
-\tSystem Flutter:    $pathFlutterVersion
-This can cause unexpected behavior if you are switching between the tools and the version gap is wide. If you have any trouble, please let us know on Shorebird discord.''';
-
+    String? shorebirdFlutterVersionString;
+    try {
+      shorebirdFlutterVersionString = await _shorebirdFlutterVersion(process);
+    } catch (error) {
       issues.add(
         ValidationIssue(
-          severity: ValidationIssueSeverity.warning,
-          message: message,
+          severity: ValidationIssueSeverity.error,
+          message: 'Failed to determine Shorebird Flutter version. $error',
         ),
       );
+    }
+
+    String? pathFlutterVersionString;
+    try {
+      pathFlutterVersionString = await _pathFlutterVersion(process);
+    } catch (error) {
+      issues.add(
+        ValidationIssue(
+          severity: ValidationIssueSeverity.error,
+          message: 'Failed to determine path Flutter version. $error',
+        ),
+      );
+    }
+
+    if (shorebirdFlutterVersionString != null &&
+        pathFlutterVersionString != null) {
+      final shorebirdFlutterVersion =
+          Version.parse(shorebirdFlutterVersionString);
+      final pathFlutterVersion = Version.parse(pathFlutterVersionString);
+      if (shorebirdFlutterVersion.major != pathFlutterVersion.major ||
+          shorebirdFlutterVersion.minor != pathFlutterVersion.minor) {
+        final message = '''
+The version of Flutter that Shorebird includes and the Flutter on your path are different.
+\tShorebird Flutter: $shorebirdFlutterVersionString
+\tSystem Flutter:    $pathFlutterVersionString
+This can cause unexpected behavior if you are switching between the tools and the version gap is wide. If you have any trouble, please let us know on Shorebird discord.''';
+
+        issues.add(
+          ValidationIssue(
+            severity: ValidationIssueSeverity.warning,
+            message: message,
+          ),
+        );
+      }
     }
 
     final flutterStorageEnvironmentValue =
@@ -133,13 +165,12 @@ This can cause unexpected behavior if you are switching between the tools and th
       'flutter',
       ['--version'],
       useVendedFlutter: !checkPathFlutter,
+      runInShell: true,
     );
 
     if (result.exitCode != 0) {
       throw FlutterValidationException(
-        '''
-        Flutter version check did not complete successfully.
-        ${result.stderr}''',
+        'Flutter version check did not complete successfully. ${result.stderr}',
       );
     }
 
@@ -147,7 +178,7 @@ This can cause unexpected behavior if you are switching between the tools and th
     final match = _flutterVersionRegex.firstMatch(output);
     if (match == null) {
       throw FlutterValidationException(
-        'Could not find version match in $output',
+        'Could not find version number in $output',
       );
     }
 

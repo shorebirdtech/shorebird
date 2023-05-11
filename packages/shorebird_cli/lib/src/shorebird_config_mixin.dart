@@ -9,7 +9,7 @@ import 'package:yaml/yaml.dart';
 import 'package:yaml_edit/yaml_edit.dart';
 
 mixin ShorebirdConfigMixin on ShorebirdCommand {
-  bool get hasShorebirdYaml => getShorebirdYaml() != null;
+  bool get hasShorebirdYaml => getShorebirdYamlFile().existsSync();
 
   bool get hasPubspecYaml => getPubspecYaml() != null;
 
@@ -36,8 +36,12 @@ mixin ShorebirdConfigMixin on ShorebirdCommand {
     return assets.contains('shorebird.yaml');
   }
 
+  File getShorebirdYamlFile() {
+    return File(p.join(Directory.current.path, 'shorebird.yaml'));
+  }
+
   ShorebirdYaml? getShorebirdYaml() {
-    final file = File(p.join(Directory.current.path, 'shorebird.yaml'));
+    final file = getShorebirdYamlFile();
     if (!file.existsSync()) return null;
     final yaml = file.readAsStringSync();
     return checkedYamlDecode(yaml, (m) => ShorebirdYaml.fromJson(m!));
@@ -50,17 +54,25 @@ mixin ShorebirdConfigMixin on ShorebirdCommand {
     return Pubspec.parse(yaml);
   }
 
-  ShorebirdYaml addShorebirdYamlToProject(String appId) {
-    File(
-      p.join(Directory.current.path, 'shorebird.yaml'),
-    ).writeAsStringSync('''
-# This file is used to configure the Shorebird CLI.
+  ShorebirdYaml addShorebirdYamlToProject(
+    String appId, {
+    Map<String, String>? flavors,
+  }) {
+    const content = '''
+# This file is used to configure the Shorebird updater used by your application.
 # Learn more at https://shorebird.dev
+# This file should be checked into version control.
 
 # This is the unique identifier assigned to your app.
-# It is used by your app to request the correct patches from the Shorebird servers.
-app_id: $appId
-''');
+# It is used by your app to request the correct patches from Shorebird servers.
+app_id:
+''';
+
+    final editor = YamlEditor(content)..update(['app_id'], appId);
+
+    if (flavors != null) editor.update(['flavors'], flavors);
+
+    getShorebirdYamlFile().writeAsStringSync(editor.toString());
 
     return ShorebirdYaml(appId: appId);
   }

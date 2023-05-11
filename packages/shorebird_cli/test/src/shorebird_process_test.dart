@@ -1,6 +1,7 @@
 import 'dart:io';
 
 import 'package:mocktail/mocktail.dart';
+import 'package:path/path.dart' as p;
 import 'package:shorebird_cli/src/shorebird_process.dart';
 import 'package:test/test.dart';
 
@@ -80,7 +81,11 @@ void main() {
 
         verify(
           () => processWrapper.run(
-            any(that: contains('bin/cache/flutter/bin/flutter')),
+            any(
+              that: contains(
+                p.join('bin', 'cache', 'flutter', 'bin', 'flutter'),
+              ),
+            ),
             ['--version'],
             runInShell: true,
             environment: flutterStorageBaseUrlEnv,
@@ -158,10 +163,11 @@ void main() {
     });
 
     test('adds local-engine arguments if set', () async {
+      final localEngineSrcPath = p.join('path', 'to', 'engine', 'src');
       shorebirdProcess = ShorebirdProcess(
         processWrapper: processWrapper,
-        engineConfig: const EngineConfig(
-          localEngineSrcPath: '/path/to/engine/src',
+        engineConfig: EngineConfig(
+          localEngineSrcPath: localEngineSrcPath,
           localEngine: 'android_release_arm64',
         ),
       );
@@ -172,7 +178,7 @@ void main() {
         () => processWrapper.run(
           any(),
           [
-            '--local-engine-src-path=/path/to/engine/src',
+            '--local-engine-src-path=$localEngineSrcPath',
             '--local-engine=android_release_arm64',
           ],
           runInShell: any(named: 'runInShell'),
@@ -201,7 +207,11 @@ void main() {
 
         verify(
           () => processWrapper.start(
-            any(that: contains('bin/cache/flutter/bin/flutter')),
+            any(
+              that: contains(
+                p.join('bin', 'cache', 'flutter', 'bin', 'flutter'),
+              ),
+            ),
             ['run'],
             runInShell: true,
             environment: flutterStorageBaseUrlEnv,
@@ -240,7 +250,11 @@ void main() {
 
       verify(
         () => processWrapper.start(
-          any(that: contains('bin/cache/flutter/bin/flutter')),
+          any(
+            that: contains(
+              p.join('bin', 'cache', 'flutter', 'bin', 'flutter'),
+            ),
+          ),
           ['--version'],
           runInShell: true,
           environment: {
