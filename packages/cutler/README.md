@@ -1,24 +1,34 @@
 # Cutler
-A tool for managing our fork of Flutter
 
-"Someone who makes or sells cutlery is a cutler." - Wikipedia
+A tool for keeping our fork of Flutter up-to-date with the primary Flutter.
 
-"Forks are considered cutlery, right?" - Me
+> "Someone who makes or sells cutlery is a cutler." - Wikipedia
+> 
+> "Forks are considered cutlery, right?" - Me
 
+## Prerequisites
+
+A directory containing git checkouts of:
+- `shorebird` (this repo)
+- [Our fork of `flutter`](https://github.com/shorebirdtech/flutter)
+  - NOTE: you will need to add the primary Flutter repo as an upstream:
+    `git remote add upstream https://github.com/flutter/flutter`
 
 ## Usage
 
-Typical usage:
-```
+Typical usage, where `root` is the directory containing the git checkouts:
+
+```bash
 dart run cutler --root=$HOME/Documents/GitHub --dry-run
 ```
 
-If you're running `cutler` repeatedly, you might also use `--no-update` after
-the first run to avoid waiting to try and update git repos.
+> **📝 NOTE:**
+> If you're running `cutler` repeatedly, you might also use `--no-update` after
+> the first run to avoid waiting to try and update git repos.
 
 You can also see what the current stable changes would look like applied to
 another Flutter channel with `--flutter-channel`, e.g.:
-```
+```bash
 dart run cutler --root=$HOME/Documents/GitHub --dry-run --flutter-channel=beta
 ```
 
