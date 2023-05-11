@@ -159,6 +159,10 @@ void main() {
           containsAll(
             badManifestPaths.map(
               (path) => ValidationIssue(
+                // The AndroidManifest.xml used for release builds is located at
+                // android/app/src/main/AndroidManifest.xml. This is the only
+                // manifest file that fail validation with an error if the
+                // INTERNET permission is missing.
                 severity: path.contains('main')
                     ? ValidationIssueSeverity.error
                     : ValidationIssueSeverity.warning,
