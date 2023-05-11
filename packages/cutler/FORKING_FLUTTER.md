@@ -22,8 +22,9 @@ do not do so in the other repos.
 The forked repos have branches corresponding to a Flutter release but do not
 keep branches corresponding to Shorebird or Flutter channels.
 
-`cutler` is able to print out all of the hashes in the forked repos for a given
-Shorebird hash (including any Shorebird channel or release tag).
+`cutler print-versions` is able to print out all of the hashes in the forked
+repos for a given Shorebird hash (including any Shorebird channel or release
+tag).
 
 ## Keeping our fork up to date
 
