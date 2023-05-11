@@ -6,6 +6,10 @@ A tool for keeping our fork of Flutter up-to-date with the primary Flutter.
 > 
 > "Forks are considered cutlery, right?" - Me
 
+Cutler has two subcommands:
+* `rebase` for updating our fork of Flutter
+* `print-versions` for printing out the versions of a given Shorebird hash
+
 ## Prerequisites
 
 A directory containing git checkouts of:
@@ -19,7 +23,7 @@ A directory containing git checkouts of:
 Typical usage, where `root` is the directory containing the git checkouts:
 
 ```bash
-dart run cutler --root=$HOME/Documents/GitHub --dry-run
+dart run cutler rebase --root=$HOME/Documents/GitHub --dry-run
 ```
 
 > **📝 NOTE:**
@@ -28,8 +32,8 @@ dart run cutler --root=$HOME/Documents/GitHub --dry-run
 
 You can also see what the current stable changes would look like applied to
 another Flutter channel with `--flutter-channel`, e.g.:
-```bash
-dart run cutler --root=$HOME/Documents/GitHub --dry-run --flutter-channel=beta
+```
+dart run cutler rebase --root=$HOME/Documents/GitHub --dry-run --flutter-channel=beta
 ```
 
 `--dry-run` will show you the changes it plans to make.  Actually making the
@@ -37,7 +41,7 @@ changes might work, but hasn't been tested yet.
 
 Example invocation, exploring porting a 3.7.12 based fork onto 3.10 (beta):
 ```
-% dart run cutler --root=$HOME/Documents/GitHub --dry-run --no-update --flutter-channel=beta
+% dart run cutler rebase --root=$HOME/Documents/GitHub --dry-run --no-update --flutter-channel=beta
 Building package executable... 
 Built cutler:cutler.
 Shorebird stable:
