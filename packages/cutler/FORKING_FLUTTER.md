@@ -92,29 +92,29 @@ Updating shorebird flutter version...
 ```
 git rebase --onto f24f62fa5381c0e415b6ca2000600fc0600c11c8 8747bce41d0dc6d9dc45c4d1b46d2100bb9ee688 7383548fa2306b5d53979ac5e9d176b35258811b
 ```
-2. Save the commit id from that rebase you'll need it to edit the DEPS file in
+2. Save the commit id from that rebase -- you'll need it to edit the DEPS file in
 the engine repo.  In this example it was "d6c410f19de5947de40ce110c1e768c887870072".
 
 3. Rebase the engine on top of the new engine hash, e.g.
 ```
 git rebase --onto 3.10.0-1.5.pre 3.7.12 c415419390e4751ddfa3110e0808e7abb3d45a18
 ```
-This might have conflicts, if so you'll need to resolve them, if the conflict
+If there are conflicts, you'll need to resolve them.  If the conflict
 is in the DEPS file, you can take it as an opportunity to insert the new
 buildroot hash.
 
-4. Save the commit id from that rebase you'll need it to edit the engine.version
+4. Save the commit id from that rebase -- you'll need it to edit the engine.version
 file in the flutter repo.  In this example it was "94bc1218b84cc0199068f8788cda96e3128784a0".
 
 5. Rebase the flutter repo on top of the new flutter hash, e.g.
 ```
 git rebase --onto 3.10.0-1.5.pre 3.7.12 83305b5088e6fe327fb3334a73ff190828d85713
 ```
-This might have conflicts, if so you'll need to resolve them, if the conflict
+This might have conflicts, if so you'll need to resolve them.  If the conflict
 is in the DEPS file, you can take it as an opportunity to insert the new
 engine hash.
 
-6. Save the commit id from that rebase you'll need it to edit the flutter.version
+6. Save the commit id from that rebase -- you'll need it to edit the flutter.version
 file in the shorebird repo.  In this example it was "f498c3913890e7a022596029c7f07f467b0889da".
 
 7. Update the flutter.version file in the shorebird repo to the new flutter
