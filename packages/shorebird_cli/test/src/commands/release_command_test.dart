@@ -33,7 +33,7 @@ class _MockShorebirdFlutterValidator extends Mock
 class _MockShorebirdProcess extends Mock implements ShorebirdProcess {}
 
 void main() {
-  group('release', () {
+  group(ReleaseCommand, () {
     const appId = 'test-app-id';
     const version = '1.2.3+1';
     const appDisplayName = 'Test App';
@@ -497,6 +497,26 @@ flavors:
       verify(
         () => logger.info(any(that: contains('Flutter issue 2'))),
       ).called(1);
+    });
+
+    test('aborts if validation errors are present', () async {
+      when(() => flutterValidator.validate(any())).thenAnswer(
+        (_) async => [
+          const ValidationIssue(
+            severity: ValidationIssueSeverity.error,
+            message: 'There was an issue',
+          ),
+        ],
+      );
+
+      final tempDir = setUpTempDir();
+      setUpTempArtifacts(tempDir);
+      final exitCode = await IOOverrides.runZoned(
+        command.run,
+        getCurrentDirectory: () => tempDir,
+      );
+      expect(exitCode, equals(ExitCode.config.code));
+      verify(() => logger.err('Aborting due to validation errors.')).called(1);
     });
   });
 }

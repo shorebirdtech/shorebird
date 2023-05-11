@@ -28,7 +28,7 @@ class _MockShorebirdFlutterValidator extends Mock
 class _MockShorebirdProcess extends Mock implements ShorebirdProcess {}
 
 void main() {
-  group('build apk', () {
+  group(BuildApkCommand, () {
     late ArgResults argResults;
     late http.Client httpClient;
     late Auth auth;
@@ -193,6 +193,33 @@ ${lightCyan.wrap("./build/app/outputs/apk/$flavor/release/app-$flavor-release.ap
       ).called(1);
       verify(
         () => logger.info(any(that: contains('Flutter issue 2'))),
+      ).called(1);
+    });
+
+    test('aborts if validation errors are present', () async {
+      when(() => flutterValidator.validate(any())).thenAnswer(
+        (_) async => [
+          ValidationIssue(
+            severity: ValidationIssueSeverity.error,
+            message: 'There was an issue',
+            fix: () async {},
+          ),
+        ],
+      );
+
+      final result = await command.run();
+
+      expect(result, equals(ExitCode.config.code));
+      verify(() => logger.err('Aborting due to validation errors.')).called(1);
+      verify(
+        () => logger.info(
+          any(
+            that: stringContainsInOrder([
+              'issue can be fixed automatically',
+              'shorebird doctor --fix',
+            ]),
+          ),
+        ),
       ).called(1);
     });
   });
