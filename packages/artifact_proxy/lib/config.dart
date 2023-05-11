@@ -25,6 +25,9 @@ final engineArtifactPatterns = {
   r'flutter_infra_release\/flutter\/(.*)\/ios\/artifacts\.zip',
   r'flutter_infra_release\/flutter\/(.*)\/ios-release\/artifacts\.zip',
   r'flutter_infra_release\/flutter\/(.*)\/ios-profile\/artifacts\.zip',
+  // Web SDK seems to be all-platform after 3.10.0.
+  r'flutter_infra_release\/flutter\/(.*)\/flutter-web-sdk\.zip',
+  // Platform-specific web-sdks may no longer needed as of 3.10.0?
   r'flutter_infra_release\/flutter\/(.*)\/flutter-web-sdk-windows-x64\.zip',
   r'flutter_infra_release\/flutter\/(.*)\/flutter-web-sdk-linux-x64\.zip',
   r'flutter_infra_release\/flutter\/(.*)\/flutter-web-sdk-darwin-x64\.zip',
