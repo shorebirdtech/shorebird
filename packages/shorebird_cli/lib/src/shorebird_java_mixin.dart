@@ -13,9 +13,9 @@ mixin ShorebirdJavaMixin on ShorebirdCommand {
     if (javaPath == null) return null;
     if (platform.isWindows) {
       return p.join(javaPath, 'java.exe');
-    }else {}
+    } else {
       return p.join(javaPath, 'java');
-    } 
+    }
   }
 
   String? getJavaPath([Platform platform = const LocalPlatform()]) {
