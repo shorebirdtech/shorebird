@@ -32,12 +32,10 @@ mixin ShorebirdValidationMixin on ShorebirdCommand {
     logger.err('Aborting due to validation errors.');
 
     final fixableIssues = issues.where((issue) => issue.fix != null);
-    if (fixableIssues.isEmpty) {
-      return;
+    if (fixableIssues.isNotEmpty) {
+      logger.info(
+        '''${fixableIssues.length} issue${fixableIssues.length == 1 ? '' : 's'} can be fixed automatically with ${lightCyan.wrap('shorebird doctor --fix')}.''',
+      );
     }
-
-    logger.info(
-      '''${fixableIssues.length} issue${fixableIssues.length == 1 ? '' : 's'} can be fixed automatically with ${lightCyan.wrap('shorebird doctor --fix')}.''',
-    );
   }
 }
