@@ -28,8 +28,8 @@ mixin ShorebirdJavaMixin on ShorebirdCommand {
     }
 
     final candidateLocations = [
-      p.join(androidStudioPath, 'jbr'),
-      p.join(androidStudioPath, 'jre'),
+      p.join(androidStudioPath, 'jbr', 'bin'),
+      p.join(androidStudioPath, 'jre', 'bin'),
     ];
 
     return candidateLocations.firstWhereOrNull(
