@@ -1,5 +1,9 @@
 name: ci
 
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
 on:
   pull_request:
     branches:
@@ -35,6 +39,10 @@ jobs:
               - ./.github/workflows/main.yaml
               - ./.github/actions/dart_package
               - packages/artifact_proxy/**
+            cutler:
+              - ./.github/workflows/main.yaml
+              - ./.github/actions/dart_package
+              - packages/cutler/**
             discord_gcp_alerts:
               - ./.github/workflows/main.yaml
               - ./.github/actions/dart_package
@@ -89,6 +97,7 @@ jobs:
         uses: ./.github/actions/dart_package
         with:
           working_directory: packages/${{ matrix.package }}
+          min_coverage: ${{ matrix.package == 'cutler' && '10' || '100' }}
 
   verify_packages:
     needs: changes
