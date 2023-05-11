@@ -16,6 +16,10 @@ periodically on top of `main` from the upstream repo.
 When Flutter makes a release, we make a branch in each repo for the Flutter
 release and rebase necessary changes from main onto that branch.
 
+The only reason we need to create branches is to keep our forked commits alive.
+You don't directly check out these branches (unless you plan to make a hotfix)
+but instead Shorebird will pull them using its `flutter.version` file, etc.
+
 We keep channel branches (e.g. `beta`, `stable`) in the `shorebird` repo but
 do not do so in the other repos.
 
@@ -25,6 +29,19 @@ keep branches corresponding to Shorebird or Flutter channels.
 `cutler print-versions` is able to print out all of the hashes in the forked
 repos for a given Shorebird hash (including any Shorebird channel or release
 tag).
+
+For example, when updating to the Flutter 3.7.10 release, we created the
+following branches:
+* flutter/flutter: `shorebird/3.7.10`
+* flutter/engine: `shorebird/3.7.10`
+* flutter/buildroot: `shorebird/3.7.10`
+* shorebird: no branch or tag, just a commit to the `main` branch which will
+  eventually get pushed to `beta` and `stable` branches for Shorebird.
+
+It's rare that we will ever need to add commits to one of these branches,
+since changes to our fork are rare.  We might also chose not to back-port
+changes to our fork to previous releases, but instead wait for the next
+Flutter release to include them.
 
 ## Keeping our fork up to date
 
@@ -38,7 +55,7 @@ git clone https://github.com/shorebirdtech/_shorebird
 ```
 To check out the engine, you should follow:
 https://github.com/shorebirdtech/updater/blob/main/BUILDING_ENGINE.md
-it will result in an `engine` directory in the same directory as `_shorebird`.
+which will result in an `engine` directory in the same directory as `_shorebird`.
 
 Run `cutler` to get the git commands you need.
 
