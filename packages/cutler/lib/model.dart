@@ -1,5 +1,6 @@
 import 'package:meta/meta.dart';
 
+/// Configuration information for each of our repos.
 enum Repo {
   shorebird(
     name: 'shorebird',
@@ -39,6 +40,17 @@ enum Repo {
   final String upstreamBranch;
 }
 
+/// Paths to version files in each repo.
+enum Paths {
+  engineDEPS('DEPS'),
+  flutterEngineVersion('bin/internal/engine.version'),
+  shorebirdFlutterVersion('bin/internal/flutter.version');
+
+  const Paths(this.path);
+  final String path;
+}
+
+/// An object to pair a [hash] with a [repo].
 @immutable
 class Version {
   const Version({
@@ -71,6 +83,7 @@ class Version {
   int get hashCode => Object.hashAll([hash, repo]);
 }
 
+/// An object to hold a set of versions that make up a Flutter release.
 class VersionSet {
   const VersionSet({
     required this.engine,
