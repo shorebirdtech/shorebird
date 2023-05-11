@@ -32,9 +32,9 @@ tag).
 
 For example, when updating to the Flutter 3.7.10 release, we created the
 following branches:
-* flutter/flutter: `shorebird/3.7.10`
-* flutter/engine: `shorebird/3.7.10`
-* flutter/buildroot: `shorebird/3.7.10`
+* flutter/flutter: `flutter_release/3.7.10`
+* flutter/engine: `flutter_release/3.7.10`
+* flutter/buildroot: `flutter_release/3.7.10`
 * shorebird: no branch or tag, just a commit to the `main` branch which will
   eventually get pushed to `beta` and `stable` branches for Shorebird.
 
