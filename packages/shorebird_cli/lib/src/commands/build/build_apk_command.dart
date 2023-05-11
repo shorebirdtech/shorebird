@@ -49,7 +49,11 @@ class BuildApkCommand extends ShorebirdCommand
       return ExitCode.noUser.code;
     }
 
-    await logValidationIssues();
+    final validationIssues = await runValidators();
+    if (validationIssuesContainsError(validationIssues)) {
+      logValidationFailure(issues: validationIssues);
+      return ExitCode.usage.code;
+    }
 
     final flavor = results['flavor'] as String?;
     final target = results['target'] as String?;

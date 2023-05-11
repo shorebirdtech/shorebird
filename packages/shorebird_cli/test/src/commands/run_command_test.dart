@@ -36,7 +36,7 @@ class _MockShorebirdFlutterValidator extends Mock
 class _MockShorebirdProcess extends Mock implements ShorebirdProcess {}
 
 void main() {
-  group('run', () {
+  group(RunCommand, () {
     late ArgResults argResults;
     late http.Client httpClient;
     late Auth auth;
@@ -214,7 +214,7 @@ void main() {
       when(() => androidInternetPermissionValidator.validate(any())).thenAnswer(
         (_) async => [
           const ValidationIssue(
-            severity: ValidationIssueSeverity.error,
+            severity: ValidationIssueSeverity.warning,
             message: 'Android issue',
           ),
         ],
@@ -246,6 +246,32 @@ void main() {
       verify(
         () => logger.info(any(that: contains('Android issue'))),
       ).called(1);
+    });
+
+    test('aborts on validation errors', () async {
+      when(() => androidInternetPermissionValidator.validate(any())).thenAnswer(
+        (_) async => [
+          const ValidationIssue(
+            severity: ValidationIssueSeverity.error,
+            message: 'Android issue',
+          ),
+        ],
+      );
+      final tempDir = Directory.systemTemp.createTempSync();
+
+      final progress = _MockProgress();
+      when(() => logger.progress(any())).thenReturn(progress);
+
+      final result = await IOOverrides.runZoned(
+        () => runCommand.run(),
+        getCurrentDirectory: () => tempDir,
+      );
+
+      await expectLater(result, equals(ExitCode.config.code));
+      verify(
+        () => logger.info(any(that: contains('Android issue'))),
+      ).called(1);
+      verify(() => logger.err('Aborting due to validation errors.')).called(1);
     });
   });
 }

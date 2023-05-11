@@ -159,7 +159,9 @@ void main() {
           containsAll(
             badManifestPaths.map(
               (path) => ValidationIssue(
-                severity: ValidationIssueSeverity.error,
+                severity: path.contains('main')
+                    ? ValidationIssueSeverity.error
+                    : ValidationIssueSeverity.warning,
                 message:
                     '${p.join(path, 'AndroidManifest.xml')} is missing the '
                     'INTERNET permission.',
