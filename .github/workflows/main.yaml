@@ -35,6 +35,10 @@ jobs:
               - ./.github/workflows/main.yaml
               - ./.github/actions/dart_package
               - packages/artifact_proxy/**
+            cutler:
+              - ./.github/workflows/main.yaml
+              - ./.github/actions/dart_package
+              - packages/cutler/**
             discord_gcp_alerts:
               - ./.github/workflows/main.yaml
               - ./.github/actions/dart_package
