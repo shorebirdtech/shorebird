@@ -74,6 +74,7 @@ several of the above approaches for code push.
 * https://github.com/expo/expo/tree/main/packages/expo-updates
 * https://github.com/hydro-sdk/hydro-sdk
 * https://pub.dev/packages/rfw
+* https://pub.dev/packages/flutter_eval
 * https://github.com/google/omaha
 * http://code.google.com/p/update-engine/
 * https://sparkle-project.org/
