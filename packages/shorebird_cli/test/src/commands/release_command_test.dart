@@ -10,6 +10,7 @@ import 'package:shorebird_cli/src/auth/auth.dart';
 import 'package:shorebird_cli/src/cache.dart';
 import 'package:shorebird_cli/src/commands/commands.dart';
 import 'package:shorebird_cli/src/shorebird_build_mixin.dart';
+import 'package:shorebird_cli/src/shorebird_environment.dart';
 import 'package:shorebird_cli/src/shorebird_process.dart';
 import 'package:shorebird_cli/src/validators/validators.dart';
 import 'package:shorebird_code_push_client/shorebird_code_push_client.dart';
@@ -41,6 +42,7 @@ class _MockShorebirdProcess extends Mock implements ShorebirdProcess {}
 void main() {
   group(ReleaseCommand, () {
     const appId = 'test-app-id';
+    const flutterRevision = '83305b5088e6fe327fb3334a73ff190828d85713';
     const versionName = '1.2.3';
     const versionCode = '1';
     const version = '$versionName+$versionCode';
@@ -52,7 +54,7 @@ void main() {
       id: 0,
       appId: appId,
       version: version,
-      flutterRevision: '83305b5088e6fe327fb3334a73ff190828d85713',
+      flutterRevision: flutterRevision,
       displayName: '1.2.3+1',
     );
     const releaseArtifact = ReleaseArtifact(
@@ -77,11 +79,14 @@ flutter:
 
     late ArgResults argResults;
     late http.Client httpClient;
+    late Directory shorebirdRoot;
+    late Platform environmentPlatform;
     late Auth auth;
     late Cache cache;
     late Progress progress;
     late Logger logger;
     late ProcessResult flutterBuildProcessResult;
+    late ProcessResult flutterRevisionProcessResult;
     late ProcessResult releaseVersionNameProcessResult;
     late ProcessResult releaseVersionCodeProcessResult;
     late CodePushClient codePushClient;
@@ -123,11 +128,14 @@ flutter:
     setUp(() {
       argResults = _MockArgResults();
       httpClient = _MockHttpClient();
+      environmentPlatform = _MockPlatform();
+      shorebirdRoot = Directory.systemTemp.createTempSync();
       auth = _MockAuth();
       cache = _MockCache();
       progress = _MockProgress();
       logger = _MockLogger();
       flutterBuildProcessResult = _MockProcessResult();
+      flutterRevisionProcessResult = _MockProcessResult();
       releaseVersionNameProcessResult = _MockProcessResult();
       releaseVersionCodeProcessResult = _MockProcessResult();
       codePushClient = _MockCodePushClient();
@@ -152,6 +160,17 @@ flutter:
 
       registerFallbackValue(shorebirdProcess);
 
+      ShorebirdEnvironment.platform = environmentPlatform;
+      when(() => environmentPlatform.script).thenReturn(
+        Uri.file(
+          p.join(
+            shorebirdRoot.path,
+            'bin',
+            'cache',
+            'shorebird.snapshot',
+          ),
+        ),
+      );
       when(
         () => shorebirdProcess.run(
           'flutter',
@@ -159,6 +178,14 @@ flutter:
           runInShell: any(named: 'runInShell'),
         ),
       ).thenAnswer((_) async => flutterBuildProcessResult);
+      when(
+        () => shorebirdProcess.run(
+          'git',
+          any(),
+          runInShell: any(named: 'runInShell'),
+          workingDirectory: any(named: 'workingDirectory'),
+        ),
+      ).thenAnswer((_) async => flutterRevisionProcessResult);
       when(
         () => shorebirdProcess.run(
           'java',
@@ -190,11 +217,17 @@ flutter:
         () => flutterBuildProcessResult.exitCode,
       ).thenReturn(ExitCode.success.code);
       when(
+        () => flutterRevisionProcessResult.exitCode,
+      ).thenReturn(ExitCode.success.code);
+      when(
         () => releaseVersionNameProcessResult.exitCode,
       ).thenReturn(ExitCode.success.code);
       when(
         () => releaseVersionCodeProcessResult.exitCode,
       ).thenReturn(ExitCode.success.code);
+      when(
+        () => flutterRevisionProcessResult.stdout,
+      ).thenReturn(flutterRevision);
       when(
         () => releaseVersionNameProcessResult.stdout,
       ).thenReturn(versionName);
@@ -211,6 +244,7 @@ flutter:
         () => codePushClient.createRelease(
           appId: any(named: 'appId'),
           version: any(named: 'version'),
+          flutterRevision: any(named: 'flutterRevision'),
         ),
       ).thenAnswer((_) async => release);
       when(
@@ -385,6 +419,27 @@ Did you forget to run "shorebird init"?''',
       expect(exitCode, ExitCode.software.code);
     });
 
+    test('throws error when unable to detect flutter revision', () async {
+      const error = 'oops';
+      when(() => flutterRevisionProcessResult.exitCode).thenReturn(1);
+      when(() => flutterRevisionProcessResult.stderr).thenReturn(error);
+      when(
+        () => codePushClient.getReleases(appId: any(named: 'appId')),
+      ).thenAnswer((_) async => []);
+      final tempDir = setUpTempDir();
+      setUpTempArtifacts(tempDir);
+      final exitCode = await IOOverrides.runZoned(
+        command.run,
+        getCurrentDirectory: () => tempDir,
+      );
+      expect(exitCode, ExitCode.software.code);
+      verify(
+        () => progress.fail(
+          'Exception: Unable to determine flutter revision: $error',
+        ),
+      ).called(1);
+    });
+
     test('throws error when creating release fails.', () async {
       const error = 'something went wrong';
       when(
@@ -394,6 +449,7 @@ Did you forget to run "shorebird init"?''',
         () => codePushClient.createRelease(
           appId: any(named: 'appId'),
           version: any(named: 'version'),
+          flutterRevision: any(named: 'flutterRevision'),
           displayName: any(named: 'displayName'),
         ),
       ).thenThrow(error);
