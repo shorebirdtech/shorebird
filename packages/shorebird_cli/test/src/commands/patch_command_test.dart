@@ -445,15 +445,27 @@ Did you forget to run "shorebird init"?''',
         getCurrentDirectory: () => tempDir,
       );
       expect(exitCode, ExitCode.software.code);
+      final shorebirdFlutterPath = ShorebirdEnvironment.flutterDirectory.path;
       verify(
         () => logger.err('''
 Flutter revision mismatch.
 
 The release you are trying to patch was built with a different version of Flutter.
-Either downgrade your Flutter version or create a new release using "shorebird release".
 
 Release Flutter Revision: $flutterRevision
 Current Flutter Revision: $otherRevision
+'''),
+      ).called(1);
+      verify(
+        () => logger.info('''
+Either create a new release using:
+  ${lightCyan.wrap('shorebird release')}
+
+Or downgrade your Flutter version and try again using:
+  ${lightCyan.wrap('cd $shorebirdFlutterPath')}
+  ${lightCyan.wrap('git checkout ${release.flutterRevision}')}
+
+${yellow.wrap('Warning: downgrading Flutter is not recommended and should only be used in emergencies (e.g. to patch a critical bug in production)')}.
 '''),
       ).called(1);
     });

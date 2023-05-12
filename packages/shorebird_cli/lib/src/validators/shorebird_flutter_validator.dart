@@ -48,17 +48,6 @@ class ShorebirdFlutterValidator extends Validator {
       );
     }
 
-    if (!await _flutterDirectoryTracksCorrectRevision(process)) {
-      final message =
-          '''${ShorebirdEnvironment.flutterDirectory} is not on the correct revision''';
-      issues.add(
-        ValidationIssue(
-          severity: ValidationIssueSeverity.warning,
-          message: message,
-        ),
-      );
-    }
-
     String? shorebirdFlutterVersionString;
     try {
       shorebirdFlutterVersionString = await _shorebirdFlutterVersion(process);
@@ -130,19 +119,6 @@ This can cause unexpected behavior if you are switching between the tools and th
     return result.stdout
         .toString()
         .contains('nothing to commit, working tree clean');
-  }
-
-  Future<bool> _flutterDirectoryTracksCorrectRevision(
-    ShorebirdProcess process,
-  ) async {
-    final result = await process.run(
-      'git',
-      ['rev-parse', 'HEAD'],
-      workingDirectory: ShorebirdEnvironment.flutterDirectory.path,
-    );
-    return result.stdout
-        .toString()
-        .contains(ShorebirdEnvironment.flutterRevision);
   }
 
   Future<String> _shorebirdFlutterVersion(ShorebirdProcess process) {

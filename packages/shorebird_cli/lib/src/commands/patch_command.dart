@@ -12,6 +12,7 @@ import 'package:shorebird_cli/src/formatters/formatters.dart';
 import 'package:shorebird_cli/src/shorebird_build_mixin.dart';
 import 'package:shorebird_cli/src/shorebird_config_mixin.dart';
 import 'package:shorebird_cli/src/shorebird_create_app_mixin.dart';
+import 'package:shorebird_cli/src/shorebird_environment.dart';
 import 'package:shorebird_cli/src/shorebird_java_mixin.dart';
 import 'package:shorebird_cli/src/shorebird_release_version_mixin.dart';
 import 'package:shorebird_cli/src/shorebird_validation_mixin.dart';
@@ -250,17 +251,27 @@ Please create a release using "shorebird release" and try again.
     }
 
     if (release.flutterRevision != shorebirdFlutterRevision) {
-      logger.err(
-        '''
+      logger
+        ..err('''
 Flutter revision mismatch.
 
 The release you are trying to patch was built with a different version of Flutter.
-Either downgrade your Flutter version or create a new release using "shorebird release".
 
 Release Flutter Revision: ${release.flutterRevision}
 Current Flutter Revision: $shorebirdFlutterRevision
+''')
+        ..info(
+          '''
+Either create a new release using:
+  ${lightCyan.wrap('shorebird release')}
+
+Or downgrade your Flutter version and try again using:
+  ${lightCyan.wrap('cd ${ShorebirdEnvironment.flutterDirectory.path}')}
+  ${lightCyan.wrap('git checkout ${release.flutterRevision}')}
+
+${yellow.wrap('Warning: downgrading Flutter is not recommended and should only be used in emergencies (e.g. to patch a critical bug in production)')}.
 ''',
-      );
+        );
       return ExitCode.software.code;
     }
 
