@@ -5,6 +5,7 @@ import 'package:path/path.dart' as p;
 import 'package:pubspec_parse/pubspec_parse.dart';
 import 'package:shorebird_cli/src/command.dart';
 import 'package:shorebird_cli/src/config/config.dart';
+import 'package:shorebird_cli/src/shorebird_environment.dart';
 import 'package:yaml/yaml.dart';
 import 'package:yaml_edit/yaml_edit.dart';
 
@@ -104,5 +105,17 @@ app_id:
     if (editor.edits.isEmpty) return;
 
     pubspecFile.writeAsStringSync(editor.toString());
+  }
+
+  Future<String> getShorebirdFlutterRevision() async {
+    final result = await process.run(
+      'git',
+      ['rev-parse', 'HEAD'],
+      workingDirectory: ShorebirdEnvironment.flutterDirectory.path,
+    );
+    if (result.exitCode != 0) {
+      throw Exception('Unable to determine flutter revision: ${result.stderr}');
+    }
+    return (result.stdout as String).trim();
   }
 }

@@ -237,6 +237,33 @@ Please create a release using "shorebird release" and try again.
       return ExitCode.software.code;
     }
 
+    final flutterRevisionProgress = logger.progress(
+      'Fetching Flutter revision',
+    );
+    final String shorebirdFlutterRevision;
+    try {
+      shorebirdFlutterRevision = await getShorebirdFlutterRevision();
+      flutterRevisionProgress.complete();
+    } catch (error) {
+      flutterRevisionProgress.fail('$error');
+      return ExitCode.software.code;
+    }
+
+    if (release.flutterRevision != shorebirdFlutterRevision) {
+      logger.err(
+        '''
+Flutter revision mismatch.
+
+The release you are trying to patch was built with a different version of Flutter.
+Either downgrade your Flutter version or create a new release using "shorebird release".
+
+Release Flutter Revision: ${release.flutterRevision}
+Shorebird Flutter Revision: $shorebirdFlutterRevision
+''',
+      );
+      return ExitCode.software.code;
+    }
+
     final releaseArtifacts = <Arch, ReleaseArtifact>{};
     final fetchReleaseArtifactProgress = logger.progress(
       'Fetching release artifacts',
