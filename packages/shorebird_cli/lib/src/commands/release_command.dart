@@ -32,6 +32,7 @@ class ReleaseCommand extends ShorebirdCommand
   ReleaseCommand({
     required super.logger,
     super.auth,
+    super.cache,
     super.buildCodePushClient,
     super.validators,
     HashFunction? hashFn,

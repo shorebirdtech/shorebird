@@ -7,6 +7,7 @@ import 'package:mocktail/mocktail.dart';
 import 'package:path/path.dart' as p;
 import 'package:platform/platform.dart';
 import 'package:shorebird_cli/src/auth/auth.dart';
+import 'package:shorebird_cli/src/cache.dart';
 import 'package:shorebird_cli/src/commands/commands.dart';
 import 'package:shorebird_cli/src/shorebird_build_mixin.dart';
 import 'package:shorebird_cli/src/shorebird_process.dart';
@@ -19,6 +20,8 @@ class _MockArgResults extends Mock implements ArgResults {}
 class _MockHttpClient extends Mock implements http.Client {}
 
 class _MockAuth extends Mock implements Auth {}
+
+class _MockCache extends Mock implements Cache {}
 
 class _MockLogger extends Mock implements Logger {}
 
@@ -74,6 +77,7 @@ flutter:
     late ArgResults argResults;
     late http.Client httpClient;
     late Auth auth;
+    late Cache cache;
     late Progress progress;
     late Logger logger;
     late ProcessResult flutterBuildProcessResult;
@@ -119,6 +123,7 @@ flutter:
       argResults = _MockArgResults();
       httpClient = _MockHttpClient();
       auth = _MockAuth();
+      cache = _MockCache();
       progress = _MockProgress();
       logger = _MockLogger();
       flutterBuildProcessResult = _MockProcessResult();
@@ -136,6 +141,7 @@ flutter:
           capturedHostedUri = hostedUri;
           return codePushClient;
         },
+        cache: cache,
         logger: logger,
         validators: [flutterValidator],
       )
@@ -170,6 +176,10 @@ flutter:
       when(() => argResults['platform']).thenReturn(platform);
       when(() => auth.isAuthenticated).thenReturn(true);
       when(() => auth.client).thenReturn(httpClient);
+      when(() => cache.updateAll()).thenAnswer((_) async => {});
+      when(
+        () => cache.getArtifactDirectory(any()),
+      ).thenReturn(Directory.systemTemp.createTempSync());
       when(() => logger.progress(any())).thenReturn(progress);
       when(() => logger.confirm(any())).thenReturn(true);
       when(
