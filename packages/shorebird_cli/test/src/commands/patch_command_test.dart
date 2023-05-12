@@ -453,7 +453,7 @@ The release you are trying to patch was built with a different version of Flutte
 Either downgrade your Flutter version or create a new release using "shorebird release".
 
 Release Flutter Revision: $flutterRevision
-Shorebird Flutter Revision: $otherRevision
+Current Flutter Revision: $otherRevision
 '''),
       ).called(1);
     });
