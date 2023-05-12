@@ -38,8 +38,13 @@ class _MockShorebirdFlutterValidator extends Mock
 class _MockShorebirdProcess extends Mock implements ShorebirdProcess {}
 
 void main() {
+<<<<<<< Updated upstream
   group(PatchCommand, () {
     const appId = 'test-app-id';
+=======
+  group('patch', () {
+    const appId = 'test-app-id';    
+>>>>>>> Stashed changes
     const versionName = '1.2.3';
     const versionCode = '1';
     const version = '$versionName+$versionCode';
@@ -70,6 +75,7 @@ void main() {
       id: 0,
       appId: appId,
       version: version,
+      flutterRevision: '83305b5088e6fe327fb3334a73ff190828d85713',
       displayName: '1.2.3+1',
     );
     const patch = Patch(id: 0, number: 1);

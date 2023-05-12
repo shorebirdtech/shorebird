@@ -23,6 +23,8 @@ class _MockLogger extends Mock implements Logger {}
 void main() {
   group(ListReleasesCommand, () {
     const appId = 'test-app-id';
+    const flutterRevision = '83305b5088e6fe327fb3334a73ff190828d85713';
+
     late ArgResults argResults;
     late Auth auth;
     late http.Client httpClient;
@@ -139,6 +141,7 @@ flavors:
             id: 1,
             appId: appId,
             version: '1.0.0',
+            flutterRevision: flutterRevision,
             displayName: 'v1.0.0 (dev)',
           ),
         ],
@@ -170,12 +173,14 @@ flavors:
             id: 1,
             appId: appId,
             version: '1.0.1',
+            flutterRevision: flutterRevision,
             displayName: 'First',
           ),
           const Release(
             id: 1,
             appId: appId,
             version: '1.0.2',
+            flutterRevision: flutterRevision,
             displayName: null,
           ),
         ],

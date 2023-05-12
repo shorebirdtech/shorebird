@@ -15,6 +15,7 @@ class _FakeBaseRequest extends Fake implements http.BaseRequest {}
 void main() {
   group('CodePushClient', () {
     const appId = 'app-id';
+    const flutterRevision = '83305b5088e6fe327fb3334a73ff190828d85713';
     const displayName = 'shorebird-example';
     const errorResponse = ErrorResponse(
       code: 'test_code',
@@ -738,6 +739,7 @@ void main() {
                 id: releaseId,
                 appId: appId,
                 version: version,
+                flutterRevision: flutterRevision,
                 displayName: displayName,
               ),
             ),
@@ -1205,8 +1207,20 @@ void main() {
 
       test('completes when request succeeds (populated)', () async {
         final expected = [
-          Release(id: 0, appId: '1', version: '1.0.0', displayName: 'v1.0.0'),
-          Release(id: 1, appId: '2', version: '1.0.1', displayName: 'v1.0.1'),
+          Release(
+            id: 0,
+            appId: '1',
+            version: '1.0.0',
+            flutterRevision: flutterRevision,
+            displayName: 'v1.0.0',
+          ),
+          Release(
+            id: 1,
+            appId: '2',
+            version: '1.0.1',
+            flutterRevision: flutterRevision,
+            displayName: 'v1.0.1',
+          ),
         ];
 
         when(
