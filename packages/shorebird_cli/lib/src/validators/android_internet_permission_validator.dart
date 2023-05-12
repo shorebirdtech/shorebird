@@ -10,6 +10,14 @@ import 'package:xml/xml.dart';
 ///
 /// See https://github.com/shorebirdtech/shorebird/issues/160.
 class AndroidInternetPermissionValidator extends Validator {
+  final String mainAndroidManifestPath = p.join(
+    'android',
+    'app',
+    'src',
+    'main',
+    'AndroidManifest.xml',
+  );
+
   // coverage:ignore-start
   @override
   String get description =>
@@ -62,17 +70,19 @@ class AndroidInternetPermissionValidator extends Validator {
         .where((manifest) => !_androidManifestHasInternetPermission(manifest));
 
     if (manifestsWithoutInternetPermission.isNotEmpty) {
-      return manifestsWithoutInternetPermission
-          .map(
-            (String manifestPath) => ValidationIssue(
-              severity: ValidationIssueSeverity.error,
-              message:
-                  '${p.relative(manifestPath, from: Directory.current.path)} '
-                  'is missing the INTERNET permission.',
-              fix: () => _addInternetPermissionToFile(manifestPath),
-            ),
-          )
-          .toList();
+      return manifestsWithoutInternetPermission.map(
+        (String manifestPath) {
+          return ValidationIssue(
+            severity: manifestPath.contains(mainAndroidManifestPath)
+                ? ValidationIssueSeverity.error
+                : ValidationIssueSeverity.warning,
+            message:
+                '${p.relative(manifestPath, from: Directory.current.path)} '
+                'is missing the INTERNET permission.',
+            fix: () => _addInternetPermissionToFile(manifestPath),
+          );
+        },
+      ).toList();
     }
 
     return [];
