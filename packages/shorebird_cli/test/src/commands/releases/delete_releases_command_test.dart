@@ -25,6 +25,7 @@ class _MockProgress extends Mock implements Progress {}
 void main() {
   group(DeleteReleasesCommand, () {
     const appId = 'test-app-id';
+    const flutterRevision = '83305b5088e6fe327fb3334a73ff190828d85713';
     const releaseId = 3;
     const versionNumber = '1.0.0';
 
@@ -87,18 +88,21 @@ flutter:
             id: 1,
             appId: appId,
             version: '0.1.0',
+            flutterRevision: flutterRevision,
             displayName: null,
           ),
           const Release(
             id: 2,
             appId: appId,
             version: '0.1.1',
+            flutterRevision: flutterRevision,
             displayName: null,
           ),
           const Release(
             id: releaseId,
             appId: appId,
             version: versionNumber,
+            flutterRevision: flutterRevision,
             displayName: null,
           ),
         ],

@@ -52,6 +52,7 @@ void main() {
       id: 0,
       appId: appId,
       version: version,
+      flutterRevision: '83305b5088e6fe327fb3334a73ff190828d85713',
       displayName: '1.2.3+1',
     );
     const releaseArtifact = ReleaseArtifact(
