@@ -269,7 +269,7 @@ Or downgrade your Flutter version and try again using:
   ${lightCyan.wrap('cd ${ShorebirdEnvironment.flutterDirectory.path}')}
   ${lightCyan.wrap('git checkout ${release.flutterRevision}')}
 
-Eventually shorebird will support older flutter versions:
+Shorebird plans to support this automatically, let us know if it's important to you:
 https://github.com/shorebirdtech/shorebird/issues/472
 ''',
         );
