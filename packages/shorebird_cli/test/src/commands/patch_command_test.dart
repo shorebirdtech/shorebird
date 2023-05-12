@@ -465,7 +465,8 @@ Or downgrade your Flutter version and try again using:
   ${lightCyan.wrap('cd $shorebirdFlutterPath')}
   ${lightCyan.wrap('git checkout ${release.flutterRevision}')}
 
-${yellow.wrap('Warning: downgrading Flutter is not recommended and should only be used in emergencies (e.g. to patch a critical bug in production)')}.
+Shorebird plans to support this automatically, let us know if it's important to you:
+https://github.com/shorebirdtech/shorebird/issues/472
 '''),
       ).called(1);
     });

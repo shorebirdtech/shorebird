@@ -29,7 +29,7 @@ class CreateReleaseRequest {
   final String version;
 
   /// The Flutter revision used to create the release.
-  /// This is nullable for backward compatibility.
+  /// TODO(felangel): Make this non-nullable in the next major release.
   final String? flutterRevision;
 
   /// The display name for the release.
