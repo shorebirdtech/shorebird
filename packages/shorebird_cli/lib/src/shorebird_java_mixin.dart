@@ -11,12 +11,12 @@ mixin ShorebirdJavaMixin on ShorebirdCommand {
   String? getJavaExecutable([Platform platform = const LocalPlatform()]) {
     if (!platform.isWindows) return 'java';
 
-    final javaPath = getJavaPath(platform);
+    final javaPath = getJavaHome(platform);
     if (javaPath == null) return null;
     return p.join(javaPath, 'bin', 'java.exe');
   }
 
-  String? getJavaPath([Platform platform = const LocalPlatform()]) {
+  String? getJavaHome([Platform platform = const LocalPlatform()]) {
     if (platform.environment.containsKey('JAVA_HOME')) {
       return platform.environment['JAVA_HOME'];
     }

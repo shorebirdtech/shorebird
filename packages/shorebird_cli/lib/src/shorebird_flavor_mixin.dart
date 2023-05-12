@@ -13,7 +13,7 @@ mixin ShorebirdFlavorMixin on ShorebirdJavaMixin {
     Platform platform = const LocalPlatform(),
   }) async {
     final executable = platform.isWindows ? 'gradlew.bat' : 'gradlew';
-    final javaPath = getJavaPath(platform);
+    final javaPath = getJavaHome(platform);
     final result = await process.run(
       p.join(appRoot, 'android', executable),
       ['app:tasks', '--all', '--console=auto'],
