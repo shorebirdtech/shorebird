@@ -2,27 +2,29 @@
 
 This section contains past updates we've sent to customers via Discord.
 
-## 0.1.1 (May 12, 2023)
+## 0.2.0 (May 12, 2023)
 
-We've just released v0.1.1 of shorebird 🎉 :shorebird:
+We've just released v0.2.0 of shorebird 🎉 :shorebird:
 
 ✨ Highlights:
-- Support for Flutter 3.1.0 and Dart 3.0.0
-- Fixed Android Studio paths on Linux
-- `shorebird release --force` will skip confirmation prompts (thanks @rkishan516)!
+- 🐦 Support for Flutter 3.1.0 and Dart 3.0.0
+- 🤖 Fixed Android Studio paths on Linux
+- 📦 `shorebird release` no longer accepts `--release-version`
+  - release versions are derived from build artifacts
+- ✅ `shorebird release --force` will skip confirmation prompts (thanks @rkishan516)!
 
 Note: Moving to Dart 3 is breaking.  Dart 3 is not able to build apps that run
 in Dart 2.x (e.g. apps you released last week) and vice versa.  Once you upgrade
-to Shorebird 0.1.1, you will not be able to push patches to releases made with
+to Shorebird 0.2.0, you will not be able to push patches to releases made with
 Shorebird 0.1.0 or earlier.  You will need to make a new release with Shorebird
-0.1.1 to be able to push patches from Shorebird 0.1.1.
+0.2.0 to be able to push patches from Shorebird 0.2.0.
 
 We can add support for multiple Flutter versions in the future:
 https://github.com/shorebirdtech/shorebird/issues/472
 Let us know if that's important to you.
 
 📚 Changelog
-https://github.com/shorebirdtech/shorebird/releases/tag/v0.1.1
+https://github.com/shorebirdtech/shorebird/releases/tag/v0.2.0
 
 
 ## 0.1.0 (May 6, 2023)
