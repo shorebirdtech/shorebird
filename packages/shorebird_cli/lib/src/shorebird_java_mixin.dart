@@ -13,7 +13,7 @@ mixin ShorebirdJavaMixin on ShorebirdCommand {
 
     final javaPath = getJavaPath(platform);
     if (javaPath == null) return null;
-    return p.join(javaPath, 'java.exe');
+    return p.join(javaPath, 'bin', 'java.exe');
   }
 
   String? getJavaPath([Platform platform = const LocalPlatform()]) {
@@ -36,8 +36,8 @@ mixin ShorebirdJavaMixin on ShorebirdCommand {
     }
 
     final candidateLocations = [
-      p.join(androidStudioPath, 'jbr', 'bin'),
-      p.join(androidStudioPath, 'jre', 'bin'),
+      p.join(androidStudioPath, 'jbr'),
+      p.join(androidStudioPath, 'jre'),
     ];
 
     return candidateLocations.firstWhereOrNull(
