@@ -33,22 +33,23 @@ mixin ShorebirdReleaseVersionMixin on ShorebirdJavaMixin {
       '/manifest/@android:versionCode'
     ];
 
-    final javaPath = getJavaPath();
+    final javaHome = getJavaHome();
+    final javaExecutable = getJavaExecutable() ?? 'java';
     final results = await Future.wait([
       process.run(
-        'java',
+        javaExecutable,
         versionNameArguments,
         runInShell: true,
         environment: {
-          if (javaPath != null) 'JAVA_HOME': javaPath,
+          if (javaHome != null) 'JAVA_HOME': javaHome,
         },
       ),
       process.run(
-        'java',
+        javaExecutable,
         versionCodeArguments,
         runInShell: true,
         environment: {
-          if (javaPath != null) 'JAVA_HOME': javaPath,
+          if (javaHome != null) 'JAVA_HOME': javaHome,
         },
       )
     ]);
