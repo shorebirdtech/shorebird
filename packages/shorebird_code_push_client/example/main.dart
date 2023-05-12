@@ -23,6 +23,8 @@ Future<void> main() async {
   final release = await client.createRelease(
     appId: app.id,
     version: '<VERSION>', // e.g. '1.0.0'
+    flutterRevision:
+        '<FLUTTER_REVISION>', // e.g. 83305b5088e6fe327fb3334a73ff190828d85713,
     displayName: '<DISPLAY NAME>', // e.g. 'v1.0.0'
   );
 

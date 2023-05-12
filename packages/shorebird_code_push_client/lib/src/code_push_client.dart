@@ -177,6 +177,7 @@ class CodePushClient {
   Future<Release> createRelease({
     required String appId,
     required String version,
+    required String flutterRevision,
     String? displayName,
   }) async {
     final response = await _httpClient.post(
@@ -184,6 +185,7 @@ class CodePushClient {
       body: json.encode({
         'app_id': appId,
         'version': version,
+        'flutter_revision': flutterRevision,
         if (displayName != null) 'display_name': displayName,
       }),
     );

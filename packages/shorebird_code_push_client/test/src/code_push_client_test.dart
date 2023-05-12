@@ -682,6 +682,7 @@ void main() {
           codePushClient.createRelease(
             appId: appId,
             version: version,
+            flutterRevision: flutterRevision,
             displayName: displayName,
           ),
           throwsA(
@@ -712,6 +713,7 @@ void main() {
           codePushClient.createRelease(
             appId: appId,
             version: version,
+            flutterRevision: flutterRevision,
             displayName: displayName,
           ),
           throwsA(
@@ -751,6 +753,7 @@ void main() {
           codePushClient.createRelease(
             appId: appId,
             version: version,
+            flutterRevision: flutterRevision,
             displayName: displayName,
           ),
           completion(
@@ -759,6 +762,11 @@ void main() {
                   .having((r) => r.id, 'id', releaseId)
                   .having((r) => r.appId, 'appId', appId)
                   .having((r) => r.version, 'version', version)
+                  .having(
+                    (r) => r.flutterRevision,
+                    'flutterRevision',
+                    flutterRevision,
+                  )
                   .having((r) => r.displayName, 'displayName', displayName),
             ),
           ),
