@@ -22,7 +22,7 @@ class TestCachedArtifact extends CachedArtifact {
   String get name => 'test';
 
   @override
-  String get storagePath => 'test-path';
+  String get storageUrl => 'test-url';
 }
 
 void main() {

@@ -10,9 +10,10 @@ import 'package:shorebird_cli/src/config/shorebird_yaml.dart';
 import 'package:shorebird_cli/src/shorebird_build_mixin.dart';
 import 'package:shorebird_cli/src/shorebird_config_mixin.dart';
 import 'package:shorebird_cli/src/shorebird_create_app_mixin.dart';
+import 'package:shorebird_cli/src/shorebird_java_mixin.dart';
+import 'package:shorebird_cli/src/shorebird_release_version_mixin.dart';
 import 'package:shorebird_cli/src/shorebird_validation_mixin.dart';
 import 'package:shorebird_code_push_client/shorebird_code_push_client.dart';
-import 'package:version/version.dart';
 
 /// {@template release_command}
 /// `shorebird release`
@@ -24,20 +25,19 @@ class ReleaseCommand extends ShorebirdCommand
         ShorebirdValidationMixin,
         ShorebirdConfigMixin,
         ShorebirdBuildMixin,
-        ShorebirdCreateAppMixin {
+        ShorebirdCreateAppMixin,
+        ShorebirdJavaMixin,
+        ShorebirdReleaseVersionMixin {
   /// {@macro release_command}
   ReleaseCommand({
     required super.logger,
     super.auth,
+    super.cache,
     super.buildCodePushClient,
     super.validators,
     HashFunction? hashFn,
   }) : _hashFn = hashFn ?? ((m) => sha256.convert(m).toString()) {
     argParser
-      ..addOption(
-        'release-version',
-        help: 'The version of the release (e.g. "1.0.0").',
-      )
       ..addOption(
         'platform',
         help: 'The platform of the release (e.g. "android").',
@@ -105,14 +105,11 @@ make smaller updates to your app.
       return ExitCode.software.code;
     }
 
-    final pubspecYaml = getPubspecYaml()!;
     final shorebirdYaml = getShorebirdYaml()!;
     final codePushClient = buildCodePushClient(
       httpClient: auth.client,
       hostedUri: hostedUri,
     );
-    final version = pubspecYaml.version!;
-    final versionString = version.toString();
 
     late final List<App> apps;
     final fetchAppsProgress = logger.progress('Fetching apps');
@@ -137,30 +134,20 @@ Did you forget to run "shorebird init"?''',
       return ExitCode.software.code;
     }
 
-    final releaseVersionArg = results['release-version'] as String?;
+    final bundlePath = flavor != null
+        ? './build/app/outputs/bundle/${flavor}Release/app-$flavor-release.aab'
+        : './build/app/outputs/bundle/release/app-release.aab';
 
-    if (releaseVersionArg == null) logger.info('');
-
-    String? releaseVersion;
-    var releaseVersionInput = releaseVersionArg;
-    while (releaseVersion == null) {
-      releaseVersionInput = releaseVersionInput ??
-          logger.prompt(
-            'What is the version of this release?',
-            defaultValue: versionString,
-          );
-      try {
-        releaseVersion = Version.parse(releaseVersionInput).toString();
-      } catch (error) {
-        final shouldContinue = logger.confirm(
-          '''"$releaseVersionInput" does not look like a version number. Proceed anyways?''',
-        );
-        if (shouldContinue) {
-          releaseVersion = releaseVersionInput;
-        } else {
-          releaseVersionInput = null;
-        }
-      }
+    final String releaseVersion;
+    final detectReleaseVersionProgress = logger.progress(
+      'Detecting release version',
+    );
+    try {
+      releaseVersion = await extractReleaseVersionFromAppBundle(bundlePath);
+      detectReleaseVersionProgress.complete();
+    } catch (error) {
+      detectReleaseVersionProgress.fail('$error');
+      return ExitCode.software.code;
     }
 
     final platform = results['platform'] as String;
@@ -202,8 +189,7 @@ ${summary.join('\n')}
       return ExitCode.software.code;
     }
 
-    var release = releases
-        .firstWhereOrNull((r) => r.version == releaseVersion.toString());
+    var release = releases.firstWhereOrNull((r) => r.version == releaseVersion);
     if (release == null) {
       final createReleaseProgress = logger.progress('Creating release');
       try {
@@ -250,10 +236,6 @@ ${summary.join('\n')}
     }
 
     createArtifactProgress.complete();
-
-    final bundlePath = flavor != null
-        ? './build/app/outputs/bundle/${flavor}Release/app-$flavor-release.aab'
-        : './build/app/outputs/bundle/release/app-release.aab';
 
     logger
       ..success('\n✅ Published Release!')
