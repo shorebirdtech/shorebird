@@ -4,6 +4,7 @@ import 'package:shorebird_cli/src/command.dart';
 import 'package:shorebird_cli/src/logger.dart';
 import 'package:shorebird_cli/src/shorebird_config_mixin.dart';
 import 'package:shorebird_cli/src/shorebird_validation_mixin.dart';
+import 'package:shorebird_cli/src/validators/shorebird_yaml_validator.dart';
 
 /// {@template run_command}
 /// `shorebird run`
@@ -28,6 +29,8 @@ class RunCommand extends ShorebirdCommand
         'flavor',
         help: 'The product flavor to use when building the app.',
       );
+    validators
+        .add(ShorebirdYamlValidator(hasShorebirdYaml: () => hasShorebirdYaml));
   }
 
   @override
@@ -45,13 +48,6 @@ class RunCommand extends ShorebirdCommand
       );
     } on PreconditionFailedException catch (e) {
       return e.exitCode.code;
-    }
-
-    if (!hasShorebirdYaml) {
-      logger.err(
-        '''Shorebird is not initialized. Did you run ${lightCyan.wrap('shorebird init')}?''',
-      );
-      return ExitCode.config.code;
     }
 
     logger.info('Running app...');
