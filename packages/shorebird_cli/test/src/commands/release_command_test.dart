@@ -1,10 +1,11 @@
-import 'dart:io';
+import 'dart:io' hide Platform;
 
 import 'package:args/args.dart';
 import 'package:http/http.dart' as http;
 import 'package:mason_logger/mason_logger.dart';
 import 'package:mocktail/mocktail.dart';
 import 'package:path/path.dart' as p;
+import 'package:platform/platform.dart';
 import 'package:shorebird_cli/src/auth/auth.dart';
 import 'package:shorebird_cli/src/commands/commands.dart';
 import 'package:shorebird_cli/src/shorebird_build_mixin.dart';
@@ -20,6 +21,8 @@ class _MockHttpClient extends Mock implements http.Client {}
 class _MockAuth extends Mock implements Auth {}
 
 class _MockLogger extends Mock implements Logger {}
+
+class _MockPlatform extends Mock implements Platform {}
 
 class _MockProgress extends Mock implements Progress {}
 
@@ -281,6 +284,25 @@ Did you forget to run "shorebird init"?''',
         ),
       ).called(1);
       expect(exitCode, ExitCode.software.code);
+    });
+
+    group('getJavaExecutable', () {
+      test('uses correct executable on windows', () async {
+        const javaHome = r'C:\Program Files\Java\jdk-11.0.1';
+        final platform = _MockPlatform();
+        when(() => platform.isWindows).thenReturn(true);
+        when(() => platform.environment).thenReturn({'JAVA_HOME': javaHome});
+        expect(
+          command.getJavaExecutable(platform),
+          equals(p.join(javaHome, 'bin', 'java.exe')),
+        );
+      });
+
+      test('uses correct executable on non-windows', () async {
+        final platform = _MockPlatform();
+        when(() => platform.isWindows).thenReturn(false);
+        expect(command.getJavaExecutable(platform), equals('java'));
+      });
     });
 
     test('errors when detecting release version name fails', () async {
