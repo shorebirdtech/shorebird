@@ -60,7 +60,10 @@ You must either specify an app id via the "--$_appIdOption" flag or run this com
       return ExitCode.usage.code;
     }
 
-    final channel = results[_channelNameOption] as String;
+    final channel = results[_channelNameOption] as String? ??
+        logger.prompt(
+          '''${lightGreen.wrap('?')} What is the name of the channel you would like to create?''',
+        );
 
     logger.info(
       '''
