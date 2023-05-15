@@ -30,7 +30,7 @@ class _MockPlatform extends Mock implements Platform {}
 
 class _MockProgress extends Mock implements Progress {}
 
-class _MockProcessResult extends Mock implements ProcessResult {}
+class _MockProcessResult extends Mock implements ShorebirdProcessResult {}
 
 class _MockHttpClient extends Mock implements http.Client {}
 
@@ -98,11 +98,11 @@ flutter:
     late Platform environmentPlatform;
     late Progress progress;
     late Logger logger;
-    late ProcessResult flutterBuildProcessResult;
-    late ProcessResult flutterRevisionProcessResult;
-    late ProcessResult patchProcessResult;
-    late ProcessResult releaseVersionNameProcessResult;
-    late ProcessResult releaseVersionCodeProcessResult;
+    late ShorebirdProcessResult flutterBuildProcessResult;
+    late ShorebirdProcessResult flutterRevisionProcessResult;
+    late ShorebirdProcessResult patchProcessResult;
+    late ShorebirdProcessResult releaseVersionNameProcessResult;
+    late ShorebirdProcessResult releaseVersionCodeProcessResult;
     late http.Client httpClient;
     late CodePushClient codePushClient;
     late Cache cache;

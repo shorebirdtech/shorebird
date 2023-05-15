@@ -1,5 +1,3 @@
-import 'dart:io';
-
 import 'package:mason_logger/mason_logger.dart';
 import 'package:mocktail/mocktail.dart';
 import 'package:shorebird_cli/src/commands/commands.dart';
@@ -8,7 +6,7 @@ import 'package:test/test.dart';
 
 class _MockLogger extends Mock implements Logger {}
 
-class _MockProcessResult extends Mock implements ProcessResult {}
+class _MockProcessResult extends Mock implements ShorebirdProcessResult {}
 
 class _MockProgress extends Mock implements Progress {}
 
@@ -20,10 +18,10 @@ void main() {
 
   group('upgrade', () {
     late Logger logger;
-    late ProcessResult fetchCurrentVersionResult;
-    late ProcessResult fetchTagsResult;
-    late ProcessResult fetchLatestVersionResult;
-    late ProcessResult hardResetResult;
+    late ShorebirdProcessResult fetchCurrentVersionResult;
+    late ShorebirdProcessResult fetchTagsResult;
+    late ShorebirdProcessResult fetchLatestVersionResult;
+    late ShorebirdProcessResult hardResetResult;
     late UpgradeCommand command;
     late ShorebirdProcess shorebirdProcess;
 

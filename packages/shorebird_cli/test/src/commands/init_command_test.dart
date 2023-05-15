@@ -24,7 +24,7 @@ class _MockLogger extends Mock implements Logger {}
 
 class _MockProcess extends Mock implements ShorebirdProcess {}
 
-class _MockProcessResult extends Mock implements ProcessResult {}
+class _MockProcessResult extends Mock implements ShorebirdProcessResult {}
 
 class _MockPlatform extends Mock implements Platform {}
 
@@ -45,7 +45,7 @@ environment:
     late ArgResults argResults;
     late Auth auth;
     late ShorebirdProcess process;
-    late ProcessResult result;
+    late ShorebirdProcessResult result;
     late CodePushClient codePushClient;
     late Logger logger;
     late InitCommand command;

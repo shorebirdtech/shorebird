@@ -7,7 +7,7 @@ import 'package:test/test.dart';
 
 class _MockProcess extends Mock implements Process {}
 
-class _MockProcessResult extends Mock implements ProcessResult {}
+class _MockProcessResult extends Mock implements ShorebirdProcessResult {}
 
 class _MockProcessWrapper extends Mock implements ProcessWrapper {}
 
@@ -19,7 +19,7 @@ void main() {
 
     late ProcessWrapper processWrapper;
     late Process startProcess;
-    late ProcessResult runProcessResult;
+    late ShorebirdProcessResult runProcessResult;
     late ShorebirdProcess shorebirdProcess;
 
     setUp(() {
