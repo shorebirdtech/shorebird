@@ -213,6 +213,17 @@ class CodePushClient {
     return Release.fromJson(body);
   }
 
+  /// Delete the channel with the provided [channelId].
+  Future<void> deleteChannel({required int channelId}) async {
+    final response = await _httpClient.delete(
+      Uri.parse('$hostedUri/api/v1/channels/$channelId'),
+    );
+
+    if (response.statusCode != HttpStatus.noContent) {
+      throw _parseErrorResponse(response.body);
+    }
+  }
+
   /// Delete the release with the provided [releaseId].
   Future<void> deleteRelease({required int releaseId}) async {
     final response = await _httpClient.delete(
