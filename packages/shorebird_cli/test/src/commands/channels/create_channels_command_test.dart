@@ -100,6 +100,29 @@ void main() {
       verify(() => logger.err(error)).called(1);
     });
 
+    test('prompts for channel name when not provided', () async {
+      when(() => argResults['name']).thenReturn(null);
+      when(() => logger.prompt(any())).thenReturn(channelName);
+      when(
+        () => codePushClient.createChannel(
+          appId: any(named: 'appId'),
+          channel: any(named: 'channel'),
+        ),
+      ).thenAnswer((_) async => channel);
+      expect(await command.run(), ExitCode.success.code);
+      verify(
+        () => logger.prompt(
+          '''${lightGreen.wrap('?')} What is the name of the channel you would like to create?''',
+        ),
+      ).called(1);
+      verify(
+        () => codePushClient.createChannel(
+          appId: appId,
+          channel: channel.name,
+        ),
+      ).called(1);
+    });
+
     test('returns ExitCode.success on success', () async {
       when(
         () => codePushClient.createChannel(
