@@ -9,7 +9,7 @@ import 'package:test/test.dart';
 
 class _MockLogger extends Mock implements Logger {}
 
-class _MockProcessResult extends Mock implements ProcessResult {}
+class _MockProcessResult extends Mock implements ShorebirdProcessResult {}
 
 class _MockShorebirdProcess extends Mock implements ShorebirdProcess {}
 
@@ -21,8 +21,8 @@ void main() {
     late ShorebirdVersionValidator validator;
     late Logger logger;
     late DoctorCommand command;
-    late ProcessResult fetchCurrentVersionResult;
-    late ProcessResult fetchLatestVersionResult;
+    late ShorebirdProcessResult fetchCurrentVersionResult;
+    late ShorebirdProcessResult fetchLatestVersionResult;
     late ShorebirdProcess shorebirdProcess;
 
     setUp(() {

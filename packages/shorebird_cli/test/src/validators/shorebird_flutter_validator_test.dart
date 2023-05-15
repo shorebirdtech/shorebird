@@ -8,7 +8,7 @@ import 'package:shorebird_cli/src/shorebird_process.dart';
 import 'package:shorebird_cli/src/validators/validators.dart';
 import 'package:test/test.dart';
 
-class _MockProcessResult extends Mock implements ProcessResult {}
+class _MockProcessResult extends Mock implements ShorebirdProcessResult {}
 
 class _MockPlatform extends Mock implements Platform {}
 
@@ -38,9 +38,9 @@ Tools • Dart 2.19.6 • DevTools 2.20.1
 
     late ShorebirdFlutterValidator validator;
     late Directory tempDir;
-    late ProcessResult pathFlutterVersionProcessResult;
-    late ProcessResult shorebirdFlutterVersionProcessResult;
-    late ProcessResult gitStatusProcessResult;
+    late ShorebirdProcessResult pathFlutterVersionProcessResult;
+    late ShorebirdProcessResult shorebirdFlutterVersionProcessResult;
+    late ShorebirdProcessResult gitStatusProcessResult;
     late ShorebirdProcess shorebirdProcess;
 
     Directory flutterDirectory(Directory root) =>

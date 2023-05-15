@@ -20,7 +20,7 @@ class _MockLogger extends Mock implements Logger {}
 
 class _MockProgress extends Mock implements Progress {}
 
-class _MockProcessResult extends Mock implements ProcessResult {}
+class _MockProcessResult extends Mock implements ShorebirdProcessResult {}
 
 class _MockShorebirdFlutterValidator extends Mock
     implements ShorebirdFlutterValidator {}
@@ -33,7 +33,7 @@ void main() {
     late http.Client httpClient;
     late Auth auth;
     late Logger logger;
-    late ProcessResult processResult;
+    late ShorebirdProcessResult processResult;
     late BuildApkCommand command;
     late ShorebirdFlutterValidator flutterValidator;
     late ShorebirdProcess shorebirdProcess;
