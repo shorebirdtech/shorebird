@@ -935,7 +935,7 @@ void main() {
         expect(
           uri,
           codePushClient.hostedUri.replace(
-            path: '/api/v1/channels/$channelId`',
+            path: '/api/v1/channels/$channelId',
           ),
         );
       });
