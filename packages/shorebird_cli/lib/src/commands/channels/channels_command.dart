@@ -9,6 +9,7 @@ class ChannelsCommand extends ShorebirdCommand {
   /// {@macro channels_command}
   ChannelsCommand({required super.logger}) {
     addSubcommand(CreateChannelsCommand(logger: logger));
+    addSubcommand(DeleteChannelsCommand(logger: logger));
     addSubcommand(ListChannelsCommand(logger: logger));
   }
 
