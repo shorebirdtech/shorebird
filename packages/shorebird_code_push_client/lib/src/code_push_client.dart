@@ -40,6 +40,22 @@ class CodePushClient {
   /// The hosted uri for the Shorebird CodePush API.
   final Uri hostedUri;
 
+  /// Add a new collaborator to the app.
+  /// Collaborators can manage the app including its releases and patches.
+  Future<void> createAppCollaborator({
+    required String appId,
+    required int userId,
+  }) async {
+    final response = await _httpClient.post(
+      Uri.parse('$hostedUri/api/v1/apps/$appId/collaborators'),
+      body: json.encode(CreateAppCollaboratorRequest(userId: userId).toJson()),
+    );
+
+    if (response.statusCode != HttpStatus.created) {
+      throw _parseErrorResponse(response.body);
+    }
+  }
+
   /// Fetches the currently logged-in user.
   Future<User?> getCurrentUser() async {
     final uri = Uri.parse('$hostedUri/api/v1/users/me');
