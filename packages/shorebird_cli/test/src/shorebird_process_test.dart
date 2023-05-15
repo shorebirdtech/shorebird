@@ -51,6 +51,13 @@ void main() {
       ).thenAnswer((_) async => startProcess);
     });
 
+    test('ShorebirdProcessResult can be instantiated as a const', () {
+      expect(
+        () => const ShorebirdProcessResult(exitCode: 0, stdout: '', stderr: ''),
+        returnsNormally,
+      );
+    });
+
     group('run', () {
       test('forwards non-flutter executables to Process.run', () async {
         await shorebirdProcess.run(
