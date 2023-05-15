@@ -53,6 +53,90 @@ void main() {
       });
     });
 
+    group('createAppCollaborator', () {
+      const appId = 'test-app-id';
+      const userId = 42;
+
+      test('throws an exception if the http request fails (unknown)', () async {
+        when(
+          () => httpClient.post(
+            any(),
+            headers: any(named: 'headers'),
+            body: any(named: 'body'),
+          ),
+        ).thenAnswer(
+          (_) async => http.Response('', HttpStatus.failedDependency),
+        );
+
+        expect(
+          codePushClient.createAppCollaborator(appId: appId, userId: userId),
+          throwsA(
+            isA<CodePushException>().having(
+              (e) => e.message,
+              'message',
+              CodePushClient.unknownErrorMessage,
+            ),
+          ),
+        );
+      });
+
+      test('throws an exception if the http request fails', () async {
+        when(
+          () => httpClient.post(
+            any(),
+            headers: any(named: 'headers'),
+            body: any(named: 'body'),
+          ),
+        ).thenAnswer(
+          (_) async => http.Response(
+            json.encode(errorResponse.toJson()),
+            HttpStatus.failedDependency,
+          ),
+        );
+
+        expect(
+          codePushClient.createAppCollaborator(appId: appId, userId: userId),
+          throwsA(
+            isA<CodePushException>().having(
+              (e) => e.message,
+              'message',
+              errorResponse.message,
+            ),
+          ),
+        );
+      });
+
+      test('completes when request succeeds', () async {
+        when(
+          () => httpClient.post(
+            any(),
+            headers: any(named: 'headers'),
+            body: any(named: 'body'),
+          ),
+        ).thenAnswer((_) async => http.Response('', HttpStatus.created));
+
+        await codePushClient.createAppCollaborator(
+          appId: appId,
+          userId: userId,
+        );
+
+        final uri = verify(
+          () => httpClient.post(
+            captureAny(),
+            headers: any(named: 'headers'),
+            body: any(named: 'body'),
+          ),
+        ).captured.single as Uri;
+
+        expect(
+          uri,
+          codePushClient.hostedUri.replace(
+            path: '/api/v1/apps/$appId/collaborators',
+          ),
+        );
+      });
+    });
+
     group('getCurrentUser', () {
       const user = User(id: 123, email: 'tester@shorebird.dev');
 
