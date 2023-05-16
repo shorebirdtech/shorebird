@@ -213,6 +213,20 @@ class CodePushClient {
     return Release.fromJson(body);
   }
 
+  /// Remove [userId] as a collaborator from [appId].
+  Future<void> deleteAppCollaborator({
+    required String appId,
+    required int userId,
+  }) async {
+    final response = await _httpClient.delete(
+      Uri.parse('$hostedUri/api/v1/apps/$appId/collaborators/$userId'),
+    );
+
+    if (response.statusCode != HttpStatus.noContent) {
+      throw _parseErrorResponse(response.body);
+    }
+  }
+
   /// Delete the release with the provided [releaseId].
   Future<void> deleteRelease({required int releaseId}) async {
     final response = await _httpClient.delete(

@@ -871,6 +871,80 @@ void main() {
       });
     });
 
+    group('deleteAppCollaborator', () {
+      const appId = 'test-app-id';
+      const userId = 42;
+
+      test('throws an exception if the http request fails (unknown)', () async {
+        when(
+          () => httpClient.delete(any(), headers: any(named: 'headers')),
+        ).thenAnswer(
+          (_) async => http.Response('', HttpStatus.failedDependency),
+        );
+
+        expect(
+          codePushClient.deleteAppCollaborator(appId: appId, userId: userId),
+          throwsA(
+            isA<CodePushException>().having(
+              (e) => e.message,
+              'message',
+              CodePushClient.unknownErrorMessage,
+            ),
+          ),
+        );
+      });
+
+      test('throws an exception if the http request fails', () async {
+        when(
+          () => httpClient.delete(any(), headers: any(named: 'headers')),
+        ).thenAnswer(
+          (_) async => http.Response(
+            json.encode(errorResponse.toJson()),
+            HttpStatus.failedDependency,
+          ),
+        );
+
+        expect(
+          codePushClient.deleteAppCollaborator(appId: appId, userId: userId),
+          throwsA(
+            isA<CodePushException>().having(
+              (e) => e.message,
+              'message',
+              errorResponse.message,
+            ),
+          ),
+        );
+      });
+
+      test('completes when request succeeds', () async {
+        when(
+          () => httpClient.delete(
+            any(),
+            headers: any(named: 'headers'),
+          ),
+        ).thenAnswer((_) async => http.Response('', HttpStatus.noContent));
+
+        await codePushClient.deleteAppCollaborator(
+          appId: appId,
+          userId: userId,
+        );
+
+        final uri = verify(
+          () => httpClient.delete(
+            captureAny(),
+            headers: any(named: 'headers'),
+          ),
+        ).captured.single as Uri;
+
+        expect(
+          uri,
+          codePushClient.hostedUri.replace(
+            path: '/api/v1/apps/$appId/collaborators/$userId',
+          ),
+        );
+      });
+    });
+
     group('deleteRelease', () {
       const releaseId = 42;
 
