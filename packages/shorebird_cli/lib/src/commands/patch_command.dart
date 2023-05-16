@@ -210,7 +210,7 @@ Did you forget to run "shorebird init"?''',
     }
 
     final platform = results['platform'] as String;
-    final channelArg = results['channel'] as String;
+    final channelName = results['channel'] as String;
 
     final List<Release> releases;
     final fetchReleaseProgress = logger.progress('Fetching release');
@@ -360,7 +360,7 @@ https://github.com/shorebirdtech/shorebird/issues/472
       '''📱 App: ${lightCyan.wrap(app.displayName)} ${lightCyan.wrap('(${app.id})')}''',
       if (flavor != null) '🍧 Flavor: ${lightCyan.wrap(flavor)}',
       '📦 Release Version: ${lightCyan.wrap(releaseVersion)}',
-      '📺 Channel: ${lightCyan.wrap(channelArg)}',
+      '📺 Channel: ${lightCyan.wrap(channelName)}',
       '''🕹️  Platform: ${lightCyan.wrap(platform)} ${lightCyan.wrap('[${archMetadata.join(', ')}]')}''',
     ];
 
@@ -415,7 +415,7 @@ ${summary.join('\n')}
     try {
       final channels = await codePushClient.getChannels(appId: app.id);
       channel = channels.firstWhereOrNull(
-        (channel) => channel.name == channelArg,
+        (channel) => channel.name == channelName,
       );
       fetchChannelsProgress.complete();
     } catch (error) {
@@ -428,7 +428,7 @@ ${summary.join('\n')}
       try {
         channel = await codePushClient.createChannel(
           appId: app.id,
-          channel: channelArg,
+          channel: channelName,
         );
         createChannelProgress.complete();
       } catch (error) {
