@@ -8,7 +8,7 @@ part 'create_app_collaborator_request.g.dart';
 @JsonSerializable()
 class CreateAppCollaboratorRequest {
   /// {@macro create_app_collaborator_request}
-  const CreateAppCollaboratorRequest({required this.userId});
+  const CreateAppCollaboratorRequest({required this.email});
 
   /// Converts a Map<String, dynamic> to a [CreateAppCollaboratorRequest]
   factory CreateAppCollaboratorRequest.fromJson(Map<String, dynamic> json) =>
@@ -17,6 +17,6 @@ class CreateAppCollaboratorRequest {
   /// Converts a [CreateAppCollaboratorRequest] to a Map<String, dynamic>
   Map<String, dynamic> toJson() => _$CreateAppCollaboratorRequestToJson(this);
 
-  /// The unique identifier of the collaborator to add.
-  final int userId;
+  /// The email of the collaborator to add.
+  final String email;
 }
