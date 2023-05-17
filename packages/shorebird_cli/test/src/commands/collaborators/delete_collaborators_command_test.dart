@@ -1,7 +1,10 @@
+import 'dart:io';
+
 import 'package:args/args.dart';
 import 'package:http/http.dart' as http;
 import 'package:mason_logger/mason_logger.dart';
 import 'package:mocktail/mocktail.dart';
+import 'package:path/path.dart' as p;
 import 'package:shorebird_cli/src/auth/auth.dart';
 import 'package:shorebird_cli/src/commands/commands.dart';
 import 'package:shorebird_code_push_client/shorebird_code_push_client.dart';
@@ -154,6 +157,32 @@ void main() {
           '''${lightGreen.wrap('?')} What is the email of the collaborator you would like to delete?''',
         ),
       ).called(1);
+      verify(
+        () => codePushClient.deleteCollaborator(
+          appId: appId,
+          userId: collaborator.userId,
+        ),
+      ).called(1);
+    });
+
+    test('uses app-id from shorebird.yaml if one exists', () async {
+      final tempDir = Directory.systemTemp.createTempSync();
+      File(
+        p.join(tempDir.path, 'shorebird.yaml'),
+      ).writeAsStringSync('app_id: $appId');
+      when(() => argResults['app-id']).thenReturn(null);
+      when(
+        () => codePushClient.deleteCollaborator(
+          appId: any(named: 'appId'),
+          userId: any(named: 'userId'),
+        ),
+      ).thenAnswer((_) async {});
+      final result = await IOOverrides.runZoned(
+        () => command.run(),
+        getCurrentDirectory: () => tempDir,
+      );
+      expect(result, ExitCode.success.code);
+      verify(() => logger.success('\n✅ Collaborator Deleted!')).called(1);
       verify(
         () => codePushClient.deleteCollaborator(
           appId: appId,
