@@ -1,5 +1,5 @@
 import 'package:shorebird_cli/src/command.dart';
-import 'package:shorebird_cli/src/commands/collaborators/list_collaborators_command.dart';
+import 'package:shorebird_cli/src/commands/commands.dart';
 
 /// {@template collaborators_command}
 /// `shorebird collaborators`
