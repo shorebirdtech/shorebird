@@ -8,6 +8,7 @@ import 'package:shorebird_cli/src/commands/commands.dart';
 class CollaboratorsCommand extends ShorebirdCommand {
   /// {@macro collaborators_command}
   CollaboratorsCommand({required super.logger}) {
+    addSubcommand(AddCollaboratorsCommand(logger: logger));
     addSubcommand(ListCollaboratorsCommand(logger: logger));
   }
 
