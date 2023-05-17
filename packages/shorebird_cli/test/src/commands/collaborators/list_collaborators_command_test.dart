@@ -50,6 +50,10 @@ void main() {
       when(() => auth.client).thenReturn(httpClient);
     });
 
+    test('name is correct', () {
+      expect(command.name, equals('list'));
+    });
+
     test('description is correct', () {
       expect(
         command.description,

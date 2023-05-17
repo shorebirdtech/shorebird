@@ -28,10 +28,10 @@ class ListCollaboratorsCommand extends ShorebirdCommand
   static const String _appIdOption = 'app-id';
 
   @override
-  String get description => 'List all collaborators for a Shorebird app.';
+  String get name => 'list';
 
   @override
-  String get name => 'list';
+  String get description => 'List all collaborators for a Shorebird app.';
 
   @override
   List<String> get aliases => ['ls'];
