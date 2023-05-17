@@ -20,7 +20,7 @@ class AddCollaboratorsCommand extends ShorebirdCommand
     argParser
       ..addOption(
         _appIdOption,
-        help: 'The app id to create a collaborator for.',
+        help: 'The app id to add a collaborator to.',
       )
       ..addOption(
         _collaboratorEmailOption,
