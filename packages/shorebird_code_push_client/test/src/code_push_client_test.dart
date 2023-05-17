@@ -53,7 +53,7 @@ void main() {
       });
     });
 
-    group('createAppCollaborator', () {
+    group('createCollaborator', () {
       const appId = 'test-app-id';
       const email = 'jane.doe@shorebird.dev';
 
@@ -69,7 +69,7 @@ void main() {
         );
 
         expect(
-          codePushClient.createAppCollaborator(appId: appId, email: email),
+          codePushClient.createCollaborator(appId: appId, email: email),
           throwsA(
             isA<CodePushException>().having(
               (e) => e.message,
@@ -95,7 +95,7 @@ void main() {
         );
 
         expect(
-          codePushClient.createAppCollaborator(appId: appId, email: email),
+          codePushClient.createCollaborator(appId: appId, email: email),
           throwsA(
             isA<CodePushException>().having(
               (e) => e.message,
@@ -115,7 +115,7 @@ void main() {
           ),
         ).thenAnswer((_) async => http.Response('', HttpStatus.created));
 
-        await codePushClient.createAppCollaborator(appId: appId, email: email);
+        await codePushClient.createCollaborator(appId: appId, email: email);
 
         final uri = verify(
           () => httpClient.post(
@@ -868,7 +868,7 @@ void main() {
       });
     });
 
-    group('deleteAppCollaborator', () {
+    group('deleteCollaborator', () {
       const appId = 'test-app-id';
       const userId = 42;
 
@@ -880,7 +880,7 @@ void main() {
         );
 
         expect(
-          codePushClient.deleteAppCollaborator(appId: appId, userId: userId),
+          codePushClient.deleteCollaborator(appId: appId, userId: userId),
           throwsA(
             isA<CodePushException>().having(
               (e) => e.message,
@@ -902,7 +902,7 @@ void main() {
         );
 
         expect(
-          codePushClient.deleteAppCollaborator(appId: appId, userId: userId),
+          codePushClient.deleteCollaborator(appId: appId, userId: userId),
           throwsA(
             isA<CodePushException>().having(
               (e) => e.message,
@@ -921,7 +921,7 @@ void main() {
           ),
         ).thenAnswer((_) async => http.Response('', HttpStatus.noContent));
 
-        await codePushClient.deleteAppCollaborator(
+        await codePushClient.deleteCollaborator(
           appId: appId,
           userId: userId,
         );
