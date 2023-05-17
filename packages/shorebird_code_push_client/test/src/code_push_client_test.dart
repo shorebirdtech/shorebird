@@ -1305,6 +1305,98 @@ void main() {
       });
     });
 
+    group('getCollaborators', () {
+      const appId = 'test-app-id';
+      test('throws an exception if the http request fails (unknown)', () async {
+        when(
+          () => httpClient.get(
+            any(),
+            headers: any(named: 'headers'),
+          ),
+        ).thenAnswer(
+          (_) async => http.Response(
+            '',
+            HttpStatus.failedDependency,
+          ),
+        );
+
+        expect(
+          codePushClient.getCollaborators(appId: appId),
+          throwsA(
+            isA<CodePushException>().having(
+              (e) => e.message,
+              'message',
+              CodePushClient.unknownErrorMessage,
+            ),
+          ),
+        );
+      });
+
+      test('throws an exception if the http request fails', () async {
+        when(
+          () => httpClient.get(
+            any(),
+            headers: any(named: 'headers'),
+          ),
+        ).thenAnswer(
+          (_) async => http.Response(
+            json.encode(errorResponse.toJson()),
+            HttpStatus.failedDependency,
+          ),
+        );
+
+        expect(
+          codePushClient.getCollaborators(appId: appId),
+          throwsA(
+            isA<CodePushException>().having(
+              (e) => e.message,
+              'message',
+              errorResponse.message,
+            ),
+          ),
+        );
+      });
+
+      test('completes when request succeeds (empty)', () async {
+        when(
+          () => httpClient.get(
+            any(),
+            headers: any(named: 'headers'),
+          ),
+        ).thenAnswer(
+          (_) async => http.Response(json.encode([]), HttpStatus.ok),
+        );
+
+        final apps = await codePushClient.getCollaborators(appId: appId);
+        expect(apps, isEmpty);
+      });
+
+      test('completes when request succeeds (populated)', () async {
+        final expected = [
+          Collaborator(
+            userId: 0,
+            email: 'jane.doe@shorebird.dev',
+          ),
+          Collaborator(
+            userId: 1,
+            email: 'john.doe@shorebird.dev',
+          ),
+        ];
+
+        when(
+          () => httpClient.get(
+            any(),
+            headers: any(named: 'headers'),
+          ),
+        ).thenAnswer(
+          (_) async => http.Response(json.encode(expected), HttpStatus.ok),
+        );
+
+        final actual = await codePushClient.getCollaborators(appId: appId);
+        expect(json.encode(actual), equals(json.encode(expected)));
+      });
+    });
+
     group('getReleases', () {
       const appId = 'test-app-id';
       test('throws an exception if the http request fails (unknown)', () async {
