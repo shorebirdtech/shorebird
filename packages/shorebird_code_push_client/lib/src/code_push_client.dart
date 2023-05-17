@@ -44,7 +44,7 @@ class CodePushClient {
 
   /// Add a new collaborator to the app.
   /// Collaborators can manage the app including its releases and patches.
-  Future<void> createAppCollaborator({
+  Future<void> createCollaborator({
     required String appId,
     required String email,
   }) async {
@@ -216,7 +216,7 @@ class CodePushClient {
   }
 
   /// Remove [userId] as a collaborator from [appId].
-  Future<void> deleteAppCollaborator({
+  Future<void> deleteCollaborator({
     required String appId,
     required int userId,
   }) async {

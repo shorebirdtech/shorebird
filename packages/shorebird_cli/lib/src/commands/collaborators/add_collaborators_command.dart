@@ -81,7 +81,7 @@ ${styleBold.wrap(lightGreen.wrap('🚀 Ready to add a new collaborator!'))}
 
     final progress = logger.progress('Adding collaborator');
     try {
-      await client.createAppCollaborator(appId: appId, email: collaborator);
+      await client.createCollaborator(appId: appId, email: collaborator);
       progress.complete();
     } catch (error) {
       progress.fail();

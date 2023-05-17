@@ -9,6 +9,7 @@ class CollaboratorsCommand extends ShorebirdCommand {
   /// {@macro collaborators_command}
   CollaboratorsCommand({required super.logger}) {
     addSubcommand(AddCollaboratorsCommand(logger: logger));
+    addSubcommand(DeleteCollaboratorsCommand(logger: logger));
     addSubcommand(ListCollaboratorsCommand(logger: logger));
   }
 

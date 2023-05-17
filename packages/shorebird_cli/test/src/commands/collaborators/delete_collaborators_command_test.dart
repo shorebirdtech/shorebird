@@ -20,9 +20,10 @@ class _MockLogger extends Mock implements Logger {}
 class _MockProgress extends Mock implements Progress {}
 
 void main() {
-  group('create', () {
+  group('delete', () {
     const appId = 'test-app-id';
     const email = 'jane.doe@shorebird.dev';
+    const collaborator = Collaborator(userId: 0, email: email);
 
     late ArgResults argResults;
     late http.Client httpClient;
@@ -30,7 +31,7 @@ void main() {
     late CodePushClient codePushClient;
     late Logger logger;
     late Progress progress;
-    late AddCollaboratorsCommand command;
+    late DeleteCollaboratorsCommand command;
 
     setUp(() {
       argResults = _MockArgResults();
@@ -39,7 +40,7 @@ void main() {
       codePushClient = _MockCodePushClient();
       logger = _MockLogger();
       progress = _MockProgress();
-      command = AddCollaboratorsCommand(
+      command = DeleteCollaboratorsCommand(
         auth: auth,
         buildCodePushClient: ({
           required http.Client httpClient,
@@ -56,16 +57,21 @@ void main() {
       when(() => auth.client).thenReturn(httpClient);
       when(() => logger.confirm(any())).thenReturn(true);
       when(() => logger.progress(any())).thenReturn(progress);
-    });
-
-    test('name is correct', () {
-      expect(command.name, equals('add'));
+      when(
+        () => codePushClient.getCollaborators(appId: any(named: 'appId')),
+      ).thenAnswer((_) async => [collaborator]);
+      when(
+        () => codePushClient.deleteCollaborator(
+          appId: any(named: 'appId'),
+          userId: any(named: 'userId'),
+        ),
+      ).thenAnswer((_) async {});
     });
 
     test('description is correct', () {
       expect(
         command.description,
-        equals('Add a new collaborator to a Shorebird app.'),
+        equals('Delete an existing collaborator from a Shorebird app.'),
       );
     });
 
@@ -83,9 +89,9 @@ void main() {
       when(() => logger.confirm(any())).thenReturn(false);
       expect(await command.run(), ExitCode.success.code);
       verifyNever(
-        () => codePushClient.createChannel(
+        () => codePushClient.deleteCollaborator(
           appId: any(named: 'appId'),
-          channel: any(named: 'channel'),
+          userId: any(named: 'userId'),
         ),
       );
       verify(() => logger.info('Aborted.')).called(1);
@@ -93,12 +99,40 @@ void main() {
 
     test(
         'returns ExitCode.software '
-        'when adding a collaborator fails', () async {
+        'when fetching collaborators fails', () async {
       const error = 'oops something went wrong';
       when(
-        () => codePushClient.createCollaborator(
+        () => codePushClient.getCollaborators(appId: any(named: 'appId')),
+      ).thenThrow(error);
+      expect(await command.run(), ExitCode.software.code);
+      verify(() => logger.err(error)).called(1);
+    });
+
+    test('returns ExitCode.software when collaborator does not exist',
+        () async {
+      when(
+        () => codePushClient.getCollaborators(appId: any(named: 'appId')),
+      ).thenAnswer((_) async => []);
+      expect(await command.run(), ExitCode.software.code);
+      verify(
+        () => logger.err(
+          any(
+            that: contains(
+              'Could not find a collaborator with the email "$email".',
+            ),
+          ),
+        ),
+      ).called(1);
+    });
+
+    test(
+        'returns ExitCode.software '
+        'when deleting a collaborator fails', () async {
+      const error = 'oops something went wrong';
+      when(
+        () => codePushClient.deleteCollaborator(
           appId: any(named: 'appId'),
-          email: any(named: 'email'),
+          userId: any(named: 'userId'),
         ),
       ).thenThrow(error);
       expect(await command.run(), ExitCode.software.code);
@@ -109,31 +143,34 @@ void main() {
       when(() => argResults['email']).thenReturn(null);
       when(() => logger.prompt(any())).thenReturn(email);
       when(
-        () => codePushClient.createCollaborator(
+        () => codePushClient.deleteCollaborator(
           appId: any(named: 'appId'),
-          email: any(named: 'email'),
+          userId: any(named: 'userId'),
         ),
-      ).thenAnswer((_) async {});
+      ).thenAnswer((_) async => collaborator);
       expect(await command.run(), ExitCode.success.code);
       verify(
         () => logger.prompt(
-          '''${lightGreen.wrap('?')} What is the email of the collaborator you would like to add?''',
+          '''${lightGreen.wrap('?')} What is the email of the collaborator you would like to delete?''',
         ),
       ).called(1);
       verify(
-        () => codePushClient.createCollaborator(appId: appId, email: email),
+        () => codePushClient.deleteCollaborator(
+          appId: appId,
+          userId: collaborator.userId,
+        ),
       ).called(1);
     });
 
     test('returns ExitCode.success on success', () async {
       when(
-        () => codePushClient.createCollaborator(
+        () => codePushClient.deleteCollaborator(
           appId: any(named: 'appId'),
-          email: any(named: 'email'),
+          userId: any(named: 'userId'),
         ),
       ).thenAnswer((_) async {});
       expect(await command.run(), ExitCode.success.code);
-      verify(() => logger.success('\n✅ New Collaborator Added!')).called(1);
+      verify(() => logger.success('\n✅ Collaborator Deleted!')).called(1);
     });
   });
 }
