@@ -40,7 +40,7 @@ class CodePushClient {
   /// The hosted uri for the Shorebird CodePush API.
   final Uri hostedUri;
 
-  Uri get _apiV1 => Uri.parse('$hostedUri/api/v1');
+  Uri get _v1 => Uri.parse('$hostedUri/api/v1');
 
   /// Add a new collaborator to the app.
   /// Collaborators can manage the app including its releases and patches.
@@ -49,7 +49,7 @@ class CodePushClient {
     required int userId,
   }) async {
     final response = await _httpClient.post(
-      Uri.parse('$_apiV1/apps/$appId/collaborators'),
+      Uri.parse('$_v1/apps/$appId/collaborators'),
       body: json.encode(CreateAppCollaboratorRequest(userId: userId).toJson()),
     );
 
@@ -60,7 +60,7 @@ class CodePushClient {
 
   /// Fetches the currently logged-in user.
   Future<User?> getCurrentUser() async {
-    final uri = Uri.parse('$_apiV1/users/me');
+    final uri = Uri.parse('$_v1/users/me');
     final response = await _httpClient.get(uri);
 
     if (response.statusCode == HttpStatus.notFound) {
@@ -83,7 +83,7 @@ class CodePushClient {
   }) async {
     final request = http.MultipartRequest(
       'POST',
-      Uri.parse('$_apiV1/patches/$patchId/artifacts'),
+      Uri.parse('$_v1/patches/$patchId/artifacts'),
     );
     final file = await http.MultipartFile.fromPath('file', artifactPath);
     request.files.add(file);
@@ -104,7 +104,7 @@ class CodePushClient {
   /// Generates a Stripe payment link for the current user.
   Future<Uri> createPaymentLink() async {
     final response = await _httpClient.post(
-      Uri.parse('$_apiV1/subscriptions/payment_link'),
+      Uri.parse('$_v1/subscriptions/payment_link'),
     );
 
     if (response.statusCode != HttpStatus.ok) {
@@ -126,7 +126,7 @@ class CodePushClient {
   }) async {
     final request = http.MultipartRequest(
       'POST',
-      Uri.parse('$_apiV1/releases/$releaseId/artifacts'),
+      Uri.parse('$_v1/releases/$releaseId/artifacts'),
     );
     final file = await http.MultipartFile.fromPath('file', artifactPath);
     request.files.add(file);
@@ -148,7 +148,7 @@ class CodePushClient {
   /// Returns the newly created app.
   Future<App> createApp({required String displayName}) async {
     final response = await _httpClient.post(
-      Uri.parse('$_apiV1/apps'),
+      Uri.parse('$_v1/apps'),
       body: json.encode({'display_name': displayName}),
     );
 
@@ -165,7 +165,7 @@ class CodePushClient {
     required String channel,
   }) async {
     final response = await _httpClient.post(
-      Uri.parse('$_apiV1/channels'),
+      Uri.parse('$_v1/channels'),
       body: json.encode({'app_id': appId, 'channel': channel}),
     );
 
@@ -179,7 +179,7 @@ class CodePushClient {
   /// Create a new patch for the given [releaseId].
   Future<Patch> createPatch({required int releaseId}) async {
     final response = await _httpClient.post(
-      Uri.parse('$_apiV1/patches'),
+      Uri.parse('$_v1/patches'),
       body: json.encode({'release_id': releaseId}),
     );
 
@@ -199,7 +199,7 @@ class CodePushClient {
     String? displayName,
   }) async {
     final response = await _httpClient.post(
-      Uri.parse('$_apiV1/releases'),
+      Uri.parse('$_v1/releases'),
       body: json.encode({
         'app_id': appId,
         'version': version,
@@ -221,7 +221,7 @@ class CodePushClient {
     required int userId,
   }) async {
     final response = await _httpClient.delete(
-      Uri.parse('$_apiV1/apps/$appId/collaborators/$userId'),
+      Uri.parse('$_v1/apps/$appId/collaborators/$userId'),
     );
 
     if (response.statusCode != HttpStatus.noContent) {
@@ -232,7 +232,7 @@ class CodePushClient {
   /// Delete the release with the provided [releaseId].
   Future<void> deleteRelease({required int releaseId}) async {
     final response = await _httpClient.delete(
-      Uri.parse('$_apiV1/releases/$releaseId'),
+      Uri.parse('$_v1/releases/$releaseId'),
     );
 
     if (response.statusCode != HttpStatus.noContent) {
@@ -247,7 +247,7 @@ class CodePushClient {
     required String name,
   }) async {
     final response = await _httpClient.post(
-      Uri.parse('$_apiV1/users'),
+      Uri.parse('$_v1/users'),
       body: jsonEncode(CreateUserRequest(name: name).toJson()),
     );
 
@@ -262,7 +262,7 @@ class CodePushClient {
   /// Delete the app with the provided [appId].
   Future<void> deleteApp({required String appId}) async {
     final response = await _httpClient.delete(
-      Uri.parse('$_apiV1/apps/$appId'),
+      Uri.parse('$_v1/apps/$appId'),
     );
 
     if (response.statusCode != HttpStatus.noContent) {
@@ -272,7 +272,7 @@ class CodePushClient {
 
   /// List all apps for the current account.
   Future<List<AppMetadata>> getApps() async {
-    final response = await _httpClient.get(Uri.parse('$_apiV1/apps'));
+    final response = await _httpClient.get(Uri.parse('$_v1/apps'));
 
     if (response.statusCode != HttpStatus.ok) {
       throw _parseErrorResponse(response.body);
@@ -287,7 +287,7 @@ class CodePushClient {
   /// List all channels for the provided [appId].
   Future<List<Channel>> getChannels({required String appId}) async {
     final response = await _httpClient.get(
-      Uri.parse('$_apiV1/channels').replace(
+      Uri.parse('$_v1/channels').replace(
         queryParameters: {'appId': appId},
       ),
     );
@@ -305,7 +305,7 @@ class CodePushClient {
   /// List all collaborators for the provided [appId].
   Future<List<Collaborator>> getCollaborators({required String appId}) async {
     final response = await _httpClient.get(
-      Uri.parse('$_apiV1/apps/$appId/collaborators'),
+      Uri.parse('$_v1/apps/$appId/collaborators'),
     );
 
     if (response.statusCode != HttpStatus.ok) {
@@ -315,14 +315,15 @@ class CodePushClient {
     final releases = json.decode(response.body) as List;
     return releases
         .map(
-            (release) => Collaborator.fromJson(release as Map<String, dynamic>))
+          (release) => Collaborator.fromJson(release as Map<String, dynamic>),
+        )
         .toList();
   }
 
   /// List all release for the provided [appId].
   Future<List<Release>> getReleases({required String appId}) async {
     final response = await _httpClient.get(
-      Uri.parse('$_apiV1/releases').replace(
+      Uri.parse('$_v1/releases').replace(
         queryParameters: {'appId': appId},
       ),
     );
@@ -344,7 +345,7 @@ class CodePushClient {
     required String platform,
   }) async {
     final response = await _httpClient.get(
-      Uri.parse('$_apiV1/releases/$releaseId/artifacts').replace(
+      Uri.parse('$_v1/releases/$releaseId/artifacts').replace(
         queryParameters: {
           'arch': arch,
           'platform': platform,
@@ -366,7 +367,7 @@ class CodePushClient {
     required int channelId,
   }) async {
     final response = await _httpClient.post(
-      Uri.parse('$_apiV1/patches/promote'),
+      Uri.parse('$_v1/patches/promote'),
       body: json.encode({'patch_id': patchId, 'channel_id': channelId}),
     );
 
@@ -378,7 +379,7 @@ class CodePushClient {
   /// Cancels the current user's subscription.
   Future<DateTime> cancelSubscription() async {
     final response = await _httpClient.delete(
-      Uri.parse('$_apiV1/subscriptions'),
+      Uri.parse('$_v1/subscriptions'),
     );
 
     if (response.statusCode != HttpStatus.ok) {
