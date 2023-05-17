@@ -33,9 +33,9 @@ mixin ShorebirdFlavorMixin on ShorebirdJavaMixin {
     for (final task in '${result.stdout}'.split('\n')) {
       final match = assembleTaskPattern.matchAsPrefix(task);
       if (match != null) {
-        final variant = match.group(1)!.toLowerCase();
-        if (!variant.endsWith('test')) {
-          variants.add(variant);
+        final variant = match.group(1)!;
+        if (!variant.toLowerCase().endsWith('test')) {
+          variants.add(variant[0].toLowerCase() + variant.substring(1));
         }
       }
     }

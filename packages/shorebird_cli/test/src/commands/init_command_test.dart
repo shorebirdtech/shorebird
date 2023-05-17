@@ -361,7 +361,14 @@ If you want to reinitialize Shorebird, please run "shorebird init --force".''',
     });
 
     test('creates shorebird.yaml for an app with flavors', () async {
-      final appIds = ['test-appId-1', 'test-appId-2', 'test-appId-3'];
+      final appIds = [
+        'test-appId-1',
+        'test-appId-2',
+        'test-appId-3',
+        'test-appId-4',
+        'test-appId-5',
+        'test-appId-6'
+      ];
       var index = 0;
       when(
         () => codePushClient.createApp(displayName: any(named: 'displayName')),
@@ -388,8 +395,11 @@ If you want to reinitialize Shorebird, please run "shorebird init --force".''',
 app_id: ${appIds[0]}
 flavors:
   development: ${appIds[0]}
-  production: ${appIds[1]}
-  staging: ${appIds[2]}'''),
+  developmentInternal: ${appIds[1]}
+  production: ${appIds[2]}
+  productionInternal: ${appIds[3]}
+  staging: ${appIds[4]}
+  stagingInternal: ${appIds[5]}'''),
       );
 
       verifyInOrder([
