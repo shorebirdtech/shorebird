@@ -46,11 +46,11 @@ class CodePushClient {
   /// Collaborators can manage the app including its releases and patches.
   Future<void> createAppCollaborator({
     required String appId,
-    required int userId,
+    required String email,
   }) async {
     final response = await _httpClient.post(
       Uri.parse('$_v1/apps/$appId/collaborators'),
-      body: json.encode(CreateAppCollaboratorRequest(userId: userId).toJson()),
+      body: json.encode(CreateAppCollaboratorRequest(email: email).toJson()),
     );
 
     if (response.statusCode != HttpStatus.created) {

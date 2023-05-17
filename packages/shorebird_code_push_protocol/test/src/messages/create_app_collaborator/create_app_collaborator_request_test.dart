@@ -4,7 +4,9 @@ import 'package:test/test.dart';
 void main() {
   group(CreateAppCollaboratorRequest, () {
     test('can be (de)serialized', () {
-      const request = CreateAppCollaboratorRequest(userId: 42);
+      const request = CreateAppCollaboratorRequest(
+        email: 'jane.doe@shorebird.dev',
+      );
       expect(
         CreateAppCollaboratorRequest.fromJson(request.toJson()).toJson(),
         equals(request.toJson()),

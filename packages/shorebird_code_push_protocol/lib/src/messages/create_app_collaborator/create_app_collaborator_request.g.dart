@@ -15,15 +15,14 @@ CreateAppCollaboratorRequest _$CreateAppCollaboratorRequestFromJson(
       json,
       ($checkedConvert) {
         final val = CreateAppCollaboratorRequest(
-          userId: $checkedConvert('user_id', (v) => v as int),
+          email: $checkedConvert('email', (v) => v as String),
         );
         return val;
       },
-      fieldKeyMap: const {'userId': 'user_id'},
     );
 
 Map<String, dynamic> _$CreateAppCollaboratorRequestToJson(
         CreateAppCollaboratorRequest instance) =>
     <String, dynamic>{
-      'user_id': instance.userId,
+      'email': instance.email,
     };

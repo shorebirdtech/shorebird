@@ -55,7 +55,7 @@ void main() {
 
     group('createAppCollaborator', () {
       const appId = 'test-app-id';
-      const userId = 42;
+      const email = 'jane.doe@shorebird.dev';
 
       test('throws an exception if the http request fails (unknown)', () async {
         when(
@@ -69,7 +69,7 @@ void main() {
         );
 
         expect(
-          codePushClient.createAppCollaborator(appId: appId, userId: userId),
+          codePushClient.createAppCollaborator(appId: appId, email: email),
           throwsA(
             isA<CodePushException>().having(
               (e) => e.message,
@@ -95,7 +95,7 @@ void main() {
         );
 
         expect(
-          codePushClient.createAppCollaborator(appId: appId, userId: userId),
+          codePushClient.createAppCollaborator(appId: appId, email: email),
           throwsA(
             isA<CodePushException>().having(
               (e) => e.message,
@@ -115,10 +115,7 @@ void main() {
           ),
         ).thenAnswer((_) async => http.Response('', HttpStatus.created));
 
-        await codePushClient.createAppCollaborator(
-          appId: appId,
-          userId: userId,
-        );
+        await codePushClient.createAppCollaborator(appId: appId, email: email);
 
         final uri = verify(
           () => httpClient.post(
