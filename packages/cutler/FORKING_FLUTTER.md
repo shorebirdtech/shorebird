@@ -187,11 +187,17 @@ git tag -a -m "shorebird-3.10.0-1.5.pre" shorebird-3.10.0-1.5.pre f498c3913890e7
 git push origin shorebird-3.10.0-1.5.pre
 ```
 
-12. If there were changes to the `patch` binary in the `updater` library we
+12. Sync our tags with the upstream (https://github.com/flutter/flutter):
+```
+git fetch --tags upstream
+git push --tags
+```
+
+13. If there were changes to the `patch` binary in the `updater` library we
 will need to trigger github actions before we can publish the new version of
 the shorebird engine.
 
-13. Before we can publish the new version of Shorebird, we need to build the
+14. Before we can publish the new version of Shorebird, we need to build the
 engine for all the platforms we support.  We do that by running the
 `build_and_upload.sh` script in the build_engine repo.
 
@@ -202,7 +208,7 @@ engine for all the platforms we support.  We do that by running the
 That script should be run in the cloud, but right now I've not figured that out
 yet, so we run it locally on an arm64 Mac.
 
-14. Once we've built all artifacts the final step is to push the new version
+15. Once we've built all artifacts the final step is to push the new version
 of shorebird to the appropriate branch.  e.g.
 (untested)
 ```
