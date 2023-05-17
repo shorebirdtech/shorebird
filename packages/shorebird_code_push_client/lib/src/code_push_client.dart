@@ -300,6 +300,23 @@ class CodePushClient {
         .toList();
   }
 
+  /// List all collaborators for the provided [appId].
+  Future<List<Collaborator>> getCollaborators({required String appId}) async {
+    final response = await _httpClient.get(
+      Uri.parse('$hostedUri/api/v1/apps/$appId/collaborators'),
+    );
+
+    if (response.statusCode != HttpStatus.ok) {
+      throw _parseErrorResponse(response.body);
+    }
+
+    final releases = json.decode(response.body) as List;
+    return releases
+        .map(
+            (release) => Collaborator.fromJson(release as Map<String, dynamic>))
+        .toList();
+  }
+
   /// List all release for the provided [appId].
   Future<List<Release>> getReleases({required String appId}) async {
     final response = await _httpClient.get(
