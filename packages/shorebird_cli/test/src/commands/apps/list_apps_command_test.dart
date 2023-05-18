@@ -93,7 +93,7 @@ void main() {
     });
 
     test('sort apps by display name', () async {
-      final apps = [
+      final unsortedApps = [
         const AppMetadata(
           appId: 'e0e32628-65b8-4df8-90e5-992de49d2d6d',
           displayName: '2',
@@ -107,7 +107,8 @@ void main() {
           displayName: '1',
         ),
       ];
-      when(() => codePushClient.getApps()).thenAnswer((_) async => apps);
+      when(() => codePushClient.getApps())
+          .thenAnswer((_) async => unsortedApps);
 
       expect(await command.run(), ExitCode.success.code);
       verify(
