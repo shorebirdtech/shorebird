@@ -57,6 +57,11 @@ class ListAppsCommand extends ShorebirdCommand
       return ExitCode.success.code;
     }
 
+    // Sort the apps by name to make the output more readable. Otherwise the
+    // list of apps is completely mixed up which is hard to read when using
+    // flavors, see https://github.com/shorebirdtech/shorebird/issues/513.
+    apps.sort((a, b) => a.displayName.compareTo(b.displayName));
+
     logger.info(apps.prettyPrint());
 
     return ExitCode.success.code;
