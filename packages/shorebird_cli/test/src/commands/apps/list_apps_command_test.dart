@@ -91,5 +91,39 @@ void main() {
         ),
       ).called(1);
     });
+
+    test('sort apps by display name', () async {
+      final apps = [
+        const AppMetadata(
+          appId: 'e0e32628-65b8-4df8-90e5-992de49d2d6d',
+          displayName: '2',
+        ),
+        const AppMetadata(
+          appId: '28843985-afde-451c-814f-21dbd6824d61',
+          displayName: '3',
+        ),
+        const AppMetadata(
+          appId: 'a13c951f-8360-4a8e-a78c-c0f5ee4e88fb',
+          displayName: '1',
+        ),
+      ];
+      when(() => codePushClient.getApps()).thenAnswer((_) async => apps);
+
+      expect(await command.run(), ExitCode.success.code);
+      verify(
+        () => logger.info(
+          '''
+┌──────┬──────────────────────────────────────┬─────────┬───────┐
+│ Name │ ID                                   │ Release │ Patch │
+├──────┼──────────────────────────────────────┼─────────┼───────┤
+│ 1    │ a13c951f-8360-4a8e-a78c-c0f5ee4e88fb │ --      │ --    │
+├──────┼──────────────────────────────────────┼─────────┼───────┤
+│ 2    │ e0e32628-65b8-4df8-90e5-992de49d2d6d │ --      │ --    │
+├──────┼──────────────────────────────────────┼─────────┼───────┤
+│ 3    │ 28843985-afde-451c-814f-21dbd6824d61 │ --      │ --    │
+└──────┴──────────────────────────────────────┴─────────┴───────┘''',
+        ),
+      ).called(1);
+    });
   });
 }
