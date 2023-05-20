@@ -1,5 +1,3 @@
-import 'dart:io';
-
 import 'package:mocktail/mocktail.dart';
 import 'package:shorebird_cli/src/git_tag_version.dart';
 import 'package:shorebird_cli/src/shorebird_process.dart';
@@ -7,7 +5,7 @@ import 'package:test/test.dart';
 
 class _MockShorebirdProcess extends Mock implements ShorebirdProcess {}
 
-class _MockProcessResult extends Mock implements ProcessResult {}
+class _MockProcessResult extends Mock implements ShorebirdProcessResult {}
 
 void main() {
   const shorebirdChannel = 'main';
@@ -20,12 +18,12 @@ void main() {
 
   group('GitTagVersion', () {
     late ShorebirdProcess shorebirdProcess;
-    late ProcessResult fetchChannelResult;
-    late ProcessResult fetchStableTagResult;
-    late ProcessResult fetchDevTagResult;
-    late ProcessResult fetchNoTagResult;
-    late ProcessResult fetchNearestTagResult;
-    late ProcessResult fetchRemoteTagsResult;
+    late ShorebirdProcessResult fetchChannelResult;
+    late ShorebirdProcessResult fetchStableTagResult;
+    late ShorebirdProcessResult fetchDevTagResult;
+    late ShorebirdProcessResult fetchNoTagResult;
+    late ShorebirdProcessResult fetchNearestTagResult;
+    late ShorebirdProcessResult fetchRemoteTagsResult;
 
     setUp(() {
       shorebirdProcess = _MockShorebirdProcess();

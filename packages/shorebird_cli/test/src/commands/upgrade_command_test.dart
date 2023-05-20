@@ -2,8 +2,8 @@ import 'package:mason_logger/mason_logger.dart';
 import 'package:mocktail/mocktail.dart';
 import 'package:scoped/scoped.dart';
 import 'package:shorebird_cli/src/commands/commands.dart';
-import 'package:shorebird_cli/src/logger.dart';
 import 'package:shorebird_cli/src/git_tag_version.dart';
+import 'package:shorebird_cli/src/logger.dart';
 import 'package:shorebird_cli/src/shorebird_process.dart';
 import 'package:test/test.dart';
 
@@ -206,6 +206,15 @@ void main() {
       when(
         () => fetchLatestVersionResult.stdout,
       ).thenReturn(newerShorebirdRevision);
+      when(
+        () => fetchCurrentChannelResult.stdout,
+      ).thenReturn(currentShorebirdChannel);
+      when(
+        () => fetchLatestTagResult.stdout,
+      ).thenReturn(newerShorebirdVersion);
+      when(
+        () => fetchCurrentTagResult.stdout,
+      ).thenReturn(currentShorebirdVersion);
       when(() => pruneFlutterOriginResult.exitCode).thenReturn(1);
       when(() => logger.progress(any())).thenReturn(_MockProgress());
 

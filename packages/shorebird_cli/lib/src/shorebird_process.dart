@@ -67,7 +67,7 @@ class ShorebirdProcess {
     );
   }
 
-  ProcessResult runSync(
+  ShorebirdProcessResult runSync(
     String executable,
     List<String> arguments, {
     bool runInShell = false,
@@ -193,19 +193,25 @@ class ProcessWrapper {
     );
   }
 
-  ProcessResult runSync(
+  ShorebirdProcessResult runSync(
     String executable,
     List<String> arguments, {
     bool runInShell = false,
     Map<String, String>? environment,
     String? workingDirectory,
   }) {
-    return Process.runSync(
+    final result = Process.runSync(
       executable,
       arguments,
       environment: environment,
       runInShell: runInShell,
       workingDirectory: workingDirectory,
+    );
+
+    return ShorebirdProcessResult(
+      exitCode: result.exitCode,
+      stdout: result.stdout,
+      stderr: result.stderr,
     );
   }
 
