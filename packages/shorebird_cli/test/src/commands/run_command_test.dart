@@ -11,6 +11,7 @@ import 'package:shorebird_cli/src/auth/auth.dart';
 import 'package:shorebird_cli/src/commands/run_command.dart';
 import 'package:shorebird_cli/src/logger.dart';
 import 'package:shorebird_cli/src/shorebird_process.dart';
+import 'package:shorebird_cli/src/validators/shorebird_yaml_validator.dart';
 import 'package:shorebird_cli/src/validators/validators.dart';
 import 'package:shorebird_code_push_client/shorebird_code_push_client.dart';
 import 'package:test/test.dart';
@@ -32,6 +33,9 @@ class _MockCodePushClient extends Mock implements CodePushClient {}
 class _MockAndroidInternetPermissionValidator extends Mock
     implements AndroidInternetPermissionValidator {}
 
+class _MockShorebirdYamlValidator extends Mock
+    implements ShorebirdYamlValidator {}
+
 class _MockShorebirdFlutterValidator extends Mock
     implements ShorebirdFlutterValidator {}
 
@@ -46,6 +50,7 @@ void main() {
     late Process process;
     late CodePushClient codePushClient;
     late AndroidInternetPermissionValidator androidInternetPermissionValidator;
+    late ShorebirdYamlValidator shorebirdYamlValidator;
     late ShorebirdFlutterValidator flutterValidator;
     late ShorebirdProcess shorebirdProcess;
     late RunCommand command;
@@ -70,9 +75,8 @@ void main() {
       codePushClient = _MockCodePushClient();
       androidInternetPermissionValidator =
           _MockAndroidInternetPermissionValidator();
+      shorebirdYamlValidator = _MockShorebirdYamlValidator();
       flutterValidator = _MockShorebirdFlutterValidator();
-
-      registerFallbackValue(shorebirdProcess);
 
       when(
         () => shorebirdProcess.start(
