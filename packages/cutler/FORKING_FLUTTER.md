@@ -10,7 +10,7 @@ We maintain forks of:
 * flutter/engine
 * flutter/buildroot
 
-We keep our forked changes on the `main` branch of each repo which we rebase
+We keep our forked changes on the `shorebird/main` branch of each repo which we rebase
 periodically on top of `main` from the upstream repo.
 
 When Flutter makes a release, we make a branch in each repo for the Flutter
@@ -35,7 +35,7 @@ following branches:
 * flutter/flutter: `flutter_release/3.7.10`
 * flutter/engine: `flutter_release/3.7.10`
 * flutter/buildroot: `flutter_release/3.7.10`
-* shorebird: no branch or tag, just a commit to the `main` branch which will
+* shorebird: no branch or tag, just a commit to the `shorebird/main` branch which will
   eventually get pushed to `beta` and `stable` branches for Shorebird.
 
 It's rare that we will ever need to add commits to one of these branches,
