@@ -248,9 +248,6 @@ ${summary.join('\n')}
       }
     }
 
-    createArtifactProgress.complete();
-
-    final uploadAppBundleProgress = logger.progress('Uploading app bundle');
     try {
       await codePushClient.createReleaseArtifact(
         releaseId: release.id,
@@ -264,7 +261,7 @@ ${summary.join('\n')}
       return ExitCode.software.code;
     }
 
-    uploadAppBundleProgress.complete();
+    createArtifactProgress.complete();
 
     logger
       ..success('\n✅ Published Release!')
