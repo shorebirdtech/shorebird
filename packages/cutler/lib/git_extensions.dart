@@ -77,7 +77,7 @@ extension RepoCommands on Repo {
   Version getForkPoint(String forkBranch) {
     final hash = runCommand(
       'git',
-      ['merge-base', '--fork-point', upstreamBranch, forkBranch],
+      ['merge-base', upstreamBranch, forkBranch],
       workingDirectory: workingDirectory,
     );
     return versionFrom(hash);
