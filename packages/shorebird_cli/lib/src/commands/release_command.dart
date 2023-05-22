@@ -250,6 +250,22 @@ ${summary.join('\n')}
 
     createArtifactProgress.complete();
 
+    final uploadAppBundleProgress = logger.progress('Uploading app bundle');
+    try {
+      await codePushClient.createReleaseArtifact(
+        releaseId: release.id,
+        artifactPath: bundlePath,
+        arch: 'universal',
+        platform: platform,
+        hash: _hashFn(await File(bundlePath).readAsBytes()),
+      );
+    } catch (error) {
+      createArtifactProgress.fail('$error');
+      return ExitCode.software.code;
+    }
+
+    uploadAppBundleProgress.complete();
+
     logger
       ..success('\n✅ Published Release!')
       ..info('''
