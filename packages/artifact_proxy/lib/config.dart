@@ -9,6 +9,7 @@ final engineArtifactPatterns = {
   r'flutter_infra_release\/flutter\/(.*)\/windows-x64\/font-subset.zip',
   r'flutter_infra_release\/flutter\/(.*)\/windows-x64\/flutter-cpp-client-wrapper\.zip',
   r'flutter_infra_release\/flutter\/(.*)\/windows-x64\/artifacts\.zip',
+  r'flutter_infra_release\/flutter\/(.*)\/windows-x64-debug\/windows-x64-flutter\.zip',
   r'flutter_infra_release\/flutter\/(.*)\/windows-x64-release\/windows-x64-flutter\.zip',
   r'flutter_infra_release\/flutter\/(.*)\/windows-x64-profile\/windows-x64-flutter\.zip',
   r'flutter_infra_release\/flutter\/(.*)\/sky_engine\.zip',
