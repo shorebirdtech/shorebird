@@ -83,7 +83,7 @@ class UpgradeCommand extends ShorebirdCommand with ShorebirdVersionMixin {
     return ExitCode.success.code;
   }
 
-  // Inteneded to fix an issue caused by a change in our remote branches.
+  // Intended to fix an issue caused by a change in our remote branches.
   // We deleted (origin/shorebird) and created (origin/shorebird/main)
   //
   // The error manifested at:
