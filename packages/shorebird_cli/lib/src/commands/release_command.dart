@@ -248,6 +248,19 @@ ${summary.join('\n')}
       }
     }
 
+    try {
+      await codePushClient.createReleaseArtifact(
+        releaseId: release.id,
+        artifactPath: bundlePath,
+        arch: 'aab',
+        platform: platform,
+        hash: _hashFn(await File(bundlePath).readAsBytes()),
+      );
+    } catch (error) {
+      createArtifactProgress.fail('$error');
+      return ExitCode.software.code;
+    }
+
     createArtifactProgress.complete();
 
     logger

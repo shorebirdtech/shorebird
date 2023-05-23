@@ -123,6 +123,11 @@ flutter:
         );
         File(artifactPath).createSync(recursive: true);
       }
+
+      final bundlePath = flavor != null
+          ? './build/app/outputs/bundle/${flavor}Release/app-$flavor-release.aab'
+          : './build/app/outputs/bundle/release/app-release.aab';
+      File(bundlePath).createSync(recursive: true);
     }
 
     setUp(() {
@@ -487,6 +492,30 @@ Did you forget to run "shorebird init"?''',
       expect(exitCode, ExitCode.software.code);
     });
 
+    test('throws error when uploading aab fails', () async {
+      const error = 'something went wrong';
+      when(
+        () => codePushClient.getReleases(appId: any(named: 'appId')),
+      ).thenAnswer((_) async => []);
+      when(
+        () => codePushClient.createReleaseArtifact(
+          artifactPath: any(named: 'artifactPath', that: endsWith('.aab')),
+          releaseId: any(named: 'releaseId'),
+          arch: any(named: 'arch'),
+          platform: any(named: 'platform'),
+          hash: any(named: 'hash'),
+        ),
+      ).thenThrow(error);
+      final tempDir = setUpTempDir();
+      setUpTempArtifacts(tempDir);
+      final exitCode = await IOOverrides.runZoned(
+        command.run,
+        getCurrentDirectory: () => tempDir,
+      );
+      verify(() => progress.fail(error)).called(1);
+      expect(exitCode, ExitCode.software.code);
+    });
+
     test(
         'does not prompt for confirmation '
         'when --release-version and --force are used', () async {
@@ -514,6 +543,15 @@ Did you forget to run "shorebird init"?''',
         getCurrentDirectory: () => tempDir,
       );
       verify(() => logger.success('\n✅ Published Release!')).called(1);
+      verify(
+        () => codePushClient.createReleaseArtifact(
+          artifactPath: any(named: 'artifactPath', that: endsWith('.aab')),
+          releaseId: any(named: 'releaseId'),
+          arch: 'aab',
+          platform: 'android',
+          hash: any(named: 'hash'),
+        ),
+      ).called(1);
       expect(exitCode, ExitCode.success.code);
       expect(capturedHostedUri, isNull);
     });
@@ -538,6 +576,15 @@ flavors:
         getCurrentDirectory: () => tempDir,
       );
       verify(() => logger.success('\n✅ Published Release!')).called(1);
+      verify(
+        () => codePushClient.createReleaseArtifact(
+          artifactPath: any(named: 'artifactPath', that: endsWith('.aab')),
+          releaseId: any(named: 'releaseId'),
+          arch: 'aab',
+          platform: 'android',
+          hash: any(named: 'hash'),
+        ),
+      ).called(1);
       expect(exitCode, ExitCode.success.code);
       expect(capturedHostedUri, isNull);
     });
