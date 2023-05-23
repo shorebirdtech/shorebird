@@ -83,6 +83,15 @@ class UpgradeCommand extends ShorebirdCommand with ShorebirdVersionMixin {
     return ExitCode.success.code;
   }
 
+  // Inteneded to fix an issue caused by a change in our remote branches.
+  // We deleted (origin/shorebird) and created (origin/shorebird/main)
+  //
+  // The error manifested at:
+  // $ shorebird --version
+  //   Updating Flutter...
+  //   error: cannot lock ref 'refs/remotes/origin/shorebird/main': 'refs/remotes/origin/shorebird' exists; cannot create 'refs/remotes/origin/shorebird/main'
+  //   From https://github.com/shorebirdtech/flutter
+  //    ! [new branch]          shorebird/main -> origin/shorebird/main  (unable to update local ref)
   Future<void> _pruneFlutterOrigin() async {
     const executable = 'git';
     final args = ['remote', 'prune', 'origin'];
