@@ -3,6 +3,7 @@ import 'dart:io';
 import 'package:mason_logger/mason_logger.dart';
 import 'package:path/path.dart' as p;
 import 'package:shorebird_cli/src/command.dart';
+import 'package:shorebird_cli/src/shorebird_environment.dart';
 import 'package:shorebird_cli/src/shorebird_version_mixin.dart';
 
 /// {@template upgrade_command}
@@ -69,8 +70,44 @@ class UpgradeCommand extends ShorebirdCommand with ShorebirdVersionMixin {
       return ExitCode.software.code;
     }
 
+    try {
+      await _pruneFlutterOrigin();
+    } on ProcessException catch (error) {
+      updateProgress.fail();
+      logger.err('Updating failed: ${error.message}');
+      return ExitCode.software.code;
+    }
+
     updateProgress.complete('Updated successfully.');
 
     return ExitCode.success.code;
+  }
+
+  // Intended to fix an issue caused by a change in our remote branches.
+  // We deleted (origin/shorebird) and created (origin/shorebird/main)
+  //
+  // The error manifested at:
+  // $ shorebird --version
+  //   Updating Flutter...
+  //   error: cannot lock ref 'refs/remotes/origin/shorebird/main': 'refs/remotes/origin/shorebird' exists; cannot create 'refs/remotes/origin/shorebird/main'
+  //   From https://github.com/shorebirdtech/flutter
+  //    ! [new branch]          shorebird/main -> origin/shorebird/main  (unable to update local ref)
+  Future<void> _pruneFlutterOrigin() async {
+    const executable = 'git';
+    final args = ['remote', 'prune', 'origin'];
+    final result = await process.run(
+      executable,
+      args,
+      workingDirectory: ShorebirdEnvironment.flutterDirectory.path,
+    );
+
+    if (result.exitCode != 0) {
+      throw ProcessException(
+        executable,
+        args,
+        '${result.stderr}',
+        result.exitCode,
+      );
+    }
   }
 }
