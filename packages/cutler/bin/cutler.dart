@@ -2,14 +2,16 @@ import 'dart:io';
 
 import 'package:args/args.dart';
 import 'package:args/command_runner.dart';
+import 'package:cutler/commands/check_out_command.dart';
+import 'package:cutler/commands/commands.dart';
 import 'package:cutler/config.dart';
 import 'package:cutler/model.dart';
-import 'package:cutler/commands/commands.dart';
 
 class Cutler extends CommandRunner<int> {
   Cutler() : super('cutler', 'A tool for maintaining forks of Flutter.') {
-    addCommand(RebaseCommand());
+    addCommand(CheckOutCommand());
     addCommand(PrintVersionsCommand());
+    addCommand(RebaseCommand());
 
     argParser
       ..addFlag('verbose', abbr: 'v')
@@ -30,6 +32,7 @@ class Cutler extends CommandRunner<int> {
   @override
   ArgResults parse(Iterable<String> args) {
     final results = super.parse(args);
+    final command = args.first;
     config = Config(
       checkoutsRoot: expandUser(results['root'] as String),
       verbose: results['verbose'] as bool,
@@ -37,12 +40,14 @@ class Cutler extends CommandRunner<int> {
       doUpdate: results['update'] as bool,
       flutterChannel: results['flutter-channel'] as String,
     );
-    for (final repo in Repo.values) {
-      final path = '${config.checkoutsRoot}/${repo.path}';
-      if (!Directory(path).existsSync()) {
-        throw Exception(
-          'Directory $path does not exist, are you sure --root is correct?',
-        );
+    if (command != 'checkout') {
+      for (final repo in Repo.values) {
+        final path = '${config.checkoutsRoot}/${repo.path}';
+        if (!Directory(path).existsSync()) {
+          throw Exception(
+            'Directory $path does not exist, Did you run "cutler checkout"?',
+          );
+        }
       }
     }
     return results;
