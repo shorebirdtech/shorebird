@@ -252,7 +252,7 @@ ${summary.join('\n')}
       await codePushClient.createReleaseArtifact(
         releaseId: release.id,
         artifactPath: bundlePath,
-        arch: 'universal',
+        arch: 'aab',
         platform: platform,
         hash: _hashFn(await File(bundlePath).readAsBytes()),
       );

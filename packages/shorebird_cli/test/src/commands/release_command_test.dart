@@ -547,7 +547,7 @@ Did you forget to run "shorebird init"?''',
         () => codePushClient.createReleaseArtifact(
           artifactPath: any(named: 'artifactPath', that: endsWith('.aab')),
           releaseId: any(named: 'releaseId'),
-          arch: 'universal',
+          arch: 'aab',
           platform: 'android',
           hash: any(named: 'hash'),
         ),
@@ -580,7 +580,7 @@ flavors:
         () => codePushClient.createReleaseArtifact(
           artifactPath: any(named: 'artifactPath', that: endsWith('.aab')),
           releaseId: any(named: 'releaseId'),
-          arch: 'universal',
+          arch: 'aab',
           platform: 'android',
           hash: any(named: 'hash'),
         ),
