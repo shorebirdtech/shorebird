@@ -1,0 +1,104 @@
+import 'dart:io';
+
+import 'package:mason_logger/mason_logger.dart';
+import 'package:shorebird_cli/src/auth_logger_mixin.dart';
+import 'package:shorebird_cli/src/command.dart';
+import 'package:shorebird_cli/src/shorebird_build_mixin.dart';
+import 'package:shorebird_cli/src/shorebird_config_mixin.dart';
+import 'package:shorebird_cli/src/shorebird_validation_mixin.dart';
+
+/// {@template build_ipa_command}
+/// `shorebird build ipa`
+/// Builds an .xcarchive and optionally .ipa for an iOS app to be generated for
+/// App Store submission.
+/// {@endtemplate}
+class BuildIpaCommand extends ShorebirdCommand
+    with
+        AuthLoggerMixin,
+        ShorebirdValidationMixin,
+        ShorebirdConfigMixin,
+        ShorebirdBuildMixin {
+  /// {@macro build_ipa_command}
+  BuildIpaCommand({required super.logger, super.auth, super.validators}) {
+    argParser
+      ..addOption(
+        'target',
+        abbr: 't',
+        help: 'The main entrypoint file of the application.',
+      )
+      ..addOption(
+        'flavor',
+        help: 'The product flavor to use when building the app.',
+      )
+      ..addFlag(
+        'codesign',
+        help:
+            '''Codesign the application bundle (only available on device builds).''',
+      );
+  }
+
+  @override
+  String get description =>
+      '''Builds an .xcarchive and optionally .ipa for an iOS app to be generated for App Store submission.''';
+
+  @override
+  String get name => 'ipa';
+
+  @override
+  Future<int> run() async {
+    if (!auth.isAuthenticated) {
+      printNeedsAuthInstructions();
+      return ExitCode.noUser.code;
+    }
+
+    final validationIssues = await runValidators();
+    if (validationIssuesContainsError(validationIssues)) {
+      logValidationFailure(issues: validationIssues);
+      return ExitCode.config.code;
+    }
+
+    final flavor = results['flavor'] as String?;
+    final target = results['target'] as String?;
+    final codesign = results['codesign'] as bool;
+
+    if (!codesign) {
+      logger.warn('''
+Codesigning is disabled. You must manually codesign before deploying to devices.''');
+    }
+
+    final buildProgress = logger.progress('Building ipa');
+    try {
+      await buildIpa(
+        flavor: flavor,
+        target: target,
+        codesign: codesign,
+      );
+    } on ProcessException catch (error) {
+      buildProgress.fail('Failed to build: ${error.message}');
+      return ExitCode.software.code;
+    }
+
+    buildProgress.complete();
+
+    const xcarchivePath = './build/ios/archive/Runner.xcarchive';
+
+    logger.info('''
+📦 Generated an xcode archive at:
+${lightCyan.wrap(xcarchivePath)}''');
+
+    if (!codesign) {
+      logger.info(
+        'Codesigning disabled via "--no-codesign". Skipping ipa generation.',
+      );
+      return ExitCode.success.code;
+    }
+
+    const ipaPath = './build/ios/ipa/Runner.ipa';
+
+    logger.info('''
+📦 Generated an ipa at:
+${lightCyan.wrap(ipaPath)}''');
+
+    return ExitCode.success.code;
+  }
+}

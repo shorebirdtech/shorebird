@@ -119,4 +119,36 @@ mixin ShorebirdBuildMixin on ShorebirdCommand {
       );
     }
   }
+
+  Future<void> buildIpa({
+    String? flavor,
+    String? target,
+    bool codesign = true,
+  }) async {
+    const executable = 'flutter';
+    final arguments = [
+      'build',
+      'ipa',
+      '--release',
+      if (flavor != null) '--flavor=$flavor',
+      if (target != null) '--target=$target',
+      if (!codesign) '--no-codesign',
+      ...results.rest,
+    ];
+
+    final result = await process.run(
+      executable,
+      arguments,
+      runInShell: true,
+    );
+
+    if (result.exitCode != ExitCode.success.code) {
+      throw ProcessException(
+        'flutter',
+        arguments,
+        result.stderr.toString(),
+        result.exitCode,
+      );
+    }
+  }
 }

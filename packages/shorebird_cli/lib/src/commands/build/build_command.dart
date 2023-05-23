@@ -13,20 +13,9 @@ class BuildCommand extends ShorebirdCommand
     with ShorebirdValidationMixin, ShorebirdConfigMixin, ShorebirdBuildMixin {
   /// {@macro build_command}
   BuildCommand({required super.logger}) {
-    addSubcommand(
-      BuildApkCommand(
-        auth: auth,
-        logger: logger,
-        validators: validators,
-      ),
-    );
-    addSubcommand(
-      BuildAppBundleCommand(
-        auth: auth,
-        logger: logger,
-        validators: validators,
-      ),
-    );
+    addSubcommand(BuildApkCommand(logger: logger));
+    addSubcommand(BuildAppBundleCommand(logger: logger));
+    addSubcommand(BuildIpaCommand(logger: logger));
   }
 
   @override
