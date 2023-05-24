@@ -5,6 +5,13 @@ import 'package:shorebird_cli/src/aab/mf_reader.dart';
 import 'package:test/test.dart';
 
 void main() {
+  group(MfEntry, () {
+    test('toString contains name and sha', () {
+      const entry = MfEntry(name: 'name', sha256Digest: '1234abcd');
+      expect(entry.toString(), 'MfEntry(name: name, sha256Digest: 1234abcd)');
+    });
+  });
+
   group(MfReader, () {
     const fileContent = '''
 Manifest-Version: 1.0

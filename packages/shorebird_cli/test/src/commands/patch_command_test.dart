@@ -76,6 +76,15 @@ void main() {
       size: 42,
       url: 'https://example.com',
     );
+    const aabArtifact = ReleaseArtifact(
+      id: 0,
+      releaseId: 0,
+      arch: arch,
+      platform: platform,
+      hash: '#',
+      size: 42,
+      url: 'https://example.com/release.aab',
+    );
     const release = Release(
       id: 0,
       appId: appId,
@@ -298,7 +307,7 @@ flutter:
       ).thenAnswer((_) async => releaseArtifact);
       when(
         () => codePushClient.getAabArtifact(releaseId: any(named: 'releaseId')),
-      ).thenAnswer((_) async => releaseArtifact);
+      ).thenAnswer((_) async => aabArtifact);
       when(
         () => codePushClient.createChannel(
           appId: any(named: 'appId'),
@@ -556,6 +565,23 @@ Please create a release using "shorebird release" and try again.
       expect(exitCode, ExitCode.software.code);
     });
 
+    test('throws error when aab artfiact cannot be retrieved', () async {
+      const error = 'something went wrong';
+      when(
+        () => codePushClient.getAabArtifact(
+          releaseId: any(named: 'releaseId'),
+        ),
+      ).thenThrow(error);
+      final tempDir = setUpTempDir();
+      setUpTempArtifacts(tempDir);
+      final exitCode = await IOOverrides.runZoned(
+        command.run,
+        getCurrentDirectory: () => tempDir,
+      );
+      verify(() => progress.fail(error)).called(1);
+      expect(exitCode, ExitCode.software.code);
+    });
+
     test('throws error when release artifact cannot be retrieved.', () async {
       const error = 'something went wrong';
       when(
@@ -597,7 +623,36 @@ Please create a release using "shorebird release" and try again.
       expect(exitCode, ExitCode.software.code);
     });
 
-    test('prints error when native code changes are detected', () async {
+    test('throws error when aab fails to download', () async {
+      when(
+        () => httpClient.send(
+          any(
+            that: isA<http.Request>().having(
+              (req) => req.url.toString(),
+              'url',
+              endsWith('aab'),
+            ),
+          ),
+        ),
+      ).thenAnswer(
+        (_) async => http.StreamedResponse(
+          const Stream.empty(),
+          HttpStatus.internalServerError,
+          reasonPhrase: 'Internal Server Error',
+        ),
+      );
+
+      final tempDir = setUpTempDir();
+      setUpTempArtifacts(tempDir);
+      final exitCode = await IOOverrides.runZoned(
+        command.run,
+        getCurrentDirectory: () => tempDir,
+      );
+
+      expect(exitCode, ExitCode.software.code);
+    });
+
+    test('throws error when native code changes are detected', () async {
       when(() => aabDiffer.aabContentDifferences(any(), any())).thenReturn(
         {AabDifferences.native},
       );
@@ -642,7 +697,7 @@ Please create a release using "shorebird release" and try again.
     });
 
     test(
-      'does not warn user of asset or code changes if only dart changes are detected',
+      '''does not warn user of asset or code changes if only dart changes are detected''',
       () async {
         when(() => aabDiffer.aabContentDifferences(any(), any())).thenReturn(
           {AabDifferences.dart},
@@ -669,6 +724,30 @@ Please create a release using "shorebird release" and try again.
           () => logger.err(
             '''Your aab contains native changes, which cannot be applied in a patch. Please create a new release or revert these changes.''',
           ),
+        );
+      },
+    );
+
+    test(
+      '''exits if user decides to not proceed after being warned of non-dart changes''',
+      () async {
+        when(() => aabDiffer.aabContentDifferences(any(), any())).thenReturn(
+          {AabDifferences.assets},
+        );
+        when(
+          () => logger.confirm(any(that: contains('contains asset changes'))),
+        ).thenReturn(false);
+
+        final tempDir = setUpTempDir();
+        setUpTempArtifacts(tempDir);
+        final exitCode = await IOOverrides.runZoned(
+          command.run,
+          getCurrentDirectory: () => tempDir,
+        );
+
+        expect(exitCode, ExitCode.success.code);
+        verifyNever(
+          () => codePushClient.createPatch(releaseId: any(named: 'releaseId')),
         );
       },
     );
