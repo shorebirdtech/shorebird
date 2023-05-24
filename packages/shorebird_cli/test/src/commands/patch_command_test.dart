@@ -651,7 +651,7 @@ Please create a release using "shorebird release" and try again.
       expect(exitCode, ExitCode.software.code);
     });
 
-    test('throws error when native code changes are detected', () async {
+    test('throws error when Java/Kotlin code changes are detected', () async {
       when(() => aabDiffer.aabContentDifferences(any(), any())).thenReturn(
         {AabDifferences.native},
       );
@@ -666,7 +666,7 @@ Please create a release using "shorebird release" and try again.
       expect(exitCode, ExitCode.software.code);
       verify(
         () => logger.err(
-          '''Your aab contains native changes, which cannot be applied in a patch. Please create a new release or revert these changes.''',
+          '''The Android App Bundle appears to contain Kotlin or Java changes, which cannot be applied via a patch.''',
         ),
       ).called(1);
     });
@@ -685,14 +685,15 @@ Please create a release using "shorebird release" and try again.
 
       expect(exitCode, ExitCode.success.code);
       verify(
-        () => logger.confirm(
+        () => logger.info(
           any(
             that: contains(
-              '''Your aab contains asset changes, which will not be included in the patch. Continue anyways?''',
+              '''The Android App Bundle contains asset changes, which will not be included in the patch.''',
             ),
           ),
         ),
       ).called(1);
+      verify(() => logger.confirm('Continue anyways?')).called(1);
     });
 
     test(
@@ -734,7 +735,7 @@ Please create a release using "shorebird release" and try again.
           {AabDifferences.assets},
         );
         when(
-          () => logger.confirm(any(that: contains('contains asset changes'))),
+          () => logger.confirm(any(that: contains('Continue anyways?'))),
         ).thenReturn(false);
 
         final tempDir = setUpTempDir();

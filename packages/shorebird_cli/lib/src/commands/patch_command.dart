@@ -349,16 +349,28 @@ https://github.com/shorebirdtech/shorebird/issues/472
     logger.detail('content diffs detected: $contentDiffs');
 
     if (contentDiffs.contains(AabDifferences.native)) {
-      logger.err(
-        '''Your aab contains native changes, which cannot be applied in a patch. Please create a new release or revert these changes.''',
-      );
+      logger
+        ..err(
+          '''The Android App Bundle appears to contain Kotlin or Java changes, which cannot be applied via a patch.''',
+        )
+        ..info(
+          yellow.wrap(
+            '''
+Please create a new release or revert those changes to create a patch.
+
+If you believe you're seeing this in error, please reach out to us for support at https://shorebird.dev/support''',
+          ),
+        );
       return ExitCode.software.code;
     }
 
     if (contentDiffs.contains(AabDifferences.assets)) {
-      final shouldContinue = logger.confirm(
-        '''Your aab contains asset changes, which will not be included in the patch. Continue anyways?''',
+      logger.info(
+        yellow.wrap(
+          '''⚠️ The Android App Bundle contains asset changes, which will not be included in the patch.''',
+        ),
       );
+      final shouldContinue = logger.confirm('Continue anyways?');
       if (!shouldContinue) {
         return ExitCode.success.code;
       }
