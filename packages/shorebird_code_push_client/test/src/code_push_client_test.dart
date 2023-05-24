@@ -1603,10 +1603,8 @@ void main() {
         );
 
         expect(
-          codePushClient.getReleaseArtifact(
+          codePushClient.getAabArtifact(
             releaseId: releaseId,
-            arch: arch,
-            platform: platform,
           ),
           throwsA(
             isA<CodePushException>().having(
@@ -1632,10 +1630,8 @@ void main() {
         );
 
         expect(
-          codePushClient.getReleaseArtifact(
+          codePushClient.getAabArtifact(
             releaseId: releaseId,
-            arch: arch,
-            platform: platform,
           ),
           throwsA(
             isA<CodePushException>().having(
@@ -1667,10 +1663,8 @@ void main() {
           (_) async => http.Response(json.encode(expected), HttpStatus.ok),
         );
 
-        final actual = await codePushClient.getReleaseArtifact(
+        final actual = await codePushClient.getAabArtifact(
           releaseId: releaseId,
-          arch: arch,
-          platform: platform,
         );
         expect(json.encode(actual), equals(json.encode(expected)));
       });
