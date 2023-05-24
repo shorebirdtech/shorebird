@@ -8,7 +8,7 @@ export 'init_command.dart';
 export 'login_command.dart';
 export 'logout_command.dart';
 export 'patch_command.dart';
-export 'release_command.dart';
+export 'release/release.dart';
 export 'releases/releases.dart';
 export 'run_command.dart';
 export 'subscription/subscription_command.dart';
