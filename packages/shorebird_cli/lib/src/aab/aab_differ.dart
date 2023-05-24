@@ -34,15 +34,18 @@ enum AabDifferences {
 /// See https://developer.android.com/guide/app-bundle/app-bundle-format for
 /// reference.
 class AabDiffer {
+  /// Match files that change when Dart code changes.
   final _dartChangePatters = [
     RegExp(r'.+libapp\.so$'),
     RegExp(r'.+libflutter\.so$'),
   ];
 
+  /// Match files that change when Java/Kotlin code changes.
   final _nativeChangePatterns = [
     RegExp(r'.+\.dex$'),
   ];
 
+  /// Match files that change when assets change.
   final _assetChangePatterns = [
     RegExp(r'(.*)\/assets\/(.*)'),
     RegExp(r'AssetManifest\.json$'),
