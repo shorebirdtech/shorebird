@@ -35,7 +35,7 @@ enum AabDifferences {
 /// reference.
 class AabDiffer {
   /// Match files that change when Dart code changes.
-  final _dartChangePatters = [
+  final _dartChangePatterns = [
     RegExp(r'.+libapp\.so$'),
     RegExp(r'.+libflutter\.so$'),
   ];
@@ -70,7 +70,7 @@ class AabDiffer {
       return _assetChangePatterns.any((pattern) => pattern.hasMatch(file));
     });
     final hasDartChanges = fileDifferences.any((file) {
-      return _dartChangePatters.any((pattern) => pattern.hasMatch(file));
+      return _dartChangePatterns.any((pattern) => pattern.hasMatch(file));
     });
     final hasNativeChanges = fileDifferences.any((file) {
       return _nativeChangePatterns.any((pattern) => pattern.hasMatch(file));
