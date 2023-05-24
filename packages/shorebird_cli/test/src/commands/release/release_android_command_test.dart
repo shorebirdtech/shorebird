@@ -265,6 +265,10 @@ flutter:
       when(() => flutterValidator.validate(any())).thenAnswer((_) async => []);
     });
 
+    test('has a description', () {
+      expect(command.description, isNotEmpty);
+    });
+
     test('throws config error when shorebird is not initialized', () async {
       final tempDir = Directory.systemTemp.createTempSync();
       final exitCode = await IOOverrides.runZoned(
