@@ -5,6 +5,7 @@ import 'package:crypto/crypto.dart';
 import 'package:http/http.dart' as http;
 import 'package:mason_logger/mason_logger.dart';
 import 'package:path/path.dart' as p;
+import 'package:shorebird_cli/src/aab/aab.dart';
 import 'package:shorebird_cli/src/auth_logger_mixin.dart';
 import 'package:shorebird_cli/src/command.dart';
 import 'package:shorebird_cli/src/config/shorebird_yaml.dart';
@@ -58,7 +59,9 @@ class PatchCommand extends ShorebirdCommand
     super.validators,
     HashFunction? hashFn,
     http.Client? httpClient,
-  })  : _hashFn = hashFn ?? ((m) => sha256.convert(m).toString()),
+    AabDiffer? aabDiffer,
+  })  : _aabDiffer = aabDiffer ?? AabDiffer(),
+        _hashFn = hashFn ?? ((m) => sha256.convert(m).toString()),
         _httpClient = httpClient ?? http.Client() {
     argParser
       ..addOption(
@@ -111,6 +114,7 @@ class PatchCommand extends ShorebirdCommand
   @override
   String get name => 'patch';
 
+  final AabDiffer _aabDiffer;
   final HashFunction _hashFn;
   final http.Client _httpClient;
 
@@ -293,6 +297,16 @@ https://github.com/shorebirdtech/shorebird/issues/472
         return ExitCode.software.code;
       }
     }
+
+    final ReleaseArtifact releaseAabArtifact;
+    try {
+      releaseAabArtifact =
+          await codePushClient.getAabArtifact(releaseId: release.id);
+    } catch (error) {
+      fetchReleaseArtifactProgress.fail('$error');
+      return ExitCode.software.code;
+    }
+
     fetchReleaseArtifactProgress.complete();
 
     final releaseArtifactPaths = <Arch, String>{};
@@ -310,7 +324,41 @@ https://github.com/shorebirdtech/shorebird/issues/472
         return ExitCode.software.code;
       }
     }
+
+    final String releaseAabPath;
+    try {
+      releaseAabPath = await _downloadReleaseArtifact(
+        Uri.parse(releaseAabArtifact.url),
+      );
+    } catch (error) {
+      downloadReleaseArtifactProgress.fail('$error');
+      return ExitCode.software.code;
+    }
+
     downloadReleaseArtifactProgress.complete();
+
+    final contentDiffs = _aabDiffer.aabContentDifferences(
+      releaseAabPath,
+      bundlePath,
+    );
+
+    logger.detail('content diffs detected: $contentDiffs');
+
+    if (contentDiffs.contains(AabDifferences.native)) {
+      logger.err(
+        '''Your aab contains native changes, which cannot be applied in a patch. Please create a new release or revert these changes.''',
+      );
+      return ExitCode.software.code;
+    }
+
+    if (contentDiffs.contains(AabDifferences.assets)) {
+      final shouldContinue = logger.confirm(
+        '''Your aab contains asset changes, which will not be included in the patch. Continue anyways?''',
+      );
+      if (!shouldContinue) {
+        return ExitCode.success.code;
+      }
+    }
 
     final patchArtifactBundles = <Arch, PatchArtifactBundle>{};
     final createDiffProgress = logger.progress('Creating artifacts');

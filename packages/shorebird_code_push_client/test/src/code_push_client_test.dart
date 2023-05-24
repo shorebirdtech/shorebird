@@ -1584,6 +1584,98 @@ void main() {
       });
     });
 
+    group('getAabArtifact', () {
+      const releaseId = 0;
+      const arch = 'aab';
+      const platform = 'android';
+
+      test('throws an exception if the http request fails (unknown)', () async {
+        when(
+          () => httpClient.get(
+            any(),
+            headers: any(named: 'headers'),
+          ),
+        ).thenAnswer(
+          (_) async => http.Response(
+            '',
+            HttpStatus.failedDependency,
+          ),
+        );
+
+        expect(
+          codePushClient.getReleaseArtifact(
+            releaseId: releaseId,
+            arch: arch,
+            platform: platform,
+          ),
+          throwsA(
+            isA<CodePushException>().having(
+              (e) => e.message,
+              'message',
+              CodePushClient.unknownErrorMessage,
+            ),
+          ),
+        );
+      });
+
+      test('throws an exception if the http request fails', () async {
+        when(
+          () => httpClient.get(
+            any(),
+            headers: any(named: 'headers'),
+          ),
+        ).thenAnswer(
+          (_) async => http.Response(
+            json.encode(errorResponse.toJson()),
+            HttpStatus.failedDependency,
+          ),
+        );
+
+        expect(
+          codePushClient.getReleaseArtifact(
+            releaseId: releaseId,
+            arch: arch,
+            platform: platform,
+          ),
+          throwsA(
+            isA<CodePushException>().having(
+              (e) => e.message,
+              'message',
+              errorResponse.message,
+            ),
+          ),
+        );
+      });
+
+      test('completes when request succeeds', () async {
+        final expected = ReleaseArtifact(
+          id: 0,
+          releaseId: releaseId,
+          arch: arch,
+          platform: platform,
+          url: 'https://example.com',
+          hash: '#',
+          size: 42,
+        );
+
+        when(
+          () => httpClient.get(
+            any(),
+            headers: any(named: 'headers'),
+          ),
+        ).thenAnswer(
+          (_) async => http.Response(json.encode(expected), HttpStatus.ok),
+        );
+
+        final actual = await codePushClient.getReleaseArtifact(
+          releaseId: releaseId,
+          arch: arch,
+          platform: platform,
+        );
+        expect(json.encode(actual), equals(json.encode(expected)));
+      });
+    });
+
     group('promotePatch', () {
       const patchId = 0;
       const channelId = 0;

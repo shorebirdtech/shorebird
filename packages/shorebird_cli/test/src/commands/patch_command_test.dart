@@ -6,6 +6,7 @@ import 'package:mason_logger/mason_logger.dart';
 import 'package:mocktail/mocktail.dart';
 import 'package:path/path.dart' as p;
 import 'package:platform/platform.dart';
+import 'package:shorebird_cli/src/aab/aab.dart';
 import 'package:shorebird_cli/src/auth/auth.dart';
 import 'package:shorebird_cli/src/cache.dart' show Cache;
 import 'package:shorebird_cli/src/commands/patch_command.dart';
@@ -17,6 +18,8 @@ import 'package:shorebird_code_push_client/shorebird_code_push_client.dart';
 import 'package:test/test.dart';
 
 class _FakeBaseRequest extends Fake implements http.BaseRequest {}
+
+class _MockAabDiffer extends Mock implements AabDiffer {}
 
 class _MockArgResults extends Mock implements ArgResults {}
 
@@ -92,6 +95,7 @@ flutter:
   assets:
     - shorebird.yaml''';
 
+    late AabDiffer aabDiffer;
     late ArgResults argResults;
     late Auth auth;
     late Directory shorebirdRoot;
@@ -147,6 +151,7 @@ flutter:
     });
 
     setUp(() {
+      aabDiffer = _MockAabDiffer();
       argResults = _MockArgResults();
       auth = _MockAuth();
       shorebirdRoot = Directory.systemTemp.createTempSync();
@@ -164,6 +169,7 @@ flutter:
       cache = _MockCache();
       shorebirdProcess = _MockShorebirdProcess();
       command = PatchCommand(
+        aabDiffer: aabDiffer,
         auth: auth,
         buildCodePushClient: ({
           required http.Client httpClient,
@@ -234,6 +240,8 @@ flutter:
             ? releaseVersionCodeProcessResult
             : releaseVersionNameProcessResult;
       });
+
+      when(() => aabDiffer.aabContentDifferences(any(), any())).thenReturn({});
       when(() => argResults.rest).thenReturn([]);
       when(() => argResults['arch']).thenReturn(arch);
       when(() => argResults['platform']).thenReturn(platform);
@@ -287,6 +295,9 @@ flutter:
           arch: any(named: 'arch'),
           platform: any(named: 'platform'),
         ),
+      ).thenAnswer((_) async => releaseArtifact);
+      when(
+        () => codePushClient.getAabArtifact(releaseId: any(named: 'releaseId')),
       ).thenAnswer((_) async => releaseArtifact);
       when(
         () => codePushClient.createChannel(
@@ -585,6 +596,82 @@ Please create a release using "shorebird release" and try again.
       ).called(1);
       expect(exitCode, ExitCode.software.code);
     });
+
+    test('prints error when native code changes are detected', () async {
+      when(() => aabDiffer.aabContentDifferences(any(), any())).thenReturn(
+        {AabDifferences.native},
+      );
+
+      final tempDir = setUpTempDir();
+      setUpTempArtifacts(tempDir);
+      final exitCode = await IOOverrides.runZoned(
+        command.run,
+        getCurrentDirectory: () => tempDir,
+      );
+
+      expect(exitCode, ExitCode.software.code);
+      verify(
+        () => logger.err(
+          '''Your aab contains native changes, which cannot be applied in a patch. Please create a new release or revert these changes.''',
+        ),
+      ).called(1);
+    });
+
+    test('prompts user to continue when asset changes are detected', () async {
+      when(() => aabDiffer.aabContentDifferences(any(), any())).thenReturn(
+        {AabDifferences.assets},
+      );
+
+      final tempDir = setUpTempDir();
+      setUpTempArtifacts(tempDir);
+      final exitCode = await IOOverrides.runZoned(
+        command.run,
+        getCurrentDirectory: () => tempDir,
+      );
+
+      expect(exitCode, ExitCode.success.code);
+      verify(
+        () => logger.confirm(
+          any(
+            that: contains(
+              '''Your aab contains asset changes, which will not be included in the patch. Continue anyways?''',
+            ),
+          ),
+        ),
+      ).called(1);
+    });
+
+    test(
+      'does not warn user of asset or code changes if only dart changes are detected',
+      () async {
+        when(() => aabDiffer.aabContentDifferences(any(), any())).thenReturn(
+          {AabDifferences.dart},
+        );
+
+        final tempDir = setUpTempDir();
+        setUpTempArtifacts(tempDir);
+        final exitCode = await IOOverrides.runZoned(
+          command.run,
+          getCurrentDirectory: () => tempDir,
+        );
+
+        expect(exitCode, ExitCode.success.code);
+        verifyNever(
+          () => logger.confirm(
+            any(
+              that: contains(
+                '''Your aab contains asset changes, which will not be included in the patch. Continue anyways?''',
+              ),
+            ),
+          ),
+        );
+        verifyNever(
+          () => logger.err(
+            '''Your aab contains native changes, which cannot be applied in a patch. Please create a new release or revert these changes.''',
+          ),
+        );
+      },
+    );
 
     test('throws error when creating diff fails', () async {
       const error = 'oops something went wrong';
