@@ -22,12 +22,12 @@ void main() {
 
     group('aabFileDifferences', () {
       test('finds no differences between the same aab', () {
-        expect(differ.aabFileDifferences(baseAabPath, baseAabPath), isEmpty);
+        expect(differ.aabChangedFiles(baseAabPath, baseAabPath), isEmpty);
       });
 
       test('finds differences between the two different aabs', () {
         expect(
-          differ.aabFileDifferences(baseAabPath, changedDartAabPath).toSet(),
+          differ.aabChangedFiles(baseAabPath, changedDartAabPath).toSet(),
           {
             'BUNDLE-METADATA/com.android.tools.build.libraries/dependencies.pb',
             'base/lib/arm64-v8a/libapp.so',

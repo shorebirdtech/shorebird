@@ -7,7 +7,6 @@ import 'package:shorebird_cli/src/aab/mf_reader.dart';
 
 /// Types of code changes that we care about.
 enum AabDifferences {
-  none,
   dart,
   native,
   assets,
@@ -34,26 +33,9 @@ enum AabDifferences {
 /// See https://developer.android.com/guide/app-bundle/app-bundle-format for
 /// reference.
 class AabDiffer {
-  /// Match files that change when Dart code changes.
-  final _dartChangePatterns = [
-    RegExp(r'.+libapp\.so$'),
-    RegExp(r'.+libflutter\.so$'),
-  ];
-
-  /// Match files that change when Java/Kotlin code changes.
-  final _nativeChangePatterns = [
-    RegExp(r'.+\.dex$'),
-  ];
-
-  /// Match files that change when assets change.
-  final _assetChangePatterns = [
-    RegExp(r'(.*)\/assets\/(.*)'),
-    RegExp(r'AssetManifest\.json$'),
-  ];
-
   /// Returns a set of file paths whose hashes differ between the AABs at the
   /// provided paths.
-  Set<String> aabFileDifferences(String aabPath1, String aabPath2) {
+  Set<String> aabChangedFiles(String aabPath1, String aabPath2) {
     final mfContents1 = _metaInfMfContent(File(aabPath1));
     final mfContents2 = _metaInfMfContent(File(aabPath2));
     final mfEntries1 = MfReader.parse(mfContents1).toSet();
@@ -64,26 +46,16 @@ class AabDiffer {
   /// Returns a set of difference types detected between the aabs at [aabPath1]
   /// and [aabPath2].
   Set<AabDifferences> aabContentDifferences(String aabPath1, String aabPath2) {
-    final fileDifferences = aabFileDifferences(aabPath1, aabPath2);
-
-    final hasAssetChanges = fileDifferences.any((file) {
-      return _assetChangePatterns.any((pattern) => pattern.hasMatch(file));
-    });
-    final hasDartChanges = fileDifferences.any((file) {
-      return _dartChangePatterns.any((pattern) => pattern.hasMatch(file));
-    });
-    final hasNativeChanges = fileDifferences.any((file) {
-      return _nativeChangePatterns.any((pattern) => pattern.hasMatch(file));
-    });
+    final fileDifferences = aabChangedFiles(aabPath1, aabPath2);
 
     final differences = <AabDifferences>{};
-    if (hasAssetChanges) {
+    if (_hasAssetChanges(fileDifferences)) {
       differences.add(AabDifferences.assets);
     }
-    if (hasDartChanges) {
+    if (_hasDartChanges(fileDifferences)) {
       differences.add(AabDifferences.dart);
     }
-    if (hasNativeChanges) {
+    if (_hasNativeChanges(fileDifferences)) {
       differences.add(AabDifferences.native);
     }
 
@@ -101,5 +73,27 @@ class AabDiffer {
           .firstWhere((file) => file.name == p.join('META-INF', 'MANIFEST.MF'))
           .content as List<int>,
     );
+  }
+
+  /// Whether any changed files correspond to a change in assets.
+  bool _hasAssetChanges(Set<String> paths) {
+    const assetDirNames = ['assets', 'res'];
+    const assetFileNames = ['AssetManifest.json'];
+    return paths.any(
+      (path) =>
+          p.split(path).any((component) => assetDirNames.contains(component)) ||
+          assetFileNames.contains(p.basename(path)),
+    );
+  }
+
+  /// Whether any changed files correspond to a change in Dart code.
+  bool _hasDartChanges(Set<String> paths) {
+    const dartFileNames = ['libapp.so', 'libflutter.so'];
+    return paths.any((path) => dartFileNames.contains(p.basename(path)));
+  }
+
+  /// Whether changed files correspond to a change in Java or Kotlin code.
+  bool _hasNativeChanges(Set<String> path) {
+    return path.any((path) => p.extension(path) == '.dex');
   }
 }
