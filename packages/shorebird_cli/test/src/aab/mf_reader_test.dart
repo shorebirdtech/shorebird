@@ -61,12 +61,12 @@ SHA-256-Digest: wCxl8B3GnKZdBjEOIaW/AhLmIQYXIlYwVC9VRisYGsw=''';
       ),
     };
 
-    test('parses content string into MFEntrys', () {
+    test('parses content string into MFEntry list', () {
       final entries = MfReader.parse(fileContent);
       expect(entries.toSet(), expectedEntries);
     });
 
-    test('parses MFEntrys from file', () {
+    test('parses file contents into MFEntry list', () {
       final tempDir = Directory.systemTemp.createTempSync();
       final file = File(p.join(tempDir.path, 'MANIFEST.MF'))
         ..writeAsStringSync(fileContent);
