@@ -5,6 +5,7 @@ import 'package:crypto/crypto.dart';
 import 'package:http/http.dart' as http;
 import 'package:mason_logger/mason_logger.dart';
 import 'package:path/path.dart' as p;
+import 'package:shorebird_cli/src/aab/aab.dart';
 import 'package:shorebird_cli/src/auth_logger_mixin.dart';
 import 'package:shorebird_cli/src/command.dart';
 import 'package:shorebird_cli/src/config/shorebird_yaml.dart';
@@ -58,7 +59,9 @@ class PatchCommand extends ShorebirdCommand
     super.validators,
     HashFunction? hashFn,
     http.Client? httpClient,
-  })  : _hashFn = hashFn ?? ((m) => sha256.convert(m).toString()),
+    AabDiffer? aabDiffer,
+  })  : _aabDiffer = aabDiffer ?? AabDiffer(),
+        _hashFn = hashFn ?? ((m) => sha256.convert(m).toString()),
         _httpClient = httpClient ?? http.Client() {
     argParser
       ..addOption(
@@ -111,6 +114,7 @@ class PatchCommand extends ShorebirdCommand
   @override
   String get name => 'patch';
 
+  final AabDiffer _aabDiffer;
   final HashFunction _hashFn;
   final http.Client _httpClient;
 
@@ -293,6 +297,20 @@ https://github.com/shorebirdtech/shorebird/issues/472
         return ExitCode.software.code;
       }
     }
+
+    ReleaseArtifact? releaseAabArtifact;
+    try {
+      releaseAabArtifact = await codePushClient.getReleaseArtifact(
+        releaseId: release.id,
+        arch: 'aab',
+        platform: 'android',
+      );
+    } catch (error) {
+      // Do nothing for now, not all releases will have an associated aab
+      // artifact.
+      // TODO(bryanoltman): Treat this as an error once all releases have an aab
+    }
+
     fetchReleaseArtifactProgress.complete();
 
     final releaseArtifactPaths = <Arch, String>{};
@@ -310,7 +328,57 @@ https://github.com/shorebirdtech/shorebird/issues/472
         return ExitCode.software.code;
       }
     }
+
+    String? releaseAabPath;
+    try {
+      if (releaseAabArtifact != null) {
+        releaseAabPath = await _downloadReleaseArtifact(
+          Uri.parse(releaseAabArtifact.url),
+        );
+      }
+    } catch (error) {
+      downloadReleaseArtifactProgress.fail('$error');
+      return ExitCode.software.code;
+    }
+
     downloadReleaseArtifactProgress.complete();
+
+    final contentDiffs = releaseAabPath == null
+        ? <AabDifferences>{}
+        : _aabDiffer.aabContentDifferences(
+            releaseAabPath,
+            bundlePath,
+          );
+
+    logger.detail('content diffs detected: $contentDiffs');
+
+    if (contentDiffs.contains(AabDifferences.native)) {
+      logger
+        ..err(
+          '''The Android App Bundle appears to contain Kotlin or Java changes, which cannot be applied via a patch.''',
+        )
+        ..info(
+          yellow.wrap(
+            '''
+Please create a new release or revert those changes to create a patch.
+
+If you believe you're seeing this in error, please reach out to us for support at https://shorebird.dev/support''',
+          ),
+        );
+      return ExitCode.software.code;
+    }
+
+    if (contentDiffs.contains(AabDifferences.assets)) {
+      logger.info(
+        yellow.wrap(
+          '''⚠️ The Android App Bundle contains asset changes, which will not be included in the patch.''',
+        ),
+      );
+      final shouldContinue = logger.confirm('Continue anyways?');
+      if (!shouldContinue) {
+        return ExitCode.success.code;
+      }
+    }
 
     final patchArtifactBundles = <Arch, PatchArtifactBundle>{};
     final createDiffProgress = logger.progress('Creating artifacts');
