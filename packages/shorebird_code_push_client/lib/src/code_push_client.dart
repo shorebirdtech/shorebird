@@ -338,15 +338,6 @@ class CodePushClient {
         .toList();
   }
 
-  /// Get a release artifact for a specific [releaseId] with architecture "aab"
-  /// and platform "android".
-  Future<ReleaseArtifact> getAabArtifact({required int releaseId}) =>
-      getReleaseArtifact(
-        releaseId: releaseId,
-        arch: 'aab',
-        platform: 'android',
-      );
-
   /// Get a release artifact for a specific [releaseId], [arch], and [platform].
   Future<ReleaseArtifact> getReleaseArtifact({
     required int releaseId,

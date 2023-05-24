@@ -306,7 +306,11 @@ flutter:
         ),
       ).thenAnswer((_) async => releaseArtifact);
       when(
-        () => codePushClient.getAabArtifact(releaseId: any(named: 'releaseId')),
+        () => codePushClient.getReleaseArtifact(
+          releaseId: any(named: 'releaseId'),
+          arch: 'aab',
+          platform: 'android',
+        ),
       ).thenAnswer((_) async => aabArtifact);
       when(
         () => codePushClient.createChannel(
@@ -568,8 +572,10 @@ Please create a release using "shorebird release" and try again.
     test('succeeds when aab artfiact cannot be retrieved', () async {
       const error = 'something went wrong';
       when(
-        () => codePushClient.getAabArtifact(
+        () => codePushClient.getReleaseArtifact(
           releaseId: any(named: 'releaseId'),
+          arch: 'aab',
+          platform: 'android',
         ),
       ).thenThrow(error);
       final tempDir = setUpTempDir();

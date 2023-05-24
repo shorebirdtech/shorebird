@@ -300,8 +300,11 @@ https://github.com/shorebirdtech/shorebird/issues/472
 
     ReleaseArtifact? releaseAabArtifact;
     try {
-      releaseAabArtifact =
-          await codePushClient.getAabArtifact(releaseId: release.id);
+      releaseAabArtifact = await codePushClient.getReleaseArtifact(
+        releaseId: release.id,
+        arch: 'aab',
+        platform: 'android',
+      );
     } catch (error) {
       // Do nothing for now, not all releases will have an associated aab
       // artifact.
