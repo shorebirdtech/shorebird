@@ -66,11 +66,10 @@ class BuildAppBundleCommand extends ShorebirdCommand
       return ExitCode.software.code;
     }
 
+    final bundleDirPath = p.join('build', 'app', 'outputs', 'bundle');
     final bundlePath = flavor != null
-        ? p.normalize(
-            './build/app/outputs/bundle/${flavor}Release/app-$flavor-release.aab',
-          )
-        : p.normalize('./build/app/outputs/bundle/release/app-release.aab');
+        ? p.join(bundleDirPath, '${flavor}Release', 'app-$flavor-release.aab')
+        : p.join(bundleDirPath, 'release', 'app-release.aab');
 
     buildProgress.complete();
     logger.info('''

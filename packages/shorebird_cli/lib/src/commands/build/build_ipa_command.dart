@@ -81,7 +81,7 @@ Codesigning is disabled. You must manually codesign before deploying to devices.
 
     buildProgress.complete();
 
-    final xcarchivePath = p.normalize('./build/ios/archive/Runner.xcarchive');
+    final xcarchivePath = p.join('build', 'ios', 'archive', 'Runner.xcarchive');
 
     logger.info('''
 📦 Generated an xcode archive at:
@@ -94,7 +94,7 @@ ${lightCyan.wrap(xcarchivePath)}''');
       return ExitCode.success.code;
     }
 
-    final ipaPath = p.normalize('./build/ios/ipa/Runner.ipa');
+    final ipaPath = p.join('build', 'ios', 'ipa', 'Runner.ipa');
 
     logger.info('''
 📦 Generated an ipa at:
