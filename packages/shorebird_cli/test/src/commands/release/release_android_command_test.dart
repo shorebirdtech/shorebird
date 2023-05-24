@@ -265,22 +265,6 @@ flutter:
       when(() => flutterValidator.validate(any())).thenAnswer((_) async => []);
     });
 
-    test('logs deprecation warning', () async {
-      final tempDir = Directory.systemTemp.createTempSync();
-      final exitCode = await IOOverrides.runZoned(
-        command.run,
-        getCurrentDirectory: () => tempDir,
-      );
-      verify(
-        () => logger.warn(
-          '''
-"shorebird release" is deprecated.
-Please use "shorebird release android" instead.''',
-        ),
-      ).called(1);
-      expect(exitCode, ExitCode.config.code);
-    });
-
     test('throws config error when shorebird is not initialized', () async {
       final tempDir = Directory.systemTemp.createTempSync();
       final exitCode = await IOOverrides.runZoned(

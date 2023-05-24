@@ -6,7 +6,6 @@ import 'package:mason_logger/mason_logger.dart';
 import 'package:path/path.dart' as p;
 import 'package:shorebird_cli/src/auth_logger_mixin.dart';
 import 'package:shorebird_cli/src/command.dart';
-import 'package:shorebird_cli/src/commands/commands.dart';
 import 'package:shorebird_cli/src/config/shorebird_yaml.dart';
 import 'package:shorebird_cli/src/shorebird_build_mixin.dart';
 import 'package:shorebird_cli/src/shorebird_config_mixin.dart';
@@ -16,11 +15,11 @@ import 'package:shorebird_cli/src/shorebird_release_version_mixin.dart';
 import 'package:shorebird_cli/src/shorebird_validation_mixin.dart';
 import 'package:shorebird_code_push_client/shorebird_code_push_client.dart';
 
-/// {@template release_command}
-/// `shorebird release`
-/// Create new app releases.
+/// {@template release_android_command}
+/// `shorebird release android`
+/// Create new app releases for Android.
 /// {@endtemplate}
-class ReleaseCommand extends ShorebirdCommand
+class ReleaseAndroidCommand extends ShorebirdCommand
     with
         AuthLoggerMixin,
         ShorebirdValidationMixin,
@@ -29,8 +28,8 @@ class ReleaseCommand extends ShorebirdCommand
         ShorebirdCreateAppMixin,
         ShorebirdJavaMixin,
         ShorebirdReleaseVersionMixin {
-  /// {@macro release_command}
-  ReleaseCommand({
+  /// {@macro release_android_command}
+  ReleaseAndroidCommand({
     required super.logger,
     super.auth,
     super.cache,
@@ -38,15 +37,7 @@ class ReleaseCommand extends ShorebirdCommand
     super.validators,
     HashFunction? hashFn,
   }) : _hashFn = hashFn ?? ((m) => sha256.convert(m).toString()) {
-    addSubcommand(ReleaseAndroidCommand(logger: logger));
     argParser
-      ..addOption(
-        'platform',
-        help: 'The platform of the release (e.g. "android").',
-        allowed: ['android'],
-        allowedHelp: {'android': 'The Android platform.'},
-        defaultsTo: 'android',
-      )
       ..addOption(
         'target',
         abbr: 't',
@@ -65,21 +56,19 @@ class ReleaseCommand extends ShorebirdCommand
   }
 
   @override
-  String get description => 'Manage your Shorebird app releases.';
+  String get description => '''
+Builds and submits your Android app to Shorebird.
+Shorebird saves the compiled Dart code from your application in order to
+make smaller updates to your app.
+''';
 
   @override
-  String get name => 'release';
+  String get name => 'android';
 
   final HashFunction _hashFn;
 
   @override
   Future<int> run() async {
-    logger.warn(
-      '''
-"shorebird release" is deprecated.
-Please use "shorebird release android" instead.''',
-    );
-
     if (!isShorebirdInitialized) {
       logger.err(
         'Shorebird is not initialized. Did you run "shorebird init"?',
