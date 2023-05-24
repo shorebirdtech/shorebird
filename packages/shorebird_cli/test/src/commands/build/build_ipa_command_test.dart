@@ -4,6 +4,7 @@ import 'package:args/args.dart';
 import 'package:http/http.dart' as http;
 import 'package:mason_logger/mason_logger.dart';
 import 'package:mocktail/mocktail.dart';
+import 'package:path/path.dart' as p;
 import 'package:shorebird_cli/src/auth/auth.dart';
 import 'package:shorebird_cli/src/commands/build/build.dart';
 import 'package:shorebird_cli/src/shorebird_process.dart';
@@ -129,12 +130,12 @@ void main() {
         () => logger.info(
               '''
 📦 Generated an xcode archive at:
-${lightCyan.wrap("build/ios/archive/Runner.xcarchive")}''',
+${lightCyan.wrap(p.join('build', 'ios', 'archive', 'Runner.xcarchive'))}''',
             ),
         () => logger.info(
               '''
 📦 Generated an ipa at:
-${lightCyan.wrap("build/ios/ipa/Runner.ipa")}''',
+${lightCyan.wrap(p.join('build', 'ios', 'ipa', 'Runner.ipa'))}''',
             ),
       ]);
     });
@@ -143,7 +144,7 @@ ${lightCyan.wrap("build/ios/ipa/Runner.ipa")}''',
         'exits with code 0 when building ipa succeeds '
         'with flavor and target', () async {
       const flavor = 'development';
-      const target = './lib/main_development.dart';
+      final target = p.join('lib', 'main_development.dart');
       when(() => argResults['flavor']).thenReturn(flavor);
       when(() => argResults['target']).thenReturn(target);
       when(() => processResult.exitCode).thenReturn(ExitCode.success.code);
@@ -173,12 +174,12 @@ ${lightCyan.wrap("build/ios/ipa/Runner.ipa")}''',
         () => logger.info(
               '''
 📦 Generated an xcode archive at:
-${lightCyan.wrap("build/ios/archive/Runner.xcarchive")}''',
+${lightCyan.wrap(p.join('build', 'ios', 'archive', 'Runner.xcarchive'))}''',
             ),
         () => logger.info(
               '''
 📦 Generated an ipa at:
-${lightCyan.wrap("build/ios/ipa/Runner.ipa")}''',
+${lightCyan.wrap(p.join('build', 'ios', 'ipa', 'Runner.ipa'))}''',
             ),
       ]);
     });
@@ -208,7 +209,7 @@ ${lightCyan.wrap("build/ios/ipa/Runner.ipa")}''',
         () => logger.info(
           '''
 📦 Generated an xcode archive at:
-${lightCyan.wrap("build/ios/archive/Runner.xcarchive")}''',
+${lightCyan.wrap(p.join('build', 'ios', 'archive', 'Runner.xcarchive'))}''',
         ),
       ).called(1);
 
@@ -216,7 +217,7 @@ ${lightCyan.wrap("build/ios/archive/Runner.xcarchive")}''',
         () => logger.info(
           '''
 📦 Generated an ipa at:
-${lightCyan.wrap("build/ios/ipa/Runner.ipa")}''',
+${lightCyan.wrap(p.join('build', 'ios', 'ipa', 'Runner.ipa'))}''',
         ),
       );
     });

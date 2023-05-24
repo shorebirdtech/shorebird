@@ -4,6 +4,7 @@ import 'package:args/args.dart';
 import 'package:http/http.dart' as http;
 import 'package:mason_logger/mason_logger.dart';
 import 'package:mocktail/mocktail.dart';
+import 'package:path/path.dart' as p;
 import 'package:shorebird_cli/src/auth/auth.dart';
 import 'package:shorebird_cli/src/commands/build/build.dart';
 import 'package:shorebird_cli/src/shorebird_process.dart';
@@ -128,7 +129,7 @@ void main() {
         () => logger.info(
           '''
 📦 Generated an app bundle at:
-${lightCyan.wrap("build/app/outputs/bundle/release/app-release.aab")}''',
+${lightCyan.wrap(p.join('build', 'app', 'outputs', 'bundle', 'release', 'app-release.aab'))}''',
         ),
       ).called(1);
     });
@@ -137,7 +138,7 @@ ${lightCyan.wrap("build/app/outputs/bundle/release/app-release.aab")}''',
         'exits with code 0 when building appbundle succeeds '
         'with flavor and target', () async {
       const flavor = 'development';
-      const target = './lib/main_development.dart';
+      final target = p.join('lib', 'main_development.dart');
       when(() => argResults['flavor']).thenReturn(flavor);
       when(() => argResults['target']).thenReturn(target);
       when(() => processResult.exitCode).thenReturn(ExitCode.success.code);
@@ -166,7 +167,7 @@ ${lightCyan.wrap("build/app/outputs/bundle/release/app-release.aab")}''',
         () => logger.info(
           '''
 📦 Generated an app bundle at:
-${lightCyan.wrap("build/app/outputs/bundle/${flavor}Release/app-$flavor-release.aab")}''',
+${lightCyan.wrap(p.join('build', 'app', 'outputs', 'bundle', '${flavor}Release', 'app-$flavor-release.aab'))}''',
         ),
       ).called(1);
     });
