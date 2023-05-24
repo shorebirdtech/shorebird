@@ -124,9 +124,10 @@ flutter:
         File(artifactPath).createSync(recursive: true);
       }
 
+      final bundleDirPath = p.join('build', 'app', 'outputs', 'bundle');
       final bundlePath = flavor != null
-          ? './build/app/outputs/bundle/${flavor}Release/app-$flavor-release.aab'
-          : './build/app/outputs/bundle/release/app-release.aab';
+          ? p.join(bundleDirPath, '${flavor}Release', 'app-$flavor-release.aab')
+          : p.join(bundleDirPath, 'release', 'app-release.aab');
       File(bundlePath).createSync(recursive: true);
     }
 
@@ -560,7 +561,7 @@ Did you forget to run "shorebird init"?''',
         'succeeds when release is successful '
         'with flavors and target', () async {
       const flavor = 'development';
-      const target = './lib/main_development.dart';
+      final target = p.join('lib', 'main_development.dart');
       when(() => argResults['flavor']).thenReturn(flavor);
       when(() => argResults['target']).thenReturn(target);
       final tempDir = setUpTempDir();
