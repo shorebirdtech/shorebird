@@ -2,9 +2,9 @@ import 'dart:io';
 
 import 'package:args/args.dart';
 import 'package:args/command_runner.dart';
+import 'package:cutler/commands/commands.dart';
 import 'package:cutler/config.dart';
 import 'package:cutler/model.dart';
-import 'package:cutler/commands/commands.dart';
 
 class Cutler extends CommandRunner<int> {
   Cutler() : super('cutler', 'A tool for maintaining forks of Flutter.') {
