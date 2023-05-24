@@ -565,7 +565,7 @@ Please create a release using "shorebird release" and try again.
       expect(exitCode, ExitCode.software.code);
     });
 
-    test('throws error when aab artfiact cannot be retrieved', () async {
+    test('succeeds when aab artfiact cannot be retrieved', () async {
       const error = 'something went wrong';
       when(
         () => codePushClient.getAabArtifact(
@@ -578,8 +578,7 @@ Please create a release using "shorebird release" and try again.
         command.run,
         getCurrentDirectory: () => tempDir,
       );
-      verify(() => progress.fail(error)).called(1);
-      expect(exitCode, ExitCode.software.code);
+      expect(exitCode, ExitCode.success.code);
     });
 
     test('throws error when release artifact cannot be retrieved.', () async {

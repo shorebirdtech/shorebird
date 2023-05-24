@@ -298,13 +298,13 @@ https://github.com/shorebirdtech/shorebird/issues/472
       }
     }
 
-    final ReleaseArtifact releaseAabArtifact;
+    ReleaseArtifact? releaseAabArtifact;
     try {
       releaseAabArtifact =
           await codePushClient.getAabArtifact(releaseId: release.id);
     } catch (error) {
-      fetchReleaseArtifactProgress.fail('$error');
-      return ExitCode.software.code;
+      // Do nothing for now, not all releases will have an associated aab
+      // artifact.
     }
 
     fetchReleaseArtifactProgress.complete();
@@ -325,11 +325,13 @@ https://github.com/shorebirdtech/shorebird/issues/472
       }
     }
 
-    final String releaseAabPath;
+    String? releaseAabPath;
     try {
-      releaseAabPath = await _downloadReleaseArtifact(
-        Uri.parse(releaseAabArtifact.url),
-      );
+      if (releaseAabArtifact != null) {
+        releaseAabPath = await _downloadReleaseArtifact(
+          Uri.parse(releaseAabArtifact.url),
+        );
+      }
     } catch (error) {
       downloadReleaseArtifactProgress.fail('$error');
       return ExitCode.software.code;
@@ -337,10 +339,12 @@ https://github.com/shorebirdtech/shorebird/issues/472
 
     downloadReleaseArtifactProgress.complete();
 
-    final contentDiffs = _aabDiffer.aabContentDifferences(
-      releaseAabPath,
-      bundlePath,
-    );
+    final contentDiffs = releaseAabPath == null
+        ? <AabDifferences>{}
+        : _aabDiffer.aabContentDifferences(
+            releaseAabPath,
+            bundlePath,
+          );
 
     logger.detail('content diffs detected: $contentDiffs');
 
