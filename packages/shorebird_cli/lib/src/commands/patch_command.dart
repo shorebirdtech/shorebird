@@ -308,6 +308,7 @@ https://github.com/shorebirdtech/shorebird/issues/472
     } catch (error) {
       // Do nothing for now, not all releases will have an associated aab
       // artifact.
+      // TODO(bryanoltman): Treat this as an error once all releases have an aab
     }
 
     fetchReleaseArtifactProgress.complete();
