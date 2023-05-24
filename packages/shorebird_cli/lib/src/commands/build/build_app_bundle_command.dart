@@ -1,6 +1,7 @@
 import 'dart:io';
 
 import 'package:mason_logger/mason_logger.dart';
+import 'package:path/path.dart' as p;
 import 'package:shorebird_cli/src/auth_logger_mixin.dart';
 import 'package:shorebird_cli/src/command.dart';
 import 'package:shorebird_cli/src/shorebird_build_mixin.dart';
@@ -66,8 +67,10 @@ class BuildAppBundleCommand extends ShorebirdCommand
     }
 
     final bundlePath = flavor != null
-        ? './build/app/outputs/bundle/${flavor}Release/app-$flavor-release.aab'
-        : './build/app/outputs/bundle/release/app-release.aab';
+        ? p.normalize(
+            './build/app/outputs/bundle/${flavor}Release/app-$flavor-release.aab',
+          )
+        : p.normalize('./build/app/outputs/bundle/release/app-release.aab');
 
     buildProgress.complete();
     logger.info('''

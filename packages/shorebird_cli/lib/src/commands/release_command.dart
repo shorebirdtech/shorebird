@@ -143,7 +143,9 @@ Did you forget to run "shorebird init"?''',
       'Detecting release version',
     );
     try {
-      releaseVersion = await extractReleaseVersionFromAppBundle(bundlePath);
+      releaseVersion = await extractReleaseVersionFromAppBundle(
+        p.normalize(bundlePath),
+      );
       detectReleaseVersionProgress.complete();
     } catch (error) {
       detectReleaseVersionProgress.fail('$error');

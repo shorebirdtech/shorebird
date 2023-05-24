@@ -1,6 +1,7 @@
 import 'dart:io';
 
 import 'package:mason_logger/mason_logger.dart';
+import 'package:path/path.dart' as p;
 import 'package:shorebird_cli/src/auth_logger_mixin.dart';
 import 'package:shorebird_cli/src/command.dart';
 import 'package:shorebird_cli/src/shorebird_build_mixin.dart';
@@ -68,8 +69,10 @@ class BuildApkCommand extends ShorebirdCommand
     buildProgress.complete();
 
     final apkPath = flavor != null
-        ? './build/app/outputs/apk/$flavor/release/app-$flavor-release.apk'
-        : './build/app/outputs/apk/release/app-release.apk';
+        ? p.normalize(
+            './build/app/outputs/apk/$flavor/release/app-$flavor-release.apk',
+          )
+        : p.normalize('./build/app/outputs/apk/release/app-release.apk');
 
     logger.info('''
 📦 Generated an apk at:

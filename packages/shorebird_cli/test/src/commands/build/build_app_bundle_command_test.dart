@@ -128,7 +128,7 @@ void main() {
         () => logger.info(
           '''
 📦 Generated an app bundle at:
-${lightCyan.wrap("./build/app/outputs/bundle/release/app-release.aab")}''',
+${lightCyan.wrap("build/app/outputs/bundle/release/app-release.aab")}''',
         ),
       ).called(1);
     });
@@ -166,7 +166,7 @@ ${lightCyan.wrap("./build/app/outputs/bundle/release/app-release.aab")}''',
         () => logger.info(
           '''
 📦 Generated an app bundle at:
-${lightCyan.wrap("./build/app/outputs/bundle/${flavor}Release/app-$flavor-release.aab")}''',
+${lightCyan.wrap("build/app/outputs/bundle/${flavor}Release/app-$flavor-release.aab")}''',
         ),
       ).called(1);
     });

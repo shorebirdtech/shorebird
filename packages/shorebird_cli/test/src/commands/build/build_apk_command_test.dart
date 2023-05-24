@@ -127,7 +127,7 @@ void main() {
         () => logger.info(
           '''
 📦 Generated an apk at:
-${lightCyan.wrap("./build/app/outputs/apk/release/app-release.apk")}''',
+${lightCyan.wrap("build/app/outputs/apk/release/app-release.apk")}''',
         ),
       ).called(1);
     });
@@ -165,7 +165,7 @@ ${lightCyan.wrap("./build/app/outputs/apk/release/app-release.apk")}''',
         () => logger.info(
           '''
 📦 Generated an apk at:
-${lightCyan.wrap("./build/app/outputs/apk/$flavor/release/app-$flavor-release.apk")}''',
+${lightCyan.wrap("build/app/outputs/apk/$flavor/release/app-$flavor-release.apk")}''',
         ),
       ).called(1);
     });

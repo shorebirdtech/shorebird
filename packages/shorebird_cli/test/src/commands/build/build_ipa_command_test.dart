@@ -129,12 +129,12 @@ void main() {
         () => logger.info(
               '''
 📦 Generated an xcode archive at:
-${lightCyan.wrap("./build/ios/archive/Runner.xcarchive")}''',
+${lightCyan.wrap("build/ios/archive/Runner.xcarchive")}''',
             ),
         () => logger.info(
               '''
 📦 Generated an ipa at:
-${lightCyan.wrap("./build/ios/ipa/Runner.ipa")}''',
+${lightCyan.wrap("build/ios/ipa/Runner.ipa")}''',
             ),
       ]);
     });
@@ -173,12 +173,12 @@ ${lightCyan.wrap("./build/ios/ipa/Runner.ipa")}''',
         () => logger.info(
               '''
 📦 Generated an xcode archive at:
-${lightCyan.wrap("./build/ios/archive/Runner.xcarchive")}''',
+${lightCyan.wrap("build/ios/archive/Runner.xcarchive")}''',
             ),
         () => logger.info(
               '''
 📦 Generated an ipa at:
-${lightCyan.wrap("./build/ios/ipa/Runner.ipa")}''',
+${lightCyan.wrap("build/ios/ipa/Runner.ipa")}''',
             ),
       ]);
     });
@@ -208,7 +208,7 @@ ${lightCyan.wrap("./build/ios/ipa/Runner.ipa")}''',
         () => logger.info(
           '''
 📦 Generated an xcode archive at:
-${lightCyan.wrap("./build/ios/archive/Runner.xcarchive")}''',
+${lightCyan.wrap("build/ios/archive/Runner.xcarchive")}''',
         ),
       ).called(1);
 
@@ -216,7 +216,7 @@ ${lightCyan.wrap("./build/ios/archive/Runner.xcarchive")}''',
         () => logger.info(
           '''
 📦 Generated an ipa at:
-${lightCyan.wrap("./build/ios/ipa/Runner.ipa")}''',
+${lightCyan.wrap("build/ios/ipa/Runner.ipa")}''',
         ),
       );
     });

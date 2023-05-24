@@ -1,6 +1,7 @@
 import 'dart:io';
 
 import 'package:mason_logger/mason_logger.dart';
+import 'package:path/path.dart' as p;
 import 'package:shorebird_cli/src/auth_logger_mixin.dart';
 import 'package:shorebird_cli/src/command.dart';
 import 'package:shorebird_cli/src/shorebird_build_mixin.dart';
@@ -80,7 +81,7 @@ Codesigning is disabled. You must manually codesign before deploying to devices.
 
     buildProgress.complete();
 
-    const xcarchivePath = './build/ios/archive/Runner.xcarchive';
+    final xcarchivePath = p.normalize('./build/ios/archive/Runner.xcarchive');
 
     logger.info('''
 📦 Generated an xcode archive at:
@@ -93,7 +94,7 @@ ${lightCyan.wrap(xcarchivePath)}''');
       return ExitCode.success.code;
     }
 
-    const ipaPath = './build/ios/ipa/Runner.ipa';
+    final ipaPath = p.normalize('./build/ios/ipa/Runner.ipa');
 
     logger.info('''
 📦 Generated an ipa at:
