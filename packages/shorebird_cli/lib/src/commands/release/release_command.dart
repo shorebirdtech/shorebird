@@ -39,6 +39,7 @@ class ReleaseCommand extends ShorebirdCommand
     HashFunction? hashFn,
   }) : _hashFn = hashFn ?? ((m) => sha256.convert(m).toString()) {
     addSubcommand(ReleaseAndroidCommand(logger: logger));
+    addSubcommand(ReleaseIosCommand(logger: logger));
     argParser
       ..addOption(
         'platform',
