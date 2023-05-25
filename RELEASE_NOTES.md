@@ -4,7 +4,7 @@ This section contains past updates we've sent to customers via Discord.
 
 ## 0.3.0 (May 25, 2023)
 
-We've just released Shorebird CLI v0.2.3 🎉
+We've just released Shorebird CLI v0.3.0 🎉
 
 ✨ The most notable changes are:
 
