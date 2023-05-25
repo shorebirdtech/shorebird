@@ -194,7 +194,7 @@ flutter:
       ).thenAnswer((_) async => flutterRevisionProcessResult);
       when(
         () => shorebirdProcess.run(
-          'java',
+          any(that: contains('java')),
           any(),
           runInShell: any(named: 'runInShell'),
           environment: any(named: 'environment'),
