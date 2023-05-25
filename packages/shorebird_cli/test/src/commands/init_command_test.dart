@@ -328,6 +328,8 @@ If you want to reinitialize Shorebird, please run "shorebird init --force".''',
           'Unable to extract product flavors: Exception: error\noops',
         ),
       ).called(1);
+      verify(() => progress.complete()).called(1);
+      verifyNever(() => progress.fail(any()));
       expect(exitCode, ExitCode.success.code);
     });
 
