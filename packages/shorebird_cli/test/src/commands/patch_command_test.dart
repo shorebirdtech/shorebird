@@ -238,7 +238,7 @@ flutter:
       });
       when(
         () => shorebirdProcess.run(
-          'java',
+          any(that: contains('java')),
           any(),
           runInShell: any(named: 'runInShell'),
           environment: any(named: 'environment'),
