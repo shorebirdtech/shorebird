@@ -12,7 +12,7 @@ We've just released Shorebird CLI v0.3.0 🎉
 - 🚨 Breaking Change: `shorebird release` was removed in favor of `shorebird release android` as part of the preparation to support iOS
 - 🩹 Fixed a bug which caused crashes on Android API <28
 
-📚 Release notes can be found at https://github.com/shorebirdtech/shorebird/releases/tag/v0.2.3
+📚 Release notes can be found at https://github.com/shorebirdtech/shorebird/releases/tag/v0.3.0
 
 As always, you can upgrade using shorebird upgrade
 
