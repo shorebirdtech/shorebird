@@ -22,6 +22,8 @@ class _MockCodePushClient extends Mock implements CodePushClient {}
 
 class _MockLogger extends Mock implements Logger {}
 
+class _MockProgress extends Mock implements Progress {}
+
 class _MockProcess extends Mock implements ShorebirdProcess {}
 
 class _MockProcessResult extends Mock implements ShorebirdProcessResult {}
@@ -48,6 +50,7 @@ environment:
     late ShorebirdProcessResult result;
     late CodePushClient codePushClient;
     late Logger logger;
+    late Progress progress;
     late InitCommand command;
 
     setUp(() {
@@ -58,6 +61,7 @@ environment:
       result = _MockProcessResult();
       codePushClient = _MockCodePushClient();
       logger = _MockLogger();
+      progress = _MockProgress();
       command = InitCommand(
         auth: auth,
         buildCodePushClient: ({
@@ -83,6 +87,7 @@ environment:
       when(
         () => logger.prompt(any(), defaultValue: any(named: 'defaultValue')),
       ).thenReturn(appName);
+      when(() => logger.progress(any())).thenReturn(progress);
       when(
         () => process.run(
           any(),
@@ -317,6 +322,7 @@ If you want to reinitialize Shorebird, please run "shorebird init --force".''',
         command.run,
         getCurrentDirectory: () => tempDir,
       );
+      verify(() => logger.progress('Detecting product flavors')).called(1);
       verify(
         () => logger.detail(
           'Unable to extract product flavors: Exception: error\noops',
