@@ -70,7 +70,7 @@ class AabDiffer {
     final archive = ZipDecoder().decodeBuffer(inputStream);
     return utf8.decode(
       archive.files
-          .firstWhere((file) => file.name == p.join('META-INF', 'MANIFEST.MF'))
+          .firstWhere((file) => file.name == 'META-INF/MANIFEST.MF')
           .content as List<int>,
     );
   }
