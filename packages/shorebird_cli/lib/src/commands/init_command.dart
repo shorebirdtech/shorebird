@@ -72,10 +72,10 @@ If you want to reinitialize Shorebird, please run "shorebird init --force".''');
     final detectFlavorsProgress = logger.progress('Detecting product flavors');
     try {
       productFlavors = await extractProductFlavors(Directory.current.path);
-    } catch (error) {
-      logger.detail('Unable to extract product flavors: $error');
-    } finally {
       detectFlavorsProgress.complete();
+    } catch (error) {
+      detectFlavorsProgress.complete();
+      logger.detail('Unable to extract product flavors: $error');
     }
 
     final String appId;
