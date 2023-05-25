@@ -144,7 +144,7 @@ Did you forget to run "shorebird init"?''',
       return ExitCode.software.code;
     }
 
-    final platform = results['platform'] as String;
+    const platform = 'android';
     final archNames = architectures.keys.map(
       (arch) => arch.name,
     );
