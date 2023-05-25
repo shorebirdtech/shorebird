@@ -249,6 +249,19 @@ flutter:
             ? releaseVersionCodeProcessResult
             : releaseVersionNameProcessResult;
       });
+      when(
+        () => shorebirdProcess.run(
+          any(that: endsWith('java.exe')),
+          any(),
+          runInShell: any(named: 'runInShell'),
+          environment: any(named: 'environment'),
+        ),
+      ).thenAnswer((invocation) async {
+        final args = invocation.positionalArguments[1] as List<String>;
+        return args.last == '/manifest/@android:versionCode'
+            ? releaseVersionCodeProcessResult
+            : releaseVersionNameProcessResult;
+      });
 
       when(() => aabDiffer.aabContentDifferences(any(), any())).thenReturn({});
       when(() => argResults.rest).thenReturn([]);
