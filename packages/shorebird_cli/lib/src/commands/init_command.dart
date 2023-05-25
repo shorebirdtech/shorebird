@@ -74,7 +74,7 @@ If you want to reinitialize Shorebird, please run "shorebird init --force".''');
       productFlavors = await extractProductFlavors(Directory.current.path);
       detectFlavorsProgress.complete();
     } catch (error) {
-      detectFlavorsProgress.fail();
+      detectFlavorsProgress.complete();
       logger.detail('Unable to extract product flavors: $error');
     }
 
