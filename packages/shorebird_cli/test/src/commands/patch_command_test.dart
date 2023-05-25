@@ -238,20 +238,7 @@ flutter:
       });
       when(
         () => shorebirdProcess.run(
-          'java',
-          any(),
-          runInShell: any(named: 'runInShell'),
-          environment: any(named: 'environment'),
-        ),
-      ).thenAnswer((invocation) async {
-        final args = invocation.positionalArguments[1] as List<String>;
-        return args.last == '/manifest/@android:versionCode'
-            ? releaseVersionCodeProcessResult
-            : releaseVersionNameProcessResult;
-      });
-      when(
-        () => shorebirdProcess.run(
-          any(that: endsWith('java.exe')),
+          any(that: contains('java')),
           any(),
           runInShell: any(named: 'runInShell'),
           environment: any(named: 'environment'),
