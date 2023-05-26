@@ -473,6 +473,65 @@ Did you forget to run "shorebird init"?''',
       expect(exitCode, ExitCode.software.code);
     });
 
+    test('logs message when uploading release artifact that already exists.',
+        () async {
+      const error = 'something went wrong';
+      when(
+        () => codePushClient.getReleases(appId: any(named: 'appId')),
+      ).thenAnswer((_) async => []);
+      when(
+        () => codePushClient.createReleaseArtifact(
+          artifactPath: any(named: 'artifactPath'),
+          releaseId: any(named: 'releaseId'),
+          arch: any(named: 'arch'),
+          platform: any(named: 'platform'),
+          hash: any(named: 'hash'),
+        ),
+      ).thenThrow(ResourceConflictException(message: error));
+      final tempDir = setUpTempDir();
+      setUpTempArtifacts(tempDir);
+      final exitCode = await IOOverrides.runZoned(
+        command.run,
+        getCurrentDirectory: () => tempDir,
+      );
+
+      // 1 for each arch, 1 for the aab
+      final numArtifactsUploaded = Arch.values.length + 1;
+      verify(() => logger.info(any(that: contains('already exists'))))
+          .called(numArtifactsUploaded);
+      verifyNever(() => progress.fail(error));
+      expect(exitCode, ExitCode.success.code);
+    });
+
+    test('logs message when uploading aab that already exists.', () async {
+      const error = 'something went wrong';
+      when(
+        () => codePushClient.getReleases(appId: any(named: 'appId')),
+      ).thenAnswer((_) async => []);
+      when(
+        () => codePushClient.createReleaseArtifact(
+          artifactPath: any(named: 'artifactPath', that: endsWith('.aab')),
+          releaseId: any(named: 'releaseId'),
+          arch: any(named: 'arch'),
+          platform: any(named: 'platform'),
+          hash: any(named: 'hash'),
+        ),
+      ).thenThrow(ResourceConflictException(message: error));
+      final tempDir = setUpTempDir();
+      setUpTempArtifacts(tempDir);
+      final exitCode = await IOOverrides.runZoned(
+        command.run,
+        getCurrentDirectory: () => tempDir,
+      );
+      verify(
+        () => logger.info(
+          any(that: contains('aab artifact already exists, continuing...')),
+        ),
+      ).called(1);
+      verifyNever(() => progress.fail(error));
+      expect(exitCode, ExitCode.success.code);
+    });
+
     test('throws error when uploading release artifact fails.', () async {
       const error = 'something went wrong';
       when(

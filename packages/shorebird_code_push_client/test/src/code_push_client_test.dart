@@ -386,6 +386,32 @@ void main() {
         );
       });
 
+      test(
+          'throws a ResourceConflictException if the http response code is 409',
+          () {
+        when(() => httpClient.send(any())).thenAnswer((_) async {
+          return http.StreamedResponse(
+            Stream.value(utf8.encode(json.encode(errorResponse.toJson()))),
+            HttpStatus.conflict,
+          );
+        });
+
+        final tempDir = Directory.systemTemp.createTempSync();
+        final fixture = File(path.join(tempDir.path, 'release.txt'))
+          ..createSync();
+
+        expect(
+          codePushClient.createReleaseArtifact(
+            artifactPath: fixture.path,
+            releaseId: releaseId,
+            arch: arch,
+            platform: platform,
+            hash: hash,
+          ),
+          throwsA(isA<ResourceConflictException>()),
+        );
+      });
+
       test('throws an exception if the http request fails', () async {
         when(() => httpClient.send(any())).thenAnswer((_) async {
           return http.StreamedResponse(

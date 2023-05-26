@@ -21,6 +21,14 @@ class CodePushException implements Exception {
   String toString() => '$message${details != null ? '\n$details' : ''}';
 }
 
+/// {@template resource_conflict_exception}
+/// Exception thrown when a 409 response is received.
+/// {@endtemplate}
+class ResourceConflictException extends CodePushException {
+  /// {@macro resource_conflict_exception}
+  ResourceConflictException({required super.message, super.details});
+}
+
 /// {@template code_push_client}
 /// Dart client for the Shorebird CodePush API.
 /// {@endtemplate}
@@ -139,7 +147,13 @@ class CodePushClient {
     final response = await _httpClient.send(request);
     final body = await response.stream.bytesToString();
 
-    if (response.statusCode != HttpStatus.ok) throw _parseErrorResponse(body);
+    if (response.statusCode == HttpStatus.conflict) {
+      throw ResourceConflictException(
+        message: 'An artifact already exists for arch:$arch platform:$platform',
+      );
+    } else if (response.statusCode != HttpStatus.ok) {
+      throw _parseErrorResponse(body);
+    }
 
     return ReleaseArtifact.fromJson(json.decode(body) as Map<String, dynamic>);
   }
