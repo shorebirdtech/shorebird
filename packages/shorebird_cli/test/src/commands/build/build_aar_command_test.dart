@@ -111,7 +111,7 @@ flutter:
         return processResult;
       });
 
-      command = runWithOverrides(() => BuildAarCommand(validators: []))
+      command = runWithOverrides(() => BuildAarCommand(validators: {}))
         ..testArgResults = argResults
         ..testProcess = shorebirdProcess
         ..testEngineConfig = const EngineConfig.empty();

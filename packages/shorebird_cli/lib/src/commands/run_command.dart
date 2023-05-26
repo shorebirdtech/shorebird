@@ -4,7 +4,6 @@ import 'package:shorebird_cli/src/command.dart';
 import 'package:shorebird_cli/src/logger.dart';
 import 'package:shorebird_cli/src/shorebird_config_mixin.dart';
 import 'package:shorebird_cli/src/shorebird_validation_mixin.dart';
-import 'package:shorebird_cli/src/validators/validators.dart';
 
 /// {@template run_command}
 /// `shorebird run`
@@ -30,11 +29,6 @@ class RunCommand extends ShorebirdCommand
         help: 'The product flavor to use when building the app.',
       );
   }
-
-  final List<Validator> _runValidators = [
-    ShorebirdYamlValidator(),
-    AndroidInternetPermissionValidator(),
-  ];
 
   @override
   String get description => 'Run the Flutter application.';
@@ -80,21 +74,5 @@ class RunCommand extends ShorebirdCommand
     });
 
     return flutter.exitCode;
-  }
-
-  /// Creates a list that is the union of [baseValidators] and
-  /// [_runValidators].
-  List<Validator> _allValidators({
-    required List<Validator> baseValidators,
-  }) {
-    final missingValidators = _runValidators
-        .where(
-          (runValidator) => baseValidators.none(
-            (baseValidator) => baseValidator.id == runValidator.id,
-          ),
-        )
-        .toList();
-
-    return baseValidators + missingValidators;
   }
 }

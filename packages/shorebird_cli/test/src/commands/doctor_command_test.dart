@@ -1,3 +1,4 @@
+// ignore_for_file: hash_and_equals
 import 'dart:io';
 
 import 'package:args/args.dart';
@@ -15,13 +16,22 @@ import 'package:test/test.dart';
 class _MockArgResults extends Mock implements ArgResults {}
 
 class _MockShorebirdVersionValidator extends Mock
-    implements ShorebirdVersionValidator {}
+    implements ShorebirdVersionValidator {
+  @override
+  int get hashCode => '$ShorebirdVersionValidator'.hashCode;
+}
 
 class _MockAndroidInternetPermissionValidator extends Mock
-    implements AndroidInternetPermissionValidator {}
+    implements AndroidInternetPermissionValidator {
+  @override
+  int get hashCode => '$AndroidInternetPermissionValidator'.hashCode;
+}
 
 class _MockShorebirdFlutterValidator extends Mock
-    implements ShorebirdFlutterValidator {}
+    implements ShorebirdFlutterValidator {
+  @override
+  int get hashCode => '$ShorebirdFlutterValidator'.hashCode;
+}
 
 class _MockLogger extends Mock implements Logger {}
 
@@ -103,11 +113,11 @@ void main() {
 
       command = runWithOverrides(
         () => DoctorCommand(
-          validators: [
+          validators: {
             androidInternetPermissionValidator,
             shorebirdVersionValidator,
             shorebirdFlutterValidator,
-          ],
+          },
         ),
       )
         ..testArgResults = argResults

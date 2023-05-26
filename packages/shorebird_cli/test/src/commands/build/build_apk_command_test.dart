@@ -59,7 +59,6 @@ void main() {
       shorebirdProcess = _MockShorebirdProcess();
       processResult = _MockProcessResult();
       flutterValidator = _MockShorebirdFlutterValidator();
-
       registerFallbackValue(shorebirdProcess);
 
       when(
@@ -77,7 +76,7 @@ void main() {
       when(() => flutterValidator.validate(any())).thenAnswer((_) async => []);
 
       command = runWithOverrides(
-        () => BuildApkCommand(validators: [flutterValidator]),
+        () => BuildApkCommand(validators: {flutterValidator}),
       )
         ..testArgResults = argResults
         ..testProcess = shorebirdProcess

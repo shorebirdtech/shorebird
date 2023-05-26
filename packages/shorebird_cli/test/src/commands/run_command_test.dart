@@ -1,3 +1,5 @@
+// ignore_for_file: hash_and_equals
+
 import 'dart:async';
 import 'dart:convert';
 import 'dart:io';
@@ -30,13 +32,22 @@ class _MockProcess extends Mock implements Process {}
 class _MockCodePushClient extends Mock implements CodePushClient {}
 
 class _MockAndroidInternetPermissionValidator extends Mock
-    implements AndroidInternetPermissionValidator {}
+    implements AndroidInternetPermissionValidator {
+  @override
+  int get hashCode => '$AndroidInternetPermissionValidator'.hashCode;
+}
 
 class _MockShorebirdYamlValidator extends Mock
-    implements ShorebirdYamlValidator {}
+    implements ShorebirdYamlValidator {
+  @override
+  int get hashCode => '$ShorebirdYamlValidator'.hashCode;
+}
 
 class _MockShorebirdFlutterValidator extends Mock
-    implements ShorebirdFlutterValidator {}
+    implements ShorebirdFlutterValidator {
+  @override
+  int get hashCode => '$ShorebirdFlutterValidator'.hashCode;
+}
 
 class _MockShorebirdProcess extends Mock implements ShorebirdProcess {}
 
@@ -77,6 +88,8 @@ void main() {
       shorebirdYamlValidator = _MockShorebirdYamlValidator();
       flutterValidator = _MockShorebirdFlutterValidator();
 
+      registerFallbackValue(shorebirdProcess);
+
       when(
         () => shorebirdProcess.start(
           any(),
@@ -91,6 +104,9 @@ void main() {
       when(
         () => androidInternetPermissionValidator.validate(any()),
       ).thenAnswer((_) async => []);
+      when(
+        () => shorebirdYamlValidator.validate(any()),
+      ).thenAnswer((_) async => []);
       when(() => flutterValidator.validate(any())).thenAnswer((_) async => []);
 
       command = runWithOverrides(
@@ -101,10 +117,11 @@ void main() {
           }) {
             return codePushClient;
           },
-          validators: [
+          validators: {
             androidInternetPermissionValidator,
+            shorebirdYamlValidator,
             flutterValidator,
-          ],
+          },
         ),
       )
         ..testArgResults = argResults

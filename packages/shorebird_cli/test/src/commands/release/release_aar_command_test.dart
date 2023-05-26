@@ -253,7 +253,7 @@ flutter:
       command = runWithOverrides(
         () => ReleaseAarCommand(
           unzipFn: (_, __) async {},
-          validators: [flutterValidator],
+          validators: {flutterValidator},
         ),
       )
         ..testArgResults = argResults

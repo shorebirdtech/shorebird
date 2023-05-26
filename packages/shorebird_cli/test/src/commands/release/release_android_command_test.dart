@@ -240,7 +240,7 @@ flutter:
       command = runWithOverrides(
         () => ReleaseAndroidCommand(
           cache: cache,
-          validators: [flutterValidator],
+          validators: {flutterValidator},
         ),
       )
         ..testArgResults = argResults

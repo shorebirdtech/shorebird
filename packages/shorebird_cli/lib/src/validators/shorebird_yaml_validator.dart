@@ -29,4 +29,7 @@ class ShorebirdYamlValidator extends Validator {
   File getShorebirdYamlFile() {
     return File(p.join(Directory.current.path, 'shorebird.yaml'));
   }
+
+  @override
+  ValidatorScope get scope => ValidatorScope.installation;
 }

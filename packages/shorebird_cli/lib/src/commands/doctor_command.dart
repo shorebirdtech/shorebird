@@ -1,4 +1,3 @@
-import 'package:collection/collection.dart';
 import 'package:mason_logger/mason_logger.dart';
 import 'package:shorebird_cli/src/command.dart';
 import 'package:shorebird_cli/src/logger.dart';
@@ -15,7 +14,7 @@ import 'package:shorebird_cli/src/version.dart';
 class DoctorCommand extends ShorebirdCommand with ShorebirdVersionMixin {
   /// {@macro doctor_command}
   DoctorCommand({super.validators}) {
-    validators = _allValidators(baseValidators: validators);
+    validators.addAll(_doctorValidators);
 
     argParser.addFlag(
       'fix',
@@ -129,21 +128,5 @@ $fixableIssueCount issue${fixableIssueCount == 1 ? '' : 's'} can be fixed automa
     }
 
     return ExitCode.success.code;
-  }
-
-  /// Creates a list that is the union of [baseValidators] and
-  /// [_doctorValidators].
-  List<Validator> _allValidators({
-    required List<Validator> baseValidators,
-  }) {
-    final missingValidators = _doctorValidators
-        .where(
-          (doctorValidator) => baseValidators.none(
-            (baseValidator) => baseValidator.id == doctorValidator.id,
-          ),
-        )
-        .toList();
-
-    return baseValidators + missingValidators;
   }
 }

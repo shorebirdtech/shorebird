@@ -82,6 +82,7 @@ class ValidationIssue {
 
 /// Checks for a specific issue with either the Shorebird installation or the
 /// current Shorebird project.
+@immutable
 abstract class Validator {
   /// A unique identifer for this class.
   String get id => '$runtimeType';
@@ -97,4 +98,16 @@ abstract class Validator {
 
   /// Whether this validator is project-specific or system-wide.
   ValidatorScope get scope;
+
+  @override
+  bool operator ==(Object other) {
+    if (other is Validator) {
+      return other.id == id;
+    }
+
+    return false;
+  }
+
+  @override
+  int get hashCode => id.hashCode;
 }

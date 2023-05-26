@@ -235,7 +235,7 @@ flutter:
       command = runWithOverrides(
         () => PatchIosCommand(
           ipaReader: ipaReader,
-          validators: [flutterValidator],
+          validators: {flutterValidator},
         ),
       )
         ..testArgResults = argResults

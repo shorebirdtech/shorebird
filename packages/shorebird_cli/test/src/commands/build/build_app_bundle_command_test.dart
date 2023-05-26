@@ -77,7 +77,7 @@ void main() {
       when(() => flutterValidator.validate(any())).thenAnswer((_) async => []);
 
       command = runWithOverrides(
-        () => BuildAppBundleCommand(validators: [flutterValidator]),
+        () => BuildAppBundleCommand(validators: {flutterValidator}),
       )
         ..testArgResults = argResults
         ..testProcess = shorebirdProcess

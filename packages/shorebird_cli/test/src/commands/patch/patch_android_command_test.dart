@@ -187,7 +187,7 @@ flutter:
           aabDiffer: aabDiffer,
           cache: cache,
           httpClient: httpClient,
-          validators: [flutterValidator],
+          validators: {flutterValidator},
         ),
       )
         ..testArgResults = argResults

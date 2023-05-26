@@ -206,7 +206,7 @@ flutter:
       command = runWithOverrides(
         () => ReleaseIosCommand(
           ipaReader: ipaReader,
-          validators: [flutterValidator],
+          validators: {flutterValidator},
         ),
       )
         ..testArgResults = argResults

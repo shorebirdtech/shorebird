@@ -31,6 +31,10 @@ void main() {
       expect(results, isEmpty);
     });
 
+    test('is not project-specific', () {
+      expect(validator.scope, ValidatorScope.installation);
+    });
+
     test('return an error when shorebird yaml is not there', () async {
       final results = await IOOverrides.runZoned(
         () => validator.validate(shorebirdProcess),

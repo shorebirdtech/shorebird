@@ -27,15 +27,15 @@ typedef StartProcess = Future<Process> Function(
   bool runInShell,
 });
 
-List<Validator> _defaultValidators() => [
+Set<Validator> _defaultValidators() => {
       AndroidInternetPermissionValidator(),
-    ];
+    };
 
 abstract class ShorebirdCommand extends Command<int> {
   ShorebirdCommand({
     Cache? cache,
     CodePushClientBuilder? buildCodePushClient,
-    List<Validator>? validators, // For mocking.
+    Set<Validator>? validators, // For mocking.
   })  : cache = cache ?? Cache(),
         buildCodePushClient = buildCodePushClient ?? CodePushClient.new,
         validators = validators ?? _defaultValidators();
@@ -70,7 +70,7 @@ abstract class ShorebirdCommand extends Command<int> {
   EngineConfig get engineConfig => testEngineConfig ?? process.engineConfig;
 
   /// Checks that the Shorebird install and project are in a good state.
-  late List<Validator> validators;
+  late Set<Validator> validators;
 
   /// [ArgResults] used for testing purposes only.
   @visibleForTesting

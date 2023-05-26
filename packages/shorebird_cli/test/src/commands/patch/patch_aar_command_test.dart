@@ -324,7 +324,7 @@ flutter:
           aarDiffer: aarDiffer,
           cache: cache,
           httpClient: httpClient,
-          validators: [flutterValidator],
+          validators: {flutterValidator},
           unzipFn: (_, __) async {},
         ),
       )
