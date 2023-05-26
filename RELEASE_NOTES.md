@@ -10,6 +10,7 @@ We've just released Shorebird CLI v0.3.0 🎉
 
 - 🐦 Support for Flutter 3.10.2 and Dart 3.0.2
 - 🚨 Breaking Change: `shorebird release` was removed in favor of `shorebird release android` as part of the preparation to support iOS
+- ⚠️ `shorebird patch` alerts users of non-patchable changes
 - 🩹 Fixed a bug which caused crashes on Android API <28
 
 📚 Release notes can be found at https://github.com/shorebirdtech/shorebird/releases/tag/v0.3.0
