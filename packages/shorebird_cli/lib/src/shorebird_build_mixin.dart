@@ -93,6 +93,34 @@ mixin ShorebirdBuildMixin on ShorebirdCommand {
     }
   }
 
+  Future<void> buildAar({String? flavor, String? target}) async {
+    const executable = 'flutter';
+    final arguments = [
+      'build',
+      'aar',
+      '--no-debug',
+      '--no-profile',
+      if (flavor != null) '--flavor=$flavor',
+      if (target != null) '--target=$target',
+      ...results.rest,
+    ];
+
+    final result = await process.run(
+      executable,
+      arguments,
+      runInShell: true,
+    );
+
+    if (result.exitCode != ExitCode.success.code) {
+      throw ProcessException(
+        'flutter',
+        arguments,
+        result.stderr.toString(),
+        result.exitCode,
+      );
+    }
+  }
+
   Future<void> buildApk({String? flavor, String? target}) async {
     const executable = 'flutter';
     final arguments = [

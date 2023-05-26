@@ -81,17 +81,19 @@ make smaller updates to your app.
       return ExitCode.noUser.code;
     }
 
-    final validationIssues = await runValidators();
-    if (validationIssuesContainsError(validationIssues)) {
-      logValidationFailure(issues: validationIssues);
-      return ExitCode.config.code;
-    }
+    // TODO: doesn't work for modules
+    // final validationIssues = await runValidators();
+    // if (validationIssuesContainsError(validationIssues)) {
+    //   logValidationFailure(issues: validationIssues);
+    //   return ExitCode.config.code;
+    // }
 
     final flavor = results['flavor'] as String?;
     final target = results['target'] as String?;
     final buildProgress = logger.progress('Building release');
     try {
-      await buildAppBundle(flavor: flavor, target: target);
+      // await buildAppBundle(flavor: flavor, target: target);
+      await buildAar(flavor: flavor, target: target);
       buildProgress.complete();
     } on ProcessException catch (error) {
       buildProgress.fail('Failed to build: ${error.message}');
@@ -127,17 +129,30 @@ Did you forget to run "shorebird init"?''',
       return ExitCode.software.code;
     }
 
-    final bundleDirPath = p.join('build', 'app', 'outputs', 'bundle');
-    final bundlePath = flavor != null
-        ? p.join(bundleDirPath, '${flavor}Release', 'app-$flavor-release.aab')
-        : p.join(bundleDirPath, 'release', 'app-release.aab');
+    final bundleDirPath = p.join(
+      'build',
+      'host',
+      'outputs',
+      'repo',
+      'com',
+      'example',
+      'my_flutter_module',
+      'flutter_release',
+      '1.0',
+    );
+    // final bundlePath = flavor != null
+    //     ? p.join(bundleDirPath, '${flavor}Release', 'app-$flavor-release.aab')
+    //     : p.join(bundleDirPath, 'release', 'app-release.aab');
+    final aarPath = p.join(bundleDirPath, 'flutter_release-1.0.aar');
 
     final String releaseVersion;
     final detectReleaseVersionProgress = logger.progress(
       'Detecting release version',
     );
     try {
-      releaseVersion = await extractReleaseVersionFromAppBundle(bundlePath);
+      // releaseVersion = await extractReleaseVersionFromAppBundle(bundlePath);
+      // TODO extract from aar
+      releaseVersion = '2.0.0+4';
       detectReleaseVersionProgress.complete();
     } catch (error) {
       detectReleaseVersionProgress.fail('$error');
@@ -212,27 +227,28 @@ ${summary.join('\n')}
     }
 
     final createArtifactProgress = logger.progress('Creating artifacts');
-    for (final archMetadata in architectures.values) {
-      final artifactPath = p.join(
-        Directory.current.path,
-        'build',
-        'app',
-        'intermediates',
-        'stripped_native_libs',
-        flavor != null ? '${flavor}Release' : 'release',
-        'out',
-        'lib',
-        archMetadata.path,
-        'libapp.so',
-      );
+    const baseAarDir =
+        '/Users/bryanoltman/AndroidStudioProjects/my_flutter_module/build/host/outputs/repo/com/example/my_flutter_module/flutter_release/1.0/flutter_release-1.0/jni';
+    final archs = [
+      'arm64-v8a',
+      'armeabi-v7a',
+      'x86_64',
+    ];
+
+    // final archs = [
+    //   p.join(baseAarDir, 'arm64-v8a', 'libapp.so'),
+    //   p.join(baseAarDir, 'armeabi-v7a', 'libapp.so'),
+    //   p.join(baseAarDir, 'x86_64', 'libapp.so'),
+    // ];
+    for (final arch in archs) {
+      final artifactPath = p.join(baseAarDir, arch, 'libapp.so');
       final artifact = File(artifactPath);
       final hash = _hashFn(await artifact.readAsBytes());
-
       try {
         await codePushClient.createReleaseArtifact(
           releaseId: release.id,
           artifactPath: artifact.path,
-          arch: archMetadata.arch,
+          arch: arch,
           platform: platform,
           hash: hash,
         );
@@ -242,18 +258,48 @@ ${summary.join('\n')}
       }
     }
 
-    try {
-      await codePushClient.createReleaseArtifact(
-        releaseId: release.id,
-        artifactPath: bundlePath,
-        arch: 'aab',
-        platform: platform,
-        hash: _hashFn(await File(bundlePath).readAsBytes()),
-      );
-    } catch (error) {
-      createArtifactProgress.fail('$error');
-      return ExitCode.software.code;
-    }
+    // for (final archMetadata in architectures.values) {
+    //   final artifactPath = p.join(
+    //     Directory.current.path,
+    //     'build',
+    //     'app',
+    //     'intermediates',
+    //     'stripped_native_libs',
+    //     flavor != null ? '${flavor}Release' : 'release',
+    //     'out',
+    //     'lib',
+    //     archMetadata.path,
+    //     'libapp.so',
+    //   );
+    //   final artifact = File(artifactPath);
+    //   final hash = _hashFn(await artifact.readAsBytes());
+
+    //   try {
+    //     await codePushClient.createReleaseArtifact(
+    //       releaseId: release.id,
+    //       artifactPath: artifact.path,
+    //       arch: archMetadata.arch,
+    //       platform: platform,
+    //       hash: hash,
+    //     );
+    //   } catch (error) {
+    //     createArtifactProgress.fail('$error');
+    //     return ExitCode.software.code;
+    //   }
+    // }
+
+    // try {
+    //   await codePushClient.createReleaseArtifact(
+    //     releaseId: release.id,
+    //     artifactPath: bundlePath,
+    //     arch: 'aab',
+    //     platform: platform,
+    //     hash: _hashFn(await File(bundlePath).readAsBytes()),
+    //   );
+    // } catch (error) {
+    //   createArtifactProgress.fail('$error');
+    //   return ExitCode.software.code;
+    // }
 
     createArtifactProgress.complete();
 
@@ -262,7 +308,6 @@ ${summary.join('\n')}
       ..info('''
 
 Your next step is to upload the app bundle to the Play Store.
-${lightCyan.wrap(bundlePath)}
 
 See the following link for more information:    
 ${link(uri: Uri.parse('https://support.google.com/googleplay/android-developer/answer/9859152?hl=en'))}
