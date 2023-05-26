@@ -4,7 +4,6 @@ import 'package:shorebird_cli/src/command.dart';
 import 'package:shorebird_cli/src/logger.dart';
 import 'package:shorebird_cli/src/shorebird_config_mixin.dart';
 import 'package:shorebird_cli/src/shorebird_validation_mixin.dart';
-import 'package:shorebird_cli/src/validators/shorebird_yaml_validator.dart';
 import 'package:shorebird_cli/src/validators/validators.dart';
 
 /// {@template run_command}
@@ -32,8 +31,8 @@ class RunCommand extends ShorebirdCommand
       );
   }
 
-  late final List<Validator> _runValidators = [
-    ShorebirdYamlValidator(hasShorebirdYaml: () => hasShorebirdYaml),
+  final List<Validator> _runValidators = [
+    ShorebirdYamlValidator(),
     AndroidInternetPermissionValidator(),
   ];
 

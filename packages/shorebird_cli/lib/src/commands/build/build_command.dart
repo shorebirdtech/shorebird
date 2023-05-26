@@ -2,7 +2,6 @@ import 'package:collection/collection.dart';
 import 'package:shorebird_cli/src/command.dart';
 import 'package:shorebird_cli/src/commands/build/build.dart';
 import 'package:shorebird_cli/src/shorebird_config_mixin.dart';
-import 'package:shorebird_cli/src/validators/shorebird_yaml_validator.dart';
 import 'package:shorebird_cli/src/validators/validators.dart';
 
 /// {@template build_command}
@@ -20,8 +19,8 @@ class BuildCommand extends ShorebirdCommand with ShorebirdConfigMixin {
     addSubcommand(BuildIpaCommand());
   }
 
-  late final List<Validator> _buildValidators = [
-    ShorebirdYamlValidator(hasShorebirdYaml: () => hasShorebirdYaml),
+  final List<Validator> _buildValidators = [
+    ShorebirdYamlValidator(),
     AndroidInternetPermissionValidator(),
   ];
 
