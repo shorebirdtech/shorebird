@@ -229,6 +229,7 @@ ${summary.join('\n')}
       );
       final artifact = File(artifactPath);
       final hash = _hashFn(await artifact.readAsBytes());
+      logger.detail('Creating artifact for $artifactPath');
 
       try {
         await codePushClient.createReleaseArtifact(
@@ -252,6 +253,7 @@ ${archMetadata.arch} artifact already exists, continuing...''',
     }
 
     try {
+      logger.detail('Creating artifact for $bundlePath');
       await codePushClient.createReleaseArtifact(
         releaseId: release.id,
         artifactPath: bundlePath,
