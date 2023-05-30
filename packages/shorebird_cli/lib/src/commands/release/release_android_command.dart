@@ -237,7 +237,7 @@ ${summary.join('\n')}
           hash: hash,
         );
       } catch (error) {
-        createArtifactProgress.fail('$error');
+        createArtifactProgress.fail('Error uploading ${artifact.path}: $error');
         return ExitCode.software.code;
       }
     }
@@ -251,7 +251,7 @@ ${summary.join('\n')}
         hash: _hashFn(await File(bundlePath).readAsBytes()),
       );
     } catch (error) {
-      createArtifactProgress.fail('$error');
+      createArtifactProgress.fail('Error uploading $bundlePath: $error');
       return ExitCode.software.code;
     }
 
