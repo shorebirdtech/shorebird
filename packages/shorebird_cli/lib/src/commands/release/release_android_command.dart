@@ -211,6 +211,8 @@ ${summary.join('\n')}
       }
     }
 
+    // TODO(bryanoltman): Consolidate aab and other artifact creation.
+    // TODO(bryanoltman): Parallelize artifact creation.
     final createArtifactProgress = logger.progress('Creating artifacts');
     for (final archMetadata in architectures.values) {
       final artifactPath = p.join(
@@ -236,6 +238,13 @@ ${summary.join('\n')}
           platform: platform,
           hash: hash,
         );
+      } on CodePushConflictException catch (_) {
+        // Newlines are due to how logger.info interacts with logger.progress.
+        logger.info(
+          '''
+
+${archMetadata.arch} artifact already exists, continuing...''',
+        );
       } catch (error) {
         createArtifactProgress.fail('Error uploading ${artifact.path}: $error');
         return ExitCode.software.code;
@@ -249,6 +258,13 @@ ${summary.join('\n')}
         arch: 'aab',
         platform: platform,
         hash: _hashFn(await File(bundlePath).readAsBytes()),
+      );
+    } on CodePushConflictException catch (_) {
+      // Newlines are due to how logger.info interacts with logger.progress.
+      logger.info(
+        '''
+
+aab artifact already exists, continuing...''',
       );
     } catch (error) {
       createArtifactProgress.fail('Error uploading $bundlePath: $error');
