@@ -55,7 +55,7 @@ class ShorebirdProcess {
     final resolvedArguments =
         useVendedFlutter ? _resolveArguments(executable, arguments) : arguments;
     logger.detail(
-      '''[Process.run] $resolvedExecutable ${resolvedArguments.join(' ')} ${workingDirectory == null ? '' : '(in $workingDirectory)'}''',
+      '''[Process.run] $resolvedExecutable ${resolvedArguments.join(' ')}${workingDirectory == null ? '' : ' (in $workingDirectory)'}''',
     );
 
     return processWrapper.run(
