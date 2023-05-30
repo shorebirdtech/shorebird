@@ -27,13 +27,18 @@ class ShorebirdCliCommandRunner extends CompletionCommandRunner<int> {
     argParser
       ..addFlag(
         'version',
-        abbr: 'v',
         negatable: false,
         help: 'Print the current version.',
       )
       ..addFlag(
         'verbose',
+        abbr: 'v',
         help: 'Noisy logging, including all shell commands executed.',
+        callback: (verbose) {
+          if (verbose) {
+            _logger.level = Level.verbose;
+          }
+        },
       )
       ..addOption(
         'local-engine-src-path',
@@ -77,9 +82,6 @@ class ShorebirdCliCommandRunner extends CompletionCommandRunner<int> {
   Future<int> run(Iterable<String> args) async {
     try {
       final topLevelResults = parse(args);
-      if (topLevelResults['verbose'] == true) {
-        _logger.level = Level.verbose;
-      }
 
       // Set up our context before running the command.
       engineConfig = EngineConfig(

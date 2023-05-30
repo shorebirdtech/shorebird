@@ -10,6 +10,7 @@ environment:
 
 dependencies:
   http: ^0.13.5
+  mason_logger: ^0.2.6
   shorebird_code_push_protocol:
     path: ../shorebird_code_push_protocol
 
