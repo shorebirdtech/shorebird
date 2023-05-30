@@ -449,7 +449,7 @@ class CodePushClient {
   }
 
   Future<http.StreamedResponse> _send(http.BaseRequest request) async {
-    logger.detail('${request.method} $request');
+    logger.detail('$request');
     return _httpClient.send(request);
   }
 
