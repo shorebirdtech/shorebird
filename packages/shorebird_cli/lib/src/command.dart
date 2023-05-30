@@ -37,12 +37,13 @@ abstract class ShorebirdCommand extends Command<int> {
     Cache? cache,
     CodePushClientBuilder? buildCodePushClient,
     List<Validator>? validators, // For mocking.
-  })  : auth = auth ?? Auth(),
-        cache = cache ?? Cache(),
+  })  : cache = cache ?? Cache(),
         buildCodePushClient = buildCodePushClient ?? CodePushClient.new,
-        validators = validators ?? _defaultValidators();
+        validators = validators ?? _defaultValidators() {
+    this.auth = auth ?? Auth(logger: logger);
+  }
 
-  final Auth auth;
+  late final Auth auth;
   final Cache cache;
   final CodePushClientBuilder buildCodePushClient;
   final Logger logger;
