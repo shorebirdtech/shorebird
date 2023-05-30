@@ -350,7 +350,7 @@ https://github.com/shorebirdtech/shorebird/issues/472
             bundlePath,
           );
 
-    logger.detail('content diffs detected: $contentDiffs');
+    logger.detail('aab content differences: $contentDiffs');
 
     if (contentDiffs.contains(AabDifferences.native)) {
       logger
@@ -398,6 +398,7 @@ If you believe you're seeing this in error, please reach out to us for support a
         archMetadata.path,
         'libapp.so',
       );
+      logger.detail('Creating artifact for $patchArtifactPath');
       final patchArtifact = File(patchArtifactPath);
       final hash = _hashFn(await patchArtifact.readAsBytes());
       try {
