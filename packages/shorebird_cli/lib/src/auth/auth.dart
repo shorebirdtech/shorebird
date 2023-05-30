@@ -58,7 +58,7 @@ class LoggingClient extends http.BaseClient {
 
   @override
   Future<http.StreamedResponse> send(http.BaseRequest request) async {
-    _logger.detail('$request');
+    _logger.detail('[HTTP] $request');
     return _baseClient.send(request);
   }
 }
