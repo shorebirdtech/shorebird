@@ -2,6 +2,22 @@
 
 This section contains past updates we've sent to customers via Discord.
 
+## 0.3.1 (May 30, 2023)
+
+We've just released Shorebird CLI v0.3.1 🎉
+
+✨ The most notable changes are:
+
+- 📦 Allow resubmitting a release after a partial failure
+- 📝 Additional verbose logging `shorebird --verbose`
+- ⚠️ Improved error output if artifact uploads fail
+
+📚 Release notes can be found at https://github.com/shorebirdtech/shorebird/releases/tag/v0.3.1
+
+As always, you can upgrade using shorebird upgrade
+
+Please let us know if we can help!
+
 ## 0.3.0 (May 25, 2023)
 
 We've just released Shorebird CLI v0.3.0 🎉
