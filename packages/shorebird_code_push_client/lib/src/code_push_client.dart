@@ -2,8 +2,6 @@ import 'dart:convert';
 import 'dart:io';
 
 import 'package:http/http.dart' as http;
-import 'package:mason_logger/mason_logger.dart';
-import 'package:meta/meta.dart';
 import 'package:shorebird_code_push_protocol/shorebird_code_push_protocol.dart';
 
 /// {@template code_push_exception}
@@ -39,18 +37,13 @@ class CodePushClient {
   CodePushClient({
     http.Client? httpClient,
     Uri? hostedUri,
-    Logger? logger,
   })  : _httpClient = httpClient ?? http.Client(),
-        hostedUri = hostedUri ?? Uri.https('api.shorebird.dev'),
-        logger = logger ?? Logger();
+        hostedUri = hostedUri ?? Uri.https('api.shorebird.dev');
 
   /// The default error message to use when an unknown error occurs.
   static const unknownErrorMessage = 'An unknown error occurred.';
 
   final http.Client _httpClient;
-
-  @visibleForTesting
-  final Logger logger;
 
   /// The hosted uri for the Shorebird CodePush API.
   final Uri hostedUri;
@@ -63,7 +56,7 @@ class CodePushClient {
     required String appId,
     required String email,
   }) async {
-    final response = await _post(
+    final response = await _httpClient.post(
       Uri.parse('$_v1/apps/$appId/collaborators'),
       body: json.encode(CreateAppCollaboratorRequest(email: email).toJson()),
     );
@@ -76,7 +69,7 @@ class CodePushClient {
   /// Fetches the currently logged-in user.
   Future<User?> getCurrentUser() async {
     final uri = Uri.parse('$_v1/users/me');
-    final response = await _get(uri);
+    final response = await _httpClient.get(uri);
 
     if (response.statusCode == HttpStatus.notFound) {
       return null;
@@ -108,7 +101,7 @@ class CodePushClient {
       'hash': hash,
       'size': '${file.length}',
     });
-    final response = await _send(request);
+    final response = await _httpClient.send(request);
     final body = await response.stream.bytesToString();
 
     if (response.statusCode != HttpStatus.ok) {
@@ -120,7 +113,7 @@ class CodePushClient {
 
   /// Generates a Stripe payment link for the current user.
   Future<Uri> createPaymentLink() async {
-    final response = await _post(
+    final response = await _httpClient.post(
       Uri.parse('$_v1/subscriptions/payment_link'),
     );
 
@@ -153,7 +146,7 @@ class CodePushClient {
       'hash': hash,
       'size': '${file.length}',
     });
-    final response = await _send(request);
+    final response = await _httpClient.send(request);
     final body = await response.stream.bytesToString();
 
     if (response.statusCode != HttpStatus.ok) {
@@ -166,7 +159,7 @@ class CodePushClient {
   /// Create a new app with the provided [displayName].
   /// Returns the newly created app.
   Future<App> createApp({required String displayName}) async {
-    final response = await _post(
+    final response = await _httpClient.post(
       Uri.parse('$_v1/apps'),
       body: json.encode({'display_name': displayName}),
     );
@@ -183,7 +176,7 @@ class CodePushClient {
     required String appId,
     required String channel,
   }) async {
-    final response = await _post(
+    final response = await _httpClient.post(
       Uri.parse('$_v1/channels'),
       body: json.encode({'app_id': appId, 'channel': channel}),
     );
@@ -197,7 +190,7 @@ class CodePushClient {
 
   /// Create a new patch for the given [releaseId].
   Future<Patch> createPatch({required int releaseId}) async {
-    final response = await _post(
+    final response = await _httpClient.post(
       Uri.parse('$_v1/patches'),
       body: json.encode({'release_id': releaseId}),
     );
@@ -217,7 +210,7 @@ class CodePushClient {
     required String flutterRevision,
     String? displayName,
   }) async {
-    final response = await _post(
+    final response = await _httpClient.post(
       Uri.parse('$_v1/releases'),
       body: json.encode({
         'app_id': appId,
@@ -239,7 +232,7 @@ class CodePushClient {
     required String appId,
     required int userId,
   }) async {
-    final response = await _delete(
+    final response = await _httpClient.delete(
       Uri.parse('$_v1/apps/$appId/collaborators/$userId'),
     );
 
@@ -250,7 +243,7 @@ class CodePushClient {
 
   /// Delete the release with the provided [releaseId].
   Future<void> deleteRelease({required int releaseId}) async {
-    final response = await _delete(
+    final response = await _httpClient.delete(
       Uri.parse('$_v1/releases/$releaseId'),
     );
 
@@ -265,7 +258,7 @@ class CodePushClient {
   Future<User> createUser({
     required String name,
   }) async {
-    final response = await _post(
+    final response = await _httpClient.post(
       Uri.parse('$_v1/users'),
       body: jsonEncode(CreateUserRequest(name: name).toJson()),
     );
@@ -280,7 +273,7 @@ class CodePushClient {
 
   /// Delete the app with the provided [appId].
   Future<void> deleteApp({required String appId}) async {
-    final response = await _delete(
+    final response = await _httpClient.delete(
       Uri.parse('$_v1/apps/$appId'),
     );
 
@@ -291,7 +284,7 @@ class CodePushClient {
 
   /// List all apps for the current account.
   Future<List<AppMetadata>> getApps() async {
-    final response = await _get(Uri.parse('$_v1/apps'));
+    final response = await _httpClient.get(Uri.parse('$_v1/apps'));
 
     if (response.statusCode != HttpStatus.ok) {
       throw _parseErrorResponse(response.statusCode, response.body);
@@ -305,7 +298,7 @@ class CodePushClient {
 
   /// List all channels for the provided [appId].
   Future<List<Channel>> getChannels({required String appId}) async {
-    final response = await _get(
+    final response = await _httpClient.get(
       Uri.parse('$_v1/channels').replace(
         queryParameters: {'appId': appId},
       ),
@@ -323,7 +316,7 @@ class CodePushClient {
 
   /// List all collaborators for the provided [appId].
   Future<List<Collaborator>> getCollaborators({required String appId}) async {
-    final response = await _get(
+    final response = await _httpClient.get(
       Uri.parse('$_v1/apps/$appId/collaborators'),
     );
 
@@ -341,7 +334,7 @@ class CodePushClient {
 
   /// List all release for the provided [appId].
   Future<List<Release>> getReleases({required String appId}) async {
-    final response = await _get(
+    final response = await _httpClient.get(
       Uri.parse('$_v1/releases').replace(
         queryParameters: {'appId': appId},
       ),
@@ -363,7 +356,7 @@ class CodePushClient {
     required String arch,
     required String platform,
   }) async {
-    final response = await _get(
+    final response = await _httpClient.get(
       Uri.parse('$_v1/releases/$releaseId/artifacts').replace(
         queryParameters: {
           'arch': arch,
@@ -385,7 +378,7 @@ class CodePushClient {
     required int patchId,
     required int channelId,
   }) async {
-    final response = await _post(
+    final response = await _httpClient.post(
       Uri.parse('$_v1/patches/promote'),
       body: json.encode({'patch_id': patchId, 'channel_id': channelId}),
     );
@@ -397,7 +390,7 @@ class CodePushClient {
 
   /// Cancels the current user's subscription.
   Future<DateTime> cancelSubscription() async {
-    final response = await _delete(
+    final response = await _httpClient.delete(
       Uri.parse('$_v1/subscriptions'),
     );
 
@@ -412,46 +405,6 @@ class CodePushClient {
 
   /// Closes the client.
   void close() => _httpClient.close();
-
-  Future<http.Response> _delete(
-    Uri url, {
-    Map<String, String>? headers,
-    Object? body,
-    Encoding? encoding,
-  }) async {
-    logger.detail('DELETE $url');
-    return _httpClient.delete(
-      url,
-      headers: headers,
-      body: body,
-      encoding: encoding,
-    );
-  }
-
-  Future<http.Response> _get(Uri url, {Map<String, String>? headers}) async {
-    logger.detail('GET $url');
-    return _httpClient.get(url, headers: headers);
-  }
-
-  Future<http.Response> _post(
-    Uri url, {
-    Map<String, String>? headers,
-    Object? body,
-    Encoding? encoding,
-  }) async {
-    logger.detail('POST $url');
-    return _httpClient.post(
-      url,
-      headers: headers,
-      body: body,
-      encoding: encoding,
-    );
-  }
-
-  Future<http.StreamedResponse> _send(http.BaseRequest request) async {
-    logger.detail('$request');
-    return _httpClient.send(request);
-  }
 
   CodePushException _parseErrorResponse(int statusCode, String response) {
     final exceptionBuilder = statusCode == HttpStatus.conflict

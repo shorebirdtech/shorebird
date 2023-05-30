@@ -37,27 +37,16 @@ abstract class ShorebirdCommand extends Command<int> {
     Cache? cache,
     CodePushClientBuilder? buildCodePushClient,
     List<Validator>? validators, // For mocking.
-  })  : auth = auth ?? Auth(),
-        cache = cache ?? Cache(),
+  })  : cache = cache ?? Cache(),
+        buildCodePushClient = buildCodePushClient ?? CodePushClient.new,
         validators = validators ?? _defaultValidators() {
-    this.buildCodePushClient =
-        buildCodePushClient ?? _defaultCodePushClientBuilder;
+    this.auth = auth ?? Auth(logger: logger);
   }
 
-  final Auth auth;
+  late final Auth auth;
   final Cache cache;
-  late final CodePushClientBuilder buildCodePushClient;
+  final CodePushClientBuilder buildCodePushClient;
   final Logger logger;
-
-  CodePushClientBuilder get _defaultCodePushClientBuilder => ({
-        required http.Client httpClient,
-        Uri? hostedUri,
-      }) =>
-          CodePushClient(
-            httpClient: httpClient,
-            hostedUri: hostedUri,
-            logger: logger,
-          );
 
   // We don't currently have a test involving both a CommandRunner
   // and a Command, so we can't test this getter.

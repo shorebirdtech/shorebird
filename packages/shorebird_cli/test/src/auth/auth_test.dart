@@ -3,6 +3,7 @@ import 'dart:io';
 
 import 'package:googleapis_auth/googleapis_auth.dart';
 import 'package:http/http.dart' as http;
+import 'package:mason_logger/mason_logger.dart';
 import 'package:mocktail/mocktail.dart';
 import 'package:path/path.dart' as p;
 import 'package:shorebird_cli/src/auth/auth.dart';
@@ -11,9 +12,11 @@ import 'package:test/test.dart';
 
 class _FakeBaseRequest extends Fake implements http.BaseRequest {}
 
-class _MockHttpClient extends Mock implements http.Client {}
-
 class _MockCodePushClient extends Mock implements CodePushClient {}
+
+class _MockLogger extends Mock implements Logger {}
+
+class _MockHttpClient extends Mock implements http.Client {}
 
 void main() {
   group('Auth', () {
@@ -40,6 +43,7 @@ void main() {
     late String credentialsDir;
     late http.Client httpClient;
     late CodePushClient codePushClient;
+    late Logger logger;
     late Auth auth;
 
     setUpAll(() {
@@ -56,6 +60,7 @@ void main() {
         obtainAccessCredentials: (clientId, scopes, client, userPrompt) async {
           return accessCredentials;
         },
+        logger: logger,
       );
     }
 
@@ -68,6 +73,7 @@ void main() {
       credentialsDir = Directory.systemTemp.createTempSync().path;
       httpClient = _MockHttpClient();
       codePushClient = _MockCodePushClient();
+      logger = _MockLogger();
       auth = buildAuth();
 
       when(() => codePushClient.getCurrentUser()).thenAnswer((_) async => user);
@@ -101,6 +107,7 @@ void main() {
           onRefreshCredentials: onRefreshCredentialsCalls.add,
           refreshCredentials: (clientId, credentials, client) async =>
               accessCredentials,
+          logger: logger,
         );
 
         await client.get(Uri.parse('https://example.com'));
@@ -129,6 +136,7 @@ void main() {
           credentials: accessCredentials,
           httpClient: httpClient,
           onRefreshCredentials: onRefreshCredentialsCalls.add,
+          logger: logger,
         );
 
         await client.get(Uri.parse('https://example.com'));

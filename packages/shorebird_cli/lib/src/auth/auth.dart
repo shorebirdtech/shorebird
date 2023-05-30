@@ -4,6 +4,7 @@ import 'dart:io';
 import 'package:cli_util/cli_util.dart';
 import 'package:googleapis_auth/auth_io.dart' as oauth2;
 import 'package:http/http.dart' as http;
+import 'package:mason_logger/mason_logger.dart';
 import 'package:path/path.dart' as p;
 import 'package:shorebird_cli/src/auth/jwt.dart';
 import 'package:shorebird_cli/src/command.dart';
@@ -45,18 +46,34 @@ typedef OnRefreshCredentials = void Function(
   oauth2.AccessCredentials credentials,
 );
 
-class AuthenticatedClient extends http.BaseClient {
-  AuthenticatedClient({
-    required oauth2.AccessCredentials credentials,
+class LoggingClient extends http.BaseClient {
+  LoggingClient({
     required http.Client httpClient,
+    required Logger logger,
+  })  : _baseClient = httpClient,
+        _logger = logger;
+
+  final http.Client _baseClient;
+  final Logger _logger;
+
+  @override
+  Future<http.StreamedResponse> send(http.BaseRequest request) async {
+    _logger.detail('$request');
+    return _baseClient.send(request);
+  }
+}
+
+class AuthenticatedClient extends LoggingClient {
+  AuthenticatedClient({
+    required super.httpClient,
+    required super.logger,
+    required oauth2.AccessCredentials credentials,
     required OnRefreshCredentials onRefreshCredentials,
     RefreshCredentials refreshCredentials = oauth2.refreshCredentials,
   })  : _credentials = credentials,
-        _baseClient = httpClient,
         _onRefreshCredentials = onRefreshCredentials,
         _refreshCredentials = refreshCredentials;
 
-  final http.Client _baseClient;
   final OnRefreshCredentials _onRefreshCredentials;
   final RefreshCredentials _refreshCredentials;
   oauth2.AccessCredentials _credentials;
@@ -73,17 +90,19 @@ class AuthenticatedClient extends http.BaseClient {
     }
     final token = _credentials.idToken;
     request.headers['Authorization'] = 'Bearer $token';
-    return _baseClient.send(request);
+    return super.send(request);
   }
 }
 
 class Auth {
   Auth({
+    Logger? logger,
     http.Client? httpClient,
     String? credentialsDir,
     ObtainAccessCredentials? obtainAccessCredentials,
     CodePushClientBuilder? buildCodePushClient,
-  })  : _httpClient = httpClient ?? http.Client(),
+  })  : logger = logger ?? Logger(),
+        _httpClient = httpClient ?? http.Client(),
         _credentialsDir =
             credentialsDir ?? applicationConfigHome(executableName),
         _obtainAccessCredentials = obtainAccessCredentials ??
@@ -96,6 +115,7 @@ class Auth {
   final String _credentialsDir;
   final ObtainAccessCredentials _obtainAccessCredentials;
   final CodePushClientBuilder _buildCodePushClient;
+  final Logger logger;
 
   String get credentialsFilePath {
     return p.join(_credentialsDir, 'credentials.json');
@@ -108,6 +128,7 @@ class Auth {
       credentials: credentials,
       httpClient: _httpClient,
       onRefreshCredentials: _flushCredentials,
+      logger: logger,
     );
   }
 
