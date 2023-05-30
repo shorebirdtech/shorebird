@@ -238,7 +238,7 @@ ${summary.join('\n')}
           platform: platform,
           hash: hash,
         );
-      } on ResourceConflictException catch (_) {
+      } on CodePushConflictException catch (_) {
         // Newlines are due to how logger.info interacts with logger.progress.
         logger.info(
           '''
@@ -259,7 +259,7 @@ ${archMetadata.arch} artifact already exists, continuing...''',
         platform: platform,
         hash: _hashFn(await File(bundlePath).readAsBytes()),
       );
-    } on ResourceConflictException catch (_) {
+    } on CodePushConflictException catch (_) {
       // Newlines are due to how logger.info interacts with logger.progress.
       logger.info(
         '''

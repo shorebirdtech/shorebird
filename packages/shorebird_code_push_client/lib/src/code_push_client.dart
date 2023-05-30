@@ -21,12 +21,12 @@ class CodePushException implements Exception {
   String toString() => '$message${details != null ? '\n$details' : ''}';
 }
 
-/// {@template resource_conflict_exception}
+/// {@template code_push_conflict_exception}
 /// Exception thrown when a 409 response is received.
 /// {@endtemplate}
-class ResourceConflictException extends CodePushException {
-  /// {@macro resource_conflict_exception}
-  ResourceConflictException({required super.message, super.details});
+class CodePushConflictException extends CodePushException {
+  /// {@macro code_push_conflict_exception}
+  const CodePushConflictException({required super.message, super.details});
 }
 
 /// {@template code_push_client}
@@ -62,7 +62,7 @@ class CodePushClient {
     );
 
     if (response.statusCode != HttpStatus.created) {
-      throw _parseErrorResponse(response.body);
+      throw _parseErrorResponse(response.statusCode, response.body);
     }
   }
 
@@ -74,7 +74,7 @@ class CodePushClient {
     if (response.statusCode == HttpStatus.notFound) {
       return null;
     } else if (response.statusCode != HttpStatus.ok) {
-      throw _parseErrorResponse(response.body);
+      throw _parseErrorResponse(response.statusCode, response.body);
     }
 
     final json = jsonDecode(response.body) as Map<String, dynamic>;
@@ -104,7 +104,9 @@ class CodePushClient {
     final response = await _httpClient.send(request);
     final body = await response.stream.bytesToString();
 
-    if (response.statusCode != HttpStatus.ok) throw _parseErrorResponse(body);
+    if (response.statusCode != HttpStatus.ok) {
+      throw _parseErrorResponse(response.statusCode, body);
+    }
 
     return PatchArtifact.fromJson(json.decode(body) as Map<String, dynamic>);
   }
@@ -116,7 +118,7 @@ class CodePushClient {
     );
 
     if (response.statusCode != HttpStatus.ok) {
-      throw _parseErrorResponse(response.body);
+      throw _parseErrorResponse(response.statusCode, response.body);
     }
 
     return CreatePaymentLinkResponse.fromJson(
@@ -147,12 +149,8 @@ class CodePushClient {
     final response = await _httpClient.send(request);
     final body = await response.stream.bytesToString();
 
-    if (response.statusCode == HttpStatus.conflict) {
-      throw ResourceConflictException(
-        message: 'An artifact already exists for arch:$arch platform:$platform',
-      );
-    } else if (response.statusCode != HttpStatus.ok) {
-      throw _parseErrorResponse(body);
+    if (response.statusCode != HttpStatus.ok) {
+      throw _parseErrorResponse(response.statusCode, body);
     }
 
     return ReleaseArtifact.fromJson(json.decode(body) as Map<String, dynamic>);
@@ -167,7 +165,7 @@ class CodePushClient {
     );
 
     if (response.statusCode != HttpStatus.ok) {
-      throw _parseErrorResponse(response.body);
+      throw _parseErrorResponse(response.statusCode, response.body);
     }
     final body = json.decode(response.body) as Map<String, dynamic>;
     return App.fromJson(body);
@@ -184,7 +182,7 @@ class CodePushClient {
     );
 
     if (response.statusCode != HttpStatus.ok) {
-      throw _parseErrorResponse(response.body);
+      throw _parseErrorResponse(response.statusCode, response.body);
     }
     final body = json.decode(response.body) as Map<String, dynamic>;
     return Channel.fromJson(body);
@@ -198,7 +196,7 @@ class CodePushClient {
     );
 
     if (response.statusCode != HttpStatus.ok) {
-      throw _parseErrorResponse(response.body);
+      throw _parseErrorResponse(response.statusCode, response.body);
     }
 
     final body = json.decode(response.body) as Map<String, dynamic>;
@@ -223,7 +221,7 @@ class CodePushClient {
     );
 
     if (response.statusCode != HttpStatus.ok) {
-      throw _parseErrorResponse(response.body);
+      throw _parseErrorResponse(response.statusCode, response.body);
     }
     final body = json.decode(response.body) as Map<String, dynamic>;
     return Release.fromJson(body);
@@ -239,7 +237,7 @@ class CodePushClient {
     );
 
     if (response.statusCode != HttpStatus.noContent) {
-      throw _parseErrorResponse(response.body);
+      throw _parseErrorResponse(response.statusCode, response.body);
     }
   }
 
@@ -250,7 +248,7 @@ class CodePushClient {
     );
 
     if (response.statusCode != HttpStatus.noContent) {
-      throw _parseErrorResponse(response.body);
+      throw _parseErrorResponse(response.statusCode, response.body);
     }
   }
 
@@ -266,7 +264,7 @@ class CodePushClient {
     );
 
     if (response.statusCode != HttpStatus.created) {
-      throw _parseErrorResponse(response.body);
+      throw _parseErrorResponse(response.statusCode, response.body);
     }
 
     final body = json.decode(response.body) as Json;
@@ -280,7 +278,7 @@ class CodePushClient {
     );
 
     if (response.statusCode != HttpStatus.noContent) {
-      throw _parseErrorResponse(response.body);
+      throw _parseErrorResponse(response.statusCode, response.body);
     }
   }
 
@@ -289,7 +287,7 @@ class CodePushClient {
     final response = await _httpClient.get(Uri.parse('$_v1/apps'));
 
     if (response.statusCode != HttpStatus.ok) {
-      throw _parseErrorResponse(response.body);
+      throw _parseErrorResponse(response.statusCode, response.body);
     }
 
     final apps = json.decode(response.body) as List;
@@ -307,7 +305,7 @@ class CodePushClient {
     );
 
     if (response.statusCode != HttpStatus.ok) {
-      throw _parseErrorResponse(response.body);
+      throw _parseErrorResponse(response.statusCode, response.body);
     }
 
     final channels = json.decode(response.body) as List;
@@ -323,7 +321,7 @@ class CodePushClient {
     );
 
     if (response.statusCode != HttpStatus.ok) {
-      throw _parseErrorResponse(response.body);
+      throw _parseErrorResponse(response.statusCode, response.body);
     }
 
     final releases = json.decode(response.body) as List;
@@ -343,7 +341,7 @@ class CodePushClient {
     );
 
     if (response.statusCode != HttpStatus.ok) {
-      throw _parseErrorResponse(response.body);
+      throw _parseErrorResponse(response.statusCode, response.body);
     }
 
     final releases = json.decode(response.body) as List;
@@ -368,7 +366,7 @@ class CodePushClient {
     );
 
     if (response.statusCode != HttpStatus.ok) {
-      throw _parseErrorResponse(response.body);
+      throw _parseErrorResponse(response.statusCode, response.body);
     }
 
     final body = json.decode(response.body) as Map<String, dynamic>;
@@ -386,7 +384,7 @@ class CodePushClient {
     );
 
     if (response.statusCode != HttpStatus.created) {
-      throw _parseErrorResponse(response.body);
+      throw _parseErrorResponse(response.statusCode, response.body);
     }
   }
 
@@ -397,7 +395,7 @@ class CodePushClient {
     );
 
     if (response.statusCode != HttpStatus.ok) {
-      throw _parseErrorResponse(response.body);
+      throw _parseErrorResponse(response.statusCode, response.body);
     }
 
     final json = jsonDecode(response.body) as Map<String, dynamic>;
@@ -408,14 +406,18 @@ class CodePushClient {
   /// Closes the client.
   void close() => _httpClient.close();
 
-  CodePushException _parseErrorResponse(String response) {
+  CodePushException _parseErrorResponse(int statusCode, String response) {
+    final exceptionBuilder = statusCode == HttpStatus.conflict
+        ? CodePushConflictException.new
+        : CodePushException.new;
+
     final ErrorResponse error;
     try {
       final body = json.decode(response) as Map<String, dynamic>;
       error = ErrorResponse.fromJson(body);
     } catch (_) {
-      throw const CodePushException(message: unknownErrorMessage);
+      throw exceptionBuilder(message: unknownErrorMessage);
     }
-    return CodePushException(message: error.message, details: error.details);
+    return exceptionBuilder(message: error.message, details: error.details);
   }
 }
