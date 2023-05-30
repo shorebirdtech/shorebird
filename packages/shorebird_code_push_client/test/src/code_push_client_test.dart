@@ -387,7 +387,7 @@ void main() {
       });
 
       test(
-          'throws a ResourceConflictException if the http response code is 409',
+          'throws a CodePushConflictException if the http response code is 409',
           () {
         when(() => httpClient.send(any())).thenAnswer((_) async {
           return http.StreamedResponse(
@@ -408,7 +408,7 @@ void main() {
             platform: platform,
             hash: hash,
           ),
-          throwsA(isA<ResourceConflictException>()),
+          throwsA(isA<CodePushConflictException>()),
         );
       });
 

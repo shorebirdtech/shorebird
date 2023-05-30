@@ -487,7 +487,7 @@ Did you forget to run "shorebird init"?''',
           platform: any(named: 'platform'),
           hash: any(named: 'hash'),
         ),
-      ).thenThrow(ResourceConflictException(message: error));
+      ).thenThrow(const CodePushConflictException(message: error));
       final tempDir = setUpTempDir();
       setUpTempArtifacts(tempDir);
       final exitCode = await IOOverrides.runZoned(
@@ -497,8 +497,9 @@ Did you forget to run "shorebird init"?''',
 
       // 1 for each arch, 1 for the aab
       final numArtifactsUploaded = Arch.values.length + 1;
-      verify(() => logger.info(any(that: contains('already exists'))))
-          .called(numArtifactsUploaded);
+      verify(
+        () => logger.info(any(that: contains('already exists'))),
+      ).called(numArtifactsUploaded);
       verifyNever(() => progress.fail(error));
       expect(exitCode, ExitCode.success.code);
     });
@@ -516,7 +517,7 @@ Did you forget to run "shorebird init"?''',
           platform: any(named: 'platform'),
           hash: any(named: 'hash'),
         ),
-      ).thenThrow(ResourceConflictException(message: error));
+      ).thenThrow(const CodePushConflictException(message: error));
       final tempDir = setUpTempDir();
       setUpTempArtifacts(tempDir);
       final exitCode = await IOOverrides.runZoned(
