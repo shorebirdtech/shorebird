@@ -553,7 +553,10 @@ Did you forget to run "shorebird init"?''',
         command.run,
         getCurrentDirectory: () => tempDir,
       );
-      verify(() => progress.fail(error)).called(1);
+      verify(
+        () => progress
+            .fail(any(that: stringContainsInOrder(['libapp.so', error]))),
+      ).called(1);
       expect(exitCode, ExitCode.software.code);
     });
 
@@ -577,7 +580,10 @@ Did you forget to run "shorebird init"?''',
         command.run,
         getCurrentDirectory: () => tempDir,
       );
-      verify(() => progress.fail(error)).called(1);
+      verify(
+        () => progress
+            .fail(any(that: stringContainsInOrder(['app-release.aab', error]))),
+      ).called(1);
       expect(exitCode, ExitCode.software.code);
     });
 

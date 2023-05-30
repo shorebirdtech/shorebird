@@ -246,7 +246,7 @@ ${summary.join('\n')}
 ${archMetadata.arch} artifact already exists, continuing...''',
         );
       } catch (error) {
-        createArtifactProgress.fail('$error');
+        createArtifactProgress.fail('Error uploading ${artifact.path}: $error');
         return ExitCode.software.code;
       }
     }
@@ -267,7 +267,7 @@ ${archMetadata.arch} artifact already exists, continuing...''',
 aab artifact already exists, continuing...''',
       );
     } catch (error) {
-      createArtifactProgress.fail('$error');
+      createArtifactProgress.fail('Error uploading $bundlePath: $error');
       return ExitCode.software.code;
     }
 
