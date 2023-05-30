@@ -1,5 +1,6 @@
 import 'dart:io';
 
+import 'package:mason_logger/mason_logger.dart';
 import 'package:meta/meta.dart';
 import 'package:shorebird_cli/src/shorebird_environment.dart';
 
@@ -24,11 +25,14 @@ class EngineConfig {
 class ShorebirdProcess {
   ShorebirdProcess({
     required this.engineConfig,
+    Logger? logger,
     ProcessWrapper? processWrapper, // For mocking ShorebirdProcess.
-  }) : processWrapper = processWrapper ?? ProcessWrapper();
+  })  : logger = logger ?? Logger(),
+        processWrapper = processWrapper ?? ProcessWrapper();
 
   final ProcessWrapper processWrapper;
   final EngineConfig engineConfig;
+  final Logger logger;
 
   Future<ShorebirdProcessResult> run(
     String executable,
@@ -46,9 +50,17 @@ class ShorebirdProcess {
       );
     }
 
+    final resolvedExecutable =
+        useVendedFlutter ? _resolveExecutable(executable) : executable;
+    final resolvedArguments =
+        useVendedFlutter ? _resolveArguments(executable, arguments) : arguments;
+    logger.detail(
+      '''[Process.run] $resolvedExecutable ${resolvedArguments.join(' ')}${workingDirectory == null ? '' : ' (in $workingDirectory)'}''',
+    );
+
     return processWrapper.run(
-      useVendedFlutter ? _resolveExecutable(executable) : executable,
-      useVendedFlutter ? _resolveArguments(executable, arguments) : arguments,
+      resolvedExecutable,
+      resolvedArguments,
       runInShell: runInShell,
       workingDirectory: workingDirectory,
       environment: resolvedEnvironment,
@@ -69,10 +81,17 @@ class ShorebirdProcess {
         _environmentOverrides(executable: executable),
       );
     }
+    final resolvedExecutable =
+        useVendedFlutter ? _resolveExecutable(executable) : executable;
+    final resolvedArguments =
+        useVendedFlutter ? _resolveArguments(executable, arguments) : arguments;
+    logger.detail(
+      '[Process.start] $resolvedExecutable ${resolvedArguments.join(' ')}',
+    );
 
     return processWrapper.start(
-      useVendedFlutter ? _resolveExecutable(executable) : executable,
-      useVendedFlutter ? _resolveArguments(executable, arguments) : arguments,
+      resolvedExecutable,
+      resolvedArguments,
       runInShell: runInShell,
       environment: resolvedEnvironment,
     );

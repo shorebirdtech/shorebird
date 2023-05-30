@@ -90,6 +90,7 @@ class ShorebirdCliCommandRunner extends CompletionCommandRunner<int> {
       );
       process = ShorebirdProcess(
         engineConfig: engineConfig,
+        logger: _logger,
       );
 
       return await runCommand(topLevelResults) ?? ExitCode.success.code;
