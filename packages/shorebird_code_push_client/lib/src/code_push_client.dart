@@ -3,6 +3,7 @@ import 'dart:io';
 
 import 'package:http/http.dart' as http;
 import 'package:mason_logger/mason_logger.dart';
+import 'package:meta/meta.dart';
 import 'package:shorebird_code_push_protocol/shorebird_code_push_protocol.dart';
 
 /// {@template code_push_exception}
@@ -41,14 +42,15 @@ class CodePushClient {
     Logger? logger,
   })  : _httpClient = httpClient ?? http.Client(),
         hostedUri = hostedUri ?? Uri.https('api.shorebird.dev'),
-        _logger = logger ?? Logger();
+        logger = logger ?? Logger();
 
   /// The default error message to use when an unknown error occurs.
   static const unknownErrorMessage = 'An unknown error occurred.';
 
   final http.Client _httpClient;
 
-  final Logger _logger;
+  @visibleForTesting
+  final Logger logger;
 
   /// The hosted uri for the Shorebird CodePush API.
   final Uri hostedUri;
@@ -417,7 +419,7 @@ class CodePushClient {
     Object? body,
     Encoding? encoding,
   }) async {
-    _logger.detail('DELETE $url');
+    logger.detail('DELETE $url');
     return _httpClient.delete(
       url,
       headers: headers,
@@ -427,7 +429,7 @@ class CodePushClient {
   }
 
   Future<http.Response> _get(Uri url, {Map<String, String>? headers}) async {
-    _logger.detail('GET $url');
+    logger.detail('GET $url');
     return _httpClient.get(url, headers: headers);
   }
 
@@ -437,7 +439,7 @@ class CodePushClient {
     Object? body,
     Encoding? encoding,
   }) async {
-    _logger.detail('POST $url');
+    logger.detail('POST $url');
     return _httpClient.post(
       url,
       headers: headers,
@@ -447,7 +449,7 @@ class CodePushClient {
   }
 
   Future<http.StreamedResponse> _send(http.BaseRequest request) async {
-    _logger.detail('${request.method} $request');
+    logger.detail('${request.method} $request');
     return _httpClient.send(request);
   }
 
