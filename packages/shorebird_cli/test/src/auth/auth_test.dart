@@ -79,6 +79,21 @@ void main() {
       when(() => codePushClient.getCurrentUser()).thenAnswer((_) async => user);
     });
 
+    test('uses default logger if none is provided', () {
+      final auth = Auth(
+        credentialsDir: credentialsDir,
+        httpClient: httpClient,
+        buildCodePushClient: ({Uri? hostedUri, http.Client? httpClient}) {
+          return codePushClient;
+        },
+        obtainAccessCredentials: (clientId, scopes, client, userPrompt) async {
+          return accessCredentials;
+        },
+      );
+
+      expect(auth.logger, isA<Logger>());
+    });
+
     group('AuthenticatedClient', () {
       test('refreshes and uses new token when credentials are expired.',
           () async {
