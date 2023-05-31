@@ -1,3 +1,5 @@
+import 'dart:io';
+
 import 'package:collection/collection.dart';
 import 'package:path/path.dart' as p;
 import 'package:platform/platform.dart';
@@ -12,13 +14,24 @@ mixin ShorebirdFlavorMixin on ShorebirdJavaMixin {
     String appRoot, {
     Platform platform = const LocalPlatform(),
   }) async {
+    // Flutter apps have android files in root/android
+    // Flutter modules have android files in root/.android
+    final androidRoot = [
+      Directory(p.join(appRoot, 'android')),
+      Directory(p.join(appRoot, '.android')),
+    ].firstWhereOrNull((dir) => dir.existsSync());
+
+    if (androidRoot == null) {
+      return {};
+    }
+
     final executable = platform.isWindows ? 'gradlew.bat' : 'gradlew';
     final javaHome = getJavaHome(platform);
     final result = await process.run(
-      p.join(appRoot, 'android', executable),
+      p.join(androidRoot.path, executable),
       ['app:tasks', '--all', '--console=auto'],
       runInShell: true,
-      workingDirectory: p.join(appRoot, 'android'),
+      workingDirectory: androidRoot.path,
       environment: {
         if (javaHome != null) 'JAVA_HOME': javaHome,
       },
