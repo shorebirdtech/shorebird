@@ -93,12 +93,9 @@ make smaller updates to your app.
       return ExitCode.config.code;
     }
 
-    final pubspec = getPubspecYaml();
-    if (pubspec == null) {
-      logger.err('No pubspec.yaml file found.');
-      return ExitCode.config.code;
-    }
-
+    // We know the pubspec exists due to the call to isShorebirdInitialized
+    // above.
+    final pubspec = getPubspecYaml()!;
     final module = pubspec.flutter?['module'] as Map?;
     final androidPackageName = module?['androidPackage'] as String?;
     if (androidPackageName == null) {
