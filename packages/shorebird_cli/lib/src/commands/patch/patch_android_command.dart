@@ -37,11 +37,12 @@ class PatchArtifactBundle {
   final String hash;
 }
 
-/// {@template patch_command}
+/// {@template patch_android_command}
 /// `shorebird patch`
-/// Publish new patches for a specific release to the Shorebird CodePush server.
+/// Publish new patches for a specific Android release to the Shorebird code
+/// push server.
 /// {@endtemplate}
-class PatchCommand extends ShorebirdCommand
+class PatchAndroidCommand extends ShorebirdCommand
     with
         AuthLoggerMixin,
         ShorebirdValidationMixin,
@@ -50,8 +51,8 @@ class PatchCommand extends ShorebirdCommand
         ShorebirdCreateAppMixin,
         ShorebirdJavaMixin,
         ShorebirdReleaseVersionMixin {
-  /// {@macro patch_command}
-  PatchCommand({
+  /// {@macro patch_android_command}
+  PatchAndroidCommand({
     required super.logger,
     super.auth,
     super.buildCodePushClient,
@@ -67,13 +68,6 @@ class PatchCommand extends ShorebirdCommand
       ..addOption(
         'release-version',
         help: 'The version of the release (e.g. "1.0.0").',
-      )
-      ..addOption(
-        'platform',
-        help: 'The platform of the release (e.g. "android").',
-        allowed: ['android'],
-        allowedHelp: {'android': 'The Android platform.'},
-        defaultsTo: 'android',
       )
       ..addOption(
         'channel',
@@ -213,7 +207,7 @@ Did you forget to run "shorebird init"?''',
       return ExitCode.success.code;
     }
 
-    final platform = results['platform'] as String;
+    const platform = 'android';
     final channelName = results['channel'] as String;
 
     final List<Release> releases;
