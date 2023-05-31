@@ -233,8 +233,11 @@ ${summary.join('\n')}
       aarDir,
       'flutter_release-$buildNumber.zip',
     );
+
+    // Copy the .aar file to a .zip file so package:archive knows how to read it
     File(aarPath).copySync(zipPath);
     final extractedAarDir = p.join(aarDir, 'flutter_release-$buildNumber');
+    // Unzip the .zip file to a directory so we can read the .so files
     await _unzipFn(zipPath, extractedAarDir);
 
     for (final archMetadata in architectures.values) {
