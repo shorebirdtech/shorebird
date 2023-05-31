@@ -15,6 +15,9 @@ import 'package:shorebird_code_push_client/shorebird_code_push_client.dart';
 /// Signature for a function which takes a list of bytes and returns a hash.
 typedef HashFunction = String Function(List<int> bytes);
 
+/// Signature for a function which takes a path to a zip file.
+typedef UnzipFn = Future<void> Function(String zipFilePath, String outputDir);
+
 typedef CodePushClientBuilder = CodePushClient Function({
   required http.Client httpClient,
   Uri? hostedUri,
