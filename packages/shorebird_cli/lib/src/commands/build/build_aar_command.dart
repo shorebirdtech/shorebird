@@ -79,7 +79,7 @@ class BuildAarCommand extends ShorebirdCommand
 
     buildProgress.complete();
 
-    final aarDirPath = p.joinAll([
+    final aarPath = p.joinAll([
       'build',
       'host',
       'outputs',
@@ -87,9 +87,8 @@ class BuildAarCommand extends ShorebirdCommand
       ...androidPackageName.split('.'),
       'flutter_release',
       buildNumber,
+      'flutter_release-$buildNumber.aar',
     ]);
-
-    final aarPath = p.join(aarDirPath, 'flutter_release-$buildNumber.aar');
 
     logger.info('''
 📦 Generated an aar at:
