@@ -14,7 +14,7 @@ We've just released Shorebird CLI v0.3.1 🎉
 
 📚 Release notes can be found at https://github.com/shorebirdtech/shorebird/releases/tag/v0.3.1
 
-As always, you can upgrade using shorebird upgrade
+As always, you can upgrade using `shorebird upgrade`
 
 Please let us know if we can help!
 
