@@ -6,7 +6,6 @@ import 'package:http/http.dart' as http;
 import 'package:mason_logger/mason_logger.dart';
 import 'package:path/path.dart' as p;
 import 'package:shorebird_cli/src/aab/aab.dart';
-import 'package:shorebird_cli/src/auth_logger_mixin.dart';
 import 'package:shorebird_cli/src/command.dart';
 import 'package:shorebird_cli/src/config/shorebird_yaml.dart';
 import 'package:shorebird_cli/src/formatters/formatters.dart';
@@ -37,21 +36,21 @@ class PatchArtifactBundle {
   final String hash;
 }
 
-/// {@template patch_command}
-/// `shorebird patch`
-/// Publish new patches for a specific release to the Shorebird CodePush server.
+/// {@template patch_android_command}
+/// `shorebird patch android`
+/// Publish new patches for a specific Android release to the Shorebird code
+/// push server.
 /// {@endtemplate}
-class PatchCommand extends ShorebirdCommand
+class PatchAndroidCommand extends ShorebirdCommand
     with
-        AuthLoggerMixin,
-        ShorebirdValidationMixin,
         ShorebirdConfigMixin,
+        ShorebirdValidationMixin,
         ShorebirdBuildMixin,
         ShorebirdCreateAppMixin,
         ShorebirdJavaMixin,
         ShorebirdReleaseVersionMixin {
-  /// {@macro patch_command}
-  PatchCommand({
+  /// {@macro patch_android_command}
+  PatchAndroidCommand({
     required super.logger,
     super.auth,
     super.buildCodePushClient,
@@ -67,13 +66,6 @@ class PatchCommand extends ShorebirdCommand
       ..addOption(
         'release-version',
         help: 'The version of the release (e.g. "1.0.0").',
-      )
-      ..addOption(
-        'platform',
-        help: 'The platform of the release (e.g. "android").',
-        allowed: ['android'],
-        allowedHelp: {'android': 'The Android platform.'},
-        defaultsTo: 'android',
       )
       ..addOption(
         'channel',
@@ -109,10 +101,10 @@ class PatchCommand extends ShorebirdCommand
 
   @override
   String get description =>
-      'Publish new patches for a specific release to Shorebird.';
+      'Publish new patches for a specific android release to Shorebird.';
 
   @override
-  String get name => 'patch';
+  String get name => 'android';
 
   final AabDiffer _aabDiffer;
   final HashFunction _hashFn;
@@ -120,16 +112,14 @@ class PatchCommand extends ShorebirdCommand
 
   @override
   Future<int> run() async {
-    if (!isShorebirdInitialized) {
-      logger.err(
-        'Shorebird is not initialized. Did you run "shorebird init"?',
+    try {
+      await validatePreconditions(
+        checkUserIsAuthenticated: true,
+        checkShorebirdInitialized: true,
+        checkValidators: true,
       );
-      return ExitCode.config.code;
-    }
-
-    if (!auth.isAuthenticated) {
-      printNeedsAuthInstructions();
-      return ExitCode.noUser.code;
+    } on PreconditionFailedException catch (e) {
+      return e.exitCode.code;
     }
 
     final force = results['force'] == true;
@@ -138,12 +128,6 @@ class PatchCommand extends ShorebirdCommand
     if (force && dryRun) {
       logger.err('Cannot use both --force and --dry-run.');
       return ExitCode.usage.code;
-    }
-
-    final validationIssues = await runValidators();
-    if (validationIssuesContainsError(validationIssues)) {
-      logValidationFailure(issues: validationIssues);
-      return ExitCode.config.code;
     }
 
     await cache.updateAll();
@@ -213,7 +197,7 @@ Did you forget to run "shorebird init"?''',
       return ExitCode.success.code;
     }
 
-    final platform = results['platform'] as String;
+    const platform = 'android';
     final channelName = results['channel'] as String;
 
     final List<Release> releases;

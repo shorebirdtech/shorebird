@@ -1,5 +1,6 @@
 import 'dart:io';
 
+import 'package:collection/collection.dart';
 import 'package:path/path.dart' as p;
 import 'package:shorebird_cli/src/shorebird_process.dart';
 import 'package:shorebird_cli/src/validators/validators.dart';
@@ -27,16 +28,22 @@ class AndroidInternetPermissionValidator extends Validator {
   @override
   Future<List<ValidationIssue>> validate(ShorebirdProcess process) async {
     const manifestFileName = 'AndroidManifest.xml';
-    final androidSrcDir = Directory(
+    final androidSrcDir = [
       p.join(
         Directory.current.path,
         'android',
         'app',
         'src',
       ),
-    );
+      p.join(
+        Directory.current.path,
+        '.android',
+        'Flutter',
+        'src',
+      ),
+    ].map(Directory.new).firstWhereOrNull((dir) => dir.existsSync());
 
-    if (!androidSrcDir.existsSync()) {
+    if (androidSrcDir == null) {
       return [
         const ValidationIssue(
           severity: ValidationIssueSeverity.error,

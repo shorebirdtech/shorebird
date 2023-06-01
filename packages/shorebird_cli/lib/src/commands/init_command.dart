@@ -1,12 +1,12 @@
 import 'dart:io';
 
 import 'package:mason_logger/mason_logger.dart';
-import 'package:shorebird_cli/src/auth_logger_mixin.dart';
 import 'package:shorebird_cli/src/command.dart';
 import 'package:shorebird_cli/src/shorebird_config_mixin.dart';
 import 'package:shorebird_cli/src/shorebird_create_app_mixin.dart';
 import 'package:shorebird_cli/src/shorebird_flavor_mixin.dart';
 import 'package:shorebird_cli/src/shorebird_java_mixin.dart';
+import 'package:shorebird_cli/src/shorebird_validation_mixin.dart';
 
 /// {@template init_command}
 ///
@@ -15,8 +15,8 @@ import 'package:shorebird_cli/src/shorebird_java_mixin.dart';
 /// {@endtemplate}
 class InitCommand extends ShorebirdCommand
     with
-        AuthLoggerMixin,
         ShorebirdConfigMixin,
+        ShorebirdValidationMixin,
         ShorebirdCreateAppMixin,
         ShorebirdJavaMixin,
         ShorebirdFlavorMixin {
@@ -38,9 +38,12 @@ class InitCommand extends ShorebirdCommand
 
   @override
   Future<int> run() async {
-    if (!auth.isAuthenticated) {
-      printNeedsAuthInstructions();
-      return ExitCode.noUser.code;
+    try {
+      await validatePreconditions(
+        checkUserIsAuthenticated: true,
+      );
+    } on PreconditionFailedException catch (e) {
+      return e.exitCode.code;
     }
 
     try {

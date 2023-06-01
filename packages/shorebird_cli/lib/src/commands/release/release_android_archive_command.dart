@@ -1,11 +1,13 @@
+import 'dart:async';
 import 'dart:io';
 
+import 'package:archive/archive_io.dart';
 import 'package:collection/collection.dart';
 import 'package:crypto/crypto.dart';
 import 'package:mason_logger/mason_logger.dart';
 import 'package:path/path.dart' as p;
 import 'package:shorebird_cli/src/command.dart';
-import 'package:shorebird_cli/src/config/shorebird_yaml.dart';
+import 'package:shorebird_cli/src/config/config.dart';
 import 'package:shorebird_cli/src/shorebird_build_mixin.dart';
 import 'package:shorebird_cli/src/shorebird_config_mixin.dart';
 import 'package:shorebird_cli/src/shorebird_create_app_mixin.dart';
@@ -14,11 +16,11 @@ import 'package:shorebird_cli/src/shorebird_release_version_mixin.dart';
 import 'package:shorebird_cli/src/shorebird_validation_mixin.dart';
 import 'package:shorebird_code_push_client/shorebird_code_push_client.dart';
 
-/// {@template release_android_command}
-/// `shorebird release android`
-/// Create new app releases for Android.
+/// {@template release_android_archive_command}
+/// `shorebird release android_archive`
+/// Create new Android archive releases.
 /// {@endtemplate}
-class ReleaseAndroidCommand extends ShorebirdCommand
+class ReleaseAndroidArchiveCommand extends ShorebirdCommand
     with
         ShorebirdConfigMixin,
         ShorebirdValidationMixin,
@@ -26,24 +28,27 @@ class ReleaseAndroidCommand extends ShorebirdCommand
         ShorebirdCreateAppMixin,
         ShorebirdJavaMixin,
         ShorebirdReleaseVersionMixin {
-  /// {@macro release_android_command}
-  ReleaseAndroidCommand({
+  /// {@macro release_android_archive_command}
+  ReleaseAndroidArchiveCommand({
     required super.logger,
     super.auth,
-    super.cache,
     super.buildCodePushClient,
     super.validators,
     HashFunction? hashFn,
-  }) : _hashFn = hashFn ?? ((m) => sha256.convert(m).toString()) {
+    UnzipFn? unzipFn,
+  })  : _hashFn = hashFn ?? ((m) => sha256.convert(m).toString()),
+        _unzipFn = unzipFn ?? extractFileToDisk {
     argParser
-      ..addOption(
-        'target',
-        abbr: 't',
-        help: 'The main entrypoint file of the application.',
-      )
       ..addOption(
         'flavor',
         help: 'The product flavor to use when building the app.',
+      )
+      // `flutter build aar` defaults to a build number of 1.0, so we do the
+      // same.
+      ..addOption(
+        'build-number',
+        help: 'The build number of the aar',
+        defaultsTo: '1.0',
       )
       ..addFlag(
         'force',
@@ -54,16 +59,17 @@ class ReleaseAndroidCommand extends ShorebirdCommand
   }
 
   @override
+  String get name => 'android_archive';
+
+  @override
   String get description => '''
-Builds and submits your Android app to Shorebird.
+Builds and submits your Android archive to Shorebird.
 Shorebird saves the compiled Dart code from your application in order to
 make smaller updates to your app.
 ''';
 
-  @override
-  String get name => 'android';
-
   final HashFunction _hashFn;
+  final UnzipFn _unzipFn;
 
   @override
   Future<int> run() async {
@@ -77,16 +83,27 @@ make smaller updates to your app.
       return e.exitCode.code;
     }
 
+    // We know the pubspec exists due to the checkShorebirdInitialized check
+    // above.
+    final pubspec = getPubspecYaml()!;
+    final module = pubspec.flutter?['module'] as Map?;
+    final androidPackageName = module?['androidPackage'] as String?;
+    if (androidPackageName == null) {
+      logger.err('Could not find androidPackage in pubspec.yaml.');
+      return ExitCode.config.code;
+    }
+
     final flavor = results['flavor'] as String?;
-    final target = results['target'] as String?;
-    final buildProgress = logger.progress('Building release');
+    final buildNumber = results['build-number'] as String;
+    final buildProgress = logger.progress('Building aar');
     try {
-      await buildAppBundle(flavor: flavor, target: target);
-      buildProgress.complete();
+      await buildAar(buildNumber: buildNumber, flavor: flavor);
     } on ProcessException catch (error) {
       buildProgress.fail('Failed to build: ${error.message}');
       return ExitCode.software.code;
     }
+
+    buildProgress.complete();
 
     final shorebirdYaml = getShorebirdYaml()!;
     final codePushClient = buildCodePushClient(
@@ -117,23 +134,7 @@ Did you forget to run "shorebird init"?''',
       return ExitCode.software.code;
     }
 
-    final bundleDirPath = p.join('build', 'app', 'outputs', 'bundle');
-    final bundlePath = flavor != null
-        ? p.join(bundleDirPath, '${flavor}Release', 'app-$flavor-release.aab')
-        : p.join(bundleDirPath, 'release', 'app-release.aab');
-
-    final String releaseVersion;
-    final detectReleaseVersionProgress = logger.progress(
-      'Detecting release version',
-    );
-    try {
-      releaseVersion = await extractReleaseVersionFromAppBundle(bundlePath);
-      detectReleaseVersionProgress.complete();
-    } catch (error) {
-      detectReleaseVersionProgress.fail('$error');
-      return ExitCode.software.code;
-    }
-
+    final releaseVersion = buildNumber;
     const platform = 'android';
     final archNames = architectures.keys.map(
       (arch) => arch.name,
@@ -201,19 +202,35 @@ ${summary.join('\n')}
       }
     }
 
-    // TODO(bryanoltman): Consolidate aab and other artifact creation.
-    // TODO(bryanoltman): Parallelize artifact creation.
     final createArtifactProgress = logger.progress('Creating artifacts');
+    final aarDir = p.joinAll([
+      'build',
+      'host',
+      'outputs',
+      'repo',
+      ...androidPackageName.split('.'),
+      'flutter_release',
+      buildNumber,
+    ]);
+    final aarPath = p.join(
+      aarDir,
+      'flutter_release-$buildNumber.aar',
+    );
+    final zipPath = p.join(
+      aarDir,
+      'flutter_release-$buildNumber.zip',
+    );
+
+    // Copy the .aar file to a .zip file so package:archive knows how to read it
+    File(aarPath).copySync(zipPath);
+    final extractedAarDir = p.join(aarDir, 'flutter_release-$buildNumber');
+    // Unzip the .zip file to a directory so we can read the .so files
+    await _unzipFn(zipPath, extractedAarDir);
+
     for (final archMetadata in architectures.values) {
       final artifactPath = p.join(
-        Directory.current.path,
-        'build',
-        'app',
-        'intermediates',
-        'stripped_native_libs',
-        flavor != null ? '${flavor}Release' : 'release',
-        'out',
-        'lib',
+        extractedAarDir,
+        'jni',
         archMetadata.path,
         'libapp.so',
       );
@@ -243,23 +260,23 @@ ${archMetadata.arch} artifact already exists, continuing...''',
     }
 
     try {
-      logger.detail('Creating artifact for $bundlePath');
+      logger.detail('Creating artifact for $aarPath');
       await codePushClient.createReleaseArtifact(
         releaseId: release.id,
-        artifactPath: bundlePath,
-        arch: 'aab',
+        artifactPath: aarPath,
+        arch: 'aar',
         platform: platform,
-        hash: _hashFn(await File(bundlePath).readAsBytes()),
+        hash: _hashFn(await File(aarPath).readAsBytes()),
       );
     } on CodePushConflictException catch (_) {
       // Newlines are due to how logger.info interacts with logger.progress.
       logger.info(
         '''
 
-aab artifact already exists, continuing...''',
+aar artifact already exists, continuing...''',
       );
     } catch (error) {
-      createArtifactProgress.fail('Error uploading $bundlePath: $error');
+      createArtifactProgress.fail('Error uploading $aarPath: $error');
       return ExitCode.software.code;
     }
 
@@ -269,11 +286,13 @@ aab artifact already exists, continuing...''',
       ..success('\n✅ Published Release!')
       ..info('''
 
-Your next step is to upload the app bundle to the Play Store.
-${lightCyan.wrap(bundlePath)}
-
-See the following link for more information:    
-${link(uri: Uri.parse('https://support.google.com/googleplay/android-developer/answer/9859152?hl=en'))}
+Your next step is to add this module as a dependency in your app's build.gradle:
+${lightCyan.wrap('''
+dependencies {
+  // ...
+  releaseImplementation '$androidPackageName:flutter_release:$buildNumber'
+  // ...
+}''')}
 ''');
 
     return ExitCode.success.code;

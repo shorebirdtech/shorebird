@@ -9,7 +9,7 @@ import 'package:platform/platform.dart';
 import 'package:shorebird_cli/src/aab/aab.dart';
 import 'package:shorebird_cli/src/auth/auth.dart';
 import 'package:shorebird_cli/src/cache.dart' show Cache;
-import 'package:shorebird_cli/src/commands/patch_command.dart';
+import 'package:shorebird_cli/src/commands/patch/patch_android_command.dart';
 import 'package:shorebird_cli/src/shorebird_build_mixin.dart';
 import 'package:shorebird_cli/src/shorebird_environment.dart';
 import 'package:shorebird_cli/src/shorebird_process.dart';
@@ -47,7 +47,7 @@ class _MockShorebirdProcess extends Mock implements ShorebirdProcess {}
 class _FakeShorebirdProcess extends Fake implements ShorebirdProcess {}
 
 void main() {
-  group(PatchCommand, () {
+  group(PatchAndroidCommand, () {
     const flutterRevision = '83305b5088e6fe327fb3334a73ff190828d85713';
     const appId = 'test-app-id';
     const versionName = '1.2.3';
@@ -119,7 +119,7 @@ flutter:
     late http.Client httpClient;
     late CodePushClient codePushClient;
     late Cache cache;
-    late PatchCommand command;
+    late PatchAndroidCommand command;
     late Uri? capturedHostedUri;
     late ShorebirdFlutterValidator flutterValidator;
     late ShorebirdProcess shorebirdProcess;
@@ -177,7 +177,7 @@ flutter:
       flutterValidator = _MockShorebirdFlutterValidator();
       cache = _MockCache();
       shorebirdProcess = _MockShorebirdProcess();
-      command = PatchCommand(
+      command = PatchAndroidCommand(
         aabDiffer: aabDiffer,
         auth: auth,
         buildCodePushClient: ({
@@ -253,7 +253,6 @@ flutter:
       when(() => aabDiffer.aabContentDifferences(any(), any())).thenReturn({});
       when(() => argResults.rest).thenReturn([]);
       when(() => argResults['arch']).thenReturn(arch);
-      when(() => argResults['platform']).thenReturn(platform);
       when(() => argResults['channel']).thenReturn(channelName);
       when(() => argResults['dry-run']).thenReturn(false);
       when(() => argResults['force']).thenReturn(false);
@@ -355,6 +354,10 @@ flutter:
         ),
       ).called(1);
       expect(exitCode, ExitCode.config.code);
+    });
+
+    test('has a description', () {
+      expect(command.description, isNotEmpty);
     });
 
     test('throws no user error when user is not logged in', () async {

@@ -1,7 +1,5 @@
 import 'dart:convert';
 
-import 'package:mason_logger/mason_logger.dart';
-import 'package:shorebird_cli/src/auth_logger_mixin.dart';
 import 'package:shorebird_cli/src/command.dart';
 import 'package:shorebird_cli/src/shorebird_config_mixin.dart';
 import 'package:shorebird_cli/src/shorebird_validation_mixin.dart';
@@ -11,7 +9,7 @@ import 'package:shorebird_cli/src/shorebird_validation_mixin.dart';
 /// Run the Flutter application.
 /// {@endtemplate}
 class RunCommand extends ShorebirdCommand
-    with AuthLoggerMixin, ShorebirdValidationMixin, ShorebirdConfigMixin {
+    with ShorebirdConfigMixin, ShorebirdValidationMixin {
   /// {@macro run_command}
   RunCommand({
     required super.logger,
@@ -44,15 +42,13 @@ class RunCommand extends ShorebirdCommand
 
   @override
   Future<int> run() async {
-    if (!auth.isAuthenticated) {
-      printNeedsAuthInstructions();
-      return ExitCode.noUser.code;
-    }
-
-    final validationIssues = await runValidators();
-    if (validationIssuesContainsError(validationIssues)) {
-      logValidationFailure(issues: validationIssues);
-      return ExitCode.config.code;
+    try {
+      await validatePreconditions(
+        checkUserIsAuthenticated: true,
+        checkValidators: true,
+      );
+    } on PreconditionFailedException catch (e) {
+      return e.exitCode.code;
     }
 
     logger.info('Running app...');
