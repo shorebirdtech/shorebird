@@ -43,7 +43,9 @@ class ReleaseAndroidArchiveCommand extends ShorebirdCommand
     argParser
       ..addOption(
         'release-version',
-        help: 'The version of the release (e.g. "1.0.0").',
+        help: '''
+The version of the associated release (e.g. "1.0.0"). This should be the version
+of the Android app that is using this module.''',
         mandatory: true,
       )
       ..addOption(

@@ -85,7 +85,7 @@ class PatchAndroidCommand extends ShorebirdCommand
 
   @override
   String get description =>
-      'Publish new patches for a specific android release to Shorebird.';
+      'Publish new patches for a specific Android release to Shorebird.';
 
   @override
   String get name => 'android';

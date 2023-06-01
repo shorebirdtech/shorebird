@@ -18,6 +18,10 @@ import 'package:shorebird_cli/src/shorebird_environment.dart';
 import 'package:shorebird_cli/src/shorebird_validation_mixin.dart';
 import 'package:shorebird_code_push_client/shorebird_code_push_client.dart';
 
+/// {@template patch_android_archive_command}
+/// `shorebird patch android_archive`
+/// Create a patch for an Android archive release.
+/// {@endtemplate}
 class PatchAndroidArchiveCommand extends ShorebirdCommand
     with
         ShorebirdConfigMixin,
@@ -26,6 +30,7 @@ class PatchAndroidArchiveCommand extends ShorebirdCommand
         ShorebirdCreateAppMixin,
         ShorebirdCodePushClientMixin,
         ShorebirdArtifactMixin {
+  /// {@macro patch_android_archive_command}
   PatchAndroidArchiveCommand({
     required super.logger,
     super.auth,
@@ -46,7 +51,10 @@ class PatchAndroidArchiveCommand extends ShorebirdCommand
       )
       ..addOption(
         'release-version',
-        help: 'The version of the release (e.g. "1.0.0").',
+        help: '''
+The version of the associated release (e.g. "1.0.0"). This should be the version
+of the Android app that is using this module.''',
+        mandatory: true,
       )
       ..addOption(
         'channel',
@@ -80,7 +88,7 @@ class PatchAndroidArchiveCommand extends ShorebirdCommand
 
   @override
   String get description =>
-      'Publish new patches for a specific android release to Shorebird.';
+      'Publish new patches for a specific Android archive release to Shorebird';
 
   final HashFunction _hashFn;
   final UnzipFn _unzipFn;
