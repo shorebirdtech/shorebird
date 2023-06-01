@@ -1,9 +1,9 @@
 import 'dart:async';
 
 import 'package:mason_logger/mason_logger.dart';
-import 'package:shorebird_cli/src/auth_logger_mixin.dart';
 import 'package:shorebird_cli/src/command.dart';
 import 'package:shorebird_cli/src/shorebird_config_mixin.dart';
+import 'package:shorebird_cli/src/shorebird_validation_mixin.dart';
 
 /// {@template delete_app_command}
 ///
@@ -11,7 +11,7 @@ import 'package:shorebird_cli/src/shorebird_config_mixin.dart';
 /// Delete an existing app on Shorebird.
 /// {@endtemplate}
 class DeleteAppCommand extends ShorebirdCommand
-    with AuthLoggerMixin, ShorebirdConfigMixin {
+    with ShorebirdConfigMixin, ShorebirdValidationMixin {
   /// {@macro delete_app_command}
   DeleteAppCommand({
     required super.logger,
@@ -34,9 +34,12 @@ Defaults to the app_id in "shorebird.yaml".''',
 
   @override
   Future<int>? run() async {
-    if (!auth.isAuthenticated) {
-      printNeedsAuthInstructions();
-      return ExitCode.noUser.code;
+    try {
+      await validatePreconditions(
+        checkUserIsAuthenticated: true,
+      );
+    } on PreconditionFailedException catch (e) {
+      return e.exitCode.code;
     }
 
     final appIdArg = results['app-id'] as String?;

@@ -23,6 +23,7 @@ class _MockShorebirdProcess extends Mock implements ShorebirdProcess {}
 
 void main() {
   group(BuildAarCommand, () {
+    const appId = 'test-app-id';
     const buildNumber = '1.0';
     const noModulePubspecYamlContent = '''
 name: example
@@ -64,6 +65,9 @@ flutter:
       ).writeAsStringSync(
         includeModule ? pubspecYamlContent : noModulePubspecYamlContent,
       );
+      File(
+        p.join(tempDir.path, 'shorebird.yaml'),
+      ).writeAsStringSync('app_id: $appId');
       return tempDir;
     }
 
@@ -78,6 +82,7 @@ flutter:
       command = BuildAarCommand(
         auth: auth,
         logger: logger,
+        validators: [],
       )
         ..testArgResults = argResults
         ..testProcess = shorebirdProcess

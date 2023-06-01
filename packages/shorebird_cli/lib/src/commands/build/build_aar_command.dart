@@ -3,7 +3,6 @@ import 'dart:io';
 
 import 'package:mason_logger/mason_logger.dart';
 import 'package:path/path.dart' as p;
-import 'package:shorebird_cli/src/auth_logger_mixin.dart';
 import 'package:shorebird_cli/src/command.dart';
 import 'package:shorebird_cli/src/shorebird_build_mixin.dart';
 import 'package:shorebird_cli/src/shorebird_config_mixin.dart';
@@ -15,14 +14,11 @@ import 'package:shorebird_cli/src/shorebird_validation_mixin.dart';
 /// Build an Android aar file from your app.
 /// {@endtemplate}
 class BuildAarCommand extends ShorebirdCommand
-    with
-        AuthLoggerMixin,
-        ShorebirdValidationMixin,
-        ShorebirdConfigMixin,
-        ShorebirdBuildMixin {
+    with ShorebirdConfigMixin, ShorebirdValidationMixin, ShorebirdBuildMixin {
   BuildAarCommand({
     required super.logger,
     super.auth,
+    super.validators,
   }) {
     // We would have a "target" option here, similar to what [BuildApkCommand]
     // and [BuildAabCommand] have, but target cannot currently be configured in
@@ -49,17 +45,16 @@ class BuildAarCommand extends ShorebirdCommand
 
   @override
   Future<int> run() async {
-    if (!auth.isAuthenticated) {
-      printNeedsAuthInstructions();
-      return ExitCode.noUser.code;
+    try {
+      await validatePreconditions(
+        checkUserIsAuthenticated: true,
+        checkShorebirdInitialized: true,
+      );
+    } on PreconditionFailedException catch (e) {
+      return e.exitCode.code;
     }
 
-    final pubspec = getPubspecYaml();
-    if (pubspec == null) {
-      logger.err('No pubspec.yaml file found.');
-      return ExitCode.config.code;
-    }
-
+    final pubspec = getPubspecYaml()!;
     final module = pubspec.flutter?['module'] as Map?;
     final androidPackageName = module?['androidPackage'] as String?;
     if (androidPackageName == null) {

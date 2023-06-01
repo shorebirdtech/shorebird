@@ -1,10 +1,10 @@
 import 'dart:async';
 
 import 'package:mason_logger/mason_logger.dart';
-import 'package:shorebird_cli/src/auth_logger_mixin.dart';
 import 'package:shorebird_cli/src/command.dart';
 import 'package:shorebird_cli/src/shorebird_config_mixin.dart';
 import 'package:shorebird_cli/src/shorebird_create_app_mixin.dart';
+import 'package:shorebird_cli/src/shorebird_validation_mixin.dart';
 import 'package:shorebird_code_push_client/shorebird_code_push_client.dart';
 
 /// {@template create_app_command}
@@ -13,7 +13,10 @@ import 'package:shorebird_code_push_client/shorebird_code_push_client.dart';
 /// Create a new app on Shorebird.
 /// {@endtemplate}
 class CreateAppCommand extends ShorebirdCommand
-    with AuthLoggerMixin, ShorebirdConfigMixin, ShorebirdCreateAppMixin {
+    with
+        ShorebirdConfigMixin,
+        ShorebirdValidationMixin,
+        ShorebirdCreateAppMixin {
   /// {@macro create_app_command}
   CreateAppCommand({
     required super.logger,
@@ -36,9 +39,12 @@ Defaults to the name in "pubspec.yaml".''',
 
   @override
   Future<int>? run() async {
-    if (!auth.isAuthenticated) {
-      printNeedsAuthInstructions();
-      return ExitCode.noUser.code;
+    try {
+      await validatePreconditions(
+        checkUserIsAuthenticated: true,
+      );
+    } on PreconditionFailedException catch (e) {
+      return e.exitCode.code;
     }
 
     final appName = results['app-name'] as String?;

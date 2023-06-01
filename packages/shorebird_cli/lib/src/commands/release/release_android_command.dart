@@ -4,7 +4,6 @@ import 'package:collection/collection.dart';
 import 'package:crypto/crypto.dart';
 import 'package:mason_logger/mason_logger.dart';
 import 'package:path/path.dart' as p;
-import 'package:shorebird_cli/src/auth_logger_mixin.dart';
 import 'package:shorebird_cli/src/command.dart';
 import 'package:shorebird_cli/src/config/shorebird_yaml.dart';
 import 'package:shorebird_cli/src/shorebird_build_mixin.dart';
@@ -21,9 +20,8 @@ import 'package:shorebird_code_push_client/shorebird_code_push_client.dart';
 /// {@endtemplate}
 class ReleaseAndroidCommand extends ShorebirdCommand
     with
-        AuthLoggerMixin,
-        ShorebirdValidationMixin,
         ShorebirdConfigMixin,
+        ShorebirdValidationMixin,
         ShorebirdBuildMixin,
         ShorebirdCreateAppMixin,
         ShorebirdJavaMixin,
@@ -69,22 +67,14 @@ make smaller updates to your app.
 
   @override
   Future<int> run() async {
-    if (!isShorebirdInitialized) {
-      logger.err(
-        'Shorebird is not initialized. Did you run "shorebird init"?',
+    try {
+      await validatePreconditions(
+        checkUserIsAuthenticated: true,
+        checkShorebirdInitialized: true,
+        checkValidators: true,
       );
-      return ExitCode.config.code;
-    }
-
-    if (!auth.isAuthenticated) {
-      printNeedsAuthInstructions();
-      return ExitCode.noUser.code;
-    }
-
-    final validationIssues = await runValidators();
-    if (validationIssuesContainsError(validationIssues)) {
-      logValidationFailure(issues: validationIssues);
-      return ExitCode.config.code;
+    } on PreconditionFailedException catch (e) {
+      return e.exitCode.code;
     }
 
     final flavor = results['flavor'] as String?;
