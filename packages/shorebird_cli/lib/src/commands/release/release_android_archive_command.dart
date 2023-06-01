@@ -8,6 +8,7 @@ import 'package:mason_logger/mason_logger.dart';
 import 'package:path/path.dart' as p;
 import 'package:shorebird_cli/src/command.dart';
 import 'package:shorebird_cli/src/config/config.dart';
+import 'package:shorebird_cli/src/shorebird_artifact_mixin.dart';
 import 'package:shorebird_cli/src/shorebird_build_mixin.dart';
 import 'package:shorebird_cli/src/shorebird_config_mixin.dart';
 import 'package:shorebird_cli/src/shorebird_create_app_mixin.dart';
@@ -27,7 +28,8 @@ class ReleaseAndroidArchiveCommand extends ShorebirdCommand
         ShorebirdBuildMixin,
         ShorebirdCreateAppMixin,
         ShorebirdJavaMixin,
-        ShorebirdReleaseVersionMixin {
+        ShorebirdReleaseVersionMixin,
+        ShorebirdArtifactMixin {
   /// {@macro release_android_archive_command}
   ReleaseAndroidArchiveCommand({
     required super.logger,
@@ -39,6 +41,11 @@ class ReleaseAndroidArchiveCommand extends ShorebirdCommand
   })  : _hashFn = hashFn ?? ((m) => sha256.convert(m).toString()),
         _unzipFn = unzipFn ?? extractFileToDisk {
     argParser
+      ..addOption(
+        'release-version',
+        help: 'The version of the release (e.g. "1.0.0").',
+        mandatory: true,
+      )
       ..addOption(
         'flavor',
         help: 'The product flavor to use when building the app.',
@@ -83,11 +90,6 @@ make smaller updates to your app.
       return e.exitCode.code;
     }
 
-    // We know the pubspec exists due to the checkShorebirdInitialized check
-    // above.
-    final pubspec = getPubspecYaml()!;
-    final module = pubspec.flutter?['module'] as Map?;
-    final androidPackageName = module?['androidPackage'] as String?;
     if (androidPackageName == null) {
       logger.err('Could not find androidPackage in pubspec.yaml.');
       return ExitCode.config.code;
@@ -95,6 +97,7 @@ make smaller updates to your app.
 
     final flavor = results['flavor'] as String?;
     final buildNumber = results['build-number'] as String;
+    final releaseVersion = results['release-version'] as String;
     final buildProgress = logger.progress('Building aar');
     try {
       await buildAar(buildNumber: buildNumber, flavor: flavor);
@@ -134,7 +137,6 @@ Did you forget to run "shorebird init"?''',
       return ExitCode.software.code;
     }
 
-    final releaseVersion = buildNumber;
     const platform = 'android';
     final archNames = architectures.keys.map(
       (arch) => arch.name,
@@ -203,29 +205,12 @@ ${summary.join('\n')}
     }
 
     final createArtifactProgress = logger.progress('Creating artifacts');
-    final aarDir = p.joinAll([
-      'build',
-      'host',
-      'outputs',
-      'repo',
-      ...androidPackageName.split('.'),
-      'flutter_release',
-      buildNumber,
-    ]);
-    final aarPath = p.join(
-      aarDir,
-      'flutter_release-$buildNumber.aar',
-    );
-    final zipPath = p.join(
-      aarDir,
-      'flutter_release-$buildNumber.zip',
-    );
 
-    // Copy the .aar file to a .zip file so package:archive knows how to read it
-    File(aarPath).copySync(zipPath);
-    final extractedAarDir = p.join(aarDir, 'flutter_release-$buildNumber');
-    // Unzip the .zip file to a directory so we can read the .so files
-    await _unzipFn(zipPath, extractedAarDir);
+    final extractedAarDir = await extractAar(
+      packageName: androidPackageName!,
+      buildNumber: buildNumber,
+      unzipFn: _unzipFn,
+    );
 
     for (final archMetadata in architectures.values) {
       final artifactPath = p.join(
@@ -259,6 +244,10 @@ ${archMetadata.arch} artifact already exists, continuing...''',
       }
     }
 
+    final aarPath = aarArtifactPath(
+      packageName: androidPackageName!,
+      buildNumber: buildNumber,
+    );
     try {
       logger.detail('Creating artifact for $aarPath');
       await codePushClient.createReleaseArtifact(

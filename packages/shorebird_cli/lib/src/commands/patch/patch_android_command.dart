@@ -10,6 +10,7 @@ import 'package:shorebird_cli/src/command.dart';
 import 'package:shorebird_cli/src/config/shorebird_yaml.dart';
 import 'package:shorebird_cli/src/formatters/formatters.dart';
 import 'package:shorebird_cli/src/shorebird_build_mixin.dart';
+import 'package:shorebird_cli/src/shorebird_code_push_client_mixin.dart';
 import 'package:shorebird_cli/src/shorebird_config_mixin.dart';
 import 'package:shorebird_cli/src/shorebird_create_app_mixin.dart';
 import 'package:shorebird_cli/src/shorebird_environment.dart';
@@ -17,24 +18,6 @@ import 'package:shorebird_cli/src/shorebird_java_mixin.dart';
 import 'package:shorebird_cli/src/shorebird_release_version_mixin.dart';
 import 'package:shorebird_cli/src/shorebird_validation_mixin.dart';
 import 'package:shorebird_code_push_client/shorebird_code_push_client.dart';
-
-/// Metadata about a patch artifact that we are about to upload.
-class PatchArtifactBundle {
-  const PatchArtifactBundle({
-    required this.arch,
-    required this.path,
-    required this.hash,
-  });
-
-  /// The corresponding architecture.
-  final String arch;
-
-  /// The path to the artifact.
-  final String path;
-
-  /// The artifact hash.
-  final String hash;
-}
 
 /// {@template patch_android_command}
 /// `shorebird patch android`
@@ -47,6 +30,7 @@ class PatchAndroidCommand extends ShorebirdCommand
         ShorebirdValidationMixin,
         ShorebirdBuildMixin,
         ShorebirdCreateAppMixin,
+        ShorebirdCodePushClientMixin,
         ShorebirdJavaMixin,
         ShorebirdReleaseVersionMixin {
   /// {@macro patch_android_command}
@@ -149,6 +133,7 @@ class PatchAndroidCommand extends ShorebirdCommand
       hostedUri: hostedUri,
     );
 
+    // TODO(bryanoltman): use ShorebirdCodePushClientMixin here
     final List<App> apps;
     final fetchAppsProgress = logger.progress('Fetching apps');
     try {
@@ -200,6 +185,7 @@ Did you forget to run "shorebird init"?''',
     const platform = 'android';
     final channelName = results['channel'] as String;
 
+    // TODO(bryanoltman): use ShorebirdCodePushClientMixin here
     final List<Release> releases;
     final fetchReleaseProgress = logger.progress('Fetching release');
     try {
@@ -303,8 +289,9 @@ https://github.com/shorebirdtech/shorebird/issues/472
     );
     for (final releaseArtifact in releaseArtifacts.entries) {
       try {
-        final releaseArtifactPath = await _downloadReleaseArtifact(
+        final releaseArtifactPath = await downloadReleaseArtifact(
           Uri.parse(releaseArtifact.value.url),
+          httpClient: _httpClient,
         );
         releaseArtifactPaths[releaseArtifact.key] = releaseArtifactPath;
       } catch (error) {
@@ -316,8 +303,9 @@ https://github.com/shorebirdtech/shorebird/issues/472
     String? releaseAabPath;
     try {
       if (releaseAabArtifact != null) {
-        releaseAabPath = await _downloadReleaseArtifact(
+        releaseAabPath = await downloadReleaseArtifact(
           Uri.parse(releaseAabArtifact.url),
+          httpClient: _httpClient,
         );
       }
     } catch (error) {
@@ -366,7 +354,6 @@ If you believe you're seeing this in error, please reach out to us for support a
 
     final patchArtifactBundles = <Arch, PatchArtifactBundle>{};
     final createDiffProgress = logger.progress('Creating artifacts');
-    final sizes = <Arch, int>{};
 
     for (final releaseArtifactPath in releaseArtifactPaths.entries) {
       final archMetadata = architectures[releaseArtifactPath.key]!;
@@ -386,15 +373,15 @@ If you believe you're seeing this in error, please reach out to us for support a
       final patchArtifact = File(patchArtifactPath);
       final hash = _hashFn(await patchArtifact.readAsBytes());
       try {
-        final diffPath = await _createDiff(
+        final diffPath = await createDiff(
           releaseArtifactPath: releaseArtifactPath.value,
           patchArtifactPath: patchArtifactPath,
         );
-        sizes[releaseArtifactPath.key] = await File(diffPath).length();
         patchArtifactBundles[releaseArtifactPath.key] = PatchArtifactBundle(
           arch: archMetadata.arch,
           path: diffPath,
           hash: hash,
+          size: await File(diffPath).length(),
         );
       } catch (error) {
         createDiffProgress.fail('$error');
@@ -405,7 +392,7 @@ If you believe you're seeing this in error, please reach out to us for support a
 
     final archMetadata = patchArtifactBundles.keys.map((arch) {
       final name = arch.name;
-      final size = formatBytes(sizes[arch]!);
+      final size = formatBytes(patchArtifactBundles[arch]!.size);
       return '$name ($size)';
     });
 
@@ -463,6 +450,7 @@ ${summary.join('\n')}
     }
     createArtifactProgress.complete();
 
+    // TODO(bryanoltman): use ShorebirdCodePushClientMixin here
     Channel? channel;
     final fetchChannelsProgress = logger.progress('Fetching channels');
     try {
@@ -506,51 +494,5 @@ ${summary.join('\n')}
 
     logger.success('\n✅ Published Patch!');
     return ExitCode.success.code;
-  }
-
-  Future<String> _downloadReleaseArtifact(Uri uri) async {
-    final request = http.Request('GET', uri);
-    final response = await _httpClient.send(request);
-
-    if (response.statusCode != HttpStatus.ok) {
-      throw Exception(
-        '''Failed to download release artifact: ${response.statusCode} ${response.reasonPhrase}''',
-      );
-    }
-
-    final tempDir = await Directory.systemTemp.createTemp();
-    final releaseArtifact = File(p.join(tempDir.path, 'artifact.so'));
-    await releaseArtifact.openWrite().addStream(response.stream);
-
-    return releaseArtifact.path;
-  }
-
-  Future<String> _createDiff({
-    required String releaseArtifactPath,
-    required String patchArtifactPath,
-  }) async {
-    final tempDir = await Directory.systemTemp.createTemp();
-    final diffPath = p.join(tempDir.path, 'diff.patch');
-    final diffExecutable = p.join(
-      cache.getArtifactDirectory('patch').path,
-      'patch',
-    );
-    final diffArguments = [
-      releaseArtifactPath,
-      patchArtifactPath,
-      diffPath,
-    ];
-
-    final result = await process.run(
-      diffExecutable,
-      diffArguments,
-      runInShell: true,
-    );
-
-    if (result.exitCode != 0) {
-      throw Exception('Failed to create diff: ${result.stderr}');
-    }
-
-    return diffPath;
   }
 }

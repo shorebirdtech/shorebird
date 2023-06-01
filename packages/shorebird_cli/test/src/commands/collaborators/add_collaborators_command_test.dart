@@ -82,12 +82,6 @@ void main() {
     test('returns ExitCode.success when user aborts', () async {
       when(() => logger.confirm(any())).thenReturn(false);
       expect(await command.run(), ExitCode.success.code);
-      verifyNever(
-        () => codePushClient.createChannel(
-          appId: any(named: 'appId'),
-          channel: any(named: 'channel'),
-        ),
-      );
       verify(() => logger.info('Aborted.')).called(1);
     });
 
