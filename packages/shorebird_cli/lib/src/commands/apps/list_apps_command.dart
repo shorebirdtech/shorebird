@@ -2,9 +2,9 @@ import 'dart:async';
 
 import 'package:barbecue/barbecue.dart';
 import 'package:mason_logger/mason_logger.dart';
-import 'package:shorebird_cli/src/auth_logger_mixin.dart';
 import 'package:shorebird_cli/src/command.dart';
 import 'package:shorebird_cli/src/shorebird_config_mixin.dart';
+import 'package:shorebird_cli/src/shorebird_validation_mixin.dart';
 import 'package:shorebird_code_push_client/shorebird_code_push_client.dart';
 
 /// {@template list_apps_command}
@@ -13,7 +13,7 @@ import 'package:shorebird_code_push_client/shorebird_code_push_client.dart';
 /// List all apps using Shorebird.
 /// {@endtemplate}
 class ListAppsCommand extends ShorebirdCommand
-    with AuthLoggerMixin, ShorebirdConfigMixin {
+    with ShorebirdConfigMixin, ShorebirdValidationMixin {
   /// {@macro list_apps_command}
   ListAppsCommand({
     required super.logger,
@@ -32,9 +32,12 @@ class ListAppsCommand extends ShorebirdCommand
 
   @override
   Future<int>? run() async {
-    if (!auth.isAuthenticated) {
-      printNeedsAuthInstructions();
-      return ExitCode.noUser.code;
+    try {
+      await validatePreconditions(
+        checkUserIsAuthenticated: true,
+      );
+    } on PreconditionFailedException catch (e) {
+      return e.exitCode.code;
     }
 
     final client = buildCodePushClient(

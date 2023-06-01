@@ -71,12 +71,12 @@ void main() {
       );
     });
 
-    test('exits with code 70 when user is not logged in', () async {
+    test('exits with code 67 when user is not logged in', () async {
       when(() => auth.isAuthenticated).thenReturn(false);
 
       final result = await subscribeAccountCommand.run();
 
-      expect(result, ExitCode.software.code);
+      expect(result, ExitCode.noUser.code);
 
       verify(
         () => logger.err(any(that: contains('You must be logged in to run'))),

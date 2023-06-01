@@ -6,7 +6,6 @@ import 'package:http/http.dart' as http;
 import 'package:mason_logger/mason_logger.dart';
 import 'package:path/path.dart' as p;
 import 'package:shorebird_cli/src/aab/aab.dart';
-import 'package:shorebird_cli/src/auth_logger_mixin.dart';
 import 'package:shorebird_cli/src/command.dart';
 import 'package:shorebird_cli/src/config/shorebird_yaml.dart';
 import 'package:shorebird_cli/src/formatters/formatters.dart';
@@ -44,9 +43,8 @@ class PatchArtifactBundle {
 /// {@endtemplate}
 class PatchAndroidCommand extends ShorebirdCommand
     with
-        AuthLoggerMixin,
-        ShorebirdValidationMixin,
         ShorebirdConfigMixin,
+        ShorebirdValidationMixin,
         ShorebirdBuildMixin,
         ShorebirdCreateAppMixin,
         ShorebirdJavaMixin,
@@ -114,16 +112,14 @@ class PatchAndroidCommand extends ShorebirdCommand
 
   @override
   Future<int> run() async {
-    if (!isShorebirdInitialized) {
-      logger.err(
-        'Shorebird is not initialized. Did you run "shorebird init"?',
+    try {
+      await validatePreconditions(
+        checkUserIsAuthenticated: true,
+        checkShorebirdInitialized: true,
+        checkValidators: true,
       );
-      return ExitCode.config.code;
-    }
-
-    if (!auth.isAuthenticated) {
-      printNeedsAuthInstructions();
-      return ExitCode.noUser.code;
+    } on PreconditionFailedException catch (e) {
+      return e.exitCode.code;
     }
 
     final force = results['force'] == true;
@@ -132,12 +128,6 @@ class PatchAndroidCommand extends ShorebirdCommand
     if (force && dryRun) {
       logger.err('Cannot use both --force and --dry-run.');
       return ExitCode.usage.code;
-    }
-
-    final validationIssues = await runValidators();
-    if (validationIssuesContainsError(validationIssues)) {
-      logValidationFailure(issues: validationIssues);
-      return ExitCode.config.code;
     }
 
     await cache.updateAll();

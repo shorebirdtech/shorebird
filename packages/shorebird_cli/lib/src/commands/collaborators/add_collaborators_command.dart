@@ -1,16 +1,16 @@
 import 'dart:async';
 
 import 'package:mason_logger/mason_logger.dart';
-import 'package:shorebird_cli/src/auth_logger_mixin.dart';
 import 'package:shorebird_cli/src/command.dart';
 import 'package:shorebird_cli/src/shorebird_config_mixin.dart';
+import 'package:shorebird_cli/src/shorebird_validation_mixin.dart';
 
 /// {@template add_collaborators_command}
 /// `shorebird collaborators add`
 /// Add a new collaborator to a Shorebird app.
 /// {@endtemplate}
 class AddCollaboratorsCommand extends ShorebirdCommand
-    with AuthLoggerMixin, ShorebirdConfigMixin {
+    with ShorebirdConfigMixin, ShorebirdValidationMixin {
   /// {@macro add_collaborators_command}
   AddCollaboratorsCommand({
     required super.logger,
@@ -39,9 +39,12 @@ class AddCollaboratorsCommand extends ShorebirdCommand
 
   @override
   Future<int>? run() async {
-    if (!auth.isAuthenticated) {
-      printNeedsAuthInstructions();
-      return ExitCode.noUser.code;
+    try {
+      await validatePreconditions(
+        checkUserIsAuthenticated: true,
+      );
+    } on PreconditionFailedException catch (e) {
+      return e.exitCode.code;
     }
 
     final client = buildCodePushClient(
