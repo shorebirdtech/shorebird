@@ -1,12 +1,17 @@
 import 'package:cutler/git_extensions.dart';
 import 'package:cutler/model.dart';
 
-void printVersions(VersionSet versions, int indent) {
+/// Print VersionSet [versions] to stdout at a given [indent] level.
+void printVersions(VersionSet versions, {int indent = 0}) {
   print("${' ' * indent}flutter   ${versions.flutter}");
   print("${' ' * indent}engine    ${versions.engine}");
   print("${' ' * indent}buildroot ${versions.buildroot}");
 }
 
+/// Returns a [VersionSet] for Flutter for a given [flutterHash].
+/// e.g. `flutterHash` might be `origin/stable` or `v1.22.0-12.1.pre`.
+/// and this would return the set of versions (engine and buildroot) that
+/// Flutter depends on for that release.
 VersionSet getFlutterVersions(String flutterHash) {
   final engineHash = Repo.flutter
       .contentsAtPath(flutterHash, 'bin/internal/engine.version')
@@ -21,6 +26,7 @@ VersionSet getFlutterVersions(String flutterHash) {
   );
 }
 
+/// Parses the given DEPS file contents and returns the buildroot version.
 String parseBuildRoot(String depsContents) {
   final lines = depsContents.split('\n');
   // Example:

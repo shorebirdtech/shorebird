@@ -1,5 +1,5 @@
 include: package:very_good_analysis/analysis_options.5.0.0.yaml
 linter:
   rules:
-    public_member_api_docs: false
+    # avoid_print can be removed now that we have a logger.
     avoid_print: false
