@@ -38,7 +38,7 @@ class PatchArtifactBundle {
 }
 
 /// {@template patch_android_command}
-/// `shorebird patch`
+/// `shorebird patch android`
 /// Publish new patches for a specific Android release to the Shorebird code
 /// push server.
 /// {@endtemplate}
