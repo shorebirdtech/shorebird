@@ -62,7 +62,7 @@ class ShorebirdCliCommandRunner extends CompletionCommandRunner<int> {
     addCommand(InitCommand(logger: _logger));
     addCommand(LoginCommand(logger: _logger));
     addCommand(LogoutCommand(logger: _logger));
-    addCommand(PatchAndroidCommand(logger: _logger));
+    addCommand(PatchCommand(logger: _logger));
     addCommand(ReleaseCommand(logger: _logger));
     addCommand(ReleasesCommand(logger: _logger));
     addCommand(RunCommand(logger: _logger));
