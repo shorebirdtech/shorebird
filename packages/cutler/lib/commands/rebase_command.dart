@@ -5,6 +5,7 @@ import 'package:cutler/model.dart';
 import 'package:cutler/versions.dart';
 import 'package:io/io.dart';
 
+/// Prints the latest commit for a given [branch] in a given [repo].
 String printLatestForBranch(Repo repo, String branch) {
   final hash = repo.getLatestCommit(branch);
   final tags = repo.getTagsFor(hash);
@@ -43,7 +44,10 @@ String rebaseRepo(
   return shorebird[repo].ref;
 }
 
+/// Print the commands needed to rebase our repos onto the given Flutter
+/// revision.
 class RebaseCommand extends CutlerCommand {
+  /// Constructs a new [RebaseCommand] with a given [logger].
   RebaseCommand({required super.logger});
   @override
   final name = 'rebase';
@@ -70,7 +74,7 @@ class RebaseCommand extends CutlerCommand {
         .contentsAtPath(shorebirdStable, 'bin/internal/flutter.version');
     final shorebird = getFlutterVersions(shorebirdFlutter);
     print('Shorebird stable:');
-    printVersions(shorebird, 2);
+    printVersions(shorebird, indent: 2);
 
     final flutterForkpoint = Repo.flutter.getForkPoint(shorebird.flutter.hash);
     // This is slightly error-prone in that we're assuming that our engine and
@@ -80,7 +84,7 @@ class RebaseCommand extends CutlerCommand {
     // x.x.0 release.
     final forkpoints = getFlutterVersions(flutterForkpoint.hash);
     print('Forkpoints:');
-    printVersions(forkpoints, 2);
+    printVersions(forkpoints, indent: 2);
 
     // Figure out the latest version of Flutter.
     final upstreamFlutter =
@@ -88,7 +92,7 @@ class RebaseCommand extends CutlerCommand {
     // Figure out what versions that Flutter depends on.
     final upstream = getFlutterVersions(upstreamFlutter);
     print('Upstream ${config.flutterChannel}:');
-    printVersions(upstream, 2);
+    printVersions(upstream, indent: 2);
 
     Version doRebase(Repo repo) {
       final newHash = rebaseRepo(
