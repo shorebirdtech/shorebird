@@ -13,7 +13,7 @@ class PatchCommand extends ShorebirdCommand {
 
   @override
   String get description =>
-      'Publish new patches for a specific release to Shorebird.';
+      'Manage patches for a specific release in Shorebird.';
 
   @override
   String get name => 'patch';
