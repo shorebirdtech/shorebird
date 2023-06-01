@@ -27,6 +27,17 @@ class PrintVersionsCommand extends CutlerCommand {
     final shorebird = getFlutterVersions(shorebirdFlutter);
     print('Shorebird $shorebirdHash:');
     printVersions(shorebird, 2);
+
+    final flutterForkpoint = Repo.flutter.getForkPoint(shorebird.flutter.hash);
+    // This is slightly error-prone in that we're assuming that our engine and
+    // buildroot forks started from the correct commit.  But I'm not sure how
+    // to determine the forkpoint otherwise.  engine and buildroot don't have
+    // a stable branch, yet they do seem to "branch" for stable releases at the
+    // x.x.0 release.
+    final forkpoints = getFlutterVersions(flutterForkpoint.hash);
+    print('Forkpoints:');
+    printVersions(forkpoints, 2);
+
     return ExitCode.success.code;
   }
 }
