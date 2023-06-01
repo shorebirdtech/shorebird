@@ -356,6 +356,10 @@ flutter:
       expect(exitCode, ExitCode.config.code);
     });
 
+    test('has a description', () {
+      expect(command.description, isNotEmpty);
+    });
+
     test('throws no user error when user is not logged in', () async {
       when(() => auth.isAuthenticated).thenReturn(false);
       final tempDir = setUpTempDir();
