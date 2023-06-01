@@ -1,4 +1,4 @@
-import 'package:args/command_runner.dart';
+import 'package:cutler/commands/base.dart';
 import 'package:cutler/config.dart';
 import 'package:cutler/git_extensions.dart';
 import 'package:cutler/model.dart';
@@ -43,8 +43,8 @@ String rebaseRepo(
   return shorebird[repo].ref;
 }
 
-class RebaseCommand extends Command<int> {
-  RebaseCommand();
+class RebaseCommand extends CutlerCommand {
+  RebaseCommand({required super.logger});
   @override
   final name = 'rebase';
   @override
