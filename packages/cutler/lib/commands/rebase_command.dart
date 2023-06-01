@@ -106,8 +106,10 @@ class RebaseCommand extends CutlerCommand {
     }
 
     // Rebase our repos.
+    // These are done in a very specific order.
     var newHead = VersionSet(
       buildroot: doRebase(Repo.buildroot),
+      dart: doRebase(Repo.dart),
       engine: doRebase(Repo.engine),
       flutter: doRebase(Repo.flutter),
     );

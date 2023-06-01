@@ -5,10 +5,15 @@ import 'package:cutler/versions.dart';
 import 'package:test/test.dart';
 
 void main() {
-  test('parseBuildRoot', () {
+  test('parseBuildrootVersion', () {
     final depsContents = File('test/fixtures/DEPS').readAsStringSync();
-    final buildrootVersion = parseBuildRoot(depsContents);
-    expect(buildrootVersion, 'd6c410f19de5947de40ce110c1e768c887870072');
+    final buildrootHash = parseBuildrootRevision(depsContents);
+    expect(buildrootHash, 'd6c410f19de5947de40ce110c1e768c887870072');
+  });
+  test('parseDartVersion', () {
+    final depsContents = File('test/fixtures/DEPS').readAsStringSync();
+    final dartHash = parseDartRevision(depsContents);
+    expect(dartHash, '7a6514d1377175decd3a886fe4190fbbebddac3a');
   });
   test('expandUser', () {
     final path = expandUser('~/foo/bar', env: {'HOME': '/home/user'});
