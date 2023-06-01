@@ -26,6 +26,14 @@ enum Repo {
     upstreamBranch: 'upstream/master',
   ),
 
+  /// Repo configuration representing the dart-lang/sdk repo.
+  dart(
+    name: 'dart',
+    path: 'engine/src/third_party/dart',
+    url: 'https://github.com/shorebirdtech/dart-sdk.git',
+    upstreamBranch: 'upstream/master',
+  ),
+
   /// Repo configuration representing the buildroot repo.
   buildroot(
     name: 'buildroot',
@@ -120,6 +128,7 @@ class VersionSet {
     required this.engine,
     required this.flutter,
     required this.buildroot,
+    required this.dart,
   });
 
   /// The engine version.
@@ -127,6 +136,9 @@ class VersionSet {
 
   /// The flutter version.
   final Version flutter;
+
+  /// The dart version.
+  final Version dart;
 
   /// The buildroot version.
   final Version buildroot;
@@ -136,14 +148,21 @@ class VersionSet {
         Repo.engine: engine,
         Repo.flutter: flutter,
         Repo.buildroot: buildroot,
+        Repo.dart: dart,
       }[repo]!;
 
   /// Copies the VersionSet replacing any provided values.
-  VersionSet copyWith({Version? engine, Version? flutter, Version? buildroot}) {
+  VersionSet copyWith({
+    Version? engine,
+    Version? flutter,
+    Version? buildroot,
+    Version? dart,
+  }) {
     return VersionSet(
       engine: engine ?? this.engine,
       flutter: flutter ?? this.flutter,
       buildroot: buildroot ?? this.buildroot,
+      dart: dart ?? this.dart,
     );
   }
 }
