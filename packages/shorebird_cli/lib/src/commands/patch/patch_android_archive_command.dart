@@ -245,53 +245,15 @@ https://github.com/shorebirdtech/shorebird/issues/472
       return ExitCode.software.code;
     }
 
-    final createDiffProgress = logger.progress('Creating artifacts');
-
     final extractedAarDir = await extractAar(
       packageName: androidPackageName!,
       buildNumber: buildNumber,
       unzipFn: _unzipFn,
     );
 
-    Future<Map<Arch, PatchArtifactBundle>?> createPatchArtifacts({
-      required Map<Arch, String> releaseArtifactPaths,
-    }) async {
-      final patchArtifactBundles = <Arch, PatchArtifactBundle>{};
-
-      for (final releaseArtifactPath in releaseArtifactPaths.entries) {
-        final archMetadata = architectures[releaseArtifactPath.key]!;
-        final artifactPath = p.join(
-          extractedAarDir,
-          'jni',
-          archMetadata.path,
-          'libapp.so',
-        );
-        logger.detail('Creating artifact for $artifactPath');
-        final patchArtifact = File(artifactPath);
-        final hash = _hashFn(await patchArtifact.readAsBytes());
-        try {
-          final diffPath = await createDiff(
-            releaseArtifactPath: releaseArtifactPath.value,
-            patchArtifactPath: artifactPath,
-          );
-          patchArtifactBundles[releaseArtifactPath.key] = PatchArtifactBundle(
-            arch: archMetadata.arch,
-            path: diffPath,
-            hash: hash,
-            size: await File(diffPath).length(),
-          );
-        } catch (error) {
-          createDiffProgress.fail('$error');
-          return null;
-        }
-      }
-      createDiffProgress.complete();
-
-      return patchArtifactBundles;
-    }
-
-    final patchArtifactBundles = await createPatchArtifacts(
+    final patchArtifactBundles = await _createPatchArtifacts(
       releaseArtifactPaths: releaseArtifactPaths,
+      extractedAarDirectory: extractedAarDir,
     );
     if (patchArtifactBundles == null) {
       return ExitCode.software.code;
@@ -389,5 +351,44 @@ ${summary.join('\n')}
 
     logger.success('\n✅ Published Patch!');
     return ExitCode.success.code;
+  }
+
+  Future<Map<Arch, PatchArtifactBundle>?> _createPatchArtifacts({
+    required Map<Arch, String> releaseArtifactPaths,
+    required String extractedAarDirectory,
+  }) async {
+    final patchArtifactBundles = <Arch, PatchArtifactBundle>{};
+
+    final createDiffProgress = logger.progress('Creating artifacts');
+    for (final releaseArtifactPath in releaseArtifactPaths.entries) {
+      final archMetadata = architectures[releaseArtifactPath.key]!;
+      final artifactPath = p.join(
+        extractedAarDirectory,
+        'jni',
+        archMetadata.path,
+        'libapp.so',
+      );
+      logger.detail('Creating artifact for $artifactPath');
+      final patchArtifact = File(artifactPath);
+      final hash = _hashFn(await patchArtifact.readAsBytes());
+      try {
+        final diffPath = await createDiff(
+          releaseArtifactPath: releaseArtifactPath.value,
+          patchArtifactPath: artifactPath,
+        );
+        patchArtifactBundles[releaseArtifactPath.key] = PatchArtifactBundle(
+          arch: archMetadata.arch,
+          path: diffPath,
+          hash: hash,
+          size: await File(diffPath).length(),
+        );
+      } catch (error) {
+        createDiffProgress.fail('$error');
+        return null;
+      }
+    }
+    createDiffProgress.complete();
+
+    return patchArtifactBundles;
   }
 }
