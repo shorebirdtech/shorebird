@@ -369,6 +369,17 @@ flutter:
       expect(exitCode, equals(ExitCode.noUser.code));
     });
 
+    test('exits with 78 if no module entry exists in pubspec.yaml', () async {
+      final tempDir = setUpTempDir(includeModule: false);
+
+      final result = await IOOverrides.runZoned(
+        () async => command.run(),
+        getCurrentDirectory: () => tempDir,
+      );
+
+      expect(result, ExitCode.config.code);
+    });
+
     test('exits with code 70 when building fails', () async {
       when(() => flutterBuildProcessResult.exitCode).thenReturn(1);
       when(() => flutterBuildProcessResult.stderr).thenReturn('oops');
