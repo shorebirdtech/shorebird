@@ -11,7 +11,7 @@ void main() {
         platform: 'android',
         hash: '1234',
         size: 9876,
-        uploadUrl: 'https://example.com',
+        url: 'https://example.com',
       );
       expect(
         CreatePatchArtifactResponse.fromJson(request.toJson()).toJson(),

@@ -112,7 +112,7 @@ class CodePushClient {
     );
 
     final uploadResponse = await _httpClient.put(
-      Uri.parse(decoded.uploadUrl),
+      Uri.parse(decoded.url),
       body: File(artifactPath).readAsBytesSync(),
     );
     if (uploadResponse.statusCode != HttpStatus.ok) {
@@ -169,7 +169,7 @@ class CodePushClient {
     );
 
     final uploadResponse = await _httpClient.put(
-      Uri.parse(decoded.uploadUrl),
+      Uri.parse(decoded.url),
       body: File(artifactPath).readAsBytesSync(),
     );
     if (uploadResponse.statusCode != HttpStatus.ok) {
