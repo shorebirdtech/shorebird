@@ -27,6 +27,7 @@ abstract class AndroidArchiveDiffer {
     return path.any((path) => p.extension(path) == '.dex');
   }
 
+  /// The types of differences between the archives at the two provided paths.
   Set<ArchiveDifferences> contentDifferences(
     String archivePath1,
     String archivePath2,
