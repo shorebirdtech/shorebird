@@ -83,6 +83,12 @@ void main() {
       when(() => logger.confirm(any())).thenReturn(false);
       expect(await command.run(), ExitCode.success.code);
       verify(() => logger.info('Aborted.')).called(1);
+      verifyNever(
+        () => codePushClient.createCollaborator(
+          appId: any(named: 'appId'),
+          email: any(named: 'email'),
+        ),
+      );
     });
 
     test(
