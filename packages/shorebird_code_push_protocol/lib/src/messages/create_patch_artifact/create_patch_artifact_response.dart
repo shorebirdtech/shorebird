@@ -33,12 +33,12 @@ class CreatePatchArtifactResponse {
   /// The hash of the artifact.
   final String hash;
 
-  /// Upload URL for the artifact.
-  final String? url;
-
   /// The size of the artifact in bytes.
   @JsonKey(fromJson: _parseStringToInt, toJson: _parseIntToString)
   final int size;
+
+  /// The upload URL for the artifact.
+  final String url;
 
   static int _parseStringToInt(dynamic value) => int.parse(value as String);
 

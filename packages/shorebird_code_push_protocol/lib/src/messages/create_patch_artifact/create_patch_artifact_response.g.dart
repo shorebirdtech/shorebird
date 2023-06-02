@@ -20,7 +20,7 @@ CreatePatchArtifactResponse _$CreatePatchArtifactResponseFromJson(
           hash: $checkedConvert('hash', (v) => v as String),
           size: $checkedConvert(
               'size', (v) => CreatePatchArtifactResponse._parseStringToInt(v)),
-          url: $checkedConvert('url', (v) => v as String?),
+          url: $checkedConvert('url', (v) => v as String),
         );
         return val;
       },
@@ -32,6 +32,6 @@ Map<String, dynamic> _$CreatePatchArtifactResponseToJson(
       'arch': instance.arch,
       'platform': instance.platform,
       'hash': instance.hash,
-      'url': instance.url,
       'size': CreatePatchArtifactResponse._parseIntToString(instance.size),
+      'url': instance.url,
     };

@@ -37,8 +37,8 @@ class CreateReleaseArtifactResponse {
   @JsonKey(fromJson: _parseStringToInt, toJson: _parseIntToString)
   final int size;
 
-  /// Upload URL for the artifact.
-  final String? url;
+  /// The upload URL for the artifact.
+  final String url;
 
   static int _parseStringToInt(dynamic value) => int.parse(value as String);
 

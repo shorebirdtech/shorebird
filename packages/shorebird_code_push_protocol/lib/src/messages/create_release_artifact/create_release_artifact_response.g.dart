@@ -20,7 +20,7 @@ CreateReleaseArtifactResponse _$CreateReleaseArtifactResponseFromJson(
           hash: $checkedConvert('hash', (v) => v as String),
           size: $checkedConvert('size',
               (v) => CreateReleaseArtifactResponse._parseStringToInt(v)),
-          url: $checkedConvert('url', (v) => v as String?),
+          url: $checkedConvert('url', (v) => v as String),
         );
         return val;
       },
