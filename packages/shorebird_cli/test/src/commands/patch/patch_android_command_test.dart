@@ -6,7 +6,7 @@ import 'package:mason_logger/mason_logger.dart';
 import 'package:mocktail/mocktail.dart';
 import 'package:path/path.dart' as p;
 import 'package:platform/platform.dart';
-import 'package:shorebird_cli/src/aab/aab.dart';
+import 'package:shorebird_cli/src/archive_analysis/archive_analysis.dart';
 import 'package:shorebird_cli/src/auth/auth.dart';
 import 'package:shorebird_cli/src/cache.dart' show Cache;
 import 'package:shorebird_cli/src/commands/patch/patch_android_command.dart';
@@ -250,7 +250,7 @@ flutter:
             : releaseVersionNameProcessResult;
       });
 
-      when(() => aabDiffer.aabContentDifferences(any(), any())).thenReturn({});
+      when(() => aabDiffer.contentDifferences(any(), any())).thenReturn({});
       when(() => argResults.rest).thenReturn([]);
       when(() => argResults['arch']).thenReturn(arch);
       when(() => argResults['channel']).thenReturn(channelName);
@@ -661,8 +661,8 @@ Please create a release using "shorebird release" and try again.
     });
 
     test('throws error when Java/Kotlin code changes are detected', () async {
-      when(() => aabDiffer.aabContentDifferences(any(), any())).thenReturn(
-        {AabDifferences.native},
+      when(() => aabDiffer.contentDifferences(any(), any())).thenReturn(
+        {ArchiveDifferences.native},
       );
 
       final tempDir = setUpTempDir();
@@ -681,8 +681,8 @@ Please create a release using "shorebird release" and try again.
     });
 
     test('prompts user to continue when asset changes are detected', () async {
-      when(() => aabDiffer.aabContentDifferences(any(), any())).thenReturn(
-        {AabDifferences.assets},
+      when(() => aabDiffer.contentDifferences(any(), any())).thenReturn(
+        {ArchiveDifferences.assets},
       );
 
       final tempDir = setUpTempDir();
@@ -708,8 +708,8 @@ Please create a release using "shorebird release" and try again.
     test(
       '''does not warn user of asset or code changes if only dart changes are detected''',
       () async {
-        when(() => aabDiffer.aabContentDifferences(any(), any())).thenReturn(
-          {AabDifferences.dart},
+        when(() => aabDiffer.contentDifferences(any(), any())).thenReturn(
+          {ArchiveDifferences.dart},
         );
 
         final tempDir = setUpTempDir();
@@ -740,8 +740,8 @@ Please create a release using "shorebird release" and try again.
     test(
       '''exits if user decides to not proceed after being warned of non-dart changes''',
       () async {
-        when(() => aabDiffer.aabContentDifferences(any(), any())).thenReturn(
-          {AabDifferences.assets},
+        when(() => aabDiffer.contentDifferences(any(), any())).thenReturn(
+          {ArchiveDifferences.assets},
         );
         when(
           () => logger.confirm(any(that: contains('Continue anyways?'))),

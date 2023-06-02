@@ -5,7 +5,7 @@ import 'package:crypto/crypto.dart';
 import 'package:http/http.dart' as http;
 import 'package:mason_logger/mason_logger.dart';
 import 'package:path/path.dart' as p;
-import 'package:shorebird_cli/src/aab/aab.dart';
+import 'package:shorebird_cli/src/archive_analysis/archive_analysis.dart';
 import 'package:shorebird_cli/src/command.dart';
 import 'package:shorebird_cli/src/config/shorebird_yaml.dart';
 import 'package:shorebird_cli/src/formatters/formatters.dart';
@@ -328,15 +328,15 @@ https://github.com/shorebirdtech/shorebird/issues/472
     downloadReleaseArtifactProgress.complete();
 
     final contentDiffs = releaseAabPath == null
-        ? <AabDifferences>{}
-        : _aabDiffer.aabContentDifferences(
+        ? <ArchiveDifferences>{}
+        : _aabDiffer.contentDifferences(
             releaseAabPath,
             bundlePath,
           );
 
     logger.detail('aab content differences: $contentDiffs');
 
-    if (contentDiffs.contains(AabDifferences.native)) {
+    if (contentDiffs.contains(ArchiveDifferences.native)) {
       logger
         ..err(
           '''The Android App Bundle appears to contain Kotlin or Java changes, which cannot be applied via a patch.''',
@@ -352,7 +352,7 @@ If you believe you're seeing this in error, please reach out to us for support a
       return ExitCode.software.code;
     }
 
-    if (contentDiffs.contains(AabDifferences.assets)) {
+    if (contentDiffs.contains(ArchiveDifferences.assets)) {
       logger.info(
         yellow.wrap(
           '''⚠️ The Android App Bundle contains asset changes, which will not be included in the patch.''',
