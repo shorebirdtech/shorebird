@@ -10,13 +10,6 @@ void main() {
         version: '1.0.0',
         displayName: 'v1.0.0',
         flutterRevision: 'flutter-revision',
-        artifactUploadUrls: ArtifactUploadUrls(
-          android: AndroidArtifactUploadUrls(
-            x86: 'x86',
-            aarch64: 'aarch64',
-            arm: 'arm',
-          ),
-        ),
       );
       expect(
         CreateReleaseResponse.fromJson(response.toJson()).toJson(),
