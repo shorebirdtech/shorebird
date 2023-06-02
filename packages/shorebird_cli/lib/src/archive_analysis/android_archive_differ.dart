@@ -2,6 +2,7 @@ import 'package:path/path.dart' as p;
 import 'package:shorebird_cli/src/archive_analysis/archive_analysis.dart';
 
 abstract class AndroidArchiveDiffer {
+  /// Files that have changed between the archives at the two provided paths.
   Set<String> changedFiles(String archivePath1, String archivePath2);
 
   /// Whether any changed files correspond to a change in assets.
