@@ -20,8 +20,7 @@ CreateReleaseArtifactResponse _$CreateReleaseArtifactResponseFromJson(
           arch: $checkedConvert('arch', (v) => v as String),
           platform: $checkedConvert('platform', (v) => v as String),
           hash: $checkedConvert('hash', (v) => v as String),
-          size: $checkedConvert('size',
-              (v) => CreateReleaseArtifactResponse._parseStringToInt(v)),
+          size: $checkedConvert('size', (v) => v as int),
           uploadUrl: $checkedConvert('upload_url', (v) => v as String),
         );
         return val;
@@ -37,6 +36,6 @@ Map<String, dynamic> _$CreateReleaseArtifactResponseToJson(
       'arch': instance.arch,
       'platform': instance.platform,
       'hash': instance.hash,
-      'size': CreateReleaseArtifactResponse._parseIntToString(instance.size),
+      'size': instance.size,
       'upload_url': instance.uploadUrl,
     };
