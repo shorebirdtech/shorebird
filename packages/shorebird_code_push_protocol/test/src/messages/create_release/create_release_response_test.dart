@@ -5,13 +5,11 @@ void main() {
   group(CreateReleaseResponse, () {
     test('can be (de)serialized', () {
       const response = CreateReleaseResponse(
-        release: Release(
-          id: 0,
-          appId: 'test-app-id',
-          version: '1.0.0',
-          displayName: 'v1.0.0',
-          flutterRevision: 'flutter-revision',
-        ),
+        id: 0,
+        appId: 'test-app-id',
+        version: '1.0.0',
+        displayName: 'v1.0.0',
+        flutterRevision: 'flutter-revision',
         artifactUploadUrls: ArtifactUploadUrls(
           android: AndroidArtifactUploadUrls(
             x86: 'x86',
