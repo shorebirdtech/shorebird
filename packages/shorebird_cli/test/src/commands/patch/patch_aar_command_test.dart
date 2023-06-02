@@ -485,7 +485,7 @@ Current Flutter Revision: $otherRevision
       verify(
         () => logger.info('''
 Either create a new release using:
-  ${lightCyan.wrap('shorebird release')}
+  ${lightCyan.wrap('shorebird release aar')}
 
 Or downgrade your Flutter version and try again using:
   ${lightCyan.wrap('cd $shorebirdFlutterPath')}
@@ -528,7 +528,7 @@ https://github.com/shorebirdtech/shorebird/issues/472
 Release not found: "$version"
 
 Patches can only be published for existing releases.
-Please create a release using "shorebird release" and try again.
+Please create a release using "shorebird release aar" and try again.
 ''',
         ),
       ).called(1);
@@ -587,7 +587,7 @@ Please create a release using "shorebird release" and try again.
         getCurrentDirectory: () => tempDir,
       );
       verify(
-        () => logger.err(any(that: contains('404 Not Found'))),
+        () => progress.fail(any(that: contains('404 Not Found'))),
       ).called(1);
       expect(exitCode, ExitCode.software.code);
     });
