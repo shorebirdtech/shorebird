@@ -75,7 +75,7 @@ void main() {
       platform: platform,
       hash: '#',
       size: 42,
-      url: 'https://example.com',
+      url: 'https://example.com/release.so',
     );
     const aarArtifact = ReleaseArtifact(
       id: 0,
@@ -573,7 +573,17 @@ Please create a release using "shorebird release aar" and try again.
     });
 
     test('throws error when release artifact does not exist.', () async {
-      when(() => httpClient.send(any())).thenAnswer(
+      when(
+        () => httpClient.send(
+          any(
+            that: isA<http.Request>().having(
+              (req) => req.url.toString(),
+              'url',
+              endsWith('so'),
+            ),
+          ),
+        ),
+      ).thenAnswer(
         (_) async => http.StreamedResponse(
           const Stream.empty(),
           HttpStatus.notFound,
