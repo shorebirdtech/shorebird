@@ -2,7 +2,7 @@ export 'cancel_subscription/cancel_subscription_response.dart';
 export 'check_for_patches/check_for_patches.dart';
 export 'create_app/create_app.dart';
 export 'create_app_collaborator/create_app_collaborator.dart';
-export 'create_artifact/create_artifact.dart';
+export 'create_patch_artifact/create_patch_artifact.dart';
 export 'create_channel/create_channel.dart';
 export 'create_patch/create_patch.dart';
 export 'create_payment_link/create_payment_link.dart';
