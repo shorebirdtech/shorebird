@@ -245,6 +245,7 @@ void main() {
       });
 
       test('throws an exception if the upload fails', () async {
+        const artifactId = 42;
         const uploadUrl = 'https://example.com/artifact.zip';
         when(() => httpClient.send(any())).thenAnswer((_) async {
           return http.StreamedResponse(
@@ -252,6 +253,8 @@ void main() {
               utf8.encode(
                 json.encode(
                   CreatePatchArtifactResponse(
+                    id: artifactId,
+                    patchId: patchId,
                     arch: arch,
                     platform: platform,
                     hash: hash,
@@ -298,6 +301,7 @@ void main() {
       });
 
       test('completes when request succeeds', () async {
+        const artifactId = 42;
         const uploadUrl = 'https://example.com/artifact.zip';
         when(() => httpClient.send(any())).thenAnswer((_) async {
           return http.StreamedResponse(
@@ -305,6 +309,8 @@ void main() {
               utf8.encode(
                 json.encode(
                   CreatePatchArtifactResponse(
+                    id: artifactId,
+                    patchId: patchId,
                     arch: arch,
                     platform: platform,
                     hash: hash,
@@ -487,6 +493,7 @@ void main() {
       });
 
       test('throws an exception if the upload fails', () async {
+        const artifactId = 42;
         const uploadUrl = 'https://example.com/artifact.zip';
         when(() => httpClient.send(any())).thenAnswer((_) async {
           return http.StreamedResponse(
@@ -494,6 +501,8 @@ void main() {
               utf8.encode(
                 json.encode(
                   CreateReleaseArtifactResponse(
+                    id: artifactId,
+                    releaseId: releaseId,
                     arch: arch,
                     platform: platform,
                     hash: hash,
@@ -540,6 +549,7 @@ void main() {
       });
 
       test('completes when request succeeds', () async {
+        const artifactId = 42;
         const uploadUrl = 'https://example.com/artifact.zip';
         when(() => httpClient.send(any())).thenAnswer((_) async {
           return http.StreamedResponse(
@@ -547,6 +557,8 @@ void main() {
               utf8.encode(
                 json.encode(
                   CreateReleaseArtifactResponse(
+                    id: artifactId,
+                    releaseId: releaseId,
                     arch: arch,
                     platform: platform,
                     hash: hash,
