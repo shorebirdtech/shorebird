@@ -10,6 +10,8 @@ part 'create_patch_artifact_response.g.dart';
 class CreatePatchArtifactResponse {
   /// {@macro create_artifact_response}
   const CreatePatchArtifactResponse({
+    required this.id,
+    required this.patchId,
     required this.arch,
     required this.platform,
     required this.hash,
@@ -23,6 +25,12 @@ class CreatePatchArtifactResponse {
 
   /// Converts a [CreatePatchArtifactResponse] to a Map<String, dynamic>.
   Json toJson() => _$CreatePatchArtifactResponseToJson(this);
+
+  /// The ID of the artifact;
+  final int id;
+
+  /// The ID of the patch.
+  final int patchId;
 
   /// The arch of the artifact.
   final String arch;
