@@ -19,7 +19,7 @@ import 'package:test/test.dart';
 
 class _FakeBaseRequest extends Fake implements http.BaseRequest {}
 
-class _MockAabDiffer extends Mock implements AabDiffer {}
+class _MockAarDiffer extends Mock implements AarDiffer {}
 
 class _MockArgResults extends Mock implements ArgResults {}
 
@@ -77,14 +77,14 @@ void main() {
       size: 42,
       url: 'https://example.com',
     );
-    const aabArtifact = ReleaseArtifact(
+    const aarArtifact = ReleaseArtifact(
       id: 0,
       releaseId: 0,
       arch: arch,
       platform: platform,
       hash: '#',
       size: 42,
-      url: 'https://example.com/release.aab',
+      url: 'https://example.com/release.aar',
     );
     const release = Release(
       id: 0,
@@ -119,7 +119,7 @@ flutter:
   assets:
     - shorebird.yaml''';
 
-    late AabDiffer aabDiffer;
+    late AarDiffer aarDiffer;
     late ArgResults argResults;
     late Auth auth;
     late Directory shorebirdRoot;
@@ -183,7 +183,7 @@ flutter:
     });
 
     setUp(() {
-      aabDiffer = _MockAabDiffer();
+      aarDiffer = _MockAarDiffer();
       argResults = _MockArgResults();
       auth = _MockAuth();
       shorebirdRoot = Directory.systemTemp.createTempSync();
@@ -199,6 +199,7 @@ flutter:
       cache = _MockCache();
       shorebirdProcess = _MockShorebirdProcess();
       command = PatchAarCommand(
+        aarDiffer: aarDiffer,
         auth: auth,
         buildCodePushClient: ({
           required http.Client httpClient,
@@ -258,7 +259,7 @@ flutter:
         return patchProcessResult;
       });
 
-      when(() => aabDiffer.contentDifferences(any(), any())).thenReturn({});
+      when(() => aarDiffer.contentDifferences(any(), any())).thenReturn({});
       when(() => argResults.rest).thenReturn([]);
       when(() => argResults['channel']).thenReturn(channelName);
       when(() => argResults['dry-run']).thenReturn(false);
@@ -306,10 +307,10 @@ flutter:
       when(
         () => codePushClient.getReleaseArtifact(
           releaseId: any(named: 'releaseId'),
-          arch: 'aab',
+          arch: 'aar',
           platform: 'android',
         ),
-      ).thenAnswer((_) async => aabArtifact);
+      ).thenAnswer((_) async => aarArtifact);
       when(
         () => codePushClient.createChannel(
           appId: any(named: 'appId'),
@@ -534,24 +535,23 @@ Please create a release using "shorebird release" and try again.
       expect(exitCode, ExitCode.software.code);
     });
 
-    // TODO(bryanoltman)
-    // test('succeeds when aar artifact cannot be retrieved', () async {
-    //   const error = 'something went wrong';
-    //   when(
-    //     () => codePushClient.getReleaseArtifact(
-    //       releaseId: any(named: 'releaseId'),
-    //       arch: 'aab',
-    //       platform: 'android',
-    //     ),
-    //   ).thenThrow(error);
-    //   final tempDir = setUpTempDir();
-    //   setUpTempArtifacts(tempDir);
-    //   final exitCode = await IOOverrides.runZoned(
-    //     command.run,
-    //     getCurrentDirectory: () => tempDir,
-    //   );
-    //   expect(exitCode, ExitCode.success.code);
-    // });
+    test('throws error when aar artifact cannot be retrieved', () async {
+      const error = 'something went wrong';
+      when(
+        () => codePushClient.getReleaseArtifact(
+          releaseId: any(named: 'releaseId'),
+          arch: 'aar',
+          platform: 'android',
+        ),
+      ).thenThrow(error);
+      final tempDir = setUpTempDir();
+      setUpTempArtifacts(tempDir);
+      final exitCode = await IOOverrides.runZoned(
+        command.run,
+        getCurrentDirectory: () => tempDir,
+      );
+      expect(exitCode, ExitCode.software.code);
+    });
 
     test('throws error when release artifact cannot be retrieved.', () async {
       const error = 'something went wrong';
@@ -587,147 +587,115 @@ Please create a release using "shorebird release" and try again.
         getCurrentDirectory: () => tempDir,
       );
       verify(
-        () => progress.fail(
-          'Exception: Failed to download release artifact: 404 Not Found',
-        ),
+        () => logger.err(any(that: contains('404 Not Found'))),
       ).called(1);
       expect(exitCode, ExitCode.software.code);
     });
 
-    // TODO(bryanoltman)
-    // test('throws error when aar fails to download', () async {
-    //   when(
-    //     () => httpClient.send(
-    //       any(
-    //         that: isA<http.Request>().having(
-    //           (req) => req.url.toString(),
-    //           'url',
-    //           endsWith('aab'),
-    //         ),
-    //       ),
-    //     ),
-    //   ).thenAnswer(
-    //     (_) async => http.StreamedResponse(
-    //       const Stream.empty(),
-    //       HttpStatus.internalServerError,
-    //       reasonPhrase: 'Internal Server Error',
-    //     ),
-    //   );
+    test('throws error when aar fails to download', () async {
+      when(
+        () => httpClient.send(
+          any(
+            that: isA<http.Request>().having(
+              (req) => req.url.toString(),
+              'url',
+              endsWith('aar'),
+            ),
+          ),
+        ),
+      ).thenAnswer(
+        (_) async => http.StreamedResponse(
+          const Stream.empty(),
+          HttpStatus.internalServerError,
+          reasonPhrase: 'Internal Server Error',
+        ),
+      );
 
-    //   final tempDir = setUpTempDir();
-    //   setUpTempArtifacts(tempDir);
-    //   final exitCode = await IOOverrides.runZoned(
-    //     command.run,
-    //     getCurrentDirectory: () => tempDir,
-    //   );
+      final tempDir = setUpTempDir();
+      setUpTempArtifacts(tempDir);
+      final exitCode = await IOOverrides.runZoned(
+        command.run,
+        getCurrentDirectory: () => tempDir,
+      );
 
-    //   expect(exitCode, ExitCode.software.code);
-    // });
+      expect(exitCode, ExitCode.software.code);
+    });
 
-    // TODO(bryanoltman)
-    // test('throws error when Java/Kotlin code changes are detected', () async {
-    //   when(() => aabDiffer.aabContentDifferences(any(), any())).thenReturn(
-    //     {AabDifferences.native},
-    //   );
+    test('prompts user to continue when asset changes are detected', () async {
+      when(() => aarDiffer.contentDifferences(any(), any())).thenReturn(
+        {ArchiveDifferences.assets},
+      );
 
-    //   final tempDir = setUpTempDir();
-    //   setUpTempArtifacts(tempDir);
-    //   final exitCode = await IOOverrides.runZoned(
-    //     command.run,
-    //     getCurrentDirectory: () => tempDir,
-    //   );
+      final tempDir = setUpTempDir();
+      setUpTempArtifacts(tempDir);
+      final exitCode = await IOOverrides.runZoned(
+        command.run,
+        getCurrentDirectory: () => tempDir,
+      );
 
-    //   expect(exitCode, ExitCode.software.code);
-    //   verify(
-    //     () => logger.err(
-    //       '''The Android App Bundle appears to contain Kotlin or Java changes, which cannot be applied via a patch.''',
-    //     ),
-    //   ).called(1);
-    // });
+      expect(exitCode, ExitCode.success.code);
+      verify(
+        () => logger.info(
+          any(
+            that: contains(
+              '''The Android Archive contains asset changes, which will not be included in the patch.''',
+            ),
+          ),
+        ),
+      ).called(1);
+      verify(() => logger.confirm('Continue anyways?')).called(1);
+    });
 
-    // TODO(bryanoltman)
-    // test('prompts user to continue when asset changes are detected', () async {
-    //   when(() => aabDiffer.aabContentDifferences(any(), any())).thenReturn(
-    //     {AabDifferences.assets},
-    //   );
+    test(
+      '''does not warn user of asset or code changes if only dart changes are detected''',
+      () async {
+        when(() => aarDiffer.contentDifferences(any(), any())).thenReturn(
+          {ArchiveDifferences.dart},
+        );
 
-    //   final tempDir = setUpTempDir();
-    //   setUpTempArtifacts(tempDir);
-    //   final exitCode = await IOOverrides.runZoned(
-    //     command.run,
-    //     getCurrentDirectory: () => tempDir,
-    //   );
+        final tempDir = setUpTempDir();
+        setUpTempArtifacts(tempDir);
+        final exitCode = await IOOverrides.runZoned(
+          command.run,
+          getCurrentDirectory: () => tempDir,
+        );
 
-    //   expect(exitCode, ExitCode.success.code);
-    //   verify(
-    //     () => logger.info(
-    //       any(
-    //         that: contains(
-    //           '''The Android App Bundle contains asset changes, which will not be included in the patch.''',
-    //         ),
-    //       ),
-    //     ),
-    //   ).called(1);
-    //   verify(() => logger.confirm('Continue anyways?')).called(1);
-    // });
+        expect(exitCode, ExitCode.success.code);
+        verifyNever(
+          () => logger.confirm(
+            any(
+              that: contains(
+                '''The Android Archive contains asset changes, which will not be included in the patch.''',
+              ),
+            ),
+          ),
+        );
+      },
+    );
 
-    // TODO(bryanoltman)
-    // test(
-    //   '''does not warn user of asset or code changes if only dart changes are detected''',
-    //   () async {
-    //     when(() => aabDiffer.aabContentDifferences(any(), any())).thenReturn(
-    //       {AabDifferences.dart},
-    //     );
+    test(
+      '''exits if user decides to not proceed after being warned of non-dart changes''',
+      () async {
+        when(() => aarDiffer.contentDifferences(any(), any())).thenReturn(
+          {ArchiveDifferences.assets},
+        );
+        when(
+          () => logger.confirm(any(that: contains('Continue anyways?'))),
+        ).thenReturn(false);
 
-    //     final tempDir = setUpTempDir();
-    //     setUpTempArtifacts(tempDir);
-    //     final exitCode = await IOOverrides.runZoned(
-    //       command.run,
-    //       getCurrentDirectory: () => tempDir,
-    //     );
+        final tempDir = setUpTempDir();
+        setUpTempArtifacts(tempDir);
+        final exitCode = await IOOverrides.runZoned(
+          command.run,
+          getCurrentDirectory: () => tempDir,
+        );
 
-    //     expect(exitCode, ExitCode.success.code);
-    //     verifyNever(
-    //       () => logger.confirm(
-    //         any(
-    //           that: contains(
-    //             '''Your aab contains asset changes, which will not be included in the patch. Continue anyways?''',
-    //           ),
-    //         ),
-    //       ),
-    //     );
-    //     verifyNever(
-    //       () => logger.err(
-    //         '''Your aab contains native changes, which cannot be applied in a patch. Please create a new release or revert these changes.''',
-    //       ),
-    //     );
-    //   },
-    // );
-
-    // TODO(bryanoltman)
-    // test(
-    //   '''exits if user decides to not proceed after being warned of non-dart changes''',
-    //   () async {
-    //     when(() => aabDiffer.aabContentDifferences(any(), any())).thenReturn(
-    //       {AabDifferences.assets},
-    //     );
-    //     when(
-    //       () => logger.confirm(any(that: contains('Continue anyways?'))),
-    //     ).thenReturn(false);
-
-    //     final tempDir = setUpTempDir();
-    //     setUpTempArtifacts(tempDir);
-    //     final exitCode = await IOOverrides.runZoned(
-    //       command.run,
-    //       getCurrentDirectory: () => tempDir,
-    //     );
-
-    //     expect(exitCode, ExitCode.success.code);
-    //     verifyNever(
-    //       () => codePushClient.createPatch(releaseId: any(named: 'releaseId')),
-    //     );
-    //   },
-    // );
+        expect(exitCode, ExitCode.success.code);
+        verifyNever(
+          () => codePushClient.createPatch(releaseId: any(named: 'releaseId')),
+        );
+      },
+    );
 
     test('throws error when creating diff fails', () async {
       const error = 'oops something went wrong';

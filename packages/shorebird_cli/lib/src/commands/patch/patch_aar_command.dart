@@ -6,6 +6,7 @@ import 'package:crypto/crypto.dart';
 import 'package:http/http.dart' as http;
 import 'package:mason_logger/mason_logger.dart';
 import 'package:path/path.dart' as p;
+import 'package:shorebird_cli/src/archive_analysis/archive_analysis.dart';
 import 'package:shorebird_cli/src/command.dart';
 import 'package:shorebird_cli/src/config/config.dart';
 import 'package:shorebird_cli/src/formatters/file_size_formatter.dart';
@@ -40,7 +41,9 @@ class PatchAarCommand extends ShorebirdCommand
     HashFunction? hashFn,
     UnzipFn? unzipFn,
     http.Client? httpClient,
-  })  : _hashFn = hashFn ?? ((m) => sha256.convert(m).toString()),
+    AarDiffer? aarDiffer,
+  })  : _aarDiffer = aarDiffer ?? AarDiffer(),
+        _hashFn = hashFn ?? ((m) => sha256.convert(m).toString()),
         _unzipFn = unzipFn ?? extractFileToDisk,
         _httpClient = httpClient ?? http.Client() {
     argParser
@@ -90,6 +93,7 @@ of the Android app that is using this module.''',
   String get description =>
       'Publish new patches for a specific Android archive release to Shorebird';
 
+  final AarDiffer _aarDiffer;
   final HashFunction _hashFn;
   final UnzipFn _unzipFn;
   final http.Client _httpClient;
@@ -224,18 +228,48 @@ https://github.com/shorebirdtech/shorebird/issues/472
       return ExitCode.software.code;
     }
 
-    // TODO(bryanoltman): implement aar asset diffing.
-    // ReleaseArtifact? releaseAarArtifact;
-    // try {
-    //   releaseAarArtifact = await codePushClient.getReleaseArtifact(
-    //     releaseId: release.id,
-    //     arch: 'aar',
-    //     platform: 'android',
-    //   );
-    // } catch (error) {
-    //   // Do nothing for now, not all releases will have an associated aar
-    //   // artifact.
-    // }
+    ReleaseArtifact releaseAarArtifact;
+    try {
+      releaseAarArtifact = await codePushClient.getReleaseArtifact(
+        releaseId: release.id,
+        arch: 'aar',
+        platform: 'android',
+      );
+    } catch (error) {
+      logger.err('$error');
+      return ExitCode.software.code;
+    }
+
+    String releaseAarPath;
+    try {
+      releaseAarPath = await downloadReleaseArtifact(
+        Uri.parse(releaseAarArtifact.url),
+        httpClient: _httpClient,
+      );
+    } catch (error) {
+      logger.err('$error');
+      return ExitCode.software.code;
+    }
+
+    final contentDiffs = _aarDiffer.contentDifferences(
+      releaseAarPath,
+      aarArtifactPath(
+        packageName: androidPackageName!,
+        buildNumber: buildNumber,
+      ),
+    );
+
+    if (contentDiffs.contains(ArchiveDifferences.assets)) {
+      logger.info(
+        yellow.wrap(
+          '''⚠️ The Android Archive contains asset changes, which will not be included in the patch.''',
+        ),
+      );
+      final shouldContinue = logger.confirm('Continue anyways?');
+      if (!shouldContinue) {
+        return ExitCode.success.code;
+      }
+    }
 
     final releaseArtifactPaths = await downloadReleaseArtifacts(
       releaseArtifacts: releaseArtifacts,
