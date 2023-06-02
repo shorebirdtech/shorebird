@@ -245,7 +245,7 @@ flutter:
       ).thenAnswer((_) async => [appMetadata]);
       when(
         () => codePushClient.getReleases(appId: any(named: 'appId')),
-      ).thenAnswer((_) async => [release]);
+      ).thenAnswer((_) async => []);
       when(
         () => codePushClient.createRelease(
           appId: any(named: 'appId'),
@@ -448,6 +448,22 @@ Did you forget to run "shorebird init"?''',
           'Exception: Unable to determine flutter revision: $error',
         ),
       ).called(1);
+    });
+
+    test('throws error when existing releases exists.', () async {
+      when(
+        () => codePushClient.getReleases(appId: any(named: 'appId')),
+      ).thenAnswer((_) async => [release]);
+      final tempDir = setUpTempDir();
+      setUpTempArtifacts(tempDir);
+      final exitCode = await IOOverrides.runZoned(
+        command.run,
+        getCurrentDirectory: () => tempDir,
+      );
+      verify(() => logger.err('''
+It looks like you have an existing release for version ${lightCyan.wrap(release.version)}.
+Please bump your version number and try again.''')).called(1);
+      expect(exitCode, ExitCode.software.code);
     });
 
     test('throws error when creating release fails.', () async {
