@@ -246,7 +246,7 @@ void main() {
 
       test('throws an exception if the upload fails', () async {
         const artifactId = 42;
-        const uploadUrl = 'https://example.com/artifact.zip';
+        const uploadUrl = 'https://example.com';
         when(() => httpClient.send(any())).thenAnswer((_) async {
           return http.StreamedResponse(
             Stream.value(
@@ -259,7 +259,7 @@ void main() {
                     platform: platform,
                     hash: hash,
                     size: size,
-                    uploadUrl: uploadUrl,
+                    url: uploadUrl,
                   ),
                 ),
               ),
@@ -302,7 +302,7 @@ void main() {
 
       test('completes when request succeeds', () async {
         const artifactId = 42;
-        const uploadUrl = 'https://example.com/artifact.zip';
+        const uploadUrl = 'https://example.com';
         when(() => httpClient.send(any())).thenAnswer((_) async {
           return http.StreamedResponse(
             Stream.value(
@@ -315,7 +315,7 @@ void main() {
                     platform: platform,
                     hash: hash,
                     size: size,
-                    uploadUrl: uploadUrl,
+                    url: uploadUrl,
                   ),
                 ),
               ),
@@ -494,7 +494,7 @@ void main() {
 
       test('throws an exception if the upload fails', () async {
         const artifactId = 42;
-        const uploadUrl = 'https://example.com/artifact.zip';
+        const uploadUrl = 'https://example.com';
         when(() => httpClient.send(any())).thenAnswer((_) async {
           return http.StreamedResponse(
             Stream.value(
@@ -507,7 +507,7 @@ void main() {
                     platform: platform,
                     hash: hash,
                     size: size,
-                    uploadUrl: uploadUrl,
+                    url: uploadUrl,
                   ),
                 ),
               ),
@@ -550,7 +550,7 @@ void main() {
 
       test('completes when request succeeds', () async {
         const artifactId = 42;
-        const uploadUrl = 'https://example.com/artifact.zip';
+        const uploadUrl = 'https://example.com';
         when(() => httpClient.send(any())).thenAnswer((_) async {
           return http.StreamedResponse(
             Stream.value(
@@ -563,7 +563,7 @@ void main() {
                     platform: platform,
                     hash: hash,
                     size: size,
-                    uploadUrl: uploadUrl,
+                    url: uploadUrl,
                   ),
                 ),
               ),
