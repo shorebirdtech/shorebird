@@ -1,27 +1,28 @@
 import 'package:json_annotation/json_annotation.dart';
 import 'package:shorebird_code_push_protocol/shorebird_code_push_protocol.dart';
 
-part 'create_artifact_request.g.dart';
+part 'create_release_artifact_response.g.dart';
 
-/// {@template create_artifact_request}
-/// The request body for POST /api/v1/artifacts
+/// {@template create_release_artifact_response}
+/// The response body for POST /api/v1/artifacts/:id/artifacts
 /// {@endtemplate}
 @JsonSerializable()
-class CreateArtifactRequest {
-  /// {@macro create_artifact_request}
-  const CreateArtifactRequest({
+class CreateReleaseArtifactResponse {
+  /// {@macro create_release_artifact_response}
+  const CreateReleaseArtifactResponse({
     required this.arch,
     required this.platform,
     required this.hash,
     required this.size,
+    required this.url,
   });
 
-  /// Converts a Map<String, dynamic> to a [CreateArtifactRequest]
-  factory CreateArtifactRequest.fromJson(Map<String, dynamic> json) =>
-      _$CreateArtifactRequestFromJson(json);
+  /// Converts a Map<String, dynamic> to a [CreateReleaseArtifactResponse]
+  factory CreateReleaseArtifactResponse.fromJson(Map<String, dynamic> json) =>
+      _$CreateReleaseArtifactResponseFromJson(json);
 
-  /// Converts a [CreateArtifactRequest] to a Map<String, dynamic>.
-  Json toJson() => _$CreateArtifactRequestToJson(this);
+  /// Converts a [CreateReleaseArtifactResponse] to a Map<String, dynamic>.
+  Json toJson() => _$CreateReleaseArtifactResponseToJson(this);
 
   /// The arch of the artifact.
   final String arch;
@@ -35,6 +36,9 @@ class CreateArtifactRequest {
   /// The size of the artifact in bytes.
   @JsonKey(fromJson: _parseStringToInt, toJson: _parseIntToString)
   final int size;
+
+  /// The upload URL for the artifact.
+  final String url;
 
   static int _parseStringToInt(dynamic value) => int.parse(value as String);
 
