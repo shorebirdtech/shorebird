@@ -1,5 +1,4 @@
 import 'package:json_annotation/json_annotation.dart';
-import 'package:shorebird_code_push_protocol/shorebird_code_push_protocol.dart';
 
 part 'create_patch_response.g.dart';
 
@@ -9,11 +8,7 @@ part 'create_patch_response.g.dart';
 @JsonSerializable()
 class CreatePatchResponse {
   /// {@macro create_patch_response}
-  const CreatePatchResponse({
-    required this.id,
-    required this.number,
-    required this.artifactUploadUrls,
-  });
+  const CreatePatchResponse({required this.id, required this.number});
 
   /// Converts a Map<String, dynamic> to a [CreatePatchResponse]
   factory CreatePatchResponse.fromJson(Map<String, dynamic> json) =>
@@ -28,7 +23,4 @@ class CreatePatchResponse {
   /// The patch number.
   /// A larger number equates to a newer patch.
   final int number;
-
-  /// The upload urls for artifacts.
-  final ArtifactUploadUrls artifactUploadUrls;
 }

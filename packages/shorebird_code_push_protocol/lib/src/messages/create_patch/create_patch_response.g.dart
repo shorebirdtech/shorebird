@@ -16,12 +16,9 @@ CreatePatchResponse _$CreatePatchResponseFromJson(Map<String, dynamic> json) =>
         final val = CreatePatchResponse(
           id: $checkedConvert('id', (v) => v as int),
           number: $checkedConvert('number', (v) => v as int),
-          artifactUploadUrls: $checkedConvert('artifact_upload_urls',
-              (v) => ArtifactUploadUrls.fromJson(v as Map<String, dynamic>)),
         );
         return val;
       },
-      fieldKeyMap: const {'artifactUploadUrls': 'artifact_upload_urls'},
     );
 
 Map<String, dynamic> _$CreatePatchResponseToJson(
@@ -29,5 +26,4 @@ Map<String, dynamic> _$CreatePatchResponseToJson(
     <String, dynamic>{
       'id': instance.id,
       'number': instance.number,
-      'artifact_upload_urls': instance.artifactUploadUrls.toJson(),
     };
