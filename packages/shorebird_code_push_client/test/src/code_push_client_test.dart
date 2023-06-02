@@ -244,22 +244,19 @@ void main() {
         );
       });
 
-      test('completes when request succeeds', () async {
-        const artifactId = 0;
-        const artifactUrl = 'https://example.com/artifact.zip';
+      test('throws an exception if the upload fails', () async {
+        const uploadUrl = 'https://example.com/artifact.zip';
         when(() => httpClient.send(any())).thenAnswer((_) async {
           return http.StreamedResponse(
             Stream.value(
               utf8.encode(
                 json.encode(
-                  PatchArtifact(
-                    id: artifactId,
-                    url: artifactUrl,
-                    patchId: patchId,
+                  CreatePatchArtifactResponse(
                     arch: arch,
                     platform: platform,
                     hash: hash,
                     size: size,
+                    uploadUrl: uploadUrl,
                   ),
                 ),
               ),
@@ -267,6 +264,10 @@ void main() {
             HttpStatus.ok,
           );
         });
+
+        when(
+          () => httpClient.put(any(), body: any(named: 'body')),
+        ).thenAnswer((_) async => http.Response('', HttpStatus.badRequest));
 
         final tempDir = Directory.systemTemp.createTempSync();
         final fixture = File(path.join(tempDir.path, 'release.txt'))
@@ -280,17 +281,60 @@ void main() {
             platform: platform,
             hash: hash,
           ),
-          completion(
-            equals(
-              isA<PatchArtifact>()
-                  .having((a) => a.id, 'id', artifactId)
-                  .having((a) => a.patchId, 'patchId', patchId)
-                  .having((a) => a.arch, 'arch', arch)
-                  .having((a) => a.platform, 'platform', platform)
-                  .having((a) => a.hash, 'hash', hash)
-                  .having((a) => a.url, 'artifactUrl', artifactUrl),
+          throwsA(
+            isA<CodePushException>().having(
+              (e) => e.message,
+              'message',
+              contains('Failed to upload artifact'),
             ),
           ),
+        );
+        verify(
+          () => httpClient.put(
+            Uri.parse(uploadUrl),
+            body: fixture.readAsBytesSync(),
+          ),
+        ).called(1);
+      });
+
+      test('completes when request succeeds', () async {
+        const uploadUrl = 'https://example.com/artifact.zip';
+        when(() => httpClient.send(any())).thenAnswer((_) async {
+          return http.StreamedResponse(
+            Stream.value(
+              utf8.encode(
+                json.encode(
+                  CreatePatchArtifactResponse(
+                    arch: arch,
+                    platform: platform,
+                    hash: hash,
+                    size: size,
+                    uploadUrl: uploadUrl,
+                  ),
+                ),
+              ),
+            ),
+            HttpStatus.ok,
+          );
+        });
+
+        when(
+          () => httpClient.put(any(), body: any(named: 'body')),
+        ).thenAnswer((_) async => http.Response('', HttpStatus.ok));
+
+        final tempDir = Directory.systemTemp.createTempSync();
+        final fixture = File(path.join(tempDir.path, 'release.txt'))
+          ..createSync();
+
+        await expectLater(
+          codePushClient.createPatchArtifact(
+            artifactPath: fixture.path,
+            patchId: patchId,
+            arch: arch,
+            platform: platform,
+            hash: hash,
+          ),
+          completes,
         );
 
         final request = verify(() => httpClient.send(captureAny()))
@@ -442,22 +486,19 @@ void main() {
         );
       });
 
-      test('completes when request succeeds', () async {
-        const artifactId = 0;
-        const artifactUrl = 'https://example.com/artifact.zip';
+      test('throws an exception if the upload fails', () async {
+        const uploadUrl = 'https://example.com/artifact.zip';
         when(() => httpClient.send(any())).thenAnswer((_) async {
           return http.StreamedResponse(
             Stream.value(
               utf8.encode(
                 json.encode(
-                  ReleaseArtifact(
-                    id: artifactId,
-                    url: artifactUrl,
-                    releaseId: releaseId,
+                  CreateReleaseArtifactResponse(
                     arch: arch,
                     platform: platform,
                     hash: hash,
                     size: size,
+                    uploadUrl: uploadUrl,
                   ),
                 ),
               ),
@@ -465,6 +506,10 @@ void main() {
             HttpStatus.ok,
           );
         });
+
+        when(
+          () => httpClient.put(any(), body: any(named: 'body')),
+        ).thenAnswer((_) async => http.Response('', HttpStatus.badRequest));
 
         final tempDir = Directory.systemTemp.createTempSync();
         final fixture = File(path.join(tempDir.path, 'release.txt'))
@@ -478,17 +523,60 @@ void main() {
             platform: platform,
             hash: hash,
           ),
-          completion(
-            equals(
-              isA<ReleaseArtifact>()
-                  .having((a) => a.id, 'id', artifactId)
-                  .having((a) => a.releaseId, 'releaseId', releaseId)
-                  .having((a) => a.arch, 'arch', arch)
-                  .having((a) => a.platform, 'platform', platform)
-                  .having((a) => a.hash, 'hash', hash)
-                  .having((a) => a.url, 'artifactUrl', artifactUrl),
+          throwsA(
+            isA<CodePushException>().having(
+              (e) => e.message,
+              'message',
+              contains('Failed to upload artifact'),
             ),
           ),
+        );
+        verify(
+          () => httpClient.put(
+            Uri.parse(uploadUrl),
+            body: fixture.readAsBytesSync(),
+          ),
+        ).called(1);
+      });
+
+      test('completes when request succeeds', () async {
+        const uploadUrl = 'https://example.com/artifact.zip';
+        when(() => httpClient.send(any())).thenAnswer((_) async {
+          return http.StreamedResponse(
+            Stream.value(
+              utf8.encode(
+                json.encode(
+                  CreateReleaseArtifactResponse(
+                    arch: arch,
+                    platform: platform,
+                    hash: hash,
+                    size: size,
+                    uploadUrl: uploadUrl,
+                  ),
+                ),
+              ),
+            ),
+            HttpStatus.ok,
+          );
+        });
+
+        when(
+          () => httpClient.put(any(), body: any(named: 'body')),
+        ).thenAnswer((_) async => http.Response('', HttpStatus.ok));
+
+        final tempDir = Directory.systemTemp.createTempSync();
+        final fixture = File(path.join(tempDir.path, 'release.txt'))
+          ..createSync();
+
+        await expectLater(
+          codePushClient.createReleaseArtifact(
+            artifactPath: fixture.path,
+            releaseId: releaseId,
+            arch: arch,
+            platform: platform,
+            hash: hash,
+          ),
+          completes,
         );
 
         final request = verify(() => httpClient.send(captureAny()))

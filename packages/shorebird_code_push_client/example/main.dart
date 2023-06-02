@@ -29,7 +29,7 @@ Future<void> main() async {
   );
 
   // Create a release artifact.
-  final releaseArtifact = await client.createReleaseArtifact(
+  await client.createReleaseArtifact(
     releaseId: release.id,
     artifactPath: '<PATH TO ARTIFACT>', // e.g. 'libapp.so'
     platform: '<PLATFORM>', // e.g. 'android'
@@ -41,7 +41,7 @@ Future<void> main() async {
   final patch = await client.createPatch(releaseId: release.id);
 
   // Create a patch artifact.
-  final patchArtifact = await client.createPatchArtifact(
+  await client.createPatchArtifact(
     patchId: patch.id,
     artifactPath: '<PATH TO ARTIFACT>', // e.g. 'libapp.so'
     platform: '<PLATFORM>', // e.g. 'android'

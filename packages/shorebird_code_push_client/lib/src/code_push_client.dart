@@ -82,7 +82,7 @@ class CodePushClient {
   }
 
   /// Create a new artifact for a specific [patchId].
-  Future<PatchArtifact> createPatchArtifact({
+  Future<void> createPatchArtifact({
     required String artifactPath,
     required int patchId,
     required String arch,
@@ -94,7 +94,6 @@ class CodePushClient {
       Uri.parse('$_v1/patches/$patchId/artifacts'),
     );
     final file = await http.MultipartFile.fromPath('file', artifactPath);
-    request.files.add(file);
     request.fields.addAll({
       'arch': arch,
       'platform': platform,
@@ -108,7 +107,20 @@ class CodePushClient {
       throw _parseErrorResponse(response.statusCode, body);
     }
 
-    return PatchArtifact.fromJson(json.decode(body) as Map<String, dynamic>);
+    final decoded = CreatePatchArtifactResponse.fromJson(
+      json.decode(body) as Map<String, dynamic>,
+    );
+
+    final uploadResponse = await _httpClient.put(
+      Uri.parse(decoded.uploadUrl),
+      body: File(artifactPath).readAsBytesSync(),
+    );
+    if (uploadResponse.statusCode != HttpStatus.ok) {
+      throw CodePushException(
+        message:
+            '''Failed to upload artifact (${uploadResponse.reasonPhrase} '${uploadResponse.statusCode})''',
+      );
+    }
   }
 
   /// Generates a Stripe payment link for the current user.
@@ -127,7 +139,7 @@ class CodePushClient {
   }
 
   /// Create a new artifact for a specific [releaseId].
-  Future<ReleaseArtifact> createReleaseArtifact({
+  Future<void> createReleaseArtifact({
     required String artifactPath,
     required int releaseId,
     required String arch,
@@ -139,7 +151,6 @@ class CodePushClient {
       Uri.parse('$_v1/releases/$releaseId/artifacts'),
     );
     final file = await http.MultipartFile.fromPath('file', artifactPath);
-    request.files.add(file);
     request.fields.addAll({
       'arch': arch,
       'platform': platform,
@@ -153,7 +164,20 @@ class CodePushClient {
       throw _parseErrorResponse(response.statusCode, body);
     }
 
-    return ReleaseArtifact.fromJson(json.decode(body) as Map<String, dynamic>);
+    final decoded = CreateReleaseArtifactResponse.fromJson(
+      json.decode(body) as Map<String, dynamic>,
+    );
+
+    final uploadResponse = await _httpClient.put(
+      Uri.parse(decoded.uploadUrl),
+      body: File(artifactPath).readAsBytesSync(),
+    );
+    if (uploadResponse.statusCode != HttpStatus.ok) {
+      throw CodePushException(
+        message:
+            '''Failed to upload artifact (${uploadResponse.reasonPhrase} '${uploadResponse.statusCode})''',
+      );
+    }
   }
 
   /// Create a new app with the provided [displayName].
