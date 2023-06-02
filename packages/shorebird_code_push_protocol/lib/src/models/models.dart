@@ -1,6 +1,5 @@
 export 'app.dart';
 export 'app_metadata.dart';
-export 'artifact_upload_urls.dart';
 export 'channel.dart';
 export 'collaborator.dart';
 export 'error_response.dart';
