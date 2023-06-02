@@ -21,16 +21,13 @@ CreateReleaseResponse _$CreateReleaseResponseFromJson(
           flutterRevision:
               $checkedConvert('flutter_revision', (v) => v as String),
           displayName: $checkedConvert('display_name', (v) => v as String?),
-          artifactUploadUrls: $checkedConvert('artifact_upload_urls',
-              (v) => ArtifactUploadUrls.fromJson(v as Map<String, dynamic>)),
         );
         return val;
       },
       fieldKeyMap: const {
         'appId': 'app_id',
         'flutterRevision': 'flutter_revision',
-        'displayName': 'display_name',
-        'artifactUploadUrls': 'artifact_upload_urls'
+        'displayName': 'display_name'
       },
     );
 
@@ -42,5 +39,4 @@ Map<String, dynamic> _$CreateReleaseResponseToJson(
       'version': instance.version,
       'flutter_revision': instance.flutterRevision,
       'display_name': instance.displayName,
-      'artifact_upload_urls': instance.artifactUploadUrls.toJson(),
     };
