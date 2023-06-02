@@ -433,9 +433,6 @@ Did you forget to run "shorebird init"?''',
       const error = 'oops';
       when(() => flutterRevisionProcessResult.exitCode).thenReturn(1);
       when(() => flutterRevisionProcessResult.stderr).thenReturn(error);
-      when(
-        () => codePushClient.getReleases(appId: any(named: 'appId')),
-      ).thenAnswer((_) async => []);
       final tempDir = setUpTempDir();
       setUpTempArtifacts(tempDir);
       final exitCode = await IOOverrides.runZoned(
@@ -469,9 +466,6 @@ Please bump your version number and try again.''')).called(1);
     test('throws error when creating release fails.', () async {
       const error = 'something went wrong';
       when(
-        () => codePushClient.getReleases(appId: any(named: 'appId')),
-      ).thenAnswer((_) async => []);
-      when(
         () => codePushClient.createRelease(
           appId: any(named: 'appId'),
           version: any(named: 'version'),
@@ -492,9 +486,6 @@ Please bump your version number and try again.''')).called(1);
     test('logs message when uploading release artifact that already exists.',
         () async {
       const error = 'something went wrong';
-      when(
-        () => codePushClient.getReleases(appId: any(named: 'appId')),
-      ).thenAnswer((_) async => []);
       when(
         () => codePushClient.createReleaseArtifact(
           artifactPath: any(named: 'artifactPath'),
@@ -523,9 +514,6 @@ Please bump your version number and try again.''')).called(1);
     test('logs message when uploading aab that already exists.', () async {
       const error = 'something went wrong';
       when(
-        () => codePushClient.getReleases(appId: any(named: 'appId')),
-      ).thenAnswer((_) async => []);
-      when(
         () => codePushClient.createReleaseArtifact(
           artifactPath: any(named: 'artifactPath', that: endsWith('.aab')),
           releaseId: any(named: 'releaseId'),
@@ -552,9 +540,6 @@ Please bump your version number and try again.''')).called(1);
     test('throws error when uploading release artifact fails.', () async {
       const error = 'something went wrong';
       when(
-        () => codePushClient.getReleases(appId: any(named: 'appId')),
-      ).thenAnswer((_) async => []);
-      when(
         () => codePushClient.createReleaseArtifact(
           artifactPath: any(named: 'artifactPath'),
           releaseId: any(named: 'releaseId'),
@@ -578,9 +563,6 @@ Please bump your version number and try again.''')).called(1);
 
     test('throws error when uploading aab fails', () async {
       const error = 'something went wrong';
-      when(
-        () => codePushClient.getReleases(appId: any(named: 'appId')),
-      ).thenAnswer((_) async => []);
       when(
         () => codePushClient.createReleaseArtifact(
           artifactPath: any(named: 'artifactPath', that: endsWith('.aab')),
