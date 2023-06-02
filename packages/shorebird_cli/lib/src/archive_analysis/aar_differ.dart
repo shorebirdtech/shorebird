@@ -22,12 +22,11 @@ class AarDiffer extends AndroidArchiveDiffer {
   String _hash(List<int> bytes) => sha256.convert(bytes).toString();
 
   @override
-  Set<String> changedFiles(String archivePath1, String archivePath2) {
-    return _fileHashes(File(archivePath1))
-        .difference(_fileHashes(File(archivePath2)))
-        .map((pair) => pair.$1)
-        .toSet();
-  }
+  Set<String> changedFiles(String archivePath1, String archivePath2) =>
+      _fileHashes(File(archivePath1))
+          .difference(_fileHashes(File(archivePath2)))
+          .map((pair) => pair.$1)
+          .toSet();
 
   Set<(String, String)> _fileHashes(File aar) => ZipDecoder()
       .decodeBuffer(InputFileStream(aar.path))
