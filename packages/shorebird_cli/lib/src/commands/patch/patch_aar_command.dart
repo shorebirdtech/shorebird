@@ -175,7 +175,7 @@ Did you forget to run "shorebird init"?''',
 Release not found: "$releaseVersion"
 
 Patches can only be published for existing releases.
-Please create a release using "shorebird release" and try again.
+Please create a release using "shorebird release aar" and try again.
 ''',
       );
       return ExitCode.software.code;
