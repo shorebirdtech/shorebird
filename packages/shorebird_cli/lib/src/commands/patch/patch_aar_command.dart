@@ -228,6 +228,9 @@ https://github.com/shorebirdtech/shorebird/issues/472
       return ExitCode.software.code;
     }
 
+    final downloadReleaseAarProgress = logger.progress(
+      'Downloading release artifacts',
+    );
     ReleaseArtifact releaseAarArtifact;
     try {
       releaseAarArtifact = await codePushClient.getReleaseArtifact(
@@ -236,7 +239,7 @@ https://github.com/shorebirdtech/shorebird/issues/472
         platform: 'android',
       );
     } catch (error) {
-      logger.err('$error');
+      downloadReleaseAarProgress.fail('$error');
       return ExitCode.software.code;
     }
 
@@ -247,9 +250,14 @@ https://github.com/shorebirdtech/shorebird/issues/472
         httpClient: _httpClient,
       );
     } catch (error) {
-      logger.err('$error');
+      downloadReleaseAarProgress.fail('$error');
       return ExitCode.software.code;
     }
+
+    downloadReleaseAarProgress.complete();
+
+    final aarDiffProgress =
+        logger.progress('Checking for aar content differences');
 
     final contentDiffs = _aarDiffer.contentDifferences(
       releaseAarPath,
@@ -258,6 +266,8 @@ https://github.com/shorebirdtech/shorebird/issues/472
         buildNumber: buildNumber,
       ),
     );
+
+    aarDiffProgress.complete();
 
     if (contentDiffs.contains(ArchiveDifferences.assets)) {
       logger.info(
