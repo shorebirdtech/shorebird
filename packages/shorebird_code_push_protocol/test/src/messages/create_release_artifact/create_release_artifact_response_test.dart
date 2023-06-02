@@ -9,7 +9,7 @@ void main() {
         platform: 'android',
         hash: '1234',
         size: 9876,
-        url: 'https://example.com',
+        uploadUrl: 'https://example.com',
       );
       expect(
         CreateReleaseArtifactResponse.fromJson(response.toJson()).toJson(),

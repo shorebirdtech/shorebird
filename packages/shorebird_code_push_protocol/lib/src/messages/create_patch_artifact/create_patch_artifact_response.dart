@@ -14,7 +14,7 @@ class CreatePatchArtifactResponse {
     required this.platform,
     required this.hash,
     required this.size,
-    required this.url,
+    required this.uploadUrl,
   });
 
   /// Converts a Map<String, dynamic> to a [CreatePatchArtifactResponse]
@@ -38,7 +38,7 @@ class CreatePatchArtifactResponse {
   final int size;
 
   /// The upload URL for the artifact.
-  final String url;
+  final String uploadUrl;
 
   static int _parseStringToInt(dynamic value) => int.parse(value as String);
 
