@@ -258,7 +258,7 @@ flutter:
         return patchProcessResult;
       });
 
-      when(() => aabDiffer.aabContentDifferences(any(), any())).thenReturn({});
+      when(() => aabDiffer.contentDifferences(any(), any())).thenReturn({});
       when(() => argResults.rest).thenReturn([]);
       when(() => argResults['channel']).thenReturn(channelName);
       when(() => argResults['dry-run']).thenReturn(false);
