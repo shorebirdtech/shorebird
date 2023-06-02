@@ -24,9 +24,7 @@ void main() {
     test('finds differences between two different aars', () {
       expect(
         differ.changedFiles(baseAarPath, changedDartAarPath).toSet(),
-        {
-          'jni/arm64-v8a/libapp.so',
-        },
+        {'jni/arm64-v8a/libapp.so'},
       );
     });
   });
