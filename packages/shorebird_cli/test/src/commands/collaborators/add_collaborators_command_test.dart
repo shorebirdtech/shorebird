@@ -82,13 +82,13 @@ void main() {
     test('returns ExitCode.success when user aborts', () async {
       when(() => logger.confirm(any())).thenReturn(false);
       expect(await command.run(), ExitCode.success.code);
+      verify(() => logger.info('Aborted.')).called(1);
       verifyNever(
-        () => codePushClient.createChannel(
+        () => codePushClient.createCollaborator(
           appId: any(named: 'appId'),
-          channel: any(named: 'channel'),
+          email: any(named: 'email'),
         ),
       );
-      verify(() => logger.info('Aborted.')).called(1);
     });
 
     test(

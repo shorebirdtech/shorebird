@@ -1,55 +1,63 @@
+import 'dart:async';
 import 'dart:io';
 
-import 'package:collection/collection.dart';
+import 'package:archive/archive_io.dart';
 import 'package:crypto/crypto.dart';
 import 'package:http/http.dart' as http;
 import 'package:mason_logger/mason_logger.dart';
 import 'package:path/path.dart' as p;
 import 'package:shorebird_cli/src/archive_analysis/archive_analysis.dart';
 import 'package:shorebird_cli/src/command.dart';
-import 'package:shorebird_cli/src/config/shorebird_yaml.dart';
-import 'package:shorebird_cli/src/formatters/formatters.dart';
+import 'package:shorebird_cli/src/config/config.dart';
+import 'package:shorebird_cli/src/formatters/file_size_formatter.dart';
+import 'package:shorebird_cli/src/shorebird_artifact_mixin.dart';
 import 'package:shorebird_cli/src/shorebird_build_mixin.dart';
 import 'package:shorebird_cli/src/shorebird_code_push_client_mixin.dart';
 import 'package:shorebird_cli/src/shorebird_config_mixin.dart';
 import 'package:shorebird_cli/src/shorebird_create_app_mixin.dart';
 import 'package:shorebird_cli/src/shorebird_environment.dart';
-import 'package:shorebird_cli/src/shorebird_java_mixin.dart';
-import 'package:shorebird_cli/src/shorebird_release_version_mixin.dart';
 import 'package:shorebird_cli/src/shorebird_validation_mixin.dart';
 import 'package:shorebird_code_push_client/shorebird_code_push_client.dart';
 
-/// {@template patch_android_command}
-/// `shorebird patch android`
-/// Publish new patches for a specific Android release to the Shorebird code
-/// push server.
+/// {@template patch_aar_command}
+/// `shorebird patch aar`
+/// Create a patch for an Android archive release.
 /// {@endtemplate}
-class PatchAndroidCommand extends ShorebirdCommand
+class PatchAarCommand extends ShorebirdCommand
     with
         ShorebirdConfigMixin,
         ShorebirdValidationMixin,
         ShorebirdBuildMixin,
         ShorebirdCreateAppMixin,
         ShorebirdCodePushClientMixin,
-        ShorebirdJavaMixin,
-        ShorebirdReleaseVersionMixin {
-  /// {@macro patch_android_command}
-  PatchAndroidCommand({
+        ShorebirdArtifactMixin {
+  /// {@macro patch_aar_command}
+  PatchAarCommand({
     required super.logger,
     super.auth,
     super.buildCodePushClient,
     super.cache,
     super.validators,
     HashFunction? hashFn,
+    UnzipFn? unzipFn,
     http.Client? httpClient,
-    AabDiffer? aabDiffer,
-  })  : _aabDiffer = aabDiffer ?? AabDiffer(),
+    AarDiffer? aarDiffer,
+  })  : _aarDiffer = aarDiffer ?? AarDiffer(),
         _hashFn = hashFn ?? ((m) => sha256.convert(m).toString()),
+        _unzipFn = unzipFn ?? extractFileToDisk,
         _httpClient = httpClient ?? http.Client() {
     argParser
       ..addOption(
+        'build-number',
+        help: 'The build number of the module (e.g. "1.0.0").',
+        defaultsTo: '1.0',
+      )
+      ..addOption(
         'release-version',
-        help: 'The version of the release (e.g. "1.0.0").',
+        help: '''
+The version of the associated release (e.g. "1.0.0"). This should be the version
+of the Android app that is using this module.''',
+        mandatory: true,
       )
       ..addOption(
         'channel',
@@ -59,11 +67,6 @@ class PatchAndroidCommand extends ShorebirdCommand
           'stable': 'The stable channel which is consumed by production apps.'
         },
         defaultsTo: 'stable',
-      )
-      ..addOption(
-        'target',
-        abbr: 't',
-        help: 'The main entrypoint file of the application.',
       )
       ..addOption(
         'flavor',
@@ -84,14 +87,15 @@ class PatchAndroidCommand extends ShorebirdCommand
   }
 
   @override
-  String get description =>
-      'Publish new patches for a specific Android release to Shorebird.';
+  String get name => 'aar';
 
   @override
-  String get name => 'android';
+  String get description =>
+      'Publish new patches for a specific Android archive release to Shorebird';
 
-  final AabDiffer _aabDiffer;
+  final AarDiffer _aarDiffer;
   final HashFunction _hashFn;
+  final UnzipFn _unzipFn;
   final http.Client _httpClient;
 
   @override
@@ -116,11 +120,17 @@ class PatchAndroidCommand extends ShorebirdCommand
 
     await cache.updateAll();
 
+    if (androidPackageName == null) {
+      logger.err('Could not find androidPackage in pubspec.yaml.');
+      return ExitCode.config.code;
+    }
+
     final flavor = results['flavor'] as String?;
-    final target = results['target'] as String?;
+    final buildNumber = results['build-number'] as String;
+    final releaseVersion = results['release-version'] as String;
     final buildProgress = logger.progress('Building patch');
     try {
-      await buildAppBundle(flavor: flavor, target: target);
+      await buildAar(flavor: flavor, buildNumber: buildNumber);
       buildProgress.complete();
     } on ProcessException catch (error) {
       buildProgress.fail('Failed to build: ${error.message}');
@@ -133,45 +143,14 @@ class PatchAndroidCommand extends ShorebirdCommand
       hostedUri: hostedUri,
     );
 
-    // TODO(bryanoltman): use ShorebirdCodePushClientMixin here
-    final List<App> apps;
-    final fetchAppsProgress = logger.progress('Fetching apps');
-    try {
-      apps = (await codePushClient.getApps())
-          .map((a) => App(id: a.appId, displayName: a.displayName))
-          .toList();
-      fetchAppsProgress.complete();
-    } catch (error) {
-      fetchAppsProgress.fail('$error');
-      return ExitCode.software.code;
-    }
-
     final appId = shorebirdYaml.getAppId(flavor: flavor);
-    final app = apps.firstWhereOrNull((a) => a.id == appId);
+    final app = await getApp(appId: appId, flavor: flavor);
     if (app == null) {
       logger.err(
         '''
 Could not find app with id: "$appId".
 Did you forget to run "shorebird init"?''',
       );
-      return ExitCode.software.code;
-    }
-    final bundlePath = flavor != null
-        ? './build/app/outputs/bundle/${flavor}Release/app-$flavor-release.aab'
-        : './build/app/outputs/bundle/release/app-release.aab';
-
-    final releaseVersionArg = results['release-version'] as String?;
-    final String releaseVersion;
-
-    final detectReleaseVersionProgress = logger.progress(
-      'Detecting release version',
-    );
-    try {
-      releaseVersion = releaseVersionArg ??
-          await extractReleaseVersionFromAppBundle(bundlePath);
-      detectReleaseVersionProgress.complete();
-    } catch (error) {
-      detectReleaseVersionProgress.fail('$error');
       return ExitCode.software.code;
     }
 
@@ -185,19 +164,9 @@ Did you forget to run "shorebird init"?''',
     const platform = 'android';
     final channelName = results['channel'] as String;
 
-    // TODO(bryanoltman): use ShorebirdCodePushClientMixin here
-    final List<Release> releases;
-    final fetchReleaseProgress = logger.progress('Fetching release');
-    try {
-      releases = await codePushClient.getReleases(appId: app.id);
-      fetchReleaseProgress.complete();
-    } catch (error) {
-      fetchReleaseProgress.fail('$error');
-      return ExitCode.software.code;
-    }
-
-    final release = releases.firstWhereOrNull(
-      (r) => r.version == releaseVersion,
+    final release = await getRelease(
+      appId: appId,
+      releaseVersion: releaseVersion,
     );
 
     if (release == null) {
@@ -206,7 +175,7 @@ Did you forget to run "shorebird init"?''',
 Release not found: "$releaseVersion"
 
 Patches can only be published for existing releases.
-Please create a release using "shorebird release" and try again.
+Please create a release using "shorebird release aar" and try again.
 ''',
       );
       return ExitCode.software.code;
@@ -237,7 +206,7 @@ Current Flutter Revision: $shorebirdFlutterRevision
         ..info(
           '''
 Either create a new release using:
-  ${lightCyan.wrap('shorebird release')}
+  ${lightCyan.wrap('shorebird release aar')}
 
 Or downgrade your Flutter version and try again using:
   ${lightCyan.wrap('cd ${ShorebirdEnvironment.flutterDirectory.path}')}
@@ -250,100 +219,60 @@ https://github.com/shorebirdtech/shorebird/issues/472
       return ExitCode.software.code;
     }
 
-    final releaseArtifacts = <Arch, ReleaseArtifact>{};
-    final fetchReleaseArtifactProgress = logger.progress(
-      'Fetching release artifacts',
+    final releaseArtifacts = await getReleaseArtifacts(
+      release: release,
+      architectures: architectures,
+      platform: platform,
     );
-    for (final entry in architectures.entries) {
-      try {
-        final releaseArtifact = await codePushClient.getReleaseArtifact(
-          releaseId: release.id,
-          arch: entry.value.arch,
-          platform: platform,
-        );
-        releaseArtifacts[entry.key] = releaseArtifact;
-      } catch (error) {
-        fetchReleaseArtifactProgress.fail('$error');
-        return ExitCode.software.code;
-      }
+    if (releaseArtifacts == null) {
+      return ExitCode.software.code;
     }
 
-    ReleaseArtifact? releaseAabArtifact;
+    final downloadReleaseAarProgress = logger.progress(
+      'Downloading release artifacts',
+    );
+    ReleaseArtifact releaseAarArtifact;
     try {
-      releaseAabArtifact = await codePushClient.getReleaseArtifact(
+      releaseAarArtifact = await codePushClient.getReleaseArtifact(
         releaseId: release.id,
-        arch: 'aab',
+        arch: 'aar',
         platform: 'android',
       );
     } catch (error) {
-      // Do nothing for now, not all releases will have an associated aab
-      // artifact.
-      // TODO(bryanoltman): Treat this as an error once all releases have an aab
+      downloadReleaseAarProgress.fail('$error');
+      return ExitCode.software.code;
     }
 
-    fetchReleaseArtifactProgress.complete();
-
-    final releaseArtifactPaths = <Arch, String>{};
-    final downloadReleaseArtifactProgress = logger.progress(
-      'Downloading release artifacts',
-    );
-    for (final releaseArtifact in releaseArtifacts.entries) {
-      try {
-        final releaseArtifactPath = await downloadReleaseArtifact(
-          Uri.parse(releaseArtifact.value.url),
-          httpClient: _httpClient,
-        );
-        releaseArtifactPaths[releaseArtifact.key] = releaseArtifactPath;
-      } catch (error) {
-        downloadReleaseArtifactProgress.fail('$error');
-        return ExitCode.software.code;
-      }
-    }
-
-    String? releaseAabPath;
+    String releaseAarPath;
     try {
-      if (releaseAabArtifact != null) {
-        releaseAabPath = await downloadReleaseArtifact(
-          Uri.parse(releaseAabArtifact.url),
-          httpClient: _httpClient,
-        );
-      }
+      releaseAarPath = await downloadReleaseArtifact(
+        Uri.parse(releaseAarArtifact.url),
+        httpClient: _httpClient,
+      );
     } catch (error) {
-      downloadReleaseArtifactProgress.fail('$error');
+      downloadReleaseAarProgress.fail('$error');
       return ExitCode.software.code;
     }
 
-    downloadReleaseArtifactProgress.complete();
+    downloadReleaseAarProgress.complete();
 
-    final contentDiffs = releaseAabPath == null
-        ? <ArchiveDifferences>{}
-        : _aabDiffer.contentDifferences(
-            releaseAabPath,
-            bundlePath,
-          );
+    final aarDiffProgress =
+        logger.progress('Checking for aar content differences');
 
-    logger.detail('aab content differences: $contentDiffs');
+    final contentDiffs = _aarDiffer.contentDifferences(
+      releaseAarPath,
+      aarArtifactPath(
+        packageName: androidPackageName!,
+        buildNumber: buildNumber,
+      ),
+    );
 
-    if (contentDiffs.contains(ArchiveDifferences.native)) {
-      logger
-        ..err(
-          '''The Android App Bundle appears to contain Kotlin or Java changes, which cannot be applied via a patch.''',
-        )
-        ..info(
-          yellow.wrap(
-            '''
-Please create a new release or revert those changes to create a patch.
-
-If you believe you're seeing this in error, please reach out to us for support at https://shorebird.dev/support''',
-          ),
-        );
-      return ExitCode.software.code;
-    }
+    aarDiffProgress.complete();
 
     if (contentDiffs.contains(ArchiveDifferences.assets)) {
       logger.info(
         yellow.wrap(
-          '''⚠️ The Android App Bundle contains asset changes, which will not be included in the patch.''',
+          '''⚠️ The Android Archive contains asset changes, which will not be included in the patch.''',
         ),
       );
       final shouldContinue = logger.confirm('Continue anyways?');
@@ -352,43 +281,29 @@ If you believe you're seeing this in error, please reach out to us for support a
       }
     }
 
-    final patchArtifactBundles = <Arch, PatchArtifactBundle>{};
-    final createDiffProgress = logger.progress('Creating artifacts');
-
-    for (final releaseArtifactPath in releaseArtifactPaths.entries) {
-      final archMetadata = architectures[releaseArtifactPath.key]!;
-      final patchArtifactPath = p.join(
-        Directory.current.path,
-        'build',
-        'app',
-        'intermediates',
-        'stripped_native_libs',
-        flavor != null ? '${flavor}Release' : 'release',
-        'out',
-        'lib',
-        archMetadata.path,
-        'libapp.so',
+    final Map<Arch, String> releaseArtifactPaths;
+    try {
+      releaseArtifactPaths = await downloadReleaseArtifacts(
+        releaseArtifacts: releaseArtifacts,
+        httpClient: _httpClient,
       );
-      logger.detail('Creating artifact for $patchArtifactPath');
-      final patchArtifact = File(patchArtifactPath);
-      final hash = _hashFn(await patchArtifact.readAsBytes());
-      try {
-        final diffPath = await createDiff(
-          releaseArtifactPath: releaseArtifactPath.value,
-          patchArtifactPath: patchArtifactPath,
-        );
-        patchArtifactBundles[releaseArtifactPath.key] = PatchArtifactBundle(
-          arch: archMetadata.arch,
-          path: diffPath,
-          hash: hash,
-          size: await File(diffPath).length(),
-        );
-      } catch (error) {
-        createDiffProgress.fail('$error');
-        return ExitCode.software.code;
-      }
+    } catch (_) {
+      return ExitCode.software.code;
     }
-    createDiffProgress.complete();
+
+    final extractedAarDir = await extractAar(
+      packageName: androidPackageName!,
+      buildNumber: buildNumber,
+      unzipFn: _unzipFn,
+    );
+
+    final patchArtifactBundles = await _createPatchArtifacts(
+      releaseArtifactPaths: releaseArtifactPaths,
+      extractedAarDirectory: extractedAarDir,
+    );
+    if (patchArtifactBundles == null) {
+      return ExitCode.software.code;
+    }
 
     final archMetadata = patchArtifactBundles.keys.map((arch) {
       final name = arch.name;
@@ -436,6 +351,7 @@ ${summary.join('\n')}
     final createArtifactProgress = logger.progress('Uploading artifacts');
     for (final artifact in patchArtifactBundles.values) {
       try {
+        logger.detail('Uploading artifact for ${artifact.arch}');
         await codePushClient.createPatchArtifact(
           patchId: patch.id,
           artifactPath: artifact.path,
@@ -450,30 +366,17 @@ ${summary.join('\n')}
     }
     createArtifactProgress.complete();
 
-    // TODO(bryanoltman): use ShorebirdCodePushClientMixin here
     Channel? channel;
-    final fetchChannelsProgress = logger.progress('Fetching channels');
+
     try {
-      final channels = await codePushClient.getChannels(appId: app.id);
-      channel = channels.firstWhereOrNull(
-        (channel) => channel.name == channelName,
-      );
-      fetchChannelsProgress.complete();
+      channel = await getChannel(appId: app.id, name: channelName);
     } catch (error) {
-      fetchChannelsProgress.fail('$error');
       return ExitCode.software.code;
     }
 
     if (channel == null) {
-      final createChannelProgress = logger.progress('Creating channel');
-      try {
-        channel = await codePushClient.createChannel(
-          appId: app.id,
-          channel: channelName,
-        );
-        createChannelProgress.complete();
-      } catch (error) {
-        createChannelProgress.fail('$error');
+      channel = await createChannel(appId: appId, name: channelName);
+      if (channel == null) {
         return ExitCode.software.code;
       }
     }
@@ -494,5 +397,44 @@ ${summary.join('\n')}
 
     logger.success('\n✅ Published Patch!');
     return ExitCode.success.code;
+  }
+
+  Future<Map<Arch, PatchArtifactBundle>?> _createPatchArtifacts({
+    required Map<Arch, String> releaseArtifactPaths,
+    required String extractedAarDirectory,
+  }) async {
+    final patchArtifactBundles = <Arch, PatchArtifactBundle>{};
+
+    final createDiffProgress = logger.progress('Creating artifacts');
+    for (final releaseArtifactPath in releaseArtifactPaths.entries) {
+      final archMetadata = architectures[releaseArtifactPath.key]!;
+      final artifactPath = p.join(
+        extractedAarDirectory,
+        'jni',
+        archMetadata.path,
+        'libapp.so',
+      );
+      logger.detail('Creating artifact for $artifactPath');
+      final patchArtifact = File(artifactPath);
+      final hash = _hashFn(await patchArtifact.readAsBytes());
+      try {
+        final diffPath = await createDiff(
+          releaseArtifactPath: releaseArtifactPath.value,
+          patchArtifactPath: artifactPath,
+        );
+        patchArtifactBundles[releaseArtifactPath.key] = PatchArtifactBundle(
+          arch: archMetadata.arch,
+          path: diffPath,
+          hash: hash,
+          size: await File(diffPath).length(),
+        );
+      } catch (error) {
+        createDiffProgress.fail('$error');
+        return null;
+      }
+    }
+    createDiffProgress.complete();
+
+    return patchArtifactBundles;
   }
 }

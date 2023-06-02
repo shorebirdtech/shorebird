@@ -94,6 +94,7 @@ make smaller updates to your app.
       hostedUri: hostedUri,
     );
 
+    // TODO(bryanoltman): use ShorebirdCodePushClientMixin here
     late final List<App> apps;
     final fetchAppsProgress = logger.progress('Fetching apps');
     try {
@@ -163,6 +164,7 @@ ${summary.join('\n')}
       }
     }
 
+    // TODO(bryanoltman): use ShorebirdCodePushClientMixin here
     late final List<Release> releases;
     final fetchReleasesProgress = logger.progress('Fetching releases');
     try {
