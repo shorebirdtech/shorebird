@@ -153,7 +153,7 @@ mixin ShorebirdCodePushClientMixin on ShorebirdConfigMixin {
     return releaseArtifacts;
   }
 
-  Future<Map<Arch, String>?> downloadReleaseArtifacts({
+  Future<Map<Arch, String>> downloadReleaseArtifacts({
     required Map<Arch, ReleaseArtifact> releaseArtifacts,
     required http.Client httpClient,
   }) async {
@@ -170,7 +170,7 @@ mixin ShorebirdCodePushClientMixin on ShorebirdConfigMixin {
         releaseArtifactPaths[releaseArtifact.key] = releaseArtifactPath;
       } catch (error) {
         downloadReleaseArtifactProgress.fail('$error');
-        return null;
+        rethrow;
       }
     }
 

@@ -281,11 +281,13 @@ https://github.com/shorebirdtech/shorebird/issues/472
       }
     }
 
-    final releaseArtifactPaths = await downloadReleaseArtifacts(
-      releaseArtifacts: releaseArtifacts,
-      httpClient: _httpClient,
-    );
-    if (releaseArtifactPaths == null) {
+    final Map<Arch, String> releaseArtifactPaths;
+    try {
+      releaseArtifactPaths = await downloadReleaseArtifacts(
+        releaseArtifacts: releaseArtifacts,
+        httpClient: _httpClient,
+      );
+    } catch (_) {
       return ExitCode.software.code;
     }
 
