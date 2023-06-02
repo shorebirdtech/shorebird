@@ -15,19 +15,32 @@ CreateReleaseResponse _$CreateReleaseResponseFromJson(
       json,
       ($checkedConvert) {
         final val = CreateReleaseResponse(
-          release: $checkedConvert(
-              'release', (v) => Release.fromJson(v as Map<String, dynamic>)),
+          id: $checkedConvert('id', (v) => v as int),
+          appId: $checkedConvert('app_id', (v) => v as String),
+          version: $checkedConvert('version', (v) => v as String),
+          flutterRevision:
+              $checkedConvert('flutter_revision', (v) => v as String),
+          displayName: $checkedConvert('display_name', (v) => v as String?),
           artifactUploadUrls: $checkedConvert('artifact_upload_urls',
               (v) => ArtifactUploadUrls.fromJson(v as Map<String, dynamic>)),
         );
         return val;
       },
-      fieldKeyMap: const {'artifactUploadUrls': 'artifact_upload_urls'},
+      fieldKeyMap: const {
+        'appId': 'app_id',
+        'flutterRevision': 'flutter_revision',
+        'displayName': 'display_name',
+        'artifactUploadUrls': 'artifact_upload_urls'
+      },
     );
 
 Map<String, dynamic> _$CreateReleaseResponseToJson(
         CreateReleaseResponse instance) =>
     <String, dynamic>{
-      'release': instance.release.toJson(),
+      'id': instance.id,
+      'app_id': instance.appId,
+      'version': instance.version,
+      'flutter_revision': instance.flutterRevision,
+      'display_name': instance.displayName,
       'artifact_upload_urls': instance.artifactUploadUrls.toJson(),
     };
