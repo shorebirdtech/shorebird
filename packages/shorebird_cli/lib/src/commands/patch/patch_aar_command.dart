@@ -18,11 +18,11 @@ import 'package:shorebird_cli/src/shorebird_environment.dart';
 import 'package:shorebird_cli/src/shorebird_validation_mixin.dart';
 import 'package:shorebird_code_push_client/shorebird_code_push_client.dart';
 
-/// {@template patch_android_archive_command}
-/// `shorebird patch android_archive`
+/// {@template patch_aar_command}
+/// `shorebird patch aar`
 /// Create a patch for an Android archive release.
 /// {@endtemplate}
-class PatchAndroidArchiveCommand extends ShorebirdCommand
+class PatchAarCommand extends ShorebirdCommand
     with
         ShorebirdConfigMixin,
         ShorebirdValidationMixin,
@@ -30,8 +30,8 @@ class PatchAndroidArchiveCommand extends ShorebirdCommand
         ShorebirdCreateAppMixin,
         ShorebirdCodePushClientMixin,
         ShorebirdArtifactMixin {
-  /// {@macro patch_android_archive_command}
-  PatchAndroidArchiveCommand({
+  /// {@macro patch_aar_command}
+  PatchAarCommand({
     required super.logger,
     super.auth,
     super.buildCodePushClient,
@@ -84,7 +84,7 @@ of the Android app that is using this module.''',
   }
 
   @override
-  String get name => 'android_archive';
+  String get name => 'aar';
 
   @override
   String get description =>

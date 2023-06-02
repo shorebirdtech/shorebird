@@ -47,7 +47,7 @@ class _MockShorebirdProcess extends Mock implements ShorebirdProcess {}
 class _FakeShorebirdProcess extends Fake implements ShorebirdProcess {}
 
 void main() {
-  group(PatchAndroidArchiveCommand, () {
+  group(PatchAarCommand, () {
     const flutterRevision = '83305b5088e6fe327fb3334a73ff190828d85713';
     const appId = 'test-app-id';
     const buildNumber = '1.0';
@@ -132,7 +132,7 @@ flutter:
     late http.Client httpClient;
     late CodePushClient codePushClient;
     late Cache cache;
-    late PatchAndroidArchiveCommand command;
+    late PatchAarCommand command;
     late Uri? capturedHostedUri;
     late ShorebirdFlutterValidator flutterValidator;
     late ShorebirdProcess shorebirdProcess;
@@ -198,7 +198,7 @@ flutter:
       flutterValidator = _MockShorebirdFlutterValidator();
       cache = _MockCache();
       shorebirdProcess = _MockShorebirdProcess();
-      command = PatchAndroidArchiveCommand(
+      command = PatchAarCommand(
         auth: auth,
         buildCodePushClient: ({
           required http.Client httpClient,

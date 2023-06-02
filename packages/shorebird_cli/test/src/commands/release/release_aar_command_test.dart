@@ -33,7 +33,7 @@ class _MockShorebirdFlutterValidator extends Mock
 class _MockShorebirdProcess extends Mock implements ShorebirdProcess {}
 
 void main() {
-  group(ReleaseAndroidArchiveCommand, () {
+  group(ReleaseAarCommand, () {
     const appDisplayName = 'Test App';
     const appId = 'test-app-id';
     const appMetadata = AppMetadata(appId: appId, displayName: appDisplayName);
@@ -96,7 +96,7 @@ flutter:
     late ShorebirdProcessResult flutterBuildProcessResult;
     late ShorebirdProcessResult flutterRevisionProcessResult;
     late CodePushClient codePushClient;
-    late ReleaseAndroidArchiveCommand command;
+    late ReleaseAarCommand command;
     late Uri? capturedHostedUri;
     late ShorebirdFlutterValidator flutterValidator;
     late ShorebirdProcess shorebirdProcess;
@@ -152,7 +152,7 @@ flutter:
       codePushClient = _MockCodePushClient();
       flutterValidator = _MockShorebirdFlutterValidator();
       shorebirdProcess = _MockShorebirdProcess();
-      command = ReleaseAndroidArchiveCommand(
+      command = ReleaseAarCommand(
         auth: auth,
         buildCodePushClient: ({
           required http.Client httpClient,
