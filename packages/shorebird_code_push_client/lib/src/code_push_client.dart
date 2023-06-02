@@ -116,7 +116,10 @@ class CodePushClient {
       body: File(artifactPath).readAsBytesSync(),
     );
     if (uploadResponse.statusCode != HttpStatus.ok) {
-      throw const CodePushException(message: 'Failed to upload artifact');
+      throw CodePushException(
+        message:
+            '''Failed to upload artifact (${uploadResponse.reasonPhrase} '${uploadResponse.statusCode})''',
+      );
     }
   }
 
@@ -170,7 +173,10 @@ class CodePushClient {
       body: File(artifactPath).readAsBytesSync(),
     );
     if (uploadResponse.statusCode != HttpStatus.ok) {
-      throw const CodePushException(message: 'Failed to upload artifact');
+      throw CodePushException(
+        message:
+            '''Failed to upload artifact (${uploadResponse.reasonPhrase} '${uploadResponse.statusCode})''',
+      );
     }
   }
 

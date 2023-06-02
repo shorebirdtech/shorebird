@@ -285,7 +285,7 @@ void main() {
             isA<CodePushException>().having(
               (e) => e.message,
               'message',
-              'Failed to upload artifact',
+              contains('Failed to upload artifact'),
             ),
           ),
         );
@@ -527,7 +527,7 @@ void main() {
             isA<CodePushException>().having(
               (e) => e.message,
               'message',
-              'Failed to upload artifact',
+              contains('Failed to upload artifact'),
             ),
           ),
         );
