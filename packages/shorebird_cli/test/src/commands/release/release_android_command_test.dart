@@ -245,7 +245,7 @@ flutter:
       ).thenAnswer((_) async => [appMetadata]);
       when(
         () => codePushClient.getReleases(appId: any(named: 'appId')),
-      ).thenAnswer((_) async => [release]);
+      ).thenAnswer((_) async => []);
       when(
         () => codePushClient.createRelease(
           appId: any(named: 'appId'),
@@ -433,9 +433,6 @@ Did you forget to run "shorebird init"?''',
       const error = 'oops';
       when(() => flutterRevisionProcessResult.exitCode).thenReturn(1);
       when(() => flutterRevisionProcessResult.stderr).thenReturn(error);
-      when(
-        () => codePushClient.getReleases(appId: any(named: 'appId')),
-      ).thenAnswer((_) async => []);
       final tempDir = setUpTempDir();
       setUpTempArtifacts(tempDir);
       final exitCode = await IOOverrides.runZoned(
@@ -450,11 +447,24 @@ Did you forget to run "shorebird init"?''',
       ).called(1);
     });
 
-    test('throws error when creating release fails.', () async {
-      const error = 'something went wrong';
+    test('throws error when existing releases exists.', () async {
       when(
         () => codePushClient.getReleases(appId: any(named: 'appId')),
-      ).thenAnswer((_) async => []);
+      ).thenAnswer((_) async => [release]);
+      final tempDir = setUpTempDir();
+      setUpTempArtifacts(tempDir);
+      final exitCode = await IOOverrides.runZoned(
+        command.run,
+        getCurrentDirectory: () => tempDir,
+      );
+      verify(() => logger.err('''
+It looks like you have an existing release for version ${lightCyan.wrap(release.version)}.
+Please bump your version number and try again.''')).called(1);
+      expect(exitCode, ExitCode.software.code);
+    });
+
+    test('throws error when creating release fails.', () async {
+      const error = 'something went wrong';
       when(
         () => codePushClient.createRelease(
           appId: any(named: 'appId'),
@@ -476,9 +486,6 @@ Did you forget to run "shorebird init"?''',
     test('logs message when uploading release artifact that already exists.',
         () async {
       const error = 'something went wrong';
-      when(
-        () => codePushClient.getReleases(appId: any(named: 'appId')),
-      ).thenAnswer((_) async => []);
       when(
         () => codePushClient.createReleaseArtifact(
           artifactPath: any(named: 'artifactPath'),
@@ -507,9 +514,6 @@ Did you forget to run "shorebird init"?''',
     test('logs message when uploading aab that already exists.', () async {
       const error = 'something went wrong';
       when(
-        () => codePushClient.getReleases(appId: any(named: 'appId')),
-      ).thenAnswer((_) async => []);
-      when(
         () => codePushClient.createReleaseArtifact(
           artifactPath: any(named: 'artifactPath', that: endsWith('.aab')),
           releaseId: any(named: 'releaseId'),
@@ -536,9 +540,6 @@ Did you forget to run "shorebird init"?''',
     test('throws error when uploading release artifact fails.', () async {
       const error = 'something went wrong';
       when(
-        () => codePushClient.getReleases(appId: any(named: 'appId')),
-      ).thenAnswer((_) async => []);
-      when(
         () => codePushClient.createReleaseArtifact(
           artifactPath: any(named: 'artifactPath'),
           releaseId: any(named: 'releaseId'),
@@ -562,9 +563,6 @@ Did you forget to run "shorebird init"?''',
 
     test('throws error when uploading aab fails', () async {
       const error = 'something went wrong';
-      when(
-        () => codePushClient.getReleases(appId: any(named: 'appId')),
-      ).thenAnswer((_) async => []);
       when(
         () => codePushClient.createReleaseArtifact(
           artifactPath: any(named: 'artifactPath', that: endsWith('.aab')),

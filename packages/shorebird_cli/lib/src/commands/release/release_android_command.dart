@@ -176,31 +176,39 @@ ${summary.join('\n')}
     }
 
     var release = releases.firstWhereOrNull((r) => r.version == releaseVersion);
-    if (release == null) {
-      final flutterRevisionProgress = logger.progress(
-        'Fetching Flutter revision',
-      );
-      final String shorebirdFlutterRevision;
-      try {
-        shorebirdFlutterRevision = await getShorebirdFlutterRevision();
-        flutterRevisionProgress.complete();
-      } catch (error) {
-        flutterRevisionProgress.fail('$error');
-        return ExitCode.software.code;
-      }
 
-      final createReleaseProgress = logger.progress('Creating release');
-      try {
-        release = await codePushClient.createRelease(
-          appId: app.id,
-          version: releaseVersion,
-          flutterRevision: shorebirdFlutterRevision,
-        );
-        createReleaseProgress.complete();
-      } catch (error) {
-        createReleaseProgress.fail('$error');
-        return ExitCode.software.code;
-      }
+    if (release != null) {
+      logger.err(
+        '''
+It looks like you have an existing release for version ${lightCyan.wrap(releaseVersion)}.
+Please bump your version number and try again.''',
+      );
+      return ExitCode.software.code;
+    }
+
+    final flutterRevisionProgress = logger.progress(
+      'Fetching Flutter revision',
+    );
+    final String shorebirdFlutterRevision;
+    try {
+      shorebirdFlutterRevision = await getShorebirdFlutterRevision();
+      flutterRevisionProgress.complete();
+    } catch (error) {
+      flutterRevisionProgress.fail('$error');
+      return ExitCode.software.code;
+    }
+
+    final createReleaseProgress = logger.progress('Creating release');
+    try {
+      release = await codePushClient.createRelease(
+        appId: app.id,
+        version: releaseVersion,
+        flutterRevision: shorebirdFlutterRevision,
+      );
+      createReleaseProgress.complete();
+    } catch (error) {
+      createReleaseProgress.fail('$error');
+      return ExitCode.software.code;
     }
 
     // TODO(bryanoltman): Consolidate aab and other artifact creation.
