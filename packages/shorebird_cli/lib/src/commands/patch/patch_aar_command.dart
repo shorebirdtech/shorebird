@@ -206,7 +206,7 @@ Current Flutter Revision: $shorebirdFlutterRevision
         ..info(
           '''
 Either create a new release using:
-  ${lightCyan.wrap('shorebird release')}
+  ${lightCyan.wrap('shorebird release aar')}
 
 Or downgrade your Flutter version and try again using:
   ${lightCyan.wrap('cd ${ShorebirdEnvironment.flutterDirectory.path}')}
