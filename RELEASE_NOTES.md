@@ -2,6 +2,23 @@
 
 This section contains past updates we've sent to customers via Discord.
 
+## 0.4.0 (June 2, 2023)
+
+We've just released Shorebird CLI v0.4.0 🎉
+
+✨ The most notable changes are:
+
+- 🧩 Support for Android Archive Add-To-App workflows
+  - `shorebird release aar` and `shorebird patch aar`
+- 🐛 Fix uploads for large apps
+- 🚨 Breaking Change: `shorebird patch` was renamed to `shorebird patch android` as continued preparation to support iOS
+
+📚 Release notes can be found at https://github.com/shorebirdtech/shorebird/releases/tag/v0.4.0
+
+As always, you can upgrade using `shorebird upgrade`
+
+Please let us know if we can help!
+
 ## 0.3.1 (May 30, 2023)
 
 We've just released Shorebird CLI v0.3.1 🎉
