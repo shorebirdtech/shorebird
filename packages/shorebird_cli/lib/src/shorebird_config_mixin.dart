@@ -37,6 +37,14 @@ mixin ShorebirdConfigMixin on ShorebirdCommand {
     return assets.contains('shorebird.yaml');
   }
 
+  /// Returns the Android package name from the pubspec.yaml file of a Flutter
+  /// module.
+  String? get androidPackageName {
+    final pubspec = getPubspecYaml()!;
+    final module = pubspec.flutter?['module'] as Map?;
+    return module?['androidPackage'] as String?;
+  }
+
   File getShorebirdYamlFile() {
     return File(p.join(Directory.current.path, 'shorebird.yaml'));
   }

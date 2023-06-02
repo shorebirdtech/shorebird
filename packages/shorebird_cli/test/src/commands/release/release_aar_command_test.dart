@@ -33,7 +33,7 @@ class _MockShorebirdFlutterValidator extends Mock
 class _MockShorebirdProcess extends Mock implements ShorebirdProcess {}
 
 void main() {
-  group(ReleaseAndroidArchiveCommand, () {
+  group(ReleaseAarCommand, () {
     const appDisplayName = 'Test App';
     const appId = 'test-app-id';
     const appMetadata = AppMetadata(appId: appId, displayName: appDisplayName);
@@ -96,7 +96,7 @@ flutter:
     late ShorebirdProcessResult flutterBuildProcessResult;
     late ShorebirdProcessResult flutterRevisionProcessResult;
     late CodePushClient codePushClient;
-    late ReleaseAndroidArchiveCommand command;
+    late ReleaseAarCommand command;
     late Uri? capturedHostedUri;
     late ShorebirdFlutterValidator flutterValidator;
     late ShorebirdProcess shorebirdProcess;
@@ -152,7 +152,7 @@ flutter:
       codePushClient = _MockCodePushClient();
       flutterValidator = _MockShorebirdFlutterValidator();
       shorebirdProcess = _MockShorebirdProcess();
-      command = ReleaseAndroidArchiveCommand(
+      command = ReleaseAarCommand(
         auth: auth,
         buildCodePushClient: ({
           required http.Client httpClient,
@@ -173,12 +173,14 @@ flutter:
 
       when(() => auth.client).thenReturn(httpClient);
       when(() => argResults['build-number']).thenReturn(buildNumber);
+      when(() => argResults['release-version']).thenReturn(versionName);
       when(() => argResults.rest).thenReturn([]);
       when(() => auth.isAuthenticated).thenReturn(true);
       when(() => logger.confirm(any())).thenReturn(true);
       when(() => logger.progress(any())).thenReturn(progress);
 
-      when(() => flutterBuildProcessResult.exitCode).thenReturn(0);
+      when(() => flutterBuildProcessResult.exitCode)
+          .thenReturn(ExitCode.success.code);
 
       when(
         () => flutterRevisionProcessResult.exitCode,
@@ -452,6 +454,13 @@ Did you forget to run "shorebird init"?''',
       // 1 for each arch, 1 for the aar
       final numArtifactsUploaded = Arch.values.length + 1;
       verify(
+        () => codePushClient.createRelease(
+          appId: appId,
+          version: versionName,
+          flutterRevision: flutterRevision,
+        ),
+      ).called(1);
+      verify(
         () => logger.info(any(that: contains('already exists'))),
       ).called(numArtifactsUploaded);
       verifyNever(() => progress.fail(error));
@@ -485,6 +494,13 @@ Did you forget to run "shorebird init"?''',
           any(that: contains('aar artifact already exists, continuing...')),
         ),
       ).called(1);
+      verify(
+        () => codePushClient.createRelease(
+          appId: appId,
+          version: versionName,
+          flutterRevision: flutterRevision,
+        ),
+      ).called(1);
       verifyNever(() => progress.fail(error));
       expect(exitCode, ExitCode.success.code);
     });
@@ -514,6 +530,13 @@ Did you forget to run "shorebird init"?''',
       verify(
         () => progress
             .fail(any(that: stringContainsInOrder(['libapp.so', error]))),
+      ).called(1);
+      verify(
+        () => codePushClient.createRelease(
+          appId: appId,
+          version: versionName,
+          flutterRevision: flutterRevision,
+        ),
       ).called(1);
       expect(exitCode, ExitCode.software.code);
     });

@@ -54,9 +54,6 @@ class BuildAarCommand extends ShorebirdCommand
       return e.exitCode.code;
     }
 
-    final pubspec = getPubspecYaml()!;
-    final module = pubspec.flutter?['module'] as Map?;
-    final androidPackageName = module?['androidPackage'] as String?;
     if (androidPackageName == null) {
       logger.err('Could not find androidPackage in pubspec.yaml.');
       return ExitCode.config.code;
@@ -79,7 +76,7 @@ class BuildAarCommand extends ShorebirdCommand
       'host',
       'outputs',
       'repo',
-      ...androidPackageName.split('.'),
+      ...androidPackageName!.split('.'),
       'flutter_release',
       buildNumber,
       'flutter_release-$buildNumber.aar',
