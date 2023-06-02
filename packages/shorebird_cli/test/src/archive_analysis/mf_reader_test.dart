@@ -1,7 +1,7 @@
 import 'dart:io';
 
 import 'package:path/path.dart' as p;
-import 'package:shorebird_cli/src/aab/mf_reader.dart';
+import 'package:shorebird_cli/src/archive_analysis/mf_reader.dart';
 import 'package:test/test.dart';
 
 void main() {

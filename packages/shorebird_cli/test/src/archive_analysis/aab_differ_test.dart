@@ -1,5 +1,5 @@
 import 'package:path/path.dart' as p;
-import 'package:shorebird_cli/src/aab/aab.dart';
+import 'package:shorebird_cli/src/archive_analysis/archive_analysis.dart';
 import 'package:test/test.dart';
 
 void main() {
@@ -20,14 +20,14 @@ void main() {
       differ = AabDiffer();
     });
 
-    group('aabFileDifferences', () {
+    group('changedFiles', () {
       test('finds no differences between the same aab', () {
-        expect(differ.aabChangedFiles(baseAabPath, baseAabPath), isEmpty);
+        expect(differ.changedFiles(baseAabPath, baseAabPath), isEmpty);
       });
 
-      test('finds differences between the two different aabs', () {
+      test('finds differences between two different aabs', () {
         expect(
-          differ.aabChangedFiles(baseAabPath, changedDartAabPath).toSet(),
+          differ.changedFiles(baseAabPath, changedDartAabPath).toSet(),
           {
             'BUNDLE-METADATA/com.android.tools.build.libraries/dependencies.pb',
             'base/lib/arm64-v8a/libapp.so',
@@ -38,38 +38,38 @@ void main() {
       });
     });
 
-    group('aabContentDifferences', () {
+    group('contentDifferences', () {
       test('detects no differences between the same aab', () {
-        expect(differ.aabContentDifferences(baseAabPath, baseAabPath), isEmpty);
+        expect(differ.contentDifferences(baseAabPath, baseAabPath), isEmpty);
       });
 
       test('detects asset changes', () {
         expect(
-          differ.aabContentDifferences(baseAabPath, changedAssetAabPath),
-          {AabDifferences.assets},
+          differ.contentDifferences(baseAabPath, changedAssetAabPath),
+          {ArchiveDifferences.assets},
         );
       });
 
       test('detects kotlin changes', () {
         expect(
-          differ.aabContentDifferences(baseAabPath, changedKotlinAabPath),
-          {AabDifferences.native},
+          differ.contentDifferences(baseAabPath, changedKotlinAabPath),
+          {ArchiveDifferences.native},
         );
       });
 
       test('detects dart changes', () {
         expect(
-          differ.aabContentDifferences(baseAabPath, changedDartAabPath),
-          {AabDifferences.dart},
+          differ.contentDifferences(baseAabPath, changedDartAabPath),
+          {ArchiveDifferences.dart},
         );
       });
 
       test('detects dart and asset changes', () {
         expect(
-          differ.aabContentDifferences(baseAabPath, changedDartAndAssetAabPath),
+          differ.contentDifferences(baseAabPath, changedDartAndAssetAabPath),
           {
-            AabDifferences.assets,
-            AabDifferences.dart,
+            ArchiveDifferences.assets,
+            ArchiveDifferences.dart,
           },
         );
       });
