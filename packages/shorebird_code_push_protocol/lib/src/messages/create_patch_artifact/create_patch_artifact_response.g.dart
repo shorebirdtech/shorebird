@@ -15,6 +15,8 @@ CreatePatchArtifactResponse _$CreatePatchArtifactResponseFromJson(
       json,
       ($checkedConvert) {
         final val = CreatePatchArtifactResponse(
+          id: $checkedConvert('id', (v) => v as int),
+          patchId: $checkedConvert('patch_id', (v) => v as int),
           arch: $checkedConvert('arch', (v) => v as String),
           platform: $checkedConvert('platform', (v) => v as String),
           hash: $checkedConvert('hash', (v) => v as String),
@@ -24,12 +26,14 @@ CreatePatchArtifactResponse _$CreatePatchArtifactResponseFromJson(
         );
         return val;
       },
-      fieldKeyMap: const {'uploadUrl': 'upload_url'},
+      fieldKeyMap: const {'patchId': 'patch_id', 'uploadUrl': 'upload_url'},
     );
 
 Map<String, dynamic> _$CreatePatchArtifactResponseToJson(
         CreatePatchArtifactResponse instance) =>
     <String, dynamic>{
+      'id': instance.id,
+      'patch_id': instance.patchId,
       'arch': instance.arch,
       'platform': instance.platform,
       'hash': instance.hash,

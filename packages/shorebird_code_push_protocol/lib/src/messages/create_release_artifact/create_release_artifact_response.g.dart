@@ -15,6 +15,8 @@ CreateReleaseArtifactResponse _$CreateReleaseArtifactResponseFromJson(
       json,
       ($checkedConvert) {
         final val = CreateReleaseArtifactResponse(
+          id: $checkedConvert('id', (v) => v as int),
+          releaseId: $checkedConvert('release_id', (v) => v as int),
           arch: $checkedConvert('arch', (v) => v as String),
           platform: $checkedConvert('platform', (v) => v as String),
           hash: $checkedConvert('hash', (v) => v as String),
@@ -24,12 +26,14 @@ CreateReleaseArtifactResponse _$CreateReleaseArtifactResponseFromJson(
         );
         return val;
       },
-      fieldKeyMap: const {'uploadUrl': 'upload_url'},
+      fieldKeyMap: const {'releaseId': 'release_id', 'uploadUrl': 'upload_url'},
     );
 
 Map<String, dynamic> _$CreateReleaseArtifactResponseToJson(
         CreateReleaseArtifactResponse instance) =>
     <String, dynamic>{
+      'id': instance.id,
+      'release_id': instance.releaseId,
       'arch': instance.arch,
       'platform': instance.platform,
       'hash': instance.hash,

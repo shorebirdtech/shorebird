@@ -5,6 +5,8 @@ void main() {
   group(CreatePatchArtifactResponse, () {
     test('can be (de)serialized', () {
       const request = CreatePatchArtifactResponse(
+        id: 42,
+        patchId: 1,
         arch: 'arm64',
         platform: 'android',
         hash: '1234',

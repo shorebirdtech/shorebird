@@ -5,6 +5,8 @@ void main() {
   group(CreateReleaseArtifactResponse, () {
     test('can be (de)serialized', () {
       const response = CreateReleaseArtifactResponse(
+        id: 42,
+        releaseId: 1,
         arch: 'arm64',
         platform: 'android',
         hash: '1234',

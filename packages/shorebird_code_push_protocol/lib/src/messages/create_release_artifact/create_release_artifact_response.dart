@@ -10,6 +10,8 @@ part 'create_release_artifact_response.g.dart';
 class CreateReleaseArtifactResponse {
   /// {@macro create_release_artifact_response}
   const CreateReleaseArtifactResponse({
+    required this.id,
+    required this.releaseId,
     required this.arch,
     required this.platform,
     required this.hash,
@@ -23,6 +25,12 @@ class CreateReleaseArtifactResponse {
 
   /// Converts a [CreateReleaseArtifactResponse] to a Map<String, dynamic>.
   Json toJson() => _$CreateReleaseArtifactResponseToJson(this);
+
+  /// The ID of the artifact;
+  final int id;
+
+  /// The ID of the release.
+  final int releaseId;
 
   /// The arch of the artifact.
   final String arch;
