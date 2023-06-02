@@ -20,10 +20,11 @@ CreatePatchArtifactResponse _$CreatePatchArtifactResponseFromJson(
           hash: $checkedConvert('hash', (v) => v as String),
           size: $checkedConvert(
               'size', (v) => CreatePatchArtifactResponse._parseStringToInt(v)),
-          url: $checkedConvert('url', (v) => v as String),
+          uploadUrl: $checkedConvert('upload_url', (v) => v as String),
         );
         return val;
       },
+      fieldKeyMap: const {'uploadUrl': 'upload_url'},
     );
 
 Map<String, dynamic> _$CreatePatchArtifactResponseToJson(
@@ -33,5 +34,5 @@ Map<String, dynamic> _$CreatePatchArtifactResponseToJson(
       'platform': instance.platform,
       'hash': instance.hash,
       'size': CreatePatchArtifactResponse._parseIntToString(instance.size),
-      'url': instance.url,
+      'upload_url': instance.uploadUrl,
     };
