@@ -292,7 +292,7 @@ void main() {
         verify(
           () => httpClient.put(
             Uri.parse(uploadUrl),
-            body: any(named: 'body'),
+            body: fixture.readAsBytesSync(),
           ),
         ).called(1);
       });
@@ -534,7 +534,7 @@ void main() {
         verify(
           () => httpClient.put(
             Uri.parse(uploadUrl),
-            body: any(named: 'body'),
+            body: fixture.readAsBytesSync(),
           ),
         ).called(1);
       });

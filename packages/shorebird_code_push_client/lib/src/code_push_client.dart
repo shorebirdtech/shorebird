@@ -113,7 +113,7 @@ class CodePushClient {
 
     final uploadResponse = await _httpClient.put(
       Uri.parse(decoded.uploadUrl),
-      body: File(artifactPath).openRead(),
+      body: File(artifactPath).readAsBytesSync(),
     );
     if (uploadResponse.statusCode != HttpStatus.ok) {
       throw const CodePushException(message: 'Failed to upload artifact');
@@ -148,7 +148,6 @@ class CodePushClient {
       Uri.parse('$_v1/releases/$releaseId/artifacts'),
     );
     final file = await http.MultipartFile.fromPath('file', artifactPath);
-    request.files.add(file);
     request.fields.addAll({
       'arch': arch,
       'platform': platform,
@@ -168,7 +167,7 @@ class CodePushClient {
 
     final uploadResponse = await _httpClient.put(
       Uri.parse(decoded.uploadUrl),
-      body: File(artifactPath).openRead(),
+      body: File(artifactPath).readAsBytesSync(),
     );
     if (uploadResponse.statusCode != HttpStatus.ok) {
       throw const CodePushException(message: 'Failed to upload artifact');
