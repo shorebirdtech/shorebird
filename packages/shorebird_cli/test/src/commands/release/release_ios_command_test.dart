@@ -320,6 +320,21 @@ Did you forget to run "shorebird init"?''',
         verify(() => logger.err(any())).called(1);
       });
 
+      test('throws error if plist does not contain version number', () async {
+        final tempDir =
+            setUpTempDir(includeConfigContent: false, includePlist: false);
+        File(p.join(tempDir.path, 'ios', 'Runner', 'Info.plist'))
+            .createSync(recursive: true);
+
+        final exitCode = await IOOverrides.runZoned(
+          command.run,
+          getCurrentDirectory: () => tempDir,
+        );
+
+        expect(exitCode, ExitCode.software.code);
+        verify(() => logger.err(any())).called(1);
+      });
+
       test(
           '''throws error if plist contains variables and config fails do not contain those variables''',
           () async {

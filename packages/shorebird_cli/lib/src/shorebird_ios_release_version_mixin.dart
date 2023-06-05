@@ -24,6 +24,7 @@ mixin ShorebirdIosReleaseVersionMixin on ShorebirdCommand {
     final configPropertyRegex = RegExp(r'\$\((\w+)\)');
 
     // TODO(bryanoltman): is it safe to assume "Runner" as the target name?
+    // See https://github.com/flutter/flutter/issues/9767
     final plistPath = p.join(
       Directory.current.path,
       'ios',
