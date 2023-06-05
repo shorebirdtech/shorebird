@@ -134,9 +134,6 @@ FLUTTER_BUILD_NUMBER=1
       if (includeConfigContent) {
         generatedConfigFile.writeAsStringSync(generatedXcConfigContent);
         releaseConfigFile.writeAsStringSync(releaseXcConfigContent);
-      } else {
-        // generatedConfigFile.writeAsStringSync('');
-        // releaseConfigFile.writeAsStringSync('');
       }
 
       if (includePlist) {
