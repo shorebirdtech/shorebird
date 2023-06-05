@@ -422,12 +422,6 @@ Did you forget to run "shorebird init"?''',
 
     test('aborts when user opts out', () async {
       when(() => logger.confirm(any())).thenReturn(false);
-      when(
-        () => logger.prompt(
-          'What is the version of this release?',
-          defaultValue: any(named: 'defaultValue'),
-        ),
-      ).thenAnswer((_) => '1.0.0');
       final tempDir = setUpTempDir();
 
       final exitCode = await IOOverrides.runZoned(
