@@ -7,9 +7,7 @@ import 'package:mocktail/mocktail.dart';
 import 'package:path/path.dart' as p;
 import 'package:platform/platform.dart';
 import 'package:shorebird_cli/src/auth/auth.dart';
-import 'package:shorebird_cli/src/cache.dart';
 import 'package:shorebird_cli/src/commands/commands.dart';
-import 'package:shorebird_cli/src/shorebird_build_mixin.dart';
 import 'package:shorebird_cli/src/shorebird_environment.dart';
 import 'package:shorebird_cli/src/shorebird_process.dart';
 import 'package:shorebird_cli/src/validators/validators.dart';
@@ -21,8 +19,6 @@ class _MockArgResults extends Mock implements ArgResults {}
 class _MockHttpClient extends Mock implements http.Client {}
 
 class _MockAuth extends Mock implements Auth {}
-
-class _MockCache extends Mock implements Cache {}
 
 class _MockLogger extends Mock implements Logger {}
 
@@ -57,15 +53,6 @@ void main() {
       flutterRevision: flutterRevision,
       displayName: '1.2.3+1',
     );
-    const releaseArtifact = ReleaseArtifact(
-      id: 0,
-      releaseId: 0,
-      arch: arch,
-      platform: platform,
-      hash: '#',
-      size: 42,
-      url: 'https://example.com',
-    );
 
     const pubspecYamlContent = '''
 name: example
@@ -77,12 +64,44 @@ flutter:
   assets:
     - shorebird.yaml''';
 
+    const releaseXcConfigContent = '#include "Generated.xcconfig"';
+    const generatedXcConfigContent = '''
+// This is a generated file; do not edit or check into version control.
+FLUTTER_TARGET=lib/main.dart
+FLUTTER_BUILD_DIR=build
+FLUTTER_BUILD_NAME=1.2.3
+FLUTTER_BUILD_NUMBER=1
+''';
+    const nonParameterizedInfoPlistContent = '''
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+<plist version="1.0">
+<dict>
+	<key>CFBundleShortVersionString</key>
+	<string>1.0.0</string>
+	<key>CFBundleVersion</key>
+	<string>1.0.0</string>
+</dict>
+</plist>
+''';
+    const parameterizedInfoPlistContent = r'''
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+<plist version="1.0">
+<dict>
+	<key>CFBundleShortVersionString</key>
+	<string>$(FLUTTER_BUILD_NAME)</string>
+	<key>CFBundleVersion</key>
+	<string>$(FLUTTER_BUILD_NUMBER)</string>
+</dict>
+</plist>
+''';
+
     late ArgResults argResults;
     late http.Client httpClient;
     late Directory shorebirdRoot;
     late Platform environmentPlatform;
     late Auth auth;
-    late Cache cache;
     late Progress progress;
     late Logger logger;
     late ShorebirdProcessResult flutterBuildProcessResult;
@@ -93,7 +112,11 @@ flutter:
     late ShorebirdFlutterValidator flutterValidator;
     late ShorebirdProcess shorebirdProcess;
 
-    Directory setUpTempDir() {
+    Directory setUpTempDir({
+      bool useParameterizedInfoPlist = true,
+      bool includeConfigContent = true,
+      bool includePlist = true,
+    }) {
       final tempDir = Directory.systemTemp.createTempSync();
       File(
         p.join(tempDir.path, 'pubspec.yaml'),
@@ -101,32 +124,34 @@ flutter:
       File(
         p.join(tempDir.path, 'shorebird.yaml'),
       ).writeAsStringSync('app_id: $appId');
-      return tempDir;
-    }
 
-    void setUpTempArtifacts(Directory dir, {String? flavor}) {
-      for (final archMetadata
-          in ShorebirdBuildMixin.allAndroidArchitectures.values) {
-        final artifactPath = p.join(
-          dir.path,
-          'build',
-          'app',
-          'intermediates',
-          'stripped_native_libs',
-          flavor != null ? '${flavor}Release' : 'release',
-          'out',
-          'lib',
-          archMetadata.path,
-          'libapp.so',
-        );
-        File(artifactPath).createSync(recursive: true);
+      final releaseConfigFile =
+          File(p.join(tempDir.path, 'ios', 'Flutter', 'Release.xcconfig'))
+            ..createSync(recursive: true);
+      final generatedConfigFile =
+          File(p.join(tempDir.path, 'ios', 'Flutter', 'Generated.xcconfig'))
+            ..createSync(recursive: true);
+      if (includeConfigContent) {
+        generatedConfigFile.writeAsStringSync(generatedXcConfigContent);
+        releaseConfigFile.writeAsStringSync(releaseXcConfigContent);
+      } else {
+        // generatedConfigFile.writeAsStringSync('');
+        // releaseConfigFile.writeAsStringSync('');
       }
 
-      final bundleDirPath = p.join('build', 'app', 'outputs', 'bundle');
-      final bundlePath = flavor != null
-          ? p.join(bundleDirPath, '${flavor}Release', 'app-$flavor-release.aab')
-          : p.join(bundleDirPath, 'release', 'app-release.aab');
-      File(bundlePath).createSync(recursive: true);
+      if (includePlist) {
+        if (useParameterizedInfoPlist) {
+          (File(p.join(tempDir.path, 'ios', 'Runner', 'Info.plist'))
+                ..createSync(recursive: true))
+              .writeAsStringSync(parameterizedInfoPlistContent);
+        } else {
+          (File(p.join(tempDir.path, 'ios', 'Runner', 'Info.plist'))
+                ..createSync(recursive: true))
+              .writeAsStringSync(nonParameterizedInfoPlistContent);
+        }
+      }
+
+      return tempDir;
     }
 
     setUp(() {
@@ -135,7 +160,6 @@ flutter:
       environmentPlatform = _MockPlatform();
       shorebirdRoot = Directory.systemTemp.createTempSync();
       auth = _MockAuth();
-      cache = _MockCache();
       progress = _MockProgress();
       logger = _MockLogger();
       flutterBuildProcessResult = _MockProcessResult();
@@ -152,7 +176,6 @@ flutter:
           capturedHostedUri = hostedUri;
           return codePushClient;
         },
-        cache: cache,
         logger: logger,
         validators: [flutterValidator],
       )
@@ -193,10 +216,6 @@ flutter:
       when(() => argResults['platform']).thenReturn(platform);
       when(() => auth.isAuthenticated).thenReturn(true);
       when(() => auth.client).thenReturn(httpClient);
-      when(() => cache.updateAll()).thenAnswer((_) async => {});
-      when(
-        () => cache.getArtifactDirectory(any()),
-      ).thenReturn(Directory.systemTemp.createTempSync());
       when(() => logger.progress(any())).thenReturn(progress);
       when(() => logger.confirm(any())).thenReturn(true);
       when(
@@ -216,7 +235,7 @@ flutter:
       ).thenAnswer((_) async => [appMetadata]);
       when(
         () => codePushClient.getReleases(appId: any(named: 'appId')),
-      ).thenAnswer((_) async => [release]);
+      ).thenAnswer((_) async => []);
       when(
         () => codePushClient.createRelease(
           appId: any(named: 'appId'),
@@ -224,15 +243,6 @@ flutter:
           flutterRevision: any(named: 'flutterRevision'),
         ),
       ).thenAnswer((_) async => release);
-      when(
-        () => codePushClient.createReleaseArtifact(
-          artifactPath: any(named: 'artifactPath'),
-          releaseId: any(named: 'releaseId'),
-          arch: any(named: 'arch'),
-          platform: any(named: 'platform'),
-          hash: any(named: 'hash'),
-        ),
-      ).thenAnswer((_) async => releaseArtifact);
       when(() => flutterValidator.validate(any())).thenAnswer((_) async => []);
     });
 
@@ -264,29 +274,16 @@ flutter:
       expect(exitCode, equals(ExitCode.noUser.code));
     });
 
-    test('exits with code 70 when building fails', () async {
-      when(() => flutterBuildProcessResult.exitCode).thenReturn(1);
-      when(() => flutterBuildProcessResult.stderr).thenReturn('oops');
-
-      final tempDir = setUpTempDir();
-      final exitCode = await IOOverrides.runZoned(
-        () async => command.run(),
-        getCurrentDirectory: () => tempDir,
-      );
-
-      expect(exitCode, equals(ExitCode.software.code));
-    });
-
     test('throws error when fetching apps fails.', () async {
       const error = 'something went wrong';
       when(() => codePushClient.getApps()).thenThrow(error);
       final tempDir = setUpTempDir();
-      setUpTempArtifacts(tempDir);
 
       final exitCode = await IOOverrides.runZoned(
         command.run,
         getCurrentDirectory: () => tempDir,
       );
+
       verify(() => progress.fail(error)).called(1);
       expect(exitCode, ExitCode.software.code);
     });
@@ -297,11 +294,12 @@ flutter:
       ).thenReturn(appDisplayName);
       when(() => codePushClient.getApps()).thenAnswer((_) async => []);
       final tempDir = setUpTempDir();
-      setUpTempArtifacts(tempDir);
+
       final exitCode = await IOOverrides.runZoned(
         command.run,
         getCurrentDirectory: () => tempDir,
       );
+
       verify(
         () => logger.err(
           '''
@@ -310,6 +308,70 @@ Did you forget to run "shorebird init"?''',
         ),
       ).called(1);
       expect(exitCode, ExitCode.software.code);
+    });
+
+    group('release version', () {
+      test('throws error if plist cannot be found', () async {
+        final tempDir = setUpTempDir(includePlist: false);
+
+        final exitCode = await IOOverrides.runZoned(
+          command.run,
+          getCurrentDirectory: () => tempDir,
+        );
+
+        expect(exitCode, ExitCode.software.code);
+        verify(() => logger.err(any())).called(1);
+      });
+
+      test(
+          '''throws error if plist contains variables and config fails do not contain those variables''',
+          () async {
+        final tempDir = setUpTempDir(includeConfigContent: false);
+
+        final exitCode = await IOOverrides.runZoned(
+          command.run,
+          getCurrentDirectory: () => tempDir,
+        );
+
+        expect(exitCode, ExitCode.software.code);
+        verify(() => logger.err(any())).called(1);
+      });
+
+      test(
+          """looks up variables in config files if plist doesn't contain raw version number""",
+          () async {
+        final tempDir = setUpTempDir(
+          includeConfigContent: false,
+          useParameterizedInfoPlist: false,
+        );
+
+        final exitCode = await IOOverrides.runZoned(
+          command.run,
+          getCurrentDirectory: () => tempDir,
+        );
+
+        expect(exitCode, ExitCode.success.code);
+        verifyNever(() => logger.err(any()));
+        verify(
+          () =>
+              logger.info(any(that: contains('Release Version: 1.0.0+1.0.0'))),
+        ).called(1);
+      });
+
+      test('determines app version from plist and xcconfig files', () async {
+        final tempDir = setUpTempDir();
+
+        final exitCode = await IOOverrides.runZoned(
+          command.run,
+          getCurrentDirectory: () => tempDir,
+        );
+
+        expect(exitCode, ExitCode.success.code);
+        verifyNever(() => logger.err(any()));
+        verify(
+          () => logger.info(any(that: contains('Release Version: 1.2.3+1'))),
+        ).called(1);
+      });
     });
 
     test('prints flutter validation warnings', () async {
@@ -326,11 +388,12 @@ Did you forget to run "shorebird init"?''',
         ],
       );
       final tempDir = setUpTempDir();
-      setUpTempArtifacts(tempDir);
+
       final exitCode = await IOOverrides.runZoned(
         command.run,
         getCurrentDirectory: () => tempDir,
       );
+
       expect(exitCode, ExitCode.success.code);
       expect(capturedHostedUri, isNull);
       verify(
@@ -352,13 +415,160 @@ Did you forget to run "shorebird init"?''',
       );
 
       final tempDir = setUpTempDir();
-      setUpTempArtifacts(tempDir);
       final exitCode = await IOOverrides.runZoned(
         command.run,
         getCurrentDirectory: () => tempDir,
       );
       expect(exitCode, equals(ExitCode.config.code));
       verify(() => logger.err('Aborting due to validation errors.')).called(1);
+    });
+
+    test('aborts when user opts out', () async {
+      when(() => logger.confirm(any())).thenReturn(false);
+      when(
+        () => logger.prompt(
+          'What is the version of this release?',
+          defaultValue: any(named: 'defaultValue'),
+        ),
+      ).thenAnswer((_) => '1.0.0');
+      final tempDir = setUpTempDir();
+
+      final exitCode = await IOOverrides.runZoned(
+        command.run,
+        getCurrentDirectory: () => tempDir,
+      );
+
+      expect(exitCode, ExitCode.success.code);
+      verify(() => logger.info('Aborting.')).called(1);
+    });
+
+    test('throws error when fetching releases fails.', () async {
+      const error = 'something went wrong';
+      when(
+        () => codePushClient.getReleases(appId: any(named: 'appId')),
+      ).thenThrow(error);
+      final tempDir = setUpTempDir();
+
+      final exitCode = await IOOverrides.runZoned(
+        command.run,
+        getCurrentDirectory: () => tempDir,
+      );
+      verify(() => progress.fail(error)).called(1);
+      expect(exitCode, ExitCode.software.code);
+    });
+
+    test('throws error when unable to detect flutter revision', () async {
+      const error = 'oops';
+      when(() => flutterRevisionProcessResult.exitCode).thenReturn(1);
+      when(() => flutterRevisionProcessResult.stderr).thenReturn(error);
+      final tempDir = setUpTempDir();
+
+      final exitCode = await IOOverrides.runZoned(
+        command.run,
+        getCurrentDirectory: () => tempDir,
+      );
+      expect(exitCode, ExitCode.software.code);
+      verify(
+        () => progress.fail(
+          'Exception: Unable to determine flutter revision: $error',
+        ),
+      ).called(1);
+    });
+
+    test('throws error when existing releases exists.', () async {
+      when(
+        () => codePushClient.getReleases(appId: any(named: 'appId')),
+      ).thenAnswer((_) async => [release]);
+      final tempDir = setUpTempDir();
+
+      final exitCode = await IOOverrides.runZoned(
+        command.run,
+        getCurrentDirectory: () => tempDir,
+      );
+
+      verify(() => logger.err('''
+It looks like you have an existing release for version ${lightCyan.wrap(release.version)}.
+Please bump your version number and try again.''')).called(1);
+      expect(exitCode, ExitCode.software.code);
+    });
+
+    test('throws error when creating release fails.', () async {
+      const error = 'something went wrong';
+      when(
+        () => codePushClient.createRelease(
+          appId: any(named: 'appId'),
+          version: any(named: 'version'),
+          flutterRevision: any(named: 'flutterRevision'),
+          displayName: any(named: 'displayName'),
+        ),
+      ).thenThrow(error);
+      final tempDir = setUpTempDir();
+
+      final exitCode = await IOOverrides.runZoned(
+        command.run,
+        getCurrentDirectory: () => tempDir,
+      );
+
+      verify(() => progress.fail(error)).called(1);
+      expect(exitCode, ExitCode.software.code);
+    });
+
+    test(
+        'does not prompt for confirmation '
+        'when --release-version and --force are used', () async {
+      when(() => argResults['force']).thenReturn(true);
+      when(() => argResults['release-version']).thenReturn(version);
+      final tempDir = setUpTempDir();
+
+      final exitCode = await IOOverrides.runZoned(
+        command.run,
+        getCurrentDirectory: () => tempDir,
+      );
+
+      verify(() => logger.success('\n✅ Published Release!')).called(1);
+      expect(exitCode, ExitCode.success.code);
+      expect(capturedHostedUri, isNull);
+      verifyNever(
+        () => logger.prompt(any(), defaultValue: any(named: 'defaultValue')),
+      );
+    });
+
+    test('succeeds when release is successful', () async {
+      final tempDir = setUpTempDir();
+
+      final exitCode = await IOOverrides.runZoned(
+        command.run,
+        getCurrentDirectory: () => tempDir,
+      );
+
+      verify(() => logger.success('\n✅ Published Release!')).called(1);
+      expect(exitCode, ExitCode.success.code);
+      expect(capturedHostedUri, isNull);
+    });
+
+    test(
+        'succeeds when release is successful '
+        'with flavors and target', () async {
+      const flavor = 'development';
+      final target = p.join('lib', 'main_development.dart');
+      when(() => argResults['flavor']).thenReturn(flavor);
+      when(() => argResults['target']).thenReturn(target);
+      final tempDir = setUpTempDir();
+      File(
+        p.join(tempDir.path, 'shorebird.yaml'),
+      ).writeAsStringSync('''
+app_id: productionAppId
+flavors:
+  development: $appId''');
+
+      final exitCode = await IOOverrides.runZoned(
+        command.run,
+        getCurrentDirectory: () => tempDir,
+      );
+
+      verify(() => logger.success('\n✅ Published Release!')).called(1);
+      expect(exitCode, ExitCode.success.code);
+      expect(capturedHostedUri, isNull);
     });
   });
 }
