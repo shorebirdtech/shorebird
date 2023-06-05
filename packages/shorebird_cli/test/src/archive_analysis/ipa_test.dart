@@ -9,7 +9,7 @@ void main() {
   group(Ipa, () {
     test('reads app version from ipa', () {
       final ipa = Ipa(path: baseIpaBath);
-      expect(ipa.versionNumber, '1.0.0');
+      expect(ipa.versionNumber, '1.0.0+1');
     });
   });
 }

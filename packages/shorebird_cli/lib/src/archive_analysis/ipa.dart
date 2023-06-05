@@ -19,12 +19,19 @@ class Ipa {
   /// See https://developer.apple.com/documentation/bundleresources/information_property_list/cfbundleshortversionstring
   static const releaseVersionKey = 'CFBundleShortVersionString';
 
+  /// The version of the build that identifies an iteration of the bundle.
+  ///
+  /// See https://developer.apple.com/documentation/bundleresources/information_property_list/cfbundleversion
+  static const buildNumberKey = 'CFBundleVersion';
+
   final File _ipaFile;
 
   /// The version number of the IPA, as derived from the app's Info.plist.
   String get versionNumber {
     final plist = _getPlist();
-    return plist[releaseVersionKey] as String;
+    final releaseVersion = plist[releaseVersionKey] as String;
+    final buildNumber = plist[buildNumberKey] as String;
+    return '$releaseVersion+$buildNumber';
   }
 
   Map<dynamic, dynamic> _getPlist() {
