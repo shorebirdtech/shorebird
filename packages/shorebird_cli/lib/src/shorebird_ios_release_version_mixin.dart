@@ -4,6 +4,7 @@ import 'package:path/path.dart' as p;
 import 'package:propertylistserialization/propertylistserialization.dart';
 import 'package:shorebird_cli/src/command.dart';
 
+/// Helpers to determine the release and build number of an iOS app.
 mixin ShorebirdIosReleaseVersionMixin on ShorebirdCommand {
   /// This key is a user-visible string for the version of the bundle. The
   /// required format is three period-separated integers, such as 10.14.1. The
@@ -17,8 +18,11 @@ mixin ShorebirdIosReleaseVersionMixin on ShorebirdCommand {
   /// See https://developer.apple.com/documentation/bundleresources/information_property_list/cfbundleversion
   static const buildNumberKey = 'CFBundleVersion';
 
+  /// Checks the iOS Info.plist and referenced .xcconfig files to determine the
+  /// app's release version and build number.
   Future<String> determineIosReleaseVersion() async {
     final configPropertyRegex = RegExp(r'\$\((\w+)\)');
+
     // TODO(bryanoltman): is it safe to assume "Runner" as the target name?
     final plistPath = p.join(
       Directory.current.path,
@@ -61,6 +65,10 @@ mixin ShorebirdIosReleaseVersionMixin on ShorebirdCommand {
     return [releaseVersion, buildNumber].whereType<String>().join('+');
   }
 
+  /// Accepts a path to an .xcconfig file and returns a map of the variables
+  /// it defines. If the file contains an `#include` directive, the included
+  /// file will be recursively parsed and its variables will be included in the
+  /// map.
   Map<String, String> _configVariables({required String path}) {
     final properties = <String, String>{};
     final includeRegex = RegExp(r'^#include "(.+)"$');
