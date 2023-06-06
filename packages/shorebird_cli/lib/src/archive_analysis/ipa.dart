@@ -43,11 +43,10 @@ class Ipa {
     if (releaseVersion == null) {
       throw Exception('Could not determine release version');
     }
-    if (buildNumber != null) {
-      return '$releaseVersion+$buildNumber';
-    } else {
-      return releaseVersion;
-    }
+
+    return buildNumber == null
+        ? releaseVersion
+        : '$releaseVersion+$buildNumber';
   }
 
   Map<String, Object> _getPlist() {
