@@ -111,6 +111,16 @@ flutter:
     }
 
     void setUpTempArtifacts(Directory dir) {
+      // Create a second app.dill for coverage of newestAppDill file.
+      File(
+        p.join(
+          dir.path,
+          '.dart_tool',
+          'flutter_build',
+          'subdir',
+          'app.dill',
+        ),
+      ).createSync(recursive: true);
       File(
         p.join(dir.path, '.dart_tool', 'flutter_build', 'app.dill'),
       ).createSync(recursive: true);

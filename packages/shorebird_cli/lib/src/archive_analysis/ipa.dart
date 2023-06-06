@@ -52,14 +52,17 @@ class Ipa {
 
   Map<String, Object> _getPlist() {
     final plistPathRegex = RegExp(r'Payload/[\w]+.app/Info.plist');
-    final content = ZipDecoder()
+    final plistFile = ZipDecoder()
         .decodeBuffer(InputFileStream(_ipaFile.path))
         .files
         .where((file) {
-          return file.isFile && plistPathRegex.hasMatch(file.name);
-        })
-        .first
-        .content as Uint8List;
+      return file.isFile && plistPathRegex.hasMatch(file.name);
+    }).firstOrNull;
+    if (plistFile == null) {
+      return {};
+    }
+
+    final content = plistFile.content as Uint8List;
 
     return PropertyListSerialization.propertyListWithData(
       ByteData.view(content.buffer),
