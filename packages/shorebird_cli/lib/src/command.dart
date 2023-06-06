@@ -2,12 +2,17 @@ import 'dart:io';
 
 import 'package:args/args.dart';
 import 'package:args/command_runner.dart';
+import 'package:checked_yaml/checked_yaml.dart';
 import 'package:http/http.dart' as http;
 import 'package:mason_logger/mason_logger.dart';
 import 'package:meta/meta.dart';
+import 'package:path/path.dart' as p;
+import 'package:pubspec_parse/pubspec_parse.dart';
 import 'package:shorebird_cli/src/auth/auth.dart';
 import 'package:shorebird_cli/src/cache.dart';
+import 'package:shorebird_cli/src/code_push_client_wrapper.dart';
 import 'package:shorebird_cli/src/command_runner.dart';
+import 'package:shorebird_cli/src/config/config.dart';
 import 'package:shorebird_cli/src/shorebird_process.dart';
 import 'package:shorebird_cli/src/validators/validators.dart';
 import 'package:shorebird_code_push_client/shorebird_code_push_client.dart';
@@ -39,17 +44,27 @@ abstract class ShorebirdCommand extends Command<int> {
     Auth? auth,
     Cache? cache,
     CodePushClientBuilder? buildCodePushClient,
+    CodePushClientWrapper? codePushClientWrapper,
     List<Validator>? validators, // For mocking.
   })  : cache = cache ?? Cache(),
         buildCodePushClient = buildCodePushClient ?? CodePushClient.new,
         validators = validators ?? _defaultValidators() {
     this.auth = auth ?? Auth(logger: logger);
+    this.codePushClientWrapper = codePushClientWrapper ??
+        CodePushClientWrapper(
+          codePushClient: CodePushClient(
+            httpClient: this.auth.client,
+            hostedUri: hostedUri,
+          ),
+          logger: logger,
+        );
   }
 
   late final Auth auth;
   final Cache cache;
   final CodePushClientBuilder buildCodePushClient;
   final Logger logger;
+  late final CodePushClientWrapper codePushClientWrapper;
 
   // We don't currently have a test involving both a CommandRunner
   // and a Command, so we can't test this getter.
@@ -86,4 +101,32 @@ abstract class ShorebirdCommand extends Command<int> {
 
   /// [ArgResults] for the current command.
   ArgResults get results => testArgResults ?? argResults!;
+
+  File getShorebirdYamlFile() {
+    return File(p.join(Directory.current.path, 'shorebird.yaml'));
+  }
+
+  ShorebirdYaml? getShorebirdYaml() {
+    final file = getShorebirdYamlFile();
+    if (!file.existsSync()) return null;
+    final yaml = file.readAsStringSync();
+    return checkedYamlDecode(yaml, (m) => ShorebirdYaml.fromJson(m!));
+  }
+
+  Pubspec? getPubspecYaml() {
+    final file = File(p.join(Directory.current.path, 'pubspec.yaml'));
+    if (!file.existsSync()) return null;
+    final yaml = file.readAsStringSync();
+    return Pubspec.parse(yaml);
+  }
+
+  Uri? get hostedUri {
+    // TODO: maybe look for an environment variable instead of reading shorebird.yaml?
+    try {
+      final baseUrl = getShorebirdYaml()?.baseUrl;
+      return baseUrl == null ? null : Uri.tryParse(baseUrl);
+    } catch (_) {
+      return null;
+    }
+  }
 }
