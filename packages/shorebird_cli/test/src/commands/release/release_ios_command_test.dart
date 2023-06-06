@@ -40,15 +40,6 @@ class _MockShorebirdFlutterValidator extends Mock
 
 class _MockShorebirdProcess extends Mock implements ShorebirdProcess {}
 
-enum PlistType {
-  // Defines version number as a raw string ("1.0.0")
-  nonParameterized,
-  // Defines version number as a variable ("$(FLUTTER_BUILD_NAME)")
-  parameterized,
-  // An empty plist
-  empty,
-}
-
 void main() {
   group(ReleaseIosCommand, () {
     const appId = 'test-app-id';
@@ -78,47 +69,6 @@ flutter:
   assets:
     - shorebird.yaml''';
 
-    const releaseXcConfigContent = '#include "Generated.xcconfig"';
-    const generatedXcConfigContent = '''
-// This is a generated file; do not edit or check into version control.
-FLUTTER_TARGET=lib/main.dart
-FLUTTER_BUILD_DIR=build
-FLUTTER_BUILD_NAME=1.2.3
-FLUTTER_BUILD_NUMBER=1
-''';
-    const nonParameterizedInfoPlistContent = '''
-<?xml version="1.0" encoding="UTF-8"?>
-<!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
-<plist version="1.0">
-<dict>
-	<key>CFBundleShortVersionString</key>
-	<string>1.0.0</string>
-	<key>CFBundleVersion</key>
-	<string>1.0.0</string>
-</dict>
-</plist>
-''';
-    const parameterizedInfoPlistContent = r'''
-<?xml version="1.0" encoding="UTF-8"?>
-<!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
-<plist version="1.0">
-<dict>
-	<key>CFBundleShortVersionString</key>
-	<string>$(FLUTTER_BUILD_NAME)</string>
-	<key>CFBundleVersion</key>
-	<string>$(FLUTTER_BUILD_NUMBER)</string>
-</dict>
-</plist>
-''';
-    const emptyPlistContent = '''
-<?xml version="1.0" encoding="UTF-8"?>
-<!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
-<plist version="1.0">
-<dict>
-</dict>
-</plist>
-''';
-
     late ArgResults argResults;
     late http.Client httpClient;
     late Directory shorebirdRoot;
@@ -136,11 +86,7 @@ FLUTTER_BUILD_NUMBER=1
     late ShorebirdFlutterValidator flutterValidator;
     late ShorebirdProcess shorebirdProcess;
 
-    Directory setUpTempDir({
-      PlistType plistType = PlistType.parameterized,
-      bool includeConfigContent = true,
-      bool includePlist = true,
-    }) {
+    Directory setUpTempDir() {
       final tempDir = Directory.systemTemp.createTempSync();
       File(
         p.join(tempDir.path, 'pubspec.yaml'),
