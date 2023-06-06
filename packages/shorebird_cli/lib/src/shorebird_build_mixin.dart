@@ -214,6 +214,9 @@ mixin ShorebirdBuildMixin on ShorebirdCommand {
     return diffPath;
   }
 
+  /// Creates an AOT snapshot of the given [appDillPath] and returns the
+  /// resulting snapshot file.
+  // TODO(bryanoltman): make this work with the --local-engine flag.
   Future<File> buildElfAotSnapshot({required String appDillPath}) async {
     final outFilePath = p.join(Directory.current.path, 'out.aot');
     final arguments = [

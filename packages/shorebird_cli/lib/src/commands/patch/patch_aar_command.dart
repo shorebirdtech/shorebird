@@ -378,7 +378,6 @@ ${summary.join('\n')}
     createArtifactProgress.complete();
 
     Channel? channel;
-
     try {
       channel = await getChannel(appId: app.id, name: channelName);
     } catch (error) {
@@ -386,8 +385,9 @@ ${summary.join('\n')}
     }
 
     if (channel == null) {
-      channel = await createChannel(appId: appId, name: channelName);
-      if (channel == null) {
+      try {
+        channel = await createChannel(appId: appId, name: channelName);
+      } catch (_) {
         return ExitCode.software.code;
       }
     }

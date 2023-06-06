@@ -159,7 +159,9 @@ Did you forget to run "shorebird init"?''',
       releaseVersion = ipa.versionNumber;
       detectReleaseVersionProgress.complete();
     } catch (error) {
-      detectReleaseVersionProgress.fail('$error');
+      detectReleaseVersionProgress.fail(
+        'Failed to determine release version: $error',
+      );
       return ExitCode.software.code;
     }
 
@@ -295,9 +297,6 @@ ${summary.join('\n')}
     if (channel == null) {
       try {
         channel = await createChannel(appId: appId, name: channelName);
-        if (channel == null) {
-          return ExitCode.software.code;
-        }
       } catch (_) {
         return ExitCode.software.code;
       }

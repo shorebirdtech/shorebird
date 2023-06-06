@@ -57,6 +57,9 @@ mixin ShorebirdArtifactMixin on ShorebirdCommand {
     return extractedAarDir;
   }
 
+  /// Finds the most recently-edited app.dill file in the .dart_tool directory.
+  // TODO(bryanoltman): This is an enormous hack – we don't know that this is
+  // the correct file.
   File newestAppDill() {
     final dartToolBuildDir = Directory(
       p.join(

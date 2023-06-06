@@ -111,8 +111,9 @@ flutter:
     }
 
     void setUpTempArtifacts(Directory dir) {
-      File(p.join(dir.path, '.dart_tool', 'flutter_build', 'app.dill'))
-          .createSync(recursive: true);
+      File(
+        p.join(dir.path, '.dart_tool', 'flutter_build', 'app.dill'),
+      ).createSync(recursive: true);
       File(p.join(dir.path, 'out.aot')).createSync();
     }
 
@@ -409,6 +410,24 @@ Please create a release using "shorebird release" and try again.
         ),
       ).called(1);
       expect(exitCode, ExitCode.software.code);
+    });
+
+    test('exits with code 70 when release version cannot be determiend',
+        () async {
+      when(() => ipa.versionNumber).thenThrow(Exception('oops'));
+
+      final tempDir = setUpTempDir();
+      setUpTempArtifacts(tempDir);
+      final exitCode = await IOOverrides.runZoned(
+        () async => command.run(),
+        getCurrentDirectory: () => tempDir,
+      );
+
+      expect(exitCode, equals(ExitCode.software.code));
+      verify(
+        () => progress
+            .fail(any(that: contains('Failed to determine release version'))),
+      ).called(1);
     });
 
     test('throws error when creating aot snapshot fails', () async {

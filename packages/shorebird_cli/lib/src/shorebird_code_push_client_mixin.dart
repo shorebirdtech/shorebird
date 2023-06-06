@@ -73,7 +73,7 @@ mixin ShorebirdCodePushClientMixin on ShorebirdConfigMixin {
     }
   }
 
-  Future<Channel?> createChannel({
+  Future<Channel> createChannel({
     required String appId,
     required String name,
   }) async {
@@ -92,7 +92,7 @@ mixin ShorebirdCodePushClientMixin on ShorebirdConfigMixin {
       return channel;
     } catch (error) {
       createChannelProgress.fail('$error');
-      return null;
+      rethrow;
     }
   }
 
