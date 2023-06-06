@@ -294,7 +294,7 @@ Did you forget to run "shorebird init"?''',
 
     group('release version', () {
       test('throws error if plist cannot be found', () async {
-        final tempDir = setUpTempDir(includePlist: false);
+        final tempDir = setUpTempDir();
 
         final exitCode = await IOOverrides.runZoned(
           command.run,
@@ -306,10 +306,7 @@ Did you forget to run "shorebird init"?''',
       });
 
       test('throws error if plist does not contain version number', () async {
-        final tempDir = setUpTempDir(
-          includeConfigContent: false,
-          plistType: PlistType.empty,
-        );
+        final tempDir = setUpTempDir();
         File(p.join(tempDir.path, 'ios', 'Runner', 'Info.plist'))
             .createSync(recursive: true);
 
@@ -325,7 +322,7 @@ Did you forget to run "shorebird init"?''',
       test(
           '''throws error if plist contains variables and config fails do not contain those variables''',
           () async {
-        final tempDir = setUpTempDir(includeConfigContent: false);
+        final tempDir = setUpTempDir();
 
         final exitCode = await IOOverrides.runZoned(
           command.run,
@@ -339,10 +336,7 @@ Did you forget to run "shorebird init"?''',
       test(
           """looks up variables in config files if plist doesn't contain raw version number""",
           () async {
-        final tempDir = setUpTempDir(
-          includeConfigContent: false,
-          plistType: PlistType.nonParameterized,
-        );
+        final tempDir = setUpTempDir();
 
         final exitCode = await IOOverrides.runZoned(
           command.run,
