@@ -165,7 +165,6 @@ flutter:
         ..testEngineConfig = const EngineConfig.empty();
 
       when(() => argResults['arch']).thenReturn(arch);
-      when(() => argResults['channel']).thenReturn(channelName);
       when(() => argResults['dry-run']).thenReturn(false);
       when(() => argResults['force']).thenReturn(false);
       when(() => argResults.rest).thenReturn([]);

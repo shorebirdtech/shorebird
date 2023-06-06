@@ -38,15 +38,6 @@ class PatchIosCommand extends ShorebirdCommand
         _ipaReader = ipaReader ?? IpaReader() {
     argParser
       ..addOption(
-        'channel',
-        help: 'The channel the patch should be promoted to (e.g. "stable").',
-        allowed: ['stable'],
-        allowedHelp: {
-          'stable': 'The stable channel which is consumed by production apps.'
-        },
-        defaultsTo: 'stable',
-      )
-      ..addOption(
         'target',
         abbr: 't',
         help: 'The main entrypoint file of the application.',
@@ -91,12 +82,12 @@ class PatchIosCommand extends ShorebirdCommand
       return error.exitCode.code;
     }
 
+    const channelName = 'stable';
     const platform = 'ios';
     final force = results['force'] == true;
     final dryRun = results['dry-run'] == true;
     final flavor = results['flavor'] as String?;
     final target = results['target'] as String?;
-    final channelName = results['channel'] as String;
 
     if (force && dryRun) {
       logger.err('Cannot use both --force and --dry-run.');
