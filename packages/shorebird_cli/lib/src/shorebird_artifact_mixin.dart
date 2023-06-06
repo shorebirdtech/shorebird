@@ -56,4 +56,23 @@ mixin ShorebirdArtifactMixin on ShorebirdCommand {
     await unzipFn(zipPath, extractedAarDir);
     return extractedAarDir;
   }
+
+  File newestAppDill() {
+    final dartToolBuildDir = Directory(
+      p.join(
+        Directory.current.path,
+        '.dart_tool',
+        'flutter_build',
+      ),
+    );
+
+    return dartToolBuildDir
+        .listSync(recursive: true)
+        .whereType<File>()
+        .where((f) => p.basename(f.path) == 'app.dill')
+        .reduce(
+          (a, b) =>
+              a.statSync().modified.isAfter(b.statSync().modified) ? a : b,
+        );
+  }
 }

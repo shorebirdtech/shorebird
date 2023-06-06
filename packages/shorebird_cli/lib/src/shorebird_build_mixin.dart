@@ -2,7 +2,9 @@ import 'dart:io';
 
 import 'package:collection/collection.dart';
 import 'package:mason_logger/mason_logger.dart';
+import 'package:path/path.dart' as p;
 import 'package:shorebird_cli/src/command.dart';
+import 'package:shorebird_cli/src/shorebird_environment.dart';
 
 enum Arch {
   arm64,
@@ -181,5 +183,55 @@ mixin ShorebirdBuildMixin on ShorebirdCommand {
         result.exitCode,
       );
     }
+  }
+
+  Future<String> createDiff({
+    required String releaseArtifactPath,
+    required String patchArtifactPath,
+  }) async {
+    final tempDir = await Directory.systemTemp.createTemp();
+    final diffPath = p.join(tempDir.path, 'diff.patch');
+    final diffExecutable = p.join(
+      cache.getArtifactDirectory('patch').path,
+      'patch',
+    );
+    final diffArguments = [
+      releaseArtifactPath,
+      patchArtifactPath,
+      diffPath,
+    ];
+
+    final result = await process.run(
+      diffExecutable,
+      diffArguments,
+      runInShell: true,
+    );
+
+    if (result.exitCode != 0) {
+      throw Exception('Failed to create diff: ${result.stderr}');
+    }
+
+    return diffPath;
+  }
+
+  Future<File> buildAotSnapshot({required String appDillPath}) async {
+    final outFilePath = p.join(Directory.current.path, 'out.aot');
+    final arguments = [
+      '--deterministic',
+      '--snapshot-kind=app-aot-elf',
+      '--elf=$outFilePath',
+      appDillPath
+    ];
+
+    final result = await process.run(
+      ShorebirdEnvironment.genSnapshotFile.path,
+      arguments,
+    );
+
+    if (result.exitCode != ExitCode.success.code) {
+      throw Exception('Failed to create snapshot: ${result.stderr}');
+    }
+
+    return File(outFilePath);
   }
 }
