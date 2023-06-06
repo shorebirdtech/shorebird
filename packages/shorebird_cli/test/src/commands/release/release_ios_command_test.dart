@@ -40,15 +40,6 @@ class _MockShorebirdFlutterValidator extends Mock
 
 class _MockShorebirdProcess extends Mock implements ShorebirdProcess {}
 
-enum PlistType {
-  // Defines version number as a raw string ("1.0.0")
-  nonParameterized,
-  // Defines version number as a variable ("$(FLUTTER_BUILD_NAME)")
-  parameterized,
-  // An empty plist
-  empty,
-}
-
 void main() {
   group(ReleaseIosCommand, () {
     const appId = 'test-app-id';
@@ -268,6 +259,39 @@ Did you forget to run "shorebird init"?''',
       expect(exitCode, ExitCode.software.code);
     });
 
+    test('exits with code 70 when building fails', () async {
+      when(() => flutterBuildProcessResult.exitCode).thenReturn(1);
+      when(() => flutterBuildProcessResult.stderr).thenReturn('oops');
+
+      final tempDir = setUpTempDir();
+      final exitCode = await IOOverrides.runZoned(
+        () async => command.run(),
+        getCurrentDirectory: () => tempDir,
+      );
+
+      expect(exitCode, equals(ExitCode.software.code));
+      verify(
+        () => progress.fail(any(that: contains('Failed to build'))),
+      ).called(1);
+    });
+
+    test('exits with code 70 when release version cannot be determiend',
+        () async {
+      when(() => ipa.versionNumber).thenThrow(Exception('oops'));
+
+      final tempDir = setUpTempDir();
+      final exitCode = await IOOverrides.runZoned(
+        () async => command.run(),
+        getCurrentDirectory: () => tempDir,
+      );
+
+      expect(exitCode, equals(ExitCode.software.code));
+      verify(
+        () => progress
+            .fail(any(that: contains('Failed to determine release version'))),
+      ).called(1);
+    });
+
     test('prints flutter validation warnings', () async {
       when(() => flutterValidator.validate(any())).thenAnswer(
         (_) async => [
@@ -374,9 +398,11 @@ Did you forget to run "shorebird init"?''',
         getCurrentDirectory: () => tempDir,
       );
 
-      verify(() => logger.err('''
+      verify(
+        () => logger.err('''
 It looks like you have an existing release for version ${lightCyan.wrap(release.version)}.
-Please bump your version number and try again.''')).called(1);
+Please bump your version number and try again.'''),
+      ).called(1);
       expect(exitCode, ExitCode.software.code);
     });
 

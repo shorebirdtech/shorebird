@@ -97,6 +97,7 @@ Did you forget to run "shorebird init"?''',
 
     buildProgress.complete();
 
+    final releaseVersionProgress = logger.progress('Getting release version');
     String releaseVersion;
     try {
       final pubspec = getPubspecYaml()!;
@@ -111,9 +112,13 @@ Did you forget to run "shorebird init"?''',
       );
       releaseVersion = ipa.versionNumber;
     } catch (error) {
-      logger.err('Failed to determine release version: $error');
+      releaseVersionProgress.fail(
+        'Failed to determine release version: $error',
+      );
       return ExitCode.software.code;
     }
+
+    releaseVersionProgress.complete();
 
     final summary = [
       '''📱 App: ${lightCyan.wrap(app.displayName)} ${lightCyan.wrap('(${app.id})')}''',
