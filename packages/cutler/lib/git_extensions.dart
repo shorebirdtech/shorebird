@@ -46,6 +46,15 @@ void dryRunCommand(
 
 /// Extension methods for [Repo] to do actual `git` actions.
 extension RepoCommands on Repo {
+  /// Updates this repo.
+  void fetchAll() {
+    runCommand(
+      'git',
+      ['fetch', '--all'],
+      workingDirectory: workingDirectory,
+    );
+  }
+
   /// Returns a [Version] for the given [hash].
   Version versionFrom(String hash, {bool lookupTags = true}) {
     return Version(

@@ -457,9 +457,11 @@ Did you forget to run "shorebird init"?''',
         command.run,
         getCurrentDirectory: () => tempDir,
       );
-      verify(() => logger.err('''
+      verify(
+        () => logger.err('''
 It looks like you have an existing release for version ${lightCyan.wrap(release.version)}.
-Please bump your version number and try again.''')).called(1);
+Please bump your version number and try again.'''),
+      ).called(1);
       expect(exitCode, ExitCode.software.code);
     });
 

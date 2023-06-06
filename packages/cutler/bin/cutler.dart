@@ -13,7 +13,7 @@ class Cutler extends CommandRunner<int> {
       : _logger = logger ?? Logger(),
         super('cutler', 'A tool for maintaining forks of Flutter.') {
     addCommand(RebaseCommand(logger: _logger));
-    addCommand(PrintVersionsCommand(logger: _logger));
+    addCommand(VersionsCommand(logger: _logger));
 
     argParser
       ..addFlag('verbose', abbr: 'v')
@@ -38,9 +38,24 @@ class Cutler extends CommandRunner<int> {
         );
   }
 
+  // This behavior belongs in the Dart SDK somewhere.
+  String findPackageRoot() {
+    // e.g. `dart run bin/cutler.dart`
+    final scriptPath = Platform.script.path;
+    if (scriptPath.endsWith('.dart')) {
+      final cutlerBin = p.dirname(Platform.script.path);
+      return p.dirname(cutlerBin);
+    }
+    // `dart run` pre-compiles into a snapshot and then runs, e.g.
+    // .../packages/cutler/.dart_tool/pub/bin/cutler/cutler.dart-3.0.2.snapshot
+    if (scriptPath.endsWith('.snapshot') && scriptPath.contains('.dart_tool')) {
+      return scriptPath.split('.dart_tool').first;
+    }
+    throw UnimplementedError('Could not find package root.');
+  }
+
   String fallbackRootDir() {
-    final cutlerBin = p.dirname(Platform.script.path);
-    final cutlerRoot = p.dirname(cutlerBin);
+    final cutlerRoot = findPackageRoot();
     final packagesDir = p.dirname(cutlerRoot);
     final shorebirdDir = p.dirname(packagesDir);
     final fallbackDirectories = <String>[
@@ -89,5 +104,6 @@ class Cutler extends CommandRunner<int> {
 }
 
 void main(List<String> args) {
+  print(Platform.script.path);
   Cutler().run(args);
 }

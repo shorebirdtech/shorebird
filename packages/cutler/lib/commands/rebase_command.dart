@@ -60,11 +60,7 @@ class RebaseCommand extends CutlerCommand {
       print('Updating checkouts (use --no-update to skip)');
       for (final repo in Repo.values) {
         print('Updating ${repo.name}...');
-        runCommand(
-          'git',
-          ['fetch', '--all'],
-          workingDirectory: repo.workingDirectory,
-        );
+        repo.fetchAll();
       }
     }
 
