@@ -1,7 +1,6 @@
 import 'dart:io';
 
 import 'package:mason_logger/mason_logger.dart';
-import 'package:meta/meta.dart';
 import 'package:shorebird_cli/src/shorebird_environment.dart';
 
 class EngineConfig {
@@ -145,7 +144,6 @@ class ShorebirdProcessResult {
 }
 
 // coverage:ignore-start
-@visibleForTesting
 class ProcessWrapper {
   Future<ShorebirdProcessResult> run(
     String executable,

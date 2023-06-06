@@ -12,10 +12,13 @@ class _MockLogger extends Mock implements Logger {}
 
 class _MockProcessResult extends Mock implements ShorebirdProcessResult {}
 
+class _MockProcessWrapper extends Mock implements ProcessWrapper {}
+
 void main() {
   group('ShorebirdCliCommandRunner', () {
     late Logger logger;
     late ShorebirdProcessResult processResult;
+    late ProcessWrapper processWrapper;
     late ShorebirdCliCommandRunner commandRunner;
 
     setUp(() {
@@ -23,8 +26,22 @@ void main() {
 
       ShorebirdEnvironment.shorebirdEngineRevision = 'test-revision';
       processResult = _MockProcessResult();
+      processWrapper = _MockProcessWrapper();
+      // when(
+      //   () => processWrapper.run(
+      //     any(),
+      //     any(),
+      //     runInShell: any(named: 'runInShell'),
+      //     environment: any(named: 'environment'),
+      //     workingDirectory: any(named: 'workingDirectory'),
+      //   ),
+      // ).thenAnswer((_) async => processResult);
+
       when(() => processResult.exitCode).thenReturn(ExitCode.success.code);
-      commandRunner = ShorebirdCliCommandRunner(logger: logger);
+      commandRunner = ShorebirdCliCommandRunner(
+        logger: logger,
+        processWrapper: processWrapper,
+      );
     });
 
     test('can be instantiated without an explicit analytics/logger instance',
@@ -72,7 +89,9 @@ void main() {
           () => logger.info(
             '''
 Shorebird $packageVersion
-Shorebird Engine • revision ${ShorebirdEnvironment.shorebirdEngineRevision}''',
+Shorebird Channel • null
+Shorebird Engine • revision ${ShorebirdEnvironment.shorebirdEngineRevision}
+flutterVersionString''',
           ),
         ).called(1);
       });

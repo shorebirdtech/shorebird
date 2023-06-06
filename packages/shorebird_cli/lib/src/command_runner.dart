@@ -21,8 +21,10 @@ const description = 'The shorebird command-line tool';
 class ShorebirdCliCommandRunner extends CompletionCommandRunner<int> {
   /// {@macro shorebird_cli_command_runner}
   ShorebirdCliCommandRunner({
+    ProcessWrapper? processWrapper,
     Logger? logger,
   })  : _logger = logger ?? Logger(),
+        _processWrapper = processWrapper,
         super(executableName, description) {
     argParser
       ..addFlag(
@@ -74,6 +76,8 @@ class ShorebirdCliCommandRunner extends CompletionCommandRunner<int> {
   void printUsage() => _logger.info(usage);
 
   final Logger _logger;
+  // For testing only.
+  final ProcessWrapper? _processWrapper;
   // Currently using ShorebirdCliCommandRunner as our context object.
   late final ShorebirdProcess process;
   late final EngineConfig engineConfig;
@@ -91,6 +95,7 @@ class ShorebirdCliCommandRunner extends CompletionCommandRunner<int> {
       process = ShorebirdProcess(
         engineConfig: engineConfig,
         logger: _logger,
+        processWrapper: _processWrapper,
       );
 
       return await runCommand(topLevelResults) ?? ExitCode.success.code;
@@ -125,10 +130,20 @@ class ShorebirdCliCommandRunner extends CompletionCommandRunner<int> {
     // Run the command or show version
     final int? exitCode;
     if (topLevelResults['version'] == true) {
+      final versionResult = await process.run('flutter', ['--version']);
+      final flutterVersionString = versionResult.stdout.toString().trim();
+      final channelResult = await process.run('git', [
+        'rev-parse',
+        '--abbrev-ref',
+        'HEAD',
+      ]);
+      final channelString = channelResult.stdout.toString().trim();
       _logger.info(
         '''
 Shorebird $packageVersion
-Shorebird Engine • revision ${ShorebirdEnvironment.shorebirdEngineRevision}''',
+Shorebird Channel • $channelString
+Shorebird Engine • revision ${ShorebirdEnvironment.shorebirdEngineRevision}
+$flutterVersionString''',
       );
       exitCode = ExitCode.success.code;
     } else {
