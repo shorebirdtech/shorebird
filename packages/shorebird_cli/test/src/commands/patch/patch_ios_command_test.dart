@@ -373,14 +373,6 @@ https://github.com/shorebirdtech/shorebird/issues/472
       ).called(1);
     });
 
-    test('errors when detecting release version name fails', () async {
-      // TODO(bryanoltman): Implement this test.
-    });
-
-    test('errors when detecting release version code fails', () async {
-      // TODO(bryanoltman): Implement this test.
-    });
-
     test('throws error when fetching releases fails.', () async {
       const error = 'something went wrong';
       when(

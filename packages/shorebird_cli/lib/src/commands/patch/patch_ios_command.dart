@@ -38,10 +38,6 @@ class PatchIosCommand extends ShorebirdCommand
         _ipaReader = ipaReader ?? IpaReader() {
     argParser
       ..addOption(
-        'release-version',
-        help: 'The version of the release (e.g. "1.0.0").',
-      )
-      ..addOption(
         'channel',
         help: 'The channel the patch should be promoted to (e.g. "stable").',
         allowed: ['stable'],
@@ -144,32 +140,27 @@ Did you forget to run "shorebird init"?''',
 
     buildProgress.complete();
 
-    final releaseVersionArg = results['release-version'] as String?;
     final String releaseVersion;
 
-    if (releaseVersionArg != null) {
-      releaseVersion = releaseVersionArg;
-    } else {
-      final detectReleaseVersionProgress = logger.progress(
-        'Detecting release version',
+    final detectReleaseVersionProgress = logger.progress(
+      'Detecting release version',
+    );
+    try {
+      final pubspec = getPubspecYaml()!;
+      final ipa = _ipaReader.read(
+        p.join(
+          Directory.current.path,
+          'build',
+          'ios',
+          'ipa',
+          '${pubspec.name}.ipa',
+        ),
       );
-      try {
-        final pubspec = getPubspecYaml()!;
-        final ipa = _ipaReader.read(
-          p.join(
-            Directory.current.path,
-            'build',
-            'ios',
-            'ipa',
-            '${pubspec.name}.ipa',
-          ),
-        );
-        releaseVersion = releaseVersionArg ?? ipa.versionNumber;
-        detectReleaseVersionProgress.complete();
-      } catch (error) {
-        detectReleaseVersionProgress.fail('$error');
-        return ExitCode.software.code;
-      }
+      releaseVersion = ipa.versionNumber;
+      detectReleaseVersionProgress.complete();
+    } catch (error) {
+      detectReleaseVersionProgress.fail('$error');
+      return ExitCode.software.code;
     }
 
     final Release? release;
