@@ -17,7 +17,7 @@ import 'package:shorebird_cli/src/shorebird_validation_mixin.dart';
 import 'package:shorebird_code_push_client/shorebird_code_push_client.dart';
 
 /// {@template patch_ios_command}
-/// `shorebird patch ios` command.
+/// `shorebird patch ios-preview` command.
 /// {@endtemplate}
 class PatchIosCommand extends ShorebirdCommand
     with
@@ -74,7 +74,7 @@ class PatchIosCommand extends ShorebirdCommand
   }
 
   @override
-  String get name => 'ios';
+  String get name => 'ios-preview';
 
   @override
   String get description =>
