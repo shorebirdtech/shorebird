@@ -214,7 +214,7 @@ mixin ShorebirdBuildMixin on ShorebirdCommand {
     return diffPath;
   }
 
-  Future<File> buildAotSnapshot({required String appDillPath}) async {
+  Future<File> buildElfAotSnapshot({required String appDillPath}) async {
     final outFilePath = p.join(Directory.current.path, 'out.aot');
     final arguments = [
       '--deterministic',

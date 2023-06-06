@@ -132,7 +132,7 @@ Did you forget to run "shorebird init"?''',
     final File aotFile;
     try {
       final newestDillFile = newestAppDill();
-      aotFile = await buildAotSnapshot(appDillPath: newestDillFile.path);
+      aotFile = await buildElfAotSnapshot(appDillPath: newestDillFile.path);
     } catch (error) {
       buildProgress.fail('$error');
       return ExitCode.software.code;
