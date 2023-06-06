@@ -27,11 +27,6 @@ class ReleaseIosCommand extends ShorebirdCommand
   }) {
     argParser
       ..addOption(
-        'target',
-        abbr: 't',
-        help: 'The main entrypoint file of the application.',
-      )
-      ..addOption(
         'flavor',
         help: 'The product flavor to use when building the app.',
       )
