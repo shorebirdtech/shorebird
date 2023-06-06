@@ -6,6 +6,7 @@ import 'package:mason_logger/mason_logger.dart';
 import 'package:mocktail/mocktail.dart';
 import 'package:path/path.dart' as p;
 import 'package:platform/platform.dart';
+import 'package:shorebird_cli/src/archive_analysis/archive_analysis.dart';
 import 'package:shorebird_cli/src/auth/auth.dart';
 import 'package:shorebird_cli/src/commands/commands.dart';
 import 'package:shorebird_cli/src/shorebird_environment.dart';
@@ -19,6 +20,10 @@ class _MockArgResults extends Mock implements ArgResults {}
 class _MockHttpClient extends Mock implements http.Client {}
 
 class _MockAuth extends Mock implements Auth {}
+
+class _MockIpa extends Mock implements Ipa {}
+
+class _MockIpaReader extends Mock implements IpaReader {}
 
 class _MockLogger extends Mock implements Logger {}
 
@@ -73,52 +78,13 @@ flutter:
   assets:
     - shorebird.yaml''';
 
-    const releaseXcConfigContent = '#include "Generated.xcconfig"';
-    const generatedXcConfigContent = '''
-// This is a generated file; do not edit or check into version control.
-FLUTTER_TARGET=lib/main.dart
-FLUTTER_BUILD_DIR=build
-FLUTTER_BUILD_NAME=1.2.3
-FLUTTER_BUILD_NUMBER=1
-''';
-    const nonParameterizedInfoPlistContent = '''
-<?xml version="1.0" encoding="UTF-8"?>
-<!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
-<plist version="1.0">
-<dict>
-	<key>CFBundleShortVersionString</key>
-	<string>1.0.0</string>
-	<key>CFBundleVersion</key>
-	<string>1.0.0</string>
-</dict>
-</plist>
-''';
-    const parameterizedInfoPlistContent = r'''
-<?xml version="1.0" encoding="UTF-8"?>
-<!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
-<plist version="1.0">
-<dict>
-	<key>CFBundleShortVersionString</key>
-	<string>$(FLUTTER_BUILD_NAME)</string>
-	<key>CFBundleVersion</key>
-	<string>$(FLUTTER_BUILD_NUMBER)</string>
-</dict>
-</plist>
-''';
-    const emptyPlistContent = '''
-<?xml version="1.0" encoding="UTF-8"?>
-<!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
-<plist version="1.0">
-<dict>
-</dict>
-</plist>
-''';
-
     late ArgResults argResults;
     late http.Client httpClient;
     late Directory shorebirdRoot;
     late Platform environmentPlatform;
     late Auth auth;
+    late IpaReader ipaReader;
+    late Ipa ipa;
     late Progress progress;
     late Logger logger;
     late ShorebirdProcessResult flutterBuildProcessResult;
@@ -129,11 +95,7 @@ FLUTTER_BUILD_NUMBER=1
     late ShorebirdFlutterValidator flutterValidator;
     late ShorebirdProcess shorebirdProcess;
 
-    Directory setUpTempDir({
-      PlistType plistType = PlistType.parameterized,
-      bool includeConfigContent = true,
-      bool includePlist = true,
-    }) {
+    Directory setUpTempDir() {
       final tempDir = Directory.systemTemp.createTempSync();
       File(
         p.join(tempDir.path, 'pubspec.yaml'),
@@ -141,31 +103,6 @@ FLUTTER_BUILD_NUMBER=1
       File(
         p.join(tempDir.path, 'shorebird.yaml'),
       ).writeAsStringSync('app_id: $appId');
-
-      final releaseConfigFile =
-          File(p.join(tempDir.path, 'ios', 'Flutter', 'Release.xcconfig'))
-            ..createSync(recursive: true);
-      final generatedConfigFile =
-          File(p.join(tempDir.path, 'ios', 'Flutter', 'Generated.xcconfig'))
-            ..createSync(recursive: true);
-      if (includeConfigContent) {
-        generatedConfigFile.writeAsStringSync(generatedXcConfigContent);
-        releaseConfigFile.writeAsStringSync(releaseXcConfigContent);
-      }
-
-      if (includePlist) {
-        final plistFile =
-            File(p.join(tempDir.path, 'ios', 'Runner', 'Info.plist'))
-              ..createSync(recursive: true);
-        switch (plistType) {
-          case PlistType.nonParameterized:
-            plistFile.writeAsStringSync(nonParameterizedInfoPlistContent);
-          case PlistType.parameterized:
-            plistFile.writeAsStringSync(parameterizedInfoPlistContent);
-          case PlistType.empty:
-            plistFile.writeAsStringSync(emptyPlistContent);
-        }
-      }
 
       return tempDir;
     }
@@ -176,6 +113,8 @@ FLUTTER_BUILD_NUMBER=1
       environmentPlatform = _MockPlatform();
       shorebirdRoot = Directory.systemTemp.createTempSync();
       auth = _MockAuth();
+      ipa = _MockIpa();
+      ipaReader = _MockIpaReader();
       progress = _MockProgress();
       logger = _MockLogger();
       flutterBuildProcessResult = _MockProcessResult();
@@ -192,6 +131,7 @@ FLUTTER_BUILD_NUMBER=1
           capturedHostedUri = hostedUri;
           return codePushClient;
         },
+        ipaReader: ipaReader,
         logger: logger,
         validators: [flutterValidator],
       )
@@ -232,6 +172,8 @@ FLUTTER_BUILD_NUMBER=1
       when(() => argResults['platform']).thenReturn(platform);
       when(() => auth.isAuthenticated).thenReturn(true);
       when(() => auth.client).thenReturn(httpClient);
+      when(() => ipaReader.read(any())).thenReturn(ipa);
+      when(() => ipa.versionNumber).thenReturn(version);
       when(() => logger.progress(any())).thenReturn(progress);
       when(() => logger.confirm(any())).thenReturn(true);
       when(
@@ -324,87 +266,6 @@ Did you forget to run "shorebird init"?''',
         ),
       ).called(1);
       expect(exitCode, ExitCode.software.code);
-    });
-
-    group('release version', () {
-      test('throws error if plist cannot be found', () async {
-        final tempDir = setUpTempDir(includePlist: false);
-
-        final exitCode = await IOOverrides.runZoned(
-          command.run,
-          getCurrentDirectory: () => tempDir,
-        );
-
-        expect(exitCode, ExitCode.software.code);
-        verify(() => logger.err(any())).called(1);
-      });
-
-      test('throws error if plist does not contain version number', () async {
-        final tempDir = setUpTempDir(
-          includeConfigContent: false,
-          plistType: PlistType.empty,
-        );
-        File(p.join(tempDir.path, 'ios', 'Runner', 'Info.plist'))
-            .createSync(recursive: true);
-
-        final exitCode = await IOOverrides.runZoned(
-          command.run,
-          getCurrentDirectory: () => tempDir,
-        );
-
-        expect(exitCode, ExitCode.software.code);
-        verify(() => logger.err(any())).called(1);
-      });
-
-      test(
-          '''throws error if plist contains variables and config fails do not contain those variables''',
-          () async {
-        final tempDir = setUpTempDir(includeConfigContent: false);
-
-        final exitCode = await IOOverrides.runZoned(
-          command.run,
-          getCurrentDirectory: () => tempDir,
-        );
-
-        expect(exitCode, ExitCode.software.code);
-        verify(() => logger.err(any())).called(1);
-      });
-
-      test(
-          """looks up variables in config files if plist doesn't contain raw version number""",
-          () async {
-        final tempDir = setUpTempDir(
-          includeConfigContent: false,
-          plistType: PlistType.nonParameterized,
-        );
-
-        final exitCode = await IOOverrides.runZoned(
-          command.run,
-          getCurrentDirectory: () => tempDir,
-        );
-
-        expect(exitCode, ExitCode.success.code);
-        verifyNever(() => logger.err(any()));
-        verify(
-          () =>
-              logger.info(any(that: contains('Release Version: 1.0.0+1.0.0'))),
-        ).called(1);
-      });
-
-      test('determines app version from plist and xcconfig files', () async {
-        final tempDir = setUpTempDir();
-
-        final exitCode = await IOOverrides.runZoned(
-          command.run,
-          getCurrentDirectory: () => tempDir,
-        );
-
-        expect(exitCode, ExitCode.success.code);
-        verifyNever(() => logger.err(any()));
-        verify(
-          () => logger.info(any(that: contains('Release Version: 1.2.3+1'))),
-        ).called(1);
-      });
     });
 
     test('prints flutter validation warnings', () async {

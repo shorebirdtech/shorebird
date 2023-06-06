@@ -1,22 +1,26 @@
+import 'dart:io';
+
 import 'package:mason_logger/mason_logger.dart';
+import 'package:path/path.dart' as p;
+import 'package:shorebird_cli/src/archive_analysis/archive_analysis.dart';
 import 'package:shorebird_cli/src/command.dart';
 import 'package:shorebird_cli/src/config/config.dart';
+import 'package:shorebird_cli/src/shorebird_build_mixin.dart';
 import 'package:shorebird_cli/src/shorebird_code_push_client_mixin.dart';
 import 'package:shorebird_cli/src/shorebird_config_mixin.dart';
-import 'package:shorebird_cli/src/shorebird_ios_release_version_mixin.dart';
 import 'package:shorebird_cli/src/shorebird_validation_mixin.dart';
 import 'package:shorebird_code_push_client/shorebird_code_push_client.dart';
 
 /// {@template release_ios_command}
-/// `shorebird release ios`
+/// `shorebird release ios-preview`
 /// Create new app releases for iOS.
 /// {@endtemplate}
 class ReleaseIosCommand extends ShorebirdCommand
     with
+        ShorebirdBuildMixin,
         ShorebirdConfigMixin,
         ShorebirdValidationMixin,
-        ShorebirdCodePushClientMixin,
-        ShorebirdIosReleaseVersionMixin {
+        ShorebirdCodePushClientMixin {
   /// {@macro release_ios_command}
   ReleaseIosCommand({
     required super.logger,
@@ -24,7 +28,8 @@ class ReleaseIosCommand extends ShorebirdCommand
     super.buildCodePushClient,
     super.cache,
     super.validators,
-  }) {
+    IpaReader? ipaReader,
+  }) : _ipaReader = ipaReader ?? IpaReader() {
     argParser
       ..addOption(
         'flavor',
@@ -38,6 +43,8 @@ class ReleaseIosCommand extends ShorebirdCommand
       );
   }
 
+  final IpaReader _ipaReader;
+
   @override
   String get description => '''
 Builds and submits your iOS app to Shorebird.
@@ -46,7 +53,7 @@ make smaller updates to your app.
 ''';
 
   @override
-  String get name => 'ios';
+  String get name => 'ios-preview';
 
   @override
   Future<int> run() async {
@@ -60,6 +67,7 @@ make smaller updates to your app.
       return e.exitCode.code;
     }
 
+    const platform = 'ios';
     final flavor = results['flavor'] as String?;
     final shorebirdYaml = getShorebirdYaml()!;
     final appId = shorebirdYaml.getAppId(flavor: flavor);
@@ -79,16 +87,34 @@ Did you forget to run "shorebird init"?''',
       return ExitCode.software.code;
     }
 
-    String releaseVersion;
-
+    final buildProgress = logger.progress('Building release');
     try {
-      releaseVersion = await determineIosReleaseVersion();
+      await buildIpa(flavor: flavor);
+    } on ProcessException catch (error) {
+      buildProgress.fail('Failed to build: ${error.message}');
+      return ExitCode.software.code;
+    }
+
+    buildProgress.complete();
+
+    String releaseVersion;
+    try {
+      final pubspec = getPubspecYaml()!;
+      final ipa = _ipaReader.read(
+        p.join(
+          Directory.current.path,
+          'build',
+          'ios',
+          'ipa',
+          '${pubspec.name}.ipa',
+        ),
+      );
+      releaseVersion = ipa.versionNumber;
     } catch (error) {
       logger.err('Failed to determine release version: $error');
       return ExitCode.software.code;
     }
 
-    const platform = 'ios';
     final summary = [
       '''📱 App: ${lightCyan.wrap(app.displayName)} ${lightCyan.wrap('(${app.id})')}''',
       if (flavor != null) '🍧 Flavor: ${lightCyan.wrap(flavor)}',
