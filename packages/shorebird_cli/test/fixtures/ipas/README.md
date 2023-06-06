@@ -4,3 +4,4 @@ Some of their contents has been removed to reduce the size of the files. All .dy
 
 Files: 
 - base.ipa is meant to represent an ipa uploaded as part of a release.
+- no_version.ipa is base.ipa with the version info removed from the Info.plist.

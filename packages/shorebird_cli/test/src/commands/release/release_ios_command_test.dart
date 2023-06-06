@@ -6,6 +6,7 @@ import 'package:mason_logger/mason_logger.dart';
 import 'package:mocktail/mocktail.dart';
 import 'package:path/path.dart' as p;
 import 'package:platform/platform.dart';
+import 'package:shorebird_cli/src/archive_analysis/archive_analysis.dart';
 import 'package:shorebird_cli/src/auth/auth.dart';
 import 'package:shorebird_cli/src/commands/commands.dart';
 import 'package:shorebird_cli/src/shorebird_environment.dart';
@@ -19,6 +20,10 @@ class _MockArgResults extends Mock implements ArgResults {}
 class _MockHttpClient extends Mock implements http.Client {}
 
 class _MockAuth extends Mock implements Auth {}
+
+class _MockIpa extends Mock implements Ipa {}
+
+class _MockIpaReader extends Mock implements IpaReader {}
 
 class _MockLogger extends Mock implements Logger {}
 
@@ -119,6 +124,8 @@ FLUTTER_BUILD_NUMBER=1
     late Directory shorebirdRoot;
     late Platform environmentPlatform;
     late Auth auth;
+    late IpaReader ipaReader;
+    late Ipa ipa;
     late Progress progress;
     late Logger logger;
     late ShorebirdProcessResult flutterBuildProcessResult;
@@ -142,31 +149,6 @@ FLUTTER_BUILD_NUMBER=1
         p.join(tempDir.path, 'shorebird.yaml'),
       ).writeAsStringSync('app_id: $appId');
 
-      final releaseConfigFile =
-          File(p.join(tempDir.path, 'ios', 'Flutter', 'Release.xcconfig'))
-            ..createSync(recursive: true);
-      final generatedConfigFile =
-          File(p.join(tempDir.path, 'ios', 'Flutter', 'Generated.xcconfig'))
-            ..createSync(recursive: true);
-      if (includeConfigContent) {
-        generatedConfigFile.writeAsStringSync(generatedXcConfigContent);
-        releaseConfigFile.writeAsStringSync(releaseXcConfigContent);
-      }
-
-      if (includePlist) {
-        final plistFile =
-            File(p.join(tempDir.path, 'ios', 'Runner', 'Info.plist'))
-              ..createSync(recursive: true);
-        switch (plistType) {
-          case PlistType.nonParameterized:
-            plistFile.writeAsStringSync(nonParameterizedInfoPlistContent);
-          case PlistType.parameterized:
-            plistFile.writeAsStringSync(parameterizedInfoPlistContent);
-          case PlistType.empty:
-            plistFile.writeAsStringSync(emptyPlistContent);
-        }
-      }
-
       return tempDir;
     }
 
@@ -176,6 +158,8 @@ FLUTTER_BUILD_NUMBER=1
       environmentPlatform = _MockPlatform();
       shorebirdRoot = Directory.systemTemp.createTempSync();
       auth = _MockAuth();
+      ipa = _MockIpa();
+      ipaReader = _MockIpaReader();
       progress = _MockProgress();
       logger = _MockLogger();
       flutterBuildProcessResult = _MockProcessResult();
@@ -192,6 +176,7 @@ FLUTTER_BUILD_NUMBER=1
           capturedHostedUri = hostedUri;
           return codePushClient;
         },
+        ipaReader: ipaReader,
         logger: logger,
         validators: [flutterValidator],
       )
@@ -232,6 +217,8 @@ FLUTTER_BUILD_NUMBER=1
       when(() => argResults['platform']).thenReturn(platform);
       when(() => auth.isAuthenticated).thenReturn(true);
       when(() => auth.client).thenReturn(httpClient);
+      when(() => ipaReader.read(any())).thenReturn(ipa);
+      when(() => ipa.versionNumber).thenReturn(version);
       when(() => logger.progress(any())).thenReturn(progress);
       when(() => logger.confirm(any())).thenReturn(true);
       when(
@@ -324,6 +311,39 @@ Did you forget to run "shorebird init"?''',
         ),
       ).called(1);
       expect(exitCode, ExitCode.software.code);
+    });
+
+    test('exits with code 70 when building fails', () async {
+      when(() => flutterBuildProcessResult.exitCode).thenReturn(1);
+      when(() => flutterBuildProcessResult.stderr).thenReturn('oops');
+
+      final tempDir = setUpTempDir();
+      final exitCode = await IOOverrides.runZoned(
+        () async => command.run(),
+        getCurrentDirectory: () => tempDir,
+      );
+
+      expect(exitCode, equals(ExitCode.software.code));
+      verify(
+        () => progress.fail(any(that: contains('Failed to build'))),
+      ).called(1);
+    });
+
+    test('exits with code 70 when release version cannot be determiend',
+        () async {
+      when(() => ipa.versionNumber).thenThrow(Exception('oops'));
+
+      final tempDir = setUpTempDir();
+      final exitCode = await IOOverrides.runZoned(
+        () async => command.run(),
+        getCurrentDirectory: () => tempDir,
+      );
+
+      expect(exitCode, equals(ExitCode.software.code));
+      verify(
+        () => progress
+            .fail(any(that: contains('Failed to determine release version'))),
+      ).called(1);
     });
 
     group('release version', () {
@@ -513,9 +533,11 @@ Did you forget to run "shorebird init"?''',
         getCurrentDirectory: () => tempDir,
       );
 
-      verify(() => logger.err('''
+      verify(
+        () => logger.err('''
 It looks like you have an existing release for version ${lightCyan.wrap(release.version)}.
-Please bump your version number and try again.''')).called(1);
+Please bump your version number and try again.'''),
+      ).called(1);
       expect(exitCode, ExitCode.software.code);
     });
 

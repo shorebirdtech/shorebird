@@ -4,7 +4,11 @@ import 'dart:typed_data';
 import 'package:archive/archive_io.dart';
 import 'package:propertylistserialization/propertylistserialization.dart';
 
+/// {@template ipa_reader}
+/// Wraps the [Ipa] class to make it easier to test.
+/// {@endtemplate}
 class IpaReader {
+  /// {@macro ipa_reader}
   Ipa read(String path) => Ipa(path: path);
 }
 
