@@ -5,6 +5,7 @@ import 'package:test/test.dart';
 void main() {
   final ipaFixturesBasePath = p.join('test', 'fixtures', 'ipas');
   final baseIpaBath = p.join(ipaFixturesBasePath, 'base.ipa');
+  final noVersionIpaBath = p.join(ipaFixturesBasePath, 'no_version.ipa');
 
   group(IpaReader, () {
     test('creates Ipa', () {
@@ -17,6 +18,11 @@ void main() {
     test('reads app version from ipa', () {
       final ipa = Ipa(path: baseIpaBath);
       expect(ipa.versionNumber, '1.0.0+1');
+    });
+
+    test('throws exception if no version is found in Info.plist', () {
+      final ipa = Ipa(path: noVersionIpaBath);
+      expect(() => ipa.versionNumber, throwsException);
     });
   });
 }
