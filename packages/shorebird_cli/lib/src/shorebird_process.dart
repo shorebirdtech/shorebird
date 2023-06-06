@@ -1,5 +1,6 @@
 import 'dart:io';
 
+import 'package:mason_logger/mason_logger.dart';
 import 'package:meta/meta.dart';
 import 'package:shorebird_cli/src/shorebird_environment.dart';
 
@@ -24,13 +25,16 @@ class EngineConfig {
 class ShorebirdProcess {
   ShorebirdProcess({
     required this.engineConfig,
+    Logger? logger,
     ProcessWrapper? processWrapper, // For mocking ShorebirdProcess.
-  }) : processWrapper = processWrapper ?? ProcessWrapper();
+  })  : logger = logger ?? Logger(),
+        processWrapper = processWrapper ?? ProcessWrapper();
 
   final ProcessWrapper processWrapper;
   final EngineConfig engineConfig;
+  final Logger logger;
 
-  Future<ProcessResult> run(
+  Future<ShorebirdProcessResult> run(
     String executable,
     List<String> arguments, {
     bool runInShell = false,
@@ -46,9 +50,17 @@ class ShorebirdProcess {
       );
     }
 
+    final resolvedExecutable =
+        useVendedFlutter ? _resolveExecutable(executable) : executable;
+    final resolvedArguments =
+        useVendedFlutter ? _resolveArguments(executable, arguments) : arguments;
+    logger.detail(
+      '''[Process.run] $resolvedExecutable ${resolvedArguments.join(' ')}${workingDirectory == null ? '' : ' (in $workingDirectory)'}''',
+    );
+
     return processWrapper.run(
-      useVendedFlutter ? _resolveExecutable(executable) : executable,
-      useVendedFlutter ? _resolveArguments(executable, arguments) : arguments,
+      resolvedExecutable,
+      resolvedArguments,
       runInShell: runInShell,
       workingDirectory: workingDirectory,
       environment: resolvedEnvironment,
@@ -69,10 +81,17 @@ class ShorebirdProcess {
         _environmentOverrides(executable: executable),
       );
     }
+    final resolvedExecutable =
+        useVendedFlutter ? _resolveExecutable(executable) : executable;
+    final resolvedArguments =
+        useVendedFlutter ? _resolveArguments(executable, arguments) : arguments;
+    logger.detail(
+      '[Process.start] $resolvedExecutable ${resolvedArguments.join(' ')}',
+    );
 
     return processWrapper.start(
-      useVendedFlutter ? _resolveExecutable(executable) : executable,
-      useVendedFlutter ? _resolveArguments(executable, arguments) : arguments,
+      resolvedExecutable,
+      resolvedArguments,
       runInShell: runInShell,
       environment: resolvedEnvironment,
     );
@@ -113,22 +132,39 @@ class ShorebirdProcess {
   }
 }
 
+class ShorebirdProcessResult {
+  const ShorebirdProcessResult({
+    required this.exitCode,
+    required this.stdout,
+    required this.stderr,
+  });
+
+  final int exitCode;
+  final dynamic stdout;
+  final dynamic stderr;
+}
+
 // coverage:ignore-start
 @visibleForTesting
 class ProcessWrapper {
-  Future<ProcessResult> run(
+  Future<ShorebirdProcessResult> run(
     String executable,
     List<String> arguments, {
     bool runInShell = false,
     Map<String, String>? environment,
     String? workingDirectory,
-  }) {
-    return Process.run(
+  }) async {
+    final result = await Process.run(
       executable,
       arguments,
       environment: environment,
       runInShell: runInShell,
       workingDirectory: workingDirectory,
+    );
+    return ShorebirdProcessResult(
+      exitCode: result.exitCode,
+      stdout: result.stdout,
+      stderr: result.stderr,
     );
   }
 

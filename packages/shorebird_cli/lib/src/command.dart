@@ -15,6 +15,9 @@ import 'package:shorebird_code_push_client/shorebird_code_push_client.dart';
 /// Signature for a function which takes a list of bytes and returns a hash.
 typedef HashFunction = String Function(List<int> bytes);
 
+/// Signature for a function which takes a path to a zip file.
+typedef UnzipFn = Future<void> Function(String zipFilePath, String outputDir);
+
 typedef CodePushClientBuilder = CodePushClient Function({
   required http.Client httpClient,
   Uri? hostedUri,
@@ -37,12 +40,13 @@ abstract class ShorebirdCommand extends Command<int> {
     Cache? cache,
     CodePushClientBuilder? buildCodePushClient,
     List<Validator>? validators, // For mocking.
-  })  : auth = auth ?? Auth(),
-        cache = cache ?? Cache(),
+  })  : cache = cache ?? Cache(),
         buildCodePushClient = buildCodePushClient ?? CodePushClient.new,
-        validators = validators ?? _defaultValidators();
+        validators = validators ?? _defaultValidators() {
+    this.auth = auth ?? Auth(logger: logger);
+  }
 
-  final Auth auth;
+  late final Auth auth;
   final Cache cache;
   final CodePushClientBuilder buildCodePushClient;
   final Logger logger;

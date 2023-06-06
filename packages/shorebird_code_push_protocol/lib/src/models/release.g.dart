@@ -16,16 +16,23 @@ Release _$ReleaseFromJson(Map<String, dynamic> json) => $checkedCreate(
           id: $checkedConvert('id', (v) => v as int),
           appId: $checkedConvert('app_id', (v) => v as String),
           version: $checkedConvert('version', (v) => v as String),
+          flutterRevision:
+              $checkedConvert('flutter_revision', (v) => v as String),
           displayName: $checkedConvert('display_name', (v) => v as String?),
         );
         return val;
       },
-      fieldKeyMap: const {'appId': 'app_id', 'displayName': 'display_name'},
+      fieldKeyMap: const {
+        'appId': 'app_id',
+        'flutterRevision': 'flutter_revision',
+        'displayName': 'display_name'
+      },
     );
 
 Map<String, dynamic> _$ReleaseToJson(Release instance) => <String, dynamic>{
       'id': instance.id,
       'app_id': instance.appId,
       'version': instance.version,
+      'flutter_revision': instance.flutterRevision,
       'display_name': instance.displayName,
     };

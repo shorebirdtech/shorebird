@@ -1,7 +1,7 @@
 import 'dart:io';
 
 import 'package:mason_logger/mason_logger.dart';
-import 'package:shorebird_cli/src/auth_logger_mixin.dart';
+import 'package:path/path.dart' as p;
 import 'package:shorebird_cli/src/command.dart';
 import 'package:shorebird_cli/src/shorebird_build_mixin.dart';
 import 'package:shorebird_cli/src/shorebird_config_mixin.dart';
@@ -13,11 +13,7 @@ import 'package:shorebird_cli/src/shorebird_validation_mixin.dart';
 /// Build an Android App Bundle file from your app.
 /// {@endtemplate}
 class BuildAppBundleCommand extends ShorebirdCommand
-    with
-        AuthLoggerMixin,
-        ShorebirdValidationMixin,
-        ShorebirdConfigMixin,
-        ShorebirdBuildMixin {
+    with ShorebirdConfigMixin, ShorebirdValidationMixin, ShorebirdBuildMixin {
   /// {@macro build_app_bundle_command}
   BuildAppBundleCommand({
     required super.logger,
@@ -44,15 +40,13 @@ class BuildAppBundleCommand extends ShorebirdCommand
 
   @override
   Future<int> run() async {
-    if (!auth.isAuthenticated) {
-      printNeedsAuthInstructions();
-      return ExitCode.noUser.code;
-    }
-
-    final validationIssues = await runValidators();
-    if (validationIssuesContainsError(validationIssues)) {
-      logValidationFailure(issues: validationIssues);
-      return ExitCode.config.code;
+    try {
+      await validatePreconditions(
+        checkUserIsAuthenticated: true,
+        checkValidators: true,
+      );
+    } on PreconditionFailedException catch (e) {
+      return e.exitCode.code;
     }
 
     final flavor = results['flavor'] as String?;
@@ -65,9 +59,10 @@ class BuildAppBundleCommand extends ShorebirdCommand
       return ExitCode.software.code;
     }
 
+    final bundleDirPath = p.join('build', 'app', 'outputs', 'bundle');
     final bundlePath = flavor != null
-        ? './build/app/outputs/bundle/${flavor}Release/app-$flavor-release.aab'
-        : './build/app/outputs/bundle/release/app-release.aab';
+        ? p.join(bundleDirPath, '${flavor}Release', 'app-$flavor-release.aab')
+        : p.join(bundleDirPath, 'release', 'app-release.aab');
 
     buildProgress.complete();
     logger.info('''

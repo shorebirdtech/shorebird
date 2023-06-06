@@ -48,17 +48,6 @@ class ShorebirdFlutterValidator extends Validator {
       );
     }
 
-    if (!await _flutterDirectoryTracksCorrectRevision(process)) {
-      final message =
-          '''${ShorebirdEnvironment.flutterDirectory} is not on the correct revision''';
-      issues.add(
-        ValidationIssue(
-          severity: ValidationIssueSeverity.warning,
-          message: message,
-        ),
-      );
-    }
-
     String? shorebirdFlutterVersionString;
     try {
       shorebirdFlutterVersionString = await _shorebirdFlutterVersion(process);
@@ -132,39 +121,25 @@ This can cause unexpected behavior if you are switching between the tools and th
         .contains('nothing to commit, working tree clean');
   }
 
-  Future<bool> _flutterDirectoryTracksCorrectRevision(
-    ShorebirdProcess process,
-  ) async {
-    final result = await process.run(
-      'git',
-      ['rev-parse', 'HEAD'],
-      workingDirectory: ShorebirdEnvironment.flutterDirectory.path,
-    );
-    return result.stdout
-        .toString()
-        .contains(ShorebirdEnvironment.flutterRevision);
+  Future<String> _shorebirdFlutterVersion(ShorebirdProcess process) {
+    return _getFlutterVersion(process: process);
   }
 
-  Future<String> _shorebirdFlutterVersion(ShorebirdProcess process) =>
-      _getFlutterVersion(
-        process: process,
-        checkPathFlutter: false,
-      );
-
-  Future<String> _pathFlutterVersion(ShorebirdProcess process) =>
-      _getFlutterVersion(
-        process: process,
-        checkPathFlutter: true,
-      );
+  Future<String> _pathFlutterVersion(ShorebirdProcess process) {
+    return _getFlutterVersion(
+      process: process,
+      useVendedFlutter: false,
+    );
+  }
 
   Future<String> _getFlutterVersion({
     required ShorebirdProcess process,
-    required bool checkPathFlutter,
+    bool useVendedFlutter = true,
   }) async {
     final result = await process.run(
       'flutter',
       ['--version'],
-      useVendedFlutter: !checkPathFlutter,
+      useVendedFlutter: useVendedFlutter,
       runInShell: true,
     );
 

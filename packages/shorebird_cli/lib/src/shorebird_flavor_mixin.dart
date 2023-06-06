@@ -3,26 +3,37 @@ import 'dart:io';
 import 'package:collection/collection.dart';
 import 'package:path/path.dart' as p;
 import 'package:platform/platform.dart';
-import 'package:shorebird_cli/src/command.dart';
+import 'package:shorebird_cli/src/shorebird_java_mixin.dart';
 
-/// Mixin on [ShorebirdCommand] which exposes methods for extracting
+/// Mixin on [ShorebirdJavaMixin] which exposes methods for extracting
 /// product flavors from the current app.
-mixin ShorebirdFlavorMixin on ShorebirdCommand {
+mixin ShorebirdFlavorMixin on ShorebirdJavaMixin {
   /// Return the set of product flavors configured for the app at [appRoot].
   /// Returns an empty set for apps that do not use product flavors.
   Future<Set<String>> extractProductFlavors(
     String appRoot, {
     Platform platform = const LocalPlatform(),
   }) async {
+    // Flutter apps have android files in root/android
+    // Flutter modules have android files in root/.android
+    final androidRoot = [
+      Directory(p.join(appRoot, 'android')),
+      Directory(p.join(appRoot, '.android')),
+    ].firstWhereOrNull((dir) => dir.existsSync());
+
+    if (androidRoot == null) {
+      return {};
+    }
+
     final executable = platform.isWindows ? 'gradlew.bat' : 'gradlew';
-    final javaPath = _getJavaPath(platform);
+    final javaHome = getJavaHome(platform);
     final result = await process.run(
-      p.join(appRoot, 'android', executable),
+      p.join(androidRoot.path, executable),
       ['app:tasks', '--all', '--console=auto'],
       runInShell: true,
-      workingDirectory: p.join(appRoot, 'android'),
+      workingDirectory: androidRoot.path,
       environment: {
-        if (javaPath != null) 'JAVA_HOME': javaPath,
+        if (javaHome != null) 'JAVA_HOME': javaHome,
       },
     );
 
@@ -35,9 +46,9 @@ mixin ShorebirdFlavorMixin on ShorebirdCommand {
     for (final task in '${result.stdout}'.split('\n')) {
       final match = assembleTaskPattern.matchAsPrefix(task);
       if (match != null) {
-        final variant = match.group(1)!.toLowerCase();
-        if (!variant.endsWith('test')) {
-          variants.add(variant);
+        final variant = match.group(1)!;
+        if (!variant.toLowerCase().endsWith('test')) {
+          variants.add(variant[0].toLowerCase() + variant.substring(1));
         }
       }
     }
@@ -55,73 +66,5 @@ mixin ShorebirdFlavorMixin on ShorebirdCommand {
       if (match != null) productFlavors.add(variant);
     }
     return productFlavors;
-  }
-
-  String? _getAndroidStudioPath(Platform platform) {
-    final home = platform.environment['HOME'] ?? '~';
-    if (platform.isMacOS) {
-      final candidateLocations = [
-        p.join(home, 'Applications', 'Android Studio.app', 'Contents'),
-        p.join('/', 'Applications', 'Android Studio.app', 'Contents'),
-      ];
-      return candidateLocations.firstWhereOrNull(
-        (location) => Directory(location).existsSync(),
-      );
-    }
-
-    if (platform.isWindows) {
-      final programFiles = platform.environment['PROGRAMFILES']!;
-      final programFilesx86 = platform.environment['PROGRAMFILES(X86)']!;
-      final candidateLocations = [
-        p.join(programFiles, 'Android', 'Android Studio'),
-        p.join(programFilesx86, 'Android', 'Android Studio'),
-      ];
-      return candidateLocations.firstWhereOrNull(
-        (location) => Directory(location).existsSync(),
-      );
-    }
-
-    if (platform.isLinux) {
-      final candidateLocations = [
-        p.join('/', 'snap', 'bin', 'android-studio'),
-        p.join('/', 'opt', 'android-studio'),
-        p.join(home, '.AndroidStudio'),
-        p.join(home, '.cache', 'Google', 'AndroidStudio'),
-      ];
-      return candidateLocations.firstWhereOrNull((location) {
-        return Directory(location).existsSync();
-      });
-    }
-
-    return null;
-  }
-
-  String? _getJavaPath(Platform platform) {
-    if (platform.environment.containsKey('JAVA_HOME')) {
-      return platform.environment['JAVA_HOME'];
-    }
-
-    final androidStudioPath = _getAndroidStudioPath(platform);
-    if (androidStudioPath == null) return null;
-    if (platform.isMacOS) {
-      final candidateLocations = [
-        p.join(androidStudioPath, 'jbr', 'Contents', 'Home'),
-        p.join(androidStudioPath, 'jre', 'Contents', 'Home'),
-        p.join(androidStudioPath, 'jre', 'jdk', 'Contents', 'Home')
-      ];
-
-      return candidateLocations.firstWhereOrNull(
-        (location) => Directory(location).existsSync(),
-      );
-    }
-
-    final candidateLocations = [
-      p.join(androidStudioPath, 'jbr'),
-      p.join(androidStudioPath, 'jre'),
-    ];
-
-    return candidateLocations.firstWhereOrNull(
-      (location) => Directory(location).existsSync(),
-    );
   }
 }

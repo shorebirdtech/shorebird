@@ -1,32 +1,17 @@
 import 'package:shorebird_cli/src/command.dart';
 import 'package:shorebird_cli/src/commands/build/build.dart';
-import 'package:shorebird_cli/src/shorebird_build_mixin.dart';
-import 'package:shorebird_cli/src/shorebird_config_mixin.dart';
-import 'package:shorebird_cli/src/shorebird_validation_mixin.dart';
 
 /// {@template build_command}
-///
 /// `shorebird build`
 /// Build a new release of your application.
 /// {@endtemplate}
-class BuildCommand extends ShorebirdCommand
-    with ShorebirdValidationMixin, ShorebirdConfigMixin, ShorebirdBuildMixin {
+class BuildCommand extends ShorebirdCommand {
   /// {@macro build_command}
   BuildCommand({required super.logger}) {
-    addSubcommand(
-      BuildApkCommand(
-        auth: auth,
-        logger: logger,
-        validators: validators,
-      ),
-    );
-    addSubcommand(
-      BuildAppBundleCommand(
-        auth: auth,
-        logger: logger,
-        validators: validators,
-      ),
-    );
+    addSubcommand(BuildAarCommand(logger: logger));
+    addSubcommand(BuildApkCommand(logger: logger));
+    addSubcommand(BuildAppBundleCommand(logger: logger));
+    addSubcommand(BuildIpaCommand(logger: logger));
   }
 
   @override

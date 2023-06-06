@@ -11,6 +11,7 @@ class CreateReleaseRequest {
   const CreateReleaseRequest({
     required this.appId,
     required this.version,
+    this.flutterRevision,
     this.displayName,
   });
 
@@ -26,6 +27,10 @@ class CreateReleaseRequest {
 
   /// The release version.
   final String version;
+
+  /// The Flutter revision used to create the release.
+  // TODO(felangel): Make this non-nullable in the next major release.
+  final String? flutterRevision;
 
   /// The display name for the release.
   final String? displayName;

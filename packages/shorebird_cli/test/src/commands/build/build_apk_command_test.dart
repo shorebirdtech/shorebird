@@ -4,6 +4,7 @@ import 'package:args/args.dart';
 import 'package:http/http.dart' as http;
 import 'package:mason_logger/mason_logger.dart';
 import 'package:mocktail/mocktail.dart';
+import 'package:path/path.dart' as p;
 import 'package:shorebird_cli/src/auth/auth.dart';
 import 'package:shorebird_cli/src/commands/build/build.dart';
 import 'package:shorebird_cli/src/shorebird_process.dart';
@@ -20,7 +21,7 @@ class _MockLogger extends Mock implements Logger {}
 
 class _MockProgress extends Mock implements Progress {}
 
-class _MockProcessResult extends Mock implements ProcessResult {}
+class _MockProcessResult extends Mock implements ShorebirdProcessResult {}
 
 class _MockShorebirdFlutterValidator extends Mock
     implements ShorebirdFlutterValidator {}
@@ -33,7 +34,7 @@ void main() {
     late http.Client httpClient;
     late Auth auth;
     late Logger logger;
-    late ProcessResult processResult;
+    late ShorebirdProcessResult processResult;
     late BuildApkCommand command;
     late ShorebirdFlutterValidator flutterValidator;
     late ShorebirdProcess shorebirdProcess;
@@ -127,7 +128,7 @@ void main() {
         () => logger.info(
           '''
 📦 Generated an apk at:
-${lightCyan.wrap("./build/app/outputs/apk/release/app-release.apk")}''',
+${lightCyan.wrap(p.join('build', 'app', 'outputs', 'apk', 'release', 'app-release.apk'))}''',
         ),
       ).called(1);
     });
@@ -136,7 +137,7 @@ ${lightCyan.wrap("./build/app/outputs/apk/release/app-release.apk")}''',
         'exits with code 0 when building apk succeeds '
         'with flavor and target', () async {
       const flavor = 'development';
-      const target = './lib/main_development.dart';
+      final target = p.join('lib', 'main_development.dart');
       when(() => argResults['flavor']).thenReturn(flavor);
       when(() => argResults['target']).thenReturn(target);
       when(() => processResult.exitCode).thenReturn(ExitCode.success.code);
@@ -165,7 +166,7 @@ ${lightCyan.wrap("./build/app/outputs/apk/release/app-release.apk")}''',
         () => logger.info(
           '''
 📦 Generated an apk at:
-${lightCyan.wrap("./build/app/outputs/apk/$flavor/release/app-$flavor-release.apk")}''',
+${lightCyan.wrap(p.join('build', 'app', 'outputs', 'apk', flavor, 'release', 'app-$flavor-release.apk'))}''',
         ),
       ).called(1);
     });

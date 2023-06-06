@@ -27,6 +27,7 @@ class Cache {
     Platform platform = const LocalPlatform(),
   }) : httpClient = httpClient ?? http.Client() {
     registerArtifact(PatchArtifact(cache: this, platform: platform));
+    registerArtifact(BundleToolArtifact(cache: this, platform: platform));
   }
 
   final http.Client httpClient;
@@ -47,7 +48,9 @@ class Cache {
   /// Get a named directory from with the cache's artifact directory;
   /// for example, `foo` would return `bin/cache/artifacts/foo`.
   Directory getArtifactDirectory(String name) {
-    return Directory(p.join(shorebirdArtifactsDirectory.path, name));
+    return Directory(
+      p.join(shorebirdArtifactsDirectory.path, p.withoutExtension(name)),
+    );
   }
 
   /// The Shorebird cache directory.
@@ -86,23 +89,24 @@ abstract class CachedArtifact {
 
   String get name;
 
-  String get storagePath;
+  String get storageUrl;
 
   List<String> get executables => [];
+
+  Future<void> extractArtifact(http.ByteStream stream, String outputPath) {
+    final file = File(p.join(outputPath, name))..createSync(recursive: true);
+    return stream.pipe(file.openWrite());
+  }
 
   Directory get location => cache.getArtifactDirectory(name);
 
   Future<bool> isUpToDate() async => location.existsSync();
 
   Future<void> update() async {
-    final url = '${cache.storageBaseUrl}/${cache.storageBucket}/$storagePath';
-    final request = http.Request('GET', Uri.parse(url));
+    final request = http.Request('GET', Uri.parse(storageUrl));
     final response = await cache.httpClient.send(request);
-    final tempDir = Directory.systemTemp.createTempSync();
-    final archivePath = p.join(tempDir.path, '$name.zip');
-    final outputPath = location.path;
-    await response.stream.pipe(File(archivePath).openWrite());
-    await cache.extractArchive(archivePath, outputPath);
+
+    await extractArtifact(response.stream, location.path);
 
     if (platform.isWindows) return;
 
@@ -126,7 +130,18 @@ class PatchArtifact extends CachedArtifact {
   List<String> get executables => ['patch'];
 
   @override
-  String get storagePath {
+  Future<void> extractArtifact(
+    http.ByteStream stream,
+    String outputPath,
+  ) async {
+    final tempDir = Directory.systemTemp.createTempSync();
+    final artifactPath = p.join(tempDir.path, '$name.zip');
+    await stream.pipe(File(artifactPath).openWrite());
+    await cache.extractArchive(artifactPath, p.join(outputPath));
+  }
+
+  @override
+  String get storageUrl {
     var artifactName = 'patch-';
     if (platform.isMacOS) {
       artifactName += 'darwin-x64.zip';
@@ -136,6 +151,18 @@ class PatchArtifact extends CachedArtifact {
       artifactName += 'windows-x64.zip';
     }
 
-    return 'shorebird/${ShorebirdEnvironment.shorebirdEngineRevision}/$artifactName';
+    return '${cache.storageBaseUrl}/${cache.storageBucket}/shorebird/${ShorebirdEnvironment.shorebirdEngineRevision}/$artifactName';
+  }
+}
+
+class BundleToolArtifact extends CachedArtifact {
+  BundleToolArtifact({required super.cache, required super.platform});
+
+  @override
+  String get name => 'bundletool.jar';
+
+  @override
+  String get storageUrl {
+    return 'https://github.com/google/bundletool/releases/download/1.14.1/bundletool-all-1.14.1.jar';
   }
 }

@@ -15,6 +15,7 @@ class _FakeBaseRequest extends Fake implements http.BaseRequest {}
 void main() {
   group('CodePushClient', () {
     const appId = 'app-id';
+    const flutterRevision = '83305b5088e6fe327fb3334a73ff190828d85713';
     const displayName = 'shorebird-example';
     const errorResponse = ErrorResponse(
       code: 'test_code',
@@ -49,6 +50,87 @@ void main() {
 
         expect(exceptionWithDetails.toString(), 'message\ndetails');
         expect(exceptionWithoutDetails.toString(), 'message');
+      });
+    });
+
+    group('createCollaborator', () {
+      const appId = 'test-app-id';
+      const email = 'jane.doe@shorebird.dev';
+
+      test('throws an exception if the http request fails (unknown)', () async {
+        when(
+          () => httpClient.post(
+            any(),
+            headers: any(named: 'headers'),
+            body: any(named: 'body'),
+          ),
+        ).thenAnswer(
+          (_) async => http.Response('', HttpStatus.failedDependency),
+        );
+
+        expect(
+          codePushClient.createCollaborator(appId: appId, email: email),
+          throwsA(
+            isA<CodePushException>().having(
+              (e) => e.message,
+              'message',
+              CodePushClient.unknownErrorMessage,
+            ),
+          ),
+        );
+      });
+
+      test('throws an exception if the http request fails', () async {
+        when(
+          () => httpClient.post(
+            any(),
+            headers: any(named: 'headers'),
+            body: any(named: 'body'),
+          ),
+        ).thenAnswer(
+          (_) async => http.Response(
+            json.encode(errorResponse.toJson()),
+            HttpStatus.failedDependency,
+          ),
+        );
+
+        expect(
+          codePushClient.createCollaborator(appId: appId, email: email),
+          throwsA(
+            isA<CodePushException>().having(
+              (e) => e.message,
+              'message',
+              errorResponse.message,
+            ),
+          ),
+        );
+      });
+
+      test('completes when request succeeds', () async {
+        when(
+          () => httpClient.post(
+            any(),
+            headers: any(named: 'headers'),
+            body: any(named: 'body'),
+          ),
+        ).thenAnswer((_) async => http.Response('', HttpStatus.created));
+
+        await codePushClient.createCollaborator(appId: appId, email: email);
+
+        final uri = verify(
+          () => httpClient.post(
+            captureAny(),
+            headers: any(named: 'headers'),
+            body: any(named: 'body'),
+          ),
+        ).captured.single as Uri;
+
+        expect(
+          uri,
+          codePushClient.hostedUri.replace(
+            path: '/api/v1/apps/$appId/collaborators',
+          ),
+        );
       });
     });
 
@@ -162,22 +244,22 @@ void main() {
         );
       });
 
-      test('completes when request succeeds', () async {
-        const artifactId = 0;
-        const artifactUrl = 'https://example.com/artifact.zip';
+      test('throws an exception if the upload fails', () async {
+        const artifactId = 42;
+        const uploadUrl = 'https://example.com';
         when(() => httpClient.send(any())).thenAnswer((_) async {
           return http.StreamedResponse(
             Stream.value(
               utf8.encode(
                 json.encode(
-                  PatchArtifact(
+                  CreatePatchArtifactResponse(
                     id: artifactId,
-                    url: artifactUrl,
                     patchId: patchId,
                     arch: arch,
                     platform: platform,
                     hash: hash,
                     size: size,
+                    url: uploadUrl,
                   ),
                 ),
               ),
@@ -185,6 +267,10 @@ void main() {
             HttpStatus.ok,
           );
         });
+
+        when(
+          () => httpClient.put(any(), body: any(named: 'body')),
+        ).thenAnswer((_) async => http.Response('', HttpStatus.badRequest));
 
         final tempDir = Directory.systemTemp.createTempSync();
         final fixture = File(path.join(tempDir.path, 'release.txt'))
@@ -198,17 +284,63 @@ void main() {
             platform: platform,
             hash: hash,
           ),
-          completion(
-            equals(
-              isA<PatchArtifact>()
-                  .having((a) => a.id, 'id', artifactId)
-                  .having((a) => a.patchId, 'patchId', patchId)
-                  .having((a) => a.arch, 'arch', arch)
-                  .having((a) => a.platform, 'platform', platform)
-                  .having((a) => a.hash, 'hash', hash)
-                  .having((a) => a.url, 'artifactUrl', artifactUrl),
+          throwsA(
+            isA<CodePushException>().having(
+              (e) => e.message,
+              'message',
+              contains('Failed to upload artifact'),
             ),
           ),
+        );
+        verify(
+          () => httpClient.put(
+            Uri.parse(uploadUrl),
+            body: fixture.readAsBytesSync(),
+          ),
+        ).called(1);
+      });
+
+      test('completes when request succeeds', () async {
+        const artifactId = 42;
+        const uploadUrl = 'https://example.com';
+        when(() => httpClient.send(any())).thenAnswer((_) async {
+          return http.StreamedResponse(
+            Stream.value(
+              utf8.encode(
+                json.encode(
+                  CreatePatchArtifactResponse(
+                    id: artifactId,
+                    patchId: patchId,
+                    arch: arch,
+                    platform: platform,
+                    hash: hash,
+                    size: size,
+                    url: uploadUrl,
+                  ),
+                ),
+              ),
+            ),
+            HttpStatus.ok,
+          );
+        });
+
+        when(
+          () => httpClient.put(any(), body: any(named: 'body')),
+        ).thenAnswer((_) async => http.Response('', HttpStatus.ok));
+
+        final tempDir = Directory.systemTemp.createTempSync();
+        final fixture = File(path.join(tempDir.path, 'release.txt'))
+          ..createSync();
+
+        await expectLater(
+          codePushClient.createPatchArtifact(
+            artifactPath: fixture.path,
+            patchId: patchId,
+            arch: arch,
+            platform: platform,
+            hash: hash,
+          ),
+          completes,
         );
 
         final request = verify(() => httpClient.send(captureAny()))
@@ -304,6 +436,32 @@ void main() {
         );
       });
 
+      test(
+          'throws a CodePushConflictException if the http response code is 409',
+          () {
+        when(() => httpClient.send(any())).thenAnswer((_) async {
+          return http.StreamedResponse(
+            Stream.value(utf8.encode(json.encode(errorResponse.toJson()))),
+            HttpStatus.conflict,
+          );
+        });
+
+        final tempDir = Directory.systemTemp.createTempSync();
+        final fixture = File(path.join(tempDir.path, 'release.txt'))
+          ..createSync();
+
+        expect(
+          codePushClient.createReleaseArtifact(
+            artifactPath: fixture.path,
+            releaseId: releaseId,
+            arch: arch,
+            platform: platform,
+            hash: hash,
+          ),
+          throwsA(isA<CodePushConflictException>()),
+        );
+      });
+
       test('throws an exception if the http request fails', () async {
         when(() => httpClient.send(any())).thenAnswer((_) async {
           return http.StreamedResponse(
@@ -334,22 +492,22 @@ void main() {
         );
       });
 
-      test('completes when request succeeds', () async {
-        const artifactId = 0;
-        const artifactUrl = 'https://example.com/artifact.zip';
+      test('throws an exception if the upload fails', () async {
+        const artifactId = 42;
+        const uploadUrl = 'https://example.com';
         when(() => httpClient.send(any())).thenAnswer((_) async {
           return http.StreamedResponse(
             Stream.value(
               utf8.encode(
                 json.encode(
-                  ReleaseArtifact(
+                  CreateReleaseArtifactResponse(
                     id: artifactId,
-                    url: artifactUrl,
                     releaseId: releaseId,
                     arch: arch,
                     platform: platform,
                     hash: hash,
                     size: size,
+                    url: uploadUrl,
                   ),
                 ),
               ),
@@ -357,6 +515,10 @@ void main() {
             HttpStatus.ok,
           );
         });
+
+        when(
+          () => httpClient.put(any(), body: any(named: 'body')),
+        ).thenAnswer((_) async => http.Response('', HttpStatus.badRequest));
 
         final tempDir = Directory.systemTemp.createTempSync();
         final fixture = File(path.join(tempDir.path, 'release.txt'))
@@ -370,17 +532,63 @@ void main() {
             platform: platform,
             hash: hash,
           ),
-          completion(
-            equals(
-              isA<ReleaseArtifact>()
-                  .having((a) => a.id, 'id', artifactId)
-                  .having((a) => a.releaseId, 'releaseId', releaseId)
-                  .having((a) => a.arch, 'arch', arch)
-                  .having((a) => a.platform, 'platform', platform)
-                  .having((a) => a.hash, 'hash', hash)
-                  .having((a) => a.url, 'artifactUrl', artifactUrl),
+          throwsA(
+            isA<CodePushException>().having(
+              (e) => e.message,
+              'message',
+              contains('Failed to upload artifact'),
             ),
           ),
+        );
+        verify(
+          () => httpClient.put(
+            Uri.parse(uploadUrl),
+            body: fixture.readAsBytesSync(),
+          ),
+        ).called(1);
+      });
+
+      test('completes when request succeeds', () async {
+        const artifactId = 42;
+        const uploadUrl = 'https://example.com';
+        when(() => httpClient.send(any())).thenAnswer((_) async {
+          return http.StreamedResponse(
+            Stream.value(
+              utf8.encode(
+                json.encode(
+                  CreateReleaseArtifactResponse(
+                    id: artifactId,
+                    releaseId: releaseId,
+                    arch: arch,
+                    platform: platform,
+                    hash: hash,
+                    size: size,
+                    url: uploadUrl,
+                  ),
+                ),
+              ),
+            ),
+            HttpStatus.ok,
+          );
+        });
+
+        when(
+          () => httpClient.put(any(), body: any(named: 'body')),
+        ).thenAnswer((_) async => http.Response('', HttpStatus.ok));
+
+        final tempDir = Directory.systemTemp.createTempSync();
+        final fixture = File(path.join(tempDir.path, 'release.txt'))
+          ..createSync();
+
+        await expectLater(
+          codePushClient.createReleaseArtifact(
+            artifactPath: fixture.path,
+            releaseId: releaseId,
+            arch: arch,
+            platform: platform,
+            hash: hash,
+          ),
+          completes,
         );
 
         final request = verify(() => httpClient.send(captureAny()))
@@ -681,6 +889,7 @@ void main() {
           codePushClient.createRelease(
             appId: appId,
             version: version,
+            flutterRevision: flutterRevision,
             displayName: displayName,
           ),
           throwsA(
@@ -711,6 +920,7 @@ void main() {
           codePushClient.createRelease(
             appId: appId,
             version: version,
+            flutterRevision: flutterRevision,
             displayName: displayName,
           ),
           throwsA(
@@ -738,6 +948,7 @@ void main() {
                 id: releaseId,
                 appId: appId,
                 version: version,
+                flutterRevision: flutterRevision,
                 displayName: displayName,
               ),
             ),
@@ -749,6 +960,7 @@ void main() {
           codePushClient.createRelease(
             appId: appId,
             version: version,
+            flutterRevision: flutterRevision,
             displayName: displayName,
           ),
           completion(
@@ -757,6 +969,11 @@ void main() {
                   .having((r) => r.id, 'id', releaseId)
                   .having((r) => r.appId, 'appId', appId)
                   .having((r) => r.version, 'version', version)
+                  .having(
+                    (r) => r.flutterRevision,
+                    'flutterRevision',
+                    flutterRevision,
+                  )
                   .having((r) => r.displayName, 'displayName', displayName),
             ),
           ),
@@ -773,6 +990,80 @@ void main() {
         expect(
           uri,
           codePushClient.hostedUri.replace(path: '/api/v1/releases'),
+        );
+      });
+    });
+
+    group('deleteCollaborator', () {
+      const appId = 'test-app-id';
+      const userId = 42;
+
+      test('throws an exception if the http request fails (unknown)', () async {
+        when(
+          () => httpClient.delete(any(), headers: any(named: 'headers')),
+        ).thenAnswer(
+          (_) async => http.Response('', HttpStatus.failedDependency),
+        );
+
+        expect(
+          codePushClient.deleteCollaborator(appId: appId, userId: userId),
+          throwsA(
+            isA<CodePushException>().having(
+              (e) => e.message,
+              'message',
+              CodePushClient.unknownErrorMessage,
+            ),
+          ),
+        );
+      });
+
+      test('throws an exception if the http request fails', () async {
+        when(
+          () => httpClient.delete(any(), headers: any(named: 'headers')),
+        ).thenAnswer(
+          (_) async => http.Response(
+            json.encode(errorResponse.toJson()),
+            HttpStatus.failedDependency,
+          ),
+        );
+
+        expect(
+          codePushClient.deleteCollaborator(appId: appId, userId: userId),
+          throwsA(
+            isA<CodePushException>().having(
+              (e) => e.message,
+              'message',
+              errorResponse.message,
+            ),
+          ),
+        );
+      });
+
+      test('completes when request succeeds', () async {
+        when(
+          () => httpClient.delete(
+            any(),
+            headers: any(named: 'headers'),
+          ),
+        ).thenAnswer((_) async => http.Response('', HttpStatus.noContent));
+
+        await codePushClient.deleteCollaborator(
+          appId: appId,
+          userId: userId,
+        );
+
+        final uri = verify(
+          () => httpClient.delete(
+            captureAny(),
+            headers: any(named: 'headers'),
+          ),
+        ).captured.single as Uri;
+
+        expect(
+          uri,
+          codePushClient.hostedUri.replace(
+            path: '/api/v1/apps/$appId/collaborators/$userId',
+          ),
         );
       });
     });
@@ -1137,6 +1428,98 @@ void main() {
       });
     });
 
+    group('getCollaborators', () {
+      const appId = 'test-app-id';
+      test('throws an exception if the http request fails (unknown)', () async {
+        when(
+          () => httpClient.get(
+            any(),
+            headers: any(named: 'headers'),
+          ),
+        ).thenAnswer(
+          (_) async => http.Response(
+            '',
+            HttpStatus.failedDependency,
+          ),
+        );
+
+        expect(
+          codePushClient.getCollaborators(appId: appId),
+          throwsA(
+            isA<CodePushException>().having(
+              (e) => e.message,
+              'message',
+              CodePushClient.unknownErrorMessage,
+            ),
+          ),
+        );
+      });
+
+      test('throws an exception if the http request fails', () async {
+        when(
+          () => httpClient.get(
+            any(),
+            headers: any(named: 'headers'),
+          ),
+        ).thenAnswer(
+          (_) async => http.Response(
+            json.encode(errorResponse.toJson()),
+            HttpStatus.failedDependency,
+          ),
+        );
+
+        expect(
+          codePushClient.getCollaborators(appId: appId),
+          throwsA(
+            isA<CodePushException>().having(
+              (e) => e.message,
+              'message',
+              errorResponse.message,
+            ),
+          ),
+        );
+      });
+
+      test('completes when request succeeds (empty)', () async {
+        when(
+          () => httpClient.get(
+            any(),
+            headers: any(named: 'headers'),
+          ),
+        ).thenAnswer(
+          (_) async => http.Response(json.encode([]), HttpStatus.ok),
+        );
+
+        final apps = await codePushClient.getCollaborators(appId: appId);
+        expect(apps, isEmpty);
+      });
+
+      test('completes when request succeeds (populated)', () async {
+        final expected = [
+          Collaborator(
+            userId: 0,
+            email: 'jane.doe@shorebird.dev',
+          ),
+          Collaborator(
+            userId: 1,
+            email: 'john.doe@shorebird.dev',
+          ),
+        ];
+
+        when(
+          () => httpClient.get(
+            any(),
+            headers: any(named: 'headers'),
+          ),
+        ).thenAnswer(
+          (_) async => http.Response(json.encode(expected), HttpStatus.ok),
+        );
+
+        final actual = await codePushClient.getCollaborators(appId: appId);
+        expect(json.encode(actual), equals(json.encode(expected)));
+      });
+    });
+
     group('getReleases', () {
       const appId = 'test-app-id';
       test('throws an exception if the http request fails (unknown)', () async {
@@ -1205,8 +1588,20 @@ void main() {
 
       test('completes when request succeeds (populated)', () async {
         final expected = [
-          Release(id: 0, appId: '1', version: '1.0.0', displayName: 'v1.0.0'),
-          Release(id: 1, appId: '2', version: '1.0.1', displayName: 'v1.0.1'),
+          Release(
+            id: 0,
+            appId: '1',
+            version: '1.0.0',
+            flutterRevision: flutterRevision,
+            displayName: 'v1.0.0',
+          ),
+          Release(
+            id: 1,
+            appId: '2',
+            version: '1.0.1',
+            flutterRevision: flutterRevision,
+            displayName: 'v1.0.1',
+          ),
         ];
 
         when(

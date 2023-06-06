@@ -1,7 +1,7 @@
 import 'dart:io';
 
 import 'package:mason_logger/mason_logger.dart';
-import 'package:shorebird_cli/src/auth_logger_mixin.dart';
+import 'package:path/path.dart' as p;
 import 'package:shorebird_cli/src/command.dart';
 import 'package:shorebird_cli/src/shorebird_build_mixin.dart';
 import 'package:shorebird_cli/src/shorebird_config_mixin.dart';
@@ -13,11 +13,7 @@ import 'package:shorebird_cli/src/shorebird_validation_mixin.dart';
 /// Build an Android APK file from your app.
 /// {@endtemplate}
 class BuildApkCommand extends ShorebirdCommand
-    with
-        AuthLoggerMixin,
-        ShorebirdValidationMixin,
-        ShorebirdConfigMixin,
-        ShorebirdBuildMixin {
+    with ShorebirdConfigMixin, ShorebirdValidationMixin, ShorebirdBuildMixin {
   /// {@macro build_apk_command}
   BuildApkCommand({
     required super.logger,
@@ -44,15 +40,13 @@ class BuildApkCommand extends ShorebirdCommand
 
   @override
   Future<int> run() async {
-    if (!auth.isAuthenticated) {
-      printNeedsAuthInstructions();
-      return ExitCode.noUser.code;
-    }
-
-    final validationIssues = await runValidators();
-    if (validationIssuesContainsError(validationIssues)) {
-      logValidationFailure(issues: validationIssues);
-      return ExitCode.config.code;
+    try {
+      await validatePreconditions(
+        checkUserIsAuthenticated: true,
+        checkValidators: true,
+      );
+    } on PreconditionFailedException catch (e) {
+      return e.exitCode.code;
     }
 
     final flavor = results['flavor'] as String?;
@@ -67,9 +61,10 @@ class BuildApkCommand extends ShorebirdCommand
 
     buildProgress.complete();
 
+    final apkDirPath = p.join('build', 'app', 'outputs', 'apk');
     final apkPath = flavor != null
-        ? './build/app/outputs/apk/$flavor/release/app-$flavor-release.apk'
-        : './build/app/outputs/apk/release/app-release.apk';
+        ? p.join(apkDirPath, flavor, 'release', 'app-$flavor-release.apk')
+        : p.join(apkDirPath, 'release', 'app-release.apk');
 
     logger.info('''
 📦 Generated an apk at:

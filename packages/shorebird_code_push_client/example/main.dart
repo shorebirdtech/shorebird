@@ -23,11 +23,13 @@ Future<void> main() async {
   final release = await client.createRelease(
     appId: app.id,
     version: '<VERSION>', // e.g. '1.0.0'
+    flutterRevision:
+        '<FLUTTER_REVISION>', // e.g. 83305b5088e6fe327fb3334a73ff190828d85713,
     displayName: '<DISPLAY NAME>', // e.g. 'v1.0.0'
   );
 
   // Create a release artifact.
-  final releaseArtifact = await client.createReleaseArtifact(
+  await client.createReleaseArtifact(
     releaseId: release.id,
     artifactPath: '<PATH TO ARTIFACT>', // e.g. 'libapp.so'
     platform: '<PLATFORM>', // e.g. 'android'
@@ -39,7 +41,7 @@ Future<void> main() async {
   final patch = await client.createPatch(releaseId: release.id);
 
   // Create a patch artifact.
-  final patchArtifact = await client.createPatchArtifact(
+  await client.createPatchArtifact(
     patchId: patch.id,
     artifactPath: '<PATH TO ARTIFACT>', // e.g. 'libapp.so'
     platform: '<PLATFORM>', // e.g. 'android'

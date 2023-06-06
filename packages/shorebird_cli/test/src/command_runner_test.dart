@@ -1,5 +1,3 @@
-import 'dart:io';
-
 import 'package:args/command_runner.dart';
 import 'package:cli_completion/cli_completion.dart';
 import 'package:collection/collection.dart';
@@ -7,17 +5,18 @@ import 'package:mason_logger/mason_logger.dart';
 import 'package:mocktail/mocktail.dart';
 import 'package:shorebird_cli/src/command_runner.dart';
 import 'package:shorebird_cli/src/shorebird_environment.dart';
+import 'package:shorebird_cli/src/shorebird_process.dart';
 import 'package:shorebird_cli/src/version.dart';
 import 'package:test/test.dart';
 
 class _MockLogger extends Mock implements Logger {}
 
-class _MockProcessResult extends Mock implements ProcessResult {}
+class _MockProcessResult extends Mock implements ShorebirdProcessResult {}
 
 void main() {
   group('ShorebirdCliCommandRunner', () {
     late Logger logger;
-    late ProcessResult processResult;
+    late ShorebirdProcessResult processResult;
     late ShorebirdCliCommandRunner commandRunner;
 
     setUp(() {

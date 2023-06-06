@@ -8,7 +8,7 @@ import 'package:shorebird_cli/src/shorebird_process.dart';
 import 'package:shorebird_cli/src/validators/validators.dart';
 import 'package:test/test.dart';
 
-class _MockProcessResult extends Mock implements ProcessResult {}
+class _MockProcessResult extends Mock implements ShorebirdProcessResult {}
 
 class _MockPlatform extends Mock implements Platform {}
 
@@ -20,10 +20,6 @@ void main() {
     const gitStatusMessage = '''
 HEAD detached at 45fc514f
 nothing to commit, working tree clean
-''';
-
-    const gitRevParseHeadMessage = '''
-$flutterRevision
 ''';
 
     const pathFlutterVersionMessage = '''
@@ -42,10 +38,9 @@ Tools • Dart 2.19.6 • DevTools 2.20.1
 
     late ShorebirdFlutterValidator validator;
     late Directory tempDir;
-    late ProcessResult pathFlutterVersionProcessResult;
-    late ProcessResult shorebirdFlutterVersionProcessResult;
-    late ProcessResult gitRevParseHeadProcessResult;
-    late ProcessResult gitStatusProcessResult;
+    late ShorebirdProcessResult pathFlutterVersionProcessResult;
+    late ShorebirdProcessResult shorebirdFlutterVersionProcessResult;
+    late ShorebirdProcessResult gitStatusProcessResult;
     late ShorebirdProcess shorebirdProcess;
 
     Directory flutterDirectory(Directory root) =>
@@ -72,18 +67,10 @@ Tools • Dart 2.19.6 • DevTools 2.20.1
 
       pathFlutterVersionProcessResult = _MockProcessResult();
       shorebirdFlutterVersionProcessResult = _MockProcessResult();
-      gitRevParseHeadProcessResult = _MockProcessResult();
       gitStatusProcessResult = _MockProcessResult();
       shorebirdProcess = _MockShorebirdProcess();
 
       validator = ShorebirdFlutterValidator();
-      when(
-        () => shorebirdProcess.run(
-          'git',
-          ['rev-parse', 'HEAD'],
-          workingDirectory: any(named: 'workingDirectory'),
-        ),
-      ).thenAnswer((_) async => gitRevParseHeadProcessResult);
       when(
         () => shorebirdProcess.run(
           'git',
@@ -115,8 +102,6 @@ Tools • Dart 2.19.6 • DevTools 2.20.1
           .thenReturn(shorebirdFlutterVersionMessage);
       when(() => shorebirdFlutterVersionProcessResult.stderr).thenReturn('');
       when(() => shorebirdFlutterVersionProcessResult.exitCode).thenReturn(0);
-      when(() => gitRevParseHeadProcessResult.stdout)
-          .thenReturn(gitRevParseHeadMessage);
       when(() => gitStatusProcessResult.stdout).thenReturn(gitStatusMessage);
     });
 
@@ -145,18 +130,6 @@ Tools • Dart 2.19.6 • DevTools 2.20.1
       expect(results, hasLength(1));
       expect(results.first.severity, ValidationIssueSeverity.warning);
       expect(results.first.message, contains('has local modifications'));
-    });
-
-    test('warns when Flutter does not track stable', () async {
-      when(() => gitRevParseHeadProcessResult.stdout).thenReturn('''
-62bd79521d
-''');
-
-      final results = await validator.validate(shorebirdProcess);
-
-      expect(results, hasLength(1));
-      expect(results.first.severity, ValidationIssueSeverity.warning);
-      expect(results.first.message, contains('is not on the correct revision'));
     });
 
     test(

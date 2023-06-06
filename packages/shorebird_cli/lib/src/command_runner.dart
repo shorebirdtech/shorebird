@@ -29,13 +29,18 @@ class ShorebirdCliCommandRunner extends CompletionCommandRunner<int> {
     argParser
       ..addFlag(
         'version',
-        abbr: 'v',
         negatable: false,
         help: 'Print the current version.',
       )
       ..addFlag(
         'verbose',
+        abbr: 'v',
         help: 'Noisy logging, including all shell commands executed.',
+        callback: (verbose) {
+          if (verbose) {
+            _logger.level = Level.verbose;
+          }
+        },
       )
       ..addOption(
         'local-engine-src-path',
@@ -54,7 +59,7 @@ class ShorebirdCliCommandRunner extends CompletionCommandRunner<int> {
     addCommand(AppsCommand(logger: _logger));
     addCommand(BuildCommand(logger: _logger));
     addCommand(CacheCommand(logger: _logger));
-    addCommand(ChannelsCommand(logger: _logger));
+    addCommand(CollaboratorsCommand(logger: _logger));
     addCommand(DoctorCommand(logger: _logger));
     addCommand(InitCommand(logger: _logger));
     addCommand(LoginCommand(logger: _logger));
@@ -79,9 +84,6 @@ class ShorebirdCliCommandRunner extends CompletionCommandRunner<int> {
   Future<int> run(Iterable<String> args) async {
     try {
       final topLevelResults = parse(args);
-      if (topLevelResults['verbose'] == true) {
-        _logger.level = Level.verbose;
-      }
 
       // Set up our context before running the command.
       engineConfig = EngineConfig(
@@ -90,6 +92,7 @@ class ShorebirdCliCommandRunner extends CompletionCommandRunner<int> {
       );
       process = ShorebirdProcess(
         engineConfig: engineConfig,
+        logger: _logger,
       );
 
       return await runCommand(topLevelResults) ?? ExitCode.success.code;

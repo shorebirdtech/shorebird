@@ -22,9 +22,11 @@ class _MockCodePushClient extends Mock implements CodePushClient {}
 
 class _MockLogger extends Mock implements Logger {}
 
+class _MockProgress extends Mock implements Progress {}
+
 class _MockProcess extends Mock implements ShorebirdProcess {}
 
-class _MockProcessResult extends Mock implements ProcessResult {}
+class _MockProcessResult extends Mock implements ShorebirdProcessResult {}
 
 class _MockPlatform extends Mock implements Platform {}
 
@@ -45,10 +47,23 @@ environment:
     late ArgResults argResults;
     late Auth auth;
     late ShorebirdProcess process;
-    late ProcessResult result;
+    late ShorebirdProcessResult result;
     late CodePushClient codePushClient;
     late Logger logger;
+    late Progress progress;
     late InitCommand command;
+
+    Directory setUpAppTempDir() {
+      final tempDir = Directory.systemTemp.createTempSync();
+      Directory(p.join(tempDir.path, 'android')).createSync(recursive: true);
+      return tempDir;
+    }
+
+    Directory setUpModuleTempDir() {
+      final tempDir = Directory.systemTemp.createTempSync();
+      Directory(p.join(tempDir.path, '.android')).createSync(recursive: true);
+      return tempDir;
+    }
 
     setUp(() {
       httpClient = _MockHttpClient();
@@ -58,6 +73,7 @@ environment:
       result = _MockProcessResult();
       codePushClient = _MockCodePushClient();
       logger = _MockLogger();
+      progress = _MockProgress();
       command = InitCommand(
         auth: auth,
         buildCodePushClient: ({
@@ -83,6 +99,7 @@ environment:
       when(
         () => logger.prompt(any(), defaultValue: any(named: 'defaultValue')),
       ).thenReturn(appName);
+      when(() => logger.progress(any())).thenReturn(progress);
       when(
         () => process.run(
           any(),
@@ -103,7 +120,7 @@ environment:
         when(() => platform.isLinux).thenReturn(true);
         when(() => platform.isMacOS).thenReturn(false);
         when(() => platform.isWindows).thenReturn(false);
-        final tempDir = Directory.systemTemp.createTempSync();
+        final tempDir = setUpAppTempDir();
         const javaHome = 'test_java_home';
         when(() => platform.environment).thenReturn({'JAVA_HOME': javaHome});
         await expectLater(
@@ -120,12 +137,13 @@ environment:
           ),
         ).called(1);
       });
+
       test('uses correct executable on windows', () async {
         final platform = _MockPlatform();
         when(() => platform.isWindows).thenReturn(true);
         when(() => platform.isMacOS).thenReturn(false);
         when(() => platform.isLinux).thenReturn(false);
-        final tempDir = Directory.systemTemp.createTempSync();
+        final tempDir = setUpAppTempDir();
         when(() => platform.environment).thenReturn({
           'PROGRAMFILES': tempDir.path,
           'PROGRAMFILES(X86)': tempDir.path,
@@ -158,7 +176,7 @@ environment:
         when(() => platform.isWindows).thenReturn(false);
         when(() => platform.isMacOS).thenReturn(true);
         when(() => platform.isLinux).thenReturn(false);
-        final tempDir = Directory.systemTemp.createTempSync();
+        final tempDir = setUpAppTempDir();
         when(() => platform.environment).thenReturn({'HOME': tempDir.path});
         final androidStudioDir = Directory(
           p.join(
@@ -194,7 +212,7 @@ environment:
         when(() => platform.isWindows).thenReturn(false);
         when(() => platform.isMacOS).thenReturn(false);
         when(() => platform.isLinux).thenReturn(true);
-        final tempDir = Directory.systemTemp.createTempSync();
+        final tempDir = setUpAppTempDir();
         when(() => platform.environment).thenReturn({'HOME': tempDir.path});
         final androidStudioDir = Directory(
           p.join(tempDir.path, '.AndroidStudio'),
@@ -215,6 +233,29 @@ environment:
             runInShell: true,
             workingDirectory: p.join(tempDir.path, 'android'),
             environment: {'JAVA_HOME': jbrDir.path},
+          ),
+        ).called(1);
+      });
+
+      test('extracts flavors from module directory structure', () async {
+        final platform = _MockPlatform();
+        when(() => platform.isLinux).thenReturn(true);
+        when(() => platform.isMacOS).thenReturn(false);
+        when(() => platform.isWindows).thenReturn(false);
+        final tempDir = setUpModuleTempDir();
+        const javaHome = 'test_java_home';
+        when(() => platform.environment).thenReturn({'JAVA_HOME': javaHome});
+        await expectLater(
+          command.extractProductFlavors(tempDir.path, platform: platform),
+          completes,
+        );
+        verify(
+          () => process.run(
+            p.join(tempDir.path, '.android', 'gradlew'),
+            ['app:tasks', '--all', '--console=auto'],
+            runInShell: true,
+            workingDirectory: p.join(tempDir.path, '.android'),
+            environment: {'JAVA_HOME': javaHome},
           ),
         ).called(1);
       });
@@ -309,7 +350,7 @@ If you want to reinitialize Shorebird, please run "shorebird init --force".''',
       when(() => result.exitCode).thenReturn(1);
       when(() => result.stdout).thenReturn('error');
       when(() => result.stderr).thenReturn('oops');
-      final tempDir = Directory.systemTemp.createTempSync();
+      final tempDir = setUpAppTempDir();
       File(
         p.join(tempDir.path, 'pubspec.yaml'),
       ).writeAsStringSync(pubspecYamlContent);
@@ -317,11 +358,14 @@ If you want to reinitialize Shorebird, please run "shorebird init --force".''',
         command.run,
         getCurrentDirectory: () => tempDir,
       );
+      verify(() => logger.progress('Detecting product flavors')).called(1);
       verify(
         () => logger.detail(
           'Unable to extract product flavors: Exception: error\noops',
         ),
       ).called(1);
+      verify(() => progress.complete()).called(1);
+      verifyNever(() => progress.fail(any()));
       expect(exitCode, ExitCode.success.code);
     });
 
@@ -361,7 +405,14 @@ If you want to reinitialize Shorebird, please run "shorebird init --force".''',
     });
 
     test('creates shorebird.yaml for an app with flavors', () async {
-      final appIds = ['test-appId-1', 'test-appId-2', 'test-appId-3'];
+      final appIds = [
+        'test-appId-1',
+        'test-appId-2',
+        'test-appId-3',
+        'test-appId-4',
+        'test-appId-5',
+        'test-appId-6'
+      ];
       var index = 0;
       when(
         () => codePushClient.createApp(displayName: any(named: 'displayName')),
@@ -374,7 +425,7 @@ If you want to reinitialize Shorebird, please run "shorebird init --force".''',
           p.join('test', 'fixtures', 'gradle_app_tasks.txt'),
         ).readAsStringSync(),
       );
-      final tempDir = Directory.systemTemp.createTempSync();
+      final tempDir = setUpAppTempDir();
       File(
         p.join(tempDir.path, 'pubspec.yaml'),
       ).writeAsStringSync(pubspecYamlContent);
@@ -388,8 +439,11 @@ If you want to reinitialize Shorebird, please run "shorebird init --force".''',
 app_id: ${appIds[0]}
 flavors:
   development: ${appIds[0]}
-  production: ${appIds[1]}
-  staging: ${appIds[2]}'''),
+  developmentInternal: ${appIds[1]}
+  production: ${appIds[2]}
+  productionInternal: ${appIds[3]}
+  staging: ${appIds[4]}
+  stagingInternal: ${appIds[5]}'''),
       );
 
       verifyInOrder([

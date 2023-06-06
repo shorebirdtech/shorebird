@@ -10,7 +10,7 @@ We maintain forks of:
 * flutter/engine
 * flutter/buildroot
 
-We keep our forked changes on the `main` branch of each repo which we rebase
+We keep our forked changes on the `shorebird/main` branch of each repo which we rebase
 periodically on top of `main` from the upstream repo.
 
 When Flutter makes a release, we make a branch in each repo for the Flutter
@@ -35,7 +35,7 @@ following branches:
 * flutter/flutter: `flutter_release/3.7.10`
 * flutter/engine: `flutter_release/3.7.10`
 * flutter/buildroot: `flutter_release/3.7.10`
-* shorebird: no branch or tag, just a commit to the `main` branch which will
+* shorebird: no branch or tag, just a commit to the `shorebird/main` branch which will
   eventually get pushed to `beta` and `stable` branches for Shorebird.
 
 It's rare that we will ever need to add commits to one of these branches,
@@ -187,11 +187,17 @@ git tag -a -m "shorebird-3.10.0-1.5.pre" shorebird-3.10.0-1.5.pre f498c3913890e7
 git push origin shorebird-3.10.0-1.5.pre
 ```
 
-12. If there were changes to the `patch` binary in the `updater` library we
+12. Sync our tags with the upstream (https://github.com/flutter/flutter):
+```
+git fetch --tags upstream
+git push --tags
+```
+
+13. If there were changes to the `patch` binary in the `updater` library we
 will need to trigger github actions before we can publish the new version of
 the shorebird engine.
 
-13. Before we can publish the new version of Shorebird, we need to build the
+14. Before we can publish the new version of Shorebird, we need to build the
 engine for all the platforms we support.  We do that by running the
 `build_and_upload.sh` script in the build_engine repo.
 
@@ -202,7 +208,7 @@ engine for all the platforms we support.  We do that by running the
 That script should be run in the cloud, but right now I've not figured that out
 yet, so we run it locally on an arm64 Mac.
 
-14. Once we've built all artifacts the final step is to push the new version
+15. Once we've built all artifacts the final step is to push the new version
 of shorebird to the appropriate branch.  e.g.
 (untested)
 ```

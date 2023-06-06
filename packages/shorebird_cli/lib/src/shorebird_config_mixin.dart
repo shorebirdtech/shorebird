@@ -5,6 +5,7 @@ import 'package:path/path.dart' as p;
 import 'package:pubspec_parse/pubspec_parse.dart';
 import 'package:shorebird_cli/src/command.dart';
 import 'package:shorebird_cli/src/config/config.dart';
+import 'package:shorebird_cli/src/shorebird_environment.dart';
 import 'package:yaml/yaml.dart';
 import 'package:yaml_edit/yaml_edit.dart';
 
@@ -34,6 +35,14 @@ mixin ShorebirdConfigMixin on ShorebirdCommand {
     if (!(yaml['flutter'] as Map).containsKey('assets')) return false;
     final assets = (yaml['flutter'] as Map)['assets'] as List;
     return assets.contains('shorebird.yaml');
+  }
+
+  /// Returns the Android package name from the pubspec.yaml file of a Flutter
+  /// module.
+  String? get androidPackageName {
+    final pubspec = getPubspecYaml()!;
+    final module = pubspec.flutter?['module'] as Map?;
+    return module?['androidPackage'] as String?;
   }
 
   File getShorebirdYamlFile() {
@@ -104,5 +113,17 @@ app_id:
     if (editor.edits.isEmpty) return;
 
     pubspecFile.writeAsStringSync(editor.toString());
+  }
+
+  Future<String> getShorebirdFlutterRevision() async {
+    final result = await process.run(
+      'git',
+      ['rev-parse', 'HEAD'],
+      workingDirectory: ShorebirdEnvironment.flutterDirectory.path,
+    );
+    if (result.exitCode != 0) {
+      throw Exception('Unable to determine flutter revision: ${result.stderr}');
+    }
+    return (result.stdout as String).trim();
   }
 }

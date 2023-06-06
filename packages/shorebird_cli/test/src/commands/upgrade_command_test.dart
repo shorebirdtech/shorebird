@@ -1,5 +1,3 @@
-import 'dart:io';
-
 import 'package:mason_logger/mason_logger.dart';
 import 'package:mocktail/mocktail.dart';
 import 'package:shorebird_cli/src/commands/commands.dart';
@@ -8,7 +6,7 @@ import 'package:test/test.dart';
 
 class _MockLogger extends Mock implements Logger {}
 
-class _MockProcessResult extends Mock implements ProcessResult {}
+class _MockProcessResult extends Mock implements ShorebirdProcessResult {}
 
 class _MockProgress extends Mock implements Progress {}
 
@@ -20,10 +18,11 @@ void main() {
 
   group('upgrade', () {
     late Logger logger;
-    late ProcessResult fetchCurrentVersionResult;
-    late ProcessResult fetchTagsResult;
-    late ProcessResult fetchLatestVersionResult;
-    late ProcessResult hardResetResult;
+    late ShorebirdProcessResult fetchCurrentVersionResult;
+    late ShorebirdProcessResult fetchTagsResult;
+    late ShorebirdProcessResult fetchLatestVersionResult;
+    late ShorebirdProcessResult hardResetResult;
+    late ShorebirdProcessResult pruneFlutterOriginResult;
     late UpgradeCommand command;
     late ShorebirdProcess shorebirdProcess;
 
@@ -36,6 +35,7 @@ void main() {
       fetchTagsResult = _MockProcessResult();
       fetchLatestVersionResult = _MockProcessResult();
       hardResetResult = _MockProcessResult();
+      pruneFlutterOriginResult = _MockProcessResult();
       shorebirdProcess = _MockShorebirdProcess();
       command = UpgradeCommand(
         logger: logger,
@@ -71,6 +71,13 @@ void main() {
           workingDirectory: any(named: 'workingDirectory'),
         ),
       ).thenAnswer((_) async => hardResetResult);
+      when(
+        () => shorebirdProcess.run(
+          'git',
+          ['remote', 'prune', 'origin'],
+          workingDirectory: any(named: 'workingDirectory'),
+        ),
+      ).thenAnswer((_) async => pruneFlutterOriginResult);
 
       when(
         () => fetchCurrentVersionResult.exitCode,
@@ -80,6 +87,9 @@ void main() {
       ).thenReturn(currentShorebirdRevision);
       when(
         () => fetchLatestVersionResult.exitCode,
+      ).thenReturn(ExitCode.success.code);
+      when(
+        () => pruneFlutterOriginResult.exitCode,
       ).thenReturn(ExitCode.success.code);
       when(
         () => fetchLatestVersionResult.stdout,
@@ -140,6 +150,18 @@ void main() {
         verify(() => logger.err('Updating failed: oops')).called(1);
       },
     );
+
+    test('handles errors on failure to prune Flutter branches', () async {
+      when(
+        () => fetchLatestVersionResult.stdout,
+      ).thenReturn(newerShorebirdRevision);
+      when(() => pruneFlutterOriginResult.exitCode).thenReturn(1);
+      when(() => logger.progress(any())).thenReturn(_MockProgress());
+
+      final result = await command.run();
+
+      expect(result, equals(ExitCode.software.code));
+    });
 
     test(
       'updates when newer version exists',
