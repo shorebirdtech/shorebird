@@ -35,6 +35,15 @@ class _MockShorebirdFlutterValidator extends Mock
 
 class _MockShorebirdProcess extends Mock implements ShorebirdProcess {}
 
+enum PlistType {
+  // Defines version number as a raw string ("1.0.0")
+  nonParameterized,
+  // Defines version number as a variable ("$(FLUTTER_BUILD_NAME)")
+  parameterized,
+  // An empty plist
+  empty,
+}
+
 void main() {
   group(ReleaseIosCommand, () {
     const appId = 'test-app-id';
@@ -96,6 +105,14 @@ FLUTTER_BUILD_NUMBER=1
 </dict>
 </plist>
 ''';
+    const emptyPlistContent = '''
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+<plist version="1.0">
+<dict>
+</dict>
+</plist>
+''';
 
     late ArgResults argResults;
     late http.Client httpClient;
@@ -113,7 +130,7 @@ FLUTTER_BUILD_NUMBER=1
     late ShorebirdProcess shorebirdProcess;
 
     Directory setUpTempDir({
-      bool useParameterizedInfoPlist = true,
+      PlistType plistType = PlistType.parameterized,
       bool includeConfigContent = true,
       bool includePlist = true,
     }) {
@@ -137,14 +154,16 @@ FLUTTER_BUILD_NUMBER=1
       }
 
       if (includePlist) {
-        if (useParameterizedInfoPlist) {
-          (File(p.join(tempDir.path, 'ios', 'Runner', 'Info.plist'))
-                ..createSync(recursive: true))
-              .writeAsStringSync(parameterizedInfoPlistContent);
-        } else {
-          (File(p.join(tempDir.path, 'ios', 'Runner', 'Info.plist'))
-                ..createSync(recursive: true))
-              .writeAsStringSync(nonParameterizedInfoPlistContent);
+        final plistFile =
+            File(p.join(tempDir.path, 'ios', 'Runner', 'Info.plist'))
+              ..createSync(recursive: true);
+        switch (plistType) {
+          case PlistType.nonParameterized:
+            plistFile.writeAsStringSync(nonParameterizedInfoPlistContent);
+          case PlistType.parameterized:
+            plistFile.writeAsStringSync(parameterizedInfoPlistContent);
+          case PlistType.empty:
+            plistFile.writeAsStringSync(emptyPlistContent);
         }
       }
 
@@ -321,8 +340,10 @@ Did you forget to run "shorebird init"?''',
       });
 
       test('throws error if plist does not contain version number', () async {
-        final tempDir =
-            setUpTempDir(includeConfigContent: false, includePlist: false);
+        final tempDir = setUpTempDir(
+          includeConfigContent: false,
+          plistType: PlistType.empty,
+        );
         File(p.join(tempDir.path, 'ios', 'Runner', 'Info.plist'))
             .createSync(recursive: true);
 
@@ -354,7 +375,7 @@ Did you forget to run "shorebird init"?''',
           () async {
         final tempDir = setUpTempDir(
           includeConfigContent: false,
-          useParameterizedInfoPlist: false,
+          plistType: PlistType.nonParameterized,
         );
 
         final exitCode = await IOOverrides.runZoned(
