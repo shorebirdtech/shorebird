@@ -3,7 +3,6 @@ import 'dart:io';
 import 'package:collection/collection.dart';
 import 'package:http/http.dart' as http;
 import 'package:path/path.dart' as p;
-import 'package:shorebird_cli/src/config/config.dart';
 import 'package:shorebird_cli/src/shorebird_build_mixin.dart';
 import 'package:shorebird_cli/src/shorebird_config_mixin.dart';
 import 'package:shorebird_code_push_client/shorebird_code_push_client.dart';
@@ -32,7 +31,6 @@ class PatchArtifactBundle {
 
 mixin ShorebirdCodePushClientMixin on ShorebirdConfigMixin {
   Future<App?> getApp({required String appId, String? flavor}) async {
-    final shorebirdYaml = getShorebirdYaml()!;
     final codePushClient = buildCodePushClient(
       httpClient: auth.client,
       hostedUri: hostedUri,
@@ -47,10 +45,9 @@ mixin ShorebirdCodePushClientMixin on ShorebirdConfigMixin {
       fetchAppsProgress.complete();
     } catch (error) {
       fetchAppsProgress.fail('$error');
-      return null;
+      rethrow;
     }
 
-    final appId = shorebirdYaml.getAppId(flavor: flavor);
     return apps.firstWhereOrNull((a) => a.id == appId);
   }
 
@@ -115,7 +112,7 @@ mixin ShorebirdCodePushClientMixin on ShorebirdConfigMixin {
       fetchReleaseProgress.complete();
     } catch (error) {
       fetchReleaseProgress.fail('$error');
-      return null;
+      rethrow;
     }
 
     return releases.firstWhereOrNull((r) => r.version == releaseVersion);
