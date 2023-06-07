@@ -1,5 +1,6 @@
 import 'package:collection/collection.dart';
 import 'package:mason_logger/mason_logger.dart';
+import 'package:meta/meta.dart';
 import 'package:shorebird_cli/src/shorebird_build_mixin.dart';
 import 'package:shorebird_cli/src/third_party/flutter_tools/lib/flutter_tools.dart';
 import 'package:shorebird_code_push_client/shorebird_code_push_client.dart';
@@ -69,6 +70,7 @@ Did you forget to run "shorebird init"?''',
     }
   }
 
+  @visibleForTesting
   Future<Channel?> maybeGetChannel({
     required String appId,
     required String name,
@@ -87,6 +89,7 @@ Did you forget to run "shorebird init"?''',
     }
   }
 
+  @visibleForTesting
   Future<Channel> createChannel({
     required String appId,
     required String name,
@@ -197,6 +200,7 @@ Please create a release using "shorebird release" and try again.
     }
   }
 
+  @visibleForTesting
   Future<Patch> createPatch({required int releaseId}) async {
     final createPatchProgress = logger.progress('Creating patch');
     try {
@@ -209,6 +213,7 @@ Please create a release using "shorebird release" and try again.
     }
   }
 
+  @visibleForTesting
   Future<void> createPatchArtifacts({
     required Patch patch,
     required String platform,
@@ -232,6 +237,7 @@ Please create a release using "shorebird release" and try again.
     createArtifactProgress.complete();
   }
 
+  @visibleForTesting
   Future<void> promotePatch({
     required int patchId,
     required Channel channel,
