@@ -52,23 +52,21 @@ void main() {
         const error = 'something went wrong';
         when(() => codePushClient.getApps()).thenThrow(error);
 
-        expect(
+        await expectLater(
           () async => codePushClientWrapper.getApp(appId: 'asdf'),
           exitsWithCode(ExitCode.software),
         );
         verify(() => progress.fail(error)).called(1);
       });
 
-      test('throws error when app does not exist if failOnNotFound', () async {
+      test('throws error when app does not exist', () async {
         when(() => codePushClient.getApps()).thenAnswer((_) async => []);
 
         await expectLater(
-          () async => codePushClientWrapper.getApp(
-            appId: appId,
-            failOnNotFound: true,
-          ),
+          () async => codePushClientWrapper.getApp(appId: appId),
           exitsWithCode(ExitCode.software),
         );
+
         verify(() => progress.complete()).called(1);
         verify(
           () => logger.err(
@@ -77,13 +75,26 @@ void main() {
         ).called(1);
       });
 
+      test('returns app when app exists', () async {
+        when(() => codePushClient.getApps()).thenAnswer((_) async => [app]);
+
+        final result = await codePushClientWrapper.getApp(appId: appId);
+
+        expect(result, app);
+        verify(() => progress.complete()).called(1);
+      });
+    });
+
+    group('maybeGetApp', () {
+      const appId = 'test-app-id';
+      const app = AppMetadata(appId: appId, displayName: 'Test App');
+
       test('succeeds if app does not exist and failOnNotFound is false',
           () async {
         when(() => codePushClient.getApps()).thenAnswer((_) async => [app]);
 
         final result = await codePushClientWrapper.getApp(
           appId: appId,
-          failOnNotFound: true,
         );
 
         expect(result, app);

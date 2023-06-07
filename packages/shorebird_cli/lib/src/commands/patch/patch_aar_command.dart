@@ -470,35 +470,6 @@ ${summary.join('\n')}
     return releaseArtifact.path;
   }
 
-  Future<String> createDiff({
-    required String releaseArtifactPath,
-    required String patchArtifactPath,
-  }) async {
-    final tempDir = await Directory.systemTemp.createTemp();
-    final diffPath = p.join(tempDir.path, 'diff.patch');
-    final diffExecutable = p.join(
-      cache.getArtifactDirectory('patch').path,
-      'patch',
-    );
-    final diffArguments = [
-      releaseArtifactPath,
-      patchArtifactPath,
-      diffPath,
-    ];
-
-    final result = await process.run(
-      diffExecutable,
-      diffArguments,
-      runInShell: true,
-    );
-
-    if (result.exitCode != 0) {
-      throw Exception('Failed to create diff: ${result.stderr}');
-    }
-
-    return diffPath;
-  }
-
   Future<Map<Arch, String>> downloadReleaseArtifacts({
     required Map<Arch, ReleaseArtifact> releaseArtifacts,
     required http.Client httpClient,

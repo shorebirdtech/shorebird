@@ -4,12 +4,19 @@ import 'package:shorebird_cli/src/shorebird_build_mixin.dart';
 import 'package:shorebird_cli/src/third_party/flutter_tools/lib/flutter_tools.dart';
 import 'package:shorebird_code_push_client/shorebird_code_push_client.dart';
 
+/// {@template unreachable_exception}
+/// Exception thrown when a code path is unreachable.
+/// {@endtemplate}
 class UnreachableException implements Exception {
+  /// {@macro unreachable_exception}
   const UnreachableException();
 }
 
+/// {@template patch_artifact_bundle}
 /// Metadata about a patch artifact that we are about to upload.
+/// {@endtemplate}
 class PatchArtifactBundle {
+  /// {@macro patch_artifact_bundle}
   const PatchArtifactBundle({
     required this.arch,
     required this.path,
@@ -30,7 +37,12 @@ class PatchArtifactBundle {
   final int size;
 }
 
+/// {@template code_push_client_wrapper}
+/// Wraps [CodePushClient] interaction with logging and error handling to
+/// reduce the amount of command and command test code.
+/// {@endtemplate}
 class CodePushClientWrapper {
+  /// {@macro code_push_client_wrapper}
   CodePushClientWrapper({
     required this.codePushClient,
     required this.logger,
@@ -39,25 +51,9 @@ class CodePushClientWrapper {
   final CodePushClient codePushClient;
   final Logger logger;
 
-  Future<App?> getApp({
-    required String appId,
-    bool failOnNotFound = false,
-  }) async {
-    final List<App> apps;
-    final fetchAppsProgress = logger.progress('Fetching apps');
-    try {
-      apps = (await codePushClient.getApps())
-          .map((a) => App(id: a.appId, displayName: a.displayName))
-          .toList();
-      fetchAppsProgress.complete();
-    } catch (error) {
-      fetchAppsProgress.fail('$error');
-      exit(ExitCode.software.code);
-      throw const UnreachableException();
-    }
-
-    final app = apps.firstWhereOrNull((a) => a.id == appId);
-    if (app == null && failOnNotFound) {
+  Future<App> getApp({required String appId}) async {
+    final app = await maybeGetApp(appId: appId);
+    if (app == null) {
       logger.err(
         '''
 Could not find app with id: "$appId".
@@ -68,6 +64,22 @@ Did you forget to run "shorebird init"?''',
     }
 
     return app;
+  }
+
+  Future<App?> maybeGetApp({required String appId}) async {
+    final List<App> apps;
+    final fetchAppsProgress = logger.progress('Fetching apps');
+    try {
+      apps = (await codePushClient.getApps())
+          .map((a) => App(id: a.appId, displayName: a.displayName))
+          .toList();
+      fetchAppsProgress.complete();
+      return apps.firstWhereOrNull((a) => a.id == appId);
+    } catch (error) {
+      fetchAppsProgress.fail('$error');
+      exit(ExitCode.software.code);
+      throw const UnreachableException();
+    }
   }
 
   Future<Channel?> getChannel({
@@ -108,25 +120,16 @@ Did you forget to run "shorebird init"?''',
     }
   }
 
-  Future<Release?> getRelease({
+  Future<Release> getRelease({
     required String appId,
     required String releaseVersion,
-    bool failOnNotFound = false,
   }) async {
-    final List<Release> releases;
-    final fetchReleaseProgress = logger.progress('Fetching release');
-    try {
-      releases = await codePushClient.getReleases(appId: appId);
-      fetchReleaseProgress.complete();
-    } catch (error) {
-      fetchReleaseProgress.fail('$error');
-      exit(ExitCode.software.code);
-      throw const UnreachableException();
-    }
+    final release = await maybeGetRelease(
+      appId: appId,
+      releaseVersion: releaseVersion,
+    );
 
-    final release =
-        releases.firstWhereOrNull((r) => r.version == releaseVersion);
-    if (release == null && failOnNotFound) {
+    if (release == null) {
       logger.err(
         '''
 Release not found: "$releaseVersion"
@@ -140,6 +143,23 @@ Please create a release using "shorebird release" and try again.
     }
 
     return release;
+  }
+
+  Future<Release?> maybeGetRelease({
+    required String appId,
+    required String releaseVersion,
+  }) async {
+    final List<Release> releases;
+    final fetchReleaseProgress = logger.progress('Fetching release');
+    try {
+      releases = await codePushClient.getReleases(appId: appId);
+      fetchReleaseProgress.complete();
+      return releases.firstWhereOrNull((r) => r.version == releaseVersion);
+    } catch (error) {
+      fetchReleaseProgress.fail('$error');
+      exit(ExitCode.software.code);
+      throw const UnreachableException();
+    }
   }
 
   Future<Map<Arch, ReleaseArtifact>> getReleaseArtifacts({

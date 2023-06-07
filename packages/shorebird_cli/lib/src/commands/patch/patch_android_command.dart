@@ -129,10 +129,7 @@ class PatchAndroidCommand extends ShorebirdCommand
 
     final shorebirdYaml = getShorebirdYaml()!;
     final appId = shorebirdYaml.getAppId(flavor: flavor);
-    final app = (await codePushClientWrapper.getApp(
-      appId: appId,
-      failOnNotFound: true,
-    ))!;
+    final app = await codePushClientWrapper.getApp(appId: appId);
 
     final bundlePath = flavor != null
         ? './build/app/outputs/bundle/${flavor}Release/app-$flavor-release.aab'
@@ -160,11 +157,10 @@ class PatchAndroidCommand extends ShorebirdCommand
       return ExitCode.success.code;
     }
 
-    final release = (await codePushClientWrapper.getRelease(
+    final release = await codePushClientWrapper.getRelease(
       appId: appId,
       releaseVersion: releaseVersion,
-      failOnNotFound: true,
-    ))!;
+    );
 
     final flutterRevisionProgress = logger.progress(
       'Fetching Flutter revision',
@@ -387,35 +383,6 @@ ${summary.join('\n')}
     await releaseArtifact.openWrite().addStream(response.stream);
 
     return releaseArtifact.path;
-  }
-
-  Future<String> createDiff({
-    required String releaseArtifactPath,
-    required String patchArtifactPath,
-  }) async {
-    final tempDir = await Directory.systemTemp.createTemp();
-    final diffPath = p.join(tempDir.path, 'diff.patch');
-    final diffExecutable = p.join(
-      cache.getArtifactDirectory('patch').path,
-      'patch',
-    );
-    final diffArguments = [
-      releaseArtifactPath,
-      patchArtifactPath,
-      diffPath,
-    ];
-
-    final result = await process.run(
-      diffExecutable,
-      diffArguments,
-      runInShell: true,
-    );
-
-    if (result.exitCode != 0) {
-      throw Exception('Failed to create diff: ${result.stderr}');
-    }
-
-    return diffPath;
   }
 
   Future<Map<Arch, String>> downloadReleaseArtifacts({
