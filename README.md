@@ -11,7 +11,7 @@ Home of the Shorebird Tools
 
 ## Status
 
-Shorebird code push is in Open Beta!  Instructions for install and usage are at
+Shorebird code push is in Open Beta! Instructions for install and usage are at
 https://docs.shorebird.dev/
 
 ## Packages
@@ -25,6 +25,7 @@ This repository is a monorepo containing the following packages:
 | [shorebird_code_push_protocol](packages/shorebird_code_push_protocol/README.md) | Dart library which contains common interfaces used by Shorebird CodePush                |
 | [discord_gcp_alerts](packages/discord_gcp_alerts/README.md)                     | Dart server which forwards GCP alerts to Discord                                        |
 | [jwt](packages/jwt/README.md)                                                   | Dart library for verifying Json Web Tokens                                              |
+| [scoped](packages/scoped/README.md)                                             | A simple dependency injection library built on Zones                                    |
 
 For more information, please refer to the documentation for each package.
 

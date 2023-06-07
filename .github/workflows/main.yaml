@@ -66,6 +66,10 @@ jobs:
               - ./.github/workflows/main.yaml
               - ./.github/actions/dart_package
               - packages/jwt/**
+            scoped:
+              - ./.github/workflows/main.yaml
+              - ./.github/actions/dart_package
+              - packages/scoped/**
 
       - uses: dorny/paths-filter@v2
         name: Verify Detection
