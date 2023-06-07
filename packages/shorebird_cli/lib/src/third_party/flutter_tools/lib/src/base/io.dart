@@ -41,7 +41,7 @@ import 'package:shorebird_cli/src/third_party/flutter_tools/lib/src/base/process
 export 'dart:io' hide exit;
 
 /// Exits the process with the given [exitCode].
-typedef ExitFunction = void Function(int exitCode);
+typedef ExitFunction = Never Function(int exitCode);
 
 const ExitFunction _defaultExitFunction = io.exit;
 

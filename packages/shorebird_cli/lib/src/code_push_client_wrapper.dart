@@ -4,14 +4,6 @@ import 'package:shorebird_cli/src/shorebird_build_mixin.dart';
 import 'package:shorebird_cli/src/third_party/flutter_tools/lib/flutter_tools.dart';
 import 'package:shorebird_code_push_client/shorebird_code_push_client.dart';
 
-/// {@template unreachable_exception}
-/// Exception thrown when a code path is unreachable.
-/// {@endtemplate}
-class UnreachableException implements Exception {
-  /// {@macro unreachable_exception}
-  const UnreachableException();
-}
-
 /// {@template patch_artifact_bundle}
 /// Metadata about a patch artifact that we are about to upload.
 /// {@endtemplate}
@@ -60,7 +52,6 @@ Could not find app with id: "$appId".
 Did you forget to run "shorebird init"?''',
       );
       exit(ExitCode.software.code);
-      throw const UnreachableException();
     }
 
     return app;
@@ -75,7 +66,6 @@ Did you forget to run "shorebird init"?''',
     } catch (error) {
       fetchAppsProgress.fail('$error');
       exit(ExitCode.software.code);
-      throw const UnreachableException();
     }
   }
 
@@ -94,7 +84,6 @@ Did you forget to run "shorebird init"?''',
     } catch (error) {
       fetchChannelsProgress.fail('$error');
       exit(ExitCode.software.code);
-      throw const UnreachableException();
     }
   }
 
@@ -113,7 +102,6 @@ Did you forget to run "shorebird init"?''',
     } catch (error) {
       createChannelProgress.fail('$error');
       exit(ExitCode.software.code);
-      throw const UnreachableException();
     }
   }
 
@@ -136,7 +124,6 @@ Please create a release using "shorebird release" and try again.
 ''',
       );
       exit(ExitCode.software.code);
-      throw const UnreachableException();
     }
 
     return release;
@@ -155,7 +142,6 @@ Please create a release using "shorebird release" and try again.
     } catch (error) {
       fetchReleaseProgress.fail('$error');
       exit(ExitCode.software.code);
-      throw const UnreachableException();
     }
   }
 
@@ -179,7 +165,6 @@ Please create a release using "shorebird release" and try again.
       } catch (error) {
         fetchReleaseArtifactProgress.fail('$error');
         exit(ExitCode.software.code);
-        throw const UnreachableException();
       }
     }
 
@@ -209,7 +194,6 @@ Please create a release using "shorebird release" and try again.
     } catch (error) {
       fetchReleaseArtifactProgress.fail('$error');
       exit(ExitCode.software.code);
-      throw const UnreachableException();
     }
   }
 
@@ -222,7 +206,6 @@ Please create a release using "shorebird release" and try again.
     } catch (error) {
       createPatchProgress.fail('$error');
       exit(ExitCode.software.code);
-      throw const UnreachableException();
     }
   }
 
@@ -244,7 +227,6 @@ Please create a release using "shorebird release" and try again.
       } catch (error) {
         createArtifactProgress.fail('$error');
         exit(ExitCode.software.code);
-        throw const UnreachableException();
       }
     }
     createArtifactProgress.complete();
@@ -266,7 +248,6 @@ Please create a release using "shorebird release" and try again.
     } catch (error) {
       promotePatchProgress.fail('$error');
       exit(ExitCode.software.code);
-      throw const UnreachableException();
     }
   }
 
