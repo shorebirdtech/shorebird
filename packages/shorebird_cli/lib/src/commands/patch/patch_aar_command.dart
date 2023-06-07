@@ -144,7 +144,13 @@ of the Android app that is using this module.''',
     );
 
     final appId = shorebirdYaml.getAppId(flavor: flavor);
-    final app = await getApp(appId: appId, flavor: flavor);
+    final App? app;
+    try {
+      app = await getApp(appId: appId, flavor: flavor);
+    } catch (_) {
+      return ExitCode.software.code;
+    }
+
     if (app == null) {
       logger.err(
         '''
@@ -164,10 +170,15 @@ Did you forget to run "shorebird init"?''',
     const platform = 'android';
     final channelName = results['channel'] as String;
 
-    final release = await getRelease(
-      appId: appId,
-      releaseVersion: releaseVersion,
-    );
+    final Release? release;
+    try {
+      release = await getRelease(
+        appId: appId,
+        releaseVersion: releaseVersion,
+      );
+    } catch (_) {
+      return ExitCode.software.code;
+    }
 
     if (release == null) {
       logger.err(
@@ -367,7 +378,6 @@ ${summary.join('\n')}
     createArtifactProgress.complete();
 
     Channel? channel;
-
     try {
       channel = await getChannel(appId: app.id, name: channelName);
     } catch (error) {
@@ -375,8 +385,9 @@ ${summary.join('\n')}
     }
 
     if (channel == null) {
-      channel = await createChannel(appId: appId, name: channelName);
-      if (channel == null) {
+      try {
+        channel = await createChannel(appId: appId, name: channelName);
+      } catch (_) {
         return ExitCode.software.code;
       }
     }

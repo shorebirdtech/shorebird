@@ -3,7 +3,6 @@ import 'dart:io';
 import 'package:collection/collection.dart';
 import 'package:http/http.dart' as http;
 import 'package:path/path.dart' as p;
-import 'package:shorebird_cli/src/config/config.dart';
 import 'package:shorebird_cli/src/shorebird_build_mixin.dart';
 import 'package:shorebird_cli/src/shorebird_config_mixin.dart';
 import 'package:shorebird_code_push_client/shorebird_code_push_client.dart';
@@ -32,7 +31,6 @@ class PatchArtifactBundle {
 
 mixin ShorebirdCodePushClientMixin on ShorebirdConfigMixin {
   Future<App?> getApp({required String appId, String? flavor}) async {
-    final shorebirdYaml = getShorebirdYaml()!;
     final codePushClient = buildCodePushClient(
       httpClient: auth.client,
       hostedUri: hostedUri,
@@ -47,10 +45,9 @@ mixin ShorebirdCodePushClientMixin on ShorebirdConfigMixin {
       fetchAppsProgress.complete();
     } catch (error) {
       fetchAppsProgress.fail('$error');
-      return null;
+      rethrow;
     }
 
-    final appId = shorebirdYaml.getAppId(flavor: flavor);
     return apps.firstWhereOrNull((a) => a.id == appId);
   }
 
@@ -76,7 +73,7 @@ mixin ShorebirdCodePushClientMixin on ShorebirdConfigMixin {
     }
   }
 
-  Future<Channel?> createChannel({
+  Future<Channel> createChannel({
     required String appId,
     required String name,
   }) async {
@@ -95,7 +92,7 @@ mixin ShorebirdCodePushClientMixin on ShorebirdConfigMixin {
       return channel;
     } catch (error) {
       createChannelProgress.fail('$error');
-      return null;
+      rethrow;
     }
   }
 
@@ -115,7 +112,7 @@ mixin ShorebirdCodePushClientMixin on ShorebirdConfigMixin {
       fetchReleaseProgress.complete();
     } catch (error) {
       fetchReleaseProgress.fail('$error');
-      return null;
+      rethrow;
     }
 
     return releases.firstWhereOrNull((r) => r.version == releaseVersion);
@@ -198,32 +195,22 @@ mixin ShorebirdCodePushClientMixin on ShorebirdConfigMixin {
     return releaseArtifact.path;
   }
 
-  Future<String> createDiff({
-    required String releaseArtifactPath,
-    required String patchArtifactPath,
-  }) async {
-    final tempDir = await Directory.systemTemp.createTemp();
-    final diffPath = p.join(tempDir.path, 'diff.patch');
-    final diffExecutable = p.join(
-      cache.getArtifactDirectory('patch').path,
-      'patch',
-    );
-    final diffArguments = [
-      releaseArtifactPath,
-      patchArtifactPath,
-      diffPath,
-    ];
-
-    final result = await process.run(
-      diffExecutable,
-      diffArguments,
-      runInShell: true,
+  Future<Patch> createPatch({required int releaseId}) async {
+    final codePushClient = buildCodePushClient(
+      httpClient: auth.client,
+      hostedUri: hostedUri,
     );
 
-    if (result.exitCode != 0) {
-      throw Exception('Failed to create diff: ${result.stderr}');
+    final Patch patch;
+    final createPatchProgress = logger.progress('Creating patch');
+    try {
+      patch = await codePushClient.createPatch(releaseId: releaseId);
+      createPatchProgress.complete();
+    } catch (error) {
+      createPatchProgress.fail('$error');
+      rethrow;
     }
 
-    return diffPath;
+    return patch;
   }
 }
