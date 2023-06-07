@@ -3,7 +3,7 @@ import 'dart:async';
 import 'package:meta/meta.dart';
 
 /// {@template scoped_ref}
-/// A reference to a scoped value;
+/// A reference to a scoped value.
 /// {@endtemplate}
 @immutable
 class ScopedRef<T> {
