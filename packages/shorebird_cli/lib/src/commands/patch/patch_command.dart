@@ -10,6 +10,7 @@ class PatchCommand extends ShorebirdCommand {
   PatchCommand({required super.logger}) {
     addSubcommand(PatchAarCommand(logger: logger));
     addSubcommand(PatchAndroidCommand(logger: logger));
+    addSubcommand(PatchIosCommand(logger: logger));
   }
 
   @override

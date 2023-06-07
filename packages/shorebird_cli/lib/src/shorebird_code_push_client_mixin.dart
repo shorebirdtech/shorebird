@@ -73,7 +73,7 @@ mixin ShorebirdCodePushClientMixin on ShorebirdConfigMixin {
     }
   }
 
-  Future<Channel?> createChannel({
+  Future<Channel> createChannel({
     required String appId,
     required String name,
   }) async {
@@ -92,7 +92,7 @@ mixin ShorebirdCodePushClientMixin on ShorebirdConfigMixin {
       return channel;
     } catch (error) {
       createChannelProgress.fail('$error');
-      return null;
+      rethrow;
     }
   }
 
@@ -195,32 +195,22 @@ mixin ShorebirdCodePushClientMixin on ShorebirdConfigMixin {
     return releaseArtifact.path;
   }
 
-  Future<String> createDiff({
-    required String releaseArtifactPath,
-    required String patchArtifactPath,
-  }) async {
-    final tempDir = await Directory.systemTemp.createTemp();
-    final diffPath = p.join(tempDir.path, 'diff.patch');
-    final diffExecutable = p.join(
-      cache.getArtifactDirectory('patch').path,
-      'patch',
-    );
-    final diffArguments = [
-      releaseArtifactPath,
-      patchArtifactPath,
-      diffPath,
-    ];
-
-    final result = await process.run(
-      diffExecutable,
-      diffArguments,
-      runInShell: true,
+  Future<Patch> createPatch({required int releaseId}) async {
+    final codePushClient = buildCodePushClient(
+      httpClient: auth.client,
+      hostedUri: hostedUri,
     );
 
-    if (result.exitCode != 0) {
-      throw Exception('Failed to create diff: ${result.stderr}');
+    final Patch patch;
+    final createPatchProgress = logger.progress('Creating patch');
+    try {
+      patch = await codePushClient.createPatch(releaseId: releaseId);
+      createPatchProgress.complete();
+    } catch (error) {
+      createPatchProgress.fail('$error');
+      rethrow;
     }
 
-    return diffPath;
+    return patch;
   }
 }
