@@ -69,9 +69,7 @@ Did you forget to run "shorebird init"?''',
   Future<AppMetadata?> maybeGetApp({required String appId}) async {
     final fetchAppsProgress = logger.progress('Fetching apps');
     try {
-      final apps = (await codePushClient.getApps())
-          // .map((a) => App(id: a.appId, displayName: a.displayName))
-          .toList();
+      final apps = (await codePushClient.getApps()).toList();
       fetchAppsProgress.complete();
       return apps.firstWhereOrNull((a) => a.appId == appId);
     } catch (error) {
