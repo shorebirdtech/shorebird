@@ -1,15 +1,12 @@
 import 'package:collection/collection.dart';
-import 'package:shorebird_cli/src/config/config.dart';
+import 'package:http/http.dart' as http;
+import 'package:path/path.dart' as p;
 import 'package:shorebird_cli/src/shorebird_build_mixin.dart';
 import 'package:shorebird_cli/src/shorebird_config_mixin.dart';
 import 'package:shorebird_code_push_client/shorebird_code_push_client.dart';
 
 mixin ShorebirdCodePushClientMixin on ShorebirdConfigMixin {
-  Future<App?> getApp({
-    required String appId,
-    String? flavor,
-  }) async {
-    final shorebirdYaml = getShorebirdYaml()!;
+  Future<App?> getApp({required String appId, String? flavor}) async {
     final codePushClient = buildCodePushClient(
       httpClient: auth.client,
       hostedUri: hostedUri,
@@ -24,10 +21,9 @@ mixin ShorebirdCodePushClientMixin on ShorebirdConfigMixin {
       fetchAppsProgress.complete();
     } catch (error) {
       fetchAppsProgress.fail('$error');
-      return null;
+      rethrow;
     }
 
-    final appId = shorebirdYaml.getAppId(flavor: flavor);
     return apps.firstWhereOrNull((a) => a.id == appId);
   }
 
@@ -53,7 +49,7 @@ mixin ShorebirdCodePushClientMixin on ShorebirdConfigMixin {
     }
   }
 
-  Future<Channel?> createChannel({
+  Future<Channel> createChannel({
     required String appId,
     required String name,
   }) async {
@@ -72,7 +68,7 @@ mixin ShorebirdCodePushClientMixin on ShorebirdConfigMixin {
       return channel;
     } catch (error) {
       createChannelProgress.fail('$error');
-      return null;
+      rethrow;
     }
   }
 
@@ -92,7 +88,7 @@ mixin ShorebirdCodePushClientMixin on ShorebirdConfigMixin {
       fetchReleaseProgress.complete();
     } catch (error) {
       fetchReleaseProgress.fail('$error');
-      return null;
+      rethrow;
     }
 
     return releases.firstWhereOrNull((r) => r.version == releaseVersion);
@@ -128,5 +124,24 @@ mixin ShorebirdCodePushClientMixin on ShorebirdConfigMixin {
 
     fetchReleaseArtifactProgress.complete();
     return releaseArtifacts;
+  }
+
+  Future<Patch> createPatch({required int releaseId}) async {
+    final codePushClient = buildCodePushClient(
+      httpClient: auth.client,
+      hostedUri: hostedUri,
+    );
+
+    final Patch patch;
+    final createPatchProgress = logger.progress('Creating patch');
+    try {
+      patch = await codePushClient.createPatch(releaseId: releaseId);
+      createPatchProgress.complete();
+    } catch (error) {
+      createPatchProgress.fail('$error');
+      rethrow;
+    }
+
+    return patch;
   }
 }
