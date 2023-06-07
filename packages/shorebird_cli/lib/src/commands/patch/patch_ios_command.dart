@@ -82,6 +82,10 @@ class PatchIosCommand extends ShorebirdCommand
       return error.exitCode.code;
     }
 
+    logger.warn(
+      '''iOS support is in an experimental state and will not work without Flutter engine changes that have not yet been published.''',
+    );
+
     const channelName = 'stable';
     const platform = 'ios';
     final force = results['force'] == true;
