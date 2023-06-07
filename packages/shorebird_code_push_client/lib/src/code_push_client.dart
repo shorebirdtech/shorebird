@@ -29,6 +29,14 @@ class CodePushConflictException extends CodePushException {
   const CodePushConflictException({required super.message, super.details});
 }
 
+/// {@template code_push_not_found_exception}
+/// Exception thrown when a 404 response is received.
+/// {@endtemplate}
+class CodePushNotFoundException extends CodePushException {
+  /// {@macro code_push_not_found_exception}
+  CodePushNotFoundException({required super.message, super.details});
+}
+
 /// {@template code_push_client}
 /// Dart client for the Shorebird CodePush API.
 /// {@endtemplate}
@@ -431,9 +439,11 @@ class CodePushClient {
   void close() => _httpClient.close();
 
   CodePushException _parseErrorResponse(int statusCode, String response) {
-    final exceptionBuilder = statusCode == HttpStatus.conflict
-        ? CodePushConflictException.new
-        : CodePushException.new;
+    final exceptionBuilder = switch (statusCode) {
+      HttpStatus.conflict => CodePushConflictException.new,
+      HttpStatus.notFound => CodePushNotFoundException.new,
+      _ => CodePushException.new,
+    };
 
     final ErrorResponse error;
     try {

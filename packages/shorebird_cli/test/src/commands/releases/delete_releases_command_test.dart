@@ -65,16 +65,6 @@ flutter:
       logger = _MockLogger();
       codePushClient = _MockCodePushClient();
       progress = _MockProgress();
-      command = DeleteReleasesCommand(
-        auth: auth,
-        buildCodePushClient: ({
-          required http.Client httpClient,
-          Uri? hostedUri,
-        }) {
-          return codePushClient;
-        },
-        logger: logger,
-      )..testArgResults = argResults;
 
       when(() => argResults['version']).thenReturn(versionNumber);
 
@@ -110,6 +100,17 @@ flutter:
 
       when(() => logger.confirm(any())).thenReturn(true);
       when(() => logger.progress(any())).thenReturn(progress);
+
+      command = DeleteReleasesCommand(
+        auth: auth,
+        buildCodePushClient: ({
+          required http.Client httpClient,
+          Uri? hostedUri,
+        }) {
+          return codePushClient;
+        },
+        logger: logger,
+      )..testArgResults = argResults;
     });
 
     test('returns correct description', () {

@@ -74,18 +74,6 @@ environment:
       codePushClient = _MockCodePushClient();
       logger = _MockLogger();
       progress = _MockProgress();
-      command = InitCommand(
-        auth: auth,
-        buildCodePushClient: ({
-          required http.Client httpClient,
-          Uri? hostedUri,
-        }) {
-          return codePushClient;
-        },
-        logger: logger,
-      )
-        ..testProcess = process
-        ..testArgResults = argResults;
 
       // when(() => argResults['force']).thenReturn(false);
       when(() => auth.isAuthenticated).thenReturn(true);
@@ -112,6 +100,19 @@ environment:
 
       when(() => result.exitCode).thenReturn(ExitCode.success.code);
       when(() => result.stdout).thenReturn('');
+
+      command = InitCommand(
+        auth: auth,
+        buildCodePushClient: ({
+          required http.Client httpClient,
+          Uri? hostedUri,
+        }) {
+          return codePushClient;
+        },
+        logger: logger,
+      )
+        ..testProcess = process
+        ..testArgResults = argResults;
     });
 
     group('extractProductFlavors', () {

@@ -147,22 +147,6 @@ flutter:
       codePushClient = _MockCodePushClient();
       flutterValidator = _MockShorebirdFlutterValidator();
       shorebirdProcess = _MockShorebirdProcess();
-      command = ReleaseAndroidCommand(
-        auth: auth,
-        buildCodePushClient: ({
-          required http.Client httpClient,
-          Uri? hostedUri,
-        }) {
-          capturedHostedUri = hostedUri;
-          return codePushClient;
-        },
-        cache: cache,
-        logger: logger,
-        validators: [flutterValidator],
-      )
-        ..testArgResults = argResults
-        ..testProcess = shorebirdProcess
-        ..testEngineConfig = const EngineConfig.empty();
 
       registerFallbackValue(shorebirdProcess);
 
@@ -263,6 +247,23 @@ flutter:
         ),
       ).thenAnswer((_) async => releaseArtifact);
       when(() => flutterValidator.validate(any())).thenAnswer((_) async => []);
+
+      command = ReleaseAndroidCommand(
+        auth: auth,
+        buildCodePushClient: ({
+          required http.Client httpClient,
+          Uri? hostedUri,
+        }) {
+          capturedHostedUri = hostedUri;
+          return codePushClient;
+        },
+        cache: cache,
+        logger: logger,
+        validators: [flutterValidator],
+      )
+        ..testArgResults = argResults
+        ..testProcess = shorebirdProcess
+        ..testEngineConfig = const EngineConfig.empty();
     });
 
     test('has a description', () {

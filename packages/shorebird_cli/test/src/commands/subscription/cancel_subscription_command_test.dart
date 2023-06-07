@@ -40,6 +40,10 @@ void main() {
       logger = _MockLogger();
       progress = _MockProgress();
 
+      when(() => auth.client).thenReturn(httpClient);
+
+      when(() => logger.progress(any())).thenReturn(progress);
+
       command = CancelSubscriptionCommand(
         logger: logger,
         auth: auth,
@@ -49,10 +53,6 @@ void main() {
         }) =>
             codePushClient,
       );
-
-      when(() => auth.client).thenReturn(httpClient);
-
-      when(() => logger.progress(any())).thenReturn(progress);
     });
 
     test('returns a non-empty description', () {

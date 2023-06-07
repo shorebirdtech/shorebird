@@ -51,7 +51,7 @@ class CodePushClientWrapper {
   final CodePushClient codePushClient;
   final Logger logger;
 
-  Future<App> getApp({required String appId}) async {
+  Future<AppMetadata> getApp({required String appId}) async {
     final app = await maybeGetApp(appId: appId);
     if (app == null) {
       logger.err(
@@ -66,15 +66,14 @@ Did you forget to run "shorebird init"?''',
     return app;
   }
 
-  Future<App?> maybeGetApp({required String appId}) async {
-    final List<App> apps;
+  Future<AppMetadata?> maybeGetApp({required String appId}) async {
     final fetchAppsProgress = logger.progress('Fetching apps');
     try {
-      apps = (await codePushClient.getApps())
-          .map((a) => App(id: a.appId, displayName: a.displayName))
+      final apps = (await codePushClient.getApps())
+          // .map((a) => App(id: a.appId, displayName: a.displayName))
           .toList();
       fetchAppsProgress.complete();
-      return apps.firstWhereOrNull((a) => a.id == appId);
+      return apps.firstWhereOrNull((a) => a.appId == appId);
     } catch (error) {
       fetchAppsProgress.fail('$error');
       exit(ExitCode.software.code);
@@ -82,7 +81,7 @@ Did you forget to run "shorebird init"?''',
     }
   }
 
-  Future<Channel?> getChannel({
+  Future<Channel?> maybeGetChannel({
     required String appId,
     required String name,
   }) async {
@@ -166,7 +165,6 @@ Please create a release using "shorebird release" and try again.
     required int releaseId,
     required Map<Arch, ArchMetadata> architectures,
     required String platform,
-    bool failOnNotFound = false,
   }) async {
     final releaseArtifacts = <Arch, ReleaseArtifact>{};
     final fetchReleaseArtifactProgress = logger.progress(
@@ -181,11 +179,9 @@ Please create a release using "shorebird release" and try again.
         );
         releaseArtifacts[entry.key] = releaseArtifact;
       } catch (error) {
-        if (failOnNotFound) {
-          fetchReleaseArtifactProgress.fail('$error');
-          exit(ExitCode.software.code);
-          throw const UnreachableException();
-        }
+        fetchReleaseArtifactProgress.fail('$error');
+        exit(ExitCode.software.code);
+        throw const UnreachableException();
       }
     }
 
@@ -193,11 +189,10 @@ Please create a release using "shorebird release" and try again.
     return releaseArtifacts;
   }
 
-  Future<ReleaseArtifact?> getReleaseArtifact({
+  Future<ReleaseArtifact?> maybeGetReleaseArtifact({
     required int releaseId,
     required String arch,
     required String platform,
-    bool failOnNotFound = false,
   }) async {
     final fetchReleaseArtifactProgress = logger.progress(
       'Fetching $arch artifact',
@@ -210,18 +205,13 @@ Please create a release using "shorebird release" and try again.
       );
       fetchReleaseArtifactProgress.complete();
       return artifact;
-    } catch (error) {
-      if (failOnNotFound) {
-        fetchReleaseArtifactProgress.fail('$error');
-        exit(ExitCode.software.code);
-        throw const UnreachableException();
-      }
-
-      // Do nothing for now, not all releases will have an associated aab
-      // artifact.
-      // TODO(bryanoltman): Treat this as an error once all releases have an aab
+    } on CodePushNotFoundException {
       fetchReleaseArtifactProgress.complete();
       return null;
+    } catch (error) {
+      fetchReleaseArtifactProgress.fail('$error');
+      exit(ExitCode.software.code);
+      throw const UnreachableException();
     }
   }
 
@@ -263,7 +253,7 @@ Please create a release using "shorebird release" and try again.
   }
 
   Future<void> promotePatch({
-    required Patch patch,
+    required int patchId,
     required Channel channel,
   }) async {
     final promotePatchProgress = logger.progress(
@@ -271,7 +261,7 @@ Please create a release using "shorebird release" and try again.
     );
     try {
       await codePushClient.promotePatch(
-        patchId: patch.id,
+        patchId: patchId,
         channelId: channel.id,
       );
       promotePatchProgress.complete();
@@ -299,7 +289,7 @@ Please create a release using "shorebird release" and try again.
       patchArtifactBundles: patchArtifactBundles,
     );
 
-    final channel = await getChannel(
+    final channel = await maybeGetChannel(
           appId: appId,
           name: channelName,
         ) ??
@@ -308,6 +298,6 @@ Please create a release using "shorebird release" and try again.
           name: channelName,
         );
 
-    await promotePatch(patch: patch, channel: channel);
+    await promotePatch(patchId: patch.id, channel: channel);
   }
 }

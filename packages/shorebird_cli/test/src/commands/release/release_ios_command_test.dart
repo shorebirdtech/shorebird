@@ -113,22 +113,6 @@ flutter:
       codePushClient = _MockCodePushClient();
       flutterValidator = _MockShorebirdFlutterValidator();
       shorebirdProcess = _MockShorebirdProcess();
-      command = ReleaseIosCommand(
-        auth: auth,
-        buildCodePushClient: ({
-          required http.Client httpClient,
-          Uri? hostedUri,
-        }) {
-          capturedHostedUri = hostedUri;
-          return codePushClient;
-        },
-        ipaReader: ipaReader,
-        logger: logger,
-        validators: [flutterValidator],
-      )
-        ..testArgResults = argResults
-        ..testProcess = shorebirdProcess
-        ..testEngineConfig = const EngineConfig.empty();
 
       registerFallbackValue(shorebirdProcess);
 
@@ -193,6 +177,23 @@ flutter:
         ),
       ).thenAnswer((_) async => release);
       when(() => flutterValidator.validate(any())).thenAnswer((_) async => []);
+
+      command = ReleaseIosCommand(
+        auth: auth,
+        buildCodePushClient: ({
+          required http.Client httpClient,
+          Uri? hostedUri,
+        }) {
+          capturedHostedUri = hostedUri;
+          return codePushClient;
+        },
+        ipaReader: ipaReader,
+        logger: logger,
+        validators: [flutterValidator],
+      )
+        ..testArgResults = argResults
+        ..testProcess = shorebirdProcess
+        ..testEngineConfig = const EngineConfig.empty();
     });
 
     test('has a description', () {

@@ -59,7 +59,7 @@ void main() {
     const platform = 'android';
     const channelName = 'stable';
     const appDisplayName = 'Test App';
-    const app = App(id: appId, displayName: appDisplayName);
+    const app = AppMetadata(appId: appId, displayName: appDisplayName);
     const releaseArtifact = ReleaseArtifact(
       id: 0,
       releaseId: 0,
@@ -276,14 +276,12 @@ flutter:
       when(
         () => codePushClientWrapper.getApp(
           appId: any(named: 'appId'),
-          failOnNotFound: true,
         ),
       ).thenAnswer((_) async => app);
       when(
         () => codePushClientWrapper.getRelease(
           appId: any(named: 'appId'),
           releaseVersion: any(named: 'releaseVersion'),
-          failOnNotFound: true,
         ),
       ).thenAnswer((_) async => release);
       when(
@@ -291,7 +289,6 @@ flutter:
           releaseId: any(named: 'releaseId'),
           architectures: any(named: 'architectures'),
           platform: any(named: 'platform'),
-          failOnNotFound: true,
         ),
       ).thenAnswer(
         (_) async => {
@@ -301,7 +298,7 @@ flutter:
         },
       );
       when(
-        () => codePushClientWrapper.getReleaseArtifact(
+        () => codePushClientWrapper.maybeGetReleaseArtifact(
           releaseId: any(named: 'releaseId'),
           arch: 'aab',
           platform: 'android',

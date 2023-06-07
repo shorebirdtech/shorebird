@@ -34,6 +34,11 @@ void main() {
       auth = _MockAuth();
       codePushClient = _MockCodePushClient();
       logger = _MockLogger();
+
+      when(() => argResults['app-id']).thenReturn(appId);
+      when(() => auth.client).thenReturn(httpClient);
+      when(() => auth.isAuthenticated).thenReturn(true);
+
       command = ListCollaboratorsCommand(
         auth: auth,
         buildCodePushClient: ({
@@ -44,10 +49,6 @@ void main() {
         },
         logger: logger,
       )..testArgResults = argResults;
-
-      when(() => argResults['app-id']).thenReturn(appId);
-      when(() => auth.isAuthenticated).thenReturn(true);
-      when(() => auth.client).thenReturn(httpClient);
     });
 
     test('name is correct', () {

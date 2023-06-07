@@ -204,10 +204,10 @@ https://github.com/shorebirdtech/shorebird/issues/472
       releaseId: release.id,
       architectures: architectures,
       platform: platform,
-      failOnNotFound: true,
     );
 
-    final releaseAabArtifact = await codePushClientWrapper.getReleaseArtifact(
+    final releaseAabArtifact =
+        await codePushClientWrapper.maybeGetReleaseArtifact(
       releaseId: release.id,
       arch: 'aab',
       platform: platform,
@@ -327,7 +327,7 @@ If you believe you're seeing this in error, please reach out to us for support a
     });
 
     final summary = [
-      '''📱 App: ${lightCyan.wrap(app.displayName)} ${lightCyan.wrap('(${app.id})')}''',
+      '''📱 App: ${lightCyan.wrap(app.displayName)} ${lightCyan.wrap('(${app.appId})')}''',
       if (flavor != null) '🍧 Flavor: ${lightCyan.wrap(flavor)}',
       '📦 Release Version: ${lightCyan.wrap(releaseVersion)}',
       '📺 Channel: ${lightCyan.wrap(channelName)}',

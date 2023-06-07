@@ -1,3 +1,4 @@
+import 'package:http/http.dart' as http;
 import 'package:mason_logger/mason_logger.dart';
 import 'package:mocktail/mocktail.dart';
 import 'package:shorebird_cli/src/auth/auth.dart';
@@ -6,6 +7,8 @@ import 'package:shorebird_code_push_client/shorebird_code_push_client.dart';
 import 'package:test/test.dart';
 
 class _MockAuth extends Mock implements Auth {}
+
+class _MockHttpClient extends Mock implements http.Client {}
 
 class _MockLogger extends Mock implements Logger {}
 
@@ -17,6 +20,7 @@ void main() {
     const email = 'tester@shorebird.dev';
 
     late Auth auth;
+    late http.Client httpClient;
     late Logger logger;
     late User user;
 
@@ -24,20 +28,22 @@ void main() {
 
     setUp(() {
       auth = _MockAuth();
+      httpClient = _MockHttpClient();
       logger = _MockLogger();
       user = _MockUser();
 
-      createAccountCommand = CreateAccountCommand(
-        logger: logger,
-        auth: auth,
-      );
-
+      when(() => auth.client).thenReturn(httpClient);
       when(() => auth.credentialsFilePath).thenReturn('credentials.json');
 
       when(() => logger.prompt(any())).thenReturn(userName);
 
       when(() => user.displayName).thenReturn(userName);
       when(() => user.email).thenReturn(email);
+
+      createAccountCommand = CreateAccountCommand(
+        logger: logger,
+        auth: auth,
+      );
     });
 
     test('has a description', () {

@@ -152,22 +152,6 @@ flutter:
       codePushClient = _MockCodePushClient();
       flutterValidator = _MockShorebirdFlutterValidator();
       shorebirdProcess = _MockShorebirdProcess();
-      command = ReleaseAarCommand(
-        auth: auth,
-        buildCodePushClient: ({
-          required http.Client httpClient,
-          Uri? hostedUri,
-        }) {
-          capturedHostedUri = hostedUri;
-          return codePushClient;
-        },
-        unzipFn: (_, __) async {},
-        logger: logger,
-        validators: [flutterValidator],
-      )
-        ..testArgResults = argResults
-        ..testProcess = shorebirdProcess
-        ..testEngineConfig = const EngineConfig.empty();
 
       registerFallbackValue(shorebirdProcess);
 
@@ -231,6 +215,23 @@ flutter:
       ).thenAnswer((_) async => releaseArtifact);
 
       when(() => flutterValidator.validate(any())).thenAnswer((_) async => []);
+
+      command = ReleaseAarCommand(
+        auth: auth,
+        buildCodePushClient: ({
+          required http.Client httpClient,
+          Uri? hostedUri,
+        }) {
+          capturedHostedUri = hostedUri;
+          return codePushClient;
+        },
+        unzipFn: (_, __) async {},
+        logger: logger,
+        validators: [flutterValidator],
+      )
+        ..testArgResults = argResults
+        ..testProcess = shorebirdProcess
+        ..testEngineConfig = const EngineConfig.empty();
     });
 
     test('has correct description', () {

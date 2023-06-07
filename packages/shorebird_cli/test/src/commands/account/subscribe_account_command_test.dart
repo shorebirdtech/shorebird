@@ -39,13 +39,6 @@ void main() {
       progress = _MockProgress();
       user = _MockUser();
 
-      subscribeAccountCommand = SubscribeAccountCommand(
-        logger: logger,
-        auth: auth,
-        buildCodePushClient: ({required httpClient, hostedUri}) =>
-            codePushClient,
-      );
-
       when(() => auth.client).thenReturn(httpClient);
       when(() => auth.isAuthenticated).thenReturn(true);
 
@@ -58,6 +51,13 @@ void main() {
       when(() => logger.progress(any())).thenReturn(progress);
 
       when(() => user.hasActiveSubscription).thenReturn(false);
+
+      subscribeAccountCommand = SubscribeAccountCommand(
+        logger: logger,
+        auth: auth,
+        buildCodePushClient: ({required httpClient, hostedUri}) =>
+            codePushClient,
+      );
     });
 
     test('has a description', () {

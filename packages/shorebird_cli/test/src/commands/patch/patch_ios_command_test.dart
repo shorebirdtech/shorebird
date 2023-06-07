@@ -147,23 +147,6 @@ flutter:
       flutterValidator = _MockShorebirdFlutterValidator();
       shorebirdProcess = _MockShorebirdProcess();
 
-      command = PatchIosCommand(
-        auth: auth,
-        ipaReader: ipaReader,
-        logger: logger,
-        validators: [flutterValidator],
-        buildCodePushClient: ({
-          required http.Client httpClient,
-          Uri? hostedUri,
-        }) {
-          capturedHostedUri = hostedUri;
-          return codePushClient;
-        },
-      )
-        ..testArgResults = argResults
-        ..testProcess = shorebirdProcess
-        ..testEngineConfig = const EngineConfig.empty();
-
       when(() => argResults['arch']).thenReturn(arch);
       when(() => argResults['dry-run']).thenReturn(false);
       when(() => argResults['force']).thenReturn(false);
@@ -239,6 +222,23 @@ flutter:
           runInShell: any(named: 'runInShell'),
         ),
       ).thenAnswer((_) async => aotBuildProcessResult);
+
+      command = PatchIosCommand(
+        auth: auth,
+        ipaReader: ipaReader,
+        logger: logger,
+        validators: [flutterValidator],
+        buildCodePushClient: ({
+          required http.Client httpClient,
+          Uri? hostedUri,
+        }) {
+          capturedHostedUri = hostedUri;
+          return codePushClient;
+        },
+      )
+        ..testArgResults = argResults
+        ..testProcess = shorebirdProcess
+        ..testEngineConfig = const EngineConfig.empty();
     });
 
     test('has a description', () {

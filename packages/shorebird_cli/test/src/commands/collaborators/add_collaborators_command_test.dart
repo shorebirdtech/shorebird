@@ -39,6 +39,14 @@ void main() {
       codePushClient = _MockCodePushClient();
       logger = _MockLogger();
       progress = _MockProgress();
+
+      when(() => argResults['app-id']).thenReturn(appId);
+      when(() => argResults['email']).thenReturn(email);
+      when(() => auth.client).thenReturn(httpClient);
+      when(() => auth.isAuthenticated).thenReturn(true);
+      when(() => logger.confirm(any())).thenReturn(true);
+      when(() => logger.progress(any())).thenReturn(progress);
+
       command = AddCollaboratorsCommand(
         auth: auth,
         buildCodePushClient: ({
@@ -49,13 +57,6 @@ void main() {
         },
         logger: logger,
       )..testArgResults = argResults;
-
-      when(() => argResults['app-id']).thenReturn(appId);
-      when(() => argResults['email']).thenReturn(email);
-      when(() => auth.isAuthenticated).thenReturn(true);
-      when(() => auth.client).thenReturn(httpClient);
-      when(() => logger.confirm(any())).thenReturn(true);
-      when(() => logger.progress(any())).thenReturn(progress);
     });
 
     test('name is correct', () {

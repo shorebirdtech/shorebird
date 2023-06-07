@@ -43,16 +43,6 @@ void main() {
       codePushClient = _MockCodePushClient();
       logger = _MockLogger();
       progress = _MockProgress();
-      command = DeleteCollaboratorsCommand(
-        auth: auth,
-        buildCodePushClient: ({
-          required http.Client httpClient,
-          Uri? hostedUri,
-        }) {
-          return codePushClient;
-        },
-        logger: logger,
-      )..testArgResults = argResults;
 
       when(() => argResults['app-id']).thenReturn(appId);
       when(() => argResults['email']).thenReturn(email);
@@ -69,6 +59,17 @@ void main() {
           userId: any(named: 'userId'),
         ),
       ).thenAnswer((_) async {});
+
+      command = DeleteCollaboratorsCommand(
+        auth: auth,
+        buildCodePushClient: ({
+          required http.Client httpClient,
+          Uri? hostedUri,
+        }) {
+          return codePushClient;
+        },
+        logger: logger,
+      )..testArgResults = argResults;
     });
 
     test('description is correct', () {
