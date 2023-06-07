@@ -66,10 +66,12 @@ ExitFunction get exit {
   return _exitFunction;
 }
 
+// coverage:ignore-start
 // Whether the tool is executing in a unit test.
 bool _inUnitTest() {
   return Zone.current[#test.declarer] != null;
 }
+// coverage:ignore-end
 
 /// Sets the [exit] function to a function that throws an exception rather
 /// than exiting the process; this is intended for testing purposes.
