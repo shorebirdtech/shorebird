@@ -576,7 +576,7 @@ void main() {
       });
 
       group('publishPatch', () {
-        test('makes expected calls to code push client', () async {
+        setUp(() {
           when(() => codePushClient.createPatch(releaseId: releaseId))
               .thenAnswer((_) async => patch);
 
@@ -599,6 +599,56 @@ void main() {
               channelId: any(named: 'channelId'),
             ),
           ).thenAnswer((_) async => patch);
+        });
+
+        test('makes expected calls to code push client', () async {
+          await codePushClientWrapper.publishPatch(
+            appId: appId,
+            releaseId: releaseId,
+            platform: platform,
+            channelName: channelName,
+            patchArtifactBundles: patchArtifactBundles,
+          );
+
+          verify(() => codePushClient.createPatch(releaseId: releaseId))
+              .called(1);
+          verify(
+            () => codePushClient.createPatchArtifact(
+              artifactPath: partchArtifactBundle.path,
+              patchId: patchId,
+              arch: arch.name,
+              platform: platform,
+              hash: partchArtifactBundle.hash,
+            ),
+          ).called(1);
+
+          verify(() => codePushClient.getChannels(appId: appId)).called(1);
+
+          verifyNever(
+            () => codePushClient.createChannel(
+              appId: any(named: 'appId'),
+              channel: any(named: 'channel'),
+            ),
+          );
+
+          verify(
+            () => codePushClient.promotePatch(
+              patchId: patchId,
+              channelId: channel.id,
+            ),
+          ).called(1);
+        });
+
+        test('creates channel if none exists', () async {
+          when(() => codePushClient.getChannels(appId: any(named: 'appId')))
+              .thenAnswer((_) async => []);
+
+          when(
+            () => codePushClient.createChannel(
+              appId: any(named: 'appId'),
+              channel: any(named: 'channel'),
+            ),
+          ).thenAnswer((_) async => channel);
 
           await codePushClientWrapper.publishPatch(
             appId: appId,
@@ -621,6 +671,13 @@ void main() {
           ).called(1);
 
           verify(() => codePushClient.getChannels(appId: appId)).called(1);
+
+          verify(
+            () => codePushClient.createChannel(
+              appId: appId,
+              channel: channelName,
+            ),
+          ).called(1);
 
           verify(
             () => codePushClient.promotePatch(

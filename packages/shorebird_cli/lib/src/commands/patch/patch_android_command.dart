@@ -16,7 +16,6 @@ import 'package:shorebird_cli/src/shorebird_environment.dart';
 import 'package:shorebird_cli/src/shorebird_java_mixin.dart';
 import 'package:shorebird_cli/src/shorebird_release_version_mixin.dart';
 import 'package:shorebird_cli/src/shorebird_validation_mixin.dart';
-import 'package:shorebird_code_push_client/shorebird_code_push_client.dart';
 
 /// {@template patch_android_command}
 /// `shorebird patch android`
@@ -383,30 +382,5 @@ ${summary.join('\n')}
     await releaseArtifact.openWrite().addStream(response.stream);
 
     return releaseArtifact.path;
-  }
-
-  Future<Map<Arch, String>> downloadReleaseArtifacts({
-    required Map<Arch, ReleaseArtifact> releaseArtifacts,
-    required http.Client httpClient,
-  }) async {
-    final releaseArtifactPaths = <Arch, String>{};
-    final downloadReleaseArtifactProgress = logger.progress(
-      'Downloading release artifacts',
-    );
-    for (final releaseArtifact in releaseArtifacts.entries) {
-      try {
-        final releaseArtifactPath = await downloadReleaseArtifact(
-          Uri.parse(releaseArtifact.value.url),
-          httpClient: httpClient,
-        );
-        releaseArtifactPaths[releaseArtifact.key] = releaseArtifactPath;
-      } catch (error) {
-        downloadReleaseArtifactProgress.fail('$error');
-        rethrow;
-      }
-    }
-
-    downloadReleaseArtifactProgress.complete();
-    return releaseArtifactPaths;
   }
 }
