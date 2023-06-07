@@ -1,5 +1,6 @@
 import 'dart:io';
 
+import 'package:http/http.dart' as http;
 import 'package:mason_logger/mason_logger.dart';
 import 'package:mocktail/mocktail.dart';
 import 'package:path/path.dart' as p;
@@ -9,26 +10,32 @@ import 'package:test/test.dart';
 
 class _MockAuth extends Mock implements Auth {}
 
+class _MockHttpClient extends Mock implements http.Client {}
+
 class _MockLogger extends Mock implements Logger {}
 
 void main() {
   group('login', () {
     const email = 'test@email.com';
 
+    late Auth auth;
+    late http.Client httpClient;
     late Directory applicationConfigHome;
     late Logger logger;
-    late Auth auth;
     late LoginCommand loginCommand;
 
     setUp(() {
       applicationConfigHome = Directory.systemTemp.createTempSync();
-      logger = _MockLogger();
       auth = _MockAuth();
-      loginCommand = LoginCommand(auth: auth, logger: logger);
+      httpClient = _MockHttpClient();
+      logger = _MockLogger();
 
+      when(() => auth.client).thenReturn(httpClient);
       when(() => auth.credentialsFilePath).thenReturn(
         p.join(applicationConfigHome.path, 'credentials.json'),
       );
+
+      loginCommand = LoginCommand(auth: auth, logger: logger);
     });
 
     test('exits with code 0 when already logged in', () async {

@@ -1,27 +1,34 @@
+import 'package:http/http.dart' as http;
 import 'package:mason_logger/mason_logger.dart';
 import 'package:mocktail/mocktail.dart';
 import 'package:shorebird_cli/src/auth/auth.dart';
 import 'package:shorebird_cli/src/commands/logout_command.dart';
 import 'package:test/test.dart';
 
+class _MockAuth extends Mock implements Auth {}
+
 class _MockLogger extends Mock implements Logger {}
 
-class _MockAuth extends Mock implements Auth {}
+class _MockHttpClient extends Mock implements http.Client {}
 
 class _MockProgress extends Mock implements Progress {}
 
 void main() {
   group('logout', () {
-    late Logger logger;
     late Auth auth;
+    late Logger logger;
+    late http.Client httpClient;
     late LogoutCommand logoutCommand;
 
     setUp(() {
-      logger = _MockLogger();
       auth = _MockAuth();
-      logoutCommand = LogoutCommand(auth: auth, logger: logger);
+      httpClient = _MockHttpClient();
+      logger = _MockLogger();
 
+      when(() => auth.client).thenReturn(httpClient);
       when(() => logger.progress(any())).thenReturn(_MockProgress());
+
+      logoutCommand = LogoutCommand(auth: auth, logger: logger);
     });
 
     test('exits with code 0 when already logged out', () async {

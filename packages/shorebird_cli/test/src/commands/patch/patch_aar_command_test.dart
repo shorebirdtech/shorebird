@@ -198,25 +198,6 @@ flutter:
       flutterValidator = _MockShorebirdFlutterValidator();
       cache = _MockCache();
       shorebirdProcess = _MockShorebirdProcess();
-      command = PatchAarCommand(
-        aarDiffer: aarDiffer,
-        auth: auth,
-        buildCodePushClient: ({
-          required http.Client httpClient,
-          Uri? hostedUri,
-        }) {
-          capturedHostedUri = hostedUri;
-          return codePushClient;
-        },
-        cache: cache,
-        logger: logger,
-        httpClient: httpClient,
-        validators: [flutterValidator],
-        unzipFn: (_, __) async {},
-      )
-        ..testArgResults = argResults
-        ..testProcess = shorebirdProcess
-        ..testEngineConfig = const EngineConfig.empty();
 
       ShorebirdEnvironment.platform = environmentPlatform;
       when(() => environmentPlatform.script).thenReturn(
@@ -340,6 +321,26 @@ flutter:
       when(
         () => cache.getArtifactDirectory(any()),
       ).thenReturn(Directory.systemTemp.createTempSync());
+
+      command = PatchAarCommand(
+        aarDiffer: aarDiffer,
+        auth: auth,
+        buildCodePushClient: ({
+          required http.Client httpClient,
+          Uri? hostedUri,
+        }) {
+          capturedHostedUri = hostedUri;
+          return codePushClient;
+        },
+        cache: cache,
+        logger: logger,
+        httpClient: httpClient,
+        validators: [flutterValidator],
+        unzipFn: (_, __) async {},
+      )
+        ..testArgResults = argResults
+        ..testProcess = shorebirdProcess
+        ..testEngineConfig = const EngineConfig.empty();
     });
 
     test('throws config error when shorebird is not initialized', () async {

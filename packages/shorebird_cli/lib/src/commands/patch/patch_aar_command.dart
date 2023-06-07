@@ -7,6 +7,7 @@ import 'package:http/http.dart' as http;
 import 'package:mason_logger/mason_logger.dart';
 import 'package:path/path.dart' as p;
 import 'package:shorebird_cli/src/archive_analysis/archive_analysis.dart';
+import 'package:shorebird_cli/src/code_push_client_wrapper.dart';
 import 'package:shorebird_cli/src/command.dart';
 import 'package:shorebird_cli/src/config/config.dart';
 import 'package:shorebird_cli/src/formatters/file_size_formatter.dart';
@@ -447,5 +448,50 @@ ${summary.join('\n')}
     createDiffProgress.complete();
 
     return patchArtifactBundles;
+  }
+
+  Future<String> downloadReleaseArtifact(
+    Uri uri, {
+    required http.Client httpClient,
+  }) async {
+    final request = http.Request('GET', uri);
+    final response = await httpClient.send(request);
+
+    if (response.statusCode != HttpStatus.ok) {
+      throw Exception(
+        '''Failed to download release artifact: ${response.statusCode} ${response.reasonPhrase}''',
+      );
+    }
+
+    final tempDir = await Directory.systemTemp.createTemp();
+    final releaseArtifact = File(p.join(tempDir.path, 'artifact.so'));
+    await releaseArtifact.openWrite().addStream(response.stream);
+
+    return releaseArtifact.path;
+  }
+
+  Future<Map<Arch, String>> downloadReleaseArtifacts({
+    required Map<Arch, ReleaseArtifact> releaseArtifacts,
+    required http.Client httpClient,
+  }) async {
+    final releaseArtifactPaths = <Arch, String>{};
+    final downloadReleaseArtifactProgress = logger.progress(
+      'Downloading release artifacts',
+    );
+    for (final releaseArtifact in releaseArtifacts.entries) {
+      try {
+        final releaseArtifactPath = await downloadReleaseArtifact(
+          Uri.parse(releaseArtifact.value.url),
+          httpClient: httpClient,
+        );
+        releaseArtifactPaths[releaseArtifact.key] = releaseArtifactPath;
+      } catch (error) {
+        downloadReleaseArtifactProgress.fail('$error');
+        rethrow;
+      }
+    }
+
+    downloadReleaseArtifactProgress.complete();
+    return releaseArtifactPaths;
   }
 }

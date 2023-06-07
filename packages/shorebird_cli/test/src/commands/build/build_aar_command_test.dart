@@ -1,6 +1,7 @@
 import 'dart:io';
 
 import 'package:args/args.dart';
+import 'package:http/http.dart' as http;
 import 'package:mason_logger/mason_logger.dart';
 import 'package:mocktail/mocktail.dart';
 import 'package:path/path.dart' as p;
@@ -12,6 +13,8 @@ import 'package:test/test.dart';
 class _MockArgResults extends Mock implements ArgResults {}
 
 class _MockAuth extends Mock implements Auth {}
+
+class _MockHttpClient extends Mock implements http.Client {}
 
 class _MockLogger extends Mock implements Logger {}
 
@@ -51,6 +54,7 @@ flutter:
 
     late ArgResults argResults;
     late Auth auth;
+    late http.Client httpClient;
     late Logger logger;
     late Progress progress;
     late ShorebirdProcess shorebirdProcess;
@@ -74,22 +78,15 @@ flutter:
     setUp(() {
       argResults = _MockArgResults();
       auth = _MockAuth();
+      httpClient = _MockHttpClient();
       logger = _MockLogger();
       processResult = _MockProcessResult();
       progress = _MockProgress();
       shorebirdProcess = _MockShorebirdProcess();
 
-      command = BuildAarCommand(
-        auth: auth,
-        logger: logger,
-        validators: [],
-      )
-        ..testArgResults = argResults
-        ..testProcess = shorebirdProcess
-        ..testEngineConfig = const EngineConfig.empty();
-
       when(() => argResults['build-number']).thenReturn(buildNumber);
       when(() => argResults.rest).thenReturn([]);
+      when(() => auth.client).thenReturn(httpClient);
       when(() => auth.isAuthenticated).thenReturn(true);
       when(() => logger.progress(any())).thenReturn(progress);
 
@@ -102,6 +99,15 @@ flutter:
       ).thenAnswer((invocation) async {
         return processResult;
       });
+
+      command = BuildAarCommand(
+        auth: auth,
+        logger: logger,
+        validators: [],
+      )
+        ..testArgResults = argResults
+        ..testProcess = shorebirdProcess
+        ..testEngineConfig = const EngineConfig.empty();
     });
 
     test('has correct description', () {

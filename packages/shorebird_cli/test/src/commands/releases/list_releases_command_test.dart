@@ -59,6 +59,10 @@ flutter:
       codePushClient = _MockCodePushClient();
       httpClient = _MockHttpClient();
       logger = _MockLogger();
+
+      when(() => auth.client).thenReturn(httpClient);
+      when(() => auth.isAuthenticated).thenReturn(true);
+
       command = ListReleasesCommand(
         auth: auth,
         logger: logger,
@@ -68,9 +72,6 @@ flutter:
         }) =>
             codePushClient,
       )..testArgResults = argResults;
-
-      when(() => auth.client).thenReturn(httpClient);
-      when(() => auth.isAuthenticated).thenReturn(true);
     });
 
     test('description is correct', () {

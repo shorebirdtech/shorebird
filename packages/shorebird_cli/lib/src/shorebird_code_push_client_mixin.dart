@@ -1,33 +1,7 @@
-import 'dart:io';
-
 import 'package:collection/collection.dart';
-import 'package:http/http.dart' as http;
-import 'package:path/path.dart' as p;
 import 'package:shorebird_cli/src/shorebird_build_mixin.dart';
 import 'package:shorebird_cli/src/shorebird_config_mixin.dart';
 import 'package:shorebird_code_push_client/shorebird_code_push_client.dart';
-
-/// Metadata about a patch artifact that we are about to upload.
-class PatchArtifactBundle {
-  const PatchArtifactBundle({
-    required this.arch,
-    required this.path,
-    required this.hash,
-    required this.size,
-  });
-
-  /// The corresponding architecture.
-  final String arch;
-
-  /// The path to the artifact.
-  final String path;
-
-  /// The artifact hash.
-  final String hash;
-
-  /// The size in bytes of the artifact.
-  final int size;
-}
 
 mixin ShorebirdCodePushClientMixin on ShorebirdConfigMixin {
   Future<App?> getApp({required String appId, String? flavor}) async {
@@ -148,51 +122,6 @@ mixin ShorebirdCodePushClientMixin on ShorebirdConfigMixin {
 
     fetchReleaseArtifactProgress.complete();
     return releaseArtifacts;
-  }
-
-  Future<Map<Arch, String>> downloadReleaseArtifacts({
-    required Map<Arch, ReleaseArtifact> releaseArtifacts,
-    required http.Client httpClient,
-  }) async {
-    final releaseArtifactPaths = <Arch, String>{};
-    final downloadReleaseArtifactProgress = logger.progress(
-      'Downloading release artifacts',
-    );
-    for (final releaseArtifact in releaseArtifacts.entries) {
-      try {
-        final releaseArtifactPath = await downloadReleaseArtifact(
-          Uri.parse(releaseArtifact.value.url),
-          httpClient: httpClient,
-        );
-        releaseArtifactPaths[releaseArtifact.key] = releaseArtifactPath;
-      } catch (error) {
-        downloadReleaseArtifactProgress.fail('$error');
-        rethrow;
-      }
-    }
-
-    downloadReleaseArtifactProgress.complete();
-    return releaseArtifactPaths;
-  }
-
-  Future<String> downloadReleaseArtifact(
-    Uri uri, {
-    required http.Client httpClient,
-  }) async {
-    final request = http.Request('GET', uri);
-    final response = await httpClient.send(request);
-
-    if (response.statusCode != HttpStatus.ok) {
-      throw Exception(
-        '''Failed to download release artifact: ${response.statusCode} ${response.reasonPhrase}''',
-      );
-    }
-
-    final tempDir = await Directory.systemTemp.createTemp();
-    final releaseArtifact = File(p.join(tempDir.path, 'artifact.so'));
-    await releaseArtifact.openWrite().addStream(response.stream);
-
-    return releaseArtifact.path;
   }
 
   Future<Patch> createPatch({required int releaseId}) async {

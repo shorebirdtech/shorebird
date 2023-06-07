@@ -59,23 +59,6 @@ void main() {
       androidInternetPermissionValidator =
           _MockAndroidInternetPermissionValidator();
       flutterValidator = _MockShorebirdFlutterValidator();
-      runCommand = RunCommand(
-        auth: auth,
-        logger: logger,
-        buildCodePushClient: ({
-          required http.Client httpClient,
-          Uri? hostedUri,
-        }) {
-          return codePushClient;
-        },
-        validators: [
-          androidInternetPermissionValidator,
-          flutterValidator,
-        ],
-      )
-        ..testArgResults = argResults
-        ..testProcess = shorebirdProcess
-        ..testEngineConfig = const EngineConfig.empty();
 
       registerFallbackValue(shorebirdProcess);
 
@@ -94,6 +77,24 @@ void main() {
         () => androidInternetPermissionValidator.validate(any()),
       ).thenAnswer((_) async => []);
       when(() => flutterValidator.validate(any())).thenAnswer((_) async => []);
+
+      runCommand = RunCommand(
+        auth: auth,
+        logger: logger,
+        buildCodePushClient: ({
+          required http.Client httpClient,
+          Uri? hostedUri,
+        }) {
+          return codePushClient;
+        },
+        validators: [
+          androidInternetPermissionValidator,
+          flutterValidator,
+        ],
+      )
+        ..testArgResults = argResults
+        ..testProcess = shorebirdProcess
+        ..testEngineConfig = const EngineConfig.empty();
     });
 
     test('exits with no user when not logged in', () async {

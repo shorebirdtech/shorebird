@@ -47,14 +47,7 @@ void main() {
       shorebirdProcess = _MockShorebirdProcess();
       processResult = _MockProcessResult();
       flutterValidator = _MockShorebirdFlutterValidator();
-      command = BuildApkCommand(
-        auth: auth,
-        logger: logger,
-        validators: [flutterValidator],
-      )
-        ..testArgResults = argResults
-        ..testProcess = shorebirdProcess
-        ..testEngineConfig = const EngineConfig.empty();
+
       registerFallbackValue(shorebirdProcess);
 
       when(
@@ -70,6 +63,15 @@ void main() {
       when(() => logger.progress(any())).thenReturn(_MockProgress());
       when(() => logger.info(any())).thenReturn(null);
       when(() => flutterValidator.validate(any())).thenAnswer((_) async => []);
+
+      command = BuildApkCommand(
+        auth: auth,
+        logger: logger,
+        validators: [flutterValidator],
+      )
+        ..testArgResults = argResults
+        ..testProcess = shorebirdProcess
+        ..testEngineConfig = const EngineConfig.empty();
     });
 
     test('has correct description', () {

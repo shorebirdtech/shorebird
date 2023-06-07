@@ -1,8 +1,6 @@
 import 'dart:io';
 
-import 'package:checked_yaml/checked_yaml.dart';
 import 'package:path/path.dart' as p;
-import 'package:pubspec_parse/pubspec_parse.dart';
 import 'package:shorebird_cli/src/command.dart';
 import 'package:shorebird_cli/src/config/config.dart';
 import 'package:shorebird_cli/src/shorebird_environment.dart';
@@ -16,15 +14,6 @@ mixin ShorebirdConfigMixin on ShorebirdCommand {
 
   bool get isShorebirdInitialized {
     return hasShorebirdYaml && pubspecContainsShorebirdYaml;
-  }
-
-  Uri? get hostedUri {
-    try {
-      final baseUrl = getShorebirdYaml()?.baseUrl;
-      return baseUrl == null ? null : Uri.tryParse(baseUrl);
-    } catch (_) {
-      return null;
-    }
   }
 
   bool get pubspecContainsShorebirdYaml {
@@ -43,24 +32,6 @@ mixin ShorebirdConfigMixin on ShorebirdCommand {
     final pubspec = getPubspecYaml()!;
     final module = pubspec.flutter?['module'] as Map?;
     return module?['androidPackage'] as String?;
-  }
-
-  File getShorebirdYamlFile() {
-    return File(p.join(Directory.current.path, 'shorebird.yaml'));
-  }
-
-  ShorebirdYaml? getShorebirdYaml() {
-    final file = getShorebirdYamlFile();
-    if (!file.existsSync()) return null;
-    final yaml = file.readAsStringSync();
-    return checkedYamlDecode(yaml, (m) => ShorebirdYaml.fromJson(m!));
-  }
-
-  Pubspec? getPubspecYaml() {
-    final file = File(p.join(Directory.current.path, 'pubspec.yaml'));
-    if (!file.existsSync()) return null;
-    final yaml = file.readAsStringSync();
-    return Pubspec.parse(yaml);
   }
 
   ShorebirdYaml addShorebirdYamlToProject(

@@ -28,6 +28,10 @@ void main() {
       auth = _MockAuth();
       codePushClient = _MockCodePushClient();
       logger = _MockLogger();
+
+      when(() => auth.isAuthenticated).thenReturn(true);
+      when(() => auth.client).thenReturn(httpClient);
+
       command = ListAppsCommand(
         auth: auth,
         buildCodePushClient: ({
@@ -38,9 +42,6 @@ void main() {
         },
         logger: logger,
       );
-
-      when(() => auth.isAuthenticated).thenReturn(true);
-      when(() => auth.client).thenReturn(httpClient);
     });
 
     test('description is correct', () {
