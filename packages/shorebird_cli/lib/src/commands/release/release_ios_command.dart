@@ -67,6 +67,10 @@ make smaller updates to your app.
       return e.exitCode.code;
     }
 
+    logger.warn(
+      '''iOS support is in an experimental state and will not work without Flutter engine changes that have not yet been published.''',
+    );
+
     const platform = 'ios';
     final flavor = results['flavor'] as String?;
     final shorebirdYaml = getShorebirdYaml()!;
