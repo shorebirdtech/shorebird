@@ -3,6 +3,7 @@ import 'dart:io';
 import 'package:mason_logger/mason_logger.dart';
 import 'package:path/path.dart' as p;
 import 'package:shorebird_cli/src/command.dart';
+import 'package:shorebird_cli/src/logger.dart';
 import 'package:shorebird_cli/src/shorebird_environment.dart';
 import 'package:shorebird_cli/src/shorebird_version_mixin.dart';
 
@@ -12,7 +13,7 @@ import 'package:shorebird_cli/src/shorebird_version_mixin.dart';
 /// {@endtemplate}
 class UpgradeCommand extends ShorebirdCommand with ShorebirdVersionMixin {
   /// {@macro upgrade_command}
-  UpgradeCommand({required super.logger});
+  UpgradeCommand();
 
   @override
   String get description => 'Upgrade your copy of Shorebird.';

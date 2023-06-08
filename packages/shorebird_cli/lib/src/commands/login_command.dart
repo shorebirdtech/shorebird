@@ -1,6 +1,7 @@
 import 'package:mason_logger/mason_logger.dart';
 import 'package:shorebird_cli/src/auth/auth.dart';
 import 'package:shorebird_cli/src/command.dart';
+import 'package:shorebird_cli/src/logger.dart';
 
 /// {@template login_command}
 /// `shorebird login`
@@ -8,7 +9,7 @@ import 'package:shorebird_cli/src/command.dart';
 /// {@endtemplate}
 class LoginCommand extends ShorebirdCommand {
   /// {@macro login_command}
-  LoginCommand({required super.logger, super.auth});
+  LoginCommand({super.auth});
 
   @override
   String get description => 'Login as a new Shorebird user.';

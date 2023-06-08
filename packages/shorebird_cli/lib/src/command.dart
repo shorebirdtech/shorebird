@@ -4,7 +4,6 @@ import 'package:args/args.dart';
 import 'package:args/command_runner.dart';
 import 'package:checked_yaml/checked_yaml.dart';
 import 'package:http/http.dart' as http;
-import 'package:mason_logger/mason_logger.dart';
 import 'package:meta/meta.dart';
 import 'package:path/path.dart' as p;
 import 'package:pubspec_parse/pubspec_parse.dart';
@@ -13,6 +12,7 @@ import 'package:shorebird_cli/src/cache.dart';
 import 'package:shorebird_cli/src/code_push_client_wrapper.dart';
 import 'package:shorebird_cli/src/command_runner.dart';
 import 'package:shorebird_cli/src/config/config.dart';
+import 'package:shorebird_cli/src/logger.dart';
 import 'package:shorebird_cli/src/shorebird_process.dart';
 import 'package:shorebird_cli/src/validators/validators.dart';
 import 'package:shorebird_code_push_client/shorebird_code_push_client.dart';
@@ -40,7 +40,6 @@ List<Validator> _defaultValidators() => [
 
 abstract class ShorebirdCommand extends Command<int> {
   ShorebirdCommand({
-    required this.logger,
     Auth? auth,
     Cache? cache,
     CodePushClientBuilder? buildCodePushClient,
@@ -63,7 +62,6 @@ abstract class ShorebirdCommand extends Command<int> {
   late final Auth auth;
   final Cache cache;
   final CodePushClientBuilder buildCodePushClient;
-  final Logger logger;
   late final CodePushClientWrapper codePushClientWrapper;
 
   // We don't currently have a test involving both a CommandRunner

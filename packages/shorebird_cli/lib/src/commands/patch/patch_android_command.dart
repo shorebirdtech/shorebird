@@ -9,6 +9,7 @@ import 'package:shorebird_cli/src/code_push_client_wrapper.dart';
 import 'package:shorebird_cli/src/command.dart';
 import 'package:shorebird_cli/src/config/shorebird_yaml.dart';
 import 'package:shorebird_cli/src/formatters/formatters.dart';
+import 'package:shorebird_cli/src/logger.dart';
 import 'package:shorebird_cli/src/shorebird_build_mixin.dart';
 import 'package:shorebird_cli/src/shorebird_config_mixin.dart';
 import 'package:shorebird_cli/src/shorebird_create_app_mixin.dart';
@@ -32,7 +33,6 @@ class PatchAndroidCommand extends ShorebirdCommand
         ShorebirdReleaseVersionMixin {
   /// {@macro patch_android_command}
   PatchAndroidCommand({
-    required super.logger,
     super.auth,
     super.cache,
     super.validators,

@@ -5,6 +5,7 @@ import 'package:path/path.dart' as p;
 import 'package:shorebird_cli/src/archive_analysis/archive_analysis.dart';
 import 'package:shorebird_cli/src/command.dart';
 import 'package:shorebird_cli/src/config/config.dart';
+import 'package:shorebird_cli/src/logger.dart';
 import 'package:shorebird_cli/src/shorebird_build_mixin.dart';
 import 'package:shorebird_cli/src/shorebird_code_push_client_mixin.dart';
 import 'package:shorebird_cli/src/shorebird_config_mixin.dart';
@@ -23,7 +24,6 @@ class ReleaseIosCommand extends ShorebirdCommand
         ShorebirdCodePushClientMixin {
   /// {@macro release_ios_command}
   ReleaseIosCommand({
-    required super.logger,
     super.auth,
     super.buildCodePushClient,
     super.cache,

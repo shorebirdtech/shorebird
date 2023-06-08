@@ -1,8 +1,9 @@
 import 'package:args/command_runner.dart';
-import 'package:cli_completion/cli_completion.dart';
 import 'package:mason_logger/mason_logger.dart';
 import 'package:mocktail/mocktail.dart';
+import 'package:scoped/scoped.dart';
 import 'package:shorebird_cli/src/command_runner.dart';
+import 'package:shorebird_cli/src/logger.dart' hide logger;
 import 'package:shorebird_cli/src/shorebird_environment.dart';
 import 'package:shorebird_cli/src/shorebird_process.dart';
 import 'package:shorebird_cli/src/version.dart';
@@ -18,20 +19,26 @@ void main() {
     late ShorebirdProcessResult processResult;
     late ShorebirdCliCommandRunner commandRunner;
 
+    ShorebirdCliCommandRunner buildRunner() {
+      return runScoped(
+        ShorebirdCliCommandRunner.new,
+        values: {loggerRef.overrideWith(() => logger)},
+      );
+    }
+
+    Future<int> runCommand(List<String> args) async {
+      return runScoped(
+        () => commandRunner.run(args),
+        values: {loggerRef.overrideWith(() => logger)},
+      );
+    }
+
     setUp(() {
       logger = _MockLogger();
-
       ShorebirdEnvironment.shorebirdEngineRevision = 'test-revision';
       processResult = _MockProcessResult();
       when(() => processResult.exitCode).thenReturn(ExitCode.success.code);
-      commandRunner = ShorebirdCliCommandRunner(logger: logger);
-    });
-
-    test('can be instantiated without an explicit analytics/logger instance',
-        () {
-      final commandRunner = ShorebirdCliCommandRunner();
-      expect(commandRunner, isNotNull);
-      expect(commandRunner, isA<CompletionCommandRunner<int>>());
+      commandRunner = buildRunner();
     });
 
     test('handles FormatException', () async {
@@ -43,7 +50,7 @@ void main() {
           throw exception;
         }
       });
-      final result = await commandRunner.run(['--version']);
+      final result = await runCommand(['--version']);
       expect(result, equals(ExitCode.usage.code));
       verify(() => logger.err(exception.message)).called(1);
       verify(() => logger.info(commandRunner.usage)).called(1);
@@ -58,7 +65,7 @@ void main() {
           throw exception;
         }
       });
-      final result = await commandRunner.run(['--version']);
+      final result = await runCommand(['--version']);
       expect(result, equals(ExitCode.usage.code));
       verify(() => logger.err(exception.message)).called(1);
       verify(() => logger.info('exception usage')).called(1);
@@ -66,7 +73,7 @@ void main() {
 
     group('--version', () {
       test('outputs current version and engine revisions', () async {
-        final result = await commandRunner.run(['--version']);
+        final result = await runCommand(['--version']);
         expect(result, equals(ExitCode.success.code));
         verify(
           () => logger.info(
@@ -80,14 +87,14 @@ Shorebird Engine • revision ${ShorebirdEnvironment.shorebirdEngineRevision}'''
 
     group('--verbose', () {
       test('enables verbose logging', () async {
-        final result = await commandRunner.run(['--verbose']);
+        final result = await runCommand(['--verbose']);
         expect(result, equals(ExitCode.success.code));
       });
     });
 
     group('completion', () {
       test('fast tracks completion', () async {
-        final result = await commandRunner.run(['completion']);
+        final result = await runCommand(['completion']);
         expect(result, equals(ExitCode.success.code));
       });
     });

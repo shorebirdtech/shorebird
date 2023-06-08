@@ -8,6 +8,7 @@ import 'package:shorebird_cli/src/archive_analysis/archive_analysis.dart';
 import 'package:shorebird_cli/src/command.dart';
 import 'package:shorebird_cli/src/config/config.dart';
 import 'package:shorebird_cli/src/formatters/file_size_formatter.dart';
+import 'package:shorebird_cli/src/logger.dart';
 import 'package:shorebird_cli/src/shorebird_artifact_mixin.dart';
 import 'package:shorebird_cli/src/shorebird_build_mixin.dart';
 import 'package:shorebird_cli/src/shorebird_code_push_client_mixin.dart';
@@ -28,7 +29,6 @@ class PatchIosCommand extends ShorebirdCommand
         ShorebirdCodePushClientMixin {
   /// {@macro patch_ios_command}
   PatchIosCommand({
-    required super.logger,
     super.auth,
     super.buildCodePushClient,
     super.validators,

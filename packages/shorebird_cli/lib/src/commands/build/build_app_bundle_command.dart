@@ -3,6 +3,7 @@ import 'dart:io';
 import 'package:mason_logger/mason_logger.dart';
 import 'package:path/path.dart' as p;
 import 'package:shorebird_cli/src/command.dart';
+import 'package:shorebird_cli/src/logger.dart';
 import 'package:shorebird_cli/src/shorebird_build_mixin.dart';
 import 'package:shorebird_cli/src/shorebird_config_mixin.dart';
 import 'package:shorebird_cli/src/shorebird_validation_mixin.dart';
@@ -15,11 +16,7 @@ import 'package:shorebird_cli/src/shorebird_validation_mixin.dart';
 class BuildAppBundleCommand extends ShorebirdCommand
     with ShorebirdConfigMixin, ShorebirdValidationMixin, ShorebirdBuildMixin {
   /// {@macro build_app_bundle_command}
-  BuildAppBundleCommand({
-    required super.logger,
-    super.auth,
-    super.validators,
-  }) {
+  BuildAppBundleCommand({super.auth, super.validators}) {
     argParser
       ..addOption(
         'target',
