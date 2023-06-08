@@ -430,6 +430,52 @@ void main() {
           verify(() => progress.complete()).called(1);
         });
       });
+
+      group('createRelease', () {
+        test('exits with code 70 when creating release fails', () async {
+          const error = 'something went wrong';
+          when(
+            () => codePushClient.createRelease(
+              appId: any(named: 'appId'),
+              version: any(named: 'version'),
+              flutterRevision: any(named: 'flutterRevision'),
+            ),
+          ).thenThrow(error);
+
+          await expectLater(
+            () async => runWithOverrides(
+              () async => codePushClientWrapper.createRelease(
+                appId: appId,
+                version: releaseVersion,
+                flutterRevision: flutterRevision,
+              ),
+            ),
+            exitsWithCode(ExitCode.software),
+          );
+          verify(() => progress.fail(error)).called(1);
+        });
+
+        test('returns release when release is successfully created', () async {
+          when(
+            () => codePushClient.createRelease(
+              appId: any(named: 'appId'),
+              version: any(named: 'version'),
+              flutterRevision: any(named: 'flutterRevision'),
+            ),
+          ).thenAnswer((_) async => release);
+
+          final result = await runWithOverrides(
+            () async => codePushClientWrapper.createRelease(
+              appId: appId,
+              version: releaseVersion,
+              flutterRevision: flutterRevision,
+            ),
+          );
+
+          expect(result, release);
+          verify(() => progress.complete()).called(1);
+        });
+      });
     });
 
     group('release artifact', () {
