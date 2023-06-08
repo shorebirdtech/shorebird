@@ -6,7 +6,9 @@ import 'package:http/http.dart' as http;
 import 'package:mason_logger/mason_logger.dart';
 import 'package:mocktail/mocktail.dart';
 import 'package:path/path.dart' as p;
+import 'package:scoped/scoped.dart';
 import 'package:shorebird_cli/src/auth/auth.dart';
+import 'package:shorebird_cli/src/logger.dart';
 import 'package:shorebird_code_push_client/shorebird_code_push_client.dart';
 import 'package:test/test.dart';
 
@@ -50,6 +52,10 @@ void main() {
       registerFallbackValue(_FakeBaseRequest());
     });
 
+    R runWithOverrides<R>(R Function() body) {
+      return runScoped(body, values: {loggerRef.overrideWith(() => logger)});
+    }
+
     Auth buildAuth() {
       return Auth(
         credentialsDir: credentialsDir,
@@ -60,13 +66,13 @@ void main() {
         obtainAccessCredentials: (clientId, scopes, client, userPrompt) async {
           return accessCredentials;
         },
-        logger: logger,
       );
     }
 
     void writeCredentials() {
-      File(p.join(credentialsDir, 'credentials.json'))
-          .writeAsStringSync(jsonEncode(accessCredentials.toJson()));
+      File(
+        p.join(credentialsDir, 'credentials.json'),
+      ).writeAsStringSync(jsonEncode(accessCredentials.toJson()));
     }
 
     setUp(() {
@@ -77,21 +83,6 @@ void main() {
       auth = buildAuth();
 
       when(() => codePushClient.getCurrentUser()).thenAnswer((_) async => user);
-    });
-
-    test('uses default logger if none is provided', () {
-      final auth = Auth(
-        credentialsDir: credentialsDir,
-        httpClient: httpClient,
-        buildCodePushClient: ({Uri? hostedUri, http.Client? httpClient}) {
-          return codePushClient;
-        },
-        obtainAccessCredentials: (clientId, scopes, client, userPrompt) async {
-          return accessCredentials;
-        },
-      );
-
-      expect(auth.logger, isA<Logger>());
     });
 
     group('AuthenticatedClient', () {
@@ -122,10 +113,11 @@ void main() {
           onRefreshCredentials: onRefreshCredentialsCalls.add,
           refreshCredentials: (clientId, credentials, client) async =>
               accessCredentials,
-          logger: logger,
         );
 
-        await client.get(Uri.parse('https://example.com'));
+        await runWithOverrides(
+          () => client.get(Uri.parse('https://example.com')),
+        );
 
         expect(
           onRefreshCredentialsCalls,
@@ -151,10 +143,11 @@ void main() {
           credentials: accessCredentials,
           httpClient: httpClient,
           onRefreshCredentials: onRefreshCredentialsCalls.add,
-          logger: logger,
         );
 
-        await client.get(Uri.parse('https://example.com'));
+        await runWithOverrides(
+          () => client.get(Uri.parse('https://example.com')),
+        );
 
         expect(onRefreshCredentialsCalls, isEmpty);
         final captured = verify(() => httpClient.send(captureAny())).captured;
@@ -179,7 +172,9 @@ void main() {
         expect(client, isA<http.Client>());
         expect(client, isA<AuthenticatedClient>());
 
-        await client.get(Uri.parse('https://example.com'));
+        await runWithOverrides(
+          () => client.get(Uri.parse('https://example.com')),
+        );
 
         final captured = verify(() => httpClient.send(captureAny())).captured;
         expect(captured, hasLength(1));

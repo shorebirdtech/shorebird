@@ -2,6 +2,7 @@ import 'dart:async';
 
 import 'package:mason_logger/mason_logger.dart';
 import 'package:shorebird_cli/src/command.dart';
+import 'package:shorebird_cli/src/logger.dart';
 import 'package:shorebird_cli/src/shorebird_config_mixin.dart';
 import 'package:shorebird_cli/src/shorebird_validation_mixin.dart';
 
@@ -12,11 +13,7 @@ import 'package:shorebird_cli/src/shorebird_validation_mixin.dart';
 class AddCollaboratorsCommand extends ShorebirdCommand
     with ShorebirdConfigMixin, ShorebirdValidationMixin {
   /// {@macro add_collaborators_command}
-  AddCollaboratorsCommand({
-    required super.logger,
-    super.buildCodePushClient,
-    super.auth,
-  }) {
+  AddCollaboratorsCommand({super.buildCodePushClient, super.auth}) {
     argParser
       ..addOption(
         _appIdOption,

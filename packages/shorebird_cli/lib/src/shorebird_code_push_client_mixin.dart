@@ -1,4 +1,5 @@
 import 'package:collection/collection.dart';
+import 'package:shorebird_cli/src/logger.dart';
 import 'package:shorebird_cli/src/shorebird_build_mixin.dart';
 import 'package:shorebird_cli/src/shorebird_config_mixin.dart';
 import 'package:shorebird_code_push_client/shorebird_code_push_client.dart';

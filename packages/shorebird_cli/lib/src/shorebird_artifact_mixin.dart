@@ -2,6 +2,7 @@ import 'dart:io';
 
 import 'package:path/path.dart' as p;
 import 'package:shorebird_cli/src/command.dart';
+import 'package:shorebird_cli/src/logger.dart';
 
 mixin ShorebirdArtifactMixin on ShorebirdCommand {
   String aarArtifactDirectory({

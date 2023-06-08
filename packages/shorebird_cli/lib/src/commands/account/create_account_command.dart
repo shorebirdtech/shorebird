@@ -3,6 +3,7 @@ import 'dart:async';
 import 'package:mason_logger/mason_logger.dart';
 import 'package:shorebird_cli/src/auth/auth.dart';
 import 'package:shorebird_cli/src/command.dart';
+import 'package:shorebird_cli/src/logger.dart';
 import 'package:shorebird_cli/src/shorebird_config_mixin.dart';
 import 'package:shorebird_code_push_client/shorebird_code_push_client.dart';
 
@@ -12,7 +13,7 @@ import 'package:shorebird_code_push_client/shorebird_code_push_client.dart';
 /// {@endtemplate}
 class CreateAccountCommand extends ShorebirdCommand with ShorebirdConfigMixin {
   /// {@macro create_account_command}
-  CreateAccountCommand({required super.logger, super.auth});
+  CreateAccountCommand({super.auth});
 
   @override
   String get description => 'Create a new Shorebird account.';

@@ -1,8 +1,12 @@
+import 'dart:async';
+
 import 'package:args/args.dart';
 import 'package:args/command_runner.dart';
 import 'package:cli_completion/cli_completion.dart';
 import 'package:mason_logger/mason_logger.dart';
+import 'package:scoped/scoped.dart';
 import 'package:shorebird_cli/src/commands/commands.dart';
+import 'package:shorebird_cli/src/logger.dart';
 import 'package:shorebird_cli/src/shorebird_environment.dart';
 import 'package:shorebird_cli/src/shorebird_process.dart';
 import 'package:shorebird_cli/src/version.dart';
@@ -20,10 +24,7 @@ const description = 'The shorebird command-line tool';
 /// {@endtemplate}
 class ShorebirdCliCommandRunner extends CompletionCommandRunner<int> {
   /// {@macro shorebird_cli_command_runner}
-  ShorebirdCliCommandRunner({
-    Logger? logger,
-  })  : _logger = logger ?? Logger(),
-        super(executableName, description) {
+  ShorebirdCliCommandRunner() : super(executableName, description) {
     argParser
       ..addFlag(
         'version',
@@ -36,7 +37,7 @@ class ShorebirdCliCommandRunner extends CompletionCommandRunner<int> {
         help: 'Noisy logging, including all shell commands executed.',
         callback: (verbose) {
           if (verbose) {
-            _logger.level = Level.verbose;
+            logger.level = Level.verbose;
           }
         },
       )
@@ -53,27 +54,26 @@ class ShorebirdCliCommandRunner extends CompletionCommandRunner<int> {
             'are building Flutter locally.',
       );
 
-    addCommand(AccountCommand(logger: _logger));
-    addCommand(AppsCommand(logger: _logger));
-    addCommand(BuildCommand(logger: _logger));
-    addCommand(CacheCommand(logger: _logger));
-    addCommand(CollaboratorsCommand(logger: _logger));
-    addCommand(DoctorCommand(logger: _logger));
-    addCommand(InitCommand(logger: _logger));
-    addCommand(LoginCommand(logger: _logger));
-    addCommand(LogoutCommand(logger: _logger));
-    addCommand(PatchCommand(logger: _logger));
-    addCommand(ReleaseCommand(logger: _logger));
-    addCommand(ReleasesCommand(logger: _logger));
-    addCommand(RunCommand(logger: _logger));
-    addCommand(SubscriptionCommand(logger: _logger));
-    addCommand(UpgradeCommand(logger: _logger));
+    addCommand(AccountCommand());
+    addCommand(AppsCommand());
+    addCommand(BuildCommand());
+    addCommand(CacheCommand());
+    addCommand(CollaboratorsCommand());
+    addCommand(DoctorCommand());
+    addCommand(InitCommand());
+    addCommand(LoginCommand());
+    addCommand(LogoutCommand());
+    addCommand(PatchCommand());
+    addCommand(ReleaseCommand());
+    addCommand(ReleasesCommand());
+    addCommand(RunCommand());
+    addCommand(SubscriptionCommand());
+    addCommand(UpgradeCommand());
   }
 
   @override
-  void printUsage() => _logger.info(usage);
+  void printUsage() => logger.info(usage);
 
-  final Logger _logger;
   // Currently using ShorebirdCliCommandRunner as our context object.
   late final ShorebirdProcess process;
   late final EngineConfig engineConfig;
@@ -90,14 +90,18 @@ class ShorebirdCliCommandRunner extends CompletionCommandRunner<int> {
       );
       process = ShorebirdProcess(
         engineConfig: engineConfig,
-        logger: _logger,
+        logger: logger,
       );
 
-      return await runCommand(topLevelResults) ?? ExitCode.success.code;
+      return await runScoped<Future<int?>>(
+            () => runCommand(topLevelResults),
+            values: {},
+          ) ??
+          ExitCode.success.code;
     } on FormatException catch (e, stackTrace) {
       // On format errors, show the commands error message, root usage and
       // exit with an error code
-      _logger
+      logger
         ..err(e.message)
         ..err('$stackTrace')
         ..info('')
@@ -106,7 +110,7 @@ class ShorebirdCliCommandRunner extends CompletionCommandRunner<int> {
     } on UsageException catch (e) {
       // On usage errors, show the commands usage message and
       // exit with an error code
-      _logger
+      logger
         ..err(e.message)
         ..info('')
         ..info(e.usage);
@@ -125,7 +129,7 @@ class ShorebirdCliCommandRunner extends CompletionCommandRunner<int> {
     // Run the command or show version
     final int? exitCode;
     if (topLevelResults['version'] == true) {
-      _logger.info(
+      logger.info(
         '''
 Shorebird $packageVersion
 Shorebird Engine • revision ${ShorebirdEnvironment.shorebirdEngineRevision}''',
