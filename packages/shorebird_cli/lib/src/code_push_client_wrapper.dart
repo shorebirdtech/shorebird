@@ -1,6 +1,7 @@
 import 'package:collection/collection.dart';
 import 'package:mason_logger/mason_logger.dart';
 import 'package:meta/meta.dart';
+import 'package:shorebird_cli/src/logger.dart';
 import 'package:shorebird_cli/src/shorebird_build_mixin.dart';
 import 'package:shorebird_cli/src/third_party/flutter_tools/lib/flutter_tools.dart';
 import 'package:shorebird_code_push_client/shorebird_code_push_client.dart';
@@ -36,13 +37,9 @@ class PatchArtifactBundle {
 /// {@endtemplate}
 class CodePushClientWrapper {
   /// {@macro code_push_client_wrapper}
-  CodePushClientWrapper({
-    required this.codePushClient,
-    required this.logger,
-  });
+  CodePushClientWrapper({required this.codePushClient});
 
   final CodePushClient codePushClient;
-  final Logger logger;
 
   Future<AppMetadata> getApp({required String appId}) async {
     final app = await maybeGetApp(appId: appId);

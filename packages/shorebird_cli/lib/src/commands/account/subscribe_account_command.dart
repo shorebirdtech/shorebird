@@ -13,10 +13,7 @@ import 'package:shorebird_code_push_client/shorebird_code_push_client.dart';
 class SubscribeAccountCommand extends ShorebirdCommand
     with ShorebirdConfigMixin, ShorebirdValidationMixin {
   /// {@macro subscribe_account_command}
-  SubscribeAccountCommand({
-    super.auth,
-    super.buildCodePushClient,
-  });
+  SubscribeAccountCommand({super.auth, super.buildCodePushClient});
 
   @override
   String get name => 'subscribe';

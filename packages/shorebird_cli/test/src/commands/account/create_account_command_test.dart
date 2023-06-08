@@ -46,9 +46,7 @@ void main() {
       when(() => user.displayName).thenReturn(userName);
       when(() => user.email).thenReturn(email);
 
-      createAccountCommand = runWithOverrides(
-        () => CreateAccountCommand(auth: auth),
-      );
+      createAccountCommand = CreateAccountCommand(auth: auth);
     });
 
     test('has a description', () {

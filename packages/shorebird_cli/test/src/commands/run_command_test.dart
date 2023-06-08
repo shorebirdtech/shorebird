@@ -6,8 +6,10 @@ import 'package:args/args.dart';
 import 'package:http/http.dart' as http;
 import 'package:mason_logger/mason_logger.dart';
 import 'package:mocktail/mocktail.dart';
+import 'package:scoped/scoped.dart';
 import 'package:shorebird_cli/src/auth/auth.dart';
 import 'package:shorebird_cli/src/commands/run_command.dart';
+import 'package:shorebird_cli/src/logger.dart';
 import 'package:shorebird_cli/src/shorebird_process.dart';
 import 'package:shorebird_cli/src/validators/validators.dart';
 import 'package:shorebird_code_push_client/shorebird_code_push_client.dart';
@@ -43,10 +45,14 @@ void main() {
     late Logger logger;
     late Process process;
     late CodePushClient codePushClient;
-    late RunCommand runCommand;
     late AndroidInternetPermissionValidator androidInternetPermissionValidator;
     late ShorebirdFlutterValidator flutterValidator;
     late ShorebirdProcess shorebirdProcess;
+    late RunCommand command;
+
+    R runWithOverrides<R>(R Function() body) {
+      return runScoped(body, values: {loggerRef.overrideWith(() => logger)});
+    }
 
     setUp(() {
       argResults = _MockArgResults();
@@ -78,9 +84,8 @@ void main() {
       ).thenAnswer((_) async => []);
       when(() => flutterValidator.validate(any())).thenAnswer((_) async => []);
 
-      runCommand = RunCommand(
+      command = RunCommand(
         auth: auth,
-        logger: logger,
         buildCodePushClient: ({
           required http.Client httpClient,
           Uri? hostedUri,
@@ -100,7 +105,7 @@ void main() {
     test('exits with no user when not logged in', () async {
       when(() => auth.isAuthenticated).thenReturn(false);
 
-      final result = await runCommand.run();
+      final result = await runWithOverrides(command.run);
       expect(result, equals(ExitCode.noUser.code));
 
       verify(
@@ -126,7 +131,7 @@ void main() {
       when(() => process.exitCode).thenAnswer((_) async => exitCode);
 
       final result = await IOOverrides.runZoned(
-        () => runCommand.run(),
+        () => runWithOverrides(command.run),
         getCurrentDirectory: () => tempDir,
       );
 
@@ -150,7 +155,7 @@ void main() {
       ).thenAnswer((_) async => ExitCode.success.code);
 
       final result = await IOOverrides.runZoned(
-        () => runCommand.run(),
+        () => runWithOverrides(command.run),
         getCurrentDirectory: () => tempDir,
       );
 
@@ -178,7 +183,7 @@ void main() {
       ).thenAnswer((_) async => ExitCode.success.code);
 
       final result = await IOOverrides.runZoned(
-        () => runCommand.run(),
+        () => runWithOverrides(command.run),
         getCurrentDirectory: () => tempDir,
       );
 
@@ -235,7 +240,7 @@ void main() {
       ).thenAnswer((_) async => ExitCode.success.code);
 
       final result = await IOOverrides.runZoned(
-        () => runCommand.run(),
+        () => runWithOverrides(command.run),
         getCurrentDirectory: () => tempDir,
       );
 
@@ -264,7 +269,7 @@ void main() {
       when(() => logger.progress(any())).thenReturn(progress);
 
       final result = await IOOverrides.runZoned(
-        () => runCommand.run(),
+        () => runWithOverrides(command.run),
         getCurrentDirectory: () => tempDir,
       );
 
