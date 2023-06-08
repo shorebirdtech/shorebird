@@ -93,7 +93,7 @@ class Version {
   /// The hash of the version.
   final String hash;
 
-  /// Aliaes for the hash (typically tag names).
+  /// Aliases for the hash (typically tag names).
   final List<String> aliases;
 
   /// The repo the version is from.
