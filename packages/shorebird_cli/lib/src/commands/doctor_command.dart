@@ -1,6 +1,7 @@
 import 'package:collection/collection.dart';
 import 'package:mason_logger/mason_logger.dart';
 import 'package:shorebird_cli/src/command.dart';
+import 'package:shorebird_cli/src/logger.dart';
 import 'package:shorebird_cli/src/shorebird_environment.dart';
 import 'package:shorebird_cli/src/shorebird_version_mixin.dart';
 import 'package:shorebird_cli/src/validators/validators.dart';
@@ -13,10 +14,7 @@ import 'package:shorebird_cli/src/version.dart';
 /// {@endtemplate}
 class DoctorCommand extends ShorebirdCommand with ShorebirdVersionMixin {
   /// {@macro doctor_command}
-  DoctorCommand({
-    required super.logger,
-    super.validators,
-  }) {
+  DoctorCommand({super.validators}) {
     validators = _allValidators(baseValidators: validators);
 
     argParser.addFlag(

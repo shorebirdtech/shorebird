@@ -5,8 +5,10 @@ import 'package:http/http.dart' as http;
 import 'package:mason_logger/mason_logger.dart';
 import 'package:mocktail/mocktail.dart';
 import 'package:path/path.dart' as p;
+import 'package:scoped/scoped.dart';
 import 'package:shorebird_cli/src/auth/auth.dart';
 import 'package:shorebird_cli/src/commands/commands.dart';
+import 'package:shorebird_cli/src/logger.dart';
 import 'package:shorebird_code_push_client/shorebird_code_push_client.dart';
 import 'package:test/test.dart';
 
@@ -42,6 +44,10 @@ flutter:
   assets:
     - shorebird.yaml''';
 
+    R runWithOverrides<R>(R Function() body) {
+      return runScoped(body, values: {loggerRef.overrideWith(() => logger)});
+    }
+
     Directory setUpTempDir() {
       final tempDir = Directory.systemTemp.createTempSync();
       File(
@@ -59,18 +65,18 @@ flutter:
       codePushClient = _MockCodePushClient();
       httpClient = _MockHttpClient();
       logger = _MockLogger();
+
+      when(() => auth.client).thenReturn(httpClient);
+      when(() => auth.isAuthenticated).thenReturn(true);
+
       command = ListReleasesCommand(
         auth: auth,
-        logger: logger,
         buildCodePushClient: ({
           required httpClient,
           hostedUri,
         }) =>
             codePushClient,
       )..testArgResults = argResults;
-
-      when(() => auth.client).thenReturn(httpClient);
-      when(() => auth.isAuthenticated).thenReturn(true);
     });
 
     test('description is correct', () {
@@ -79,11 +85,11 @@ flutter:
 
     test('returns ExitCode.noUser when not logged in', () async {
       when(() => auth.isAuthenticated).thenReturn(false);
-      expect(await command.run(), ExitCode.noUser.code);
+      expect(await runWithOverrides(command.run), ExitCode.noUser.code);
     });
 
     test('returns ExitCode.config when shorebird is not initialized', () async {
-      final exitCode = await command.run();
+      final exitCode = await runWithOverrides(command.run);
 
       verify(
         () => logger.err(
@@ -99,12 +105,13 @@ flutter:
     });
 
     test('returns ExitCode.software when unable to get releases', () async {
-      when(() => codePushClient.getReleases(appId: any(named: 'appId')))
-          .thenThrow(Exception());
+      when(
+        () => codePushClient.getReleases(appId: any(named: 'appId')),
+      ).thenThrow(Exception());
       final tempDir = setUpTempDir();
 
       final exitCode = await IOOverrides.runZoned(
-        command.run,
+        () => runWithOverrides(command.run),
         getCurrentDirectory: () => tempDir,
       );
 
@@ -117,7 +124,7 @@ flutter:
       final tempDir = setUpTempDir();
 
       final exitCode = await IOOverrides.runZoned(
-        command.run,
+        () => runWithOverrides(command.run),
         getCurrentDirectory: () => tempDir,
       );
 
@@ -148,7 +155,7 @@ flavors:
       );
 
       final exitCode = await IOOverrides.runZoned(
-        command.run,
+        () => runWithOverrides(command.run),
         getCurrentDirectory: () => tempDir,
       );
 
@@ -187,7 +194,7 @@ flavors:
       );
 
       final exitCode = await IOOverrides.runZoned(
-        command.run,
+        () => runWithOverrides(command.run),
         getCurrentDirectory: () => tempDir,
       );
 

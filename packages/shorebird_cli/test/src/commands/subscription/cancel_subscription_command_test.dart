@@ -1,8 +1,10 @@
 import 'package:http/http.dart' as http;
 import 'package:mason_logger/mason_logger.dart';
 import 'package:mocktail/mocktail.dart';
+import 'package:scoped/scoped.dart';
 import 'package:shorebird_cli/src/auth/auth.dart';
 import 'package:shorebird_cli/src/commands/subscription/cancel_subscription_command.dart';
+import 'package:shorebird_cli/src/logger.dart';
 import 'package:shorebird_code_push_client/shorebird_code_push_client.dart';
 import 'package:test/test.dart';
 
@@ -30,8 +32,11 @@ void main() {
     late http.Client httpClient;
     late Logger logger;
     late Progress progress;
-
     late CancelSubscriptionCommand command;
+
+    R runWithOverrides<R>(R Function() body) {
+      return runScoped(body, values: {loggerRef.overrideWith(() => logger)});
+    }
 
     setUp(() {
       auth = _MockAuth();
@@ -40,8 +45,11 @@ void main() {
       logger = _MockLogger();
       progress = _MockProgress();
 
+      when(() => auth.client).thenReturn(httpClient);
+
+      when(() => logger.progress(any())).thenReturn(progress);
+
       command = CancelSubscriptionCommand(
-        logger: logger,
         auth: auth,
         buildCodePushClient: ({
           required http.Client httpClient,
@@ -49,10 +57,6 @@ void main() {
         }) =>
             codePushClient,
       );
-
-      when(() => auth.client).thenReturn(httpClient);
-
-      when(() => logger.progress(any())).thenReturn(progress);
     });
 
     test('returns a non-empty description', () {
@@ -62,7 +66,7 @@ void main() {
     test('prints an error if the user is not logged in', () async {
       when(() => auth.isAuthenticated).thenReturn(false);
 
-      final result = await command.run();
+      final result = await runWithOverrides(command.run);
 
       expect(result, ExitCode.noUser.code);
       verify(
@@ -76,7 +80,7 @@ void main() {
         Exception('an error occurred'),
       );
 
-      final result = await command.run();
+      final result = await runWithOverrides(command.run);
 
       expect(result, ExitCode.software.code);
       verify(
@@ -88,7 +92,7 @@ void main() {
       when(() => auth.isAuthenticated).thenReturn(true);
       when(() => codePushClient.getCurrentUser()).thenAnswer((_) async => null);
 
-      final result = await command.run();
+      final result = await runWithOverrides(command.run);
 
       expect(result, ExitCode.software.code);
       verify(
@@ -102,10 +106,11 @@ void main() {
       'prints an error if the user does not have an active subscription',
       () async {
         when(() => auth.isAuthenticated).thenReturn(true);
-        when(() => codePushClient.getCurrentUser())
-            .thenAnswer((_) async => noSubscriptionUser);
+        when(
+          () => codePushClient.getCurrentUser(),
+        ).thenAnswer((_) async => noSubscriptionUser);
 
-        final result = await command.run();
+        final result = await runWithOverrides(command.run);
 
         expect(result, ExitCode.software.code);
         verify(
@@ -118,8 +123,9 @@ void main() {
 
     test('exits successfully if the user opts not to cancel', () async {
       when(() => auth.isAuthenticated).thenReturn(true);
-      when(() => codePushClient.getCurrentUser())
-          .thenAnswer((_) async => subscriptionUser);
+      when(
+        () => codePushClient.getCurrentUser(),
+      ).thenAnswer((_) async => subscriptionUser);
       when(
         () => logger.confirm(
           any(
@@ -130,7 +136,7 @@ void main() {
         ),
       ).thenReturn(false);
 
-      final result = await command.run();
+      final result = await runWithOverrides(command.run);
 
       expect(result, ExitCode.success.code);
       verify(() => logger.info('Aborting.')).called(1);
@@ -138,8 +144,9 @@ void main() {
 
     test('prints an error if call to cancel subscription fails', () async {
       when(() => auth.isAuthenticated).thenReturn(true);
-      when(() => codePushClient.getCurrentUser())
-          .thenAnswer((_) async => subscriptionUser);
+      when(
+        () => codePushClient.getCurrentUser(),
+      ).thenAnswer((_) async => subscriptionUser);
       when(
         () => logger.confirm(
           any(
@@ -153,7 +160,7 @@ void main() {
         Exception('an error occurred'),
       );
 
-      final result = await command.run();
+      final result = await runWithOverrides(command.run);
 
       expect(result, ExitCode.software.code);
       verify(
@@ -186,7 +193,7 @@ void main() {
         ),
       );
 
-      final result = await command.run();
+      final result = await runWithOverrides(command.run);
 
       expect(result, ExitCode.success.code);
 

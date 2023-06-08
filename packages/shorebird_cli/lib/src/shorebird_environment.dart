@@ -63,4 +63,16 @@ abstract class ShorebirdEnvironment {
           'flutter',
         ),
       );
+
+  static File get genSnapshotFile => File(
+        p.join(
+          flutterDirectory.path,
+          'bin',
+          'cache',
+          'artifacts',
+          'engine',
+          'ios-release',
+          'gen_snapshot_arm64',
+        ),
+      );
 }

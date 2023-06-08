@@ -7,9 +7,11 @@ import 'package:http/http.dart' as http;
 import 'package:mason_logger/mason_logger.dart';
 import 'package:path/path.dart' as p;
 import 'package:shorebird_cli/src/archive_analysis/archive_analysis.dart';
+import 'package:shorebird_cli/src/code_push_client_wrapper.dart';
 import 'package:shorebird_cli/src/command.dart';
 import 'package:shorebird_cli/src/config/config.dart';
 import 'package:shorebird_cli/src/formatters/file_size_formatter.dart';
+import 'package:shorebird_cli/src/logger.dart';
 import 'package:shorebird_cli/src/shorebird_artifact_mixin.dart';
 import 'package:shorebird_cli/src/shorebird_build_mixin.dart';
 import 'package:shorebird_cli/src/shorebird_code_push_client_mixin.dart';
@@ -33,7 +35,6 @@ class PatchAarCommand extends ShorebirdCommand
         ShorebirdArtifactMixin {
   /// {@macro patch_aar_command}
   PatchAarCommand({
-    required super.logger,
     super.auth,
     super.buildCodePushClient,
     super.cache,
@@ -144,7 +145,13 @@ of the Android app that is using this module.''',
     );
 
     final appId = shorebirdYaml.getAppId(flavor: flavor);
-    final app = await getApp(appId: appId, flavor: flavor);
+    final App? app;
+    try {
+      app = await getApp(appId: appId, flavor: flavor);
+    } catch (_) {
+      return ExitCode.software.code;
+    }
+
     if (app == null) {
       logger.err(
         '''
@@ -164,10 +171,15 @@ Did you forget to run "shorebird init"?''',
     const platform = 'android';
     final channelName = results['channel'] as String;
 
-    final release = await getRelease(
-      appId: appId,
-      releaseVersion: releaseVersion,
-    );
+    final Release? release;
+    try {
+      release = await getRelease(
+        appId: appId,
+        releaseVersion: releaseVersion,
+      );
+    } catch (_) {
+      return ExitCode.software.code;
+    }
 
     if (release == null) {
       logger.err(
@@ -367,7 +379,6 @@ ${summary.join('\n')}
     createArtifactProgress.complete();
 
     Channel? channel;
-
     try {
       channel = await getChannel(appId: app.id, name: channelName);
     } catch (error) {
@@ -375,8 +386,9 @@ ${summary.join('\n')}
     }
 
     if (channel == null) {
-      channel = await createChannel(appId: appId, name: channelName);
-      if (channel == null) {
+      try {
+        channel = await createChannel(appId: appId, name: channelName);
+      } catch (_) {
         return ExitCode.software.code;
       }
     }
@@ -436,5 +448,50 @@ ${summary.join('\n')}
     createDiffProgress.complete();
 
     return patchArtifactBundles;
+  }
+
+  Future<String> downloadReleaseArtifact(
+    Uri uri, {
+    required http.Client httpClient,
+  }) async {
+    final request = http.Request('GET', uri);
+    final response = await httpClient.send(request);
+
+    if (response.statusCode != HttpStatus.ok) {
+      throw Exception(
+        '''Failed to download release artifact: ${response.statusCode} ${response.reasonPhrase}''',
+      );
+    }
+
+    final tempDir = await Directory.systemTemp.createTemp();
+    final releaseArtifact = File(p.join(tempDir.path, 'artifact.so'));
+    await releaseArtifact.openWrite().addStream(response.stream);
+
+    return releaseArtifact.path;
+  }
+
+  Future<Map<Arch, String>> downloadReleaseArtifacts({
+    required Map<Arch, ReleaseArtifact> releaseArtifacts,
+    required http.Client httpClient,
+  }) async {
+    final releaseArtifactPaths = <Arch, String>{};
+    final downloadReleaseArtifactProgress = logger.progress(
+      'Downloading release artifacts',
+    );
+    for (final releaseArtifact in releaseArtifacts.entries) {
+      try {
+        final releaseArtifactPath = await downloadReleaseArtifact(
+          Uri.parse(releaseArtifact.value.url),
+          httpClient: httpClient,
+        );
+        releaseArtifactPaths[releaseArtifact.key] = releaseArtifactPath;
+      } catch (error) {
+        downloadReleaseArtifactProgress.fail('$error');
+        rethrow;
+      }
+    }
+
+    downloadReleaseArtifactProgress.complete();
+    return releaseArtifactPaths;
   }
 }

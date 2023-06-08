@@ -1,8 +1,10 @@
 import 'package:http/http.dart' as http;
 import 'package:mason_logger/mason_logger.dart';
 import 'package:mocktail/mocktail.dart';
+import 'package:scoped/scoped.dart';
 import 'package:shorebird_cli/src/auth/auth.dart';
 import 'package:shorebird_cli/src/commands/commands.dart';
+import 'package:shorebird_cli/src/logger.dart';
 import 'package:shorebird_code_push_client/shorebird_code_push_client.dart';
 import 'package:test/test.dart';
 
@@ -20,14 +22,21 @@ void main() {
     late Auth auth;
     late CodePushClient codePushClient;
     late Logger logger;
-
     late ListAppsCommand command;
+
+    R runWithOverrides<R>(R Function() body) {
+      return runScoped(body, values: {loggerRef.overrideWith(() => logger)});
+    }
 
     setUp(() {
       httpClient = _MockHttpClient();
       auth = _MockAuth();
       codePushClient = _MockCodePushClient();
       logger = _MockLogger();
+
+      when(() => auth.isAuthenticated).thenReturn(true);
+      when(() => auth.client).thenReturn(httpClient);
+
       command = ListAppsCommand(
         auth: auth,
         buildCodePushClient: ({
@@ -36,11 +45,7 @@ void main() {
         }) {
           return codePushClient;
         },
-        logger: logger,
       );
-
-      when(() => auth.isAuthenticated).thenReturn(true);
-      when(() => auth.client).thenReturn(httpClient);
     });
 
     test('description is correct', () {
@@ -49,17 +54,17 @@ void main() {
 
     test('returns ExitCode.noUser when not logged in', () async {
       when(() => auth.isAuthenticated).thenReturn(false);
-      expect(await command.run(), ExitCode.noUser.code);
+      expect(await runWithOverrides(command.run), ExitCode.noUser.code);
     });
 
     test('returns ExitCode.software when unable to get apps', () async {
       when(() => codePushClient.getApps()).thenThrow(Exception());
-      expect(await command.run(), ExitCode.software.code);
+      expect(await runWithOverrides(command.run), ExitCode.software.code);
     });
 
     test('returns ExitCode.success when apps are empty', () async {
       when(() => codePushClient.getApps()).thenAnswer((_) async => []);
-      expect(await command.run(), ExitCode.success.code);
+      expect(await runWithOverrides(command.run), ExitCode.success.code);
       verify(() => logger.info('(empty)')).called(1);
     });
 
@@ -77,7 +82,7 @@ void main() {
         ),
       ];
       when(() => codePushClient.getApps()).thenAnswer((_) async => apps);
-      expect(await command.run(), ExitCode.success.code);
+      expect(await runWithOverrides(command.run), ExitCode.success.code);
       verify(
         () => logger.info(
           '''

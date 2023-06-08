@@ -7,9 +7,10 @@ import 'package:shorebird_cli/src/commands/commands.dart';
 /// {@endtemplate}
 class PatchCommand extends ShorebirdCommand {
   /// {@macro patch_command}
-  PatchCommand({required super.logger}) {
-    addSubcommand(PatchAarCommand(logger: logger));
-    addSubcommand(PatchAndroidCommand(logger: logger));
+  PatchCommand() {
+    addSubcommand(PatchAarCommand());
+    addSubcommand(PatchAndroidCommand());
+    addSubcommand(PatchIosCommand());
   }
 
   @override

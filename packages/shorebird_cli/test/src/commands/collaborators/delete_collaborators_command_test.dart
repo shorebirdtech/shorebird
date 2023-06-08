@@ -5,8 +5,10 @@ import 'package:http/http.dart' as http;
 import 'package:mason_logger/mason_logger.dart';
 import 'package:mocktail/mocktail.dart';
 import 'package:path/path.dart' as p;
+import 'package:scoped/scoped.dart';
 import 'package:shorebird_cli/src/auth/auth.dart';
 import 'package:shorebird_cli/src/commands/commands.dart';
+import 'package:shorebird_cli/src/logger.dart';
 import 'package:shorebird_code_push_client/shorebird_code_push_client.dart';
 import 'package:test/test.dart';
 
@@ -36,6 +38,10 @@ void main() {
     late Progress progress;
     late DeleteCollaboratorsCommand command;
 
+    R runWithOverrides<R>(R Function() body) {
+      return runScoped(body, values: {loggerRef.overrideWith(() => logger)});
+    }
+
     setUp(() {
       argResults = _MockArgResults();
       httpClient = _MockHttpClient();
@@ -43,16 +49,6 @@ void main() {
       codePushClient = _MockCodePushClient();
       logger = _MockLogger();
       progress = _MockProgress();
-      command = DeleteCollaboratorsCommand(
-        auth: auth,
-        buildCodePushClient: ({
-          required http.Client httpClient,
-          Uri? hostedUri,
-        }) {
-          return codePushClient;
-        },
-        logger: logger,
-      )..testArgResults = argResults;
 
       when(() => argResults['app-id']).thenReturn(appId);
       when(() => argResults['email']).thenReturn(email);
@@ -69,6 +65,16 @@ void main() {
           userId: any(named: 'userId'),
         ),
       ).thenAnswer((_) async {});
+
+      command = DeleteCollaboratorsCommand(
+        auth: auth,
+        buildCodePushClient: ({
+          required http.Client httpClient,
+          Uri? hostedUri,
+        }) {
+          return codePushClient;
+        },
+      )..testArgResults = argResults;
     });
 
     test('description is correct', () {
@@ -80,17 +86,17 @@ void main() {
 
     test('returns ExitCode.noUser when not logged in', () async {
       when(() => auth.isAuthenticated).thenReturn(false);
-      expect(await command.run(), ExitCode.noUser.code);
+      expect(await runWithOverrides(command.run), ExitCode.noUser.code);
     });
 
     test('returns ExitCode.usage when app id is missing.', () async {
       when(() => argResults['app-id']).thenReturn(null);
-      expect(await command.run(), ExitCode.usage.code);
+      expect(await runWithOverrides(command.run), ExitCode.usage.code);
     });
 
     test('returns ExitCode.success when user aborts', () async {
       when(() => logger.confirm(any())).thenReturn(false);
-      expect(await command.run(), ExitCode.success.code);
+      expect(await runWithOverrides(command.run), ExitCode.success.code);
       verifyNever(
         () => codePushClient.deleteCollaborator(
           appId: any(named: 'appId'),
@@ -107,7 +113,7 @@ void main() {
       when(
         () => codePushClient.getCollaborators(appId: any(named: 'appId')),
       ).thenThrow(error);
-      expect(await command.run(), ExitCode.software.code);
+      expect(await runWithOverrides(command.run), ExitCode.software.code);
       verify(() => logger.err(error)).called(1);
     });
 
@@ -116,7 +122,7 @@ void main() {
       when(
         () => codePushClient.getCollaborators(appId: any(named: 'appId')),
       ).thenAnswer((_) async => []);
-      expect(await command.run(), ExitCode.software.code);
+      expect(await runWithOverrides(command.run), ExitCode.software.code);
       verify(
         () => logger.err(
           any(
@@ -138,7 +144,7 @@ void main() {
           userId: any(named: 'userId'),
         ),
       ).thenThrow(error);
-      expect(await command.run(), ExitCode.software.code);
+      expect(await runWithOverrides(command.run), ExitCode.software.code);
       verify(() => logger.err(error)).called(1);
     });
 
@@ -151,7 +157,7 @@ void main() {
           userId: any(named: 'userId'),
         ),
       ).thenAnswer((_) async => collaborator);
-      expect(await command.run(), ExitCode.success.code);
+      expect(await runWithOverrides(command.run), ExitCode.success.code);
       verify(
         () => logger.prompt(
           '''${lightGreen.wrap('?')} What is the email of the collaborator you would like to delete?''',
@@ -178,7 +184,7 @@ void main() {
         ),
       ).thenAnswer((_) async {});
       final result = await IOOverrides.runZoned(
-        () => command.run(),
+        () => runWithOverrides(command.run),
         getCurrentDirectory: () => tempDir,
       );
       expect(result, ExitCode.success.code);
@@ -198,7 +204,7 @@ void main() {
           userId: any(named: 'userId'),
         ),
       ).thenAnswer((_) async {});
-      expect(await command.run(), ExitCode.success.code);
+      expect(await runWithOverrides(command.run), ExitCode.success.code);
       verify(() => logger.success('\n✅ Collaborator Deleted!')).called(1);
     });
   });

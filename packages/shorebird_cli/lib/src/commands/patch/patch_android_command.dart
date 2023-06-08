@@ -1,23 +1,22 @@
 import 'dart:io';
 
-import 'package:collection/collection.dart';
 import 'package:crypto/crypto.dart';
 import 'package:http/http.dart' as http;
 import 'package:mason_logger/mason_logger.dart';
 import 'package:path/path.dart' as p;
 import 'package:shorebird_cli/src/archive_analysis/archive_analysis.dart';
+import 'package:shorebird_cli/src/code_push_client_wrapper.dart';
 import 'package:shorebird_cli/src/command.dart';
 import 'package:shorebird_cli/src/config/shorebird_yaml.dart';
 import 'package:shorebird_cli/src/formatters/formatters.dart';
+import 'package:shorebird_cli/src/logger.dart';
 import 'package:shorebird_cli/src/shorebird_build_mixin.dart';
-import 'package:shorebird_cli/src/shorebird_code_push_client_mixin.dart';
 import 'package:shorebird_cli/src/shorebird_config_mixin.dart';
 import 'package:shorebird_cli/src/shorebird_create_app_mixin.dart';
 import 'package:shorebird_cli/src/shorebird_environment.dart';
 import 'package:shorebird_cli/src/shorebird_java_mixin.dart';
 import 'package:shorebird_cli/src/shorebird_release_version_mixin.dart';
 import 'package:shorebird_cli/src/shorebird_validation_mixin.dart';
-import 'package:shorebird_code_push_client/shorebird_code_push_client.dart';
 
 /// {@template patch_android_command}
 /// `shorebird patch android`
@@ -30,16 +29,14 @@ class PatchAndroidCommand extends ShorebirdCommand
         ShorebirdValidationMixin,
         ShorebirdBuildMixin,
         ShorebirdCreateAppMixin,
-        ShorebirdCodePushClientMixin,
         ShorebirdJavaMixin,
         ShorebirdReleaseVersionMixin {
   /// {@macro patch_android_command}
   PatchAndroidCommand({
-    required super.logger,
     super.auth,
-    super.buildCodePushClient,
     super.cache,
     super.validators,
+    super.codePushClientWrapper,
     HashFunction? hashFn,
     http.Client? httpClient,
     AabDiffer? aabDiffer,
@@ -116,6 +113,8 @@ class PatchAndroidCommand extends ShorebirdCommand
 
     await cache.updateAll();
 
+    const platform = 'android';
+    final channelName = results['channel'] as String;
     final flavor = results['flavor'] as String?;
     final target = results['target'] as String?;
     final buildProgress = logger.progress('Building patch');
@@ -128,34 +127,9 @@ class PatchAndroidCommand extends ShorebirdCommand
     }
 
     final shorebirdYaml = getShorebirdYaml()!;
-    final codePushClient = buildCodePushClient(
-      httpClient: auth.client,
-      hostedUri: hostedUri,
-    );
-
-    // TODO(bryanoltman): use ShorebirdCodePushClientMixin here
-    final List<App> apps;
-    final fetchAppsProgress = logger.progress('Fetching apps');
-    try {
-      apps = (await codePushClient.getApps())
-          .map((a) => App(id: a.appId, displayName: a.displayName))
-          .toList();
-      fetchAppsProgress.complete();
-    } catch (error) {
-      fetchAppsProgress.fail('$error');
-      return ExitCode.software.code;
-    }
-
     final appId = shorebirdYaml.getAppId(flavor: flavor);
-    final app = apps.firstWhereOrNull((a) => a.id == appId);
-    if (app == null) {
-      logger.err(
-        '''
-Could not find app with id: "$appId".
-Did you forget to run "shorebird init"?''',
-      );
-      return ExitCode.software.code;
-    }
+    final app = await codePushClientWrapper.getApp(appId: appId);
+
     final bundlePath = flavor != null
         ? './build/app/outputs/bundle/${flavor}Release/app-$flavor-release.aab'
         : './build/app/outputs/bundle/release/app-release.aab';
@@ -182,35 +156,10 @@ Did you forget to run "shorebird init"?''',
       return ExitCode.success.code;
     }
 
-    const platform = 'android';
-    final channelName = results['channel'] as String;
-
-    // TODO(bryanoltman): use ShorebirdCodePushClientMixin here
-    final List<Release> releases;
-    final fetchReleaseProgress = logger.progress('Fetching release');
-    try {
-      releases = await codePushClient.getReleases(appId: app.id);
-      fetchReleaseProgress.complete();
-    } catch (error) {
-      fetchReleaseProgress.fail('$error');
-      return ExitCode.software.code;
-    }
-
-    final release = releases.firstWhereOrNull(
-      (r) => r.version == releaseVersion,
+    final release = await codePushClientWrapper.getRelease(
+      appId: appId,
+      releaseVersion: releaseVersion,
     );
-
-    if (release == null) {
-      logger.err(
-        '''
-Release not found: "$releaseVersion"
-
-Patches can only be published for existing releases.
-Please create a release using "shorebird release" and try again.
-''',
-      );
-      return ExitCode.software.code;
-    }
 
     final flutterRevisionProgress = logger.progress(
       'Fetching Flutter revision',
@@ -250,38 +199,18 @@ https://github.com/shorebirdtech/shorebird/issues/472
       return ExitCode.software.code;
     }
 
-    final releaseArtifacts = <Arch, ReleaseArtifact>{};
-    final fetchReleaseArtifactProgress = logger.progress(
-      'Fetching release artifacts',
+    final releaseArtifacts = await codePushClientWrapper.getReleaseArtifacts(
+      releaseId: release.id,
+      architectures: architectures,
+      platform: platform,
     );
-    for (final entry in architectures.entries) {
-      try {
-        final releaseArtifact = await codePushClient.getReleaseArtifact(
-          releaseId: release.id,
-          arch: entry.value.arch,
-          platform: platform,
-        );
-        releaseArtifacts[entry.key] = releaseArtifact;
-      } catch (error) {
-        fetchReleaseArtifactProgress.fail('$error');
-        return ExitCode.software.code;
-      }
-    }
 
-    ReleaseArtifact? releaseAabArtifact;
-    try {
-      releaseAabArtifact = await codePushClient.getReleaseArtifact(
-        releaseId: release.id,
-        arch: 'aab',
-        platform: 'android',
-      );
-    } catch (error) {
-      // Do nothing for now, not all releases will have an associated aab
-      // artifact.
-      // TODO(bryanoltman): Treat this as an error once all releases have an aab
-    }
-
-    fetchReleaseArtifactProgress.complete();
+    final releaseAabArtifact =
+        await codePushClientWrapper.maybeGetReleaseArtifact(
+      releaseId: release.id,
+      arch: 'aab',
+      platform: platform,
+    );
 
     final releaseArtifactPaths = <Arch, String>{};
     final downloadReleaseArtifactProgress = logger.progress(
@@ -397,7 +326,7 @@ If you believe you're seeing this in error, please reach out to us for support a
     });
 
     final summary = [
-      '''📱 App: ${lightCyan.wrap(app.displayName)} ${lightCyan.wrap('(${app.id})')}''',
+      '''📱 App: ${lightCyan.wrap(app.displayName)} ${lightCyan.wrap('(${app.appId})')}''',
       if (flavor != null) '🍧 Flavor: ${lightCyan.wrap(flavor)}',
       '📦 Release Version: ${lightCyan.wrap(releaseVersion)}',
       '📺 Channel: ${lightCyan.wrap(channelName)}',
@@ -423,76 +352,35 @@ ${summary.join('\n')}
       }
     }
 
-    final Patch patch;
-    final createPatchProgress = logger.progress('Creating patch');
-    try {
-      patch = await codePushClient.createPatch(releaseId: release.id);
-      createPatchProgress.complete();
-    } catch (error) {
-      createPatchProgress.fail('$error');
-      return ExitCode.software.code;
-    }
-
-    final createArtifactProgress = logger.progress('Uploading artifacts');
-    for (final artifact in patchArtifactBundles.values) {
-      try {
-        await codePushClient.createPatchArtifact(
-          patchId: patch.id,
-          artifactPath: artifact.path,
-          arch: artifact.arch,
-          platform: platform,
-          hash: artifact.hash,
-        );
-      } catch (error) {
-        createArtifactProgress.fail('$error');
-        return ExitCode.software.code;
-      }
-    }
-    createArtifactProgress.complete();
-
-    // TODO(bryanoltman): use ShorebirdCodePushClientMixin here
-    Channel? channel;
-    final fetchChannelsProgress = logger.progress('Fetching channels');
-    try {
-      final channels = await codePushClient.getChannels(appId: app.id);
-      channel = channels.firstWhereOrNull(
-        (channel) => channel.name == channelName,
-      );
-      fetchChannelsProgress.complete();
-    } catch (error) {
-      fetchChannelsProgress.fail('$error');
-      return ExitCode.software.code;
-    }
-
-    if (channel == null) {
-      final createChannelProgress = logger.progress('Creating channel');
-      try {
-        channel = await codePushClient.createChannel(
-          appId: app.id,
-          channel: channelName,
-        );
-        createChannelProgress.complete();
-      } catch (error) {
-        createChannelProgress.fail('$error');
-        return ExitCode.software.code;
-      }
-    }
-
-    final publishPatchProgress = logger.progress(
-      'Promoting patch to ${channel.name}',
+    await codePushClientWrapper.publishPatch(
+      appId: appId,
+      releaseId: release.id,
+      platform: platform,
+      channelName: channelName,
+      patchArtifactBundles: patchArtifactBundles,
     );
-    try {
-      await codePushClient.promotePatch(
-        patchId: patch.id,
-        channelId: channel.id,
-      );
-      publishPatchProgress.complete();
-    } catch (error) {
-      publishPatchProgress.fail('$error');
-      return ExitCode.software.code;
-    }
 
     logger.success('\n✅ Published Patch!');
     return ExitCode.success.code;
+  }
+
+  Future<String> downloadReleaseArtifact(
+    Uri uri, {
+    required http.Client httpClient,
+  }) async {
+    final request = http.Request('GET', uri);
+    final response = await httpClient.send(request);
+
+    if (response.statusCode != HttpStatus.ok) {
+      throw Exception(
+        '''Failed to download release artifact: ${response.statusCode} ${response.reasonPhrase}''',
+      );
+    }
+
+    final tempDir = await Directory.systemTemp.createTemp();
+    final releaseArtifact = File(p.join(tempDir.path, 'artifact.so'));
+    await releaseArtifact.openWrite().addStream(response.stream);
+
+    return releaseArtifact.path;
   }
 }

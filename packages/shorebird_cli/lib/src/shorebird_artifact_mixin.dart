@@ -2,6 +2,7 @@ import 'dart:io';
 
 import 'package:path/path.dart' as p;
 import 'package:shorebird_cli/src/command.dart';
+import 'package:shorebird_cli/src/logger.dart';
 
 mixin ShorebirdArtifactMixin on ShorebirdCommand {
   String aarArtifactDirectory({
@@ -55,5 +56,27 @@ mixin ShorebirdArtifactMixin on ShorebirdCommand {
     // Unzip the .zip file to a directory so we can read the .so files
     await unzipFn(zipPath, extractedAarDir);
     return extractedAarDir;
+  }
+
+  /// Finds the most recently-edited app.dill file in the .dart_tool directory.
+  // TODO(bryanoltman): This is an enormous hack – we don't know that this is
+  // the correct file.
+  File newestAppDill() {
+    final dartToolBuildDir = Directory(
+      p.join(
+        Directory.current.path,
+        '.dart_tool',
+        'flutter_build',
+      ),
+    );
+
+    return dartToolBuildDir
+        .listSync(recursive: true)
+        .whereType<File>()
+        .where((f) => p.basename(f.path) == 'app.dill')
+        .reduce(
+          (a, b) =>
+              a.statSync().modified.isAfter(b.statSync().modified) ? a : b,
+        );
   }
 }

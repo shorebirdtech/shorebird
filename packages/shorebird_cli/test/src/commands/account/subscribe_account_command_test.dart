@@ -1,8 +1,10 @@
 import 'package:http/http.dart' as http;
 import 'package:mason_logger/mason_logger.dart';
 import 'package:mocktail/mocktail.dart';
+import 'package:scoped/scoped.dart';
 import 'package:shorebird_cli/src/auth/auth.dart';
 import 'package:shorebird_cli/src/commands/account/account.dart';
+import 'package:shorebird_cli/src/logger.dart';
 import 'package:shorebird_code_push_client/shorebird_code_push_client.dart';
 import 'package:test/test.dart';
 
@@ -31,6 +33,10 @@ void main() {
   late SubscribeAccountCommand subscribeAccountCommand;
 
   group(SubscribeAccountCommand, () {
+    R runWithOverrides<R>(R Function() body) {
+      return runScoped(body, values: {loggerRef.overrideWith(() => logger)});
+    }
+
     setUp(() {
       auth = _MockAuth();
       codePushClient = _MockCodePushClient();
@@ -38,13 +44,6 @@ void main() {
       logger = _MockLogger();
       progress = _MockProgress();
       user = _MockUser();
-
-      subscribeAccountCommand = SubscribeAccountCommand(
-        logger: logger,
-        auth: auth,
-        buildCodePushClient: ({required httpClient, hostedUri}) =>
-            codePushClient,
-      );
 
       when(() => auth.client).thenReturn(httpClient);
       when(() => auth.isAuthenticated).thenReturn(true);
@@ -58,6 +57,12 @@ void main() {
       when(() => logger.progress(any())).thenReturn(progress);
 
       when(() => user.hasActiveSubscription).thenReturn(false);
+
+      subscribeAccountCommand = SubscribeAccountCommand(
+        auth: auth,
+        buildCodePushClient: ({required httpClient, hostedUri}) =>
+            codePushClient,
+      );
     });
 
     test('has a description', () {
@@ -74,7 +79,7 @@ void main() {
     test('exits with code 67 when user is not logged in', () async {
       when(() => auth.isAuthenticated).thenReturn(false);
 
-      final result = await subscribeAccountCommand.run();
+      final result = await runWithOverrides(subscribeAccountCommand.run);
 
       expect(result, ExitCode.noUser.code);
 
@@ -89,7 +94,7 @@ void main() {
       when(() => codePushClient.getCurrentUser())
           .thenThrow(Exception('oh no!'));
 
-      final result = await subscribeAccountCommand.run();
+      final result = await runWithOverrides(subscribeAccountCommand.run);
 
       expect(result, ExitCode.software.code);
       verify(() => progress.fail(any(that: contains('oh no!')))).called(1);
@@ -99,7 +104,7 @@ void main() {
     test('exits with code 70 when getCurrentUser returns null', () async {
       when(() => codePushClient.getCurrentUser()).thenAnswer((_) async => null);
 
-      final result = await subscribeAccountCommand.run();
+      final result = await runWithOverrides(subscribeAccountCommand.run);
 
       expect(result, ExitCode.software.code);
       verify(
@@ -118,7 +123,7 @@ void main() {
         'exits with code 0 and prints message and exits if user already has '
         'an active subscription', () async {
       when(() => user.hasActiveSubscription).thenReturn(true);
-      final result = await subscribeAccountCommand.run();
+      final result = await runWithOverrides(subscribeAccountCommand.run);
 
       expect(result, ExitCode.success.code);
       verify(
@@ -135,7 +140,7 @@ void main() {
       when(() => codePushClient.createPaymentLink())
           .thenThrow(Exception(errorMessage));
 
-      final result = await subscribeAccountCommand.run();
+      final result = await runWithOverrides(subscribeAccountCommand.run);
 
       expect(result, ExitCode.software.code);
       verify(() => codePushClient.createPaymentLink()).called(1);
@@ -143,7 +148,7 @@ void main() {
     });
 
     test('exits with code 0 and prints payment link', () async {
-      final result = await subscribeAccountCommand.run();
+      final result = await runWithOverrides(subscribeAccountCommand.run);
 
       expect(result, ExitCode.success.code);
       verify(() => progress.complete('Link generated!')).called(1);

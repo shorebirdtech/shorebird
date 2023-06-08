@@ -6,8 +6,10 @@ import 'package:mason_logger/mason_logger.dart';
 import 'package:mocktail/mocktail.dart';
 import 'package:path/path.dart' as p;
 import 'package:platform/platform.dart';
+import 'package:scoped/scoped.dart';
 import 'package:shorebird_cli/src/auth/auth.dart';
 import 'package:shorebird_cli/src/commands/init_command.dart';
+import 'package:shorebird_cli/src/logger.dart';
 import 'package:shorebird_cli/src/shorebird_process.dart';
 import 'package:shorebird_code_push_client/shorebird_code_push_client.dart';
 import 'package:test/test.dart';
@@ -53,6 +55,10 @@ environment:
     late Progress progress;
     late InitCommand command;
 
+    R runWithOverrides<R>(R Function() body) {
+      return runScoped(body, values: {loggerRef.overrideWith(() => logger)});
+    }
+
     Directory setUpAppTempDir() {
       final tempDir = Directory.systemTemp.createTempSync();
       Directory(p.join(tempDir.path, 'android')).createSync(recursive: true);
@@ -74,20 +80,7 @@ environment:
       codePushClient = _MockCodePushClient();
       logger = _MockLogger();
       progress = _MockProgress();
-      command = InitCommand(
-        auth: auth,
-        buildCodePushClient: ({
-          required http.Client httpClient,
-          Uri? hostedUri,
-        }) {
-          return codePushClient;
-        },
-        logger: logger,
-      )
-        ..testProcess = process
-        ..testArgResults = argResults;
 
-      // when(() => argResults['force']).thenReturn(false);
       when(() => auth.isAuthenticated).thenReturn(true);
       when(() => auth.client).thenReturn(httpClient);
       when(
@@ -112,6 +105,18 @@ environment:
 
       when(() => result.exitCode).thenReturn(ExitCode.success.code);
       when(() => result.stdout).thenReturn('');
+
+      command = InitCommand(
+        auth: auth,
+        buildCodePushClient: ({
+          required http.Client httpClient,
+          Uri? hostedUri,
+        }) {
+          return codePushClient;
+        },
+      )
+        ..testProcess = process
+        ..testArgResults = argResults;
     });
 
     group('extractProductFlavors', () {
@@ -263,14 +268,14 @@ environment:
 
     test('returns no user error when not logged in', () async {
       when(() => auth.isAuthenticated).thenReturn(false);
-      final result = await command.run();
+      final result = await runWithOverrides(command.run);
       expect(result, ExitCode.noUser.code);
     });
 
     test('throws no input error when pubspec.yaml is not found.', () async {
       final tempDir = Directory.systemTemp.createTempSync();
       final exitCode = await IOOverrides.runZoned(
-        command.run,
+        () => runWithOverrides(command.run),
         getCurrentDirectory: () => tempDir,
       );
       verify(
@@ -288,7 +293,7 @@ Please make sure you are running "shorebird init" from the root of your Flutter 
       final tempDir = Directory.systemTemp.createTempSync();
       File(p.join(tempDir.path, 'pubspec.yaml')).createSync();
       final exitCode = await IOOverrides.runZoned(
-        command.run,
+        () => runWithOverrides(command.run),
         getCurrentDirectory: () => tempDir,
       );
       verify(
@@ -306,7 +311,7 @@ Please make sure you are running "shorebird init" from the root of your Flutter 
       ).writeAsStringSync(pubspecYamlContent);
       File(p.join(tempDir.path, 'shorebird.yaml')).createSync();
       final exitCode = await IOOverrides.runZoned(
-        command.run,
+        () => runWithOverrides(command.run),
         getCurrentDirectory: () => tempDir,
       );
       verify(
@@ -327,7 +332,7 @@ If you want to reinitialize Shorebird, please run "shorebird init --force".''',
       ).writeAsStringSync(pubspecYamlContent);
       File(p.join(tempDir.path, 'shorebird.yaml')).createSync();
       final exitCode = await IOOverrides.runZoned(
-        command.run,
+        () => runWithOverrides(command.run),
         getCurrentDirectory: () => tempDir,
       );
       verifyNever(
@@ -355,7 +360,7 @@ If you want to reinitialize Shorebird, please run "shorebird init --force".''',
         p.join(tempDir.path, 'pubspec.yaml'),
       ).writeAsStringSync(pubspecYamlContent);
       final exitCode = await IOOverrides.runZoned(
-        command.run,
+        () => runWithOverrides(command.run),
         getCurrentDirectory: () => tempDir,
       );
       verify(() => logger.progress('Detecting product flavors')).called(1);
@@ -379,7 +384,7 @@ If you want to reinitialize Shorebird, please run "shorebird init --force".''',
         () => codePushClient.createApp(displayName: any(named: 'displayName')),
       ).thenThrow(error);
       final exitCode = await IOOverrides.runZoned(
-        command.run,
+        () => runWithOverrides(command.run),
         getCurrentDirectory: () => tempDir,
       );
       verify(
@@ -395,7 +400,7 @@ If you want to reinitialize Shorebird, please run "shorebird init --force".''',
         p.join(tempDir.path, 'pubspec.yaml'),
       ).writeAsStringSync(pubspecYamlContent);
       await IOOverrides.runZoned(
-        command.run,
+        () => runWithOverrides(command.run),
         getCurrentDirectory: () => tempDir,
       );
       expect(
@@ -430,7 +435,7 @@ If you want to reinitialize Shorebird, please run "shorebird init --force".''',
         p.join(tempDir.path, 'pubspec.yaml'),
       ).writeAsStringSync(pubspecYamlContent);
       await IOOverrides.runZoned(
-        command.run,
+        () => runWithOverrides(command.run),
         getCurrentDirectory: () => tempDir,
       );
       expect(
@@ -464,7 +469,7 @@ flutter:
     - shorebird.yaml
 ''');
       await IOOverrides.runZoned(
-        command.run,
+        () => runWithOverrides(command.run),
         getCurrentDirectory: () => tempDir,
       );
       expect(
@@ -479,7 +484,7 @@ flutter:
         p.join(tempDir.path, 'pubspec.yaml'),
       ).writeAsStringSync(pubspecYamlContent);
       await IOOverrides.runZoned(
-        command.run,
+        () => runWithOverrides(command.run),
         getCurrentDirectory: () => tempDir,
       );
       expect(
@@ -501,7 +506,7 @@ flutter:
   uses-material-design: true
 ''');
       await IOOverrides.runZoned(
-        command.run,
+        () => runWithOverrides(command.run),
         getCurrentDirectory: () => tempDir,
       );
       expect(
@@ -525,7 +530,7 @@ flutter:
     - some/asset.txt
 ''');
       await IOOverrides.runZoned(
-        command.run,
+        () => runWithOverrides(command.run),
         getCurrentDirectory: () => tempDir,
       );
       expect(

@@ -5,8 +5,10 @@ import 'package:http/http.dart' as http;
 import 'package:mason_logger/mason_logger.dart';
 import 'package:mocktail/mocktail.dart';
 import 'package:path/path.dart' as p;
+import 'package:scoped/scoped.dart';
 import 'package:shorebird_cli/src/auth/auth.dart';
 import 'package:shorebird_cli/src/commands/build/build.dart';
+import 'package:shorebird_cli/src/logger.dart';
 import 'package:shorebird_cli/src/shorebird_process.dart';
 import 'package:shorebird_cli/src/validators/validators.dart';
 import 'package:test/test.dart';
@@ -39,6 +41,10 @@ void main() {
     late ShorebirdFlutterValidator flutterValidator;
     late ShorebirdProcess shorebirdProcess;
 
+    R runWithOverrides<R>(R Function() body) {
+      return runScoped(body, values: {loggerRef.overrideWith(() => logger)});
+    }
+
     setUp(() {
       argResults = _MockArgResults();
       httpClient = _MockHttpClient();
@@ -47,14 +53,7 @@ void main() {
       shorebirdProcess = _MockShorebirdProcess();
       processResult = _MockProcessResult();
       flutterValidator = _MockShorebirdFlutterValidator();
-      command = BuildApkCommand(
-        auth: auth,
-        logger: logger,
-        validators: [flutterValidator],
-      )
-        ..testArgResults = argResults
-        ..testProcess = shorebirdProcess
-        ..testEngineConfig = const EngineConfig.empty();
+
       registerFallbackValue(shorebirdProcess);
 
       when(
@@ -70,6 +69,14 @@ void main() {
       when(() => logger.progress(any())).thenReturn(_MockProgress());
       when(() => logger.info(any())).thenReturn(null);
       when(() => flutterValidator.validate(any())).thenAnswer((_) async => []);
+
+      command = BuildApkCommand(
+        auth: auth,
+        validators: [flutterValidator],
+      )
+        ..testArgResults = argResults
+        ..testProcess = shorebirdProcess
+        ..testEngineConfig = const EngineConfig.empty();
     });
 
     test('has correct description', () {
@@ -79,7 +86,7 @@ void main() {
     test('exits with no user when not logged in', () async {
       when(() => auth.isAuthenticated).thenReturn(false);
 
-      final result = await command.run();
+      final result = await runWithOverrides(command.run);
       expect(result, equals(ExitCode.noUser.code));
 
       verify(
@@ -93,7 +100,7 @@ void main() {
       final tempDir = Directory.systemTemp.createTempSync();
 
       final result = await IOOverrides.runZoned(
-        () async => command.run(),
+        () async => runWithOverrides(command.run),
         getCurrentDirectory: () => tempDir,
       );
 
@@ -111,7 +118,7 @@ void main() {
       when(() => processResult.exitCode).thenReturn(ExitCode.success.code);
       final tempDir = Directory.systemTemp.createTempSync();
       final result = await IOOverrides.runZoned(
-        () async => command.run(),
+        () async => runWithOverrides(command.run),
         getCurrentDirectory: () => tempDir,
       );
 
@@ -143,7 +150,7 @@ ${lightCyan.wrap(p.join('build', 'app', 'outputs', 'apk', 'release', 'app-releas
       when(() => processResult.exitCode).thenReturn(ExitCode.success.code);
       final tempDir = Directory.systemTemp.createTempSync();
       final result = await IOOverrides.runZoned(
-        () async => command.run(),
+        () async => runWithOverrides(command.run),
         getCurrentDirectory: () => tempDir,
       );
 
@@ -186,7 +193,7 @@ ${lightCyan.wrap(p.join('build', 'app', 'outputs', 'apk', flavor, 'release', 'ap
       );
       when(() => processResult.exitCode).thenReturn(ExitCode.success.code);
 
-      final result = await command.run();
+      final result = await runWithOverrides(command.run);
 
       expect(result, equals(ExitCode.success.code));
       verify(
@@ -208,7 +215,7 @@ ${lightCyan.wrap(p.join('build', 'app', 'outputs', 'apk', flavor, 'release', 'ap
         ],
       );
 
-      final result = await command.run();
+      final result = await runWithOverrides(command.run);
 
       expect(result, equals(ExitCode.config.code));
       verify(() => logger.err('Aborting due to validation errors.')).called(1);

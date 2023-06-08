@@ -5,8 +5,10 @@ import 'package:http/http.dart' as http;
 import 'package:mason_logger/mason_logger.dart';
 import 'package:mocktail/mocktail.dart';
 import 'package:path/path.dart' as p;
+import 'package:scoped/scoped.dart';
 import 'package:shorebird_cli/src/auth/auth.dart';
 import 'package:shorebird_cli/src/commands/releases/releases.dart';
+import 'package:shorebird_cli/src/logger.dart';
 import 'package:shorebird_code_push_client/shorebird_code_push_client.dart';
 import 'package:test/test.dart';
 
@@ -39,6 +41,18 @@ flutter:
   assets:
     - shorebird.yaml''';
 
+    late ArgResults argResults;
+    late http.Client httpClient;
+    late Auth auth;
+    late Logger logger;
+    late CodePushClient codePushClient;
+    late Progress progress;
+    late DeleteReleasesCommand command;
+
+    R runWithOverrides<R>(R Function() body) {
+      return runScoped(body, values: {loggerRef.overrideWith(() => logger)});
+    }
+
     Directory setUpTempDir() {
       final tempDir = Directory.systemTemp.createTempSync();
       File(
@@ -50,14 +64,6 @@ flutter:
       return tempDir;
     }
 
-    late ArgResults argResults;
-    late http.Client httpClient;
-    late Auth auth;
-    late Logger logger;
-    late CodePushClient codePushClient;
-    late Progress progress;
-    late DeleteReleasesCommand command;
-
     setUp(() {
       argResults = _MockArgResults();
       httpClient = _MockHttpClient();
@@ -65,16 +71,6 @@ flutter:
       logger = _MockLogger();
       codePushClient = _MockCodePushClient();
       progress = _MockProgress();
-      command = DeleteReleasesCommand(
-        auth: auth,
-        buildCodePushClient: ({
-          required http.Client httpClient,
-          Uri? hostedUri,
-        }) {
-          return codePushClient;
-        },
-        logger: logger,
-      )..testArgResults = argResults;
 
       when(() => argResults['version']).thenReturn(versionNumber);
 
@@ -110,6 +106,16 @@ flutter:
 
       when(() => logger.confirm(any())).thenReturn(true);
       when(() => logger.progress(any())).thenReturn(progress);
+
+      command = DeleteReleasesCommand(
+        auth: auth,
+        buildCodePushClient: ({
+          required http.Client httpClient,
+          Uri? hostedUri,
+        }) {
+          return codePushClient;
+        },
+      )..testArgResults = argResults;
     });
 
     test('returns correct description', () {
@@ -122,13 +128,13 @@ flutter:
     test('returns no user error when not logged in', () async {
       when(() => auth.isAuthenticated).thenReturn(false);
 
-      final result = await command.run();
+      final result = await runWithOverrides(command.run);
 
       expect(result, ExitCode.noUser.code);
     });
 
     test('returns config exit code if shorebird.yaml is not present', () async {
-      final exitCode = await command.run();
+      final exitCode = await runWithOverrides(command.run);
 
       expect(exitCode, ExitCode.config.code);
     });
@@ -139,7 +145,7 @@ flutter:
 
       final tempDir = setUpTempDir();
       await IOOverrides.runZoned(
-        command.run,
+        () => runWithOverrides(command.run),
         getCurrentDirectory: () => tempDir,
       );
 
@@ -154,19 +160,20 @@ flutter:
         () async {
       final tempDir = setUpTempDir();
       await IOOverrides.runZoned(
-        command.run,
+        () => runWithOverrides(command.run),
         getCurrentDirectory: () => tempDir,
       );
       verifyNever(() => logger.prompt(any()));
     });
 
     test('returns software exit code if get releases request fails', () async {
-      when(() => codePushClient.getReleases(appId: any(named: 'appId')))
-          .thenThrow(Exception('oops'));
+      when(
+        () => codePushClient.getReleases(appId: any(named: 'appId')),
+      ).thenThrow(Exception('oops'));
 
       final tempDir = setUpTempDir();
       final exitCode = await IOOverrides.runZoned(
-        command.run,
+        () => runWithOverrides(command.run),
         getCurrentDirectory: () => tempDir,
       );
 
@@ -178,7 +185,7 @@ flutter:
 
       final tempDir = setUpTempDir();
       final exitCode = await IOOverrides.runZoned(
-        command.run,
+        () => runWithOverrides(command.run),
         getCurrentDirectory: () => tempDir,
       );
 
@@ -194,7 +201,7 @@ flutter:
 
       final tempDir = setUpTempDir();
       final exitCode = await IOOverrides.runZoned(
-        command.run,
+        () => runWithOverrides(command.run),
         getCurrentDirectory: () => tempDir,
       );
 
@@ -212,7 +219,7 @@ flutter:
 
       final tempDir = setUpTempDir();
       final exitCode = await IOOverrides.runZoned(
-        command.run,
+        () => runWithOverrides(command.run),
         getCurrentDirectory: () => tempDir,
       );
 
@@ -230,7 +237,7 @@ flutter:
 
       final tempDir = setUpTempDir();
       final exitCode = await IOOverrides.runZoned(
-        command.run,
+        () => runWithOverrides(command.run),
         getCurrentDirectory: () => tempDir,
       );
 
@@ -256,7 +263,7 @@ flavors:
       ).thenAnswer((_) async {});
 
       final exitCode = await IOOverrides.runZoned(
-        command.run,
+        () => runWithOverrides(command.run),
         getCurrentDirectory: () => tempDir,
       );
 

@@ -1,32 +1,45 @@
+import 'package:http/http.dart' as http;
 import 'package:mason_logger/mason_logger.dart';
 import 'package:mocktail/mocktail.dart';
+import 'package:scoped/scoped.dart';
 import 'package:shorebird_cli/src/auth/auth.dart';
 import 'package:shorebird_cli/src/commands/logout_command.dart';
+import 'package:shorebird_cli/src/logger.dart';
 import 'package:test/test.dart';
+
+class _MockAuth extends Mock implements Auth {}
 
 class _MockLogger extends Mock implements Logger {}
 
-class _MockAuth extends Mock implements Auth {}
+class _MockHttpClient extends Mock implements http.Client {}
 
 class _MockProgress extends Mock implements Progress {}
 
 void main() {
   group('logout', () {
-    late Logger logger;
     late Auth auth;
-    late LogoutCommand logoutCommand;
+    late Logger logger;
+    late http.Client httpClient;
+    late LogoutCommand command;
+
+    R runWithOverrides<R>(R Function() body) {
+      return runScoped(body, values: {loggerRef.overrideWith(() => logger)});
+    }
 
     setUp(() {
-      logger = _MockLogger();
       auth = _MockAuth();
-      logoutCommand = LogoutCommand(auth: auth, logger: logger);
+      httpClient = _MockHttpClient();
+      logger = _MockLogger();
 
+      when(() => auth.client).thenReturn(httpClient);
       when(() => logger.progress(any())).thenReturn(_MockProgress());
+
+      command = LogoutCommand(auth: auth);
     });
 
     test('exits with code 0 when already logged out', () async {
       when(() => auth.isAuthenticated).thenReturn(false);
-      final result = await logoutCommand.run();
+      final result = await runWithOverrides(command.run);
       expect(result, equals(ExitCode.success.code));
 
       verify(
@@ -41,7 +54,7 @@ void main() {
       when(() => progress.complete(any())).thenAnswer((invocation) {});
       when(() => logger.progress(any())).thenReturn(progress);
 
-      final result = await logoutCommand.run();
+      final result = await runWithOverrides(command.run);
       expect(result, equals(ExitCode.success.code));
 
       verify(() => logger.progress('Logging out of shorebird.dev')).called(1);

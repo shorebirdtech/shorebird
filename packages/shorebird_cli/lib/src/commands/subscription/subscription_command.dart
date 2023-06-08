@@ -8,8 +8,8 @@ import 'package:shorebird_cli/src/commands/subscription/subscription.dart';
 /// {@endtemplate}
 class SubscriptionCommand extends ShorebirdCommand {
   /// {@macro subscription_command}
-  SubscriptionCommand({required super.logger}) {
-    addSubcommand(CancelSubscriptionCommand(logger: logger));
+  SubscriptionCommand() {
+    addSubcommand(CancelSubscriptionCommand());
   }
 
   @override
