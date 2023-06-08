@@ -1,6 +1,8 @@
 import 'package:collection/collection.dart';
+import 'package:crypto/crypto.dart';
 import 'package:mason_logger/mason_logger.dart';
 import 'package:meta/meta.dart';
+import 'package:path/path.dart' as p;
 import 'package:shorebird_cli/src/shorebird_build_mixin.dart';
 import 'package:shorebird_cli/src/third_party/flutter_tools/lib/flutter_tools.dart';
 import 'package:shorebird_code_push_client/shorebird_code_push_client.dart';
@@ -148,6 +150,26 @@ Please create a release using "shorebird release" and try again.
     }
   }
 
+  Future<Release> createRelease({
+    required String appId,
+    required String version,
+    required String flutterRevision,
+  }) async {
+    final createReleaseProgress = logger.progress('Creating release');
+    try {
+      final release = await codePushClient.createRelease(
+        appId: appId,
+        version: version,
+        flutterRevision: flutterRevision,
+      );
+      createReleaseProgress.complete();
+      return release;
+    } catch (error) {
+      createReleaseProgress.fail('$error');
+      exit(ExitCode.software.code);
+    }
+  }
+
   Future<Map<Arch, ReleaseArtifact>> getReleaseArtifacts({
     required int releaseId,
     required Map<Arch, ArchMetadata> architectures,
@@ -198,6 +220,76 @@ Please create a release using "shorebird release" and try again.
       fetchReleaseArtifactProgress.fail('$error');
       exit(ExitCode.software.code);
     }
+  }
+
+  Future<void> createAndroidReleaseArtifacts({
+    required int releaseId,
+    required String platform,
+    required String aabPath,
+    required Map<Arch, ArchMetadata> architectures,
+    String? flavor,
+  }) async {
+    final createArtifactProgress = logger.progress('Creating artifacts');
+    for (final archMetadata in architectures.values) {
+      final artifactPath = p.join(
+        Directory.current.path,
+        'build',
+        'app',
+        'intermediates',
+        'stripped_native_libs',
+        flavor != null ? '${flavor}Release' : 'release',
+        'out',
+        'lib',
+        archMetadata.path,
+        'libapp.so',
+      );
+      final artifact = File(artifactPath);
+      final hash = sha256.convert(await artifact.readAsBytes()).toString();
+      logger.detail('Creating artifact for $artifactPath');
+
+      try {
+        await codePushClient.createReleaseArtifact(
+          releaseId: releaseId,
+          artifactPath: artifact.path,
+          arch: archMetadata.arch,
+          platform: platform,
+          hash: hash,
+        );
+      } on CodePushConflictException catch (_) {
+        // Newlines are due to how logger.info interacts with logger.progress.
+        logger.info(
+          '''
+
+${archMetadata.arch} artifact already exists, continuing...''',
+        );
+      } catch (error) {
+        createArtifactProgress.fail('Error uploading ${artifact.path}: $error');
+        exit(ExitCode.software.code);
+      }
+    }
+
+    try {
+      logger.detail('Creating artifact for $aabPath');
+      await codePushClient.createReleaseArtifact(
+        releaseId: releaseId,
+        artifactPath: aabPath,
+        arch: 'aab',
+        platform: platform,
+        hash: sha256.convert(await File(aabPath).readAsBytes()).toString(),
+      );
+    } on CodePushConflictException catch (_) {
+      // Newlines are due to how logger.info interacts with logger.progress.
+      logger.info(
+        '''
+
+aab artifact already exists, continuing...''',
+      );
+    } catch (error) {
+      createArtifactProgress.fail('Error uploading $aabPath: $error');
+      exit(ExitCode.software.code);
+    }
+
+    createArtifactProgress.complete();
   }
 
   @visibleForTesting
