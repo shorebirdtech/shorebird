@@ -7,8 +7,8 @@ import 'package:shorebird_cli/src/commands/commands.dart';
 /// {@endtemplate}
 class CacheCommand extends ShorebirdCommand {
   /// {@macro cache_command}
-  CacheCommand({required super.logger, super.cache}) {
-    addSubcommand(CleanCacheCommand(logger: logger, cache: cache));
+  CacheCommand({super.cache}) {
+    addSubcommand(CleanCacheCommand(cache: cache));
   }
 
   @override

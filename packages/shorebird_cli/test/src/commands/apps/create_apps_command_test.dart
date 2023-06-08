@@ -2,8 +2,10 @@ import 'package:args/args.dart';
 import 'package:http/http.dart' as http;
 import 'package:mason_logger/mason_logger.dart';
 import 'package:mocktail/mocktail.dart';
+import 'package:scoped/scoped.dart';
 import 'package:shorebird_cli/src/auth/auth.dart';
 import 'package:shorebird_cli/src/commands/commands.dart';
+import 'package:shorebird_cli/src/logger.dart';
 import 'package:shorebird_code_push_client/shorebird_code_push_client.dart';
 import 'package:test/test.dart';
 
@@ -29,6 +31,10 @@ void main() {
     late CodePushClient codePushClient;
     late CreateAppCommand command;
 
+    R runWithOverrides<R>(R Function() body) {
+      return runScoped(body, values: {loggerRef.overrideWith(() => logger)});
+    }
+
     setUp(() {
       argResults = _MockArgResults();
       httpClient = _MockHttpClient();
@@ -47,7 +53,6 @@ void main() {
         }) {
           return codePushClient;
         },
-        logger: logger,
       )..testArgResults = argResults;
     });
 
@@ -57,7 +62,7 @@ void main() {
 
     test('returns no user error when not logged in', () async {
       when(() => auth.isAuthenticated).thenReturn(false);
-      final result = await command.run();
+      final result = await runWithOverrides(command.run);
       expect(result, ExitCode.noUser.code);
     });
 
@@ -65,7 +70,7 @@ void main() {
       when(
         () => logger.prompt(any(), defaultValue: any(named: 'defaultValue')),
       ).thenReturn(displayName);
-      await command.run();
+      await runWithOverrides(command.run);
       verify(
         () => logger.prompt(any(), defaultValue: any(named: 'defaultValue')),
       ).called(1);
@@ -76,7 +81,7 @@ void main() {
 
     test('uses provided app name when provided', () async {
       when(() => argResults['app-name']).thenReturn(displayName);
-      await command.run();
+      await runWithOverrides(command.run);
       verifyNever(() => logger.prompt(any()));
       verify(
         () => codePushClient.createApp(displayName: displayName),
@@ -88,7 +93,7 @@ void main() {
       when(
         () => codePushClient.createApp(displayName: displayName),
       ).thenAnswer((_) async => const App(id: appId, displayName: displayName));
-      final result = await command.run();
+      final result = await runWithOverrides(command.run);
       expect(result, ExitCode.success.code);
     });
 
@@ -98,7 +103,7 @@ void main() {
       when(
         () => codePushClient.createApp(displayName: displayName),
       ).thenThrow(error);
-      final result = await command.run();
+      final result = await runWithOverrides(command.run);
       expect(result, ExitCode.software.code);
       verify(() => logger.err('$error')).called(1);
     });

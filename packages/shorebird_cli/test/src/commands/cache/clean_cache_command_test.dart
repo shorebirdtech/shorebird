@@ -1,7 +1,9 @@
 import 'package:mason_logger/mason_logger.dart';
 import 'package:mocktail/mocktail.dart';
+import 'package:scoped/scoped.dart';
 import 'package:shorebird_cli/src/cache.dart';
 import 'package:shorebird_cli/src/commands/commands.dart';
+import 'package:shorebird_cli/src/logger.dart';
 import 'package:test/test.dart';
 
 class _MockLogger extends Mock implements Logger {}
@@ -14,10 +16,14 @@ void main() {
     late Logger logger;
     late CleanCacheCommand command;
 
+    R runWithOverrides<R>(R Function() body) {
+      return runScoped(body, values: {loggerRef.overrideWith(() => logger)});
+    }
+
     setUp(() {
       cache = _MockCache();
       logger = _MockLogger();
-      command = CleanCacheCommand(cache: cache, logger: logger);
+      command = runWithOverrides(() => CleanCacheCommand(cache: cache));
     });
 
     test('has a description', () {
@@ -25,7 +31,7 @@ void main() {
     });
 
     test('clears the cache', () async {
-      final result = await command.run();
+      final result = await runWithOverrides(command.run);
       expect(result, equals(ExitCode.success.code));
       verify(() => logger.success('✅ Cleared Cache!')).called(1);
       verify(cache.clear).called(1);

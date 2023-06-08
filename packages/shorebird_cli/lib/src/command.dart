@@ -4,7 +4,6 @@ import 'package:args/args.dart';
 import 'package:args/command_runner.dart';
 import 'package:checked_yaml/checked_yaml.dart';
 import 'package:http/http.dart' as http;
-import 'package:mason_logger/mason_logger.dart';
 import 'package:meta/meta.dart';
 import 'package:path/path.dart' as p;
 import 'package:pubspec_parse/pubspec_parse.dart';
@@ -40,7 +39,6 @@ List<Validator> _defaultValidators() => [
 
 abstract class ShorebirdCommand extends Command<int> {
   ShorebirdCommand({
-    required this.logger,
     Auth? auth,
     Cache? cache,
     CodePushClientBuilder? buildCodePushClient,
@@ -49,21 +47,19 @@ abstract class ShorebirdCommand extends Command<int> {
   })  : cache = cache ?? Cache(),
         buildCodePushClient = buildCodePushClient ?? CodePushClient.new,
         validators = validators ?? _defaultValidators() {
-    this.auth = auth ?? Auth(logger: logger);
+    this.auth = auth ?? Auth();
     this.codePushClientWrapper = codePushClientWrapper ??
         CodePushClientWrapper(
           codePushClient: CodePushClient(
             httpClient: this.auth.client,
             hostedUri: hostedUri,
           ),
-          logger: logger,
         );
   }
 
   late final Auth auth;
   final Cache cache;
   final CodePushClientBuilder buildCodePushClient;
-  final Logger logger;
   late final CodePushClientWrapper codePushClientWrapper;
 
   // We don't currently have a test involving both a CommandRunner

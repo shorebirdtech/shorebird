@@ -4,8 +4,10 @@ import 'package:http/http.dart' as http;
 import 'package:mason_logger/mason_logger.dart';
 import 'package:mocktail/mocktail.dart';
 import 'package:path/path.dart' as p;
+import 'package:scoped/scoped.dart';
 import 'package:shorebird_cli/src/auth/auth.dart';
 import 'package:shorebird_cli/src/commands/login_command.dart';
+import 'package:shorebird_cli/src/logger.dart';
 import 'package:test/test.dart';
 
 class _MockAuth extends Mock implements Auth {}
@@ -22,7 +24,11 @@ void main() {
     late http.Client httpClient;
     late Directory applicationConfigHome;
     late Logger logger;
-    late LoginCommand loginCommand;
+    late LoginCommand command;
+
+    R runWithOverrides<R>(R Function() body) {
+      return runScoped(body, values: {loggerRef.overrideWith(() => logger)});
+    }
 
     setUp(() {
       applicationConfigHome = Directory.systemTemp.createTempSync();
@@ -35,14 +41,15 @@ void main() {
         p.join(applicationConfigHome.path, 'credentials.json'),
       );
 
-      loginCommand = LoginCommand(auth: auth, logger: logger);
+      command = LoginCommand(auth: auth);
     });
 
     test('exits with code 0 when already logged in', () async {
-      when(() => auth.login(any()))
-          .thenThrow(UserAlreadyLoggedInException(email: email));
+      when(
+        () => auth.login(any()),
+      ).thenThrow(UserAlreadyLoggedInException(email: email));
 
-      final result = await loginCommand.run();
+      final result = await runWithOverrides(command.run);
       expect(result, equals(ExitCode.success.code));
 
       verify(
@@ -56,10 +63,11 @@ void main() {
     });
 
     test('exits with code 70 if no user is found', () async {
-      when(() => auth.login(any()))
-          .thenThrow(UserNotFoundException(email: email));
+      when(
+        () => auth.login(any()),
+      ).thenThrow(UserNotFoundException(email: email));
 
-      final result = await loginCommand.run();
+      final result = await runWithOverrides(command.run);
       expect(result, equals(ExitCode.software.code));
 
       verify(
@@ -74,7 +82,7 @@ void main() {
       final error = Exception('oops something went wrong!');
       when(() => auth.login(any())).thenThrow(error);
 
-      final result = await loginCommand.run();
+      final result = await runWithOverrides(command.run);
       expect(result, equals(ExitCode.software.code));
 
       verify(() => auth.login(any())).called(1);
@@ -85,7 +93,7 @@ void main() {
       when(() => auth.login(any())).thenAnswer((_) async {});
       when(() => auth.email).thenReturn(email);
 
-      final result = await loginCommand.run();
+      final result = await runWithOverrides(command.run);
       expect(result, equals(ExitCode.success.code));
 
       verify(() => auth.login(any())).called(1);
@@ -98,7 +106,7 @@ void main() {
 
     test('prompt is correct', () {
       const url = 'http://example.com';
-      loginCommand.prompt(url);
+      runWithOverrides(() => command.prompt(url));
 
       verify(
         () => logger.info('''

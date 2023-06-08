@@ -8,9 +8,9 @@ import 'package:shorebird_cli/src/commands/releases/releases.dart';
 /// {@endtemplate}
 class ReleasesCommand extends ShorebirdCommand {
   /// {@macro releases_command}
-  ReleasesCommand({required super.logger}) {
-    addSubcommand(DeleteReleasesCommand(logger: logger));
-    addSubcommand(ListReleasesCommand(logger: logger));
+  ReleasesCommand() {
+    addSubcommand(DeleteReleasesCommand());
+    addSubcommand(ListReleasesCommand());
   }
 
   @override

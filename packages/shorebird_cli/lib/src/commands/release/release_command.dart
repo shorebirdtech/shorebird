@@ -7,10 +7,10 @@ import 'package:shorebird_cli/src/commands/commands.dart';
 /// {@endtemplate}
 class ReleaseCommand extends ShorebirdCommand {
   /// {@macro release_command}
-  ReleaseCommand({required super.logger}) {
-    addSubcommand(ReleaseAarCommand(logger: logger));
-    addSubcommand(ReleaseAndroidCommand(logger: logger));
-    addSubcommand(ReleaseIosCommand(logger: logger));
+  ReleaseCommand() {
+    addSubcommand(ReleaseAarCommand());
+    addSubcommand(ReleaseAndroidCommand());
+    addSubcommand(ReleaseIosCommand());
   }
 
   @override

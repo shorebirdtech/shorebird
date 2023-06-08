@@ -1,7 +1,9 @@
 import 'package:args/args.dart';
 import 'package:mason_logger/mason_logger.dart';
 import 'package:mocktail/mocktail.dart';
+import 'package:scoped/scoped.dart';
 import 'package:shorebird_cli/src/commands/commands.dart';
+import 'package:shorebird_cli/src/logger.dart';
 import 'package:shorebird_cli/src/shorebird_environment.dart';
 import 'package:shorebird_cli/src/shorebird_process.dart';
 import 'package:shorebird_cli/src/validators/validators.dart';
@@ -36,6 +38,10 @@ void main() {
     late ShorebirdVersionValidator shorebirdVersionValidator;
     late ShorebirdFlutterValidator shorebirdFlutterValidator;
     late ShorebirdProcess shorebirdProcess;
+
+    R runWithOverrides<R>(R Function() body) {
+      return runScoped(body, values: {loggerRef.overrideWith(() => logger)});
+    }
 
     setUp(() {
       argResults = _MockArgResults();
@@ -77,13 +83,14 @@ void main() {
       when(() => shorebirdFlutterValidator.validate(any()))
           .thenAnswer((_) async => []);
 
-      command = DoctorCommand(
-        logger: logger,
-        validators: [
-          androidInternetPermissionValidator,
-          shorebirdVersionValidator,
-          shorebirdFlutterValidator,
-        ],
+      command = runWithOverrides(
+        () => DoctorCommand(
+          validators: [
+            androidInternetPermissionValidator,
+            shorebirdVersionValidator,
+            shorebirdFlutterValidator,
+          ],
+        ),
       )
         ..testArgResults = argResults
         ..testProcess = shorebirdProcess
@@ -91,7 +98,7 @@ void main() {
     });
 
     test('prints "no issues" when everything is OK', () async {
-      await command.run();
+      await runWithOverrides(command.run);
       for (final validator in command.validators) {
         verify(() => validator.validate(shorebirdProcess)).called(1);
       }
@@ -116,7 +123,7 @@ void main() {
         ],
       );
 
-      await command.run();
+      await runWithOverrides(command.run);
 
       for (final validator in command.validators) {
         verify(() => validator.validate(any())).called(1);
@@ -148,7 +155,7 @@ void main() {
         ],
       );
 
-      await command.run();
+      await runWithOverrides(command.run);
 
       verify(
         () => logger.info(
@@ -174,7 +181,7 @@ void main() {
         ],
       );
 
-      await command.run();
+      await runWithOverrides(command.run);
 
       verifyNever(
         () => logger.info(
@@ -204,7 +211,7 @@ void main() {
         ],
       );
 
-      await command.run();
+      await runWithOverrides(command.run);
 
       expect(fixCalled, isFalse);
       verifyNever(() => progress.update('Fixing'));
@@ -234,7 +241,7 @@ void main() {
         },
       );
 
-      await command.run();
+      await runWithOverrides(command.run);
 
       expect(fixCalled, isTrue);
       verify(() => progress.update('Fixing')).called(1);
@@ -262,7 +269,7 @@ void main() {
         ],
       );
 
-      await command.run();
+      await runWithOverrides(command.run);
 
       expect(fixCalled, isTrue);
       verify(() => progress.update('Fixing')).called(1);
@@ -292,7 +299,7 @@ void main() {
         ],
       );
 
-      await command.run();
+      await runWithOverrides(command.run);
 
       verify(() => progress.update('Fixing')).called(1);
       verify(
