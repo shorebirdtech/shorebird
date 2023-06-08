@@ -2,6 +2,7 @@ import 'dart:io';
 
 import 'package:mason_logger/mason_logger.dart';
 import 'package:shorebird_cli/src/command.dart';
+import 'package:shorebird_cli/src/logger.dart';
 import 'package:shorebird_cli/src/shorebird_config_mixin.dart';
 import 'package:shorebird_cli/src/shorebird_create_app_mixin.dart';
 import 'package:shorebird_cli/src/shorebird_flavor_mixin.dart';
@@ -21,7 +22,7 @@ class InitCommand extends ShorebirdCommand
         ShorebirdJavaMixin,
         ShorebirdFlavorMixin {
   /// {@macro init_command}
-  InitCommand({required super.logger, super.auth, super.buildCodePushClient}) {
+  InitCommand({super.auth, super.buildCodePushClient}) {
     argParser.addFlag(
       'force',
       abbr: 'f',

@@ -1,6 +1,8 @@
 import 'package:mason_logger/mason_logger.dart';
 import 'package:mocktail/mocktail.dart';
+import 'package:scoped/scoped.dart';
 import 'package:shorebird_cli/src/commands/commands.dart';
+import 'package:shorebird_cli/src/logger.dart';
 import 'package:shorebird_cli/src/shorebird_process.dart';
 import 'package:test/test.dart';
 
@@ -23,8 +25,12 @@ void main() {
     late ShorebirdProcessResult fetchLatestVersionResult;
     late ShorebirdProcessResult hardResetResult;
     late ShorebirdProcessResult pruneFlutterOriginResult;
-    late UpgradeCommand command;
     late ShorebirdProcess shorebirdProcess;
+    late UpgradeCommand command;
+
+    R runWithOverrides<R>(R Function() body) {
+      return runScoped(body, values: {loggerRef.overrideWith(() => logger)});
+    }
 
     setUp(() {
       final progress = _MockProgress();
@@ -37,9 +43,7 @@ void main() {
       hardResetResult = _MockProcessResult();
       pruneFlutterOriginResult = _MockProcessResult();
       shorebirdProcess = _MockShorebirdProcess();
-      command = UpgradeCommand(
-        logger: logger,
-      )
+      command = UpgradeCommand()
         ..testProcess = shorebirdProcess
         ..testEngineConfig = const EngineConfig.empty();
 
@@ -103,7 +107,7 @@ void main() {
     });
 
     test('can be instantiated', () {
-      final command = UpgradeCommand(logger: logger);
+      final command = UpgradeCommand();
       expect(command, isNotNull);
     });
 
@@ -113,7 +117,7 @@ void main() {
         const errorMessage = 'oops';
         when(() => fetchCurrentVersionResult.exitCode).thenReturn(1);
         when(() => fetchCurrentVersionResult.stderr).thenReturn(errorMessage);
-        final result = await command.run();
+        final result = await runWithOverrides(command.run);
         expect(result, equals(ExitCode.software.code));
         verify(() => logger.progress('Checking for updates')).called(1);
         verify(
@@ -128,7 +132,7 @@ void main() {
         const errorMessage = 'oops';
         when(() => fetchLatestVersionResult.exitCode).thenReturn(1);
         when(() => fetchLatestVersionResult.stderr).thenReturn(errorMessage);
-        final result = await command.run();
+        final result = await runWithOverrides(command.run);
         expect(result, equals(ExitCode.software.code));
         verify(() => logger.progress('Checking for updates')).called(1);
         verify(() => logger.err('Checking for updates failed: oops')).called(1);
@@ -144,7 +148,7 @@ void main() {
         ).thenReturn(newerShorebirdRevision);
         when(() => hardResetResult.exitCode).thenReturn(1);
         when(() => hardResetResult.stderr).thenReturn(errorMessage);
-        final result = await command.run();
+        final result = await runWithOverrides(command.run);
         expect(result, equals(ExitCode.software.code));
         verify(() => logger.progress('Checking for updates')).called(1);
         verify(() => logger.err('Updating failed: oops')).called(1);
@@ -158,7 +162,7 @@ void main() {
       when(() => pruneFlutterOriginResult.exitCode).thenReturn(1);
       when(() => logger.progress(any())).thenReturn(_MockProgress());
 
-      final result = await command.run();
+      final result = await runWithOverrides(command.run);
 
       expect(result, equals(ExitCode.software.code));
     });
@@ -170,7 +174,7 @@ void main() {
           () => fetchLatestVersionResult.stdout,
         ).thenReturn(newerShorebirdRevision);
         when(() => logger.progress(any())).thenReturn(_MockProgress());
-        final result = await command.run();
+        final result = await runWithOverrides(command.run);
         expect(result, equals(ExitCode.success.code));
         verify(() => logger.progress('Checking for updates')).called(1);
         verify(() => logger.progress('Updating')).called(1);
@@ -181,7 +185,7 @@ void main() {
       'does not update when already on latest version',
       () async {
         when(() => logger.progress(any())).thenReturn(_MockProgress());
-        final result = await command.run();
+        final result = await runWithOverrides(command.run);
         expect(result, equals(ExitCode.success.code));
         verify(
           () => logger.info('Shorebird is already at the latest version.'),

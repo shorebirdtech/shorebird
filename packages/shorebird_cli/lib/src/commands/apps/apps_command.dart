@@ -8,10 +8,10 @@ import 'package:shorebird_cli/src/commands/commands.dart';
 /// {@endtemplate}
 class AppsCommand extends ShorebirdCommand {
   /// {@macro apps_command}
-  AppsCommand({required super.logger}) {
-    addSubcommand(CreateAppCommand(logger: logger));
-    addSubcommand(DeleteAppCommand(logger: logger));
-    addSubcommand(ListAppsCommand(logger: logger));
+  AppsCommand() {
+    addSubcommand(CreateAppCommand());
+    addSubcommand(DeleteAppCommand());
+    addSubcommand(ListAppsCommand());
   }
 
   @override

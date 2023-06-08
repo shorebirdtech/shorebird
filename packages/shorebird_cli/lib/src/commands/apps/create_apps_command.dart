@@ -2,6 +2,7 @@ import 'dart:async';
 
 import 'package:mason_logger/mason_logger.dart';
 import 'package:shorebird_cli/src/command.dart';
+import 'package:shorebird_cli/src/logger.dart';
 import 'package:shorebird_cli/src/shorebird_config_mixin.dart';
 import 'package:shorebird_cli/src/shorebird_create_app_mixin.dart';
 import 'package:shorebird_cli/src/shorebird_validation_mixin.dart';
@@ -18,11 +19,7 @@ class CreateAppCommand extends ShorebirdCommand
         ShorebirdValidationMixin,
         ShorebirdCreateAppMixin {
   /// {@macro create_app_command}
-  CreateAppCommand({
-    required super.logger,
-    super.buildCodePushClient,
-    super.auth,
-  }) {
+  CreateAppCommand({super.buildCodePushClient, super.auth}) {
     argParser.addOption(
       'app-name',
       help: '''

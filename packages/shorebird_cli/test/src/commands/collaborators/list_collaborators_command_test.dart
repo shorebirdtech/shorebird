@@ -2,8 +2,10 @@ import 'package:args/args.dart';
 import 'package:http/http.dart' as http;
 import 'package:mason_logger/mason_logger.dart';
 import 'package:mocktail/mocktail.dart';
+import 'package:scoped/scoped.dart';
 import 'package:shorebird_cli/src/auth/auth.dart';
 import 'package:shorebird_cli/src/commands/commands.dart';
+import 'package:shorebird_cli/src/logger.dart';
 import 'package:shorebird_code_push_client/shorebird_code_push_client.dart';
 import 'package:test/test.dart';
 
@@ -28,6 +30,10 @@ void main() {
     late Logger logger;
     late ListCollaboratorsCommand command;
 
+    R runWithOverrides<R>(R Function() body) {
+      return runScoped(body, values: {loggerRef.overrideWith(() => logger)});
+    }
+
     setUp(() {
       argResults = _MockArgResults();
       httpClient = _MockHttpClient();
@@ -47,7 +53,6 @@ void main() {
         }) {
           return codePushClient;
         },
-        logger: logger,
       )..testArgResults = argResults;
     });
 
@@ -68,12 +73,12 @@ void main() {
 
     test('returns ExitCode.noUser when not logged in', () async {
       when(() => auth.isAuthenticated).thenReturn(false);
-      expect(await command.run(), ExitCode.noUser.code);
+      expect(await runWithOverrides(command.run), ExitCode.noUser.code);
     });
 
     test('returns ExitCode.usage when app id is missing.', () async {
       when(() => argResults['app-id']).thenReturn(null);
-      expect(await command.run(), ExitCode.usage.code);
+      expect(await runWithOverrides(command.run), ExitCode.usage.code);
     });
 
     test('returns ExitCode.software when unable to get collaborators',
@@ -81,14 +86,14 @@ void main() {
       when(
         () => codePushClient.getCollaborators(appId: any(named: 'appId')),
       ).thenThrow(Exception());
-      expect(await command.run(), ExitCode.software.code);
+      expect(await runWithOverrides(command.run), ExitCode.software.code);
     });
 
     test('returns ExitCode.success when collaborators are empty', () async {
       when(
         () => codePushClient.getCollaborators(appId: any(named: 'appId')),
       ).thenAnswer((_) async => []);
-      expect(await command.run(), ExitCode.success.code);
+      expect(await runWithOverrides(command.run), ExitCode.success.code);
       verify(() => logger.info('(empty)')).called(1);
     });
 
@@ -100,7 +105,7 @@ void main() {
       when(
         () => codePushClient.getCollaborators(appId: any(named: 'appId')),
       ).thenAnswer((_) async => collaborators);
-      expect(await command.run(), ExitCode.success.code);
+      expect(await runWithOverrides(command.run), ExitCode.success.code);
       verify(
         () => logger.info(
           '''

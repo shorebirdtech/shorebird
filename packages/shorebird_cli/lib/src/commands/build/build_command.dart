@@ -7,11 +7,11 @@ import 'package:shorebird_cli/src/commands/build/build.dart';
 /// {@endtemplate}
 class BuildCommand extends ShorebirdCommand {
   /// {@macro build_command}
-  BuildCommand({required super.logger}) {
-    addSubcommand(BuildAarCommand(logger: logger));
-    addSubcommand(BuildApkCommand(logger: logger));
-    addSubcommand(BuildAppBundleCommand(logger: logger));
-    addSubcommand(BuildIpaCommand(logger: logger));
+  BuildCommand() {
+    addSubcommand(BuildAarCommand());
+    addSubcommand(BuildApkCommand());
+    addSubcommand(BuildAppBundleCommand());
+    addSubcommand(BuildIpaCommand());
   }
 
   @override
