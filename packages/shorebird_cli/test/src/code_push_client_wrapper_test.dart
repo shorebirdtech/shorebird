@@ -677,6 +677,44 @@ void main() {
           verify(() => progress.complete()).called(1);
           verifyNever(() => progress.fail(any()));
         });
+
+        test('completes succesfully when a flavor is provided', () async {
+          const flavorName = 'myFlavor';
+          when(
+            () => codePushClient.createReleaseArtifact(
+              artifactPath: any(named: 'artifactPath'),
+              releaseId: any(named: 'releaseId'),
+              arch: any(named: 'arch'),
+              platform: any(named: 'platform'),
+              hash: any(named: 'hash'),
+            ),
+          ).thenAnswer((_) async => {});
+          final tempDir = setUpTempDir(flavor: flavorName);
+
+          await IOOverrides.runZoned(
+            () async => codePushClientWrapper.createAndroidReleaseArtifacts(
+              releaseId: releaseId,
+              platform: platform,
+              aabPath: p.join(tempDir.path, aabPath),
+              architectures: ShorebirdBuildMixin.allAndroidArchitectures,
+              flavor: flavorName,
+            ),
+            getCurrentDirectory: () => tempDir,
+          );
+
+          verify(
+            () => codePushClient.createReleaseArtifact(
+              artifactPath:
+                  any(named: 'artifactPath', that: contains(flavorName)),
+              releaseId: releaseId,
+              arch: any(named: 'arch'),
+              platform: platform,
+              hash: any(named: 'hash'),
+            ),
+          ).called(ShorebirdBuildMixin.allAndroidArchitectures.length);
+          verify(() => progress.complete()).called(1);
+          verifyNever(() => progress.fail(any()));
+        });
       });
     });
 
