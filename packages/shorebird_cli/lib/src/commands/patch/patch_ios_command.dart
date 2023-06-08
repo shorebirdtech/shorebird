@@ -84,6 +84,7 @@ class PatchIosCommand extends ShorebirdCommand
       '''iOS support is in an experimental state and will not work without Flutter engine changes that have not yet been published.''',
     );
 
+    const arch = 'aarch64';
     const channelName = 'stable';
     const platform = 'ios';
     final force = results['force'] == true;
@@ -201,7 +202,7 @@ https://github.com/shorebirdtech/shorebird/issues/472
       if (flavor != null) '🍧 Flavor: ${lightCyan.wrap(flavor)}',
       '📦 Release Version: ${lightCyan.wrap(releaseVersion)}',
       '📺 Channel: ${lightCyan.wrap(channelName)}',
-      '''🕹️  Platform: ${lightCyan.wrap(platform)} ${lightCyan.wrap('[arm64 (${formatBytes(aotFileSize)})]')}''',
+      '''🕹️  Platform: ${lightCyan.wrap(platform)} ${lightCyan.wrap('[$arch (${formatBytes(aotFileSize)})]')}''',
     ];
 
     logger.info(
@@ -232,7 +233,7 @@ ${summary.join('\n')}
       channelName: channelName,
       patchArtifactBundles: {
         Arch.arm64: PatchArtifactBundle(
-          arch: 'arm64',
+          arch: arch,
           path: aotFile.path,
           hash: _hashFn(aotFile.readAsBytesSync()),
           size: aotFileSize,
