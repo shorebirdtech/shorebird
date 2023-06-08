@@ -7,6 +7,7 @@ import 'package:mocktail/mocktail.dart';
 import 'package:path/path.dart' as p;
 import 'package:shorebird_cli/src/archive_analysis/archive_analysis.dart';
 import 'package:shorebird_cli/src/auth/auth.dart';
+import 'package:shorebird_cli/src/code_push_client_wrapper.dart';
 import 'package:shorebird_cli/src/commands/patch/patch.dart';
 import 'package:shorebird_cli/src/shorebird_environment.dart';
 import 'package:shorebird_cli/src/shorebird_process.dart';
@@ -20,6 +21,9 @@ class _MockArgResults extends Mock implements ArgResults {}
 
 class _MockAuth extends Mock implements Auth {}
 
+class _MockCodePushClientWrapper extends Mock
+    implements CodePushClientWrapper {}
+
 class _MockIpaReader extends Mock implements IpaReader {}
 
 class _MockIpa extends Mock implements Ipa {}
@@ -31,8 +35,6 @@ class _MockProgress extends Mock implements Progress {}
 class _MockProcessResult extends Mock implements ShorebirdProcessResult {}
 
 class _MockHttpClient extends Mock implements http.Client {}
-
-class _MockCodePushClient extends Mock implements CodePushClient {}
 
 class _MockShorebirdFlutterValidator extends Mock
     implements ShorebirdFlutterValidator {}
@@ -49,7 +51,6 @@ void main() {
   const version = '$versionName+$versionCode';
   const arch = 'aarch64';
   const appDisplayName = 'Test App';
-  const channelName = 'stable';
   const platform = 'ios';
   const pubspecYamlContent = '''
 name: example
@@ -62,17 +63,6 @@ flutter:
     - shorebird.yaml''';
 
   const appMetadata = AppMetadata(appId: appId, displayName: appDisplayName);
-  const channel = Channel(id: 0, appId: appId, name: channelName);
-  const patch = Patch(id: 0, number: 1);
-  const patchArtifact = PatchArtifact(
-    id: 0,
-    patchId: 0,
-    arch: arch,
-    platform: platform,
-    hash: '#',
-    size: 42,
-    url: 'https://example.com',
-  );
   const release = Release(
     id: 0,
     appId: appId,
@@ -84,6 +74,7 @@ flutter:
   group(PatchIosCommand, () {
     late ArgResults argResults;
     late Auth auth;
+    late CodePushClientWrapper codePushClientWrapper;
     late Ipa ipa;
     late IpaReader ipaReader;
     late Progress progress;
@@ -92,8 +83,6 @@ flutter:
     late ShorebirdProcessResult flutterBuildProcessResult;
     late ShorebirdProcessResult flutterRevisionProcessResult;
     late http.Client httpClient;
-    late CodePushClient codePushClient;
-    late Uri? capturedHostedUri;
     late ShorebirdFlutterValidator flutterValidator;
     late ShorebirdProcess shorebirdProcess;
 
@@ -135,6 +124,7 @@ flutter:
     setUp(() {
       argResults = _MockArgResults();
       auth = _MockAuth();
+      codePushClientWrapper = _MockCodePushClientWrapper();
       ipaReader = _MockIpaReader();
       ipa = _MockIpa();
       progress = _MockProgress();
@@ -143,7 +133,6 @@ flutter:
       flutterBuildProcessResult = _MockProcessResult();
       flutterRevisionProcessResult = _MockProcessResult();
       httpClient = _MockHttpClient();
-      codePushClient = _MockCodePushClient();
       flutterValidator = _MockShorebirdFlutterValidator();
       shorebirdProcess = _MockShorebirdProcess();
 
@@ -154,36 +143,21 @@ flutter:
       when(() => auth.isAuthenticated).thenReturn(true);
       when(() => auth.client).thenReturn(httpClient);
       when(
-        () => codePushClient.getApps(),
-      ).thenAnswer((_) async => [appMetadata]);
+        () => codePushClientWrapper.getApp(appId: any(named: 'appId')),
+      ).thenAnswer((_) async => appMetadata);
       when(
-        () => codePushClient.getChannels(appId: any(named: 'appId')),
-      ).thenAnswer((_) async => [channel]);
-      when(
-        () => codePushClient.getReleases(appId: any(named: 'appId')),
-      ).thenAnswer((_) async => [release]);
-      when(
-        () => codePushClient.createChannel(
+        () => codePushClientWrapper.getRelease(
           appId: any(named: 'appId'),
-          channel: any(named: 'channel'),
+          releaseVersion: any(named: 'releaseVersion'),
         ),
-      ).thenAnswer((_) async => channel);
+      ).thenAnswer((_) async => release);
       when(
-        () => codePushClient.createPatch(releaseId: any(named: 'releaseId')),
-      ).thenAnswer((_) async => patch);
-      when(
-        () => codePushClient.createPatchArtifact(
-          artifactPath: any(named: 'artifactPath'),
-          patchId: any(named: 'patchId'),
-          arch: any(named: 'arch'),
+        () => codePushClientWrapper.publishPatch(
+          appId: any(named: 'appId'),
+          releaseId: any(named: 'releaseId'),
           platform: any(named: 'platform'),
-          hash: any(named: 'hash'),
-        ),
-      ).thenAnswer((_) async => patchArtifact);
-      when(
-        () => codePushClient.promotePatch(
-          patchId: any(named: 'patchId'),
-          channelId: any(named: 'channelId'),
+          channelName: any(named: 'channelName'),
+          patchArtifactBundles: any(named: 'patchArtifactBundles'),
         ),
       ).thenAnswer((_) async {});
       when(() => ipa.versionNumber).thenReturn(version);
@@ -225,16 +199,10 @@ flutter:
 
       command = PatchIosCommand(
         auth: auth,
+        codePushClientWrapper: codePushClientWrapper,
         ipaReader: ipaReader,
         logger: logger,
         validators: [flutterValidator],
-        buildCodePushClient: ({
-          required http.Client httpClient,
-          Uri? hostedUri,
-        }) {
-          capturedHostedUri = hostedUri;
-          return codePushClient;
-        },
       )
         ..testArgResults = argResults
         ..testProcess = shorebirdProcess
@@ -279,40 +247,6 @@ flutter:
         getCurrentDirectory: () => tempDir,
       );
       expect(exitCode, equals(ExitCode.usage.code));
-    });
-
-    test('throws error when fetching apps fails.', () async {
-      const error = 'something went wrong';
-      when(() => codePushClient.getApps()).thenThrow(error);
-      final tempDir = setUpTempDir();
-      setUpTempArtifacts(tempDir);
-      final exitCode = await IOOverrides.runZoned(
-        command.run,
-        getCurrentDirectory: () => tempDir,
-      );
-      verify(() => progress.fail(error)).called(1);
-      expect(exitCode, ExitCode.software.code);
-    });
-
-    test('throws error when app does not exist fails.', () async {
-      when(
-        () => logger.prompt(any(), defaultValue: any(named: 'defaultValue')),
-      ).thenReturn(appDisplayName);
-      when(() => codePushClient.getApps()).thenAnswer((_) async => []);
-      final tempDir = setUpTempDir();
-      setUpTempArtifacts(tempDir);
-      final exitCode = await IOOverrides.runZoned(
-        command.run,
-        getCurrentDirectory: () => tempDir,
-      );
-      verify(
-        () => logger.err(
-          '''
-Could not find app with id: "$appId".
-Did you forget to run "shorebird init"?''',
-        ),
-      ).called(1);
-      expect(exitCode, ExitCode.software.code);
     });
 
     test('aborts when user opts out', () async {
@@ -383,44 +317,6 @@ https://github.com/shorebirdtech/shorebird/issues/472
       ).called(1);
     });
 
-    test('throws error when fetching releases fails.', () async {
-      const error = 'something went wrong';
-      when(
-        () => codePushClient.getReleases(appId: any(named: 'appId')),
-      ).thenThrow(error);
-      final tempDir = setUpTempDir();
-      setUpTempArtifacts(tempDir);
-      final exitCode = await IOOverrides.runZoned(
-        command.run,
-        getCurrentDirectory: () => tempDir,
-      );
-      verify(() => progress.fail(error)).called(1);
-      expect(exitCode, ExitCode.software.code);
-    });
-
-    test('throws error when release does not exist.', () async {
-      when(
-        () => codePushClient.getReleases(appId: any(named: 'appId')),
-      ).thenAnswer((_) async => []);
-      final tempDir = setUpTempDir();
-      setUpTempArtifacts(tempDir);
-      final exitCode = await IOOverrides.runZoned(
-        command.run,
-        getCurrentDirectory: () => tempDir,
-      );
-      verify(
-        () => logger.err(
-          '''
-Release not found: "$version"
-
-Patches can only be published for existing releases.
-Please create a release using "shorebird release" and try again.
-''',
-        ),
-      ).called(1);
-      expect(exitCode, ExitCode.software.code);
-    });
-
     test('exits with code 70 when release version cannot be determiend',
         () async {
       when(() => ipa.versionNumber).thenThrow(Exception('oops'));
@@ -465,7 +361,9 @@ Please create a release using "shorebird release" and try again.
       );
       expect(exitCode, equals(ExitCode.success.code));
       verifyNever(
-        () => codePushClient.createPatch(releaseId: any(named: 'releaseId')),
+        () => codePushClientWrapper.createPatch(
+          releaseId: any(named: 'releaseId'),
+        ),
       );
       verify(() => logger.info('No issues detected.')).called(1);
     });
@@ -481,101 +379,14 @@ Please create a release using "shorebird release" and try again.
       expect(exitCode, equals(ExitCode.success.code));
       verifyNever(() => logger.confirm(any()));
       verify(
-        () => codePushClient.createPatch(releaseId: any(named: 'releaseId')),
-      ).called(1);
-    });
-
-    test('throws error when creating patch fails.', () async {
-      const error = 'something went wrong';
-      when(
-        () => codePushClient.createPatch(releaseId: any(named: 'releaseId')),
-      ).thenThrow(error);
-      final tempDir = setUpTempDir();
-      setUpTempArtifacts(tempDir);
-      final exitCode = await IOOverrides.runZoned(
-        command.run,
-        getCurrentDirectory: () => tempDir,
-      );
-      verify(() => progress.fail(error)).called(1);
-      expect(exitCode, ExitCode.software.code);
-    });
-
-    test('throws error when uploading patch artifact fails.', () async {
-      const error = 'something went wrong';
-      when(
-        () => codePushClient.createPatchArtifact(
-          artifactPath: any(named: 'artifactPath'),
-          patchId: any(named: 'patchId'),
-          arch: any(named: 'arch'),
-          platform: any(named: 'platform'),
-          hash: any(named: 'hash'),
-        ),
-      ).thenThrow(error);
-      final tempDir = setUpTempDir();
-      setUpTempArtifacts(tempDir);
-      final exitCode = await IOOverrides.runZoned(
-        command.run,
-        getCurrentDirectory: () => tempDir,
-      );
-      verify(() => progress.fail(error)).called(1);
-      expect(exitCode, ExitCode.software.code);
-    });
-
-    test('throws error when fetching channels fails.', () async {
-      const error = 'something went wrong';
-      when(
-        () => codePushClient.getChannels(appId: any(named: 'appId')),
-      ).thenThrow(error);
-      final tempDir = setUpTempDir();
-      setUpTempArtifacts(tempDir);
-      final exitCode = await IOOverrides.runZoned(
-        command.run,
-        getCurrentDirectory: () => tempDir,
-      );
-      verify(() => progress.fail(error)).called(1);
-      expect(exitCode, ExitCode.software.code);
-    });
-
-    test('throws error when creating channel fails.', () async {
-      const error = 'something went wrong';
-      when(
-        () => codePushClient.getChannels(appId: any(named: 'appId')),
-      ).thenAnswer((_) async => []);
-      when(
-        () => codePushClient.createChannel(
+        () => codePushClientWrapper.publishPatch(
           appId: any(named: 'appId'),
-          channel: any(named: 'channel'),
+          releaseId: any(named: 'releaseId'),
+          platform: any(named: 'platform'),
+          channelName: any(named: 'channelName'),
+          patchArtifactBundles: any(named: 'patchArtifactBundles'),
         ),
-      ).thenThrow(error);
-      final tempDir = setUpTempDir();
-      setUpTempArtifacts(tempDir);
-      final exitCode = await IOOverrides.runZoned(
-        command.run,
-        getCurrentDirectory: () => tempDir,
-      );
-      verify(() => progress.fail(error)).called(1);
-      expect(exitCode, ExitCode.software.code);
-    });
-
-    test('throws error when promoting patch fails.', () async {
-      const error = 'something went wrong';
-      when(
-        () => codePushClient.getChannels(appId: any(named: 'appId')),
-      ).thenAnswer((_) async => []);
-      when(
-        () => codePushClient.promotePatch(
-          patchId: any(named: 'patchId'),
-          channelId: any(named: 'channelId'),
-        ),
-      ).thenThrow(error);
-      final tempDir = setUpTempDir();
-      setUpTempArtifacts(tempDir);
-      final exitCode = await IOOverrides.runZoned(
-        command.run,
-        getCurrentDirectory: () => tempDir,
-      );
-      verify(() => progress.fail(error)).called(1);
-      expect(exitCode, ExitCode.software.code);
+      ).called(1);
     });
 
     test('succeeds when patch is successful', () async {
@@ -596,7 +407,6 @@ Please create a release using "shorebird release" and try again.
       ).called(1);
       verify(() => logger.success('\n✅ Published Patch!')).called(1);
       expect(exitCode, ExitCode.success.code);
-      expect(capturedHostedUri, isNull);
     });
 
     test(
@@ -620,7 +430,6 @@ flavors:
       );
       verify(() => logger.success('\n✅ Published Patch!')).called(1);
       expect(exitCode, ExitCode.success.code);
-      expect(capturedHostedUri, isNull);
     });
 
     test('succeeds when patch is successful using custom base_url', () async {
@@ -638,7 +447,6 @@ base_url: $baseUrl''',
         command.run,
         getCurrentDirectory: () => tempDir,
       );
-      expect(capturedHostedUri, equals(Uri.parse(baseUrl)));
     });
 
     test('prints flutter validation warnings', () async {

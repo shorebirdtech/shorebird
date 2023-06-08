@@ -5,16 +5,15 @@ import 'package:crypto/crypto.dart';
 import 'package:mason_logger/mason_logger.dart';
 import 'package:path/path.dart' as p;
 import 'package:shorebird_cli/src/archive_analysis/archive_analysis.dart';
+import 'package:shorebird_cli/src/code_push_client_wrapper.dart';
 import 'package:shorebird_cli/src/command.dart';
 import 'package:shorebird_cli/src/config/config.dart';
 import 'package:shorebird_cli/src/formatters/file_size_formatter.dart';
 import 'package:shorebird_cli/src/shorebird_artifact_mixin.dart';
 import 'package:shorebird_cli/src/shorebird_build_mixin.dart';
-import 'package:shorebird_cli/src/shorebird_code_push_client_mixin.dart';
 import 'package:shorebird_cli/src/shorebird_config_mixin.dart';
 import 'package:shorebird_cli/src/shorebird_environment.dart';
 import 'package:shorebird_cli/src/shorebird_validation_mixin.dart';
-import 'package:shorebird_code_push_client/shorebird_code_push_client.dart';
 
 /// {@template patch_ios_command}
 /// `shorebird patch ios-preview` command.
@@ -24,13 +23,12 @@ class PatchIosCommand extends ShorebirdCommand
         ShorebirdConfigMixin,
         ShorebirdBuildMixin,
         ShorebirdValidationMixin,
-        ShorebirdArtifactMixin,
-        ShorebirdCodePushClientMixin {
+        ShorebirdArtifactMixin {
   /// {@macro patch_ios_command}
   PatchIosCommand({
     required super.logger,
     super.auth,
-    super.buildCodePushClient,
+    super.codePushClientWrapper,
     super.validators,
     HashFunction? hashFn,
     IpaReader? ipaReader,
@@ -100,21 +98,7 @@ class PatchIosCommand extends ShorebirdCommand
 
     final shorebirdYaml = getShorebirdYaml()!;
     final appId = shorebirdYaml.getAppId(flavor: flavor);
-    final App? app;
-    try {
-      app = await getApp(appId: appId, flavor: flavor);
-    } catch (_) {
-      return ExitCode.software.code;
-    }
-
-    if (app == null) {
-      logger.err(
-        '''
-Could not find app with id: "$appId".
-Did you forget to run "shorebird init"?''',
-      );
-      return ExitCode.software.code;
-    }
+    final app = await codePushClientWrapper.getApp(appId: appId);
 
     final buildProgress = logger.progress('Building release');
     try {
@@ -160,24 +144,10 @@ Did you forget to run "shorebird init"?''',
       return ExitCode.software.code;
     }
 
-    final Release? release;
-    try {
-      release = await getRelease(appId: appId, releaseVersion: releaseVersion);
-    } catch (_) {
-      return ExitCode.software.code;
-    }
-
-    if (release == null) {
-      logger.err(
-        '''
-Release not found: "$releaseVersion"
-
-Patches can only be published for existing releases.
-Please create a release using "shorebird release" and try again.
-''',
-      );
-      return ExitCode.software.code;
-    }
+    final release = await codePushClientWrapper.getRelease(
+      appId: appId,
+      releaseVersion: releaseVersion,
+    );
 
     final flutterRevisionProgress = logger.progress(
       'Fetching Flutter revision',
@@ -224,14 +194,14 @@ https://github.com/shorebirdtech/shorebird/issues/472
       return ExitCode.success.code;
     }
 
-    final size = formatBytes(aotFile.statSync().size);
+    final aotFileSize = aotFile.statSync().size;
 
     final summary = [
-      '''📱 App: ${lightCyan.wrap(app.displayName)} ${lightCyan.wrap('(${app.id})')}''',
+      '''📱 App: ${lightCyan.wrap(app.displayName)} ${lightCyan.wrap('($appId)')}''',
       if (flavor != null) '🍧 Flavor: ${lightCyan.wrap(flavor)}',
       '📦 Release Version: ${lightCyan.wrap(releaseVersion)}',
       '📺 Channel: ${lightCyan.wrap(channelName)}',
-      '''🕹️  Platform: ${lightCyan.wrap(platform)} ${lightCyan.wrap('[arm64 ($size)]')}''',
+      '''🕹️  Platform: ${lightCyan.wrap(platform)} ${lightCyan.wrap('[arm64 (${formatBytes(aotFileSize)})]')}''',
     ];
 
     logger.info(
@@ -243,6 +213,8 @@ ${summary.join('\n')}
 ''',
     );
 
+    // TODO(bryanoltman): check for asset changes
+
     final needsConfirmation = !force;
     if (needsConfirmation) {
       final confirm = logger.confirm('Would you like to continue?');
@@ -253,63 +225,20 @@ ${summary.join('\n')}
       }
     }
 
-    final Patch patch;
-    try {
-      patch = await createPatch(releaseId: release.id);
-    } catch (e) {
-      return ExitCode.software.code;
-    }
-
-    final codePushClient = buildCodePushClient(
-      httpClient: auth.client,
-      hostedUri: hostedUri,
+    await codePushClientWrapper.publishPatch(
+      appId: appId,
+      releaseId: release.id,
+      platform: platform,
+      channelName: channelName,
+      patchArtifactBundles: {
+        Arch.arm64: PatchArtifactBundle(
+          arch: 'arm64',
+          path: aotFile.path,
+          hash: _hashFn(aotFile.readAsBytesSync()),
+          size: aotFileSize,
+        ),
+      },
     );
-
-    // TODO(bryanoltman): check for asset changes
-
-    final createArtifactProgress = logger.progress('Uploading artifacts');
-    try {
-      await codePushClient.createPatchArtifact(
-        patchId: patch.id,
-        artifactPath: aotFile.path,
-        arch: 'arm64',
-        platform: 'ios',
-        hash: _hashFn(await aotFile.readAsBytes()),
-      );
-    } catch (error) {
-      createArtifactProgress.fail('$error');
-      return ExitCode.software.code;
-    }
-    createArtifactProgress.complete();
-
-    Channel? channel;
-    try {
-      channel = await getChannel(appId: appId, name: channelName);
-    } catch (_) {
-      return ExitCode.software.code;
-    }
-
-    if (channel == null) {
-      try {
-        channel = await createChannel(appId: appId, name: channelName);
-      } catch (_) {
-        return ExitCode.software.code;
-      }
-    }
-
-    final publishPatchProgress = logger.progress(
-      'Promoting patch to ${channel.name}',
-    );
-    try {
-      await codePushClient.promotePatch(
-        patchId: patch.id,
-        channelId: channel.id,
-      );
-      publishPatchProgress.complete();
-    } catch (error) {
-      publishPatchProgress.fail('$error');
-      return ExitCode.software.code;
-    }
 
     logger.success('\n✅ Published Patch!');
     return ExitCode.success.code;
