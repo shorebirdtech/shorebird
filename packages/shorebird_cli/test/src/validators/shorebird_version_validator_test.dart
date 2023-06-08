@@ -7,8 +7,6 @@ import 'package:shorebird_cli/src/shorebird_process.dart';
 import 'package:shorebird_cli/src/validators/validators.dart';
 import 'package:test/test.dart';
 
-class _MockLogger extends Mock implements Logger {}
-
 class _MockProcessResult extends Mock implements ShorebirdProcessResult {}
 
 class _MockShorebirdProcess extends Mock implements ShorebirdProcess {}
@@ -19,21 +17,17 @@ void main() {
 
   group('ShorebirdVersionValidator', () {
     late ShorebirdVersionValidator validator;
-    late Logger logger;
-    late DoctorCommand command;
     late ShorebirdProcessResult fetchCurrentVersionResult;
     late ShorebirdProcessResult fetchLatestVersionResult;
     late ShorebirdProcess shorebirdProcess;
+    late DoctorCommand command;
 
     setUp(() {
-      logger = _MockLogger();
       fetchCurrentVersionResult = _MockProcessResult();
       fetchLatestVersionResult = _MockProcessResult();
       shorebirdProcess = _MockShorebirdProcess();
 
-      command = DoctorCommand(
-        logger: logger,
-      )
+      command = DoctorCommand()
         ..testProcess = shorebirdProcess
         ..testEngineConfig = const EngineConfig.empty();
 

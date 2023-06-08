@@ -1,7 +1,9 @@
 import 'package:mason_logger/mason_logger.dart';
 import 'package:mocktail/mocktail.dart';
 import 'package:path/path.dart' as p;
+import 'package:scoped/scoped.dart';
 import 'package:shorebird_cli/src/code_push_client_wrapper.dart';
+import 'package:shorebird_cli/src/logger.dart';
 import 'package:shorebird_cli/src/shorebird_build_mixin.dart';
 import 'package:shorebird_cli/src/third_party/flutter_tools/lib/flutter_tools.dart';
 import 'package:shorebird_code_push_client/shorebird_code_push_client.dart';
@@ -69,8 +71,11 @@ void main() {
     late CodePushClient codePushClient;
     late Logger logger;
     late Progress progress;
-
     late CodePushClientWrapper codePushClientWrapper;
+
+    R runWithOverrides<R>(R Function() body) {
+      return runScoped(body, values: {loggerRef.overrideWith(() => logger)});
+    }
 
     setUpAll(setExitFunctionForTests);
 
@@ -81,9 +86,8 @@ void main() {
       logger = _MockLogger();
       progress = _MockProgress();
 
-      codePushClientWrapper = CodePushClientWrapper(
-        codePushClient: codePushClient,
-        logger: logger,
+      codePushClientWrapper = runWithOverrides(
+        () => CodePushClientWrapper(codePushClient: codePushClient),
       );
 
       when(() => logger.progress(any())).thenReturn(progress);
@@ -96,7 +100,9 @@ void main() {
           when(() => codePushClient.getApps()).thenThrow(error);
 
           await expectLater(
-            () async => codePushClientWrapper.getApp(appId: appId),
+            () async => runWithOverrides(
+              () => codePushClientWrapper.getApp(appId: appId),
+            ),
             exitsWithCode(ExitCode.software),
           );
           verify(() => progress.fail(error)).called(1);
@@ -106,7 +112,9 @@ void main() {
           when(() => codePushClient.getApps()).thenAnswer((_) async => []);
 
           await expectLater(
-            () async => codePushClientWrapper.getApp(appId: appId),
+            () async => runWithOverrides(
+              () => codePushClientWrapper.getApp(appId: appId),
+            ),
             exitsWithCode(ExitCode.software),
           );
 
@@ -121,7 +129,9 @@ void main() {
         test('returns app when app exists', () async {
           when(() => codePushClient.getApps()).thenAnswer((_) async => [app]);
 
-          final result = await codePushClientWrapper.getApp(appId: appId);
+          final result = await runWithOverrides(
+            () => codePushClientWrapper.getApp(appId: appId),
+          );
 
           expect(result, app);
           verify(() => progress.complete()).called(1);
@@ -134,7 +144,9 @@ void main() {
           when(() => codePushClient.getApps()).thenThrow(error);
 
           await expectLater(
-            () async => codePushClientWrapper.maybeGetApp(appId: appId),
+            () async => runWithOverrides(
+              () => codePushClientWrapper.maybeGetApp(appId: appId),
+            ),
             exitsWithCode(ExitCode.software),
           );
           verify(() => progress.fail(error)).called(1);
@@ -143,8 +155,8 @@ void main() {
         test('succeeds if app does not exist', () async {
           when(() => codePushClient.getApps()).thenAnswer((_) async => []);
 
-          final result = await codePushClientWrapper.maybeGetApp(
-            appId: appId,
+          final result = await runWithOverrides(
+            () => codePushClientWrapper.maybeGetApp(appId: appId),
           );
 
           expect(result, isNull);
@@ -155,7 +167,9 @@ void main() {
         test('returns app when app exists', () async {
           when(() => codePushClient.getApps()).thenAnswer((_) async => [app]);
 
-          final result = await codePushClientWrapper.maybeGetApp(appId: appId);
+          final result = await runWithOverrides(
+            () => codePushClientWrapper.maybeGetApp(appId: appId),
+          );
 
           expect(result, app);
           verify(() => progress.complete()).called(1);
@@ -167,13 +181,16 @@ void main() {
       group('maybeGetChannel', () {
         test('exits with code 70 when fetching channels fails', () async {
           const error = 'something went wrong';
-          when(() => codePushClient.getChannels(appId: any(named: 'appId')))
-              .thenThrow(error);
+          when(
+            () => codePushClient.getChannels(appId: any(named: 'appId')),
+          ).thenThrow(error);
 
           await expectLater(
-            () async => codePushClientWrapper.maybeGetChannel(
-              appId: appId,
-              name: channelName,
+            () async => runWithOverrides(
+              () => codePushClientWrapper.maybeGetChannel(
+                appId: appId,
+                name: channelName,
+              ),
             ),
             exitsWithCode(ExitCode.software),
           );
@@ -181,12 +198,15 @@ void main() {
         });
 
         test('returns null when channel does not exist', () async {
-          when(() => codePushClient.getChannels(appId: any(named: 'appId')))
-              .thenAnswer((_) async => []);
+          when(
+            () => codePushClient.getChannels(appId: any(named: 'appId')),
+          ).thenAnswer((_) async => []);
 
-          final result = await codePushClientWrapper.maybeGetChannel(
-            appId: appId,
-            name: channelName,
+          final result = await runWithOverrides(
+            () => codePushClientWrapper.maybeGetChannel(
+              appId: appId,
+              name: channelName,
+            ),
           );
 
           expect(result, isNull);
@@ -194,12 +214,15 @@ void main() {
         });
 
         test('returns channel when channel exists', () async {
-          when(() => codePushClient.getChannels(appId: any(named: 'appId')))
-              .thenAnswer((_) async => [channel]);
+          when(
+            () => codePushClient.getChannels(appId: any(named: 'appId')),
+          ).thenAnswer((_) async => [channel]);
 
-          final result = await codePushClientWrapper.maybeGetChannel(
-            appId: appId,
-            name: channelName,
+          final result = await runWithOverrides(
+            () => codePushClientWrapper.maybeGetChannel(
+              appId: appId,
+              name: channelName,
+            ),
           );
 
           expect(result, channel);
@@ -218,9 +241,11 @@ void main() {
           ).thenThrow(error);
 
           await expectLater(
-            () async => codePushClientWrapper.createChannel(
-              appId: appId,
-              name: channelName,
+            () async => runWithOverrides(
+              () => codePushClientWrapper.createChannel(
+                appId: appId,
+                name: channelName,
+              ),
             ),
             exitsWithCode(ExitCode.software),
           );
@@ -235,9 +260,11 @@ void main() {
             ),
           ).thenAnswer((_) async => channel);
 
-          final result = await codePushClientWrapper.createChannel(
-            appId: appId,
-            name: channelName,
+          final result = await runWithOverrides(
+            () => codePushClientWrapper.createChannel(
+              appId: appId,
+              name: channelName,
+            ),
           );
 
           expect(result, channel);
@@ -250,13 +277,16 @@ void main() {
       group('getRelease', () {
         test('exits with code 70 when fetching release fails', () async {
           const error = 'something went wrong';
-          when(() => codePushClient.getReleases(appId: any(named: 'appId')))
-              .thenThrow(error);
+          when(
+            () => codePushClient.getReleases(appId: any(named: 'appId')),
+          ).thenThrow(error);
 
           await expectLater(
-            () async => codePushClientWrapper.getRelease(
-              appId: appId,
-              releaseVersion: releaseVersion,
+            () async => runWithOverrides(
+              () => codePushClientWrapper.getRelease(
+                appId: appId,
+                releaseVersion: releaseVersion,
+              ),
             ),
             exitsWithCode(ExitCode.software),
           );
@@ -268,9 +298,11 @@ void main() {
               .thenAnswer((_) async => []);
 
           await expectLater(
-            () async => codePushClientWrapper.getRelease(
-              appId: appId,
-              releaseVersion: releaseVersion,
+            () async => runWithOverrides(
+              () => codePushClientWrapper.getRelease(
+                appId: appId,
+                releaseVersion: releaseVersion,
+              ),
             ),
             exitsWithCode(ExitCode.software),
           );
@@ -284,12 +316,15 @@ void main() {
         });
 
         test('returns release when release exists', () async {
-          when(() => codePushClient.getReleases(appId: any(named: 'appId')))
-              .thenAnswer((_) async => [release]);
+          when(
+            () => codePushClient.getReleases(appId: any(named: 'appId')),
+          ).thenAnswer((_) async => [release]);
 
-          final result = await codePushClientWrapper.getRelease(
-            appId: appId,
-            releaseVersion: releaseVersion,
+          final result = await runWithOverrides(
+            () => codePushClientWrapper.getRelease(
+              appId: appId,
+              releaseVersion: releaseVersion,
+            ),
           );
 
           expect(result, release);
@@ -300,13 +335,16 @@ void main() {
       group('maybeGetRelease', () {
         test('exits with code 70 when fetching releases fails', () async {
           const error = 'something went wrong';
-          when(() => codePushClient.getReleases(appId: any(named: 'appId')))
-              .thenThrow(error);
+          when(
+            () => codePushClient.getReleases(appId: any(named: 'appId')),
+          ).thenThrow(error);
 
           await expectLater(
-            () async => codePushClientWrapper.maybeGetRelease(
-              appId: appId,
-              releaseVersion: releaseVersion,
+            () async => runWithOverrides(
+              () => codePushClientWrapper.maybeGetRelease(
+                appId: appId,
+                releaseVersion: releaseVersion,
+              ),
             ),
             exitsWithCode(ExitCode.software),
           );
@@ -314,12 +352,15 @@ void main() {
         });
 
         test('succeeds if release does not exist', () async {
-          when(() => codePushClient.getReleases(appId: any(named: 'appId')))
-              .thenAnswer((_) async => []);
+          when(
+            () => codePushClient.getReleases(appId: any(named: 'appId')),
+          ).thenAnswer((_) async => []);
 
-          final result = await codePushClientWrapper.maybeGetRelease(
-            appId: appId,
-            releaseVersion: releaseVersion,
+          final result = await runWithOverrides(
+            () => codePushClientWrapper.maybeGetRelease(
+              appId: appId,
+              releaseVersion: releaseVersion,
+            ),
           );
 
           expect(result, isNull);
@@ -328,12 +369,15 @@ void main() {
         });
 
         test('returns release when release exists', () async {
-          when(() => codePushClient.getReleases(appId: any(named: 'appId')))
-              .thenAnswer((_) async => [release]);
+          when(
+            () => codePushClient.getReleases(appId: any(named: 'appId')),
+          ).thenAnswer((_) async => [release]);
 
-          final result = await codePushClientWrapper.maybeGetRelease(
-            appId: appId,
-            releaseVersion: releaseVersion,
+          final result = await runWithOverrides(
+            () => codePushClientWrapper.maybeGetRelease(
+              appId: appId,
+              releaseVersion: releaseVersion,
+            ),
           );
 
           expect(result, release);
@@ -353,10 +397,12 @@ void main() {
           ).thenThrow(error);
 
           await expectLater(
-            () async => codePushClientWrapper.createRelease(
-              appId: appId,
-              version: releaseVersion,
-              flutterRevision: flutterRevision,
+            () async => runWithOverrides(
+              () async => codePushClientWrapper.createRelease(
+                appId: appId,
+                version: releaseVersion,
+                flutterRevision: flutterRevision,
+              ),
             ),
             exitsWithCode(ExitCode.software),
           );
@@ -372,10 +418,58 @@ void main() {
             ),
           ).thenAnswer((_) async => release);
 
-          final result = await codePushClientWrapper.createRelease(
-            appId: appId,
-            version: releaseVersion,
-            flutterRevision: flutterRevision,
+          final result = await runWithOverrides(
+            () async => codePushClientWrapper.createRelease(
+              appId: appId,
+              version: releaseVersion,
+              flutterRevision: flutterRevision,
+            ),
+          );
+
+          expect(result, release);
+          verify(() => progress.complete()).called(1);
+        });
+      });
+
+      group('createRelease', () {
+        test('exits with code 70 when creating release fails', () async {
+          const error = 'something went wrong';
+          when(
+            () => codePushClient.createRelease(
+              appId: any(named: 'appId'),
+              version: any(named: 'version'),
+              flutterRevision: any(named: 'flutterRevision'),
+            ),
+          ).thenThrow(error);
+
+          await expectLater(
+            () async => runWithOverrides(
+              () async => codePushClientWrapper.createRelease(
+                appId: appId,
+                version: releaseVersion,
+                flutterRevision: flutterRevision,
+              ),
+            ),
+            exitsWithCode(ExitCode.software),
+          );
+          verify(() => progress.fail(error)).called(1);
+        });
+
+        test('returns release when release is successfully created', () async {
+          when(
+            () => codePushClient.createRelease(
+              appId: any(named: 'appId'),
+              version: any(named: 'version'),
+              flutterRevision: any(named: 'flutterRevision'),
+            ),
+          ).thenAnswer((_) async => release);
+
+          final result = await runWithOverrides(
+            () async => codePushClientWrapper.createRelease(
+              appId: appId,
+              version: releaseVersion,
+              flutterRevision: flutterRevision,
+            ),
           );
 
           expect(result, release);
@@ -397,10 +491,12 @@ void main() {
           ).thenThrow(error);
 
           await expectLater(
-            () async => codePushClientWrapper.getReleaseArtifacts(
-              releaseId: releaseId,
-              architectures: archMap,
-              platform: platform,
+            () async => runWithOverrides(
+              () => codePushClientWrapper.getReleaseArtifacts(
+                releaseId: releaseId,
+                architectures: archMap,
+                platform: platform,
+              ),
             ),
             exitsWithCode(ExitCode.software),
           );
@@ -417,10 +513,12 @@ void main() {
             ),
           ).thenAnswer((_) async => releaseArtifact);
 
-          final result = await codePushClientWrapper.getReleaseArtifacts(
-            releaseId: releaseId,
-            architectures: archMap,
-            platform: platform,
+          final result = await runWithOverrides(
+            () => codePushClientWrapper.getReleaseArtifacts(
+              releaseId: releaseId,
+              architectures: archMap,
+              platform: platform,
+            ),
           );
 
           expect(result, {arch: releaseArtifact});
@@ -440,10 +538,12 @@ void main() {
           ).thenThrow(error);
 
           await expectLater(
-            () async => codePushClientWrapper.maybeGetReleaseArtifact(
-              releaseId: releaseId,
-              arch: arch.name,
-              platform: platform,
+            () async => runWithOverrides(
+              () => codePushClientWrapper.maybeGetReleaseArtifact(
+                releaseId: releaseId,
+                arch: arch.name,
+                platform: platform,
+              ),
             ),
             exitsWithCode(ExitCode.software),
           );
@@ -460,10 +560,12 @@ void main() {
             ),
           ).thenThrow(CodePushNotFoundException(message: 'not found'));
 
-          final result = await codePushClientWrapper.maybeGetReleaseArtifact(
-            releaseId: releaseId,
-            arch: arch.name,
-            platform: platform,
+          final result = await runWithOverrides(
+            () => codePushClientWrapper.maybeGetReleaseArtifact(
+              releaseId: releaseId,
+              arch: arch.name,
+              platform: platform,
+            ),
           );
 
           expect(result, isNull);
@@ -481,10 +583,12 @@ void main() {
               ),
             ).thenAnswer((_) async => releaseArtifact);
 
-            final result = await codePushClientWrapper.maybeGetReleaseArtifact(
-              releaseId: releaseId,
-              arch: arch.name,
-              platform: platform,
+            final result = await runWithOverrides(
+              () => codePushClientWrapper.maybeGetReleaseArtifact(
+                releaseId: releaseId,
+                arch: arch.name,
+                platform: platform,
+              ),
             );
 
             expect(result, releaseArtifact);
@@ -545,11 +649,13 @@ void main() {
 
           await IOOverrides.runZoned(
             () async => expectLater(
-              () async => codePushClientWrapper.createAndroidReleaseArtifacts(
-                releaseId: releaseId,
-                platform: platform,
-                aabPath: p.join(tempDir.path, aabPath),
-                architectures: ShorebirdBuildMixin.allAndroidArchitectures,
+              () async => runWithOverrides(
+                () async => codePushClientWrapper.createAndroidReleaseArtifacts(
+                  releaseId: releaseId,
+                  platform: platform,
+                  aabPath: p.join(tempDir.path, aabPath),
+                  architectures: ShorebirdBuildMixin.allAndroidArchitectures,
+                ),
               ),
               exitsWithCode(ExitCode.software),
             ),
@@ -574,11 +680,13 @@ void main() {
 
           await IOOverrides.runZoned(
             () async => expectLater(
-              () async => codePushClientWrapper.createAndroidReleaseArtifacts(
-                releaseId: releaseId,
-                platform: platform,
-                aabPath: p.join(tempDir.path, aabPath),
-                architectures: ShorebirdBuildMixin.allAndroidArchitectures,
+              () async => runWithOverrides(
+                () async => codePushClientWrapper.createAndroidReleaseArtifacts(
+                  releaseId: releaseId,
+                  platform: platform,
+                  aabPath: p.join(tempDir.path, aabPath),
+                  architectures: ShorebirdBuildMixin.allAndroidArchitectures,
+                ),
               ),
               exitsWithCode(ExitCode.software),
             ),
@@ -602,14 +710,16 @@ void main() {
           ).thenThrow(const CodePushConflictException(message: error));
           final tempDir = setUpTempDir();
 
-          await IOOverrides.runZoned(
-            () async => codePushClientWrapper.createAndroidReleaseArtifacts(
-              releaseId: releaseId,
-              platform: platform,
-              aabPath: p.join(tempDir.path, aabPath),
-              architectures: ShorebirdBuildMixin.allAndroidArchitectures,
+          await runWithOverrides(
+            () async => IOOverrides.runZoned(
+              () async => codePushClientWrapper.createAndroidReleaseArtifacts(
+                releaseId: releaseId,
+                platform: platform,
+                aabPath: p.join(tempDir.path, aabPath),
+                architectures: ShorebirdBuildMixin.allAndroidArchitectures,
+              ),
+              getCurrentDirectory: () => tempDir,
             ),
-            getCurrentDirectory: () => tempDir,
           );
 
           // 1 for each arch, 1 for the aab
@@ -634,14 +744,16 @@ void main() {
           ).thenThrow(const CodePushConflictException(message: error));
           final tempDir = setUpTempDir();
 
-          await IOOverrides.runZoned(
-            () async => codePushClientWrapper.createAndroidReleaseArtifacts(
-              releaseId: releaseId,
-              platform: platform,
-              aabPath: p.join(tempDir.path, aabPath),
-              architectures: ShorebirdBuildMixin.allAndroidArchitectures,
+          await runWithOverrides(
+            () async => IOOverrides.runZoned(
+              () async => codePushClientWrapper.createAndroidReleaseArtifacts(
+                releaseId: releaseId,
+                platform: platform,
+                aabPath: p.join(tempDir.path, aabPath),
+                architectures: ShorebirdBuildMixin.allAndroidArchitectures,
+              ),
+              getCurrentDirectory: () => tempDir,
             ),
-            getCurrentDirectory: () => tempDir,
           );
 
           verify(
@@ -664,14 +776,16 @@ void main() {
           ).thenAnswer((_) async => {});
           final tempDir = setUpTempDir();
 
-          await IOOverrides.runZoned(
-            () async => codePushClientWrapper.createAndroidReleaseArtifacts(
-              releaseId: releaseId,
-              platform: platform,
-              aabPath: p.join(tempDir.path, aabPath),
-              architectures: ShorebirdBuildMixin.allAndroidArchitectures,
+          await runWithOverrides(
+            () async => IOOverrides.runZoned(
+              () async => codePushClientWrapper.createAndroidReleaseArtifacts(
+                releaseId: releaseId,
+                platform: platform,
+                aabPath: p.join(tempDir.path, aabPath),
+                architectures: ShorebirdBuildMixin.allAndroidArchitectures,
+              ),
+              getCurrentDirectory: () => tempDir,
             ),
-            getCurrentDirectory: () => tempDir,
           );
 
           verify(() => progress.complete()).called(1);
@@ -691,15 +805,17 @@ void main() {
           ).thenAnswer((_) async => {});
           final tempDir = setUpTempDir(flavor: flavorName);
 
-          await IOOverrides.runZoned(
-            () async => codePushClientWrapper.createAndroidReleaseArtifacts(
-              releaseId: releaseId,
-              platform: platform,
-              aabPath: p.join(tempDir.path, aabPath),
-              architectures: ShorebirdBuildMixin.allAndroidArchitectures,
-              flavor: flavorName,
+          await runWithOverrides(
+            () async => IOOverrides.runZoned(
+              () async => codePushClientWrapper.createAndroidReleaseArtifacts(
+                releaseId: releaseId,
+                platform: platform,
+                aabPath: p.join(tempDir.path, aabPath),
+                architectures: ShorebirdBuildMixin.allAndroidArchitectures,
+                flavor: flavorName,
+              ),
+              getCurrentDirectory: () => tempDir,
             ),
-            getCurrentDirectory: () => tempDir,
           );
 
           verify(
@@ -722,12 +838,15 @@ void main() {
       group('createPatch', () {
         test('exits with code 70 when creating patch fails', () async {
           const error = 'something went wrong';
-          when(() => codePushClient.createPatch(releaseId: releaseId))
-              .thenThrow(error);
+          when(
+            () => codePushClient.createPatch(releaseId: releaseId),
+          ).thenThrow(error);
 
           await expectLater(
-            () async => codePushClientWrapper.createPatch(
-              releaseId: releaseId,
+            () async => runWithOverrides(
+              () => codePushClientWrapper.createPatch(
+                releaseId: releaseId,
+              ),
             ),
             exitsWithCode(ExitCode.software),
           );
@@ -738,8 +857,10 @@ void main() {
           when(() => codePushClient.createPatch(releaseId: releaseId))
               .thenAnswer((_) async => patch);
 
-          final result = await codePushClientWrapper.createPatch(
-            releaseId: releaseId,
+          final result = await runWithOverrides(
+            () => codePushClientWrapper.createPatch(
+              releaseId: releaseId,
+            ),
           );
 
           expect(result, patch);
@@ -758,16 +879,18 @@ void main() {
           ).thenThrow(error);
 
           await expectLater(
-            () async => codePushClientWrapper.promotePatch(
-              patchId: patchId,
-              channel: channel,
+            () async => runWithOverrides(
+              () => codePushClientWrapper.promotePatch(
+                patchId: patchId,
+                channel: channel,
+              ),
             ),
             exitsWithCode(ExitCode.software),
           );
           verify(() => progress.fail(error)).called(1);
         });
 
-        test('TODO', () async {
+        test('completes progress when patch is promoted', () async {
           when(
             () => codePushClient.promotePatch(
               patchId: any(named: 'patchId'),
@@ -775,9 +898,11 @@ void main() {
             ),
           ).thenAnswer((_) async => patch);
 
-          await codePushClientWrapper.promotePatch(
-            patchId: patchId,
-            channel: channel,
+          await runWithOverrides(
+            () => codePushClientWrapper.promotePatch(
+              patchId: patchId,
+              channel: channel,
+            ),
           );
 
           verify(() => progress.complete()).called(1);
@@ -800,10 +925,12 @@ void main() {
             ).thenThrow(error);
 
             await expectLater(
-              () async => codePushClientWrapper.createPatchArtifacts(
-                patch: patch,
-                platform: platform,
-                patchArtifactBundles: patchArtifactBundles,
+              () async => runWithOverrides(
+                () => codePushClientWrapper.createPatchArtifacts(
+                  patch: patch,
+                  platform: platform,
+                  patchArtifactBundles: patchArtifactBundles,
+                ),
               ),
               exitsWithCode(ExitCode.software),
             );
@@ -823,10 +950,12 @@ void main() {
             ),
           ).thenAnswer((_) async {});
 
-          await codePushClientWrapper.createPatchArtifacts(
-            patch: patch,
-            platform: platform,
-            patchArtifactBundles: patchArtifactBundles,
+          await runWithOverrides(
+            () => codePushClientWrapper.createPatchArtifacts(
+              patch: patch,
+              platform: platform,
+              patchArtifactBundles: patchArtifactBundles,
+            ),
           );
 
           verify(() => progress.complete()).called(1);
@@ -844,9 +973,9 @@ void main() {
 
       group('publishPatch', () {
         setUp(() {
-          when(() => codePushClient.createPatch(releaseId: releaseId))
-              .thenAnswer((_) async => patch);
-
+          when(
+            () => codePushClient.createPatch(releaseId: releaseId),
+          ).thenAnswer((_) async => patch);
           when(
             () => codePushClient.createPatchArtifact(
               patchId: any(named: 'patchId'),
@@ -856,10 +985,9 @@ void main() {
               hash: any(named: 'hash'),
             ),
           ).thenAnswer((_) async {});
-
-          when(() => codePushClient.getChannels(appId: any(named: 'appId')))
-              .thenAnswer((_) async => [channel]);
-
+          when(
+            () => codePushClient.getChannels(appId: any(named: 'appId')),
+          ).thenAnswer((_) async => [channel]);
           when(
             () => codePushClient.promotePatch(
               patchId: any(named: 'patchId'),
@@ -869,16 +997,19 @@ void main() {
         });
 
         test('makes expected calls to code push client', () async {
-          await codePushClientWrapper.publishPatch(
-            appId: appId,
-            releaseId: releaseId,
-            platform: platform,
-            channelName: channelName,
-            patchArtifactBundles: patchArtifactBundles,
+          await runWithOverrides(
+            () => codePushClientWrapper.publishPatch(
+              appId: appId,
+              releaseId: releaseId,
+              platform: platform,
+              channelName: channelName,
+              patchArtifactBundles: patchArtifactBundles,
+            ),
           );
 
-          verify(() => codePushClient.createPatch(releaseId: releaseId))
-              .called(1);
+          verify(
+            () => codePushClient.createPatch(releaseId: releaseId),
+          ).called(1);
           verify(
             () => codePushClient.createPatchArtifact(
               artifactPath: partchArtifactBundle.path,
@@ -888,16 +1019,13 @@ void main() {
               hash: partchArtifactBundle.hash,
             ),
           ).called(1);
-
           verify(() => codePushClient.getChannels(appId: appId)).called(1);
-
           verifyNever(
             () => codePushClient.createChannel(
               appId: any(named: 'appId'),
               channel: any(named: 'channel'),
             ),
           );
-
           verify(
             () => codePushClient.promotePatch(
               patchId: patchId,
@@ -907,8 +1035,9 @@ void main() {
         });
 
         test('creates channel if none exists', () async {
-          when(() => codePushClient.getChannels(appId: any(named: 'appId')))
-              .thenAnswer((_) async => []);
+          when(
+            () => codePushClient.getChannels(appId: any(named: 'appId')),
+          ).thenAnswer((_) async => []);
 
           when(
             () => codePushClient.createChannel(
@@ -917,16 +1046,19 @@ void main() {
             ),
           ).thenAnswer((_) async => channel);
 
-          await codePushClientWrapper.publishPatch(
-            appId: appId,
-            releaseId: releaseId,
-            platform: platform,
-            channelName: channelName,
-            patchArtifactBundles: patchArtifactBundles,
+          await runWithOverrides(
+            () => codePushClientWrapper.publishPatch(
+              appId: appId,
+              releaseId: releaseId,
+              platform: platform,
+              channelName: channelName,
+              patchArtifactBundles: patchArtifactBundles,
+            ),
           );
 
-          verify(() => codePushClient.createPatch(releaseId: releaseId))
-              .called(1);
+          verify(
+            () => codePushClient.createPatch(releaseId: releaseId),
+          ).called(1);
           verify(
             () => codePushClient.createPatchArtifact(
               artifactPath: partchArtifactBundle.path,
@@ -936,16 +1068,13 @@ void main() {
               hash: partchArtifactBundle.hash,
             ),
           ).called(1);
-
           verify(() => codePushClient.getChannels(appId: appId)).called(1);
-
           verify(
             () => codePushClient.createChannel(
               appId: appId,
               channel: channelName,
             ),
           ).called(1);
-
           verify(
             () => codePushClient.promotePatch(
               patchId: patchId,

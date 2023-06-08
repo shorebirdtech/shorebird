@@ -6,11 +6,13 @@ import 'package:mason_logger/mason_logger.dart';
 import 'package:mocktail/mocktail.dart';
 import 'package:path/path.dart' as p;
 import 'package:platform/platform.dart';
+import 'package:scoped/scoped.dart';
 import 'package:shorebird_cli/src/archive_analysis/archive_analysis.dart';
 import 'package:shorebird_cli/src/auth/auth.dart';
 import 'package:shorebird_cli/src/cache.dart' show Cache;
 import 'package:shorebird_cli/src/code_push_client_wrapper.dart';
 import 'package:shorebird_cli/src/commands/patch/patch_android_command.dart';
+import 'package:shorebird_cli/src/logger.dart';
 import 'package:shorebird_cli/src/shorebird_build_mixin.dart';
 import 'package:shorebird_cli/src/shorebird_environment.dart';
 import 'package:shorebird_cli/src/shorebird_process.dart';
@@ -114,6 +116,10 @@ flutter:
     late ShorebirdFlutterValidator flutterValidator;
     late ShorebirdProcess shorebirdProcess;
 
+    R runWithOverrides<R>(R Function() body) {
+      return runScoped(body, values: {loggerRef.overrideWith(() => logger)});
+    }
+
     Directory setUpTempDir() {
       final tempDir = Directory.systemTemp.createTempSync();
       File(
@@ -172,7 +178,6 @@ flutter:
         auth: auth,
         codePushClientWrapper: codePushClientWrapper,
         cache: cache,
-        logger: logger,
         httpClient: httpClient,
         validators: [flutterValidator],
       )
@@ -323,7 +328,7 @@ flutter:
     test('throws config error when shorebird is not initialized', () async {
       final tempDir = Directory.systemTemp.createTempSync();
       final exitCode = await IOOverrides.runZoned(
-        command.run,
+        () => runWithOverrides(command.run),
         getCurrentDirectory: () => tempDir,
       );
       verify(
@@ -342,7 +347,7 @@ flutter:
       when(() => auth.isAuthenticated).thenReturn(false);
       final tempDir = setUpTempDir();
       final exitCode = await IOOverrides.runZoned(
-        () => command.run(),
+        () => runWithOverrides(command.run),
         getCurrentDirectory: () => tempDir,
       );
       expect(exitCode, equals(ExitCode.noUser.code));
@@ -354,7 +359,7 @@ flutter:
 
       final tempDir = setUpTempDir();
       final exitCode = await IOOverrides.runZoned(
-        () async => command.run(),
+        () => runWithOverrides(command.run),
         getCurrentDirectory: () => tempDir,
       );
 
@@ -368,7 +373,7 @@ flutter:
       when(() => argResults['force']).thenReturn(true);
       final tempDir = setUpTempDir();
       final exitCode = await IOOverrides.runZoned(
-        command.run,
+        () => runWithOverrides(command.run),
         getCurrentDirectory: () => tempDir,
       );
       expect(exitCode, equals(ExitCode.usage.code));
@@ -379,7 +384,7 @@ flutter:
       final tempDir = setUpTempDir();
       setUpTempArtifacts(tempDir);
       final exitCode = await IOOverrides.runZoned(
-        command.run,
+        () => runWithOverrides(command.run),
         getCurrentDirectory: () => tempDir,
       );
       expect(exitCode, ExitCode.success.code);
@@ -393,7 +398,7 @@ flutter:
       final tempDir = setUpTempDir();
       setUpTempArtifacts(tempDir);
       final exitCode = await IOOverrides.runZoned(
-        command.run,
+        () => runWithOverrides(command.run),
         getCurrentDirectory: () => tempDir,
       );
       expect(exitCode, ExitCode.software.code);
@@ -412,7 +417,7 @@ flutter:
       final tempDir = setUpTempDir();
       setUpTempArtifacts(tempDir);
       final exitCode = await IOOverrides.runZoned(
-        command.run,
+        () => runWithOverrides(command.run),
         getCurrentDirectory: () => tempDir,
       );
       expect(exitCode, ExitCode.software.code);
@@ -449,7 +454,7 @@ https://github.com/shorebirdtech/shorebird/issues/472
       final tempDir = setUpTempDir();
       setUpTempArtifacts(tempDir);
       final exitCode = await IOOverrides.runZoned(
-        command.run,
+        () => runWithOverrides(command.run),
         getCurrentDirectory: () => tempDir,
       );
       expect(exitCode, ExitCode.software.code);
@@ -467,7 +472,7 @@ https://github.com/shorebirdtech/shorebird/issues/472
       final tempDir = setUpTempDir();
       setUpTempArtifacts(tempDir);
       final exitCode = await IOOverrides.runZoned(
-        command.run,
+        () => runWithOverrides(command.run),
         getCurrentDirectory: () => tempDir,
       );
       expect(exitCode, ExitCode.software.code);
@@ -489,7 +494,7 @@ https://github.com/shorebirdtech/shorebird/issues/472
       final tempDir = setUpTempDir();
       setUpTempArtifacts(tempDir);
       final exitCode = await IOOverrides.runZoned(
-        command.run,
+        () => runWithOverrides(command.run),
         getCurrentDirectory: () => tempDir,
       );
       verify(
@@ -522,7 +527,7 @@ https://github.com/shorebirdtech/shorebird/issues/472
       final tempDir = setUpTempDir();
       setUpTempArtifacts(tempDir);
       final exitCode = await IOOverrides.runZoned(
-        command.run,
+        () => runWithOverrides(command.run),
         getCurrentDirectory: () => tempDir,
       );
 
@@ -537,7 +542,7 @@ https://github.com/shorebirdtech/shorebird/issues/472
       final tempDir = setUpTempDir();
       setUpTempArtifacts(tempDir);
       final exitCode = await IOOverrides.runZoned(
-        command.run,
+        () => runWithOverrides(command.run),
         getCurrentDirectory: () => tempDir,
       );
 
@@ -557,7 +562,7 @@ https://github.com/shorebirdtech/shorebird/issues/472
       final tempDir = setUpTempDir();
       setUpTempArtifacts(tempDir);
       final exitCode = await IOOverrides.runZoned(
-        command.run,
+        () => runWithOverrides(command.run),
         getCurrentDirectory: () => tempDir,
       );
 
@@ -584,7 +589,7 @@ https://github.com/shorebirdtech/shorebird/issues/472
         final tempDir = setUpTempDir();
         setUpTempArtifacts(tempDir);
         final exitCode = await IOOverrides.runZoned(
-          command.run,
+          () => runWithOverrides(command.run),
           getCurrentDirectory: () => tempDir,
         );
 
@@ -619,7 +624,7 @@ https://github.com/shorebirdtech/shorebird/issues/472
         final tempDir = setUpTempDir();
         setUpTempArtifacts(tempDir);
         final exitCode = await IOOverrides.runZoned(
-          command.run,
+          () => runWithOverrides(command.run),
           getCurrentDirectory: () => tempDir,
         );
 
@@ -643,7 +648,7 @@ https://github.com/shorebirdtech/shorebird/issues/472
       final tempDir = setUpTempDir();
       setUpTempArtifacts(tempDir);
       final exitCode = await IOOverrides.runZoned(
-        command.run,
+        () => runWithOverrides(command.run),
         getCurrentDirectory: () => tempDir,
       );
       verify(
@@ -657,7 +662,7 @@ https://github.com/shorebirdtech/shorebird/issues/472
       final tempDir = setUpTempDir();
       setUpTempArtifacts(tempDir);
       final exitCode = await IOOverrides.runZoned(
-        command.run,
+        () => runWithOverrides(command.run),
         getCurrentDirectory: () => tempDir,
       );
       expect(exitCode, equals(ExitCode.success.code));
@@ -678,7 +683,7 @@ https://github.com/shorebirdtech/shorebird/issues/472
       final tempDir = setUpTempDir();
       setUpTempArtifacts(tempDir);
       final exitCode = await IOOverrides.runZoned(
-        command.run,
+        () => runWithOverrides(command.run),
         getCurrentDirectory: () => tempDir,
       );
       expect(exitCode, equals(ExitCode.success.code));
@@ -698,7 +703,7 @@ https://github.com/shorebirdtech/shorebird/issues/472
       final tempDir = setUpTempDir();
       setUpTempArtifacts(tempDir);
       final exitCode = await IOOverrides.runZoned(
-        command.run,
+        () => runWithOverrides(command.run),
         getCurrentDirectory: () => tempDir,
       );
       verify(
@@ -731,7 +736,7 @@ flavors:
   development: $appId''');
       setUpTempArtifacts(tempDir, flavor: flavor);
       final exitCode = await IOOverrides.runZoned(
-        command.run,
+        () => runWithOverrides(command.run),
         getCurrentDirectory: () => tempDir,
       );
       verify(() => logger.success('\n✅ Published Patch!')).called(1);
@@ -755,7 +760,7 @@ flavors:
       );
 
       final exitCode = await IOOverrides.runZoned(
-        command.run,
+        () => runWithOverrides(command.run),
         getCurrentDirectory: () => tempDir,
       );
 
@@ -781,7 +786,7 @@ flavors:
       );
 
       final exitCode = await IOOverrides.runZoned(
-        command.run,
+        () => runWithOverrides(command.run),
         getCurrentDirectory: () => tempDir,
       );
 

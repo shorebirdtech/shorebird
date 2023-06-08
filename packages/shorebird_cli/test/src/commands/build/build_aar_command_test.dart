@@ -5,8 +5,10 @@ import 'package:http/http.dart' as http;
 import 'package:mason_logger/mason_logger.dart';
 import 'package:mocktail/mocktail.dart';
 import 'package:path/path.dart' as p;
+import 'package:scoped/scoped.dart';
 import 'package:shorebird_cli/src/auth/auth.dart';
 import 'package:shorebird_cli/src/commands/build/build.dart';
+import 'package:shorebird_cli/src/logger.dart';
 import 'package:shorebird_cli/src/shorebird_process.dart';
 import 'package:test/test.dart';
 
@@ -59,8 +61,11 @@ flutter:
     late Progress progress;
     late ShorebirdProcess shorebirdProcess;
     late ShorebirdProcessResult processResult;
-
     late BuildAarCommand command;
+
+    R runWithOverrides<R>(R Function() body) {
+      return runScoped(body, values: {loggerRef.overrideWith(() => logger)});
+    }
 
     Directory setUpTempDir({bool includeModule = true}) {
       final tempDir = Directory.systemTemp.createTempSync();
@@ -100,11 +105,7 @@ flutter:
         return processResult;
       });
 
-      command = BuildAarCommand(
-        auth: auth,
-        logger: logger,
-        validators: [],
-      )
+      command = BuildAarCommand(auth: auth, validators: [])
         ..testArgResults = argResults
         ..testProcess = shorebirdProcess
         ..testEngineConfig = const EngineConfig.empty();
@@ -117,7 +118,7 @@ flutter:
     test('exits with no user when not logged in', () async {
       when(() => auth.isAuthenticated).thenReturn(false);
 
-      final result = await command.run();
+      final result = await runWithOverrides(command.run);
       expect(result, equals(ExitCode.noUser.code));
 
       verify(
@@ -128,7 +129,7 @@ flutter:
     test('exits with 78 if no pubspec.yaml exists', () async {
       final tempDir = Directory.systemTemp.createTempSync();
       final result = await IOOverrides.runZoned(
-        () async => command.run(),
+        () async => runWithOverrides(command.run),
         getCurrentDirectory: () => tempDir,
       );
 
@@ -138,7 +139,7 @@ flutter:
     test('exits with 78 if no module entry exists in pubspec.yaml', () async {
       final tempDir = setUpTempDir(includeModule: false);
       final result = await IOOverrides.runZoned(
-        () async => command.run(),
+        () async => runWithOverrides(command.run),
         getCurrentDirectory: () => tempDir,
       );
 
@@ -151,7 +152,7 @@ flutter:
       final tempDir = setUpTempDir();
 
       final result = await IOOverrides.runZoned(
-        () async => command.run(),
+        () async => runWithOverrides(command.run),
         getCurrentDirectory: () => tempDir,
       );
 
@@ -169,15 +170,16 @@ flutter:
           runInShell: any(named: 'runInShell'),
         ),
       ).called(1);
-      verify(() => progress.fail(any(that: contains('Failed to build'))))
-          .called(1);
+      verify(
+        () => progress.fail(any(that: contains('Failed to build'))),
+      ).called(1);
     });
 
     test('exits with code 0 when building aar succeeds', () async {
       when(() => processResult.exitCode).thenReturn(ExitCode.success.code);
       final tempDir = setUpTempDir();
       final result = await IOOverrides.runZoned(
-        () async => command.run(),
+        () async => runWithOverrides(command.run),
         getCurrentDirectory: () => tempDir,
       );
 
@@ -227,7 +229,7 @@ ${lightCyan.wrap(
       when(() => processResult.exitCode).thenReturn(ExitCode.success.code);
       final tempDir = setUpTempDir();
       final result = await IOOverrides.runZoned(
-        () async => command.run(),
+        () async => runWithOverrides(command.run),
         getCurrentDirectory: () => tempDir,
       );
 

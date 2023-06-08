@@ -1,8 +1,10 @@
 import 'package:http/http.dart' as http;
 import 'package:mason_logger/mason_logger.dart';
 import 'package:mocktail/mocktail.dart';
+import 'package:scoped/scoped.dart';
 import 'package:shorebird_cli/src/auth/auth.dart';
 import 'package:shorebird_cli/src/commands/account/account.dart';
+import 'package:shorebird_cli/src/logger.dart' hide logger;
 import 'package:shorebird_code_push_client/shorebird_code_push_client.dart';
 import 'package:test/test.dart';
 
@@ -26,6 +28,10 @@ void main() {
 
     late CreateAccountCommand createAccountCommand;
 
+    R runWithOverrides<R>(R Function() body) {
+      return runScoped(body, values: {loggerRef.overrideWith(() => logger)});
+    }
+
     setUp(() {
       auth = _MockAuth();
       httpClient = _MockHttpClient();
@@ -40,10 +46,7 @@ void main() {
       when(() => user.displayName).thenReturn(userName);
       when(() => user.email).thenReturn(email);
 
-      createAccountCommand = CreateAccountCommand(
-        logger: logger,
-        auth: auth,
-      );
+      createAccountCommand = CreateAccountCommand(auth: auth);
     });
 
     test('has a description', () {
@@ -51,7 +54,9 @@ void main() {
     });
 
     test('login prompt is correct', () {
-      createAccountCommand.authPrompt('https://shorebird.dev');
+      runWithOverrides(
+        () => createAccountCommand.authPrompt('https://shorebird.dev'),
+      );
       verify(
         () => logger.info('''
 Shorebird currently requires a Google account for authentication. If you'd like to use a different kind of auth, please let us know: ${lightCyan.wrap('https://github.com/shorebirdtech/shorebird/issues/335')}.
@@ -65,11 +70,12 @@ Waiting for your authorization...'''),
     });
 
     test('namePrompt asks user for name', () {
-      final name = createAccountCommand.namePrompt();
+      final name = runWithOverrides(() => createAccountCommand.namePrompt());
       expect(name, userName);
       verify(
-        () =>
-            logger.prompt('Tell us your name to finish creating your account:'),
+        () => logger.prompt(
+          'Tell us your name to finish creating your account:',
+        ),
       ).called(1);
     });
 
@@ -81,7 +87,7 @@ Waiting for your authorization...'''),
         ),
       ).thenThrow(UserAlreadyLoggedInException(email: email));
 
-      final result = await createAccountCommand.run();
+      final result = await runWithOverrides(createAccountCommand.run);
 
       expect(result, ExitCode.success.code);
 
@@ -100,7 +106,7 @@ Waiting for your authorization...'''),
         ),
       ).thenThrow(UserAlreadyExistsException(user));
 
-      final result = await createAccountCommand.run();
+      final result = await runWithOverrides(createAccountCommand.run);
 
       expect(result, ExitCode.success.code);
       verify(
@@ -116,7 +122,7 @@ Waiting for your authorization...'''),
         ),
       ).thenThrow(Exception('login failed'));
 
-      final result = await createAccountCommand.run();
+      final result = await runWithOverrides(createAccountCommand.run);
 
       expect(result, ExitCode.software.code);
       verify(() => logger.err(any(that: contains('login failed')))).called(1);
@@ -131,7 +137,7 @@ Waiting for your authorization...'''),
         ),
       ).thenAnswer((_) async => user);
 
-      final result = await createAccountCommand.run();
+      final result = await runWithOverrides(createAccountCommand.run);
 
       expect(result, ExitCode.success.code);
       verify(

@@ -1,8 +1,10 @@
 import 'package:http/http.dart' as http;
 import 'package:mason_logger/mason_logger.dart';
 import 'package:mocktail/mocktail.dart';
+import 'package:scoped/scoped.dart';
 import 'package:shorebird_cli/src/auth/auth.dart';
 import 'package:shorebird_cli/src/commands/logout_command.dart';
+import 'package:shorebird_cli/src/logger.dart';
 import 'package:test/test.dart';
 
 class _MockAuth extends Mock implements Auth {}
@@ -18,7 +20,11 @@ void main() {
     late Auth auth;
     late Logger logger;
     late http.Client httpClient;
-    late LogoutCommand logoutCommand;
+    late LogoutCommand command;
+
+    R runWithOverrides<R>(R Function() body) {
+      return runScoped(body, values: {loggerRef.overrideWith(() => logger)});
+    }
 
     setUp(() {
       auth = _MockAuth();
@@ -28,12 +34,12 @@ void main() {
       when(() => auth.client).thenReturn(httpClient);
       when(() => logger.progress(any())).thenReturn(_MockProgress());
 
-      logoutCommand = LogoutCommand(auth: auth, logger: logger);
+      command = LogoutCommand(auth: auth);
     });
 
     test('exits with code 0 when already logged out', () async {
       when(() => auth.isAuthenticated).thenReturn(false);
-      final result = await logoutCommand.run();
+      final result = await runWithOverrides(command.run);
       expect(result, equals(ExitCode.success.code));
 
       verify(
@@ -48,7 +54,7 @@ void main() {
       when(() => progress.complete(any())).thenAnswer((invocation) {});
       when(() => logger.progress(any())).thenReturn(progress);
 
-      final result = await logoutCommand.run();
+      final result = await runWithOverrides(command.run);
       expect(result, equals(ExitCode.success.code));
 
       verify(() => logger.progress('Logging out of shorebird.dev')).called(1);
