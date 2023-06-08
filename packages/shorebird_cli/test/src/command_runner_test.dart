@@ -19,16 +19,13 @@ void main() {
     late ShorebirdProcessResult processResult;
     late ShorebirdCliCommandRunner commandRunner;
 
+    R runWithOverrides<R>(R Function() body) {
+      return runScoped(body, values: {loggerRef.overrideWith(() => logger)});
+    }
+
     ShorebirdCliCommandRunner buildRunner() {
       return runScoped(
         ShorebirdCliCommandRunner.new,
-        values: {loggerRef.overrideWith(() => logger)},
-      );
-    }
-
-    Future<int> runCommand(List<String> args) async {
-      return runScoped(
-        () => commandRunner.run(args),
         values: {loggerRef.overrideWith(() => logger)},
       );
     }
@@ -50,7 +47,9 @@ void main() {
           throw exception;
         }
       });
-      final result = await runCommand(['--version']);
+      final result = await runWithOverrides(
+        () => commandRunner.run(['--version']),
+      );
       expect(result, equals(ExitCode.usage.code));
       verify(() => logger.err(exception.message)).called(1);
       verify(() => logger.info(commandRunner.usage)).called(1);
@@ -65,7 +64,9 @@ void main() {
           throw exception;
         }
       });
-      final result = await runCommand(['--version']);
+      final result = await runWithOverrides(
+        () => commandRunner.run(['--version']),
+      );
       expect(result, equals(ExitCode.usage.code));
       verify(() => logger.err(exception.message)).called(1);
       verify(() => logger.info('exception usage')).called(1);
@@ -73,7 +74,9 @@ void main() {
 
     group('--version', () {
       test('outputs current version and engine revisions', () async {
-        final result = await runCommand(['--version']);
+        final result = await runWithOverrides(
+          () => commandRunner.run(['--version']),
+        );
         expect(result, equals(ExitCode.success.code));
         verify(
           () => logger.info(
@@ -87,14 +90,18 @@ Shorebird Engine • revision ${ShorebirdEnvironment.shorebirdEngineRevision}'''
 
     group('--verbose', () {
       test('enables verbose logging', () async {
-        final result = await runCommand(['--verbose']);
+        final result = await runWithOverrides(
+          () => commandRunner.run(['--verbose']),
+        );
         expect(result, equals(ExitCode.success.code));
       });
     });
 
     group('completion', () {
       test('fast tracks completion', () async {
-        final result = await runCommand(['completion']);
+        final result = await runWithOverrides(
+          () => commandRunner.run(['completion']),
+        );
         expect(result, equals(ExitCode.success.code));
       });
     });
