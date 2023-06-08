@@ -405,7 +405,7 @@ https://github.com/shorebirdtech/shorebird/issues/472
         () => logger.info(
           any(
             that: contains(
-              '''🕹️  Platform: ${lightCyan.wrap(platform)} ${lightCyan.wrap('[arm64 (0 B)]')}''',
+              '''🕹️  Platform: ${lightCyan.wrap(platform)} ${lightCyan.wrap('[aarch64 (0 B)]')}''',
             ),
           ),
         ),
