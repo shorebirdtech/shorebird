@@ -2,6 +2,22 @@
 
 This section contains past updates we've sent to customers via Discord.
 
+## 0.4.1 (June 7, 2023)
+
+We've just released Shorebird CLI v0.4.1 🎉
+
+✨ The most notable changes are:
+
+- 🐦 Support for Flutter 3.10.3
+- 🍎 Additional iOS preparation
+- 🧹 refactors to improve consistency of CLI output
+
+📚 Release notes can be found at https://github.com/shorebirdtech/shorebird/releases/tag/v0.4.1
+
+As always, you can upgrade using `shorebird upgrade`
+
+Please let us know if we can help!
+
 ## 0.4.0 (June 2, 2023)
 
 We've just released Shorebird CLI v0.4.0 🎉
