@@ -124,23 +124,4 @@ mixin ShorebirdCodePushClientMixin on ShorebirdConfigMixin {
     fetchReleaseArtifactProgress.complete();
     return releaseArtifacts;
   }
-
-  Future<Patch> createPatch({required int releaseId}) async {
-    final codePushClient = buildCodePushClient(
-      httpClient: auth.client,
-      hostedUri: hostedUri,
-    );
-
-    final Patch patch;
-    final createPatchProgress = logger.progress('Creating patch');
-    try {
-      patch = await codePushClient.createPatch(releaseId: releaseId);
-      createPatchProgress.complete();
-    } catch (error) {
-      createPatchProgress.fail('$error');
-      rethrow;
-    }
-
-    return patch;
-  }
 }
