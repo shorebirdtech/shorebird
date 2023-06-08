@@ -8,6 +8,7 @@ import 'package:path/path.dart' as p;
 import 'package:platform/platform.dart';
 import 'package:shorebird_cli/src/archive_analysis/archive_analysis.dart';
 import 'package:shorebird_cli/src/auth/auth.dart';
+import 'package:shorebird_cli/src/code_push_client_wrapper.dart';
 import 'package:shorebird_cli/src/commands/commands.dart';
 import 'package:shorebird_cli/src/shorebird_environment.dart';
 import 'package:shorebird_cli/src/shorebird_process.dart';
@@ -21,6 +22,9 @@ class _MockHttpClient extends Mock implements http.Client {}
 
 class _MockAuth extends Mock implements Auth {}
 
+class _MockCodePushClientWrapper extends Mock
+    implements CodePushClientWrapper {}
+
 class _MockIpa extends Mock implements Ipa {}
 
 class _MockIpaReader extends Mock implements IpaReader {}
@@ -32,8 +36,6 @@ class _MockPlatform extends Mock implements Platform {}
 class _MockProgress extends Mock implements Progress {}
 
 class _MockProcessResult extends Mock implements ShorebirdProcessResult {}
-
-class _MockCodePushClient extends Mock implements CodePushClient {}
 
 class _MockShorebirdFlutterValidator extends Mock
     implements ShorebirdFlutterValidator {}
@@ -71,6 +73,7 @@ flutter:
 
     late ArgResults argResults;
     late http.Client httpClient;
+    late CodePushClientWrapper codePushClientWrapper;
     late Directory shorebirdRoot;
     late Platform environmentPlatform;
     late Auth auth;
@@ -80,9 +83,7 @@ flutter:
     late Logger logger;
     late ShorebirdProcessResult flutterBuildProcessResult;
     late ShorebirdProcessResult flutterRevisionProcessResult;
-    late CodePushClient codePushClient;
     late ReleaseIosCommand command;
-    late Uri? capturedHostedUri;
     late ShorebirdFlutterValidator flutterValidator;
     late ShorebirdProcess shorebirdProcess;
 
@@ -100,6 +101,7 @@ flutter:
 
     setUp(() {
       argResults = _MockArgResults();
+      codePushClientWrapper = _MockCodePushClientWrapper();
       httpClient = _MockHttpClient();
       environmentPlatform = _MockPlatform();
       shorebirdRoot = Directory.systemTemp.createTempSync();
@@ -110,7 +112,6 @@ flutter:
       logger = _MockLogger();
       flutterBuildProcessResult = _MockProcessResult();
       flutterRevisionProcessResult = _MockProcessResult();
-      codePushClient = _MockCodePushClient();
       flutterValidator = _MockShorebirdFlutterValidator();
       shorebirdProcess = _MockShorebirdProcess();
 
@@ -164,13 +165,16 @@ flutter:
         () => flutterRevisionProcessResult.stdout,
       ).thenReturn(flutterRevision);
       when(
-        () => codePushClient.getApps(),
-      ).thenAnswer((_) async => [appMetadata]);
+        () => codePushClientWrapper.getApp(appId: any(named: 'appId')),
+      ).thenAnswer((_) async => appMetadata);
       when(
-        () => codePushClient.getReleases(appId: any(named: 'appId')),
-      ).thenAnswer((_) async => []);
+        () => codePushClientWrapper.maybeGetRelease(
+          appId: any(named: 'appId'),
+          releaseVersion: any(named: 'releaseVersion'),
+        ),
+      ).thenAnswer((_) async => null);
       when(
-        () => codePushClient.createRelease(
+        () => codePushClientWrapper.createRelease(
           appId: any(named: 'appId'),
           version: any(named: 'version'),
           flutterRevision: any(named: 'flutterRevision'),
@@ -180,13 +184,7 @@ flutter:
 
       command = ReleaseIosCommand(
         auth: auth,
-        buildCodePushClient: ({
-          required http.Client httpClient,
-          Uri? hostedUri,
-        }) {
-          capturedHostedUri = hostedUri;
-          return codePushClient;
-        },
+        codePushClientWrapper: codePushClientWrapper,
         ipaReader: ipaReader,
         logger: logger,
         validators: [flutterValidator],
@@ -222,42 +220,6 @@ flutter:
         getCurrentDirectory: () => tempDir,
       );
       expect(exitCode, equals(ExitCode.noUser.code));
-    });
-
-    test('throws error when fetching apps fails.', () async {
-      const error = 'something went wrong';
-      when(() => codePushClient.getApps()).thenThrow(error);
-      final tempDir = setUpTempDir();
-
-      final exitCode = await IOOverrides.runZoned(
-        command.run,
-        getCurrentDirectory: () => tempDir,
-      );
-
-      verify(() => progress.fail(error)).called(1);
-      expect(exitCode, ExitCode.software.code);
-    });
-
-    test('throws error when app does not exist.', () async {
-      when(
-        () => logger.prompt(any(), defaultValue: any(named: 'defaultValue')),
-      ).thenReturn(appDisplayName);
-      when(() => codePushClient.getApps()).thenAnswer((_) async => []);
-      final tempDir = setUpTempDir();
-
-      final exitCode = await IOOverrides.runZoned(
-        command.run,
-        getCurrentDirectory: () => tempDir,
-      );
-
-      verify(
-        () => logger.err(
-          '''
-Could not find app with id: "$appId".
-Did you forget to run "shorebird init"?''',
-        ),
-      ).called(1);
-      expect(exitCode, ExitCode.software.code);
     });
 
     test('exits with code 70 when building fails', () async {
@@ -314,7 +276,6 @@ Did you forget to run "shorebird init"?''',
       );
 
       expect(exitCode, ExitCode.success.code);
-      expect(capturedHostedUri, isNull);
       verify(
         () => logger.info(any(that: contains('Flutter issue 1'))),
       ).called(1);
@@ -355,21 +316,6 @@ Did you forget to run "shorebird init"?''',
       verify(() => logger.info('Aborting.')).called(1);
     });
 
-    test('throws error when fetching releases fails.', () async {
-      const error = 'something went wrong';
-      when(
-        () => codePushClient.getReleases(appId: any(named: 'appId')),
-      ).thenThrow(error);
-      final tempDir = setUpTempDir();
-
-      final exitCode = await IOOverrides.runZoned(
-        command.run,
-        getCurrentDirectory: () => tempDir,
-      );
-      verify(() => progress.fail(error)).called(1);
-      expect(exitCode, ExitCode.software.code);
-    });
-
     test('throws error when unable to detect flutter revision', () async {
       const error = 'oops';
       when(() => flutterRevisionProcessResult.exitCode).thenReturn(1);
@@ -390,8 +336,11 @@ Did you forget to run "shorebird init"?''',
 
     test('throws error when existing releases exists.', () async {
       when(
-        () => codePushClient.getReleases(appId: any(named: 'appId')),
-      ).thenAnswer((_) async => [release]);
+        () => codePushClientWrapper.maybeGetRelease(
+          appId: any(named: 'appId'),
+          releaseVersion: any(named: 'releaseVersion'),
+        ),
+      ).thenAnswer((_) async => release);
       final tempDir = setUpTempDir();
 
       final exitCode = await IOOverrides.runZoned(
@@ -404,27 +353,6 @@ Did you forget to run "shorebird init"?''',
 It looks like you have an existing release for version ${lightCyan.wrap(release.version)}.
 Please bump your version number and try again.'''),
       ).called(1);
-      expect(exitCode, ExitCode.software.code);
-    });
-
-    test('throws error when creating release fails.', () async {
-      const error = 'something went wrong';
-      when(
-        () => codePushClient.createRelease(
-          appId: any(named: 'appId'),
-          version: any(named: 'version'),
-          flutterRevision: any(named: 'flutterRevision'),
-          displayName: any(named: 'displayName'),
-        ),
-      ).thenThrow(error);
-      final tempDir = setUpTempDir();
-
-      final exitCode = await IOOverrides.runZoned(
-        command.run,
-        getCurrentDirectory: () => tempDir,
-      );
-
-      verify(() => progress.fail(error)).called(1);
       expect(exitCode, ExitCode.software.code);
     });
 
@@ -442,7 +370,6 @@ Please bump your version number and try again.'''),
 
       verify(() => logger.success('\n✅ Published Release!')).called(1);
       expect(exitCode, ExitCode.success.code);
-      expect(capturedHostedUri, isNull);
       verifyNever(
         () => logger.prompt(any(), defaultValue: any(named: 'defaultValue')),
       );
@@ -458,7 +385,6 @@ Please bump your version number and try again.'''),
 
       verify(() => logger.success('\n✅ Published Release!')).called(1);
       expect(exitCode, ExitCode.success.code);
-      expect(capturedHostedUri, isNull);
     });
 
     test(
@@ -483,7 +409,6 @@ flavors:
 
       verify(() => logger.success('\n✅ Published Release!')).called(1);
       expect(exitCode, ExitCode.success.code);
-      expect(capturedHostedUri, isNull);
     });
   });
 }
