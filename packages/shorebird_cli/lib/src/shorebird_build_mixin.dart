@@ -33,9 +33,6 @@ class BuildException implements Exception {
 
   /// Information about the build failure.
   final String message;
-
-  @override
-  String toString() => message;
 }
 
 mixin ShorebirdBuildMixin on ShorebirdCommand {
