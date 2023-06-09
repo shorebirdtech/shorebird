@@ -432,6 +432,18 @@ Please bump your version number and try again.'''),
       );
 
       verify(() => logger.success('\n✅ Published Release!')).called(1);
+      verify(
+        () => logger.info(
+          any(
+            that: stringContainsInOrder(
+              [
+                'Your next step is to upload the ipa to App Store Connect.',
+                'build/ios/ipa/example.ipa',
+              ],
+            ),
+          ),
+        ),
+      ).called(1);
       expect(exitCode, ExitCode.success.code);
     });
 
@@ -456,6 +468,18 @@ flavors:
       );
 
       verify(() => logger.success('\n✅ Published Release!')).called(1);
+      verify(
+        () => logger.info(
+          any(
+            that: stringContainsInOrder(
+              [
+                'Your next step is to upload the ipa to App Store Connect.',
+                'build/ios/ipa/example.ipa',
+              ],
+            ),
+          ),
+        ),
+      ).called(1);
       expect(exitCode, ExitCode.success.code);
     });
   });
