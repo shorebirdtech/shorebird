@@ -24,6 +24,17 @@ class ArchMetadata {
   final String enginePath;
 }
 
+/// {@template build_exception}
+/// Thrown when a build fails.
+/// {@endtemplate}
+class BuildException implements Exception {
+  /// {@macro build_exception}
+  BuildException(this.message);
+
+  /// Information about the build failure.
+  final String message;
+}
+
 mixin ShorebirdBuildMixin on ShorebirdCommand {
   // This exists only so tests can get the full list.
   static const allAndroidArchitectures = <Arch, ArchMetadata>{
@@ -182,7 +193,40 @@ mixin ShorebirdBuildMixin on ShorebirdCommand {
         result.stderr.toString(),
         result.exitCode,
       );
+    } else if (result.stderr
+        .toString()
+        .contains('Encountered error while creating the IPA')) {
+      final errorMessage = _failedToCreateIpaErrorMessage(
+        stderr: result.stderr.toString(),
+      );
+
+      throw BuildException(errorMessage);
     }
+  }
+
+  String _failedToCreateIpaErrorMessage({required String stderr}) {
+    // The full error text consists of many repeated lines of the format:
+    // (newlines added for line length)
+    //
+    //    error: exportArchive: No signing certificate "iOS Distribution" found
+    //    error: exportArchive: Communication with Apple failed
+    //    error: exportArchive: No signing certificate "iOS Distribution" found
+    //    error: exportArchive: Team "My Team" does not have permission to
+    //      create "iOS App Store" provisioning profiles.
+    //    error: exportArchive: No profiles for 'com.example.demo' were found
+    //    error: exportArchive: Communication with Apple failed
+    //    error: exportArchive: No signing certificate "iOS Distribution" found
+    //    error: exportArchive: Communication with Apple failed
+    final exportArchiveRegex = RegExp(r'^error: exportArchive: (.+)$');
+
+    return stderr
+        .split('\n')
+        .map((l) => l.trim())
+        .toSet()
+        .map(exportArchiveRegex.firstMatch)
+        .whereType<Match>()
+        .map((m) => '    ${m.group(1)!}')
+        .join('\n');
   }
 
   Future<String> createDiff({

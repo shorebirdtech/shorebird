@@ -227,7 +227,8 @@ flutter:
       expect(exitCode, equals(ExitCode.noUser.code));
     });
 
-    test('exits with code 70 when building fails', () async {
+    test('exits with code 70 when build fails with non-zero exit code',
+        () async {
       when(() => flutterBuildProcessResult.exitCode).thenReturn(1);
       when(() => flutterBuildProcessResult.stderr).thenReturn('oops');
 
@@ -240,6 +241,43 @@ flutter:
       expect(exitCode, equals(ExitCode.software.code));
       verify(
         () => progress.fail(any(that: contains('Failed to build'))),
+      ).called(1);
+    });
+
+    test('exits with code 70 when building fails with 0 exit code', () async {
+      when(() => flutterBuildProcessResult.exitCode).thenReturn(0);
+      when(() => flutterBuildProcessResult.stderr).thenReturn('''
+Encountered error while creating the IPA:
+error: exportArchive: Communication with Apple failed
+error: exportArchive: No signing certificate "iOS Distribution" found
+error: exportArchive: Communication with Apple failed
+error: exportArchive: No signing certificate "iOS Distribution" found
+error: exportArchive: Team "My Team" does not have permission to create "iOS App Store" provisioning profiles.
+error: exportArchive: No profiles for 'com.example.co' were found
+error: exportArchive: Communication with Apple failed
+error: exportArchive: No signing certificate "iOS Distribution" found
+error: exportArchive: Communication with Apple failed
+error: exportArchive: No signing certificate "iOS Distribution" found
+error: exportArchive: Communication with Apple failed
+error: exportArchive: No signing certificate "iOS Distribution" found
+''');
+
+      final tempDir = setUpTempDir();
+      final exitCode = await IOOverrides.runZoned(
+        () => runWithOverrides(command.run),
+        getCurrentDirectory: () => tempDir,
+      );
+
+      expect(exitCode, equals(ExitCode.software.code));
+      verify(
+        () => progress.fail(any(that: contains('Failed to build'))),
+      ).called(1);
+      verify(
+        () => logger.err('''
+    Communication with Apple failed
+    No signing certificate "iOS Distribution" found
+    Team "My Team" does not have permission to create "iOS App Store" provisioning profiles.
+    No profiles for 'com.example.co' were found'''),
       ).called(1);
     });
 
