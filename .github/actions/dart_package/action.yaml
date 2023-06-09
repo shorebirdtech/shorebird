@@ -36,7 +36,7 @@ inputs:
     description: Platform to use when running tests
   secrets:
     required: true
-    description: GitHub secretes
+    description: GitHub secrets
 
 runs:
   using: "composite"
