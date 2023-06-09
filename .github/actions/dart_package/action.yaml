@@ -34,6 +34,9 @@ inputs:
     required: false
     default: "vm"
     description: Platform to use when running tests
+  secrets:
+    required: true
+    description: GitHub secretes
 
 runs:
   using: "composite"
@@ -64,10 +67,10 @@ runs:
         dart pub global activate coverage
         dart test -j ${{inputs.concurrency}} --coverage=coverage --platform=${{inputs.platform}} && dart pub global run coverage:format_coverage --lcov --in=coverage --out=coverage/lcov.info --packages=.dart_tool/package_config.json --report-on=${{inputs.report_on}} --check-ignore
 
-    # - name: Upload Coverage
-    #   uses: codecov/codecov-action@v3
-    #   with:
-    #     token: ${{ secrets.CODECOV_TOKEN }}
+    - name: Upload Coverage
+      uses: codecov/codecov-action@v3
+      with:
+        token: ${{ secrets.CODECOV_TOKEN }}
 
     - uses: VeryGoodOpenSource/very_good_coverage@v2
       with:
