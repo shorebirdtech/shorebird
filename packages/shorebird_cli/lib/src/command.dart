@@ -117,7 +117,8 @@ abstract class ShorebirdCommand extends Command<int> {
   }
 
   Uri? get hostedUri {
-    // TODO(bryanoltman): maybe look for an environment variable instead of reading shorebird.yaml?
+    // TODO(bryanoltman): maybe look for an environment variable instead of
+    // reading shorebird.yaml?
     try {
       final baseUrl = getShorebirdYaml()?.baseUrl;
       return baseUrl == null ? null : Uri.tryParse(baseUrl);
