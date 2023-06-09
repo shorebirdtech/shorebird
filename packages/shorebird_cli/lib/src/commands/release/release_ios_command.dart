@@ -75,7 +75,11 @@ make smaller updates to your app.
     try {
       await buildIpa(flavor: flavor);
     } on ProcessException catch (error) {
-      buildProgress.fail('Failed to build: ${error.message}');
+      buildProgress.fail('Failed to build IPA: ${error.message}');
+      return ExitCode.software.code;
+    } on BuildException catch (error) {
+      buildProgress.fail('Failed to build IPA');
+      logger.err(error.message);
       return ExitCode.software.code;
     }
 
