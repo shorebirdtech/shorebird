@@ -483,6 +483,19 @@ https://github.com/shorebirdtech/shorebird/issues/472
       ).called(1);
     });
 
+    test('prints release version when detected', () async {
+      final tempDir = setUpTempDir();
+      setUpTempArtifacts(tempDir);
+      final exitCode = await IOOverrides.runZoned(
+        () => runWithOverrides(command.run),
+        getCurrentDirectory: () => tempDir,
+      );
+
+      expect(exitCode, equals(ExitCode.success.code));
+      verify(() => progress.complete('Detected release version 1.2.3+1'))
+          .called(1);
+    });
+
     test('throws error when release artifact does not exist.', () async {
       when(() => httpClient.send(any())).thenAnswer(
         (_) async => http.StreamedResponse(
