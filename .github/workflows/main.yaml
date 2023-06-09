@@ -6,6 +6,7 @@ concurrency:
 
 on:
   pull_request:
+  push:
     branches:
       - main
 
@@ -37,38 +38,38 @@ jobs:
           filters: |
             artifact_proxy:
               - ./.github/workflows/main.yaml
-              - ./.github/actions/dart_package
+              - ./.github/actions/dart_package/action.yaml
               - packages/artifact_proxy/**
             cutler:
               - ./.github/workflows/main.yaml
-              - ./.github/actions/dart_package
+              - ./.github/actions/dart_package/action.yaml
               - packages/cutler/**
             discord_gcp_alerts:
               - ./.github/workflows/main.yaml
-              - ./.github/actions/dart_package
+              - ./.github/actions/dart_package/action.yaml
               - packages/discord_gcp_alerts/**
             shorebird_cli:
               - ./.github/workflows/main.yaml
-              - ./.github/actions/dart_package
+              - ./.github/actions/dart_package/action.yaml
               - packages/shorebird_cli/**
               - packages/shorebird_code_push_client/**
               - packages/shorebird_code_push_protocol/**
             shorebird_code_push_client:
               - ./.github/workflows/main.yaml
-              - ./.github/actions/dart_package
+              - ./.github/actions/dart_package/action.yaml
               - packages/shorebird_code_push_client/**
               - packages/shorebird_code_push_protocol/**
             shorebird_code_push_protocol:
               - ./.github/workflows/main.yaml
-              - ./.github/actions/dart_package
+              - ./.github/actions/dart_package/action.yaml
               - packages/shorebird_code_push_protocol/**
             jwt:
               - ./.github/workflows/main.yaml
-              - ./.github/actions/dart_package
+              - ./.github/actions/dart_package/action.yaml
               - packages/jwt/**
             scoped:
               - ./.github/workflows/main.yaml
-              - ./.github/actions/dart_package
+              - ./.github/actions/dart_package/action.yaml
               - packages/scoped/**
 
       - uses: dorny/paths-filter@v2
@@ -100,6 +101,7 @@ jobs:
       - name: 🎯 Build ${{ matrix.package }}
         uses: ./.github/actions/dart_package
         with:
+          codecov_token: ${{ secrets.CODECOV_TOKEN }}
           working_directory: packages/${{ matrix.package }}
           min_coverage: ${{ matrix.package == 'cutler' && '10' || '100' }}
 
