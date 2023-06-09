@@ -10,7 +10,7 @@ We've just released Shorebird CLI v0.4.2 🎉
 
 - 🐦 Support for Flutter 3.10.4
 - 🍎 Additional iOS preparation
-- 📈 Codecov in enabled
+- 📈 Codecov is enabled
 
 📚 Release notes can be found at https://github.com/shorebirdtech/shorebird/releases/tag/v0.4.2
 
