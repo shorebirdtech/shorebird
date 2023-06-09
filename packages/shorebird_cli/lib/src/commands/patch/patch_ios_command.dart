@@ -59,7 +59,10 @@ class PatchIosCommand extends ShorebirdCommand
   }
 
   @override
-  String get name => 'ios-preview';
+  bool get hidden => true;
+
+  @override
+  String get name => 'ios';
 
   @override
   String get description =>

@@ -40,6 +40,9 @@ class ReleaseIosCommand extends ShorebirdCommand
   final IpaReader _ipaReader;
 
   @override
+  bool get hidden => true;
+
+  @override
   String get description => '''
 Builds and submits your iOS app to Shorebird.
 Shorebird saves the compiled Dart code from your application in order to
@@ -47,7 +50,7 @@ make smaller updates to your app.
 ''';
 
   @override
-  String get name => 'ios-preview';
+  String get name => 'ios';
 
   @override
   Future<int> run() async {
