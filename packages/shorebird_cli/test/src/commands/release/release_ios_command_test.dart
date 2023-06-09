@@ -203,6 +203,10 @@ flutter:
       expect(command.description, isNotEmpty);
     });
 
+    test('is hidden', () {
+      expect(command.hidden, isTrue);
+    });
+
     test('throws config error when shorebird is not initialized', () async {
       final tempDir = Directory.systemTemp.createTempSync();
       final exitCode = await IOOverrides.runZoned(

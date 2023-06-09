@@ -217,6 +217,10 @@ flutter:
       expect(command.description, isNotEmpty);
     });
 
+    test('is hidden', () {
+      expect(command.hidden, isTrue);
+    });
+
     test('throws no user error when user is not logged in', () async {
       when(() => auth.isAuthenticated).thenReturn(false);
       final tempDir = setUpTempDir();
