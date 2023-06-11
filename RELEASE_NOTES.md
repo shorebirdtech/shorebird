@@ -2,6 +2,20 @@
 
 This section contains past updates we've sent to customers via Discord.
 
+## 0.4.3 (June 10, 2023)
+
+We've just released Shorebird CLI v0.4.3 🎉
+
+✨ The most notable changes are:
+
+- 🩹 Hotfix for issue where `shorebird android release` did not work with build flavors.
+
+📚 Release notes can be found at https://github.com/shorebirdtech/shorebird/releases/tag/v0.4.3
+
+As always, you can upgrade using `shorebird upgrade`
+
+Please let us know if we can help!
+
 ## 0.4.2 (June 9, 2023)
 
 We've just released Shorebird CLI v0.4.2 🎉
