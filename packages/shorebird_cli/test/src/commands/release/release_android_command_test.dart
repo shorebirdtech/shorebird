@@ -458,6 +458,7 @@ flavors:
           platform: platform,
           aabPath: any(named: 'aabPath'),
           architectures: any(named: 'architectures'),
+          flavor: flavor,
         ),
       ).called(1);
       expect(exitCode, ExitCode.success.code);
