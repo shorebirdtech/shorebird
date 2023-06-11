@@ -169,6 +169,7 @@ Please bump your version number and try again.''',
       aabPath: bundlePath,
       platform: platform,
       architectures: architectures,
+      flavor: flavor,
     );
 
     logger
