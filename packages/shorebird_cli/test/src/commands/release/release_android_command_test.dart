@@ -218,6 +218,7 @@ flutter:
           aabPath: any(named: 'aabPath'),
           platform: any(named: 'platform'),
           architectures: any(named: 'architectures'),
+          flavor: any(named: 'flavor'),
         ),
       ).thenAnswer((_) async {});
       when(() => flutterValidator.validate(any())).thenAnswer((_) async => []);
