@@ -1,6 +1,5 @@
 import 'dart:io';
 
-import 'package:path/path.dart' as p;
 import 'package:shorebird_cli/src/shorebird_process.dart';
 import 'package:shorebird_cli/src/validators/validators.dart';
 
@@ -8,8 +7,7 @@ import 'package:shorebird_cli/src/validators/validators.dart';
 class ShorebirdVersionValidator extends Validator {
   ShorebirdVersionValidator({required this.isShorebirdVersionCurrent});
 
-  final Future<bool> Function({required String workingDirectory})
-      isShorebirdVersionCurrent;
+  final Future<bool> Function() isShorebirdVersionCurrent;
 
   // coverage:ignore-start
   @override
@@ -18,13 +16,10 @@ class ShorebirdVersionValidator extends Validator {
 
   @override
   Future<List<ValidationIssue>> validate(ShorebirdProcess process) async {
-    final workingDirectory = p.dirname(Platform.script.toFilePath());
     final bool isShorebirdUpToDate;
 
     try {
-      isShorebirdUpToDate = await isShorebirdVersionCurrent(
-        workingDirectory: workingDirectory,
-      );
+      isShorebirdUpToDate = await isShorebirdVersionCurrent();
     } on ProcessException catch (e) {
       return [
         ValidationIssue(

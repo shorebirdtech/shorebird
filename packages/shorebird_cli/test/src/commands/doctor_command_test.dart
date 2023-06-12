@@ -6,6 +6,7 @@ import 'package:shorebird_cli/src/commands/commands.dart';
 import 'package:shorebird_cli/src/logger.dart';
 import 'package:shorebird_cli/src/shorebird_environment.dart';
 import 'package:shorebird_cli/src/shorebird_process.dart';
+import 'package:shorebird_cli/src/upgrader.dart' hide upgrader;
 import 'package:shorebird_cli/src/validators/validators.dart';
 import 'package:test/test.dart';
 
@@ -26,8 +27,10 @@ class _MockProgress extends Mock implements Progress {}
 
 class _MockShorebirdProcess extends Mock implements ShorebirdProcess {}
 
+class _MockUpgrader extends Mock implements Upgrader {}
+
 void main() {
-  group('doctor', () {
+  group(DoctorCommand, () {
     const androidValidatorDescription = 'Android';
 
     late ArgResults argResults;
@@ -38,15 +41,23 @@ void main() {
     late ShorebirdVersionValidator shorebirdVersionValidator;
     late ShorebirdFlutterValidator shorebirdFlutterValidator;
     late ShorebirdProcess shorebirdProcess;
+    late Upgrader upgrader;
 
     R runWithOverrides<R>(R Function() body) {
-      return runScoped(body, values: {loggerRef.overrideWith(() => logger)});
+      return runScoped(
+        body,
+        values: {
+          loggerRef.overrideWith(() => logger),
+          upgraderRef.overrideWith(() => upgrader),
+        },
+      );
     }
 
     setUp(() {
       argResults = _MockArgResults();
       logger = _MockLogger();
       progress = _MockProgress();
+      upgrader = _MockUpgrader();
 
       ShorebirdEnvironment.shorebirdEngineRevision = 'test-revision';
 
@@ -80,8 +91,10 @@ void main() {
           .thenReturn('$ShorebirdFlutterValidator');
       when(() => shorebirdFlutterValidator.description)
           .thenReturn('Shorebird Flutter');
-      when(() => shorebirdFlutterValidator.validate(any()))
-          .thenAnswer((_) async => []);
+      when(
+        () => shorebirdFlutterValidator.validate(any()),
+      ).thenAnswer((_) async => []);
+      when(() => upgrader.isUpToDate()).thenAnswer((_) async => true);
 
       command = runWithOverrides(
         () => DoctorCommand(

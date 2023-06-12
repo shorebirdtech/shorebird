@@ -3,7 +3,7 @@ import 'package:mason_logger/mason_logger.dart';
 import 'package:shorebird_cli/src/command.dart';
 import 'package:shorebird_cli/src/logger.dart';
 import 'package:shorebird_cli/src/shorebird_environment.dart';
-import 'package:shorebird_cli/src/shorebird_version_mixin.dart';
+import 'package:shorebird_cli/src/upgrader.dart';
 import 'package:shorebird_cli/src/validators/validators.dart';
 import 'package:shorebird_cli/src/version.dart';
 
@@ -12,7 +12,7 @@ import 'package:shorebird_cli/src/version.dart';
 /// A command that checks for potential issues with the current shorebird
 /// environment.
 /// {@endtemplate}
-class DoctorCommand extends ShorebirdCommand with ShorebirdVersionMixin {
+class DoctorCommand extends ShorebirdCommand {
   /// {@macro doctor_command}
   DoctorCommand({super.validators}) {
     validators = _allValidators(baseValidators: validators);
@@ -27,7 +27,7 @@ class DoctorCommand extends ShorebirdCommand with ShorebirdVersionMixin {
 
   late final List<Validator> _doctorValidators = [
     ShorebirdVersionValidator(
-      isShorebirdVersionCurrent: isShorebirdVersionCurrent,
+      isShorebirdVersionCurrent: upgrader.isUpToDate,
     ),
     ShorebirdFlutterValidator(),
     AndroidInternetPermissionValidator(),

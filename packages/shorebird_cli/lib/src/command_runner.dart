@@ -69,7 +69,6 @@ class ShorebirdCliCommandRunner extends CompletionCommandRunner<int> {
     addCommand(ReleasesCommand());
     addCommand(RunCommand());
     addCommand(SubscriptionCommand());
-    addCommand(UpgradeCommand());
   }
 
   @override
