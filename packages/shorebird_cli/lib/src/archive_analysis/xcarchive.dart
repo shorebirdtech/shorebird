@@ -4,7 +4,12 @@ import 'package:collection/collection.dart';
 import 'package:path/path.dart' as p;
 import 'package:propertylistserialization/propertylistserialization.dart';
 
+/// {@template xcarchive_reader}
+/// Wraps the [Xcarchive] class to make it easier to test.
+/// {@endtemplate}
 class XcarchiveReader {
+  /// Determines the location of the .xcarchive file from the project root and
+  /// returns an [Xcarchive] object.
   Xcarchive xcarchiveFromProjectRoot(String projectRoot) {
     final workspaceRoot = p.join(projectRoot, 'ios');
     final workspace = Directory(workspaceRoot)
@@ -33,7 +38,11 @@ class XcarchiveReader {
   }
 }
 
+/// {@template xcarchive}
+/// A utility to extract version information from an .xcarchive file.
+/// {@endtemplate}
 class Xcarchive {
+  /// {@macro xcarchive}
   Xcarchive({required String path}) : _file = File(path);
 
   final File _file;
