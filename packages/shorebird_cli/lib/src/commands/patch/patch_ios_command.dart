@@ -135,7 +135,7 @@ class PatchIosCommand extends ShorebirdCommand
       final xcarchive = _xcarchiveReader.xcarchiveFromProjectRoot(
         Directory.current.path,
       );
-      releaseVersion = xcarchive!.versionNumber;
+      releaseVersion = xcarchive.versionNumber;
       detectReleaseVersionProgress.complete(
         'Detected release version $releaseVersion',
       );

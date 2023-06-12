@@ -102,9 +102,6 @@ make smaller updates to your app.
       final xcarchive = _xcarchiveReader.xcarchiveFromProjectRoot(
         Directory.current.path,
       );
-      if (xcarchive == null) {
-        throw Exception('Failed to find xcarchive at');
-      }
       releaseVersion = xcarchive.versionNumber;
     } catch (error) {
       releaseVersionProgress.fail(
