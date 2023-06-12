@@ -3,7 +3,6 @@ import 'dart:io';
 
 import 'package:crypto/crypto.dart';
 import 'package:mason_logger/mason_logger.dart';
-import 'package:path/path.dart' as p;
 import 'package:shorebird_cli/src/archive_analysis/archive_analysis.dart';
 import 'package:shorebird_cli/src/code_push_client_wrapper.dart';
 import 'package:shorebird_cli/src/command.dart';
@@ -31,9 +30,9 @@ class PatchIosCommand extends ShorebirdCommand
     super.codePushClientWrapper,
     super.validators,
     HashFunction? hashFn,
-    IpaReader? ipaReader,
+    XcarchiveReader? xcarchiveReader,
   })  : _hashFn = hashFn ?? ((m) => sha256.convert(m).toString()),
-        _ipaReader = ipaReader ?? IpaReader() {
+        _xcarchiveReader = xcarchiveReader ?? XcarchiveReader() {
     argParser
       ..addOption(
         'target',
@@ -69,7 +68,7 @@ class PatchIosCommand extends ShorebirdCommand
       'Publish new patches for a specific iOS release to Shorebird.';
 
   final HashFunction _hashFn;
-  final IpaReader _ipaReader;
+  final XcarchiveReader _xcarchiveReader;
 
   @override
   Future<int> run() async {
@@ -115,6 +114,7 @@ class PatchIosCommand extends ShorebirdCommand
     final File aotFile;
     try {
       final newestDillFile = newestAppDill();
+      logger.detail('Newest dill file is ${newestDillFile.path}');
       aotFile = await buildElfAotSnapshot(appDillPath: newestDillFile.path);
     } catch (error) {
       buildProgress.fail('$error');
@@ -129,17 +129,13 @@ class PatchIosCommand extends ShorebirdCommand
       'Detecting release version',
     );
     try {
-      final pubspec = getPubspecYaml()!;
-      final ipa = _ipaReader.read(
-        p.join(
-          Directory.current.path,
-          'build',
-          'ios',
-          'ipa',
-          '${pubspec.name}.ipa',
-        ),
+      // Building an ipa generates an ipa and an xcarchive. The xcrun command
+      // will sometimes auto-increment the build number in the ipa file, so we
+      // determine the version number from the xcarchive's Info.plist.
+      final xcarchive = _xcarchiveReader.xcarchiveFromProjectRoot(
+        Directory.current.path,
       );
-      releaseVersion = ipa.versionNumber;
+      releaseVersion = xcarchive!.versionNumber;
       detectReleaseVersionProgress.complete(
         'Detected release version $releaseVersion',
       );

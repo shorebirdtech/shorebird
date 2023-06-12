@@ -26,9 +26,9 @@ class _MockAuth extends Mock implements Auth {}
 class _MockCodePushClientWrapper extends Mock
     implements CodePushClientWrapper {}
 
-class _MockIpaReader extends Mock implements IpaReader {}
+class _MockXcarchiveReader extends Mock implements XcarchiveReader {}
 
-class _MockIpa extends Mock implements Ipa {}
+class _MockXcarchive extends Mock implements Xcarchive {}
 
 class _MockLogger extends Mock implements Logger {}
 
@@ -77,8 +77,8 @@ flutter:
     late ArgResults argResults;
     late Auth auth;
     late CodePushClientWrapper codePushClientWrapper;
-    late Ipa ipa;
-    late IpaReader ipaReader;
+    late Xcarchive xcarchive;
+    late XcarchiveReader xcarchiveReader;
     late Progress progress;
     late Logger logger;
     late ShorebirdProcessResult aotBuildProcessResult;
@@ -130,8 +130,8 @@ flutter:
       argResults = _MockArgResults();
       auth = _MockAuth();
       codePushClientWrapper = _MockCodePushClientWrapper();
-      ipaReader = _MockIpaReader();
-      ipa = _MockIpa();
+      xcarchive = _MockXcarchive();
+      xcarchiveReader = _MockXcarchiveReader();
       progress = _MockProgress();
       logger = _MockLogger();
       aotBuildProcessResult = _MockProcessResult();
@@ -165,8 +165,9 @@ flutter:
           patchArtifactBundles: any(named: 'patchArtifactBundles'),
         ),
       ).thenAnswer((_) async {});
-      when(() => ipa.versionNumber).thenReturn(version);
-      when(() => ipaReader.read(any())).thenReturn(ipa);
+      when(() => xcarchive.versionNumber).thenReturn(version);
+      when(() => xcarchiveReader.xcarchiveFromProjectRoot(any()))
+          .thenReturn(xcarchive);
       when(() => flutterValidator.validate(any())).thenAnswer((_) async => []);
       when(() => logger.confirm(any())).thenReturn(true);
       when(() => logger.progress(any())).thenReturn(progress);
@@ -205,8 +206,8 @@ flutter:
       command = PatchIosCommand(
         auth: auth,
         codePushClientWrapper: codePushClientWrapper,
-        ipaReader: ipaReader,
         validators: [flutterValidator],
+        xcarchiveReader: xcarchiveReader,
       )
         ..testArgResults = argResults
         ..testProcess = shorebirdProcess
@@ -327,7 +328,7 @@ https://github.com/shorebirdtech/shorebird/issues/472
 
     test('exits with code 70 when release version cannot be determiend',
         () async {
-      when(() => ipa.versionNumber).thenThrow(Exception('oops'));
+      when(() => xcarchive.versionNumber).thenThrow(Exception('oops'));
 
       final tempDir = setUpTempDir();
       setUpTempArtifacts(tempDir);

@@ -22,8 +22,8 @@ class ReleaseIosCommand extends ShorebirdCommand
     super.codePushClientWrapper,
     super.cache,
     super.validators,
-    IpaReader? ipaReader,
-  }) : _ipaReader = ipaReader ?? IpaReader() {
+    XcarchiveReader? xcarchiveReader,
+  }) : _xcarchiveReader = xcarchiveReader ?? XcarchiveReader() {
     argParser
       ..addOption(
         'flavor',
@@ -37,7 +37,7 @@ class ReleaseIosCommand extends ShorebirdCommand
       );
   }
 
-  final IpaReader _ipaReader;
+  final XcarchiveReader _xcarchiveReader;
 
   @override
   bool get hidden => true;
@@ -99,8 +99,13 @@ make smaller updates to your app.
     );
     String releaseVersion;
     try {
-      final ipa = _ipaReader.read(ipaPath);
-      releaseVersion = ipa.versionNumber;
+      final xcarchive = _xcarchiveReader.xcarchiveFromProjectRoot(
+        Directory.current.path,
+      );
+      if (xcarchive == null) {
+        throw Exception('Failed to find xcarchive at');
+      }
+      releaseVersion = xcarchive.versionNumber;
     } catch (error) {
       releaseVersionProgress.fail(
         'Failed to determine release version: $error',

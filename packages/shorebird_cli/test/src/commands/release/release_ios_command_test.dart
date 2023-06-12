@@ -27,9 +27,9 @@ class _MockAuth extends Mock implements Auth {}
 class _MockCodePushClientWrapper extends Mock
     implements CodePushClientWrapper {}
 
-class _MockIpa extends Mock implements Ipa {}
+class _MockXcarchiveReader extends Mock implements XcarchiveReader {}
 
-class _MockIpaReader extends Mock implements IpaReader {}
+class _MockXcarchive extends Mock implements Xcarchive {}
 
 class _MockLogger extends Mock implements Logger {}
 
@@ -79,8 +79,8 @@ flutter:
     late Directory shorebirdRoot;
     late Platform environmentPlatform;
     late Auth auth;
-    late IpaReader ipaReader;
-    late Ipa ipa;
+    late Xcarchive xcarchive;
+    late XcarchiveReader xcarchiveReader;
     late Progress progress;
     late Logger logger;
     late ShorebirdProcessResult flutterBuildProcessResult;
@@ -112,8 +112,8 @@ flutter:
       environmentPlatform = _MockPlatform();
       shorebirdRoot = Directory.systemTemp.createTempSync();
       auth = _MockAuth();
-      ipa = _MockIpa();
-      ipaReader = _MockIpaReader();
+      xcarchive = _MockXcarchive();
+      xcarchiveReader = _MockXcarchiveReader();
       progress = _MockProgress();
       logger = _MockLogger();
       flutterBuildProcessResult = _MockProcessResult();
@@ -154,8 +154,9 @@ flutter:
       when(() => argResults['platform']).thenReturn(platform);
       when(() => auth.isAuthenticated).thenReturn(true);
       when(() => auth.client).thenReturn(httpClient);
-      when(() => ipaReader.read(any())).thenReturn(ipa);
-      when(() => ipa.versionNumber).thenReturn(version);
+      when(() => xcarchiveReader.xcarchiveFromProjectRoot(any()))
+          .thenReturn(xcarchive);
+      when(() => xcarchive.versionNumber).thenReturn(version);
       when(() => logger.progress(any())).thenReturn(progress);
       when(() => logger.confirm(any())).thenReturn(true);
       when(
@@ -191,8 +192,8 @@ flutter:
       command = ReleaseIosCommand(
         auth: auth,
         codePushClientWrapper: codePushClientWrapper,
-        ipaReader: ipaReader,
         validators: [flutterValidator],
+        xcarchiveReader: xcarchiveReader,
       )
         ..testArgResults = argResults
         ..testProcess = shorebirdProcess
@@ -287,7 +288,7 @@ error: exportArchive: No signing certificate "iOS Distribution" found
 
     test('exits with code 70 when release version cannot be determiend',
         () async {
-      when(() => ipa.versionNumber).thenThrow(Exception('oops'));
+      when(() => xcarchive.versionNumber).thenThrow(Exception('oops'));
 
       final tempDir = setUpTempDir();
       final exitCode = await IOOverrides.runZoned(
