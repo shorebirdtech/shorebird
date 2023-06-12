@@ -54,6 +54,7 @@ void main() {
   const arch = 'aarch64';
   const appDisplayName = 'Test App';
   const platform = 'ios';
+  const elfAotSnapshotFileName = 'out.aot';
   const pubspecYamlContent = '''
 name: example
 version: $version
@@ -118,7 +119,7 @@ flutter:
       File(
         p.join(dir.path, '.dart_tool', 'flutter_build', 'app.dill'),
       ).createSync(recursive: true);
-      File(p.join(dir.path, 'out.aot')).createSync();
+      File(p.join(dir.path, elfAotSnapshotFileName)).createSync();
     }
 
     setUpAll(() {
@@ -469,6 +470,46 @@ base_url: $baseUrl''',
         () => runWithOverrides(command.run),
         getCurrentDirectory: () => tempDir,
       );
+    });
+
+    test('deletes elf file after patch', () async {
+      final tempDir = setUpTempDir();
+      setUpTempArtifacts(tempDir);
+
+      final exitCode = await IOOverrides.runZoned(
+        () => runWithOverrides(command.run),
+        getCurrentDirectory: () => tempDir,
+      );
+
+      expect(
+        File(p.join(tempDir.path, elfAotSnapshotFileName)).existsSync(),
+        isFalse,
+      );
+      expect(exitCode, ExitCode.success.code);
+    });
+
+    test('prints error message if cleanup fails', () async {
+      final tempDir = setUpTempDir();
+      setUpTempArtifacts(tempDir);
+      when(() => logger.progress('Cleaning up')).thenAnswer((_) {
+        File(p.join(tempDir.path, elfAotSnapshotFileName)).deleteSync();
+        return progress;
+      });
+
+      final exitCode = await IOOverrides.runZoned(
+        () => runWithOverrides(command.run),
+        getCurrentDirectory: () => tempDir,
+      );
+
+      expect(exitCode, ExitCode.success.code);
+      verify(
+        () => progress.fail(
+          any(
+            that:
+                stringContainsInOrder(['Cleanup failed', 'Cannot delete file']),
+          ),
+        ),
+      ).called(1);
     });
 
     test('prints flutter validation warnings', () async {
