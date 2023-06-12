@@ -143,7 +143,9 @@ class PatchAndroidCommand extends ShorebirdCommand
     try {
       releaseVersion = releaseVersionArg ??
           await extractReleaseVersionFromAppBundle(bundlePath);
-      detectReleaseVersionProgress.complete();
+      detectReleaseVersionProgress.complete(
+        'Detected release version $releaseVersion',
+      );
     } catch (error) {
       detectReleaseVersionProgress.fail('$error');
       return ExitCode.software.code;
