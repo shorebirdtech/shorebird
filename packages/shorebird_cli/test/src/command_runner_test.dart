@@ -6,36 +6,46 @@ import 'package:shorebird_cli/src/command_runner.dart';
 import 'package:shorebird_cli/src/logger.dart' hide logger;
 import 'package:shorebird_cli/src/shorebird_environment.dart';
 import 'package:shorebird_cli/src/shorebird_process.dart';
+import 'package:shorebird_cli/src/upgrader.dart';
 import 'package:shorebird_cli/src/version.dart';
 import 'package:test/test.dart';
 
 class _MockLogger extends Mock implements Logger {}
 
+class _MockProgress extends Mock implements Progress {}
+
 class _MockProcessResult extends Mock implements ShorebirdProcessResult {}
+
+class _MockUpgrader extends Mock implements Upgrader {}
 
 void main() {
   group('ShorebirdCliCommandRunner', () {
     late Logger logger;
+    late Progress progress;
+    late Upgrader upgrader;
     late ShorebirdProcessResult processResult;
     late ShorebirdCliCommandRunner commandRunner;
 
     R runWithOverrides<R>(R Function() body) {
-      return runScoped(body, values: {loggerRef.overrideWith(() => logger)});
-    }
-
-    ShorebirdCliCommandRunner buildRunner() {
       return runScoped(
-        ShorebirdCliCommandRunner.new,
-        values: {loggerRef.overrideWith(() => logger)},
+        body,
+        values: {
+          loggerRef.overrideWith(() => logger),
+          upgraderRef.overrideWith(() => upgrader),
+        },
       );
     }
 
     setUp(() {
       logger = _MockLogger();
+      progress = _MockProgress();
+      upgrader = _MockUpgrader();
       ShorebirdEnvironment.shorebirdEngineRevision = 'test-revision';
       processResult = _MockProcessResult();
       when(() => processResult.exitCode).thenReturn(ExitCode.success.code);
-      commandRunner = buildRunner();
+      when(() => upgrader.isUpToDate()).thenAnswer((_) async => true);
+      when(() => logger.progress(any())).thenReturn(progress);
+      commandRunner = runWithOverrides(ShorebirdCliCommandRunner.new);
     });
 
     test('handles FormatException', () async {
@@ -85,6 +95,47 @@ Shorebird $packageVersion
 Shorebird Engine • revision ${ShorebirdEnvironment.shorebirdEngineRevision}''',
           ),
         ).called(1);
+      });
+    });
+
+    group('updates', () {
+      test('checks for updates', () async {
+        await runWithOverrides(
+          () => commandRunner.run(['--verbose']),
+        );
+        verify(() => upgrader.isUpToDate()).called(1);
+      });
+
+      test('gracefully handles updates check failures', () async {
+        when(() => upgrader.isUpToDate()).thenThrow(Exception('oops'));
+        final result = await runWithOverrides(
+          () => commandRunner.run(['--verbose']),
+        );
+        expect(result, equals(ExitCode.success.code));
+        verify(() => upgrader.isUpToDate()).called(1);
+      });
+
+      test('attempts to upgrade when out of date', () async {
+        final exception = Exception('oops');
+        when(() => upgrader.isUpToDate()).thenAnswer((_) async => false);
+        when(() => upgrader.upgrade()).thenThrow(exception);
+        final result = await runWithOverrides(
+          () => commandRunner.run(['--verbose']),
+        );
+        expect(result, equals(ExitCode.success.code));
+        verify(() => upgrader.isUpToDate()).called(1);
+        verify(() => upgrader.upgrade()).called(1);
+      });
+
+      test('successfully upgrades when out of date', () async {
+        when(() => upgrader.isUpToDate()).thenAnswer((_) async => false);
+        when(() => upgrader.upgrade()).thenAnswer((_) async {});
+        final result = await runWithOverrides(
+          () => commandRunner.run(['--verbose']),
+        );
+        expect(result, equals(ExitCode.success.code));
+        verify(() => upgrader.isUpToDate()).called(1);
+        verify(() => upgrader.upgrade()).called(1);
       });
     });
 

@@ -24,7 +24,7 @@ class EngineConfig {
 // "ProcessFactory" than a "Process".
 class ShorebirdProcess {
   ShorebirdProcess({
-    required this.engineConfig,
+    this.engineConfig = const EngineConfig.empty(),
     Logger? logger,
     ProcessWrapper? processWrapper, // For mocking ShorebirdProcess.
   })  : logger = logger ?? Logger(),

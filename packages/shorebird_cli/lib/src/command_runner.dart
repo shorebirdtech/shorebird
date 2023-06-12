@@ -9,6 +9,7 @@ import 'package:shorebird_cli/src/commands/commands.dart';
 import 'package:shorebird_cli/src/logger.dart';
 import 'package:shorebird_cli/src/shorebird_environment.dart';
 import 'package:shorebird_cli/src/shorebird_process.dart';
+import 'package:shorebird_cli/src/upgrader.dart';
 import 'package:shorebird_cli/src/version.dart';
 
 const executableName = 'shorebird';
@@ -124,6 +125,31 @@ class ShorebirdCliCommandRunner extends CompletionCommandRunner<int> {
     if (topLevelResults.command?.name == 'completion') {
       await super.runCommand(topLevelResults);
       return ExitCode.success.code;
+    }
+
+    var isUpToDate = true;
+    try {
+      logger.detail('[upgrader] Checking for updates...');
+      isUpToDate = await upgrader.isUpToDate();
+      logger.detail('[upgrader] isUpToDate: $isUpToDate');
+    } catch (_) {
+      logger.detail('[upgrader] Failed to check for updates: $_');
+    }
+
+    if (!isUpToDate) {
+      final progress = logger.progress(
+        'A new version of Shorebird is available! Upgrading',
+      );
+      try {
+        logger.detail('[upgrader] Upgrading...');
+        await upgrader.upgrade();
+        logger.detail('[upgrader] Upgrading complete.');
+        progress.complete();
+        return ExitCode.success.code;
+      } catch (error) {
+        logger.detail('[upgrader] Failed to upgrade: $error');
+        progress.fail(error.toString());
+      }
     }
 
     // Run the command or show version
