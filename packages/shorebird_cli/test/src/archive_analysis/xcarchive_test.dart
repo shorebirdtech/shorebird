@@ -47,6 +47,8 @@ void main() {
     String? plistContent,
   }) {
     final tempDir = Directory.systemTemp.createTempSync();
+    Directory(p.join(tempDir.path, 'ios')).createSync();
+
     if (createWorkspace) {
       Directory(p.join(tempDir.path, workspacePath))
           .createSync(recursive: true);
@@ -76,7 +78,7 @@ void main() {
       expect(xcarchive.versionNumber, '1.0.3+10');
     });
 
-    test('returns null if no xcworkspace exists', () {
+    test('throws exception if no xcworkspace exists', () {
       final tempDir = createTempDirectory(createWorkspace: false);
       expect(
         () => XcarchiveReader().xcarchiveFromProjectRoot(tempDir.path),
