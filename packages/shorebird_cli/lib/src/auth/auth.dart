@@ -5,11 +5,18 @@ import 'package:cli_util/cli_util.dart';
 import 'package:googleapis_auth/auth_io.dart' as oauth2;
 import 'package:http/http.dart' as http;
 import 'package:path/path.dart' as p;
+import 'package:scoped/scoped.dart';
 import 'package:shorebird_cli/src/auth/jwt.dart';
 import 'package:shorebird_cli/src/command.dart';
 import 'package:shorebird_cli/src/command_runner.dart';
 import 'package:shorebird_cli/src/logger.dart';
 import 'package:shorebird_code_push_client/shorebird_code_push_client.dart';
+
+// A reference to a [Auth] instance.
+final authRef = create(Auth.new);
+
+// The [Auth] instance available in the current zone.
+Auth get auth => read(authRef);
 
 final _clientId = oauth2.ClientId(
   /// Shorebird CLI's OAuth 2.0 identifier.

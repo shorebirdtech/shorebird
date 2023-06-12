@@ -2,6 +2,7 @@ import 'dart:async';
 
 import 'package:intl/intl.dart';
 import 'package:mason_logger/mason_logger.dart';
+import 'package:shorebird_cli/src/auth/auth.dart';
 import 'package:shorebird_cli/src/command.dart';
 import 'package:shorebird_cli/src/logger.dart';
 import 'package:shorebird_cli/src/shorebird_config_mixin.dart';
@@ -10,7 +11,7 @@ import 'package:shorebird_code_push_client/shorebird_code_push_client.dart';
 
 class CancelSubscriptionCommand extends ShorebirdCommand
     with ShorebirdConfigMixin, ShorebirdValidationMixin {
-  CancelSubscriptionCommand({super.auth, super.buildCodePushClient});
+  CancelSubscriptionCommand({super.buildCodePushClient});
 
   @override
   String get name => 'cancel';

@@ -90,7 +90,13 @@ flutter:
     late PatchIosCommand command;
 
     R runWithOverrides<R>(R Function() body) {
-      return runScoped(body, values: {loggerRef.overrideWith(() => logger)});
+      return runScoped(
+        body,
+        values: {
+          authRef.overrideWith(() => auth),
+          loggerRef.overrideWith(() => logger)
+        },
+      );
     }
 
     Directory setUpTempDir() {
@@ -202,11 +208,12 @@ flutter:
         ),
       ).thenAnswer((_) async => aotBuildProcessResult);
 
-      command = PatchIosCommand(
-        auth: auth,
-        codePushClientWrapper: codePushClientWrapper,
-        ipaReader: ipaReader,
-        validators: [flutterValidator],
+      command = runWithOverrides(
+        () => PatchIosCommand(
+          codePushClientWrapper: codePushClientWrapper,
+          ipaReader: ipaReader,
+          validators: [flutterValidator],
+        ),
       )
         ..testArgResults = argResults
         ..testProcess = shorebirdProcess

@@ -117,7 +117,13 @@ flutter:
     late ShorebirdProcess shorebirdProcess;
 
     R runWithOverrides<R>(R Function() body) {
-      return runScoped(body, values: {loggerRef.overrideWith(() => logger)});
+      return runScoped(
+        body,
+        values: {
+          authRef.overrideWith(() => auth),
+          loggerRef.overrideWith(() => logger)
+        },
+      );
     }
 
     Directory setUpTempDir() {
@@ -173,13 +179,14 @@ flutter:
       flutterValidator = _MockShorebirdFlutterValidator();
       cache = _MockCache();
       shorebirdProcess = _MockShorebirdProcess();
-      command = PatchAndroidCommand(
-        aabDiffer: aabDiffer,
-        auth: auth,
-        codePushClientWrapper: codePushClientWrapper,
-        cache: cache,
-        httpClient: httpClient,
-        validators: [flutterValidator],
+      command = runWithOverrides(
+        () => PatchAndroidCommand(
+          aabDiffer: aabDiffer,
+          codePushClientWrapper: codePushClientWrapper,
+          cache: cache,
+          httpClient: httpClient,
+          validators: [flutterValidator],
+        ),
       )
         ..testArgResults = argResults
         ..testProcess = shorebirdProcess

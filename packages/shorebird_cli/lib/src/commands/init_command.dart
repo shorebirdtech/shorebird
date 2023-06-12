@@ -22,7 +22,7 @@ class InitCommand extends ShorebirdCommand
         ShorebirdJavaMixin,
         ShorebirdFlavorMixin {
   /// {@macro init_command}
-  InitCommand({super.auth, super.buildCodePushClient}) {
+  InitCommand({super.buildCodePushClient}) {
     argParser.addFlag(
       'force',
       abbr: 'f',

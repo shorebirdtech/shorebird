@@ -18,7 +18,6 @@ class ReleaseIosCommand extends ShorebirdCommand
     with ShorebirdBuildMixin, ShorebirdConfigMixin, ShorebirdValidationMixin {
   /// {@macro release_ios_command}
   ReleaseIosCommand({
-    super.auth,
     super.codePushClientWrapper,
     super.cache,
     super.validators,

@@ -26,7 +26,6 @@ class ReleaseAndroidCommand extends ShorebirdCommand
         ShorebirdReleaseVersionMixin {
   /// {@macro release_android_command}
   ReleaseAndroidCommand({
-    super.auth,
     super.cache,
     super.codePushClientWrapper,
     super.validators,

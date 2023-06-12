@@ -22,7 +22,7 @@ class _MockLogger extends Mock implements Logger {}
 class _MockProgress extends Mock implements Progress {}
 
 void main() {
-  group('create', () {
+  group(AddCollaboratorsCommand, () {
     const appId = 'test-app-id';
     const email = 'jane.doe@shorebird.dev';
 
@@ -35,7 +35,13 @@ void main() {
     late AddCollaboratorsCommand command;
 
     R runWithOverrides<R>(R Function() body) {
-      return runScoped(body, values: {loggerRef.overrideWith(() => logger)});
+      return runScoped(
+        body,
+        values: {
+          authRef.overrideWith(() => auth),
+          loggerRef.overrideWith(() => logger)
+        },
+      );
     }
 
     setUp(() {
@@ -53,14 +59,15 @@ void main() {
       when(() => logger.confirm(any())).thenReturn(true);
       when(() => logger.progress(any())).thenReturn(progress);
 
-      command = AddCollaboratorsCommand(
-        auth: auth,
-        buildCodePushClient: ({
-          required http.Client httpClient,
-          Uri? hostedUri,
-        }) {
-          return codePushClient;
-        },
+      command = runWithOverrides(
+        () => AddCollaboratorsCommand(
+          buildCodePushClient: ({
+            required http.Client httpClient,
+            Uri? hostedUri,
+          }) {
+            return codePushClient;
+          },
+        ),
       )..testArgResults = argResults;
     });
 

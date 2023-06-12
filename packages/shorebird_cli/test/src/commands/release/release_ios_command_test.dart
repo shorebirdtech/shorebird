@@ -90,7 +90,13 @@ flutter:
     late ShorebirdProcess shorebirdProcess;
 
     R runWithOverrides<R>(R Function() body) {
-      return runScoped(body, values: {loggerRef.overrideWith(() => logger)});
+      return runScoped(
+        body,
+        values: {
+          authRef.overrideWith(() => auth),
+          loggerRef.overrideWith(() => logger)
+        },
+      );
     }
 
     Directory setUpTempDir() {
@@ -188,11 +194,12 @@ flutter:
       ).thenAnswer((_) async => release);
       when(() => flutterValidator.validate(any())).thenAnswer((_) async => []);
 
-      command = ReleaseIosCommand(
-        auth: auth,
-        codePushClientWrapper: codePushClientWrapper,
-        ipaReader: ipaReader,
-        validators: [flutterValidator],
+      command = runWithOverrides(
+        () => ReleaseIosCommand(
+          codePushClientWrapper: codePushClientWrapper,
+          ipaReader: ipaReader,
+          validators: [flutterValidator],
+        ),
       )
         ..testArgResults = argResults
         ..testProcess = shorebirdProcess

@@ -39,7 +39,6 @@ List<Validator> _defaultValidators() => [
 
 abstract class ShorebirdCommand extends Command<int> {
   ShorebirdCommand({
-    Auth? auth,
     Cache? cache,
     CodePushClientBuilder? buildCodePushClient,
     CodePushClientWrapper? codePushClientWrapper,
@@ -47,17 +46,15 @@ abstract class ShorebirdCommand extends Command<int> {
   })  : cache = cache ?? Cache(),
         buildCodePushClient = buildCodePushClient ?? CodePushClient.new,
         validators = validators ?? _defaultValidators() {
-    this.auth = auth ?? Auth();
     this.codePushClientWrapper = codePushClientWrapper ??
         CodePushClientWrapper(
           codePushClient: CodePushClient(
-            httpClient: this.auth.client,
+            httpClient: auth.client,
             hostedUri: hostedUri,
           ),
         );
   }
 
-  late final Auth auth;
   final Cache cache;
   final CodePushClientBuilder buildCodePushClient;
   late final CodePushClientWrapper codePushClientWrapper;

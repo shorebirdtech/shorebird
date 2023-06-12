@@ -1,7 +1,9 @@
 import 'package:args/command_runner.dart';
+import 'package:http/http.dart' as http;
 import 'package:mason_logger/mason_logger.dart';
 import 'package:mocktail/mocktail.dart';
 import 'package:scoped/scoped.dart';
+import 'package:shorebird_cli/src/auth/auth.dart' hide auth;
 import 'package:shorebird_cli/src/command_runner.dart';
 import 'package:shorebird_cli/src/logger.dart' hide logger;
 import 'package:shorebird_cli/src/shorebird_environment.dart';
@@ -9,33 +11,41 @@ import 'package:shorebird_cli/src/shorebird_process.dart';
 import 'package:shorebird_cli/src/version.dart';
 import 'package:test/test.dart';
 
+class _MockAuth extends Mock implements Auth {}
+
 class _MockLogger extends Mock implements Logger {}
+
+class _MockHttpClient extends Mock implements http.Client {}
 
 class _MockProcessResult extends Mock implements ShorebirdProcessResult {}
 
 void main() {
-  group('ShorebirdCliCommandRunner', () {
+  group(ShorebirdCliCommandRunner, () {
+    late http.Client httpClient;
+    late Auth auth;
     late Logger logger;
     late ShorebirdProcessResult processResult;
     late ShorebirdCliCommandRunner commandRunner;
 
     R runWithOverrides<R>(R Function() body) {
-      return runScoped(body, values: {loggerRef.overrideWith(() => logger)});
-    }
-
-    ShorebirdCliCommandRunner buildRunner() {
       return runScoped(
-        ShorebirdCliCommandRunner.new,
-        values: {loggerRef.overrideWith(() => logger)},
+        body,
+        values: {
+          authRef.overrideWith(() => auth),
+          loggerRef.overrideWith(() => logger)
+        },
       );
     }
 
     setUp(() {
+      httpClient = _MockHttpClient();
+      auth = _MockAuth();
       logger = _MockLogger();
       ShorebirdEnvironment.shorebirdEngineRevision = 'test-revision';
       processResult = _MockProcessResult();
+      when(() => auth.client).thenReturn(httpClient);
       when(() => processResult.exitCode).thenReturn(ExitCode.success.code);
-      commandRunner = buildRunner();
+      commandRunner = runWithOverrides(ShorebirdCliCommandRunner.new);
     });
 
     test('handles FormatException', () async {

@@ -2,6 +2,7 @@ import 'dart:async';
 
 import 'package:collection/collection.dart';
 import 'package:mason_logger/mason_logger.dart';
+import 'package:shorebird_cli/src/auth/auth.dart';
 import 'package:shorebird_cli/src/command.dart';
 import 'package:shorebird_cli/src/config/shorebird_yaml.dart';
 import 'package:shorebird_cli/src/logger.dart';
@@ -17,7 +18,7 @@ import 'package:shorebird_code_push_client/shorebird_code_push_client.dart';
 class DeleteReleasesCommand extends ShorebirdCommand
     with ShorebirdConfigMixin, ShorebirdValidationMixin {
   /// {@macro delete_releases_command}
-  DeleteReleasesCommand({super.auth, super.buildCodePushClient}) {
+  DeleteReleasesCommand({super.buildCodePushClient}) {
     argParser
       ..addOption(
         'version',

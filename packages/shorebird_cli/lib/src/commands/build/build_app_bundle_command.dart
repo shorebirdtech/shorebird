@@ -16,7 +16,7 @@ import 'package:shorebird_cli/src/shorebird_validation_mixin.dart';
 class BuildAppBundleCommand extends ShorebirdCommand
     with ShorebirdConfigMixin, ShorebirdValidationMixin, ShorebirdBuildMixin {
   /// {@macro build_app_bundle_command}
-  BuildAppBundleCommand({super.auth, super.validators}) {
+  BuildAppBundleCommand({super.validators}) {
     argParser
       ..addOption(
         'target',

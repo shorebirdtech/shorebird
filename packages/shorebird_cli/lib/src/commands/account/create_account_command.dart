@@ -12,9 +12,6 @@ import 'package:shorebird_code_push_client/shorebird_code_push_client.dart';
 /// Create a new Shorebird account.
 /// {@endtemplate}
 class CreateAccountCommand extends ShorebirdCommand with ShorebirdConfigMixin {
-  /// {@macro create_account_command}
-  CreateAccountCommand({super.auth});
-
   @override
   String get description => 'Create a new Shorebird account.';
 

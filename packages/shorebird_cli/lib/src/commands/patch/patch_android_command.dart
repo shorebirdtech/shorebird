@@ -33,7 +33,6 @@ class PatchAndroidCommand extends ShorebirdCommand
         ShorebirdReleaseVersionMixin {
   /// {@macro patch_android_command}
   PatchAndroidCommand({
-    super.auth,
     super.cache,
     super.validators,
     super.codePushClientWrapper,

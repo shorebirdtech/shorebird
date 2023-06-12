@@ -6,6 +6,7 @@ import 'package:collection/collection.dart';
 import 'package:crypto/crypto.dart';
 import 'package:mason_logger/mason_logger.dart';
 import 'package:path/path.dart' as p;
+import 'package:shorebird_cli/src/auth/auth.dart';
 import 'package:shorebird_cli/src/command.dart';
 import 'package:shorebird_cli/src/config/config.dart';
 import 'package:shorebird_cli/src/logger.dart';
@@ -33,7 +34,6 @@ class ReleaseAarCommand extends ShorebirdCommand
         ShorebirdArtifactMixin {
   /// {@macro release_aar_command}
   ReleaseAarCommand({
-    super.auth,
     super.buildCodePushClient,
     super.validators,
     HashFunction? hashFn,

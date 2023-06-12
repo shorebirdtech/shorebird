@@ -8,9 +8,6 @@ import 'package:shorebird_cli/src/logger.dart';
 /// Login as a new Shorebird user.
 /// {@endtemplate}
 class LoginCommand extends ShorebirdCommand {
-  /// {@macro login_command}
-  LoginCommand({super.auth});
-
   @override
   String get description => 'Login as a new Shorebird user.';
 

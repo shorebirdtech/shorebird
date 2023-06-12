@@ -140,7 +140,13 @@ flutter:
     late ShorebirdProcess shorebirdProcess;
 
     R runWithOverrides<R>(R Function() body) {
-      return runScoped(body, values: {loggerRef.overrideWith(() => logger)});
+      return runScoped(
+        body,
+        values: {
+          authRef.overrideWith(() => auth),
+          loggerRef.overrideWith(() => logger)
+        },
+      );
     }
 
     Directory setUpTempDir({bool includeModule = true}) {
@@ -328,20 +334,21 @@ flutter:
         () => cache.getArtifactDirectory(any()),
       ).thenReturn(Directory.systemTemp.createTempSync());
 
-      command = PatchAarCommand(
-        aarDiffer: aarDiffer,
-        auth: auth,
-        buildCodePushClient: ({
-          required http.Client httpClient,
-          Uri? hostedUri,
-        }) {
-          capturedHostedUri = hostedUri;
-          return codePushClient;
-        },
-        cache: cache,
-        httpClient: httpClient,
-        validators: [flutterValidator],
-        unzipFn: (_, __) async {},
+      command = runWithOverrides(
+        () => PatchAarCommand(
+          aarDiffer: aarDiffer,
+          buildCodePushClient: ({
+            required http.Client httpClient,
+            Uri? hostedUri,
+          }) {
+            capturedHostedUri = hostedUri;
+            return codePushClient;
+          },
+          cache: cache,
+          httpClient: httpClient,
+          validators: [flutterValidator],
+          unzipFn: (_, __) async {},
+        ),
       )
         ..testArgResults = argResults
         ..testProcess = shorebirdProcess

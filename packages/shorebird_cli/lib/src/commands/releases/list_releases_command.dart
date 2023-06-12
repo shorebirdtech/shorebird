@@ -1,5 +1,6 @@
 import 'package:barbecue/barbecue.dart';
 import 'package:mason_logger/mason_logger.dart';
+import 'package:shorebird_cli/src/auth/auth.dart';
 import 'package:shorebird_cli/src/command.dart';
 import 'package:shorebird_cli/src/config/shorebird_yaml.dart';
 import 'package:shorebird_cli/src/logger.dart';
@@ -15,7 +16,7 @@ import 'package:shorebird_code_push_client/shorebird_code_push_client.dart';
 class ListReleasesCommand extends ShorebirdCommand
     with ShorebirdConfigMixin, ShorebirdValidationMixin {
   /// {@macro list_releases_command}
-  ListReleasesCommand({super.auth, super.buildCodePushClient}) {
+  ListReleasesCommand({super.buildCodePushClient}) {
     argParser.addOption(
       'flavor',
       help: 'The product flavor to use when listing releases.',

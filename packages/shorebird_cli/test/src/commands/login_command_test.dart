@@ -17,7 +17,7 @@ class _MockHttpClient extends Mock implements http.Client {}
 class _MockLogger extends Mock implements Logger {}
 
 void main() {
-  group('login', () {
+  group(LoginCommand, () {
     const email = 'test@email.com';
 
     late Auth auth;
@@ -27,7 +27,13 @@ void main() {
     late LoginCommand command;
 
     R runWithOverrides<R>(R Function() body) {
-      return runScoped(body, values: {loggerRef.overrideWith(() => logger)});
+      return runScoped(
+        body,
+        values: {
+          authRef.overrideWith(() => auth),
+          loggerRef.overrideWith(() => logger)
+        },
+      );
     }
 
     setUp(() {
@@ -41,7 +47,7 @@ void main() {
         p.join(applicationConfigHome.path, 'credentials.json'),
       );
 
-      command = LoginCommand(auth: auth);
+      command = runWithOverrides(LoginCommand.new);
     });
 
     test('exits with code 0 when already logged in', () async {

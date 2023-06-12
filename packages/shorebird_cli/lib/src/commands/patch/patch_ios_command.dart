@@ -27,7 +27,6 @@ class PatchIosCommand extends ShorebirdCommand
         ShorebirdArtifactMixin {
   /// {@macro patch_ios_command}
   PatchIosCommand({
-    super.auth,
     super.codePushClientWrapper,
     super.validators,
     HashFunction? hashFn,

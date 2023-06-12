@@ -20,7 +20,7 @@ class _MockCodePushClient extends Mock implements CodePushClient {}
 class _MockLogger extends Mock implements Logger {}
 
 void main() {
-  group('create', () {
+  group(CreateAppCommand, () {
     const appId = 'app-id';
     const displayName = 'Example App';
 
@@ -32,7 +32,13 @@ void main() {
     late CreateAppCommand command;
 
     R runWithOverrides<R>(R Function() body) {
-      return runScoped(body, values: {loggerRef.overrideWith(() => logger)});
+      return runScoped(
+        body,
+        values: {
+          authRef.overrideWith(() => auth),
+          loggerRef.overrideWith(() => logger)
+        },
+      );
     }
 
     setUp(() {
@@ -45,14 +51,15 @@ void main() {
       when(() => auth.client).thenReturn(httpClient);
       when(() => auth.isAuthenticated).thenReturn(true);
 
-      command = CreateAppCommand(
-        auth: auth,
-        buildCodePushClient: ({
-          required http.Client httpClient,
-          Uri? hostedUri,
-        }) {
-          return codePushClient;
-        },
+      command = runWithOverrides(
+        () => CreateAppCommand(
+          buildCodePushClient: ({
+            required http.Client httpClient,
+            Uri? hostedUri,
+          }) {
+            return codePushClient;
+          },
+        ),
       )..testArgResults = argResults;
     });
 

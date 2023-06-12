@@ -19,7 +19,7 @@ class _MockLogger extends Mock implements Logger {}
 class _MockProgress extends Mock implements Progress {}
 
 void main() {
-  group('CancelSubscriptionCommand', () {
+  group(CancelSubscriptionCommand, () {
     const noSubscriptionUser = User(id: 1, email: 'tester1@shorebird.dev');
     const subscriptionUser = User(
       id: 2,
@@ -35,7 +35,13 @@ void main() {
     late CancelSubscriptionCommand command;
 
     R runWithOverrides<R>(R Function() body) {
-      return runScoped(body, values: {loggerRef.overrideWith(() => logger)});
+      return runScoped(
+        body,
+        values: {
+          authRef.overrideWith(() => auth),
+          loggerRef.overrideWith(() => logger)
+        },
+      );
     }
 
     setUp(() {
@@ -49,13 +55,15 @@ void main() {
 
       when(() => logger.progress(any())).thenReturn(progress);
 
-      command = CancelSubscriptionCommand(
-        auth: auth,
-        buildCodePushClient: ({
-          required http.Client httpClient,
-          Uri? hostedUri,
-        }) =>
-            codePushClient,
+      command = runWithOverrides(
+        () => CancelSubscriptionCommand(
+          buildCodePushClient: ({
+            required http.Client httpClient,
+            Uri? hostedUri,
+          }) {
+            return codePushClient;
+          },
+        ),
       );
     });
 

@@ -12,7 +12,7 @@ import 'package:shorebird_cli/src/shorebird_validation_mixin.dart';
 class RunCommand extends ShorebirdCommand
     with ShorebirdConfigMixin, ShorebirdValidationMixin {
   /// {@macro run_command}
-  RunCommand({super.auth, super.buildCodePushClient, super.validators}) {
+  RunCommand({super.buildCodePushClient, super.validators}) {
     argParser
       ..addOption(
         'device-id',
