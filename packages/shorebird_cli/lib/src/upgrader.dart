@@ -4,21 +4,26 @@ import 'package:path/path.dart' as p;
 import 'package:scoped/scoped.dart';
 import 'package:shorebird_cli/src/shorebird_process.dart';
 
-// A reference to a [Logger] instance.
+// A reference to a [Upgrader] instance.
 final upgraderRef = create(Upgrader.new);
 
 // The [Upgrader] instance available in the current zone.
 Upgrader get upgrader => read(upgraderRef);
 
+/// {@template upgrader}
+/// A class that manages checking for updates and upgrading to newer versions.
+/// {@endtemplate}
 class Upgrader {
+  /// {@macro upgrader}
   Upgrader({ShorebirdProcess? process})
       : process = process ?? ShorebirdProcess();
 
   final ShorebirdProcess process;
 
+  /// Returns `true` if the current version is up to date.
   Future<bool> isUpToDate() async {
     final workingDirectory = p.dirname(Platform.script.toFilePath());
-    final currentVersion = await fetchCurrentGitHash(
+    final currentVersion = await _fetchCurrentGitHash(
       workingDirectory: workingDirectory,
     );
 
@@ -29,9 +34,10 @@ class Upgrader {
     return currentVersion == latestVersion;
   }
 
+  /// Attempts to upgrade to the latest version.
   Future<void> upgrade() async {
     final workingDirectory = p.dirname(Platform.script.toFilePath());
-    final currentVersion = await fetchCurrentGitHash(
+    final currentVersion = await _fetchCurrentGitHash(
       workingDirectory: workingDirectory,
     );
     final latestVersion = await _fetchLatestGitHash(
@@ -61,7 +67,7 @@ class Upgrader {
   /// Returns the local HEAD shorebird hash.
   ///
   /// Exits if HEAD isn't pointing to a branch, or there is no upstream.
-  Future<String> fetchCurrentGitHash({
+  Future<String> _fetchCurrentGitHash({
     required String workingDirectory,
   }) async {
     // Get the commit revision of HEAD

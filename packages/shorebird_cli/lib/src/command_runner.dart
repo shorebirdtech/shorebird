@@ -140,10 +140,9 @@ class ShorebirdCliCommandRunner extends CompletionCommandRunner<int> {
         'A new version of Shorebird is available! Upgrading',
       );
       try {
-        logger.detail('[upgrader] Upgrading...');
         await upgrader.upgrade();
-        logger.detail('[upgrader] Upgrading complete.');
         progress.complete();
+        logger.detail('[upgrader] Upgrading complete.');
         return ExitCode.success.code;
       } catch (error) {
         logger.detail('[upgrader] Failed to upgrade: $error');
