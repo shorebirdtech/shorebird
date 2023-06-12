@@ -11,7 +11,7 @@ class GetReleaseArtifactsResponse {
   /// {@macro get_release_artifacts_response}
   const GetReleaseArtifactsResponse({required this.artifacts});
 
-  /// Converts a Map<String, dynamic> to a [GetReleaseArtifactsResponse]
+  /// Converts a Map<String, dynamic> to a [GetReleaseArtifactsResponse].
   factory GetReleaseArtifactsResponse.fromJson(Map<String, dynamic> json) =>
       _$GetReleaseArtifactsResponseFromJson(json);
 
