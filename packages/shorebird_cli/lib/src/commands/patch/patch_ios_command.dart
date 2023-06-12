@@ -246,14 +246,6 @@ ${summary.join('\n')}
       },
     );
 
-    final cleanupProgress = logger.progress('Cleaning up');
-    try {
-      await aotFile.delete();
-      cleanupProgress.complete();
-    } catch (error) {
-      cleanupProgress.fail('Cleanup failed: $error');
-    }
-
     logger.success('\n✅ Published Patch!');
     return ExitCode.success.code;
   }
