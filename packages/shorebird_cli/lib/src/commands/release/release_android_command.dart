@@ -71,7 +71,9 @@ make smaller updates to your app.
       return e.exitCode.code;
     }
 
+    final shorebirdYaml = getShorebirdYaml()!;
     final appId = shorebirdYaml.getAppId(flavor: flavor);
+    final flavor = results['flavor'] as String?;
 
     final String releaseVersion;
     final detectReleaseVersionProgress = logger.progress(
@@ -99,7 +101,6 @@ Please bump your version number and try again.''',
       return ExitCode.software.code;
     }
 
-    final flavor = results['flavor'] as String?;
     final target = results['target'] as String?;
     final buildProgress = logger.progress('Building release');
     try {
@@ -110,7 +111,6 @@ Please bump your version number and try again.''',
       return ExitCode.software.code;
     }
 
-    final shorebirdYaml = getShorebirdYaml()!;
 
     final app = await codePushClientWrapper.getApp(appId: appId);
 
