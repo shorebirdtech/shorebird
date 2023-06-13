@@ -54,6 +54,7 @@ void main() {
   const arch = 'aarch64';
   const appDisplayName = 'Test App';
   const platform = 'ios';
+  const elfAotSnapshotFileName = 'out.aot';
   const pubspecYamlContent = '''
 name: example
 version: $version
@@ -125,7 +126,9 @@ flutter:
       File(
         p.join(dir.path, '.dart_tool', 'flutter_build', 'app.dill'),
       ).createSync(recursive: true);
-      File(p.join(dir.path, 'out.aot')).createSync();
+      File(p.join(dir.path, 'build', elfAotSnapshotFileName)).createSync(
+        recursive: true,
+      );
     }
 
     setUpAll(() {
