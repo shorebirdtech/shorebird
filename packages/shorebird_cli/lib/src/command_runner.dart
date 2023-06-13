@@ -17,11 +17,6 @@ const executableName = 'shorebird';
 const packageName = 'shorebird_cli';
 const description = 'The shorebird command-line tool';
 
-typedef BuildProcess = ShorebirdProcess Function({
-  EngineConfig engineConfig,
-  Logger? logger,
-});
-
 /// {@template shorebird_cli_command_runner}
 /// A [CommandRunner] for the CLI.
 ///
