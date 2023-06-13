@@ -1,4 +1,5 @@
 import 'dart:async';
+import 'dart:convert';
 import 'dart:io';
 
 import 'package:args/args.dart';
@@ -28,6 +29,11 @@ class ShorebirdCliCommandRunner extends CompletionCommandRunner<int> {
   /// {@macro shorebird_cli_command_runner}
   ShorebirdCliCommandRunner() : super(executableName, description) {
     argParser
+      ..addFlag(
+        'force-upgrade',
+        negatable: false,
+        help: 'Print the current version.',
+      )
       ..addFlag(
         'version',
         negatable: false,
@@ -136,18 +142,21 @@ class ShorebirdCliCommandRunner extends CompletionCommandRunner<int> {
     }
 
     if (!isUpToDate) {
-      final progress = logger.progress(
-        'A new version of Shorebird is available! Upgrading',
-      );
+      logger.info('A new version of Shorebird is available!');
+      final progress = logger.progress('Upgrading');
       try {
         await upgrader.upgrade();
         progress.complete();
-        final result = await process.run(
-          Platform.script.path,
-          topLevelResults.arguments,
+        final subprocess = await process.start(
+          'dart',
+          [Platform.script.path, ...topLevelResults.arguments],
           runInShell: true,
         );
-        return result.exitCode;
+        unawaited(subprocess.stdin.addStream(stdin));
+        subprocess.stdout.listen((m) => logger.info(utf8.decode(m)));
+        subprocess.stderr.listen((m) => logger.err(utf8.decode(m)));
+
+        return await subprocess.exitCode;
       } catch (error) {
         progress.fail(error.toString());
       }

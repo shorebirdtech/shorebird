@@ -1,3 +1,6 @@
+import 'dart:async';
+import 'dart:io';
+
 import 'package:args/args.dart';
 import 'package:args/command_runner.dart';
 import 'package:mason_logger/mason_logger.dart';
@@ -19,6 +22,8 @@ class _MockProgress extends Mock implements Progress {}
 
 class _MockShorebirdProcess extends Mock implements ShorebirdProcess {}
 
+class _MockProcess extends Mock implements Process {}
+
 class _MockProcessResult extends Mock implements ShorebirdProcessResult {}
 
 class _MockUpgrader extends Mock implements Upgrader {}
@@ -28,7 +33,8 @@ void main() {
     late ArgResults argResults;
     late Logger logger;
     late Progress progress;
-    late ShorebirdProcess process;
+    late ShorebirdProcess shorebirdProcess;
+    late Process process;
     late Upgrader upgrader;
     late ShorebirdProcessResult processResult;
     late ShorebirdCliCommandRunner commandRunner;
@@ -38,7 +44,7 @@ void main() {
         body,
         values: {
           loggerRef.overrideWith(() => logger),
-          processRef.overrideWith(() => process),
+          processRef.overrideWith(() => shorebirdProcess),
           upgraderRef.overrideWith(() => upgrader),
         },
       );
@@ -48,13 +54,21 @@ void main() {
       argResults = _MockArgResults();
       logger = _MockLogger();
       progress = _MockProgress();
-      process = _MockShorebirdProcess();
+      shorebirdProcess = _MockShorebirdProcess();
+      process = _MockProcess();
       upgrader = _MockUpgrader();
       ShorebirdEnvironment.shorebirdEngineRevision = 'test-revision';
       processResult = _MockProcessResult();
       when(
-        () => process.run(any(), any(), runInShell: any(named: 'runInShell')),
-      ).thenAnswer((_) async => processResult);
+        () => shorebirdProcess.start(
+          any(),
+          any(),
+          runInShell: any(named: 'runInShell'),
+        ),
+      ).thenAnswer((_) async => process);
+      when(() => process.stdout).thenAnswer((_) => const Stream.empty());
+      when(() => process.stderr).thenAnswer((_) => const Stream.empty());
+      when(() => process.stdin).thenAnswer((_) => IOSink(StreamController()));
       when(() => processResult.exitCode).thenReturn(ExitCode.success.code);
       when(() => upgrader.isUpToDate()).thenAnswer((_) async => true);
       when(() => logger.progress(any())).thenReturn(progress);
@@ -152,7 +166,11 @@ Shorebird Engine • revision ${ShorebirdEnvironment.shorebirdEngineRevision}'''
         verify(() => upgrader.isUpToDate()).called(1);
         verify(() => upgrader.upgrade()).called(1);
         verify(
-          () => process.run(any(), ['--version'], runInShell: true),
+          () => shorebirdProcess.start(
+            'dart',
+            any(that: contains('--version')),
+            runInShell: true,
+          ),
         ).called(1);
       });
     });

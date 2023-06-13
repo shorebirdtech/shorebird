@@ -32,6 +32,7 @@ void main() {
           'git',
           ['rev-parse', '--verify', 'HEAD'],
           workingDirectory: any(named: 'workingDirectory'),
+          runInShell: any(named: 'runInShell'),
         ),
       ).thenAnswer((_) async => fetchCurrentVersionResult);
       when(
@@ -39,6 +40,7 @@ void main() {
           'git',
           ['fetch', '--tags'],
           workingDirectory: any(named: 'workingDirectory'),
+          runInShell: any(named: 'runInShell'),
         ),
       ).thenAnswer((_) async => fetchTagsResult);
       when(
@@ -46,6 +48,7 @@ void main() {
           'git',
           ['rev-parse', '--verify', '@{upstream}'],
           workingDirectory: any(named: 'workingDirectory'),
+          runInShell: any(named: 'runInShell'),
         ),
       ).thenAnswer((_) async => fetchLatestVersionResult);
       when(
@@ -53,6 +56,7 @@ void main() {
           'git',
           ['reset', '--hard', newerShorebirdRevision],
           workingDirectory: any(named: 'workingDirectory'),
+          runInShell: any(named: 'runInShell'),
         ),
       ).thenAnswer((_) async => hardResetResult);
 

@@ -23,26 +23,23 @@ class Upgrader {
   /// Returns `true` if the current version is up to date.
   Future<bool> isUpToDate() async {
     final workingDirectory = p.dirname(Platform.script.toFilePath());
-    final currentVersion = await _fetchCurrentGitHash(
-      workingDirectory: workingDirectory,
-    );
+    final versions = await Future.wait([
+      _fetchCurrentGitHash(workingDirectory: workingDirectory),
+      _fetchLatestGitHash(workingDirectory: workingDirectory)
+    ]);
 
-    final latestVersion = await _fetchLatestGitHash(
-      workingDirectory: workingDirectory,
-    );
-
-    return currentVersion == latestVersion;
+    return versions.first == versions.last;
   }
 
   /// Attempts to upgrade to the latest version.
   Future<void> upgrade() async {
     final workingDirectory = p.dirname(Platform.script.toFilePath());
-    final currentVersion = await _fetchCurrentGitHash(
-      workingDirectory: workingDirectory,
-    );
-    final latestVersion = await _fetchLatestGitHash(
-      workingDirectory: workingDirectory,
-    );
+    final versions = await Future.wait([
+      _fetchCurrentGitHash(workingDirectory: workingDirectory),
+      _fetchLatestGitHash(workingDirectory: workingDirectory)
+    ]);
+    final currentVersion = versions.first;
+    final latestVersion = versions.last;
     if (currentVersion == latestVersion) return;
     return _attemptReset(
       newRevision: latestVersion,
@@ -59,6 +56,7 @@ class Upgrader {
       'git',
       ['fetch', '--tags'],
       workingDirectory: workingDirectory,
+      runInShell: true,
     );
     // Get the latest commit revision of the upstream
     return _gitRevParse('@{upstream}', workingDirectory: workingDirectory);
@@ -83,6 +81,7 @@ class Upgrader {
       'git',
       ['rev-parse', '--verify', revision],
       workingDirectory: workingDirectory,
+      runInShell: true,
     );
     if (result.exitCode != 0) {
       throw ProcessException(
@@ -108,6 +107,7 @@ class Upgrader {
       'git',
       ['reset', '--hard', newRevision],
       workingDirectory: workingDirectory,
+      runInShell: true,
     );
     if (result.exitCode != 0) {
       throw ProcessException(
