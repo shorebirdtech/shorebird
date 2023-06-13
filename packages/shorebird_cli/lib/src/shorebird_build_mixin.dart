@@ -210,6 +210,8 @@ mixin ShorebirdBuildMixin on ShorebirdCommand {
   /// not manage the app version and build number. If we don't do this, then
   /// xcodebuild will increment the build number if it detects an App Store
   /// Connect build with the same version and build number.
+  /// See
+  /// https://developer.apple.com/forums/thread/690647?answerId=689925022#689925022
   File _createExportOptionsPlist() {
     const plistContents = '''
 <?xml version="1.0" encoding="UTF-8"?>
