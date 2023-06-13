@@ -38,6 +38,9 @@ class CodePushNotFoundException extends CodePushException {
   CodePushNotFoundException({required super.message, super.details});
 }
 
+/// A wrapper around [http.Client] that ensures all outbound requests
+/// are consistent.
+/// For example, all requests include the standard `x-version` header.
 class _CodePushClientWrapper extends http.BaseClient {
   _CodePushClientWrapper(this._client);
 
@@ -46,6 +49,12 @@ class _CodePushClientWrapper extends http.BaseClient {
   @override
   Future<http.StreamedResponse> send(http.BaseRequest request) {
     return _client.send(request..headers.addAll(CodePushClient.headers));
+  }
+
+  @override
+  void close() {
+    _client.close();
+    super.close();
   }
 }
 

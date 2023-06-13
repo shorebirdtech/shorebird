@@ -895,13 +895,12 @@ void main() {
     group('createRelease', () {
       const version = '1.0.0';
       test('throws an exception if the http request fails (unknown)', () async {
-        when(
-          () => httpClient.post(
-            any(),
-            headers: any(named: 'headers'),
-            body: any(named: 'body'),
+        when(() => httpClient.send(any())).thenAnswer(
+          (_) async => http.StreamedResponse(
+            const Stream.empty(),
+            HttpStatus.badRequest,
           ),
-        ).thenAnswer((_) async => http.Response('', HttpStatus.badRequest));
+        );
 
         expect(
           codePushClient.createRelease(
@@ -921,15 +920,9 @@ void main() {
       });
 
       test('throws an exception if the http request fails', () async {
-        when(
-          () => httpClient.post(
-            any(),
-            headers: any(named: 'headers'),
-            body: any(named: 'body'),
-          ),
-        ).thenAnswer(
-          (_) async => http.Response(
-            json.encode(errorResponse.toJson()),
+        when(() => httpClient.send(any())).thenAnswer(
+          (_) async => http.StreamedResponse(
+            Stream.value(utf8.encode(json.encode(errorResponse.toJson()))),
             HttpStatus.failedDependency,
           ),
         );
@@ -953,21 +946,19 @@ void main() {
 
       test('completes when request succeeds', () async {
         const releaseId = 0;
-        when(
-          () => httpClient.post(
-            any(),
-            headers: any(named: 'headers'),
-            body: any(named: 'body'),
-          ),
-        ).thenAnswer(
-          (_) async => http.Response(
-            json.encode(
-              Release(
-                id: releaseId,
-                appId: appId,
-                version: version,
-                flutterRevision: flutterRevision,
-                displayName: displayName,
+        when(() => httpClient.send(any())).thenAnswer(
+          (_) async => http.StreamedResponse(
+            Stream.value(
+              utf8.encode(
+                json.encode(
+                  Release(
+                    id: releaseId,
+                    appId: appId,
+                    version: version,
+                    flutterRevision: flutterRevision,
+                    displayName: displayName,
+                  ),
+                ),
               ),
             ),
             HttpStatus.ok,
@@ -997,16 +988,12 @@ void main() {
           ),
         );
 
-        final uri = verify(
-          () => httpClient.post(
-            captureAny(),
-            headers: CodePushClient.headers,
-            body: any(named: 'body'),
-          ),
-        ).captured.single as Uri;
+        final request = verify(() => httpClient.send(captureAny()))
+            .captured
+            .single as http.BaseRequest;
 
         expect(
-          uri,
+          request.url,
           codePushClient.hostedUri.replace(path: '/api/v1/releases'),
         );
       });
@@ -1017,10 +1004,11 @@ void main() {
       const userId = 42;
 
       test('throws an exception if the http request fails (unknown)', () async {
-        when(
-          () => httpClient.delete(any(), headers: any(named: 'headers')),
-        ).thenAnswer(
-          (_) async => http.Response('', HttpStatus.failedDependency),
+        when(() => httpClient.send(any())).thenAnswer(
+          (_) async => http.StreamedResponse(
+            const Stream.empty(),
+            HttpStatus.badRequest,
+          ),
         );
 
         expect(
@@ -1036,11 +1024,9 @@ void main() {
       });
 
       test('throws an exception if the http request fails', () async {
-        when(
-          () => httpClient.delete(any(), headers: any(named: 'headers')),
-        ).thenAnswer(
-          (_) async => http.Response(
-            json.encode(errorResponse.toJson()),
+        when(() => httpClient.send(any())).thenAnswer(
+          (_) async => http.StreamedResponse(
+            Stream.value(utf8.encode(json.encode(errorResponse.toJson()))),
             HttpStatus.failedDependency,
           ),
         );
@@ -1058,27 +1044,24 @@ void main() {
       });
 
       test('completes when request succeeds', () async {
-        when(
-          () => httpClient.delete(
-            any(),
-            headers: any(named: 'headers'),
+        when(() => httpClient.send(any())).thenAnswer(
+          (_) async => http.StreamedResponse(
+            const Stream.empty(),
+            HttpStatus.noContent,
           ),
-        ).thenAnswer((_) async => http.Response('', HttpStatus.noContent));
+        );
 
         await codePushClient.deleteCollaborator(
           appId: appId,
           userId: userId,
         );
 
-        final uri = verify(
-          () => httpClient.delete(
-            captureAny(),
-            headers: CodePushClient.headers,
-          ),
-        ).captured.single as Uri;
+        final request = verify(() => httpClient.send(captureAny()))
+            .captured
+            .single as http.BaseRequest;
 
         expect(
-          uri,
+          request.url,
           codePushClient.hostedUri.replace(
             path: '/api/v1/apps/$appId/collaborators/$userId',
           ),
@@ -1090,10 +1073,11 @@ void main() {
       const releaseId = 42;
 
       test('throws an exception if the http request fails (unknown)', () async {
-        when(
-          () => httpClient.delete(any(), headers: any(named: 'headers')),
-        ).thenAnswer(
-          (_) async => http.Response('', HttpStatus.failedDependency),
+        when(() => httpClient.send(any())).thenAnswer(
+          (_) async => http.StreamedResponse(
+            const Stream.empty(),
+            HttpStatus.badRequest,
+          ),
         );
 
         expect(
@@ -1109,11 +1093,9 @@ void main() {
       });
 
       test('throws an exception if the http request fails', () async {
-        when(
-          () => httpClient.delete(any(), headers: any(named: 'headers')),
-        ).thenAnswer(
-          (_) async => http.Response(
-            json.encode(errorResponse.toJson()),
+        when(() => httpClient.send(any())).thenAnswer(
+          (_) async => http.StreamedResponse(
+            Stream.value(utf8.encode(json.encode(errorResponse.toJson()))),
             HttpStatus.failedDependency,
           ),
         );
@@ -1131,24 +1113,21 @@ void main() {
       });
 
       test('completes when request succeeds', () async {
-        when(
-          () => httpClient.delete(
-            any(),
-            headers: any(named: 'headers'),
+        when(() => httpClient.send(any())).thenAnswer(
+          (_) async => http.StreamedResponse(
+            const Stream.empty(),
+            HttpStatus.noContent,
           ),
-        ).thenAnswer((_) async => http.Response('', HttpStatus.noContent));
+        );
 
         await codePushClient.deleteRelease(releaseId: releaseId);
 
-        final uri = verify(
-          () => httpClient.delete(
-            captureAny(),
-            headers: CodePushClient.headers,
-          ),
-        ).captured.single as Uri;
+        final request = verify(() => httpClient.send(captureAny()))
+            .captured
+            .single as http.BaseRequest;
 
         expect(
-          uri,
+          request.url,
           codePushClient.hostedUri.replace(
             path: '/api/v1/releases/$releaseId',
           ),
@@ -1165,14 +1144,11 @@ void main() {
       );
 
       test('throws an exception if the http request fails', () {
-        when(
-          () => httpClient.post(
-            any(),
-            headers: any(named: 'headers'),
-            body: any(named: 'body'),
+        when(() => httpClient.send(any())).thenAnswer(
+          (_) async => http.StreamedResponse(
+            const Stream.empty(),
+            HttpStatus.failedDependency,
           ),
-        ).thenAnswer(
-          (_) async => http.Response('', HttpStatus.failedDependency),
         );
 
         expect(
@@ -1188,15 +1164,9 @@ void main() {
       });
 
       test('returns a User when the http request succeeds', () async {
-        when(
-          () => httpClient.post(
-            any(),
-            headers: any(named: 'headers'),
-            body: any(named: 'body'),
-          ),
-        ).thenAnswer(
-          (_) async => http.Response(
-            jsonEncode(user.toJson()),
+        when(() => httpClient.send(any())).thenAnswer(
+          (_) async => http.StreamedResponse(
+            Stream.value(utf8.encode(json.encode(user.toJson()))),
             HttpStatus.created,
           ),
         );
@@ -1209,10 +1179,11 @@ void main() {
 
     group('deleteApp', () {
       test('throws an exception if the http request fails (unknown)', () async {
-        when(
-          () => httpClient.delete(any(), headers: any(named: 'headers')),
-        ).thenAnswer(
-          (_) async => http.Response('', HttpStatus.failedDependency),
+        when(() => httpClient.send(any())).thenAnswer(
+          (_) async => http.StreamedResponse(
+            const Stream.empty(),
+            HttpStatus.failedDependency,
+          ),
         );
 
         expect(
@@ -1228,11 +1199,9 @@ void main() {
       });
 
       test('throws an exception if the http request fails', () async {
-        when(
-          () => httpClient.delete(any(), headers: any(named: 'headers')),
-        ).thenAnswer(
-          (_) async => http.Response(
-            json.encode(errorResponse.toJson()),
+        when(() => httpClient.send(any())).thenAnswer(
+          (_) async => http.StreamedResponse(
+            Stream.value(utf8.encode(json.encode(errorResponse.toJson()))),
             HttpStatus.failedDependency,
           ),
         );
@@ -1250,24 +1219,21 @@ void main() {
       });
 
       test('completes when request succeeds', () async {
-        when(
-          () => httpClient.delete(
-            any(),
-            headers: any(named: 'headers'),
+        when(() => httpClient.send(any())).thenAnswer(
+          (_) async => http.StreamedResponse(
+            const Stream.empty(),
+            HttpStatus.noContent,
           ),
-        ).thenAnswer((_) async => http.Response('', HttpStatus.noContent));
+        );
 
         await codePushClient.deleteApp(appId: appId);
 
-        final uri = verify(
-          () => httpClient.delete(
-            captureAny(),
-            headers: any(named: 'headers'),
-          ),
-        ).captured.single as Uri;
+        final request = verify(() => httpClient.send(captureAny()))
+            .captured
+            .single as http.BaseRequest;
 
         expect(
-          uri,
+          request.url,
           codePushClient.hostedUri.replace(
             path: '/api/v1/apps/$appId',
           ),
@@ -1277,14 +1243,9 @@ void main() {
 
     group('getApps', () {
       test('throws an exception if the http request fails (unknown)', () async {
-        when(
-          () => httpClient.get(
-            any(),
-            headers: any(named: 'headers'),
-          ),
-        ).thenAnswer(
-          (_) async => http.Response(
-            '',
+        when(() => httpClient.send(any())).thenAnswer(
+          (_) async => http.StreamedResponse(
+            const Stream.empty(),
             HttpStatus.failedDependency,
           ),
         );
@@ -1302,15 +1263,10 @@ void main() {
       });
 
       test('throws an exception if the http request fails', () async {
-        when(
-          () => httpClient.get(
-            any(),
-            headers: any(named: 'headers'),
-          ),
-        ).thenAnswer(
-          (_) async => http.Response(
-            json.encode(errorResponse.toJson()),
-            HttpStatus.failedDependency,
+        when(() => httpClient.send(any())).thenAnswer(
+          (_) async => http.StreamedResponse(
+            Stream.value(utf8.encode(json.encode(errorResponse.toJson()))),
+            HttpStatus.noContent,
           ),
         );
 
@@ -1327,13 +1283,11 @@ void main() {
       });
 
       test('completes when request succeeds (empty)', () async {
-        when(
-          () => httpClient.get(
-            any(),
-            headers: any(named: 'headers'),
+        when(() => httpClient.send(any())).thenAnswer(
+          (_) async => http.StreamedResponse(
+            Stream.value(utf8.encode(json.encode([]))),
+            HttpStatus.ok,
           ),
-        ).thenAnswer(
-          (_) async => http.Response(json.encode([]), HttpStatus.ok),
         );
 
         final apps = await codePushClient.getApps();
@@ -1346,13 +1300,11 @@ void main() {
           AppMetadata(appId: '2', displayName: 'Shorebird Clock'),
         ];
 
-        when(
-          () => httpClient.get(
-            any(),
-            headers: any(named: 'headers'),
+        when(() => httpClient.send(any())).thenAnswer(
+          (_) async => http.StreamedResponse(
+            Stream.value(utf8.encode(json.encode(expected))),
+            HttpStatus.ok,
           ),
-        ).thenAnswer(
-          (_) async => http.Response(json.encode(expected), HttpStatus.ok),
         );
 
         final actual = await codePushClient.getApps();
@@ -1363,14 +1315,9 @@ void main() {
     group('getChannels', () {
       const appId = 'test-app-id';
       test('throws an exception if the http request fails (unknown)', () async {
-        when(
-          () => httpClient.get(
-            any(),
-            headers: any(named: 'headers'),
-          ),
-        ).thenAnswer(
-          (_) async => http.Response(
-            '',
+        when(() => httpClient.send(any())).thenAnswer(
+          (_) async => http.StreamedResponse(
+            const Stream.empty(),
             HttpStatus.failedDependency,
           ),
         );
@@ -1388,14 +1335,9 @@ void main() {
       });
 
       test('throws an exception if the http request fails', () async {
-        when(
-          () => httpClient.get(
-            any(),
-            headers: any(named: 'headers'),
-          ),
-        ).thenAnswer(
-          (_) async => http.Response(
-            json.encode(errorResponse.toJson()),
+        when(() => httpClient.send(any())).thenAnswer(
+          (_) async => http.StreamedResponse(
+            Stream.value(utf8.encode(json.encode(errorResponse.toJson()))),
             HttpStatus.failedDependency,
           ),
         );
@@ -1413,13 +1355,11 @@ void main() {
       });
 
       test('completes when request succeeds (empty)', () async {
-        when(
-          () => httpClient.get(
-            any(),
-            headers: any(named: 'headers'),
+        when(() => httpClient.send(any())).thenAnswer(
+          (_) async => http.StreamedResponse(
+            Stream.value(utf8.encode(json.encode([]))),
+            HttpStatus.ok,
           ),
-        ).thenAnswer(
-          (_) async => http.Response(json.encode([]), HttpStatus.ok),
         );
 
         final apps = await codePushClient.getChannels(appId: appId);
@@ -1432,13 +1372,11 @@ void main() {
           Channel(id: 1, appId: '2', name: 'development'),
         ];
 
-        when(
-          () => httpClient.get(
-            any(),
-            headers: any(named: 'headers'),
+        when(() => httpClient.send(any())).thenAnswer(
+          (_) async => http.StreamedResponse(
+            Stream.value(utf8.encode(json.encode(expected))),
+            HttpStatus.ok,
           ),
-        ).thenAnswer(
-          (_) async => http.Response(json.encode(expected), HttpStatus.ok),
         );
 
         final actual = await codePushClient.getChannels(appId: appId);
@@ -1449,14 +1387,9 @@ void main() {
     group('getCollaborators', () {
       const appId = 'test-app-id';
       test('throws an exception if the http request fails (unknown)', () async {
-        when(
-          () => httpClient.get(
-            any(),
-            headers: any(named: 'headers'),
-          ),
-        ).thenAnswer(
-          (_) async => http.Response(
-            '',
+        when(() => httpClient.send(any())).thenAnswer(
+          (_) async => http.StreamedResponse(
+            const Stream.empty(),
             HttpStatus.failedDependency,
           ),
         );
@@ -1474,14 +1407,9 @@ void main() {
       });
 
       test('throws an exception if the http request fails', () async {
-        when(
-          () => httpClient.get(
-            any(),
-            headers: any(named: 'headers'),
-          ),
-        ).thenAnswer(
-          (_) async => http.Response(
-            json.encode(errorResponse.toJson()),
+        when(() => httpClient.send(any())).thenAnswer(
+          (_) async => http.StreamedResponse(
+            Stream.value(utf8.encode(json.encode(errorResponse.toJson()))),
             HttpStatus.failedDependency,
           ),
         );
@@ -1499,13 +1427,11 @@ void main() {
       });
 
       test('completes when request succeeds (empty)', () async {
-        when(
-          () => httpClient.get(
-            any(),
-            headers: any(named: 'headers'),
+        when(() => httpClient.send(any())).thenAnswer(
+          (_) async => http.StreamedResponse(
+            Stream.value(utf8.encode(json.encode([]))),
+            HttpStatus.ok,
           ),
-        ).thenAnswer(
-          (_) async => http.Response(json.encode([]), HttpStatus.ok),
         );
 
         final apps = await codePushClient.getCollaborators(appId: appId);
@@ -1524,13 +1450,11 @@ void main() {
           ),
         ];
 
-        when(
-          () => httpClient.get(
-            any(),
-            headers: any(named: 'headers'),
+        when(() => httpClient.send(any())).thenAnswer(
+          (_) async => http.StreamedResponse(
+            Stream.value(utf8.encode(json.encode(expected))),
+            HttpStatus.ok,
           ),
-        ).thenAnswer(
-          (_) async => http.Response(json.encode(expected), HttpStatus.ok),
         );
 
         final actual = await codePushClient.getCollaborators(appId: appId);
@@ -1541,14 +1465,9 @@ void main() {
     group('getReleases', () {
       const appId = 'test-app-id';
       test('throws an exception if the http request fails (unknown)', () async {
-        when(
-          () => httpClient.get(
-            any(),
-            headers: any(named: 'headers'),
-          ),
-        ).thenAnswer(
-          (_) async => http.Response(
-            '',
+        when(() => httpClient.send(any())).thenAnswer(
+          (_) async => http.StreamedResponse(
+            const Stream.empty(),
             HttpStatus.failedDependency,
           ),
         );
@@ -1566,14 +1485,9 @@ void main() {
       });
 
       test('throws an exception if the http request fails', () async {
-        when(
-          () => httpClient.get(
-            any(),
-            headers: any(named: 'headers'),
-          ),
-        ).thenAnswer(
-          (_) async => http.Response(
-            json.encode(errorResponse.toJson()),
+        when(() => httpClient.send(any())).thenAnswer(
+          (_) async => http.StreamedResponse(
+            Stream.value(utf8.encode(json.encode(errorResponse.toJson()))),
             HttpStatus.failedDependency,
           ),
         );
@@ -1591,13 +1505,11 @@ void main() {
       });
 
       test('completes when request succeeds (empty)', () async {
-        when(
-          () => httpClient.get(
-            any(),
-            headers: any(named: 'headers'),
+        when(() => httpClient.send(any())).thenAnswer(
+          (_) async => http.StreamedResponse(
+            Stream.value(utf8.encode(json.encode([]))),
+            HttpStatus.ok,
           ),
-        ).thenAnswer(
-          (_) async => http.Response(json.encode([]), HttpStatus.ok),
         );
 
         final apps = await codePushClient.getReleases(appId: appId);
@@ -1622,13 +1534,11 @@ void main() {
           ),
         ];
 
-        when(
-          () => httpClient.get(
-            any(),
-            headers: any(named: 'headers'),
+        when(() => httpClient.send(any())).thenAnswer(
+          (_) async => http.StreamedResponse(
+            Stream.value(utf8.encode(json.encode(expected))),
+            HttpStatus.ok,
           ),
-        ).thenAnswer(
-          (_) async => http.Response(json.encode(expected), HttpStatus.ok),
         );
 
         final actual = await codePushClient.getReleases(appId: appId);
@@ -1642,14 +1552,9 @@ void main() {
       const platform = 'android';
 
       test('throws an exception if the http request fails (unknown)', () async {
-        when(
-          () => httpClient.get(
-            any(),
-            headers: any(named: 'headers'),
-          ),
-        ).thenAnswer(
-          (_) async => http.Response(
-            '',
+        when(() => httpClient.send(any())).thenAnswer(
+          (_) async => http.StreamedResponse(
+            const Stream.empty(),
             HttpStatus.failedDependency,
           ),
         );
@@ -1671,14 +1576,9 @@ void main() {
       });
 
       test('throws an exception if the http request fails', () async {
-        when(
-          () => httpClient.get(
-            any(),
-            headers: any(named: 'headers'),
-          ),
-        ).thenAnswer(
-          (_) async => http.Response(
-            json.encode(errorResponse.toJson()),
+        when(() => httpClient.send(any())).thenAnswer(
+          (_) async => http.StreamedResponse(
+            Stream.value(utf8.encode(json.encode(errorResponse.toJson()))),
             HttpStatus.failedDependency,
           ),
         );
@@ -1710,13 +1610,11 @@ void main() {
           size: 42,
         );
 
-        when(
-          () => httpClient.get(
-            any(),
-            headers: any(named: 'headers'),
+        when(() => httpClient.send(any())).thenAnswer(
+          (_) async => http.StreamedResponse(
+            Stream.value(utf8.encode(json.encode(expected))),
+            HttpStatus.ok,
           ),
-        ).thenAnswer(
-          (_) async => http.Response(json.encode(expected), HttpStatus.ok),
         );
 
         final actual = await codePushClient.getReleaseArtifact(
@@ -1732,13 +1630,12 @@ void main() {
       const patchId = 0;
       const channelId = 0;
       test('throws an exception if the http request fails (unknown)', () async {
-        when(
-          () => httpClient.post(
-            any(),
-            headers: any(named: 'headers'),
-            body: any(named: 'body'),
+        when(() => httpClient.send(any())).thenAnswer(
+          (_) async => http.StreamedResponse(
+            const Stream.empty(),
+            HttpStatus.badRequest,
           ),
-        ).thenAnswer((_) async => http.Response('', HttpStatus.badRequest));
+        );
 
         expect(
           codePushClient.promotePatch(patchId: patchId, channelId: channelId),
@@ -1753,15 +1650,9 @@ void main() {
       });
 
       test('throws an exception if the http request fails', () async {
-        when(
-          () => httpClient.post(
-            any(),
-            headers: any(named: 'headers'),
-            body: any(named: 'body'),
-          ),
-        ).thenAnswer(
-          (_) async => http.Response(
-            json.encode(errorResponse.toJson()),
+        when(() => httpClient.send(any())).thenAnswer(
+          (_) async => http.StreamedResponse(
+            Stream.value(utf8.encode(json.encode(errorResponse.toJson()))),
             HttpStatus.failedDependency,
           ),
         );
@@ -1779,14 +1670,11 @@ void main() {
       });
 
       test('completes when request succeeds', () async {
-        when(
-          () => httpClient.post(
-            any(),
-            headers: any(named: 'headers'),
-            body: any(named: 'body'),
+        when(() => httpClient.send(any())).thenAnswer(
+          (_) async => http.StreamedResponse(
+            const Stream.empty(),
+            HttpStatus.created,
           ),
-        ).thenAnswer(
-          (_) async => http.Response('', HttpStatus.created),
         );
 
         await expectLater(
@@ -1794,16 +1682,12 @@ void main() {
           completes,
         );
 
-        final uri = verify(
-          () => httpClient.post(
-            captureAny(),
-            headers: CodePushClient.headers,
-            body: any(named: 'body'),
-          ),
-        ).captured.single as Uri;
+        final request = verify(() => httpClient.send(captureAny()))
+            .captured
+            .single as http.BaseRequest;
 
         expect(
-          uri,
+          request.url,
           codePushClient.hostedUri.replace(path: '/api/v1/patches/promote'),
         );
       });
@@ -1817,9 +1701,12 @@ void main() {
       });
 
       test('throws an exception if the http request fails', () {
-        when(
-          () => httpClient.delete(uri, headers: any(named: 'headers')),
-        ).thenAnswer((_) async => http.Response('', HttpStatus.badRequest));
+        when(() => httpClient.send(any())).thenAnswer(
+          (_) async => http.StreamedResponse(
+            const Stream.empty(),
+            HttpStatus.badRequest,
+          ),
+        );
 
         expect(
           codePushClient.cancelSubscription(),
@@ -1835,12 +1722,11 @@ void main() {
 
       test('completes when request succeeds', () async {
         const timestamp = 1681455600;
-
-        when(
-          () => httpClient.delete(uri, headers: any(named: 'headers')),
-        ).thenAnswer(
-          (_) async => http.Response(
-            jsonEncode({'expiration_date': 1681455600}),
+        when(() => httpClient.send(any())).thenAnswer(
+          (_) async => http.StreamedResponse(
+            Stream.value(
+              utf8.encode(json.encode({'expiration_date': 1681455600})),
+            ),
             HttpStatus.ok,
           ),
         );
@@ -1848,9 +1734,10 @@ void main() {
         final response = await codePushClient.cancelSubscription();
 
         expect(response.millisecondsSinceEpoch, timestamp * 1000);
-        verify(
-          () => httpClient.delete(uri, headers: CodePushClient.headers),
-        ).called(1);
+        final request = verify(() => httpClient.send(captureAny()))
+            .captured
+            .single as http.BaseRequest;
+        expect(request.url, equals(uri));
       });
     });
 
