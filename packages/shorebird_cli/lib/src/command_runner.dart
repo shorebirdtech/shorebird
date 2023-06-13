@@ -142,7 +142,6 @@ class ShorebirdCliCommandRunner extends CompletionCommandRunner<int> {
       try {
         await upgrader.upgrade();
         progress.complete();
-        logger.detail('[upgrader] Upgrading complete.');
         final result = await process.run(
           Platform.script.path,
           topLevelResults.arguments,
@@ -150,7 +149,6 @@ class ShorebirdCliCommandRunner extends CompletionCommandRunner<int> {
         );
         return result.exitCode;
       } catch (error) {
-        logger.detail('[upgrader] Failed to upgrade: $error');
         progress.fail(error.toString());
       }
     }
