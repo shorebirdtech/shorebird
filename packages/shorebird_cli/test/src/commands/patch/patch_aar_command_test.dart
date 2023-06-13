@@ -140,7 +140,14 @@ flutter:
     late ShorebirdProcess shorebirdProcess;
 
     R runWithOverrides<R>(R Function() body) {
-      return runScoped(body, values: {loggerRef.overrideWith(() => logger)});
+      return runScoped(
+        body,
+        values: {
+          loggerRef.overrideWith(() => logger),
+          engineConfigRef.overrideWith(() => const EngineConfig.empty()),
+          processRef.overrideWith(() => shorebirdProcess),
+        },
+      );
     }
 
     Directory setUpTempDir({bool includeModule = true}) {
@@ -328,24 +335,23 @@ flutter:
         () => cache.getArtifactDirectory(any()),
       ).thenReturn(Directory.systemTemp.createTempSync());
 
-      command = PatchAarCommand(
-        aarDiffer: aarDiffer,
-        auth: auth,
-        buildCodePushClient: ({
-          required http.Client httpClient,
-          Uri? hostedUri,
-        }) {
-          capturedHostedUri = hostedUri;
-          return codePushClient;
-        },
-        cache: cache,
-        httpClient: httpClient,
-        validators: [flutterValidator],
-        unzipFn: (_, __) async {},
-      )
-        ..testArgResults = argResults
-        ..testProcess = shorebirdProcess
-        ..testEngineConfig = const EngineConfig.empty();
+      command = runWithOverrides(
+        () => PatchAarCommand(
+          aarDiffer: aarDiffer,
+          auth: auth,
+          buildCodePushClient: ({
+            required http.Client httpClient,
+            Uri? hostedUri,
+          }) {
+            capturedHostedUri = hostedUri;
+            return codePushClient;
+          },
+          cache: cache,
+          httpClient: httpClient,
+          validators: [flutterValidator],
+          unzipFn: (_, __) async {},
+        ),
+      )..testArgResults = argResults;
     });
 
     test('throws config error when shorebird is not initialized', () async {

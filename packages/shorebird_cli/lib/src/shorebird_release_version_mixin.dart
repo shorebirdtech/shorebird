@@ -1,5 +1,6 @@
 import 'package:path/path.dart' as p;
 import 'package:shorebird_cli/src/shorebird_java_mixin.dart';
+import 'package:shorebird_cli/src/shorebird_process.dart';
 
 /// Mixin on [ShorebirdJavaMixin] which exposes methods
 /// to extract the release version from an app bundle.

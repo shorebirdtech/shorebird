@@ -104,7 +104,14 @@ flutter:
     late ShorebirdProcess shorebirdProcess;
 
     R runWithOverrides<R>(R Function() body) {
-      return runScoped(body, values: {loggerRef.overrideWith(() => logger)});
+      return runScoped(
+        body,
+        values: {
+          loggerRef.overrideWith(() => logger),
+          engineConfigRef.overrideWith(() => const EngineConfig.empty()),
+          processRef.overrideWith(() => shorebirdProcess),
+        },
+      );
     }
 
     Directory setUpTempDir({bool includeModule = true}) {
@@ -222,21 +229,20 @@ flutter:
 
       when(() => flutterValidator.validate(any())).thenAnswer((_) async => []);
 
-      command = ReleaseAarCommand(
-        auth: auth,
-        buildCodePushClient: ({
-          required http.Client httpClient,
-          Uri? hostedUri,
-        }) {
-          capturedHostedUri = hostedUri;
-          return codePushClient;
-        },
-        unzipFn: (_, __) async {},
-        validators: [flutterValidator],
-      )
-        ..testArgResults = argResults
-        ..testProcess = shorebirdProcess
-        ..testEngineConfig = const EngineConfig.empty();
+      command = runWithOverrides(
+        () => ReleaseAarCommand(
+          auth: auth,
+          buildCodePushClient: ({
+            required http.Client httpClient,
+            Uri? hostedUri,
+          }) {
+            capturedHostedUri = hostedUri;
+            return codePushClient;
+          },
+          unzipFn: (_, __) async {},
+          validators: [flutterValidator],
+        ),
+      )..testArgResults = argResults;
     });
 
     test('has correct description', () {

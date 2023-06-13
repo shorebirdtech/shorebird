@@ -10,7 +10,7 @@ import 'package:scoped/scoped.dart';
 import 'package:shorebird_cli/src/auth/auth.dart';
 import 'package:shorebird_cli/src/commands/init_command.dart';
 import 'package:shorebird_cli/src/logger.dart';
-import 'package:shorebird_cli/src/shorebird_process.dart';
+import 'package:shorebird_cli/src/shorebird_process.dart' hide process;
 import 'package:shorebird_code_push_client/shorebird_code_push_client.dart';
 import 'package:test/test.dart';
 
@@ -48,7 +48,7 @@ environment:
     late http.Client httpClient;
     late ArgResults argResults;
     late Auth auth;
-    late ShorebirdProcess process;
+    late ShorebirdProcess shorebirdProcess;
     late ShorebirdProcessResult result;
     late CodePushClient codePushClient;
     late Logger logger;
@@ -56,7 +56,13 @@ environment:
     late InitCommand command;
 
     R runWithOverrides<R>(R Function() body) {
-      return runScoped(body, values: {loggerRef.overrideWith(() => logger)});
+      return runScoped(
+        body,
+        values: {
+          loggerRef.overrideWith(() => logger),
+          processRef.overrideWith(() => shorebirdProcess),
+        },
+      );
     }
 
     Directory setUpAppTempDir() {
@@ -75,7 +81,7 @@ environment:
       httpClient = _MockHttpClient();
       argResults = _MockArgResults();
       auth = _MockAuth();
-      process = _MockProcess();
+      shorebirdProcess = _MockProcess();
       result = _MockProcessResult();
       codePushClient = _MockCodePushClient();
       logger = _MockLogger();
@@ -94,7 +100,7 @@ environment:
       ).thenReturn(appName);
       when(() => logger.progress(any())).thenReturn(progress);
       when(
-        () => process.run(
+        () => shorebirdProcess.run(
           any(),
           any(),
           runInShell: any(named: 'runInShell'),
@@ -106,17 +112,17 @@ environment:
       when(() => result.exitCode).thenReturn(ExitCode.success.code);
       when(() => result.stdout).thenReturn('');
 
-      command = InitCommand(
-        auth: auth,
-        buildCodePushClient: ({
-          required http.Client httpClient,
-          Uri? hostedUri,
-        }) {
-          return codePushClient;
-        },
-      )
-        ..testProcess = process
-        ..testArgResults = argResults;
+      command = runWithOverrides(
+        () => InitCommand(
+          auth: auth,
+          buildCodePushClient: ({
+            required http.Client httpClient,
+            Uri? hostedUri,
+          }) {
+            return codePushClient;
+          },
+        ),
+      )..testArgResults = argResults;
     });
 
     group('extractProductFlavors', () {
@@ -129,11 +135,16 @@ environment:
         const javaHome = 'test_java_home';
         when(() => platform.environment).thenReturn({'JAVA_HOME': javaHome});
         await expectLater(
-          command.extractProductFlavors(tempDir.path, platform: platform),
+          runWithOverrides(
+            () => command.extractProductFlavors(
+              tempDir.path,
+              platform: platform,
+            ),
+          ),
           completes,
         );
         verify(
-          () => process.run(
+          () => shorebirdProcess.run(
             p.join(tempDir.path, 'android', 'gradlew'),
             ['app:tasks', '--all', '--console=auto'],
             runInShell: true,
@@ -162,11 +173,16 @@ environment:
           p.join(tempDir.path, 'pubspec.yaml'),
         ).writeAsStringSync(pubspecYamlContent);
         await expectLater(
-          command.extractProductFlavors(tempDir.path, platform: platform),
+          runWithOverrides(
+            () => command.extractProductFlavors(
+              tempDir.path,
+              platform: platform,
+            ),
+          ),
           completes,
         );
         verify(
-          () => process.run(
+          () => shorebirdProcess.run(
             p.join(tempDir.path, 'android', 'gradlew.bat'),
             ['app:tasks', '--all', '--console=auto'],
             runInShell: true,
@@ -198,11 +214,16 @@ environment:
           p.join(tempDir.path, 'pubspec.yaml'),
         ).writeAsStringSync(pubspecYamlContent);
         await expectLater(
-          command.extractProductFlavors(tempDir.path, platform: platform),
+          runWithOverrides(
+            () => command.extractProductFlavors(
+              tempDir.path,
+              platform: platform,
+            ),
+          ),
           completes,
         );
         verify(
-          () => process.run(
+          () => shorebirdProcess.run(
             p.join(tempDir.path, 'android', 'gradlew'),
             ['app:tasks', '--all', '--console=auto'],
             runInShell: true,
@@ -228,11 +249,16 @@ environment:
           p.join(tempDir.path, 'pubspec.yaml'),
         ).writeAsStringSync(pubspecYamlContent);
         await expectLater(
-          command.extractProductFlavors(tempDir.path, platform: platform),
+          runWithOverrides(
+            () => command.extractProductFlavors(
+              tempDir.path,
+              platform: platform,
+            ),
+          ),
           completes,
         );
         verify(
-          () => process.run(
+          () => shorebirdProcess.run(
             p.join(tempDir.path, 'android', 'gradlew'),
             ['app:tasks', '--all', '--console=auto'],
             runInShell: true,
@@ -251,11 +277,16 @@ environment:
         const javaHome = 'test_java_home';
         when(() => platform.environment).thenReturn({'JAVA_HOME': javaHome});
         await expectLater(
-          command.extractProductFlavors(tempDir.path, platform: platform),
+          runWithOverrides(
+            () => command.extractProductFlavors(
+              tempDir.path,
+              platform: platform,
+            ),
+          ),
           completes,
         );
         verify(
-          () => process.run(
+          () => shorebirdProcess.run(
             p.join(tempDir.path, '.android', 'gradlew'),
             ['app:tasks', '--all', '--console=auto'],
             runInShell: true,

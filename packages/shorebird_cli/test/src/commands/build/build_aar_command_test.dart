@@ -64,7 +64,14 @@ flutter:
     late BuildAarCommand command;
 
     R runWithOverrides<R>(R Function() body) {
-      return runScoped(body, values: {loggerRef.overrideWith(() => logger)});
+      return runScoped(
+        body,
+        values: {
+          loggerRef.overrideWith(() => logger),
+          engineConfigRef.overrideWith(() => const EngineConfig.empty()),
+          processRef.overrideWith(() => shorebirdProcess),
+        },
+      );
     }
 
     Directory setUpTempDir({bool includeModule = true}) {
@@ -105,10 +112,9 @@ flutter:
         return processResult;
       });
 
-      command = BuildAarCommand(auth: auth, validators: [])
-        ..testArgResults = argResults
-        ..testProcess = shorebirdProcess
-        ..testEngineConfig = const EngineConfig.empty();
+      command = runWithOverrides(
+        () => BuildAarCommand(auth: auth, validators: []),
+      )..testArgResults = argResults;
     });
 
     test('has correct description', () {

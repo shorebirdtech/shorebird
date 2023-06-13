@@ -89,7 +89,14 @@ flutter:
     late ShorebirdProcess shorebirdProcess;
 
     R runWithOverrides<R>(R Function() body) {
-      return runScoped(body, values: {loggerRef.overrideWith(() => logger)});
+      return runScoped(
+        body,
+        values: {
+          loggerRef.overrideWith(() => logger),
+          engineConfigRef.overrideWith(() => const EngineConfig.empty()),
+          processRef.overrideWith(() => shorebirdProcess),
+        },
+      );
     }
 
     Directory setUpTempDir() {
@@ -223,15 +230,14 @@ flutter:
       ).thenAnswer((_) async {});
       when(() => flutterValidator.validate(any())).thenAnswer((_) async => []);
 
-      command = ReleaseAndroidCommand(
-        auth: auth,
-        codePushClientWrapper: codePushClientWrapper,
-        cache: cache,
-        validators: [flutterValidator],
-      )
-        ..testArgResults = argResults
-        ..testProcess = shorebirdProcess
-        ..testEngineConfig = const EngineConfig.empty();
+      command = runWithOverrides(
+        () => ReleaseAndroidCommand(
+          auth: auth,
+          codePushClientWrapper: codePushClientWrapper,
+          cache: cache,
+          validators: [flutterValidator],
+        ),
+      )..testArgResults = argResults;
     });
 
     test('has a description', () {

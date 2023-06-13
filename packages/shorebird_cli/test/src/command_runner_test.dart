@@ -1,3 +1,4 @@
+import 'package:args/args.dart';
 import 'package:args/command_runner.dart';
 import 'package:mason_logger/mason_logger.dart';
 import 'package:mocktail/mocktail.dart';
@@ -10,18 +11,24 @@ import 'package:shorebird_cli/src/upgrader.dart';
 import 'package:shorebird_cli/src/version.dart';
 import 'package:test/test.dart';
 
+class _MockArgResults extends Mock implements ArgResults {}
+
 class _MockLogger extends Mock implements Logger {}
 
 class _MockProgress extends Mock implements Progress {}
+
+class _MockShorebirdProcess extends Mock implements ShorebirdProcess {}
 
 class _MockProcessResult extends Mock implements ShorebirdProcessResult {}
 
 class _MockUpgrader extends Mock implements Upgrader {}
 
 void main() {
-  group('ShorebirdCliCommandRunner', () {
+  group(ShorebirdCliCommandRunner, () {
+    late ArgResults argResults;
     late Logger logger;
     late Progress progress;
+    late ShorebirdProcess process;
     late Upgrader upgrader;
     late ShorebirdProcessResult processResult;
     late ShorebirdCliCommandRunner commandRunner;
@@ -31,17 +38,23 @@ void main() {
         body,
         values: {
           loggerRef.overrideWith(() => logger),
+          processRef.overrideWith(() => process),
           upgraderRef.overrideWith(() => upgrader),
         },
       );
     }
 
     setUp(() {
+      argResults = _MockArgResults();
       logger = _MockLogger();
       progress = _MockProgress();
+      process = _MockShorebirdProcess();
       upgrader = _MockUpgrader();
       ShorebirdEnvironment.shorebirdEngineRevision = 'test-revision';
       processResult = _MockProcessResult();
+      when(
+        () => process.run(any(), any(), runInShell: any(named: 'runInShell')),
+      ).thenAnswer((_) async => processResult);
       when(() => processResult.exitCode).thenReturn(ExitCode.success.code);
       when(() => upgrader.isUpToDate()).thenAnswer((_) async => true);
       when(() => logger.progress(any())).thenReturn(progress);
@@ -128,14 +141,19 @@ Shorebird Engine • revision ${ShorebirdEnvironment.shorebirdEngineRevision}'''
       });
 
       test('successfully upgrades when out of date', () async {
+        when(() => argResults['version']).thenReturn(true);
+        when(() => argResults.arguments).thenReturn(['--version']);
         when(() => upgrader.isUpToDate()).thenAnswer((_) async => false);
         when(() => upgrader.upgrade()).thenAnswer((_) async {});
         final result = await runWithOverrides(
-          () => commandRunner.run(['--verbose']),
+          () => commandRunner.runCommand(argResults),
         );
         expect(result, equals(ExitCode.success.code));
         verify(() => upgrader.isUpToDate()).called(1);
         verify(() => upgrader.upgrade()).called(1);
+        verify(
+          () => process.run(any(), ['--version'], runInShell: true),
+        ).called(1);
       });
     });
 

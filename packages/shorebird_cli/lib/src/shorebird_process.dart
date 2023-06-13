@@ -2,7 +2,14 @@ import 'dart:io';
 
 import 'package:mason_logger/mason_logger.dart';
 import 'package:meta/meta.dart';
+import 'package:scoped/scoped.dart';
 import 'package:shorebird_cli/src/shorebird_environment.dart';
+
+final engineConfigRef = create(() => const EngineConfig.empty());
+final processRef = create(ShorebirdProcess.new);
+
+EngineConfig get engineConfig => read(engineConfigRef);
+ShorebirdProcess get process => read(processRef);
 
 class EngineConfig {
   const EngineConfig({

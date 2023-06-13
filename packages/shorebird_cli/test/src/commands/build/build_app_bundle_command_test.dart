@@ -42,7 +42,14 @@ void main() {
     late ShorebirdProcess shorebirdProcess;
 
     R runWithOverrides<R>(R Function() body) {
-      return runScoped(body, values: {loggerRef.overrideWith(() => logger)});
+      return runScoped(
+        body,
+        values: {
+          loggerRef.overrideWith(() => logger),
+          engineConfigRef.overrideWith(() => const EngineConfig.empty()),
+          processRef.overrideWith(() => shorebirdProcess),
+        },
+      );
     }
 
     setUp(() {
@@ -70,13 +77,9 @@ void main() {
       when(() => logger.info(any())).thenReturn(null);
       when(() => flutterValidator.validate(any())).thenAnswer((_) async => []);
 
-      command = BuildAppBundleCommand(
-        auth: auth,
-        validators: [flutterValidator],
-      )
-        ..testArgResults = argResults
-        ..testProcess = shorebirdProcess
-        ..testEngineConfig = const EngineConfig.empty();
+      command = runWithOverrides(
+        () => BuildAppBundleCommand(auth: auth, validators: [flutterValidator]),
+      )..testArgResults = argResults;
     });
 
     test('has correct description', () {
@@ -179,20 +182,39 @@ ${lightCyan.wrap(p.join('build', 'app', 'outputs', 'bundle', '${flavor}Release',
     });
 
     test('local-engine and architectures', () async {
-      expect(command.architectures.length, greaterThan(1));
+      expect(
+        runWithOverrides(() => command.architectures.length),
+        greaterThan(1),
+      );
 
-      command.testEngineConfig = const EngineConfig(
+      const androidArm64EngineConfig = EngineConfig(
         localEngine: 'android_release_arm64',
         localEngineSrcPath: 'path/to/engine/src',
       );
-      expect(command.architectures.length, equals(1));
+      expect(
+        runScoped(
+          () => command.architectures.length,
+          values: {
+            engineConfigRef.overrideWith(() => androidArm64EngineConfig)
+          },
+        ),
+        equals(1),
+      );
 
       // We only support a few release configs for now.
-      command.testEngineConfig = const EngineConfig(
+      const androidDebugUnoptEngineConfig = EngineConfig(
         localEngine: 'android_debug_unopt',
         localEngineSrcPath: 'path/to/engine/src',
       );
-      expect(() => command.architectures, throwsException);
+      expect(
+        () => runScoped(
+          () => command.architectures,
+          values: {
+            engineConfigRef.overrideWith(() => androidDebugUnoptEngineConfig)
+          },
+        ),
+        throwsException,
+      );
     });
 
     test('prints flutter validation warnings', () async {

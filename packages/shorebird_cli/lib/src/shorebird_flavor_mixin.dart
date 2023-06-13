@@ -4,6 +4,7 @@ import 'package:collection/collection.dart';
 import 'package:path/path.dart' as p;
 import 'package:platform/platform.dart';
 import 'package:shorebird_cli/src/shorebird_java_mixin.dart';
+import 'package:shorebird_cli/src/shorebird_process.dart';
 
 /// Mixin on [ShorebirdJavaMixin] which exposes methods for extracting
 /// product flavors from the current app.

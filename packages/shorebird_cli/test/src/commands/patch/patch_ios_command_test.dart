@@ -90,7 +90,14 @@ flutter:
     late PatchIosCommand command;
 
     R runWithOverrides<R>(R Function() body) {
-      return runScoped(body, values: {loggerRef.overrideWith(() => logger)});
+      return runScoped(
+        body,
+        values: {
+          loggerRef.overrideWith(() => logger),
+          engineConfigRef.overrideWith(() => const EngineConfig.empty()),
+          processRef.overrideWith(() => shorebirdProcess),
+        },
+      );
     }
 
     Directory setUpTempDir() {
@@ -202,15 +209,14 @@ flutter:
         ),
       ).thenAnswer((_) async => aotBuildProcessResult);
 
-      command = PatchIosCommand(
-        auth: auth,
-        codePushClientWrapper: codePushClientWrapper,
-        ipaReader: ipaReader,
-        validators: [flutterValidator],
-      )
-        ..testArgResults = argResults
-        ..testProcess = shorebirdProcess
-        ..testEngineConfig = const EngineConfig.empty();
+      command = runWithOverrides(
+        () => PatchIosCommand(
+          auth: auth,
+          codePushClientWrapper: codePushClientWrapper,
+          ipaReader: ipaReader,
+          validators: [flutterValidator],
+        ),
+      )..testArgResults = argResults;
     });
 
     test('has a description', () {

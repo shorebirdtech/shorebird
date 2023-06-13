@@ -42,7 +42,14 @@ void main() {
     late ShorebirdProcess shorebirdProcess;
 
     R runWithOverrides<R>(R Function() body) {
-      return runScoped(body, values: {loggerRef.overrideWith(() => logger)});
+      return runScoped(
+        body,
+        values: {
+          loggerRef.overrideWith(() => logger),
+          engineConfigRef.overrideWith(() => const EngineConfig.empty()),
+          processRef.overrideWith(() => shorebirdProcess),
+        },
+      );
     }
 
     setUp(() {
@@ -71,13 +78,9 @@ void main() {
       when(() => logger.info(any())).thenReturn(null);
       when(() => flutterValidator.validate(any())).thenAnswer((_) async => []);
 
-      command = BuildIpaCommand(
-        auth: auth,
-        validators: [flutterValidator],
-      )
-        ..testArgResults = argResults
-        ..testProcess = shorebirdProcess
-        ..testEngineConfig = const EngineConfig.empty();
+      command = runWithOverrides(
+        () => BuildIpaCommand(auth: auth, validators: [flutterValidator]),
+      )..testArgResults = argResults;
     });
 
     test('has correct description', () {

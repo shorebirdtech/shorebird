@@ -48,6 +48,8 @@ void main() {
         body,
         values: {
           loggerRef.overrideWith(() => logger),
+          engineConfigRef.overrideWith(() => const EngineConfig.empty()),
+          processRef.overrideWith(() => shorebirdProcess),
           upgraderRef.overrideWith(() => upgrader),
         },
       );
@@ -104,10 +106,7 @@ void main() {
             shorebirdFlutterValidator,
           ],
         ),
-      )
-        ..testArgResults = argResults
-        ..testProcess = shorebirdProcess
-        ..testEngineConfig = const EngineConfig.empty();
+      )..testArgResults = argResults;
     });
 
     test('prints "no issues" when everything is OK', () async {

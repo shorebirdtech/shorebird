@@ -51,7 +51,14 @@ void main() {
     late RunCommand command;
 
     R runWithOverrides<R>(R Function() body) {
-      return runScoped(body, values: {loggerRef.overrideWith(() => logger)});
+      return runScoped(
+        body,
+        values: {
+          loggerRef.overrideWith(() => logger),
+          engineConfigRef.overrideWith(() => const EngineConfig.empty()),
+          processRef.overrideWith(() => shorebirdProcess),
+        },
+      );
     }
 
     setUp(() {
@@ -84,22 +91,21 @@ void main() {
       ).thenAnswer((_) async => []);
       when(() => flutterValidator.validate(any())).thenAnswer((_) async => []);
 
-      command = RunCommand(
-        auth: auth,
-        buildCodePushClient: ({
-          required http.Client httpClient,
-          Uri? hostedUri,
-        }) {
-          return codePushClient;
-        },
-        validators: [
-          androidInternetPermissionValidator,
-          flutterValidator,
-        ],
-      )
-        ..testArgResults = argResults
-        ..testProcess = shorebirdProcess
-        ..testEngineConfig = const EngineConfig.empty();
+      command = runWithOverrides(
+        () => RunCommand(
+          auth: auth,
+          buildCodePushClient: ({
+            required http.Client httpClient,
+            Uri? hostedUri,
+          }) {
+            return codePushClient;
+          },
+          validators: [
+            androidInternetPermissionValidator,
+            flutterValidator,
+          ],
+        ),
+      )..testArgResults = argResults;
     });
 
     test('exits with no user when not logged in', () async {
