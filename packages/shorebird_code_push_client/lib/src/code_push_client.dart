@@ -41,8 +41,8 @@ class CodePushNotFoundException extends CodePushException {
 /// A wrapper around [http.Client] that ensures all outbound requests
 /// are consistent.
 /// For example, all requests include the standard `x-version` header.
-class _CodePushClientWrapper extends http.BaseClient {
-  _CodePushClientWrapper(this._client);
+class _CodePushHttpClient extends http.BaseClient {
+  _CodePushHttpClient(this._client);
 
   final http.Client _client;
 
@@ -66,7 +66,7 @@ class CodePushClient {
   CodePushClient({
     http.Client? httpClient,
     Uri? hostedUri,
-  })  : _httpClient = _CodePushClientWrapper(httpClient ?? http.Client()),
+  })  : _httpClient = _CodePushHttpClient(httpClient ?? http.Client()),
         hostedUri = hostedUri ?? Uri.https('api.shorebird.dev');
 
   /// The standard headers applied to all requests.
