@@ -30,11 +30,6 @@ class ShorebirdCliCommandRunner extends CompletionCommandRunner<int> {
   ShorebirdCliCommandRunner() : super(executableName, description) {
     argParser
       ..addFlag(
-        'force-upgrade',
-        negatable: false,
-        help: 'Print the current version.',
-      )
-      ..addFlag(
         'version',
         negatable: false,
         help: 'Print the current version.',
