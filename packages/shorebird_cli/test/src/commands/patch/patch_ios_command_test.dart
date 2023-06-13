@@ -54,6 +54,7 @@ void main() {
   const arch = 'aarch64';
   const appDisplayName = 'Test App';
   const platform = 'ios';
+  const elfAotSnapshotFileName = 'out.aot';
   const pubspecYamlContent = '''
 name: example
 version: $version
@@ -118,7 +119,9 @@ flutter:
       File(
         p.join(dir.path, '.dart_tool', 'flutter_build', 'app.dill'),
       ).createSync(recursive: true);
-      File(p.join(dir.path, 'out.aot')).createSync();
+      File(p.join(dir.path, 'build', elfAotSnapshotFileName)).createSync(
+        recursive: true,
+      );
     }
 
     setUpAll(() {
@@ -342,6 +345,19 @@ https://github.com/shorebirdtech/shorebird/issues/472
           any(that: contains('Failed to determine release version')),
         ),
       ).called(1);
+    });
+
+    test('prints release version when detected', () async {
+      final tempDir = setUpTempDir();
+      setUpTempArtifacts(tempDir);
+      final exitCode = await IOOverrides.runZoned(
+        () => runWithOverrides(command.run),
+        getCurrentDirectory: () => tempDir,
+      );
+
+      expect(exitCode, equals(ExitCode.success.code));
+      verify(() => progress.complete('Detected release version 1.2.3+1'))
+          .called(1);
     });
 
     test('throws error when creating aot snapshot fails', () async {

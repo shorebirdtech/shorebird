@@ -140,7 +140,9 @@ class PatchIosCommand extends ShorebirdCommand
         ),
       );
       releaseVersion = ipa.versionNumber;
-      detectReleaseVersionProgress.complete();
+      detectReleaseVersionProgress.complete(
+        'Detected release version $releaseVersion',
+      );
     } catch (error) {
       detectReleaseVersionProgress.fail(
         'Failed to determine release version: $error',
