@@ -218,10 +218,10 @@ mixin ShorebirdBuildMixin on ShorebirdCommand {
 <!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
 <plist version="1.0">
 <dict>
-	<key>manageAppVersionAndBuildNumber</key>
-	<false/>
+  <key>manageAppVersionAndBuildNumber</key>
+  <false/>
   <key>signingStyle</key>
-	<string>automatic</string>
+  <string>automatic</string>
   <key>uploadBitcode</key>
   <false/>
   <key>method</key>
