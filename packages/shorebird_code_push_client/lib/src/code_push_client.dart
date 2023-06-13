@@ -2,6 +2,7 @@ import 'dart:convert';
 import 'dart:io';
 
 import 'package:http/http.dart' as http;
+import 'package:shorebird_code_push_client/src/version.dart';
 import 'package:shorebird_code_push_protocol/shorebird_code_push_protocol.dart';
 
 /// {@template code_push_exception}
@@ -48,6 +49,9 @@ class CodePushClient {
   })  : _httpClient = httpClient ?? http.Client(),
         hostedUri = hostedUri ?? Uri.https('api.shorebird.dev');
 
+  /// The standard headers applied to all requests.
+  static const headers = <String, String>{'x-version': packageVersion};
+
   /// The default error message to use when an unknown error occurs.
   static const unknownErrorMessage = 'An unknown error occurred.';
 
@@ -66,6 +70,7 @@ class CodePushClient {
   }) async {
     final response = await _httpClient.post(
       Uri.parse('$_v1/apps/$appId/collaborators'),
+      headers: headers,
       body: json.encode(CreateAppCollaboratorRequest(email: email).toJson()),
     );
 
@@ -102,6 +107,7 @@ class CodePushClient {
       Uri.parse('$_v1/patches/$patchId/artifacts'),
     );
     final file = await http.MultipartFile.fromPath('file', artifactPath);
+    request.headers.addAll(headers);
     request.fields.addAll({
       'arch': arch,
       'platform': platform,
@@ -135,6 +141,7 @@ class CodePushClient {
   Future<Uri> createPaymentLink() async {
     final response = await _httpClient.post(
       Uri.parse('$_v1/subscriptions/payment_link'),
+      headers: headers,
     );
 
     if (response.statusCode != HttpStatus.ok) {
@@ -159,6 +166,7 @@ class CodePushClient {
       Uri.parse('$_v1/releases/$releaseId/artifacts'),
     );
     final file = await http.MultipartFile.fromPath('file', artifactPath);
+    request.headers.addAll(headers);
     request.fields.addAll({
       'arch': arch,
       'platform': platform,
@@ -193,6 +201,7 @@ class CodePushClient {
   Future<App> createApp({required String displayName}) async {
     final response = await _httpClient.post(
       Uri.parse('$_v1/apps'),
+      headers: headers,
       body: json.encode({'display_name': displayName}),
     );
 
@@ -210,6 +219,7 @@ class CodePushClient {
   }) async {
     final response = await _httpClient.post(
       Uri.parse('$_v1/channels'),
+      headers: headers,
       body: json.encode({'app_id': appId, 'channel': channel}),
     );
 
@@ -224,6 +234,7 @@ class CodePushClient {
   Future<Patch> createPatch({required int releaseId}) async {
     final response = await _httpClient.post(
       Uri.parse('$_v1/patches'),
+      headers: headers,
       body: json.encode({'release_id': releaseId}),
     );
 
@@ -244,6 +255,7 @@ class CodePushClient {
   }) async {
     final response = await _httpClient.post(
       Uri.parse('$_v1/releases'),
+      headers: headers,
       body: json.encode({
         'app_id': appId,
         'version': version,
@@ -266,6 +278,7 @@ class CodePushClient {
   }) async {
     final response = await _httpClient.delete(
       Uri.parse('$_v1/apps/$appId/collaborators/$userId'),
+      headers: headers,
     );
 
     if (response.statusCode != HttpStatus.noContent) {
@@ -277,6 +290,7 @@ class CodePushClient {
   Future<void> deleteRelease({required int releaseId}) async {
     final response = await _httpClient.delete(
       Uri.parse('$_v1/releases/$releaseId'),
+      headers: headers,
     );
 
     if (response.statusCode != HttpStatus.noContent) {
@@ -292,6 +306,7 @@ class CodePushClient {
   }) async {
     final response = await _httpClient.post(
       Uri.parse('$_v1/users'),
+      headers: headers,
       body: jsonEncode(CreateUserRequest(name: name).toJson()),
     );
 
@@ -307,6 +322,7 @@ class CodePushClient {
   Future<void> deleteApp({required String appId}) async {
     final response = await _httpClient.delete(
       Uri.parse('$_v1/apps/$appId'),
+      headers: headers,
     );
 
     if (response.statusCode != HttpStatus.noContent) {
@@ -316,7 +332,10 @@ class CodePushClient {
 
   /// List all apps for the current account.
   Future<List<AppMetadata>> getApps() async {
-    final response = await _httpClient.get(Uri.parse('$_v1/apps'));
+    final response = await _httpClient.get(
+      Uri.parse('$_v1/apps'),
+      headers: headers,
+    );
 
     if (response.statusCode != HttpStatus.ok) {
       throw _parseErrorResponse(response.statusCode, response.body);
@@ -334,6 +353,7 @@ class CodePushClient {
       Uri.parse('$_v1/channels').replace(
         queryParameters: {'appId': appId},
       ),
+      headers: headers,
     );
 
     if (response.statusCode != HttpStatus.ok) {
@@ -350,6 +370,7 @@ class CodePushClient {
   Future<List<Collaborator>> getCollaborators({required String appId}) async {
     final response = await _httpClient.get(
       Uri.parse('$_v1/apps/$appId/collaborators'),
+      headers: headers,
     );
 
     if (response.statusCode != HttpStatus.ok) {
@@ -370,6 +391,7 @@ class CodePushClient {
       Uri.parse('$_v1/releases').replace(
         queryParameters: {'appId': appId},
       ),
+      headers: headers,
     );
 
     if (response.statusCode != HttpStatus.ok) {
@@ -395,6 +417,7 @@ class CodePushClient {
           'platform': platform,
         },
       ),
+      headers: headers,
     );
 
     if (response.statusCode != HttpStatus.ok) {
@@ -412,6 +435,7 @@ class CodePushClient {
   }) async {
     final response = await _httpClient.post(
       Uri.parse('$_v1/patches/promote'),
+      headers: headers,
       body: json.encode({'patch_id': patchId, 'channel_id': channelId}),
     );
 
@@ -424,6 +448,7 @@ class CodePushClient {
   Future<DateTime> cancelSubscription() async {
     final response = await _httpClient.delete(
       Uri.parse('$_v1/subscriptions'),
+      headers: headers,
     );
 
     if (response.statusCode != HttpStatus.ok) {

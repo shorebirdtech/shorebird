@@ -170,10 +170,12 @@ mixin ShorebirdBuildMixin on ShorebirdCommand {
     bool codesign = true,
   }) async {
     const executable = 'flutter';
+    final exportPlistFile = _createExportOptionsPlist();
     final arguments = [
       'build',
       'ipa',
       '--release',
+      '--export-options-plist=${exportPlistFile.path}',
       if (flavor != null) '--flavor=$flavor',
       if (target != null) '--target=$target',
       if (!codesign) '--no-codesign',
@@ -202,6 +204,38 @@ mixin ShorebirdBuildMixin on ShorebirdCommand {
 
       throw BuildException(errorMessage);
     }
+  }
+
+  /// Creates an ExportOptions.plist file, which is used to tell xcodebuild to
+  /// not manage the app version and build number. If we don't do this, then
+  /// xcodebuild will increment the build number if it detects an App Store
+  /// Connect build with the same version and build number. This is a problem
+  /// for us when patching, as patches need to have the same version and build
+  /// number as the release they are patching.
+  /// See
+  /// https://developer.apple.com/forums/thread/690647?answerId=689925022#689925022
+  File _createExportOptionsPlist() {
+    const plistContents = '''
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+<plist version="1.0">
+<dict>
+  <key>manageAppVersionAndBuildNumber</key>
+  <false/>
+  <key>signingStyle</key>
+  <string>automatic</string>
+  <key>uploadBitcode</key>
+  <false/>
+  <key>method</key>
+  <string>app-store</string>
+</dict>
+</plist>
+''';
+    final tempDir = Directory.systemTemp.createTempSync();
+    final exportPlistFile = File(p.join(tempDir.path, 'ExportOptions.plist'))
+      ..createSync(recursive: true)
+      ..writeAsStringSync(plistContents);
+    return exportPlistFile;
   }
 
   String _failedToCreateIpaErrorMessage({required String stderr}) {
