@@ -134,12 +134,6 @@ void main() {
     group('getCurrentUser', () {
       const user = User(id: 123, email: 'tester@shorebird.dev');
 
-      late Uri uri;
-
-      setUp(() {
-        uri = Uri.parse('${codePushClient.hostedUri}/api/v1/users/me');
-      });
-
       test('returns null if reponse is a 404', () async {
         when(() => httpClient.send(any())).thenAnswer(
           (_) async => http.StreamedResponse(
