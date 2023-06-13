@@ -706,7 +706,7 @@ void main() {
         final uri = verify(
           () => httpClient.post(
             captureAny(),
-            headers: any(named: 'headers'),
+            headers: CodePushClient.headers,
             body: any(named: 'body'),
           ),
         ).captured.single as Uri;
@@ -888,7 +888,7 @@ void main() {
         final uri = verify(
           () => httpClient.post(
             captureAny(),
-            headers: any(named: 'headers'),
+            headers: CodePushClient.headers,
             body: any(named: 'body'),
           ),
         ).captured.single as Uri;
@@ -1008,7 +1008,7 @@ void main() {
         final uri = verify(
           () => httpClient.post(
             captureAny(),
-            headers: any(named: 'headers'),
+            headers: CodePushClient.headers,
             body: any(named: 'body'),
           ),
         ).captured.single as Uri;
@@ -1081,7 +1081,7 @@ void main() {
         final uri = verify(
           () => httpClient.delete(
             captureAny(),
-            headers: any(named: 'headers'),
+            headers: CodePushClient.headers,
           ),
         ).captured.single as Uri;
 
@@ -1151,7 +1151,7 @@ void main() {
         final uri = verify(
           () => httpClient.delete(
             captureAny(),
-            headers: any(named: 'headers'),
+            headers: CodePushClient.headers,
           ),
         ).captured.single as Uri;
 
@@ -1805,7 +1805,7 @@ void main() {
         final uri = verify(
           () => httpClient.post(
             captureAny(),
-            headers: any(named: 'headers'),
+            headers: CodePushClient.headers,
             body: any(named: 'body'),
           ),
         ).captured.single as Uri;
@@ -1825,8 +1825,9 @@ void main() {
       });
 
       test('throws an exception if the http request fails', () {
-        when(() => httpClient.delete(uri))
-            .thenAnswer((_) async => http.Response('', HttpStatus.badRequest));
+        when(
+          () => httpClient.delete(uri, headers: any(named: 'headers')),
+        ).thenAnswer((_) async => http.Response('', HttpStatus.badRequest));
 
         expect(
           codePushClient.cancelSubscription(),
@@ -1843,7 +1844,9 @@ void main() {
       test('completes when request succeeds', () async {
         const timestamp = 1681455600;
 
-        when(() => httpClient.delete(uri)).thenAnswer(
+        when(
+          () => httpClient.delete(uri, headers: any(named: 'headers')),
+        ).thenAnswer(
           (_) async => http.Response(
             jsonEncode({'expiration_date': 1681455600}),
             HttpStatus.ok,
@@ -1853,7 +1856,9 @@ void main() {
         final response = await codePushClient.cancelSubscription();
 
         expect(response.millisecondsSinceEpoch, timestamp * 1000);
-        verify(() => httpClient.delete(uri)).called(1);
+        verify(
+          () => httpClient.delete(uri, headers: CodePushClient.headers),
+        ).called(1);
       });
     });
 
