@@ -71,6 +71,20 @@ make smaller updates to your app.
       return e.exitCode.code;
     }
 
+    final appId = shorebirdYaml.getAppId(flavor: flavor);
+
+    final String releaseVersion;
+    final detectReleaseVersionProgress = logger.progress(
+      'Detecting release version',
+    );
+    try {
+      releaseVersion = await extractReleaseVersionFromAppBundle(bundlePath);
+      detectReleaseVersionProgress.complete();
+    } catch (error) {
+      detectReleaseVersionProgress.fail('$error');
+      return ExitCode.software.code;
+    }
+
     // Validate existing release
     final existingRelease = await codePushClientWrapper.maybeGetRelease(
       appId: appId,
@@ -98,7 +112,6 @@ Please bump your version number and try again.''',
 
     final shorebirdYaml = getShorebirdYaml()!;
 
-    final appId = shorebirdYaml.getAppId(flavor: flavor);
     final app = await codePushClientWrapper.getApp(appId: appId);
 
     final bundleDirPath = p.join('build', 'app', 'outputs', 'bundle');
@@ -106,17 +119,6 @@ Please bump your version number and try again.''',
         ? p.join(bundleDirPath, '${flavor}Release', 'app-$flavor-release.aab')
         : p.join(bundleDirPath, 'release', 'app-release.aab');
 
-    final String releaseVersion;
-    final detectReleaseVersionProgress = logger.progress(
-      'Detecting release version',
-    );
-    try {
-      releaseVersion = await extractReleaseVersionFromAppBundle(bundlePath);
-      detectReleaseVersionProgress.complete();
-    } catch (error) {
-      detectReleaseVersionProgress.fail('$error');
-      return ExitCode.software.code;
-    }
 
     const platform = 'android';
     final archNames = architectures.keys.map(
