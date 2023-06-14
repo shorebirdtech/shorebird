@@ -5,4 +5,4 @@ import 'package:scoped/scoped.dart';
 ScopedRef<Platform> platformRef = create(() => const LocalPlatform());
 
 // The [Platform] instance available in the current zone.
-Platform get platform => read(platformRef);
+Platform get platform => read(platformRef, orElse: () => const LocalPlatform());
