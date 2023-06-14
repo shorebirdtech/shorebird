@@ -72,10 +72,17 @@ make smaller updates to your app.
     }
 
     final shorebirdYaml = getShorebirdYaml()!;
-    final appId = shorebirdYaml.getAppId(flavor: flavor);
     final flavor = results['flavor'] as String?;
+    final appId = shorebirdYaml.getAppId(flavor: flavor);
 
     final String releaseVersion;
+
+    final bundleDirPath = p.join('build', 'app', 'outputs', 'bundle');
+    final bundlePath = flavor != null
+        ? p.join(bundleDirPath, '${flavor}Release', 'app-$flavor-release.aab')
+        : p.join(bundleDirPath, 'release', 'app-release.aab');
+
+
     final detectReleaseVersionProgress = logger.progress(
       'Detecting release version',
     );
@@ -113,11 +120,6 @@ Please bump your version number and try again.''',
 
 
     final app = await codePushClientWrapper.getApp(appId: appId);
-
-    final bundleDirPath = p.join('build', 'app', 'outputs', 'bundle');
-    final bundlePath = flavor != null
-        ? p.join(bundleDirPath, '${flavor}Release', 'app-$flavor-release.aab')
-        : p.join(bundleDirPath, 'release', 'app-release.aab');
 
 
     const platform = 'android';
