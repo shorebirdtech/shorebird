@@ -26,6 +26,10 @@ void main() {
     late http.Client httpClient;
     late CodePushClient codePushClient;
 
+    Uri v1(String endpoint) {
+      return Uri.parse('${codePushClient.hostedUri}/api/v1/$endpoint');
+    }
+
     setUpAll(() {
       registerFallbackValue(_FakeBaseRequest());
       registerFallbackValue(Uri());
@@ -59,6 +63,16 @@ void main() {
     group('createCollaborator', () {
       const appId = 'test-app-id';
       const email = 'jane.doe@shorebird.dev';
+
+      test('makes the correct request', () async {
+        codePushClient.createCollaborator(appId: appId, email: email).ignore();
+        final request = verify(() => httpClient.send(captureAny()))
+            .captured
+            .single as http.BaseRequest;
+        expect(request.method, equals('POST'));
+        expect(request.url, equals(v1('apps/$appId/collaborators')));
+        expect(request.hasStandardHeaders, isTrue);
+      });
 
       test('throws an exception if the http request fails (unknown)', () async {
         when(() => httpClient.send(any())).thenAnswer(
@@ -108,31 +122,25 @@ void main() {
           ),
         );
 
-        await codePushClient.createCollaborator(appId: appId, email: email);
-
-        final request = verify(
-          () => httpClient.send(
-            captureAny(),
-          ),
-        ).captured.single as http.BaseRequest;
-
-        expect(
-          request.url,
-          codePushClient.hostedUri.replace(
-            path: '/api/v1/apps/$appId/collaborators',
-          ),
-        );
-        expect(
-          CodePushClient.headers.entries.every(
-            (entry) => request.headers[entry.key] == entry.value,
-          ),
-          isTrue,
+        await expectLater(
+          codePushClient.createCollaborator(appId: appId, email: email),
+          completes,
         );
       });
     });
 
     group('getCurrentUser', () {
       const user = User(id: 123, email: 'tester@shorebird.dev');
+
+      test('makes the correct request', () async {
+        codePushClient.getCurrentUser().ignore();
+        final request = verify(() => httpClient.send(captureAny()))
+            .captured
+            .single as http.BaseRequest;
+        expect(request.method, equals('GET'));
+        expect(request.url, equals(v1('users/me')));
+        expect(request.hasStandardHeaders, isTrue);
+      });
 
       test('returns null if reponse is a 404', () async {
         when(() => httpClient.send(any())).thenAnswer(
@@ -186,6 +194,29 @@ void main() {
       const platform = 'android';
       const hash = 'test-hash';
       const size = 42;
+
+      test('makes the correct request', () async {
+        final tempDir = Directory.systemTemp.createTempSync();
+        final fixture = File(path.join(tempDir.path, 'release.txt'))
+          ..createSync();
+
+        try {
+          await codePushClient.createPatchArtifact(
+            artifactPath: fixture.path,
+            patchId: patchId,
+            arch: arch,
+            platform: platform,
+            hash: hash,
+          );
+        } catch (_) {}
+
+        final request = verify(() => httpClient.send(captureAny()))
+            .captured
+            .single as http.BaseRequest;
+        expect(request.method, equals('POST'));
+        expect(request.url, equals(v1('patches/$patchId/artifacts')));
+        expect(request.hasStandardHeaders, isTrue);
+      });
 
       test('throws an exception if the http request fails (unknown)', () async {
         when(() => httpClient.send(any())).thenAnswer((_) async {
@@ -370,6 +401,16 @@ void main() {
     });
 
     group('createPaymentLink', () {
+      test('makes the correct request', () async {
+        codePushClient.createPaymentLink().ignore();
+        final request = verify(() => httpClient.send(captureAny()))
+            .captured
+            .single as http.BaseRequest;
+        expect(request.method, equals('POST'));
+        expect(request.url, equals(v1('subscriptions/payment_link')));
+        expect(request.hasStandardHeaders, isTrue);
+      });
+
       test('throws an exception if the http request fails', () {
         when(() => httpClient.send(any())).thenAnswer((_) async {
           return http.StreamedResponse(
@@ -418,6 +459,29 @@ void main() {
       const platform = 'android';
       const hash = 'test-hash';
       const size = 42;
+
+      test('makes the correct request', () async {
+        final tempDir = Directory.systemTemp.createTempSync();
+        final fixture = File(path.join(tempDir.path, 'release.txt'))
+          ..createSync();
+
+        try {
+          await codePushClient.createReleaseArtifact(
+            artifactPath: fixture.path,
+            releaseId: releaseId,
+            arch: arch,
+            platform: platform,
+            hash: hash,
+          );
+        } catch (_) {}
+
+        final request = verify(() => httpClient.send(captureAny()))
+            .captured
+            .single as http.BaseRequest;
+        expect(request.method, equals('POST'));
+        expect(request.url, equals(v1('releases/$releaseId/artifacts')));
+        expect(request.hasStandardHeaders, isTrue);
+      });
 
       test('throws an exception if the http request fails (unknown)', () async {
         when(() => httpClient.send(any())).thenAnswer((_) async {
@@ -654,6 +718,16 @@ void main() {
     });
 
     group('createApp', () {
+      test('makes the correct request', () async {
+        codePushClient.createApp(displayName: displayName).ignore();
+        final request = verify(() => httpClient.send(captureAny()))
+            .captured
+            .single as http.BaseRequest;
+        expect(request.method, equals('POST'));
+        expect(request.url, equals(v1('apps')));
+        expect(request.hasStandardHeaders, isTrue);
+      });
+
       test('throws an exception if the http request fails (unknown)', () async {
         when(() => httpClient.send(any())).thenAnswer(
           (_) async => http.StreamedResponse(
@@ -730,6 +804,17 @@ void main() {
 
     group('createChannel', () {
       const channel = 'stable';
+
+      test('makes the correct request', () async {
+        codePushClient.createChannel(appId: appId, channel: channel).ignore();
+        final request = verify(() => httpClient.send(captureAny()))
+            .captured
+            .single as http.BaseRequest;
+        expect(request.method, equals('POST'));
+        expect(request.url, equals(v1('channels')));
+        expect(request.hasStandardHeaders, isTrue);
+      });
+
       test('throws an exception if the http request fails (unknown)', () async {
         when(() => httpClient.send(any())).thenAnswer(
           (_) async => http.StreamedResponse(
@@ -810,6 +895,17 @@ void main() {
 
     group('createPatch', () {
       const releaseId = 0;
+
+      test('makes the correct request', () async {
+        codePushClient.createPatch(releaseId: releaseId).ignore();
+        final request = verify(() => httpClient.send(captureAny()))
+            .captured
+            .single as http.BaseRequest;
+        expect(request.method, equals('POST'));
+        expect(request.url, equals(v1('patches')));
+        expect(request.hasStandardHeaders, isTrue);
+      });
+
       test('throws an exception if the http request fails (unknown)', () async {
         when(() => httpClient.send(any())).thenAnswer(
           (_) async => http.StreamedResponse(
@@ -888,6 +984,24 @@ void main() {
 
     group('createRelease', () {
       const version = '1.0.0';
+
+      test('makes the correct request', () async {
+        codePushClient
+            .createRelease(
+              appId: appId,
+              version: version,
+              flutterRevision: flutterRevision,
+              displayName: displayName,
+            )
+            .ignore();
+        final request = verify(() => httpClient.send(captureAny()))
+            .captured
+            .single as http.BaseRequest;
+        expect(request.method, equals('POST'));
+        expect(request.url, equals(v1('releases')));
+        expect(request.hasStandardHeaders, isTrue);
+      });
+
       test('throws an exception if the http request fails (unknown)', () async {
         when(() => httpClient.send(any())).thenAnswer(
           (_) async => http.StreamedResponse(
@@ -997,6 +1111,18 @@ void main() {
       const appId = 'test-app-id';
       const userId = 42;
 
+      test('makes the correct request', () async {
+        codePushClient
+            .deleteCollaborator(appId: appId, userId: userId)
+            .ignore();
+        final request = verify(() => httpClient.send(captureAny()))
+            .captured
+            .single as http.BaseRequest;
+        expect(request.method, equals('DELETE'));
+        expect(request.url, equals(v1('apps/$appId/collaborators/$userId')));
+        expect(request.hasStandardHeaders, isTrue);
+      });
+
       test('throws an exception if the http request fails (unknown)', () async {
         when(() => httpClient.send(any())).thenAnswer(
           (_) async => http.StreamedResponse(
@@ -1065,6 +1191,16 @@ void main() {
 
     group('deleteRelease', () {
       const releaseId = 42;
+
+      test('makes the correct request', () async {
+        codePushClient.deleteRelease(releaseId: releaseId).ignore();
+        final request = verify(() => httpClient.send(captureAny()))
+            .captured
+            .single as http.BaseRequest;
+        expect(request.method, equals('DELETE'));
+        expect(request.url, equals(v1('releases/$releaseId')));
+        expect(request.hasStandardHeaders, isTrue);
+      });
 
       test('throws an exception if the http request fails (unknown)', () async {
         when(() => httpClient.send(any())).thenAnswer(
@@ -1137,6 +1273,16 @@ void main() {
         displayName: userName,
       );
 
+      test('makes the correct request', () async {
+        codePushClient.createUser(name: userName).ignore();
+        final request = verify(() => httpClient.send(captureAny()))
+            .captured
+            .single as http.BaseRequest;
+        expect(request.method, equals('POST'));
+        expect(request.url, equals(v1('users')));
+        expect(request.hasStandardHeaders, isTrue);
+      });
+
       test('throws an exception if the http request fails', () {
         when(() => httpClient.send(any())).thenAnswer(
           (_) async => http.StreamedResponse(
@@ -1172,6 +1318,16 @@ void main() {
     });
 
     group('deleteApp', () {
+      test('makes the correct request', () async {
+        codePushClient.deleteApp(appId: appId).ignore();
+        final request = verify(() => httpClient.send(captureAny()))
+            .captured
+            .single as http.BaseRequest;
+        expect(request.method, equals('DELETE'));
+        expect(request.url, equals(v1('apps/$appId')));
+        expect(request.hasStandardHeaders, isTrue);
+      });
+
       test('throws an exception if the http request fails (unknown)', () async {
         when(() => httpClient.send(any())).thenAnswer(
           (_) async => http.StreamedResponse(
@@ -1236,6 +1392,16 @@ void main() {
     });
 
     group('getApps', () {
+      test('makes the correct request', () async {
+        codePushClient.getApps().ignore();
+        final request = verify(() => httpClient.send(captureAny()))
+            .captured
+            .single as http.BaseRequest;
+        expect(request.method, equals('GET'));
+        expect(request.url, equals(v1('apps')));
+        expect(request.hasStandardHeaders, isTrue);
+      });
+
       test('throws an exception if the http request fails (unknown)', () async {
         when(() => httpClient.send(any())).thenAnswer(
           (_) async => http.StreamedResponse(
@@ -1308,6 +1474,17 @@ void main() {
 
     group('getChannels', () {
       const appId = 'test-app-id';
+
+      test('makes the correct request', () async {
+        codePushClient.getChannels(appId: appId).ignore();
+        final request = verify(() => httpClient.send(captureAny()))
+            .captured
+            .single as http.BaseRequest;
+        expect(request.method, equals('GET'));
+        expect(request.url, equals(v1('channels?appId=$appId')));
+        expect(request.hasStandardHeaders, isTrue);
+      });
+
       test('throws an exception if the http request fails (unknown)', () async {
         when(() => httpClient.send(any())).thenAnswer(
           (_) async => http.StreamedResponse(
@@ -1380,6 +1557,17 @@ void main() {
 
     group('getCollaborators', () {
       const appId = 'test-app-id';
+
+      test('makes the correct request', () async {
+        codePushClient.getCollaborators(appId: appId).ignore();
+        final request = verify(() => httpClient.send(captureAny()))
+            .captured
+            .single as http.BaseRequest;
+        expect(request.method, equals('GET'));
+        expect(request.url, equals(v1('apps/$appId/collaborators')));
+        expect(request.hasStandardHeaders, isTrue);
+      });
+
       test('throws an exception if the http request fails (unknown)', () async {
         when(() => httpClient.send(any())).thenAnswer(
           (_) async => http.StreamedResponse(
@@ -1458,6 +1646,17 @@ void main() {
 
     group('getReleases', () {
       const appId = 'test-app-id';
+
+      test('makes the correct request', () async {
+        codePushClient.getReleases(appId: appId).ignore();
+        final request = verify(() => httpClient.send(captureAny()))
+            .captured
+            .single as http.BaseRequest;
+        expect(request.method, equals('GET'));
+        expect(request.url, equals(v1('releases?appId=$appId')));
+        expect(request.hasStandardHeaders, isTrue);
+      });
+
       test('throws an exception if the http request fails (unknown)', () async {
         when(() => httpClient.send(any())).thenAnswer(
           (_) async => http.StreamedResponse(
@@ -1545,6 +1744,27 @@ void main() {
       const arch = 'aarch64';
       const platform = 'android';
 
+      test('makes the correct request', () async {
+        codePushClient
+            .getReleaseArtifact(
+              releaseId: releaseId,
+              arch: arch,
+              platform: platform,
+            )
+            .ignore();
+        final request = verify(() => httpClient.send(captureAny()))
+            .captured
+            .single as http.BaseRequest;
+        expect(request.method, equals('GET'));
+        expect(
+          request.url,
+          equals(
+            v1('releases/$releaseId/artifacts?arch=$arch&platform=$platform'),
+          ),
+        );
+        expect(request.hasStandardHeaders, isTrue);
+      });
+
       test('throws an exception if the http request fails (unknown)', () async {
         when(() => httpClient.send(any())).thenAnswer(
           (_) async => http.StreamedResponse(
@@ -1623,6 +1843,19 @@ void main() {
     group('promotePatch', () {
       const patchId = 0;
       const channelId = 0;
+
+      test('makes the correct request', () async {
+        codePushClient
+            .promotePatch(patchId: patchId, channelId: channelId)
+            .ignore();
+        final request = verify(() => httpClient.send(captureAny()))
+            .captured
+            .single as http.BaseRequest;
+        expect(request.method, equals('POST'));
+        expect(request.url, equals(v1('patches/promote')));
+        expect(request.hasStandardHeaders, isTrue);
+      });
+
       test('throws an exception if the http request fails (unknown)', () async {
         when(() => httpClient.send(any())).thenAnswer(
           (_) async => http.StreamedResponse(
@@ -1694,6 +1927,16 @@ void main() {
         uri = Uri.parse('${codePushClient.hostedUri}/api/v1/subscriptions');
       });
 
+      test('makes the correct request', () async {
+        codePushClient.cancelSubscription().ignore();
+        final request = verify(() => httpClient.send(captureAny()))
+            .captured
+            .single as http.BaseRequest;
+        expect(request.method, equals('DELETE'));
+        expect(request.url, equals(v1('subscriptions')));
+        expect(request.hasStandardHeaders, isTrue);
+      });
+
       test('throws an exception if the http request fails', () {
         when(() => httpClient.send(any())).thenAnswer(
           (_) async => http.StreamedResponse(
@@ -1742,4 +1985,12 @@ void main() {
       });
     });
   });
+}
+
+extension on http.BaseRequest {
+  bool get hasStandardHeaders {
+    return CodePushClient.headers.entries.every(
+      (entry) => headers[entry.key] == entry.value,
+    );
+  }
 }
