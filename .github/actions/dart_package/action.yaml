@@ -2,6 +2,9 @@ name: Dart Package Workflow
 description: Build and test your Dart packages.
 
 inputs:
+  codecov_token:
+    required: true
+    description: The Codecov token used to upload coverage
   concurrency:
     required: false
     default: "4"
@@ -67,7 +70,7 @@ runs:
     - name: Upload Coverage
       uses: codecov/codecov-action@v3
       with:
-        token: ${{ secrets.CODECOV_TOKEN }}
+        token: ${{ inputs.codecov_token }}
 
     - uses: VeryGoodOpenSource/very_good_coverage@v2
       with:

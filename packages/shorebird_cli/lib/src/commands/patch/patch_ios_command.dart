@@ -59,7 +59,10 @@ class PatchIosCommand extends ShorebirdCommand
   }
 
   @override
-  String get name => 'ios-preview';
+  bool get hidden => true;
+
+  @override
+  String get name => 'ios';
 
   @override
   String get description =>
@@ -137,7 +140,9 @@ class PatchIosCommand extends ShorebirdCommand
         ),
       );
       releaseVersion = ipa.versionNumber;
-      detectReleaseVersionProgress.complete();
+      detectReleaseVersionProgress.complete(
+        'Detected release version $releaseVersion',
+      );
     } catch (error) {
       detectReleaseVersionProgress.fail(
         'Failed to determine release version: $error',

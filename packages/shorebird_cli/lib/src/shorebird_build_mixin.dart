@@ -24,6 +24,17 @@ class ArchMetadata {
   final String enginePath;
 }
 
+/// {@template build_exception}
+/// Thrown when a build fails.
+/// {@endtemplate}
+class BuildException implements Exception {
+  /// {@macro build_exception}
+  BuildException(this.message);
+
+  /// Information about the build failure.
+  final String message;
+}
+
 mixin ShorebirdBuildMixin on ShorebirdCommand {
   // This exists only so tests can get the full list.
   static const allAndroidArchitectures = <Arch, ArchMetadata>{
@@ -159,10 +170,12 @@ mixin ShorebirdBuildMixin on ShorebirdCommand {
     bool codesign = true,
   }) async {
     const executable = 'flutter';
+    final exportPlistFile = _createExportOptionsPlist();
     final arguments = [
       'build',
       'ipa',
       '--release',
+      '--export-options-plist=${exportPlistFile.path}',
       if (flavor != null) '--flavor=$flavor',
       if (target != null) '--target=$target',
       if (!codesign) '--no-codesign',
@@ -182,7 +195,72 @@ mixin ShorebirdBuildMixin on ShorebirdCommand {
         result.stderr.toString(),
         result.exitCode,
       );
+    } else if (result.stderr
+        .toString()
+        .contains('Encountered error while creating the IPA')) {
+      final errorMessage = _failedToCreateIpaErrorMessage(
+        stderr: result.stderr.toString(),
+      );
+
+      throw BuildException(errorMessage);
     }
+  }
+
+  /// Creates an ExportOptions.plist file, which is used to tell xcodebuild to
+  /// not manage the app version and build number. If we don't do this, then
+  /// xcodebuild will increment the build number if it detects an App Store
+  /// Connect build with the same version and build number. This is a problem
+  /// for us when patching, as patches need to have the same version and build
+  /// number as the release they are patching.
+  /// See
+  /// https://developer.apple.com/forums/thread/690647?answerId=689925022#689925022
+  File _createExportOptionsPlist() {
+    const plistContents = '''
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+<plist version="1.0">
+<dict>
+  <key>manageAppVersionAndBuildNumber</key>
+  <false/>
+  <key>signingStyle</key>
+  <string>automatic</string>
+  <key>uploadBitcode</key>
+  <false/>
+  <key>method</key>
+  <string>app-store</string>
+</dict>
+</plist>
+''';
+    final tempDir = Directory.systemTemp.createTempSync();
+    final exportPlistFile = File(p.join(tempDir.path, 'ExportOptions.plist'))
+      ..createSync(recursive: true)
+      ..writeAsStringSync(plistContents);
+    return exportPlistFile;
+  }
+
+  String _failedToCreateIpaErrorMessage({required String stderr}) {
+    // The full error text consists of many repeated lines of the format:
+    // (newlines added for line length)
+    //
+    //    error: exportArchive: No signing certificate "iOS Distribution" found
+    //    error: exportArchive: Communication with Apple failed
+    //    error: exportArchive: No signing certificate "iOS Distribution" found
+    //    error: exportArchive: Team "My Team" does not have permission to
+    //      create "iOS App Store" provisioning profiles.
+    //    error: exportArchive: No profiles for 'com.example.demo' were found
+    //    error: exportArchive: Communication with Apple failed
+    //    error: exportArchive: No signing certificate "iOS Distribution" found
+    //    error: exportArchive: Communication with Apple failed
+    final exportArchiveRegex = RegExp(r'^error: exportArchive: (.+)$');
+
+    return stderr
+        .split('\n')
+        .map((l) => l.trim())
+        .toSet()
+        .map(exportArchiveRegex.firstMatch)
+        .whereType<Match>()
+        .map((m) => '    ${m.group(1)!}')
+        .join('\n');
   }
 
   Future<String> createDiff({
@@ -218,7 +296,7 @@ mixin ShorebirdBuildMixin on ShorebirdCommand {
   /// resulting snapshot file.
   // TODO(bryanoltman): make this work with the --local-engine flag.
   Future<File> buildElfAotSnapshot({required String appDillPath}) async {
-    final outFilePath = p.join(Directory.current.path, 'out.aot');
+    final outFilePath = p.join(Directory.current.path, 'build', 'out.aot');
     final arguments = [
       '--deterministic',
       '--snapshot-kind=app-aot-elf',

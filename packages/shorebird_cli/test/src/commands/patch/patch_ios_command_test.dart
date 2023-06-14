@@ -5,6 +5,7 @@ import 'package:http/http.dart' as http;
 import 'package:mason_logger/mason_logger.dart';
 import 'package:mocktail/mocktail.dart';
 import 'package:path/path.dart' as p;
+import 'package:propertylistserialization/propertylistserialization.dart';
 import 'package:scoped/scoped.dart';
 import 'package:shorebird_cli/src/archive_analysis/archive_analysis.dart';
 import 'package:shorebird_cli/src/auth/auth.dart';
@@ -54,6 +55,7 @@ void main() {
   const arch = 'aarch64';
   const appDisplayName = 'Test App';
   const platform = 'ios';
+  const elfAotSnapshotFileName = 'out.aot';
   const pubspecYamlContent = '''
 name: example
 version: $version
@@ -118,7 +120,9 @@ flutter:
       File(
         p.join(dir.path, '.dart_tool', 'flutter_build', 'app.dill'),
       ).createSync(recursive: true);
-      File(p.join(dir.path, 'out.aot')).createSync();
+      File(p.join(dir.path, 'build', elfAotSnapshotFileName)).createSync(
+        recursive: true,
+      );
     }
 
     setUpAll(() {
@@ -215,6 +219,10 @@ flutter:
 
     test('has a description', () {
       expect(command.description, isNotEmpty);
+    });
+
+    test('is hidden', () {
+      expect(command.hidden, isTrue);
     });
 
     test('throws no user error when user is not logged in', () async {
@@ -340,6 +348,19 @@ https://github.com/shorebirdtech/shorebird/issues/472
       ).called(1);
     });
 
+    test('prints release version when detected', () async {
+      final tempDir = setUpTempDir();
+      setUpTempArtifacts(tempDir);
+      final exitCode = await IOOverrides.runZoned(
+        () => runWithOverrides(command.run),
+        getCurrentDirectory: () => tempDir,
+      );
+
+      expect(exitCode, equals(ExitCode.success.code));
+      verify(() => progress.complete('Detected release version 1.2.3+1'))
+          .called(1);
+    });
+
     test('throws error when creating aot snapshot fails', () async {
       const error = 'oops something went wrong';
       when(() => aotBuildProcessResult.exitCode).thenReturn(1);
@@ -452,6 +473,42 @@ base_url: $baseUrl''',
         () => runWithOverrides(command.run),
         getCurrentDirectory: () => tempDir,
       );
+    });
+
+    test('provides appropriate ExportOptions.plist to build ipa command',
+        () async {
+      final tempDir = setUpTempDir();
+      setUpTempArtifacts(tempDir);
+
+      final exitCode = await IOOverrides.runZoned(
+        () => runWithOverrides(command.run),
+        getCurrentDirectory: () => tempDir,
+      );
+
+      expect(exitCode, ExitCode.success.code);
+      final capturedArgs = verify(
+        () => shorebirdProcess.run(
+          'flutter',
+          captureAny(),
+          runInShell: any(named: 'runInShell'),
+        ),
+      ).captured.first as List<String>;
+      final exportOptionsPlistFile = File(
+        capturedArgs
+            .whereType<String>()
+            .firstWhere((arg) => arg.contains('export-options-plist'))
+            .split('=')
+            .last,
+      );
+      expect(exportOptionsPlistFile.existsSync(), isTrue);
+      final exportOptionsPlist =
+          PropertyListSerialization.propertyListWithString(
+        exportOptionsPlistFile.readAsStringSync(),
+      ) as Map<String, Object>;
+      expect(exportOptionsPlist['manageAppVersionAndBuildNumber'], isFalse);
+      expect(exportOptionsPlist['signingStyle'], 'automatic');
+      expect(exportOptionsPlist['uploadBitcode'], isFalse);
+      expect(exportOptionsPlist['method'], 'app-store');
     });
 
     test('prints flutter validation warnings', () async {

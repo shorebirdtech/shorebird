@@ -6,6 +6,7 @@ import 'package:mason_logger/mason_logger.dart';
 import 'package:mocktail/mocktail.dart';
 import 'package:path/path.dart' as p;
 import 'package:platform/platform.dart';
+import 'package:propertylistserialization/propertylistserialization.dart';
 import 'package:scoped/scoped.dart';
 import 'package:shorebird_cli/src/archive_analysis/archive_analysis.dart';
 import 'package:shorebird_cli/src/auth/auth.dart';
@@ -203,6 +204,10 @@ flutter:
       expect(command.description, isNotEmpty);
     });
 
+    test('is hidden', () {
+      expect(command.hidden, isTrue);
+    });
+
     test('throws config error when shorebird is not initialized', () async {
       final tempDir = Directory.systemTemp.createTempSync();
       final exitCode = await IOOverrides.runZoned(
@@ -227,7 +232,8 @@ flutter:
       expect(exitCode, equals(ExitCode.noUser.code));
     });
 
-    test('exits with code 70 when building fails', () async {
+    test('exits with code 70 when build fails with non-zero exit code',
+        () async {
       when(() => flutterBuildProcessResult.exitCode).thenReturn(1);
       when(() => flutterBuildProcessResult.stderr).thenReturn('oops');
 
@@ -240,6 +246,43 @@ flutter:
       expect(exitCode, equals(ExitCode.software.code));
       verify(
         () => progress.fail(any(that: contains('Failed to build'))),
+      ).called(1);
+    });
+
+    test('exits with code 70 when building fails with 0 exit code', () async {
+      when(() => flutterBuildProcessResult.exitCode).thenReturn(0);
+      when(() => flutterBuildProcessResult.stderr).thenReturn('''
+Encountered error while creating the IPA:
+error: exportArchive: Communication with Apple failed
+error: exportArchive: No signing certificate "iOS Distribution" found
+error: exportArchive: Communication with Apple failed
+error: exportArchive: No signing certificate "iOS Distribution" found
+error: exportArchive: Team "My Team" does not have permission to create "iOS App Store" provisioning profiles.
+error: exportArchive: No profiles for 'com.example.co' were found
+error: exportArchive: Communication with Apple failed
+error: exportArchive: No signing certificate "iOS Distribution" found
+error: exportArchive: Communication with Apple failed
+error: exportArchive: No signing certificate "iOS Distribution" found
+error: exportArchive: Communication with Apple failed
+error: exportArchive: No signing certificate "iOS Distribution" found
+''');
+
+      final tempDir = setUpTempDir();
+      final exitCode = await IOOverrides.runZoned(
+        () => runWithOverrides(command.run),
+        getCurrentDirectory: () => tempDir,
+      );
+
+      expect(exitCode, equals(ExitCode.software.code));
+      verify(
+        () => progress.fail(any(that: contains('Failed to build'))),
+      ).called(1);
+      verify(
+        () => logger.err('''
+    Communication with Apple failed
+    No signing certificate "iOS Distribution" found
+    Team "My Team" does not have permission to create "iOS App Store" provisioning profiles.
+    No profiles for 'com.example.co' were found'''),
       ).called(1);
     });
 
@@ -390,6 +433,18 @@ Please bump your version number and try again.'''),
       );
 
       verify(() => logger.success('\n✅ Published Release!')).called(1);
+      verify(
+        () => logger.info(
+          any(
+            that: stringContainsInOrder(
+              [
+                'Your next step is to upload the ipa to App Store Connect.',
+                'build/ios/ipa/example.ipa',
+              ],
+            ),
+          ),
+        ),
+      ).called(1);
       expect(exitCode, ExitCode.success.code);
     });
 
@@ -414,7 +469,54 @@ flavors:
       );
 
       verify(() => logger.success('\n✅ Published Release!')).called(1);
+      verify(
+        () => logger.info(
+          any(
+            that: stringContainsInOrder(
+              [
+                'Your next step is to upload the ipa to App Store Connect.',
+                'build/ios/ipa/example.ipa',
+              ],
+            ),
+          ),
+        ),
+      ).called(1);
       expect(exitCode, ExitCode.success.code);
+    });
+
+    test('provides appropriate ExportOptions.plist to build ipa command',
+        () async {
+      final tempDir = setUpTempDir();
+
+      final exitCode = await IOOverrides.runZoned(
+        () => runWithOverrides(command.run),
+        getCurrentDirectory: () => tempDir,
+      );
+
+      expect(exitCode, ExitCode.success.code);
+      final capturedArgs = verify(
+        () => shorebirdProcess.run(
+          'flutter',
+          captureAny(),
+          runInShell: any(named: 'runInShell'),
+        ),
+      ).captured.first as List<String>;
+      final exportOptionsPlistFile = File(
+        capturedArgs
+            .whereType<String>()
+            .firstWhere((arg) => arg.contains('export-options-plist'))
+            .split('=')
+            .last,
+      );
+      expect(exportOptionsPlistFile.existsSync(), isTrue);
+      final exportOptionsPlist =
+          PropertyListSerialization.propertyListWithString(
+        exportOptionsPlistFile.readAsStringSync(),
+      ) as Map<String, Object>;
+      expect(exportOptionsPlist['manageAppVersionAndBuildNumber'], isFalse);
+      expect(exportOptionsPlist['signingStyle'], 'automatic');
+      expect(exportOptionsPlist['uploadBitcode'], isFalse);
+      expect(exportOptionsPlist['method'], 'app-store');
     });
   });
 }

@@ -4,6 +4,7 @@
 
 [![ci](https://github.com/shorebirdtech/shorebird/actions/workflows/main.yaml/badge.svg)](https://github.com/shorebirdtech/shorebird/actions/workflows/main.yaml)
 [![e2e](https://github.com/shorebirdtech/shorebird/actions/workflows/e2e.yaml/badge.svg)](https://github.com/shorebirdtech/shorebird/actions/workflows/e2e.yaml)
+[![codecov](https://codecov.io/gh/shorebirdtech/shorebird/branch/main/graph/badge.svg)](https://codecov.io/gh/shorebirdtech/shorebird)
 [![License: MIT](https://img.shields.io/badge/license-MIT-blue.svg)](./LICENSE-MIT)
 [![License: Apache](https://img.shields.io/badge/license-Apache-orange.svg)](./LICENSE-APACHE)
 

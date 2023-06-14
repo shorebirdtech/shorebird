@@ -40,6 +40,9 @@ class ReleaseIosCommand extends ShorebirdCommand
   final IpaReader _ipaReader;
 
   @override
+  bool get hidden => true;
+
+  @override
   String get description => '''
 Builds and submits your iOS app to Shorebird.
 Shorebird saves the compiled Dart code from your application in order to
@@ -47,7 +50,7 @@ make smaller updates to your app.
 ''';
 
   @override
-  String get name => 'ios-preview';
+  String get name => 'ios';
 
   @override
   Future<int> run() async {
@@ -75,25 +78,28 @@ make smaller updates to your app.
     try {
       await buildIpa(flavor: flavor);
     } on ProcessException catch (error) {
-      buildProgress.fail('Failed to build: ${error.message}');
+      buildProgress.fail('Failed to build IPA: ${error.message}');
+      return ExitCode.software.code;
+    } on BuildException catch (error) {
+      buildProgress.fail('Failed to build IPA');
+      logger.err(error.message);
       return ExitCode.software.code;
     }
 
     buildProgress.complete();
 
     final releaseVersionProgress = logger.progress('Getting release version');
+    final pubspec = getPubspecYaml()!;
+    final ipaPath = p.join(
+      Directory.current.path,
+      'build',
+      'ios',
+      'ipa',
+      '${pubspec.name}.ipa',
+    );
     String releaseVersion;
     try {
-      final pubspec = getPubspecYaml()!;
-      final ipa = _ipaReader.read(
-        p.join(
-          Directory.current.path,
-          'build',
-          'ios',
-          'ipa',
-          '${pubspec.name}.ipa',
-        ),
-      );
+      final ipa = _ipaReader.read(ipaPath);
       releaseVersion = ipa.versionNumber;
     } catch (error) {
       releaseVersionProgress.fail(
@@ -159,7 +165,20 @@ Please bump your version number and try again.''',
       flutterRevision: shorebirdFlutterRevision,
     );
 
-    logger.success('\n✅ Published Release!');
+    final relativeIpaPath = p.relative(ipaPath);
+
+    logger
+      ..success('\n✅ Published Release!')
+      ..info('''
+
+Your next step is to upload the ipa to App Store Connect.
+${lightCyan.wrap(relativeIpaPath)}
+
+To upload to the App Store either:
+    1. Drag and drop the "$relativeIpaPath" bundle into the Apple Transporter macOS app (https://apps.apple.com/us/app/transporter/id1450874784)
+    2. Run ${lightCyan.wrap('xcrun altool --upload-app --type ios -f $relativeIpaPath --apiKey your_api_key --apiIssuer your_issuer_id')}.
+       See "man altool" for details about how to authenticate with the App Store Connect API key.
+''');
 
     return ExitCode.success.code;
   }

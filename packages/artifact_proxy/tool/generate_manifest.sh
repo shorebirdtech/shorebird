@@ -25,6 +25,7 @@ artifact_overrides:
   - flutter_infra_release/flutter/\$engine/android-arm-64-release/artifacts.zip
   - flutter_infra_release/flutter/\$engine/android-arm-release/artifacts.zip
   - flutter_infra_release/flutter/\$engine/android-x64-release/artifacts.zip
+  - flutter_infra_release/flutter/\$engine/ios-release/artifacts.zip
   # embedding release
   - download.flutter.io/io/flutter/flutter_embedding_release/1.0.0-\$engine/flutter_embedding_release-1.0.0-\$engine.pom
   - download.flutter.io/io/flutter/flutter_embedding_release/1.0.0-\$engine/flutter_embedding_release-1.0.0-\$engine.jar
