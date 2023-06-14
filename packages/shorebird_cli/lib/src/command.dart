@@ -118,13 +118,9 @@ abstract class ShorebirdCommand extends Command<int> {
   }
 
   Uri? get hostedUri {
-    final envHostedUrl = platform.environment['SHOREBIRD_HOSTED_URL'];
-    Uri? envHostedUri;
-    if (envHostedUrl != null) envHostedUri = Uri.tryParse(envHostedUrl);
-    if (envHostedUri != null) return envHostedUri;
-
     try {
-      final baseUrl = getShorebirdYaml()?.baseUrl;
+      final baseUrl = platform.environment['SHOREBIRD_HOSTED_URL'] ??
+          getShorebirdYaml()?.baseUrl;
       return baseUrl == null ? null : Uri.tryParse(baseUrl);
     } catch (_) {
       return null;
