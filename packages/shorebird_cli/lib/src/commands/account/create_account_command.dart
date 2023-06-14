@@ -53,7 +53,7 @@ To subscribe, run ${lightCyan.wrap('shorebird account subscribe')}.
 🔑 Credentials are stored in ${lightCyan.wrap(auth.credentialsFilePath)}.
 🚪 To logout, use: "${lightCyan.wrap('shorebird logout')}".
 
-A subscription is required to use Shorebird during the Trusted Tester program.
+A subscription is required to use Shorebird.
 To subscribe, run ${lightCyan.wrap('shorebird account subscribe')}.
 
 Please let us know via Discord if we can help!

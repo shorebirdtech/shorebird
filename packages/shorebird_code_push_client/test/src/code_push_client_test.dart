@@ -26,6 +26,10 @@ void main() {
     late http.Client httpClient;
     late CodePushClient codePushClient;
 
+    Uri v1(String endpoint) {
+      return Uri.parse('${codePushClient.hostedUri}/api/v1/$endpoint');
+    }
+
     setUpAll(() {
       registerFallbackValue(_FakeBaseRequest());
       registerFallbackValue(Uri());
@@ -34,6 +38,9 @@ void main() {
     setUp(() {
       httpClient = _MockHttpClient();
       codePushClient = CodePushClient(httpClient: httpClient);
+      when(() => httpClient.send(any())).thenAnswer(
+        (_) async => http.StreamedResponse(Stream.empty(), HttpStatus.ok),
+      );
     });
 
     test('can be instantiated', () {
@@ -53,19 +60,40 @@ void main() {
       });
     });
 
+    test('throws CodePushUpgradeRequiredException on 426 response', () async {
+      when(() => httpClient.send(any())).thenAnswer(
+        (_) async => http.StreamedResponse(
+          Stream.empty(),
+          HttpStatus.upgradeRequired,
+        ),
+      );
+
+      expect(
+        codePushClient.getApps(),
+        throwsA(isA<CodePushUpgradeRequiredException>()),
+      );
+    });
+
     group('createCollaborator', () {
       const appId = 'test-app-id';
       const email = 'jane.doe@shorebird.dev';
 
+      test('makes the correct request', () async {
+        codePushClient.createCollaborator(appId: appId, email: email).ignore();
+        final request = verify(() => httpClient.send(captureAny()))
+            .captured
+            .single as http.BaseRequest;
+        expect(request.method, equals('POST'));
+        expect(request.url, equals(v1('apps/$appId/collaborators')));
+        expect(request.hasStandardHeaders, isTrue);
+      });
+
       test('throws an exception if the http request fails (unknown)', () async {
-        when(
-          () => httpClient.post(
-            any(),
-            headers: any(named: 'headers'),
-            body: any(named: 'body'),
+        when(() => httpClient.send(any())).thenAnswer(
+          (_) async => http.StreamedResponse(
+            const Stream.empty(),
+            HttpStatus.failedDependency,
           ),
-        ).thenAnswer(
-          (_) async => http.Response('', HttpStatus.failedDependency),
         );
 
         expect(
@@ -81,15 +109,9 @@ void main() {
       });
 
       test('throws an exception if the http request fails', () async {
-        when(
-          () => httpClient.post(
-            any(),
-            headers: any(named: 'headers'),
-            body: any(named: 'body'),
-          ),
-        ).thenAnswer(
-          (_) async => http.Response(
-            json.encode(errorResponse.toJson()),
+        when(() => httpClient.send(any())).thenAnswer(
+          (_) async => http.StreamedResponse(
+            Stream.value(utf8.encode(json.encode(errorResponse.toJson()))),
             HttpStatus.failedDependency,
           ),
         );
@@ -107,29 +129,16 @@ void main() {
       });
 
       test('completes when request succeeds', () async {
-        when(
-          () => httpClient.post(
-            any(),
-            headers: any(named: 'headers'),
-            body: any(named: 'body'),
+        when(() => httpClient.send(any())).thenAnswer(
+          (_) async => http.StreamedResponse(
+            const Stream.empty(),
+            HttpStatus.created,
           ),
-        ).thenAnswer((_) async => http.Response('', HttpStatus.created));
+        );
 
-        await codePushClient.createCollaborator(appId: appId, email: email);
-
-        final uri = verify(
-          () => httpClient.post(
-            captureAny(),
-            headers: any(named: 'headers'),
-            body: any(named: 'body'),
-          ),
-        ).captured.single as Uri;
-
-        expect(
-          uri,
-          codePushClient.hostedUri.replace(
-            path: '/api/v1/apps/$appId/collaborators',
-          ),
+        await expectLater(
+          codePushClient.createCollaborator(appId: appId, email: email),
+          completes,
         );
       });
     });
@@ -137,20 +146,33 @@ void main() {
     group('getCurrentUser', () {
       const user = User(id: 123, email: 'tester@shorebird.dev');
 
-      late Uri uri;
-      setUp(() {
-        uri = Uri.parse('${codePushClient.hostedUri}/api/v1/users/me');
+      test('makes the correct request', () async {
+        codePushClient.getCurrentUser().ignore();
+        final request = verify(() => httpClient.send(captureAny()))
+            .captured
+            .single as http.BaseRequest;
+        expect(request.method, equals('GET'));
+        expect(request.url, equals(v1('users/me')));
+        expect(request.hasStandardHeaders, isTrue);
       });
 
       test('returns null if reponse is a 404', () async {
-        when(() => httpClient.get(uri))
-            .thenAnswer((_) async => http.Response('', HttpStatus.notFound));
+        when(() => httpClient.send(any())).thenAnswer(
+          (_) async => http.StreamedResponse(
+            const Stream.empty(),
+            HttpStatus.notFound,
+          ),
+        );
         expect(await codePushClient.getCurrentUser(), isNull);
       });
 
       test('throws exception if the http request fails', () {
-        when(() => httpClient.get(uri))
-            .thenAnswer((_) async => http.Response('', HttpStatus.badRequest));
+        when(() => httpClient.send(any())).thenAnswer(
+          (_) async => http.StreamedResponse(
+            const Stream.empty(),
+            HttpStatus.badRequest,
+          ),
+        );
 
         expect(
           codePushClient.getCurrentUser(),
@@ -165,8 +187,11 @@ void main() {
       });
 
       test('returns a deserialize user if the request succeeds', () async {
-        when(() => httpClient.get(uri)).thenAnswer(
-          (_) async => http.Response(jsonEncode(user.toJson()), HttpStatus.ok),
+        when(() => httpClient.send(any())).thenAnswer(
+          (_) async => http.StreamedResponse(
+            Stream.value(utf8.encode(json.encode(user.toJson()))),
+            HttpStatus.ok,
+          ),
         );
 
         final responseUser = await codePushClient.getCurrentUser();
@@ -184,10 +209,33 @@ void main() {
       const hash = 'test-hash';
       const size = 42;
 
+      test('makes the correct request', () async {
+        final tempDir = Directory.systemTemp.createTempSync();
+        final fixture = File(path.join(tempDir.path, 'release.txt'))
+          ..createSync();
+
+        try {
+          await codePushClient.createPatchArtifact(
+            artifactPath: fixture.path,
+            patchId: patchId,
+            arch: arch,
+            platform: platform,
+            hash: hash,
+          );
+        } catch (_) {}
+
+        final request = verify(() => httpClient.send(captureAny()))
+            .captured
+            .single as http.BaseRequest;
+        expect(request.method, equals('POST'));
+        expect(request.url, equals(v1('patches/$patchId/artifacts')));
+        expect(request.hasStandardHeaders, isTrue);
+      });
+
       test('throws an exception if the http request fails (unknown)', () async {
         when(() => httpClient.send(any())).thenAnswer((_) async {
           return http.StreamedResponse(
-            Stream.empty(),
+            const Stream.empty(),
             HttpStatus.failedDependency,
           );
         });
@@ -247,30 +295,34 @@ void main() {
       test('throws an exception if the upload fails', () async {
         const artifactId = 42;
         const uploadUrl = 'https://example.com';
-        when(() => httpClient.send(any())).thenAnswer((_) async {
-          return http.StreamedResponse(
-            Stream.value(
-              utf8.encode(
-                json.encode(
-                  CreatePatchArtifactResponse(
-                    id: artifactId,
-                    patchId: patchId,
-                    arch: arch,
-                    platform: platform,
-                    hash: hash,
-                    size: size,
-                    url: uploadUrl,
+        when(() => httpClient.send(any())).thenAnswer((invocation) async {
+          final request =
+              invocation.positionalArguments.first as http.BaseRequest;
+          if (request.method == 'POST') {
+            return http.StreamedResponse(
+              Stream.value(
+                utf8.encode(
+                  json.encode(
+                    CreatePatchArtifactResponse(
+                      id: artifactId,
+                      patchId: patchId,
+                      arch: arch,
+                      platform: platform,
+                      hash: hash,
+                      size: size,
+                      url: uploadUrl,
+                    ),
                   ),
                 ),
               ),
-            ),
-            HttpStatus.ok,
+              HttpStatus.ok,
+            );
+          }
+          return http.StreamedResponse(
+            const Stream.empty(),
+            HttpStatus.badRequest,
           );
         });
-
-        when(
-          () => httpClient.put(any(), body: any(named: 'body')),
-        ).thenAnswer((_) async => http.Response('', HttpStatus.badRequest));
 
         final tempDir = Directory.systemTemp.createTempSync();
         final fixture = File(path.join(tempDir.path, 'release.txt'))
@@ -292,41 +344,47 @@ void main() {
             ),
           ),
         );
-        verify(
-          () => httpClient.put(
-            Uri.parse(uploadUrl),
-            body: fixture.readAsBytesSync(),
-          ),
-        ).called(1);
+        final request = verify(() => httpClient.send(captureAny()))
+            .captured
+            .last as http.BaseRequest;
+        expect(request.url, equals(Uri.parse(uploadUrl)));
+        expect(
+          request.contentLength,
+          equals(fixture.readAsBytesSync().lengthInBytes),
+        );
       });
 
       test('completes when request succeeds', () async {
         const artifactId = 42;
         const uploadUrl = 'https://example.com';
-        when(() => httpClient.send(any())).thenAnswer((_) async {
-          return http.StreamedResponse(
-            Stream.value(
-              utf8.encode(
-                json.encode(
-                  CreatePatchArtifactResponse(
-                    id: artifactId,
-                    patchId: patchId,
-                    arch: arch,
-                    platform: platform,
-                    hash: hash,
-                    size: size,
-                    url: uploadUrl,
+        when(() => httpClient.send(any())).thenAnswer((invocation) async {
+          final request =
+              invocation.positionalArguments.first as http.BaseRequest;
+          if (request.method == 'POST') {
+            return http.StreamedResponse(
+              Stream.value(
+                utf8.encode(
+                  json.encode(
+                    CreatePatchArtifactResponse(
+                      id: artifactId,
+                      patchId: patchId,
+                      arch: arch,
+                      platform: platform,
+                      hash: hash,
+                      size: size,
+                      url: uploadUrl,
+                    ),
                   ),
                 ),
               ),
-            ),
+              HttpStatus.ok,
+            );
+          }
+          return http.StreamedResponse(
+            const Stream.empty(),
             HttpStatus.ok,
           );
         });
-
-        when(
-          () => httpClient.put(any(), body: any(named: 'body')),
-        ).thenAnswer((_) async => http.Response('', HttpStatus.ok));
 
         final tempDir = Directory.systemTemp.createTempSync();
         final fixture = File(path.join(tempDir.path, 'release.txt'))
@@ -345,7 +403,7 @@ void main() {
 
         final request = verify(() => httpClient.send(captureAny()))
             .captured
-            .single as http.MultipartRequest;
+            .first as http.MultipartRequest;
 
         expect(
           request.url,
@@ -357,13 +415,23 @@ void main() {
     });
 
     group('createPaymentLink', () {
+      test('makes the correct request', () async {
+        codePushClient.createPaymentLink().ignore();
+        final request = verify(() => httpClient.send(captureAny()))
+            .captured
+            .single as http.BaseRequest;
+        expect(request.method, equals('POST'));
+        expect(request.url, equals(v1('subscriptions/payment_link')));
+        expect(request.hasStandardHeaders, isTrue);
+      });
+
       test('throws an exception if the http request fails', () {
-        when(
-          () => httpClient.post(
-            any(),
-            headers: any(named: 'headers'),
-          ),
-        ).thenAnswer((_) async => http.Response('', HttpStatus.badRequest));
+        when(() => httpClient.send(any())).thenAnswer((_) async {
+          return http.StreamedResponse(
+            const Stream.empty(),
+            HttpStatus.badRequest,
+          );
+        });
 
         expect(
           codePushClient.createPaymentLink(),
@@ -379,18 +447,18 @@ void main() {
 
       test('returns a payment link if the http request succeeds', () {
         final link = Uri.parse('http://test.com');
-
-        when(
-          () => httpClient.post(
-            any(),
-            headers: any(named: 'headers'),
-          ),
-        ).thenAnswer(
-          (_) async => http.Response(
-            jsonEncode(CreatePaymentLinkResponse(paymentLink: link).toJson()),
+        when(() => httpClient.send(any())).thenAnswer((_) async {
+          return http.StreamedResponse(
+            Stream.value(
+              utf8.encode(
+                json.encode(
+                  CreatePaymentLinkResponse(paymentLink: link).toJson(),
+                ),
+              ),
+            ),
             HttpStatus.ok,
-          ),
-        );
+          );
+        });
 
         expect(
           codePushClient.createPaymentLink(),
@@ -405,6 +473,29 @@ void main() {
       const platform = 'android';
       const hash = 'test-hash';
       const size = 42;
+
+      test('makes the correct request', () async {
+        final tempDir = Directory.systemTemp.createTempSync();
+        final fixture = File(path.join(tempDir.path, 'release.txt'))
+          ..createSync();
+
+        try {
+          await codePushClient.createReleaseArtifact(
+            artifactPath: fixture.path,
+            releaseId: releaseId,
+            arch: arch,
+            platform: platform,
+            hash: hash,
+          );
+        } catch (_) {}
+
+        final request = verify(() => httpClient.send(captureAny()))
+            .captured
+            .single as http.BaseRequest;
+        expect(request.method, equals('POST'));
+        expect(request.url, equals(v1('releases/$releaseId/artifacts')));
+        expect(request.hasStandardHeaders, isTrue);
+      });
 
       test('throws an exception if the http request fails (unknown)', () async {
         when(() => httpClient.send(any())).thenAnswer((_) async {
@@ -521,30 +612,34 @@ void main() {
       test('throws an exception if the upload fails', () async {
         const artifactId = 42;
         const uploadUrl = 'https://example.com';
-        when(() => httpClient.send(any())).thenAnswer((_) async {
-          return http.StreamedResponse(
-            Stream.value(
-              utf8.encode(
-                json.encode(
-                  CreateReleaseArtifactResponse(
-                    id: artifactId,
-                    releaseId: releaseId,
-                    arch: arch,
-                    platform: platform,
-                    hash: hash,
-                    size: size,
-                    url: uploadUrl,
+        when(() => httpClient.send(any())).thenAnswer((invocation) async {
+          final request =
+              invocation.positionalArguments.first as http.BaseRequest;
+          if (request.method == 'POST') {
+            return http.StreamedResponse(
+              Stream.value(
+                utf8.encode(
+                  json.encode(
+                    CreateReleaseArtifactResponse(
+                      id: artifactId,
+                      releaseId: releaseId,
+                      arch: arch,
+                      platform: platform,
+                      hash: hash,
+                      size: size,
+                      url: uploadUrl,
+                    ),
                   ),
                 ),
               ),
-            ),
-            HttpStatus.ok,
+              HttpStatus.ok,
+            );
+          }
+          return http.StreamedResponse(
+            const Stream.empty(),
+            HttpStatus.badRequest,
           );
         });
-
-        when(
-          () => httpClient.put(any(), body: any(named: 'body')),
-        ).thenAnswer((_) async => http.Response('', HttpStatus.badRequest));
 
         final tempDir = Directory.systemTemp.createTempSync();
         final fixture = File(path.join(tempDir.path, 'release.txt'))
@@ -566,41 +661,47 @@ void main() {
             ),
           ),
         );
-        verify(
-          () => httpClient.put(
-            Uri.parse(uploadUrl),
-            body: fixture.readAsBytesSync(),
-          ),
-        ).called(1);
+        final request = verify(
+          () => httpClient.send(captureAny()),
+        ).captured.last as http.BaseRequest;
+        expect(request.url, equals(Uri.parse(uploadUrl)));
+        expect(
+          request.contentLength,
+          equals(fixture.readAsBytesSync().lengthInBytes),
+        );
       });
 
       test('completes when request succeeds', () async {
         const artifactId = 42;
         const uploadUrl = 'https://example.com';
-        when(() => httpClient.send(any())).thenAnswer((_) async {
-          return http.StreamedResponse(
-            Stream.value(
-              utf8.encode(
-                json.encode(
-                  CreateReleaseArtifactResponse(
-                    id: artifactId,
-                    releaseId: releaseId,
-                    arch: arch,
-                    platform: platform,
-                    hash: hash,
-                    size: size,
-                    url: uploadUrl,
+        when(() => httpClient.send(any())).thenAnswer((invocation) async {
+          final request =
+              invocation.positionalArguments.first as http.BaseRequest;
+          if (request.method == 'POST') {
+            return http.StreamedResponse(
+              Stream.value(
+                utf8.encode(
+                  json.encode(
+                    CreateReleaseArtifactResponse(
+                      id: artifactId,
+                      releaseId: releaseId,
+                      arch: arch,
+                      platform: platform,
+                      hash: hash,
+                      size: size,
+                      url: uploadUrl,
+                    ),
                   ),
                 ),
               ),
-            ),
+              HttpStatus.ok,
+            );
+          }
+          return http.StreamedResponse(
+            const Stream.empty(),
             HttpStatus.ok,
           );
         });
-
-        when(
-          () => httpClient.put(any(), body: any(named: 'body')),
-        ).thenAnswer((_) async => http.Response('', HttpStatus.ok));
 
         final tempDir = Directory.systemTemp.createTempSync();
         final fixture = File(path.join(tempDir.path, 'release.txt'))
@@ -619,7 +720,7 @@ void main() {
 
         final request = verify(() => httpClient.send(captureAny()))
             .captured
-            .single as http.MultipartRequest;
+            .first as http.MultipartRequest;
 
         expect(
           request.url,
@@ -631,14 +732,23 @@ void main() {
     });
 
     group('createApp', () {
+      test('makes the correct request', () async {
+        codePushClient.createApp(displayName: displayName).ignore();
+        final request = verify(() => httpClient.send(captureAny()))
+            .captured
+            .single as http.BaseRequest;
+        expect(request.method, equals('POST'));
+        expect(request.url, equals(v1('apps')));
+        expect(request.hasStandardHeaders, isTrue);
+      });
+
       test('throws an exception if the http request fails (unknown)', () async {
-        when(
-          () => httpClient.post(
-            any(),
-            headers: any(named: 'headers'),
-            body: any(named: 'body'),
+        when(() => httpClient.send(any())).thenAnswer(
+          (_) async => http.StreamedResponse(
+            const Stream.empty(),
+            HttpStatus.badRequest,
           ),
-        ).thenAnswer((_) async => http.Response('', HttpStatus.badRequest));
+        );
 
         expect(
           codePushClient.createApp(displayName: displayName),
@@ -653,15 +763,9 @@ void main() {
       });
 
       test('throws an exception if the http request fails', () async {
-        when(
-          () => httpClient.post(
-            any(),
-            headers: any(named: 'headers'),
-            body: any(named: 'body'),
-          ),
-        ).thenAnswer(
-          (_) async => http.Response(
-            json.encode(errorResponse.toJson()),
+        when(() => httpClient.send(any())).thenAnswer(
+          (_) async => http.StreamedResponse(
+            Stream.value(utf8.encode(json.encode(errorResponse.toJson()))),
             HttpStatus.failedDependency,
           ),
         );
@@ -679,15 +783,13 @@ void main() {
       });
 
       test('completes when request succeeds', () async {
-        when(
-          () => httpClient.post(
-            any(),
-            headers: any(named: 'headers'),
-            body: any(named: 'body'),
-          ),
-        ).thenAnswer(
-          (_) async => http.Response(
-            json.encode(App(id: appId, displayName: displayName)),
+        when(() => httpClient.send(any())).thenAnswer(
+          (_) async => http.StreamedResponse(
+            Stream.value(
+              utf8.encode(
+                json.encode(App(id: appId, displayName: displayName)),
+              ),
+            ),
             HttpStatus.ok,
           ),
         );
@@ -703,16 +805,12 @@ void main() {
           ),
         );
 
-        final uri = verify(
-          () => httpClient.post(
-            captureAny(),
-            headers: any(named: 'headers'),
-            body: any(named: 'body'),
-          ),
-        ).captured.single as Uri;
+        final request = verify(
+          () => httpClient.send(captureAny()),
+        ).captured.single as http.BaseRequest;
 
         expect(
-          uri,
+          request.url,
           codePushClient.hostedUri.replace(path: '/api/v1/apps'),
         );
       });
@@ -720,14 +818,24 @@ void main() {
 
     group('createChannel', () {
       const channel = 'stable';
+
+      test('makes the correct request', () async {
+        codePushClient.createChannel(appId: appId, channel: channel).ignore();
+        final request = verify(() => httpClient.send(captureAny()))
+            .captured
+            .single as http.BaseRequest;
+        expect(request.method, equals('POST'));
+        expect(request.url, equals(v1('channels')));
+        expect(request.hasStandardHeaders, isTrue);
+      });
+
       test('throws an exception if the http request fails (unknown)', () async {
-        when(
-          () => httpClient.post(
-            any(),
-            headers: any(named: 'headers'),
-            body: any(named: 'body'),
+        when(() => httpClient.send(any())).thenAnswer(
+          (_) async => http.StreamedResponse(
+            const Stream.empty(),
+            HttpStatus.badRequest,
           ),
-        ).thenAnswer((_) async => http.Response('', HttpStatus.badRequest));
+        );
 
         expect(
           codePushClient.createChannel(appId: appId, channel: channel),
@@ -742,15 +850,9 @@ void main() {
       });
 
       test('throws an exception if the http request fails', () async {
-        when(
-          () => httpClient.post(
-            any(),
-            headers: any(named: 'headers'),
-            body: any(named: 'body'),
-          ),
-        ).thenAnswer(
-          (_) async => http.Response(
-            json.encode(errorResponse.toJson()),
+        when(() => httpClient.send(any())).thenAnswer(
+          (_) async => http.StreamedResponse(
+            Stream.value(utf8.encode(json.encode(errorResponse.toJson()))),
             HttpStatus.failedDependency,
           ),
         );
@@ -769,15 +871,15 @@ void main() {
 
       test('completes when request succeeds', () async {
         const channelId = 0;
-        when(
-          () => httpClient.post(
-            any(),
-            headers: any(named: 'headers'),
-            body: any(named: 'body'),
-          ),
-        ).thenAnswer(
-          (_) async => http.Response(
-            json.encode(Channel(id: channelId, appId: appId, name: channel)),
+        when(() => httpClient.send(any())).thenAnswer(
+          (_) async => http.StreamedResponse(
+            Stream.value(
+              utf8.encode(
+                json.encode(
+                  Channel(id: channelId, appId: appId, name: channel),
+                ),
+              ),
+            ),
             HttpStatus.ok,
           ),
         );
@@ -794,16 +896,12 @@ void main() {
           ),
         );
 
-        final uri = verify(
-          () => httpClient.post(
-            captureAny(),
-            headers: any(named: 'headers'),
-            body: any(named: 'body'),
-          ),
-        ).captured.single as Uri;
+        final request = verify(
+          () => httpClient.send(captureAny()),
+        ).captured.single as http.BaseRequest;
 
         expect(
-          uri,
+          request.url,
           codePushClient.hostedUri.replace(path: '/api/v1/channels'),
         );
       });
@@ -811,14 +909,24 @@ void main() {
 
     group('createPatch', () {
       const releaseId = 0;
+
+      test('makes the correct request', () async {
+        codePushClient.createPatch(releaseId: releaseId).ignore();
+        final request = verify(() => httpClient.send(captureAny()))
+            .captured
+            .single as http.BaseRequest;
+        expect(request.method, equals('POST'));
+        expect(request.url, equals(v1('patches')));
+        expect(request.hasStandardHeaders, isTrue);
+      });
+
       test('throws an exception if the http request fails (unknown)', () async {
-        when(
-          () => httpClient.post(
-            any(),
-            headers: any(named: 'headers'),
-            body: any(named: 'body'),
+        when(() => httpClient.send(any())).thenAnswer(
+          (_) async => http.StreamedResponse(
+            const Stream.empty(),
+            HttpStatus.badRequest,
           ),
-        ).thenAnswer((_) async => http.Response('', HttpStatus.badRequest));
+        );
 
         expect(
           codePushClient.createPatch(releaseId: releaseId),
@@ -833,15 +941,9 @@ void main() {
       });
 
       test('throws an exception if the http request fails', () async {
-        when(
-          () => httpClient.post(
-            any(),
-            headers: any(named: 'headers'),
-            body: any(named: 'body'),
-          ),
-        ).thenAnswer(
-          (_) async => http.Response(
-            json.encode(errorResponse.toJson()),
+        when(() => httpClient.send(any())).thenAnswer(
+          (_) async => http.StreamedResponse(
+            Stream.value(utf8.encode(json.encode(errorResponse.toJson()))),
             HttpStatus.failedDependency,
           ),
         );
@@ -861,15 +963,13 @@ void main() {
       test('completes when request succeeds', () async {
         const patchId = 0;
         const patchNumber = 1;
-        when(
-          () => httpClient.post(
-            any(),
-            headers: any(named: 'headers'),
-            body: any(named: 'body'),
-          ),
-        ).thenAnswer(
-          (_) async => http.Response(
-            json.encode(Patch(id: patchId, number: patchNumber)),
+        when(() => httpClient.send(any())).thenAnswer(
+          (_) async => http.StreamedResponse(
+            Stream.value(
+              utf8.encode(
+                json.encode(Patch(id: patchId, number: patchNumber)),
+              ),
+            ),
             HttpStatus.ok,
           ),
         );
@@ -885,16 +985,12 @@ void main() {
           ),
         );
 
-        final uri = verify(
-          () => httpClient.post(
-            captureAny(),
-            headers: any(named: 'headers'),
-            body: any(named: 'body'),
-          ),
-        ).captured.single as Uri;
+        final request = verify(() => httpClient.send(captureAny()))
+            .captured
+            .single as http.BaseRequest;
 
         expect(
-          uri,
+          request.url,
           codePushClient.hostedUri.replace(path: '/api/v1/patches'),
         );
       });
@@ -902,14 +998,31 @@ void main() {
 
     group('createRelease', () {
       const version = '1.0.0';
+
+      test('makes the correct request', () async {
+        codePushClient
+            .createRelease(
+              appId: appId,
+              version: version,
+              flutterRevision: flutterRevision,
+              displayName: displayName,
+            )
+            .ignore();
+        final request = verify(() => httpClient.send(captureAny()))
+            .captured
+            .single as http.BaseRequest;
+        expect(request.method, equals('POST'));
+        expect(request.url, equals(v1('releases')));
+        expect(request.hasStandardHeaders, isTrue);
+      });
+
       test('throws an exception if the http request fails (unknown)', () async {
-        when(
-          () => httpClient.post(
-            any(),
-            headers: any(named: 'headers'),
-            body: any(named: 'body'),
+        when(() => httpClient.send(any())).thenAnswer(
+          (_) async => http.StreamedResponse(
+            const Stream.empty(),
+            HttpStatus.badRequest,
           ),
-        ).thenAnswer((_) async => http.Response('', HttpStatus.badRequest));
+        );
 
         expect(
           codePushClient.createRelease(
@@ -929,15 +1042,9 @@ void main() {
       });
 
       test('throws an exception if the http request fails', () async {
-        when(
-          () => httpClient.post(
-            any(),
-            headers: any(named: 'headers'),
-            body: any(named: 'body'),
-          ),
-        ).thenAnswer(
-          (_) async => http.Response(
-            json.encode(errorResponse.toJson()),
+        when(() => httpClient.send(any())).thenAnswer(
+          (_) async => http.StreamedResponse(
+            Stream.value(utf8.encode(json.encode(errorResponse.toJson()))),
             HttpStatus.failedDependency,
           ),
         );
@@ -961,21 +1068,19 @@ void main() {
 
       test('completes when request succeeds', () async {
         const releaseId = 0;
-        when(
-          () => httpClient.post(
-            any(),
-            headers: any(named: 'headers'),
-            body: any(named: 'body'),
-          ),
-        ).thenAnswer(
-          (_) async => http.Response(
-            json.encode(
-              Release(
-                id: releaseId,
-                appId: appId,
-                version: version,
-                flutterRevision: flutterRevision,
-                displayName: displayName,
+        when(() => httpClient.send(any())).thenAnswer(
+          (_) async => http.StreamedResponse(
+            Stream.value(
+              utf8.encode(
+                json.encode(
+                  Release(
+                    id: releaseId,
+                    appId: appId,
+                    version: version,
+                    flutterRevision: flutterRevision,
+                    displayName: displayName,
+                  ),
+                ),
               ),
             ),
             HttpStatus.ok,
@@ -1005,16 +1110,12 @@ void main() {
           ),
         );
 
-        final uri = verify(
-          () => httpClient.post(
-            captureAny(),
-            headers: any(named: 'headers'),
-            body: any(named: 'body'),
-          ),
-        ).captured.single as Uri;
+        final request = verify(() => httpClient.send(captureAny()))
+            .captured
+            .single as http.BaseRequest;
 
         expect(
-          uri,
+          request.url,
           codePushClient.hostedUri.replace(path: '/api/v1/releases'),
         );
       });
@@ -1024,11 +1125,24 @@ void main() {
       const appId = 'test-app-id';
       const userId = 42;
 
+      test('makes the correct request', () async {
+        codePushClient
+            .deleteCollaborator(appId: appId, userId: userId)
+            .ignore();
+        final request = verify(() => httpClient.send(captureAny()))
+            .captured
+            .single as http.BaseRequest;
+        expect(request.method, equals('DELETE'));
+        expect(request.url, equals(v1('apps/$appId/collaborators/$userId')));
+        expect(request.hasStandardHeaders, isTrue);
+      });
+
       test('throws an exception if the http request fails (unknown)', () async {
-        when(
-          () => httpClient.delete(any(), headers: any(named: 'headers')),
-        ).thenAnswer(
-          (_) async => http.Response('', HttpStatus.failedDependency),
+        when(() => httpClient.send(any())).thenAnswer(
+          (_) async => http.StreamedResponse(
+            const Stream.empty(),
+            HttpStatus.badRequest,
+          ),
         );
 
         expect(
@@ -1044,11 +1158,9 @@ void main() {
       });
 
       test('throws an exception if the http request fails', () async {
-        when(
-          () => httpClient.delete(any(), headers: any(named: 'headers')),
-        ).thenAnswer(
-          (_) async => http.Response(
-            json.encode(errorResponse.toJson()),
+        when(() => httpClient.send(any())).thenAnswer(
+          (_) async => http.StreamedResponse(
+            Stream.value(utf8.encode(json.encode(errorResponse.toJson()))),
             HttpStatus.failedDependency,
           ),
         );
@@ -1066,27 +1178,24 @@ void main() {
       });
 
       test('completes when request succeeds', () async {
-        when(
-          () => httpClient.delete(
-            any(),
-            headers: any(named: 'headers'),
+        when(() => httpClient.send(any())).thenAnswer(
+          (_) async => http.StreamedResponse(
+            const Stream.empty(),
+            HttpStatus.noContent,
           ),
-        ).thenAnswer((_) async => http.Response('', HttpStatus.noContent));
+        );
 
         await codePushClient.deleteCollaborator(
           appId: appId,
           userId: userId,
         );
 
-        final uri = verify(
-          () => httpClient.delete(
-            captureAny(),
-            headers: any(named: 'headers'),
-          ),
-        ).captured.single as Uri;
+        final request = verify(() => httpClient.send(captureAny()))
+            .captured
+            .single as http.BaseRequest;
 
         expect(
-          uri,
+          request.url,
           codePushClient.hostedUri.replace(
             path: '/api/v1/apps/$appId/collaborators/$userId',
           ),
@@ -1097,11 +1206,22 @@ void main() {
     group('deleteRelease', () {
       const releaseId = 42;
 
+      test('makes the correct request', () async {
+        codePushClient.deleteRelease(releaseId: releaseId).ignore();
+        final request = verify(() => httpClient.send(captureAny()))
+            .captured
+            .single as http.BaseRequest;
+        expect(request.method, equals('DELETE'));
+        expect(request.url, equals(v1('releases/$releaseId')));
+        expect(request.hasStandardHeaders, isTrue);
+      });
+
       test('throws an exception if the http request fails (unknown)', () async {
-        when(
-          () => httpClient.delete(any(), headers: any(named: 'headers')),
-        ).thenAnswer(
-          (_) async => http.Response('', HttpStatus.failedDependency),
+        when(() => httpClient.send(any())).thenAnswer(
+          (_) async => http.StreamedResponse(
+            const Stream.empty(),
+            HttpStatus.badRequest,
+          ),
         );
 
         expect(
@@ -1117,11 +1237,9 @@ void main() {
       });
 
       test('throws an exception if the http request fails', () async {
-        when(
-          () => httpClient.delete(any(), headers: any(named: 'headers')),
-        ).thenAnswer(
-          (_) async => http.Response(
-            json.encode(errorResponse.toJson()),
+        when(() => httpClient.send(any())).thenAnswer(
+          (_) async => http.StreamedResponse(
+            Stream.value(utf8.encode(json.encode(errorResponse.toJson()))),
             HttpStatus.failedDependency,
           ),
         );
@@ -1139,24 +1257,21 @@ void main() {
       });
 
       test('completes when request succeeds', () async {
-        when(
-          () => httpClient.delete(
-            any(),
-            headers: any(named: 'headers'),
+        when(() => httpClient.send(any())).thenAnswer(
+          (_) async => http.StreamedResponse(
+            const Stream.empty(),
+            HttpStatus.noContent,
           ),
-        ).thenAnswer((_) async => http.Response('', HttpStatus.noContent));
+        );
 
         await codePushClient.deleteRelease(releaseId: releaseId);
 
-        final uri = verify(
-          () => httpClient.delete(
-            captureAny(),
-            headers: any(named: 'headers'),
-          ),
-        ).captured.single as Uri;
+        final request = verify(() => httpClient.send(captureAny()))
+            .captured
+            .single as http.BaseRequest;
 
         expect(
-          uri,
+          request.url,
           codePushClient.hostedUri.replace(
             path: '/api/v1/releases/$releaseId',
           ),
@@ -1172,15 +1287,22 @@ void main() {
         displayName: userName,
       );
 
+      test('makes the correct request', () async {
+        codePushClient.createUser(name: userName).ignore();
+        final request = verify(() => httpClient.send(captureAny()))
+            .captured
+            .single as http.BaseRequest;
+        expect(request.method, equals('POST'));
+        expect(request.url, equals(v1('users')));
+        expect(request.hasStandardHeaders, isTrue);
+      });
+
       test('throws an exception if the http request fails', () {
-        when(
-          () => httpClient.post(
-            any(),
-            headers: any(named: 'headers'),
-            body: any(named: 'body'),
+        when(() => httpClient.send(any())).thenAnswer(
+          (_) async => http.StreamedResponse(
+            const Stream.empty(),
+            HttpStatus.failedDependency,
           ),
-        ).thenAnswer(
-          (_) async => http.Response('', HttpStatus.failedDependency),
         );
 
         expect(
@@ -1196,15 +1318,9 @@ void main() {
       });
 
       test('returns a User when the http request succeeds', () async {
-        when(
-          () => httpClient.post(
-            any(),
-            headers: any(named: 'headers'),
-            body: any(named: 'body'),
-          ),
-        ).thenAnswer(
-          (_) async => http.Response(
-            jsonEncode(user.toJson()),
+        when(() => httpClient.send(any())).thenAnswer(
+          (_) async => http.StreamedResponse(
+            Stream.value(utf8.encode(json.encode(user.toJson()))),
             HttpStatus.created,
           ),
         );
@@ -1216,11 +1332,22 @@ void main() {
     });
 
     group('deleteApp', () {
+      test('makes the correct request', () async {
+        codePushClient.deleteApp(appId: appId).ignore();
+        final request = verify(() => httpClient.send(captureAny()))
+            .captured
+            .single as http.BaseRequest;
+        expect(request.method, equals('DELETE'));
+        expect(request.url, equals(v1('apps/$appId')));
+        expect(request.hasStandardHeaders, isTrue);
+      });
+
       test('throws an exception if the http request fails (unknown)', () async {
-        when(
-          () => httpClient.delete(any(), headers: any(named: 'headers')),
-        ).thenAnswer(
-          (_) async => http.Response('', HttpStatus.failedDependency),
+        when(() => httpClient.send(any())).thenAnswer(
+          (_) async => http.StreamedResponse(
+            const Stream.empty(),
+            HttpStatus.failedDependency,
+          ),
         );
 
         expect(
@@ -1236,11 +1363,9 @@ void main() {
       });
 
       test('throws an exception if the http request fails', () async {
-        when(
-          () => httpClient.delete(any(), headers: any(named: 'headers')),
-        ).thenAnswer(
-          (_) async => http.Response(
-            json.encode(errorResponse.toJson()),
+        when(() => httpClient.send(any())).thenAnswer(
+          (_) async => http.StreamedResponse(
+            Stream.value(utf8.encode(json.encode(errorResponse.toJson()))),
             HttpStatus.failedDependency,
           ),
         );
@@ -1258,24 +1383,21 @@ void main() {
       });
 
       test('completes when request succeeds', () async {
-        when(
-          () => httpClient.delete(
-            any(),
-            headers: any(named: 'headers'),
+        when(() => httpClient.send(any())).thenAnswer(
+          (_) async => http.StreamedResponse(
+            const Stream.empty(),
+            HttpStatus.noContent,
           ),
-        ).thenAnswer((_) async => http.Response('', HttpStatus.noContent));
+        );
 
         await codePushClient.deleteApp(appId: appId);
 
-        final uri = verify(
-          () => httpClient.delete(
-            captureAny(),
-            headers: any(named: 'headers'),
-          ),
-        ).captured.single as Uri;
+        final request = verify(() => httpClient.send(captureAny()))
+            .captured
+            .single as http.BaseRequest;
 
         expect(
-          uri,
+          request.url,
           codePushClient.hostedUri.replace(
             path: '/api/v1/apps/$appId',
           ),
@@ -1284,15 +1406,20 @@ void main() {
     });
 
     group('getApps', () {
+      test('makes the correct request', () async {
+        codePushClient.getApps().ignore();
+        final request = verify(() => httpClient.send(captureAny()))
+            .captured
+            .single as http.BaseRequest;
+        expect(request.method, equals('GET'));
+        expect(request.url, equals(v1('apps')));
+        expect(request.hasStandardHeaders, isTrue);
+      });
+
       test('throws an exception if the http request fails (unknown)', () async {
-        when(
-          () => httpClient.get(
-            any(),
-            headers: any(named: 'headers'),
-          ),
-        ).thenAnswer(
-          (_) async => http.Response(
-            '',
+        when(() => httpClient.send(any())).thenAnswer(
+          (_) async => http.StreamedResponse(
+            const Stream.empty(),
             HttpStatus.failedDependency,
           ),
         );
@@ -1310,15 +1437,10 @@ void main() {
       });
 
       test('throws an exception if the http request fails', () async {
-        when(
-          () => httpClient.get(
-            any(),
-            headers: any(named: 'headers'),
-          ),
-        ).thenAnswer(
-          (_) async => http.Response(
-            json.encode(errorResponse.toJson()),
-            HttpStatus.failedDependency,
+        when(() => httpClient.send(any())).thenAnswer(
+          (_) async => http.StreamedResponse(
+            Stream.value(utf8.encode(json.encode(errorResponse.toJson()))),
+            HttpStatus.noContent,
           ),
         );
 
@@ -1335,13 +1457,11 @@ void main() {
       });
 
       test('completes when request succeeds (empty)', () async {
-        when(
-          () => httpClient.get(
-            any(),
-            headers: any(named: 'headers'),
+        when(() => httpClient.send(any())).thenAnswer(
+          (_) async => http.StreamedResponse(
+            Stream.value(utf8.encode(json.encode([]))),
+            HttpStatus.ok,
           ),
-        ).thenAnswer(
-          (_) async => http.Response(json.encode([]), HttpStatus.ok),
         );
 
         final apps = await codePushClient.getApps();
@@ -1354,13 +1474,11 @@ void main() {
           AppMetadata(appId: '2', displayName: 'Shorebird Clock'),
         ];
 
-        when(
-          () => httpClient.get(
-            any(),
-            headers: any(named: 'headers'),
+        when(() => httpClient.send(any())).thenAnswer(
+          (_) async => http.StreamedResponse(
+            Stream.value(utf8.encode(json.encode(expected))),
+            HttpStatus.ok,
           ),
-        ).thenAnswer(
-          (_) async => http.Response(json.encode(expected), HttpStatus.ok),
         );
 
         final actual = await codePushClient.getApps();
@@ -1370,15 +1488,21 @@ void main() {
 
     group('getChannels', () {
       const appId = 'test-app-id';
+
+      test('makes the correct request', () async {
+        codePushClient.getChannels(appId: appId).ignore();
+        final request = verify(() => httpClient.send(captureAny()))
+            .captured
+            .single as http.BaseRequest;
+        expect(request.method, equals('GET'));
+        expect(request.url, equals(v1('channels?appId=$appId')));
+        expect(request.hasStandardHeaders, isTrue);
+      });
+
       test('throws an exception if the http request fails (unknown)', () async {
-        when(
-          () => httpClient.get(
-            any(),
-            headers: any(named: 'headers'),
-          ),
-        ).thenAnswer(
-          (_) async => http.Response(
-            '',
+        when(() => httpClient.send(any())).thenAnswer(
+          (_) async => http.StreamedResponse(
+            const Stream.empty(),
             HttpStatus.failedDependency,
           ),
         );
@@ -1396,14 +1520,9 @@ void main() {
       });
 
       test('throws an exception if the http request fails', () async {
-        when(
-          () => httpClient.get(
-            any(),
-            headers: any(named: 'headers'),
-          ),
-        ).thenAnswer(
-          (_) async => http.Response(
-            json.encode(errorResponse.toJson()),
+        when(() => httpClient.send(any())).thenAnswer(
+          (_) async => http.StreamedResponse(
+            Stream.value(utf8.encode(json.encode(errorResponse.toJson()))),
             HttpStatus.failedDependency,
           ),
         );
@@ -1421,13 +1540,11 @@ void main() {
       });
 
       test('completes when request succeeds (empty)', () async {
-        when(
-          () => httpClient.get(
-            any(),
-            headers: any(named: 'headers'),
+        when(() => httpClient.send(any())).thenAnswer(
+          (_) async => http.StreamedResponse(
+            Stream.value(utf8.encode(json.encode([]))),
+            HttpStatus.ok,
           ),
-        ).thenAnswer(
-          (_) async => http.Response(json.encode([]), HttpStatus.ok),
         );
 
         final apps = await codePushClient.getChannels(appId: appId);
@@ -1440,13 +1557,11 @@ void main() {
           Channel(id: 1, appId: '2', name: 'development'),
         ];
 
-        when(
-          () => httpClient.get(
-            any(),
-            headers: any(named: 'headers'),
+        when(() => httpClient.send(any())).thenAnswer(
+          (_) async => http.StreamedResponse(
+            Stream.value(utf8.encode(json.encode(expected))),
+            HttpStatus.ok,
           ),
-        ).thenAnswer(
-          (_) async => http.Response(json.encode(expected), HttpStatus.ok),
         );
 
         final actual = await codePushClient.getChannels(appId: appId);
@@ -1456,15 +1571,21 @@ void main() {
 
     group('getCollaborators', () {
       const appId = 'test-app-id';
+
+      test('makes the correct request', () async {
+        codePushClient.getCollaborators(appId: appId).ignore();
+        final request = verify(() => httpClient.send(captureAny()))
+            .captured
+            .single as http.BaseRequest;
+        expect(request.method, equals('GET'));
+        expect(request.url, equals(v1('apps/$appId/collaborators')));
+        expect(request.hasStandardHeaders, isTrue);
+      });
+
       test('throws an exception if the http request fails (unknown)', () async {
-        when(
-          () => httpClient.get(
-            any(),
-            headers: any(named: 'headers'),
-          ),
-        ).thenAnswer(
-          (_) async => http.Response(
-            '',
+        when(() => httpClient.send(any())).thenAnswer(
+          (_) async => http.StreamedResponse(
+            const Stream.empty(),
             HttpStatus.failedDependency,
           ),
         );
@@ -1482,14 +1603,9 @@ void main() {
       });
 
       test('throws an exception if the http request fails', () async {
-        when(
-          () => httpClient.get(
-            any(),
-            headers: any(named: 'headers'),
-          ),
-        ).thenAnswer(
-          (_) async => http.Response(
-            json.encode(errorResponse.toJson()),
+        when(() => httpClient.send(any())).thenAnswer(
+          (_) async => http.StreamedResponse(
+            Stream.value(utf8.encode(json.encode(errorResponse.toJson()))),
             HttpStatus.failedDependency,
           ),
         );
@@ -1507,13 +1623,11 @@ void main() {
       });
 
       test('completes when request succeeds (empty)', () async {
-        when(
-          () => httpClient.get(
-            any(),
-            headers: any(named: 'headers'),
+        when(() => httpClient.send(any())).thenAnswer(
+          (_) async => http.StreamedResponse(
+            Stream.value(utf8.encode(json.encode([]))),
+            HttpStatus.ok,
           ),
-        ).thenAnswer(
-          (_) async => http.Response(json.encode([]), HttpStatus.ok),
         );
 
         final apps = await codePushClient.getCollaborators(appId: appId);
@@ -1532,13 +1646,11 @@ void main() {
           ),
         ];
 
-        when(
-          () => httpClient.get(
-            any(),
-            headers: any(named: 'headers'),
+        when(() => httpClient.send(any())).thenAnswer(
+          (_) async => http.StreamedResponse(
+            Stream.value(utf8.encode(json.encode(expected))),
+            HttpStatus.ok,
           ),
-        ).thenAnswer(
-          (_) async => http.Response(json.encode(expected), HttpStatus.ok),
         );
 
         final actual = await codePushClient.getCollaborators(appId: appId);
@@ -1548,15 +1660,21 @@ void main() {
 
     group('getReleases', () {
       const appId = 'test-app-id';
+
+      test('makes the correct request', () async {
+        codePushClient.getReleases(appId: appId).ignore();
+        final request = verify(() => httpClient.send(captureAny()))
+            .captured
+            .single as http.BaseRequest;
+        expect(request.method, equals('GET'));
+        expect(request.url, equals(v1('releases?appId=$appId')));
+        expect(request.hasStandardHeaders, isTrue);
+      });
+
       test('throws an exception if the http request fails (unknown)', () async {
-        when(
-          () => httpClient.get(
-            any(),
-            headers: any(named: 'headers'),
-          ),
-        ).thenAnswer(
-          (_) async => http.Response(
-            '',
+        when(() => httpClient.send(any())).thenAnswer(
+          (_) async => http.StreamedResponse(
+            const Stream.empty(),
             HttpStatus.failedDependency,
           ),
         );
@@ -1574,14 +1692,9 @@ void main() {
       });
 
       test('throws an exception if the http request fails', () async {
-        when(
-          () => httpClient.get(
-            any(),
-            headers: any(named: 'headers'),
-          ),
-        ).thenAnswer(
-          (_) async => http.Response(
-            json.encode(errorResponse.toJson()),
+        when(() => httpClient.send(any())).thenAnswer(
+          (_) async => http.StreamedResponse(
+            Stream.value(utf8.encode(json.encode(errorResponse.toJson()))),
             HttpStatus.failedDependency,
           ),
         );
@@ -1599,13 +1712,11 @@ void main() {
       });
 
       test('completes when request succeeds (empty)', () async {
-        when(
-          () => httpClient.get(
-            any(),
-            headers: any(named: 'headers'),
+        when(() => httpClient.send(any())).thenAnswer(
+          (_) async => http.StreamedResponse(
+            Stream.value(utf8.encode(json.encode([]))),
+            HttpStatus.ok,
           ),
-        ).thenAnswer(
-          (_) async => http.Response(json.encode([]), HttpStatus.ok),
         );
 
         final apps = await codePushClient.getReleases(appId: appId);
@@ -1630,13 +1741,11 @@ void main() {
           ),
         ];
 
-        when(
-          () => httpClient.get(
-            any(),
-            headers: any(named: 'headers'),
+        when(() => httpClient.send(any())).thenAnswer(
+          (_) async => http.StreamedResponse(
+            Stream.value(utf8.encode(json.encode(expected))),
+            HttpStatus.ok,
           ),
-        ).thenAnswer(
-          (_) async => http.Response(json.encode(expected), HttpStatus.ok),
         );
 
         final actual = await codePushClient.getReleases(appId: appId);
@@ -1649,15 +1758,31 @@ void main() {
       const arch = 'aarch64';
       const platform = 'android';
 
-      test('throws an exception if the http request fails (unknown)', () async {
-        when(
-          () => httpClient.get(
-            any(),
-            headers: any(named: 'headers'),
+      test('makes the correct request', () async {
+        codePushClient
+            .getReleaseArtifact(
+              releaseId: releaseId,
+              arch: arch,
+              platform: platform,
+            )
+            .ignore();
+        final request = verify(() => httpClient.send(captureAny()))
+            .captured
+            .single as http.BaseRequest;
+        expect(request.method, equals('GET'));
+        expect(
+          request.url,
+          equals(
+            v1('releases/$releaseId/artifacts?arch=$arch&platform=$platform'),
           ),
-        ).thenAnswer(
-          (_) async => http.Response(
-            '',
+        );
+        expect(request.hasStandardHeaders, isTrue);
+      });
+
+      test('throws an exception if the http request fails (unknown)', () async {
+        when(() => httpClient.send(any())).thenAnswer(
+          (_) async => http.StreamedResponse(
+            const Stream.empty(),
             HttpStatus.failedDependency,
           ),
         );
@@ -1679,14 +1804,9 @@ void main() {
       });
 
       test('throws an exception if the http request fails', () async {
-        when(
-          () => httpClient.get(
-            any(),
-            headers: any(named: 'headers'),
-          ),
-        ).thenAnswer(
-          (_) async => http.Response(
-            json.encode(errorResponse.toJson()),
+        when(() => httpClient.send(any())).thenAnswer(
+          (_) async => http.StreamedResponse(
+            Stream.value(utf8.encode(json.encode(errorResponse.toJson()))),
             HttpStatus.failedDependency,
           ),
         );
@@ -1718,13 +1838,11 @@ void main() {
           size: 42,
         );
 
-        when(
-          () => httpClient.get(
-            any(),
-            headers: any(named: 'headers'),
+        when(() => httpClient.send(any())).thenAnswer(
+          (_) async => http.StreamedResponse(
+            Stream.value(utf8.encode(json.encode(expected))),
+            HttpStatus.ok,
           ),
-        ).thenAnswer(
-          (_) async => http.Response(json.encode(expected), HttpStatus.ok),
         );
 
         final actual = await codePushClient.getReleaseArtifact(
@@ -1739,14 +1857,26 @@ void main() {
     group('promotePatch', () {
       const patchId = 0;
       const channelId = 0;
+
+      test('makes the correct request', () async {
+        codePushClient
+            .promotePatch(patchId: patchId, channelId: channelId)
+            .ignore();
+        final request = verify(() => httpClient.send(captureAny()))
+            .captured
+            .single as http.BaseRequest;
+        expect(request.method, equals('POST'));
+        expect(request.url, equals(v1('patches/promote')));
+        expect(request.hasStandardHeaders, isTrue);
+      });
+
       test('throws an exception if the http request fails (unknown)', () async {
-        when(
-          () => httpClient.post(
-            any(),
-            headers: any(named: 'headers'),
-            body: any(named: 'body'),
+        when(() => httpClient.send(any())).thenAnswer(
+          (_) async => http.StreamedResponse(
+            const Stream.empty(),
+            HttpStatus.badRequest,
           ),
-        ).thenAnswer((_) async => http.Response('', HttpStatus.badRequest));
+        );
 
         expect(
           codePushClient.promotePatch(patchId: patchId, channelId: channelId),
@@ -1761,15 +1891,9 @@ void main() {
       });
 
       test('throws an exception if the http request fails', () async {
-        when(
-          () => httpClient.post(
-            any(),
-            headers: any(named: 'headers'),
-            body: any(named: 'body'),
-          ),
-        ).thenAnswer(
-          (_) async => http.Response(
-            json.encode(errorResponse.toJson()),
+        when(() => httpClient.send(any())).thenAnswer(
+          (_) async => http.StreamedResponse(
+            Stream.value(utf8.encode(json.encode(errorResponse.toJson()))),
             HttpStatus.failedDependency,
           ),
         );
@@ -1787,14 +1911,11 @@ void main() {
       });
 
       test('completes when request succeeds', () async {
-        when(
-          () => httpClient.post(
-            any(),
-            headers: any(named: 'headers'),
-            body: any(named: 'body'),
+        when(() => httpClient.send(any())).thenAnswer(
+          (_) async => http.StreamedResponse(
+            const Stream.empty(),
+            HttpStatus.created,
           ),
-        ).thenAnswer(
-          (_) async => http.Response('', HttpStatus.created),
         );
 
         await expectLater(
@@ -1802,16 +1923,12 @@ void main() {
           completes,
         );
 
-        final uri = verify(
-          () => httpClient.post(
-            captureAny(),
-            headers: any(named: 'headers'),
-            body: any(named: 'body'),
-          ),
-        ).captured.single as Uri;
+        final request = verify(() => httpClient.send(captureAny()))
+            .captured
+            .single as http.BaseRequest;
 
         expect(
-          uri,
+          request.url,
           codePushClient.hostedUri.replace(path: '/api/v1/patches/promote'),
         );
       });
@@ -1824,9 +1941,23 @@ void main() {
         uri = Uri.parse('${codePushClient.hostedUri}/api/v1/subscriptions');
       });
 
+      test('makes the correct request', () async {
+        codePushClient.cancelSubscription().ignore();
+        final request = verify(() => httpClient.send(captureAny()))
+            .captured
+            .single as http.BaseRequest;
+        expect(request.method, equals('DELETE'));
+        expect(request.url, equals(v1('subscriptions')));
+        expect(request.hasStandardHeaders, isTrue);
+      });
+
       test('throws an exception if the http request fails', () {
-        when(() => httpClient.delete(uri))
-            .thenAnswer((_) async => http.Response('', HttpStatus.badRequest));
+        when(() => httpClient.send(any())).thenAnswer(
+          (_) async => http.StreamedResponse(
+            const Stream.empty(),
+            HttpStatus.badRequest,
+          ),
+        );
 
         expect(
           codePushClient.cancelSubscription(),
@@ -1842,10 +1973,11 @@ void main() {
 
       test('completes when request succeeds', () async {
         const timestamp = 1681455600;
-
-        when(() => httpClient.delete(uri)).thenAnswer(
-          (_) async => http.Response(
-            jsonEncode({'expiration_date': 1681455600}),
+        when(() => httpClient.send(any())).thenAnswer(
+          (_) async => http.StreamedResponse(
+            Stream.value(
+              utf8.encode(json.encode({'expiration_date': 1681455600})),
+            ),
             HttpStatus.ok,
           ),
         );
@@ -1853,7 +1985,10 @@ void main() {
         final response = await codePushClient.cancelSubscription();
 
         expect(response.millisecondsSinceEpoch, timestamp * 1000);
-        verify(() => httpClient.delete(uri)).called(1);
+        final request = verify(() => httpClient.send(captureAny()))
+            .captured
+            .single as http.BaseRequest;
+        expect(request.url, equals(uri));
       });
     });
 
@@ -1864,4 +1999,12 @@ void main() {
       });
     });
   });
+}
+
+extension on http.BaseRequest {
+  bool get hasStandardHeaders {
+    return CodePushClient.headers.entries.every(
+      (entry) => headers[entry.key] == entry.value,
+    );
+  }
 }

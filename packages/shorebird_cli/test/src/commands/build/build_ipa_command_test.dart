@@ -5,6 +5,7 @@ import 'package:http/http.dart' as http;
 import 'package:mason_logger/mason_logger.dart';
 import 'package:mocktail/mocktail.dart';
 import 'package:path/path.dart' as p;
+import 'package:propertylistserialization/propertylistserialization.dart';
 import 'package:scoped/scoped.dart';
 import 'package:shorebird_cli/src/auth/auth.dart';
 import 'package:shorebird_cli/src/commands/build/build.dart';
@@ -114,7 +115,11 @@ void main() {
       verify(
         () => shorebirdProcess.run(
           'flutter',
-          ['build', 'ipa', '--release'],
+          any(
+            that: containsAll(
+              ['build', 'ipa', '--release'],
+            ),
+          ),
           runInShell: any(named: 'runInShell'),
         ),
       ).called(1);
@@ -133,7 +138,11 @@ void main() {
       verify(
         () => shorebirdProcess.run(
           'flutter',
-          ['build', 'ipa', '--release'],
+          any(
+            that: containsAll(
+              ['build', 'ipa', '--release'],
+            ),
+          ),
           runInShell: true,
         ),
       ).called(1);
@@ -171,13 +180,17 @@ ${lightCyan.wrap(p.join('build', 'ios', 'ipa', 'Runner.ipa'))}''',
       verify(
         () => shorebirdProcess.run(
           'flutter',
-          [
-            'build',
-            'ipa',
-            '--release',
-            '--flavor=$flavor',
-            '--target=$target',
-          ],
+          any(
+            that: containsAll(
+              [
+                'build',
+                'ipa',
+                '--release',
+                '--flavor=$flavor',
+                '--target=$target',
+              ],
+            ),
+          ),
           runInShell: true,
         ),
       ).called(1);
@@ -212,7 +225,9 @@ ${lightCyan.wrap(p.join('build', 'ios', 'ipa', 'Runner.ipa'))}''',
       verify(
         () => shorebirdProcess.run(
           'flutter',
-          ['build', 'ipa', '--release', '--no-codesign'],
+          any(
+            that: containsAll(['build', 'ipa', '--release', '--no-codesign']),
+          ),
           runInShell: true,
         ),
       ).called(1);
@@ -285,6 +300,42 @@ ${lightCyan.wrap(p.join('build', 'ios', 'ipa', 'Runner.ipa'))}''',
           ),
         ),
       ).called(1);
+    });
+
+    test('provides appropriate ExportOptions.plist to build ipa command',
+        () async {
+      when(() => processResult.exitCode).thenReturn(ExitCode.success.code);
+      final tempDir = Directory.systemTemp.createTempSync();
+      final result = await IOOverrides.runZoned(
+        () async => runWithOverrides(command.run),
+        getCurrentDirectory: () => tempDir,
+      );
+
+      expect(result, equals(ExitCode.success.code));
+      expect(exitCode, ExitCode.success.code);
+      final capturedArgs = verify(
+        () => shorebirdProcess.run(
+          'flutter',
+          captureAny(),
+          runInShell: any(named: 'runInShell'),
+        ),
+      ).captured.first as List<String>;
+      final exportOptionsPlistFile = File(
+        capturedArgs
+            .whereType<String>()
+            .firstWhere((arg) => arg.contains('export-options-plist'))
+            .split('=')
+            .last,
+      );
+      expect(exportOptionsPlistFile.existsSync(), isTrue);
+      final exportOptionsPlist =
+          PropertyListSerialization.propertyListWithString(
+        exportOptionsPlistFile.readAsStringSync(),
+      ) as Map<String, Object>;
+      expect(exportOptionsPlist['manageAppVersionAndBuildNumber'], isFalse);
+      expect(exportOptionsPlist['signingStyle'], 'automatic');
+      expect(exportOptionsPlist['uploadBitcode'], isFalse);
+      expect(exportOptionsPlist['method'], 'app-store');
     });
   });
 }

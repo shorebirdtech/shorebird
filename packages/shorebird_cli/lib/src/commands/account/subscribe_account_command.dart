@@ -24,8 +24,7 @@ class SubscribeAccountCommand extends ShorebirdCommand
 
   @override
   String get summary => '''
-A subscription to Shorebird's Trusted Tester program is required to publish
-patches to your apps.
+A subscription to Shorebird is required to publish patches to your apps.
 
 The subscription costs \$20 USD per month per user and is billed through Stripe.
 
@@ -90,8 +89,7 @@ Once Stripe has processed your payment, you will be able to use Shorebird to cre
 ${styleBold.wrap(red.wrap('Note: This payment link is specifically for ${styleItalic.wrap('your account')}. Do not share it with others.'))}
 
 Once you have completed your payment, please let us know on Discord or by
-replying to your invite email, so that we can add you to the Trusted Tester
-private Discord channel for live support.
+replying to your invite email, so that we can add you to the support channel for live support.
 
 Thanks for you help!
 ''');

@@ -79,8 +79,12 @@ jobs:
           filters: |
             shorebird_cli:
               - ./.github/workflows/main.yaml
-              - ./.github/actions/dart_package
+              - ./.github/actions/verify_version/action.yaml
               - packages/shorebird_cli/**
+            shorebird_code_push_client:
+              - ./.github/workflows/main.yaml
+              - ./.github/actions/verify_version/action.yaml
+              - packages/shorebird_code_push_client/**
 
   build_dart_packages:
     needs: changes

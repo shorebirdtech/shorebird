@@ -9,6 +9,11 @@ void main() {
       expect(() => read(value), throwsStateError);
     });
 
+    test('read uses orElse when ref is not available', () {
+      final value = create(() => 42);
+      expect(read(value, orElse: () => 0), equals(0));
+    });
+
     test('calls onError when uncaught exception occurs', () {
       final value = create(() => 42);
       late final Object exception;

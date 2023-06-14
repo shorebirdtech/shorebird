@@ -2,6 +2,7 @@ import 'dart:convert';
 import 'dart:io';
 
 import 'package:http/http.dart' as http;
+import 'package:shorebird_code_push_client/src/version.dart';
 import 'package:shorebird_code_push_protocol/shorebird_code_push_protocol.dart';
 
 /// {@template code_push_exception}
@@ -37,6 +38,37 @@ class CodePushNotFoundException extends CodePushException {
   CodePushNotFoundException({required super.message, super.details});
 }
 
+/// {@template code_push_upgrade_required_exception}
+/// Exception thrown when a 426 response is received.
+/// {@endtemplate}
+class CodePushUpgradeRequiredException extends CodePushException {
+  /// {@macro code_push_upgrade_required_exception}
+  const CodePushUpgradeRequiredException({
+    required super.message,
+    super.details,
+  });
+}
+
+/// A wrapper around [http.Client] that ensures all outbound requests
+/// are consistent.
+/// For example, all requests include the standard `x-version` header.
+class _CodePushHttpClient extends http.BaseClient {
+  _CodePushHttpClient(this._client);
+
+  final http.Client _client;
+
+  @override
+  Future<http.StreamedResponse> send(http.BaseRequest request) {
+    return _client.send(request..headers.addAll(CodePushClient.headers));
+  }
+
+  @override
+  void close() {
+    _client.close();
+    super.close();
+  }
+}
+
 /// {@template code_push_client}
 /// Dart client for the Shorebird CodePush API.
 /// {@endtemplate}
@@ -45,8 +77,11 @@ class CodePushClient {
   CodePushClient({
     http.Client? httpClient,
     Uri? hostedUri,
-  })  : _httpClient = httpClient ?? http.Client(),
+  })  : _httpClient = _CodePushHttpClient(httpClient ?? http.Client()),
         hostedUri = hostedUri ?? Uri.https('api.shorebird.dev');
+
+  /// The standard headers applied to all requests.
+  static const headers = <String, String>{'x-version': packageVersion};
 
   /// The default error message to use when an unknown error occurs.
   static const unknownErrorMessage = 'An unknown error occurred.';
@@ -316,7 +351,9 @@ class CodePushClient {
 
   /// List all apps for the current account.
   Future<List<AppMetadata>> getApps() async {
-    final response = await _httpClient.get(Uri.parse('$_v1/apps'));
+    final response = await _httpClient.get(
+      Uri.parse('$_v1/apps'),
+    );
 
     if (response.statusCode != HttpStatus.ok) {
       throw _parseErrorResponse(response.statusCode, response.body);
@@ -422,9 +459,7 @@ class CodePushClient {
 
   /// Cancels the current user's subscription.
   Future<DateTime> cancelSubscription() async {
-    final response = await _httpClient.delete(
-      Uri.parse('$_v1/subscriptions'),
-    );
+    final response = await _httpClient.delete(Uri.parse('$_v1/subscriptions'));
 
     if (response.statusCode != HttpStatus.ok) {
       throw _parseErrorResponse(response.statusCode, response.body);
@@ -442,6 +477,7 @@ class CodePushClient {
     final exceptionBuilder = switch (statusCode) {
       HttpStatus.conflict => CodePushConflictException.new,
       HttpStatus.notFound => CodePushNotFoundException.new,
+      HttpStatus.upgradeRequired => CodePushUpgradeRequiredException.new,
       _ => CodePushException.new,
     };
 
