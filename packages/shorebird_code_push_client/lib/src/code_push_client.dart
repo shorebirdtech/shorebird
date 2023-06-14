@@ -38,6 +38,37 @@ class CodePushNotFoundException extends CodePushException {
   CodePushNotFoundException({required super.message, super.details});
 }
 
+/// {@template code_push_upgrade_required_exception}
+/// Exception thrown when a 426 response is received.
+/// {@endtemplate}
+class CodePushUpgradeRequiredException extends CodePushException {
+  /// {@macro code_push_upgrade_required_exception}
+  const CodePushUpgradeRequiredException({
+    required super.message,
+    super.details,
+  });
+}
+
+/// A wrapper around [http.Client] that ensures all outbound requests
+/// are consistent.
+/// For example, all requests include the standard `x-version` header.
+class _CodePushHttpClient extends http.BaseClient {
+  _CodePushHttpClient(this._client);
+
+  final http.Client _client;
+
+  @override
+  Future<http.StreamedResponse> send(http.BaseRequest request) {
+    return _client.send(request..headers.addAll(CodePushClient.headers));
+  }
+
+  @override
+  void close() {
+    _client.close();
+    super.close();
+  }
+}
+
 /// {@template code_push_client}
 /// Dart client for the Shorebird CodePush API.
 /// {@endtemplate}
@@ -46,7 +77,7 @@ class CodePushClient {
   CodePushClient({
     http.Client? httpClient,
     Uri? hostedUri,
-  })  : _httpClient = httpClient ?? http.Client(),
+  })  : _httpClient = _CodePushHttpClient(httpClient ?? http.Client()),
         hostedUri = hostedUri ?? Uri.https('api.shorebird.dev');
 
   /// The standard headers applied to all requests.
@@ -70,7 +101,6 @@ class CodePushClient {
   }) async {
     final response = await _httpClient.post(
       Uri.parse('$_v1/apps/$appId/collaborators'),
-      headers: headers,
       body: json.encode(CreateAppCollaboratorRequest(email: email).toJson()),
     );
 
@@ -107,7 +137,6 @@ class CodePushClient {
       Uri.parse('$_v1/patches/$patchId/artifacts'),
     );
     final file = await http.MultipartFile.fromPath('file', artifactPath);
-    request.headers.addAll(headers);
     request.fields.addAll({
       'arch': arch,
       'platform': platform,
@@ -141,7 +170,6 @@ class CodePushClient {
   Future<Uri> createPaymentLink() async {
     final response = await _httpClient.post(
       Uri.parse('$_v1/subscriptions/payment_link'),
-      headers: headers,
     );
 
     if (response.statusCode != HttpStatus.ok) {
@@ -166,7 +194,6 @@ class CodePushClient {
       Uri.parse('$_v1/releases/$releaseId/artifacts'),
     );
     final file = await http.MultipartFile.fromPath('file', artifactPath);
-    request.headers.addAll(headers);
     request.fields.addAll({
       'arch': arch,
       'platform': platform,
@@ -201,7 +228,6 @@ class CodePushClient {
   Future<App> createApp({required String displayName}) async {
     final response = await _httpClient.post(
       Uri.parse('$_v1/apps'),
-      headers: headers,
       body: json.encode({'display_name': displayName}),
     );
 
@@ -219,7 +245,6 @@ class CodePushClient {
   }) async {
     final response = await _httpClient.post(
       Uri.parse('$_v1/channels'),
-      headers: headers,
       body: json.encode({'app_id': appId, 'channel': channel}),
     );
 
@@ -234,7 +259,6 @@ class CodePushClient {
   Future<Patch> createPatch({required int releaseId}) async {
     final response = await _httpClient.post(
       Uri.parse('$_v1/patches'),
-      headers: headers,
       body: json.encode({'release_id': releaseId}),
     );
 
@@ -255,7 +279,6 @@ class CodePushClient {
   }) async {
     final response = await _httpClient.post(
       Uri.parse('$_v1/releases'),
-      headers: headers,
       body: json.encode({
         'app_id': appId,
         'version': version,
@@ -278,7 +301,6 @@ class CodePushClient {
   }) async {
     final response = await _httpClient.delete(
       Uri.parse('$_v1/apps/$appId/collaborators/$userId'),
-      headers: headers,
     );
 
     if (response.statusCode != HttpStatus.noContent) {
@@ -290,7 +312,6 @@ class CodePushClient {
   Future<void> deleteRelease({required int releaseId}) async {
     final response = await _httpClient.delete(
       Uri.parse('$_v1/releases/$releaseId'),
-      headers: headers,
     );
 
     if (response.statusCode != HttpStatus.noContent) {
@@ -306,7 +327,6 @@ class CodePushClient {
   }) async {
     final response = await _httpClient.post(
       Uri.parse('$_v1/users'),
-      headers: headers,
       body: jsonEncode(CreateUserRequest(name: name).toJson()),
     );
 
@@ -322,7 +342,6 @@ class CodePushClient {
   Future<void> deleteApp({required String appId}) async {
     final response = await _httpClient.delete(
       Uri.parse('$_v1/apps/$appId'),
-      headers: headers,
     );
 
     if (response.statusCode != HttpStatus.noContent) {
@@ -334,7 +353,6 @@ class CodePushClient {
   Future<List<AppMetadata>> getApps() async {
     final response = await _httpClient.get(
       Uri.parse('$_v1/apps'),
-      headers: headers,
     );
 
     if (response.statusCode != HttpStatus.ok) {
@@ -353,7 +371,6 @@ class CodePushClient {
       Uri.parse('$_v1/channels').replace(
         queryParameters: {'appId': appId},
       ),
-      headers: headers,
     );
 
     if (response.statusCode != HttpStatus.ok) {
@@ -370,7 +387,6 @@ class CodePushClient {
   Future<List<Collaborator>> getCollaborators({required String appId}) async {
     final response = await _httpClient.get(
       Uri.parse('$_v1/apps/$appId/collaborators'),
-      headers: headers,
     );
 
     if (response.statusCode != HttpStatus.ok) {
@@ -391,7 +407,6 @@ class CodePushClient {
       Uri.parse('$_v1/releases').replace(
         queryParameters: {'appId': appId},
       ),
-      headers: headers,
     );
 
     if (response.statusCode != HttpStatus.ok) {
@@ -417,7 +432,6 @@ class CodePushClient {
           'platform': platform,
         },
       ),
-      headers: headers,
     );
 
     if (response.statusCode != HttpStatus.ok) {
@@ -435,7 +449,6 @@ class CodePushClient {
   }) async {
     final response = await _httpClient.post(
       Uri.parse('$_v1/patches/promote'),
-      headers: headers,
       body: json.encode({'patch_id': patchId, 'channel_id': channelId}),
     );
 
@@ -446,10 +459,7 @@ class CodePushClient {
 
   /// Cancels the current user's subscription.
   Future<DateTime> cancelSubscription() async {
-    final response = await _httpClient.delete(
-      Uri.parse('$_v1/subscriptions'),
-      headers: headers,
-    );
+    final response = await _httpClient.delete(Uri.parse('$_v1/subscriptions'));
 
     if (response.statusCode != HttpStatus.ok) {
       throw _parseErrorResponse(response.statusCode, response.body);
@@ -467,6 +477,7 @@ class CodePushClient {
     final exceptionBuilder = switch (statusCode) {
       HttpStatus.conflict => CodePushConflictException.new,
       HttpStatus.notFound => CodePushNotFoundException.new,
+      HttpStatus.upgradeRequired => CodePushUpgradeRequiredException.new,
       _ => CodePushException.new,
     };
 
