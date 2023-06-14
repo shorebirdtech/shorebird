@@ -12,6 +12,7 @@ import 'package:shorebird_cli/src/cache.dart';
 import 'package:shorebird_cli/src/code_push_client_wrapper.dart';
 import 'package:shorebird_cli/src/command_runner.dart';
 import 'package:shorebird_cli/src/config/config.dart';
+import 'package:shorebird_cli/src/platform.dart';
 import 'package:shorebird_cli/src/shorebird_process.dart';
 import 'package:shorebird_cli/src/validators/validators.dart';
 import 'package:shorebird_code_push_client/shorebird_code_push_client.dart';
@@ -117,8 +118,11 @@ abstract class ShorebirdCommand extends Command<int> {
   }
 
   Uri? get hostedUri {
-    // TODO(bryanoltman): maybe look for an environment variable instead of
-    // reading shorebird.yaml?
+    final envHostedUrl = platform.environment['SHOREBIRD_HOSTED_URL'];
+    Uri? envHostedUri;
+    if (envHostedUrl != null) envHostedUri = Uri.tryParse(envHostedUrl);
+    if (envHostedUri != null) return envHostedUri;
+
     try {
       final baseUrl = getShorebirdYaml()?.baseUrl;
       return baseUrl == null ? null : Uri.tryParse(baseUrl);
