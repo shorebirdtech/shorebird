@@ -60,6 +60,20 @@ void main() {
       });
     });
 
+    test('throws CodePushUpgradeRequiredException on 426 response', () async {
+      when(() => httpClient.send(any())).thenAnswer(
+        (_) async => http.StreamedResponse(
+          Stream.empty(),
+          HttpStatus.upgradeRequired,
+        ),
+      );
+
+      expect(
+        codePushClient.getApps(),
+        throwsA(isA<CodePushUpgradeRequiredException>()),
+      );
+    });
+
     group('createCollaborator', () {
       const appId = 'test-app-id';
       const email = 'jane.doe@shorebird.dev';

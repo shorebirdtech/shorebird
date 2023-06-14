@@ -38,6 +38,17 @@ class CodePushNotFoundException extends CodePushException {
   CodePushNotFoundException({required super.message, super.details});
 }
 
+/// {@template code_push_upgrade_required_exception}
+/// Exception thrown when a 426 response is received.
+/// {@endtemplate}
+class CodePushUpgradeRequiredException extends CodePushException {
+  /// {@macro code_push_upgrade_required_exception}
+  const CodePushUpgradeRequiredException({
+    required super.message,
+    super.details,
+  });
+}
+
 /// A wrapper around [http.Client] that ensures all outbound requests
 /// are consistent.
 /// For example, all requests include the standard `x-version` header.
@@ -466,6 +477,7 @@ class CodePushClient {
     final exceptionBuilder = switch (statusCode) {
       HttpStatus.conflict => CodePushConflictException.new,
       HttpStatus.notFound => CodePushNotFoundException.new,
+      HttpStatus.upgradeRequired => CodePushUpgradeRequiredException.new,
       _ => CodePushException.new,
     };
 
