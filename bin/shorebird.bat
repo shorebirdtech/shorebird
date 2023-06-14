@@ -18,4 +18,4 @@ SET PowerShellScriptPath=%CurrentDirectory%shorebird.ps1
 
 REM Pass up to four arguments to the PowerShell script
 REM This number is arbitrary and can be increased if needed
-& %powershell_executable% -NoProfile -ExecutionPolicy Bypass -Command "& '%PowerShellScriptPath%' %1% %2% %3% %4%";
+%powershell_executable% -NoProfile -ExecutionPolicy Bypass -Command "& '%PowerShellScriptPath%'";
