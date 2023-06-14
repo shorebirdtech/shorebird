@@ -110,6 +110,20 @@ make smaller updates to your app.
 
     releaseVersionProgress.complete();
 
+    final existingRelease = await codePushClientWrapper.maybeGetRelease(
+      appId: appId,
+      releaseVersion: releaseVersion,
+    );
+
+    if (existingRelease != null) {
+      logger.err(
+        '''
+It looks like you have an existing release for version ${lightCyan.wrap(releaseVersion)}.
+Please bump your version number and try again.''',
+      );
+      return ExitCode.software.code;
+    }
+
     final summary = [
       '''📱 App: ${lightCyan.wrap(app.displayName)} ${lightCyan.wrap('($appId)')}''',
       if (flavor != null) '🍧 Flavor: ${lightCyan.wrap(flavor)}',
@@ -131,20 +145,6 @@ ${summary.join('\n')}
         logger.info('Aborting.');
         return ExitCode.success.code;
       }
-    }
-
-    final existingRelease = await codePushClientWrapper.maybeGetRelease(
-      appId: appId,
-      releaseVersion: releaseVersion,
-    );
-
-    if (existingRelease != null) {
-      logger.err(
-        '''
-It looks like you have an existing release for version ${lightCyan.wrap(releaseVersion)}.
-Please bump your version number and try again.''',
-      );
-      return ExitCode.software.code;
     }
 
     final flutterRevisionProgress = logger.progress(

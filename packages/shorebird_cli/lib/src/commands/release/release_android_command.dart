@@ -71,6 +71,7 @@ make smaller updates to your app.
       return e.exitCode.code;
     }
 
+    const platform = 'android';
     final flavor = results['flavor'] as String?;
     final target = results['target'] as String?;
     final buildProgress = logger.progress('Building release');
@@ -104,7 +105,19 @@ make smaller updates to your app.
       return ExitCode.software.code;
     }
 
-    const platform = 'android';
+    final existingRelease = await codePushClientWrapper.maybeGetRelease(
+      appId: appId,
+      releaseVersion: releaseVersion,
+    );
+    if (existingRelease != null) {
+      logger.err(
+        '''
+It looks like you have an existing release for version ${lightCyan.wrap(releaseVersion)}.
+Please bump your version number and try again.''',
+      );
+      return ExitCode.software.code;
+    }
+
     final archNames = architectures.keys.map(
       (arch) => arch.name,
     );
@@ -131,19 +144,6 @@ ${summary.join('\n')}
         logger.info('Aborting.');
         return ExitCode.success.code;
       }
-    }
-
-    final existingRelease = await codePushClientWrapper.maybeGetRelease(
-      appId: appId,
-      releaseVersion: releaseVersion,
-    );
-    if (existingRelease != null) {
-      logger.err(
-        '''
-It looks like you have an existing release for version ${lightCyan.wrap(releaseVersion)}.
-Please bump your version number and try again.''',
-      );
-      return ExitCode.software.code;
     }
 
     final flutterRevisionProgress = logger.progress(
