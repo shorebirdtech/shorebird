@@ -97,12 +97,12 @@ void main() {
 
     group('clear', () {
       test('deletes the cache directory', () async {
-        runWithOverrides(() {
-          Cache.shorebirdCacheDirectory.createSync(recursive: true);
-          expect(Cache.shorebirdCacheDirectory.existsSync(), isTrue);
-          cache.clear();
-          expect(Cache.shorebirdCacheDirectory.existsSync(), isFalse);
-        });
+        final shorebirdCacheDirectory =
+            runWithOverrides(() => Cache.shorebirdCacheDirectory)
+              ..createSync(recursive: true);
+        expect(shorebirdCacheDirectory.existsSync(), isTrue);
+        runWithOverrides(cache.clear);
+        expect(shorebirdCacheDirectory.existsSync(), isFalse);
       });
 
       test('does nothing if directory does not exist', () {
