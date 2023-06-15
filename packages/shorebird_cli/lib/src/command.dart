@@ -42,7 +42,6 @@ abstract class ShorebirdCommand extends Command<int> {
 
   final Cache cache;
   final CodePushClientBuilder buildCodePushClient;
-  // late final CodePushClientWrapper codePushClientWrapper;
 
   // We don't currently have a test involving both a CommandRunner
   // and a Command, so we can't test this getter.
