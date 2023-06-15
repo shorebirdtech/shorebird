@@ -569,6 +569,79 @@ void main() {
         });
       });
 
+      group('getReleaseArtifact', () {
+        test('exits with code 70 if fetching release artifact fails', () async {
+          const error = 'something went wrong';
+          when(
+            () => codePushClient.getReleaseArtifact(
+              releaseId: any(named: 'releaseId'),
+              arch: any(named: 'arch'),
+              platform: any(named: 'platform'),
+            ),
+          ).thenThrow(error);
+
+          await expectLater(
+            () async => runWithOverrides(
+              () => codePushClientWrapper.getReleaseArtifact(
+                releaseId: releaseId,
+                arch: arch.name,
+                platform: platformName,
+              ),
+            ),
+            exitsWithCode(ExitCode.software),
+          );
+
+          verify(() => progress.fail(error)).called(1);
+        });
+
+        test('exits with code 70 if release artifact does not exist', () async {
+          when(
+            () => codePushClient.getReleaseArtifact(
+              releaseId: any(named: 'releaseId'),
+              arch: any(named: 'arch'),
+              platform: any(named: 'platform'),
+            ),
+          ).thenThrow(CodePushNotFoundException(message: 'not found'));
+
+          await expectLater(
+            () async => runWithOverrides(
+              () => codePushClientWrapper.getReleaseArtifact(
+                releaseId: releaseId,
+                arch: arch.name,
+                platform: platformName,
+              ),
+            ),
+            exitsWithCode(ExitCode.software),
+          );
+
+          verify(() => progress.fail('not found')).called(1);
+        });
+
+        test(
+          'returns release artifact if release artifact exists',
+          () async {
+            when(
+              () => codePushClient.getReleaseArtifact(
+                releaseId: any(named: 'releaseId'),
+                arch: any(named: 'arch'),
+                platform: any(named: 'platform'),
+              ),
+            ).thenAnswer((_) async => releaseArtifact);
+
+            final result = await runWithOverrides(
+              () => codePushClientWrapper.getReleaseArtifact(
+                releaseId: releaseId,
+                arch: arch.name,
+                platform: platformName,
+              ),
+            );
+
+            expect(result, releaseArtifact);
+            verify(() => progress.complete()).called(1);
+          },
+        );
+      });
+
       group('maybeGetReleaseArtifact', () {
         test('exits with code 70 if fetching release artifact fails', () async {
           const error = 'something went wrong';

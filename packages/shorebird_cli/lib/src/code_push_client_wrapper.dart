@@ -211,6 +211,28 @@ Please create a release using "shorebird release" and try again.
     return releaseArtifacts;
   }
 
+  Future<ReleaseArtifact> getReleaseArtifact({
+    required int releaseId,
+    required String arch,
+    required String platform,
+  }) async {
+    final fetchReleaseArtifactProgress = logger.progress(
+      'Fetching $arch artifact',
+    );
+    try {
+      final artifact = await codePushClient.getReleaseArtifact(
+        releaseId: releaseId,
+        arch: arch,
+        platform: platform,
+      );
+      fetchReleaseArtifactProgress.complete();
+      return artifact;
+    } catch (error) {
+      fetchReleaseArtifactProgress.fail('$error');
+      exit(ExitCode.software.code);
+    }
+  }
+
   Future<ReleaseArtifact?> maybeGetReleaseArtifact({
     required int releaseId,
     required String arch,
