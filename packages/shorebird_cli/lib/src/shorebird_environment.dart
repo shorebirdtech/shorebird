@@ -77,10 +77,16 @@ abstract class ShorebirdEnvironment {
         ),
       );
 
+  /// The `shorebird.yaml` file for this project.
   static File getShorebirdYamlFile() {
     return File(p.join(Directory.current.path, 'shorebird.yaml'));
   }
 
+  /// The `shorebird.yaml` file for this project, parsed into a [ShorebirdYaml]
+  /// object.
+  ///
+  /// Returns `null` if the file does not exist.
+  /// Throws a [ParsedYamlException] if the file exists but is invalid.
   static ShorebirdYaml? getShorebirdYaml() {
     final file = getShorebirdYamlFile();
     if (!file.existsSync()) return null;
@@ -88,6 +94,10 @@ abstract class ShorebirdEnvironment {
     return checkedYamlDecode(yaml, (m) => ShorebirdYaml.fromJson(m!));
   }
 
+  /// The `pubspec.yaml` file for this project, parsed into a [Pubspec] object.
+  ///
+  /// Returns `null` if the file does not exist.
+  /// Throws a [ParsedYamlException] if the file exists but is invalid.
   static Pubspec? getPubspecYaml() {
     final file = File(p.join(Directory.current.path, 'pubspec.yaml'));
     if (!file.existsSync()) return null;
@@ -95,6 +105,9 @@ abstract class ShorebirdEnvironment {
     return Pubspec.parse(yaml);
   }
 
+  /// The base URL for the Shorebird code push server that overrides the default
+  /// used by [CodePushClient]. If none is provided, [CodePushClient] will use
+  /// its default.
   static Uri? get hostedUri {
     try {
       final baseUrl = platform.environment['SHOREBIRD_HOSTED_URL'] ??
