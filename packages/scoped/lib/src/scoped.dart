@@ -49,7 +49,7 @@ T read<T>(ScopedRef<T> ref, {T Function()? orElse}) {
     if (orElse != null) return orElse();
     throw StateError(
       '''
-read(...) was called in a scope which does not contain a corresponding value for the provided ref (type: $T).
+read(ScopedRef<$T>) was called in a scope which does not contain a corresponding value for the provided ref.
 Did you forget to call: runScoped(() {...}, values: {value})?''',
     );
   }
