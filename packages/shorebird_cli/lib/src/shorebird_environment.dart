@@ -1,13 +1,14 @@
 import 'dart:io' hide Platform;
 
+import 'package:checked_yaml/checked_yaml.dart';
 import 'package:meta/meta.dart';
 import 'package:path/path.dart' as p;
 import 'package:platform/platform.dart';
+import 'package:pubspec_parse/pubspec_parse.dart';
+import 'package:shorebird_cli/src/config/shorebird_yaml.dart';
+import 'package:shorebird_cli/src/platform.dart';
 
 abstract class ShorebirdEnvironment {
-  @visibleForTesting
-  static Platform platform = const LocalPlatform();
-
   /// Environment variables from [Platform.environment].
   static Map<String, String> get environment => platform.environment;
 
@@ -75,4 +76,32 @@ abstract class ShorebirdEnvironment {
           'gen_snapshot_arm64',
         ),
       );
+
+  static File getShorebirdYamlFile() {
+    return File(p.join(Directory.current.path, 'shorebird.yaml'));
+  }
+
+  static ShorebirdYaml? getShorebirdYaml() {
+    final file = getShorebirdYamlFile();
+    if (!file.existsSync()) return null;
+    final yaml = file.readAsStringSync();
+    return checkedYamlDecode(yaml, (m) => ShorebirdYaml.fromJson(m!));
+  }
+
+  static Pubspec? getPubspecYaml() {
+    final file = File(p.join(Directory.current.path, 'pubspec.yaml'));
+    if (!file.existsSync()) return null;
+    final yaml = file.readAsStringSync();
+    return Pubspec.parse(yaml);
+  }
+
+  static Uri? get hostedUri {
+    try {
+      final baseUrl = platform.environment['SHOREBIRD_HOSTED_URL'] ??
+          getShorebirdYaml()?.baseUrl;
+      return baseUrl == null ? null : Uri.tryParse(baseUrl);
+    } catch (_) {
+      return null;
+    }
+  }
 }

@@ -27,7 +27,6 @@ class PatchIosCommand extends ShorebirdCommand
         ShorebirdArtifactMixin {
   /// {@macro patch_ios_command}
   PatchIosCommand({
-    super.codePushClientWrapper,
     super.validators,
     HashFunction? hashFn,
     IpaReader? ipaReader,
@@ -99,7 +98,7 @@ class PatchIosCommand extends ShorebirdCommand
       return ExitCode.usage.code;
     }
 
-    final shorebirdYaml = getShorebirdYaml()!;
+    final shorebirdYaml = ShorebirdEnvironment.getShorebirdYaml()!;
     final appId = shorebirdYaml.getAppId(flavor: flavor);
     final app = await codePushClientWrapper.getApp(appId: appId);
 
@@ -128,7 +127,7 @@ class PatchIosCommand extends ShorebirdCommand
       'Detecting release version',
     );
     try {
-      final pubspec = getPubspecYaml()!;
+      final pubspec = ShorebirdEnvironment.getPubspecYaml()!;
       final ipa = _ipaReader.read(
         p.join(
           Directory.current.path,

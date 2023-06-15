@@ -35,7 +35,6 @@ class PatchAndroidCommand extends ShorebirdCommand
   PatchAndroidCommand({
     super.cache,
     super.validators,
-    super.codePushClientWrapper,
     HashFunction? hashFn,
     http.Client? httpClient,
     AabDiffer? aabDiffer,
@@ -125,7 +124,7 @@ class PatchAndroidCommand extends ShorebirdCommand
       return ExitCode.software.code;
     }
 
-    final shorebirdYaml = getShorebirdYaml()!;
+    final shorebirdYaml = ShorebirdEnvironment.getShorebirdYaml()!;
     final appId = shorebirdYaml.getAppId(flavor: flavor);
     final app = await codePushClientWrapper.getApp(appId: appId);
 

@@ -5,7 +5,9 @@ import 'package:http/http.dart' as http;
 import 'package:mocktail/mocktail.dart';
 import 'package:path/path.dart' as p;
 import 'package:platform/platform.dart';
+import 'package:scoped/scoped.dart';
 import 'package:shorebird_cli/src/cache.dart';
+import 'package:shorebird_cli/src/platform.dart';
 import 'package:shorebird_cli/src/shorebird_environment.dart';
 import 'package:test/test.dart';
 
@@ -32,6 +34,15 @@ void main() {
     late Platform platform;
     late Cache cache;
 
+    R runWithOverrides<R>(R Function() body) {
+      return runScoped(
+        () => body(),
+        values: {
+          platformRef.overrideWith(() => platform),
+        },
+      );
+    }
+
     setUpAll(() {
       registerFallbackValue(_FakeBaseRequest());
     });
@@ -41,9 +52,9 @@ void main() {
       platform = _MockPlatform();
 
       shorebirdRoot = Directory.systemTemp.createTempSync();
-      ShorebirdEnvironment.platform = platform;
       ShorebirdEnvironment.shorebirdEngineRevision = 'test-revision';
 
+      when(() => platform.environment).thenReturn({});
       when(() => platform.isMacOS).thenReturn(true);
       when(() => platform.isWindows).thenReturn(false);
       when(() => platform.isLinux).thenReturn(false);
@@ -112,7 +123,10 @@ void main() {
           when(() => platform.isWindows).thenReturn(false);
           when(() => platform.isLinux).thenReturn(false);
 
-          await expectLater(cache.updateAll(), completes);
+          await runWithOverrides(
+            () async => expectLater(cache.updateAll(), completes),
+          );
+
           final request = verify(() => httpClient.send(captureAny()))
               .captured
               .first as http.BaseRequest;
@@ -132,7 +146,11 @@ void main() {
           when(() => platform.isWindows).thenReturn(true);
           when(() => platform.isLinux).thenReturn(false);
 
-          await expectLater(cache.updateAll(), completes);
+          await expectLater(
+            runWithOverrides(cache.updateAll),
+            completes,
+          );
+
           final request = verify(() => httpClient.send(captureAny()))
               .captured
               .first as http.BaseRequest;
@@ -152,7 +170,7 @@ void main() {
           when(() => platform.isWindows).thenReturn(false);
           when(() => platform.isLinux).thenReturn(true);
 
-          await expectLater(cache.updateAll(), completes);
+          await expectLater(runWithOverrides(cache.updateAll), completes);
           final request = verify(() => httpClient.send(captureAny()))
               .captured
               .first as http.BaseRequest;

@@ -5,6 +5,7 @@ import 'package:shorebird_cli/src/command.dart';
 import 'package:shorebird_cli/src/logger.dart';
 import 'package:shorebird_cli/src/shorebird_config_mixin.dart';
 import 'package:shorebird_cli/src/shorebird_create_app_mixin.dart';
+import 'package:shorebird_cli/src/shorebird_environment.dart';
 import 'package:shorebird_cli/src/shorebird_flavor_mixin.dart';
 import 'package:shorebird_cli/src/shorebird_java_mixin.dart';
 import 'package:shorebird_cli/src/shorebird_validation_mixin.dart';
@@ -62,7 +63,7 @@ Please make sure you are running "shorebird init" from the root of your Flutter 
 
     final force = results['force'] == true;
     if (force && hasShorebirdYaml) {
-      getShorebirdYamlFile().deleteSync();
+      ShorebirdEnvironment.getShorebirdYamlFile().deleteSync();
     }
 
     if (hasShorebirdYaml) {
@@ -87,7 +88,7 @@ If you want to reinitialize Shorebird, please run "shorebird init --force".''');
     try {
       final displayName = logger.prompt(
         '${lightGreen.wrap('?')} How should we refer to this app?',
-        defaultValue: getPubspecYaml()?.name,
+        defaultValue: ShorebirdEnvironment.getPubspecYaml()?.name,
       );
 
       if (productFlavors.isNotEmpty) {

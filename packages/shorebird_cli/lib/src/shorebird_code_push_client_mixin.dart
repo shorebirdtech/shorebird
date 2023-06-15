@@ -3,13 +3,14 @@ import 'package:shorebird_cli/src/auth/auth.dart';
 import 'package:shorebird_cli/src/logger.dart';
 import 'package:shorebird_cli/src/shorebird_build_mixin.dart';
 import 'package:shorebird_cli/src/shorebird_config_mixin.dart';
+import 'package:shorebird_cli/src/shorebird_environment.dart';
 import 'package:shorebird_code_push_client/shorebird_code_push_client.dart';
 
 mixin ShorebirdCodePushClientMixin on ShorebirdConfigMixin {
   Future<App?> getApp({required String appId, String? flavor}) async {
     final codePushClient = buildCodePushClient(
       httpClient: auth.client,
-      hostedUri: hostedUri,
+      hostedUri: ShorebirdEnvironment.hostedUri,
     );
 
     final List<App> apps;
@@ -33,7 +34,7 @@ mixin ShorebirdCodePushClientMixin on ShorebirdConfigMixin {
   }) async {
     final codePushClient = buildCodePushClient(
       httpClient: auth.client,
-      hostedUri: hostedUri,
+      hostedUri: ShorebirdEnvironment.hostedUri,
     );
     final fetchChannelsProgress = logger.progress('Fetching channels');
     try {
@@ -55,7 +56,7 @@ mixin ShorebirdCodePushClientMixin on ShorebirdConfigMixin {
   }) async {
     final codePushClient = buildCodePushClient(
       httpClient: auth.client,
-      hostedUri: hostedUri,
+      hostedUri: ShorebirdEnvironment.hostedUri,
     );
 
     final createChannelProgress = logger.progress('Creating channel');
@@ -78,7 +79,7 @@ mixin ShorebirdCodePushClientMixin on ShorebirdConfigMixin {
   }) async {
     final codePushClient = buildCodePushClient(
       httpClient: auth.client,
-      hostedUri: hostedUri,
+      hostedUri: ShorebirdEnvironment.hostedUri,
     );
 
     final List<Release> releases;
@@ -101,7 +102,7 @@ mixin ShorebirdCodePushClientMixin on ShorebirdConfigMixin {
   }) async {
     final codePushClient = buildCodePushClient(
       httpClient: auth.client,
-      hostedUri: hostedUri,
+      hostedUri: ShorebirdEnvironment.hostedUri,
     );
 
     final releaseArtifacts = <Arch, ReleaseArtifact>{};

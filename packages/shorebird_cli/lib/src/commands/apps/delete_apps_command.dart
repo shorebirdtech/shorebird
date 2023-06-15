@@ -5,6 +5,7 @@ import 'package:shorebird_cli/src/auth/auth.dart';
 import 'package:shorebird_cli/src/command.dart';
 import 'package:shorebird_cli/src/logger.dart';
 import 'package:shorebird_cli/src/shorebird_config_mixin.dart';
+import 'package:shorebird_cli/src/shorebird_environment.dart';
 import 'package:shorebird_cli/src/shorebird_validation_mixin.dart';
 
 /// {@template delete_app_command}
@@ -46,7 +47,7 @@ Defaults to the app_id in "shorebird.yaml".''',
     if (appIdArg == null) {
       String? defaultAppId;
       try {
-        defaultAppId = getShorebirdYaml()?.appId;
+        defaultAppId = ShorebirdEnvironment.getShorebirdYaml()?.appId;
       } catch (_) {}
 
       appId = logger.prompt(
@@ -59,7 +60,7 @@ Defaults to the app_id in "shorebird.yaml".''',
 
     final client = buildCodePushClient(
       httpClient: auth.client,
-      hostedUri: hostedUri,
+      hostedUri: ShorebirdEnvironment.hostedUri,
     );
 
     final confirm = logger.confirm('Deleting an app is permanent. Continue?');

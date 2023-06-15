@@ -12,6 +12,7 @@ import 'package:shorebird_cli/src/auth/auth.dart';
 import 'package:shorebird_cli/src/cache.dart' show Cache;
 import 'package:shorebird_cli/src/commands/commands.dart';
 import 'package:shorebird_cli/src/logger.dart';
+import 'package:shorebird_cli/src/platform.dart';
 import 'package:shorebird_cli/src/shorebird_build_mixin.dart';
 import 'package:shorebird_cli/src/shorebird_environment.dart';
 import 'package:shorebird_cli/src/shorebird_process.dart';
@@ -144,7 +145,8 @@ flutter:
         body,
         values: {
           authRef.overrideWith(() => auth),
-          loggerRef.overrideWith(() => logger)
+          loggerRef.overrideWith(() => logger),
+          platformRef.overrideWith(() => environmentPlatform),
         },
       );
     }
@@ -211,7 +213,7 @@ flutter:
       cache = _MockCache();
       shorebirdProcess = _MockShorebirdProcess();
 
-      ShorebirdEnvironment.platform = environmentPlatform;
+      when(() => environmentPlatform.environment).thenReturn({});
       when(() => environmentPlatform.script).thenReturn(
         Uri.file(
           p.join(
@@ -478,13 +480,16 @@ Did you forget to run "shorebird init"?''',
       const otherRevision = 'other-revision';
       when(() => flutterRevisionProcessResult.stdout).thenReturn(otherRevision);
       final tempDir = setUpTempDir();
+      final flutterDir =
+          runWithOverrides(() => ShorebirdEnvironment.flutterDirectory.path);
       setUpTempArtifacts(tempDir);
+
       final exitCode = await IOOverrides.runZoned(
         () => runWithOverrides(command.run),
         getCurrentDirectory: () => tempDir,
       );
+
       expect(exitCode, ExitCode.software.code);
-      final shorebirdFlutterPath = ShorebirdEnvironment.flutterDirectory.path;
       verify(
         () => logger.err('''
 Flutter revision mismatch.
@@ -501,7 +506,7 @@ Either create a new release using:
   ${lightCyan.wrap('shorebird release aar')}
 
 Or downgrade your Flutter version and try again using:
-  ${lightCyan.wrap('cd $shorebirdFlutterPath')}
+  ${lightCyan.wrap('cd $flutterDir')}
   ${lightCyan.wrap('git checkout ${release.flutterRevision}')}
 
 Shorebird plans to support this automatically, let us know if it's important to you:

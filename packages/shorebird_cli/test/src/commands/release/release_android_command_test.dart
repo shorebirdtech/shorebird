@@ -12,7 +12,7 @@ import 'package:shorebird_cli/src/cache.dart';
 import 'package:shorebird_cli/src/code_push_client_wrapper.dart';
 import 'package:shorebird_cli/src/commands/commands.dart';
 import 'package:shorebird_cli/src/logger.dart';
-import 'package:shorebird_cli/src/shorebird_environment.dart';
+import 'package:shorebird_cli/src/platform.dart';
 import 'package:shorebird_cli/src/shorebird_process.dart';
 import 'package:shorebird_cli/src/validators/validators.dart';
 import 'package:shorebird_code_push_client/shorebird_code_push_client.dart';
@@ -93,7 +93,9 @@ flutter:
         body,
         values: {
           authRef.overrideWith(() => auth),
-          loggerRef.overrideWith(() => logger)
+          loggerRef.overrideWith(() => logger),
+          platformRef.overrideWith(() => environmentPlatform),
+          codePushClientWrapperRef.overrideWith(() => codePushClientWrapper),
         },
       );
     }
@@ -128,7 +130,6 @@ flutter:
 
       registerFallbackValue(shorebirdProcess);
 
-      ShorebirdEnvironment.platform = environmentPlatform;
       when(() => environmentPlatform.script).thenReturn(
         Uri.file(
           p.join(
@@ -231,7 +232,6 @@ flutter:
 
       command = runWithOverrides(
         () => ReleaseAndroidCommand(
-          codePushClientWrapper: codePushClientWrapper,
           cache: cache,
           validators: [flutterValidator],
         ),

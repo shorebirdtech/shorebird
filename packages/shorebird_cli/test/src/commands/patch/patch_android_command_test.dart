@@ -13,6 +13,7 @@ import 'package:shorebird_cli/src/cache.dart' show Cache;
 import 'package:shorebird_cli/src/code_push_client_wrapper.dart';
 import 'package:shorebird_cli/src/commands/patch/patch_android_command.dart';
 import 'package:shorebird_cli/src/logger.dart';
+import 'package:shorebird_cli/src/platform.dart';
 import 'package:shorebird_cli/src/shorebird_build_mixin.dart';
 import 'package:shorebird_cli/src/shorebird_environment.dart';
 import 'package:shorebird_cli/src/shorebird_process.dart';
@@ -121,7 +122,9 @@ flutter:
         body,
         values: {
           authRef.overrideWith(() => auth),
-          loggerRef.overrideWith(() => logger)
+          loggerRef.overrideWith(() => logger),
+          platformRef.overrideWith(() => environmentPlatform),
+          codePushClientWrapperRef.overrideWith(() => codePushClientWrapper),
         },
       );
     }
@@ -182,7 +185,6 @@ flutter:
       command = runWithOverrides(
         () => PatchAndroidCommand(
           aabDiffer: aabDiffer,
-          codePushClientWrapper: codePushClientWrapper,
           cache: cache,
           httpClient: httpClient,
           validators: [flutterValidator],
@@ -192,7 +194,6 @@ flutter:
         ..testProcess = shorebirdProcess
         ..testEngineConfig = const EngineConfig.empty();
 
-      ShorebirdEnvironment.platform = environmentPlatform;
       when(() => environmentPlatform.script).thenReturn(
         Uri.file(
           p.join(
@@ -428,7 +429,9 @@ flutter:
         getCurrentDirectory: () => tempDir,
       );
       expect(exitCode, ExitCode.software.code);
-      final shorebirdFlutterPath = ShorebirdEnvironment.flutterDirectory.path;
+      final shorebirdFlutterPath = runWithOverrides(
+        () => ShorebirdEnvironment.flutterDirectory.path,
+      );
       verify(
         () => logger.err('''
 Flutter revision mismatch.

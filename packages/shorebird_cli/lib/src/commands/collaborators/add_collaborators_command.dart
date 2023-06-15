@@ -5,6 +5,7 @@ import 'package:shorebird_cli/src/auth/auth.dart';
 import 'package:shorebird_cli/src/command.dart';
 import 'package:shorebird_cli/src/logger.dart';
 import 'package:shorebird_cli/src/shorebird_config_mixin.dart';
+import 'package:shorebird_cli/src/shorebird_environment.dart';
 import 'package:shorebird_cli/src/shorebird_validation_mixin.dart';
 
 /// {@template add_collaborators_command}
@@ -47,10 +48,11 @@ class AddCollaboratorsCommand extends ShorebirdCommand
 
     final client = buildCodePushClient(
       httpClient: auth.client,
-      hostedUri: hostedUri,
+      hostedUri: ShorebirdEnvironment.hostedUri,
     );
 
-    final appId = results[_appIdOption] as String? ?? getShorebirdYaml()?.appId;
+    final appId = results[_appIdOption] as String? ??
+        ShorebirdEnvironment.getShorebirdYaml()?.appId;
     if (appId == null) {
       logger.err(
         '''

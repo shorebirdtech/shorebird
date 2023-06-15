@@ -3,8 +3,11 @@ import 'package:crypto/crypto.dart';
 import 'package:mason_logger/mason_logger.dart';
 import 'package:meta/meta.dart';
 import 'package:path/path.dart' as p;
+import 'package:scoped/scoped.dart';
+import 'package:shorebird_cli/src/auth/auth.dart';
 import 'package:shorebird_cli/src/logger.dart';
 import 'package:shorebird_cli/src/shorebird_build_mixin.dart';
+import 'package:shorebird_cli/src/shorebird_environment.dart';
 import 'package:shorebird_cli/src/third_party/flutter_tools/lib/flutter_tools.dart';
 import 'package:shorebird_code_push_client/shorebird_code_push_client.dart';
 
@@ -32,6 +35,20 @@ class PatchArtifactBundle {
   /// The size in bytes of the artifact.
   final int size;
 }
+
+// A reference to a [CodePushClientWrapper] instance.
+ScopedRef<CodePushClientWrapper> codePushClientWrapperRef = create(() {
+  return CodePushClientWrapper(
+    codePushClient: CodePushClient(
+      httpClient: auth.client,
+      hostedUri: ShorebirdEnvironment.hostedUri,
+    ),
+  );
+});
+
+// The [CodePushClientWrapper] instance available in the current zone.
+CodePushClientWrapper get codePushClientWrapper =>
+    read(codePushClientWrapperRef);
 
 /// {@template code_push_client_wrapper}
 /// Wraps [CodePushClient] interaction with logging and error handling to
