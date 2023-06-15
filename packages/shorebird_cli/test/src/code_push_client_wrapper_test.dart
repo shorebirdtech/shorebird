@@ -115,9 +115,16 @@ void main() {
     late Logger logger;
     late Progress progress;
     late CodePushClientWrapper codePushClientWrapper;
+    late Platform platform;
 
     R runWithOverrides<R>(R Function() body) {
-      return runScoped(body, values: {loggerRef.overrideWith(() => logger)});
+      return runScoped(
+        body,
+        values: {
+          loggerRef.overrideWith(() => logger),
+          platformRef.overrideWith(() => platform),
+        },
+      );
     }
 
     setUpAll(setExitFunctionForTests);
@@ -127,6 +134,7 @@ void main() {
     setUp(() {
       codePushClient = _MockCodePushClient();
       logger = _MockLogger();
+      platform = _MockPlatform();
       progress = _MockProgress();
 
       codePushClientWrapper = runWithOverrides(
@@ -134,6 +142,16 @@ void main() {
       );
 
       when(() => logger.progress(any())).thenReturn(progress);
+      when(() => platform.script).thenReturn(
+        Uri.file(
+          p.join(
+            Directory.systemTemp.createTempSync().path,
+            'bin',
+            'cache',
+            'shorebird.snapshot',
+          ),
+        ),
+      );
     });
 
     group('app', () {
@@ -944,6 +962,261 @@ void main() {
               hash: any(named: 'hash'),
             ),
           ).called(ShorebirdBuildMixin.allAndroidArchitectures.length);
+          verify(() => progress.complete()).called(1);
+          verifyNever(() => progress.fail(any()));
+        });
+      });
+
+      group('createAndroidArchiveReleaseArtifacts', () {
+        const buildNumber = '1.0';
+
+        final aarDir = p.join(
+          'build',
+          'host',
+          'outputs',
+          'repo',
+          'com',
+          'example',
+          'my_flutter_module',
+          'flutter_release',
+          buildNumber,
+        );
+        final aarPath = p.join(aarDir, 'flutter_release-$buildNumber.aar');
+        final extractedAarPath = p.join(aarDir, 'flutter_release-$buildNumber');
+
+        Directory setUpTempDir({String? flavor}) {
+          final tempDir = Directory.systemTemp.createTempSync();
+          for (final archMetadata
+              in ShorebirdBuildMixin.allAndroidArchitectures.values) {
+            final artifactPath = p.join(
+              tempDir.path,
+              extractedAarPath,
+              'jni',
+              archMetadata.path,
+              'libapp.so',
+            );
+            File(artifactPath).createSync(recursive: true);
+          }
+          File(p.join(tempDir.path, aarPath)).createSync(recursive: true);
+          return tempDir;
+        }
+
+        setUp(() {
+          when(
+            () => codePushClient.createReleaseArtifact(
+              artifactPath: any(named: 'artifactPath'),
+              releaseId: any(named: 'releaseId'),
+              arch: any(named: 'arch'),
+              platform: any(named: 'platform'),
+              hash: any(named: 'hash'),
+            ),
+          ).thenAnswer((_) async => {});
+        });
+
+        test('exits with code 70 when artifact creation fails', () async {
+          const error = 'something went wrong';
+          when(
+            () => codePushClient.createReleaseArtifact(
+              artifactPath: any(named: 'artifactPath'),
+              releaseId: any(named: 'releaseId'),
+              arch: any(named: 'arch'),
+              platform: any(named: 'platform'),
+              hash: any(named: 'hash'),
+            ),
+          ).thenThrow(error);
+          final tempDir = setUpTempDir();
+
+          await IOOverrides.runZoned(
+            () async => expectLater(
+              () async => runWithOverrides(
+                () async =>
+                    codePushClientWrapper.createAndroidArchiveReleaseArtifacts(
+                  releaseId: releaseId,
+                  platform: platformName,
+                  aarPath: p.join(tempDir.path, aarPath),
+                  extractedAarDir: p.join(tempDir.path, extractedAarPath),
+                  architectures: ShorebirdBuildMixin.allAndroidArchitectures,
+                ),
+              ),
+              exitsWithCode(ExitCode.software),
+            ),
+            getCurrentDirectory: () => tempDir,
+          );
+
+          verify(() => progress.fail(any(that: contains(error)))).called(1);
+        });
+
+        test('exits with code 70 when aar artifact creation fails', () async {
+          const error = 'something went wrong';
+          when(
+            () => codePushClient.createReleaseArtifact(
+              artifactPath: any(named: 'artifactPath', that: endsWith('aar')),
+              releaseId: any(named: 'releaseId'),
+              arch: any(named: 'arch'),
+              platform: any(named: 'platform'),
+              hash: any(named: 'hash'),
+            ),
+          ).thenThrow(error);
+          final tempDir = setUpTempDir();
+
+          await IOOverrides.runZoned(
+            () async => expectLater(
+              () async => runWithOverrides(
+                () async =>
+                    codePushClientWrapper.createAndroidArchiveReleaseArtifacts(
+                  releaseId: releaseId,
+                  platform: platformName,
+                  aarPath: p.join(tempDir.path, aarPath),
+                  extractedAarDir: p.join(tempDir.path, extractedAarPath),
+                  architectures: ShorebirdBuildMixin.allAndroidArchitectures,
+                ),
+              ),
+              exitsWithCode(ExitCode.software),
+            ),
+            getCurrentDirectory: () => tempDir,
+          );
+
+          verify(() => progress.fail(any(that: contains(error)))).called(1);
+        });
+
+        test('logs message when uploading release artifact that already exists',
+            () async {
+          const error = 'something went wrong';
+          when(
+            () => codePushClient.createReleaseArtifact(
+              artifactPath: any(named: 'artifactPath'),
+              releaseId: any(named: 'releaseId'),
+              arch: any(named: 'arch'),
+              platform: any(named: 'platform'),
+              hash: any(named: 'hash'),
+            ),
+          ).thenThrow(const CodePushConflictException(message: error));
+          final tempDir = setUpTempDir();
+
+          await runWithOverrides(
+            () async => IOOverrides.runZoned(
+              () async =>
+                  codePushClientWrapper.createAndroidArchiveReleaseArtifacts(
+                releaseId: releaseId,
+                platform: platformName,
+                aarPath: p.join(tempDir.path, aarPath),
+                extractedAarDir: p.join(tempDir.path, extractedAarPath),
+                architectures: ShorebirdBuildMixin.allAndroidArchitectures,
+              ),
+              getCurrentDirectory: () => tempDir,
+            ),
+          );
+
+          // 1 for each arch, 1 for the aab
+          final numArtifactsUploaded =
+              ShorebirdBuildMixin.allAndroidArchitectures.values.length + 1;
+          verify(
+            () => logger.info(any(that: contains('already exists'))),
+          ).called(numArtifactsUploaded);
+          verifyNever(() => progress.fail(error));
+        });
+
+        test('logs message when uploading aar that already exists', () async {
+          const error = 'something went wrong';
+          when(
+            () => codePushClient.createReleaseArtifact(
+              artifactPath: any(named: 'artifactPath', that: endsWith('.aar')),
+              releaseId: any(named: 'releaseId'),
+              arch: any(named: 'arch'),
+              platform: any(named: 'platform'),
+              hash: any(named: 'hash'),
+            ),
+          ).thenThrow(const CodePushConflictException(message: error));
+          final tempDir = setUpTempDir();
+
+          await runWithOverrides(
+            () async => IOOverrides.runZoned(
+              () async =>
+                  codePushClientWrapper.createAndroidArchiveReleaseArtifacts(
+                releaseId: releaseId,
+                platform: platformName,
+                aarPath: p.join(tempDir.path, aarPath),
+                extractedAarDir: p.join(tempDir.path, extractedAarPath),
+                architectures: ShorebirdBuildMixin.allAndroidArchitectures,
+              ),
+              getCurrentDirectory: () => tempDir,
+            ),
+          );
+
+          verify(
+            () => logger.info(
+              any(that: contains('aar artifact already exists, continuing...')),
+            ),
+          ).called(1);
+          verifyNever(() => progress.fail(error));
+        });
+
+        test('completes successfully when all artifacts are created', () async {
+          when(
+            () => codePushClient.createReleaseArtifact(
+              artifactPath: any(named: 'artifactPath'),
+              releaseId: any(named: 'releaseId'),
+              arch: any(named: 'arch'),
+              platform: any(named: 'platform'),
+              hash: any(named: 'hash'),
+            ),
+          ).thenAnswer((_) async => {});
+          final tempDir = setUpTempDir();
+
+          await runWithOverrides(
+            () async => IOOverrides.runZoned(
+              () async =>
+                  codePushClientWrapper.createAndroidArchiveReleaseArtifacts(
+                releaseId: releaseId,
+                platform: platformName,
+                aarPath: p.join(tempDir.path, aarPath),
+                extractedAarDir: p.join(tempDir.path, extractedAarPath),
+                architectures: ShorebirdBuildMixin.allAndroidArchitectures,
+              ),
+              getCurrentDirectory: () => tempDir,
+            ),
+          );
+
+          verify(() => progress.complete()).called(1);
+          verifyNever(() => progress.fail(any()));
+        });
+
+        test('completes succesfully when a flavor is provided', () async {
+          const flavorName = 'myFlavor';
+          when(
+            () => codePushClient.createReleaseArtifact(
+              artifactPath: any(named: 'artifactPath'),
+              releaseId: any(named: 'releaseId'),
+              arch: any(named: 'arch'),
+              platform: any(named: 'platform'),
+              hash: any(named: 'hash'),
+            ),
+          ).thenAnswer((_) async => {});
+          final tempDir = setUpTempDir(flavor: flavorName);
+
+          await runWithOverrides(
+            () async => IOOverrides.runZoned(
+              () async =>
+                  codePushClientWrapper.createAndroidArchiveReleaseArtifacts(
+                releaseId: releaseId,
+                platform: platformName,
+                aarPath: p.join(tempDir.path, aarPath),
+                extractedAarDir: p.join(tempDir.path, extractedAarPath),
+                architectures: ShorebirdBuildMixin.allAndroidArchitectures,
+              ),
+              getCurrentDirectory: () => tempDir,
+            ),
+          );
+
+          verify(
+            () => codePushClient.createReleaseArtifact(
+              artifactPath: any(named: 'artifactPath'),
+              releaseId: releaseId,
+              arch: any(named: 'arch'),
+              platform: platformName,
+              hash: any(named: 'hash'),
+            ),
+          ).called(ShorebirdBuildMixin.allAndroidArchitectures.length + 1);
           verify(() => progress.complete()).called(1);
           verifyNever(() => progress.fail(any()));
         });

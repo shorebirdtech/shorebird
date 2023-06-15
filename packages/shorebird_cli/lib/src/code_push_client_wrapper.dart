@@ -328,6 +328,71 @@ aab artifact already exists, continuing...''',
     createArtifactProgress.complete();
   }
 
+  Future<void> createAndroidArchiveReleaseArtifacts({
+    required int releaseId,
+    required String platform,
+    required String aarPath,
+    required String extractedAarDir,
+    required Map<Arch, ArchMetadata> architectures,
+  }) async {
+    final createArtifactProgress = logger.progress('Creating artifacts');
+
+    for (final archMetadata in architectures.values) {
+      final artifactPath = p.join(
+        extractedAarDir,
+        'jni',
+        archMetadata.path,
+        'libapp.so',
+      );
+      final artifact = File(artifactPath);
+      final hash = sha256.convert(await artifact.readAsBytes()).toString();
+      logger.detail('Creating artifact for $artifactPath');
+
+      try {
+        await codePushClient.createReleaseArtifact(
+          releaseId: releaseId,
+          artifactPath: artifact.path,
+          arch: archMetadata.arch,
+          platform: platform,
+          hash: hash,
+        );
+      } on CodePushConflictException catch (_) {
+        // Newlines are due to how logger.info interacts with logger.progress.
+        logger.info(
+          '''
+
+${archMetadata.arch} artifact already exists, continuing...''',
+        );
+      } catch (error) {
+        createArtifactProgress.fail('Error uploading ${artifact.path}: $error');
+        exit(ExitCode.software.code);
+      }
+    }
+
+    try {
+      logger.detail('Creating artifact for $aarPath');
+      await codePushClient.createReleaseArtifact(
+        releaseId: releaseId,
+        artifactPath: aarPath,
+        arch: 'aar',
+        platform: platform,
+        hash: sha256.convert(await File(aarPath).readAsBytes()).toString(),
+      );
+    } on CodePushConflictException catch (_) {
+      // Newlines are due to how logger.info interacts with logger.progress.
+      logger.info(
+        '''
+
+aar artifact already exists, continuing...''',
+      );
+    } catch (error) {
+      createArtifactProgress.fail('Error uploading $aarPath: $error');
+      exit(ExitCode.software.code);
+    }
+
+    createArtifactProgress.complete();
+  }
+
   @visibleForTesting
   Future<Patch> createPatch({required int releaseId}) async {
     final createPatchProgress = logger.progress('Creating patch');
