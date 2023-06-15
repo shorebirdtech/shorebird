@@ -8,7 +8,7 @@ environment:
 
 dependencies:
   clock: ^1.1.0
-  http: ^0.13.4
+  http: ^1.0.0
   json_annotation: ^4.4.0
   meta: ^1.7.0
   pointycastle: ^3.5.0

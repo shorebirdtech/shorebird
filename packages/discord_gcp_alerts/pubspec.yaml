@@ -7,7 +7,7 @@ environment:
   sdk: '>=3.0.0 <4.0.0'
 
 dependencies:
-  http: ^0.13.5
+  http: ^1.0.0
   json_annotation: ^4.8.0
   shelf: ^1.4.0
   shelf_router: ^1.1.0
