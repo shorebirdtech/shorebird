@@ -115,9 +115,16 @@ void main() {
     late Logger logger;
     late Progress progress;
     late CodePushClientWrapper codePushClientWrapper;
+    late Platform platform;
 
     R runWithOverrides<R>(R Function() body) {
-      return runScoped(body, values: {loggerRef.overrideWith(() => logger)});
+      return runScoped(
+        body,
+        values: {
+          loggerRef.overrideWith(() => logger),
+          platformRef.overrideWith(() => platform),
+        },
+      );
     }
 
     setUpAll(setExitFunctionForTests);
@@ -127,6 +134,7 @@ void main() {
     setUp(() {
       codePushClient = _MockCodePushClient();
       logger = _MockLogger();
+      platform = _MockPlatform();
       progress = _MockProgress();
 
       codePushClientWrapper = runWithOverrides(
@@ -134,6 +142,16 @@ void main() {
       );
 
       when(() => logger.progress(any())).thenReturn(progress);
+      when(() => platform.script).thenReturn(
+        Uri.file(
+          p.join(
+            Directory.systemTemp.createTempSync().path,
+            'bin',
+            'cache',
+            'shorebird.snapshot',
+          ),
+        ),
+      );
     });
 
     group('app', () {
