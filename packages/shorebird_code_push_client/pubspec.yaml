@@ -9,7 +9,7 @@ environment:
   sdk: ">=3.0.0 <4.0.0"
 
 dependencies:
-  http: ^0.13.5
+  http: ^1.0.0
   shorebird_code_push_protocol:
     path: ../shorebird_code_push_protocol
 

@@ -10,7 +10,7 @@ environment:
 dependencies:
   checked_yaml: ^2.0.2
   collection: ^1.17.1
-  http: ^0.13.5
+  http: ^1.0.0
   json_annotation: ^4.8.0
   quiver: ^3.2.1
   shelf: ^1.4.0
