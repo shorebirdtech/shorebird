@@ -339,6 +339,29 @@ flutter:
           .called(1);
     });
 
+    test('throws error when existing releases exists.', () async {
+      when(
+        () => codePushClientWrapper.maybeGetRelease(
+          appId: any(named: 'appId'),
+          releaseVersion: any(named: 'releaseVersion'),
+        ),
+      ).thenAnswer((_) async => release);
+      final tempDir = setUpTempDir();
+      setUpTempArtifacts(tempDir);
+
+      final exitCode = await IOOverrides.runZoned(
+        () => runWithOverrides(command.run),
+        getCurrentDirectory: () => tempDir,
+      );
+
+      verify(
+        () => logger.err('''
+It looks like you have an existing release for version ${lightCyan.wrap(versionName)}.
+Please bump your version number and try again.'''),
+      ).called(1);
+      expect(exitCode, ExitCode.software.code);
+    });
+
     test('aborts when user opts out', () async {
       when(() => logger.confirm(any())).thenReturn(false);
       when(
