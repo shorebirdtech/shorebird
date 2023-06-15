@@ -618,6 +618,33 @@ Please bump your version number and try again.''',
           verify(() => progress.fail(error)).called(1);
         });
 
+        test('exits with code 70 if release artifact does not exist', () async {
+          when(
+            () => codePushClient.getReleaseArtifacts(
+              releaseId: any(named: 'releaseId'),
+              arch: any(named: 'arch'),
+              platform: any(named: 'platform'),
+            ),
+          ).thenAnswer((_) async => []);
+
+          await expectLater(
+            () async => runWithOverrides(
+              () => codePushClientWrapper.getReleaseArtifacts(
+                releaseId: releaseId,
+                architectures: archMap,
+                platform: platformName,
+              ),
+            ),
+            exitsWithCode(ExitCode.software),
+          );
+
+          verify(
+            () => progress.fail(
+              '''No artifact found for architecture aarch64 in release $releaseId''',
+            ),
+          ).called(1);
+        });
+
         test('returns release artifacts when release artifacts exist',
             () async {
           when(
