@@ -19,7 +19,7 @@ class CreateAppCommand extends ShorebirdCommand
         ShorebirdValidationMixin,
         ShorebirdCreateAppMixin {
   /// {@macro create_app_command}
-  CreateAppCommand({super.buildCodePushClient, super.auth}) {
+  CreateAppCommand({super.buildCodePushClient}) {
     argParser.addOption(
       'app-name',
       help: '''

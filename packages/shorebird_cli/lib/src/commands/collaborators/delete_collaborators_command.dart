@@ -2,9 +2,11 @@ import 'dart:async';
 
 import 'package:collection/collection.dart';
 import 'package:mason_logger/mason_logger.dart';
+import 'package:shorebird_cli/src/auth/auth.dart';
 import 'package:shorebird_cli/src/command.dart';
 import 'package:shorebird_cli/src/logger.dart';
 import 'package:shorebird_cli/src/shorebird_config_mixin.dart';
+import 'package:shorebird_cli/src/shorebird_environment.dart';
 import 'package:shorebird_cli/src/shorebird_validation_mixin.dart';
 import 'package:shorebird_code_push_client/shorebird_code_push_client.dart';
 
@@ -15,7 +17,7 @@ import 'package:shorebird_code_push_client/shorebird_code_push_client.dart';
 class DeleteCollaboratorsCommand extends ShorebirdCommand
     with ShorebirdConfigMixin, ShorebirdValidationMixin {
   /// {@macro delete_collaborators_command}
-  DeleteCollaboratorsCommand({super.buildCodePushClient, super.auth}) {
+  DeleteCollaboratorsCommand({super.buildCodePushClient}) {
     argParser
       ..addOption(
         _appIdOption,
@@ -49,10 +51,11 @@ class DeleteCollaboratorsCommand extends ShorebirdCommand
 
     final client = buildCodePushClient(
       httpClient: auth.client,
-      hostedUri: hostedUri,
+      hostedUri: ShorebirdEnvironment.hostedUri,
     );
 
-    final appId = results[_appIdOption] as String? ?? getShorebirdYaml()?.appId;
+    final appId = results[_appIdOption] as String? ??
+        ShorebirdEnvironment.getShorebirdYaml()?.appId;
     if (appId == null) {
       logger.err(
         '''

@@ -5,7 +5,9 @@ import 'package:http/http.dart' as http;
 import 'package:mocktail/mocktail.dart';
 import 'package:path/path.dart' as p;
 import 'package:platform/platform.dart';
+import 'package:scoped/scoped.dart';
 import 'package:shorebird_cli/src/cache.dart';
+import 'package:shorebird_cli/src/platform.dart';
 import 'package:shorebird_cli/src/shorebird_environment.dart';
 import 'package:test/test.dart';
 
@@ -32,6 +34,15 @@ void main() {
     late Platform platform;
     late Cache cache;
 
+    R runWithOverrides<R>(R Function() body) {
+      return runScoped(
+        () => body(),
+        values: {
+          platformRef.overrideWith(() => platform),
+        },
+      );
+    }
+
     setUpAll(() {
       registerFallbackValue(_FakeBaseRequest());
     });
@@ -41,9 +52,9 @@ void main() {
       platform = _MockPlatform();
 
       shorebirdRoot = Directory.systemTemp.createTempSync();
-      ShorebirdEnvironment.platform = platform;
       ShorebirdEnvironment.shorebirdEngineRevision = 'test-revision';
 
+      when(() => platform.environment).thenReturn({});
       when(() => platform.isMacOS).thenReturn(true);
       when(() => platform.isWindows).thenReturn(false);
       when(() => platform.isLinux).thenReturn(false);
@@ -86,25 +97,32 @@ void main() {
 
     group('clear', () {
       test('deletes the cache directory', () async {
-        Cache.shorebirdCacheDirectory.createSync(recursive: true);
-        expect(Cache.shorebirdCacheDirectory.existsSync(), isTrue);
-        cache.clear();
-        expect(Cache.shorebirdCacheDirectory.existsSync(), isFalse);
+        final shorebirdCacheDirectory =
+            runWithOverrides(() => Cache.shorebirdCacheDirectory)
+              ..createSync(recursive: true);
+        expect(shorebirdCacheDirectory.existsSync(), isTrue);
+        runWithOverrides(cache.clear);
+        expect(shorebirdCacheDirectory.existsSync(), isFalse);
       });
 
       test('does nothing if directory does not exist', () {
-        expect(Cache.shorebirdCacheDirectory.existsSync(), isFalse);
-        cache.clear();
-        expect(Cache.shorebirdCacheDirectory.existsSync(), isFalse);
+        final shorebirdCacheDirectory =
+            runWithOverrides(() => Cache.shorebirdCacheDirectory);
+        expect(shorebirdCacheDirectory.existsSync(), isFalse);
+        runWithOverrides(cache.clear);
+        expect(shorebirdCacheDirectory.existsSync(), isFalse);
       });
     });
 
     group('updateAll', () {
       group('patch', () {
         test('downloads correct artifacts', () async {
-          expect(cache.getArtifactDirectory('patch').existsSync(), isFalse);
-          await expectLater(cache.updateAll(), completes);
-          expect(cache.getArtifactDirectory('patch').existsSync(), isTrue);
+          final patchArtifactDirectory = runWithOverrides(
+            () => cache.getArtifactDirectory('patch'),
+          );
+          expect(patchArtifactDirectory.existsSync(), isFalse);
+          await expectLater(runWithOverrides(cache.updateAll), completes);
+          expect(patchArtifactDirectory.existsSync(), isTrue);
         });
 
         test('pull correct artifact for MacOS', () async {
@@ -112,7 +130,8 @@ void main() {
           when(() => platform.isWindows).thenReturn(false);
           when(() => platform.isLinux).thenReturn(false);
 
-          await expectLater(cache.updateAll(), completes);
+          await expectLater(runWithOverrides(cache.updateAll), completes);
+
           final request = verify(() => httpClient.send(captureAny()))
               .captured
               .first as http.BaseRequest;
@@ -132,7 +151,8 @@ void main() {
           when(() => platform.isWindows).thenReturn(true);
           when(() => platform.isLinux).thenReturn(false);
 
-          await expectLater(cache.updateAll(), completes);
+          await expectLater(runWithOverrides(cache.updateAll), completes);
+
           final request = verify(() => httpClient.send(captureAny()))
               .captured
               .first as http.BaseRequest;
@@ -152,11 +172,11 @@ void main() {
           when(() => platform.isWindows).thenReturn(false);
           when(() => platform.isLinux).thenReturn(true);
 
-          await expectLater(cache.updateAll(), completes);
+          await expectLater(runWithOverrides(cache.updateAll), completes);
+
           final request = verify(() => httpClient.send(captureAny()))
               .captured
               .first as http.BaseRequest;
-
           expect(
             request.url,
             equals(

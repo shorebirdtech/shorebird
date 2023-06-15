@@ -12,6 +12,7 @@ import 'package:shorebird_cli/src/auth/auth.dart';
 import 'package:shorebird_cli/src/cache.dart' show Cache;
 import 'package:shorebird_cli/src/commands/commands.dart';
 import 'package:shorebird_cli/src/logger.dart';
+import 'package:shorebird_cli/src/platform.dart';
 import 'package:shorebird_cli/src/shorebird_build_mixin.dart';
 import 'package:shorebird_cli/src/shorebird_environment.dart';
 import 'package:shorebird_cli/src/shorebird_process.dart';
@@ -57,7 +58,7 @@ void main() {
     const versionCode = '1';
     const version = '$versionName+$versionCode';
     const arch = 'aarch64';
-    const platform = 'android';
+    const platformName = 'android';
     const channelName = 'stable';
     const appDisplayName = 'Test App';
     const appMetadata = AppMetadata(appId: appId, displayName: appDisplayName);
@@ -65,7 +66,7 @@ void main() {
       id: 0,
       patchId: 0,
       arch: arch,
-      platform: platform,
+      platform: platformName,
       hash: '#',
       size: 42,
       url: 'https://example.com',
@@ -74,7 +75,7 @@ void main() {
       id: 0,
       releaseId: 0,
       arch: arch,
-      platform: platform,
+      platform: platformName,
       hash: '#',
       size: 42,
       url: 'https://example.com/release.so',
@@ -83,7 +84,7 @@ void main() {
       id: 0,
       releaseId: 0,
       arch: arch,
-      platform: platform,
+      platform: platformName,
       hash: '#',
       size: 42,
       url: 'https://example.com/release.aar',
@@ -125,7 +126,7 @@ flutter:
     late ArgResults argResults;
     late Auth auth;
     late Directory shorebirdRoot;
-    late Platform environmentPlatform;
+    late Platform platform;
     late Progress progress;
     late Logger logger;
     late ShorebirdProcessResult flutterBuildProcessResult;
@@ -140,7 +141,14 @@ flutter:
     late ShorebirdProcess shorebirdProcess;
 
     R runWithOverrides<R>(R Function() body) {
-      return runScoped(body, values: {loggerRef.overrideWith(() => logger)});
+      return runScoped(
+        body,
+        values: {
+          authRef.overrideWith(() => auth),
+          loggerRef.overrideWith(() => logger),
+          platformRef.overrideWith(() => platform),
+        },
+      );
     }
 
     Directory setUpTempDir({bool includeModule = true}) {
@@ -193,7 +201,7 @@ flutter:
       argResults = _MockArgResults();
       auth = _MockAuth();
       shorebirdRoot = Directory.systemTemp.createTempSync();
-      environmentPlatform = _MockPlatform();
+      platform = _MockPlatform();
       progress = _MockProgress();
       logger = _MockLogger();
       flutterBuildProcessResult = _MockProcessResult();
@@ -205,8 +213,8 @@ flutter:
       cache = _MockCache();
       shorebirdProcess = _MockShorebirdProcess();
 
-      ShorebirdEnvironment.platform = environmentPlatform;
-      when(() => environmentPlatform.script).thenReturn(
+      when(() => platform.environment).thenReturn({});
+      when(() => platform.script).thenReturn(
         Uri.file(
           p.join(
             shorebirdRoot.path,
@@ -328,20 +336,21 @@ flutter:
         () => cache.getArtifactDirectory(any()),
       ).thenReturn(Directory.systemTemp.createTempSync());
 
-      command = PatchAarCommand(
-        aarDiffer: aarDiffer,
-        auth: auth,
-        buildCodePushClient: ({
-          required http.Client httpClient,
-          Uri? hostedUri,
-        }) {
-          capturedHostedUri = hostedUri;
-          return codePushClient;
-        },
-        cache: cache,
-        httpClient: httpClient,
-        validators: [flutterValidator],
-        unzipFn: (_, __) async {},
+      command = runWithOverrides(
+        () => PatchAarCommand(
+          aarDiffer: aarDiffer,
+          buildCodePushClient: ({
+            required http.Client httpClient,
+            Uri? hostedUri,
+          }) {
+            capturedHostedUri = hostedUri;
+            return codePushClient;
+          },
+          cache: cache,
+          httpClient: httpClient,
+          validators: [flutterValidator],
+          unzipFn: (_, __) async {},
+        ),
       )
         ..testArgResults = argResults
         ..testProcess = shorebirdProcess
@@ -471,13 +480,16 @@ Did you forget to run "shorebird init"?''',
       const otherRevision = 'other-revision';
       when(() => flutterRevisionProcessResult.stdout).thenReturn(otherRevision);
       final tempDir = setUpTempDir();
+      final flutterDir =
+          runWithOverrides(() => ShorebirdEnvironment.flutterDirectory.path);
       setUpTempArtifacts(tempDir);
+
       final exitCode = await IOOverrides.runZoned(
         () => runWithOverrides(command.run),
         getCurrentDirectory: () => tempDir,
       );
+
       expect(exitCode, ExitCode.software.code);
-      final shorebirdFlutterPath = ShorebirdEnvironment.flutterDirectory.path;
       verify(
         () => logger.err('''
 Flutter revision mismatch.
@@ -494,7 +506,7 @@ Either create a new release using:
   ${lightCyan.wrap('shorebird release aar')}
 
 Or downgrade your Flutter version and try again using:
-  ${lightCyan.wrap('cd $shorebirdFlutterPath')}
+  ${lightCyan.wrap('cd $flutterDir')}
   ${lightCyan.wrap('git checkout ${release.flutterRevision}')}
 
 Shorebird plans to support this automatically, let us know if it's important to you:
@@ -875,7 +887,7 @@ Please create a release using "shorebird release aar" and try again.
         () => logger.info(
           any(
             that: contains(
-              '''🕹️  Platform: ${lightCyan.wrap(platform)} ${lightCyan.wrap('[arm64 (4 B), arm32 (4 B), x86_64 (4 B)]')}''',
+              '''🕹️  Platform: ${lightCyan.wrap(platformName)} ${lightCyan.wrap('[arm64 (4 B), arm32 (4 B), x86_64 (4 B)]')}''',
             ),
           ),
         ),

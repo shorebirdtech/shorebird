@@ -20,7 +20,7 @@ class _MockCodePushClient extends Mock implements CodePushClient {}
 class _MockLogger extends Mock implements Logger {}
 
 void main() {
-  group('delete', () {
+  group(DeleteAppCommand, () {
     const appId = 'example';
 
     late ArgResults argResults;
@@ -31,7 +31,13 @@ void main() {
     late DeleteAppCommand command;
 
     R runWithOverrides<R>(R Function() body) {
-      return runScoped(body, values: {loggerRef.overrideWith(() => logger)});
+      return runScoped(
+        body,
+        values: {
+          authRef.overrideWith(() => auth),
+          loggerRef.overrideWith(() => logger)
+        },
+      );
     }
 
     setUp(() {
@@ -44,14 +50,15 @@ void main() {
       when(() => auth.isAuthenticated).thenReturn(true);
       when(() => auth.client).thenReturn(httpClient);
 
-      command = DeleteAppCommand(
-        auth: auth,
-        buildCodePushClient: ({
-          required http.Client httpClient,
-          Uri? hostedUri,
-        }) {
-          return codePushClient;
-        },
+      command = runWithOverrides(
+        () => DeleteAppCommand(
+          buildCodePushClient: ({
+            required http.Client httpClient,
+            Uri? hostedUri,
+          }) {
+            return codePushClient;
+          },
+        ),
       )..testArgResults = argResults;
     });
 

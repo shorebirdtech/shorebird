@@ -33,10 +33,8 @@ class PatchAndroidCommand extends ShorebirdCommand
         ShorebirdReleaseVersionMixin {
   /// {@macro patch_android_command}
   PatchAndroidCommand({
-    super.auth,
     super.cache,
     super.validators,
-    super.codePushClientWrapper,
     HashFunction? hashFn,
     http.Client? httpClient,
     AabDiffer? aabDiffer,
@@ -113,7 +111,7 @@ class PatchAndroidCommand extends ShorebirdCommand
 
     await cache.updateAll();
 
-    const platform = 'android';
+    const platformName = 'android';
     final channelName = results['channel'] as String;
     final flavor = results['flavor'] as String?;
     final target = results['target'] as String?;
@@ -126,7 +124,7 @@ class PatchAndroidCommand extends ShorebirdCommand
       return ExitCode.software.code;
     }
 
-    final shorebirdYaml = getShorebirdYaml()!;
+    final shorebirdYaml = ShorebirdEnvironment.getShorebirdYaml()!;
     final appId = shorebirdYaml.getAppId(flavor: flavor);
     final app = await codePushClientWrapper.getApp(appId: appId);
 
@@ -204,14 +202,14 @@ https://github.com/shorebirdtech/shorebird/issues/472
     final releaseArtifacts = await codePushClientWrapper.getReleaseArtifacts(
       releaseId: release.id,
       architectures: architectures,
-      platform: platform,
+      platform: platformName,
     );
 
     final releaseAabArtifact =
         await codePushClientWrapper.maybeGetReleaseArtifact(
       releaseId: release.id,
       arch: 'aab',
-      platform: platform,
+      platform: platformName,
     );
 
     final releaseArtifactPaths = <Arch, String>{};
@@ -332,7 +330,7 @@ If you believe you're seeing this in error, please reach out to us for support a
       if (flavor != null) '🍧 Flavor: ${lightCyan.wrap(flavor)}',
       '📦 Release Version: ${lightCyan.wrap(releaseVersion)}',
       '📺 Channel: ${lightCyan.wrap(channelName)}',
-      '''🕹️  Platform: ${lightCyan.wrap(platform)} ${lightCyan.wrap('[${archMetadata.join(', ')}]')}''',
+      '''🕹️  Platform: ${lightCyan.wrap(platformName)} ${lightCyan.wrap('[${archMetadata.join(', ')}]')}''',
     ];
 
     logger.info(
@@ -357,7 +355,7 @@ ${summary.join('\n')}
     await codePushClientWrapper.publishPatch(
       appId: appId,
       releaseId: release.id,
-      platform: platform,
+      platform: platformName,
       channelName: channelName,
       patchArtifactBundles: patchArtifactBundles,
     );

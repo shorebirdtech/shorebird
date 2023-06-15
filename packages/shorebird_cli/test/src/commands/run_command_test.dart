@@ -51,7 +51,13 @@ void main() {
     late RunCommand command;
 
     R runWithOverrides<R>(R Function() body) {
-      return runScoped(body, values: {loggerRef.overrideWith(() => logger)});
+      return runScoped(
+        body,
+        values: {
+          authRef.overrideWith(() => auth),
+          loggerRef.overrideWith(() => logger)
+        },
+      );
     }
 
     setUp(() {
@@ -84,18 +90,19 @@ void main() {
       ).thenAnswer((_) async => []);
       when(() => flutterValidator.validate(any())).thenAnswer((_) async => []);
 
-      command = RunCommand(
-        auth: auth,
-        buildCodePushClient: ({
-          required http.Client httpClient,
-          Uri? hostedUri,
-        }) {
-          return codePushClient;
-        },
-        validators: [
-          androidInternetPermissionValidator,
-          flutterValidator,
-        ],
+      command = runWithOverrides(
+        () => RunCommand(
+          buildCodePushClient: ({
+            required http.Client httpClient,
+            Uri? hostedUri,
+          }) {
+            return codePushClient;
+          },
+          validators: [
+            androidInternetPermissionValidator,
+            flutterValidator,
+          ],
+        ),
       )
         ..testArgResults = argResults
         ..testProcess = shorebirdProcess

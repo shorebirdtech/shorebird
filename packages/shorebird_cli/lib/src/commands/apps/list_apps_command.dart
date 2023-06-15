@@ -2,9 +2,11 @@ import 'dart:async';
 
 import 'package:barbecue/barbecue.dart';
 import 'package:mason_logger/mason_logger.dart';
+import 'package:shorebird_cli/src/auth/auth.dart';
 import 'package:shorebird_cli/src/command.dart';
 import 'package:shorebird_cli/src/logger.dart';
 import 'package:shorebird_cli/src/shorebird_config_mixin.dart';
+import 'package:shorebird_cli/src/shorebird_environment.dart';
 import 'package:shorebird_cli/src/shorebird_validation_mixin.dart';
 import 'package:shorebird_code_push_client/shorebird_code_push_client.dart';
 
@@ -16,7 +18,7 @@ import 'package:shorebird_code_push_client/shorebird_code_push_client.dart';
 class ListAppsCommand extends ShorebirdCommand
     with ShorebirdConfigMixin, ShorebirdValidationMixin {
   /// {@macro list_apps_command}
-  ListAppsCommand({super.buildCodePushClient, super.auth});
+  ListAppsCommand({super.buildCodePushClient});
 
   @override
   String get description => 'List all apps using Shorebird.';
@@ -39,7 +41,7 @@ class ListAppsCommand extends ShorebirdCommand
 
     final client = buildCodePushClient(
       httpClient: auth.client,
-      hostedUri: hostedUri,
+      hostedUri: ShorebirdEnvironment.hostedUri,
     );
 
     final List<AppMetadata> apps;

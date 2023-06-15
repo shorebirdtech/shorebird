@@ -3,11 +3,13 @@ import 'dart:io';
 import 'package:mason_logger/mason_logger.dart';
 import 'package:path/path.dart' as p;
 import 'package:shorebird_cli/src/archive_analysis/archive_analysis.dart';
+import 'package:shorebird_cli/src/code_push_client_wrapper.dart';
 import 'package:shorebird_cli/src/command.dart';
 import 'package:shorebird_cli/src/config/config.dart';
 import 'package:shorebird_cli/src/logger.dart';
 import 'package:shorebird_cli/src/shorebird_build_mixin.dart';
 import 'package:shorebird_cli/src/shorebird_config_mixin.dart';
+import 'package:shorebird_cli/src/shorebird_environment.dart';
 import 'package:shorebird_cli/src/shorebird_validation_mixin.dart';
 
 /// {@template release_ios_command}
@@ -18,8 +20,6 @@ class ReleaseIosCommand extends ShorebirdCommand
     with ShorebirdBuildMixin, ShorebirdConfigMixin, ShorebirdValidationMixin {
   /// {@macro release_ios_command}
   ReleaseIosCommand({
-    super.auth,
-    super.codePushClientWrapper,
     super.cache,
     super.validators,
     IpaReader? ipaReader,
@@ -68,9 +68,9 @@ make smaller updates to your app.
       '''iOS support is in an experimental state and will not work without Flutter engine changes that have not yet been published.''',
     );
 
-    const platform = 'ios';
+    const platformName = 'ios';
     final flavor = results['flavor'] as String?;
-    final shorebirdYaml = getShorebirdYaml()!;
+    final shorebirdYaml = ShorebirdEnvironment.getShorebirdYaml()!;
     final appId = shorebirdYaml.getAppId(flavor: flavor);
     final app = await codePushClientWrapper.getApp(appId: appId);
 
@@ -89,7 +89,7 @@ make smaller updates to your app.
     buildProgress.complete();
 
     final releaseVersionProgress = logger.progress('Getting release version');
-    final pubspec = getPubspecYaml()!;
+    final pubspec = ShorebirdEnvironment.getPubspecYaml()!;
     final ipaPath = p.join(
       Directory.current.path,
       'build',
@@ -128,7 +128,7 @@ Please bump your version number and try again.''',
       '''📱 App: ${lightCyan.wrap(app.displayName)} ${lightCyan.wrap('($appId)')}''',
       if (flavor != null) '🍧 Flavor: ${lightCyan.wrap(flavor)}',
       '📦 Release Version: ${lightCyan.wrap(releaseVersion)}',
-      '''🕹️  Platform: ${lightCyan.wrap(platform)}''',
+      '''🕹️  Platform: ${lightCyan.wrap(platformName)}''',
     ];
 
     logger.info('''

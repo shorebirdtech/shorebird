@@ -6,6 +6,7 @@ import 'package:collection/collection.dart';
 import 'package:crypto/crypto.dart';
 import 'package:mason_logger/mason_logger.dart';
 import 'package:path/path.dart' as p;
+import 'package:shorebird_cli/src/auth/auth.dart';
 import 'package:shorebird_cli/src/command.dart';
 import 'package:shorebird_cli/src/config/config.dart';
 import 'package:shorebird_cli/src/logger.dart';
@@ -13,6 +14,7 @@ import 'package:shorebird_cli/src/shorebird_artifact_mixin.dart';
 import 'package:shorebird_cli/src/shorebird_build_mixin.dart';
 import 'package:shorebird_cli/src/shorebird_config_mixin.dart';
 import 'package:shorebird_cli/src/shorebird_create_app_mixin.dart';
+import 'package:shorebird_cli/src/shorebird_environment.dart';
 import 'package:shorebird_cli/src/shorebird_java_mixin.dart';
 import 'package:shorebird_cli/src/shorebird_release_version_mixin.dart';
 import 'package:shorebird_cli/src/shorebird_validation_mixin.dart';
@@ -33,7 +35,6 @@ class ReleaseAarCommand extends ShorebirdCommand
         ShorebirdArtifactMixin {
   /// {@macro release_aar_command}
   ReleaseAarCommand({
-    super.auth,
     super.buildCodePushClient,
     super.validators,
     HashFunction? hashFn,
@@ -110,10 +111,10 @@ make smaller updates to your app.
 
     buildProgress.complete();
 
-    final shorebirdYaml = getShorebirdYaml()!;
+    final shorebirdYaml = ShorebirdEnvironment.getShorebirdYaml()!;
     final codePushClient = buildCodePushClient(
       httpClient: auth.client,
-      hostedUri: hostedUri,
+      hostedUri: ShorebirdEnvironment.hostedUri,
     );
 
     late final List<App> apps;
@@ -139,7 +140,7 @@ Did you forget to run "shorebird init"?''',
       return ExitCode.software.code;
     }
 
-    const platform = 'android';
+    const platformName = 'android';
     final archNames = architectures.keys.map(
       (arch) => arch.name,
     );
@@ -147,7 +148,7 @@ Did you forget to run "shorebird init"?''',
       '''📱 App: ${lightCyan.wrap(app.displayName)} ${lightCyan.wrap('(${app.id})')}''',
       if (flavor != null) '🍧 Flavor: ${lightCyan.wrap(flavor)}',
       '📦 Release Version: ${lightCyan.wrap(releaseVersion)}',
-      '''🕹️  Platform: ${lightCyan.wrap(platform)} ${lightCyan.wrap('(${archNames.join(', ')})')}''',
+      '''🕹️  Platform: ${lightCyan.wrap(platformName)} ${lightCyan.wrap('(${archNames.join(', ')})')}''',
     ];
 
     logger.info('''
@@ -230,7 +231,7 @@ ${summary.join('\n')}
           releaseId: release.id,
           artifactPath: artifact.path,
           arch: archMetadata.arch,
-          platform: platform,
+          platform: platformName,
           hash: hash,
         );
       } on CodePushConflictException catch (_) {
@@ -256,7 +257,7 @@ ${archMetadata.arch} artifact already exists, continuing...''',
         releaseId: release.id,
         artifactPath: aarPath,
         arch: 'aar',
-        platform: platform,
+        platform: platformName,
         hash: _hashFn(await File(aarPath).readAsBytes()),
       );
     } on CodePushConflictException catch (_) {

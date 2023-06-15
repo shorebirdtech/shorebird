@@ -2,12 +2,14 @@ import 'dart:io';
 
 import 'package:mason_logger/mason_logger.dart';
 import 'package:path/path.dart' as p;
+import 'package:shorebird_cli/src/code_push_client_wrapper.dart';
 import 'package:shorebird_cli/src/command.dart';
 import 'package:shorebird_cli/src/config/shorebird_yaml.dart';
 import 'package:shorebird_cli/src/logger.dart';
 import 'package:shorebird_cli/src/shorebird_build_mixin.dart';
 import 'package:shorebird_cli/src/shorebird_config_mixin.dart';
 import 'package:shorebird_cli/src/shorebird_create_app_mixin.dart';
+import 'package:shorebird_cli/src/shorebird_environment.dart';
 import 'package:shorebird_cli/src/shorebird_java_mixin.dart';
 import 'package:shorebird_cli/src/shorebird_release_version_mixin.dart';
 import 'package:shorebird_cli/src/shorebird_validation_mixin.dart';
@@ -26,9 +28,7 @@ class ReleaseAndroidCommand extends ShorebirdCommand
         ShorebirdReleaseVersionMixin {
   /// {@macro release_android_command}
   ReleaseAndroidCommand({
-    super.auth,
     super.cache,
-    super.codePushClientWrapper,
     super.validators,
   }) {
     argParser
@@ -71,7 +71,7 @@ make smaller updates to your app.
       return e.exitCode.code;
     }
 
-    const platform = 'android';
+    const platformName = 'android';
     final flavor = results['flavor'] as String?;
     final target = results['target'] as String?;
     final buildProgress = logger.progress('Building release');
@@ -83,7 +83,7 @@ make smaller updates to your app.
       return ExitCode.software.code;
     }
 
-    final shorebirdYaml = getShorebirdYaml()!;
+    final shorebirdYaml = ShorebirdEnvironment.getShorebirdYaml()!;
 
     final appId = shorebirdYaml.getAppId(flavor: flavor);
     final app = await codePushClientWrapper.getApp(appId: appId);
@@ -125,7 +125,7 @@ Please bump your version number and try again.''',
       '''📱 App: ${lightCyan.wrap(app.displayName)} ${lightCyan.wrap('(${app.appId})')}''',
       if (flavor != null) '🍧 Flavor: ${lightCyan.wrap(flavor)}',
       '📦 Release Version: ${lightCyan.wrap(releaseVersion)}',
-      '''🕹️  Platform: ${lightCyan.wrap(platform)} ${lightCyan.wrap('(${archNames.join(', ')})')}''',
+      '''🕹️  Platform: ${lightCyan.wrap(platformName)} ${lightCyan.wrap('(${archNames.join(', ')})')}''',
     ];
 
     logger.info('''
@@ -167,7 +167,7 @@ ${summary.join('\n')}
     await codePushClientWrapper.createAndroidReleaseArtifacts(
       releaseId: release.id,
       aabPath: bundlePath,
-      platform: platform,
+      platform: platformName,
       architectures: architectures,
       flavor: flavor,
     );

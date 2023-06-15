@@ -1,9 +1,11 @@
 import 'dart:async';
 
 import 'package:mason_logger/mason_logger.dart';
+import 'package:shorebird_cli/src/auth/auth.dart';
 import 'package:shorebird_cli/src/command.dart';
 import 'package:shorebird_cli/src/logger.dart';
 import 'package:shorebird_cli/src/shorebird_config_mixin.dart';
+import 'package:shorebird_cli/src/shorebird_environment.dart';
 import 'package:shorebird_cli/src/shorebird_validation_mixin.dart';
 
 /// {@template add_collaborators_command}
@@ -13,7 +15,7 @@ import 'package:shorebird_cli/src/shorebird_validation_mixin.dart';
 class AddCollaboratorsCommand extends ShorebirdCommand
     with ShorebirdConfigMixin, ShorebirdValidationMixin {
   /// {@macro add_collaborators_command}
-  AddCollaboratorsCommand({super.buildCodePushClient, super.auth}) {
+  AddCollaboratorsCommand({super.buildCodePushClient}) {
     argParser
       ..addOption(
         _appIdOption,
@@ -46,10 +48,11 @@ class AddCollaboratorsCommand extends ShorebirdCommand
 
     final client = buildCodePushClient(
       httpClient: auth.client,
-      hostedUri: hostedUri,
+      hostedUri: ShorebirdEnvironment.hostedUri,
     );
 
-    final appId = results[_appIdOption] as String? ?? getShorebirdYaml()?.appId;
+    final appId = results[_appIdOption] as String? ??
+        ShorebirdEnvironment.getShorebirdYaml()?.appId;
     if (appId == null) {
       logger.err(
         '''

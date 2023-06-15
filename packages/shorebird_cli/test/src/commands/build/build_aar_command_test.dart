@@ -64,7 +64,13 @@ flutter:
     late BuildAarCommand command;
 
     R runWithOverrides<R>(R Function() body) {
-      return runScoped(body, values: {loggerRef.overrideWith(() => logger)});
+      return runScoped(
+        body,
+        values: {
+          authRef.overrideWith(() => auth),
+          loggerRef.overrideWith(() => logger)
+        },
+      );
     }
 
     Directory setUpTempDir({bool includeModule = true}) {
@@ -105,7 +111,7 @@ flutter:
         return processResult;
       });
 
-      command = BuildAarCommand(auth: auth, validators: [])
+      command = runWithOverrides(() => BuildAarCommand(validators: []))
         ..testArgResults = argResults
         ..testProcess = shorebirdProcess
         ..testEngineConfig = const EngineConfig.empty();

@@ -7,6 +7,7 @@ import 'package:http/http.dart' as http;
 import 'package:mason_logger/mason_logger.dart';
 import 'package:path/path.dart' as p;
 import 'package:shorebird_cli/src/archive_analysis/archive_analysis.dart';
+import 'package:shorebird_cli/src/auth/auth.dart';
 import 'package:shorebird_cli/src/code_push_client_wrapper.dart';
 import 'package:shorebird_cli/src/command.dart';
 import 'package:shorebird_cli/src/config/config.dart';
@@ -35,7 +36,6 @@ class PatchAarCommand extends ShorebirdCommand
         ShorebirdArtifactMixin {
   /// {@macro patch_aar_command}
   PatchAarCommand({
-    super.auth,
     super.buildCodePushClient,
     super.cache,
     super.validators,
@@ -138,10 +138,10 @@ of the Android app that is using this module.''',
       return ExitCode.software.code;
     }
 
-    final shorebirdYaml = getShorebirdYaml()!;
+    final shorebirdYaml = ShorebirdEnvironment.getShorebirdYaml()!;
     final codePushClient = buildCodePushClient(
       httpClient: auth.client,
-      hostedUri: hostedUri,
+      hostedUri: ShorebirdEnvironment.hostedUri,
     );
 
     final appId = shorebirdYaml.getAppId(flavor: flavor);
@@ -168,7 +168,7 @@ Did you forget to run "shorebird init"?''',
       return ExitCode.success.code;
     }
 
-    const platform = 'android';
+    const platformName = 'android';
     final channelName = results['channel'] as String;
 
     final Release? release;
@@ -234,7 +234,7 @@ https://github.com/shorebirdtech/shorebird/issues/472
     final releaseArtifacts = await getReleaseArtifacts(
       release: release,
       architectures: architectures,
-      platform: platform,
+      platform: platformName,
     );
     if (releaseArtifacts == null) {
       return ExitCode.software.code;
@@ -328,7 +328,7 @@ https://github.com/shorebirdtech/shorebird/issues/472
       if (flavor != null) '🍧 Flavor: ${lightCyan.wrap(flavor)}',
       '📦 Release Version: ${lightCyan.wrap(releaseVersion)}',
       '📺 Channel: ${lightCyan.wrap(channelName)}',
-      '''🕹️  Platform: ${lightCyan.wrap(platform)} ${lightCyan.wrap('[${archMetadata.join(', ')}]')}''',
+      '''🕹️  Platform: ${lightCyan.wrap(platformName)} ${lightCyan.wrap('[${archMetadata.join(', ')}]')}''',
     ];
 
     logger.info(
@@ -368,7 +368,7 @@ ${summary.join('\n')}
           patchId: patch.id,
           artifactPath: artifact.path,
           arch: artifact.arch,
-          platform: platform,
+          platform: platformName,
           hash: artifact.hash,
         );
       } catch (error) {

@@ -45,7 +45,13 @@ flutter:
     - shorebird.yaml''';
 
     R runWithOverrides<R>(R Function() body) {
-      return runScoped(body, values: {loggerRef.overrideWith(() => logger)});
+      return runScoped(
+        body,
+        values: {
+          authRef.overrideWith(() => auth),
+          loggerRef.overrideWith(() => logger)
+        },
+      );
     }
 
     Directory setUpTempDir() {
@@ -69,13 +75,12 @@ flutter:
       when(() => auth.client).thenReturn(httpClient);
       when(() => auth.isAuthenticated).thenReturn(true);
 
-      command = ListReleasesCommand(
-        auth: auth,
-        buildCodePushClient: ({
-          required httpClient,
-          hostedUri,
-        }) =>
-            codePushClient,
+      command = runWithOverrides(
+        () => ListReleasesCommand(
+          buildCodePushClient: ({required httpClient, hostedUri}) {
+            return codePushClient;
+          },
+        ),
       )..testArgResults = argResults;
     });
 

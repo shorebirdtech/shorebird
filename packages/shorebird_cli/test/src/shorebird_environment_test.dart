@@ -3,6 +3,8 @@ import 'dart:io';
 import 'package:mocktail/mocktail.dart';
 import 'package:path/path.dart' as p;
 import 'package:platform/platform.dart';
+import 'package:scoped/scoped.dart';
+import 'package:shorebird_cli/src/platform.dart';
 import 'package:shorebird_cli/src/shorebird_environment.dart';
 import 'package:test/test.dart';
 
@@ -14,14 +16,23 @@ void main() {
     late Directory shorebirdRoot;
     late Uri platformScript;
 
+    R runWithOverrides<R>(R Function() body) {
+      return runScoped(
+        () => body(),
+        values: {
+          platformRef.overrideWith(() => platform),
+        },
+      );
+    }
+
     setUp(() {
       shorebirdRoot = Directory.systemTemp.createTempSync();
       platformScript = Uri.file(
         p.join(shorebirdRoot.path, 'bin', 'cache', 'shorebird.snapshot'),
       );
       platform = _MockPlatform();
-      ShorebirdEnvironment.platform = platform;
 
+      when(() => platform.environment).thenReturn(const {});
       when(() => platform.script).thenReturn(platformScript);
     });
 
@@ -31,7 +42,10 @@ void main() {
         File(p.join(shorebirdRoot.path, 'bin', 'internal', 'flutter.version'))
           ..createSync(recursive: true)
           ..writeAsStringSync(revision, flush: true);
-        expect(ShorebirdEnvironment.flutterRevision, equals(revision));
+        expect(
+          runWithOverrides(() => ShorebirdEnvironment.flutterRevision),
+          equals(revision),
+        );
       });
 
       test('trims revision file content', () {
@@ -45,7 +59,10 @@ test-revision
           ..createSync(recursive: true)
           ..writeAsStringSync(revision, flush: true);
 
-        expect(ShorebirdEnvironment.flutterRevision, 'test-revision');
+        expect(
+          runWithOverrides(() => ShorebirdEnvironment.flutterRevision),
+          'test-revision',
+        );
       });
     });
 
@@ -65,7 +82,40 @@ test-revision
         )
           ..createSync(recursive: true)
           ..writeAsStringSync(revision, flush: true);
-        expect(ShorebirdEnvironment.shorebirdEngineRevision, equals(revision));
+        expect(
+          runWithOverrides(() => ShorebirdEnvironment.shorebirdEngineRevision),
+          equals(revision),
+        );
+      });
+    });
+
+    group('hostedUrl', () {
+      test('returns hosted url from env if available', () {
+        when(() => platform.environment).thenReturn({
+          'SHOREBIRD_HOSTED_URL': 'https://example.com',
+        });
+        expect(
+          runWithOverrides(() => ShorebirdEnvironment.hostedUri),
+          equals(Uri.parse('https://example.com')),
+        );
+      });
+
+      test('falls back to shorebird.yaml', () {
+        final directory = Directory.systemTemp.createTempSync();
+        File(p.join(directory.path, 'shorebird.yaml')).writeAsStringSync('''
+app_id: test-id
+base_url: https://example.com''');
+        expect(
+          IOOverrides.runZoned(
+            () => runWithOverrides(() => ShorebirdEnvironment.hostedUri),
+            getCurrentDirectory: () => directory,
+          ),
+          equals(Uri.parse('https://example.com')),
+        );
+      });
+
+      test('returns null when there is no env override or shorebird.yaml', () {
+        expect(runWithOverrides(() => ShorebirdEnvironment.hostedUri), isNull);
       });
     });
   });

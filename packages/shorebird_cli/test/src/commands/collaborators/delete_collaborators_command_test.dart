@@ -25,7 +25,7 @@ class _MockLogger extends Mock implements Logger {}
 class _MockProgress extends Mock implements Progress {}
 
 void main() {
-  group('delete', () {
+  group(DeleteCollaboratorsCommand, () {
     const appId = 'test-app-id';
     const email = 'jane.doe@shorebird.dev';
     const collaborator = Collaborator(userId: 0, email: email);
@@ -39,7 +39,13 @@ void main() {
     late DeleteCollaboratorsCommand command;
 
     R runWithOverrides<R>(R Function() body) {
-      return runScoped(body, values: {loggerRef.overrideWith(() => logger)});
+      return runScoped(
+        body,
+        values: {
+          authRef.overrideWith(() => auth),
+          loggerRef.overrideWith(() => logger)
+        },
+      );
     }
 
     setUp(() {
@@ -66,14 +72,15 @@ void main() {
         ),
       ).thenAnswer((_) async {});
 
-      command = DeleteCollaboratorsCommand(
-        auth: auth,
-        buildCodePushClient: ({
-          required http.Client httpClient,
-          Uri? hostedUri,
-        }) {
-          return codePushClient;
-        },
+      command = runWithOverrides(
+        () => DeleteCollaboratorsCommand(
+          buildCodePushClient: ({
+            required http.Client httpClient,
+            Uri? hostedUri,
+          }) {
+            return codePushClient;
+          },
+        ),
       )..testArgResults = argResults;
     });
 

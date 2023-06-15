@@ -13,7 +13,7 @@ import 'package:shorebird_cli/src/auth/auth.dart';
 import 'package:shorebird_cli/src/code_push_client_wrapper.dart';
 import 'package:shorebird_cli/src/commands/commands.dart';
 import 'package:shorebird_cli/src/logger.dart';
-import 'package:shorebird_cli/src/shorebird_environment.dart';
+import 'package:shorebird_cli/src/platform.dart';
 import 'package:shorebird_cli/src/shorebird_process.dart';
 import 'package:shorebird_cli/src/validators/validators.dart';
 import 'package:shorebird_code_push_client/shorebird_code_push_client.dart';
@@ -54,7 +54,7 @@ void main() {
     const version = '$versionName+$versionCode';
     const appDisplayName = 'Test App';
     const arch = 'armv7';
-    const platform = 'ios';
+    const platformName = 'ios';
     const appMetadata = AppMetadata(appId: appId, displayName: appDisplayName);
     const release = Release(
       id: 0,
@@ -91,7 +91,15 @@ flutter:
     late ShorebirdProcess shorebirdProcess;
 
     R runWithOverrides<R>(R Function() body) {
-      return runScoped(body, values: {loggerRef.overrideWith(() => logger)});
+      return runScoped(
+        body,
+        values: {
+          authRef.overrideWith(() => auth),
+          loggerRef.overrideWith(() => logger),
+          platformRef.overrideWith(() => environmentPlatform),
+          codePushClientWrapperRef.overrideWith(() => codePushClientWrapper),
+        },
+      );
     }
 
     Directory setUpTempDir() {
@@ -124,7 +132,6 @@ flutter:
 
       registerFallbackValue(shorebirdProcess);
 
-      ShorebirdEnvironment.platform = environmentPlatform;
       when(() => environmentPlatform.script).thenReturn(
         Uri.file(
           p.join(
@@ -152,7 +159,7 @@ flutter:
       ).thenAnswer((_) async => flutterRevisionProcessResult);
       when(() => argResults.rest).thenReturn([]);
       when(() => argResults['arch']).thenReturn(arch);
-      when(() => argResults['platform']).thenReturn(platform);
+      when(() => argResults['platform']).thenReturn(platformName);
       when(() => auth.isAuthenticated).thenReturn(true);
       when(() => auth.client).thenReturn(httpClient);
       when(() => ipaReader.read(any())).thenReturn(ipa);
@@ -189,11 +196,11 @@ flutter:
       ).thenAnswer((_) async => release);
       when(() => flutterValidator.validate(any())).thenAnswer((_) async => []);
 
-      command = ReleaseIosCommand(
-        auth: auth,
-        codePushClientWrapper: codePushClientWrapper,
-        ipaReader: ipaReader,
-        validators: [flutterValidator],
+      command = runWithOverrides(
+        () => ReleaseIosCommand(
+          ipaReader: ipaReader,
+          validators: [flutterValidator],
+        ),
       )
         ..testArgResults = argResults
         ..testProcess = shorebirdProcess

@@ -33,7 +33,7 @@ class _MockProcessResult extends Mock implements ShorebirdProcessResult {}
 class _MockPlatform extends Mock implements Platform {}
 
 void main() {
-  group('init', () {
+  group(InitCommand, () {
     const version = '1.2.3';
     const appId = 'test_app_id';
     const appName = 'test_app_name';
@@ -56,7 +56,13 @@ environment:
     late InitCommand command;
 
     R runWithOverrides<R>(R Function() body) {
-      return runScoped(body, values: {loggerRef.overrideWith(() => logger)});
+      return runScoped(
+        body,
+        values: {
+          authRef.overrideWith(() => auth),
+          loggerRef.overrideWith(() => logger)
+        },
+      );
     }
 
     Directory setUpAppTempDir() {
@@ -106,14 +112,15 @@ environment:
       when(() => result.exitCode).thenReturn(ExitCode.success.code);
       when(() => result.stdout).thenReturn('');
 
-      command = InitCommand(
-        auth: auth,
-        buildCodePushClient: ({
-          required http.Client httpClient,
-          Uri? hostedUri,
-        }) {
-          return codePushClient;
-        },
+      command = runWithOverrides(
+        () => InitCommand(
+          buildCodePushClient: ({
+            required http.Client httpClient,
+            Uri? hostedUri,
+          }) {
+            return codePushClient;
+          },
+        ),
       )
         ..testProcess = process
         ..testArgResults = argResults;

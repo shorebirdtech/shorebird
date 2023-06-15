@@ -16,7 +16,7 @@ import 'package:shorebird_cli/src/shorebird_validation_mixin.dart';
 class BuildApkCommand extends ShorebirdCommand
     with ShorebirdConfigMixin, ShorebirdValidationMixin, ShorebirdBuildMixin {
   /// {@macro build_apk_command}
-  BuildApkCommand({super.auth, super.validators}) {
+  BuildApkCommand({super.validators}) {
     argParser
       ..addOption(
         'target',

@@ -17,7 +17,7 @@ class _MockCodePushClient extends Mock implements CodePushClient {}
 class _MockLogger extends Mock implements Logger {}
 
 void main() {
-  group('list', () {
+  group(ListAppsCommand, () {
     late http.Client httpClient;
     late Auth auth;
     late CodePushClient codePushClient;
@@ -25,7 +25,13 @@ void main() {
     late ListAppsCommand command;
 
     R runWithOverrides<R>(R Function() body) {
-      return runScoped(body, values: {loggerRef.overrideWith(() => logger)});
+      return runScoped(
+        body,
+        values: {
+          authRef.overrideWith(() => auth),
+          loggerRef.overrideWith(() => logger)
+        },
+      );
     }
 
     setUp(() {
@@ -37,14 +43,15 @@ void main() {
       when(() => auth.isAuthenticated).thenReturn(true);
       when(() => auth.client).thenReturn(httpClient);
 
-      command = ListAppsCommand(
-        auth: auth,
-        buildCodePushClient: ({
-          required http.Client httpClient,
-          Uri? hostedUri,
-        }) {
-          return codePushClient;
-        },
+      command = runWithOverrides(
+        () => ListAppsCommand(
+          buildCodePushClient: ({
+            required http.Client httpClient,
+            Uri? hostedUri,
+          }) {
+            return codePushClient;
+          },
+        ),
       );
     });
 

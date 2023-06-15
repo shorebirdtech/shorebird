@@ -50,7 +50,13 @@ flutter:
     late DeleteReleasesCommand command;
 
     R runWithOverrides<R>(R Function() body) {
-      return runScoped(body, values: {loggerRef.overrideWith(() => logger)});
+      return runScoped(
+        body,
+        values: {
+          authRef.overrideWith(() => auth),
+          loggerRef.overrideWith(() => logger)
+        },
+      );
     }
 
     Directory setUpTempDir() {
@@ -107,14 +113,15 @@ flutter:
       when(() => logger.confirm(any())).thenReturn(true);
       when(() => logger.progress(any())).thenReturn(progress);
 
-      command = DeleteReleasesCommand(
-        auth: auth,
-        buildCodePushClient: ({
-          required http.Client httpClient,
-          Uri? hostedUri,
-        }) {
-          return codePushClient;
-        },
+      command = runWithOverrides(
+        () => DeleteReleasesCommand(
+          buildCodePushClient: ({
+            required http.Client httpClient,
+            Uri? hostedUri,
+          }) {
+            return codePushClient;
+          },
+        ),
       )..testArgResults = argResults;
     });
 

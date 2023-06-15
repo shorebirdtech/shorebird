@@ -16,7 +16,7 @@ import 'package:shorebird_cli/src/shorebird_validation_mixin.dart';
 /// {@endtemplate}
 class BuildAarCommand extends ShorebirdCommand
     with ShorebirdConfigMixin, ShorebirdValidationMixin, ShorebirdBuildMixin {
-  BuildAarCommand({super.auth, super.validators}) {
+  BuildAarCommand({super.validators}) {
     // We would have a "target" option here, similar to what [BuildApkCommand]
     // and [BuildAabCommand] have, but target cannot currently be configured in
     // `flutter build aar` and is always assumed to be lib/main.dart.

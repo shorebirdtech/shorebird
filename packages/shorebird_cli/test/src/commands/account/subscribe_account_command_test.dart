@@ -34,7 +34,13 @@ void main() {
 
   group(SubscribeAccountCommand, () {
     R runWithOverrides<R>(R Function() body) {
-      return runScoped(body, values: {loggerRef.overrideWith(() => logger)});
+      return runScoped(
+        body,
+        values: {
+          authRef.overrideWith(() => auth),
+          loggerRef.overrideWith(() => logger)
+        },
+      );
     }
 
     setUp(() {
@@ -58,10 +64,12 @@ void main() {
 
       when(() => user.hasActiveSubscription).thenReturn(false);
 
-      subscribeAccountCommand = SubscribeAccountCommand(
-        auth: auth,
-        buildCodePushClient: ({required httpClient, hostedUri}) =>
-            codePushClient,
+      subscribeAccountCommand = runWithOverrides(
+        () => SubscribeAccountCommand(
+          buildCodePushClient: ({required httpClient, hostedUri}) {
+            return codePushClient;
+          },
+        ),
       );
     });
 

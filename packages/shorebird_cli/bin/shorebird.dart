@@ -1,6 +1,8 @@
 import 'dart:io';
 
 import 'package:scoped/scoped.dart';
+import 'package:shorebird_cli/src/auth/auth.dart';
+import 'package:shorebird_cli/src/code_push_client_wrapper.dart';
 import 'package:shorebird_cli/src/command_runner.dart';
 import 'package:shorebird_cli/src/logger.dart';
 import 'package:shorebird_cli/src/platform.dart';
@@ -9,7 +11,12 @@ Future<void> main(List<String> args) async {
   await _flushThenExit(
     await runScoped(
       () async => ShorebirdCliCommandRunner().run(args),
-      values: {loggerRef, platformRef},
+      values: {
+        authRef,
+        loggerRef,
+        platformRef,
+        codePushClientWrapperRef,
+      },
     ),
   );
 }
