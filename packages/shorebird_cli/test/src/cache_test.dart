@@ -106,22 +106,26 @@ void main() {
       });
 
       test('does nothing if directory does not exist', () {
-        runWithOverrides(() {
-          expect(Cache.shorebirdCacheDirectory.existsSync(), isFalse);
-          cache.clear();
-          expect(Cache.shorebirdCacheDirectory.existsSync(), isFalse);
-        });
+        final shorebirdCacheDirectory =
+            runWithOverrides(() => Cache.shorebirdCacheDirectory);
+        expect(shorebirdCacheDirectory.existsSync(), isFalse);
+        runWithOverrides(cache.clear);
+        expect(shorebirdCacheDirectory.existsSync(), isFalse);
       });
     });
 
     group('updateAll', () {
       group('patch', () {
         test('downloads correct artifacts', () async {
-          await runWithOverrides(() async {
-            expect(cache.getArtifactDirectory('patch').existsSync(), isFalse);
-            await expectLater(cache.updateAll(), completes);
-            expect(cache.getArtifactDirectory('patch').existsSync(), isTrue);
-          });
+          final patchArtifactDirectory = runWithOverrides(
+            () => cache.getArtifactDirectory('patch'),
+          );
+          expect(patchArtifactDirectory.existsSync(), isFalse);
+          await expectLater(
+            runWithOverrides(() => cache.updateAll),
+            completes,
+          );
+          expect(patchArtifactDirectory.existsSync(), isTrue);
         });
 
         test('pull correct artifact for MacOS', () async {
