@@ -121,10 +121,7 @@ void main() {
             () => cache.getArtifactDirectory('patch'),
           );
           expect(patchArtifactDirectory.existsSync(), isFalse);
-          await expectLater(
-            runWithOverrides(() => cache.updateAll),
-            completes,
-          );
+          await expectLater(runWithOverrides(cache.updateAll), completes);
           expect(patchArtifactDirectory.existsSync(), isTrue);
         });
 
