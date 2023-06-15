@@ -429,8 +429,8 @@ class CodePushClient {
     final response = await _httpClient.get(
       Uri.parse('$_v1/releases/$releaseId/artifacts').replace(
         queryParameters: {
-          'arch': arch,
-          'platform': platform,
+          if (arch != null) 'arch': arch,
+          if (platform != null) 'platform': platform,
         },
       ),
     );

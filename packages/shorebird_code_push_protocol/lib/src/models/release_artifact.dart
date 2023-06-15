@@ -46,4 +46,7 @@ class ReleaseArtifact {
 
   /// The url of the artifact.
   final String url;
+
+  @override
+  String toString() => toJson().toString();
 }

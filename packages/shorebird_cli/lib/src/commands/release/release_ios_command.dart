@@ -114,14 +114,11 @@ make smaller updates to your app.
       appId: appId,
       releaseVersion: releaseVersion,
     );
-
     if (existingRelease != null) {
-      logger.err(
-        '''
-It looks like you have an existing release for version ${lightCyan.wrap(releaseVersion)}.
-Please bump your version number and try again.''',
+      await codePushClientWrapper.verifyCanRelease(
+        existingRelease: existingRelease,
+        platform: platformName,
       );
-      return ExitCode.software.code;
     }
 
     final summary = [
@@ -159,11 +156,13 @@ ${summary.join('\n')}
       return ExitCode.software.code;
     }
 
-    await codePushClientWrapper.createRelease(
-      appId: appId,
-      version: releaseVersion,
-      flutterRevision: shorebirdFlutterRevision,
-    );
+    if (existingRelease == null) {
+      await codePushClientWrapper.createRelease(
+        appId: appId,
+        version: releaseVersion,
+        flutterRevision: shorebirdFlutterRevision,
+      );
+    }
 
     final relativeIpaPath = p.relative(ipaPath);
 

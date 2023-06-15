@@ -100,6 +100,17 @@ make smaller updates to your app.
     final appId = shorebirdYaml.getAppId(flavor: flavor);
     final app = await codePushClientWrapper.getApp(appId: appId);
 
+    final existingRelease = await codePushClientWrapper.maybeGetRelease(
+      appId: appId,
+      releaseVersion: releaseVersion,
+    );
+    if (existingRelease != null) {
+      await codePushClientWrapper.verifyCanRelease(
+        existingRelease: existingRelease,
+        platform: platformName,
+      );
+    }
+
     try {
       await buildAar(buildNumber: buildNumber, flavor: flavor);
     } on ProcessException catch (error) {
@@ -108,19 +119,6 @@ make smaller updates to your app.
     }
 
     buildProgress.complete();
-
-    final existingRelease = await codePushClientWrapper.maybeGetRelease(
-      appId: appId,
-      releaseVersion: releaseVersion,
-    );
-    if (existingRelease != null) {
-      logger.err(
-        '''
-It looks like you have an existing release for version ${lightCyan.wrap(releaseVersion)}.
-Please bump your version number and try again.''',
-      );
-      return ExitCode.software.code;
-    }
 
     final archNames = architectures.keys.map(
       (arch) => arch.name,
@@ -162,11 +160,12 @@ ${summary.join('\n')}
       return ExitCode.software.code;
     }
 
-    final release = await codePushClientWrapper.createRelease(
-      appId: appId,
-      version: releaseVersion,
-      flutterRevision: shorebirdFlutterRevision,
-    );
+    final release = existingRelease ??
+        await codePushClientWrapper.createRelease(
+          appId: appId,
+          version: releaseVersion,
+          flutterRevision: shorebirdFlutterRevision,
+        );
 
     final extractAarProgress = logger.progress('Creating artifacts');
     final extractedAarDir = await extractAar(

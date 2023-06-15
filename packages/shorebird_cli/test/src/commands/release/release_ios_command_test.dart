@@ -130,6 +130,7 @@ flutter:
       flutterValidator = _MockShorebirdFlutterValidator();
       shorebirdProcess = _MockShorebirdProcess();
 
+      registerFallbackValue(release);
       registerFallbackValue(shorebirdProcess);
 
       when(() => environmentPlatform.script).thenReturn(
@@ -187,6 +188,12 @@ flutter:
           releaseVersion: any(named: 'releaseVersion'),
         ),
       ).thenAnswer((_) async => null);
+      when(
+        () => codePushClientWrapper.verifyCanRelease(
+          existingRelease: any(named: 'existingRelease'),
+          platform: any(named: 'platform'),
+        ),
+      ).thenAnswer((_) async => {});
       when(
         () => codePushClientWrapper.createRelease(
           appId: any(named: 'appId'),
@@ -390,28 +397,6 @@ error: exportArchive: No signing certificate "iOS Distribution" found
       ).called(1);
     });
 
-    test('throws error when existing releases exists.', () async {
-      when(
-        () => codePushClientWrapper.maybeGetRelease(
-          appId: any(named: 'appId'),
-          releaseVersion: any(named: 'releaseVersion'),
-        ),
-      ).thenAnswer((_) async => release);
-      final tempDir = setUpTempDir();
-
-      final exitCode = await IOOverrides.runZoned(
-        () => runWithOverrides(command.run),
-        getCurrentDirectory: () => tempDir,
-      );
-
-      verify(
-        () => logger.err('''
-It looks like you have an existing release for version ${lightCyan.wrap(release.version)}.
-Please bump your version number and try again.'''),
-      ).called(1);
-      expect(exitCode, ExitCode.software.code);
-    });
-
     test(
         'does not prompt for confirmation '
         'when --release-version and --force are used', () async {
@@ -489,6 +474,31 @@ flavors:
         ),
       ).called(1);
       expect(exitCode, ExitCode.success.code);
+    });
+
+    test('does not create new release if existing release is present',
+        () async {
+      when(
+        () => codePushClientWrapper.maybeGetRelease(
+          appId: any(named: 'appId'),
+          releaseVersion: any(named: 'releaseVersion'),
+        ),
+      ).thenAnswer((_) async => release);
+      final tempDir = setUpTempDir();
+
+      final exitCode = await IOOverrides.runZoned(
+        () => runWithOverrides(command.run),
+        getCurrentDirectory: () => tempDir,
+      );
+
+      expect(exitCode, ExitCode.success.code);
+      verifyNever(
+        () => codePushClientWrapper.createRelease(
+          appId: any(named: 'appId'),
+          version: any(named: 'version'),
+          flutterRevision: any(named: 'flutterRevision'),
+        ),
+      );
     });
 
     test('provides appropriate ExportOptions.plist to build ipa command',

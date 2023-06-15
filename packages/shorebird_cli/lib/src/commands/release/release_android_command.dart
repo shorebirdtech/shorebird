@@ -109,13 +109,12 @@ make smaller updates to your app.
       appId: appId,
       releaseVersion: releaseVersion,
     );
+
     if (existingRelease != null) {
-      logger.err(
-        '''
-It looks like you have an existing release for version ${lightCyan.wrap(releaseVersion)}.
-Please bump your version number and try again.''',
+      await codePushClientWrapper.verifyCanRelease(
+        existingRelease: existingRelease,
+        platform: platformName,
       );
-      return ExitCode.software.code;
     }
 
     final archNames = architectures.keys.map(
@@ -158,11 +157,12 @@ ${summary.join('\n')}
       return ExitCode.software.code;
     }
 
-    final release = await codePushClientWrapper.createRelease(
-      appId: appId,
-      version: releaseVersion,
-      flutterRevision: shorebirdFlutterRevision,
-    );
+    final release = existingRelease ??
+        await codePushClientWrapper.createRelease(
+          appId: appId,
+          version: releaseVersion,
+          flutterRevision: shorebirdFlutterRevision,
+        );
 
     await codePushClientWrapper.createAndroidReleaseArtifacts(
       releaseId: release.id,
