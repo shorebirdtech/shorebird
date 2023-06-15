@@ -94,7 +94,7 @@ class ArchUsage {
 @JsonSerializable()
 class PatchUsage {
   /// {@macro patch_usage}
-  const PatchUsage({required this.number, required this.installCount});
+  const PatchUsage({required this.id, required this.installCount});
 
   /// Converts a Map<String, dynamic> to a [PatchUsage].
   factory PatchUsage.fromJson(Map<String, dynamic> json) =>
@@ -103,8 +103,8 @@ class PatchUsage {
   /// Converts a [PatchUsage] to a Map<String, dynamic>.
   Json toJson() => _$PatchUsageToJson(this);
 
-  /// The number of the patch.
-  final int number;
+  /// The id of the patch.
+  final int id;
 
   /// The number of times the patch has been installed.
   final int installCount;

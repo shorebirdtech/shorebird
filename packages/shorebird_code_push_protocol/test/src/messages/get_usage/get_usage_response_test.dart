@@ -14,7 +14,7 @@ void main() {
                 arches: [
                   ArchUsage(
                     name: 'arm64',
-                    patches: [PatchUsage(number: 1, installCount: 42)],
+                    patches: [PatchUsage(id: 1, installCount: 42)],
                   ),
                 ],
               )

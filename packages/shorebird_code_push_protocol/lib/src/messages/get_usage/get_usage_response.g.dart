@@ -99,7 +99,7 @@ PatchUsage _$PatchUsageFromJson(Map<String, dynamic> json) => $checkedCreate(
       json,
       ($checkedConvert) {
         final val = PatchUsage(
-          number: $checkedConvert('number', (v) => v as int),
+          id: $checkedConvert('id', (v) => v as int),
           installCount: $checkedConvert('install_count', (v) => v as int),
         );
         return val;
@@ -109,6 +109,6 @@ PatchUsage _$PatchUsageFromJson(Map<String, dynamic> json) => $checkedCreate(
 
 Map<String, dynamic> _$PatchUsageToJson(PatchUsage instance) =>
     <String, dynamic>{
-      'number': instance.number,
+      'id': instance.id,
       'install_count': instance.installCount,
     };
