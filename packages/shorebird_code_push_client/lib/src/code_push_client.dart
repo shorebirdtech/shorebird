@@ -419,7 +419,8 @@ class CodePushClient {
         .toList();
   }
 
-  /// Get a release artifact for a specific [releaseId], [arch], and [platform].
+  /// Get all release artifacts for a specific [releaseId]
+  /// and optional [arch] and [platform].
   Future<List<ReleaseArtifact>> getReleaseArtifacts({
     required int releaseId,
     String? arch,
