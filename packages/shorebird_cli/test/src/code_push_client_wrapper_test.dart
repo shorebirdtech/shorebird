@@ -74,7 +74,7 @@ void main() {
     const patchId = 1;
     const patchNumber = 2;
     const patch = Patch(id: patchId, number: patchNumber);
-    const platform = 'ios';
+    const platformName = 'ios';
     const releaseId = 123;
     const arch = Arch.arm64;
     const flutterRevision = '123';
@@ -105,7 +105,7 @@ void main() {
       id: 1,
       releaseId: releaseId,
       arch: 'aarch64',
-      platform: platform,
+      platform: platformName,
       hash: 'asdf',
       size: 4,
       url: 'url',
@@ -538,7 +538,7 @@ void main() {
               () => codePushClientWrapper.getReleaseArtifacts(
                 releaseId: releaseId,
                 architectures: archMap,
-                platform: platform,
+                platform: platformName,
               ),
             ),
             exitsWithCode(ExitCode.software),
@@ -560,7 +560,7 @@ void main() {
             () => codePushClientWrapper.getReleaseArtifacts(
               releaseId: releaseId,
               architectures: archMap,
-              platform: platform,
+              platform: platformName,
             ),
           );
 
@@ -585,7 +585,7 @@ void main() {
               () => codePushClientWrapper.maybeGetReleaseArtifact(
                 releaseId: releaseId,
                 arch: arch.name,
-                platform: platform,
+                platform: platformName,
               ),
             ),
             exitsWithCode(ExitCode.software),
@@ -607,7 +607,7 @@ void main() {
             () => codePushClientWrapper.maybeGetReleaseArtifact(
               releaseId: releaseId,
               arch: arch.name,
-              platform: platform,
+              platform: platformName,
             ),
           );
 
@@ -630,7 +630,7 @@ void main() {
               () => codePushClientWrapper.maybeGetReleaseArtifact(
                 releaseId: releaseId,
                 arch: arch.name,
-                platform: platform,
+                platform: platformName,
               ),
             );
 
@@ -695,7 +695,7 @@ void main() {
               () async => runWithOverrides(
                 () async => codePushClientWrapper.createAndroidReleaseArtifacts(
                   releaseId: releaseId,
-                  platform: platform,
+                  platform: platformName,
                   aabPath: p.join(tempDir.path, aabPath),
                   architectures: ShorebirdBuildMixin.allAndroidArchitectures,
                 ),
@@ -726,7 +726,7 @@ void main() {
               () async => runWithOverrides(
                 () async => codePushClientWrapper.createAndroidReleaseArtifacts(
                   releaseId: releaseId,
-                  platform: platform,
+                  platform: platformName,
                   aabPath: p.join(tempDir.path, aabPath),
                   architectures: ShorebirdBuildMixin.allAndroidArchitectures,
                 ),
@@ -757,7 +757,7 @@ void main() {
             () async => IOOverrides.runZoned(
               () async => codePushClientWrapper.createAndroidReleaseArtifacts(
                 releaseId: releaseId,
-                platform: platform,
+                platform: platformName,
                 aabPath: p.join(tempDir.path, aabPath),
                 architectures: ShorebirdBuildMixin.allAndroidArchitectures,
               ),
@@ -791,7 +791,7 @@ void main() {
             () async => IOOverrides.runZoned(
               () async => codePushClientWrapper.createAndroidReleaseArtifacts(
                 releaseId: releaseId,
-                platform: platform,
+                platform: platformName,
                 aabPath: p.join(tempDir.path, aabPath),
                 architectures: ShorebirdBuildMixin.allAndroidArchitectures,
               ),
@@ -823,7 +823,7 @@ void main() {
             () async => IOOverrides.runZoned(
               () async => codePushClientWrapper.createAndroidReleaseArtifacts(
                 releaseId: releaseId,
-                platform: platform,
+                platform: platformName,
                 aabPath: p.join(tempDir.path, aabPath),
                 architectures: ShorebirdBuildMixin.allAndroidArchitectures,
               ),
@@ -852,7 +852,7 @@ void main() {
             () async => IOOverrides.runZoned(
               () async => codePushClientWrapper.createAndroidReleaseArtifacts(
                 releaseId: releaseId,
-                platform: platform,
+                platform: platformName,
                 aabPath: p.join(tempDir.path, aabPath),
                 architectures: ShorebirdBuildMixin.allAndroidArchitectures,
                 flavor: flavorName,
@@ -867,7 +867,7 @@ void main() {
                   any(named: 'artifactPath', that: contains(flavorName)),
               releaseId: releaseId,
               arch: any(named: 'arch'),
-              platform: platform,
+              platform: platformName,
               hash: any(named: 'hash'),
             ),
           ).called(ShorebirdBuildMixin.allAndroidArchitectures.length);
@@ -971,7 +971,7 @@ void main() {
               () async => runWithOverrides(
                 () => codePushClientWrapper.createPatchArtifacts(
                   patch: patch,
-                  platform: platform,
+                  platform: platformName,
                   patchArtifactBundles: patchArtifactBundles,
                 ),
               ),
@@ -996,7 +996,7 @@ void main() {
           await runWithOverrides(
             () => codePushClientWrapper.createPatchArtifacts(
               patch: patch,
-              platform: platform,
+              platform: platformName,
               patchArtifactBundles: patchArtifactBundles,
             ),
           );
@@ -1007,7 +1007,7 @@ void main() {
               artifactPath: partchArtifactBundle.path,
               patchId: patchId,
               arch: arch.name,
-              platform: platform,
+              platform: platformName,
               hash: partchArtifactBundle.hash,
             ),
           ).called(1);
@@ -1044,7 +1044,7 @@ void main() {
             () => codePushClientWrapper.publishPatch(
               appId: appId,
               releaseId: releaseId,
-              platform: platform,
+              platform: platformName,
               channelName: channelName,
               patchArtifactBundles: patchArtifactBundles,
             ),
@@ -1058,7 +1058,7 @@ void main() {
               artifactPath: partchArtifactBundle.path,
               patchId: patchId,
               arch: arch.name,
-              platform: platform,
+              platform: platformName,
               hash: partchArtifactBundle.hash,
             ),
           ).called(1);
@@ -1093,7 +1093,7 @@ void main() {
             () => codePushClientWrapper.publishPatch(
               appId: appId,
               releaseId: releaseId,
-              platform: platform,
+              platform: platformName,
               channelName: channelName,
               patchArtifactBundles: patchArtifactBundles,
             ),
@@ -1107,7 +1107,7 @@ void main() {
               artifactPath: partchArtifactBundle.path,
               patchId: patchId,
               arch: arch.name,
-              platform: platform,
+              platform: platformName,
               hash: partchArtifactBundle.hash,
             ),
           ).called(1);

@@ -59,7 +59,7 @@ void main() {
     const versionCode = '1';
     const version = '$versionName+$versionCode';
     const arch = 'aarch64';
-    const platform = 'android';
+    const platformName = 'android';
     const channelName = 'stable';
     const appDisplayName = 'Test App';
     const app = AppMetadata(appId: appId, displayName: appDisplayName);
@@ -67,7 +67,7 @@ void main() {
       id: 0,
       releaseId: 0,
       arch: arch,
-      platform: platform,
+      platform: platformName,
       hash: '#',
       size: 42,
       url: 'https://example.com',
@@ -76,7 +76,7 @@ void main() {
       id: 0,
       releaseId: 0,
       arch: arch,
-      platform: platform,
+      platform: platformName,
       hash: '#',
       size: 42,
       url: 'https://example.com/release.aab',
@@ -103,7 +103,7 @@ flutter:
     late Auth auth;
     late CodePushClientWrapper codePushClientWrapper;
     late Directory shorebirdRoot;
-    late Platform environmentPlatform;
+    late Platform platform;
     late Progress progress;
     late Logger logger;
     late ShorebirdProcessResult flutterBuildProcessResult;
@@ -123,7 +123,7 @@ flutter:
         values: {
           authRef.overrideWith(() => auth),
           loggerRef.overrideWith(() => logger),
-          platformRef.overrideWith(() => environmentPlatform),
+          platformRef.overrideWith(() => platform),
           codePushClientWrapperRef.overrideWith(() => codePushClientWrapper),
         },
       );
@@ -170,7 +170,7 @@ flutter:
       auth = _MockAuth();
       codePushClientWrapper = _MockCodePushClientWrapper();
       shorebirdRoot = Directory.systemTemp.createTempSync();
-      environmentPlatform = _MockPlatform();
+      platform = _MockPlatform();
       progress = _MockProgress();
       logger = _MockLogger();
       flutterBuildProcessResult = _MockProcessResult();
@@ -194,7 +194,7 @@ flutter:
         ..testProcess = shorebirdProcess
         ..testEngineConfig = const EngineConfig.empty();
 
-      when(() => environmentPlatform.script).thenReturn(
+      when(() => platform.script).thenReturn(
         Uri.file(
           p.join(
             shorebirdRoot.path,
@@ -733,7 +733,7 @@ https://github.com/shorebirdtech/shorebird/issues/472
         () => logger.info(
           any(
             that: contains(
-              '''🕹️  Platform: ${lightCyan.wrap(platform)} ${lightCyan.wrap('[arm32 (4 B), arm64 (4 B), x86_64 (4 B)]')}''',
+              '''🕹️  Platform: ${lightCyan.wrap(platformName)} ${lightCyan.wrap('[arm32 (4 B), arm64 (4 B), x86_64 (4 B)]')}''',
             ),
           ),
         ),

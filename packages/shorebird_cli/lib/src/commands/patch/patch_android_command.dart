@@ -111,7 +111,7 @@ class PatchAndroidCommand extends ShorebirdCommand
 
     await cache.updateAll();
 
-    const platform = 'android';
+    const platformName = 'android';
     final channelName = results['channel'] as String;
     final flavor = results['flavor'] as String?;
     final target = results['target'] as String?;
@@ -202,14 +202,14 @@ https://github.com/shorebirdtech/shorebird/issues/472
     final releaseArtifacts = await codePushClientWrapper.getReleaseArtifacts(
       releaseId: release.id,
       architectures: architectures,
-      platform: platform,
+      platform: platformName,
     );
 
     final releaseAabArtifact =
         await codePushClientWrapper.maybeGetReleaseArtifact(
       releaseId: release.id,
       arch: 'aab',
-      platform: platform,
+      platform: platformName,
     );
 
     final releaseArtifactPaths = <Arch, String>{};
@@ -330,7 +330,7 @@ If you believe you're seeing this in error, please reach out to us for support a
       if (flavor != null) '🍧 Flavor: ${lightCyan.wrap(flavor)}',
       '📦 Release Version: ${lightCyan.wrap(releaseVersion)}',
       '📺 Channel: ${lightCyan.wrap(channelName)}',
-      '''🕹️  Platform: ${lightCyan.wrap(platform)} ${lightCyan.wrap('[${archMetadata.join(', ')}]')}''',
+      '''🕹️  Platform: ${lightCyan.wrap(platformName)} ${lightCyan.wrap('[${archMetadata.join(', ')}]')}''',
     ];
 
     logger.info(
@@ -355,7 +355,7 @@ ${summary.join('\n')}
     await codePushClientWrapper.publishPatch(
       appId: appId,
       releaseId: release.id,
-      platform: platform,
+      platform: platformName,
       channelName: channelName,
       patchArtifactBundles: patchArtifactBundles,
     );

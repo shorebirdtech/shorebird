@@ -71,7 +71,7 @@ make smaller updates to your app.
       return e.exitCode.code;
     }
 
-    const platform = 'android';
+    const platformName = 'android';
     final flavor = results['flavor'] as String?;
     final target = results['target'] as String?;
     final buildProgress = logger.progress('Building release');
@@ -125,7 +125,7 @@ Please bump your version number and try again.''',
       '''📱 App: ${lightCyan.wrap(app.displayName)} ${lightCyan.wrap('(${app.appId})')}''',
       if (flavor != null) '🍧 Flavor: ${lightCyan.wrap(flavor)}',
       '📦 Release Version: ${lightCyan.wrap(releaseVersion)}',
-      '''🕹️  Platform: ${lightCyan.wrap(platform)} ${lightCyan.wrap('(${archNames.join(', ')})')}''',
+      '''🕹️  Platform: ${lightCyan.wrap(platformName)} ${lightCyan.wrap('(${archNames.join(', ')})')}''',
     ];
 
     logger.info('''
@@ -167,7 +167,7 @@ ${summary.join('\n')}
     await codePushClientWrapper.createAndroidReleaseArtifacts(
       releaseId: release.id,
       aabPath: bundlePath,
-      platform: platform,
+      platform: platformName,
       architectures: architectures,
       flavor: flavor,
     );

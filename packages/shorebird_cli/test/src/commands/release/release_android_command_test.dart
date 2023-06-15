@@ -51,7 +51,7 @@ void main() {
     const version = '$versionName+$versionCode';
     const appDisplayName = 'Test App';
     const arch = 'aarch64';
-    const platform = 'android';
+    const platformName = 'android';
     const appMetadata = AppMetadata(appId: appId, displayName: appDisplayName);
     const release = Release(
       id: 0,
@@ -75,7 +75,7 @@ flutter:
     late http.Client httpClient;
     late CodePushClientWrapper codePushClientWrapper;
     late Directory shorebirdRoot;
-    late Platform environmentPlatform;
+    late Platform platform;
     late Auth auth;
     late Cache cache;
     late Progress progress;
@@ -94,7 +94,7 @@ flutter:
         values: {
           authRef.overrideWith(() => auth),
           loggerRef.overrideWith(() => logger),
-          platformRef.overrideWith(() => environmentPlatform),
+          platformRef.overrideWith(() => platform),
           codePushClientWrapperRef.overrideWith(() => codePushClientWrapper),
         },
       );
@@ -115,7 +115,7 @@ flutter:
       argResults = _MockArgResults();
       codePushClientWrapper = _MockCodePushClientWrapper();
       httpClient = _MockHttpClient();
-      environmentPlatform = _MockPlatform();
+      platform = _MockPlatform();
       shorebirdRoot = Directory.systemTemp.createTempSync();
       auth = _MockAuth();
       cache = _MockCache();
@@ -130,7 +130,7 @@ flutter:
 
       registerFallbackValue(shorebirdProcess);
 
-      when(() => environmentPlatform.script).thenReturn(
+      when(() => platform.script).thenReturn(
         Uri.file(
           p.join(
             shorebirdRoot.path,
@@ -170,7 +170,7 @@ flutter:
       });
       when(() => argResults.rest).thenReturn([]);
       when(() => argResults['arch']).thenReturn(arch);
-      when(() => argResults['platform']).thenReturn(platform);
+      when(() => argResults['platform']).thenReturn(platformName);
       when(() => auth.isAuthenticated).thenReturn(true);
       when(() => auth.client).thenReturn(httpClient);
       when(() => cache.updateAll()).thenAnswer((_) async => {});
@@ -430,7 +430,7 @@ Please bump your version number and try again.'''),
       verify(
         () => codePushClientWrapper.createAndroidReleaseArtifacts(
           releaseId: release.id,
-          platform: platform,
+          platform: platformName,
           aabPath: any(named: 'aabPath'),
           architectures: any(named: 'architectures'),
         ),
@@ -462,7 +462,7 @@ flavors:
       verify(
         () => codePushClientWrapper.createAndroidReleaseArtifacts(
           releaseId: release.id,
-          platform: platform,
+          platform: platformName,
           aabPath: any(named: 'aabPath'),
           architectures: any(named: 'architectures'),
           flavor: flavor,

@@ -87,7 +87,7 @@ class PatchIosCommand extends ShorebirdCommand
 
     const arch = 'aarch64';
     const channelName = 'stable';
-    const platform = 'ios';
+    const platformName = 'ios';
     final force = results['force'] == true;
     final dryRun = results['dry-run'] == true;
     final flavor = results['flavor'] as String?;
@@ -205,7 +205,7 @@ https://github.com/shorebirdtech/shorebird/issues/472
       if (flavor != null) '🍧 Flavor: ${lightCyan.wrap(flavor)}',
       '📦 Release Version: ${lightCyan.wrap(releaseVersion)}',
       '📺 Channel: ${lightCyan.wrap(channelName)}',
-      '''🕹️  Platform: ${lightCyan.wrap(platform)} ${lightCyan.wrap('[$arch (${formatBytes(aotFileSize)})]')}''',
+      '''🕹️  Platform: ${lightCyan.wrap(platformName)} ${lightCyan.wrap('[$arch (${formatBytes(aotFileSize)})]')}''',
     ];
 
     logger.info(
@@ -232,7 +232,7 @@ ${summary.join('\n')}
     await codePushClientWrapper.publishPatch(
       appId: appId,
       releaseId: release.id,
-      platform: platform,
+      platform: platformName,
       channelName: channelName,
       patchArtifactBundles: {
         Arch.arm64: PatchArtifactBundle(

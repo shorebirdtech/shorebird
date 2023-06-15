@@ -54,7 +54,7 @@ void main() {
     const version = '$versionName+$versionCode';
     const appDisplayName = 'Test App';
     const arch = 'armv7';
-    const platform = 'ios';
+    const platformName = 'ios';
     const appMetadata = AppMetadata(appId: appId, displayName: appDisplayName);
     const release = Release(
       id: 0,
@@ -159,7 +159,7 @@ flutter:
       ).thenAnswer((_) async => flutterRevisionProcessResult);
       when(() => argResults.rest).thenReturn([]);
       when(() => argResults['arch']).thenReturn(arch);
-      when(() => argResults['platform']).thenReturn(platform);
+      when(() => argResults['platform']).thenReturn(platformName);
       when(() => auth.isAuthenticated).thenReturn(true);
       when(() => auth.client).thenReturn(httpClient);
       when(() => ipaReader.read(any())).thenReturn(ipa);

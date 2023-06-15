@@ -168,7 +168,7 @@ Did you forget to run "shorebird init"?''',
       return ExitCode.success.code;
     }
 
-    const platform = 'android';
+    const platformName = 'android';
     final channelName = results['channel'] as String;
 
     final Release? release;
@@ -234,7 +234,7 @@ https://github.com/shorebirdtech/shorebird/issues/472
     final releaseArtifacts = await getReleaseArtifacts(
       release: release,
       architectures: architectures,
-      platform: platform,
+      platform: platformName,
     );
     if (releaseArtifacts == null) {
       return ExitCode.software.code;
@@ -328,7 +328,7 @@ https://github.com/shorebirdtech/shorebird/issues/472
       if (flavor != null) '🍧 Flavor: ${lightCyan.wrap(flavor)}',
       '📦 Release Version: ${lightCyan.wrap(releaseVersion)}',
       '📺 Channel: ${lightCyan.wrap(channelName)}',
-      '''🕹️  Platform: ${lightCyan.wrap(platform)} ${lightCyan.wrap('[${archMetadata.join(', ')}]')}''',
+      '''🕹️  Platform: ${lightCyan.wrap(platformName)} ${lightCyan.wrap('[${archMetadata.join(', ')}]')}''',
     ];
 
     logger.info(
@@ -368,7 +368,7 @@ ${summary.join('\n')}
           patchId: patch.id,
           artifactPath: artifact.path,
           arch: artifact.arch,
-          platform: platform,
+          platform: platformName,
           hash: artifact.hash,
         );
       } catch (error) {

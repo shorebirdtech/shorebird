@@ -140,7 +140,7 @@ Did you forget to run "shorebird init"?''',
       return ExitCode.software.code;
     }
 
-    const platform = 'android';
+    const platformName = 'android';
     final archNames = architectures.keys.map(
       (arch) => arch.name,
     );
@@ -148,7 +148,7 @@ Did you forget to run "shorebird init"?''',
       '''📱 App: ${lightCyan.wrap(app.displayName)} ${lightCyan.wrap('(${app.id})')}''',
       if (flavor != null) '🍧 Flavor: ${lightCyan.wrap(flavor)}',
       '📦 Release Version: ${lightCyan.wrap(releaseVersion)}',
-      '''🕹️  Platform: ${lightCyan.wrap(platform)} ${lightCyan.wrap('(${archNames.join(', ')})')}''',
+      '''🕹️  Platform: ${lightCyan.wrap(platformName)} ${lightCyan.wrap('(${archNames.join(', ')})')}''',
     ];
 
     logger.info('''
@@ -231,7 +231,7 @@ ${summary.join('\n')}
           releaseId: release.id,
           artifactPath: artifact.path,
           arch: archMetadata.arch,
-          platform: platform,
+          platform: platformName,
           hash: hash,
         );
       } on CodePushConflictException catch (_) {
@@ -257,7 +257,7 @@ ${archMetadata.arch} artifact already exists, continuing...''',
         releaseId: release.id,
         artifactPath: aarPath,
         arch: 'aar',
-        platform: platform,
+        platform: platformName,
         hash: _hashFn(await File(aarPath).readAsBytes()),
       );
     } on CodePushConflictException catch (_) {

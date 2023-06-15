@@ -68,7 +68,7 @@ make smaller updates to your app.
       '''iOS support is in an experimental state and will not work without Flutter engine changes that have not yet been published.''',
     );
 
-    const platform = 'ios';
+    const platformName = 'ios';
     final flavor = results['flavor'] as String?;
     final shorebirdYaml = ShorebirdEnvironment.getShorebirdYaml()!;
     final appId = shorebirdYaml.getAppId(flavor: flavor);
@@ -128,7 +128,7 @@ Please bump your version number and try again.''',
       '''📱 App: ${lightCyan.wrap(app.displayName)} ${lightCyan.wrap('($appId)')}''',
       if (flavor != null) '🍧 Flavor: ${lightCyan.wrap(flavor)}',
       '📦 Release Version: ${lightCyan.wrap(releaseVersion)}',
-      '''🕹️  Platform: ${lightCyan.wrap(platform)}''',
+      '''🕹️  Platform: ${lightCyan.wrap(platformName)}''',
     ];
 
     logger.info('''

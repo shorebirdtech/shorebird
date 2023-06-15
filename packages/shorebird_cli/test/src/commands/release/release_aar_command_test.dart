@@ -54,12 +54,12 @@ void main() {
     );
 
     const arch = 'aarch64';
-    const platform = 'android';
+    const platformName = 'android';
     const releaseArtifact = ReleaseArtifact(
       id: 0,
       releaseId: 0,
       arch: arch,
-      platform: platform,
+      platform: platformName,
       hash: '#',
       size: 42,
       url: 'https://example.com',

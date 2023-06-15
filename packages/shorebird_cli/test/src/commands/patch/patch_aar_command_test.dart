@@ -58,7 +58,7 @@ void main() {
     const versionCode = '1';
     const version = '$versionName+$versionCode';
     const arch = 'aarch64';
-    const platform = 'android';
+    const platformName = 'android';
     const channelName = 'stable';
     const appDisplayName = 'Test App';
     const appMetadata = AppMetadata(appId: appId, displayName: appDisplayName);
@@ -66,7 +66,7 @@ void main() {
       id: 0,
       patchId: 0,
       arch: arch,
-      platform: platform,
+      platform: platformName,
       hash: '#',
       size: 42,
       url: 'https://example.com',
@@ -75,7 +75,7 @@ void main() {
       id: 0,
       releaseId: 0,
       arch: arch,
-      platform: platform,
+      platform: platformName,
       hash: '#',
       size: 42,
       url: 'https://example.com/release.so',
@@ -84,7 +84,7 @@ void main() {
       id: 0,
       releaseId: 0,
       arch: arch,
-      platform: platform,
+      platform: platformName,
       hash: '#',
       size: 42,
       url: 'https://example.com/release.aar',
@@ -126,7 +126,7 @@ flutter:
     late ArgResults argResults;
     late Auth auth;
     late Directory shorebirdRoot;
-    late Platform environmentPlatform;
+    late Platform platform;
     late Progress progress;
     late Logger logger;
     late ShorebirdProcessResult flutterBuildProcessResult;
@@ -146,7 +146,7 @@ flutter:
         values: {
           authRef.overrideWith(() => auth),
           loggerRef.overrideWith(() => logger),
-          platformRef.overrideWith(() => environmentPlatform),
+          platformRef.overrideWith(() => platform),
         },
       );
     }
@@ -201,7 +201,7 @@ flutter:
       argResults = _MockArgResults();
       auth = _MockAuth();
       shorebirdRoot = Directory.systemTemp.createTempSync();
-      environmentPlatform = _MockPlatform();
+      platform = _MockPlatform();
       progress = _MockProgress();
       logger = _MockLogger();
       flutterBuildProcessResult = _MockProcessResult();
@@ -213,8 +213,8 @@ flutter:
       cache = _MockCache();
       shorebirdProcess = _MockShorebirdProcess();
 
-      when(() => environmentPlatform.environment).thenReturn({});
-      when(() => environmentPlatform.script).thenReturn(
+      when(() => platform.environment).thenReturn({});
+      when(() => platform.script).thenReturn(
         Uri.file(
           p.join(
             shorebirdRoot.path,
@@ -887,7 +887,7 @@ Please create a release using "shorebird release aar" and try again.
         () => logger.info(
           any(
             that: contains(
-              '''🕹️  Platform: ${lightCyan.wrap(platform)} ${lightCyan.wrap('[arm64 (4 B), arm32 (4 B), x86_64 (4 B)]')}''',
+              '''🕹️  Platform: ${lightCyan.wrap(platformName)} ${lightCyan.wrap('[arm64 (4 B), arm32 (4 B), x86_64 (4 B)]')}''',
             ),
           ),
         ),
