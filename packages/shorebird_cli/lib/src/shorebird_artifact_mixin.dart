@@ -10,6 +10,7 @@ mixin ShorebirdArtifactMixin on ShorebirdCommand {
     required String buildNumber,
   }) =>
       p.joinAll([
+        Directory.current.path,
         'build',
         'host',
         'outputs',
@@ -44,18 +45,20 @@ mixin ShorebirdArtifactMixin on ShorebirdCommand {
       packageName: packageName,
       buildNumber: buildNumber,
     );
-    final zipPath = p.join(aarDirectory, 'flutter_release-$buildNumber.zip');
+
+    final zipDir = Directory.systemTemp.createTempSync();
+    final zipPath = p.join(zipDir.path, 'flutter_release-$buildNumber.zip');
     logger.detail('Extracting $aarPath to $zipPath');
 
     // Copy the .aar file to a .zip file so package:archive knows how to read it
     File(aarPath).copySync(zipPath);
-    final extractedAarDir = p.join(
+    final extractedZipDir = p.join(
       aarDirectory,
       'flutter_release-$buildNumber',
     );
     // Unzip the .zip file to a directory so we can read the .so files
-    await unzipFn(zipPath, extractedAarDir);
-    return extractedAarDir;
+    await unzipFn(zipPath, extractedZipDir);
+    return extractedZipDir;
   }
 
   /// Finds the most recently-edited app.dill file in the .dart_tool directory.

@@ -157,6 +157,7 @@ flutter:
 
     void setUpTempArtifacts(Directory dir) {
       final aarDir = p.join(
+        dir.path,
         'build',
         'host',
         'outputs',
