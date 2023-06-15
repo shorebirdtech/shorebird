@@ -991,13 +991,11 @@ void main() {
             final artifactPath = p.join(
               tempDir.path,
               extractedAarPath,
-              'flutter_release-$buildNumber',
               'jni',
               archMetadata.path,
               'libapp.so',
             );
-            File(p.join(tempDir.path, artifactPath))
-                .createSync(recursive: true);
+            File(artifactPath).createSync(recursive: true);
           }
           File(p.join(tempDir.path, aarPath)).createSync(recursive: true);
           return tempDir;
@@ -1035,8 +1033,8 @@ void main() {
                     codePushClientWrapper.createAndroidArchiveReleaseArtifacts(
                   releaseId: releaseId,
                   platform: platformName,
-                  aarPath: aarPath,
-                  extractedAarDir: extractedAarPath,
+                  aarPath: p.join(tempDir.path, aarPath),
+                  extractedAarDir: p.join(tempDir.path, extractedAarPath),
                   architectures: ShorebirdBuildMixin.allAndroidArchitectures,
                 ),
               ),
@@ -1068,8 +1066,8 @@ void main() {
                     codePushClientWrapper.createAndroidArchiveReleaseArtifacts(
                   releaseId: releaseId,
                   platform: platformName,
-                  aarPath: aarPath,
-                  extractedAarDir: extractedAarPath,
+                  aarPath: p.join(tempDir.path, aarPath),
+                  extractedAarDir: p.join(tempDir.path, extractedAarPath),
                   architectures: ShorebirdBuildMixin.allAndroidArchitectures,
                 ),
               ),
@@ -1101,8 +1099,8 @@ void main() {
                   codePushClientWrapper.createAndroidArchiveReleaseArtifacts(
                 releaseId: releaseId,
                 platform: platformName,
-                aarPath: aarPath,
-                extractedAarDir: extractedAarPath,
+                aarPath: p.join(tempDir.path, aarPath),
+                extractedAarDir: p.join(tempDir.path, extractedAarPath),
                 architectures: ShorebirdBuildMixin.allAndroidArchitectures,
               ),
               getCurrentDirectory: () => tempDir,
@@ -1137,8 +1135,8 @@ void main() {
                   codePushClientWrapper.createAndroidArchiveReleaseArtifacts(
                 releaseId: releaseId,
                 platform: platformName,
-                aarPath: aarPath,
-                extractedAarDir: extractedAarPath,
+                aarPath: p.join(tempDir.path, aarPath),
+                extractedAarDir: p.join(tempDir.path, extractedAarPath),
                 architectures: ShorebirdBuildMixin.allAndroidArchitectures,
               ),
               getCurrentDirectory: () => tempDir,
@@ -1171,8 +1169,8 @@ void main() {
                   codePushClientWrapper.createAndroidArchiveReleaseArtifacts(
                 releaseId: releaseId,
                 platform: platformName,
-                aarPath: aarPath,
-                extractedAarDir: extractedAarPath,
+                aarPath: p.join(tempDir.path, aarPath),
+                extractedAarDir: p.join(tempDir.path, extractedAarPath),
                 architectures: ShorebirdBuildMixin.allAndroidArchitectures,
               ),
               getCurrentDirectory: () => tempDir,
@@ -1202,8 +1200,8 @@ void main() {
                   codePushClientWrapper.createAndroidArchiveReleaseArtifacts(
                 releaseId: releaseId,
                 platform: platformName,
-                aarPath: aarPath,
-                extractedAarDir: extractedAarPath,
+                aarPath: p.join(tempDir.path, aarPath),
+                extractedAarDir: p.join(tempDir.path, extractedAarPath),
                 architectures: ShorebirdBuildMixin.allAndroidArchitectures,
               ),
               getCurrentDirectory: () => tempDir,
