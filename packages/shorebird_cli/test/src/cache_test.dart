@@ -97,25 +97,31 @@ void main() {
 
     group('clear', () {
       test('deletes the cache directory', () async {
-        Cache.shorebirdCacheDirectory.createSync(recursive: true);
-        expect(Cache.shorebirdCacheDirectory.existsSync(), isTrue);
-        cache.clear();
-        expect(Cache.shorebirdCacheDirectory.existsSync(), isFalse);
+        runWithOverrides(() {
+          Cache.shorebirdCacheDirectory.createSync(recursive: true);
+          expect(Cache.shorebirdCacheDirectory.existsSync(), isTrue);
+          cache.clear();
+          expect(Cache.shorebirdCacheDirectory.existsSync(), isFalse);
+        });
       });
 
       test('does nothing if directory does not exist', () {
-        expect(Cache.shorebirdCacheDirectory.existsSync(), isFalse);
-        cache.clear();
-        expect(Cache.shorebirdCacheDirectory.existsSync(), isFalse);
+        runWithOverrides(() {
+          expect(Cache.shorebirdCacheDirectory.existsSync(), isFalse);
+          cache.clear();
+          expect(Cache.shorebirdCacheDirectory.existsSync(), isFalse);
+        });
       });
     });
 
     group('updateAll', () {
       group('patch', () {
         test('downloads correct artifacts', () async {
-          expect(cache.getArtifactDirectory('patch').existsSync(), isFalse);
-          await expectLater(cache.updateAll(), completes);
-          expect(cache.getArtifactDirectory('patch').existsSync(), isTrue);
+          await runWithOverrides(() async {
+            expect(cache.getArtifactDirectory('patch').existsSync(), isFalse);
+            await expectLater(cache.updateAll(), completes);
+            expect(cache.getArtifactDirectory('patch').existsSync(), isTrue);
+          });
         });
 
         test('pull correct artifact for MacOS', () async {
@@ -170,7 +176,10 @@ void main() {
           when(() => platform.isWindows).thenReturn(false);
           when(() => platform.isLinux).thenReturn(true);
 
-          await expectLater(runWithOverrides(cache.updateAll), completes);
+          await expectLater(
+            runWithOverrides(cache.updateAll),
+            completes,
+          );
           final request = verify(() => httpClient.send(captureAny()))
               .captured
               .first as http.BaseRequest;
