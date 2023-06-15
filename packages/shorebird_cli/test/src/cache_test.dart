@@ -129,9 +129,7 @@ void main() {
           when(() => platform.isWindows).thenReturn(false);
           when(() => platform.isLinux).thenReturn(false);
 
-          await runWithOverrides(
-            () async => expectLater(cache.updateAll(), completes),
-          );
+          await expectLater(runWithOverrides(cache.updateAll), completes);
 
           final request = verify(() => httpClient.send(captureAny()))
               .captured
@@ -152,10 +150,7 @@ void main() {
           when(() => platform.isWindows).thenReturn(true);
           when(() => platform.isLinux).thenReturn(false);
 
-          await expectLater(
-            runWithOverrides(cache.updateAll),
-            completes,
-          );
+          await expectLater(runWithOverrides(cache.updateAll), completes);
 
           final request = verify(() => httpClient.send(captureAny()))
               .captured
@@ -176,14 +171,11 @@ void main() {
           when(() => platform.isWindows).thenReturn(false);
           when(() => platform.isLinux).thenReturn(true);
 
-          await expectLater(
-            runWithOverrides(cache.updateAll),
-            completes,
-          );
+          await expectLater(runWithOverrides(cache.updateAll), completes);
+
           final request = verify(() => httpClient.send(captureAny()))
               .captured
               .first as http.BaseRequest;
-
           expect(
             request.url,
             equals(
