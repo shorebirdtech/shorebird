@@ -334,7 +334,6 @@ aab artifact already exists, continuing...''',
     required String aarPath,
     required String extractedAarDir,
     required Map<Arch, ArchMetadata> architectures,
-    String? flavor,
   }) async {
     final createArtifactProgress = logger.progress('Creating artifacts');
 
