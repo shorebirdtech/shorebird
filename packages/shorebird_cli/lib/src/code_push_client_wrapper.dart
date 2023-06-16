@@ -527,4 +527,18 @@ aar artifact already exists, continuing...''',
 
     await promotePatch(patchId: patch.id, channel: channel);
   }
+
+  Future<List<AppUsage>> getUsage() async {
+    final progress = logger.progress('Fetching usage');
+    final List<AppUsage>? appsUsage;
+    try {
+      appsUsage = await codePushClient.getUsage();
+      progress.complete();
+    } catch (error) {
+      progress.fail(error.toString());
+      exit(ExitCode.software.code);
+    }
+
+    return appsUsage;
+  }
 }
