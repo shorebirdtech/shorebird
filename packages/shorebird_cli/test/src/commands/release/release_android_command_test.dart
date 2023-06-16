@@ -214,7 +214,7 @@ flutter:
         ),
       ).thenAnswer((_) async => null);
       when(
-        () => codePushClientWrapper.verifyCanRelease(
+        () => codePushClientWrapper.ensureReleaseHasNoArtifacts(
           existingRelease: any(named: 'existingRelease'),
           platform: any(named: 'platform'),
         ),

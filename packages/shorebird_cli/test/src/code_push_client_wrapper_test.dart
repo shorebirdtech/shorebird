@@ -348,7 +348,7 @@ void main() {
 
             await expectLater(
               runWithOverrides(
-                () async => codePushClientWrapper.verifyCanRelease(
+                () async => codePushClientWrapper.ensureReleaseHasNoArtifacts(
                   existingRelease: release,
                   platform: platformName,
                 ),
@@ -378,7 +378,7 @@ Please bump your version number and try again.''',
 
             await expectLater(
               runWithOverrides(
-                () => codePushClientWrapper.verifyCanRelease(
+                () => codePushClientWrapper.ensureReleaseHasNoArtifacts(
                   existingRelease: release,
                   platform: platformName,
                 ),

@@ -111,7 +111,7 @@ make smaller updates to your app.
     );
 
     if (existingRelease != null) {
-      await codePushClientWrapper.verifyCanRelease(
+      await codePushClientWrapper.ensureReleaseHasNoArtifacts(
         existingRelease: existingRelease,
         platform: platformName,
       );

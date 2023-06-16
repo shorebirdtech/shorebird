@@ -126,7 +126,7 @@ Did you forget to run "shorebird init"?''',
 
   /// Exits if [platform] release artifacts already exist for an
   /// [existingRelease].
-  Future<void> verifyCanRelease({
+  Future<void> ensureReleaseHasNoArtifacts({
     required Release existingRelease,
     required String platform,
   }) async {
