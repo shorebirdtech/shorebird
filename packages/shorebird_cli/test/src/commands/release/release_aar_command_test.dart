@@ -166,6 +166,7 @@ flutter:
       shorebirdProcess = _MockShorebirdProcess();
       shorebirdRoot = Directory.systemTemp.createTempSync();
 
+      registerFallbackValue(release);
       registerFallbackValue(shorebirdProcess);
 
       when(() => auth.client).thenReturn(httpClient);
@@ -224,6 +225,12 @@ flutter:
           releaseVersion: any(named: 'releaseVersion'),
         ),
       ).thenAnswer((_) async => null);
+      when(
+        () => codePushClientWrapper.ensureReleaseHasNoArtifacts(
+          existingRelease: any(named: 'existingRelease'),
+          platform: any(named: 'platform'),
+        ),
+      ).thenAnswer((_) async => {});
       when(
         () => codePushClientWrapper.createRelease(
           appId: any(named: 'appId'),
@@ -337,29 +344,6 @@ flutter:
       ).called(1);
       verify(() => progress.fail(any(that: contains('Failed to build'))))
           .called(1);
-    });
-
-    test('throws error when existing releases exists.', () async {
-      when(
-        () => codePushClientWrapper.maybeGetRelease(
-          appId: any(named: 'appId'),
-          releaseVersion: any(named: 'releaseVersion'),
-        ),
-      ).thenAnswer((_) async => release);
-      final tempDir = setUpTempDir();
-      setUpTempArtifacts(tempDir);
-
-      final exitCode = await IOOverrides.runZoned(
-        () => runWithOverrides(command.run),
-        getCurrentDirectory: () => tempDir,
-      );
-
-      verify(
-        () => logger.err('''
-It looks like you have an existing release for version ${lightCyan.wrap(versionName)}.
-Please bump your version number and try again.'''),
-      ).called(1);
-      expect(exitCode, ExitCode.software.code);
     });
 
     test('aborts when user opts out', () async {
@@ -493,6 +477,32 @@ flavors:
           architectures: any(named: 'architectures'),
         ),
       ).called(1);
+    });
+
+    test('does not create new release if existing release is present',
+        () async {
+      when(
+        () => codePushClientWrapper.maybeGetRelease(
+          appId: any(named: 'appId'),
+          releaseVersion: any(named: 'releaseVersion'),
+        ),
+      ).thenAnswer((_) async => release);
+      final tempDir = setUpTempDir();
+      setUpTempArtifacts(tempDir);
+
+      final exitCode = await IOOverrides.runZoned(
+        () => runWithOverrides(command.run),
+        getCurrentDirectory: () => tempDir,
+      );
+
+      expect(exitCode, ExitCode.success.code);
+      verifyNever(
+        () => codePushClientWrapper.createRelease(
+          appId: any(named: 'appId'),
+          version: any(named: 'version'),
+          flutterRevision: any(named: 'flutterRevision'),
+        ),
+      );
     });
 
     test('prints flutter validation warnings', () async {

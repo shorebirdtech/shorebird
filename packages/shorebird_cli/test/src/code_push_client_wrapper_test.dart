@@ -335,6 +335,60 @@ void main() {
     });
 
     group('release', () {
+      group('verifyCanRelease', () {
+        test(
+          '''exits with code 70 if release artifacts exist for the given release and platform''',
+          () async {
+            when(
+              () => codePushClient.getReleaseArtifacts(
+                releaseId: any(named: 'releaseId'),
+                platform: any(named: 'platform'),
+              ),
+            ).thenAnswer((_) async => [releaseArtifact]);
+
+            await expectLater(
+              runWithOverrides(
+                () async => codePushClientWrapper.ensureReleaseHasNoArtifacts(
+                  existingRelease: release,
+                  platform: platformName,
+                ),
+              ),
+              exitsWithCode(ExitCode.software),
+            );
+
+            verify(
+              () => logger.err(
+                '''
+It looks like you have an existing $platformName release for version ${lightCyan.wrap(release.version)}.
+Please bump your version number and try again.''',
+              ),
+            ).called(1);
+          },
+        );
+
+        test(
+          '''completes without error if release artifacts exist for the given release and platform''',
+          () async {
+            when(
+              () => codePushClient.getReleaseArtifacts(
+                releaseId: any(named: 'releaseId'),
+                platform: any(named: 'platform'),
+              ),
+            ).thenAnswer((_) async => []);
+
+            await expectLater(
+              runWithOverrides(
+                () => codePushClientWrapper.ensureReleaseHasNoArtifacts(
+                  existingRelease: release,
+                  platform: platformName,
+                ),
+              ),
+              completes,
+            );
+          },
+        );
+      });
+
       group('getRelease', () {
         test('exits with code 70 when fetching release fails', () async {
           const error = 'something went wrong';
@@ -544,7 +598,7 @@ void main() {
         test('exits with code 70 if fetching release artifact fails', () async {
           const error = 'something went wrong';
           when(
-            () => codePushClient.getReleaseArtifact(
+            () => codePushClient.getReleaseArtifacts(
               releaseId: any(named: 'releaseId'),
               arch: any(named: 'arch'),
               platform: any(named: 'platform'),
@@ -564,15 +618,42 @@ void main() {
           verify(() => progress.fail(error)).called(1);
         });
 
-        test('returns release artifacts when release artifacts exist',
-            () async {
+        test('exits with code 70 if release artifact does not exist', () async {
           when(
-            () => codePushClient.getReleaseArtifact(
+            () => codePushClient.getReleaseArtifacts(
               releaseId: any(named: 'releaseId'),
               arch: any(named: 'arch'),
               platform: any(named: 'platform'),
             ),
-          ).thenAnswer((_) async => releaseArtifact);
+          ).thenAnswer((_) async => []);
+
+          await expectLater(
+            () async => runWithOverrides(
+              () => codePushClientWrapper.getReleaseArtifacts(
+                releaseId: releaseId,
+                architectures: archMap,
+                platform: platformName,
+              ),
+            ),
+            exitsWithCode(ExitCode.software),
+          );
+
+          verify(
+            () => progress.fail(
+              '''No artifact found for architecture aarch64 in release $releaseId''',
+            ),
+          ).called(1);
+        });
+
+        test('returns release artifacts when release artifacts exist',
+            () async {
+          when(
+            () => codePushClient.getReleaseArtifacts(
+              releaseId: any(named: 'releaseId'),
+              arch: any(named: 'arch'),
+              platform: any(named: 'platform'),
+            ),
+          ).thenAnswer((_) async => [releaseArtifact]);
 
           final result = await runWithOverrides(
             () => codePushClientWrapper.getReleaseArtifacts(
@@ -591,7 +672,7 @@ void main() {
         test('exits with code 70 if fetching release artifact fails', () async {
           const error = 'something went wrong';
           when(
-            () => codePushClient.getReleaseArtifact(
+            () => codePushClient.getReleaseArtifacts(
               releaseId: any(named: 'releaseId'),
               arch: any(named: 'arch'),
               platform: any(named: 'platform'),
@@ -614,12 +695,12 @@ void main() {
 
         test('exits with code 70 if release artifact does not exist', () async {
           when(
-            () => codePushClient.getReleaseArtifact(
+            () => codePushClient.getReleaseArtifacts(
               releaseId: any(named: 'releaseId'),
               arch: any(named: 'arch'),
               platform: any(named: 'platform'),
             ),
-          ).thenThrow(CodePushNotFoundException(message: 'not found'));
+          ).thenAnswer((_) async => []);
 
           await expectLater(
             () async => runWithOverrides(
@@ -632,19 +713,23 @@ void main() {
             exitsWithCode(ExitCode.software),
           );
 
-          verify(() => progress.fail('not found')).called(1);
+          verify(
+            () => progress.fail(
+              '''No artifact found for architecture arm64 in release $releaseId''',
+            ),
+          ).called(1);
         });
 
         test(
           'returns release artifact if release artifact exists',
           () async {
             when(
-              () => codePushClient.getReleaseArtifact(
+              () => codePushClient.getReleaseArtifacts(
                 releaseId: any(named: 'releaseId'),
                 arch: any(named: 'arch'),
                 platform: any(named: 'platform'),
               ),
-            ).thenAnswer((_) async => releaseArtifact);
+            ).thenAnswer((_) async => [releaseArtifact]);
 
             final result = await runWithOverrides(
               () => codePushClientWrapper.getReleaseArtifact(
@@ -664,7 +749,7 @@ void main() {
         test('exits with code 70 if fetching release artifact fails', () async {
           const error = 'something went wrong';
           when(
-            () => codePushClient.getReleaseArtifact(
+            () => codePushClient.getReleaseArtifacts(
               releaseId: any(named: 'releaseId'),
               arch: any(named: 'arch'),
               platform: any(named: 'platform'),
@@ -687,12 +772,12 @@ void main() {
 
         test('returns null if release artifact does not exist', () async {
           when(
-            () => codePushClient.getReleaseArtifact(
+            () => codePushClient.getReleaseArtifacts(
               releaseId: any(named: 'releaseId'),
               arch: any(named: 'arch'),
               platform: any(named: 'platform'),
             ),
-          ).thenThrow(CodePushNotFoundException(message: 'not found'));
+          ).thenAnswer((_) async => []);
 
           final result = await runWithOverrides(
             () => codePushClientWrapper.maybeGetReleaseArtifact(
@@ -710,12 +795,12 @@ void main() {
           'returns release artifact if release artifact exists',
           () async {
             when(
-              () => codePushClient.getReleaseArtifact(
+              () => codePushClient.getReleaseArtifacts(
                 releaseId: any(named: 'releaseId'),
                 arch: any(named: 'arch'),
                 platform: any(named: 'platform'),
               ),
-            ).thenAnswer((_) async => releaseArtifact);
+            ).thenAnswer((_) async => [releaseArtifact]);
 
             final result = await runWithOverrides(
               () => codePushClientWrapper.maybeGetReleaseArtifact(

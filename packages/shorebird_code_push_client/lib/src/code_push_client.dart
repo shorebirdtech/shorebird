@@ -419,17 +419,18 @@ class CodePushClient {
         .toList();
   }
 
-  /// Get a release artifact for a specific [releaseId], [arch], and [platform].
-  Future<ReleaseArtifact> getReleaseArtifact({
+  /// Get all release artifacts for a specific [releaseId]
+  /// and optional [arch] and [platform].
+  Future<List<ReleaseArtifact>> getReleaseArtifacts({
     required int releaseId,
-    required String arch,
-    required String platform,
+    String? arch,
+    String? platform,
   }) async {
     final response = await _httpClient.get(
       Uri.parse('$_v1/releases/$releaseId/artifacts').replace(
         queryParameters: {
-          'arch': arch,
-          'platform': platform,
+          if (arch != null) 'arch': arch,
+          if (platform != null) 'platform': platform,
         },
       ),
     );
@@ -438,8 +439,10 @@ class CodePushClient {
       throw _parseErrorResponse(response.statusCode, response.body);
     }
 
-    final body = json.decode(response.body) as Map<String, dynamic>;
-    return ReleaseArtifact.fromJson(body);
+    final decoded = GetReleaseArtifactsResponse.fromJson(
+      json.decode(response.body) as Map<String, dynamic>,
+    );
+    return decoded.artifacts;
   }
 
   /// Promote the [patchId] to the [channelId].

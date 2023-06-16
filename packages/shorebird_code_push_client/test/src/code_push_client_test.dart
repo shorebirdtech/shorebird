@@ -1753,14 +1753,14 @@ void main() {
       });
     });
 
-    group('getReleaseArtifact', () {
+    group('getReleaseArtifacts', () {
       const releaseId = 0;
       const arch = 'aarch64';
       const platform = 'android';
 
       test('makes the correct request', () async {
         codePushClient
-            .getReleaseArtifact(
+            .getReleaseArtifacts(
               releaseId: releaseId,
               arch: arch,
               platform: platform,
@@ -1788,7 +1788,7 @@ void main() {
         );
 
         expect(
-          codePushClient.getReleaseArtifact(
+          codePushClient.getReleaseArtifacts(
             releaseId: releaseId,
             arch: arch,
             platform: platform,
@@ -1812,7 +1812,7 @@ void main() {
         );
 
         expect(
-          codePushClient.getReleaseArtifact(
+          codePushClient.getReleaseArtifacts(
             releaseId: releaseId,
             arch: arch,
             platform: platform,
@@ -1828,24 +1828,30 @@ void main() {
       });
 
       test('completes when request succeeds', () async {
-        final expected = ReleaseArtifact(
-          id: 0,
-          releaseId: releaseId,
-          arch: arch,
-          platform: platform,
-          url: 'https://example.com',
-          hash: '#',
-          size: 42,
-        );
+        final expected = [
+          ReleaseArtifact(
+            id: 0,
+            releaseId: releaseId,
+            arch: arch,
+            platform: platform,
+            url: 'https://example.com',
+            hash: '#',
+            size: 42,
+          )
+        ];
 
         when(() => httpClient.send(any())).thenAnswer(
           (_) async => http.StreamedResponse(
-            Stream.value(utf8.encode(json.encode(expected))),
+            Stream.value(
+              utf8.encode(
+                json.encode(GetReleaseArtifactsResponse(artifacts: expected)),
+              ),
+            ),
             HttpStatus.ok,
           ),
         );
 
-        final actual = await codePushClient.getReleaseArtifact(
+        final actual = await codePushClient.getReleaseArtifacts(
           releaseId: releaseId,
           arch: arch,
           platform: platform,

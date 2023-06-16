@@ -124,6 +124,35 @@ Did you forget to run "shorebird init"?''',
     }
   }
 
+  /// Exits if [platform] release artifacts already exist for an
+  /// [existingRelease].
+  Future<void> ensureReleaseHasNoArtifacts({
+    required Release existingRelease,
+    required String platform,
+  }) async {
+    logger.detail('Verifying ability to release');
+
+    final artifacts = await codePushClient.getReleaseArtifacts(
+      releaseId: existingRelease.id,
+      platform: platform,
+    );
+
+    logger.detail(
+      '''
+Artifacts for release:${existingRelease.version} platform:$platform
+  $artifacts''',
+    );
+
+    if (artifacts.isNotEmpty) {
+      logger.err(
+        '''
+It looks like you have an existing $platform release for version ${lightCyan.wrap(existingRelease.version)}.
+Please bump your version number and try again.''',
+      );
+      exit(ExitCode.software.code);
+    }
+  }
+
   Future<Release> getRelease({
     required String appId,
     required String releaseVersion,
@@ -189,18 +218,26 @@ Please create a release using "shorebird release" and try again.
     required Map<Arch, ArchMetadata> architectures,
     required String platform,
   }) async {
+    // TODO(bryanoltman): update this function to only make one call to
+    // getReleaseArtifacts.
     final releaseArtifacts = <Arch, ReleaseArtifact>{};
     final fetchReleaseArtifactProgress = logger.progress(
       'Fetching release artifacts',
     );
     for (final entry in architectures.entries) {
       try {
-        final releaseArtifact = await codePushClient.getReleaseArtifact(
+        final artifacts = await codePushClient.getReleaseArtifacts(
           releaseId: releaseId,
           arch: entry.value.arch,
           platform: platform,
         );
-        releaseArtifacts[entry.key] = releaseArtifact;
+        if (artifacts.isEmpty) {
+          throw CodePushNotFoundException(
+            message:
+                '''No artifact found for architecture ${entry.value.arch} in release $releaseId''',
+          );
+        }
+        releaseArtifacts[entry.key] = artifacts.first;
       } catch (error) {
         fetchReleaseArtifactProgress.fail('$error');
         exit(ExitCode.software.code);
@@ -220,13 +257,19 @@ Please create a release using "shorebird release" and try again.
       'Fetching $arch artifact',
     );
     try {
-      final artifact = await codePushClient.getReleaseArtifact(
+      final artifacts = await codePushClient.getReleaseArtifacts(
         releaseId: releaseId,
         arch: arch,
         platform: platform,
       );
+      if (artifacts.isEmpty) {
+        throw CodePushNotFoundException(
+          message:
+              '''No artifact found for architecture $arch in release $releaseId''',
+        );
+      }
       fetchReleaseArtifactProgress.complete();
-      return artifact;
+      return artifacts.first;
     } catch (error) {
       fetchReleaseArtifactProgress.fail('$error');
       exit(ExitCode.software.code);
@@ -242,13 +285,19 @@ Please create a release using "shorebird release" and try again.
       'Fetching $arch artifact',
     );
     try {
-      final artifact = await codePushClient.getReleaseArtifact(
+      final artifacts = await codePushClient.getReleaseArtifacts(
         releaseId: releaseId,
         arch: arch,
         platform: platform,
       );
+      if (artifacts.isEmpty) {
+        throw CodePushNotFoundException(
+          message:
+              '''No artifact found for architecture $arch in release $releaseId''',
+        );
+      }
       fetchReleaseArtifactProgress.complete();
-      return artifact;
+      return artifacts.first;
     } on CodePushNotFoundException {
       fetchReleaseArtifactProgress.complete();
       return null;
