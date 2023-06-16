@@ -18,10 +18,11 @@ class ShorebirdFlutterValidator extends Validator {
 
   final _flutterVersionRegex = RegExp(r'Flutter (\d+.\d+.\d+)');
 
-  // coverage:ignore-start
   @override
   String get description => 'Flutter install is correct';
-  // coverage:ignore-end
+
+  @override
+  ValidatorScope get scope => ValidatorScope.installation;
 
   @override
   Future<List<ValidationIssue>> validate(ShorebirdProcess process) async {

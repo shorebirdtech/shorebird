@@ -11,10 +11,11 @@ class ShorebirdVersionValidator extends Validator {
   final Future<bool> Function({required String workingDirectory})
       isShorebirdVersionCurrent;
 
-  // coverage:ignore-start
   @override
   String get description => 'Shorebird is up-to-date';
-  // coverage:ignore-end
+
+  @override
+  ValidatorScope get scope => ValidatorScope.installation;
 
   @override
   Future<List<ValidationIssue>> validate(ShorebirdProcess process) async {

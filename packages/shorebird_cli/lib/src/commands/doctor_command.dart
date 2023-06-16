@@ -42,6 +42,8 @@ class DoctorCommand extends ShorebirdCommand with ShorebirdVersionMixin {
   @override
   Future<int> run() async {
     final shouldFix = results['fix'] == true;
+    final isInProject =
+        ShorebirdEnvironment.getShorebirdYamlFile().existsSync();
 
     logger.info('''
 
@@ -51,6 +53,10 @@ Shorebird Engine • revision ${ShorebirdEnvironment.shorebirdEngineRevision}'''
     final allIssues = <ValidationIssue>[];
     final allFixableIssues = <ValidationIssue>[];
     for (final validator in validators) {
+      if (validator.scope == ValidatorScope.project && !isInProject) {
+        continue;
+      }
+
       final failedFixes = <ValidationIssue, dynamic>{};
       final progress = logger.progress(validator.description);
       final issues = await validator.validate(process);

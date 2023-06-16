@@ -19,11 +19,12 @@ class AndroidInternetPermissionValidator extends Validator {
     'AndroidManifest.xml',
   );
 
-  // coverage:ignore-start
   @override
   String get description =>
       'AndroidManifest.xml files contain INTERNET permission';
-  // coverage:ignore-end
+
+  @override
+  ValidatorScope get scope => ValidatorScope.project;
 
   @override
   Future<List<ValidationIssue>> validate(ShorebirdProcess process) async {
