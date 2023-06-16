@@ -7,6 +7,7 @@ import 'package:shorebird_cli/src/shorebird_config_mixin.dart';
 import 'package:shorebird_cli/src/shorebird_create_app_mixin.dart';
 import 'package:shorebird_cli/src/shorebird_validation_mixin.dart';
 import 'package:shorebird_code_push_client/shorebird_code_push_client.dart';
+import 'package:shorebird_cli/src/code_push_client_wrapper.dart';
 
 /// {@template create_app_command}
 ///

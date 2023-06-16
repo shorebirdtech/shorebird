@@ -406,6 +406,18 @@ aar artifact already exists, continuing...''',
     }
   }
 
+  Future<App> createApp({required String displayName}) async {
+    // final createAppProgress = logger.progress('Creating App');
+    try {
+      final patch = await codePushClient.createApp(displayName: displayName);
+      // createAppProgress.complete();
+      return patch;
+    } catch (error) {
+      logger.err('$error');
+      exit(ExitCode.software.code);
+    }
+  }
+
   @visibleForTesting
   Future<void> createPatchArtifacts({
     required Patch patch,
