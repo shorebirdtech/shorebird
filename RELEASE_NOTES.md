@@ -7,10 +7,10 @@ This section contains past updates we've sent to customers via Discord.
 We've just released Shorebird CLI v0.5.0 🎉
 
 - 🐦 Upgrading to Flutter 3.10.5
-- 📈 New Usage Command (`shorebird account usage`)
+- 📈 New Usage Command to show how many patches are installed (`shorebird account usage`)
   - In preparation for usage-based pricing
 - 🍎 Additional iOS preparation
-- 🧑‍⚕️ `shorebird doctor` supports being run outside of a project
+- 🧑‍⚕️ `shorebird doctor` supports being run outside of a shorebird project directory
 
 📚 Release notes can be found at https://github.com/shorebirdtech/shorebird/releases/tag/v0.5.0
 
