@@ -1860,6 +1860,81 @@ void main() {
       });
     });
 
+    group('getUsage', () {
+      test('makes the correct request', () async {
+        codePushClient.getUsage().ignore();
+        final request = verify(() => httpClient.send(captureAny()))
+            .captured
+            .single as http.BaseRequest;
+        expect(request.method, equals('GET'));
+        expect(request.url, equals(v1('usage')));
+        expect(request.hasStandardHeaders, isTrue);
+      });
+
+      test('throws an exception if the http request fails (unknown)', () async {
+        when(() => httpClient.send(any())).thenAnswer(
+          (_) async => http.StreamedResponse(
+            const Stream.empty(),
+            HttpStatus.failedDependency,
+          ),
+        );
+
+        expect(
+          codePushClient.getUsage(),
+          throwsA(
+            isA<CodePushException>().having(
+              (e) => e.message,
+              'message',
+              CodePushClient.unknownErrorMessage,
+            ),
+          ),
+        );
+      });
+
+      test('throws an exception if the http request fails', () async {
+        when(() => httpClient.send(any())).thenAnswer(
+          (_) async => http.StreamedResponse(
+            Stream.value(utf8.encode(json.encode(errorResponse.toJson()))),
+            HttpStatus.failedDependency,
+          ),
+        );
+
+        expect(
+          codePushClient.getUsage(),
+          throwsA(
+            isA<CodePushException>().having(
+              (e) => e.message,
+              'message',
+              errorResponse.message,
+            ),
+          ),
+        );
+      });
+
+      test('completes when request succeeds', () async {
+        final expected = [
+          AppUsage(
+            id: 'test-app-id',
+            platforms: [],
+          )
+        ];
+
+        when(() => httpClient.send(any())).thenAnswer(
+          (_) async => http.StreamedResponse(
+            Stream.value(
+              utf8.encode(
+                json.encode(GetUsageResponse(apps: expected)),
+              ),
+            ),
+            HttpStatus.ok,
+          ),
+        );
+
+        final actual = await codePushClient.getUsage();
+        expect(json.encode(actual), equals(json.encode(expected)));
+      });
+    });
+
     group('promotePatch', () {
       const patchId = 0;
       const channelId = 0;
