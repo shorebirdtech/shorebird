@@ -2,6 +2,22 @@
 
 This section contains past updates we've sent to customers via Discord.
 
+## 0.5.0 (June 16, 2023)
+
+We've just released Shorebird CLI v0.4.5 🎉
+
+- 🐦 Upgrading to Flutter 3.10.5
+- 📈 New Usage Command (`shorebird account usage`)
+  - In preparation for usage-based pricing
+- 🍎 Additional iOS preparation
+- 🧑‍⚕️ `shorebird doctor` supports being run outside of a project
+
+📚 Release notes can be found at https://github.com/shorebirdtech/shorebird/releases/tag/v0.4.5
+
+As always, you can upgrade using `shorebird upgrade`
+
+Please let us know if we can help!
+
 ## 0.4.5 (June 14, 2023)
 
 We've just released Shorebird CLI v0.4.5 🎉
