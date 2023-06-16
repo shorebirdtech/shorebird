@@ -1557,6 +1557,63 @@ Please bump your version number and try again.''',
           ).called(1);
         });
       });
+
+      group('getUsage', () {
+        test('exits with code 70 when getUsage throws an exception', () async {
+          when(() => codePushClient.getUsage()).thenThrow(Exception('oh no!'));
+
+          await expectLater(
+            () => runWithOverrides(codePushClientWrapper.getUsage),
+            exitsWithCode(ExitCode.software),
+          );
+
+          verify(() => progress.fail(any(that: contains('oh no!')))).called(1);
+        });
+
+        test('returns usage when succeeds', () async {
+          const usage = [
+            AppUsage(
+              id: 'test-app-id',
+              platforms: [
+                PlatformUsage(
+                  name: 'android',
+                  arches: [
+                    ArchUsage(
+                      name: 'aarch64',
+                      patches: [
+                        PatchUsage(id: 0, installCount: 10),
+                        PatchUsage(id: 1, installCount: 10)
+                      ],
+                    ),
+                    ArchUsage(
+                      name: 'arm',
+                      patches: [
+                        PatchUsage(id: 0, installCount: 10),
+                        PatchUsage(id: 1, installCount: 10)
+                      ],
+                    ),
+                    ArchUsage(
+                      name: 'x86',
+                      patches: [
+                        PatchUsage(id: 0, installCount: 1),
+                        PatchUsage(id: 1, installCount: 1)
+                      ],
+                    )
+                  ],
+                )
+              ],
+            ),
+          ];
+          when(() => codePushClient.getUsage()).thenAnswer((_) async => usage);
+
+          await expectLater(
+            runWithOverrides(codePushClientWrapper.getUsage),
+            completion(equals(usage)),
+          );
+
+          verify(() => progress.complete()).called(1);
+        });
+      });
     });
   });
 }
