@@ -13,15 +13,12 @@ class _MockAuth extends Mock implements Auth {}
 class _MockCodePushClientWrapper extends Mock
     implements CodePushClientWrapper {}
 
-class _MockCodePushClient extends Mock implements CodePushClient {}
-
 class _MockLogger extends Mock implements Logger {}
 
 class _MockProgress extends Mock implements Progress {}
 
 void main() {
   late Auth auth;
-  late CodePushClient codePushClient;
   late CodePushClientWrapper codePushClientWrapper;
   late Logger logger;
   late Progress progress;
@@ -42,16 +39,12 @@ void main() {
 
     setUp(() {
       auth = _MockAuth();
-      codePushClient = _MockCodePushClient();
       codePushClientWrapper = _MockCodePushClientWrapper();
       logger = _MockLogger();
       progress = _MockProgress();
 
       when(() => auth.isAuthenticated).thenReturn(true);
       when(() => logger.progress(any())).thenReturn(progress);
-      when(
-        () => codePushClientWrapper.codePushClient,
-      ).thenReturn(codePushClient);
 
       command = runWithOverrides(AccountUsageCommand.new);
     });
@@ -70,15 +63,6 @@ void main() {
       verify(
         () => logger.err(any(that: contains('You must be logged in to run'))),
       ).called(1);
-    });
-
-    test('exits with code 70 when getUsage throws an exception', () async {
-      when(() => codePushClient.getUsage()).thenThrow(Exception('oh no!'));
-
-      final result = await runWithOverrides(command.run);
-
-      expect(result, ExitCode.software.code);
-      verify(() => progress.fail(any(that: contains('oh no!')))).called(1);
     });
 
     test('exits with code 0 when usage is fetched.', () async {
@@ -115,7 +99,9 @@ void main() {
           ],
         ),
       ];
-      when(() => codePushClient.getUsage()).thenAnswer((_) async => usage);
+      when(
+        () => codePushClientWrapper.getUsage(),
+      ).thenAnswer((_) async => usage);
 
       final result = await runWithOverrides(command.run);
 

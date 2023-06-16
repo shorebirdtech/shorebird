@@ -29,19 +29,11 @@ class AccountUsageCommand extends ShorebirdCommand
       return e.exitCode.code;
     }
 
-    final progress = logger.progress('Fetching usage');
-    final List<AppUsage>? appsUsage;
-    try {
-      appsUsage = await codePushClientWrapper.codePushClient.getUsage();
-      progress.complete();
-    } catch (error) {
-      progress.fail(error.toString());
-      return ExitCode.software.code;
-    }
+    final usage = await codePushClientWrapper.getUsage();
 
     logger
       ..info('📈 Usage')
-      ..info(appsUsage.prettyPrint());
+      ..info(usage.prettyPrint());
 
     return ExitCode.success.code;
   }
