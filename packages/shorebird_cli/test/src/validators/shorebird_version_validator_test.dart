@@ -71,6 +71,14 @@ void main() {
       ).thenReturn(currentShorebirdRevision);
     });
 
+    test('has a non-empty description', () {
+      expect(validator.description, isNotEmpty);
+    });
+
+    test('is not project-specific', () {
+      expect(validator.scope, ValidatorScope.installation);
+    });
+
     test('returns no issues when shorebird is up-to-date', () async {
       final results = await validator.validate(shorebirdProcess);
       expect(results, isEmpty);

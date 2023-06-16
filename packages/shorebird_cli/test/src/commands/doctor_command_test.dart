@@ -1,6 +1,9 @@
+import 'dart:io';
+
 import 'package:args/args.dart';
 import 'package:mason_logger/mason_logger.dart';
 import 'package:mocktail/mocktail.dart';
+import 'package:path/path.dart' as p;
 import 'package:scoped/scoped.dart';
 import 'package:shorebird_cli/src/commands/commands.dart';
 import 'package:shorebird_cli/src/logger.dart';
@@ -29,6 +32,7 @@ class _MockShorebirdProcess extends Mock implements ShorebirdProcess {}
 void main() {
   group('doctor', () {
     const androidValidatorDescription = 'Android';
+    const appId = 'test-app-id';
 
     late ArgResults argResults;
     late Logger logger;
@@ -41,6 +45,14 @@ void main() {
 
     R runWithOverrides<R>(R Function() body) {
       return runScoped(body, values: {loggerRef.overrideWith(() => logger)});
+    }
+
+    Directory setUpTempDir() {
+      final tempDir = Directory.systemTemp.createTempSync();
+      File(
+        p.join(tempDir.path, 'shorebird.yaml'),
+      ).writeAsStringSync('app_id: $appId');
+      return tempDir;
     }
 
     setUp(() {
@@ -66,6 +78,8 @@ void main() {
           .thenReturn('$AndroidInternetPermissionValidator');
       when(() => androidInternetPermissionValidator.description)
           .thenReturn(androidValidatorDescription);
+      when(() => androidInternetPermissionValidator.scope)
+          .thenReturn(ValidatorScope.project);
       when(() => androidInternetPermissionValidator.validate(any()))
           .thenAnswer((_) async => []);
 
@@ -73,6 +87,8 @@ void main() {
           .thenReturn('$ShorebirdVersionValidator');
       when(() => shorebirdVersionValidator.description)
           .thenReturn('Shorebird Version');
+      when(() => shorebirdVersionValidator.scope)
+          .thenReturn(ValidatorScope.installation);
       when(() => shorebirdVersionValidator.validate(any()))
           .thenAnswer((_) async => []);
 
@@ -80,6 +96,8 @@ void main() {
           .thenReturn('$ShorebirdFlutterValidator');
       when(() => shorebirdFlutterValidator.description)
           .thenReturn('Shorebird Flutter');
+      when(() => shorebirdFlutterValidator.scope)
+          .thenReturn(ValidatorScope.installation);
       when(() => shorebirdFlutterValidator.validate(any()))
           .thenAnswer((_) async => []);
 
@@ -98,7 +116,13 @@ void main() {
     });
 
     test('prints "no issues" when everything is OK', () async {
-      await runWithOverrides(command.run);
+      final tempDir = setUpTempDir();
+
+      await IOOverrides.runZoned(
+        () => runWithOverrides(command.run),
+        getCurrentDirectory: () => tempDir,
+      );
+
       for (final validator in command.validators) {
         verify(() => validator.validate(shorebirdProcess)).called(1);
       }
@@ -123,7 +147,12 @@ void main() {
         ],
       );
 
-      await runWithOverrides(command.run);
+      final tempDir = setUpTempDir();
+
+      await IOOverrides.runZoned(
+        () => runWithOverrides(command.run),
+        getCurrentDirectory: () => tempDir,
+      );
 
       for (final validator in command.validators) {
         verify(() => validator.validate(any())).called(1);
@@ -142,179 +171,221 @@ void main() {
       ).called(1);
     });
 
-    test('tells the user we can fix issues if we can', () async {
-      when(
-        () => androidInternetPermissionValidator.validate(any()),
-      ).thenAnswer(
-        (_) async => [
-          ValidationIssue(
-            severity: ValidationIssueSeverity.warning,
-            message: 'oh no!',
-            fix: () async {},
-          ),
-        ],
+    test(
+        '''does not run project-specific validators if not in a project directory''',
+        () async {
+      await IOOverrides.runZoned(
+        () => runWithOverrides(command.run),
+        getCurrentDirectory: () => Directory.systemTemp.createTempSync(),
       );
 
-      await runWithOverrides(command.run);
-
-      verify(
-        () => logger.info(
-          any(
-            that: stringContainsInOrder([
-              '1 issue can be fixed automatically',
-              'shorebird doctor --fix',
-            ]),
-          ),
-        ),
-      ).called(1);
+      verify(() => shorebirdFlutterValidator.validate(any())).called(1);
+      verify(() => shorebirdVersionValidator.validate(any())).called(1);
+      verifyNever(() => androidInternetPermissionValidator.validate(any()));
     });
 
-    test('does not tell the user we can fix issues if we cannot', () async {
-      when(
-        () => androidInternetPermissionValidator.validate(any()),
-      ).thenAnswer(
-        (_) async => [
-          const ValidationIssue(
-            severity: ValidationIssueSeverity.warning,
-            message: 'oh no!',
+    group('fix', () {
+      test('tells the user we can fix issues if we can', () async {
+        when(
+          () => androidInternetPermissionValidator.validate(any()),
+        ).thenAnswer(
+          (_) async => [
+            ValidationIssue(
+              severity: ValidationIssueSeverity.warning,
+              message: 'oh no!',
+              fix: () async {},
+            ),
+          ],
+        );
+        final tempDir = setUpTempDir();
+
+        await IOOverrides.runZoned(
+          () => runWithOverrides(command.run),
+          getCurrentDirectory: () => tempDir,
+        );
+
+        verify(
+          () => logger.info(
+            any(
+              that: stringContainsInOrder([
+                '1 issue can be fixed automatically',
+                'shorebird doctor --fix',
+              ]),
+            ),
           ),
-        ],
-      );
+        ).called(1);
+      });
 
-      await runWithOverrides(command.run);
+      test('does not tell the user we can fix issues if we cannot', () async {
+        when(
+          () => androidInternetPermissionValidator.validate(any()),
+        ).thenAnswer(
+          (_) async => [
+            const ValidationIssue(
+              severity: ValidationIssueSeverity.warning,
+              message: 'oh no!',
+            ),
+          ],
+        );
+        final tempDir = setUpTempDir();
 
-      verifyNever(
-        () => logger.info(
-          any(
-            that: stringContainsInOrder([
-              'We can fix some of these issues',
-              'shorebird doctor --fix',
-            ]),
+        await IOOverrides.runZoned(
+          () => runWithOverrides(command.run),
+          getCurrentDirectory: () => tempDir,
+        );
+
+        verifyNever(
+          () => logger.info(
+            any(
+              that: stringContainsInOrder([
+                'We can fix some of these issues',
+                'shorebird doctor --fix',
+              ]),
+            ),
           ),
-        ),
-      );
-    });
+        );
+      });
 
-    test('does not fix issues if --fix flag is not provided', () async {
-      when(() => argResults['fix']).thenReturn(false);
+      test('does not fix issues if --fix flag is not provided', () async {
+        when(() => argResults['fix']).thenReturn(false);
 
-      var fixCalled = false;
-      when(
-        () => androidInternetPermissionValidator.validate(any()),
-      ).thenAnswer(
-        (_) async => [
-          ValidationIssue(
-            severity: ValidationIssueSeverity.warning,
-            message: 'oh no!',
-            fix: () => fixCalled = true,
-          ),
-        ],
-      );
+        var fixCalled = false;
+        when(
+          () => androidInternetPermissionValidator.validate(any()),
+        ).thenAnswer(
+          (_) async => [
+            ValidationIssue(
+              severity: ValidationIssueSeverity.warning,
+              message: 'oh no!',
+              fix: () => fixCalled = true,
+            ),
+          ],
+        );
 
-      await runWithOverrides(command.run);
+        final tempDir = setUpTempDir();
 
-      expect(fixCalled, isFalse);
-      verifyNever(() => progress.update('Fixing'));
-      verify(() => progress.fail(androidValidatorDescription)).called(1);
-      verify(
-        () => androidInternetPermissionValidator.validate(any()),
-      ).called(1);
-    });
+        await IOOverrides.runZoned(
+          () => runWithOverrides(command.run),
+          getCurrentDirectory: () => tempDir,
+        );
 
-    test('fixes issues if the --fix flag is provided', () async {
-      when(() => argResults['fix']).thenReturn(true);
+        expect(fixCalled, isFalse);
+        verifyNever(() => progress.update('Fixing'));
+        verify(() => progress.fail(androidValidatorDescription)).called(1);
+        verify(
+          () => androidInternetPermissionValidator.validate(any()),
+        ).called(1);
+      });
 
-      var fixCalled = false;
-      final issues = [
-        ValidationIssue(
-          severity: ValidationIssueSeverity.warning,
-          message: 'oh no!',
-          fix: () => fixCalled = true,
-        ),
-      ];
-      when(
-        () => androidInternetPermissionValidator.validate(any()),
-      ).thenAnswer(
-        (_) async {
-          if (issues.isEmpty) return [];
-          return [issues.removeLast()];
-        },
-      );
+      test('fixes issues if the --fix flag is provided', () async {
+        when(() => argResults['fix']).thenReturn(true);
 
-      await runWithOverrides(command.run);
-
-      expect(fixCalled, isTrue);
-      verify(() => progress.update('Fixing')).called(1);
-      verify(
-        () => progress.complete(any(that: contains('1 fix applied'))),
-      ).called(1);
-      verify(
-        () => androidInternetPermissionValidator.validate(any()),
-      ).called(2);
-    });
-
-    test('does not print "fixed" if fix fails', () async {
-      when(() => argResults['fix']).thenReturn(true);
-
-      var fixCalled = false;
-      when(
-        () => androidInternetPermissionValidator.validate(any()),
-      ).thenAnswer(
-        (_) async => [
+        var fixCalled = false;
+        final issues = [
           ValidationIssue(
             severity: ValidationIssueSeverity.warning,
             message: 'oh no!',
             fix: () => fixCalled = true,
           ),
-        ],
-      );
+        ];
+        when(
+          () => androidInternetPermissionValidator.validate(any()),
+        ).thenAnswer(
+          (_) async {
+            if (issues.isEmpty) return [];
+            return [issues.removeLast()];
+          },
+        );
+        final tempDir = setUpTempDir();
 
-      await runWithOverrides(command.run);
+        await IOOverrides.runZoned(
+          () => runWithOverrides(command.run),
+          getCurrentDirectory: () => tempDir,
+        );
 
-      expect(fixCalled, isTrue);
-      verify(() => progress.update('Fixing')).called(1);
-      verify(() => progress.fail(androidValidatorDescription)).called(1);
-      verifyNever(
-        () => progress.complete(any(that: contains('fix applied'))),
-      );
-      verifyNever(
-        () => progress.complete(any(that: contains('fixes applied'))),
-      );
-      verify(
-        () => androidInternetPermissionValidator.validate(any()),
-      ).called(2);
-    });
+        expect(fixCalled, isTrue);
+        verify(() => progress.update('Fixing')).called(1);
+        verify(
+          () => progress.complete(any(that: contains('1 fix applied'))),
+        ).called(1);
+        verify(
+          () => androidInternetPermissionValidator.validate(any()),
+        ).called(2);
+      });
 
-    test('prints error and continues if fix() throws', () async {
-      when(() => argResults['fix']).thenReturn(true);
-      when(
-        () => androidInternetPermissionValidator.validate(any()),
-      ).thenAnswer(
-        (_) async => [
-          ValidationIssue(
-            severity: ValidationIssueSeverity.warning,
-            message: 'oh no!',
-            fix: () => throw Exception('oh no!'),
+      test('does not print "fixed" if fix fails', () async {
+        when(() => argResults['fix']).thenReturn(true);
+
+        var fixCalled = false;
+        when(
+          () => androidInternetPermissionValidator.validate(any()),
+        ).thenAnswer(
+          (_) async => [
+            ValidationIssue(
+              severity: ValidationIssueSeverity.warning,
+              message: 'oh no!',
+              fix: () => fixCalled = true,
+            ),
+          ],
+        );
+
+        final tempDir = setUpTempDir();
+
+        await IOOverrides.runZoned(
+          () => runWithOverrides(command.run),
+          getCurrentDirectory: () => tempDir,
+        );
+
+        expect(fixCalled, isTrue);
+        verify(() => progress.update('Fixing')).called(1);
+        verify(() => progress.fail(androidValidatorDescription)).called(1);
+        verifyNever(
+          () => progress.complete(any(that: contains('fix applied'))),
+        );
+        verifyNever(
+          () => progress.complete(any(that: contains('fixes applied'))),
+        );
+        verify(
+          () => androidInternetPermissionValidator.validate(any()),
+        ).called(2);
+      });
+
+      test('prints error and continues if fix() throws', () async {
+        when(() => argResults['fix']).thenReturn(true);
+        when(
+          () => androidInternetPermissionValidator.validate(any()),
+        ).thenAnswer(
+          (_) async => [
+            ValidationIssue(
+              severity: ValidationIssueSeverity.warning,
+              message: 'oh no!',
+              fix: () => throw Exception('oh no!'),
+            ),
+          ],
+        );
+
+        final tempDir = setUpTempDir();
+
+        await IOOverrides.runZoned(
+          () => runWithOverrides(command.run),
+          getCurrentDirectory: () => tempDir,
+        );
+
+        verify(() => progress.update('Fixing')).called(1);
+        verify(
+          () => androidInternetPermissionValidator.validate(any()),
+        ).called(2);
+        verify(
+          () => logger.err(
+            any(
+              that: stringContainsInOrder([
+                'An error occurred while attempting to fix',
+                'oh no!',
+              ]),
+            ),
           ),
-        ],
-      );
-
-      await runWithOverrides(command.run);
-
-      verify(() => progress.update('Fixing')).called(1);
-      verify(
-        () => androidInternetPermissionValidator.validate(any()),
-      ).called(2);
-      verify(
-        () => logger.err(
-          any(
-            that: stringContainsInOrder([
-              'An error occurred while attempting to fix',
-              'oh no!',
-            ]),
-          ),
-        ),
-      ).called(1);
+        ).called(1);
+      });
     });
   });
 }
