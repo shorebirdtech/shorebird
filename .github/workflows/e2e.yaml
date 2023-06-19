@@ -68,15 +68,15 @@ jobs:
       - name: Set Shorebird Credentials
         run: |
           if [[ ${{ matrix.os }} == "macos-latest" ]]; then
-            LOCATION=$HOME/Library/Application\ Support/shorebird/credentials.json
+            LOCATION="$HOME/Library/Application\ Support/shorebird/credentials.json"
             mkdir -p $(dirname $LOCATION)
             echo ${{ steps.auth.outputs.id_token }} > $LOCATION
           elif [[ ${{ matrix.os }} == "windows-latest" ]]; then
-            LOCATION=$HOME/AppData/Local/shorebird/credentials.json
+            LOCATION="$HOME/AppData/Local/shorebird/credentials.json"
             mkdir -p $(dirname $LOCATION)
             echo ${{ steps.auth.outputs.id_token }} > $LOCATION
           else
-            LOCATION=$HOME/.config/shorebird/credentials.json
+            LOCATION="$HOME/.config/shorebird/credentials.json"
             mkdir -p $(dirname $LOCATION)
             echo ${{ steps.auth.outputs.id_token }} > $LOCATION
           fi
@@ -129,15 +129,15 @@ jobs:
       - name: Set Shorebird Credentials
         run: |
           if [[ ${{ matrix.os }} == "macos-latest" ]]; then
-            LOCATION=$HOME/Library/Application\ Support/shorebird/credentials.json
+            LOCATION="$HOME/Library/Application\ Support/shorebird/credentials.json"
             mkdir -p $(dirname $LOCATION)
             echo ${{ steps.auth.outputs.id_token }} > $LOCATION
           elif [[ ${{ matrix.os }} == "windows-latest" ]]; then
-            LOCATION=$HOME/AppData/Local/shorebird/credentials.json
+            LOCATION="$HOME/AppData/Local/shorebird/credentials.json"
             mkdir -p $(dirname $LOCATION)
             echo ${{ steps.auth.outputs.id_token }} > $LOCATION
           else
-            LOCATION=$HOME/.config/shorebird/credentials.json
+            LOCATION="$HOME/.config/shorebird/credentials.json"
             mkdir -p $(dirname $LOCATION)
             echo ${{ steps.auth.outputs.id_token }} > $LOCATION
           fi
