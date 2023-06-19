@@ -1,4 +1,6 @@
+import 'dart:async';
 import 'dart:convert';
+import 'dart:io';
 
 import 'package:shorebird_cli/src/command.dart';
 import 'package:shorebird_cli/src/logger.dart';
@@ -72,6 +74,8 @@ class RunCommand extends ShorebirdCommand
     flutter.stderr.listen((event) {
       logger.err(utf8.decode(event));
     });
+
+    unawaited(flutter.stdin.addStream(stdin));
 
     return flutter.exitCode;
   }
