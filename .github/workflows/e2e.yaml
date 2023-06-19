@@ -53,9 +53,6 @@ jobs:
       - name: 📚 Git Checkout
         uses: actions/checkout@v3
 
-      - name: 🐦 Setup Flutter
-        uses: subosito/flutter-action@v2
-
       - id: auth
         name: Authenticate with Google Cloud
         uses: google-github-actions/auth@v1
@@ -77,8 +74,11 @@ jobs:
             LOCATION="$HOME/.config/shorebird/credentials.json"
           fi
           mkdir -p $(dirname $LOCATION)
-          echo "{'idToken':'${{ steps.auth.outputs.id_token }}'}" > $LOCATION
+          echo "{'accessToken':'${{ steps.auth.outputs.access_token }}','idToken':'${{ steps.auth.outputs.id_token }}','scopes':['openid','https://www.googleapis.com/auth/userinfo.email']}" > $LOCATION
           cat $LOCATION
+
+      - name: 🐦 Setup Flutter
+        uses: subosito/flutter-action@v2
 
       - name: 📦 Create a new Flutter project
         run: flutter create shorebird_init_test --empty
