@@ -33,7 +33,10 @@ jobs:
           fi
 
   verify_shorebird_init:
-    if: false # disable for now until we have a GitHub action that can handle auth
+    permissions:
+      contents: "read"
+      id-token: "write"
+
     strategy:
       fail-fast: false
       matrix:
@@ -89,6 +92,10 @@ jobs:
             echo '❌ Shorebird Init does not work.'
 
   verify_shorebird_run:
+    permissions:
+      contents: "read"
+      id-token: "write"
+
     strategy:
       fail-fast: false
       matrix:
