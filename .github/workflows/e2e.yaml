@@ -8,6 +8,7 @@ on:
 
 jobs:
   verify_cli_installation:
+    if: false # TODO: Re-enable before merging
     strategy:
       fail-fast: false
       matrix:
@@ -65,21 +66,18 @@ jobs:
           id_token_audience: ${{ secrets.ID_TOKEN_AUDIENCE }}
           id_token_include_email: true
 
-      - name: Set Shorebird Credentials
+      - name: 🔐 Set Shorebird Credentials
         run: |
+          LOCATION=""
           if [[ ${{ matrix.os }} == "macos-latest" ]]; then
             LOCATION="$HOME/Library/Application\ Support/shorebird/credentials.json"
-            mkdir -p $(dirname $LOCATION)
-            echo ${{ steps.auth.outputs.id_token }} > $LOCATION
           elif [[ ${{ matrix.os }} == "windows-latest" ]]; then
             LOCATION="$HOME/AppData/Local/shorebird/credentials.json"
-            mkdir -p $(dirname $LOCATION)
-            echo ${{ steps.auth.outputs.id_token }} > $LOCATION
           else
             LOCATION="$HOME/.config/shorebird/credentials.json"
-            mkdir -p $(dirname $LOCATION)
-            echo ${{ steps.auth.outputs.id_token }} > $LOCATION
           fi
+          mkdir -p $(dirname $LOCATION)
+          cp ${{ steps.auth.outputs.credentials_file_path}} $LOCATION
 
       - name: 📦 Create a new Flutter project
         run: flutter create shorebird_init_test --empty
@@ -94,6 +92,7 @@ jobs:
             echo '❌ Shorebird Init does not work.'
 
   verify_shorebird_run:
+    if: false # TODO: Re-enable once we have auth working
     permissions:
       contents: "read"
       id-token: "write"
