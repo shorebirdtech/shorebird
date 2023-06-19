@@ -30,3 +30,69 @@ jobs:
             echo '❌ Shorebird CLI is not installed.'
           exit 1
           fi
+
+  verify_shorebird_init:
+    if: false # disable for now until we have a GitHub action that can handle auth
+    strategy:
+      fail-fast: false
+      matrix:
+        os: [macos-latest, windows-latest, ubuntu-latest]
+
+    defaults:
+      run:
+        shell: bash
+
+    runs-on: ${{ matrix.os }}
+
+    steps:
+      - name: 📚 Git Checkout
+        uses: actions/checkout@v3
+
+      - name: 🐦 Setup Flutter
+        uses: subosito/flutter-action@v2
+
+      - name: 📦 Create a new Flutter project
+        run: flutter create shorebird_init_test --empty
+
+      - name: 🐦 Verify Shorebird Init (${{ matrix.os }})
+        run: |
+          cd shorebird_init_test
+          ../bin/shorebird init
+          if [[ -f "shorebird.yaml" ]]; then          
+            echo '✅ Shorebird Init works!'
+          else
+            echo '❌ Shorebird Init does not work.'
+
+  verify_shorebird_run:
+    if: false # disable for now until we have a GitHub action that can handle auth
+    strategy:
+      fail-fast: false
+      matrix:
+        os: [macos-latest, windows-latest, ubuntu-latest]
+
+    defaults:
+      run:
+        shell: bash
+
+    runs-on: ${{ matrix.os }}
+
+    steps:
+      - name: 📚 Git Checkout
+        uses: actions/checkout@v3
+
+      - name: 🐦 Setup Flutter
+        uses: subosito/flutter-action@v2
+
+      - name: 📦 Create a new Flutter project
+        run: flutter create shorebird_init_test --empty
+
+      - name: 🐦 Verify Shorebird Run (${{ matrix.os }})
+        run: |
+          cd shorebird_init_test
+          if [[ $(../bin/shorebird run) =~ "Starting Shorebird update" ]]; then          
+            echo '✅ Shorebird run success!'
+          else
+            echo '❌ Shorebird run failure.'
+          exit 1
+          fi
+          
