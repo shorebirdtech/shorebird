@@ -69,7 +69,6 @@ jobs:
       - name: 🔐 Set Shorebird Credentials
         run: |
           LOCATION=""
-          echo ${{ steps.auth.outputs.id_token }}
           if [[ ${{ matrix.os }} == "macos-latest" ]]; then
             LOCATION="$HOME/Library/Application\ Support/shorebird/credentials.json"            
           elif [[ ${{ matrix.os }} == "windows-latest" ]]; then
@@ -78,7 +77,8 @@ jobs:
             LOCATION="$HOME/.config/shorebird/credentials.json"
           fi
           mkdir -p $(dirname $LOCATION)
-          echo "{'id_token':'${{ steps.auth.outputs.id_token }}'}" > $LOCATION
+          echo "{'idToken':'${{ steps.auth.outputs.id_token }}'}" > $LOCATION
+          cat $LOCATION
 
       - name: 📦 Create a new Flutter project
         run: flutter create shorebird_init_test --empty
