@@ -1,7 +1,7 @@
 name: e2e
 
 on:
-  workflow_dispatch:
+  push:
   schedule:
     # At the end of every day
     - cron: "0 0 * * *"
