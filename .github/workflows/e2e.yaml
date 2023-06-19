@@ -68,16 +68,14 @@ jobs:
 
       - name: 🔐 Set Shorebird Credentials
         run: |
-          LOCATION=""
+          cat ${{ env.GOOGLE_GHA_CREDS_PATH }}
           if [[ ${{ matrix.os }} == "macos-latest" ]]; then
-            LOCATION="$HOME/Library/Application\ Support/shorebird/credentials.json"
+            cp ${{ env.GOOGLE_GHA_CREDS_PATH }} $HOME/Library/Application\ Support/shorebird/credentials.json
           elif [[ ${{ matrix.os }} == "windows-latest" ]]; then
-            LOCATION="$HOME/AppData/Local/shorebird/credentials.json"
+            cp ${{ env.GOOGLE_GHA_CREDS_PATH }} $HOME/AppData/Local/shorebird/credentials.json
           else
-            LOCATION="$HOME/.config/shorebird/credentials.json"
+            cp ${{ env.GOOGLE_GHA_CREDS_PATH }} $HOME/.config/shorebird/credentials.json
           fi
-          mkdir -p $(dirname $LOCATION)
-          cp ${{ steps.auth.outputs.credentials_file_path}} $LOCATION
 
       - name: 📦 Create a new Flutter project
         run: flutter create shorebird_init_test --empty
