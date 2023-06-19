@@ -84,7 +84,7 @@ jobs:
             LOCATION="$HOME/.config/shorebird/credentials.json"
           fi
           mkdir -p $(dirname $LOCATION)
-          echo "{'accessToken':${{ steps.access-token-auth.outputs.access_token }},'idToken':'${{ steps.id-token-auth.outputs.id_token }}','scopes':['openid','https://www.googleapis.com/auth/userinfo.email']}" > $LOCATION
+          echo `{"accessToken":{"type":"Bearer","data":"${{ steps.access-token-auth.outputs.access_token }}","expiry":"${{ steps.access-token-auth.outputs.access_token_expiration }}"},"idToken":"${{ steps.id-token-auth.outputs.id_token }}","scopes":["openid","https://www.googleapis.com/auth/userinfo.email"]}` > $LOCATION
           cat $LOCATION
 
       - name: 🐦 Setup Flutter
