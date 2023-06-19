@@ -1,6 +1,7 @@
 name: e2e
 
 on:
+  workflow_dispatch:
   schedule:
     # At the end of every day
     - cron: "0 0 * * *"
@@ -51,6 +52,30 @@ jobs:
       - name: 🐦 Setup Flutter
         uses: subosito/flutter-action@v2
 
+      - id: auth
+        name: Authenticate with Google Cloud
+        uses: google-github-actions/auth@v1
+        with:
+          token_format: id_token
+          workload_identity_provider: ${{ secrets.WORKLOAD_IDENTITY_PROVIDER }}
+          service_account: ${{ secrets.SERVICE_ACCOUNT }}
+          id_token_audience: ${{ secrets.ID_TOKEN_AUDIENCE }}
+          id_token_include_email: true
+
+      - name: Set Shorebird Credentials
+        run: |
+          MACOS_LOCATION=$HOME/Library/Application\ Support/shorebird/credentials.json
+          WINDOWS_LOCATION=$HOME/AppData/Local/shorebird/credentials.json
+          LINUX_LOCATION=$HOME/.config/shorebird/credentials.json
+
+          mkdir -p $(dirname $MACOS_LOCATION)
+          mkdir -p $(dirname $WINDOWS_LOCATION)
+          mkdir -p $(dirname $LINUX_LOCATION)
+
+          echo ${{ steps.auth.outputs.id_token }} > $MACOS_LOCATION
+          echo ${{ steps.auth.outputs.id_token }} > $WINDOWS_LOCATION
+          echo ${{ steps.auth.outputs.id_token }} > $LINUX_LOCATION
+
       - name: 📦 Create a new Flutter project
         run: flutter create shorebird_init_test --empty
 
@@ -64,7 +89,6 @@ jobs:
             echo '❌ Shorebird Init does not work.'
 
   verify_shorebird_run:
-    if: false # disable for now until we have a GitHub action that can handle auth
     strategy:
       fail-fast: false
       matrix:
@@ -83,6 +107,30 @@ jobs:
       - name: 🐦 Setup Flutter
         uses: subosito/flutter-action@v2
 
+      - id: auth
+        name: Authenticate with Google Cloud
+        uses: google-github-actions/auth@v1
+        with:
+          token_format: id_token
+          workload_identity_provider: ${{ secrets.WORKLOAD_IDENTITY_PROVIDER }}
+          service_account: ${{ secrets.SERVICE_ACCOUNT }}
+          id_token_audience: ${{ secrets.ID_TOKEN_AUDIENCE }}
+          id_token_include_email: true
+
+      - name: Set Shorebird Credentials
+        run: |
+          MACOS_LOCATION=$HOME/Library/Application\ Support/shorebird/credentials.json
+          WINDOWS_LOCATION=$HOME/AppData/Local/shorebird/credentials.json
+          LINUX_LOCATION=$HOME/.config/shorebird/credentials.json
+
+          mkdir -p $(dirname $MACOS_LOCATION)
+          mkdir -p $(dirname $WINDOWS_LOCATION)
+          mkdir -p $(dirname $LINUX_LOCATION)
+
+          echo ${{ steps.auth.outputs.id_token }} > $MACOS_LOCATION
+          echo ${{ steps.auth.outputs.id_token }} > $WINDOWS_LOCATION
+          echo ${{ steps.auth.outputs.id_token }} > $LINUX_LOCATION
+
       - name: 📦 Create a new Flutter project
         run: flutter create shorebird_init_test --empty
 
@@ -95,4 +143,3 @@ jobs:
             echo '❌ Shorebird run failure.'
           exit 1
           fi
-          
