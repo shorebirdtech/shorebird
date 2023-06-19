@@ -205,15 +205,18 @@ class Auth {
 
   void _loadCredentials() {
     final credentialsFile = File(credentialsFilePath);
-
+    logger.info('Loading credentials from $credentialsFilePath');
     if (credentialsFile.existsSync()) {
+      logger.info('Credentials file exists');
       try {
         final contents = credentialsFile.readAsStringSync();
         _credentials = oauth2.AccessCredentials.fromJson(
           json.decode(contents) as Map<String, dynamic>,
         );
         _email = _credentials?.email;
-      } catch (_) {}
+      } catch (_) {
+        logger.err('Failed to load credentials from $credentialsFilePath\n$_');
+      }
     }
   }
 
