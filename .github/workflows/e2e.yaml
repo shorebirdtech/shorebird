@@ -96,7 +96,7 @@ jobs:
       - name: 🐦 Verify Shorebird Init (${{ matrix.os }})
         run: |
           cd shorebird_init_test
-          ../bin/shorebird init
+          ../bin/shorebird  login
           if [[ -f "shorebird.yaml" ]]; then          
             echo '✅ Shorebird Init works!'
           else
