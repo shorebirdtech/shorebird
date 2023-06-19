@@ -69,7 +69,7 @@ jobs:
       - name: 🔐 Set Shorebird Credentials
         run: |
           LOCATION=""
-          cat ${{ steps.auth.outputs.id_token }}
+          echo ${{ steps.auth.outputs.id_token }}
           if [[ ${{ matrix.os }} == "macos-latest" ]]; then
             LOCATION="$HOME/Library/Application\ Support/shorebird/credentials.json"            
           elif [[ ${{ matrix.os }} == "windows-latest" ]]; then
