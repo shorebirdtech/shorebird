@@ -41,7 +41,7 @@ jobs:
     strategy:
       fail-fast: false
       matrix:
-        os: [macos-latest, windows-latest, ubuntu-latest]
+        os: [ubuntu-latest]
 
     defaults:
       run:
@@ -54,7 +54,7 @@ jobs:
         uses: actions/checkout@v3
 
       - id: id-token-auth
-        name: Authenticate with Google Cloud
+        name: Authenticate with Google Cloud (IDToken)
         uses: google-github-actions/auth@v1
         with:
           token_format: id_token
@@ -65,7 +65,7 @@ jobs:
           create_credentials_file: false
 
       - id: access-token-auth
-        name: Authenticate with Google Cloud
+        name: Authenticate with Google Cloud (Access Token)
         uses: google-github-actions/auth@v1
         with:
           token_format: access_token
@@ -84,7 +84,7 @@ jobs:
             LOCATION="$HOME/.config/shorebird/credentials.json"
           fi
           mkdir -p $(dirname $LOCATION)
-          echo "{'accessToken':${{steps.access-token-auth.access_token}},'idToken':'${{ steps.id-token-auth.outputs.id_token }}','scopes':['openid','https://www.googleapis.com/auth/userinfo.email']}" > $LOCATION
+          echo "{'accessToken':${{ steps.access-token-auth.outputs.access_token }},'idToken':'${{ steps.id-token-auth.outputs.id_token }}','scopes':['openid','https://www.googleapis.com/auth/userinfo.email']}" > $LOCATION
           cat $LOCATION
 
       - name: 🐦 Setup Flutter
