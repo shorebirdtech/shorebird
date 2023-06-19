@@ -5,14 +5,18 @@ import 'package:http/http.dart' as http;
 import 'package:mason_logger/mason_logger.dart';
 import 'package:mocktail/mocktail.dart';
 import 'package:path/path.dart' as p;
+import 'package:platform/platform.dart';
+import 'package:propertylistserialization/propertylistserialization.dart';
 import 'package:scoped/scoped.dart';
 import 'package:shorebird_cli/src/archive_analysis/archive_analysis.dart';
 import 'package:shorebird_cli/src/auth/auth.dart';
 import 'package:shorebird_cli/src/code_push_client_wrapper.dart';
 import 'package:shorebird_cli/src/commands/patch/patch.dart';
 import 'package:shorebird_cli/src/logger.dart';
+import 'package:shorebird_cli/src/platform.dart';
 import 'package:shorebird_cli/src/shorebird_environment.dart';
 import 'package:shorebird_cli/src/shorebird_process.dart';
+import 'package:shorebird_cli/src/third_party/flutter_tools/lib/flutter_tools.dart';
 import 'package:shorebird_cli/src/validators/validators.dart';
 import 'package:shorebird_code_push_client/shorebird_code_push_client.dart';
 import 'package:test/test.dart';
@@ -31,6 +35,8 @@ class _MockIpaReader extends Mock implements IpaReader {}
 class _MockIpa extends Mock implements Ipa {}
 
 class _MockLogger extends Mock implements Logger {}
+
+class _MockPlatform extends Mock implements Platform {}
 
 class _MockProgress extends Mock implements Progress {}
 
@@ -53,7 +59,7 @@ void main() {
   const version = '$versionName+$versionCode';
   const arch = 'aarch64';
   const appDisplayName = 'Test App';
-  const platform = 'ios';
+  const platformName = 'ios';
   const elfAotSnapshotFileName = 'out.aot';
   const pubspecYamlContent = '''
 name: example
@@ -82,6 +88,7 @@ flutter:
     late IpaReader ipaReader;
     late Progress progress;
     late Logger logger;
+    late Platform platform;
     late ShorebirdProcessResult aotBuildProcessResult;
     late ShorebirdProcessResult flutterBuildProcessResult;
     late ShorebirdProcessResult flutterRevisionProcessResult;
@@ -91,7 +98,15 @@ flutter:
     late PatchIosCommand command;
 
     R runWithOverrides<R>(R Function() body) {
-      return runScoped(body, values: {loggerRef.overrideWith(() => logger)});
+      return runScoped(
+        body,
+        values: {
+          authRef.overrideWith(() => auth),
+          loggerRef.overrideWith(() => logger),
+          platformRef.overrideWith(() => platform),
+          codePushClientWrapperRef.overrideWith(() => codePushClientWrapper),
+        },
+      );
     }
 
     Directory setUpTempDir() {
@@ -137,6 +152,7 @@ flutter:
       ipa = _MockIpa();
       progress = _MockProgress();
       logger = _MockLogger();
+      platform = _MockPlatform();
       aotBuildProcessResult = _MockProcessResult();
       flutterBuildProcessResult = _MockProcessResult();
       flutterRevisionProcessResult = _MockProcessResult();
@@ -173,6 +189,17 @@ flutter:
       when(() => flutterValidator.validate(any())).thenAnswer((_) async => []);
       when(() => logger.confirm(any())).thenReturn(true);
       when(() => logger.progress(any())).thenReturn(progress);
+      when(() => platform.environment).thenReturn({});
+      when(() => platform.script).thenReturn(
+        Uri.file(
+          p.join(
+            Directory.systemTemp.createTempSync().path,
+            'bin',
+            'cache',
+            'shorebird.snapshot',
+          ),
+        ),
+      );
       when(() => aotBuildProcessResult.exitCode)
           .thenReturn(ExitCode.success.code);
       when(() => flutterBuildProcessResult.exitCode)
@@ -205,11 +232,11 @@ flutter:
         ),
       ).thenAnswer((_) async => aotBuildProcessResult);
 
-      command = PatchIosCommand(
-        auth: auth,
-        codePushClientWrapper: codePushClientWrapper,
-        ipaReader: ipaReader,
-        validators: [flutterValidator],
+      command = runWithOverrides(
+        () => PatchIosCommand(
+          ipaReader: ipaReader,
+          validators: [flutterValidator],
+        ),
       )
         ..testArgResults = argResults
         ..testProcess = shorebirdProcess
@@ -302,7 +329,9 @@ flutter:
         getCurrentDirectory: () => tempDir,
       );
       expect(exitCode, ExitCode.software.code);
-      final shorebirdFlutterPath = ShorebirdEnvironment.flutterDirectory.path;
+      final shorebirdFlutterPath = runWithOverrides(
+        () => ShorebirdEnvironment.flutterDirectory.path,
+      );
       verify(
         () => logger.err('''
 Flutter revision mismatch.
@@ -425,7 +454,7 @@ https://github.com/shorebirdtech/shorebird/issues/472
         () => logger.info(
           any(
             that: contains(
-              '''🕹️  Platform: ${lightCyan.wrap(platform)} ${lightCyan.wrap('[aarch64 (0 B)]')}''',
+              '''🕹️  Platform: ${lightCyan.wrap(platformName)} ${lightCyan.wrap('[aarch64 (0 B)]')}''',
             ),
           ),
         ),
@@ -472,6 +501,42 @@ base_url: $baseUrl''',
         () => runWithOverrides(command.run),
         getCurrentDirectory: () => tempDir,
       );
+    });
+
+    test('provides appropriate ExportOptions.plist to build ipa command',
+        () async {
+      final tempDir = setUpTempDir();
+      setUpTempArtifacts(tempDir);
+
+      final exitCode = await IOOverrides.runZoned(
+        () => runWithOverrides(command.run),
+        getCurrentDirectory: () => tempDir,
+      );
+
+      expect(exitCode, ExitCode.success.code);
+      final capturedArgs = verify(
+        () => shorebirdProcess.run(
+          'flutter',
+          captureAny(),
+          runInShell: any(named: 'runInShell'),
+        ),
+      ).captured.first as List<String>;
+      final exportOptionsPlistFile = File(
+        capturedArgs
+            .whereType<String>()
+            .firstWhere((arg) => arg.contains('export-options-plist'))
+            .split('=')
+            .last,
+      );
+      expect(exportOptionsPlistFile.existsSync(), isTrue);
+      final exportOptionsPlist =
+          PropertyListSerialization.propertyListWithString(
+        exportOptionsPlistFile.readAsStringSync(),
+      ) as Map<String, Object>;
+      expect(exportOptionsPlist['manageAppVersionAndBuildNumber'], isFalse);
+      expect(exportOptionsPlist['signingStyle'], 'automatic');
+      expect(exportOptionsPlist['uploadBitcode'], isFalse);
+      expect(exportOptionsPlist['method'], 'app-store');
     });
 
     test('prints flutter validation warnings', () async {

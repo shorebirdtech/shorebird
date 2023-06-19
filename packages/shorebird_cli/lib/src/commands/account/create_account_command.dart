@@ -12,9 +12,6 @@ import 'package:shorebird_code_push_client/shorebird_code_push_client.dart';
 /// Create a new Shorebird account.
 /// {@endtemplate}
 class CreateAccountCommand extends ShorebirdCommand with ShorebirdConfigMixin {
-  /// {@macro create_account_command}
-  CreateAccountCommand({super.auth});
-
   @override
   String get description => 'Create a new Shorebird account.';
 
@@ -56,7 +53,7 @@ To subscribe, run ${lightCyan.wrap('shorebird account subscribe')}.
 🔑 Credentials are stored in ${lightCyan.wrap(auth.credentialsFilePath)}.
 🚪 To logout, use: "${lightCyan.wrap('shorebird logout')}".
 
-A subscription is required to use Shorebird during the Trusted Tester program.
+A subscription is required to use Shorebird.
 To subscribe, run ${lightCyan.wrap('shorebird account subscribe')}.
 
 Please let us know via Discord if we can help!

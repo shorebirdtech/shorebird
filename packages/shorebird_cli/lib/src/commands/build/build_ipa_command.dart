@@ -16,7 +16,7 @@ import 'package:shorebird_cli/src/shorebird_validation_mixin.dart';
 class BuildIpaCommand extends ShorebirdCommand
     with ShorebirdConfigMixin, ShorebirdValidationMixin, ShorebirdBuildMixin {
   /// {@macro build_ipa_command}
-  BuildIpaCommand({super.auth, super.validators}) {
+  BuildIpaCommand({super.validators}) {
     argParser
       ..addOption(
         'target',

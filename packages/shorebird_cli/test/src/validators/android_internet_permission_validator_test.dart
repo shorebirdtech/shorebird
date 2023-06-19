@@ -37,7 +37,7 @@ void main() {
 </manifest>
 ''';
 
-  group('AndroidInternetPermissionValidator', () {
+  group(AndroidInternetPermissionValidator, () {
     late ShorebirdProcess shorebirdProcess;
 
     setUp(() {
@@ -51,6 +51,17 @@ void main() {
       File(p.join(path, 'AndroidManifest.xml'))
           .writeAsStringSync(manifestContents);
     }
+
+    test('has a non-empty description', () {
+      expect(AndroidInternetPermissionValidator().description, isNotEmpty);
+    });
+
+    test('is a project-specific validator', () {
+      expect(
+        AndroidInternetPermissionValidator().scope,
+        ValidatorScope.project,
+      );
+    });
 
     test(
       'returns successful result if all AndroidManifest.xml files have the '

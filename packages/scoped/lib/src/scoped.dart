@@ -43,12 +43,13 @@ ScopedRef<T> create<T>(T Function() create) => ScopedRef<T>(create);
 /// Attempts to retrieve the value for the [ref].
 /// If [read] is called with a [ref] which is not available
 /// in the current scope, a [StateError] will be thrown.
-T read<T>(ScopedRef<T> ref) {
+T read<T>(ScopedRef<T> ref, {T Function()? orElse}) {
   final value = (Zone.current[ref._key] as ScopedRef<T>?)?._value;
   if (value == null) {
+    if (orElse != null) return orElse();
     throw StateError(
       '''
-read(...) was called in a scope which does not contain a corresponding value for the provided ref.
+read(ScopedRef<$T>) was called in a scope which does not contain a corresponding value for the provided ref.
 Did you forget to call: runScoped(() {...}, values: {value})?''',
     );
   }

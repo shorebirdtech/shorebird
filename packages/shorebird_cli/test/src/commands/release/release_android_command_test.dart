@@ -12,7 +12,7 @@ import 'package:shorebird_cli/src/cache.dart';
 import 'package:shorebird_cli/src/code_push_client_wrapper.dart';
 import 'package:shorebird_cli/src/commands/commands.dart';
 import 'package:shorebird_cli/src/logger.dart';
-import 'package:shorebird_cli/src/shorebird_environment.dart';
+import 'package:shorebird_cli/src/platform.dart';
 import 'package:shorebird_cli/src/shorebird_process.dart';
 import 'package:shorebird_cli/src/validators/validators.dart';
 import 'package:shorebird_code_push_client/shorebird_code_push_client.dart';
@@ -51,7 +51,7 @@ void main() {
     const version = '$versionName+$versionCode';
     const appDisplayName = 'Test App';
     const arch = 'aarch64';
-    const platform = 'android';
+    const platformName = 'android';
     const appMetadata = AppMetadata(appId: appId, displayName: appDisplayName);
     const release = Release(
       id: 0,
@@ -75,7 +75,7 @@ flutter:
     late http.Client httpClient;
     late CodePushClientWrapper codePushClientWrapper;
     late Directory shorebirdRoot;
-    late Platform environmentPlatform;
+    late Platform platform;
     late Auth auth;
     late Cache cache;
     late Progress progress;
@@ -89,7 +89,15 @@ flutter:
     late ShorebirdProcess shorebirdProcess;
 
     R runWithOverrides<R>(R Function() body) {
-      return runScoped(body, values: {loggerRef.overrideWith(() => logger)});
+      return runScoped(
+        body,
+        values: {
+          authRef.overrideWith(() => auth),
+          loggerRef.overrideWith(() => logger),
+          platformRef.overrideWith(() => platform),
+          codePushClientWrapperRef.overrideWith(() => codePushClientWrapper),
+        },
+      );
     }
 
     Directory setUpTempDir() {
@@ -107,7 +115,7 @@ flutter:
       argResults = _MockArgResults();
       codePushClientWrapper = _MockCodePushClientWrapper();
       httpClient = _MockHttpClient();
-      environmentPlatform = _MockPlatform();
+      platform = _MockPlatform();
       shorebirdRoot = Directory.systemTemp.createTempSync();
       auth = _MockAuth();
       cache = _MockCache();
@@ -120,10 +128,10 @@ flutter:
       flutterValidator = _MockShorebirdFlutterValidator();
       shorebirdProcess = _MockShorebirdProcess();
 
+      registerFallbackValue(release);
       registerFallbackValue(shorebirdProcess);
 
-      ShorebirdEnvironment.platform = environmentPlatform;
-      when(() => environmentPlatform.script).thenReturn(
+      when(() => platform.script).thenReturn(
         Uri.file(
           p.join(
             shorebirdRoot.path,
@@ -163,7 +171,7 @@ flutter:
       });
       when(() => argResults.rest).thenReturn([]);
       when(() => argResults['arch']).thenReturn(arch);
-      when(() => argResults['platform']).thenReturn(platform);
+      when(() => argResults['platform']).thenReturn(platformName);
       when(() => auth.isAuthenticated).thenReturn(true);
       when(() => auth.client).thenReturn(httpClient);
       when(() => cache.updateAll()).thenAnswer((_) async => {});
@@ -206,6 +214,12 @@ flutter:
         ),
       ).thenAnswer((_) async => null);
       when(
+        () => codePushClientWrapper.ensureReleaseHasNoArtifacts(
+          existingRelease: any(named: 'existingRelease'),
+          platform: any(named: 'platform'),
+        ),
+      ).thenAnswer((_) async => {});
+      when(
         () => codePushClientWrapper.createRelease(
           appId: any(named: 'appId'),
           version: any(named: 'version'),
@@ -223,11 +237,11 @@ flutter:
       ).thenAnswer((_) async {});
       when(() => flutterValidator.validate(any())).thenAnswer((_) async => []);
 
-      command = ReleaseAndroidCommand(
-        auth: auth,
-        codePushClientWrapper: codePushClientWrapper,
-        cache: cache,
-        validators: [flutterValidator],
+      command = runWithOverrides(
+        () => ReleaseAndroidCommand(
+          cache: cache,
+          validators: [flutterValidator],
+        ),
       )
         ..testArgResults = argResults
         ..testProcess = shorebirdProcess
@@ -370,28 +384,6 @@ flutter:
       ).called(1);
     });
 
-    test('throws error when existing releases exists.', () async {
-      when(
-        () => codePushClientWrapper.maybeGetRelease(
-          appId: any(named: 'appId'),
-          releaseVersion: version,
-        ),
-      ).thenAnswer((_) async => release);
-      final tempDir = setUpTempDir();
-
-      final exitCode = await IOOverrides.runZoned(
-        () => runWithOverrides(command.run),
-        getCurrentDirectory: () => tempDir,
-      );
-
-      verify(
-        () => logger.err('''
-It looks like you have an existing release for version ${lightCyan.wrap(release.version)}.
-Please bump your version number and try again.'''),
-      ).called(1);
-      expect(exitCode, ExitCode.software.code);
-    });
-
     test(
         'does not prompt for confirmation '
         'when --release-version and --force are used', () async {
@@ -423,7 +415,7 @@ Please bump your version number and try again.'''),
       verify(
         () => codePushClientWrapper.createAndroidReleaseArtifacts(
           releaseId: release.id,
-          platform: platform,
+          platform: platformName,
           aabPath: any(named: 'aabPath'),
           architectures: any(named: 'architectures'),
         ),
@@ -455,13 +447,38 @@ flavors:
       verify(
         () => codePushClientWrapper.createAndroidReleaseArtifacts(
           releaseId: release.id,
-          platform: platform,
+          platform: platformName,
           aabPath: any(named: 'aabPath'),
           architectures: any(named: 'architectures'),
           flavor: flavor,
         ),
       ).called(1);
       expect(exitCode, ExitCode.success.code);
+    });
+
+    test('does not create new release if existing release is present',
+        () async {
+      when(
+        () => codePushClientWrapper.maybeGetRelease(
+          appId: any(named: 'appId'),
+          releaseVersion: any(named: 'releaseVersion'),
+        ),
+      ).thenAnswer((_) async => release);
+      final tempDir = setUpTempDir();
+
+      final exitCode = await IOOverrides.runZoned(
+        () => runWithOverrides(command.run),
+        getCurrentDirectory: () => tempDir,
+      );
+
+      expect(exitCode, ExitCode.success.code);
+      verifyNever(
+        () => codePushClientWrapper.createRelease(
+          appId: any(named: 'appId'),
+          version: any(named: 'version'),
+          flutterRevision: any(named: 'flutterRevision'),
+        ),
+      );
     });
 
     test('prints flutter validation warnings', () async {

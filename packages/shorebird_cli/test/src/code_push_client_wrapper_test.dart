@@ -1,21 +1,64 @@
+import 'package:http/http.dart' as http;
 import 'package:mason_logger/mason_logger.dart';
 import 'package:mocktail/mocktail.dart';
 import 'package:path/path.dart' as p;
+import 'package:platform/platform.dart';
 import 'package:scoped/scoped.dart';
+import 'package:shorebird_cli/src/auth/auth.dart';
 import 'package:shorebird_cli/src/code_push_client_wrapper.dart';
 import 'package:shorebird_cli/src/logger.dart';
+import 'package:shorebird_cli/src/platform.dart';
 import 'package:shorebird_cli/src/shorebird_build_mixin.dart';
 import 'package:shorebird_cli/src/third_party/flutter_tools/lib/flutter_tools.dart';
 import 'package:shorebird_code_push_client/shorebird_code_push_client.dart';
 import 'package:test/test.dart';
 
+class _MockAuth extends Mock implements Auth {}
+
 class _MockCodePushClient extends Mock implements CodePushClient {}
 
+class _MockHttpClient extends Mock implements http.Client {}
+
 class _MockLogger extends Mock implements Logger {}
+
+class _MockPlatform extends Mock implements Platform {}
 
 class _MockProgress extends Mock implements Progress {}
 
 void main() {
+  group('scoped', () {
+    late Auth auth;
+    late http.Client httpClient;
+    late Platform platform;
+
+    setUp(() {
+      auth = _MockAuth();
+      httpClient = _MockHttpClient();
+      platform = _MockPlatform();
+
+      when(() => auth.client).thenReturn(httpClient);
+      when(() => platform.environment).thenReturn({
+        'SHOREBIRD_HOSTED_URL': 'http://example.com',
+      });
+    });
+
+    test('creates instance from scoped Auth and ShorebirdEnvironment', () {
+      final instance = runScoped(
+        () => codePushClientWrapper,
+        values: {
+          codePushClientWrapperRef,
+          authRef.overrideWith(() => auth),
+          platformRef.overrideWith(() => platform),
+        },
+      );
+      expect(
+        instance.codePushClient.hostedUri,
+        Uri.parse('http://example.com'),
+      );
+      verify(() => auth.client).called(1);
+    });
+  });
+
   group(CodePushClientWrapper, () {
     Matcher exitsWithCode(ExitCode exitcode) => throwsA(
           isA<ProcessExit>().having(
@@ -31,7 +74,7 @@ void main() {
     const patchId = 1;
     const patchNumber = 2;
     const patch = Patch(id: patchId, number: patchNumber);
-    const platform = 'ios';
+    const platformName = 'ios';
     const releaseId = 123;
     const arch = Arch.arm64;
     const flutterRevision = '123';
@@ -62,7 +105,7 @@ void main() {
       id: 1,
       releaseId: releaseId,
       arch: 'aarch64',
-      platform: platform,
+      platform: platformName,
       hash: 'asdf',
       size: 4,
       url: 'url',
@@ -72,9 +115,16 @@ void main() {
     late Logger logger;
     late Progress progress;
     late CodePushClientWrapper codePushClientWrapper;
+    late Platform platform;
 
     R runWithOverrides<R>(R Function() body) {
-      return runScoped(body, values: {loggerRef.overrideWith(() => logger)});
+      return runScoped(
+        body,
+        values: {
+          loggerRef.overrideWith(() => logger),
+          platformRef.overrideWith(() => platform),
+        },
+      );
     }
 
     setUpAll(setExitFunctionForTests);
@@ -84,6 +134,7 @@ void main() {
     setUp(() {
       codePushClient = _MockCodePushClient();
       logger = _MockLogger();
+      platform = _MockPlatform();
       progress = _MockProgress();
 
       codePushClientWrapper = runWithOverrides(
@@ -91,6 +142,16 @@ void main() {
       );
 
       when(() => logger.progress(any())).thenReturn(progress);
+      when(() => platform.script).thenReturn(
+        Uri.file(
+          p.join(
+            Directory.systemTemp.createTempSync().path,
+            'bin',
+            'cache',
+            'shorebird.snapshot',
+          ),
+        ),
+      );
     });
 
     group('app', () {
@@ -274,6 +335,60 @@ void main() {
     });
 
     group('release', () {
+      group('verifyCanRelease', () {
+        test(
+          '''exits with code 70 if release artifacts exist for the given release and platform''',
+          () async {
+            when(
+              () => codePushClient.getReleaseArtifacts(
+                releaseId: any(named: 'releaseId'),
+                platform: any(named: 'platform'),
+              ),
+            ).thenAnswer((_) async => [releaseArtifact]);
+
+            await expectLater(
+              runWithOverrides(
+                () async => codePushClientWrapper.ensureReleaseHasNoArtifacts(
+                  existingRelease: release,
+                  platform: platformName,
+                ),
+              ),
+              exitsWithCode(ExitCode.software),
+            );
+
+            verify(
+              () => logger.err(
+                '''
+It looks like you have an existing $platformName release for version ${lightCyan.wrap(release.version)}.
+Please bump your version number and try again.''',
+              ),
+            ).called(1);
+          },
+        );
+
+        test(
+          '''completes without error if release artifacts exist for the given release and platform''',
+          () async {
+            when(
+              () => codePushClient.getReleaseArtifacts(
+                releaseId: any(named: 'releaseId'),
+                platform: any(named: 'platform'),
+              ),
+            ).thenAnswer((_) async => []);
+
+            await expectLater(
+              runWithOverrides(
+                () => codePushClientWrapper.ensureReleaseHasNoArtifacts(
+                  existingRelease: release,
+                  platform: platformName,
+                ),
+              ),
+              completes,
+            );
+          },
+        );
+      });
+
       group('getRelease', () {
         test('exits with code 70 when fetching release fails', () async {
           const error = 'something went wrong';
@@ -483,7 +598,7 @@ void main() {
         test('exits with code 70 if fetching release artifact fails', () async {
           const error = 'something went wrong';
           when(
-            () => codePushClient.getReleaseArtifact(
+            () => codePushClient.getReleaseArtifacts(
               releaseId: any(named: 'releaseId'),
               arch: any(named: 'arch'),
               platform: any(named: 'platform'),
@@ -495,7 +610,7 @@ void main() {
               () => codePushClientWrapper.getReleaseArtifacts(
                 releaseId: releaseId,
                 architectures: archMap,
-                platform: platform,
+                platform: platformName,
               ),
             ),
             exitsWithCode(ExitCode.software),
@@ -503,21 +618,48 @@ void main() {
           verify(() => progress.fail(error)).called(1);
         });
 
-        test('returns release artifacts when release artifacts exist',
-            () async {
+        test('exits with code 70 if release artifact does not exist', () async {
           when(
-            () => codePushClient.getReleaseArtifact(
+            () => codePushClient.getReleaseArtifacts(
               releaseId: any(named: 'releaseId'),
               arch: any(named: 'arch'),
               platform: any(named: 'platform'),
             ),
-          ).thenAnswer((_) async => releaseArtifact);
+          ).thenAnswer((_) async => []);
+
+          await expectLater(
+            () async => runWithOverrides(
+              () => codePushClientWrapper.getReleaseArtifacts(
+                releaseId: releaseId,
+                architectures: archMap,
+                platform: platformName,
+              ),
+            ),
+            exitsWithCode(ExitCode.software),
+          );
+
+          verify(
+            () => progress.fail(
+              '''No artifact found for architecture aarch64 in release $releaseId''',
+            ),
+          ).called(1);
+        });
+
+        test('returns release artifacts when release artifacts exist',
+            () async {
+          when(
+            () => codePushClient.getReleaseArtifacts(
+              releaseId: any(named: 'releaseId'),
+              arch: any(named: 'arch'),
+              platform: any(named: 'platform'),
+            ),
+          ).thenAnswer((_) async => [releaseArtifact]);
 
           final result = await runWithOverrides(
             () => codePushClientWrapper.getReleaseArtifacts(
               releaseId: releaseId,
               architectures: archMap,
-              platform: platform,
+              platform: platformName,
             ),
           );
 
@@ -526,11 +668,88 @@ void main() {
         });
       });
 
+      group('getReleaseArtifact', () {
+        test('exits with code 70 if fetching release artifact fails', () async {
+          const error = 'something went wrong';
+          when(
+            () => codePushClient.getReleaseArtifacts(
+              releaseId: any(named: 'releaseId'),
+              arch: any(named: 'arch'),
+              platform: any(named: 'platform'),
+            ),
+          ).thenThrow(error);
+
+          await expectLater(
+            () async => runWithOverrides(
+              () => codePushClientWrapper.getReleaseArtifact(
+                releaseId: releaseId,
+                arch: arch.name,
+                platform: platformName,
+              ),
+            ),
+            exitsWithCode(ExitCode.software),
+          );
+
+          verify(() => progress.fail(error)).called(1);
+        });
+
+        test('exits with code 70 if release artifact does not exist', () async {
+          when(
+            () => codePushClient.getReleaseArtifacts(
+              releaseId: any(named: 'releaseId'),
+              arch: any(named: 'arch'),
+              platform: any(named: 'platform'),
+            ),
+          ).thenAnswer((_) async => []);
+
+          await expectLater(
+            () async => runWithOverrides(
+              () => codePushClientWrapper.getReleaseArtifact(
+                releaseId: releaseId,
+                arch: arch.name,
+                platform: platformName,
+              ),
+            ),
+            exitsWithCode(ExitCode.software),
+          );
+
+          verify(
+            () => progress.fail(
+              '''No artifact found for architecture arm64 in release $releaseId''',
+            ),
+          ).called(1);
+        });
+
+        test(
+          'returns release artifact if release artifact exists',
+          () async {
+            when(
+              () => codePushClient.getReleaseArtifacts(
+                releaseId: any(named: 'releaseId'),
+                arch: any(named: 'arch'),
+                platform: any(named: 'platform'),
+              ),
+            ).thenAnswer((_) async => [releaseArtifact]);
+
+            final result = await runWithOverrides(
+              () => codePushClientWrapper.getReleaseArtifact(
+                releaseId: releaseId,
+                arch: arch.name,
+                platform: platformName,
+              ),
+            );
+
+            expect(result, releaseArtifact);
+            verify(() => progress.complete()).called(1);
+          },
+        );
+      });
+
       group('maybeGetReleaseArtifact', () {
         test('exits with code 70 if fetching release artifact fails', () async {
           const error = 'something went wrong';
           when(
-            () => codePushClient.getReleaseArtifact(
+            () => codePushClient.getReleaseArtifacts(
               releaseId: any(named: 'releaseId'),
               arch: any(named: 'arch'),
               platform: any(named: 'platform'),
@@ -542,7 +761,7 @@ void main() {
               () => codePushClientWrapper.maybeGetReleaseArtifact(
                 releaseId: releaseId,
                 arch: arch.name,
-                platform: platform,
+                platform: platformName,
               ),
             ),
             exitsWithCode(ExitCode.software),
@@ -553,18 +772,18 @@ void main() {
 
         test('returns null if release artifact does not exist', () async {
           when(
-            () => codePushClient.getReleaseArtifact(
+            () => codePushClient.getReleaseArtifacts(
               releaseId: any(named: 'releaseId'),
               arch: any(named: 'arch'),
               platform: any(named: 'platform'),
             ),
-          ).thenThrow(CodePushNotFoundException(message: 'not found'));
+          ).thenAnswer((_) async => []);
 
           final result = await runWithOverrides(
             () => codePushClientWrapper.maybeGetReleaseArtifact(
               releaseId: releaseId,
               arch: arch.name,
-              platform: platform,
+              platform: platformName,
             ),
           );
 
@@ -576,18 +795,18 @@ void main() {
           'returns release artifact if release artifact exists',
           () async {
             when(
-              () => codePushClient.getReleaseArtifact(
+              () => codePushClient.getReleaseArtifacts(
                 releaseId: any(named: 'releaseId'),
                 arch: any(named: 'arch'),
                 platform: any(named: 'platform'),
               ),
-            ).thenAnswer((_) async => releaseArtifact);
+            ).thenAnswer((_) async => [releaseArtifact]);
 
             final result = await runWithOverrides(
               () => codePushClientWrapper.maybeGetReleaseArtifact(
                 releaseId: releaseId,
                 arch: arch.name,
-                platform: platform,
+                platform: platformName,
               ),
             );
 
@@ -652,7 +871,7 @@ void main() {
               () async => runWithOverrides(
                 () async => codePushClientWrapper.createAndroidReleaseArtifacts(
                   releaseId: releaseId,
-                  platform: platform,
+                  platform: platformName,
                   aabPath: p.join(tempDir.path, aabPath),
                   architectures: ShorebirdBuildMixin.allAndroidArchitectures,
                 ),
@@ -683,7 +902,7 @@ void main() {
               () async => runWithOverrides(
                 () async => codePushClientWrapper.createAndroidReleaseArtifacts(
                   releaseId: releaseId,
-                  platform: platform,
+                  platform: platformName,
                   aabPath: p.join(tempDir.path, aabPath),
                   architectures: ShorebirdBuildMixin.allAndroidArchitectures,
                 ),
@@ -714,7 +933,7 @@ void main() {
             () async => IOOverrides.runZoned(
               () async => codePushClientWrapper.createAndroidReleaseArtifacts(
                 releaseId: releaseId,
-                platform: platform,
+                platform: platformName,
                 aabPath: p.join(tempDir.path, aabPath),
                 architectures: ShorebirdBuildMixin.allAndroidArchitectures,
               ),
@@ -748,7 +967,7 @@ void main() {
             () async => IOOverrides.runZoned(
               () async => codePushClientWrapper.createAndroidReleaseArtifacts(
                 releaseId: releaseId,
-                platform: platform,
+                platform: platformName,
                 aabPath: p.join(tempDir.path, aabPath),
                 architectures: ShorebirdBuildMixin.allAndroidArchitectures,
               ),
@@ -780,7 +999,7 @@ void main() {
             () async => IOOverrides.runZoned(
               () async => codePushClientWrapper.createAndroidReleaseArtifacts(
                 releaseId: releaseId,
-                platform: platform,
+                platform: platformName,
                 aabPath: p.join(tempDir.path, aabPath),
                 architectures: ShorebirdBuildMixin.allAndroidArchitectures,
               ),
@@ -809,7 +1028,7 @@ void main() {
             () async => IOOverrides.runZoned(
               () async => codePushClientWrapper.createAndroidReleaseArtifacts(
                 releaseId: releaseId,
-                platform: platform,
+                platform: platformName,
                 aabPath: p.join(tempDir.path, aabPath),
                 architectures: ShorebirdBuildMixin.allAndroidArchitectures,
                 flavor: flavorName,
@@ -824,10 +1043,265 @@ void main() {
                   any(named: 'artifactPath', that: contains(flavorName)),
               releaseId: releaseId,
               arch: any(named: 'arch'),
-              platform: platform,
+              platform: platformName,
               hash: any(named: 'hash'),
             ),
           ).called(ShorebirdBuildMixin.allAndroidArchitectures.length);
+          verify(() => progress.complete()).called(1);
+          verifyNever(() => progress.fail(any()));
+        });
+      });
+
+      group('createAndroidArchiveReleaseArtifacts', () {
+        const buildNumber = '1.0';
+
+        final aarDir = p.join(
+          'build',
+          'host',
+          'outputs',
+          'repo',
+          'com',
+          'example',
+          'my_flutter_module',
+          'flutter_release',
+          buildNumber,
+        );
+        final aarPath = p.join(aarDir, 'flutter_release-$buildNumber.aar');
+        final extractedAarPath = p.join(aarDir, 'flutter_release-$buildNumber');
+
+        Directory setUpTempDir({String? flavor}) {
+          final tempDir = Directory.systemTemp.createTempSync();
+          for (final archMetadata
+              in ShorebirdBuildMixin.allAndroidArchitectures.values) {
+            final artifactPath = p.join(
+              tempDir.path,
+              extractedAarPath,
+              'jni',
+              archMetadata.path,
+              'libapp.so',
+            );
+            File(artifactPath).createSync(recursive: true);
+          }
+          File(p.join(tempDir.path, aarPath)).createSync(recursive: true);
+          return tempDir;
+        }
+
+        setUp(() {
+          when(
+            () => codePushClient.createReleaseArtifact(
+              artifactPath: any(named: 'artifactPath'),
+              releaseId: any(named: 'releaseId'),
+              arch: any(named: 'arch'),
+              platform: any(named: 'platform'),
+              hash: any(named: 'hash'),
+            ),
+          ).thenAnswer((_) async => {});
+        });
+
+        test('exits with code 70 when artifact creation fails', () async {
+          const error = 'something went wrong';
+          when(
+            () => codePushClient.createReleaseArtifact(
+              artifactPath: any(named: 'artifactPath'),
+              releaseId: any(named: 'releaseId'),
+              arch: any(named: 'arch'),
+              platform: any(named: 'platform'),
+              hash: any(named: 'hash'),
+            ),
+          ).thenThrow(error);
+          final tempDir = setUpTempDir();
+
+          await IOOverrides.runZoned(
+            () async => expectLater(
+              () async => runWithOverrides(
+                () async =>
+                    codePushClientWrapper.createAndroidArchiveReleaseArtifacts(
+                  releaseId: releaseId,
+                  platform: platformName,
+                  aarPath: p.join(tempDir.path, aarPath),
+                  extractedAarDir: p.join(tempDir.path, extractedAarPath),
+                  architectures: ShorebirdBuildMixin.allAndroidArchitectures,
+                ),
+              ),
+              exitsWithCode(ExitCode.software),
+            ),
+            getCurrentDirectory: () => tempDir,
+          );
+
+          verify(() => progress.fail(any(that: contains(error)))).called(1);
+        });
+
+        test('exits with code 70 when aar artifact creation fails', () async {
+          const error = 'something went wrong';
+          when(
+            () => codePushClient.createReleaseArtifact(
+              artifactPath: any(named: 'artifactPath', that: endsWith('aar')),
+              releaseId: any(named: 'releaseId'),
+              arch: any(named: 'arch'),
+              platform: any(named: 'platform'),
+              hash: any(named: 'hash'),
+            ),
+          ).thenThrow(error);
+          final tempDir = setUpTempDir();
+
+          await IOOverrides.runZoned(
+            () async => expectLater(
+              () async => runWithOverrides(
+                () async =>
+                    codePushClientWrapper.createAndroidArchiveReleaseArtifacts(
+                  releaseId: releaseId,
+                  platform: platformName,
+                  aarPath: p.join(tempDir.path, aarPath),
+                  extractedAarDir: p.join(tempDir.path, extractedAarPath),
+                  architectures: ShorebirdBuildMixin.allAndroidArchitectures,
+                ),
+              ),
+              exitsWithCode(ExitCode.software),
+            ),
+            getCurrentDirectory: () => tempDir,
+          );
+
+          verify(() => progress.fail(any(that: contains(error)))).called(1);
+        });
+
+        test('logs message when uploading release artifact that already exists',
+            () async {
+          const error = 'something went wrong';
+          when(
+            () => codePushClient.createReleaseArtifact(
+              artifactPath: any(named: 'artifactPath'),
+              releaseId: any(named: 'releaseId'),
+              arch: any(named: 'arch'),
+              platform: any(named: 'platform'),
+              hash: any(named: 'hash'),
+            ),
+          ).thenThrow(const CodePushConflictException(message: error));
+          final tempDir = setUpTempDir();
+
+          await runWithOverrides(
+            () async => IOOverrides.runZoned(
+              () async =>
+                  codePushClientWrapper.createAndroidArchiveReleaseArtifacts(
+                releaseId: releaseId,
+                platform: platformName,
+                aarPath: p.join(tempDir.path, aarPath),
+                extractedAarDir: p.join(tempDir.path, extractedAarPath),
+                architectures: ShorebirdBuildMixin.allAndroidArchitectures,
+              ),
+              getCurrentDirectory: () => tempDir,
+            ),
+          );
+
+          // 1 for each arch, 1 for the aab
+          final numArtifactsUploaded =
+              ShorebirdBuildMixin.allAndroidArchitectures.values.length + 1;
+          verify(
+            () => logger.info(any(that: contains('already exists'))),
+          ).called(numArtifactsUploaded);
+          verifyNever(() => progress.fail(error));
+        });
+
+        test('logs message when uploading aar that already exists', () async {
+          const error = 'something went wrong';
+          when(
+            () => codePushClient.createReleaseArtifact(
+              artifactPath: any(named: 'artifactPath', that: endsWith('.aar')),
+              releaseId: any(named: 'releaseId'),
+              arch: any(named: 'arch'),
+              platform: any(named: 'platform'),
+              hash: any(named: 'hash'),
+            ),
+          ).thenThrow(const CodePushConflictException(message: error));
+          final tempDir = setUpTempDir();
+
+          await runWithOverrides(
+            () async => IOOverrides.runZoned(
+              () async =>
+                  codePushClientWrapper.createAndroidArchiveReleaseArtifacts(
+                releaseId: releaseId,
+                platform: platformName,
+                aarPath: p.join(tempDir.path, aarPath),
+                extractedAarDir: p.join(tempDir.path, extractedAarPath),
+                architectures: ShorebirdBuildMixin.allAndroidArchitectures,
+              ),
+              getCurrentDirectory: () => tempDir,
+            ),
+          );
+
+          verify(
+            () => logger.info(
+              any(that: contains('aar artifact already exists, continuing...')),
+            ),
+          ).called(1);
+          verifyNever(() => progress.fail(error));
+        });
+
+        test('completes successfully when all artifacts are created', () async {
+          when(
+            () => codePushClient.createReleaseArtifact(
+              artifactPath: any(named: 'artifactPath'),
+              releaseId: any(named: 'releaseId'),
+              arch: any(named: 'arch'),
+              platform: any(named: 'platform'),
+              hash: any(named: 'hash'),
+            ),
+          ).thenAnswer((_) async => {});
+          final tempDir = setUpTempDir();
+
+          await runWithOverrides(
+            () async => IOOverrides.runZoned(
+              () async =>
+                  codePushClientWrapper.createAndroidArchiveReleaseArtifacts(
+                releaseId: releaseId,
+                platform: platformName,
+                aarPath: p.join(tempDir.path, aarPath),
+                extractedAarDir: p.join(tempDir.path, extractedAarPath),
+                architectures: ShorebirdBuildMixin.allAndroidArchitectures,
+              ),
+              getCurrentDirectory: () => tempDir,
+            ),
+          );
+
+          verify(() => progress.complete()).called(1);
+          verifyNever(() => progress.fail(any()));
+        });
+
+        test('completes succesfully when a flavor is provided', () async {
+          const flavorName = 'myFlavor';
+          when(
+            () => codePushClient.createReleaseArtifact(
+              artifactPath: any(named: 'artifactPath'),
+              releaseId: any(named: 'releaseId'),
+              arch: any(named: 'arch'),
+              platform: any(named: 'platform'),
+              hash: any(named: 'hash'),
+            ),
+          ).thenAnswer((_) async => {});
+          final tempDir = setUpTempDir(flavor: flavorName);
+
+          await runWithOverrides(
+            () async => IOOverrides.runZoned(
+              () async =>
+                  codePushClientWrapper.createAndroidArchiveReleaseArtifacts(
+                releaseId: releaseId,
+                platform: platformName,
+                aarPath: p.join(tempDir.path, aarPath),
+                extractedAarDir: p.join(tempDir.path, extractedAarPath),
+                architectures: ShorebirdBuildMixin.allAndroidArchitectures,
+              ),
+              getCurrentDirectory: () => tempDir,
+            ),
+          );
+
+          verify(
+            () => codePushClient.createReleaseArtifact(
+              artifactPath: any(named: 'artifactPath'),
+              releaseId: releaseId,
+              arch: any(named: 'arch'),
+              platform: platformName,
+              hash: any(named: 'hash'),
+            ),
+          ).called(ShorebirdBuildMixin.allAndroidArchitectures.length + 1);
           verify(() => progress.complete()).called(1);
           verifyNever(() => progress.fail(any()));
         });
@@ -928,7 +1402,7 @@ void main() {
               () async => runWithOverrides(
                 () => codePushClientWrapper.createPatchArtifacts(
                   patch: patch,
-                  platform: platform,
+                  platform: platformName,
                   patchArtifactBundles: patchArtifactBundles,
                 ),
               ),
@@ -953,7 +1427,7 @@ void main() {
           await runWithOverrides(
             () => codePushClientWrapper.createPatchArtifacts(
               patch: patch,
-              platform: platform,
+              platform: platformName,
               patchArtifactBundles: patchArtifactBundles,
             ),
           );
@@ -964,7 +1438,7 @@ void main() {
               artifactPath: partchArtifactBundle.path,
               patchId: patchId,
               arch: arch.name,
-              platform: platform,
+              platform: platformName,
               hash: partchArtifactBundle.hash,
             ),
           ).called(1);
@@ -1001,7 +1475,7 @@ void main() {
             () => codePushClientWrapper.publishPatch(
               appId: appId,
               releaseId: releaseId,
-              platform: platform,
+              platform: platformName,
               channelName: channelName,
               patchArtifactBundles: patchArtifactBundles,
             ),
@@ -1015,7 +1489,7 @@ void main() {
               artifactPath: partchArtifactBundle.path,
               patchId: patchId,
               arch: arch.name,
-              platform: platform,
+              platform: platformName,
               hash: partchArtifactBundle.hash,
             ),
           ).called(1);
@@ -1050,7 +1524,7 @@ void main() {
             () => codePushClientWrapper.publishPatch(
               appId: appId,
               releaseId: releaseId,
-              platform: platform,
+              platform: platformName,
               channelName: channelName,
               patchArtifactBundles: patchArtifactBundles,
             ),
@@ -1064,7 +1538,7 @@ void main() {
               artifactPath: partchArtifactBundle.path,
               patchId: patchId,
               arch: arch.name,
-              platform: platform,
+              platform: platformName,
               hash: partchArtifactBundle.hash,
             ),
           ).called(1);
@@ -1081,6 +1555,63 @@ void main() {
               channelId: channel.id,
             ),
           ).called(1);
+        });
+      });
+
+      group('getUsage', () {
+        test('exits with code 70 when getUsage throws an exception', () async {
+          when(() => codePushClient.getUsage()).thenThrow(Exception('oh no!'));
+
+          await expectLater(
+            () => runWithOverrides(codePushClientWrapper.getUsage),
+            exitsWithCode(ExitCode.software),
+          );
+
+          verify(() => progress.fail(any(that: contains('oh no!')))).called(1);
+        });
+
+        test('returns usage when succeeds', () async {
+          const usage = [
+            AppUsage(
+              id: 'test-app-id',
+              platforms: [
+                PlatformUsage(
+                  name: 'android',
+                  arches: [
+                    ArchUsage(
+                      name: 'aarch64',
+                      patches: [
+                        PatchUsage(id: 0, installCount: 10),
+                        PatchUsage(id: 1, installCount: 10)
+                      ],
+                    ),
+                    ArchUsage(
+                      name: 'arm',
+                      patches: [
+                        PatchUsage(id: 0, installCount: 10),
+                        PatchUsage(id: 1, installCount: 10)
+                      ],
+                    ),
+                    ArchUsage(
+                      name: 'x86',
+                      patches: [
+                        PatchUsage(id: 0, installCount: 1),
+                        PatchUsage(id: 1, installCount: 1)
+                      ],
+                    )
+                  ],
+                )
+              ],
+            ),
+          ];
+          when(() => codePushClient.getUsage()).thenAnswer((_) async => usage);
+
+          await expectLater(
+            runWithOverrides(codePushClientWrapper.getUsage),
+            completion(equals(usage)),
+          );
+
+          verify(() => progress.complete()).called(1);
         });
       });
     });

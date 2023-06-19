@@ -1,4 +1,5 @@
 import 'package:mason_logger/mason_logger.dart';
+import 'package:shorebird_cli/src/auth/auth.dart';
 import 'package:shorebird_cli/src/command.dart';
 import 'package:shorebird_cli/src/logger.dart';
 
@@ -8,9 +9,6 @@ import 'package:shorebird_cli/src/logger.dart';
 /// Logout of the current Shorebird user.
 /// {@endtemplate}
 class LogoutCommand extends ShorebirdCommand {
-  /// {@macro logout_command}
-  LogoutCommand({super.auth});
-
   @override
   String get description => 'Logout of the current Shorebird user';
 

@@ -13,6 +13,7 @@ import 'package:shorebird_cli/src/cache.dart' show Cache;
 import 'package:shorebird_cli/src/code_push_client_wrapper.dart';
 import 'package:shorebird_cli/src/commands/patch/patch_android_command.dart';
 import 'package:shorebird_cli/src/logger.dart';
+import 'package:shorebird_cli/src/platform.dart';
 import 'package:shorebird_cli/src/shorebird_build_mixin.dart';
 import 'package:shorebird_cli/src/shorebird_environment.dart';
 import 'package:shorebird_cli/src/shorebird_process.dart';
@@ -58,7 +59,7 @@ void main() {
     const versionCode = '1';
     const version = '$versionName+$versionCode';
     const arch = 'aarch64';
-    const platform = 'android';
+    const platformName = 'android';
     const channelName = 'stable';
     const appDisplayName = 'Test App';
     const app = AppMetadata(appId: appId, displayName: appDisplayName);
@@ -66,7 +67,7 @@ void main() {
       id: 0,
       releaseId: 0,
       arch: arch,
-      platform: platform,
+      platform: platformName,
       hash: '#',
       size: 42,
       url: 'https://example.com',
@@ -75,7 +76,7 @@ void main() {
       id: 0,
       releaseId: 0,
       arch: arch,
-      platform: platform,
+      platform: platformName,
       hash: '#',
       size: 42,
       url: 'https://example.com/release.aab',
@@ -102,7 +103,7 @@ flutter:
     late Auth auth;
     late CodePushClientWrapper codePushClientWrapper;
     late Directory shorebirdRoot;
-    late Platform environmentPlatform;
+    late Platform platform;
     late Progress progress;
     late Logger logger;
     late ShorebirdProcessResult flutterBuildProcessResult;
@@ -117,7 +118,15 @@ flutter:
     late ShorebirdProcess shorebirdProcess;
 
     R runWithOverrides<R>(R Function() body) {
-      return runScoped(body, values: {loggerRef.overrideWith(() => logger)});
+      return runScoped(
+        body,
+        values: {
+          authRef.overrideWith(() => auth),
+          loggerRef.overrideWith(() => logger),
+          platformRef.overrideWith(() => platform),
+          codePushClientWrapperRef.overrideWith(() => codePushClientWrapper),
+        },
+      );
     }
 
     Directory setUpTempDir() {
@@ -161,7 +170,7 @@ flutter:
       auth = _MockAuth();
       codePushClientWrapper = _MockCodePushClientWrapper();
       shorebirdRoot = Directory.systemTemp.createTempSync();
-      environmentPlatform = _MockPlatform();
+      platform = _MockPlatform();
       progress = _MockProgress();
       logger = _MockLogger();
       flutterBuildProcessResult = _MockProcessResult();
@@ -173,20 +182,19 @@ flutter:
       flutterValidator = _MockShorebirdFlutterValidator();
       cache = _MockCache();
       shorebirdProcess = _MockShorebirdProcess();
-      command = PatchAndroidCommand(
-        aabDiffer: aabDiffer,
-        auth: auth,
-        codePushClientWrapper: codePushClientWrapper,
-        cache: cache,
-        httpClient: httpClient,
-        validators: [flutterValidator],
+      command = runWithOverrides(
+        () => PatchAndroidCommand(
+          aabDiffer: aabDiffer,
+          cache: cache,
+          httpClient: httpClient,
+          validators: [flutterValidator],
+        ),
       )
         ..testArgResults = argResults
         ..testProcess = shorebirdProcess
         ..testEngineConfig = const EngineConfig.empty();
 
-      ShorebirdEnvironment.platform = environmentPlatform;
-      when(() => environmentPlatform.script).thenReturn(
+      when(() => platform.script).thenReturn(
         Uri.file(
           p.join(
             shorebirdRoot.path,
@@ -421,7 +429,9 @@ flutter:
         getCurrentDirectory: () => tempDir,
       );
       expect(exitCode, ExitCode.software.code);
-      final shorebirdFlutterPath = ShorebirdEnvironment.flutterDirectory.path;
+      final shorebirdFlutterPath = runWithOverrides(
+        () => ShorebirdEnvironment.flutterDirectory.path,
+      );
       verify(
         () => logger.err('''
 Flutter revision mismatch.
@@ -723,7 +733,7 @@ https://github.com/shorebirdtech/shorebird/issues/472
         () => logger.info(
           any(
             that: contains(
-              '''🕹️  Platform: ${lightCyan.wrap(platform)} ${lightCyan.wrap('[arm32 (4 B), arm64 (4 B), x86_64 (4 B)]')}''',
+              '''🕹️  Platform: ${lightCyan.wrap(platformName)} ${lightCyan.wrap('[arm32 (4 B), arm64 (4 B), x86_64 (4 B)]')}''',
             ),
           ),
         ),

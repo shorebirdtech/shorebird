@@ -9,11 +9,14 @@ environment:
   sdk: ">=3.0.0 <4.0.0"
 
 dependencies:
-  http: ^0.13.5
+  http: ^1.0.0
   shorebird_code_push_protocol:
     path: ../shorebird_code_push_protocol
 
 dev_dependencies:
+  build_runner: ^2.0.0
+  build_verify: ^3.0.0
+  build_version: ^2.0.0
   mocktail: ^0.3.0
   path: ^1.8.3
   test: ^1.19.2

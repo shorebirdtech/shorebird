@@ -1,9 +1,10 @@
 name: Verify Version Workflow
+description: Verify the version of the package is correct
 
 inputs:
   working_directory:
     required: false
-    type: string
+    description: "The working directory to run the command in"
     default: "."
 
 runs:

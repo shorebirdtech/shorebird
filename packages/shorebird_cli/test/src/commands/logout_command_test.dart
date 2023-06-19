@@ -16,14 +16,20 @@ class _MockHttpClient extends Mock implements http.Client {}
 class _MockProgress extends Mock implements Progress {}
 
 void main() {
-  group('logout', () {
+  group(LogoutCommand, () {
     late Auth auth;
     late Logger logger;
     late http.Client httpClient;
     late LogoutCommand command;
 
     R runWithOverrides<R>(R Function() body) {
-      return runScoped(body, values: {loggerRef.overrideWith(() => logger)});
+      return runScoped(
+        body,
+        values: {
+          authRef.overrideWith(() => auth),
+          loggerRef.overrideWith(() => logger)
+        },
+      );
     }
 
     setUp(() {
@@ -34,7 +40,7 @@ void main() {
       when(() => auth.client).thenReturn(httpClient);
       when(() => logger.progress(any())).thenReturn(_MockProgress());
 
-      command = LogoutCommand(auth: auth);
+      command = runWithOverrides(LogoutCommand.new);
     });
 
     test('exits with code 0 when already logged out', () async {

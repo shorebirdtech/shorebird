@@ -6,13 +6,14 @@ import 'package:mason_logger/mason_logger.dart';
 import 'package:mocktail/mocktail.dart';
 import 'package:path/path.dart' as p;
 import 'package:platform/platform.dart';
+import 'package:propertylistserialization/propertylistserialization.dart';
 import 'package:scoped/scoped.dart';
 import 'package:shorebird_cli/src/archive_analysis/archive_analysis.dart';
 import 'package:shorebird_cli/src/auth/auth.dart';
 import 'package:shorebird_cli/src/code_push_client_wrapper.dart';
 import 'package:shorebird_cli/src/commands/commands.dart';
 import 'package:shorebird_cli/src/logger.dart';
-import 'package:shorebird_cli/src/shorebird_environment.dart';
+import 'package:shorebird_cli/src/platform.dart';
 import 'package:shorebird_cli/src/shorebird_process.dart';
 import 'package:shorebird_cli/src/validators/validators.dart';
 import 'package:shorebird_code_push_client/shorebird_code_push_client.dart';
@@ -53,7 +54,7 @@ void main() {
     const version = '$versionName+$versionCode';
     const appDisplayName = 'Test App';
     const arch = 'armv7';
-    const platform = 'ios';
+    const platformName = 'ios';
     const appMetadata = AppMetadata(appId: appId, displayName: appDisplayName);
     const release = Release(
       id: 0,
@@ -90,7 +91,15 @@ flutter:
     late ShorebirdProcess shorebirdProcess;
 
     R runWithOverrides<R>(R Function() body) {
-      return runScoped(body, values: {loggerRef.overrideWith(() => logger)});
+      return runScoped(
+        body,
+        values: {
+          authRef.overrideWith(() => auth),
+          loggerRef.overrideWith(() => logger),
+          platformRef.overrideWith(() => environmentPlatform),
+          codePushClientWrapperRef.overrideWith(() => codePushClientWrapper),
+        },
+      );
     }
 
     Directory setUpTempDir() {
@@ -121,9 +130,9 @@ flutter:
       flutterValidator = _MockShorebirdFlutterValidator();
       shorebirdProcess = _MockShorebirdProcess();
 
+      registerFallbackValue(release);
       registerFallbackValue(shorebirdProcess);
 
-      ShorebirdEnvironment.platform = environmentPlatform;
       when(() => environmentPlatform.script).thenReturn(
         Uri.file(
           p.join(
@@ -151,7 +160,7 @@ flutter:
       ).thenAnswer((_) async => flutterRevisionProcessResult);
       when(() => argResults.rest).thenReturn([]);
       when(() => argResults['arch']).thenReturn(arch);
-      when(() => argResults['platform']).thenReturn(platform);
+      when(() => argResults['platform']).thenReturn(platformName);
       when(() => auth.isAuthenticated).thenReturn(true);
       when(() => auth.client).thenReturn(httpClient);
       when(() => ipaReader.read(any())).thenReturn(ipa);
@@ -180,6 +189,12 @@ flutter:
         ),
       ).thenAnswer((_) async => null);
       when(
+        () => codePushClientWrapper.ensureReleaseHasNoArtifacts(
+          existingRelease: any(named: 'existingRelease'),
+          platform: any(named: 'platform'),
+        ),
+      ).thenAnswer((_) async => {});
+      when(
         () => codePushClientWrapper.createRelease(
           appId: any(named: 'appId'),
           version: any(named: 'version'),
@@ -188,11 +203,11 @@ flutter:
       ).thenAnswer((_) async => release);
       when(() => flutterValidator.validate(any())).thenAnswer((_) async => []);
 
-      command = ReleaseIosCommand(
-        auth: auth,
-        codePushClientWrapper: codePushClientWrapper,
-        ipaReader: ipaReader,
-        validators: [flutterValidator],
+      command = runWithOverrides(
+        () => ReleaseIosCommand(
+          ipaReader: ipaReader,
+          validators: [flutterValidator],
+        ),
       )
         ..testArgResults = argResults
         ..testProcess = shorebirdProcess
@@ -382,28 +397,6 @@ error: exportArchive: No signing certificate "iOS Distribution" found
       ).called(1);
     });
 
-    test('throws error when existing releases exists.', () async {
-      when(
-        () => codePushClientWrapper.maybeGetRelease(
-          appId: any(named: 'appId'),
-          releaseVersion: any(named: 'releaseVersion'),
-        ),
-      ).thenAnswer((_) async => release);
-      final tempDir = setUpTempDir();
-
-      final exitCode = await IOOverrides.runZoned(
-        () => runWithOverrides(command.run),
-        getCurrentDirectory: () => tempDir,
-      );
-
-      verify(
-        () => logger.err('''
-It looks like you have an existing release for version ${lightCyan.wrap(release.version)}.
-Please bump your version number and try again.'''),
-      ).called(1);
-      expect(exitCode, ExitCode.software.code);
-    });
-
     test(
         'does not prompt for confirmation '
         'when --release-version and --force are used', () async {
@@ -481,6 +474,66 @@ flavors:
         ),
       ).called(1);
       expect(exitCode, ExitCode.success.code);
+    });
+
+    test('does not create new release if existing release is present',
+        () async {
+      when(
+        () => codePushClientWrapper.maybeGetRelease(
+          appId: any(named: 'appId'),
+          releaseVersion: any(named: 'releaseVersion'),
+        ),
+      ).thenAnswer((_) async => release);
+      final tempDir = setUpTempDir();
+
+      final exitCode = await IOOverrides.runZoned(
+        () => runWithOverrides(command.run),
+        getCurrentDirectory: () => tempDir,
+      );
+
+      expect(exitCode, ExitCode.success.code);
+      verifyNever(
+        () => codePushClientWrapper.createRelease(
+          appId: any(named: 'appId'),
+          version: any(named: 'version'),
+          flutterRevision: any(named: 'flutterRevision'),
+        ),
+      );
+    });
+
+    test('provides appropriate ExportOptions.plist to build ipa command',
+        () async {
+      final tempDir = setUpTempDir();
+
+      final exitCode = await IOOverrides.runZoned(
+        () => runWithOverrides(command.run),
+        getCurrentDirectory: () => tempDir,
+      );
+
+      expect(exitCode, ExitCode.success.code);
+      final capturedArgs = verify(
+        () => shorebirdProcess.run(
+          'flutter',
+          captureAny(),
+          runInShell: any(named: 'runInShell'),
+        ),
+      ).captured.first as List<String>;
+      final exportOptionsPlistFile = File(
+        capturedArgs
+            .whereType<String>()
+            .firstWhere((arg) => arg.contains('export-options-plist'))
+            .split('=')
+            .last,
+      );
+      expect(exportOptionsPlistFile.existsSync(), isTrue);
+      final exportOptionsPlist =
+          PropertyListSerialization.propertyListWithString(
+        exportOptionsPlistFile.readAsStringSync(),
+      ) as Map<String, Object>;
+      expect(exportOptionsPlist['manageAppVersionAndBuildNumber'], isFalse);
+      expect(exportOptionsPlist['signingStyle'], 'automatic');
+      expect(exportOptionsPlist['uploadBitcode'], isFalse);
+      expect(exportOptionsPlist['method'], 'app-store');
     });
   });
 }

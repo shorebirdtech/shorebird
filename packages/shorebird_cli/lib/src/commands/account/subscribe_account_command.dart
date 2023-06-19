@@ -1,9 +1,11 @@
 import 'dart:async';
 
 import 'package:mason_logger/mason_logger.dart';
+import 'package:shorebird_cli/src/auth/auth.dart';
 import 'package:shorebird_cli/src/command.dart';
 import 'package:shorebird_cli/src/logger.dart';
 import 'package:shorebird_cli/src/shorebird_config_mixin.dart';
+import 'package:shorebird_cli/src/shorebird_environment.dart';
 import 'package:shorebird_cli/src/shorebird_validation_mixin.dart';
 import 'package:shorebird_code_push_client/shorebird_code_push_client.dart';
 
@@ -13,7 +15,7 @@ import 'package:shorebird_code_push_client/shorebird_code_push_client.dart';
 class SubscribeAccountCommand extends ShorebirdCommand
     with ShorebirdConfigMixin, ShorebirdValidationMixin {
   /// {@macro subscribe_account_command}
-  SubscribeAccountCommand({super.auth, super.buildCodePushClient});
+  SubscribeAccountCommand({super.buildCodePushClient});
 
   @override
   String get name => 'subscribe';
@@ -23,8 +25,7 @@ class SubscribeAccountCommand extends ShorebirdCommand
 
   @override
   String get summary => '''
-A subscription to Shorebird's Trusted Tester program is required to publish
-patches to your apps.
+A subscription to Shorebird is required to publish patches to your apps.
 
 The subscription costs \$20 USD per month per user and is billed through Stripe.
 
@@ -42,7 +43,7 @@ Visit ${styleUnderlined.wrap(lightCyan.wrap('https://shorebird.dev'))} for more 
 
     final client = buildCodePushClient(
       httpClient: auth.client,
-      hostedUri: hostedUri,
+      hostedUri: ShorebirdEnvironment.hostedUri,
     );
 
     final progress = logger.progress('Retrieving account information');
@@ -89,8 +90,7 @@ Once Stripe has processed your payment, you will be able to use Shorebird to cre
 ${styleBold.wrap(red.wrap('Note: This payment link is specifically for ${styleItalic.wrap('your account')}. Do not share it with others.'))}
 
 Once you have completed your payment, please let us know on Discord or by
-replying to your invite email, so that we can add you to the Trusted Tester
-private Discord channel for live support.
+replying to your invite email, so that we can add you to the support channel for live support.
 
 Thanks for you help!
 ''');

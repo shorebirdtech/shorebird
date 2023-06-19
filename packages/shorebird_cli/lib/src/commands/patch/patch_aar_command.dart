@@ -14,7 +14,6 @@ import 'package:shorebird_cli/src/formatters/file_size_formatter.dart';
 import 'package:shorebird_cli/src/logger.dart';
 import 'package:shorebird_cli/src/shorebird_artifact_mixin.dart';
 import 'package:shorebird_cli/src/shorebird_build_mixin.dart';
-import 'package:shorebird_cli/src/shorebird_code_push_client_mixin.dart';
 import 'package:shorebird_cli/src/shorebird_config_mixin.dart';
 import 'package:shorebird_cli/src/shorebird_create_app_mixin.dart';
 import 'package:shorebird_cli/src/shorebird_environment.dart';
@@ -31,12 +30,9 @@ class PatchAarCommand extends ShorebirdCommand
         ShorebirdValidationMixin,
         ShorebirdBuildMixin,
         ShorebirdCreateAppMixin,
-        ShorebirdCodePushClientMixin,
         ShorebirdArtifactMixin {
   /// {@macro patch_aar_command}
   PatchAarCommand({
-    super.auth,
-    super.buildCodePushClient,
     super.cache,
     super.validators,
     HashFunction? hashFn,
@@ -129,35 +125,17 @@ of the Android app that is using this module.''',
     final flavor = results['flavor'] as String?;
     final buildNumber = results['build-number'] as String;
     final releaseVersion = results['release-version'] as String;
+
+    final shorebirdYaml = ShorebirdEnvironment.getShorebirdYaml()!;
+    final appId = shorebirdYaml.getAppId(flavor: flavor);
+    final app = await codePushClientWrapper.getApp(appId: appId);
+
     final buildProgress = logger.progress('Building patch');
     try {
       await buildAar(flavor: flavor, buildNumber: buildNumber);
       buildProgress.complete();
     } on ProcessException catch (error) {
       buildProgress.fail('Failed to build: ${error.message}');
-      return ExitCode.software.code;
-    }
-
-    final shorebirdYaml = getShorebirdYaml()!;
-    final codePushClient = buildCodePushClient(
-      httpClient: auth.client,
-      hostedUri: hostedUri,
-    );
-
-    final appId = shorebirdYaml.getAppId(flavor: flavor);
-    final App? app;
-    try {
-      app = await getApp(appId: appId, flavor: flavor);
-    } catch (_) {
-      return ExitCode.software.code;
-    }
-
-    if (app == null) {
-      logger.err(
-        '''
-Could not find app with id: "$appId".
-Did you forget to run "shorebird init"?''',
-      );
       return ExitCode.software.code;
     }
 
@@ -168,30 +146,13 @@ Did you forget to run "shorebird init"?''',
       return ExitCode.success.code;
     }
 
-    const platform = 'android';
+    const platformName = 'android';
     final channelName = results['channel'] as String;
 
-    final Release? release;
-    try {
-      release = await getRelease(
-        appId: appId,
-        releaseVersion: releaseVersion,
-      );
-    } catch (_) {
-      return ExitCode.software.code;
-    }
-
-    if (release == null) {
-      logger.err(
-        '''
-Release not found: "$releaseVersion"
-
-Patches can only be published for existing releases.
-Please create a release using "shorebird release aar" and try again.
-''',
-      );
-      return ExitCode.software.code;
-    }
+    final release = await codePushClientWrapper.getRelease(
+      appId: appId,
+      releaseVersion: releaseVersion,
+    );
 
     final flutterRevisionProgress = logger.progress(
       'Fetching Flutter revision',
@@ -231,33 +192,24 @@ https://github.com/shorebirdtech/shorebird/issues/472
       return ExitCode.software.code;
     }
 
-    final releaseArtifacts = await getReleaseArtifacts(
-      release: release,
+    final releaseArtifacts = await codePushClientWrapper.getReleaseArtifacts(
+      releaseId: release.id,
       architectures: architectures,
-      platform: platform,
+      platform: platformName,
     );
-    if (releaseArtifacts == null) {
-      return ExitCode.software.code;
-    }
+
+    final releaseAarArtifact = await codePushClientWrapper.getReleaseArtifact(
+      releaseId: release.id,
+      arch: 'aar',
+      platform: platformName,
+    );
 
     final downloadReleaseAarProgress = logger.progress(
       'Downloading release artifacts',
     );
-    ReleaseArtifact releaseAarArtifact;
-    try {
-      releaseAarArtifact = await codePushClient.getReleaseArtifact(
-        releaseId: release.id,
-        arch: 'aar',
-        platform: 'android',
-      );
-    } catch (error) {
-      downloadReleaseAarProgress.fail('$error');
-      return ExitCode.software.code;
-    }
-
     String releaseAarPath;
     try {
-      releaseAarPath = await downloadReleaseArtifact(
+      releaseAarPath = await _downloadReleaseArtifact(
         Uri.parse(releaseAarArtifact.url),
         httpClient: _httpClient,
       );
@@ -295,7 +247,7 @@ https://github.com/shorebirdtech/shorebird/issues/472
 
     final Map<Arch, String> releaseArtifactPaths;
     try {
-      releaseArtifactPaths = await downloadReleaseArtifacts(
+      releaseArtifactPaths = await _downloadReleaseArtifacts(
         releaseArtifacts: releaseArtifacts,
         httpClient: _httpClient,
       );
@@ -324,11 +276,11 @@ https://github.com/shorebirdtech/shorebird/issues/472
     });
 
     final summary = [
-      '''📱 App: ${lightCyan.wrap(app.displayName)} ${lightCyan.wrap('(${app.id})')}''',
+      '''📱 App: ${lightCyan.wrap(app.displayName)} ${lightCyan.wrap('(${app.appId})')}''',
       if (flavor != null) '🍧 Flavor: ${lightCyan.wrap(flavor)}',
       '📦 Release Version: ${lightCyan.wrap(releaseVersion)}',
       '📺 Channel: ${lightCyan.wrap(channelName)}',
-      '''🕹️  Platform: ${lightCyan.wrap(platform)} ${lightCyan.wrap('[${archMetadata.join(', ')}]')}''',
+      '''🕹️  Platform: ${lightCyan.wrap(platformName)} ${lightCyan.wrap('[${archMetadata.join(', ')}]')}''',
     ];
 
     logger.info(
@@ -350,62 +302,13 @@ ${summary.join('\n')}
       }
     }
 
-    final Patch patch;
-    final createPatchProgress = logger.progress('Creating patch');
-    try {
-      patch = await codePushClient.createPatch(releaseId: release.id);
-      createPatchProgress.complete();
-    } catch (error) {
-      createPatchProgress.fail('$error');
-      return ExitCode.software.code;
-    }
-
-    final createArtifactProgress = logger.progress('Uploading artifacts');
-    for (final artifact in patchArtifactBundles.values) {
-      try {
-        logger.detail('Uploading artifact for ${artifact.arch}');
-        await codePushClient.createPatchArtifact(
-          patchId: patch.id,
-          artifactPath: artifact.path,
-          arch: artifact.arch,
-          platform: platform,
-          hash: artifact.hash,
-        );
-      } catch (error) {
-        createArtifactProgress.fail('$error');
-        return ExitCode.software.code;
-      }
-    }
-    createArtifactProgress.complete();
-
-    Channel? channel;
-    try {
-      channel = await getChannel(appId: app.id, name: channelName);
-    } catch (error) {
-      return ExitCode.software.code;
-    }
-
-    if (channel == null) {
-      try {
-        channel = await createChannel(appId: appId, name: channelName);
-      } catch (_) {
-        return ExitCode.software.code;
-      }
-    }
-
-    final publishPatchProgress = logger.progress(
-      'Promoting patch to ${channel.name}',
+    await codePushClientWrapper.publishPatch(
+      appId: appId,
+      releaseId: release.id,
+      platform: platformName,
+      channelName: channelName,
+      patchArtifactBundles: patchArtifactBundles,
     );
-    try {
-      await codePushClient.promotePatch(
-        patchId: patch.id,
-        channelId: channel.id,
-      );
-      publishPatchProgress.complete();
-    } catch (error) {
-      publishPatchProgress.fail('$error');
-      return ExitCode.software.code;
-    }
 
     logger.success('\n✅ Published Patch!');
     return ExitCode.success.code;
@@ -450,7 +353,7 @@ ${summary.join('\n')}
     return patchArtifactBundles;
   }
 
-  Future<String> downloadReleaseArtifact(
+  Future<String> _downloadReleaseArtifact(
     Uri uri, {
     required http.Client httpClient,
   }) async {
@@ -470,7 +373,7 @@ ${summary.join('\n')}
     return releaseArtifact.path;
   }
 
-  Future<Map<Arch, String>> downloadReleaseArtifacts({
+  Future<Map<Arch, String>> _downloadReleaseArtifacts({
     required Map<Arch, ReleaseArtifact> releaseArtifacts,
     required http.Client httpClient,
   }) async {
@@ -480,7 +383,7 @@ ${summary.join('\n')}
     );
     for (final releaseArtifact in releaseArtifacts.entries) {
       try {
-        final releaseArtifactPath = await downloadReleaseArtifact(
+        final releaseArtifactPath = await _downloadReleaseArtifact(
           Uri.parse(releaseArtifact.value.url),
           httpClient: httpClient,
         );

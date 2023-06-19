@@ -29,7 +29,13 @@ void main() {
     late CreateAccountCommand createAccountCommand;
 
     R runWithOverrides<R>(R Function() body) {
-      return runScoped(body, values: {loggerRef.overrideWith(() => logger)});
+      return runScoped(
+        body,
+        values: {
+          authRef.overrideWith(() => auth),
+          loggerRef.overrideWith(() => logger)
+        },
+      );
     }
 
     setUp(() {
@@ -46,7 +52,7 @@ void main() {
       when(() => user.displayName).thenReturn(userName);
       when(() => user.email).thenReturn(email);
 
-      createAccountCommand = CreateAccountCommand(auth: auth);
+      createAccountCommand = runWithOverrides(CreateAccountCommand.new);
     });
 
     test('has a description', () {

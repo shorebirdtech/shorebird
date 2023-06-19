@@ -8,9 +8,10 @@ import 'package:yaml/yaml.dart';
 import 'package:yaml_edit/yaml_edit.dart';
 
 mixin ShorebirdConfigMixin on ShorebirdCommand {
-  bool get hasShorebirdYaml => getShorebirdYamlFile().existsSync();
+  bool get hasShorebirdYaml =>
+      ShorebirdEnvironment.getShorebirdYamlFile().existsSync();
 
-  bool get hasPubspecYaml => getPubspecYaml() != null;
+  bool get hasPubspecYaml => ShorebirdEnvironment.getPubspecYaml() != null;
 
   bool get isShorebirdInitialized {
     return hasShorebirdYaml && pubspecContainsShorebirdYaml;
@@ -29,7 +30,7 @@ mixin ShorebirdConfigMixin on ShorebirdCommand {
   /// Returns the Android package name from the pubspec.yaml file of a Flutter
   /// module.
   String? get androidPackageName {
-    final pubspec = getPubspecYaml()!;
+    final pubspec = ShorebirdEnvironment.getPubspecYaml()!;
     final module = pubspec.flutter?['module'] as Map?;
     return module?['androidPackage'] as String?;
   }
@@ -52,7 +53,8 @@ app_id:
 
     if (flavors != null) editor.update(['flavors'], flavors);
 
-    getShorebirdYamlFile().writeAsStringSync(editor.toString());
+    ShorebirdEnvironment.getShorebirdYamlFile()
+        .writeAsStringSync(editor.toString());
 
     return ShorebirdYaml(appId: appId);
   }

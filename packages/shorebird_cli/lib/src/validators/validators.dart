@@ -18,6 +18,12 @@ enum ValidationIssueSeverity {
   warning,
 }
 
+/// The level at which validation is being performed.
+enum ValidatorScope {
+  project,
+  installation,
+}
+
 /// Display helpers for printing [ValidationIssue]s.
 extension Display on ValidationIssueSeverity {
   String get leading {
@@ -87,4 +93,7 @@ abstract class Validator {
   /// Returns an empty list if no issues are found.
   /// Not all validators use [process].
   Future<List<ValidationIssue>> validate(ShorebirdProcess process);
+
+  /// Whether this validator is project-specific or system-wide.
+  ValidatorScope get scope;
 }
