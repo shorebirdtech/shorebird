@@ -96,11 +96,11 @@ jobs:
       - name: 🐦 Verify Shorebird Init (${{ matrix.os }})
         run: |
           cd shorebird_init_test
-          ../bin/shorebird  login
+          ../bin/shorebird init --force
           if [[ -f "shorebird.yaml" ]]; then          
-            echo '✅ Shorebird Init works!'
+            echo "✅ Shorebird Init works!"
           else
-            echo '❌ Shorebird Init does not work.'
+            echo "❌ Shorebird Init does not work."
 
   verify_shorebird_run:
     if: false # TODO: Re-enable once we have auth working
