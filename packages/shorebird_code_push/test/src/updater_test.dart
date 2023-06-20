@@ -1,6 +1,3 @@
-import 'dart:ffi' as ffi;
-
-import 'package:ffi/ffi.dart';
 import 'package:mocktail/mocktail.dart';
 import 'package:shorebird_code_push/src/generated/updater_bindings.g.dart';
 import 'package:shorebird_code_push/src/updater.dart';
@@ -25,23 +22,27 @@ void main() {
     });
 
     group('currentPatchNumber', () {
-      test('returns null if bindings return null pointer', () {
+      test('returns 0 if shorebird_next_boot_patch_number throws', () {
         when(() => updaterBindings.shorebird_next_boot_patch_number())
-            .thenReturn(ffi.nullptr);
-        final currentPatchNumber = updater.currentPatchNumber();
-        expect(currentPatchNumber, isNull);
+            .thenThrow(Exception());
+        expect(updater.currentPatchNumber(), 0);
       });
 
-      test('returns number if bindings return non-null pointer', () {
-        final charPtr = '123'.toNativeUtf8().cast<ffi.Char>();
+      test('forwards the result of shorebird_next_boot_patch_number', () {
         when(() => updaterBindings.shorebird_next_boot_patch_number())
-            .thenReturn(charPtr);
+            .thenReturn(123);
         final currentPatchNumber = updater.currentPatchNumber();
         expect(currentPatchNumber, 123);
       });
     });
 
     group('checkForUpdate', () {
+      test('returns false if shorebird_check_for_update throws', () {
+        when(() => updaterBindings.shorebird_check_for_update())
+            .thenThrow(Exception());
+        expect(updater.checkForUpdate(), isFalse);
+      });
+
       test('forwards the result of shorebird_check_for_update', () {
         when(() => updaterBindings.shorebird_check_for_update())
             .thenReturn(true);

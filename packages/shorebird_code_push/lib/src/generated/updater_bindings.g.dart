@@ -2084,20 +2084,20 @@ class UpdaterBindings {
   late final _shorebird_init = _shorebird_initPtr.asFunction<
       bool Function(ffi.Pointer<AppParameters>, ffi.Pointer<ffi.Char>)>();
 
-  /// Return the active patch number, or NULL if there is no active patch.
-  ffi.Pointer<ffi.Char> shorebird_next_boot_patch_number() {
+  /// The patch number that will boot on the next run of the app, or 0 if there is
+  /// no next patch.
+  int shorebird_next_boot_patch_number() {
     return _shorebird_next_boot_patch_number();
   }
 
   late final _shorebird_next_boot_patch_numberPtr =
-      _lookup<ffi.NativeFunction<ffi.Pointer<ffi.Char> Function()>>(
+      _lookup<ffi.NativeFunction<ffi.UintPtr Function()>>(
           'shorebird_next_boot_patch_number');
   late final _shorebird_next_boot_patch_number =
-      _shorebird_next_boot_patch_numberPtr
-          .asFunction<ffi.Pointer<ffi.Char> Function()>();
+      _shorebird_next_boot_patch_numberPtr.asFunction<int Function()>();
 
-  /// Return the path to the active patch for the app, or NULL if there is no
-  /// active patch.
+  /// The path to the patch that will boot on the next run of the app, or NULL if
+  /// there is no next patch.
   ffi.Pointer<ffi.Char> shorebird_next_boot_patch_path() {
     return _shorebird_next_boot_patch_path();
   }
