@@ -8,7 +8,7 @@ import 'package:shorebird_cli/src/logger.dart';
 /// `shorebird login:ci`
 /// Login as a CI user.
 /// {@endtemplate}
-class LoginCICommand extends ShorebirdCommand {
+class LoginCiCommand extends ShorebirdCommand {
   @override
   String get description => 'Login as a CI user.';
 
