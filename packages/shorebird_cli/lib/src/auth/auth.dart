@@ -118,7 +118,7 @@ class AuthenticatedClient extends LoggingClient {
         _clientId,
         oauth2.AccessCredentials(
           // This isn't relevant for a refresh operation.
-          AccessToken('Bearer', '', DateTime.now().toUtc()),
+          AccessToken('Bearer', '', DateTime.timestamp()),
           token,
           _scopes,
         ),
