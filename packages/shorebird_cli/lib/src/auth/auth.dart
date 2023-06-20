@@ -70,8 +70,8 @@ class LoggingClient extends http.BaseClient {
 class AuthenticatedClient extends LoggingClient {
   AuthenticatedClient.credentials({
     required http.Client httpClient,
-    required OnRefreshCredentials onRefreshCredentials,
     required oauth2.AccessCredentials credentials,
+    OnRefreshCredentials? onRefreshCredentials,
     RefreshCredentials refreshCredentials = oauth2.refreshCredentials,
   }) : this._(
           httpClient: httpClient,
@@ -191,7 +191,12 @@ class Auth {
         prompt,
       );
 
-      final codePushClient = _buildCodePushClient(httpClient: this.client);
+      final codePushClient = _buildCodePushClient(
+        httpClient: AuthenticatedClient.credentials(
+          credentials: credentials,
+          httpClient: _httpClient,
+        ),
+      );
       final user = await codePushClient.getCurrentUser();
       if (user == null) {
         throw UserNotFoundException(email: credentials.email!);
