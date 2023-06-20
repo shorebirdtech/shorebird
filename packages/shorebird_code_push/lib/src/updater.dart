@@ -4,8 +4,8 @@ import 'package:meta/meta.dart';
 import 'package:shorebird_code_push/src/generated/updater_bindings.g.dart';
 
 /// {@template updater}
-/// A wrapper around the generated [UpdaterBindings] that translates ffi types
-/// into easier to use Dart types.
+/// A wrapper around the generated [UpdaterBindings] that, when necessary,
+/// translates ffi types into easier to use Dart types.
 /// {@endtemplate}
 class Updater {
   /// Creates an [Updater] instance using the currently loaded dynamic library.
@@ -18,30 +18,15 @@ class Updater {
   static late UpdaterBindings bindings;
 
   /// The currently active patch number.
-  int currentPatchNumber() {
-    try {
-      return bindings.shorebird_current_boot_patch_number();
-    } catch (e) {
-      return 0;
-    }
-  }
+  int currentPatchNumber() => bindings.shorebird_current_boot_patch_number();
 
   /// Whether a new patch is available.
-  bool checkForUpdate() {
-    try {
-      return bindings.shorebird_check_for_update();
-    } catch (e) {
-      return false;
-    }
-  }
+  bool checkForUpdate() => bindings.shorebird_check_for_update();
 
   /// The next patch number that will be loaded. Will be the same as
   /// currentPatchNumber if no new patch is available.
-  int nextPatchNumber() {
-    try {
-      return bindings.shorebird_next_boot_patch_number();
-    } catch (e) {
-      return 0;
-    }
-  }
+  int nextPatchNumber() => bindings.shorebird_next_boot_patch_number();
+
+  /// Downloads the latest patch, if available.
+  void downloadUpdate() => bindings.shorebird_update();
 }

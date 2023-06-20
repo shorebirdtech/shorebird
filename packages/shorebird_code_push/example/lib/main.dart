@@ -36,6 +36,8 @@ class _MyHomePageState extends State<MyHomePage> {
   int? _currentPatchVersion;
   int? _nextPatchVersion;
   bool _isCheckingForUpdate = false;
+  bool _isUpdateAvailable = false;
+  bool _isDownloadingUpdate = false;
 
   @override
   void initState() {
@@ -57,7 +59,7 @@ class _MyHomePageState extends State<MyHomePage> {
       _isCheckingForUpdate = true;
     });
 
-    final isUpdateAvailable = await _shorebirdCodePush.checkForUpdate();
+    _isUpdateAvailable = await _shorebirdCodePush.checkForUpdate();
 
     if (!mounted) return;
 
@@ -68,10 +70,24 @@ class _MyHomePageState extends State<MyHomePage> {
     ScaffoldMessenger.of(context).showSnackBar(
       SnackBar(
         content: Text(
-          isUpdateAvailable ? 'Update available' : 'No update available',
+          _isUpdateAvailable ? 'Update available' : 'No update available',
         ),
       ),
     );
+  }
+
+  Future<void> _downloadUpdate() async {
+    setState(() {
+      _isDownloadingUpdate = true;
+    });
+
+    await _shorebirdCodePush.downloadUpdate();
+    _nextPatchVersion = await _shorebirdCodePush.nextPatchNumber();
+
+    if (!mounted) return;
+    setState(() {
+      _isDownloadingUpdate = false;
+    });
   }
 
   @override
@@ -120,6 +136,13 @@ class _MyHomePageState extends State<MyHomePage> {
                     )
                   : const Text('Check for update'),
             ),
+            if (_isUpdateAvailable)
+              ElevatedButton(
+                onPressed: _isDownloadingUpdate ? null : _downloadUpdate,
+                child: Text(
+                  _isDownloadingUpdate ? 'Downloading...' : 'Download update',
+                ),
+              ),
           ],
         ),
       ),
