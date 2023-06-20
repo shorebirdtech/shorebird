@@ -17,13 +17,13 @@ class _MockHttpClient extends Mock implements http.Client {}
 class _MockLogger extends Mock implements Logger {}
 
 void main() {
-  group(LoginCICommand, () {
+  group(LoginCiCommand, () {
     const email = 'test@email.com';
 
     late Auth auth;
     late http.Client httpClient;
     late Logger logger;
-    late LoginCICommand command;
+    late LoginCiCommand command;
 
     R runWithOverrides<R>(R Function() body) {
       return runScoped(
@@ -41,7 +41,7 @@ void main() {
       logger = _MockLogger();
 
       when(() => auth.client).thenReturn(httpClient);
-      command = runWithOverrides(LoginCICommand.new);
+      command = runWithOverrides(LoginCiCommand.new);
     });
 
     test('exits with code 70 if no user is found', () async {
