@@ -2084,6 +2084,18 @@ class UpdaterBindings {
   late final _shorebird_init = _shorebird_initPtr.asFunction<
       bool Function(ffi.Pointer<AppParameters>, ffi.Pointer<ffi.Char>)>();
 
+  /// The currently running patch number, or 0 if the release has not been
+  /// patched.
+  int shorebird_current_boot_patch_number() {
+    return _shorebird_current_boot_patch_number();
+  }
+
+  late final _shorebird_current_boot_patch_numberPtr =
+      _lookup<ffi.NativeFunction<ffi.UintPtr Function()>>(
+          'shorebird_current_boot_patch_number');
+  late final _shorebird_current_boot_patch_number =
+      _shorebird_current_boot_patch_numberPtr.asFunction<int Function()>();
+
   /// The patch number that will boot on the next run of the app, or 0 if there is
   /// no next patch.
   int shorebird_next_boot_patch_number() {
@@ -2157,8 +2169,9 @@ class UpdaterBindings {
       _shorebird_start_update_threadPtr.asFunction<void Function()>();
 
   /// Tell the updater that we're launching from what it told us was the
-  /// next patch to boot from.  This will copy the next_boot patch to be
-  /// the current_boot patch.
+  /// next patch to boot from. This will copy the next_boot patch to be the
+  /// current_boot patch.
+  ///
   /// It is required to call this function before calling
   /// shorebird_report_launch_success or shorebird_report_launch_failure.
   void shorebird_report_launch_start() {
@@ -2188,6 +2201,7 @@ class UpdaterBindings {
   /// as having been launched successfully.  We don't currently do anything
   /// with this information, but it could be used to record a point at which
   /// we will not roll back from.
+  ///
   /// This is not currently wired up to be called from the Engine.  It's unclear
   /// where best to connect it.  Expo waits 5 seconds after the app launches
   /// and then marks the launch as successful.  We could do something similar.

@@ -23,13 +23,13 @@ void main() {
 
     group('currentPatchNumber', () {
       test('returns 0 if shorebird_next_boot_patch_number throws', () {
-        when(() => updaterBindings.shorebird_next_boot_patch_number())
+        when(() => updaterBindings.shorebird_current_boot_patch_number())
             .thenThrow(Exception());
         expect(updater.currentPatchNumber(), 0);
       });
 
       test('forwards the result of shorebird_next_boot_patch_number', () {
-        when(() => updaterBindings.shorebird_next_boot_patch_number())
+        when(() => updaterBindings.shorebird_current_boot_patch_number())
             .thenReturn(123);
         final currentPatchNumber = updater.currentPatchNumber();
         expect(currentPatchNumber, 123);
@@ -51,6 +51,21 @@ void main() {
         when(() => updaterBindings.shorebird_check_for_update())
             .thenReturn(false);
         expect(updater.checkForUpdate(), isFalse);
+      });
+    });
+
+    group('nextPatchNumber', () {
+      test('returns 0 if shorebird_next_boot_patch_number throws', () {
+        when(() => updaterBindings.shorebird_next_boot_patch_number())
+            .thenThrow(Exception());
+        expect(updater.nextPatchNumber(), 0);
+      });
+
+      test('forwards the result of shorebird_next_boot_patch_number', () {
+        when(() => updaterBindings.shorebird_next_boot_patch_number())
+            .thenReturn(123);
+        final currentPatchNumber = updater.nextPatchNumber();
+        expect(currentPatchNumber, 123);
       });
     });
   });

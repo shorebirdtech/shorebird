@@ -22,8 +22,21 @@ class ShorebirdCodePush {
 
   /// The version of the currently-installed patch. Null if no patch is
   /// installed (i.e., the app is running the release version).
-  Future<int?> currentPatchVersion() {
-    return _runInIsolate((updater) => updater.currentPatchNumber());
+  Future<int?> currentPatchNumber() {
+    return _runInIsolate((updater) {
+      final patchNumber = updater.currentPatchNumber();
+      return patchNumber == 0 ? null : patchNumber;
+    });
+  }
+
+  /// The version of the patch that will be run on the next app launch. If no
+  /// new patch has been downloaded, this will be the same as
+  /// [currentPatchNumber].
+  Future<int?> nextPatchNumber() {
+    return _runInIsolate((updater) {
+      final patchNumber = updater.nextPatchNumber();
+      return patchNumber == 0 ? null : patchNumber;
+    });
   }
 
   /// Creates an [Updater] in a separate isolate and runs the given function.

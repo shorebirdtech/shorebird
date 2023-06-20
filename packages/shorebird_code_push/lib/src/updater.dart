@@ -18,11 +18,9 @@ class Updater {
   static late UpdaterBindings bindings;
 
   /// The currently active patch number.
-  // TODO(bryanoltman): this will return the current number + 1 if an update is
-  // available. It should instead always return the current patch version.
   int currentPatchNumber() {
     try {
-      return bindings.shorebird_next_boot_patch_number();
+      return bindings.shorebird_current_boot_patch_number();
     } catch (e) {
       return 0;
     }
@@ -34,6 +32,16 @@ class Updater {
       return bindings.shorebird_check_for_update();
     } catch (e) {
       return false;
+    }
+  }
+
+  /// The next patch number that will be loaded. Will be the same as
+  /// currentPatchNumber if no new patch is available.
+  int nextPatchNumber() {
+    try {
+      return bindings.shorebird_next_boot_patch_number();
+    } catch (e) {
+      return 0;
     }
   }
 }
