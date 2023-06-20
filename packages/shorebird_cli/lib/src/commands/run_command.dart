@@ -24,6 +24,11 @@ class RunCommand extends ShorebirdCommand
         abbr: 't',
         help: 'The main entrypoint file of the application.',
       )
+      ..addMultiOption(
+        'dart-define',
+        help:
+            '''comma seperated key-value pairs (eg: FOO=BAR,FOO1=BAR1) that will be available as constants''',
+      )
       ..addOption(
         'flavor',
         help: 'The product flavor to use when building the app.',
@@ -52,6 +57,7 @@ class RunCommand extends ShorebirdCommand
     final deviceId = results['device-id'] as String?;
     final flavor = results['flavor'] as String?;
     final target = results['target'] as String?;
+    final dartDefine = results['dart-define'] as List<String>?;
     final flutter = await process.start(
       'flutter',
       [
@@ -61,6 +67,7 @@ class RunCommand extends ShorebirdCommand
         if (deviceId != null) '--device-id=$deviceId',
         if (flavor != null) '--flavor=$flavor',
         if (target != null) '--target=$target',
+        if (dartDefine != null) ...dartDefine.map((e) => '--dart-define=$e'),
         ...results.rest
       ],
       runInShell: true,
