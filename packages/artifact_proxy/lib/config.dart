@@ -18,6 +18,7 @@ final engineArtifactPatterns = {
   r'flutter_infra_release\/flutter\/(.*)\/linux-x64\/artifacts\.zip',
   r'flutter_infra_release\/flutter\/(.*)\/linux-x64-release\/linux-x64-flutter-gtk\.zip',
   r'flutter_infra_release\/flutter\/(.*)\/linux-x64-profile\/linux-x64-flutter-gtk\.zip',
+  r'flutter_infra_release\/flutter\/(.*)\/linux-x64-debug\/linux-x64-flutter-gtk\.zip',
   r'flutter_infra_release\/flutter\/(.*)\/linux-arm64\/linux-arm64-flutter-gtk\.zip',
   r'flutter_infra_release\/flutter\/(.*)\/linux-arm64\/font-subset\.zip',
   r'flutter_infra_release\/flutter\/(.*)\/linux-arm64\/artifacts\.zip',
