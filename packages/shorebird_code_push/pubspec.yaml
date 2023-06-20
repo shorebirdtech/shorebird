@@ -1,6 +1,8 @@
 name: shorebird_code_push
-description: Get info about your Shorebird code push app
+description: Control Shorebird code push from your app.
 version: 0.1.0+1
+homepage: https://shorebird.dev
+repository: https://github.com/shorebirdtech/updater
 
 environment:
   sdk: ">=3.0.0 <4.0.0"
