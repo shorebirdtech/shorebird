@@ -5,6 +5,9 @@ on:
     # At the end of every day
     - cron: "0 0 * * *"
 
+env:
+  SHOREBIRD_TOKEN: ${{ secrets.SHOREBIRD_TOKEN }}
+
 jobs:
   verify_cli_installation:
     strategy:

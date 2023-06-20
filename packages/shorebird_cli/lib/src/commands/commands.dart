@@ -5,6 +5,7 @@ export 'cache/cache.dart';
 export 'collaborators/collaborators.dart';
 export 'doctor_command.dart';
 export 'init_command.dart';
+export 'login_ci_command.dart';
 export 'login_command.dart';
 export 'logout_command.dart';
 export 'patch/patch.dart';
