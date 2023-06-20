@@ -1,5 +1,5 @@
 import 'dart:convert';
-import 'dart:io';
+import 'dart:io' hide Platform;
 
 import 'package:cli_util/cli_util.dart';
 import 'package:googleapis_auth/googleapis_auth.dart';
@@ -7,10 +7,12 @@ import 'package:http/http.dart' as http;
 import 'package:mason_logger/mason_logger.dart';
 import 'package:mocktail/mocktail.dart';
 import 'package:path/path.dart' as p;
+import 'package:platform/platform.dart';
 import 'package:scoped/scoped.dart';
 import 'package:shorebird_cli/src/auth/auth.dart';
 import 'package:shorebird_cli/src/command_runner.dart';
 import 'package:shorebird_cli/src/logger.dart';
+import 'package:shorebird_cli/src/platform.dart';
 import 'package:shorebird_code_push_client/shorebird_code_push_client.dart';
 import 'package:test/test.dart';
 
@@ -21,6 +23,8 @@ class _MockCodePushClient extends Mock implements CodePushClient {}
 class _MockLogger extends Mock implements Logger {}
 
 class _MockHttpClient extends Mock implements http.Client {}
+
+class _MockPlatform extends Mock implements Platform {}
 
 void main() {
   group('scoped', () {
@@ -59,25 +63,35 @@ void main() {
     late CodePushClient codePushClient;
     late Logger logger;
     late Auth auth;
+    late Platform platform;
 
     setUpAll(() {
       registerFallbackValue(_FakeBaseRequest());
     });
 
     R runWithOverrides<R>(R Function() body) {
-      return runScoped(body, values: {loggerRef.overrideWith(() => logger)});
+      return runScoped(
+        body,
+        values: {
+          loggerRef.overrideWith(() => logger),
+          platformRef.overrideWith(() => platform),
+        },
+      );
     }
 
     Auth buildAuth() {
-      return Auth(
-        credentialsDir: credentialsDir,
-        httpClient: httpClient,
-        buildCodePushClient: ({Uri? hostedUri, http.Client? httpClient}) {
-          return codePushClient;
-        },
-        obtainAccessCredentials: (clientId, scopes, client, userPrompt) async {
-          return accessCredentials;
-        },
+      return runWithOverrides(
+        () => Auth(
+          credentialsDir: credentialsDir,
+          httpClient: httpClient,
+          buildCodePushClient: ({Uri? hostedUri, http.Client? httpClient}) {
+            return codePushClient;
+          },
+          obtainAccessCredentials:
+              (clientId, scopes, client, userPrompt) async {
+            return accessCredentials;
+          },
+        ),
       );
     }
 
@@ -92,80 +106,170 @@ void main() {
       httpClient = _MockHttpClient();
       codePushClient = _MockCodePushClient();
       logger = _MockLogger();
-      auth = buildAuth();
+      platform = _MockPlatform();
 
       when(() => codePushClient.getCurrentUser()).thenAnswer((_) async => user);
+      when(() => platform.environment).thenReturn(<String, String>{});
+
+      auth = buildAuth();
     });
 
     group('AuthenticatedClient', () {
-      test('refreshes and uses new token when credentials are expired.',
-          () async {
-        when(() => httpClient.send(any())).thenAnswer(
-          (_) async => http.StreamedResponse(
-            const Stream.empty(),
-            HttpStatus.ok,
-          ),
-        );
+      group('token', () {
+        const token = 'shorebird-token';
 
-        final onRefreshCredentialsCalls = <AccessCredentials>[];
-        final expiredCredentials = AccessCredentials(
-          AccessToken(
-            'Bearer',
-            'accessToken',
-            DateTime.now().subtract(const Duration(minutes: 1)).toUtc(),
-          ),
-          '',
-          [],
-          idToken: 'expiredIdToken',
-        );
+        test('does not require an onRefreshCredentials callback', () {
+          expect(
+            () => AuthenticatedClient.token(
+              token: token,
+              httpClient: httpClient,
+              refreshCredentials: (clientId, credentials, client) async =>
+                  accessCredentials,
+            ),
+            returnsNormally,
+          );
+        });
 
-        final client = AuthenticatedClient(
-          credentials: expiredCredentials,
-          httpClient: httpClient,
-          onRefreshCredentials: onRefreshCredentialsCalls.add,
-          refreshCredentials: (clientId, credentials, client) async =>
-              accessCredentials,
-        );
+        test('refreshes and uses new token when credentials are expired.',
+            () async {
+          when(() => httpClient.send(any())).thenAnswer(
+            (_) async => http.StreamedResponse(
+              const Stream.empty(),
+              HttpStatus.ok,
+            ),
+          );
 
-        await runWithOverrides(
-          () => client.get(Uri.parse('https://example.com')),
-        );
+          final onRefreshCredentialsCalls = <AccessCredentials>[];
 
-        expect(
-          onRefreshCredentialsCalls,
-          equals([
-            isA<AccessCredentials>().having((c) => c.idToken, 'token', idToken)
-          ]),
-        );
-        final captured = verify(() => httpClient.send(captureAny())).captured;
-        expect(captured, hasLength(1));
-        final request = captured.first as http.BaseRequest;
-        expect(request.headers['Authorization'], equals('Bearer $idToken'));
+          final client = AuthenticatedClient.token(
+            token: token,
+            httpClient: httpClient,
+            onRefreshCredentials: onRefreshCredentialsCalls.add,
+            refreshCredentials: (clientId, credentials, client) async =>
+                accessCredentials,
+          );
+
+          await runWithOverrides(
+            () => client.get(Uri.parse('https://example.com')),
+          );
+
+          expect(
+            onRefreshCredentialsCalls,
+            equals([
+              isA<AccessCredentials>()
+                  .having((c) => c.idToken, 'token', idToken)
+            ]),
+          );
+          final captured = verify(() => httpClient.send(captureAny())).captured;
+          expect(captured, hasLength(1));
+          final request = captured.first as http.BaseRequest;
+          expect(request.headers['Authorization'], equals('Bearer $idToken'));
+        });
+
+        test('uses valid token when credentials valid.', () async {
+          when(() => httpClient.send(any())).thenAnswer(
+            (_) async => http.StreamedResponse(
+              const Stream.empty(),
+              HttpStatus.ok,
+            ),
+          );
+          final onRefreshCredentialsCalls = <AccessCredentials>[];
+          final client = AuthenticatedClient.token(
+            token: token,
+            httpClient: httpClient,
+            onRefreshCredentials: onRefreshCredentialsCalls.add,
+            refreshCredentials: (clientId, credentials, client) async =>
+                accessCredentials,
+          );
+
+          await runWithOverrides(
+            () async {
+              await client.get(Uri.parse('https://example.com'));
+              await client.get(Uri.parse('https://example.com'));
+            },
+          );
+
+          expect(onRefreshCredentialsCalls.length, equals(1));
+          final captured = verify(() => httpClient.send(captureAny())).captured;
+          expect(captured, hasLength(2));
+          var request = captured.first as http.BaseRequest;
+          expect(request.headers['Authorization'], equals('Bearer $idToken'));
+          request = captured.last as http.BaseRequest;
+          expect(request.headers['Authorization'], equals('Bearer $idToken'));
+        });
       });
 
-      test('uses valid token when credentials valid.', () async {
-        when(() => httpClient.send(any())).thenAnswer(
-          (_) async => http.StreamedResponse(
-            const Stream.empty(),
-            HttpStatus.ok,
-          ),
-        );
-        final onRefreshCredentialsCalls = <AccessCredentials>[];
-        final client = AuthenticatedClient(
-          credentials: accessCredentials,
-          httpClient: httpClient,
-          onRefreshCredentials: onRefreshCredentialsCalls.add,
-        );
+      group('credentials', () {
+        test('refreshes and uses new token when credentials are expired.',
+            () async {
+          when(() => httpClient.send(any())).thenAnswer(
+            (_) async => http.StreamedResponse(
+              const Stream.empty(),
+              HttpStatus.ok,
+            ),
+          );
 
-        await runWithOverrides(
-          () => client.get(Uri.parse('https://example.com')),
-        );
+          final onRefreshCredentialsCalls = <AccessCredentials>[];
+          final expiredCredentials = AccessCredentials(
+            AccessToken(
+              'Bearer',
+              'accessToken',
+              DateTime.now().subtract(const Duration(minutes: 1)).toUtc(),
+            ),
+            '',
+            [],
+            idToken: 'expiredIdToken',
+          );
 
-        expect(onRefreshCredentialsCalls, isEmpty);
-        final captured = verify(() => httpClient.send(captureAny())).captured;
-        expect(captured, hasLength(1));
-        final request = captured.first as http.BaseRequest;
-        expect(request.headers['Authorization'], equals('Bearer $idToken'));
+          final client = AuthenticatedClient.credentials(
+            credentials: expiredCredentials,
+            httpClient: httpClient,
+            onRefreshCredentials: onRefreshCredentialsCalls.add,
+            refreshCredentials: (clientId, credentials, client) async =>
+                accessCredentials,
+          );
+
+          await runWithOverrides(
+            () => client.get(Uri.parse('https://example.com')),
+          );
+
+          expect(
+            onRefreshCredentialsCalls,
+            equals([
+              isA<AccessCredentials>()
+                  .having((c) => c.idToken, 'token', idToken)
+            ]),
+          );
+          final captured = verify(() => httpClient.send(captureAny())).captured;
+          expect(captured, hasLength(1));
+          final request = captured.first as http.BaseRequest;
+          expect(request.headers['Authorization'], equals('Bearer $idToken'));
+        });
+
+        test('uses valid token when credentials valid.', () async {
+          when(() => httpClient.send(any())).thenAnswer(
+            (_) async => http.StreamedResponse(
+              const Stream.empty(),
+              HttpStatus.ok,
+            ),
+          );
+          final onRefreshCredentialsCalls = <AccessCredentials>[];
+          final client = AuthenticatedClient.credentials(
+            credentials: accessCredentials,
+            httpClient: httpClient,
+            onRefreshCredentials: onRefreshCredentialsCalls.add,
+          );
+
+          await runWithOverrides(
+            () => client.get(Uri.parse('https://example.com')),
+          );
+
+          expect(onRefreshCredentialsCalls, isEmpty);
+          final captured = verify(() => httpClient.send(captureAny())).captured;
+          expect(captured, hasLength(1));
+          final request = captured.first as http.BaseRequest;
+          expect(request.headers['Authorization'], equals('Bearer $idToken'));
+        });
       });
     });
 
@@ -192,6 +296,25 @@ void main() {
         expect(captured, hasLength(1));
         final request = captured.first as http.BaseRequest;
         expect(request.headers['Authorization'], equals('Bearer $idToken'));
+      });
+
+      test(
+          'returns an authenticated client '
+          'when a token is present.', () async {
+        const token = 'shorebird-token';
+        when(() => httpClient.send(any())).thenAnswer(
+          (_) async => http.StreamedResponse(
+            const Stream.empty(),
+            HttpStatus.ok,
+          ),
+        );
+        when(() => platform.environment).thenReturn(
+          <String, String>{'SHOREBIRD_TOKEN': token},
+        );
+        auth = buildAuth();
+        final client = auth.client;
+        expect(client, isA<http.Client>());
+        expect(client, isA<AuthenticatedClient>());
       });
 
       test(
@@ -239,6 +362,44 @@ void main() {
 
         expect(auth.email, isNull);
         expect(auth.isAuthenticated, isFalse);
+      });
+    });
+
+    group('loginCI', () {
+      const token = 'shorebird-token';
+      setUp(() {
+        when(() => platform.environment).thenReturn(
+          <String, String>{'SHOREBIRD_TOKEN': token},
+        );
+        auth = buildAuth();
+      });
+
+      test(
+          'returns credentials and does not set the email or cache credentials',
+          () async {
+        await expectLater(
+          auth.loginCI((_) {}),
+          completion(equals(accessCredentials)),
+        );
+        expect(auth.email, isNull);
+        expect(auth.isAuthenticated, isTrue);
+        expect(buildAuth().email, isNull);
+        expect(buildAuth().isAuthenticated, isTrue);
+        when(() => platform.environment).thenReturn({});
+        expect(buildAuth().isAuthenticated, isFalse);
+      });
+
+      test('throws when user does not exist', () async {
+        when(
+          () => codePushClient.getCurrentUser(),
+        ).thenAnswer((_) async => null);
+
+        await expectLater(
+          auth.loginCI((_) {}),
+          throwsA(isA<UserNotFoundException>()),
+        );
+
+        expect(auth.email, isNull);
       });
     });
 

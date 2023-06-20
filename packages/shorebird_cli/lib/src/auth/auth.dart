@@ -68,38 +68,63 @@ class LoggingClient extends http.BaseClient {
 }
 
 class AuthenticatedClient extends LoggingClient {
-  AuthenticatedClient({
-    required super.httpClient,
+  AuthenticatedClient.credentials({
+    required http.Client httpClient,
     required OnRefreshCredentials onRefreshCredentials,
-    required oauth2.AccessCredentials? credentials,
-    required String? ciToken,
+    required oauth2.AccessCredentials credentials,
+    RefreshCredentials refreshCredentials = oauth2.refreshCredentials,
+  }) : this._(
+          httpClient: httpClient,
+          onRefreshCredentials: onRefreshCredentials,
+          credentials: credentials,
+          refreshCredentials: refreshCredentials,
+        );
+
+  AuthenticatedClient.token({
+    required http.Client httpClient,
+    required String token,
+    OnRefreshCredentials? onRefreshCredentials,
+    RefreshCredentials refreshCredentials = oauth2.refreshCredentials,
+  }) : this._(
+          httpClient: httpClient,
+          token: token,
+          onRefreshCredentials: onRefreshCredentials,
+          refreshCredentials: refreshCredentials,
+        );
+
+  AuthenticatedClient._({
+    required super.httpClient,
+    OnRefreshCredentials? onRefreshCredentials,
+    oauth2.AccessCredentials? credentials,
+    String? token,
     RefreshCredentials refreshCredentials = oauth2.refreshCredentials,
   })  : _credentials = credentials,
         _onRefreshCredentials = onRefreshCredentials,
         _refreshCredentials = refreshCredentials,
-        _ciToken = ciToken;
+        _token = token;
 
-  final OnRefreshCredentials _onRefreshCredentials;
+  final OnRefreshCredentials? _onRefreshCredentials;
   final RefreshCredentials _refreshCredentials;
   oauth2.AccessCredentials? _credentials;
-  final String? _ciToken;
+  final String? _token;
 
   @override
   Future<http.StreamedResponse> send(http.BaseRequest request) async {
     var credentials = _credentials;
 
     if (credentials == null) {
-      final ciToken = _ciToken!;
+      final token = _token!;
       credentials = _credentials = await _refreshCredentials(
         _clientId,
         oauth2.AccessCredentials(
           // This isn't relevant for a refresh operation.
           AccessToken('Bearer', '', DateTime.now().toUtc()),
-          ciToken,
+          token,
           _scopes,
         ),
         _baseClient,
       );
+      _onRefreshCredentials?.call(credentials);
     }
 
     if (credentials.accessToken.hasExpired) {
@@ -108,7 +133,7 @@ class AuthenticatedClient extends LoggingClient {
         credentials,
         _baseClient,
       );
-      _onRefreshCredentials(credentials);
+      _onRefreshCredentials?.call(credentials);
     }
 
     final token = credentials.idToken;
@@ -136,23 +161,27 @@ class Auth {
   final String _credentialsDir;
   final ObtainAccessCredentials _obtainAccessCredentials;
   final CodePushClientBuilder _buildCodePushClient;
-  String? _ciToken;
+  String? _token;
 
   String get credentialsFilePath {
     return p.join(_credentialsDir, 'credentials.json');
   }
 
   http.Client get client {
-    if (_credentials == null && _ciToken == null) return _httpClient;
-    return AuthenticatedClient(
-      credentials: _credentials,
-      ciToken: _ciToken,
+    if (_credentials == null && _token == null) return _httpClient;
+
+    if (_token != null) {
+      return AuthenticatedClient.token(token: _token!, httpClient: _httpClient);
+    }
+
+    return AuthenticatedClient.credentials(
+      credentials: _credentials!,
       httpClient: _httpClient,
       onRefreshCredentials: _flushCredentials,
     );
   }
 
-  Future<AccessCredentials> loginAsCI(void Function(String) prompt) async {
+  Future<AccessCredentials> loginCI(void Function(String) prompt) async {
     final client = http.Client();
     try {
       final credentials = await _obtainAccessCredentials(
@@ -165,7 +194,7 @@ class Auth {
       final codePushClient = _buildCodePushClient(httpClient: this.client);
       final user = await codePushClient.getCurrentUser();
       if (user == null) {
-        throw UserNotFoundException(email: _credentials!.email!);
+        throw UserNotFoundException(email: credentials.email!);
       }
       return credentials;
     } finally {
@@ -245,12 +274,12 @@ class Auth {
 
   String? get email => _email;
 
-  bool get isAuthenticated => _email != null || _ciToken != null;
+  bool get isAuthenticated => _email != null || _token != null;
 
   void _loadCredentials() {
-    final ciToken = platform.environment['SHOREBIRD_CI_TOKEN'];
-    if (ciToken != null) {
-      _ciToken = ciToken;
+    final token = platform.environment['SHOREBIRD_TOKEN'];
+    if (token != null) {
+      _token = token;
       return;
     }
 

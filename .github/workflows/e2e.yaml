@@ -6,9 +6,11 @@ on:
     # At the end of every day
     - cron: "0 0 * * *"
 
+env:
+  SHOREBIRD_TOKEN: ${{ secrets.SHOREBIRD_TOKEN }}
+
 jobs:
   verify_cli_installation:
-    if: false # TODO: Re-enable before merging
     strategy:
       fail-fast: false
       matrix:
@@ -30,73 +32,5 @@ jobs:
             echo '✅ Shorebird CLI is installed!'
           else
             echo '❌ Shorebird CLI is not installed.'
-          exit 1
-          fi
-
-  verify_shorebird_init:
-    env:
-      SHOREBIRD_CI_TOKEN: ${{ secrets.SHOREBIRD_CI_TOKEN }}
-
-    strategy:
-      fail-fast: false
-      matrix:
-        os: [ubuntu-latest]
-
-    defaults:
-      run:
-        shell: bash
-
-    runs-on: ${{ matrix.os }}
-
-    steps:
-      - name: 📚 Git Checkout
-        uses: actions/checkout@v3
-
-      - name: 🐦 Setup Flutter
-        uses: subosito/flutter-action@v2
-
-      - name: 📦 Create a new Flutter project
-        run: flutter create shorebird_init_test --empty
-
-      - name: 🐦 Verify Shorebird Init (${{ matrix.os }})
-        run: |
-          cd shorebird_init_test
-          ../bin/shorebird init --force
-          if [[ -f "shorebird.yaml" ]]; then          
-            echo "✅ Shorebird Init works!"
-          else
-            echo "❌ Shorebird Init does not work."
-
-  verify_shorebird_run:
-    if: false # TODO: Re-enable once we have auth working
-
-    strategy:
-      fail-fast: false
-      matrix:
-        os: [macos-latest, windows-latest, ubuntu-latest]
-
-    defaults:
-      run:
-        shell: bash
-
-    runs-on: ${{ matrix.os }}
-
-    steps:
-      - name: 📚 Git Checkout
-        uses: actions/checkout@v3
-
-      - name: 🐦 Setup Flutter
-        uses: subosito/flutter-action@v2
-
-      - name: 📦 Create a new Flutter project
-        run: flutter create shorebird_init_test --empty
-
-      - name: 🐦 Verify Shorebird Run (${{ matrix.os }})
-        run: |
-          cd shorebird_init_test
-          if [[ $(../bin/shorebird run) =~ "Starting Shorebird update" ]]; then          
-            echo '✅ Shorebird run success!'
-          else
-            echo '❌ Shorebird run failure.'
           exit 1
           fi
