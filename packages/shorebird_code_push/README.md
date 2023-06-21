@@ -4,6 +4,8 @@
 
 A Dart library that allows Flutter apps to get information about code push updates.
 
+WARNING: This package is in a preview state and does not work with the currently available version of Shorebird.
+
 ## Usage
 
 ```dart

@@ -1,6 +1,6 @@
 name: shorebird_code_push
 description: Control Shorebird code push from your app.
-version: 0.1.0
+version: 0.1.1
 homepage: https://shorebird.dev
 repository: https://github.com/shorebirdtech/updater
 
