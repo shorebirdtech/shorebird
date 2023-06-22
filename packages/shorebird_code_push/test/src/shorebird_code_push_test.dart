@@ -26,7 +26,9 @@ void main() {
       test('returns false if no update is available', () async {
         when(() => updater.checkForUpdate()).thenAnswer((_) => false);
         expect(
-            await shorebirdCodePush.isNewPatchAvailableForDownload(), isFalse);
+          await shorebirdCodePush.isNewPatchAvailableForDownload(),
+          isFalse,
+        );
         expect(loggedError, isNull);
       });
 
@@ -39,7 +41,9 @@ void main() {
       test('returns false if updater throws exception', () async {
         when(() => updater.checkForUpdate()).thenThrow(Exception('oh no'));
         expect(
-            await shorebirdCodePush.isNewPatchAvailableForDownload(), isFalse);
+          await shorebirdCodePush.isNewPatchAvailableForDownload(),
+          isFalse,
+        );
         expect(loggedError, '[ShorebirdCodePush] Exception: oh no');
       });
     });
