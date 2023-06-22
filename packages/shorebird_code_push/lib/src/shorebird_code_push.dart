@@ -39,7 +39,7 @@ class ShorebirdCodePush {
   /// Checks whether a new patch is available for download.
   ///
   /// Runs in a separate isolate to avoid blocking the UI thread.
-  Future<bool> checkForUpdate() {
+  Future<bool> isNewPatchAvailableForDownload() {
     return _runInIsolate(
       (updater) => updater.checkForUpdate(),
       fallbackValue: false,
@@ -77,6 +77,19 @@ class ShorebirdCodePush {
       (updater) => updater.downloadUpdate(),
       fallbackValue: null,
     );
+  }
+
+  /// Whether a new patch has been downloaded and is ready to install.
+  ///
+  /// If true, the patch number returned by [nextPatchNumber] will be run on the
+  /// next app launch.
+  Future<bool> isNewPatchReadyToInstall() async {
+    final patchNumbers =
+        await Future.wait([currentPatchNumber(), nextPatchNumber()]);
+    final currentPatch = patchNumbers[0];
+    final nextPatch = patchNumbers[1];
+
+    return nextPatch != null && currentPatch != nextPatch;
   }
 
   void _logError(Object error) {

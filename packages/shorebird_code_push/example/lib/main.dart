@@ -1,6 +1,12 @@
 import 'package:flutter/material.dart';
+import 'package:restart_app/restart_app.dart';
 
 import 'package:shorebird_code_push/shorebird_code_push.dart';
+
+// Create an instance of ShorebirdCodePush. Because this example only contains
+// a single widget, we create it here, but you will likely only need to create
+// a single instance of ShorebirdCodePush in your app.
+final _shorebirdCodePush = ShorebirdCodePush();
 
 void main() {
   runApp(const MyApp());
@@ -32,24 +38,17 @@ class MyHomePage extends StatefulWidget {
 }
 
 class _MyHomePageState extends State<MyHomePage> {
-  final _shorebirdCodePush = ShorebirdCodePush();
   int? _currentPatchVersion;
-  int? _nextPatchVersion;
   bool _isCheckingForUpdate = false;
-  bool _isUpdateAvailable = false;
-  bool _isDownloadingUpdate = false;
 
   @override
   void initState() {
     super.initState();
-    _shorebirdCodePush.currentPatchNumber().then((currentPatchVersion) async {
-      final nextPatchVersion = await _shorebirdCodePush.nextPatchNumber();
-
+    // Request the current patch number.
+    _shorebirdCodePush.currentPatchNumber().then((currentPatchVersion) {
       if (!mounted) return;
-
       setState(() {
         _currentPatchVersion = currentPatchVersion;
-        _nextPatchVersion = nextPatchVersion;
       });
     });
   }
@@ -59,7 +58,9 @@ class _MyHomePageState extends State<MyHomePage> {
       _isCheckingForUpdate = true;
     });
 
-    _isUpdateAvailable = await _shorebirdCodePush.checkForUpdate();
+    // Ask the Shorebird servers if there is a new patch available.
+    final isUpdateAvailable =
+        await _shorebirdCodePush.isNewPatchAvailableForDownload();
 
     if (!mounted) return;
 
@@ -67,27 +68,76 @@ class _MyHomePageState extends State<MyHomePage> {
       _isCheckingForUpdate = false;
     });
 
-    ScaffoldMessenger.of(context).showSnackBar(
-      SnackBar(
-        content: Text(
-          _isUpdateAvailable ? 'Update available' : 'No update available',
+    if (isUpdateAvailable) {
+      _showUpdateAvailableBanner();
+    } else {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+          content: Text('No update available'),
         ),
+      );
+    }
+  }
+
+  void _showDownloadingBanner() {
+    ScaffoldMessenger.of(context).showMaterialBanner(
+      const MaterialBanner(
+        content: Text('Downloading...'),
+        actions: [
+          SizedBox(
+            height: 14,
+            width: 14,
+            child: CircularProgressIndicator(
+              strokeWidth: 2,
+            ),
+          )
+        ],
+      ),
+    );
+  }
+
+  void _showUpdateAvailableBanner() {
+    ScaffoldMessenger.of(context).showMaterialBanner(
+      MaterialBanner(
+        content: const Text('Update available'),
+        actions: [
+          TextButton(
+            onPressed: () async {
+              ScaffoldMessenger.of(context).hideCurrentMaterialBanner();
+              await _downloadUpdate();
+
+              if (!mounted) return;
+              ScaffoldMessenger.of(context).hideCurrentMaterialBanner();
+            },
+            child: const Text('Download'),
+          ),
+        ],
+      ),
+    );
+  }
+
+  void _showRestartBanner() {
+    ScaffoldMessenger.of(context).showMaterialBanner(
+      const MaterialBanner(
+        content: Text('A new patch is ready!'),
+        actions: [
+          TextButton(
+            // Restart the app for the new patch to take effect.
+            onPressed: Restart.restartApp,
+            child: Text('Restart app'),
+          ),
+        ],
       ),
     );
   }
 
   Future<void> _downloadUpdate() async {
-    setState(() {
-      _isDownloadingUpdate = true;
-    });
-
+    _showDownloadingBanner();
     await _shorebirdCodePush.downloadUpdate();
-    _nextPatchVersion = await _shorebirdCodePush.nextPatchNumber();
-
     if (!mounted) return;
-    setState(() {
-      _isDownloadingUpdate = false;
-    });
+
+    ScaffoldMessenger.of(context).hideCurrentMaterialBanner();
+    _showRestartBanner();
   }
 
   @override
@@ -105,22 +155,9 @@ class _MyHomePageState extends State<MyHomePage> {
             Text(
               _currentPatchVersion != null
                   ? _currentPatchVersion.toString()
-                  : 'none',
+                  : 'No patch installed',
               style: Theme.of(context).textTheme.headlineMedium,
             ),
-            if (_nextPatchVersion != null &&
-                _nextPatchVersion != _currentPatchVersion)
-              Column(
-                mainAxisSize: MainAxisSize.min,
-                children: [
-                  const SizedBox(height: 10),
-                  const Text('Next patch version:'),
-                  Text(
-                    _nextPatchVersion.toString(),
-                    style: Theme.of(context).textTheme.headlineMedium,
-                  ),
-                ],
-              ),
             const SizedBox(
               height: 20,
             ),
@@ -136,13 +173,6 @@ class _MyHomePageState extends State<MyHomePage> {
                     )
                   : const Text('Check for update'),
             ),
-            if (_isUpdateAvailable)
-              ElevatedButton(
-                onPressed: _isDownloadingUpdate ? null : _downloadUpdate,
-                child: Text(
-                  _isDownloadingUpdate ? 'Downloading...' : 'Download update',
-                ),
-              ),
           ],
         ),
       ),

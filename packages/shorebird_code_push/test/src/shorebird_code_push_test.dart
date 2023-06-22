@@ -22,22 +22,24 @@ void main() {
       );
     });
 
-    group('checkForUpdate', () {
+    group('isNewPatchAvailableForDownload', () {
       test('returns false if no update is available', () async {
         when(() => updater.checkForUpdate()).thenAnswer((_) => false);
-        expect(await shorebirdCodePush.checkForUpdate(), isFalse);
+        expect(
+            await shorebirdCodePush.isNewPatchAvailableForDownload(), isFalse);
         expect(loggedError, isNull);
       });
 
       test('returns true if an update is available', () async {
         when(() => updater.checkForUpdate()).thenAnswer((_) => true);
-        expect(await shorebirdCodePush.checkForUpdate(), true);
+        expect(await shorebirdCodePush.isNewPatchAvailableForDownload(), true);
         expect(loggedError, isNull);
       });
 
       test('returns false if updater throws exception', () async {
         when(() => updater.checkForUpdate()).thenThrow(Exception('oh no'));
-        expect(await shorebirdCodePush.checkForUpdate(), isFalse);
+        expect(
+            await shorebirdCodePush.isNewPatchAvailableForDownload(), isFalse);
         expect(loggedError, '[ShorebirdCodePush] Exception: oh no');
       });
     });
@@ -93,6 +95,31 @@ void main() {
         when(() => updater.downloadUpdate()).thenThrow(Exception('oh no'));
         await expectLater(shorebirdCodePush.downloadUpdate(), completes);
         expect(loggedError, '[ShorebirdCodePush] Exception: oh no');
+      });
+    });
+
+    group('isNewPatchReadyToInstall', () {
+      test('returns false is no new patch is available', () async {
+        when(() => updater.currentPatchNumber()).thenReturn(1);
+        when(() => updater.nextPatchNumber()).thenReturn(0);
+        expect(await shorebirdCodePush.isNewPatchReadyToInstall(), isFalse);
+      });
+
+      test(
+        'returns false is the next patch is the same as the current patch',
+        () async {
+          when(() => updater.currentPatchNumber()).thenReturn(1);
+          when(() => updater.nextPatchNumber()).thenReturn(1);
+          expect(await shorebirdCodePush.isNewPatchReadyToInstall(), isFalse);
+        },
+      );
+
+      test(
+          '''returns true if the next patch number is greater than the current patch number''',
+          () async {
+        when(() => updater.currentPatchNumber()).thenReturn(1);
+        when(() => updater.nextPatchNumber()).thenReturn(2);
+        expect(await shorebirdCodePush.isNewPatchReadyToInstall(), isTrue);
       });
     });
   });
