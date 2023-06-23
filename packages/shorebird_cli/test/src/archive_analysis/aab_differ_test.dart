@@ -27,7 +27,7 @@ void main() {
 
       test('finds differences between two different aabs', () {
         expect(
-          differ.changedFiles(baseAabPath, changedDartAabPath).toSet(),
+          differ.changedFiles(baseAabPath, changedDartAabPath).changedPaths,
           {
             'BUNDLE-METADATA/com.android.tools.build.libraries/dependencies.pb',
             'base/lib/arm64-v8a/libapp.so',
@@ -40,38 +40,39 @@ void main() {
 
     group('contentDifferences', () {
       test('detects no differences between the same aab', () {
-        expect(differ.contentDifferences(baseAabPath, baseAabPath), isEmpty);
+        expect(differ.changedFiles(baseAabPath, baseAabPath), isEmpty);
       });
 
       test('detects asset changes', () {
-        expect(
-          differ.contentDifferences(baseAabPath, changedAssetAabPath),
-          {ArchiveDifferences.assets},
-        );
+        final fileSetDiff =
+            differ.changedFiles(baseAabPath, changedAssetAabPath);
+        expect(fileSetDiff.assetChanges.isEmpty, isFalse);
+        expect(fileSetDiff.dartChanges.isEmpty, isTrue);
+        expect(fileSetDiff.nativeChanges.isEmpty, isTrue);
       });
 
       test('detects kotlin changes', () {
-        expect(
-          differ.contentDifferences(baseAabPath, changedKotlinAabPath),
-          {ArchiveDifferences.native},
-        );
+        final fileSetDiff =
+            differ.changedFiles(baseAabPath, changedKotlinAabPath);
+        expect(fileSetDiff.assetChanges.isEmpty, isTrue);
+        expect(fileSetDiff.dartChanges.isEmpty, isTrue);
+        expect(fileSetDiff.nativeChanges.isEmpty, isFalse);
       });
 
       test('detects dart changes', () {
-        expect(
-          differ.contentDifferences(baseAabPath, changedDartAabPath),
-          {ArchiveDifferences.dart},
-        );
+        final fileSetDiff =
+            differ.changedFiles(baseAabPath, changedDartAabPath);
+        expect(fileSetDiff.assetChanges.isEmpty, isTrue);
+        expect(fileSetDiff.dartChanges.isEmpty, isFalse);
+        expect(fileSetDiff.nativeChanges.isEmpty, isTrue);
       });
 
       test('detects dart and asset changes', () {
-        expect(
-          differ.contentDifferences(baseAabPath, changedDartAndAssetAabPath),
-          {
-            ArchiveDifferences.assets,
-            ArchiveDifferences.dart,
-          },
-        );
+        final fileSetDiff =
+            differ.changedFiles(baseAabPath, changedDartAndAssetAabPath);
+        expect(fileSetDiff.assetChanges.isEmpty, isFalse);
+        expect(fileSetDiff.dartChanges.isEmpty, isFalse);
+        expect(fileSetDiff.nativeChanges.isEmpty, isTrue);
       });
     });
   });
