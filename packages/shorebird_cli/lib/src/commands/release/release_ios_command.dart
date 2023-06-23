@@ -156,15 +156,19 @@ ${summary.join('\n')}
       return ExitCode.software.code;
     }
 
-    if (existingRelease == null) {
-      await codePushClientWrapper.createRelease(
-        appId: appId,
-        version: releaseVersion,
-        flutterRevision: shorebirdFlutterRevision,
-      );
-    }
+    final release = existingRelease ??
+        await codePushClientWrapper.createRelease(
+          appId: appId,
+          version: releaseVersion,
+          flutterRevision: shorebirdFlutterRevision,
+        );
 
     final relativeIpaPath = p.relative(ipaPath);
+
+    await codePushClientWrapper.createIosReleaseArtifact(
+      releaseId: release.id,
+      ipaPath: ipaPath,
+    );
 
     logger
       ..success('\n✅ Published Release!')
