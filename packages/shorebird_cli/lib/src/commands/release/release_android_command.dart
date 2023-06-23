@@ -188,27 +188,16 @@ ${summary.join('\n')}
       flavor: flavor,
     );
 
-    final instructions = generateApk
-        ? '''
-
-Your next step is to upload the apk to the Play Store.
-${lightCyan.wrap(apkPath)}
-
-See the following link for more information:    
-${link(uri: Uri.parse('https://support.google.com/googleplay/android-developer/answer/9859152?hl=en'))}
-'''
-        : '''
-
-Your next step is to upload the app bundle to the Play Store.
-${lightCyan.wrap(bundlePath)}
-
-See the following link for more information:    
-${link(uri: Uri.parse('https://support.google.com/googleplay/android-developer/answer/9859152?hl=en'))}
-''';
-
     logger
       ..success('\n✅ Published Release!')
-      ..info(instructions);
+      ..info('''
+
+Your next step is to upload the ${generateApk ? 'apk' : 'app bundle'} to the Play Store.
+${lightCyan.wrap(generateApk ? apkPath : bundlePath)}
+
+See the following link for more information:    
+${link(uri: Uri.parse('https://support.google.com/googleplay/android-developer/answer/9859152?hl=en'))}
+''');
 
     return ExitCode.success.code;
   }
