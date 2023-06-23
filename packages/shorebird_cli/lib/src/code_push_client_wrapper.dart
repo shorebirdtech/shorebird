@@ -530,15 +530,13 @@ aar artifact already exists, continuing...''',
 
   Future<GetUsageResponse> getUsage() async {
     final progress = logger.progress('Fetching usage');
-    final GetUsageResponse? usage;
     try {
-      usage = await codePushClient.getUsage();
+      final usage = await codePushClient.getUsage();
       progress.complete();
+      return usage;
     } catch (error) {
       progress.fail(error.toString());
       exit(ExitCode.software.code);
     }
-
-    return usage;
   }
 }
