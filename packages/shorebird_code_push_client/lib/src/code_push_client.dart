@@ -446,17 +446,16 @@ class CodePushClient {
   }
 
   /// Get all usage information for the associated account.
-  Future<List<AppUsage>> getUsage() async {
+  Future<GetUsageResponse> getUsage() async {
     final response = await _httpClient.get(Uri.parse('$_v1/usage'));
 
     if (response.statusCode != HttpStatus.ok) {
       throw _parseErrorResponse(response.statusCode, response.body);
     }
 
-    final decoded = GetUsageResponse.fromJson(
+    return GetUsageResponse.fromJson(
       json.decode(response.body) as Map<String, dynamic>,
     );
-    return decoded.apps;
   }
 
   /// Promote the [patchId] to the [channelId].
