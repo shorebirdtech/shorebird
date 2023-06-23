@@ -172,6 +172,7 @@ flutter:
       when(() => argResults.rest).thenReturn([]);
       when(() => argResults['arch']).thenReturn(arch);
       when(() => argResults['platform']).thenReturn(platformName);
+      when(() => argResults['artifact']).thenReturn('aab');
       when(() => auth.isAuthenticated).thenReturn(true);
       when(() => auth.client).thenReturn(httpClient);
       when(() => cache.updateAll()).thenAnswer((_) async => {});
@@ -404,6 +405,27 @@ flutter:
     });
 
     test('succeeds when release is successful', () async {
+      final tempDir = setUpTempDir();
+
+      final exitCode = await IOOverrides.runZoned(
+        () => runWithOverrides(command.run),
+        getCurrentDirectory: () => tempDir,
+      );
+
+      verify(() => logger.success('\n✅ Published Release!')).called(1);
+      verify(
+        () => codePushClientWrapper.createAndroidReleaseArtifacts(
+          releaseId: release.id,
+          platform: platformName,
+          aabPath: any(named: 'aabPath'),
+          architectures: any(named: 'architectures'),
+        ),
+      ).called(1);
+      expect(exitCode, ExitCode.success.code);
+    });
+
+    test('succeeds when release is successful (with apk)', () async {
+      when(() => argResults['artifact']).thenReturn('apk');
       final tempDir = setUpTempDir();
 
       final exitCode = await IOOverrides.runZoned(
