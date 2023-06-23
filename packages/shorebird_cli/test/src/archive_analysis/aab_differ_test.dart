@@ -20,7 +20,7 @@ void main() {
       differ = AabDiffer();
     });
 
-    group('changedFiles', () {
+    group('changedPaths', () {
       test('finds no differences between the same aab', () {
         expect(differ.changedFiles(baseAabPath, baseAabPath), isEmpty);
       });

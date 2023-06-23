@@ -312,7 +312,7 @@ flutter:
         },
       );
       when(
-        () => codePushClientWrapper.maybeGetReleaseArtifact(
+        () => codePushClientWrapper.getReleaseArtifact(
           releaseId: any(named: 'releaseId'),
           arch: 'aab',
           platform: 'android',

@@ -80,10 +80,10 @@ class FileSetDiff {
   String get prettyString => [
         if (addedPaths.isNotEmpty)
           _prettyFileSetString(title: 'Added files', paths: addedPaths),
-        if (removedPaths.isNotEmpty)
-          _prettyFileSetString(title: 'Removed files', paths: removedPaths),
         if (changedPaths.isNotEmpty)
           _prettyFileSetString(title: 'Changed files', paths: changedPaths),
+        if (removedPaths.isNotEmpty)
+          _prettyFileSetString(title: 'Removed files', paths: removedPaths),
       ].join('\n');
 
   static String _prettyFileSetString({
