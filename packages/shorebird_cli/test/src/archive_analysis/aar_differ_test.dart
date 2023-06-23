@@ -16,46 +16,44 @@ void main() {
     differ = AarDiffer();
   });
 
-  group('changedFiles', () {
+  group('changedPaths', () {
     test('finds no differences between the same aar', () {
       expect(differ.changedFiles(baseAarPath, baseAarPath), isEmpty);
     });
 
     test('finds differences between two different aars', () {
       expect(
-        differ.changedFiles(baseAarPath, changedDartAarPath).toSet(),
+        differ.changedFiles(baseAarPath, changedDartAarPath).changedPaths,
         {'jni/arm64-v8a/libapp.so'},
       );
     });
   });
 
-  group('contentDifferences', () {
+  group('changedFiles', () {
     test('detects no differences between the same aar', () {
-      expect(differ.contentDifferences(baseAarPath, baseAarPath), isEmpty);
+      expect(differ.changedFiles(baseAarPath, baseAarPath), isEmpty);
     });
 
     test('detects asset changes', () {
-      expect(
-        differ.contentDifferences(baseAarPath, changedAssetAarPath),
-        {ArchiveDifferences.assets},
-      );
+      final fileSetDiff = differ.changedFiles(baseAarPath, changedAssetAarPath);
+      expect(fileSetDiff.assetChanges.isEmpty, isFalse);
+      expect(fileSetDiff.dartChanges.isEmpty, isTrue);
+      expect(fileSetDiff.nativeChanges.isEmpty, isTrue);
     });
 
     test('detects dart changes', () {
-      expect(
-        differ.contentDifferences(baseAarPath, changedDartAarPath),
-        {ArchiveDifferences.dart},
-      );
+      final fileSetDiff = differ.changedFiles(baseAarPath, changedDartAarPath);
+      expect(fileSetDiff.assetChanges.isEmpty, isTrue);
+      expect(fileSetDiff.dartChanges.isEmpty, isFalse);
+      expect(fileSetDiff.nativeChanges.isEmpty, isTrue);
     });
 
     test('detects dart and asset changes', () {
-      expect(
-        differ.contentDifferences(baseAarPath, changedDartAndAssetAarPath),
-        {
-          ArchiveDifferences.assets,
-          ArchiveDifferences.dart,
-        },
-      );
+      final fileSetDiff =
+          differ.changedFiles(baseAarPath, changedDartAndAssetAarPath);
+      expect(fileSetDiff.assetChanges.isEmpty, isFalse);
+      expect(fileSetDiff.dartChanges.isEmpty, isFalse);
+      expect(fileSetDiff.nativeChanges.isEmpty, isTrue);
     });
   });
 }

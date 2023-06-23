@@ -247,7 +247,8 @@ flutter:
             : releaseVersionNameProcessResult;
       });
 
-      when(() => aabDiffer.contentDifferences(any(), any())).thenReturn({});
+      when(() => aabDiffer.changedFiles(any(), any()))
+          .thenReturn(FileSetDiff.empty());
       when(() => argResults.rest).thenReturn([]);
       when(() => argResults['arch']).thenReturn(arch);
       when(() => argResults['channel']).thenReturn(channelName);
@@ -311,7 +312,7 @@ flutter:
         },
       );
       when(
-        () => codePushClientWrapper.maybeGetReleaseArtifact(
+        () => codePushClientWrapper.getReleaseArtifact(
           releaseId: any(named: 'releaseId'),
           arch: 'aab',
           platform: 'android',
@@ -558,8 +559,12 @@ https://github.com/shorebirdtech/shorebird/issues/472
     });
 
     test('throws error when Java/Kotlin code changes are detected', () async {
-      when(() => aabDiffer.contentDifferences(any(), any())).thenReturn(
-        {ArchiveDifferences.native},
+      when(() => aabDiffer.changedFiles(any(), any())).thenReturn(
+        FileSetDiff(
+          addedPaths: {},
+          removedPaths: {},
+          changedPaths: {'some/path/to/changed.dex'},
+        ),
       );
 
       final tempDir = setUpTempDir();
@@ -578,8 +583,12 @@ https://github.com/shorebirdtech/shorebird/issues/472
     });
 
     test('prompts user to continue when asset changes are detected', () async {
-      when(() => aabDiffer.contentDifferences(any(), any())).thenReturn(
-        {ArchiveDifferences.assets},
+      when(() => aabDiffer.changedFiles(any(), any())).thenReturn(
+        FileSetDiff(
+          addedPaths: {},
+          removedPaths: {},
+          changedPaths: {'assets/test.json'},
+        ),
       );
 
       final tempDir = setUpTempDir();
@@ -591,7 +600,7 @@ https://github.com/shorebirdtech/shorebird/issues/472
 
       expect(exitCode, ExitCode.success.code);
       verify(
-        () => logger.info(
+        () => logger.warn(
           any(
             that: contains(
               '''The Android App Bundle contains asset changes, which will not be included in the patch.''',
@@ -605,8 +614,12 @@ https://github.com/shorebirdtech/shorebird/issues/472
     test(
       '''does not warn user of asset or code changes if only dart changes are detected''',
       () async {
-        when(() => aabDiffer.contentDifferences(any(), any())).thenReturn(
-          {ArchiveDifferences.dart},
+        when(() => aabDiffer.changedFiles(any(), any())).thenReturn(
+          FileSetDiff(
+            addedPaths: {},
+            removedPaths: {},
+            changedPaths: {'some/path/to/libapp.so'},
+          ),
         );
 
         final tempDir = setUpTempDir();
@@ -637,8 +650,12 @@ https://github.com/shorebirdtech/shorebird/issues/472
     test(
       '''exits if user decides to not proceed after being warned of non-dart changes''',
       () async {
-        when(() => aabDiffer.contentDifferences(any(), any())).thenReturn(
-          {ArchiveDifferences.assets},
+        when(() => aabDiffer.changedFiles(any(), any())).thenReturn(
+          FileSetDiff(
+            addedPaths: {},
+            removedPaths: {},
+            changedPaths: {'assets/test.json'},
+          ),
         );
         when(
           () => logger.confirm(any(that: contains('Continue anyways?'))),
