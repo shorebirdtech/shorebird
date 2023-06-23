@@ -1358,7 +1358,8 @@ Please bump your version number and try again.''',
         verify(() => progress.fail(any(that: contains(error)))).called(1);
       });
 
-      test('logs message when uploading ipa that already exists', () async {
+      test('exits with code 70 when uploading ipa that already exists',
+          () async {
         const error = 'something went wrong';
         when(
           () => codePushClient.createReleaseArtifact(
@@ -1371,22 +1372,20 @@ Please bump your version number and try again.''',
         ).thenThrow(const CodePushConflictException(message: error));
         final tempDir = setUpTempDir();
 
-        await runWithOverrides(
-          () async => IOOverrides.runZoned(
-            () async => codePushClientWrapper.createIosReleaseArtifact(
-              releaseId: releaseId,
-              ipaPath: p.join(tempDir.path, ipaPath),
+        await IOOverrides.runZoned(
+          () async => expectLater(
+            () async => runWithOverrides(
+              () async => codePushClientWrapper.createIosReleaseArtifact(
+                releaseId: releaseId,
+                ipaPath: p.join(tempDir.path, ipaPath),
+              ),
             ),
-            getCurrentDirectory: () => tempDir,
+            exitsWithCode(ExitCode.software),
           ),
+          getCurrentDirectory: () => tempDir,
         );
 
-        verify(
-          () => logger.info(
-            any(that: contains('ipa artifact already exists, continuing...')),
-          ),
-        ).called(1);
-        verifyNever(() => progress.fail(error));
+        verify(() => progress.fail(any(that: contains(error)))).called(1);
       });
 
       test('completes successfully when artifact is created', () async {

@@ -457,13 +457,6 @@ aar artifact already exists, continuing...''',
         platform: 'ios',
         hash: sha256.convert(await ipaFile.readAsBytes()).toString(),
       );
-    } on CodePushConflictException catch (_) {
-      // Newlines are due to how logger.info interacts with logger.progress.
-      logger.info(
-        '''
-
-ipa artifact already exists, continuing...''',
-      );
     } catch (error) {
       createArtifactProgress.fail('Error uploading ipa: $error');
       exit(ExitCode.software.code);
