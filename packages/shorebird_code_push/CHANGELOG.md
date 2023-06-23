@@ -1,3 +1,7 @@
+# 0.1.3
+
+- Ignore some lints in generated files to make pub.dev happy
+
 # 0.1.2
 
 - Improves documentation
