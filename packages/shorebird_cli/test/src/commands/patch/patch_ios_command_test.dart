@@ -61,6 +61,15 @@ void main() {
   const appDisplayName = 'Test App';
   const platformName = 'ios';
   const elfAotSnapshotFileName = 'out.aot';
+  const infoPlistContent = '''
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+<plist version="1.0">
+<dict>
+	<key>CFBundleName</key>
+	<string>app_bundle_name</string>
+</dict>
+</plist>''';
   const pubspecYamlContent = '''
 name: example
 version: $version
@@ -117,6 +126,11 @@ flutter:
       File(
         p.join(tempDir.path, 'shorebird.yaml'),
       ).writeAsStringSync('app_id: $appId');
+      File(
+        p.join(tempDir.path, 'ios', 'Runner', 'Info.plist'),
+      )
+        ..createSync(recursive: true)
+        ..writeAsStringSync(infoPlistContent);
       return tempDir;
     }
 
