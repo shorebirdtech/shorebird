@@ -2,6 +2,23 @@
 
 This section contains past updates we've sent to customers via Discord.
 
+## 0.6.0 (June 23, 2023)
+
+We've just released Shorebird v0.6.0 🎉
+
+- 🎮 released `package:shorebird_code_push` to control code push from Dart (guide coming soon)
+  - example: https://github.com/shorebirdtech/updater/tree/main/shorebird_code_push/example
+- 📈 `shorebird account usage` reports per-app update counts since the last billing cycle.
+- 📦 `shorebird release android –artifacts apk` generates an `apk` instead of `aab`.
+- 📝 `shorebird release list` and `shorebird apps list` displays sorted by most recent.
+- 🩹 Resolved Firebase Cloud Messaging background messages sometimes hanging on Android.
+
+📚 Release notes can be found at https://github.com/shorebirdtech/shorebird/releases/tag/v0.6.0
+
+As always, you can upgrade using `shorebird upgrade`
+
+Please let us know if we can help!
+
 ## 0.5.1 (June 21, 2023)
 
 We've just released Shorebird CLI v0.5.1 🎉
