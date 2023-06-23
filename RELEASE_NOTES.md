@@ -6,8 +6,7 @@ This section contains past updates we've sent to customers via Discord.
 
 We've just released Shorebird v0.6.0 🎉
 
-- 🎮 released [`package:shorebird_code_push`](https://pub.dev/packages/shorebird_code_push) to control code push from Dart
-  - See [example](https://github.com/shorebirdtech/updater/tree/main/shorebird_code_push/example)
+- 🎮 Released [`package:shorebird_code_push`](https://pub.dev/packages/shorebird_code_push) to control code push from Dart
 - 📈 `shorebird account usage` reports per-app update counts since the last billing cycle.
 - 📦 `shorebird release android --artifacts apk` generates an `apk` instead of `aab`.
 - 📝 `shorebird releases list` and `shorebird apps list` displays sorted by most recent.
