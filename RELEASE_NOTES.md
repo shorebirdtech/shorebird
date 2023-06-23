@@ -9,7 +9,7 @@ We've just released Shorebird v0.6.0 🎉
 - 🎮 released `package:shorebird_code_push` to control code push from Dart (guide coming soon)
   - example: https://github.com/shorebirdtech/updater/tree/main/shorebird_code_push/example
 - 📈 `shorebird account usage` reports per-app update counts since the last billing cycle.
-- 📦 `shorebird release android –artifacts apk` generates an `apk` instead of `aab`.
+- 📦 `shorebird release android --artifacts apk` generates an `apk` instead of `aab`.
 - 📝 `shorebird release list` and `shorebird apps list` displays sorted by most recent.
 - 🩹 Resolved Firebase Cloud Messaging background messages sometimes hanging on Android.
 
