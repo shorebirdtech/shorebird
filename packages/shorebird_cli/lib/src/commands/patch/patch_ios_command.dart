@@ -127,14 +127,13 @@ class PatchIosCommand extends ShorebirdCommand
       'Detecting release version',
     );
     try {
-      final pubspec = ShorebirdEnvironment.getPubspecYaml()!;
       final ipa = _ipaReader.read(
         p.join(
           Directory.current.path,
           'build',
           'ios',
           'ipa',
-          '${pubspec.name}.ipa',
+          '${getIpaName()}.ipa',
         ),
       );
       releaseVersion = ipa.versionNumber;
