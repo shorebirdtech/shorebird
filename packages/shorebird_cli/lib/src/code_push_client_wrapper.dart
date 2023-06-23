@@ -453,7 +453,7 @@ aar artifact already exists, continuing...''',
       await codePushClient.createReleaseArtifact(
         releaseId: releaseId,
         artifactPath: ipaPath,
-        arch: 'aarch64',
+        arch: 'ipa',
         platform: 'ios',
         hash: sha256.convert(await ipaFile.readAsBytes()).toString(),
       );
