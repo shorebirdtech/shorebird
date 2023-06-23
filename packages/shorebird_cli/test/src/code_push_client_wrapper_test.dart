@@ -1308,6 +1308,113 @@ Please bump your version number and try again.''',
       });
     });
 
+    group('createIosReleaseArtifact', () {
+      final ipaPath = p.join('path', 'to', 'app.ipa');
+
+      Directory setUpTempDir({String? flavor}) {
+        final tempDir = Directory.systemTemp.createTempSync();
+        File(p.join(tempDir.path, ipaPath)).createSync(recursive: true);
+        return tempDir;
+      }
+
+      setUp(() {
+        when(
+          () => codePushClient.createReleaseArtifact(
+            artifactPath: any(named: 'artifactPath'),
+            releaseId: any(named: 'releaseId'),
+            arch: any(named: 'arch'),
+            platform: any(named: 'platform'),
+            hash: any(named: 'hash'),
+          ),
+        ).thenAnswer((_) async => {});
+      });
+
+      test('exits with code 70 when artifact creation fails', () async {
+        const error = 'something went wrong';
+        when(
+          () => codePushClient.createReleaseArtifact(
+            artifactPath: any(named: 'artifactPath'),
+            releaseId: any(named: 'releaseId'),
+            arch: any(named: 'arch'),
+            platform: any(named: 'platform'),
+            hash: any(named: 'hash'),
+          ),
+        ).thenThrow(error);
+        final tempDir = setUpTempDir();
+
+        await IOOverrides.runZoned(
+          () async => expectLater(
+            () async => runWithOverrides(
+              () async => codePushClientWrapper.createIosReleaseArtifact(
+                releaseId: releaseId,
+                ipaPath: p.join(tempDir.path, ipaPath),
+              ),
+            ),
+            exitsWithCode(ExitCode.software),
+          ),
+          getCurrentDirectory: () => tempDir,
+        );
+
+        verify(() => progress.fail(any(that: contains(error)))).called(1);
+      });
+
+      test('exits with code 70 when uploading ipa that already exists',
+          () async {
+        const error = 'something went wrong';
+        when(
+          () => codePushClient.createReleaseArtifact(
+            artifactPath: any(named: 'artifactPath', that: endsWith('.ipa')),
+            releaseId: any(named: 'releaseId'),
+            arch: any(named: 'arch'),
+            platform: any(named: 'platform'),
+            hash: any(named: 'hash'),
+          ),
+        ).thenThrow(const CodePushConflictException(message: error));
+        final tempDir = setUpTempDir();
+
+        await IOOverrides.runZoned(
+          () async => expectLater(
+            () async => runWithOverrides(
+              () async => codePushClientWrapper.createIosReleaseArtifact(
+                releaseId: releaseId,
+                ipaPath: p.join(tempDir.path, ipaPath),
+              ),
+            ),
+            exitsWithCode(ExitCode.software),
+          ),
+          getCurrentDirectory: () => tempDir,
+        );
+
+        verify(() => progress.fail(any(that: contains(error)))).called(1);
+      });
+
+      test('completes successfully when artifact is created', () async {
+        when(
+          () => codePushClient.createReleaseArtifact(
+            artifactPath: any(named: 'artifactPath'),
+            releaseId: any(named: 'releaseId'),
+            arch: any(named: 'arch'),
+            platform: any(named: 'platform'),
+            hash: any(named: 'hash'),
+          ),
+        ).thenAnswer((_) async => {});
+        final tempDir = setUpTempDir();
+
+        await runWithOverrides(
+          () async => IOOverrides.runZoned(
+            () async => codePushClientWrapper.createIosReleaseArtifact(
+              releaseId: releaseId,
+              ipaPath: p.join(tempDir.path, ipaPath),
+            ),
+            getCurrentDirectory: () => tempDir,
+          ),
+        );
+
+        verify(() => progress.complete()).called(1);
+        verifyNever(() => progress.fail(any()));
+      });
+    });
+
     group('patch', () {
       group('createPatch', () {
         test('exits with code 70 when creating patch fails', () async {

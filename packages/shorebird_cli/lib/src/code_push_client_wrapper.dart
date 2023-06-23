@@ -442,6 +442,29 @@ aar artifact already exists, continuing...''',
     createArtifactProgress.complete();
   }
 
+  /// Uploads a release ipa to the Shorebird server.
+  Future<void> createIosReleaseArtifact({
+    required int releaseId,
+    required String ipaPath,
+  }) async {
+    final createArtifactProgress = logger.progress('Creating artifacts');
+    final ipaFile = File(ipaPath);
+    try {
+      await codePushClient.createReleaseArtifact(
+        releaseId: releaseId,
+        artifactPath: ipaPath,
+        arch: 'ipa',
+        platform: 'ios',
+        hash: sha256.convert(await ipaFile.readAsBytes()).toString(),
+      );
+    } catch (error) {
+      createArtifactProgress.fail('Error uploading ipa: $error');
+      exit(ExitCode.software.code);
+    }
+
+    createArtifactProgress.complete();
+  }
+
   @visibleForTesting
   Future<Patch> createPatch({required int releaseId}) async {
     final createPatchProgress = logger.progress('Creating patch');
