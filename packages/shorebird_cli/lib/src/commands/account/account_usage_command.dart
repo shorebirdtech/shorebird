@@ -51,13 +51,7 @@ extension on List<AppUsage> {
     );
     var totalPatchInstalls = 0;
     for (final appUsage in this) {
-      for (final platformUsage in appUsage.platforms) {
-        for (final archUsage in platformUsage.arches) {
-          for (final patchUsage in archUsage.patches) {
-            totalPatchInstalls += patchUsage.installCount;
-          }
-        }
-      }
+      totalPatchInstalls += appUsage.patchInstallCount;
     }
 
     return Table(

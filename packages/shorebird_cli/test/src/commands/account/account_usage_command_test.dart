@@ -69,34 +69,8 @@ void main() {
       final usage = [
         const AppUsage(
           id: 'test-app-id',
-          platforms: [
-            PlatformUsage(
-              name: 'android',
-              arches: [
-                ArchUsage(
-                  name: 'aarch64',
-                  patches: [
-                    PatchUsage(id: 0, installCount: 10),
-                    PatchUsage(id: 1, installCount: 10)
-                  ],
-                ),
-                ArchUsage(
-                  name: 'arm',
-                  patches: [
-                    PatchUsage(id: 0, installCount: 10),
-                    PatchUsage(id: 1, installCount: 10)
-                  ],
-                ),
-                ArchUsage(
-                  name: 'x86',
-                  patches: [
-                    PatchUsage(id: 0, installCount: 1),
-                    PatchUsage(id: 1, installCount: 1)
-                  ],
-                )
-              ],
-            )
-          ],
+          name: 'test-app-name',
+          patchInstallCount: 42,
         ),
       ];
       when(

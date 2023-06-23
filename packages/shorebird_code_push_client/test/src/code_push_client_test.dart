@@ -1915,7 +1915,8 @@ void main() {
         final expected = [
           AppUsage(
             id: 'test-app-id',
-            platforms: [],
+            name: 'Test App',
+            patchInstallCount: 42,
           )
         ];
 
@@ -1923,7 +1924,9 @@ void main() {
           (_) async => http.StreamedResponse(
             Stream.value(
               utf8.encode(
-                json.encode(GetUsageResponse(apps: expected)),
+                json.encode(
+                  GetUsageResponse(apps: expected, patchInstallLimit: 1337),
+                ),
               ),
             ),
             HttpStatus.ok,

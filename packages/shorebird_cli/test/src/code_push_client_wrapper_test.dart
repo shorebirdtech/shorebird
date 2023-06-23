@@ -1574,34 +1574,8 @@ Please bump your version number and try again.''',
           const usage = [
             AppUsage(
               id: 'test-app-id',
-              platforms: [
-                PlatformUsage(
-                  name: 'android',
-                  arches: [
-                    ArchUsage(
-                      name: 'aarch64',
-                      patches: [
-                        PatchUsage(id: 0, installCount: 10),
-                        PatchUsage(id: 1, installCount: 10)
-                      ],
-                    ),
-                    ArchUsage(
-                      name: 'arm',
-                      patches: [
-                        PatchUsage(id: 0, installCount: 10),
-                        PatchUsage(id: 1, installCount: 10)
-                      ],
-                    ),
-                    ArchUsage(
-                      name: 'x86',
-                      patches: [
-                        PatchUsage(id: 0, installCount: 1),
-                        PatchUsage(id: 1, installCount: 1)
-                      ],
-                    )
-                  ],
-                )
-              ],
+              name: 'test app',
+              patchInstallCount: 42,
             ),
           ];
           when(() => codePushClient.getUsage()).thenAnswer((_) async => usage);
