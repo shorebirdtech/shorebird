@@ -1678,13 +1678,18 @@ Please bump your version number and try again.''',
         });
 
         test('returns usage when succeeds', () async {
-          const usage = [
-            AppUsage(
-              id: 'test-app-id',
-              name: 'test app',
-              patchInstallCount: 42,
-            ),
-          ];
+          final usage = GetUsageResponse(
+            apps: const [
+              AppUsage(
+                id: 'test-app-id',
+                name: 'test app',
+                patchInstallCount: 42,
+              ),
+            ],
+            patchInstallLimit: 20000,
+            currentPeriodStart: DateTime(2023),
+            currentPeriodEnd: DateTime(2023, 2),
+          );
           when(() => codePushClient.getUsage()).thenAnswer((_) async => usage);
 
           await expectLater(

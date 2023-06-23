@@ -1912,23 +1912,22 @@ void main() {
       });
 
       test('completes when request succeeds', () async {
-        final expected = [
-          AppUsage(
-            id: 'test-app-id',
-            name: 'Test App',
-            patchInstallCount: 42,
-          )
-        ];
+        final expected = GetUsageResponse(
+          apps: [
+            AppUsage(
+              id: 'test-app-id',
+              name: 'Test App',
+              patchInstallCount: 42,
+            )
+          ],
+          patchInstallLimit: 1337,
+          currentPeriodStart: DateTime(2023),
+          currentPeriodEnd: DateTime(2023, 2),
+        );
 
         when(() => httpClient.send(any())).thenAnswer(
           (_) async => http.StreamedResponse(
-            Stream.value(
-              utf8.encode(
-                json.encode(
-                  GetUsageResponse(apps: expected, patchInstallLimit: 1337),
-                ),
-              ),
-            ),
+            Stream.value(utf8.encode(json.encode(expected))),
             HttpStatus.ok,
           ),
         );

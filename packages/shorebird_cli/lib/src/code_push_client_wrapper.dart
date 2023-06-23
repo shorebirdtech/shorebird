@@ -551,17 +551,15 @@ aar artifact already exists, continuing...''',
     await promotePatch(patchId: patch.id, channel: channel);
   }
 
-  Future<List<AppUsage>> getUsage() async {
+  Future<GetUsageResponse> getUsage() async {
     final progress = logger.progress('Fetching usage');
-    final List<AppUsage>? appsUsage;
     try {
-      appsUsage = await codePushClient.getUsage();
+      final usage = await codePushClient.getUsage();
       progress.complete();
+      return usage;
     } catch (error) {
       progress.fail(error.toString());
       exit(ExitCode.software.code);
     }
-
-    return appsUsage;
   }
 }
