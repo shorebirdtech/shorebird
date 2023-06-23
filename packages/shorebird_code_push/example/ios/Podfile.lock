@@ -1,0 +1,22 @@
+PODS:
+  - Flutter (1.0.0)
+  - restart_app (0.0.1):
+    - Flutter
+
+DEPENDENCIES:
+  - Flutter (from `Flutter`)
+  - restart_app (from `.symlinks/plugins/restart_app/ios`)
+
+EXTERNAL SOURCES:
+  Flutter:
+    :path: Flutter
+  restart_app:
+    :path: ".symlinks/plugins/restart_app/ios"
+
+SPEC CHECKSUMS:
+  Flutter: f04841e97a9d0b0a8025694d0796dd46242b2854
+  restart_app: 806659942bf932f6ce51c5372f91ce5e81c8c14a
+
+PODFILE CHECKSUM: 70d9d25280d0dd177a5f637cdb0f0b0b12c6a189
+
+COCOAPODS: 1.12.0

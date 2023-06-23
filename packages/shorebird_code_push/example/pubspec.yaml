@@ -2,7 +2,7 @@ name: shorebird_code_push_example
 description: An example demonstrating how to use the shorebird_code_push package
 publish_to: 'none'
 
-version: 1.0.0+19
+version: 1.0.0+20
 
 environment:
   sdk: '>=3.0.5 <4.0.0'
