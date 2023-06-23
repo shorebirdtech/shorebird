@@ -1,6 +1,6 @@
 ## Shorebird 🐦
 
-[![Discord](https://dcbadge.vercel.app/api/server/9hKJcWGcaB)](https://discord.gg/9hKJcWGcaB)
+[![Discord](https://dcbadge.vercel.app/api/server/shorebird)](https://discord.gg/shorebird)
 
 [![ci](https://github.com/shorebirdtech/shorebird/actions/workflows/main.yaml/badge.svg)](https://github.com/shorebirdtech/shorebird/actions/workflows/main.yaml)
 [![e2e](https://github.com/shorebirdtech/shorebird/actions/workflows/e2e.yaml/badge.svg)](https://github.com/shorebirdtech/shorebird/actions/workflows/e2e.yaml)
@@ -35,7 +35,7 @@ For more information, please refer to the documentation for each package.
 ## Contributing
 
 If you're interested in contributing, please join us on
-[Discord](https://discord.gg/9hKJcWGcaB).
+[Discord](https://discord.gg/shorebird).
 
 ### Environment setup
 
