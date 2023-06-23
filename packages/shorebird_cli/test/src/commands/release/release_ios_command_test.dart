@@ -213,6 +213,12 @@ flutter:
           flutterRevision: any(named: 'flutterRevision'),
         ),
       ).thenAnswer((_) async => release);
+      when(
+        () => codePushClientWrapper.createIosReleaseArtifact(
+          releaseId: any(named: 'releaseId'),
+          ipaPath: any(named: 'ipaPath'),
+        ),
+      ).thenAnswer((_) async => release);
       when(() => flutterValidator.validate(any())).thenAnswer((_) async => []);
 
       command = runWithOverrides(
@@ -389,6 +395,12 @@ error: exportArchive: No signing certificate "iOS Distribution" found
 
       expect(exitCode, ExitCode.success.code);
       verify(() => logger.info('Aborting.')).called(1);
+      verifyNever(
+        () => codePushClientWrapper.createIosReleaseArtifact(
+          releaseId: release.id,
+          ipaPath: any(named: 'ipaPath', that: endsWith('.ipa')),
+        ),
+      );
     });
 
     test('throws error when unable to detect flutter revision', () async {
@@ -449,6 +461,12 @@ error: exportArchive: No signing certificate "iOS Distribution" found
           ),
         ),
       ).called(1);
+      verify(
+        () => codePushClientWrapper.createIosReleaseArtifact(
+          releaseId: release.id,
+          ipaPath: any(named: 'ipaPath', that: endsWith('.ipa')),
+        ),
+      ).called(1);
       expect(exitCode, ExitCode.success.code);
     });
 
@@ -485,6 +503,12 @@ flavors:
           ),
         ),
       ).called(1);
+      verify(
+        () => codePushClientWrapper.createIosReleaseArtifact(
+          releaseId: release.id,
+          ipaPath: any(named: 'ipaPath', that: endsWith('.ipa')),
+        ),
+      ).called(1);
       expect(exitCode, ExitCode.success.code);
     });
 
@@ -511,6 +535,12 @@ flavors:
           flutterRevision: any(named: 'flutterRevision'),
         ),
       );
+      verify(
+        () => codePushClientWrapper.createIosReleaseArtifact(
+          releaseId: release.id,
+          ipaPath: any(named: 'ipaPath', that: endsWith('.ipa')),
+        ),
+      ).called(1);
     });
 
     test('provides appropriate ExportOptions.plist to build ipa command',
