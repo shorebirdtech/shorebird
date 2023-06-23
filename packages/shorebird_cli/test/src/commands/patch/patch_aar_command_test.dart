@@ -246,7 +246,8 @@ flutter:
         return patchProcessResult;
       });
 
-      when(() => aarDiffer.contentDifferences(any(), any())).thenReturn({});
+      when(() => aarDiffer.changedFiles(any(), any()))
+          .thenReturn(FileSetDiff.empty());
       when(() => argResults.rest).thenReturn([]);
       when(() => argResults['channel']).thenReturn(channelName);
       when(() => argResults['dry-run']).thenReturn(false);
@@ -517,8 +518,12 @@ https://github.com/shorebirdtech/shorebird/issues/472
     });
 
     test('prompts user to continue when asset changes are detected', () async {
-      when(() => aarDiffer.contentDifferences(any(), any())).thenReturn(
-        {ArchiveDifferences.assets},
+      when(() => aarDiffer.changedFiles(any(), any())).thenReturn(
+        FileSetDiff(
+          addedPaths: {'assets/test.json'},
+          removedPaths: {},
+          changedPaths: {},
+        ),
       );
 
       final tempDir = setUpTempDir();
@@ -544,8 +549,12 @@ https://github.com/shorebirdtech/shorebird/issues/472
     test(
       '''does not warn user of asset or code changes if only dart changes are detected''',
       () async {
-        when(() => aarDiffer.contentDifferences(any(), any())).thenReturn(
-          {ArchiveDifferences.dart},
+        when(() => aarDiffer.changedFiles(any(), any())).thenReturn(
+          FileSetDiff(
+            addedPaths: {},
+            removedPaths: {},
+            changedPaths: {'some/path/libapp.so'},
+          ),
         );
 
         final tempDir = setUpTempDir();
@@ -571,8 +580,12 @@ https://github.com/shorebirdtech/shorebird/issues/472
     test(
       '''exits if user decides to not proceed after being warned of non-dart changes''',
       () async {
-        when(() => aarDiffer.contentDifferences(any(), any())).thenReturn(
-          {ArchiveDifferences.assets},
+        when(() => aarDiffer.changedFiles(any(), any())).thenReturn(
+          FileSetDiff(
+            addedPaths: {'assets/test.json'},
+            removedPaths: {},
+            changedPaths: {},
+          ),
         );
         when(
           () => logger.confirm(any(that: contains('Continue anyways?'))),
