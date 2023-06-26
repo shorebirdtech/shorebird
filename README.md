@@ -10,10 +10,9 @@
 
 Home of the Shorebird Tools
 
-## Status
+## Getting Started
 
-Shorebird code push is in Open Beta! Instructions for install and usage are at
-https://docs.shorebird.dev/
+Visit https://docs.shorebird.dev to get started.
 
 ## Packages
 
