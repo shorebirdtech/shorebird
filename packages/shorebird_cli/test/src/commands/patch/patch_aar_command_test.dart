@@ -661,13 +661,22 @@ https://github.com/shorebirdtech/shorebird/issues/472
     });
 
     test('does not prompt on --force', () async {
+      when(() => aarDiffer.changedFiles(any(), any())).thenReturn(
+        FileSetDiff(
+          addedPaths: {'assets/test.json'},
+          removedPaths: {},
+          changedPaths: {},
+        ),
+      );
       when(() => argResults['force']).thenReturn(true);
       final tempDir = setUpTempDir();
       setUpTempArtifacts(tempDir);
+
       final exitCode = await IOOverrides.runZoned(
         () => runWithOverrides(command.run),
         getCurrentDirectory: () => tempDir,
       );
+
       expect(exitCode, equals(ExitCode.success.code));
       verifyNever(() => logger.confirm(any()));
       verify(

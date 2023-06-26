@@ -271,7 +271,8 @@ If you believe you're seeing this in error, please reach out to us for support a
           '''The Android App Bundle contains asset changes, which will not be included in the patch.''',
         )
         ..info(yellow.wrap(contentDiffs.assetChanges.prettyString));
-      final shouldContinue = logger.confirm('Continue anyways?');
+
+      final shouldContinue = force || logger.confirm('Continue anyways?');
       if (!shouldContinue) {
         return ExitCode.success.code;
       }
