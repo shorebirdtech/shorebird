@@ -77,10 +77,13 @@ void main() {
       expect(subscribeAccountCommand.description, isNotEmpty);
     });
 
-    test('summary has price and link to shorebird.dev', () {
+    test('summary contains usage and link to shorebird.dev', () {
       expect(
         subscribeAccountCommand.summary,
-        stringContainsInOrder([r'$20', 'shorebird.dev']),
+        stringContainsInOrder([
+          'The subscription is billed monthly based on usage through Stripe.',
+          'shorebird.dev'
+        ]),
       );
     });
 

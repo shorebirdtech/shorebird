@@ -27,7 +27,7 @@ class SubscribeAccountCommand extends ShorebirdCommand
   String get summary => '''
 A subscription to Shorebird is required to publish patches to your apps.
 
-The subscription costs \$20 USD per month per user and is billed through Stripe.
+The subscription is billed monthly based on usage through Stripe.
 
 Visit ${styleUnderlined.wrap(lightCyan.wrap('https://shorebird.dev'))} for more details.''';
 
