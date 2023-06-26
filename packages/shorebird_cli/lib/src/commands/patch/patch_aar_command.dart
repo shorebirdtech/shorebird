@@ -239,7 +239,7 @@ https://github.com/shorebirdtech/shorebird/issues/472
           '''⚠️ The Android Archive contains asset changes, which will not be included in the patch.''',
         ),
       );
-      final shouldContinue = logger.confirm('Continue anyways?');
+      final shouldContinue = force || logger.confirm('Continue anyways?');
       if (!shouldContinue) {
         return ExitCode.success.code;
       }
