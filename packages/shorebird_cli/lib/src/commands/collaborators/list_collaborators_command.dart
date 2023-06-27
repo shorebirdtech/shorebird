@@ -100,13 +100,23 @@ extension on List<Collaborator> {
       cellStyle: cellStyle,
       header: const TableSection(
         rows: [
-          Row(cells: [Cell('Email')])
+          Row(
+            cells: [
+              Cell('Email'),
+              Cell('Role'),
+            ],
+          ),
         ],
       ),
       body: TableSection(
         rows: [
           for (final collaborator in this)
-            Row(cells: [Cell(collaborator.email)]),
+            Row(
+              cells: [
+                Cell(collaborator.email),
+                Cell(collaborator.role.name),
+              ],
+            ),
         ],
       ),
     ).render();

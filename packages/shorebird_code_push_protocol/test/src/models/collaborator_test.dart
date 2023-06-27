@@ -7,6 +7,7 @@ void main() {
       const collaborator = Collaborator(
         userId: 1,
         email: 'jane.doe@shorebird.dev',
+        role: CollaboratorRole.admin,
       );
       expect(
         Collaborator.fromJson(collaborator.toJson()).toJson(),

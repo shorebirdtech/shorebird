@@ -1639,10 +1639,12 @@ void main() {
           Collaborator(
             userId: 0,
             email: 'jane.doe@shorebird.dev',
+            role: CollaboratorRole.developer,
           ),
           Collaborator(
             userId: 1,
             email: 'john.doe@shorebird.dev',
+            role: CollaboratorRole.admin,
           ),
         ];
 
