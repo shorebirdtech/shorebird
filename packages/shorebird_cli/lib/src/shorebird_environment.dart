@@ -7,6 +7,7 @@ import 'package:platform/platform.dart';
 import 'package:pubspec_parse/pubspec_parse.dart';
 import 'package:shorebird_cli/src/config/shorebird_yaml.dart';
 import 'package:shorebird_cli/src/platform.dart';
+import 'package:shorebird_code_push_client/shorebird_code_push_client.dart';
 
 abstract class ShorebirdEnvironment {
   /// Environment variables from [Platform.environment].
