@@ -105,6 +105,26 @@ void main() {
     });
 
     test(
+        '''exits with code 70 if user does not have permission to add collaborators''',
+        () async {
+      final error = CodePushForbiddenException(
+        message: 'oops something went wrong',
+      );
+      when(
+        () => codePushClient.createCollaborator(
+          appId: any(named: 'appId'),
+          email: any(named: 'email'),
+        ),
+      ).thenThrow(error);
+      expect(await runWithOverrides(command.run), ExitCode.software.code);
+      verify(
+        () => logger.err(
+          'You do not have permission to add collaborators to this app.',
+        ),
+      ).called(1);
+    });
+
+    test(
         'returns ExitCode.software '
         'when adding a collaborator fails', () async {
       const error = 'oops something went wrong';

@@ -22,6 +22,14 @@ class CodePushException implements Exception {
   String toString() => '$message${details != null ? '\n$details' : ''}';
 }
 
+/// {@template code_push_forbidden_exception}
+/// Exception thrown when a 403 response is received.
+/// {@endtemplate}
+class CodePushForbiddenException extends CodePushException {
+  /// {@macro code_push_forbidden_exception}
+  CodePushForbiddenException({required super.message, super.details});
+}
+
 /// {@template code_push_conflict_exception}
 /// Exception thrown when a 409 response is received.
 /// {@endtemplate}
@@ -494,6 +502,7 @@ class CodePushClient {
       HttpStatus.conflict => CodePushConflictException.new,
       HttpStatus.notFound => CodePushNotFoundException.new,
       HttpStatus.upgradeRequired => CodePushUpgradeRequiredException.new,
+      HttpStatus.forbidden => CodePushForbiddenException.new,
       _ => CodePushException.new,
     };
 
