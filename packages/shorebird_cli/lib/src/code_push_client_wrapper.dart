@@ -63,6 +63,8 @@ class CodePushClientWrapper {
   Future<AppMetadata> getApp({required String appId}) async {
     final app = await maybeGetApp(appId: appId);
     if (app == null) {
+      // TODO(bryanoltman): improve this error message to indicate that a user
+      // may not have permission to view the app.
       logger.err(
         '''
 Could not find app with id: "$appId".

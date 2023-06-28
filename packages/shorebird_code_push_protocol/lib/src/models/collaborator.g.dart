@@ -16,6 +16,8 @@ Collaborator _$CollaboratorFromJson(Map<String, dynamic> json) =>
         final val = Collaborator(
           userId: $checkedConvert('user_id', (v) => v as int),
           email: $checkedConvert('email', (v) => v as String),
+          role: $checkedConvert(
+              'role', (v) => $enumDecode(_$CollaboratorRoleEnumMap, v)),
         );
         return val;
       },
@@ -26,4 +28,10 @@ Map<String, dynamic> _$CollaboratorToJson(Collaborator instance) =>
     <String, dynamic>{
       'user_id': instance.userId,
       'email': instance.email,
+      'role': _$CollaboratorRoleEnumMap[instance.role]!,
     };
+
+const _$CollaboratorRoleEnumMap = {
+  CollaboratorRole.admin: 'admin',
+  CollaboratorRole.developer: 'developer',
+};
