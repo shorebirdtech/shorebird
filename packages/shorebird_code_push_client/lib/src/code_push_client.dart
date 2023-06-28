@@ -22,6 +22,14 @@ class CodePushException implements Exception {
   String toString() => '$message${details != null ? '\n$details' : ''}';
 }
 
+/// {@template code_push_permission_exception}
+/// Exception thrown when a 403 response is received.
+/// {@endtemplate}
+class CodePushPermissionException extends CodePushException {
+  /// {@macro code_push_permission_exception}
+  CodePushPermissionException({required super.message});
+}
+
 /// {@template code_push_conflict_exception}
 /// Exception thrown when a 409 response is received.
 /// {@endtemplate}
@@ -103,6 +111,12 @@ class CodePushClient {
       Uri.parse('$_v1/apps/$appId/collaborators'),
       body: json.encode(CreateAppCollaboratorRequest(email: email).toJson()),
     );
+
+    if (response.statusCode == HttpStatus.forbidden) {
+      throw CodePushPermissionException(
+        message: 'You do not have permission to add collaborators to this app.',
+      );
+    }
 
     if (response.statusCode != HttpStatus.created) {
       throw _parseErrorResponse(response.statusCode, response.body);

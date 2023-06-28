@@ -108,6 +108,21 @@ void main() {
         );
       });
 
+      test('throws a permission exception if the http response code is 403',
+          () async {
+        when(() => httpClient.send(any())).thenAnswer(
+          (_) async => http.StreamedResponse(
+            Stream.value(utf8.encode(json.encode(errorResponse.toJson()))),
+            HttpStatus.forbidden,
+          ),
+        );
+
+        expect(
+          codePushClient.createCollaborator(appId: appId, email: email),
+          throwsA(isA<CodePushPermissionException>()),
+        );
+      });
+
       test('throws an exception if the http request fails', () async {
         when(() => httpClient.send(any())).thenAnswer(
           (_) async => http.StreamedResponse(
