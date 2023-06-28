@@ -9,6 +9,7 @@ import 'package:shorebird_cli/src/shorebird_environment.dart';
 import 'package:shorebird_cli/src/shorebird_flavor_mixin.dart';
 import 'package:shorebird_cli/src/shorebird_java_mixin.dart';
 import 'package:shorebird_cli/src/shorebird_validation_mixin.dart';
+import 'package:shorebird_code_push_client/shorebird_code_push_client.dart';
 
 /// {@template init_command}
 ///
@@ -102,6 +103,11 @@ If you want to reinitialize Shorebird, please run "shorebird init --force".''');
       } else {
         appId = (await createApp(appName: displayName)).id;
       }
+    } on CodePushForbiddenException {
+      logger.err('''
+A paid account is required to create apps.
+To upgrade, run ${lightCyan.wrap('shorebird account upgrade')}.''');
+      return ExitCode.software.code;
     } catch (error) {
       logger.err('$error');
       return ExitCode.software.code;
