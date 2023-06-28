@@ -158,7 +158,7 @@ Waiting for your authorization...'''),
             that: stringContainsInOrder([
               'Welcome to Shorebird',
               userName,
-              'shorebird account subscribe',
+              'shorebird account upgrade',
             ]),
           ),
         ),
