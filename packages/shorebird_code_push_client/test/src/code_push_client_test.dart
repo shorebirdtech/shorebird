@@ -119,7 +119,7 @@ void main() {
 
         expect(
           codePushClient.createCollaborator(appId: appId, email: email),
-          throwsA(isA<CodePushPermissionException>()),
+          throwsA(isA<CodePushForbiddenException>()),
         );
       });
 
