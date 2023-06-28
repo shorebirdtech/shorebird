@@ -9,27 +9,19 @@ import 'package:shorebird_cli/src/shorebird_environment.dart';
 import 'package:shorebird_cli/src/shorebird_validation_mixin.dart';
 import 'package:shorebird_code_push_client/shorebird_code_push_client.dart';
 
-/// {@template subscribe_account_command}
-/// `shorebird account subscribe`
+/// {@template upgrade_account_command}
+/// `shorebird account upgrade`
 /// {@endtemplate}
-class SubscribeAccountCommand extends ShorebirdCommand
+class UpgradeAccountCommand extends ShorebirdCommand
     with ShorebirdConfigMixin, ShorebirdValidationMixin {
-  /// {@macro subscribe_account_command}
-  SubscribeAccountCommand({super.buildCodePushClient});
+  /// {@macro upgrade_account_command}
+  UpgradeAccountCommand({super.buildCodePushClient});
 
   @override
-  String get name => 'subscribe';
+  String get name => 'upgrade';
 
   @override
-  String get description => 'Sign up for a Shorebird subscription .';
-
-  @override
-  String get summary => '''
-A subscription to Shorebird is required to publish patches to your apps.
-
-The subscription is billed monthly based on usage through Stripe.
-
-Visit ${styleUnderlined.wrap(lightCyan.wrap('https://shorebird.dev'))} for more details.''';
+  String get description => 'Upgrade your Shorebird account.';
 
   @override
   Future<int> run() async {

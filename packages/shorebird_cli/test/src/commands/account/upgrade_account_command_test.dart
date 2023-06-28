@@ -30,9 +30,9 @@ void main() {
   late Progress progress;
   late User user;
 
-  late SubscribeAccountCommand subscribeAccountCommand;
+  late UpgradeAccountCommand command;
 
-  group(SubscribeAccountCommand, () {
+  group(UpgradeAccountCommand, () {
     R runWithOverrides<R>(R Function() body) {
       return runScoped(
         body,
@@ -64,8 +64,8 @@ void main() {
 
       when(() => user.hasActiveSubscription).thenReturn(false);
 
-      subscribeAccountCommand = runWithOverrides(
-        () => SubscribeAccountCommand(
+      command = runWithOverrides(
+        () => UpgradeAccountCommand(
           buildCodePushClient: ({required httpClient, hostedUri}) {
             return codePushClient;
           },
@@ -74,23 +74,13 @@ void main() {
     });
 
     test('has a description', () {
-      expect(subscribeAccountCommand.description, isNotEmpty);
-    });
-
-    test('summary contains usage and link to shorebird.dev', () {
-      expect(
-        subscribeAccountCommand.summary,
-        stringContainsInOrder([
-          'The subscription is billed monthly based on usage through Stripe.',
-          'shorebird.dev'
-        ]),
-      );
+      expect(command.description, isNotEmpty);
     });
 
     test('exits with code 67 when user is not logged in', () async {
       when(() => auth.isAuthenticated).thenReturn(false);
 
-      final result = await runWithOverrides(subscribeAccountCommand.run);
+      final result = await runWithOverrides(command.run);
 
       expect(result, ExitCode.noUser.code);
 
@@ -105,7 +95,7 @@ void main() {
       when(() => codePushClient.getCurrentUser())
           .thenThrow(Exception('oh no!'));
 
-      final result = await runWithOverrides(subscribeAccountCommand.run);
+      final result = await runWithOverrides(command.run);
 
       expect(result, ExitCode.software.code);
       verify(() => progress.fail(any(that: contains('oh no!')))).called(1);
@@ -115,7 +105,7 @@ void main() {
     test('exits with code 70 when getCurrentUser returns null', () async {
       when(() => codePushClient.getCurrentUser()).thenAnswer((_) async => null);
 
-      final result = await runWithOverrides(subscribeAccountCommand.run);
+      final result = await runWithOverrides(command.run);
 
       expect(result, ExitCode.software.code);
       verify(
@@ -134,7 +124,7 @@ void main() {
         'exits with code 0 and prints message and exits if user already has '
         'an active subscription', () async {
       when(() => user.hasActiveSubscription).thenReturn(true);
-      final result = await runWithOverrides(subscribeAccountCommand.run);
+      final result = await runWithOverrides(command.run);
 
       expect(result, ExitCode.success.code);
       verify(
@@ -151,7 +141,7 @@ void main() {
       when(() => codePushClient.createPaymentLink())
           .thenThrow(Exception(errorMessage));
 
-      final result = await runWithOverrides(subscribeAccountCommand.run);
+      final result = await runWithOverrides(command.run);
 
       expect(result, ExitCode.software.code);
       verify(() => codePushClient.createPaymentLink()).called(1);
@@ -159,7 +149,7 @@ void main() {
     });
 
     test('exits with code 0 and prints payment link', () async {
-      final result = await runWithOverrides(subscribeAccountCommand.run);
+      final result = await runWithOverrides(command.run);
 
       expect(result, ExitCode.success.code);
       verify(() => progress.complete('Link generated!')).called(1);
