@@ -2,6 +2,21 @@
 
 This section contains past updates we've sent to customers via Discord.
 
+## 0.7.0 (June 28, 2023)
+
+We've just released Shorebird v0.7.0 🎉
+
+- 🚀 introduce new free hobby tier
+- 🍄 rename `shorebird account subscribe` to `shorebird account upgrade`
+- 🐛 don't prompt about asset changes when `--force` is used
+- 🤝 `shorebird collaborators list` shows roles
+
+📚 Release notes can be found at https://github.com/shorebirdtech/shorebird/releases/tag/v0.7.0
+
+As always, you can upgrade using `shorebird upgrade`
+
+Please let us know if we can help!
+
 ## 0.6.0 (June 23, 2023)
 
 We've just released Shorebird v0.6.0 🎉
