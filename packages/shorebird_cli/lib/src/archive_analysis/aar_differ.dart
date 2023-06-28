@@ -2,8 +2,8 @@ import 'dart:io';
 
 import 'package:archive/archive_io.dart';
 import 'package:crypto/crypto.dart';
-import 'package:shorebird_cli/src/archive_analysis/archive_differ.dart';
 import 'package:shorebird_cli/src/archive_analysis/archive_analysis.dart';
+import 'package:shorebird_cli/src/archive_analysis/archive_differ.dart';
 
 /// Finds differences between two AABs.
 ///
