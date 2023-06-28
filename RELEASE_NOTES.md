@@ -6,7 +6,6 @@ This section contains past updates we've sent to customers via Discord.
 
 We've just released Shorebird v0.7.0 🎉
 
-- 🚀 introduce new free hobby tier
 - 🍄 rename `shorebird account subscribe` to `shorebird account upgrade`
 - 🐛 don't prompt about asset changes when `--force` is used
 - 🤝 `shorebird collaborators list` shows roles
