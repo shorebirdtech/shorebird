@@ -20,11 +20,11 @@ GetUsageResponse _$GetUsageResponseFromJson(Map<String, dynamic> json) =>
                   .map((e) => AppUsage.fromJson(e as Map<String, dynamic>))
                   .toList()),
           patchInstallLimit:
-              $checkedConvert('patch_install_limit', (v) => v as int),
-          currentPeriodStart: $checkedConvert('current_period_start',
-              (v) => v == null ? null : DateTime.parse(v as String)),
-          currentPeriodEnd: $checkedConvert('current_period_end',
-              (v) => v == null ? null : DateTime.parse(v as String)),
+              $checkedConvert('patch_install_limit', (v) => v as int?),
+          currentPeriodStart: $checkedConvert(
+              'current_period_start', (v) => DateTime.parse(v as String)),
+          currentPeriodEnd: $checkedConvert(
+              'current_period_end', (v) => DateTime.parse(v as String)),
         );
         return val;
       },
@@ -38,8 +38,8 @@ GetUsageResponse _$GetUsageResponseFromJson(Map<String, dynamic> json) =>
 Map<String, dynamic> _$GetUsageResponseToJson(GetUsageResponse instance) =>
     <String, dynamic>{
       'apps': instance.apps.map((e) => e.toJson()).toList(),
-      'current_period_start': instance.currentPeriodStart?.toIso8601String(),
-      'current_period_end': instance.currentPeriodEnd?.toIso8601String(),
+      'current_period_start': instance.currentPeriodStart.toIso8601String(),
+      'current_period_end': instance.currentPeriodEnd.toIso8601String(),
       'patch_install_limit': instance.patchInstallLimit,
     };
 

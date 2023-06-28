@@ -12,8 +12,8 @@ class GetUsageResponse {
   const GetUsageResponse({
     required this.apps,
     required this.patchInstallLimit,
-    this.currentPeriodStart,
-    this.currentPeriodEnd,
+    required this.currentPeriodStart,
+    required this.currentPeriodEnd,
   });
 
   /// Converts a Map<String, dynamic> to a [GetUsageResponse].
@@ -26,14 +26,15 @@ class GetUsageResponse {
   /// The usage per app.
   final List<AppUsage> apps;
 
-  /// The start of the current billin period.
-  final DateTime? currentPeriodStart;
+  /// The start of the current billing period.
+  final DateTime currentPeriodStart;
 
-  /// The end of the current billin period.
-  final DateTime? currentPeriodEnd;
+  /// The end of the current billing period.
+  final DateTime currentPeriodEnd;
 
   /// The upper limit of patch installs for the current billing period.
-  final int patchInstallLimit;
+  /// If `null`, there is no limit.
+  final int? patchInstallLimit;
 }
 
 /// {@template app_usage}
