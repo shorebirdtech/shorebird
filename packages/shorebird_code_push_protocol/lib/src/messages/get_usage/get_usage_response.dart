@@ -11,9 +11,9 @@ class GetUsageResponse {
   /// {@macro get_usage_response}
   const GetUsageResponse({
     required this.apps,
-    required this.patchInstallLimit,
     required this.currentPeriodStart,
     required this.currentPeriodEnd,
+    this.patchInstallLimit,
   });
 
   /// Converts a Map<String, dynamic> to a [GetUsageResponse].

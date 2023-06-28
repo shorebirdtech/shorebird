@@ -108,7 +108,56 @@ void main() {
 
 ${styleBold.wrap('${lightCyan.wrap('${20000 - 84}')} patch installs remaining in the current billing period.')}
 
-Current Billing Period: ${lightCyan.wrap(DateFormat.yMMMd().format(usage.currentPeriodStart!))} - ${lightCyan.wrap(DateFormat.yMMMd().format(usage.currentPeriodEnd!))}
+Current Billing Period: ${lightCyan.wrap(DateFormat.yMMMd().format(usage.currentPeriodStart))} - ${lightCyan.wrap(DateFormat.yMMMd().format(usage.currentPeriodEnd))}
+
+${styleBold.wrap('*Usage data is not reported in real-time and may be delayed by up to 48 hours.')}'''),
+          ),
+        ),
+      ).called(1);
+    });
+
+    test('exits with code 0 when usage is fetched (unlimited).', () async {
+      final usage = GetUsageResponse(
+        apps: const [
+          AppUsage(
+            id: 'test-app-id',
+            name: 'test app 2',
+            patchInstallCount: 42,
+          ),
+          AppUsage(
+            id: 'test-app-id',
+            name: 'test app 2',
+            patchInstallCount: 42,
+          ),
+        ],
+        currentPeriodStart: DateTime(2023),
+        currentPeriodEnd: DateTime(2023, 2),
+      );
+      when(
+        () => codePushClientWrapper.getUsage(),
+      ).thenAnswer((_) async => usage);
+
+      final result = await runWithOverrides(command.run);
+
+      expect(result, ExitCode.success.code);
+      verify(() => logger.info('📈 Usage')).called(1);
+      verify(
+        () => logger.info(
+          any(
+            that: contains('''
+┌────────────┬────────────────┐
+│ App        │ Patch Installs │
+├────────────┼────────────────┤
+│ test app 2 │ 42             │
+├────────────┼────────────────┤
+│ test app 2 │ 42             │
+├────────────┼────────────────┤
+│ Total      │ 84             │
+└────────────┴────────────────┘
+
+${styleBold.wrap('∞ patch installs remaining in the current billing period.')}
+
+Current Billing Period: ${lightCyan.wrap(DateFormat.yMMMd().format(usage.currentPeriodStart))} - ${lightCyan.wrap(DateFormat.yMMMd().format(usage.currentPeriodEnd))}
 
 ${styleBold.wrap('*Usage data is not reported in real-time and may be delayed by up to 48 hours.')}'''),
           ),

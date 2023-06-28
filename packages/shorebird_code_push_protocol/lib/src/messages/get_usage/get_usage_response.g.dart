@@ -19,19 +19,19 @@ GetUsageResponse _$GetUsageResponseFromJson(Map<String, dynamic> json) =>
               (v) => (v as List<dynamic>)
                   .map((e) => AppUsage.fromJson(e as Map<String, dynamic>))
                   .toList()),
-          patchInstallLimit:
-              $checkedConvert('patch_install_limit', (v) => v as int?),
           currentPeriodStart: $checkedConvert(
               'current_period_start', (v) => DateTime.parse(v as String)),
           currentPeriodEnd: $checkedConvert(
               'current_period_end', (v) => DateTime.parse(v as String)),
+          patchInstallLimit:
+              $checkedConvert('patch_install_limit', (v) => v as int?),
         );
         return val;
       },
       fieldKeyMap: const {
-        'patchInstallLimit': 'patch_install_limit',
         'currentPeriodStart': 'current_period_start',
-        'currentPeriodEnd': 'current_period_end'
+        'currentPeriodEnd': 'current_period_end',
+        'patchInstallLimit': 'patch_install_limit'
       },
     );
 
