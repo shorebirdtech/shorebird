@@ -10,7 +10,7 @@ class AccountCommand extends ShorebirdCommand {
   AccountCommand() {
     addSubcommand(AccountUsageCommand());
     addSubcommand(CreateAccountCommand());
-    addSubcommand(SubscribeAccountCommand());
+    addSubcommand(UpgradeAccountCommand());
   }
 
   @override
