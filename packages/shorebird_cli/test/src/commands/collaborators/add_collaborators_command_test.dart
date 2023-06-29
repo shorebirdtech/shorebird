@@ -117,11 +117,7 @@ void main() {
         ),
       ).thenThrow(error);
       expect(await runWithOverrides(command.run), ExitCode.software.code);
-      verify(
-        () => logger.err(
-          'You do not have permission to add collaborators to this app.',
-        ),
-      ).called(1);
+      verify(() => logger.err('$error')).called(1);
     });
 
     test(

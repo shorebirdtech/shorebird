@@ -7,7 +7,6 @@ import 'package:shorebird_cli/src/logger.dart';
 import 'package:shorebird_cli/src/shorebird_config_mixin.dart';
 import 'package:shorebird_cli/src/shorebird_environment.dart';
 import 'package:shorebird_cli/src/shorebird_validation_mixin.dart';
-import 'package:shorebird_code_push_client/shorebird_code_push_client.dart';
 
 /// {@template add_collaborators_command}
 /// `shorebird collaborators add`
@@ -87,12 +86,6 @@ ${styleBold.wrap(lightGreen.wrap('🚀 Ready to add a new collaborator!'))}
     try {
       await client.createCollaborator(appId: appId, email: collaborator);
       progress.complete();
-    } on CodePushForbiddenException {
-      progress.fail();
-      logger.err(
-        'You do not have permission to add collaborators to this app.',
-      );
-      return ExitCode.software.code;
     } catch (error) {
       progress.fail();
       logger.err('$error');
