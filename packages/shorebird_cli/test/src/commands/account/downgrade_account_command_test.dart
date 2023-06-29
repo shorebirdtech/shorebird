@@ -123,7 +123,7 @@ void main() {
         expect(result, ExitCode.software.code);
         verify(
           () => logger.err(
-            any(that: contains('You do not have an active subscription')),
+            any(that: contains('You do not have a "teams" subscription')),
           ),
         ).called(1);
       },
@@ -135,13 +135,7 @@ void main() {
         () => codePushClient.getCurrentUser(),
       ).thenAnswer((_) async => subscriptionUser);
       when(
-        () => logger.confirm(
-          any(
-            that: contains(
-              'This will cancel your Shorebird subscription. Are you sure?',
-            ),
-          ),
-        ),
+        () => logger.confirm(any(that: contains('Are you sure?'))),
       ).thenReturn(false);
 
       final result = await runWithOverrides(command.run);
@@ -156,13 +150,7 @@ void main() {
         () => codePushClient.getCurrentUser(),
       ).thenAnswer((_) async => subscriptionUser);
       when(
-        () => logger.confirm(
-          any(
-            that: contains(
-              'This will cancel your Shorebird subscription. Are you sure?',
-            ),
-          ),
-        ),
+        () => logger.confirm(any(that: contains('Are you sure?'))),
       ).thenReturn(true);
       when(() => codePushClient.cancelSubscription()).thenThrow(
         Exception('an error occurred'),
@@ -172,9 +160,7 @@ void main() {
 
       expect(result, ExitCode.software.code);
       verify(
-        () => progress.fail(
-          any(that: contains('an error occurred')),
-        ),
+        () => progress.fail(any(that: contains('an error occurred'))),
       ).called(1);
     });
 
@@ -183,16 +169,11 @@ void main() {
       const cancellationTimestamp = 1681455600;
 
       when(() => auth.isAuthenticated).thenReturn(true);
-      when(() => codePushClient.getCurrentUser())
-          .thenAnswer((_) async => subscriptionUser);
       when(
-        () => logger.confirm(
-          any(
-            that: contains(
-              'This will cancel your Shorebird subscription. Are you sure?',
-            ),
-          ),
-        ),
+        () => codePushClient.getCurrentUser(),
+      ).thenAnswer((_) async => subscriptionUser);
+      when(
+        () => logger.confirm(any(that: contains('Are you sure?'))),
       ).thenReturn(true);
 
       when(() => codePushClient.cancelSubscription()).thenAnswer(
@@ -209,8 +190,8 @@ void main() {
         () => progress.complete(
           any(
             that: stringContainsInOrder([
-              'Your subscription has been canceled.',
-              'Your access to Shorebird will continue until April 14, 2023'
+              'Your plan has been downgraded.',
+              '''Note: Your current plan will continue until April 14, 2023, after which your account will be on the "hobby" tier.'''
             ]),
           ),
         ),
