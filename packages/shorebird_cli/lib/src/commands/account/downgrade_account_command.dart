@@ -10,22 +10,20 @@ import 'package:shorebird_cli/src/shorebird_environment.dart';
 import 'package:shorebird_cli/src/shorebird_validation_mixin.dart';
 import 'package:shorebird_code_push_client/shorebird_code_push_client.dart';
 
-class CancelSubscriptionCommand extends ShorebirdCommand
+class DowngradeAccountCommand extends ShorebirdCommand
     with ShorebirdConfigMixin, ShorebirdValidationMixin {
-  CancelSubscriptionCommand({super.buildCodePushClient});
+  DowngradeAccountCommand({super.buildCodePushClient});
 
   @override
-  String get name => 'cancel';
+  String get name => 'downgrade';
 
   @override
-  String get description => 'Cancel your Shorebird subscription.';
+  String get description => 'Downgrade your Shorebird account.';
 
   @override
   Future<int> run() async {
     try {
-      await validatePreconditions(
-        checkUserIsAuthenticated: true,
-      );
+      await validatePreconditions(checkUserIsAuthenticated: true);
     } on PreconditionFailedException catch (e) {
       return e.exitCode.code;
     }
@@ -48,36 +46,39 @@ class CancelSubscriptionCommand extends ShorebirdCommand
     }
 
     if (!user.hasActiveSubscription) {
-      logger.err('You do not have an active subscription.');
+      logger.err('You do not have a "teams" subscription.');
       return ExitCode.software.code;
     }
 
     final confirm = logger.confirm(
-      red.wrap('This will cancel your Shorebird subscription. Are you sure?'),
+      red.wrap(
+        '''This will downgrade your Shorebird plan to the "hobby" tier. Are you sure?''',
+      ),
     );
+
     if (!confirm) {
       logger.info('Aborting.');
       return ExitCode.success.code;
     }
 
-    final progress = logger.progress('Canceling your subscription');
+    final progress = logger.progress('Downgrading your plan');
 
     final DateTime cancellationDate;
     try {
       cancellationDate = await client.cancelSubscription();
     } catch (error) {
-      progress.fail('Failed to cancel subscription. Error: $error');
+      progress.fail('Failed to downgrade plan. Error: $error');
       return ExitCode.software.code;
     }
 
     final formattedDate = DateFormat.yMMMMd().format(cancellationDate);
     progress.complete(
       '''
-Your subscription has been canceled.
+Your plan has been downgraded.
 
-Note: Your access to Shorebird will continue until $formattedDate, after which all data stored by Shorebird will be deleted as per our privacy policy: https://shorebird.dev/privacy.html.
+Note: Your current plan will continue until $formattedDate, after which your account will be on the "hobby" tier.
 
-Apps on devices you've built with Shorebird will continue to function normally, but will not receive further updates.''',
+Apps on devices you've built with Shorebird will continue to function normally, but will be subject to the limits of the "hobby" tier.''',
     );
 
     return ExitCode.success.code;
