@@ -5,6 +5,12 @@ import 'package:path/path.dart' as p;
 import 'package:platform/platform.dart';
 import 'package:shorebird_cli/src/shorebird_java_mixin.dart';
 
+/// Thrown when the gradle wrapper cannot be found.
+/// This has been resolved on the master channel but
+/// on the stable channel currently creating an app via
+/// `flutter create` does not generate a gradle wrapper which
+/// means we're not able to accurately detect flavors until
+/// the user has run `flutter build apk` at least once.
 class MissingGradleWrapperException implements Exception {
   const MissingGradleWrapperException(this.executablePath);
 
