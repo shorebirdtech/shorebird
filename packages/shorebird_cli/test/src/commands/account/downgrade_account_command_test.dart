@@ -3,7 +3,7 @@ import 'package:mason_logger/mason_logger.dart';
 import 'package:mocktail/mocktail.dart';
 import 'package:scoped/scoped.dart';
 import 'package:shorebird_cli/src/auth/auth.dart';
-import 'package:shorebird_cli/src/commands/subscription/cancel_subscription_command.dart';
+import 'package:shorebird_cli/src/commands/account/account.dart';
 import 'package:shorebird_cli/src/logger.dart';
 import 'package:shorebird_code_push_client/shorebird_code_push_client.dart';
 import 'package:test/test.dart';
@@ -19,7 +19,7 @@ class _MockLogger extends Mock implements Logger {}
 class _MockProgress extends Mock implements Progress {}
 
 void main() {
-  group(CancelSubscriptionCommand, () {
+  group(DowngradeAccountCommand, () {
     const noSubscriptionUser = User(id: 1, email: 'tester1@shorebird.dev');
     const subscriptionUser = User(
       id: 2,
@@ -32,7 +32,7 @@ void main() {
     late http.Client httpClient;
     late Logger logger;
     late Progress progress;
-    late CancelSubscriptionCommand command;
+    late DowngradeAccountCommand command;
 
     R runWithOverrides<R>(R Function() body) {
       return runScoped(
@@ -56,7 +56,7 @@ void main() {
       when(() => logger.progress(any())).thenReturn(progress);
 
       command = runWithOverrides(
-        () => CancelSubscriptionCommand(
+        () => DowngradeAccountCommand(
           buildCodePushClient: ({
             required http.Client httpClient,
             Uri? hostedUri,
