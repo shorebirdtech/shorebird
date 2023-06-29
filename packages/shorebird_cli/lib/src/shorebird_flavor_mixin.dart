@@ -5,6 +5,19 @@ import 'package:path/path.dart' as p;
 import 'package:platform/platform.dart';
 import 'package:shorebird_cli/src/shorebird_java_mixin.dart';
 
+class MissingGradleWrapperException implements Exception {
+  const MissingGradleWrapperException(this.executablePath);
+
+  final String executablePath;
+
+  @override
+  String toString() {
+    return '''
+Could not find $executablePath.
+Make sure you have run "flutter build apk at least once.''';
+  }
+}
+
 /// Mixin on [ShorebirdJavaMixin] which exposes methods for extracting
 /// product flavors from the current app.
 mixin ShorebirdFlavorMixin on ShorebirdJavaMixin {
@@ -26,9 +39,15 @@ mixin ShorebirdFlavorMixin on ShorebirdJavaMixin {
     }
 
     final executable = platform.isWindows ? 'gradlew.bat' : 'gradlew';
+    final executablePath = p.join(androidRoot.path, executable);
+
+    if (!File(executablePath).existsSync()) {
+      throw MissingGradleWrapperException(p.relative(executablePath));
+    }
+
     final javaHome = getJavaHome(platform);
     final result = await process.run(
-      p.join(androidRoot.path, executable),
+      executablePath,
       ['app:tasks', '--all', '--console=auto'],
       runInShell: true,
       workingDirectory: androidRoot.path,

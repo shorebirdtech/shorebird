@@ -10,6 +10,7 @@ import 'package:scoped/scoped.dart';
 import 'package:shorebird_cli/src/auth/auth.dart';
 import 'package:shorebird_cli/src/commands/init_command.dart';
 import 'package:shorebird_cli/src/logger.dart';
+import 'package:shorebird_cli/src/shorebird_flavor_mixin.dart';
 import 'package:shorebird_cli/src/shorebird_process.dart';
 import 'package:shorebird_code_push_client/shorebird_code_push_client.dart';
 import 'package:test/test.dart';
@@ -127,12 +128,40 @@ environment:
     });
 
     group('extractProductFlavors', () {
+      test(
+          'throws MissingGradleWrapperException '
+          'when gradlew does not exist', () async {
+        final platform = _MockPlatform();
+        when(() => platform.isLinux).thenReturn(true);
+        when(() => platform.isMacOS).thenReturn(false);
+        when(() => platform.isWindows).thenReturn(false);
+        final tempDir = setUpAppTempDir();
+        const javaHome = 'test_java_home';
+        when(() => platform.environment).thenReturn({'JAVA_HOME': javaHome});
+        await expectLater(
+          command.extractProductFlavors(tempDir.path, platform: platform),
+          throwsA(isA<MissingGradleWrapperException>()),
+        );
+        verifyNever(
+          () => process.run(
+            p.join(tempDir.path, 'android', 'gradlew'),
+            ['app:tasks', '--all', '--console=auto'],
+            runInShell: true,
+            workingDirectory: p.join(tempDir.path, 'android'),
+            environment: {'JAVA_HOME': javaHome},
+          ),
+        );
+      });
+
       test('uses existing JAVA_HOME when set', () async {
         final platform = _MockPlatform();
         when(() => platform.isLinux).thenReturn(true);
         when(() => platform.isMacOS).thenReturn(false);
         when(() => platform.isWindows).thenReturn(false);
         final tempDir = setUpAppTempDir();
+        File(
+          p.join(tempDir.path, 'android', 'gradlew'),
+        ).createSync(recursive: true);
         const javaHome = 'test_java_home';
         when(() => platform.environment).thenReturn({'JAVA_HOME': javaHome});
         await expectLater(
@@ -156,6 +185,9 @@ environment:
         when(() => platform.isMacOS).thenReturn(false);
         when(() => platform.isLinux).thenReturn(false);
         final tempDir = setUpAppTempDir();
+        File(
+          p.join(tempDir.path, 'android', 'gradlew.bat'),
+        ).createSync(recursive: true);
         when(() => platform.environment).thenReturn({
           'PROGRAMFILES': tempDir.path,
           'PROGRAMFILES(X86)': tempDir.path,
@@ -189,6 +221,9 @@ environment:
         when(() => platform.isMacOS).thenReturn(true);
         when(() => platform.isLinux).thenReturn(false);
         final tempDir = setUpAppTempDir();
+        File(
+          p.join(tempDir.path, 'android', 'gradlew'),
+        ).createSync(recursive: true);
         when(() => platform.environment).thenReturn({'HOME': tempDir.path});
         final androidStudioDir = Directory(
           p.join(
@@ -225,6 +260,9 @@ environment:
         when(() => platform.isMacOS).thenReturn(false);
         when(() => platform.isLinux).thenReturn(true);
         final tempDir = setUpAppTempDir();
+        File(
+          p.join(tempDir.path, 'android', 'gradlew'),
+        ).createSync(recursive: true);
         when(() => platform.environment).thenReturn({'HOME': tempDir.path});
         final androidStudioDir = Directory(
           p.join(tempDir.path, '.AndroidStudio'),
@@ -255,6 +293,9 @@ environment:
         when(() => platform.isMacOS).thenReturn(false);
         when(() => platform.isWindows).thenReturn(false);
         final tempDir = setUpModuleTempDir();
+        File(
+          p.join(tempDir.path, '.android', 'gradlew'),
+        ).createSync(recursive: true);
         const javaHome = 'test_java_home';
         when(() => platform.environment).thenReturn({'JAVA_HOME': javaHome});
         await expectLater(
@@ -356,9 +397,7 @@ If you want to reinitialize Shorebird, please run "shorebird init --force".''',
       );
     });
 
-    test(
-        'proceeds without flavors '
-        'when an error occurs while extracting flavors', () async {
+    test('fails when an error occurs while extracting flavors', () async {
       when(() => result.exitCode).thenReturn(1);
       when(() => result.stdout).thenReturn('error');
       when(() => result.stderr).thenReturn('oops');
@@ -372,13 +411,12 @@ If you want to reinitialize Shorebird, please run "shorebird init --force".''',
       );
       verify(() => logger.progress('Detecting product flavors')).called(1);
       verify(
-        () => logger.detail(
-          'Unable to extract product flavors: Exception: error\noops',
+        () => logger.err(
+          any(that: contains('Unable to extract product flavors.')),
         ),
       ).called(1);
-      verify(() => progress.complete()).called(1);
-      verifyNever(() => progress.fail(any()));
-      expect(exitCode, ExitCode.success.code);
+      verify(() => progress.fail()).called(1);
+      expect(exitCode, ExitCode.software.code);
     });
 
     test('throws software error when error occurs creating app.', () async {
@@ -438,6 +476,7 @@ If you want to reinitialize Shorebird, please run "shorebird init --force".''',
         ).readAsStringSync(),
       );
       final tempDir = setUpAppTempDir();
+      File(p.join(tempDir.path, 'android', 'gradlew')).createSync();
       File(
         p.join(tempDir.path, 'pubspec.yaml'),
       ).writeAsStringSync(pubspecYamlContent);
