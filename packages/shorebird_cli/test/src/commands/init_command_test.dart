@@ -401,36 +401,6 @@ If you want to reinitialize Shorebird, please run "shorebird init --force".''',
       expect(exitCode, ExitCode.software.code);
     });
 
-    test(
-        '''exits with code 70 and prints error if user does not have a paid account''',
-        () async {
-      final tempDir = Directory.systemTemp.createTempSync();
-      File(
-        p.join(tempDir.path, 'pubspec.yaml'),
-      ).writeAsStringSync(pubspecYamlContent);
-      when(
-        () => codePushClient.createApp(displayName: any(named: 'displayName')),
-      ).thenThrow(CodePushForbiddenException(message: 'oh no'));
-
-      final result = await IOOverrides.runZoned(
-        () => runWithOverrides(command.run),
-        getCurrentDirectory: () => tempDir,
-      );
-
-      expect(result, ExitCode.software.code);
-
-      verify(
-        () => logger.err(
-          any(
-            that: stringContainsInOrder([
-              'A paid account is required to create apps',
-              'shorebird account upgrade',
-            ]),
-          ),
-        ),
-      );
-    });
-
     test('creates shorebird.yaml for an app without flavors', () async {
       final tempDir = Directory.systemTemp.createTempSync();
       File(
