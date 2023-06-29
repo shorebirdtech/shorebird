@@ -72,7 +72,7 @@ class ShorebirdCodePush {
   }
 
   /// Downloads the latest patch, if available.
-  Future<void> downloadUpdate() async {
+  Future<void> downloadUpdateIfAvailable() async {
     await _runInIsolate(
       (updater) => updater.downloadUpdate(),
       fallbackValue: null,

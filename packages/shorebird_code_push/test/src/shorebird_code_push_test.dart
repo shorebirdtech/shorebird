@@ -91,13 +91,19 @@ void main() {
     group('downloadUpdate', () {
       test('forwards the return value of updater.nextPatchNumber', () async {
         when(() => updater.downloadUpdate()).thenReturn(null);
-        await expectLater(shorebirdCodePush.downloadUpdate(), completes);
+        await expectLater(
+          shorebirdCodePush.downloadUpdateIfAvailable(),
+          completes,
+        );
         expect(loggedError, isNull);
       });
 
       test('logs error if updater throws exception', () async {
         when(() => updater.downloadUpdate()).thenThrow(Exception('oh no'));
-        await expectLater(shorebirdCodePush.downloadUpdate(), completes);
+        await expectLater(
+          shorebirdCodePush.downloadUpdateIfAvailable(),
+          completes,
+        );
         expect(loggedError, '[ShorebirdCodePush] Exception: oh no');
       });
     });

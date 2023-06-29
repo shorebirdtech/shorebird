@@ -133,7 +133,7 @@ class _MyHomePageState extends State<MyHomePage> {
 
   Future<void> _downloadUpdate() async {
     _showDownloadingBanner();
-    await _shorebirdCodePush.downloadUpdate();
+    await _shorebirdCodePush.downloadUpdateIfAvailable();
     if (!mounted) return;
 
     ScaffoldMessenger.of(context).hideCurrentMaterialBanner();

@@ -1,3 +1,8 @@
+# 1.0.0
+
+- Change `downloadUpdate` to `downloadUpdateIfAvailable`, as the Updater performs
+  this check internally anyway.
+
 # 0.1.3
 
 - Ignore some lints in generated files to make pub.dev happy
