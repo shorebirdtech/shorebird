@@ -179,6 +179,42 @@ environment:
         ).called(1);
       });
 
+      test(
+          'throws Exception '
+          'when process exits with non-zero code', () async {
+        final platform = _MockPlatform();
+        when(() => platform.isLinux).thenReturn(true);
+        when(() => platform.isMacOS).thenReturn(false);
+        when(() => platform.isWindows).thenReturn(false);
+        final tempDir = setUpAppTempDir();
+        File(
+          p.join(tempDir.path, 'android', 'gradlew'),
+        ).createSync(recursive: true);
+        when(() => result.exitCode).thenReturn(1);
+        when(() => result.stderr).thenReturn('test error');
+        const javaHome = 'test_java_home';
+        when(() => platform.environment).thenReturn({'JAVA_HOME': javaHome});
+        await expectLater(
+          command.extractProductFlavors(tempDir.path, platform: platform),
+          throwsA(
+            isA<Exception>().having(
+              (e) => '$e',
+              'message',
+              contains('test error'),
+            ),
+          ),
+        );
+        verify(
+          () => process.run(
+            p.join(tempDir.path, 'android', 'gradlew'),
+            ['app:tasks', '--all', '--console=auto'],
+            runInShell: true,
+            workingDirectory: p.join(tempDir.path, 'android'),
+            environment: {'JAVA_HOME': javaHome},
+          ),
+        ).called(1);
+      });
+
       test('uses correct executable on windows', () async {
         final platform = _MockPlatform();
         when(() => platform.isWindows).thenReturn(true);
