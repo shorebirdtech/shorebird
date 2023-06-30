@@ -71,7 +71,7 @@ class JwtVerificationFailure implements Exception {
 Future<Jwt> verify(
   String jwt, {
   required String issuer,
-  required String audience,
+  required Set<String> audience,
   required String publicKeysUrl,
 }) async {
   final parts = jwt.split('.');
@@ -136,7 +136,7 @@ Future<void> _verifyHeader(
   }
 }
 
-void _verifyPayload(JwtPayload payload, String issuer, String audience) {
+void _verifyPayload(JwtPayload payload, String issuer, Set<String> audience) {
   final now = clock.now();
 
   final exp = DateTime.fromMillisecondsSinceEpoch(payload.exp * 1000);
@@ -158,7 +158,7 @@ void _verifyPayload(JwtPayload payload, String issuer, String audience) {
     }
   }
 
-  if (payload.aud != audience) {
+  if (!audience.contains(payload.aud)) {
     throw const JwtVerificationFailure('Invalid audience.');
   }
 
