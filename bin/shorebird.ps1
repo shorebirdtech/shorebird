@@ -46,8 +46,8 @@ function Test-ShorebirdNeedsUpdate {
         return $true
     }
 
-    if ($stampFile.Exists) {
-        Write-Debug "stamp file does not exist, shorebird needs update"
+    if (!$stampFile.Exists) {
+        Write-Debug "stamp file does not exist at $($stampFile), shorebird needs update"
         return $true
     }
 
