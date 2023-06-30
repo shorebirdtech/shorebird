@@ -6,6 +6,7 @@ This section contains past updates we've sent to customers via Discord.
 
 We've just released Shorebird v0.8.0 🎉
 
+- 🚀 introduce new hobby tier (FREE)
 - 🪟 windows installer fixes/improvements
 - ⬇️ rename `shorebird subscription cancel` to `shorebird account downgrade`
 - 🐛 fix flavor detection issues when running `shorebird init`
