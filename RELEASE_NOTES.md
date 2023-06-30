@@ -2,6 +2,21 @@
 
 This section contains past updates we've sent to customers via Discord.
 
+## 0.8.0 (June 30, 2023)
+
+We've just released Shorebird v0.8.0 🎉
+
+- 🚀 introduce new hobby tier (FREE)
+- 🪟 windows installer fixes/improvements
+- ⬇️ rename `shorebird subscription cancel` to `shorebird account downgrade`
+- 🐛 fix flavor detection issues when running `shorebird init`
+
+📚 Release notes can be found at https://github.com/shorebirdtech/shorebird/releases/tag/v0.8.0
+
+As always, you can upgrade using `shorebird upgrade`
+
+Please let us know if we can help!
+
 ## 0.7.0 (June 28, 2023)
 
 We've just released Shorebird v0.7.0 🎉
