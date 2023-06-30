@@ -40,7 +40,7 @@ void main() {
       try {
         await verify(
           token,
-          audience: audience,
+          audience: {audience},
           issuer: issuer,
           publicKeysUrl: publicKeysUrl,
         );
@@ -69,7 +69,7 @@ void main() {
         try {
           await verify(
             token,
-            audience: 'invalid-audience',
+            audience: {'invalid-audience'},
             issuer: issuer,
             publicKeysUrl: publicKeysUrl,
           );
@@ -99,7 +99,7 @@ void main() {
         try {
           await verify(
             token,
-            audience: audience,
+            audience: {audience},
             issuer: 'https://invalid/issuer',
             publicKeysUrl: publicKeysUrl,
           );
@@ -128,7 +128,26 @@ void main() {
         };
         final jwt = await verify(
           token,
-          audience: audience,
+          audience: {audience},
+          issuer: issuer,
+          publicKeysUrl: publicKeysUrl,
+        );
+        expect(jwt, isA<Jwt>());
+      });
+    });
+
+    test('can verify a valid jwt (multiple audiences)', () async {
+      await withClock(Clock.fixed(validTime), () async {
+        getOverride = (Uri uri) async {
+          return Response(
+            body,
+            HttpStatus.ok,
+            headers: {'cache-control': 'max-age=3600'},
+          );
+        };
+        final jwt = await verify(
+          token,
+          audience: {'other-audience', audience},
           issuer: issuer,
           publicKeysUrl: publicKeysUrl,
         );
@@ -147,7 +166,7 @@ void main() {
         };
         final jwt = await verify(
           tokenNoAuthTime,
-          audience: audience,
+          audience: {audience},
           issuer: issuer,
           publicKeysUrl: publicKeysUrl,
         );
