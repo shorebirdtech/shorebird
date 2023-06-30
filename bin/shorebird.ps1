@@ -13,6 +13,15 @@ $flutter = [IO.Path]::Combine($shorebirdCacheDir, "flutter", "bin", "flutter.bat
 $shorebirdScript = [IO.Path]::Combine($shorebirdCliDir, "bin", "shorebird.dart")
 $dart = [IO.Path]::Combine($flutterPath, "bin", "cache", "dart-sdk", "bin", "dart.exe")
 
+function Test-GitInstalled {
+    if (Get-Command git -ErrorAction SilentlyContinue) {
+        Write-Debug "Git is installed."
+    } else {
+        Write-Output "No git installation detected. Git is required to use shorebird."
+        exit 1
+    }
+}
+
 function Update-Flutter {
     Write-Output "Updating Flutter..."
 
@@ -94,6 +103,8 @@ function Update-Shorebird {
         Write-Debug "Shorebird is up-to-date"
     }
 }
+
+Test-GitInstalled
 
 Update-Shorebird
 
