@@ -7,7 +7,7 @@ This section contains past updates we've sent to customers via Discord.
 We've just released Shorebird v0.8.0 🎉
 
 - 🪟 windows installer fixes/improvements
-- 🍄 rename `shorebird subscription cancel` to `shorebird account downgrade`
+- ⬇️ rename `shorebird subscription cancel` to `shorebird account downgrade`
 - 🐛 fix flavor detection issues when running `shorebird init`
 
 📚 Release notes can be found at https://github.com/shorebirdtech/shorebird/releases/tag/v0.8.0
