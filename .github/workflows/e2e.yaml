@@ -56,9 +56,6 @@ jobs:
     runs-on: ${{ matrix.os }}
 
     steps:
-      - name: 🐦 Setup Shorebird
-        uses: shorebirdtech/setup-shorebird@v0
-
       - name: 📚 Git Checkout
         uses: actions/checkout@v3
 
@@ -79,7 +76,7 @@ jobs:
           Write-Output "github path is"
           Write-Output $env:GITHUB_PATH
           Write-Output "github path ^^"
-          $shorebird_version = shorebird --version
+          $shorebird_version = .\bin\shorebird --version
           if ($shorebird_version -match "Shorebird Engine") {
             Write-Output "✅ Shorebird CLI is installed!"
           } else {
