@@ -4,7 +4,11 @@ import 'package:test/test.dart';
 void main() {
   group('integration tests', () {
     test('checks for version', () async {
-      final result = await Process.run('shorebird', ['--version']);
+      final result = await Process.run(
+        'shorebird',
+        ['--version'],
+        runInShell: true,
+      );
       expect(
         result.stdout,
         contains('Shorebird Engine • revision'),
