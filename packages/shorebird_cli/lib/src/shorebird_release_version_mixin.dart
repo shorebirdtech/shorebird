@@ -39,7 +39,6 @@ mixin ShorebirdReleaseVersionMixin on ShorebirdJavaMixin {
       process.run(
         javaExecutable,
         versionNameArguments,
-        // runInShell: true,
         environment: {
           if (javaHome != null) 'JAVA_HOME': javaHome,
         },
@@ -47,7 +46,6 @@ mixin ShorebirdReleaseVersionMixin on ShorebirdJavaMixin {
       process.run(
         javaExecutable,
         versionCodeArguments,
-        // runInShell: true,
         environment: {
           if (javaHome != null) 'JAVA_HOME': javaHome,
         },
