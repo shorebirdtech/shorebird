@@ -67,7 +67,7 @@ jobs:
       - name: Add Shorebird to Windows PATH
         shell: pwsh
         if: runner.os == 'Windows'
-        run: Add-Content $env:GITHUB_PATH "${GITHUB_WORKSPACE}\bin"
+        run: Add-Content $env:GITHUB_PATH "${env:GITHUB_WORKSPACE}\bin"
 
       - name: 🐦 Verify Shorebird Installation (macOS / Linux)
         if: runner.os != 'Windows'
