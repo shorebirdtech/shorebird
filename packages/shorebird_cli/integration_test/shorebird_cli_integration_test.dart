@@ -9,11 +9,11 @@ void main() {
         ['--version'],
         runInShell: true,
       );
+      expect(result.stderr, isEmpty);
       expect(
         result.stdout,
         stringContainsInOrder(['Shorebird Engine', 'revision']),
       );
-      expect(result.stderr, isEmpty);
       expect(result.exitCode, 0);
     });
   });
