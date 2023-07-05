@@ -70,6 +70,9 @@ jobs:
       - name: 📚 Git Checkout
         uses: actions/checkout@v3
 
+      - name: 🎯 Set up dart
+        uses: dart-lang/setup-dart@v1
+
       - name: Run Integration Tests
         run: dart test integration_test
         working-directory: packages/${{ matrix.package }}
