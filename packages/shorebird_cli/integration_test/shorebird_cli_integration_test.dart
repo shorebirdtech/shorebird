@@ -13,6 +13,7 @@ void main() {
         result.stdout,
         contains('Shorebird Engine • revision'),
       );
+      expect(result.stderr, isEmpty);
       expect(result.exitCode, 0);
     });
   });
