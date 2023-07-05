@@ -63,13 +63,13 @@ jobs:
         shell: bash
         if: runner.os != 'Windows'
         run: |
-          echo "./bin" >> $GITHUB_PATH
+          echo "./bin/" >> $GITHUB_PATH
 
       - name: Add Shorebird to Windows PATH
         shell: pwsh
         if: runner.os == 'Windows'
         run: |
-          echo ".\bin" | Out-File -FilePath $env:GITHUB_PATH -Encoding utf8 -Append
+          echo ".\bin\" | Out-File -FilePath $env:GITHUB_PATH -Encoding utf8 -Append
 
       - name: 🐦 Verify Shorebird Installation (macOS / Linux)
         if: runner.os != 'Windows'
