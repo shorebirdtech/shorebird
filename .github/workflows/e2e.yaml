@@ -60,6 +60,7 @@ jobs:
       fail-fast: false
       matrix:
         os: [macos-latest, windows-latest, ubuntu-latest]
+        package: ${{ fromJSON(needs.changes.outputs.needs_test) }}
 
     runs-on: ${{ matrix.os }}
 
@@ -75,4 +76,4 @@ jobs:
 
       - name: Run Integration Tests
         run: dart test integration_test
-        working-directory: packages/${{ needs.changes.outputs.needs_test }}
+        working-directory: packages/${{ matrix.package }}
