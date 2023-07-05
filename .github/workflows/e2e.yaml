@@ -33,22 +33,22 @@ jobs:
 
       - uses: dorny/paths-filter@v2
         name: Build Detection
-        id: needs_dart_build
+        id: needs_test
         with:
           filters: |
             shorebird_cli:
-              - ./.github/workflows/main.yaml
+              - ./.github/workflows/e2e.yaml
               - ./.github/actions/dart_package/action.yaml
               - packages/shorebird_cli/**
               - packages/shorebird_code_push_client/**
               - packages/shorebird_code_push_protocol/**
             shorebird_code_push_client:
-              - ./.github/workflows/main.yaml
+              - ./.github/workflows/e2e.yaml
               - ./.github/actions/dart_package/action.yaml
               - packages/shorebird_code_push_client/**
               - packages/shorebird_code_push_protocol/**
             shorebird_code_push_protocol:
-              - ./.github/workflows/main.yaml
+              - ./.github/workflows/e2e.yaml
               - ./.github/actions/dart_package/action.yaml
               - packages/shorebird_code_push_protocol/**
 
