@@ -83,6 +83,7 @@ jobs:
       - name: 🐦 Verify Shorebird Installation (Windows)
         if: runner.os == 'Windows'
         run: |
+          Write-Output $env:GITHUB_PATH
           $shorebird_version = shorebird --version
           if ($shorebird_version -match "Shorebird Engine") {
             Write-Output "✅ Shorebird CLI is installed!"
