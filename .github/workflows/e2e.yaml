@@ -75,4 +75,4 @@ jobs:
 
       - name: Run Integration Tests
         run: dart test integration_test
-        working-directory: packages/${{ matrix.package }}
+        working-directory: packages/${{ needs.changes.outputs.needs_test }}
