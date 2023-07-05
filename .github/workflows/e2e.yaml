@@ -71,6 +71,7 @@ jobs:
             echo '❌ Shorebird CLI is not installed.'
           exit 1
           fi
+        shell: bash
         
       - name: 🐦 Verify Shorebird Installation (Windows)
         if: runner.os == 'Windows'
@@ -83,6 +84,7 @@ jobs:
             Write-Output "❌ Shorebird CLI is not installed."
             exit 1
           }
+        shell: pwsh
 
       - name: 🎯 Set up dart
         uses: dart-lang/setup-dart@v1
