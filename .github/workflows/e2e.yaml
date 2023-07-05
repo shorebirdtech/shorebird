@@ -42,15 +42,6 @@ jobs:
               - packages/shorebird_cli/**
               - packages/shorebird_code_push_client/**
               - packages/shorebird_code_push_protocol/**
-            shorebird_code_push_client:
-              - ./.github/workflows/e2e.yaml
-              - ./.github/actions/dart_package/action.yaml
-              - packages/shorebird_code_push_client/**
-              - packages/shorebird_code_push_protocol/**
-            shorebird_code_push_protocol:
-              - ./.github/workflows/e2e.yaml
-              - ./.github/actions/dart_package/action.yaml
-              - packages/shorebird_code_push_protocol/**
 
   test:
     needs: changes
