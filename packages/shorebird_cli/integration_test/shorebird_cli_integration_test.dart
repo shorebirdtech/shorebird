@@ -1,0 +1,15 @@
+import 'package:shorebird_cli/src/third_party/flutter_tools/lib/flutter_tools.dart';
+import 'package:test/test.dart';
+
+void main() {
+  group('integration tests', () {
+    test('checks for version', () async {
+      final result = await Process.run('shorebird', ['--version']);
+      expect(
+        result.stdout,
+        contains('Shorebird Engine • revision'),
+      );
+      expect(result.exitCode, 0);
+    });
+  });
+}

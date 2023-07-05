@@ -1,35 +1,75 @@
 name: e2e
 
+# on:
+#   schedule:
+#     # At the end of every day
+#     - cron: "0 0 * * *"
+
+# TODO: change this back to a cron schedule once we've verified it works
 on:
-  schedule:
-    # At the end of every day
-    - cron: "0 0 * * *"
+  pull_request:
+  push:
+    branches:
+      - main
 
 env:
   SHOREBIRD_TOKEN: ${{ secrets.SHOREBIRD_TOKEN }}
 
 jobs:
-  verify_cli_installation:
-    strategy:
-      fail-fast: false
-      matrix:
-        os: [macos-latest, windows-latest, ubuntu-latest]
+  changes:
+    runs-on: ubuntu-latest
 
-    defaults:
-      run:
-        shell: bash
+    permissions:
+      pull-requests: read
 
-    runs-on: ${{ matrix.os }}
+    outputs:
+      needs_test: ${{ steps.needs_test.outputs.changes }}
+
+    name: 👀 Detect Changes
 
     steps:
       - name: 📚 Git Checkout
         uses: actions/checkout@v3
 
-      - name: 🐦 Verify Shorebird Installation (${{ matrix.os }})
-        run: |
-          if [[ $(./bin/shorebird --version) =~ "Shorebird Engine • revision" ]]; then          
-            echo '✅ Shorebird CLI is installed!'
-          else
-            echo '❌ Shorebird CLI is not installed.'
-          exit 1
-          fi
+      - uses: dorny/paths-filter@v2
+        name: Build Detection
+        id: needs_dart_build
+        with:
+          filters: |
+            shorebird_cli:
+              - ./.github/workflows/main.yaml
+              - ./.github/actions/dart_package/action.yaml
+              - packages/shorebird_cli/**
+              - packages/shorebird_code_push_client/**
+              - packages/shorebird_code_push_protocol/**
+            shorebird_code_push_client:
+              - ./.github/workflows/main.yaml
+              - ./.github/actions/dart_package/action.yaml
+              - packages/shorebird_code_push_client/**
+              - packages/shorebird_code_push_protocol/**
+            shorebird_code_push_protocol:
+              - ./.github/workflows/main.yaml
+              - ./.github/actions/dart_package/action.yaml
+              - packages/shorebird_code_push_protocol/**
+
+  test:
+    needs: changes
+    if: ${{ needs.changes.outputs.needs_test != '[]' }}
+
+    strategy:
+      fail-fast: false
+      matrix:
+        os: [macos-latest, windows-latest, ubuntu-latest]
+
+    runs-on: ${{ matrix.os }}
+
+    steps:
+      - name: 🐦 Setup Shorebird
+        uses: shorebirdtech/setup-shorebird@v0
+
+      - name: 📚 Git Checkout
+        uses: actions/checkout@v3
+
+      - name: Run Integration Tests
+        run: dart test integration_test
+        working-directory: packages/${{ matrix.package }}
