@@ -63,7 +63,7 @@ jobs:
         uses: actions/checkout@v3
 
       - name: 🐦 Verify Shorebird Installation (macOS / Linux)
-        if: ${{ runner.os != 'Windows' }}
+        if: runner.os != 'Windows'
         run: |
           if [[ $(./bin/shorebird --version) =~ "Shorebird Engine • revision" ]]; then          
             echo '✅ Shorebird CLI is installed!'
@@ -73,8 +73,9 @@ jobs:
           fi
         
       - name: 🐦 Verify Shorebird Installation (Windows)
-        if: ${{ runner.os == 'Windows' }}
+        if: runner.os == 'Windows'
         run: |
+          Write-Output $GITHUB_PATH
           $shorebird_version = shorebird --version
           if ($shorebird_version -match "Shorebird Engine") {
             Write-Output "✅ Shorebird CLI is installed!"
