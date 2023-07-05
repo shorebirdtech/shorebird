@@ -7,7 +7,7 @@ void main() {
       final result = await Process.run(
         'shorebird',
         ['--version'],
-        // runInShell: true,
+        runInShell: true,
       );
       expect(result.stderr, isEmpty);
       expect(
