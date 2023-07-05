@@ -62,6 +62,27 @@ jobs:
       - name: 📚 Git Checkout
         uses: actions/checkout@v3
 
+      - name: 🐦 Verify Shorebird Installation (macOS / Linux)
+        if: ${{ runner.os != 'Windows' }}
+        run: |
+          if [[ $(./bin/shorebird --version) =~ "Shorebird Engine • revision" ]]; then          
+            echo '✅ Shorebird CLI is installed!'
+          else
+            echo '❌ Shorebird CLI is not installed.'
+          exit 1
+          fi
+        
+      - name: 🐦 Verify Shorebird Installation (Windows)
+        if: ${{ runner.os == 'Windows' }}
+        run: |
+          $shorebird_version = shorebird --version
+          if ($shorebird_version -match "Shorebird Engine") {
+            Write-Output "✅ Shorebird CLI is installed!"
+          } else {
+            Write-Output "❌ Shorebird CLI is not installed."
+            exit 1
+          }
+
       - name: 🎯 Set up dart
         uses: dart-lang/setup-dart@v1
 
