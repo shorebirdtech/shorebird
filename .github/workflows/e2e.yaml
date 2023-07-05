@@ -71,5 +71,6 @@ jobs:
         uses: actions/checkout@v3
 
       - name: Run Integration Tests
+        uses: ./.github/actions/dart_package
         run: dart test integration_test
         working-directory: packages/${{ matrix.package }}
