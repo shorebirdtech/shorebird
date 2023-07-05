@@ -59,10 +59,22 @@ jobs:
       - name: 📚 Git Checkout
         uses: actions/checkout@v3
 
+      - name: Add Shorebird to macOS/Linux PATH
+        shell: bash
+        if: runner.os != 'Windows'
+        run: |
+          echo "./bin" >> $GITHUB_PATH
+
+      - name: Add Shorebird to Windows PATH
+        shell: pwsh
+        if: runner.os == 'Windows'
+        run: |
+          echo ".\bin" | Out-File -FilePath $env:GITHUB_PATH -Encoding utf8 -Append
+
       - name: 🐦 Verify Shorebird Installation (macOS / Linux)
         if: runner.os != 'Windows'
         run: |
-          if [[ $(./bin/shorebird --version) =~ "Shorebird Engine • revision" ]]; then          
+          if [[ $(shorebird --version) =~ "Shorebird Engine • revision" ]]; then          
             echo '✅ Shorebird CLI is installed!'
           else
             echo '❌ Shorebird CLI is not installed.'
@@ -73,10 +85,7 @@ jobs:
       - name: 🐦 Verify Shorebird Installation (Windows)
         if: runner.os == 'Windows'
         run: |
-          Write-Output "github path is"
-          Write-Output $env:GITHUB_PATH
-          Write-Output "github path ^^"
-          $shorebird_version = .\bin\shorebird --version
+          $shorebird_version = shorebird --version
           if ($shorebird_version -match "Shorebird Engine") {
             Write-Output "✅ Shorebird CLI is installed!"
           } else {
