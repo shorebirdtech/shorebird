@@ -5,7 +5,12 @@ void main() {
   group(GetUsageResponse, () {
     test('can be (de)serialized', () {
       final response = GetUsageResponse(
-        tierName: 'Hobby',
+        plan: const ShorebirdPlan(
+          name: 'Hobby',
+          monthlyCost: 0,
+          patchInstallLimit: 1000,
+          maxTeamSize: 1,
+        ),
         apps: [
           const AppUsage(id: 'app-id', name: 'My app', patchInstallCount: 1337),
         ],

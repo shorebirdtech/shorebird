@@ -10,7 +10,7 @@ part 'get_usage_response.g.dart';
 class GetUsageResponse {
   /// {@macro get_usage_response}
   const GetUsageResponse({
-    required this.tierName,
+    required this.plan,
     required this.apps,
     required this.currentPeriodStart,
     required this.currentPeriodEnd,
@@ -25,7 +25,7 @@ class GetUsageResponse {
   Json toJson() => _$GetUsageResponseToJson(this);
 
   /// The name of the user's plan tier.
-  final String tierName;
+  final ShorebirdPlan plan;
 
   /// The usage per app.
   final List<AppUsage> apps;

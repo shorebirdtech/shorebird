@@ -3,8 +3,16 @@ import 'package:test/test.dart';
 
 void main() {
   group(Subscription, () {
+    const plan = ShorebirdPlan(
+      name: 'Hobby',
+      monthlyCost: 0,
+      patchInstallLimit: 1000,
+      maxTeamSize: 1,
+    );
+
     test('can be (de)serialized', () {
       final subscription = Subscription(
+        plan: plan,
         cost: 100,
         paidThroughDate: DateTime.now(),
         willRenew: true,
@@ -18,6 +26,7 @@ void main() {
     group('isActive', () {
       test('returns true if paidThroughDate is in the future', () {
         final subscription = Subscription(
+          plan: plan,
           cost: 100,
           paidThroughDate: DateTime.now().add(const Duration(days: 1)),
           willRenew: true,
@@ -27,6 +36,7 @@ void main() {
 
       test('returns false if paidThroughDate is in the past', () {
         final subscription = Subscription(
+          plan: plan,
           cost: 100,
           paidThroughDate: DateTime.now().subtract(const Duration(days: 1)),
           willRenew: true,
