@@ -481,14 +481,6 @@ class CodePushClient {
     }
   }
 
-  Future<void> getSubscriptions() async {
-    final response = await _httpClient.get(Uri.parse('$_v1/subscriptions'));
-    if (response.statusCode != HttpStatus.ok) {
-      throw _parseErrorResponse(response.statusCode, response.body);
-    }
-    print(response);
-  }
-
   /// Cancels the current user's subscription.
   Future<DateTime> cancelSubscription() async {
     final response = await _httpClient.delete(Uri.parse('$_v1/subscriptions'));
