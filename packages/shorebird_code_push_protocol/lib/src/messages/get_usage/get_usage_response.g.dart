@@ -14,6 +14,7 @@ GetUsageResponse _$GetUsageResponseFromJson(Map<String, dynamic> json) =>
       json,
       ($checkedConvert) {
         final val = GetUsageResponse(
+          tierName: $checkedConvert('tier_name', (v) => v as String),
           apps: $checkedConvert(
               'apps',
               (v) => (v as List<dynamic>)
@@ -29,6 +30,7 @@ GetUsageResponse _$GetUsageResponseFromJson(Map<String, dynamic> json) =>
         return val;
       },
       fieldKeyMap: const {
+        'tierName': 'tier_name',
         'currentPeriodStart': 'current_period_start',
         'currentPeriodEnd': 'current_period_end',
         'patchInstallLimit': 'patch_install_limit'
@@ -37,6 +39,7 @@ GetUsageResponse _$GetUsageResponseFromJson(Map<String, dynamic> json) =>
 
 Map<String, dynamic> _$GetUsageResponseToJson(GetUsageResponse instance) =>
     <String, dynamic>{
+      'tier_name': instance.tierName,
       'apps': instance.apps.map((e) => e.toJson()).toList(),
       'current_period_start': instance.currentPeriodStart.toIso8601String(),
       'current_period_end': instance.currentPeriodEnd.toIso8601String(),

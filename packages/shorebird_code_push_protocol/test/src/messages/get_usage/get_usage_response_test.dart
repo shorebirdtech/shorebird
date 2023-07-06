@@ -5,6 +5,7 @@ void main() {
   group(GetUsageResponse, () {
     test('can be (de)serialized', () {
       final response = GetUsageResponse(
+        tierName: 'Hobby',
         apps: [
           const AppUsage(id: 'app-id', name: 'My app', patchInstallCount: 1337),
         ],

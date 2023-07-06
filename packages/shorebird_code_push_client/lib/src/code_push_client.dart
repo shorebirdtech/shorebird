@@ -86,7 +86,8 @@ class CodePushClient {
     http.Client? httpClient,
     Uri? hostedUri,
   })  : _httpClient = _CodePushHttpClient(httpClient ?? http.Client()),
-        hostedUri = hostedUri ?? Uri.https('api.shorebird.dev');
+        // hostedUri = hostedUri ?? Uri.https('api.shorebird.dev');
+        hostedUri = hostedUri ?? Uri.http('localhost:8080');
 
   /// The standard headers applied to all requests.
   static const headers = <String, String>{'x-version': packageVersion};
@@ -479,6 +480,14 @@ class CodePushClient {
     if (response.statusCode != HttpStatus.created) {
       throw _parseErrorResponse(response.statusCode, response.body);
     }
+  }
+
+  Future<void> getSubscriptions() async {
+    final response = await _httpClient.get(Uri.parse('$_v1/subscriptions'));
+    if (response.statusCode != HttpStatus.ok) {
+      throw _parseErrorResponse(response.statusCode, response.body);
+    }
+    print(response);
   }
 
   /// Cancels the current user's subscription.
