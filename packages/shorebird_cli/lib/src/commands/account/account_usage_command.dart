@@ -42,6 +42,8 @@ class AccountUsageCommand extends ShorebirdCommand
 
 extension on GetUsageResponse {
   String prettyPrint() {
+    final currencyFormatter = NumberFormat('#,##0.00', 'en_US');
+
     const cellStyle = CellStyle(
       paddingLeft: 1,
       paddingRight: 1,
@@ -60,6 +62,9 @@ extension on GetUsageResponse {
         : '${patchInstallLimit! - totalPatchInstalls}';
 
     return '''
+
+You are on the ${lightCyan.wrap(plan.name)} plan.
+
 ${Table(
       cellStyle: cellStyle,
       header: const TableSection(
@@ -94,6 +99,7 @@ ${Table(
 ${styleBold.wrap('${lightCyan.wrap(remainingPatchInstalls)} patch installs remaining in the current billing period.')}
 
 Current Billing Period: ${lightCyan.wrap(DateFormat.yMMMd().format(currentPeriodStart))} - ${lightCyan.wrap(DateFormat.yMMMd().format(currentPeriodEnd))}
+Next Invoice: ${lightCyan.wrap('\$${currencyFormatter.format(currentPeriodCost * 100.0)}')}
 
 ${styleBold.wrap('*Usage data is not reported in real-time and may be delayed by up to 48 hours.')}''';
   }

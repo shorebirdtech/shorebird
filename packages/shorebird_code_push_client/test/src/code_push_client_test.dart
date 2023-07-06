@@ -1944,6 +1944,7 @@ void main() {
             )
           ],
           patchInstallLimit: 1337,
+          currentPeriodCost: 0,
           currentPeriodStart: DateTime(2023),
           currentPeriodEnd: DateTime(2023, 2),
         );

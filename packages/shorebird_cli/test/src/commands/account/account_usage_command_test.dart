@@ -87,6 +87,7 @@ void main() {
           ),
         ],
         patchInstallLimit: 20000,
+        currentPeriodCost: 0,
         currentPeriodStart: DateTime(2023),
         currentPeriodEnd: DateTime(2023, 2),
       );
@@ -142,6 +143,7 @@ ${styleBold.wrap('*Usage data is not reported in real-time and may be delayed by
             patchInstallCount: 42,
           ),
         ],
+        currentPeriodCost: 0,
         currentPeriodStart: DateTime(2023),
         currentPeriodEnd: DateTime(2023, 2),
       );

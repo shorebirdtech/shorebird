@@ -1693,6 +1693,7 @@ Please bump your version number and try again.''',
               ),
             ],
             patchInstallLimit: 20000,
+            currentPeriodCost: 0,
             currentPeriodStart: DateTime(2023),
             currentPeriodEnd: DateTime(2023, 2),
           );
