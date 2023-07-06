@@ -103,6 +103,9 @@ void main() {
         () => logger.info(
           any(
             that: contains('''
+
+You are on the ${lightCyan.wrap('Hobby')} plan.
+
 ┌────────────┬────────────────┐
 │ App        │ Patch Installs │
 ├────────────┼────────────────┤
@@ -116,6 +119,7 @@ void main() {
 ${styleBold.wrap('${lightCyan.wrap('${20000 - 84}')} patch installs remaining in the current billing period.')}
 
 Current Billing Period: ${lightCyan.wrap(DateFormat.yMMMd().format(usage.currentPeriodStart))} - ${lightCyan.wrap(DateFormat.yMMMd().format(usage.currentPeriodEnd))}
+Next Invoice: \$0.00
 
 ${styleBold.wrap('*Usage data is not reported in real-time and may be delayed by up to 48 hours.')}'''),
           ),
@@ -159,6 +163,9 @@ ${styleBold.wrap('*Usage data is not reported in real-time and may be delayed by
         () => logger.info(
           any(
             that: contains('''
+
+You are on the ${lightCyan.wrap('Hobby')} plan.
+
 ┌────────────┬────────────────┐
 │ App        │ Patch Installs │
 ├────────────┼────────────────┤
@@ -172,6 +179,7 @@ ${styleBold.wrap('*Usage data is not reported in real-time and may be delayed by
 ${styleBold.wrap('${lightCyan.wrap('∞')} patch installs remaining in the current billing period.')}
 
 Current Billing Period: ${lightCyan.wrap(DateFormat.yMMMd().format(usage.currentPeriodStart))} - ${lightCyan.wrap(DateFormat.yMMMd().format(usage.currentPeriodEnd))}
+Next Invoice: \$0.00
 
 ${styleBold.wrap('*Usage data is not reported in real-time and may be delayed by up to 48 hours.')}'''),
           ),
