@@ -38,7 +38,7 @@ class CreateAccountCommand extends ShorebirdCommand with ShorebirdConfigMixin {
       // status.
       logger.info('''
 You already have an account, ${error.user.displayName}!
-To upgrade, run ${lightCyan.wrap('shorebird account upgrade')}.
+To login, run ${lightCyan.wrap('shorebird login')}.
 ''');
       return ExitCode.success.code;
     } catch (error) {
