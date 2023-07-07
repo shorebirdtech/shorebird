@@ -155,7 +155,7 @@ ${styleBold.wrap('*Usage data is not reported in real-time and may be delayed by
 │ Total      │ 84             │
 └────────────┴────────────────┘
 
-${styleBold.wrap('∞ patch installs remaining in the current billing period.')}
+${styleBold.wrap('${lightCyan.wrap('∞')} patch installs remaining in the current billing period.')}
 
 Current Billing Period: ${lightCyan.wrap(DateFormat.yMMMd().format(usage.currentPeriodStart))} - ${lightCyan.wrap(DateFormat.yMMMd().format(usage.currentPeriodEnd))}
 
