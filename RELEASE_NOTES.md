@@ -2,6 +2,21 @@
 
 This section contains past updates we've sent to customers via Discord.
 
+## 0.9.0 (July 7, 2023)
+
+We've just released Shorebird v0.9.0 🎉
+
+- ✨ `shorebird account usage` includes month-to-date cost and tier
+- 🔥 `shorebird run --dart-define` support
+- 🚰 `shorebird run` forwards `stdin` to Flutter process
+- 🖥️ console.shorebird.dev supports app deletion and releases list
+
+📚 Release notes can be found at https://github.com/shorebirdtech/shorebird/releases/tag/v0.9.0
+
+As always, you can upgrade using `shorebird upgrade`
+
+Please let us know if we can help!
+
 ## 0.8.0 (June 30, 2023)
 
 We've just released Shorebird v0.8.0 🎉
