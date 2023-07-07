@@ -1930,6 +1930,12 @@ void main() {
 
       test('completes when request succeeds', () async {
         final expected = GetUsageResponse(
+          plan: const ShorebirdPlan(
+            name: 'Hobby',
+            monthlyCost: 0,
+            patchInstallLimit: 1000,
+            maxTeamSize: 1,
+          ),
           apps: [
             AppUsage(
               id: 'test-app-id',
