@@ -24,7 +24,7 @@ class GetUsageResponse {
   /// Converts a [GetUsageResponse] to a Map<String, dynamic>.
   Json toJson() => _$GetUsageResponseToJson(this);
 
-  /// The name of the user's plan tier.
+  /// The user's current plan.
   final ShorebirdPlan plan;
 
   /// The usage per app.
