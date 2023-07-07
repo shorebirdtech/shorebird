@@ -66,7 +66,7 @@ class CodePushClientWrapper {
       logger.err(
         '''
 Could not find app with id: "$appId".
-Did you forget to run "shorebird init"?''',
+This app may not exist or you may not have permission to view it.''',
       );
       exit(ExitCode.software.code);
     }
@@ -442,6 +442,29 @@ aar artifact already exists, continuing...''',
     createArtifactProgress.complete();
   }
 
+  /// Uploads a release ipa to the Shorebird server.
+  Future<void> createIosReleaseArtifact({
+    required int releaseId,
+    required String ipaPath,
+  }) async {
+    final createArtifactProgress = logger.progress('Creating artifacts');
+    final ipaFile = File(ipaPath);
+    try {
+      await codePushClient.createReleaseArtifact(
+        releaseId: releaseId,
+        artifactPath: ipaPath,
+        arch: 'ipa',
+        platform: 'ios',
+        hash: sha256.convert(await ipaFile.readAsBytes()).toString(),
+      );
+    } catch (error) {
+      createArtifactProgress.fail('Error uploading ipa: $error');
+      exit(ExitCode.software.code);
+    }
+
+    createArtifactProgress.complete();
+  }
+
   @visibleForTesting
   Future<Patch> createPatch({required int releaseId}) async {
     final createPatchProgress = logger.progress('Creating patch');
@@ -528,17 +551,15 @@ aar artifact already exists, continuing...''',
     await promotePatch(patchId: patch.id, channel: channel);
   }
 
-  Future<List<AppUsage>> getUsage() async {
+  Future<GetUsageResponse> getUsage() async {
     final progress = logger.progress('Fetching usage');
-    final List<AppUsage>? appsUsage;
     try {
-      appsUsage = await codePushClient.getUsage();
+      final usage = await codePushClient.getUsage();
       progress.complete();
+      return usage;
     } catch (error) {
       progress.fail(error.toString());
       exit(ExitCode.software.code);
     }
-
-    return appsUsage;
   }
 }

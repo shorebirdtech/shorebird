@@ -8,7 +8,6 @@ import 'package:shorebird_cli/src/config/shorebird_yaml.dart';
 import 'package:shorebird_cli/src/logger.dart';
 import 'package:shorebird_cli/src/shorebird_build_mixin.dart';
 import 'package:shorebird_cli/src/shorebird_config_mixin.dart';
-import 'package:shorebird_cli/src/shorebird_create_app_mixin.dart';
 import 'package:shorebird_cli/src/shorebird_environment.dart';
 import 'package:shorebird_cli/src/shorebird_java_mixin.dart';
 import 'package:shorebird_cli/src/shorebird_release_version_mixin.dart';
@@ -23,7 +22,6 @@ class ReleaseAndroidCommand extends ShorebirdCommand
         ShorebirdConfigMixin,
         ShorebirdValidationMixin,
         ShorebirdBuildMixin,
-        ShorebirdCreateAppMixin,
         ShorebirdJavaMixin,
         ShorebirdReleaseVersionMixin {
   /// {@macro release_android_command}
@@ -40,6 +38,16 @@ class ReleaseAndroidCommand extends ShorebirdCommand
       ..addOption(
         'flavor',
         help: 'The product flavor to use when building the app.',
+      )
+      ..addOption(
+        'artifact',
+        help: 'They type of artifact to generate.',
+        allowed: ['aab', 'apk'],
+        defaultsTo: 'aab',
+        allowedHelp: {
+          'aab': 'Android App Bundle',
+          'apk': 'Android Package Kit',
+        },
       )
       ..addFlag(
         'force',
@@ -74,9 +82,11 @@ make smaller updates to your app.
     const platformName = 'android';
     final flavor = results['flavor'] as String?;
     final target = results['target'] as String?;
+    final generateApk = results['artifact'] as String == 'apk';
     final buildProgress = logger.progress('Building release');
     try {
       await buildAppBundle(flavor: flavor, target: target);
+      if (generateApk) await buildApk(flavor: flavor, target: target);
       buildProgress.complete();
     } on ProcessException catch (error) {
       buildProgress.fail('Failed to build: ${error.message}');
@@ -92,6 +102,10 @@ make smaller updates to your app.
     final bundlePath = flavor != null
         ? p.join(bundleDirPath, '${flavor}Release', 'app-$flavor-release.aab')
         : p.join(bundleDirPath, 'release', 'app-release.aab');
+    final apkDirPath = p.join('build', 'app', 'outputs', 'apk');
+    final apkPath = flavor != null
+        ? p.join(apkDirPath, flavor, 'release', 'app-$flavor-release.apk')
+        : p.join(apkDirPath, 'release', 'app-release.apk');
 
     final String releaseVersion;
     final detectReleaseVersionProgress = logger.progress(
@@ -176,8 +190,8 @@ ${summary.join('\n')}
       ..success('\n✅ Published Release!')
       ..info('''
 
-Your next step is to upload the app bundle to the Play Store.
-${lightCyan.wrap(bundlePath)}
+Your next step is to upload the ${generateApk ? 'apk' : 'app bundle'} to the Play Store.
+${lightCyan.wrap(generateApk ? apkPath : bundlePath)}
 
 See the following link for more information:    
 ${link(uri: Uri.parse('https://support.google.com/googleplay/android-developer/answer/9859152?hl=en'))}

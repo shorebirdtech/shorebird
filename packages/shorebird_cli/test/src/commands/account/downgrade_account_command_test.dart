@@ -3,7 +3,7 @@ import 'package:mason_logger/mason_logger.dart';
 import 'package:mocktail/mocktail.dart';
 import 'package:scoped/scoped.dart';
 import 'package:shorebird_cli/src/auth/auth.dart';
-import 'package:shorebird_cli/src/commands/subscription/cancel_subscription_command.dart';
+import 'package:shorebird_cli/src/commands/account/account.dart';
 import 'package:shorebird_cli/src/logger.dart';
 import 'package:shorebird_code_push_client/shorebird_code_push_client.dart';
 import 'package:test/test.dart';
@@ -19,7 +19,7 @@ class _MockLogger extends Mock implements Logger {}
 class _MockProgress extends Mock implements Progress {}
 
 void main() {
-  group(CancelSubscriptionCommand, () {
+  group(DowngradeAccountCommand, () {
     const noSubscriptionUser = User(id: 1, email: 'tester1@shorebird.dev');
     const subscriptionUser = User(
       id: 2,
@@ -32,7 +32,7 @@ void main() {
     late http.Client httpClient;
     late Logger logger;
     late Progress progress;
-    late CancelSubscriptionCommand command;
+    late DowngradeAccountCommand command;
 
     R runWithOverrides<R>(R Function() body) {
       return runScoped(
@@ -56,7 +56,7 @@ void main() {
       when(() => logger.progress(any())).thenReturn(progress);
 
       command = runWithOverrides(
-        () => CancelSubscriptionCommand(
+        () => DowngradeAccountCommand(
           buildCodePushClient: ({
             required http.Client httpClient,
             Uri? hostedUri,
@@ -123,7 +123,7 @@ void main() {
         expect(result, ExitCode.software.code);
         verify(
           () => logger.err(
-            any(that: contains('You do not have an active subscription')),
+            any(that: contains('You do not have a "teams" subscription')),
           ),
         ).called(1);
       },
@@ -135,13 +135,7 @@ void main() {
         () => codePushClient.getCurrentUser(),
       ).thenAnswer((_) async => subscriptionUser);
       when(
-        () => logger.confirm(
-          any(
-            that: contains(
-              'This will cancel your Shorebird subscription. Are you sure?',
-            ),
-          ),
-        ),
+        () => logger.confirm(any(that: contains('Are you sure?'))),
       ).thenReturn(false);
 
       final result = await runWithOverrides(command.run);
@@ -156,13 +150,7 @@ void main() {
         () => codePushClient.getCurrentUser(),
       ).thenAnswer((_) async => subscriptionUser);
       when(
-        () => logger.confirm(
-          any(
-            that: contains(
-              'This will cancel your Shorebird subscription. Are you sure?',
-            ),
-          ),
-        ),
+        () => logger.confirm(any(that: contains('Are you sure?'))),
       ).thenReturn(true);
       when(() => codePushClient.cancelSubscription()).thenThrow(
         Exception('an error occurred'),
@@ -172,9 +160,7 @@ void main() {
 
       expect(result, ExitCode.software.code);
       verify(
-        () => progress.fail(
-          any(that: contains('an error occurred')),
-        ),
+        () => progress.fail(any(that: contains('an error occurred'))),
       ).called(1);
     });
 
@@ -183,16 +169,11 @@ void main() {
       const cancellationTimestamp = 1681455600;
 
       when(() => auth.isAuthenticated).thenReturn(true);
-      when(() => codePushClient.getCurrentUser())
-          .thenAnswer((_) async => subscriptionUser);
       when(
-        () => logger.confirm(
-          any(
-            that: contains(
-              'This will cancel your Shorebird subscription. Are you sure?',
-            ),
-          ),
-        ),
+        () => codePushClient.getCurrentUser(),
+      ).thenAnswer((_) async => subscriptionUser);
+      when(
+        () => logger.confirm(any(that: contains('Are you sure?'))),
       ).thenReturn(true);
 
       when(() => codePushClient.cancelSubscription()).thenAnswer(
@@ -209,8 +190,8 @@ void main() {
         () => progress.complete(
           any(
             that: stringContainsInOrder([
-              'Your subscription has been canceled.',
-              'Your access to Shorebird will continue until April 14, 2023'
+              'Your plan has been downgraded.',
+              '''Note: Your current plan will continue until April 14, 2023, after which your account will be on the "hobby" tier.'''
             ]),
           ),
         ),

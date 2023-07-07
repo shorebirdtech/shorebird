@@ -82,6 +82,36 @@ void main() {
       verify(() => logger.info('exception usage')).called(1);
     });
 
+    test('handles missing option error', () async {
+      final exception = UsageException(
+        'Could not find an option named "foo".',
+        'exception usage',
+      );
+      var isFirstInvocation = true;
+      when(() => logger.info(any())).thenAnswer((_) {
+        if (isFirstInvocation) {
+          isFirstInvocation = false;
+          throw exception;
+        }
+      });
+      final result = await runWithOverrides(
+        () => commandRunner.run(['--version']),
+      );
+      expect(result, equals(ExitCode.usage.code));
+      verify(() => logger.err(exception.message)).called(1);
+      verify(
+        () => logger.err(
+          '''
+To proxy an option to the flutter command, use the -- --<option> syntax.
+
+Example:
+
+${lightCyan.wrap('shorebird run -- --no-pub lib/main.dart')}''',
+        ),
+      ).called(1);
+      verify(() => logger.info('exception usage')).called(1);
+    });
+
     group('--version', () {
       test('outputs current version and engine revisions', () async {
         final result = await runWithOverrides(

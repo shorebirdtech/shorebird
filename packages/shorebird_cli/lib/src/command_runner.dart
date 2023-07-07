@@ -62,12 +62,12 @@ class ShorebirdCliCommandRunner extends CompletionCommandRunner<int> {
     addCommand(DoctorCommand());
     addCommand(InitCommand());
     addCommand(LoginCommand());
+    addCommand(LoginCiCommand());
     addCommand(LogoutCommand());
     addCommand(PatchCommand());
     addCommand(ReleaseCommand());
     addCommand(ReleasesCommand());
     addCommand(RunCommand());
-    addCommand(SubscriptionCommand());
     addCommand(UpgradeCommand());
   }
 
@@ -110,8 +110,20 @@ class ShorebirdCliCommandRunner extends CompletionCommandRunner<int> {
     } on UsageException catch (e) {
       // On usage errors, show the commands usage message and
       // exit with an error code
+
+      logger.err(e.message);
+      if (e.message.contains('Could not find an option named')) {
+        logger.err(
+          '''
+To proxy an option to the flutter command, use the -- --<option> syntax.
+
+Example:
+
+${lightCyan.wrap('shorebird run -- --no-pub lib/main.dart')}''',
+        );
+      }
+
       logger
-        ..err(e.message)
         ..info('')
         ..info(e.usage);
       return ExitCode.usage.code;

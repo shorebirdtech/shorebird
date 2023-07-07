@@ -9,7 +9,14 @@ part 'get_usage_response.g.dart';
 @JsonSerializable()
 class GetUsageResponse {
   /// {@macro get_usage_response}
-  const GetUsageResponse({required this.apps});
+  const GetUsageResponse({
+    required this.plan,
+    required this.apps,
+    required this.currentPeriodStart,
+    required this.currentPeriodEnd,
+    required this.currentPeriodCost,
+    this.patchInstallLimit,
+  });
 
   /// Converts a Map<String, dynamic> to a [GetUsageResponse].
   factory GetUsageResponse.fromJson(Map<String, dynamic> json) =>
@@ -18,8 +25,25 @@ class GetUsageResponse {
   /// Converts a [GetUsageResponse] to a Map<String, dynamic>.
   Json toJson() => _$GetUsageResponseToJson(this);
 
+  /// The user's current plan.
+  final ShorebirdPlan plan;
+
   /// The usage per app.
   final List<AppUsage> apps;
+
+  /// The start of the current billing period.
+  final DateTime currentPeriodStart;
+
+  /// The end of the current billing period.
+  final DateTime currentPeriodEnd;
+
+  /// The total cost so far for the current billing period. Includes base
+  /// monthly cost and any overages.
+  final int currentPeriodCost;
+
+  /// The upper limit of patch installs for the current billing period.
+  /// If `null`, there is no limit.
+  final int? patchInstallLimit;
 }
 
 /// {@template app_usage}
@@ -28,7 +52,11 @@ class GetUsageResponse {
 @JsonSerializable()
 class AppUsage {
   /// {@macro app_usage}
-  const AppUsage({required this.id, required this.platforms});
+  const AppUsage({
+    required this.id,
+    required this.name,
+    required this.patchInstallCount,
+  });
 
   /// Converts a Map<String, dynamic> to a [AppUsage].
   factory AppUsage.fromJson(Map<String, dynamic> json) =>
@@ -40,72 +68,9 @@ class AppUsage {
   /// The id of the app.
   final String id;
 
-  /// The usage per platform.
-  final List<PlatformUsage> platforms;
-}
-
-/// {@template platform_usage}
-/// The usage for a single platform.
-/// {@endtemplate}
-@JsonSerializable()
-class PlatformUsage {
-  /// {@macro platform_usage}
-  const PlatformUsage({required this.name, required this.arches});
-
-  /// Converts a Map<String, dynamic> to a [PlatformUsage].
-  factory PlatformUsage.fromJson(Map<String, dynamic> json) =>
-      _$PlatformUsageFromJson(json);
-
-  /// Converts a [PlatformUsage] to a Map<String, dynamic>.
-  Json toJson() => _$PlatformUsageToJson(this);
-
-  /// The name of the platform.
+  /// The display name of the app.
   final String name;
 
-  /// The usage per arch.
-  final List<ArchUsage> arches;
-}
-
-/// {@template arch_usage}
-/// The usage for a single architecture.
-/// {@endtemplate}
-@JsonSerializable()
-class ArchUsage {
-  /// {@macro arch_usage}
-  const ArchUsage({required this.name, required this.patches});
-
-  /// Converts a Map<String, dynamic> to a [ArchUsage].
-  factory ArchUsage.fromJson(Map<String, dynamic> json) =>
-      _$ArchUsageFromJson(json);
-
-  /// Converts a [ArchUsage] to a Map<String, dynamic>.
-  Json toJson() => _$ArchUsageToJson(this);
-
-  /// The name of the architecture.
-  final String name;
-
-  /// The usage per patch.
-  final List<PatchUsage> patches;
-}
-
-/// {@template patch_usage}
-/// The usage for a single patch.
-/// {@endtemplate}
-@JsonSerializable()
-class PatchUsage {
-  /// {@macro patch_usage}
-  const PatchUsage({required this.id, required this.installCount});
-
-  /// Converts a Map<String, dynamic> to a [PatchUsage].
-  factory PatchUsage.fromJson(Map<String, dynamic> json) =>
-      _$PatchUsageFromJson(json);
-
-  /// Converts a [PatchUsage] to a Map<String, dynamic>.
-  Json toJson() => _$PatchUsageToJson(this);
-
-  /// The id of the patch.
-  final int id;
-
-  /// The number of times the patch has been installed.
-  final int installCount;
+  /// The number of patch installs for the app.
+  final int patchInstallCount;
 }

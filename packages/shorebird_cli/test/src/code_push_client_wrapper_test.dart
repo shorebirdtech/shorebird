@@ -1308,6 +1308,113 @@ Please bump your version number and try again.''',
       });
     });
 
+    group('createIosReleaseArtifact', () {
+      final ipaPath = p.join('path', 'to', 'app.ipa');
+
+      Directory setUpTempDir({String? flavor}) {
+        final tempDir = Directory.systemTemp.createTempSync();
+        File(p.join(tempDir.path, ipaPath)).createSync(recursive: true);
+        return tempDir;
+      }
+
+      setUp(() {
+        when(
+          () => codePushClient.createReleaseArtifact(
+            artifactPath: any(named: 'artifactPath'),
+            releaseId: any(named: 'releaseId'),
+            arch: any(named: 'arch'),
+            platform: any(named: 'platform'),
+            hash: any(named: 'hash'),
+          ),
+        ).thenAnswer((_) async => {});
+      });
+
+      test('exits with code 70 when artifact creation fails', () async {
+        const error = 'something went wrong';
+        when(
+          () => codePushClient.createReleaseArtifact(
+            artifactPath: any(named: 'artifactPath'),
+            releaseId: any(named: 'releaseId'),
+            arch: any(named: 'arch'),
+            platform: any(named: 'platform'),
+            hash: any(named: 'hash'),
+          ),
+        ).thenThrow(error);
+        final tempDir = setUpTempDir();
+
+        await IOOverrides.runZoned(
+          () async => expectLater(
+            () async => runWithOverrides(
+              () async => codePushClientWrapper.createIosReleaseArtifact(
+                releaseId: releaseId,
+                ipaPath: p.join(tempDir.path, ipaPath),
+              ),
+            ),
+            exitsWithCode(ExitCode.software),
+          ),
+          getCurrentDirectory: () => tempDir,
+        );
+
+        verify(() => progress.fail(any(that: contains(error)))).called(1);
+      });
+
+      test('exits with code 70 when uploading ipa that already exists',
+          () async {
+        const error = 'something went wrong';
+        when(
+          () => codePushClient.createReleaseArtifact(
+            artifactPath: any(named: 'artifactPath', that: endsWith('.ipa')),
+            releaseId: any(named: 'releaseId'),
+            arch: any(named: 'arch'),
+            platform: any(named: 'platform'),
+            hash: any(named: 'hash'),
+          ),
+        ).thenThrow(const CodePushConflictException(message: error));
+        final tempDir = setUpTempDir();
+
+        await IOOverrides.runZoned(
+          () async => expectLater(
+            () async => runWithOverrides(
+              () async => codePushClientWrapper.createIosReleaseArtifact(
+                releaseId: releaseId,
+                ipaPath: p.join(tempDir.path, ipaPath),
+              ),
+            ),
+            exitsWithCode(ExitCode.software),
+          ),
+          getCurrentDirectory: () => tempDir,
+        );
+
+        verify(() => progress.fail(any(that: contains(error)))).called(1);
+      });
+
+      test('completes successfully when artifact is created', () async {
+        when(
+          () => codePushClient.createReleaseArtifact(
+            artifactPath: any(named: 'artifactPath'),
+            releaseId: any(named: 'releaseId'),
+            arch: any(named: 'arch'),
+            platform: any(named: 'platform'),
+            hash: any(named: 'hash'),
+          ),
+        ).thenAnswer((_) async => {});
+        final tempDir = setUpTempDir();
+
+        await runWithOverrides(
+          () async => IOOverrides.runZoned(
+            () async => codePushClientWrapper.createIosReleaseArtifact(
+              releaseId: releaseId,
+              ipaPath: p.join(tempDir.path, ipaPath),
+            ),
+            getCurrentDirectory: () => tempDir,
+          ),
+        );
+
+        verify(() => progress.complete()).called(1);
+        verifyNever(() => progress.fail(any()));
+      });
+    });
+
     group('patch', () {
       group('createPatch', () {
         test('exits with code 70 when creating patch fails', () async {
@@ -1571,39 +1678,25 @@ Please bump your version number and try again.''',
         });
 
         test('returns usage when succeeds', () async {
-          const usage = [
-            AppUsage(
-              id: 'test-app-id',
-              platforms: [
-                PlatformUsage(
-                  name: 'android',
-                  arches: [
-                    ArchUsage(
-                      name: 'aarch64',
-                      patches: [
-                        PatchUsage(id: 0, installCount: 10),
-                        PatchUsage(id: 1, installCount: 10)
-                      ],
-                    ),
-                    ArchUsage(
-                      name: 'arm',
-                      patches: [
-                        PatchUsage(id: 0, installCount: 10),
-                        PatchUsage(id: 1, installCount: 10)
-                      ],
-                    ),
-                    ArchUsage(
-                      name: 'x86',
-                      patches: [
-                        PatchUsage(id: 0, installCount: 1),
-                        PatchUsage(id: 1, installCount: 1)
-                      ],
-                    )
-                  ],
-                )
-              ],
+          final usage = GetUsageResponse(
+            plan: const ShorebirdPlan(
+              name: 'Hobby',
+              monthlyCost: 0,
+              patchInstallLimit: 1000,
+              maxTeamSize: 1,
             ),
-          ];
+            apps: const [
+              AppUsage(
+                id: 'test-app-id',
+                name: 'test app',
+                patchInstallCount: 42,
+              ),
+            ],
+            patchInstallLimit: 20000,
+            currentPeriodCost: 0,
+            currentPeriodStart: DateTime(2023),
+            currentPeriodEnd: DateTime(2023, 2),
+          );
           when(() => codePushClient.getUsage()).thenAnswer((_) async => usage);
 
           await expectLater(

@@ -3,6 +3,7 @@ import 'dart:io';
 
 import 'package:cli_util/cli_util.dart';
 import 'package:googleapis_auth/auth_io.dart' as oauth2;
+import 'package:googleapis_auth/googleapis_auth.dart';
 import 'package:http/http.dart' as http;
 import 'package:path/path.dart' as p;
 import 'package:scoped/scoped.dart';
@@ -10,6 +11,7 @@ import 'package:shorebird_cli/src/auth/jwt.dart';
 import 'package:shorebird_cli/src/command.dart';
 import 'package:shorebird_cli/src/command_runner.dart';
 import 'package:shorebird_cli/src/logger.dart';
+import 'package:shorebird_cli/src/platform.dart';
 import 'package:shorebird_code_push_client/shorebird_code_push_client.dart';
 
 // A reference to a [Auth] instance.
@@ -66,30 +68,75 @@ class LoggingClient extends http.BaseClient {
 }
 
 class AuthenticatedClient extends LoggingClient {
-  AuthenticatedClient({
-    required super.httpClient,
+  AuthenticatedClient.credentials({
+    required http.Client httpClient,
     required oauth2.AccessCredentials credentials,
-    required OnRefreshCredentials onRefreshCredentials,
+    OnRefreshCredentials? onRefreshCredentials,
+    RefreshCredentials refreshCredentials = oauth2.refreshCredentials,
+  }) : this._(
+          httpClient: httpClient,
+          onRefreshCredentials: onRefreshCredentials,
+          credentials: credentials,
+          refreshCredentials: refreshCredentials,
+        );
+
+  AuthenticatedClient.token({
+    required http.Client httpClient,
+    required String token,
+    OnRefreshCredentials? onRefreshCredentials,
+    RefreshCredentials refreshCredentials = oauth2.refreshCredentials,
+  }) : this._(
+          httpClient: httpClient,
+          token: token,
+          onRefreshCredentials: onRefreshCredentials,
+          refreshCredentials: refreshCredentials,
+        );
+
+  AuthenticatedClient._({
+    required super.httpClient,
+    OnRefreshCredentials? onRefreshCredentials,
+    oauth2.AccessCredentials? credentials,
+    String? token,
     RefreshCredentials refreshCredentials = oauth2.refreshCredentials,
   })  : _credentials = credentials,
         _onRefreshCredentials = onRefreshCredentials,
-        _refreshCredentials = refreshCredentials;
+        _refreshCredentials = refreshCredentials,
+        _token = token;
 
-  final OnRefreshCredentials _onRefreshCredentials;
+  final OnRefreshCredentials? _onRefreshCredentials;
   final RefreshCredentials _refreshCredentials;
-  oauth2.AccessCredentials _credentials;
+  oauth2.AccessCredentials? _credentials;
+  final String? _token;
 
   @override
   Future<http.StreamedResponse> send(http.BaseRequest request) async {
-    if (_credentials.accessToken.hasExpired) {
-      _credentials = await _refreshCredentials(
+    var credentials = _credentials;
+
+    if (credentials == null) {
+      final token = _token!;
+      credentials = _credentials = await _refreshCredentials(
         _clientId,
-        _credentials,
+        oauth2.AccessCredentials(
+          // This isn't relevant for a refresh operation.
+          AccessToken('Bearer', '', DateTime.timestamp()),
+          token,
+          _scopes,
+        ),
         _baseClient,
       );
-      _onRefreshCredentials(_credentials);
+      _onRefreshCredentials?.call(credentials);
     }
-    final token = _credentials.idToken;
+
+    if (credentials.accessToken.hasExpired) {
+      credentials = _credentials = await _refreshCredentials(
+        _clientId,
+        credentials,
+        _baseClient,
+      );
+      _onRefreshCredentials?.call(credentials);
+    }
+
+    final token = credentials.idToken;
     request.headers['Authorization'] = 'Bearer $token';
     return super.send(request);
   }
@@ -114,19 +161,50 @@ class Auth {
   final String _credentialsDir;
   final ObtainAccessCredentials _obtainAccessCredentials;
   final CodePushClientBuilder _buildCodePushClient;
+  String? _token;
 
   String get credentialsFilePath {
     return p.join(_credentialsDir, 'credentials.json');
   }
 
   http.Client get client {
-    final credentials = _credentials;
-    if (credentials == null) return _httpClient;
-    return AuthenticatedClient(
-      credentials: credentials,
+    if (_credentials == null && _token == null) return _httpClient;
+
+    if (_token != null) {
+      return AuthenticatedClient.token(token: _token!, httpClient: _httpClient);
+    }
+
+    return AuthenticatedClient.credentials(
+      credentials: _credentials!,
       httpClient: _httpClient,
       onRefreshCredentials: _flushCredentials,
     );
+  }
+
+  Future<AccessCredentials> loginCI(void Function(String) prompt) async {
+    final client = http.Client();
+    try {
+      final credentials = await _obtainAccessCredentials(
+        _clientId,
+        _scopes,
+        client,
+        prompt,
+      );
+
+      final codePushClient = _buildCodePushClient(
+        httpClient: AuthenticatedClient.credentials(
+          credentials: credentials,
+          httpClient: _httpClient,
+        ),
+      );
+      final user = await codePushClient.getCurrentUser();
+      if (user == null) {
+        throw UserNotFoundException(email: credentials.email!);
+      }
+      return credentials;
+    } finally {
+      client.close();
+    }
   }
 
   Future<void> login(void Function(String) prompt) async {
@@ -201,11 +279,16 @@ class Auth {
 
   String? get email => _email;
 
-  bool get isAuthenticated => _email != null;
+  bool get isAuthenticated => _email != null || _token != null;
 
   void _loadCredentials() {
-    final credentialsFile = File(credentialsFilePath);
+    final token = platform.environment['SHOREBIRD_TOKEN'];
+    if (token != null) {
+      _token = token;
+      return;
+    }
 
+    final credentialsFile = File(credentialsFilePath);
     if (credentialsFile.existsSync()) {
       try {
         final contents = credentialsFile.readAsStringSync();

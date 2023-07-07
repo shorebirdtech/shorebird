@@ -1,6 +1,7 @@
 import 'dart:async';
 
 import 'package:barbecue/barbecue.dart';
+import 'package:intl/intl.dart';
 import 'package:mason_logger/mason_logger.dart';
 import 'package:shorebird_cli/src/code_push_client_wrapper.dart';
 import 'package:shorebird_cli/src/command.dart';
@@ -39,8 +40,10 @@ class AccountUsageCommand extends ShorebirdCommand
   }
 }
 
-extension on List<AppUsage> {
+extension on GetUsageResponse {
   String prettyPrint() {
+    final currencyFormatter = NumberFormat('#,##0.00', 'en_US');
+
     const cellStyle = CellStyle(
       paddingLeft: 1,
       paddingRight: 1,
@@ -50,28 +53,54 @@ extension on List<AppUsage> {
       borderRight: true,
     );
     var totalPatchInstalls = 0;
-    for (final appUsage in this) {
-      for (final platformUsage in appUsage.platforms) {
-        for (final archUsage in platformUsage.arches) {
-          for (final patchUsage in archUsage.patches) {
-            totalPatchInstalls += patchUsage.installCount;
-          }
-        }
-      }
+    for (final appUsage in apps) {
+      totalPatchInstalls += appUsage.patchInstallCount;
     }
 
-    return Table(
+    final remainingPatchInstalls = patchInstallLimit == null
+        ? '∞'
+        : '${patchInstallLimit! - totalPatchInstalls}';
+
+    return '''
+
+You are on the ${lightCyan.wrap(plan.name)} plan.
+
+${Table(
       cellStyle: cellStyle,
       header: const TableSection(
         rows: [
-          Row(cells: [Cell('Total Patch Installs')])
+          Row(
+            cells: [
+              Cell('App'),
+              Cell('Patch Installs'),
+            ],
+          )
         ],
       ),
       body: TableSection(
         rows: [
-          Row(cells: [Cell('$totalPatchInstalls')])
+          for (final appUsage in apps)
+            Row(
+              cells: [
+                Cell(appUsage.name),
+                Cell('${appUsage.patchInstallCount}'),
+              ],
+            ),
+          Row(
+            cells: [
+              const Cell('Total'),
+              Cell('$totalPatchInstalls'),
+            ],
+          ),
         ],
       ),
-    ).render();
+    ).render()}
+
+${styleBold.wrap('${lightCyan.wrap(remainingPatchInstalls)} patch installs remaining in the current billing period.')}
+
+Current Billing Period: ${lightCyan.wrap(DateFormat.yMMMd().format(currentPeriodStart))} - ${lightCyan.wrap(DateFormat.yMMMd().format(currentPeriodEnd))}
+Month-to-date cost: ${lightCyan.wrap('\$${currencyFormatter.format(currentPeriodCost * 100.0)}')}
+
+${styleBold.wrap('*Usage data is not reported in real-time and may be delayed by up to 48 hours.')}''';
   }
 }

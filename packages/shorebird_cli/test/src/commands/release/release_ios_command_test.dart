@@ -63,7 +63,15 @@ void main() {
       flutterRevision: flutterRevision,
       displayName: '1.2.3+1',
     );
-
+    const infoPlistContent = '''
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+<plist version="1.0">
+<dict>
+	<key>CFBundleName</key>
+	<string>app_bundle_name</string>
+</dict>
+</plist>''';
     const pubspecYamlContent = '''
 name: example
 version: $version
@@ -110,7 +118,11 @@ flutter:
       File(
         p.join(tempDir.path, 'shorebird.yaml'),
       ).writeAsStringSync('app_id: $appId');
-
+      File(
+        p.join(tempDir.path, 'ios', 'Runner', 'Info.plist'),
+      )
+        ..createSync(recursive: true)
+        ..writeAsStringSync(infoPlistContent);
       return tempDir;
     }
 
@@ -199,6 +211,12 @@ flutter:
           appId: any(named: 'appId'),
           version: any(named: 'version'),
           flutterRevision: any(named: 'flutterRevision'),
+        ),
+      ).thenAnswer((_) async => release);
+      when(
+        () => codePushClientWrapper.createIosReleaseArtifact(
+          releaseId: any(named: 'releaseId'),
+          ipaPath: any(named: 'ipaPath'),
         ),
       ).thenAnswer((_) async => release);
       when(() => flutterValidator.validate(any())).thenAnswer((_) async => []);
@@ -377,6 +395,12 @@ error: exportArchive: No signing certificate "iOS Distribution" found
 
       expect(exitCode, ExitCode.success.code);
       verify(() => logger.info('Aborting.')).called(1);
+      verifyNever(
+        () => codePushClientWrapper.createIosReleaseArtifact(
+          releaseId: release.id,
+          ipaPath: any(named: 'ipaPath', that: endsWith('.ipa')),
+        ),
+      );
     });
 
     test('throws error when unable to detect flutter revision', () async {
@@ -431,10 +455,16 @@ error: exportArchive: No signing certificate "iOS Distribution" found
             that: stringContainsInOrder(
               [
                 'Your next step is to upload the ipa to App Store Connect.',
-                'build/ios/ipa/example.ipa',
+                'build/ios/ipa/app_bundle_name.ipa',
               ],
             ),
           ),
+        ),
+      ).called(1);
+      verify(
+        () => codePushClientWrapper.createIosReleaseArtifact(
+          releaseId: release.id,
+          ipaPath: any(named: 'ipaPath', that: endsWith('.ipa')),
         ),
       ).called(1);
       expect(exitCode, ExitCode.success.code);
@@ -467,10 +497,16 @@ flavors:
             that: stringContainsInOrder(
               [
                 'Your next step is to upload the ipa to App Store Connect.',
-                'build/ios/ipa/example.ipa',
+                'build/ios/ipa/app_bundle_name.ipa',
               ],
             ),
           ),
+        ),
+      ).called(1);
+      verify(
+        () => codePushClientWrapper.createIosReleaseArtifact(
+          releaseId: release.id,
+          ipaPath: any(named: 'ipaPath', that: endsWith('.ipa')),
         ),
       ).called(1);
       expect(exitCode, ExitCode.success.code);
@@ -499,6 +535,12 @@ flavors:
           flutterRevision: any(named: 'flutterRevision'),
         ),
       );
+      verify(
+        () => codePushClientWrapper.createIosReleaseArtifact(
+          releaseId: release.id,
+          ipaPath: any(named: 'ipaPath', that: endsWith('.ipa')),
+        ),
+      ).called(1);
     });
 
     test('provides appropriate ExportOptions.plist to build ipa command',

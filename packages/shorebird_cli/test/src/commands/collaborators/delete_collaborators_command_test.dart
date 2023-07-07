@@ -28,7 +28,11 @@ void main() {
   group(DeleteCollaboratorsCommand, () {
     const appId = 'test-app-id';
     const email = 'jane.doe@shorebird.dev';
-    const collaborator = Collaborator(userId: 0, email: email);
+    const collaborator = Collaborator(
+      userId: 0,
+      email: email,
+      role: CollaboratorRole.admin,
+    );
 
     late ArgResults argResults;
     late http.Client httpClient;

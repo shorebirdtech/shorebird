@@ -5,16 +5,16 @@ on:
     # At the end of every day
     - cron: "0 0 * * *"
 
+env:
+  SHOREBIRD_TOKEN: ${{ secrets.SHOREBIRD_TOKEN }}
+
 jobs:
-  verify_cli_installation:
+  test:
     strategy:
       fail-fast: false
       matrix:
         os: [macos-latest, windows-latest, ubuntu-latest]
-
-    defaults:
-      run:
-        shell: bash
+        package: [packages/shorebird_cli]
 
     runs-on: ${{ matrix.os }}
 
@@ -22,11 +22,42 @@ jobs:
       - name: 📚 Git Checkout
         uses: actions/checkout@v3
 
-      - name: 🐦 Verify Shorebird Installation (${{ matrix.os }})
+      - name: Add Shorebird to macOS/Linux PATH
+        shell: bash
+        if: runner.os != 'Windows'
+        run: echo "${GITHUB_WORKSPACE}/bin/" >> $GITHUB_PATH
+
+      - name: 🐦 Verify Shorebird Installation (macOS / Linux)
+        if: runner.os != 'Windows'
         run: |
-          if [[ $(./bin/shorebird --version) =~ "Shorebird Engine • revision" ]]; then          
+          if [[ $(shorebird --version) =~ "Shorebird Engine • revision" ]]; then          
             echo '✅ Shorebird CLI is installed!'
           else
             echo '❌ Shorebird CLI is not installed.'
           exit 1
           fi
+        shell: bash
+
+      - name: Add Shorebird to Windows PATH
+        shell: pwsh
+        if: runner.os == 'Windows'
+        run: Add-Content $env:GITHUB_PATH "${env:GITHUB_WORKSPACE}\bin"
+
+      - name: 🐦 Verify Shorebird Installation (Windows)
+        if: runner.os == 'Windows'
+        run: |
+          $shorebird_version = shorebird --version
+          if ($shorebird_version -match "Shorebird Engine") {
+            Write-Output "✅ Shorebird CLI is installed!"
+          } else {
+            Write-Output "❌ Shorebird CLI is not installed."
+            exit 1
+          }
+        shell: pwsh
+
+      - name: 🎯 Set up dart
+        uses: dart-lang/setup-dart@v1
+
+      - name: Run Integration Tests
+        run: dart test integration_test
+        working-directory: packages/shorebird_cli

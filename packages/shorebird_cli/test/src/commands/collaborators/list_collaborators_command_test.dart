@@ -106,8 +106,16 @@ void main() {
 
     test('returns ExitCode.success when collaborators are not empty', () async {
       final collaborators = [
-        const Collaborator(userId: 0, email: 'jane.doe@shorebird.dev'),
-        const Collaborator(userId: 1, email: 'john.doe@shorebird.dev'),
+        const Collaborator(
+          userId: 0,
+          email: 'jane.doe@shorebird.dev',
+          role: CollaboratorRole.admin,
+        ),
+        const Collaborator(
+          userId: 1,
+          email: 'john.doe@shorebird.dev',
+          role: CollaboratorRole.developer,
+        ),
       ];
       when(
         () => codePushClient.getCollaborators(appId: any(named: 'appId')),
@@ -123,13 +131,13 @@ void main() {
       verify(
         () => logger.info(
           '''
-┌────────────────────────┐
-│ Email                  │
-├────────────────────────┤
-│ jane.doe@shorebird.dev │
-├────────────────────────┤
-│ john.doe@shorebird.dev │
-└────────────────────────┘''',
+┌────────────────────────┬───────────┐
+│ Email                  │ Role      │
+├────────────────────────┼───────────┤
+│ jane.doe@shorebird.dev │ admin     │
+├────────────────────────┼───────────┤
+│ john.doe@shorebird.dev │ developer │
+└────────────────────────┴───────────┘''',
         ),
       ).called(1);
     });

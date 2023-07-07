@@ -38,7 +38,7 @@ class CreateAccountCommand extends ShorebirdCommand with ShorebirdConfigMixin {
       // status.
       logger.info('''
 You already have an account, ${error.user.displayName}!
-To subscribe, run ${lightCyan.wrap('shorebird account subscribe')}.
+To login, run ${lightCyan.wrap('shorebird login')}.
 ''');
       return ExitCode.success.code;
     } catch (error) {
@@ -53,11 +53,11 @@ To subscribe, run ${lightCyan.wrap('shorebird account subscribe')}.
 🔑 Credentials are stored in ${lightCyan.wrap(auth.credentialsFilePath)}.
 🚪 To logout, use: "${lightCyan.wrap('shorebird logout')}".
 
-A subscription is required to use Shorebird.
-To subscribe, run ${lightCyan.wrap('shorebird account subscribe')}.
+Your current plan is ${lightCyan.wrap('Hobby')}.
+To upgrade, run ${lightCyan.wrap('shorebird account upgrade')}.
 
 Please let us know via Discord if we can help!
-${lightCyan.wrap('https://discord.com/invite/9hKJcWGcaB')}.
+${lightCyan.wrap('https://discord.gg/shorebird')}.
 ''',
     );
     return ExitCode.success.code;

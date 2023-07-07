@@ -12,7 +12,6 @@ import 'package:shorebird_cli/src/formatters/formatters.dart';
 import 'package:shorebird_cli/src/logger.dart';
 import 'package:shorebird_cli/src/shorebird_build_mixin.dart';
 import 'package:shorebird_cli/src/shorebird_config_mixin.dart';
-import 'package:shorebird_cli/src/shorebird_create_app_mixin.dart';
 import 'package:shorebird_cli/src/shorebird_environment.dart';
 import 'package:shorebird_cli/src/shorebird_java_mixin.dart';
 import 'package:shorebird_cli/src/shorebird_release_version_mixin.dart';
@@ -28,7 +27,6 @@ class PatchAndroidCommand extends ShorebirdCommand
         ShorebirdConfigMixin,
         ShorebirdValidationMixin,
         ShorebirdBuildMixin,
-        ShorebirdCreateAppMixin,
         ShorebirdJavaMixin,
         ShorebirdReleaseVersionMixin {
   /// {@macro patch_android_command}
@@ -205,8 +203,7 @@ https://github.com/shorebirdtech/shorebird/issues/472
       platform: platformName,
     );
 
-    final releaseAabArtifact =
-        await codePushClientWrapper.maybeGetReleaseArtifact(
+    final releaseAabArtifact = await codePushClientWrapper.getReleaseArtifact(
       releaseId: release.id,
       arch: 'aab',
       platform: platformName,
@@ -229,14 +226,12 @@ https://github.com/shorebirdtech/shorebird/issues/472
       }
     }
 
-    String? releaseAabPath;
+    String releaseAabPath;
     try {
-      if (releaseAabArtifact != null) {
-        releaseAabPath = await downloadReleaseArtifact(
-          Uri.parse(releaseAabArtifact.url),
-          httpClient: _httpClient,
-        );
-      }
+      releaseAabPath = await downloadReleaseArtifact(
+        Uri.parse(releaseAabArtifact.url),
+        httpClient: _httpClient,
+      );
     } catch (error) {
       downloadReleaseArtifactProgress.fail('$error');
       return ExitCode.software.code;
@@ -244,20 +239,19 @@ https://github.com/shorebirdtech/shorebird/issues/472
 
     downloadReleaseArtifactProgress.complete();
 
-    final contentDiffs = releaseAabPath == null
-        ? <ArchiveDifferences>{}
-        : _aabDiffer.contentDifferences(
-            releaseAabPath,
-            bundlePath,
-          );
+    final contentDiffs = _aabDiffer.changedFiles(
+      releaseAabPath,
+      bundlePath,
+    );
 
     logger.detail('aab content differences: $contentDiffs');
 
-    if (contentDiffs.contains(ArchiveDifferences.native)) {
+    if (contentDiffs.nativeChanges.isNotEmpty) {
       logger
         ..err(
           '''The Android App Bundle appears to contain Kotlin or Java changes, which cannot be applied via a patch.''',
         )
+        ..info(yellow.wrap(contentDiffs.nativeChanges.prettyString))
         ..info(
           yellow.wrap(
             '''
@@ -269,13 +263,14 @@ If you believe you're seeing this in error, please reach out to us for support a
       return ExitCode.software.code;
     }
 
-    if (contentDiffs.contains(ArchiveDifferences.assets)) {
-      logger.info(
-        yellow.wrap(
-          '''⚠️ The Android App Bundle contains asset changes, which will not be included in the patch.''',
-        ),
-      );
-      final shouldContinue = logger.confirm('Continue anyways?');
+    if (contentDiffs.assetChanges.isNotEmpty) {
+      logger
+        ..warn(
+          '''The Android App Bundle contains asset changes, which will not be included in the patch.''',
+        )
+        ..info(yellow.wrap(contentDiffs.assetChanges.prettyString));
+
+      final shouldContinue = force || logger.confirm('Continue anyways?');
       if (!shouldContinue) {
         return ExitCode.success.code;
       }
