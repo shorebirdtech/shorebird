@@ -37,6 +37,8 @@ class _MockShorebirdFlutterValidator extends Mock
 
 class _MockShorebirdProcess extends Mock implements ShorebirdProcess {}
 
+class _MockIOSink extends Mock implements IOSink {}
+
 void main() {
   group(RunCommand, () {
     late ArgResults argResults;
@@ -49,6 +51,7 @@ void main() {
     late ShorebirdFlutterValidator flutterValidator;
     late ShorebirdProcess shorebirdProcess;
     late RunCommand command;
+    late IOSink ioSink;
 
     R runWithOverrides<R>(R Function() body) {
       return runScoped(
@@ -59,6 +62,10 @@ void main() {
         },
       );
     }
+
+    setUpAll(() {
+      registerFallbackValue(const Stream<List<int>>.empty());
+    });
 
     setUp(() {
       argResults = _MockArgResults();
@@ -71,6 +78,7 @@ void main() {
       androidInternetPermissionValidator =
           _MockAndroidInternetPermissionValidator();
       flutterValidator = _MockShorebirdFlutterValidator();
+      ioSink = _MockIOSink();
 
       registerFallbackValue(shorebirdProcess);
 
@@ -89,6 +97,7 @@ void main() {
         () => androidInternetPermissionValidator.validate(any()),
       ).thenAnswer((_) async => []);
       when(() => flutterValidator.validate(any())).thenAnswer((_) async => []);
+      when(() => ioSink.addStream(any())).thenAnswer((_) async {});
 
       command = runWithOverrides(
         () => RunCommand(
@@ -128,10 +137,10 @@ void main() {
 
       const error = 'oops something went wrong';
       const exitCode = 1;
-
       when(
         () => process.stdout,
       ).thenAnswer((_) => const Stream.empty());
+      when(() => process.stdin).thenAnswer((_) => ioSink);
       when(() => process.stderr).thenAnswer(
         (_) => Stream.value(utf8.encode(error)),
       );
@@ -156,6 +165,7 @@ void main() {
       when(
         () => process.stdout,
       ).thenAnswer((_) => Stream.value(utf8.encode(output)));
+      when(() => process.stdin).thenAnswer((_) => ioSink);
       when(() => process.stderr).thenAnswer((_) => const Stream.empty());
       when(
         () => process.exitCode,
@@ -168,6 +178,7 @@ void main() {
 
       await expectLater(result, equals(ExitCode.success.code));
       verify(() => logger.info(output)).called(1);
+      verify(() => ioSink.addStream(any())).called(1);
     });
 
     test('passes additional args when specified', () async {
@@ -186,6 +197,7 @@ void main() {
       when(() => argResults['dart-define']).thenReturn(dartDefines);
 
       when(() => process.stdout).thenAnswer((_) => const Stream.empty());
+      when(() => process.stdin).thenAnswer((_) => ioSink);
       when(() => process.stderr).thenAnswer((_) => const Stream.empty());
       when(
         () => process.exitCode,
@@ -242,9 +254,11 @@ void main() {
       when(() => logger.progress(any())).thenReturn(progress);
 
       const output = 'some output';
+      final ioSink = IOSink(StreamController());
       when(
         () => process.stdout,
       ).thenAnswer((_) => Stream.value(utf8.encode(output)));
+      when(() => process.stdin).thenAnswer((_) => ioSink);
       when(() => process.stderr).thenAnswer((_) => const Stream.empty());
       when(
         () => process.exitCode,
