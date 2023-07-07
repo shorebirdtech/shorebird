@@ -26,8 +26,12 @@ class RunCommand extends ShorebirdCommand
       )
       ..addMultiOption(
         'dart-define',
-        help:
-            '''comma seperated key-value pairs (eg: FOO=BAR,FOO1=BAR1) that will be available as constants''',
+        help: 'Additional key-value pairs that will be available as constants '
+            '''from the String.fromEnvironment, bool.fromEnvironment, and int.fromEnvironment '''
+            'constructors.\n'
+            '''Multiple defines can be passed by repeating "--dart-define" multiple times.''',
+        splitCommas: false,
+        valueHelp: 'foo=bar',
       )
       ..addOption(
         'flavor',
@@ -57,7 +61,7 @@ class RunCommand extends ShorebirdCommand
     final deviceId = results['device-id'] as String?;
     final flavor = results['flavor'] as String?;
     final target = results['target'] as String?;
-    final dartDefine = results['dart-define'] as List<String>?;
+    final dartDefines = results['dart-define'] as List<String>?;
     final flutter = await process.start(
       'flutter',
       [
@@ -67,7 +71,7 @@ class RunCommand extends ShorebirdCommand
         if (deviceId != null) '--device-id=$deviceId',
         if (flavor != null) '--flavor=$flavor',
         if (target != null) '--target=$target',
-        if (dartDefine != null) ...dartDefine.map((e) => '--dart-define=$e'),
+        if (dartDefines != null) ...dartDefines.map((e) => '--dart-define=$e'),
         ...results.rest
       ],
       runInShell: true,

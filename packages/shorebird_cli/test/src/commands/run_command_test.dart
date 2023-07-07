@@ -179,12 +179,11 @@ void main() {
       const deviceId = 'test-device-id';
       const flavor = 'development';
       const target = './lib/main_development.dart';
-      const dartDefine = 'VAL1=KEY1,VAL2=KEY2';
-      final dartDefineArray = dartDefine.split(',');
+      const dartDefines = ['FOO=BAR', 'BAZ=QUX'];
       when(() => argResults['device-id']).thenReturn(deviceId);
       when(() => argResults['flavor']).thenReturn(flavor);
       when(() => argResults['target']).thenReturn(target);
-      when(() => argResults['dart-define']).thenReturn(dartDefineArray);
+      when(() => argResults['dart-define']).thenReturn(dartDefines);
 
       when(() => process.stdout).thenAnswer((_) => const Stream.empty());
       when(() => process.stderr).thenAnswer((_) => const Stream.empty());
@@ -212,8 +211,8 @@ void main() {
           '--device-id=$deviceId',
           '--flavor=$flavor',
           '--target=$target',
-          '--dart-define=${dartDefineArray[0]}',
-          '--dart-define=${dartDefineArray[1]}',
+          '--dart-define=${dartDefines[0]}',
+          '--dart-define=${dartDefines[1]}',
         ]),
       );
 
