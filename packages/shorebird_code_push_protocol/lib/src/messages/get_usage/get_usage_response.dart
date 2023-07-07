@@ -14,6 +14,7 @@ class GetUsageResponse {
     required this.apps,
     required this.currentPeriodStart,
     required this.currentPeriodEnd,
+    required this.currentPeriodCost,
     this.patchInstallLimit,
   });
 
@@ -35,6 +36,10 @@ class GetUsageResponse {
 
   /// The end of the current billing period.
   final DateTime currentPeriodEnd;
+
+  /// The total cost so far for the current billing period. Includes base
+  /// monthly cost and any overages.
+  final int currentPeriodCost;
 
   /// The upper limit of patch installs for the current billing period.
   /// If `null`, there is no limit.
