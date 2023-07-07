@@ -119,7 +119,7 @@ You are on the ${lightCyan.wrap('Hobby')} plan.
 ${styleBold.wrap('${lightCyan.wrap('${20000 - 84}')} patch installs remaining in the current billing period.')}
 
 Current Billing Period: ${lightCyan.wrap(DateFormat.yMMMd().format(usage.currentPeriodStart))} - ${lightCyan.wrap(DateFormat.yMMMd().format(usage.currentPeriodEnd))}
-Next Invoice: \$0.00
+Month-to-date cost: ${lightCyan.wrap(r'$0.00')}
 
 ${styleBold.wrap('*Usage data is not reported in real-time and may be delayed by up to 48 hours.')}'''),
           ),
@@ -179,7 +179,7 @@ You are on the ${lightCyan.wrap('Hobby')} plan.
 ${styleBold.wrap('${lightCyan.wrap('∞')} patch installs remaining in the current billing period.')}
 
 Current Billing Period: ${lightCyan.wrap(DateFormat.yMMMd().format(usage.currentPeriodStart))} - ${lightCyan.wrap(DateFormat.yMMMd().format(usage.currentPeriodEnd))}
-Next Invoice: \$0.00
+Month-to-date cost: ${lightCyan.wrap(r'$0.00')}
 
 ${styleBold.wrap('*Usage data is not reported in real-time and may be delayed by up to 48 hours.')}'''),
           ),
