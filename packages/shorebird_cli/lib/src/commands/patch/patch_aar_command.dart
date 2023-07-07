@@ -15,7 +15,6 @@ import 'package:shorebird_cli/src/logger.dart';
 import 'package:shorebird_cli/src/shorebird_artifact_mixin.dart';
 import 'package:shorebird_cli/src/shorebird_build_mixin.dart';
 import 'package:shorebird_cli/src/shorebird_config_mixin.dart';
-import 'package:shorebird_cli/src/shorebird_create_app_mixin.dart';
 import 'package:shorebird_cli/src/shorebird_environment.dart';
 import 'package:shorebird_cli/src/shorebird_validation_mixin.dart';
 import 'package:shorebird_code_push_client/shorebird_code_push_client.dart';
@@ -29,7 +28,6 @@ class PatchAarCommand extends ShorebirdCommand
         ShorebirdConfigMixin,
         ShorebirdValidationMixin,
         ShorebirdBuildMixin,
-        ShorebirdCreateAppMixin,
         ShorebirdArtifactMixin {
   /// {@macro patch_aar_command}
   PatchAarCommand({
@@ -223,7 +221,7 @@ https://github.com/shorebirdtech/shorebird/issues/472
     final aarDiffProgress =
         logger.progress('Checking for aar content differences');
 
-    final contentDiffs = _aarDiffer.contentDifferences(
+    final contentDiffs = _aarDiffer.changedFiles(
       releaseAarPath,
       aarArtifactPath(
         packageName: androidPackageName!,
@@ -233,13 +231,13 @@ https://github.com/shorebirdtech/shorebird/issues/472
 
     aarDiffProgress.complete();
 
-    if (contentDiffs.contains(ArchiveDifferences.assets)) {
+    if (contentDiffs.assetChanges.isNotEmpty) {
       logger.info(
         yellow.wrap(
           '''⚠️ The Android Archive contains asset changes, which will not be included in the patch.''',
         ),
       );
-      final shouldContinue = logger.confirm('Continue anyways?');
+      final shouldContinue = force || logger.confirm('Continue anyways?');
       if (!shouldContinue) {
         return ExitCode.success.code;
       }

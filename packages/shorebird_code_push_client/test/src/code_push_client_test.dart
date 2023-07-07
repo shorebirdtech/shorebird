@@ -108,6 +108,21 @@ void main() {
         );
       });
 
+      test('throws a permission exception if the http response code is 403',
+          () async {
+        when(() => httpClient.send(any())).thenAnswer(
+          (_) async => http.StreamedResponse(
+            Stream.value(utf8.encode(json.encode(errorResponse.toJson()))),
+            HttpStatus.forbidden,
+          ),
+        );
+
+        expect(
+          codePushClient.createCollaborator(appId: appId, email: email),
+          throwsA(isA<CodePushForbiddenException>()),
+        );
+      });
+
       test('throws an exception if the http request fails', () async {
         when(() => httpClient.send(any())).thenAnswer(
           (_) async => http.StreamedResponse(
@@ -1639,10 +1654,12 @@ void main() {
           Collaborator(
             userId: 0,
             email: 'jane.doe@shorebird.dev',
+            role: CollaboratorRole.developer,
           ),
           Collaborator(
             userId: 1,
             email: 'john.doe@shorebird.dev',
+            role: CollaboratorRole.admin,
           ),
         ];
 
@@ -1912,20 +1929,28 @@ void main() {
       });
 
       test('completes when request succeeds', () async {
-        final expected = [
-          AppUsage(
-            id: 'test-app-id',
-            platforms: [],
-          )
-        ];
+        final expected = GetUsageResponse(
+          plan: const ShorebirdPlan(
+            name: 'Hobby',
+            monthlyCost: 0,
+            patchInstallLimit: 1000,
+            maxTeamSize: 1,
+          ),
+          apps: [
+            AppUsage(
+              id: 'test-app-id',
+              name: 'Test App',
+              patchInstallCount: 42,
+            )
+          ],
+          patchInstallLimit: 1337,
+          currentPeriodStart: DateTime(2023),
+          currentPeriodEnd: DateTime(2023, 2),
+        );
 
         when(() => httpClient.send(any())).thenAnswer(
           (_) async => http.StreamedResponse(
-            Stream.value(
-              utf8.encode(
-                json.encode(GetUsageResponse(apps: expected)),
-              ),
-            ),
+            Stream.value(utf8.encode(json.encode(expected))),
             HttpStatus.ok,
           ),
         );

@@ -7,6 +7,7 @@ import 'package:shorebird_cli/src/code_push_client_wrapper.dart';
 import 'package:shorebird_cli/src/command.dart';
 import 'package:shorebird_cli/src/config/config.dart';
 import 'package:shorebird_cli/src/logger.dart';
+import 'package:shorebird_cli/src/shorebird_artifact_mixin.dart';
 import 'package:shorebird_cli/src/shorebird_build_mixin.dart';
 import 'package:shorebird_cli/src/shorebird_config_mixin.dart';
 import 'package:shorebird_cli/src/shorebird_environment.dart';
@@ -17,7 +18,11 @@ import 'package:shorebird_cli/src/shorebird_validation_mixin.dart';
 /// Create new app releases for iOS.
 /// {@endtemplate}
 class ReleaseIosCommand extends ShorebirdCommand
-    with ShorebirdBuildMixin, ShorebirdConfigMixin, ShorebirdValidationMixin {
+    with
+        ShorebirdBuildMixin,
+        ShorebirdConfigMixin,
+        ShorebirdArtifactMixin,
+        ShorebirdValidationMixin {
   /// {@macro release_ios_command}
   ReleaseIosCommand({
     super.cache,
@@ -89,13 +94,12 @@ make smaller updates to your app.
     buildProgress.complete();
 
     final releaseVersionProgress = logger.progress('Getting release version');
-    final pubspec = ShorebirdEnvironment.getPubspecYaml()!;
     final ipaPath = p.join(
       Directory.current.path,
       'build',
       'ios',
       'ipa',
-      '${pubspec.name}.ipa',
+      '${getIpaName()}.ipa',
     );
     String releaseVersion;
     try {
@@ -156,15 +160,19 @@ ${summary.join('\n')}
       return ExitCode.software.code;
     }
 
-    if (existingRelease == null) {
-      await codePushClientWrapper.createRelease(
-        appId: appId,
-        version: releaseVersion,
-        flutterRevision: shorebirdFlutterRevision,
-      );
-    }
+    final release = existingRelease ??
+        await codePushClientWrapper.createRelease(
+          appId: appId,
+          version: releaseVersion,
+          flutterRevision: shorebirdFlutterRevision,
+        );
 
     final relativeIpaPath = p.relative(ipaPath);
+
+    await codePushClientWrapper.createIosReleaseArtifact(
+      releaseId: release.id,
+      ipaPath: ipaPath,
+    );
 
     logger
       ..success('\n✅ Published Release!')

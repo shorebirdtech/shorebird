@@ -1,3 +1,4 @@
+import 'package:intl/intl.dart';
 import 'package:mason_logger/mason_logger.dart';
 import 'package:mocktail/mocktail.dart';
 import 'package:scoped/scoped.dart';
@@ -66,39 +67,29 @@ void main() {
     });
 
     test('exits with code 0 when usage is fetched.', () async {
-      final usage = [
-        const AppUsage(
-          id: 'test-app-id',
-          platforms: [
-            PlatformUsage(
-              name: 'android',
-              arches: [
-                ArchUsage(
-                  name: 'aarch64',
-                  patches: [
-                    PatchUsage(id: 0, installCount: 10),
-                    PatchUsage(id: 1, installCount: 10)
-                  ],
-                ),
-                ArchUsage(
-                  name: 'arm',
-                  patches: [
-                    PatchUsage(id: 0, installCount: 10),
-                    PatchUsage(id: 1, installCount: 10)
-                  ],
-                ),
-                ArchUsage(
-                  name: 'x86',
-                  patches: [
-                    PatchUsage(id: 0, installCount: 1),
-                    PatchUsage(id: 1, installCount: 1)
-                  ],
-                )
-              ],
-            )
-          ],
+      final usage = GetUsageResponse(
+        plan: const ShorebirdPlan(
+          name: 'Hobby',
+          monthlyCost: 0,
+          patchInstallLimit: 1000,
+          maxTeamSize: 1,
         ),
-      ];
+        apps: const [
+          AppUsage(
+            id: 'test-app-id',
+            name: 'test app 2',
+            patchInstallCount: 42,
+          ),
+          AppUsage(
+            id: 'test-app-id',
+            name: 'test app 2',
+            patchInstallCount: 42,
+          ),
+        ],
+        patchInstallLimit: 20000,
+        currentPeriodStart: DateTime(2023),
+        currentPeriodEnd: DateTime(2023, 2),
+      );
       when(
         () => codePushClientWrapper.getUsage(),
       ).thenAnswer((_) async => usage);
@@ -108,12 +99,81 @@ void main() {
       expect(result, ExitCode.success.code);
       verify(() => logger.info('📈 Usage')).called(1);
       verify(
-        () => logger.info('''
-┌──────────────────────┐
-│ Total Patch Installs │
-├──────────────────────┤
-│ 42                   │
-└──────────────────────┘'''),
+        () => logger.info(
+          any(
+            that: contains('''
+┌────────────┬────────────────┐
+│ App        │ Patch Installs │
+├────────────┼────────────────┤
+│ test app 2 │ 42             │
+├────────────┼────────────────┤
+│ test app 2 │ 42             │
+├────────────┼────────────────┤
+│ Total      │ 84             │
+└────────────┴────────────────┘
+
+${styleBold.wrap('${lightCyan.wrap('${20000 - 84}')} patch installs remaining in the current billing period.')}
+
+Current Billing Period: ${lightCyan.wrap(DateFormat.yMMMd().format(usage.currentPeriodStart))} - ${lightCyan.wrap(DateFormat.yMMMd().format(usage.currentPeriodEnd))}
+
+${styleBold.wrap('*Usage data is not reported in real-time and may be delayed by up to 48 hours.')}'''),
+          ),
+        ),
+      ).called(1);
+    });
+
+    test('exits with code 0 when usage is fetched (unlimited).', () async {
+      final usage = GetUsageResponse(
+        plan: const ShorebirdPlan(
+          name: 'Hobby',
+          monthlyCost: 0,
+          patchInstallLimit: 1000,
+          maxTeamSize: 1,
+        ),
+        apps: const [
+          AppUsage(
+            id: 'test-app-id',
+            name: 'test app 2',
+            patchInstallCount: 42,
+          ),
+          AppUsage(
+            id: 'test-app-id',
+            name: 'test app 2',
+            patchInstallCount: 42,
+          ),
+        ],
+        currentPeriodStart: DateTime(2023),
+        currentPeriodEnd: DateTime(2023, 2),
+      );
+      when(
+        () => codePushClientWrapper.getUsage(),
+      ).thenAnswer((_) async => usage);
+
+      final result = await runWithOverrides(command.run);
+
+      expect(result, ExitCode.success.code);
+      verify(() => logger.info('📈 Usage')).called(1);
+      verify(
+        () => logger.info(
+          any(
+            that: contains('''
+┌────────────┬────────────────┐
+│ App        │ Patch Installs │
+├────────────┼────────────────┤
+│ test app 2 │ 42             │
+├────────────┼────────────────┤
+│ test app 2 │ 42             │
+├────────────┼────────────────┤
+│ Total      │ 84             │
+└────────────┴────────────────┘
+
+${styleBold.wrap('${lightCyan.wrap('∞')} patch installs remaining in the current billing period.')}
+
+Current Billing Period: ${lightCyan.wrap(DateFormat.yMMMd().format(usage.currentPeriodStart))} - ${lightCyan.wrap(DateFormat.yMMMd().format(usage.currentPeriodEnd))}
+
+${styleBold.wrap('*Usage data is not reported in real-time and may be delayed by up to 48 hours.')}'''),
+          ),
+        ),
       ).called(1);
     });
   });

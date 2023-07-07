@@ -2,7 +2,8 @@ import 'dart:convert';
 import 'dart:io';
 
 import 'package:archive/archive_io.dart';
-import 'package:shorebird_cli/src/archive_analysis/android_archive_differ.dart';
+import 'package:shorebird_cli/src/archive_analysis/archive_analysis.dart';
+import 'package:shorebird_cli/src/archive_analysis/archive_differ.dart';
 import 'package:shorebird_cli/src/archive_analysis/mf_reader.dart';
 
 /// Finds differences between two AABs.
@@ -25,16 +26,17 @@ import 'package:shorebird_cli/src/archive_analysis/mf_reader.dart';
 ///
 /// See https://developer.android.com/guide/app-bundle/app-bundle-format for
 /// reference.
-class AabDiffer extends AndroidArchiveDiffer {
+class AabDiffer extends ArchiveDiffer {
   /// Returns a set of file paths whose hashes differ between the AABs at the
   /// provided paths.
   @override
-  Set<String> changedFiles(String aabPath1, String aabPath2) {
-    final mfContents1 = _metaInfMfContent(File(aabPath1));
-    final mfContents2 = _metaInfMfContent(File(aabPath2));
-    final mfEntries1 = MfReader.parse(mfContents1).toSet();
-    final mfEntries2 = MfReader.parse(mfContents2).toSet();
-    return mfEntries1.difference(mfEntries2).map((entry) => entry.name).toSet();
+  FileSetDiff changedFiles(String oldAabPath, String newAabPath) {
+    final oldMfContents = _metaInfMfContent(File(oldAabPath));
+    final newMfContents = _metaInfMfContent(File(newAabPath));
+    return FileSetDiff.fromPathHashes(
+      oldPathHashes: MfReader.parse(oldMfContents),
+      newPathHashes: MfReader.parse(newMfContents),
+    );
   }
 
   /// Reads the contents of META-INF/MANIFEST.MF from an AAB.

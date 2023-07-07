@@ -22,6 +22,14 @@ class CodePushException implements Exception {
   String toString() => '$message${details != null ? '\n$details' : ''}';
 }
 
+/// {@template code_push_forbidden_exception}
+/// Exception thrown when a 403 response is received.
+/// {@endtemplate}
+class CodePushForbiddenException extends CodePushException {
+  /// {@macro code_push_forbidden_exception}
+  CodePushForbiddenException({required super.message, super.details});
+}
+
 /// {@template code_push_conflict_exception}
 /// Exception thrown when a 409 response is received.
 /// {@endtemplate}
@@ -446,17 +454,16 @@ class CodePushClient {
   }
 
   /// Get all usage information for the associated account.
-  Future<List<AppUsage>> getUsage() async {
+  Future<GetUsageResponse> getUsage() async {
     final response = await _httpClient.get(Uri.parse('$_v1/usage'));
 
     if (response.statusCode != HttpStatus.ok) {
       throw _parseErrorResponse(response.statusCode, response.body);
     }
 
-    final decoded = GetUsageResponse.fromJson(
+    return GetUsageResponse.fromJson(
       json.decode(response.body) as Map<String, dynamic>,
     );
-    return decoded.apps;
   }
 
   /// Promote the [patchId] to the [channelId].
@@ -495,6 +502,7 @@ class CodePushClient {
       HttpStatus.conflict => CodePushConflictException.new,
       HttpStatus.notFound => CodePushNotFoundException.new,
       HttpStatus.upgradeRequired => CodePushUpgradeRequiredException.new,
+      HttpStatus.forbidden => CodePushForbiddenException.new,
       _ => CodePushException.new,
     };
 
