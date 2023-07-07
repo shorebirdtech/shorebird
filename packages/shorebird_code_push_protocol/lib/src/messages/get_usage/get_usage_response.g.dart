@@ -14,6 +14,8 @@ GetUsageResponse _$GetUsageResponseFromJson(Map<String, dynamic> json) =>
       json,
       ($checkedConvert) {
         final val = GetUsageResponse(
+          plan: $checkedConvert(
+              'plan', (v) => ShorebirdPlan.fromJson(v as Map<String, dynamic>)),
           apps: $checkedConvert(
               'apps',
               (v) => (v as List<dynamic>)
@@ -37,6 +39,7 @@ GetUsageResponse _$GetUsageResponseFromJson(Map<String, dynamic> json) =>
 
 Map<String, dynamic> _$GetUsageResponseToJson(GetUsageResponse instance) =>
     <String, dynamic>{
+      'plan': instance.plan.toJson(),
       'apps': instance.apps.map((e) => e.toJson()).toList(),
       'current_period_start': instance.currentPeriodStart.toIso8601String(),
       'current_period_end': instance.currentPeriodEnd.toIso8601String(),

@@ -68,6 +68,12 @@ void main() {
 
     test('exits with code 0 when usage is fetched.', () async {
       final usage = GetUsageResponse(
+        plan: const ShorebirdPlan(
+          name: 'Hobby',
+          monthlyCost: 0,
+          patchInstallLimit: 1000,
+          maxTeamSize: 1,
+        ),
         apps: const [
           AppUsage(
             id: 'test-app-id',
@@ -118,6 +124,12 @@ ${styleBold.wrap('*Usage data is not reported in real-time and may be delayed by
 
     test('exits with code 0 when usage is fetched (unlimited).', () async {
       final usage = GetUsageResponse(
+        plan: const ShorebirdPlan(
+          name: 'Hobby',
+          monthlyCost: 0,
+          patchInstallLimit: 1000,
+          maxTeamSize: 1,
+        ),
         apps: const [
           AppUsage(
             id: 'test-app-id',

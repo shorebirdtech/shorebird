@@ -10,6 +10,7 @@ part 'get_usage_response.g.dart';
 class GetUsageResponse {
   /// {@macro get_usage_response}
   const GetUsageResponse({
+    required this.plan,
     required this.apps,
     required this.currentPeriodStart,
     required this.currentPeriodEnd,
@@ -22,6 +23,9 @@ class GetUsageResponse {
 
   /// Converts a [GetUsageResponse] to a Map<String, dynamic>.
   Json toJson() => _$GetUsageResponseToJson(this);
+
+  /// The user's current plan.
+  final ShorebirdPlan plan;
 
   /// The usage per app.
   final List<AppUsage> apps;

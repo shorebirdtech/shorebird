@@ -1679,6 +1679,12 @@ Please bump your version number and try again.''',
 
         test('returns usage when succeeds', () async {
           final usage = GetUsageResponse(
+            plan: const ShorebirdPlan(
+              name: 'Hobby',
+              monthlyCost: 0,
+              patchInstallLimit: 1000,
+              maxTeamSize: 1,
+            ),
             apps: const [
               AppUsage(
                 id: 'test-app-id',
