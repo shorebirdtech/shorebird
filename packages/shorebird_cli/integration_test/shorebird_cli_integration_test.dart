@@ -10,21 +10,24 @@ import 'package:uuid/uuid.dart';
 void main() {
   final logger = Logger();
 
-  ProcessResult runShorebirdCommand(
+  ProcessResult runCommand(
     String command, {
     required String workingDirectory,
   }) {
-    logger.info('running shorebird $command in $workingDirectory');
+    final parts = command.split(' ');
+    final executable = parts.first;
+    final arguments = parts.skip(1).toList();
+    logger.info('running $command in $workingDirectory');
     return Process.runSync(
-      'shorebird',
-      command.split(' '),
+      executable,
+      arguments,
       runInShell: true,
       workingDirectory: workingDirectory,
     );
   }
 
   test('--version', () {
-    final result = runShorebirdCommand('--version', workingDirectory: '.');
+    final result = runCommand('shorebird --version', workingDirectory: '.');
     expect(result.stderr, isEmpty);
     expect(
       result.stdout,
@@ -48,10 +51,8 @@ void main() {
 
     // Create the default flutter counter app
     logger.info('running `flutter create $testAppName` in $cwd');
-    final createAppResult = Process.runSync(
-      'flutter',
-      ['create', testAppName],
-      runInShell: true,
+    final createAppResult = runCommand(
+      'flutter create $testAppName',
       workingDirectory: cwd,
     );
     expect(createAppResult.stderr, isEmpty);
@@ -60,8 +61,8 @@ void main() {
     cwd = p.join(cwd, testAppName);
 
     // Initialize Shorebird
-    final initShorebirdResult = runShorebirdCommand(
-      'init',
+    final initShorebirdResult = runCommand(
+      'shorebird init',
       workingDirectory: cwd,
     );
     expect(initShorebirdResult.stderr, isEmpty);
@@ -77,8 +78,8 @@ void main() {
     // Run the doctor command. This should yield a warning about the
     // AndroidManifest.xml not containing the internet permission and suggest
     // that the user run `shorebird doctor --fix`.
-    final shorebirdDoctorResult = runShorebirdCommand(
-      'doctor',
+    final shorebirdDoctorResult = runCommand(
+      'shorebird doctor',
       workingDirectory: cwd,
     );
     expect(shorebirdDoctorResult.stderr, isEmpty);
@@ -86,16 +87,16 @@ void main() {
     expect(shorebirdDoctorResult.exitCode, equals(0));
 
     // Run the suggested `doctor --fix` command.
-    final shorebirdDoctorFixResult = runShorebirdCommand(
-      'doctor --fix',
+    final shorebirdDoctorFixResult = runCommand(
+      'shorebird doctor --fix',
       workingDirectory: cwd,
     );
     expect(shorebirdDoctorFixResult.stderr, isEmpty);
     expect(shorebirdDoctorFixResult.exitCode, equals(0));
 
     // Verify that we have no releases for this app
-    final preReleaseAppsListResult = runShorebirdCommand(
-      'apps list',
+    final preReleaseAppsListResult = runCommand(
+      'shorebird apps list',
       workingDirectory: cwd,
     );
     expect(preReleaseAppsListResult.stderr, isEmpty);
@@ -108,8 +109,8 @@ void main() {
     );
 
     // Create an Android release.
-    final shorebirdReleaseResult = runShorebirdCommand(
-      'release android --force',
+    final shorebirdReleaseResult = runCommand(
+      'shorebird release android --force',
       workingDirectory: cwd,
     );
     expect(shorebirdReleaseResult.stderr, isEmpty);
@@ -117,8 +118,8 @@ void main() {
     expect(shorebirdReleaseResult.exitCode, equals(0));
 
     // Verify that the release was created.
-    final postReleaseAppsListResult = runShorebirdCommand(
-      'apps list',
+    final postReleaseAppsListResult = runCommand(
+      'shorebird apps list',
       workingDirectory: cwd,
     );
     expect(postReleaseAppsListResult.stderr, isEmpty);
@@ -133,8 +134,8 @@ void main() {
     );
 
     // Create an Android patch.
-    final shorebirdPatchResult = runShorebirdCommand(
-      'patch android --force',
+    final shorebirdPatchResult = runCommand(
+      'shorebird patch android --force',
       workingDirectory: cwd,
     );
     expect(shorebirdPatchResult.stderr, isEmpty);
@@ -142,8 +143,8 @@ void main() {
     expect(shorebirdPatchResult.exitCode, equals(0));
 
     // Verify that the release was created.
-    final postPatchAppsListResult = runShorebirdCommand(
-      'apps list',
+    final postPatchAppsListResult = runCommand(
+      'shorebird apps list',
       workingDirectory: cwd,
     );
     expect(postPatchAppsListResult.stderr, isEmpty);
