@@ -1,7 +1,7 @@
 import 'dart:io';
 
 import 'package:path/path.dart' as p;
-import 'package:shorebird_cli/src/shorebird_process.dart';
+import 'package:shorebird_cli/src/process.dart';
 import 'package:shorebird_cli/src/validators/validators.dart';
 
 /// Verifies that the currently installed version of Shorebird is the latest.
