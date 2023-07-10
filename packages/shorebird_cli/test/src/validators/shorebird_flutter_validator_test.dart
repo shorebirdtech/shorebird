@@ -6,7 +6,7 @@ import 'package:platform/platform.dart';
 import 'package:scoped/scoped.dart';
 import 'package:shorebird_cli/src/platform.dart';
 import 'package:shorebird_cli/src/shorebird_environment.dart';
-import 'package:shorebird_cli/src/shorebird_process.dart';
+import 'package:shorebird_cli/src/process.dart';
 import 'package:shorebird_cli/src/validators/validators.dart';
 import 'package:test/test.dart';
 

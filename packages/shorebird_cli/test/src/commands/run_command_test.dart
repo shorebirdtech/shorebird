@@ -10,7 +10,7 @@ import 'package:scoped/scoped.dart';
 import 'package:shorebird_cli/src/auth/auth.dart';
 import 'package:shorebird_cli/src/commands/run_command.dart';
 import 'package:shorebird_cli/src/logger.dart';
-import 'package:shorebird_cli/src/shorebird_process.dart';
+import 'package:shorebird_cli/src/process.dart';
 import 'package:shorebird_cli/src/validators/validators.dart';
 import 'package:shorebird_code_push_client/shorebird_code_push_client.dart';
 import 'package:test/test.dart';
@@ -58,7 +58,8 @@ void main() {
         body,
         values: {
           authRef.overrideWith(() => auth),
-          loggerRef.overrideWith(() => logger)
+          loggerRef.overrideWith(() => logger),
+          processRef.overrideWith(() => shorebirdProcess),
         },
       );
     }
@@ -112,10 +113,7 @@ void main() {
             flutterValidator,
           ],
         ),
-      )
-        ..testArgResults = argResults
-        ..testProcess = shorebirdProcess
-        ..testEngineConfig = const EngineConfig.empty();
+      )..testArgResults = argResults;
     });
 
     test('exits with no user when not logged in', () async {

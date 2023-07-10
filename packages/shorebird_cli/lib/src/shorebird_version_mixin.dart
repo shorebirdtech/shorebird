@@ -1,6 +1,7 @@
 import 'dart:io';
 
 import 'package:shorebird_cli/src/command.dart';
+import 'package:shorebird_cli/src/process.dart';
 
 mixin ShorebirdVersionMixin on ShorebirdCommand {
   /// Whether the current version of Shorebird is the latest available.

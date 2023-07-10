@@ -5,6 +5,7 @@ import 'package:path/path.dart' as p;
 import 'package:shorebird_cli/src/command.dart';
 import 'package:shorebird_cli/src/java.dart';
 import 'package:shorebird_cli/src/platform.dart';
+import 'package:shorebird_cli/src/process.dart';
 
 /// Thrown when the gradle wrapper cannot be found.
 /// This has been resolved on the master channel but

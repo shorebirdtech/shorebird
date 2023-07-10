@@ -14,8 +14,8 @@ import 'package:shorebird_cli/src/code_push_client_wrapper.dart';
 import 'package:shorebird_cli/src/commands/patch/patch.dart';
 import 'package:shorebird_cli/src/logger.dart';
 import 'package:shorebird_cli/src/platform.dart';
+import 'package:shorebird_cli/src/process.dart';
 import 'package:shorebird_cli/src/shorebird_environment.dart';
-import 'package:shorebird_cli/src/shorebird_process.dart';
 import 'package:shorebird_cli/src/third_party/flutter_tools/lib/flutter_tools.dart';
 import 'package:shorebird_cli/src/validators/validators.dart';
 import 'package:shorebird_code_push_client/shorebird_code_push_client.dart';
@@ -111,9 +111,10 @@ flutter:
         body,
         values: {
           authRef.overrideWith(() => auth),
+          codePushClientWrapperRef.overrideWith(() => codePushClientWrapper),
           loggerRef.overrideWith(() => logger),
           platformRef.overrideWith(() => platform),
-          codePushClientWrapperRef.overrideWith(() => codePushClientWrapper),
+          processRef.overrideWith(() => shorebirdProcess),
         },
       );
     }
@@ -251,10 +252,7 @@ flutter:
           ipaReader: ipaReader,
           validators: [flutterValidator],
         ),
-      )
-        ..testArgResults = argResults
-        ..testProcess = shorebirdProcess
-        ..testEngineConfig = const EngineConfig.empty();
+      )..testArgResults = argResults;
     });
 
     test('has a description', () {

@@ -9,7 +9,7 @@ import 'package:scoped/scoped.dart';
 import 'package:shorebird_cli/src/auth/auth.dart';
 import 'package:shorebird_cli/src/commands/build/build.dart';
 import 'package:shorebird_cli/src/logger.dart';
-import 'package:shorebird_cli/src/shorebird_process.dart';
+import 'package:shorebird_cli/src/process.dart';
 import 'package:shorebird_cli/src/validators/validators.dart';
 import 'package:test/test.dart';
 
@@ -46,7 +46,9 @@ void main() {
         body,
         values: {
           authRef.overrideWith(() => auth),
-          loggerRef.overrideWith(() => logger)
+          engineConfigRef.overrideWith(() => const EngineConfig.empty()),
+          loggerRef.overrideWith(() => logger),
+          processRef.overrideWith(() => shorebirdProcess),
         },
       );
     }
@@ -78,10 +80,7 @@ void main() {
 
       command = runWithOverrides(
         () => BuildAppBundleCommand(validators: [flutterValidator]),
-      )
-        ..testArgResults = argResults
-        ..testProcess = shorebirdProcess
-        ..testEngineConfig = const EngineConfig.empty();
+      )..testArgResults = argResults;
     });
 
     test('has correct description', () {
@@ -184,20 +183,41 @@ ${lightCyan.wrap(p.join('build', 'app', 'outputs', 'bundle', '${flavor}Release',
     });
 
     test('local-engine and architectures', () async {
-      expect(command.architectures.length, greaterThan(1));
-
-      command.testEngineConfig = const EngineConfig(
-        localEngine: 'android_release_arm64',
-        localEngineSrcPath: 'path/to/engine/src',
+      expect(
+        runWithOverrides(() => command.architectures.length),
+        greaterThan(1),
       );
-      expect(command.architectures.length, equals(1));
+
+      expect(
+        runScoped(
+          () => command.architectures.length,
+          values: {
+            engineConfigRef.overrideWith(
+              () => const EngineConfig(
+                localEngine: 'android_release_arm64',
+                localEngineSrcPath: 'path/to/engine/src',
+              ),
+            )
+          },
+        ),
+        equals(1),
+      );
 
       // We only support a few release configs for now.
-      command.testEngineConfig = const EngineConfig(
-        localEngine: 'android_debug_unopt',
-        localEngineSrcPath: 'path/to/engine/src',
+      expect(
+        () => runScoped(
+          () => command.architectures.length,
+          values: {
+            engineConfigRef.overrideWith(
+              () => const EngineConfig(
+                localEngine: 'android_debug_unopt',
+                localEngineSrcPath: 'path/to/engine/src',
+              ),
+            )
+          },
+        ),
+        throwsException,
       );
-      expect(() => command.architectures, throwsException);
     });
 
     test('prints flutter validation warnings', () async {

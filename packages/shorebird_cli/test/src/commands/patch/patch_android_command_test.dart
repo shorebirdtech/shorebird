@@ -15,9 +15,9 @@ import 'package:shorebird_cli/src/commands/patch/patch_android_command.dart';
 import 'package:shorebird_cli/src/java.dart';
 import 'package:shorebird_cli/src/logger.dart';
 import 'package:shorebird_cli/src/platform.dart';
+import 'package:shorebird_cli/src/process.dart';
 import 'package:shorebird_cli/src/shorebird_build_mixin.dart';
 import 'package:shorebird_cli/src/shorebird_environment.dart';
-import 'package:shorebird_cli/src/shorebird_process.dart';
 import 'package:shorebird_cli/src/validators/validators.dart';
 import 'package:shorebird_code_push_client/shorebird_code_push_client.dart';
 import 'package:test/test.dart';
@@ -127,10 +127,12 @@ flutter:
         values: {
           authRef.overrideWith(() => auth),
           cacheRef.overrideWith(() => cache),
+          codePushClientWrapperRef.overrideWith(() => codePushClientWrapper),
+          engineConfigRef.overrideWith(() => const EngineConfig.empty()),
           javaRef.overrideWith(() => java),
           loggerRef.overrideWith(() => logger),
           platformRef.overrideWith(() => platform),
-          codePushClientWrapperRef.overrideWith(() => codePushClientWrapper),
+          processRef.overrideWith(() => shorebirdProcess),
         },
       );
     }
@@ -195,10 +197,7 @@ flutter:
           httpClient: httpClient,
           validators: [flutterValidator],
         ),
-      )
-        ..testArgResults = argResults
-        ..testProcess = shorebirdProcess
-        ..testEngineConfig = const EngineConfig.empty();
+      )..testArgResults = argResults;
 
       when(() => platform.script).thenReturn(
         Uri.file(

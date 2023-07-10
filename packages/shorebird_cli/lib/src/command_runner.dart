@@ -7,8 +7,8 @@ import 'package:mason_logger/mason_logger.dart';
 import 'package:scoped/scoped.dart';
 import 'package:shorebird_cli/src/commands/commands.dart';
 import 'package:shorebird_cli/src/logger.dart';
+import 'package:shorebird_cli/src/process.dart';
 import 'package:shorebird_cli/src/shorebird_environment.dart';
-import 'package:shorebird_cli/src/shorebird_process.dart';
 import 'package:shorebird_cli/src/version.dart';
 
 const executableName = 'shorebird';
@@ -74,28 +74,27 @@ class ShorebirdCliCommandRunner extends CompletionCommandRunner<int> {
   @override
   void printUsage() => logger.info(usage);
 
-  // Currently using ShorebirdCliCommandRunner as our context object.
-  late final ShorebirdProcess process;
-  late final EngineConfig engineConfig;
-
   @override
   Future<int> run(Iterable<String> args) async {
     try {
       final topLevelResults = parse(args);
 
       // Set up our context before running the command.
-      engineConfig = EngineConfig(
+      final engineConfig = EngineConfig(
         localEngineSrcPath: topLevelResults['local-engine-src-path'] as String?,
         localEngine: topLevelResults['local-engine'] as String?,
       );
-      process = ShorebirdProcess(
+      final process = ShorebirdProcess(
         engineConfig: engineConfig,
         logger: logger,
       );
 
       return await runScoped<Future<int?>>(
             () => runCommand(topLevelResults),
-            values: {},
+            values: {
+              engineConfigRef.overrideWith(() => engineConfig),
+              processRef.overrideWith(() => process),
+            },
           ) ??
           ExitCode.success.code;
     } on FormatException catch (e, stackTrace) {

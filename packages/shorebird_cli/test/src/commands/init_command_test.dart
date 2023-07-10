@@ -12,8 +12,8 @@ import 'package:shorebird_cli/src/commands/init_command.dart';
 import 'package:shorebird_cli/src/java.dart';
 import 'package:shorebird_cli/src/logger.dart';
 import 'package:shorebird_cli/src/platform.dart';
+import 'package:shorebird_cli/src/process.dart';
 import 'package:shorebird_cli/src/shorebird_flavor_mixin.dart';
-import 'package:shorebird_cli/src/shorebird_process.dart';
 import 'package:shorebird_code_push_client/shorebird_code_push_client.dart';
 import 'package:test/test.dart';
 
@@ -71,6 +71,7 @@ environment:
           javaRef.overrideWith(() => java),
           loggerRef.overrideWith(() => logger),
           platformRef.overrideWith(() => platform),
+          processRef.overrideWith(() => process),
         },
       );
     }
@@ -136,9 +137,7 @@ environment:
             return codePushClient;
           },
         ),
-      )
-        ..testProcess = process
-        ..testArgResults = argResults;
+      )..testArgResults = argResults;
     });
 
     group('extractProductFlavors', () {
