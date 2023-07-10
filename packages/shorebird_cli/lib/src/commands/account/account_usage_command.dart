@@ -99,7 +99,7 @@ ${Table(
 ${styleBold.wrap('${lightCyan.wrap(remainingPatchInstalls)} patch installs remaining in the current billing period.')}
 
 Current Billing Period: ${lightCyan.wrap(DateFormat.yMMMd().format(currentPeriodStart))} - ${lightCyan.wrap(DateFormat.yMMMd().format(currentPeriodEnd))}
-Month-to-date cost: ${lightCyan.wrap('\$${currencyFormatter.format(currentPeriodCost * 100.0)}')}
+Month-to-date cost: ${lightCyan.wrap('\$${currencyFormatter.format(currentPeriodCost / 100.0)}')}
 
 ${styleBold.wrap('*Usage data is not reported in real-time and may be delayed by up to 48 hours.')}''';
   }
