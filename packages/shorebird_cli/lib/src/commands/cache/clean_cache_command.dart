@@ -1,6 +1,7 @@
 import 'dart:async';
 
 import 'package:mason_logger/mason_logger.dart';
+import 'package:shorebird_cli/src/cache.dart';
 import 'package:shorebird_cli/src/command.dart';
 import 'package:shorebird_cli/src/logger.dart';
 import 'package:shorebird_cli/src/shorebird_config_mixin.dart';
@@ -11,7 +12,7 @@ import 'package:shorebird_cli/src/shorebird_config_mixin.dart';
 /// {@endtemplate}
 class CleanCacheCommand extends ShorebirdCommand with ShorebirdConfigMixin {
   /// {@macro clean_cache_command}
-  CleanCacheCommand({required super.cache});
+  CleanCacheCommand();
 
   @override
   String get description => 'Clears the Shorebird cache directory.';

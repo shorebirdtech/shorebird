@@ -17,13 +17,19 @@ void main() {
     late CleanCacheCommand command;
 
     R runWithOverrides<R>(R Function() body) {
-      return runScoped(body, values: {loggerRef.overrideWith(() => logger)});
+      return runScoped(
+        body,
+        values: {
+          cacheRef.overrideWith(() => cache),
+          loggerRef.overrideWith(() => logger),
+        },
+      );
     }
 
     setUp(() {
       cache = _MockCache();
       logger = _MockLogger();
-      command = runWithOverrides(() => CleanCacheCommand(cache: cache));
+      command = runWithOverrides(CleanCacheCommand.new);
     });
 
     test('has a description', () {

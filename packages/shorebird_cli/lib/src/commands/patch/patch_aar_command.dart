@@ -7,6 +7,7 @@ import 'package:http/http.dart' as http;
 import 'package:mason_logger/mason_logger.dart';
 import 'package:path/path.dart' as p;
 import 'package:shorebird_cli/src/archive_analysis/archive_analysis.dart';
+import 'package:shorebird_cli/src/cache.dart';
 import 'package:shorebird_cli/src/code_push_client_wrapper.dart';
 import 'package:shorebird_cli/src/command.dart';
 import 'package:shorebird_cli/src/config/config.dart';
@@ -31,7 +32,6 @@ class PatchAarCommand extends ShorebirdCommand
         ShorebirdArtifactMixin {
   /// {@macro patch_aar_command}
   PatchAarCommand({
-    super.cache,
     super.validators,
     HashFunction? hashFn,
     UnzipFn? unzipFn,

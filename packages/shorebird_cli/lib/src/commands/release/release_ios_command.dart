@@ -25,7 +25,6 @@ class ReleaseIosCommand extends ShorebirdCommand
         ShorebirdValidationMixin {
   /// {@macro release_ios_command}
   ReleaseIosCommand({
-    super.cache,
     super.validators,
     IpaReader? ipaReader,
   }) : _ipaReader = ipaReader ?? IpaReader() {

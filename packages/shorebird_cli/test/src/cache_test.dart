@@ -38,6 +38,7 @@ void main() {
       return runScoped(
         () => body(),
         values: {
+          cacheRef.overrideWith(() => cache),
           platformRef.overrideWith(() => platform),
         },
       );

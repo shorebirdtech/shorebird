@@ -5,6 +5,7 @@ import 'package:archive/archive_io.dart';
 import 'package:http/http.dart' as http;
 import 'package:path/path.dart' as p;
 import 'package:platform/platform.dart';
+import 'package:scoped/scoped.dart';
 import 'package:shorebird_cli/src/shorebird_environment.dart';
 
 typedef ArchiveExtracter = Future<void> Function(
@@ -19,6 +20,12 @@ Future<void> _defaultArchiveExtractor(String archivePath, String outputPath) {
     extractArchiveToDisk(archive, outputPath);
   });
 }
+
+// A reference to a [Cache] instance.
+final cacheRef = create(Cache.new);
+
+// The [Cache] instance available in the current zone.
+Cache get cache => read(cacheRef);
 
 class Cache {
   Cache({
