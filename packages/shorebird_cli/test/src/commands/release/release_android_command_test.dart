@@ -74,6 +74,8 @@ flutter:
   assets:
     - shorebird.yaml''';
 
+    const javaHome = 'test-java-home';
+
     late ArgResults argResults;
     late http.Client httpClient;
     late CodePushClientWrapper codePushClientWrapper;
@@ -244,6 +246,7 @@ flutter:
         ),
       ).thenAnswer((_) async {});
       when(() => flutterValidator.validate(any())).thenAnswer((_) async => []);
+      when(() => java.home()).thenReturn(javaHome);
 
       command = runWithOverrides(
         () => ReleaseAndroidCommand(
