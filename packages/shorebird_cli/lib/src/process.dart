@@ -2,7 +2,14 @@ import 'dart:io';
 
 import 'package:mason_logger/mason_logger.dart';
 import 'package:meta/meta.dart';
+import 'package:scoped/scoped.dart';
 import 'package:shorebird_cli/src/shorebird_environment.dart';
+
+// A reference to a [EngineConfig] instance.
+final engineConfigRef = create(() => const EngineConfig.empty());
+
+// The [EngineConfig] instance available in the current zone.
+EngineConfig get engineConfig => read(engineConfigRef);
 
 class EngineConfig {
   const EngineConfig({
@@ -18,13 +25,19 @@ class EngineConfig {
   final String? localEngine;
 }
 
+// A reference to a [ShorebirdProcess] instance.
+final processRef = create(ShorebirdProcess.new);
+
+// The [ShorebirdProcess] instance available in the current zone.
+ShorebirdProcess get process => read(processRef);
+
 /// A wrapper around [Process] that replaces executables to Shorebird-vended
 /// versions.
 // This may need a better name, since it returns "Process" it's more a
 // "ProcessFactory" than a "Process".
 class ShorebirdProcess {
   ShorebirdProcess({
-    required this.engineConfig,
+    this.engineConfig = const EngineConfig.empty(),
     Logger? logger,
     ProcessWrapper? processWrapper, // For mocking ShorebirdProcess.
   })  : logger = logger ?? Logger(),

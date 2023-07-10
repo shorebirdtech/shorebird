@@ -2,8 +2,9 @@ import 'dart:io';
 
 import 'package:mason_logger/mason_logger.dart';
 import 'package:mocktail/mocktail.dart';
+import 'package:scoped/scoped.dart';
 import 'package:shorebird_cli/src/commands/doctor_command.dart';
-import 'package:shorebird_cli/src/shorebird_process.dart';
+import 'package:shorebird_cli/src/process.dart';
 import 'package:shorebird_cli/src/validators/validators.dart';
 import 'package:test/test.dart';
 
@@ -22,14 +23,22 @@ void main() {
     late ShorebirdProcess shorebirdProcess;
     late DoctorCommand command;
 
+    R runWithOverrides<R>(R Function() body) {
+      return runScoped(
+        body,
+        values: {
+          engineConfigRef.overrideWith(() => const EngineConfig.empty()),
+          processRef.overrideWith(() => shorebirdProcess),
+        },
+      );
+    }
+
     setUp(() {
       fetchCurrentVersionResult = _MockProcessResult();
       fetchLatestVersionResult = _MockProcessResult();
       shorebirdProcess = _MockShorebirdProcess();
 
-      command = DoctorCommand()
-        ..testProcess = shorebirdProcess
-        ..testEngineConfig = const EngineConfig.empty();
+      command = runWithOverrides(DoctorCommand.new);
 
       validator = ShorebirdVersionValidator(
         isShorebirdVersionCurrent: command.isShorebirdVersionCurrent,
@@ -80,7 +89,9 @@ void main() {
     });
 
     test('returns no issues when shorebird is up-to-date', () async {
-      final results = await validator.validate(shorebirdProcess);
+      final results = await runWithOverrides(
+        () => validator.validate(shorebirdProcess),
+      );
       expect(results, isEmpty);
     });
 
@@ -89,7 +100,9 @@ void main() {
         () => fetchLatestVersionResult.stdout,
       ).thenReturn(newerShorebirdRevision);
 
-      final results = await validator.validate(shorebirdProcess);
+      final results = await runWithOverrides(
+        () => validator.validate(shorebirdProcess),
+      );
       expect(results, hasLength(1));
       expect(results.first.severity, ValidationIssueSeverity.warning);
       expect(
@@ -111,7 +124,9 @@ void main() {
           ),
         );
 
-        final results = await validator.validate(shorebirdProcess);
+        final results = await runWithOverrides(
+          () => validator.validate(shorebirdProcess),
+        );
 
         expect(results, hasLength(1));
         expect(results.first.severity, ValidationIssueSeverity.error);

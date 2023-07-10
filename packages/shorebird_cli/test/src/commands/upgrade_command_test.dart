@@ -3,7 +3,7 @@ import 'package:mocktail/mocktail.dart';
 import 'package:scoped/scoped.dart';
 import 'package:shorebird_cli/src/commands/commands.dart';
 import 'package:shorebird_cli/src/logger.dart';
-import 'package:shorebird_cli/src/shorebird_process.dart';
+import 'package:shorebird_cli/src/process.dart';
 import 'package:test/test.dart';
 
 class _MockLogger extends Mock implements Logger {}
@@ -29,7 +29,13 @@ void main() {
     late UpgradeCommand command;
 
     R runWithOverrides<R>(R Function() body) {
-      return runScoped(body, values: {loggerRef.overrideWith(() => logger)});
+      return runScoped(
+        body,
+        values: {
+          loggerRef.overrideWith(() => logger),
+          processRef.overrideWith(() => shorebirdProcess),
+        },
+      );
     }
 
     setUp(() {
@@ -43,9 +49,7 @@ void main() {
       hardResetResult = _MockProcessResult();
       pruneFlutterOriginResult = _MockProcessResult();
       shorebirdProcess = _MockShorebirdProcess();
-      command = UpgradeCommand()
-        ..testProcess = shorebirdProcess
-        ..testEngineConfig = const EngineConfig.empty();
+      command = runWithOverrides(UpgradeCommand.new);
 
       when(
         () => shorebirdProcess.run(

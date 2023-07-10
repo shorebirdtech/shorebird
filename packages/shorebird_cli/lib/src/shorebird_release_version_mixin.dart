@@ -2,6 +2,7 @@ import 'package:path/path.dart' as p;
 import 'package:shorebird_cli/src/cache.dart';
 import 'package:shorebird_cli/src/command.dart';
 import 'package:shorebird_cli/src/java.dart';
+import 'package:shorebird_cli/src/process.dart';
 
 /// Mixin on [ShorebirdCommand] which exposes methods
 /// to extract the release version from an app bundle.
