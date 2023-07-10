@@ -49,10 +49,7 @@ jobs:
       - name: Add Shorebird to Windows PATH
         shell: pwsh
         if: runner.os == 'Windows'
-        run: |
-          Add-Content $env:GITHUB_PATH "${env:GITHUB_WORKSPACE}\bin"
-          # Change the active code push to UTF-8 so we can properly read stdout
-          chcp 65001
+        run: Add-Content $env:GITHUB_PATH "${env:GITHUB_WORKSPACE}\bin"
 
       - name: 🐦 Verify Shorebird Installation (Windows)
         if: runner.os == 'Windows'
@@ -72,10 +69,18 @@ jobs:
           distribution: 'temurin'
           java-version: '17'
 
-
       - name: 🎯 Set up Flutter
         uses: subosito/flutter-action@v2
 
-      - name: Run Integration Tests
+      - name: Run Integration Tests (macOS / Linux)
+        if: runner.os != 'Windows'
         run: dart test integration_test
+        working-directory: packages/shorebird_cli
+      
+      - name: Run Integration Tests (Windows)
+        if: runner.os == 'Windows'
+        run: |
+          # Change the active code push to UTF-8 so we can properly read stdout
+          chcp 65001
+          dart test integration_test
         working-directory: packages/shorebird_cli
