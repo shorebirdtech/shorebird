@@ -30,7 +30,7 @@ void main() {
       result.stdout,
       stringContainsInOrder(['Shorebird Engine', 'revision']),
     );
-    expect(result.exitCode, 0);
+    expect(result.exitCode, equals(0));
   });
 
   test('create an app with a release and patch', () {
@@ -55,7 +55,7 @@ void main() {
       workingDirectory: cwd,
     );
     expect(createAppResult.stderr, isEmpty);
-    expect(createAppResult.exitCode, 0);
+    expect(createAppResult.exitCode, equals(0));
 
     cwd = p.join(cwd, testAppName);
 
@@ -65,7 +65,7 @@ void main() {
       workingDirectory: cwd,
     );
     expect(initShorebirdResult.stderr, isEmpty);
-    expect(initShorebirdResult.exitCode, 0);
+    expect(initShorebirdResult.exitCode, equals(0));
 
     final shorebirdYamlPath = p.join(cwd, 'shorebird.yaml');
     final shorebirdYamlText = File(shorebirdYamlPath).readAsStringSync();
@@ -83,7 +83,7 @@ void main() {
     );
     expect(shorebirdDoctorResult.stderr, isEmpty);
     expect(shorebirdDoctorResult.stdout, contains('shorebird doctor --fix'));
-    expect(shorebirdDoctorResult.exitCode, 0);
+    expect(shorebirdDoctorResult.exitCode, equals(0));
 
     // Run the suggested `doctor --fix` command.
     final shorebirdDoctorFixResult = runShorebirdCommand(
@@ -91,7 +91,7 @@ void main() {
       workingDirectory: cwd,
     );
     expect(shorebirdDoctorFixResult.stderr, isEmpty);
-    expect(shorebirdDoctorFixResult.exitCode, 0);
+    expect(shorebirdDoctorFixResult.exitCode, equals(0));
 
     // Verify that we have no releases for this app
     final preReleaseAppsListResult = runShorebirdCommand(
@@ -99,7 +99,7 @@ void main() {
       workingDirectory: cwd,
     );
     expect(preReleaseAppsListResult.stderr, isEmpty);
-    expect(preReleaseAppsListResult.exitCode, 0);
+    expect(preReleaseAppsListResult.exitCode, equals(0));
     expect(
       (preReleaseAppsListResult.stdout as String).split('\n'),
       anyElement(
@@ -114,7 +114,7 @@ void main() {
     );
     expect(shorebirdReleaseResult.stderr, isEmpty);
     expect(shorebirdReleaseResult.stdout, contains('Published Release!'));
-    expect(shorebirdReleaseResult.exitCode, 0);
+    expect(shorebirdReleaseResult.exitCode, equals(0));
 
     // Verify that the release was created.
     final postReleaseAppsListResult = runShorebirdCommand(
@@ -122,7 +122,7 @@ void main() {
       workingDirectory: cwd,
     );
     expect(postReleaseAppsListResult.stderr, isEmpty);
-    expect(postReleaseAppsListResult.exitCode, 0);
+    expect(postReleaseAppsListResult.exitCode, equals(0));
     expect(
       (postReleaseAppsListResult.stdout as String).split('\n'),
       anyElement(
@@ -139,7 +139,7 @@ void main() {
     );
     expect(shorebirdPatchResult.stderr, isEmpty);
     expect(shorebirdPatchResult.stdout, contains('Published Patch!'));
-    expect(shorebirdPatchResult.exitCode, 0);
+    expect(shorebirdPatchResult.exitCode, equals(0));
 
     // Verify that the release was created.
     final postPatchAppsListResult = runShorebirdCommand(
@@ -147,7 +147,7 @@ void main() {
       workingDirectory: cwd,
     );
     expect(postPatchAppsListResult.stderr, isEmpty);
-    expect(postPatchAppsListResult.exitCode, 0);
+    expect(postPatchAppsListResult.exitCode, equals(0));
     expect(
       (postPatchAppsListResult.stdout as String).split('\n'),
       anyElement(
