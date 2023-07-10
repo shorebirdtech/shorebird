@@ -11,7 +11,7 @@ import 'package:test/test.dart';
 class _MockPlatform extends Mock implements Platform {}
 
 void main() {
-  group('java', () {
+  group(Java, () {
     late Platform platform;
     late Java java;
 
