@@ -101,17 +101,10 @@ void main() {
     expect(preReleaseAppsListResult.stderr, isEmpty);
     expect(preReleaseAppsListResult.exitCode, 0);
     expect(
-      preReleaseAppsListResult.stdout,
-      stringContainsInOrder([
-        testAppName,
-        '│',
-        shorebirdYaml.appId,
-        '│',
-        '--',
-        '│',
-        '--',
-        '│',
-      ]),
+      (preReleaseAppsListResult.stdout as String).split('\n'),
+      anyElement(
+        matches('^.+$testAppName.+${shorebirdYaml.appId}.+--.+--.+\$'),
+      ),
     );
 
     // Create an Android release.
@@ -131,17 +124,12 @@ void main() {
     expect(postReleaseAppsListResult.stderr, isEmpty);
     expect(postReleaseAppsListResult.exitCode, 0);
     expect(
-      postReleaseAppsListResult.stdout,
-      stringContainsInOrder([
-        testAppName,
-        '│',
-        shorebirdYaml.appId,
-        '│',
-        '1.0.0+1',
-        '│',
-        '--',
-        '│',
-      ]),
+      (postReleaseAppsListResult.stdout as String).split('\n'),
+      anyElement(
+        matches(
+          '^.+$testAppName.+${shorebirdYaml.appId}.+1\\.0\\.0\\+1.+--.+\$',
+        ),
+      ),
     );
 
     // Create an Android patch.
@@ -161,17 +149,12 @@ void main() {
     expect(postPatchAppsListResult.stderr, isEmpty);
     expect(postPatchAppsListResult.exitCode, 0);
     expect(
-      postPatchAppsListResult.stdout,
-      stringContainsInOrder([
-        testAppName,
-        '│',
-        shorebirdYaml.appId,
-        '│',
-        '1.0.0+1',
-        '│',
-        '1',
-        '│',
-      ]),
+      (postPatchAppsListResult.stdout as String).split('\n'),
+      anyElement(
+        matches(
+          '^.+$testAppName.+${shorebirdYaml.appId}.+1\\.0\\.0\\+1.+1.+\$',
+        ),
+      ),
     );
   });
 }
