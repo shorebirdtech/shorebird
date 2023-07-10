@@ -4,7 +4,6 @@ import 'package:args/args.dart';
 import 'package:args/command_runner.dart';
 import 'package:http/http.dart' as http;
 import 'package:meta/meta.dart';
-import 'package:shorebird_cli/src/cache.dart';
 import 'package:shorebird_cli/src/command_runner.dart';
 import 'package:shorebird_cli/src/shorebird_process.dart';
 import 'package:shorebird_cli/src/validators/validators.dart';
@@ -33,14 +32,11 @@ List<Validator> _defaultValidators() => [
 
 abstract class ShorebirdCommand extends Command<int> {
   ShorebirdCommand({
-    Cache? cache,
     CodePushClientBuilder? buildCodePushClient,
     List<Validator>? validators, // For mocking.
-  })  : cache = cache ?? Cache(),
-        buildCodePushClient = buildCodePushClient ?? CodePushClient.new,
+  })  : buildCodePushClient = buildCodePushClient ?? CodePushClient.new,
         validators = validators ?? _defaultValidators();
 
-  final Cache cache;
   final CodePushClientBuilder buildCodePushClient;
 
   // We don't currently have a test involving both a CommandRunner

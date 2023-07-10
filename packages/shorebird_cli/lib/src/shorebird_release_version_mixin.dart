@@ -1,4 +1,5 @@
 import 'package:path/path.dart' as p;
+import 'package:shorebird_cli/src/cache.dart';
 import 'package:shorebird_cli/src/shorebird_java_mixin.dart';
 
 /// Mixin on [ShorebirdJavaMixin] which exposes methods

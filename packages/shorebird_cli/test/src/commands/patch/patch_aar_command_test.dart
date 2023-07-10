@@ -9,7 +9,7 @@ import 'package:platform/platform.dart';
 import 'package:scoped/scoped.dart';
 import 'package:shorebird_cli/src/archive_analysis/archive_analysis.dart';
 import 'package:shorebird_cli/src/auth/auth.dart';
-import 'package:shorebird_cli/src/cache.dart' show Cache;
+import 'package:shorebird_cli/src/cache.dart' show Cache, cacheRef;
 import 'package:shorebird_cli/src/code_push_client_wrapper.dart';
 import 'package:shorebird_cli/src/commands/commands.dart';
 import 'package:shorebird_cli/src/logger.dart';
@@ -135,6 +135,7 @@ flutter:
         body,
         values: {
           authRef.overrideWith(() => auth),
+          cacheRef.overrideWith(() => cache),
           codePushClientWrapperRef.overrideWith(() => codePushClientWrapper),
           loggerRef.overrideWith(() => logger),
           platformRef.overrideWith(() => platform),
@@ -323,7 +324,6 @@ flutter:
       command = runWithOverrides(
         () => PatchAarCommand(
           aarDiffer: aarDiffer,
-          cache: cache,
           httpClient: httpClient,
           validators: [flutterValidator],
           unzipFn: (_, __) async {},

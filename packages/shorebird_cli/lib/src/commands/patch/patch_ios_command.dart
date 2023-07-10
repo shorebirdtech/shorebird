@@ -17,7 +17,7 @@ import 'package:shorebird_cli/src/shorebird_environment.dart';
 import 'package:shorebird_cli/src/shorebird_validation_mixin.dart';
 
 /// {@template patch_ios_command}
-/// `shorebird patch ios-preview` command.
+/// `shorebird patch ios` command.
 /// {@endtemplate}
 class PatchIosCommand extends ShorebirdCommand
     with

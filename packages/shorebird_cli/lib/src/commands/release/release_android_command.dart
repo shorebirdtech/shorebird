@@ -25,10 +25,7 @@ class ReleaseAndroidCommand extends ShorebirdCommand
         ShorebirdJavaMixin,
         ShorebirdReleaseVersionMixin {
   /// {@macro release_android_command}
-  ReleaseAndroidCommand({
-    super.cache,
-    super.validators,
-  }) {
+  ReleaseAndroidCommand({super.validators}) {
     argParser
       ..addOption(
         'target',
@@ -131,9 +128,7 @@ make smaller updates to your app.
       );
     }
 
-    final archNames = architectures.keys.map(
-      (arch) => arch.name,
-    );
+    final archNames = architectures.keys.map((arch) => arch.name);
     final summary = [
       '''📱 App: ${lightCyan.wrap(app.displayName)} ${lightCyan.wrap('(${app.appId})')}''',
       if (flavor != null) '🍧 Flavor: ${lightCyan.wrap(flavor)}',

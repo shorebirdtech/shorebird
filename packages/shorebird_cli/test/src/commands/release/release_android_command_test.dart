@@ -93,6 +93,7 @@ flutter:
         body,
         values: {
           authRef.overrideWith(() => auth),
+          cacheRef.overrideWith(() => cache),
           loggerRef.overrideWith(() => logger),
           platformRef.overrideWith(() => platform),
           codePushClientWrapperRef.overrideWith(() => codePushClientWrapper),
@@ -240,7 +241,6 @@ flutter:
 
       command = runWithOverrides(
         () => ReleaseAndroidCommand(
-          cache: cache,
           validators: [flutterValidator],
         ),
       )
