@@ -51,8 +51,8 @@ void main() {
       runInShell: true,
       workingDirectory: cwd,
     );
-    expect(createAppResult.exitCode, 0);
     expect(createAppResult.stderr, isEmpty);
+    expect(createAppResult.exitCode, 0);
 
     cwd = p.join(cwd, testAppName);
 
@@ -61,8 +61,8 @@ void main() {
       'init',
       workingDirectory: cwd,
     );
-    expect(initShorebirdResult.exitCode, 0);
     expect(initShorebirdResult.stderr, isEmpty);
+    expect(initShorebirdResult.exitCode, 0);
 
     // Run the doctor command. This should yield a warning about the
     // AndroidManifest.xml not containing the internet permission and suggest
@@ -71,14 +71,16 @@ void main() {
       'doctor',
       workingDirectory: cwd,
     );
-    expect(shorebirdDoctorResult.exitCode, 0);
+    expect(shorebirdDoctorResult.stderr, isEmpty);
     expect(shorebirdDoctorResult.stdout, contains('shorebird doctor --fix'));
+    expect(shorebirdDoctorResult.exitCode, 0);
 
     // Run the suggested `doctor --fix` command.
     final shorebirdDoctorFixResult = runShorebirdCommand(
       'doctor --fix',
       workingDirectory: cwd,
     );
+    expect(shorebirdDoctorFixResult.stderr, isEmpty);
     expect(shorebirdDoctorFixResult.exitCode, 0);
 
     // Create an Android release.
@@ -86,15 +88,17 @@ void main() {
       'release android --force',
       workingDirectory: cwd,
     );
-    expect(shorebirdReleaseResult.exitCode, 0);
+    expect(shorebirdReleaseResult.stderr, isEmpty);
     expect(shorebirdReleaseResult.stdout, contains('Published Release!'));
+    expect(shorebirdReleaseResult.exitCode, 0);
 
     // Create an Android patch.
     final shorebirdPatchResult = runShorebirdCommand(
       'patch android --force',
       workingDirectory: cwd,
     );
-    expect(shorebirdPatchResult.exitCode, 0);
+    expect(shorebirdPatchResult.stderr, isEmpty);
     expect(shorebirdPatchResult.stdout, contains('Published Patch!'));
+    expect(shorebirdPatchResult.exitCode, 0);
   });
 }
