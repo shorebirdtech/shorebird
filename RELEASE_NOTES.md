@@ -6,7 +6,7 @@ This section contains past updates we've sent to customers via Discord.
 
 We've just released Shorebird v0.9.1 🎉
 
-- 💵 `shorebird account usage` fix price
+- 💵 `shorebird account usage` price fix
 - 🪟 `shorebird patch android` windows fix
 
 📚 Release notes can be found at https://github.com/shorebirdtech/shorebird/releases/tag/v0.9.1
