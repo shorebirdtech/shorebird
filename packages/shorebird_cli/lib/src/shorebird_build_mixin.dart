@@ -279,11 +279,7 @@ mixin ShorebirdBuildMixin on ShorebirdCommand {
       diffPath,
     ];
 
-    final result = await process.run(
-      diffExecutable,
-      diffArguments,
-      runInShell: true,
-    );
+    final result = await process.run(diffExecutable, diffArguments);
 
     if (result.exitCode != 0) {
       throw Exception('Failed to create diff: ${result.stderr}');
