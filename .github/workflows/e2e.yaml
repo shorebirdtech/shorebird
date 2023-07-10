@@ -63,6 +63,9 @@ jobs:
           }
         shell: pwsh
 
+      - name: ☕ Set up Java
+        uses: actions/setup-java@v3
+
       - name: 🎯 Set up Flutter
         uses: subosito/flutter-action@v2
 
