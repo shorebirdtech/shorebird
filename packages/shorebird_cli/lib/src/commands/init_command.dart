@@ -7,7 +7,6 @@ import 'package:shorebird_cli/src/shorebird_config_mixin.dart';
 import 'package:shorebird_cli/src/shorebird_create_app_mixin.dart';
 import 'package:shorebird_cli/src/shorebird_environment.dart';
 import 'package:shorebird_cli/src/shorebird_flavor_mixin.dart';
-import 'package:shorebird_cli/src/shorebird_java_mixin.dart';
 import 'package:shorebird_cli/src/shorebird_validation_mixin.dart';
 
 /// {@template init_command}
@@ -20,7 +19,6 @@ class InitCommand extends ShorebirdCommand
         ShorebirdConfigMixin,
         ShorebirdValidationMixin,
         ShorebirdCreateAppMixin,
-        ShorebirdJavaMixin,
         ShorebirdFlavorMixin {
   /// {@macro init_command}
   InitCommand({super.buildCodePushClient}) {

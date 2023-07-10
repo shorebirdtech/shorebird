@@ -9,7 +9,6 @@ import 'package:shorebird_cli/src/logger.dart';
 import 'package:shorebird_cli/src/shorebird_build_mixin.dart';
 import 'package:shorebird_cli/src/shorebird_config_mixin.dart';
 import 'package:shorebird_cli/src/shorebird_environment.dart';
-import 'package:shorebird_cli/src/shorebird_java_mixin.dart';
 import 'package:shorebird_cli/src/shorebird_release_version_mixin.dart';
 import 'package:shorebird_cli/src/shorebird_validation_mixin.dart';
 
@@ -22,13 +21,9 @@ class ReleaseAndroidCommand extends ShorebirdCommand
         ShorebirdConfigMixin,
         ShorebirdValidationMixin,
         ShorebirdBuildMixin,
-        ShorebirdJavaMixin,
         ShorebirdReleaseVersionMixin {
   /// {@macro release_android_command}
-  ReleaseAndroidCommand({
-    super.cache,
-    super.validators,
-  }) {
+  ReleaseAndroidCommand({super.validators}) {
     argParser
       ..addOption(
         'target',
@@ -131,9 +126,7 @@ make smaller updates to your app.
       );
     }
 
-    final archNames = architectures.keys.map(
-      (arch) => arch.name,
-    );
+    final archNames = architectures.keys.map((arch) => arch.name);
     final summary = [
       '''📱 App: ${lightCyan.wrap(app.displayName)} ${lightCyan.wrap('(${app.appId})')}''',
       if (flavor != null) '🍧 Flavor: ${lightCyan.wrap(flavor)}',
