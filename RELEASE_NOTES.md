@@ -2,6 +2,19 @@
 
 This section contains past updates we've sent to customers via Discord.
 
+## 0.9.1 (July 10, 2023)
+
+We've just released Shorebird v0.9.1 🎉
+
+- 💵 `shorebird account usage` price fix
+- 🪟 `shorebird patch android` windows fix
+
+📚 Release notes can be found at https://github.com/shorebirdtech/shorebird/releases/tag/v0.9.1
+
+As always, you can upgrade using `shorebird upgrade`
+
+Please let us know if we can help!
+
 ## 0.9.0 (July 7, 2023)
 
 We've just released Shorebird v0.9.0 🎉
