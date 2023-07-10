@@ -2,8 +2,9 @@ import 'dart:io';
 
 import 'package:collection/collection.dart';
 import 'package:path/path.dart' as p;
-import 'package:platform/platform.dart';
-import 'package:shorebird_cli/src/shorebird_java_mixin.dart';
+import 'package:shorebird_cli/src/command.dart';
+import 'package:shorebird_cli/src/java.dart';
+import 'package:shorebird_cli/src/platform.dart';
 
 /// Thrown when the gradle wrapper cannot be found.
 /// This has been resolved on the master channel but
@@ -24,15 +25,12 @@ Make sure you have run "flutter build apk at least once.''';
   }
 }
 
-/// Mixin on [ShorebirdJavaMixin] which exposes methods for extracting
+/// Mixin on [ShorebirdCommand] which exposes methods for extracting
 /// product flavors from the current app.
-mixin ShorebirdFlavorMixin on ShorebirdJavaMixin {
+mixin ShorebirdFlavorMixin on ShorebirdCommand {
   /// Return the set of product flavors configured for the app at [appRoot].
   /// Returns an empty set for apps that do not use product flavors.
-  Future<Set<String>> extractProductFlavors(
-    String appRoot, {
-    Platform platform = const LocalPlatform(),
-  }) async {
+  Future<Set<String>> extractProductFlavors(String appRoot) async {
     // Flutter apps have android files in root/android
     // Flutter modules have android files in root/.android
     final androidRoot = [
@@ -51,7 +49,7 @@ mixin ShorebirdFlavorMixin on ShorebirdJavaMixin {
       throw MissingGradleWrapperException(p.relative(executablePath));
     }
 
-    final javaHome = getJavaHome(platform);
+    final javaHome = java.home();
     final result = await process.run(
       executablePath,
       ['app:tasks', '--all', '--console=auto'],

@@ -1,27 +1,35 @@
-import 'dart:io';
+import 'dart:io' hide Platform;
 
 import 'package:collection/collection.dart';
 import 'package:path/path.dart' as p;
-import 'package:platform/platform.dart';
-import 'package:shorebird_cli/src/command.dart';
+import 'package:scoped/scoped.dart';
+import 'package:shorebird_cli/src/platform.dart';
 
-/// Mixin on [ShorebirdCommand] which exposes methods
-/// for determining the java path.
-mixin ShorebirdJavaMixin on ShorebirdCommand {
-  String? getJavaExecutable([Platform platform = const LocalPlatform()]) {
+// A reference to a [Java] instance.
+final javaRef = create(Java.new);
+
+// The [Java] instance available in the current zone.
+Java get java => read(javaRef);
+
+/// A wrapper around all java related functionality.
+class Java {
+  /// Returns the path to the java executable.
+  String? executable() {
     if (!platform.isWindows) return 'java';
 
-    final javaHome = getJavaHome(platform);
+    final javaHome = home();
     if (javaHome == null) return null;
     return p.join(javaHome, 'bin', 'java.exe');
   }
 
-  String? getJavaHome([Platform platform = const LocalPlatform()]) {
+  /// Returns the JAVA_HOME environment variable if set.
+  /// Otherwise, returns the location where the Android Studio JDK/JRE is installed.
+  String? home() {
     if (platform.environment.containsKey('JAVA_HOME')) {
       return platform.environment['JAVA_HOME'];
     }
 
-    final androidStudioPath = _getAndroidStudioPath(platform);
+    final androidStudioPath = _getAndroidStudioPath();
     if (androidStudioPath == null) return null;
     if (platform.isMacOS) {
       final candidateLocations = [
@@ -45,7 +53,7 @@ mixin ShorebirdJavaMixin on ShorebirdCommand {
     );
   }
 
-  String? _getAndroidStudioPath(Platform platform) {
+  String? _getAndroidStudioPath() {
     final home = platform.environment['HOME'] ?? '~';
     if (platform.isMacOS) {
       final candidateLocations = [

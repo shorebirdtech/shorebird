@@ -11,6 +11,7 @@ import 'package:shorebird_cli/src/auth/auth.dart';
 import 'package:shorebird_cli/src/cache.dart';
 import 'package:shorebird_cli/src/code_push_client_wrapper.dart';
 import 'package:shorebird_cli/src/commands/commands.dart';
+import 'package:shorebird_cli/src/java.dart';
 import 'package:shorebird_cli/src/logger.dart';
 import 'package:shorebird_cli/src/platform.dart';
 import 'package:shorebird_cli/src/shorebird_process.dart';
@@ -41,6 +42,8 @@ class _MockShorebirdFlutterValidator extends Mock
     implements ShorebirdFlutterValidator {}
 
 class _MockShorebirdProcess extends Mock implements ShorebirdProcess {}
+
+class _MockJava extends Mock implements Java {}
 
 void main() {
   group(ReleaseAndroidCommand, () {
@@ -78,6 +81,7 @@ flutter:
     late Platform platform;
     late Auth auth;
     late Cache cache;
+    late Java java;
     late Progress progress;
     late Logger logger;
     late ShorebirdProcessResult flutterBuildProcessResult;
@@ -94,6 +98,7 @@ flutter:
         values: {
           authRef.overrideWith(() => auth),
           cacheRef.overrideWith(() => cache),
+          javaRef.overrideWith(() => java),
           loggerRef.overrideWith(() => logger),
           platformRef.overrideWith(() => platform),
           codePushClientWrapperRef.overrideWith(() => codePushClientWrapper),
@@ -120,6 +125,7 @@ flutter:
       shorebirdRoot = Directory.systemTemp.createTempSync();
       auth = _MockAuth();
       cache = _MockCache();
+      java = _MockJava();
       progress = _MockProgress();
       logger = _MockLogger();
       flutterBuildProcessResult = _MockProcessResult();
@@ -288,25 +294,6 @@ flutter:
       );
 
       expect(exitCode, equals(ExitCode.software.code));
-    });
-
-    group('getJavaExecutable', () {
-      test('uses correct executable on windows', () async {
-        const javaHome = r'C:\Program Files\Java\jdk-11.0.1';
-        final platform = _MockPlatform();
-        when(() => platform.isWindows).thenReturn(true);
-        when(() => platform.environment).thenReturn({'JAVA_HOME': javaHome});
-        expect(
-          command.getJavaExecutable(platform),
-          equals(p.join(javaHome, 'bin', 'java.exe')),
-        );
-      });
-
-      test('uses correct executable on non-windows', () async {
-        final platform = _MockPlatform();
-        when(() => platform.isWindows).thenReturn(false);
-        expect(command.getJavaExecutable(platform), equals('java'));
-      });
     });
 
     test('errors when detecting release version name fails', () async {
