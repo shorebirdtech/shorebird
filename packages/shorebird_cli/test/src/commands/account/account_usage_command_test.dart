@@ -69,8 +69,8 @@ void main() {
     test('exits with code 0 when usage is fetched.', () async {
       final usage = GetUsageResponse(
         plan: const ShorebirdPlan(
-          name: 'Hobby',
-          monthlyCost: 0,
+          name: 'Team',
+          monthlyCost: 2000,
           patchInstallLimit: 1000,
           maxTeamSize: 1,
         ),
@@ -87,7 +87,7 @@ void main() {
           ),
         ],
         patchInstallLimit: 20000,
-        currentPeriodCost: 0,
+        currentPeriodCost: 2000,
         currentPeriodStart: DateTime(2023),
         currentPeriodEnd: DateTime(2023, 2),
       );
@@ -104,7 +104,7 @@ void main() {
           any(
             that: contains('''
 
-You are on the ${lightCyan.wrap('Hobby')} plan.
+You are on the ${lightCyan.wrap('Team')} plan.
 
 ┌────────────┬────────────────┐
 │ App        │ Patch Installs │
@@ -116,10 +116,10 @@ You are on the ${lightCyan.wrap('Hobby')} plan.
 │ Total      │ 84             │
 └────────────┴────────────────┘
 
-${styleBold.wrap('${lightCyan.wrap('${20000 - 84}')} patch installs remaining in the current billing period.')}
+${styleBold.wrap('${lightCyan.wrap('19916')} patch installs remaining in the current billing period.')}
 
 Current Billing Period: ${lightCyan.wrap(DateFormat.yMMMd().format(usage.currentPeriodStart))} - ${lightCyan.wrap(DateFormat.yMMMd().format(usage.currentPeriodEnd))}
-Month-to-date cost: ${lightCyan.wrap(r'$0.00')}
+Month-to-date cost: ${lightCyan.wrap(r'$20.00')}
 
 ${styleBold.wrap('*Usage data is not reported in real-time and may be delayed by up to 48 hours.')}'''),
           ),
