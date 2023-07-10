@@ -12,6 +12,7 @@ import 'package:shorebird_cli/src/auth/auth.dart';
 import 'package:shorebird_cli/src/cache.dart' show Cache, cacheRef;
 import 'package:shorebird_cli/src/code_push_client_wrapper.dart';
 import 'package:shorebird_cli/src/commands/patch/patch_android_command.dart';
+import 'package:shorebird_cli/src/java.dart';
 import 'package:shorebird_cli/src/logger.dart';
 import 'package:shorebird_cli/src/platform.dart';
 import 'package:shorebird_cli/src/shorebird_build_mixin.dart';
@@ -33,6 +34,8 @@ class _MockCache extends Mock implements Cache {}
 
 class _MockCodePushClientWrapper extends Mock
     implements CodePushClientWrapper {}
+
+class _MockJava extends Mock implements Java {}
 
 class _MockLogger extends Mock implements Logger {}
 
@@ -103,6 +106,7 @@ flutter:
     late Auth auth;
     late CodePushClientWrapper codePushClientWrapper;
     late Directory shorebirdRoot;
+    late Java java;
     late Platform platform;
     late Progress progress;
     late Logger logger;
@@ -123,6 +127,7 @@ flutter:
         values: {
           authRef.overrideWith(() => auth),
           cacheRef.overrideWith(() => cache),
+          javaRef.overrideWith(() => java),
           loggerRef.overrideWith(() => logger),
           platformRef.overrideWith(() => platform),
           codePushClientWrapperRef.overrideWith(() => codePushClientWrapper),
@@ -170,6 +175,7 @@ flutter:
       argResults = _MockArgResults();
       auth = _MockAuth();
       codePushClientWrapper = _MockCodePushClientWrapper();
+      java = _MockJava();
       shorebirdRoot = Directory.systemTemp.createTempSync();
       platform = _MockPlatform();
       progress = _MockProgress();

@@ -14,7 +14,6 @@ import 'package:shorebird_cli/src/logger.dart';
 import 'package:shorebird_cli/src/shorebird_build_mixin.dart';
 import 'package:shorebird_cli/src/shorebird_config_mixin.dart';
 import 'package:shorebird_cli/src/shorebird_environment.dart';
-import 'package:shorebird_cli/src/shorebird_java_mixin.dart';
 import 'package:shorebird_cli/src/shorebird_release_version_mixin.dart';
 import 'package:shorebird_cli/src/shorebird_validation_mixin.dart';
 
@@ -28,7 +27,6 @@ class PatchAndroidCommand extends ShorebirdCommand
         ShorebirdConfigMixin,
         ShorebirdValidationMixin,
         ShorebirdBuildMixin,
-        ShorebirdJavaMixin,
         ShorebirdReleaseVersionMixin {
   /// {@macro patch_android_command}
   PatchAndroidCommand({

@@ -9,7 +9,9 @@ import 'package:platform/platform.dart';
 import 'package:scoped/scoped.dart';
 import 'package:shorebird_cli/src/auth/auth.dart';
 import 'package:shorebird_cli/src/commands/init_command.dart';
+import 'package:shorebird_cli/src/java.dart';
 import 'package:shorebird_cli/src/logger.dart';
+import 'package:shorebird_cli/src/platform.dart';
 import 'package:shorebird_cli/src/shorebird_flavor_mixin.dart';
 import 'package:shorebird_cli/src/shorebird_process.dart';
 import 'package:shorebird_code_push_client/shorebird_code_push_client.dart';
@@ -22,6 +24,8 @@ class _MockHttpClient extends Mock implements http.Client {}
 class _MockAuth extends Mock implements Auth {}
 
 class _MockCodePushClient extends Mock implements CodePushClient {}
+
+class _MockJava extends Mock implements Java {}
 
 class _MockLogger extends Mock implements Logger {}
 
@@ -45,10 +49,13 @@ name: $appName
 version: $version
 environment:
   sdk: ">=2.19.0 <3.0.0"''';
+    const javaHome = 'test_java_home';
 
     late http.Client httpClient;
     late ArgResults argResults;
     late Auth auth;
+    late Java java;
+    late Platform platform;
     late ShorebirdProcess process;
     late ShorebirdProcessResult result;
     late CodePushClient codePushClient;
@@ -61,7 +68,9 @@ environment:
         body,
         values: {
           authRef.overrideWith(() => auth),
-          loggerRef.overrideWith(() => logger)
+          javaRef.overrideWith(() => java),
+          loggerRef.overrideWith(() => logger),
+          platformRef.overrideWith(() => platform),
         },
       );
     }
@@ -82,6 +91,8 @@ environment:
       httpClient = _MockHttpClient();
       argResults = _MockArgResults();
       auth = _MockAuth();
+      java = _MockJava();
+      platform = _MockPlatform();
       process = _MockProcess();
       result = _MockProcessResult();
       codePushClient = _MockCodePushClient();
@@ -113,6 +124,9 @@ environment:
       when(() => result.exitCode).thenReturn(ExitCode.success.code);
       when(() => result.stdout).thenReturn('');
 
+      when(java.home).thenReturn(javaHome);
+      when(() => platform.isWindows).thenReturn(false);
+
       command = runWithOverrides(
         () => InitCommand(
           buildCodePushClient: ({
@@ -131,15 +145,12 @@ environment:
       test(
           'throws MissingGradleWrapperException '
           'when gradlew does not exist', () async {
-        final platform = _MockPlatform();
         when(() => platform.isLinux).thenReturn(true);
         when(() => platform.isMacOS).thenReturn(false);
         when(() => platform.isWindows).thenReturn(false);
         final tempDir = setUpAppTempDir();
-        const javaHome = 'test_java_home';
-        when(() => platform.environment).thenReturn({'JAVA_HOME': javaHome});
         await expectLater(
-          command.extractProductFlavors(tempDir.path, platform: platform),
+          command.extractProductFlavors(tempDir.path),
           throwsA(isA<MissingGradleWrapperException>()),
         );
         verifyNever(
@@ -154,7 +165,6 @@ environment:
       });
 
       test('uses existing JAVA_HOME when set', () async {
-        final platform = _MockPlatform();
         when(() => platform.isLinux).thenReturn(true);
         when(() => platform.isMacOS).thenReturn(false);
         when(() => platform.isWindows).thenReturn(false);
@@ -162,10 +172,8 @@ environment:
         File(
           p.join(tempDir.path, 'android', 'gradlew'),
         ).createSync(recursive: true);
-        const javaHome = 'test_java_home';
-        when(() => platform.environment).thenReturn({'JAVA_HOME': javaHome});
         await expectLater(
-          command.extractProductFlavors(tempDir.path, platform: platform),
+          runWithOverrides(() => command.extractProductFlavors(tempDir.path)),
           completes,
         );
         verify(
@@ -182,7 +190,6 @@ environment:
       test(
           'throws Exception '
           'when process exits with non-zero code', () async {
-        final platform = _MockPlatform();
         when(() => platform.isLinux).thenReturn(true);
         when(() => platform.isMacOS).thenReturn(false);
         when(() => platform.isWindows).thenReturn(false);
@@ -192,10 +199,8 @@ environment:
         ).createSync(recursive: true);
         when(() => result.exitCode).thenReturn(1);
         when(() => result.stderr).thenReturn('test error');
-        const javaHome = 'test_java_home';
-        when(() => platform.environment).thenReturn({'JAVA_HOME': javaHome});
         await expectLater(
-          command.extractProductFlavors(tempDir.path, platform: platform),
+          runWithOverrides(() => command.extractProductFlavors(tempDir.path)),
           throwsA(
             isA<Exception>().having(
               (e) => '$e',
@@ -215,116 +220,7 @@ environment:
         ).called(1);
       });
 
-      test('uses correct executable on windows', () async {
-        final platform = _MockPlatform();
-        when(() => platform.isWindows).thenReturn(true);
-        when(() => platform.isMacOS).thenReturn(false);
-        when(() => platform.isLinux).thenReturn(false);
-        final tempDir = setUpAppTempDir();
-        File(
-          p.join(tempDir.path, 'android', 'gradlew.bat'),
-        ).createSync(recursive: true);
-        when(() => platform.environment).thenReturn({
-          'PROGRAMFILES': tempDir.path,
-          'PROGRAMFILES(X86)': tempDir.path,
-        });
-        final androidStudioDir = Directory(
-          p.join(tempDir.path, 'Android', 'Android Studio'),
-        )..createSync(recursive: true);
-        final jbrDir = Directory(p.join(androidStudioDir.path, 'jbr'))
-          ..createSync();
-        File(
-          p.join(tempDir.path, 'pubspec.yaml'),
-        ).writeAsStringSync(pubspecYamlContent);
-        await expectLater(
-          command.extractProductFlavors(tempDir.path, platform: platform),
-          completes,
-        );
-        verify(
-          () => process.run(
-            p.join(tempDir.path, 'android', 'gradlew.bat'),
-            ['app:tasks', '--all', '--console=auto'],
-            runInShell: true,
-            workingDirectory: p.join(tempDir.path, 'android'),
-            environment: {'JAVA_HOME': jbrDir.path},
-          ),
-        ).called(1);
-      });
-
-      test('uses correct executable on MacOS', () async {
-        final platform = _MockPlatform();
-        when(() => platform.isWindows).thenReturn(false);
-        when(() => platform.isMacOS).thenReturn(true);
-        when(() => platform.isLinux).thenReturn(false);
-        final tempDir = setUpAppTempDir();
-        File(
-          p.join(tempDir.path, 'android', 'gradlew'),
-        ).createSync(recursive: true);
-        when(() => platform.environment).thenReturn({'HOME': tempDir.path});
-        final androidStudioDir = Directory(
-          p.join(
-            tempDir.path,
-            'Applications',
-            'Android Studio.app',
-            'Contents',
-          ),
-        )..createSync(recursive: true);
-        final jbrDir = Directory(
-          p.join(androidStudioDir.path, 'jbr', 'Contents', 'Home'),
-        )..createSync(recursive: true);
-        File(
-          p.join(tempDir.path, 'pubspec.yaml'),
-        ).writeAsStringSync(pubspecYamlContent);
-        await expectLater(
-          command.extractProductFlavors(tempDir.path, platform: platform),
-          completes,
-        );
-        verify(
-          () => process.run(
-            p.join(tempDir.path, 'android', 'gradlew'),
-            ['app:tasks', '--all', '--console=auto'],
-            runInShell: true,
-            workingDirectory: p.join(tempDir.path, 'android'),
-            environment: {'JAVA_HOME': jbrDir.path},
-          ),
-        ).called(1);
-      });
-
-      test('uses correct executable on Linux', () async {
-        final platform = _MockPlatform();
-        when(() => platform.isWindows).thenReturn(false);
-        when(() => platform.isMacOS).thenReturn(false);
-        when(() => platform.isLinux).thenReturn(true);
-        final tempDir = setUpAppTempDir();
-        File(
-          p.join(tempDir.path, 'android', 'gradlew'),
-        ).createSync(recursive: true);
-        when(() => platform.environment).thenReturn({'HOME': tempDir.path});
-        final androidStudioDir = Directory(
-          p.join(tempDir.path, '.AndroidStudio'),
-        )..createSync(recursive: true);
-        final jbrDir = Directory(p.join(androidStudioDir.path, 'jbr'))
-          ..createSync(recursive: true);
-        File(
-          p.join(tempDir.path, 'pubspec.yaml'),
-        ).writeAsStringSync(pubspecYamlContent);
-        await expectLater(
-          command.extractProductFlavors(tempDir.path, platform: platform),
-          completes,
-        );
-        verify(
-          () => process.run(
-            p.join(tempDir.path, 'android', 'gradlew'),
-            ['app:tasks', '--all', '--console=auto'],
-            runInShell: true,
-            workingDirectory: p.join(tempDir.path, 'android'),
-            environment: {'JAVA_HOME': jbrDir.path},
-          ),
-        ).called(1);
-      });
-
       test('extracts flavors from module directory structure', () async {
-        final platform = _MockPlatform();
         when(() => platform.isLinux).thenReturn(true);
         when(() => platform.isMacOS).thenReturn(false);
         when(() => platform.isWindows).thenReturn(false);
@@ -335,7 +231,7 @@ environment:
         const javaHome = 'test_java_home';
         when(() => platform.environment).thenReturn({'JAVA_HOME': javaHome});
         await expectLater(
-          command.extractProductFlavors(tempDir.path, platform: platform),
+          runWithOverrides(() => command.extractProductFlavors(tempDir.path)),
           completes,
         );
         verify(

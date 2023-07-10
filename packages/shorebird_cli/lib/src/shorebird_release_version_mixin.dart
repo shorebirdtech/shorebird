@@ -1,10 +1,11 @@
 import 'package:path/path.dart' as p;
 import 'package:shorebird_cli/src/cache.dart';
-import 'package:shorebird_cli/src/shorebird_java_mixin.dart';
+import 'package:shorebird_cli/src/command.dart';
+import 'package:shorebird_cli/src/java.dart';
 
-/// Mixin on [ShorebirdJavaMixin] which exposes methods
+/// Mixin on [ShorebirdCommand] which exposes methods
 /// to extract the release version from an app bundle.
-mixin ShorebirdReleaseVersionMixin on ShorebirdJavaMixin {
+mixin ShorebirdReleaseVersionMixin on ShorebirdCommand {
   /// Extract the release version from an appbundle.
   Future<String> extractReleaseVersionFromAppBundle(
     String appBundlePath,
@@ -34,8 +35,8 @@ mixin ShorebirdReleaseVersionMixin on ShorebirdJavaMixin {
       '/manifest/@android:versionCode'
     ];
 
-    final javaHome = getJavaHome();
-    final javaExecutable = getJavaExecutable() ?? 'java';
+    final javaHome = java.home();
+    final javaExecutable = java.executable() ?? 'java';
     final results = await Future.wait([
       process.run(
         javaExecutable,
