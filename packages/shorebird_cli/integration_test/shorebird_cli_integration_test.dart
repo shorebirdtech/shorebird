@@ -1,8 +1,11 @@
 import 'dart:io';
 
+import 'package:checked_yaml/checked_yaml.dart';
 import 'package:mason_logger/mason_logger.dart';
 import 'package:path/path.dart' as p;
+import 'package:shorebird_cli/src/config/config.dart';
 import 'package:test/test.dart';
+import 'package:uuid/uuid.dart';
 
 void main() {
   final logger = Logger();
@@ -36,8 +39,8 @@ void main() {
       throw Exception('SHOREBIRD_TOKEN environment variable is not set.');
     }
 
-    final testAppName =
-        'test_app_${DateTime.now().millisecondsSinceEpoch ~/ 1000}';
+    final uuid = const Uuid().v4().replaceAll('-', '_');
+    final testAppName = 'test_app_$uuid';
     final tempDir = Directory.systemTemp.createTempSync();
     final subDirWithSpace = Directory(p.join(tempDir.path, 'flutter directory'))
       ..createSync();
@@ -64,6 +67,13 @@ void main() {
     expect(initShorebirdResult.stderr, isEmpty);
     expect(initShorebirdResult.exitCode, 0);
 
+    final shorebirdYamlPath = p.join(cwd, 'shorebird.yaml');
+    final shorebirdYamlText = File(shorebirdYamlPath).readAsStringSync();
+    final shorebirdYaml = checkedYamlDecode(
+      shorebirdYamlText,
+      (m) => ShorebirdYaml.fromJson(m!),
+    );
+
     // Run the doctor command. This should yield a warning about the
     // AndroidManifest.xml not containing the internet permission and suggest
     // that the user run `shorebird doctor --fix`.
@@ -83,6 +93,27 @@ void main() {
     expect(shorebirdDoctorFixResult.stderr, isEmpty);
     expect(shorebirdDoctorFixResult.exitCode, 0);
 
+    // Verify that we have no releases for this app
+    final preReleaseAppsListResult = runShorebirdCommand(
+      'apps list',
+      workingDirectory: cwd,
+    );
+    expect(preReleaseAppsListResult.stderr, isEmpty);
+    expect(preReleaseAppsListResult.exitCode, 0);
+    expect(
+      preReleaseAppsListResult.stdout,
+      stringContainsInOrder([
+        testAppName,
+        '│',
+        shorebirdYaml.appId,
+        '│',
+        '1.0.0+1',
+        '│',
+        '--',
+        '│',
+      ]),
+    );
+
     // Create an Android release.
     final shorebirdReleaseResult = runShorebirdCommand(
       'release android --force',
@@ -92,6 +123,27 @@ void main() {
     expect(shorebirdReleaseResult.stdout, contains('Published Release!'));
     expect(shorebirdReleaseResult.exitCode, 0);
 
+    // Verify that the release was created.
+    final postReleaseAppsListResult = runShorebirdCommand(
+      'apps list',
+      workingDirectory: cwd,
+    );
+    expect(postReleaseAppsListResult.stderr, isEmpty);
+    expect(postReleaseAppsListResult.exitCode, 0);
+    expect(
+      postReleaseAppsListResult.stdout,
+      stringContainsInOrder([
+        testAppName,
+        '│',
+        shorebirdYaml.appId,
+        '│',
+        '--',
+        '│',
+        '--',
+        '│',
+      ]),
+    );
+
     // Create an Android patch.
     final shorebirdPatchResult = runShorebirdCommand(
       'patch android --force',
@@ -100,5 +152,26 @@ void main() {
     expect(shorebirdPatchResult.stderr, isEmpty);
     expect(shorebirdPatchResult.stdout, contains('Published Patch!'));
     expect(shorebirdPatchResult.exitCode, 0);
+
+    // Verify that the release was created.
+    final postPatchAppsListResult = runShorebirdCommand(
+      'apps list',
+      workingDirectory: cwd,
+    );
+    expect(postPatchAppsListResult.stderr, isEmpty);
+    expect(postPatchAppsListResult.exitCode, 0);
+    expect(
+      postPatchAppsListResult.stdout,
+      stringContainsInOrder([
+        testAppName,
+        '│',
+        shorebirdYaml.appId,
+        '│',
+        '1.0.0+1',
+        '│',
+        '1',
+        '│',
+      ]),
+    );
   });
 }
