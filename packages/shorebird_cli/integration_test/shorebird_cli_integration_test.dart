@@ -142,7 +142,7 @@ void main() {
     expect(shorebirdPatchResult.stdout, contains('Published Patch!'));
     expect(shorebirdPatchResult.exitCode, equals(0));
 
-    // Verify that the release was created.
+    // Verify that the patch was created.
     final postPatchAppsListResult = runCommand(
       'shorebird apps list',
       workingDirectory: cwd,
