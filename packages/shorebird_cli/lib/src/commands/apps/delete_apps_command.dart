@@ -30,7 +30,6 @@ Defaults to the app_id in "shorebird.yaml".''',
         help: 'Release without confirmation if there are no errors.',
         negatable: false,
       );
-    ;
   }
 
   @override

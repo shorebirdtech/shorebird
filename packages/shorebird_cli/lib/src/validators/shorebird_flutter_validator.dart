@@ -1,5 +1,5 @@
-import 'package:shorebird_cli/src/shorebird_environment.dart';
 import 'package:shorebird_cli/src/process.dart';
+import 'package:shorebird_cli/src/shorebird_environment.dart';
 import 'package:shorebird_cli/src/validators/validators.dart';
 import 'package:version/version.dart';
 
