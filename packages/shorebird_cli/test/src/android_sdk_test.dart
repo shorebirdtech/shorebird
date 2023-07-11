@@ -61,7 +61,15 @@ void main() {
         );
       });
 
-      test('returns correct path on Linux', () {
+      test('returns null on Linux when HOME is not set', () {
+        when(() => platform.isLinux).thenReturn(true);
+        expect(
+          runWithOverrides(() => androidSdk.path),
+          isNull,
+        );
+      });
+
+      test('returns correct path on Linux when HOME is set', () {
         when(() => platform.environment).thenReturn({
           'HOME': homeDirectory.path,
         });
@@ -72,6 +80,14 @@ void main() {
         expect(
           runWithOverrides(() => androidSdk.path),
           equals(androidHomeDir.path),
+        );
+      });
+
+      test('returns null on MacOS when HOME is not set', () {
+        when(() => platform.isMacOS).thenReturn(true);
+        expect(
+          runWithOverrides(() => androidSdk.path),
+          isNull,
         );
       });
 
@@ -89,9 +105,17 @@ void main() {
         );
       });
 
+      test('returns null on Windows when USERPROFILE is not set', () {
+        when(() => platform.isWindows).thenReturn(true);
+        expect(
+          runWithOverrides(() => androidSdk.path),
+          isNull,
+        );
+      });
+
       test('returns correct path on Windows', () {
         when(() => platform.environment).thenReturn({
-          'HOME': homeDirectory.path,
+          'USERPROFILE': homeDirectory.path,
         });
         when(() => platform.isWindows).thenReturn(true);
         final androidHomeDir = Directory(
