@@ -8,7 +8,7 @@ void main() {
         clientId: 'some-client-id',
       );
       expect(
-        CreatePaymentLinkResponse.fromJson(response.toJson()).toJson(),
+        CreatePatchInstallRequest.fromJson(response.toJson()).toJson(),
         equals(response.toJson()),
       );
     });
