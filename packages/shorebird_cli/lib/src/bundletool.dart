@@ -28,6 +28,12 @@ class Bundletool {
     );
   }
 
+  /// Generate an APK set for all device configurations
+  /// your app supports from an app bundle
+  ///
+  /// e.g. `bundletool build-apks --bundle=/MyApp/my_app.aab --output=/MyApp/my_app.apks`
+  ///
+  /// https://developer.android.com/tools/bundletool#generate_apks
   Future<void> buildApks({
     required String bundle,
     required String output,
@@ -40,6 +46,19 @@ class Bundletool {
     }
   }
 
+  /// Deploy your app from an APK set.
+  ///
+  /// e.g. `bundletool install-apks --apks=/MyApp/my_app.apks`
+  ///
+  /// https://developer.android.com/tools/bundletool#deploy_with_bundletool
+  Future<void> installApks({required String apks}) async {
+    final result = await _exec('install-apks --apks="$apks"');
+    if (result.exitCode != 0) {
+      throw Exception('Failed to install apks: ${result.stderr}');
+    }
+  }
+
+  /// Extract the version name from an app bundle.
   Future<String> getVersionName(String appBundlePath) async {
     final result = await _exec(
       'dump manifest --bundle "$appBundlePath" --xpath /manifest/@android:versionName',
@@ -54,6 +73,7 @@ class Bundletool {
     return (result.stdout as String).trim();
   }
 
+  /// Extract the version code from an app bundle.
   Future<String> getVersionCode(String appBundlePath) async {
     final result = await _exec(
       'dump manifest --bundle "$appBundlePath" --xpath /manifest/@android:versionCode',
