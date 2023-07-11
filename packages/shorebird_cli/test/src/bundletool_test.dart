@@ -121,6 +121,68 @@ void main() {
       });
     });
 
+    group('installApks', () {
+      const apks = 'test.apks';
+
+      test('throws exception if process returns non-zero exit code', () async {
+        when(
+          () => process.run(
+            any(),
+            any(),
+            environment: any(named: 'environment'),
+          ),
+        ).thenAnswer(
+          (_) async => const ShorebirdProcessResult(
+            exitCode: 1,
+            stdout: '',
+            stderr: 'oops',
+          ),
+        );
+        await expectLater(
+          () => runWithOverrides(() => bundletool.installApks(apks: apks)),
+          throwsA(
+            isA<Exception>().having(
+              (e) => e.toString(),
+              'exception',
+              'Exception: Failed to install apks: oops',
+            ),
+          ),
+        );
+      });
+
+      test('completes when process succeeds', () async {
+        when(
+          () => process.run(
+            any(),
+            any(),
+            environment: any(named: 'environment'),
+          ),
+        ).thenAnswer(
+          (_) async => const ShorebirdProcessResult(
+            exitCode: 0,
+            stdout: '',
+            stderr: '',
+          ),
+        );
+        await expectLater(
+          runWithOverrides(
+            () => bundletool.installApks(apks: apks),
+          ),
+          completes,
+        );
+        verify(
+          () => process.run(
+            'java',
+            '''-jar ${p.join(workingDirectory.path, 'bundletool.jar')} install-apks --apks="$apks"'''
+                .split(' '),
+            environment: {
+              'JAVA_HOME': javaHome,
+            },
+          ),
+        ).called(1);
+      });
+    });
+
     group('getVersionName', () {
       test('throws exception if process returns non-zero exit code', () async {
         when(
