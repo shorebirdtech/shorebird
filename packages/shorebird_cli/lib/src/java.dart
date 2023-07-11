@@ -3,6 +3,7 @@ import 'dart:io' hide Platform;
 import 'package:collection/collection.dart';
 import 'package:path/path.dart' as p;
 import 'package:scoped/scoped.dart';
+import 'package:shorebird_cli/src/android_studio.dart';
 import 'package:shorebird_cli/src/platform.dart';
 
 // A reference to a [Java] instance.
@@ -29,7 +30,7 @@ class Java {
       return platform.environment['JAVA_HOME'];
     }
 
-    final androidStudioPath = _getAndroidStudioPath();
+    final androidStudioPath = androidStudio.path();
     if (androidStudioPath == null) return null;
     if (platform.isMacOS) {
       final candidateLocations = [
@@ -51,44 +52,5 @@ class Java {
     return candidateLocations.firstWhereOrNull(
       (location) => Directory(location).existsSync(),
     );
-  }
-
-  String? _getAndroidStudioPath() {
-    final home = platform.environment['HOME'] ?? '~';
-    if (platform.isMacOS) {
-      final candidateLocations = [
-        p.join(home, 'Applications', 'Android Studio.app', 'Contents'),
-        p.join('/', 'Applications', 'Android Studio.app', 'Contents'),
-      ];
-      return candidateLocations.firstWhereOrNull(
-        (location) => Directory(location).existsSync(),
-      );
-    }
-
-    if (platform.isWindows) {
-      final programFiles = platform.environment['PROGRAMFILES']!;
-      final programFilesx86 = platform.environment['PROGRAMFILES(X86)']!;
-      final candidateLocations = [
-        p.join(programFiles, 'Android', 'Android Studio'),
-        p.join(programFilesx86, 'Android', 'Android Studio'),
-      ];
-      return candidateLocations.firstWhereOrNull(
-        (location) => Directory(location).existsSync(),
-      );
-    }
-
-    if (platform.isLinux) {
-      final candidateLocations = [
-        p.join('/', 'snap', 'bin', 'android-studio'),
-        p.join('/', 'opt', 'android-studio'),
-        p.join(home, '.AndroidStudio'),
-        p.join(home, '.cache', 'Google', 'AndroidStudio'),
-      ];
-      return candidateLocations.firstWhereOrNull((location) {
-        return Directory(location).existsSync();
-      });
-    }
-
-    return null;
   }
 }
