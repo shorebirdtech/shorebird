@@ -28,6 +28,18 @@ class Bundletool {
     );
   }
 
+  Future<void> buildApks({
+    required String bundle,
+    required String output,
+  }) async {
+    final result = await _exec(
+      '''build-apks --overwrite --bundle="$bundle" --output="$output" --mode=universal''',
+    );
+    if (result.exitCode != 0) {
+      throw Exception('Failed to build apks: ${result.stderr}');
+    }
+  }
+
   Future<String> getVersionName(String appBundlePath) async {
     final result = await _exec(
       'dump manifest --bundle "$appBundlePath" --xpath /manifest/@android:versionName',
