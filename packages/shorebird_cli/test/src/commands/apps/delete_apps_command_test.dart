@@ -98,6 +98,19 @@ void main() {
       verify(() => logger.info('Aborted.')).called(1);
     });
 
+    test('does not prompt for confirmation when force flag is provided',
+        () async {
+      when(() => argResults['app-id']).thenReturn(appId);
+      when(() => argResults['force']).thenReturn(true);
+      when(
+        () => codePushClient.deleteApp(appId: appId),
+      ).thenAnswer((_) async {});
+      final result = await runWithOverrides(command.run);
+      expect(result, ExitCode.success.code);
+      verify(() => codePushClient.deleteApp(appId: appId));
+      verifyNever(() => logger.confirm(any()));
+    });
+
     test('returns success when app is deleted', () async {
       when(() => logger.confirm(any())).thenReturn(true);
       when(() => argResults['app-id']).thenReturn(appId);
