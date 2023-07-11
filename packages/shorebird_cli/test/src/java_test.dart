@@ -4,14 +4,18 @@ import 'package:mocktail/mocktail.dart';
 import 'package:path/path.dart' as p;
 import 'package:platform/platform.dart';
 import 'package:scoped/scoped.dart';
+import 'package:shorebird_cli/src/android_studio.dart';
 import 'package:shorebird_cli/src/java.dart';
 import 'package:shorebird_cli/src/platform.dart';
 import 'package:test/test.dart';
+
+class _MockAndroidStudio extends Mock implements AndroidStudio {}
 
 class _MockPlatform extends Mock implements Platform {}
 
 void main() {
   group(Java, () {
+    late AndroidStudio androidStudio;
     late Platform platform;
     late Java java;
 
@@ -19,6 +23,7 @@ void main() {
       return runScoped(
         () => body(),
         values: {
+          androidStudioRef.overrideWith(() => androidStudio),
           platformRef.overrideWith(() => platform),
         },
       );
@@ -31,6 +36,7 @@ void main() {
     }
 
     setUp(() {
+      androidStudio = _MockAndroidStudio();
       platform = _MockPlatform();
       java = Java();
     });
@@ -80,6 +86,7 @@ void main() {
         final androidStudioDir = Directory(
           p.join(tempDir.path, 'Android', 'Android Studio'),
         )..createSync(recursive: true);
+        when(() => androidStudio.path()).thenReturn(androidStudioDir.path);
         final jbrDir = Directory(p.join(androidStudioDir.path, 'jbr'))
           ..createSync();
         File(
@@ -105,6 +112,7 @@ void main() {
             'Contents',
           ),
         )..createSync(recursive: true);
+        when(() => androidStudio.path()).thenReturn(androidStudioDir.path);
         final jbrDir = Directory(
           p.join(androidStudioDir.path, 'jbr', 'Contents', 'Home'),
         )..createSync(recursive: true);
@@ -123,6 +131,7 @@ void main() {
         final androidStudioDir = Directory(
           p.join(tempDir.path, '.AndroidStudio'),
         )..createSync(recursive: true);
+        when(() => androidStudio.path()).thenReturn(androidStudioDir.path);
         final jbrDir = Directory(p.join(androidStudioDir.path, 'jbr'))
           ..createSync(recursive: true);
         File(
