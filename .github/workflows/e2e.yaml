@@ -1,16 +1,9 @@
 name: e2e
 
-# TODO: don't commit this, this is just to test that the flow works on GHA
 on:
-  pull_request:
-  push:
-    branches:
-      - main
-
-# on:
-#   schedule:
-#     # At the end of every day
-#     - cron: "0 0 * * *"
+  schedule:
+    # At the end of every day
+    - cron: "0 0 * * *"
 
 env:
   SHOREBIRD_TOKEN: ${{ secrets.SHOREBIRD_TOKEN }}
