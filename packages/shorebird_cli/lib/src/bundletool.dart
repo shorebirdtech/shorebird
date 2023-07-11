@@ -4,10 +4,10 @@ import 'package:shorebird_cli/src/cache.dart';
 import 'package:shorebird_cli/src/java.dart';
 import 'package:shorebird_cli/src/process.dart';
 
-// A reference to a [Bundletool] instance.
+/// A reference to a [Bundletool] instance.
 final bundletoolRef = create(Bundletool.new);
 
-// The [Bundletool] instance available in the current zone.
+/// The [Bundletool] instance available in the current zone.
 Bundletool get bundletool => read(bundletoolRef);
 
 class Bundletool {
