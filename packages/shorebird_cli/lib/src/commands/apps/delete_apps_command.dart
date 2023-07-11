@@ -17,12 +17,20 @@ class DeleteAppCommand extends ShorebirdCommand
     with ShorebirdConfigMixin, ShorebirdValidationMixin {
   /// {@macro delete_app_command}
   DeleteAppCommand({super.buildCodePushClient}) {
-    argParser.addOption(
-      'app-id',
-      help: '''
+    argParser
+      ..addOption(
+        'app-id',
+        help: '''
 The unique application identifier.
 Defaults to the app_id in "shorebird.yaml".''',
-    );
+      )
+      ..addFlag(
+        'force',
+        abbr: 'f',
+        help: 'Release without confirmation if there are no errors.',
+        negatable: false,
+      );
+    ;
   }
 
   @override
@@ -42,6 +50,7 @@ Defaults to the app_id in "shorebird.yaml".''',
     }
 
     final appIdArg = results['app-id'] as String?;
+    final force = results['force'] == true;
     late final String appId;
 
     if (appIdArg == null) {
@@ -63,8 +72,9 @@ Defaults to the app_id in "shorebird.yaml".''',
       hostedUri: ShorebirdEnvironment.hostedUri,
     );
 
-    final confirm = logger.confirm('Deleting an app is permanent. Continue?');
-    if (!confirm) {
+    final shouldProceed =
+        force || logger.confirm('Deleting an app is permanent. Continue?');
+    if (!shouldProceed) {
       logger.info('Aborted.');
       return ExitCode.success.code;
     }
