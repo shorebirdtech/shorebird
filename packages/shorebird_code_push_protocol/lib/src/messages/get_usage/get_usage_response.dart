@@ -1,4 +1,5 @@
 import 'package:json_annotation/json_annotation.dart';
+import 'package:money2/money2.dart';
 import 'package:shorebird_code_push_protocol/shorebird_code_push_protocol.dart';
 
 part 'get_usage_response.g.dart';
@@ -44,6 +45,16 @@ class GetUsageResponse {
   /// The upper limit of patch installs for the current billing period.
   /// If `null`, there is no limit.
   final int? patchInstallLimit;
+}
+
+/// Converts [currentPeriodCost] to a [Money] object.
+extension GetUsageResponseMoney on GetUsageResponse {
+  /// [currentPeriodCost] as a [Money] object. Prefer this over using
+  /// [currentPeriodCost] directly.
+  Money get currentPeriodCostMoney => Money.fromIntWithCurrency(
+        currentPeriodCost,
+        ShorebirdCurrency.usd,
+      );
 }
 
 /// {@template app_usage}
