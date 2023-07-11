@@ -30,7 +30,7 @@ class Bundletool {
 
   Future<String> getVersionName(String appBundlePath) async {
     final result = await _exec(
-      'dump manifest --bundle $appBundlePath --xpath /manifest/@android:versionName',
+      'dump manifest --bundle "$appBundlePath" --xpath /manifest/@android:versionName',
     );
 
     if (result.exitCode != 0) {
@@ -44,7 +44,7 @@ class Bundletool {
 
   Future<String> getVersionCode(String appBundlePath) async {
     final result = await _exec(
-      'dump manifest --bundle $appBundlePath --xpath /manifest/@android:versionCode',
+      'dump manifest --bundle "$appBundlePath" --xpath /manifest/@android:versionCode',
     );
 
     if (result.exitCode != 0) {

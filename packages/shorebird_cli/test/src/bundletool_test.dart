@@ -99,7 +99,7 @@ void main() {
         verify(
           () => process.run(
             'java',
-            '-jar ${p.join(workingDirectory.path, 'bundletool.jar')} dump manifest --bundle $appBundlePath --xpath /manifest/@android:versionName'
+            '-jar ${p.join(workingDirectory.path, 'bundletool.jar')} dump manifest --bundle "$appBundlePath" --xpath /manifest/@android:versionName'
                 .split(' '),
             environment: {},
           ),
@@ -157,7 +157,7 @@ void main() {
         verify(
           () => process.run(
             'java',
-            '-jar ${p.join(workingDirectory.path, 'bundletool.jar')} dump manifest --bundle $appBundlePath --xpath /manifest/@android:versionCode'
+            '-jar ${p.join(workingDirectory.path, 'bundletool.jar')} dump manifest --bundle "$appBundlePath" --xpath /manifest/@android:versionCode'
                 .split(' '),
             environment: {},
           ),
