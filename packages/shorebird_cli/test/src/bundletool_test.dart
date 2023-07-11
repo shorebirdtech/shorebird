@@ -111,7 +111,7 @@ void main() {
         verify(
           () => process.run(
             'java',
-            '''-jar ${p.join(workingDirectory.path, 'bundletool.jar')} build-apks --overwrite --bundle="$appBundlePath" --output="$output" --mode=universal'''
+            '''-jar ${p.join(workingDirectory.path, 'bundletool.jar')} build-apks --overwrite --bundle=$appBundlePath --output=$output --mode=universal'''
                 .split(' '),
             environment: {
               'JAVA_HOME': javaHome,
@@ -173,7 +173,68 @@ void main() {
         verify(
           () => process.run(
             'java',
-            '''-jar ${p.join(workingDirectory.path, 'bundletool.jar')} install-apks --apks="$apks"'''
+            '''-jar ${p.join(workingDirectory.path, 'bundletool.jar')} install-apks --apks=$apks'''
+                .split(' '),
+            environment: {
+              'JAVA_HOME': javaHome,
+            },
+          ),
+        ).called(1);
+      });
+    });
+
+    group('getPackageName', () {
+      test('throws exception if process returns non-zero exit code', () async {
+        when(
+          () => process.run(
+            any(),
+            any(),
+            environment: any(named: 'environment'),
+          ),
+        ).thenAnswer(
+          (_) async => const ShorebirdProcessResult(
+            exitCode: 1,
+            stdout: '',
+            stderr: 'oops',
+          ),
+        );
+        await expectLater(
+          () => runWithOverrides(
+            () => bundletool.getPackageName(appBundlePath),
+          ),
+          throwsA(
+            isA<Exception>().having(
+              (e) => e.toString(),
+              'exception',
+              'Exception: Failed to extract package name from app bundle: oops',
+            ),
+          ),
+        );
+      });
+
+      test('returns the correct package name', () async {
+        when(
+          () => process.run(
+            any(),
+            any(),
+            environment: any(named: 'environment'),
+          ),
+        ).thenAnswer(
+          (_) async => const ShorebirdProcessResult(
+            exitCode: 0,
+            stdout: 'com.example.app',
+            stderr: '',
+          ),
+        );
+
+        final versionName = await runWithOverrides(
+          () => bundletool.getPackageName(appBundlePath),
+        );
+        expect(versionName, equals('com.example.app'));
+        verify(
+          () => process.run(
+            'java',
+            '-jar ${p.join(workingDirectory.path, 'bundletool.jar')} dump manifest --bundle=$appBundlePath --xpath /manifest/@package'
                 .split(' '),
             environment: {
               'JAVA_HOME': javaHome,
@@ -234,7 +295,7 @@ void main() {
         verify(
           () => process.run(
             'java',
-            '-jar ${p.join(workingDirectory.path, 'bundletool.jar')} dump manifest --bundle "$appBundlePath" --xpath /manifest/@android:versionName'
+            '-jar ${p.join(workingDirectory.path, 'bundletool.jar')} dump manifest --bundle=$appBundlePath --xpath /manifest/@android:versionName'
                 .split(' '),
             environment: {
               'JAVA_HOME': javaHome,
@@ -294,7 +355,7 @@ void main() {
         verify(
           () => process.run(
             'java',
-            '-jar ${p.join(workingDirectory.path, 'bundletool.jar')} dump manifest --bundle "$appBundlePath" --xpath /manifest/@android:versionCode'
+            '-jar ${p.join(workingDirectory.path, 'bundletool.jar')} dump manifest --bundle=$appBundlePath --xpath /manifest/@android:versionCode'
                 .split(' '),
             environment: {
               'JAVA_HOME': javaHome,

@@ -15,7 +15,8 @@ ShorebirdPlan _$ShorebirdPlanFromJson(Map<String, dynamic> json) =>
       ($checkedConvert) {
         final val = ShorebirdPlan(
           name: $checkedConvert('name', (v) => v as String),
-          monthlyCost: $checkedConvert('monthly_cost', (v) => v as int),
+          monthlyCost: $checkedConvert('monthly_cost',
+              (v) => const MoneyConverter().fromJson(v as BigInt)),
           patchInstallLimit:
               $checkedConvert('patch_install_limit', (v) => v as int?),
           maxTeamSize: $checkedConvert('max_team_size', (v) => v as int?),
@@ -32,7 +33,7 @@ ShorebirdPlan _$ShorebirdPlanFromJson(Map<String, dynamic> json) =>
 Map<String, dynamic> _$ShorebirdPlanToJson(ShorebirdPlan instance) =>
     <String, dynamic>{
       'name': instance.name,
-      'monthly_cost': instance.monthlyCost,
+      'monthly_cost': const MoneyConverter().toJson(instance.monthlyCost),
       'patch_install_limit': instance.patchInstallLimit,
       'max_team_size': instance.maxTeamSize,
     };
