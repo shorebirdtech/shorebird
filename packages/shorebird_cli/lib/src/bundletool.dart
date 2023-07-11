@@ -48,11 +48,11 @@ class Bundletool {
 
   /// Deploy your app from an APK set.
   ///
-  /// e.g. `bundletool install-apks --apks=/MyApp/my_app.apks`
+  /// e.g. `bundletool install-apks --apks=/MyApp/my_app.apks --allow-downgrade`
   ///
   /// https://developer.android.com/tools/bundletool#deploy_with_bundletool
   Future<void> installApks({required String apks}) async {
-    final result = await _exec('install-apks --apks=$apks');
+    final result = await _exec('install-apks --apks=$apks --allow-downgrade');
     if (result.exitCode != 0) {
       throw Exception('Failed to install apks: ${result.stderr}');
     }
