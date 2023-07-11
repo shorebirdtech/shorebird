@@ -1,17 +1,9 @@
 name: e2e
 
-# on:
-#   schedule:
-#     # At the end of every day
-#     - cron: "0 0 * * *"
-
-# TODO delete this before submitting, this is just to test that this works in
-# the context of a GHA.
 on:
-  pull_request:
-  push:
-    branches:
-      - main
+  schedule:
+    # At the end of every day
+    - cron: "0 0 * * *"
 
 env:
   SHOREBIRD_TOKEN: ${{ secrets.SHOREBIRD_TOKEN }}
