@@ -9,6 +9,7 @@ import 'package:platform/platform.dart';
 import 'package:scoped/scoped.dart';
 import 'package:shorebird_cli/src/archive_analysis/archive_analysis.dart';
 import 'package:shorebird_cli/src/auth/auth.dart';
+import 'package:shorebird_cli/src/bundletool.dart';
 import 'package:shorebird_cli/src/cache.dart' show Cache, cacheRef;
 import 'package:shorebird_cli/src/code_push_client_wrapper.dart';
 import 'package:shorebird_cli/src/commands/patch/patch_android_command.dart';
@@ -29,6 +30,8 @@ class _MockAabDiffer extends Mock implements AabDiffer {}
 class _MockArgResults extends Mock implements ArgResults {}
 
 class _MockAuth extends Mock implements Auth {}
+
+class _MockBundleTool extends Mock implements Bundletool {}
 
 class _MockCache extends Mock implements Cache {}
 
@@ -104,6 +107,7 @@ flutter:
     late AabDiffer aabDiffer;
     late ArgResults argResults;
     late Auth auth;
+    late Bundletool bundletool;
     late CodePushClientWrapper codePushClientWrapper;
     late Directory shorebirdRoot;
     late Java java;
@@ -113,8 +117,6 @@ flutter:
     late ShorebirdProcessResult flutterBuildProcessResult;
     late ShorebirdProcessResult flutterRevisionProcessResult;
     late ShorebirdProcessResult patchProcessResult;
-    late ShorebirdProcessResult releaseVersionNameProcessResult;
-    late ShorebirdProcessResult releaseVersionCodeProcessResult;
     late http.Client httpClient;
     late Cache cache;
     late PatchAndroidCommand command;
@@ -126,6 +128,7 @@ flutter:
         body,
         values: {
           authRef.overrideWith(() => auth),
+          bundletoolRef.overrideWith(() => bundletool),
           cacheRef.overrideWith(() => cache),
           codePushClientWrapperRef.overrideWith(() => codePushClientWrapper),
           engineConfigRef.overrideWith(() => const EngineConfig.empty()),
@@ -176,6 +179,7 @@ flutter:
       aabDiffer = _MockAabDiffer();
       argResults = _MockArgResults();
       auth = _MockAuth();
+      bundletool = _MockBundleTool();
       codePushClientWrapper = _MockCodePushClientWrapper();
       java = _MockJava();
       shorebirdRoot = Directory.systemTemp.createTempSync();
@@ -185,8 +189,6 @@ flutter:
       flutterBuildProcessResult = _MockProcessResult();
       flutterRevisionProcessResult = _MockProcessResult();
       patchProcessResult = _MockProcessResult();
-      releaseVersionNameProcessResult = _MockProcessResult();
-      releaseVersionCodeProcessResult = _MockProcessResult();
       httpClient = _MockHttpClient();
       flutterValidator = _MockShorebirdFlutterValidator();
       cache = _MockCache();
@@ -238,19 +240,6 @@ flutter:
           ..writeAsStringSync('diff');
         return patchProcessResult;
       });
-      when(
-        () => shorebirdProcess.run(
-          any(that: contains('java')),
-          any(),
-          runInShell: any(named: 'runInShell'),
-          environment: any(named: 'environment'),
-        ),
-      ).thenAnswer((invocation) async {
-        final args = invocation.positionalArguments[1] as List<String>;
-        return args.last == '/manifest/@android:versionCode'
-            ? releaseVersionCodeProcessResult
-            : releaseVersionNameProcessResult;
-      });
 
       when(() => aabDiffer.changedFiles(any(), any()))
           .thenReturn(FileSetDiff.empty());
@@ -274,20 +263,8 @@ flutter:
       ).thenReturn(ExitCode.success.code);
       when(() => patchProcessResult.exitCode).thenReturn(ExitCode.success.code);
       when(
-        () => releaseVersionNameProcessResult.exitCode,
-      ).thenReturn(ExitCode.success.code);
-      when(
-        () => releaseVersionCodeProcessResult.exitCode,
-      ).thenReturn(ExitCode.success.code);
-      when(
         () => flutterRevisionProcessResult.stdout,
       ).thenReturn(flutterRevision);
-      when(
-        () => releaseVersionNameProcessResult.stdout,
-      ).thenReturn(versionName);
-      when(
-        () => releaseVersionCodeProcessResult.stdout,
-      ).thenReturn(versionCode);
       when(() => httpClient.send(any())).thenAnswer(
         (_) async => http.StreamedResponse(const Stream.empty(), HttpStatus.ok),
       );
@@ -337,6 +314,12 @@ flutter:
       when(
         () => cache.getArtifactDirectory(any()),
       ).thenReturn(Directory.systemTemp.createTempSync());
+      when(() => bundletool.getVersionName(any())).thenAnswer(
+        (_) async => versionName,
+      );
+      when(() => bundletool.getVersionCode(any())).thenAnswer(
+        (_) async => versionCode,
+      );
     });
 
     test('throws config error when shorebird is not initialized', () async {
@@ -464,9 +447,10 @@ https://github.com/shorebirdtech/shorebird/issues/472
     });
 
     test('errors when detecting release version name fails', () async {
-      const error = 'oops';
-      when(() => releaseVersionNameProcessResult.exitCode).thenReturn(1);
-      when(() => releaseVersionNameProcessResult.stderr).thenReturn(error);
+      final exception = Exception(
+        'Failed to extract version name from app bundle: oops',
+      );
+      when(() => bundletool.getVersionName(any())).thenThrow(exception);
       final tempDir = setUpTempDir();
       setUpTempArtifacts(tempDir);
       final exitCode = await IOOverrides.runZoned(
@@ -474,17 +458,14 @@ https://github.com/shorebirdtech/shorebird/issues/472
         getCurrentDirectory: () => tempDir,
       );
       expect(exitCode, ExitCode.software.code);
-      verify(
-        () => progress.fail(
-          'Exception: Failed to extract version name from app bundle: $error',
-        ),
-      ).called(1);
+      verify(() => progress.fail('$exception')).called(1);
     });
 
     test('errors when detecting release version code fails', () async {
-      const error = 'oops';
-      when(() => releaseVersionCodeProcessResult.exitCode).thenReturn(1);
-      when(() => releaseVersionCodeProcessResult.stderr).thenReturn(error);
+      final exception = Exception(
+        'Failed to extract version code from app bundle: oops',
+      );
+      when(() => bundletool.getVersionCode(any())).thenThrow(exception);
       final tempDir = setUpTempDir();
       setUpTempArtifacts(tempDir);
       final exitCode = await IOOverrides.runZoned(
@@ -492,11 +473,7 @@ https://github.com/shorebirdtech/shorebird/issues/472
         getCurrentDirectory: () => tempDir,
       );
       expect(exitCode, ExitCode.software.code);
-      verify(
-        () => progress.fail(
-          'Exception: Failed to extract version code from app bundle: $error',
-        ),
-      ).called(1);
+      verify(() => progress.fail('$exception')).called(1);
     });
 
     test('prints release version when detected', () async {

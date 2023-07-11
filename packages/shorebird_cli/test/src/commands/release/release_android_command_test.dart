@@ -8,6 +8,7 @@ import 'package:path/path.dart' as p;
 import 'package:platform/platform.dart';
 import 'package:scoped/scoped.dart';
 import 'package:shorebird_cli/src/auth/auth.dart';
+import 'package:shorebird_cli/src/bundletool.dart';
 import 'package:shorebird_cli/src/cache.dart';
 import 'package:shorebird_cli/src/code_push_client_wrapper.dart';
 import 'package:shorebird_cli/src/commands/commands.dart';
@@ -24,6 +25,8 @@ class _MockArgResults extends Mock implements ArgResults {}
 class _MockHttpClient extends Mock implements http.Client {}
 
 class _MockAuth extends Mock implements Auth {}
+
+class _MockBundleTool extends Mock implements Bundletool {}
 
 class _MockCache extends Mock implements Cache {}
 
@@ -77,6 +80,7 @@ flutter:
     const javaHome = 'test-java-home';
 
     late ArgResults argResults;
+    late Bundletool bundletool;
     late http.Client httpClient;
     late CodePushClientWrapper codePushClientWrapper;
     late Directory shorebirdRoot;
@@ -88,8 +92,6 @@ flutter:
     late Logger logger;
     late ShorebirdProcessResult flutterBuildProcessResult;
     late ShorebirdProcessResult flutterRevisionProcessResult;
-    late ShorebirdProcessResult releaseVersionNameProcessResult;
-    late ShorebirdProcessResult releaseVersionCodeProcessResult;
     late ReleaseAndroidCommand command;
     late ShorebirdFlutterValidator flutterValidator;
     late ShorebirdProcess shorebirdProcess;
@@ -99,6 +101,7 @@ flutter:
         body,
         values: {
           authRef.overrideWith(() => auth),
+          bundletoolRef.overrideWith(() => bundletool),
           cacheRef.overrideWith(() => cache),
           codePushClientWrapperRef.overrideWith(() => codePushClientWrapper),
           engineConfigRef.overrideWith(() => const EngineConfig.empty()),
@@ -123,6 +126,7 @@ flutter:
 
     setUp(() {
       argResults = _MockArgResults();
+      bundletool = _MockBundleTool();
       codePushClientWrapper = _MockCodePushClientWrapper();
       httpClient = _MockHttpClient();
       platform = _MockPlatform();
@@ -134,8 +138,6 @@ flutter:
       logger = _MockLogger();
       flutterBuildProcessResult = _MockProcessResult();
       flutterRevisionProcessResult = _MockProcessResult();
-      releaseVersionNameProcessResult = _MockProcessResult();
-      releaseVersionCodeProcessResult = _MockProcessResult();
       flutterValidator = _MockShorebirdFlutterValidator();
       shorebirdProcess = _MockShorebirdProcess();
 
@@ -167,19 +169,6 @@ flutter:
           workingDirectory: any(named: 'workingDirectory'),
         ),
       ).thenAnswer((_) async => flutterRevisionProcessResult);
-      when(
-        () => shorebirdProcess.run(
-          any(that: contains('java')),
-          any(),
-          runInShell: any(named: 'runInShell'),
-          environment: any(named: 'environment'),
-        ),
-      ).thenAnswer((invocation) async {
-        final args = invocation.positionalArguments[1] as List<String>;
-        return args.last == '/manifest/@android:versionCode'
-            ? releaseVersionCodeProcessResult
-            : releaseVersionNameProcessResult;
-      });
       when(() => argResults.rest).thenReturn([]);
       when(() => argResults['arch']).thenReturn(arch);
       when(() => argResults['platform']).thenReturn(platformName);
@@ -202,20 +191,8 @@ flutter:
         () => flutterRevisionProcessResult.exitCode,
       ).thenReturn(ExitCode.success.code);
       when(
-        () => releaseVersionNameProcessResult.exitCode,
-      ).thenReturn(ExitCode.success.code);
-      when(
-        () => releaseVersionCodeProcessResult.exitCode,
-      ).thenReturn(ExitCode.success.code);
-      when(
         () => flutterRevisionProcessResult.stdout,
       ).thenReturn(flutterRevision);
-      when(
-        () => releaseVersionNameProcessResult.stdout,
-      ).thenReturn(versionName);
-      when(
-        () => releaseVersionCodeProcessResult.stdout,
-      ).thenReturn(versionCode);
       when(
         () => codePushClientWrapper.getApp(appId: any(named: 'appId')),
       ).thenAnswer((_) async => appMetadata);
@@ -249,6 +226,12 @@ flutter:
       ).thenAnswer((_) async {});
       when(() => flutterValidator.validate(any())).thenAnswer((_) async => []);
       when(() => java.home()).thenReturn(javaHome);
+      when(
+        () => bundletool.getVersionName(any()),
+      ).thenAnswer((_) async => versionName);
+      when(
+        () => bundletool.getVersionCode(any()),
+      ).thenAnswer((_) async => versionCode);
 
       command = runWithOverrides(
         () => ReleaseAndroidCommand(
@@ -299,9 +282,10 @@ flutter:
     });
 
     test('errors when detecting release version name fails', () async {
-      const error = 'oops';
-      when(() => releaseVersionNameProcessResult.exitCode).thenReturn(1);
-      when(() => releaseVersionNameProcessResult.stderr).thenReturn(error);
+      final exception = Exception(
+        'Failed to extract version name from app bundle: oops',
+      );
+      when(() => bundletool.getVersionName(any())).thenThrow(exception);
       final tempDir = setUpTempDir();
 
       final exitCode = await IOOverrides.runZoned(
@@ -310,17 +294,14 @@ flutter:
       );
 
       expect(exitCode, ExitCode.software.code);
-      verify(
-        () => progress.fail(
-          'Exception: Failed to extract version name from app bundle: $error',
-        ),
-      ).called(1);
+      verify(() => progress.fail('$exception')).called(1);
     });
 
     test('errors when detecting release version code fails', () async {
-      const error = 'oops';
-      when(() => releaseVersionCodeProcessResult.exitCode).thenReturn(1);
-      when(() => releaseVersionCodeProcessResult.stderr).thenReturn(error);
+      final exception = Exception(
+        'Failed to extract version code from app bundle: oops',
+      );
+      when(() => bundletool.getVersionCode(any())).thenThrow(exception);
       final tempDir = setUpTempDir();
 
       final exitCode = await IOOverrides.runZoned(
@@ -329,11 +310,7 @@ flutter:
       );
 
       expect(exitCode, ExitCode.software.code);
-      verify(
-        () => progress.fail(
-          'Exception: Failed to extract version code from app bundle: $error',
-        ),
-      ).called(1);
+      verify(() => progress.fail('$exception')).called(1);
     });
 
     test('aborts when user opts out', () async {
