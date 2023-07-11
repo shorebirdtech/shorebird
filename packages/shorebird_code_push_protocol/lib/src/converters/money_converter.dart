@@ -5,15 +5,17 @@ import 'package:money2/money2.dart';
 Currency get usd => Currency.create('USD', 2);
 
 /// {@template money_converter}
-/// Converts between [Money] and [String].
+/// Converts between [Money] and [int].
 /// {@endtemplate}
-class MoneyConverter implements JsonConverter<Money, String> {
+// TODO(bryanoltman): change this to use String as the transport type the next
+// time we make a breaking change to the API.
+class MoneyConverter implements JsonConverter<Money, int> {
   /// {@macro money_converter}
   const MoneyConverter();
 
   @override
-  Money fromJson(String cents) => Money.parseWithCurrency(cents, usd);
+  Money fromJson(int cents) => Money.fromIntWithCurrency(cents, usd);
 
   @override
-  String toJson(Money money) => money.minorUnits.toString();
+  int toJson(Money money) => money.minorUnits.toInt();
 }
