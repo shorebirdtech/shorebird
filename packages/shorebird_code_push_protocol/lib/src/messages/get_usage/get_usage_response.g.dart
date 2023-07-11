@@ -26,7 +26,7 @@ GetUsageResponse _$GetUsageResponseFromJson(Map<String, dynamic> json) =>
           currentPeriodEnd: $checkedConvert(
               'current_period_end', (v) => DateTime.parse(v as String)),
           currentPeriodCost: $checkedConvert('current_period_cost',
-              (v) => const MoneyConverter().fromJson(v as String)),
+              (v) => const MoneyConverter().fromJson(v as int)),
           patchInstallLimit:
               $checkedConvert('patch_install_limit', (v) => v as int?),
         );
