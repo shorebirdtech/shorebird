@@ -18,6 +18,7 @@ class _MockShorebirdProcess extends Mock implements ShorebirdProcess {}
 void main() {
   group(Bundletool, () {
     const appBundlePath = 'test-app-bundle.aab';
+    const javaHome = 'test-java-home';
 
     late Directory workingDirectory;
     late Cache cache;
@@ -47,6 +48,7 @@ void main() {
       when(
         () => cache.getArtifactDirectory(any()),
       ).thenReturn(workingDirectory);
+      when(() => java.home()).thenReturn(javaHome);
     });
 
     group('getVersionName', () {
@@ -92,6 +94,7 @@ void main() {
             stderr: '',
           ),
         );
+
         final versionName = await runWithOverrides(
           () => bundletool.getVersionName(appBundlePath),
         );
@@ -101,7 +104,9 @@ void main() {
             'java',
             '-jar ${p.join(workingDirectory.path, 'bundletool.jar')} dump manifest --bundle "$appBundlePath" --xpath /manifest/@android:versionName'
                 .split(' '),
-            environment: {},
+            environment: {
+              'JAVA_HOME': javaHome,
+            },
           ),
         ).called(1);
       });
@@ -159,7 +164,9 @@ void main() {
             'java',
             '-jar ${p.join(workingDirectory.path, 'bundletool.jar')} dump manifest --bundle "$appBundlePath" --xpath /manifest/@android:versionCode'
                 .split(' '),
-            environment: {},
+            environment: {
+              'JAVA_HOME': javaHome,
+            },
           ),
         ).called(1);
       });
