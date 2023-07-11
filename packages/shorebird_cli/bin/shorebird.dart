@@ -2,6 +2,7 @@ import 'dart:io';
 
 import 'package:scoped/scoped.dart';
 import 'package:shorebird_cli/src/auth/auth.dart';
+import 'package:shorebird_cli/src/bundle_tool.dart';
 import 'package:shorebird_cli/src/cache.dart';
 import 'package:shorebird_cli/src/code_push_client_wrapper.dart';
 import 'package:shorebird_cli/src/command_runner.dart';
@@ -16,13 +17,14 @@ Future<void> main(List<String> args) async {
       () async => ShorebirdCliCommandRunner().run(args),
       values: {
         authRef,
+        bundletoolRef,
         cacheRef,
+        codePushClientWrapperRef,
         engineConfigRef,
         javaRef,
         loggerRef,
         platformRef,
         processRef,
-        codePushClientWrapperRef,
       },
     ),
   );
