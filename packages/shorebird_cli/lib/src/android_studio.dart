@@ -11,8 +11,10 @@ final androidStudioRef = create(AndroidStudio.new);
 /// The [AndroidStudio] instance available in the current zone.
 AndroidStudio get androidStudio => read(androidStudioRef);
 
+/// A wrapper around Android Studio.
 class AndroidStudio {
-  String? path() {
+  /// The path to the Android Studio installation.
+  String? get path {
     final home = platform.environment['HOME'] ?? '~';
     if (platform.isMacOS) {
       final candidateLocations = [

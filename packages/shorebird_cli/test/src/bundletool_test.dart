@@ -48,7 +48,7 @@ void main() {
       when(
         () => cache.getArtifactDirectory(any()),
       ).thenReturn(workingDirectory);
-      when(() => java.home()).thenReturn(javaHome);
+      when(() => java.home).thenReturn(javaHome);
     });
 
     group('buildApks', () {

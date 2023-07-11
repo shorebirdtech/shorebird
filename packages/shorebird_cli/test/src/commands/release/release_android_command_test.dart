@@ -225,7 +225,7 @@ flutter:
         ),
       ).thenAnswer((_) async {});
       when(() => flutterValidator.validate(any())).thenAnswer((_) async => []);
-      when(() => java.home()).thenReturn(javaHome);
+      when(() => java.home).thenReturn(javaHome);
       when(
         () => bundletool.getVersionName(any()),
       ).thenAnswer((_) async => versionName);

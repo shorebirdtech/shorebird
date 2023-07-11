@@ -125,7 +125,7 @@ environment:
       when(() => result.exitCode).thenReturn(ExitCode.success.code);
       when(() => result.stdout).thenReturn('');
 
-      when(java.home).thenReturn(javaHome);
+      when(() => java.home).thenReturn(javaHome);
       when(() => platform.isWindows).thenReturn(false);
 
       command = runWithOverrides(

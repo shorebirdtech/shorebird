@@ -15,22 +15,22 @@ Java get java => read(javaRef);
 /// A wrapper around all java related functionality.
 class Java {
   /// Returns the path to the java executable.
-  String? executable() {
+  String? get executable {
     if (!platform.isWindows) return 'java';
 
-    final javaHome = home();
+    final javaHome = home;
     if (javaHome == null) return null;
     return p.join(javaHome, 'bin', 'java.exe');
   }
 
   /// Returns the JAVA_HOME environment variable if set.
   /// Otherwise, returns the location where the Android Studio JDK/JRE is installed.
-  String? home() {
+  String? get home {
     if (platform.environment.containsKey('JAVA_HOME')) {
       return platform.environment['JAVA_HOME'];
     }
 
-    final androidStudioPath = androidStudio.path();
+    final androidStudioPath = androidStudio.path;
     if (androidStudioPath == null) return null;
     if (platform.isMacOS) {
       final candidateLocations = [

@@ -16,8 +16,8 @@ class Bundletool {
   Future<ShorebirdProcessResult> _exec(String command) async {
     await cache.updateAll();
     final bundletool = p.join(cache.getArtifactDirectory(jar).path, jar);
-    final javaHome = java.home();
-    final javaExecutable = java.executable() ?? 'java';
+    final javaHome = java.home;
+    final javaExecutable = java.executable ?? 'java';
 
     return process.run(
       javaExecutable,
