@@ -9,7 +9,7 @@ import 'package:platform/platform.dart';
 import 'package:scoped/scoped.dart';
 import 'package:shorebird_cli/src/archive_analysis/archive_analysis.dart';
 import 'package:shorebird_cli/src/auth/auth.dart';
-import 'package:shorebird_cli/src/bundle_tool.dart';
+import 'package:shorebird_cli/src/bundletool.dart';
 import 'package:shorebird_cli/src/cache.dart' show Cache, cacheRef;
 import 'package:shorebird_cli/src/code_push_client_wrapper.dart';
 import 'package:shorebird_cli/src/commands/patch/patch_android_command.dart';

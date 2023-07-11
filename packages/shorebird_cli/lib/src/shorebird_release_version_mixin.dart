@@ -1,4 +1,4 @@
-import 'package:shorebird_cli/src/bundle_tool.dart';
+import 'package:shorebird_cli/src/bundletool.dart';
 import 'package:shorebird_cli/src/cache.dart';
 import 'package:shorebird_cli/src/command.dart';
 
