@@ -84,6 +84,40 @@ void main() {
       expect(Cache.new, returnsNormally);
     });
 
+    group('getArtifactDirectory', () {
+      test('returns correct directory', () {
+        final directory = cache.getArtifactDirectory('test');
+        expect(
+          directory.path.endsWith(
+            p.join(
+              'bin',
+              'cache',
+              'artifacts',
+              'test',
+            ),
+          ),
+          isTrue,
+        );
+      });
+    });
+
+    group('getPreviewDirectory', () {
+      test('returns correct directory', () {
+        final directory = cache.getPreviewDirectory('test');
+        expect(
+          directory.path.endsWith(
+            p.join(
+              'bin',
+              'cache',
+              'previews',
+              'test',
+            ),
+          ),
+          isTrue,
+        );
+      });
+    });
+
     group('CachedArtifact', () {
       late CachedArtifact artifact;
 
