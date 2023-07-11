@@ -55,8 +55,14 @@ jobs:
           }
         shell: pwsh
 
-      - name: 🎯 Set up dart
-        uses: dart-lang/setup-dart@v1
+      - name: ☕ Set up Java
+        uses: actions/setup-java@v3
+        with:
+          distribution: "temurin"
+          java-version: "17"
+
+      - name: 🎯 Set up Flutter
+        uses: subosito/flutter-action@v2
 
       - name: Run Integration Tests
         run: dart test integration_test

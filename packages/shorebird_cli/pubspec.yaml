@@ -31,6 +31,7 @@ dependencies:
     path: ../scoped
   shorebird_code_push_client:
     path: ../shorebird_code_push_client
+  uuid: ^3.0.7
   version: ^3.0.2
   xml: ^6.2.2
   yaml: ^3.1.1
