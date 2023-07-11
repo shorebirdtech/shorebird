@@ -1,4 +1,3 @@
-import 'package:money2/money2.dart';
 import 'package:shorebird_code_push_protocol/shorebird_code_push_protocol.dart';
 import 'package:test/test.dart';
 
