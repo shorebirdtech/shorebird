@@ -157,5 +157,35 @@ void main() {
         ),
       ),
     );
+
+    // Delete the app to clean up after ourselves.
+    final deleteAppResult = runCommand(
+      'shorebird apps delete --app-id=${shorebirdYaml.appId} --force',
+      workingDirectory: cwd,
+    );
+    expect(deleteAppResult.stderr, isEmpty);
+    expect(deleteAppResult.exitCode, equals(0));
+    expect(
+      deleteAppResult.stdout,
+      contains('Deleted app: ${shorebirdYaml.appId}'),
+    );
+
+    // Verify that the app was deleted.
+    final deleteAppAppsListResult = runCommand(
+      'shorebird apps list',
+      workingDirectory: cwd,
+    );
+    expect(deleteAppAppsListResult.stderr, isEmpty);
+    expect(deleteAppAppsListResult.exitCode, equals(0));
+    expect(
+      (deleteAppAppsListResult.stdout as String).split('\n'),
+      isNot(
+        anyElement(
+          matches(
+            '^.+$testAppName.+${shorebirdYaml.appId}.+\$',
+          ),
+        ),
+      ),
+    );
   });
 }
