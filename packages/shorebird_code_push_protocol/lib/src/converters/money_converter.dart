@@ -5,7 +5,7 @@ import 'package:money2/money2.dart';
 Currency get usd => Currency.create('USD', 2);
 
 /// {@template money_converter}
-/// Converts between [Money] and [int].
+/// Converts between [Money] and [BigInt].
 /// {@endtemplate}
 class MoneyConverter implements JsonConverter<Money, BigInt> {
   /// {@macro money_converter}
