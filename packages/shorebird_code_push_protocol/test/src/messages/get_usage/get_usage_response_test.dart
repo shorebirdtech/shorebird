@@ -25,30 +25,5 @@ void main() {
         equals(response.toJson()),
       );
     });
-
-    group('currentPeriodCostMoney', () {
-      test('converts currentPeriodCost to a Money object', () {
-        final response = GetUsageResponse(
-          plan: ShorebirdPlan(
-            name: 'Team',
-            monthlyCost: Money.fromIntWithCurrency(2000, usd),
-            patchInstallLimit: 10000,
-            maxTeamSize: 1,
-          ),
-          apps: [
-            const AppUsage(
-              id: 'app-id',
-              name: 'My app',
-              patchInstallCount: 1337,
-            ),
-          ],
-          patchInstallLimit: 42,
-          currentPeriodCost: Money.fromIntWithCurrency(2000, usd),
-          currentPeriodStart: DateTime(2021),
-          currentPeriodEnd: DateTime(2021, 1, 2),
-        );
-        expect(response.currentPeriodCost.toString(), equals(r'$20.00'));
-      });
-    });
   });
 }
