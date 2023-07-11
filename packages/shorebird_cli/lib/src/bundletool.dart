@@ -39,7 +39,7 @@ class Bundletool {
     required String output,
   }) async {
     final result = await _exec(
-      '''build-apks --overwrite --bundle="$bundle" --output="$output" --mode=universal''',
+      '''build-apks --overwrite --bundle=$bundle --output=$output --mode=universal''',
     );
     if (result.exitCode != 0) {
       throw Exception('Failed to build apks: ${result.stderr}');
@@ -52,16 +52,31 @@ class Bundletool {
   ///
   /// https://developer.android.com/tools/bundletool#deploy_with_bundletool
   Future<void> installApks({required String apks}) async {
-    final result = await _exec('install-apks --apks="$apks"');
+    final result = await _exec('install-apks --apks=$apks');
     if (result.exitCode != 0) {
       throw Exception('Failed to install apks: ${result.stderr}');
     }
   }
 
+  /// Extract the package name from an app bundle.
+  Future<String> getPackageName(String appBundlePath) async {
+    final result = await _exec(
+      'dump manifest --bundle=$appBundlePath --xpath /manifest/@package',
+    );
+
+    if (result.exitCode != 0) {
+      throw Exception(
+        '''Failed to extract package name from app bundle: ${result.stderr}''',
+      );
+    }
+
+    return (result.stdout as String).trim();
+  }
+
   /// Extract the version name from an app bundle.
   Future<String> getVersionName(String appBundlePath) async {
     final result = await _exec(
-      'dump manifest --bundle "$appBundlePath" --xpath /manifest/@android:versionName',
+      'dump manifest --bundle=$appBundlePath --xpath /manifest/@android:versionName',
     );
 
     if (result.exitCode != 0) {
@@ -76,7 +91,7 @@ class Bundletool {
   /// Extract the version code from an app bundle.
   Future<String> getVersionCode(String appBundlePath) async {
     final result = await _exec(
-      'dump manifest --bundle "$appBundlePath" --xpath /manifest/@android:versionCode',
+      'dump manifest --bundle=$appBundlePath --xpath /manifest/@android:versionCode',
     );
 
     if (result.exitCode != 0) {
