@@ -19,4 +19,7 @@ class BuildCommand extends ShorebirdCommand {
 
   @override
   String get name => 'build';
+
+  @override
+  bool get hidden => true;
 }
