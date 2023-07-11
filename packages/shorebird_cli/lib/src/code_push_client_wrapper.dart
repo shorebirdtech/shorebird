@@ -60,6 +60,18 @@ class CodePushClientWrapper {
 
   final CodePushClient codePushClient;
 
+  Future<List<AppMetadata>> getApps() async {
+    final fetchAppsProgress = logger.progress('Fetching apps');
+    try {
+      final apps = (await codePushClient.getApps()).toList();
+      fetchAppsProgress.complete();
+      return apps;
+    } catch (error) {
+      fetchAppsProgress.fail('$error');
+      exit(ExitCode.software.code);
+    }
+  }
+
   Future<AppMetadata> getApp({required String appId}) async {
     final app = await maybeGetApp(appId: appId);
     if (app == null) {
@@ -75,15 +87,8 @@ This app may not exist or you may not have permission to view it.''',
   }
 
   Future<AppMetadata?> maybeGetApp({required String appId}) async {
-    final fetchAppsProgress = logger.progress('Fetching apps');
-    try {
-      final apps = (await codePushClient.getApps()).toList();
-      fetchAppsProgress.complete();
-      return apps.firstWhereOrNull((a) => a.appId == appId);
-    } catch (error) {
-      fetchAppsProgress.fail('$error');
-      exit(ExitCode.software.code);
-    }
+    final apps = await getApps();
+    return apps.firstWhereOrNull((a) => a.appId == appId);
   }
 
   @visibleForTesting
@@ -177,20 +182,24 @@ Please create a release using "shorebird release" and try again.
     return release;
   }
 
+  Future<List<Release>> getReleases({required String appId}) async {
+    final fetchReleasesProgress = logger.progress('Fetching releases');
+    try {
+      final releases = await codePushClient.getReleases(appId: appId);
+      fetchReleasesProgress.complete();
+      return releases;
+    } catch (error) {
+      fetchReleasesProgress.fail('$error');
+      exit(ExitCode.software.code);
+    }
+  }
+
   Future<Release?> maybeGetRelease({
     required String appId,
     required String releaseVersion,
   }) async {
-    final List<Release> releases;
-    final fetchReleaseProgress = logger.progress('Fetching release');
-    try {
-      releases = await codePushClient.getReleases(appId: appId);
-      fetchReleaseProgress.complete();
-      return releases.firstWhereOrNull((r) => r.version == releaseVersion);
-    } catch (error) {
-      fetchReleaseProgress.fail('$error');
-      exit(ExitCode.software.code);
-    }
+    final releases = await getReleases(appId: appId);
+    return releases.firstWhereOrNull((r) => r.version == releaseVersion);
   }
 
   Future<Release> createRelease({
