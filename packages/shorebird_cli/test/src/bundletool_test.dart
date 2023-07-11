@@ -51,6 +51,76 @@ void main() {
       when(() => java.home()).thenReturn(javaHome);
     });
 
+    group('buildApks', () {
+      late Directory tempDir;
+      late String output;
+
+      setUp(() {
+        tempDir = Directory.systemTemp.createTempSync();
+        output = p.join(tempDir.path, 'output.apks');
+      });
+
+      test('throws exception if process returns non-zero exit code', () async {
+        when(
+          () => process.run(
+            any(),
+            any(),
+            environment: any(named: 'environment'),
+          ),
+        ).thenAnswer(
+          (_) async => const ShorebirdProcessResult(
+            exitCode: 1,
+            stdout: '',
+            stderr: 'oops',
+          ),
+        );
+        await expectLater(
+          () => runWithOverrides(
+            () => bundletool.buildApks(bundle: appBundlePath, output: output),
+          ),
+          throwsA(
+            isA<Exception>().having(
+              (e) => e.toString(),
+              'exception',
+              'Exception: Failed to build apks: oops',
+            ),
+          ),
+        );
+      });
+
+      test('completes when process succeeds', () async {
+        when(
+          () => process.run(
+            any(),
+            any(),
+            environment: any(named: 'environment'),
+          ),
+        ).thenAnswer(
+          (_) async => const ShorebirdProcessResult(
+            exitCode: 0,
+            stdout: '',
+            stderr: '',
+          ),
+        );
+        await expectLater(
+          runWithOverrides(
+            () => bundletool.buildApks(bundle: appBundlePath, output: output),
+          ),
+          completes,
+        );
+        verify(
+          () => process.run(
+            'java',
+            '''-jar ${p.join(workingDirectory.path, 'bundletool.jar')} build-apks --overwrite --bundle="$appBundlePath" --output="$output" --mode=universal'''
+                .split(' '),
+            environment: {
+              'JAVA_HOME': javaHome,
+            },
+          ),
+        ).called(1);
+      });
+    });
+
     group('getVersionName', () {
       test('throws exception if process returns non-zero exit code', () async {
         when(
