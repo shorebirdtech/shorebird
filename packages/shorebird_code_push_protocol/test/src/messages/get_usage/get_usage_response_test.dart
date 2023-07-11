@@ -1,3 +1,4 @@
+import 'package:money2/money2.dart';
 import 'package:shorebird_code_push_protocol/shorebird_code_push_protocol.dart';
 import 'package:test/test.dart';
 
@@ -5,9 +6,9 @@ void main() {
   group(GetUsageResponse, () {
     test('can be (de)serialized', () {
       final response = GetUsageResponse(
-        plan: const ShorebirdPlan(
+        plan: ShorebirdPlan(
           name: 'Hobby',
-          monthlyCost: 0,
+          monthlyCost: Money.fromIntWithCurrency(0, usd),
           patchInstallLimit: 1000,
           maxTeamSize: 1,
         ),
@@ -15,7 +16,7 @@ void main() {
           const AppUsage(id: 'app-id', name: 'My app', patchInstallCount: 1337),
         ],
         patchInstallLimit: 42,
-        currentPeriodCost: 0,
+        currentPeriodCost: Money.fromIntWithCurrency(0, usd),
         currentPeriodStart: DateTime(2021),
         currentPeriodEnd: DateTime(2021, 1, 2),
       );
@@ -28,9 +29,9 @@ void main() {
     group('currentPeriodCostMoney', () {
       test('converts currentPeriodCost to a Money object', () {
         final response = GetUsageResponse(
-          plan: const ShorebirdPlan(
+          plan: ShorebirdPlan(
             name: 'Team',
-            monthlyCost: 2000,
+            monthlyCost: Money.fromIntWithCurrency(2000, usd),
             patchInstallLimit: 10000,
             maxTeamSize: 1,
           ),
@@ -42,11 +43,11 @@ void main() {
             ),
           ],
           patchInstallLimit: 42,
-          currentPeriodCost: 2000,
+          currentPeriodCost: Money.fromIntWithCurrency(2000, usd),
           currentPeriodStart: DateTime(2021),
           currentPeriodEnd: DateTime(2021, 1, 2),
         );
-        expect(response.currentPeriodCostMoney.toString(), equals(r'$20.00'));
+        expect(response.currentPeriodCost.toString(), equals(r'$20.00'));
       });
     });
   });
