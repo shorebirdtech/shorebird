@@ -16,7 +16,7 @@ ShorebirdPlan _$ShorebirdPlanFromJson(Map<String, dynamic> json) =>
         final val = ShorebirdPlan(
           name: $checkedConvert('name', (v) => v as String),
           monthlyCost: $checkedConvert('monthly_cost',
-              (v) => const MoneyConverter().fromJson(v as BigInt)),
+              (v) => const MoneyConverter().fromJson(v as String)),
           patchInstallLimit:
               $checkedConvert('patch_install_limit', (v) => v as int?),
           maxTeamSize: $checkedConvert('max_team_size', (v) => v as int?),

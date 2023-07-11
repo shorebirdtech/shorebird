@@ -5,15 +5,15 @@ import 'package:money2/money2.dart';
 Currency get usd => Currency.create('USD', 2);
 
 /// {@template money_converter}
-/// Converts between [Money] and [BigInt].
+/// Converts between [Money] and [String].
 /// {@endtemplate}
-class MoneyConverter implements JsonConverter<Money, BigInt> {
+class MoneyConverter implements JsonConverter<Money, String> {
   /// {@macro money_converter}
   const MoneyConverter();
 
   @override
-  Money fromJson(BigInt cents) => Money.fromBigIntWithCurrency(cents, usd);
+  Money fromJson(String cents) => Money.parseWithCurrency(cents, usd);
 
   @override
-  BigInt toJson(Money money) => money.minorUnits;
+  String toJson(Money money) => money.minorUnits.toString();
 }
