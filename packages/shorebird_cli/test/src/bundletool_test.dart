@@ -173,7 +173,7 @@ void main() {
         verify(
           () => process.run(
             'java',
-            '''-jar ${p.join(workingDirectory.path, 'bundletool.jar')} install-apks --apks=$apks'''
+            '''-jar ${p.join(workingDirectory.path, 'bundletool.jar')} install-apks --apks=$apks --allow-downgrade'''
                 .split(' '),
             environment: {
               'JAVA_HOME': javaHome,
