@@ -1,6 +1,7 @@
 import 'package:http/http.dart' as http;
 import 'package:mason_logger/mason_logger.dart';
 import 'package:mocktail/mocktail.dart';
+import 'package:money2/money2.dart';
 import 'package:path/path.dart' as p;
 import 'package:platform/platform.dart';
 import 'package:scoped/scoped.dart';
@@ -1679,9 +1680,9 @@ Please bump your version number and try again.''',
 
         test('returns usage when succeeds', () async {
           final usage = GetUsageResponse(
-            plan: const ShorebirdPlan(
+            plan: ShorebirdPlan(
               name: 'Hobby',
-              monthlyCost: 0,
+              monthlyCost: Money.fromIntWithCurrency(0, usd),
               patchInstallLimit: 1000,
               maxTeamSize: 1,
             ),
@@ -1693,7 +1694,7 @@ Please bump your version number and try again.''',
               ),
             ],
             patchInstallLimit: 20000,
-            currentPeriodCost: 0,
+            currentPeriodCost: Money.fromIntWithCurrency(0, usd),
             currentPeriodStart: DateTime(2023),
             currentPeriodEnd: DateTime(2023, 2),
           );

@@ -1,6 +1,7 @@
 import 'package:intl/intl.dart';
 import 'package:mason_logger/mason_logger.dart';
 import 'package:mocktail/mocktail.dart';
+import 'package:money2/money2.dart';
 import 'package:scoped/scoped.dart';
 import 'package:shorebird_cli/src/auth/auth.dart';
 import 'package:shorebird_cli/src/code_push_client_wrapper.dart';
@@ -68,9 +69,9 @@ void main() {
 
     test('exits with code 0 when usage is fetched.', () async {
       final usage = GetUsageResponse(
-        plan: const ShorebirdPlan(
+        plan: ShorebirdPlan(
           name: 'Team',
-          monthlyCost: 2000,
+          monthlyCost: Money.fromIntWithCurrency(2000, usd),
           patchInstallLimit: 1000,
           maxTeamSize: 1,
         ),
@@ -87,7 +88,7 @@ void main() {
           ),
         ],
         patchInstallLimit: 20000,
-        currentPeriodCost: 2000,
+        currentPeriodCost: Money.fromIntWithCurrency(2000, usd),
         currentPeriodStart: DateTime(2023),
         currentPeriodEnd: DateTime(2023, 2),
       );
@@ -129,9 +130,9 @@ ${styleBold.wrap('*Usage data is not reported in real-time and may be delayed by
 
     test('exits with code 0 when usage is fetched (unlimited).', () async {
       final usage = GetUsageResponse(
-        plan: const ShorebirdPlan(
+        plan: ShorebirdPlan(
           name: 'Hobby',
-          monthlyCost: 0,
+          monthlyCost: Money.fromIntWithCurrency(0, usd),
           patchInstallLimit: 1000,
           maxTeamSize: 1,
         ),
@@ -147,7 +148,7 @@ ${styleBold.wrap('*Usage data is not reported in real-time and may be delayed by
             patchInstallCount: 42,
           ),
         ],
-        currentPeriodCost: 0,
+        currentPeriodCost: Money.fromIntWithCurrency(0, usd),
         currentPeriodStart: DateTime(2023),
         currentPeriodEnd: DateTime(2023, 2),
       );
