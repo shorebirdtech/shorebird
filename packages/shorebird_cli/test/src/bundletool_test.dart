@@ -111,7 +111,7 @@ void main() {
         verify(
           () => process.run(
             'java',
-            '''-jar ${p.join(workingDirectory.path, 'bundletool.jar')} build-apks --overwrite --bundle="$appBundlePath" --output="$output" --mode=universal'''
+            '''-jar ${p.join(workingDirectory.path, 'bundletool.jar')} build-apks --overwrite --bundle=$appBundlePath --output=$output --mode=universal'''
                 .split(' '),
             environment: {
               'JAVA_HOME': javaHome,
@@ -173,7 +173,7 @@ void main() {
         verify(
           () => process.run(
             'java',
-            '''-jar ${p.join(workingDirectory.path, 'bundletool.jar')} install-apks --apks="$apks"'''
+            '''-jar ${p.join(workingDirectory.path, 'bundletool.jar')} install-apks --apks=$apks'''
                 .split(' '),
             environment: {
               'JAVA_HOME': javaHome,
@@ -234,7 +234,7 @@ void main() {
         verify(
           () => process.run(
             'java',
-            '-jar ${p.join(workingDirectory.path, 'bundletool.jar')} dump manifest --bundle "$appBundlePath" --xpath /manifest/@package'
+            '-jar ${p.join(workingDirectory.path, 'bundletool.jar')} dump manifest --bundle=$appBundlePath --xpath /manifest/@package'
                 .split(' '),
             environment: {
               'JAVA_HOME': javaHome,
@@ -295,7 +295,7 @@ void main() {
         verify(
           () => process.run(
             'java',
-            '-jar ${p.join(workingDirectory.path, 'bundletool.jar')} dump manifest --bundle "$appBundlePath" --xpath /manifest/@android:versionName'
+            '-jar ${p.join(workingDirectory.path, 'bundletool.jar')} dump manifest --bundle=$appBundlePath --xpath /manifest/@android:versionName'
                 .split(' '),
             environment: {
               'JAVA_HOME': javaHome,
@@ -355,7 +355,7 @@ void main() {
         verify(
           () => process.run(
             'java',
-            '-jar ${p.join(workingDirectory.path, 'bundletool.jar')} dump manifest --bundle "$appBundlePath" --xpath /manifest/@android:versionCode'
+            '-jar ${p.join(workingDirectory.path, 'bundletool.jar')} dump manifest --bundle=$appBundlePath --xpath /manifest/@android:versionCode'
                 .split(' '),
             environment: {
               'JAVA_HOME': javaHome,
