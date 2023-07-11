@@ -2,11 +2,18 @@ import 'dart:io';
 
 import 'package:collection/collection.dart';
 import 'package:path/path.dart' as p;
+import 'package:scoped/scoped.dart';
 import 'package:shorebird_cli/src/platform.dart';
 
 // https://developer.android.com/studio/command-line/variables.html#envar
 const kAndroidHome = 'ANDROID_HOME';
 const kAndroidSdkRoot = 'ANDROID_SDK_ROOT';
+
+/// A reference to a [AndroidSdk] instance.
+final androidSdkRef = create(AndroidSdk.new);
+
+/// The [AndroidSdk] instance available in the current zone.
+AndroidSdk get androidSdk => read(androidSdkRef);
 
 /// A wrapper around Android SDK.
 class AndroidSdk {
