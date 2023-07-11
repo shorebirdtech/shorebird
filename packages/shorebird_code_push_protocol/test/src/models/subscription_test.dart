@@ -1,11 +1,12 @@
+import 'package:money2/money2.dart';
 import 'package:shorebird_code_push_protocol/shorebird_code_push_protocol.dart';
 import 'package:test/test.dart';
 
 void main() {
   group(Subscription, () {
-    const plan = ShorebirdPlan(
+    final plan = ShorebirdPlan(
       name: 'Hobby',
-      monthlyCost: 0,
+      monthlyCost: Money.fromIntWithCurrency(0, usd),
       patchInstallLimit: 1000,
       maxTeamSize: 1,
     );

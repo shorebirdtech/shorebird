@@ -1,4 +1,5 @@
 import 'package:json_annotation/json_annotation.dart';
+import 'package:money2/money2.dart';
 import 'package:shorebird_code_push_protocol/shorebird_code_push_protocol.dart';
 
 part 'shorebird_plan.g.dart';
@@ -25,8 +26,9 @@ class ShorebirdPlan {
   /// The name of the plan.
   final String name;
 
-  /// Billing rate, in cents.
-  final int monthlyCost;
+  /// Monthly billing rate.
+  @MoneyConverter()
+  final Money monthlyCost;
 
   /// The number of patch installs allowed per billing period. This will be null
   /// for accounts with unlimited patch installs.
