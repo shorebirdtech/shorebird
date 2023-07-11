@@ -60,10 +60,25 @@ class Cache {
     );
   }
 
+  /// Get a named directory from with the cache's preview directory;
+  /// for example, `foo` would return `bin/cache/previews/foo`.
+  Directory getPreviewDirectory(String name) {
+    return Directory(
+      p.join(shorebirdPreviewsDirectory.path, p.withoutExtension(name)),
+    );
+  }
+
   /// The Shorebird cache directory.
   static Directory get shorebirdCacheDirectory {
     return Directory(
       p.join(ShorebirdEnvironment.shorebirdRoot.path, 'bin', 'cache'),
+    );
+  }
+
+  /// The Shorebird cached previews directory.
+  static Directory get shorebirdPreviewsDirectory {
+    return Directory(
+      p.join(shorebirdCacheDirectory.path, 'previews'),
     );
   }
 

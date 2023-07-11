@@ -63,7 +63,7 @@ class CodePushClientWrapper {
   Future<List<AppMetadata>> getApps() async {
     final fetchAppsProgress = logger.progress('Fetching apps');
     try {
-      final apps = (await codePushClient.getApps()).toList();
+      final apps = await codePushClient.getApps();
       fetchAppsProgress.complete();
       return apps;
     } catch (error) {
