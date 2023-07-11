@@ -50,7 +50,7 @@ mixin ShorebirdFlavorMixin on ShorebirdCommand {
       throw MissingGradleWrapperException(p.relative(executablePath));
     }
 
-    final javaHome = java.home();
+    final javaHome = java.home;
     final result = await process.run(
       executablePath,
       ['app:tasks', '--all', '--console=auto'],

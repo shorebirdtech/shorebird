@@ -47,7 +47,7 @@ void main() {
         when(() => platform.isWindows).thenReturn(true);
         when(() => platform.environment).thenReturn({'JAVA_HOME': javaHome});
         expect(
-          runWithOverrides(java.executable),
+          runWithOverrides(() => java.executable),
           equals(p.join(javaHome, 'bin', 'java.exe')),
         );
       });
@@ -55,7 +55,7 @@ void main() {
       test('returns correct executable on non-windows', () async {
         when(() => platform.isWindows).thenReturn(false);
         expect(
-          runWithOverrides(java.executable),
+          runWithOverrides(() => java.executable),
           equals('java'),
         );
       });
@@ -66,7 +66,7 @@ void main() {
         const javaHome = r'C:\Program Files\Java\jdk-11.0.1';
         when(() => platform.environment).thenReturn({'JAVA_HOME': javaHome});
         expect(
-          runWithOverrides(java.home),
+          runWithOverrides(() => java.home),
           equals(javaHome),
         );
       });
@@ -78,7 +78,7 @@ void main() {
         when(() => platform.isMacOS).thenReturn(false);
         when(() => platform.isWindows).thenReturn(false);
         when(() => platform.isLinux).thenReturn(false);
-        expect(runWithOverrides(java.home), isNull);
+        expect(runWithOverrides(() => java.home), isNull);
       });
 
       test('returns correct path on windows', () async {
@@ -86,7 +86,7 @@ void main() {
         final androidStudioDir = Directory(
           p.join(tempDir.path, 'Android', 'Android Studio'),
         )..createSync(recursive: true);
-        when(() => androidStudio.path()).thenReturn(androidStudioDir.path);
+        when(() => androidStudio.path).thenReturn(androidStudioDir.path);
         final jbrDir = Directory(p.join(androidStudioDir.path, 'jbr'))
           ..createSync();
         File(
@@ -99,7 +99,8 @@ void main() {
           'PROGRAMFILES': tempDir.path,
           'PROGRAMFILES(X86)': tempDir.path,
         });
-        await expectLater(runWithOverrides(java.home), equals(jbrDir.path));
+        await expectLater(
+            runWithOverrides(() => java.home), equals(jbrDir.path));
       });
 
       test('returns correct path on MacOS', () async {
@@ -112,7 +113,7 @@ void main() {
             'Contents',
           ),
         )..createSync(recursive: true);
-        when(() => androidStudio.path()).thenReturn(androidStudioDir.path);
+        when(() => androidStudio.path).thenReturn(androidStudioDir.path);
         final jbrDir = Directory(
           p.join(androidStudioDir.path, 'jbr', 'Contents', 'Home'),
         )..createSync(recursive: true);
@@ -123,7 +124,8 @@ void main() {
         when(() => platform.isMacOS).thenReturn(true);
         when(() => platform.isLinux).thenReturn(false);
         when(() => platform.environment).thenReturn({'HOME': tempDir.path});
-        await expectLater(runWithOverrides(java.home), equals(jbrDir.path));
+        await expectLater(
+            runWithOverrides(() => java.home), equals(jbrDir.path));
       });
 
       test('returns correct path on Linux', () async {
@@ -131,7 +133,7 @@ void main() {
         final androidStudioDir = Directory(
           p.join(tempDir.path, '.AndroidStudio'),
         )..createSync(recursive: true);
-        when(() => androidStudio.path()).thenReturn(androidStudioDir.path);
+        when(() => androidStudio.path).thenReturn(androidStudioDir.path);
         final jbrDir = Directory(p.join(androidStudioDir.path, 'jbr'))
           ..createSync(recursive: true);
         File(
@@ -141,7 +143,8 @@ void main() {
         when(() => platform.isMacOS).thenReturn(false);
         when(() => platform.isLinux).thenReturn(true);
         when(() => platform.environment).thenReturn({'HOME': tempDir.path});
-        await expectLater(runWithOverrides(java.home), equals(jbrDir.path));
+        await expectLater(
+            runWithOverrides(() => java.home), equals(jbrDir.path));
       });
     });
   });

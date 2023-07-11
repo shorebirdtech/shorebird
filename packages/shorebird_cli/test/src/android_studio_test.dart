@@ -49,7 +49,7 @@ void main() {
           'PROGRAMFILES(X86)': tempDir.path,
         });
         await expectLater(
-          runWithOverrides(androidStudio.path),
+          runWithOverrides(() => androidStudio.path),
           equals(androidStudioDir.path),
         );
       });
@@ -69,7 +69,7 @@ void main() {
         when(() => platform.isLinux).thenReturn(false);
         when(() => platform.environment).thenReturn({'HOME': tempDir.path});
         await expectLater(
-          runWithOverrides(androidStudio.path),
+          runWithOverrides(() => androidStudio.path),
           equals(androidStudioDir.path),
         );
       });
@@ -84,7 +84,7 @@ void main() {
         when(() => platform.isLinux).thenReturn(true);
         when(() => platform.environment).thenReturn({'HOME': tempDir.path});
         await expectLater(
-          runWithOverrides(androidStudio.path),
+          runWithOverrides(() => androidStudio.path),
           equals(androidStudioDir.path),
         );
       });

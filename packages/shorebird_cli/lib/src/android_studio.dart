@@ -12,7 +12,7 @@ final androidStudioRef = create(AndroidStudio.new);
 AndroidStudio get androidStudio => read(androidStudioRef);
 
 class AndroidStudio {
-  String? path() {
+  String? get path {
     final home = platform.environment['HOME'] ?? '~';
     if (platform.isMacOS) {
       final candidateLocations = [
