@@ -58,6 +58,21 @@ class Bundletool {
     }
   }
 
+  /// Extract the package name from an app bundle.
+  Future<String> getPackageName(String appBundlePath) async {
+    final result = await _exec(
+      'dump manifest --bundle "$appBundlePath" --xpath /manifest/@package',
+    );
+
+    if (result.exitCode != 0) {
+      throw Exception(
+        '''Failed to extract package name from app bundle: ${result.stderr}''',
+      );
+    }
+
+    return (result.stdout as String).trim();
+  }
+
   /// Extract the version name from an app bundle.
   Future<String> getVersionName(String appBundlePath) async {
     final result = await _exec(

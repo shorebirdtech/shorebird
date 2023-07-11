@@ -183,6 +183,67 @@ void main() {
       });
     });
 
+    group('getPackageName', () {
+      test('throws exception if process returns non-zero exit code', () async {
+        when(
+          () => process.run(
+            any(),
+            any(),
+            environment: any(named: 'environment'),
+          ),
+        ).thenAnswer(
+          (_) async => const ShorebirdProcessResult(
+            exitCode: 1,
+            stdout: '',
+            stderr: 'oops',
+          ),
+        );
+        await expectLater(
+          () => runWithOverrides(
+            () => bundletool.getPackageName(appBundlePath),
+          ),
+          throwsA(
+            isA<Exception>().having(
+              (e) => e.toString(),
+              'exception',
+              'Exception: Failed to extract package name from app bundle: oops',
+            ),
+          ),
+        );
+      });
+
+      test('returns the correct package name', () async {
+        when(
+          () => process.run(
+            any(),
+            any(),
+            environment: any(named: 'environment'),
+          ),
+        ).thenAnswer(
+          (_) async => const ShorebirdProcessResult(
+            exitCode: 0,
+            stdout: 'com.example.app',
+            stderr: '',
+          ),
+        );
+
+        final versionName = await runWithOverrides(
+          () => bundletool.getPackageName(appBundlePath),
+        );
+        expect(versionName, equals('com.example.app'));
+        verify(
+          () => process.run(
+            'java',
+            '-jar ${p.join(workingDirectory.path, 'bundletool.jar')} dump manifest --bundle "$appBundlePath" --xpath /manifest/@package'
+                .split(' '),
+            environment: {
+              'JAVA_HOME': javaHome,
+            },
+          ),
+        ).called(1);
+      });
+    });
+
     group('getVersionName', () {
       test('throws exception if process returns non-zero exit code', () async {
         when(
