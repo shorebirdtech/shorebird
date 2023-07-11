@@ -4,6 +4,7 @@ import 'dart:io';
 
 import 'package:http/http.dart' as http;
 import 'package:mocktail/mocktail.dart';
+import 'package:money2/money2.dart';
 import 'package:path/path.dart' as path;
 import 'package:shorebird_code_push_client/shorebird_code_push_client.dart';
 import 'package:test/test.dart';
@@ -1930,9 +1931,9 @@ void main() {
 
       test('completes when request succeeds', () async {
         final expected = GetUsageResponse(
-          plan: const ShorebirdPlan(
+          plan: ShorebirdPlan(
             name: 'Hobby',
-            monthlyCost: 0,
+            monthlyCost: Money.fromIntWithCurrency(0, usd),
             patchInstallLimit: 1000,
             maxTeamSize: 1,
           ),
@@ -1944,7 +1945,7 @@ void main() {
             )
           ],
           patchInstallLimit: 1337,
-          currentPeriodCost: 0,
+          currentPeriodCost: Money.fromIntWithCurrency(0, usd),
           currentPeriodStart: DateTime(2023),
           currentPeriodEnd: DateTime(2023, 2),
         );

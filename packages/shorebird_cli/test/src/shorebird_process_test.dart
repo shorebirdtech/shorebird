@@ -28,7 +28,6 @@ void main() {
       startProcess = _MockProcess();
       shorebirdProcess = ShorebirdProcess(
         processWrapper: processWrapper,
-        engineConfig: const EngineConfig.empty(),
       );
 
       when(

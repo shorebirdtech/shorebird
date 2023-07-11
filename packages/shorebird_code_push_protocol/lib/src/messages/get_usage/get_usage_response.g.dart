@@ -25,8 +25,8 @@ GetUsageResponse _$GetUsageResponseFromJson(Map<String, dynamic> json) =>
               'current_period_start', (v) => DateTime.parse(v as String)),
           currentPeriodEnd: $checkedConvert(
               'current_period_end', (v) => DateTime.parse(v as String)),
-          currentPeriodCost:
-              $checkedConvert('current_period_cost', (v) => v as int),
+          currentPeriodCost: $checkedConvert('current_period_cost',
+              (v) => const MoneyConverter().fromJson(v as String)),
           patchInstallLimit:
               $checkedConvert('patch_install_limit', (v) => v as int?),
         );
@@ -46,7 +46,8 @@ Map<String, dynamic> _$GetUsageResponseToJson(GetUsageResponse instance) =>
       'apps': instance.apps.map((e) => e.toJson()).toList(),
       'current_period_start': instance.currentPeriodStart.toIso8601String(),
       'current_period_end': instance.currentPeriodEnd.toIso8601String(),
-      'current_period_cost': instance.currentPeriodCost,
+      'current_period_cost':
+          const MoneyConverter().toJson(instance.currentPeriodCost),
       'patch_install_limit': instance.patchInstallLimit,
     };
 
