@@ -155,6 +155,32 @@ void main() {
     });
 
     group('app', () {
+      group('getApps', () {
+        test('exits with code 70 when getting apps fails', () async {
+          const error = 'something went wrong';
+          when(() => codePushClient.getApps()).thenThrow(error);
+
+          await expectLater(
+            () async => runWithOverrides(
+              () => codePushClientWrapper.getApps(),
+            ),
+            exitsWithCode(ExitCode.software),
+          );
+          verify(() => progress.fail(error)).called(1);
+        });
+
+        test('returns apps on success', () async {
+          when(() => codePushClient.getApps()).thenAnswer((_) async => [app]);
+
+          final apps = await runWithOverrides(
+            () => codePushClientWrapper.getApps(),
+          );
+
+          expect(apps, equals([app]));
+          verify(() => progress.complete()).called(1);
+        });
+      });
+
       group('getApp', () {
         test('exits with code 70 when getting app fails', () async {
           const error = 'something went wrong';
@@ -387,6 +413,36 @@ Please bump your version number and try again.''',
             );
           },
         );
+      });
+
+      group('getReleases', () {
+        test('exits with code 70 when fetching release fails', () async {
+          const error = 'something went wrong';
+          when(
+            () => codePushClient.getReleases(appId: any(named: 'appId')),
+          ).thenThrow(error);
+
+          await expectLater(
+            () async => runWithOverrides(
+              () => codePushClientWrapper.getReleases(appId: appId),
+            ),
+            exitsWithCode(ExitCode.software),
+          );
+          verify(() => progress.fail(error)).called(1);
+        });
+
+        test('returns releases on success', () async {
+          when(
+            () => codePushClient.getReleases(appId: any(named: 'appId')),
+          ).thenAnswer((_) async => [release]);
+
+          final releases = await runWithOverrides(
+            () => codePushClientWrapper.getReleases(appId: appId),
+          );
+
+          expect(releases, equals([release]));
+          verify(() => progress.complete()).called(1);
+        });
       });
 
       group('getRelease', () {
