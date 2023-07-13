@@ -1,6 +1,7 @@
 import 'dart:io';
 
 import 'package:scoped/scoped.dart';
+import 'package:shorebird_cli/src/adb.dart';
 import 'package:shorebird_cli/src/android_sdk.dart';
 import 'package:shorebird_cli/src/android_studio.dart';
 import 'package:shorebird_cli/src/auth/auth.dart';
@@ -18,6 +19,7 @@ Future<void> main(List<String> args) async {
     await runScoped(
       () async => ShorebirdCliCommandRunner().run(args),
       values: {
+        adbRef,
         androidSdkRef,
         androidStudioRef,
         authRef,
