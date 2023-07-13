@@ -349,6 +349,40 @@ void main() {
       verify(() => codePushClientWrapper.getApps()).called(1);
     });
 
+    test('exits early when no apps are found', () async {
+      when(() => argResults['app-id']).thenReturn(null);
+      when(() => codePushClientWrapper.getApps()).thenAnswer((_) async => []);
+      final result = await runWithOverrides(command.run);
+      expect(result, equals(ExitCode.success.code));
+      verifyNever(
+        () => logger.chooseOne<AppMetadata>(
+          any(),
+          choices: any(named: 'choices'),
+          display: captureAny(named: 'display'),
+        ),
+      );
+      verify(() => codePushClientWrapper.getApps()).called(1);
+      verify(() => logger.info('No apps found')).called(1);
+    });
+
+    test('exits early when no releases are found', () async {
+      when(() => argResults['release-version']).thenReturn(null);
+      when(
+        () => codePushClientWrapper.getReleases(appId: any(named: 'appId')),
+      ).thenAnswer((_) async => []);
+      final result = await runWithOverrides(command.run);
+      expect(result, equals(ExitCode.success.code));
+      verifyNever(
+        () => logger.chooseOne<AppMetadata>(
+          any(),
+          choices: any(named: 'choices'),
+          display: captureAny(named: 'display'),
+        ),
+      );
+      verify(() => codePushClientWrapper.getReleases(appId: appId)).called(1);
+      verify(() => logger.info('No releases found')).called(1);
+    });
+
     test(
         'queries for releases when '
         'release-version is not specified', () async {
