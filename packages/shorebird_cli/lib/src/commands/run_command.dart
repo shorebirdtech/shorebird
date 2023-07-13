@@ -50,6 +50,12 @@ class RunCommand extends ShorebirdCommand
 
   @override
   Future<int> run() async {
+    logger.warn(
+      '''
+This command is deprecated and will be removed in a future release.
+Please use "shorebird preview" instead.''',
+    );
+
     try {
       await validatePreconditions(
         checkUserIsAuthenticated: true,

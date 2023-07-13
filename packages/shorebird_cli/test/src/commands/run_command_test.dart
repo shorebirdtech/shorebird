@@ -116,6 +116,16 @@ void main() {
       )..testArgResults = argResults;
     });
 
+    test('logs deprecation warning', () async {
+      runWithOverrides(command.run).ignore();
+
+      verify(
+        () => logger.warn('''
+This command is deprecated and will be removed in a future release.
+Please use "shorebird preview" instead.'''),
+      ).called(1);
+    });
+
     test('exits with no user when not logged in', () async {
       when(() => auth.isAuthenticated).thenReturn(false);
 
