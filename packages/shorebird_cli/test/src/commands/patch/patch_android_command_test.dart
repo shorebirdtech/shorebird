@@ -570,6 +570,43 @@ https://github.com/shorebirdtech/shorebird/issues/472
       verify(() => logger.confirm('Continue anyways?')).called(1);
     });
 
+    test(
+        '''exits if user decides to not proceed after being warned of Java/Kotlin changes''',
+        () async {
+      when(() => aabDiffer.changedFiles(any(), any())).thenReturn(
+        FileSetDiff(
+          addedPaths: {},
+          removedPaths: {},
+          changedPaths: {'some/path/to/changed.dex'},
+        ),
+      );
+      when(() => logger.confirm(any())).thenReturn(false);
+
+      final tempDir = setUpTempDir();
+      setUpTempArtifacts(tempDir);
+      final exitCode = await IOOverrides.runZoned(
+        () => runWithOverrides(command.run),
+        getCurrentDirectory: () => tempDir,
+      );
+
+      expect(exitCode, ExitCode.success.code);
+      verify(
+        () => logger.warn(
+          any(
+            that: contains(
+              '''The Android App Bundle appears to contain Kotlin or Java changes, which cannot be applied via a patch.''',
+            ),
+          ),
+        ),
+      ).called(1);
+      verify(() => logger.confirm('Continue anyways?')).called(1);
+      verifyNever(
+        () => codePushClientWrapper.createPatch(
+          releaseId: any(named: 'releaseId'),
+        ),
+      );
+    });
+
     test('prompts user to continue when asset changes are detected', () async {
       when(() => aabDiffer.changedFiles(any(), any())).thenReturn(
         FileSetDiff(
@@ -636,7 +673,7 @@ https://github.com/shorebirdtech/shorebird/issues/472
     );
 
     test(
-      '''exits if user decides to not proceed after being warned of non-dart changes''',
+      '''exits if user decides to not proceed after being warned of asset changes''',
       () async {
         when(() => aabDiffer.changedFiles(any(), any())).thenReturn(
           FileSetDiff(
