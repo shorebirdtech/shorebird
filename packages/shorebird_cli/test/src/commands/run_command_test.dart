@@ -120,6 +120,10 @@ void main() {
       expect(command.hidden, isTrue);
     });
 
+    test('has a description', () {
+      expect(command.description, isNotEmpty);
+    });
+
     test('logs deprecation warning', () async {
       runWithOverrides(command.run).ignore();
 
