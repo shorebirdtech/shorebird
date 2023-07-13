@@ -246,19 +246,15 @@ https://github.com/shorebirdtech/shorebird/issues/472
 
     if (contentDiffs.nativeChanges.isNotEmpty) {
       logger
-        ..err(
+        ..warn(
           '''The Android App Bundle appears to contain Kotlin or Java changes, which cannot be applied via a patch.''',
         )
-        ..info(yellow.wrap(contentDiffs.nativeChanges.prettyString))
-        ..info(
-          yellow.wrap(
-            '''
-Please create a new release or revert those changes to create a patch.
+        ..info(yellow.wrap(contentDiffs.nativeChanges.prettyString));
+      final shouldContinue = force || logger.confirm('Continue anyways?');
 
-If you believe you're seeing this in error, please reach out to us for support at https://shorebird.dev/support''',
-          ),
-        );
-      return ExitCode.software.code;
+      if (!shouldContinue) {
+        return ExitCode.success.code;
+      }
     }
 
     if (contentDiffs.assetChanges.isNotEmpty) {
