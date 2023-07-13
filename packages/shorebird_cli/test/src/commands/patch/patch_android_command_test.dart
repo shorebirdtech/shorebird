@@ -540,7 +540,8 @@ https://github.com/shorebirdtech/shorebird/issues/472
       expect(exitCode, ExitCode.software.code);
     });
 
-    test('throws error when Java/Kotlin code changes are detected', () async {
+    test('prompts user to continue when Java/Kotlin code changes are detected',
+        () async {
       when(() => aabDiffer.changedFiles(any(), any())).thenReturn(
         FileSetDiff(
           addedPaths: {},
@@ -556,12 +557,17 @@ https://github.com/shorebirdtech/shorebird/issues/472
         getCurrentDirectory: () => tempDir,
       );
 
-      expect(exitCode, ExitCode.software.code);
+      expect(exitCode, ExitCode.success.code);
       verify(
-        () => logger.err(
-          '''The Android App Bundle appears to contain Kotlin or Java changes, which cannot be applied via a patch.''',
+        () => logger.warn(
+          any(
+            that: contains(
+              '''The Android App Bundle appears to contain Kotlin or Java changes, which cannot be applied via a patch.''',
+            ),
+          ),
         ),
       ).called(1);
+      verify(() => logger.confirm('Continue anyways?')).called(1);
     });
 
     test('prompts user to continue when asset changes are detected', () async {
