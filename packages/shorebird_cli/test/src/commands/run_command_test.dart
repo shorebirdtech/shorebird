@@ -116,6 +116,10 @@ void main() {
       )..testArgResults = argResults;
     });
 
+    test('command is hidden', () {
+      expect(command.hidden, isTrue);
+    });
+
     test('logs deprecation warning', () async {
       runWithOverrides(command.run).ignore();
 
