@@ -49,28 +49,6 @@ class PreviewCommand extends ShorebirdCommand
       return error.exitCode.code;
     }
 
-    Future<String?> promptForApp() async {
-      final apps = await codePushClientWrapper.getApps();
-      if (apps.isEmpty) return null;
-      final app = logger.chooseOne(
-        'Which app would you like to preview?',
-        choices: apps,
-        display: (app) => app.displayName,
-      );
-      return app.appId;
-    }
-
-    Future<String?> promptForReleaseVersion(String appId) async {
-      final releases = await codePushClientWrapper.getReleases(appId: appId);
-      if (releases.isEmpty) return null;
-      final release = logger.chooseOne(
-        'Which release would you like to preview?',
-        choices: releases,
-        display: (release) => release.version,
-      );
-      return release.version;
-    }
-
     const platform = 'android';
     final appId = results['app-id'] as String? ?? await promptForApp();
 
@@ -91,10 +69,6 @@ class PreviewCommand extends ShorebirdCommand
     final aabPath = p.join(
       previewDirectory.path,
       '${platform}_$releaseVersion.aab',
-    );
-    final apksPath = p.join(
-      previewDirectory.path,
-      '${platform}_$releaseVersion.apks',
     );
 
     if (!File(aabPath).existsSync()) {
@@ -129,6 +103,11 @@ class PreviewCommand extends ShorebirdCommand
       extractMetadataProgress.fail('$error');
       return ExitCode.software.code;
     }
+
+    final apksPath = p.join(
+      previewDirectory.path,
+      '${platform}_$releaseVersion.apks',
+    );
 
     if (!File(apksPath).existsSync()) {
       final buildApksProgress = logger.progress('Building apks');
@@ -168,6 +147,28 @@ class PreviewCommand extends ShorebirdCommand
     });
 
     return process.exitCode;
+  }
+
+  Future<String?> promptForApp() async {
+    final apps = await codePushClientWrapper.getApps();
+    if (apps.isEmpty) return null;
+    final app = logger.chooseOne(
+      'Which app would you like to preview?',
+      choices: apps,
+      display: (app) => app.displayName,
+    );
+    return app.appId;
+  }
+
+  Future<String?> promptForReleaseVersion(String appId) async {
+    final releases = await codePushClientWrapper.getReleases(appId: appId);
+    if (releases.isEmpty) return null;
+    final release = logger.chooseOne(
+      'Which release would you like to preview?',
+      choices: releases,
+      display: (release) => release.version,
+    );
+    return release.version;
   }
 }
 
