@@ -9,6 +9,7 @@ export 'login_ci_command.dart';
 export 'login_command.dart';
 export 'logout_command.dart';
 export 'patch/patch.dart';
+export 'preview_command.dart';
 export 'release/release.dart';
 export 'releases/releases.dart';
 export 'run_command.dart';

@@ -1,8 +1,15 @@
 import 'dart:async';
 import 'dart:io';
 
+import 'package:scoped/scoped.dart';
 import 'package:shorebird_cli/src/android_sdk.dart';
 import 'package:shorebird_cli/src/process.dart';
+
+/// A reference to a [Adb] instance.
+final adbRef = create(Adb.new);
+
+/// The [Adb] instance available in the current zone.
+Adb get adb => read(adbRef);
 
 /// A wrapper around the `adb` command.
 class Adb {
