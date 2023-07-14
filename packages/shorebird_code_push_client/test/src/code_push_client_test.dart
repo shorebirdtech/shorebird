@@ -1151,7 +1151,7 @@ void main() {
         final request = verify(() => httpClient.send(captureAny()))
             .captured
             .single as http.BaseRequest;
-        expect(request.method, equals('PUT'));
+        expect(request.method, equals('PATCH'));
         expect(request.url, equals(v1('releases/$releaseId')));
         expect(request.hasStandardHeaders, isTrue);
       });

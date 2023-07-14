@@ -308,7 +308,7 @@ class CodePushClient {
     required String platform,
     required ReleaseStatus status,
   }) async {
-    final response = await _httpClient.put(
+    final response = await _httpClient.patch(
       Uri.parse('$_v1/releases/$releaseId'),
       body: json.encode(
         UpdateReleaseRequest(
