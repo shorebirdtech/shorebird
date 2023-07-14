@@ -49,6 +49,9 @@ class RunCommand extends ShorebirdCommand
   String get name => 'run';
 
   @override
+  bool get hidden => true;
+
+  @override
   Future<int> run() async {
     logger.warn(
       '''
