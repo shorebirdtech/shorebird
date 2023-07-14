@@ -474,6 +474,8 @@ aar artifact already exists, continuing...''',
     createArtifactProgress.complete();
   }
 
+  /// Updates the specified release's status to [ReleaseStatus.active] for the
+  /// given platform.
   Future<void> completeRelease({
     required int releaseId,
     required String platform,
