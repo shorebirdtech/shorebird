@@ -179,6 +179,11 @@ ${summary.join('\n')}
       flavor: flavor,
     );
 
+    await codePushClientWrapper.completeRelease(
+      releaseId: release.id,
+      platform: platformName,
+    );
+
     logger
       ..success('\n✅ Published Release!')
       ..info('''

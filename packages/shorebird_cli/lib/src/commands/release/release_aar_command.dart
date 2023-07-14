@@ -182,6 +182,11 @@ ${summary.join('\n')}
       architectures: architectures,
     );
 
+    await codePushClientWrapper.completeRelease(
+      releaseId: release.id,
+      platform: platformName,
+    );
+
     logger
       ..success('\n✅ Published Release!')
       ..info('''
