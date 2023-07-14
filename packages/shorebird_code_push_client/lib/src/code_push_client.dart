@@ -302,6 +302,27 @@ class CodePushClient {
     return Release.fromJson(body);
   }
 
+  /// Updates the specified release's status to [status].
+  Future<void> updateReleaseStatus({
+    required int releaseId,
+    required ReleaseStatus status,
+    required String platform,
+  }) async {
+    final response = await _httpClient.put(
+      Uri.parse('$_v1/releases/$releaseId'),
+      body: json.encode(
+        UpdateReleaseRequest(
+          status: status,
+          platform: platform,
+        ).toJson(),
+      ),
+    );
+
+    if (response.statusCode != HttpStatus.noContent) {
+      throw _parseErrorResponse(response.statusCode, response.body);
+    }
+  }
+
   /// Remove [userId] as a collaborator from [appId].
   Future<void> deleteCollaborator({
     required String appId,

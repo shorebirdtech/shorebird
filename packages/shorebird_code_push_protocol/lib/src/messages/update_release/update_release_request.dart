@@ -9,7 +9,7 @@ part 'update_release_request.g.dart';
 @JsonSerializable()
 class UpdateReleaseRequest {
   /// {@macro update_release_request}
-  UpdateReleaseRequest({
+  const UpdateReleaseRequest({
     required this.status,
     required this.platform,
   });
