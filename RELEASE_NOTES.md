@@ -9,7 +9,7 @@ We've just released Shorebird v0.9.2 🎉
 - 🐦 Upgrading to Flutter 3.10.6
 - 👀 New `shorebird preview` command
 - 🎮 New release of [package:shorebird_code_push](https://pub.dev/packages/shorebird_code_push)
-- 🧩 Allow overriding patches with java/kotlin changes
+- 🧩 `shorebird patch` allows user to proceed if java/kotlin changes are detected
 
 📚 Release notes can be found at https://github.com/shorebirdtech/shorebird/releases/tag/v0.9.2
 
