@@ -1471,6 +1471,54 @@ Please bump your version number and try again.''',
       });
     });
 
+    group('completeRelease', () {
+      setUp(() {
+        registerFallbackValue(ReleaseStatus.active);
+      });
+
+      test(
+        'exits with code 70 when updating release status fails',
+        () async {
+          when(
+            () => codePushClient.updateReleaseStatus(
+              releaseId: any(named: 'releaseId'),
+              platform: any(named: 'platform'),
+              status: any(named: 'status'),
+            ),
+          ).thenThrow(Exception('oh no'));
+
+          await expectLater(
+            () async => runWithOverrides(
+              () => codePushClientWrapper.completeRelease(
+                releaseId: releaseId,
+                platform: platformName,
+              ),
+            ),
+            exitsWithCode(ExitCode.software),
+          );
+        },
+      );
+
+      test('completes when updating release status succeeds', () async {
+        when(
+          () => codePushClient.updateReleaseStatus(
+            releaseId: any(named: 'releaseId'),
+            platform: any(named: 'platform'),
+            status: any(named: 'status'),
+          ),
+        ).thenAnswer((_) async => {});
+
+        await runWithOverrides(
+          () => codePushClientWrapper.completeRelease(
+            releaseId: releaseId,
+            platform: platformName,
+          ),
+        );
+
+        verify(() => progress.complete()).called(1);
+      });
+    });
+
     group('patch', () {
       group('createPatch', () {
         test('exits with code 70 when creating patch fails', () async {

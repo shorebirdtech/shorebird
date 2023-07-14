@@ -220,6 +220,13 @@ flutter:
           ipaPath: any(named: 'ipaPath'),
         ),
       ).thenAnswer((_) async => release);
+      when(
+        () => codePushClientWrapper.completeRelease(
+          releaseId: any(named: 'releaseId'),
+          platform: any(named: 'platform'),
+        ),
+      ).thenAnswer((_) async => {});
+
       when(() => flutterValidator.validate(any())).thenAnswer((_) async => []);
 
       command = runWithOverrides(
@@ -436,6 +443,12 @@ error: exportArchive: No signing certificate "iOS Distribution" found
       verifyNever(
         () => logger.prompt(any(), defaultValue: any(named: 'defaultValue')),
       );
+      verify(
+        () => codePushClientWrapper.completeRelease(
+          releaseId: release.id,
+          platform: platformName,
+        ),
+      ).called(1);
     });
 
     test('succeeds when release is successful', () async {
@@ -463,6 +476,12 @@ error: exportArchive: No signing certificate "iOS Distribution" found
         () => codePushClientWrapper.createIosReleaseArtifact(
           releaseId: release.id,
           ipaPath: any(named: 'ipaPath', that: endsWith('.ipa')),
+        ),
+      ).called(1);
+      verify(
+        () => codePushClientWrapper.completeRelease(
+          releaseId: release.id,
+          platform: platformName,
         ),
       ).called(1);
       expect(exitCode, ExitCode.success.code);
@@ -537,6 +556,12 @@ flavors:
         () => codePushClientWrapper.createIosReleaseArtifact(
           releaseId: release.id,
           ipaPath: any(named: 'ipaPath', that: endsWith('.ipa')),
+        ),
+      ).called(1);
+      verify(
+        () => codePushClientWrapper.completeRelease(
+          releaseId: release.id,
+          platform: platformName,
         ),
       ).called(1);
     });
