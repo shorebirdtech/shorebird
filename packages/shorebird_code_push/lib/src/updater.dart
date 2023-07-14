@@ -8,14 +8,13 @@ import 'package:shorebird_code_push/src/generated/updater_bindings.g.dart';
 /// translates ffi types into easier to use Dart types.
 /// {@endtemplate}
 class Updater {
-  /// Creates an [Updater] instance using the currently loaded dynamic library.
-  Updater() {
-    bindings = UpdaterBindings(ffi.DynamicLibrary.process());
-  }
+  /// {@macro updater}
+  const Updater();
 
   /// The ffi bindings to the Updater library.
   @visibleForTesting
-  static late UpdaterBindings bindings;
+  static UpdaterBindings bindings =
+      UpdaterBindings(ffi.DynamicLibrary.process());
 
   /// The currently active patch number.
   int currentPatchNumber() => bindings.shorebird_current_boot_patch_number();

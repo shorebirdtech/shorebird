@@ -13,7 +13,7 @@ void main() {
     setUp(() {
       updaterBindings = _MockUpdaterBindings();
 
-      updater = Updater();
+      updater = const Updater();
       Updater.bindings = updaterBindings;
     });
 
@@ -23,8 +23,9 @@ void main() {
 
     group('currentPatchNumber', () {
       test('forwards the result of shorebird_next_boot_patch_number', () {
-        when(() => updaterBindings.shorebird_current_boot_patch_number())
-            .thenReturn(123);
+        when(
+          () => updaterBindings.shorebird_current_boot_patch_number(),
+        ).thenReturn(123);
         final currentPatchNumber = updater.currentPatchNumber();
         expect(currentPatchNumber, 123);
       });
@@ -32,20 +33,23 @@ void main() {
 
     group('checkForUpdate', () {
       test('forwards the result of shorebird_check_for_update', () {
-        when(() => updaterBindings.shorebird_check_for_update())
-            .thenReturn(true);
+        when(
+          () => updaterBindings.shorebird_check_for_update(),
+        ).thenReturn(true);
         expect(updater.checkForUpdate(), isTrue);
 
-        when(() => updaterBindings.shorebird_check_for_update())
-            .thenReturn(false);
+        when(
+          () => updaterBindings.shorebird_check_for_update(),
+        ).thenReturn(false);
         expect(updater.checkForUpdate(), isFalse);
       });
     });
 
     group('nextPatchNumber', () {
       test('forwards the result of shorebird_next_boot_patch_number', () {
-        when(() => updaterBindings.shorebird_next_boot_patch_number())
-            .thenReturn(123);
+        when(
+          () => updaterBindings.shorebird_next_boot_patch_number(),
+        ).thenReturn(123);
         final currentPatchNumber = updater.nextPatchNumber();
         expect(currentPatchNumber, 123);
       });
