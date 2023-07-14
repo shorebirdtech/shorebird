@@ -1,3 +1,9 @@
+# 1.1.0
+
+- feat: introduce `isShorebirdAvailable` to determine whether the Shorebird Engine is detected
+- fix: crashes when running Flutter application on web
+- docs: improvements to example app
+
 # 1.0.0
 
 - Change `downloadUpdate` to `downloadUpdateIfAvailable`, as the Updater performs
