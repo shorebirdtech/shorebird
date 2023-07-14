@@ -1,6 +1,7 @@
 # Shorebird Code Push
 
 [![Discord](https://dcbadge.vercel.app/api/server/shorebird)](https://discord.gg/shorebird)
+
 [![ci](https://github.com/shorebirdtech/updater/actions/workflows/main.yaml/badge.svg)](https://github.com/shorebirdtech/updater/actions/workflows/main.yaml)
 [![License: MIT][license_badge]][license_link]
 
