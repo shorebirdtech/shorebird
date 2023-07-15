@@ -13,8 +13,6 @@ class _MockShorebirdProcess extends Mock implements ShorebirdProcess {}
 
 class _MockProcess extends Mock implements Process {}
 
-class _MockIOSink extends Mock implements IOSink {}
-
 void main() {
   group(Adb, () {
     const adbPath = '/path/to/adb';
@@ -133,27 +131,21 @@ void main() {
       test('returns correct process (filtered)', () async {
         const filter = 'flutter';
         final logcatProcess = _MockProcess();
-        final grepProcess = _MockProcess();
-        final grepStdin = _MockIOSink();
         const logcatStdout = Stream<List<int>>.empty();
 
-        when(grepStdin.close).thenAnswer((_) async {});
-        when(() => grepStdin.addStream(any())).thenAnswer((_) async {});
-        when(() => grepProcess.stdin).thenReturn(grepStdin);
         when(
           () => logcatProcess.stdout,
         ).thenAnswer((_) => logcatStdout);
         when(() => process.start(any(), any())).thenAnswer((invocation) async {
           final executable = invocation.positionalArguments[0] as String;
           if (executable == adbPath) return logcatProcess;
-          if (executable == 'grep') return grepProcess;
           fail('Unexpected executable: $executable');
         });
         final result = await runWithOverrides(() => adb.logcat(filter: filter));
-        expect(result, equals(grepProcess));
-        verify(() => process.start(adbPath, ['logcat'])).called(1);
-        verify(() => process.start('grep', [filter])).called(1);
-        verify(() => grepStdin.addStream(logcatStdout)).called(1);
+        expect(result, equals(logcatProcess));
+        verify(
+          () => process.start(adbPath, ['logcat', '-s', filter]),
+        ).called(1);
       });
     });
   });
