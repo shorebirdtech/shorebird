@@ -15,7 +15,6 @@ class GetUsageResponse {
     required this.currentPeriodStart,
     required this.currentPeriodEnd,
     required this.currentPeriodCost,
-    this.patchInstallLimit,
   });
 
   /// Converts a Map<String, dynamic> to a [GetUsageResponse].
@@ -41,10 +40,6 @@ class GetUsageResponse {
   /// monthly cost and any overages.
   @MoneyConverter()
   final Money currentPeriodCost;
-
-  /// The upper limit of patch installs for the current billing period.
-  /// If `null`, there is no limit.
-  final int? patchInstallLimit;
 }
 
 /// {@template app_usage}

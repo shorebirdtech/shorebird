@@ -86,7 +86,6 @@ void main() {
             patchInstallCount: 42,
           ),
         ],
-        patchInstallLimit: 20000,
         currentPeriodCost: Money.fromIntWithCurrency(2000, usd),
         currentPeriodStart: DateTime(2023),
         currentPeriodEnd: DateTime(2023, 2),

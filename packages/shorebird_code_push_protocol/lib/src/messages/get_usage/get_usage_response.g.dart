@@ -27,8 +27,8 @@ GetUsageResponse _$GetUsageResponseFromJson(Map<String, dynamic> json) =>
               'current_period_end', (v) => DateTime.parse(v as String)),
           currentPeriodCost: $checkedConvert('current_period_cost',
               (v) => const MoneyConverter().fromJson(v as int)),
-          patchInstallLimit:
-              $checkedConvert('patch_install_limit', (v) => v as int?),
+          patchInstallOverageLimit:
+              $checkedConvert('patch_install_overage_limit', (v) => v as int?),
         );
         return val;
       },
@@ -36,7 +36,7 @@ GetUsageResponse _$GetUsageResponseFromJson(Map<String, dynamic> json) =>
         'currentPeriodStart': 'current_period_start',
         'currentPeriodEnd': 'current_period_end',
         'currentPeriodCost': 'current_period_cost',
-        'patchInstallLimit': 'patch_install_limit'
+        'patchInstallOverageLimit': 'patch_install_overage_limit'
       },
     );
 
@@ -48,7 +48,7 @@ Map<String, dynamic> _$GetUsageResponseToJson(GetUsageResponse instance) =>
       'current_period_end': instance.currentPeriodEnd.toIso8601String(),
       'current_period_cost':
           const MoneyConverter().toJson(instance.currentPeriodCost),
-      'patch_install_limit': instance.patchInstallLimit,
+      'patch_install_overage_limit': instance.patchInstallOverageLimit,
     };
 
 AppUsage _$AppUsageFromJson(Map<String, dynamic> json) => $checkedCreate(

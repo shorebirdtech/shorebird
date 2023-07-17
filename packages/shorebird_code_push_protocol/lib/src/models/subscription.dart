@@ -11,7 +11,6 @@ class Subscription {
   /// {@macro subscription}
   Subscription({
     required this.plan,
-    @Deprecated('Use plan.monthlyCost instead.') required this.cost,
     required this.paidThroughDate,
     required this.willRenew,
   });
@@ -24,10 +23,6 @@ class Subscription {
 
   /// The plan associated with this subscription.
   final ShorebirdPlan plan;
-
-  /// Billing rate, in cents.
-  @Deprecated('Use plan.monthlyCost instead.')
-  final int cost;
 
   /// When the subscription will be renewed or expire.
   @TimestampConverter()
