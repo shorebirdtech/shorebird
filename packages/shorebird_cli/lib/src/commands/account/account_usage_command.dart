@@ -55,9 +55,9 @@ extension on GetUsageResponse {
       totalPatchInstalls += appUsage.patchInstallCount;
     }
 
-    final remainingPatchInstalls = patchInstallLimit == null
+    final remainingPatchInstalls = plan.patchInstallLimit == null
         ? '∞'
-        : '${patchInstallLimit! - totalPatchInstalls}';
+        : '${plan.patchInstallLimit! - totalPatchInstalls}';
 
     return '''
 

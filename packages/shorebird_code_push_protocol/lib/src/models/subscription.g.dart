@@ -16,7 +16,6 @@ Subscription _$SubscriptionFromJson(Map<String, dynamic> json) =>
         final val = Subscription(
           plan: $checkedConvert(
               'plan', (v) => ShorebirdPlan.fromJson(v as Map<String, dynamic>)),
-          cost: $checkedConvert('cost', (v) => v as int),
           paidThroughDate: $checkedConvert('paid_through_date',
               (v) => const TimestampConverter().fromJson(v as int)),
           willRenew: $checkedConvert('will_renew', (v) => v as bool),
@@ -32,7 +31,6 @@ Subscription _$SubscriptionFromJson(Map<String, dynamic> json) =>
 Map<String, dynamic> _$SubscriptionToJson(Subscription instance) =>
     <String, dynamic>{
       'plan': instance.plan.toJson(),
-      'cost': instance.cost,
       'paid_through_date':
           const TimestampConverter().toJson(instance.paidThroughDate),
       'will_renew': instance.willRenew,

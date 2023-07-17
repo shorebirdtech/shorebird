@@ -14,7 +14,6 @@ void main() {
         apps: [
           const AppUsage(id: 'app-id', name: 'My app', patchInstallCount: 1337),
         ],
-        patchInstallLimit: 42,
         currentPeriodCost: Money.fromIntWithCurrency(0, usd),
         currentPeriodStart: DateTime(2021),
         currentPeriodEnd: DateTime(2021, 1, 2),

@@ -71,7 +71,7 @@ void main() {
         plan: ShorebirdPlan(
           name: 'Team',
           monthlyCost: Money.fromIntWithCurrency(2000, usd),
-          patchInstallLimit: 1000,
+          patchInstallLimit: 20000,
           maxTeamSize: 1,
         ),
         apps: const [
@@ -86,7 +86,6 @@ void main() {
             patchInstallCount: 42,
           ),
         ],
-        patchInstallLimit: 20000,
         currentPeriodCost: Money.fromIntWithCurrency(2000, usd),
         currentPeriodStart: DateTime(2023),
         currentPeriodEnd: DateTime(2023, 2),
@@ -132,7 +131,7 @@ ${styleBold.wrap('*Usage data is not reported in real-time and may be delayed by
         plan: ShorebirdPlan(
           name: 'Hobby',
           monthlyCost: Money.fromIntWithCurrency(0, usd),
-          patchInstallLimit: 1000,
+          patchInstallLimit: null,
           maxTeamSize: 1,
         ),
         apps: const [
