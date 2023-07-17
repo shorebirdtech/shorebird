@@ -36,10 +36,7 @@ class Adb {
   }
 
   Future<Process> logcat({String? filter}) async {
-    final logcat = await _stream('logcat');
-    if (filter == null) return logcat;
-    final grep = await process.start('grep', [filter]);
-    unawaited(logcat.stdout.pipe(grep.stdin));
-    return grep;
+    final expression = ['logcat', if (filter != null) '-s $filter'].join(' ');
+    return _stream(expression);
   }
 }
