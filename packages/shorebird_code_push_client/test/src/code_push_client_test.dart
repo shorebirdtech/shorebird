@@ -1140,7 +1140,8 @@ void main() {
 
         expect(
           request.url,
-          codePushClient.hostedUri.replace(path: '/api/v1/apps/$appId/releases'),
+          codePushClient.hostedUri
+              .replace(path: '/api/v1/apps/$appId/releases'),
         );
       });
     });
