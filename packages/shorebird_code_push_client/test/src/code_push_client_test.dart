@@ -1136,6 +1136,69 @@ void main() {
       });
     });
 
+    group('updateReleaseStatus', () {
+      const releaseId = 42;
+      const platform = 'android';
+
+      test('makes the correct request', () async {
+        codePushClient
+            .updateReleaseStatus(
+              releaseId: releaseId,
+              platform: platform,
+              status: ReleaseStatus.active,
+            )
+            .ignore();
+        final request = verify(() => httpClient.send(captureAny()))
+            .captured
+            .single as http.BaseRequest;
+        expect(request.method, equals('PATCH'));
+        expect(request.url, equals(v1('releases/$releaseId')));
+        expect(request.hasStandardHeaders, isTrue);
+      });
+
+      test('throws an exception if the response is not a 204', () async {
+        when(() => httpClient.send(any())).thenAnswer(
+          (_) async => http.StreamedResponse(
+            const Stream.empty(),
+            HttpStatus.badRequest,
+          ),
+        );
+
+        expect(
+          codePushClient.updateReleaseStatus(
+            releaseId: releaseId,
+            platform: platform,
+            status: ReleaseStatus.active,
+          ),
+          throwsA(
+            isA<CodePushException>().having(
+              (e) => e.message,
+              'message',
+              CodePushClient.unknownErrorMessage,
+            ),
+          ),
+        );
+      });
+
+      test('completes when the server responds with a 204', () async {
+        when(() => httpClient.send(any())).thenAnswer(
+          (_) async => http.StreamedResponse(
+            const Stream.empty(),
+            HttpStatus.noContent,
+          ),
+        );
+
+        expect(
+          codePushClient.updateReleaseStatus(
+            releaseId: releaseId,
+            platform: platform,
+            status: ReleaseStatus.active,
+          ),
+          completes,
+        );
+      });
+    });
+
     group('deleteCollaborator', () {
       const appId = 'test-app-id';
       const userId = 42;
