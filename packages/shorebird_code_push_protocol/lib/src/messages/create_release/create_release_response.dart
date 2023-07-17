@@ -3,7 +3,7 @@ import 'package:json_annotation/json_annotation.dart';
 part 'create_release_response.g.dart';
 
 /// {@template create_release_response}
-/// The response body for POST /api/v1/releases
+/// The response body for POST /api/v1/apps/<appId>/releases
 /// {@endtemplate}
 @JsonSerializable()
 class CreateReleaseResponse {
