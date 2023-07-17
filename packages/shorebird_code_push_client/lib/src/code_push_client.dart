@@ -253,8 +253,8 @@ class CodePushClient {
     required String channel,
   }) async {
     final response = await _httpClient.post(
-      Uri.parse('$_v1/channels'),
-      body: json.encode({'app_id': appId, 'channel': channel}),
+      Uri.parse('$_v1/apps/$appId/channels'),
+      body: json.encode({'channel': channel}),
     );
 
     if (response.statusCode != HttpStatus.ok) {
@@ -401,9 +401,7 @@ class CodePushClient {
   /// List all channels for the provided [appId].
   Future<List<Channel>> getChannels({required String appId}) async {
     final response = await _httpClient.get(
-      Uri.parse('$_v1/channels').replace(
-        queryParameters: {'appId': appId},
-      ),
+      Uri.parse('$_v1/apps/$appId/channels'),
     );
 
     if (response.statusCode != HttpStatus.ok) {

@@ -510,8 +510,10 @@ void main() {
             .captured
             .single as http.BaseRequest;
         expect(request.method, equals('POST'));
-        expect(request.url,
-            equals(v1('apps/$appId/releases/$releaseId/artifacts')));
+        expect(
+          request.url,
+          equals(v1('apps/$appId/releases/$releaseId/artifacts')),
+        );
         expect(request.hasStandardHeaders, isTrue);
       });
 
@@ -849,7 +851,7 @@ void main() {
             .captured
             .single as http.BaseRequest;
         expect(request.method, equals('POST'));
-        expect(request.url, equals(v1('channels')));
+        expect(request.url, equals(v1('apps/$appId/channels')));
         expect(request.hasStandardHeaders, isTrue);
       });
 
@@ -926,7 +928,9 @@ void main() {
 
         expect(
           request.url,
-          codePushClient.hostedUri.replace(path: '/api/v1/channels'),
+          codePushClient.hostedUri.replace(
+            path: '/api/v1/apps/$appId/channels',
+          ),
         );
       });
     });
@@ -1590,7 +1594,7 @@ void main() {
             .captured
             .single as http.BaseRequest;
         expect(request.method, equals('GET'));
-        expect(request.url, equals(v1('channels?appId=$appId')));
+        expect(request.url, equals(v1('apps/$appId/channels')));
         expect(request.hasStandardHeaders, isTrue);
       });
 
