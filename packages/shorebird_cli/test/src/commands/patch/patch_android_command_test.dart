@@ -282,6 +282,7 @@ flutter:
       ).thenAnswer((_) async => release);
       when(
         () => codePushClientWrapper.getReleaseArtifacts(
+          appId: any(named: 'appId'),
           releaseId: any(named: 'releaseId'),
           architectures: any(named: 'architectures'),
           platform: any(named: 'platform'),
@@ -295,6 +296,7 @@ flutter:
       );
       when(
         () => codePushClientWrapper.getReleaseArtifact(
+          appId: any(named: 'appId'),
           releaseId: any(named: 'releaseId'),
           arch: 'aab',
           platform: 'android',

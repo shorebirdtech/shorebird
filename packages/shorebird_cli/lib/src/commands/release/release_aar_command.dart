@@ -102,6 +102,7 @@ make smaller updates to your app.
     );
     if (existingRelease != null) {
       await codePushClientWrapper.ensureReleaseHasNoArtifacts(
+        appId: app.appId,
         existingRelease: existingRelease,
         platform: platformName,
       );
@@ -172,6 +173,7 @@ ${summary.join('\n')}
     extractAarProgress.complete();
 
     await codePushClientWrapper.createAndroidArchiveReleaseArtifacts(
+      appId: app.appId,
       releaseId: release.id,
       platform: platformName,
       aarPath: aarArtifactPath(
@@ -183,6 +185,7 @@ ${summary.join('\n')}
     );
 
     await codePushClientWrapper.completeRelease(
+      appId: app.appId,
       releaseId: release.id,
       platform: platformName,
     );

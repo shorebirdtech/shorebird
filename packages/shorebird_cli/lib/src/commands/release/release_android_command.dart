@@ -121,6 +121,7 @@ make smaller updates to your app.
 
     if (existingRelease != null) {
       await codePushClientWrapper.ensureReleaseHasNoArtifacts(
+        appId: app.appId,
         existingRelease: existingRelease,
         platform: platformName,
       );
@@ -172,6 +173,7 @@ ${summary.join('\n')}
         );
 
     await codePushClientWrapper.createAndroidReleaseArtifacts(
+      appId: app.appId,
       releaseId: release.id,
       aabPath: bundlePath,
       platform: platformName,
@@ -180,6 +182,7 @@ ${summary.join('\n')}
     );
 
     await codePushClientWrapper.completeRelease(
+      appId: app.appId,
       releaseId: release.id,
       platform: platformName,
     );

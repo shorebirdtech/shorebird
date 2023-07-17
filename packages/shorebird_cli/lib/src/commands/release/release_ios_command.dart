@@ -119,6 +119,7 @@ make smaller updates to your app.
     );
     if (existingRelease != null) {
       await codePushClientWrapper.ensureReleaseHasNoArtifacts(
+        appId: app.appId,
         existingRelease: existingRelease,
         platform: platformName,
       );
@@ -169,11 +170,13 @@ ${summary.join('\n')}
     final relativeIpaPath = p.relative(ipaPath);
 
     await codePushClientWrapper.createIosReleaseArtifact(
+      appId: app.appId,
       releaseId: release.id,
       ipaPath: ipaPath,
     );
 
     await codePushClientWrapper.completeRelease(
+      appId: app.appId,
       releaseId: release.id,
       platform: platformName,
     );

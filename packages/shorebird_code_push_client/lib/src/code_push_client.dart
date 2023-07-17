@@ -192,6 +192,7 @@ class CodePushClient {
   /// Create a new artifact for a specific [releaseId].
   Future<void> createReleaseArtifact({
     required String artifactPath,
+    required String appId,
     required int releaseId,
     required String arch,
     required String platform,
@@ -199,7 +200,7 @@ class CodePushClient {
   }) async {
     final request = http.MultipartRequest(
       'POST',
-      Uri.parse('$_v1/releases/$releaseId/artifacts'),
+      Uri.parse('$_v1/apps/$appId/releases/$releaseId/artifacts'),
     );
     final file = await http.MultipartFile.fromPath('file', artifactPath);
     request.fields.addAll({
@@ -286,9 +287,8 @@ class CodePushClient {
     String? displayName,
   }) async {
     final response = await _httpClient.post(
-      Uri.parse('$_v1/releases'),
+      Uri.parse('$_v1/apps/$appId/releases'),
       body: json.encode({
-        'app_id': appId,
         'version': version,
         'flutter_revision': flutterRevision,
         if (displayName != null) 'display_name': displayName,
@@ -304,12 +304,13 @@ class CodePushClient {
 
   /// Updates the specified release's status to [status].
   Future<void> updateReleaseStatus({
+    required String appId,
     required int releaseId,
     required String platform,
     required ReleaseStatus status,
   }) async {
     final response = await _httpClient.patch(
-      Uri.parse('$_v1/releases/$releaseId'),
+      Uri.parse('$_v1/apps/$appId/releases/$releaseId'),
       body: json.encode(
         UpdateReleaseRequest(
           status: status,
@@ -338,9 +339,12 @@ class CodePushClient {
   }
 
   /// Delete the release with the provided [releaseId].
-  Future<void> deleteRelease({required int releaseId}) async {
+  Future<void> deleteRelease({
+    required String appId,
+    required int releaseId,
+  }) async {
     final response = await _httpClient.delete(
-      Uri.parse('$_v1/releases/$releaseId'),
+      Uri.parse('$_v1/apps/$appId/releases/$releaseId'),
     );
 
     if (response.statusCode != HttpStatus.noContent) {
@@ -422,10 +426,12 @@ class CodePushClient {
       throw _parseErrorResponse(response.statusCode, response.body);
     }
 
-    final releases = json.decode(response.body) as List;
-    return releases
+    final collaborators = json.decode(response.body) as List;
+    return collaborators
         .map(
-          (release) => Collaborator.fromJson(release as Map<String, dynamic>),
+          (collaborator) => Collaborator.fromJson(
+            collaborator as Map<String, dynamic>,
+          ),
         )
         .toList();
   }
@@ -433,9 +439,7 @@ class CodePushClient {
   /// List all release for the provided [appId].
   Future<List<Release>> getReleases({required String appId}) async {
     final response = await _httpClient.get(
-      Uri.parse('$_v1/releases').replace(
-        queryParameters: {'appId': appId},
-      ),
+      Uri.parse('$_v1/apps/$appId/releases'),
     );
 
     if (response.statusCode != HttpStatus.ok) {
@@ -451,12 +455,13 @@ class CodePushClient {
   /// Get all release artifacts for a specific [releaseId]
   /// and optional [arch] and [platform].
   Future<List<ReleaseArtifact>> getReleaseArtifacts({
+    required String appId,
     required int releaseId,
     String? arch,
     String? platform,
   }) async {
     final response = await _httpClient.get(
-      Uri.parse('$_v1/releases/$releaseId/artifacts').replace(
+      Uri.parse('$_v1/apps/$appId/releases/$releaseId/artifacts').replace(
         queryParameters: {
           if (arch != null) 'arch': arch,
           if (platform != null) 'platform': platform,

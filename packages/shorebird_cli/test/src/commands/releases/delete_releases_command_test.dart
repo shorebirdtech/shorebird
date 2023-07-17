@@ -198,7 +198,10 @@ flutter:
 
       expect(exitCode, ExitCode.success.code);
       verifyNever(
-        () => codePushClient.deleteRelease(releaseId: any(named: 'releaseId')),
+        () => codePushClient.deleteRelease(
+          appId: any(named: 'appId'),
+          releaseId: any(named: 'releaseId'),
+        ),
       );
       verify(() => logger.info('Aborted.')).called(1);
     });
@@ -215,13 +218,19 @@ flutter:
       expect(exitCode, ExitCode.software.code);
       verify(() => logger.err('No release found for version "asdf"')).called(1);
       verifyNever(
-        () => codePushClient.deleteRelease(releaseId: any(named: 'releaseId')),
+        () => codePushClient.deleteRelease(
+          appId: any(named: 'appId'),
+          releaseId: any(named: 'releaseId'),
+        ),
       );
     });
 
     test('returns software error when delete release fails', () async {
       when(
-        () => codePushClient.deleteRelease(releaseId: any(named: 'releaseId')),
+        () => codePushClient.deleteRelease(
+          appId: any(named: 'appId'),
+          releaseId: any(named: 'releaseId'),
+        ),
       ).thenThrow(Exception('oops'));
 
       final tempDir = setUpTempDir();
@@ -233,13 +242,16 @@ flutter:
       expect(exitCode, ExitCode.software.code);
       verify(() => progress.fail(any(that: contains('oops')))).called(1);
       verify(
-        () => codePushClient.deleteRelease(releaseId: any(named: 'releaseId')),
+        () => codePushClient.deleteRelease(appId: appId, releaseId: releaseId),
       ).called(1);
     });
 
     test('returns success when release is deleted', () async {
       when(
-        () => codePushClient.deleteRelease(releaseId: any(named: 'releaseId')),
+        () => codePushClient.deleteRelease(
+          appId: any(named: 'appId'),
+          releaseId: any(named: 'releaseId'),
+        ),
       ).thenAnswer((_) async {});
 
       final tempDir = setUpTempDir();
@@ -249,10 +261,12 @@ flutter:
       );
 
       expect(exitCode, ExitCode.success.code);
-      verify(() => codePushClient.deleteRelease(releaseId: releaseId))
-          .called(1);
-      verify(() => progress.complete('Deleted release $versionNumber.'))
-          .called(1);
+      verify(
+        () => codePushClient.deleteRelease(appId: appId, releaseId: releaseId),
+      ).called(1);
+      verify(
+        () => progress.complete('Deleted release $versionNumber.'),
+      ).called(1);
     });
 
     test('uses correct app_id when flavor is specified', () async {
@@ -266,7 +280,10 @@ app_id: productionAppId
 flavors:
   $flavor: $appId''');
       when(
-        () => codePushClient.deleteRelease(releaseId: any(named: 'releaseId')),
+        () => codePushClient.deleteRelease(
+          appId: any(named: 'appId'),
+          releaseId: any(named: 'releaseId'),
+        ),
       ).thenAnswer((_) async {});
 
       final exitCode = await IOOverrides.runZoned(
@@ -277,7 +294,7 @@ flavors:
       expect(exitCode, ExitCode.success.code);
       verify(() => codePushClient.getReleases(appId: appId)).called(1);
       verify(
-        () => codePushClient.deleteRelease(releaseId: releaseId),
+        () => codePushClient.deleteRelease(appId: appId, releaseId: releaseId),
       ).called(1);
       verify(
         () => progress.complete('Deleted release $versionNumber.'),

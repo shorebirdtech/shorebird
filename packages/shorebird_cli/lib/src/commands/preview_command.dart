@@ -80,6 +80,7 @@ class PreviewCommand extends ShorebirdCommand
         );
         final releaseAabArtifact =
             await codePushClientWrapper.getReleaseArtifact(
+          appId: appId,
           releaseId: release.id,
           // TODO(felangel): add iOS support
           arch: 'aab',
