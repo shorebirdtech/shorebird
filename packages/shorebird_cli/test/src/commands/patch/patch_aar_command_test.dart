@@ -290,6 +290,7 @@ flutter:
       ).thenAnswer((_) async => release);
       when(
         () => codePushClientWrapper.getReleaseArtifacts(
+          appId: any(named: 'appId'),
           releaseId: any(named: 'releaseId'),
           architectures: any(named: 'architectures'),
           platform: any(named: 'platform'),
@@ -303,6 +304,7 @@ flutter:
       );
       when(
         () => codePushClientWrapper.getReleaseArtifact(
+          appId: any(named: 'appId'),
           releaseId: any(named: 'releaseId'),
           arch: 'aar',
           platform: 'android',
@@ -719,6 +721,7 @@ https://github.com/shorebirdtech/shorebird/issues/472
       ).called(1);
       verify(
         () => codePushClientWrapper.getReleaseArtifacts(
+          appId: appId,
           releaseId: release.id,
           architectures: ShorebirdBuildMixin.allAndroidArchitectures,
           platform: platformName,
@@ -726,6 +729,7 @@ https://github.com/shorebirdtech/shorebird/issues/472
       ).called(1);
       verify(
         () => codePushClientWrapper.getReleaseArtifact(
+          appId: appId,
           releaseId: release.id,
           arch: 'aar',
           platform: platformName,
@@ -769,6 +773,7 @@ flavors:
       ).called(1);
       verify(
         () => codePushClientWrapper.getReleaseArtifacts(
+          appId: appId,
           releaseId: release.id,
           architectures: ShorebirdBuildMixin.allAndroidArchitectures,
           platform: platformName,
@@ -776,6 +781,7 @@ flavors:
       ).called(1);
       verify(
         () => codePushClientWrapper.getReleaseArtifact(
+          appId: appId,
           releaseId: release.id,
           arch: 'aar',
           platform: platformName,

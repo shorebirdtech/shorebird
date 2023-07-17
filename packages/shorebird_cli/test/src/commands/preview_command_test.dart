@@ -145,6 +145,7 @@ void main() {
       ).thenAnswer((_) async => release);
       when(
         () => codePushClientWrapper.getReleaseArtifact(
+          appId: any(named: 'appId'),
           releaseId: any(named: 'releaseId'),
           arch: any(named: 'arch'),
           platform: any(named: 'platform'),
@@ -216,6 +217,7 @@ void main() {
       final exception = Exception('oops');
       when(
         () => codePushClientWrapper.getReleaseArtifact(
+          appId: any(named: 'appId'),
           releaseId: any(named: 'releaseId'),
           arch: any(named: 'arch'),
           platform: any(named: 'platform'),
@@ -225,6 +227,7 @@ void main() {
       expect(result, equals(ExitCode.software.code));
       verify(
         () => codePushClientWrapper.getReleaseArtifact(
+          appId: appId,
           releaseId: releaseId,
           arch: 'aab',
           platform: platform,

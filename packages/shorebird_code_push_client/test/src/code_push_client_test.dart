@@ -483,6 +483,7 @@ void main() {
     });
 
     group('createReleaseArtifact', () {
+      const appId = 'test-app-id';
       const releaseId = 0;
       const arch = 'aarch64';
       const platform = 'android';
@@ -496,6 +497,7 @@ void main() {
 
         try {
           await codePushClient.createReleaseArtifact(
+            appId: appId,
             artifactPath: fixture.path,
             releaseId: releaseId,
             arch: arch,
@@ -508,7 +510,8 @@ void main() {
             .captured
             .single as http.BaseRequest;
         expect(request.method, equals('POST'));
-        expect(request.url, equals(v1('releases/$releaseId/artifacts')));
+        expect(request.url,
+            equals(v1('apps/$appId/releases/$releaseId/artifacts')));
         expect(request.hasStandardHeaders, isTrue);
       });
 
@@ -526,6 +529,7 @@ void main() {
 
         expect(
           codePushClient.createReleaseArtifact(
+            appId: appId,
             artifactPath: fixture.path,
             releaseId: releaseId,
             arch: arch,
@@ -558,6 +562,7 @@ void main() {
 
         expect(
           codePushClient.createReleaseArtifact(
+            appId: appId,
             artifactPath: fixture.path,
             releaseId: releaseId,
             arch: arch,
@@ -584,6 +589,7 @@ void main() {
 
         expect(
           codePushClient.createReleaseArtifact(
+            appId: appId,
             artifactPath: fixture.path,
             releaseId: releaseId,
             arch: arch,
@@ -608,6 +614,7 @@ void main() {
 
         expect(
           codePushClient.createReleaseArtifact(
+            appId: appId,
             artifactPath: fixture.path,
             releaseId: releaseId,
             arch: arch,
@@ -662,6 +669,7 @@ void main() {
 
         await expectLater(
           codePushClient.createReleaseArtifact(
+            appId: appId,
             artifactPath: fixture.path,
             releaseId: releaseId,
             arch: arch,
@@ -724,6 +732,7 @@ void main() {
 
         await expectLater(
           codePushClient.createReleaseArtifact(
+            appId: appId,
             artifactPath: fixture.path,
             releaseId: releaseId,
             arch: arch,
@@ -740,7 +749,7 @@ void main() {
         expect(
           request.url,
           codePushClient.hostedUri.replace(
-            path: '/api/v1/releases/$releaseId/artifacts',
+            path: '/api/v1/apps/$appId/releases/$releaseId/artifacts',
           ),
         );
       });
@@ -1027,7 +1036,7 @@ void main() {
             .captured
             .single as http.BaseRequest;
         expect(request.method, equals('POST'));
-        expect(request.url, equals(v1('releases')));
+        expect(request.url, equals(v1('apps/$appId/releases')));
         expect(request.hasStandardHeaders, isTrue);
       });
 
@@ -1131,18 +1140,20 @@ void main() {
 
         expect(
           request.url,
-          codePushClient.hostedUri.replace(path: '/api/v1/releases'),
+          codePushClient.hostedUri.replace(path: '/api/v1/apps/$appId/releases'),
         );
       });
     });
 
     group('updateReleaseStatus', () {
+      const appId = 'test-app-id';
       const releaseId = 42;
       const platform = 'android';
 
       test('makes the correct request', () async {
         codePushClient
             .updateReleaseStatus(
+              appId: appId,
               releaseId: releaseId,
               platform: platform,
               status: ReleaseStatus.active,
@@ -1152,7 +1163,7 @@ void main() {
             .captured
             .single as http.BaseRequest;
         expect(request.method, equals('PATCH'));
-        expect(request.url, equals(v1('releases/$releaseId')));
+        expect(request.url, equals(v1('apps/$appId/releases/$releaseId')));
         expect(request.hasStandardHeaders, isTrue);
       });
 
@@ -1166,6 +1177,7 @@ void main() {
 
         expect(
           codePushClient.updateReleaseStatus(
+            appId: appId,
             releaseId: releaseId,
             platform: platform,
             status: ReleaseStatus.active,
@@ -1190,6 +1202,7 @@ void main() {
 
         expect(
           codePushClient.updateReleaseStatus(
+            appId: appId,
             releaseId: releaseId,
             platform: platform,
             status: ReleaseStatus.active,
@@ -1282,15 +1295,18 @@ void main() {
     });
 
     group('deleteRelease', () {
+      const appId = 'test-app-id';
       const releaseId = 42;
 
       test('makes the correct request', () async {
-        codePushClient.deleteRelease(releaseId: releaseId).ignore();
+        codePushClient
+            .deleteRelease(appId: appId, releaseId: releaseId)
+            .ignore();
         final request = verify(() => httpClient.send(captureAny()))
             .captured
             .single as http.BaseRequest;
         expect(request.method, equals('DELETE'));
-        expect(request.url, equals(v1('releases/$releaseId')));
+        expect(request.url, equals(v1('apps/$appId/releases/$releaseId')));
         expect(request.hasStandardHeaders, isTrue);
       });
 
@@ -1303,7 +1319,7 @@ void main() {
         );
 
         expect(
-          codePushClient.deleteRelease(releaseId: releaseId),
+          codePushClient.deleteRelease(appId: appId, releaseId: releaseId),
           throwsA(
             isA<CodePushException>().having(
               (e) => e.message,
@@ -1323,7 +1339,7 @@ void main() {
         );
 
         expect(
-          codePushClient.deleteRelease(releaseId: releaseId),
+          codePushClient.deleteRelease(appId: appId, releaseId: releaseId),
           throwsA(
             isA<CodePushException>().having(
               (e) => e.message,
@@ -1342,7 +1358,7 @@ void main() {
           ),
         );
 
-        await codePushClient.deleteRelease(releaseId: releaseId);
+        await codePushClient.deleteRelease(appId: appId, releaseId: releaseId);
 
         final request = verify(() => httpClient.send(captureAny()))
             .captured
@@ -1351,7 +1367,7 @@ void main() {
         expect(
           request.url,
           codePushClient.hostedUri.replace(
-            path: '/api/v1/releases/$releaseId',
+            path: '/api/v1/apps/$appId/releases/$releaseId',
           ),
         );
       });
@@ -1747,7 +1763,7 @@ void main() {
             .captured
             .single as http.BaseRequest;
         expect(request.method, equals('GET'));
-        expect(request.url, equals(v1('releases?appId=$appId')));
+        expect(request.url, equals(v1('apps/$appId/releases')));
         expect(request.hasStandardHeaders, isTrue);
       });
 
@@ -1834,6 +1850,7 @@ void main() {
     });
 
     group('getReleaseArtifacts', () {
+      const appId = 'test-app-id';
       const releaseId = 0;
       const arch = 'aarch64';
       const platform = 'android';
@@ -1841,6 +1858,7 @@ void main() {
       test('makes the correct request', () async {
         codePushClient
             .getReleaseArtifacts(
+              appId: appId,
               releaseId: releaseId,
               arch: arch,
               platform: platform,
@@ -1853,7 +1871,7 @@ void main() {
         expect(
           request.url,
           equals(
-            v1('releases/$releaseId/artifacts?arch=$arch&platform=$platform'),
+            v1('apps/$appId/releases/$releaseId/artifacts?arch=$arch&platform=$platform'),
           ),
         );
         expect(request.hasStandardHeaders, isTrue);
@@ -1869,6 +1887,7 @@ void main() {
 
         expect(
           codePushClient.getReleaseArtifacts(
+            appId: appId,
             releaseId: releaseId,
             arch: arch,
             platform: platform,
@@ -1893,6 +1912,7 @@ void main() {
 
         expect(
           codePushClient.getReleaseArtifacts(
+            appId: appId,
             releaseId: releaseId,
             arch: arch,
             platform: platform,
@@ -1932,6 +1952,7 @@ void main() {
         );
 
         final actual = await codePushClient.getReleaseArtifacts(
+          appId: appId,
           releaseId: releaseId,
           arch: arch,
           platform: platform,

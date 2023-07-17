@@ -30,6 +30,7 @@ Future<void> main() async {
 
   // Create a release artifact.
   await client.createReleaseArtifact(
+    appId: app.id,
     releaseId: release.id,
     artifactPath: '<PATH TO ARTIFACT>', // e.g. 'libapp.so'
     platform: '<PLATFORM>', // e.g. 'android'

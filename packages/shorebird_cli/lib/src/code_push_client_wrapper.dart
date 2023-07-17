@@ -132,12 +132,14 @@ This app may not exist or you may not have permission to view it.''',
   /// Exits if [platform] release artifacts already exist for an
   /// [existingRelease].
   Future<void> ensureReleaseHasNoArtifacts({
+    required String appId,
     required Release existingRelease,
     required String platform,
   }) async {
     logger.detail('Verifying ability to release');
 
     final artifacts = await codePushClient.getReleaseArtifacts(
+      appId: appId,
       releaseId: existingRelease.id,
       platform: platform,
     );
@@ -223,6 +225,7 @@ Please create a release using "shorebird release" and try again.
   }
 
   Future<Map<Arch, ReleaseArtifact>> getReleaseArtifacts({
+    required String appId,
     required int releaseId,
     required Map<Arch, ArchMetadata> architectures,
     required String platform,
@@ -236,6 +239,7 @@ Please create a release using "shorebird release" and try again.
     for (final entry in architectures.entries) {
       try {
         final artifacts = await codePushClient.getReleaseArtifacts(
+          appId: appId,
           releaseId: releaseId,
           arch: entry.value.arch,
           platform: platform,
@@ -258,6 +262,7 @@ Please create a release using "shorebird release" and try again.
   }
 
   Future<ReleaseArtifact> getReleaseArtifact({
+    required String appId,
     required int releaseId,
     required String arch,
     required String platform,
@@ -267,6 +272,7 @@ Please create a release using "shorebird release" and try again.
     );
     try {
       final artifacts = await codePushClient.getReleaseArtifacts(
+        appId: appId,
         releaseId: releaseId,
         arch: arch,
         platform: platform,
@@ -286,6 +292,7 @@ Please create a release using "shorebird release" and try again.
   }
 
   Future<ReleaseArtifact?> maybeGetReleaseArtifact({
+    required String appId,
     required int releaseId,
     required String arch,
     required String platform,
@@ -295,6 +302,7 @@ Please create a release using "shorebird release" and try again.
     );
     try {
       final artifacts = await codePushClient.getReleaseArtifacts(
+        appId: appId,
         releaseId: releaseId,
         arch: arch,
         platform: platform,
@@ -317,6 +325,7 @@ Please create a release using "shorebird release" and try again.
   }
 
   Future<void> createAndroidReleaseArtifacts({
+    required String appId,
     required int releaseId,
     required String platform,
     required String aabPath,
@@ -343,6 +352,7 @@ Please create a release using "shorebird release" and try again.
 
       try {
         await codePushClient.createReleaseArtifact(
+          appId: appId,
           releaseId: releaseId,
           artifactPath: artifact.path,
           arch: archMetadata.arch,
@@ -365,6 +375,7 @@ ${archMetadata.arch} artifact already exists, continuing...''',
     try {
       logger.detail('Creating artifact for $aabPath');
       await codePushClient.createReleaseArtifact(
+        appId: appId,
         releaseId: releaseId,
         artifactPath: aabPath,
         arch: 'aab',
@@ -387,6 +398,7 @@ aab artifact already exists, continuing...''',
   }
 
   Future<void> createAndroidArchiveReleaseArtifacts({
+    required String appId,
     required int releaseId,
     required String platform,
     required String aarPath,
@@ -408,6 +420,7 @@ aab artifact already exists, continuing...''',
 
       try {
         await codePushClient.createReleaseArtifact(
+          appId: appId,
           releaseId: releaseId,
           artifactPath: artifact.path,
           arch: archMetadata.arch,
@@ -430,6 +443,7 @@ ${archMetadata.arch} artifact already exists, continuing...''',
     try {
       logger.detail('Creating artifact for $aarPath');
       await codePushClient.createReleaseArtifact(
+        appId: appId,
         releaseId: releaseId,
         artifactPath: aarPath,
         arch: 'aar',
@@ -453,6 +467,7 @@ aar artifact already exists, continuing...''',
 
   /// Uploads a release ipa to the Shorebird server.
   Future<void> createIosReleaseArtifact({
+    required String appId,
     required int releaseId,
     required String ipaPath,
   }) async {
@@ -460,6 +475,7 @@ aar artifact already exists, continuing...''',
     final ipaFile = File(ipaPath);
     try {
       await codePushClient.createReleaseArtifact(
+        appId: appId,
         releaseId: releaseId,
         artifactPath: ipaPath,
         arch: 'ipa',
@@ -477,12 +493,14 @@ aar artifact already exists, continuing...''',
   /// Updates the specified release's status to [ReleaseStatus.active] for the
   /// given platform.
   Future<void> completeRelease({
+    required String appId,
     required int releaseId,
     required String platform,
   }) async {
     final completeReleaseProgress = logger.progress('Completing release');
     try {
       await codePushClient.updateReleaseStatus(
+        appId: appId,
         releaseId: releaseId,
         status: ReleaseStatus.active,
         platform: platform,

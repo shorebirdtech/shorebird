@@ -196,12 +196,14 @@ https://github.com/shorebirdtech/shorebird/issues/472
     }
 
     final releaseArtifacts = await codePushClientWrapper.getReleaseArtifacts(
+      appId: app.appId,
       releaseId: release.id,
       architectures: architectures,
       platform: platformName,
     );
 
     final releaseAabArtifact = await codePushClientWrapper.getReleaseArtifact(
+      appId: app.appId,
       releaseId: release.id,
       arch: 'aab',
       platform: platformName,

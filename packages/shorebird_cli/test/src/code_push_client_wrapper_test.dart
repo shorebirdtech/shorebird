@@ -361,12 +361,14 @@ void main() {
     });
 
     group('release', () {
-      group('verifyCanRelease', () {
+      group('ensureReleaseHasNoArtifacts', () {
+        const appId = 'test-app-id';
         test(
           '''exits with code 70 if release artifacts exist for the given release and platform''',
           () async {
             when(
               () => codePushClient.getReleaseArtifacts(
+                appId: any(named: 'appId'),
                 releaseId: any(named: 'releaseId'),
                 platform: any(named: 'platform'),
               ),
@@ -375,6 +377,7 @@ void main() {
             await expectLater(
               runWithOverrides(
                 () async => codePushClientWrapper.ensureReleaseHasNoArtifacts(
+                  appId: appId,
                   existingRelease: release,
                   platform: platformName,
                 ),
@@ -397,6 +400,7 @@ Please bump your version number and try again.''',
           () async {
             when(
               () => codePushClient.getReleaseArtifacts(
+                appId: any(named: 'appId'),
                 releaseId: any(named: 'releaseId'),
                 platform: any(named: 'platform'),
               ),
@@ -405,6 +409,7 @@ Please bump your version number and try again.''',
             await expectLater(
               runWithOverrides(
                 () => codePushClientWrapper.ensureReleaseHasNoArtifacts(
+                  appId: appId,
                   existingRelease: release,
                   platform: platformName,
                 ),
@@ -655,6 +660,7 @@ Please bump your version number and try again.''',
           const error = 'something went wrong';
           when(
             () => codePushClient.getReleaseArtifacts(
+              appId: any(named: 'appId'),
               releaseId: any(named: 'releaseId'),
               arch: any(named: 'arch'),
               platform: any(named: 'platform'),
@@ -664,6 +670,7 @@ Please bump your version number and try again.''',
           await expectLater(
             () async => runWithOverrides(
               () => codePushClientWrapper.getReleaseArtifacts(
+                appId: app.appId,
                 releaseId: releaseId,
                 architectures: archMap,
                 platform: platformName,
@@ -677,6 +684,7 @@ Please bump your version number and try again.''',
         test('exits with code 70 if release artifact does not exist', () async {
           when(
             () => codePushClient.getReleaseArtifacts(
+              appId: any(named: 'appId'),
               releaseId: any(named: 'releaseId'),
               arch: any(named: 'arch'),
               platform: any(named: 'platform'),
@@ -686,6 +694,7 @@ Please bump your version number and try again.''',
           await expectLater(
             () async => runWithOverrides(
               () => codePushClientWrapper.getReleaseArtifacts(
+                appId: app.appId,
                 releaseId: releaseId,
                 architectures: archMap,
                 platform: platformName,
@@ -705,6 +714,7 @@ Please bump your version number and try again.''',
             () async {
           when(
             () => codePushClient.getReleaseArtifacts(
+              appId: any(named: 'appId'),
               releaseId: any(named: 'releaseId'),
               arch: any(named: 'arch'),
               platform: any(named: 'platform'),
@@ -713,6 +723,7 @@ Please bump your version number and try again.''',
 
           final result = await runWithOverrides(
             () => codePushClientWrapper.getReleaseArtifacts(
+              appId: app.appId,
               releaseId: releaseId,
               architectures: archMap,
               platform: platformName,
@@ -729,6 +740,7 @@ Please bump your version number and try again.''',
           const error = 'something went wrong';
           when(
             () => codePushClient.getReleaseArtifacts(
+              appId: any(named: 'appId'),
               releaseId: any(named: 'releaseId'),
               arch: any(named: 'arch'),
               platform: any(named: 'platform'),
@@ -738,6 +750,7 @@ Please bump your version number and try again.''',
           await expectLater(
             () async => runWithOverrides(
               () => codePushClientWrapper.getReleaseArtifact(
+                appId: app.appId,
                 releaseId: releaseId,
                 arch: arch.name,
                 platform: platformName,
@@ -752,6 +765,7 @@ Please bump your version number and try again.''',
         test('exits with code 70 if release artifact does not exist', () async {
           when(
             () => codePushClient.getReleaseArtifacts(
+              appId: any(named: 'appId'),
               releaseId: any(named: 'releaseId'),
               arch: any(named: 'arch'),
               platform: any(named: 'platform'),
@@ -761,6 +775,7 @@ Please bump your version number and try again.''',
           await expectLater(
             () async => runWithOverrides(
               () => codePushClientWrapper.getReleaseArtifact(
+                appId: app.appId,
                 releaseId: releaseId,
                 arch: arch.name,
                 platform: platformName,
@@ -781,6 +796,7 @@ Please bump your version number and try again.''',
           () async {
             when(
               () => codePushClient.getReleaseArtifacts(
+                appId: any(named: 'appId'),
                 releaseId: any(named: 'releaseId'),
                 arch: any(named: 'arch'),
                 platform: any(named: 'platform'),
@@ -789,6 +805,7 @@ Please bump your version number and try again.''',
 
             final result = await runWithOverrides(
               () => codePushClientWrapper.getReleaseArtifact(
+                appId: app.appId,
                 releaseId: releaseId,
                 arch: arch.name,
                 platform: platformName,
@@ -806,6 +823,7 @@ Please bump your version number and try again.''',
           const error = 'something went wrong';
           when(
             () => codePushClient.getReleaseArtifacts(
+              appId: any(named: 'appId'),
               releaseId: any(named: 'releaseId'),
               arch: any(named: 'arch'),
               platform: any(named: 'platform'),
@@ -815,6 +833,7 @@ Please bump your version number and try again.''',
           await expectLater(
             () async => runWithOverrides(
               () => codePushClientWrapper.maybeGetReleaseArtifact(
+                appId: app.appId,
                 releaseId: releaseId,
                 arch: arch.name,
                 platform: platformName,
@@ -829,6 +848,7 @@ Please bump your version number and try again.''',
         test('returns null if release artifact does not exist', () async {
           when(
             () => codePushClient.getReleaseArtifacts(
+              appId: any(named: 'appId'),
               releaseId: any(named: 'releaseId'),
               arch: any(named: 'arch'),
               platform: any(named: 'platform'),
@@ -837,6 +857,7 @@ Please bump your version number and try again.''',
 
           final result = await runWithOverrides(
             () => codePushClientWrapper.maybeGetReleaseArtifact(
+              appId: app.appId,
               releaseId: releaseId,
               arch: arch.name,
               platform: platformName,
@@ -852,6 +873,7 @@ Please bump your version number and try again.''',
           () async {
             when(
               () => codePushClient.getReleaseArtifacts(
+                appId: any(named: 'appId'),
                 releaseId: any(named: 'releaseId'),
                 arch: any(named: 'arch'),
                 platform: any(named: 'platform'),
@@ -860,6 +882,7 @@ Please bump your version number and try again.''',
 
             final result = await runWithOverrides(
               () => codePushClientWrapper.maybeGetReleaseArtifact(
+                appId: app.appId,
                 releaseId: releaseId,
                 arch: arch.name,
                 platform: platformName,
@@ -900,6 +923,7 @@ Please bump your version number and try again.''',
         setUp(() {
           when(
             () => codePushClient.createReleaseArtifact(
+              appId: any(named: 'appId'),
               artifactPath: any(named: 'artifactPath'),
               releaseId: any(named: 'releaseId'),
               arch: any(named: 'arch'),
@@ -913,6 +937,7 @@ Please bump your version number and try again.''',
           const error = 'something went wrong';
           when(
             () => codePushClient.createReleaseArtifact(
+              appId: any(named: 'appId'),
               artifactPath: any(named: 'artifactPath'),
               releaseId: any(named: 'releaseId'),
               arch: any(named: 'arch'),
@@ -926,6 +951,7 @@ Please bump your version number and try again.''',
             () async => expectLater(
               () async => runWithOverrides(
                 () async => codePushClientWrapper.createAndroidReleaseArtifacts(
+                  appId: app.appId,
                   releaseId: releaseId,
                   platform: platformName,
                   aabPath: p.join(tempDir.path, aabPath),
@@ -944,6 +970,7 @@ Please bump your version number and try again.''',
           const error = 'something went wrong';
           when(
             () => codePushClient.createReleaseArtifact(
+              appId: any(named: 'appId'),
               artifactPath: any(named: 'artifactPath', that: endsWith('aab')),
               releaseId: any(named: 'releaseId'),
               arch: any(named: 'arch'),
@@ -957,6 +984,7 @@ Please bump your version number and try again.''',
             () async => expectLater(
               () async => runWithOverrides(
                 () async => codePushClientWrapper.createAndroidReleaseArtifacts(
+                  appId: app.appId,
                   releaseId: releaseId,
                   platform: platformName,
                   aabPath: p.join(tempDir.path, aabPath),
@@ -976,6 +1004,7 @@ Please bump your version number and try again.''',
           const error = 'something went wrong';
           when(
             () => codePushClient.createReleaseArtifact(
+              appId: any(named: 'appId'),
               artifactPath: any(named: 'artifactPath'),
               releaseId: any(named: 'releaseId'),
               arch: any(named: 'arch'),
@@ -988,6 +1017,7 @@ Please bump your version number and try again.''',
           await runWithOverrides(
             () async => IOOverrides.runZoned(
               () async => codePushClientWrapper.createAndroidReleaseArtifacts(
+                appId: app.appId,
                 releaseId: releaseId,
                 platform: platformName,
                 aabPath: p.join(tempDir.path, aabPath),
@@ -1010,6 +1040,7 @@ Please bump your version number and try again.''',
           const error = 'something went wrong';
           when(
             () => codePushClient.createReleaseArtifact(
+              appId: any(named: 'appId'),
               artifactPath: any(named: 'artifactPath', that: endsWith('.aab')),
               releaseId: any(named: 'releaseId'),
               arch: any(named: 'arch'),
@@ -1022,6 +1053,7 @@ Please bump your version number and try again.''',
           await runWithOverrides(
             () async => IOOverrides.runZoned(
               () async => codePushClientWrapper.createAndroidReleaseArtifacts(
+                appId: app.appId,
                 releaseId: releaseId,
                 platform: platformName,
                 aabPath: p.join(tempDir.path, aabPath),
@@ -1042,6 +1074,7 @@ Please bump your version number and try again.''',
         test('completes successfully when all artifacts are created', () async {
           when(
             () => codePushClient.createReleaseArtifact(
+              appId: any(named: 'appId'),
               artifactPath: any(named: 'artifactPath'),
               releaseId: any(named: 'releaseId'),
               arch: any(named: 'arch'),
@@ -1054,6 +1087,7 @@ Please bump your version number and try again.''',
           await runWithOverrides(
             () async => IOOverrides.runZoned(
               () async => codePushClientWrapper.createAndroidReleaseArtifacts(
+                appId: app.appId,
                 releaseId: releaseId,
                 platform: platformName,
                 aabPath: p.join(tempDir.path, aabPath),
@@ -1071,6 +1105,7 @@ Please bump your version number and try again.''',
           const flavorName = 'myFlavor';
           when(
             () => codePushClient.createReleaseArtifact(
+              appId: any(named: 'appId'),
               artifactPath: any(named: 'artifactPath'),
               releaseId: any(named: 'releaseId'),
               arch: any(named: 'arch'),
@@ -1083,6 +1118,7 @@ Please bump your version number and try again.''',
           await runWithOverrides(
             () async => IOOverrides.runZoned(
               () async => codePushClientWrapper.createAndroidReleaseArtifacts(
+                appId: app.appId,
                 releaseId: releaseId,
                 platform: platformName,
                 aabPath: p.join(tempDir.path, aabPath),
@@ -1095,8 +1131,11 @@ Please bump your version number and try again.''',
 
           verify(
             () => codePushClient.createReleaseArtifact(
-              artifactPath:
-                  any(named: 'artifactPath', that: contains(flavorName)),
+              appId: app.appId,
+              artifactPath: any(
+                named: 'artifactPath',
+                that: contains(flavorName),
+              ),
               releaseId: releaseId,
               arch: any(named: 'arch'),
               platform: platformName,
@@ -1145,6 +1184,7 @@ Please bump your version number and try again.''',
         setUp(() {
           when(
             () => codePushClient.createReleaseArtifact(
+              appId: any(named: 'appId'),
               artifactPath: any(named: 'artifactPath'),
               releaseId: any(named: 'releaseId'),
               arch: any(named: 'arch'),
@@ -1158,6 +1198,7 @@ Please bump your version number and try again.''',
           const error = 'something went wrong';
           when(
             () => codePushClient.createReleaseArtifact(
+              appId: any(named: 'appId'),
               artifactPath: any(named: 'artifactPath'),
               releaseId: any(named: 'releaseId'),
               arch: any(named: 'arch'),
@@ -1172,6 +1213,7 @@ Please bump your version number and try again.''',
               () async => runWithOverrides(
                 () async =>
                     codePushClientWrapper.createAndroidArchiveReleaseArtifacts(
+                  appId: app.appId,
                   releaseId: releaseId,
                   platform: platformName,
                   aarPath: p.join(tempDir.path, aarPath),
@@ -1191,6 +1233,7 @@ Please bump your version number and try again.''',
           const error = 'something went wrong';
           when(
             () => codePushClient.createReleaseArtifact(
+              appId: any(named: 'appId'),
               artifactPath: any(named: 'artifactPath', that: endsWith('aar')),
               releaseId: any(named: 'releaseId'),
               arch: any(named: 'arch'),
@@ -1205,6 +1248,7 @@ Please bump your version number and try again.''',
               () async => runWithOverrides(
                 () async =>
                     codePushClientWrapper.createAndroidArchiveReleaseArtifacts(
+                  appId: app.appId,
                   releaseId: releaseId,
                   platform: platformName,
                   aarPath: p.join(tempDir.path, aarPath),
@@ -1225,6 +1269,7 @@ Please bump your version number and try again.''',
           const error = 'something went wrong';
           when(
             () => codePushClient.createReleaseArtifact(
+              appId: any(named: 'appId'),
               artifactPath: any(named: 'artifactPath'),
               releaseId: any(named: 'releaseId'),
               arch: any(named: 'arch'),
@@ -1238,6 +1283,7 @@ Please bump your version number and try again.''',
             () async => IOOverrides.runZoned(
               () async =>
                   codePushClientWrapper.createAndroidArchiveReleaseArtifacts(
+                appId: app.appId,
                 releaseId: releaseId,
                 platform: platformName,
                 aarPath: p.join(tempDir.path, aarPath),
@@ -1261,6 +1307,7 @@ Please bump your version number and try again.''',
           const error = 'something went wrong';
           when(
             () => codePushClient.createReleaseArtifact(
+              appId: any(named: 'appId'),
               artifactPath: any(named: 'artifactPath', that: endsWith('.aar')),
               releaseId: any(named: 'releaseId'),
               arch: any(named: 'arch'),
@@ -1274,6 +1321,7 @@ Please bump your version number and try again.''',
             () async => IOOverrides.runZoned(
               () async =>
                   codePushClientWrapper.createAndroidArchiveReleaseArtifacts(
+                appId: app.appId,
                 releaseId: releaseId,
                 platform: platformName,
                 aarPath: p.join(tempDir.path, aarPath),
@@ -1295,6 +1343,7 @@ Please bump your version number and try again.''',
         test('completes successfully when all artifacts are created', () async {
           when(
             () => codePushClient.createReleaseArtifact(
+              appId: any(named: 'appId'),
               artifactPath: any(named: 'artifactPath'),
               releaseId: any(named: 'releaseId'),
               arch: any(named: 'arch'),
@@ -1308,6 +1357,7 @@ Please bump your version number and try again.''',
             () async => IOOverrides.runZoned(
               () async =>
                   codePushClientWrapper.createAndroidArchiveReleaseArtifacts(
+                appId: app.appId,
                 releaseId: releaseId,
                 platform: platformName,
                 aarPath: p.join(tempDir.path, aarPath),
@@ -1326,6 +1376,7 @@ Please bump your version number and try again.''',
           const flavorName = 'myFlavor';
           when(
             () => codePushClient.createReleaseArtifact(
+              appId: any(named: 'appId'),
               artifactPath: any(named: 'artifactPath'),
               releaseId: any(named: 'releaseId'),
               arch: any(named: 'arch'),
@@ -1339,6 +1390,7 @@ Please bump your version number and try again.''',
             () async => IOOverrides.runZoned(
               () async =>
                   codePushClientWrapper.createAndroidArchiveReleaseArtifacts(
+                appId: app.appId,
                 releaseId: releaseId,
                 platform: platformName,
                 aarPath: p.join(tempDir.path, aarPath),
@@ -1351,6 +1403,7 @@ Please bump your version number and try again.''',
 
           verify(
             () => codePushClient.createReleaseArtifact(
+              appId: app.appId,
               artifactPath: any(named: 'artifactPath'),
               releaseId: releaseId,
               arch: any(named: 'arch'),
@@ -1376,6 +1429,7 @@ Please bump your version number and try again.''',
       setUp(() {
         when(
           () => codePushClient.createReleaseArtifact(
+            appId: any(named: 'appId'),
             artifactPath: any(named: 'artifactPath'),
             releaseId: any(named: 'releaseId'),
             arch: any(named: 'arch'),
@@ -1389,6 +1443,7 @@ Please bump your version number and try again.''',
         const error = 'something went wrong';
         when(
           () => codePushClient.createReleaseArtifact(
+            appId: any(named: 'appId'),
             artifactPath: any(named: 'artifactPath'),
             releaseId: any(named: 'releaseId'),
             arch: any(named: 'arch'),
@@ -1402,6 +1457,7 @@ Please bump your version number and try again.''',
           () async => expectLater(
             () async => runWithOverrides(
               () async => codePushClientWrapper.createIosReleaseArtifact(
+                appId: app.appId,
                 releaseId: releaseId,
                 ipaPath: p.join(tempDir.path, ipaPath),
               ),
@@ -1419,6 +1475,7 @@ Please bump your version number and try again.''',
         const error = 'something went wrong';
         when(
           () => codePushClient.createReleaseArtifact(
+            appId: any(named: 'appId'),
             artifactPath: any(named: 'artifactPath', that: endsWith('.ipa')),
             releaseId: any(named: 'releaseId'),
             arch: any(named: 'arch'),
@@ -1432,6 +1489,7 @@ Please bump your version number and try again.''',
           () async => expectLater(
             () async => runWithOverrides(
               () async => codePushClientWrapper.createIosReleaseArtifact(
+                appId: app.appId,
                 releaseId: releaseId,
                 ipaPath: p.join(tempDir.path, ipaPath),
               ),
@@ -1447,6 +1505,7 @@ Please bump your version number and try again.''',
       test('completes successfully when artifact is created', () async {
         when(
           () => codePushClient.createReleaseArtifact(
+            appId: any(named: 'appId'),
             artifactPath: any(named: 'artifactPath'),
             releaseId: any(named: 'releaseId'),
             arch: any(named: 'arch'),
@@ -1459,6 +1518,7 @@ Please bump your version number and try again.''',
         await runWithOverrides(
           () async => IOOverrides.runZoned(
             () async => codePushClientWrapper.createIosReleaseArtifact(
+              appId: app.appId,
               releaseId: releaseId,
               ipaPath: p.join(tempDir.path, ipaPath),
             ),
@@ -1481,6 +1541,7 @@ Please bump your version number and try again.''',
         () async {
           when(
             () => codePushClient.updateReleaseStatus(
+              appId: any(named: 'appId'),
               releaseId: any(named: 'releaseId'),
               platform: any(named: 'platform'),
               status: any(named: 'status'),
@@ -1490,6 +1551,7 @@ Please bump your version number and try again.''',
           await expectLater(
             () async => runWithOverrides(
               () => codePushClientWrapper.completeRelease(
+                appId: app.appId,
                 releaseId: releaseId,
                 platform: platformName,
               ),
@@ -1502,6 +1564,7 @@ Please bump your version number and try again.''',
       test('completes when updating release status succeeds', () async {
         when(
           () => codePushClient.updateReleaseStatus(
+            appId: any(named: 'appId'),
             releaseId: any(named: 'releaseId'),
             platform: any(named: 'platform'),
             status: any(named: 'status'),
@@ -1510,6 +1573,7 @@ Please bump your version number and try again.''',
 
         await runWithOverrides(
           () => codePushClientWrapper.completeRelease(
+            appId: app.appId,
             releaseId: releaseId,
             platform: platformName,
           ),

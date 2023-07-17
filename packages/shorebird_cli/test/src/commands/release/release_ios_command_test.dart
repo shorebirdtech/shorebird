@@ -203,6 +203,7 @@ flutter:
       ).thenAnswer((_) async => null);
       when(
         () => codePushClientWrapper.ensureReleaseHasNoArtifacts(
+          appId: any(named: 'appId'),
           existingRelease: any(named: 'existingRelease'),
           platform: any(named: 'platform'),
         ),
@@ -216,12 +217,14 @@ flutter:
       ).thenAnswer((_) async => release);
       when(
         () => codePushClientWrapper.createIosReleaseArtifact(
+          appId: any(named: 'appId'),
           releaseId: any(named: 'releaseId'),
           ipaPath: any(named: 'ipaPath'),
         ),
       ).thenAnswer((_) async => release);
       when(
         () => codePushClientWrapper.completeRelease(
+          appId: any(named: 'appId'),
           releaseId: any(named: 'releaseId'),
           platform: any(named: 'platform'),
         ),
@@ -402,6 +405,7 @@ error: exportArchive: No signing certificate "iOS Distribution" found
       verify(() => logger.info('Aborting.')).called(1);
       verifyNever(
         () => codePushClientWrapper.createIosReleaseArtifact(
+          appId: appId,
           releaseId: release.id,
           ipaPath: any(named: 'ipaPath', that: endsWith('.ipa')),
         ),
@@ -445,6 +449,7 @@ error: exportArchive: No signing certificate "iOS Distribution" found
       );
       verify(
         () => codePushClientWrapper.completeRelease(
+          appId: appId,
           releaseId: release.id,
           platform: platformName,
         ),
@@ -474,12 +479,14 @@ error: exportArchive: No signing certificate "iOS Distribution" found
       ).called(1);
       verify(
         () => codePushClientWrapper.createIosReleaseArtifact(
+          appId: appId,
           releaseId: release.id,
           ipaPath: any(named: 'ipaPath', that: endsWith('.ipa')),
         ),
       ).called(1);
       verify(
         () => codePushClientWrapper.completeRelease(
+          appId: appId,
           releaseId: release.id,
           platform: platformName,
         ),
@@ -522,6 +529,7 @@ flavors:
       ).called(1);
       verify(
         () => codePushClientWrapper.createIosReleaseArtifact(
+          appId: appId,
           releaseId: release.id,
           ipaPath: any(named: 'ipaPath', that: endsWith('.ipa')),
         ),
@@ -554,12 +562,14 @@ flavors:
       );
       verify(
         () => codePushClientWrapper.createIosReleaseArtifact(
+          appId: appId,
           releaseId: release.id,
           ipaPath: any(named: 'ipaPath', that: endsWith('.ipa')),
         ),
       ).called(1);
       verify(
         () => codePushClientWrapper.completeRelease(
+          appId: appId,
           releaseId: release.id,
           platform: platformName,
         ),

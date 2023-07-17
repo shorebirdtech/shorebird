@@ -5,8 +5,8 @@ void main() {
   group(CreateReleaseRequest, () {
     test('can be (de)serialized', () {
       const request = CreateReleaseRequest(
-        appId: 'my_app',
         version: '1.2.3',
+        flutterRevision: 'abc123',
         displayName: 'display_name',
       );
       expect(

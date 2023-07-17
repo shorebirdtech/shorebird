@@ -91,7 +91,10 @@ class DeleteReleasesCommand extends ShorebirdCommand
     progress = logger.progress('Deleting release');
 
     try {
-      await codePushClient.deleteRelease(releaseId: releaseToDelete.id);
+      await codePushClient.deleteRelease(
+        appId: appId,
+        releaseId: releaseToDelete.id,
+      );
     } catch (error) {
       progress.fail('$error');
       return ExitCode.software.code;

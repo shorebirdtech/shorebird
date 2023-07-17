@@ -235,6 +235,7 @@ flutter:
       ).thenAnswer((_) async => null);
       when(
         () => codePushClientWrapper.ensureReleaseHasNoArtifacts(
+          appId: any(named: 'appId'),
           existingRelease: any(named: 'existingRelease'),
           platform: any(named: 'platform'),
         ),
@@ -248,6 +249,7 @@ flutter:
       ).thenAnswer((_) async => release);
       when(
         () => codePushClientWrapper.createAndroidArchiveReleaseArtifacts(
+          appId: any(named: 'appId'),
           releaseId: any(named: 'releaseId'),
           platform: any(named: 'platform'),
           aarPath: any(named: 'aarPath'),
@@ -257,6 +259,7 @@ flutter:
       ).thenAnswer((_) async => {});
       when(
         () => codePushClientWrapper.completeRelease(
+          appId: any(named: 'appId'),
           releaseId: any(named: 'releaseId'),
           platform: any(named: 'platform'),
         ),
@@ -421,6 +424,7 @@ flutter:
       verify(() => logger.success('\n✅ Published Release!')).called(1);
       verify(
         () => codePushClientWrapper.createAndroidArchiveReleaseArtifacts(
+          appId: appId,
           releaseId: release.id,
           platform: platformName,
           aarPath: any(
@@ -440,6 +444,7 @@ flutter:
       ).called(1);
       verify(
         () => codePushClientWrapper.completeRelease(
+          appId: appId,
           releaseId: release.id,
           platform: platformName,
         ),
@@ -477,6 +482,7 @@ flavors:
       expect(capturedArgs, contains('--flavor=$flavor'));
       verify(
         () => codePushClientWrapper.createAndroidArchiveReleaseArtifacts(
+          appId: appId,
           releaseId: release.id,
           platform: platformName,
           aarPath: any(
@@ -496,6 +502,7 @@ flavors:
       ).called(1);
       verify(
         () => codePushClientWrapper.completeRelease(
+          appId: appId,
           releaseId: release.id,
           platform: platformName,
         ),
@@ -528,6 +535,7 @@ flavors:
       );
       verify(
         () => codePushClientWrapper.completeRelease(
+          appId: appId,
           releaseId: release.id,
           platform: platformName,
         ),
@@ -585,6 +593,7 @@ flavors:
       verify(() => logger.err('Aborting due to validation errors.')).called(1);
       verifyNever(
         () => codePushClientWrapper.completeRelease(
+          appId: appId,
           releaseId: release.id,
           platform: platformName,
         ),
