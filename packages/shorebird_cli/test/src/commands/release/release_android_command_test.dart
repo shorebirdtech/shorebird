@@ -224,6 +224,12 @@ flutter:
           flavor: any(named: 'flavor'),
         ),
       ).thenAnswer((_) async {});
+      when(
+        () => codePushClientWrapper.completeRelease(
+          releaseId: any(named: 'releaseId'),
+          platform: any(named: 'platform'),
+        ),
+      ).thenAnswer((_) async {});
       when(() => flutterValidator.validate(any())).thenAnswer((_) async => []);
       when(() => java.home).thenReturn(javaHome);
       when(
@@ -330,6 +336,12 @@ flutter:
 
       expect(exitCode, ExitCode.success.code);
       verify(() => logger.info('Aborting.')).called(1);
+      verifyNever(
+        () => codePushClientWrapper.completeRelease(
+          releaseId: any(named: 'releaseId'),
+          platform: any(named: 'platform'),
+        ),
+      );
     });
 
     test('throws error when unable to detect flutter revision', () async {
@@ -387,6 +399,12 @@ flutter:
           architectures: any(named: 'architectures'),
         ),
       ).called(1);
+      verify(
+        () => codePushClientWrapper.completeRelease(
+          releaseId: release.id,
+          platform: platformName,
+        ),
+      ).called(1);
       expect(exitCode, ExitCode.success.code);
     });
 
@@ -406,6 +424,12 @@ flutter:
           platform: platformName,
           aabPath: any(named: 'aabPath'),
           architectures: any(named: 'architectures'),
+        ),
+      ).called(1);
+      verify(
+        () => codePushClientWrapper.completeRelease(
+          releaseId: release.id,
+          platform: platformName,
         ),
       ).called(1);
       expect(exitCode, ExitCode.success.code);
@@ -439,6 +463,12 @@ flavors:
           aabPath: any(named: 'aabPath'),
           architectures: any(named: 'architectures'),
           flavor: flavor,
+        ),
+      ).called(1);
+      verify(
+        () => codePushClientWrapper.completeRelease(
+          releaseId: release.id,
+          platform: platformName,
         ),
       ).called(1);
       expect(exitCode, ExitCode.success.code);
@@ -518,6 +548,12 @@ flavors:
 
       expect(exitCode, equals(ExitCode.config.code));
       verify(() => logger.err('Aborting due to validation errors.')).called(1);
+      verifyNever(
+        () => codePushClientWrapper.completeRelease(
+          releaseId: any(named: 'releaseId'),
+          platform: any(named: 'platform'),
+        ),
+      );
     });
   });
 }

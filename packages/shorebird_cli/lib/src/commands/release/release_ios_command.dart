@@ -173,6 +173,11 @@ ${summary.join('\n')}
       ipaPath: ipaPath,
     );
 
+    await codePushClientWrapper.completeRelease(
+      releaseId: release.id,
+      platform: platformName,
+    );
+
     logger
       ..success('\n✅ Published Release!')
       ..info('''

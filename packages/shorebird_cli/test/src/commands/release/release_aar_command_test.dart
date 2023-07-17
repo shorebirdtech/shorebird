@@ -255,6 +255,12 @@ flutter:
           architectures: any(named: 'architectures'),
         ),
       ).thenAnswer((_) async => {});
+      when(
+        () => codePushClientWrapper.completeRelease(
+          releaseId: any(named: 'releaseId'),
+          platform: any(named: 'platform'),
+        ),
+      ).thenAnswer((_) async => {});
 
       when(() => flutterValidator.validate(any())).thenAnswer((_) async => []);
 
@@ -432,6 +438,12 @@ flutter:
           architectures: any(named: 'architectures'),
         ),
       ).called(1);
+      verify(
+        () => codePushClientWrapper.completeRelease(
+          releaseId: release.id,
+          platform: platformName,
+        ),
+      ).called(1);
     });
 
     test(
@@ -482,6 +494,12 @@ flavors:
           architectures: any(named: 'architectures'),
         ),
       ).called(1);
+      verify(
+        () => codePushClientWrapper.completeRelease(
+          releaseId: release.id,
+          platform: platformName,
+        ),
+      ).called(1);
     });
 
     test('does not create new release if existing release is present',
@@ -508,6 +526,12 @@ flavors:
           flutterRevision: any(named: 'flutterRevision'),
         ),
       );
+      verify(
+        () => codePushClientWrapper.completeRelease(
+          releaseId: release.id,
+          platform: platformName,
+        ),
+      ).called(1);
     });
 
     test('prints flutter validation warnings', () async {
@@ -559,6 +583,12 @@ flavors:
 
       expect(exitCode, equals(ExitCode.config.code));
       verify(() => logger.err('Aborting due to validation errors.')).called(1);
+      verifyNever(
+        () => codePushClientWrapper.completeRelease(
+          releaseId: release.id,
+          platform: platformName,
+        ),
+      );
     });
   });
 }

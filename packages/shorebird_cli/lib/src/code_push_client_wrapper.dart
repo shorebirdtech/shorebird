@@ -474,6 +474,26 @@ aar artifact already exists, continuing...''',
     createArtifactProgress.complete();
   }
 
+  /// Updates the specified release's status to [ReleaseStatus.active] for the
+  /// given platform.
+  Future<void> completeRelease({
+    required int releaseId,
+    required String platform,
+  }) async {
+    final completeReleaseProgress = logger.progress('Completing release');
+    try {
+      await codePushClient.updateReleaseStatus(
+        releaseId: releaseId,
+        status: ReleaseStatus.active,
+        platform: platform,
+      );
+    } catch (error) {
+      completeReleaseProgress.fail('$error');
+      exit(ExitCode.software.code);
+    }
+    completeReleaseProgress.complete();
+  }
+
   @visibleForTesting
   Future<Patch> createPatch({required int releaseId}) async {
     final createPatchProgress = logger.progress('Creating patch');
