@@ -1,5 +1,9 @@
 name: e2e
 
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
 on:
   workflow_dispatch:
   schedule:
@@ -70,6 +74,6 @@ jobs:
       - name: 🎯 Set up Flutter
         uses: subosito/flutter-action@v2
 
-      - name: 🧪 Run Integration Tests (${{ matrix.branch }}/${{matrix.backend }})
+      - name: 🧪 Run Integration Tests
         run: dart test integration_test
         working-directory: ${{ matrix.package }}
