@@ -8,7 +8,7 @@ void main() {
         id: 1,
         patchId: 1,
         arch: 'aarch64',
-        platform: 'android',
+        platform: ReleasePlatform.android,
         url: 'https://example.com',
         size: 42,
         hash: 'sha256:1234567890',

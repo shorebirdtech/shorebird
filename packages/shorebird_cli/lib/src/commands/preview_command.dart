@@ -12,6 +12,7 @@ import 'package:shorebird_cli/src/logger.dart';
 import 'package:shorebird_cli/src/shorebird_config_mixin.dart';
 import 'package:shorebird_cli/src/shorebird_validation_mixin.dart';
 import 'package:shorebird_cli/src/third_party/flutter_tools/lib/flutter_tools.dart';
+import 'package:shorebird_code_push_client/shorebird_code_push_client.dart';
 
 /// {@template preview_command}
 /// `shorebird preview` command.
@@ -49,7 +50,7 @@ class PreviewCommand extends ShorebirdCommand
       return error.exitCode.code;
     }
 
-    const platform = 'android';
+    const platform = ReleasePlatform.android;
     final appId = results['app-id'] as String? ?? await promptForApp();
 
     if (appId == null) {

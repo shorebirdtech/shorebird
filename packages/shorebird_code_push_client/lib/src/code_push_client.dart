@@ -138,7 +138,7 @@ class CodePushClient {
     required String appId,
     required int patchId,
     required String arch,
-    required String platform,
+    required ReleasePlatform platform,
     required String hash,
   }) async {
     final request = http.MultipartRequest(
@@ -148,7 +148,7 @@ class CodePushClient {
     final file = await http.MultipartFile.fromPath('file', artifactPath);
     request.fields.addAll({
       'arch': arch,
-      'platform': platform,
+      'platform': platform.name,
       'hash': hash,
       'size': '${file.length}',
     });
@@ -196,7 +196,7 @@ class CodePushClient {
     required String appId,
     required int releaseId,
     required String arch,
-    required String platform,
+    required ReleasePlatform platform,
     required String hash,
   }) async {
     final request = http.MultipartRequest(
@@ -206,7 +206,7 @@ class CodePushClient {
     final file = await http.MultipartFile.fromPath('file', artifactPath);
     request.fields.addAll({
       'arch': arch,
-      'platform': platform,
+      'platform': platform.name,
       'hash': hash,
       'size': '${file.length}',
     });
@@ -310,7 +310,7 @@ class CodePushClient {
   Future<void> updateReleaseStatus({
     required String appId,
     required int releaseId,
-    required String platform,
+    required ReleasePlatform platform,
     required ReleaseStatus status,
   }) async {
     final response = await _httpClient.patch(
@@ -460,13 +460,13 @@ class CodePushClient {
     required String appId,
     required int releaseId,
     String? arch,
-    String? platform,
+    ReleasePlatform? platform,
   }) async {
     final response = await _httpClient.get(
       Uri.parse('$_v1/apps/$appId/releases/$releaseId/artifacts').replace(
         queryParameters: {
           if (arch != null) 'arch': arch,
-          if (platform != null) 'platform': platform,
+          if (platform != null) 'platform': platform.name,
         },
       ),
     );

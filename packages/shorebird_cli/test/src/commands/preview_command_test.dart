@@ -52,7 +52,7 @@ void main() {
   group(PreviewCommand, () {
     const appId = 'test-app-id';
     const appDisplayName = 'Test App';
-    const platform = 'android';
+    const platform = ReleasePlatform.android;
     const releaseVersion = '1.2.3';
     const releaseId = 42;
     const releaseArtifactUrl = 'https://example.com/release.aab';

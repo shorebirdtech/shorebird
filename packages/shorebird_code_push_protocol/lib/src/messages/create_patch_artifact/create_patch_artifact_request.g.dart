@@ -16,7 +16,8 @@ CreatePatchArtifactRequest _$CreatePatchArtifactRequestFromJson(
       ($checkedConvert) {
         final val = CreatePatchArtifactRequest(
           arch: $checkedConvert('arch', (v) => v as String),
-          platform: $checkedConvert('platform', (v) => v as String),
+          platform: $checkedConvert(
+              'platform', (v) => $enumDecode(_$ReleasePlatformEnumMap, v)),
           hash: $checkedConvert('hash', (v) => v as String),
           size: $checkedConvert(
               'size', (v) => CreatePatchArtifactRequest._parseStringToInt(v)),
@@ -29,7 +30,12 @@ Map<String, dynamic> _$CreatePatchArtifactRequestToJson(
         CreatePatchArtifactRequest instance) =>
     <String, dynamic>{
       'arch': instance.arch,
-      'platform': instance.platform,
+      'platform': _$ReleasePlatformEnumMap[instance.platform]!,
       'hash': instance.hash,
       'size': CreatePatchArtifactRequest._parseIntToString(instance.size),
     };
+
+const _$ReleasePlatformEnumMap = {
+  ReleasePlatform.android: 'android',
+  ReleasePlatform.ios: 'ios',
+};

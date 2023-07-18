@@ -144,7 +144,7 @@ of the Android app that is using this module.''',
       return ExitCode.success.code;
     }
 
-    const platformName = 'android';
+    const platform = ReleasePlatform.android;
     final channelName = results['channel'] as String;
 
     final release = await codePushClientWrapper.getRelease(
@@ -194,14 +194,14 @@ https://github.com/shorebirdtech/shorebird/issues/472
       appId: appId,
       releaseId: release.id,
       architectures: architectures,
-      platform: platformName,
+      platform: platform,
     );
 
     final releaseAarArtifact = await codePushClientWrapper.getReleaseArtifact(
       appId: appId,
       releaseId: release.id,
       arch: 'aar',
-      platform: platformName,
+      platform: platform,
     );
 
     final downloadReleaseAarProgress = logger.progress(
@@ -280,7 +280,7 @@ https://github.com/shorebirdtech/shorebird/issues/472
       if (flavor != null) '🍧 Flavor: ${lightCyan.wrap(flavor)}',
       '📦 Release Version: ${lightCyan.wrap(releaseVersion)}',
       '📺 Channel: ${lightCyan.wrap(channelName)}',
-      '''🕹️  Platform: ${lightCyan.wrap(platformName)} ${lightCyan.wrap('[${archMetadata.join(', ')}]')}''',
+      '''🕹️  Platform: ${lightCyan.wrap(platform.name)} ${lightCyan.wrap('[${archMetadata.join(', ')}]')}''',
     ];
 
     logger.info(
@@ -305,7 +305,7 @@ ${summary.join('\n')}
     await codePushClientWrapper.publishPatch(
       appId: appId,
       releaseId: release.id,
-      platform: platformName,
+      platform: platform,
       channelName: channelName,
       patchArtifactBundles: patchArtifactBundles,
     );

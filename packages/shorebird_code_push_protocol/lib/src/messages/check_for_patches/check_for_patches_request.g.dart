@@ -19,7 +19,8 @@ CheckForPatchesRequest _$CheckForPatchesRequestFromJson(
               $checkedConvert('release_version', (v) => v as String),
           patchNumber: $checkedConvert('patch_number', (v) => v as int?),
           patchHash: $checkedConvert('patch_hash', (v) => v as String?),
-          platform: $checkedConvert('platform', (v) => v as String),
+          platform: $checkedConvert(
+              'platform', (v) => $enumDecode(_$ReleasePlatformEnumMap, v)),
           arch: $checkedConvert('arch', (v) => v as String),
           appId: $checkedConvert('app_id', (v) => v as String),
           channel: $checkedConvert('channel', (v) => v as String),
@@ -40,8 +41,13 @@ Map<String, dynamic> _$CheckForPatchesRequestToJson(
       'release_version': instance.releaseVersion,
       'patch_number': instance.patchNumber,
       'patch_hash': instance.patchHash,
-      'platform': instance.platform,
+      'platform': _$ReleasePlatformEnumMap[instance.platform]!,
       'arch': instance.arch,
       'app_id': instance.appId,
       'channel': instance.channel,
     };
+
+const _$ReleasePlatformEnumMap = {
+  ReleasePlatform.android: 'android',
+  ReleasePlatform.ios: 'ios',
+};

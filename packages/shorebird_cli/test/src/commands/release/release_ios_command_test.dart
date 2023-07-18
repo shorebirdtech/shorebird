@@ -54,7 +54,7 @@ void main() {
     const version = '$versionName+$versionCode';
     const appDisplayName = 'Test App';
     const arch = 'armv7';
-    const platformName = 'ios';
+    const releasePlatform = ReleasePlatform.ios;
     const appMetadata = AppMetadata(appId: appId, displayName: appDisplayName);
     const release = Release(
       id: 0,
@@ -173,7 +173,7 @@ flutter:
       ).thenAnswer((_) async => flutterRevisionProcessResult);
       when(() => argResults.rest).thenReturn([]);
       when(() => argResults['arch']).thenReturn(arch);
-      when(() => argResults['platform']).thenReturn(platformName);
+      when(() => argResults['platform']).thenReturn(releasePlatform);
       when(() => auth.isAuthenticated).thenReturn(true);
       when(() => auth.client).thenReturn(httpClient);
       when(() => ipaReader.read(any())).thenReturn(ipa);
@@ -451,7 +451,7 @@ error: exportArchive: No signing certificate "iOS Distribution" found
         () => codePushClientWrapper.completeRelease(
           appId: appId,
           releaseId: release.id,
-          platform: platformName,
+          platform: releasePlatform,
         ),
       ).called(1);
     });
@@ -488,7 +488,7 @@ error: exportArchive: No signing certificate "iOS Distribution" found
         () => codePushClientWrapper.completeRelease(
           appId: appId,
           releaseId: release.id,
-          platform: platformName,
+          platform: releasePlatform,
         ),
       ).called(1);
       expect(exitCode, ExitCode.success.code);
@@ -571,7 +571,7 @@ flavors:
         () => codePushClientWrapper.completeRelease(
           appId: appId,
           releaseId: release.id,
-          platform: platformName,
+          platform: releasePlatform,
         ),
       ).called(1);
     });

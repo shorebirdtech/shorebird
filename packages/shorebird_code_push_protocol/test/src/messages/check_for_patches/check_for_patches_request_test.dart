@@ -8,7 +8,7 @@ void main() {
         releaseVersion: '1',
         patchNumber: 2,
         patchHash: '3',
-        platform: 'android',
+        platform: ReleasePlatform.android,
         arch: 'arm64',
         appId: 'app_123',
         channel: 'channel_123',

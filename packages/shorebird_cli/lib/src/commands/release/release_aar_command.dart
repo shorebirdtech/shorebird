@@ -13,6 +13,7 @@ import 'package:shorebird_cli/src/shorebird_config_mixin.dart';
 import 'package:shorebird_cli/src/shorebird_environment.dart';
 import 'package:shorebird_cli/src/shorebird_release_version_mixin.dart';
 import 'package:shorebird_cli/src/shorebird_validation_mixin.dart';
+import 'package:shorebird_code_push_client/shorebird_code_push_client.dart';
 
 /// {@template release_aar_command}
 /// `shorebird release aar`
@@ -86,7 +87,7 @@ make smaller updates to your app.
       return ExitCode.config.code;
     }
 
-    const platformName = 'android';
+    const platform = ReleasePlatform.android;
     final flavor = results['flavor'] as String?;
     final buildNumber = results['build-number'] as String;
     final releaseVersion = results['release-version'] as String;
@@ -104,7 +105,7 @@ make smaller updates to your app.
       await codePushClientWrapper.ensureReleaseHasNoArtifacts(
         appId: app.appId,
         existingRelease: existingRelease,
-        platform: platformName,
+        platform: platform,
       );
     }
 
@@ -124,7 +125,7 @@ make smaller updates to your app.
       '''📱 App: ${lightCyan.wrap(app.displayName)} ${lightCyan.wrap('(${app.appId})')}''',
       if (flavor != null) '🍧 Flavor: ${lightCyan.wrap(flavor)}',
       '📦 Release Version: ${lightCyan.wrap(releaseVersion)}',
-      '''🕹️  Platform: ${lightCyan.wrap(platformName)} ${lightCyan.wrap('(${archNames.join(', ')})')}''',
+      '''🕹️  Platform: ${lightCyan.wrap(platform.name)} ${lightCyan.wrap('(${archNames.join(', ')})')}''',
     ];
 
     logger.info('''
@@ -175,7 +176,7 @@ ${summary.join('\n')}
     await codePushClientWrapper.createAndroidArchiveReleaseArtifacts(
       appId: app.appId,
       releaseId: release.id,
-      platform: platformName,
+      platform: platform,
       aarPath: aarArtifactPath(
         packageName: androidPackageName!,
         buildNumber: buildNumber,
@@ -187,7 +188,7 @@ ${summary.join('\n')}
     await codePushClientWrapper.completeRelease(
       appId: app.appId,
       releaseId: release.id,
-      platform: platformName,
+      platform: platform,
     );
 
     logger

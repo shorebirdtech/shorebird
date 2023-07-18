@@ -17,7 +17,8 @@ PatchArtifact _$PatchArtifactFromJson(Map<String, dynamic> json) =>
           id: $checkedConvert('id', (v) => v as int),
           patchId: $checkedConvert('patch_id', (v) => v as int),
           arch: $checkedConvert('arch', (v) => v as String),
-          platform: $checkedConvert('platform', (v) => v as String),
+          platform: $checkedConvert(
+              'platform', (v) => $enumDecode(_$ReleasePlatformEnumMap, v)),
           hash: $checkedConvert('hash', (v) => v as String),
           size: $checkedConvert('size', (v) => v as int),
           url: $checkedConvert('url', (v) => v as String),
@@ -32,8 +33,13 @@ Map<String, dynamic> _$PatchArtifactToJson(PatchArtifact instance) =>
       'id': instance.id,
       'patch_id': instance.patchId,
       'arch': instance.arch,
-      'platform': instance.platform,
+      'platform': _$ReleasePlatformEnumMap[instance.platform]!,
       'hash': instance.hash,
       'size': instance.size,
       'url': instance.url,
     };
+
+const _$ReleasePlatformEnumMap = {
+  ReleasePlatform.android: 'android',
+  ReleasePlatform.ios: 'ios',
+};

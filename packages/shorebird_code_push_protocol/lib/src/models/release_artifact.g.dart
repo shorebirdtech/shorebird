@@ -17,7 +17,8 @@ ReleaseArtifact _$ReleaseArtifactFromJson(Map<String, dynamic> json) =>
           id: $checkedConvert('id', (v) => v as int),
           releaseId: $checkedConvert('release_id', (v) => v as int),
           arch: $checkedConvert('arch', (v) => v as String),
-          platform: $checkedConvert('platform', (v) => v as String),
+          platform: $checkedConvert(
+              'platform', (v) => $enumDecode(_$ReleasePlatformEnumMap, v)),
           hash: $checkedConvert('hash', (v) => v as String),
           size: $checkedConvert('size', (v) => v as int),
           url: $checkedConvert('url', (v) => v as String),
@@ -32,8 +33,13 @@ Map<String, dynamic> _$ReleaseArtifactToJson(ReleaseArtifact instance) =>
       'id': instance.id,
       'release_id': instance.releaseId,
       'arch': instance.arch,
-      'platform': instance.platform,
+      'platform': _$ReleasePlatformEnumMap[instance.platform]!,
       'hash': instance.hash,
       'size': instance.size,
       'url': instance.url,
     };
+
+const _$ReleasePlatformEnumMap = {
+  ReleasePlatform.android: 'android',
+  ReleasePlatform.ios: 'ios',
+};

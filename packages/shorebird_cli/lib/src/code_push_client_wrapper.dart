@@ -134,7 +134,7 @@ This app may not exist or you may not have permission to view it.''',
   Future<void> ensureReleaseHasNoArtifacts({
     required String appId,
     required Release existingRelease,
-    required String platform,
+    required ReleasePlatform platform,
   }) async {
     logger.detail('Verifying ability to release');
 
@@ -228,7 +228,7 @@ Please create a release using "shorebird release" and try again.
     required String appId,
     required int releaseId,
     required Map<Arch, ArchMetadata> architectures,
-    required String platform,
+    required ReleasePlatform platform,
   }) async {
     // TODO(bryanoltman): update this function to only make one call to
     // getReleaseArtifacts.
@@ -265,7 +265,7 @@ Please create a release using "shorebird release" and try again.
     required String appId,
     required int releaseId,
     required String arch,
-    required String platform,
+    required ReleasePlatform platform,
   }) async {
     final fetchReleaseArtifactProgress = logger.progress(
       'Fetching $arch artifact',
@@ -295,7 +295,7 @@ Please create a release using "shorebird release" and try again.
     required String appId,
     required int releaseId,
     required String arch,
-    required String platform,
+    required ReleasePlatform platform,
   }) async {
     final fetchReleaseArtifactProgress = logger.progress(
       'Fetching $arch artifact',
@@ -327,7 +327,7 @@ Please create a release using "shorebird release" and try again.
   Future<void> createAndroidReleaseArtifacts({
     required String appId,
     required int releaseId,
-    required String platform,
+    required ReleasePlatform platform,
     required String aabPath,
     required Map<Arch, ArchMetadata> architectures,
     String? flavor,
@@ -400,7 +400,7 @@ aab artifact already exists, continuing...''',
   Future<void> createAndroidArchiveReleaseArtifacts({
     required String appId,
     required int releaseId,
-    required String platform,
+    required ReleasePlatform platform,
     required String aarPath,
     required String extractedAarDir,
     required Map<Arch, ArchMetadata> architectures,
@@ -479,7 +479,7 @@ aar artifact already exists, continuing...''',
         releaseId: releaseId,
         artifactPath: ipaPath,
         arch: 'ipa',
-        platform: 'ios',
+        platform: ReleasePlatform.ios,
         hash: sha256.convert(await ipaFile.readAsBytes()).toString(),
       );
     } catch (error) {
@@ -495,7 +495,7 @@ aar artifact already exists, continuing...''',
   Future<void> completeRelease({
     required String appId,
     required int releaseId,
-    required String platform,
+    required ReleasePlatform platform,
   }) async {
     final completeReleaseProgress = logger.progress('Completing release');
     try {
@@ -535,7 +535,7 @@ aar artifact already exists, continuing...''',
   Future<void> createPatchArtifacts({
     required String appId,
     required Patch patch,
-    required String platform,
+    required ReleasePlatform platform,
     required Map<Arch, PatchArtifactBundle> patchArtifactBundles,
   }) async {
     final createArtifactProgress = logger.progress('Uploading artifacts');
@@ -582,7 +582,7 @@ aar artifact already exists, continuing...''',
   Future<void> publishPatch({
     required String appId,
     required int releaseId,
-    required String platform,
+    required ReleasePlatform platform,
     required String channelName,
     required Map<Arch, PatchArtifactBundle> patchArtifactBundles,
   }) async {

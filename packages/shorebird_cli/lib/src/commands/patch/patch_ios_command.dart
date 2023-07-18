@@ -15,6 +15,7 @@ import 'package:shorebird_cli/src/shorebird_build_mixin.dart';
 import 'package:shorebird_cli/src/shorebird_config_mixin.dart';
 import 'package:shorebird_cli/src/shorebird_environment.dart';
 import 'package:shorebird_cli/src/shorebird_validation_mixin.dart';
+import 'package:shorebird_code_push_client/shorebird_code_push_client.dart';
 
 /// {@template patch_ios_command}
 /// `shorebird patch ios` command.
@@ -87,7 +88,7 @@ class PatchIosCommand extends ShorebirdCommand
 
     const arch = 'aarch64';
     const channelName = 'stable';
-    const platformName = 'ios';
+    const platform = ReleasePlatform.ios;
     final force = results['force'] == true;
     final dryRun = results['dry-run'] == true;
     final flavor = results['flavor'] as String?;
@@ -204,7 +205,7 @@ https://github.com/shorebirdtech/shorebird/issues/472
       if (flavor != null) '🍧 Flavor: ${lightCyan.wrap(flavor)}',
       '📦 Release Version: ${lightCyan.wrap(releaseVersion)}',
       '📺 Channel: ${lightCyan.wrap(channelName)}',
-      '''🕹️  Platform: ${lightCyan.wrap(platformName)} ${lightCyan.wrap('[$arch (${formatBytes(aotFileSize)})]')}''',
+      '''🕹️  Platform: ${lightCyan.wrap(platform.name)} ${lightCyan.wrap('[$arch (${formatBytes(aotFileSize)})]')}''',
     ];
 
     logger.info(
@@ -231,7 +232,7 @@ ${summary.join('\n')}
     await codePushClientWrapper.publishPatch(
       appId: appId,
       releaseId: release.id,
-      platform: platformName,
+      platform: platform,
       channelName: channelName,
       patchArtifactBundles: {
         Arch.arm64: PatchArtifactBundle(

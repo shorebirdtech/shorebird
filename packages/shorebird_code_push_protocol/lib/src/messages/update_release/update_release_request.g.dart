@@ -17,7 +17,8 @@ UpdateReleaseRequest _$UpdateReleaseRequestFromJson(
         final val = UpdateReleaseRequest(
           status: $checkedConvert(
               'status', (v) => $enumDecode(_$ReleaseStatusEnumMap, v)),
-          platform: $checkedConvert('platform', (v) => v as String),
+          platform: $checkedConvert(
+              'platform', (v) => $enumDecode(_$ReleasePlatformEnumMap, v)),
         );
         return val;
       },
@@ -27,10 +28,15 @@ Map<String, dynamic> _$UpdateReleaseRequestToJson(
         UpdateReleaseRequest instance) =>
     <String, dynamic>{
       'status': _$ReleaseStatusEnumMap[instance.status]!,
-      'platform': instance.platform,
+      'platform': _$ReleasePlatformEnumMap[instance.platform]!,
     };
 
 const _$ReleaseStatusEnumMap = {
   ReleaseStatus.draft: 'draft',
   ReleaseStatus.active: 'active',
+};
+
+const _$ReleasePlatformEnumMap = {
+  ReleasePlatform.android: 'android',
+  ReleasePlatform.ios: 'ios',
 };

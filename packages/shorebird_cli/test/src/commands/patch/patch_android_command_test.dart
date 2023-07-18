@@ -65,7 +65,7 @@ void main() {
     const versionCode = '1';
     const version = '$versionName+$versionCode';
     const arch = 'aarch64';
-    const platformName = 'android';
+    const releasePlatform = ReleasePlatform.android;
     const channelName = 'stable';
     const appDisplayName = 'Test App';
     const app = AppMetadata(appId: appId, displayName: appDisplayName);
@@ -73,7 +73,7 @@ void main() {
       id: 0,
       releaseId: 0,
       arch: arch,
-      platform: platformName,
+      platform: releasePlatform,
       hash: '#',
       size: 42,
       url: 'https://example.com',
@@ -82,7 +82,7 @@ void main() {
       id: 0,
       releaseId: 0,
       arch: arch,
-      platform: platformName,
+      platform: releasePlatform,
       hash: '#',
       size: 42,
       url: 'https://example.com/release.aab',
@@ -299,7 +299,7 @@ flutter:
           appId: any(named: 'appId'),
           releaseId: any(named: 'releaseId'),
           arch: 'aab',
-          platform: 'android',
+          platform: ReleasePlatform.android,
         ),
       ).thenAnswer((_) async => aabArtifact);
       when(
@@ -787,7 +787,7 @@ https://github.com/shorebirdtech/shorebird/issues/472
         () => logger.info(
           any(
             that: contains(
-              '''🕹️  Platform: ${lightCyan.wrap(platformName)} ${lightCyan.wrap('[arm32 (4 B), arm64 (4 B), x86_64 (4 B)]')}''',
+              '''🕹️  Platform: ${lightCyan.wrap(releasePlatform.name)} ${lightCyan.wrap('[arm32 (4 B), arm64 (4 B), x86_64 (4 B)]')}''',
             ),
           ),
         ),
