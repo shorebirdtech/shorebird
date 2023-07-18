@@ -100,7 +100,9 @@ void main() {
           'PROGRAMFILES(X86)': tempDir.path,
         });
         await expectLater(
-            runWithOverrides(() => java.home), equals(jbrDir.path));
+          runWithOverrides(() => java.home),
+          equals(jbrDir.path),
+        );
       });
 
       test('returns correct path on MacOS', () async {
@@ -125,7 +127,9 @@ void main() {
         when(() => platform.isLinux).thenReturn(false);
         when(() => platform.environment).thenReturn({'HOME': tempDir.path});
         await expectLater(
-            runWithOverrides(() => java.home), equals(jbrDir.path));
+          runWithOverrides(() => java.home),
+          equals(jbrDir.path),
+        );
       });
 
       test('returns correct path on Linux', () async {
@@ -144,7 +148,9 @@ void main() {
         when(() => platform.isLinux).thenReturn(true);
         when(() => platform.environment).thenReturn({'HOME': tempDir.path});
         await expectLater(
-            runWithOverrides(() => java.home), equals(jbrDir.path));
+          runWithOverrides(() => java.home),
+          equals(jbrDir.path),
+        );
       });
     });
   });

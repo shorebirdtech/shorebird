@@ -231,6 +231,7 @@ void main() {
 
         try {
           await codePushClient.createPatchArtifact(
+            appId: appId,
             artifactPath: fixture.path,
             patchId: patchId,
             arch: arch,
@@ -243,7 +244,10 @@ void main() {
             .captured
             .single as http.BaseRequest;
         expect(request.method, equals('POST'));
-        expect(request.url, equals(v1('patches/$patchId/artifacts')));
+        expect(
+          request.url,
+          equals(v1('apps/$appId/patches/$patchId/artifacts')),
+        );
         expect(request.hasStandardHeaders, isTrue);
       });
 
@@ -261,6 +265,7 @@ void main() {
 
         expect(
           codePushClient.createPatchArtifact(
+            appId: appId,
             artifactPath: fixture.path,
             patchId: patchId,
             arch: arch,
@@ -291,6 +296,7 @@ void main() {
 
         expect(
           codePushClient.createPatchArtifact(
+            appId: appId,
             artifactPath: fixture.path,
             patchId: patchId,
             arch: arch,
@@ -345,6 +351,7 @@ void main() {
 
         await expectLater(
           codePushClient.createPatchArtifact(
+            appId: appId,
             artifactPath: fixture.path,
             patchId: patchId,
             arch: arch,
@@ -407,6 +414,7 @@ void main() {
 
         await expectLater(
           codePushClient.createPatchArtifact(
+            appId: appId,
             artifactPath: fixture.path,
             patchId: patchId,
             arch: arch,
@@ -423,7 +431,7 @@ void main() {
         expect(
           request.url,
           codePushClient.hostedUri.replace(
-            path: '/api/v1/patches/$patchId/artifacts',
+            path: '/api/v1/apps/$appId/patches/$patchId/artifacts',
           ),
         );
       });
@@ -939,12 +947,12 @@ void main() {
       const releaseId = 0;
 
       test('makes the correct request', () async {
-        codePushClient.createPatch(releaseId: releaseId).ignore();
+        codePushClient.createPatch(appId: appId, releaseId: releaseId).ignore();
         final request = verify(() => httpClient.send(captureAny()))
             .captured
             .single as http.BaseRequest;
         expect(request.method, equals('POST'));
-        expect(request.url, equals(v1('patches')));
+        expect(request.url, equals(v1('apps/$appId/patches')));
         expect(request.hasStandardHeaders, isTrue);
       });
 
@@ -957,7 +965,7 @@ void main() {
         );
 
         expect(
-          codePushClient.createPatch(releaseId: releaseId),
+          codePushClient.createPatch(appId: appId, releaseId: releaseId),
           throwsA(
             isA<CodePushException>().having(
               (e) => e.message,
@@ -977,7 +985,7 @@ void main() {
         );
 
         expect(
-          codePushClient.createPatch(releaseId: releaseId),
+          codePushClient.createPatch(appId: appId, releaseId: releaseId),
           throwsA(
             isA<CodePushException>().having(
               (e) => e.message,
@@ -1003,7 +1011,7 @@ void main() {
         );
 
         await expectLater(
-          codePushClient.createPatch(releaseId: releaseId),
+          codePushClient.createPatch(appId: appId, releaseId: releaseId),
           completion(
             equals(
               isA<Patch>()
@@ -1019,7 +1027,7 @@ void main() {
 
         expect(
           request.url,
-          codePushClient.hostedUri.replace(path: '/api/v1/patches'),
+          codePushClient.hostedUri.replace(path: '/api/v1/apps/$appId/patches'),
         );
       });
     });
@@ -2055,13 +2063,13 @@ void main() {
 
       test('makes the correct request', () async {
         codePushClient
-            .promotePatch(patchId: patchId, channelId: channelId)
+            .promotePatch(appId: appId, patchId: patchId, channelId: channelId)
             .ignore();
         final request = verify(() => httpClient.send(captureAny()))
             .captured
             .single as http.BaseRequest;
         expect(request.method, equals('POST'));
-        expect(request.url, equals(v1('patches/promote')));
+        expect(request.url, equals(v1('apps/$appId/patches/promote')));
         expect(request.hasStandardHeaders, isTrue);
       });
 
@@ -2074,7 +2082,11 @@ void main() {
         );
 
         expect(
-          codePushClient.promotePatch(patchId: patchId, channelId: channelId),
+          codePushClient.promotePatch(
+            appId: appId,
+            patchId: patchId,
+            channelId: channelId,
+          ),
           throwsA(
             isA<CodePushException>().having(
               (e) => e.message,
@@ -2094,7 +2106,11 @@ void main() {
         );
 
         expect(
-          codePushClient.promotePatch(patchId: patchId, channelId: channelId),
+          codePushClient.promotePatch(
+            appId: appId,
+            patchId: patchId,
+            channelId: channelId,
+          ),
           throwsA(
             isA<CodePushException>().having(
               (e) => e.message,
@@ -2114,7 +2130,11 @@ void main() {
         );
 
         await expectLater(
-          codePushClient.promotePatch(patchId: patchId, channelId: channelId),
+          codePushClient.promotePatch(
+            appId: appId,
+            patchId: patchId,
+            channelId: channelId,
+          ),
           completes,
         );
 
@@ -2124,7 +2144,7 @@ void main() {
 
         expect(
           request.url,
-          codePushClient.hostedUri.replace(path: '/api/v1/patches/promote'),
+          codePushClient.hostedUri.replace(path: '/api/v1/apps/$appId/patches/promote'),
         );
       });
     });

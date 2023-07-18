@@ -1588,12 +1588,16 @@ Please bump your version number and try again.''',
         test('exits with code 70 when creating patch fails', () async {
           const error = 'something went wrong';
           when(
-            () => codePushClient.createPatch(releaseId: releaseId),
+            () => codePushClient.createPatch(
+              appId: appId,
+              releaseId: releaseId,
+            ),
           ).thenThrow(error);
 
           await expectLater(
             () async => runWithOverrides(
               () => codePushClientWrapper.createPatch(
+                appId: appId,
                 releaseId: releaseId,
               ),
             ),
@@ -1603,11 +1607,16 @@ Please bump your version number and try again.''',
         });
 
         test('returns patch when patch is successfully created', () async {
-          when(() => codePushClient.createPatch(releaseId: releaseId))
-              .thenAnswer((_) async => patch);
+          when(
+            () => codePushClient.createPatch(
+              appId: appId,
+              releaseId: releaseId,
+            ),
+          ).thenAnswer((_) async => patch);
 
           final result = await runWithOverrides(
             () => codePushClientWrapper.createPatch(
+              appId: appId,
               releaseId: releaseId,
             ),
           );
@@ -1622,6 +1631,7 @@ Please bump your version number and try again.''',
           const error = 'something went wrong';
           when(
             () => codePushClient.promotePatch(
+              appId: any(named: 'appId'),
               patchId: any(named: 'patchId'),
               channelId: any(named: 'channelId'),
             ),
@@ -1630,6 +1640,7 @@ Please bump your version number and try again.''',
           await expectLater(
             () async => runWithOverrides(
               () => codePushClientWrapper.promotePatch(
+                appId: appId,
                 patchId: patchId,
                 channel: channel,
               ),
@@ -1642,6 +1653,7 @@ Please bump your version number and try again.''',
         test('completes progress when patch is promoted', () async {
           when(
             () => codePushClient.promotePatch(
+              appId: any(named: 'appId'),
               patchId: any(named: 'patchId'),
               channelId: any(named: 'channelId'),
             ),
@@ -1649,6 +1661,7 @@ Please bump your version number and try again.''',
 
           await runWithOverrides(
             () => codePushClientWrapper.promotePatch(
+              appId: appId,
               patchId: patchId,
               channel: channel,
             ),
@@ -1665,6 +1678,7 @@ Please bump your version number and try again.''',
             const error = 'something went wrong';
             when(
               () => codePushClient.createPatchArtifact(
+                appId: any(named: 'appId'),
                 patchId: any(named: 'patchId'),
                 artifactPath: any(named: 'artifactPath'),
                 arch: any(named: 'arch'),
@@ -1676,6 +1690,7 @@ Please bump your version number and try again.''',
             await expectLater(
               () async => runWithOverrides(
                 () => codePushClientWrapper.createPatchArtifacts(
+                  appId: appId,
                   patch: patch,
                   platform: platformName,
                   patchArtifactBundles: patchArtifactBundles,
@@ -1691,6 +1706,7 @@ Please bump your version number and try again.''',
         test('creates artifacts successfully', () async {
           when(
             () => codePushClient.createPatchArtifact(
+              appId: any(named: 'appId'),
               patchId: any(named: 'patchId'),
               artifactPath: any(named: 'artifactPath'),
               arch: any(named: 'arch'),
@@ -1701,6 +1717,7 @@ Please bump your version number and try again.''',
 
           await runWithOverrides(
             () => codePushClientWrapper.createPatchArtifacts(
+              appId: appId,
               patch: patch,
               platform: platformName,
               patchArtifactBundles: patchArtifactBundles,
@@ -1710,6 +1727,7 @@ Please bump your version number and try again.''',
           verify(() => progress.complete()).called(1);
           verify(
             () => codePushClient.createPatchArtifact(
+              appId: appId,
               artifactPath: partchArtifactBundle.path,
               patchId: patchId,
               arch: arch.name,
@@ -1723,10 +1741,14 @@ Please bump your version number and try again.''',
       group('publishPatch', () {
         setUp(() {
           when(
-            () => codePushClient.createPatch(releaseId: releaseId),
+            () => codePushClient.createPatch(
+              appId: any(named: 'appId'),
+              releaseId: any(named: 'releaseId'),
+            ),
           ).thenAnswer((_) async => patch);
           when(
             () => codePushClient.createPatchArtifact(
+              appId: any(named: 'appId'),
               patchId: any(named: 'patchId'),
               artifactPath: any(named: 'artifactPath'),
               arch: any(named: 'arch'),
@@ -1739,6 +1761,7 @@ Please bump your version number and try again.''',
           ).thenAnswer((_) async => [channel]);
           when(
             () => codePushClient.promotePatch(
+              appId: any(named: 'appId'),
               patchId: any(named: 'patchId'),
               channelId: any(named: 'channelId'),
             ),
@@ -1757,10 +1780,14 @@ Please bump your version number and try again.''',
           );
 
           verify(
-            () => codePushClient.createPatch(releaseId: releaseId),
+            () => codePushClient.createPatch(
+              appId: appId,
+              releaseId: releaseId,
+            ),
           ).called(1);
           verify(
             () => codePushClient.createPatchArtifact(
+              appId: appId,
               artifactPath: partchArtifactBundle.path,
               patchId: patchId,
               arch: arch.name,
@@ -1777,6 +1804,7 @@ Please bump your version number and try again.''',
           );
           verify(
             () => codePushClient.promotePatch(
+              appId: appId,
               patchId: patchId,
               channelId: channel.id,
             ),
@@ -1806,10 +1834,14 @@ Please bump your version number and try again.''',
           );
 
           verify(
-            () => codePushClient.createPatch(releaseId: releaseId),
+            () => codePushClient.createPatch(
+              appId: appId,
+              releaseId: releaseId,
+            ),
           ).called(1);
           verify(
             () => codePushClient.createPatchArtifact(
+              appId: appId,
               artifactPath: partchArtifactBundle.path,
               patchId: patchId,
               arch: arch.name,
@@ -1826,6 +1858,7 @@ Please bump your version number and try again.''',
           ).called(1);
           verify(
             () => codePushClient.promotePatch(
+              appId: appId,
               patchId: patchId,
               channelId: channel.id,
             ),

@@ -135,6 +135,7 @@ class CodePushClient {
   /// Create a new artifact for a specific [patchId].
   Future<void> createPatchArtifact({
     required String artifactPath,
+    required String appId,
     required int patchId,
     required String arch,
     required String platform,
@@ -142,7 +143,7 @@ class CodePushClient {
   }) async {
     final request = http.MultipartRequest(
       'POST',
-      Uri.parse('$_v1/patches/$patchId/artifacts'),
+      Uri.parse('$_v1/apps/$appId/patches/$patchId/artifacts'),
     );
     final file = await http.MultipartFile.fromPath('file', artifactPath);
     request.fields.addAll({
@@ -265,9 +266,12 @@ class CodePushClient {
   }
 
   /// Create a new patch for the given [releaseId].
-  Future<Patch> createPatch({required int releaseId}) async {
+  Future<Patch> createPatch({
+    required String appId,
+    required int releaseId,
+  }) async {
     final response = await _httpClient.post(
-      Uri.parse('$_v1/patches'),
+      Uri.parse('$_v1/apps/$appId/patches'),
       body: json.encode({'release_id': releaseId}),
     );
 
@@ -492,11 +496,12 @@ class CodePushClient {
 
   /// Promote the [patchId] to the [channelId].
   Future<void> promotePatch({
+    required String appId,
     required int patchId,
     required int channelId,
   }) async {
     final response = await _httpClient.post(
-      Uri.parse('$_v1/patches/promote'),
+      Uri.parse('$_v1/apps/$appId/patches/promote'),
       body: json.encode({'patch_id': patchId, 'channel_id': channelId}),
     );
 

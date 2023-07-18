@@ -513,10 +513,16 @@ aar artifact already exists, continuing...''',
   }
 
   @visibleForTesting
-  Future<Patch> createPatch({required int releaseId}) async {
+  Future<Patch> createPatch({
+    required String appId,
+    required int releaseId,
+  }) async {
     final createPatchProgress = logger.progress('Creating patch');
     try {
-      final patch = await codePushClient.createPatch(releaseId: releaseId);
+      final patch = await codePushClient.createPatch(
+        appId: appId,
+        releaseId: releaseId,
+      );
       createPatchProgress.complete();
       return patch;
     } catch (error) {
@@ -527,6 +533,7 @@ aar artifact already exists, continuing...''',
 
   @visibleForTesting
   Future<void> createPatchArtifacts({
+    required String appId,
     required Patch patch,
     required String platform,
     required Map<Arch, PatchArtifactBundle> patchArtifactBundles,
@@ -535,6 +542,7 @@ aar artifact already exists, continuing...''',
     for (final artifact in patchArtifactBundles.values) {
       try {
         await codePushClient.createPatchArtifact(
+          appId: appId,
           patchId: patch.id,
           artifactPath: artifact.path,
           arch: artifact.arch,
@@ -551,6 +559,7 @@ aar artifact already exists, continuing...''',
 
   @visibleForTesting
   Future<void> promotePatch({
+    required String appId,
     required int patchId,
     required Channel channel,
   }) async {
@@ -559,6 +568,7 @@ aar artifact already exists, continuing...''',
     );
     try {
       await codePushClient.promotePatch(
+        appId: appId,
         patchId: patchId,
         channelId: channel.id,
       );
@@ -577,10 +587,12 @@ aar artifact already exists, continuing...''',
     required Map<Arch, PatchArtifactBundle> patchArtifactBundles,
   }) async {
     final patch = await createPatch(
+      appId: appId,
       releaseId: releaseId,
     );
 
     await createPatchArtifacts(
+      appId: appId,
       patch: patch,
       platform: platform,
       patchArtifactBundles: patchArtifactBundles,
@@ -595,7 +607,7 @@ aar artifact already exists, continuing...''',
           name: channelName,
         );
 
-    await promotePatch(patchId: patch.id, channel: channel);
+    await promotePatch(appId: appId, patchId: patch.id, channel: channel);
   }
 
   Future<GetUsageResponse> getUsage() async {

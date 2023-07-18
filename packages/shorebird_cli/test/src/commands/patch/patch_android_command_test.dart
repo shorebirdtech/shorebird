@@ -604,6 +604,7 @@ https://github.com/shorebirdtech/shorebird/issues/472
       verify(() => logger.confirm('Continue anyways?')).called(1);
       verifyNever(
         () => codePushClientWrapper.createPatch(
+          appId: any(named: 'appId'),
           releaseId: any(named: 'releaseId'),
         ),
       );
