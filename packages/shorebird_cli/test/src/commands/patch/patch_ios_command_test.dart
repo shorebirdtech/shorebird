@@ -428,6 +428,7 @@ https://github.com/shorebirdtech/shorebird/issues/472
       expect(exitCode, equals(ExitCode.success.code));
       verifyNever(
         () => codePushClientWrapper.createPatch(
+          appId: any(named: 'appId'),
           releaseId: any(named: 'releaseId'),
         ),
       );

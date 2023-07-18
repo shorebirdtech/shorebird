@@ -39,10 +39,11 @@ Future<void> main() async {
   );
 
   // Create a new patch.
-  final patch = await client.createPatch(releaseId: release.id);
+  final patch = await client.createPatch(appId: app.id, releaseId: release.id);
 
   // Create a patch artifact.
   await client.createPatchArtifact(
+    appId: app.id,
     patchId: patch.id,
     artifactPath: '<PATH TO ARTIFACT>', // e.g. 'libapp.so'
     platform: '<PLATFORM>', // e.g. 'android'
@@ -51,7 +52,11 @@ Future<void> main() async {
   );
 
   // Promote a patch to a channel.
-  await client.promotePatch(patchId: patch.id, channelId: channel.id);
+  await client.promotePatch(
+    appId: app.id,
+    patchId: patch.id,
+    channelId: channel.id,
+  );
 
   // Close the client.
   client.close();
