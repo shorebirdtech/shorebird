@@ -1,13 +1,14 @@
 name: e2e
 
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
 on:
   workflow_dispatch:
   schedule:
     # At the end of every day
     - cron: "0 0 * * *"
-
-env:
-  SHOREBIRD_TOKEN: ${{ secrets.SHOREBIRD_TOKEN }}
 
 jobs:
   test:
@@ -16,19 +17,29 @@ jobs:
       matrix:
         os: [macos-latest, windows-latest, ubuntu-latest]
         package: [packages/shorebird_cli]
+        branch: [stable, main]
 
     runs-on: ${{ matrix.os }}
+
+    env:
+      SHOREBIRD_TOKEN: ${{ secrets.SHOREBIRD_TOKEN }}
+      SHOREBIRD_HOSTED_URL: ${{ matrix.branch == 'stable' && 'https://api.shorebird.dev' || 'https://api-dev.shorebird.dev' }}
 
     steps:
       - name: 📚 Git Checkout
         uses: actions/checkout@v3
         with:
-          ref: stable
+          ref: ${{ matrix.branch }}
 
-      - name: Add Shorebird to macOS/Linux PATH
+      - name: 🖥️ Add Shorebird to macOS/Linux PATH
         shell: bash
         if: runner.os != 'Windows'
         run: echo "${GITHUB_WORKSPACE}/bin/" >> $GITHUB_PATH
+
+      - name: 🖥️ Add Shorebird to Windows PATH
+        shell: pwsh
+        if: runner.os == 'Windows'
+        run: Add-Content $env:GITHUB_PATH "${env:GITHUB_WORKSPACE}\bin"
 
       - name: 🐦 Verify Shorebird Installation (macOS / Linux)
         if: runner.os != 'Windows'
@@ -40,11 +51,6 @@ jobs:
           exit 1
           fi
         shell: bash
-
-      - name: Add Shorebird to Windows PATH
-        shell: pwsh
-        if: runner.os == 'Windows'
-        run: Add-Content $env:GITHUB_PATH "${env:GITHUB_WORKSPACE}\bin"
 
       - name: 🐦 Verify Shorebird Installation (Windows)
         if: runner.os == 'Windows'
@@ -67,6 +73,6 @@ jobs:
       - name: 🎯 Set up Flutter
         uses: subosito/flutter-action@v2
 
-      - name: Run Integration Tests
+      - name: 🧪 Run Integration Tests
         run: dart test integration_test
-        working-directory: packages/shorebird_cli
+        working-directory: ${{ matrix.package }}
