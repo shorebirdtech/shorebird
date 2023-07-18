@@ -7,9 +7,6 @@ on:
     - cron: "0 0 * * *"
   pull_request:
 
-env:
-  SHOREBIRD_TOKEN: ${{ secrets.SHOREBIRD_TOKEN }}
-
 jobs:
   test:
     strategy:
@@ -22,6 +19,7 @@ jobs:
     runs-on: ${{ matrix.os }}
 
     env:
+      SHOREBIRD_TOKEN: ${{ secrets.SHOREBIRD_TOKEN }}
       SHOREBIRD_HOSTED_URL: ${{ matrix.branch == 'stable' && 'https://api.shorebird.dev' || 'https://api-dev.shorebird.dev' }}
 
     steps:
