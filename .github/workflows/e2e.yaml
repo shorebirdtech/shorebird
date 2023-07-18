@@ -22,7 +22,7 @@ jobs:
     runs-on: ${{ matrix.os }}
 
     env:
-      SHOREBIRD_TOKEN: ${{ matrix.branch == 'stable' && secrets.SHOREBIRD_TOKEN_PROD || secrets.SHOREBIRD_TOKEN_DEV }}
+      SHOREBIRD_TOKEN: ${{ secrets.SHOREBIRD_TOKEN }}
       SHOREBIRD_HOSTED_URL: ${{ matrix.branch == 'stable' && 'https://api.shorebird.dev' || 'https://api-dev.shorebird.dev' }}
 
     steps:
