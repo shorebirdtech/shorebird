@@ -18,12 +18,13 @@ jobs:
         os: [macos-latest, windows-latest, ubuntu-latest]
         package: [packages/shorebird_cli]
         branch: [stable, main]
-        backend: [https://api.shorebird.dev, https://api-dev.shorebird.dev]
+        hosted_url:
+          ["https://api.shorebird.dev", "https://api-dev.shorebird.dev"]
 
     runs-on: ${{ matrix.os }}
 
     env:
-      SHOREBIRD_HOSTED_URL: ${{ matrix.backend }}
+      SHOREBIRD_HOSTED_URL: ${{ matrix.hosted_url }}
 
     steps:
       - name: 📚 Git Checkout
