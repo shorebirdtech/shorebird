@@ -5,7 +5,7 @@ void main() {
   group(UpdateReleaseRequest, () {
     test('can be (de)serialized', () {
       const request = UpdateReleaseRequest(
-        platform: 'android',
+        platform: ReleasePlatform.android,
         status: ReleaseStatus.active,
       );
       expect(

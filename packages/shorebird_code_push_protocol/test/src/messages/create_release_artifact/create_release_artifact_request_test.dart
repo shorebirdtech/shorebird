@@ -6,7 +6,7 @@ void main() {
     test('can be (de)serialized', () {
       const request = CreateReleaseArtifactRequest(
         arch: 'arm64',
-        platform: 'android',
+        platform: ReleasePlatform.android,
         hash: '1234',
         size: 9876,
       );

@@ -1,4 +1,5 @@
 import 'package:json_annotation/json_annotation.dart';
+import 'package:shorebird_code_push_protocol/shorebird_code_push_protocol.dart';
 
 part 'release_artifact.g.dart';
 
@@ -36,7 +37,7 @@ class ReleaseArtifact {
   final String arch;
 
   /// The platform of the artifact.
-  final String platform;
+  final ReleasePlatform platform;
 
   /// The hash of the artifact.
   final String hash;

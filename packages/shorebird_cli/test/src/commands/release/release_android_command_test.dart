@@ -57,7 +57,7 @@ void main() {
     const version = '$versionName+$versionCode';
     const appDisplayName = 'Test App';
     const arch = 'aarch64';
-    const platformName = 'android';
+    const releasePlatform = ReleasePlatform.android;
     const appMetadata = AppMetadata(appId: appId, displayName: appDisplayName);
     const release = Release(
       id: 0,
@@ -124,6 +124,10 @@ flutter:
       return tempDir;
     }
 
+    setUpAll(() {
+      registerFallbackValue(ReleasePlatform.android);
+    });
+
     setUp(() {
       argResults = _MockArgResults();
       bundletool = _MockBundleTool();
@@ -171,7 +175,7 @@ flutter:
       ).thenAnswer((_) async => flutterRevisionProcessResult);
       when(() => argResults.rest).thenReturn([]);
       when(() => argResults['arch']).thenReturn(arch);
-      when(() => argResults['platform']).thenReturn(platformName);
+      when(() => argResults['platform']).thenReturn(releasePlatform);
       when(() => argResults['artifact']).thenReturn('aab');
       when(() => auth.isAuthenticated).thenReturn(true);
       when(() => auth.client).thenReturn(httpClient);
@@ -399,7 +403,7 @@ flutter:
         () => codePushClientWrapper.createAndroidReleaseArtifacts(
           appId: appId,
           releaseId: release.id,
-          platform: platformName,
+          platform: releasePlatform,
           aabPath: any(named: 'aabPath'),
           architectures: any(named: 'architectures'),
         ),
@@ -408,7 +412,7 @@ flutter:
         () => codePushClientWrapper.completeRelease(
           appId: appId,
           releaseId: release.id,
-          platform: platformName,
+          platform: releasePlatform,
         ),
       ).called(1);
       expect(exitCode, ExitCode.success.code);
@@ -428,7 +432,7 @@ flutter:
         () => codePushClientWrapper.createAndroidReleaseArtifacts(
           appId: appId,
           releaseId: release.id,
-          platform: platformName,
+          platform: releasePlatform,
           aabPath: any(named: 'aabPath'),
           architectures: any(named: 'architectures'),
         ),
@@ -437,7 +441,7 @@ flutter:
         () => codePushClientWrapper.completeRelease(
           appId: appId,
           releaseId: release.id,
-          platform: platformName,
+          platform: releasePlatform,
         ),
       ).called(1);
       expect(exitCode, ExitCode.success.code);
@@ -468,7 +472,7 @@ flavors:
         () => codePushClientWrapper.createAndroidReleaseArtifacts(
           appId: appId,
           releaseId: release.id,
-          platform: platformName,
+          platform: releasePlatform,
           aabPath: any(named: 'aabPath'),
           architectures: any(named: 'architectures'),
           flavor: flavor,
@@ -478,7 +482,7 @@ flavors:
         () => codePushClientWrapper.completeRelease(
           appId: appId,
           releaseId: release.id,
-          platform: platformName,
+          platform: releasePlatform,
         ),
       ).called(1);
       expect(exitCode, ExitCode.success.code);

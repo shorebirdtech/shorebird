@@ -220,7 +220,7 @@ void main() {
     group('createPatchArtifact', () {
       const patchId = 0;
       const arch = 'aarch64';
-      const platform = 'android';
+      const platform = ReleasePlatform.android;
       const hash = 'test-hash';
       const size = 42;
 
@@ -494,7 +494,7 @@ void main() {
       const appId = 'test-app-id';
       const releaseId = 0;
       const arch = 'aarch64';
-      const platform = 'android';
+      const platform = ReleasePlatform.android;
       const hash = 'test-hash';
       const size = 42;
 
@@ -1161,7 +1161,7 @@ void main() {
     group('updateReleaseStatus', () {
       const appId = 'test-app-id';
       const releaseId = 42;
-      const platform = 'android';
+      const platform = ReleasePlatform.android;
 
       test('makes the correct request', () async {
         codePushClient
@@ -1866,7 +1866,7 @@ void main() {
       const appId = 'test-app-id';
       const releaseId = 0;
       const arch = 'aarch64';
-      const platform = 'android';
+      const platform = ReleasePlatform.android;
 
       test('makes the correct request', () async {
         codePushClient
@@ -1884,7 +1884,7 @@ void main() {
         expect(
           request.url,
           equals(
-            v1('apps/$appId/releases/$releaseId/artifacts?arch=$arch&platform=$platform'),
+            v1('apps/$appId/releases/$releaseId/artifacts?arch=$arch&platform=${platform.name}'),
           ),
         );
         expect(request.hasStandardHeaders, isTrue);

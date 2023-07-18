@@ -11,6 +11,7 @@ import 'package:shorebird_cli/src/shorebird_config_mixin.dart';
 import 'package:shorebird_cli/src/shorebird_environment.dart';
 import 'package:shorebird_cli/src/shorebird_release_version_mixin.dart';
 import 'package:shorebird_cli/src/shorebird_validation_mixin.dart';
+import 'package:shorebird_code_push_client/shorebird_code_push_client.dart';
 
 /// {@template release_android_command}
 /// `shorebird release android`
@@ -74,7 +75,7 @@ make smaller updates to your app.
       return e.exitCode.code;
     }
 
-    const platformName = 'android';
+    const platform = ReleasePlatform.android;
     final flavor = results['flavor'] as String?;
     final target = results['target'] as String?;
     final generateApk = results['artifact'] as String == 'apk';
@@ -123,7 +124,7 @@ make smaller updates to your app.
       await codePushClientWrapper.ensureReleaseHasNoArtifacts(
         appId: app.appId,
         existingRelease: existingRelease,
-        platform: platformName,
+        platform: platform,
       );
     }
 
@@ -132,7 +133,7 @@ make smaller updates to your app.
       '''📱 App: ${lightCyan.wrap(app.displayName)} ${lightCyan.wrap('(${app.appId})')}''',
       if (flavor != null) '🍧 Flavor: ${lightCyan.wrap(flavor)}',
       '📦 Release Version: ${lightCyan.wrap(releaseVersion)}',
-      '''🕹️  Platform: ${lightCyan.wrap(platformName)} ${lightCyan.wrap('(${archNames.join(', ')})')}''',
+      '''🕹️  Platform: ${lightCyan.wrap(platform.name)} ${lightCyan.wrap('(${archNames.join(', ')})')}''',
     ];
 
     logger.info('''
@@ -176,7 +177,7 @@ ${summary.join('\n')}
       appId: app.appId,
       releaseId: release.id,
       aabPath: bundlePath,
-      platform: platformName,
+      platform: platform,
       architectures: architectures,
       flavor: flavor,
     );
@@ -184,7 +185,7 @@ ${summary.join('\n')}
     await codePushClientWrapper.completeRelease(
       appId: app.appId,
       releaseId: release.id,
-      platform: platformName,
+      platform: platform,
     );
 
     logger
