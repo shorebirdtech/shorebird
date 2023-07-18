@@ -208,6 +208,8 @@ flutter:
       cache = _MockCache();
       shorebirdProcess = _MockShorebirdProcess();
 
+      registerFallbackValue(ReleasePlatform.android);
+
       when(() => platform.environment).thenReturn({});
       when(() => platform.script).thenReturn(
         Uri.file(

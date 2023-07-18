@@ -127,6 +127,10 @@ flutter:
       return tempDir;
     }
 
+    setUpAll(() {
+      registerFallbackValue(ReleasePlatform.ios);
+    });
+
     setUp(() {
       argResults = _MockArgResults();
       codePushClientWrapper = _MockCodePushClientWrapper();

@@ -31,6 +31,10 @@ void main() {
     late http.Client httpClient;
     late Platform platform;
 
+    setUpAll(() {
+      registerFallbackValue(ReleasePlatform.android);
+    });
+
     setUp(() {
       auth = _MockAuth();
       httpClient = _MockHttpClient();

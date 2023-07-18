@@ -159,6 +159,10 @@ flutter:
       File(aarPath).createSync(recursive: true);
     }
 
+    setUpAll(() {
+      registerFallbackValue(ReleasePlatform.android);
+    });
+
     setUp(() {
       argResults = _MockArgResults();
       httpClient = _MockHttpClient();

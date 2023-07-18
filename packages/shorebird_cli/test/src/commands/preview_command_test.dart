@@ -104,8 +104,9 @@ void main() {
         );
 
     setUpAll(() {
-      registerFallbackValue(Uri());
+      registerFallbackValue(ReleasePlatform.android);
       registerFallbackValue(StreamController<List<int>>());
+      registerFallbackValue(Uri());
     });
 
     setUp(() {

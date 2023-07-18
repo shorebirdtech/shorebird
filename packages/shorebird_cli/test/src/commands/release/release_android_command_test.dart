@@ -124,6 +124,10 @@ flutter:
       return tempDir;
     }
 
+    setUpAll(() {
+      registerFallbackValue(ReleasePlatform.android);
+    });
+
     setUp(() {
       argResults = _MockArgResults();
       bundletool = _MockBundleTool();

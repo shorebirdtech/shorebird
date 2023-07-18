@@ -173,6 +173,7 @@ flutter:
     setUpAll(() {
       registerFallbackValue(_FakeBaseRequest());
       registerFallbackValue(_FakeShorebirdProcess());
+      registerFallbackValue(ReleasePlatform.android);
     });
 
     setUp(() {
