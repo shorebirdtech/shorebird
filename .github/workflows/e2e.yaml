@@ -1,6 +1,7 @@
 name: e2e
 
 on:
+  workflow_dispatch:
   schedule:
     # At the end of every day
     - cron: "0 0 * * *"
@@ -21,6 +22,8 @@ jobs:
     steps:
       - name: 📚 Git Checkout
         uses: actions/checkout@v3
+        with:
+          ref: stable
 
       - name: Add Shorebird to macOS/Linux PATH
         shell: bash
