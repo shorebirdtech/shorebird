@@ -25,5 +25,5 @@ class UpdateReleaseRequest {
   final ReleaseStatus status;
 
   /// The platform of the release.
-  final String platform;
+  final ReleasePlatform platform;
 }

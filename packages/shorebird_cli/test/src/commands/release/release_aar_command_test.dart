@@ -62,7 +62,7 @@ void main() {
       displayName: '1.2.3+1',
     );
 
-    const platformName = 'android';
+    const releasePlatform = ReleasePlatform.android;
     const buildNumber = '1.0';
     const noModulePubspecYamlContent = '''
 name: example
@@ -158,6 +158,10 @@ flutter:
       }
       File(aarPath).createSync(recursive: true);
     }
+
+    setUpAll(() {
+      registerFallbackValue(ReleasePlatform.android);
+    });
 
     setUp(() {
       argResults = _MockArgResults();
@@ -426,7 +430,7 @@ flutter:
         () => codePushClientWrapper.createAndroidArchiveReleaseArtifacts(
           appId: appId,
           releaseId: release.id,
-          platform: platformName,
+          platform: releasePlatform,
           aarPath: any(
             named: 'aarPath',
             that: endsWith(
@@ -446,7 +450,7 @@ flutter:
         () => codePushClientWrapper.completeRelease(
           appId: appId,
           releaseId: release.id,
-          platform: platformName,
+          platform: releasePlatform,
         ),
       ).called(1);
     });
@@ -484,7 +488,7 @@ flavors:
         () => codePushClientWrapper.createAndroidArchiveReleaseArtifacts(
           appId: appId,
           releaseId: release.id,
-          platform: platformName,
+          platform: releasePlatform,
           aarPath: any(
             named: 'aarPath',
             that: endsWith(
@@ -504,7 +508,7 @@ flavors:
         () => codePushClientWrapper.completeRelease(
           appId: appId,
           releaseId: release.id,
-          platform: platformName,
+          platform: releasePlatform,
         ),
       ).called(1);
     });
@@ -537,7 +541,7 @@ flavors:
         () => codePushClientWrapper.completeRelease(
           appId: appId,
           releaseId: release.id,
-          platform: platformName,
+          platform: releasePlatform,
         ),
       ).called(1);
     });
@@ -595,7 +599,7 @@ flavors:
         () => codePushClientWrapper.completeRelease(
           appId: appId,
           releaseId: release.id,
-          platform: platformName,
+          platform: releasePlatform,
         ),
       );
     });

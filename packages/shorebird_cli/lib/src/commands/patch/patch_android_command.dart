@@ -16,6 +16,7 @@ import 'package:shorebird_cli/src/shorebird_config_mixin.dart';
 import 'package:shorebird_cli/src/shorebird_environment.dart';
 import 'package:shorebird_cli/src/shorebird_release_version_mixin.dart';
 import 'package:shorebird_cli/src/shorebird_validation_mixin.dart';
+import 'package:shorebird_code_push_client/shorebird_code_push_client.dart';
 
 /// {@template patch_android_command}
 /// `shorebird patch android`
@@ -107,7 +108,7 @@ class PatchAndroidCommand extends ShorebirdCommand
 
     await cache.updateAll();
 
-    const platformName = 'android';
+    const platform = ReleasePlatform.android;
     final channelName = results['channel'] as String;
     final flavor = results['flavor'] as String?;
     final target = results['target'] as String?;
@@ -199,14 +200,14 @@ https://github.com/shorebirdtech/shorebird/issues/472
       appId: app.appId,
       releaseId: release.id,
       architectures: architectures,
-      platform: platformName,
+      platform: platform,
     );
 
     final releaseAabArtifact = await codePushClientWrapper.getReleaseArtifact(
       appId: app.appId,
       releaseId: release.id,
       arch: 'aab',
-      platform: platformName,
+      platform: platform,
     );
 
     final releaseArtifactPaths = <Arch, String>{};
@@ -321,7 +322,7 @@ https://github.com/shorebirdtech/shorebird/issues/472
       if (flavor != null) '🍧 Flavor: ${lightCyan.wrap(flavor)}',
       '📦 Release Version: ${lightCyan.wrap(releaseVersion)}',
       '📺 Channel: ${lightCyan.wrap(channelName)}',
-      '''🕹️  Platform: ${lightCyan.wrap(platformName)} ${lightCyan.wrap('[${archMetadata.join(', ')}]')}''',
+      '''🕹️  Platform: ${lightCyan.wrap(platform.name)} ${lightCyan.wrap('[${archMetadata.join(', ')}]')}''',
     ];
 
     logger.info(
@@ -346,7 +347,7 @@ ${summary.join('\n')}
     await codePushClientWrapper.publishPatch(
       appId: appId,
       releaseId: release.id,
-      platform: platformName,
+      platform: platform,
       channelName: channelName,
       patchArtifactBundles: patchArtifactBundles,
     );

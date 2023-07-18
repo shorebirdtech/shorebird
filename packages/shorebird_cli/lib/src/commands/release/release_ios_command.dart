@@ -12,6 +12,7 @@ import 'package:shorebird_cli/src/shorebird_build_mixin.dart';
 import 'package:shorebird_cli/src/shorebird_config_mixin.dart';
 import 'package:shorebird_cli/src/shorebird_environment.dart';
 import 'package:shorebird_cli/src/shorebird_validation_mixin.dart';
+import 'package:shorebird_code_push_client/shorebird_code_push_client.dart';
 
 /// {@template release_ios_command}
 /// `shorebird release ios-preview`
@@ -72,7 +73,7 @@ make smaller updates to your app.
       '''iOS support is in an experimental state and will not work without Flutter engine changes that have not yet been published.''',
     );
 
-    const platformName = 'ios';
+    const platform = ReleasePlatform.ios;
     final flavor = results['flavor'] as String?;
     final shorebirdYaml = ShorebirdEnvironment.getShorebirdYaml()!;
     final appId = shorebirdYaml.getAppId(flavor: flavor);
@@ -121,7 +122,7 @@ make smaller updates to your app.
       await codePushClientWrapper.ensureReleaseHasNoArtifacts(
         appId: app.appId,
         existingRelease: existingRelease,
-        platform: platformName,
+        platform: platform,
       );
     }
 
@@ -129,7 +130,7 @@ make smaller updates to your app.
       '''📱 App: ${lightCyan.wrap(app.displayName)} ${lightCyan.wrap('($appId)')}''',
       if (flavor != null) '🍧 Flavor: ${lightCyan.wrap(flavor)}',
       '📦 Release Version: ${lightCyan.wrap(releaseVersion)}',
-      '''🕹️  Platform: ${lightCyan.wrap(platformName)}''',
+      '''🕹️  Platform: ${lightCyan.wrap(platform.name)}''',
     ];
 
     logger.info('''
@@ -178,7 +179,7 @@ ${summary.join('\n')}
     await codePushClientWrapper.completeRelease(
       appId: app.appId,
       releaseId: release.id,
-      platform: platformName,
+      platform: platform,
     );
 
     logger

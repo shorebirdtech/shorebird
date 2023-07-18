@@ -36,7 +36,7 @@ class CreatePatchArtifactResponse {
   final String arch;
 
   /// The platform of the artifact.
-  final String platform;
+  final ReleasePlatform platform;
 
   /// The hash of the artifact.
   final String hash;

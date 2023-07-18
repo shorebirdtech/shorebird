@@ -8,7 +8,7 @@ void main() {
         id: 42,
         releaseId: 1,
         arch: 'arm64',
-        platform: 'android',
+        platform: ReleasePlatform.android,
         hash: '1234',
         size: 9876,
         url: 'https://example.com',

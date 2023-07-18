@@ -32,8 +32,8 @@ Future<void> main() async {
   await client.createReleaseArtifact(
     appId: app.id,
     releaseId: release.id,
+    platform: ReleasePlatform.android,
     artifactPath: '<PATH TO ARTIFACT>', // e.g. 'libapp.so'
-    platform: '<PLATFORM>', // e.g. 'android'
     arch: '<ARCHITECTURE>', // e.g. 'aarch64'
     hash: '<HASH>', // 'sha256 hash of the artifact'
   );
@@ -45,8 +45,8 @@ Future<void> main() async {
   await client.createPatchArtifact(
     appId: app.id,
     patchId: patch.id,
+    platform: ReleasePlatform.android,
     artifactPath: '<PATH TO ARTIFACT>', // e.g. 'libapp.so'
-    platform: '<PLATFORM>', // e.g. 'android'
     arch: '<ARCHITECTURE>', // e.g. 'aarch64'
     hash: '<HASH>', // 'sha256 hash of the artifact'
   );

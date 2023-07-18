@@ -5,9 +5,5 @@ enum ReleaseStatus {
   draft,
 
   /// Indicates that all platform artifacts have been uploaded for this release.
-  active;
-
-  /// Returns the [ReleaseStatus] with the given [name].
-  factory ReleaseStatus.named(String name) =>
-      ReleaseStatus.values.firstWhere((status) => status.name == name);
+  active,
 }
