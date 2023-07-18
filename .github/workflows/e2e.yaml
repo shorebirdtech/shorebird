@@ -1,9 +1,11 @@
 name: e2e
 
 on:
+  workflow_dispatch:
   schedule:
     # At the end of every day
     - cron: "0 0 * * *"
+  pull_request:
 
 env:
   SHOREBIRD_TOKEN: ${{ secrets.SHOREBIRD_TOKEN }}
@@ -21,6 +23,8 @@ jobs:
     steps:
       - name: 📚 Git Checkout
         uses: actions/checkout@v3
+        with:
+          ref: stable
 
       - name: Add Shorebird to macOS/Linux PATH
         shell: bash
