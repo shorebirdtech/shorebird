@@ -13,4 +13,5 @@ export 'get_overages/get_overages.dart';
 export 'get_release_artifacts/get_release_artifacts.dart';
 export 'get_usage/get_usage.dart';
 export 'promote_patch/promote_patch.dart';
+export 'update_overages/update_overages.dart';
 export 'update_release/update_release.dart';
