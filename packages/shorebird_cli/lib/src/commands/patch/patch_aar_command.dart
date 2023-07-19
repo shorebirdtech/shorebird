@@ -137,13 +137,6 @@ of the Android app that is using this module.''',
       return ExitCode.software.code;
     }
 
-    if (dryRun) {
-      logger
-        ..info('No issues detected.')
-        ..info('The server may enforce additional checks.');
-      return ExitCode.success.code;
-    }
-
     const platform = ReleasePlatform.android;
     final channelName = results['channel'] as String;
 
@@ -283,6 +276,13 @@ https://github.com/shorebirdtech/shorebird/issues/472
       final size = formatBytes(patchArtifactBundles[arch]!.size);
       return '$name ($size)';
     });
+
+    if (dryRun) {
+      logger
+        ..info('No issues detected.')
+        ..info('The server may enforce additional checks.');
+      return ExitCode.success.code;
+    }
 
     final summary = [
       '''📱 App: ${lightCyan.wrap(app.displayName)} ${lightCyan.wrap('(${app.appId})')}''',
