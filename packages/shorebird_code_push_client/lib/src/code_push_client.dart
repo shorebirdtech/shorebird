@@ -303,7 +303,8 @@ class CodePushClient {
       throw _parseErrorResponse(response.statusCode, response.body);
     }
     final body = json.decode(response.body) as Map<String, dynamic>;
-    return Release.fromJson(body);
+    final createReleaseResponse = CreateReleaseResponse.fromJson(body);
+    return createReleaseResponse.release;
   }
 
   /// Updates the specified release's status to [status].

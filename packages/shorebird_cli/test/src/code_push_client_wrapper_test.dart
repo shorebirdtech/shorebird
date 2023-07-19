@@ -1551,7 +1551,7 @@ Please bump your version number and try again.''',
             appId: app.appId,
             releaseId: releaseId,
             platform: releasePlatform,
-            status: ReleaseStatus.draft,
+            status: ReleaseStatus.active,
           ),
         );
 
@@ -1560,7 +1560,7 @@ Please bump your version number and try again.''',
             appId: app.appId,
             releaseId: releaseId,
             platform: releasePlatform,
-            status: ReleaseStatus.draft,
+            status: ReleaseStatus.active,
           ),
         ).called(1);
         verify(() => progress.complete()).called(1);

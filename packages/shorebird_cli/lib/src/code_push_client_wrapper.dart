@@ -243,7 +243,7 @@ Please create a release using "shorebird release" and try again.
         appId: appId,
         releaseId: releaseId,
         platform: platform,
-        status: ReleaseStatus.draft,
+        status: status,
       );
       updateStatusProgress.complete();
     } catch (error) {
