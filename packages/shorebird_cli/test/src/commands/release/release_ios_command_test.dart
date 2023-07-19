@@ -62,6 +62,7 @@ void main() {
       version: version,
       flutterRevision: flutterRevision,
       displayName: '1.2.3+1',
+      platformStatuses: {},
     );
     const infoPlistContent = '''
 <?xml version="1.0" encoding="UTF-8"?>
@@ -129,6 +130,7 @@ flutter:
 
     setUpAll(() {
       registerFallbackValue(ReleasePlatform.ios);
+      registerFallbackValue(ReleaseStatus.draft);
     });
 
     setUp(() {
@@ -217,6 +219,7 @@ flutter:
           appId: any(named: 'appId'),
           version: any(named: 'version'),
           flutterRevision: any(named: 'flutterRevision'),
+          platform: any(named: 'platform'),
         ),
       ).thenAnswer((_) async => release);
       when(
@@ -227,10 +230,11 @@ flutter:
         ),
       ).thenAnswer((_) async => release);
       when(
-        () => codePushClientWrapper.completeRelease(
+        () => codePushClientWrapper.updateReleaseStatus(
           appId: any(named: 'appId'),
           releaseId: any(named: 'releaseId'),
           platform: any(named: 'platform'),
+          status: any(named: 'status'),
         ),
       ).thenAnswer((_) async => {});
 
@@ -452,10 +456,11 @@ error: exportArchive: No signing certificate "iOS Distribution" found
         () => logger.prompt(any(), defaultValue: any(named: 'defaultValue')),
       );
       verify(
-        () => codePushClientWrapper.completeRelease(
+        () => codePushClientWrapper.updateReleaseStatus(
           appId: appId,
           releaseId: release.id,
           platform: releasePlatform,
+          status: ReleaseStatus.active,
         ),
       ).called(1);
     });
@@ -489,10 +494,11 @@ error: exportArchive: No signing certificate "iOS Distribution" found
         ),
       ).called(1);
       verify(
-        () => codePushClientWrapper.completeRelease(
+        () => codePushClientWrapper.updateReleaseStatus(
           appId: appId,
           releaseId: release.id,
           platform: releasePlatform,
+          status: ReleaseStatus.active,
         ),
       ).called(1);
       expect(exitCode, ExitCode.success.code);
@@ -562,6 +568,7 @@ flavors:
           appId: any(named: 'appId'),
           version: any(named: 'version'),
           flutterRevision: any(named: 'flutterRevision'),
+          platform: any(named: 'platform'),
         ),
       );
       verify(
@@ -572,10 +579,11 @@ flavors:
         ),
       ).called(1);
       verify(
-        () => codePushClientWrapper.completeRelease(
+        () => codePushClientWrapper.updateReleaseStatus(
           appId: appId,
           releaseId: release.id,
           platform: releasePlatform,
+          status: ReleaseStatus.active,
         ),
       ).called(1);
     });

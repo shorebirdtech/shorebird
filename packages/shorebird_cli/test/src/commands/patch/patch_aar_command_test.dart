@@ -88,6 +88,7 @@ void main() {
       version: version,
       flutterRevision: flutterRevision,
       displayName: '1.2.3+1',
+      platformStatuses: {},
     );
     const noModulePubspecYamlContent = '''
 name: example

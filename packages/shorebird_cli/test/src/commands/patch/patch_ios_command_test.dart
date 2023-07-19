@@ -87,6 +87,7 @@ flutter:
     version: version,
     flutterRevision: flutterRevision,
     displayName: '1.2.3+1',
+    platformStatuses: {},
   );
 
   group(PatchIosCommand, () {

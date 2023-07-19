@@ -33,6 +33,7 @@ void main() {
 
     setUpAll(() {
       registerFallbackValue(ReleasePlatform.android);
+      registerFallbackValue(ReleaseStatus.draft);
     });
 
     setUp(() {
@@ -90,6 +91,7 @@ void main() {
       version: releaseVersion,
       flutterRevision: flutterRevision,
       displayName: displayName,
+      platformStatuses: {},
     );
     final partchArtifactBundle = PatchArtifactBundle(
       arch: arch.name,
@@ -582,6 +584,7 @@ Please bump your version number and try again.''',
                 appId: appId,
                 version: releaseVersion,
                 flutterRevision: flutterRevision,
+                platform: releasePlatform,
               ),
             ),
             exitsWithCode(ExitCode.software),
@@ -597,62 +600,33 @@ Please bump your version number and try again.''',
               flutterRevision: any(named: 'flutterRevision'),
             ),
           ).thenAnswer((_) async => release);
+          when(
+            () => codePushClient.updateReleaseStatus(
+              appId: any(named: 'appId'),
+              releaseId: any(named: 'releaseId'),
+              platform: any(named: 'platform'),
+              status: any(named: 'status'),
+            ),
+          ).thenAnswer((_) async => {});
 
           final result = await runWithOverrides(
             () async => codePushClientWrapper.createRelease(
               appId: appId,
               version: releaseVersion,
               flutterRevision: flutterRevision,
+              platform: releasePlatform,
             ),
           );
 
           expect(result, release);
-          verify(() => progress.complete()).called(1);
-        });
-      });
-
-      group('createRelease', () {
-        test('exits with code 70 when creating release fails', () async {
-          const error = 'something went wrong';
-          when(
-            () => codePushClient.createRelease(
-              appId: any(named: 'appId'),
-              version: any(named: 'version'),
-              flutterRevision: any(named: 'flutterRevision'),
-            ),
-          ).thenThrow(error);
-
-          await expectLater(
-            () async => runWithOverrides(
-              () async => codePushClientWrapper.createRelease(
-                appId: appId,
-                version: releaseVersion,
-                flutterRevision: flutterRevision,
-              ),
-            ),
-            exitsWithCode(ExitCode.software),
-          );
-          verify(() => progress.fail(error)).called(1);
-        });
-
-        test('returns release when release is successfully created', () async {
-          when(
-            () => codePushClient.createRelease(
-              appId: any(named: 'appId'),
-              version: any(named: 'version'),
-              flutterRevision: any(named: 'flutterRevision'),
-            ),
-          ).thenAnswer((_) async => release);
-
-          final result = await runWithOverrides(
-            () async => codePushClientWrapper.createRelease(
+          verify(
+            () => codePushClient.updateReleaseStatus(
               appId: appId,
-              version: releaseVersion,
-              flutterRevision: flutterRevision,
+              releaseId: result.id,
+              platform: releasePlatform,
+              status: ReleaseStatus.draft,
             ),
-          );
-
-          expect(result, release);
+          ).called(1);
           verify(() => progress.complete()).called(1);
         });
       });
@@ -1535,11 +1509,7 @@ Please bump your version number and try again.''',
       });
     });
 
-    group('completeRelease', () {
-      setUp(() {
-        registerFallbackValue(ReleaseStatus.active);
-      });
-
+    group('updateReleaseStatus', () {
       test(
         'exits with code 70 when updating release status fails',
         () async {
@@ -1554,10 +1524,11 @@ Please bump your version number and try again.''',
 
           await expectLater(
             () async => runWithOverrides(
-              () => codePushClientWrapper.completeRelease(
+              () => codePushClientWrapper.updateReleaseStatus(
                 appId: app.appId,
                 releaseId: releaseId,
                 platform: releasePlatform,
+                status: ReleaseStatus.active,
               ),
             ),
             exitsWithCode(ExitCode.software),
@@ -1576,13 +1547,22 @@ Please bump your version number and try again.''',
         ).thenAnswer((_) async => {});
 
         await runWithOverrides(
-          () => codePushClientWrapper.completeRelease(
+          () => codePushClientWrapper.updateReleaseStatus(
             appId: app.appId,
             releaseId: releaseId,
             platform: releasePlatform,
+            status: ReleaseStatus.draft,
           ),
         );
 
+        verify(
+          () => codePushClient.updateReleaseStatus(
+            appId: app.appId,
+            releaseId: releaseId,
+            platform: releasePlatform,
+            status: ReleaseStatus.draft,
+          ),
+        ).called(1);
         verify(() => progress.complete()).called(1);
       });
     });

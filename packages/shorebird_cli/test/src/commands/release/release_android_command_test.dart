@@ -65,6 +65,7 @@ void main() {
       version: version,
       flutterRevision: flutterRevision,
       displayName: '1.2.3+1',
+      platformStatuses: {},
     );
 
     const pubspecYamlContent = '''
@@ -126,6 +127,7 @@ flutter:
 
     setUpAll(() {
       registerFallbackValue(ReleasePlatform.android);
+      registerFallbackValue(ReleaseStatus.draft);
     });
 
     setUp(() {
@@ -218,6 +220,7 @@ flutter:
           appId: any(named: 'appId'),
           version: any(named: 'version'),
           flutterRevision: any(named: 'flutterRevision'),
+          platform: any(named: 'platform'),
         ),
       ).thenAnswer((_) async => release);
       when(
@@ -231,10 +234,11 @@ flutter:
         ),
       ).thenAnswer((_) async {});
       when(
-        () => codePushClientWrapper.completeRelease(
+        () => codePushClientWrapper.updateReleaseStatus(
           appId: any(named: 'appId'),
           releaseId: any(named: 'releaseId'),
           platform: any(named: 'platform'),
+          status: any(named: 'status'),
         ),
       ).thenAnswer((_) async {});
       when(() => flutterValidator.validate(any())).thenAnswer((_) async => []);
@@ -344,10 +348,11 @@ flutter:
       expect(exitCode, ExitCode.success.code);
       verify(() => logger.info('Aborting.')).called(1);
       verifyNever(
-        () => codePushClientWrapper.completeRelease(
+        () => codePushClientWrapper.updateReleaseStatus(
           appId: any(named: 'appId'),
           releaseId: any(named: 'releaseId'),
           platform: any(named: 'platform'),
+          status: any(named: 'status'),
         ),
       );
     });
@@ -409,10 +414,11 @@ flutter:
         ),
       ).called(1);
       verify(
-        () => codePushClientWrapper.completeRelease(
+        () => codePushClientWrapper.updateReleaseStatus(
           appId: appId,
           releaseId: release.id,
           platform: releasePlatform,
+          status: ReleaseStatus.active,
         ),
       ).called(1);
       expect(exitCode, ExitCode.success.code);
@@ -438,10 +444,11 @@ flutter:
         ),
       ).called(1);
       verify(
-        () => codePushClientWrapper.completeRelease(
+        () => codePushClientWrapper.updateReleaseStatus(
           appId: appId,
           releaseId: release.id,
           platform: releasePlatform,
+          status: ReleaseStatus.active,
         ),
       ).called(1);
       expect(exitCode, ExitCode.success.code);
@@ -479,10 +486,11 @@ flavors:
         ),
       ).called(1);
       verify(
-        () => codePushClientWrapper.completeRelease(
+        () => codePushClientWrapper.updateReleaseStatus(
           appId: appId,
           releaseId: release.id,
           platform: releasePlatform,
+          status: ReleaseStatus.active,
         ),
       ).called(1);
       expect(exitCode, ExitCode.success.code);
@@ -509,6 +517,7 @@ flavors:
           appId: any(named: 'appId'),
           version: any(named: 'version'),
           flutterRevision: any(named: 'flutterRevision'),
+          platform: any(named: 'platform'),
         ),
       );
     });
@@ -563,10 +572,11 @@ flavors:
       expect(exitCode, equals(ExitCode.config.code));
       verify(() => logger.err('Aborting due to validation errors.')).called(1);
       verifyNever(
-        () => codePushClientWrapper.completeRelease(
+        () => codePushClientWrapper.updateReleaseStatus(
           appId: any(named: 'appId'),
           releaseId: any(named: 'releaseId'),
           platform: any(named: 'platform'),
+          status: any(named: 'status'),
         ),
       );
     });

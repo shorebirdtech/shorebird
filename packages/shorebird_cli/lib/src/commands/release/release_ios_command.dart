@@ -161,12 +161,23 @@ ${summary.join('\n')}
       return ExitCode.software.code;
     }
 
-    final release = existingRelease ??
-        await codePushClientWrapper.createRelease(
-          appId: appId,
-          version: releaseVersion,
-          flutterRevision: shorebirdFlutterRevision,
-        );
+    final Release release;
+    if (existingRelease != null) {
+      release = existingRelease;
+      await codePushClientWrapper.updateReleaseStatus(
+        appId: appId,
+        releaseId: release.id,
+        platform: platform,
+        status: ReleaseStatus.draft,
+      );
+    } else {
+      release = await codePushClientWrapper.createRelease(
+        appId: appId,
+        version: releaseVersion,
+        flutterRevision: shorebirdFlutterRevision,
+        platform: platform,
+      );
+    }
 
     final relativeIpaPath = p.relative(ipaPath);
 
@@ -176,10 +187,11 @@ ${summary.join('\n')}
       ipaPath: ipaPath,
     );
 
-    await codePushClientWrapper.completeRelease(
+    await codePushClientWrapper.updateReleaseStatus(
       appId: app.appId,
       releaseId: release.id,
       platform: platform,
+      status: ReleaseStatus.active,
     );
 
     logger

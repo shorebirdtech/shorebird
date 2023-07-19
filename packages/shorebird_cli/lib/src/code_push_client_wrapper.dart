@@ -208,6 +208,7 @@ Please create a release using "shorebird release" and try again.
     required String appId,
     required String version,
     required String flutterRevision,
+    required ReleasePlatform platform,
   }) async {
     final createReleaseProgress = logger.progress('Creating release');
     try {
@@ -216,10 +217,37 @@ Please create a release using "shorebird release" and try again.
         version: version,
         flutterRevision: flutterRevision,
       );
+      await codePushClient.updateReleaseStatus(
+        appId: appId,
+        releaseId: release.id,
+        platform: platform,
+        status: ReleaseStatus.draft,
+      );
       createReleaseProgress.complete();
       return release;
     } catch (error) {
       createReleaseProgress.fail('$error');
+      exit(ExitCode.software.code);
+    }
+  }
+
+  Future<void> updateReleaseStatus({
+    required String appId,
+    required int releaseId,
+    required ReleasePlatform platform,
+    required ReleaseStatus status,
+  }) async {
+    final updateStatusProgress = logger.progress('Updating release status');
+    try {
+      await codePushClient.updateReleaseStatus(
+        appId: appId,
+        releaseId: releaseId,
+        platform: platform,
+        status: ReleaseStatus.draft,
+      );
+      updateStatusProgress.complete();
+    } catch (error) {
+      updateStatusProgress.fail();
       exit(ExitCode.software.code);
     }
   }
@@ -488,28 +516,6 @@ aar artifact already exists, continuing...''',
     }
 
     createArtifactProgress.complete();
-  }
-
-  /// Updates the specified release's status to [ReleaseStatus.active] for the
-  /// given platform.
-  Future<void> completeRelease({
-    required String appId,
-    required int releaseId,
-    required ReleasePlatform platform,
-  }) async {
-    final completeReleaseProgress = logger.progress('Completing release');
-    try {
-      await codePushClient.updateReleaseStatus(
-        appId: appId,
-        releaseId: releaseId,
-        status: ReleaseStatus.active,
-        platform: platform,
-      );
-    } catch (error) {
-      completeReleaseProgress.fail('$error');
-      exit(ExitCode.software.code);
-    }
-    completeReleaseProgress.complete();
   }
 
   @visibleForTesting
