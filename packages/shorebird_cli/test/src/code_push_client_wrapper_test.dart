@@ -394,7 +394,7 @@ void main() {
             verify(
               () => logger.err(
                 '''
-It looks like you have an existing $releasePlatform release for version ${lightCyan.wrap(release.version)}.
+It looks like you have an existing ios release for version ${lightCyan.wrap(release.version)}.
 Please bump your version number and try again.''',
               ),
             ).called(1);

@@ -313,6 +313,68 @@ flutter:
       verify(() => logger.info('Aborting.')).called(1);
     });
 
+    test(
+      '''exits with code 70 if release is in draft state for the ios platform''',
+      () async {
+        when(
+          () => codePushClientWrapper.getRelease(
+            appId: any(named: 'appId'),
+            releaseVersion: any(named: 'releaseVersion'),
+          ),
+        ).thenAnswer(
+          (_) async => const Release(
+            id: 0,
+            appId: appId,
+            version: version,
+            flutterRevision: flutterRevision,
+            displayName: '1.2.3+1',
+            platformStatuses: {ReleasePlatform.ios: ReleaseStatus.draft},
+          ),
+        );
+        final tempDir = setUpTempDir();
+        setUpTempArtifacts(tempDir);
+        final exitCode = await IOOverrides.runZoned(
+          () => runWithOverrides(command.run),
+          getCurrentDirectory: () => tempDir,
+        );
+        expect(exitCode, ExitCode.software.code);
+        verify(
+          () => logger.err('''
+Release 1.2.3+1 is in an incomplete state. It's possible that the original release was terminated or failed to complete.
+
+Please re-run the release command for this version or create a new release.'''),
+        ).called(1);
+      },
+    );
+
+    test(
+      'proceeds if release is in draft state for a non-ios platform',
+      () async {
+        when(
+          () => codePushClientWrapper.getRelease(
+            appId: any(named: 'appId'),
+            releaseVersion: any(named: 'releaseVersion'),
+          ),
+        ).thenAnswer(
+          (_) async => const Release(
+            id: 0,
+            appId: appId,
+            version: version,
+            flutterRevision: flutterRevision,
+            displayName: '1.2.3+1',
+            platformStatuses: {ReleasePlatform.android: ReleaseStatus.draft},
+          ),
+        );
+        final tempDir = setUpTempDir();
+        setUpTempArtifacts(tempDir);
+        final exitCode = await IOOverrides.runZoned(
+          () => runWithOverrides(command.run),
+          getCurrentDirectory: () => tempDir,
+        );
+        expect(exitCode, ExitCode.success.code);
+      },
+    );
+
     test('errors when unable to detect flutter revision', () async {
       const error = 'oops';
       when(() => flutterRevisionProcessResult.exitCode).thenReturn(1);

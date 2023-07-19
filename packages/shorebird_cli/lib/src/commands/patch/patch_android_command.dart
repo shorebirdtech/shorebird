@@ -158,6 +158,15 @@ class PatchAndroidCommand extends ShorebirdCommand
       releaseVersion: releaseVersion,
     );
 
+    if (release.platformStatuses[ReleasePlatform.android] ==
+        ReleaseStatus.draft) {
+      logger.err('''
+Release $releaseVersion is in an incomplete state. It's possible that the original release was terminated or failed to complete.
+
+Please re-run the release command for this version or create a new release.''');
+      return ExitCode.software.code;
+    }
+
     final flutterRevisionProgress = logger.progress(
       'Fetching Flutter revision',
     );
