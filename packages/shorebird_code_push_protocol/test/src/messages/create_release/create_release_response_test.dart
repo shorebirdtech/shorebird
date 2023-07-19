@@ -5,11 +5,14 @@ void main() {
   group(CreateReleaseResponse, () {
     test('can be (de)serialized', () {
       const response = CreateReleaseResponse(
-        id: 0,
-        appId: 'test-app-id',
-        version: '1.0.0',
-        displayName: 'v1.0.0',
-        flutterRevision: 'flutter-revision',
+        release: Release(
+          id: 0,
+          appId: 'test-app-id',
+          version: '1.0.0',
+          displayName: 'v1.0.0',
+          flutterRevision: 'flutter-revision',
+          platformStatuses: {},
+        ),
       );
       expect(
         CreateReleaseResponse.fromJson(response.toJson()).toJson(),

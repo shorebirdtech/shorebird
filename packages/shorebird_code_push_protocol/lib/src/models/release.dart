@@ -1,4 +1,5 @@
 import 'package:json_annotation/json_annotation.dart';
+import 'package:shorebird_code_push_protocol/shorebird_code_push_protocol.dart';
 
 part 'release.g.dart';
 
@@ -15,6 +16,7 @@ class Release {
     required this.version,
     required this.flutterRevision,
     required this.displayName,
+    required this.platformStatuses,
   });
 
   /// Converts a Map<String, dynamic> to a [Release]
@@ -38,4 +40,7 @@ class Release {
 
   /// The display name for the release
   final String? displayName;
+
+  /// The status of the release for each platform.
+  final Map<ReleasePlatform, ReleaseStatus> platformStatuses;
 }

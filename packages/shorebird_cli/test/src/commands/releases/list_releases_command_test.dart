@@ -155,6 +155,7 @@ flavors:
             version: '1.0.0',
             flutterRevision: flutterRevision,
             displayName: 'v1.0.0 (dev)',
+            platformStatuses: {ReleasePlatform.ios: ReleaseStatus.draft},
           ),
         ],
       );
@@ -187,6 +188,7 @@ flavors:
             version: '1.0.1',
             flutterRevision: flutterRevision,
             displayName: 'First',
+            platformStatuses: {ReleasePlatform.ios: ReleaseStatus.active},
           ),
           const Release(
             id: 1,
@@ -194,6 +196,7 @@ flavors:
             version: '1.0.2',
             flutterRevision: flutterRevision,
             displayName: null,
+            platformStatuses: {ReleasePlatform.ios: ReleaseStatus.draft},
           ),
         ],
       );

@@ -1109,12 +1109,15 @@ void main() {
             Stream.value(
               utf8.encode(
                 json.encode(
-                  Release(
-                    id: releaseId,
-                    appId: appId,
-                    version: version,
-                    flutterRevision: flutterRevision,
-                    displayName: displayName,
+                  CreateReleaseResponse(
+                    release: Release(
+                      id: releaseId,
+                      appId: appId,
+                      version: version,
+                      flutterRevision: flutterRevision,
+                      displayName: displayName,
+                      platformStatuses: {},
+                    ),
                   ),
                 ),
               ),
@@ -1141,7 +1144,12 @@ void main() {
                     'flutterRevision',
                     flutterRevision,
                   )
-                  .having((r) => r.displayName, 'displayName', displayName),
+                  .having((r) => r.displayName, 'displayName', displayName)
+                  .having(
+                (r) => r.platformStatuses,
+                'platformStatuses',
+                <ReleasePlatform, ReleaseStatus>{},
+              ),
             ),
           ),
         );
@@ -1840,6 +1848,7 @@ void main() {
             version: '1.0.0',
             flutterRevision: flutterRevision,
             displayName: 'v1.0.0',
+            platformStatuses: {ReleasePlatform.android: ReleaseStatus.draft},
           ),
           Release(
             id: 1,
@@ -1847,6 +1856,7 @@ void main() {
             version: '1.0.1',
             flutterRevision: flutterRevision,
             displayName: 'v1.0.1',
+            platformStatuses: {},
           ),
         ];
 

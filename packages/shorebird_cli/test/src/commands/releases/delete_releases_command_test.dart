@@ -92,6 +92,7 @@ flutter:
             version: '0.1.0',
             flutterRevision: flutterRevision,
             displayName: null,
+            platformStatuses: {ReleasePlatform.android: ReleaseStatus.active},
           ),
           const Release(
             id: 2,
@@ -99,6 +100,7 @@ flutter:
             version: '0.1.1',
             flutterRevision: flutterRevision,
             displayName: null,
+            platformStatuses: {},
           ),
           const Release(
             id: releaseId,
@@ -106,6 +108,7 @@ flutter:
             version: versionNumber,
             flutterRevision: flutterRevision,
             displayName: null,
+            platformStatuses: {ReleasePlatform.android: ReleaseStatus.active},
           ),
         ],
       );
