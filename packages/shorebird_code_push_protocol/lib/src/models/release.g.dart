@@ -19,13 +19,20 @@ Release _$ReleaseFromJson(Map<String, dynamic> json) => $checkedCreate(
           flutterRevision:
               $checkedConvert('flutter_revision', (v) => v as String),
           displayName: $checkedConvert('display_name', (v) => v as String?),
+          platformStatuses: $checkedConvert(
+              'platform_statuses',
+              (v) => (v as Map<String, dynamic>).map(
+                    (k, e) => MapEntry($enumDecode(_$ReleasePlatformEnumMap, k),
+                        $enumDecode(_$ReleaseStatusEnumMap, e)),
+                  )),
         );
         return val;
       },
       fieldKeyMap: const {
         'appId': 'app_id',
         'flutterRevision': 'flutter_revision',
-        'displayName': 'display_name'
+        'displayName': 'display_name',
+        'platformStatuses': 'platform_statuses'
       },
     );
 
@@ -35,4 +42,16 @@ Map<String, dynamic> _$ReleaseToJson(Release instance) => <String, dynamic>{
       'version': instance.version,
       'flutter_revision': instance.flutterRevision,
       'display_name': instance.displayName,
+      'platform_statuses': instance.platformStatuses.map((k, e) =>
+          MapEntry(_$ReleasePlatformEnumMap[k]!, _$ReleaseStatusEnumMap[e]!)),
     };
+
+const _$ReleaseStatusEnumMap = {
+  ReleaseStatus.draft: 'draft',
+  ReleaseStatus.active: 'active',
+};
+
+const _$ReleasePlatformEnumMap = {
+  ReleasePlatform.android: 'android',
+  ReleasePlatform.ios: 'ios',
+};
