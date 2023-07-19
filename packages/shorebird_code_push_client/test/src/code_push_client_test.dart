@@ -1115,6 +1115,9 @@ void main() {
                     version: version,
                     flutterRevision: flutterRevision,
                     displayName: displayName,
+                    platformStatuses: {
+                      ReleasePlatform.android: ReleaseStatus.draft
+                    },
                   ),
                 ),
               ),
@@ -1840,6 +1843,7 @@ void main() {
             version: '1.0.0',
             flutterRevision: flutterRevision,
             displayName: 'v1.0.0',
+            platformStatuses: {ReleasePlatform.android: ReleaseStatus.draft},
           ),
           Release(
             id: 1,
@@ -1847,6 +1851,7 @@ void main() {
             version: '1.0.1',
             flutterRevision: flutterRevision,
             displayName: 'v1.0.1',
+            platformStatuses: {},
           ),
         ];
 
