@@ -4,7 +4,7 @@ import 'package:shorebird_code_push_protocol/shorebird_code_push_protocol.dart';
 part 'get_overages_response.g.dart';
 
 /// {@template get_overages_response}
-/// The response body for GET /api/v1/account/overages
+/// The response body for GET /api/v1/billing/overages
 /// {@endtemplate}
 @JsonSerializable()
 class GetOveragesResponse {
