@@ -2,6 +2,20 @@
 
 This section contains past updates we've sent to customers via Discord.
 
+## 0.10.0 (July 20, 2023)
+
+We've just released Shorebird v0.10.0 🎉
+
+- ✨ `shorebird patch` warns users of incomplete releases
+- 📈 New console.shorebird.dev accounts page to view plan and usage info
+- 🧹 Remove deprecated `shorebird run` command
+
+📚 Release notes can be found at https://github.com/shorebirdtech/shorebird/releases/tag/v0.10.0
+
+As always, you can upgrade using `shorebird upgrade`
+
+Please let us know if we can help!
+
 ## 0.9.2 (July 14, 2023)
 
 We've just released Shorebird v0.9.2 🎉
