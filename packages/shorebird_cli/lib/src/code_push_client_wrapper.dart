@@ -153,7 +153,7 @@ Artifacts for release:${existingRelease.version} platform:$platform
     if (artifacts.isNotEmpty) {
       logger.err(
         '''
-It looks like you have an existing $platform release for version ${lightCyan.wrap(existingRelease.version)}.
+It looks like you have an existing ${platform.name} release for version ${lightCyan.wrap(existingRelease.version)}.
 Please bump your version number and try again.''',
       );
       exit(ExitCode.software.code);

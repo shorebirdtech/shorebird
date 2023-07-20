@@ -137,13 +137,6 @@ of the Android app that is using this module.''',
       return ExitCode.software.code;
     }
 
-    if (dryRun) {
-      logger
-        ..info('No issues detected.')
-        ..info('The server may enforce additional checks.');
-      return ExitCode.success.code;
-    }
-
     const platform = ReleasePlatform.android;
     final channelName = results['channel'] as String;
 
@@ -151,6 +144,15 @@ of the Android app that is using this module.''',
       appId: appId,
       releaseVersion: releaseVersion,
     );
+
+    if (release.platformStatuses[ReleasePlatform.android] ==
+        ReleaseStatus.draft) {
+      logger.err('''
+Release $releaseVersion is in an incomplete state. It's possible that the original release was terminated or failed to complete.
+
+Please re-run the release command for this version or create a new release.''');
+      return ExitCode.software.code;
+    }
 
     final flutterRevisionProgress = logger.progress(
       'Fetching Flutter revision',
@@ -274,6 +276,13 @@ https://github.com/shorebirdtech/shorebird/issues/472
       final size = formatBytes(patchArtifactBundles[arch]!.size);
       return '$name ($size)';
     });
+
+    if (dryRun) {
+      logger
+        ..info('No issues detected.')
+        ..info('The server may enforce additional checks.');
+      return ExitCode.success.code;
+    }
 
     final summary = [
       '''📱 App: ${lightCyan.wrap(app.displayName)} ${lightCyan.wrap('(${app.appId})')}''',
