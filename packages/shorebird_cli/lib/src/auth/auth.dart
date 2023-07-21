@@ -237,42 +237,6 @@ class Auth {
 
   void logout() => _clearCredentials();
 
-  Future<User> signUp({
-    required void Function(String) authPrompt,
-    required String Function() namePrompt,
-  }) async {
-    if (_credentials != null) {
-      throw UserAlreadyLoggedInException(email: _credentials!.email!);
-    }
-
-    final client = http.Client();
-    final User newUser;
-    try {
-      _credentials = await _obtainAccessCredentials(
-        _clientId,
-        _scopes,
-        client,
-        authPrompt,
-      );
-
-      final codePushClient = _buildCodePushClient(httpClient: this.client);
-
-      final existingUser = await codePushClient.getCurrentUser();
-      if (existingUser != null) {
-        throw UserAlreadyExistsException(existingUser);
-      }
-
-      newUser = await codePushClient.createUser(name: namePrompt());
-
-      _email = newUser.email;
-      _flushCredentials(_credentials!);
-    } finally {
-      client.close();
-    }
-
-    return newUser;
-  }
-
   oauth2.AccessCredentials? _credentials;
 
   String? _email;
