@@ -92,7 +92,7 @@ abstract class Validator {
   ///
   /// Returns an empty list if no issues are found.
   /// Not all validators use [process].
-  Future<List<ValidationIssue>> validate(ShorebirdProcess process);
+  Future<List<ValidationIssue>> validate();
 
   /// Whether this validator is project-specific or system-wide.
   ValidatorScope get scope;

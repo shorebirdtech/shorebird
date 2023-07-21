@@ -1,10 +1,8 @@
-import 'package:collection/collection.dart';
 import 'package:mason_logger/mason_logger.dart';
 import 'package:shorebird_cli/src/command.dart';
+import 'package:shorebird_cli/src/doctor.dart';
 import 'package:shorebird_cli/src/logger.dart';
-import 'package:shorebird_cli/src/process.dart';
 import 'package:shorebird_cli/src/shorebird_environment.dart';
-import 'package:shorebird_cli/src/shorebird_version_mixin.dart';
 import 'package:shorebird_cli/src/validators/validators.dart';
 import 'package:shorebird_cli/src/version.dart';
 
@@ -13,11 +11,9 @@ import 'package:shorebird_cli/src/version.dart';
 /// A command that checks for potential issues with the current shorebird
 /// environment.
 /// {@endtemplate}
-class DoctorCommand extends ShorebirdCommand with ShorebirdVersionMixin {
+class DoctorCommand extends ShorebirdCommand {
   /// {@macro doctor_command}
-  DoctorCommand({super.validators}) {
-    validators = _allValidators(baseValidators: validators);
-
+  DoctorCommand() {
     argParser.addFlag(
       'fix',
       abbr: 'f',
@@ -25,14 +21,6 @@ class DoctorCommand extends ShorebirdCommand with ShorebirdVersionMixin {
       negatable: false,
     );
   }
-
-  late final List<Validator> _doctorValidators = [
-    ShorebirdVersionValidator(
-      isShorebirdVersionCurrent: isShorebirdVersionCurrent,
-    ),
-    ShorebirdFlutterValidator(),
-    AndroidInternetPermissionValidator(),
-  ];
 
   @override
   String get name => 'doctor';
@@ -53,14 +41,14 @@ Shorebird Engine • revision ${ShorebirdEnvironment.shorebirdEngineRevision}'''
 
     final allIssues = <ValidationIssue>[];
     final allFixableIssues = <ValidationIssue>[];
-    for (final validator in validators) {
+    for (final validator in doctor.allValidators) {
       if (validator.scope == ValidatorScope.project && !isInProject) {
         continue;
       }
 
       final failedFixes = <ValidationIssue, dynamic>{};
       final progress = logger.progress(validator.description);
-      final issues = await validator.validate(process);
+      final issues = await validator.validate();
       if (issues.isEmpty) {
         progress.complete();
         continue;
@@ -82,7 +70,7 @@ Shorebird Engine • revision ${ShorebirdEnvironment.shorebirdEngineRevision}'''
 
           // Re-run the validator to see if there are any remaining issues that
           // we couldn't fix.
-          unresolvedIssues = await validator.validate(process);
+          unresolvedIssues = await validator.validate();
           if (unresolvedIssues.isEmpty) {
             final numFixed = issues.length - unresolvedIssues.length;
             final fixAppliedMessage =
@@ -130,21 +118,5 @@ $fixableIssueCount issue${fixableIssueCount == 1 ? '' : 's'} can be fixed automa
     }
 
     return ExitCode.success.code;
-  }
-
-  /// Creates a list that is the union of [baseValidators] and
-  /// [_doctorValidators].
-  List<Validator> _allValidators({
-    required List<Validator> baseValidators,
-  }) {
-    final missingValidators = _doctorValidators
-        .where(
-          (doctorValidator) => baseValidators.none(
-            (baseValidator) => baseValidator.id == doctorValidator.id,
-          ),
-        )
-        .toList();
-
-    return baseValidators + missingValidators;
   }
 }

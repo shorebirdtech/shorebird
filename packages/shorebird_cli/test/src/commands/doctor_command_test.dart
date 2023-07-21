@@ -6,6 +6,7 @@ import 'package:mocktail/mocktail.dart';
 import 'package:path/path.dart' as p;
 import 'package:scoped/scoped.dart';
 import 'package:shorebird_cli/src/commands/commands.dart';
+import 'package:shorebird_cli/src/doctor.dart';
 import 'package:shorebird_cli/src/logger.dart';
 import 'package:shorebird_cli/src/process.dart';
 import 'package:shorebird_cli/src/shorebird_environment.dart';
@@ -19,6 +20,8 @@ class _MockShorebirdVersionValidator extends Mock
 
 class _MockAndroidInternetPermissionValidator extends Mock
     implements AndroidInternetPermissionValidator {}
+
+class _MockDoctor extends Mock implements Doctor {}
 
 class _MockShorebirdFlutterValidator extends Mock
     implements ShorebirdFlutterValidator {}
@@ -35,6 +38,7 @@ void main() {
     const appId = 'test-app-id';
 
     late ArgResults argResults;
+    late Doctor doctor;
     late Logger logger;
     late Progress progress;
     late DoctorCommand command;
@@ -47,6 +51,7 @@ void main() {
       return runScoped(
         body,
         values: {
+          doctorRef.overrideWith(() => doctor),
           loggerRef.overrideWith(() => logger),
           processRef.overrideWith(() => shorebirdProcess),
         },
@@ -63,6 +68,7 @@ void main() {
 
     setUp(() {
       argResults = _MockArgResults();
+      doctor = _MockDoctor();
       logger = _MockLogger();
       progress = _MockProgress();
 
@@ -86,7 +92,7 @@ void main() {
           .thenReturn(androidValidatorDescription);
       when(() => androidInternetPermissionValidator.scope)
           .thenReturn(ValidatorScope.project);
-      when(() => androidInternetPermissionValidator.validate(any()))
+      when(androidInternetPermissionValidator.validate)
           .thenAnswer((_) async => []);
 
       when(() => shorebirdVersionValidator.id)
@@ -95,8 +101,7 @@ void main() {
           .thenReturn('Shorebird Version');
       when(() => shorebirdVersionValidator.scope)
           .thenReturn(ValidatorScope.installation);
-      when(() => shorebirdVersionValidator.validate(any()))
-          .thenAnswer((_) async => []);
+      when(shorebirdVersionValidator.validate).thenAnswer((_) async => []);
 
       when(() => shorebirdFlutterValidator.id)
           .thenReturn('$ShorebirdFlutterValidator');
@@ -104,18 +109,16 @@ void main() {
           .thenReturn('Shorebird Flutter');
       when(() => shorebirdFlutterValidator.scope)
           .thenReturn(ValidatorScope.installation);
-      when(() => shorebirdFlutterValidator.validate(any()))
-          .thenAnswer((_) async => []);
+      when(shorebirdFlutterValidator.validate).thenAnswer((_) async => []);
 
-      command = runWithOverrides(
-        () => DoctorCommand(
-          validators: [
-            androidInternetPermissionValidator,
-            shorebirdVersionValidator,
-            shorebirdFlutterValidator,
-          ],
-        ),
-      )..testArgResults = argResults;
+      when(() => doctor.allValidators).thenReturn([
+        androidInternetPermissionValidator,
+        shorebirdVersionValidator,
+        shorebirdFlutterValidator,
+      ]);
+
+      command = runWithOverrides(DoctorCommand.new)
+        ..testArgResults = argResults;
     });
 
     test('prints "no issues" when everything is OK', () async {
@@ -126,8 +129,8 @@ void main() {
         getCurrentDirectory: () => tempDir,
       );
 
-      for (final validator in command.validators) {
-        verify(() => validator.validate(shorebirdProcess)).called(1);
+      for (final validator in doctor.allValidators) {
+        verify(validator.validate).called(1);
       }
       verify(
         () => logger.info(any(that: contains('No issues detected'))),
@@ -135,9 +138,7 @@ void main() {
     });
 
     test('prints messages when warnings or errors found', () async {
-      when(
-        () => androidInternetPermissionValidator.validate(any()),
-      ).thenAnswer(
+      when(androidInternetPermissionValidator.validate).thenAnswer(
         (_) async => [
           const ValidationIssue(
             severity: ValidationIssueSeverity.warning,
@@ -157,8 +158,8 @@ void main() {
         getCurrentDirectory: () => tempDir,
       );
 
-      for (final validator in command.validators) {
-        verify(() => validator.validate(any())).called(1);
+      for (final validator in doctor.allValidators) {
+        verify(validator.validate).called(1);
       }
 
       verify(
@@ -182,16 +183,14 @@ void main() {
         getCurrentDirectory: () => Directory.systemTemp.createTempSync(),
       );
 
-      verify(() => shorebirdFlutterValidator.validate(any())).called(1);
-      verify(() => shorebirdVersionValidator.validate(any())).called(1);
-      verifyNever(() => androidInternetPermissionValidator.validate(any()));
+      verify(shorebirdFlutterValidator.validate).called(1);
+      verify(shorebirdVersionValidator.validate).called(1);
+      verifyNever(androidInternetPermissionValidator.validate);
     });
 
     group('fix', () {
       test('tells the user we can fix issues if we can', () async {
-        when(
-          () => androidInternetPermissionValidator.validate(any()),
-        ).thenAnswer(
+        when(androidInternetPermissionValidator.validate).thenAnswer(
           (_) async => [
             ValidationIssue(
               severity: ValidationIssueSeverity.warning,
@@ -220,9 +219,7 @@ void main() {
       });
 
       test('does not tell the user we can fix issues if we cannot', () async {
-        when(
-          () => androidInternetPermissionValidator.validate(any()),
-        ).thenAnswer(
+        when(androidInternetPermissionValidator.validate).thenAnswer(
           (_) async => [
             const ValidationIssue(
               severity: ValidationIssueSeverity.warning,
@@ -253,9 +250,7 @@ void main() {
         when(() => argResults['fix']).thenReturn(false);
 
         var fixCalled = false;
-        when(
-          () => androidInternetPermissionValidator.validate(any()),
-        ).thenAnswer(
+        when(androidInternetPermissionValidator.validate).thenAnswer(
           (_) async => [
             ValidationIssue(
               severity: ValidationIssueSeverity.warning,
@@ -275,9 +270,7 @@ void main() {
         expect(fixCalled, isFalse);
         verifyNever(() => progress.update('Fixing'));
         verify(() => progress.fail(androidValidatorDescription)).called(1);
-        verify(
-          () => androidInternetPermissionValidator.validate(any()),
-        ).called(1);
+        verify(androidInternetPermissionValidator.validate).called(1);
       });
 
       test('fixes issues if the --fix flag is provided', () async {
@@ -291,9 +284,7 @@ void main() {
             fix: () => fixCalled = true,
           ),
         ];
-        when(
-          () => androidInternetPermissionValidator.validate(any()),
-        ).thenAnswer(
+        when(androidInternetPermissionValidator.validate).thenAnswer(
           (_) async {
             if (issues.isEmpty) return [];
             return [issues.removeLast()];
@@ -311,18 +302,14 @@ void main() {
         verify(
           () => progress.complete(any(that: contains('1 fix applied'))),
         ).called(1);
-        verify(
-          () => androidInternetPermissionValidator.validate(any()),
-        ).called(2);
+        verify(androidInternetPermissionValidator.validate).called(2);
       });
 
       test('does not print "fixed" if fix fails', () async {
         when(() => argResults['fix']).thenReturn(true);
 
         var fixCalled = false;
-        when(
-          () => androidInternetPermissionValidator.validate(any()),
-        ).thenAnswer(
+        when(androidInternetPermissionValidator.validate).thenAnswer(
           (_) async => [
             ValidationIssue(
               severity: ValidationIssueSeverity.warning,
@@ -348,16 +335,12 @@ void main() {
         verifyNever(
           () => progress.complete(any(that: contains('fixes applied'))),
         );
-        verify(
-          () => androidInternetPermissionValidator.validate(any()),
-        ).called(2);
+        verify(androidInternetPermissionValidator.validate).called(2);
       });
 
       test('prints error and continues if fix() throws', () async {
         when(() => argResults['fix']).thenReturn(true);
-        when(
-          () => androidInternetPermissionValidator.validate(any()),
-        ).thenAnswer(
+        when(androidInternetPermissionValidator.validate).thenAnswer(
           (_) async => [
             ValidationIssue(
               severity: ValidationIssueSeverity.warning,
@@ -375,9 +358,7 @@ void main() {
         );
 
         verify(() => progress.update('Fixing')).called(1);
-        verify(
-          () => androidInternetPermissionValidator.validate(any()),
-        ).called(2);
+        verify(androidInternetPermissionValidator.validate).called(2);
         verify(
           () => logger.err(
             any(

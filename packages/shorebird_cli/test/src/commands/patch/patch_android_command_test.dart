@@ -13,6 +13,7 @@ import 'package:shorebird_cli/src/bundletool.dart';
 import 'package:shorebird_cli/src/cache.dart' show Cache, cacheRef;
 import 'package:shorebird_cli/src/code_push_client_wrapper.dart';
 import 'package:shorebird_cli/src/commands/patch/patch_android_command.dart';
+import 'package:shorebird_cli/src/doctor.dart';
 import 'package:shorebird_cli/src/java.dart';
 import 'package:shorebird_cli/src/logger.dart';
 import 'package:shorebird_cli/src/platform.dart';
@@ -37,6 +38,8 @@ class _MockCache extends Mock implements Cache {}
 
 class _MockCodePushClientWrapper extends Mock
     implements CodePushClientWrapper {}
+
+class _MockDoctor extends Mock implements Doctor {}
 
 class _MockJava extends Mock implements Java {}
 
@@ -111,6 +114,7 @@ flutter:
     late Bundletool bundletool;
     late CodePushClientWrapper codePushClientWrapper;
     late Directory shorebirdRoot;
+    late Doctor doctor;
     late Java java;
     late Platform platform;
     late Progress progress;
@@ -132,6 +136,7 @@ flutter:
           bundletoolRef.overrideWith(() => bundletool),
           cacheRef.overrideWith(() => cache),
           codePushClientWrapperRef.overrideWith(() => codePushClientWrapper),
+          doctorRef.overrideWith(() => doctor),
           engineConfigRef.overrideWith(() => const EngineConfig.empty()),
           javaRef.overrideWith(() => java),
           loggerRef.overrideWith(() => logger),
@@ -183,6 +188,7 @@ flutter:
       auth = _MockAuth();
       bundletool = _MockBundleTool();
       codePushClientWrapper = _MockCodePushClientWrapper();
+      doctor = _MockDoctor();
       java = _MockJava();
       shorebirdRoot = Directory.systemTemp.createTempSync();
       platform = _MockPlatform();
@@ -199,7 +205,6 @@ flutter:
         () => PatchAndroidCommand(
           aabDiffer: aabDiffer,
           httpClient: httpClient,
-          validators: [flutterValidator],
         ),
       )..testArgResults = argResults;
 
@@ -313,7 +318,9 @@ flutter:
           patchArtifactBundles: any(named: 'patchArtifactBundles'),
         ),
       ).thenAnswer((_) async {});
-      when(() => flutterValidator.validate(any())).thenAnswer((_) async => []);
+      when(() => doctor.androidCommandValidators)
+          .thenReturn([flutterValidator]);
+      when(flutterValidator.validate).thenAnswer((_) async => []);
       when(() => cache.updateAll()).thenAnswer((_) async => {});
       when(
         () => cache.getArtifactDirectory(any()),
@@ -887,7 +894,7 @@ flavors:
     test('prints flutter validation warnings', () async {
       final tempDir = setUpTempDir();
       setUpTempArtifacts(tempDir);
-      when(() => flutterValidator.validate(any())).thenAnswer(
+      when(flutterValidator.validate).thenAnswer(
         (_) async => [
           const ValidationIssue(
             severity: ValidationIssueSeverity.warning,
@@ -917,7 +924,7 @@ flavors:
     test('aborts if validation errors are present', () async {
       final tempDir = setUpTempDir();
       setUpTempArtifacts(tempDir);
-      when(() => flutterValidator.validate(any())).thenAnswer(
+      when(flutterValidator.validate).thenAnswer(
         (_) async => [
           const ValidationIssue(
             severity: ValidationIssueSeverity.error,

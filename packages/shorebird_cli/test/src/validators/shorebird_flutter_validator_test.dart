@@ -51,6 +51,7 @@ Tools • Dart 2.19.6 • DevTools 2.20.1
         () => body(),
         values: {
           platformRef.overrideWith(() => platform),
+          processRef.overrideWith(() => shorebirdProcess),
         },
       );
     }
@@ -125,9 +126,7 @@ Tools • Dart 2.19.6 • DevTools 2.20.1
     });
 
     test('returns no issues when the Flutter install is good', () async {
-      final results = await runWithOverrides(
-        () => validator.validate(shorebirdProcess),
-      );
+      final results = await runWithOverrides(validator.validate);
 
       expect(results, isEmpty);
     });
@@ -135,7 +134,7 @@ Tools • Dart 2.19.6 • DevTools 2.20.1
     test('errors when Flutter does not exist', () async {
       flutterDirectory(tempDir).deleteSync();
 
-      final results = await validator.validate(shorebirdProcess);
+      final results = await runWithOverrides(validator.validate);
 
       expect(results, hasLength(1));
       expect(results.first.severity, ValidationIssueSeverity.error);
@@ -146,9 +145,7 @@ Tools • Dart 2.19.6 • DevTools 2.20.1
       when(() => gitStatusProcessResult.stdout)
           .thenReturn('Changes not staged for commit');
 
-      final results = await runWithOverrides(
-        () => validator.validate(shorebirdProcess),
-      );
+      final results = await runWithOverrides(validator.validate);
 
       expect(results, hasLength(1));
       expect(results.first.severity, ValidationIssueSeverity.warning);
@@ -164,7 +161,7 @@ Tools • Dart 2.19.6 • DevTools 2.20.1
         );
 
         final results = await runWithOverrides(
-          () => validator.validate(shorebirdProcess),
+          () => validator.validate(),
         );
 
         expect(results, isEmpty);
@@ -179,9 +176,7 @@ Tools • Dart 2.19.6 • DevTools 2.20.1
           pathFlutterVersionMessage.replaceAll('3.7.9', '3.8.9'),
         );
 
-        final results = await runWithOverrides(
-          () => validator.validate(shorebirdProcess),
-        );
+        final results = await runWithOverrides(validator.validate);
 
         expect(results, hasLength(1));
         expect(results.first.severity, ValidationIssueSeverity.warning);
@@ -202,9 +197,7 @@ Tools • Dart 2.19.6 • DevTools 2.20.1
           {'FLUTTER_STORAGE_BASE_URL': 'https://storage.flutter-io.cn'},
         );
 
-        final results = await runWithOverrides(
-          () => validator.validate(shorebirdProcess),
-        );
+        final results = await runWithOverrides(validator.validate);
 
         expect(results, hasLength(1));
         expect(results.first.severity, ValidationIssueSeverity.warning);
@@ -223,9 +216,7 @@ Tools • Dart 2.19.6 • DevTools 2.20.1
       when(() => pathFlutterVersionProcessResult.stdout)
           .thenReturn('OH NO THERE IS NO FLUTTER VERSION HERE');
 
-      final results = await runWithOverrides(
-        () => validator.validate(shorebirdProcess),
-      );
+      final results = await runWithOverrides(validator.validate);
 
       expect(results, hasLength(1));
       expect(
@@ -244,9 +235,7 @@ Tools • Dart 2.19.6 • DevTools 2.20.1
       when(() => pathFlutterVersionProcessResult.stderr)
           .thenReturn('error getting Flutter version');
 
-      final results = await runWithOverrides(
-        () => validator.validate(shorebirdProcess),
-      );
+      final results = await runWithOverrides(validator.validate);
 
       expect(results, hasLength(1));
       expect(
@@ -264,9 +253,7 @@ Tools • Dart 2.19.6 • DevTools 2.20.1
       when(() => shorebirdFlutterVersionProcessResult.stdout)
           .thenReturn('OH NO THERE IS NO FLUTTER VERSION HERE');
 
-      final results = await runWithOverrides(
-        () => validator.validate(shorebirdProcess),
-      );
+      final results = await runWithOverrides(validator.validate);
 
       expect(results, hasLength(1));
       expect(
@@ -285,9 +272,7 @@ Tools • Dart 2.19.6 • DevTools 2.20.1
       when(() => shorebirdFlutterVersionProcessResult.stderr)
           .thenReturn('error getting Flutter version');
 
-      final results = await runWithOverrides(
-        () => validator.validate(shorebirdProcess),
-      );
+      final results = await runWithOverrides(validator.validate);
 
       expect(results, hasLength(1));
       expect(

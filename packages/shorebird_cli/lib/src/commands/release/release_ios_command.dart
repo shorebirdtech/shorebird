@@ -6,6 +6,7 @@ import 'package:shorebird_cli/src/archive_analysis/archive_analysis.dart';
 import 'package:shorebird_cli/src/code_push_client_wrapper.dart';
 import 'package:shorebird_cli/src/command.dart';
 import 'package:shorebird_cli/src/config/config.dart';
+import 'package:shorebird_cli/src/doctor.dart';
 import 'package:shorebird_cli/src/logger.dart';
 import 'package:shorebird_cli/src/shorebird_artifact_mixin.dart';
 import 'package:shorebird_cli/src/shorebird_build_mixin.dart';
@@ -26,7 +27,6 @@ class ReleaseIosCommand extends ShorebirdCommand
         ShorebirdValidationMixin {
   /// {@macro release_ios_command}
   ReleaseIosCommand({
-    super.validators,
     IpaReader? ipaReader,
   }) : _ipaReader = ipaReader ?? IpaReader() {
     argParser
@@ -63,7 +63,7 @@ make smaller updates to your app.
       await validatePreconditions(
         checkUserIsAuthenticated: true,
         checkShorebirdInitialized: true,
-        checkValidators: true,
+        validators: doctor.iosCommandValidators,
       );
     } on PreconditionFailedException catch (e) {
       return e.exitCode.code;

@@ -12,6 +12,7 @@ import 'package:shorebird_cli/src/auth/auth.dart';
 import 'package:shorebird_cli/src/cache.dart' show Cache, cacheRef;
 import 'package:shorebird_cli/src/code_push_client_wrapper.dart';
 import 'package:shorebird_cli/src/commands/commands.dart';
+import 'package:shorebird_cli/src/doctor.dart';
 import 'package:shorebird_cli/src/logger.dart';
 import 'package:shorebird_cli/src/platform.dart';
 import 'package:shorebird_cli/src/process.dart';
@@ -30,6 +31,8 @@ class _MockArgResults extends Mock implements ArgResults {}
 class _MockAuth extends Mock implements Auth {}
 
 class _MockCache extends Mock implements Cache {}
+
+class _MockDoctor extends Mock implements Doctor {}
 
 class _MockCodePushClientWrapper extends Mock
     implements CodePushClientWrapper {}
@@ -119,6 +122,7 @@ flutter:
     late Auth auth;
     late CodePushClientWrapper codePushClientWrapper;
     late Directory shorebirdRoot;
+    late Doctor doctor;
     late Platform platform;
     late Progress progress;
     late Logger logger;
@@ -138,6 +142,7 @@ flutter:
           authRef.overrideWith(() => auth),
           cacheRef.overrideWith(() => cache),
           codePushClientWrapperRef.overrideWith(() => codePushClientWrapper),
+          doctorRef.overrideWith(() => doctor),
           engineConfigRef.overrideWith(() => const EngineConfig.empty()),
           loggerRef.overrideWith(() => logger),
           platformRef.overrideWith(() => platform),
@@ -197,6 +202,7 @@ flutter:
       argResults = _MockArgResults();
       auth = _MockAuth();
       codePushClientWrapper = _MockCodePushClientWrapper();
+      doctor = _MockDoctor();
       shorebirdRoot = Directory.systemTemp.createTempSync();
       platform = _MockPlatform();
       progress = _MockProgress();
@@ -322,7 +328,9 @@ flutter:
           patchArtifactBundles: any(named: 'patchArtifactBundles'),
         ),
       ).thenAnswer((_) async {});
-      when(() => flutterValidator.validate(any())).thenAnswer((_) async => []);
+      when(() => doctor.androidCommandValidators)
+          .thenReturn([flutterValidator]);
+      when(flutterValidator.validate).thenAnswer((_) async => []);
       when(() => cache.updateAll()).thenAnswer((_) async => {});
       when(
         () => cache.getArtifactDirectory(any()),
@@ -332,7 +340,6 @@ flutter:
         () => PatchAarCommand(
           aarDiffer: aarDiffer,
           httpClient: httpClient,
-          validators: [flutterValidator],
           unzipFn: (_, __) async {},
         ),
       )..testArgResults = argResults;
@@ -894,7 +901,7 @@ flavors:
     test('prints flutter validation warnings', () async {
       final tempDir = setUpTempDir();
       setUpTempArtifacts(tempDir);
-      when(() => flutterValidator.validate(any())).thenAnswer(
+      when(flutterValidator.validate).thenAnswer(
         (_) async => [
           const ValidationIssue(
             severity: ValidationIssueSeverity.warning,
@@ -924,7 +931,7 @@ flavors:
     test('aborts if validation errors are present', () async {
       final tempDir = setUpTempDir();
       setUpTempArtifacts(tempDir);
-      when(() => flutterValidator.validate(any())).thenAnswer(
+      when(flutterValidator.validate).thenAnswer(
         (_) async => [
           const ValidationIssue(
             severity: ValidationIssueSeverity.error,

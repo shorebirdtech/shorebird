@@ -1,0 +1,111 @@
+import 'package:mason_logger/mason_logger.dart';
+import 'package:mocktail/mocktail.dart';
+import 'package:scoped/scoped.dart';
+import 'package:shorebird_cli/src/process.dart';
+import 'package:shorebird_cli/src/shorebird_version_manager.dart';
+import 'package:test/test.dart';
+
+class _MockProcessResult extends Mock implements ShorebirdProcessResult {}
+
+class _MockShorebirdProcess extends Mock implements ShorebirdProcess {}
+
+void main() {
+  group(ShorebirdVersionManager, () {
+    const currentShorebirdRevision = 'revision-1';
+    const newerShorebirdRevision = 'revision-2';
+
+    late ShorebirdProcessResult fetchCurrentVersionResult;
+    late ShorebirdProcessResult fetchLatestVersionResult;
+    late ShorebirdProcess shorebirdProcess;
+    late ShorebirdVersionManager shorebirdVersionManager;
+
+    R runWithOverrides<R>(R Function() body) {
+      return runScoped(
+        body,
+        values: {
+          engineConfigRef.overrideWith(() => const EngineConfig.empty()),
+          processRef.overrideWith(() => shorebirdProcess),
+        },
+      );
+    }
+
+    setUp(() {
+      fetchCurrentVersionResult = _MockProcessResult();
+      fetchLatestVersionResult = _MockProcessResult();
+      shorebirdProcess = _MockShorebirdProcess();
+      shorebirdVersionManager = ShorebirdVersionManager();
+
+      when(
+        () => shorebirdProcess.run(
+          'git',
+          ['rev-parse', '--verify', 'HEAD'],
+          workingDirectory: any(named: 'workingDirectory'),
+        ),
+      ).thenAnswer((_) async => fetchCurrentVersionResult);
+      when(
+        () => shorebirdProcess.run(
+          'git',
+          ['rev-parse', '--verify', '@{upstream}'],
+          workingDirectory: any(named: 'workingDirectory'),
+        ),
+      ).thenAnswer((_) async => fetchLatestVersionResult);
+      when(
+        () => shorebirdProcess.run(
+          'git',
+          ['fetch', '--tags'],
+          workingDirectory: any(named: 'workingDirectory'),
+        ),
+      ).thenAnswer((_) async => _MockProcessResult());
+
+      when(
+        () => fetchCurrentVersionResult.exitCode,
+      ).thenReturn(ExitCode.success.code);
+      when(
+        () => fetchCurrentVersionResult.stdout,
+      ).thenReturn(currentShorebirdRevision);
+      when(
+        () => fetchLatestVersionResult.exitCode,
+      ).thenReturn(ExitCode.success.code);
+      when(
+        () => fetchLatestVersionResult.stdout,
+      ).thenReturn(currentShorebirdRevision);
+    });
+
+    group('isShorebirdVersionCurrent', () {
+      test('returns true if current and latest git hashes match', () async {
+        when(
+          () => fetchCurrentVersionResult.stdout,
+        ).thenReturn(currentShorebirdRevision);
+        when(
+          () => fetchLatestVersionResult.stdout,
+        ).thenReturn(currentShorebirdRevision);
+
+        expect(
+          await runWithOverrides(
+            shorebirdVersionManager.isShorebirdVersionCurrent,
+          ),
+          isTrue,
+        );
+      });
+
+      test(
+        'returns false if current and latest git hashes differ',
+        () async {
+          when(
+            () => fetchCurrentVersionResult.stdout,
+          ).thenReturn(currentShorebirdRevision);
+          when(
+            () => fetchLatestVersionResult.stdout,
+          ).thenReturn(newerShorebirdRevision);
+
+          expect(
+            await runWithOverrides(
+              shorebirdVersionManager.isShorebirdVersionCurrent,
+            ),
+            isFalse,
+          );
+        },
+      );
+    });
+  });
+}
