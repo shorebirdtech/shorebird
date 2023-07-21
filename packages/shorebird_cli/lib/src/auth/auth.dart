@@ -237,42 +237,6 @@ class Auth {
 
   void logout() => _clearCredentials();
 
-  Future<User> signUp({
-    required void Function(String) authPrompt,
-    required String Function() namePrompt,
-  }) async {
-    if (_credentials != null) {
-      throw UserAlreadyLoggedInException(email: _credentials!.email!);
-    }
-
-    final client = http.Client();
-    final User newUser;
-    try {
-      _credentials = await _obtainAccessCredentials(
-        _clientId,
-        _scopes,
-        client,
-        authPrompt,
-      );
-
-      final codePushClient = _buildCodePushClient(httpClient: this.client);
-
-      final existingUser = await codePushClient.getCurrentUser();
-      if (existingUser != null) {
-        throw UserAlreadyExistsException(existingUser);
-      }
-
-      newUser = await codePushClient.createUser(name: namePrompt());
-
-      _email = newUser.email;
-      _flushCredentials(_credentials!);
-    } finally {
-      client.close();
-    }
-
-    return newUser;
-  }
-
   oauth2.AccessCredentials? _credentials;
 
   String? _email;
@@ -355,15 +319,4 @@ class UserNotFoundException implements Exception {
   /// The email used to locate the user, as derived from the stored auth
   /// credentials.
   final String email;
-}
-
-/// {@template user_already_exists_exception}
-/// Thrown when an attempt to create a User object results in a 409.
-/// {@endtemplate}
-class UserAlreadyExistsException implements Exception {
-  /// {@macro user_already_exists_exception}
-  UserAlreadyExistsException(this.user);
-
-  /// The existing user.
-  final User user;
 }

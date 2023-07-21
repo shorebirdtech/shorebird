@@ -1849,48 +1849,6 @@ Please bump your version number and try again.''',
           ).called(1);
         });
       });
-
-      group('getUsage', () {
-        test('exits with code 70 when getUsage throws an exception', () async {
-          when(() => codePushClient.getUsage()).thenThrow(Exception('oh no!'));
-
-          await expectLater(
-            () => runWithOverrides(codePushClientWrapper.getUsage),
-            exitsWithCode(ExitCode.software),
-          );
-
-          verify(() => progress.fail(any(that: contains('oh no!')))).called(1);
-        });
-
-        test('returns usage when succeeds', () async {
-          final usage = GetUsageResponse(
-            plan: ShorebirdPlan(
-              name: 'Hobby',
-              monthlyCost: Money.fromIntWithCurrency(0, usd),
-              patchInstallLimit: 1000,
-              maxTeamSize: 1,
-            ),
-            apps: const [
-              AppUsage(
-                id: 'test-app-id',
-                name: 'test app',
-                patchInstallCount: 42,
-              ),
-            ],
-            currentPeriodCost: Money.fromIntWithCurrency(0, usd),
-            currentPeriodStart: DateTime(2023),
-            currentPeriodEnd: DateTime(2023, 2),
-          );
-          when(() => codePushClient.getUsage()).thenAnswer((_) async => usage);
-
-          await expectLater(
-            runWithOverrides(codePushClientWrapper.getUsage),
-            completion(equals(usage)),
-          );
-
-          verify(() => progress.complete()).called(1);
-        });
-      });
     });
   });
 }
