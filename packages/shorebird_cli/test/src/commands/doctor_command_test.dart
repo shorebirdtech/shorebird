@@ -86,8 +86,6 @@ void main() {
       shorebirdProcess = _MockShorebirdProcess();
       registerFallbackValue(shorebirdProcess);
 
-      when(() => androidInternetPermissionValidator.id)
-          .thenReturn('$AndroidInternetPermissionValidator');
       when(() => androidInternetPermissionValidator.description)
           .thenReturn(androidValidatorDescription);
       when(() => androidInternetPermissionValidator.scope)
@@ -95,16 +93,12 @@ void main() {
       when(androidInternetPermissionValidator.validate)
           .thenAnswer((_) async => []);
 
-      when(() => shorebirdVersionValidator.id)
-          .thenReturn('$ShorebirdVersionValidator');
       when(() => shorebirdVersionValidator.description)
           .thenReturn('Shorebird Version');
       when(() => shorebirdVersionValidator.scope)
           .thenReturn(ValidatorScope.installation);
       when(shorebirdVersionValidator.validate).thenAnswer((_) async => []);
 
-      when(() => shorebirdFlutterValidator.id)
-          .thenReturn('$ShorebirdFlutterValidator');
       when(() => shorebirdFlutterValidator.description)
           .thenReturn('Shorebird Flutter');
       when(() => shorebirdFlutterValidator.scope)
