@@ -15,7 +15,7 @@ import 'package:shorebird_cli/src/shorebird_validation_mixin.dart';
 class RunCommand extends ShorebirdCommand
     with ShorebirdConfigMixin, ShorebirdValidationMixin {
   /// {@macro run_command}
-  RunCommand({super.buildCodePushClient, super.validators}) {
+  RunCommand({super.buildCodePushClient}) {
     argParser
       ..addOption(
         'device-id',
@@ -62,7 +62,6 @@ Please use "shorebird preview" instead.''',
     try {
       await validatePreconditions(
         checkUserIsAuthenticated: true,
-        checkValidators: true,
       );
     } on PreconditionFailedException catch (e) {
       return e.exitCode.code;
