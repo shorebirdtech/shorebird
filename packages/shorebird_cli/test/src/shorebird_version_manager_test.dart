@@ -1,3 +1,5 @@
+import 'dart:io';
+
 import 'package:mason_logger/mason_logger.dart';
 import 'package:mocktail/mocktail.dart';
 import 'package:scoped/scoped.dart';
@@ -16,6 +18,7 @@ void main() {
 
     late ShorebirdProcessResult fetchCurrentVersionResult;
     late ShorebirdProcessResult fetchLatestVersionResult;
+    late ShorebirdProcessResult hardResetResult;
     late ShorebirdProcess shorebirdProcess;
     late ShorebirdVersionManager shorebirdVersionManager;
 
@@ -32,6 +35,7 @@ void main() {
     setUp(() {
       fetchCurrentVersionResult = _MockProcessResult();
       fetchLatestVersionResult = _MockProcessResult();
+      hardResetResult = _MockProcessResult();
       shorebirdProcess = _MockShorebirdProcess();
       shorebirdVersionManager = ShorebirdVersionManager();
 
@@ -56,6 +60,13 @@ void main() {
           workingDirectory: any(named: 'workingDirectory'),
         ),
       ).thenAnswer((_) async => _MockProcessResult());
+      when(
+        () => shorebirdProcess.run(
+          'git',
+          ['reset', '--hard', 'HEAD'],
+          workingDirectory: any(named: 'workingDirectory'),
+        ),
+      ).thenAnswer((_) async => hardResetResult);
 
       when(
         () => fetchCurrentVersionResult.exitCode,
@@ -69,6 +80,7 @@ void main() {
       when(
         () => fetchLatestVersionResult.stdout,
       ).thenReturn(currentShorebirdRevision);
+      when(() => hardResetResult.exitCode).thenReturn(ExitCode.success.code);
     });
 
     group('isShorebirdVersionCurrent', () {
@@ -103,6 +115,32 @@ void main() {
               shorebirdVersionManager.isShorebirdVersionCurrent,
             ),
             isFalse,
+          );
+        },
+      );
+    });
+
+    group('attemptReset', () {
+      test('completes when git command exits with code 0', () async {
+        expect(
+          runWithOverrides(
+            () => shorebirdVersionManager.attemptReset(newRevision: 'HEAD'),
+          ),
+          completes,
+        );
+      });
+
+      test(
+        '''throws ProcessException when git command exits with code other than 0''',
+        () async {
+          when(() => hardResetResult.exitCode)
+              .thenReturn(ExitCode.software.code);
+
+          expect(
+            runWithOverrides(
+              () => shorebirdVersionManager.attemptReset(newRevision: 'HEAD'),
+            ),
+            throwsA(isA<ProcessException>()),
           );
         },
       );
