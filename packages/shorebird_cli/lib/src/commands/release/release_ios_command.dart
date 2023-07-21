@@ -55,7 +55,7 @@ make smaller updates to your app.
 ''';
 
   @override
-  String get name => 'ios';
+  String get name => 'ios-preview';
 
   @override
   Future<int> run() async {
