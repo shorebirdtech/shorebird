@@ -118,6 +118,29 @@ void main() {
           );
         },
       );
+
+      test(
+          'throws ProcessException if git command exits with code other than 0',
+          () async {
+        const errorMessage = 'oh no!';
+        when(
+          () => fetchCurrentVersionResult.exitCode,
+        ).thenReturn(ExitCode.software.code);
+        when(() => fetchCurrentVersionResult.stderr).thenReturn(errorMessage);
+
+        expect(
+          runWithOverrides(
+            shorebirdVersionManager.isShorebirdVersionCurrent,
+          ),
+          throwsA(
+            isA<ProcessException>().having(
+              (e) => e.message,
+              'message',
+              errorMessage,
+            ),
+          ),
+        );
+      });
     });
 
     group('attemptReset', () {
@@ -133,14 +156,23 @@ void main() {
       test(
         '''throws ProcessException when git command exits with code other than 0''',
         () async {
-          when(() => hardResetResult.exitCode)
-              .thenReturn(ExitCode.software.code);
+          const errorMessage = 'oh no!';
+          when(
+            () => hardResetResult.exitCode,
+          ).thenReturn(ExitCode.software.code);
+          when(() => hardResetResult.stderr).thenReturn(errorMessage);
 
           expect(
             runWithOverrides(
               () => shorebirdVersionManager.attemptReset(newRevision: 'HEAD'),
             ),
-            throwsA(isA<ProcessException>()),
+            throwsA(
+              isA<ProcessException>().having(
+                (e) => e.message,
+                'message',
+                errorMessage,
+              ),
+            ),
           );
         },
       );
