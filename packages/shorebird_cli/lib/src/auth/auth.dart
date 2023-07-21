@@ -320,14 +320,3 @@ class UserNotFoundException implements Exception {
   /// credentials.
   final String email;
 }
-
-/// {@template user_already_exists_exception}
-/// Thrown when an attempt to create a User object results in a 409.
-/// {@endtemplate}
-class UserAlreadyExistsException implements Exception {
-  /// {@macro user_already_exists_exception}
-  UserAlreadyExistsException(this.user);
-
-  /// The existing user.
-  final User user;
-}
