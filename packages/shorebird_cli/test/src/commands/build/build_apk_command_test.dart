@@ -8,6 +8,7 @@ import 'package:path/path.dart' as p;
 import 'package:scoped/scoped.dart';
 import 'package:shorebird_cli/src/auth/auth.dart';
 import 'package:shorebird_cli/src/commands/build/build.dart';
+import 'package:shorebird_cli/src/doctor.dart';
 import 'package:shorebird_cli/src/logger.dart';
 import 'package:shorebird_cli/src/process.dart';
 import 'package:shorebird_cli/src/validators/validators.dart';
@@ -18,6 +19,8 @@ class _MockArgResults extends Mock implements ArgResults {}
 class _MockHttpClient extends Mock implements http.Client {}
 
 class _MockAuth extends Mock implements Auth {}
+
+class _MockDoctor extends Mock implements Doctor {}
 
 class _MockLogger extends Mock implements Logger {}
 
@@ -35,6 +38,7 @@ void main() {
     late ArgResults argResults;
     late http.Client httpClient;
     late Auth auth;
+    late Doctor doctor;
     late Logger logger;
     late ShorebirdProcessResult processResult;
     late BuildApkCommand command;
@@ -46,6 +50,7 @@ void main() {
         body,
         values: {
           authRef.overrideWith(() => auth),
+          doctorRef.overrideWith(() => doctor),
           loggerRef.overrideWith(() => logger),
           processRef.overrideWith(() => shorebirdProcess),
         },
@@ -56,6 +61,7 @@ void main() {
       argResults = _MockArgResults();
       httpClient = _MockHttpClient();
       auth = _MockAuth();
+      doctor = _MockDoctor();
       logger = _MockLogger();
       shorebirdProcess = _MockShorebirdProcess();
       processResult = _MockProcessResult();
@@ -75,11 +81,12 @@ void main() {
       when(() => auth.client).thenReturn(httpClient);
       when(() => logger.progress(any())).thenReturn(_MockProgress());
       when(() => logger.info(any())).thenReturn(null);
-      when(() => flutterValidator.validate(any())).thenAnswer((_) async => []);
+      when(() => doctor.androidCommandValidators)
+          .thenReturn([flutterValidator]);
+      when(flutterValidator.validate).thenAnswer((_) async => []);
 
-      command = runWithOverrides(
-        () => BuildApkCommand(validators: [flutterValidator]),
-      )..testArgResults = argResults;
+      command = runWithOverrides(BuildApkCommand.new)
+        ..testArgResults = argResults;
     });
 
     test('has correct description', () {
@@ -182,7 +189,7 @@ ${lightCyan.wrap(p.join('build', 'app', 'outputs', 'apk', flavor, 'release', 'ap
     });
 
     test('prints flutter validation warnings', () async {
-      when(() => flutterValidator.validate(any())).thenAnswer(
+      when(flutterValidator.validate).thenAnswer(
         (_) async => [
           const ValidationIssue(
             severity: ValidationIssueSeverity.warning,
@@ -208,7 +215,7 @@ ${lightCyan.wrap(p.join('build', 'app', 'outputs', 'apk', flavor, 'release', 'ap
     });
 
     test('aborts if validation errors are present', () async {
-      when(() => flutterValidator.validate(any())).thenAnswer(
+      when(flutterValidator.validate).thenAnswer(
         (_) async => [
           ValidationIssue(
             severity: ValidationIssueSeverity.error,

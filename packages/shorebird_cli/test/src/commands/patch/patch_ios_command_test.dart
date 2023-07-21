@@ -12,6 +12,7 @@ import 'package:shorebird_cli/src/archive_analysis/archive_analysis.dart';
 import 'package:shorebird_cli/src/auth/auth.dart';
 import 'package:shorebird_cli/src/code_push_client_wrapper.dart';
 import 'package:shorebird_cli/src/commands/patch/patch.dart';
+import 'package:shorebird_cli/src/doctor.dart';
 import 'package:shorebird_cli/src/logger.dart';
 import 'package:shorebird_cli/src/platform.dart';
 import 'package:shorebird_cli/src/process.dart';
@@ -29,6 +30,8 @@ class _MockAuth extends Mock implements Auth {}
 
 class _MockCodePushClientWrapper extends Mock
     implements CodePushClientWrapper {}
+
+class _MockDoctor extends Mock implements Doctor {}
 
 class _MockIpaReader extends Mock implements IpaReader {}
 
@@ -94,6 +97,7 @@ flutter:
     late ArgResults argResults;
     late Auth auth;
     late CodePushClientWrapper codePushClientWrapper;
+    late Doctor doctor;
     late Ipa ipa;
     late IpaReader ipaReader;
     late Progress progress;
@@ -113,6 +117,7 @@ flutter:
         values: {
           authRef.overrideWith(() => auth),
           codePushClientWrapperRef.overrideWith(() => codePushClientWrapper),
+          doctorRef.overrideWith(() => doctor),
           loggerRef.overrideWith(() => logger),
           platformRef.overrideWith(() => platform),
           processRef.overrideWith(() => shorebirdProcess),
@@ -165,6 +170,7 @@ flutter:
       argResults = _MockArgResults();
       auth = _MockAuth();
       codePushClientWrapper = _MockCodePushClientWrapper();
+      doctor = _MockDoctor();
       ipaReader = _MockIpaReader();
       ipa = _MockIpa();
       progress = _MockProgress();
@@ -203,7 +209,8 @@ flutter:
       ).thenAnswer((_) async {});
       when(() => ipa.versionNumber).thenReturn(version);
       when(() => ipaReader.read(any())).thenReturn(ipa);
-      when(() => flutterValidator.validate(any())).thenAnswer((_) async => []);
+      when(() => doctor.iosCommandValidators).thenReturn([flutterValidator]);
+      when(flutterValidator.validate).thenAnswer((_) async => []);
       when(() => logger.confirm(any())).thenReturn(true);
       when(() => logger.progress(any())).thenReturn(progress);
       when(() => platform.environment).thenReturn({});
@@ -249,12 +256,8 @@ flutter:
         ),
       ).thenAnswer((_) async => aotBuildProcessResult);
 
-      command = runWithOverrides(
-        () => PatchIosCommand(
-          ipaReader: ipaReader,
-          validators: [flutterValidator],
-        ),
-      )..testArgResults = argResults;
+      command = runWithOverrides(() => PatchIosCommand(ipaReader: ipaReader))
+        ..testArgResults = argResults;
     });
 
     test('has a description', () {
@@ -619,7 +622,7 @@ base_url: $baseUrl''',
     test('prints flutter validation warnings', () async {
       final tempDir = setUpTempDir();
       setUpTempArtifacts(tempDir);
-      when(() => flutterValidator.validate(any())).thenAnswer(
+      when(flutterValidator.validate).thenAnswer(
         (_) async => [
           const ValidationIssue(
             severity: ValidationIssueSeverity.warning,
@@ -649,7 +652,7 @@ base_url: $baseUrl''',
     test('aborts if validation errors are present', () async {
       final tempDir = setUpTempDir();
       setUpTempArtifacts(tempDir);
-      when(() => flutterValidator.validate(any())).thenAnswer(
+      when(flutterValidator.validate).thenAnswer(
         (_) async => [
           const ValidationIssue(
             severity: ValidationIssueSeverity.error,

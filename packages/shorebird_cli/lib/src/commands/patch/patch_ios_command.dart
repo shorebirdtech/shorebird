@@ -8,6 +8,7 @@ import 'package:shorebird_cli/src/archive_analysis/archive_analysis.dart';
 import 'package:shorebird_cli/src/code_push_client_wrapper.dart';
 import 'package:shorebird_cli/src/command.dart';
 import 'package:shorebird_cli/src/config/config.dart';
+import 'package:shorebird_cli/src/doctor.dart';
 import 'package:shorebird_cli/src/formatters/file_size_formatter.dart';
 import 'package:shorebird_cli/src/logger.dart';
 import 'package:shorebird_cli/src/shorebird_artifact_mixin.dart';
@@ -28,7 +29,6 @@ class PatchIosCommand extends ShorebirdCommand
         ShorebirdArtifactMixin {
   /// {@macro patch_ios_command}
   PatchIosCommand({
-    super.validators,
     HashFunction? hashFn,
     IpaReader? ipaReader,
   })  : _hashFn = hashFn ?? ((m) => sha256.convert(m).toString()),
@@ -76,7 +76,7 @@ class PatchIosCommand extends ShorebirdCommand
       await validatePreconditions(
         checkShorebirdInitialized: true,
         checkUserIsAuthenticated: true,
-        checkValidators: true,
+        validators: doctor.iosCommandValidators,
       );
     } on PreconditionFailedException catch (error) {
       return error.exitCode.code;

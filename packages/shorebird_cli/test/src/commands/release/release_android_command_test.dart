@@ -12,6 +12,7 @@ import 'package:shorebird_cli/src/bundletool.dart';
 import 'package:shorebird_cli/src/cache.dart';
 import 'package:shorebird_cli/src/code_push_client_wrapper.dart';
 import 'package:shorebird_cli/src/commands/commands.dart';
+import 'package:shorebird_cli/src/doctor.dart';
 import 'package:shorebird_cli/src/java.dart';
 import 'package:shorebird_cli/src/logger.dart';
 import 'package:shorebird_cli/src/platform.dart';
@@ -32,6 +33,8 @@ class _MockCache extends Mock implements Cache {}
 
 class _MockCodePushClientWrapper extends Mock
     implements CodePushClientWrapper {}
+
+class _MockDoctor extends Mock implements Doctor {}
 
 class _MockLogger extends Mock implements Logger {}
 
@@ -85,6 +88,7 @@ flutter:
     late http.Client httpClient;
     late CodePushClientWrapper codePushClientWrapper;
     late Directory shorebirdRoot;
+    late Doctor doctor;
     late Platform platform;
     late Auth auth;
     late Cache cache;
@@ -105,6 +109,7 @@ flutter:
           bundletoolRef.overrideWith(() => bundletool),
           cacheRef.overrideWith(() => cache),
           codePushClientWrapperRef.overrideWith(() => codePushClientWrapper),
+          doctorRef.overrideWith(() => doctor),
           engineConfigRef.overrideWith(() => const EngineConfig.empty()),
           javaRef.overrideWith(() => java),
           loggerRef.overrideWith(() => logger),
@@ -134,6 +139,7 @@ flutter:
       argResults = _MockArgResults();
       bundletool = _MockBundleTool();
       codePushClientWrapper = _MockCodePushClientWrapper();
+      doctor = _MockDoctor();
       httpClient = _MockHttpClient();
       platform = _MockPlatform();
       shorebirdRoot = Directory.systemTemp.createTempSync();
@@ -241,7 +247,9 @@ flutter:
           status: any(named: 'status'),
         ),
       ).thenAnswer((_) async {});
-      when(() => flutterValidator.validate(any())).thenAnswer((_) async => []);
+      when(() => doctor.androidCommandValidators)
+          .thenReturn([flutterValidator]);
+      when(flutterValidator.validate).thenAnswer((_) async => []);
       when(() => java.home).thenReturn(javaHome);
       when(
         () => bundletool.getVersionName(any()),
@@ -250,11 +258,8 @@ flutter:
         () => bundletool.getVersionCode(any()),
       ).thenAnswer((_) async => versionCode);
 
-      command = runWithOverrides(
-        () => ReleaseAndroidCommand(
-          validators: [flutterValidator],
-        ),
-      )..testArgResults = argResults;
+      command = runWithOverrides(ReleaseAndroidCommand.new)
+        ..testArgResults = argResults;
     });
 
     test('has a description', () {
@@ -523,7 +528,7 @@ flavors:
     });
 
     test('prints flutter validation warnings', () async {
-      when(() => flutterValidator.validate(any())).thenAnswer(
+      when(flutterValidator.validate).thenAnswer(
         (_) async => [
           const ValidationIssue(
             severity: ValidationIssueSeverity.warning,
@@ -553,7 +558,7 @@ flavors:
     });
 
     test('aborts if validation errors are present', () async {
-      when(() => flutterValidator.validate(any())).thenAnswer(
+      when(flutterValidator.validate).thenAnswer(
         (_) async => [
           const ValidationIssue(
             severity: ValidationIssueSeverity.error,

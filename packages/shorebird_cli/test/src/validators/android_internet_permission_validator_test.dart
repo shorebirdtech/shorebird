@@ -3,6 +3,7 @@ import 'dart:io';
 import 'package:collection/collection.dart';
 import 'package:mocktail/mocktail.dart';
 import 'package:path/path.dart' as p;
+import 'package:scoped/scoped.dart';
 import 'package:shorebird_cli/src/process.dart';
 import 'package:shorebird_cli/src/validators/validators.dart';
 import 'package:test/test.dart';
@@ -39,6 +40,15 @@ void main() {
 
   group(AndroidInternetPermissionValidator, () {
     late ShorebirdProcess shorebirdProcess;
+
+    R runWithOverrides<R>(R Function() body) {
+      return runScoped(
+        () => body(),
+        values: {
+          processRef.overrideWith(() => shorebirdProcess),
+        },
+      );
+    }
 
     setUp(() {
       shorebirdProcess = _MockShorebirdProcess();
@@ -78,7 +88,7 @@ void main() {
         );
 
         final results = await IOOverrides.runZoned(
-          () => AndroidInternetPermissionValidator().validate(shorebirdProcess),
+          () => runWithOverrides(AndroidInternetPermissionValidator().validate),
           getCurrentDirectory: () => tempDirectory,
         );
 
@@ -87,8 +97,7 @@ void main() {
     );
 
     test('returns an error if no android project is found', () async {
-      final results =
-          await AndroidInternetPermissionValidator().validate(shorebirdProcess);
+      final results = await AndroidInternetPermissionValidator().validate();
 
       expect(results, hasLength(1));
       expect(results.first.severity, ValidationIssueSeverity.error);
@@ -103,7 +112,7 @@ void main() {
           .createSync(recursive: true);
 
       final results = await IOOverrides.runZoned(
-        () => AndroidInternetPermissionValidator().validate(shorebirdProcess),
+        () => runWithOverrides(AndroidInternetPermissionValidator().validate),
         getCurrentDirectory: () => tempDirectory,
       );
 
@@ -159,7 +168,7 @@ void main() {
         );
 
         final results = await IOOverrides.runZoned(
-          () => AndroidInternetPermissionValidator().validate(shorebirdProcess),
+          () => runWithOverrides(AndroidInternetPermissionValidator().validate),
           getCurrentDirectory: () => tempDirectory,
         );
 
@@ -195,7 +204,7 @@ void main() {
       );
 
       var results = await IOOverrides.runZoned(
-        () => AndroidInternetPermissionValidator().validate(shorebirdProcess),
+        () => runWithOverrides(AndroidInternetPermissionValidator().validate),
         getCurrentDirectory: () => tempDirectory,
       );
       expect(results, hasLength(1));
@@ -207,7 +216,7 @@ void main() {
       );
 
       results = await IOOverrides.runZoned(
-        () => AndroidInternetPermissionValidator().validate(shorebirdProcess),
+        () => runWithOverrides(AndroidInternetPermissionValidator().validate),
         getCurrentDirectory: () => tempDirectory,
       );
       expect(results, isEmpty);

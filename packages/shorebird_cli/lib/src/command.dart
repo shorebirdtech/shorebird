@@ -5,7 +5,6 @@ import 'package:args/command_runner.dart';
 import 'package:http/http.dart' as http;
 import 'package:meta/meta.dart';
 import 'package:shorebird_cli/src/command_runner.dart';
-import 'package:shorebird_cli/src/validators/validators.dart';
 import 'package:shorebird_code_push_client/shorebird_code_push_client.dart';
 
 /// Signature for a function which takes a list of bytes and returns a hash.
@@ -25,16 +24,10 @@ typedef StartProcess = Future<Process> Function(
   bool runInShell,
 });
 
-List<Validator> _defaultValidators() => [
-      AndroidInternetPermissionValidator(),
-    ];
-
 abstract class ShorebirdCommand extends Command<int> {
   ShorebirdCommand({
     CodePushClientBuilder? buildCodePushClient,
-    List<Validator>? validators, // For mocking.
-  })  : buildCodePushClient = buildCodePushClient ?? CodePushClient.new,
-        validators = validators ?? _defaultValidators();
+  }) : buildCodePushClient = buildCodePushClient ?? CodePushClient.new;
 
   final CodePushClientBuilder buildCodePushClient;
 
@@ -45,9 +38,6 @@ abstract class ShorebirdCommand extends Command<int> {
   ShorebirdCliCommandRunner? get runner =>
       super.runner as ShorebirdCliCommandRunner?;
   // coverage:ignore-end
-
-  /// Checks that the Shorebird install and project are in a good state.
-  late List<Validator> validators;
 
   /// [ArgResults] used for testing purposes only.
   @visibleForTesting

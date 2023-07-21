@@ -5,6 +5,7 @@ import 'package:path/path.dart' as p;
 import 'package:shorebird_cli/src/code_push_client_wrapper.dart';
 import 'package:shorebird_cli/src/command.dart';
 import 'package:shorebird_cli/src/config/shorebird_yaml.dart';
+import 'package:shorebird_cli/src/doctor.dart';
 import 'package:shorebird_cli/src/logger.dart';
 import 'package:shorebird_cli/src/shorebird_build_mixin.dart';
 import 'package:shorebird_cli/src/shorebird_config_mixin.dart';
@@ -24,7 +25,7 @@ class ReleaseAndroidCommand extends ShorebirdCommand
         ShorebirdBuildMixin,
         ShorebirdReleaseVersionMixin {
   /// {@macro release_android_command}
-  ReleaseAndroidCommand({super.validators}) {
+  ReleaseAndroidCommand() {
     argParser
       ..addOption(
         'target',
@@ -69,7 +70,7 @@ make smaller updates to your app.
       await validatePreconditions(
         checkUserIsAuthenticated: true,
         checkShorebirdInitialized: true,
-        checkValidators: true,
+        validators: doctor.androidCommandValidators,
       );
     } on PreconditionFailedException catch (e) {
       return e.exitCode.code;

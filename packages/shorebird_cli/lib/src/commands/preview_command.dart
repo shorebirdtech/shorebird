@@ -20,7 +20,7 @@ import 'package:shorebird_code_push_client/shorebird_code_push_client.dart';
 class PreviewCommand extends ShorebirdCommand
     with ShorebirdConfigMixin, ShorebirdValidationMixin {
   /// {@macro preview_command}
-  PreviewCommand({super.validators}) {
+  PreviewCommand() {
     argParser
       ..addOption(
         'device-id',
@@ -44,6 +44,8 @@ class PreviewCommand extends ShorebirdCommand
 
   @override
   Future<int> run() async {
+    // TODO(bryanoltman): check preview target and run either
+    // doctor.iosValidators or doctor.androidValidators as appropriate.
     try {
       await validatePreconditions(checkUserIsAuthenticated: true);
     } on PreconditionFailedException catch (error) {

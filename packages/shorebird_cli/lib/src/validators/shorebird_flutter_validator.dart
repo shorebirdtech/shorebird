@@ -25,7 +25,7 @@ class ShorebirdFlutterValidator extends Validator {
   ValidatorScope get scope => ValidatorScope.installation;
 
   @override
-  Future<List<ValidationIssue>> validate(ShorebirdProcess process) async {
+  Future<List<ValidationIssue>> validate() async {
     final issues = <ValidationIssue>[];
 
     if (!ShorebirdEnvironment.flutterDirectory.existsSync()) {

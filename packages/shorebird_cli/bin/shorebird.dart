@@ -9,10 +9,12 @@ import 'package:shorebird_cli/src/bundletool.dart';
 import 'package:shorebird_cli/src/cache.dart';
 import 'package:shorebird_cli/src/code_push_client_wrapper.dart';
 import 'package:shorebird_cli/src/command_runner.dart';
+import 'package:shorebird_cli/src/doctor.dart';
 import 'package:shorebird_cli/src/java.dart';
 import 'package:shorebird_cli/src/logger.dart';
 import 'package:shorebird_cli/src/platform.dart';
 import 'package:shorebird_cli/src/process.dart';
+import 'package:shorebird_cli/src/shorebird_version_manager.dart';
 
 Future<void> main(List<String> args) async {
   await _flushThenExit(
@@ -26,11 +28,13 @@ Future<void> main(List<String> args) async {
         bundletoolRef,
         cacheRef,
         codePushClientWrapperRef,
+        doctorRef,
         engineConfigRef,
         javaRef,
         loggerRef,
         platformRef,
         processRef,
+        shorebirdVersionManagerRef,
       },
     ),
   );

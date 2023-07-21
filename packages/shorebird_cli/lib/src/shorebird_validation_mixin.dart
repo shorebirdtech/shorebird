@@ -2,7 +2,6 @@ import 'package:collection/collection.dart';
 import 'package:mason_logger/mason_logger.dart';
 import 'package:shorebird_cli/src/auth/auth.dart';
 import 'package:shorebird_cli/src/logger.dart';
-import 'package:shorebird_cli/src/process.dart';
 import 'package:shorebird_cli/src/shorebird_config_mixin.dart';
 import 'package:shorebird_cli/src/validators/validators.dart';
 
@@ -31,7 +30,7 @@ mixin ShorebirdValidationMixin on ShorebirdConfigMixin {
   Future<void> validatePreconditions({
     bool checkShorebirdInitialized = false,
     bool checkUserIsAuthenticated = false,
-    bool checkValidators = false,
+    List<Validator> validators = const [],
   }) async {
     if (checkUserIsAuthenticated && !auth.isAuthenticated) {
       logger
@@ -52,20 +51,20 @@ mixin ShorebirdValidationMixin on ShorebirdConfigMixin {
       throw ShorebirdNotInitializedException();
     }
 
-    if (checkValidators) {
-      final validationIssues = await runValidators();
-      if (validationIssuesContainsError(validationIssues)) {
-        logValidationFailure(issues: validationIssues);
-        throw ValidationFailedException();
-      }
+    final validationIssues = await runValidators(validators);
+    if (validationIssuesContainsError(validationIssues)) {
+      logValidationFailure(issues: validationIssues);
+      throw ValidationFailedException();
     }
   }
 
   /// Runs [Validator.validate] on all [validators] and writes results to
   /// stdout.
-  Future<List<ValidationIssue>> runValidators() async {
+  Future<List<ValidationIssue>> runValidators(
+    List<Validator> validators,
+  ) async {
     final validationIssues = (await Future.wait(
-      validators.map((v) => v.validate(process)),
+      validators.map((v) => v.validate()),
     ))
         .flattened
         .toList();

@@ -12,6 +12,7 @@ import 'package:shorebird_cli/src/archive_analysis/archive_analysis.dart';
 import 'package:shorebird_cli/src/auth/auth.dart';
 import 'package:shorebird_cli/src/code_push_client_wrapper.dart';
 import 'package:shorebird_cli/src/commands/commands.dart';
+import 'package:shorebird_cli/src/doctor.dart';
 import 'package:shorebird_cli/src/logger.dart';
 import 'package:shorebird_cli/src/platform.dart';
 import 'package:shorebird_cli/src/process.dart';
@@ -27,6 +28,8 @@ class _MockAuth extends Mock implements Auth {}
 
 class _MockCodePushClientWrapper extends Mock
     implements CodePushClientWrapper {}
+
+class _MockDoctor extends Mock implements Doctor {}
 
 class _MockIpa extends Mock implements Ipa {}
 
@@ -87,6 +90,7 @@ flutter:
     late http.Client httpClient;
     late CodePushClientWrapper codePushClientWrapper;
     late Directory shorebirdRoot;
+    late Doctor doctor;
     late Platform environmentPlatform;
     late Auth auth;
     late IpaReader ipaReader;
@@ -105,6 +109,7 @@ flutter:
         values: {
           authRef.overrideWith(() => auth),
           codePushClientWrapperRef.overrideWith(() => codePushClientWrapper),
+          doctorRef.overrideWith(() => doctor),
           loggerRef.overrideWith(() => logger),
           platformRef.overrideWith(() => environmentPlatform),
           processRef.overrideWith(() => shorebirdProcess),
@@ -136,6 +141,7 @@ flutter:
     setUp(() {
       argResults = _MockArgResults();
       codePushClientWrapper = _MockCodePushClientWrapper();
+      doctor = _MockDoctor();
       httpClient = _MockHttpClient();
       environmentPlatform = _MockPlatform();
       shorebirdRoot = Directory.systemTemp.createTempSync();
@@ -238,14 +244,11 @@ flutter:
         ),
       ).thenAnswer((_) async => {});
 
-      when(() => flutterValidator.validate(any())).thenAnswer((_) async => []);
+      when(() => doctor.iosCommandValidators).thenReturn([flutterValidator]);
+      when(flutterValidator.validate).thenAnswer((_) async => []);
 
-      command = runWithOverrides(
-        () => ReleaseIosCommand(
-          ipaReader: ipaReader,
-          validators: [flutterValidator],
-        ),
-      )..testArgResults = argResults;
+      command = runWithOverrides(() => ReleaseIosCommand(ipaReader: ipaReader))
+        ..testArgResults = argResults;
     });
 
     test('has a description', () {
@@ -353,7 +356,7 @@ error: exportArchive: No signing certificate "iOS Distribution" found
     });
 
     test('prints flutter validation warnings', () async {
-      when(() => flutterValidator.validate(any())).thenAnswer(
+      when(flutterValidator.validate).thenAnswer(
         (_) async => [
           const ValidationIssue(
             severity: ValidationIssueSeverity.warning,
@@ -382,7 +385,7 @@ error: exportArchive: No signing certificate "iOS Distribution" found
     });
 
     test('aborts if validation errors are present', () async {
-      when(() => flutterValidator.validate(any())).thenAnswer(
+      when(flutterValidator.validate).thenAnswer(
         (_) async => [
           const ValidationIssue(
             severity: ValidationIssueSeverity.error,

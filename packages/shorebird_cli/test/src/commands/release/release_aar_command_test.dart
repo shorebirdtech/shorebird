@@ -10,6 +10,7 @@ import 'package:scoped/scoped.dart';
 import 'package:shorebird_cli/src/auth/auth.dart';
 import 'package:shorebird_cli/src/code_push_client_wrapper.dart';
 import 'package:shorebird_cli/src/commands/commands.dart';
+import 'package:shorebird_cli/src/doctor.dart';
 import 'package:shorebird_cli/src/java.dart';
 import 'package:shorebird_cli/src/logger.dart';
 import 'package:shorebird_cli/src/platform.dart';
@@ -24,6 +25,8 @@ class _MockArgResults extends Mock implements ArgResults {}
 class _MockHttpClient extends Mock implements http.Client {}
 
 class _MockAuth extends Mock implements Auth {}
+
+class _MockDoctor extends Mock implements Doctor {}
 
 class _MockJava extends Mock implements Java {}
 
@@ -94,6 +97,7 @@ flutter:
     late Auth auth;
     late CodePushClientWrapper codePushClientWrapper;
     late Directory shorebirdRoot;
+    late Doctor doctor;
     late Java java;
     late Platform platform;
     late Progress progress;
@@ -110,6 +114,7 @@ flutter:
         values: {
           authRef.overrideWith(() => auth),
           codePushClientWrapperRef.overrideWith(() => codePushClientWrapper),
+          doctorRef.overrideWith(() => doctor),
           engineConfigRef.overrideWith(() => const EngineConfig.empty()),
           javaRef.overrideWith(() => java),
           loggerRef.overrideWith(() => logger),
@@ -170,6 +175,7 @@ flutter:
       httpClient = _MockHttpClient();
       auth = _MockAuth();
       codePushClientWrapper = _MockCodePushClientWrapper();
+      doctor = _MockDoctor();
       java = _MockJava();
       platform = _MockPlatform();
       progress = _MockProgress();
@@ -273,13 +279,12 @@ flutter:
         ),
       ).thenAnswer((_) async => {});
 
-      when(() => flutterValidator.validate(any())).thenAnswer((_) async => []);
+      when(() => doctor.androidCommandValidators)
+          .thenReturn([flutterValidator]);
+      when(flutterValidator.validate).thenAnswer((_) async => []);
 
       command = runWithOverrides(
-        () => ReleaseAarCommand(
-          unzipFn: (_, __) async {},
-          validators: [flutterValidator],
-        ),
+        () => ReleaseAarCommand(unzipFn: (_, __) async {}),
       )..testArgResults = argResults;
     });
 
@@ -555,7 +560,7 @@ flavors:
     });
 
     test('prints flutter validation warnings', () async {
-      when(() => flutterValidator.validate(any())).thenAnswer(
+      when(flutterValidator.validate).thenAnswer(
         (_) async => [
           const ValidationIssue(
             severity: ValidationIssueSeverity.warning,
@@ -586,7 +591,7 @@ flavors:
     });
 
     test('aborts if validation errors are present', () async {
-      when(() => flutterValidator.validate(any())).thenAnswer(
+      when(flutterValidator.validate).thenAnswer(
         (_) async => [
           const ValidationIssue(
             severity: ValidationIssueSeverity.error,
