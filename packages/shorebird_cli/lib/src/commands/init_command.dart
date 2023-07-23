@@ -2,6 +2,7 @@ import 'dart:io';
 
 import 'package:mason_logger/mason_logger.dart';
 import 'package:shorebird_cli/src/command.dart';
+import 'package:shorebird_cli/src/doctor.dart';
 import 'package:shorebird_cli/src/logger.dart';
 import 'package:shorebird_cli/src/shorebird_config_mixin.dart';
 import 'package:shorebird_cli/src/shorebird_create_app_mixin.dart';
@@ -109,6 +110,8 @@ If you want to reinitialize Shorebird, please run "shorebird init --force".''');
     addShorebirdYamlToProject(appId, flavors: flavors);
 
     if (!pubspecContainsShorebirdYaml) addShorebirdYamlToPubspecAssets();
+
+    await doctor.runValidators(doctor.allValidators, applyFixes: true);
 
     logger.info(
       '''
