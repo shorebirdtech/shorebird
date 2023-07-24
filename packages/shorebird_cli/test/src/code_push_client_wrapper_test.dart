@@ -1421,7 +1421,7 @@ Please bump your version number and try again.''',
       });
     });
 
-    group('createIosReleaseArtifact', () {
+    group('createIosReleaseArtifacts', () {
       final ipaPath = p.join('path', 'to', 'app.ipa');
       final xcarchivePath = p.join('path', 'to', 'app.xcarchive');
 
@@ -1444,12 +1444,12 @@ Please bump your version number and try again.''',
         ).thenAnswer((_) async => {});
       });
 
-      test('exits with code 70 when artifact creation fails', () async {
+      test('exits with code 70 when ipa artifact creation fails', () async {
         const error = 'something went wrong';
         when(
           () => codePushClient.createReleaseArtifact(
             appId: any(named: 'appId'),
-            artifactPath: any(named: 'artifactPath'),
+            artifactPath: any(named: 'artifactPath', that: endsWith('.ipa')),
             releaseId: any(named: 'releaseId'),
             arch: any(named: 'arch'),
             platform: any(named: 'platform'),
@@ -1489,6 +1489,40 @@ Please bump your version number and try again.''',
             hash: any(named: 'hash'),
           ),
         ).thenThrow(const CodePushConflictException(message: error));
+        final tempDir = setUpTempDir();
+
+        await IOOverrides.runZoned(
+          () async => expectLater(
+            () async => runWithOverrides(
+              () async => codePushClientWrapper.createIosReleaseArtifacts(
+                appId: app.appId,
+                releaseId: releaseId,
+                ipaPath: p.join(tempDir.path, ipaPath),
+                xcArchivePath: p.join(tempDir.path, xcarchivePath),
+              ),
+            ),
+            exitsWithCode(ExitCode.software),
+          ),
+          getCurrentDirectory: () => tempDir,
+        );
+
+        verify(() => progress.fail(any(that: contains(error)))).called(1);
+      });
+
+      test('exits with code 70 when xcarchive artifact creation fails',
+          () async {
+        const error = 'something went wrong';
+        when(
+          () => codePushClient.createReleaseArtifact(
+            appId: any(named: 'appId'),
+            artifactPath:
+                any(named: 'artifactPath', that: endsWith('.xcarchive.zip')),
+            releaseId: any(named: 'releaseId'),
+            arch: any(named: 'arch'),
+            platform: any(named: 'platform'),
+            hash: any(named: 'hash'),
+          ),
+        ).thenThrow(error);
         final tempDir = setUpTempDir();
 
         await IOOverrides.runZoned(
