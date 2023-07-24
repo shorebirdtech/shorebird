@@ -165,6 +165,11 @@ void main() {
           message: 'warning',
           fix: () => wasFixCalled = true,
         );
+        final erroringValidationWarning = ValidationIssue(
+          severity: ValidationIssueSeverity.warning,
+          message: 'warning',
+          fix: () => throw Exception('oh no!'),
+        );
 
         late Validator fixableWarningValidator;
 
@@ -236,6 +241,24 @@ void main() {
             ),
           ).called(1);
           expect(wasFixCalled, isTrue);
+        });
+
+        test('prints error if fixes fail to apply', () async {
+          when(fixableWarningValidator.validate).thenAnswer(
+            (_) async => [erroringValidationWarning],
+          );
+          await runWithOverrides(
+            () async => doctor.runValidators(
+              [fixableWarningValidator],
+              applyFixes: true,
+            ),
+          );
+
+          verify(
+            () => logger.err(
+              '''  An error occurred while attempting to fix warning: Exception: oh no!''',
+            ),
+          ).called(1);
         });
       });
     });
