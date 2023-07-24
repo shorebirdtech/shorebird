@@ -1,5 +1,4 @@
 import 'package:collection/collection.dart';
-import 'package:shorebird_cli/src/archive_analysis/archive_differ.dart';
 
 /// Maps file paths to SHA-256 hash digests.
 typedef PathHashes = Map<String, String>;
@@ -43,6 +42,12 @@ class FileSetDiff {
   /// File paths that were changed.
   final Set<String> changedPaths;
 
+  Set<String> get allPaths => {
+        ...addedPaths,
+        ...removedPaths,
+        ...changedPaths,
+      };
+
   /// Whether all path sets are empty.
   bool get isEmpty => !isNotEmpty;
 
@@ -51,30 +56,6 @@ class FileSetDiff {
       addedPaths.isNotEmpty ||
       removedPaths.isNotEmpty ||
       changedPaths.isNotEmpty;
-
-  /// A subset of this [FileSetDiff] that only contains paths that correspond
-  /// to a change in Dart code.
-  FileSetDiff get dartChanges => FileSetDiff(
-        addedPaths: ArchiveDiffer.dartChanges(addedPaths),
-        removedPaths: ArchiveDiffer.dartChanges(removedPaths),
-        changedPaths: ArchiveDiffer.dartChanges(changedPaths),
-      );
-
-  /// A subset of this [FileSetDiff] that only contains paths that correspond
-  /// to changes in native code.
-  FileSetDiff get nativeChanges => FileSetDiff(
-        addedPaths: ArchiveDiffer.nativeChanges(addedPaths),
-        removedPaths: ArchiveDiffer.nativeChanges(removedPaths),
-        changedPaths: ArchiveDiffer.nativeChanges(changedPaths),
-      );
-
-  /// A subset of this [FileSetDiff] that only contains paths that correspond
-  /// to changes in bundled assets.
-  FileSetDiff get assetChanges => FileSetDiff(
-        addedPaths: ArchiveDiffer.assetChanges(addedPaths),
-        removedPaths: ArchiveDiffer.assetChanges(removedPaths),
-        changedPaths: ArchiveDiffer.assetChanges(changedPaths),
-      );
 
   /// A printable string representation of this [FileSetDiff].
   String get prettyString => [

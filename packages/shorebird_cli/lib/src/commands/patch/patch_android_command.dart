@@ -249,12 +249,14 @@ https://github.com/shorebirdtech/shorebird/issues/472
 
     logger.detail('aab content differences: $contentDiffs');
 
-    if (contentDiffs.nativeChanges.isNotEmpty) {
+    if (_aabDiffer.containsPotentiallyBreakingNativeDiffs(contentDiffs)) {
       logger
         ..warn(
           '''The Android App Bundle appears to contain Kotlin or Java changes, which cannot be applied via a patch.''',
         )
-        ..info(yellow.wrap(contentDiffs.nativeChanges.prettyString));
+        ..info(
+          yellow.wrap(_aabDiffer.nativeFileSetDiff(contentDiffs).prettyString),
+        );
       final shouldContinue = force || logger.confirm('Continue anyways?');
 
       if (!shouldContinue) {
@@ -262,12 +264,14 @@ https://github.com/shorebirdtech/shorebird/issues/472
       }
     }
 
-    if (contentDiffs.assetChanges.isNotEmpty) {
+    if (_aabDiffer.containsPotentiallyBreakingAssetDiffs(contentDiffs)) {
       logger
         ..warn(
           '''The Android App Bundle contains asset changes, which will not be included in the patch.''',
         )
-        ..info(yellow.wrap(contentDiffs.assetChanges.prettyString));
+        ..info(
+          yellow.wrap(_aabDiffer.assetsFileSetDiff(contentDiffs).prettyString),
+        );
 
       final shouldContinue = force || logger.confirm('Continue anyways?');
       if (!shouldContinue) {
