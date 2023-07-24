@@ -67,8 +67,7 @@ class CodePushClientWrapper {
       fetchAppsProgress.complete();
       return apps;
     } catch (error) {
-      fetchAppsProgress.fail('$error');
-      exit(ExitCode.software.code);
+      _handleErrorAndExit(error, progress: fetchAppsProgress);
     }
   }
 
@@ -105,8 +104,7 @@ This app may not exist or you may not have permission to view it.''',
       fetchChannelsProgress.complete();
       return channel;
     } catch (error) {
-      fetchChannelsProgress.fail('$error');
-      exit(ExitCode.software.code);
+      _handleErrorAndExit(error, progress: fetchChannelsProgress);
     }
   }
 
@@ -124,8 +122,7 @@ This app may not exist or you may not have permission to view it.''',
       createChannelProgress.complete();
       return channel;
     } catch (error) {
-      createChannelProgress.fail('$error');
-      exit(ExitCode.software.code);
+      _handleErrorAndExit(error, progress: createChannelProgress);
     }
   }
 
@@ -191,8 +188,7 @@ Please create a release using "shorebird release" and try again.
       fetchReleasesProgress.complete();
       return releases;
     } catch (error) {
-      fetchReleasesProgress.fail('$error');
-      exit(ExitCode.software.code);
+      _handleErrorAndExit(error, progress: fetchReleasesProgress);
     }
   }
 
@@ -226,8 +222,7 @@ Please create a release using "shorebird release" and try again.
       createReleaseProgress.complete();
       return release;
     } catch (error) {
-      createReleaseProgress.fail('$error');
-      exit(ExitCode.software.code);
+      _handleErrorAndExit(error, progress: createReleaseProgress);
     }
   }
 
@@ -247,8 +242,7 @@ Please create a release using "shorebird release" and try again.
       );
       updateStatusProgress.complete();
     } catch (error) {
-      updateStatusProgress.fail();
-      exit(ExitCode.software.code);
+      _handleErrorAndExit(error, progress: updateStatusProgress);
     }
   }
 
@@ -280,8 +274,7 @@ Please create a release using "shorebird release" and try again.
         }
         releaseArtifacts[entry.key] = artifacts.first;
       } catch (error) {
-        fetchReleaseArtifactProgress.fail('$error');
-        exit(ExitCode.software.code);
+        _handleErrorAndExit(error, progress: fetchReleaseArtifactProgress);
       }
     }
 
@@ -314,8 +307,7 @@ Please create a release using "shorebird release" and try again.
       fetchReleaseArtifactProgress.complete();
       return artifacts.first;
     } catch (error) {
-      fetchReleaseArtifactProgress.fail('$error');
-      exit(ExitCode.software.code);
+      _handleErrorAndExit(error, progress: fetchReleaseArtifactProgress);
     }
   }
 
@@ -347,8 +339,7 @@ Please create a release using "shorebird release" and try again.
       fetchReleaseArtifactProgress.complete();
       return null;
     } catch (error) {
-      fetchReleaseArtifactProgress.fail('$error');
-      exit(ExitCode.software.code);
+      _handleErrorAndExit(error, progress: fetchReleaseArtifactProgress);
     }
   }
 
@@ -395,8 +386,11 @@ Please create a release using "shorebird release" and try again.
 ${archMetadata.arch} artifact already exists, continuing...''',
         );
       } catch (error) {
-        createArtifactProgress.fail('Error uploading ${artifact.path}: $error');
-        exit(ExitCode.software.code);
+        _handleErrorAndExit(
+          error,
+          progress: createArtifactProgress,
+          message: 'Error uploading ${artifact.path}: $error',
+        );
       }
     }
 
@@ -418,8 +412,11 @@ ${archMetadata.arch} artifact already exists, continuing...''',
 aab artifact already exists, continuing...''',
       );
     } catch (error) {
-      createArtifactProgress.fail('Error uploading $aabPath: $error');
-      exit(ExitCode.software.code);
+      _handleErrorAndExit(
+        error,
+        progress: createArtifactProgress,
+        message: 'Error uploading $aabPath: $error',
+      );
     }
 
     createArtifactProgress.complete();
@@ -463,8 +460,11 @@ aab artifact already exists, continuing...''',
 ${archMetadata.arch} artifact already exists, continuing...''',
         );
       } catch (error) {
-        createArtifactProgress.fail('Error uploading ${artifact.path}: $error');
-        exit(ExitCode.software.code);
+        _handleErrorAndExit(
+          error,
+          progress: createArtifactProgress,
+          message: 'Error uploading ${artifact.path}: $error',
+        );
       }
     }
 
@@ -486,8 +486,11 @@ ${archMetadata.arch} artifact already exists, continuing...''',
 aar artifact already exists, continuing...''',
       );
     } catch (error) {
-      createArtifactProgress.fail('Error uploading $aarPath: $error');
-      exit(ExitCode.software.code);
+      _handleErrorAndExit(
+        error,
+        progress: createArtifactProgress,
+        message: 'Error uploading $aarPath: $error',
+      );
     }
 
     createArtifactProgress.complete();
@@ -511,8 +514,11 @@ aar artifact already exists, continuing...''',
         hash: sha256.convert(await ipaFile.readAsBytes()).toString(),
       );
     } catch (error) {
-      createArtifactProgress.fail('Error uploading ipa: $error');
-      exit(ExitCode.software.code);
+      _handleErrorAndExit(
+        error,
+        progress: createArtifactProgress,
+        message: 'Error uploading ipa: $error',
+      );
     }
 
     createArtifactProgress.complete();
@@ -532,8 +538,7 @@ aar artifact already exists, continuing...''',
       createPatchProgress.complete();
       return patch;
     } catch (error) {
-      createPatchProgress.fail('$error');
-      exit(ExitCode.software.code);
+      _handleErrorAndExit(error, progress: createPatchProgress);
     }
   }
 
@@ -556,8 +561,7 @@ aar artifact already exists, continuing...''',
           hash: artifact.hash,
         );
       } catch (error) {
-        createArtifactProgress.fail('$error');
-        exit(ExitCode.software.code);
+        _handleErrorAndExit(error, progress: createArtifactProgress);
       }
     }
     createArtifactProgress.complete();
@@ -580,8 +584,7 @@ aar artifact already exists, continuing...''',
       );
       promotePatchProgress.complete();
     } catch (error) {
-      promotePatchProgress.fail('$error');
-      exit(ExitCode.software.code);
+      _handleErrorAndExit(error, progress: promotePatchProgress);
     }
   }
 
@@ -614,5 +617,27 @@ aar artifact already exists, continuing...''',
         );
 
     await promotePatch(appId: appId, patchId: patch.id, channel: channel);
+  }
+
+  /// Prints an appropriate error message for the given error and exits with
+  /// code 70. If [progress] is provided, it will be failed with the given
+  /// [message] or [error.toString()] if [message] is null.
+  Never _handleErrorAndExit(
+    Object error, {
+    Progress? progress,
+    String? message,
+  }) {
+    if (error is CodePushUpgradeRequiredException) {
+      progress?.fail();
+      logger
+        ..err('Your version of shorebird is out of date.')
+        ..info(
+          '''Run ${lightCyan.wrap('shorebird upgrade')} to get the latest version.''',
+        );
+    } else if (progress != null) {
+      progress.fail(message ?? '$error');
+    }
+
+    exit(ExitCode.software.code);
   }
 }
