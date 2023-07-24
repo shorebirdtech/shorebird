@@ -46,33 +46,33 @@ void main() {
       test('detects asset changes', () {
         final fileSetDiff =
             differ.changedFiles(baseAabPath, changedAssetAabPath);
-        expect(fileSetDiff.assetChanges.isEmpty, isFalse);
-        expect(fileSetDiff.dartChanges.isEmpty, isTrue);
-        expect(fileSetDiff.nativeChanges.isEmpty, isTrue);
+        expect(differ.assetsFileSetDiff(fileSetDiff), isNotEmpty);
+        expect(differ.dartFileSetDiff(fileSetDiff), isEmpty);
+        expect(differ.nativeFileSetDiff(fileSetDiff), isEmpty);
       });
 
       test('detects kotlin changes', () {
         final fileSetDiff =
             differ.changedFiles(baseAabPath, changedKotlinAabPath);
-        expect(fileSetDiff.assetChanges.isEmpty, isTrue);
-        expect(fileSetDiff.dartChanges.isEmpty, isTrue);
-        expect(fileSetDiff.nativeChanges.isEmpty, isFalse);
+        expect(differ.assetsFileSetDiff(fileSetDiff), isEmpty);
+        expect(differ.dartFileSetDiff(fileSetDiff), isEmpty);
+        expect(differ.nativeFileSetDiff(fileSetDiff), isNotEmpty);
       });
 
       test('detects dart changes', () {
         final fileSetDiff =
             differ.changedFiles(baseAabPath, changedDartAabPath);
-        expect(fileSetDiff.assetChanges.isEmpty, isTrue);
-        expect(fileSetDiff.dartChanges.isEmpty, isFalse);
-        expect(fileSetDiff.nativeChanges.isEmpty, isTrue);
+        expect(differ.assetsFileSetDiff(fileSetDiff), isEmpty);
+        expect(differ.dartFileSetDiff(fileSetDiff), isNotEmpty);
+        expect(differ.nativeFileSetDiff(fileSetDiff), isEmpty);
       });
 
       test('detects dart and asset changes', () {
         final fileSetDiff =
             differ.changedFiles(baseAabPath, changedDartAndAssetAabPath);
-        expect(fileSetDiff.assetChanges.isEmpty, isFalse);
-        expect(fileSetDiff.dartChanges.isEmpty, isFalse);
-        expect(fileSetDiff.nativeChanges.isEmpty, isTrue);
+        expect(differ.assetsFileSetDiff(fileSetDiff), isNotEmpty);
+        expect(differ.dartFileSetDiff(fileSetDiff), isNotEmpty);
+        expect(differ.nativeFileSetDiff(fileSetDiff), isEmpty);
       });
     });
   });

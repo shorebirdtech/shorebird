@@ -235,7 +235,7 @@ https://github.com/shorebirdtech/shorebird/issues/472
 
     aarDiffProgress.complete();
 
-    if (contentDiffs.assetChanges.isNotEmpty) {
+    if (_aarDiffer.containsPotentiallyBreakingAssetDiffs(contentDiffs)) {
       logger.info(
         yellow.wrap(
           '''⚠️ The Android Archive contains asset changes, which will not be included in the patch.''',

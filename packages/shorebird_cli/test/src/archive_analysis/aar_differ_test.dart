@@ -36,24 +36,24 @@ void main() {
 
     test('detects asset changes', () {
       final fileSetDiff = differ.changedFiles(baseAarPath, changedAssetAarPath);
-      expect(fileSetDiff.assetChanges.isEmpty, isFalse);
-      expect(fileSetDiff.dartChanges.isEmpty, isTrue);
-      expect(fileSetDiff.nativeChanges.isEmpty, isTrue);
+      expect(differ.assetsFileSetDiff(fileSetDiff), isNotEmpty);
+      expect(differ.dartFileSetDiff(fileSetDiff), isEmpty);
+      expect(differ.nativeFileSetDiff(fileSetDiff), isEmpty);
     });
 
     test('detects dart changes', () {
       final fileSetDiff = differ.changedFiles(baseAarPath, changedDartAarPath);
-      expect(fileSetDiff.assetChanges.isEmpty, isTrue);
-      expect(fileSetDiff.dartChanges.isEmpty, isFalse);
-      expect(fileSetDiff.nativeChanges.isEmpty, isTrue);
+      expect(differ.assetsFileSetDiff(fileSetDiff), isEmpty);
+      expect(differ.dartFileSetDiff(fileSetDiff), isNotEmpty);
+      expect(differ.nativeFileSetDiff(fileSetDiff), isEmpty);
     });
 
     test('detects dart and asset changes', () {
       final fileSetDiff =
           differ.changedFiles(baseAarPath, changedDartAndAssetAarPath);
-      expect(fileSetDiff.assetChanges.isEmpty, isFalse);
-      expect(fileSetDiff.dartChanges.isEmpty, isFalse);
-      expect(fileSetDiff.nativeChanges.isEmpty, isTrue);
+      expect(differ.assetsFileSetDiff(fileSetDiff), isNotEmpty);
+      expect(differ.dartFileSetDiff(fileSetDiff), isNotEmpty);
+      expect(differ.nativeFileSetDiff(fileSetDiff), isEmpty);
     });
   });
 }
