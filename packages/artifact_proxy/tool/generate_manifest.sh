@@ -21,10 +21,19 @@ cat <<EOF
 flutter_engine_revision: $FLUTTER_ENGINE_REVISION
 storage_bucket: download.shorebird.dev
 artifact_overrides:
-  # artifacts.zip
+  # Android release artifacts
+  # artifacts.zip includes flutter.jar, libflutter.so, etc.
+  # darwin-x64.zip gen_snapshot for darwin-x64
+  # symbols.zip includes symbols for libflutter.so
   - flutter_infra_release/flutter/\$engine/android-arm-64-release/artifacts.zip
+  - flutter_infra_release/flutter/\$engine/android-arm-64-release/darwin-x64.zip
+  - flutter_infra_release/flutter/\$engine/android-arm-64-release/symbols.zip
   - flutter_infra_release/flutter/\$engine/android-arm-release/artifacts.zip
+  - flutter_infra_release/flutter/\$engine/android-arm-release/darwin-x64.zip
+  - flutter_infra_release/flutter/\$engine/android-arm-release/symbols.zip
   - flutter_infra_release/flutter/\$engine/android-x64-release/artifacts.zip
+  - flutter_infra_release/flutter/\$engine/android-x64-release/darwin-x64.zip
+  - flutter_infra_release/flutter/\$engine/android-x64-release/symbols.zip
   - flutter_infra_release/flutter/\$engine/ios-release/artifacts.zip
   # embedding release
   - download.flutter.io/io/flutter/flutter_embedding_release/1.0.0-\$engine/flutter_embedding_release-1.0.0-\$engine.pom
