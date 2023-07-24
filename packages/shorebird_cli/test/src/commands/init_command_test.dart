@@ -9,6 +9,7 @@ import 'package:platform/platform.dart';
 import 'package:scoped/scoped.dart';
 import 'package:shorebird_cli/src/auth/auth.dart';
 import 'package:shorebird_cli/src/commands/init_command.dart';
+import 'package:shorebird_cli/src/doctor.dart';
 import 'package:shorebird_cli/src/java.dart';
 import 'package:shorebird_cli/src/logger.dart';
 import 'package:shorebird_cli/src/platform.dart';
@@ -24,6 +25,8 @@ class _MockHttpClient extends Mock implements http.Client {}
 class _MockAuth extends Mock implements Auth {}
 
 class _MockCodePushClient extends Mock implements CodePushClient {}
+
+class _MockDoctor extends Mock implements Doctor {}
 
 class _MockJava extends Mock implements Java {}
 
@@ -54,6 +57,7 @@ environment:
     late http.Client httpClient;
     late ArgResults argResults;
     late Auth auth;
+    late Doctor doctor;
     late Java java;
     late Platform platform;
     late ShorebirdProcess process;
@@ -68,6 +72,7 @@ environment:
         body,
         values: {
           authRef.overrideWith(() => auth),
+          doctorRef.overrideWith(() => doctor),
           javaRef.overrideWith(() => java),
           loggerRef.overrideWith(() => logger),
           platformRef.overrideWith(() => platform),
@@ -92,6 +97,7 @@ environment:
       httpClient = _MockHttpClient();
       argResults = _MockArgResults();
       auth = _MockAuth();
+      doctor = _MockDoctor();
       java = _MockJava();
       platform = _MockPlatform();
       process = _MockProcess();
@@ -108,6 +114,10 @@ environment:
       when(
         () => codePushClient.getApps(),
       ).thenAnswer((_) async => [appMetadata]);
+      when(
+        () => doctor.runValidators(any(), applyFixes: any(named: 'applyFixes')),
+      ).thenAnswer((_) async => {});
+      when(() => doctor.allValidators).thenReturn([]);
       when(
         () => logger.prompt(any(), defaultValue: any(named: 'defaultValue')),
       ).thenReturn(appName);
@@ -520,6 +530,18 @@ flutter:
     - shorebird.yaml
 '''),
       );
+    });
+
+    test('fixes fixable validation errors', () async {
+      final tempDir = Directory.systemTemp.createTempSync();
+      File(
+        p.join(tempDir.path, 'pubspec.yaml'),
+      ).writeAsStringSync(pubspecYamlContent);
+      await IOOverrides.runZoned(
+        () => runWithOverrides(command.run),
+        getCurrentDirectory: () => tempDir,
+      );
+      verify(() => doctor.runValidators(any(), applyFixes: true)).called(1);
     });
   });
 }

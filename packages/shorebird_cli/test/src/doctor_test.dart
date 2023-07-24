@@ -223,7 +223,7 @@ void main() {
             (_) async => wasFixCalled ? [] : [fixableValidationWarning],
           );
           await runWithOverrides(
-            () => doctor.runValidators(
+            () async => doctor.runValidators(
               [fixableWarningValidator],
               applyFixes: true,
             ),
@@ -232,7 +232,7 @@ void main() {
           verify(() => progress.update('Fixing'));
           verify(
             () => progress.complete(
-              'fixable warning validator (1 fix applied)',
+              'fixable warning validator ${green.wrap('(1 fix applied)')}',
             ),
           ).called(1);
           expect(wasFixCalled, isTrue);
