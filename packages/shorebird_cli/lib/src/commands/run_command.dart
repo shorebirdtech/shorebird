@@ -3,6 +3,7 @@ import 'dart:convert';
 import 'dart:io';
 
 import 'package:shorebird_cli/src/command.dart';
+import 'package:shorebird_cli/src/doctor.dart';
 import 'package:shorebird_cli/src/logger.dart';
 import 'package:shorebird_cli/src/process.dart';
 import 'package:shorebird_cli/src/shorebird_config_mixin.dart';
@@ -59,9 +60,12 @@ This command is deprecated and will be removed in a future release.
 Please use "shorebird preview" instead.''',
     );
 
+    // TODO(bryanoltman): check run target and run either
+    // doctor.iosValidators or doctor.androidValidators as appropriate.
     try {
       await validatePreconditions(
         checkUserIsAuthenticated: true,
+        validators: doctor.allValidators,
       );
     } on PreconditionFailedException catch (e) {
       return e.exitCode.code;
