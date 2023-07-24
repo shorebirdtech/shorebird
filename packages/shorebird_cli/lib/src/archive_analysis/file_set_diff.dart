@@ -42,12 +42,6 @@ class FileSetDiff {
   /// File paths that were changed.
   final Set<String> changedPaths;
 
-  Set<String> get allPaths => {
-        ...addedPaths,
-        ...removedPaths,
-        ...changedPaths,
-      };
-
   /// Whether all path sets are empty.
   bool get isEmpty => !isNotEmpty;
 
