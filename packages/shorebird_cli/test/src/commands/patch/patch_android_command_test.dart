@@ -177,9 +177,10 @@ flutter:
     }
 
     setUpAll(() {
+      registerFallbackValue(FileSetDiff.empty());
+      registerFallbackValue(ReleasePlatform.android);
       registerFallbackValue(_FakeBaseRequest());
       registerFallbackValue(_FakeShorebirdProcess());
-      registerFallbackValue(ReleasePlatform.android);
     });
 
     setUp(() {
@@ -250,6 +251,14 @@ flutter:
 
       when(() => aabDiffer.changedFiles(any(), any()))
           .thenReturn(FileSetDiff.empty());
+      when(() => aabDiffer.assetsFileSetDiff(any()))
+          .thenReturn(FileSetDiff.empty());
+      when(() => aabDiffer.nativeFileSetDiff(any()))
+          .thenReturn(FileSetDiff.empty());
+      when(() => aabDiffer.containsPotentiallyBreakingAssetDiffs(any()))
+          .thenReturn(false);
+      when(() => aabDiffer.containsPotentiallyBreakingNativeDiffs(any()))
+          .thenReturn(false);
       when(() => argResults.rest).thenReturn([]);
       when(() => argResults['arch']).thenReturn(arch);
       when(() => argResults['channel']).thenReturn(channelName);
@@ -615,13 +624,8 @@ https://github.com/shorebirdtech/shorebird/issues/472
 
     test('prompts user to continue when Java/Kotlin code changes are detected',
         () async {
-      when(() => aabDiffer.changedFiles(any(), any())).thenReturn(
-        FileSetDiff(
-          addedPaths: {},
-          removedPaths: {},
-          changedPaths: {'some/path/to/changed.dex'},
-        ),
-      );
+      when(() => aabDiffer.containsPotentiallyBreakingNativeDiffs(any()))
+          .thenReturn(true);
 
       final tempDir = setUpTempDir();
       setUpTempArtifacts(tempDir);
@@ -646,13 +650,8 @@ https://github.com/shorebirdtech/shorebird/issues/472
     test(
         '''exits if user decides to not proceed after being warned of Java/Kotlin changes''',
         () async {
-      when(() => aabDiffer.changedFiles(any(), any())).thenReturn(
-        FileSetDiff(
-          addedPaths: {},
-          removedPaths: {},
-          changedPaths: {'some/path/to/changed.dex'},
-        ),
-      );
+      when(() => aabDiffer.containsPotentiallyBreakingNativeDiffs(any()))
+          .thenReturn(true);
       when(() => logger.confirm(any())).thenReturn(false);
 
       final tempDir = setUpTempDir();
@@ -682,13 +681,8 @@ https://github.com/shorebirdtech/shorebird/issues/472
     });
 
     test('prompts user to continue when asset changes are detected', () async {
-      when(() => aabDiffer.changedFiles(any(), any())).thenReturn(
-        FileSetDiff(
-          addedPaths: {},
-          removedPaths: {},
-          changedPaths: {'assets/test.json'},
-        ),
-      );
+      when(() => aabDiffer.containsPotentiallyBreakingAssetDiffs(any()))
+          .thenReturn(true);
 
       final tempDir = setUpTempDir();
       setUpTempArtifacts(tempDir);
@@ -711,51 +705,10 @@ https://github.com/shorebirdtech/shorebird/issues/472
     });
 
     test(
-      '''does not warn user of asset or code changes if only dart changes are detected''',
-      () async {
-        when(() => aabDiffer.changedFiles(any(), any())).thenReturn(
-          FileSetDiff(
-            addedPaths: {},
-            removedPaths: {},
-            changedPaths: {'some/path/to/libapp.so'},
-          ),
-        );
-
-        final tempDir = setUpTempDir();
-        setUpTempArtifacts(tempDir);
-        final exitCode = await IOOverrides.runZoned(
-          () => runWithOverrides(command.run),
-          getCurrentDirectory: () => tempDir,
-        );
-
-        expect(exitCode, ExitCode.success.code);
-        verifyNever(
-          () => logger.confirm(
-            any(
-              that: contains(
-                '''Your aab contains asset changes, which will not be included in the patch. Continue anyways?''',
-              ),
-            ),
-          ),
-        );
-        verifyNever(
-          () => logger.err(
-            '''Your aab contains native changes, which cannot be applied in a patch. Please create a new release or revert these changes.''',
-          ),
-        );
-      },
-    );
-
-    test(
       '''exits if user decides to not proceed after being warned of asset changes''',
       () async {
-        when(() => aabDiffer.changedFiles(any(), any())).thenReturn(
-          FileSetDiff(
-            addedPaths: {},
-            removedPaths: {},
-            changedPaths: {'assets/test.json'},
-          ),
-        );
+        when(() => aabDiffer.containsPotentiallyBreakingAssetDiffs(any()))
+            .thenReturn(true);
         when(
           () => logger.confirm(any(that: contains('Continue anyways?'))),
         ).thenReturn(false);
@@ -819,13 +772,8 @@ https://github.com/shorebirdtech/shorebird/issues/472
 
     test('does not prompt on --force', () async {
       when(() => argResults['force']).thenReturn(true);
-      when(() => aabDiffer.changedFiles(any(), any())).thenReturn(
-        FileSetDiff(
-          addedPaths: {},
-          removedPaths: {},
-          changedPaths: {'assets/test.json'},
-        ),
-      );
+      when(() => aabDiffer.containsPotentiallyBreakingAssetDiffs(any()))
+          .thenReturn(true);
       final tempDir = setUpTempDir();
       setUpTempArtifacts(tempDir);
 

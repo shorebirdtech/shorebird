@@ -2,8 +2,8 @@ import 'dart:convert';
 import 'dart:io';
 
 import 'package:archive/archive_io.dart';
+import 'package:shorebird_cli/src/archive_analysis/android_archive_differ.dart';
 import 'package:shorebird_cli/src/archive_analysis/archive_analysis.dart';
-import 'package:shorebird_cli/src/archive_analysis/archive_differ.dart';
 import 'package:shorebird_cli/src/archive_analysis/mf_reader.dart';
 
 /// Finds differences between two AABs.
@@ -26,7 +26,7 @@ import 'package:shorebird_cli/src/archive_analysis/mf_reader.dart';
 ///
 /// See https://developer.android.com/guide/app-bundle/app-bundle-format for
 /// reference.
-class AabDiffer extends ArchiveDiffer {
+class AabDiffer extends AndroidArchiveDiffer {
   /// Returns a set of file paths whose hashes differ between the AABs at the
   /// provided paths.
   @override
