@@ -12,4 +12,5 @@ export 'patch/patch.dart';
 export 'preview_command.dart';
 export 'release/release.dart';
 export 'releases/releases.dart';
+export 'run_command.dart';
 export 'upgrade_command.dart';
