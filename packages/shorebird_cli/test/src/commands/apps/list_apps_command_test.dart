@@ -1,26 +1,24 @@
-import 'package:http/http.dart' as http;
 import 'package:mason_logger/mason_logger.dart';
 import 'package:mocktail/mocktail.dart';
 import 'package:scoped/scoped.dart';
 import 'package:shorebird_cli/src/auth/auth.dart';
+import 'package:shorebird_cli/src/code_push_client_wrapper.dart';
 import 'package:shorebird_cli/src/commands/commands.dart';
 import 'package:shorebird_cli/src/logger.dart';
 import 'package:shorebird_code_push_client/shorebird_code_push_client.dart';
 import 'package:test/test.dart';
 
-class _MockHttpClient extends Mock implements http.Client {}
-
 class _MockAuth extends Mock implements Auth {}
 
-class _MockCodePushClient extends Mock implements CodePushClient {}
+class _MockCodePushClientWrapper extends Mock
+    implements CodePushClientWrapper {}
 
 class _MockLogger extends Mock implements Logger {}
 
 void main() {
   group(ListAppsCommand, () {
-    late http.Client httpClient;
     late Auth auth;
-    late CodePushClient codePushClient;
+    late CodePushClientWrapper codePushClientWrapper;
     late Logger logger;
     late ListAppsCommand command;
 
@@ -29,30 +27,19 @@ void main() {
         body,
         values: {
           authRef.overrideWith(() => auth),
+          codePushClientWrapperRef.overrideWith(() => codePushClientWrapper),
           loggerRef.overrideWith(() => logger)
         },
       );
     }
 
     setUp(() {
-      httpClient = _MockHttpClient();
       auth = _MockAuth();
-      codePushClient = _MockCodePushClient();
+      codePushClientWrapper = _MockCodePushClientWrapper();
       logger = _MockLogger();
+      command = ListAppsCommand();
 
       when(() => auth.isAuthenticated).thenReturn(true);
-      when(() => auth.client).thenReturn(httpClient);
-
-      command = runWithOverrides(
-        () => ListAppsCommand(
-          buildCodePushClient: ({
-            required http.Client httpClient,
-            Uri? hostedUri,
-          }) {
-            return codePushClient;
-          },
-        ),
-      );
     });
 
     test('description is correct', () {
@@ -64,13 +51,8 @@ void main() {
       expect(await runWithOverrides(command.run), ExitCode.noUser.code);
     });
 
-    test('returns ExitCode.software when unable to get apps', () async {
-      when(() => codePushClient.getApps()).thenThrow(Exception());
-      expect(await runWithOverrides(command.run), ExitCode.software.code);
-    });
-
     test('returns ExitCode.success when apps are empty', () async {
-      when(() => codePushClient.getApps()).thenAnswer((_) async => []);
+      when(codePushClientWrapper.getApps).thenAnswer((_) async => []);
       expect(await runWithOverrides(command.run), ExitCode.success.code);
       verify(() => logger.info('(empty)')).called(1);
     });
@@ -88,7 +70,7 @@ void main() {
           displayName: 'Shorebird Clock',
         ),
       ];
-      when(() => codePushClient.getApps()).thenAnswer((_) async => apps);
+      when(codePushClientWrapper.getApps).thenAnswer((_) async => apps);
       expect(await runWithOverrides(command.run), ExitCode.success.code);
       verify(
         () => logger.info(
