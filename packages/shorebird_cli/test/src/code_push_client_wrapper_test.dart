@@ -175,6 +175,32 @@ void main() {
           verify(() => progress.fail(error)).called(1);
         });
 
+        test(
+          '''prints upgrade message when client throws CodePushUpgradeRequiredException''',
+          () async {
+            when(codePushClient.getApps).thenThrow(
+              const CodePushUpgradeRequiredException(
+                message: 'upgrade required',
+              ),
+            );
+            await expectLater(
+              () async => runWithOverrides(
+                () => codePushClientWrapper.getApps(),
+              ),
+              exitsWithCode(ExitCode.software),
+            );
+            verify(() => progress.fail()).called(1);
+            verify(
+              () => logger.err('Your version of shorebird is out of date.'),
+            ).called(1);
+            verify(
+              () => logger.info(
+                '''Run ${lightCyan.wrap('shorebird upgrade')} to get the latest version.''',
+              ),
+            ).called(1);
+          },
+        );
+
         test('returns apps on success', () async {
           when(() => codePushClient.getApps()).thenAnswer((_) async => [app]);
 
