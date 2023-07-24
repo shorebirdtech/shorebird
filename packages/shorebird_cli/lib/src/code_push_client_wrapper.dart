@@ -1,3 +1,6 @@
+import 'dart:isolate';
+
+import 'package:archive/archive_io.dart';
 import 'package:collection/collection.dart';
 import 'package:crypto/crypto.dart';
 import 'package:mason_logger/mason_logger.dart';
@@ -497,10 +500,11 @@ aar artifact already exists, continuing...''',
   }
 
   /// Uploads a release ipa to the Shorebird server.
-  Future<void> createIosReleaseArtifact({
+  Future<void> createIosReleaseArtifacts({
     required String appId,
     required int releaseId,
     required String ipaPath,
+    required String xcArchivePath,
   }) async {
     final createArtifactProgress = logger.progress('Creating artifacts');
     final ipaFile = File(ipaPath);
@@ -518,6 +522,26 @@ aar artifact already exists, continuing...''',
         error,
         progress: createArtifactProgress,
         message: 'Error uploading ipa: $error',
+      );
+    }
+
+    final xcArchiveDirectory = Directory(xcArchivePath);
+    await Isolate.run(() => ZipFileEncoder().zipDirectory(xcArchiveDirectory));
+    final zippedXcArchive = File('$xcArchivePath.zip');
+    try {
+      await codePushClient.createReleaseArtifact(
+        appId: appId,
+        releaseId: releaseId,
+        artifactPath: zippedXcArchive.path,
+        arch: 'xcarchive',
+        platform: ReleasePlatform.ios,
+        hash: sha256.convert(await zippedXcArchive.readAsBytes()).toString(),
+      );
+    } catch (error) {
+      _handleErrorAndExit(
+        error,
+        progress: createArtifactProgress,
+        message: 'Error uploading xcarchive: $error',
       );
     }
 

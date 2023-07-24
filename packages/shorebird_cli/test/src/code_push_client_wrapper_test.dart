@@ -1423,6 +1423,7 @@ Please bump your version number and try again.''',
 
     group('createIosReleaseArtifact', () {
       final ipaPath = p.join('path', 'to', 'app.ipa');
+      final xcarchivePath = p.join('path', 'to', 'app.xcarchive');
 
       Directory setUpTempDir({String? flavor}) {
         final tempDir = Directory.systemTemp.createTempSync();
@@ -1460,10 +1461,11 @@ Please bump your version number and try again.''',
         await IOOverrides.runZoned(
           () async => expectLater(
             () async => runWithOverrides(
-              () async => codePushClientWrapper.createIosReleaseArtifact(
+              () async => codePushClientWrapper.createIosReleaseArtifacts(
                 appId: app.appId,
                 releaseId: releaseId,
                 ipaPath: p.join(tempDir.path, ipaPath),
+                xcArchivePath: p.join(tempDir.path, xcarchivePath),
               ),
             ),
             exitsWithCode(ExitCode.software),
@@ -1492,10 +1494,11 @@ Please bump your version number and try again.''',
         await IOOverrides.runZoned(
           () async => expectLater(
             () async => runWithOverrides(
-              () async => codePushClientWrapper.createIosReleaseArtifact(
+              () async => codePushClientWrapper.createIosReleaseArtifacts(
                 appId: app.appId,
                 releaseId: releaseId,
                 ipaPath: p.join(tempDir.path, ipaPath),
+                xcArchivePath: p.join(tempDir.path, xcarchivePath),
               ),
             ),
             exitsWithCode(ExitCode.software),
@@ -1521,10 +1524,11 @@ Please bump your version number and try again.''',
 
         await runWithOverrides(
           () async => IOOverrides.runZoned(
-            () async => codePushClientWrapper.createIosReleaseArtifact(
+            () async => codePushClientWrapper.createIosReleaseArtifacts(
               appId: app.appId,
               releaseId: releaseId,
               ipaPath: p.join(tempDir.path, ipaPath),
+              xcArchivePath: p.join(tempDir.path, xcarchivePath),
             ),
             getCurrentDirectory: () => tempDir,
           ),
