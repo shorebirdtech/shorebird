@@ -31,11 +31,6 @@ void main() {
     late http.Client httpClient;
     late Platform platform;
 
-    setUpAll(() {
-      registerFallbackValue(ReleasePlatform.android);
-      registerFallbackValue(ReleaseStatus.draft);
-    });
-
     setUp(() {
       auth = _MockAuth();
       httpClient = _MockHttpClient();
@@ -133,7 +128,11 @@ void main() {
       );
     }
 
-    setUpAll(setExitFunctionForTests);
+    setUpAll(() {
+      registerFallbackValue(ReleasePlatform.android);
+      registerFallbackValue(ReleaseStatus.draft);
+      setExitFunctionForTests();
+    });
 
     tearDownAll(restoreExitFunction);
 
@@ -1423,7 +1422,7 @@ Please bump your version number and try again.''',
 
     group('createIosReleaseArtifacts', () {
       final ipaPath = p.join('path', 'to', 'app.ipa');
-      final xcarchivePath = p.join('path', 'to', 'app.xcarchive');
+      final runnerPath = p.join('path', 'to', 'runner.app');
 
       Directory setUpTempDir({String? flavor}) {
         final tempDir = Directory.systemTemp.createTempSync();
@@ -1465,7 +1464,7 @@ Please bump your version number and try again.''',
                 appId: app.appId,
                 releaseId: releaseId,
                 ipaPath: p.join(tempDir.path, ipaPath),
-                xcArchivePath: p.join(tempDir.path, xcarchivePath),
+                runnerPath: p.join(tempDir.path, runnerPath),
               ),
             ),
             exitsWithCode(ExitCode.software),
@@ -1498,7 +1497,7 @@ Please bump your version number and try again.''',
                 appId: app.appId,
                 releaseId: releaseId,
                 ipaPath: p.join(tempDir.path, ipaPath),
-                xcArchivePath: p.join(tempDir.path, xcarchivePath),
+                runnerPath: p.join(tempDir.path, runnerPath),
               ),
             ),
             exitsWithCode(ExitCode.software),
@@ -1515,8 +1514,10 @@ Please bump your version number and try again.''',
         when(
           () => codePushClient.createReleaseArtifact(
             appId: any(named: 'appId'),
-            artifactPath:
-                any(named: 'artifactPath', that: endsWith('.xcarchive.zip')),
+            artifactPath: any(
+              named: 'artifactPath',
+              that: endsWith('runner.app.zip'),
+            ),
             releaseId: any(named: 'releaseId'),
             arch: any(named: 'arch'),
             platform: any(named: 'platform'),
@@ -1532,7 +1533,7 @@ Please bump your version number and try again.''',
                 appId: app.appId,
                 releaseId: releaseId,
                 ipaPath: p.join(tempDir.path, ipaPath),
-                xcArchivePath: p.join(tempDir.path, xcarchivePath),
+                runnerPath: p.join(tempDir.path, runnerPath),
               ),
             ),
             exitsWithCode(ExitCode.software),
@@ -1562,7 +1563,7 @@ Please bump your version number and try again.''',
               appId: app.appId,
               releaseId: releaseId,
               ipaPath: p.join(tempDir.path, ipaPath),
-              xcArchivePath: p.join(tempDir.path, xcarchivePath),
+              runnerPath: p.join(tempDir.path, runnerPath),
             ),
             getCurrentDirectory: () => tempDir,
           ),
