@@ -129,8 +129,8 @@ This app may not exist or you may not have permission to view it.''',
     }
   }
 
-  /// Checks whether [release] is in an active state for [platform]. If so,
-  /// exits with code 70.
+  /// Prints an error message and exits with code 70 if [release] is in an
+  /// active state for [platform].
   void ensureReleaseIsIsNotActive({
     required Release release,
     required ReleasePlatform platform,
