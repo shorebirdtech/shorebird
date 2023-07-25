@@ -5,7 +5,7 @@ import 'package:shorebird_cli/src/shorebird_environment.dart';
 /// Wrapper around the `ios-deploy` command cached by the Flutter tool.
 /// https://github.com/ios-control/ios-deploy
 class IOSDeploy {
-  /// Installs the specified app bundle.
+  /// Installs the .app file at [bundlePath] to the device identified by [deviceId].
   ///
   /// Uses ios-deploy and returns the exit code.
   /// `ios-deploy --id [deviceId] --bundle [bundlePath]`
