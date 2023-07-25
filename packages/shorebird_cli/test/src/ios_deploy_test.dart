@@ -46,9 +46,9 @@ void main() {
         expect(result, equals(processResult.exitCode));
         verify(
           () => process.run(any(that: endsWith('ios-deploy')), [
+            '--debug',
             '--id',
             deviceId,
-            '--debug',
             '--bundle',
             bundlePath,
           ]),
