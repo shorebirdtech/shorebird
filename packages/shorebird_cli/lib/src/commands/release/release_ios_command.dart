@@ -16,7 +16,7 @@ import 'package:shorebird_cli/src/shorebird_validation_mixin.dart';
 import 'package:shorebird_code_push_client/shorebird_code_push_client.dart';
 
 /// {@template release_ios_command}
-/// `shorebird release ios-preview`
+/// `shorebird release ios-alpha`
 /// Create new app releases for iOS.
 /// {@endtemplate}
 class ReleaseIosCommand extends ShorebirdCommand
@@ -55,7 +55,7 @@ make smaller updates to your app.
 ''';
 
   @override
-  String get name => 'ios-preview';
+  String get name => 'ios-alpha';
 
   @override
   Future<int> run() async {
@@ -126,9 +126,8 @@ make smaller updates to your app.
       releaseVersion: releaseVersion,
     );
     if (existingRelease != null) {
-      await codePushClientWrapper.ensureReleaseHasNoArtifacts(
-        appId: app.appId,
-        existingRelease: existingRelease,
+      codePushClientWrapper.ensureReleaseIsNotActive(
+        release: existingRelease,
         platform: platform,
       );
     }

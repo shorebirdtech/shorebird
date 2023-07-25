@@ -392,24 +392,23 @@ void main() {
     });
 
     group('release', () {
-      group('ensureReleaseHasNoArtifacts', () {
-        const appId = 'test-app-id';
+      group('ensureReleaseIsIsNotActive', () {
         test(
-          '''exits with code 70 if release artifacts exist for the given release and platform''',
-          () async {
-            when(
-              () => codePushClient.getReleaseArtifacts(
-                appId: any(named: 'appId'),
-                releaseId: any(named: 'releaseId'),
-                platform: any(named: 'platform'),
-              ),
-            ).thenAnswer((_) async => [releaseArtifact]);
-
-            await expectLater(
-              runWithOverrides(
-                () async => codePushClientWrapper.ensureReleaseHasNoArtifacts(
-                  appId: appId,
-                  existingRelease: release,
+          '''exits with code 70 if release is in an active state for the given platform''',
+          () {
+            expect(
+              () => runWithOverrides(
+                () => codePushClientWrapper.ensureReleaseIsNotActive(
+                  release: const Release(
+                    id: releaseId,
+                    appId: appId,
+                    version: releaseVersion,
+                    flutterRevision: flutterRevision,
+                    displayName: displayName,
+                    platformStatuses: {
+                      releasePlatform: ReleaseStatus.active,
+                    },
+                  ),
                   platform: releasePlatform,
                 ),
               ),
@@ -427,21 +426,41 @@ Please bump your version number and try again.''',
         );
 
         test(
-          '''completes without error if release artifacts exist for the given release and platform''',
+          '''completes without error if release has no status for the given platform''',
           () async {
-            when(
-              () => codePushClient.getReleaseArtifacts(
-                appId: any(named: 'appId'),
-                releaseId: any(named: 'releaseId'),
-                platform: any(named: 'platform'),
-              ),
-            ).thenAnswer((_) async => []);
-
             await expectLater(
               runWithOverrides(
-                () => codePushClientWrapper.ensureReleaseHasNoArtifacts(
-                  appId: appId,
-                  existingRelease: release,
+                () async => codePushClientWrapper.ensureReleaseIsNotActive(
+                  release: const Release(
+                    id: releaseId,
+                    appId: appId,
+                    version: releaseVersion,
+                    flutterRevision: flutterRevision,
+                    displayName: displayName,
+                    platformStatuses: {},
+                  ),
+                  platform: releasePlatform,
+                ),
+              ),
+              completes,
+            );
+          },
+        );
+
+        test(
+          '''completes without error if release has draft status for the given platform''',
+          () async {
+            await expectLater(
+              runWithOverrides(
+                () async => codePushClientWrapper.ensureReleaseIsNotActive(
+                  release: const Release(
+                    id: releaseId,
+                    appId: appId,
+                    version: releaseVersion,
+                    flutterRevision: flutterRevision,
+                    displayName: displayName,
+                    platformStatuses: {releasePlatform: ReleaseStatus.draft},
+                  ),
                   platform: releasePlatform,
                 ),
               ),

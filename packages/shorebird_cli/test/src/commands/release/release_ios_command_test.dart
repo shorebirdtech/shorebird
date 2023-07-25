@@ -214,9 +214,8 @@ flutter:
         ),
       ).thenAnswer((_) async => null);
       when(
-        () => codePushClientWrapper.ensureReleaseHasNoArtifacts(
-          appId: any(named: 'appId'),
-          existingRelease: any(named: 'existingRelease'),
+        () => codePushClientWrapper.ensureReleaseIsNotActive(
+          release: any(named: 'release'),
           platform: any(named: 'platform'),
         ),
       ).thenAnswer((_) async => {});
