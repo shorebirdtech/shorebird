@@ -246,7 +246,7 @@ flutter:
         ),
       ).thenAnswer((_) async => null);
       when(
-        () => codePushClientWrapper.ensureReleaseIsIsNotActive(
+        () => codePushClientWrapper.ensureReleaseIsNotActive(
           release: any(named: 'release'),
           platform: any(named: 'platform'),
         ),

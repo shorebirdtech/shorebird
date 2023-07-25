@@ -122,7 +122,7 @@ make smaller updates to your app.
     );
 
     if (existingRelease != null) {
-      codePushClientWrapper.ensureReleaseIsIsNotActive(
+      codePushClientWrapper.ensureReleaseIsNotActive(
         release: existingRelease,
         platform: platform,
       );

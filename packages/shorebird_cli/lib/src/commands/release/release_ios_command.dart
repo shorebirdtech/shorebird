@@ -126,7 +126,7 @@ make smaller updates to your app.
       releaseVersion: releaseVersion,
     );
     if (existingRelease != null) {
-      codePushClientWrapper.ensureReleaseIsIsNotActive(
+      codePushClientWrapper.ensureReleaseIsNotActive(
         release: existingRelease,
         platform: platform,
       );

@@ -398,7 +398,7 @@ void main() {
           () {
             expect(
               () => runWithOverrides(
-                () => codePushClientWrapper.ensureReleaseIsIsNotActive(
+                () => codePushClientWrapper.ensureReleaseIsNotActive(
                   release: const Release(
                     id: releaseId,
                     appId: appId,
@@ -430,7 +430,7 @@ Please bump your version number and try again.''',
           () async {
             await expectLater(
               runWithOverrides(
-                () async => codePushClientWrapper.ensureReleaseIsIsNotActive(
+                () async => codePushClientWrapper.ensureReleaseIsNotActive(
                   release: const Release(
                     id: releaseId,
                     appId: appId,
@@ -452,7 +452,7 @@ Please bump your version number and try again.''',
           () async {
             await expectLater(
               runWithOverrides(
-                () async => codePushClientWrapper.ensureReleaseIsIsNotActive(
+                () async => codePushClientWrapper.ensureReleaseIsNotActive(
                   release: const Release(
                     id: releaseId,
                     appId: appId,
