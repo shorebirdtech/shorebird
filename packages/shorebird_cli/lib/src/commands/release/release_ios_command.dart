@@ -94,13 +94,13 @@ make smaller updates to your app.
     buildProgress.complete();
 
     final releaseVersionProgress = logger.progress('Getting release version');
+    final iosBuildDir = p.join(Directory.current.path, 'build', 'ios');
     final ipaPath = p.join(
-      Directory.current.path,
-      'build',
-      'ios',
+      iosBuildDir,
       'ipa',
       '${getIpaName()}.ipa',
     );
+    final xcArchivePath = p.join(iosBuildDir, 'archive', 'Runner.xcarchive');
     String releaseVersion;
     try {
       final ipa = _ipaReader.read(ipaPath);
@@ -181,10 +181,11 @@ ${summary.join('\n')}
 
     final relativeIpaPath = p.relative(ipaPath);
 
-    await codePushClientWrapper.createIosReleaseArtifact(
+    await codePushClientWrapper.createIosReleaseArtifacts(
       appId: app.appId,
       releaseId: release.id,
       ipaPath: ipaPath,
+      xcArchivePath: xcArchivePath,
     );
 
     await codePushClientWrapper.updateReleaseStatus(
