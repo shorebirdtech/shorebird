@@ -130,6 +130,7 @@ void main() {
 
       when(() => argResults['app-id']).thenReturn(appId);
       when(() => argResults['release-version']).thenReturn(releaseVersion);
+      when(() => argResults['platform']).thenReturn(platform.name);
       when(() => auth.isAuthenticated).thenReturn(true);
       when(() => cache.getPreviewDirectory(any())).thenReturn(previewDirectory);
       when(
@@ -138,12 +139,6 @@ void main() {
       when(
         () => codePushClientWrapper.getReleases(appId: appId),
       ).thenAnswer((_) async => [release]);
-      when(
-        () => codePushClientWrapper.getRelease(
-          appId: any(named: 'appId'),
-          releaseVersion: any(named: 'releaseVersion'),
-        ),
-      ).thenAnswer((_) async => release);
       when(
         () => codePushClientWrapper.getReleaseArtifact(
           appId: any(named: 'appId'),
@@ -156,6 +151,10 @@ void main() {
       when(() => app.displayName).thenReturn(appDisplayName);
       when(() => release.id).thenReturn(releaseId);
       when(() => release.version).thenReturn(releaseVersion);
+      when(() => release.platformStatuses).thenReturn({
+        ReleasePlatform.android: ReleaseStatus.active,
+        ReleasePlatform.ios: ReleaseStatus.active,
+      });
       when(() => releaseArtifact.url).thenReturn(releaseArtifactUrl);
       when(() => logger.progress(any())).thenReturn(progress);
       when(
@@ -195,21 +194,17 @@ void main() {
       expect(result, ExitCode.noUser.code);
     });
 
-    test('exits with code 70 when querying for release fails', () async {
+    test('exits with code 70 when querying for releases fails', () async {
       final exception = Exception('oops');
       when(
-        () => codePushClientWrapper.getRelease(
-          appId: any(named: 'appId'),
-          releaseVersion: any(named: 'releaseVersion'),
-        ),
+        () => codePushClientWrapper.getReleases(appId: any(named: 'appId')),
       ).thenThrow(exception);
-      final result = await runWithOverrides(command.run);
-      expect(result, equals(ExitCode.software.code));
+      await expectLater(
+        () => runWithOverrides(command.run),
+        throwsA(exception),
+      );
       verify(
-        () => codePushClientWrapper.getRelease(
-          appId: appId,
-          releaseVersion: releaseVersion,
-        ),
+        () => codePushClientWrapper.getReleases(appId: appId),
       ).called(1);
     });
 
@@ -351,6 +346,39 @@ void main() {
       ).captured.single as String Function(AppMetadata);
       expect(captured(app), equals(app.displayName));
       verify(() => codePushClientWrapper.getApps()).called(1);
+    });
+
+    test('prompts for platforms when platform is not specified', () async {
+      when(() => argResults['platform']).thenReturn(null);
+      when(
+        () => logger.chooseOne<String>(
+          any(),
+          choices: any(named: 'choices'),
+          display: any(named: 'display'),
+        ),
+      ).thenReturn(platform.name);
+      final result = await runWithOverrides(command.run);
+      expect(result, equals(ExitCode.success.code));
+      final platforms = verify(
+        () => logger.chooseOne<String>(
+          any(),
+          choices: captureAny(named: 'choices'),
+          display: any(named: 'display'),
+        ),
+      ).captured.single as List<String>;
+      expect(
+        platforms,
+        equals([
+          ReleasePlatform.android.name,
+          ReleasePlatform.ios.name,
+        ]),
+      );
+    });
+
+    test('exits with unavailable when platform is ios', () async {
+      when(() => argResults['platform']).thenReturn(ReleasePlatform.ios.name);
+      final result = await runWithOverrides(command.run);
+      expect(result, equals(ExitCode.unavailable.code));
     });
 
     test('exits early when no apps are found', () async {
