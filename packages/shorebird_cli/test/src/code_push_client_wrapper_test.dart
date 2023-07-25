@@ -1514,8 +1514,10 @@ Please bump your version number and try again.''',
         when(
           () => codePushClient.createReleaseArtifact(
             appId: any(named: 'appId'),
-            artifactPath:
-                any(named: 'artifactPath', that: endsWith('runner.app.zip')),
+            artifactPath: any(
+              named: 'artifactPath',
+              that: endsWith('runner.app.zip'),
+            ),
             releaseId: any(named: 'releaseId'),
             arch: any(named: 'arch'),
             platform: any(named: 'platform'),
