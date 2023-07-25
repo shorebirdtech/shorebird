@@ -129,31 +129,16 @@ This app may not exist or you may not have permission to view it.''',
     }
   }
 
-  /// Exits if [platform] release artifacts already exist for an
-  /// [existingRelease].
-  Future<void> ensureReleaseHasNoArtifacts({
-    required String appId,
-    required Release existingRelease,
+  /// Prints an error message and exits with code 70 if [release] is in an
+  /// active state for [platform].
+  void ensureReleaseIsNotActive({
+    required Release release,
     required ReleasePlatform platform,
-  }) async {
-    logger.detail('Verifying ability to release');
-
-    final artifacts = await codePushClient.getReleaseArtifacts(
-      appId: appId,
-      releaseId: existingRelease.id,
-      platform: platform,
-    );
-
-    logger.detail(
-      '''
-Artifacts for release:${existingRelease.version} platform:$platform
-  $artifacts''',
-    );
-
-    if (artifacts.isNotEmpty) {
+  }) {
+    if (release.platformStatuses[platform] == ReleaseStatus.active) {
       logger.err(
         '''
-It looks like you have an existing ${platform.name} release for version ${lightCyan.wrap(existingRelease.version)}.
+It looks like you have an existing ${platform.name} release for version ${lightCyan.wrap(release.version)}.
 Please bump your version number and try again.''',
       );
       exit(ExitCode.software.code);
