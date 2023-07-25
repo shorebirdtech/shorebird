@@ -232,7 +232,7 @@ flutter:
           appId: any(named: 'appId'),
           releaseId: any(named: 'releaseId'),
           ipaPath: any(named: 'ipaPath'),
-          xcArchivePath: any(named: 'xcArchivePath'),
+          runnerPath: any(named: 'runnerPath'),
         ),
       ).thenAnswer((_) async => release);
       when(
@@ -419,7 +419,7 @@ error: exportArchive: No signing certificate "iOS Distribution" found
           appId: appId,
           releaseId: release.id,
           ipaPath: any(named: 'ipaPath', that: endsWith('.ipa')),
-          xcArchivePath: any(named: 'xcArchivePath'),
+          runnerPath: any(named: 'runnerPath', that: endsWith('Runner.app')),
         ),
       );
     });
@@ -495,7 +495,7 @@ error: exportArchive: No signing certificate "iOS Distribution" found
           appId: appId,
           releaseId: release.id,
           ipaPath: any(named: 'ipaPath', that: endsWith('.ipa')),
-          xcArchivePath: any(named: 'xcArchivePath'),
+          runnerPath: any(named: 'runnerPath', that: endsWith('Runner.app')),
         ),
       ).called(1);
       verify(
@@ -547,7 +547,7 @@ flavors:
           appId: appId,
           releaseId: release.id,
           ipaPath: any(named: 'ipaPath', that: endsWith('.ipa')),
-          xcArchivePath: any(named: 'xcArchivePath'),
+          runnerPath: any(named: 'runnerPath', that: endsWith('Runner.app')),
         ),
       ).called(1);
       expect(exitCode, ExitCode.success.code);
@@ -582,7 +582,7 @@ flavors:
           appId: appId,
           releaseId: release.id,
           ipaPath: any(named: 'ipaPath', that: endsWith('.ipa')),
-          xcArchivePath: any(named: 'xcArchivePath'),
+          runnerPath: any(named: 'runnerPath', that: endsWith('Runner.app')),
         ),
       ).called(1);
       verify(

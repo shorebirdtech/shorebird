@@ -100,7 +100,14 @@ make smaller updates to your app.
       'ipa',
       '${getIpaName()}.ipa',
     );
-    final xcArchivePath = p.join(iosBuildDir, 'archive', 'Runner.xcarchive');
+    final runnerPath = p.join(
+      iosBuildDir,
+      'archive',
+      'Runner.xcarchive',
+      'Products',
+      'Applications',
+      'Runner.app',
+    );
     String releaseVersion;
     try {
       final ipa = _ipaReader.read(ipaPath);
@@ -184,7 +191,7 @@ ${summary.join('\n')}
       appId: app.appId,
       releaseId: release.id,
       ipaPath: ipaPath,
-      xcArchivePath: xcArchivePath,
+      runnerPath: runnerPath,
     );
 
     await codePushClientWrapper.updateReleaseStatus(
