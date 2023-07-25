@@ -375,6 +375,12 @@ void main() {
       );
     });
 
+    test('exits with unavailable when platform is ios', () async {
+      when(() => argResults['platform']).thenReturn(ReleasePlatform.ios.name);
+      final result = await runWithOverrides(command.run);
+      expect(result, equals(ExitCode.unavailable.code));
+    });
+
     test('exits early when no apps are found', () async {
       when(() => argResults['app-id']).thenReturn(null);
       when(() => codePushClientWrapper.getApps()).thenAnswer((_) async => []);
