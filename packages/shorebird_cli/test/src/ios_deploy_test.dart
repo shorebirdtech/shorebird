@@ -44,10 +44,19 @@ void main() {
       process = _MockShorebirdProcess();
       progress = _MockProgress();
       iosDeploy = IOSDeploy();
+
+      final tempDir = Directory.systemTemp.createTempSync();
+
+      final shorebirdScriptFile = File(
+        p.join(tempDir.path, 'bin', 'cache', 'shorebird.snapshot'),
+      )..create(recursive: true);
+      when(() => platform.script).thenReturn(shorebirdScriptFile.uri);
+
+      when(() => logger.progress(any())).thenReturn(progress);
     });
 
     group('installAndLaunchApp', () {
-      test('executes correct command w/deviceId', () async {
+      test('executes correct command when deviceId is provided', () async {
         const processResult = ShorebirdProcessResult(
           exitCode: 0,
           stdout: '',
@@ -76,7 +85,7 @@ void main() {
         ).called(1);
       });
 
-      test('executes correct command w/out deviceId', () async {
+      test('executes correct command when deviceId is not provided', () async {
         const processResult = ShorebirdProcessResult(
           exitCode: 0,
           stdout: '',
@@ -103,17 +112,6 @@ void main() {
     });
 
     group('installIfNeeded', () {
-      setUp(() {
-        final tempDir = Directory.systemTemp.createTempSync();
-
-        final shorebirdScriptFile = File(
-          p.join(tempDir.path, 'bin', 'cache', 'shorebird.snapshot'),
-        )..create(recursive: true);
-        when(() => platform.script).thenReturn(shorebirdScriptFile.uri);
-
-        when(() => logger.progress(any())).thenReturn(progress);
-      });
-
       test('does nothing if ios-deploy is already installed', () async {
         runWithOverrides(
           () => IOSDeploy.iosDeployExecutable.createSync(recursive: true),
