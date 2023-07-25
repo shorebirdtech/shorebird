@@ -47,11 +47,16 @@ class IOSDeploy {
   Future<void> installIfNeeded() async {
     if (_isInstalled) return;
 
+    const executable = 'flutter';
+    const arguments = ['precache', '--ios'];
     final progress = logger.progress('Installing ios-deploy');
 
-    final result = await process.run('flutter', ['precache', '--ios']);
+    final result = await process.run(executable, arguments);
 
-    if (result.exitCode != ExitCode.success.code || !_isInstalled) {
+    if (result.exitCode != ExitCode.success.code) {
+      progress.fail();
+      throw ProcessException(executable, arguments, result.stderr as String);
+    } else if (!_isInstalled) {
       const errorMessage = 'Failed to install ios-deploy.';
       progress.fail(errorMessage);
       throw Exception(errorMessage);
