@@ -25,9 +25,9 @@ artifact_overrides:
   # artifacts.zip includes flutter.jar, libflutter.so, etc.
   # darwin-x64.zip gen_snapshot for darwin-x64
   # symbols.zip includes symbols for libflutter.so
-  - flutter_infra_release/flutter/\$engine/android-arm-64-release/artifacts.zip
-  - flutter_infra_release/flutter/\$engine/android-arm-64-release/darwin-x64.zip
-  - flutter_infra_release/flutter/\$engine/android-arm-64-release/symbols.zip
+  - flutter_infra_release/flutter/\$engine/android-arm64-release/artifacts.zip
+  - flutter_infra_release/flutter/\$engine/android-arm64-release/darwin-x64.zip
+  - flutter_infra_release/flutter/\$engine/android-arm64-release/symbols.zip
   - flutter_infra_release/flutter/\$engine/android-arm-release/artifacts.zip
   - flutter_infra_release/flutter/\$engine/android-arm-release/darwin-x64.zip
   - flutter_infra_release/flutter/\$engine/android-arm-release/symbols.zip
