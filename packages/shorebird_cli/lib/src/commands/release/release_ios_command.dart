@@ -119,9 +119,8 @@ make smaller updates to your app.
       releaseVersion: releaseVersion,
     );
     if (existingRelease != null) {
-      await codePushClientWrapper.ensureReleaseHasNoArtifacts(
-        appId: app.appId,
-        existingRelease: existingRelease,
+      codePushClientWrapper.ensureReleaseIsIsNotActive(
+        release: existingRelease,
         platform: platform,
       );
     }
