@@ -1,6 +1,7 @@
 import 'dart:async';
 import 'dart:convert';
 
+import 'package:collection/collection.dart';
 import 'package:mason_logger/mason_logger.dart';
 import 'package:path/path.dart' as p;
 import 'package:shorebird_cli/src/adb.dart';
@@ -33,6 +34,15 @@ class PreviewCommand extends ShorebirdCommand
       ..addOption(
         'release-version',
         help: 'The version of the release (e.g. "1.0.0").',
+      )
+      ..addOption(
+        'platform',
+        allowed: [ReleasePlatform.android.name, ReleasePlatform.ios.name],
+        allowedHelp: {
+          ReleasePlatform.android.name: 'Android',
+          ReleasePlatform.ios.name: 'iOS',
+        },
+        help: 'The platform of the release.',
       );
   }
 
@@ -52,7 +62,6 @@ class PreviewCommand extends ShorebirdCommand
       return error.exitCode.code;
     }
 
-    const platform = ReleasePlatform.android;
     final appId = results['app-id'] as String? ?? await promptForApp();
 
     if (appId == null) {
@@ -60,13 +69,23 @@ class PreviewCommand extends ShorebirdCommand
       return ExitCode.success.code;
     }
 
-    final releaseVersion = results['release-version'] as String? ??
-        await promptForReleaseVersion(appId);
+    final releases = await codePushClientWrapper.getReleases(appId: appId);
 
-    if (releaseVersion == null) {
+    final releaseVersion = results['release-version'] as String? ??
+        await promptForReleaseVersion(releases);
+
+    final release = releases.firstWhereOrNull(
+      (r) => r.version == releaseVersion,
+    );
+
+    if (releaseVersion == null || release == null) {
       logger.info('No releases found');
       return ExitCode.success.code;
     }
+
+    final platform = ReleasePlatform.values.byName(
+      results['platform'] as String? ?? await promptForPlatform(release),
+    );
 
     final previewDirectory = cache.getPreviewDirectory(appId);
     final aabPath = p.join(
@@ -164,8 +183,7 @@ class PreviewCommand extends ShorebirdCommand
     return app.appId;
   }
 
-  Future<String?> promptForReleaseVersion(String appId) async {
-    final releases = await codePushClientWrapper.getReleases(appId: appId);
+  Future<String?> promptForReleaseVersion(List<Release> releases) async {
     if (releases.isEmpty) return null;
     final release = logger.chooseOne(
       'Which release would you like to preview?',
@@ -173,6 +191,15 @@ class PreviewCommand extends ShorebirdCommand
       display: (release) => release.version,
     );
     return release.version;
+  }
+
+  Future<String> promptForPlatform(Release release) async {
+    final platforms = release.platformStatuses.keys.map((p) => p.name).toList();
+    final platform = logger.chooseOne(
+      'Which platform would you like to preview?',
+      choices: platforms,
+    );
+    return platform;
   }
 }
 
