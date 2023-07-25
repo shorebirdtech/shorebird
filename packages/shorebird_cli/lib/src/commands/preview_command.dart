@@ -89,7 +89,7 @@ class PreviewCommand extends ShorebirdCommand
 
     return switch (platform) {
       ReleasePlatform.android => installAndLaunchAndroid(appId, release),
-      ReleasePlatform.ios => Future.value(ExitCode.unavailable.code),
+      ReleasePlatform.ios => installAndLaunchIos(appId, release),
     };
   }
 
@@ -203,6 +203,10 @@ class PreviewCommand extends ShorebirdCommand
     });
 
     return process.exitCode;
+  }
+
+  Future<int> installAndLaunchIos(String appId, Release release) async {
+    return ExitCode.unavailable.code;
   }
 }
 
