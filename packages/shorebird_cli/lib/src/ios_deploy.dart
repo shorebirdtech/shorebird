@@ -1,6 +1,7 @@
 import 'dart:io';
 
 import 'package:mason_logger/mason_logger.dart';
+import 'package:meta/meta.dart';
 import 'package:path/path.dart' as p;
 import 'package:shorebird_cli/src/logger.dart';
 import 'package:shorebird_cli/src/process.dart';
@@ -9,7 +10,8 @@ import 'package:shorebird_cli/src/shorebird_environment.dart';
 /// Wrapper around the `ios-deploy` command cached by the Flutter tool.
 /// https://github.com/ios-control/ios-deploy
 class IOSDeploy {
-  File get _iosDeployExecutable => File(
+  @visibleForTesting
+  static File get iosDeployExecutable => File(
         p.join(
           ShorebirdEnvironment.flutterDirectory.path,
           'bin',
@@ -20,7 +22,7 @@ class IOSDeploy {
         ),
       );
 
-  bool get _isInstalled => _iosDeployExecutable.existsSync();
+  static bool get _isInstalled => iosDeployExecutable.existsSync();
 
   /// Installs the .app file at [bundlePath] to the device identified by
   /// [deviceId] and attaches the debugger.
@@ -32,7 +34,7 @@ class IOSDeploy {
     String? deviceId,
   }) async {
     final result = await process.run(
-      _iosDeployExecutable.path,
+      iosDeployExecutable.path,
       [
         '--debug',
         if (deviceId != null) ...['--id', deviceId],
