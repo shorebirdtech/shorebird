@@ -504,7 +504,7 @@ aar artifact already exists, continuing...''',
     required String appId,
     required int releaseId,
     required String ipaPath,
-    required String xcArchivePath,
+    required String runnerPath,
   }) async {
     final createArtifactProgress = logger.progress('Creating artifacts');
     final ipaFile = File(ipaPath);
@@ -525,23 +525,23 @@ aar artifact already exists, continuing...''',
       );
     }
 
-    final xcArchiveDirectory = Directory(xcArchivePath);
-    await Isolate.run(() => ZipFileEncoder().zipDirectory(xcArchiveDirectory));
-    final zippedXcArchive = File('$xcArchivePath.zip');
+    final runnerDirectory = Directory(runnerPath);
+    await Isolate.run(() => ZipFileEncoder().zipDirectory(runnerDirectory));
+    final zipperRunner = File('$runnerPath.zip');
     try {
       await codePushClient.createReleaseArtifact(
         appId: appId,
         releaseId: releaseId,
-        artifactPath: zippedXcArchive.path,
-        arch: 'xcarchive',
+        artifactPath: zipperRunner.path,
+        arch: 'runner',
         platform: ReleasePlatform.ios,
-        hash: sha256.convert(await zippedXcArchive.readAsBytes()).toString(),
+        hash: sha256.convert(await zipperRunner.readAsBytes()).toString(),
       );
     } catch (error) {
       _handleErrorAndExit(
         error,
         progress: createArtifactProgress,
-        message: 'Error uploading xcarchive: $error',
+        message: 'Error uploading runner.app: $error',
       );
     }
 
