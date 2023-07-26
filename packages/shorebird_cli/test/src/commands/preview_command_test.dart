@@ -592,6 +592,12 @@ void main() {
       });
 
       test('exits with code 0 when install/launch succeeds', () async {
+        when(
+          () => iosDeploy.installAndLaunchApp(
+            bundlePath: any(named: 'bundlePath'),
+            deviceId: any(named: 'deviceId'),
+          ),
+        ).thenAnswer((_) async => ExitCode.success.code);
         final result = await runWithOverrides(command.run);
         expect(result, equals(ExitCode.success.code));
         verify(
