@@ -280,15 +280,15 @@ Or run on an iOS simulator without code signing
           launchProcess.stderr.asLines().listen(onStderr);
 
       final status = await launchProcess.exitCode;
-      logger.detail('ios-deploy exited with code $exitCode');
+      logger.detail('[ios-deploy] exited with code: $exitCode');
       debuggerState = _DebuggerState.detached;
       unawaited(stdoutSubscription.cancel());
       unawaited(stderrSubscription.cancel());
       return status;
     } catch (exception, stackTrace) {
-      logger.detail('ios-deploy failed: $exception\n$stackTrace');
+      logger.detail('[ios-deploy] failed: $exception\n$stackTrace');
       debuggerState = _DebuggerState.detached;
-      logger.err('ios-deplay failed: $exception');
+      logger.err('[ios-deplay] failed: $exception');
       return ExitCode.software.code;
     }
   }

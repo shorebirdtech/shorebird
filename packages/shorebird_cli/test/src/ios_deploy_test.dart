@@ -144,7 +144,7 @@ void main() {
             bundlePath,
           ]),
         ).called(1);
-        verify(() => logger.err('ios-deplay failed: $exception')).called(1);
+        verify(() => logger.err('[ios-deplay] failed: $exception')).called(1);
       });
 
       test('dumps backtrace on process stopped', () async {
