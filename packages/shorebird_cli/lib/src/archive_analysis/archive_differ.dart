@@ -1,5 +1,8 @@
 import 'package:shorebird_cli/src/archive_analysis/archive_analysis.dart';
 
+/// Thrown when an [ArchiveDiffer] fails to generate a [FileSetDiff].
+class DiffFailedException implements Exception {}
+
 /// Computes content differences between two archives.
 abstract class ArchiveDiffer {
   /// Files that have been added, removed, or that have changed between the

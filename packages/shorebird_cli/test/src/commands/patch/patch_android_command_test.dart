@@ -8,6 +8,7 @@ import 'package:path/path.dart' as p;
 import 'package:platform/platform.dart';
 import 'package:scoped/scoped.dart';
 import 'package:shorebird_cli/src/archive_analysis/archive_analysis.dart';
+import 'package:shorebird_cli/src/archive_analysis/archive_differ.dart';
 import 'package:shorebird_cli/src/auth/auth.dart';
 import 'package:shorebird_cli/src/bundletool.dart';
 import 'package:shorebird_cli/src/cache.dart' show Cache, cacheRef;
@@ -621,6 +622,27 @@ https://github.com/shorebirdtech/shorebird/issues/472
 
       expect(exitCode, ExitCode.software.code);
     });
+
+    test(
+      'prints warning if differ cannot determine patch differences',
+      () async {
+        when(() => aabDiffer.changedFiles(any(), any()))
+            .thenThrow(DiffFailedException());
+        final tempDir = setUpTempDir();
+        setUpTempArtifacts(tempDir);
+        final exitCode = await IOOverrides.runZoned(
+          () => runWithOverrides(command.run),
+          getCurrentDirectory: () => tempDir,
+        );
+
+        expect(exitCode, ExitCode.success.code);
+        verify(
+          () => logger.warn(
+            '''Could not determine whether patch contains asset changes. If you have added or removed assets, you will need to create a new release.''',
+          ),
+        ).called(1);
+      },
+    );
 
     test('prompts user to continue when Java/Kotlin code changes are detected',
         () async {
