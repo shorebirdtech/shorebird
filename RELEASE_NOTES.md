@@ -11,6 +11,7 @@ We've just released Shorebird v0.11.0 🎉
   - `shorebird preview` support for iOS
 - 🧑‍⚕️ `shorebird init` automatically runs `shorebird doctor` checks and fixes
 - 🧹 Remove deprecated `shorebird account create` and `shorebird account usage` commands
+  - This functionality has been moved to console.shorebird.dev
 
 📚 Release notes can be found at https://github.com/shorebirdtech/shorebird/releases/tag/v0.11.0
 
