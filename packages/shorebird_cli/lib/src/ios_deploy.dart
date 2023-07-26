@@ -341,6 +341,7 @@ String detectFailures(String line, Logger logger) {
   final isUnknownAppLaunchError = line.contains(
     IOSDeploy.unknownAppLaunchError,
   );
+
   if (isUnknownAppLaunchError) {
     logger.err(IOSDeploy.unknownErrorFixInstructions);
     return line;
