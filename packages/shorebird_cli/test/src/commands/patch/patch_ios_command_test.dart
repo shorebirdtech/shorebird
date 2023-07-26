@@ -265,10 +265,6 @@ flutter:
       expect(command.description, isNotEmpty);
     });
 
-    test('is hidden', () {
-      expect(command.hidden, isTrue);
-    });
-
     test('exits with unavailable code if run on non-macOS platform', () async {
       when(() => platform.isMacOS).thenReturn(false);
 
