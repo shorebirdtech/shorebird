@@ -10,6 +10,7 @@ import 'package:shorebird_cli/src/cache.dart';
 import 'package:shorebird_cli/src/code_push_client_wrapper.dart';
 import 'package:shorebird_cli/src/command_runner.dart';
 import 'package:shorebird_cli/src/doctor.dart';
+import 'package:shorebird_cli/src/ios_deploy.dart';
 import 'package:shorebird_cli/src/java.dart';
 import 'package:shorebird_cli/src/logger.dart';
 import 'package:shorebird_cli/src/platform.dart';
@@ -30,6 +31,7 @@ Future<void> main(List<String> args) async {
         codePushClientWrapperRef,
         doctorRef,
         engineConfigRef,
+        iosDeployRef,
         javaRef,
         loggerRef,
         platformRef,
