@@ -146,7 +146,7 @@ class PreviewCommand extends ShorebirdCommand
           platform: platform,
         );
 
-        await releaseAabArtifact.url.download(aabPath);
+        await releaseAabArtifact.url.download(outputPath: aabPath);
         downloadArtifactProgress.complete();
       } catch (error) {
         downloadArtifactProgress.fail('$error');
@@ -231,7 +231,9 @@ class PreviewCommand extends ShorebirdCommand
           platform: platform,
         );
 
-        await releaseRunnerArtifact.url.downloadAndExtract(runnerPath);
+        await releaseRunnerArtifact.url.downloadAndExtract(
+          outputPath: runnerPath,
+        );
         downloadArtifactProgress.complete();
       } catch (error) {
         downloadArtifactProgress.fail('$error');
@@ -266,7 +268,7 @@ class PreviewCommand extends ShorebirdCommand
 }
 
 extension on String {
-  Future<void> download(String path) async {
+  Future<void> download({required String outputPath}) async {
     final uri = Uri.parse(this);
     final client = HttpClient();
     final request = await client.getUrl(uri);
@@ -274,11 +276,11 @@ extension on String {
     if (response.statusCode != 200) {
       throw Exception('Failed to download artifact at $this');
     }
-    final file = File(path)..createSync(recursive: true);
+    final file = File(outputPath)..createSync(recursive: true);
     await response.pipe(file.openWrite());
   }
 
-  Future<void> downloadAndExtract(String path) async {
+  Future<void> downloadAndExtract({required String outputPath}) async {
     final uri = Uri.parse(this);
     final client = HttpClient();
     final request = await client.getUrl(uri);
@@ -287,14 +289,14 @@ extension on String {
       throw Exception('Failed to download artifact at $this');
     }
     final tempDir = Directory.systemTemp.createTempSync();
-    final file = File(p.join(tempDir.path, p.basename(path)))
+    final file = File(p.join(tempDir.path, p.basename(outputPath)))
       ..createSync(recursive: true);
     await response.pipe(file.openWrite());
-    logger.detail('Extracting ${file.path} to $path');
+    logger.detail('Extracting ${file.path} to $outputPath');
     await Isolate.run(() async {
       final inputStream = InputFileStream(file.path);
       final archive = ZipDecoder().decodeBuffer(inputStream);
-      extractArchiveToDisk(archive, path);
+      extractArchiveToDisk(archive, outputPath);
     });
   }
 }
