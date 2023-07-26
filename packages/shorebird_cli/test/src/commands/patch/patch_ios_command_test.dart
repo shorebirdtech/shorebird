@@ -213,6 +213,7 @@ flutter:
       when(flutterValidator.validate).thenAnswer((_) async => []);
       when(() => logger.confirm(any())).thenReturn(true);
       when(() => logger.progress(any())).thenReturn(progress);
+      when(() => platform.isMacOS).thenReturn(true);
       when(() => platform.environment).thenReturn({});
       when(() => platform.script).thenReturn(
         Uri.file(
@@ -266,6 +267,16 @@ flutter:
 
     test('is hidden', () {
       expect(command.hidden, isTrue);
+    });
+
+    test('exits with unavailable code if run on non-macOS platform', () async {
+      when(() => platform.isMacOS).thenReturn(false);
+
+      final result = await runWithOverrides(command.run);
+
+      expect(result, equals(ExitCode.unavailable.code));
+      verify(() => logger.err('This command is only supported on macOS.'))
+          .called(1);
     });
 
     test('throws no user error when user is not logged in', () async {
