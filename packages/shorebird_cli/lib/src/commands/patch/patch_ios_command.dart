@@ -11,6 +11,7 @@ import 'package:shorebird_cli/src/config/config.dart';
 import 'package:shorebird_cli/src/doctor.dart';
 import 'package:shorebird_cli/src/formatters/file_size_formatter.dart';
 import 'package:shorebird_cli/src/logger.dart';
+import 'package:shorebird_cli/src/platform.dart';
 import 'package:shorebird_cli/src/shorebird_artifact_mixin.dart';
 import 'package:shorebird_cli/src/shorebird_build_mixin.dart';
 import 'package:shorebird_cli/src/shorebird_config_mixin.dart';
@@ -72,6 +73,11 @@ class PatchIosCommand extends ShorebirdCommand
 
   @override
   Future<int> run() async {
+    if (!platform.isMacOS) {
+      logger.err('This command is only supported on macOS.');
+      return ExitCode.unavailable.code;
+    }
+
     try {
       await validatePreconditions(
         checkShorebirdInitialized: true,
@@ -88,7 +94,7 @@ class PatchIosCommand extends ShorebirdCommand
 
     const arch = 'aarch64';
     const channelName = 'stable';
-    const platform = ReleasePlatform.ios;
+    const releasePlatform = ReleasePlatform.ios;
     final force = results['force'] == true;
     final dryRun = results['dry-run'] == true;
     final flavor = results['flavor'] as String?;
@@ -213,7 +219,7 @@ https://github.com/shorebirdtech/shorebird/issues/472
       if (flavor != null) '🍧 Flavor: ${lightCyan.wrap(flavor)}',
       '📦 Release Version: ${lightCyan.wrap(releaseVersion)}',
       '📺 Channel: ${lightCyan.wrap(channelName)}',
-      '''🕹️  Platform: ${lightCyan.wrap(platform.name)} ${lightCyan.wrap('[$arch (${formatBytes(aotFileSize)})]')}''',
+      '''🕹️  Platform: ${lightCyan.wrap(releasePlatform.name)} ${lightCyan.wrap('[$arch (${formatBytes(aotFileSize)})]')}''',
     ];
 
     logger.info(
@@ -240,7 +246,7 @@ ${summary.join('\n')}
     await codePushClientWrapper.publishPatch(
       appId: appId,
       releaseId: release.id,
-      platform: platform,
+      platform: releasePlatform,
       channelName: channelName,
       patchArtifactBundles: {
         Arch.arm64: PatchArtifactBundle(

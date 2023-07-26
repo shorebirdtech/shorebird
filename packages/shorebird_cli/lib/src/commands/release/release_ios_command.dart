@@ -8,6 +8,7 @@ import 'package:shorebird_cli/src/command.dart';
 import 'package:shorebird_cli/src/config/config.dart';
 import 'package:shorebird_cli/src/doctor.dart';
 import 'package:shorebird_cli/src/logger.dart';
+import 'package:shorebird_cli/src/platform.dart';
 import 'package:shorebird_cli/src/shorebird_artifact_mixin.dart';
 import 'package:shorebird_cli/src/shorebird_build_mixin.dart';
 import 'package:shorebird_cli/src/shorebird_config_mixin.dart';
@@ -59,6 +60,11 @@ make smaller updates to your app.
 
   @override
   Future<int> run() async {
+    if (!platform.isMacOS) {
+      logger.err('This command is only supported on macOS.');
+      return ExitCode.unavailable.code;
+    }
+
     try {
       await validatePreconditions(
         checkUserIsAuthenticated: true,
@@ -73,7 +79,7 @@ make smaller updates to your app.
       '''iOS support is in an alpha state. See https://docs.shorebird.dev/faq#ios-alpha for more information.''',
     );
 
-    const platform = ReleasePlatform.ios;
+    const releasePlatform = ReleasePlatform.ios;
     final flavor = results['flavor'] as String?;
     final shorebirdYaml = ShorebirdEnvironment.getShorebirdYaml()!;
     final appId = shorebirdYaml.getAppId(flavor: flavor);
@@ -128,7 +134,7 @@ make smaller updates to your app.
     if (existingRelease != null) {
       codePushClientWrapper.ensureReleaseIsNotActive(
         release: existingRelease,
-        platform: platform,
+        platform: releasePlatform,
       );
     }
 
@@ -136,7 +142,7 @@ make smaller updates to your app.
       '''📱 App: ${lightCyan.wrap(app.displayName)} ${lightCyan.wrap('($appId)')}''',
       if (flavor != null) '🍧 Flavor: ${lightCyan.wrap(flavor)}',
       '📦 Release Version: ${lightCyan.wrap(releaseVersion)}',
-      '''🕹️  Platform: ${lightCyan.wrap(platform.name)}''',
+      '''🕹️  Platform: ${lightCyan.wrap(releasePlatform.name)}''',
     ];
 
     logger.info('''
@@ -173,7 +179,7 @@ ${summary.join('\n')}
       await codePushClientWrapper.updateReleaseStatus(
         appId: appId,
         releaseId: release.id,
-        platform: platform,
+        platform: releasePlatform,
         status: ReleaseStatus.draft,
       );
     } else {
@@ -181,7 +187,7 @@ ${summary.join('\n')}
         appId: appId,
         version: releaseVersion,
         flutterRevision: shorebirdFlutterRevision,
-        platform: platform,
+        platform: releasePlatform,
       );
     }
 
@@ -197,7 +203,7 @@ ${summary.join('\n')}
     await codePushClientWrapper.updateReleaseStatus(
       appId: app.appId,
       releaseId: release.id,
-      platform: platform,
+      platform: releasePlatform,
       status: ReleaseStatus.active,
     );
 

@@ -91,7 +91,7 @@ flutter:
     late CodePushClientWrapper codePushClientWrapper;
     late Directory shorebirdRoot;
     late Doctor doctor;
-    late Platform environmentPlatform;
+    late Platform platform;
     late Auth auth;
     late IpaReader ipaReader;
     late Ipa ipa;
@@ -111,7 +111,7 @@ flutter:
           codePushClientWrapperRef.overrideWith(() => codePushClientWrapper),
           doctorRef.overrideWith(() => doctor),
           loggerRef.overrideWith(() => logger),
-          platformRef.overrideWith(() => environmentPlatform),
+          platformRef.overrideWith(() => platform),
           processRef.overrideWith(() => shorebirdProcess),
         },
       );
@@ -143,7 +143,7 @@ flutter:
       codePushClientWrapper = _MockCodePushClientWrapper();
       doctor = _MockDoctor();
       httpClient = _MockHttpClient();
-      environmentPlatform = _MockPlatform();
+      platform = _MockPlatform();
       shorebirdRoot = Directory.systemTemp.createTempSync();
       auth = _MockAuth();
       ipa = _MockIpa();
@@ -158,7 +158,7 @@ flutter:
       registerFallbackValue(release);
       registerFallbackValue(shorebirdProcess);
 
-      when(() => environmentPlatform.script).thenReturn(
+      when(() => platform.script).thenReturn(
         Uri.file(
           p.join(
             shorebirdRoot.path,
@@ -195,6 +195,7 @@ flutter:
       when(
         () => logger.prompt(any(), defaultValue: any(named: 'defaultValue')),
       ).thenReturn(version);
+      when(() => platform.isMacOS).thenReturn(true);
       when(
         () => flutterBuildProcessResult.exitCode,
       ).thenReturn(ExitCode.success.code);
@@ -257,6 +258,16 @@ flutter:
 
     test('is hidden', () {
       expect(command.hidden, isTrue);
+    });
+
+    test('exits with unavailable code if run on non-macOS platform', () async {
+      when(() => platform.isMacOS).thenReturn(false);
+
+      final result = await runWithOverrides(command.run);
+
+      expect(result, equals(ExitCode.unavailable.code));
+      verify(() => logger.err('This command is only supported on macOS.'))
+          .called(1);
     });
 
     test('throws config error when shorebird is not initialized', () async {
