@@ -128,10 +128,11 @@ class PreviewCommand extends ShorebirdCommand
 
   Future<int> installAndLaunchAndroid(String appId, Release release) async {
     const platform = ReleasePlatform.android;
-    final previewDirectory = cache.getPreviewDirectory(appId);
-    final aabPath = p.join(
-      previewDirectory.path,
-      '${platform.name}_${release.version}.aab',
+    final aabPath = getArtifactPath(
+      appId: appId,
+      release: release,
+      platform: platform,
+      extension: 'aab',
     );
 
     if (!File(aabPath).existsSync()) {
@@ -163,9 +164,11 @@ class PreviewCommand extends ShorebirdCommand
       return ExitCode.software.code;
     }
 
-    final apksPath = p.join(
-      previewDirectory.path,
-      '${platform.name}_${release.version}.apks',
+    final apksPath = getArtifactPath(
+      appId: appId,
+      release: release,
+      platform: platform,
+      extension: 'apks',
     );
 
     if (!File(apksPath).existsSync()) {
@@ -210,10 +213,11 @@ class PreviewCommand extends ShorebirdCommand
 
   Future<int> installAndLaunchIos(String appId, Release release) async {
     const platform = ReleasePlatform.ios;
-    final previewDirectory = cache.getPreviewDirectory(appId);
-    final runnerPath = p.join(
-      previewDirectory.path,
-      '${platform.name}_${release.version}.app',
+    final runnerPath = getArtifactPath(
+      appId: appId,
+      release: release,
+      platform: platform,
+      extension: 'app',
     );
 
     if (!Directory(runnerPath).existsSync()) {
@@ -245,6 +249,19 @@ class PreviewCommand extends ShorebirdCommand
     } catch (error) {
       return ExitCode.software.code;
     }
+  }
+
+  String getArtifactPath({
+    required String appId,
+    required Release release,
+    required ReleasePlatform platform,
+    required String extension,
+  }) {
+    final previewDirectory = cache.getPreviewDirectory(appId);
+    return p.join(
+      previewDirectory.path,
+      '${platform.name}_${release.version}.$extension',
+    );
   }
 }
 
