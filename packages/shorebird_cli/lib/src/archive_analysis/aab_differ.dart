@@ -2,8 +2,10 @@ import 'dart:convert';
 import 'dart:io';
 
 import 'package:archive/archive_io.dart';
+import 'package:collection/collection.dart';
 import 'package:shorebird_cli/src/archive_analysis/android_archive_differ.dart';
 import 'package:shorebird_cli/src/archive_analysis/archive_analysis.dart';
+import 'package:shorebird_cli/src/archive_analysis/archive_differ.dart';
 import 'package:shorebird_cli/src/archive_analysis/mf_reader.dart';
 
 /// Finds differences between two AABs.
@@ -45,10 +47,14 @@ class AabDiffer extends AndroidArchiveDiffer {
   String _metaInfMfContent(File aab) {
     final inputStream = InputFileStream(aab.path);
     final archive = ZipDecoder().decodeBuffer(inputStream);
-    return utf8.decode(
-      archive.files
-          .firstWhere((file) => file.name == 'META-INF/MANIFEST.MF')
-          .content as List<int>,
+    final manifestFile = archive.files.firstWhereOrNull(
+      (file) => file.name == 'META-INF/MANIFEST.MF',
     );
+
+    if (manifestFile == null) {
+      throw DiffFailedException();
+    }
+
+    return utf8.decode(manifestFile.content as List<int>);
   }
 }

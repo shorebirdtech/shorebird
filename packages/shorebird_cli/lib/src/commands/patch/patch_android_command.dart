@@ -5,6 +5,7 @@ import 'package:http/http.dart' as http;
 import 'package:mason_logger/mason_logger.dart';
 import 'package:path/path.dart' as p;
 import 'package:shorebird_cli/src/archive_analysis/archive_analysis.dart';
+import 'package:shorebird_cli/src/archive_analysis/archive_differ.dart';
 import 'package:shorebird_cli/src/cache.dart';
 import 'package:shorebird_cli/src/code_push_client_wrapper.dart';
 import 'package:shorebird_cli/src/command.dart';
@@ -242,10 +243,19 @@ https://github.com/shorebirdtech/shorebird/issues/472
 
     downloadReleaseArtifactProgress.complete();
 
-    final contentDiffs = _aabDiffer.changedFiles(
-      releaseAabPath,
-      bundlePath,
-    );
+    FileSetDiff contentDiffs;
+    try {
+      contentDiffs = _aabDiffer.changedFiles(
+        releaseAabPath,
+        bundlePath,
+      );
+    } on DiffFailedException catch (_) {
+      logger.warn(
+        '''
+Could not determine whether patch contains asset changes. If you have added or removed assets, you will need to create a new release.''',
+      );
+      contentDiffs = FileSetDiff.empty();
+    }
 
     logger.detail('aab content differences: $contentDiffs');
 

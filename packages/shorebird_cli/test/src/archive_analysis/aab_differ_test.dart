@@ -1,5 +1,6 @@
 import 'package:path/path.dart' as p;
 import 'package:shorebird_cli/src/archive_analysis/archive_analysis.dart';
+import 'package:shorebird_cli/src/archive_analysis/archive_differ.dart';
 import 'package:test/test.dart';
 
 void main() {
@@ -13,6 +14,7 @@ void main() {
         p.join(aabFixturesBasePath, 'changed_kotlin.aab');
     final changedDartAndAssetAabPath =
         p.join(aabFixturesBasePath, 'changed_dart_and_asset.aab');
+    final noManifestAabPath = p.join(aabFixturesBasePath, 'no_manifest.aab');
 
     late AabDiffer differ;
 
@@ -36,6 +38,13 @@ void main() {
           },
         );
       });
+    });
+
+    test('does not crash if MANIFEST.MF is missing', () {
+      expect(
+        () => differ.changedFiles(baseAabPath, noManifestAabPath),
+        throwsA(isA<DiffFailedException>()),
+      );
     });
 
     group('contentDifferences', () {
