@@ -146,7 +146,9 @@ make smaller updates to your app.
     ];
 
     logger.info('''
+
 ${styleBold.wrap(lightGreen.wrap('🚀 Ready to create a new release!'))}
+
 ${summary.join('\n')}
 ''');
 
