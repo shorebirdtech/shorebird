@@ -7,6 +7,7 @@ import 'package:shorebird_cli/src/code_push_client_wrapper.dart';
 import 'package:shorebird_cli/src/command.dart';
 import 'package:shorebird_cli/src/config/config.dart';
 import 'package:shorebird_cli/src/doctor.dart';
+import 'package:shorebird_cli/src/ios.dart';
 import 'package:shorebird_cli/src/logger.dart';
 import 'package:shorebird_cli/src/platform.dart';
 import 'package:shorebird_cli/src/shorebird_artifact_mixin.dart';
@@ -75,9 +76,7 @@ make smaller updates to your app.
       return e.exitCode.code;
     }
 
-    logger.warn(
-      '''iOS support is in an alpha state. See https://docs.shorebird.dev/faq#ios-alpha for more information.''',
-    );
+    showiOSStatusWarning();
 
     const releasePlatform = ReleasePlatform.ios;
     final flavor = results['flavor'] as String?;
