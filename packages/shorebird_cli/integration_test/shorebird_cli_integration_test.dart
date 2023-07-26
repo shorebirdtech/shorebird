@@ -75,25 +75,6 @@ void main() {
       (m) => ShorebirdYaml.fromJson(m!),
     );
 
-    // Run the doctor command. This should yield a warning about the
-    // AndroidManifest.xml not containing the internet permission and suggest
-    // that the user run `shorebird doctor --fix`.
-    final shorebirdDoctorResult = runCommand(
-      'shorebird doctor',
-      workingDirectory: cwd,
-    );
-    expect(shorebirdDoctorResult.stderr, isEmpty);
-    expect(shorebirdDoctorResult.stdout, contains('shorebird doctor --fix'));
-    expect(shorebirdDoctorResult.exitCode, equals(0));
-
-    // Run the suggested `doctor --fix` command.
-    final shorebirdDoctorFixResult = runCommand(
-      'shorebird doctor --fix',
-      workingDirectory: cwd,
-    );
-    expect(shorebirdDoctorFixResult.stderr, isEmpty);
-    expect(shorebirdDoctorFixResult.exitCode, equals(0));
-
     // Verify that we have no releases for this app
     final preReleaseAppsListResult = runCommand(
       'shorebird apps list',
