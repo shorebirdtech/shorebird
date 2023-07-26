@@ -2,6 +2,23 @@
 
 This section contains past updates we've sent to customers via Discord.
 
+## 0.11.0 (July 26, 2023)
+
+We've just released Shorebird v0.11.0 🎉
+
+- 🍎 iOS is now in alpha (!!!)
+  - New `shorebird release ios-alpha` and `shorebird patch ios-alpha` commands
+  - `shorebird preview` support for iOS
+- 🧑‍⚕️ `shorebird init` automatically runs `shorebird doctor` checks and fixes
+- 🧹 Remove deprecated `shorebird account create` and `shorebird account usage` commands
+  - This functionality has been moved to console.shorebird.dev
+
+📚 Release notes can be found at https://github.com/shorebirdtech/shorebird/releases/tag/v0.11.0
+
+As always, you can upgrade using `shorebird upgrade`
+
+Please let us know if we can help!
+
 ## 0.10.0 (July 20, 2023)
 
 We've just released Shorebird v0.10.0 🎉
