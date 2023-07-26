@@ -60,9 +60,6 @@ class PatchIosCommand extends ShorebirdCommand
   }
 
   @override
-  bool get hidden => true;
-
-  @override
   String get name => 'ios-alpha';
 
   @override
