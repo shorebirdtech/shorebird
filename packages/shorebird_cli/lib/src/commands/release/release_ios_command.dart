@@ -70,7 +70,7 @@ make smaller updates to your app.
     }
 
     logger.warn(
-      '''iOS support is in an experimental state and will not work without Flutter engine changes that have not yet been published.''',
+      '''iOS support is in an alpha state. See https://docs.shorebird.dev/faq#ios-alpha for more information.''',
     );
 
     const platform = ReleasePlatform.ios;
