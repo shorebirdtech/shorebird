@@ -6,7 +6,7 @@ This section contains past updates we've sent to customers via Discord.
 
 We've just released Shorebird v0.11.0 🎉
 
-- 🍎 iOS is now in alpha
+- 🍎 iOS is now in alpha (!!!)
   - New `shorebird release ios-alpha` and `shorebird patch ios-alpha` commands
   - `shorebird preview` support for iOS
 - 🧑‍⚕️ `shorebird init` automatically runs `shorebird doctor` checks and fixes
