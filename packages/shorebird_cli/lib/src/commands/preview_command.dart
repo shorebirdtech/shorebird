@@ -1,6 +1,8 @@
 import 'dart:async';
 import 'dart:convert';
+import 'dart:isolate';
 
+import 'package:archive/archive_io.dart';
 import 'package:collection/collection.dart';
 import 'package:mason_logger/mason_logger.dart';
 import 'package:path/path.dart' as p;
@@ -9,6 +11,7 @@ import 'package:shorebird_cli/src/bundletool.dart';
 import 'package:shorebird_cli/src/cache.dart';
 import 'package:shorebird_cli/src/code_push_client_wrapper.dart';
 import 'package:shorebird_cli/src/command.dart';
+import 'package:shorebird_cli/src/ios_deploy.dart';
 import 'package:shorebird_cli/src/logger.dart';
 import 'package:shorebird_cli/src/shorebird_config_mixin.dart';
 import 'package:shorebird_cli/src/shorebird_validation_mixin.dart';
@@ -128,7 +131,7 @@ class PreviewCommand extends ShorebirdCommand
     final previewDirectory = cache.getPreviewDirectory(appId);
     final aabPath = p.join(
       previewDirectory.path,
-      '${platform}_${release.version}.aab',
+      '${platform.name}_${release.version}.aab',
     );
 
     if (!File(aabPath).existsSync()) {
@@ -162,7 +165,7 @@ class PreviewCommand extends ShorebirdCommand
 
     final apksPath = p.join(
       previewDirectory.path,
-      '${platform}_${release.version}.apks',
+      '${platform.name}_${release.version}.apks',
     );
 
     if (!File(apksPath).existsSync()) {
@@ -206,7 +209,42 @@ class PreviewCommand extends ShorebirdCommand
   }
 
   Future<int> installAndLaunchIos(String appId, Release release) async {
-    return ExitCode.unavailable.code;
+    const platform = ReleasePlatform.ios;
+    final previewDirectory = cache.getPreviewDirectory(appId);
+    final runnerPath = p.join(
+      previewDirectory.path,
+      '${platform.name}_${release.version}.app',
+    );
+
+    if (!Directory(runnerPath).existsSync()) {
+      final downloadArtifactProgress = logger.progress('Downloading release');
+      try {
+        final releaseRunnerArtifact =
+            await codePushClientWrapper.getReleaseArtifact(
+          appId: appId,
+          releaseId: release.id,
+          arch: 'runner',
+          platform: platform,
+        );
+
+        await releaseRunnerArtifact.url.downloadAndExtract(runnerPath);
+        downloadArtifactProgress.complete();
+      } catch (error) {
+        downloadArtifactProgress.fail('$error');
+        return ExitCode.software.code;
+      }
+    }
+
+    try {
+      final deviceId = results['device-id'] as String?;
+      final exitCode = await iosDeploy.installAndLaunchApp(
+        bundlePath: runnerPath,
+        deviceId: deviceId,
+      );
+      return exitCode;
+    } catch (error) {
+      return ExitCode.software.code;
+    }
   }
 }
 
@@ -221,5 +259,25 @@ extension on String {
     }
     final file = File(path)..createSync(recursive: true);
     await response.pipe(file.openWrite());
+  }
+
+  Future<void> downloadAndExtract(String path) async {
+    final uri = Uri.parse(this);
+    final client = HttpClient();
+    final request = await client.getUrl(uri);
+    final response = await request.close();
+    if (response.statusCode != 200) {
+      throw Exception('Failed to download artifact at $this');
+    }
+    final tempDir = Directory.systemTemp.createTempSync();
+    final file = File(p.join(tempDir.path, p.basename(path)))
+      ..createSync(recursive: true);
+    await response.pipe(file.openWrite());
+    logger.detail('Extracting ${file.path} to $path');
+    await Isolate.run(() async {
+      final inputStream = InputFileStream(file.path);
+      final archive = ZipDecoder().decodeBuffer(inputStream);
+      extractArchiveToDisk(archive, path);
+    });
   }
 }
