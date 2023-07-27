@@ -114,12 +114,10 @@ This can cause unexpected behavior if you are switching between the tools and th
   Future<bool> _flutterDirectoryIsClean(ShorebirdProcess process) async {
     final result = await process.run(
       'git',
-      ['status'],
+      ['status', '--untracked-files=no', '--porcelain'],
       workingDirectory: ShorebirdEnvironment.flutterDirectory.path,
     );
-    return result.stdout
-        .toString()
-        .contains('nothing to commit, working tree clean');
+    return result.stdout.toString().isEmpty;
   }
 
   Future<String> _shorebirdFlutterVersion(ShorebirdProcess process) {
