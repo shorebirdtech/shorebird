@@ -117,7 +117,7 @@ This can cause unexpected behavior if you are switching between the tools and th
       ['status', '--untracked-files=no', '--porcelain'],
       workingDirectory: ShorebirdEnvironment.flutterDirectory.path,
     );
-    return result.stdout.toString().isEmpty;
+    return result.stdout.toString().trim().isEmpty;
   }
 
   Future<String> _shorebirdFlutterVersion(ShorebirdProcess process) {
