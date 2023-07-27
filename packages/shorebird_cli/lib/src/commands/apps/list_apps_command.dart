@@ -16,9 +16,6 @@ import 'package:shorebird_code_push_client/shorebird_code_push_client.dart';
 /// {@endtemplate}
 class ListAppsCommand extends ShorebirdCommand
     with ShorebirdConfigMixin, ShorebirdValidationMixin {
-  /// {@macro list_apps_command}
-  ListAppsCommand();
-
   @override
   String get description => 'List all apps using Shorebird.';
 
@@ -30,6 +27,13 @@ class ListAppsCommand extends ShorebirdCommand
 
   @override
   Future<int>? run() async {
+    final consoleLink = link(uri: Uri.parse('https://console.shorebird.dev'));
+    logger.warn(
+      '''
+This command is deprecated and will be removed in a future release.
+Please use $consoleLink instead.''',
+    );
+
     try {
       await validatePreconditions(
         checkUserIsAuthenticated: true,

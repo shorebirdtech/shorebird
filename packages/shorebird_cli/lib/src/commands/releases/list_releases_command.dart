@@ -32,6 +32,13 @@ class ListReleasesCommand extends ShorebirdCommand
 
   @override
   Future<int> run() async {
+    final consoleLink = link(uri: Uri.parse('https://console.shorebird.dev'));
+    logger.warn(
+      '''
+This command is deprecated and will be removed in a future release.
+Please use $consoleLink instead.''',
+    );
+
     try {
       await validatePreconditions(
         checkUserIsAuthenticated: true,
