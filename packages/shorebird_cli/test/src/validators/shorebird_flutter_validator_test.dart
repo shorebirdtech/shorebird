@@ -19,10 +19,6 @@ class _MockShorebirdProcess extends Mock implements ShorebirdProcess {}
 void main() {
   group(ShorebirdFlutterValidator, () {
     const flutterRevision = '45fc514f1a9c347a3af76b02baf980a4d88b7879';
-    const gitStatusMessage = '''
-HEAD detached at 45fc514f
-nothing to commit, working tree clean
-''';
 
     const pathFlutterVersionMessage = '''
 Flutter 3.7.9 • channel unknown • unknown source
@@ -86,7 +82,7 @@ Tools • Dart 2.19.6 • DevTools 2.20.1
       when(
         () => shorebirdProcess.run(
           'git',
-          ['status'],
+          ['status', '--untracked-files=no', '--porcelain'],
           workingDirectory: any(named: 'workingDirectory'),
         ),
       ).thenAnswer((_) async => gitStatusProcessResult);
@@ -114,7 +110,7 @@ Tools • Dart 2.19.6 • DevTools 2.20.1
           .thenReturn(shorebirdFlutterVersionMessage);
       when(() => shorebirdFlutterVersionProcessResult.stderr).thenReturn('');
       when(() => shorebirdFlutterVersionProcessResult.exitCode).thenReturn(0);
-      when(() => gitStatusProcessResult.stdout).thenReturn(gitStatusMessage);
+      when(() => gitStatusProcessResult.stdout).thenReturn('');
     });
 
     test('has a non-empty description', () {
