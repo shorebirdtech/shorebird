@@ -148,7 +148,8 @@ Watch the following issue for updates: https://github.com/shorebirdtech/shorebir
 
     final summary = [
       '''📱 App: ${lightCyan.wrap(app.displayName)} ${lightCyan.wrap('($appId)')}''',
-      if (flavor != null) '🍧 Flavor: ${lightCyan.wrap(flavor)}',
+      // TODO(felangel): uncomment once flavor support is added.
+      // if (flavor != null) '🍧 Flavor: ${lightCyan.wrap(flavor)}',
       '📦 Release Version: ${lightCyan.wrap(releaseVersion)}',
       '''🕹️  Platform: ${lightCyan.wrap(releasePlatform.name)}''',
     ];
