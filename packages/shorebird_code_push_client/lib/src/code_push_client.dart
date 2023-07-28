@@ -2,7 +2,6 @@ import 'dart:convert';
 import 'dart:io';
 
 import 'package:http/http.dart' as http;
-import 'package:retry/retry.dart';
 import 'package:shorebird_code_push_client/src/version.dart';
 import 'package:shorebird_code_push_protocol/shorebird_code_push_protocol.dart';
 
@@ -67,51 +66,13 @@ class _CodePushHttpClient extends http.BaseClient {
   final http.Client _client;
 
   @override
-  Future<http.StreamedResponse> send(http.BaseRequest request) {
-    return retry(
-      () {
-        return _client.send(
-          _asNonFinalizedRequest(request)
-            ..headers.addAll(CodePushClient.headers),
-        );
-      },
-      retryIf: (e) => e is! CodePushException,
-    );
-  }
+  Future<http.StreamedResponse> send(http.BaseRequest request) =>
+      _client.send(request..headers.addAll(CodePushClient.headers));
 
   @override
   void close() {
     _client.close();
     super.close();
-  }
-
-  /// Because [http.Client.send] finalizes requests and requires a non-finalized
-  /// request as a parameter, we need to create a non-finalized copy to support
-  /// retries.
-  http.BaseRequest _asNonFinalizedRequest(http.BaseRequest request) {
-    if (!request.finalized) {
-      return request;
-    }
-
-    if (request is http.Request) {
-      return http.Request(request.method, request.url)
-        ..bodyBytes = request.bodyBytes
-        ..encoding = request.encoding
-        ..headers.addAll(request.headers);
-    }
-
-    if (request is http.MultipartRequest) {
-      return http.MultipartRequest(request.method, request.url)
-        ..fields.addAll(request.fields)
-        ..files.addAll(request.files)
-        ..headers.addAll(request.headers);
-    }
-
-    throw ArgumentError.value(
-      request,
-      'request',
-      'Request must be either a Request or MultipartRequest.',
-    );
   }
 }
 
