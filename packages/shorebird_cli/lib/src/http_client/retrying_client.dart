@@ -12,6 +12,7 @@ http.Client retryingHttpClient(http.Client client) => RetryClient(
 
 bool isRetryableException(Object exception, StackTrace _) {
   return switch (exception.runtimeType) {
+    http.ClientException => true,
     HttpException => true,
     TlsException => true,
     SocketException => true,
