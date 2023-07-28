@@ -2,7 +2,6 @@ import 'dart:io';
 
 import 'package:http/http.dart' as http;
 import 'package:http/retry.dart';
-import 'package:meta/meta.dart';
 
 /// An http client that retries requests on connection failures.
 http.Client retryingHttpClient(http.Client client) => RetryClient(
@@ -11,7 +10,6 @@ http.Client retryingHttpClient(http.Client client) => RetryClient(
       whenError: isRetryableException,
     );
 
-@visibleForTesting
 bool isRetryableException(Object exception, StackTrace _) {
   return switch (exception.runtimeType) {
     HttpException => true,
@@ -22,6 +20,5 @@ bool isRetryableException(Object exception, StackTrace _) {
   };
 }
 
-@visibleForTesting
 bool isRetryableResponse(http.BaseResponse response) =>
     response.statusCode >= 500;
