@@ -3,7 +3,6 @@ import 'dart:isolate';
 
 import 'package:archive/archive_io.dart';
 import 'package:http/http.dart' as http;
-import 'package:http/retry.dart';
 import 'package:path/path.dart' as p;
 import 'package:platform/platform.dart';
 import 'package:scoped/scoped.dart';
