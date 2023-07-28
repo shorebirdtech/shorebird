@@ -2,6 +2,7 @@ import 'dart:convert';
 import 'dart:io';
 
 import 'package:http/http.dart' as http;
+import 'package:retry/retry.dart';
 import 'package:shorebird_code_push_client/src/version.dart';
 import 'package:shorebird_code_push_protocol/shorebird_code_push_protocol.dart';
 
@@ -67,7 +68,10 @@ class _CodePushHttpClient extends http.BaseClient {
 
   @override
   Future<http.StreamedResponse> send(http.BaseRequest request) {
-    return _client.send(request..headers.addAll(CodePushClient.headers));
+    return retry(
+      () => _client.send(request..headers.addAll(CodePushClient.headers)),
+      retryIf: (e) => e is! CodePushException,
+    );
   }
 
   @override
