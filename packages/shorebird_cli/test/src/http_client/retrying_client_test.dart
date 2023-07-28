@@ -44,6 +44,13 @@ void main() {
         );
       });
 
+      test('returns true on http.ClientException', () {
+        expect(
+          isRetryableException(http.ClientException(''), StackTrace.empty),
+          isTrue,
+        );
+      });
+
       test('returns false on arbitrary exception', () {
         expect(isRetryableException(Exception(), StackTrace.empty), isFalse);
       });
