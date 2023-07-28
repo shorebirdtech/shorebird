@@ -6,6 +6,7 @@ import 'package:http/http.dart' as http;
 import 'package:path/path.dart' as p;
 import 'package:platform/platform.dart';
 import 'package:scoped/scoped.dart';
+import 'package:shorebird_cli/src/http_client/http_client.dart';
 import 'package:shorebird_cli/src/shorebird_environment.dart';
 
 typedef ArchiveExtracter = Future<void> Function(
@@ -32,7 +33,7 @@ class Cache {
     http.Client? httpClient,
     this.extractArchive = _defaultArchiveExtractor,
     Platform platform = const LocalPlatform(),
-  }) : httpClient = httpClient ?? http.Client() {
+  }) : httpClient = httpClient ?? retryingHttpClient(http.Client()) {
     registerArtifact(PatchArtifact(cache: this, platform: platform));
     registerArtifact(BundleToolArtifact(cache: this, platform: platform));
   }

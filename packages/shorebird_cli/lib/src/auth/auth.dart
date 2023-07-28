@@ -10,7 +10,7 @@ import 'package:scoped/scoped.dart';
 import 'package:shorebird_cli/src/auth/jwt.dart';
 import 'package:shorebird_cli/src/command.dart';
 import 'package:shorebird_cli/src/command_runner.dart';
-import 'package:shorebird_cli/src/logger.dart';
+import 'package:shorebird_cli/src/http_client/http_client.dart';
 import 'package:shorebird_cli/src/platform.dart';
 import 'package:shorebird_code_push_client/shorebird_code_push_client.dart';
 
@@ -55,19 +55,7 @@ typedef OnRefreshCredentials = void Function(
   oauth2.AccessCredentials credentials,
 );
 
-class LoggingClient extends http.BaseClient {
-  LoggingClient({required http.Client httpClient}) : _baseClient = httpClient;
-
-  final http.Client _baseClient;
-
-  @override
-  Future<http.StreamedResponse> send(http.BaseRequest request) async {
-    logger.detail('[HTTP] $request');
-    return _baseClient.send(request);
-  }
-}
-
-class AuthenticatedClient extends LoggingClient {
+class AuthenticatedClient extends http.BaseClient {
   AuthenticatedClient.credentials({
     required http.Client httpClient,
     required oauth2.AccessCredentials credentials,
@@ -93,16 +81,18 @@ class AuthenticatedClient extends LoggingClient {
         );
 
   AuthenticatedClient._({
-    required super.httpClient,
+    required http.Client httpClient,
     OnRefreshCredentials? onRefreshCredentials,
     oauth2.AccessCredentials? credentials,
     String? token,
     RefreshCredentials refreshCredentials = oauth2.refreshCredentials,
-  })  : _credentials = credentials,
+  })  : _baseClient = httpClient,
+        _credentials = credentials,
         _onRefreshCredentials = onRefreshCredentials,
         _refreshCredentials = refreshCredentials,
         _token = token;
 
+  final http.Client _baseClient;
   final OnRefreshCredentials? _onRefreshCredentials;
   final RefreshCredentials _refreshCredentials;
   oauth2.AccessCredentials? _credentials;
@@ -138,7 +128,7 @@ class AuthenticatedClient extends LoggingClient {
 
     final token = credentials.idToken;
     request.headers['Authorization'] = 'Bearer $token';
-    return super.send(request);
+    return _baseClient.send(request);
   }
 }
 
@@ -148,7 +138,7 @@ class Auth {
     String? credentialsDir,
     ObtainAccessCredentials? obtainAccessCredentials,
     CodePushClientBuilder? buildCodePushClient,
-  })  : _httpClient = httpClient ?? http.Client(),
+  })  : _httpClient = httpClient ?? _defaultHttpClient,
         _credentialsDir =
             credentialsDir ?? applicationConfigHome(executableName),
         _obtainAccessCredentials = obtainAccessCredentials ??
@@ -156,6 +146,10 @@ class Auth {
         _buildCodePushClient = buildCodePushClient ?? CodePushClient.new {
     _loadCredentials();
   }
+
+  static http.Client get _defaultHttpClient => retryingHttpClient(
+        LoggingClient(httpClient: http.Client()),
+      );
 
   final http.Client _httpClient;
   final String _credentialsDir;
@@ -168,7 +162,9 @@ class Auth {
   }
 
   http.Client get client {
-    if (_credentials == null && _token == null) return _httpClient;
+    if (_credentials == null && _token == null) {
+      return _httpClient;
+    }
 
     if (_token != null) {
       return AuthenticatedClient.token(token: _token!, httpClient: _httpClient);
