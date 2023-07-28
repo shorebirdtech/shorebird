@@ -119,7 +119,7 @@ To proxy an option to the flutter command, use the -- --<option> syntax.
 
 Example:
 
-${lightCyan.wrap('shorebird run -- --no-pub lib/main.dart')}''',
+${lightCyan.wrap('shorebird release android -- --no-pub lib/main.dart')}''',
         );
       }
 

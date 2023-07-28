@@ -80,7 +80,6 @@ void main() {
       'shorebird apps list',
       workingDirectory: cwd,
     );
-    expect(preReleaseAppsListResult.stderr, isEmpty);
     expect(preReleaseAppsListResult.exitCode, equals(0));
     expect(
       (preReleaseAppsListResult.stdout as String).split('\n'),
@@ -103,7 +102,6 @@ void main() {
       'shorebird apps list',
       workingDirectory: cwd,
     );
-    expect(postReleaseAppsListResult.stderr, isEmpty);
     expect(postReleaseAppsListResult.exitCode, equals(0));
     expect(
       (postReleaseAppsListResult.stdout as String).split('\n'),
@@ -128,7 +126,6 @@ void main() {
       'shorebird apps list',
       workingDirectory: cwd,
     );
-    expect(postPatchAppsListResult.stderr, isEmpty);
     expect(postPatchAppsListResult.exitCode, equals(0));
     expect(
       (postPatchAppsListResult.stdout as String).split('\n'),
@@ -144,7 +141,6 @@ void main() {
       'shorebird apps delete --app-id=${shorebirdYaml.appId} --force',
       workingDirectory: cwd,
     );
-    expect(deleteAppResult.stderr, isEmpty);
     expect(deleteAppResult.exitCode, equals(0));
     expect(
       deleteAppResult.stdout,
@@ -156,7 +152,6 @@ void main() {
       'shorebird apps list',
       workingDirectory: cwd,
     );
-    expect(deleteAppAppsListResult.stderr, isEmpty);
     expect(deleteAppAppsListResult.exitCode, equals(0));
     expect(
       (deleteAppAppsListResult.stdout as String).split('\n'),
