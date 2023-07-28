@@ -147,10 +147,8 @@ class Auth {
     _loadCredentials();
   }
 
-  static http.Client get _defaultHttpClient => RetryingClient(
-        httpClient: LoggingClient(
-          httpClient: http.Client(),
-        ),
+  static http.Client get _defaultHttpClient => retryingHttpClient(
+        LoggingClient(httpClient: http.Client()),
       );
 
   final http.Client _httpClient;

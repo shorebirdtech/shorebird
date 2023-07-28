@@ -1,59 +1,19 @@
 import 'dart:io';
 
 import 'package:http/http.dart' as http;
-import 'package:meta/meta.dart';
-import 'package:retry/retry.dart';
-import 'package:shorebird_code_push_client/shorebird_code_push_client.dart';
+import 'package:http/retry.dart';
 
 /// An http client that retries requests on connection failures.
-class RetryingClient extends http.BaseClient {
-  RetryingClient({required http.Client httpClient}) : _baseClient = httpClient;
-
-  final http.Client _baseClient;
-
-  @override
-  Future<http.StreamedResponse> send(http.BaseRequest request) => retry(
-        () => _baseClient.send(asNonFinalizedRequest(request)),
-        retryIf: shouldRetryOnException,
-      );
-
-  /// Because [http.Client.send] finalizes requests and requires a non-finalized
-  /// request as a parameter, we need to create a non-finalized copy to support
-  /// retries.
-  @visibleForTesting
-  static http.BaseRequest asNonFinalizedRequest(http.BaseRequest request) {
-    if (!request.finalized) {
-      return request;
-    }
-
-    if (request is http.Request) {
-      return http.Request(request.method, request.url)
-        ..bodyBytes = request.bodyBytes
-        ..encoding = request.encoding
-        ..headers.addAll(request.headers);
-    }
-
-    if (request is http.MultipartRequest) {
-      return http.MultipartRequest(request.method, request.url)
-        ..fields.addAll(request.fields)
-        ..files.addAll(request.files)
-        ..headers.addAll(request.headers);
-    }
-
-    throw ArgumentError.value(
-      request,
-      'request',
-      'Request must be either a Request or MultipartRequest.',
+http.Client retryingHttpClient(http.Client client) => RetryClient(
+      client,
+      when: (response) => response.statusCode >= 500,
+      whenError: (e, _) {
+        return switch (e.runtimeType) {
+          HttpException => true,
+          TlsException => true,
+          SocketException => true,
+          WebSocketException => true,
+          _ => false,
+        };
+      },
     );
-  }
-
-  @visibleForTesting
-  static bool shouldRetryOnException(Object e) => switch (e.runtimeType) {
-        HttpException => true,
-        TlsException => true,
-        SocketException => true,
-        WebSocketException => true,
-        CodePushException => (e as CodePushException).statusCode >= 500,
-        _ => false,
-      };
-}
