@@ -35,6 +35,8 @@ class ReleaseIosCommand extends ShorebirdCommand
       ..addOption(
         'flavor',
         help: 'The product flavor to use when building the app.',
+        // TODO(felangel): unhide when we support flavors
+        hide: true,
       )
       ..addFlag(
         'force',
@@ -77,6 +79,16 @@ make smaller updates to your app.
 
     const releasePlatform = ReleasePlatform.ios;
     final flavor = results['flavor'] as String?;
+
+    if (flavor != null) {
+      logger.err(
+        '''
+iOS flavors are not yet supported.
+Watch the following issue for updates: https://github.com/shorebirdtech/shorebird/issues/910''',
+      );
+      return ExitCode.unavailable.code;
+    }
+
     final shorebirdYaml = ShorebirdEnvironment.getShorebirdYaml()!;
     final appId = shorebirdYaml.getAppId(flavor: flavor);
     final app = await codePushClientWrapper.getApp(appId: appId);
@@ -136,7 +148,8 @@ make smaller updates to your app.
 
     final summary = [
       '''📱 App: ${lightCyan.wrap(app.displayName)} ${lightCyan.wrap('($appId)')}''',
-      if (flavor != null) '🍧 Flavor: ${lightCyan.wrap(flavor)}',
+      // TODO(felangel): uncomment once flavor support is added.
+      // if (flavor != null) '🍧 Flavor: ${lightCyan.wrap(flavor)}',
       '📦 Release Version: ${lightCyan.wrap(releaseVersion)}',
       '''🕹️  Platform: ${lightCyan.wrap(releasePlatform.name)}''',
     ];
