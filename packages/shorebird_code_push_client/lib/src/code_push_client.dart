@@ -10,10 +10,7 @@ import 'package:shorebird_code_push_protocol/shorebird_code_push_protocol.dart';
 /// {@endtemplate}
 class CodePushException implements Exception {
   /// {@macro code_push_exception}
-  const CodePushException({
-    required this.message,
-    this.details,
-  });
+  const CodePushException({required this.message, this.details});
 
   /// The message associated with the exception.
   final String message;
@@ -69,8 +66,9 @@ class _CodePushHttpClient extends http.BaseClient {
   final http.Client _client;
 
   @override
-  Future<http.StreamedResponse> send(http.BaseRequest request) =>
-      _client.send(request..headers.addAll(CodePushClient.headers));
+  Future<http.StreamedResponse> send(http.BaseRequest request) {
+    return _client.send(request..headers.addAll(CodePushClient.headers));
+  }
 
   @override
   void close() {
