@@ -44,7 +44,7 @@ void main() {
         );
       });
 
-      test('returns true on WebSocketException', () {
+      test('returns true on http.ClientException', () {
         expect(
           isRetryableException(http.ClientException(''), StackTrace.empty),
           isTrue,
