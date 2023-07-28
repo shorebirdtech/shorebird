@@ -10,10 +10,17 @@ import 'package:shorebird_code_push_protocol/shorebird_code_push_protocol.dart';
 /// {@endtemplate}
 class CodePushException implements Exception {
   /// {@macro code_push_exception}
-  const CodePushException({required this.message, this.details});
+  const CodePushException({
+    required this.message,
+    required this.statusCode,
+    this.details,
+  });
 
   /// The message associated with the exception.
   final String message;
+
+  /// The status code of the response that triggered the exception.
+  final int statusCode;
 
   /// The details associated with the exception.
   final String? details;
@@ -27,7 +34,11 @@ class CodePushException implements Exception {
 /// {@endtemplate}
 class CodePushForbiddenException extends CodePushException {
   /// {@macro code_push_forbidden_exception}
-  CodePushForbiddenException({required super.message, super.details});
+  CodePushForbiddenException({
+    required super.message,
+    super.statusCode = HttpStatus.forbidden,
+    super.details,
+  });
 }
 
 /// {@template code_push_conflict_exception}
@@ -35,7 +46,11 @@ class CodePushForbiddenException extends CodePushException {
 /// {@endtemplate}
 class CodePushConflictException extends CodePushException {
   /// {@macro code_push_conflict_exception}
-  const CodePushConflictException({required super.message, super.details});
+  const CodePushConflictException({
+    required super.message,
+    super.statusCode = HttpStatus.conflict,
+    super.details,
+  });
 }
 
 /// {@template code_push_not_found_exception}
@@ -43,7 +58,11 @@ class CodePushConflictException extends CodePushException {
 /// {@endtemplate}
 class CodePushNotFoundException extends CodePushException {
   /// {@macro code_push_not_found_exception}
-  CodePushNotFoundException({required super.message, super.details});
+  CodePushNotFoundException({
+    required super.message,
+    super.statusCode = HttpStatus.notFound,
+    super.details,
+  });
 }
 
 /// {@template code_push_upgrade_required_exception}
@@ -53,6 +72,7 @@ class CodePushUpgradeRequiredException extends CodePushException {
   /// {@macro code_push_upgrade_required_exception}
   const CodePushUpgradeRequiredException({
     required super.message,
+    super.statusCode = HttpStatus.upgradeRequired,
     super.details,
   });
 }
@@ -86,6 +106,7 @@ class CodePushClient {
     Uri? hostedUri,
   })  : _httpClient = _CodePushHttpClient(httpClient ?? http.Client()),
         hostedUri = hostedUri ?? Uri.https('api.shorebird.dev');
+  // hostedUri = hostedUri ?? Uri.http('localhost:8080');
 
   /// The standard headers applied to all requests.
   static const headers = <String, String>{'x-version': packageVersion};
@@ -170,6 +191,7 @@ class CodePushClient {
       throw CodePushException(
         message:
             '''Failed to upload artifact (${uploadResponse.reasonPhrase} '${uploadResponse.statusCode})''',
+        statusCode: uploadResponse.statusCode,
       );
     }
   }
@@ -228,6 +250,7 @@ class CodePushClient {
       throw CodePushException(
         message:
             '''Failed to upload artifact (${uploadResponse.reasonPhrase} '${uploadResponse.statusCode})''',
+        statusCode: uploadResponse.statusCode,
       );
     }
   }
@@ -540,8 +563,15 @@ class CodePushClient {
       final body = json.decode(response) as Map<String, dynamic>;
       error = ErrorResponse.fromJson(body);
     } catch (_) {
-      throw exceptionBuilder(message: unknownErrorMessage);
+      throw exceptionBuilder(
+        message: unknownErrorMessage,
+        statusCode: statusCode,
+      );
     }
-    return exceptionBuilder(message: error.message, details: error.details);
+    return exceptionBuilder(
+      message: error.message,
+      statusCode: statusCode,
+      details: error.details,
+    );
   }
 }

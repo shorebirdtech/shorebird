@@ -51,9 +51,13 @@ void main() {
       test('toString is correct', () {
         const exceptionWithDetails = CodePushException(
           message: 'message',
+          statusCode: HttpStatus.badRequest,
           details: 'details',
         );
-        const exceptionWithoutDetails = CodePushException(message: 'message');
+        const exceptionWithoutDetails = CodePushException(
+          message: 'message',
+          statusCode: HttpStatus.badGateway,
+        );
 
         expect(exceptionWithDetails.toString(), 'message\ndetails');
         expect(exceptionWithoutDetails.toString(), 'message');

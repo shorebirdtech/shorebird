@@ -1,7 +1,9 @@
 import 'dart:io';
 
 import 'package:http/http.dart' as http;
+import 'package:meta/meta.dart';
 import 'package:retry/retry.dart';
+import 'package:shorebird_code_push_client/shorebird_code_push_client.dart';
 
 /// An http client that retries requests on connection failures.
 class RetryingClient extends http.BaseClient {
@@ -11,16 +13,15 @@ class RetryingClient extends http.BaseClient {
 
   @override
   Future<http.StreamedResponse> send(http.BaseRequest request) => retry(
-        () => _baseClient.send(
-          _asNonFinalizedRequest(request),
-        ),
-        retryIf: _shouldRetryOnException,
+        () => _baseClient.send(asNonFinalizedRequest(request)),
+        retryIf: shouldRetryOnException,
       );
 
   /// Because [http.Client.send] finalizes requests and requires a non-finalized
   /// request as a parameter, we need to create a non-finalized copy to support
   /// retries.
-  http.BaseRequest _asNonFinalizedRequest(http.BaseRequest request) {
+  @visibleForTesting
+  static http.BaseRequest asNonFinalizedRequest(http.BaseRequest request) {
     if (!request.finalized) {
       return request;
     }
@@ -46,9 +47,13 @@ class RetryingClient extends http.BaseClient {
     );
   }
 
-  bool _shouldRetryOnException(Object e) =>
-      e is HttpException ||
-      e is TlsException ||
-      e is SocketException ||
-      e is WebSocketException;
+  @visibleForTesting
+  static bool shouldRetryOnException(Object e) => switch (e.runtimeType) {
+        HttpException => true,
+        TlsException => true,
+        SocketException => true,
+        WebSocketException => true,
+        CodePushException => (e as CodePushException).statusCode >= 500,
+        _ => false,
+      };
 }
