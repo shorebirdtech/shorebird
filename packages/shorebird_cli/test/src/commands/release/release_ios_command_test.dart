@@ -516,13 +516,9 @@ error: exportArchive: No signing certificate "iOS Distribution" found
       expect(exitCode, ExitCode.success.code);
     });
 
-    test(
-        'succeeds when release is successful '
-        'with flavors and target', () async {
+    test('logs error when a flavor is supplied', () async {
       const flavor = 'development';
-      final target = p.join('lib', 'main_development.dart');
       when(() => argResults['flavor']).thenReturn(flavor);
-      when(() => argResults['target']).thenReturn(target);
       final tempDir = setUpTempDir();
       File(
         p.join(tempDir.path, 'shorebird.yaml'),
@@ -536,29 +532,70 @@ flavors:
         getCurrentDirectory: () => tempDir,
       );
 
-      verify(() => logger.success('\n✅ Published Release!')).called(1);
+      expect(exitCode, ExitCode.unavailable.code);
+
       verify(
-        () => logger.info(
-          any(
-            that: stringContainsInOrder(
-              [
-                'Your next step is to upload the ipa to App Store Connect.',
-                'build/ios/ipa/app_bundle_name.ipa',
-              ],
-            ),
-          ),
-        ),
+        () => logger.err('''
+iOS flavors are not yet supported.
+Watch the following issue for updates: https://github.com/shorebirdtech/shorebird/issues/910'''),
       ).called(1);
-      verify(
+      verifyNever(
         () => codePushClientWrapper.createIosReleaseArtifacts(
           appId: appId,
           releaseId: release.id,
           ipaPath: any(named: 'ipaPath', that: endsWith('.ipa')),
           runnerPath: any(named: 'runnerPath', that: endsWith('Runner.app')),
         ),
-      ).called(1);
-      expect(exitCode, ExitCode.success.code);
+      );
     });
+
+    test(
+      'succeeds when release is successful '
+      'with flavors and target',
+      () async {
+        const flavor = 'development';
+        final target = p.join('lib', 'main_development.dart');
+        when(() => argResults['flavor']).thenReturn(flavor);
+        when(() => argResults['target']).thenReturn(target);
+        final tempDir = setUpTempDir();
+        File(
+          p.join(tempDir.path, 'shorebird.yaml'),
+        ).writeAsStringSync('''
+app_id: productionAppId
+flavors:
+  development: $appId''');
+
+        final exitCode = await IOOverrides.runZoned(
+          () => runWithOverrides(command.run),
+          getCurrentDirectory: () => tempDir,
+        );
+
+        verify(() => logger.success('\n✅ Published Release!')).called(1);
+        verify(
+          () => logger.info(
+            any(
+              that: stringContainsInOrder(
+                [
+                  'Your next step is to upload the ipa to App Store Connect.',
+                  'build/ios/ipa/app_bundle_name.ipa',
+                ],
+              ),
+            ),
+          ),
+        ).called(1);
+        verify(
+          () => codePushClientWrapper.createIosReleaseArtifacts(
+            appId: appId,
+            releaseId: release.id,
+            ipaPath: any(named: 'ipaPath', that: endsWith('.ipa')),
+            runnerPath: any(named: 'runnerPath', that: endsWith('Runner.app')),
+          ),
+        ).called(1);
+        expect(exitCode, ExitCode.success.code);
+      },
+      // TODO(felangel): revert when we support flavors for iOS
+      skip: true,
+    );
 
     test('does not create new release if existing release is present',
         () async {
