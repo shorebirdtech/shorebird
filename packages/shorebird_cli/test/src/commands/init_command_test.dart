@@ -5,16 +5,13 @@ import 'package:http/http.dart' as http;
 import 'package:mason_logger/mason_logger.dart';
 import 'package:mocktail/mocktail.dart';
 import 'package:path/path.dart' as p;
-import 'package:platform/platform.dart';
 import 'package:scoped/scoped.dart';
 import 'package:shorebird_cli/src/auth/auth.dart';
 import 'package:shorebird_cli/src/commands/init_command.dart';
 import 'package:shorebird_cli/src/doctor.dart';
-import 'package:shorebird_cli/src/java.dart';
+import 'package:shorebird_cli/src/gradlew.dart';
 import 'package:shorebird_cli/src/logger.dart';
-import 'package:shorebird_cli/src/platform.dart';
 import 'package:shorebird_cli/src/process.dart';
-import 'package:shorebird_cli/src/shorebird_flavor_mixin.dart';
 import 'package:shorebird_code_push_client/shorebird_code_push_client.dart';
 import 'package:test/test.dart';
 
@@ -28,17 +25,11 @@ class _MockCodePushClient extends Mock implements CodePushClient {}
 
 class _MockDoctor extends Mock implements Doctor {}
 
-class _MockJava extends Mock implements Java {}
+class _MockGradlew extends Mock implements Gradlew {}
 
 class _MockLogger extends Mock implements Logger {}
 
 class _MockProgress extends Mock implements Progress {}
-
-class _MockProcess extends Mock implements ShorebirdProcess {}
-
-class _MockProcessResult extends Mock implements ShorebirdProcessResult {}
-
-class _MockPlatform extends Mock implements Platform {}
 
 void main() {
   group(InitCommand, () {
@@ -52,16 +43,12 @@ name: $appName
 version: $version
 environment:
   sdk: ">=2.19.0 <3.0.0"''';
-    const javaHome = 'test_java_home';
 
     late http.Client httpClient;
     late ArgResults argResults;
     late Auth auth;
     late Doctor doctor;
-    late Java java;
-    late Platform platform;
-    late ShorebirdProcess process;
-    late ShorebirdProcessResult result;
+    late Gradlew gradlew;
     late CodePushClient codePushClient;
     late Logger logger;
     late Progress progress;
@@ -73,9 +60,8 @@ environment:
         values: {
           authRef.overrideWith(() => auth),
           doctorRef.overrideWith(() => doctor),
-          javaRef.overrideWith(() => java),
+          gradlewRef.overrideWith(() => gradlew),
           loggerRef.overrideWith(() => logger),
-          platformRef.overrideWith(() => platform),
           processRef.overrideWith(() => process),
         },
       );
@@ -87,21 +73,12 @@ environment:
       return tempDir;
     }
 
-    Directory setUpModuleTempDir() {
-      final tempDir = Directory.systemTemp.createTempSync();
-      Directory(p.join(tempDir.path, '.android')).createSync(recursive: true);
-      return tempDir;
-    }
-
     setUp(() {
       httpClient = _MockHttpClient();
       argResults = _MockArgResults();
       auth = _MockAuth();
       doctor = _MockDoctor();
-      java = _MockJava();
-      platform = _MockPlatform();
-      process = _MockProcess();
-      result = _MockProcessResult();
+      gradlew = _MockGradlew();
       codePushClient = _MockCodePushClient();
       logger = _MockLogger();
       progress = _MockProgress();
@@ -122,21 +99,7 @@ environment:
         () => logger.prompt(any(), defaultValue: any(named: 'defaultValue')),
       ).thenReturn(appName);
       when(() => logger.progress(any())).thenReturn(progress);
-      when(
-        () => process.run(
-          any(),
-          any(),
-          runInShell: any(named: 'runInShell'),
-          workingDirectory: any(named: 'workingDirectory'),
-          environment: any(named: 'environment'),
-        ),
-      ).thenAnswer((_) async => result);
-
-      when(() => result.exitCode).thenReturn(ExitCode.success.code);
-      when(() => result.stdout).thenReturn('');
-
-      when(() => java.home).thenReturn(javaHome);
-      when(() => platform.isWindows).thenReturn(false);
+      when(() => gradlew.productFlavors(any())).thenAnswer((_) async => {});
 
       command = runWithOverrides(
         () => InitCommand(
@@ -148,111 +111,6 @@ environment:
           },
         ),
       )..testArgResults = argResults;
-    });
-
-    group('extractProductFlavors', () {
-      test(
-          'throws MissingGradleWrapperException '
-          'when gradlew does not exist', () async {
-        when(() => platform.isLinux).thenReturn(true);
-        when(() => platform.isMacOS).thenReturn(false);
-        when(() => platform.isWindows).thenReturn(false);
-        final tempDir = setUpAppTempDir();
-        await expectLater(
-          command.extractProductFlavors(tempDir.path),
-          throwsA(isA<MissingGradleWrapperException>()),
-        );
-        verifyNever(
-          () => process.run(
-            p.join(tempDir.path, 'android', 'gradlew'),
-            ['app:tasks', '--all', '--console=auto'],
-            runInShell: true,
-            workingDirectory: p.join(tempDir.path, 'android'),
-            environment: {'JAVA_HOME': javaHome},
-          ),
-        );
-      });
-
-      test('uses existing JAVA_HOME when set', () async {
-        when(() => platform.isLinux).thenReturn(true);
-        when(() => platform.isMacOS).thenReturn(false);
-        when(() => platform.isWindows).thenReturn(false);
-        final tempDir = setUpAppTempDir();
-        File(
-          p.join(tempDir.path, 'android', 'gradlew'),
-        ).createSync(recursive: true);
-        await expectLater(
-          runWithOverrides(() => command.extractProductFlavors(tempDir.path)),
-          completes,
-        );
-        verify(
-          () => process.run(
-            p.join(tempDir.path, 'android', 'gradlew'),
-            ['app:tasks', '--all', '--console=auto'],
-            runInShell: true,
-            workingDirectory: p.join(tempDir.path, 'android'),
-            environment: {'JAVA_HOME': javaHome},
-          ),
-        ).called(1);
-      });
-
-      test(
-          'throws Exception '
-          'when process exits with non-zero code', () async {
-        when(() => platform.isLinux).thenReturn(true);
-        when(() => platform.isMacOS).thenReturn(false);
-        when(() => platform.isWindows).thenReturn(false);
-        final tempDir = setUpAppTempDir();
-        File(
-          p.join(tempDir.path, 'android', 'gradlew'),
-        ).createSync(recursive: true);
-        when(() => result.exitCode).thenReturn(1);
-        when(() => result.stderr).thenReturn('test error');
-        await expectLater(
-          runWithOverrides(() => command.extractProductFlavors(tempDir.path)),
-          throwsA(
-            isA<Exception>().having(
-              (e) => '$e',
-              'message',
-              contains('test error'),
-            ),
-          ),
-        );
-        verify(
-          () => process.run(
-            p.join(tempDir.path, 'android', 'gradlew'),
-            ['app:tasks', '--all', '--console=auto'],
-            runInShell: true,
-            workingDirectory: p.join(tempDir.path, 'android'),
-            environment: {'JAVA_HOME': javaHome},
-          ),
-        ).called(1);
-      });
-
-      test('extracts flavors from module directory structure', () async {
-        when(() => platform.isLinux).thenReturn(true);
-        when(() => platform.isMacOS).thenReturn(false);
-        when(() => platform.isWindows).thenReturn(false);
-        final tempDir = setUpModuleTempDir();
-        File(
-          p.join(tempDir.path, '.android', 'gradlew'),
-        ).createSync(recursive: true);
-        const javaHome = 'test_java_home';
-        when(() => platform.environment).thenReturn({'JAVA_HOME': javaHome});
-        await expectLater(
-          runWithOverrides(() => command.extractProductFlavors(tempDir.path)),
-          completes,
-        );
-        verify(
-          () => process.run(
-            p.join(tempDir.path, '.android', 'gradlew'),
-            ['app:tasks', '--all', '--console=auto'],
-            runInShell: true,
-            workingDirectory: p.join(tempDir.path, '.android'),
-            environment: {'JAVA_HOME': javaHome},
-          ),
-        ).called(1);
-      });
     });
 
     test('returns no user error when not logged in', () async {
@@ -339,9 +197,8 @@ If you want to reinitialize Shorebird, please run "shorebird init --force".''',
     });
 
     test('fails when an error occurs while extracting flavors', () async {
-      when(() => result.exitCode).thenReturn(1);
-      when(() => result.stdout).thenReturn('error');
-      when(() => result.stderr).thenReturn('oops');
+      final exception = Exception('oops');
+      when(() => gradlew.productFlavors(any())).thenThrow(exception);
       final tempDir = setUpAppTempDir();
       File(
         p.join(tempDir.path, 'pubspec.yaml'),
@@ -405,17 +262,22 @@ If you want to reinitialize Shorebird, please run "shorebird init --force".''',
         'test-appId-6'
       ];
       var index = 0;
+      when(() => gradlew.productFlavors(any())).thenAnswer(
+        (_) async => {
+          'development',
+          'developmentInternal',
+          'production',
+          'productionInternal',
+          'staging',
+          'stagingInternal',
+        },
+      );
       when(
         () => codePushClient.createApp(displayName: any(named: 'displayName')),
       ).thenAnswer((invocation) async {
         final displayName = invocation.namedArguments[#displayName] as String;
         return App(id: appIds[index++], displayName: displayName);
       });
-      when(() => result.stdout).thenReturn(
-        File(
-          p.join('test', 'fixtures', 'gradle_app_tasks.txt'),
-        ).readAsStringSync(),
-      );
       final tempDir = setUpAppTempDir();
       File(p.join(tempDir.path, 'android', 'gradlew')).createSync();
       File(
