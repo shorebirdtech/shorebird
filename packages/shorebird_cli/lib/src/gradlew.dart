@@ -2,7 +2,7 @@ import 'dart:io';
 
 import 'package:collection/collection.dart';
 import 'package:path/path.dart' as p;
-import 'package:shorebird_cli/src/command.dart';
+import 'package:scoped/scoped.dart';
 import 'package:shorebird_cli/src/java.dart';
 import 'package:shorebird_cli/src/platform.dart';
 import 'package:shorebird_cli/src/process.dart';
@@ -26,36 +26,45 @@ Make sure you have run "flutter build apk at least once.''';
   }
 }
 
-/// Mixin on [ShorebirdCommand] which exposes methods for extracting
-/// product flavors from the current app.
-mixin ShorebirdFlavorMixin on ShorebirdCommand {
-  /// Return the set of product flavors configured for the app at [appRoot].
-  /// Returns an empty set for apps that do not use product flavors.
-  Future<Set<String>> extractProductFlavors(String appRoot) async {
+/// A reference to a [Gradlew] instance.
+final gradlewRef = create(Gradlew.new);
+
+/// The [Gradlew] instance available in the current zone.
+Gradlew get gradlew => read(gradlewRef);
+
+/// A wrapper around the gradle wrapper (gradlew).
+class Gradlew {
+  String get executable => platform.isWindows ? 'gradlew.bat' : 'gradlew';
+
+  String executablePath(String projectPath) {
     // Flutter apps have android files in root/android
     // Flutter modules have android files in root/.android
     final androidRoot = [
-      Directory(p.join(appRoot, 'android')),
-      Directory(p.join(appRoot, '.android')),
+      Directory(p.join(projectPath, 'android')),
+      Directory(p.join(projectPath, '.android')),
     ].firstWhereOrNull((dir) => dir.existsSync());
 
-    if (androidRoot == null) {
-      return {};
+    if (androidRoot == null) throw MissingGradleWrapperException(executable);
+
+    final executableFile = File(p.join(androidRoot.path, executable));
+
+    if (!executableFile.existsSync()) {
+      throw MissingGradleWrapperException(p.relative(executableFile.path));
     }
 
-    final executable = platform.isWindows ? 'gradlew.bat' : 'gradlew';
-    final executablePath = p.join(androidRoot.path, executable);
+    return executableFile.path;
+  }
 
-    if (!File(executablePath).existsSync()) {
-      throw MissingGradleWrapperException(p.relative(executablePath));
-    }
-
+  /// Return the set of product flavors configured for the app at [projectPath].
+  /// Returns an empty set for apps that do not use product flavors.
+  Future<Set<String>> productFlavors(String projectPath) async {
     final javaHome = java.home;
+    final gradlePath = executablePath(projectPath);
     final result = await process.run(
-      executablePath,
+      executablePath(projectPath),
       ['app:tasks', '--all', '--console=auto'],
       runInShell: true,
-      workingDirectory: androidRoot.path,
+      workingDirectory: p.dirname(gradlePath),
       environment: {
         if (javaHome != null) 'JAVA_HOME': javaHome,
       },

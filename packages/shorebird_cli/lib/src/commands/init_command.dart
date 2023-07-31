@@ -3,11 +3,11 @@ import 'dart:io';
 import 'package:mason_logger/mason_logger.dart';
 import 'package:shorebird_cli/src/command.dart';
 import 'package:shorebird_cli/src/doctor.dart';
+import 'package:shorebird_cli/src/gradlew.dart';
 import 'package:shorebird_cli/src/logger.dart';
 import 'package:shorebird_cli/src/shorebird_config_mixin.dart';
 import 'package:shorebird_cli/src/shorebird_create_app_mixin.dart';
 import 'package:shorebird_cli/src/shorebird_environment.dart';
-import 'package:shorebird_cli/src/shorebird_flavor_mixin.dart';
 import 'package:shorebird_cli/src/shorebird_validation_mixin.dart';
 
 /// {@template init_command}
@@ -19,8 +19,7 @@ class InitCommand extends ShorebirdCommand
     with
         ShorebirdConfigMixin,
         ShorebirdValidationMixin,
-        ShorebirdCreateAppMixin,
-        ShorebirdFlavorMixin {
+        ShorebirdCreateAppMixin {
   /// {@macro init_command}
   InitCommand({super.buildCodePushClient}) {
     argParser.addFlag(
@@ -75,7 +74,7 @@ If you want to reinitialize Shorebird, please run "shorebird init --force".''');
     var productFlavors = <String>{};
     final detectFlavorsProgress = logger.progress('Detecting product flavors');
     try {
-      productFlavors = await extractProductFlavors(Directory.current.path);
+      productFlavors = await gradlew.productFlavors(Directory.current.path);
       detectFlavorsProgress.complete();
     } catch (error) {
       detectFlavorsProgress.fail();
