@@ -22,7 +22,7 @@ class MissingGradleWrapperException implements Exception {
   String toString() {
     return '''
 Could not find $executablePath.
-Make sure you have run "flutter build apk at least once.''';
+Make sure you have run "flutter build apk" at least once.''';
   }
 }
 

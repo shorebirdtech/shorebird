@@ -67,7 +67,7 @@ void main() {
           const MissingGradleWrapperException('test').toString(),
           '''
 Could not find test.
-Make sure you have run "flutter build apk at least once.''',
+Make sure you have run "flutter build apk" at least once.''',
         );
       });
     });

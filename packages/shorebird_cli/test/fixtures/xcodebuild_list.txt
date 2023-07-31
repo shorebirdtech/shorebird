@@ -1,0 +1,29 @@
+Command line invocation:
+    /Applications/Xcode.app/Contents/Developer/usr/bin/xcodebuild -list
+
+User defaults from command line:
+    IDEPackageSupportUseBuiltinSCM = YES
+
+Information about project "Runner":
+    Targets:
+        Runner
+        RunnerTests
+
+    Build Configurations:
+        Debug
+        Debug-stable
+        Debug-internal
+        Release
+        Release-stable
+        Release-internal
+        Profile
+        Profile-stable
+        Profile-internal
+
+    If no build configuration is specified and -scheme is not passed then "Release" is used.
+
+    Schemes:
+        internal
+        Runner
+        stable
+
