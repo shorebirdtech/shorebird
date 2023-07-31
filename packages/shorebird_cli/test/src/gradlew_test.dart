@@ -61,6 +61,17 @@ void main() {
       when(() => result.stdout).thenReturn('');
     });
 
+    group(MissingAndroidProjectException, () {
+      test('toString is correct', () {
+        expect(
+          const MissingAndroidProjectException('test').toString(),
+          '''
+Could not find an android project in test.
+To add android, run "flutter create . --platforms android"''',
+        );
+      });
+    });
+
     group(MissingGradleWrapperException, () {
       test('toString is correct', () {
         expect(
@@ -86,7 +97,7 @@ Make sure you have run "flutter build apk" at least once.''',
       }
 
       test(
-          'throws MissingGradleWrapperException '
+          'throws MissingAndroidProjectException '
           'when android root does not exist', () async {
         when(() => platform.isLinux).thenReturn(true);
         when(() => platform.isMacOS).thenReturn(false);
@@ -94,7 +105,7 @@ Make sure you have run "flutter build apk" at least once.''',
         final tempDir = Directory.systemTemp.createTempSync();
         await expectLater(
           runWithOverrides(() => gradlew.productFlavors(tempDir.path)),
-          throwsA(isA<MissingGradleWrapperException>()),
+          throwsA(isA<MissingAndroidProjectException>()),
         );
         verifyNever(
           () => process.run(

@@ -7,6 +7,24 @@ import 'package:shorebird_cli/src/java.dart';
 import 'package:shorebird_cli/src/platform.dart';
 import 'package:shorebird_cli/src/process.dart';
 
+/// {@template missing_android_project_exception}
+/// Thrown when the Flutter project does not have
+/// Android configured as a platform.
+/// {@endtemplate}
+class MissingAndroidProjectException implements Exception {
+  /// {@macro missing_android_project_exception}
+  const MissingAndroidProjectException(this.projectPath);
+
+  final String projectPath;
+
+  @override
+  String toString() {
+    return '''
+Could not find an android project in $projectPath.
+To add android, run "flutter create . --platforms android"''';
+  }
+}
+
 /// Thrown when the gradle wrapper cannot be found.
 /// This has been resolved on the master channel but
 /// on the stable channel currently creating an app via
@@ -36,7 +54,10 @@ Gradlew get gradlew => read(gradlewRef);
 class Gradlew {
   String get executable => platform.isWindows ? 'gradlew.bat' : 'gradlew';
 
-  String executablePath(String projectPath) {
+  /// Return the set of product flavors configured for the app at [projectPath].
+  /// Returns an empty set for apps that do not use product flavors.
+  Future<Set<String>> productFlavors(String projectPath) async {
+    final javaHome = java.home;
     // Flutter apps have android files in root/android
     // Flutter modules have android files in root/.android
     final androidRoot = [
@@ -44,7 +65,7 @@ class Gradlew {
       Directory(p.join(projectPath, '.android')),
     ].firstWhereOrNull((dir) => dir.existsSync());
 
-    if (androidRoot == null) throw MissingGradleWrapperException(executable);
+    if (androidRoot == null) throw MissingAndroidProjectException(projectPath);
 
     final executableFile = File(p.join(androidRoot.path, executable));
 
@@ -52,19 +73,12 @@ class Gradlew {
       throw MissingGradleWrapperException(p.relative(executableFile.path));
     }
 
-    return executableFile.path;
-  }
-
-  /// Return the set of product flavors configured for the app at [projectPath].
-  /// Returns an empty set for apps that do not use product flavors.
-  Future<Set<String>> productFlavors(String projectPath) async {
-    final javaHome = java.home;
-    final gradlePath = executablePath(projectPath);
+    final executablePath = executableFile.path;
     final result = await process.run(
-      executablePath(projectPath),
+      executablePath,
       ['app:tasks', '--all', '--console=auto'],
       runInShell: true,
-      workingDirectory: p.dirname(gradlePath),
+      workingDirectory: p.dirname(executablePath),
       environment: {
         if (javaHome != null) 'JAVA_HOME': javaHome,
       },
