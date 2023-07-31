@@ -1593,6 +1593,74 @@ Please bump your version number and try again.''',
       });
     });
 
+    group('createIosFrameworkReleaseArtifacts', () {
+      final frameworkPath = p.join('path', 'to', 'App.xcframework');
+
+      Directory setUpTempDir({String? flavor}) {
+        final tempDir = Directory.systemTemp.createTempSync();
+        File(p.join(tempDir.path, frameworkPath)).createSync(recursive: true);
+        return tempDir;
+      }
+
+      test(
+        'exits with code 70 when creating xcframework artifact fails',
+        () async {
+          when(
+            () => codePushClient.createReleaseArtifact(
+              artifactPath: any(named: 'artifactPath'),
+              appId: any(named: 'appId'),
+              releaseId: any(named: 'releaseId'),
+              arch: any(named: 'arch'),
+              platform: any(named: 'platform'),
+              hash: any(named: 'hash'),
+            ),
+          ).thenThrow(
+            Exception('oh no'),
+          );
+          final tempDir = setUpTempDir();
+
+          await expectLater(
+            () async => runWithOverrides(
+              () => codePushClientWrapper.createIosFrameworkReleaseArtifacts(
+                appId: app.appId,
+                releaseId: releaseId,
+                appFrameworkPath: p.join(tempDir.path, frameworkPath),
+              ),
+            ),
+            exitsWithCode(ExitCode.software),
+          );
+        },
+      );
+
+      test('completes successfully when release artifact is created', () async {
+        when(
+          () => codePushClient.createReleaseArtifact(
+            artifactPath: any(named: 'artifactPath'),
+            appId: any(named: 'appId'),
+            releaseId: any(named: 'releaseId'),
+            arch: any(named: 'arch'),
+            platform: any(named: 'platform'),
+            hash: any(named: 'hash'),
+          ),
+        ).thenAnswer((_) async => {});
+        final tempDir = setUpTempDir();
+
+        await IOOverrides.runZoned(
+          () async => expectLater(
+            runWithOverrides(
+              () => codePushClientWrapper.createIosFrameworkReleaseArtifacts(
+                appId: app.appId,
+                releaseId: releaseId,
+                appFrameworkPath: p.join(tempDir.path, frameworkPath),
+              ),
+            ),
+            completes,
+          ),
+          getCurrentDirectory: () => tempDir,
+        );
+      });
+    });
+
     group('updateReleaseStatus', () {
       test(
         'exits with code 70 when updating release status fails',

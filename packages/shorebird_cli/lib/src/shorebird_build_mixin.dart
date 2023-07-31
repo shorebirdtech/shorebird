@@ -208,6 +208,33 @@ mixin ShorebirdBuildMixin on ShorebirdCommand {
     }
   }
 
+  /// Builds a release iOS framework (.xcframework) for the current project.
+  Future<void> buildIosFramework() async {
+    const executable = 'flutter';
+    final arguments = [
+      'build',
+      'ios-framework',
+      '--no-debug',
+      '--no-profile',
+      ...results.rest,
+    ];
+
+    final result = await process.run(
+      executable,
+      arguments,
+      runInShell: true,
+    );
+
+    if (result.exitCode != ExitCode.success.code) {
+      throw ProcessException(
+        'flutter',
+        arguments,
+        result.stderr.toString(),
+        result.exitCode,
+      );
+    }
+  }
+
   /// Creates an ExportOptions.plist file, which is used to tell xcodebuild to
   /// not manage the app version and build number. If we don't do this, then
   /// xcodebuild will increment the build number if it detects an App Store
