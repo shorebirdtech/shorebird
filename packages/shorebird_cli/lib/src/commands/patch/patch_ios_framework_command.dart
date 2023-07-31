@@ -84,6 +84,20 @@ of the iOS app that is using this module.''',
     final shorebirdYaml = ShorebirdEnvironment.getShorebirdYaml()!;
     final appId = shorebirdYaml.getAppId();
     final app = await codePushClientWrapper.getApp(appId: appId);
+
+    final release = await codePushClientWrapper.getRelease(
+      appId: appId,
+      releaseVersion: releaseVersion,
+    );
+
+    if (release.platformStatuses[ReleasePlatform.ios] == ReleaseStatus.draft) {
+      logger.err('''
+Release $releaseVersion is in an incomplete state. It's possible that the original release was terminated or failed to complete.
+
+Please re-run the release command for this version or create a new release.''');
+      return ExitCode.software.code;
+    }
+
     final buildProgress = logger.progress('Building patch');
     try {
       await buildIosFramework();
@@ -103,19 +117,6 @@ of the iOS app that is using this module.''',
     }
 
     buildProgress.complete();
-
-    final release = await codePushClientWrapper.getRelease(
-      appId: appId,
-      releaseVersion: releaseVersion,
-    );
-
-    if (release.platformStatuses[ReleasePlatform.ios] == ReleaseStatus.draft) {
-      logger.err('''
-Release $releaseVersion is in an incomplete state. It's possible that the original release was terminated or failed to complete.
-
-Please re-run the release command for this version or create a new release.''');
-      return ExitCode.software.code;
-    }
 
     final flutterRevisionProgress = logger.progress(
       'Fetching Flutter revision',

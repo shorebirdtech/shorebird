@@ -331,6 +331,20 @@ Please re-run the release command for this version or create a new release.'''),
       },
     );
 
+    test('exits with code 70 when build fails', () async {
+      when(() => flutterBuildProcessResult.exitCode).thenReturn(1);
+      when(() => flutterBuildProcessResult.stderr).thenReturn('oh no');
+
+      final tempDir = setUpTempDir();
+      setUpTempArtifacts(tempDir);
+      final exitCode = await IOOverrides.runZoned(
+        () => runWithOverrides(command.run),
+        getCurrentDirectory: () => tempDir,
+      );
+      expect(exitCode, ExitCode.software.code);
+      verify(() => progress.fail('Failed to build: oh no')).called(1);
+    });
+
     test('errors when unable to detect flutter revision', () async {
       const error = 'oops';
       when(() => flutterRevisionProcessResult.exitCode).thenReturn(1);
