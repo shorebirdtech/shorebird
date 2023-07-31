@@ -1,7 +1,6 @@
 import 'dart:io' hide Platform;
 
 import 'package:args/args.dart';
-import 'package:http/http.dart' as http;
 import 'package:mason_logger/mason_logger.dart';
 import 'package:mocktail/mocktail.dart';
 import 'package:path/path.dart' as p;
@@ -21,8 +20,6 @@ import 'package:shorebird_code_push_client/shorebird_code_push_client.dart';
 import 'package:test/test.dart';
 
 class _MockArgResults extends Mock implements ArgResults {}
-
-class _MockHttpClient extends Mock implements http.Client {}
 
 class _MockAuth extends Mock implements Auth {}
 
@@ -87,7 +84,6 @@ flutter:
     - shorebird.yaml''';
 
     late ArgResults argResults;
-    late http.Client httpClient;
     late CodePushClientWrapper codePushClientWrapper;
     late Directory shorebirdRoot;
     late Doctor doctor;
@@ -142,7 +138,6 @@ flutter:
       argResults = _MockArgResults();
       codePushClientWrapper = _MockCodePushClientWrapper();
       doctor = _MockDoctor();
-      httpClient = _MockHttpClient();
       platform = _MockPlatform();
       shorebirdRoot = Directory.systemTemp.createTempSync();
       auth = _MockAuth();
@@ -187,7 +182,6 @@ flutter:
       when(() => argResults['arch']).thenReturn(arch);
       when(() => argResults['platform']).thenReturn(releasePlatform);
       when(() => auth.isAuthenticated).thenReturn(true);
-      when(() => auth.client).thenReturn(httpClient);
       when(() => ipaReader.read(any())).thenReturn(ipa);
       when(() => ipa.versionNumber).thenReturn(version);
       when(() => logger.progress(any())).thenReturn(progress);
