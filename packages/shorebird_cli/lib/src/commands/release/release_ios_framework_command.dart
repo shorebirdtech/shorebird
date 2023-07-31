@@ -129,12 +129,6 @@ ${summary.join('\n')}
     final Release release;
     if (existingRelease != null) {
       release = existingRelease;
-      await codePushClientWrapper.updateReleaseStatus(
-        appId: appId,
-        releaseId: release.id,
-        platform: releasePlatform,
-        status: ReleaseStatus.draft,
-      );
     } else {
       release = await codePushClientWrapper.createRelease(
         appId: appId,

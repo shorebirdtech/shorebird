@@ -317,6 +317,28 @@ flutter:
       verify(() => logger.err('Aborting due to validation errors.')).called(1);
     });
 
+    test('checks that release is not active if release exists', () async {
+      when(
+        () => codePushClientWrapper.maybeGetRelease(
+          appId: any(named: 'appId'),
+          releaseVersion: any(named: 'releaseVersion'),
+        ),
+      ).thenAnswer((_) async => release);
+      final tempDir = setUpTempDir();
+
+      await IOOverrides.runZoned(
+        () => runWithOverrides(command.run),
+        getCurrentDirectory: () => tempDir,
+      );
+
+      verify(
+        () => codePushClientWrapper.ensureReleaseIsNotActive(
+          release: release,
+          platform: releasePlatform,
+        ),
+      ).called(1);
+    });
+
     test('aborts when user opts out', () async {
       when(() => logger.confirm(any())).thenReturn(false);
       final tempDir = setUpTempDir();
