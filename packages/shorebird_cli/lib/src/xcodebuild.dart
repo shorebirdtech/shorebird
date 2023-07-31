@@ -3,6 +3,7 @@ import 'dart:io';
 import 'package:collection/collection.dart';
 import 'package:mason_logger/mason_logger.dart';
 import 'package:path/path.dart' as p;
+import 'package:scoped/scoped.dart';
 import 'package:shorebird_cli/src/process.dart';
 
 /// {@template missing_ios_project_exception}
@@ -27,7 +28,7 @@ To add iOS, run "flutter create . --platforms ios"''';
 /// {@endtemplate}
 class XcodeProjectBuildInfo {
   /// {@macro xcode_project_build_info}
-  XcodeProjectBuildInfo({
+  const XcodeProjectBuildInfo({
     this.targets = const {},
     this.buildConfigurations = const {},
     this.schemes = const {},
@@ -42,6 +43,12 @@ class XcodeProjectBuildInfo {
   /// Set of schemes configured for the project.
   final Set<String> schemes;
 }
+
+/// A reference to a [XcodeBuild] instance.
+final xcodeBuildRef = create(XcodeBuild.new);
+
+/// The [XcodeBuild] instance available in the current zone.
+XcodeBuild get xcodeBuild => read(xcodeBuildRef);
 
 /// A wrapper around the `xcodebuild` command.
 class XcodeBuild {

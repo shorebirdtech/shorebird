@@ -12,6 +12,7 @@ import 'package:shorebird_cli/src/doctor.dart';
 import 'package:shorebird_cli/src/gradlew.dart';
 import 'package:shorebird_cli/src/logger.dart';
 import 'package:shorebird_cli/src/process.dart';
+import 'package:shorebird_cli/src/xcodebuild.dart';
 import 'package:shorebird_code_push_client/shorebird_code_push_client.dart';
 import 'package:test/test.dart';
 
@@ -30,6 +31,8 @@ class _MockGradlew extends Mock implements Gradlew {}
 class _MockLogger extends Mock implements Logger {}
 
 class _MockProgress extends Mock implements Progress {}
+
+class _MockXcodeBuild extends Mock implements XcodeBuild {}
 
 void main() {
   group(InitCommand, () {
@@ -52,6 +55,7 @@ environment:
     late CodePushClient codePushClient;
     late Logger logger;
     late Progress progress;
+    late XcodeBuild xcodeBuild;
     late InitCommand command;
 
     R runWithOverrides<R>(R Function() body) {
@@ -63,6 +67,7 @@ environment:
           gradlewRef.overrideWith(() => gradlew),
           loggerRef.overrideWith(() => logger),
           processRef.overrideWith(() => process),
+          xcodeBuildRef.overrideWith(() => xcodeBuild),
         },
       );
     }
@@ -70,6 +75,7 @@ environment:
     Directory setUpAppTempDir() {
       final tempDir = Directory.systemTemp.createTempSync();
       Directory(p.join(tempDir.path, 'android')).createSync(recursive: true);
+      Directory(p.join(tempDir.path, 'ios')).createSync(recursive: true);
       return tempDir;
     }
 
@@ -82,6 +88,7 @@ environment:
       codePushClient = _MockCodePushClient();
       logger = _MockLogger();
       progress = _MockProgress();
+      xcodeBuild = _MockXcodeBuild();
 
       when(() => auth.isAuthenticated).thenReturn(true);
       when(() => auth.client).thenReturn(httpClient);
@@ -100,6 +107,9 @@ environment:
       ).thenReturn(appName);
       when(() => logger.progress(any())).thenReturn(progress);
       when(() => gradlew.productFlavors(any())).thenAnswer((_) async => {});
+      when(
+        () => xcodeBuild.list(any()),
+      ).thenAnswer((_) async => const XcodeProjectBuildInfo());
 
       command = runWithOverrides(
         () => InitCommand(
@@ -252,44 +262,48 @@ If you want to reinitialize Shorebird, please run "shorebird init --force".''',
       );
     });
 
-    test('creates shorebird.yaml for an app with flavors', () async {
-      final appIds = [
-        'test-appId-1',
-        'test-appId-2',
-        'test-appId-3',
-        'test-appId-4',
-        'test-appId-5',
-        'test-appId-6'
-      ];
-      var index = 0;
-      when(() => gradlew.productFlavors(any())).thenAnswer(
-        (_) async => {
-          'development',
-          'developmentInternal',
-          'production',
-          'productionInternal',
-          'staging',
-          'stagingInternal',
-        },
-      );
-      when(
-        () => codePushClient.createApp(displayName: any(named: 'displayName')),
-      ).thenAnswer((invocation) async {
-        final displayName = invocation.namedArguments[#displayName] as String;
-        return App(id: appIds[index++], displayName: displayName);
-      });
-      final tempDir = setUpAppTempDir();
-      File(p.join(tempDir.path, 'android', 'gradlew')).createSync();
-      File(
-        p.join(tempDir.path, 'pubspec.yaml'),
-      ).writeAsStringSync(pubspecYamlContent);
-      await IOOverrides.runZoned(
-        () => runWithOverrides(command.run),
-        getCurrentDirectory: () => tempDir,
-      );
-      expect(
-        File(p.join(tempDir.path, 'shorebird.yaml')).readAsStringSync(),
-        contains('''
+    group('creates shorebird.yaml for an app with flavors', () {
+      test('android only', () async {
+        final appIds = [
+          'test-appId-1',
+          'test-appId-2',
+          'test-appId-3',
+          'test-appId-4',
+          'test-appId-5',
+          'test-appId-6',
+        ];
+        var index = 0;
+        when(() => gradlew.productFlavors(any())).thenAnswer(
+          (_) async => {
+            'development',
+            'developmentInternal',
+            'production',
+            'productionInternal',
+            'staging',
+            'stagingInternal',
+          },
+        );
+        when(
+          () =>
+              codePushClient.createApp(displayName: any(named: 'displayName')),
+        ).thenAnswer((invocation) async {
+          final displayName = invocation.namedArguments[#displayName] as String;
+          return App(id: appIds[index++], displayName: displayName);
+        });
+        final tempDir = setUpAppTempDir();
+        when(
+          () => xcodeBuild.list(any()),
+        ).thenThrow(MissingIOSProjectException(tempDir.path));
+        File(
+          p.join(tempDir.path, 'pubspec.yaml'),
+        ).writeAsStringSync(pubspecYamlContent);
+        await IOOverrides.runZoned(
+          () => runWithOverrides(command.run),
+          getCurrentDirectory: () => tempDir,
+        );
+        expect(
+          File(p.join(tempDir.path, 'shorebird.yaml')).readAsStringSync(),
+          contains('''
 app_id: ${appIds[0]}
 flavors:
   development: ${appIds[0]}
@@ -298,13 +312,376 @@ flavors:
   productionInternal: ${appIds[3]}
   staging: ${appIds[4]}
   stagingInternal: ${appIds[5]}'''),
-      );
+        );
 
-      verifyInOrder([
-        () => codePushClient.createApp(displayName: '$appName (development)'),
-        () => codePushClient.createApp(displayName: '$appName (production)'),
-        () => codePushClient.createApp(displayName: '$appName (staging)'),
-      ]);
+        verifyInOrder([
+          () => codePushClient.createApp(displayName: '$appName (development)'),
+          () => codePushClient.createApp(
+                displayName: '$appName (developmentInternal)',
+              ),
+          () => codePushClient.createApp(displayName: '$appName (production)'),
+          () => codePushClient.createApp(
+                displayName: '$appName (productionInternal)',
+              ),
+          () => codePushClient.createApp(displayName: '$appName (staging)'),
+          () => codePushClient.createApp(
+                displayName: '$appName (stagingInternal)',
+              ),
+        ]);
+      });
+
+      test('ios only', () async {
+        final appIds = [
+          'test-appId-1',
+          'test-appId-2',
+          'test-appId-3',
+          'test-appId-4',
+          'test-appId-5',
+          'test-appId-6'
+        ];
+        var index = 0;
+        when(() => xcodeBuild.list(any())).thenAnswer(
+          (_) async => const XcodeProjectBuildInfo(
+            schemes: {
+              'development',
+              'developmentInternal',
+              'production',
+              'productionInternal',
+              'staging',
+              'stagingInternal',
+            },
+          ),
+        );
+        when(
+          () =>
+              codePushClient.createApp(displayName: any(named: 'displayName')),
+        ).thenAnswer((invocation) async {
+          final displayName = invocation.namedArguments[#displayName] as String;
+          return App(id: appIds[index++], displayName: displayName);
+        });
+        final tempDir = setUpAppTempDir();
+        when(
+          () => gradlew.productFlavors(any()),
+        ).thenThrow(MissingAndroidProjectException(tempDir.path));
+        File(
+          p.join(tempDir.path, 'pubspec.yaml'),
+        ).writeAsStringSync(pubspecYamlContent);
+        await IOOverrides.runZoned(
+          () => runWithOverrides(command.run),
+          getCurrentDirectory: () => tempDir,
+        );
+        expect(
+          File(p.join(tempDir.path, 'shorebird.yaml')).readAsStringSync(),
+          contains('''
+app_id: ${appIds[0]}
+flavors:
+  development: ${appIds[0]}
+  developmentInternal: ${appIds[1]}
+  production: ${appIds[2]}
+  productionInternal: ${appIds[3]}
+  staging: ${appIds[4]}
+  stagingInternal: ${appIds[5]}'''),
+        );
+
+        verifyInOrder([
+          () => codePushClient.createApp(displayName: '$appName (development)'),
+          () => codePushClient.createApp(
+                displayName: '$appName (developmentInternal)',
+              ),
+          () => codePushClient.createApp(displayName: '$appName (production)'),
+          () => codePushClient.createApp(
+                displayName: '$appName (productionInternal)',
+              ),
+          () => codePushClient.createApp(displayName: '$appName (staging)'),
+          () => codePushClient.createApp(
+                displayName: '$appName (stagingInternal)',
+              ),
+        ]);
+      });
+
+      test('ios w/flavors and android w/out flavors', () async {
+        final appIds = [
+          'test-appId-1',
+          'test-appId-2',
+          'test-appId-3',
+          'test-appId-4',
+          'test-appId-5',
+          'test-appId-6',
+          'test-appId-7'
+        ];
+        var index = 0;
+        when(() => xcodeBuild.list(any())).thenAnswer(
+          (_) async => const XcodeProjectBuildInfo(
+            schemes: {
+              'development',
+              'developmentInternal',
+              'production',
+              'productionInternal',
+              'staging',
+              'stagingInternal',
+            },
+          ),
+        );
+        when(() => gradlew.productFlavors(any())).thenAnswer((_) async => {});
+        when(
+          () =>
+              codePushClient.createApp(displayName: any(named: 'displayName')),
+        ).thenAnswer((invocation) async {
+          final displayName = invocation.namedArguments[#displayName] as String;
+          return App(id: appIds[index++], displayName: displayName);
+        });
+        final tempDir = setUpAppTempDir();
+        File(
+          p.join(tempDir.path, 'pubspec.yaml'),
+        ).writeAsStringSync(pubspecYamlContent);
+        await IOOverrides.runZoned(
+          () => runWithOverrides(command.run),
+          getCurrentDirectory: () => tempDir,
+        );
+        expect(
+          File(p.join(tempDir.path, 'shorebird.yaml')).readAsStringSync(),
+          contains('''
+app_id: ${appIds[0]}
+flavors:
+  development: ${appIds[1]}
+  developmentInternal: ${appIds[2]}
+  production: ${appIds[3]}
+  productionInternal: ${appIds[4]}
+  staging: ${appIds[5]}
+  stagingInternal: ${appIds[6]}'''),
+        );
+
+        verifyInOrder([
+          () => codePushClient.createApp(displayName: '$appName (development)'),
+          () => codePushClient.createApp(
+                displayName: '$appName (developmentInternal)',
+              ),
+          () => codePushClient.createApp(displayName: '$appName (production)'),
+          () => codePushClient.createApp(
+                displayName: '$appName (productionInternal)',
+              ),
+          () => codePushClient.createApp(displayName: '$appName (staging)'),
+          () => codePushClient.createApp(
+                displayName: '$appName (stagingInternal)',
+              ),
+        ]);
+      });
+
+      test('android w/flavors and ios w/out flavors', () async {
+        final appIds = [
+          'test-appId-1',
+          'test-appId-2',
+          'test-appId-3',
+          'test-appId-4',
+          'test-appId-5',
+          'test-appId-6',
+          'test-appId-7'
+        ];
+        var index = 0;
+        when(() => xcodeBuild.list(any())).thenAnswer(
+          (_) async => const XcodeProjectBuildInfo(),
+        );
+        when(() => gradlew.productFlavors(any())).thenAnswer(
+          (_) async => {
+            'development',
+            'developmentInternal',
+            'production',
+            'productionInternal',
+            'staging',
+            'stagingInternal',
+          },
+        );
+        when(
+          () =>
+              codePushClient.createApp(displayName: any(named: 'displayName')),
+        ).thenAnswer((invocation) async {
+          final displayName = invocation.namedArguments[#displayName] as String;
+          return App(id: appIds[index++], displayName: displayName);
+        });
+        final tempDir = setUpAppTempDir();
+        File(
+          p.join(tempDir.path, 'pubspec.yaml'),
+        ).writeAsStringSync(pubspecYamlContent);
+        await IOOverrides.runZoned(
+          () => runWithOverrides(command.run),
+          getCurrentDirectory: () => tempDir,
+        );
+        expect(
+          File(p.join(tempDir.path, 'shorebird.yaml')).readAsStringSync(),
+          contains('''
+app_id: ${appIds[0]}
+flavors:
+  development: ${appIds[1]}
+  developmentInternal: ${appIds[2]}
+  production: ${appIds[3]}
+  productionInternal: ${appIds[4]}
+  staging: ${appIds[5]}
+  stagingInternal: ${appIds[6]}'''),
+        );
+
+        verifyInOrder([
+          () => codePushClient.createApp(displayName: '$appName (development)'),
+          () => codePushClient.createApp(
+                displayName: '$appName (developmentInternal)',
+              ),
+          () => codePushClient.createApp(displayName: '$appName (production)'),
+          () => codePushClient.createApp(
+                displayName: '$appName (productionInternal)',
+              ),
+          () => codePushClient.createApp(displayName: '$appName (staging)'),
+          () => codePushClient.createApp(
+                displayName: '$appName (stagingInternal)',
+              ),
+        ]);
+      });
+
+      test('ios + android w/same variants', () async {
+        final appIds = [
+          'test-appId-1',
+          'test-appId-2',
+          'test-appId-3',
+          'test-appId-4',
+          'test-appId-5',
+          'test-appId-6'
+        ];
+        const variants = {
+          'development',
+          'developmentInternal',
+          'production',
+          'productionInternal',
+          'staging',
+          'stagingInternal',
+        };
+        var index = 0;
+        when(
+          () => gradlew.productFlavors(any()),
+        ).thenAnswer((_) async => variants);
+        when(() => xcodeBuild.list(any())).thenAnswer(
+          (_) async => const XcodeProjectBuildInfo(schemes: variants),
+        );
+        when(
+          () =>
+              codePushClient.createApp(displayName: any(named: 'displayName')),
+        ).thenAnswer((invocation) async {
+          final displayName = invocation.namedArguments[#displayName] as String;
+          return App(id: appIds[index++], displayName: displayName);
+        });
+        final tempDir = setUpAppTempDir();
+        File(
+          p.join(tempDir.path, 'pubspec.yaml'),
+        ).writeAsStringSync(pubspecYamlContent);
+        await IOOverrides.runZoned(
+          () => runWithOverrides(command.run),
+          getCurrentDirectory: () => tempDir,
+        );
+        expect(
+          File(p.join(tempDir.path, 'shorebird.yaml')).readAsStringSync(),
+          contains('''
+app_id: ${appIds[0]}
+flavors:
+  development: ${appIds[0]}
+  developmentInternal: ${appIds[1]}
+  production: ${appIds[2]}
+  productionInternal: ${appIds[3]}
+  staging: ${appIds[4]}
+  stagingInternal: ${appIds[5]}'''),
+        );
+
+        verifyInOrder([
+          () => codePushClient.createApp(displayName: '$appName (development)'),
+          () => codePushClient.createApp(
+                displayName: '$appName (developmentInternal)',
+              ),
+          () => codePushClient.createApp(displayName: '$appName (production)'),
+          () => codePushClient.createApp(
+                displayName: '$appName (productionInternal)',
+              ),
+          () => codePushClient.createApp(displayName: '$appName (staging)'),
+          () => codePushClient.createApp(
+                displayName: '$appName (stagingInternal)',
+              ),
+        ]);
+      });
+
+      test('ios + android w/different variants', () async {
+        final appIds = [
+          'test-appId-1',
+          'test-appId-2',
+          'test-appId-3',
+          'test-appId-4',
+          'test-appId-5',
+          'test-appId-6',
+          'test-appId-7',
+          'test-appId-8',
+        ];
+        const androidVariants = {
+          'dev',
+          'devInternal',
+          'production',
+          'productionInternal',
+        };
+        const iosVariants = {
+          'development',
+          'developmentInternal',
+          'production',
+          'productionInternal',
+          'staging',
+          'stagingInternal',
+        };
+        var index = 0;
+        when(
+          () => gradlew.productFlavors(any()),
+        ).thenAnswer((_) async => androidVariants);
+        when(() => xcodeBuild.list(any())).thenAnswer(
+          (_) async => const XcodeProjectBuildInfo(schemes: iosVariants),
+        );
+        when(
+          () =>
+              codePushClient.createApp(displayName: any(named: 'displayName')),
+        ).thenAnswer((invocation) async {
+          final displayName = invocation.namedArguments[#displayName] as String;
+          return App(id: appIds[index++], displayName: displayName);
+        });
+        final tempDir = setUpAppTempDir();
+        File(
+          p.join(tempDir.path, 'pubspec.yaml'),
+        ).writeAsStringSync(pubspecYamlContent);
+        await IOOverrides.runZoned(
+          () => runWithOverrides(command.run),
+          getCurrentDirectory: () => tempDir,
+        );
+        expect(
+          File(p.join(tempDir.path, 'shorebird.yaml')).readAsStringSync(),
+          contains('''
+app_id: test-appId-1
+flavors:
+  dev: test-appId-1
+  devInternal: test-appId-2
+  production: test-appId-3
+  productionInternal: test-appId-4
+  development: test-appId-5
+  developmentInternal: test-appId-6
+  staging: test-appId-7
+  stagingInternal: test-appId-8'''),
+        );
+
+        verifyInOrder([
+          () => codePushClient.createApp(displayName: '$appName (dev)'),
+          () => codePushClient.createApp(displayName: '$appName (devInternal)'),
+          () => codePushClient.createApp(displayName: '$appName (production)'),
+          () => codePushClient.createApp(
+                displayName: '$appName (productionInternal)',
+              ),
+          () => codePushClient.createApp(displayName: '$appName (development)'),
+          () => codePushClient.createApp(
+                displayName: '$appName (developmentInternal)',
+              ),
+          () => codePushClient.createApp(displayName: '$appName (staging)'),
+          () => codePushClient.createApp(
+                displayName: '$appName (stagingInternal)',
+              ),
+        ]);
+      });
     });
 
     test('detects existing shorebird.yaml in pubspec.yaml assets', () async {
