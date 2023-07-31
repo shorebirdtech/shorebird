@@ -213,7 +213,7 @@ flutter:
       when(flutterValidator.validate).thenAnswer((_) async => []);
       when(() => logger.confirm(any())).thenReturn(true);
       when(() => logger.progress(any())).thenReturn(progress);
-      when(() => platform.isMacOS).thenReturn(true);
+      when(() => platform.operatingSystem).thenReturn(Platform.macOS);
       when(() => platform.environment).thenReturn({});
       when(() => platform.script).thenReturn(
         Uri.file(
@@ -266,12 +266,12 @@ flutter:
     });
 
     test('exits with unavailable code if run on non-macOS platform', () async {
-      when(() => platform.isMacOS).thenReturn(false);
+      when(() => platform.operatingSystem).thenReturn(Platform.windows);
 
       final result = await runWithOverrides(command.run);
 
       expect(result, equals(ExitCode.unavailable.code));
-      verify(() => logger.err('This command is only supported on macOS.'))
+      verify(() => logger.err('This command is only supported on macos.'))
           .called(1);
     });
 

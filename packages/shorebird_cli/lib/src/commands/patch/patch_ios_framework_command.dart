@@ -1,7 +1,8 @@
-import 'dart:io';
+import 'dart:io' hide Platform;
 
 import 'package:crypto/crypto.dart';
 import 'package:mason_logger/mason_logger.dart';
+import 'package:platform/platform.dart';
 import 'package:shorebird_cli/src/code_push_client_wrapper.dart';
 import 'package:shorebird_cli/src/command.dart';
 import 'package:shorebird_cli/src/config/shorebird_yaml.dart';
@@ -9,7 +10,6 @@ import 'package:shorebird_cli/src/doctor.dart';
 import 'package:shorebird_cli/src/formatters/file_size_formatter.dart';
 import 'package:shorebird_cli/src/ios.dart';
 import 'package:shorebird_cli/src/logger.dart';
-import 'package:shorebird_cli/src/platform.dart';
 import 'package:shorebird_cli/src/shorebird_artifact_mixin.dart';
 import 'package:shorebird_cli/src/shorebird_build_mixin.dart';
 import 'package:shorebird_cli/src/shorebird_config_mixin.dart';
@@ -59,16 +59,12 @@ of the iOS app that is using this module.''',
 
   @override
   Future<int> run() async {
-    if (!platform.isMacOS) {
-      logger.err('This command is only supported on macOS.');
-      return ExitCode.unavailable.code;
-    }
-
     try {
       await validatePreconditions(
         checkUserIsAuthenticated: true,
         checkShorebirdInitialized: true,
         validators: doctor.iosCommandValidators,
+        supportedOperatingSystems: {Platform.macOS},
       );
     } on PreconditionFailedException catch (e) {
       return e.exitCode.code;

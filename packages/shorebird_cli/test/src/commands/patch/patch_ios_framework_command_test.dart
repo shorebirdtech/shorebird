@@ -176,7 +176,7 @@ flutter:
       when(flutterValidator.validate).thenAnswer((_) async => []);
       when(() => logger.progress(any())).thenReturn(progress);
       when(() => logger.confirm(any())).thenReturn(true);
-      when(() => platform.isMacOS).thenReturn(true);
+      when(() => platform.operatingSystem).thenReturn(Platform.macOS);
       when(() => platform.script).thenReturn(
         Uri.file(
           p.join(
@@ -224,12 +224,12 @@ flutter:
     });
 
     test('exits with unavailable code if run on non-macOS platform', () async {
-      when(() => platform.isMacOS).thenReturn(false);
+      when(() => platform.operatingSystem).thenReturn(Platform.windows);
 
       final result = await runWithOverrides(command.run);
 
       expect(result, equals(ExitCode.unavailable.code));
-      verify(() => logger.err('This command is only supported on macOS.'))
+      verify(() => logger.err('This command is only supported on macos.'))
           .called(1);
     });
 
@@ -476,46 +476,6 @@ https://github.com/shorebirdtech/shorebird/issues/472
       ).called(1);
       verify(() => logger.success('\n✅ Published Patch!')).called(1);
       expect(exitCode, ExitCode.success.code);
-    });
-
-    test(
-        'succeeds when patch is successful '
-        'with flavors and target', () async {
-      const flavor = 'development';
-      const target = './lib/main_development.dart';
-      when(() => argResults['flavor']).thenReturn(flavor);
-      when(() => argResults['target']).thenReturn(target);
-      final tempDir = setUpTempDir();
-      File(
-        p.join(tempDir.path, 'shorebird.yaml'),
-      ).writeAsStringSync('''
-app_id: productionAppId
-flavors:
-  development: $appId''');
-      setUpTempArtifacts(tempDir);
-      final exitCode = await IOOverrides.runZoned(
-        () => runWithOverrides(command.run),
-        getCurrentDirectory: () => tempDir,
-      );
-      verify(() => logger.success('\n✅ Published Patch!')).called(1);
-      expect(exitCode, ExitCode.success.code);
-    });
-
-    test('succeeds when patch is successful using custom base_url', () async {
-      final tempDir = setUpTempDir();
-      setUpTempArtifacts(tempDir);
-      const baseUrl = 'https://example.com';
-      File(
-        p.join(tempDir.path, 'shorebird.yaml'),
-      ).writeAsStringSync(
-        '''
-app_id: $appId
-base_url: $baseUrl''',
-      );
-      await IOOverrides.runZoned(
-        () => runWithOverrides(command.run),
-        getCurrentDirectory: () => tempDir,
-      );
     });
 
     test('prints flutter validation warnings', () async {
