@@ -512,21 +512,56 @@ aar artifact already exists, continuing...''',
 
     final runnerDirectory = Directory(runnerPath);
     await Isolate.run(() => ZipFileEncoder().zipDirectory(runnerDirectory));
-    final zipperRunner = File('$runnerPath.zip');
+    final zippedRunner = File('$runnerPath.zip');
     try {
       await codePushClient.createReleaseArtifact(
         appId: appId,
         releaseId: releaseId,
-        artifactPath: zipperRunner.path,
+        artifactPath: zippedRunner.path,
         arch: 'runner',
         platform: ReleasePlatform.ios,
-        hash: sha256.convert(await zipperRunner.readAsBytes()).toString(),
+        hash: sha256.convert(await zippedRunner.readAsBytes()).toString(),
       );
     } catch (error) {
       _handleErrorAndExit(
         error,
         progress: createArtifactProgress,
         message: 'Error uploading runner.app: $error',
+      );
+    }
+
+    createArtifactProgress.complete();
+  }
+
+  /// Zips and uploads a release xcframework to the Shorebird server.
+  Future<void> createIosFrameworkReleaseArtifacts({
+    required String appId,
+    required int releaseId,
+    required String appFrameworkPath,
+  }) async {
+    final createArtifactProgress = logger.progress('Creating artifacts');
+    final appFrameworkDirectory = Directory(appFrameworkPath);
+    await Isolate.run(
+      () => ZipFileEncoder().zipDirectory(appFrameworkDirectory),
+    );
+    final zippedAppFrameworkFile = File('$appFrameworkPath.zip');
+
+    try {
+      await codePushClient.createReleaseArtifact(
+        appId: appId,
+        releaseId: releaseId,
+        artifactPath: zippedAppFrameworkFile.path,
+        arch: 'xcframework',
+        platform: ReleasePlatform.ios,
+        hash: sha256
+            .convert(await zippedAppFrameworkFile.readAsBytes())
+            .toString(),
+      );
+    } catch (error) {
+      _handleErrorAndExit(
+        error,
+        progress: createArtifactProgress,
+        message: 'Error uploading xcframework: $error',
       );
     }
 
