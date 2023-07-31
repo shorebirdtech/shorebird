@@ -419,8 +419,9 @@ flutter:
           any(
             that: stringContainsInOrder(
               [
-                'Your next step is to include the framework in your iOS app.',
-                '${lightCyan.wrap('build/ios/framework/Release')}'
+                'Your next step is to include the .xcframework files in',
+                '/build/ios/framework/Release',
+                'in your iOS app.'
               ],
             ),
           ),

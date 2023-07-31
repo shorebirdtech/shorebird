@@ -162,8 +162,7 @@ ${summary.join('\n')}
       ..success('\n✅ Published Release!')
       ..info('''
 
-Your next step is to include the framework in your iOS app.
-${lightCyan.wrap(relativeFrameworkDirectoryPath)}
+Your next step is to include the .xcframework files in ${lightCyan.wrap(relativeFrameworkDirectoryPath)} in your iOS app.
 
 To do this:
     1. Add the relative path to $relativeFrameworkDirectoryPath to your app's Framework Search Paths in your Xcode build settings.
