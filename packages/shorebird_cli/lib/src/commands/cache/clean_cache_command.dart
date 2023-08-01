@@ -59,7 +59,7 @@ This could be because a program is using a file in the cache directory. To find 
       return ExitCode.software.code;
     }
 
-    progress.complete('Cleared Cache');
+    progress.complete('Cleared cache');
     return ExitCode.success.code;
   }
 }
