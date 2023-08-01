@@ -6,7 +6,6 @@ import 'package:mason_logger/mason_logger.dart';
 import 'package:shorebird_cli/src/code_push_client_wrapper.dart';
 import 'package:shorebird_cli/src/command.dart';
 import 'package:shorebird_cli/src/config/config.dart';
-import 'package:shorebird_cli/src/doctor.dart';
 import 'package:shorebird_cli/src/logger.dart';
 import 'package:shorebird_cli/src/shorebird_artifact_mixin.dart';
 import 'package:shorebird_cli/src/shorebird_build_mixin.dart';
@@ -76,7 +75,6 @@ make smaller updates to your app.
       await validatePreconditions(
         checkUserIsAuthenticated: true,
         checkShorebirdInitialized: true,
-        validators: doctor.androidCommandValidators,
       );
     } on PreconditionFailedException catch (e) {
       return e.exitCode.code;

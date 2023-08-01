@@ -10,13 +10,11 @@ import 'package:scoped/scoped.dart';
 import 'package:shorebird_cli/src/auth/auth.dart';
 import 'package:shorebird_cli/src/code_push_client_wrapper.dart';
 import 'package:shorebird_cli/src/commands/commands.dart';
-import 'package:shorebird_cli/src/doctor.dart';
 import 'package:shorebird_cli/src/java.dart';
 import 'package:shorebird_cli/src/logger.dart';
 import 'package:shorebird_cli/src/platform.dart';
 import 'package:shorebird_cli/src/process.dart';
 import 'package:shorebird_cli/src/shorebird_build_mixin.dart';
-import 'package:shorebird_cli/src/validators/validators.dart';
 import 'package:shorebird_code_push_client/shorebird_code_push_client.dart';
 import 'package:test/test.dart';
 
@@ -25,8 +23,6 @@ class _MockArgResults extends Mock implements ArgResults {}
 class _MockHttpClient extends Mock implements http.Client {}
 
 class _MockAuth extends Mock implements Auth {}
-
-class _MockDoctor extends Mock implements Doctor {}
 
 class _MockJava extends Mock implements Java {}
 
@@ -40,9 +36,6 @@ class _MockProcessResult extends Mock implements ShorebirdProcessResult {}
 
 class _MockCodePushClientWrapper extends Mock
     implements CodePushClientWrapper {}
-
-class _MockShorebirdFlutterValidator extends Mock
-    implements ShorebirdFlutterValidator {}
 
 class _MockShorebirdProcess extends Mock implements ShorebirdProcess {}
 
@@ -97,7 +90,6 @@ flutter:
     late Auth auth;
     late CodePushClientWrapper codePushClientWrapper;
     late Directory shorebirdRoot;
-    late Doctor doctor;
     late Java java;
     late Platform platform;
     late Progress progress;
@@ -105,7 +97,6 @@ flutter:
     late ShorebirdProcessResult flutterBuildProcessResult;
     late ShorebirdProcessResult flutterRevisionProcessResult;
     late ReleaseAarCommand command;
-    late ShorebirdFlutterValidator flutterValidator;
     late ShorebirdProcess shorebirdProcess;
 
     R runWithOverrides<R>(R Function() body) {
@@ -114,7 +105,6 @@ flutter:
         values: {
           authRef.overrideWith(() => auth),
           codePushClientWrapperRef.overrideWith(() => codePushClientWrapper),
-          doctorRef.overrideWith(() => doctor),
           engineConfigRef.overrideWith(() => const EngineConfig.empty()),
           javaRef.overrideWith(() => java),
           loggerRef.overrideWith(() => logger),
@@ -175,14 +165,12 @@ flutter:
       httpClient = _MockHttpClient();
       auth = _MockAuth();
       codePushClientWrapper = _MockCodePushClientWrapper();
-      doctor = _MockDoctor();
       java = _MockJava();
       platform = _MockPlatform();
       progress = _MockProgress();
       logger = _MockLogger();
       flutterBuildProcessResult = _MockProcessResult();
       flutterRevisionProcessResult = _MockProcessResult();
-      flutterValidator = _MockShorebirdFlutterValidator();
       shorebirdProcess = _MockShorebirdProcess();
       shorebirdRoot = Directory.systemTemp.createTempSync();
 
@@ -277,10 +265,6 @@ flutter:
           status: any(named: 'status'),
         ),
       ).thenAnswer((_) async => {});
-
-      when(() => doctor.androidCommandValidators)
-          .thenReturn([flutterValidator]);
-      when(flutterValidator.validate).thenAnswer((_) async => []);
 
       command = runWithOverrides(
         () => ReleaseAarCommand(unzipFn: (_, __) async {}),
@@ -556,65 +540,6 @@ flavors:
           status: ReleaseStatus.active,
         ),
       ).called(1);
-    });
-
-    test('prints flutter validation warnings', () async {
-      when(flutterValidator.validate).thenAnswer(
-        (_) async => [
-          const ValidationIssue(
-            severity: ValidationIssueSeverity.warning,
-            message: 'Flutter issue 1',
-          ),
-          const ValidationIssue(
-            severity: ValidationIssueSeverity.warning,
-            message: 'Flutter issue 2',
-          ),
-        ],
-      );
-      final tempDir = setUpTempDir();
-      setUpTempArtifacts(tempDir);
-
-      final exitCode = await IOOverrides.runZoned(
-        () => runWithOverrides(command.run),
-        getCurrentDirectory: () => tempDir,
-      );
-
-      expect(exitCode, ExitCode.success.code);
-      verify(() => logger.success('\n✅ Published Release!')).called(1);
-      verify(
-        () => logger.info(any(that: contains('Flutter issue 1'))),
-      ).called(1);
-      verify(
-        () => logger.info(any(that: contains('Flutter issue 2'))),
-      ).called(1);
-    });
-
-    test('aborts if validation errors are present', () async {
-      when(flutterValidator.validate).thenAnswer(
-        (_) async => [
-          const ValidationIssue(
-            severity: ValidationIssueSeverity.error,
-            message: 'There was an issue',
-          ),
-        ],
-      );
-
-      final tempDir = setUpTempDir();
-      final exitCode = await IOOverrides.runZoned(
-        () => runWithOverrides(command.run),
-        getCurrentDirectory: () => tempDir,
-      );
-
-      expect(exitCode, equals(ExitCode.config.code));
-      verify(() => logger.err('Aborting due to validation errors.')).called(1);
-      verifyNever(
-        () => codePushClientWrapper.updateReleaseStatus(
-          appId: appId,
-          releaseId: release.id,
-          platform: releasePlatform,
-          status: ReleaseStatus.active,
-        ),
-      );
     });
   });
 }
