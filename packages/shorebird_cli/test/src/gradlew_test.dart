@@ -90,12 +90,6 @@ Make sure you have run "flutter build apk" at least once.''',
         return tempDir;
       }
 
-      Directory setUpModuleTempDir() {
-        final tempDir = Directory.systemTemp.createTempSync();
-        Directory(p.join(tempDir.path, '.android')).createSync(recursive: true);
-        return tempDir;
-      }
-
       test(
           'throws MissingAndroidProjectException '
           'when android root does not exist', () async {
@@ -200,9 +194,9 @@ Make sure you have run "flutter build apk" at least once.''',
         when(() => platform.isLinux).thenReturn(true);
         when(() => platform.isMacOS).thenReturn(false);
         when(() => platform.isWindows).thenReturn(false);
-        final tempDir = setUpModuleTempDir();
+        final tempDir = setUpAppTempDir();
         File(
-          p.join(tempDir.path, '.android', 'gradlew'),
+          p.join(tempDir.path, 'android', 'gradlew'),
         ).createSync(recursive: true);
         const javaHome = 'test_java_home';
         when(() => platform.environment).thenReturn({'JAVA_HOME': javaHome});
@@ -226,35 +220,10 @@ Make sure you have run "flutter build apk" at least once.''',
         );
         verify(
           () => process.run(
-            p.join(tempDir.path, '.android', 'gradlew'),
+            p.join(tempDir.path, 'android', 'gradlew'),
             ['app:tasks', '--all', '--console=auto'],
             runInShell: true,
-            workingDirectory: p.join(tempDir.path, '.android'),
-            environment: {'JAVA_HOME': javaHome},
-          ),
-        ).called(1);
-      });
-
-      test('extracts flavors from module directory structure', () async {
-        when(() => platform.isLinux).thenReturn(true);
-        when(() => platform.isMacOS).thenReturn(false);
-        when(() => platform.isWindows).thenReturn(false);
-        final tempDir = setUpModuleTempDir();
-        File(
-          p.join(tempDir.path, '.android', 'gradlew'),
-        ).createSync(recursive: true);
-        const javaHome = 'test_java_home';
-        when(() => platform.environment).thenReturn({'JAVA_HOME': javaHome});
-        await expectLater(
-          runWithOverrides(() => gradlew.productFlavors(tempDir.path)),
-          completes,
-        );
-        verify(
-          () => process.run(
-            p.join(tempDir.path, '.android', 'gradlew'),
-            ['app:tasks', '--all', '--console=auto'],
-            runInShell: true,
-            workingDirectory: p.join(tempDir.path, '.android'),
+            workingDirectory: p.join(tempDir.path, 'android'),
             environment: {'JAVA_HOME': javaHome},
           ),
         ).called(1);
