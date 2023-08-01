@@ -29,11 +29,11 @@ of the iOS app that is using this module.''',
       ..addOption(
         'target',
         abbr: 't',
-        help: 'The main entrypoint file of the application.',
+        help: 'The main entrypoint file of the module.',
       )
       ..addOption(
         'flavor',
-        help: 'The product flavor to use when building the app.',
+        help: 'The product flavor to use when building the module.',
       )
       ..addFlag(
         'force',
