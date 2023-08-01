@@ -1,6 +1,5 @@
 import 'dart:io';
 
-import 'package:collection/collection.dart';
 import 'package:mason_logger/mason_logger.dart';
 import 'package:path/path.dart' as p;
 import 'package:scoped/scoped.dart';
@@ -60,12 +59,9 @@ class XcodeBuild {
   Future<XcodeProjectBuildInfo> list(String projectPath) async {
     // Flutter apps have ios files in root/ios
     // Flutter modules have ios files in root/.ios
-    final iosRoot = [
-      Directory(p.join(projectPath, 'ios')),
-      Directory(p.join(projectPath, '.ios')),
-    ].firstWhereOrNull((dir) => dir.existsSync());
+    final iosRoot = Directory(p.join(projectPath, 'ios'));
 
-    if (iosRoot == null) throw MissingIOSProjectException(projectPath);
+    if (!iosRoot.existsSync()) throw MissingIOSProjectException(projectPath);
 
     const arguments = ['-list'];
     final result = await process.run(
