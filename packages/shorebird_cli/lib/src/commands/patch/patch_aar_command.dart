@@ -62,10 +62,6 @@ of the Android app that is using this module.''',
         },
         defaultsTo: 'stable',
       )
-      ..addOption(
-        'flavor',
-        help: 'The product flavor to use when building the app.',
-      )
       ..addFlag(
         'force',
         abbr: 'f',
@@ -118,17 +114,16 @@ of the Android app that is using this module.''',
       return ExitCode.config.code;
     }
 
-    final flavor = results['flavor'] as String?;
     final buildNumber = results['build-number'] as String;
     final releaseVersion = results['release-version'] as String;
 
     final shorebirdYaml = ShorebirdEnvironment.getShorebirdYaml()!;
-    final appId = shorebirdYaml.getAppId(flavor: flavor);
+    final appId = shorebirdYaml.getAppId();
     final app = await codePushClientWrapper.getApp(appId: appId);
 
     final buildProgress = logger.progress('Building patch');
     try {
-      await buildAar(flavor: flavor, buildNumber: buildNumber);
+      await buildAar(buildNumber: buildNumber);
       buildProgress.complete();
     } on ProcessException catch (error) {
       buildProgress.fail('Failed to build: ${error.message}');
@@ -284,7 +279,6 @@ https://github.com/shorebirdtech/shorebird/issues/472
 
     final summary = [
       '''📱 App: ${lightCyan.wrap(app.displayName)} ${lightCyan.wrap('(${app.appId})')}''',
-      if (flavor != null) '🍧 Flavor: ${lightCyan.wrap(flavor)}',
       '📦 Release Version: ${lightCyan.wrap(releaseVersion)}',
       '📺 Channel: ${lightCyan.wrap(channelName)}',
       '''🕹️  Platform: ${lightCyan.wrap(platform.name)} ${lightCyan.wrap('[${archMetadata.join(', ')}]')}''',

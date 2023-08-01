@@ -110,7 +110,6 @@ mixin ShorebirdBuildMixin on ShorebirdCommand {
 
   Future<void> buildAar({
     required String buildNumber,
-    String? flavor,
   }) async {
     const executable = 'flutter';
     final arguments = [
@@ -119,7 +118,6 @@ mixin ShorebirdBuildMixin on ShorebirdCommand {
       '--no-debug',
       '--no-profile',
       '--build-number=$buildNumber',
-      if (flavor != null) '--flavor=$flavor',
       ...results.rest,
     ];
 
@@ -209,18 +207,13 @@ mixin ShorebirdBuildMixin on ShorebirdCommand {
   }
 
   /// Builds a release iOS framework (.xcframework) for the current project.
-  Future<void> buildIosFramework({
-    String? flavor,
-    String? target,
-  }) async {
+  Future<void> buildIosFramework() async {
     const executable = 'flutter';
     final arguments = [
       'build',
       'ios-framework',
       '--no-debug',
       '--no-profile',
-      if (flavor != null) '--flavor=$flavor',
-      if (target != null) '--target=$target',
       ...results.rest,
     ];
 

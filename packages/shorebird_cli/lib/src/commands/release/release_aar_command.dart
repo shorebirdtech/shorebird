@@ -38,10 +38,6 @@ The version of the associated release (e.g. "1.0.0"). This should be the version
 of the Android app that is using this module.''',
         mandatory: true,
       )
-      ..addOption(
-        'flavor',
-        help: 'The product flavor to use when building the app.',
-      )
       // `flutter build aar` defaults to a build number of 1.0, so we do the
       // same.
       ..addOption(
@@ -86,13 +82,12 @@ make smaller updates to your app.
     }
 
     const platform = ReleasePlatform.android;
-    final flavor = results['flavor'] as String?;
     final buildNumber = results['build-number'] as String;
     final releaseVersion = results['release-version'] as String;
     final buildProgress = logger.progress('Building aar');
 
     final shorebirdYaml = ShorebirdEnvironment.getShorebirdYaml()!;
-    final appId = shorebirdYaml.getAppId(flavor: flavor);
+    final appId = shorebirdYaml.getAppId();
     final app = await codePushClientWrapper.getApp(appId: appId);
 
     final existingRelease = await codePushClientWrapper.maybeGetRelease(
@@ -107,7 +102,7 @@ make smaller updates to your app.
     }
 
     try {
-      await buildAar(buildNumber: buildNumber, flavor: flavor);
+      await buildAar(buildNumber: buildNumber);
     } on ProcessException catch (error) {
       buildProgress.fail('Failed to build: ${error.message}');
       return ExitCode.software.code;
@@ -120,7 +115,6 @@ make smaller updates to your app.
     );
     final summary = [
       '''📱 App: ${lightCyan.wrap(app.displayName)} ${lightCyan.wrap('(${app.appId})')}''',
-      if (flavor != null) '🍧 Flavor: ${lightCyan.wrap(flavor)}',
       '📦 Release Version: ${lightCyan.wrap(releaseVersion)}',
       '''🕹️  Platform: ${lightCyan.wrap(platform.name)} ${lightCyan.wrap('(${archNames.join(', ')})')}''',
     ];
