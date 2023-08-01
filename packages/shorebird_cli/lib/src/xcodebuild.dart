@@ -57,8 +57,6 @@ class XcodeBuild {
   /// Return Xcode project build info returned by `xcodebuild -list`
   /// for the app at [projectPath].
   Future<XcodeProjectBuildInfo> list(String projectPath) async {
-    // Flutter apps have ios files in root/ios
-    // Flutter modules have ios files in root/.ios
     final iosRoot = Directory(p.join(projectPath, 'ios'));
 
     if (!iosRoot.existsSync()) throw MissingIOSProjectException(projectPath);
