@@ -8,7 +8,6 @@ import 'package:path/path.dart' as p;
 import 'package:scoped/scoped.dart';
 import 'package:shorebird_cli/src/auth/auth.dart';
 import 'package:shorebird_cli/src/commands/build/build.dart';
-import 'package:shorebird_cli/src/doctor.dart';
 import 'package:shorebird_cli/src/logger.dart';
 import 'package:shorebird_cli/src/process.dart';
 import 'package:test/test.dart';
@@ -16,8 +15,6 @@ import 'package:test/test.dart';
 class _MockArgResults extends Mock implements ArgResults {}
 
 class _MockAuth extends Mock implements Auth {}
-
-class _MockDoctor extends Mock implements Doctor {}
 
 class _MockHttpClient extends Mock implements http.Client {}
 
@@ -59,7 +56,6 @@ flutter:
 
     late ArgResults argResults;
     late Auth auth;
-    late Doctor doctor;
     late http.Client httpClient;
     late Logger logger;
     late Progress progress;
@@ -72,7 +68,6 @@ flutter:
         body,
         values: {
           authRef.overrideWith(() => auth),
-          doctorRef.overrideWith(() => doctor),
           loggerRef.overrideWith(() => logger),
           processRef.overrideWith(() => shorebirdProcess),
         },
@@ -95,7 +90,6 @@ flutter:
     setUp(() {
       argResults = _MockArgResults();
       auth = _MockAuth();
-      doctor = _MockDoctor();
       httpClient = _MockHttpClient();
       logger = _MockLogger();
       processResult = _MockProcessResult();
@@ -106,7 +100,6 @@ flutter:
       when(() => argResults.rest).thenReturn([]);
       when(() => auth.client).thenReturn(httpClient);
       when(() => auth.isAuthenticated).thenReturn(true);
-      when(() => doctor.androidCommandValidators).thenReturn([]);
       when(() => logger.progress(any())).thenReturn(progress);
 
       when(
