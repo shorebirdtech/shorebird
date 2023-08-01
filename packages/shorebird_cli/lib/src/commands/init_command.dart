@@ -203,6 +203,7 @@ For more information about Shorebird, visit ${link(uri: Uri.parse('https://shore
           .where((e) => p.basename(e.path).endsWith('.xcscheme'))
           .where((e) => p.basenameWithoutExtension(e.path) != 'Runner')
           .map((file) => p.basename(file.path).split('.xcscheme').first)
+          .sorted()
           .toSet();
     }
   }
