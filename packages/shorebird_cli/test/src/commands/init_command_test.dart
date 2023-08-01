@@ -265,6 +265,7 @@ If you want to reinitialize Shorebird, please run "shorebird init --force".''',
         File(
           p.join(tempDir.path, 'pubspec.yaml'),
         ).writeAsStringSync(pubspecYamlContent);
+        Directory(p.join(tempDir.path, 'ios')).createSync(recursive: true);
         final exitCode = await IOOverrides.runZoned(
           () => runWithOverrides(command.run),
           getCurrentDirectory: () => tempDir,
