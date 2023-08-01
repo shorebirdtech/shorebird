@@ -65,7 +65,7 @@ void main() {
     test('clears the cache', () async {
       final result = await runWithOverrides(command.run);
       expect(result, equals(ExitCode.success.code));
-      verify(() => progress.complete('Cleared Cache')).called(1);
+      verify(() => progress.complete('Cleared cache')).called(1);
       verify(cache.clear).called(1);
     });
 
