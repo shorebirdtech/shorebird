@@ -260,12 +260,12 @@ If you want to reinitialize Shorebird, please run "shorebird init --force".''',
         when(() => platform.isMacOS).thenReturn(false);
       });
 
-      test('throws software error when unable to detect schemes (non-macos)',
-          () async {
+      test('throws software error when unable to detect schemes', () async {
         final tempDir = Directory.systemTemp.createTempSync();
         File(
           p.join(tempDir.path, 'pubspec.yaml'),
         ).writeAsStringSync(pubspecYamlContent);
+        Directory(p.join(tempDir.path, 'ios')).createSync(recursive: true);
         final exitCode = await IOOverrides.runZoned(
           () => runWithOverrides(command.run),
           getCurrentDirectory: () => tempDir,
@@ -279,8 +279,24 @@ If you want to reinitialize Shorebird, please run "shorebird init --force".''',
         verifyNever(() => xcodeBuild.list(any()));
       });
 
-      test('creates shorebird for an app without flavors (non-macos)',
-          () async {
+      test('creates shorebird for an android-only app', () async {
+        final tempDir = Directory.systemTemp.createTempSync();
+        File(
+          p.join(tempDir.path, 'pubspec.yaml'),
+        ).writeAsStringSync(pubspecYamlContent);
+        final exitCode = await IOOverrides.runZoned(
+          () => runWithOverrides(command.run),
+          getCurrentDirectory: () => tempDir,
+        );
+        expect(
+          File(p.join(tempDir.path, 'shorebird.yaml')).readAsStringSync(),
+          contains('app_id: $appId'),
+        );
+        expect(exitCode, equals(ExitCode.success.code));
+        verifyNever(() => xcodeBuild.list(any()));
+      });
+
+      test('creates shorebird for an app without flavors', () async {
         final tempDir = Directory.systemTemp.createTempSync();
         when(
           () => gradlew.productFlavors(any()),
@@ -310,7 +326,7 @@ If you want to reinitialize Shorebird, please run "shorebird init --force".''',
         verifyNever(() => xcodeBuild.list(any()));
       });
 
-      test('creates shorebird for an app with flavors (non-macos)', () async {
+      test('creates shorebird for an app with flavors', () async {
         const appIds = ['test-appId-1', 'test-appId-2'];
         var index = 0;
         when(
