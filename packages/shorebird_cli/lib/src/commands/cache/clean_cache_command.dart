@@ -1,9 +1,11 @@
 import 'dart:async';
+import 'dart:io';
 
 import 'package:mason_logger/mason_logger.dart';
 import 'package:shorebird_cli/src/cache.dart';
 import 'package:shorebird_cli/src/command.dart';
 import 'package:shorebird_cli/src/logger.dart';
+import 'package:shorebird_cli/src/platform.dart';
 import 'package:shorebird_cli/src/shorebird_config_mixin.dart';
 
 /// {@template clean_cache_command}
@@ -25,8 +27,34 @@ class CleanCacheCommand extends ShorebirdCommand with ShorebirdConfigMixin {
 
   @override
   Future<int> run() async {
-    cache.clear();
-    logger.success('✅ Cleared Cache!');
+    final progress = logger.progress('Clearing Cache');
+    try {
+      cache.clear();
+    } on FileSystemException catch (error) {
+      final cachePath = Cache.shorebirdCacheDirectory.path;
+      progress.fail(
+        '''Failed to delete cache directory $cachePath: $error''',
+      );
+      if (!platform.isWindows) {
+        return ExitCode.software.code;
+      }
+
+      final superuserLink = link(
+        uri: Uri.parse(
+          'https://superuser.com/questions/1333118/cant-delete-empty-folder-because-it-is-used',
+        ),
+      );
+
+      logger.info(
+        '''
+This could be because a program is using a file in the cache directory. To find and stop such a program, see:
+    ${lightCyan.wrap(superuserLink)}
+''',
+      );
+      return ExitCode.software.code;
+    }
+
+    progress.complete('Cleared cache');
     return ExitCode.success.code;
   }
 }
