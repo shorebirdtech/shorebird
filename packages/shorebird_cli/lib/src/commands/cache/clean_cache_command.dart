@@ -31,18 +31,13 @@ class CleanCacheCommand extends ShorebirdCommand with ShorebirdConfigMixin {
     try {
       cache.clear();
     } on FileSystemException catch (error) {
-      if (!platform.isWindows) {
-        progress.fail(
-          '''Failed to delete cache directory ${Cache.shorebirdCacheDirectory.path}: $error''',
-        );
-        return ExitCode.software.code;
-      }
-
       final cachePath = Cache.shorebirdCacheDirectory.path;
-
       progress.fail(
         '''Failed to delete cache directory $cachePath: $error''',
       );
+      if (!platform.isWindows) {
+        return ExitCode.software.code;
+      }
 
       final superuserLink = link(
         uri: Uri.parse(
