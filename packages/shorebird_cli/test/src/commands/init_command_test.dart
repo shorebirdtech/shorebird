@@ -279,6 +279,23 @@ If you want to reinitialize Shorebird, please run "shorebird init --force".''',
         verifyNever(() => xcodeBuild.list(any()));
       });
 
+      test('creates shorebird for an app android only (non-macos)', () async {
+        final tempDir = Directory.systemTemp.createTempSync();
+        File(
+          p.join(tempDir.path, 'pubspec.yaml'),
+        ).writeAsStringSync(pubspecYamlContent);
+        final exitCode = await IOOverrides.runZoned(
+          () => runWithOverrides(command.run),
+          getCurrentDirectory: () => tempDir,
+        );
+        expect(
+          File(p.join(tempDir.path, 'shorebird.yaml')).readAsStringSync(),
+          contains('app_id: $appId'),
+        );
+        expect(exitCode, equals(ExitCode.success.code));
+        verifyNever(() => xcodeBuild.list(any()));
+      });
+
       test('creates shorebird for an app without flavors (non-macos)',
           () async {
         final tempDir = Directory.systemTemp.createTempSync();
