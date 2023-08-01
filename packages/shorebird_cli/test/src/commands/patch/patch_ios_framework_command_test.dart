@@ -478,6 +478,54 @@ https://github.com/shorebirdtech/shorebird/issues/472
       expect(exitCode, ExitCode.success.code);
     });
 
+    test('succeeds when patch is successful with flavors and target', () async {
+      const flavor = 'development';
+      final target = p.join('lib', 'main_development.dart');
+      when(() => argResults['flavor']).thenReturn(flavor);
+      when(() => argResults['target']).thenReturn(target);
+      final tempDir = setUpTempDir();
+      setUpTempArtifacts(tempDir);
+      File(
+        p.join(tempDir.path, 'shorebird.yaml'),
+      ).writeAsStringSync('''
+app_id: productionAppId
+flavors:
+  development: $appId''');
+
+      final exitCode = await IOOverrides.runZoned(
+        () => runWithOverrides(command.run),
+        getCurrentDirectory: () => tempDir,
+      );
+      final arguments = [
+        'build',
+        'ios-framework',
+        '--no-debug',
+        '--no-profile',
+        '--flavor=$flavor',
+        '--target=$target',
+      ];
+      verify(
+        () => shorebirdProcess.run('flutter', arguments, runInShell: true),
+      ).called(1);
+      verify(
+        () => logger.info(
+          any(that: contains('🍧 Flavor: ${lightCyan.wrap(flavor)}')),
+        ),
+      ).called(1);
+      verify(() => logger.success('\n✅ Published Patch!')).called(1);
+      verify(
+        () => codePushClientWrapper.publishPatch(
+          appId: appId,
+          releaseId: release.id,
+          platform: ReleasePlatform.ios,
+          channelName: 'stable',
+          patchArtifactBundles: any(named: 'patchArtifactBundles'),
+        ),
+      ).called(1);
+
+      expect(exitCode, ExitCode.success.code);
+    });
+
     test('prints flutter validation warnings', () async {
       final tempDir = setUpTempDir();
       setUpTempArtifacts(tempDir);

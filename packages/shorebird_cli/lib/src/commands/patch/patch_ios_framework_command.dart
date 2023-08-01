@@ -34,6 +34,15 @@ The version of the associated release (e.g. "1.0.0"). This should be the version
 of the iOS app that is using this module.''',
         mandatory: true,
       )
+      ..addOption(
+        'target',
+        abbr: 't',
+        help: 'The main entrypoint file of the module.',
+      )
+      ..addOption(
+        'flavor',
+        help: 'The product flavor to use when building the module.',
+      )
       ..addFlag(
         'force',
         abbr: 'f',
@@ -75,10 +84,12 @@ of the iOS app that is using this module.''',
     const arch = 'aarch64';
     const channelName = 'stable';
     const releasePlatform = ReleasePlatform.ios;
+    final flavor = results['flavor'] as String?;
+    final target = results['target'] as String?;
     final releaseVersion = results['release-version'] as String;
     final dryRun = results['dry-run'] == true;
     final shorebirdYaml = ShorebirdEnvironment.getShorebirdYaml()!;
-    final appId = shorebirdYaml.getAppId();
+    final appId = shorebirdYaml.getAppId(flavor: flavor);
     final app = await codePushClientWrapper.getApp(appId: appId);
 
     final release = await codePushClientWrapper.getRelease(
@@ -96,7 +107,7 @@ Please re-run the release command for this version or create a new release.''');
 
     final buildProgress = logger.progress('Building patch');
     try {
-      await buildIosFramework();
+      await buildIosFramework(flavor: flavor, target: target);
       buildProgress.complete();
     } on ProcessException catch (error) {
       buildProgress.fail('Failed to build: ${error.message}');
@@ -163,8 +174,7 @@ https://github.com/shorebirdtech/shorebird/issues/472
 
     final summary = [
       '''📱 App: ${lightCyan.wrap(app.displayName)} ${lightCyan.wrap('($appId)')}''',
-      // TODO(felangel): uncomment once flavor support is added.
-      // if (flavor != null) '🍧 Flavor: ${lightCyan.wrap(flavor)}',
+      if (flavor != null) '🍧 Flavor: ${lightCyan.wrap(flavor)}',
       '📦 Release Version: ${lightCyan.wrap(releaseVersion)}',
       '📺 Channel: ${lightCyan.wrap(channelName)}',
       '''🕹️  Platform: ${lightCyan.wrap(releasePlatform.name)} ${lightCyan.wrap('[$arch (${formatBytes(aotFileSize)})]')}''',
