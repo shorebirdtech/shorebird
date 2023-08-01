@@ -467,7 +467,22 @@ flavors:
         () => runWithOverrides(command.run),
         getCurrentDirectory: () => tempDir,
       );
-
+      final arguments = [
+        'build',
+        'ios-framework',
+        '--no-debug',
+        '--no-profile',
+        '--flavor=$flavor',
+        '--target=$target',
+      ];
+      verify(
+        () => shorebirdProcess.run('flutter', arguments, runInShell: true),
+      ).called(1);
+      verify(
+        () => logger.info(
+          any(that: contains('🍧 Flavor: ${lightCyan.wrap(flavor)}')),
+        ),
+      ).called(1);
       verify(() => logger.success('\n✅ Published Release!')).called(1);
       verify(
         () => logger.info(
