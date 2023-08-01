@@ -255,104 +255,111 @@ If you want to reinitialize Shorebird, please run "shorebird init --force".''',
       expect(exitCode, ExitCode.software.code);
     });
 
-    test('throws software error when unable to detect schemes (non-macos)',
-        () async {
-      when(() => platform.isMacOS).thenReturn(false);
-      final tempDir = Directory.systemTemp.createTempSync();
-      File(
-        p.join(tempDir.path, 'pubspec.yaml'),
-      ).writeAsStringSync(pubspecYamlContent);
-      final exitCode = await IOOverrides.runZoned(
-        () => runWithOverrides(command.run),
-        getCurrentDirectory: () => tempDir,
-      );
-      expect(exitCode, equals(ExitCode.software.code));
-      verify(
-        () => logger.err(
-          any(that: contains('Unable to detect iOS schemes in')),
-        ),
-      ).called(1);
-      verifyNever(() => xcodeBuild.list(any()));
-    });
+    group('on non MacOS', () {
+      setUp(() {
+        when(() => platform.isMacOS).thenReturn(false);
+      });
 
-    test('creates shorebird for an app without flavors (non-macos)', () async {
-      when(() => platform.isMacOS).thenReturn(false);
-      final tempDir = Directory.systemTemp.createTempSync();
-      when(
-        () => gradlew.productFlavors(any()),
-      ).thenThrow(MissingAndroidProjectException(tempDir.path));
-      File(
-        p.join(tempDir.path, 'pubspec.yaml'),
-      ).writeAsStringSync(pubspecYamlContent);
-      File(
-        p.join(
+      test('throws software error when unable to detect schemes (non-macos)',
+          () async {
+        final tempDir = Directory.systemTemp.createTempSync();
+        File(
+          p.join(tempDir.path, 'pubspec.yaml'),
+        ).writeAsStringSync(pubspecYamlContent);
+        final exitCode = await IOOverrides.runZoned(
+          () => runWithOverrides(command.run),
+          getCurrentDirectory: () => tempDir,
+        );
+        expect(exitCode, equals(ExitCode.software.code));
+        verify(
+          () => logger.err(
+            any(that: contains('Unable to detect iOS schemes in')),
+          ),
+        ).called(1);
+        verifyNever(() => xcodeBuild.list(any()));
+      });
+
+      test('creates shorebird for an app without flavors (non-macos)',
+          () async {
+        final tempDir = Directory.systemTemp.createTempSync();
+        when(
+          () => gradlew.productFlavors(any()),
+        ).thenThrow(MissingAndroidProjectException(tempDir.path));
+        File(
+          p.join(tempDir.path, 'pubspec.yaml'),
+        ).writeAsStringSync(pubspecYamlContent);
+        File(
+          p.join(
+            tempDir.path,
+            'ios',
+            'Runner.xcodeproj',
+            'xcshareddata',
+            'xcschemes',
+            'Runner.xcscheme',
+          ),
+        ).createSync(recursive: true);
+        final exitCode = await IOOverrides.runZoned(
+          () => runWithOverrides(command.run),
+          getCurrentDirectory: () => tempDir,
+        );
+        expect(
+          File(p.join(tempDir.path, 'shorebird.yaml')).readAsStringSync(),
+          contains('app_id: $appId'),
+        );
+        expect(exitCode, equals(ExitCode.success.code));
+        verifyNever(() => xcodeBuild.list(any()));
+      });
+
+      test('creates shorebird for an app with flavors (non-macos)', () async {
+        const appIds = ['test-appId-1', 'test-appId-2'];
+        var index = 0;
+        when(
+          () =>
+              codePushClient.createApp(displayName: any(named: 'displayName')),
+        ).thenAnswer((invocation) async {
+          final displayName = invocation.namedArguments[#displayName] as String;
+          return App(id: appIds[index++], displayName: displayName);
+        });
+        final tempDir = Directory.systemTemp.createTempSync();
+        when(
+          () => gradlew.productFlavors(any()),
+        ).thenThrow(MissingAndroidProjectException(tempDir.path));
+        File(
+          p.join(tempDir.path, 'pubspec.yaml'),
+        ).writeAsStringSync(pubspecYamlContent);
+        final schemesPath = p.join(
           tempDir.path,
           'ios',
           'Runner.xcodeproj',
           'xcshareddata',
           'xcschemes',
-          'Runner.xcscheme',
-        ),
-      ).createSync(recursive: true);
-      final exitCode = await IOOverrides.runZoned(
-        () => runWithOverrides(command.run),
-        getCurrentDirectory: () => tempDir,
-      );
-      expect(
-        File(p.join(tempDir.path, 'shorebird.yaml')).readAsStringSync(),
-        contains('app_id: $appId'),
-      );
-      expect(exitCode, equals(ExitCode.success.code));
-      verifyNever(() => xcodeBuild.list(any()));
-    });
-
-    test('creates shorebird for an app with flavors (non-macos)', () async {
-      const appIds = ['test-appId-1', 'test-appId-2'];
-      var index = 0;
-      when(() => platform.isMacOS).thenReturn(false);
-      when(
-        () => codePushClient.createApp(displayName: any(named: 'displayName')),
-      ).thenAnswer((invocation) async {
-        final displayName = invocation.namedArguments[#displayName] as String;
-        return App(id: appIds[index++], displayName: displayName);
-      });
-      final tempDir = Directory.systemTemp.createTempSync();
-      when(
-        () => gradlew.productFlavors(any()),
-      ).thenThrow(MissingAndroidProjectException(tempDir.path));
-      File(
-        p.join(tempDir.path, 'pubspec.yaml'),
-      ).writeAsStringSync(pubspecYamlContent);
-      final schemesPath = p.join(
-        tempDir.path,
-        'ios',
-        'Runner.xcodeproj',
-        'xcshareddata',
-        'xcschemes',
-      );
-      File(p.join(schemesPath, 'Runner.xcscheme')).createSync(recursive: true);
-      File(p.join(schemesPath, 'internal.xcscheme'))
-          .createSync(recursive: true);
-      File(p.join(schemesPath, 'stable.xcscheme')).createSync(recursive: true);
-      final exitCode = await IOOverrides.runZoned(
-        () => runWithOverrides(command.run),
-        getCurrentDirectory: () => tempDir,
-      );
-      expect(
-        File(p.join(tempDir.path, 'shorebird.yaml')).readAsStringSync(),
-        contains('''
+        );
+        File(p.join(schemesPath, 'Runner.xcscheme'))
+            .createSync(recursive: true);
+        File(p.join(schemesPath, 'internal.xcscheme'))
+            .createSync(recursive: true);
+        File(p.join(schemesPath, 'stable.xcscheme'))
+            .createSync(recursive: true);
+        final exitCode = await IOOverrides.runZoned(
+          () => runWithOverrides(command.run),
+          getCurrentDirectory: () => tempDir,
+        );
+        expect(
+          File(p.join(tempDir.path, 'shorebird.yaml')).readAsStringSync(),
+          contains('''
 app_id: ${appIds[0]}
 flavors:
   internal: ${appIds[0]}
   stable: ${appIds[1]}'''),
-      );
+        );
 
-      verifyInOrder([
-        () => codePushClient.createApp(displayName: '$appName (internal)'),
-        () => codePushClient.createApp(displayName: '$appName (stable)'),
-      ]);
-      expect(exitCode, equals(ExitCode.success.code));
-      verifyNever(() => xcodeBuild.list(any()));
+        verifyInOrder([
+          () => codePushClient.createApp(displayName: '$appName (internal)'),
+          () => codePushClient.createApp(displayName: '$appName (stable)'),
+        ]);
+        expect(exitCode, equals(ExitCode.success.code));
+        verifyNever(() => xcodeBuild.list(any()));
+      });
     });
 
     test('creates shorebird.yaml for an app without flavors', () async {

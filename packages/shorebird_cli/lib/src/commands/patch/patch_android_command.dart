@@ -45,15 +45,6 @@ class PatchAndroidCommand extends ShorebirdCommand
         help: 'The version of the release (e.g. "1.0.0").',
       )
       ..addOption(
-        'channel',
-        help: 'The channel the patch should be promoted to (e.g. "stable").',
-        allowed: ['stable'],
-        allowedHelp: {
-          'stable': 'The stable channel which is consumed by production apps.'
-        },
-        defaultsTo: 'stable',
-      )
-      ..addOption(
         'target',
         abbr: 't',
         help: 'The main entrypoint file of the application.',
@@ -110,7 +101,7 @@ class PatchAndroidCommand extends ShorebirdCommand
     await cache.updateAll();
 
     const platform = ReleasePlatform.android;
-    final channelName = results['channel'] as String;
+    const channelName = 'stable';
     final flavor = results['flavor'] as String?;
     final target = results['target'] as String?;
     final buildProgress = logger.progress('Building patch');

@@ -182,8 +182,9 @@ For more information about Shorebird, visit ${link(uri: Uri.parse('https://shore
         return null;
       }
     } else {
-      // When running on a non-macOS platform, we can't use xcodebuild to
+      // When running on a non-macOS platform, we can't use `xcodebuild` to
       // detect flavors so we fallback to looking for schemes in xcschemes.
+      // Note: this appears to be identical to the behavior of `xcodebuild`.
       final xcschemesDir = Directory(
         p.join(
           projectPath,
