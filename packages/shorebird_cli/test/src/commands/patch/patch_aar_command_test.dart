@@ -780,57 +780,5 @@ https://github.com/shorebirdtech/shorebird/issues/472
         ),
       ).called(1);
     });
-
-    test('succeeds when patch is successful with flavors', () async {
-      const flavor = 'development';
-      when(() => argResults['flavor']).thenReturn(flavor);
-      final tempDir = setUpTempDir();
-      File(
-        p.join(tempDir.path, 'shorebird.yaml'),
-      ).writeAsStringSync('''
-app_id: productionAppId
-flavors:
-  development: $appId''');
-      setUpTempArtifacts(tempDir);
-      final exitCode = await IOOverrides.runZoned(
-        () => runWithOverrides(command.run),
-        getCurrentDirectory: () => tempDir,
-      );
-
-      expect(exitCode, ExitCode.success.code);
-      verify(() => logger.success('\n✅ Published Patch!')).called(1);
-      verify(() => codePushClientWrapper.getApp(appId: appId)).called(1);
-      verify(
-        () => codePushClientWrapper.getRelease(
-          appId: appId,
-          releaseVersion: version,
-        ),
-      ).called(1);
-      verify(
-        () => codePushClientWrapper.getReleaseArtifacts(
-          appId: appId,
-          releaseId: release.id,
-          architectures: ShorebirdBuildMixin.allAndroidArchitectures,
-          platform: releasePlatform,
-        ),
-      ).called(1);
-      verify(
-        () => codePushClientWrapper.getReleaseArtifact(
-          appId: appId,
-          releaseId: release.id,
-          arch: 'aar',
-          platform: releasePlatform,
-        ),
-      ).called(1);
-      verify(
-        () => codePushClientWrapper.publishPatch(
-          appId: appId,
-          releaseId: release.id,
-          platform: releasePlatform,
-          channelName: channelName,
-          patchArtifactBundles: any(named: 'patchArtifactBundles'),
-        ),
-      ).called(1);
-    });
   });
 }

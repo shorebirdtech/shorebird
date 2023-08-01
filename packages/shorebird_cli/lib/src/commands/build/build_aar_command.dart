@@ -21,17 +21,13 @@ class BuildAarCommand extends ShorebirdCommand
     // and [BuildAabCommand] have, but target cannot currently be configured in
     // `flutter build aar` and is always assumed to be lib/main.dart.
     argParser
-      ..addOption(
-        'flavor',
-        help: 'The product flavor to use when building the app.',
-      )
-      // `flutter build aar` defaults to a build number of 1.0, so we do the
-      // same.
-      ..addOption(
-        'build-number',
-        help: 'The build number of the aar',
-        defaultsTo: '1.0',
-      );
+        // `flutter build aar` defaults to a build number of 1.0, so we do the
+        // same.
+        .addOption(
+      'build-number',
+      help: 'The build number of the aar',
+      defaultsTo: '1.0',
+    );
   }
 
   @override
@@ -56,11 +52,10 @@ class BuildAarCommand extends ShorebirdCommand
       return ExitCode.config.code;
     }
 
-    final flavor = results['flavor'] as String?;
     final buildNumber = results['build-number'] as String;
     final buildProgress = logger.progress('Building aar');
     try {
-      await buildAar(buildNumber: buildNumber, flavor: flavor);
+      await buildAar(buildNumber: buildNumber);
     } on ProcessException catch (error) {
       buildProgress.fail('Failed to build: ${error.message}');
       return ExitCode.software.code;

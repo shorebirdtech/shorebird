@@ -26,15 +26,6 @@ The version of the associated release (e.g. "1.0.0"). This should be the version
 of the iOS app that is using this module.''',
         mandatory: true,
       )
-      ..addOption(
-        'target',
-        abbr: 't',
-        help: 'The main entrypoint file of the module.',
-      )
-      ..addOption(
-        'flavor',
-        help: 'The product flavor to use when building the module.',
-      )
       ..addFlag(
         'force',
         abbr: 'f',
@@ -66,11 +57,9 @@ of the iOS app that is using this module.''',
     showiOSStatusWarning();
 
     const releasePlatform = ReleasePlatform.ios;
-    final flavor = results['flavor'] as String?;
-    final target = results['target'] as String?;
     final releaseVersion = results['release-version'] as String;
     final shorebirdYaml = ShorebirdEnvironment.getShorebirdYaml()!;
-    final appId = shorebirdYaml.getAppId(flavor: flavor);
+    final appId = shorebirdYaml.getAppId();
     final app = await codePushClientWrapper.getApp(appId: appId);
 
     final existingRelease = await codePushClientWrapper.maybeGetRelease(
@@ -87,7 +76,7 @@ of the iOS app that is using this module.''',
     final buildProgress = logger.progress('Building iOS framework');
 
     try {
-      await buildIosFramework(flavor: flavor, target: target);
+      await buildIosFramework();
     } catch (error) {
       buildProgress.fail('Failed to build iOS framework: $error');
       return ExitCode.software.code;
@@ -97,7 +86,6 @@ of the iOS app that is using this module.''',
 
     final summary = [
       '''📱 App: ${lightCyan.wrap(app.displayName)} ${lightCyan.wrap('($appId)')}''',
-      if (flavor != null) '🍧 Flavor: ${lightCyan.wrap(flavor)}',
       '📦 Release Version: ${lightCyan.wrap(releaseVersion)}',
       '''🕹️  Platform: ${lightCyan.wrap(releasePlatform.name)}''',
     ];
