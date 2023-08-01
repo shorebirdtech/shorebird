@@ -54,7 +54,7 @@ class Ipa {
   }
 
   Map<String, Object>? _getPlist() {
-    final plistPathRegex = RegExp(r'Payload/[\w|\s]+.app/Info.plist');
+    final plistPathRegex = RegExp(r'Payload/[\w\-. ]+.app/Info.plist');
     final plistFile = ZipDecoder()
         .decodeBuffer(InputFileStream(_ipaFile.path))
         .files
