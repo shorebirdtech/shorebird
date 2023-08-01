@@ -12,13 +12,11 @@ import 'package:shorebird_cli/src/auth/auth.dart';
 import 'package:shorebird_cli/src/cache.dart' show Cache, cacheRef;
 import 'package:shorebird_cli/src/code_push_client_wrapper.dart';
 import 'package:shorebird_cli/src/commands/commands.dart';
-import 'package:shorebird_cli/src/doctor.dart';
 import 'package:shorebird_cli/src/logger.dart';
 import 'package:shorebird_cli/src/platform.dart';
 import 'package:shorebird_cli/src/process.dart';
 import 'package:shorebird_cli/src/shorebird_build_mixin.dart';
 import 'package:shorebird_cli/src/shorebird_environment.dart';
-import 'package:shorebird_cli/src/validators/validators.dart';
 import 'package:shorebird_code_push_client/shorebird_code_push_client.dart';
 import 'package:test/test.dart';
 
@@ -32,8 +30,6 @@ class _MockAuth extends Mock implements Auth {}
 
 class _MockCache extends Mock implements Cache {}
 
-class _MockDoctor extends Mock implements Doctor {}
-
 class _MockCodePushClientWrapper extends Mock
     implements CodePushClientWrapper {}
 
@@ -46,9 +42,6 @@ class _MockProgress extends Mock implements Progress {}
 class _MockProcessResult extends Mock implements ShorebirdProcessResult {}
 
 class _MockHttpClient extends Mock implements http.Client {}
-
-class _MockShorebirdFlutterValidator extends Mock
-    implements ShorebirdFlutterValidator {}
 
 class _MockShorebirdProcess extends Mock implements ShorebirdProcess {}
 
@@ -122,7 +115,6 @@ flutter:
     late Auth auth;
     late CodePushClientWrapper codePushClientWrapper;
     late Directory shorebirdRoot;
-    late Doctor doctor;
     late Platform platform;
     late Progress progress;
     late Logger logger;
@@ -132,7 +124,6 @@ flutter:
     late http.Client httpClient;
     late Cache cache;
     late PatchAarCommand command;
-    late ShorebirdFlutterValidator flutterValidator;
     late ShorebirdProcess shorebirdProcess;
 
     R runWithOverrides<R>(R Function() body) {
@@ -142,7 +133,6 @@ flutter:
           authRef.overrideWith(() => auth),
           cacheRef.overrideWith(() => cache),
           codePushClientWrapperRef.overrideWith(() => codePushClientWrapper),
-          doctorRef.overrideWith(() => doctor),
           engineConfigRef.overrideWith(() => const EngineConfig.empty()),
           loggerRef.overrideWith(() => logger),
           platformRef.overrideWith(() => platform),
@@ -203,7 +193,6 @@ flutter:
       argResults = _MockArgResults();
       auth = _MockAuth();
       codePushClientWrapper = _MockCodePushClientWrapper();
-      doctor = _MockDoctor();
       shorebirdRoot = Directory.systemTemp.createTempSync();
       platform = _MockPlatform();
       progress = _MockProgress();
@@ -212,7 +201,6 @@ flutter:
       flutterRevisionProcessResult = _MockProcessResult();
       patchProcessResult = _MockProcessResult();
       httpClient = _MockHttpClient();
-      flutterValidator = _MockShorebirdFlutterValidator();
       cache = _MockCache();
       shorebirdProcess = _MockShorebirdProcess();
 
@@ -331,9 +319,6 @@ flutter:
           patchArtifactBundles: any(named: 'patchArtifactBundles'),
         ),
       ).thenAnswer((_) async {});
-      when(() => doctor.androidCommandValidators)
-          .thenReturn([flutterValidator]);
-      when(flutterValidator.validate).thenAnswer((_) async => []);
       when(() => cache.updateAll()).thenAnswer((_) async => {});
       when(
         () => cache.getArtifactDirectory(any()),
@@ -444,34 +429,6 @@ Release 1.2.3+1 is in an incomplete state. It's possible that the original relea
 
 Please re-run the release command for this version or create a new release.'''),
         ).called(1);
-      },
-    );
-
-    test(
-      'proceeds if release is in draft state for non-android platform',
-      () async {
-        when(
-          () => codePushClientWrapper.getRelease(
-            appId: any(named: 'appId'),
-            releaseVersion: any(named: 'releaseVersion'),
-          ),
-        ).thenAnswer(
-          (_) async => const Release(
-            id: 0,
-            appId: appId,
-            version: version,
-            flutterRevision: flutterRevision,
-            displayName: '1.2.3+1',
-            platformStatuses: {ReleasePlatform.ios: ReleaseStatus.draft},
-          ),
-        );
-        final tempDir = setUpTempDir();
-        setUpTempArtifacts(tempDir);
-        final exitCode = await IOOverrides.runZoned(
-          () => runWithOverrides(command.run),
-          getCurrentDirectory: () => tempDir,
-        );
-        expect(exitCode, ExitCode.success.code);
       },
     );
 
@@ -874,57 +831,6 @@ flavors:
           patchArtifactBundles: any(named: 'patchArtifactBundles'),
         ),
       ).called(1);
-    });
-
-    test('prints flutter validation warnings', () async {
-      final tempDir = setUpTempDir();
-      setUpTempArtifacts(tempDir);
-      when(flutterValidator.validate).thenAnswer(
-        (_) async => [
-          const ValidationIssue(
-            severity: ValidationIssueSeverity.warning,
-            message: 'Flutter issue 1',
-          ),
-          const ValidationIssue(
-            severity: ValidationIssueSeverity.warning,
-            message: 'Flutter issue 2',
-          ),
-        ],
-      );
-
-      final exitCode = await IOOverrides.runZoned(
-        () => runWithOverrides(command.run),
-        getCurrentDirectory: () => tempDir,
-      );
-
-      expect(exitCode, equals(ExitCode.success.code));
-      verify(
-        () => logger.info(any(that: contains('Flutter issue 1'))),
-      ).called(1);
-      verify(
-        () => logger.info(any(that: contains('Flutter issue 2'))),
-      ).called(1);
-    });
-
-    test('aborts if validation errors are present', () async {
-      final tempDir = setUpTempDir();
-      setUpTempArtifacts(tempDir);
-      when(flutterValidator.validate).thenAnswer(
-        (_) async => [
-          const ValidationIssue(
-            severity: ValidationIssueSeverity.error,
-            message: 'There was an issue',
-          ),
-        ],
-      );
-
-      final exitCode = await IOOverrides.runZoned(
-        () => runWithOverrides(command.run),
-        getCurrentDirectory: () => tempDir,
-      );
-
-      expect(exitCode, equals(ExitCode.config.code));
-      verify(() => logger.err('Aborting due to validation errors.')).called(1);
     });
   });
 }
