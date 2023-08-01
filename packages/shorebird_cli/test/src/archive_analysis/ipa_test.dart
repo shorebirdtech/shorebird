@@ -7,6 +7,8 @@ void main() {
   final baseIpaBath = p.join(ipaFixturesBasePath, 'base.ipa');
   final noVersionIpaPath = p.join(ipaFixturesBasePath, 'no_version.ipa');
   final noPlistIpaPath = p.join(ipaFixturesBasePath, 'no_plist.ipa');
+  final spaceInAppFileNameIpaPath =
+      p.join(ipaFixturesBasePath, 'app_file_space.ipa');
 
   group(IpaReader, () {
     test('creates Ipa', () {
@@ -18,6 +20,11 @@ void main() {
   group(Ipa, () {
     test('reads app version from ipa', () {
       final ipa = Ipa(path: baseIpaBath);
+      expect(ipa.versionNumber, '1.0.0+1');
+    });
+
+    test('reads app version from ipa with space in app file name', () {
+      final ipa = Ipa(path: spaceInAppFileNameIpaPath);
       expect(ipa.versionNumber, '1.0.0+1');
     });
 
