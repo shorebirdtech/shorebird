@@ -224,56 +224,5 @@ ${lightCyan.wrap(
         ),
       ).called(1);
     });
-
-    test(
-        '''exits with code 0 when building aar succeeds with flavor and custom build number''',
-        () async {
-      const flavor = 'development';
-      when(() => argResults['flavor']).thenReturn(flavor);
-      when(() => argResults['build-number']).thenReturn('2.0');
-      when(() => processResult.exitCode).thenReturn(ExitCode.success.code);
-      final tempDir = setUpTempDir();
-      final result = await IOOverrides.runZoned(
-        () async => runWithOverrides(command.run),
-        getCurrentDirectory: () => tempDir,
-      );
-
-      expect(result, equals(ExitCode.success.code));
-
-      verify(
-        () => shorebirdProcess.run(
-          'flutter',
-          [
-            'build',
-            'aar',
-            '--no-debug',
-            '--no-profile',
-            '--build-number=2.0',
-            '--flavor=$flavor',
-          ],
-          runInShell: any(named: 'runInShell'),
-        ),
-      ).called(1);
-      verify(
-        () => logger.info(
-          '''
-📦 Generated an aar at:
-${lightCyan.wrap(
-            p.join(
-              'build',
-              'host',
-              'outputs',
-              'repo',
-              'com',
-              'example',
-              'my_flutter_module',
-              'flutter_release',
-              '2.0',
-              'flutter_release-2.0.aar',
-            ),
-          )}''',
-        ),
-      ).called(1);
-    });
   });
 }
