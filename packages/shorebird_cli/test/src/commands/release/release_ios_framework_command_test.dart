@@ -447,5 +447,60 @@ flutter:
       ).called(1);
       expect(exitCode, ExitCode.success.code);
     });
+
+    test(
+        'succeeds when release is successful '
+        'with flavors and target', () async {
+      const flavor = 'development';
+      final target = p.join('lib', 'main_development.dart');
+      when(() => argResults['flavor']).thenReturn(flavor);
+      when(() => argResults['target']).thenReturn(target);
+      final tempDir = setUpTempDir();
+      File(
+        p.join(tempDir.path, 'shorebird.yaml'),
+      ).writeAsStringSync('''
+app_id: productionAppId
+flavors:
+  development: $appId''');
+
+      final exitCode = await IOOverrides.runZoned(
+        () => runWithOverrides(command.run),
+        getCurrentDirectory: () => tempDir,
+      );
+
+      verify(() => logger.success('\n✅ Published Release!')).called(1);
+      verify(
+        () => logger.info(
+          any(
+            that: stringContainsInOrder(
+              [
+                'Your next step is to include the .xcframework files in',
+                '/build/ios/framework/Release',
+                'in your iOS app.'
+              ],
+            ),
+          ),
+        ),
+      ).called(1);
+      verify(
+        () => codePushClientWrapper.createIosFrameworkReleaseArtifacts(
+          appId: appId,
+          releaseId: release.id,
+          appFrameworkPath: any(
+            named: 'appFrameworkPath',
+            that: endsWith('build/ios/framework/Release/App.xcframework'),
+          ),
+        ),
+      ).called(1);
+      verify(
+        () => codePushClientWrapper.updateReleaseStatus(
+          appId: appId,
+          releaseId: release.id,
+          platform: releasePlatform,
+          status: ReleaseStatus.active,
+        ),
+      ).called(1);
+      expect(exitCode, ExitCode.success.code);
+    });
   });
 }
