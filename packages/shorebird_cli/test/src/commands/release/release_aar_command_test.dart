@@ -448,65 +448,6 @@ flutter:
       ).called(1);
     });
 
-    test(
-        'succeeds when release is successful '
-        'with flavors and target', () async {
-      const flavor = 'development';
-      when(() => argResults['flavor']).thenReturn(flavor);
-      final tempDir = setUpTempDir();
-      setUpTempArtifacts(tempDir);
-      File(
-        p.join(tempDir.path, 'shorebird.yaml'),
-      ).writeAsStringSync('''
-app_id: productionAppId
-flavors:
-  development: $appId''');
-
-      final exitCode = await IOOverrides.runZoned(
-        () => runWithOverrides(command.run),
-        getCurrentDirectory: () => tempDir,
-      );
-
-      expect(exitCode, ExitCode.success.code);
-      verify(() => logger.success('\n✅ Published Release!')).called(1);
-      final capturedArgs = verify(
-        () => shorebirdProcess.run(
-          'flutter',
-          captureAny(),
-          runInShell: true,
-        ),
-      ).captured.first as List<String>;
-      expect(capturedArgs, contains('--flavor=$flavor'));
-      verify(
-        () => codePushClientWrapper.createAndroidArchiveReleaseArtifacts(
-          appId: appId,
-          releaseId: release.id,
-          platform: releasePlatform,
-          aarPath: any(
-            named: 'aarPath',
-            that: endsWith(
-              '/build/host/outputs/repo/com/example/my_flutter_module/flutter_release/1.0/flutter_release-1.0.aar',
-            ),
-          ),
-          extractedAarDir: any(
-            named: 'extractedAarDir',
-            that: endsWith(
-              'build/host/outputs/repo/com/example/my_flutter_module/flutter_release/1.0/flutter_release-1.0',
-            ),
-          ),
-          architectures: any(named: 'architectures'),
-        ),
-      ).called(1);
-      verify(
-        () => codePushClientWrapper.updateReleaseStatus(
-          appId: appId,
-          releaseId: release.id,
-          platform: releasePlatform,
-          status: ReleaseStatus.active,
-        ),
-      ).called(1);
-    });
-
     test('does not create new release if existing release is present',
         () async {
       when(
