@@ -5,12 +5,14 @@ import 'package:http/http.dart' as http;
 import 'package:mason_logger/mason_logger.dart';
 import 'package:mocktail/mocktail.dart';
 import 'package:path/path.dart' as p;
+import 'package:platform/platform.dart';
 import 'package:scoped/scoped.dart';
 import 'package:shorebird_cli/src/auth/auth.dart';
 import 'package:shorebird_cli/src/commands/init_command.dart';
 import 'package:shorebird_cli/src/doctor.dart';
 import 'package:shorebird_cli/src/gradlew.dart';
 import 'package:shorebird_cli/src/logger.dart';
+import 'package:shorebird_cli/src/platform.dart';
 import 'package:shorebird_cli/src/process.dart';
 import 'package:shorebird_cli/src/xcodebuild.dart';
 import 'package:shorebird_code_push_client/shorebird_code_push_client.dart';
@@ -29,6 +31,8 @@ class _MockDoctor extends Mock implements Doctor {}
 class _MockGradlew extends Mock implements Gradlew {}
 
 class _MockLogger extends Mock implements Logger {}
+
+class _MockPlatform extends Mock implements Platform {}
 
 class _MockProgress extends Mock implements Progress {}
 
@@ -54,6 +58,7 @@ environment:
     late Gradlew gradlew;
     late CodePushClient codePushClient;
     late Logger logger;
+    late Platform platform;
     late Progress progress;
     late XcodeBuild xcodeBuild;
     late InitCommand command;
@@ -66,6 +71,7 @@ environment:
           doctorRef.overrideWith(() => doctor),
           gradlewRef.overrideWith(() => gradlew),
           loggerRef.overrideWith(() => logger),
+          platformRef.overrideWith(() => platform),
           processRef.overrideWith(() => process),
           xcodeBuildRef.overrideWith(() => xcodeBuild),
         },
@@ -87,6 +93,7 @@ environment:
       gradlew = _MockGradlew();
       codePushClient = _MockCodePushClient();
       logger = _MockLogger();
+      platform = _MockPlatform();
       progress = _MockProgress();
       xcodeBuild = _MockXcodeBuild();
 
@@ -107,6 +114,7 @@ environment:
       ).thenReturn(appName);
       when(() => logger.progress(any())).thenReturn(progress);
       when(() => gradlew.productFlavors(any())).thenAnswer((_) async => {});
+      when(() => platform.isMacOS).thenReturn(true);
       when(
         () => xcodeBuild.list(any()),
       ).thenAnswer((_) async => const XcodeProjectBuildInfo());
@@ -245,6 +253,106 @@ If you want to reinitialize Shorebird, please run "shorebird init --force".''',
       ).called(1);
       verify(() => logger.err('$error')).called(1);
       expect(exitCode, ExitCode.software.code);
+    });
+
+    test('throws software error when unable to detect schemes (non-macos)',
+        () async {
+      when(() => platform.isMacOS).thenReturn(false);
+      final tempDir = Directory.systemTemp.createTempSync();
+      File(
+        p.join(tempDir.path, 'pubspec.yaml'),
+      ).writeAsStringSync(pubspecYamlContent);
+      final exitCode = await IOOverrides.runZoned(
+        () => runWithOverrides(command.run),
+        getCurrentDirectory: () => tempDir,
+      );
+      expect(exitCode, equals(ExitCode.software.code));
+      verify(
+        () => logger.err(
+          any(that: contains('Unable to detect iOS schemes in')),
+        ),
+      ).called(1);
+      verifyNever(() => xcodeBuild.list(any()));
+    });
+
+    test('creates shorebird for an app without flavors (non-macos)', () async {
+      when(() => platform.isMacOS).thenReturn(false);
+      final tempDir = Directory.systemTemp.createTempSync();
+      when(
+        () => gradlew.productFlavors(any()),
+      ).thenThrow(MissingAndroidProjectException(tempDir.path));
+      File(
+        p.join(tempDir.path, 'pubspec.yaml'),
+      ).writeAsStringSync(pubspecYamlContent);
+      File(
+        p.join(
+          tempDir.path,
+          'ios',
+          'Runner.xcodeproj',
+          'xcshareddata',
+          'xcschemes',
+          'Runner.xcscheme',
+        ),
+      ).createSync(recursive: true);
+      final exitCode = await IOOverrides.runZoned(
+        () => runWithOverrides(command.run),
+        getCurrentDirectory: () => tempDir,
+      );
+      expect(
+        File(p.join(tempDir.path, 'shorebird.yaml')).readAsStringSync(),
+        contains('app_id: $appId'),
+      );
+      expect(exitCode, equals(ExitCode.success.code));
+      verifyNever(() => xcodeBuild.list(any()));
+    });
+
+    test('creates shorebird for an app with flavors (non-macos)', () async {
+      const appIds = ['test-appId-1', 'test-appId-2'];
+      var index = 0;
+      when(() => platform.isMacOS).thenReturn(false);
+      when(
+        () => codePushClient.createApp(displayName: any(named: 'displayName')),
+      ).thenAnswer((invocation) async {
+        final displayName = invocation.namedArguments[#displayName] as String;
+        return App(id: appIds[index++], displayName: displayName);
+      });
+      final tempDir = Directory.systemTemp.createTempSync();
+      when(
+        () => gradlew.productFlavors(any()),
+      ).thenThrow(MissingAndroidProjectException(tempDir.path));
+      File(
+        p.join(tempDir.path, 'pubspec.yaml'),
+      ).writeAsStringSync(pubspecYamlContent);
+      final schemesPath = p.join(
+        tempDir.path,
+        'ios',
+        'Runner.xcodeproj',
+        'xcshareddata',
+        'xcschemes',
+      );
+      File(p.join(schemesPath, 'Runner.xcscheme')).createSync(recursive: true);
+      File(p.join(schemesPath, 'internal.xcscheme'))
+          .createSync(recursive: true);
+      File(p.join(schemesPath, 'stable.xcscheme')).createSync(recursive: true);
+      final exitCode = await IOOverrides.runZoned(
+        () => runWithOverrides(command.run),
+        getCurrentDirectory: () => tempDir,
+      );
+      expect(
+        File(p.join(tempDir.path, 'shorebird.yaml')).readAsStringSync(),
+        contains('''
+app_id: ${appIds[0]}
+flavors:
+  internal: ${appIds[0]}
+  stable: ${appIds[1]}'''),
+      );
+
+      verifyInOrder([
+        () => codePushClient.createApp(displayName: '$appName (internal)'),
+        () => codePushClient.createApp(displayName: '$appName (stable)'),
+      ]);
+      expect(exitCode, equals(ExitCode.success.code));
+      verifyNever(() => xcodeBuild.list(any()));
     });
 
     test('creates shorebird.yaml for an app without flavors', () async {

@@ -2,10 +2,12 @@ import 'dart:io';
 
 import 'package:collection/collection.dart';
 import 'package:mason_logger/mason_logger.dart';
+import 'package:path/path.dart' as p;
 import 'package:shorebird_cli/src/command.dart';
 import 'package:shorebird_cli/src/doctor.dart';
 import 'package:shorebird_cli/src/gradlew.dart';
 import 'package:shorebird_cli/src/logger.dart';
+import 'package:shorebird_cli/src/platform.dart';
 import 'package:shorebird_cli/src/shorebird_config_mixin.dart';
 import 'package:shorebird_cli/src/shorebird_create_app_mixin.dart';
 import 'package:shorebird_cli/src/shorebird_environment.dart';
@@ -172,11 +174,35 @@ For more information about Shorebird, visit ${link(uri: Uri.parse('https://shore
   }
 
   Future<Set<String>?> _maybeGetiOSFlavors(String projectPath) async {
-    try {
-      final info = await xcodeBuild.list(projectPath);
-      return info.schemes.whereNot((element) => element == 'Runner').toSet();
-    } on MissingIOSProjectException {
-      return null;
+    if (platform.isMacOS) {
+      try {
+        final info = await xcodeBuild.list(projectPath);
+        return info.schemes.whereNot((element) => element == 'Runner').toSet();
+      } on MissingIOSProjectException {
+        return null;
+      }
+    } else {
+      // When running on a non-macOS platform, we can't use xcodebuild to
+      // detect flavors so we fallback to looking for schemes in xcschemes.
+      final xcschemesDir = Directory(
+        p.join(
+          projectPath,
+          'ios',
+          'Runner.xcodeproj',
+          'xcshareddata',
+          'xcschemes',
+        ),
+      );
+      if (!xcschemesDir.existsSync()) {
+        throw Exception('Unable to detect iOS schemes in $xcschemesDir');
+      }
+      return xcschemesDir
+          .listSync()
+          .whereType<File>()
+          .where((e) => p.basename(e.path).endsWith('.xcscheme'))
+          .where((e) => p.basenameWithoutExtension(e.path) != 'Runner')
+          .map((file) => p.basename(file.path).split('.xcscheme').first)
+          .toSet();
     }
   }
 }
