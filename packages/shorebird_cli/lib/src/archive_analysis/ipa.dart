@@ -38,6 +38,10 @@ class Ipa {
   /// The version number of the IPA, as derived from the app's Info.plist.
   String get versionNumber {
     final plist = _getPlist();
+    if (plist == null) {
+      throw Exception('Could not find Info.plist');
+    }
+
     final releaseVersion = plist[releaseVersionKey] as String?;
     final buildNumber = plist[buildNumberKey] as String?;
     if (releaseVersion == null) {
@@ -49,8 +53,8 @@ class Ipa {
         : '$releaseVersion+$buildNumber';
   }
 
-  Map<String, Object> _getPlist() {
-    final plistPathRegex = RegExp(r'Payload/[\w]+.app/Info.plist');
+  Map<String, Object>? _getPlist() {
+    final plistPathRegex = RegExp(r'Payload/[\w|\s]+.app/Info.plist');
     final plistFile = ZipDecoder()
         .decodeBuffer(InputFileStream(_ipaFile.path))
         .files
@@ -58,7 +62,7 @@ class Ipa {
       return file.isFile && plistPathRegex.hasMatch(file.name);
     }).firstOrNull;
     if (plistFile == null) {
-      return {};
+      return null;
     }
 
     final content = plistFile.content as Uint8List;
