@@ -209,13 +209,18 @@ mixin ShorebirdBuildMixin on ShorebirdCommand {
   }
 
   /// Builds a release iOS framework (.xcframework) for the current project.
-  Future<void> buildIosFramework() async {
+  Future<void> buildIosFramework({
+    String? flavor,
+    String? target,
+  }) async {
     const executable = 'flutter';
     final arguments = [
       'build',
       'ios-framework',
       '--no-debug',
       '--no-profile',
+      if (flavor != null) '--flavor=$flavor',
+      if (target != null) '--target=$target',
       ...results.rest,
     ];
 
