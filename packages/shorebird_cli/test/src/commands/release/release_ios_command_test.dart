@@ -189,7 +189,7 @@ flutter:
       when(
         () => logger.prompt(any(), defaultValue: any(named: 'defaultValue')),
       ).thenReturn(version);
-      when(() => platform.isMacOS).thenReturn(true);
+      when(() => platform.operatingSystem).thenReturn(Platform.macOS);
       when(
         () => flutterBuildProcessResult.exitCode,
       ).thenReturn(ExitCode.success.code);
@@ -251,12 +251,12 @@ flutter:
     });
 
     test('exits with unavailable code if run on non-macOS platform', () async {
-      when(() => platform.isMacOS).thenReturn(false);
+      when(() => platform.operatingSystem).thenReturn(Platform.windows);
 
       final result = await runWithOverrides(command.run);
 
       expect(result, equals(ExitCode.unavailable.code));
-      verify(() => logger.err('This command is only supported on macOS.'))
+      verify(() => logger.err('This command is only supported on macos.'))
           .called(1);
     });
 

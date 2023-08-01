@@ -2,6 +2,7 @@ import 'package:collection/collection.dart';
 import 'package:mason_logger/mason_logger.dart';
 import 'package:shorebird_cli/src/auth/auth.dart';
 import 'package:shorebird_cli/src/logger.dart';
+import 'package:shorebird_cli/src/platform.dart';
 import 'package:shorebird_cli/src/shorebird_config_mixin.dart';
 import 'package:shorebird_cli/src/validators/validators.dart';
 
@@ -24,6 +25,12 @@ class ValidationFailedException implements PreconditionFailedException {
   ExitCode get exitCode => ExitCode.config;
 }
 
+class UnsupportedOperatingSystemException
+    implements PreconditionFailedException {
+  @override
+  ExitCode get exitCode => ExitCode.unavailable;
+}
+
 mixin ShorebirdValidationMixin on ShorebirdConfigMixin {
   /// Checks common preconditions for running a command and throws an
   /// appropriate [PreconditionFailedException] if any of them fail.
@@ -31,7 +38,16 @@ mixin ShorebirdValidationMixin on ShorebirdConfigMixin {
     bool checkShorebirdInitialized = false,
     bool checkUserIsAuthenticated = false,
     List<Validator> validators = const [],
+    Set<String>? supportedOperatingSystems,
   }) async {
+    if (supportedOperatingSystems != null &&
+        !supportedOperatingSystems.contains(platform.operatingSystem)) {
+      logger.err(
+        '''This command is only supported on ${supportedOperatingSystems.join(' ,')}.''',
+      );
+      throw UnsupportedOperatingSystemException();
+    }
+
     if (checkUserIsAuthenticated && !auth.isAuthenticated) {
       logger
         ..err('You must be logged in to run this command.')

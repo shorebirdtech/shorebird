@@ -1,14 +1,11 @@
-import 'dart:async';
 import 'dart:io' hide Platform;
 
 import 'package:crypto/crypto.dart';
 import 'package:mason_logger/mason_logger.dart';
-import 'package:path/path.dart' as p;
 import 'package:platform/platform.dart';
-import 'package:shorebird_cli/src/archive_analysis/archive_analysis.dart';
 import 'package:shorebird_cli/src/code_push_client_wrapper.dart';
 import 'package:shorebird_cli/src/command.dart';
-import 'package:shorebird_cli/src/config/config.dart';
+import 'package:shorebird_cli/src/config/shorebird_yaml.dart';
 import 'package:shorebird_cli/src/doctor.dart';
 import 'package:shorebird_cli/src/formatters/file_size_formatter.dart';
 import 'package:shorebird_cli/src/ios.dart';
@@ -20,30 +17,31 @@ import 'package:shorebird_cli/src/shorebird_environment.dart';
 import 'package:shorebird_cli/src/shorebird_validation_mixin.dart';
 import 'package:shorebird_code_push_client/shorebird_code_push_client.dart';
 
-/// {@template patch_ios_command}
-/// `shorebird patch ios-alpha` command.
-/// {@endtemplate}
-class PatchIosCommand extends ShorebirdCommand
+class PatchIosFrameworkCommand extends ShorebirdCommand
     with
         ShorebirdConfigMixin,
-        ShorebirdBuildMixin,
         ShorebirdValidationMixin,
+        ShorebirdBuildMixin,
         ShorebirdArtifactMixin {
-  /// {@macro patch_ios_command}
-  PatchIosCommand({
+  PatchIosFrameworkCommand({
     HashFunction? hashFn,
-    IpaReader? ipaReader,
-  })  : _hashFn = hashFn ?? ((m) => sha256.convert(m).toString()),
-        _ipaReader = ipaReader ?? IpaReader() {
+  }) : _hashFn = hashFn ?? ((m) => sha256.convert(m).toString()) {
     argParser
+      ..addOption(
+        'release-version',
+        help: '''
+The version of the associated release (e.g. "1.0.0"). This should be the version
+of the iOS app that is using this module.''',
+        mandatory: true,
+      )
       ..addOption(
         'target',
         abbr: 't',
-        help: 'The main entrypoint file of the application.',
+        help: 'The main entrypoint file of the module.',
       )
       ..addOption(
         'flavor',
-        help: 'The product flavor to use when building the app.',
+        help: 'The product flavor to use when building the module.',
       )
       ..addFlag(
         'force',
@@ -59,27 +57,26 @@ class PatchIosCommand extends ShorebirdCommand
       );
   }
 
+  final HashFunction _hashFn;
+
   @override
-  String get name => 'ios-alpha';
+  String get name => 'ios-framework-alpha';
 
   @override
   String get description =>
-      'Publish new patches for a specific iOS release to Shorebird.';
-
-  final HashFunction _hashFn;
-  final IpaReader _ipaReader;
+      'Publish new patches for a specific iOS framework release to Shorebird.';
 
   @override
   Future<int> run() async {
     try {
       await validatePreconditions(
-        checkShorebirdInitialized: true,
         checkUserIsAuthenticated: true,
+        checkShorebirdInitialized: true,
         validators: doctor.iosCommandValidators,
         supportedOperatingSystems: {Platform.macOS},
       );
-    } on PreconditionFailedException catch (error) {
-      return error.exitCode.code;
+    } on PreconditionFailedException catch (e) {
+      return e.exitCode.code;
     }
 
     showiOSStatusWarning();
@@ -87,23 +84,31 @@ class PatchIosCommand extends ShorebirdCommand
     const arch = 'aarch64';
     const channelName = 'stable';
     const releasePlatform = ReleasePlatform.ios;
-    final force = results['force'] == true;
-    final dryRun = results['dry-run'] == true;
     final flavor = results['flavor'] as String?;
     final target = results['target'] as String?;
-
-    if (force && dryRun) {
-      logger.err('Cannot use both --force and --dry-run.');
-      return ExitCode.usage.code;
-    }
-
+    final releaseVersion = results['release-version'] as String;
+    final dryRun = results['dry-run'] == true;
     final shorebirdYaml = ShorebirdEnvironment.getShorebirdYaml()!;
     final appId = shorebirdYaml.getAppId(flavor: flavor);
     final app = await codePushClientWrapper.getApp(appId: appId);
 
-    final buildProgress = logger.progress('Building release');
+    final release = await codePushClientWrapper.getRelease(
+      appId: appId,
+      releaseVersion: releaseVersion,
+    );
+
+    if (release.platformStatuses[ReleasePlatform.ios] == ReleaseStatus.draft) {
+      logger.err('''
+Release $releaseVersion is in an incomplete state. It's possible that the original release was terminated or failed to complete.
+
+Please re-run the release command for this version or create a new release.''');
+      return ExitCode.software.code;
+    }
+
+    final buildProgress = logger.progress('Building patch');
     try {
-      await buildIpa(flavor: flavor, target: target);
+      await buildIosFramework(flavor: flavor, target: target);
+      buildProgress.complete();
     } on ProcessException catch (error) {
       buildProgress.fail('Failed to build: ${error.message}');
       return ExitCode.software.code;
@@ -119,45 +124,6 @@ class PatchIosCommand extends ShorebirdCommand
     }
 
     buildProgress.complete();
-
-    final String releaseVersion;
-
-    final detectReleaseVersionProgress = logger.progress(
-      'Detecting release version',
-    );
-    try {
-      final ipa = _ipaReader.read(
-        p.join(
-          Directory.current.path,
-          'build',
-          'ios',
-          'ipa',
-          '${getIpaName()}.ipa',
-        ),
-      );
-      releaseVersion = ipa.versionNumber;
-      detectReleaseVersionProgress.complete(
-        'Detected release version $releaseVersion',
-      );
-    } catch (error) {
-      detectReleaseVersionProgress.fail(
-        'Failed to determine release version: $error',
-      );
-      return ExitCode.software.code;
-    }
-
-    final release = await codePushClientWrapper.getRelease(
-      appId: appId,
-      releaseVersion: releaseVersion,
-    );
-
-    if (release.platformStatuses[ReleasePlatform.ios] == ReleaseStatus.draft) {
-      logger.err('''
-Release $releaseVersion is in an incomplete state. It's possible that the original release was terminated or failed to complete.
-
-Please re-run the release command for this version or create a new release.''');
-      return ExitCode.software.code;
-    }
 
     final flutterRevisionProgress = logger.progress(
       'Fetching Flutter revision',
@@ -224,7 +190,7 @@ ${summary.join('\n')}
     );
 
     // TODO(bryanoltman): check for asset changes
-
+    final force = results['force'] == true;
     final needsConfirmation = !force;
     if (needsConfirmation) {
       final confirm = logger.confirm('Would you like to continue?');

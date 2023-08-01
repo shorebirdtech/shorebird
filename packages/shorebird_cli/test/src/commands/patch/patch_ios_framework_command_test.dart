@@ -1,14 +1,11 @@
-import 'dart:io' hide Platform;
+import 'dart:io';
 
 import 'package:args/args.dart';
-import 'package:http/http.dart' as http;
 import 'package:mason_logger/mason_logger.dart';
 import 'package:mocktail/mocktail.dart';
 import 'package:path/path.dart' as p;
 import 'package:platform/platform.dart';
-import 'package:propertylistserialization/propertylistserialization.dart';
 import 'package:scoped/scoped.dart';
-import 'package:shorebird_cli/src/archive_analysis/archive_analysis.dart';
 import 'package:shorebird_cli/src/auth/auth.dart';
 import 'package:shorebird_cli/src/code_push_client_wrapper.dart';
 import 'package:shorebird_cli/src/commands/patch/patch.dart';
@@ -17,12 +14,9 @@ import 'package:shorebird_cli/src/logger.dart';
 import 'package:shorebird_cli/src/platform.dart';
 import 'package:shorebird_cli/src/process.dart';
 import 'package:shorebird_cli/src/shorebird_environment.dart';
-import 'package:shorebird_cli/src/third_party/flutter_tools/lib/flutter_tools.dart';
 import 'package:shorebird_cli/src/validators/validators.dart';
 import 'package:shorebird_code_push_client/shorebird_code_push_client.dart';
 import 'package:test/test.dart';
-
-class _FakeBaseRequest extends Fake implements http.BaseRequest {}
 
 class _MockArgResults extends Mock implements ArgResults {}
 
@@ -33,10 +27,6 @@ class _MockCodePushClientWrapper extends Mock
 
 class _MockDoctor extends Mock implements Doctor {}
 
-class _MockIpaReader extends Mock implements IpaReader {}
-
-class _MockIpa extends Mock implements Ipa {}
-
 class _MockLogger extends Mock implements Logger {}
 
 class _MockPlatform extends Mock implements Platform {}
@@ -45,35 +35,21 @@ class _MockProgress extends Mock implements Progress {}
 
 class _MockProcessResult extends Mock implements ShorebirdProcessResult {}
 
-class _MockHttpClient extends Mock implements http.Client {}
-
 class _MockShorebirdFlutterValidator extends Mock
     implements ShorebirdFlutterValidator {}
 
 class _MockShorebirdProcess extends Mock implements ShorebirdProcess {}
 
-class _FakeShorebirdProcess extends Fake implements ShorebirdProcess {}
-
 void main() {
-  const flutterRevision = '83305b5088e6fe327fb3334a73ff190828d85713';
-  const appId = 'test-app-id';
-  const versionName = '1.2.3';
-  const versionCode = '1';
-  const version = '$versionName+$versionCode';
-  const arch = 'aarch64';
-  const appDisplayName = 'Test App';
-  const platformName = 'ios';
-  const elfAotSnapshotFileName = 'out.aot';
-  const infoPlistContent = '''
-<?xml version="1.0" encoding="UTF-8"?>
-<!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
-<plist version="1.0">
-<dict>
-	<key>CFBundleName</key>
-	<string>app_bundle_name</string>
-</dict>
-</plist>''';
-  const pubspecYamlContent = '''
+  group(PatchIosFrameworkCommand, () {
+    const appDisplayName = 'Test App';
+    const appId = 'test-app-id';
+    const versionName = '1.2.3';
+    const versionCode = '1';
+    const version = '$versionName+$versionCode';
+    const elfAotSnapshotFileName = 'out.aot';
+    const flutterRevision = '83305b5088e6fe327fb3334a73ff190828d85713';
+    const pubspecYamlContent = '''
 name: example
 version: $version
 environment:
@@ -82,34 +58,30 @@ environment:
 flutter:
   assets:
     - shorebird.yaml''';
+    const appMetadata = AppMetadata(appId: appId, displayName: appDisplayName);
+    const release = Release(
+      id: 0,
+      appId: appId,
+      version: version,
+      flutterRevision: flutterRevision,
+      displayName: '1.2.3+1',
+      platformStatuses: {},
+    );
 
-  const appMetadata = AppMetadata(appId: appId, displayName: appDisplayName);
-  const release = Release(
-    id: 0,
-    appId: appId,
-    version: version,
-    flutterRevision: flutterRevision,
-    displayName: '1.2.3+1',
-    platformStatuses: {},
-  );
-
-  group(PatchIosCommand, () {
     late ArgResults argResults;
-    late Auth auth;
     late CodePushClientWrapper codePushClientWrapper;
+    late Directory shorebirdRoot;
     late Doctor doctor;
-    late Ipa ipa;
-    late IpaReader ipaReader;
+    late Platform platform;
+    late Auth auth;
     late Progress progress;
     late Logger logger;
-    late Platform platform;
     late ShorebirdProcessResult aotBuildProcessResult;
     late ShorebirdProcessResult flutterBuildProcessResult;
     late ShorebirdProcessResult flutterRevisionProcessResult;
-    late http.Client httpClient;
+    late PatchIosFrameworkCommand command;
     late ShorebirdFlutterValidator flutterValidator;
     late ShorebirdProcess shorebirdProcess;
-    late PatchIosCommand command;
 
     R runWithOverrides<R>(R Function() body) {
       return runScoped(
@@ -123,22 +95,6 @@ flutter:
           processRef.overrideWith(() => shorebirdProcess),
         },
       );
-    }
-
-    Directory setUpTempDir() {
-      final tempDir = Directory.systemTemp.createTempSync();
-      File(
-        p.join(tempDir.path, 'pubspec.yaml'),
-      ).writeAsStringSync(pubspecYamlContent);
-      File(
-        p.join(tempDir.path, 'shorebird.yaml'),
-      ).writeAsStringSync('app_id: $appId');
-      File(
-        p.join(tempDir.path, 'ios', 'Runner', 'Info.plist'),
-      )
-        ..createSync(recursive: true)
-        ..writeAsStringSync(infoPlistContent);
-      return tempDir;
     }
 
     void setUpTempArtifacts(Directory dir) {
@@ -160,35 +116,86 @@ flutter:
       );
     }
 
+    Directory setUpTempDir() {
+      final tempDir = Directory.systemTemp.createTempSync();
+      File(
+        p.join(tempDir.path, 'pubspec.yaml'),
+      ).writeAsStringSync(pubspecYamlContent);
+      File(
+        p.join(tempDir.path, 'shorebird.yaml'),
+      ).writeAsStringSync('app_id: $appId');
+      return tempDir;
+    }
+
     setUpAll(() {
-      registerFallbackValue(_FakeBaseRequest());
-      registerFallbackValue(_FakeShorebirdProcess());
       registerFallbackValue(ReleasePlatform.ios);
     });
 
     setUp(() {
       argResults = _MockArgResults();
-      auth = _MockAuth();
       codePushClientWrapper = _MockCodePushClientWrapper();
       doctor = _MockDoctor();
-      ipaReader = _MockIpaReader();
-      ipa = _MockIpa();
+      platform = _MockPlatform();
+      shorebirdRoot = Directory.systemTemp.createTempSync();
+      auth = _MockAuth();
       progress = _MockProgress();
       logger = _MockLogger();
-      platform = _MockPlatform();
       aotBuildProcessResult = _MockProcessResult();
       flutterBuildProcessResult = _MockProcessResult();
       flutterRevisionProcessResult = _MockProcessResult();
-      httpClient = _MockHttpClient();
       flutterValidator = _MockShorebirdFlutterValidator();
       shorebirdProcess = _MockShorebirdProcess();
 
-      when(() => argResults['arch']).thenReturn(arch);
-      when(() => argResults['dry-run']).thenReturn(false);
+      when(
+        () => shorebirdProcess.run(
+          'flutter',
+          any(),
+          runInShell: any(named: 'runInShell'),
+        ),
+      ).thenAnswer((_) async => flutterBuildProcessResult);
+      when(
+        () => shorebirdProcess.run(
+          any(that: endsWith('gen_snapshot_arm64')),
+          any(),
+          runInShell: any(named: 'runInShell'),
+        ),
+      ).thenAnswer((_) async => aotBuildProcessResult);
+      when(
+        () => shorebirdProcess.run(
+          'git',
+          any(),
+          runInShell: any(named: 'runInShell'),
+          workingDirectory: any(named: 'workingDirectory'),
+        ),
+      ).thenAnswer((_) async => flutterRevisionProcessResult);
       when(() => argResults['force']).thenReturn(false);
+      when(() => argResults['release-version']).thenReturn(version);
       when(() => argResults.rest).thenReturn([]);
       when(() => auth.isAuthenticated).thenReturn(true);
-      when(() => auth.client).thenReturn(httpClient);
+      when(() => doctor.iosCommandValidators).thenReturn([flutterValidator]);
+      when(flutterValidator.validate).thenAnswer((_) async => []);
+      when(() => logger.progress(any())).thenReturn(progress);
+      when(() => logger.confirm(any())).thenReturn(true);
+      when(() => platform.operatingSystem).thenReturn(Platform.macOS);
+      when(() => platform.script).thenReturn(
+        Uri.file(
+          p.join(
+            shorebirdRoot.path,
+            'bin',
+            'cache',
+            'shorebird.snapshot',
+          ),
+        ),
+      );
+      when(() => aotBuildProcessResult.exitCode)
+          .thenReturn(ExitCode.success.code);
+      when(() => flutterBuildProcessResult.exitCode)
+          .thenReturn(ExitCode.success.code);
+      when(() => flutterRevisionProcessResult.exitCode)
+          .thenReturn(ExitCode.success.code);
+      when(
+        () => flutterRevisionProcessResult.stdout,
+      ).thenReturn(flutterRevision);
       when(
         () => codePushClientWrapper.getApp(appId: any(named: 'appId')),
       ).thenAnswer((_) async => appMetadata);
@@ -207,57 +214,8 @@ flutter:
           patchArtifactBundles: any(named: 'patchArtifactBundles'),
         ),
       ).thenAnswer((_) async {});
-      when(() => ipa.versionNumber).thenReturn(version);
-      when(() => ipaReader.read(any())).thenReturn(ipa);
-      when(() => doctor.iosCommandValidators).thenReturn([flutterValidator]);
-      when(flutterValidator.validate).thenAnswer((_) async => []);
-      when(() => logger.confirm(any())).thenReturn(true);
-      when(() => logger.progress(any())).thenReturn(progress);
-      when(() => platform.operatingSystem).thenReturn(Platform.macOS);
-      when(() => platform.environment).thenReturn({});
-      when(() => platform.script).thenReturn(
-        Uri.file(
-          p.join(
-            Directory.systemTemp.createTempSync().path,
-            'bin',
-            'cache',
-            'shorebird.snapshot',
-          ),
-        ),
-      );
-      when(() => aotBuildProcessResult.exitCode)
-          .thenReturn(ExitCode.success.code);
-      when(() => flutterBuildProcessResult.exitCode)
-          .thenReturn(ExitCode.success.code);
-      when(() => flutterRevisionProcessResult.exitCode)
-          .thenReturn(ExitCode.success.code);
-      when(
-        () => flutterRevisionProcessResult.stdout,
-      ).thenReturn(flutterRevision);
-      when(
-        () => shorebirdProcess.run(
-          'git',
-          any(),
-          runInShell: any(named: 'runInShell'),
-          workingDirectory: any(named: 'workingDirectory'),
-        ),
-      ).thenAnswer((_) async => flutterRevisionProcessResult);
-      when(
-        () => shorebirdProcess.run(
-          'flutter',
-          any(),
-          runInShell: any(named: 'runInShell'),
-        ),
-      ).thenAnswer((_) async => flutterBuildProcessResult);
-      when(
-        () => shorebirdProcess.run(
-          any(that: endsWith('gen_snapshot_arm64')),
-          any(),
-          runInShell: any(named: 'runInShell'),
-        ),
-      ).thenAnswer((_) async => aotBuildProcessResult);
 
-      command = runWithOverrides(() => PatchIosCommand(ipaReader: ipaReader))
+      command = runWithOverrides(PatchIosFrameworkCommand.new)
         ..testArgResults = argResults;
     });
 
@@ -275,6 +233,20 @@ flutter:
           .called(1);
     });
 
+    test('throws config error when shorebird is not initialized', () async {
+      final tempDir = Directory.systemTemp.createTempSync();
+      final exitCode = await IOOverrides.runZoned(
+        () => runWithOverrides(command.run),
+        getCurrentDirectory: () => tempDir,
+      );
+      verify(
+        () => logger.err(
+          'Shorebird is not initialized. Did you run "shorebird init"?',
+        ),
+      ).called(1);
+      expect(exitCode, ExitCode.config.code);
+    });
+
     test('throws no user error when user is not logged in', () async {
       when(() => auth.isAuthenticated).thenReturn(false);
       final tempDir = setUpTempDir();
@@ -283,32 +255,6 @@ flutter:
         getCurrentDirectory: () => tempDir,
       );
       expect(exitCode, equals(ExitCode.noUser.code));
-    });
-
-    test('exits with code 70 when building fails', () async {
-      when(() => flutterBuildProcessResult.exitCode).thenReturn(1);
-      when(() => flutterBuildProcessResult.stderr).thenReturn('oops');
-
-      final tempDir = setUpTempDir();
-      final exitCode = await IOOverrides.runZoned(
-        () => runWithOverrides(command.run),
-        getCurrentDirectory: () => tempDir,
-      );
-
-      expect(exitCode, equals(ExitCode.software.code));
-    });
-
-    test(
-        'exits with usage code when '
-        'both --dry-run and --force are specified', () async {
-      when(() => argResults['dry-run']).thenReturn(true);
-      when(() => argResults['force']).thenReturn(true);
-      final tempDir = setUpTempDir();
-      final exitCode = await IOOverrides.runZoned(
-        () => runWithOverrides(command.run),
-        getCurrentDirectory: () => tempDir,
-      );
-      expect(exitCode, equals(ExitCode.usage.code));
     });
 
     test('aborts when user opts out', () async {
@@ -385,6 +331,20 @@ Please re-run the release command for this version or create a new release.'''),
       },
     );
 
+    test('exits with code 70 when build fails', () async {
+      when(() => flutterBuildProcessResult.exitCode).thenReturn(1);
+      when(() => flutterBuildProcessResult.stderr).thenReturn('oh no');
+
+      final tempDir = setUpTempDir();
+      setUpTempArtifacts(tempDir);
+      final exitCode = await IOOverrides.runZoned(
+        () => runWithOverrides(command.run),
+        getCurrentDirectory: () => tempDir,
+      );
+      expect(exitCode, ExitCode.software.code);
+      verify(() => progress.fail('Failed to build: oh no')).called(1);
+    });
+
     test('errors when unable to detect flutter revision', () async {
       const error = 'oops';
       when(() => flutterRevisionProcessResult.exitCode).thenReturn(1);
@@ -441,38 +401,6 @@ Shorebird plans to support this automatically, let us know if it's important to 
 https://github.com/shorebirdtech/shorebird/issues/472
 '''),
       ).called(1);
-    });
-
-    test('exits with code 70 when release version cannot be determiend',
-        () async {
-      when(() => ipa.versionNumber).thenThrow(Exception('oops'));
-
-      final tempDir = setUpTempDir();
-      setUpTempArtifacts(tempDir);
-      final exitCode = await IOOverrides.runZoned(
-        () => runWithOverrides(command.run),
-        getCurrentDirectory: () => tempDir,
-      );
-
-      expect(exitCode, equals(ExitCode.software.code));
-      verify(
-        () => progress.fail(
-          any(that: contains('Failed to determine release version')),
-        ),
-      ).called(1);
-    });
-
-    test('prints release version when detected', () async {
-      final tempDir = setUpTempDir();
-      setUpTempArtifacts(tempDir);
-      final exitCode = await IOOverrides.runZoned(
-        () => runWithOverrides(command.run),
-        getCurrentDirectory: () => tempDir,
-      );
-
-      expect(exitCode, equals(ExitCode.success.code));
-      verify(() => progress.complete('Detected release version 1.2.3+1'))
-          .called(1);
     });
 
     test('throws error when creating aot snapshot fails', () async {
@@ -541,7 +469,7 @@ https://github.com/shorebirdtech/shorebird/issues/472
         () => logger.info(
           any(
             that: contains(
-              '''🕹️  Platform: ${lightCyan.wrap(platformName)} ${lightCyan.wrap('[aarch64 (0 B)]')}''',
+              '''🕹️  Platform: ${lightCyan.wrap('ios')} ${lightCyan.wrap('[aarch64 (0 B)]')}''',
             ),
           ),
         ),
@@ -550,80 +478,52 @@ https://github.com/shorebirdtech/shorebird/issues/472
       expect(exitCode, ExitCode.success.code);
     });
 
-    test(
-        'succeeds when patch is successful '
-        'with flavors and target', () async {
+    test('succeeds when patch is successful with flavors and target', () async {
       const flavor = 'development';
-      const target = './lib/main_development.dart';
+      final target = p.join('lib', 'main_development.dart');
       when(() => argResults['flavor']).thenReturn(flavor);
       when(() => argResults['target']).thenReturn(target);
       final tempDir = setUpTempDir();
+      setUpTempArtifacts(tempDir);
       File(
         p.join(tempDir.path, 'shorebird.yaml'),
       ).writeAsStringSync('''
 app_id: productionAppId
 flavors:
   development: $appId''');
-      setUpTempArtifacts(tempDir);
-      final exitCode = await IOOverrides.runZoned(
-        () => runWithOverrides(command.run),
-        getCurrentDirectory: () => tempDir,
-      );
-      verify(() => logger.success('\n✅ Published Patch!')).called(1);
-      expect(exitCode, ExitCode.success.code);
-    });
-
-    test('succeeds when patch is successful using custom base_url', () async {
-      final tempDir = setUpTempDir();
-      setUpTempArtifacts(tempDir);
-      const baseUrl = 'https://example.com';
-      File(
-        p.join(tempDir.path, 'shorebird.yaml'),
-      ).writeAsStringSync(
-        '''
-app_id: $appId
-base_url: $baseUrl''',
-      );
-      await IOOverrides.runZoned(
-        () => runWithOverrides(command.run),
-        getCurrentDirectory: () => tempDir,
-      );
-    });
-
-    test('provides appropriate ExportOptions.plist to build ipa command',
-        () async {
-      final tempDir = setUpTempDir();
-      setUpTempArtifacts(tempDir);
 
       final exitCode = await IOOverrides.runZoned(
         () => runWithOverrides(command.run),
         getCurrentDirectory: () => tempDir,
       );
-
-      expect(exitCode, ExitCode.success.code);
-      final capturedArgs = verify(
-        () => shorebirdProcess.run(
-          'flutter',
-          captureAny(),
-          runInShell: any(named: 'runInShell'),
+      final arguments = [
+        'build',
+        'ios-framework',
+        '--no-debug',
+        '--no-profile',
+        '--flavor=$flavor',
+        '--target=$target',
+      ];
+      verify(
+        () => shorebirdProcess.run('flutter', arguments, runInShell: true),
+      ).called(1);
+      verify(
+        () => logger.info(
+          any(that: contains('🍧 Flavor: ${lightCyan.wrap(flavor)}')),
         ),
-      ).captured.first as List<String>;
-      final exportOptionsPlistFile = File(
-        capturedArgs
-            .whereType<String>()
-            .firstWhere((arg) => arg.contains('export-options-plist'))
-            .split('=')
-            .last,
-      );
-      expect(exportOptionsPlistFile.existsSync(), isTrue);
-      final exportOptionsPlist =
-          PropertyListSerialization.propertyListWithString(
-        exportOptionsPlistFile.readAsStringSync(),
-      ) as Map<String, Object>;
-      expect(exportOptionsPlist['manageAppVersionAndBuildNumber'], isFalse);
-      expect(exportOptionsPlist['signingStyle'], 'automatic');
-      expect(exportOptionsPlist['uploadBitcode'], isFalse);
-      expect(exportOptionsPlist['method'], 'app-store');
+      ).called(1);
+      verify(() => logger.success('\n✅ Published Patch!')).called(1);
+      verify(
+        () => codePushClientWrapper.publishPatch(
+          appId: appId,
+          releaseId: release.id,
+          platform: ReleasePlatform.ios,
+          channelName: 'stable',
+          patchArtifactBundles: any(named: 'patchArtifactBundles'),
+        ),
+      ).called(1);
+
+      expect(exitCode, ExitCode.success.code);
     });
 
     test('prints flutter validation warnings', () async {
