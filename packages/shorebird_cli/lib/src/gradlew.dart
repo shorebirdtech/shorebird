@@ -60,12 +60,11 @@ class Gradlew {
     final javaHome = java.home;
     // Flutter apps have android files in root/android
     // Flutter modules have android files in root/.android
-    final androidRoot = [
-      Directory(p.join(projectPath, 'android')),
-      Directory(p.join(projectPath, '.android')),
-    ].firstWhereOrNull((dir) => dir.existsSync());
+    final androidRoot = Directory(p.join(projectPath, 'android'));
 
-    if (androidRoot == null) throw MissingAndroidProjectException(projectPath);
+    if (!androidRoot.existsSync()) {
+      throw MissingAndroidProjectException(projectPath);
+    }
 
     final executableFile = File(p.join(androidRoot.path, executable));
 
