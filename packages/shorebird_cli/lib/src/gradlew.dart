@@ -58,8 +58,6 @@ class Gradlew {
   /// Returns an empty set for apps that do not use product flavors.
   Future<Set<String>> productFlavors(String projectPath) async {
     final javaHome = java.home;
-    // Flutter apps have android files in root/android
-    // Flutter modules have android files in root/.android
     final androidRoot = Directory(p.join(projectPath, 'android'));
 
     if (!androidRoot.existsSync()) {
