@@ -2,6 +2,26 @@
 
 This section contains past updates we've sent to customers via Discord.
 
+## 0.11.2 (August 1, 2023)
+
+We've just released Shorebird v0.11.2 🎉
+
+- 🧩 Add-to-app support for iOS
+  - `shorebird release ios-framework-alpha`
+  - `shorebird patch ios-framework-alpha`
+  - 📚 See our [new guides](https://docs.shorebird.dev/add-to-app)
+- 🍧 Flavor support for iOS
+  - `shorebird release ios-alpha --flavor <flavor>`
+  - `shorebird patch ios-alpha --flavor <flavor>`
+  - 📚 See our [new guides](https://docs.shorebird.dev/flavors)
+- 🦀 Improve rust logging to reduce noise
+
+📚 Release notes can be found at https://github.com/shorebirdtech/shorebird/releases/tag/v0.11.2
+
+As always, you can upgrade using `shorebird upgrade`
+
+Please let us know if we can help!
+
 ## 0.11.1 (July 28, 2023)
 
 We've just released Shorebird v0.11.1 🎉
