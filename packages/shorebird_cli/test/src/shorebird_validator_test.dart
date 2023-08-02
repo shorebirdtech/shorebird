@@ -145,7 +145,8 @@ void main() {
         verify(
           () => logger.err('Aborting due to validation errors.'),
         ).called(1);
-        verify(() => logger.info('[✗] ${issue.message}')).called(1);
+        verify(() => logger.info('${red.wrap('[✗]')} ${issue.message}'))
+            .called(1);
         verify(
           () => logger.info(
             '''1 issue can be fixed automatically with ${lightCyan.wrap('shorebird doctor --fix')}.''',

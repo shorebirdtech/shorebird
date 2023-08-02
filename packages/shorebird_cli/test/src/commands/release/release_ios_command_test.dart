@@ -71,6 +71,7 @@ void main() {
     const appDisplayName = 'Test App';
     const arch = 'armv7';
     const releasePlatform = ReleasePlatform.ios;
+    const ipaPath = 'build/ios/ipa/Runner.ipa';
     const appMetadata = AppMetadata(appId: appId, displayName: appDisplayName);
     const release = Release(
       id: 0,
@@ -149,6 +150,7 @@ flutter:
       )
         ..createSync(recursive: true)
         ..writeAsStringSync(infoPlistContent);
+      File(p.join(tempDir.path, ipaPath)).createSync(recursive: true);
       return tempDir;
     }
 
@@ -379,6 +381,75 @@ error: exportArchive: No signing certificate "iOS Distribution" found
       );
     });
 
+    test('exits with code 70 if build directory does not exist', () async {
+      final tempDir = setUpTempDir();
+      Directory(p.join(tempDir.path, 'build')).deleteSync(recursive: true);
+
+      final exitCode = await IOOverrides.runZoned(
+        () => runWithOverrides(command.run),
+        getCurrentDirectory: () => tempDir,
+      );
+
+      expect(exitCode, equals(ExitCode.software.code));
+      verify(
+        () => progress.fail(
+          any(
+            that: stringContainsInOrder([
+              'Could not find ipa file',
+              'No directory found at ${p.join(tempDir.path, 'build')}',
+            ]),
+          ),
+        ),
+      ).called(1);
+    });
+
+    test('exits with code 70 if ipa file does not exist', () async {
+      final tempDir = setUpTempDir();
+      File(p.join(tempDir.path, ipaPath)).deleteSync(recursive: true);
+
+      final exitCode = await IOOverrides.runZoned(
+        () => runWithOverrides(command.run),
+        getCurrentDirectory: () => tempDir,
+      );
+
+      expect(exitCode, equals(ExitCode.software.code));
+      verify(
+        () => progress.fail(
+          any(
+            that: stringContainsInOrder([
+              'Could not find ipa file',
+              'No .ipa files found in',
+              'build/ios/ipa',
+            ]),
+          ),
+        ),
+      ).called(1);
+    });
+
+    test('exits with code 70 if more than one ipa file is found', () async {
+      final tempDir = setUpTempDir();
+      File(p.join(tempDir.path, 'build/ios/ipa/Runner2.ipa'))
+          .createSync(recursive: true);
+
+      final exitCode = await IOOverrides.runZoned(
+        () => runWithOverrides(command.run),
+        getCurrentDirectory: () => tempDir,
+      );
+
+      expect(exitCode, equals(ExitCode.software.code));
+      verify(
+        () => progress.fail(
+          any(
+            that: stringContainsInOrder([
+              'Could not find ipa file',
+              'More than one .ipa file found in',
+              'build/ios/ipa',
+            ]),
+          ),
+        ),
+      ).called(1);
+    });
+
     test('throws error when unable to detect flutter revision', () async {
       final exception = Exception('oops');
       when(
@@ -436,7 +507,7 @@ error: exportArchive: No signing certificate "iOS Distribution" found
             that: stringContainsInOrder(
               [
                 'Your next step is to upload the ipa to App Store Connect.',
-                'build/ios/ipa/app_bundle_name.ipa',
+                'build/ios/ipa/Runner.ipa',
               ],
             ),
           ),
@@ -488,7 +559,7 @@ flavors:
             that: stringContainsInOrder(
               [
                 'Your next step is to upload the ipa to App Store Connect.',
-                'build/ios/ipa/app_bundle_name.ipa',
+                'build/ios/ipa/Runner.ipa',
               ],
             ),
           ),

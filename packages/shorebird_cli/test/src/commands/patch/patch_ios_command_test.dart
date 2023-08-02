@@ -75,6 +75,7 @@ void main() {
   const appDisplayName = 'Test App';
   const platformName = 'ios';
   const elfAotSnapshotFileName = 'out.aot';
+  const ipaPath = 'build/ios/ipa/Runner.ipa';
   const infoPlistContent = '''
 <?xml version="1.0" encoding="UTF-8"?>
 <!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
@@ -159,6 +160,7 @@ flutter:
       )
         ..createSync(recursive: true)
         ..writeAsStringSync(infoPlistContent);
+      File(p.join(tempDir.path, ipaPath)).createSync(recursive: true);
       return tempDir;
     }
 
@@ -332,6 +334,78 @@ flutter:
       );
 
       expect(exitCode, equals(ExitCode.software.code));
+    });
+
+    test('exits with code 70 if build directory does not exist', () async {
+      final tempDir = setUpTempDir();
+      setUpTempArtifacts(tempDir);
+      Directory(p.join(tempDir.path, 'build')).deleteSync(recursive: true);
+
+      final exitCode = await IOOverrides.runZoned(
+        () => runWithOverrides(command.run),
+        getCurrentDirectory: () => tempDir,
+      );
+
+      expect(exitCode, equals(ExitCode.software.code));
+      verify(
+        () => progress.fail(
+          any(
+            that: stringContainsInOrder([
+              'Could not find ipa file',
+              'No directory found at ${p.join(tempDir.path, 'build')}',
+            ]),
+          ),
+        ),
+      ).called(1);
+    });
+
+    test('exits with code 70 if ipa file does not exist', () async {
+      final tempDir = setUpTempDir();
+      setUpTempArtifacts(tempDir);
+      File(p.join(tempDir.path, ipaPath)).deleteSync(recursive: true);
+
+      final exitCode = await IOOverrides.runZoned(
+        () => runWithOverrides(command.run),
+        getCurrentDirectory: () => tempDir,
+      );
+
+      expect(exitCode, equals(ExitCode.software.code));
+      verify(
+        () => progress.fail(
+          any(
+            that: stringContainsInOrder([
+              'Could not find ipa file',
+              'No .ipa files found in',
+              'build/ios/ipa',
+            ]),
+          ),
+        ),
+      ).called(1);
+    });
+
+    test('exits with code 70 if more than one ipa file is found', () async {
+      final tempDir = setUpTempDir();
+      setUpTempArtifacts(tempDir);
+      File(p.join(tempDir.path, 'build/ios/ipa/Runner2.ipa'))
+          .createSync(recursive: true);
+
+      final exitCode = await IOOverrides.runZoned(
+        () => runWithOverrides(command.run),
+        getCurrentDirectory: () => tempDir,
+      );
+
+      expect(exitCode, equals(ExitCode.software.code));
+      verify(
+        () => progress.fail(
+          any(
+            that: stringContainsInOrder([
+              'Could not find ipa file',
+              'More than one .ipa file found in',
+              'build/ios/ipa',
+            ]),
+          ),
+        ),
+      ).called(1);
     });
 
     test(
