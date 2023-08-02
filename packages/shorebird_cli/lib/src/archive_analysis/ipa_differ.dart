@@ -6,6 +6,15 @@ import 'package:path/path.dart' as p;
 import 'package:shorebird_cli/src/archive_analysis/archive_differ.dart';
 import 'package:shorebird_cli/src/archive_analysis/file_set_diff.dart';
 
+/// Finds differences between two IPAs.
+///
+/// Asset changes will be in the `Assets.car` file (which is a combination of
+/// the `.xcasset` catalogs in the Xcode project) and the `flutter_assets`
+/// directory.
+///
+/// Native and Dart changes appear in `.symbols` files. These files change
+/// between builds even if no code has changed, so we can't rely on them to
+/// tell us whether changes have actually been made.
 class IpaDiffer extends ArchiveDiffer {
   String _hash(List<int> bytes) => sha256.convert(bytes).toString();
 
