@@ -95,11 +95,14 @@ make smaller updates to your app.
 
     final releaseVersionProgress = logger.progress('Getting release version');
     final iosBuildDir = p.join(Directory.current.path, 'build', 'ios');
-    final ipaPath = p.join(
-      iosBuildDir,
-      'ipa',
-      '${getIpaName()}.ipa',
-    );
+    final String ipaPath;
+    try {
+      ipaPath = getIpaPath();
+    } catch (error) {
+      releaseVersionProgress.fail('Could not find ipa file: $error');
+      return ExitCode.software.code;
+    }
+
     final runnerPath = p.join(
       iosBuildDir,
       'archive',
