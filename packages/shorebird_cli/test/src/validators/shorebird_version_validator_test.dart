@@ -38,8 +38,8 @@ void main() {
       expect(validator.description, isNotEmpty);
     });
 
-    test('is not project-specific', () {
-      expect(validator.scope, ValidatorScope.installation);
+    test('canRunInContext always returns true', () {
+      expect(validator.canRunInCurrentContext(), isTrue);
     });
 
     test('returns no issues when shorebird is up-to-date', () async {

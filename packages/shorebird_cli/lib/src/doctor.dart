@@ -1,7 +1,6 @@
 import 'package:mason_logger/mason_logger.dart';
 import 'package:scoped/scoped.dart';
 import 'package:shorebird_cli/src/logger.dart';
-import 'package:shorebird_cli/src/shorebird_environment.dart';
 import 'package:shorebird_cli/src/validators/validators.dart';
 
 /// A reference to a [Doctor] instance.
@@ -36,15 +35,12 @@ class Doctor {
     List<Validator> validators, {
     bool applyFixes = false,
   }) async {
-    final isInProject =
-        ShorebirdEnvironment.getShorebirdYamlFile().existsSync();
-
     final allIssues = <ValidationIssue>[];
     final allFixableIssues = <ValidationIssue>[];
 
     var numIssuesFixed = 0;
     for (final validator in validators) {
-      if (validator.scope == ValidatorScope.project && !isInProject) {
+      if (!validator.canRunInCurrentContext()) {
         continue;
       }
 

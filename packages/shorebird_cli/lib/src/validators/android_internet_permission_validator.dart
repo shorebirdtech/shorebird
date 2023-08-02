@@ -22,30 +22,13 @@ class AndroidInternetPermissionValidator extends Validator {
       'AndroidManifest.xml files contain INTERNET permission';
 
   @override
-  ValidatorScope get scope => ValidatorScope.project;
+  bool canRunInCurrentContext() => _androidSrcDirectory.existsSync();
 
   @override
   Future<List<ValidationIssue>> validate() async {
     const manifestFileName = 'AndroidManifest.xml';
-    final androidSrcDir = Directory(
-      p.join(
-        Directory.current.path,
-        'android',
-        'app',
-        'src',
-      ),
-    );
 
-    if (!androidSrcDir.existsSync()) {
-      return [
-        const ValidationIssue(
-          severity: ValidationIssueSeverity.error,
-          message: 'No Android project found',
-        ),
-      ];
-    }
-
-    final manifestFiles = androidSrcDir
+    final manifestFiles = _androidSrcDirectory
         .listSync()
         .whereType<Directory>()
         .where(
@@ -61,7 +44,7 @@ class AndroidInternetPermissionValidator extends Validator {
         ValidationIssue(
           severity: ValidationIssueSeverity.error,
           message:
-              'No AndroidManifest.xml files found in ${androidSrcDir.path}',
+              '''No AndroidManifest.xml files found in ${_androidSrcDirectory.path}''',
         ),
       ];
     }
@@ -87,6 +70,15 @@ class AndroidInternetPermissionValidator extends Validator {
 
     return [];
   }
+
+  Directory get _androidSrcDirectory => Directory(
+        p.join(
+          Directory.current.path,
+          'android',
+          'app',
+          'src',
+        ),
+      );
 
   bool _androidManifestHasInternetPermission(String path) {
     final xmlDocument = XmlDocument.parse(File(path).readAsStringSync());
