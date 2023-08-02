@@ -67,7 +67,7 @@ void main() {
       when(() => errorValidator.description).thenReturn('error validator');
     });
 
-    group('validate', () {
+    group('runValidators', () {
       test('prints messages when warnings and errors found', () async {
         final validators = [
           warningValidator,
@@ -102,11 +102,23 @@ void main() {
         ];
         when(() => warningValidator.canRunInCurrentContext()).thenReturn(false);
 
-        await runWithOverrides(() => doctor.runValidators(validators));
+        await runWithOverrides(() async => doctor.runValidators(validators));
 
         verify(noIssuesValidator.validate).called(1);
         verifyNever(warningValidator.validate);
         verify(errorValidator.validate).called(1);
+      });
+
+      test('tells the user when no issues are found', () async {
+        final validators = [
+          noIssuesValidator,
+        ];
+
+        await runWithOverrides(() async => doctor.runValidators(validators));
+
+        verify(
+          () => logger.info(any(that: contains('No issues detected!'))),
+        ).called(1);
       });
 
       group('fix', () {
