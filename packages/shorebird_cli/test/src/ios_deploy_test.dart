@@ -11,6 +11,7 @@ import 'package:shorebird_cli/src/ios_deploy.dart';
 import 'package:shorebird_cli/src/logger.dart';
 import 'package:shorebird_cli/src/platform.dart';
 import 'package:shorebird_cli/src/process.dart';
+import 'package:shorebird_cli/src/shorebird_env.dart';
 import 'package:test/test.dart';
 
 class _MockLogger extends Mock implements Logger {}
@@ -27,6 +28,8 @@ class _MockIOSink extends Mock implements IOSink {}
 
 class _MockProcessSignal extends Mock implements ProcessSignal {}
 
+class _MockShorebirdEnv extends Mock implements ShorebirdEnv {}
+
 void main() {
   group(IOSDeploy, () {
     late Logger logger;
@@ -35,6 +38,7 @@ void main() {
     late ShorebirdProcess shorebirdProcess;
     late Process process;
     late IOSink ioSink;
+    late ShorebirdEnv shorebirdEnv;
     late IOSDeploy iosDeploy;
 
     R runWithOverrides<R>(R Function() body) {
@@ -44,6 +48,7 @@ void main() {
           loggerRef.overrideWith(() => logger),
           platformRef.overrideWith(() => platform),
           processRef.overrideWith(() => shorebirdProcess),
+          shorebirdEnvRef.overrideWith(() => shorebirdEnv),
         },
       );
     }
@@ -55,14 +60,15 @@ void main() {
       process = _MockProcess();
       progress = _MockProgress();
       ioSink = _MockIOSink();
+      shorebirdEnv = _MockShorebirdEnv();
       iosDeploy = IOSDeploy();
 
       final tempDir = Directory.systemTemp.createTempSync();
 
-      final shorebirdScriptFile = File(
-        p.join(tempDir.path, 'bin', 'cache', 'shorebird.snapshot'),
-      )..create(recursive: true);
-      when(() => platform.script).thenReturn(shorebirdScriptFile.uri);
+      when(() => shorebirdEnv.shorebirdRoot).thenReturn(tempDir);
+      when(() => shorebirdEnv.flutterDirectory).thenReturn(
+        Directory(p.join(tempDir.path, 'bin', 'cache', 'flutter')),
+      );
       when(() => logger.progress(any())).thenReturn(progress);
       when(
         () => shorebirdProcess.start(any(), any()),

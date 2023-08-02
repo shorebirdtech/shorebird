@@ -5,6 +5,7 @@ import 'package:scoped/scoped.dart';
 import 'package:shorebird_cli/src/auth/auth.dart';
 import 'package:shorebird_cli/src/logger.dart';
 import 'package:shorebird_cli/src/platform.dart';
+import 'package:shorebird_cli/src/shorebird_env.dart';
 import 'package:shorebird_cli/src/shorebird_validator.dart';
 import 'package:shorebird_cli/src/validators/validators.dart';
 import 'package:test/test.dart';
@@ -15,6 +16,8 @@ class _MockLogger extends Mock implements Logger {}
 
 class _MockPlatform extends Mock implements Platform {}
 
+class _MockShorebirdEnv extends Mock implements ShorebirdEnv {}
+
 class _MockValidator extends Mock implements Validator {}
 
 void main() {
@@ -23,6 +26,7 @@ void main() {
     late Logger logger;
     late Platform platform;
     late Validator validator;
+    late ShorebirdEnv shorebirdEnv;
     late ShorebirdValidator shorebirdValidator;
 
     R runWithOverrides<R>(R Function() body) {
@@ -32,6 +36,7 @@ void main() {
           authRef.overrideWith(() => auth),
           loggerRef.overrideWith(() => logger),
           platformRef.overrideWith(() => platform),
+          shorebirdEnvRef.overrideWith(() => shorebirdEnv),
         },
       );
     }
@@ -40,6 +45,7 @@ void main() {
       auth = _MockAuth();
       logger = _MockLogger();
       platform = _MockPlatform();
+      shorebirdEnv = _MockShorebirdEnv();
       validator = _MockValidator();
       shorebirdValidator = runWithOverrides(ShorebirdValidator.new);
     });
@@ -103,6 +109,7 @@ void main() {
       test(
           'throws ShorebirdNotInitializedException '
           'when shorebird has not been initialized', () async {
+        when(() => shorebirdEnv.isShorebirdInitialized).thenReturn(false);
         await expectLater(
           runWithOverrides(
             () => shorebirdValidator.validatePreconditions(

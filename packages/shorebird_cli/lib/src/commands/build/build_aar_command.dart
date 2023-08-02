@@ -6,7 +6,7 @@ import 'package:path/path.dart' as p;
 import 'package:shorebird_cli/src/command.dart';
 import 'package:shorebird_cli/src/logger.dart';
 import 'package:shorebird_cli/src/shorebird_build_mixin.dart';
-import 'package:shorebird_cli/src/shorebird_config_mixin.dart';
+import 'package:shorebird_cli/src/shorebird_env.dart';
 import 'package:shorebird_cli/src/shorebird_validator.dart';
 
 /// {@template build_aar_command}
@@ -14,8 +14,7 @@ import 'package:shorebird_cli/src/shorebird_validator.dart';
 /// `shorebird build aar`
 /// Build an Android aar file from your app.
 /// {@endtemplate}
-class BuildAarCommand extends ShorebirdCommand
-    with ShorebirdConfigMixin, ShorebirdBuildMixin {
+class BuildAarCommand extends ShorebirdCommand with ShorebirdBuildMixin {
   BuildAarCommand() {
     // We would have a "target" option here, similar to what [BuildApkCommand]
     // and [BuildAabCommand] have, but target cannot currently be configured in
@@ -47,7 +46,7 @@ class BuildAarCommand extends ShorebirdCommand
       return e.exitCode.code;
     }
 
-    if (androidPackageName == null) {
+    if (shorebirdEnv.androidPackageName == null) {
       logger.err('Could not find androidPackage in pubspec.yaml.');
       return ExitCode.config.code;
     }
@@ -68,7 +67,7 @@ class BuildAarCommand extends ShorebirdCommand
       'host',
       'outputs',
       'repo',
-      ...androidPackageName!.split('.'),
+      ...shorebirdEnv.androidPackageName!.split('.'),
       'flutter_release',
       buildNumber,
       'flutter_release-$buildNumber.aar',

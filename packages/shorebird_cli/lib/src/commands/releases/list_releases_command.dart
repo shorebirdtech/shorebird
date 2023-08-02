@@ -1,10 +1,10 @@
 import 'package:barbecue/barbecue.dart';
 import 'package:mason_logger/mason_logger.dart';
-import 'package:shorebird_cli/src/auth/auth.dart';
+import 'package:shorebird_cli/src/code_push_client_wrapper.dart';
 import 'package:shorebird_cli/src/command.dart';
 import 'package:shorebird_cli/src/config/shorebird_yaml.dart';
 import 'package:shorebird_cli/src/logger.dart';
-import 'package:shorebird_cli/src/shorebird_environment.dart';
+import 'package:shorebird_cli/src/shorebird_env.dart';
 import 'package:shorebird_cli/src/shorebird_validator.dart';
 import 'package:shorebird_code_push_client/shorebird_code_push_client.dart';
 
@@ -15,7 +15,7 @@ import 'package:shorebird_code_push_client/shorebird_code_push_client.dart';
 /// {@endtemplate}
 class ListReleasesCommand extends ShorebirdCommand {
   /// {@macro list_releases_command}
-  ListReleasesCommand({super.buildCodePushClient}) {
+  ListReleasesCommand() {
     argParser.addOption(
       'flavor',
       help: 'The product flavor to use when listing releases.',
@@ -47,17 +47,13 @@ Please use $consoleLink instead.''',
     }
 
     final flavor = results['flavor'] as String?;
-    final appId =
-        ShorebirdEnvironment.getShorebirdYaml()!.getAppId(flavor: flavor);
-
-    final codePushClient = buildCodePushClient(
-      httpClient: auth.client,
-      hostedUri: ShorebirdEnvironment.hostedUri,
-    );
+    final appId = shorebirdEnv.getShorebirdYaml()!.getAppId(flavor: flavor);
 
     final List<Release> releases;
     try {
-      releases = await codePushClient.getReleases(appId: appId);
+      releases = await codePushClientWrapper.codePushClient.getReleases(
+        appId: appId,
+      );
     } catch (error) {
       logger.err('$error');
       return ExitCode.software.code;

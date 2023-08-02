@@ -1,5 +1,6 @@
+import 'package:shorebird_cli/src/platform.dart';
 import 'package:shorebird_cli/src/process.dart';
-import 'package:shorebird_cli/src/shorebird_environment.dart';
+import 'package:shorebird_cli/src/shorebird_env.dart';
 import 'package:shorebird_cli/src/validators/validators.dart';
 import 'package:version/version.dart';
 
@@ -28,9 +29,9 @@ class ShorebirdFlutterValidator extends Validator {
   Future<List<ValidationIssue>> validate() async {
     final issues = <ValidationIssue>[];
 
-    if (!ShorebirdEnvironment.flutterDirectory.existsSync()) {
+    if (!shorebirdEnv.flutterDirectory.existsSync()) {
       final message = 'No Flutter directory found at '
-          '${ShorebirdEnvironment.flutterDirectory}';
+          '${shorebirdEnv.flutterDirectory}';
       issues.add(
         ValidationIssue(
           severity: ValidationIssueSeverity.error,
@@ -43,7 +44,7 @@ class ShorebirdFlutterValidator extends Validator {
       issues.add(
         ValidationIssue(
           severity: ValidationIssueSeverity.warning,
-          message: '${ShorebirdEnvironment.flutterDirectory} has local '
+          message: '${shorebirdEnv.flutterDirectory} has local '
               'modifications',
         ),
       );
@@ -96,7 +97,7 @@ This can cause unexpected behavior if you are switching between the tools and th
     }
 
     final flutterStorageEnvironmentValue =
-        ShorebirdEnvironment.environment['FLUTTER_STORAGE_BASE_URL'];
+        platform.environment['FLUTTER_STORAGE_BASE_URL'];
     if (flutterStorageEnvironmentValue != null &&
         flutterStorageEnvironmentValue.isNotEmpty) {
       issues.add(
@@ -115,7 +116,7 @@ This can cause unexpected behavior if you are switching between the tools and th
     final result = await process.run(
       'git',
       ['status', '--untracked-files=no', '--porcelain'],
-      workingDirectory: ShorebirdEnvironment.flutterDirectory.path,
+      workingDirectory: shorebirdEnv.flutterDirectory.path,
     );
     return result.stdout.toString().trim().isEmpty;
   }

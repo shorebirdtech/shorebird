@@ -4,18 +4,19 @@ import 'package:args/args.dart';
 import 'package:http/http.dart' as http;
 import 'package:mason_logger/mason_logger.dart';
 import 'package:mocktail/mocktail.dart';
-import 'package:path/path.dart' as p;
 import 'package:platform/platform.dart';
 import 'package:scoped/scoped.dart';
 import 'package:shorebird_cli/src/auth/auth.dart';
 import 'package:shorebird_cli/src/code_push_client_wrapper.dart';
 import 'package:shorebird_cli/src/commands/commands.dart';
+import 'package:shorebird_cli/src/config/config.dart';
 import 'package:shorebird_cli/src/java.dart';
 import 'package:shorebird_cli/src/logger.dart';
 import 'package:shorebird_cli/src/platform.dart';
 import 'package:shorebird_cli/src/process.dart';
-import 'package:shorebird_cli/src/shorebird_build_mixin.dart';
+import 'package:shorebird_cli/src/shorebird_env.dart';
 import 'package:shorebird_cli/src/shorebird_validator.dart';
+import 'package:shorebird_cli/src/shorebird_version_manager.dart';
 import 'package:shorebird_code_push_client/shorebird_code_push_client.dart';
 import 'package:test/test.dart';
 
@@ -40,7 +41,12 @@ class _MockCodePushClientWrapper extends Mock
 
 class _MockShorebirdProcess extends Mock implements ShorebirdProcess {}
 
+class _MockShorebirdEnv extends Mock implements ShorebirdEnv {}
+
 class _MockShorebirdValidator extends Mock implements ShorebirdValidator {}
+
+class _MockShorebirdVersionManager extends Mock
+    implements ShorebirdVersionManager {}
 
 class _FakeRelease extends Fake implements Release {}
 
@@ -50,6 +56,8 @@ void main() {
   group(ReleaseAarCommand, () {
     const appDisplayName = 'Test App';
     const appId = 'test-app-id';
+    const shorebirdYaml = ShorebirdYaml(appId: appId);
+    const androidPackageName = 'com.example.my_flutter_module';
     const appMetadata = AppMetadata(appId: appId, displayName: appDisplayName);
     const flutterRevision = '83305b5088e6fe327fb3334a73ff190828d85713';
     const versionName = '1.2.3';
@@ -65,29 +73,6 @@ void main() {
     );
     const releasePlatform = ReleasePlatform.android;
     const buildNumber = '1.0';
-    const noModulePubspecYamlContent = '''
-name: example
-version: 1.0.0
-environment:
-  sdk: ">=2.19.0 <3.0.0"
-  
-flutter:
-  assets:
-    - shorebird.yaml''';
-
-    const pubspecYamlContent = '''
-name: example
-version: 1.0.0
-environment:
-  sdk: ">=2.19.0 <3.0.0"
-  
-flutter:
-  module:
-    androidX: true
-    androidPackage: com.example.my_flutter_module
-    iosBundleIdentifier: com.example.myFlutterModule
-  assets:
-    - shorebird.yaml''';
 
     late ArgResults argResults;
     late http.Client httpClient;
@@ -99,9 +84,10 @@ flutter:
     late Progress progress;
     late Logger logger;
     late ShorebirdProcessResult flutterBuildProcessResult;
-    late ShorebirdProcessResult flutterRevisionProcessResult;
+    late ShorebirdEnv shorebirdEnv;
     late ShorebirdProcess shorebirdProcess;
     late ShorebirdValidator shorebirdValidator;
+    late ShorebirdVersionManager shorebirdVersionManager;
     late ReleaseAarCommand command;
 
     R runWithOverrides<R>(R Function() body) {
@@ -115,50 +101,13 @@ flutter:
           loggerRef.overrideWith(() => logger),
           platformRef.overrideWith(() => platform),
           processRef.overrideWith(() => shorebirdProcess),
+          shorebirdEnvRef.overrideWith(() => shorebirdEnv),
           shorebirdValidatorRef.overrideWith(() => shorebirdValidator),
+          shorebirdVersionManagerRef.overrideWith(
+            () => shorebirdVersionManager,
+          ),
         },
       );
-    }
-
-    Directory setUpTempDir({bool includeModule = true}) {
-      final tempDir = Directory.systemTemp.createTempSync();
-      File(
-        p.join(tempDir.path, 'pubspec.yaml'),
-      ).writeAsStringSync(
-        includeModule ? pubspecYamlContent : noModulePubspecYamlContent,
-      );
-      File(
-        p.join(tempDir.path, 'shorebird.yaml'),
-      ).writeAsStringSync('app_id: $appId');
-      return tempDir;
-    }
-
-    void setUpTempArtifacts(Directory dir) {
-      final aarDir = p.join(
-        dir.path,
-        'build',
-        'host',
-        'outputs',
-        'repo',
-        'com',
-        'example',
-        'my_flutter_module',
-        'flutter_release',
-        buildNumber,
-      );
-      final aarPath = p.join(aarDir, 'flutter_release-$buildNumber.aar');
-      for (final archMetadata
-          in ShorebirdBuildMixin.allAndroidArchitectures.values) {
-        final artifactPath = p.join(
-          aarDir,
-          'flutter_release-$buildNumber',
-          'jni',
-          archMetadata.path,
-          'libapp.so',
-        );
-        File(artifactPath).createSync(recursive: true);
-      }
-      File(aarPath).createSync(recursive: true);
     }
 
     setUpAll(() {
@@ -178,10 +127,11 @@ flutter:
       progress = _MockProgress();
       logger = _MockLogger();
       flutterBuildProcessResult = _MockProcessResult();
-      flutterRevisionProcessResult = _MockProcessResult();
       shorebirdProcess = _MockShorebirdProcess();
       shorebirdRoot = Directory.systemTemp.createTempSync();
+      shorebirdEnv = _MockShorebirdEnv();
       shorebirdValidator = _MockShorebirdValidator();
+      shorebirdVersionManager = _MockShorebirdVersionManager();
 
       when(() => auth.client).thenReturn(httpClient);
       when(() => argResults['build-number']).thenReturn(buildNumber);
@@ -191,26 +141,15 @@ flutter:
       when(() => logger.confirm(any())).thenReturn(true);
       when(() => logger.progress(any())).thenReturn(progress);
 
-      when(() => platform.script).thenReturn(
-        Uri.file(
-          p.join(
-            shorebirdRoot.path,
-            'bin',
-            'cache',
-            'shorebird.snapshot',
-          ),
-        ),
-      );
-
-      when(() => flutterBuildProcessResult.exitCode)
-          .thenReturn(ExitCode.success.code);
+      when(() => shorebirdEnv.getShorebirdYaml()).thenReturn(shorebirdYaml);
+      when(() => shorebirdEnv.shorebirdRoot).thenReturn(shorebirdRoot);
+      when(
+        () => shorebirdEnv.androidPackageName,
+      ).thenReturn(androidPackageName);
 
       when(
-        () => flutterRevisionProcessResult.exitCode,
+        () => flutterBuildProcessResult.exitCode,
       ).thenReturn(ExitCode.success.code);
-      when(
-        () => flutterRevisionProcessResult.stdout,
-      ).thenReturn(flutterRevision);
 
       when(
         () => shorebirdProcess.run(
@@ -221,14 +160,6 @@ flutter:
       ).thenAnswer((invocation) async {
         return flutterBuildProcessResult;
       });
-      when(
-        () => shorebirdProcess.run(
-          'git',
-          any(),
-          runInShell: any(named: 'runInShell'),
-          workingDirectory: any(named: 'workingDirectory'),
-        ),
-      ).thenAnswer((_) async => flutterRevisionProcessResult);
 
       when(
         () => codePushClientWrapper.getApp(appId: any(named: 'appId')),
@@ -278,6 +209,9 @@ flutter:
           checkShorebirdInitialized: any(named: 'checkShorebirdInitialized'),
         ),
       ).thenAnswer((_) async {});
+      when(
+        () => shorebirdVersionManager.getShorebirdFlutterRevision(),
+      ).thenAnswer((_) async => flutterRevision);
 
       command = runWithOverrides(
         () => ReleaseAarCommand(unzipFn: (_, __) async {}),
@@ -308,24 +242,10 @@ flutter:
       ).called(1);
     });
 
-    test('exits with 78 if no pubspec.yaml exists', () async {
-      final tempDir = Directory.systemTemp.createTempSync();
-
-      final result = await IOOverrides.runZoned(
-        () => runWithOverrides(command.run),
-        getCurrentDirectory: () => tempDir,
-      );
-
-      expect(result, ExitCode.config.code);
-    });
-
     test('exits with 78 if no module entry exists in pubspec.yaml', () async {
-      final tempDir = setUpTempDir(includeModule: false);
+      when(() => shorebirdEnv.androidPackageName).thenReturn(null);
 
-      final result = await IOOverrides.runZoned(
-        () => runWithOverrides(command.run),
-        getCurrentDirectory: () => tempDir,
-      );
+      final result = await runWithOverrides(command.run);
 
       expect(result, ExitCode.config.code);
     });
@@ -333,13 +253,7 @@ flutter:
     test('exits with code 70 when building aar fails', () async {
       when(() => flutterBuildProcessResult.exitCode).thenReturn(1);
       when(() => flutterBuildProcessResult.stderr).thenReturn('oops');
-      final tempDir = setUpTempDir();
-
-      final result = await IOOverrides.runZoned(
-        () => runWithOverrides(command.run),
-        getCurrentDirectory: () => tempDir,
-      );
-
+      final result = await runWithOverrides(command.run);
       expect(result, equals(ExitCode.software.code));
       verify(
         () => shorebirdProcess.run(
@@ -354,8 +268,9 @@ flutter:
           runInShell: any(named: 'runInShell'),
         ),
       ).called(1);
-      verify(() => progress.fail(any(that: contains('Failed to build'))))
-          .called(1);
+      verify(
+        () => progress.fail(any(that: contains('Failed to build'))),
+      ).called(1);
     });
 
     test('aborts when user opts out', () async {
@@ -366,42 +281,24 @@ flutter:
           defaultValue: any(named: 'defaultValue'),
         ),
       ).thenAnswer((_) => '1.0.0');
-      final tempDir = setUpTempDir();
-      final exitCode = await IOOverrides.runZoned(
-        () => runWithOverrides(command.run),
-        getCurrentDirectory: () => tempDir,
-      );
+      final exitCode = await runWithOverrides(command.run);
       expect(exitCode, ExitCode.success.code);
       verify(() => logger.info('Aborting.')).called(1);
     });
 
     test('throws error when unable to detect flutter revision', () async {
-      const error = 'oops';
-      when(() => flutterRevisionProcessResult.exitCode).thenReturn(1);
-      when(() => flutterRevisionProcessResult.stderr).thenReturn(error);
-      final tempDir = setUpTempDir();
-      final exitCode = await IOOverrides.runZoned(
-        () => runWithOverrides(command.run),
-        getCurrentDirectory: () => tempDir,
-      );
+      final exception = Exception('oops');
+      when(
+        () => shorebirdVersionManager.getShorebirdFlutterRevision(),
+      ).thenThrow(exception);
+      final exitCode = await runWithOverrides(command.run);
       expect(exitCode, ExitCode.software.code);
-      verify(
-        () => progress.fail(
-          'Exception: Unable to determine flutter revision: $error',
-        ),
-      ).called(1);
+      verify(() => progress.fail('$exception')).called(1);
     });
 
     test('does not prompt for confirmation when --force is used', () async {
       when(() => argResults['force']).thenReturn(true);
-      final tempDir = setUpTempDir();
-      setUpTempArtifacts(tempDir);
-
-      final exitCode = await IOOverrides.runZoned(
-        () => runWithOverrides(command.run),
-        getCurrentDirectory: () => tempDir,
-      );
-
+      final exitCode = await runWithOverrides(command.run);
       expect(exitCode, ExitCode.success.code);
       verify(() => logger.success('\n✅ Published Release!')).called(1);
       verifyNever(
@@ -410,14 +307,7 @@ flutter:
     });
 
     test('succeeds when release is successful', () async {
-      final tempDir = setUpTempDir();
-      setUpTempArtifacts(tempDir);
-
-      final exitCode = await IOOverrides.runZoned(
-        () => runWithOverrides(command.run),
-        getCurrentDirectory: () => tempDir,
-      );
-
+      final exitCode = await runWithOverrides(command.run);
       expect(exitCode, ExitCode.success.code);
       verify(() => logger.success('\n✅ Published Release!')).called(1);
       verify(
@@ -458,14 +348,7 @@ flutter:
           releaseVersion: any(named: 'releaseVersion'),
         ),
       ).thenAnswer((_) async => release);
-      final tempDir = setUpTempDir();
-      setUpTempArtifacts(tempDir);
-
-      final exitCode = await IOOverrides.runZoned(
-        () => runWithOverrides(command.run),
-        getCurrentDirectory: () => tempDir,
-      );
-
+      final exitCode = await runWithOverrides(command.run);
       expect(exitCode, ExitCode.success.code);
       verifyNever(
         () => codePushClientWrapper.createRelease(

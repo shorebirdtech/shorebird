@@ -4,7 +4,7 @@ import 'package:scoped/scoped.dart';
 import 'package:shorebird_cli/src/auth/auth.dart';
 import 'package:shorebird_cli/src/logger.dart';
 import 'package:shorebird_cli/src/platform.dart';
-import 'package:shorebird_cli/src/shorebird_environment.dart';
+import 'package:shorebird_cli/src/shorebird_env.dart';
 import 'package:shorebird_cli/src/validators/validators.dart';
 
 abstract interface class PreconditionFailedException implements Exception {
@@ -73,8 +73,7 @@ class ShorebirdValidator {
       throw UserNotAuthorizedException();
     }
 
-    if (checkShorebirdInitialized &&
-        !ShorebirdEnvironment.isShorebirdInitialized) {
+    if (checkShorebirdInitialized && !shorebirdEnv.isShorebirdInitialized) {
       logger.err(
         'Shorebird is not initialized. Did you run "shorebird init"?',
       );

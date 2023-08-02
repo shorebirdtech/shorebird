@@ -12,12 +12,14 @@ import 'package:shorebird_cli/src/archive_analysis/archive_analysis.dart';
 import 'package:shorebird_cli/src/auth/auth.dart';
 import 'package:shorebird_cli/src/code_push_client_wrapper.dart';
 import 'package:shorebird_cli/src/commands/patch/patch.dart';
+import 'package:shorebird_cli/src/config/config.dart';
 import 'package:shorebird_cli/src/doctor.dart';
 import 'package:shorebird_cli/src/logger.dart';
 import 'package:shorebird_cli/src/platform.dart';
 import 'package:shorebird_cli/src/process.dart';
-import 'package:shorebird_cli/src/shorebird_environment.dart';
+import 'package:shorebird_cli/src/shorebird_env.dart';
 import 'package:shorebird_cli/src/shorebird_validator.dart';
+import 'package:shorebird_cli/src/shorebird_version_manager.dart';
 import 'package:shorebird_cli/src/third_party/flutter_tools/lib/flutter_tools.dart';
 import 'package:shorebird_cli/src/validators/validators.dart';
 import 'package:shorebird_code_push_client/shorebird_code_push_client.dart';
@@ -48,6 +50,8 @@ class _MockProcessResult extends Mock implements ShorebirdProcessResult {}
 
 class _MockHttpClient extends Mock implements http.Client {}
 
+class _MockShorebirdEnv extends Mock implements ShorebirdEnv {}
+
 class _MockShorebirdFlutterValidator extends Mock
     implements ShorebirdFlutterValidator {}
 
@@ -55,11 +59,15 @@ class _MockShorebirdProcess extends Mock implements ShorebirdProcess {}
 
 class _MockShorebirdValidator extends Mock implements ShorebirdValidator {}
 
+class _MockShorebirdVersionManager extends Mock
+    implements ShorebirdVersionManager {}
+
 class _FakeShorebirdProcess extends Fake implements ShorebirdProcess {}
 
 void main() {
   const flutterRevision = '83305b5088e6fe327fb3334a73ff190828d85713';
   const appId = 'test-app-id';
+  const shorebirdYaml = ShorebirdYaml(appId: appId);
   const versionName = '1.2.3';
   const versionCode = '1';
   const version = '$versionName+$versionCode';
@@ -100,6 +108,9 @@ flutter:
     late ArgResults argResults;
     late Auth auth;
     late CodePushClientWrapper codePushClientWrapper;
+    late Directory flutterDirectory;
+    late Directory shorebirdRoot;
+    late File genSnapshotFile;
     late Doctor doctor;
     late Ipa ipa;
     late IpaReader ipaReader;
@@ -108,11 +119,12 @@ flutter:
     late Platform platform;
     late ShorebirdProcessResult aotBuildProcessResult;
     late ShorebirdProcessResult flutterBuildProcessResult;
-    late ShorebirdProcessResult flutterRevisionProcessResult;
     late http.Client httpClient;
+    late ShorebirdEnv shorebirdEnv;
     late ShorebirdFlutterValidator flutterValidator;
     late ShorebirdProcess shorebirdProcess;
     late ShorebirdValidator shorebirdValidator;
+    late ShorebirdVersionManager shorebirdVersionManager;
     late PatchIosCommand command;
 
     R runWithOverrides<R>(R Function() body) {
@@ -125,7 +137,11 @@ flutter:
           loggerRef.overrideWith(() => logger),
           platformRef.overrideWith(() => platform),
           processRef.overrideWith(() => shorebirdProcess),
+          shorebirdEnvRef.overrideWith(() => shorebirdEnv),
           shorebirdValidatorRef.overrideWith(() => shorebirdValidator),
+          shorebirdVersionManagerRef.overrideWith(
+            () => shorebirdVersionManager,
+          ),
         },
       );
     }
@@ -176,6 +192,21 @@ flutter:
       auth = _MockAuth();
       codePushClientWrapper = _MockCodePushClientWrapper();
       doctor = _MockDoctor();
+      shorebirdRoot = Directory.systemTemp.createTempSync();
+      flutterDirectory = Directory(
+        p.join(shorebirdRoot.path, 'bin', 'cache', 'flutter'),
+      );
+      genSnapshotFile = File(
+        p.join(
+          flutterDirectory.path,
+          'bin',
+          'cache',
+          'artifacts',
+          'engine',
+          'ios-release',
+          'gen_snapshot_arm64',
+        ),
+      );
       ipaReader = _MockIpaReader();
       ipa = _MockIpa();
       progress = _MockProgress();
@@ -183,11 +214,12 @@ flutter:
       platform = _MockPlatform();
       aotBuildProcessResult = _MockProcessResult();
       flutterBuildProcessResult = _MockProcessResult();
-      flutterRevisionProcessResult = _MockProcessResult();
       httpClient = _MockHttpClient();
+      shorebirdEnv = _MockShorebirdEnv();
       flutterValidator = _MockShorebirdFlutterValidator();
       shorebirdProcess = _MockShorebirdProcess();
       shorebirdValidator = _MockShorebirdValidator();
+      shorebirdVersionManager = _MockShorebirdVersionManager();
 
       when(() => argResults['arch']).thenReturn(arch);
       when(() => argResults['dry-run']).thenReturn(false);
@@ -221,33 +253,16 @@ flutter:
       when(() => logger.progress(any())).thenReturn(progress);
       when(() => platform.operatingSystem).thenReturn(Platform.macOS);
       when(() => platform.environment).thenReturn({});
-      when(() => platform.script).thenReturn(
-        Uri.file(
-          p.join(
-            Directory.systemTemp.createTempSync().path,
-            'bin',
-            'cache',
-            'shorebird.snapshot',
-          ),
-        ),
-      );
-      when(() => aotBuildProcessResult.exitCode)
-          .thenReturn(ExitCode.success.code);
-      when(() => flutterBuildProcessResult.exitCode)
-          .thenReturn(ExitCode.success.code);
-      when(() => flutterRevisionProcessResult.exitCode)
-          .thenReturn(ExitCode.success.code);
+      when(() => shorebirdEnv.getShorebirdYaml()).thenReturn(shorebirdYaml);
+      when(() => shorebirdEnv.shorebirdRoot).thenReturn(shorebirdRoot);
+      when(() => shorebirdEnv.flutterDirectory).thenReturn(flutterDirectory);
+      when(() => shorebirdEnv.genSnapshotFile).thenReturn(genSnapshotFile);
       when(
-        () => flutterRevisionProcessResult.stdout,
-      ).thenReturn(flutterRevision);
+        () => aotBuildProcessResult.exitCode,
+      ).thenReturn(ExitCode.success.code);
       when(
-        () => shorebirdProcess.run(
-          'git',
-          any(),
-          runInShell: any(named: 'runInShell'),
-          workingDirectory: any(named: 'workingDirectory'),
-        ),
-      ).thenAnswer((_) async => flutterRevisionProcessResult);
+        () => flutterBuildProcessResult.exitCode,
+      ).thenReturn(ExitCode.success.code);
       when(
         () => shorebirdProcess.run(
           'flutter',
@@ -270,6 +285,9 @@ flutter:
           supportedOperatingSystems: any(named: 'supportedOperatingSystems'),
         ),
       ).thenAnswer((_) async {});
+      when(
+        () => shorebirdVersionManager.getShorebirdFlutterRevision(),
+      ).thenAnswer((_) async => flutterRevision);
 
       command = runWithOverrides(() => PatchIosCommand(ipaReader: ipaReader))
         ..testArgResults = argResults;
@@ -404,9 +422,10 @@ Please re-run the release command for this version or create a new release.'''),
     );
 
     test('errors when unable to detect flutter revision', () async {
-      const error = 'oops';
-      when(() => flutterRevisionProcessResult.exitCode).thenReturn(1);
-      when(() => flutterRevisionProcessResult.stderr).thenReturn(error);
+      final exception = Exception('oops');
+      when(
+        () => shorebirdVersionManager.getShorebirdFlutterRevision(),
+      ).thenThrow(exception);
       final tempDir = setUpTempDir();
       setUpTempArtifacts(tempDir);
       final exitCode = await IOOverrides.runZoned(
@@ -414,45 +433,32 @@ Please re-run the release command for this version or create a new release.'''),
         getCurrentDirectory: () => tempDir,
       );
       expect(exitCode, ExitCode.software.code);
-      verify(
-        () => progress.fail(
-          'Exception: Unable to determine flutter revision: $error',
-        ),
-      ).called(1);
+      verify(() => progress.fail('$exception')).called(1);
     });
 
     test(
         'errors when shorebird flutter revision '
         'does not match release revision', () async {
       const otherRevision = 'other-revision';
-      when(() => flutterRevisionProcessResult.stdout).thenReturn(otherRevision);
+      when(
+        () => shorebirdVersionManager.getShorebirdFlutterRevision(),
+      ).thenAnswer((_) async => otherRevision);
       final tempDir = setUpTempDir();
       setUpTempArtifacts(tempDir);
+
       final exitCode = await IOOverrides.runZoned(
         () => runWithOverrides(command.run),
         getCurrentDirectory: () => tempDir,
       );
+
       expect(exitCode, ExitCode.software.code);
-      final shorebirdFlutterPath = runWithOverrides(
-        () => ShorebirdEnvironment.flutterDirectory.path,
-      );
       verify(
         () => logger.err('''
-Flutter revision mismatch.
-
-The release you are trying to patch was built with a different version of Flutter.
-
-Release Flutter Revision: $flutterRevision
-Current Flutter Revision: $otherRevision
-'''),
-      ).called(1);
-      verify(
-        () => logger.info('''
 Either create a new release using:
-  ${lightCyan.wrap('shorebird release')}
+  ${lightCyan.wrap('shorebird release aar')}
 
 Or downgrade your Flutter version and try again using:
-  ${lightCyan.wrap('cd $shorebirdFlutterPath')}
+  ${lightCyan.wrap('cd ${shorebirdEnv.flutterDirectory.path}')}
   ${lightCyan.wrap('git checkout ${release.flutterRevision}')}
 
 Shorebird plans to support this automatically, let us know if it's important to you:

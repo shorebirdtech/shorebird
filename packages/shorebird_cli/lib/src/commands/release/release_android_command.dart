@@ -8,10 +8,10 @@ import 'package:shorebird_cli/src/config/shorebird_yaml.dart';
 import 'package:shorebird_cli/src/doctor.dart';
 import 'package:shorebird_cli/src/logger.dart';
 import 'package:shorebird_cli/src/shorebird_build_mixin.dart';
-import 'package:shorebird_cli/src/shorebird_config_mixin.dart';
-import 'package:shorebird_cli/src/shorebird_environment.dart';
+import 'package:shorebird_cli/src/shorebird_env.dart';
 import 'package:shorebird_cli/src/shorebird_release_version_mixin.dart';
 import 'package:shorebird_cli/src/shorebird_validator.dart';
+import 'package:shorebird_cli/src/shorebird_version_manager.dart';
 import 'package:shorebird_code_push_client/shorebird_code_push_client.dart';
 
 /// {@template release_android_command}
@@ -19,10 +19,7 @@ import 'package:shorebird_code_push_client/shorebird_code_push_client.dart';
 /// Create new app releases for Android.
 /// {@endtemplate}
 class ReleaseAndroidCommand extends ShorebirdCommand
-    with
-        ShorebirdConfigMixin,
-        ShorebirdBuildMixin,
-        ShorebirdReleaseVersionMixin {
+    with ShorebirdBuildMixin, ShorebirdReleaseVersionMixin {
   /// {@macro release_android_command}
   ReleaseAndroidCommand() {
     argParser
@@ -89,8 +86,7 @@ make smaller updates to your app.
       return ExitCode.software.code;
     }
 
-    final shorebirdYaml = ShorebirdEnvironment.getShorebirdYaml()!;
-
+    final shorebirdYaml = shorebirdEnv.getShorebirdYaml()!;
     final appId = shorebirdYaml.getAppId(flavor: flavor);
     final app = await codePushClientWrapper.getApp(appId: appId);
 
@@ -158,7 +154,8 @@ ${summary.join('\n')}
     );
     final String shorebirdFlutterRevision;
     try {
-      shorebirdFlutterRevision = await getShorebirdFlutterRevision();
+      shorebirdFlutterRevision =
+          await shorebirdVersionManager.getShorebirdFlutterRevision();
       flutterRevisionProgress.complete();
     } catch (error) {
       flutterRevisionProgress.fail('$error');

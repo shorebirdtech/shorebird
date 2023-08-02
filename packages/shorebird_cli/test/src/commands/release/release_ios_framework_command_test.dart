@@ -9,11 +9,14 @@ import 'package:scoped/scoped.dart';
 import 'package:shorebird_cli/src/auth/auth.dart';
 import 'package:shorebird_cli/src/code_push_client_wrapper.dart';
 import 'package:shorebird_cli/src/commands/release/release.dart';
+import 'package:shorebird_cli/src/config/config.dart';
 import 'package:shorebird_cli/src/doctor.dart';
 import 'package:shorebird_cli/src/logger.dart';
 import 'package:shorebird_cli/src/platform.dart';
 import 'package:shorebird_cli/src/process.dart';
+import 'package:shorebird_cli/src/shorebird_env.dart';
 import 'package:shorebird_cli/src/shorebird_validator.dart';
+import 'package:shorebird_cli/src/shorebird_version_manager.dart';
 import 'package:shorebird_cli/src/validators/validators.dart';
 import 'package:shorebird_code_push_client/shorebird_code_push_client.dart';
 import 'package:test/test.dart';
@@ -40,7 +43,12 @@ class _MockShorebirdFlutterValidator extends Mock
 
 class _MockShorebirdProcess extends Mock implements ShorebirdProcess {}
 
+class _MockShorebirdEnv extends Mock implements ShorebirdEnv {}
+
 class _MockShorebirdValidator extends Mock implements ShorebirdValidator {}
+
+class _MockShorebirdVersionManager extends Mock
+    implements ShorebirdVersionManager {}
 
 class _FakeRelease extends Fake implements Release {}
 
@@ -49,6 +57,7 @@ class _FakeShorebirdProcess extends Fake implements ShorebirdProcess {}
 void main() {
   group(ReleaseIosFrameworkCommand, () {
     const appId = 'test-app-id';
+    const shorebirdYaml = ShorebirdYaml(appId: appId);
     const flutterRevision = '83305b5088e6fe327fb3334a73ff190828d85713';
     const versionName = '1.2.3';
     const versionCode = '1';
@@ -83,10 +92,11 @@ flutter:
     late Progress progress;
     late Logger logger;
     late ShorebirdProcessResult flutterBuildProcessResult;
-    late ShorebirdProcessResult flutterRevisionProcessResult;
     late ShorebirdFlutterValidator flutterValidator;
     late ShorebirdProcess shorebirdProcess;
+    late ShorebirdEnv shorebirdEnv;
     late ShorebirdValidator shorebirdValidator;
+    late ShorebirdVersionManager shorebirdVersionManager;
     late ReleaseIosFrameworkCommand command;
 
     R runWithOverrides<R>(R Function() body) {
@@ -99,7 +109,11 @@ flutter:
           loggerRef.overrideWith(() => logger),
           platformRef.overrideWith(() => platform),
           processRef.overrideWith(() => shorebirdProcess),
+          shorebirdEnvRef.overrideWith(() => shorebirdEnv),
           shorebirdValidatorRef.overrideWith(() => shorebirdValidator),
+          shorebirdVersionManagerRef.overrideWith(
+            () => shorebirdVersionManager,
+          ),
         },
       );
     }
@@ -132,21 +146,14 @@ flutter:
       progress = _MockProgress();
       logger = _MockLogger();
       flutterBuildProcessResult = _MockProcessResult();
-      flutterRevisionProcessResult = _MockProcessResult();
       flutterValidator = _MockShorebirdFlutterValidator();
       shorebirdProcess = _MockShorebirdProcess();
+      shorebirdEnv = _MockShorebirdEnv();
       shorebirdValidator = _MockShorebirdValidator();
+      shorebirdVersionManager = _MockShorebirdVersionManager();
 
-      when(() => platform.script).thenReturn(
-        Uri.file(
-          p.join(
-            shorebirdRoot.path,
-            'bin',
-            'cache',
-            'shorebird.snapshot',
-          ),
-        ),
-      );
+      when(() => shorebirdEnv.getShorebirdYaml()).thenReturn(shorebirdYaml);
+      when(() => shorebirdEnv.shorebirdRoot).thenReturn(shorebirdRoot);
       when(
         () => shorebirdProcess.run(
           'flutter',
@@ -154,14 +161,6 @@ flutter:
           runInShell: any(named: 'runInShell'),
         ),
       ).thenAnswer((_) async => flutterBuildProcessResult);
-      when(
-        () => shorebirdProcess.run(
-          'git',
-          any(),
-          runInShell: any(named: 'runInShell'),
-          workingDirectory: any(named: 'workingDirectory'),
-        ),
-      ).thenAnswer((_) async => flutterRevisionProcessResult);
       when(() => argResults['release-version']).thenReturn(version);
       when(() => argResults['force']).thenReturn(false);
       when(() => argResults.rest).thenReturn([]);
@@ -170,12 +169,6 @@ flutter:
       when(
         () => flutterBuildProcessResult.exitCode,
       ).thenReturn(ExitCode.success.code);
-      when(
-        () => flutterRevisionProcessResult.exitCode,
-      ).thenReturn(ExitCode.success.code);
-      when(
-        () => flutterRevisionProcessResult.stdout,
-      ).thenReturn(flutterRevision);
       when(() => logger.progress(any())).thenReturn(progress);
       when(() => logger.confirm(any())).thenReturn(true);
       when(() => platform.operatingSystem).thenReturn(Platform.macOS);
@@ -225,6 +218,9 @@ flutter:
           supportedOperatingSystems: any(named: 'supportedOperatingSystems'),
         ),
       ).thenAnswer((_) async {});
+      when(
+        () => shorebirdVersionManager.getShorebirdFlutterRevision(),
+      ).thenAnswer((_) async => flutterRevision);
 
       command = runWithOverrides(ReleaseIosFrameworkCommand.new)
         ..testArgResults = argResults;
@@ -319,9 +315,10 @@ flutter:
     });
 
     test('throws error when unable to detect flutter revision', () async {
-      const error = 'oops';
-      when(() => flutterRevisionProcessResult.exitCode).thenReturn(1);
-      when(() => flutterRevisionProcessResult.stderr).thenReturn(error);
+      final exception = Exception('oops');
+      when(
+        () => shorebirdVersionManager.getShorebirdFlutterRevision(),
+      ).thenThrow(exception);
       final tempDir = setUpTempDir();
 
       final exitCode = await IOOverrides.runZoned(
@@ -329,11 +326,7 @@ flutter:
         getCurrentDirectory: () => tempDir,
       );
       expect(exitCode, ExitCode.software.code);
-      verify(
-        () => progress.fail(
-          'Exception: Unable to determine flutter revision: $error',
-        ),
-      ).called(1);
+      verify(() => progress.fail('$exception')).called(1);
     });
 
     test(

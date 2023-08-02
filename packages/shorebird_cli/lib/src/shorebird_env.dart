@@ -1,55 +1,47 @@
 import 'dart:io' hide Platform;
 
 import 'package:checked_yaml/checked_yaml.dart';
-import 'package:meta/meta.dart';
 import 'package:path/path.dart' as p;
-import 'package:platform/platform.dart';
 import 'package:pubspec_parse/pubspec_parse.dart';
+import 'package:scoped/scoped.dart';
 import 'package:shorebird_cli/src/config/shorebird_yaml.dart';
 import 'package:shorebird_cli/src/platform.dart';
 import 'package:shorebird_code_push_client/shorebird_code_push_client.dart';
 import 'package:yaml/yaml.dart';
 
-abstract class ShorebirdEnvironment {
-  /// Environment variables from [Platform.environment].
-  static Map<String, String> get environment => platform.environment;
+/// A reference to a [ShorebirdEnv] instance.
+final shorebirdEnvRef = create(ShorebirdEnv.new);
+
+/// The [ShorebirdEnv] instance available in the current zone.
+ShorebirdEnv get shorebirdEnv => read(shorebirdEnvRef);
+
+/// {@template shorebird_env}
+/// A class that provides access to shorebird environment metadata.
+/// {@endtemplate}
+class ShorebirdEnv {
+  /// {@macro shorebird_env}
+  const ShorebirdEnv();
 
   /// The root directory of the Shorebird install.
   ///
   /// Assumes we are running from $ROOT/bin/cache.
-  static Directory get shorebirdRoot =>
+  Directory get shorebirdRoot =>
       File(platform.script.toFilePath()).parent.parent.parent;
 
-  static String get shorebirdEngineRevision {
-    return _shorebirdEngineRevision ??
-        File(p.join(flutterDirectory.path, 'bin', 'internal', 'engine.version'))
-            .readAsStringSync()
-            .trim();
+  String get shorebirdEngineRevision {
+    return File(
+      p.join(flutterDirectory.path, 'bin', 'internal', 'engine.version'),
+    ).readAsStringSync().trim();
   }
 
-  static String? _shorebirdEngineRevision;
-
-  @visibleForTesting
-  static set shorebirdEngineRevision(String revision) {
-    _shorebirdEngineRevision = revision;
-  }
-
-  static String? _flutterRevision;
-
-  @visibleForTesting
-  static set flutterRevision(String revision) {
-    _flutterRevision = revision;
-  }
-
-  static String get flutterRevision {
-    return _flutterRevision ??
-        File(
-          p.join(shorebirdRoot.path, 'bin', 'internal', 'flutter.version'),
-        ).readAsStringSync().trim();
+  String get flutterRevision {
+    return File(
+      p.join(shorebirdRoot.path, 'bin', 'internal', 'flutter.version'),
+    ).readAsStringSync().trim();
   }
 
   /// The root of the Shorebird-vended Flutter git checkout.
-  static Directory get flutterDirectory => Directory(
+  Directory get flutterDirectory => Directory(
         p.join(
           shorebirdRoot.path,
           'bin',
@@ -59,7 +51,7 @@ abstract class ShorebirdEnvironment {
       );
 
   /// The Shorebird-vended Flutter binary.
-  static File get flutterBinaryFile => File(
+  File get flutterBinaryFile => File(
         p.join(
           flutterDirectory.path,
           'bin',
@@ -67,7 +59,7 @@ abstract class ShorebirdEnvironment {
         ),
       );
 
-  static File get genSnapshotFile => File(
+  File get genSnapshotFile => File(
         p.join(
           flutterDirectory.path,
           'bin',
@@ -80,8 +72,13 @@ abstract class ShorebirdEnvironment {
       );
 
   /// The `shorebird.yaml` file for this project.
-  static File getShorebirdYamlFile() {
+  File getShorebirdYamlFile() {
     return File(p.join(Directory.current.path, 'shorebird.yaml'));
+  }
+
+  /// The `pubspec.yaml` file for this project.
+  File getPubspecYamlFile() {
+    return File(p.join(Directory.current.path, 'pubspec.yaml'));
   }
 
   /// The `shorebird.yaml` file for this project, parsed into a [ShorebirdYaml]
@@ -89,26 +86,38 @@ abstract class ShorebirdEnvironment {
   ///
   /// Returns `null` if the file does not exist.
   /// Throws a [ParsedYamlException] if the file exists but is invalid.
-  static ShorebirdYaml? getShorebirdYaml() {
+  ShorebirdYaml? getShorebirdYaml() {
     final file = getShorebirdYamlFile();
     if (!file.existsSync()) return null;
     final yaml = file.readAsStringSync();
     return checkedYamlDecode(yaml, (m) => ShorebirdYaml.fromJson(m!));
   }
 
-  static bool get isShorebirdInitialized {
+  /// The `pubspec.yaml` file for this project, parsed into a [Pubspec] object.
+  ///
+  /// Returns `null` if the file does not exist.
+  /// Throws a [ParsedYamlException] if the file exists but is invalid.
+  Pubspec? getPubspecYaml() {
+    final file = getPubspecYamlFile();
+    if (!file.existsSync()) return null;
+    final yaml = file.readAsStringSync();
+    return Pubspec.parse(yaml);
+  }
+
+  /// Whether `shorebird init` has been run in the current project.
+  bool get isShorebirdInitialized {
     return hasShorebirdYaml && pubspecContainsShorebirdYaml;
   }
 
-  static bool get hasShorebirdYaml {
-    return ShorebirdEnvironment.getShorebirdYamlFile().existsSync();
-  }
+  /// Whether the current project has a `shorebird.yaml` file.
+  bool get hasShorebirdYaml => getShorebirdYamlFile().existsSync();
 
-  static bool get hasPubspecYaml {
-    return ShorebirdEnvironment.getPubspecYaml() != null;
-  }
+  /// Whether the current project has a `pubspec.yaml` file.
+  bool get hasPubspecYaml => getPubspecYaml() != null;
 
-  static bool get pubspecContainsShorebirdYaml {
+  /// Whether the current project's `pubspec.yaml` file contains a reference to
+  /// `shorebird.yaml` in its `assets` section.
+  bool get pubspecContainsShorebirdYaml {
     final file = File(p.join(Directory.current.path, 'pubspec.yaml'));
     final pubspecContents = file.readAsStringSync();
     final yaml = loadYaml(pubspecContents, sourceUrl: file.uri) as Map;
@@ -118,21 +127,18 @@ abstract class ShorebirdEnvironment {
     return assets.contains('shorebird.yaml');
   }
 
-  /// The `pubspec.yaml` file for this project, parsed into a [Pubspec] object.
-  ///
-  /// Returns `null` if the file does not exist.
-  /// Throws a [ParsedYamlException] if the file exists but is invalid.
-  static Pubspec? getPubspecYaml() {
-    final file = File(p.join(Directory.current.path, 'pubspec.yaml'));
-    if (!file.existsSync()) return null;
-    final yaml = file.readAsStringSync();
-    return Pubspec.parse(yaml);
+  /// Returns the Android package name from the pubspec.yaml file of a Flutter
+  /// module.
+  String? get androidPackageName {
+    final pubspec = shorebirdEnv.getPubspecYaml();
+    final module = pubspec?.flutter?['module'] as Map?;
+    return module?['androidPackage'] as String?;
   }
 
   /// The base URL for the Shorebird code push server that overrides the default
   /// used by [CodePushClient]. If none is provided, [CodePushClient] will use
   /// its default.
-  static Uri? get hostedUri {
+  Uri? get hostedUri {
     try {
       final baseUrl = platform.environment['SHOREBIRD_HOSTED_URL'] ??
           getShorebirdYaml()?.baseUrl;

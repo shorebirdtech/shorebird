@@ -25,12 +25,6 @@ typedef StartProcess = Future<Process> Function(
 });
 
 abstract class ShorebirdCommand extends Command<int> {
-  ShorebirdCommand({
-    CodePushClientBuilder? buildCodePushClient,
-  }) : buildCodePushClient = buildCodePushClient ?? CodePushClient.new;
-
-  final CodePushClientBuilder buildCodePushClient;
-
   // We don't currently have a test involving both a CommandRunner
   // and a Command, so we can't test this getter.
   // coverage:ignore-start

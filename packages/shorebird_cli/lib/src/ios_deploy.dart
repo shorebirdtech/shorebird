@@ -8,7 +8,7 @@ import 'package:path/path.dart' as p;
 import 'package:scoped/scoped.dart';
 import 'package:shorebird_cli/src/logger.dart';
 import 'package:shorebird_cli/src/process.dart';
-import 'package:shorebird_cli/src/shorebird_environment.dart';
+import 'package:shorebird_cli/src/shorebird_env.dart';
 
 /// A reference to a [IOSDeploy] instance.
 final iosDeployRef = create(IOSDeploy.new);
@@ -33,7 +33,7 @@ class IOSDeploy {
   @visibleForTesting
   static File get iosDeployExecutable => File(
         p.join(
-          ShorebirdEnvironment.flutterDirectory.path,
+          shorebirdEnv.flutterDirectory.path,
           'bin',
           'cache',
           'artifacts',

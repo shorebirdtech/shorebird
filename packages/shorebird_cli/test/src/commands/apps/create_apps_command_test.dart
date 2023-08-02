@@ -1,9 +1,8 @@
 import 'package:args/args.dart';
-import 'package:http/http.dart' as http;
 import 'package:mason_logger/mason_logger.dart';
 import 'package:mocktail/mocktail.dart';
 import 'package:scoped/scoped.dart';
-import 'package:shorebird_cli/src/auth/auth.dart';
+import 'package:shorebird_cli/src/code_push_client_wrapper.dart';
 import 'package:shorebird_cli/src/commands/commands.dart';
 import 'package:shorebird_cli/src/logger.dart';
 import 'package:shorebird_cli/src/shorebird_validator.dart';
@@ -12,11 +11,8 @@ import 'package:test/test.dart';
 
 class _MockArgResults extends Mock implements ArgResults {}
 
-class _MockHttpClient extends Mock implements http.Client {}
-
-class _MockAuth extends Mock implements Auth {}
-
-class _MockCodePushClient extends Mock implements CodePushClient {}
+class _MockCodePushClientWrapper extends Mock
+    implements CodePushClientWrapper {}
 
 class _MockLogger extends Mock implements Logger {}
 
@@ -25,13 +21,11 @@ class _MockShorebirdValidator extends Mock implements ShorebirdValidator {}
 void main() {
   group(CreateAppCommand, () {
     const appId = 'app-id';
-    const displayName = 'Example App';
+    const appName = 'Example App';
 
     late ArgResults argResults;
-    late http.Client httpClient;
-    late Auth auth;
     late Logger logger;
-    late CodePushClient codePushClient;
+    late CodePushClientWrapper codePushClientWrapper;
     late ShorebirdValidator shorebirdValidator;
     late CreateAppCommand command;
 
@@ -39,7 +33,7 @@ void main() {
       return runScoped(
         body,
         values: {
-          authRef.overrideWith(() => auth),
+          codePushClientWrapperRef.overrideWith(() => codePushClientWrapper),
           loggerRef.overrideWith(() => logger),
           shorebirdValidatorRef.overrideWith(() => shorebirdValidator),
         },
@@ -48,30 +42,22 @@ void main() {
 
     setUp(() {
       argResults = _MockArgResults();
-      httpClient = _MockHttpClient();
-      auth = _MockAuth();
       logger = _MockLogger();
-      codePushClient = _MockCodePushClient();
+      codePushClientWrapper = _MockCodePushClientWrapper();
       shorebirdValidator = _MockShorebirdValidator();
 
-      when(() => auth.client).thenReturn(httpClient);
-      when(() => auth.isAuthenticated).thenReturn(true);
+      when(() => argResults['app-name']).thenReturn(appName);
       when(
         () => shorebirdValidator.validatePreconditions(
           checkUserIsAuthenticated: any(named: 'checkUserIsAuthenticated'),
         ),
       ).thenAnswer((_) async {});
+      when(
+        () => codePushClientWrapper.createApp(appName: appName),
+      ).thenAnswer((_) async => const App(id: appId, displayName: appName));
 
-      command = runWithOverrides(
-        () => CreateAppCommand(
-          buildCodePushClient: ({
-            required http.Client httpClient,
-            Uri? hostedUri,
-          }) {
-            return codePushClient;
-          },
-        ),
-      )..testArgResults = argResults;
+      command = runWithOverrides(CreateAppCommand.new)
+        ..testArgResults = argResults;
     });
 
     test('has a description', () {
@@ -96,42 +82,28 @@ void main() {
       ).called(1);
     });
 
-    test('prompts for app name when not provided', () async {
-      when(
-        () => logger.prompt(any(), defaultValue: any(named: 'defaultValue')),
-      ).thenReturn(displayName);
+    test('calls createApp with no app-name when not provided', () async {
+      when(() => argResults['app-name']).thenReturn(null);
       await runWithOverrides(command.run);
-      verify(
-        () => logger.prompt(any(), defaultValue: any(named: 'defaultValue')),
-      ).called(1);
-      verify(
-        () => codePushClient.createApp(displayName: displayName),
-      ).called(1);
+      verify(() => codePushClientWrapper.createApp()).called(1);
     });
 
     test('uses provided app name when provided', () async {
-      when(() => argResults['app-name']).thenReturn(displayName);
       await runWithOverrides(command.run);
-      verifyNever(() => logger.prompt(any()));
       verify(
-        () => codePushClient.createApp(displayName: displayName),
+        () => codePushClientWrapper.createApp(appName: appName),
       ).called(1);
     });
 
     test('returns success when app is created', () async {
-      when(() => argResults['app-name']).thenReturn(displayName);
-      when(
-        () => codePushClient.createApp(displayName: displayName),
-      ).thenAnswer((_) async => const App(id: appId, displayName: displayName));
       final result = await runWithOverrides(command.run);
       expect(result, ExitCode.success.code);
     });
 
     test('returns software error when app creation fails', () async {
       final error = Exception('oops');
-      when(() => argResults['app-name']).thenReturn(displayName);
       when(
-        () => codePushClient.createApp(displayName: displayName),
+        () => codePushClientWrapper.createApp(appName: appName),
       ).thenThrow(error);
       final result = await runWithOverrides(command.run);
       expect(result, ExitCode.software.code);

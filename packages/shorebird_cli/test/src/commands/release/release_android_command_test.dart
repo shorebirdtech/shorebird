@@ -12,12 +12,15 @@ import 'package:shorebird_cli/src/bundletool.dart';
 import 'package:shorebird_cli/src/cache.dart';
 import 'package:shorebird_cli/src/code_push_client_wrapper.dart';
 import 'package:shorebird_cli/src/commands/commands.dart';
+import 'package:shorebird_cli/src/config/config.dart';
 import 'package:shorebird_cli/src/doctor.dart';
 import 'package:shorebird_cli/src/java.dart';
 import 'package:shorebird_cli/src/logger.dart';
 import 'package:shorebird_cli/src/platform.dart';
 import 'package:shorebird_cli/src/process.dart';
+import 'package:shorebird_cli/src/shorebird_env.dart';
 import 'package:shorebird_cli/src/shorebird_validator.dart';
+import 'package:shorebird_cli/src/shorebird_version_manager.dart';
 import 'package:shorebird_cli/src/validators/validators.dart';
 import 'package:shorebird_code_push_client/shorebird_code_push_client.dart';
 import 'package:test/test.dart';
@@ -50,7 +53,12 @@ class _MockShorebirdFlutterValidator extends Mock
 
 class _MockShorebirdProcess extends Mock implements ShorebirdProcess {}
 
+class _MockShorebirdEnv extends Mock implements ShorebirdEnv {}
+
 class _MockShorebirdValidator extends Mock implements ShorebirdValidator {}
+
+class _MockShorebirdVersionManager extends Mock
+    implements ShorebirdVersionManager {}
 
 class _MockJava extends Mock implements Java {}
 
@@ -61,6 +69,7 @@ class _FakeShorebirdProcess extends Fake implements ShorebirdProcess {}
 void main() {
   group(ReleaseAndroidCommand, () {
     const appId = 'test-app-id';
+    const shorebirdYaml = ShorebirdYaml(appId: appId);
     const flutterRevision = '83305b5088e6fe327fb3334a73ff190828d85713';
     const versionName = '1.2.3';
     const versionCode = '1';
@@ -78,16 +87,6 @@ void main() {
       platformStatuses: {},
     );
 
-    const pubspecYamlContent = '''
-name: example
-version: $version
-environment:
-  sdk: ">=2.19.0 <3.0.0"
-  
-flutter:
-  assets:
-    - shorebird.yaml''';
-
     const javaHome = 'test-java-home';
 
     late ArgResults argResults;
@@ -103,10 +102,11 @@ flutter:
     late Progress progress;
     late Logger logger;
     late ShorebirdProcessResult flutterBuildProcessResult;
-    late ShorebirdProcessResult flutterRevisionProcessResult;
     late ShorebirdFlutterValidator flutterValidator;
     late ShorebirdProcess shorebirdProcess;
+    late ShorebirdEnv shorebirdEnv;
     late ShorebirdValidator shorebirdValidator;
+    late ShorebirdVersionManager shorebirdVersionManager;
     late ReleaseAndroidCommand command;
 
     R runWithOverrides<R>(R Function() body) {
@@ -123,20 +123,13 @@ flutter:
           loggerRef.overrideWith(() => logger),
           platformRef.overrideWith(() => platform),
           processRef.overrideWith(() => shorebirdProcess),
+          shorebirdEnvRef.overrideWith(() => shorebirdEnv),
           shorebirdValidatorRef.overrideWith(() => shorebirdValidator),
+          shorebirdVersionManagerRef.overrideWith(
+            () => shorebirdVersionManager,
+          ),
         },
       );
-    }
-
-    Directory setUpTempDir() {
-      final tempDir = Directory.systemTemp.createTempSync();
-      File(
-        p.join(tempDir.path, 'pubspec.yaml'),
-      ).writeAsStringSync(pubspecYamlContent);
-      File(
-        p.join(tempDir.path, 'shorebird.yaml'),
-      ).writeAsStringSync('app_id: $appId');
-      return tempDir;
     }
 
     setUpAll(() {
@@ -160,21 +153,15 @@ flutter:
       progress = _MockProgress();
       logger = _MockLogger();
       flutterBuildProcessResult = _MockProcessResult();
-      flutterRevisionProcessResult = _MockProcessResult();
       flutterValidator = _MockShorebirdFlutterValidator();
       shorebirdProcess = _MockShorebirdProcess();
+      shorebirdEnv = _MockShorebirdEnv();
       shorebirdValidator = _MockShorebirdValidator();
+      shorebirdVersionManager = _MockShorebirdVersionManager();
 
-      when(() => platform.script).thenReturn(
-        Uri.file(
-          p.join(
-            shorebirdRoot.path,
-            'bin',
-            'cache',
-            'shorebird.snapshot',
-          ),
-        ),
-      );
+      when(() => shorebirdEnv.getShorebirdYaml()).thenReturn(shorebirdYaml);
+      when(() => shorebirdEnv.shorebirdRoot).thenReturn(shorebirdRoot);
+
       when(
         () => shorebirdProcess.run(
           'flutter',
@@ -182,14 +169,7 @@ flutter:
           runInShell: any(named: 'runInShell'),
         ),
       ).thenAnswer((_) async => flutterBuildProcessResult);
-      when(
-        () => shorebirdProcess.run(
-          'git',
-          any(),
-          runInShell: any(named: 'runInShell'),
-          workingDirectory: any(named: 'workingDirectory'),
-        ),
-      ).thenAnswer((_) async => flutterRevisionProcessResult);
+
       when(() => argResults.rest).thenReturn([]);
       when(() => argResults['arch']).thenReturn(arch);
       when(() => argResults['platform']).thenReturn(releasePlatform);
@@ -208,12 +188,6 @@ flutter:
       when(
         () => flutterBuildProcessResult.exitCode,
       ).thenReturn(ExitCode.success.code);
-      when(
-        () => flutterRevisionProcessResult.exitCode,
-      ).thenReturn(ExitCode.success.code);
-      when(
-        () => flutterRevisionProcessResult.stdout,
-      ).thenReturn(flutterRevision);
       when(
         () => codePushClientWrapper.getApp(appId: any(named: 'appId')),
       ).thenAnswer((_) async => appMetadata);
@@ -273,6 +247,9 @@ flutter:
           supportedOperatingSystems: any(named: 'supportedOperatingSystems'),
         ),
       ).thenAnswer((_) async {});
+      when(
+        () => shorebirdVersionManager.getShorebirdFlutterRevision(),
+      ).thenAnswer((_) async => flutterRevision);
 
       command = runWithOverrides(ReleaseAndroidCommand.new)
         ..testArgResults = argResults;
@@ -307,13 +284,7 @@ flutter:
     test('exits with code 70 when building fails', () async {
       when(() => flutterBuildProcessResult.exitCode).thenReturn(1);
       when(() => flutterBuildProcessResult.stderr).thenReturn('oops');
-
-      final tempDir = setUpTempDir();
-      final exitCode = await IOOverrides.runZoned(
-        () => runWithOverrides(command.run),
-        getCurrentDirectory: () => tempDir,
-      );
-
+      final exitCode = await runWithOverrides(command.run);
       expect(exitCode, equals(ExitCode.software.code));
     });
 
@@ -322,13 +293,7 @@ flutter:
         'Failed to extract version name from app bundle: oops',
       );
       when(() => bundletool.getVersionName(any())).thenThrow(exception);
-      final tempDir = setUpTempDir();
-
-      final exitCode = await IOOverrides.runZoned(
-        () => runWithOverrides(command.run),
-        getCurrentDirectory: () => tempDir,
-      );
-
+      final exitCode = await runWithOverrides(command.run);
       expect(exitCode, ExitCode.software.code);
       verify(() => progress.fail('$exception')).called(1);
     });
@@ -338,13 +303,7 @@ flutter:
         'Failed to extract version code from app bundle: oops',
       );
       when(() => bundletool.getVersionCode(any())).thenThrow(exception);
-      final tempDir = setUpTempDir();
-
-      final exitCode = await IOOverrides.runZoned(
-        () => runWithOverrides(command.run),
-        getCurrentDirectory: () => tempDir,
-      );
-
+      final exitCode = await runWithOverrides(command.run);
       expect(exitCode, ExitCode.software.code);
       verify(() => progress.fail('$exception')).called(1);
     });
@@ -357,13 +316,7 @@ flutter:
           defaultValue: any(named: 'defaultValue'),
         ),
       ).thenAnswer((_) => '1.0.0');
-      final tempDir = setUpTempDir();
-
-      final exitCode = await IOOverrides.runZoned(
-        () => runWithOverrides(command.run),
-        getCurrentDirectory: () => tempDir,
-      );
-
+      final exitCode = await runWithOverrides(command.run);
       expect(exitCode, ExitCode.success.code);
       verify(() => logger.info('Aborting.')).called(1);
       verifyNever(
@@ -377,22 +330,13 @@ flutter:
     });
 
     test('throws error when unable to detect flutter revision', () async {
-      const error = 'oops';
-      when(() => flutterRevisionProcessResult.exitCode).thenReturn(1);
-      when(() => flutterRevisionProcessResult.stderr).thenReturn(error);
-      final tempDir = setUpTempDir();
-
-      final exitCode = await IOOverrides.runZoned(
-        () => runWithOverrides(command.run),
-        getCurrentDirectory: () => tempDir,
-      );
-
+      final exception = Exception('oops');
+      when(
+        () => shorebirdVersionManager.getShorebirdFlutterRevision(),
+      ).thenThrow(exception);
+      final exitCode = await runWithOverrides(command.run);
       expect(exitCode, ExitCode.software.code);
-      verify(
-        () => progress.fail(
-          'Exception: Unable to determine flutter revision: $error',
-        ),
-      ).called(1);
+      verify(() => progress.fail('$exception')).called(1);
     });
 
     test(
@@ -400,13 +344,7 @@ flutter:
         'when --release-version and --force are used', () async {
       when(() => argResults['force']).thenReturn(true);
       when(() => argResults['release-version']).thenReturn(version);
-      final tempDir = setUpTempDir();
-
-      final exitCode = await IOOverrides.runZoned(
-        () => runWithOverrides(command.run),
-        getCurrentDirectory: () => tempDir,
-      );
-
+      final exitCode = await runWithOverrides(command.run);
       verify(() => logger.success('\n✅ Published Release!')).called(1);
       expect(exitCode, ExitCode.success.code);
       verifyNever(
@@ -415,13 +353,7 @@ flutter:
     });
 
     test('succeeds when release is successful', () async {
-      final tempDir = setUpTempDir();
-
-      final exitCode = await IOOverrides.runZoned(
-        () => runWithOverrides(command.run),
-        getCurrentDirectory: () => tempDir,
-      );
-
+      final exitCode = await runWithOverrides(command.run);
       verify(() => logger.success('\n✅ Published Release!')).called(1);
       verify(
         () => codePushClientWrapper.createAndroidReleaseArtifacts(
@@ -445,13 +377,7 @@ flutter:
 
     test('succeeds when release is successful (with apk)', () async {
       when(() => argResults['artifact']).thenReturn('apk');
-      final tempDir = setUpTempDir();
-
-      final exitCode = await IOOverrides.runZoned(
-        () => runWithOverrides(command.run),
-        getCurrentDirectory: () => tempDir,
-      );
-
+      final exitCode = await runWithOverrides(command.run);
       verify(() => logger.success('\n✅ Published Release!')).called(1);
       verify(
         () => codePushClientWrapper.createAndroidReleaseArtifacts(
@@ -480,18 +406,12 @@ flutter:
       final target = p.join('lib', 'main_development.dart');
       when(() => argResults['flavor']).thenReturn(flavor);
       when(() => argResults['target']).thenReturn(target);
-      final tempDir = setUpTempDir();
-      File(
-        p.join(tempDir.path, 'shorebird.yaml'),
-      ).writeAsStringSync('''
-app_id: productionAppId
-flavors:
-  development: $appId''');
-
-      final exitCode = await IOOverrides.runZoned(
-        () => runWithOverrides(command.run),
-        getCurrentDirectory: () => tempDir,
+      const shorebirdYaml = ShorebirdYaml(
+        appId: 'productionAppId',
+        flavors: {flavor: appId},
       );
+      when(() => shorebirdEnv.getShorebirdYaml()).thenReturn(shorebirdYaml);
+      final exitCode = await runWithOverrides(command.run);
 
       verify(() => logger.success('\n✅ Published Release!')).called(1);
       verify(
@@ -523,13 +443,7 @@ flavors:
           releaseVersion: any(named: 'releaseVersion'),
         ),
       ).thenAnswer((_) async => release);
-      final tempDir = setUpTempDir();
-
-      final exitCode = await IOOverrides.runZoned(
-        () => runWithOverrides(command.run),
-        getCurrentDirectory: () => tempDir,
-      );
-
+      final exitCode = await runWithOverrides(command.run);
       expect(exitCode, ExitCode.success.code);
       verifyNever(
         () => codePushClientWrapper.createRelease(
