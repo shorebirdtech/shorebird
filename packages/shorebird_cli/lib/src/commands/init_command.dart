@@ -48,7 +48,7 @@ class InitCommand extends ShorebirdCommand
     }
 
     try {
-      if (!hasPubspecYaml) {
+      if (!ShorebirdEnvironment.hasPubspecYaml) {
         logger.err('''
 Could not find a "pubspec.yaml".
 Please make sure you are running "shorebird init" from the root of your Flutter project.
@@ -61,11 +61,11 @@ Please make sure you are running "shorebird init" from the root of your Flutter 
     }
 
     final force = results['force'] == true;
-    if (force && hasShorebirdYaml) {
+    if (force && ShorebirdEnvironment.hasShorebirdYaml) {
       ShorebirdEnvironment.getShorebirdYamlFile().deleteSync();
     }
 
-    if (hasShorebirdYaml) {
+    if (ShorebirdEnvironment.hasShorebirdYaml) {
       logger.err('''
 A "shorebird.yaml" already exists.
 If you want to reinitialize Shorebird, please run "shorebird init --force".''');
@@ -138,7 +138,9 @@ If you want to reinitialize Shorebird, please run "shorebird init --force".''');
 
     addShorebirdYamlToProject(appId, flavors: flavors);
 
-    if (!pubspecContainsShorebirdYaml) addShorebirdYamlToPubspecAssets();
+    if (!ShorebirdEnvironment.pubspecContainsShorebirdYaml) {
+      addShorebirdYamlToPubspecAssets();
+    }
 
     await doctor.runValidators(doctor.allValidators, applyFixes: true);
 

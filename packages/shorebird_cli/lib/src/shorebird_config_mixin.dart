@@ -9,25 +9,6 @@ import 'package:yaml/yaml.dart';
 import 'package:yaml_edit/yaml_edit.dart';
 
 mixin ShorebirdConfigMixin on ShorebirdCommand {
-  bool get hasShorebirdYaml =>
-      ShorebirdEnvironment.getShorebirdYamlFile().existsSync();
-
-  bool get hasPubspecYaml => ShorebirdEnvironment.getPubspecYaml() != null;
-
-  bool get isShorebirdInitialized {
-    return hasShorebirdYaml && pubspecContainsShorebirdYaml;
-  }
-
-  bool get pubspecContainsShorebirdYaml {
-    final file = File(p.join(Directory.current.path, 'pubspec.yaml'));
-    final pubspecContents = file.readAsStringSync();
-    final yaml = loadYaml(pubspecContents, sourceUrl: file.uri) as Map;
-    if (!yaml.containsKey('flutter')) return false;
-    if (!(yaml['flutter'] as Map).containsKey('assets')) return false;
-    final assets = (yaml['flutter'] as Map)['assets'] as List;
-    return assets.contains('shorebird.yaml');
-  }
-
   /// Returns the Android package name from the pubspec.yaml file of a Flutter
   /// module.
   String? get androidPackageName {

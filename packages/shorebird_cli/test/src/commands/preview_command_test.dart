@@ -530,8 +530,8 @@ void main() {
             .thenAnswer((invocation) async {
           (invocation.positionalArguments.single as IOSink)
               .add(ZipEncoder().encode(Archive())!);
-          // Wait 1 tick for the content to be written.
-          await Future<void>.delayed(Duration.zero);
+          // Wait for Isolate to finish.
+          await Future<void>.delayed(const Duration(milliseconds: 1));
         });
         when(
           () => iosDeploy.installAndLaunchApp(

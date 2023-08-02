@@ -73,13 +73,12 @@ class ShorebirdValidator {
       throw UserNotAuthorizedException();
     }
 
-    if (checkShorebirdInitialized) {
-      if (!ShorebirdEnvironment.getShorebirdYamlFile().existsSync()) {
-        logger.err(
-          'Shorebird is not initialized. Did you run "shorebird init"?',
-        );
-        throw ShorebirdNotInitializedException();
-      }
+    if (checkShorebirdInitialized &&
+        !ShorebirdEnvironment.isShorebirdInitialized) {
+      logger.err(
+        'Shorebird is not initialized. Did you run "shorebird init"?',
+      );
+      throw ShorebirdNotInitializedException();
     }
 
     final validationIssues = await runValidators(validators);
