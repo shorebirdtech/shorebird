@@ -16,19 +16,6 @@ void main() {
     differ = AarDiffer();
   });
 
-  group('changedPaths', () {
-    test('finds no differences between the same aar', () {
-      expect(differ.changedFiles(baseAarPath, baseAarPath), isEmpty);
-    });
-
-    test('finds differences between two different aars', () {
-      expect(
-        differ.changedFiles(baseAarPath, changedDartAarPath).changedPaths,
-        {'jni/arm64-v8a/libapp.so'},
-      );
-    });
-  });
-
   group('changedFiles', () {
     test('detects no differences between the same aar', () {
       expect(differ.changedFiles(baseAarPath, baseAarPath), isEmpty);
