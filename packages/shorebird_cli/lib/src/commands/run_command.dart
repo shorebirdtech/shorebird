@@ -6,15 +6,13 @@ import 'package:shorebird_cli/src/command.dart';
 import 'package:shorebird_cli/src/doctor.dart';
 import 'package:shorebird_cli/src/logger.dart';
 import 'package:shorebird_cli/src/process.dart';
-import 'package:shorebird_cli/src/shorebird_config_mixin.dart';
-import 'package:shorebird_cli/src/shorebird_validation_mixin.dart';
+import 'package:shorebird_cli/src/shorebird_validator.dart';
 
 /// {@template run_command}
 /// `shorebird run`
 /// Run the Flutter application.
 /// {@endtemplate}
-class RunCommand extends ShorebirdCommand
-    with ShorebirdConfigMixin, ShorebirdValidationMixin {
+class RunCommand extends ShorebirdCommand {
   /// {@macro run_command}
   RunCommand({super.buildCodePushClient}) {
     argParser
@@ -63,7 +61,7 @@ Please use "shorebird preview" instead.''',
     // TODO(bryanoltman): check run target and run either
     // doctor.iosValidators or doctor.androidValidators as appropriate.
     try {
-      await validatePreconditions(
+      await shorebirdValidator.validatePreconditions(
         checkUserIsAuthenticated: true,
         validators: doctor.allValidators,
       );

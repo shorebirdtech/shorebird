@@ -17,7 +17,7 @@ import 'package:shorebird_cli/src/shorebird_artifact_mixin.dart';
 import 'package:shorebird_cli/src/shorebird_build_mixin.dart';
 import 'package:shorebird_cli/src/shorebird_config_mixin.dart';
 import 'package:shorebird_cli/src/shorebird_environment.dart';
-import 'package:shorebird_cli/src/shorebird_validation_mixin.dart';
+import 'package:shorebird_cli/src/shorebird_validator.dart';
 import 'package:shorebird_code_push_client/shorebird_code_push_client.dart';
 
 /// {@template patch_aar_command}
@@ -25,11 +25,7 @@ import 'package:shorebird_code_push_client/shorebird_code_push_client.dart';
 /// Create a patch for an Android archive release.
 /// {@endtemplate}
 class PatchAarCommand extends ShorebirdCommand
-    with
-        ShorebirdConfigMixin,
-        ShorebirdValidationMixin,
-        ShorebirdBuildMixin,
-        ShorebirdArtifactMixin {
+    with ShorebirdConfigMixin, ShorebirdBuildMixin, ShorebirdArtifactMixin {
   /// {@macro patch_aar_command}
   PatchAarCommand({
     HashFunction? hashFn,
@@ -91,7 +87,7 @@ of the Android app that is using this module.''',
   @override
   Future<int> run() async {
     try {
-      await validatePreconditions(
+      await shorebirdValidator.validatePreconditions(
         checkUserIsAuthenticated: true,
         checkShorebirdInitialized: true,
       );

@@ -5,17 +5,15 @@ import 'package:mason_logger/mason_logger.dart';
 import 'package:shorebird_cli/src/auth/auth.dart';
 import 'package:shorebird_cli/src/command.dart';
 import 'package:shorebird_cli/src/logger.dart';
-import 'package:shorebird_cli/src/shorebird_config_mixin.dart';
 import 'package:shorebird_cli/src/shorebird_environment.dart';
-import 'package:shorebird_cli/src/shorebird_validation_mixin.dart';
+import 'package:shorebird_cli/src/shorebird_validator.dart';
 import 'package:shorebird_code_push_client/shorebird_code_push_client.dart';
 
 /// {@template delete_collaborators_command}
 /// `shorebird collaborators delete`
 /// Delete an existing collaborator from a Shorebird app.
 /// {@endtemplate}
-class DeleteCollaboratorsCommand extends ShorebirdCommand
-    with ShorebirdConfigMixin, ShorebirdValidationMixin {
+class DeleteCollaboratorsCommand extends ShorebirdCommand {
   /// {@macro delete_collaborators_command}
   DeleteCollaboratorsCommand({super.buildCodePushClient}) {
     argParser
@@ -42,7 +40,7 @@ class DeleteCollaboratorsCommand extends ShorebirdCommand
   @override
   Future<int>? run() async {
     try {
-      await validatePreconditions(
+      await shorebirdValidator.validatePreconditions(
         checkUserIsAuthenticated: true,
       );
     } on PreconditionFailedException catch (e) {

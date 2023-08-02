@@ -10,6 +10,7 @@ import 'package:shorebird_cli/src/auth/auth.dart';
 import 'package:shorebird_cli/src/commands/build/build.dart';
 import 'package:shorebird_cli/src/logger.dart';
 import 'package:shorebird_cli/src/process.dart';
+import 'package:shorebird_cli/src/shorebird_validator.dart';
 import 'package:test/test.dart';
 
 class _MockArgResults extends Mock implements ArgResults {}
@@ -25,6 +26,8 @@ class _MockProcessResult extends Mock implements ShorebirdProcessResult {}
 class _MockProgress extends Mock implements Progress {}
 
 class _MockShorebirdProcess extends Mock implements ShorebirdProcess {}
+
+class _MockShorebirdValidator extends Mock implements ShorebirdValidator {}
 
 void main() {
   group(BuildAarCommand, () {
@@ -61,6 +64,7 @@ flutter:
     late Progress progress;
     late ShorebirdProcess shorebirdProcess;
     late ShorebirdProcessResult processResult;
+    late ShorebirdValidator shorebirdValidator;
     late BuildAarCommand command;
 
     R runWithOverrides<R>(R Function() body) {
@@ -70,6 +74,7 @@ flutter:
           authRef.overrideWith(() => auth),
           loggerRef.overrideWith(() => logger),
           processRef.overrideWith(() => shorebirdProcess),
+          shorebirdValidatorRef.overrideWith(() => shorebirdValidator),
         },
       );
     }
@@ -95,6 +100,7 @@ flutter:
       processResult = _MockProcessResult();
       progress = _MockProgress();
       shorebirdProcess = _MockShorebirdProcess();
+      shorebirdValidator = _MockShorebirdValidator();
 
       when(() => argResults['build-number']).thenReturn(buildNumber);
       when(() => argResults.rest).thenReturn([]);
@@ -112,22 +118,38 @@ flutter:
         return processResult;
       });
 
+      when(
+        () => shorebirdValidator.validatePreconditions(
+          checkUserIsAuthenticated: any(named: 'checkUserIsAuthenticated'),
+          checkShorebirdInitialized: any(named: 'checkShorebirdInitialized'),
+        ),
+      ).thenAnswer((_) async {});
+
       command = runWithOverrides(BuildAarCommand.new)
         ..testArgResults = argResults;
     });
 
-    test('has correct description', () {
+    test('has a description', () {
       expect(command.description, isNotEmpty);
     });
 
-    test('exits with no user when not logged in', () async {
-      when(() => auth.isAuthenticated).thenReturn(false);
-
-      final result = await runWithOverrides(command.run);
-      expect(result, equals(ExitCode.noUser.code));
-
+    test('exits when validation fails', () async {
+      final exception = ValidationFailedException();
+      when(
+        () => shorebirdValidator.validatePreconditions(
+          checkUserIsAuthenticated: any(named: 'checkUserIsAuthenticated'),
+          checkShorebirdInitialized: any(named: 'checkShorebirdInitialized'),
+        ),
+      ).thenThrow(exception);
+      await expectLater(
+        runWithOverrides(command.run),
+        completion(equals(exception.exitCode.code)),
+      );
       verify(
-        () => logger.err(any(that: contains('You must be logged in to run'))),
+        () => shorebirdValidator.validatePreconditions(
+          checkUserIsAuthenticated: true,
+          checkShorebirdInitialized: true,
+        ),
       ).called(1);
     });
 

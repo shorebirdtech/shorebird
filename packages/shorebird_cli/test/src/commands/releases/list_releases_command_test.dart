@@ -9,6 +9,7 @@ import 'package:scoped/scoped.dart';
 import 'package:shorebird_cli/src/auth/auth.dart';
 import 'package:shorebird_cli/src/commands/commands.dart';
 import 'package:shorebird_cli/src/logger.dart';
+import 'package:shorebird_cli/src/shorebird_validator.dart';
 import 'package:shorebird_code_push_client/shorebird_code_push_client.dart';
 import 'package:test/test.dart';
 
@@ -22,6 +23,8 @@ class _MockHttpClient extends Mock implements http.Client {}
 
 class _MockLogger extends Mock implements Logger {}
 
+class _MockShorebirdValidator extends Mock implements ShorebirdValidator {}
+
 void main() {
   group(ListReleasesCommand, () {
     const appId = 'test-app-id';
@@ -32,6 +35,7 @@ void main() {
     late http.Client httpClient;
     late CodePushClient codePushClient;
     late Logger logger;
+    late ShorebirdValidator shorebirdValidator;
     late ListReleasesCommand command;
 
     const pubspecYamlContent = '''
@@ -49,7 +53,8 @@ flutter:
         body,
         values: {
           authRef.overrideWith(() => auth),
-          loggerRef.overrideWith(() => logger)
+          loggerRef.overrideWith(() => logger),
+          shorebirdValidatorRef.overrideWith(() => shorebirdValidator),
         },
       );
     }
@@ -71,9 +76,17 @@ flutter:
       codePushClient = _MockCodePushClient();
       httpClient = _MockHttpClient();
       logger = _MockLogger();
+      shorebirdValidator = _MockShorebirdValidator();
 
       when(() => auth.client).thenReturn(httpClient);
       when(() => auth.isAuthenticated).thenReturn(true);
+
+      when(
+        () => shorebirdValidator.validatePreconditions(
+          checkUserIsAuthenticated: any(named: 'checkUserIsAuthenticated'),
+          checkShorebirdInitialized: any(named: 'checkShorebirdInitialized'),
+        ),
+      ).thenAnswer((_) async {});
 
       command = runWithOverrides(
         () => ListReleasesCommand(
@@ -88,25 +101,24 @@ flutter:
       expect(command.description, equals('List all releases for this app.'));
     });
 
-    test('returns ExitCode.noUser when not logged in', () async {
-      when(() => auth.isAuthenticated).thenReturn(false);
-      expect(await runWithOverrides(command.run), ExitCode.noUser.code);
-    });
-
-    test('returns ExitCode.config when shorebird is not initialized', () async {
-      final exitCode = await runWithOverrides(command.run);
-
+    test('exits when validation fails', () async {
+      final exception = ValidationFailedException();
+      when(
+        () => shorebirdValidator.validatePreconditions(
+          checkUserIsAuthenticated: any(named: 'checkUserIsAuthenticated'),
+          checkShorebirdInitialized: any(named: 'checkShorebirdInitialized'),
+        ),
+      ).thenThrow(exception);
+      await expectLater(
+        runWithOverrides(command.run),
+        completion(equals(exception.exitCode.code)),
+      );
       verify(
-        () => logger.err(
-          any(
-            that: stringContainsInOrder([
-              'Shorebird is not initialized. Did you run',
-              'shorebird init',
-            ]),
-          ),
+        () => shorebirdValidator.validatePreconditions(
+          checkUserIsAuthenticated: true,
+          checkShorebirdInitialized: true,
         ),
       ).called(1);
-      expect(exitCode, ExitCode.config.code);
     });
 
     test('returns ExitCode.software when unable to get releases', () async {

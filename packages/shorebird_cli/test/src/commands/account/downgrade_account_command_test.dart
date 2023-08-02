@@ -5,6 +5,7 @@ import 'package:scoped/scoped.dart';
 import 'package:shorebird_cli/src/auth/auth.dart';
 import 'package:shorebird_cli/src/commands/account/account.dart';
 import 'package:shorebird_cli/src/logger.dart';
+import 'package:shorebird_cli/src/shorebird_validator.dart';
 import 'package:shorebird_code_push_client/shorebird_code_push_client.dart';
 import 'package:test/test.dart';
 
@@ -17,6 +18,8 @@ class _MockHttpClient extends Mock implements http.Client {}
 class _MockLogger extends Mock implements Logger {}
 
 class _MockProgress extends Mock implements Progress {}
+
+class _MockShorebirdValidator extends Mock implements ShorebirdValidator {}
 
 void main() {
   group(DowngradeAccountCommand, () {
@@ -32,6 +35,7 @@ void main() {
     late http.Client httpClient;
     late Logger logger;
     late Progress progress;
+    late ShorebirdValidator shorebirdValidator;
     late DowngradeAccountCommand command;
 
     R runWithOverrides<R>(R Function() body) {
@@ -39,7 +43,8 @@ void main() {
         body,
         values: {
           authRef.overrideWith(() => auth),
-          loggerRef.overrideWith(() => logger)
+          loggerRef.overrideWith(() => logger),
+          shorebirdValidatorRef.overrideWith(() => shorebirdValidator),
         },
       );
     }
@@ -50,10 +55,15 @@ void main() {
       httpClient = _MockHttpClient();
       logger = _MockLogger();
       progress = _MockProgress();
+      shorebirdValidator = _MockShorebirdValidator();
 
       when(() => auth.client).thenReturn(httpClient);
-
       when(() => logger.progress(any())).thenReturn(progress);
+      when(
+        () => shorebirdValidator.validatePreconditions(
+          checkUserIsAuthenticated: any(named: 'checkUserIsAuthenticated'),
+        ),
+      ).thenAnswer((_) async {});
 
       command = runWithOverrides(
         () => DowngradeAccountCommand(
@@ -67,18 +77,25 @@ void main() {
       );
     });
 
-    test('returns a non-empty description', () {
+    test('has a description', () {
       expect(command.description, isNotEmpty);
     });
 
-    test('prints an error if the user is not logged in', () async {
-      when(() => auth.isAuthenticated).thenReturn(false);
-
-      final result = await runWithOverrides(command.run);
-
-      expect(result, ExitCode.noUser.code);
+    test('exits when validation fails', () async {
+      final exception = ValidationFailedException();
+      when(
+        () => shorebirdValidator.validatePreconditions(
+          checkUserIsAuthenticated: any(named: 'checkUserIsAuthenticated'),
+        ),
+      ).thenThrow(exception);
+      await expectLater(
+        runWithOverrides(command.run),
+        completion(equals(exception.exitCode.code)),
+      );
       verify(
-        () => logger.err(any(that: contains('You must be logged in'))),
+        () => shorebirdValidator.validatePreconditions(
+          checkUserIsAuthenticated: true,
+        ),
       ).called(1);
     });
 

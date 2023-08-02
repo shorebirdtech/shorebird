@@ -9,6 +9,7 @@ import 'package:scoped/scoped.dart';
 import 'package:shorebird_cli/src/auth/auth.dart';
 import 'package:shorebird_cli/src/commands/releases/releases.dart';
 import 'package:shorebird_cli/src/logger.dart';
+import 'package:shorebird_cli/src/shorebird_validator.dart';
 import 'package:shorebird_code_push_client/shorebird_code_push_client.dart';
 import 'package:test/test.dart';
 
@@ -23,6 +24,8 @@ class _MockHttpClient extends Mock implements http.Client {}
 class _MockLogger extends Mock implements Logger {}
 
 class _MockProgress extends Mock implements Progress {}
+
+class _MockShorebirdValidator extends Mock implements ShorebirdValidator {}
 
 void main() {
   group(DeleteReleasesCommand, () {
@@ -47,6 +50,7 @@ flutter:
     late Logger logger;
     late CodePushClient codePushClient;
     late Progress progress;
+    late ShorebirdValidator shorebirdValidator;
     late DeleteReleasesCommand command;
 
     R runWithOverrides<R>(R Function() body) {
@@ -54,7 +58,8 @@ flutter:
         body,
         values: {
           authRef.overrideWith(() => auth),
-          loggerRef.overrideWith(() => logger)
+          loggerRef.overrideWith(() => logger),
+          shorebirdValidatorRef.overrideWith(() => shorebirdValidator),
         },
       );
     }
@@ -77,6 +82,7 @@ flutter:
       logger = _MockLogger();
       codePushClient = _MockCodePushClient();
       progress = _MockProgress();
+      shorebirdValidator = _MockShorebirdValidator();
 
       when(() => argResults['version']).thenReturn(versionNumber);
 
@@ -116,6 +122,13 @@ flutter:
       when(() => logger.confirm(any())).thenReturn(true);
       when(() => logger.progress(any())).thenReturn(progress);
 
+      when(
+        () => shorebirdValidator.validatePreconditions(
+          checkUserIsAuthenticated: any(named: 'checkUserIsAuthenticated'),
+          checkShorebirdInitialized: any(named: 'checkShorebirdInitialized'),
+        ),
+      ).thenAnswer((_) async {});
+
       command = runWithOverrides(
         () => DeleteReleasesCommand(
           buildCodePushClient: ({
@@ -135,18 +148,24 @@ flutter:
       );
     });
 
-    test('returns no user error when not logged in', () async {
-      when(() => auth.isAuthenticated).thenReturn(false);
-
-      final result = await runWithOverrides(command.run);
-
-      expect(result, ExitCode.noUser.code);
-    });
-
-    test('returns config exit code if shorebird.yaml is not present', () async {
-      final exitCode = await runWithOverrides(command.run);
-
-      expect(exitCode, ExitCode.config.code);
+    test('exits when validation fails', () async {
+      final exception = ValidationFailedException();
+      when(
+        () => shorebirdValidator.validatePreconditions(
+          checkUserIsAuthenticated: any(named: 'checkUserIsAuthenticated'),
+          checkShorebirdInitialized: any(named: 'checkShorebirdInitialized'),
+        ),
+      ).thenThrow(exception);
+      await expectLater(
+        runWithOverrides(command.run),
+        completion(equals(exception.exitCode.code)),
+      );
+      verify(
+        () => shorebirdValidator.validatePreconditions(
+          checkUserIsAuthenticated: true,
+          checkShorebirdInitialized: true,
+        ),
+      ).called(1);
     });
 
     test('prompts for version when not provided', () async {

@@ -4,9 +4,8 @@ import 'package:shorebird_cli/src/auth/auth.dart';
 import 'package:shorebird_cli/src/command.dart';
 import 'package:shorebird_cli/src/config/shorebird_yaml.dart';
 import 'package:shorebird_cli/src/logger.dart';
-import 'package:shorebird_cli/src/shorebird_config_mixin.dart';
 import 'package:shorebird_cli/src/shorebird_environment.dart';
-import 'package:shorebird_cli/src/shorebird_validation_mixin.dart';
+import 'package:shorebird_cli/src/shorebird_validator.dart';
 import 'package:shorebird_code_push_client/shorebird_code_push_client.dart';
 
 /// {@template list_releases_command}
@@ -14,8 +13,7 @@ import 'package:shorebird_code_push_client/shorebird_code_push_client.dart';
 /// `shorebird releases list`
 /// List all releases for this app.
 /// {@endtemplate}
-class ListReleasesCommand extends ShorebirdCommand
-    with ShorebirdConfigMixin, ShorebirdValidationMixin {
+class ListReleasesCommand extends ShorebirdCommand {
   /// {@macro list_releases_command}
   ListReleasesCommand({super.buildCodePushClient}) {
     argParser.addOption(
@@ -40,7 +38,7 @@ Please use $consoleLink instead.''',
     );
 
     try {
-      await validatePreconditions(
+      await shorebirdValidator.validatePreconditions(
         checkUserIsAuthenticated: true,
         checkShorebirdInitialized: true,
       );

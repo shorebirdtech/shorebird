@@ -16,6 +16,7 @@ import 'package:shorebird_cli/src/java.dart';
 import 'package:shorebird_cli/src/logger.dart';
 import 'package:shorebird_cli/src/platform.dart';
 import 'package:shorebird_cli/src/process.dart';
+import 'package:shorebird_cli/src/shorebird_validator.dart';
 import 'package:shorebird_cli/src/shorebird_version_manager.dart';
 import 'package:shorebird_cli/src/xcodebuild.dart';
 
@@ -39,6 +40,7 @@ Future<void> main(List<String> args) async {
         loggerRef,
         platformRef,
         processRef,
+        shorebirdValidatorRef,
         shorebirdVersionManagerRef,
         xcodeBuildRef,
       },

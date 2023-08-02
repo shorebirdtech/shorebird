@@ -7,7 +7,7 @@ import 'package:shorebird_cli/src/doctor.dart';
 import 'package:shorebird_cli/src/logger.dart';
 import 'package:shorebird_cli/src/shorebird_build_mixin.dart';
 import 'package:shorebird_cli/src/shorebird_config_mixin.dart';
-import 'package:shorebird_cli/src/shorebird_validation_mixin.dart';
+import 'package:shorebird_cli/src/shorebird_validator.dart';
 
 /// {@template build_ipa_command}
 /// `shorebird build ipa`
@@ -15,7 +15,7 @@ import 'package:shorebird_cli/src/shorebird_validation_mixin.dart';
 /// App Store submission.
 /// {@endtemplate}
 class BuildIpaCommand extends ShorebirdCommand
-    with ShorebirdConfigMixin, ShorebirdValidationMixin, ShorebirdBuildMixin {
+    with ShorebirdConfigMixin, ShorebirdBuildMixin {
   /// {@macro build_ipa_command}
   BuildIpaCommand() {
     argParser
@@ -45,8 +45,9 @@ class BuildIpaCommand extends ShorebirdCommand
   @override
   Future<int> run() async {
     try {
-      await validatePreconditions(
+      await shorebirdValidator.validatePreconditions(
         checkUserIsAuthenticated: true,
+        checkShorebirdInitialized: true,
         validators: doctor.iosCommandValidators,
       );
     } on PreconditionFailedException catch (e) {

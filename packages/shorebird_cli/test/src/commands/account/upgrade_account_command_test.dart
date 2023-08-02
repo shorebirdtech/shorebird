@@ -5,6 +5,7 @@ import 'package:scoped/scoped.dart';
 import 'package:shorebird_cli/src/auth/auth.dart';
 import 'package:shorebird_cli/src/commands/account/account.dart';
 import 'package:shorebird_cli/src/logger.dart';
+import 'package:shorebird_cli/src/shorebird_validator.dart';
 import 'package:shorebird_code_push_client/shorebird_code_push_client.dart';
 import 'package:test/test.dart';
 
@@ -18,6 +19,8 @@ class _MockLogger extends Mock implements Logger {}
 
 class _MockProgress extends Mock implements Progress {}
 
+class _MockShorebirdValidator extends Mock implements ShorebirdValidator {}
+
 class _MockUser extends Mock implements User {}
 
 void main() {
@@ -28,8 +31,8 @@ void main() {
   late http.Client httpClient;
   late Logger logger;
   late Progress progress;
+  late ShorebirdValidator shorebirdValidator;
   late User user;
-
   late UpgradeAccountCommand command;
 
   group(UpgradeAccountCommand, () {
@@ -38,7 +41,8 @@ void main() {
         body,
         values: {
           authRef.overrideWith(() => auth),
-          loggerRef.overrideWith(() => logger)
+          loggerRef.overrideWith(() => logger),
+          shorebirdValidatorRef.overrideWith(() => shorebirdValidator),
         },
       );
     }
@@ -49,18 +53,26 @@ void main() {
       httpClient = _MockHttpClient();
       logger = _MockLogger();
       progress = _MockProgress();
+      shorebirdValidator = _MockShorebirdValidator();
       user = _MockUser();
 
       when(() => auth.client).thenReturn(httpClient);
       when(() => auth.isAuthenticated).thenReturn(true);
 
-      when(() => codePushClient.createPaymentLink())
-          .thenAnswer((_) async => paymentLink);
+      when(
+        () => codePushClient.createPaymentLink(),
+      ).thenAnswer((_) async => paymentLink);
       when(() => codePushClient.getCurrentUser()).thenAnswer((_) async => user);
 
       when(() => logger.err(any())).thenReturn(null);
       when(() => logger.info(any())).thenReturn(null);
       when(() => logger.progress(any())).thenReturn(progress);
+
+      when(
+        () => shorebirdValidator.validatePreconditions(
+          checkUserIsAuthenticated: any(named: 'checkUserIsAuthenticated'),
+        ),
+      ).thenAnswer((_) async {});
 
       when(() => user.hasActiveSubscription).thenReturn(false);
 
@@ -77,23 +89,30 @@ void main() {
       expect(command.description, isNotEmpty);
     });
 
-    test('exits with code 67 when user is not logged in', () async {
-      when(() => auth.isAuthenticated).thenReturn(false);
-
-      final result = await runWithOverrides(command.run);
-
-      expect(result, ExitCode.noUser.code);
-
+    test('exits when validation fails', () async {
+      final exception = ValidationFailedException();
+      when(
+        () => shorebirdValidator.validatePreconditions(
+          checkUserIsAuthenticated: any(named: 'checkUserIsAuthenticated'),
+        ),
+      ).thenThrow(exception);
+      await expectLater(
+        runWithOverrides(command.run),
+        completion(equals(exception.exitCode.code)),
+      );
       verify(
-        () => logger.err(any(that: contains('You must be logged in to run'))),
+        () => shorebirdValidator.validatePreconditions(
+          checkUserIsAuthenticated: true,
+        ),
       ).called(1);
       verifyNever(() => codePushClient.createPaymentLink());
     });
 
     test('exits with code 70 when getCurrentUser throws an exception',
         () async {
-      when(() => codePushClient.getCurrentUser())
-          .thenThrow(Exception('oh no!'));
+      when(
+        () => codePushClient.getCurrentUser(),
+      ).thenThrow(Exception('oh no!'));
 
       final result = await runWithOverrides(command.run);
 

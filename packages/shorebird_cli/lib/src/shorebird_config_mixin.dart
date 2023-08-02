@@ -31,8 +31,8 @@ mixin ShorebirdConfigMixin on ShorebirdCommand {
   /// Returns the Android package name from the pubspec.yaml file of a Flutter
   /// module.
   String? get androidPackageName {
-    final pubspec = ShorebirdEnvironment.getPubspecYaml()!;
-    final module = pubspec.flutter?['module'] as Map?;
+    final pubspec = ShorebirdEnvironment.getPubspecYaml();
+    final module = pubspec?.flutter?['module'] as Map?;
     return module?['androidPackage'] as String?;
   }
 

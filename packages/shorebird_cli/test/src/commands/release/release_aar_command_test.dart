@@ -15,6 +15,7 @@ import 'package:shorebird_cli/src/logger.dart';
 import 'package:shorebird_cli/src/platform.dart';
 import 'package:shorebird_cli/src/process.dart';
 import 'package:shorebird_cli/src/shorebird_build_mixin.dart';
+import 'package:shorebird_cli/src/shorebird_validator.dart';
 import 'package:shorebird_code_push_client/shorebird_code_push_client.dart';
 import 'package:test/test.dart';
 
@@ -39,14 +40,18 @@ class _MockCodePushClientWrapper extends Mock
 
 class _MockShorebirdProcess extends Mock implements ShorebirdProcess {}
 
+class _MockShorebirdValidator extends Mock implements ShorebirdValidator {}
+
+class _FakeRelease extends Fake implements Release {}
+
+class _FakeShorebirdProcess extends Fake implements ShorebirdProcess {}
+
 void main() {
   group(ReleaseAarCommand, () {
     const appDisplayName = 'Test App';
     const appId = 'test-app-id';
     const appMetadata = AppMetadata(appId: appId, displayName: appDisplayName);
-
     const flutterRevision = '83305b5088e6fe327fb3334a73ff190828d85713';
-
     const versionName = '1.2.3';
     const versionCode = '1';
     const version = '$versionName+$versionCode';
@@ -58,7 +63,6 @@ void main() {
       displayName: '1.2.3+1',
       platformStatuses: {},
     );
-
     const releasePlatform = ReleasePlatform.android;
     const buildNumber = '1.0';
     const noModulePubspecYamlContent = '''
@@ -96,8 +100,9 @@ flutter:
     late Logger logger;
     late ShorebirdProcessResult flutterBuildProcessResult;
     late ShorebirdProcessResult flutterRevisionProcessResult;
-    late ReleaseAarCommand command;
     late ShorebirdProcess shorebirdProcess;
+    late ShorebirdValidator shorebirdValidator;
+    late ReleaseAarCommand command;
 
     R runWithOverrides<R>(R Function() body) {
       return runScoped(
@@ -110,6 +115,7 @@ flutter:
           loggerRef.overrideWith(() => logger),
           platformRef.overrideWith(() => platform),
           processRef.overrideWith(() => shorebirdProcess),
+          shorebirdValidatorRef.overrideWith(() => shorebirdValidator),
         },
       );
     }
@@ -158,6 +164,8 @@ flutter:
     setUpAll(() {
       registerFallbackValue(ReleasePlatform.android);
       registerFallbackValue(ReleaseStatus.draft);
+      registerFallbackValue(_FakeRelease());
+      registerFallbackValue(_FakeShorebirdProcess());
     });
 
     setUp(() {
@@ -173,9 +181,7 @@ flutter:
       flutterRevisionProcessResult = _MockProcessResult();
       shorebirdProcess = _MockShorebirdProcess();
       shorebirdRoot = Directory.systemTemp.createTempSync();
-
-      registerFallbackValue(release);
-      registerFallbackValue(shorebirdProcess);
+      shorebirdValidator = _MockShorebirdValidator();
 
       when(() => auth.client).thenReturn(httpClient);
       when(() => argResults['build-number']).thenReturn(buildNumber);
@@ -266,6 +272,13 @@ flutter:
         ),
       ).thenAnswer((_) async => {});
 
+      when(
+        () => shorebirdValidator.validatePreconditions(
+          checkUserIsAuthenticated: any(named: 'checkUserIsAuthenticated'),
+          checkShorebirdInitialized: any(named: 'checkShorebirdInitialized'),
+        ),
+      ).thenAnswer((_) async {});
+
       command = runWithOverrides(
         () => ReleaseAarCommand(unzipFn: (_, __) async {}),
       )..testArgResults = argResults;
@@ -275,34 +288,23 @@ flutter:
       expect(command.description, isNotEmpty);
     });
 
-    test('throws config error when shorebird is not initialized', () async {
-      final tempDir = Directory.systemTemp.createTempSync();
-
-      final exitCode = await IOOverrides.runZoned(
-        () => runWithOverrides(command.run),
-        getCurrentDirectory: () => tempDir,
-      );
-
-      verify(
-        () => logger.err(
-          'Shorebird is not initialized. Did you run "shorebird init"?',
+    test('exits when validation fails', () async {
+      final exception = ValidationFailedException();
+      when(
+        () => shorebirdValidator.validatePreconditions(
+          checkUserIsAuthenticated: any(named: 'checkUserIsAuthenticated'),
+          checkShorebirdInitialized: any(named: 'checkShorebirdInitialized'),
         ),
-      ).called(1);
-      expect(exitCode, ExitCode.config.code);
-    });
-
-    test('exits with no user when not logged in', () async {
-      when(() => auth.isAuthenticated).thenReturn(false);
-      final tempDir = setUpTempDir(includeModule: false);
-
-      final result = await IOOverrides.runZoned(
-        () => runWithOverrides(command.run),
-        getCurrentDirectory: () => tempDir,
+      ).thenThrow(exception);
+      await expectLater(
+        runWithOverrides(command.run),
+        completion(equals(exception.exitCode.code)),
       );
-
-      expect(result, equals(ExitCode.noUser.code));
       verify(
-        () => logger.err(any(that: contains('You must be logged in to run'))),
+        () => shorebirdValidator.validatePreconditions(
+          checkUserIsAuthenticated: true,
+          checkShorebirdInitialized: true,
+        ),
       ).called(1);
     });
 

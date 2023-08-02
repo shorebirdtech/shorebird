@@ -4,16 +4,14 @@ import 'package:mason_logger/mason_logger.dart';
 import 'package:shorebird_cli/src/auth/auth.dart';
 import 'package:shorebird_cli/src/command.dart';
 import 'package:shorebird_cli/src/logger.dart';
-import 'package:shorebird_cli/src/shorebird_config_mixin.dart';
 import 'package:shorebird_cli/src/shorebird_environment.dart';
-import 'package:shorebird_cli/src/shorebird_validation_mixin.dart';
+import 'package:shorebird_cli/src/shorebird_validator.dart';
 import 'package:shorebird_code_push_client/shorebird_code_push_client.dart';
 
 /// {@template upgrade_account_command}
 /// `shorebird account upgrade`
 /// {@endtemplate}
-class UpgradeAccountCommand extends ShorebirdCommand
-    with ShorebirdConfigMixin, ShorebirdValidationMixin {
+class UpgradeAccountCommand extends ShorebirdCommand {
   /// {@macro upgrade_account_command}
   UpgradeAccountCommand({super.buildCodePushClient});
 
@@ -33,7 +31,7 @@ Please use $consoleLink instead.''',
     );
 
     try {
-      await validatePreconditions(
+      await shorebirdValidator.validatePreconditions(
         checkUserIsAuthenticated: true,
       );
     } on PreconditionFailedException catch (e) {

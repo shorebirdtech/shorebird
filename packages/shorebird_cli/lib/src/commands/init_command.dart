@@ -11,7 +11,7 @@ import 'package:shorebird_cli/src/platform.dart';
 import 'package:shorebird_cli/src/shorebird_config_mixin.dart';
 import 'package:shorebird_cli/src/shorebird_create_app_mixin.dart';
 import 'package:shorebird_cli/src/shorebird_environment.dart';
-import 'package:shorebird_cli/src/shorebird_validation_mixin.dart';
+import 'package:shorebird_cli/src/shorebird_validator.dart';
 import 'package:shorebird_cli/src/xcodebuild.dart';
 
 /// {@template init_command}
@@ -20,10 +20,7 @@ import 'package:shorebird_cli/src/xcodebuild.dart';
 /// Initialize Shorebird.
 /// {@endtemplate}
 class InitCommand extends ShorebirdCommand
-    with
-        ShorebirdConfigMixin,
-        ShorebirdValidationMixin,
-        ShorebirdCreateAppMixin {
+    with ShorebirdConfigMixin, ShorebirdCreateAppMixin {
   /// {@macro init_command}
   InitCommand({super.buildCodePushClient}) {
     argParser.addFlag(
@@ -43,7 +40,7 @@ class InitCommand extends ShorebirdCommand
   @override
   Future<int> run() async {
     try {
-      await validatePreconditions(
+      await shorebirdValidator.validatePreconditions(
         checkUserIsAuthenticated: true,
       );
     } on PreconditionFailedException catch (e) {

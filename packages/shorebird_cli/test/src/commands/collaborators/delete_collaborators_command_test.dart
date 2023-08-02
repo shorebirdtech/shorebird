@@ -9,6 +9,7 @@ import 'package:scoped/scoped.dart';
 import 'package:shorebird_cli/src/auth/auth.dart';
 import 'package:shorebird_cli/src/commands/commands.dart';
 import 'package:shorebird_cli/src/logger.dart';
+import 'package:shorebird_cli/src/shorebird_validator.dart';
 import 'package:shorebird_code_push_client/shorebird_code_push_client.dart';
 import 'package:test/test.dart';
 
@@ -23,6 +24,8 @@ class _MockCodePushClient extends Mock implements CodePushClient {}
 class _MockLogger extends Mock implements Logger {}
 
 class _MockProgress extends Mock implements Progress {}
+
+class _MockShorebirdValidator extends Mock implements ShorebirdValidator {}
 
 void main() {
   group(DeleteCollaboratorsCommand, () {
@@ -40,6 +43,7 @@ void main() {
     late CodePushClient codePushClient;
     late Logger logger;
     late Progress progress;
+    late ShorebirdValidator shorebirdValidator;
     late DeleteCollaboratorsCommand command;
 
     R runWithOverrides<R>(R Function() body) {
@@ -47,7 +51,8 @@ void main() {
         body,
         values: {
           authRef.overrideWith(() => auth),
-          loggerRef.overrideWith(() => logger)
+          loggerRef.overrideWith(() => logger),
+          shorebirdValidatorRef.overrideWith(() => shorebirdValidator),
         },
       );
     }
@@ -59,6 +64,7 @@ void main() {
       codePushClient = _MockCodePushClient();
       logger = _MockLogger();
       progress = _MockProgress();
+      shorebirdValidator = _MockShorebirdValidator();
 
       when(() => argResults['app-id']).thenReturn(appId);
       when(() => argResults['email']).thenReturn(email);
@@ -73,6 +79,11 @@ void main() {
         () => codePushClient.deleteCollaborator(
           appId: any(named: 'appId'),
           userId: any(named: 'userId'),
+        ),
+      ).thenAnswer((_) async {});
+      when(
+        () => shorebirdValidator.validatePreconditions(
+          checkUserIsAuthenticated: any(named: 'checkUserIsAuthenticated'),
         ),
       ).thenAnswer((_) async {});
 
@@ -95,9 +106,22 @@ void main() {
       );
     });
 
-    test('returns ExitCode.noUser when not logged in', () async {
-      when(() => auth.isAuthenticated).thenReturn(false);
-      expect(await runWithOverrides(command.run), ExitCode.noUser.code);
+    test('exits when validation fails', () async {
+      final exception = ValidationFailedException();
+      when(
+        () => shorebirdValidator.validatePreconditions(
+          checkUserIsAuthenticated: any(named: 'checkUserIsAuthenticated'),
+        ),
+      ).thenThrow(exception);
+      await expectLater(
+        runWithOverrides(command.run),
+        completion(equals(exception.exitCode.code)),
+      );
+      verify(
+        () => shorebirdValidator.validatePreconditions(
+          checkUserIsAuthenticated: true,
+        ),
+      ).called(1);
     });
 
     test('returns ExitCode.usage when app id is missing.', () async {

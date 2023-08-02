@@ -14,6 +14,7 @@ import 'package:shorebird_cli/src/gradlew.dart';
 import 'package:shorebird_cli/src/logger.dart';
 import 'package:shorebird_cli/src/platform.dart';
 import 'package:shorebird_cli/src/process.dart';
+import 'package:shorebird_cli/src/shorebird_validator.dart';
 import 'package:shorebird_cli/src/xcodebuild.dart';
 import 'package:shorebird_code_push_client/shorebird_code_push_client.dart';
 import 'package:test/test.dart';
@@ -35,6 +36,8 @@ class _MockLogger extends Mock implements Logger {}
 class _MockPlatform extends Mock implements Platform {}
 
 class _MockProgress extends Mock implements Progress {}
+
+class _MockShorebirdValidator extends Mock implements ShorebirdValidator {}
 
 class _MockXcodeBuild extends Mock implements XcodeBuild {}
 
@@ -60,6 +63,7 @@ environment:
     late Logger logger;
     late Platform platform;
     late Progress progress;
+    late ShorebirdValidator shorebirdValidator;
     late XcodeBuild xcodeBuild;
     late InitCommand command;
 
@@ -73,6 +77,7 @@ environment:
           loggerRef.overrideWith(() => logger),
           platformRef.overrideWith(() => platform),
           processRef.overrideWith(() => process),
+          shorebirdValidatorRef.overrideWith(() => shorebirdValidator),
           xcodeBuildRef.overrideWith(() => xcodeBuild),
         },
       );
@@ -95,6 +100,7 @@ environment:
       logger = _MockLogger();
       platform = _MockPlatform();
       progress = _MockProgress();
+      shorebirdValidator = _MockShorebirdValidator();
       xcodeBuild = _MockXcodeBuild();
 
       when(() => auth.isAuthenticated).thenReturn(true);
@@ -116,6 +122,11 @@ environment:
       when(() => gradlew.productFlavors(any())).thenAnswer((_) async => {});
       when(() => platform.isMacOS).thenReturn(true);
       when(
+        () => shorebirdValidator.validatePreconditions(
+          checkUserIsAuthenticated: any(named: 'checkUserIsAuthenticated'),
+        ),
+      ).thenAnswer((_) async {});
+      when(
         () => xcodeBuild.list(any()),
       ).thenAnswer((_) async => const XcodeProjectBuildInfo());
 
@@ -131,10 +142,22 @@ environment:
       )..testArgResults = argResults;
     });
 
-    test('returns no user error when not logged in', () async {
-      when(() => auth.isAuthenticated).thenReturn(false);
-      final result = await runWithOverrides(command.run);
-      expect(result, ExitCode.noUser.code);
+    test('exits when validation fails', () async {
+      final exception = ValidationFailedException();
+      when(
+        () => shorebirdValidator.validatePreconditions(
+          checkUserIsAuthenticated: any(named: 'checkUserIsAuthenticated'),
+        ),
+      ).thenThrow(exception);
+      await expectLater(
+        runWithOverrides(command.run),
+        completion(equals(exception.exitCode.code)),
+      );
+      verify(
+        () => shorebirdValidator.validatePreconditions(
+          checkUserIsAuthenticated: true,
+        ),
+      ).called(1);
     });
 
     test('throws no input error when pubspec.yaml is not found.', () async {

@@ -5,17 +5,15 @@ import 'package:mason_logger/mason_logger.dart';
 import 'package:shorebird_cli/src/auth/auth.dart';
 import 'package:shorebird_cli/src/command.dart';
 import 'package:shorebird_cli/src/logger.dart';
-import 'package:shorebird_cli/src/shorebird_config_mixin.dart';
 import 'package:shorebird_cli/src/shorebird_environment.dart';
-import 'package:shorebird_cli/src/shorebird_validation_mixin.dart';
+import 'package:shorebird_cli/src/shorebird_validator.dart';
 import 'package:shorebird_code_push_client/shorebird_code_push_client.dart';
 
 /// {@template list_collaborators_command}
 /// `shorebird collaborators list`
 /// List all collaborators for a Shorebird app.
 /// {@endtemplate}
-class ListCollaboratorsCommand extends ShorebirdCommand
-    with ShorebirdConfigMixin, ShorebirdValidationMixin {
+class ListCollaboratorsCommand extends ShorebirdCommand {
   /// {@macro list_collaborators_command}
   ListCollaboratorsCommand({super.buildCodePushClient}) {
     argParser.addOption(
@@ -38,7 +36,7 @@ class ListCollaboratorsCommand extends ShorebirdCommand
   @override
   Future<int>? run() async {
     try {
-      await validatePreconditions(
+      await shorebirdValidator.validatePreconditions(
         checkUserIsAuthenticated: true,
       );
     } on PreconditionFailedException catch (e) {

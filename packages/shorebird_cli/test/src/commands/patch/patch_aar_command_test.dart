@@ -17,6 +17,7 @@ import 'package:shorebird_cli/src/platform.dart';
 import 'package:shorebird_cli/src/process.dart';
 import 'package:shorebird_cli/src/shorebird_build_mixin.dart';
 import 'package:shorebird_cli/src/shorebird_environment.dart';
+import 'package:shorebird_cli/src/shorebird_validator.dart';
 import 'package:shorebird_code_push_client/shorebird_code_push_client.dart';
 import 'package:test/test.dart';
 
@@ -44,6 +45,8 @@ class _MockProcessResult extends Mock implements ShorebirdProcessResult {}
 class _MockHttpClient extends Mock implements http.Client {}
 
 class _MockShorebirdProcess extends Mock implements ShorebirdProcess {}
+
+class _MockShorebirdValidator extends Mock implements ShorebirdValidator {}
 
 class _FakeShorebirdProcess extends Fake implements ShorebirdProcess {}
 
@@ -123,8 +126,9 @@ flutter:
     late ShorebirdProcessResult patchProcessResult;
     late http.Client httpClient;
     late Cache cache;
-    late PatchAarCommand command;
     late ShorebirdProcess shorebirdProcess;
+    late ShorebirdValidator shorebirdValidator;
+    late PatchAarCommand command;
 
     R runWithOverrides<R>(R Function() body) {
       return runScoped(
@@ -137,6 +141,7 @@ flutter:
           loggerRef.overrideWith(() => logger),
           platformRef.overrideWith(() => platform),
           processRef.overrideWith(() => shorebirdProcess),
+          shorebirdValidatorRef.overrideWith(() => shorebirdValidator),
         },
       );
     }
@@ -203,6 +208,7 @@ flutter:
       httpClient = _MockHttpClient();
       cache = _MockCache();
       shorebirdProcess = _MockShorebirdProcess();
+      shorebirdValidator = _MockShorebirdValidator();
 
       registerFallbackValue(ReleasePlatform.android);
 
@@ -323,6 +329,12 @@ flutter:
       when(
         () => cache.getArtifactDirectory(any()),
       ).thenReturn(Directory.systemTemp.createTempSync());
+      when(
+        () => shorebirdValidator.validatePreconditions(
+          checkUserIsAuthenticated: any(named: 'checkUserIsAuthenticated'),
+          checkShorebirdInitialized: any(named: 'checkShorebirdInitialized'),
+        ),
+      ).thenAnswer((_) async {});
 
       command = runWithOverrides(
         () => PatchAarCommand(
@@ -333,32 +345,28 @@ flutter:
       )..testArgResults = argResults;
     });
 
-    test('throws config error when shorebird is not initialized', () async {
-      final tempDir = Directory.systemTemp.createTempSync();
-      final exitCode = await IOOverrides.runZoned(
-        () => runWithOverrides(command.run),
-        getCurrentDirectory: () => tempDir,
-      );
-      verify(
-        () => logger.err(
-          'Shorebird is not initialized. Did you run "shorebird init"?',
-        ),
-      ).called(1);
-      expect(exitCode, ExitCode.config.code);
-    });
-
     test('has a description', () {
       expect(command.description, isNotEmpty);
     });
 
-    test('throws no user error when user is not logged in', () async {
-      when(() => auth.isAuthenticated).thenReturn(false);
-      final tempDir = setUpTempDir();
-      final exitCode = await IOOverrides.runZoned(
-        () => runWithOverrides(command.run),
-        getCurrentDirectory: () => tempDir,
+    test('exits when validation fails', () async {
+      final exception = ValidationFailedException();
+      when(
+        () => shorebirdValidator.validatePreconditions(
+          checkUserIsAuthenticated: any(named: 'checkUserIsAuthenticated'),
+          checkShorebirdInitialized: any(named: 'checkShorebirdInitialized'),
+        ),
+      ).thenThrow(exception);
+      await expectLater(
+        runWithOverrides(command.run),
+        completion(equals(exception.exitCode.code)),
       );
-      expect(exitCode, equals(ExitCode.noUser.code));
+      verify(
+        () => shorebirdValidator.validatePreconditions(
+          checkUserIsAuthenticated: true,
+          checkShorebirdInitialized: true,
+        ),
+      ).called(1);
     });
 
     test('exits with 78 if no module entry exists in pubspec.yaml', () async {
