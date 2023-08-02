@@ -117,8 +117,8 @@ Tools • Dart 2.19.6 • DevTools 2.20.1
       expect(validator.description, isNotEmpty);
     });
 
-    test('is not project-specific', () {
-      expect(validator.scope, ValidatorScope.installation);
+    test('canRunInContext always returns true', () {
+      expect(validator.canRunInCurrentContext(), isTrue);
     });
 
     test('returns no issues when the Flutter install is good', () async {

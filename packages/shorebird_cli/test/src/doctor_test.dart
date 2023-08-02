@@ -1,8 +1,5 @@
-import 'dart:io';
-
 import 'package:mason_logger/mason_logger.dart';
 import 'package:mocktail/mocktail.dart';
-import 'package:path/path.dart' as p;
 import 'package:scoped/scoped.dart';
 import 'package:shorebird_cli/src/doctor.dart';
 import 'package:shorebird_cli/src/logger.dart';
@@ -55,24 +52,22 @@ void main() {
       when(() => logger.info(any())).thenReturn(null);
 
       when(noIssuesValidator.validate).thenAnswer((_) async => []);
-      when(() => noIssuesValidator.scope)
-          .thenReturn(ValidatorScope.installation);
+      when(noIssuesValidator.canRunInCurrentContext).thenReturn(true);
       when(() => noIssuesValidator.description)
           .thenReturn('no issues validator');
 
       when(warningValidator.validate).thenAnswer(
         (_) async => [validationWarning],
       );
-      when(() => warningValidator.scope)
-          .thenReturn(ValidatorScope.installation);
+      when(warningValidator.canRunInCurrentContext).thenReturn(true);
       when(() => warningValidator.description).thenReturn('warning validator');
 
       when(errorValidator.validate).thenAnswer((_) async => [validationError]);
-      when(() => errorValidator.scope).thenReturn(ValidatorScope.installation);
+      when(errorValidator.canRunInCurrentContext).thenReturn(true);
       when(() => errorValidator.description).thenReturn('error validator');
     });
 
-    group('validate', () {
+    group('runValidators', () {
       test('prints messages when warnings and errors found', () async {
         final validators = [
           warningValidator,
@@ -98,64 +93,32 @@ void main() {
         ).called(1);
       });
 
-      group('validator scope', () {
-        const appId = 'test-app-id';
-        late Validator projectScopeValidator;
-        late Validator installationScopeValidator;
+      test('only runs validators that can run in the current context',
+          () async {
+        final validators = [
+          noIssuesValidator,
+          warningValidator,
+          errorValidator,
+        ];
+        when(() => warningValidator.canRunInCurrentContext()).thenReturn(false);
 
-        Directory setUpTempDir() {
-          final tempDir = Directory.systemTemp.createTempSync();
-          File(
-            p.join(tempDir.path, 'shorebird.yaml'),
-          ).writeAsStringSync('app_id: $appId');
-          return tempDir;
-        }
+        await runWithOverrides(() async => doctor.runValidators(validators));
 
-        setUp(() {
-          projectScopeValidator = _MockValidator();
-          installationScopeValidator = _MockValidator();
+        verify(noIssuesValidator.validate).called(1);
+        verifyNever(warningValidator.validate);
+        verify(errorValidator.validate).called(1);
+      });
 
-          when(projectScopeValidator.validate).thenAnswer((_) async => []);
-          when(() => projectScopeValidator.scope)
-              .thenReturn(ValidatorScope.project);
-          when(() => projectScopeValidator.description)
-              .thenReturn('project-scoped validator');
+      test('tells the user when no issues are found', () async {
+        final validators = [
+          noIssuesValidator,
+        ];
 
-          when(installationScopeValidator.validate).thenAnswer((_) async => []);
-          when(() => installationScopeValidator.scope)
-              .thenReturn(ValidatorScope.installation);
-          when(() => installationScopeValidator.description)
-              .thenReturn('installation-scoped validator');
-        });
+        await runWithOverrides(() async => doctor.runValidators(validators));
 
-        test('does not run project-scoped validators in project directory',
-            () async {
-          final validators = [
-            projectScopeValidator,
-            installationScopeValidator
-          ];
-          await runWithOverrides(
-            () => doctor.runValidators(validators),
-          );
-          verify(installationScopeValidator.validate).called(1);
-          verifyNever(projectScopeValidator.validate);
-        });
-
-        test('runs project-scoped validators in project directory', () async {
-          final tempDir = setUpTempDir();
-          final validators = [
-            projectScopeValidator,
-            installationScopeValidator
-          ];
-          await runWithOverrides(
-            () async => IOOverrides.runZoned(
-              () => doctor.runValidators(validators),
-              getCurrentDirectory: () => tempDir,
-            ),
-          );
-          verify(installationScopeValidator.validate).called(1);
-          verify(projectScopeValidator.validate).called(1);
-        });
+        verify(
+          () => logger.info(any(that: contains('No issues detected!'))),
+        ).called(1);
       });
 
       group('fix', () {
@@ -180,10 +143,9 @@ void main() {
           when(fixableWarningValidator.validate).thenAnswer(
             (_) async => [fixableValidationWarning],
           );
-          when(() => fixableWarningValidator.scope)
-              .thenReturn(ValidatorScope.installation);
           when(() => fixableWarningValidator.description)
               .thenReturn('fixable warning validator');
+          when(fixableWarningValidator.canRunInCurrentContext).thenReturn(true);
         });
 
         test(

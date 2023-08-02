@@ -11,7 +11,7 @@ class ShorebirdVersionValidator extends Validator {
   String get description => 'Shorebird is up-to-date';
 
   @override
-  ValidatorScope get scope => ValidatorScope.installation;
+  bool canRunInCurrentContext() => true;
 
   @override
   Future<List<ValidationIssue>> validate() async {
