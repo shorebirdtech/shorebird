@@ -21,6 +21,7 @@ import 'package:shorebird_cli/src/platform.dart';
 import 'package:shorebird_cli/src/process.dart';
 import 'package:shorebird_cli/src/shorebird_build_mixin.dart';
 import 'package:shorebird_cli/src/shorebird_environment.dart';
+import 'package:shorebird_cli/src/shorebird_validator.dart';
 import 'package:shorebird_cli/src/validators/validators.dart';
 import 'package:shorebird_code_push_client/shorebird_code_push_client.dart';
 import 'package:test/test.dart';
@@ -58,6 +59,8 @@ class _MockShorebirdFlutterValidator extends Mock
     implements ShorebirdFlutterValidator {}
 
 class _MockShorebirdProcess extends Mock implements ShorebirdProcess {}
+
+class _MockShorebirdValidator extends Mock implements ShorebirdValidator {}
 
 class _FakeShorebirdProcess extends Fake implements ShorebirdProcess {}
 
@@ -125,9 +128,10 @@ flutter:
     late ShorebirdProcessResult patchProcessResult;
     late http.Client httpClient;
     late Cache cache;
-    late PatchAndroidCommand command;
     late ShorebirdFlutterValidator flutterValidator;
     late ShorebirdProcess shorebirdProcess;
+    late ShorebirdValidator shorebirdValidator;
+    late PatchAndroidCommand command;
 
     R runWithOverrides<R>(R Function() body) {
       return runScoped(
@@ -143,6 +147,7 @@ flutter:
           loggerRef.overrideWith(() => logger),
           platformRef.overrideWith(() => platform),
           processRef.overrideWith(() => shorebirdProcess),
+          shorebirdValidatorRef.overrideWith(() => shorebirdValidator),
         },
       );
     }
@@ -203,6 +208,7 @@ flutter:
       flutterValidator = _MockShorebirdFlutterValidator();
       cache = _MockCache();
       shorebirdProcess = _MockShorebirdProcess();
+      shorebirdValidator = _MockShorebirdValidator();
       command = runWithOverrides(
         () => PatchAndroidCommand(
           aabDiffer: aabDiffer,
@@ -341,34 +347,39 @@ flutter:
       when(() => bundletool.getVersionCode(any())).thenAnswer(
         (_) async => versionCode,
       );
-    });
-
-    test('throws config error when shorebird is not initialized', () async {
-      final tempDir = Directory.systemTemp.createTempSync();
-      final exitCode = await IOOverrides.runZoned(
-        () => runWithOverrides(command.run),
-        getCurrentDirectory: () => tempDir,
-      );
-      verify(
-        () => logger.err(
-          'Shorebird is not initialized. Did you run "shorebird init"?',
+      when(
+        () => shorebirdValidator.validatePreconditions(
+          checkUserIsAuthenticated: any(named: 'checkUserIsAuthenticated'),
+          checkShorebirdInitialized: any(named: 'checkShorebirdInitialized'),
+          validators: any(named: 'validators'),
         ),
-      ).called(1);
-      expect(exitCode, ExitCode.config.code);
+      ).thenAnswer((_) async {});
     });
 
     test('has a description', () {
       expect(command.description, isNotEmpty);
     });
 
-    test('throws no user error when user is not logged in', () async {
-      when(() => auth.isAuthenticated).thenReturn(false);
-      final tempDir = setUpTempDir();
-      final exitCode = await IOOverrides.runZoned(
-        () => runWithOverrides(command.run),
-        getCurrentDirectory: () => tempDir,
+    test('exits when validation fails', () async {
+      final exception = ValidationFailedException();
+      when(
+        () => shorebirdValidator.validatePreconditions(
+          checkUserIsAuthenticated: any(named: 'checkUserIsAuthenticated'),
+          checkShorebirdInitialized: any(named: 'checkShorebirdInitialized'),
+          validators: any(named: 'validators'),
+        ),
+      ).thenThrow(exception);
+      await expectLater(
+        runWithOverrides(command.run),
+        completion(equals(exception.exitCode.code)),
       );
-      expect(exitCode, equals(ExitCode.noUser.code));
+      verify(
+        () => shorebirdValidator.validatePreconditions(
+          checkUserIsAuthenticated: true,
+          checkShorebirdInitialized: true,
+          validators: [flutterValidator],
+        ),
+      ).called(1);
     });
 
     test('exits with code 70 when building fails', () async {
@@ -859,57 +870,6 @@ flavors:
       );
       verify(() => logger.success('\n✅ Published Patch!')).called(1);
       expect(exitCode, ExitCode.success.code);
-    });
-
-    test('prints flutter validation warnings', () async {
-      final tempDir = setUpTempDir();
-      setUpTempArtifacts(tempDir);
-      when(flutterValidator.validate).thenAnswer(
-        (_) async => [
-          const ValidationIssue(
-            severity: ValidationIssueSeverity.warning,
-            message: 'Flutter issue 1',
-          ),
-          const ValidationIssue(
-            severity: ValidationIssueSeverity.warning,
-            message: 'Flutter issue 2',
-          ),
-        ],
-      );
-
-      final exitCode = await IOOverrides.runZoned(
-        () => runWithOverrides(command.run),
-        getCurrentDirectory: () => tempDir,
-      );
-
-      expect(exitCode, equals(ExitCode.success.code));
-      verify(
-        () => logger.info(any(that: contains('Flutter issue 1'))),
-      ).called(1);
-      verify(
-        () => logger.info(any(that: contains('Flutter issue 2'))),
-      ).called(1);
-    });
-
-    test('aborts if validation errors are present', () async {
-      final tempDir = setUpTempDir();
-      setUpTempArtifacts(tempDir);
-      when(flutterValidator.validate).thenAnswer(
-        (_) async => [
-          const ValidationIssue(
-            severity: ValidationIssueSeverity.error,
-            message: 'There was an issue',
-          ),
-        ],
-      );
-
-      final exitCode = await IOOverrides.runZoned(
-        () => runWithOverrides(command.run),
-        getCurrentDirectory: () => tempDir,
-      );
-
-      expect(exitCode, equals(ExitCode.config.code));
-      verify(() => logger.err('Aborting due to validation errors.')).called(1);
     });
   });
 }

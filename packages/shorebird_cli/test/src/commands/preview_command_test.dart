@@ -16,6 +16,7 @@ import 'package:shorebird_cli/src/code_push_client_wrapper.dart';
 import 'package:shorebird_cli/src/commands/commands.dart';
 import 'package:shorebird_cli/src/ios_deploy.dart';
 import 'package:shorebird_cli/src/logger.dart';
+import 'package:shorebird_cli/src/shorebird_validator.dart';
 import 'package:shorebird_code_push_client/shorebird_code_push_client.dart';
 import 'package:test/test.dart';
 
@@ -52,6 +53,8 @@ class _MockReleaseArtifact extends Mock implements ReleaseArtifact {}
 
 class _MockIOSDeploy extends Mock implements IOSDeploy {}
 
+class _MockShorebirdValidator extends Mock implements ShorebirdValidator {}
+
 void main() {
   group(PreviewCommand, () {
     const appId = 'test-app-id';
@@ -72,6 +75,7 @@ void main() {
     late Progress progress;
     late Release release;
     late ReleaseArtifact releaseArtifact;
+    late ShorebirdValidator shorebirdValidator;
     late PreviewCommand command;
 
     R runWithOverrides<R>(R Function() body) {
@@ -83,6 +87,7 @@ void main() {
             cacheRef.overrideWith(() => cache),
             codePushClientWrapperRef.overrideWith(() => codePushClientWrapper),
             loggerRef.overrideWith(() => logger),
+            shorebirdValidatorRef.overrideWith(() => shorebirdValidator),
           },
         ),
         createHttpClient: (_) => httpClient,
@@ -109,6 +114,7 @@ void main() {
       progress = _MockProgress();
       release = _MockRelease();
       releaseArtifact = _MockReleaseArtifact();
+      shorebirdValidator = _MockShorebirdValidator();
       command = PreviewCommand()..testArgResults = argResults;
 
       when(() => argResults['app-id']).thenReturn(appId);
@@ -138,12 +144,29 @@ void main() {
         ReleasePlatform.ios: ReleaseStatus.active,
       });
       when(() => logger.progress(any())).thenReturn(progress);
+      when(
+        () => shorebirdValidator.validatePreconditions(
+          checkUserIsAuthenticated: any(named: 'checkUserIsAuthenticated'),
+        ),
+      ).thenAnswer((_) async {});
     });
 
-    test('returns no user error when not logged in', () async {
-      when(() => auth.isAuthenticated).thenReturn(false);
-      final result = await runWithOverrides(command.run);
-      expect(result, ExitCode.noUser.code);
+    test('exits when validation fails', () async {
+      final exception = ValidationFailedException();
+      when(
+        () => shorebirdValidator.validatePreconditions(
+          checkUserIsAuthenticated: any(named: 'checkUserIsAuthenticated'),
+        ),
+      ).thenThrow(exception);
+      await expectLater(
+        runWithOverrides(command.run),
+        completion(equals(exception.exitCode.code)),
+      );
+      verify(
+        () => shorebirdValidator.validatePreconditions(
+          checkUserIsAuthenticated: true,
+        ),
+      ).called(1);
     });
 
     test('exits with code 70 when querying for releases fails', () async {
@@ -191,6 +214,7 @@ void main() {
               codePushClientWrapperRef
                   .overrideWith(() => codePushClientWrapper),
               loggerRef.overrideWith(() => logger),
+              shorebirdValidatorRef.overrideWith(() => shorebirdValidator),
             },
           ),
           createHttpClient: (_) => httpClient,
@@ -485,6 +509,7 @@ void main() {
                   .overrideWith(() => codePushClientWrapper),
               iosDeployRef.overrideWith(() => iosDeploy),
               loggerRef.overrideWith(() => logger),
+              shorebirdValidatorRef.overrideWith(() => shorebirdValidator),
             },
           ),
           createHttpClient: (_) => httpClient,
@@ -505,8 +530,8 @@ void main() {
             .thenAnswer((invocation) async {
           (invocation.positionalArguments.single as IOSink)
               .add(ZipEncoder().encode(Archive())!);
-          // Wait 1 tick for the content to be written.
-          await Future<void>.delayed(Duration.zero);
+          // Wait for Isolate to finish.
+          await Future<void>.delayed(const Duration(milliseconds: 1));
         });
         when(
           () => iosDeploy.installAndLaunchApp(

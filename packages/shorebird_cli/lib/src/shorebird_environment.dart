@@ -8,6 +8,7 @@ import 'package:pubspec_parse/pubspec_parse.dart';
 import 'package:shorebird_cli/src/config/shorebird_yaml.dart';
 import 'package:shorebird_cli/src/platform.dart';
 import 'package:shorebird_code_push_client/shorebird_code_push_client.dart';
+import 'package:yaml/yaml.dart';
 
 abstract class ShorebirdEnvironment {
   /// Environment variables from [Platform.environment].
@@ -93,6 +94,28 @@ abstract class ShorebirdEnvironment {
     if (!file.existsSync()) return null;
     final yaml = file.readAsStringSync();
     return checkedYamlDecode(yaml, (m) => ShorebirdYaml.fromJson(m!));
+  }
+
+  static bool get isShorebirdInitialized {
+    return hasShorebirdYaml && pubspecContainsShorebirdYaml;
+  }
+
+  static bool get hasShorebirdYaml {
+    return ShorebirdEnvironment.getShorebirdYamlFile().existsSync();
+  }
+
+  static bool get hasPubspecYaml {
+    return ShorebirdEnvironment.getPubspecYaml() != null;
+  }
+
+  static bool get pubspecContainsShorebirdYaml {
+    final file = File(p.join(Directory.current.path, 'pubspec.yaml'));
+    final pubspecContents = file.readAsStringSync();
+    final yaml = loadYaml(pubspecContents, sourceUrl: file.uri) as Map;
+    if (!yaml.containsKey('flutter')) return false;
+    if (!(yaml['flutter'] as Map).containsKey('assets')) return false;
+    final assets = (yaml['flutter'] as Map)['assets'] as List;
+    return assets.contains('shorebird.yaml');
   }
 
   /// The `pubspec.yaml` file for this project, parsed into a [Pubspec] object.

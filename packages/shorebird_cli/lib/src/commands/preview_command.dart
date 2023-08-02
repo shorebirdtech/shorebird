@@ -13,16 +13,14 @@ import 'package:shorebird_cli/src/code_push_client_wrapper.dart';
 import 'package:shorebird_cli/src/command.dart';
 import 'package:shorebird_cli/src/ios_deploy.dart';
 import 'package:shorebird_cli/src/logger.dart';
-import 'package:shorebird_cli/src/shorebird_config_mixin.dart';
-import 'package:shorebird_cli/src/shorebird_validation_mixin.dart';
+import 'package:shorebird_cli/src/shorebird_validator.dart';
 import 'package:shorebird_cli/src/third_party/flutter_tools/lib/flutter_tools.dart';
 import 'package:shorebird_code_push_client/shorebird_code_push_client.dart';
 
 /// {@template preview_command}
 /// `shorebird preview` command.
 /// {@endtemplate}
-class PreviewCommand extends ShorebirdCommand
-    with ShorebirdConfigMixin, ShorebirdValidationMixin {
+class PreviewCommand extends ShorebirdCommand {
   /// {@macro preview_command}
   PreviewCommand() {
     argParser
@@ -60,7 +58,9 @@ class PreviewCommand extends ShorebirdCommand
     // TODO(bryanoltman): check preview target and run either
     // doctor.iosValidators or doctor.androidValidators as appropriate.
     try {
-      await validatePreconditions(checkUserIsAuthenticated: true);
+      await shorebirdValidator.validatePreconditions(
+        checkUserIsAuthenticated: true,
+      );
     } on PreconditionFailedException catch (error) {
       return error.exitCode.code;
     }

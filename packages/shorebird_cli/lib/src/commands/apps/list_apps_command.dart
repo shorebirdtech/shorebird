@@ -5,8 +5,7 @@ import 'package:mason_logger/mason_logger.dart';
 import 'package:shorebird_cli/src/code_push_client_wrapper.dart';
 import 'package:shorebird_cli/src/command.dart';
 import 'package:shorebird_cli/src/logger.dart';
-import 'package:shorebird_cli/src/shorebird_config_mixin.dart';
-import 'package:shorebird_cli/src/shorebird_validation_mixin.dart';
+import 'package:shorebird_cli/src/shorebird_validator.dart';
 import 'package:shorebird_code_push_client/shorebird_code_push_client.dart';
 
 /// {@template list_apps_command}
@@ -14,8 +13,7 @@ import 'package:shorebird_code_push_client/shorebird_code_push_client.dart';
 /// `shorebird apps list`
 /// List all apps using Shorebird.
 /// {@endtemplate}
-class ListAppsCommand extends ShorebirdCommand
-    with ShorebirdConfigMixin, ShorebirdValidationMixin {
+class ListAppsCommand extends ShorebirdCommand {
   @override
   String get description => 'List all apps using Shorebird.';
 
@@ -35,7 +33,7 @@ Please use $consoleLink instead.''',
     );
 
     try {
-      await validatePreconditions(
+      await shorebirdValidator.validatePreconditions(
         checkUserIsAuthenticated: true,
       );
     } on PreconditionFailedException catch (e) {

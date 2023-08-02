@@ -7,7 +7,7 @@ import 'package:shorebird_cli/src/doctor.dart';
 import 'package:shorebird_cli/src/logger.dart';
 import 'package:shorebird_cli/src/shorebird_build_mixin.dart';
 import 'package:shorebird_cli/src/shorebird_config_mixin.dart';
-import 'package:shorebird_cli/src/shorebird_validation_mixin.dart';
+import 'package:shorebird_cli/src/shorebird_validator.dart';
 
 /// {@template build_app_bundle_command}
 ///
@@ -15,7 +15,7 @@ import 'package:shorebird_cli/src/shorebird_validation_mixin.dart';
 /// Build an Android App Bundle file from your app.
 /// {@endtemplate}
 class BuildAppBundleCommand extends ShorebirdCommand
-    with ShorebirdConfigMixin, ShorebirdValidationMixin, ShorebirdBuildMixin {
+    with ShorebirdConfigMixin, ShorebirdBuildMixin {
   /// {@macro build_app_bundle_command}
   BuildAppBundleCommand() {
     argParser
@@ -39,8 +39,9 @@ class BuildAppBundleCommand extends ShorebirdCommand
   @override
   Future<int> run() async {
     try {
-      await validatePreconditions(
+      await shorebirdValidator.validatePreconditions(
         checkUserIsAuthenticated: true,
+        checkShorebirdInitialized: true,
         validators: doctor.androidCommandValidators,
       );
     } on PreconditionFailedException catch (e) {

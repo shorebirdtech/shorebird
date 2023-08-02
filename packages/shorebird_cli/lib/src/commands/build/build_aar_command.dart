@@ -7,7 +7,7 @@ import 'package:shorebird_cli/src/command.dart';
 import 'package:shorebird_cli/src/logger.dart';
 import 'package:shorebird_cli/src/shorebird_build_mixin.dart';
 import 'package:shorebird_cli/src/shorebird_config_mixin.dart';
-import 'package:shorebird_cli/src/shorebird_validation_mixin.dart';
+import 'package:shorebird_cli/src/shorebird_validator.dart';
 
 /// {@template build_aar_command}
 ///
@@ -15,7 +15,7 @@ import 'package:shorebird_cli/src/shorebird_validation_mixin.dart';
 /// Build an Android aar file from your app.
 /// {@endtemplate}
 class BuildAarCommand extends ShorebirdCommand
-    with ShorebirdConfigMixin, ShorebirdValidationMixin, ShorebirdBuildMixin {
+    with ShorebirdConfigMixin, ShorebirdBuildMixin {
   BuildAarCommand() {
     // We would have a "target" option here, similar to what [BuildApkCommand]
     // and [BuildAabCommand] have, but target cannot currently be configured in
@@ -39,7 +39,7 @@ class BuildAarCommand extends ShorebirdCommand
   @override
   Future<int> run() async {
     try {
-      await validatePreconditions(
+      await shorebirdValidator.validatePreconditions(
         checkUserIsAuthenticated: true,
         checkShorebirdInitialized: true,
       );

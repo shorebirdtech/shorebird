@@ -12,6 +12,7 @@ import 'package:shorebird_cli/src/commands/run_command.dart';
 import 'package:shorebird_cli/src/doctor.dart';
 import 'package:shorebird_cli/src/logger.dart';
 import 'package:shorebird_cli/src/process.dart';
+import 'package:shorebird_cli/src/shorebird_validator.dart';
 import 'package:shorebird_cli/src/validators/validators.dart';
 import 'package:shorebird_code_push_client/shorebird_code_push_client.dart';
 import 'package:test/test.dart';
@@ -36,6 +37,8 @@ class _MockShorebirdProcess extends Mock implements ShorebirdProcess {}
 
 class _MockIOSink extends Mock implements IOSink {}
 
+class _MockShorebirdValidator extends Mock implements ShorebirdValidator {}
+
 class _MockValidator extends Mock implements Validator {}
 
 void main() {
@@ -48,9 +51,10 @@ void main() {
     late Process process;
     late CodePushClient codePushClient;
     late ShorebirdProcess shorebirdProcess;
-    late RunCommand command;
     late IOSink ioSink;
+    late ShorebirdValidator shorebirdValidator;
     late Validator validator;
+    late RunCommand command;
 
     R runWithOverrides<R>(R Function() body) {
       return runScoped(
@@ -60,6 +64,7 @@ void main() {
           doctorRef.overrideWith(() => doctor),
           loggerRef.overrideWith(() => logger),
           processRef.overrideWith(() => shorebirdProcess),
+          shorebirdValidatorRef.overrideWith(() => shorebirdValidator),
         },
       );
     }
@@ -78,6 +83,7 @@ void main() {
       shorebirdProcess = _MockShorebirdProcess();
       codePushClient = _MockCodePushClient();
       ioSink = _MockIOSink();
+      shorebirdValidator = _MockShorebirdValidator();
       validator = _MockValidator();
 
       when(
@@ -93,7 +99,12 @@ void main() {
       when(() => doctor.allValidators).thenReturn([validator]);
       when(() => logger.progress(any())).thenReturn(_MockProgress());
       when(() => ioSink.addStream(any())).thenAnswer((_) async {});
-      when(() => validator.validate()).thenAnswer((_) async => []);
+      when(
+        () => shorebirdValidator.validatePreconditions(
+          checkUserIsAuthenticated: any(named: 'checkUserIsAuthenticated'),
+          validators: any(named: 'validators'),
+        ),
+      ).thenAnswer((_) async {});
 
       command = runWithOverrides(
         () => RunCommand(
@@ -125,35 +136,24 @@ Please use "shorebird preview" instead.'''),
       ).called(1);
     });
 
-    test('exits with no user when not logged in', () async {
-      when(() => auth.isAuthenticated).thenReturn(false);
-
-      final result = await runWithOverrides(command.run);
-      expect(result, equals(ExitCode.noUser.code));
-
-      verify(
-        () => logger.err(any(that: contains('You must be logged in to run'))),
-      ).called(1);
-    });
-
-    test('aborts on validation errors', () async {
-      when(() => validator.validate()).thenAnswer(
-        (_) async => [
-          const ValidationIssue(
-            severity: ValidationIssueSeverity.error,
-            message: 'Android issue',
-          ),
-        ],
+    test('exits when validation fails', () async {
+      final exception = ValidationFailedException();
+      when(
+        () => shorebirdValidator.validatePreconditions(
+          checkUserIsAuthenticated: any(named: 'checkUserIsAuthenticated'),
+          validators: any(named: 'validators'),
+        ),
+      ).thenThrow(exception);
+      await expectLater(
+        runWithOverrides(command.run),
+        completion(equals(exception.exitCode.code)),
       );
-
-      final result = await runWithOverrides(command.run);
-
-      await expectLater(result, equals(ExitCode.config.code));
       verify(
-        () => logger.info(any(that: contains('Android issue'))),
+        () => shorebirdValidator.validatePreconditions(
+          checkUserIsAuthenticated: true,
+          validators: [validator],
+        ),
       ).called(1);
-      verify(() => logger.err('Aborting due to validation errors.')).called(1);
-      verifyNever(() => logger.info('Running app...'));
     });
 
     test('exits with code when running the app fails', () async {

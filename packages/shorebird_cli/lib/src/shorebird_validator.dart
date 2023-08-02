@@ -1,9 +1,10 @@
 import 'package:collection/collection.dart';
 import 'package:mason_logger/mason_logger.dart';
+import 'package:scoped/scoped.dart';
 import 'package:shorebird_cli/src/auth/auth.dart';
 import 'package:shorebird_cli/src/logger.dart';
 import 'package:shorebird_cli/src/platform.dart';
-import 'package:shorebird_cli/src/shorebird_config_mixin.dart';
+import 'package:shorebird_cli/src/shorebird_environment.dart';
 import 'package:shorebird_cli/src/validators/validators.dart';
 
 abstract interface class PreconditionFailedException implements Exception {
@@ -31,7 +32,19 @@ class UnsupportedOperatingSystemException
   ExitCode get exitCode => ExitCode.unavailable;
 }
 
-mixin ShorebirdValidationMixin on ShorebirdConfigMixin {
+/// A reference to a [ShorebirdValidator] instance.
+final shorebirdValidatorRef = create(ShorebirdValidator.new);
+
+/// The [ShorebirdValidator] instance available in the current zone.
+ShorebirdValidator get shorebirdValidator => read(shorebirdValidatorRef);
+
+/// {@template shorebird_validator}
+/// A class that provides common validation functionality for commands.
+/// {@endtemplate}
+class ShorebirdValidator {
+  /// {@macro shorebird_validator}
+  const ShorebirdValidator();
+
   /// Checks common preconditions for running a command and throws an
   /// appropriate [PreconditionFailedException] if any of them fail.
   Future<void> validatePreconditions({
@@ -60,7 +73,8 @@ mixin ShorebirdValidationMixin on ShorebirdConfigMixin {
       throw UserNotAuthorizedException();
     }
 
-    if (checkShorebirdInitialized && !isShorebirdInitialized) {
+    if (checkShorebirdInitialized &&
+        !ShorebirdEnvironment.isShorebirdInitialized) {
       logger.err(
         'Shorebird is not initialized. Did you run "shorebird init"?',
       );

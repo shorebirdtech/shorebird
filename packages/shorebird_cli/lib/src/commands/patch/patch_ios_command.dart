@@ -17,18 +17,14 @@ import 'package:shorebird_cli/src/shorebird_artifact_mixin.dart';
 import 'package:shorebird_cli/src/shorebird_build_mixin.dart';
 import 'package:shorebird_cli/src/shorebird_config_mixin.dart';
 import 'package:shorebird_cli/src/shorebird_environment.dart';
-import 'package:shorebird_cli/src/shorebird_validation_mixin.dart';
+import 'package:shorebird_cli/src/shorebird_validator.dart';
 import 'package:shorebird_code_push_client/shorebird_code_push_client.dart';
 
 /// {@template patch_ios_command}
 /// `shorebird patch ios-alpha` command.
 /// {@endtemplate}
 class PatchIosCommand extends ShorebirdCommand
-    with
-        ShorebirdConfigMixin,
-        ShorebirdBuildMixin,
-        ShorebirdValidationMixin,
-        ShorebirdArtifactMixin {
+    with ShorebirdConfigMixin, ShorebirdBuildMixin, ShorebirdArtifactMixin {
   /// {@macro patch_ios_command}
   PatchIosCommand({
     HashFunction? hashFn,
@@ -72,7 +68,7 @@ class PatchIosCommand extends ShorebirdCommand
   @override
   Future<int> run() async {
     try {
-      await validatePreconditions(
+      await shorebirdValidator.validatePreconditions(
         checkShorebirdInitialized: true,
         checkUserIsAuthenticated: true,
         validators: doctor.iosCommandValidators,

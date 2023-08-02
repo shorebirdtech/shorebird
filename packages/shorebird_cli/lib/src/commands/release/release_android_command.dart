@@ -11,7 +11,7 @@ import 'package:shorebird_cli/src/shorebird_build_mixin.dart';
 import 'package:shorebird_cli/src/shorebird_config_mixin.dart';
 import 'package:shorebird_cli/src/shorebird_environment.dart';
 import 'package:shorebird_cli/src/shorebird_release_version_mixin.dart';
-import 'package:shorebird_cli/src/shorebird_validation_mixin.dart';
+import 'package:shorebird_cli/src/shorebird_validator.dart';
 import 'package:shorebird_code_push_client/shorebird_code_push_client.dart';
 
 /// {@template release_android_command}
@@ -21,7 +21,6 @@ import 'package:shorebird_code_push_client/shorebird_code_push_client.dart';
 class ReleaseAndroidCommand extends ShorebirdCommand
     with
         ShorebirdConfigMixin,
-        ShorebirdValidationMixin,
         ShorebirdBuildMixin,
         ShorebirdReleaseVersionMixin {
   /// {@macro release_android_command}
@@ -67,7 +66,7 @@ make smaller updates to your app.
   @override
   Future<int> run() async {
     try {
-      await validatePreconditions(
+      await shorebirdValidator.validatePreconditions(
         checkUserIsAuthenticated: true,
         checkShorebirdInitialized: true,
         validators: doctor.androidCommandValidators,

@@ -11,6 +11,7 @@ import 'package:shorebird_cli/src/commands/build/build.dart';
 import 'package:shorebird_cli/src/doctor.dart';
 import 'package:shorebird_cli/src/logger.dart';
 import 'package:shorebird_cli/src/process.dart';
+import 'package:shorebird_cli/src/shorebird_validator.dart';
 import 'package:shorebird_cli/src/validators/validators.dart';
 import 'package:test/test.dart';
 
@@ -33,6 +34,8 @@ class _MockShorebirdFlutterValidator extends Mock
 
 class _MockShorebirdProcess extends Mock implements ShorebirdProcess {}
 
+class _MockShorebirdValidator extends Mock implements ShorebirdValidator {}
+
 void main() {
   group(BuildApkCommand, () {
     late ArgResults argResults;
@@ -44,6 +47,7 @@ void main() {
     late BuildApkCommand command;
     late ShorebirdFlutterValidator flutterValidator;
     late ShorebirdProcess shorebirdProcess;
+    late ShorebirdValidator shorebirdValidator;
 
     R runWithOverrides<R>(R Function() body) {
       return runScoped(
@@ -53,6 +57,7 @@ void main() {
           doctorRef.overrideWith(() => doctor),
           loggerRef.overrideWith(() => logger),
           processRef.overrideWith(() => shorebirdProcess),
+          shorebirdValidatorRef.overrideWith(() => shorebirdValidator),
         },
       );
     }
@@ -66,6 +71,7 @@ void main() {
       shorebirdProcess = _MockShorebirdProcess();
       processResult = _MockProcessResult();
       flutterValidator = _MockShorebirdFlutterValidator();
+      shorebirdValidator = _MockShorebirdValidator();
 
       registerFallbackValue(shorebirdProcess);
 
@@ -81,26 +87,44 @@ void main() {
       when(() => auth.client).thenReturn(httpClient);
       when(() => logger.progress(any())).thenReturn(_MockProgress());
       when(() => logger.info(any())).thenReturn(null);
-      when(() => doctor.androidCommandValidators)
-          .thenReturn([flutterValidator]);
-      when(flutterValidator.validate).thenAnswer((_) async => []);
+      when(
+        () => shorebirdValidator.validatePreconditions(
+          checkUserIsAuthenticated: any(named: 'checkUserIsAuthenticated'),
+          checkShorebirdInitialized: any(named: 'checkShorebirdInitialized'),
+          validators: any(named: 'validators'),
+        ),
+      ).thenAnswer((_) async {});
+      when(
+        () => doctor.androidCommandValidators,
+      ).thenReturn([flutterValidator]);
 
       command = runWithOverrides(BuildApkCommand.new)
         ..testArgResults = argResults;
     });
 
-    test('has correct description', () {
+    test('has a description', () {
       expect(command.description, isNotEmpty);
     });
 
-    test('exits with no user when not logged in', () async {
-      when(() => auth.isAuthenticated).thenReturn(false);
-
-      final result = await runWithOverrides(command.run);
-      expect(result, equals(ExitCode.noUser.code));
-
+    test('exits when validation fails', () async {
+      final exception = ValidationFailedException();
+      when(
+        () => shorebirdValidator.validatePreconditions(
+          checkUserIsAuthenticated: any(named: 'checkUserIsAuthenticated'),
+          checkShorebirdInitialized: any(named: 'checkShorebirdInitialized'),
+          validators: any(named: 'validators'),
+        ),
+      ).thenThrow(exception);
+      await expectLater(
+        runWithOverrides(command.run),
+        completion(equals(exception.exitCode.code)),
+      );
       verify(
-        () => logger.err(any(that: contains('You must be logged in to run'))),
+        () => shorebirdValidator.validatePreconditions(
+          checkUserIsAuthenticated: true,
+          checkShorebirdInitialized: true,
+          validators: [flutterValidator],
+        ),
       ).called(1);
     });
 
@@ -184,59 +208,6 @@ ${lightCyan.wrap(p.join('build', 'app', 'outputs', 'apk', 'release', 'app-releas
           '''
 📦 Generated an apk at:
 ${lightCyan.wrap(p.join('build', 'app', 'outputs', 'apk', flavor, 'release', 'app-$flavor-release.apk'))}''',
-        ),
-      ).called(1);
-    });
-
-    test('prints flutter validation warnings', () async {
-      when(flutterValidator.validate).thenAnswer(
-        (_) async => [
-          const ValidationIssue(
-            severity: ValidationIssueSeverity.warning,
-            message: 'Flutter issue 1',
-          ),
-          const ValidationIssue(
-            severity: ValidationIssueSeverity.warning,
-            message: 'Flutter issue 2',
-          ),
-        ],
-      );
-      when(() => processResult.exitCode).thenReturn(ExitCode.success.code);
-
-      final result = await runWithOverrides(command.run);
-
-      expect(result, equals(ExitCode.success.code));
-      verify(
-        () => logger.info(any(that: contains('Flutter issue 1'))),
-      ).called(1);
-      verify(
-        () => logger.info(any(that: contains('Flutter issue 2'))),
-      ).called(1);
-    });
-
-    test('aborts if validation errors are present', () async {
-      when(flutterValidator.validate).thenAnswer(
-        (_) async => [
-          ValidationIssue(
-            severity: ValidationIssueSeverity.error,
-            message: 'There was an issue',
-            fix: () async {},
-          ),
-        ],
-      );
-
-      final result = await runWithOverrides(command.run);
-
-      expect(result, equals(ExitCode.config.code));
-      verify(() => logger.err('Aborting due to validation errors.')).called(1);
-      verify(
-        () => logger.info(
-          any(
-            that: stringContainsInOrder([
-              'issue can be fixed automatically',
-              'shorebird doctor --fix',
-            ]),
-          ),
         ),
       ).called(1);
     });

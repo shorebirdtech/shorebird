@@ -11,7 +11,7 @@ import 'package:shorebird_cli/src/platform.dart';
 import 'package:shorebird_cli/src/shorebird_config_mixin.dart';
 import 'package:shorebird_cli/src/shorebird_create_app_mixin.dart';
 import 'package:shorebird_cli/src/shorebird_environment.dart';
-import 'package:shorebird_cli/src/shorebird_validation_mixin.dart';
+import 'package:shorebird_cli/src/shorebird_validator.dart';
 import 'package:shorebird_cli/src/xcodebuild.dart';
 
 /// {@template init_command}
@@ -20,10 +20,7 @@ import 'package:shorebird_cli/src/xcodebuild.dart';
 /// Initialize Shorebird.
 /// {@endtemplate}
 class InitCommand extends ShorebirdCommand
-    with
-        ShorebirdConfigMixin,
-        ShorebirdValidationMixin,
-        ShorebirdCreateAppMixin {
+    with ShorebirdConfigMixin, ShorebirdCreateAppMixin {
   /// {@macro init_command}
   InitCommand({super.buildCodePushClient}) {
     argParser.addFlag(
@@ -43,7 +40,7 @@ class InitCommand extends ShorebirdCommand
   @override
   Future<int> run() async {
     try {
-      await validatePreconditions(
+      await shorebirdValidator.validatePreconditions(
         checkUserIsAuthenticated: true,
       );
     } on PreconditionFailedException catch (e) {
@@ -51,7 +48,7 @@ class InitCommand extends ShorebirdCommand
     }
 
     try {
-      if (!hasPubspecYaml) {
+      if (!ShorebirdEnvironment.hasPubspecYaml) {
         logger.err('''
 Could not find a "pubspec.yaml".
 Please make sure you are running "shorebird init" from the root of your Flutter project.
@@ -64,11 +61,11 @@ Please make sure you are running "shorebird init" from the root of your Flutter 
     }
 
     final force = results['force'] == true;
-    if (force && hasShorebirdYaml) {
+    if (force && ShorebirdEnvironment.hasShorebirdYaml) {
       ShorebirdEnvironment.getShorebirdYamlFile().deleteSync();
     }
 
-    if (hasShorebirdYaml) {
+    if (ShorebirdEnvironment.hasShorebirdYaml) {
       logger.err('''
 A "shorebird.yaml" already exists.
 If you want to reinitialize Shorebird, please run "shorebird init --force".''');
@@ -141,7 +138,9 @@ If you want to reinitialize Shorebird, please run "shorebird init --force".''');
 
     addShorebirdYamlToProject(appId, flavors: flavors);
 
-    if (!pubspecContainsShorebirdYaml) addShorebirdYamlToPubspecAssets();
+    if (!ShorebirdEnvironment.pubspecContainsShorebirdYaml) {
+      addShorebirdYamlToPubspecAssets();
+    }
 
     await doctor.runValidators(doctor.allValidators, applyFixes: true);
 

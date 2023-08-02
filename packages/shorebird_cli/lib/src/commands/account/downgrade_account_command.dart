@@ -5,13 +5,11 @@ import 'package:mason_logger/mason_logger.dart';
 import 'package:shorebird_cli/src/auth/auth.dart';
 import 'package:shorebird_cli/src/command.dart';
 import 'package:shorebird_cli/src/logger.dart';
-import 'package:shorebird_cli/src/shorebird_config_mixin.dart';
 import 'package:shorebird_cli/src/shorebird_environment.dart';
-import 'package:shorebird_cli/src/shorebird_validation_mixin.dart';
+import 'package:shorebird_cli/src/shorebird_validator.dart';
 import 'package:shorebird_code_push_client/shorebird_code_push_client.dart';
 
-class DowngradeAccountCommand extends ShorebirdCommand
-    with ShorebirdConfigMixin, ShorebirdValidationMixin {
+class DowngradeAccountCommand extends ShorebirdCommand {
   DowngradeAccountCommand({super.buildCodePushClient});
 
   @override
@@ -23,7 +21,9 @@ class DowngradeAccountCommand extends ShorebirdCommand
   @override
   Future<int> run() async {
     try {
-      await validatePreconditions(checkUserIsAuthenticated: true);
+      await shorebirdValidator.validatePreconditions(
+        checkUserIsAuthenticated: true,
+      );
     } on PreconditionFailedException catch (e) {
       return e.exitCode.code;
     }

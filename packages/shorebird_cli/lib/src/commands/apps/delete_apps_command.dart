@@ -4,17 +4,15 @@ import 'package:mason_logger/mason_logger.dart';
 import 'package:shorebird_cli/src/auth/auth.dart';
 import 'package:shorebird_cli/src/command.dart';
 import 'package:shorebird_cli/src/logger.dart';
-import 'package:shorebird_cli/src/shorebird_config_mixin.dart';
 import 'package:shorebird_cli/src/shorebird_environment.dart';
-import 'package:shorebird_cli/src/shorebird_validation_mixin.dart';
+import 'package:shorebird_cli/src/shorebird_validator.dart';
 
 /// {@template delete_app_command}
 ///
 /// `shorebird apps delete`
 /// Delete an existing app on Shorebird.
 /// {@endtemplate}
-class DeleteAppCommand extends ShorebirdCommand
-    with ShorebirdConfigMixin, ShorebirdValidationMixin {
+class DeleteAppCommand extends ShorebirdCommand {
   /// {@macro delete_app_command}
   DeleteAppCommand({super.buildCodePushClient}) {
     argParser
@@ -48,7 +46,7 @@ Please use $consoleLink instead.''',
     );
 
     try {
-      await validatePreconditions(
+      await shorebirdValidator.validatePreconditions(
         checkUserIsAuthenticated: true,
       );
     } on PreconditionFailedException catch (e) {
