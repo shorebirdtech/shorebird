@@ -3,7 +3,6 @@ import 'dart:io' hide Platform;
 
 import 'package:crypto/crypto.dart';
 import 'package:mason_logger/mason_logger.dart';
-import 'package:path/path.dart' as p;
 import 'package:platform/platform.dart';
 import 'package:shorebird_cli/src/archive_analysis/archive_analysis.dart';
 import 'package:shorebird_cli/src/code_push_client_wrapper.dart';
@@ -121,16 +120,15 @@ class PatchIosCommand extends ShorebirdCommand
     final detectReleaseVersionProgress = logger.progress(
       'Detecting release version',
     );
+    final String ipaPath;
     try {
-      final ipa = _ipaReader.read(
-        p.join(
-          Directory.current.path,
-          'build',
-          'ios',
-          'ipa',
-          '${getIpaName()}.ipa',
-        ),
-      );
+      ipaPath = getIpaPath();
+    } catch (error) {
+      detectReleaseVersionProgress.fail('Could not find ipa file: $error');
+      return ExitCode.software.code;
+    }
+    try {
+      final ipa = _ipaReader.read(ipaPath);
       releaseVersion = ipa.versionNumber;
       detectReleaseVersionProgress.complete(
         'Detected release version $releaseVersion',
