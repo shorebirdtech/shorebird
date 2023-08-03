@@ -31,8 +31,8 @@ class PatchAndroidCommand extends ShorebirdCommand
   PatchAndroidCommand({
     HashFunction? hashFn,
     http.Client? httpClient,
-    AabDiffer? aabDiffer,
-  })  : _aabDiffer = aabDiffer ?? AabDiffer(),
+    AndroidArchiveDiffer? archiveDiffer,
+  })  : _archiveDiffer = archiveDiffer ?? AndroidArchiveDiffer(),
         _hashFn = hashFn ?? ((m) => sha256.convert(m).toString()),
         _httpClient = httpClient ?? http.Client() {
     argParser
@@ -70,7 +70,7 @@ class PatchAndroidCommand extends ShorebirdCommand
   @override
   String get name => 'android';
 
-  final AabDiffer _aabDiffer;
+  final ArchiveDiffer _archiveDiffer;
   final HashFunction _hashFn;
   final http.Client _httpClient;
 
@@ -233,7 +233,7 @@ https://github.com/shorebirdtech/shorebird/issues/472
 
     FileSetDiff contentDiffs;
     try {
-      contentDiffs = _aabDiffer.changedFiles(
+      contentDiffs = _archiveDiffer.changedFiles(
         releaseAabPath,
         bundlePath,
       );
@@ -247,13 +247,15 @@ Could not determine whether patch contains asset changes. If you have added or r
 
     logger.detail('aab content differences: $contentDiffs');
 
-    if (_aabDiffer.containsPotentiallyBreakingNativeDiffs(contentDiffs)) {
+    if (_archiveDiffer.containsPotentiallyBreakingNativeDiffs(contentDiffs)) {
       logger
         ..warn(
           '''The Android App Bundle appears to contain Kotlin or Java changes, which cannot be applied via a patch.''',
         )
         ..info(
-          yellow.wrap(_aabDiffer.nativeFileSetDiff(contentDiffs).prettyString),
+          yellow.wrap(
+            _archiveDiffer.nativeFileSetDiff(contentDiffs).prettyString,
+          ),
         );
       final shouldContinue = force || logger.confirm('Continue anyways?');
 
@@ -262,13 +264,15 @@ Could not determine whether patch contains asset changes. If you have added or r
       }
     }
 
-    if (_aabDiffer.containsPotentiallyBreakingAssetDiffs(contentDiffs)) {
+    if (_archiveDiffer.containsPotentiallyBreakingAssetDiffs(contentDiffs)) {
       logger
         ..warn(
           '''The Android App Bundle contains asset changes, which will not be included in the patch.''',
         )
         ..info(
-          yellow.wrap(_aabDiffer.assetsFileSetDiff(contentDiffs).prettyString),
+          yellow.wrap(
+            _archiveDiffer.assetsFileSetDiff(contentDiffs).prettyString,
+          ),
         );
 
       final shouldContinue = force || logger.confirm('Continue anyways?');

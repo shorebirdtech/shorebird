@@ -31,8 +31,8 @@ class PatchAarCommand extends ShorebirdCommand
     HashFunction? hashFn,
     UnzipFn? unzipFn,
     http.Client? httpClient,
-    AarDiffer? aarDiffer,
-  })  : _aarDiffer = aarDiffer ?? AarDiffer(),
+    AndroidArchiveDiffer? archiveDiffer,
+  })  : _archiveDiffer = archiveDiffer ?? AndroidArchiveDiffer(),
         _hashFn = hashFn ?? ((m) => sha256.convert(m).toString()),
         _unzipFn = unzipFn ?? extractFileToDisk,
         _httpClient = httpClient ?? http.Client() {
@@ -79,7 +79,7 @@ of the Android app that is using this module.''',
   String get description =>
       'Publish new patches for a specific Android archive release to Shorebird';
 
-  final AarDiffer _aarDiffer;
+  final AndroidArchiveDiffer _archiveDiffer;
   final HashFunction _hashFn;
   final UnzipFn _unzipFn;
   final http.Client _httpClient;
@@ -215,7 +215,7 @@ https://github.com/shorebirdtech/shorebird/issues/472
     final aarDiffProgress =
         logger.progress('Checking for aar content differences');
 
-    final contentDiffs = _aarDiffer.changedFiles(
+    final contentDiffs = _archiveDiffer.changedFiles(
       releaseAarPath,
       aarArtifactPath(
         packageName: shorebirdEnv.androidPackageName!,
@@ -225,7 +225,7 @@ https://github.com/shorebirdtech/shorebird/issues/472
 
     aarDiffProgress.complete();
 
-    if (_aarDiffer.containsPotentiallyBreakingAssetDiffs(contentDiffs)) {
+    if (_archiveDiffer.containsPotentiallyBreakingAssetDiffs(contentDiffs)) {
       logger.info(
         yellow.wrap(
           '''⚠️ The Android Archive contains asset changes, which will not be included in the patch.''',
