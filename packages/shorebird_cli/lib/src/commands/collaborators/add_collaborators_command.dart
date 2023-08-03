@@ -1,10 +1,10 @@
 import 'dart:async';
 
 import 'package:mason_logger/mason_logger.dart';
-import 'package:shorebird_cli/src/auth/auth.dart';
+import 'package:shorebird_cli/src/code_push_client_wrapper.dart';
 import 'package:shorebird_cli/src/command.dart';
 import 'package:shorebird_cli/src/logger.dart';
-import 'package:shorebird_cli/src/shorebird_environment.dart';
+import 'package:shorebird_cli/src/shorebird_env.dart';
 import 'package:shorebird_cli/src/shorebird_validator.dart';
 
 /// {@template add_collaborators_command}
@@ -13,7 +13,7 @@ import 'package:shorebird_cli/src/shorebird_validator.dart';
 /// {@endtemplate}
 class AddCollaboratorsCommand extends ShorebirdCommand {
   /// {@macro add_collaborators_command}
-  AddCollaboratorsCommand({super.buildCodePushClient}) {
+  AddCollaboratorsCommand() {
     argParser
       ..addOption(
         _appIdOption,
@@ -44,13 +44,8 @@ class AddCollaboratorsCommand extends ShorebirdCommand {
       return e.exitCode.code;
     }
 
-    final client = buildCodePushClient(
-      httpClient: auth.client,
-      hostedUri: ShorebirdEnvironment.hostedUri,
-    );
-
     final appId = results[_appIdOption] as String? ??
-        ShorebirdEnvironment.getShorebirdYaml()?.appId;
+        shorebirdEnv.getShorebirdYaml()?.appId;
     if (appId == null) {
       logger.err(
         '''
@@ -82,7 +77,10 @@ ${styleBold.wrap(lightGreen.wrap('🚀 Ready to add a new collaborator!'))}
 
     final progress = logger.progress('Adding collaborator');
     try {
-      await client.createCollaborator(appId: appId, email: collaborator);
+      await codePushClientWrapper.codePushClient.createCollaborator(
+        appId: appId,
+        email: collaborator,
+      );
       progress.complete();
     } catch (error) {
       progress.fail();

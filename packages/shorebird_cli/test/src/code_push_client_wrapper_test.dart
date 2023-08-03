@@ -9,6 +9,7 @@ import 'package:shorebird_cli/src/code_push_client_wrapper.dart';
 import 'package:shorebird_cli/src/logger.dart';
 import 'package:shorebird_cli/src/platform.dart';
 import 'package:shorebird_cli/src/shorebird_build_mixin.dart';
+import 'package:shorebird_cli/src/shorebird_env.dart';
 import 'package:shorebird_cli/src/third_party/flutter_tools/lib/flutter_tools.dart';
 import 'package:shorebird_code_push_client/shorebird_code_push_client.dart';
 import 'package:test/test.dart';
@@ -25,21 +26,25 @@ class _MockPlatform extends Mock implements Platform {}
 
 class _MockProgress extends Mock implements Progress {}
 
+class _MockShorebirdEnv extends Mock implements ShorebirdEnv {}
+
 void main() {
   group('scoped', () {
     late Auth auth;
     late http.Client httpClient;
     late Platform platform;
+    late ShorebirdEnv shorebirdEnv;
 
     setUp(() {
       auth = _MockAuth();
       httpClient = _MockHttpClient();
       platform = _MockPlatform();
+      shorebirdEnv = _MockShorebirdEnv();
 
       when(() => auth.client).thenReturn(httpClient);
-      when(() => platform.environment).thenReturn({
-        'SHOREBIRD_HOSTED_URL': 'http://example.com',
-      });
+      when(() => shorebirdEnv.hostedUri).thenReturn(
+        Uri.parse('http://example.com'),
+      );
     });
 
     test('creates instance from scoped Auth and ShorebirdEnvironment', () {
@@ -49,6 +54,7 @@ void main() {
           codePushClientWrapperRef,
           authRef.overrideWith(() => auth),
           platformRef.overrideWith(() => platform),
+          shorebirdEnvRef.overrideWith(() => shorebirdEnv),
         },
       );
       expect(
@@ -160,6 +166,43 @@ void main() {
     });
 
     group('app', () {
+      group('createApp', () {
+        test('prompts for displayName when not provided', () async {
+          const appName = 'test app';
+          const app = App(id: appId, displayName: 'Test App');
+          when(() => logger.prompt(any())).thenReturn(appName);
+          when(() => codePushClient.createApp(displayName: appName)).thenAnswer(
+            (_) async => app,
+          );
+
+          await runWithOverrides(
+            () => codePushClientWrapper.createApp(),
+          );
+
+          verify(() => logger.prompt(any())).called(1);
+          verify(
+            () => codePushClient.createApp(displayName: appName),
+          ).called(1);
+        });
+
+        test('does not prompt for displayName when not provided', () async {
+          const appName = 'test app';
+          const app = App(id: appId, displayName: 'Test App');
+          when(() => codePushClient.createApp(displayName: appName)).thenAnswer(
+            (_) async => app,
+          );
+
+          await runWithOverrides(
+            () => codePushClientWrapper.createApp(appName: appName),
+          );
+
+          verifyNever(() => logger.prompt(any()));
+          verify(
+            () => codePushClient.createApp(displayName: appName),
+          ).called(1);
+        });
+      });
+
       group('getApps', () {
         test('exits with code 70 when getting apps fails', () async {
           const error = 'something went wrong';

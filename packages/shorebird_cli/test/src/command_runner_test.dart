@@ -1,29 +1,26 @@
 import 'package:args/command_runner.dart';
-import 'package:http/http.dart' as http;
 import 'package:mason_logger/mason_logger.dart';
 import 'package:mocktail/mocktail.dart';
 import 'package:scoped/scoped.dart';
-import 'package:shorebird_cli/src/auth/auth.dart' hide auth;
 import 'package:shorebird_cli/src/command_runner.dart';
 import 'package:shorebird_cli/src/logger.dart' hide logger;
 import 'package:shorebird_cli/src/process.dart';
-import 'package:shorebird_cli/src/shorebird_environment.dart';
+import 'package:shorebird_cli/src/shorebird_env.dart';
 import 'package:shorebird_cli/src/version.dart';
 import 'package:test/test.dart';
 
-class _MockAuth extends Mock implements Auth {}
-
 class _MockLogger extends Mock implements Logger {}
 
-class _MockHttpClient extends Mock implements http.Client {}
+class _MockShorebirdEnv extends Mock implements ShorebirdEnv {}
 
 class _MockProcessResult extends Mock implements ShorebirdProcessResult {}
 
 void main() {
   group(ShorebirdCliCommandRunner, () {
-    late http.Client httpClient;
-    late Auth auth;
+    const shorebirdEngineRevision = 'test-revision';
+
     late Logger logger;
+    late ShorebirdEnv shorebirdEnv;
     late ShorebirdProcessResult processResult;
     late ShorebirdCliCommandRunner commandRunner;
 
@@ -31,20 +28,20 @@ void main() {
       return runScoped(
         body,
         values: {
-          authRef.overrideWith(() => auth),
-          loggerRef.overrideWith(() => logger)
+          loggerRef.overrideWith(() => logger),
+          shorebirdEnvRef.overrideWith(() => shorebirdEnv),
         },
       );
     }
 
     setUp(() {
-      httpClient = _MockHttpClient();
-      auth = _MockAuth();
       logger = _MockLogger();
-      ShorebirdEnvironment.shorebirdEngineRevision = 'test-revision';
+      shorebirdEnv = _MockShorebirdEnv();
       processResult = _MockProcessResult();
-      when(() => auth.client).thenReturn(httpClient);
       when(() => processResult.exitCode).thenReturn(ExitCode.success.code);
+      when(
+        () => shorebirdEnv.shorebirdEngineRevision,
+      ).thenReturn(shorebirdEngineRevision);
       commandRunner = runWithOverrides(ShorebirdCliCommandRunner.new);
     });
 
@@ -122,7 +119,7 @@ ${lightCyan.wrap('shorebird release android -- --no-pub lib/main.dart')}''',
           () => logger.info(
             '''
 Shorebird $packageVersion
-Shorebird Engine • revision ${ShorebirdEnvironment.shorebirdEngineRevision}''',
+Shorebird Engine • revision $shorebirdEngineRevision''',
           ),
         ).called(1);
       });

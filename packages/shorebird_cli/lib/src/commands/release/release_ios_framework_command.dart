@@ -10,13 +10,13 @@ import 'package:shorebird_cli/src/doctor.dart';
 import 'package:shorebird_cli/src/ios.dart';
 import 'package:shorebird_cli/src/logger.dart';
 import 'package:shorebird_cli/src/shorebird_build_mixin.dart';
-import 'package:shorebird_cli/src/shorebird_config_mixin.dart';
-import 'package:shorebird_cli/src/shorebird_environment.dart';
+import 'package:shorebird_cli/src/shorebird_env.dart';
 import 'package:shorebird_cli/src/shorebird_validator.dart';
+import 'package:shorebird_cli/src/shorebird_version_manager.dart';
 import 'package:shorebird_code_push_client/shorebird_code_push_client.dart';
 
 class ReleaseIosFrameworkCommand extends ShorebirdCommand
-    with ShorebirdConfigMixin, ShorebirdBuildMixin {
+    with ShorebirdBuildMixin {
   ReleaseIosFrameworkCommand() {
     argParser
       ..addOption(
@@ -58,7 +58,7 @@ of the iOS app that is using this module.''',
 
     const releasePlatform = ReleasePlatform.ios;
     final releaseVersion = results['release-version'] as String;
-    final shorebirdYaml = ShorebirdEnvironment.getShorebirdYaml()!;
+    final shorebirdYaml = shorebirdEnv.getShorebirdYaml()!;
     final appId = shorebirdYaml.getAppId();
     final app = await codePushClientWrapper.getApp(appId: appId);
 
@@ -113,7 +113,8 @@ ${summary.join('\n')}
     );
     final String shorebirdFlutterRevision;
     try {
-      shorebirdFlutterRevision = await getShorebirdFlutterRevision();
+      shorebirdFlutterRevision =
+          await shorebirdVersionManager.fetchCurrentGitHash();
       flutterRevisionProgress.complete();
     } catch (error) {
       flutterRevisionProgress.fail('$error');

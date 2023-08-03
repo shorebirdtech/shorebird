@@ -4,7 +4,7 @@ import 'package:mason_logger/mason_logger.dart';
 import 'package:shorebird_cli/src/command.dart';
 import 'package:shorebird_cli/src/logger.dart';
 import 'package:shorebird_cli/src/process.dart';
-import 'package:shorebird_cli/src/shorebird_environment.dart';
+import 'package:shorebird_cli/src/shorebird_env.dart';
 import 'package:shorebird_cli/src/shorebird_version_manager.dart';
 
 /// {@template upgrade_command}
@@ -91,7 +91,7 @@ class UpgradeCommand extends ShorebirdCommand {
     final result = await process.run(
       executable,
       args,
-      workingDirectory: ShorebirdEnvironment.flutterDirectory.path,
+      workingDirectory: shorebirdEnv.flutterDirectory.path,
     );
 
     if (result.exitCode != 0) {

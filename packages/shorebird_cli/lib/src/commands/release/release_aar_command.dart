@@ -9,10 +9,10 @@ import 'package:shorebird_cli/src/config/config.dart';
 import 'package:shorebird_cli/src/logger.dart';
 import 'package:shorebird_cli/src/shorebird_artifact_mixin.dart';
 import 'package:shorebird_cli/src/shorebird_build_mixin.dart';
-import 'package:shorebird_cli/src/shorebird_config_mixin.dart';
-import 'package:shorebird_cli/src/shorebird_environment.dart';
+import 'package:shorebird_cli/src/shorebird_env.dart';
 import 'package:shorebird_cli/src/shorebird_release_version_mixin.dart';
 import 'package:shorebird_cli/src/shorebird_validator.dart';
+import 'package:shorebird_cli/src/shorebird_version_manager.dart';
 import 'package:shorebird_code_push_client/shorebird_code_push_client.dart';
 
 /// {@template release_aar_command}
@@ -21,7 +21,6 @@ import 'package:shorebird_code_push_client/shorebird_code_push_client.dart';
 /// {@endtemplate}
 class ReleaseAarCommand extends ShorebirdCommand
     with
-        ShorebirdConfigMixin,
         ShorebirdBuildMixin,
         ShorebirdReleaseVersionMixin,
         ShorebirdArtifactMixin {
@@ -75,7 +74,7 @@ make smaller updates to your app.
       return e.exitCode.code;
     }
 
-    if (androidPackageName == null) {
+    if (shorebirdEnv.androidPackageName == null) {
       logger.err('Could not find androidPackage in pubspec.yaml.');
       return ExitCode.config.code;
     }
@@ -85,7 +84,7 @@ make smaller updates to your app.
     final releaseVersion = results['release-version'] as String;
     final buildProgress = logger.progress('Building aar');
 
-    final shorebirdYaml = ShorebirdEnvironment.getShorebirdYaml()!;
+    final shorebirdYaml = shorebirdEnv.getShorebirdYaml()!;
     final appId = shorebirdYaml.getAppId();
     final app = await codePushClientWrapper.getApp(appId: appId);
 
@@ -141,7 +140,8 @@ ${summary.join('\n')}
     );
     final String shorebirdFlutterRevision;
     try {
-      shorebirdFlutterRevision = await getShorebirdFlutterRevision();
+      shorebirdFlutterRevision =
+          await shorebirdVersionManager.fetchCurrentGitHash();
       flutterRevisionProgress.complete();
     } catch (error) {
       flutterRevisionProgress.fail('$error');
@@ -168,7 +168,7 @@ ${summary.join('\n')}
 
     final extractAarProgress = logger.progress('Creating artifacts');
     final extractedAarDir = await extractAar(
-      packageName: androidPackageName!,
+      packageName: shorebirdEnv.androidPackageName!,
       buildNumber: buildNumber,
       unzipFn: _unzipFn,
     );
@@ -179,7 +179,7 @@ ${summary.join('\n')}
       releaseId: release.id,
       platform: platform,
       aarPath: aarArtifactPath(
-        packageName: androidPackageName!,
+        packageName: shorebirdEnv.androidPackageName!,
         buildNumber: buildNumber,
       ),
       extractedAarDir: extractedAarDir,
@@ -201,7 +201,7 @@ Your next step is to add this module as a dependency in your app's build.gradle:
 ${lightCyan.wrap('''
 dependencies {
   // ...
-  releaseImplementation '$androidPackageName:flutter_release:$buildNumber'
+  releaseImplementation '${shorebirdEnv.androidPackageName}:flutter_release:$buildNumber'
   // ...
 }''')}
 ''');

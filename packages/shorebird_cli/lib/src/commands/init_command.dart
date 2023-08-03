@@ -3,26 +3,27 @@ import 'dart:io';
 import 'package:collection/collection.dart';
 import 'package:mason_logger/mason_logger.dart';
 import 'package:path/path.dart' as p;
+import 'package:shorebird_cli/src/code_push_client_wrapper.dart';
 import 'package:shorebird_cli/src/command.dart';
+import 'package:shorebird_cli/src/config/config.dart';
 import 'package:shorebird_cli/src/doctor.dart';
 import 'package:shorebird_cli/src/gradlew.dart';
 import 'package:shorebird_cli/src/logger.dart';
 import 'package:shorebird_cli/src/platform.dart';
-import 'package:shorebird_cli/src/shorebird_config_mixin.dart';
-import 'package:shorebird_cli/src/shorebird_create_app_mixin.dart';
-import 'package:shorebird_cli/src/shorebird_environment.dart';
+import 'package:shorebird_cli/src/shorebird_env.dart';
 import 'package:shorebird_cli/src/shorebird_validator.dart';
 import 'package:shorebird_cli/src/xcodebuild.dart';
+import 'package:yaml/yaml.dart';
+import 'package:yaml_edit/yaml_edit.dart';
 
 /// {@template init_command}
 ///
 /// `shorebird init`
 /// Initialize Shorebird.
 /// {@endtemplate}
-class InitCommand extends ShorebirdCommand
-    with ShorebirdConfigMixin, ShorebirdCreateAppMixin {
+class InitCommand extends ShorebirdCommand {
   /// {@macro init_command}
-  InitCommand({super.buildCodePushClient}) {
+  InitCommand() {
     argParser.addFlag(
       'force',
       abbr: 'f',
@@ -48,7 +49,7 @@ class InitCommand extends ShorebirdCommand
     }
 
     try {
-      if (!ShorebirdEnvironment.hasPubspecYaml) {
+      if (!shorebirdEnv.hasPubspecYaml) {
         logger.err('''
 Could not find a "pubspec.yaml".
 Please make sure you are running "shorebird init" from the root of your Flutter project.
@@ -61,11 +62,8 @@ Please make sure you are running "shorebird init" from the root of your Flutter 
     }
 
     final force = results['force'] == true;
-    if (force && ShorebirdEnvironment.hasShorebirdYaml) {
-      ShorebirdEnvironment.getShorebirdYamlFile().deleteSync();
-    }
 
-    if (ShorebirdEnvironment.hasShorebirdYaml) {
+    if (!force && shorebirdEnv.hasShorebirdYaml) {
       logger.err('''
 A "shorebird.yaml" already exists.
 If you want to reinitialize Shorebird, please run "shorebird init --force".''');
@@ -99,7 +97,7 @@ If you want to reinitialize Shorebird, please run "shorebird init --force".''');
     try {
       final displayName = logger.prompt(
         '${lightGreen.wrap('?')} How should we refer to this app?',
-        defaultValue: ShorebirdEnvironment.getPubspecYaml()?.name,
+        defaultValue: shorebirdEnv.getPubspecYaml()?.name,
       );
       final hasNoFlavors = productFlavors.isEmpty;
       final hasSomeFlavors = productFlavors.isNotEmpty &&
@@ -109,15 +107,19 @@ If you want to reinitialize Shorebird, please run "shorebird init --force".''');
       if (hasNoFlavors) {
         // No platforms have any flavors so we just create a single app
         // and assign it as the default.
-        appId = (await createApp(appName: displayName)).id;
+        final app = await codePushClientWrapper.createApp(appName: displayName);
+        appId = app.id;
       } else if (hasSomeFlavors) {
         // Some platforms have flavors and some do not so we create an app
         // for the default (no flavor) and then create an app per flavor.
-        appId = (await createApp(appName: displayName)).id;
+        final app = await codePushClientWrapper.createApp(appName: displayName);
+        appId = app.id;
         final values = <String, String>{};
         for (final flavor in productFlavors) {
-          values[flavor] =
-              (await createApp(appName: '$displayName ($flavor)')).id;
+          final app = await codePushClientWrapper.createApp(
+            appName: '$displayName ($flavor)',
+          );
+          values[flavor] = app.id;
         }
         flavors = values;
       } else {
@@ -125,8 +127,10 @@ If you want to reinitialize Shorebird, please run "shorebird init --force".''');
         // and assign the default to the first flavor.
         final values = <String, String>{};
         for (final flavor in productFlavors) {
-          values[flavor] =
-              (await createApp(appName: '$displayName ($flavor)')).id;
+          final app = await codePushClientWrapper.createApp(
+            appName: '$displayName ($flavor)',
+          );
+          values[flavor] = app.id;
         }
         flavors = values;
         appId = flavors.values.first;
@@ -136,10 +140,10 @@ If you want to reinitialize Shorebird, please run "shorebird init --force".''');
       return ExitCode.software.code;
     }
 
-    addShorebirdYamlToProject(appId, flavors: flavors);
+    _addShorebirdYamlToProject(appId, flavors: flavors);
 
-    if (!ShorebirdEnvironment.pubspecContainsShorebirdYaml) {
-      addShorebirdYamlToPubspecAssets();
+    if (!shorebirdEnv.pubspecContainsShorebirdYaml) {
+      _addShorebirdYamlToPubspecAssets();
     }
 
     await doctor.runValidators(doctor.allValidators, applyFixes: true);
@@ -206,5 +210,57 @@ For more information about Shorebird, visit ${link(uri: Uri.parse('https://shore
           .sorted()
           .toSet();
     }
+  }
+
+  ShorebirdYaml _addShorebirdYamlToProject(
+    String appId, {
+    Map<String, String>? flavors,
+  }) {
+    const content = '''
+# This file is used to configure the Shorebird updater used by your application.
+# Learn more at https://shorebird.dev
+# This file should be checked into version control.
+
+# This is the unique identifier assigned to your app.
+# It is used by your app to request the correct patches from Shorebird servers.
+app_id:
+''';
+
+    final editor = YamlEditor(content)..update(['app_id'], appId);
+
+    if (flavors != null) editor.update(['flavors'], flavors);
+
+    shorebirdEnv.getShorebirdYamlFile().writeAsStringSync(editor.toString());
+
+    return ShorebirdYaml(appId: appId);
+  }
+
+  void _addShorebirdYamlToPubspecAssets() {
+    final pubspecFile = shorebirdEnv.getPubspecYamlFile();
+    final pubspecContents = pubspecFile.readAsStringSync();
+    final yaml = loadYaml(pubspecContents, sourceUrl: pubspecFile.uri) as Map;
+    final editor = YamlEditor(pubspecContents);
+
+    if (!yaml.containsKey('flutter')) {
+      editor.update(
+        ['flutter'],
+        {
+          'assets': ['shorebird.yaml']
+        },
+      );
+    } else {
+      if (!(yaml['flutter'] as Map).containsKey('assets')) {
+        editor.update(['flutter', 'assets'], ['shorebird.yaml']);
+      } else {
+        final assets = (yaml['flutter'] as Map)['assets'] as List;
+        if (!assets.contains('shorebird.yaml')) {
+          editor.update(['flutter', 'assets'], [...assets, 'shorebird.yaml']);
+        }
+      }
+    }
+
+    if (editor.edits.isEmpty) return;
+
+    pubspecFile.writeAsStringSync(editor.toString());
   }
 }
