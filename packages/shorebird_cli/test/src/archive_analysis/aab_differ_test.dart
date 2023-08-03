@@ -22,6 +22,24 @@ void main() {
       differ = AabDiffer();
     });
 
+    group('changedFiles', () {
+      test('finds no differences between the same aab', () {
+        expect(differ.changedFiles(baseAabPath, baseAabPath), isEmpty);
+      });
+
+      test('finds differences between two different aabs', () {
+        expect(
+          differ.changedFiles(baseAabPath, changedDartAabPath).changedPaths,
+          {
+            'BUNDLE-METADATA/com.android.tools.build.libraries/dependencies.pb',
+            'base/lib/arm64-v8a/libapp.so',
+            'base/lib/armeabi-v7a/libapp.so',
+            'base/lib/x86_64/libapp.so',
+          },
+        );
+      });
+    });
+
     test('does not crash if MANIFEST.MF is missing', () {
       expect(
         () => differ.changedFiles(baseAabPath, noManifestAabPath),
