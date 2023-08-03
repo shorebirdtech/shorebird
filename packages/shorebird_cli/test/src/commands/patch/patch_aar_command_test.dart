@@ -7,7 +7,6 @@ import 'package:mocktail/mocktail.dart';
 import 'package:path/path.dart' as p;
 import 'package:platform/platform.dart';
 import 'package:scoped/scoped.dart';
-import 'package:shorebird_cli/src/archive_analysis/android_archive_differ.dart';
 import 'package:shorebird_cli/src/archive_analysis/archive_analysis.dart';
 import 'package:shorebird_cli/src/auth/auth.dart';
 import 'package:shorebird_cli/src/cache.dart' show Cache, cacheRef;
@@ -375,7 +374,7 @@ void main() {
       expect(exitCode, equals(ExitCode.success.code));
       verify(
         () => logger.progress(
-          'Installing Flutter revision ${release.flutterRevision}',
+          'Switching to Flutter revision ${release.flutterRevision}',
         ),
       ).called(1);
       verify(
@@ -453,7 +452,7 @@ void main() {
       expect(exitCode, equals(ExitCode.software.code));
       verify(
         () => logger.progress(
-          'Installing Flutter revision ${release.flutterRevision}',
+          'Switching to Flutter revision ${release.flutterRevision}',
         ),
       ).called(1);
       verify(

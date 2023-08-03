@@ -124,7 +124,7 @@ of the Android app that is using this module.''',
     final shorebirdFlutterRevision = shorebirdEnv.flutterRevision;
     if (release.flutterRevision != shorebirdFlutterRevision) {
       final installFlutterRevisionProgress = logger.progress(
-        'Installing Flutter revision ${release.flutterRevision}',
+        'Switching to Flutter revision ${release.flutterRevision}',
       );
       try {
         await shorebirdFlutterManager.installRevision(
