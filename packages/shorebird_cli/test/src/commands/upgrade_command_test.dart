@@ -61,7 +61,7 @@ void main() {
       command = runWithOverrides(UpgradeCommand.new);
 
       when(
-        () => shorebirdEnv.flutterDirectory,
+        () => shorebirdEnv.flutterDirectory(revision: any(named: 'revision')),
       ).thenReturn(Directory('flutter'));
       when(
         shorebirdVersionManager.fetchCurrentGitHash,

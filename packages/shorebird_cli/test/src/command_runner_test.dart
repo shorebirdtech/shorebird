@@ -40,7 +40,9 @@ void main() {
       processResult = _MockProcessResult();
       when(() => processResult.exitCode).thenReturn(ExitCode.success.code);
       when(
-        () => shorebirdEnv.shorebirdEngineRevision,
+        () => shorebirdEnv.shorebirdEngineRevision(
+          flutterRevision: any(named: 'flutterRevision'),
+        ),
       ).thenReturn(shorebirdEngineRevision);
       commandRunner = runWithOverrides(ShorebirdCliCommandRunner.new);
     });

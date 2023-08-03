@@ -207,8 +207,12 @@ flutter:
       when(() => platform.operatingSystem).thenReturn(Platform.macOS);
       when(() => shorebirdEnv.getShorebirdYaml()).thenReturn(shorebirdYaml);
       when(() => shorebirdEnv.shorebirdRoot).thenReturn(shorebirdRoot);
-      when(() => shorebirdEnv.flutterDirectory).thenReturn(flutterDirectory);
-      when(() => shorebirdEnv.genSnapshotFile).thenReturn(genSnapshotFile);
+      when(
+        () => shorebirdEnv.flutterDirectory(revision: any(named: 'revision')),
+      ).thenReturn(flutterDirectory);
+      when(
+        () => shorebirdEnv.genSnapshotFile(revision: any(named: 'revision')),
+      ).thenReturn(genSnapshotFile);
       when(
         () => aotBuildProcessResult.exitCode,
       ).thenReturn(ExitCode.success.code);
@@ -402,7 +406,7 @@ Either create a new release using:
   ${lightCyan.wrap('shorebird release aar')}
 
 Or downgrade your Flutter version and try again using:
-  ${lightCyan.wrap('cd ${shorebirdEnv.flutterDirectory.path}')}
+  ${lightCyan.wrap('cd ${shorebirdEnv.flutterDirectory().path}')}
   ${lightCyan.wrap('git checkout ${release.flutterRevision}')}
 
 Shorebird plans to support this automatically, let us know if it's important to you:

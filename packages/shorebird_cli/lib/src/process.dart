@@ -111,7 +111,7 @@ class ShorebirdProcess {
   }
 
   String _resolveExecutable(String executable) {
-    if (executable == 'flutter') return shorebirdEnv.flutterBinaryFile.path;
+    if (executable == 'flutter') return shorebirdEnv.flutterBinaryFile().path;
     return executable;
   }
 
