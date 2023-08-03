@@ -46,7 +46,7 @@ void main() {
       );
 
       when(
-        () => shorebirdEnv.flutterBinaryFile(revision: any(named: 'revision')),
+        () => shorebirdEnv.flutterBinaryFile,
       ).thenReturn(File(p.join('bin', 'cache', 'flutter', 'bin', 'flutter')));
       when(
         () => processWrapper.run(

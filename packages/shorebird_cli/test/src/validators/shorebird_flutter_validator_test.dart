@@ -76,7 +76,7 @@ Tools • Dart 2.19.6 • DevTools 2.20.1
 
       when(() => shorebirdEnv.flutterRevision).thenReturn(flutterRevision);
       when(
-        () => shorebirdEnv.flutterDirectory(revision: any(named: 'revision')),
+        () => shorebirdEnv.flutterDirectory,
       ).thenReturn(flutterDirectory(tempDir));
       when(() => platform.script).thenReturn(shorebirdScriptFile(tempDir).uri);
       when(() => platform.environment).thenReturn({});

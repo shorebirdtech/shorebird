@@ -91,7 +91,7 @@ class UpgradeCommand extends ShorebirdCommand {
     final result = await process.run(
       executable,
       args,
-      workingDirectory: shorebirdEnv.flutterDirectory().path,
+      workingDirectory: shorebirdEnv.flutterDirectory.path,
     );
 
     if (result.exitCode != 0) {
