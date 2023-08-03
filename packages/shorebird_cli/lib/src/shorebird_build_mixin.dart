@@ -108,9 +108,7 @@ mixin ShorebirdBuildMixin on ShorebirdCommand {
     }
   }
 
-  Future<void> buildAar({
-    required String buildNumber,
-  }) async {
+  Future<void> buildAar({required String buildNumber}) async {
     const executable = 'flutter';
     final arguments = [
       'build',
