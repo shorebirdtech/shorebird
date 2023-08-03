@@ -29,7 +29,7 @@ class ShorebirdFlutterValidator extends Validator {
   Future<List<ValidationIssue>> validate() async {
     final issues = <ValidationIssue>[];
 
-    if (!shorebirdEnv.flutterDirectory().existsSync()) {
+    if (!shorebirdEnv.flutterDirectory.existsSync()) {
       final message = 'No Flutter directory found at '
           '${shorebirdEnv.flutterDirectory}';
       issues.add(
@@ -116,7 +116,7 @@ This can cause unexpected behavior if you are switching between the tools and th
     final result = await process.run(
       'git',
       ['status', '--untracked-files=no', '--porcelain'],
-      workingDirectory: shorebirdEnv.flutterDirectory().path,
+      workingDirectory: shorebirdEnv.flutterDirectory.path,
     );
     return result.stdout.toString().trim().isEmpty;
   }

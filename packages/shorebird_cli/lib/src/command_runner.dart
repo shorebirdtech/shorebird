@@ -144,7 +144,7 @@ ${lightCyan.wrap('shorebird release android -- --no-pub lib/main.dart')}''',
       logger.info(
         '''
 Shorebird $packageVersion
-Shorebird Engine • revision ${shorebirdEnv.shorebirdEngineRevision()}''',
+Shorebird Engine • revision ${shorebirdEnv.shorebirdEngineRevision}''',
       );
       exitCode = ExitCode.success.code;
     } else {

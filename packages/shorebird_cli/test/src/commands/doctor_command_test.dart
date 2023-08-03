@@ -50,9 +50,7 @@ void main() {
       validator = _MockValidator();
 
       when(
-        () => shorebirdEnv.shorebirdEngineRevision(
-          flutterRevision: any(named: 'flutterRevision'),
-        ),
+        () => shorebirdEnv.shorebirdEngineRevision,
       ).thenReturn(shorebirdEngineRevision);
       when(() => doctor.allValidators).thenReturn([validator]);
       when(

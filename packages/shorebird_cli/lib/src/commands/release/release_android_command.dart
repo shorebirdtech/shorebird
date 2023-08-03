@@ -43,6 +43,12 @@ class ReleaseAndroidCommand extends ShorebirdCommand
         },
       )
       ..addFlag(
+        'split-per-abi',
+        help: 'Whether to split the APKs per ABIs. '
+            'To learn more, see: https://developer.android.com/studio/build/configure-apk-splits#configure-abi-split',
+        negatable: false,
+      )
+      ..addFlag(
         'force',
         abbr: 'f',
         help: 'Release without confirmation if there are no errors.',
@@ -79,7 +85,13 @@ make smaller updates to your app.
     final buildProgress = logger.progress('Building release');
     try {
       await buildAppBundle(flavor: flavor, target: target);
-      if (generateApk) await buildApk(flavor: flavor, target: target);
+      if (generateApk) {
+        await buildApk(
+          flavor: flavor,
+          target: target,
+          splitPerAbi: results['split-per-abi'] == true,
+        );
+      }
       buildProgress.complete();
     } on ProcessException catch (error) {
       buildProgress.fail('Failed to build: ${error.message}');
