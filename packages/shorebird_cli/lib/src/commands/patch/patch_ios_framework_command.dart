@@ -3,6 +3,7 @@ import 'dart:io' hide Platform;
 import 'package:crypto/crypto.dart';
 import 'package:mason_logger/mason_logger.dart';
 import 'package:platform/platform.dart';
+import 'package:scoped/scoped.dart';
 import 'package:shorebird_cli/src/code_push_client_wrapper.dart';
 import 'package:shorebird_cli/src/command.dart';
 import 'package:shorebird_cli/src/config/shorebird_yaml.dart';
@@ -13,6 +14,7 @@ import 'package:shorebird_cli/src/logger.dart';
 import 'package:shorebird_cli/src/shorebird_artifact_mixin.dart';
 import 'package:shorebird_cli/src/shorebird_build_mixin.dart';
 import 'package:shorebird_cli/src/shorebird_env.dart';
+import 'package:shorebird_cli/src/shorebird_flutter_manager.dart';
 import 'package:shorebird_cli/src/shorebird_validator.dart';
 import 'package:shorebird_code_push_client/shorebird_code_push_client.dart';
 
@@ -75,7 +77,6 @@ of the iOS app that is using this module.''',
     final shorebirdYaml = shorebirdEnv.getShorebirdYaml()!;
     final appId = shorebirdYaml.getAppId();
     final app = await codePushClientWrapper.getApp(appId: appId);
-
     final release = await codePushClientWrapper.getRelease(
       appId: appId,
       releaseVersion: releaseVersion,
@@ -89,9 +90,34 @@ Please re-run the release command for this version or create a new release.''');
       return ExitCode.software.code;
     }
 
+    final shorebirdFlutterRevision = shorebirdEnv.flutterRevision;
+    if (release.flutterRevision != shorebirdFlutterRevision) {
+      final installFlutterRevisionProgress = logger.progress(
+        'Switching to Flutter revision ${release.flutterRevision}',
+      );
+      try {
+        await shorebirdFlutterManager.installRevision(
+          revision: release.flutterRevision,
+        );
+        installFlutterRevisionProgress.complete();
+      } catch (error) {
+        installFlutterRevisionProgress.fail('$error');
+        return ExitCode.software.code;
+      }
+    }
+
     final buildProgress = logger.progress('Building patch');
     try {
-      await buildIosFramework();
+      await runScoped(
+        buildIosFramework,
+        values: {
+          shorebirdEnvRef.overrideWith(
+            () => ShorebirdEnv(
+              flutterRevisionOverride: release.flutterRevision,
+            ),
+          ),
+        },
+      );
       buildProgress.complete();
     } on ProcessException catch (error) {
       buildProgress.fail('Failed to build: ${error.message}');
@@ -108,33 +134,6 @@ Please re-run the release command for this version or create a new release.''');
     }
 
     buildProgress.complete();
-
-    final shorebirdFlutterRevision = shorebirdEnv.flutterRevision;
-    if (release.flutterRevision != shorebirdFlutterRevision) {
-      logger
-        ..err('''
-Flutter revision mismatch.
-
-The release you are trying to patch was built with a different version of Flutter.
-
-Release Flutter Revision: ${release.flutterRevision}
-Current Flutter Revision: $shorebirdFlutterRevision
-''')
-        ..info(
-          '''
-Either create a new release using:
-  ${lightCyan.wrap('shorebird release')}
-
-Or downgrade your Flutter version and try again using:
-  ${lightCyan.wrap('cd ${shorebirdEnv.flutterDirectory.path}')}
-  ${lightCyan.wrap('git checkout ${release.flutterRevision}')}
-
-Shorebird plans to support this automatically, let us know if it's important to you:
-https://github.com/shorebirdtech/shorebird/issues/472
-''',
-        );
-      return ExitCode.software.code;
-    }
 
     if (dryRun) {
       logger
