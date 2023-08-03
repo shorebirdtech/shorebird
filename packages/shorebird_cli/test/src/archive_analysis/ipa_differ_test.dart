@@ -61,5 +61,54 @@ void main() {
         expect(differ.nativeFileSetDiff(fileSetDiff), isNotEmpty);
       });
     });
+
+    group('containsPotentiallyBreakingAssetDiffs', () {
+      test('returns true if a file in flutter_assets has changed', () {
+        final fileSetDiff = differ.changedFiles(
+          baseIpaPath,
+          changedAssetIpaPath,
+        );
+        expect(
+          differ.containsPotentiallyBreakingAssetDiffs(fileSetDiff),
+          isTrue,
+        );
+      });
+
+      test('returns false if no files in flutter_assets has changed', () {
+        final fileSetDiff = differ.changedFiles(
+          baseIpaPath,
+          changedDartIpaPath,
+        );
+        expect(
+          differ.containsPotentiallyBreakingAssetDiffs(fileSetDiff),
+          isFalse,
+        );
+      });
+    });
+
+    group('containsPotentiallyBreakingNativeDiffs', () {
+      test('returns true if the unsigned App.framework/App has changed', () {
+        final fileSetDiff = differ.changedFiles(
+          baseIpaPath,
+          changedSwiftIpaPath,
+        );
+        expect(
+          differ.containsPotentiallyBreakingNativeDiffs(fileSetDiff),
+          isTrue,
+        );
+      });
+
+      test('returns false if the unsigned App.framework/App has not changed',
+          () {
+        final fileSetDiff = differ.changedFiles(
+          baseIpaPath,
+          changedDartIpaPath,
+        );
+        expect(
+          differ.containsPotentiallyBreakingNativeDiffs(fileSetDiff),
+          isFalse,
+        );
+      });
+    });
   });
 }

@@ -1,6 +1,7 @@
 import 'dart:io';
 
 import 'package:archive/archive_io.dart';
+import 'package:collection/collection.dart';
 import 'package:crypto/crypto.dart';
 import 'package:path/path.dart' as p;
 import 'package:shorebird_cli/src/archive_analysis/archive_differ.dart';
@@ -36,14 +37,8 @@ class IpaDiffer extends ArchiveDiffer {
       assetsFileSetDiff(fileSetDiff).isNotEmpty;
 
   @override
-  bool containsPotentiallyBreakingNativeDiffs(FileSetDiff fileSetDiff) {
-    // TODO(bryanoltman): Implement this
-    // We will need to unsign executable files (App.framework/app,
-    // Runner.app/Runner) to determine whether native changes have been made. If
-    // these files are signed, they will be different between builds from
-    // identical code bases.
-    return false;
-  }
+  bool containsPotentiallyBreakingNativeDiffs(FileSetDiff fileSetDiff) =>
+      nativeFileSetDiff(fileSetDiff).isNotEmpty;
 
   @override
   bool isAssetFilePath(String filePath) {
@@ -62,10 +57,19 @@ class IpaDiffer extends ArchiveDiffer {
   bool isNativeFilePath(String filePath) => appRegex.hasMatch(filePath);
 
   PathHashes _fileHashes(File ipa) {
+    // Ignore the Flutter mach-o binary, since it is large, slow to hash, and
+    // changes to it should be caught earlier in the patch process.
+    const ignoredFiles = {
+      'Flutter.framework/Flutter',
+    };
     final files = ZipDecoder()
         .decodeBuffer(InputFileStream(ipa.path))
         .files
-        .where((file) => file.isFile);
+        .where((file) => file.isFile)
+        .whereNot(
+          (file) => ignoredFiles
+              .any((ignoredFile) => file.name.endsWith(ignoredFile)),
+        );
     final namesToHashes = <String, String>{};
     for (final file in files) {
       String hash;
@@ -93,7 +97,5 @@ class IpaDiffer extends ArchiveDiffer {
   }
 
   bool _shouldUnsignFile(String filePath) =>
-      filePath.endsWith('App.framework/App') ||
-      filePath.endsWith('Flutter.framework/Flutter') ||
-      appRegex.hasMatch(filePath);
+      filePath.endsWith('App.framework/App') || appRegex.hasMatch(filePath);
 }
