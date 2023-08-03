@@ -147,20 +147,6 @@ class PatchIosCommand extends ShorebirdCommand
       releaseVersion: releaseVersion,
     );
 
-    // final ipaAsset = await codePushClientWrapper.getReleaseArtifact(
-    //   appId: appId,
-    //   releaseId: release.id,
-    //   arch: 'ipa',
-    //   platform: ReleasePlatform.ios,
-    // );
-    // final releaseIpa = await _downloadReleaseArtifact(
-    //   Uri.parse(ipaAsset.url),
-    //   httpClient: http.Client(),
-    // );
-
-    // final diff = IpaDiffer().changedFiles(releaseIpa, ipaPath);
-    // print('diff is ${diff.prettyString}');
-
     if (release.platformStatuses[ReleasePlatform.ios] == ReleaseStatus.draft) {
       logger.err('''
 Release $releaseVersion is in an incomplete state. It's possible that the original release was terminated or failed to complete.

@@ -1,8 +1,6 @@
 import 'dart:io';
 
 import 'package:archive/archive_io.dart';
-import 'package:collection/collection.dart';
-import 'package:crypto/crypto.dart';
 import 'package:path/path.dart' as p;
 import 'package:shorebird_cli/src/archive_analysis/archive_differ.dart';
 import 'package:shorebird_cli/src/archive_analysis/file_set_diff.dart';
@@ -23,8 +21,6 @@ class IpaDiffer extends ArchiveDiffer {
   };
   static RegExp appRegex = RegExp(r'^Payload/[\w\-. ]+.app/[\w\-. ]+$');
 
-  String _hash(List<int> bytes) => sha256.convert(bytes).toString();
-
   @override
   FileSetDiff changedFiles(String oldArchivePath, String newArchivePath) =>
       FileSetDiff.fromPathHashes(
@@ -37,8 +33,15 @@ class IpaDiffer extends ArchiveDiffer {
       assetsFileSetDiff(fileSetDiff).isNotEmpty;
 
   @override
-  bool containsPotentiallyBreakingNativeDiffs(FileSetDiff fileSetDiff) =>
-      nativeFileSetDiff(fileSetDiff).isNotEmpty;
+  bool containsPotentiallyBreakingNativeDiffs(FileSetDiff fileSetDiff) {
+    // Because the mach-o binaries are signed, they will always have different
+    // hashes, even if the code used to generate them is identical.
+    //
+    // TODO(bryanoltman): support mach-o binary diffing.
+    // We can do this using the `codesign --remove-signature` command, but this
+    // is slow and requires a temporary directory to store the unsigned binary.
+    return false;
+  }
 
   @override
   bool isAssetFilePath(String filePath) {
@@ -57,45 +60,10 @@ class IpaDiffer extends ArchiveDiffer {
   bool isNativeFilePath(String filePath) => appRegex.hasMatch(filePath);
 
   PathHashes _fileHashes(File ipa) {
-    // Ignore the Flutter mach-o binary, since it is large, slow to hash, and
-    // changes to it should be caught earlier in the patch process.
-    const ignoredFiles = {
-      'Flutter.framework/Flutter',
+    final zipDirectory = ZipDirectory.read(InputFileStream(ipa.path));
+    return {
+      for (final file in zipDirectory.fileHeaders)
+        file.filename: file.crc32!.toString()
     };
-    final files = ZipDecoder()
-        .decodeBuffer(InputFileStream(ipa.path))
-        .files
-        .where((file) => file.isFile)
-        .whereNot(
-          (file) => ignoredFiles
-              .any((ignoredFile) => file.name.endsWith(ignoredFile)),
-        );
-    final namesToHashes = <String, String>{};
-    for (final file in files) {
-      String hash;
-      if (_shouldUnsignFile(file.name)) {
-        final tempDir = Directory.systemTemp.createTempSync();
-        final outPath = p.join(tempDir.path, file.name);
-        final outputStream = OutputFileStream(outPath);
-        file.writeContent(outputStream);
-        outputStream.close();
-
-        Process.runSync('codesign', [
-          '--remove-signature',
-          outPath,
-        ]);
-
-        final outFile = File(outPath);
-        hash = _hash(outFile.readAsBytesSync());
-      } else {
-        hash = _hash(file.content as List<int>);
-      }
-      namesToHashes[file.name] = hash;
-    }
-
-    return namesToHashes;
   }
-
-  bool _shouldUnsignFile(String filePath) =>
-      filePath.endsWith('App.framework/App') || appRegex.hasMatch(filePath);
 }

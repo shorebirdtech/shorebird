@@ -26,11 +26,14 @@ void main() {
           differ.changedFiles(baseIpaPath, changedAssetIpaPath).changedPaths,
           {
             'Payload/Runner.app/_CodeSignature/CodeResources',
+            'Payload/Runner.app/Runner',
+            'Payload/Runner.app/Frameworks/Flutter.framework/Flutter',
             'Payload/Runner.app/Frameworks/App.framework/_CodeSignature/CodeResources',
+            'Payload/Runner.app/Frameworks/App.framework/App',
             'Payload/Runner.app/Frameworks/App.framework/flutter_assets/assets/asset.json',
             'Symbols/4C4C4411-5555-3144-A13A-E47369D8ACD5.symbols',
             'Symbols/BC970605-0A53-3457-8736-D7A870AB6E71.symbols',
-            'Symbols/0CBBC9EF-0745-3074-81B7-765F5B4515FD.symbols'
+            'Symbols/0CBBC9EF-0745-3074-81B7-765F5B4515FD.symbols',
           },
         );
       });
@@ -41,8 +44,8 @@ void main() {
         final fileSetDiff =
             differ.changedFiles(baseIpaPath, changedAssetIpaPath);
         expect(differ.assetsFileSetDiff(fileSetDiff), isNotEmpty);
-        expect(differ.dartFileSetDiff(fileSetDiff), isEmpty);
-        expect(differ.nativeFileSetDiff(fileSetDiff), isEmpty);
+        expect(differ.dartFileSetDiff(fileSetDiff), isNotEmpty);
+        expect(differ.nativeFileSetDiff(fileSetDiff), isNotEmpty);
       });
 
       test('detects dart changes', () {
@@ -50,14 +53,14 @@ void main() {
             differ.changedFiles(baseIpaPath, changedDartIpaPath);
         expect(differ.assetsFileSetDiff(fileSetDiff), isEmpty);
         expect(differ.dartFileSetDiff(fileSetDiff), isNotEmpty);
-        expect(differ.nativeFileSetDiff(fileSetDiff), isEmpty);
+        expect(differ.nativeFileSetDiff(fileSetDiff), isNotEmpty);
       });
 
       test('detects swift changes', () {
         final fileSetDiff =
             differ.changedFiles(baseIpaPath, changedSwiftIpaPath);
         expect(differ.assetsFileSetDiff(fileSetDiff), isEmpty);
-        expect(differ.dartFileSetDiff(fileSetDiff), isEmpty);
+        expect(differ.dartFileSetDiff(fileSetDiff), isNotEmpty);
         expect(differ.nativeFileSetDiff(fileSetDiff), isNotEmpty);
       });
     });
@@ -87,22 +90,10 @@ void main() {
     });
 
     group('containsPotentiallyBreakingNativeDiffs', () {
-      test('returns true if the unsigned App.framework/App has changed', () {
+      test("always returns false, as we don't check for this yet", () {
         final fileSetDiff = differ.changedFiles(
           baseIpaPath,
           changedSwiftIpaPath,
-        );
-        expect(
-          differ.containsPotentiallyBreakingNativeDiffs(fileSetDiff),
-          isTrue,
-        );
-      });
-
-      test('returns false if the unsigned App.framework/App has not changed',
-          () {
-        final fileSetDiff = differ.changedFiles(
-          baseIpaPath,
-          changedDartIpaPath,
         );
         expect(
           differ.containsPotentiallyBreakingNativeDiffs(fileSetDiff),
