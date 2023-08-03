@@ -1,8 +1,17 @@
 import 'dart:io';
 
 import 'package:path/path.dart' as p;
+import 'package:scoped/scoped.dart';
 import 'package:shorebird_cli/src/process.dart';
 import 'package:shorebird_cli/src/shorebird_env.dart';
+
+/// A reference to a [ShorebirdFlutterManager] instance.
+final shorebirdFlutterManagerRef = create(ShorebirdFlutterManager.new);
+
+/// The [ShorebirdFlutterManager] instance available in the current zone.
+ShorebirdFlutterManager get shorebirdFlutterManager {
+  return read(shorebirdFlutterManagerRef);
+}
 
 /// {@template shorebird_flutter_manager}
 /// Helps manage the Flutter installation used by Shorebird.
@@ -43,7 +52,7 @@ class ShorebirdFlutterManager {
       );
     }
 
-    // Checkout the correct revision
+    // Checkout the correct revision.
     final checkoutArgs = [
       '-C',
       targetDirectory.path,
