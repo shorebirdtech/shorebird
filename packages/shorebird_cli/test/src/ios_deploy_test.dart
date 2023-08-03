@@ -66,9 +66,9 @@ void main() {
       final tempDir = Directory.systemTemp.createTempSync();
 
       when(() => shorebirdEnv.shorebirdRoot).thenReturn(tempDir);
-      when(() => shorebirdEnv.flutterDirectory).thenReturn(
-        Directory(p.join(tempDir.path, 'bin', 'cache', 'flutter')),
-      );
+      when(
+        () => shorebirdEnv.flutterDirectory(revision: any(named: 'revision')),
+      ).thenReturn(Directory(p.join(tempDir.path, 'bin', 'cache', 'flutter')));
       when(() => logger.progress(any())).thenReturn(progress);
       when(
         () => shorebirdProcess.start(any(), any()),
