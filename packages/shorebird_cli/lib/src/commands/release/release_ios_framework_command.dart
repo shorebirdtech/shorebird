@@ -107,8 +107,6 @@ ${summary.join('\n')}
       }
     }
 
-    final shorebirdFlutterRevision = shorebirdEnv.flutterRevision;
-
     final Release release;
     if (existingRelease != null) {
       release = existingRelease;
@@ -116,7 +114,7 @@ ${summary.join('\n')}
       release = await codePushClientWrapper.createRelease(
         appId: appId,
         version: releaseVersion,
-        flutterRevision: shorebirdFlutterRevision,
+        flutterRevision: shorebirdEnv.flutterRevision,
         platform: releasePlatform,
       );
     }
