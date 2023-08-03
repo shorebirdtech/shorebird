@@ -2,9 +2,7 @@ import 'dart:async';
 import 'dart:io' hide Platform;
 
 import 'package:crypto/crypto.dart';
-import 'package:http/http.dart' as http;
 import 'package:mason_logger/mason_logger.dart';
-import 'package:path/path.dart' as p;
 import 'package:platform/platform.dart';
 import 'package:shorebird_cli/src/archive_analysis/archive_analysis.dart';
 import 'package:shorebird_cli/src/code_push_client_wrapper.dart';
