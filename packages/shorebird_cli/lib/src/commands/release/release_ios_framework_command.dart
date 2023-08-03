@@ -12,7 +12,6 @@ import 'package:shorebird_cli/src/logger.dart';
 import 'package:shorebird_cli/src/shorebird_build_mixin.dart';
 import 'package:shorebird_cli/src/shorebird_env.dart';
 import 'package:shorebird_cli/src/shorebird_validator.dart';
-import 'package:shorebird_cli/src/shorebird_version_manager.dart';
 import 'package:shorebird_code_push_client/shorebird_code_push_client.dart';
 
 class ReleaseIosFrameworkCommand extends ShorebirdCommand
@@ -108,18 +107,7 @@ ${summary.join('\n')}
       }
     }
 
-    final flutterRevisionProgress = logger.progress(
-      'Fetching Flutter revision',
-    );
-    final String shorebirdFlutterRevision;
-    try {
-      shorebirdFlutterRevision =
-          await shorebirdVersionManager.fetchCurrentGitHash();
-      flutterRevisionProgress.complete();
-    } catch (error) {
-      flutterRevisionProgress.fail('$error');
-      return ExitCode.software.code;
-    }
+    final shorebirdFlutterRevision = shorebirdEnv.flutterRevision;
 
     final Release release;
     if (existingRelease != null) {

@@ -18,7 +18,6 @@ import 'package:shorebird_cli/src/process.dart';
 import 'package:shorebird_cli/src/shorebird_build_mixin.dart';
 import 'package:shorebird_cli/src/shorebird_env.dart';
 import 'package:shorebird_cli/src/shorebird_validator.dart';
-import 'package:shorebird_cli/src/shorebird_version_manager.dart';
 import 'package:shorebird_code_push_client/shorebird_code_push_client.dart';
 import 'package:test/test.dart';
 
@@ -46,9 +45,6 @@ class _MockShorebirdProcess extends Mock implements ShorebirdProcess {}
 class _MockShorebirdEnv extends Mock implements ShorebirdEnv {}
 
 class _MockShorebirdValidator extends Mock implements ShorebirdValidator {}
-
-class _MockShorebirdVersionManager extends Mock
-    implements ShorebirdVersionManager {}
 
 class _FakeRelease extends Fake implements Release {}
 
@@ -89,7 +85,6 @@ void main() {
     late ShorebirdEnv shorebirdEnv;
     late ShorebirdProcess shorebirdProcess;
     late ShorebirdValidator shorebirdValidator;
-    late ShorebirdVersionManager shorebirdVersionManager;
     late ReleaseAarCommand command;
 
     R runWithOverrides<R>(R Function() body) {
@@ -105,9 +100,6 @@ void main() {
           processRef.overrideWith(() => shorebirdProcess),
           shorebirdEnvRef.overrideWith(() => shorebirdEnv),
           shorebirdValidatorRef.overrideWith(() => shorebirdValidator),
-          shorebirdVersionManagerRef.overrideWith(
-            () => shorebirdVersionManager,
-          ),
         },
       );
     }
@@ -163,7 +155,6 @@ void main() {
       shorebirdRoot = Directory.systemTemp.createTempSync();
       shorebirdEnv = _MockShorebirdEnv();
       shorebirdValidator = _MockShorebirdValidator();
-      shorebirdVersionManager = _MockShorebirdVersionManager();
 
       when(() => auth.client).thenReturn(httpClient);
       when(() => argResults['build-number']).thenReturn(buildNumber);
@@ -178,6 +169,7 @@ void main() {
       when(
         () => shorebirdEnv.androidPackageName,
       ).thenReturn(androidPackageName);
+      when(() => shorebirdEnv.flutterRevision).thenReturn(flutterRevision);
 
       when(
         () => flutterBuildProcessResult.exitCode,
@@ -241,9 +233,6 @@ void main() {
           checkShorebirdInitialized: any(named: 'checkShorebirdInitialized'),
         ),
       ).thenAnswer((_) async {});
-      when(
-        () => shorebirdVersionManager.fetchCurrentGitHash(),
-      ).thenAnswer((_) async => flutterRevision);
 
       command = runWithOverrides(
         () => ReleaseAarCommand(unzipFn: (_, __) async {}),
@@ -320,16 +309,6 @@ void main() {
       );
       expect(exitCode, ExitCode.success.code);
       verify(() => logger.info('Aborting.')).called(1);
-    });
-
-    test('throws error when unable to detect flutter revision', () async {
-      final exception = Exception('oops');
-      when(
-        () => shorebirdVersionManager.fetchCurrentGitHash(),
-      ).thenThrow(exception);
-      final exitCode = await runWithOverrides(command.run);
-      expect(exitCode, ExitCode.software.code);
-      verify(() => progress.fail('$exception')).called(1);
     });
 
     test('does not prompt for confirmation when --force is used', () async {
