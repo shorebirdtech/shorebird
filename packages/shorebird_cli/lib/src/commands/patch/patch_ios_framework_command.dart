@@ -12,13 +12,13 @@ import 'package:shorebird_cli/src/ios.dart';
 import 'package:shorebird_cli/src/logger.dart';
 import 'package:shorebird_cli/src/shorebird_artifact_mixin.dart';
 import 'package:shorebird_cli/src/shorebird_build_mixin.dart';
-import 'package:shorebird_cli/src/shorebird_config_mixin.dart';
-import 'package:shorebird_cli/src/shorebird_environment.dart';
+import 'package:shorebird_cli/src/shorebird_env.dart';
 import 'package:shorebird_cli/src/shorebird_validator.dart';
+import 'package:shorebird_cli/src/shorebird_version_manager.dart';
 import 'package:shorebird_code_push_client/shorebird_code_push_client.dart';
 
 class PatchIosFrameworkCommand extends ShorebirdCommand
-    with ShorebirdConfigMixin, ShorebirdBuildMixin, ShorebirdArtifactMixin {
+    with ShorebirdBuildMixin, ShorebirdArtifactMixin {
   PatchIosFrameworkCommand({
     HashFunction? hashFn,
   }) : _hashFn = hashFn ?? ((m) => sha256.convert(m).toString()) {
@@ -73,7 +73,7 @@ of the iOS app that is using this module.''',
     const releasePlatform = ReleasePlatform.ios;
     final releaseVersion = results['release-version'] as String;
     final dryRun = results['dry-run'] == true;
-    final shorebirdYaml = ShorebirdEnvironment.getShorebirdYaml()!;
+    final shorebirdYaml = shorebirdEnv.getShorebirdYaml()!;
     final appId = shorebirdYaml.getAppId();
     final app = await codePushClientWrapper.getApp(appId: appId);
 
@@ -115,7 +115,8 @@ Please re-run the release command for this version or create a new release.''');
     );
     final String shorebirdFlutterRevision;
     try {
-      shorebirdFlutterRevision = await getShorebirdFlutterRevision();
+      shorebirdFlutterRevision =
+          await shorebirdVersionManager.fetchCurrentGitHash();
       flutterRevisionProgress.complete();
     } catch (error) {
       flutterRevisionProgress.fail('$error');
@@ -138,7 +139,7 @@ Either create a new release using:
   ${lightCyan.wrap('shorebird release')}
 
 Or downgrade your Flutter version and try again using:
-  ${lightCyan.wrap('cd ${ShorebirdEnvironment.flutterDirectory.path}')}
+  ${lightCyan.wrap('cd ${shorebirdEnv.flutterDirectory().path}')}
   ${lightCyan.wrap('git checkout ${release.flutterRevision}')}
 
 Shorebird plans to support this automatically, let us know if it's important to you:

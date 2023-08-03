@@ -3,7 +3,7 @@ import 'dart:io';
 import 'package:mason_logger/mason_logger.dart';
 import 'package:meta/meta.dart';
 import 'package:scoped/scoped.dart';
-import 'package:shorebird_cli/src/shorebird_environment.dart';
+import 'package:shorebird_cli/src/shorebird_env.dart';
 
 // A reference to a [EngineConfig] instance.
 final engineConfigRef = create(() => const EngineConfig.empty());
@@ -111,10 +111,7 @@ class ShorebirdProcess {
   }
 
   String _resolveExecutable(String executable) {
-    if (executable == 'flutter') {
-      return ShorebirdEnvironment.flutterBinaryFile.path;
-    }
-
+    if (executable == 'flutter') return shorebirdEnv.flutterBinaryFile().path;
     return executable;
   }
 

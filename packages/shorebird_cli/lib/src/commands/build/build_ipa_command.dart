@@ -6,7 +6,6 @@ import 'package:shorebird_cli/src/command.dart';
 import 'package:shorebird_cli/src/doctor.dart';
 import 'package:shorebird_cli/src/logger.dart';
 import 'package:shorebird_cli/src/shorebird_build_mixin.dart';
-import 'package:shorebird_cli/src/shorebird_config_mixin.dart';
 import 'package:shorebird_cli/src/shorebird_validator.dart';
 
 /// {@template build_ipa_command}
@@ -14,8 +13,7 @@ import 'package:shorebird_cli/src/shorebird_validator.dart';
 /// Builds an .xcarchive and optionally .ipa for an iOS app to be generated for
 /// App Store submission.
 /// {@endtemplate}
-class BuildIpaCommand extends ShorebirdCommand
-    with ShorebirdConfigMixin, ShorebirdBuildMixin {
+class BuildIpaCommand extends ShorebirdCommand with ShorebirdBuildMixin {
   /// {@macro build_ipa_command}
   BuildIpaCommand() {
     argParser

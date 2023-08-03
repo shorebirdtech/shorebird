@@ -2,13 +2,13 @@ import 'dart:io';
 
 import 'package:mason_logger/mason_logger.dart';
 import 'package:mocktail/mocktail.dart';
-import 'package:path/path.dart' as p;
 import 'package:platform/platform.dart';
 import 'package:scoped/scoped.dart';
 import 'package:shorebird_cli/src/cache.dart';
 import 'package:shorebird_cli/src/commands/commands.dart';
 import 'package:shorebird_cli/src/logger.dart';
 import 'package:shorebird_cli/src/platform.dart';
+import 'package:shorebird_cli/src/shorebird_env.dart';
 import 'package:test/test.dart';
 
 class _MockCache extends Mock implements Cache {}
@@ -19,12 +19,15 @@ class _MockPlatform extends Mock implements Platform {}
 
 class _MockProgress extends Mock implements Progress {}
 
+class _MockShorebirdEnv extends Mock implements ShorebirdEnv {}
+
 void main() {
   group('cache clean', () {
     late Cache cache;
     late Logger logger;
     late Platform platform;
     late Progress progress;
+    late ShorebirdEnv shorebirdEnv;
     late CleanCacheCommand command;
 
     R runWithOverrides<R>(R Function() body) {
@@ -34,6 +37,7 @@ void main() {
           cacheRef.overrideWith(() => cache),
           loggerRef.overrideWith(() => logger),
           platformRef.overrideWith(() => platform),
+          shorebirdEnvRef.overrideWith(() => shorebirdEnv),
         },
       );
     }
@@ -43,18 +47,12 @@ void main() {
       logger = _MockLogger();
       platform = _MockPlatform();
       progress = _MockProgress();
+      shorebirdEnv = _MockShorebirdEnv();
       command = runWithOverrides(CleanCacheCommand.new);
 
       when(() => logger.progress(any())).thenReturn(progress);
-      when(() => platform.script).thenReturn(
-        Uri.file(
-          p.join(
-            Directory.systemTemp.createTempSync().path,
-            'bin',
-            'cache',
-            'shorebird.snapshot',
-          ),
-        ),
+      when(() => shorebirdEnv.shorebirdRoot).thenReturn(
+        Directory.systemTemp.createTempSync(),
       );
     });
 

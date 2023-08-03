@@ -15,9 +15,9 @@ import 'package:shorebird_cli/src/formatters/file_size_formatter.dart';
 import 'package:shorebird_cli/src/logger.dart';
 import 'package:shorebird_cli/src/shorebird_artifact_mixin.dart';
 import 'package:shorebird_cli/src/shorebird_build_mixin.dart';
-import 'package:shorebird_cli/src/shorebird_config_mixin.dart';
-import 'package:shorebird_cli/src/shorebird_environment.dart';
+import 'package:shorebird_cli/src/shorebird_env.dart';
 import 'package:shorebird_cli/src/shorebird_validator.dart';
+import 'package:shorebird_cli/src/shorebird_version_manager.dart';
 import 'package:shorebird_code_push_client/shorebird_code_push_client.dart';
 
 /// {@template patch_aar_command}
@@ -25,7 +25,7 @@ import 'package:shorebird_code_push_client/shorebird_code_push_client.dart';
 /// Create a patch for an Android archive release.
 /// {@endtemplate}
 class PatchAarCommand extends ShorebirdCommand
-    with ShorebirdConfigMixin, ShorebirdBuildMixin, ShorebirdArtifactMixin {
+    with ShorebirdBuildMixin, ShorebirdArtifactMixin {
   /// {@macro patch_aar_command}
   PatchAarCommand({
     HashFunction? hashFn,
@@ -105,7 +105,7 @@ of the Android app that is using this module.''',
 
     await cache.updateAll();
 
-    if (androidPackageName == null) {
+    if (shorebirdEnv.androidPackageName == null) {
       logger.err('Could not find androidPackage in pubspec.yaml.');
       return ExitCode.config.code;
     }
@@ -113,7 +113,7 @@ of the Android app that is using this module.''',
     final buildNumber = results['build-number'] as String;
     final releaseVersion = results['release-version'] as String;
 
-    final shorebirdYaml = ShorebirdEnvironment.getShorebirdYaml()!;
+    final shorebirdYaml = shorebirdEnv.getShorebirdYaml()!;
     final appId = shorebirdYaml.getAppId();
     final app = await codePushClientWrapper.getApp(appId: appId);
 
@@ -148,7 +148,8 @@ Please re-run the release command for this version or create a new release.''');
     );
     final String shorebirdFlutterRevision;
     try {
-      shorebirdFlutterRevision = await getShorebirdFlutterRevision();
+      shorebirdFlutterRevision =
+          await shorebirdVersionManager.fetchCurrentGitHash();
       flutterRevisionProgress.complete();
     } catch (error) {
       flutterRevisionProgress.fail('$error');
@@ -171,7 +172,7 @@ Either create a new release using:
   ${lightCyan.wrap('shorebird release aar')}
 
 Or downgrade your Flutter version and try again using:
-  ${lightCyan.wrap('cd ${ShorebirdEnvironment.flutterDirectory.path}')}
+  ${lightCyan.wrap('cd ${shorebirdEnv.flutterDirectory().path}')}
   ${lightCyan.wrap('git checkout ${release.flutterRevision}')}
 
 Shorebird plans to support this automatically, let us know if it's important to you:
@@ -217,7 +218,7 @@ https://github.com/shorebirdtech/shorebird/issues/472
     final contentDiffs = _aarDiffer.changedFiles(
       releaseAarPath,
       aarArtifactPath(
-        packageName: androidPackageName!,
+        packageName: shorebirdEnv.androidPackageName!,
         buildNumber: buildNumber,
       ),
     );
@@ -247,7 +248,7 @@ https://github.com/shorebirdtech/shorebird/issues/472
     }
 
     final extractedAarDir = await extractAar(
-      packageName: androidPackageName!,
+      packageName: shorebirdEnv.androidPackageName!,
       buildNumber: buildNumber,
       unzipFn: _unzipFn,
     );

@@ -1,13 +1,11 @@
 import 'dart:io';
 
 import 'package:args/args.dart';
-import 'package:http/http.dart' as http;
 import 'package:mason_logger/mason_logger.dart';
 import 'package:mocktail/mocktail.dart';
 import 'package:path/path.dart' as p;
 import 'package:propertylistserialization/propertylistserialization.dart';
 import 'package:scoped/scoped.dart';
-import 'package:shorebird_cli/src/auth/auth.dart';
 import 'package:shorebird_cli/src/commands/build/build.dart';
 import 'package:shorebird_cli/src/doctor.dart';
 import 'package:shorebird_cli/src/logger.dart';
@@ -17,10 +15,6 @@ import 'package:shorebird_cli/src/validators/validators.dart';
 import 'package:test/test.dart';
 
 class _MockArgResults extends Mock implements ArgResults {}
-
-class _MockHttpClient extends Mock implements http.Client {}
-
-class _MockAuth extends Mock implements Auth {}
 
 class _MockDoctor extends Mock implements Doctor {}
 
@@ -42,8 +36,6 @@ class _FakeShorebirdProcess extends Fake implements ShorebirdProcess {}
 void main() {
   group(BuildIpaCommand, () {
     late ArgResults argResults;
-    late http.Client httpClient;
-    late Auth auth;
     late Doctor doctor;
     late Logger logger;
     late ShorebirdProcessResult processResult;
@@ -56,7 +48,6 @@ void main() {
       return runScoped(
         body,
         values: {
-          authRef.overrideWith(() => auth),
           doctorRef.overrideWith(() => doctor),
           loggerRef.overrideWith(() => logger),
           processRef.overrideWith(() => shorebirdProcess),
@@ -71,8 +62,6 @@ void main() {
 
     setUp(() {
       argResults = _MockArgResults();
-      httpClient = _MockHttpClient();
-      auth = _MockAuth();
       doctor = _MockDoctor();
       logger = _MockLogger();
       shorebirdProcess = _MockShorebirdProcess();
@@ -89,8 +78,6 @@ void main() {
       ).thenAnswer((_) async => processResult);
       when(() => argResults['codesign']).thenReturn(true);
       when(() => argResults.rest).thenReturn([]);
-      when(() => auth.isAuthenticated).thenReturn(true);
-      when(() => auth.client).thenReturn(httpClient);
       when(() => logger.progress(any())).thenReturn(_MockProgress());
       when(() => logger.info(any())).thenReturn(null);
       when(() => doctor.iosCommandValidators).thenReturn([flutterValidator]);

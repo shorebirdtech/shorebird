@@ -6,13 +6,15 @@ import 'package:platform/platform.dart';
 import 'package:scoped/scoped.dart';
 import 'package:shorebird_cli/src/platform.dart';
 import 'package:shorebird_cli/src/process.dart';
-import 'package:shorebird_cli/src/shorebird_environment.dart';
+import 'package:shorebird_cli/src/shorebird_env.dart';
 import 'package:shorebird_cli/src/validators/validators.dart';
 import 'package:test/test.dart';
 
 class _MockProcessResult extends Mock implements ShorebirdProcessResult {}
 
 class _MockPlatform extends Mock implements Platform {}
+
+class _MockShorebirdEnv extends Mock implements ShorebirdEnv {}
 
 class _MockShorebirdProcess extends Mock implements ShorebirdProcess {}
 
@@ -40,6 +42,7 @@ Tools • Dart 2.19.6 • DevTools 2.20.1
     late ShorebirdProcessResult shorebirdFlutterVersionProcessResult;
     late ShorebirdProcessResult gitStatusProcessResult;
     late ShorebirdProcess shorebirdProcess;
+    late ShorebirdEnv shorebirdEnv;
     late Platform platform;
 
     R runWithOverrides<R>(R Function() body) {
@@ -48,6 +51,7 @@ Tools • Dart 2.19.6 • DevTools 2.20.1
         values: {
           platformRef.overrideWith(() => platform),
           processRef.overrideWith(() => shorebirdProcess),
+          shorebirdEnvRef.overrideWith(() => shorebirdEnv),
         },
       );
     }
@@ -68,8 +72,12 @@ Tools • Dart 2.19.6 • DevTools 2.20.1
     setUp(() {
       tempDir = setupTempDirectory();
       platform = _MockPlatform();
+      shorebirdEnv = _MockShorebirdEnv();
 
-      ShorebirdEnvironment.flutterRevision = flutterRevision;
+      when(() => shorebirdEnv.flutterRevision).thenReturn(flutterRevision);
+      when(
+        () => shorebirdEnv.flutterDirectory(revision: any(named: 'revision')),
+      ).thenReturn(flutterDirectory(tempDir));
       when(() => platform.script).thenReturn(shorebirdScriptFile(tempDir).uri);
       when(() => platform.environment).thenReturn({});
 
