@@ -2,7 +2,7 @@ import 'package:mason_logger/mason_logger.dart';
 import 'package:shorebird_cli/src/command.dart';
 import 'package:shorebird_cli/src/doctor.dart';
 import 'package:shorebird_cli/src/logger.dart';
-import 'package:shorebird_cli/src/shorebird_environment.dart';
+import 'package:shorebird_cli/src/shorebird_env.dart';
 import 'package:shorebird_cli/src/version.dart';
 
 /// {@template doctor_command}
@@ -34,7 +34,7 @@ class DoctorCommand extends ShorebirdCommand {
     logger.info('''
 
 Shorebird v$packageVersion
-Shorebird Engine • revision ${ShorebirdEnvironment.shorebirdEngineRevision}
+Shorebird Engine • revision ${shorebirdEnv.shorebirdEngineRevision}
 ''');
 
     await doctor.runValidators(doctor.allValidators, applyFixes: shouldFix);

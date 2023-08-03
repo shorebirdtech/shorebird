@@ -2,10 +2,10 @@ import 'dart:async';
 
 import 'package:collection/collection.dart';
 import 'package:mason_logger/mason_logger.dart';
-import 'package:shorebird_cli/src/auth/auth.dart';
+import 'package:shorebird_cli/src/code_push_client_wrapper.dart';
 import 'package:shorebird_cli/src/command.dart';
 import 'package:shorebird_cli/src/logger.dart';
-import 'package:shorebird_cli/src/shorebird_environment.dart';
+import 'package:shorebird_cli/src/shorebird_env.dart';
 import 'package:shorebird_cli/src/shorebird_validator.dart';
 import 'package:shorebird_code_push_client/shorebird_code_push_client.dart';
 
@@ -15,7 +15,7 @@ import 'package:shorebird_code_push_client/shorebird_code_push_client.dart';
 /// {@endtemplate}
 class DeleteCollaboratorsCommand extends ShorebirdCommand {
   /// {@macro delete_collaborators_command}
-  DeleteCollaboratorsCommand({super.buildCodePushClient}) {
+  DeleteCollaboratorsCommand() {
     argParser
       ..addOption(
         _appIdOption,
@@ -47,13 +47,8 @@ class DeleteCollaboratorsCommand extends ShorebirdCommand {
       return e.exitCode.code;
     }
 
-    final client = buildCodePushClient(
-      httpClient: auth.client,
-      hostedUri: ShorebirdEnvironment.hostedUri,
-    );
-
     final appId = results[_appIdOption] as String? ??
-        ShorebirdEnvironment.getShorebirdYaml()?.appId;
+        shorebirdEnv.getShorebirdYaml()?.appId;
     if (appId == null) {
       logger.err(
         '''
@@ -71,7 +66,8 @@ You must either specify an app id via the "--$_appIdOption" flag or run this com
     final getCollaboratorsProgress = logger.progress('Fetching collaborators');
     final List<Collaborator> collaborators;
     try {
-      collaborators = await client.getCollaborators(appId: appId);
+      collaborators = await codePushClientWrapper.codePushClient
+          .getCollaborators(appId: appId);
       getCollaboratorsProgress.complete();
     } catch (error) {
       getCollaboratorsProgress.fail();
@@ -109,7 +105,7 @@ ${styleBold.wrap(lightGreen.wrap('🗑️  Ready to delete an existing collabora
 
     final progress = logger.progress('Deleting collaborator');
     try {
-      await client.deleteCollaborator(
+      await codePushClientWrapper.codePushClient.deleteCollaborator(
         appId: appId,
         userId: collaborator.userId,
       );

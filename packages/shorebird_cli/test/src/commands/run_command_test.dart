@@ -3,25 +3,18 @@ import 'dart:convert';
 import 'dart:io';
 
 import 'package:args/args.dart';
-import 'package:http/http.dart' as http;
 import 'package:mason_logger/mason_logger.dart';
 import 'package:mocktail/mocktail.dart';
 import 'package:scoped/scoped.dart';
-import 'package:shorebird_cli/src/auth/auth.dart';
 import 'package:shorebird_cli/src/commands/run_command.dart';
 import 'package:shorebird_cli/src/doctor.dart';
 import 'package:shorebird_cli/src/logger.dart';
 import 'package:shorebird_cli/src/process.dart';
 import 'package:shorebird_cli/src/shorebird_validator.dart';
 import 'package:shorebird_cli/src/validators/validators.dart';
-import 'package:shorebird_code_push_client/shorebird_code_push_client.dart';
 import 'package:test/test.dart';
 
 class _MockArgResults extends Mock implements ArgResults {}
-
-class _MockHttpClient extends Mock implements http.Client {}
-
-class _MockAuth extends Mock implements Auth {}
 
 class _MockDoctor extends Mock implements Doctor {}
 
@@ -30,8 +23,6 @@ class _MockLogger extends Mock implements Logger {}
 class _MockProgress extends Mock implements Progress {}
 
 class _MockProcess extends Mock implements Process {}
-
-class _MockCodePushClient extends Mock implements CodePushClient {}
 
 class _MockShorebirdProcess extends Mock implements ShorebirdProcess {}
 
@@ -44,12 +35,9 @@ class _MockValidator extends Mock implements Validator {}
 void main() {
   group(RunCommand, () {
     late ArgResults argResults;
-    late http.Client httpClient;
-    late Auth auth;
     late Doctor doctor;
     late Logger logger;
     late Process process;
-    late CodePushClient codePushClient;
     late ShorebirdProcess shorebirdProcess;
     late IOSink ioSink;
     late ShorebirdValidator shorebirdValidator;
@@ -60,7 +48,6 @@ void main() {
       return runScoped(
         body,
         values: {
-          authRef.overrideWith(() => auth),
           doctorRef.overrideWith(() => doctor),
           loggerRef.overrideWith(() => logger),
           processRef.overrideWith(() => shorebirdProcess),
@@ -75,13 +62,10 @@ void main() {
 
     setUp(() {
       argResults = _MockArgResults();
-      httpClient = _MockHttpClient();
-      auth = _MockAuth();
       doctor = _MockDoctor();
       logger = _MockLogger();
       process = _MockProcess();
       shorebirdProcess = _MockShorebirdProcess();
-      codePushClient = _MockCodePushClient();
       ioSink = _MockIOSink();
       shorebirdValidator = _MockShorebirdValidator();
       validator = _MockValidator();
@@ -94,8 +78,6 @@ void main() {
         ),
       ).thenAnswer((_) async => process);
       when(() => argResults.rest).thenReturn([]);
-      when(() => auth.isAuthenticated).thenReturn(true);
-      when(() => auth.client).thenReturn(httpClient);
       when(() => doctor.allValidators).thenReturn([validator]);
       when(() => logger.progress(any())).thenReturn(_MockProgress());
       when(() => ioSink.addStream(any())).thenAnswer((_) async {});
@@ -106,16 +88,7 @@ void main() {
         ),
       ).thenAnswer((_) async {});
 
-      command = runWithOverrides(
-        () => RunCommand(
-          buildCodePushClient: ({
-            required http.Client httpClient,
-            Uri? hostedUri,
-          }) {
-            return codePushClient;
-          },
-        ),
-      )..testArgResults = argResults;
+      command = runWithOverrides(RunCommand.new)..testArgResults = argResults;
     });
 
     test('command is hidden', () {

@@ -6,6 +6,7 @@ import 'package:scoped/scoped.dart';
 import 'package:shorebird_cli/src/commands/commands.dart';
 import 'package:shorebird_cli/src/logger.dart';
 import 'package:shorebird_cli/src/process.dart';
+import 'package:shorebird_cli/src/shorebird_env.dart';
 import 'package:shorebird_cli/src/shorebird_version_manager.dart';
 import 'package:test/test.dart';
 
@@ -16,6 +17,8 @@ class _MockProcessResult extends Mock implements ShorebirdProcessResult {}
 class _MockProgress extends Mock implements Progress {}
 
 class _MockShorebirdProcess extends Mock implements ShorebirdProcess {}
+
+class _MockShorebirdEnv extends Mock implements ShorebirdEnv {}
 
 class _MockShorebirdVersionManager extends Mock
     implements ShorebirdVersionManager {}
@@ -28,6 +31,7 @@ void main() {
     late Logger logger;
     late ShorebirdProcessResult pruneFlutterOriginResult;
     late ShorebirdProcess shorebirdProcess;
+    late ShorebirdEnv shorebirdEnv;
     late ShorebirdVersionManager shorebirdVersionManager;
     late UpgradeCommand command;
 
@@ -37,8 +41,10 @@ void main() {
         values: {
           loggerRef.overrideWith(() => logger),
           processRef.overrideWith(() => shorebirdProcess),
-          shorebirdVersionManagerRef
-              .overrideWith(() => shorebirdVersionManager),
+          shorebirdEnvRef.overrideWith(() => shorebirdEnv),
+          shorebirdVersionManagerRef.overrideWith(
+            () => shorebirdVersionManager,
+          ),
         },
       );
     }
@@ -50,9 +56,13 @@ void main() {
       logger = _MockLogger();
       pruneFlutterOriginResult = _MockProcessResult();
       shorebirdProcess = _MockShorebirdProcess();
+      shorebirdEnv = _MockShorebirdEnv();
       shorebirdVersionManager = _MockShorebirdVersionManager();
       command = runWithOverrides(UpgradeCommand.new);
 
+      when(
+        () => shorebirdEnv.flutterDirectory,
+      ).thenReturn(Directory('flutter'));
       when(
         shorebirdVersionManager.fetchCurrentGitHash,
       ).thenAnswer((_) async => currentShorebirdRevision);

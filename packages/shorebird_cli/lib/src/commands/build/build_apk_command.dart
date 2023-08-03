@@ -6,7 +6,6 @@ import 'package:shorebird_cli/src/command.dart';
 import 'package:shorebird_cli/src/doctor.dart';
 import 'package:shorebird_cli/src/logger.dart';
 import 'package:shorebird_cli/src/shorebird_build_mixin.dart';
-import 'package:shorebird_cli/src/shorebird_config_mixin.dart';
 import 'package:shorebird_cli/src/shorebird_validator.dart';
 
 /// {@template build_apk_command}
@@ -14,8 +13,7 @@ import 'package:shorebird_cli/src/shorebird_validator.dart';
 /// `shorebird build apk`
 /// Build an Android APK file from your app.
 /// {@endtemplate}
-class BuildApkCommand extends ShorebirdCommand
-    with ShorebirdConfigMixin, ShorebirdBuildMixin {
+class BuildApkCommand extends ShorebirdCommand with ShorebirdBuildMixin {
   /// {@macro build_apk_command}
   BuildApkCommand() {
     argParser

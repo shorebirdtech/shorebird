@@ -8,7 +8,7 @@ import 'package:scoped/scoped.dart';
 import 'package:shorebird_cli/src/commands/commands.dart';
 import 'package:shorebird_cli/src/logger.dart';
 import 'package:shorebird_cli/src/process.dart';
-import 'package:shorebird_cli/src/shorebird_environment.dart';
+import 'package:shorebird_cli/src/shorebird_env.dart';
 import 'package:shorebird_cli/src/version.dart';
 
 const executableName = 'shorebird';
@@ -144,7 +144,7 @@ ${lightCyan.wrap('shorebird release android -- --no-pub lib/main.dart')}''',
       logger.info(
         '''
 Shorebird $packageVersion
-Shorebird Engine • revision ${ShorebirdEnvironment.shorebirdEngineRevision}''',
+Shorebird Engine • revision ${shorebirdEnv.shorebirdEngineRevision}''',
       );
       exitCode = ExitCode.success.code;
     } else {
