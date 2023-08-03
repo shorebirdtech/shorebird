@@ -11,7 +11,8 @@ import 'package:shorebird_cli/src/archive_analysis/file_set_diff.dart';
 /// the `.xcasset` catalogs in the Xcode project) and the `flutter_assets`
 /// directory.
 ///
-/// Native changes will appear in the Runner.app/Runner executable.
+/// Native changes will appear in the Runner.app/Runner executable and non
+///   Flutter.framework or App.framework files.
 ///
 /// Dart changes will appear in the App.framework/App executable.
 class IpaDiffer extends ArchiveDiffer {
@@ -34,8 +35,9 @@ class IpaDiffer extends ArchiveDiffer {
 
   @override
   bool containsPotentiallyBreakingNativeDiffs(FileSetDiff fileSetDiff) {
-    // Because the mach-o binaries are signed, they will always have different
-    // hashes, even if the code used to generate them is identical.
+    // Because the mach-o binaries are signed (we believe with in expiration
+    // date), they will always have different hashes, even if the code used to
+    // generate them is identical.
     //
     // TODO(bryanoltman): support mach-o binary diffing.
     // We can do this using the `codesign --remove-signature` command, but this
@@ -63,6 +65,9 @@ class IpaDiffer extends ArchiveDiffer {
     final zipDirectory = ZipDirectory.read(InputFileStream(ipa.path));
     return {
       for (final file in zipDirectory.fileHeaders)
+        // Zip files contain an (optional) crc32 checksum for a file. IPAs seem
+        // to always include this for files, so a quick way for us to tell if
+        // file contents differ is if their checksums differ.
         file.filename: file.crc32!.toString()
     };
   }
