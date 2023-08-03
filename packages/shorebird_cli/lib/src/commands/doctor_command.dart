@@ -34,7 +34,7 @@ class DoctorCommand extends ShorebirdCommand {
     logger.info('''
 
 Shorebird v$packageVersion
-Shorebird Engine • revision ${shorebirdEnv.shorebirdEngineRevision()}
+Shorebird Engine • revision ${shorebirdEnv.shorebirdEngineRevision}
 ''');
 
     await doctor.runValidators(doctor.allValidators, applyFixes: shouldFix);

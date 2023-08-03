@@ -20,7 +20,10 @@ ShorebirdEnv get shorebirdEnv => read(shorebirdEnvRef);
 /// {@endtemplate}
 class ShorebirdEnv {
   /// {@macro shorebird_env}
-  const ShorebirdEnv();
+  const ShorebirdEnv({String? flutterRevisionOverride})
+      : _flutterRevisionOverride = flutterRevisionOverride;
+
+  final String? _flutterRevisionOverride;
 
   /// The root directory of the Shorebird install.
   ///
@@ -29,10 +32,10 @@ class ShorebirdEnv {
     return File(platform.script.toFilePath()).parent.parent.parent;
   }
 
-  String shorebirdEngineRevision({String? flutterRevision}) {
+  String get shorebirdEngineRevision {
     return File(
       p.join(
-        flutterDirectory(revision: flutterRevision).path,
+        flutterDirectory.path,
         'bin',
         'internal',
         'engine.version',
@@ -41,39 +44,34 @@ class ShorebirdEnv {
   }
 
   String get flutterRevision {
-    return File(
-      p.join(shorebirdRoot.path, 'bin', 'internal', 'flutter.version'),
-    ).readAsStringSync().trim();
+    return _flutterRevisionOverride ??
+        File(
+          p.join(shorebirdRoot.path, 'bin', 'internal', 'flutter.version'),
+        ).readAsStringSync().trim();
   }
 
   /// The root of the Shorebird-vended Flutter git checkout.
-  Directory flutterDirectory({String? revision}) {
+  Directory get flutterDirectory {
     return Directory(
       p.join(
         shorebirdRoot.path,
         'bin',
         'cache',
         'flutter',
-        revision ?? flutterRevision,
+        flutterRevision,
       ),
     );
   }
 
   /// The Shorebird-vended Flutter binary.
-  File flutterBinaryFile({String? revision}) {
-    return File(
-      p.join(
-        flutterDirectory(revision: revision).path,
-        'bin',
-        'flutter',
-      ),
-    );
+  File get flutterBinaryFile {
+    return File(p.join(flutterDirectory.path, 'bin', 'flutter'));
   }
 
-  File genSnapshotFile({String? revision}) {
+  File get genSnapshotFile {
     return File(
       p.join(
-        flutterDirectory(revision: revision).path,
+        flutterDirectory.path,
         'bin',
         'cache',
         'artifacts',

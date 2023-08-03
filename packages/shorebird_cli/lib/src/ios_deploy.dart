@@ -33,7 +33,7 @@ class IOSDeploy {
   @visibleForTesting
   static File get iosDeployExecutable => File(
         p.join(
-          shorebirdEnv.flutterDirectory().path,
+          shorebirdEnv.flutterDirectory.path,
           'bin',
           'cache',
           'artifacts',
