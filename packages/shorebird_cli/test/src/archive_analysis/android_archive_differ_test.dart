@@ -228,10 +228,3 @@ void main() {
     });
   });
 }
-
-/// An empty subclass of [AndroidArchiveDiffer] to allow instantiation.
-// class TestAndroidArchiveDiffer extends AndroidArchiveDiffer {
-//   @override
-//   FileSetDiff changedFiles(String oldArchivePath, String newArchivePath) =>
-//       FileSetDiff.empty();
-// }
