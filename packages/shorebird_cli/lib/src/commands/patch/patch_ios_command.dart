@@ -250,49 +250,4 @@ ${summary.join('\n')}
     logger.success('\n✅ Published Patch!');
     return ExitCode.success.code;
   }
-
-  Future<String> _downloadReleaseArtifact(
-    Uri uri, {
-    required http.Client httpClient,
-  }) async {
-    final request = http.Request('GET', uri);
-    final response = await httpClient.send(request);
-
-    if (response.statusCode != HttpStatus.ok) {
-      throw Exception(
-        '''Failed to download release artifact: ${response.statusCode} ${response.reasonPhrase}''',
-      );
-    }
-
-    final tempDir = await Directory.systemTemp.createTemp();
-    final releaseArtifact = File(p.join(tempDir.path, 'artifact.so'));
-    await releaseArtifact.openWrite().addStream(response.stream);
-
-    return releaseArtifact.path;
-  }
-
-  Future<Map<Arch, String>> _downloadReleaseArtifacts({
-    required Map<Arch, ReleaseArtifact> releaseArtifacts,
-    required http.Client httpClient,
-  }) async {
-    final releaseArtifactPaths = <Arch, String>{};
-    final downloadReleaseArtifactProgress = logger.progress(
-      'Downloading release artifacts',
-    );
-    for (final releaseArtifact in releaseArtifacts.entries) {
-      try {
-        final releaseArtifactPath = await _downloadReleaseArtifact(
-          Uri.parse(releaseArtifact.value.url),
-          httpClient: httpClient,
-        );
-        releaseArtifactPaths[releaseArtifact.key] = releaseArtifactPath;
-      } catch (error) {
-        downloadReleaseArtifactProgress.fail('$error');
-        rethrow;
-      }
-    }
-
-    downloadReleaseArtifactProgress.complete();
-    return releaseArtifactPaths;
-  }
 }
