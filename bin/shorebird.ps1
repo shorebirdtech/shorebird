@@ -4,11 +4,12 @@
 # We are running from $shorebirdRootDir\bin
 $shorebirdBinDir = (Get-Item $PSScriptRoot).FullName
 $shorebirdRootDir = (Get-Item $shorebirdBinDir\..\).FullName
+$flutterVersion = Get-Content "$shorebirdBinDir\internal\flutter.version"
 $shorebirdCacheDir = [IO.Path]::Combine($shorebirdRootDir, "bin", "cache")
 $shorebirdCliDir = [IO.Path]::Combine($shorebirdRootDir, "packages", "shorebird_cli")
 $snapshotPath = [IO.Path]::Combine($shorebirdCacheDir, "shorebird.snapshot")
 $stampPath = [IO.Path]::Combine($shorebirdCacheDir, "shorebird.stamp")
-$flutterPath = [IO.Path]::Combine($shorebirdCacheDir, "flutter")
+$flutterPath = [IO.Path]::Combine($shorebirdCacheDir, "flutter", $flutterVersion)
 $flutter = [IO.Path]::Combine($shorebirdCacheDir, "flutter", "bin", "flutter.bat")
 $shorebirdScript = [IO.Path]::Combine($shorebirdCliDir, "bin", "shorebird.dart")
 $dart = [IO.Path]::Combine($flutterPath, "bin", "cache", "dart-sdk", "bin", "dart.exe")
@@ -81,8 +82,6 @@ function Update-Flutter {
     else {
         git -C "$flutterPath" fetch *> $null
     }
-
-    $flutterVersion = Get-Content "$shorebirdBinDir\internal\flutter.version"
 
     # -c to avoid printing a warning about being in a detached head state.
     git -C "$flutterPath" -c advice.detachedHead=false checkout "$flutterVersion" *> $null

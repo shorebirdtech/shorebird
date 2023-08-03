@@ -10,7 +10,7 @@ import 'package:scoped/scoped.dart';
 import 'package:shorebird_cli/src/auth/auth.dart';
 import 'package:shorebird_cli/src/logger.dart';
 import 'package:shorebird_cli/src/shorebird_build_mixin.dart';
-import 'package:shorebird_cli/src/shorebird_environment.dart';
+import 'package:shorebird_cli/src/shorebird_env.dart';
 import 'package:shorebird_cli/src/third_party/flutter_tools/lib/flutter_tools.dart';
 import 'package:shorebird_code_push_client/shorebird_code_push_client.dart';
 
@@ -44,7 +44,7 @@ ScopedRef<CodePushClientWrapper> codePushClientWrapperRef = create(() {
   return CodePushClientWrapper(
     codePushClient: CodePushClient(
       httpClient: auth.client,
-      hostedUri: ShorebirdEnvironment.hostedUri,
+      hostedUri: shorebirdEnv.hostedUri,
     ),
   );
 });
@@ -62,6 +62,25 @@ class CodePushClientWrapper {
   CodePushClientWrapper({required this.codePushClient});
 
   final CodePushClient codePushClient;
+
+  Future<App> createApp({String? appName}) async {
+    late final String displayName;
+    if (appName == null) {
+      String? defaultAppName;
+      try {
+        defaultAppName = shorebirdEnv.getPubspecYaml()?.name;
+      } catch (_) {}
+
+      displayName = logger.prompt(
+        '${lightGreen.wrap('?')} How should we refer to this app?',
+        defaultValue: defaultAppName,
+      );
+    } else {
+      displayName = appName;
+    }
+
+    return codePushClient.createApp(displayName: displayName);
+  }
 
   Future<List<AppMetadata>> getApps() async {
     final fetchAppsProgress = logger.progress('Fetching apps');

@@ -1,10 +1,10 @@
 import 'dart:async';
 
 import 'package:mason_logger/mason_logger.dart';
-import 'package:shorebird_cli/src/auth/auth.dart';
+import 'package:shorebird_cli/src/code_push_client_wrapper.dart';
 import 'package:shorebird_cli/src/command.dart';
 import 'package:shorebird_cli/src/logger.dart';
-import 'package:shorebird_cli/src/shorebird_environment.dart';
+import 'package:shorebird_cli/src/shorebird_env.dart';
 import 'package:shorebird_cli/src/shorebird_validator.dart';
 
 /// {@template delete_app_command}
@@ -14,7 +14,7 @@ import 'package:shorebird_cli/src/shorebird_validator.dart';
 /// {@endtemplate}
 class DeleteAppCommand extends ShorebirdCommand {
   /// {@macro delete_app_command}
-  DeleteAppCommand({super.buildCodePushClient}) {
+  DeleteAppCommand() {
     argParser
       ..addOption(
         'app-id',
@@ -60,7 +60,7 @@ Please use $consoleLink instead.''',
     if (appIdArg == null) {
       String? defaultAppId;
       try {
-        defaultAppId = ShorebirdEnvironment.getShorebirdYaml()?.appId;
+        defaultAppId = shorebirdEnv.getShorebirdYaml()?.appId;
       } catch (_) {}
 
       appId = logger.prompt(
@@ -71,11 +71,6 @@ Please use $consoleLink instead.''',
       appId = appIdArg;
     }
 
-    final client = buildCodePushClient(
-      httpClient: auth.client,
-      hostedUri: ShorebirdEnvironment.hostedUri,
-    );
-
     final shouldProceed =
         force || logger.confirm('Deleting an app is permanent. Continue?');
     if (!shouldProceed) {
@@ -84,7 +79,7 @@ Please use $consoleLink instead.''',
     }
 
     try {
-      await client.deleteApp(appId: appId);
+      await codePushClientWrapper.codePushClient.deleteApp(appId: appId);
     } catch (error) {
       logger.err('$error');
       return ExitCode.software.code;

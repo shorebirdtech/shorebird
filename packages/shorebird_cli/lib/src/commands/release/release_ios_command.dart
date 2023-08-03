@@ -12,9 +12,9 @@ import 'package:shorebird_cli/src/ios.dart';
 import 'package:shorebird_cli/src/logger.dart';
 import 'package:shorebird_cli/src/shorebird_artifact_mixin.dart';
 import 'package:shorebird_cli/src/shorebird_build_mixin.dart';
-import 'package:shorebird_cli/src/shorebird_config_mixin.dart';
-import 'package:shorebird_cli/src/shorebird_environment.dart';
+import 'package:shorebird_cli/src/shorebird_env.dart';
 import 'package:shorebird_cli/src/shorebird_validator.dart';
+import 'package:shorebird_cli/src/shorebird_version_manager.dart';
 import 'package:shorebird_code_push_client/shorebird_code_push_client.dart';
 
 /// {@template release_ios_command}
@@ -22,7 +22,7 @@ import 'package:shorebird_code_push_client/shorebird_code_push_client.dart';
 /// Create new app releases for iOS.
 /// {@endtemplate}
 class ReleaseIosCommand extends ShorebirdCommand
-    with ShorebirdBuildMixin, ShorebirdConfigMixin, ShorebirdArtifactMixin {
+    with ShorebirdBuildMixin, ShorebirdArtifactMixin {
   /// {@macro release_ios_command}
   ReleaseIosCommand({
     IpaReader? ipaReader,
@@ -75,7 +75,7 @@ make smaller updates to your app.
     const releasePlatform = ReleasePlatform.ios;
     final flavor = results['flavor'] as String?;
     final target = results['target'] as String?;
-    final shorebirdYaml = ShorebirdEnvironment.getShorebirdYaml()!;
+    final shorebirdYaml = shorebirdEnv.getShorebirdYaml()!;
     final appId = shorebirdYaml.getAppId(flavor: flavor);
     final app = await codePushClientWrapper.getApp(appId: appId);
 
@@ -165,7 +165,8 @@ ${summary.join('\n')}
     );
     final String shorebirdFlutterRevision;
     try {
-      shorebirdFlutterRevision = await getShorebirdFlutterRevision();
+      shorebirdFlutterRevision =
+          await shorebirdVersionManager.fetchCurrentGitHash();
       flutterRevisionProgress.complete();
     } catch (error) {
       flutterRevisionProgress.fail('$error');

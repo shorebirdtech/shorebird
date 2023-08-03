@@ -6,13 +6,12 @@ import 'package:shorebird_cli/src/cache.dart';
 import 'package:shorebird_cli/src/command.dart';
 import 'package:shorebird_cli/src/logger.dart';
 import 'package:shorebird_cli/src/platform.dart';
-import 'package:shorebird_cli/src/shorebird_config_mixin.dart';
 
 /// {@template clean_cache_command}
 /// `shorebird cache clean`
 /// Clears the Shorebird cache directory.
 /// {@endtemplate}
-class CleanCacheCommand extends ShorebirdCommand with ShorebirdConfigMixin {
+class CleanCacheCommand extends ShorebirdCommand {
   /// {@macro clean_cache_command}
   CleanCacheCommand();
 

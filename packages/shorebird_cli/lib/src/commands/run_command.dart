@@ -14,7 +14,7 @@ import 'package:shorebird_cli/src/shorebird_validator.dart';
 /// {@endtemplate}
 class RunCommand extends ShorebirdCommand {
   /// {@macro run_command}
-  RunCommand({super.buildCodePushClient}) {
+  RunCommand() {
     argParser
       ..addOption(
         'device-id',
