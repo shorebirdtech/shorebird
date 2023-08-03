@@ -29,9 +29,14 @@ class ShorebirdEnv {
     return File(platform.script.toFilePath()).parent.parent.parent;
   }
 
-  String get shorebirdEngineRevision {
+  String shorebirdEngineRevision({String? flutterRevision}) {
     return File(
-      p.join(flutterDirectory.path, 'bin', 'internal', 'engine.version'),
+      p.join(
+        flutterDirectory(revision: flutterRevision).path,
+        'bin',
+        'internal',
+        'engine.version',
+      ),
     ).readAsStringSync().trim();
   }
 
@@ -42,32 +47,33 @@ class ShorebirdEnv {
   }
 
   /// The root of the Shorebird-vended Flutter git checkout.
-  Directory get flutterDirectory {
+  Directory flutterDirectory({String? revision}) {
     return Directory(
       p.join(
         shorebirdRoot.path,
         'bin',
         'cache',
         'flutter',
+        revision ?? flutterRevision,
       ),
     );
   }
 
   /// The Shorebird-vended Flutter binary.
-  File get flutterBinaryFile {
+  File flutterBinaryFile({String? revision}) {
     return File(
       p.join(
-        flutterDirectory.path,
+        flutterDirectory(revision: revision).path,
         'bin',
         'flutter',
       ),
     );
   }
 
-  File get genSnapshotFile {
+  File genSnapshotFile({String? revision}) {
     return File(
       p.join(
-        flutterDirectory.path,
+        flutterDirectory(revision: revision).path,
         'bin',
         'cache',
         'artifacts',

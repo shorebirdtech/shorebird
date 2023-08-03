@@ -13,6 +13,7 @@ class _MockPlatform extends Mock implements Platform {}
 
 void main() {
   group(ShorebirdEnv, () {
+    const flutterRevision = 'test-flutter-revision';
     late Platform platform;
     late Directory shorebirdRoot;
     late Uri platformScript;
@@ -32,6 +33,11 @@ void main() {
       platformScript = Uri.file(
         p.join(shorebirdRoot.path, 'bin', 'cache', 'shorebird.snapshot'),
       );
+      File(
+        p.join(shorebirdRoot.path, 'bin', 'internal', 'flutter.version'),
+      )
+        ..createSync(recursive: true)
+        ..writeAsStringSync(flutterRevision, flush: true);
       platform = _MockPlatform();
       shorebirdEnv = runWithOverrides(ShorebirdEnv.new);
 
@@ -40,15 +46,38 @@ void main() {
     });
 
     group('flutterBinaryFile', () {
-      test('returns correct path', () {
+      test('returns correct path using the default revision', () {
         expect(
-          runWithOverrides(() => shorebirdEnv.flutterBinaryFile.path),
+          runWithOverrides(() => shorebirdEnv.flutterBinaryFile().path),
           equals(
             p.join(
               shorebirdRoot.path,
               'bin',
               'cache',
               'flutter',
+              flutterRevision,
+              'bin',
+              'flutter',
+            ),
+          ),
+        );
+      });
+
+      test('returns correct path using a custom revision', () {
+        const customFlutterRevision = 'custom-flutter-revision';
+        expect(
+          runWithOverrides(
+            () => shorebirdEnv
+                .flutterBinaryFile(revision: customFlutterRevision)
+                .path,
+          ),
+          equals(
+            p.join(
+              shorebirdRoot.path,
+              'bin',
+              'cache',
+              'flutter',
+              customFlutterRevision,
               'bin',
               'flutter',
             ),
@@ -58,15 +87,42 @@ void main() {
     });
 
     group('genSnapshotFile', () {
-      test('returns correct path', () {
+      test('returns correct path using the default revision', () {
         expect(
-          runWithOverrides(() => shorebirdEnv.genSnapshotFile.path),
+          runWithOverrides(() => shorebirdEnv.genSnapshotFile().path),
           equals(
             p.join(
               shorebirdRoot.path,
               'bin',
               'cache',
               'flutter',
+              flutterRevision,
+              'bin',
+              'cache',
+              'artifacts',
+              'engine',
+              'ios-release',
+              'gen_snapshot_arm64',
+            ),
+          ),
+        );
+      });
+
+      test('returns correct path using a custom revision', () {
+        const customFlutterRevision = 'custom-flutter-revision';
+        expect(
+          runWithOverrides(
+            () => shorebirdEnv
+                .genSnapshotFile(revision: customFlutterRevision)
+                .path,
+          ),
+          equals(
+            p.join(
+              shorebirdRoot.path,
+              'bin',
+              'cache',
+              'flutter',
+              customFlutterRevision,
               'bin',
               'cache',
               'artifacts',
@@ -364,24 +420,52 @@ test-revision
     });
 
     group('shorebirdEngineRevision', () {
-      test('returns correct revision', () {
-        const revision = 'test-revision';
+      test('returns correct revision using default flutter revision', () {
+        const engineRevision = 'test-revision';
         File(
           p.join(
             shorebirdRoot.path,
             'bin',
             'cache',
             'flutter',
+            flutterRevision,
             'bin',
             'internal',
             'engine.version',
           ),
         )
           ..createSync(recursive: true)
-          ..writeAsStringSync(revision, flush: true);
+          ..writeAsStringSync(engineRevision, flush: true);
         expect(
-          runWithOverrides(() => shorebirdEnv.shorebirdEngineRevision),
-          equals(revision),
+          runWithOverrides(() => shorebirdEnv.shorebirdEngineRevision()),
+          equals(engineRevision),
+        );
+      });
+
+      test('returns correct revision using a custom flutter revision', () {
+        const engineRevision = 'test-revision';
+        const customFlutterRevision = 'custom-flutter-revision';
+        File(
+          p.join(
+            shorebirdRoot.path,
+            'bin',
+            'cache',
+            'flutter',
+            customFlutterRevision,
+            'bin',
+            'internal',
+            'engine.version',
+          ),
+        )
+          ..createSync(recursive: true)
+          ..writeAsStringSync(engineRevision, flush: true);
+        expect(
+          runWithOverrides(
+            () => shorebirdEnv.shorebirdEngineRevision(
+              flutterRevision: customFlutterRevision,
+            ),
+          ),
+          equals(engineRevision),
         );
       });
     });
