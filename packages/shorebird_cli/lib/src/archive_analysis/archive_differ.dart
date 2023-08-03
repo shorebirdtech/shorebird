@@ -1,3 +1,6 @@
+import 'dart:io';
+
+import 'package:archive/archive_io.dart';
 import 'package:collection/collection.dart';
 import 'package:path/path.dart' as p;
 import 'package:shorebird_cli/src/archive_analysis/archive_analysis.dart';
@@ -13,10 +16,6 @@ abstract class ArchiveDiffer {
     'AssetManifest.json',
     'NOTICES.Z',
   };
-
-  /// Files that have been added, removed, or that have changed between the
-  /// archives at the two provided paths.
-  FileSetDiff changedFiles(String oldArchivePath, String newArchivePath);
 
   /// Whether there are asset differences between the archives that may cause
   /// issues when patching a release.
@@ -72,4 +71,20 @@ abstract class ArchiveDiffer {
         removedPaths: fileSetDiff.removedPaths.where(isNativeFilePath).toSet(),
         changedPaths: fileSetDiff.changedPaths.where(isNativeFilePath).toSet(),
       );
+
+  /// Files that have been added, removed, or that have changed between the
+  /// archives at the two provided paths.
+  FileSetDiff changedFiles(String oldArchivePath, String newArchivePath) =>
+      FileSetDiff.fromPathHashes(
+        oldPathHashes: _fileHashes(File(oldArchivePath)),
+        newPathHashes: _fileHashes(File(newArchivePath)),
+      );
+
+  PathHashes _fileHashes(File aar) {
+    final zipDirectory = ZipDirectory.read(InputFileStream(aar.path));
+    return {
+      for (final file in zipDirectory.fileHeaders)
+        file.filename: file.crc32!.toString()
+    };
+  }
 }

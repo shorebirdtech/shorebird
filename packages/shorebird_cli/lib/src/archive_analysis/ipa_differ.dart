@@ -1,6 +1,3 @@
-import 'dart:io';
-
-import 'package:archive/archive_io.dart';
 import 'package:path/path.dart' as p;
 import 'package:shorebird_cli/src/archive_analysis/archive_differ.dart';
 import 'package:shorebird_cli/src/archive_analysis/file_set_diff.dart';
@@ -20,13 +17,6 @@ class IpaDiffer extends ArchiveDiffer {
     'Flutter.framework/Flutter',
   };
   static RegExp appRegex = RegExp(r'^Payload/[\w\-. ]+.app/[\w\-. ]+$');
-
-  @override
-  FileSetDiff changedFiles(String oldArchivePath, String newArchivePath) =>
-      FileSetDiff.fromPathHashes(
-        oldPathHashes: _fileHashes(File(oldArchivePath)),
-        newPathHashes: _fileHashes(File(newArchivePath)),
-      );
 
   @override
   bool containsPotentiallyBreakingAssetDiffs(FileSetDiff fileSetDiff) =>
@@ -58,12 +48,4 @@ class IpaDiffer extends ArchiveDiffer {
 
   @override
   bool isNativeFilePath(String filePath) => appRegex.hasMatch(filePath);
-
-  PathHashes _fileHashes(File ipa) {
-    final zipDirectory = ZipDirectory.read(InputFileStream(ipa.path));
-    return {
-      for (final file in zipDirectory.fileHeaders)
-        file.filename: file.crc32!.toString()
-    };
-  }
 }
