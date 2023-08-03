@@ -328,7 +328,7 @@ mixin ShorebirdBuildMixin on ShorebirdCommand {
     ];
 
     final result = await process.run(
-      shorebirdEnv.genSnapshotFile().path,
+      shorebirdEnv.genSnapshotFile.path,
       arguments,
     );
 
