@@ -4,9 +4,9 @@ Some of their contents has been removed to reduce the size of the files. All .dy
 
 Files:
 
-- base.ipa is meant to represent an ipa uploaded as part of a release.
+- base.ipa is meant to represent an ipa uploaded as part of a release. App.framework/App and Flutter.framework/Flutter have been removed to save space.
 - no_version.ipa an .ipa with the version info removed from the Info.plist, along with several other files to save space.
 - no_plist.ipa an .ipa with the Info.plist (and many other parts) removed.
 - app_file_space.ipa is an .ipa with a space in the .app file name.
-- asset_changes.ipa is built from the same codebase as base.ipa with a change made to one of the assets.
-- dart_changes.ipa is built from the same codebase as base.ipa with a change made to the dart code.
+- asset_changes.ipa is built from the same codebase as base.ipa with a change made to one of the assets. App.framework/App and Flutter.framework/Flutter have been removed to save space.
+- dart_changes.ipa is built from the same codebase as base.ipa with a change made to the dart code. App.framework/App and Flutter.framework/Flutter have been removed to save space.

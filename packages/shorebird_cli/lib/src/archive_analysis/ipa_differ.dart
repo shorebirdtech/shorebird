@@ -12,10 +12,16 @@ import 'package:shorebird_cli/src/archive_analysis/file_set_diff.dart';
 /// the `.xcasset` catalogs in the Xcode project) and the `flutter_assets`
 /// directory.
 ///
-/// Native and Dart changes appear in `.symbols` files. These files change
-/// between builds even if no code has changed, so we can't rely on them to
-/// tell us whether changes have actually been made.
+/// Native changes will appear in the Runner.app/Runner executable.
+///
+/// Dart changes will appear in the App.framework/App executable.
 class IpaDiffer extends ArchiveDiffer {
+  static const binaryFiles = {
+    'App.framework/App',
+    'Flutter.framework/Flutter',
+  };
+  static RegExp appRegex = RegExp(r'^Payload/[\w\-. ]+.app/[\w\-. ]+$');
+
   String _hash(List<int> bytes) => sha256.convert(bytes).toString();
 
   @override
@@ -31,8 +37,11 @@ class IpaDiffer extends ArchiveDiffer {
 
   @override
   bool containsPotentiallyBreakingNativeDiffs(FileSetDiff fileSetDiff) {
-    // Because every IPA will have changed .symbols files, we can't reliably
-    // tell whether potentially problematic native changes have been made.
+    // TODO(bryanoltman): Implement this
+    // We will need to unsign executable files (App.framework/app,
+    // Runner.app/Runner) to determine whether native changes have been made. If
+    // these files are signed, they will be different between builds from
+    // identical code bases.
     return false;
   }
 
@@ -46,18 +55,45 @@ class IpaDiffer extends ArchiveDiffer {
   }
 
   @override
-  bool isDartFilePath(String filePath) => p.extension(filePath) == '.symbols';
+  bool isDartFilePath(String filePath) =>
+      filePath.endsWith('App.framework/App');
 
   @override
-  bool isNativeFilePath(String filePath) => p.extension(filePath) == '.symbols';
+  bool isNativeFilePath(String filePath) => appRegex.hasMatch(filePath);
 
   PathHashes _fileHashes(File ipa) {
     final files = ZipDecoder()
         .decodeBuffer(InputFileStream(ipa.path))
         .files
         .where((file) => file.isFile);
-    return {
-      for (final file in files) file.name: _hash(file.content as List<int>)
-    };
+    final namesToHashes = <String, String>{};
+    for (final file in files) {
+      String hash;
+      if (_shouldUnsignFile(file.name)) {
+        final tempDir = Directory.systemTemp.createTempSync();
+        final outPath = p.join(tempDir.path, file.name);
+        final outputStream = OutputFileStream(outPath);
+        file.writeContent(outputStream);
+        outputStream.close();
+
+        Process.runSync('codesign', [
+          '--remove-signature',
+          outPath,
+        ]);
+
+        final outFile = File(outPath);
+        hash = _hash(outFile.readAsBytesSync());
+      } else {
+        hash = _hash(file.content as List<int>);
+      }
+      namesToHashes[file.name] = hash;
+    }
+
+    return namesToHashes;
   }
+
+  bool _shouldUnsignFile(String filePath) =>
+      filePath.endsWith('App.framework/App') ||
+      filePath.endsWith('Flutter.framework/Flutter') ||
+      appRegex.hasMatch(filePath);
 }

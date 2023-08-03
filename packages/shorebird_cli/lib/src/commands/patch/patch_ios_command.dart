@@ -2,7 +2,9 @@ import 'dart:async';
 import 'dart:io' hide Platform;
 
 import 'package:crypto/crypto.dart';
+import 'package:http/http.dart' as http;
 import 'package:mason_logger/mason_logger.dart';
+import 'package:path/path.dart' as p;
 import 'package:platform/platform.dart';
 import 'package:shorebird_cli/src/archive_analysis/archive_analysis.dart';
 import 'package:shorebird_cli/src/code_push_client_wrapper.dart';
@@ -145,6 +147,20 @@ class PatchIosCommand extends ShorebirdCommand
       releaseVersion: releaseVersion,
     );
 
+    // final ipaAsset = await codePushClientWrapper.getReleaseArtifact(
+    //   appId: appId,
+    //   releaseId: release.id,
+    //   arch: 'ipa',
+    //   platform: ReleasePlatform.ios,
+    // );
+    // final releaseIpa = await _downloadReleaseArtifact(
+    //   Uri.parse(ipaAsset.url),
+    //   httpClient: http.Client(),
+    // );
+
+    // final diff = IpaDiffer().changedFiles(releaseIpa, ipaPath);
+    // print('diff is ${diff.prettyString}');
+
     if (release.platformStatuses[ReleasePlatform.ios] == ReleaseStatus.draft) {
       logger.err('''
 Release $releaseVersion is in an incomplete state. It's possible that the original release was terminated or failed to complete.
@@ -246,5 +262,50 @@ ${summary.join('\n')}
 
     logger.success('\n✅ Published Patch!');
     return ExitCode.success.code;
+  }
+
+  Future<String> _downloadReleaseArtifact(
+    Uri uri, {
+    required http.Client httpClient,
+  }) async {
+    final request = http.Request('GET', uri);
+    final response = await httpClient.send(request);
+
+    if (response.statusCode != HttpStatus.ok) {
+      throw Exception(
+        '''Failed to download release artifact: ${response.statusCode} ${response.reasonPhrase}''',
+      );
+    }
+
+    final tempDir = await Directory.systemTemp.createTemp();
+    final releaseArtifact = File(p.join(tempDir.path, 'artifact.so'));
+    await releaseArtifact.openWrite().addStream(response.stream);
+
+    return releaseArtifact.path;
+  }
+
+  Future<Map<Arch, String>> _downloadReleaseArtifacts({
+    required Map<Arch, ReleaseArtifact> releaseArtifacts,
+    required http.Client httpClient,
+  }) async {
+    final releaseArtifactPaths = <Arch, String>{};
+    final downloadReleaseArtifactProgress = logger.progress(
+      'Downloading release artifacts',
+    );
+    for (final releaseArtifact in releaseArtifacts.entries) {
+      try {
+        final releaseArtifactPath = await _downloadReleaseArtifact(
+          Uri.parse(releaseArtifact.value.url),
+          httpClient: httpClient,
+        );
+        releaseArtifactPaths[releaseArtifact.key] = releaseArtifactPath;
+      } catch (error) {
+        downloadReleaseArtifactProgress.fail('$error');
+        rethrow;
+      }
+    }
+
+    downloadReleaseArtifactProgress.complete();
+    return releaseArtifactPaths;
   }
 }
