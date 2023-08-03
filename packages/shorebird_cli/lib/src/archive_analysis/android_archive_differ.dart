@@ -1,26 +1,30 @@
-import 'package:collection/collection.dart';
 import 'package:path/path.dart' as p;
 import 'package:shorebird_cli/src/archive_analysis/archive_analysis.dart';
 import 'package:shorebird_cli/src/archive_analysis/archive_differ.dart';
 
-abstract class AndroidArchiveDiffer extends ArchiveDiffer {
-  @override
-  bool containsPotentiallyBreakingAssetDiffs(FileSetDiff fileSetDiff) {
-    final assetsDiff = assetsFileSetDiff(fileSetDiff);
-
-    // If assets were added, we need to warn the user about asset differences.
-    if (assetsDiff.addedPaths.isNotEmpty) {
-      return true;
-    }
-
-    return assetsDiff.changedPaths
-        .whereNot(
-          (path) =>
-              ArchiveDiffer.assetFileNamesToIgnore.contains(p.basename(path)),
-        )
-        .isNotEmpty;
-  }
-
+/// Finds differences between two Android archives (either AABs or AARs).
+///
+/// Types of changes we care about:
+///   - Dart code changes
+///      - libapp.so will be different
+///   - Java/Kotlin code changes
+///      - .dex files will be different
+///   - Assets
+///      - **/assets/** will be different
+///      - AssetManifest.json will have changed if assets have been added or
+///        removed
+///
+/// Changes we don't care about:
+///   - Anything in META-INF
+///   - BUNDLE-METADATA/com.android.tools.build.libraries/dependencies.pb
+///      - This seems to change with every build, regardless of whether any code
+///        or assets were changed.
+///
+/// See https://developer.android.com/guide/app-bundle/app-bundle-format and
+/// /// https://developer.android.com/studio/projects/android-library.html#aar-contents
+/// for reference. Note that .aars produced by Flutter modules do not contain
+/// .jar files, so only asset and dart changes are possible.
+class AndroidArchiveDiffer extends ArchiveDiffer {
   @override
   bool containsPotentiallyBreakingNativeDiffs(FileSetDiff fileSetDiff) =>
       nativeFileSetDiff(fileSetDiff).isNotEmpty;
