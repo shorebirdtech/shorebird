@@ -30,7 +30,7 @@ import 'package:test/test.dart';
 
 class _FakeBaseRequest extends Fake implements http.BaseRequest {}
 
-class _MockAabDiffer extends Mock implements AabDiffer {}
+class _MockAndroidArchiveDiffer extends Mock implements AndroidArchiveDiffer {}
 
 class _MockArgResults extends Mock implements ArgResults {}
 
@@ -120,7 +120,7 @@ flutter:
   assets:
     - shorebird.yaml''';
 
-    late AabDiffer aabDiffer;
+    late AndroidArchiveDiffer archiveDiffer;
     late ArgResults argResults;
     late Auth auth;
     late Bundletool bundletool;
@@ -204,7 +204,7 @@ flutter:
     });
 
     setUp(() {
-      aabDiffer = _MockAabDiffer();
+      archiveDiffer = _MockAndroidArchiveDiffer();
       argResults = _MockArgResults();
       auth = _MockAuth();
       bundletool = _MockBundleTool();
@@ -229,7 +229,7 @@ flutter:
       shorebirdVersionManager = _MockShorebirdVersionManager();
       command = runWithOverrides(
         () => PatchAndroidCommand(
-          aabDiffer: aabDiffer,
+          archiveDiffer: archiveDiffer,
           httpClient: httpClient,
         ),
       )..testArgResults = argResults;
@@ -261,19 +261,19 @@ flutter:
       when(() => patchProcessResult.exitCode).thenReturn(ExitCode.success.code);
 
       when(
-        () => aabDiffer.changedFiles(any(), any()),
+        () => archiveDiffer.changedFiles(any(), any()),
       ).thenReturn(FileSetDiff.empty());
       when(
-        () => aabDiffer.assetsFileSetDiff(any()),
+        () => archiveDiffer.assetsFileSetDiff(any()),
       ).thenReturn(FileSetDiff.empty());
       when(
-        () => aabDiffer.nativeFileSetDiff(any()),
+        () => archiveDiffer.nativeFileSetDiff(any()),
       ).thenReturn(FileSetDiff.empty());
       when(
-        () => aabDiffer.containsPotentiallyBreakingAssetDiffs(any()),
+        () => archiveDiffer.containsPotentiallyBreakingAssetDiffs(any()),
       ).thenReturn(false);
       when(
-        () => aabDiffer.containsPotentiallyBreakingNativeDiffs(any()),
+        () => archiveDiffer.containsPotentiallyBreakingNativeDiffs(any()),
       ).thenReturn(false);
       when(() => argResults.rest).thenReturn([]);
       when(() => argResults['arch']).thenReturn(arch);
@@ -630,7 +630,7 @@ https://github.com/shorebirdtech/shorebird/issues/472
     test(
       'prints warning if differ cannot determine patch differences',
       () async {
-        when(() => aabDiffer.changedFiles(any(), any()))
+        when(() => archiveDiffer.changedFiles(any(), any()))
             .thenThrow(DiffFailedException());
         final tempDir = setUpTempDir();
         setUpTempArtifacts(tempDir);
@@ -650,7 +650,7 @@ https://github.com/shorebirdtech/shorebird/issues/472
 
     test('prompts user to continue when Java/Kotlin code changes are detected',
         () async {
-      when(() => aabDiffer.containsPotentiallyBreakingNativeDiffs(any()))
+      when(() => archiveDiffer.containsPotentiallyBreakingNativeDiffs(any()))
           .thenReturn(true);
 
       final tempDir = setUpTempDir();
@@ -676,7 +676,7 @@ https://github.com/shorebirdtech/shorebird/issues/472
     test(
         '''exits if user decides to not proceed after being warned of Java/Kotlin changes''',
         () async {
-      when(() => aabDiffer.containsPotentiallyBreakingNativeDiffs(any()))
+      when(() => archiveDiffer.containsPotentiallyBreakingNativeDiffs(any()))
           .thenReturn(true);
       when(() => logger.confirm(any())).thenReturn(false);
 
@@ -707,7 +707,7 @@ https://github.com/shorebirdtech/shorebird/issues/472
     });
 
     test('prompts user to continue when asset changes are detected', () async {
-      when(() => aabDiffer.containsPotentiallyBreakingAssetDiffs(any()))
+      when(() => archiveDiffer.containsPotentiallyBreakingAssetDiffs(any()))
           .thenReturn(true);
 
       final tempDir = setUpTempDir();
@@ -733,7 +733,7 @@ https://github.com/shorebirdtech/shorebird/issues/472
     test(
       '''exits if user decides to not proceed after being warned of asset changes''',
       () async {
-        when(() => aabDiffer.containsPotentiallyBreakingAssetDiffs(any()))
+        when(() => archiveDiffer.containsPotentiallyBreakingAssetDiffs(any()))
             .thenReturn(true);
         when(
           () => logger.confirm(any(that: contains('Continue anyways?'))),
@@ -798,7 +798,7 @@ https://github.com/shorebirdtech/shorebird/issues/472
 
     test('does not prompt on --force', () async {
       when(() => argResults['force']).thenReturn(true);
-      when(() => aabDiffer.containsPotentiallyBreakingAssetDiffs(any()))
+      when(() => archiveDiffer.containsPotentiallyBreakingAssetDiffs(any()))
           .thenReturn(true);
       final tempDir = setUpTempDir();
       setUpTempArtifacts(tempDir);

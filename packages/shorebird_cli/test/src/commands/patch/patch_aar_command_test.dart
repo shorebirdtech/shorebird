@@ -7,6 +7,7 @@ import 'package:mocktail/mocktail.dart';
 import 'package:path/path.dart' as p;
 import 'package:platform/platform.dart';
 import 'package:scoped/scoped.dart';
+import 'package:shorebird_cli/src/archive_analysis/android_archive_differ.dart';
 import 'package:shorebird_cli/src/archive_analysis/archive_analysis.dart';
 import 'package:shorebird_cli/src/auth/auth.dart';
 import 'package:shorebird_cli/src/cache.dart' show Cache, cacheRef;
@@ -25,7 +26,7 @@ import 'package:test/test.dart';
 
 class _FakeBaseRequest extends Fake implements http.BaseRequest {}
 
-class _MockAarDiffer extends Mock implements AarDiffer {}
+class _MockAndroidArchiveDiffer extends Mock implements AndroidArchiveDiffer {}
 
 class _MockArgResults extends Mock implements ArgResults {}
 
@@ -99,7 +100,7 @@ void main() {
       platformStatuses: {},
     );
 
-    late AarDiffer aarDiffer;
+    late AndroidArchiveDiffer archiveDiffer;
     late ArgResults argResults;
     late Auth auth;
     late CodePushClientWrapper codePushClientWrapper;
@@ -175,7 +176,7 @@ void main() {
     });
 
     setUp(() {
-      aarDiffer = _MockAarDiffer();
+      archiveDiffer = _MockAndroidArchiveDiffer();
       argResults = _MockArgResults();
       auth = _MockAuth();
       codePushClientWrapper = _MockCodePushClientWrapper();
@@ -227,10 +228,10 @@ void main() {
       });
 
       when(
-        () => aarDiffer.changedFiles(any(), any()),
+        () => archiveDiffer.changedFiles(any(), any()),
       ).thenReturn(FileSetDiff.empty());
       when(
-        () => aarDiffer.containsPotentiallyBreakingAssetDiffs(any()),
+        () => archiveDiffer.containsPotentiallyBreakingAssetDiffs(any()),
       ).thenReturn(false);
       when(() => argResults.rest).thenReturn([]);
       when(() => argResults['channel']).thenReturn(channelName);
@@ -308,7 +309,7 @@ void main() {
 
       command = runWithOverrides(
         () => PatchAarCommand(
-          aarDiffer: aarDiffer,
+          archiveDiffer: archiveDiffer,
           httpClient: httpClient,
           unzipFn: (_, __) async {},
         ),
@@ -529,7 +530,7 @@ https://github.com/shorebirdtech/shorebird/issues/472
     });
 
     test('prompts user to continue when asset changes are detected', () async {
-      when(() => aarDiffer.containsPotentiallyBreakingAssetDiffs(any()))
+      when(() => archiveDiffer.containsPotentiallyBreakingAssetDiffs(any()))
           .thenReturn(true);
 
       final tempDir = setUpTempDir();
@@ -578,7 +579,7 @@ https://github.com/shorebirdtech/shorebird/issues/472
     test(
       '''exits if user decides to not proceed after being warned of non-dart changes''',
       () async {
-        when(() => aarDiffer.containsPotentiallyBreakingAssetDiffs(any()))
+        when(() => archiveDiffer.containsPotentiallyBreakingAssetDiffs(any()))
             .thenReturn(true);
         when(
           () => logger.confirm(any(that: contains('Continue anyways?'))),
