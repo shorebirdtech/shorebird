@@ -11,7 +11,6 @@ import 'package:shorebird_cli/src/shorebird_build_mixin.dart';
 import 'package:shorebird_cli/src/shorebird_env.dart';
 import 'package:shorebird_cli/src/shorebird_release_version_mixin.dart';
 import 'package:shorebird_cli/src/shorebird_validator.dart';
-import 'package:shorebird_cli/src/shorebird_version_manager.dart';
 import 'package:shorebird_code_push_client/shorebird_code_push_client.dart';
 
 /// {@template release_android_command}
@@ -161,19 +160,6 @@ ${summary.join('\n')}
       }
     }
 
-    final flutterRevisionProgress = logger.progress(
-      'Fetching Flutter revision',
-    );
-    final String shorebirdFlutterRevision;
-    try {
-      shorebirdFlutterRevision =
-          await shorebirdVersionManager.fetchCurrentGitHash();
-      flutterRevisionProgress.complete();
-    } catch (error) {
-      flutterRevisionProgress.fail('$error');
-      return ExitCode.software.code;
-    }
-
     final Release release;
     if (existingRelease != null) {
       release = existingRelease;
@@ -187,7 +173,7 @@ ${summary.join('\n')}
       release = await codePushClientWrapper.createRelease(
         appId: appId,
         version: releaseVersion,
-        flutterRevision: shorebirdFlutterRevision,
+        flutterRevision: shorebirdEnv.flutterRevision,
         platform: platform,
       );
     }
