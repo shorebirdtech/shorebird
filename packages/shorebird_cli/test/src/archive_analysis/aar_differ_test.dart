@@ -16,7 +16,7 @@ void main() {
     differ = AarDiffer();
   });
 
-  group('changedPaths', () {
+  group('changedFiles', () {
     test('finds no differences between the same aar', () {
       expect(differ.changedFiles(baseAarPath, baseAarPath), isEmpty);
     });
