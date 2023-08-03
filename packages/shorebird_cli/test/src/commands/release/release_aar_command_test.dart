@@ -4,6 +4,7 @@ import 'package:args/args.dart';
 import 'package:http/http.dart' as http;
 import 'package:mason_logger/mason_logger.dart';
 import 'package:mocktail/mocktail.dart';
+import 'package:path/path.dart' as p;
 import 'package:platform/platform.dart';
 import 'package:scoped/scoped.dart';
 import 'package:shorebird_cli/src/auth/auth.dart';
@@ -14,6 +15,7 @@ import 'package:shorebird_cli/src/java.dart';
 import 'package:shorebird_cli/src/logger.dart';
 import 'package:shorebird_cli/src/platform.dart';
 import 'package:shorebird_cli/src/process.dart';
+import 'package:shorebird_cli/src/shorebird_build_mixin.dart';
 import 'package:shorebird_cli/src/shorebird_env.dart';
 import 'package:shorebird_cli/src/shorebird_validator.dart';
 import 'package:shorebird_cli/src/shorebird_version_manager.dart';
@@ -108,6 +110,36 @@ void main() {
           ),
         },
       );
+    }
+
+    Directory setUpTempArtifacts() {
+      final dir = Directory.systemTemp.createTempSync();
+      final aarDir = p.join(
+        dir.path,
+        'build',
+        'host',
+        'outputs',
+        'repo',
+        'com',
+        'example',
+        'my_flutter_module',
+        'flutter_release',
+        buildNumber,
+      );
+      final aarPath = p.join(aarDir, 'flutter_release-$buildNumber.aar');
+      for (final archMetadata
+          in ShorebirdBuildMixin.allAndroidArchitectures.values) {
+        final artifactPath = p.join(
+          aarDir,
+          'flutter_release-$buildNumber',
+          'jni',
+          archMetadata.path,
+          'libapp.so',
+        );
+        File(artifactPath).createSync(recursive: true);
+      }
+      File(aarPath).createSync(recursive: true);
+      return dir;
     }
 
     setUpAll(() {
@@ -281,7 +313,11 @@ void main() {
           defaultValue: any(named: 'defaultValue'),
         ),
       ).thenAnswer((_) => '1.0.0');
-      final exitCode = await runWithOverrides(command.run);
+      final tempDir = setUpTempArtifacts();
+      final exitCode = await IOOverrides.runZoned(
+        () => runWithOverrides(command.run),
+        getCurrentDirectory: () => tempDir,
+      );
       expect(exitCode, ExitCode.success.code);
       verify(() => logger.info('Aborting.')).called(1);
     });
@@ -298,7 +334,11 @@ void main() {
 
     test('does not prompt for confirmation when --force is used', () async {
       when(() => argResults['force']).thenReturn(true);
-      final exitCode = await runWithOverrides(command.run);
+      final tempDir = setUpTempArtifacts();
+      final exitCode = await IOOverrides.runZoned(
+        () => runWithOverrides(command.run),
+        getCurrentDirectory: () => tempDir,
+      );
       expect(exitCode, ExitCode.success.code);
       verify(() => logger.success('\n✅ Published Release!')).called(1);
       verifyNever(
@@ -307,7 +347,11 @@ void main() {
     });
 
     test('succeeds when release is successful', () async {
-      final exitCode = await runWithOverrides(command.run);
+      final tempDir = setUpTempArtifacts();
+      final exitCode = await IOOverrides.runZoned(
+        () => runWithOverrides(command.run),
+        getCurrentDirectory: () => tempDir,
+      );
       expect(exitCode, ExitCode.success.code);
       verify(() => logger.success('\n✅ Published Release!')).called(1);
       verify(
@@ -348,7 +392,11 @@ void main() {
           releaseVersion: any(named: 'releaseVersion'),
         ),
       ).thenAnswer((_) async => release);
-      final exitCode = await runWithOverrides(command.run);
+      final tempDir = setUpTempArtifacts();
+      final exitCode = await IOOverrides.runZoned(
+        () => runWithOverrides(command.run),
+        getCurrentDirectory: () => tempDir,
+      );
       expect(exitCode, ExitCode.success.code);
       verifyNever(
         () => codePushClientWrapper.createRelease(
