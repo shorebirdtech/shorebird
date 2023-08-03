@@ -3,7 +3,6 @@ import 'dart:io';
 import 'package:path/path.dart' as p;
 import 'package:scoped/scoped.dart';
 import 'package:shorebird_cli/src/process.dart';
-import 'package:shorebird_cli/src/shorebird_env.dart';
 
 /// A reference to a [ShorebirdVersionManager] instance.
 final shorebirdVersionManagerRef = create(ShorebirdVersionManager.new);
@@ -25,19 +24,6 @@ class ShorebirdVersionManager {
     final latestVersion = await fetchLatestGitHash();
 
     return currentVersion == latestVersion;
-  }
-
-  /// Returns the current shorebird version.
-  Future<String> getShorebirdFlutterRevision() async {
-    final result = await process.run(
-      'git',
-      ['rev-parse', 'HEAD'],
-      workingDirectory: shorebirdEnv.flutterDirectory.path,
-    );
-    if (result.exitCode != 0) {
-      throw Exception('Unable to determine flutter revision: ${result.stderr}');
-    }
-    return (result.stdout as String).trim();
   }
 
   /// Returns the remote HEAD shorebird hash.

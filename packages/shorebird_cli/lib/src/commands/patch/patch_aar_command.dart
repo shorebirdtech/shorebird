@@ -149,7 +149,7 @@ Please re-run the release command for this version or create a new release.''');
     final String shorebirdFlutterRevision;
     try {
       shorebirdFlutterRevision =
-          await shorebirdVersionManager.getShorebirdFlutterRevision();
+          await shorebirdVersionManager.fetchCurrentGitHash();
       flutterRevisionProgress.complete();
     } catch (error) {
       flutterRevisionProgress.fail('$error');

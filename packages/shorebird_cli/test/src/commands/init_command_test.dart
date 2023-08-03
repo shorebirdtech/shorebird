@@ -171,9 +171,11 @@ Please make sure you are running "shorebird init" from the root of your Flutter 
 
     test('throws software error when pubspec.yaml is malformed.', () async {
       final exception = Exception('oops');
-      when(() => shorebirdEnv.getPubspecYaml()).thenThrow(exception);
+      when(() => shorebirdEnv.hasPubspecYaml).thenThrow(exception);
       final exitCode = await runWithOverrides(command.run);
-      verify(() => logger.err('$exception')).called(1);
+      verify(
+        () => logger.err('Error parsing "pubspec.yaml": $exception'),
+      ).called(1);
       expect(exitCode, ExitCode.software.code);
     });
 

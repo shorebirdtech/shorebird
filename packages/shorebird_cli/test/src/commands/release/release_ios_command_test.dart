@@ -253,7 +253,7 @@ flutter:
         ),
       ).thenAnswer((_) async {});
       when(
-        () => shorebirdVersionManager.getShorebirdFlutterRevision(),
+        () => shorebirdVersionManager.fetchCurrentGitHash(),
       ).thenAnswer((_) async => flutterRevision);
 
       command = runWithOverrides(() => ReleaseIosCommand(ipaReader: ipaReader))
@@ -453,7 +453,7 @@ error: exportArchive: No signing certificate "iOS Distribution" found
     test('throws error when unable to detect flutter revision', () async {
       final exception = Exception('oops');
       when(
-        () => shorebirdVersionManager.getShorebirdFlutterRevision(),
+        () => shorebirdVersionManager.fetchCurrentGitHash(),
       ).thenThrow(exception);
       final tempDir = setUpTempDir();
 

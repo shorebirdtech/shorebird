@@ -114,7 +114,7 @@ ${summary.join('\n')}
     final String shorebirdFlutterRevision;
     try {
       shorebirdFlutterRevision =
-          await shorebirdVersionManager.getShorebirdFlutterRevision();
+          await shorebirdVersionManager.fetchCurrentGitHash();
       flutterRevisionProgress.complete();
     } catch (error) {
       flutterRevisionProgress.fail('$error');

@@ -288,7 +288,7 @@ flutter:
         ),
       ).thenAnswer((_) async {});
       when(
-        () => shorebirdVersionManager.getShorebirdFlutterRevision(),
+        () => shorebirdVersionManager.fetchCurrentGitHash(),
       ).thenAnswer((_) async => flutterRevision);
 
       command = runWithOverrides(() => PatchIosCommand(ipaReader: ipaReader))
@@ -498,7 +498,7 @@ Please re-run the release command for this version or create a new release.'''),
     test('errors when unable to detect flutter revision', () async {
       final exception = Exception('oops');
       when(
-        () => shorebirdVersionManager.getShorebirdFlutterRevision(),
+        () => shorebirdVersionManager.fetchCurrentGitHash(),
       ).thenThrow(exception);
       final tempDir = setUpTempDir();
       setUpTempArtifacts(tempDir);
@@ -515,7 +515,7 @@ Please re-run the release command for this version or create a new release.'''),
         'does not match release revision', () async {
       const otherRevision = 'other-revision';
       when(
-        () => shorebirdVersionManager.getShorebirdFlutterRevision(),
+        () => shorebirdVersionManager.fetchCurrentGitHash(),
       ).thenAnswer((_) async => otherRevision);
       final tempDir = setUpTempDir();
       setUpTempArtifacts(tempDir);

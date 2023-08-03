@@ -210,7 +210,7 @@ void main() {
         ),
       ).thenAnswer((_) async {});
       when(
-        () => shorebirdVersionManager.getShorebirdFlutterRevision(),
+        () => shorebirdVersionManager.fetchCurrentGitHash(),
       ).thenAnswer((_) async => flutterRevision);
 
       command = runWithOverrides(
@@ -289,7 +289,7 @@ void main() {
     test('throws error when unable to detect flutter revision', () async {
       final exception = Exception('oops');
       when(
-        () => shorebirdVersionManager.getShorebirdFlutterRevision(),
+        () => shorebirdVersionManager.fetchCurrentGitHash(),
       ).thenThrow(exception);
       final exitCode = await runWithOverrides(command.run);
       expect(exitCode, ExitCode.software.code);

@@ -25,8 +25,9 @@ class ShorebirdEnv {
   /// The root directory of the Shorebird install.
   ///
   /// Assumes we are running from $ROOT/bin/cache.
-  Directory get shorebirdRoot =>
-      File(platform.script.toFilePath()).parent.parent.parent;
+  Directory get shorebirdRoot {
+    return File(platform.script.toFilePath()).parent.parent.parent;
+  }
 
   String get shorebirdEngineRevision {
     return File(
@@ -41,35 +42,41 @@ class ShorebirdEnv {
   }
 
   /// The root of the Shorebird-vended Flutter git checkout.
-  Directory get flutterDirectory => Directory(
-        p.join(
-          shorebirdRoot.path,
-          'bin',
-          'cache',
-          'flutter',
-        ),
-      );
+  Directory get flutterDirectory {
+    return Directory(
+      p.join(
+        shorebirdRoot.path,
+        'bin',
+        'cache',
+        'flutter',
+      ),
+    );
+  }
 
   /// The Shorebird-vended Flutter binary.
-  File get flutterBinaryFile => File(
-        p.join(
-          flutterDirectory.path,
-          'bin',
-          'flutter',
-        ),
-      );
+  File get flutterBinaryFile {
+    return File(
+      p.join(
+        flutterDirectory.path,
+        'bin',
+        'flutter',
+      ),
+    );
+  }
 
-  File get genSnapshotFile => File(
-        p.join(
-          flutterDirectory.path,
-          'bin',
-          'cache',
-          'artifacts',
-          'engine',
-          'ios-release',
-          'gen_snapshot_arm64',
-        ),
-      );
+  File get genSnapshotFile {
+    return File(
+      p.join(
+        flutterDirectory.path,
+        'bin',
+        'cache',
+        'artifacts',
+        'engine',
+        'ios-release',
+        'gen_snapshot_arm64',
+      ),
+    );
+  }
 
   /// The `shorebird.yaml` file for this project.
   File getShorebirdYamlFile() {
@@ -130,7 +137,7 @@ class ShorebirdEnv {
   /// Returns the Android package name from the pubspec.yaml file of a Flutter
   /// module.
   String? get androidPackageName {
-    final pubspec = shorebirdEnv.getPubspecYaml();
+    final pubspec = getPubspecYaml();
     final module = pubspec?.flutter?['module'] as Map?;
     return module?['androidPackage'] as String?;
   }
