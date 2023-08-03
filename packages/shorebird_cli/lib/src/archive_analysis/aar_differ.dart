@@ -1,9 +1,4 @@
-import 'dart:io';
-
-import 'package:archive/archive_io.dart';
-import 'package:crypto/crypto.dart';
 import 'package:shorebird_cli/src/archive_analysis/android_archive_differ.dart';
-import 'package:shorebird_cli/src/archive_analysis/archive_analysis.dart';
 
 /// Finds differences between two AABs.
 ///
@@ -19,23 +14,4 @@ import 'package:shorebird_cli/src/archive_analysis/archive_analysis.dart';
 /// https://developer.android.com/studio/projects/android-library.html#aar-contents
 /// for reference. Note that .aars produced by Flutter modules do not contain
 /// .jar files, so only asset and dart changes are possible.
-class AarDiffer extends AndroidArchiveDiffer {
-  String _hash(List<int> bytes) => sha256.convert(bytes).toString();
-
-  @override
-  FileSetDiff changedFiles(String oldArchivePath, String newArchivePath) =>
-      FileSetDiff.fromPathHashes(
-        oldPathHashes: _fileHashes(File(oldArchivePath)),
-        newPathHashes: _fileHashes(File(newArchivePath)),
-      );
-
-  PathHashes _fileHashes(File aar) {
-    final files = ZipDecoder()
-        .decodeBuffer(InputFileStream(aar.path))
-        .files
-        .where((file) => file.isFile);
-    return {
-      for (final file in files) file.name: _hash(file.content as List<int>)
-    };
-  }
-}
+class AarDiffer extends AndroidArchiveDiffer {}
