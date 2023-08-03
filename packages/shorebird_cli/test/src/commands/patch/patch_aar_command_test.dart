@@ -206,6 +206,7 @@ void main() {
         () => shorebirdEnv.androidPackageName,
       ).thenReturn(androidPackageName);
       when(() => shorebirdEnv.getShorebirdYaml()).thenReturn(shorebirdYaml);
+      when(() => shorebirdEnv.flutterRevision).thenReturn(flutterRevision);
       when(
         () => shorebirdProcess.run(
           'flutter',
@@ -298,7 +299,6 @@ void main() {
       when(
         () => cache.getArtifactDirectory(any()),
       ).thenReturn(Directory.systemTemp.createTempSync());
-      when(() => shorebirdEnv.flutterRevision).thenReturn(flutterRevision);
       when(
         () => shorebirdFlutterManager.installRevision(
           revision: any(named: 'revision'),

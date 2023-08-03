@@ -14,7 +14,6 @@ import 'package:shorebird_cli/src/shorebird_artifact_mixin.dart';
 import 'package:shorebird_cli/src/shorebird_build_mixin.dart';
 import 'package:shorebird_cli/src/shorebird_env.dart';
 import 'package:shorebird_cli/src/shorebird_validator.dart';
-import 'package:shorebird_cli/src/shorebird_version_manager.dart';
 import 'package:shorebird_code_push_client/shorebird_code_push_client.dart';
 
 class PatchIosFrameworkCommand extends ShorebirdCommand
@@ -110,19 +109,7 @@ Please re-run the release command for this version or create a new release.''');
 
     buildProgress.complete();
 
-    final flutterRevisionProgress = logger.progress(
-      'Fetching Flutter revision',
-    );
-    final String shorebirdFlutterRevision;
-    try {
-      shorebirdFlutterRevision =
-          await shorebirdVersionManager.fetchCurrentGitHash();
-      flutterRevisionProgress.complete();
-    } catch (error) {
-      flutterRevisionProgress.fail('$error');
-      return ExitCode.software.code;
-    }
-
+    final shorebirdFlutterRevision = shorebirdEnv.flutterRevision;
     if (release.flutterRevision != shorebirdFlutterRevision) {
       logger
         ..err('''
