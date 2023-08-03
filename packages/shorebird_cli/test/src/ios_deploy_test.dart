@@ -67,7 +67,7 @@ void main() {
 
       when(() => shorebirdEnv.shorebirdRoot).thenReturn(tempDir);
       when(
-        () => shorebirdEnv.flutterDirectory(revision: any(named: 'revision')),
+        () => shorebirdEnv.flutterDirectory,
       ).thenReturn(Directory(p.join(tempDir.path, 'bin', 'cache', 'flutter')));
       when(() => logger.progress(any())).thenReturn(progress);
       when(

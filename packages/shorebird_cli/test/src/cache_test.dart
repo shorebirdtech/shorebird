@@ -61,9 +61,7 @@ void main() {
 
       shorebirdRoot = Directory.systemTemp.createTempSync();
       when(
-        () => shorebirdEnv.shorebirdEngineRevision(
-          flutterRevision: any(named: 'flutterRevision'),
-        ),
+        () => shorebirdEnv.shorebirdEngineRevision,
       ).thenReturn(shorebirdEngineRevision);
       when(() => shorebirdEnv.shorebirdRoot).thenReturn(shorebirdRoot);
 
