@@ -188,9 +188,8 @@ Please re-run the release command for this version or create a new release.''');
       archiveDiffer: _ipaDiffer,
       force: force,
     );
-    if (!shouldContinue) {
-      return ExitCode.success.code;
-    }
+
+    if (!shouldContinue) return ExitCode.success.code;
 
     if (dryRun) {
       logger
