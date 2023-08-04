@@ -19,7 +19,9 @@ PatchDiffChecker get patchDiffChecker => read(patchDiffCheckerRef);
 class PatchDiffChecker {
   /// {@macro patch_verifier}
   PatchDiffChecker({http.Client? httpClient})
+      // coverage:ignore-start
       : _httpClient = httpClient ?? http.Client();
+  // coverage:ignore-end
 
   final http.Client _httpClient;
 

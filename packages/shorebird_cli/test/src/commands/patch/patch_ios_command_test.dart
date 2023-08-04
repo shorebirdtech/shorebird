@@ -621,6 +621,22 @@ Please re-run the release command for this version or create a new release.'''),
       expect(exitCode, ExitCode.software.code);
     });
 
+    test('exits with code 70 when ipa not found', () async {
+      final tempDir = setUpTempDir();
+      setUpTempArtifacts(tempDir);
+      File(p.join(tempDir.path, ipaPath)).deleteSync();
+
+      final exitCode = await IOOverrides.runZoned(
+        () => runWithOverrides(command.run),
+        getCurrentDirectory: () => tempDir,
+      );
+
+      expect(exitCode, equals(ExitCode.software.code));
+      verify(
+        () => logger.err(any(that: contains('Could not find ipa file'))),
+      ).called(1);
+    });
+
     test('exits if confirmUnpatchableDiffsIfNecessary returns false', () async {
       when(() => argResults['force']).thenReturn(false);
       when(
