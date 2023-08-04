@@ -344,8 +344,9 @@ flutter:
           patchArtifactBundles: any(named: 'patchArtifactBundles'),
         ),
       ).thenAnswer((_) async {});
-      when(() => doctor.androidCommandValidators)
-          .thenReturn([flutterValidator]);
+      when(
+        () => doctor.androidCommandValidators,
+      ).thenReturn([flutterValidator]);
       when(flutterValidator.validate).thenAnswer((_) async => []);
       when(() => cache.updateAll()).thenAnswer((_) async => {});
       when(
