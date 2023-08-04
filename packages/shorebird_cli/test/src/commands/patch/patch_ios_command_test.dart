@@ -285,6 +285,7 @@ flutter:
       when(() => logger.progress(any())).thenReturn(progress);
       when(() => platform.operatingSystem).thenReturn(Platform.macOS);
       when(() => platform.environment).thenReturn({});
+      when(() => platform.script).thenReturn(shorebirdRoot.uri);
       when(() => shorebirdEnv.getShorebirdYaml()).thenReturn(shorebirdYaml);
       when(() => shorebirdEnv.shorebirdRoot).thenReturn(shorebirdRoot);
       when(() => shorebirdEnv.flutterDirectory).thenReturn(flutterDirectory);
@@ -573,6 +574,14 @@ Please re-run the release command for this version or create a new release.'''),
           '/bin/cache/flutter/${release.flutterRevision}/bin/flutter',
           any(),
           runInShell: true,
+          workingDirectory: any(named: 'workingDirectory'),
+          environment: any(named: 'environment'),
+        ),
+      ).called(1);
+      verify(
+        () => processWrapper.run(
+          '/bin/cache/flutter/${release.flutterRevision}/bin/cache/artifacts/engine/ios-release/gen_snapshot_arm64',
+          any(),
           workingDirectory: any(named: 'workingDirectory'),
           environment: any(named: 'environment'),
         ),
