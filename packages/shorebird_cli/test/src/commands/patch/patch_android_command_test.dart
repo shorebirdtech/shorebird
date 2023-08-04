@@ -467,6 +467,28 @@ flutter:
       verify(() => logger.info('No releases found')).called(1);
     });
 
+    test('exits early when specified release does not exist.', () async {
+      when(() => argResults['release-version']).thenReturn('0.0.0');
+      try {
+        await runWithOverrides(command.run);
+      } catch (_) {}
+      verifyNever(
+        () => logger.chooseOne<Release>(
+          any(),
+          choices: any(named: 'choices'),
+          display: captureAny(named: 'display'),
+        ),
+      );
+      verify(() => codePushClientWrapper.getReleases(appId: appId)).called(1);
+      verify(
+        () => logger.info('''
+No release found for version 0.0.0
+Available release versions:
+  ${release.version}
+'''),
+      ).called(1);
+    });
+
     test(
         '''exits with code 70 if release is in draft state for the android platform''',
         () async {

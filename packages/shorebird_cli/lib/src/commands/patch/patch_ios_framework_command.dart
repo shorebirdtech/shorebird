@@ -84,6 +84,12 @@ of the iOS app that is using this module.''',
     final appId = shorebirdYaml.getAppId();
     final app = await codePushClientWrapper.getApp(appId: appId);
     final releases = await codePushClientWrapper.getReleases(appId: appId);
+
+    if (releases.isEmpty) {
+      logger.info('No releases found');
+      return ExitCode.success.code;
+    }
+
     final releaseVersion = results['release-version'] as String? ??
         await _promptForReleaseVersion(releases);
 
@@ -92,7 +98,11 @@ of the iOS app that is using this module.''',
     );
 
     if (releaseVersion == null || release == null) {
-      logger.info('No releases found');
+      logger.info('''
+No release found for version $releaseVersion
+Available release versions:
+  ${releases.map((r) => r.version).join('\n')}
+''');
       return ExitCode.success.code;
     }
 
