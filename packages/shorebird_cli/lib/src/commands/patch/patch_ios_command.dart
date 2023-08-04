@@ -175,10 +175,9 @@ Please re-run the release command for this version or create a new release.''');
       return ExitCode.software.code;
     }
 
-    final newestDillFile = newestAppDill();
-
     final File aotFile;
     try {
+      final newestDillFile = newestAppDill();
       aotFile = await runScoped(
         () => buildElfAotSnapshot(appDillPath: newestDillFile.path),
         values: {
