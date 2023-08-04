@@ -10,7 +10,7 @@ $shorebirdCliDir = [IO.Path]::Combine($shorebirdRootDir, "packages", "shorebird_
 $snapshotPath = [IO.Path]::Combine($shorebirdCacheDir, "shorebird.snapshot")
 $stampPath = [IO.Path]::Combine($shorebirdCacheDir, "shorebird.stamp")
 $flutterPath = [IO.Path]::Combine($shorebirdCacheDir, "flutter", $flutterVersion)
-$flutter = [IO.Path]::Combine($shorebirdCacheDir, "flutter", "bin", "flutter.bat")
+$flutter = [IO.Path]::Combine($shorebirdCacheDir, "flutter", $flutterVersion, "bin", "flutter.bat")
 $shorebirdScript = [IO.Path]::Combine($shorebirdCliDir, "bin", "shorebird.dart")
 $dart = [IO.Path]::Combine($flutterPath, "bin", "cache", "dart-sdk", "bin", "dart.exe")
 
