@@ -37,7 +37,11 @@ class _MockCodePushClientWrapper extends Mock
 
 class _MockDoctor extends Mock implements Doctor {}
 
+class _MockIpa extends Mock implements Ipa {}
+
 class _MockIpaDiffer extends Mock implements IpaDiffer {}
+
+class _MockIpaReader extends Mock implements IpaReader {}
 
 class _MockLogger extends Mock implements Logger {}
 
@@ -125,7 +129,9 @@ flutter:
     late Directory shorebirdRoot;
     late File genSnapshotFile;
     late Doctor doctor;
+    late Ipa ipa;
     late IpaDiffer ipaDiffer;
+    late IpaReader ipaReader;
     late Progress progress;
     late Logger logger;
     late PatchDiffChecker patchDiffChecker;
@@ -225,7 +231,9 @@ flutter:
           'gen_snapshot_arm64',
         ),
       );
+      ipa = _MockIpa();
       ipaDiffer = _MockIpaDiffer();
+      ipaReader = _MockIpaReader();
       progress = _MockProgress();
       logger = _MockLogger();
       platform = _MockPlatform();
@@ -269,6 +277,8 @@ flutter:
           patchArtifactBundles: any(named: 'patchArtifactBundles'),
         ),
       ).thenAnswer((_) async {});
+      when(() => ipa.versionNumber).thenReturn(version);
+      when(() => ipaReader.read(any())).thenReturn(ipa);
       when(() => doctor.iosCommandValidators).thenReturn([flutterValidator]);
       when(flutterValidator.validate).thenAnswer((_) async => []);
       when(() => logger.confirm(any())).thenReturn(true);
@@ -323,7 +333,7 @@ flutter:
       ).thenAnswer((_) async => true);
 
       command = runWithOverrides(
-        () => PatchIosCommand(ipaDiffer: ipaDiffer),
+        () => PatchIosCommand(ipaDiffer: ipaDiffer, ipaReader: ipaReader),
       )..testArgResults = argResults;
     });
 
@@ -655,6 +665,59 @@ Please re-run the release command for this version or create a new release.'''),
       expect(exitCode, equals(ExitCode.software.code));
       verify(
         () => logger.err(any(that: contains('Could not find ipa file'))),
+      ).called(1);
+    });
+
+    test('exits with code 70 when local release version cannot be determiend',
+        () async {
+      when(() => ipa.versionNumber).thenThrow(Exception('oops'));
+
+      final tempDir = setUpTempDir();
+      setUpTempArtifacts(tempDir);
+      final exitCode = await IOOverrides.runZoned(
+        () => runWithOverrides(command.run),
+        getCurrentDirectory: () => tempDir,
+      );
+
+      expect(exitCode, equals(ExitCode.software.code));
+      verify(
+        () => progress.fail(
+          any(that: contains('Failed to determine release version')),
+        ),
+      ).called(1);
+    });
+
+    test('prints local release version when detected', () async {
+      final tempDir = setUpTempDir();
+      setUpTempArtifacts(tempDir);
+      final exitCode = await IOOverrides.runZoned(
+        () => runWithOverrides(command.run),
+        getCurrentDirectory: () => tempDir,
+      );
+
+      expect(exitCode, equals(ExitCode.success.code));
+      verify(
+        () => progress.complete('Detected release version 1.2.3+1'),
+      ).called(1);
+    });
+
+    test(
+        'errors when local release version '
+        'does not match remote release version', () async {
+      when(
+        () => ipa.versionNumber,
+      ).thenReturn('0.0.0+0');
+      final tempDir = setUpTempDir();
+      setUpTempArtifacts(tempDir);
+      final exitCode = await IOOverrides.runZoned(
+        () => runWithOverrides(command.run),
+        getCurrentDirectory: () => tempDir,
+      );
+      expect(exitCode, ExitCode.software.code);
+      verify(
+        () => logger.err('''
+The local release version (0.0.0+0) does not match the remote release version (1.2.3+1).
+Please re-run the release command for this version or create a new release.'''),
       ).called(1);
     });
 

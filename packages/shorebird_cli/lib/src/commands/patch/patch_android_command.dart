@@ -208,6 +208,29 @@ Please re-run the release command for this version or create a new release.''');
         ? './build/app/outputs/bundle/${flavor}Release/app-$flavor-release.aab'
         : './build/app/outputs/bundle/release/app-release.aab';
 
+    final detectReleaseVersionProgress = logger.progress(
+      'Detecting release version',
+    );
+    final String localReleaseVersion;
+    try {
+      localReleaseVersion = await extractReleaseVersionFromAppBundle(
+        bundlePath,
+      );
+      detectReleaseVersionProgress.complete(
+        'Detected release version $localReleaseVersion',
+      );
+    } catch (error) {
+      detectReleaseVersionProgress.fail('$error');
+      return ExitCode.software.code;
+    }
+
+    if (localReleaseVersion != releaseVersion) {
+      logger.err('''
+The local release version ($localReleaseVersion) does not match the remote release version ($releaseVersion).
+Please re-run the release command for this version or create a new release.''');
+      return ExitCode.software.code;
+    }
+
     final shouldContinue =
         await patchDiffChecker.confirmUnpatchableDiffsIfNecessary(
       localArtifact: File(bundlePath),

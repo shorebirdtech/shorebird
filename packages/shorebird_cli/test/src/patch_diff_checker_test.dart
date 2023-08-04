@@ -203,7 +203,8 @@ void main() {
           expect(result, isTrue);
           verify(
             () => logger.warn(
-                '''The release artifact contains asset changes, which will not be included in the patch.'''),
+              '''The release artifact contains asset changes, which will not be included in the patch.''',
+            ),
           ).called(1);
           verify(
             () => logger.info(yellow.wrap(assetsDiffPrettyString)),
