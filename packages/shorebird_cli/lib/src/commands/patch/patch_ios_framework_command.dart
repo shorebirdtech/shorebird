@@ -1,5 +1,6 @@
 import 'dart:io' hide Platform;
 
+import 'package:collection/collection.dart';
 import 'package:crypto/crypto.dart';
 import 'package:mason_logger/mason_logger.dart';
 import 'package:platform/platform.dart';
@@ -29,7 +30,6 @@ class PatchIosFrameworkCommand extends ShorebirdCommand
         help: '''
 The version of the associated release (e.g. "1.0.0"). This should be the version
 of the iOS app that is using this module.''',
-        mandatory: true,
       )
       ..addFlag(
         'force',
@@ -67,25 +67,38 @@ of the iOS app that is using this module.''',
       return e.exitCode.code;
     }
 
+    final force = results['force'] == true;
+    final dryRun = results['dry-run'] == true;
+
+    if (force && dryRun) {
+      logger.err('Cannot use both --force and --dry-run.');
+      return ExitCode.usage.code;
+    }
+
     showiOSStatusWarning();
 
     const arch = 'aarch64';
     const channelName = 'stable';
     const releasePlatform = ReleasePlatform.ios;
-    final releaseVersion = results['release-version'] as String;
-    final dryRun = results['dry-run'] == true;
     final shorebirdYaml = shorebirdEnv.getShorebirdYaml()!;
     final appId = shorebirdYaml.getAppId();
     final app = await codePushClientWrapper.getApp(appId: appId);
-    final release = await codePushClientWrapper.getRelease(
-      appId: appId,
-      releaseVersion: releaseVersion,
+    final releases = await codePushClientWrapper.getReleases(appId: appId);
+    final releaseVersion = results['release-version'] as String? ??
+        await _promptForReleaseVersion(releases);
+
+    final release = releases.firstWhereOrNull(
+      (r) => r.version == releaseVersion,
     );
+
+    if (releaseVersion == null || release == null) {
+      logger.info('No releases found');
+      return ExitCode.success.code;
+    }
 
     if (release.platformStatuses[ReleasePlatform.ios] == ReleaseStatus.draft) {
       logger.err('''
 Release $releaseVersion is in an incomplete state. It's possible that the original release was terminated or failed to complete.
-
 Please re-run the release command for this version or create a new release.''');
       return ExitCode.software.code;
     }
@@ -143,7 +156,6 @@ Please re-run the release command for this version or create a new release.''');
     }
 
     final aotFileSize = aotFile.statSync().size;
-
     final summary = [
       '''📱 App: ${lightCyan.wrap(app.displayName)} ${lightCyan.wrap('($appId)')}''',
       '📦 Release Version: ${lightCyan.wrap(releaseVersion)}',
@@ -161,7 +173,6 @@ ${summary.join('\n')}
     );
 
     // TODO(bryanoltman): check for asset changes
-    final force = results['force'] == true;
     final needsConfirmation = !force;
     if (needsConfirmation) {
       final confirm = logger.confirm('Would you like to continue?');
@@ -189,5 +200,15 @@ ${summary.join('\n')}
 
     logger.success('\n✅ Published Patch!');
     return ExitCode.success.code;
+  }
+
+  Future<String?> _promptForReleaseVersion(List<Release> releases) async {
+    if (releases.isEmpty) return null;
+    final release = logger.chooseOne(
+      'Which release would you like to patch?',
+      choices: releases,
+      display: (release) => release.version,
+    );
+    return release.version;
   }
 }

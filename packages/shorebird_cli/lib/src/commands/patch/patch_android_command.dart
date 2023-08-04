@@ -123,7 +123,6 @@ class PatchAndroidCommand extends ShorebirdCommand
         ReleaseStatus.draft) {
       logger.err('''
 Release $releaseVersion is in an incomplete state. It's possible that the original release was terminated or failed to complete.
-
 Please re-run the release command for this version or create a new release.''');
       return ExitCode.software.code;
     }
@@ -206,9 +205,8 @@ Please re-run the release command for this version or create a new release.''');
       archiveDiffer: _archiveDiffer,
       force: force,
     );
-    if (!shouldContinue) {
-      return ExitCode.success.code;
-    }
+
+    if (!shouldContinue) return ExitCode.success.code;
 
     final patchArtifactBundles = <Arch, PatchArtifactBundle>{};
     final createDiffProgress = logger.progress('Creating artifacts');

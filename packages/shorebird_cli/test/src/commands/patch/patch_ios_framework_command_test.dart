@@ -111,8 +111,9 @@ flutter:
           platformRef.overrideWith(() => platform),
           processRef.overrideWith(() => shorebirdProcess),
           shorebirdEnvRef.overrideWith(() => shorebirdEnv),
-          shorebirdFlutterManagerRef
-              .overrideWith(() => shorebirdFlutterManager),
+          shorebirdFlutterManagerRef.overrideWith(
+            () => shorebirdFlutterManager,
+          ),
           shorebirdValidatorRef.overrideWith(() => shorebirdValidator),
         },
       );
@@ -221,11 +222,8 @@ flutter:
         () => codePushClientWrapper.getApp(appId: any(named: 'appId')),
       ).thenAnswer((_) async => appMetadata);
       when(
-        () => codePushClientWrapper.getRelease(
-          appId: any(named: 'appId'),
-          releaseVersion: any(named: 'releaseVersion'),
-        ),
-      ).thenAnswer((_) async => release);
+        () => codePushClientWrapper.getReleases(appId: any(named: 'appId')),
+      ).thenAnswer((_) async => [release]);
       when(
         () => codePushClientWrapper.publishPatch(
           appId: any(named: 'appId'),
@@ -281,6 +279,63 @@ flutter:
       ).called(1);
     });
 
+    test(
+        'exits with usage code when '
+        'both --dry-run and --force are specified', () async {
+      when(() => argResults['dry-run']).thenReturn(true);
+      when(() => argResults['force']).thenReturn(true);
+      final exitCode = await runWithOverrides(command.run);
+      expect(exitCode, equals(ExitCode.usage.code));
+    });
+
+    test('prompts for release when release-version is not specified', () async {
+      when(() => argResults['release-version']).thenReturn(null);
+      when(
+        () => logger.chooseOne<Release>(
+          any(),
+          choices: any(named: 'choices'),
+          display: any(named: 'display'),
+        ),
+      ).thenReturn(release);
+      try {
+        await runWithOverrides(command.run);
+      } catch (_) {}
+      await untilCalled(
+        () => logger.chooseOne<Release>(
+          any(),
+          choices: any(named: 'choices'),
+          display: any(named: 'display'),
+        ),
+      );
+      final display = verify(
+        () => logger.chooseOne<Release>(
+          any(),
+          choices: any(named: 'choices'),
+          display: captureAny(named: 'display'),
+        ),
+      ).captured.single as String Function(Release);
+      expect(display(release), equals(release.version));
+    });
+
+    test('exits early when no releases are found', () async {
+      when(() => argResults['release-version']).thenReturn(null);
+      when(
+        () => codePushClientWrapper.getReleases(appId: any(named: 'appId')),
+      ).thenAnswer((_) async => []);
+      try {
+        await runWithOverrides(command.run);
+      } catch (_) {}
+      verifyNever(
+        () => logger.chooseOne<Release>(
+          any(),
+          choices: any(named: 'choices'),
+          display: captureAny(named: 'display'),
+        ),
+      );
+      verify(() => codePushClientWrapper.getReleases(appId: appId)).called(1);
+      verify(() => logger.info('No releases found')).called(1);
+    });
+
     test('aborts when user opts out', () async {
       when(() => logger.confirm(any())).thenReturn(false);
       final tempDir = setUpTempDir();
@@ -297,19 +352,18 @@ flutter:
         '''exits with code 70 if release is in draft state for the ios platform''',
         () async {
       when(
-        () => codePushClientWrapper.getRelease(
-          appId: any(named: 'appId'),
-          releaseVersion: any(named: 'releaseVersion'),
-        ),
+        () => codePushClientWrapper.getReleases(appId: any(named: 'appId')),
       ).thenAnswer(
-        (_) async => const Release(
-          id: 0,
-          appId: appId,
-          version: version,
-          flutterRevision: flutterRevision,
-          displayName: '1.2.3+1',
-          platformStatuses: {ReleasePlatform.ios: ReleaseStatus.draft},
-        ),
+        (_) async => const [
+          Release(
+            id: 0,
+            appId: appId,
+            version: version,
+            flutterRevision: flutterRevision,
+            displayName: '1.2.3+1',
+            platformStatuses: {ReleasePlatform.ios: ReleaseStatus.draft},
+          ),
+        ],
       );
       final tempDir = setUpTempDir();
       setUpTempArtifacts(tempDir);
@@ -321,7 +375,6 @@ flutter:
       verify(
         () => logger.err('''
 Release 1.2.3+1 is in an incomplete state. It's possible that the original release was terminated or failed to complete.
-
 Please re-run the release command for this version or create a new release.'''),
       ).called(1);
     });
@@ -329,19 +382,18 @@ Please re-run the release command for this version or create a new release.'''),
     test('proceeds if release is in draft state for a non-ios platform',
         () async {
       when(
-        () => codePushClientWrapper.getRelease(
-          appId: any(named: 'appId'),
-          releaseVersion: any(named: 'releaseVersion'),
-        ),
+        () => codePushClientWrapper.getReleases(appId: any(named: 'appId')),
       ).thenAnswer(
-        (_) async => const Release(
-          id: 0,
-          appId: appId,
-          version: version,
-          flutterRevision: flutterRevision,
-          displayName: '1.2.3+1',
-          platformStatuses: {ReleasePlatform.android: ReleaseStatus.draft},
-        ),
+        (_) async => const [
+          Release(
+            id: 0,
+            appId: appId,
+            version: version,
+            flutterRevision: flutterRevision,
+            displayName: '1.2.3+1',
+            platformStatuses: {ReleasePlatform.android: ReleaseStatus.draft},
+          ),
+        ],
       );
       final tempDir = setUpTempDir();
       setUpTempArtifacts(tempDir);
