@@ -355,6 +355,19 @@ flutter:
       ).called(1);
     });
 
+    test(
+        'exits with usage code when '
+        'both --dry-run and --force are specified', () async {
+      when(() => argResults['dry-run']).thenReturn(true);
+      when(() => argResults['force']).thenReturn(true);
+      final tempDir = setUpTempDir();
+      final exitCode = await IOOverrides.runZoned(
+        () => runWithOverrides(command.run),
+        getCurrentDirectory: () => tempDir,
+      );
+      expect(exitCode, equals(ExitCode.usage.code));
+    });
+
     test('prompts for release when release-version is not specified', () async {
       when(() => argResults['release-version']).thenReturn(null);
       when(
@@ -403,29 +416,26 @@ flutter:
       verify(() => logger.info('No releases found')).called(1);
     });
 
-    test(
-        'exits with usage code when '
-        'both --dry-run and --force are specified', () async {
-      when(() => argResults['dry-run']).thenReturn(true);
-      when(() => argResults['force']).thenReturn(true);
-      final tempDir = setUpTempDir();
-      final exitCode = await IOOverrides.runZoned(
-        () => runWithOverrides(command.run),
-        getCurrentDirectory: () => tempDir,
+    test('exits early when specified release does not exist.', () async {
+      when(() => argResults['release-version']).thenReturn('0.0.0');
+      try {
+        await runWithOverrides(command.run);
+      } catch (_) {}
+      verifyNever(
+        () => logger.chooseOne<Release>(
+          any(),
+          choices: any(named: 'choices'),
+          display: captureAny(named: 'display'),
+        ),
       );
-      expect(exitCode, equals(ExitCode.usage.code));
-    });
-
-    test('aborts when user opts out', () async {
-      when(() => logger.confirm(any())).thenReturn(false);
-      final tempDir = setUpTempDir();
-      setUpTempArtifacts(tempDir);
-      final exitCode = await IOOverrides.runZoned(
-        () => runWithOverrides(command.run),
-        getCurrentDirectory: () => tempDir,
-      );
-      expect(exitCode, ExitCode.success.code);
-      verify(() => logger.info('Aborting.')).called(1);
+      verify(() => codePushClientWrapper.getReleases(appId: appId)).called(1);
+      verify(
+        () => logger.info('''
+No release found for version 0.0.0
+Available release versions:
+  ${release.version}
+'''),
+      ).called(1);
     });
 
     test(
@@ -589,6 +599,18 @@ Please re-run the release command for this version or create a new release.'''),
         ),
       ).called(1);
       verify(() => progress.fail('$exception')).called(1);
+    });
+
+    test('aborts when user opts out', () async {
+      when(() => logger.confirm(any())).thenReturn(false);
+      final tempDir = setUpTempDir();
+      setUpTempArtifacts(tempDir);
+      final exitCode = await IOOverrides.runZoned(
+        () => runWithOverrides(command.run),
+        getCurrentDirectory: () => tempDir,
+      );
+      expect(exitCode, ExitCode.success.code);
+      verify(() => logger.info('Aborting.')).called(1);
     });
 
     test('exits with code 70 when building fails', () async {
