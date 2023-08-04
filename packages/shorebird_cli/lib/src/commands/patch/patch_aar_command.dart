@@ -14,6 +14,7 @@ import 'package:shorebird_cli/src/command.dart';
 import 'package:shorebird_cli/src/config/config.dart';
 import 'package:shorebird_cli/src/formatters/file_size_formatter.dart';
 import 'package:shorebird_cli/src/logger.dart';
+import 'package:shorebird_cli/src/patch_diff_checker.dart';
 import 'package:shorebird_cli/src/shorebird_artifact_mixin.dart';
 import 'package:shorebird_cli/src/shorebird_build_mixin.dart';
 import 'package:shorebird_cli/src/shorebird_env.dart';
@@ -181,45 +182,20 @@ Please re-run the release command for this version or create a new release.''');
       platform: platform,
     );
 
-    final downloadReleaseAarProgress = logger.progress(
-      'Downloading release artifacts',
-    );
-    String releaseAarPath;
-    try {
-      releaseAarPath = await _downloadReleaseArtifact(
-        Uri.parse(releaseAarArtifact.url),
-        httpClient: _httpClient,
-      );
-    } catch (error) {
-      downloadReleaseAarProgress.fail('$error');
-      return ExitCode.software.code;
-    }
-
-    downloadReleaseAarProgress.complete();
-
-    final aarDiffProgress =
-        logger.progress('Checking for aar content differences');
-
-    final contentDiffs = _archiveDiffer.changedFiles(
-      releaseAarPath,
-      aarArtifactPath(
-        packageName: shorebirdEnv.androidPackageName!,
-        buildNumber: buildNumber,
-      ),
-    );
-
-    aarDiffProgress.complete();
-
-    if (_archiveDiffer.containsPotentiallyBreakingAssetDiffs(contentDiffs)) {
-      logger.info(
-        yellow.wrap(
-          '''⚠️ The Android Archive contains asset changes, which will not be included in the patch.''',
+    final shouldContinue =
+        await patchDiffChecker.confirmUnpatchableDiffsIfNecessary(
+      localArtifact: File(
+        aarArtifactPath(
+          packageName: shorebirdEnv.androidPackageName!,
+          buildNumber: buildNumber,
         ),
-      );
-      final shouldContinue = force || logger.confirm('Continue anyways?');
-      if (!shouldContinue) {
-        return ExitCode.success.code;
-      }
+      ),
+      releaseArtifactUrl: Uri.parse(releaseAarArtifact.url),
+      archiveDiffer: _archiveDiffer,
+      force: force,
+    );
+    if (!shouldContinue) {
+      return ExitCode.success.code;
     }
 
     final Map<Arch, String> releaseArtifactPaths;

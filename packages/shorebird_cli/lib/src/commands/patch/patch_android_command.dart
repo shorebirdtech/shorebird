@@ -15,6 +15,7 @@ import 'package:shorebird_cli/src/config/shorebird_yaml.dart';
 import 'package:shorebird_cli/src/doctor.dart';
 import 'package:shorebird_cli/src/formatters/formatters.dart';
 import 'package:shorebird_cli/src/logger.dart';
+import 'package:shorebird_cli/src/patch_diff_checker.dart';
 import 'package:shorebird_cli/src/shorebird_build_mixin.dart';
 import 'package:shorebird_cli/src/shorebird_env.dart';
 import 'package:shorebird_cli/src/shorebird_flutter_manager.dart';
@@ -158,17 +159,7 @@ Please re-run the release command for this version or create a new release.''');
       }
     }
 
-    String releaseAabPath;
-    try {
-      releaseAabPath = await downloadReleaseArtifact(
-        Uri.parse(releaseAabArtifact.url),
-        httpClient: _httpClient,
-      );
-      downloadReleaseArtifactProgress.complete();
-    } catch (error) {
-      downloadReleaseArtifactProgress.fail('$error');
-      return ExitCode.software.code;
-    }
+    downloadReleaseArtifactProgress.complete();
 
     final shorebirdFlutterRevision = shorebirdEnv.flutterRevision;
     if (release.flutterRevision != shorebirdFlutterRevision) {
@@ -208,54 +199,15 @@ Please re-run the release command for this version or create a new release.''');
         ? './build/app/outputs/bundle/${flavor}Release/app-$flavor-release.aab'
         : './build/app/outputs/bundle/release/app-release.aab';
 
-    FileSetDiff contentDiffs;
-    try {
-      contentDiffs = _archiveDiffer.changedFiles(
-        releaseAabPath,
-        bundlePath,
-      );
-    } on DiffFailedException catch (_) {
-      logger.warn(
-        '''
-Could not determine whether patch contains asset changes. If you have added or removed assets, you will need to create a new release.''',
-      );
-      contentDiffs = FileSetDiff.empty();
-    }
-
-    logger.detail('aab content differences: $contentDiffs');
-
-    if (_archiveDiffer.containsPotentiallyBreakingNativeDiffs(contentDiffs)) {
-      logger
-        ..warn(
-          '''The Android App Bundle appears to contain Kotlin or Java changes, which cannot be applied via a patch.''',
-        )
-        ..info(
-          yellow.wrap(
-            _archiveDiffer.nativeFileSetDiff(contentDiffs).prettyString,
-          ),
-        );
-      final shouldContinue = force || logger.confirm('Continue anyways?');
-
-      if (!shouldContinue) {
-        return ExitCode.success.code;
-      }
-    }
-
-    if (_archiveDiffer.containsPotentiallyBreakingAssetDiffs(contentDiffs)) {
-      logger
-        ..warn(
-          '''The Android App Bundle contains asset changes, which will not be included in the patch.''',
-        )
-        ..info(
-          yellow.wrap(
-            _archiveDiffer.assetsFileSetDiff(contentDiffs).prettyString,
-          ),
-        );
-
-      final shouldContinue = force || logger.confirm('Continue anyways?');
-      if (!shouldContinue) {
-        return ExitCode.success.code;
-      }
+    final shouldContinue =
+        await patchDiffChecker.confirmUnpatchableDiffsIfNecessary(
+      localArtifact: File(bundlePath),
+      releaseArtifactUrl: Uri.parse(releaseAabArtifact.url),
+      archiveDiffer: _archiveDiffer,
+      force: force,
+    );
+    if (!shouldContinue) {
+      return ExitCode.success.code;
     }
 
     final patchArtifactBundles = <Arch, PatchArtifactBundle>{};

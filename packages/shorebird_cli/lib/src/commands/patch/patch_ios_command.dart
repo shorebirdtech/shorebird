@@ -6,6 +6,7 @@ import 'package:crypto/crypto.dart';
 import 'package:mason_logger/mason_logger.dart';
 import 'package:platform/platform.dart';
 import 'package:scoped/scoped.dart';
+import 'package:shorebird_cli/src/archive_analysis/archive_analysis.dart';
 import 'package:shorebird_cli/src/code_push_client_wrapper.dart';
 import 'package:shorebird_cli/src/command.dart';
 import 'package:shorebird_cli/src/config/config.dart';
@@ -13,6 +14,7 @@ import 'package:shorebird_cli/src/doctor.dart';
 import 'package:shorebird_cli/src/formatters/file_size_formatter.dart';
 import 'package:shorebird_cli/src/ios.dart';
 import 'package:shorebird_cli/src/logger.dart';
+import 'package:shorebird_cli/src/patch_diff_checker.dart';
 import 'package:shorebird_cli/src/shorebird_artifact_mixin.dart';
 import 'package:shorebird_cli/src/shorebird_build_mixin.dart';
 import 'package:shorebird_cli/src/shorebird_env.dart';
@@ -26,8 +28,11 @@ import 'package:shorebird_code_push_client/shorebird_code_push_client.dart';
 class PatchIosCommand extends ShorebirdCommand
     with ShorebirdBuildMixin, ShorebirdArtifactMixin {
   /// {@macro patch_ios_command}
-  PatchIosCommand({HashFunction? hashFn})
-      : _hashFn = hashFn ?? ((m) => sha256.convert(m).toString()) {
+  PatchIosCommand({
+    HashFunction? hashFn,
+    IpaDiffer? ipaDiffer,
+  })  : _hashFn = hashFn ?? ((m) => sha256.convert(m).toString()),
+        _ipaDiffer = ipaDiffer ?? IpaDiffer() {
     argParser
       ..addOption(
         'release-version',
@@ -64,6 +69,7 @@ class PatchIosCommand extends ShorebirdCommand
       'Publish new patches for a specific iOS release to Shorebird.';
 
   final HashFunction _hashFn;
+  final IpaDiffer _ipaDiffer;
 
   @override
   Future<int> run() async {
@@ -160,6 +166,32 @@ Please re-run the release command for this version or create a new release.''');
     }
 
     buildProgress.complete();
+
+    final releaseArtifact = await codePushClientWrapper.getReleaseArtifact(
+      appId: appId,
+      releaseId: release.id,
+      arch: 'ipa',
+      platform: ReleasePlatform.ios,
+    );
+
+    final String ipaPath;
+    try {
+      ipaPath = getIpaPath();
+    } catch (error) {
+      logger.err('Could not find ipa file: $error');
+      return ExitCode.software.code;
+    }
+
+    final shouldContinue =
+        await patchDiffChecker.confirmUnpatchableDiffsIfNecessary(
+      localArtifact: File(ipaPath),
+      releaseArtifactUrl: Uri.parse(releaseArtifact.url),
+      archiveDiffer: _ipaDiffer,
+      force: force,
+    );
+    if (!shouldContinue) {
+      return ExitCode.success.code;
+    }
 
     if (dryRun) {
       logger

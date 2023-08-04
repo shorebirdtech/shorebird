@@ -14,6 +14,7 @@ import 'package:shorebird_cli/src/code_push_client_wrapper.dart';
 import 'package:shorebird_cli/src/commands/commands.dart';
 import 'package:shorebird_cli/src/config/config.dart';
 import 'package:shorebird_cli/src/logger.dart';
+import 'package:shorebird_cli/src/patch_diff_checker.dart';
 import 'package:shorebird_cli/src/platform.dart';
 import 'package:shorebird_cli/src/process.dart';
 import 'package:shorebird_cli/src/shorebird_build_mixin.dart';
@@ -37,6 +38,8 @@ class _MockCodePushClientWrapper extends Mock
     implements CodePushClientWrapper {}
 
 class _MockLogger extends Mock implements Logger {}
+
+class _MockPatchDiffChecker extends Mock implements PatchDiffChecker {}
 
 class _MockPlatform extends Mock implements Platform {}
 
@@ -107,6 +110,7 @@ void main() {
     late CodePushClientWrapper codePushClientWrapper;
     late Directory shorebirdRoot;
     late Directory flutterDirectory;
+    late PatchDiffChecker patchDiffChecker;
     late Platform platform;
     late Progress progress;
     late Logger logger;
@@ -129,6 +133,7 @@ void main() {
           codePushClientWrapperRef.overrideWith(() => codePushClientWrapper),
           engineConfigRef.overrideWith(() => const EngineConfig.empty()),
           loggerRef.overrideWith(() => logger),
+          patchDiffCheckerRef.overrideWith(() => patchDiffChecker),
           platformRef.overrideWith(() => platform),
           processRef.overrideWith(() => shorebirdProcess),
           shorebirdEnvRef.overrideWith(() => shorebirdEnv),
@@ -171,7 +176,9 @@ void main() {
     }
 
     setUpAll(() {
+      registerFallbackValue(File(''));
       registerFallbackValue(FileSetDiff.empty());
+      registerFallbackValue(Uri.parse('https://example.com'));
       registerFallbackValue(_FakeBaseRequest());
       registerFallbackValue(_FakeShorebirdProcess());
     });
@@ -185,6 +192,7 @@ void main() {
       flutterDirectory = Directory(
         p.join(shorebirdRoot.path, 'bin', 'cache', 'flutter'),
       );
+      patchDiffChecker = _MockPatchDiffChecker();
       platform = _MockPlatform();
       progress = _MockProgress();
       logger = _MockLogger();
@@ -310,6 +318,14 @@ void main() {
           checkShorebirdInitialized: any(named: 'checkShorebirdInitialized'),
         ),
       ).thenAnswer((_) async {});
+      when(
+        () => patchDiffChecker.confirmUnpatchableDiffsIfNecessary(
+          localArtifact: any(named: 'localArtifact'),
+          releaseArtifactUrl: any(named: 'releaseArtifactUrl'),
+          archiveDiffer: archiveDiffer,
+          force: any(named: 'force'),
+        ),
+      ).thenAnswer((_) async => true);
 
       command = runWithOverrides(
         () => PatchAarCommand(
@@ -562,110 +578,43 @@ Please re-run the release command for this version or create a new release.'''),
       expect(exitCode, ExitCode.software.code);
     });
 
-    test('throws error when aar fails to download', () async {
+    test('exits if confirmUnpatchableDiffsIfNecessary returns false', () async {
+      when(() => argResults['force']).thenReturn(false);
       when(
-        () => httpClient.send(
-          any(
-            that: isA<http.Request>().having(
-              (req) => req.url.toString(),
-              'url',
-              endsWith('aar'),
-            ),
-          ),
+        () => patchDiffChecker.confirmUnpatchableDiffsIfNecessary(
+          localArtifact: any(named: 'localArtifact'),
+          releaseArtifactUrl: any(named: 'releaseArtifactUrl'),
+          archiveDiffer: archiveDiffer,
+          force: any(named: 'force'),
         ),
-      ).thenAnswer(
-        (_) async => http.StreamedResponse(
-          const Stream.empty(),
-          HttpStatus.internalServerError,
-          reasonPhrase: 'Internal Server Error',
-        ),
-      );
-
+      ).thenAnswer((_) async => false);
       final tempDir = setUpTempDir();
       setUpTempArtifacts(tempDir);
+
       final exitCode = await IOOverrides.runZoned(
         () => runWithOverrides(command.run),
         getCurrentDirectory: () => tempDir,
       );
 
-      expect(exitCode, ExitCode.software.code);
-    });
-
-    test('prompts user to continue when asset changes are detected', () async {
-      when(() => archiveDiffer.containsPotentiallyBreakingAssetDiffs(any()))
-          .thenReturn(true);
-
-      final tempDir = setUpTempDir();
-      setUpTempArtifacts(tempDir);
-      final exitCode = await IOOverrides.runZoned(
-        () => runWithOverrides(command.run),
-        getCurrentDirectory: () => tempDir,
-      );
-
-      expect(exitCode, ExitCode.success.code);
+      expect(exitCode, equals(ExitCode.success.code));
       verify(
-        () => logger.info(
-          any(
-            that: contains(
-              '''The Android Archive contains asset changes, which will not be included in the patch.''',
-            ),
-          ),
+        () => patchDiffChecker.confirmUnpatchableDiffsIfNecessary(
+          localArtifact: any(named: 'localArtifact'),
+          releaseArtifactUrl: Uri.parse(aarArtifact.url),
+          archiveDiffer: archiveDiffer,
+          force: false,
         ),
       ).called(1);
-      verify(() => logger.confirm('Continue anyways?')).called(1);
+      verifyNever(
+        () => codePushClientWrapper.publishPatch(
+          appId: any(named: 'appId'),
+          releaseId: any(named: 'releaseId'),
+          platform: any(named: 'platform'),
+          channelName: any(named: 'channelName'),
+          patchArtifactBundles: any(named: 'patchArtifactBundles'),
+        ),
+      );
     });
-
-    test(
-      '''does not warn user of asset or code changes if only dart changes are detected''',
-      () async {
-        final tempDir = setUpTempDir();
-        setUpTempArtifacts(tempDir);
-        final exitCode = await IOOverrides.runZoned(
-          () => runWithOverrides(command.run),
-          getCurrentDirectory: () => tempDir,
-        );
-
-        expect(exitCode, ExitCode.success.code);
-        verifyNever(
-          () => logger.confirm(
-            any(
-              that: contains(
-                '''The Android Archive contains asset changes, which will not be included in the patch.''',
-              ),
-            ),
-          ),
-        );
-      },
-    );
-
-    test(
-      '''exits if user decides to not proceed after being warned of non-dart changes''',
-      () async {
-        when(() => archiveDiffer.containsPotentiallyBreakingAssetDiffs(any()))
-            .thenReturn(true);
-        when(
-          () => logger.confirm(any(that: contains('Continue anyways?'))),
-        ).thenReturn(false);
-
-        final tempDir = setUpTempDir();
-        setUpTempArtifacts(tempDir);
-        final exitCode = await IOOverrides.runZoned(
-          () => runWithOverrides(command.run),
-          getCurrentDirectory: () => tempDir,
-        );
-
-        expect(exitCode, ExitCode.success.code);
-        verifyNever(
-          () => codePushClientWrapper.publishPatch(
-            appId: any(named: 'appId'),
-            releaseId: any(named: 'releaseId'),
-            platform: any(named: 'platform'),
-            channelName: any(named: 'channelName'),
-            patchArtifactBundles: any(named: 'patchArtifactBundles'),
-          ),
-        );
-      },
-    );
 
     test('throws error when creating diff fails', () async {
       const error = 'oops something went wrong';

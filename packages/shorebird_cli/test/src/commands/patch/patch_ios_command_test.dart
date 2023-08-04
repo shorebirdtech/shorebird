@@ -8,12 +8,14 @@ import 'package:path/path.dart' as p;
 import 'package:platform/platform.dart';
 import 'package:propertylistserialization/propertylistserialization.dart';
 import 'package:scoped/scoped.dart';
+import 'package:shorebird_cli/src/archive_analysis/archive_analysis.dart';
 import 'package:shorebird_cli/src/auth/auth.dart';
 import 'package:shorebird_cli/src/code_push_client_wrapper.dart';
 import 'package:shorebird_cli/src/commands/patch/patch.dart';
 import 'package:shorebird_cli/src/config/config.dart';
 import 'package:shorebird_cli/src/doctor.dart';
 import 'package:shorebird_cli/src/logger.dart';
+import 'package:shorebird_cli/src/patch_diff_checker.dart';
 import 'package:shorebird_cli/src/platform.dart';
 import 'package:shorebird_cli/src/process.dart';
 import 'package:shorebird_cli/src/shorebird_env.dart';
@@ -35,7 +37,11 @@ class _MockCodePushClientWrapper extends Mock
 
 class _MockDoctor extends Mock implements Doctor {}
 
+class _MockIpaDiffer extends Mock implements IpaDiffer {}
+
 class _MockLogger extends Mock implements Logger {}
+
+class _MockPatchDiffChecker extends Mock implements PatchDiffChecker {}
 
 class _MockPlatform extends Mock implements Platform {}
 
@@ -93,6 +99,15 @@ flutter:
     - shorebird.yaml''';
 
   const appMetadata = AppMetadata(appId: appId, displayName: appDisplayName);
+  const ipaArtifact = ReleaseArtifact(
+    id: 0,
+    releaseId: 0,
+    arch: arch,
+    platform: ReleasePlatform.ios,
+    hash: '#',
+    size: 42,
+    url: 'https://example.com/release.ipa',
+  );
   const release = Release(
     id: 0,
     appId: appId,
@@ -110,8 +125,10 @@ flutter:
     late Directory shorebirdRoot;
     late File genSnapshotFile;
     late Doctor doctor;
+    late IpaDiffer ipaDiffer;
     late Progress progress;
     late Logger logger;
+    late PatchDiffChecker patchDiffChecker;
     late Platform platform;
     late ShorebirdProcessResult aotBuildProcessResult;
     late ShorebirdProcessResult flutterBuildProcessResult;
@@ -131,6 +148,7 @@ flutter:
           codePushClientWrapperRef.overrideWith(() => codePushClientWrapper),
           doctorRef.overrideWith(() => doctor),
           loggerRef.overrideWith(() => logger),
+          patchDiffCheckerRef.overrideWith(() => patchDiffChecker),
           platformRef.overrideWith(() => platform),
           processRef.overrideWith(() => shorebirdProcess),
           shorebirdEnvRef.overrideWith(() => shorebirdEnv),
@@ -179,9 +197,12 @@ flutter:
     }
 
     setUpAll(() {
+      registerFallbackValue(File(''));
+      registerFallbackValue(FileSetDiff.empty());
+      registerFallbackValue(ReleasePlatform.ios);
+      registerFallbackValue(Uri.parse('https://example.com'));
       registerFallbackValue(_FakeBaseRequest());
       registerFallbackValue(_FakeShorebirdProcess());
-      registerFallbackValue(ReleasePlatform.ios);
     });
 
     setUp(() {
@@ -204,12 +225,14 @@ flutter:
           'gen_snapshot_arm64',
         ),
       );
+      ipaDiffer = _MockIpaDiffer();
       progress = _MockProgress();
       logger = _MockLogger();
       platform = _MockPlatform();
       aotBuildProcessResult = _MockProcessResult();
       flutterBuildProcessResult = _MockProcessResult();
       httpClient = _MockHttpClient();
+      patchDiffChecker = _MockPatchDiffChecker();
       shorebirdEnv = _MockShorebirdEnv();
       shorebirdFlutterManager = _MockShorebirdFlutterManager();
       flutterValidator = _MockShorebirdFlutterValidator();
@@ -229,6 +252,14 @@ flutter:
       when(
         () => codePushClientWrapper.getReleases(appId: any(named: 'appId')),
       ).thenAnswer((_) async => [release]);
+      when(
+        () => codePushClientWrapper.getReleaseArtifact(
+          appId: any(named: 'appId'),
+          releaseId: any(named: 'releaseId'),
+          arch: any(named: 'arch'),
+          platform: any(named: 'platform'),
+        ),
+      ).thenAnswer((_) async => ipaArtifact);
       when(
         () => codePushClientWrapper.publishPatch(
           appId: any(named: 'appId'),
@@ -282,9 +313,18 @@ flutter:
           supportedOperatingSystems: any(named: 'supportedOperatingSystems'),
         ),
       ).thenAnswer((_) async {});
+      when(
+        () => patchDiffChecker.confirmUnpatchableDiffsIfNecessary(
+          localArtifact: any(named: 'localArtifact'),
+          releaseArtifactUrl: any(named: 'releaseArtifactUrl'),
+          archiveDiffer: ipaDiffer,
+          force: any(named: 'force'),
+        ),
+      ).thenAnswer((_) async => true);
 
-      command = runWithOverrides(PatchIosCommand.new)
-        ..testArgResults = argResults;
+      command = runWithOverrides(
+        () => PatchIosCommand(ipaDiffer: ipaDiffer),
+      )..testArgResults = argResults;
     });
 
     test('has a description', () {
@@ -579,6 +619,60 @@ Please re-run the release command for this version or create a new release.'''),
         () => progress.fail('Exception: Failed to create snapshot: $error'),
       ).called(1);
       expect(exitCode, ExitCode.software.code);
+    });
+
+    test('exits with code 70 when ipa not found', () async {
+      final tempDir = setUpTempDir();
+      setUpTempArtifacts(tempDir);
+      File(p.join(tempDir.path, ipaPath)).deleteSync();
+
+      final exitCode = await IOOverrides.runZoned(
+        () => runWithOverrides(command.run),
+        getCurrentDirectory: () => tempDir,
+      );
+
+      expect(exitCode, equals(ExitCode.software.code));
+      verify(
+        () => logger.err(any(that: contains('Could not find ipa file'))),
+      ).called(1);
+    });
+
+    test('exits if confirmUnpatchableDiffsIfNecessary returns false', () async {
+      when(() => argResults['force']).thenReturn(false);
+      when(
+        () => patchDiffChecker.confirmUnpatchableDiffsIfNecessary(
+          localArtifact: any(named: 'localArtifact'),
+          releaseArtifactUrl: any(named: 'releaseArtifactUrl'),
+          archiveDiffer: ipaDiffer,
+          force: any(named: 'force'),
+        ),
+      ).thenAnswer((_) async => false);
+      final tempDir = setUpTempDir();
+      setUpTempArtifacts(tempDir);
+
+      final exitCode = await IOOverrides.runZoned(
+        () => runWithOverrides(command.run),
+        getCurrentDirectory: () => tempDir,
+      );
+
+      expect(exitCode, equals(ExitCode.success.code));
+      verify(
+        () => patchDiffChecker.confirmUnpatchableDiffsIfNecessary(
+          localArtifact: any(named: 'localArtifact'),
+          releaseArtifactUrl: Uri.parse(ipaArtifact.url),
+          archiveDiffer: ipaDiffer,
+          force: false,
+        ),
+      ).called(1);
+      verifyNever(
+        () => codePushClientWrapper.publishPatch(
+          appId: any(named: 'appId'),
+          releaseId: any(named: 'releaseId'),
+          platform: any(named: 'platform'),
+          channelName: any(named: 'channelName'),
+          patchArtifactBundles: any(named: 'patchArtifactBundles'),
+        ),
+      );
     });
 
     test('does not create patch on --dry-run', () async {
