@@ -577,6 +577,14 @@ Please re-run the release command for this version or create a new release.'''),
           environment: any(named: 'environment'),
         ),
       ).called(1);
+      verify(
+        () => processWrapper.run(
+          '/bin/cache/flutter/${release.flutterRevision}/bin/cache/artifacts/engine/ios-release/gen_snapshot_arm64',
+          any(),
+          workingDirectory: any(named: 'workingDirectory'),
+          environment: any(named: 'environment'),
+        ),
+      ).called(1);
     });
 
     test(
