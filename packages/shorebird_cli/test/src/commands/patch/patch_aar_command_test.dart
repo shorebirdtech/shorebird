@@ -267,11 +267,8 @@ void main() {
         () => codePushClientWrapper.getApp(appId: any(named: 'appId')),
       ).thenAnswer((_) async => appMetadata);
       when(
-        () => codePushClientWrapper.getRelease(
-          appId: any(named: 'appId'),
-          releaseVersion: any(named: 'releaseVersion'),
-        ),
-      ).thenAnswer((_) async => release);
+        () => codePushClientWrapper.getReleases(appId: any(named: 'appId')),
+      ).thenAnswer((_) async => [release]);
       when(
         () => codePushClientWrapper.getReleaseArtifacts(
           appId: any(named: 'appId'),
@@ -360,12 +357,6 @@ void main() {
       ).called(1);
     });
 
-    test('exits with 78 if no module entry exists in pubspec.yaml', () async {
-      when(() => shorebirdEnv.androidPackageName).thenReturn(null);
-      final exitCode = await runWithOverrides(command.run);
-      expect(exitCode, ExitCode.config.code);
-    });
-
     test(
         'exits with usage code when '
         'both --dry-run and --force are specified', () async {
@@ -373,6 +364,146 @@ void main() {
       when(() => argResults['force']).thenReturn(true);
       final exitCode = await runWithOverrides(command.run);
       expect(exitCode, equals(ExitCode.usage.code));
+    });
+
+    test('exits with 78 if no module entry exists in pubspec.yaml', () async {
+      when(() => shorebirdEnv.androidPackageName).thenReturn(null);
+      final exitCode = await runWithOverrides(command.run);
+      expect(exitCode, ExitCode.config.code);
+    });
+
+    test('prompts for release when release-version is not specified', () async {
+      when(() => argResults['release-version']).thenReturn(null);
+      when(
+        () => logger.chooseOne<Release>(
+          any(),
+          choices: any(named: 'choices'),
+          display: any(named: 'display'),
+        ),
+      ).thenReturn(release);
+      try {
+        await runWithOverrides(command.run);
+      } catch (_) {}
+      await untilCalled(
+        () => logger.chooseOne<Release>(
+          any(),
+          choices: any(named: 'choices'),
+          display: any(named: 'display'),
+        ),
+      );
+      final display = verify(
+        () => logger.chooseOne<Release>(
+          any(),
+          choices: any(named: 'choices'),
+          display: captureAny(named: 'display'),
+        ),
+      ).captured.single as String Function(Release);
+      expect(display(release), equals(release.version));
+    });
+
+    test('exits early when no releases are found', () async {
+      when(() => argResults['release-version']).thenReturn(null);
+      when(
+        () => codePushClientWrapper.getReleases(appId: any(named: 'appId')),
+      ).thenAnswer((_) async => []);
+      try {
+        await runWithOverrides(command.run);
+      } catch (_) {}
+      verifyNever(
+        () => logger.chooseOne<Release>(
+          any(),
+          choices: any(named: 'choices'),
+          display: captureAny(named: 'display'),
+        ),
+      );
+      verify(() => codePushClientWrapper.getReleases(appId: appId)).called(1);
+      verify(() => logger.info('No releases found')).called(1);
+    });
+
+    test(
+        '''exits with code 70 if release is in draft state for the android platform''',
+        () async {
+      when(
+        () => codePushClientWrapper.getReleases(appId: any(named: 'appId')),
+      ).thenAnswer(
+        (_) async => const [
+          Release(
+            id: 0,
+            appId: appId,
+            version: version,
+            flutterRevision: flutterRevision,
+            displayName: '1.2.3+1',
+            platformStatuses: {ReleasePlatform.android: ReleaseStatus.draft},
+          ),
+        ],
+      );
+      final tempDir = setUpTempDir();
+      setUpTempArtifacts(tempDir);
+      final exitCode = await IOOverrides.runZoned(
+        () => runWithOverrides(command.run),
+        getCurrentDirectory: () => tempDir,
+      );
+      expect(exitCode, ExitCode.software.code);
+      verify(
+        () => logger.err('''
+Release 1.2.3+1 is in an incomplete state. It's possible that the original release was terminated or failed to complete.
+Please re-run the release command for this version or create a new release.'''),
+      ).called(1);
+    });
+
+    test('proceeds if release is in draft state for non-android platform',
+        () async {
+      when(
+        () => codePushClientWrapper.getReleases(appId: any(named: 'appId')),
+      ).thenAnswer(
+        (_) async => const [
+          Release(
+            id: 0,
+            appId: appId,
+            version: version,
+            flutterRevision: flutterRevision,
+            displayName: '1.2.3+1',
+            platformStatuses: {ReleasePlatform.ios: ReleaseStatus.draft},
+          ),
+        ],
+      );
+      final tempDir = setUpTempDir();
+      setUpTempArtifacts(tempDir);
+      final exitCode = await IOOverrides.runZoned(
+        () => runWithOverrides(command.run),
+        getCurrentDirectory: () => tempDir,
+      );
+      expect(exitCode, ExitCode.success.code);
+    });
+
+    test('throws error when release artifact does not exist.', () async {
+      when(
+        () => httpClient.send(
+          any(
+            that: isA<http.Request>().having(
+              (req) => req.url.toString(),
+              'url',
+              endsWith('so'),
+            ),
+          ),
+        ),
+      ).thenAnswer(
+        (_) async => http.StreamedResponse(
+          const Stream.empty(),
+          HttpStatus.notFound,
+          reasonPhrase: 'Not Found',
+        ),
+      );
+      final tempDir = setUpTempDir();
+      setUpTempArtifacts(tempDir);
+      final exitCode = await IOOverrides.runZoned(
+        () => runWithOverrides(command.run),
+        getCurrentDirectory: () => tempDir,
+      );
+      verify(
+        () => progress.fail(any(that: contains('404 Not Found'))),
+      ).called(1);
+      expect(exitCode, ExitCode.software.code);
     });
 
     test(
@@ -484,98 +615,6 @@ void main() {
       when(() => flutterBuildProcessResult.stderr).thenReturn('oops');
       final exitCode = await runWithOverrides(command.run);
       expect(exitCode, equals(ExitCode.software.code));
-    });
-
-    test(
-      '''exits with code 70 if release is in draft state for the android platform''',
-      () async {
-        when(
-          () => codePushClientWrapper.getRelease(
-            appId: any(named: 'appId'),
-            releaseVersion: any(named: 'releaseVersion'),
-          ),
-        ).thenAnswer(
-          (_) async => const Release(
-            id: 0,
-            appId: appId,
-            version: version,
-            flutterRevision: flutterRevision,
-            displayName: '1.2.3+1',
-            platformStatuses: {ReleasePlatform.android: ReleaseStatus.draft},
-          ),
-        );
-        final tempDir = setUpTempDir();
-        setUpTempArtifacts(tempDir);
-        final exitCode = await IOOverrides.runZoned(
-          () => runWithOverrides(command.run),
-          getCurrentDirectory: () => tempDir,
-        );
-        expect(exitCode, ExitCode.software.code);
-        verify(
-          () => logger.err('''
-Release 1.2.3+1 is in an incomplete state. It's possible that the original release was terminated or failed to complete.
-
-Please re-run the release command for this version or create a new release.'''),
-        ).called(1);
-      },
-    );
-
-    test(
-      'proceeds if release is in draft state for non-android platform',
-      () async {
-        when(
-          () => codePushClientWrapper.getRelease(
-            appId: any(named: 'appId'),
-            releaseVersion: any(named: 'releaseVersion'),
-          ),
-        ).thenAnswer(
-          (_) async => const Release(
-            id: 0,
-            appId: appId,
-            version: version,
-            flutterRevision: flutterRevision,
-            displayName: '1.2.3+1',
-            platformStatuses: {ReleasePlatform.ios: ReleaseStatus.draft},
-          ),
-        );
-        final tempDir = setUpTempDir();
-        setUpTempArtifacts(tempDir);
-        final exitCode = await IOOverrides.runZoned(
-          () => runWithOverrides(command.run),
-          getCurrentDirectory: () => tempDir,
-        );
-        expect(exitCode, ExitCode.success.code);
-      },
-    );
-
-    test('throws error when release artifact does not exist.', () async {
-      when(
-        () => httpClient.send(
-          any(
-            that: isA<http.Request>().having(
-              (req) => req.url.toString(),
-              'url',
-              endsWith('so'),
-            ),
-          ),
-        ),
-      ).thenAnswer(
-        (_) async => http.StreamedResponse(
-          const Stream.empty(),
-          HttpStatus.notFound,
-          reasonPhrase: 'Not Found',
-        ),
-      );
-      final tempDir = setUpTempDir();
-      setUpTempArtifacts(tempDir);
-      final exitCode = await IOOverrides.runZoned(
-        () => runWithOverrides(command.run),
-        getCurrentDirectory: () => tempDir,
-      );
-      verify(
-        () => progress.fail(any(that: contains('404 Not Found'))),
-      ).called(1);
-      expect(exitCode, ExitCode.software.code);
     });
 
     test('exits if confirmUnpatchableDiffsIfNecessary returns false', () async {
@@ -710,12 +749,7 @@ Please re-run the release command for this version or create a new release.'''),
       verify(() => logger.success('\n✅ Published Patch!')).called(1);
 
       verify(() => codePushClientWrapper.getApp(appId: appId)).called(1);
-      verify(
-        () => codePushClientWrapper.getRelease(
-          appId: appId,
-          releaseVersion: version,
-        ),
-      ).called(1);
+      verify(() => codePushClientWrapper.getReleases(appId: appId)).called(1);
       verify(
         () => codePushClientWrapper.getReleaseArtifacts(
           appId: appId,

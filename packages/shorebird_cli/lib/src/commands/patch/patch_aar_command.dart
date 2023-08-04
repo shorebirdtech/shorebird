@@ -2,6 +2,7 @@ import 'dart:async';
 import 'dart:io';
 
 import 'package:archive/archive_io.dart';
+import 'package:collection/collection.dart';
 import 'package:crypto/crypto.dart';
 import 'package:http/http.dart' as http;
 import 'package:mason_logger/mason_logger.dart';
@@ -50,15 +51,6 @@ class PatchAarCommand extends ShorebirdCommand
 The version of the associated release (e.g. "1.0.0"). This should be the version
 of the Android app that is using this module.''',
         mandatory: true,
-      )
-      ..addOption(
-        'channel',
-        help: 'The channel the patch should be promoted to (e.g. "stable").',
-        allowed: ['stable'],
-        allowedHelp: {
-          'stable': 'The stable channel which is consumed by production apps.'
-        },
-        defaultsTo: 'stable',
       )
       ..addFlag(
         'force',
@@ -112,16 +104,30 @@ of the Android app that is using this module.''',
       return ExitCode.config.code;
     }
 
-    final buildNumber = results['build-number'] as String;
-    final releaseVersion = results['release-version'] as String;
-
     final shorebirdYaml = shorebirdEnv.getShorebirdYaml()!;
     final appId = shorebirdYaml.getAppId();
     final app = await codePushClientWrapper.getApp(appId: appId);
-    final release = await codePushClientWrapper.getRelease(
-      appId: appId,
-      releaseVersion: releaseVersion,
+    final releases = await codePushClientWrapper.getReleases(appId: appId);
+    final releaseVersion = results['release-version'] as String? ??
+        await _promptForReleaseVersion(releases);
+
+    final release = releases.firstWhereOrNull(
+      (r) => r.version == releaseVersion,
     );
+
+    if (releaseVersion == null || release == null) {
+      logger.info('No releases found');
+      return ExitCode.success.code;
+    }
+
+    if (release.platformStatuses[ReleasePlatform.android] ==
+        ReleaseStatus.draft) {
+      logger.err('''
+Release $releaseVersion is in an incomplete state. It's possible that the original release was terminated or failed to complete.
+Please re-run the release command for this version or create a new release.''');
+      return ExitCode.software.code;
+    }
+
     final shorebirdFlutterRevision = shorebirdEnv.flutterRevision;
     if (release.flutterRevision != shorebirdFlutterRevision) {
       final installFlutterRevisionProgress = logger.progress(
@@ -138,6 +144,32 @@ of the Android app that is using this module.''',
       }
     }
 
+    const platform = ReleasePlatform.android;
+    final releaseArtifacts = await codePushClientWrapper.getReleaseArtifacts(
+      appId: appId,
+      releaseId: release.id,
+      architectures: architectures,
+      platform: platform,
+    );
+
+    final releaseAarArtifact = await codePushClientWrapper.getReleaseArtifact(
+      appId: appId,
+      releaseId: release.id,
+      arch: 'aar',
+      platform: platform,
+    );
+
+    final Map<Arch, String> releaseArtifactPaths;
+    try {
+      releaseArtifactPaths = await _downloadReleaseArtifacts(
+        releaseArtifacts: releaseArtifacts,
+        httpClient: _httpClient,
+      );
+    } catch (_) {
+      return ExitCode.software.code;
+    }
+
+    final buildNumber = results['build-number'] as String;
     final buildProgress = logger.progress('Building patch');
     try {
       await runScoped(
@@ -156,30 +188,10 @@ of the Android app that is using this module.''',
       return ExitCode.software.code;
     }
 
-    const platform = ReleasePlatform.android;
-    final channelName = results['channel'] as String;
-
-    if (release.platformStatuses[ReleasePlatform.android] ==
-        ReleaseStatus.draft) {
-      logger.err('''
-Release $releaseVersion is in an incomplete state. It's possible that the original release was terminated or failed to complete.
-
-Please re-run the release command for this version or create a new release.''');
-      return ExitCode.software.code;
-    }
-
-    final releaseArtifacts = await codePushClientWrapper.getReleaseArtifacts(
-      appId: appId,
-      releaseId: release.id,
-      architectures: architectures,
-      platform: platform,
-    );
-
-    final releaseAarArtifact = await codePushClientWrapper.getReleaseArtifact(
-      appId: appId,
-      releaseId: release.id,
-      arch: 'aar',
-      platform: platform,
+    final extractedAarDir = await extractAar(
+      packageName: shorebirdEnv.androidPackageName!,
+      buildNumber: buildNumber,
+      unzipFn: _unzipFn,
     );
 
     final shouldContinue =
@@ -194,25 +206,8 @@ Please re-run the release command for this version or create a new release.''');
       archiveDiffer: _archiveDiffer,
       force: force,
     );
-    if (!shouldContinue) {
-      return ExitCode.success.code;
-    }
 
-    final Map<Arch, String> releaseArtifactPaths;
-    try {
-      releaseArtifactPaths = await _downloadReleaseArtifacts(
-        releaseArtifacts: releaseArtifacts,
-        httpClient: _httpClient,
-      );
-    } catch (_) {
-      return ExitCode.software.code;
-    }
-
-    final extractedAarDir = await extractAar(
-      packageName: shorebirdEnv.androidPackageName!,
-      buildNumber: buildNumber,
-      unzipFn: _unzipFn,
-    );
+    if (!shouldContinue) return ExitCode.success.code;
 
     final patchArtifactBundles = await _createPatchArtifacts(
       releaseArtifactPaths: releaseArtifactPaths,
@@ -235,6 +230,7 @@ Please re-run the release command for this version or create a new release.''');
       return ExitCode.success.code;
     }
 
+    const channelName = 'stable';
     final summary = [
       '''📱 App: ${lightCyan.wrap(app.displayName)} ${lightCyan.wrap('(${app.appId})')}''',
       '📦 Release Version: ${lightCyan.wrap(releaseVersion)}',
@@ -271,6 +267,16 @@ ${summary.join('\n')}
 
     logger.success('\n✅ Published Patch!');
     return ExitCode.success.code;
+  }
+
+  Future<String?> _promptForReleaseVersion(List<Release> releases) async {
+    if (releases.isEmpty) return null;
+    final release = logger.chooseOne(
+      'Which release would you like to patch?',
+      choices: releases,
+      display: (release) => release.version,
+    );
+    return release.version;
   }
 
   Future<Map<Arch, PatchArtifactBundle>?> _createPatchArtifacts({
