@@ -123,9 +123,9 @@ class PatchAndroidCommand extends ShorebirdCommand
     if (releaseVersion == null || release == null) {
       logger.info('''
 No release found for version $releaseVersion
+
 Available release versions:
-  ${releases.map((r) => r.version).join('\n')}
-''');
+${releases.map((r) => r.version).join('\n')}''');
       return ExitCode.success.code;
     }
 

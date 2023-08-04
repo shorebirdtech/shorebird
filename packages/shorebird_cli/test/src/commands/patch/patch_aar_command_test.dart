@@ -436,9 +436,9 @@ void main() {
       verify(
         () => logger.info('''
 No release found for version 0.0.0
+
 Available release versions:
-  ${release.version}
-'''),
+${release.version}'''),
       ).called(1);
     });
 
