@@ -31,8 +31,10 @@ class PatchIosCommand extends ShorebirdCommand
   PatchIosCommand({
     HashFunction? hashFn,
     IpaDiffer? ipaDiffer,
+    IpaReader? ipaReader,
   })  : _hashFn = hashFn ?? ((m) => sha256.convert(m).toString()),
-        _ipaDiffer = ipaDiffer ?? IpaDiffer() {
+        _ipaDiffer = ipaDiffer ?? IpaDiffer(),
+        _ipaReader = ipaReader ?? IpaReader() {
     argParser
       ..addOption(
         'release-version',
@@ -70,6 +72,7 @@ class PatchIosCommand extends ShorebirdCommand
 
   final HashFunction _hashFn;
   final IpaDiffer _ipaDiffer;
+  final IpaReader _ipaReader;
 
   @override
   Future<int> run() async {
@@ -148,6 +151,13 @@ Please re-run the release command for this version or create a new release.''');
       }
     }
 
+    final releaseArtifact = await codePushClientWrapper.getReleaseArtifact(
+      appId: appId,
+      releaseId: release.id,
+      arch: 'ipa',
+      platform: ReleasePlatform.ios,
+    );
+
     final buildProgress = logger.progress('Building release');
     try {
       await runScoped(
@@ -176,18 +186,35 @@ Please re-run the release command for this version or create a new release.''');
 
     buildProgress.complete();
 
-    final releaseArtifact = await codePushClientWrapper.getReleaseArtifact(
-      appId: appId,
-      releaseId: release.id,
-      arch: 'ipa',
-      platform: ReleasePlatform.ios,
-    );
-
     final String ipaPath;
     try {
       ipaPath = getIpaPath();
     } catch (error) {
       logger.err('Could not find ipa file: $error');
+      return ExitCode.software.code;
+    }
+
+    final detectReleaseVersionProgress = logger.progress(
+      'Detecting release version',
+    );
+    final String localReleaseVersion;
+    try {
+      final ipa = _ipaReader.read(getIpaPath());
+      localReleaseVersion = ipa.versionNumber;
+      detectReleaseVersionProgress.complete(
+        'Detected release version $localReleaseVersion',
+      );
+    } catch (error) {
+      detectReleaseVersionProgress.fail(
+        'Failed to determine release version: $error',
+      );
+      return ExitCode.software.code;
+    }
+
+    if (localReleaseVersion != releaseVersion) {
+      logger.err('''
+The local release version ($localReleaseVersion) does not match the remote release version ($releaseVersion).
+Please re-run the release command for this version or create a new release.''');
       return ExitCode.software.code;
     }
 

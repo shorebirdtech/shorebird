@@ -700,6 +700,71 @@ Please re-run the release command for this version or create a new release.'''),
       expect(exitCode, ExitCode.software.code);
     });
 
+    test('errors when detecting release version name fails', () async {
+      final exception = Exception(
+        'Failed to extract version name from app bundle: oops',
+      );
+      when(() => bundletool.getVersionName(any())).thenThrow(exception);
+      final tempDir = setUpTempDir();
+      setUpTempArtifacts(tempDir);
+      final exitCode = await IOOverrides.runZoned(
+        () => runWithOverrides(command.run),
+        getCurrentDirectory: () => tempDir,
+      );
+      expect(exitCode, ExitCode.software.code);
+      verify(() => progress.fail('$exception')).called(1);
+    });
+
+    test('errors when detecting release version code fails', () async {
+      final exception = Exception(
+        'Failed to extract version code from app bundle: oops',
+      );
+      when(() => bundletool.getVersionCode(any())).thenThrow(exception);
+      final tempDir = setUpTempDir();
+      setUpTempArtifacts(tempDir);
+      final exitCode = await IOOverrides.runZoned(
+        () => runWithOverrides(command.run),
+        getCurrentDirectory: () => tempDir,
+      );
+      expect(exitCode, ExitCode.software.code);
+      verify(() => progress.fail('$exception')).called(1);
+    });
+
+    test('prints release version when detected', () async {
+      final tempDir = setUpTempDir();
+      setUpTempArtifacts(tempDir);
+      final exitCode = await IOOverrides.runZoned(
+        () => runWithOverrides(command.run),
+        getCurrentDirectory: () => tempDir,
+      );
+
+      expect(exitCode, equals(ExitCode.success.code));
+      verify(
+        () => progress.complete('Detected release version 1.2.3+1'),
+      ).called(1);
+    });
+
+    test(
+        'errors when local release version '
+        'does not match remote release version', () async {
+      when(
+        () => bundletool.getVersionName(any()),
+      ).thenAnswer((_) async => '0.0.0');
+      when(() => bundletool.getVersionCode(any())).thenAnswer((_) async => '0');
+      final tempDir = setUpTempDir();
+      setUpTempArtifacts(tempDir);
+      final exitCode = await IOOverrides.runZoned(
+        () => runWithOverrides(command.run),
+        getCurrentDirectory: () => tempDir,
+      );
+      expect(exitCode, ExitCode.software.code);
+      verify(
+        () => logger.err('''
+The local release version (0.0.0+0) does not match the remote release version (1.2.3+1).
+Please re-run the release command for this version or create a new release.'''),
+      ).called(1);
+    });
+
     test('exits if confirmUnpatchableDiffsIfNecessary returns false', () async {
       when(() => argResults['force']).thenReturn(false);
       when(
