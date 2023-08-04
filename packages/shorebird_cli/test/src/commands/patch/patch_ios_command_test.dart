@@ -457,7 +457,6 @@ flutter:
       verify(
         () => logger.err('''
 Release 1.2.3+1 is in an incomplete state. It's possible that the original release was terminated or failed to complete.
-
 Please re-run the release command for this version or create a new release.'''),
       ).called(1);
     });

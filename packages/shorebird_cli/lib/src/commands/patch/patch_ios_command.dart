@@ -104,7 +104,7 @@ class PatchIosCommand extends ShorebirdCommand
     final app = await codePushClientWrapper.getApp(appId: appId);
     final releases = await codePushClientWrapper.getReleases(appId: appId);
     final releaseVersion = results['release-version'] as String? ??
-        await promptForReleaseVersion(releases);
+        await _promptForReleaseVersion(releases);
 
     final release = releases.firstWhereOrNull(
       (r) => r.version == releaseVersion,
@@ -118,7 +118,6 @@ class PatchIosCommand extends ShorebirdCommand
     if (release.platformStatuses[ReleasePlatform.ios] == ReleaseStatus.draft) {
       logger.err('''
 Release $releaseVersion is in an incomplete state. It's possible that the original release was terminated or failed to complete.
-
 Please re-run the release command for this version or create a new release.''');
       return ExitCode.software.code;
     }
@@ -250,7 +249,7 @@ ${summary.join('\n')}
     return ExitCode.success.code;
   }
 
-  Future<String?> promptForReleaseVersion(List<Release> releases) async {
+  Future<String?> _promptForReleaseVersion(List<Release> releases) async {
     if (releases.isEmpty) return null;
     final release = logger.chooseOne(
       'Which release would you like to patch?',
