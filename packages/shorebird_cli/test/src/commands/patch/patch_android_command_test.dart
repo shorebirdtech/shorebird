@@ -717,6 +717,22 @@ Please re-run the release command for this version or create a new release.'''),
       );
     });
 
+    test('throws error when creating diff fails', () async {
+      const error = 'oops something went wrong';
+      when(() => patchProcessResult.exitCode).thenReturn(1);
+      when(() => patchProcessResult.stderr).thenReturn(error);
+      final tempDir = setUpTempDir();
+      setUpTempArtifacts(tempDir);
+      final exitCode = await IOOverrides.runZoned(
+        () => runWithOverrides(command.run),
+        getCurrentDirectory: () => tempDir,
+      );
+      verify(
+        () => progress.fail('Exception: Failed to create diff: $error'),
+      ).called(1);
+      expect(exitCode, ExitCode.software.code);
+    });
+
     test('does not create patch on --dry-run', () async {
       when(() => argResults['dry-run']).thenReturn(true);
       final tempDir = setUpTempDir();
