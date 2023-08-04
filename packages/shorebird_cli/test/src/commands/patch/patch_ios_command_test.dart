@@ -285,6 +285,7 @@ flutter:
       when(() => logger.progress(any())).thenReturn(progress);
       when(() => platform.operatingSystem).thenReturn(Platform.macOS);
       when(() => platform.environment).thenReturn({});
+      when(() => platform.script).thenReturn(shorebirdRoot.uri);
       when(() => shorebirdEnv.getShorebirdYaml()).thenReturn(shorebirdYaml);
       when(() => shorebirdEnv.shorebirdRoot).thenReturn(shorebirdRoot);
       when(() => shorebirdEnv.flutterDirectory).thenReturn(flutterDirectory);
