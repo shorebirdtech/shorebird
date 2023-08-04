@@ -114,7 +114,7 @@ void main() {
 
     // Create an Android patch.
     final shorebirdPatchResult = runCommand(
-      'shorebird patch android --force',
+      'shorebird patch android --release-version=1.0.0+1 --force',
       workingDirectory: cwd,
     );
     expect(shorebirdPatchResult.stderr, isEmpty);
