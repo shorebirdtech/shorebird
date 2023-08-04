@@ -2,6 +2,21 @@
 
 This section contains past updates we've sent to customers via Discord.
 
+## 0.12.0 (August 4, 2023)
+
+We've just released Shorebird v0.12.0 🎉
+
+- 📜 `shorebird patch` supports patching releases that used older Flutter versions
+- ✅ `shorebird.yaml` exposes `auto_update` which can be used to disable automatic update checks
+- 🗂️ `shorebird patch ios-alpha` warns users of asset changes
+- 📦 `shorebird release android` supports `--split-per-abi` flag
+
+📚 Release notes can be found at https://github.com/shorebirdtech/shorebird/releases/tag/v0.12.0
+
+As always, you can upgrade using `shorebird upgrade`
+
+Please let us know if we can help!
+
 ## 0.11.2 (August 1, 2023)
 
 We've just released Shorebird v0.11.2 🎉
