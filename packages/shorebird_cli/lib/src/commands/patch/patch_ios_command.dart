@@ -124,8 +124,7 @@ class PatchIosCommand extends ShorebirdCommand
 No release found for version $releaseVersion
 
 Available release versions:
-${releases.map((r) => r.version).join('\n')}
-''');
+${releases.map((r) => r.version).join('\n')}''');
       return ExitCode.success.code;
     }
 

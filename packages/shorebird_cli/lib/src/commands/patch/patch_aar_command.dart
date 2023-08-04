@@ -126,8 +126,7 @@ of the Android app that is using this module.''',
 No release found for version $releaseVersion
 
 Available release versions:
-${releases.map((r) => r.version).join('\n')}
-''');
+${releases.map((r) => r.version).join('\n')}''');
       return ExitCode.success.code;
     }
 

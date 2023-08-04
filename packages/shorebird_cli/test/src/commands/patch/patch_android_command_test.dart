@@ -485,8 +485,7 @@ flutter:
 No release found for version 0.0.0
 
 Available release versions:
-${release.version}
-'''),
+${release.version}'''),
       ).called(1);
     });
 
