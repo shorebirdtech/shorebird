@@ -14,6 +14,7 @@ import 'package:shorebird_cli/src/gradlew.dart';
 import 'package:shorebird_cli/src/ios_deploy.dart';
 import 'package:shorebird_cli/src/java.dart';
 import 'package:shorebird_cli/src/logger.dart';
+import 'package:shorebird_cli/src/patch_diff_checker.dart';
 import 'package:shorebird_cli/src/platform.dart';
 import 'package:shorebird_cli/src/process.dart';
 import 'package:shorebird_cli/src/shorebird_env.dart';
@@ -40,6 +41,7 @@ Future<void> main(List<String> args) async {
         iosDeployRef,
         javaRef,
         loggerRef,
+        patchDiffCheckerRef,
         platformRef,
         processRef,
         shorebirdEnvRef,

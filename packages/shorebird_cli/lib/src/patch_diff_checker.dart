@@ -1,0 +1,94 @@
+import 'dart:io';
+
+import 'package:http/http.dart' as http;
+import 'package:mason_logger/mason_logger.dart';
+import 'package:path/path.dart' as p;
+import 'package:scoped/scoped.dart';
+import 'package:shorebird_cli/src/archive_analysis/archive_differ.dart';
+import 'package:shorebird_cli/src/logger.dart';
+
+/// A reference to a [PatchDiffChecker] instance.
+ScopedRef<PatchDiffChecker> patchDiffCheckerRef = create(PatchDiffChecker.new);
+
+// The [PatchVerifier] instance available in the current zone.
+PatchDiffChecker get patchDiffChecker => read(patchDiffCheckerRef);
+
+/// {@template patch_verifier}
+/// Verifies that a patch can successfully be applied to a release artifact.
+/// {@endtemplate}
+class PatchDiffChecker {
+  /// {@macro patch_verifier}
+  PatchDiffChecker({http.Client? httpClient})
+      : _httpClient = httpClient ?? http.Client();
+
+  final http.Client _httpClient;
+
+  /// Downloads the release artifact at [releaseArtifactUrl] and checks for
+  /// differences that could cause issues when applying the patch represented by
+  /// [localArtifact].
+  Future<bool> confirmUnpatchableDiffsIfNecessary({
+    required File localArtifact,
+    required Uri releaseArtifactUrl,
+    required ArchiveDiffer archiveDiffer,
+    required bool force,
+  }) async {
+    final progress =
+        logger.progress('Verifying patch can be applied to release');
+
+    final request = http.Request('GET', releaseArtifactUrl);
+    final response = await _httpClient.send(request);
+
+    if (response.statusCode != HttpStatus.ok) {
+      progress.fail();
+      throw Exception(
+        '''Failed to download release artifact: ${response.statusCode} ${response.reasonPhrase}''',
+      );
+    }
+
+    final tempDir = await Directory.systemTemp.createTemp();
+    final releaseArtifact = File(p.join(tempDir.path, 'release.artifact'));
+    await releaseArtifact.openWrite().addStream(response.stream);
+
+    final contentDiffs = archiveDiffer.changedFiles(
+      releaseArtifact.path,
+      localArtifact.path,
+    );
+    progress.complete();
+
+    if (archiveDiffer.containsPotentiallyBreakingNativeDiffs(contentDiffs)) {
+      logger
+        ..warn(
+          '''The release artifact contains native changes, which cannot be applied with a patch.''',
+        )
+        ..info(
+          yellow.wrap(
+            archiveDiffer.nativeFileSetDiff(contentDiffs).prettyString,
+          ),
+        );
+      final shouldContinue = force || logger.confirm('Continue anyways?');
+
+      if (!shouldContinue) {
+        return false;
+      }
+    }
+
+    if (archiveDiffer.containsPotentiallyBreakingAssetDiffs(contentDiffs)) {
+      logger
+        ..warn(
+          '''The release artifact contains asset changes, which will not be included in the patch.''',
+        )
+        ..info(
+          yellow.wrap(
+            archiveDiffer.assetsFileSetDiff(contentDiffs).prettyString,
+          ),
+        );
+
+      final shouldContinue = force || logger.confirm('Continue anyways?');
+      if (!shouldContinue) {
+        return false;
+      }
+    }
+
+    return true;
+  }
+}

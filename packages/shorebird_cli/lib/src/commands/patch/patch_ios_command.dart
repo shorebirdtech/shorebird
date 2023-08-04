@@ -12,6 +12,7 @@ import 'package:shorebird_cli/src/doctor.dart';
 import 'package:shorebird_cli/src/formatters/file_size_formatter.dart';
 import 'package:shorebird_cli/src/ios.dart';
 import 'package:shorebird_cli/src/logger.dart';
+import 'package:shorebird_cli/src/patch_diff_checker.dart';
 import 'package:shorebird_cli/src/shorebird_artifact_mixin.dart';
 import 'package:shorebird_cli/src/shorebird_build_mixin.dart';
 import 'package:shorebird_cli/src/shorebird_env.dart';
@@ -26,8 +27,10 @@ class PatchIosCommand extends ShorebirdCommand
   /// {@macro patch_ios_command}
   PatchIosCommand({
     HashFunction? hashFn,
+    IpaDiffer? ipaDiffer,
     IpaReader? ipaReader,
   })  : _hashFn = hashFn ?? ((m) => sha256.convert(m).toString()),
+        _ipaDiffer = ipaDiffer ?? IpaDiffer(),
         _ipaReader = ipaReader ?? IpaReader() {
     argParser
       ..addOption(
@@ -61,6 +64,7 @@ class PatchIosCommand extends ShorebirdCommand
       'Publish new patches for a specific iOS release to Shorebird.';
 
   final HashFunction _hashFn;
+  final IpaDiffer _ipaDiffer;
   final IpaReader _ipaReader;
 
   @override
@@ -150,6 +154,24 @@ Release $releaseVersion is in an incomplete state. It's possible that the origin
 
 Please re-run the release command for this version or create a new release.''');
       return ExitCode.software.code;
+    }
+
+    final releaseArtifact = await codePushClientWrapper.getReleaseArtifact(
+      appId: appId,
+      releaseId: release.id,
+      arch: 'ipa',
+      platform: ReleasePlatform.ios,
+    );
+
+    final shouldContinue =
+        await patchDiffChecker.confirmUnpatchableDiffsIfNecessary(
+      localArtifact: File(ipaPath),
+      releaseArtifactUrl: Uri.parse(releaseArtifact.url),
+      archiveDiffer: _ipaDiffer,
+      force: force,
+    );
+    if (!shouldContinue) {
+      return ExitCode.success.code;
     }
 
     final shorebirdFlutterRevision = shorebirdEnv.flutterRevision;
