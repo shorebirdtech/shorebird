@@ -2,6 +2,18 @@
 
 This section contains past updates we've sent to customers via Discord.
 
+## 0.12.1 (August 5, 2023)
+
+We've just released Shorebird v0.12.1 🎉
+
+- 🩹 fix for `shorebird release android --artifact apk` where `--split-per-abi` was incorrectly always enabled.
+
+📚 Release notes can be found at https://github.com/shorebirdtech/shorebird/releases/tag/v0.12.1
+
+As always, you can upgrade using `shorebird upgrade`
+
+Please let us know if we can help!
+
 ## 0.12.0 (August 4, 2023)
 
 We've just released Shorebird v0.12.0 🎉
