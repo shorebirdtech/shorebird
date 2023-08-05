@@ -375,6 +375,14 @@ void main() {
           status: ReleaseStatus.active,
         ),
       ).called(1);
+      const buildApkArguments = ['build', 'apk', '--release'];
+      verify(
+        () => shorebirdProcess.run(
+          'flutter',
+          buildApkArguments,
+          runInShell: true,
+        ),
+      ).called(1);
       expect(exitCode, ExitCode.success.code);
     });
 
@@ -401,7 +409,7 @@ void main() {
           status: ReleaseStatus.active,
         ),
       ).called(1);
-      final buildApkArguments = [
+      const buildApkArguments = [
         'build',
         'apk',
         '--release',

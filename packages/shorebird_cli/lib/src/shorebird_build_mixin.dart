@@ -138,7 +138,7 @@ mixin ShorebirdBuildMixin on ShorebirdCommand {
   Future<void> buildApk({
     String? flavor,
     String? target,
-    bool? splitPerAbi,
+    bool splitPerAbi = false,
   }) async {
     const executable = 'flutter';
     final arguments = [
@@ -147,7 +147,7 @@ mixin ShorebirdBuildMixin on ShorebirdCommand {
       '--release',
       if (flavor != null) '--flavor=$flavor',
       if (target != null) '--target=$target',
-      if (splitPerAbi != null) '--split-per-abi',
+      if (splitPerAbi) '--split-per-abi',
       ...results.rest,
     ];
 
