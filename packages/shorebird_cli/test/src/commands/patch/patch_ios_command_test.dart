@@ -39,7 +39,7 @@ class _MockDoctor extends Mock implements Doctor {}
 
 class _MockIpa extends Mock implements Ipa {}
 
-class _MockIpaDiffer extends Mock implements IpaDiffer {}
+class _MockIpaDiffer extends Mock implements IosArchiveDiffer {}
 
 class _MockIpaReader extends Mock implements IpaReader {}
 
@@ -130,7 +130,7 @@ flutter:
     late File genSnapshotFile;
     late Doctor doctor;
     late Ipa ipa;
-    late IpaDiffer ipaDiffer;
+    late IosArchiveDiffer archiveDiffer;
     late IpaReader ipaReader;
     late Progress progress;
     late Logger logger;
@@ -232,7 +232,7 @@ flutter:
         ),
       );
       ipa = _MockIpa();
-      ipaDiffer = _MockIpaDiffer();
+      archiveDiffer = _MockIpaDiffer();
       ipaReader = _MockIpaReader();
       progress = _MockProgress();
       logger = _MockLogger();
@@ -328,13 +328,14 @@ flutter:
         () => patchDiffChecker.confirmUnpatchableDiffsIfNecessary(
           localArtifact: any(named: 'localArtifact'),
           releaseArtifactUrl: any(named: 'releaseArtifactUrl'),
-          archiveDiffer: ipaDiffer,
+          archiveDiffer: archiveDiffer,
           force: any(named: 'force'),
         ),
       ).thenAnswer((_) async => true);
 
       command = runWithOverrides(
-        () => PatchIosCommand(ipaDiffer: ipaDiffer, ipaReader: ipaReader),
+        () =>
+            PatchIosCommand(archiveDiffer: archiveDiffer, ipaReader: ipaReader),
       )..testArgResults = argResults;
     });
 
@@ -774,7 +775,7 @@ Please re-run the release command for this version or create a new release.'''),
         () => patchDiffChecker.confirmUnpatchableDiffsIfNecessary(
           localArtifact: any(named: 'localArtifact'),
           releaseArtifactUrl: any(named: 'releaseArtifactUrl'),
-          archiveDiffer: ipaDiffer,
+          archiveDiffer: archiveDiffer,
           force: any(named: 'force'),
         ),
       ).thenAnswer((_) async => false);
@@ -791,7 +792,7 @@ Please re-run the release command for this version or create a new release.'''),
         () => patchDiffChecker.confirmUnpatchableDiffsIfNecessary(
           localArtifact: any(named: 'localArtifact'),
           releaseArtifactUrl: Uri.parse(ipaArtifact.url),
-          archiveDiffer: ipaDiffer,
+          archiveDiffer: archiveDiffer,
           force: false,
         ),
       ).called(1);
