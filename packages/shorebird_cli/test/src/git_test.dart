@@ -33,7 +33,12 @@ void main() {
       git = runWithOverrides(Git.new);
 
       when(
-        () => process.run(any(), any(), runInShell: any(named: 'runInShell')),
+        () => process.run(
+          any(),
+          any(),
+          runInShell: any(named: 'runInShell'),
+          workingDirectory: any(named: 'workingDirectory'),
+        ),
       ).thenAnswer((_) async => processResult);
       when(() => processResult.exitCode).thenReturn(ExitCode.success.code);
     });
@@ -125,6 +130,46 @@ void main() {
         expect(
           () => runWithOverrides(
             () => git.checkout(
+              directory: directory,
+              revision: revision,
+            ),
+          ),
+          throwsA(
+            isA<ProcessException>().having((e) => e.message, 'message', error),
+          ),
+        );
+      });
+    });
+
+    group('rev-parse', () {
+      const directory = './output';
+      const revision = 'revision';
+
+      test('executes correct command', () async {
+        const output = 'revision';
+        when(() => processResult.stdout).thenReturn(output);
+        await expectLater(
+          runWithOverrides(
+            () => git.revParse(directory: directory, revision: revision),
+          ),
+          completion(equals(output)),
+        );
+        verify(
+          () => process.run(
+            'git',
+            ['rev-parse', '--verify', revision],
+            workingDirectory: directory,
+          ),
+        ).called(1);
+      });
+
+      test('throws ProcessException if process exits with error', () async {
+        const error = 'oops';
+        when(() => processResult.exitCode).thenReturn(ExitCode.software.code);
+        when(() => processResult.stderr).thenReturn(error);
+        expect(
+          () => runWithOverrides(
+            () => git.revParse(
               directory: directory,
               revision: revision,
             ),
