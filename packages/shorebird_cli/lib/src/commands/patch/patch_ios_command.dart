@@ -30,10 +30,10 @@ class PatchIosCommand extends ShorebirdCommand
   /// {@macro patch_ios_command}
   PatchIosCommand({
     HashFunction? hashFn,
-    IpaDiffer? ipaDiffer,
+    IosArchiveDiffer? archiveDiffer,
     IpaReader? ipaReader,
   })  : _hashFn = hashFn ?? ((m) => sha256.convert(m).toString()),
-        _ipaDiffer = ipaDiffer ?? IpaDiffer(),
+        _archiveDiffer = archiveDiffer ?? IosArchiveDiffer(),
         _ipaReader = ipaReader ?? IpaReader() {
     argParser
       ..addOption(
@@ -71,7 +71,7 @@ class PatchIosCommand extends ShorebirdCommand
       'Publish new patches for a specific iOS release to Shorebird.';
 
   final HashFunction _hashFn;
-  final IpaDiffer _ipaDiffer;
+  final IosArchiveDiffer _archiveDiffer;
   final IpaReader _ipaReader;
 
   @override
@@ -235,7 +235,7 @@ Please re-run the release command for this version or create a new release.''');
         await patchDiffChecker.confirmUnpatchableDiffsIfNecessary(
       localArtifact: File(ipaPath),
       releaseArtifactUrl: Uri.parse(releaseArtifact.url),
-      archiveDiffer: _ipaDiffer,
+      archiveDiffer: _archiveDiffer,
       force: force,
     );
 

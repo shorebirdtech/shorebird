@@ -1,5 +1,3 @@
-import 'dart:io' hide Platform;
-
 import 'package:mason_logger/mason_logger.dart';
 import 'package:path/path.dart' as p;
 import 'package:platform/platform.dart';
@@ -9,13 +7,14 @@ import 'package:shorebird_cli/src/config/config.dart';
 import 'package:shorebird_cli/src/doctor.dart';
 import 'package:shorebird_cli/src/ios.dart';
 import 'package:shorebird_cli/src/logger.dart';
+import 'package:shorebird_cli/src/shorebird_artifact_mixin.dart';
 import 'package:shorebird_cli/src/shorebird_build_mixin.dart';
 import 'package:shorebird_cli/src/shorebird_env.dart';
 import 'package:shorebird_cli/src/shorebird_validator.dart';
 import 'package:shorebird_code_push_client/shorebird_code_push_client.dart';
 
 class ReleaseIosFrameworkCommand extends ShorebirdCommand
-    with ShorebirdBuildMixin {
+    with ShorebirdArtifactMixin, ShorebirdBuildMixin {
   ReleaseIosFrameworkCommand() {
     argParser
       ..addOption(
@@ -119,16 +118,10 @@ ${summary.join('\n')}
       );
     }
 
-    final iosBuildDir = p.join(Directory.current.path, 'build', 'ios');
-    final frameworkDirectory = Directory(
-      p.join(iosBuildDir, 'framework', 'Release'),
-    );
-    final xcframeworkPath = p.join(frameworkDirectory.path, 'App.xcframework');
-
     await codePushClientWrapper.createIosFrameworkReleaseArtifacts(
       appId: appId,
       releaseId: release.id,
-      appFrameworkPath: xcframeworkPath,
+      appFrameworkPath: getAppXcframeworkPath(),
     );
 
     await codePushClientWrapper.updateReleaseStatus(
@@ -138,7 +131,8 @@ ${summary.join('\n')}
       status: ReleaseStatus.active,
     );
 
-    final relativeFrameworkDirectoryPath = p.relative(frameworkDirectory.path);
+    final relativeFrameworkDirectoryPath =
+        p.relative(getAppXcframeworkDirectory().path);
     logger
       ..success('\n✅ Published Release!')
       ..info('''

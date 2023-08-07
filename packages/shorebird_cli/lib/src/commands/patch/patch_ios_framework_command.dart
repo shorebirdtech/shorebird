@@ -1,10 +1,13 @@
 import 'dart:io' hide Platform;
 
+import 'package:archive/archive_io.dart';
 import 'package:collection/collection.dart';
 import 'package:crypto/crypto.dart';
 import 'package:mason_logger/mason_logger.dart';
+import 'package:path/path.dart' as p;
 import 'package:platform/platform.dart';
 import 'package:scoped/scoped.dart';
+import 'package:shorebird_cli/src/archive_analysis/archive_analysis.dart';
 import 'package:shorebird_cli/src/code_push_client_wrapper.dart';
 import 'package:shorebird_cli/src/command.dart';
 import 'package:shorebird_cli/src/config/shorebird_yaml.dart';
@@ -12,6 +15,7 @@ import 'package:shorebird_cli/src/doctor.dart';
 import 'package:shorebird_cli/src/formatters/file_size_formatter.dart';
 import 'package:shorebird_cli/src/ios.dart';
 import 'package:shorebird_cli/src/logger.dart';
+import 'package:shorebird_cli/src/patch_diff_checker.dart';
 import 'package:shorebird_cli/src/shorebird_artifact_mixin.dart';
 import 'package:shorebird_cli/src/shorebird_build_mixin.dart';
 import 'package:shorebird_cli/src/shorebird_env.dart';
@@ -23,7 +27,9 @@ class PatchIosFrameworkCommand extends ShorebirdCommand
     with ShorebirdBuildMixin, ShorebirdArtifactMixin {
   PatchIosFrameworkCommand({
     HashFunction? hashFn,
-  }) : _hashFn = hashFn ?? ((m) => sha256.convert(m).toString()) {
+    IosArchiveDiffer? archiveDiffer,
+  })  : _hashFn = hashFn ?? ((m) => sha256.convert(m).toString()),
+        _archiveDiffer = archiveDiffer ?? IosArchiveDiffer() {
     argParser
       ..addOption(
         'release-version',
@@ -46,6 +52,7 @@ of the iOS app that is using this module.''',
   }
 
   final HashFunction _hashFn;
+  final IosArchiveDiffer _archiveDiffer;
 
   @override
   String get name => 'ios-framework-alpha';
@@ -157,6 +164,36 @@ Please re-run the release command for this version or create a new release.''');
     }
 
     buildProgress.complete();
+
+    const zippedFrameworkFileName =
+        '${ShorebirdArtifactMixin.appXcframeworkName}.zip';
+    final tempDir = Directory.systemTemp.createTempSync();
+    final zippedFrameworkPath = p.join(
+      tempDir.path,
+      zippedFrameworkFileName,
+    );
+    ZipFileEncoder().zipDirectory(
+      Directory(getAppXcframeworkPath()),
+      filename: zippedFrameworkPath,
+    );
+
+    final releaseArtifact = await codePushClientWrapper.getReleaseArtifact(
+      appId: appId,
+      releaseId: release.id,
+      arch: 'xcframework',
+      platform: ReleasePlatform.ios,
+    );
+    final shouldContinue =
+        await patchDiffChecker.confirmUnpatchableDiffsIfNecessary(
+      localArtifact: File(zippedFrameworkPath),
+      releaseArtifactUrl: Uri.parse(releaseArtifact.url),
+      archiveDiffer: _archiveDiffer,
+      force: force,
+    );
+
+    if (!shouldContinue) {
+      return ExitCode.success.code;
+    }
 
     if (dryRun) {
       logger
