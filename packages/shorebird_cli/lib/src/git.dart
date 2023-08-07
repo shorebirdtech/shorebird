@@ -69,6 +69,24 @@ class Git {
     }
   }
 
+  /// Fetch branches/tags from the repository at [directory].
+  Future<void> fetch({required String directory, List<String>? args}) async {
+    final arguments = ['fetch', ...?args];
+    final result = await process.run(
+      executable,
+      arguments,
+      workingDirectory: directory,
+    );
+    if (result.exitCode != 0) {
+      throw ProcessException(
+        executable,
+        arguments,
+        '${result.stderr}',
+        result.exitCode,
+      );
+    }
+  }
+
   /// Returns the revision of the git repository located at [directory].
   Future<String> revParse({
     required String revision,
