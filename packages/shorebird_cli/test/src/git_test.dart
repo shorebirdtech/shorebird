@@ -141,6 +141,54 @@ void main() {
       });
     });
 
+    group('fetch', () {
+      const directory = 'repository';
+      test('executes correct command', () async {
+        await expectLater(
+          runWithOverrides(
+            () => git.fetch(directory: directory),
+          ),
+          completes,
+        );
+        verify(
+          () => process.run(
+            'git',
+            ['fetch'],
+            workingDirectory: directory,
+          ),
+        ).called(1);
+      });
+
+      test('executes correct command w/args', () async {
+        final args = ['--tags'];
+        await expectLater(
+          runWithOverrides(
+            () => git.fetch(directory: directory, args: args),
+          ),
+          completes,
+        );
+        verify(
+          () => process.run(
+            'git',
+            ['fetch', ...args],
+            workingDirectory: directory,
+          ),
+        ).called(1);
+      });
+
+      test('throws ProcessException if process exits with error', () async {
+        const error = 'oops';
+        when(() => processResult.exitCode).thenReturn(ExitCode.software.code);
+        when(() => processResult.stderr).thenReturn(error);
+        expect(
+          () => runWithOverrides(() => git.fetch(directory: directory)),
+          throwsA(
+            isA<ProcessException>().having((e) => e.message, 'message', error),
+          ),
+        );
+      });
+    });
+
     group('revParse', () {
       const directory = './output';
       const revision = 'revision';
