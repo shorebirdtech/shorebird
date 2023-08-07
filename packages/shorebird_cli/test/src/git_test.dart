@@ -23,7 +23,6 @@ void main() {
         () => body(),
         values: {
           processRef.overrideWith(() => process),
-          gitRef.overrideWith(() => git),
         },
       );
     }
