@@ -68,4 +68,26 @@ class Git {
       );
     }
   }
+
+  /// Returns the revision of the git repository located at [directory].
+  Future<String> revParse({
+    required String revision,
+    required String directory,
+  }) async {
+    final arguments = ['rev-parse', '--verify', revision];
+    final result = await process.run(
+      executable,
+      arguments,
+      workingDirectory: directory,
+    );
+    if (result.exitCode != 0) {
+      throw ProcessException(
+        executable,
+        arguments,
+        '${result.stderr}',
+        result.exitCode,
+      );
+    }
+    return '${result.stdout}'.trim();
+  }
 }
