@@ -160,7 +160,7 @@ flutter:
           dir.path,
           'build',
           'ios',
-          'Framework',
+          'framework',
           'Release',
           'App.xcframework',
         ),
