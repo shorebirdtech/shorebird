@@ -1,7 +1,6 @@
 import 'package:shorebird_cli/src/command.dart';
 
 /// {@template flutter_command}
-///
 /// `shorebird flutter`
 /// Manage your Shorebird Flutter installation.
 /// {@endtemplate}
