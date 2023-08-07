@@ -173,6 +173,10 @@ Please re-run the release command for this version or create a new release.''');
     } on ProcessException catch (error) {
       buildProgress.fail('Failed to build: ${error.message}');
       return ExitCode.software.code;
+    } on BuildException catch (error) {
+      buildProgress.fail('Failed to build IPA');
+      logger.err(error.message);
+      return ExitCode.software.code;
     }
 
     final File aotFile;
