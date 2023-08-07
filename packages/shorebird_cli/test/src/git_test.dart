@@ -141,7 +141,7 @@ void main() {
       });
     });
 
-    group('rev-parse', () {
+    group('revParse', () {
       const directory = './output';
       const revision = 'revision';
 
