@@ -93,5 +93,47 @@ void main() {
         );
       });
     });
+
+    group('checkout', () {
+      const directory = './output';
+      const revision = 'revision';
+
+      test('executes correct command', () async {
+        await runWithOverrides(
+          () => git.checkout(directory: directory, revision: revision),
+        );
+        verify(
+          () => process.run(
+            'git',
+            [
+              '-C',
+              directory,
+              '-c',
+              'advice.detachedHead=false',
+              'checkout',
+              revision,
+            ],
+            runInShell: true,
+          ),
+        ).called(1);
+      });
+
+      test('throws ProcessException if process exits with error', () async {
+        const error = 'oops';
+        when(() => processResult.exitCode).thenReturn(ExitCode.software.code);
+        when(() => processResult.stderr).thenReturn(error);
+        expect(
+          () => runWithOverrides(
+            () => git.checkout(
+              directory: directory,
+              revision: revision,
+            ),
+          ),
+          throwsA(
+            isA<ProcessException>().having((e) => e.message, 'message', error),
+          ),
+        );
+      });
+    });
   });
 }

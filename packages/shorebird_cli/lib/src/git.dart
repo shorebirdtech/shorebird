@@ -33,4 +33,32 @@ class Git {
       );
     }
   }
+
+  /// Checks out the git repository located at [directory] to the [revision].
+  Future<void> checkout({
+    required String directory,
+    required String revision,
+  }) async {
+    final arguments = [
+      '-C',
+      directory,
+      '-c',
+      'advice.detachedHead=false',
+      'checkout',
+      revision,
+    ];
+    final result = await process.run(
+      executable,
+      arguments,
+      runInShell: true,
+    );
+    if (result.exitCode != 0) {
+      throw ProcessException(
+        executable,
+        arguments,
+        '${result.stderr}',
+        result.exitCode,
+      );
+    }
+  }
 }
