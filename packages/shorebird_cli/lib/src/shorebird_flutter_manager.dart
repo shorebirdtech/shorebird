@@ -2,7 +2,7 @@ import 'dart:io';
 
 import 'package:path/path.dart' as p;
 import 'package:scoped/scoped.dart';
-import 'package:shorebird_cli/src/process.dart';
+import 'package:shorebird_cli/src/git.dart';
 import 'package:shorebird_cli/src/shorebird_env.dart';
 
 /// A reference to a [ShorebirdFlutterManager] instance.
@@ -28,51 +28,21 @@ class ShorebirdFlutterManager {
       p.join(shorebirdEnv.flutterDirectory.parent.path, revision),
     );
     if (targetDirectory.existsSync()) return;
-    const executable = 'git';
 
     // Clone the Shorebird Flutter repo into the target directory.
-    final cloneArgs = [
-      'clone',
-      '--filter=tree:0',
-      flutterGitUrl,
-      '--no-checkout',
-      targetDirectory.path,
-    ];
-    final cloneResult = await process.run(
-      executable,
-      cloneArgs,
-      runInShell: true,
+    await git.clone(
+      url: flutterGitUrl,
+      outputDirectory: targetDirectory.path,
+      args: [
+        '--filter=tree:0',
+        '--no-checkout',
+      ],
     );
-    if (cloneResult.exitCode != 0) {
-      throw ProcessException(
-        executable,
-        cloneArgs,
-        '${cloneResult.stderr}',
-        cloneResult.exitCode,
-      );
-    }
 
     // Checkout the correct revision.
-    final checkoutArgs = [
-      '-C',
-      targetDirectory.path,
-      '-c',
-      'advice.detachedHead=false',
-      'checkout',
-      revision,
-    ];
-    final checkoutResult = await process.run(
-      executable,
-      checkoutArgs,
-      runInShell: true,
+    await git.checkout(
+      directory: targetDirectory.path,
+      revision: revision,
     );
-    if (checkoutResult.exitCode != 0) {
-      throw ProcessException(
-        executable,
-        checkoutArgs,
-        '${checkoutResult.stderr}',
-        checkoutResult.exitCode,
-      );
-    }
   }
 }

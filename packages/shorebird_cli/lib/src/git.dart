@@ -1,6 +1,13 @@
 import 'dart:io';
 
+import 'package:scoped/scoped.dart';
 import 'package:shorebird_cli/src/process.dart';
+
+/// A reference to a [Git] instance.
+final gitRef = create(Git.new);
+
+/// The [Git] instance available in the current zone.
+Git get git => read(gitRef);
 
 /// A wrapper around all git related functionality.
 class Git {
