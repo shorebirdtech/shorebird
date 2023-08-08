@@ -40,8 +40,7 @@ void main() {
     });
 
     test('returns no issues when shorebird is up-to-date', () async {
-      when(shorebirdVersion.isLatest)
-          .thenAnswer((_) async => true);
+      when(shorebirdVersion.isLatest).thenAnswer((_) async => true);
 
       final results = await runWithOverrides(validator.validate);
 
@@ -65,8 +64,7 @@ void main() {
     });
 
     test('returns a warning when a newer shorebird is available', () async {
-      when(shorebirdVersion.isLatest)
-          .thenAnswer((_) async => false);
+      when(shorebirdVersion.isLatest).thenAnswer((_) async => false);
 
       final results = await runWithOverrides(validator.validate);
 
