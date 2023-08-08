@@ -1,3 +1,4 @@
+import 'dart:convert';
 import 'dart:io';
 
 import 'package:path/path.dart' as p;
@@ -59,5 +60,16 @@ class ShorebirdFlutter {
       args: ['--untracked-files=no', '--porcelain'],
     );
     return status.isEmpty;
+  }
+
+  Future<List<String>> getVersions({String? revision}) async {
+    final result = await git.forEachRef(
+      format: '%(refname:short)',
+      pattern: 'refs/remotes/origin/flutter_release/*',
+      directory: _workingDirectory(revision: revision),
+    );
+    return LineSplitter.split(result)
+        .map((e) => e.replaceFirst('origin/flutter_release/', ''))
+        .toList();
   }
 }
