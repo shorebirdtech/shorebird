@@ -53,4 +53,13 @@ class ShorebirdFlutterManager {
       directory: _workingDirectory(revision: revision),
     );
   }
+
+  /// Whether the current revision is porcelain (unmodified).
+  Future<bool> isPorcelain({String? revision}) async {
+    final status = await git.status(
+      directory: _workingDirectory(revision: revision),
+      args: ['--untracked-files=no', '--porcelain'],
+    );
+    return status.isEmpty;
+  }
 }

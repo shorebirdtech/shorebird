@@ -7,6 +7,7 @@ import 'package:scoped/scoped.dart';
 import 'package:shorebird_cli/src/platform.dart';
 import 'package:shorebird_cli/src/process.dart';
 import 'package:shorebird_cli/src/shorebird_env.dart';
+import 'package:shorebird_cli/src/shorebird_flutter_manager.dart';
 import 'package:shorebird_cli/src/validators/validators.dart';
 import 'package:test/test.dart';
 
@@ -15,6 +16,9 @@ class _MockProcessResult extends Mock implements ShorebirdProcessResult {}
 class _MockPlatform extends Mock implements Platform {}
 
 class _MockShorebirdEnv extends Mock implements ShorebirdEnv {}
+
+class _MockShorebirdFlutterManager extends Mock
+    implements ShorebirdFlutterManager {}
 
 class _MockShorebirdProcess extends Mock implements ShorebirdProcess {}
 
@@ -40,9 +44,9 @@ Tools • Dart 2.19.6 • DevTools 2.20.1
     late Directory tempDir;
     late ShorebirdProcessResult pathFlutterVersionProcessResult;
     late ShorebirdProcessResult shorebirdFlutterVersionProcessResult;
-    late ShorebirdProcessResult gitStatusProcessResult;
     late ShorebirdProcess shorebirdProcess;
     late ShorebirdEnv shorebirdEnv;
+    late ShorebirdFlutterManager shorebirdFlutterManager;
     late Platform platform;
 
     R runWithOverrides<R>(R Function() body) {
@@ -52,6 +56,9 @@ Tools • Dart 2.19.6 • DevTools 2.20.1
           platformRef.overrideWith(() => platform),
           processRef.overrideWith(() => shorebirdProcess),
           shorebirdEnvRef.overrideWith(() => shorebirdEnv),
+          shorebirdFlutterManagerRef.overrideWith(
+            () => shorebirdFlutterManager,
+          ),
         },
       );
     }
@@ -73,6 +80,7 @@ Tools • Dart 2.19.6 • DevTools 2.20.1
       tempDir = setupTempDirectory();
       platform = _MockPlatform();
       shorebirdEnv = _MockShorebirdEnv();
+      shorebirdFlutterManager = _MockShorebirdFlutterManager();
 
       when(() => shorebirdEnv.flutterRevision).thenReturn(flutterRevision);
       when(
@@ -83,17 +91,14 @@ Tools • Dart 2.19.6 • DevTools 2.20.1
 
       pathFlutterVersionProcessResult = _MockProcessResult();
       shorebirdFlutterVersionProcessResult = _MockProcessResult();
-      gitStatusProcessResult = _MockProcessResult();
       shorebirdProcess = _MockShorebirdProcess();
 
       validator = ShorebirdFlutterValidator();
       when(
-        () => shorebirdProcess.run(
-          'git',
-          ['status', '--untracked-files=no', '--porcelain'],
-          workingDirectory: any(named: 'workingDirectory'),
+        () => shorebirdFlutterManager.isPorcelain(
+          revision: any(named: 'revision'),
         ),
-      ).thenAnswer((_) async => gitStatusProcessResult);
+      ).thenAnswer((_) async => true);
       when(
         () => shorebirdProcess.run(
           'flutter',
@@ -118,7 +123,6 @@ Tools • Dart 2.19.6 • DevTools 2.20.1
           .thenReturn(shorebirdFlutterVersionMessage);
       when(() => shorebirdFlutterVersionProcessResult.stderr).thenReturn('');
       when(() => shorebirdFlutterVersionProcessResult.exitCode).thenReturn(0);
-      when(() => gitStatusProcessResult.stdout).thenReturn('');
     });
 
     test('has a non-empty description', () {
@@ -146,8 +150,11 @@ Tools • Dart 2.19.6 • DevTools 2.20.1
     });
 
     test('warns when Flutter has local modifications', () async {
-      when(() => gitStatusProcessResult.stdout)
-          .thenReturn('Changes not staged for commit');
+      when(
+        () => shorebirdFlutterManager.isPorcelain(
+          revision: any(named: 'revision'),
+        ),
+      ).thenAnswer((_) async => false);
 
       final results = await runWithOverrides(validator.validate);
 
