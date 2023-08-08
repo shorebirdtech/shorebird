@@ -1,3 +1,4 @@
+import 'dart:convert';
 import 'dart:io';
 
 import 'package:mason_logger/mason_logger.dart';
@@ -72,7 +73,7 @@ class XcodeBuild {
       throw ProcessException(executable, arguments, '${result.stderr}');
     }
 
-    final lines = '${result.stdout}'.split('\n').map((e) => e.trim());
+    final lines = LineSplitter.split('${result.stdout}').map((e) => e.trim());
     final targets = <String>{};
     final buildConfigurations = <String>{};
     final schemes = <String>{};
