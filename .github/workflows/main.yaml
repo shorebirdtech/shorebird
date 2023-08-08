@@ -115,9 +115,10 @@ jobs:
 
     strategy:
       matrix:
+        os: [macos-latest, windows-latest, ubuntu-latest]
         package: ${{ fromJSON(needs.changes.outputs.needs_verify) }}
 
-    runs-on: ubuntu-latest
+    runs-on: ${{ matrix.os }}
 
     name: 🔎 Verify ${{ matrix.package }}
 
