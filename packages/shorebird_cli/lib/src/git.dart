@@ -87,7 +87,8 @@ class Git {
     }
   }
 
-  /// Prunes stale remote branches from the repository at [directory].
+  /// Prunes stale remote branches from the repository at [directory]
+  /// associated with [name].
   Future<void> remotePrune({
     required String name,
     required String directory,
