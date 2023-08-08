@@ -399,8 +399,8 @@ test-revision
           ..createSync(recursive: true)
           ..writeAsStringSync(revision, flush: true);
         final snapshot = File(
-            p.join(shorebirdRoot.path, 'bin', 'cache', 'shorebird.snapshot'))
-          ..createSync(recursive: true);
+          p.join(shorebirdRoot.path, 'bin', 'cache', 'shorebird.snapshot'),
+        )..createSync(recursive: true);
 
         expect(
           runWithOverrides(() => shorebirdEnv.flutterRevision),
@@ -429,8 +429,8 @@ test-revision
           ..createSync(recursive: true)
           ..writeAsStringSync(revision, flush: true);
         final snapshot = File(
-            p.join(shorebirdRoot.path, 'bin', 'cache', 'shorebird.snapshot'))
-          ..createSync(recursive: true);
+          p.join(shorebirdRoot.path, 'bin', 'cache', 'shorebird.snapshot'),
+        )..createSync(recursive: true);
 
         expect(
           runWithOverrides(() => shorebirdEnv.flutterRevision),
