@@ -2,7 +2,7 @@ import 'dart:io';
 
 import 'package:path/path.dart' as p;
 import 'package:scoped/scoped.dart';
-import 'package:shorebird_cli/src/process.dart';
+import 'package:shorebird_cli/src/git.dart';
 
 /// A reference to a [ShorebirdVersionManager] instance.
 final shorebirdVersionManagerRef = create(ShorebirdVersionManager.new);
@@ -20,7 +20,6 @@ class ShorebirdVersionManager {
   /// Whether the current version of Shorebird is the latest available.
   Future<bool> isShorebirdVersionCurrent() async {
     final currentVersion = await fetchCurrentGitHash();
-
     final latestVersion = await fetchLatestGitHash();
 
     return currentVersion == latestVersion;
@@ -31,13 +30,9 @@ class ShorebirdVersionManager {
   /// Exits if HEAD isn't pointing to a branch, or there is no upstream.
   Future<String> fetchLatestGitHash() async {
     // Fetch upstream branch's commits and tags
-    await process.run(
-      'git',
-      ['fetch', '--tags'],
-      workingDirectory: _workingDirectory,
-    );
+    await git.fetch(directory: _workingDirectory, args: ['--tags']);
     // Get the latest commit revision of the upstream
-    return _gitRevParse('@{upstream}');
+    return git.revParse(revision: '@{upstream}', directory: _workingDirectory);
   }
 
   /// Returns the local HEAD shorebird hash.
@@ -45,25 +40,7 @@ class ShorebirdVersionManager {
   /// Exits if HEAD isn't pointing to a branch, or there is no upstream.
   Future<String> fetchCurrentGitHash() async {
     // Get the commit revision of HEAD
-    return _gitRevParse('HEAD');
-  }
-
-  Future<String> _gitRevParse(String revision) async {
-    // Get the commit revision of HEAD
-    final result = await process.run(
-      'git',
-      ['rev-parse', '--verify', revision],
-      workingDirectory: _workingDirectory,
-    );
-    if (result.exitCode != 0) {
-      throw ProcessException(
-        'git',
-        ['rev-parse', '--verify', revision],
-        '${result.stderr}',
-        result.exitCode,
-      );
-    }
-    return '${result.stdout}'.trim();
+    return git.revParse(revision: 'HEAD', directory: _workingDirectory);
   }
 
   /// Attempts a hard reset to the given revision.
@@ -74,18 +51,10 @@ class ShorebirdVersionManager {
   Future<void> attemptReset({
     required String newRevision,
   }) async {
-    final result = await process.run(
-      'git',
-      ['reset', '--hard', newRevision],
-      workingDirectory: _workingDirectory,
+    return git.reset(
+      revision: newRevision,
+      directory: _workingDirectory,
+      args: ['--hard'],
     );
-    if (result.exitCode != 0) {
-      throw ProcessException(
-        'git',
-        ['reset', '--hard', newRevision],
-        '${result.stderr}',
-        result.exitCode,
-      );
-    }
   }
 }
