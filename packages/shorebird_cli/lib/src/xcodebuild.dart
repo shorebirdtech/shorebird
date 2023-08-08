@@ -72,7 +72,7 @@ class XcodeBuild {
       throw ProcessException(executable, arguments, '${result.stderr}');
     }
 
-    final lines = '${result.stdout}'.split('\n');
+    final lines = '${result.stdout}'.split('\n').map((e) => e.trim());
     final targets = <String>{};
     final buildConfigurations = <String>{};
     final schemes = <String>{};
@@ -95,7 +95,7 @@ class XcodeBuild {
         bucket = schemes;
         continue;
       }
-      bucket?.add(line.trim());
+      bucket?.add(line);
     }
     if (schemes.isEmpty) schemes.add('Runner');
 
