@@ -152,4 +152,23 @@ class Git {
     }
     return '${result.stdout}'.trim();
   }
+
+  /// Returns the status of the git repository located at [directory].
+  Future<String> status({required String directory, List<String>? args}) async {
+    final arguments = ['status', ...?args];
+    final result = await process.run(
+      executable,
+      arguments,
+      workingDirectory: directory,
+    );
+    if (result.exitCode != 0) {
+      throw ProcessException(
+        executable,
+        arguments,
+        '${result.stderr}',
+        result.exitCode,
+      );
+    }
+    return '${result.stdout}'.trim();
+  }
 }
