@@ -44,6 +44,7 @@ class ShorebirdEnv {
   }
 
   set flutterRevision(String revision) {
+    if (revision == flutterRevision) return;
     File(
       p.join(shorebirdRoot.path, 'bin', 'internal', 'flutter.version'),
     ).writeAsStringSync(revision);
