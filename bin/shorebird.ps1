@@ -1,6 +1,8 @@
 # This is the windows equivalent of the `third_party/flutter/bin/internal/shared.sh` script
 # compiles `shorebird_cli/bin/shorebird_cli.dart` to `bin/cache/shorebird.shapshot`
 
+$ErrorActionPreference = "Stop"
+
 # We are running from $shorebirdRootDir\bin
 $shorebirdBinDir = (Get-Item $PSScriptRoot).FullName
 $shorebirdRootDir = (Get-Item $shorebirdBinDir\..\).FullName
