@@ -384,6 +384,36 @@ test-revision
           equals(override),
         );
       });
+
+      test('can be set', () {
+        const newRevision = 'new-revision';
+        const revision = '''
+
+test-revision
+
+\r\n
+''';
+        final version = File(
+          p.join(shorebirdRoot.path, 'bin', 'internal', 'flutter.version'),
+        )
+          ..createSync(recursive: true)
+          ..writeAsStringSync(revision, flush: true);
+        final snapshot = File(
+            p.join(shorebirdRoot.path, 'bin', 'cache', 'shorebird.snapshot'))
+          ..createSync(recursive: true);
+
+        expect(
+          runWithOverrides(() => shorebirdEnv.flutterRevision),
+          'test-revision',
+        );
+        runWithOverrides(() => shorebirdEnv.flutterRevision = newRevision);
+        expect(snapshot.existsSync(), isFalse);
+        expect(version.readAsStringSync(), equals(newRevision));
+        expect(
+          runWithOverrides(() => shorebirdEnv.flutterRevision),
+          newRevision,
+        );
+      });
     });
 
     group('shorebirdEngineRevision', () {
