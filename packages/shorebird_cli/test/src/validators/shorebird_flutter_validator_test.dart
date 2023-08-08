@@ -7,7 +7,7 @@ import 'package:scoped/scoped.dart';
 import 'package:shorebird_cli/src/platform.dart';
 import 'package:shorebird_cli/src/process.dart';
 import 'package:shorebird_cli/src/shorebird_env.dart';
-import 'package:shorebird_cli/src/shorebird_flutter_manager.dart';
+import 'package:shorebird_cli/src/shorebird_flutter.dart';
 import 'package:shorebird_cli/src/validators/validators.dart';
 import 'package:test/test.dart';
 
@@ -17,8 +17,7 @@ class _MockPlatform extends Mock implements Platform {}
 
 class _MockShorebirdEnv extends Mock implements ShorebirdEnv {}
 
-class _MockShorebirdFlutterManager extends Mock
-    implements ShorebirdFlutterManager {}
+class _MockShorebirdFlutter extends Mock implements ShorebirdFlutter {}
 
 class _MockShorebirdProcess extends Mock implements ShorebirdProcess {}
 
@@ -46,7 +45,7 @@ Tools • Dart 2.19.6 • DevTools 2.20.1
     late ShorebirdProcessResult shorebirdFlutterVersionProcessResult;
     late ShorebirdProcess shorebirdProcess;
     late ShorebirdEnv shorebirdEnv;
-    late ShorebirdFlutterManager shorebirdFlutterManager;
+    late ShorebirdFlutter shorebirdFlutter;
     late Platform platform;
 
     R runWithOverrides<R>(R Function() body) {
@@ -56,9 +55,7 @@ Tools • Dart 2.19.6 • DevTools 2.20.1
           platformRef.overrideWith(() => platform),
           processRef.overrideWith(() => shorebirdProcess),
           shorebirdEnvRef.overrideWith(() => shorebirdEnv),
-          shorebirdFlutterManagerRef.overrideWith(
-            () => shorebirdFlutterManager,
-          ),
+          shorebirdFlutterRef.overrideWith(() => shorebirdFlutter),
         },
       );
     }
@@ -80,7 +77,7 @@ Tools • Dart 2.19.6 • DevTools 2.20.1
       tempDir = setupTempDirectory();
       platform = _MockPlatform();
       shorebirdEnv = _MockShorebirdEnv();
-      shorebirdFlutterManager = _MockShorebirdFlutterManager();
+      shorebirdFlutter = _MockShorebirdFlutter();
 
       when(() => shorebirdEnv.flutterRevision).thenReturn(flutterRevision);
       when(
@@ -95,7 +92,7 @@ Tools • Dart 2.19.6 • DevTools 2.20.1
 
       validator = ShorebirdFlutterValidator();
       when(
-        () => shorebirdFlutterManager.isPorcelain(
+        () => shorebirdFlutter.isPorcelain(
           revision: any(named: 'revision'),
         ),
       ).thenAnswer((_) async => true);
@@ -151,7 +148,7 @@ Tools • Dart 2.19.6 • DevTools 2.20.1
 
     test('warns when Flutter has local modifications', () async {
       when(
-        () => shorebirdFlutterManager.isPorcelain(
+        () => shorebirdFlutter.isPorcelain(
           revision: any(named: 'revision'),
         ),
       ).thenAnswer((_) async => false);

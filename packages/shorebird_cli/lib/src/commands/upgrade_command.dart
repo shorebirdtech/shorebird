@@ -3,7 +3,7 @@ import 'dart:io';
 import 'package:mason_logger/mason_logger.dart';
 import 'package:shorebird_cli/src/command.dart';
 import 'package:shorebird_cli/src/logger.dart';
-import 'package:shorebird_cli/src/shorebird_flutter_manager.dart';
+import 'package:shorebird_cli/src/shorebird_flutter.dart';
 import 'package:shorebird_cli/src/shorebird_version_manager.dart';
 
 /// {@template upgrade_command}
@@ -72,7 +72,7 @@ class UpgradeCommand extends ShorebirdCommand {
       //   error: cannot lock ref 'refs/remotes/origin/shorebird/main': 'refs/remotes/origin/shorebird' exists; cannot create 'refs/remotes/origin/shorebird/main'
       //   From https://github.com/shorebirdtech/flutter
       //    ! [new branch]          shorebird/main -> origin/shorebird/main  (unable to update local ref)
-      await shorebirdFlutterManager.pruneRemoteOrigin(revision: latestVersion);
+      await shorebirdFlutter.pruneRemoteOrigin(revision: latestVersion);
     } on ProcessException catch (error) {
       updateProgress.fail();
       logger.err('Updating failed: ${error.message}');

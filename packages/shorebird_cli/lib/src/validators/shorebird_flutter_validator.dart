@@ -1,7 +1,7 @@
 import 'package:shorebird_cli/src/platform.dart';
 import 'package:shorebird_cli/src/process.dart';
 import 'package:shorebird_cli/src/shorebird_env.dart';
-import 'package:shorebird_cli/src/shorebird_flutter_manager.dart';
+import 'package:shorebird_cli/src/shorebird_flutter.dart';
 import 'package:shorebird_cli/src/validators/validators.dart';
 import 'package:version/version.dart';
 
@@ -41,7 +41,7 @@ class ShorebirdFlutterValidator extends Validator {
       );
     }
 
-    if (!await shorebirdFlutterManager.isPorcelain()) {
+    if (!await shorebirdFlutter.isPorcelain()) {
       issues.add(
         ValidationIssue(
           severity: ValidationIssueSeverity.warning,
