@@ -19,7 +19,7 @@ import 'package:shorebird_cli/src/patch_diff_checker.dart';
 import 'package:shorebird_cli/src/platform.dart';
 import 'package:shorebird_cli/src/process.dart';
 import 'package:shorebird_cli/src/shorebird_env.dart';
-import 'package:shorebird_cli/src/shorebird_flutter_manager.dart';
+import 'package:shorebird_cli/src/shorebird_flutter.dart';
 import 'package:shorebird_cli/src/shorebird_validator.dart';
 import 'package:shorebird_cli/src/third_party/flutter_tools/lib/flutter_tools.dart';
 import 'package:shorebird_cli/src/validators/validators.dart';
@@ -59,8 +59,7 @@ class _MockHttpClient extends Mock implements http.Client {}
 
 class _MockShorebirdEnv extends Mock implements ShorebirdEnv {}
 
-class _MockShorebirdFlutterManager extends Mock
-    implements ShorebirdFlutterManager {}
+class _MockShorebirdFlutter extends Mock implements ShorebirdFlutter {}
 
 class _MockShorebirdFlutterValidator extends Mock
     implements ShorebirdFlutterValidator {}
@@ -140,7 +139,7 @@ flutter:
     late ShorebirdProcessResult flutterBuildProcessResult;
     late http.Client httpClient;
     late ShorebirdEnv shorebirdEnv;
-    late ShorebirdFlutterManager shorebirdFlutterManager;
+    late ShorebirdFlutter shorebirdFlutter;
     late ShorebirdFlutterValidator flutterValidator;
     late ShorebirdProcess shorebirdProcess;
     late ShorebirdValidator shorebirdValidator;
@@ -158,9 +157,7 @@ flutter:
           platformRef.overrideWith(() => platform),
           processRef.overrideWith(() => shorebirdProcess),
           shorebirdEnvRef.overrideWith(() => shorebirdEnv),
-          shorebirdFlutterManagerRef.overrideWith(
-            () => shorebirdFlutterManager,
-          ),
+          shorebirdFlutterRef.overrideWith(() => shorebirdFlutter),
           shorebirdValidatorRef.overrideWith(() => shorebirdValidator),
         },
       );
@@ -242,7 +239,7 @@ flutter:
       httpClient = _MockHttpClient();
       patchDiffChecker = _MockPatchDiffChecker();
       shorebirdEnv = _MockShorebirdEnv();
-      shorebirdFlutterManager = _MockShorebirdFlutterManager();
+      shorebirdFlutter = _MockShorebirdFlutter();
       flutterValidator = _MockShorebirdFlutterValidator();
       shorebirdProcess = _MockShorebirdProcess();
       shorebirdValidator = _MockShorebirdValidator();
@@ -312,7 +309,7 @@ flutter:
         ),
       ).thenAnswer((_) async => aotBuildProcessResult);
       when(
-        () => shorebirdFlutterManager.installRevision(
+        () => shorebirdFlutter.installRevision(
           revision: any(named: 'revision'),
         ),
       ).thenAnswer((_) async {});
@@ -528,7 +525,7 @@ Please re-run the release command for this version or create a new release.'''),
         ),
       ).called(1);
       verify(
-        () => shorebirdFlutterManager.installRevision(
+        () => shorebirdFlutter.installRevision(
           revision: release.flutterRevision,
         ),
       ).called(1);
@@ -596,7 +593,7 @@ Please re-run the release command for this version or create a new release.'''),
       const otherRevision = 'other-revision';
       when(() => shorebirdEnv.flutterRevision).thenReturn(otherRevision);
       when(
-        () => shorebirdFlutterManager.installRevision(
+        () => shorebirdFlutter.installRevision(
           revision: any(named: 'revision'),
         ),
       ).thenThrow(exception);
@@ -614,7 +611,7 @@ Please re-run the release command for this version or create a new release.'''),
         ),
       ).called(1);
       verify(
-        () => shorebirdFlutterManager.installRevision(
+        () => shorebirdFlutter.installRevision(
           revision: release.flutterRevision,
         ),
       ).called(1);

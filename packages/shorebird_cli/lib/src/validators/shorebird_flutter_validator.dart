@@ -1,6 +1,7 @@
 import 'package:shorebird_cli/src/platform.dart';
 import 'package:shorebird_cli/src/process.dart';
 import 'package:shorebird_cli/src/shorebird_env.dart';
+import 'package:shorebird_cli/src/shorebird_flutter.dart';
 import 'package:shorebird_cli/src/validators/validators.dart';
 import 'package:version/version.dart';
 
@@ -40,7 +41,7 @@ class ShorebirdFlutterValidator extends Validator {
       );
     }
 
-    if (!await _flutterDirectoryIsClean(process)) {
+    if (!await shorebirdFlutter.isPorcelain()) {
       issues.add(
         ValidationIssue(
           severity: ValidationIssueSeverity.warning,
@@ -110,15 +111,6 @@ This can cause unexpected behavior if you are switching between the tools and th
     }
 
     return issues;
-  }
-
-  Future<bool> _flutterDirectoryIsClean(ShorebirdProcess process) async {
-    final result = await process.run(
-      'git',
-      ['status', '--untracked-files=no', '--porcelain'],
-      workingDirectory: shorebirdEnv.flutterDirectory.path,
-    );
-    return result.stdout.toString().trim().isEmpty;
   }
 
   Future<String> _shorebirdFlutterVersion(ShorebirdProcess process) {

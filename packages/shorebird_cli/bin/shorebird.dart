@@ -19,7 +19,7 @@ import 'package:shorebird_cli/src/patch_diff_checker.dart';
 import 'package:shorebird_cli/src/platform.dart';
 import 'package:shorebird_cli/src/process.dart';
 import 'package:shorebird_cli/src/shorebird_env.dart';
-import 'package:shorebird_cli/src/shorebird_flutter_manager.dart';
+import 'package:shorebird_cli/src/shorebird_flutter.dart';
 import 'package:shorebird_cli/src/shorebird_validator.dart';
 import 'package:shorebird_cli/src/shorebird_version_manager.dart';
 import 'package:shorebird_cli/src/xcodebuild.dart';
@@ -47,7 +47,7 @@ Future<void> main(List<String> args) async {
         platformRef,
         processRef,
         shorebirdEnvRef,
-        shorebirdFlutterManagerRef,
+        shorebirdFlutterRef,
         shorebirdValidatorRef,
         shorebirdVersionManagerRef,
         xcodeBuildRef,

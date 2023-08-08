@@ -5,20 +5,18 @@ import 'package:scoped/scoped.dart';
 import 'package:shorebird_cli/src/git.dart';
 import 'package:shorebird_cli/src/shorebird_env.dart';
 
-/// A reference to a [ShorebirdFlutterManager] instance.
-final shorebirdFlutterManagerRef = create(ShorebirdFlutterManager.new);
+/// A reference to a [ShorebirdFlutter] instance.
+final shorebirdFlutterRef = create(ShorebirdFlutter.new);
 
-/// The [ShorebirdFlutterManager] instance available in the current zone.
-ShorebirdFlutterManager get shorebirdFlutterManager {
-  return read(shorebirdFlutterManagerRef);
-}
+/// The [ShorebirdFlutter] instance available in the current zone.
+ShorebirdFlutter get shorebirdFlutter => read(shorebirdFlutterRef);
 
-/// {@template shorebird_flutter_manager}
+/// {@template shorebird_flutter}
 /// Helps manage the Flutter installation used by Shorebird.
 /// {@endtemplate}
-class ShorebirdFlutterManager {
-  /// {@macro shorebird_flutter_manager}
-  const ShorebirdFlutterManager();
+class ShorebirdFlutter {
+  /// {@macro shorebird_flutter}
+  const ShorebirdFlutter();
 
   static const String flutterGitUrl =
       'https://github.com/shorebirdtech/flutter.git';
@@ -52,5 +50,14 @@ class ShorebirdFlutterManager {
       name: 'origin',
       directory: _workingDirectory(revision: revision),
     );
+  }
+
+  /// Whether the current revision is porcelain (unmodified).
+  Future<bool> isPorcelain({String? revision}) async {
+    final status = await git.status(
+      directory: _workingDirectory(revision: revision),
+      args: ['--untracked-files=no', '--porcelain'],
+    );
+    return status.isEmpty;
   }
 }

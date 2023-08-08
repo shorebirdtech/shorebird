@@ -6,7 +6,7 @@ import 'package:path/path.dart' as p;
 import 'package:scoped/scoped.dart';
 import 'package:shorebird_cli/src/git.dart';
 import 'package:shorebird_cli/src/shorebird_env.dart';
-import 'package:shorebird_cli/src/shorebird_flutter_manager.dart';
+import 'package:shorebird_cli/src/shorebird_flutter.dart';
 import 'package:test/test.dart';
 
 class _MockGit extends Mock implements Git {}
@@ -14,13 +14,13 @@ class _MockGit extends Mock implements Git {}
 class _MockShorebirdEnv extends Mock implements ShorebirdEnv {}
 
 void main() {
-  group(ShorebirdFlutterManager, () {
+  group(ShorebirdFlutter, () {
     const flutterRevision = 'flutter-revision';
     late Directory shorebirdRoot;
     late Directory flutterDirectory;
     late Git git;
     late ShorebirdEnv shorebirdEnv;
-    late ShorebirdFlutterManager shorebirdFlutterManager;
+    late ShorebirdFlutter shorebirdFlutterManager;
 
     R runWithOverrides<R>(R Function() body) {
       return runScoped(
@@ -37,7 +37,7 @@ void main() {
       flutterDirectory = Directory(p.join(shorebirdRoot.path, 'flutter'));
       git = _MockGit();
       shorebirdEnv = _MockShorebirdEnv();
-      shorebirdFlutterManager = runWithOverrides(ShorebirdFlutterManager.new);
+      shorebirdFlutterManager = runWithOverrides(ShorebirdFlutter.new);
 
       when(
         () => git.clone(
@@ -58,6 +58,12 @@ void main() {
           directory: any(named: 'directory'),
         ),
       ).thenAnswer((_) async {});
+      when(
+        () => git.status(
+          directory: p.join(flutterDirectory.parent.path, flutterRevision),
+          args: ['--untracked-files=no', '--porcelain'],
+        ),
+      ).thenAnswer((_) async => '');
       when(() => shorebirdEnv.flutterDirectory).thenReturn(flutterDirectory);
       when(() => shorebirdEnv.flutterRevision).thenReturn(flutterRevision);
     });
@@ -101,7 +107,7 @@ void main() {
 
         verify(
           () => git.clone(
-            url: ShorebirdFlutterManager.flutterGitUrl,
+            url: ShorebirdFlutter.flutterGitUrl,
             outputDirectory: p.join(flutterDirectory.parent.path, revision),
             args: ['--filter=tree:0', '--no-checkout'],
           ),
@@ -125,7 +131,7 @@ void main() {
         );
         verify(
           () => git.clone(
-            url: ShorebirdFlutterManager.flutterGitUrl,
+            url: ShorebirdFlutter.flutterGitUrl,
             outputDirectory: p.join(flutterDirectory.parent.path, revision),
             args: ['--filter=tree:0', '--no-checkout'],
           ),
@@ -200,6 +206,69 @@ void main() {
 
         expect(
           runWithOverrides(() => shorebirdFlutterManager.pruneRemoteOrigin()),
+          throwsA(
+            isA<ProcessException>().having(
+              (e) => e.message,
+              'message',
+              errorMessage,
+            ),
+          ),
+        );
+      });
+    });
+
+    group('isPorcelain', () {
+      test('returns true when status is empty', () async {
+        await expectLater(
+          runWithOverrides(() => shorebirdFlutterManager.isPorcelain()),
+          completion(isTrue),
+        );
+        verify(
+          () => git.status(
+            directory: p.join(flutterDirectory.parent.path, flutterRevision),
+            args: ['--untracked-files=no', '--porcelain'],
+          ),
+        ).called(1);
+      });
+
+      test('returns false when status is not empty', () async {
+        when(
+          () => git.status(
+            directory: any(named: 'directory'),
+            args: any(named: 'args'),
+          ),
+        ).thenAnswer((_) async => 'M some/file');
+        await expectLater(
+          runWithOverrides(() => shorebirdFlutterManager.isPorcelain()),
+          completion(isFalse),
+        );
+        verify(
+          () => git.status(
+            directory: p.join(flutterDirectory.parent.path, flutterRevision),
+            args: ['--untracked-files=no', '--porcelain'],
+          ),
+        ).called(1);
+      });
+
+      test('throws ProcessException when git command exits non-zero code',
+          () async {
+        const errorMessage = 'oh no!';
+        when(
+          () => git.status(
+            directory: any(named: 'directory'),
+            args: any(named: 'args'),
+          ),
+        ).thenThrow(
+          ProcessException(
+            'git',
+            ['status'],
+            errorMessage,
+            ExitCode.software.code,
+          ),
+        );
+
+        expect(
+          runWithOverrides(() => shorebirdFlutterManager.isPorcelain()),
           throwsA(
             isA<ProcessException>().having(
               (e) => e.message,
