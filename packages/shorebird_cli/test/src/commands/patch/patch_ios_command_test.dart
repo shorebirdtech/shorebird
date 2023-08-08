@@ -536,7 +536,7 @@ Please re-run the release command for this version or create a new release.'''),
         'when release flutter revision differs', () async {
       when(
         () => platform.script,
-      ).thenReturn(Uri.parse('file:///bin/cache/shorebird.snapshot'));
+      ).thenReturn(Uri.file(p.join('bin', 'cache', 'shorebird.snapshot')));
       const otherRevision = 'other-revision';
       when(() => shorebirdEnv.flutterRevision).thenReturn(otherRevision);
       final processWrapper = _MockProcessWrapper();
@@ -569,7 +569,15 @@ Please re-run the release command for this version or create a new release.'''),
       );
       verify(
         () => processWrapper.run(
-          '/bin/cache/flutter/${release.flutterRevision}/bin/flutter',
+          p.join(
+            '.',
+            'bin',
+            'cache',
+            'flutter',
+            release.flutterRevision,
+            'bin',
+            'flutter',
+          ),
           any(),
           runInShell: true,
           workingDirectory: any(named: 'workingDirectory'),
@@ -578,7 +586,19 @@ Please re-run the release command for this version or create a new release.'''),
       ).called(1);
       verify(
         () => processWrapper.run(
-          '/bin/cache/flutter/${release.flutterRevision}/bin/cache/artifacts/engine/ios-release/gen_snapshot_arm64',
+          p.join(
+            '.',
+            'bin',
+            'cache',
+            'flutter',
+            release.flutterRevision,
+            'bin',
+            'cache',
+            'artifacts',
+            'engine',
+            'ios-release',
+            'gen_snapshot_arm64',
+          ),
           any(),
           workingDirectory: any(named: 'workingDirectory'),
           environment: any(named: 'environment'),

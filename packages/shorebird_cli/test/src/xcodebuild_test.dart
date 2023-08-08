@@ -97,8 +97,8 @@ To add iOS, run "flutter create . --platforms ios"''',
         ).thenAnswer(
           (_) async => ShorebirdProcessResult(
             exitCode: ExitCode.success.code,
-            stdout:
-                File('test/fixtures/xcodebuild_list.txt').readAsStringSync(),
+            stdout: File(p.join('test', 'fixtures', 'xcodebuild_list.txt'))
+                .readAsStringSync(),
             stderr: '',
           ),
         );
