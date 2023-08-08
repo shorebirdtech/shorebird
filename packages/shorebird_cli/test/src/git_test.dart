@@ -189,6 +189,65 @@ void main() {
       });
     });
 
+    group('reset', () {
+      const directory = './output';
+      const revision = 'revision';
+
+      test('executes correct command', () async {
+        await expectLater(
+          runWithOverrides(
+            () => git.reset(directory: directory, revision: revision),
+          ),
+          completes,
+        );
+        verify(
+          () => process.run(
+            'git',
+            ['reset', revision],
+            workingDirectory: directory,
+          ),
+        ).called(1);
+      });
+
+      test('executes correct command w/args', () async {
+        const args = ['--hard'];
+        await expectLater(
+          runWithOverrides(
+            () => git.reset(
+              directory: directory,
+              revision: revision,
+              args: args,
+            ),
+          ),
+          completes,
+        );
+        verify(
+          () => process.run(
+            'git',
+            ['reset', ...args, revision],
+            workingDirectory: directory,
+          ),
+        ).called(1);
+      });
+
+      test('throws ProcessException if process exits with error', () async {
+        const error = 'oops';
+        when(() => processResult.exitCode).thenReturn(ExitCode.software.code);
+        when(() => processResult.stderr).thenReturn(error);
+        expect(
+          () => runWithOverrides(
+            () => git.reset(
+              directory: directory,
+              revision: revision,
+            ),
+          ),
+          throwsA(
+            isA<ProcessException>().having((e) => e.message, 'message', error),
+          ),
+        );
+      });
+    });
+
     group('revParse', () {
       const directory = './output';
       const revision = 'revision';
