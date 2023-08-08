@@ -341,13 +341,35 @@ void main() {
           aarPath: any(
             named: 'aarPath',
             that: endsWith(
-              '/build/host/outputs/repo/com/example/my_flutter_module/flutter_release/1.0/flutter_release-1.0.aar',
+              p.join(
+                'build',
+                'host',
+                'outputs',
+                'repo',
+                'com',
+                'example',
+                'my_flutter_module',
+                'flutter_release',
+                '1.0',
+                'flutter_release-1.0.aar',
+              ),
             ),
           ),
           extractedAarDir: any(
             named: 'extractedAarDir',
             that: endsWith(
-              'build/host/outputs/repo/com/example/my_flutter_module/flutter_release/1.0/flutter_release-1.0',
+              p.join(
+                'build',
+                'host',
+                'outputs',
+                'repo',
+                'com',
+                'example',
+                'my_flutter_module',
+                'flutter_release',
+                '1.0',
+                'flutter_release-1.0',
+              ),
             ),
           ),
           architectures: any(named: 'architectures'),

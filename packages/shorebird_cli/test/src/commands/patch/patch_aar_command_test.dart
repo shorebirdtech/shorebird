@@ -555,7 +555,9 @@ Please re-run the release command for this version or create a new release.'''),
         'when release flutter revision differs', () async {
       when(
         () => platform.script,
-      ).thenReturn(Uri.parse('file:///bin/cache/shorebird.snapshot'));
+      ).thenReturn(
+        Uri.file(p.join('bin', 'cache', 'shorebird.snapshot')),
+      );
       const otherRevision = 'other-revision';
       when(() => shorebirdEnv.flutterRevision).thenReturn(otherRevision);
       final processWrapper = _MockProcessWrapper();
@@ -588,7 +590,15 @@ Please re-run the release command for this version or create a new release.'''),
       );
       verify(
         () => processWrapper.run(
-          '/bin/cache/flutter/${release.flutterRevision}/bin/flutter',
+          p.join(
+            '.',
+            'bin',
+            'cache',
+            'flutter',
+            release.flutterRevision,
+            'bin',
+            'flutter',
+          ),
           any(),
           runInShell: true,
           workingDirectory: any(named: 'workingDirectory'),

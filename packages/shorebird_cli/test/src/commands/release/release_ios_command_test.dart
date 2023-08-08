@@ -408,7 +408,7 @@ error: exportArchive: No signing certificate "iOS Distribution" found
             that: stringContainsInOrder([
               'Could not find ipa file',
               'No .ipa files found in',
-              'build/ios/ipa',
+              p.join('build', 'ios', 'ipa'),
             ]),
           ),
         ),
@@ -432,7 +432,7 @@ error: exportArchive: No signing certificate "iOS Distribution" found
             that: stringContainsInOrder([
               'Could not find ipa file',
               'More than one .ipa file found in',
-              'build/ios/ipa',
+              p.join('build', 'ios', 'ipa'),
             ]),
           ),
         ),
@@ -481,7 +481,7 @@ error: exportArchive: No signing certificate "iOS Distribution" found
             that: stringContainsInOrder(
               [
                 'Your next step is to upload the ipa to App Store Connect.',
-                'build/ios/ipa/Runner.ipa',
+                p.join('build', 'ios', 'ipa', 'Runner.ipa'),
               ],
             ),
           ),
@@ -533,7 +533,7 @@ flavors:
             that: stringContainsInOrder(
               [
                 'Your next step is to upload the ipa to App Store Connect.',
-                'build/ios/ipa/Runner.ipa',
+                p.join('build', 'ios', 'ipa', 'Runner.ipa'),
               ],
             ),
           ),
