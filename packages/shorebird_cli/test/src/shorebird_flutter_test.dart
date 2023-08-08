@@ -68,6 +68,79 @@ void main() {
       when(() => shorebirdEnv.flutterRevision).thenReturn(flutterRevision);
     });
 
+    group('getVersions', () {
+      const format = '%(refname:short)';
+      const pattern = 'refs/remotes/origin/flutter_release/*';
+      test('returns a list of versions', () async {
+        const versions = [
+          '3.10.0',
+          '3.10.1',
+          '3.10.2',
+          '3.10.3',
+          '3.10.4',
+          '3.10.5',
+          '3.10.6',
+        ];
+        const output = '''
+origin/flutter_release/3.10.0
+origin/flutter_release/3.10.1
+origin/flutter_release/3.10.2
+origin/flutter_release/3.10.3
+origin/flutter_release/3.10.4
+origin/flutter_release/3.10.5
+origin/flutter_release/3.10.6''';
+        when(
+          () => git.forEachRef(
+            directory: any(named: 'directory'),
+            format: any(named: 'format'),
+            pattern: any(named: 'pattern'),
+          ),
+        ).thenAnswer((_) async => output);
+
+        await expectLater(
+          runWithOverrides(shorebirdFlutterManager.getVersions),
+          completion(equals(versions)),
+        );
+        verify(
+          () => git.forEachRef(
+            directory: p.join(flutterDirectory.parent.path, flutterRevision),
+            format: format,
+            pattern: pattern,
+          ),
+        ).called(1);
+      });
+
+      test('throws ProcessException when git command exits non-zero code',
+          () async {
+        const errorMessage = 'oh no!';
+        when(
+          () => git.forEachRef(
+            directory: any(named: 'directory'),
+            format: any(named: 'format'),
+            pattern: any(named: 'pattern'),
+          ),
+        ).thenThrow(
+          ProcessException(
+            'git',
+            ['for-each-ref', '--format', format, pattern],
+            errorMessage,
+            ExitCode.software.code,
+          ),
+        );
+
+        expect(
+          runWithOverrides(shorebirdFlutterManager.getVersions),
+          throwsA(
+            isA<ProcessException>().having(
+              (e) => e.message,
+              'message',
+              errorMessage,
+            ),
+          ),
+        );
+      });
+    });
+
     group('installRevision', () {
       const revision = 'test-revision';
       test('does nothing if the revision is already installed', () async {
