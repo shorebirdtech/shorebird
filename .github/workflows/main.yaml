@@ -97,13 +97,13 @@ jobs:
 
     runs-on: ${{ matrix.os }}
 
-    name: 🎯 Build ${{ matrix.package }} ${{ matrix.os }}
+    name: 🎯 Build ${{ matrix.package }} (${{ matrix.os }})
 
     steps:
       - name: 📚 Git Checkout
         uses: actions/checkout@v3
 
-      - name: 🎯 Build ${{ matrix.package }} ${{ matrix.os }}
+      - name: 🎯 Build ${{ matrix.package }} (${{ matrix.os }})
         uses: ./.github/actions/dart_package
         with:
           codecov_token: ${{ secrets.CODECOV_TOKEN }}
@@ -121,13 +121,13 @@ jobs:
 
     runs-on: ${{ matrix.os }}
 
-    name: 🔎 Verify ${{ matrix.package }} ${{ matrix.os }}
+    name: 🔎 Verify ${{ matrix.package }} (${{ matrix.os }})
 
     steps:
       - name: 📚 Git Checkout
         uses: actions/checkout@v3
 
-      - name: 🔎 Verify ${{ matrix.package }}
+      - name: 🔎 Verify ${{ matrix.package }} (${{ matrix.os }})
         uses: ./.github/actions/verify_version
         with:
           working_directory: packages/${{ matrix.package }}
