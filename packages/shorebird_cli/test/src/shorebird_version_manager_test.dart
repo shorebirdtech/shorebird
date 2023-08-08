@@ -4,18 +4,18 @@ import 'package:mason_logger/mason_logger.dart';
 import 'package:mocktail/mocktail.dart';
 import 'package:scoped/scoped.dart';
 import 'package:shorebird_cli/src/git.dart';
-import 'package:shorebird_cli/src/shorebird_version_manager.dart';
+import 'package:shorebird_cli/src/shorebird_version.dart';
 import 'package:test/test.dart';
 
 class _MockGit extends Mock implements Git {}
 
 void main() {
-  group(ShorebirdVersionManager, () {
+  group(ShorebirdVersion, () {
     const currentShorebirdRevision = 'revision-1';
     const newerShorebirdRevision = 'revision-2';
 
     late Git git;
-    late ShorebirdVersionManager shorebirdVersionManager;
+    late ShorebirdVersion shorebirdVersionManager;
 
     R runWithOverrides<R>(R Function() body) {
       return runScoped(
@@ -28,7 +28,7 @@ void main() {
 
     setUp(() {
       git = _MockGit();
-      shorebirdVersionManager = ShorebirdVersionManager();
+      shorebirdVersionManager = ShorebirdVersion();
 
       when(
         () => git.fetch(
@@ -61,7 +61,7 @@ void main() {
       test('returns true if current and latest git hashes match', () async {
         expect(
           await runWithOverrides(
-            shorebirdVersionManager.isShorebirdVersionCurrent,
+            shorebirdVersionManager.isLatest,
           ),
           isTrue,
         );
@@ -100,7 +100,7 @@ void main() {
 
         expect(
           await runWithOverrides(
-            shorebirdVersionManager.isShorebirdVersionCurrent,
+            shorebirdVersionManager.isLatest,
           ),
           isFalse,
         );
@@ -141,7 +141,7 @@ void main() {
 
         expect(
           runWithOverrides(
-            shorebirdVersionManager.isShorebirdVersionCurrent,
+            shorebirdVersionManager.isLatest,
           ),
           throwsA(
             isA<ProcessException>().having(
@@ -158,7 +158,7 @@ void main() {
       test('completes when git command exits with code 0', () async {
         expect(
           runWithOverrides(
-            () => shorebirdVersionManager.attemptReset(newRevision: 'HEAD'),
+            () => shorebirdVersionManager.attemptReset(revision: 'HEAD'),
           ),
           completes,
         );
@@ -184,7 +184,7 @@ void main() {
 
         expect(
           runWithOverrides(
-            () => shorebirdVersionManager.attemptReset(newRevision: 'HEAD'),
+            () => shorebirdVersionManager.attemptReset(revision: 'HEAD'),
           ),
           throwsA(
             isA<ProcessException>().having(

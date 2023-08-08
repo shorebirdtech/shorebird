@@ -1,6 +1,6 @@
 import 'dart:io';
 
-import 'package:shorebird_cli/src/shorebird_version_manager.dart';
+import 'package:shorebird_cli/src/shorebird_version.dart';
 import 'package:shorebird_cli/src/validators/validators.dart';
 
 /// Verifies that the currently installed version of Shorebird is the latest.
@@ -18,8 +18,7 @@ class ShorebirdVersionValidator extends Validator {
     final bool isShorebirdUpToDate;
 
     try {
-      isShorebirdUpToDate =
-          await shorebirdVersionManager.isShorebirdVersionCurrent();
+      isShorebirdUpToDate = await shorebirdVersion.isLatest();
     } on ProcessException catch (e) {
       return [
         ValidationIssue(

@@ -2,35 +2,32 @@ import 'dart:io';
 
 import 'package:mocktail/mocktail.dart';
 import 'package:scoped/scoped.dart';
-import 'package:shorebird_cli/src/shorebird_version_manager.dart';
+import 'package:shorebird_cli/src/shorebird_version.dart';
 import 'package:shorebird_cli/src/validators/validators.dart';
 import 'package:test/test.dart';
 
-class _MockShorebirdVersionManager extends Mock
-    implements ShorebirdVersionManager {}
+class _MockShorebirdVersion extends Mock implements ShorebirdVersion {}
 
 void main() {
   group('ShorebirdVersionValidator', () {
-    late ShorebirdVersionManager shorebirdVersionManager;
+    late ShorebirdVersion shorebirdVersion;
     late ShorebirdVersionValidator validator;
 
     R runWithOverrides<R>(R Function() body) {
       return runScoped(
         body,
         values: {
-          shorebirdVersionManagerRef
-              .overrideWith(() => shorebirdVersionManager),
+          shorebirdVersionRef.overrideWith(() => shorebirdVersion),
         },
       );
     }
 
     setUp(() {
-      shorebirdVersionManager = _MockShorebirdVersionManager();
-
+      shorebirdVersion = _MockShorebirdVersion();
       validator = ShorebirdVersionValidator();
 
       when(
-        shorebirdVersionManager.isShorebirdVersionCurrent,
+        shorebirdVersion.isLatest,
       ).thenAnswer((_) async => false);
     });
 
@@ -43,8 +40,7 @@ void main() {
     });
 
     test('returns no issues when shorebird is up-to-date', () async {
-      when(shorebirdVersionManager.isShorebirdVersionCurrent)
-          .thenAnswer((_) async => true);
+      when(shorebirdVersion.isLatest).thenAnswer((_) async => true);
 
       final results = await runWithOverrides(validator.validate);
 
@@ -53,7 +49,7 @@ void main() {
 
     test('retursn an error when shorebird version cannot be determined',
         () async {
-      when(shorebirdVersionManager.isShorebirdVersionCurrent).thenThrow(
+      when(shorebirdVersion.isLatest).thenThrow(
         const ProcessException('git', ['rev-parse', 'HEAD']),
       );
 
@@ -68,8 +64,7 @@ void main() {
     });
 
     test('returns a warning when a newer shorebird is available', () async {
-      when(shorebirdVersionManager.isShorebirdVersionCurrent)
-          .thenAnswer((_) async => false);
+      when(shorebirdVersion.isLatest).thenAnswer((_) async => false);
 
       final results = await runWithOverrides(validator.validate);
 
