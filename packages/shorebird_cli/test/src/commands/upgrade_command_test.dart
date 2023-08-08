@@ -6,7 +6,7 @@ import 'package:scoped/scoped.dart';
 import 'package:shorebird_cli/src/commands/commands.dart';
 import 'package:shorebird_cli/src/logger.dart';
 import 'package:shorebird_cli/src/shorebird_flutter.dart';
-import 'package:shorebird_cli/src/shorebird_version_manager.dart';
+import 'package:shorebird_cli/src/shorebird_version.dart';
 import 'package:test/test.dart';
 
 class _MockLogger extends Mock implements Logger {}
@@ -15,8 +15,7 @@ class _MockProgress extends Mock implements Progress {}
 
 class _MockShorebirdFlutter extends Mock implements ShorebirdFlutter {}
 
-class _MockShorebirdVersionManager extends Mock
-    implements ShorebirdVersionManager {}
+class _MockShorebirdVersion extends Mock implements ShorebirdVersion {}
 
 void main() {
   const currentShorebirdRevision = 'revision-1';
@@ -25,7 +24,7 @@ void main() {
   group('upgrade', () {
     late Logger logger;
     late ShorebirdFlutter shorebirdFlutter;
-    late ShorebirdVersionManager shorebirdVersionManager;
+    late ShorebirdVersion shorebirdVersion;
     late UpgradeCommand command;
 
     R runWithOverrides<R>(R Function() body) {
@@ -34,9 +33,7 @@ void main() {
         values: {
           loggerRef.overrideWith(() => logger),
           shorebirdFlutterRef.overrideWith(() => shorebirdFlutter),
-          shorebirdVersionManagerRef.overrideWith(
-            () => shorebirdVersionManager,
-          ),
+          shorebirdVersionRef.overrideWith(() => shorebirdVersion),
         },
       );
     }
@@ -47,7 +44,7 @@ void main() {
 
       logger = _MockLogger();
       shorebirdFlutter = _MockShorebirdFlutter();
-      shorebirdVersionManager = _MockShorebirdVersionManager();
+      shorebirdVersion = _MockShorebirdVersion();
       command = runWithOverrides(UpgradeCommand.new);
 
       when(
@@ -56,15 +53,13 @@ void main() {
         ),
       ).thenAnswer((_) async {});
       when(
-        shorebirdVersionManager.fetchCurrentGitHash,
+        shorebirdVersion.fetchCurrentGitHash,
       ).thenAnswer((_) async => currentShorebirdRevision);
       when(
-        shorebirdVersionManager.fetchLatestGitHash,
+        shorebirdVersion.fetchLatestGitHash,
       ).thenAnswer((_) async => newerShorebirdRevision);
       when(
-        () => shorebirdVersionManager.attemptReset(
-          newRevision: any(named: 'newRevision'),
-        ),
+        () => shorebirdVersion.attemptReset(revision: any(named: 'revision')),
       ).thenAnswer((_) async => {});
 
       when(() => progress.complete(any())).thenAnswer((_) {
@@ -83,7 +78,7 @@ void main() {
       'handles errors when determining the current version',
       () async {
         const errorMessage = 'oops';
-        when(shorebirdVersionManager.fetchCurrentGitHash).thenThrow(
+        when(shorebirdVersion.fetchCurrentGitHash).thenThrow(
           const ProcessException(
             'git',
             ['rev-parse'],
@@ -105,7 +100,7 @@ void main() {
       'handles errors when determining the latest version',
       () async {
         const errorMessage = 'oops';
-        when(shorebirdVersionManager.fetchLatestGitHash).thenThrow(
+        when(shorebirdVersion.fetchLatestGitHash).thenThrow(
           const ProcessException(
             'git',
             ['rev-parse'],
@@ -124,9 +119,7 @@ void main() {
     test('handles errors when updating', () async {
       const errorMessage = 'oops';
       when(
-        () => shorebirdVersionManager.attemptReset(
-          newRevision: any(named: 'newRevision'),
-        ),
+        () => shorebirdVersion.attemptReset(revision: any(named: 'revision')),
       ).thenThrow(const ProcessException('git', ['reset'], errorMessage));
 
       final result = await runWithOverrides(command.run);
@@ -171,7 +164,7 @@ void main() {
     test(
       'does not update when already on latest version',
       () async {
-        when(shorebirdVersionManager.fetchLatestGitHash)
+        when(shorebirdVersion.fetchLatestGitHash)
             .thenAnswer((_) async => currentShorebirdRevision);
         when(() => logger.progress(any())).thenReturn(_MockProgress());
 

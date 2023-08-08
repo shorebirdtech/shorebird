@@ -4,7 +4,7 @@ import 'package:mason_logger/mason_logger.dart';
 import 'package:shorebird_cli/src/command.dart';
 import 'package:shorebird_cli/src/logger.dart';
 import 'package:shorebird_cli/src/shorebird_flutter.dart';
-import 'package:shorebird_cli/src/shorebird_version_manager.dart';
+import 'package:shorebird_cli/src/shorebird_version.dart';
 
 /// {@template upgrade_command}
 /// `shorebird upgrade`
@@ -28,7 +28,7 @@ class UpgradeCommand extends ShorebirdCommand {
 
     late final String currentVersion;
     try {
-      currentVersion = await shorebirdVersionManager.fetchCurrentGitHash();
+      currentVersion = await shorebirdVersion.fetchCurrentGitHash();
     } on ProcessException catch (error) {
       updateCheckProgress.fail();
       logger.err('Fetching current version failed: ${error.message}');
@@ -37,7 +37,7 @@ class UpgradeCommand extends ShorebirdCommand {
 
     late final String latestVersion;
     try {
-      latestVersion = await shorebirdVersionManager.fetchLatestGitHash();
+      latestVersion = await shorebirdVersion.fetchLatestGitHash();
     } on ProcessException catch (error) {
       updateCheckProgress.fail();
       logger.err('Checking for updates failed: ${error.message}');
@@ -55,7 +55,7 @@ class UpgradeCommand extends ShorebirdCommand {
     final updateProgress = logger.progress('Updating');
 
     try {
-      await shorebirdVersionManager.attemptReset(newRevision: latestVersion);
+      await shorebirdVersion.attemptReset(revision: latestVersion);
     } on ProcessException catch (error) {
       updateProgress.fail();
       logger.err('Updating failed: ${error.message}');
