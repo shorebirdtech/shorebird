@@ -8,6 +8,7 @@ import 'package:platform/platform.dart';
 import 'package:scoped/scoped.dart';
 import 'package:shorebird_cli/src/http_client/http_client.dart';
 import 'package:shorebird_cli/src/platform.dart';
+import 'package:shorebird_cli/src/process.dart';
 import 'package:shorebird_cli/src/shorebird_env.dart';
 
 typedef ArchiveExtracter = Future<void> Function(
@@ -134,11 +135,11 @@ abstract class CachedArtifact {
     if (platform.isWindows) return;
 
     for (final executable in executables) {
-      final process = await Process.start(
+      final result = await process.start(
         'chmod',
         ['+x', p.join(location.path, executable)],
       );
-      await process.exitCode;
+      await result.exitCode;
     }
   }
 }

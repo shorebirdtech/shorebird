@@ -2,11 +2,14 @@ import 'dart:io';
 
 import 'package:archive/archive_io.dart';
 import 'package:http/http.dart' as http;
+import 'package:mason_logger/mason_logger.dart';
 import 'package:mocktail/mocktail.dart';
 import 'package:path/path.dart' as p;
+import 'package:platform/platform.dart';
 import 'package:scoped/scoped.dart';
 import 'package:shorebird_cli/src/cache.dart';
 import 'package:shorebird_cli/src/platform.dart';
+import 'package:shorebird_cli/src/process.dart';
 import 'package:shorebird_cli/src/shorebird_env.dart';
 import 'package:test/test.dart';
 
@@ -14,7 +17,13 @@ class _FakeBaseRequest extends Fake implements http.BaseRequest {}
 
 class _MockHttpClient extends Mock implements http.Client {}
 
+class _MockPlatform extends Mock implements Platform {}
+
+class _MockProcess extends Mock implements Process {}
+
 class _MockShorebirdEnv extends Mock implements ShorebirdEnv {}
+
+class _MockShorebirdProcess extends Mock implements ShorebirdProcess {}
 
 class TestCachedArtifact extends CachedArtifact {
   TestCachedArtifact({required super.cache, required super.platform});
@@ -32,7 +41,10 @@ void main() {
 
     late Directory shorebirdRoot;
     late http.Client httpClient;
+    late Platform platform;
+    late Process chmodProcess;
     late ShorebirdEnv shorebirdEnv;
+    late ShorebirdProcess shorebirdProcess;
     late Cache cache;
 
     R runWithOverrides<R>(R Function() body) {
@@ -40,6 +52,8 @@ void main() {
         () => body(),
         values: {
           cacheRef.overrideWith(() => cache),
+          platformRef.overrideWith(() => platform),
+          processRef.overrideWith(() => shorebirdProcess),
           shorebirdEnvRef.overrideWith(() => shorebirdEnv),
         },
       );
@@ -51,7 +65,10 @@ void main() {
 
     setUp(() {
       httpClient = _MockHttpClient();
+      platform = _MockPlatform();
+      chmodProcess = _MockProcess();
       shorebirdEnv = _MockShorebirdEnv();
+      shorebirdProcess = _MockShorebirdProcess();
 
       shorebirdRoot = Directory.systemTemp.createTempSync();
       when(
@@ -59,6 +76,16 @@ void main() {
       ).thenReturn(shorebirdEngineRevision);
       when(() => shorebirdEnv.shorebirdRoot).thenReturn(shorebirdRoot);
 
+      when(() => platform.environment).thenReturn({});
+      when(() => platform.isMacOS).thenReturn(true);
+      when(() => platform.isWindows).thenReturn(false);
+      when(() => platform.isLinux).thenReturn(false);
+      when(() => shorebirdProcess.start(any(), any())).thenAnswer(
+        (_) async => chmodProcess,
+      );
+      when(() => chmodProcess.exitCode).thenAnswer(
+        (_) async => ExitCode.success.code,
+      );
       when(() => httpClient.send(any())).thenAnswer(
         (_) async => http.StreamedResponse(
           Stream.value(ZipEncoder().encode(Archive())!),
@@ -154,67 +181,67 @@ void main() {
           expect(patchArtifactDirectory.existsSync(), isTrue);
         });
 
-        test(
-          'pull correct artifact for MacOS',
-          () async {
-            await expectLater(runWithOverrides(cache.updateAll), completes);
+        test('pull correct artifact for MacOS', () async {
+          when(() => platform.isMacOS).thenReturn(true);
+          when(() => platform.isWindows).thenReturn(false);
+          when(() => platform.isLinux).thenReturn(false);
 
-            final request = verify(() => httpClient.send(captureAny()))
-                .captured
-                .first as http.BaseRequest;
+          await expectLater(runWithOverrides(cache.updateAll), completes);
 
-            expect(
-              request.url,
-              equals(
-                Uri.parse(
-                  '${cache.storageBaseUrl}/${cache.storageBucket}/shorebird/$shorebirdEngineRevision/patch-darwin-x64.zip',
-                ),
+          final request = verify(() => httpClient.send(captureAny()))
+              .captured
+              .first as http.BaseRequest;
+
+          expect(
+            request.url,
+            equals(
+              Uri.parse(
+                '${cache.storageBaseUrl}/${cache.storageBucket}/shorebird/$shorebirdEngineRevision/patch-darwin-x64.zip',
               ),
-            );
-          },
-          skip: !platform.isMacOS,
-        );
+            ),
+          );
+        });
 
-        test(
-          'pull correct artifact for Windows',
-          () async {
-            await expectLater(runWithOverrides(cache.updateAll), completes);
+        test('pull correct artifact for Windows', () async {
+          when(() => platform.isMacOS).thenReturn(false);
+          when(() => platform.isWindows).thenReturn(true);
+          when(() => platform.isLinux).thenReturn(false);
 
-            final request = verify(() => httpClient.send(captureAny()))
-                .captured
-                .first as http.BaseRequest;
+          await expectLater(runWithOverrides(cache.updateAll), completes);
 
-            expect(
-              request.url,
-              equals(
-                Uri.parse(
-                  '${cache.storageBaseUrl}/${cache.storageBucket}/shorebird/$shorebirdEngineRevision/patch-windows-x64.zip',
-                ),
+          final request = verify(() => httpClient.send(captureAny()))
+              .captured
+              .first as http.BaseRequest;
+
+          expect(
+            request.url,
+            equals(
+              Uri.parse(
+                '${cache.storageBaseUrl}/${cache.storageBucket}/shorebird/$shorebirdEngineRevision/patch-windows-x64.zip',
               ),
-            );
-          },
-          skip: !platform.isWindows,
-        );
+            ),
+          );
+        });
 
-        test(
-          'pull correct artifact for Linux',
-          () async {
-            await expectLater(runWithOverrides(cache.updateAll), completes);
+        test('pull correct artifact for Linux', () async {
+          when(() => platform.isMacOS).thenReturn(false);
+          when(() => platform.isWindows).thenReturn(false);
+          when(() => platform.isLinux).thenReturn(true);
 
-            final request = verify(() => httpClient.send(captureAny()))
-                .captured
-                .first as http.BaseRequest;
-            expect(
-              request.url,
-              equals(
-                Uri.parse(
-                  '${cache.storageBaseUrl}/${cache.storageBucket}/shorebird/$shorebirdEngineRevision/patch-linux-x64.zip',
-                ),
+          await expectLater(runWithOverrides(cache.updateAll), completes);
+
+          final request = verify(() => httpClient.send(captureAny()))
+              .captured
+              .first as http.BaseRequest;
+          expect(
+            request.url,
+            equals(
+              Uri.parse(
+                '${cache.storageBaseUrl}/${cache.storageBucket}/shorebird/$shorebirdEngineRevision/patch-linux-x64.zip',
               ),
-            );
-          },
-          skip: !platform.isLinux,
-        );
+            ),
+          );
+        });
       });
     });
   });
