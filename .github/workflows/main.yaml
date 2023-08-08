@@ -92,17 +92,18 @@ jobs:
 
     strategy:
       matrix:
+        os: [macos-latest, windows-latest, ubuntu-latest]
         package: ${{ fromJSON(needs.changes.outputs.needs_dart_build) }}
 
-    runs-on: ubuntu-latest
+    runs-on: ${{ matrix.os }}
 
-    name: 🎯 Build ${{ matrix.package }}
+    name: 🎯 Build ${{ matrix.package }} ${{ matrix.os }}
 
     steps:
       - name: 📚 Git Checkout
         uses: actions/checkout@v3
 
-      - name: 🎯 Build ${{ matrix.package }}
+      - name: 🎯 Build ${{ matrix.package }} ${{ matrix.os }}
         uses: ./.github/actions/dart_package
         with:
           codecov_token: ${{ secrets.CODECOV_TOKEN }}
@@ -120,7 +121,7 @@ jobs:
 
     runs-on: ${{ matrix.os }}
 
-    name: 🔎 Verify ${{ matrix.package }}
+    name: 🔎 Verify ${{ matrix.package }} ${{ matrix.os }}
 
     steps:
       - name: 📚 Git Checkout
