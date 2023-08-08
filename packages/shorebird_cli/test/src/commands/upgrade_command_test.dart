@@ -5,20 +5,16 @@ import 'package:mocktail/mocktail.dart';
 import 'package:scoped/scoped.dart';
 import 'package:shorebird_cli/src/commands/commands.dart';
 import 'package:shorebird_cli/src/logger.dart';
-import 'package:shorebird_cli/src/process.dart';
-import 'package:shorebird_cli/src/shorebird_env.dart';
+import 'package:shorebird_cli/src/shorebird_flutter_manager.dart';
 import 'package:shorebird_cli/src/shorebird_version_manager.dart';
 import 'package:test/test.dart';
 
 class _MockLogger extends Mock implements Logger {}
 
-class _MockProcessResult extends Mock implements ShorebirdProcessResult {}
-
 class _MockProgress extends Mock implements Progress {}
 
-class _MockShorebirdProcess extends Mock implements ShorebirdProcess {}
-
-class _MockShorebirdEnv extends Mock implements ShorebirdEnv {}
+class _MockShorebirdFlutterManager extends Mock
+    implements ShorebirdFlutterManager {}
 
 class _MockShorebirdVersionManager extends Mock
     implements ShorebirdVersionManager {}
@@ -29,9 +25,7 @@ void main() {
 
   group('upgrade', () {
     late Logger logger;
-    late ShorebirdProcessResult pruneFlutterOriginResult;
-    late ShorebirdProcess shorebirdProcess;
-    late ShorebirdEnv shorebirdEnv;
+    late ShorebirdFlutterManager shorebirdFlutterManager;
     late ShorebirdVersionManager shorebirdVersionManager;
     late UpgradeCommand command;
 
@@ -40,8 +34,9 @@ void main() {
         body,
         values: {
           loggerRef.overrideWith(() => logger),
-          processRef.overrideWith(() => shorebirdProcess),
-          shorebirdEnvRef.overrideWith(() => shorebirdEnv),
+          shorebirdFlutterManagerRef.overrideWith(
+            () => shorebirdFlutterManager,
+          ),
           shorebirdVersionManagerRef.overrideWith(
             () => shorebirdVersionManager,
           ),
@@ -54,15 +49,15 @@ void main() {
       final progressLogs = <String>[];
 
       logger = _MockLogger();
-      pruneFlutterOriginResult = _MockProcessResult();
-      shorebirdProcess = _MockShorebirdProcess();
-      shorebirdEnv = _MockShorebirdEnv();
+      shorebirdFlutterManager = _MockShorebirdFlutterManager();
       shorebirdVersionManager = _MockShorebirdVersionManager();
       command = runWithOverrides(UpgradeCommand.new);
 
       when(
-        () => shorebirdEnv.flutterDirectory,
-      ).thenReturn(Directory('flutter'));
+        () => shorebirdFlutterManager.pruneRemoteOrigin(
+          revision: any(named: 'revision'),
+        ),
+      ).thenAnswer((_) async {});
       when(
         shorebirdVersionManager.fetchCurrentGitHash,
       ).thenAnswer((_) async => currentShorebirdRevision);
@@ -74,17 +69,6 @@ void main() {
           newRevision: any(named: 'newRevision'),
         ),
       ).thenAnswer((_) async => {});
-
-      when(
-        () => shorebirdProcess.run(
-          'git',
-          ['remote', 'prune', 'origin'],
-          workingDirectory: any(named: 'workingDirectory'),
-        ),
-      ).thenAnswer((_) async => pruneFlutterOriginResult);
-      when(
-        () => pruneFlutterOriginResult.exitCode,
-      ).thenReturn(ExitCode.success.code);
 
       when(() => progress.complete(any())).thenAnswer((_) {
         final message = _.positionalArguments.elementAt(0) as String?;
@@ -156,12 +140,22 @@ void main() {
     });
 
     test('handles errors on failure to prune Flutter branches', () async {
-      when(() => pruneFlutterOriginResult.exitCode).thenReturn(1);
+      const exception = ProcessException('git', ['remote', 'prune'], 'oops');
+      when(
+        () => shorebirdFlutterManager.pruneRemoteOrigin(
+          revision: any(named: 'revision'),
+        ),
+      ).thenThrow(exception);
       when(() => logger.progress(any())).thenReturn(_MockProgress());
 
       final result = await runWithOverrides(command.run);
 
       expect(result, equals(ExitCode.software.code));
+      verify(
+        () => shorebirdFlutterManager.pruneRemoteOrigin(
+          revision: newerShorebirdRevision,
+        ),
+      ).called(1);
     });
 
     test(

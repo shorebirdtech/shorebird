@@ -49,6 +49,12 @@ void main() {
           args: any(named: 'args'),
         ),
       ).thenAnswer((_) async {});
+      when(
+        () => git.remotePrune(
+          name: any(named: 'name'),
+          directory: any(named: 'directory'),
+        ),
+      ).thenAnswer((_) async {});
     });
 
     group('isShorebirdVersionCurrent', () {
@@ -76,48 +82,44 @@ void main() {
         ).called(1);
       });
 
-      test(
-        'returns false if current and latest git hashes differ',
-        () async {
-          when(
-            () => git.revParse(
-              revision: any(named: 'revision'),
-              directory: any(named: 'directory'),
-            ),
-          ).thenAnswer((invocation) async {
-            final revision = invocation.namedArguments[#revision] as String;
-            if (revision == 'HEAD') {
-              return currentShorebirdRevision;
-            } else if (revision == '@{upstream}') {
-              return newerShorebirdRevision;
-            }
-            throw UnsupportedError('Unexpected revision: $revision');
-          });
+      test('returns false if current and latest git hashes differ', () async {
+        when(
+          () => git.revParse(
+            revision: any(named: 'revision'),
+            directory: any(named: 'directory'),
+          ),
+        ).thenAnswer((invocation) async {
+          final revision = invocation.namedArguments[#revision] as String;
+          if (revision == 'HEAD') {
+            return currentShorebirdRevision;
+          } else if (revision == '@{upstream}') {
+            return newerShorebirdRevision;
+          }
+          throw UnsupportedError('Unexpected revision: $revision');
+        });
 
-          expect(
-            await runWithOverrides(
-              shorebirdVersionManager.isShorebirdVersionCurrent,
-            ),
-            isFalse,
-          );
-          verify(
-            () =>
-                git.fetch(directory: any(named: 'directory'), args: ['--tags']),
-          ).called(1);
-          verify(
-            () => git.revParse(
-              revision: 'HEAD',
-              directory: any(named: 'directory'),
-            ),
-          ).called(1);
-          verify(
-            () => git.revParse(
-              revision: '@{upstream}',
-              directory: any(named: 'directory'),
-            ),
-          ).called(1);
-        },
-      );
+        expect(
+          await runWithOverrides(
+            shorebirdVersionManager.isShorebirdVersionCurrent,
+          ),
+          isFalse,
+        );
+        verify(
+          () => git.fetch(directory: any(named: 'directory'), args: ['--tags']),
+        ).called(1);
+        verify(
+          () => git.revParse(
+            revision: 'HEAD',
+            directory: any(named: 'directory'),
+          ),
+        ).called(1);
+        verify(
+          () => git.revParse(
+            revision: '@{upstream}',
+            directory: any(named: 'directory'),
+          ),
+        ).called(1);
+      });
 
       test(
           'throws ProcessException if git command exits with code other than 0',
@@ -162,39 +164,37 @@ void main() {
         );
       });
 
-      test(
-        'throws ProcessException when git command exits with code other than 0',
-        () async {
-          const errorMessage = 'oh no!';
-          when(
-            () => git.reset(
-              revision: any(named: 'revision'),
-              directory: any(named: 'directory'),
-              args: any(named: 'args'),
-            ),
-          ).thenThrow(
-            ProcessException(
-              'git',
-              ['reset', '--hard', 'HEAD'],
-              errorMessage,
-              ExitCode.software.code,
-            ),
-          );
+      test('throws ProcessException when git command exits with non-zero code',
+          () async {
+        const errorMessage = 'oh no!';
+        when(
+          () => git.reset(
+            revision: any(named: 'revision'),
+            directory: any(named: 'directory'),
+            args: any(named: 'args'),
+          ),
+        ).thenThrow(
+          ProcessException(
+            'git',
+            ['reset', '--hard', 'HEAD'],
+            errorMessage,
+            ExitCode.software.code,
+          ),
+        );
 
-          expect(
-            runWithOverrides(
-              () => shorebirdVersionManager.attemptReset(newRevision: 'HEAD'),
+        expect(
+          runWithOverrides(
+            () => shorebirdVersionManager.attemptReset(newRevision: 'HEAD'),
+          ),
+          throwsA(
+            isA<ProcessException>().having(
+              (e) => e.message,
+              'message',
+              errorMessage,
             ),
-            throwsA(
-              isA<ProcessException>().having(
-                (e) => e.message,
-                'message',
-                errorMessage,
-              ),
-            ),
-          );
-        },
-      );
+          ),
+        );
+      });
     });
   });
 }

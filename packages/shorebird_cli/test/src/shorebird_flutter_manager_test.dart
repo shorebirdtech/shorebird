@@ -1,5 +1,6 @@
 import 'dart:io';
 
+import 'package:mason_logger/mason_logger.dart';
 import 'package:mocktail/mocktail.dart';
 import 'package:path/path.dart' as p;
 import 'package:scoped/scoped.dart';
@@ -14,6 +15,7 @@ class _MockShorebirdEnv extends Mock implements ShorebirdEnv {}
 
 void main() {
   group(ShorebirdFlutterManager, () {
+    const flutterRevision = 'flutter-revision';
     late Directory shorebirdRoot;
     late Directory flutterDirectory;
     late Git git;
@@ -50,7 +52,14 @@ void main() {
           revision: any(named: 'revision'),
         ),
       ).thenAnswer((_) async => {});
+      when(
+        () => git.remotePrune(
+          name: any(named: 'name'),
+          directory: any(named: 'directory'),
+        ),
+      ).thenAnswer((_) async {});
       when(() => shorebirdEnv.flutterDirectory).thenReturn(flutterDirectory);
+      when(() => shorebirdEnv.flutterRevision).thenReturn(flutterRevision);
     });
 
     group('installRevision', () {
@@ -135,6 +144,69 @@ void main() {
             () => shorebirdFlutterManager.installRevision(revision: revision),
           ),
           completes,
+        );
+      });
+    });
+
+    group('pruneRemoteOrigin', () {
+      test('completes when git command exits with code 0', () async {
+        await expectLater(
+          runWithOverrides(() => shorebirdFlutterManager.pruneRemoteOrigin()),
+          completes,
+        );
+        verify(
+          () => git.remotePrune(
+            name: 'origin',
+            directory: p.join(flutterDirectory.parent.path, flutterRevision),
+          ),
+        ).called(1);
+      });
+
+      test('completes when git command exits with code 0 (custom revision)',
+          () async {
+        const customRevision = 'custom-revision';
+        await expectLater(
+          runWithOverrides(
+            () => shorebirdFlutterManager.pruneRemoteOrigin(
+              revision: customRevision,
+            ),
+          ),
+          completes,
+        );
+        verify(
+          () => git.remotePrune(
+            name: 'origin',
+            directory: p.join(flutterDirectory.parent.path, customRevision),
+          ),
+        ).called(1);
+      });
+
+      test('throws ProcessException when git command exits non-zero code',
+          () async {
+        const errorMessage = 'oh no!';
+        when(
+          () => git.remotePrune(
+            name: any(named: 'name'),
+            directory: any(named: 'directory'),
+          ),
+        ).thenThrow(
+          ProcessException(
+            'git',
+            ['remote', 'prune', 'origin'],
+            errorMessage,
+            ExitCode.software.code,
+          ),
+        );
+
+        expect(
+          runWithOverrides(() => shorebirdFlutterManager.pruneRemoteOrigin()),
+          throwsA(
+            isA<ProcessException>().having(
+              (e) => e.message,
+              'message',
+              errorMessage,
+            ),
+          ),
         );
       });
     });

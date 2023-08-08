@@ -23,10 +23,13 @@ class ShorebirdFlutterManager {
   static const String flutterGitUrl =
       'https://github.com/shorebirdtech/flutter.git';
 
+  String _workingDirectory({String? revision}) {
+    revision ??= shorebirdEnv.flutterRevision;
+    return p.join(shorebirdEnv.flutterDirectory.parent.path, revision);
+  }
+
   Future<void> installRevision({required String revision}) async {
-    final targetDirectory = Directory(
-      p.join(shorebirdEnv.flutterDirectory.parent.path, revision),
-    );
+    final targetDirectory = Directory(_workingDirectory(revision: revision));
     if (targetDirectory.existsSync()) return;
 
     // Clone the Shorebird Flutter repo into the target directory.
@@ -40,9 +43,14 @@ class ShorebirdFlutterManager {
     );
 
     // Checkout the correct revision.
-    await git.checkout(
-      directory: targetDirectory.path,
-      revision: revision,
+    await git.checkout(directory: targetDirectory.path, revision: revision);
+  }
+
+  /// Prunes stale remote branches from the repository.
+  Future<void> pruneRemoteOrigin({String? revision}) async {
+    return git.remotePrune(
+      name: 'origin',
+      directory: _workingDirectory(revision: revision),
     );
   }
 }
