@@ -41,19 +41,38 @@ void main() {
           });
 
           test('finds differences between two different ipas', () {
-            expect(
-              differ
-                  .changedFiles(baseIpaPath, changedAssetIpaPath)
-                  .changedPaths,
-              {
-                'Payload/Runner.app/_CodeSignature/CodeResources',
-                'Payload/Runner.app/Frameworks/App.framework/_CodeSignature/CodeResources',
-                'Payload/Runner.app/Frameworks/App.framework/flutter_assets/assets/asset.json',
-                'Symbols/4C4C4411-5555-3144-A13A-E47369D8ACD5.symbols',
-                'Symbols/BC970605-0A53-3457-8736-D7A870AB6E71.symbols',
-                'Symbols/0CBBC9EF-0745-3074-81B7-765F5B4515FD.symbols'
-              },
+            final fileSetDiff = differ.changedFiles(
+              baseIpaPath,
+              changedAssetIpaPath,
             );
+            if (platform.isMacOS) {
+              expect(
+                fileSetDiff.changedPaths,
+                {
+                  'Payload/Runner.app/_CodeSignature/CodeResources',
+                  'Payload/Runner.app/Frameworks/App.framework/_CodeSignature/CodeResources',
+                  'Payload/Runner.app/Frameworks/App.framework/flutter_assets/assets/asset.json',
+                  'Symbols/4C4C4411-5555-3144-A13A-E47369D8ACD5.symbols',
+                  'Symbols/BC970605-0A53-3457-8736-D7A870AB6E71.symbols',
+                  'Symbols/0CBBC9EF-0745-3074-81B7-765F5B4515FD.symbols'
+                },
+              );
+            } else {
+              expect(
+                fileSetDiff.changedPaths,
+                {
+                  'Payload/Runner.app/_CodeSignature/CodeResources',
+                  'Payload/Runner.app/Runner',
+                  'Payload/Runner.app/Frameworks/Flutter.framework/Flutter',
+                  'Payload/Runner.app/Frameworks/App.framework/_CodeSignature/CodeResources',
+                  'Payload/Runner.app/Frameworks/App.framework/App',
+                  'Payload/Runner.app/Frameworks/App.framework/flutter_assets/assets/asset.json',
+                  'Symbols/4C4C4411-5555-3144-A13A-E47369D8ACD5.symbols',
+                  'Symbols/BC970605-0A53-3457-8736-D7A870AB6E71.symbols',
+                  'Symbols/0CBBC9EF-0745-3074-81B7-765F5B4515FD.symbols'
+                },
+              );
+            }
           });
         });
 
@@ -62,8 +81,14 @@ void main() {
             final fileSetDiff =
                 differ.changedFiles(baseIpaPath, changedAssetIpaPath);
             expect(differ.assetsFileSetDiff(fileSetDiff), isNotEmpty);
-            expect(differ.dartFileSetDiff(fileSetDiff), isEmpty);
-            expect(differ.nativeFileSetDiff(fileSetDiff), isEmpty);
+            expect(
+              differ.dartFileSetDiff(fileSetDiff),
+              platform.isMacOS ? isEmpty : isNotEmpty,
+            );
+            expect(
+              differ.nativeFileSetDiff(fileSetDiff),
+              platform.isMacOS ? isEmpty : isNotEmpty,
+            );
           });
 
           test('detects dart changes', () {
@@ -71,14 +96,20 @@ void main() {
                 differ.changedFiles(baseIpaPath, changedDartIpaPath);
             expect(differ.assetsFileSetDiff(fileSetDiff), isEmpty);
             expect(differ.dartFileSetDiff(fileSetDiff), isNotEmpty);
-            expect(differ.nativeFileSetDiff(fileSetDiff), isEmpty);
+            expect(
+              differ.nativeFileSetDiff(fileSetDiff),
+              platform.isMacOS ? isEmpty : isNotEmpty,
+            );
           });
 
           test('detects swift changes', () {
             final fileSetDiff =
                 differ.changedFiles(baseIpaPath, changedSwiftIpaPath);
             expect(differ.assetsFileSetDiff(fileSetDiff), isEmpty);
-            expect(differ.dartFileSetDiff(fileSetDiff), isEmpty);
+            expect(
+              differ.dartFileSetDiff(fileSetDiff),
+              platform.isMacOS ? isEmpty : isNotEmpty,
+            );
             expect(differ.nativeFileSetDiff(fileSetDiff), isNotEmpty);
           });
         });
@@ -126,7 +157,7 @@ void main() {
             );
             expect(
               differ.containsPotentiallyBreakingNativeDiffs(fileSetDiff),
-              isFalse,
+              platform.isMacOS ? isFalse : isTrue,
             );
           });
         });
@@ -143,18 +174,33 @@ void main() {
 
           test('finds differences between two differed zipped xcframeworks',
               () {
-            expect(
-              differ
-                  .changedFiles(
-                      baseXcframeworkPath, changedAssetXcframeworkPath)
-                  .changedPaths,
-              {
-                'ios-arm64_x86_64-simulator/App.framework/_CodeSignature/CodeResources',
-                'ios-arm64_x86_64-simulator/App.framework/flutter_assets/assets/asset.json',
-                'ios-arm64/App.framework/_CodeSignature/CodeResources',
-                'ios-arm64/App.framework/flutter_assets/assets/asset.json'
-              },
+            final fileSetDiff = differ.changedFiles(
+              baseXcframeworkPath,
+              changedAssetXcframeworkPath,
             );
+            if (platform.isMacOS) {
+              expect(
+                fileSetDiff.changedPaths,
+                {
+                  'ios-arm64_x86_64-simulator/App.framework/_CodeSignature/CodeResources',
+                  'ios-arm64_x86_64-simulator/App.framework/flutter_assets/assets/asset.json',
+                  'ios-arm64/App.framework/_CodeSignature/CodeResources',
+                  'ios-arm64/App.framework/flutter_assets/assets/asset.json'
+                },
+              );
+            } else {
+              expect(
+                fileSetDiff.changedPaths,
+                {
+                  'ios-arm64_x86_64-simulator/App.framework/_CodeSignature/CodeResources',
+                  'ios-arm64_x86_64-simulator/App.framework/App',
+                  'ios-arm64_x86_64-simulator/App.framework/flutter_assets/assets/asset.json',
+                  'ios-arm64/App.framework/_CodeSignature/CodeResources',
+                  'ios-arm64/App.framework/App',
+                  'ios-arm64/App.framework/flutter_assets/assets/asset.json',
+                },
+              );
+            }
           });
         });
 
@@ -165,7 +211,10 @@ void main() {
               changedAssetXcframeworkPath,
             );
             expect(differ.assetsFileSetDiff(fileSetDiff), isNotEmpty);
-            expect(differ.dartFileSetDiff(fileSetDiff), isEmpty);
+            expect(
+              differ.dartFileSetDiff(fileSetDiff),
+              platform.isMacOS ? isEmpty : isNotEmpty,
+            );
             expect(differ.nativeFileSetDiff(fileSetDiff), isEmpty);
           });
 
@@ -181,8 +230,5 @@ void main() {
         });
       });
     },
-    // These tests rely on the presence of the `codesign` executable, which is
-    // only present on macOS.
-    skip: !platform.isMacOS,
   );
 }
