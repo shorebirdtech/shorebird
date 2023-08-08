@@ -87,6 +87,29 @@ class Git {
     }
   }
 
+  /// List all branches in the git repository located at [directory] that match
+  /// the [pattern].
+  Future<String> listBranches({
+    required String directory,
+    required String pattern,
+  }) async {
+    final arguments = ['branch', '--all', '--list', pattern];
+    final result = await process.run(
+      executable,
+      arguments,
+      workingDirectory: directory,
+    );
+    if (result.exitCode != 0) {
+      throw ProcessException(
+        executable,
+        arguments,
+        '${result.stderr}',
+        result.exitCode,
+      );
+    }
+    return '${result.stdout}'.trim();
+  }
+
   /// Prunes stale remote branches from the repository at [directory]
   /// associated with [name].
   Future<void> remotePrune({

@@ -189,6 +189,45 @@ void main() {
       });
     });
 
+    group('listBranches', () {
+      const directory = 'repository';
+      const pattern = 'pattern';
+      const output = '''
+* main
+  stable
+  remotes/origin/HEAD -> origin/main''';
+      test('executes correct command', () async {
+        when(() => processResult.stdout).thenReturn(output);
+        await expectLater(
+          runWithOverrides(
+            () => git.listBranches(pattern: pattern, directory: directory),
+          ),
+          completion(equals(output)),
+        );
+        verify(
+          () => process.run(
+            'git',
+            ['branch', '--all', '--list', pattern],
+            workingDirectory: directory,
+          ),
+        ).called(1);
+      });
+
+      test('throws ProcessException if process exits with error', () async {
+        const error = 'oops';
+        when(() => processResult.exitCode).thenReturn(ExitCode.software.code);
+        when(() => processResult.stderr).thenReturn(error);
+        expect(
+          () => runWithOverrides(
+            () => git.listBranches(pattern: pattern, directory: directory),
+          ),
+          throwsA(
+            isA<ProcessException>().having((e) => e.message, 'message', error),
+          ),
+        );
+      });
+    });
+
     group('remotePrune', () {
       const directory = './output';
       const name = 'origin';
