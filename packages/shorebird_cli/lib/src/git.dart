@@ -87,6 +87,28 @@ class Git {
     }
   }
 
+  /// Prunes stale remote branches from the repository at [directory]
+  /// associated with [name].
+  Future<void> remotePrune({
+    required String name,
+    required String directory,
+  }) async {
+    final arguments = ['remote', 'prune', name];
+    final result = await process.run(
+      executable,
+      arguments,
+      workingDirectory: directory,
+    );
+    if (result.exitCode != 0) {
+      throw ProcessException(
+        executable,
+        arguments,
+        '${result.stderr}',
+        result.exitCode,
+      );
+    }
+  }
+
   /// Resets the git repository located at [directory] to the [revision].
   Future<void> reset({
     required String revision,
