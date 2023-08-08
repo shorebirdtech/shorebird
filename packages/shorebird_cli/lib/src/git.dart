@@ -87,13 +87,14 @@ class Git {
     }
   }
 
-  /// List all branches in the git repository located at [directory] that match
-  /// the [pattern].
-  Future<String> listBranches({
+  /// Iterate over all refs that match [pattern] and show them
+  /// according to the given [format].
+  Future<String> forEachRef({
     required String directory,
+    required String format,
     required String pattern,
   }) async {
-    final arguments = ['branch', '--all', '--list', pattern];
+    final arguments = ['for-each-ref', '--format', format, pattern];
     final result = await process.run(
       executable,
       arguments,

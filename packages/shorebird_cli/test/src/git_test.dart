@@ -189,25 +189,35 @@ void main() {
       });
     });
 
-    group('listBranches', () {
+    group('forEachRef', () {
       const directory = 'repository';
-      const pattern = 'pattern';
+      const format = '%(refname:short)';
+      const pattern = 'refs/remotes/origin/flutter_release/*';
       const output = '''
-* main
-  stable
-  remotes/origin/HEAD -> origin/main''';
+
+origin/flutter_release/3.10.0
+origin/flutter_release/3.10.1
+origin/flutter_release/3.10.2
+origin/flutter_release/3.10.3
+origin/flutter_release/3.10.4
+origin/flutter_release/3.10.5
+origin/flutter_release/3.10.6''';
       test('executes correct command', () async {
         when(() => processResult.stdout).thenReturn(output);
         await expectLater(
           runWithOverrides(
-            () => git.listBranches(pattern: pattern, directory: directory),
+            () => git.forEachRef(
+              pattern: pattern,
+              format: format,
+              directory: directory,
+            ),
           ),
-          completion(equals(output)),
+          completion(equals(output.trim())),
         );
         verify(
           () => process.run(
             'git',
-            ['branch', '--all', '--list', pattern],
+            ['for-each-ref', '--format', format, pattern],
             workingDirectory: directory,
           ),
         ).called(1);
@@ -219,7 +229,11 @@ void main() {
         when(() => processResult.stderr).thenReturn(error);
         expect(
           () => runWithOverrides(
-            () => git.listBranches(pattern: pattern, directory: directory),
+            () => git.forEachRef(
+              pattern: pattern,
+              format: format,
+              directory: directory,
+            ),
           ),
           throwsA(
             isA<ProcessException>().having((e) => e.message, 'message', error),
