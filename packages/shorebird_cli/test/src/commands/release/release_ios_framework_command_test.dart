@@ -345,7 +345,7 @@ flutter:
             that: stringContainsInOrder(
               [
                 'Your next step is to include the .xcframework files in',
-                '/build/ios/framework/Release',
+                p.join('build', 'ios', 'framework', 'Release'),
                 'in your iOS app.'
               ],
             ),
@@ -358,7 +358,9 @@ flutter:
           releaseId: release.id,
           appFrameworkPath: any(
             named: 'appFrameworkPath',
-            that: endsWith('build/ios/framework/Release/App.xcframework'),
+            that: endsWith(
+              p.join('build', 'ios', 'framework', 'Release', 'App.xcframework'),
+            ),
           ),
         ),
       ).called(1);

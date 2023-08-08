@@ -4,7 +4,6 @@ import 'package:archive/archive_io.dart';
 import 'package:http/http.dart' as http;
 import 'package:mocktail/mocktail.dart';
 import 'package:path/path.dart' as p;
-import 'package:platform/platform.dart';
 import 'package:scoped/scoped.dart';
 import 'package:shorebird_cli/src/cache.dart';
 import 'package:shorebird_cli/src/platform.dart';
@@ -14,8 +13,6 @@ import 'package:test/test.dart';
 class _FakeBaseRequest extends Fake implements http.BaseRequest {}
 
 class _MockHttpClient extends Mock implements http.Client {}
-
-class _MockPlatform extends Mock implements Platform {}
 
 class _MockShorebirdEnv extends Mock implements ShorebirdEnv {}
 
@@ -35,7 +32,6 @@ void main() {
 
     late Directory shorebirdRoot;
     late http.Client httpClient;
-    late Platform platform;
     late ShorebirdEnv shorebirdEnv;
     late Cache cache;
 
@@ -44,7 +40,6 @@ void main() {
         () => body(),
         values: {
           cacheRef.overrideWith(() => cache),
-          platformRef.overrideWith(() => platform),
           shorebirdEnvRef.overrideWith(() => shorebirdEnv),
         },
       );
@@ -56,7 +51,6 @@ void main() {
 
     setUp(() {
       httpClient = _MockHttpClient();
-      platform = _MockPlatform();
       shorebirdEnv = _MockShorebirdEnv();
 
       shorebirdRoot = Directory.systemTemp.createTempSync();
@@ -64,11 +58,6 @@ void main() {
         () => shorebirdEnv.shorebirdEngineRevision,
       ).thenReturn(shorebirdEngineRevision);
       when(() => shorebirdEnv.shorebirdRoot).thenReturn(shorebirdRoot);
-
-      when(() => platform.environment).thenReturn({});
-      when(() => platform.isMacOS).thenReturn(true);
-      when(() => platform.isWindows).thenReturn(false);
-      when(() => platform.isLinux).thenReturn(false);
 
       when(() => httpClient.send(any())).thenAnswer(
         (_) async => http.StreamedResponse(
@@ -165,67 +154,67 @@ void main() {
           expect(patchArtifactDirectory.existsSync(), isTrue);
         });
 
-        test('pull correct artifact for MacOS', () async {
-          when(() => platform.isMacOS).thenReturn(true);
-          when(() => platform.isWindows).thenReturn(false);
-          when(() => platform.isLinux).thenReturn(false);
+        test(
+          'pull correct artifact for MacOS',
+          () async {
+            await expectLater(runWithOverrides(cache.updateAll), completes);
 
-          await expectLater(runWithOverrides(cache.updateAll), completes);
+            final request = verify(() => httpClient.send(captureAny()))
+                .captured
+                .first as http.BaseRequest;
 
-          final request = verify(() => httpClient.send(captureAny()))
-              .captured
-              .first as http.BaseRequest;
-
-          expect(
-            request.url,
-            equals(
-              Uri.parse(
-                '${cache.storageBaseUrl}/${cache.storageBucket}/shorebird/$shorebirdEngineRevision/patch-darwin-x64.zip',
+            expect(
+              request.url,
+              equals(
+                Uri.parse(
+                  '${cache.storageBaseUrl}/${cache.storageBucket}/shorebird/$shorebirdEngineRevision/patch-darwin-x64.zip',
+                ),
               ),
-            ),
-          );
-        });
+            );
+          },
+          skip: !platform.isMacOS,
+        );
 
-        test('pull correct artifact for Windows', () async {
-          when(() => platform.isMacOS).thenReturn(false);
-          when(() => platform.isWindows).thenReturn(true);
-          when(() => platform.isLinux).thenReturn(false);
+        test(
+          'pull correct artifact for Windows',
+          () async {
+            await expectLater(runWithOverrides(cache.updateAll), completes);
 
-          await expectLater(runWithOverrides(cache.updateAll), completes);
+            final request = verify(() => httpClient.send(captureAny()))
+                .captured
+                .first as http.BaseRequest;
 
-          final request = verify(() => httpClient.send(captureAny()))
-              .captured
-              .first as http.BaseRequest;
-
-          expect(
-            request.url,
-            equals(
-              Uri.parse(
-                '${cache.storageBaseUrl}/${cache.storageBucket}/shorebird/$shorebirdEngineRevision/patch-windows-x64.zip',
+            expect(
+              request.url,
+              equals(
+                Uri.parse(
+                  '${cache.storageBaseUrl}/${cache.storageBucket}/shorebird/$shorebirdEngineRevision/patch-windows-x64.zip',
+                ),
               ),
-            ),
-          );
-        });
+            );
+          },
+          skip: !platform.isWindows,
+        );
 
-        test('pull correct artifact for Linux', () async {
-          when(() => platform.isMacOS).thenReturn(false);
-          when(() => platform.isWindows).thenReturn(false);
-          when(() => platform.isLinux).thenReturn(true);
+        test(
+          'pull correct artifact for Linux',
+          () async {
+            await expectLater(runWithOverrides(cache.updateAll), completes);
 
-          await expectLater(runWithOverrides(cache.updateAll), completes);
-
-          final request = verify(() => httpClient.send(captureAny()))
-              .captured
-              .first as http.BaseRequest;
-          expect(
-            request.url,
-            equals(
-              Uri.parse(
-                '${cache.storageBaseUrl}/${cache.storageBucket}/shorebird/$shorebirdEngineRevision/patch-linux-x64.zip',
+            final request = verify(() => httpClient.send(captureAny()))
+                .captured
+                .first as http.BaseRequest;
+            expect(
+              request.url,
+              equals(
+                Uri.parse(
+                  '${cache.storageBaseUrl}/${cache.storageBucket}/shorebird/$shorebirdEngineRevision/patch-linux-x64.zip',
+                ),
               ),
-            ),
-          );
-        });
+            );
+          },
+          skip: !platform.isLinux,
+        );
       });
     });
   });
