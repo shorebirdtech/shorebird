@@ -72,4 +72,18 @@ class ShorebirdFlutter {
         .map((e) => e.replaceFirst('origin/flutter_release/', ''))
         .toList();
   }
+
+  Future<void> useVersion({required String version}) async {
+    final revision = await git.revParse(
+      revision: 'origin/flutter_release/$version',
+      directory: _workingDirectory(),
+    );
+
+    final targetDirectory = Directory(_workingDirectory(revision: revision));
+    if (!targetDirectory.existsSync()) {
+      await installRevision(revision: revision);
+    }
+
+    shorebirdEnv.flutterRevision = revision;
+  }
 }

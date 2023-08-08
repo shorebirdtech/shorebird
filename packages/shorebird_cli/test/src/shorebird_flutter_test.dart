@@ -64,6 +64,12 @@ void main() {
           args: ['--untracked-files=no', '--porcelain'],
         ),
       ).thenAnswer((_) async => '');
+      when(
+        () => git.revParse(
+          revision: any(named: 'revision'),
+          directory: any(named: 'directory'),
+        ),
+      ).thenAnswer((_) async => flutterRevision);
       when(() => shorebirdEnv.flutterDirectory).thenReturn(flutterDirectory);
       when(() => shorebirdEnv.flutterRevision).thenReturn(flutterRevision);
     });
@@ -350,6 +356,74 @@ origin/flutter_release/3.10.6''';
             ),
           ),
         );
+      });
+    });
+
+    group('useVersion', () {
+      const version = '3.10.0';
+      const newRevision = 'new-revision';
+
+      setUp(() {
+        when(
+          () => git.revParse(
+            revision: any(named: 'revision'),
+            directory: any(named: 'directory'),
+          ),
+        ).thenAnswer((_) async => newRevision);
+      });
+
+      test('installs revision if it does not exist', () async {
+        await expectLater(
+          runWithOverrides(
+            () => shorebirdFlutterManager.useVersion(version: version),
+          ),
+          completes,
+        );
+        verify(
+          () => git.revParse(
+            revision: 'origin/flutter_release/$version',
+            directory: p.join(flutterDirectory.parent.path, flutterRevision),
+          ),
+        ).called(1);
+        verify(
+          () => git.clone(
+            url: ShorebirdFlutter.flutterGitUrl,
+            outputDirectory: p.join(
+              flutterDirectory.parent.path,
+              newRevision,
+            ),
+            args: ['--filter=tree:0', '--no-checkout'],
+          ),
+        ).called(1);
+        verify(() => shorebirdEnv.flutterRevision = newRevision).called(1);
+      });
+
+      test('skips installation if revision already exists', () async {
+        Directory(p.join(flutterDirectory.parent.path, newRevision))
+            .createSync(recursive: true);
+        await expectLater(
+          runWithOverrides(
+            () => shorebirdFlutterManager.useVersion(version: version),
+          ),
+          completes,
+        );
+        verify(
+          () => git.revParse(
+            revision: 'origin/flutter_release/$version',
+            directory: p.join(flutterDirectory.parent.path, flutterRevision),
+          ),
+        ).called(1);
+        verifyNever(
+          () => git.clone(
+            url: ShorebirdFlutter.flutterGitUrl,
+            outputDirectory: p.join(
+              flutterDirectory.parent.path,
+              newRevision,
+            ),
+            args: ['--filter=tree:0', '--no-checkout'],
+          ),
+        );
+        verify(() => shorebirdEnv.flutterRevision = newRevision).called(1);
       });
     });
   });
