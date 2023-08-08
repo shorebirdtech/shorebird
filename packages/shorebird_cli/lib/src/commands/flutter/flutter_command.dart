@@ -1,4 +1,5 @@
 import 'package:shorebird_cli/src/command.dart';
+import 'package:shorebird_cli/src/commands/commands.dart';
 
 /// {@template flutter_command}
 /// `shorebird flutter`
@@ -6,7 +7,9 @@ import 'package:shorebird_cli/src/command.dart';
 /// {@endtemplate}
 class FlutterCommand extends ShorebirdCommand {
   /// {@macro flutter_command}
-  FlutterCommand();
+  FlutterCommand() {
+    addSubcommand(FlutterVersionsCommand());
+  }
 
   @override
   String get description => 'Manage your Shorebird Flutter installation.';
