@@ -6,6 +6,7 @@ import 'package:shorebird_cli/src/command_runner.dart';
 import 'package:shorebird_cli/src/logger.dart' hide logger;
 import 'package:shorebird_cli/src/process.dart';
 import 'package:shorebird_cli/src/shorebird_env.dart';
+import 'package:shorebird_cli/src/shorebird_flutter.dart';
 import 'package:shorebird_cli/src/version.dart';
 import 'package:test/test.dart';
 
@@ -15,12 +16,17 @@ class _MockShorebirdEnv extends Mock implements ShorebirdEnv {}
 
 class _MockProcessResult extends Mock implements ShorebirdProcessResult {}
 
+class _MockShorebirdFlutter extends Mock implements ShorebirdFlutter {}
+
 void main() {
   group(ShorebirdCliCommandRunner, () {
-    const shorebirdEngineRevision = 'test-revision';
+    const shorebirdEngineRevision = 'test-engine-revision';
+    const flutterRevision = 'test-flutter-revision';
+    const flutterVersion = '1.2.3';
 
     late Logger logger;
     late ShorebirdEnv shorebirdEnv;
+    late ShorebirdFlutter shorebirdFlutter;
     late ShorebirdProcessResult processResult;
     late ShorebirdCliCommandRunner commandRunner;
 
@@ -30,6 +36,7 @@ void main() {
         values: {
           loggerRef.overrideWith(() => logger),
           shorebirdEnvRef.overrideWith(() => shorebirdEnv),
+          shorebirdFlutterRef.overrideWith(() => shorebirdFlutter),
         },
       );
     }
@@ -37,11 +44,16 @@ void main() {
     setUp(() {
       logger = _MockLogger();
       shorebirdEnv = _MockShorebirdEnv();
+      shorebirdFlutter = _MockShorebirdFlutter();
       processResult = _MockProcessResult();
       when(() => processResult.exitCode).thenReturn(ExitCode.success.code);
       when(
         () => shorebirdEnv.shorebirdEngineRevision,
       ).thenReturn(shorebirdEngineRevision);
+      when(() => shorebirdEnv.flutterRevision).thenReturn(flutterRevision);
+      when(
+        () => shorebirdFlutter.getVersion(),
+      ).thenAnswer((_) async => flutterVersion);
       commandRunner = runWithOverrides(ShorebirdCliCommandRunner.new);
     });
 
@@ -110,7 +122,7 @@ ${lightCyan.wrap('shorebird release android -- --no-pub lib/main.dart')}''',
     });
 
     group('--version', () {
-      test('outputs current version and engine revisions', () async {
+      test('outputs current version info', () async {
         final result = await runWithOverrides(
           () => commandRunner.run(['--version']),
         );
@@ -118,9 +130,30 @@ ${lightCyan.wrap('shorebird release android -- --no-pub lib/main.dart')}''',
         verify(
           () => logger.info(
             '''
-Shorebird $packageVersion
-Shorebird Engine • revision $shorebirdEngineRevision''',
+Shorebird $packageVersion • git@github.com:shorebirdtech/shorebird.git
+Flutter $flutterVersion • revision $flutterRevision
+Engine • revision $shorebirdEngineRevision''',
           ),
+        ).called(1);
+      });
+
+      test('gracefully handles case when flutter version cannot be determined',
+          () async {
+        when(() => shorebirdFlutter.getVersion()).thenThrow('error');
+        final result = await runWithOverrides(
+          () => commandRunner.run(['--version']),
+        );
+        expect(result, equals(ExitCode.success.code));
+        verify(
+          () => logger.info(
+            '''
+Shorebird $packageVersion • git@github.com:shorebirdtech/shorebird.git
+Flutter • revision $flutterRevision
+Engine • revision $shorebirdEngineRevision''',
+          ),
+        ).called(1);
+        verify(
+          () => logger.detail('Unable to determine Flutter version.\nerror'),
         ).called(1);
       });
     });
