@@ -1,39 +1,45 @@
 import 'dart:async';
-import 'dart:io';
+import 'dart:io' hide Platform;
 
+import 'package:collection/collection.dart';
 import 'package:crypto/crypto.dart';
 import 'package:mason_logger/mason_logger.dart';
-import 'package:path/path.dart' as p;
+import 'package:platform/platform.dart';
+import 'package:scoped/scoped.dart';
 import 'package:shorebird_cli/src/archive_analysis/archive_analysis.dart';
 import 'package:shorebird_cli/src/code_push_client_wrapper.dart';
 import 'package:shorebird_cli/src/command.dart';
 import 'package:shorebird_cli/src/config/config.dart';
+import 'package:shorebird_cli/src/doctor.dart';
 import 'package:shorebird_cli/src/formatters/file_size_formatter.dart';
+import 'package:shorebird_cli/src/ios.dart';
 import 'package:shorebird_cli/src/logger.dart';
+import 'package:shorebird_cli/src/patch_diff_checker.dart';
 import 'package:shorebird_cli/src/shorebird_artifact_mixin.dart';
 import 'package:shorebird_cli/src/shorebird_build_mixin.dart';
-import 'package:shorebird_cli/src/shorebird_config_mixin.dart';
-import 'package:shorebird_cli/src/shorebird_environment.dart';
-import 'package:shorebird_cli/src/shorebird_validation_mixin.dart';
+import 'package:shorebird_cli/src/shorebird_env.dart';
+import 'package:shorebird_cli/src/shorebird_flutter.dart';
+import 'package:shorebird_cli/src/shorebird_validator.dart';
 import 'package:shorebird_code_push_client/shorebird_code_push_client.dart';
 
 /// {@template patch_ios_command}
-/// `shorebird patch ios` command.
+/// `shorebird patch ios-alpha` command.
 /// {@endtemplate}
 class PatchIosCommand extends ShorebirdCommand
-    with
-        ShorebirdConfigMixin,
-        ShorebirdBuildMixin,
-        ShorebirdValidationMixin,
-        ShorebirdArtifactMixin {
+    with ShorebirdBuildMixin, ShorebirdArtifactMixin {
   /// {@macro patch_ios_command}
   PatchIosCommand({
-    super.validators,
     HashFunction? hashFn,
+    IosArchiveDiffer? archiveDiffer,
     IpaReader? ipaReader,
   })  : _hashFn = hashFn ?? ((m) => sha256.convert(m).toString()),
+        _archiveDiffer = archiveDiffer ?? IosArchiveDiffer(),
         _ipaReader = ipaReader ?? IpaReader() {
     argParser
+      ..addOption(
+        'release-version',
+        help: 'The version of the release (e.g. "1.0.0").',
+      )
       ..addOption(
         'target',
         abbr: 't',
@@ -58,37 +64,34 @@ class PatchIosCommand extends ShorebirdCommand
   }
 
   @override
-  bool get hidden => true;
-
-  @override
-  String get name => 'ios';
+  String get name => 'ios-alpha';
 
   @override
   String get description =>
       'Publish new patches for a specific iOS release to Shorebird.';
 
   final HashFunction _hashFn;
+  final IosArchiveDiffer _archiveDiffer;
   final IpaReader _ipaReader;
 
   @override
   Future<int> run() async {
     try {
-      await validatePreconditions(
+      await shorebirdValidator.validatePreconditions(
         checkShorebirdInitialized: true,
         checkUserIsAuthenticated: true,
-        checkValidators: true,
+        validators: doctor.iosCommandValidators,
+        supportedOperatingSystems: {Platform.macOS},
       );
     } on PreconditionFailedException catch (error) {
       return error.exitCode.code;
     }
 
-    logger.warn(
-      '''iOS support is in an experimental state and will not work without Flutter engine changes that have not yet been published.''',
-    );
+    showiOSStatusWarning();
 
     const arch = 'aarch64';
     const channelName = 'stable';
-    const platform = ReleasePlatform.ios;
+    const releasePlatform = ReleasePlatform.ios;
     final force = results['force'] == true;
     final dryRun = results['dry-run'] == true;
     final flavor = results['flavor'] as String?;
@@ -99,22 +102,96 @@ class PatchIosCommand extends ShorebirdCommand
       return ExitCode.usage.code;
     }
 
-    final shorebirdYaml = ShorebirdEnvironment.getShorebirdYaml()!;
+    final shorebirdYaml = shorebirdEnv.getShorebirdYaml()!;
     final appId = shorebirdYaml.getAppId(flavor: flavor);
     final app = await codePushClientWrapper.getApp(appId: appId);
+    final releases = await codePushClientWrapper.getReleases(appId: appId);
+
+    if (releases.isEmpty) {
+      logger.info('No releases found');
+      return ExitCode.success.code;
+    }
+
+    final releaseVersion = results['release-version'] as String? ??
+        await _promptForReleaseVersion(releases);
+
+    final release = releases.firstWhereOrNull(
+      (r) => r.version == releaseVersion,
+    );
+
+    if (releaseVersion == null || release == null) {
+      logger.info('''
+No release found for version $releaseVersion
+
+Available release versions:
+${releases.map((r) => r.version).join('\n')}''');
+      return ExitCode.success.code;
+    }
+
+    if (release.platformStatuses[ReleasePlatform.ios] == ReleaseStatus.draft) {
+      logger.err('''
+Release $releaseVersion is in an incomplete state. It's possible that the original release was terminated or failed to complete.
+Please re-run the release command for this version or create a new release.''');
+      return ExitCode.software.code;
+    }
+
+    final shorebirdFlutterRevision = shorebirdEnv.flutterRevision;
+    if (release.flutterRevision != shorebirdFlutterRevision) {
+      final installFlutterRevisionProgress = logger.progress(
+        'Switching to Flutter revision ${release.flutterRevision}',
+      );
+      try {
+        await shorebirdFlutter.installRevision(
+          revision: release.flutterRevision,
+        );
+        installFlutterRevisionProgress.complete();
+      } catch (error) {
+        installFlutterRevisionProgress.fail('$error');
+        return ExitCode.software.code;
+      }
+    }
+
+    final releaseArtifact = await codePushClientWrapper.getReleaseArtifact(
+      appId: appId,
+      releaseId: release.id,
+      arch: 'ipa',
+      platform: ReleasePlatform.ios,
+    );
 
     final buildProgress = logger.progress('Building release');
     try {
-      await buildIpa(flavor: flavor, target: target);
+      await runScoped(
+        () => buildIpa(flavor: flavor, target: target),
+        values: {
+          shorebirdEnvRef.overrideWith(
+            () => ShorebirdEnv(
+              flutterRevisionOverride: release.flutterRevision,
+            ),
+          )
+        },
+      );
     } on ProcessException catch (error) {
       buildProgress.fail('Failed to build: ${error.message}');
+      return ExitCode.software.code;
+    } on BuildException catch (error) {
+      buildProgress.fail('Failed to build IPA');
+      logger.err(error.message);
       return ExitCode.software.code;
     }
 
     final File aotFile;
     try {
       final newestDillFile = newestAppDill();
-      aotFile = await buildElfAotSnapshot(appDillPath: newestDillFile.path);
+      aotFile = await runScoped(
+        () => buildElfAotSnapshot(appDillPath: newestDillFile.path),
+        values: {
+          shorebirdEnvRef.overrideWith(
+            () => ShorebirdEnv(
+              flutterRevisionOverride: release.flutterRevision,
+            ),
+          )
+        },
+      );
     } catch (error) {
       buildProgress.fail('$error');
       return ExitCode.software.code;
@@ -122,24 +199,23 @@ class PatchIosCommand extends ShorebirdCommand
 
     buildProgress.complete();
 
-    final String releaseVersion;
+    final String ipaPath;
+    try {
+      ipaPath = getIpaPath();
+    } catch (error) {
+      logger.err('Could not find ipa file: $error');
+      return ExitCode.software.code;
+    }
 
     final detectReleaseVersionProgress = logger.progress(
       'Detecting release version',
     );
+    final String localReleaseVersion;
     try {
-      final ipa = _ipaReader.read(
-        p.join(
-          Directory.current.path,
-          'build',
-          'ios',
-          'ipa',
-          '${getIpaName()}.ipa',
-        ),
-      );
-      releaseVersion = ipa.versionNumber;
+      final ipa = _ipaReader.read(getIpaPath());
+      localReleaseVersion = ipa.versionNumber;
       detectReleaseVersionProgress.complete(
-        'Detected release version $releaseVersion',
+        'Detected release version $localReleaseVersion',
       );
     } catch (error) {
       detectReleaseVersionProgress.fail(
@@ -148,56 +224,22 @@ class PatchIosCommand extends ShorebirdCommand
       return ExitCode.software.code;
     }
 
-    final release = await codePushClientWrapper.getRelease(
-      appId: appId,
-      releaseVersion: releaseVersion,
-    );
-
-    if (release.platformStatuses[ReleasePlatform.ios] == ReleaseStatus.draft) {
+    if (localReleaseVersion != releaseVersion) {
       logger.err('''
-Release $releaseVersion is in an incomplete state. It's possible that the original release was terminated or failed to complete.
-
+The local release version ($localReleaseVersion) does not match the remote release version ($releaseVersion).
 Please re-run the release command for this version or create a new release.''');
       return ExitCode.software.code;
     }
 
-    final flutterRevisionProgress = logger.progress(
-      'Fetching Flutter revision',
+    final shouldContinue =
+        await patchDiffChecker.confirmUnpatchableDiffsIfNecessary(
+      localArtifact: File(ipaPath),
+      releaseArtifactUrl: Uri.parse(releaseArtifact.url),
+      archiveDiffer: _archiveDiffer,
+      force: force,
     );
-    final String shorebirdFlutterRevision;
-    try {
-      shorebirdFlutterRevision = await getShorebirdFlutterRevision();
-      flutterRevisionProgress.complete();
-    } catch (error) {
-      flutterRevisionProgress.fail('$error');
-      return ExitCode.software.code;
-    }
 
-    if (release.flutterRevision != shorebirdFlutterRevision) {
-      logger
-        ..err('''
-Flutter revision mismatch.
-
-The release you are trying to patch was built with a different version of Flutter.
-
-Release Flutter Revision: ${release.flutterRevision}
-Current Flutter Revision: $shorebirdFlutterRevision
-''')
-        ..info(
-          '''
-Either create a new release using:
-  ${lightCyan.wrap('shorebird release')}
-
-Or downgrade your Flutter version and try again using:
-  ${lightCyan.wrap('cd ${ShorebirdEnvironment.flutterDirectory.path}')}
-  ${lightCyan.wrap('git checkout ${release.flutterRevision}')}
-
-Shorebird plans to support this automatically, let us know if it's important to you:
-https://github.com/shorebirdtech/shorebird/issues/472
-''',
-        );
-      return ExitCode.software.code;
-    }
+    if (!shouldContinue) return ExitCode.success.code;
 
     if (dryRun) {
       logger
@@ -213,7 +255,7 @@ https://github.com/shorebirdtech/shorebird/issues/472
       if (flavor != null) '🍧 Flavor: ${lightCyan.wrap(flavor)}',
       '📦 Release Version: ${lightCyan.wrap(releaseVersion)}',
       '📺 Channel: ${lightCyan.wrap(channelName)}',
-      '''🕹️  Platform: ${lightCyan.wrap(platform.name)} ${lightCyan.wrap('[$arch (${formatBytes(aotFileSize)})]')}''',
+      '''🕹️  Platform: ${lightCyan.wrap(releasePlatform.name)} ${lightCyan.wrap('[$arch (${formatBytes(aotFileSize)})]')}''',
     ];
 
     logger.info(
@@ -240,7 +282,7 @@ ${summary.join('\n')}
     await codePushClientWrapper.publishPatch(
       appId: appId,
       releaseId: release.id,
-      platform: platform,
+      platform: releasePlatform,
       channelName: channelName,
       patchArtifactBundles: {
         Arch.arm64: PatchArtifactBundle(
@@ -254,5 +296,15 @@ ${summary.join('\n')}
 
     logger.success('\n✅ Published Patch!');
     return ExitCode.success.code;
+  }
+
+  Future<String?> _promptForReleaseVersion(List<Release> releases) async {
+    if (releases.isEmpty) return null;
+    final release = logger.chooseOne(
+      'Which release would you like to patch?',
+      choices: releases,
+      display: (release) => release.version,
+    );
+    return release.version;
   }
 }

@@ -11,6 +11,7 @@ class PatchCommand extends ShorebirdCommand {
     addSubcommand(PatchAarCommand());
     addSubcommand(PatchAndroidCommand());
     addSubcommand(PatchIosCommand());
+    addSubcommand(PatchIosFrameworkCommand());
   }
 
   @override

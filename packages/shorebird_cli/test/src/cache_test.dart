@@ -2,13 +2,15 @@ import 'dart:io';
 
 import 'package:archive/archive_io.dart';
 import 'package:http/http.dart' as http;
+import 'package:mason_logger/mason_logger.dart';
 import 'package:mocktail/mocktail.dart';
 import 'package:path/path.dart' as p;
 import 'package:platform/platform.dart';
 import 'package:scoped/scoped.dart';
 import 'package:shorebird_cli/src/cache.dart';
 import 'package:shorebird_cli/src/platform.dart';
-import 'package:shorebird_cli/src/shorebird_environment.dart';
+import 'package:shorebird_cli/src/process.dart';
+import 'package:shorebird_cli/src/shorebird_env.dart';
 import 'package:test/test.dart';
 
 class _FakeBaseRequest extends Fake implements http.BaseRequest {}
@@ -16,6 +18,12 @@ class _FakeBaseRequest extends Fake implements http.BaseRequest {}
 class _MockHttpClient extends Mock implements http.Client {}
 
 class _MockPlatform extends Mock implements Platform {}
+
+class _MockProcess extends Mock implements Process {}
+
+class _MockShorebirdEnv extends Mock implements ShorebirdEnv {}
+
+class _MockShorebirdProcess extends Mock implements ShorebirdProcess {}
 
 class TestCachedArtifact extends CachedArtifact {
   TestCachedArtifact({required super.cache, required super.platform});
@@ -29,9 +37,14 @@ class TestCachedArtifact extends CachedArtifact {
 
 void main() {
   group('Cache', () {
+    const shorebirdEngineRevision = 'test-revision';
+
     late Directory shorebirdRoot;
     late http.Client httpClient;
     late Platform platform;
+    late Process chmodProcess;
+    late ShorebirdEnv shorebirdEnv;
+    late ShorebirdProcess shorebirdProcess;
     late Cache cache;
 
     R runWithOverrides<R>(R Function() body) {
@@ -40,6 +53,8 @@ void main() {
         values: {
           cacheRef.overrideWith(() => cache),
           platformRef.overrideWith(() => platform),
+          processRef.overrideWith(() => shorebirdProcess),
+          shorebirdEnvRef.overrideWith(() => shorebirdEnv),
         },
       );
     }
@@ -51,25 +66,26 @@ void main() {
     setUp(() {
       httpClient = _MockHttpClient();
       platform = _MockPlatform();
+      chmodProcess = _MockProcess();
+      shorebirdEnv = _MockShorebirdEnv();
+      shorebirdProcess = _MockShorebirdProcess();
 
       shorebirdRoot = Directory.systemTemp.createTempSync();
-      ShorebirdEnvironment.shorebirdEngineRevision = 'test-revision';
+      when(
+        () => shorebirdEnv.shorebirdEngineRevision,
+      ).thenReturn(shorebirdEngineRevision);
+      when(() => shorebirdEnv.shorebirdRoot).thenReturn(shorebirdRoot);
 
       when(() => platform.environment).thenReturn({});
       when(() => platform.isMacOS).thenReturn(true);
       when(() => platform.isWindows).thenReturn(false);
       when(() => platform.isLinux).thenReturn(false);
-      when(() => platform.script).thenReturn(
-        Uri.file(
-          p.join(
-            shorebirdRoot.path,
-            'bin',
-            'cache',
-            'shorebird.snapshot',
-          ),
-        ),
+      when(() => shorebirdProcess.start(any(), any())).thenAnswer(
+        (_) async => chmodProcess,
       );
-
+      when(() => chmodProcess.exitCode).thenAnswer(
+        (_) async => ExitCode.success.code,
+      );
       when(() => httpClient.send(any())).thenAnswer(
         (_) async => http.StreamedResponse(
           Stream.value(ZipEncoder().encode(Archive())!),
@@ -77,7 +93,7 @@ void main() {
         ),
       );
 
-      cache = Cache(httpClient: httpClient, platform: platform);
+      cache = runWithOverrides(() => Cache(httpClient: httpClient));
     });
 
     test('can be instantiated w/out args', () {
@@ -86,7 +102,9 @@ void main() {
 
     group('getArtifactDirectory', () {
       test('returns correct directory', () {
-        final directory = cache.getArtifactDirectory('test');
+        final directory = runWithOverrides(
+          () => cache.getArtifactDirectory('test'),
+        );
         expect(
           directory.path.endsWith(
             p.join(
@@ -103,7 +121,9 @@ void main() {
 
     group('getPreviewDirectory', () {
       test('returns correct directory', () {
-        final directory = cache.getPreviewDirectory('test');
+        final directory = runWithOverrides(
+          () => cache.getPreviewDirectory('test'),
+        );
         expect(
           directory.path.endsWith(
             p.join(
@@ -132,17 +152,18 @@ void main() {
 
     group('clear', () {
       test('deletes the cache directory', () async {
-        final shorebirdCacheDirectory =
-            runWithOverrides(() => Cache.shorebirdCacheDirectory)
-              ..createSync(recursive: true);
+        final shorebirdCacheDirectory = runWithOverrides(
+          () => Cache.shorebirdCacheDirectory,
+        )..createSync(recursive: true);
         expect(shorebirdCacheDirectory.existsSync(), isTrue);
         runWithOverrides(cache.clear);
         expect(shorebirdCacheDirectory.existsSync(), isFalse);
       });
 
       test('does nothing if directory does not exist', () {
-        final shorebirdCacheDirectory =
-            runWithOverrides(() => Cache.shorebirdCacheDirectory);
+        final shorebirdCacheDirectory = runWithOverrides(
+          () => Cache.shorebirdCacheDirectory,
+        );
         expect(shorebirdCacheDirectory.existsSync(), isFalse);
         runWithOverrides(cache.clear);
         expect(shorebirdCacheDirectory.existsSync(), isFalse);
@@ -175,7 +196,7 @@ void main() {
             request.url,
             equals(
               Uri.parse(
-                '${cache.storageBaseUrl}/${cache.storageBucket}/shorebird/${ShorebirdEnvironment.shorebirdEngineRevision}/patch-darwin-x64.zip',
+                '${cache.storageBaseUrl}/${cache.storageBucket}/shorebird/$shorebirdEngineRevision/patch-darwin-x64.zip',
               ),
             ),
           );
@@ -196,7 +217,7 @@ void main() {
             request.url,
             equals(
               Uri.parse(
-                '${cache.storageBaseUrl}/${cache.storageBucket}/shorebird/${ShorebirdEnvironment.shorebirdEngineRevision}/patch-windows-x64.zip',
+                '${cache.storageBaseUrl}/${cache.storageBucket}/shorebird/$shorebirdEngineRevision/patch-windows-x64.zip',
               ),
             ),
           );
@@ -216,7 +237,7 @@ void main() {
             request.url,
             equals(
               Uri.parse(
-                '${cache.storageBaseUrl}/${cache.storageBucket}/shorebird/${ShorebirdEnvironment.shorebirdEngineRevision}/patch-linux-x64.zip',
+                '${cache.storageBaseUrl}/${cache.storageBucket}/shorebird/$shorebirdEngineRevision/patch-linux-x64.zip',
               ),
             ),
           );

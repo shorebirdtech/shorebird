@@ -9,10 +9,9 @@ import 'package:shorebird_cli/src/config/config.dart';
 import 'package:shorebird_cli/src/logger.dart';
 import 'package:shorebird_cli/src/shorebird_artifact_mixin.dart';
 import 'package:shorebird_cli/src/shorebird_build_mixin.dart';
-import 'package:shorebird_cli/src/shorebird_config_mixin.dart';
-import 'package:shorebird_cli/src/shorebird_environment.dart';
+import 'package:shorebird_cli/src/shorebird_env.dart';
 import 'package:shorebird_cli/src/shorebird_release_version_mixin.dart';
-import 'package:shorebird_cli/src/shorebird_validation_mixin.dart';
+import 'package:shorebird_cli/src/shorebird_validator.dart';
 import 'package:shorebird_code_push_client/shorebird_code_push_client.dart';
 
 /// {@template release_aar_command}
@@ -21,14 +20,11 @@ import 'package:shorebird_code_push_client/shorebird_code_push_client.dart';
 /// {@endtemplate}
 class ReleaseAarCommand extends ShorebirdCommand
     with
-        ShorebirdConfigMixin,
-        ShorebirdValidationMixin,
         ShorebirdBuildMixin,
         ShorebirdReleaseVersionMixin,
         ShorebirdArtifactMixin {
   /// {@macro release_aar_command}
   ReleaseAarCommand({
-    super.validators,
     UnzipFn? unzipFn,
   }) : _unzipFn = unzipFn ?? extractFileToDisk {
     argParser
@@ -38,10 +34,6 @@ class ReleaseAarCommand extends ShorebirdCommand
 The version of the associated release (e.g. "1.0.0"). This should be the version
 of the Android app that is using this module.''',
         mandatory: true,
-      )
-      ..addOption(
-        'flavor',
-        help: 'The product flavor to use when building the app.',
       )
       // `flutter build aar` defaults to a build number of 1.0, so we do the
       // same.
@@ -73,28 +65,26 @@ make smaller updates to your app.
   @override
   Future<int> run() async {
     try {
-      await validatePreconditions(
+      await shorebirdValidator.validatePreconditions(
         checkUserIsAuthenticated: true,
         checkShorebirdInitialized: true,
-        checkValidators: true,
       );
     } on PreconditionFailedException catch (e) {
       return e.exitCode.code;
     }
 
-    if (androidPackageName == null) {
+    if (shorebirdEnv.androidPackageName == null) {
       logger.err('Could not find androidPackage in pubspec.yaml.');
       return ExitCode.config.code;
     }
 
     const platform = ReleasePlatform.android;
-    final flavor = results['flavor'] as String?;
     final buildNumber = results['build-number'] as String;
     final releaseVersion = results['release-version'] as String;
     final buildProgress = logger.progress('Building aar');
 
-    final shorebirdYaml = ShorebirdEnvironment.getShorebirdYaml()!;
-    final appId = shorebirdYaml.getAppId(flavor: flavor);
+    final shorebirdYaml = shorebirdEnv.getShorebirdYaml()!;
+    final appId = shorebirdYaml.getAppId();
     final app = await codePushClientWrapper.getApp(appId: appId);
 
     final existingRelease = await codePushClientWrapper.maybeGetRelease(
@@ -102,15 +92,14 @@ make smaller updates to your app.
       releaseVersion: releaseVersion,
     );
     if (existingRelease != null) {
-      await codePushClientWrapper.ensureReleaseHasNoArtifacts(
-        appId: app.appId,
-        existingRelease: existingRelease,
+      codePushClientWrapper.ensureReleaseIsNotActive(
+        release: existingRelease,
         platform: platform,
       );
     }
 
     try {
-      await buildAar(buildNumber: buildNumber, flavor: flavor);
+      await buildAar(buildNumber: buildNumber);
     } on ProcessException catch (error) {
       buildProgress.fail('Failed to build: ${error.message}');
       return ExitCode.software.code;
@@ -123,7 +112,6 @@ make smaller updates to your app.
     );
     final summary = [
       '''📱 App: ${lightCyan.wrap(app.displayName)} ${lightCyan.wrap('(${app.appId})')}''',
-      if (flavor != null) '🍧 Flavor: ${lightCyan.wrap(flavor)}',
       '📦 Release Version: ${lightCyan.wrap(releaseVersion)}',
       '''🕹️  Platform: ${lightCyan.wrap(platform.name)} ${lightCyan.wrap('(${archNames.join(', ')})')}''',
     ];
@@ -146,18 +134,6 @@ ${summary.join('\n')}
       }
     }
 
-    final flutterRevisionProgress = logger.progress(
-      'Fetching Flutter revision',
-    );
-    final String shorebirdFlutterRevision;
-    try {
-      shorebirdFlutterRevision = await getShorebirdFlutterRevision();
-      flutterRevisionProgress.complete();
-    } catch (error) {
-      flutterRevisionProgress.fail('$error');
-      return ExitCode.software.code;
-    }
-
     final Release release;
     if (existingRelease != null) {
       release = existingRelease;
@@ -171,14 +147,14 @@ ${summary.join('\n')}
       release = await codePushClientWrapper.createRelease(
         appId: appId,
         version: releaseVersion,
-        flutterRevision: shorebirdFlutterRevision,
+        flutterRevision: shorebirdEnv.flutterRevision,
         platform: platform,
       );
     }
 
     final extractAarProgress = logger.progress('Creating artifacts');
     final extractedAarDir = await extractAar(
-      packageName: androidPackageName!,
+      packageName: shorebirdEnv.androidPackageName!,
       buildNumber: buildNumber,
       unzipFn: _unzipFn,
     );
@@ -189,7 +165,7 @@ ${summary.join('\n')}
       releaseId: release.id,
       platform: platform,
       aarPath: aarArtifactPath(
-        packageName: androidPackageName!,
+        packageName: shorebirdEnv.androidPackageName!,
         buildNumber: buildNumber,
       ),
       extractedAarDir: extractedAarDir,
@@ -211,7 +187,7 @@ Your next step is to add this module as a dependency in your app's build.gradle:
 ${lightCyan.wrap('''
 dependencies {
   // ...
-  releaseImplementation '$androidPackageName:flutter_release:$buildNumber'
+  releaseImplementation '${shorebirdEnv.androidPackageName}:flutter_release:$buildNumber'
   // ...
 }''')}
 ''');

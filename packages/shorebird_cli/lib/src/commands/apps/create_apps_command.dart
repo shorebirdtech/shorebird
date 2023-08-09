@@ -1,11 +1,10 @@
 import 'dart:async';
 
 import 'package:mason_logger/mason_logger.dart';
+import 'package:shorebird_cli/src/code_push_client_wrapper.dart';
 import 'package:shorebird_cli/src/command.dart';
 import 'package:shorebird_cli/src/logger.dart';
-import 'package:shorebird_cli/src/shorebird_config_mixin.dart';
-import 'package:shorebird_cli/src/shorebird_create_app_mixin.dart';
-import 'package:shorebird_cli/src/shorebird_validation_mixin.dart';
+import 'package:shorebird_cli/src/shorebird_validator.dart';
 import 'package:shorebird_code_push_client/shorebird_code_push_client.dart';
 
 /// {@template create_app_command}
@@ -13,13 +12,9 @@ import 'package:shorebird_code_push_client/shorebird_code_push_client.dart';
 /// `shorebird apps create`
 /// Create a new app on Shorebird.
 /// {@endtemplate}
-class CreateAppCommand extends ShorebirdCommand
-    with
-        ShorebirdConfigMixin,
-        ShorebirdValidationMixin,
-        ShorebirdCreateAppMixin {
+class CreateAppCommand extends ShorebirdCommand {
   /// {@macro create_app_command}
-  CreateAppCommand({super.buildCodePushClient}) {
+  CreateAppCommand() {
     argParser.addOption(
       'app-name',
       help: '''
@@ -37,7 +32,7 @@ Defaults to the name in "pubspec.yaml".''',
   @override
   Future<int>? run() async {
     try {
-      await validatePreconditions(
+      await shorebirdValidator.validatePreconditions(
         checkUserIsAuthenticated: true,
       );
     } on PreconditionFailedException catch (e) {
@@ -47,7 +42,7 @@ Defaults to the name in "pubspec.yaml".''',
     final appName = results['app-name'] as String?;
     late final App app;
     try {
-      app = await createApp(appName: appName);
+      app = await codePushClientWrapper.createApp(appName: appName);
     } catch (error) {
       logger.err('$error');
       return ExitCode.software.code;

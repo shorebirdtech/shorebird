@@ -1,5 +1,7 @@
-import 'package:shorebird_cli/src/process.dart';
-import 'package:shorebird_cli/src/shorebird_environment.dart';
+import 'package:shorebird_cli/src/platform.dart';
+import 'package:shorebird_cli/src/shorebird_env.dart';
+import 'package:shorebird_cli/src/shorebird_flutter.dart';
+import 'package:shorebird_cli/src/third_party/flutter_tools/lib/flutter_tools.dart';
 import 'package:shorebird_cli/src/validators/validators.dart';
 import 'package:version/version.dart';
 
@@ -16,21 +18,19 @@ class FlutterValidationException implements Exception {
 class ShorebirdFlutterValidator extends Validator {
   ShorebirdFlutterValidator();
 
-  final _flutterVersionRegex = RegExp(r'Flutter (\d+.\d+.\d+)');
-
   @override
   String get description => 'Flutter install is correct';
 
   @override
-  ValidatorScope get scope => ValidatorScope.installation;
+  bool canRunInCurrentContext() => true;
 
   @override
-  Future<List<ValidationIssue>> validate(ShorebirdProcess process) async {
+  Future<List<ValidationIssue>> validate() async {
     final issues = <ValidationIssue>[];
 
-    if (!ShorebirdEnvironment.flutterDirectory.existsSync()) {
+    if (!shorebirdEnv.flutterDirectory.existsSync()) {
       final message = 'No Flutter directory found at '
-          '${ShorebirdEnvironment.flutterDirectory}';
+          '${shorebirdEnv.flutterDirectory}';
       issues.add(
         ValidationIssue(
           severity: ValidationIssueSeverity.error,
@@ -39,11 +39,11 @@ class ShorebirdFlutterValidator extends Validator {
       );
     }
 
-    if (!await _flutterDirectoryIsClean(process)) {
+    if (!await shorebirdFlutter.isPorcelain()) {
       issues.add(
         ValidationIssue(
           severity: ValidationIssueSeverity.warning,
-          message: '${ShorebirdEnvironment.flutterDirectory} has local '
+          message: '${shorebirdEnv.flutterDirectory} has local '
               'modifications',
         ),
       );
@@ -51,7 +51,7 @@ class ShorebirdFlutterValidator extends Validator {
 
     String? shorebirdFlutterVersionString;
     try {
-      shorebirdFlutterVersionString = await _shorebirdFlutterVersion(process);
+      shorebirdFlutterVersionString = await _getFlutterVersion();
     } catch (error) {
       issues.add(
         ValidationIssue(
@@ -63,7 +63,9 @@ class ShorebirdFlutterValidator extends Validator {
 
     String? pathFlutterVersionString;
     try {
-      pathFlutterVersionString = await _pathFlutterVersion(process);
+      pathFlutterVersionString = await _getFlutterVersion(
+        useVendedFlutter: false,
+      );
     } catch (error) {
       issues.add(
         ValidationIssue(
@@ -96,7 +98,7 @@ This can cause unexpected behavior if you are switching between the tools and th
     }
 
     final flutterStorageEnvironmentValue =
-        ShorebirdEnvironment.environment['FLUTTER_STORAGE_BASE_URL'];
+        platform.environment['FLUTTER_STORAGE_BASE_URL'];
     if (flutterStorageEnvironmentValue != null &&
         flutterStorageEnvironmentValue.isNotEmpty) {
       issues.add(
@@ -111,53 +113,24 @@ This can cause unexpected behavior if you are switching between the tools and th
     return issues;
   }
 
-  Future<bool> _flutterDirectoryIsClean(ShorebirdProcess process) async {
-    final result = await process.run(
-      'git',
-      ['status'],
-      workingDirectory: ShorebirdEnvironment.flutterDirectory.path,
-    );
-    return result.stdout
-        .toString()
-        .contains('nothing to commit, working tree clean');
-  }
-
-  Future<String> _shorebirdFlutterVersion(ShorebirdProcess process) {
-    return _getFlutterVersion(process: process);
-  }
-
-  Future<String> _pathFlutterVersion(ShorebirdProcess process) {
-    return _getFlutterVersion(
-      process: process,
-      useVendedFlutter: false,
-    );
-  }
-
-  Future<String> _getFlutterVersion({
-    required ShorebirdProcess process,
-    bool useVendedFlutter = true,
-  }) async {
-    final result = await process.run(
-      'flutter',
-      ['--version'],
-      useVendedFlutter: useVendedFlutter,
-      runInShell: true,
-    );
-
-    if (result.exitCode != 0) {
+  Future<String> _getFlutterVersion({bool useVendedFlutter = true}) async {
+    final String? version;
+    try {
+      version = await shorebirdFlutter.getVersion(
+        useVendedFlutter: useVendedFlutter,
+      );
+    } on ProcessException catch (error) {
       throw FlutterValidationException(
-        'Flutter version check did not complete successfully. ${result.stderr}',
+        'Flutter version check did not complete successfully. ${error.message}',
       );
     }
 
-    final output = result.stdout.toString();
-    final match = _flutterVersionRegex.firstMatch(output);
-    if (match == null) {
-      throw FlutterValidationException(
-        'Could not find version number in $output',
+    if (version == null) {
+      throw const FlutterValidationException(
+        'Could not detect version number in output',
       );
     }
 
-    return match.group(1)!;
+    return version;
   }
 }

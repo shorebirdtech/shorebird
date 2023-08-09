@@ -1,21 +1,19 @@
 import 'dart:async';
 
 import 'package:mason_logger/mason_logger.dart';
-import 'package:shorebird_cli/src/auth/auth.dart';
+import 'package:shorebird_cli/src/code_push_client_wrapper.dart';
 import 'package:shorebird_cli/src/command.dart';
 import 'package:shorebird_cli/src/logger.dart';
-import 'package:shorebird_cli/src/shorebird_config_mixin.dart';
-import 'package:shorebird_cli/src/shorebird_environment.dart';
-import 'package:shorebird_cli/src/shorebird_validation_mixin.dart';
+import 'package:shorebird_cli/src/shorebird_env.dart';
+import 'package:shorebird_cli/src/shorebird_validator.dart';
 
 /// {@template add_collaborators_command}
 /// `shorebird collaborators add`
 /// Add a new collaborator to a Shorebird app.
 /// {@endtemplate}
-class AddCollaboratorsCommand extends ShorebirdCommand
-    with ShorebirdConfigMixin, ShorebirdValidationMixin {
+class AddCollaboratorsCommand extends ShorebirdCommand {
   /// {@macro add_collaborators_command}
-  AddCollaboratorsCommand({super.buildCodePushClient}) {
+  AddCollaboratorsCommand() {
     argParser
       ..addOption(
         _appIdOption,
@@ -39,20 +37,15 @@ class AddCollaboratorsCommand extends ShorebirdCommand
   @override
   Future<int>? run() async {
     try {
-      await validatePreconditions(
+      await shorebirdValidator.validatePreconditions(
         checkUserIsAuthenticated: true,
       );
     } on PreconditionFailedException catch (e) {
       return e.exitCode.code;
     }
 
-    final client = buildCodePushClient(
-      httpClient: auth.client,
-      hostedUri: ShorebirdEnvironment.hostedUri,
-    );
-
     final appId = results[_appIdOption] as String? ??
-        ShorebirdEnvironment.getShorebirdYaml()?.appId;
+        shorebirdEnv.getShorebirdYaml()?.appId;
     if (appId == null) {
       logger.err(
         '''
@@ -84,7 +77,10 @@ ${styleBold.wrap(lightGreen.wrap('🚀 Ready to add a new collaborator!'))}
 
     final progress = logger.progress('Adding collaborator');
     try {
-      await client.createCollaborator(appId: appId, email: collaborator);
+      await codePushClientWrapper.codePushClient.createCollaborator(
+        appId: appId,
+        email: collaborator,
+      );
       progress.complete();
     } catch (error) {
       progress.fail();

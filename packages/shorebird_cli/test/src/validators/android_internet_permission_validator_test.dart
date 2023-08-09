@@ -1,13 +1,9 @@
 import 'dart:io';
 
 import 'package:collection/collection.dart';
-import 'package:mocktail/mocktail.dart';
 import 'package:path/path.dart' as p;
-import 'package:shorebird_cli/src/process.dart';
 import 'package:shorebird_cli/src/validators/validators.dart';
 import 'package:test/test.dart';
-
-class _MockShorebirdProcess extends Mock implements ShorebirdProcess {}
 
 void main() {
   const manifestWithInternetPermission = '''
@@ -38,12 +34,6 @@ void main() {
 ''';
 
   group(AndroidInternetPermissionValidator, () {
-    late ShorebirdProcess shorebirdProcess;
-
-    setUp(() {
-      shorebirdProcess = _MockShorebirdProcess();
-    });
-
     Directory createTempDir() => Directory.systemTemp.createTempSync();
 
     void writeManifestToPath(String manifestContents, String path) {
@@ -56,11 +46,32 @@ void main() {
       expect(AndroidInternetPermissionValidator().description, isNotEmpty);
     });
 
-    test('is a project-specific validator', () {
-      expect(
-        AndroidInternetPermissionValidator().scope,
-        ValidatorScope.project,
-      );
+    group('canRunInContext', () {
+      test('returns false if no android src directory exists', () {
+        final tempDirectory = createTempDir();
+
+        final result = IOOverrides.runZoned(
+          () => AndroidInternetPermissionValidator().canRunInCurrentContext(),
+          getCurrentDirectory: () => tempDirectory,
+        );
+
+        expect(result, isFalse);
+      });
+
+      test('returns true if an android src directory exists', () {
+        final tempDirectory = createTempDir();
+        writeManifestToPath(
+          manifestWithInternetPermission,
+          p.join(tempDirectory.path, 'android', 'app', 'src', 'main'),
+        );
+
+        final result = IOOverrides.runZoned(
+          () => AndroidInternetPermissionValidator().canRunInCurrentContext(),
+          getCurrentDirectory: () => tempDirectory,
+        );
+
+        expect(result, isTrue);
+      });
     });
 
     test(
@@ -78,23 +89,13 @@ void main() {
         );
 
         final results = await IOOverrides.runZoned(
-          () => AndroidInternetPermissionValidator().validate(shorebirdProcess),
+          AndroidInternetPermissionValidator().validate,
           getCurrentDirectory: () => tempDirectory,
         );
 
         expect(results.map((res) => res.severity), isEmpty);
       },
     );
-
-    test('returns an error if no android project is found', () async {
-      final results =
-          await AndroidInternetPermissionValidator().validate(shorebirdProcess);
-
-      expect(results, hasLength(1));
-      expect(results.first.severity, ValidationIssueSeverity.error);
-      expect(results.first.message, 'No Android project found');
-      expect(results.first.fix, isNull);
-    });
 
     test('returns an error if no AndroidManifest.xml files are found',
         () async {
@@ -103,7 +104,7 @@ void main() {
           .createSync(recursive: true);
 
       final results = await IOOverrides.runZoned(
-        () => AndroidInternetPermissionValidator().validate(shorebirdProcess),
+        AndroidInternetPermissionValidator().validate,
         getCurrentDirectory: () => tempDirectory,
       );
 
@@ -159,7 +160,7 @@ void main() {
         );
 
         final results = await IOOverrides.runZoned(
-          () => AndroidInternetPermissionValidator().validate(shorebirdProcess),
+          AndroidInternetPermissionValidator().validate,
           getCurrentDirectory: () => tempDirectory,
         );
 
@@ -195,7 +196,7 @@ void main() {
       );
 
       var results = await IOOverrides.runZoned(
-        () => AndroidInternetPermissionValidator().validate(shorebirdProcess),
+        AndroidInternetPermissionValidator().validate,
         getCurrentDirectory: () => tempDirectory,
       );
       expect(results, hasLength(1));
@@ -207,7 +208,7 @@ void main() {
       );
 
       results = await IOOverrides.runZoned(
-        () => AndroidInternetPermissionValidator().validate(shorebirdProcess),
+        AndroidInternetPermissionValidator().validate,
         getCurrentDirectory: () => tempDirectory,
       );
       expect(results, isEmpty);

@@ -1,3 +1,6 @@
+import 'dart:isolate';
+
+import 'package:archive/archive_io.dart';
 import 'package:collection/collection.dart';
 import 'package:crypto/crypto.dart';
 import 'package:mason_logger/mason_logger.dart';
@@ -7,7 +10,7 @@ import 'package:scoped/scoped.dart';
 import 'package:shorebird_cli/src/auth/auth.dart';
 import 'package:shorebird_cli/src/logger.dart';
 import 'package:shorebird_cli/src/shorebird_build_mixin.dart';
-import 'package:shorebird_cli/src/shorebird_environment.dart';
+import 'package:shorebird_cli/src/shorebird_env.dart';
 import 'package:shorebird_cli/src/third_party/flutter_tools/lib/flutter_tools.dart';
 import 'package:shorebird_code_push_client/shorebird_code_push_client.dart';
 
@@ -41,7 +44,7 @@ ScopedRef<CodePushClientWrapper> codePushClientWrapperRef = create(() {
   return CodePushClientWrapper(
     codePushClient: CodePushClient(
       httpClient: auth.client,
-      hostedUri: ShorebirdEnvironment.hostedUri,
+      hostedUri: shorebirdEnv.hostedUri,
     ),
   );
 });
@@ -60,6 +63,25 @@ class CodePushClientWrapper {
 
   final CodePushClient codePushClient;
 
+  Future<App> createApp({String? appName}) async {
+    late final String displayName;
+    if (appName == null) {
+      String? defaultAppName;
+      try {
+        defaultAppName = shorebirdEnv.getPubspecYaml()?.name;
+      } catch (_) {}
+
+      displayName = logger.prompt(
+        '${lightGreen.wrap('?')} How should we refer to this app?',
+        defaultValue: defaultAppName,
+      );
+    } else {
+      displayName = appName;
+    }
+
+    return codePushClient.createApp(displayName: displayName);
+  }
+
   Future<List<AppMetadata>> getApps() async {
     final fetchAppsProgress = logger.progress('Fetching apps');
     try {
@@ -67,8 +89,7 @@ class CodePushClientWrapper {
       fetchAppsProgress.complete();
       return apps;
     } catch (error) {
-      fetchAppsProgress.fail('$error');
-      exit(ExitCode.software.code);
+      _handleErrorAndExit(error, progress: fetchAppsProgress);
     }
   }
 
@@ -105,8 +126,7 @@ This app may not exist or you may not have permission to view it.''',
       fetchChannelsProgress.complete();
       return channel;
     } catch (error) {
-      fetchChannelsProgress.fail('$error');
-      exit(ExitCode.software.code);
+      _handleErrorAndExit(error, progress: fetchChannelsProgress);
     }
   }
 
@@ -124,36 +144,20 @@ This app may not exist or you may not have permission to view it.''',
       createChannelProgress.complete();
       return channel;
     } catch (error) {
-      createChannelProgress.fail('$error');
-      exit(ExitCode.software.code);
+      _handleErrorAndExit(error, progress: createChannelProgress);
     }
   }
 
-  /// Exits if [platform] release artifacts already exist for an
-  /// [existingRelease].
-  Future<void> ensureReleaseHasNoArtifacts({
-    required String appId,
-    required Release existingRelease,
+  /// Prints an error message and exits with code 70 if [release] is in an
+  /// active state for [platform].
+  void ensureReleaseIsNotActive({
+    required Release release,
     required ReleasePlatform platform,
-  }) async {
-    logger.detail('Verifying ability to release');
-
-    final artifacts = await codePushClient.getReleaseArtifacts(
-      appId: appId,
-      releaseId: existingRelease.id,
-      platform: platform,
-    );
-
-    logger.detail(
-      '''
-Artifacts for release:${existingRelease.version} platform:$platform
-  $artifacts''',
-    );
-
-    if (artifacts.isNotEmpty) {
+  }) {
+    if (release.platformStatuses[platform] == ReleaseStatus.active) {
       logger.err(
         '''
-It looks like you have an existing ${platform.name} release for version ${lightCyan.wrap(existingRelease.version)}.
+It looks like you have an existing ${platform.name} release for version ${lightCyan.wrap(release.version)}.
 Please bump your version number and try again.''',
       );
       exit(ExitCode.software.code);
@@ -191,8 +195,7 @@ Please create a release using "shorebird release" and try again.
       fetchReleasesProgress.complete();
       return releases;
     } catch (error) {
-      fetchReleasesProgress.fail('$error');
-      exit(ExitCode.software.code);
+      _handleErrorAndExit(error, progress: fetchReleasesProgress);
     }
   }
 
@@ -226,8 +229,7 @@ Please create a release using "shorebird release" and try again.
       createReleaseProgress.complete();
       return release;
     } catch (error) {
-      createReleaseProgress.fail('$error');
-      exit(ExitCode.software.code);
+      _handleErrorAndExit(error, progress: createReleaseProgress);
     }
   }
 
@@ -247,8 +249,7 @@ Please create a release using "shorebird release" and try again.
       );
       updateStatusProgress.complete();
     } catch (error) {
-      updateStatusProgress.fail();
-      exit(ExitCode.software.code);
+      _handleErrorAndExit(error, progress: updateStatusProgress);
     }
   }
 
@@ -280,8 +281,7 @@ Please create a release using "shorebird release" and try again.
         }
         releaseArtifacts[entry.key] = artifacts.first;
       } catch (error) {
-        fetchReleaseArtifactProgress.fail('$error');
-        exit(ExitCode.software.code);
+        _handleErrorAndExit(error, progress: fetchReleaseArtifactProgress);
       }
     }
 
@@ -314,8 +314,7 @@ Please create a release using "shorebird release" and try again.
       fetchReleaseArtifactProgress.complete();
       return artifacts.first;
     } catch (error) {
-      fetchReleaseArtifactProgress.fail('$error');
-      exit(ExitCode.software.code);
+      _handleErrorAndExit(error, progress: fetchReleaseArtifactProgress);
     }
   }
 
@@ -347,8 +346,7 @@ Please create a release using "shorebird release" and try again.
       fetchReleaseArtifactProgress.complete();
       return null;
     } catch (error) {
-      fetchReleaseArtifactProgress.fail('$error');
-      exit(ExitCode.software.code);
+      _handleErrorAndExit(error, progress: fetchReleaseArtifactProgress);
     }
   }
 
@@ -395,8 +393,11 @@ Please create a release using "shorebird release" and try again.
 ${archMetadata.arch} artifact already exists, continuing...''',
         );
       } catch (error) {
-        createArtifactProgress.fail('Error uploading ${artifact.path}: $error');
-        exit(ExitCode.software.code);
+        _handleErrorAndExit(
+          error,
+          progress: createArtifactProgress,
+          message: 'Error uploading ${artifact.path}: $error',
+        );
       }
     }
 
@@ -418,8 +419,11 @@ ${archMetadata.arch} artifact already exists, continuing...''',
 aab artifact already exists, continuing...''',
       );
     } catch (error) {
-      createArtifactProgress.fail('Error uploading $aabPath: $error');
-      exit(ExitCode.software.code);
+      _handleErrorAndExit(
+        error,
+        progress: createArtifactProgress,
+        message: 'Error uploading $aabPath: $error',
+      );
     }
 
     createArtifactProgress.complete();
@@ -463,8 +467,11 @@ aab artifact already exists, continuing...''',
 ${archMetadata.arch} artifact already exists, continuing...''',
         );
       } catch (error) {
-        createArtifactProgress.fail('Error uploading ${artifact.path}: $error');
-        exit(ExitCode.software.code);
+        _handleErrorAndExit(
+          error,
+          progress: createArtifactProgress,
+          message: 'Error uploading ${artifact.path}: $error',
+        );
       }
     }
 
@@ -486,18 +493,22 @@ ${archMetadata.arch} artifact already exists, continuing...''',
 aar artifact already exists, continuing...''',
       );
     } catch (error) {
-      createArtifactProgress.fail('Error uploading $aarPath: $error');
-      exit(ExitCode.software.code);
+      _handleErrorAndExit(
+        error,
+        progress: createArtifactProgress,
+        message: 'Error uploading $aarPath: $error',
+      );
     }
 
     createArtifactProgress.complete();
   }
 
   /// Uploads a release ipa to the Shorebird server.
-  Future<void> createIosReleaseArtifact({
+  Future<void> createIosReleaseArtifacts({
     required String appId,
     required int releaseId,
     required String ipaPath,
+    required String runnerPath,
   }) async {
     final createArtifactProgress = logger.progress('Creating artifacts');
     final ipaFile = File(ipaPath);
@@ -511,8 +522,66 @@ aar artifact already exists, continuing...''',
         hash: sha256.convert(await ipaFile.readAsBytes()).toString(),
       );
     } catch (error) {
-      createArtifactProgress.fail('Error uploading ipa: $error');
-      exit(ExitCode.software.code);
+      _handleErrorAndExit(
+        error,
+        progress: createArtifactProgress,
+        message: 'Error uploading ipa: $error',
+      );
+    }
+
+    final runnerDirectory = Directory(runnerPath);
+    await Isolate.run(() => ZipFileEncoder().zipDirectory(runnerDirectory));
+    final zippedRunner = File('$runnerPath.zip');
+    try {
+      await codePushClient.createReleaseArtifact(
+        appId: appId,
+        releaseId: releaseId,
+        artifactPath: zippedRunner.path,
+        arch: 'runner',
+        platform: ReleasePlatform.ios,
+        hash: sha256.convert(await zippedRunner.readAsBytes()).toString(),
+      );
+    } catch (error) {
+      _handleErrorAndExit(
+        error,
+        progress: createArtifactProgress,
+        message: 'Error uploading runner.app: $error',
+      );
+    }
+
+    createArtifactProgress.complete();
+  }
+
+  /// Zips and uploads a release xcframework to the Shorebird server.
+  Future<void> createIosFrameworkReleaseArtifacts({
+    required String appId,
+    required int releaseId,
+    required String appFrameworkPath,
+  }) async {
+    final createArtifactProgress = logger.progress('Creating artifacts');
+    final appFrameworkDirectory = Directory(appFrameworkPath);
+    await Isolate.run(
+      () => ZipFileEncoder().zipDirectory(appFrameworkDirectory),
+    );
+    final zippedAppFrameworkFile = File('$appFrameworkPath.zip');
+
+    try {
+      await codePushClient.createReleaseArtifact(
+        appId: appId,
+        releaseId: releaseId,
+        artifactPath: zippedAppFrameworkFile.path,
+        arch: 'xcframework',
+        platform: ReleasePlatform.ios,
+        hash: sha256
+            .convert(await zippedAppFrameworkFile.readAsBytes())
+            .toString(),
+      );
+    } catch (error) {
+      _handleErrorAndExit(
+        error,
+        progress: createArtifactProgress,
+        message: 'Error uploading xcframework: $error',
+      );
     }
 
     createArtifactProgress.complete();
@@ -532,8 +601,7 @@ aar artifact already exists, continuing...''',
       createPatchProgress.complete();
       return patch;
     } catch (error) {
-      createPatchProgress.fail('$error');
-      exit(ExitCode.software.code);
+      _handleErrorAndExit(error, progress: createPatchProgress);
     }
   }
 
@@ -556,8 +624,7 @@ aar artifact already exists, continuing...''',
           hash: artifact.hash,
         );
       } catch (error) {
-        createArtifactProgress.fail('$error');
-        exit(ExitCode.software.code);
+        _handleErrorAndExit(error, progress: createArtifactProgress);
       }
     }
     createArtifactProgress.complete();
@@ -580,8 +647,7 @@ aar artifact already exists, continuing...''',
       );
       promotePatchProgress.complete();
     } catch (error) {
-      promotePatchProgress.fail('$error');
-      exit(ExitCode.software.code);
+      _handleErrorAndExit(error, progress: promotePatchProgress);
     }
   }
 
@@ -616,15 +682,25 @@ aar artifact already exists, continuing...''',
     await promotePatch(appId: appId, patchId: patch.id, channel: channel);
   }
 
-  Future<GetUsageResponse> getUsage() async {
-    final progress = logger.progress('Fetching usage');
-    try {
-      final usage = await codePushClient.getUsage();
-      progress.complete();
-      return usage;
-    } catch (error) {
-      progress.fail(error.toString());
-      exit(ExitCode.software.code);
+  /// Prints an appropriate error message for the given error and exits with
+  /// code 70. If [progress] is provided, it will be failed with the given
+  /// [message] or [error.toString()] if [message] is null.
+  Never _handleErrorAndExit(
+    Object error, {
+    Progress? progress,
+    String? message,
+  }) {
+    if (error is CodePushUpgradeRequiredException) {
+      progress?.fail();
+      logger
+        ..err('Your version of shorebird is out of date.')
+        ..info(
+          '''Run ${lightCyan.wrap('shorebird upgrade')} to get the latest version.''',
+        );
+    } else if (progress != null) {
+      progress.fail(message ?? '$error');
     }
+
+    exit(ExitCode.software.code);
   }
 }

@@ -12,18 +12,21 @@ import 'package:shorebird_cli/src/auth/auth.dart';
 import 'package:shorebird_cli/src/cache.dart' show Cache, cacheRef;
 import 'package:shorebird_cli/src/code_push_client_wrapper.dart';
 import 'package:shorebird_cli/src/commands/commands.dart';
+import 'package:shorebird_cli/src/config/config.dart';
 import 'package:shorebird_cli/src/logger.dart';
+import 'package:shorebird_cli/src/patch_diff_checker.dart';
 import 'package:shorebird_cli/src/platform.dart';
 import 'package:shorebird_cli/src/process.dart';
 import 'package:shorebird_cli/src/shorebird_build_mixin.dart';
-import 'package:shorebird_cli/src/shorebird_environment.dart';
-import 'package:shorebird_cli/src/validators/validators.dart';
+import 'package:shorebird_cli/src/shorebird_env.dart';
+import 'package:shorebird_cli/src/shorebird_flutter.dart';
+import 'package:shorebird_cli/src/shorebird_validator.dart';
 import 'package:shorebird_code_push_client/shorebird_code_push_client.dart';
 import 'package:test/test.dart';
 
 class _FakeBaseRequest extends Fake implements http.BaseRequest {}
 
-class _MockAarDiffer extends Mock implements AarDiffer {}
+class _MockAndroidArchiveDiffer extends Mock implements AndroidArchiveDiffer {}
 
 class _MockArgResults extends Mock implements ArgResults {}
 
@@ -36,18 +39,25 @@ class _MockCodePushClientWrapper extends Mock
 
 class _MockLogger extends Mock implements Logger {}
 
+class _MockPatchDiffChecker extends Mock implements PatchDiffChecker {}
+
 class _MockPlatform extends Mock implements Platform {}
 
 class _MockProgress extends Mock implements Progress {}
 
 class _MockProcessResult extends Mock implements ShorebirdProcessResult {}
 
+class _MockProcessWrapper extends Mock implements ProcessWrapper {}
+
 class _MockHttpClient extends Mock implements http.Client {}
 
-class _MockShorebirdFlutterValidator extends Mock
-    implements ShorebirdFlutterValidator {}
+class _MockShorebirdEnv extends Mock implements ShorebirdEnv {}
+
+class _MockShorebirdFlutter extends Mock implements ShorebirdFlutter {}
 
 class _MockShorebirdProcess extends Mock implements ShorebirdProcess {}
+
+class _MockShorebirdValidator extends Mock implements ShorebirdValidator {}
 
 class _FakeShorebirdProcess extends Fake implements ShorebirdProcess {}
 
@@ -55,6 +65,7 @@ void main() {
   group(PatchAarCommand, () {
     const flutterRevision = '83305b5088e6fe327fb3334a73ff190828d85713';
     const appId = 'test-app-id';
+    const shorebirdYaml = ShorebirdYaml(appId: appId);
     const buildNumber = '1.0';
     const versionName = '1.2.3';
     const versionCode = '1';
@@ -64,6 +75,7 @@ void main() {
     const channelName = 'stable';
     const appDisplayName = 'Test App';
     const appMetadata = AppMetadata(appId: appId, displayName: appDisplayName);
+    const androidPackageName = 'com.example.my_flutter_module';
     const releaseArtifact = ReleaseArtifact(
       id: 0,
       releaseId: 0,
@@ -90,46 +102,26 @@ void main() {
       displayName: '1.2.3+1',
       platformStatuses: {},
     );
-    const noModulePubspecYamlContent = '''
-name: example
-version: 1.0.0
-environment:
-  sdk: ">=2.19.0 <3.0.0"
-  
-flutter:
-  assets:
-    - shorebird.yaml''';
 
-    const pubspecYamlContent = '''
-name: example
-version: 1.0.0
-environment:
-  sdk: ">=2.19.0 <3.0.0"
-  
-flutter:
-  module:
-    androidX: true
-    androidPackage: com.example.my_flutter_module
-    iosBundleIdentifier: com.example.myFlutterModule
-  assets:
-    - shorebird.yaml''';
-
-    late AarDiffer aarDiffer;
+    late AndroidArchiveDiffer archiveDiffer;
     late ArgResults argResults;
     late Auth auth;
     late CodePushClientWrapper codePushClientWrapper;
     late Directory shorebirdRoot;
+    late Directory flutterDirectory;
+    late PatchDiffChecker patchDiffChecker;
     late Platform platform;
     late Progress progress;
     late Logger logger;
     late ShorebirdProcessResult flutterBuildProcessResult;
-    late ShorebirdProcessResult flutterRevisionProcessResult;
     late ShorebirdProcessResult patchProcessResult;
     late http.Client httpClient;
     late Cache cache;
-    late PatchAarCommand command;
-    late ShorebirdFlutterValidator flutterValidator;
+    late ShorebirdEnv shorebirdEnv;
+    late ShorebirdFlutter shorebirdFlutter;
     late ShorebirdProcess shorebirdProcess;
+    late ShorebirdValidator shorebirdValidator;
+    late PatchAarCommand command;
 
     R runWithOverrides<R>(R Function() body) {
       return runScoped(
@@ -140,24 +132,17 @@ flutter:
           codePushClientWrapperRef.overrideWith(() => codePushClientWrapper),
           engineConfigRef.overrideWith(() => const EngineConfig.empty()),
           loggerRef.overrideWith(() => logger),
+          patchDiffCheckerRef.overrideWith(() => patchDiffChecker),
           platformRef.overrideWith(() => platform),
           processRef.overrideWith(() => shorebirdProcess),
+          shorebirdEnvRef.overrideWith(() => shorebirdEnv),
+          shorebirdFlutterRef.overrideWith(() => shorebirdFlutter),
+          shorebirdValidatorRef.overrideWith(() => shorebirdValidator),
         },
       );
     }
 
-    Directory setUpTempDir({bool includeModule = true}) {
-      final tempDir = Directory.systemTemp.createTempSync();
-      File(
-        p.join(tempDir.path, 'pubspec.yaml'),
-      ).writeAsStringSync(
-        includeModule ? pubspecYamlContent : noModulePubspecYamlContent,
-      );
-      File(
-        p.join(tempDir.path, 'shorebird.yaml'),
-      ).writeAsStringSync('app_id: $appId');
-      return tempDir;
-    }
+    Directory setUpTempDir() => Directory.systemTemp.createTempSync();
 
     void setUpTempArtifacts(Directory dir) {
       final aarDir = p.join(
@@ -188,40 +173,45 @@ flutter:
     }
 
     setUpAll(() {
+      registerFallbackValue(File(''));
+      registerFallbackValue(FileSetDiff.empty());
+      registerFallbackValue(Uri.parse('https://example.com'));
       registerFallbackValue(_FakeBaseRequest());
       registerFallbackValue(_FakeShorebirdProcess());
     });
 
     setUp(() {
-      aarDiffer = _MockAarDiffer();
+      archiveDiffer = _MockAndroidArchiveDiffer();
       argResults = _MockArgResults();
       auth = _MockAuth();
       codePushClientWrapper = _MockCodePushClientWrapper();
       shorebirdRoot = Directory.systemTemp.createTempSync();
+      flutterDirectory = Directory(
+        p.join(shorebirdRoot.path, 'bin', 'cache', 'flutter'),
+      );
+      patchDiffChecker = _MockPatchDiffChecker();
       platform = _MockPlatform();
       progress = _MockProgress();
       logger = _MockLogger();
       flutterBuildProcessResult = _MockProcessResult();
-      flutterRevisionProcessResult = _MockProcessResult();
       patchProcessResult = _MockProcessResult();
       httpClient = _MockHttpClient();
-      flutterValidator = _MockShorebirdFlutterValidator();
       cache = _MockCache();
+      shorebirdEnv = _MockShorebirdEnv();
+      shorebirdFlutter = _MockShorebirdFlutter();
       shorebirdProcess = _MockShorebirdProcess();
+      shorebirdValidator = _MockShorebirdValidator();
 
       registerFallbackValue(ReleasePlatform.android);
 
       when(() => platform.environment).thenReturn({});
-      when(() => platform.script).thenReturn(
-        Uri.file(
-          p.join(
-            shorebirdRoot.path,
-            'bin',
-            'cache',
-            'shorebird.snapshot',
-          ),
-        ),
-      );
+      when(() => shorebirdEnv.shorebirdRoot).thenReturn(shorebirdRoot);
+      when(() => shorebirdEnv.flutterDirectory).thenReturn(flutterDirectory);
+      when(
+        () => shorebirdEnv.androidPackageName,
+      ).thenReturn(androidPackageName);
+      when(() => shorebirdEnv.getShorebirdYaml()).thenReturn(shorebirdYaml);
+      when(() => shorebirdEnv.flutterRevision).thenReturn(flutterRevision);
       when(
         () => shorebirdProcess.run(
           'flutter',
@@ -229,14 +219,6 @@ flutter:
           runInShell: any(named: 'runInShell'),
         ),
       ).thenAnswer((_) async => flutterBuildProcessResult);
-      when(
-        () => shorebirdProcess.run(
-          'git',
-          any(),
-          runInShell: any(named: 'runInShell'),
-          workingDirectory: any(named: 'workingDirectory'),
-        ),
-      ).thenAnswer((_) async => flutterRevisionProcessResult);
       when(
         () => shorebirdProcess.run(
           any(that: endsWith('patch')),
@@ -252,8 +234,12 @@ flutter:
         return patchProcessResult;
       });
 
-      when(() => aarDiffer.changedFiles(any(), any()))
-          .thenReturn(FileSetDiff.empty());
+      when(
+        () => archiveDiffer.changedFiles(any(), any()),
+      ).thenReturn(FileSetDiff.empty());
+      when(
+        () => archiveDiffer.containsPotentiallyBreakingAssetDiffs(any()),
+      ).thenReturn(false);
       when(() => argResults.rest).thenReturn([]);
       when(() => argResults['channel']).thenReturn(channelName);
       when(() => argResults['dry-run']).thenReturn(false);
@@ -270,14 +256,6 @@ flutter:
       when(
         () => flutterBuildProcessResult.exitCode,
       ).thenReturn(ExitCode.success.code);
-
-      when(
-        () => flutterRevisionProcessResult.exitCode,
-      ).thenReturn(ExitCode.success.code);
-      when(
-        () => flutterRevisionProcessResult.stdout,
-      ).thenReturn(flutterRevision);
-
       when(() => patchProcessResult.exitCode).thenReturn(ExitCode.success.code);
       when(() => httpClient.send(any())).thenAnswer(
         (_) async => http.StreamedResponse(const Stream.empty(), HttpStatus.ok),
@@ -286,11 +264,8 @@ flutter:
         () => codePushClientWrapper.getApp(appId: any(named: 'appId')),
       ).thenAnswer((_) async => appMetadata);
       when(
-        () => codePushClientWrapper.getRelease(
-          appId: any(named: 'appId'),
-          releaseVersion: any(named: 'releaseVersion'),
-        ),
-      ).thenAnswer((_) async => release);
+        () => codePushClientWrapper.getReleases(appId: any(named: 'appId')),
+      ).thenAnswer((_) async => [release]);
       when(
         () => codePushClientWrapper.getReleaseArtifacts(
           appId: any(named: 'appId'),
@@ -322,72 +297,61 @@ flutter:
           patchArtifactBundles: any(named: 'patchArtifactBundles'),
         ),
       ).thenAnswer((_) async {});
-      when(() => flutterValidator.validate(any())).thenAnswer((_) async => []);
       when(() => cache.updateAll()).thenAnswer((_) async => {});
       when(
         () => cache.getArtifactDirectory(any()),
       ).thenReturn(Directory.systemTemp.createTempSync());
+      when(
+        () => shorebirdFlutter.installRevision(
+          revision: any(named: 'revision'),
+        ),
+      ).thenAnswer((_) async {});
+      when(
+        () => shorebirdValidator.validatePreconditions(
+          checkUserIsAuthenticated: any(named: 'checkUserIsAuthenticated'),
+          checkShorebirdInitialized: any(named: 'checkShorebirdInitialized'),
+        ),
+      ).thenAnswer((_) async {});
+      when(
+        () => patchDiffChecker.confirmUnpatchableDiffsIfNecessary(
+          localArtifact: any(named: 'localArtifact'),
+          releaseArtifactUrl: any(named: 'releaseArtifactUrl'),
+          archiveDiffer: archiveDiffer,
+          force: any(named: 'force'),
+        ),
+      ).thenAnswer((_) async => true);
 
       command = runWithOverrides(
         () => PatchAarCommand(
-          aarDiffer: aarDiffer,
+          archiveDiffer: archiveDiffer,
           httpClient: httpClient,
-          validators: [flutterValidator],
           unzipFn: (_, __) async {},
         ),
       )..testArgResults = argResults;
-    });
-
-    test('throws config error when shorebird is not initialized', () async {
-      final tempDir = Directory.systemTemp.createTempSync();
-      final exitCode = await IOOverrides.runZoned(
-        () => runWithOverrides(command.run),
-        getCurrentDirectory: () => tempDir,
-      );
-      verify(
-        () => logger.err(
-          'Shorebird is not initialized. Did you run "shorebird init"?',
-        ),
-      ).called(1);
-      expect(exitCode, ExitCode.config.code);
     });
 
     test('has a description', () {
       expect(command.description, isNotEmpty);
     });
 
-    test('throws no user error when user is not logged in', () async {
-      when(() => auth.isAuthenticated).thenReturn(false);
-      final tempDir = setUpTempDir();
-      final exitCode = await IOOverrides.runZoned(
-        () => runWithOverrides(command.run),
-        getCurrentDirectory: () => tempDir,
+    test('exits when validation fails', () async {
+      final exception = ValidationFailedException();
+      when(
+        () => shorebirdValidator.validatePreconditions(
+          checkUserIsAuthenticated: any(named: 'checkUserIsAuthenticated'),
+          checkShorebirdInitialized: any(named: 'checkShorebirdInitialized'),
+        ),
+      ).thenThrow(exception);
+      await expectLater(
+        runWithOverrides(command.run),
+        completion(equals(exception.exitCode.code)),
       );
-      expect(exitCode, equals(ExitCode.noUser.code));
-    });
-
-    test('exits with 78 if no module entry exists in pubspec.yaml', () async {
-      final tempDir = setUpTempDir(includeModule: false);
-
-      final result = await IOOverrides.runZoned(
-        () => runWithOverrides(command.run),
-        getCurrentDirectory: () => tempDir,
-      );
-
-      expect(result, ExitCode.config.code);
-    });
-
-    test('exits with code 70 when building fails', () async {
-      when(() => flutterBuildProcessResult.exitCode).thenReturn(1);
-      when(() => flutterBuildProcessResult.stderr).thenReturn('oops');
-
-      final tempDir = setUpTempDir();
-      final exitCode = await IOOverrides.runZoned(
-        () => runWithOverrides(command.run),
-        getCurrentDirectory: () => tempDir,
-      );
-
-      expect(exitCode, equals(ExitCode.software.code));
+      verify(
+        () => shorebirdValidator.validatePreconditions(
+          checkUserIsAuthenticated: true,
+          checkShorebirdInitialized: true,
+        ),
+      ).called(1);
     });
 
     test(
@@ -395,24 +359,94 @@ flutter:
         'both --dry-run and --force are specified', () async {
       when(() => argResults['dry-run']).thenReturn(true);
       when(() => argResults['force']).thenReturn(true);
-      final tempDir = setUpTempDir();
-      final exitCode = await IOOverrides.runZoned(
-        () => runWithOverrides(command.run),
-        getCurrentDirectory: () => tempDir,
-      );
+      final exitCode = await runWithOverrides(command.run);
       expect(exitCode, equals(ExitCode.usage.code));
     });
 
+    test('exits with 78 if no module entry exists in pubspec.yaml', () async {
+      when(() => shorebirdEnv.androidPackageName).thenReturn(null);
+      final exitCode = await runWithOverrides(command.run);
+      expect(exitCode, ExitCode.config.code);
+    });
+
+    test('prompts for release when release-version is not specified', () async {
+      when(() => argResults['release-version']).thenReturn(null);
+      when(
+        () => logger.chooseOne<Release>(
+          any(),
+          choices: any(named: 'choices'),
+          display: any(named: 'display'),
+        ),
+      ).thenReturn(release);
+      try {
+        await runWithOverrides(command.run);
+      } catch (_) {}
+      await untilCalled(
+        () => logger.chooseOne<Release>(
+          any(),
+          choices: any(named: 'choices'),
+          display: any(named: 'display'),
+        ),
+      );
+      final display = verify(
+        () => logger.chooseOne<Release>(
+          any(),
+          choices: any(named: 'choices'),
+          display: captureAny(named: 'display'),
+        ),
+      ).captured.single as String Function(Release);
+      expect(display(release), equals(release.version));
+    });
+
+    test('exits early when no releases are found', () async {
+      when(() => argResults['release-version']).thenReturn(null);
+      when(
+        () => codePushClientWrapper.getReleases(appId: any(named: 'appId')),
+      ).thenAnswer((_) async => []);
+      try {
+        await runWithOverrides(command.run);
+      } catch (_) {}
+      verifyNever(
+        () => logger.chooseOne<Release>(
+          any(),
+          choices: any(named: 'choices'),
+          display: captureAny(named: 'display'),
+        ),
+      );
+      verify(() => codePushClientWrapper.getReleases(appId: appId)).called(1);
+      verify(() => logger.info('No releases found')).called(1);
+    });
+
+    test('exits early when specified release does not exist.', () async {
+      when(() => argResults['release-version']).thenReturn('0.0.0');
+      try {
+        await runWithOverrides(command.run);
+      } catch (_) {}
+      verifyNever(
+        () => logger.chooseOne<Release>(
+          any(),
+          choices: any(named: 'choices'),
+          display: captureAny(named: 'display'),
+        ),
+      );
+      verify(() => codePushClientWrapper.getReleases(appId: appId)).called(1);
+      verify(
+        () => logger.info('''
+No release found for version 0.0.0
+
+Available release versions:
+${release.version}'''),
+      ).called(1);
+    });
+
     test(
-      '''exits with code 70 if release is in draft state for the android platform''',
-      () async {
-        when(
-          () => codePushClientWrapper.getRelease(
-            appId: any(named: 'appId'),
-            releaseVersion: any(named: 'releaseVersion'),
-          ),
-        ).thenAnswer(
-          (_) async => const Release(
+        '''exits with code 70 if release is in draft state for the android platform''',
+        () async {
+      when(
+        () => codePushClientWrapper.getReleases(appId: any(named: 'appId')),
+      ).thenAnswer(
+        (_) async => const [
+          Release(
             id: 0,
             appId: appId,
             version: version,
@@ -420,136 +454,45 @@ flutter:
             displayName: '1.2.3+1',
             platformStatuses: {ReleasePlatform.android: ReleaseStatus.draft},
           ),
-        );
-        final tempDir = setUpTempDir();
-        setUpTempArtifacts(tempDir);
-        final exitCode = await IOOverrides.runZoned(
-          () => runWithOverrides(command.run),
-          getCurrentDirectory: () => tempDir,
-        );
-        expect(exitCode, ExitCode.software.code);
-        verify(
-          () => logger.err('''
-Release 1.2.3+1 is in an incomplete state. It's possible that the original release was terminated or failed to complete.
-
-Please re-run the release command for this version or create a new release.'''),
-        ).called(1);
-      },
-    );
-
-    test(
-      'proceeds if release is in draft state for non-android platform',
-      () async {
-        when(
-          () => codePushClientWrapper.getRelease(
-            appId: any(named: 'appId'),
-            releaseVersion: any(named: 'releaseVersion'),
-          ),
-        ).thenAnswer(
-          (_) async => const Release(
-            id: 0,
-            appId: appId,
-            version: version,
-            flutterRevision: flutterRevision,
-            displayName: '1.2.3+1',
-            platformStatuses: {ReleasePlatform.ios: ReleaseStatus.draft},
-          ),
-        );
-        final tempDir = setUpTempDir();
-        setUpTempArtifacts(tempDir);
-        final exitCode = await IOOverrides.runZoned(
-          () => runWithOverrides(command.run),
-          getCurrentDirectory: () => tempDir,
-        );
-        expect(exitCode, ExitCode.success.code);
-      },
-    );
-
-    test(
-      'proceeds if release is in draft state for non-android platform',
-      () async {
-        when(
-          () => codePushClientWrapper.getRelease(
-            appId: any(named: 'appId'),
-            releaseVersion: any(named: 'releaseVersion'),
-          ),
-        ).thenAnswer(
-          (_) async => const Release(
-            id: 0,
-            appId: appId,
-            version: version,
-            flutterRevision: flutterRevision,
-            displayName: '1.2.3+1',
-            platformStatuses: {ReleasePlatform.ios: ReleaseStatus.draft},
-          ),
-        );
-        final tempDir = setUpTempDir();
-        setUpTempArtifacts(tempDir);
-        final exitCode = await IOOverrides.runZoned(
-          () => runWithOverrides(command.run),
-          getCurrentDirectory: () => tempDir,
-        );
-        expect(exitCode, ExitCode.success.code);
-      },
-    );
-
-    test('errors when unable to detect flutter revision', () async {
-      const error = 'oops';
-      when(() => flutterRevisionProcessResult.exitCode).thenReturn(1);
-      when(() => flutterRevisionProcessResult.stderr).thenReturn(error);
+        ],
+      );
       final tempDir = setUpTempDir();
       setUpTempArtifacts(tempDir);
       final exitCode = await IOOverrides.runZoned(
         () => runWithOverrides(command.run),
         getCurrentDirectory: () => tempDir,
       );
-      expect(exitCode, ExitCode.software.code);
-      verify(
-        () => progress.fail(
-          'Exception: Unable to determine flutter revision: $error',
-        ),
-      ).called(1);
-    });
-
-    test(
-        'errors when shorebird flutter revision '
-        'does not match release revision', () async {
-      const otherRevision = 'other-revision';
-      when(() => flutterRevisionProcessResult.stdout).thenReturn(otherRevision);
-      final tempDir = setUpTempDir();
-      final flutterDir =
-          runWithOverrides(() => ShorebirdEnvironment.flutterDirectory.path);
-      setUpTempArtifacts(tempDir);
-
-      final exitCode = await IOOverrides.runZoned(
-        () => runWithOverrides(command.run),
-        getCurrentDirectory: () => tempDir,
-      );
-
       expect(exitCode, ExitCode.software.code);
       verify(
         () => logger.err('''
-Flutter revision mismatch.
-
-The release you are trying to patch was built with a different version of Flutter.
-
-Release Flutter Revision: $flutterRevision
-Current Flutter Revision: $otherRevision
-'''),
+Release 1.2.3+1 is in an incomplete state. It's possible that the original release was terminated or failed to complete.
+Please re-run the release command for this version or create a new release.'''),
       ).called(1);
-      verify(
-        () => logger.info('''
-Either create a new release using:
-  ${lightCyan.wrap('shorebird release aar')}
+    });
 
-Or downgrade your Flutter version and try again using:
-  ${lightCyan.wrap('cd $flutterDir')}
-  ${lightCyan.wrap('git checkout ${release.flutterRevision}')}
-
-Shorebird plans to support this automatically, let us know if it's important to you:
-https://github.com/shorebirdtech/shorebird/issues/472
-'''),
-      ).called(1);
+    test('proceeds if release is in draft state for non-android platform',
+        () async {
+      when(
+        () => codePushClientWrapper.getReleases(appId: any(named: 'appId')),
+      ).thenAnswer(
+        (_) async => const [
+          Release(
+            id: 0,
+            appId: appId,
+            version: version,
+            flutterRevision: flutterRevision,
+            displayName: '1.2.3+1',
+            platformStatuses: {ReleasePlatform.ios: ReleaseStatus.draft},
+          ),
+        ],
+      );
+      final tempDir = setUpTempDir();
+      setUpTempArtifacts(tempDir);
+      final exitCode = await IOOverrides.runZoned(
+        () => runWithOverrides(command.run),
+        getCurrentDirectory: () => tempDir,
+      );
+      expect(exitCode, ExitCode.success.code);
     });
 
     test('throws error when release artifact does not exist.', () async {
@@ -582,128 +525,164 @@ https://github.com/shorebirdtech/shorebird/issues/472
       expect(exitCode, ExitCode.software.code);
     });
 
-    test('throws error when aar fails to download', () async {
-      when(
-        () => httpClient.send(
-          any(
-            that: isA<http.Request>().having(
-              (req) => req.url.toString(),
-              'url',
-              endsWith('aar'),
-            ),
-          ),
-        ),
-      ).thenAnswer(
-        (_) async => http.StreamedResponse(
-          const Stream.empty(),
-          HttpStatus.internalServerError,
-          reasonPhrase: 'Internal Server Error',
-        ),
-      );
-
+    test(
+        'installs correct flutter revision '
+        'when release flutter revision differs', () async {
+      const otherRevision = 'other-revision';
+      when(() => shorebirdEnv.flutterRevision).thenReturn(otherRevision);
       final tempDir = setUpTempDir();
       setUpTempArtifacts(tempDir);
+
       final exitCode = await IOOverrides.runZoned(
         () => runWithOverrides(command.run),
         getCurrentDirectory: () => tempDir,
       );
-
-      expect(exitCode, ExitCode.software.code);
-    });
-
-    test('prompts user to continue when asset changes are detected', () async {
-      when(() => aarDiffer.changedFiles(any(), any())).thenReturn(
-        FileSetDiff(
-          addedPaths: {'assets/test.json'},
-          removedPaths: {},
-          changedPaths: {},
-        ),
-      );
-
-      final tempDir = setUpTempDir();
-      setUpTempArtifacts(tempDir);
-      final exitCode = await IOOverrides.runZoned(
-        () => runWithOverrides(command.run),
-        getCurrentDirectory: () => tempDir,
-      );
-
-      expect(exitCode, ExitCode.success.code);
+      expect(exitCode, equals(ExitCode.success.code));
       verify(
-        () => logger.info(
-          any(
-            that: contains(
-              '''The Android Archive contains asset changes, which will not be included in the patch.''',
-            ),
-          ),
+        () => logger.progress(
+          'Switching to Flutter revision ${release.flutterRevision}',
         ),
       ).called(1);
-      verify(() => logger.confirm('Continue anyways?')).called(1);
+      verify(
+        () => shorebirdFlutter.installRevision(
+          revision: release.flutterRevision,
+        ),
+      ).called(1);
     });
 
     test(
-      '''does not warn user of asset or code changes if only dart changes are detected''',
-      () async {
-        when(() => aarDiffer.changedFiles(any(), any())).thenReturn(
-          FileSetDiff(
-            addedPaths: {},
-            removedPaths: {},
-            changedPaths: {'some/path/libapp.so'},
-          ),
-        );
-
-        final tempDir = setUpTempDir();
-        setUpTempArtifacts(tempDir);
-        final exitCode = await IOOverrides.runZoned(
-          () => runWithOverrides(command.run),
-          getCurrentDirectory: () => tempDir,
-        );
-
-        expect(exitCode, ExitCode.success.code);
-        verifyNever(
-          () => logger.confirm(
-            any(
-              that: contains(
-                '''The Android Archive contains asset changes, which will not be included in the patch.''',
+        'builds using correct flutter revision '
+        'when release flutter revision differs', () async {
+      when(
+        () => platform.script,
+      ).thenReturn(
+        Uri.file(p.join('bin', 'cache', 'shorebird.snapshot')),
+      );
+      const otherRevision = 'other-revision';
+      when(() => shorebirdEnv.flutterRevision).thenReturn(otherRevision);
+      final processWrapper = _MockProcessWrapper();
+      when(
+        () => processWrapper.run(
+          any(),
+          any(),
+          runInShell: any(named: 'runInShell'),
+          workingDirectory: any(named: 'workingDirectory'),
+          environment: any(named: 'environment'),
+        ),
+      ).thenAnswer((_) async => flutterBuildProcessResult);
+      final tempDir = setUpTempDir();
+      setUpTempArtifacts(tempDir);
+      await IOOverrides.runZoned(
+        () => runWithOverrides(
+          () => runScoped(
+            () => command.run(),
+            values: {
+              processRef.overrideWith(
+                () => ShorebirdProcess(
+                  logger: logger,
+                  processWrapper: processWrapper,
+                ),
               ),
-            ),
+            },
           ),
-        );
-      },
-    );
+        ),
+        getCurrentDirectory: () => tempDir,
+      );
+      verify(
+        () => processWrapper.run(
+          p.join(
+            '.',
+            'bin',
+            'cache',
+            'flutter',
+            release.flutterRevision,
+            'bin',
+            'flutter',
+          ),
+          any(),
+          runInShell: true,
+          workingDirectory: any(named: 'workingDirectory'),
+          environment: any(named: 'environment'),
+        ),
+      ).called(1);
+    });
 
     test(
-      '''exits if user decides to not proceed after being warned of non-dart changes''',
-      () async {
-        when(() => aarDiffer.changedFiles(any(), any())).thenReturn(
-          FileSetDiff(
-            addedPaths: {'assets/test.json'},
-            removedPaths: {},
-            changedPaths: {},
-          ),
-        );
-        when(
-          () => logger.confirm(any(that: contains('Continue anyways?'))),
-        ).thenReturn(false);
+        'exits with code 70 when '
+        'unable to install correct flutter revision', () async {
+      final exception = Exception('oops');
+      const otherRevision = 'other-revision';
+      when(() => shorebirdEnv.flutterRevision).thenReturn(otherRevision);
+      when(
+        () => shorebirdFlutter.installRevision(
+          revision: any(named: 'revision'),
+        ),
+      ).thenThrow(exception);
+      final tempDir = setUpTempDir();
+      setUpTempArtifacts(tempDir);
 
-        final tempDir = setUpTempDir();
-        setUpTempArtifacts(tempDir);
-        final exitCode = await IOOverrides.runZoned(
-          () => runWithOverrides(command.run),
-          getCurrentDirectory: () => tempDir,
-        );
+      final exitCode = await IOOverrides.runZoned(
+        () => runWithOverrides(command.run),
+        getCurrentDirectory: () => tempDir,
+      );
+      expect(exitCode, equals(ExitCode.software.code));
+      verify(
+        () => logger.progress(
+          'Switching to Flutter revision ${release.flutterRevision}',
+        ),
+      ).called(1);
+      verify(
+        () => shorebirdFlutter.installRevision(
+          revision: release.flutterRevision,
+        ),
+      ).called(1);
+      verify(() => progress.fail('$exception')).called(1);
+    });
 
-        expect(exitCode, ExitCode.success.code);
-        verifyNever(
-          () => codePushClientWrapper.publishPatch(
-            appId: any(named: 'appId'),
-            releaseId: any(named: 'releaseId'),
-            platform: any(named: 'platform'),
-            channelName: any(named: 'channelName'),
-            patchArtifactBundles: any(named: 'patchArtifactBundles'),
-          ),
-        );
-      },
-    );
+    test('exits with code 70 when building fails', () async {
+      when(() => flutterBuildProcessResult.exitCode).thenReturn(1);
+      when(() => flutterBuildProcessResult.stderr).thenReturn('oops');
+      final exitCode = await runWithOverrides(command.run);
+      expect(exitCode, equals(ExitCode.software.code));
+    });
+
+    test('exits if confirmUnpatchableDiffsIfNecessary returns false', () async {
+      when(() => argResults['force']).thenReturn(false);
+      when(
+        () => patchDiffChecker.confirmUnpatchableDiffsIfNecessary(
+          localArtifact: any(named: 'localArtifact'),
+          releaseArtifactUrl: any(named: 'releaseArtifactUrl'),
+          archiveDiffer: archiveDiffer,
+          force: any(named: 'force'),
+        ),
+      ).thenAnswer((_) async => false);
+      final tempDir = setUpTempDir();
+      setUpTempArtifacts(tempDir);
+
+      final exitCode = await IOOverrides.runZoned(
+        () => runWithOverrides(command.run),
+        getCurrentDirectory: () => tempDir,
+      );
+
+      expect(exitCode, equals(ExitCode.success.code));
+      verify(
+        () => patchDiffChecker.confirmUnpatchableDiffsIfNecessary(
+          localArtifact: any(named: 'localArtifact'),
+          releaseArtifactUrl: Uri.parse(aarArtifact.url),
+          archiveDiffer: archiveDiffer,
+          force: false,
+        ),
+      ).called(1);
+      verifyNever(
+        () => codePushClientWrapper.publishPatch(
+          appId: any(named: 'appId'),
+          releaseId: any(named: 'releaseId'),
+          platform: any(named: 'platform'),
+          channelName: any(named: 'channelName'),
+          patchArtifactBundles: any(named: 'patchArtifactBundles'),
+        ),
+      );
+    });
 
     test('throws error when creating diff fails', () async {
       const error = 'oops something went wrong';
@@ -755,13 +734,6 @@ https://github.com/shorebirdtech/shorebird/issues/472
     });
 
     test('does not prompt on --force', () async {
-      when(() => aarDiffer.changedFiles(any(), any())).thenReturn(
-        FileSetDiff(
-          addedPaths: {'assets/test.json'},
-          removedPaths: {},
-          changedPaths: {},
-        ),
-      );
       when(() => argResults['force']).thenReturn(true);
       final tempDir = setUpTempDir();
       setUpTempArtifacts(tempDir);
@@ -806,12 +778,7 @@ https://github.com/shorebirdtech/shorebird/issues/472
       verify(() => logger.success('\n✅ Published Patch!')).called(1);
 
       verify(() => codePushClientWrapper.getApp(appId: appId)).called(1);
-      verify(
-        () => codePushClientWrapper.getRelease(
-          appId: appId,
-          releaseVersion: version,
-        ),
-      ).called(1);
+      verify(() => codePushClientWrapper.getReleases(appId: appId)).called(1);
       verify(
         () => codePushClientWrapper.getReleaseArtifacts(
           appId: appId,
@@ -837,109 +804,6 @@ https://github.com/shorebirdtech/shorebird/issues/472
           patchArtifactBundles: any(named: 'patchArtifactBundles'),
         ),
       ).called(1);
-    });
-
-    test('succeeds when patch is successful with flavors', () async {
-      const flavor = 'development';
-      when(() => argResults['flavor']).thenReturn(flavor);
-      final tempDir = setUpTempDir();
-      File(
-        p.join(tempDir.path, 'shorebird.yaml'),
-      ).writeAsStringSync('''
-app_id: productionAppId
-flavors:
-  development: $appId''');
-      setUpTempArtifacts(tempDir);
-      final exitCode = await IOOverrides.runZoned(
-        () => runWithOverrides(command.run),
-        getCurrentDirectory: () => tempDir,
-      );
-
-      expect(exitCode, ExitCode.success.code);
-      verify(() => logger.success('\n✅ Published Patch!')).called(1);
-      verify(() => codePushClientWrapper.getApp(appId: appId)).called(1);
-      verify(
-        () => codePushClientWrapper.getRelease(
-          appId: appId,
-          releaseVersion: version,
-        ),
-      ).called(1);
-      verify(
-        () => codePushClientWrapper.getReleaseArtifacts(
-          appId: appId,
-          releaseId: release.id,
-          architectures: ShorebirdBuildMixin.allAndroidArchitectures,
-          platform: releasePlatform,
-        ),
-      ).called(1);
-      verify(
-        () => codePushClientWrapper.getReleaseArtifact(
-          appId: appId,
-          releaseId: release.id,
-          arch: 'aar',
-          platform: releasePlatform,
-        ),
-      ).called(1);
-      verify(
-        () => codePushClientWrapper.publishPatch(
-          appId: appId,
-          releaseId: release.id,
-          platform: releasePlatform,
-          channelName: channelName,
-          patchArtifactBundles: any(named: 'patchArtifactBundles'),
-        ),
-      ).called(1);
-    });
-
-    test('prints flutter validation warnings', () async {
-      final tempDir = setUpTempDir();
-      setUpTempArtifacts(tempDir);
-      when(() => flutterValidator.validate(any())).thenAnswer(
-        (_) async => [
-          const ValidationIssue(
-            severity: ValidationIssueSeverity.warning,
-            message: 'Flutter issue 1',
-          ),
-          const ValidationIssue(
-            severity: ValidationIssueSeverity.warning,
-            message: 'Flutter issue 2',
-          ),
-        ],
-      );
-
-      final exitCode = await IOOverrides.runZoned(
-        () => runWithOverrides(command.run),
-        getCurrentDirectory: () => tempDir,
-      );
-
-      expect(exitCode, equals(ExitCode.success.code));
-      verify(
-        () => logger.info(any(that: contains('Flutter issue 1'))),
-      ).called(1);
-      verify(
-        () => logger.info(any(that: contains('Flutter issue 2'))),
-      ).called(1);
-    });
-
-    test('aborts if validation errors are present', () async {
-      final tempDir = setUpTempDir();
-      setUpTempArtifacts(tempDir);
-      when(() => flutterValidator.validate(any())).thenAnswer(
-        (_) async => [
-          const ValidationIssue(
-            severity: ValidationIssueSeverity.error,
-            message: 'There was an issue',
-          ),
-        ],
-      );
-
-      final exitCode = await IOOverrides.runZoned(
-        () => runWithOverrides(command.run),
-        getCurrentDirectory: () => tempDir,
-      );
-
-      expect(exitCode, equals(ExitCode.config.code));
-      verify(() => logger.err('Aborting due to validation errors.')).called(1);
     });
   });
 }

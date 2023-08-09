@@ -13,7 +13,7 @@ class _MockHttpClient extends Mock implements http.Client {}
 class _FakeBaseRequest extends Fake implements http.BaseRequest {}
 
 void main() {
-  group('CodePushClient', () {
+  group(CodePushClient, () {
     const appId = 'app-id';
     const flutterRevision = '83305b5088e6fe327fb3334a73ff190828d85713';
     const displayName = 'shorebird-example';

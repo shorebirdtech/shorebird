@@ -21,11 +21,30 @@ cat <<EOF
 flutter_engine_revision: $FLUTTER_ENGINE_REVISION
 storage_bucket: download.shorebird.dev
 artifact_overrides:
-  # artifacts.zip
-  - flutter_infra_release/flutter/\$engine/android-arm-64-release/artifacts.zip
+  # Android release artifacts
+  # artifacts.zip includes flutter.jar, libflutter.so, etc.
+  # symbols.zip includes symbols for libflutter.so
+  # darwin-x64.zip gen_snapshot for darwin-x64
+  # windows-x64.zip gen_snapshot for windows-x64
+  # linux-x64.zip gen_snapshot for linux-x64
+  - flutter_infra_release/flutter/\$engine/android-arm64-release/artifacts.zip
+  - flutter_infra_release/flutter/\$engine/android-arm64-release/darwin-x64.zip
+  - flutter_infra_release/flutter/\$engine/android-arm64-release/linux-x64.zip
+  - flutter_infra_release/flutter/\$engine/android-arm64-release/symbols.zip
+  - flutter_infra_release/flutter/\$engine/android-arm64-release/windows-x64.zip
+
   - flutter_infra_release/flutter/\$engine/android-arm-release/artifacts.zip
+  - flutter_infra_release/flutter/\$engine/android-arm-release/darwin-x64.zip
+  - flutter_infra_release/flutter/\$engine/android-arm-release/linux-x64.zip
+  - flutter_infra_release/flutter/\$engine/android-arm-release/symbols.zip
+  - flutter_infra_release/flutter/\$engine/android-arm-release/windows-x64.zip
+
   - flutter_infra_release/flutter/\$engine/android-x64-release/artifacts.zip
-  - flutter_infra_release/flutter/\$engine/ios-release/artifacts.zip
+  - flutter_infra_release/flutter/\$engine/android-x64-release/darwin-x64.zip
+  - flutter_infra_release/flutter/\$engine/android-x64-release/linux-x64.zip
+  - flutter_infra_release/flutter/\$engine/android-x64-release/symbols.zip
+  - flutter_infra_release/flutter/\$engine/android-x64-release/windows-x64.zip
+
   # embedding release
   - download.flutter.io/io/flutter/flutter_embedding_release/1.0.0-\$engine/flutter_embedding_release-1.0.0-\$engine.pom
   - download.flutter.io/io/flutter/flutter_embedding_release/1.0.0-\$engine/flutter_embedding_release-1.0.0-\$engine.jar
@@ -38,3 +57,7 @@ artifact_overrides:
   # x86_64 release
   - download.flutter.io/io/flutter/x86_64_release/1.0.0-\$engine/x86_64_release-1.0.0-\$engine.pom
   - download.flutter.io/io/flutter/x86_64_release/1.0.0-\$engine/x86_64_release-1.0.0-\$engine.jar
+
+  # iOS release artifacts
+  # Includes unified Flutter.framework for device and simulator (debug)
+  - flutter_infra_release/flutter/\$engine/ios-release/artifacts.zip

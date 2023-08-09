@@ -2,22 +2,20 @@ import 'dart:async';
 
 import 'package:barbecue/barbecue.dart';
 import 'package:mason_logger/mason_logger.dart';
-import 'package:shorebird_cli/src/auth/auth.dart';
+import 'package:shorebird_cli/src/code_push_client_wrapper.dart';
 import 'package:shorebird_cli/src/command.dart';
 import 'package:shorebird_cli/src/logger.dart';
-import 'package:shorebird_cli/src/shorebird_config_mixin.dart';
-import 'package:shorebird_cli/src/shorebird_environment.dart';
-import 'package:shorebird_cli/src/shorebird_validation_mixin.dart';
+import 'package:shorebird_cli/src/shorebird_env.dart';
+import 'package:shorebird_cli/src/shorebird_validator.dart';
 import 'package:shorebird_code_push_client/shorebird_code_push_client.dart';
 
 /// {@template list_collaborators_command}
 /// `shorebird collaborators list`
 /// List all collaborators for a Shorebird app.
 /// {@endtemplate}
-class ListCollaboratorsCommand extends ShorebirdCommand
-    with ShorebirdConfigMixin, ShorebirdValidationMixin {
+class ListCollaboratorsCommand extends ShorebirdCommand {
   /// {@macro list_collaborators_command}
-  ListCollaboratorsCommand({super.buildCodePushClient}) {
+  ListCollaboratorsCommand() {
     argParser.addOption(
       _appIdOption,
       help: 'The app id to list collaborators for.',
@@ -38,20 +36,15 @@ class ListCollaboratorsCommand extends ShorebirdCommand
   @override
   Future<int>? run() async {
     try {
-      await validatePreconditions(
+      await shorebirdValidator.validatePreconditions(
         checkUserIsAuthenticated: true,
       );
     } on PreconditionFailedException catch (e) {
       return e.exitCode.code;
     }
 
-    final client = buildCodePushClient(
-      httpClient: auth.client,
-      hostedUri: ShorebirdEnvironment.hostedUri,
-    );
-
     final appId = results[_appIdOption] as String? ??
-        ShorebirdEnvironment.getShorebirdYaml()?.appId;
+        shorebirdEnv.getShorebirdYaml()?.appId;
     if (appId == null) {
       logger.err(
         '''
@@ -63,7 +56,8 @@ You must either specify an app id via the "--$_appIdOption" flag or run this com
 
     final List<Collaborator> collaborators;
     try {
-      collaborators = await client.getCollaborators(appId: appId);
+      collaborators = await codePushClientWrapper.codePushClient
+          .getCollaborators(appId: appId);
     } catch (error) {
       logger.err('$error');
       return ExitCode.software.code;

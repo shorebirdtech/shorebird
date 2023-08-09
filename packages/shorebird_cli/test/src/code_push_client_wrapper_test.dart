@@ -9,6 +9,7 @@ import 'package:shorebird_cli/src/code_push_client_wrapper.dart';
 import 'package:shorebird_cli/src/logger.dart';
 import 'package:shorebird_cli/src/platform.dart';
 import 'package:shorebird_cli/src/shorebird_build_mixin.dart';
+import 'package:shorebird_cli/src/shorebird_env.dart';
 import 'package:shorebird_cli/src/third_party/flutter_tools/lib/flutter_tools.dart';
 import 'package:shorebird_code_push_client/shorebird_code_push_client.dart';
 import 'package:test/test.dart';
@@ -25,26 +26,25 @@ class _MockPlatform extends Mock implements Platform {}
 
 class _MockProgress extends Mock implements Progress {}
 
+class _MockShorebirdEnv extends Mock implements ShorebirdEnv {}
+
 void main() {
   group('scoped', () {
     late Auth auth;
     late http.Client httpClient;
     late Platform platform;
-
-    setUpAll(() {
-      registerFallbackValue(ReleasePlatform.android);
-      registerFallbackValue(ReleaseStatus.draft);
-    });
+    late ShorebirdEnv shorebirdEnv;
 
     setUp(() {
       auth = _MockAuth();
       httpClient = _MockHttpClient();
       platform = _MockPlatform();
+      shorebirdEnv = _MockShorebirdEnv();
 
       when(() => auth.client).thenReturn(httpClient);
-      when(() => platform.environment).thenReturn({
-        'SHOREBIRD_HOSTED_URL': 'http://example.com',
-      });
+      when(() => shorebirdEnv.hostedUri).thenReturn(
+        Uri.parse('http://example.com'),
+      );
     });
 
     test('creates instance from scoped Auth and ShorebirdEnvironment', () {
@@ -54,6 +54,7 @@ void main() {
           codePushClientWrapperRef,
           authRef.overrideWith(() => auth),
           platformRef.overrideWith(() => platform),
+          shorebirdEnvRef.overrideWith(() => shorebirdEnv),
         },
       );
       expect(
@@ -133,7 +134,11 @@ void main() {
       );
     }
 
-    setUpAll(setExitFunctionForTests);
+    setUpAll(() {
+      registerFallbackValue(ReleasePlatform.android);
+      registerFallbackValue(ReleaseStatus.draft);
+      setExitFunctionForTests();
+    });
 
     tearDownAll(restoreExitFunction);
 
@@ -161,6 +166,43 @@ void main() {
     });
 
     group('app', () {
+      group('createApp', () {
+        test('prompts for displayName when not provided', () async {
+          const appName = 'test app';
+          const app = App(id: appId, displayName: 'Test App');
+          when(() => logger.prompt(any())).thenReturn(appName);
+          when(() => codePushClient.createApp(displayName: appName)).thenAnswer(
+            (_) async => app,
+          );
+
+          await runWithOverrides(
+            () => codePushClientWrapper.createApp(),
+          );
+
+          verify(() => logger.prompt(any())).called(1);
+          verify(
+            () => codePushClient.createApp(displayName: appName),
+          ).called(1);
+        });
+
+        test('does not prompt for displayName when not provided', () async {
+          const appName = 'test app';
+          const app = App(id: appId, displayName: 'Test App');
+          when(() => codePushClient.createApp(displayName: appName)).thenAnswer(
+            (_) async => app,
+          );
+
+          await runWithOverrides(
+            () => codePushClientWrapper.createApp(appName: appName),
+          );
+
+          verifyNever(() => logger.prompt(any()));
+          verify(
+            () => codePushClient.createApp(displayName: appName),
+          ).called(1);
+        });
+      });
+
       group('getApps', () {
         test('exits with code 70 when getting apps fails', () async {
           const error = 'something went wrong';
@@ -174,6 +216,32 @@ void main() {
           );
           verify(() => progress.fail(error)).called(1);
         });
+
+        test(
+          '''prints upgrade message when client throws CodePushUpgradeRequiredException''',
+          () async {
+            when(codePushClient.getApps).thenThrow(
+              const CodePushUpgradeRequiredException(
+                message: 'upgrade required',
+              ),
+            );
+            await expectLater(
+              () async => runWithOverrides(
+                () => codePushClientWrapper.getApps(),
+              ),
+              exitsWithCode(ExitCode.software),
+            );
+            verify(() => progress.fail()).called(1);
+            verify(
+              () => logger.err('Your version of shorebird is out of date.'),
+            ).called(1);
+            verify(
+              () => logger.info(
+                '''Run ${lightCyan.wrap('shorebird upgrade')} to get the latest version.''',
+              ),
+            ).called(1);
+          },
+        );
 
         test('returns apps on success', () async {
           when(() => codePushClient.getApps()).thenAnswer((_) async => [app]);
@@ -367,24 +435,23 @@ void main() {
     });
 
     group('release', () {
-      group('ensureReleaseHasNoArtifacts', () {
-        const appId = 'test-app-id';
+      group('ensureReleaseIsIsNotActive', () {
         test(
-          '''exits with code 70 if release artifacts exist for the given release and platform''',
-          () async {
-            when(
-              () => codePushClient.getReleaseArtifacts(
-                appId: any(named: 'appId'),
-                releaseId: any(named: 'releaseId'),
-                platform: any(named: 'platform'),
-              ),
-            ).thenAnswer((_) async => [releaseArtifact]);
-
-            await expectLater(
-              runWithOverrides(
-                () async => codePushClientWrapper.ensureReleaseHasNoArtifacts(
-                  appId: appId,
-                  existingRelease: release,
+          '''exits with code 70 if release is in an active state for the given platform''',
+          () {
+            expect(
+              () => runWithOverrides(
+                () => codePushClientWrapper.ensureReleaseIsNotActive(
+                  release: const Release(
+                    id: releaseId,
+                    appId: appId,
+                    version: releaseVersion,
+                    flutterRevision: flutterRevision,
+                    displayName: displayName,
+                    platformStatuses: {
+                      releasePlatform: ReleaseStatus.active,
+                    },
+                  ),
                   platform: releasePlatform,
                 ),
               ),
@@ -402,21 +469,41 @@ Please bump your version number and try again.''',
         );
 
         test(
-          '''completes without error if release artifacts exist for the given release and platform''',
+          '''completes without error if release has no status for the given platform''',
           () async {
-            when(
-              () => codePushClient.getReleaseArtifacts(
-                appId: any(named: 'appId'),
-                releaseId: any(named: 'releaseId'),
-                platform: any(named: 'platform'),
-              ),
-            ).thenAnswer((_) async => []);
-
             await expectLater(
               runWithOverrides(
-                () => codePushClientWrapper.ensureReleaseHasNoArtifacts(
-                  appId: appId,
-                  existingRelease: release,
+                () async => codePushClientWrapper.ensureReleaseIsNotActive(
+                  release: const Release(
+                    id: releaseId,
+                    appId: appId,
+                    version: releaseVersion,
+                    flutterRevision: flutterRevision,
+                    displayName: displayName,
+                    platformStatuses: {},
+                  ),
+                  platform: releasePlatform,
+                ),
+              ),
+              completes,
+            );
+          },
+        );
+
+        test(
+          '''completes without error if release has draft status for the given platform''',
+          () async {
+            await expectLater(
+              runWithOverrides(
+                () async => codePushClientWrapper.ensureReleaseIsNotActive(
+                  release: const Release(
+                    id: releaseId,
+                    appId: appId,
+                    version: releaseVersion,
+                    flutterRevision: flutterRevision,
+                    displayName: displayName,
+                    platformStatuses: {releasePlatform: ReleaseStatus.draft},
+                  ),
                   platform: releasePlatform,
                 ),
               ),
@@ -1395,8 +1482,9 @@ Please bump your version number and try again.''',
       });
     });
 
-    group('createIosReleaseArtifact', () {
+    group('createIosReleaseArtifacts', () {
       final ipaPath = p.join('path', 'to', 'app.ipa');
+      final runnerPath = p.join('path', 'to', 'runner.app');
 
       Directory setUpTempDir({String? flavor}) {
         final tempDir = Directory.systemTemp.createTempSync();
@@ -1417,12 +1505,12 @@ Please bump your version number and try again.''',
         ).thenAnswer((_) async => {});
       });
 
-      test('exits with code 70 when artifact creation fails', () async {
+      test('exits with code 70 when ipa artifact creation fails', () async {
         const error = 'something went wrong';
         when(
           () => codePushClient.createReleaseArtifact(
             appId: any(named: 'appId'),
-            artifactPath: any(named: 'artifactPath'),
+            artifactPath: any(named: 'artifactPath', that: endsWith('.ipa')),
             releaseId: any(named: 'releaseId'),
             arch: any(named: 'arch'),
             platform: any(named: 'platform'),
@@ -1434,10 +1522,11 @@ Please bump your version number and try again.''',
         await IOOverrides.runZoned(
           () async => expectLater(
             () async => runWithOverrides(
-              () async => codePushClientWrapper.createIosReleaseArtifact(
+              () async => codePushClientWrapper.createIosReleaseArtifacts(
                 appId: app.appId,
                 releaseId: releaseId,
                 ipaPath: p.join(tempDir.path, ipaPath),
+                runnerPath: p.join(tempDir.path, runnerPath),
               ),
             ),
             exitsWithCode(ExitCode.software),
@@ -1466,10 +1555,47 @@ Please bump your version number and try again.''',
         await IOOverrides.runZoned(
           () async => expectLater(
             () async => runWithOverrides(
-              () async => codePushClientWrapper.createIosReleaseArtifact(
+              () async => codePushClientWrapper.createIosReleaseArtifacts(
                 appId: app.appId,
                 releaseId: releaseId,
                 ipaPath: p.join(tempDir.path, ipaPath),
+                runnerPath: p.join(tempDir.path, runnerPath),
+              ),
+            ),
+            exitsWithCode(ExitCode.software),
+          ),
+          getCurrentDirectory: () => tempDir,
+        );
+
+        verify(() => progress.fail(any(that: contains(error)))).called(1);
+      });
+
+      test('exits with code 70 when xcarchive artifact creation fails',
+          () async {
+        const error = 'something went wrong';
+        when(
+          () => codePushClient.createReleaseArtifact(
+            appId: any(named: 'appId'),
+            artifactPath: any(
+              named: 'artifactPath',
+              that: endsWith('runner.app.zip'),
+            ),
+            releaseId: any(named: 'releaseId'),
+            arch: any(named: 'arch'),
+            platform: any(named: 'platform'),
+            hash: any(named: 'hash'),
+          ),
+        ).thenThrow(error);
+        final tempDir = setUpTempDir();
+
+        await IOOverrides.runZoned(
+          () async => expectLater(
+            () async => runWithOverrides(
+              () async => codePushClientWrapper.createIosReleaseArtifacts(
+                appId: app.appId,
+                releaseId: releaseId,
+                ipaPath: p.join(tempDir.path, ipaPath),
+                runnerPath: p.join(tempDir.path, runnerPath),
               ),
             ),
             exitsWithCode(ExitCode.software),
@@ -1495,10 +1621,11 @@ Please bump your version number and try again.''',
 
         await runWithOverrides(
           () async => IOOverrides.runZoned(
-            () async => codePushClientWrapper.createIosReleaseArtifact(
+            () async => codePushClientWrapper.createIosReleaseArtifacts(
               appId: app.appId,
               releaseId: releaseId,
               ipaPath: p.join(tempDir.path, ipaPath),
+              runnerPath: p.join(tempDir.path, runnerPath),
             ),
             getCurrentDirectory: () => tempDir,
           ),
@@ -1506,6 +1633,74 @@ Please bump your version number and try again.''',
 
         verify(() => progress.complete()).called(1);
         verifyNever(() => progress.fail(any()));
+      });
+    });
+
+    group('createIosFrameworkReleaseArtifacts', () {
+      final frameworkPath = p.join('path', 'to', 'App.xcframework');
+
+      Directory setUpTempDir({String? flavor}) {
+        final tempDir = Directory.systemTemp.createTempSync();
+        File(p.join(tempDir.path, frameworkPath)).createSync(recursive: true);
+        return tempDir;
+      }
+
+      test(
+        'exits with code 70 when creating xcframework artifact fails',
+        () async {
+          when(
+            () => codePushClient.createReleaseArtifact(
+              artifactPath: any(named: 'artifactPath'),
+              appId: any(named: 'appId'),
+              releaseId: any(named: 'releaseId'),
+              arch: any(named: 'arch'),
+              platform: any(named: 'platform'),
+              hash: any(named: 'hash'),
+            ),
+          ).thenThrow(
+            Exception('oh no'),
+          );
+          final tempDir = setUpTempDir();
+
+          await expectLater(
+            () async => runWithOverrides(
+              () => codePushClientWrapper.createIosFrameworkReleaseArtifacts(
+                appId: app.appId,
+                releaseId: releaseId,
+                appFrameworkPath: p.join(tempDir.path, frameworkPath),
+              ),
+            ),
+            exitsWithCode(ExitCode.software),
+          );
+        },
+      );
+
+      test('completes successfully when release artifact is created', () async {
+        when(
+          () => codePushClient.createReleaseArtifact(
+            artifactPath: any(named: 'artifactPath'),
+            appId: any(named: 'appId'),
+            releaseId: any(named: 'releaseId'),
+            arch: any(named: 'arch'),
+            platform: any(named: 'platform'),
+            hash: any(named: 'hash'),
+          ),
+        ).thenAnswer((_) async => {});
+        final tempDir = setUpTempDir();
+
+        await IOOverrides.runZoned(
+          () async => expectLater(
+            runWithOverrides(
+              () => codePushClientWrapper.createIosFrameworkReleaseArtifacts(
+                appId: app.appId,
+                releaseId: releaseId,
+                appFrameworkPath: p.join(tempDir.path, frameworkPath),
+              ),
+            ),
+            completes,
+          ),
+          getCurrentDirectory: () => tempDir,
+        );
       });
     });
 
@@ -1847,48 +2042,6 @@ Please bump your version number and try again.''',
               channelId: channel.id,
             ),
           ).called(1);
-        });
-      });
-
-      group('getUsage', () {
-        test('exits with code 70 when getUsage throws an exception', () async {
-          when(() => codePushClient.getUsage()).thenThrow(Exception('oh no!'));
-
-          await expectLater(
-            () => runWithOverrides(codePushClientWrapper.getUsage),
-            exitsWithCode(ExitCode.software),
-          );
-
-          verify(() => progress.fail(any(that: contains('oh no!')))).called(1);
-        });
-
-        test('returns usage when succeeds', () async {
-          final usage = GetUsageResponse(
-            plan: ShorebirdPlan(
-              name: 'Hobby',
-              monthlyCost: Money.fromIntWithCurrency(0, usd),
-              patchInstallLimit: 1000,
-              maxTeamSize: 1,
-            ),
-            apps: const [
-              AppUsage(
-                id: 'test-app-id',
-                name: 'test app',
-                patchInstallCount: 42,
-              ),
-            ],
-            currentPeriodCost: Money.fromIntWithCurrency(0, usd),
-            currentPeriodStart: DateTime(2023),
-            currentPeriodEnd: DateTime(2023, 2),
-          );
-          when(() => codePushClient.getUsage()).thenAnswer((_) async => usage);
-
-          await expectLater(
-            runWithOverrides(codePushClientWrapper.getUsage),
-            completion(equals(usage)),
-          );
-
-          verify(() => progress.complete()).called(1);
         });
       });
     });

@@ -6,7 +6,10 @@ import 'package:http/http.dart' as http;
 import 'package:path/path.dart' as p;
 import 'package:platform/platform.dart';
 import 'package:scoped/scoped.dart';
-import 'package:shorebird_cli/src/shorebird_environment.dart';
+import 'package:shorebird_cli/src/http_client/http_client.dart';
+import 'package:shorebird_cli/src/platform.dart';
+import 'package:shorebird_cli/src/process.dart';
+import 'package:shorebird_cli/src/shorebird_env.dart';
 
 typedef ArchiveExtracter = Future<void> Function(
   String archivePath,
@@ -31,8 +34,7 @@ class Cache {
   Cache({
     http.Client? httpClient,
     this.extractArchive = _defaultArchiveExtractor,
-    Platform platform = const LocalPlatform(),
-  }) : httpClient = httpClient ?? http.Client() {
+  }) : httpClient = httpClient ?? retryingHttpClient(http.Client()) {
     registerArtifact(PatchArtifact(cache: this, platform: platform));
     registerArtifact(BundleToolArtifact(cache: this, platform: platform));
   }
@@ -71,7 +73,7 @@ class Cache {
   /// The Shorebird cache directory.
   static Directory get shorebirdCacheDirectory {
     return Directory(
-      p.join(ShorebirdEnvironment.shorebirdRoot.path, 'bin', 'cache'),
+      p.join(shorebirdEnv.shorebirdRoot.path, 'bin', 'cache'),
     );
   }
 
@@ -133,11 +135,11 @@ abstract class CachedArtifact {
     if (platform.isWindows) return;
 
     for (final executable in executables) {
-      final process = await Process.start(
+      final result = await process.start(
         'chmod',
         ['+x', p.join(location.path, executable)],
       );
-      await process.exitCode;
+      await result.exitCode;
     }
   }
 }
@@ -173,7 +175,7 @@ class PatchArtifact extends CachedArtifact {
       artifactName += 'windows-x64.zip';
     }
 
-    return '${cache.storageBaseUrl}/${cache.storageBucket}/shorebird/${ShorebirdEnvironment.shorebirdEngineRevision}/$artifactName';
+    return '${cache.storageBaseUrl}/${cache.storageBucket}/shorebird/${shorebirdEnv.shorebirdEngineRevision}/$artifactName';
   }
 }
 

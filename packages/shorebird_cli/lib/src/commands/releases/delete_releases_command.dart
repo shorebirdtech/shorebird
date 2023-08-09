@@ -2,13 +2,12 @@ import 'dart:async';
 
 import 'package:collection/collection.dart';
 import 'package:mason_logger/mason_logger.dart';
-import 'package:shorebird_cli/src/auth/auth.dart';
+import 'package:shorebird_cli/src/code_push_client_wrapper.dart';
 import 'package:shorebird_cli/src/command.dart';
 import 'package:shorebird_cli/src/config/shorebird_yaml.dart';
 import 'package:shorebird_cli/src/logger.dart';
-import 'package:shorebird_cli/src/shorebird_config_mixin.dart';
-import 'package:shorebird_cli/src/shorebird_environment.dart';
-import 'package:shorebird_cli/src/shorebird_validation_mixin.dart';
+import 'package:shorebird_cli/src/shorebird_env.dart';
+import 'package:shorebird_cli/src/shorebird_validator.dart';
 import 'package:shorebird_code_push_client/shorebird_code_push_client.dart';
 
 /// {@template delete_releases_command}
@@ -16,10 +15,9 @@ import 'package:shorebird_code_push_client/shorebird_code_push_client.dart';
 /// `shorebird releases delete`
 /// Delete the specified release.
 /// {@endtemplate}
-class DeleteReleasesCommand extends ShorebirdCommand
-    with ShorebirdConfigMixin, ShorebirdValidationMixin {
+class DeleteReleasesCommand extends ShorebirdCommand {
   /// {@macro delete_releases_command}
-  DeleteReleasesCommand({super.buildCodePushClient}) {
+  DeleteReleasesCommand() {
     argParser
       ..addOption(
         'version',
@@ -40,7 +38,7 @@ class DeleteReleasesCommand extends ShorebirdCommand
   @override
   Future<int> run() async {
     try {
-      await validatePreconditions(
+      await shorebirdValidator.validatePreconditions(
         checkUserIsAuthenticated: true,
         checkShorebirdInitialized: true,
       );
@@ -49,18 +47,14 @@ class DeleteReleasesCommand extends ShorebirdCommand
     }
 
     final flavor = results['flavor'] as String?;
-    final appId =
-        ShorebirdEnvironment.getShorebirdYaml()!.getAppId(flavor: flavor);
-
-    final codePushClient = buildCodePushClient(
-      httpClient: auth.client,
-      hostedUri: ShorebirdEnvironment.hostedUri,
-    );
+    final appId = shorebirdEnv.getShorebirdYaml()!.getAppId(flavor: flavor);
 
     final List<Release> releases;
     var progress = logger.progress('Fetching releases');
     try {
-      releases = await codePushClient.getReleases(appId: appId);
+      releases = await codePushClientWrapper.codePushClient.getReleases(
+        appId: appId,
+      );
       progress.complete('Fetched releases.');
     } catch (error) {
       progress.fail('$error');
@@ -91,7 +85,7 @@ class DeleteReleasesCommand extends ShorebirdCommand
     progress = logger.progress('Deleting release');
 
     try {
-      await codePushClient.deleteRelease(
+      await codePushClientWrapper.codePushClient.deleteRelease(
         appId: appId,
         releaseId: releaseToDelete.id,
       );
