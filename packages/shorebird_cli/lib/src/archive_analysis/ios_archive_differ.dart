@@ -79,7 +79,9 @@ class IosArchiveDiffer extends ArchiveDiffer {
     outputStream.close();
 
     if (Platform.isMacOS) {
+      // coverage:ignore-start
       Process.runSync('codesign', ['--remove-signature', outPath]);
+      // coverage:ignore-end
     }
 
     final outFile = File(outPath);
