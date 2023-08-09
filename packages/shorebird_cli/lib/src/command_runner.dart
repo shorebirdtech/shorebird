@@ -7,6 +7,7 @@ import 'package:mason_logger/mason_logger.dart';
 import 'package:scoped/scoped.dart';
 import 'package:shorebird_cli/src/commands/commands.dart';
 import 'package:shorebird_cli/src/logger.dart';
+import 'package:shorebird_cli/src/platform.dart';
 import 'package:shorebird_cli/src/process.dart';
 import 'package:shorebird_cli/src/shorebird_env.dart';
 import 'package:shorebird_cli/src/version.dart';
@@ -114,14 +115,24 @@ class ShorebirdCliCommandRunner extends CompletionCommandRunner<int> {
 
       logger.err(e.message);
       if (e.message.contains('Could not find an option named')) {
-        logger.err(
-          '''
+        final String errorMessage;
+        if (platform.isWindows) {
+          errorMessage = '''
+To proxy an option to the flutter command, use the `-`- --<option> syntax.
+
+Example:
+
+${lightCyan.wrap('shorebird release android `-`- --no-pub lib/main.dart')}''';
+        } else {
+          errorMessage = '''
 To proxy an option to the flutter command, use the -- --<option> syntax.
 
 Example:
 
-${lightCyan.wrap('shorebird release android -- --no-pub lib/main.dart')}''',
-        );
+${lightCyan.wrap('shorebird release android -- --no-pub lib/main.dart')}''';
+        }
+
+        logger.err(errorMessage);
       }
 
       logger
