@@ -59,9 +59,10 @@ void main() {
       ).thenReturn(flutterDirectory(tempDir));
       when(() => platform.environment).thenReturn({});
       when(
-        () => shorebirdFlutter.getVersion(
-          useVendedFlutter: any(named: 'useVendedFlutter'),
-        ),
+        () => shorebirdFlutter.getVersion(),
+      ).thenAnswer((_) async => flutterVersion);
+      when(
+        () => shorebirdFlutter.getSystemVersion(),
       ).thenAnswer((_) async => flutterVersion);
 
       validator = ShorebirdFlutterValidator();
@@ -115,7 +116,7 @@ void main() {
       ' major and minor but different patch versions',
       () async {
         when(
-          () => shorebirdFlutter.getVersion(useVendedFlutter: false),
+          () => shorebirdFlutter.getSystemVersion(),
         ).thenAnswer((_) async => '3.7.10');
 
         final results = await runWithOverrides(
@@ -131,7 +132,7 @@ void main() {
       'than shorebird flutter',
       () async {
         when(
-          () => shorebirdFlutter.getVersion(useVendedFlutter: false),
+          () => shorebirdFlutter.getSystemVersion(),
         ).thenAnswer((_) async => '3.8.9');
 
         final results = await runWithOverrides(validator.validate);
@@ -170,9 +171,7 @@ void main() {
     );
 
     test('throws exception if path flutter version lookup fails', () async {
-      when(
-        () => shorebirdFlutter.getVersion(useVendedFlutter: false),
-      ).thenThrow(
+      when(() => shorebirdFlutter.getSystemVersion()).thenThrow(
         const ProcessException(
           'flutter',
           ['--version'],
