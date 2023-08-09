@@ -4,7 +4,7 @@ import 'package:test/test.dart';
 void main() {
   group(CreatePatchEventRequest, () {
     test('can be (de)serialized', () {
-      final response = CreatePatchEventRequest(
+      final request = CreatePatchEventRequest(
         event: PatchInstallEvent(
           clientId: 'some-client-id',
           appId: 'some-app-id',
@@ -15,8 +15,8 @@ void main() {
         ),
       );
       expect(
-        CreatePatchEventRequest.fromJson(response.toJson()).toJson(),
-        equals(response.toJson()),
+        CreatePatchEventRequest.fromJson(request.toJson()).toJson(),
+        equals(request.toJson()),
       );
     });
   });
