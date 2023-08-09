@@ -78,7 +78,9 @@ class IosArchiveDiffer extends ArchiveDiffer {
     file.writeContent(outputStream);
     outputStream.close();
 
-    Process.runSync('codesign', ['--remove-signature', outPath]);
+    if (Platform.isMacOS) {
+      Process.runSync('codesign', ['--remove-signature', outPath]);
+    }
 
     final outFile = File(outPath);
     final hash = _hash(outFile.readAsBytesSync());
