@@ -105,11 +105,10 @@ class ShorebirdFlutter {
       directory: _workingDirectory(),
     );
 
-    final lines = LineSplitter.split(result)
+    return LineSplitter.split(result)
         .map((e) => e.replaceFirst('origin/flutter_release/', ''))
-        .toList();
-
-    return lines.firstOrNull;
+        .toList()
+        .firstOrNull;
   }
 
   Future<List<String>> getVersions({String? revision}) async {
