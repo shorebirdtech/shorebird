@@ -2,19 +2,18 @@
 
 // ignore_for_file: implicit_dynamic_parameter, require_trailing_commas, cast_nullable_to_non_nullable, lines_longer_than_80_chars
 
-part of 'record_patch_install_request.dart';
+part of 'patch_install_event.dart';
 
 // **************************************************************************
 // JsonSerializableGenerator
 // **************************************************************************
 
-RecordPatchInstallRequest _$RecordPatchInstallRequestFromJson(
-        Map<String, dynamic> json) =>
+PatchInstallEvent _$PatchInstallEventFromJson(Map<String, dynamic> json) =>
     $checkedCreate(
-      'RecordPatchInstallRequest',
+      'PatchInstallEvent',
       json,
       ($checkedConvert) {
-        final val = RecordPatchInstallRequest(
+        final val = PatchInstallEvent(
           clientId: $checkedConvert('client_id', (v) => v as String),
           appId: $checkedConvert('app_id', (v) => v as String),
           releaseVersion:
@@ -23,6 +22,8 @@ RecordPatchInstallRequest _$RecordPatchInstallRequestFromJson(
           platform: $checkedConvert(
               'platform', (v) => $enumDecode(_$ReleasePlatformEnumMap, v)),
           arch: $checkedConvert('arch', (v) => v as String),
+          type: $checkedConvert(
+              'type', (v) => v as String? ?? PatchInstallEvent.identifier),
         );
         return val;
       },
@@ -34,9 +35,9 @@ RecordPatchInstallRequest _$RecordPatchInstallRequestFromJson(
       },
     );
 
-Map<String, dynamic> _$RecordPatchInstallRequestToJson(
-        RecordPatchInstallRequest instance) =>
+Map<String, dynamic> _$PatchInstallEventToJson(PatchInstallEvent instance) =>
     <String, dynamic>{
+      'type': instance.type,
       'client_id': instance.clientId,
       'app_id': instance.appId,
       'release_version': instance.releaseVersion,
