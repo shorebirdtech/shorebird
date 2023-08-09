@@ -51,8 +51,14 @@ Usage: shorebird flutter versions use <version>''');
     }
 
     if (!versions.contains(version)) {
+      final openIssueLink = link(
+        uri: Uri.parse(
+          'https://github.com/shorebirdtech/shorebird/issues/new?assignees=&labels=feature&projects=&template=feature_request.md&title=feat%3A+',
+        ),
+        message: 'open an issue',
+      );
       logger.err('''
-Version $version not found.
+Version $version not found. Please $openIssueLink to request a new version.
 Use `shorebird flutter versions list` to list available versions.''');
       return ExitCode.software.code;
     }

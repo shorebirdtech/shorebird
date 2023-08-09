@@ -4,6 +4,7 @@ import 'dart:io';
 import 'package:path/path.dart' as p;
 import 'package:scoped/scoped.dart';
 import 'package:shorebird_cli/src/git.dart';
+import 'package:shorebird_cli/src/process.dart';
 import 'package:shorebird_cli/src/shorebird_env.dart';
 
 /// A reference to a [ShorebirdFlutter] instance.
@@ -19,6 +20,7 @@ class ShorebirdFlutter {
   /// {@macro shorebird_flutter}
   const ShorebirdFlutter();
 
+  static const executable = 'flutter';
   static const String flutterGitUrl =
       'https://github.com/shorebirdtech/flutter.git';
 
@@ -60,6 +62,30 @@ class ShorebirdFlutter {
       args: ['--untracked-files=no', '--porcelain'],
     );
     return status.isEmpty;
+  }
+
+  /// Returns the current Shorebird Flutter version.
+  /// Throws a [ProcessException] if the version check fails.
+  /// Returns `null` if the version check succeeds but the version cannot be
+  /// parsed.
+  Future<String?> getVersion() async {
+    const args = ['--version'];
+    final result = await process.run(executable, args, runInShell: true);
+
+    if (result.exitCode != 0) {
+      throw ProcessException(
+        executable,
+        args,
+        '${result.stderr}',
+        result.exitCode,
+      );
+    }
+
+    final output = result.stdout.toString();
+    final flutterVersionRegex = RegExp(r'Flutter (\d+.\d+.\d+)');
+    final match = flutterVersionRegex.firstMatch(output);
+
+    return match?.group(1);
   }
 
   Future<List<String>> getVersions({String? revision}) async {

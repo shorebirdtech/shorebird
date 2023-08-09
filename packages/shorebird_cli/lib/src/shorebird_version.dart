@@ -10,7 +10,7 @@ final shorebirdVersionRef = create(ShorebirdVersion.new);
 /// The [ShorebirdVersion] instance available in the current zone.
 ShorebirdVersion get shorebirdVersion => read(shorebirdVersionRef);
 
-/// {@template shorebird_version_manager}
+/// {@template shorebird_version}
 /// Provides information about installed and available versions of Shorebird.
 /// {@endtemplate}
 class ShorebirdVersion {
