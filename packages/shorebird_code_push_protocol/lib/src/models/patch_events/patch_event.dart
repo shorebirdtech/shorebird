@@ -24,9 +24,9 @@ abstract class PatchEvent {
     }
   }
 
-  /// The type of patch event.
-  final String type;
-
   /// Converts a [PatchEvent] to a Map<String, dynamic>
   Map<String, dynamic> toJson();
+
+  /// The type of patch event.
+  final String type;
 }
