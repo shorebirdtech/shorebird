@@ -8,6 +8,9 @@ void main() {
         clientId: 'some-client-id',
         appId: 'some-app-id',
         patchNumber: 2,
+        arch: 'arm64',
+        platform: ReleasePlatform.android,
+        releaseVersion: '1.0.0',
       );
       expect(
         RecordPatchInstallRequest.fromJson(response.toJson()).toJson(),

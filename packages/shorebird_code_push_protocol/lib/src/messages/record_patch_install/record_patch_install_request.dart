@@ -1,4 +1,5 @@
 import 'package:json_annotation/json_annotation.dart';
+import 'package:shorebird_code_push_protocol/shorebird_code_push_protocol.dart';
 
 part 'record_patch_install_request.g.dart';
 
@@ -11,7 +12,10 @@ class RecordPatchInstallRequest {
   RecordPatchInstallRequest({
     required this.clientId,
     required this.appId,
+    required this.releaseVersion,
     required this.patchNumber,
+    required this.platform,
+    required this.arch,
   });
 
   /// Converts a Map<String, dynamic> to a [RecordPatchInstallRequest]
@@ -27,6 +31,15 @@ class RecordPatchInstallRequest {
   /// The id of the app being updated.
   final String appId;
 
+  /// The id of the app being updated.
+  final String releaseVersion;
+
   /// The patch number being installed.
   final int patchNumber;
+
+  /// The platform of the device being updated.
+  final ReleasePlatform platform;
+
+  /// The architecture of the device being updated.
+  final String arch;
 }
