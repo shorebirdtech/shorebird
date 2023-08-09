@@ -93,8 +93,15 @@ class Git {
     required String directory,
     required String format,
     required String pattern,
+    String? pointsAt,
   }) async {
-    final arguments = ['for-each-ref', '--format', format, pattern];
+    final arguments = [
+      'for-each-ref',
+      if (pointsAt != null) ...['--points-at', pointsAt],
+      '--format',
+      format,
+      pattern
+    ];
     final result = await process.run(
       executable,
       arguments,

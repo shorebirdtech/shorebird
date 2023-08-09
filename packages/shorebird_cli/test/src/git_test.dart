@@ -223,6 +223,36 @@ origin/flutter_release/3.10.6''';
         ).called(1);
       });
 
+      test('executes correct command w/points-at', () async {
+        const pointsAt = 'revision';
+        when(() => processResult.stdout).thenReturn(output);
+        await expectLater(
+          runWithOverrides(
+            () => git.forEachRef(
+              pointsAt: pointsAt,
+              pattern: pattern,
+              format: format,
+              directory: directory,
+            ),
+          ),
+          completion(equals(output.trim())),
+        );
+        verify(
+          () => process.run(
+            'git',
+            [
+              'for-each-ref',
+              '--points-at',
+              pointsAt,
+              '--format',
+              format,
+              pattern
+            ],
+            workingDirectory: directory,
+          ),
+        ).called(1);
+      });
+
       test('throws ProcessException if process exits with error', () async {
         const error = 'oops';
         when(() => processResult.exitCode).thenReturn(ExitCode.software.code);
