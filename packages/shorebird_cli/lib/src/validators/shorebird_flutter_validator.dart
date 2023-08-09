@@ -116,9 +116,9 @@ This can cause unexpected behavior if you are switching between the tools and th
   Future<String> _getFlutterVersion({bool useVendedFlutter = true}) async {
     final String? version;
     try {
-      version = await shorebirdFlutter.getVersion(
-        useVendedFlutter: useVendedFlutter,
-      );
+      version = useVendedFlutter
+          ? await shorebirdFlutter.getVersion()
+          : await shorebirdFlutter.getSystemVersion();
     } on ProcessException catch (error) {
       throw FlutterValidationException(
         'Flutter version check did not complete successfully. ${error.message}',

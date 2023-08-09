@@ -64,20 +64,17 @@ class ShorebirdFlutter {
     return status.isEmpty;
   }
 
-  /// Returns the current Shorebird Flutter version.
+  /// Returns the current system Flutter version.
   /// Throws a [ProcessException] if the version check fails.
   /// Returns `null` if the version check succeeds but the version cannot be
   /// parsed.
-  ///
-  /// If [useVendedFlutter] is `true`, the vended Flutter is used instead of
-  /// the system Flutter. Defaults to true.
-  Future<String?> getVersion({bool useVendedFlutter = true}) async {
+  Future<String?> getSystemVersion() async {
     const args = ['--version'];
     final result = await process.run(
       executable,
       args,
       runInShell: true,
-      useVendedFlutter: useVendedFlutter,
+      useVendedFlutter: false,
     );
 
     if (result.exitCode != 0) {
@@ -94,6 +91,25 @@ class ShorebirdFlutter {
     final match = flutterVersionRegex.firstMatch(output);
 
     return match?.group(1);
+  }
+
+  /// Returns the current Shorebird Flutter version.
+  /// Throws a [ProcessException] if the version check fails.
+  /// Returns `null` if the version check succeeds but the version cannot be
+  /// parsed.
+  Future<String?> getVersion() async {
+    final result = await git.forEachRef(
+      pointsAt: shorebirdEnv.flutterRevision,
+      format: '%(refname:short)',
+      pattern: 'refs/remotes/origin/flutter_release/*',
+      directory: _workingDirectory(),
+    );
+
+    final lines = LineSplitter.split(result)
+        .map((e) => e.replaceFirst('origin/flutter_release/', ''))
+        .toList();
+
+    return lines.firstOrNull;
   }
 
   Future<List<String>> getVersions({String? revision}) async {
