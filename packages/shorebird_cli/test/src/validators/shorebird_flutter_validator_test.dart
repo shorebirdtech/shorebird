@@ -5,13 +5,10 @@ import 'package:path/path.dart' as p;
 import 'package:platform/platform.dart';
 import 'package:scoped/scoped.dart';
 import 'package:shorebird_cli/src/platform.dart';
-import 'package:shorebird_cli/src/process.dart';
 import 'package:shorebird_cli/src/shorebird_env.dart';
 import 'package:shorebird_cli/src/shorebird_flutter.dart';
 import 'package:shorebird_cli/src/validators/validators.dart';
 import 'package:test/test.dart';
-
-class _MockProcessResult extends Mock implements ShorebirdProcessResult {}
 
 class _MockPlatform extends Mock implements Platform {}
 
@@ -19,31 +16,13 @@ class _MockShorebirdEnv extends Mock implements ShorebirdEnv {}
 
 class _MockShorebirdFlutter extends Mock implements ShorebirdFlutter {}
 
-class _MockShorebirdProcess extends Mock implements ShorebirdProcess {}
-
 void main() {
   group(ShorebirdFlutterValidator, () {
     const flutterRevision = '45fc514f1a9c347a3af76b02baf980a4d88b7879';
-
-    const pathFlutterVersionMessage = '''
-Flutter 3.7.9 • channel unknown • unknown source
-Framework • revision 62bd79521d (7 days ago) • 2023-03-30 10:59:36 -0700
-Engine • revision ec975089ac
-Tools • Dart 2.19.6 • DevTools 2.20.1
-''';
-
-    const shorebirdFlutterVersionMessage = '''
-Flutter 3.7.9 • channel stable • https://github.com/shorebirdtech/flutter.git
-Framework • revision 62bd79521d (7 days ago) • 2023-03-30 10:59:36 -0700
-Engine • revision ec975089ac
-Tools • Dart 2.19.6 • DevTools 2.20.1
-''';
+    const flutterVersion = '3.7.9';
 
     late ShorebirdFlutterValidator validator;
     late Directory tempDir;
-    late ShorebirdProcessResult pathFlutterVersionProcessResult;
-    late ShorebirdProcessResult shorebirdFlutterVersionProcessResult;
-    late ShorebirdProcess shorebirdProcess;
     late ShorebirdEnv shorebirdEnv;
     late ShorebirdFlutter shorebirdFlutter;
     late Platform platform;
@@ -53,7 +32,6 @@ Tools • Dart 2.19.6 • DevTools 2.20.1
         () => body(),
         values: {
           platformRef.overrideWith(() => platform),
-          processRef.overrideWith(() => shorebirdProcess),
           shorebirdEnvRef.overrideWith(() => shorebirdEnv),
           shorebirdFlutterRef.overrideWith(() => shorebirdFlutter),
         },
@@ -63,12 +41,8 @@ Tools • Dart 2.19.6 • DevTools 2.20.1
     Directory flutterDirectory(Directory root) =>
         Directory(p.join(root.path, 'bin', 'cache', 'flutter'));
 
-    File shorebirdScriptFile(Directory root) =>
-        File(p.join(root.path, 'bin', 'cache', 'shorebird.snapshot'));
-
     Directory setupTempDirectory() {
       final tempDir = Directory.systemTemp.createTempSync();
-      shorebirdScriptFile(tempDir).createSync(recursive: true);
       flutterDirectory(tempDir).createSync(recursive: true);
       return tempDir;
     }
@@ -83,12 +57,12 @@ Tools • Dart 2.19.6 • DevTools 2.20.1
       when(
         () => shorebirdEnv.flutterDirectory,
       ).thenReturn(flutterDirectory(tempDir));
-      when(() => platform.script).thenReturn(shorebirdScriptFile(tempDir).uri);
       when(() => platform.environment).thenReturn({});
-
-      pathFlutterVersionProcessResult = _MockProcessResult();
-      shorebirdFlutterVersionProcessResult = _MockProcessResult();
-      shorebirdProcess = _MockShorebirdProcess();
+      when(
+        () => shorebirdFlutter.getVersion(
+          useVendedFlutter: any(named: 'useVendedFlutter'),
+        ),
+      ).thenAnswer((_) async => flutterVersion);
 
       validator = ShorebirdFlutterValidator();
       when(
@@ -96,30 +70,6 @@ Tools • Dart 2.19.6 • DevTools 2.20.1
           revision: any(named: 'revision'),
         ),
       ).thenAnswer((_) async => true);
-      when(
-        () => shorebirdProcess.run(
-          'flutter',
-          ['--version'],
-          runInShell: any(named: 'runInShell'),
-        ),
-      ).thenAnswer((_) async => shorebirdFlutterVersionProcessResult);
-      when(
-        () => shorebirdProcess.run(
-          'flutter',
-          ['--version'],
-          useVendedFlutter: false,
-          runInShell: any(named: 'runInShell'),
-        ),
-      ).thenAnswer((_) async => pathFlutterVersionProcessResult);
-
-      when(() => pathFlutterVersionProcessResult.stdout)
-          .thenReturn(pathFlutterVersionMessage);
-      when(() => pathFlutterVersionProcessResult.stderr).thenReturn('');
-      when(() => pathFlutterVersionProcessResult.exitCode).thenReturn(0);
-      when(() => shorebirdFlutterVersionProcessResult.stdout)
-          .thenReturn(shorebirdFlutterVersionMessage);
-      when(() => shorebirdFlutterVersionProcessResult.stderr).thenReturn('');
-      when(() => shorebirdFlutterVersionProcessResult.exitCode).thenReturn(0);
     });
 
     test('has a non-empty description', () {
@@ -164,9 +114,9 @@ Tools • Dart 2.19.6 • DevTools 2.20.1
       'does not warn if flutter version and shorebird flutter version have same'
       ' major and minor but different patch versions',
       () async {
-        when(() => pathFlutterVersionProcessResult.stdout).thenReturn(
-          pathFlutterVersionMessage.replaceAll('3.7.9', '3.7.10'),
-        );
+        when(
+          () => shorebirdFlutter.getVersion(useVendedFlutter: false),
+        ).thenAnswer((_) async => '3.7.10');
 
         final results = await runWithOverrides(
           () => validator.validate(),
@@ -180,9 +130,9 @@ Tools • Dart 2.19.6 • DevTools 2.20.1
       'warns when path flutter version has different major or minor version '
       'than shorebird flutter',
       () async {
-        when(() => pathFlutterVersionProcessResult.stdout).thenReturn(
-          pathFlutterVersionMessage.replaceAll('3.7.9', '3.8.9'),
-        );
+        when(
+          () => shorebirdFlutter.getVersion(useVendedFlutter: false),
+        ).thenAnswer((_) async => '3.8.9');
 
         final results = await runWithOverrides(validator.validate);
 
@@ -219,10 +169,17 @@ Tools • Dart 2.19.6 • DevTools 2.20.1
       },
     );
 
-    test('throws exception if path flutter version output is malformed',
-        () async {
-      when(() => pathFlutterVersionProcessResult.stdout)
-          .thenReturn('OH NO THERE IS NO FLUTTER VERSION HERE');
+    test('throws exception if path flutter version lookup fails', () async {
+      when(
+        () => shorebirdFlutter.getVersion(useVendedFlutter: false),
+      ).thenThrow(
+        const ProcessException(
+          'flutter',
+          ['--version'],
+          'OH NO THERE IS NO FLUTTER VERSION HERE',
+          1,
+        ),
+      );
 
       final results = await runWithOverrides(validator.validate);
 
@@ -237,48 +194,18 @@ Tools • Dart 2.19.6 • DevTools 2.20.1
       );
     });
 
-    test('prints stderr output and throws if path Flutterversion check fails',
+    test('throws exception if shorebird flutter version lookup fails',
         () async {
-      when(() => pathFlutterVersionProcessResult.exitCode).thenReturn(1);
-      when(() => pathFlutterVersionProcessResult.stderr)
-          .thenReturn('error getting Flutter version');
-
-      final results = await runWithOverrides(validator.validate);
-
-      expect(results, hasLength(1));
-      expect(
-        results[0],
-        isA<ValidationIssue>().having(
-          (exception) => exception.message,
-          'message',
-          contains('Failed to determine path Flutter version'),
+      when(
+        () => shorebirdFlutter.getVersion(),
+      ).thenThrow(
+        const ProcessException(
+          'flutter',
+          ['--version'],
+          'OH NO THERE IS NO FLUTTER VERSION HERE',
+          1,
         ),
       );
-    });
-
-    test('throws exception if shorebird flutter version output is malformed',
-        () async {
-      when(() => shorebirdFlutterVersionProcessResult.stdout)
-          .thenReturn('OH NO THERE IS NO FLUTTER VERSION HERE');
-
-      final results = await runWithOverrides(validator.validate);
-
-      expect(results, hasLength(1));
-      expect(
-        results[0],
-        isA<ValidationIssue>().having(
-          (exception) => exception.message,
-          'message',
-          contains('Failed to determine Shorebird Flutter version'),
-        ),
-      );
-    });
-
-    test('prints stderr output and throws if path Flutterversion check fails',
-        () async {
-      when(() => shorebirdFlutterVersionProcessResult.exitCode).thenReturn(1);
-      when(() => shorebirdFlutterVersionProcessResult.stderr)
-          .thenReturn('error getting Flutter version');
 
       final results = await runWithOverrides(validator.validate);
 
