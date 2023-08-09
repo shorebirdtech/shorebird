@@ -1,4 +1,5 @@
 import 'package:json_annotation/json_annotation.dart';
+import 'package:shorebird_code_push_protocol/shorebird_code_push_protocol.dart';
 
 part 'check_for_patches_request.g.dart';
 
@@ -35,7 +36,7 @@ class CheckForPatchesRequest {
   final String? patchHash;
 
   /// The platform of the app.
-  final String platform;
+  final ReleasePlatform platform;
 
   /// The architecture of the app.
   final String arch;

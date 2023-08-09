@@ -3,20 +3,19 @@ import 'dart:io';
 import 'package:mason_logger/mason_logger.dart';
 import 'package:path/path.dart' as p;
 import 'package:shorebird_cli/src/command.dart';
+import 'package:shorebird_cli/src/doctor.dart';
 import 'package:shorebird_cli/src/logger.dart';
 import 'package:shorebird_cli/src/shorebird_build_mixin.dart';
-import 'package:shorebird_cli/src/shorebird_config_mixin.dart';
-import 'package:shorebird_cli/src/shorebird_validation_mixin.dart';
+import 'package:shorebird_cli/src/shorebird_validator.dart';
 
 /// {@template build_app_bundle_command}
 ///
 /// `shorebird build appbundle`
 /// Build an Android App Bundle file from your app.
 /// {@endtemplate}
-class BuildAppBundleCommand extends ShorebirdCommand
-    with ShorebirdConfigMixin, ShorebirdValidationMixin, ShorebirdBuildMixin {
+class BuildAppBundleCommand extends ShorebirdCommand with ShorebirdBuildMixin {
   /// {@macro build_app_bundle_command}
-  BuildAppBundleCommand({super.validators}) {
+  BuildAppBundleCommand() {
     argParser
       ..addOption(
         'target',
@@ -38,9 +37,10 @@ class BuildAppBundleCommand extends ShorebirdCommand
   @override
   Future<int> run() async {
     try {
-      await validatePreconditions(
+      await shorebirdValidator.validatePreconditions(
         checkUserIsAuthenticated: true,
-        checkValidators: true,
+        checkShorebirdInitialized: true,
+        validators: doctor.androidCommandValidators,
       );
     } on PreconditionFailedException catch (e) {
       return e.exitCode.code;

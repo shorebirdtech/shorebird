@@ -15,17 +15,14 @@ CreateChannelRequest _$CreateChannelRequestFromJson(
       json,
       ($checkedConvert) {
         final val = CreateChannelRequest(
-          appId: $checkedConvert('app_id', (v) => v as String),
           channel: $checkedConvert('channel', (v) => v as String),
         );
         return val;
       },
-      fieldKeyMap: const {'appId': 'app_id'},
     );
 
 Map<String, dynamic> _$CreateChannelRequestToJson(
         CreateChannelRequest instance) =>
     <String, dynamic>{
-      'app_id': instance.appId,
       'channel': instance.channel,
     };

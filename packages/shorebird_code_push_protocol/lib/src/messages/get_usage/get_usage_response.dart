@@ -1,5 +1,4 @@
 import 'package:json_annotation/json_annotation.dart';
-import 'package:money2/money2.dart';
 import 'package:shorebird_code_push_protocol/shorebird_code_push_protocol.dart';
 
 part 'get_usage_response.g.dart';
@@ -16,7 +15,6 @@ class GetUsageResponse {
     required this.currentPeriodStart,
     required this.currentPeriodEnd,
     required this.currentPeriodCost,
-    this.patchInstallLimit,
   });
 
   /// Converts a Map<String, dynamic> to a [GetUsageResponse].
@@ -42,10 +40,6 @@ class GetUsageResponse {
   /// monthly cost and any overages.
   @MoneyConverter()
   final Money currentPeriodCost;
-
-  /// The upper limit of patch installs for the current billing period.
-  /// If `null`, there is no limit.
-  final int? patchInstallLimit;
 }
 
 /// {@template app_usage}

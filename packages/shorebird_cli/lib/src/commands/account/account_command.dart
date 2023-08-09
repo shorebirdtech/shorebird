@@ -8,8 +8,6 @@ import 'package:shorebird_cli/src/commands/commands.dart';
 class AccountCommand extends ShorebirdCommand {
   /// {@macro account_command}
   AccountCommand() {
-    addSubcommand(AccountUsageCommand());
-    addSubcommand(CreateAccountCommand());
     addSubcommand(DowngradeAccountCommand());
     addSubcommand(UpgradeAccountCommand());
   }

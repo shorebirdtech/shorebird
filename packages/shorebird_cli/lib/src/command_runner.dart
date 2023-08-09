@@ -7,8 +7,10 @@ import 'package:mason_logger/mason_logger.dart';
 import 'package:scoped/scoped.dart';
 import 'package:shorebird_cli/src/commands/commands.dart';
 import 'package:shorebird_cli/src/logger.dart';
+import 'package:shorebird_cli/src/platform.dart';
 import 'package:shorebird_cli/src/process.dart';
-import 'package:shorebird_cli/src/shorebird_environment.dart';
+import 'package:shorebird_cli/src/shorebird_env.dart';
+import 'package:shorebird_cli/src/shorebird_flutter.dart';
 import 'package:shorebird_cli/src/version.dart';
 
 const executableName = 'shorebird';
@@ -60,11 +62,13 @@ class ShorebirdCliCommandRunner extends CompletionCommandRunner<int> {
     addCommand(CacheCommand());
     addCommand(CollaboratorsCommand());
     addCommand(DoctorCommand());
+    addCommand(FlutterCommand());
     addCommand(InitCommand());
     addCommand(LoginCommand());
     addCommand(LoginCiCommand());
     addCommand(LogoutCommand());
     addCommand(PatchCommand());
+    addCommand(PreviewCommand());
     addCommand(ReleaseCommand());
     addCommand(ReleasesCommand());
     addCommand(RunCommand());
@@ -112,14 +116,24 @@ class ShorebirdCliCommandRunner extends CompletionCommandRunner<int> {
 
       logger.err(e.message);
       if (e.message.contains('Could not find an option named')) {
-        logger.err(
-          '''
+        final String errorMessage;
+        if (platform.isWindows) {
+          errorMessage = '''
+To proxy an option to the flutter command, use the '--' --<option> syntax.
+
+Example:
+
+${lightCyan.wrap("shorebird release android '--' --no-pub lib/main.dart")}''';
+        } else {
+          errorMessage = '''
 To proxy an option to the flutter command, use the -- --<option> syntax.
 
 Example:
 
-${lightCyan.wrap('shorebird run -- --no-pub lib/main.dart')}''',
-        );
+${lightCyan.wrap('shorebird release android -- --no-pub lib/main.dart')}''';
+        }
+
+        logger.err(errorMessage);
       }
 
       logger
@@ -140,16 +154,29 @@ ${lightCyan.wrap('shorebird run -- --no-pub lib/main.dart')}''',
     // Run the command or show version
     final int? exitCode;
     if (topLevelResults['version'] == true) {
-      logger.info(
-        '''
-Shorebird $packageVersion
-Shorebird Engine • revision ${ShorebirdEnvironment.shorebirdEngineRevision}''',
-      );
+      final flutterVersion = await _tryGetFlutterVersion();
+      final shorebirdFlutterPrefix = StringBuffer('Flutter');
+      if (flutterVersion != null) {
+        shorebirdFlutterPrefix.write(' $flutterVersion');
+      }
+      logger.info('''
+Shorebird $packageVersion • git@github.com:shorebirdtech/shorebird.git
+$shorebirdFlutterPrefix • revision ${shorebirdEnv.flutterRevision}
+Engine • revision ${shorebirdEnv.shorebirdEngineRevision}''');
       exitCode = ExitCode.success.code;
     } else {
       exitCode = await super.runCommand(topLevelResults);
     }
 
     return exitCode;
+  }
+
+  Future<String?> _tryGetFlutterVersion() async {
+    try {
+      return await shorebirdFlutter.getVersion();
+    } catch (error) {
+      logger.detail('Unable to determine Flutter version.\n$error');
+      return null;
+    }
   }
 }

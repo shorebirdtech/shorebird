@@ -2,6 +2,114 @@
 
 This section contains past updates we've sent to customers via Discord.
 
+## 0.12.1 (August 5, 2023)
+
+We've just released Shorebird v0.12.1 🎉
+
+- 🩹 fix for `shorebird release android --artifact apk` where `--split-per-abi` was incorrectly always enabled.
+
+📚 Release notes can be found at https://github.com/shorebirdtech/shorebird/releases/tag/v0.12.1
+
+As always, you can upgrade using `shorebird upgrade`
+
+Please let us know if we can help!
+
+## 0.12.0 (August 4, 2023)
+
+We've just released Shorebird v0.12.0 🎉
+
+- 📜 `shorebird patch` supports patching releases that used older Flutter versions
+- ✅ `shorebird.yaml` exposes `auto_update` which can be used to disable automatic update checks
+- 🗂️ `shorebird patch ios-alpha` warns users of asset changes
+- 📦 `shorebird release android` supports `--split-per-abi` flag
+
+📚 Release notes can be found at https://github.com/shorebirdtech/shorebird/releases/tag/v0.12.0
+
+As always, you can upgrade using `shorebird upgrade`
+
+Please let us know if we can help!
+
+## 0.11.2 (August 1, 2023)
+
+We've just released Shorebird v0.11.2 🎉
+
+- 🧩 Add-to-app support for iOS
+  - `shorebird release ios-framework-alpha`
+  - `shorebird patch ios-framework-alpha`
+  - 📚 See our [new guides](https://docs.shorebird.dev/add-to-app)
+- 🍧 Flavor support for iOS
+  - `shorebird release ios-alpha --flavor <flavor>`
+  - `shorebird patch ios-alpha --flavor <flavor>`
+  - 📚 See our [new guides](https://docs.shorebird.dev/flavors)
+- 🦀 Improve rust logging to reduce noise
+
+📚 Release notes can be found at https://github.com/shorebirdtech/shorebird/releases/tag/v0.11.2
+
+As always, you can upgrade using `shorebird upgrade`
+
+Please let us know if we can help!
+
+## 0.11.1 (July 28, 2023)
+
+We've just released Shorebird v0.11.1 🎉
+
+- 🔄 Add retry logic to networking layer
+- 🩹 Improve iOS flavors error until we add support for flavors
+- 🧹 Deprecated `apps list`, `apps delete`, `releases list`, and `accounts upgrade` commands
+  - This functionality has been moved to console.shorebird.dev
+
+📚 Release notes can be found at https://github.com/shorebirdtech/shorebird/releases/tag/v0.11.1
+
+As always, you can upgrade using `shorebird upgrade`
+
+Please let us know if we can help!
+
+## 0.11.0 (July 26, 2023)
+
+We've just released Shorebird v0.11.0 🎉
+
+- 🍎 iOS is now in alpha (!!!)
+  - New `shorebird release ios-alpha` and `shorebird patch ios-alpha` commands
+  - `shorebird preview` support for iOS
+- 🧑‍⚕️ `shorebird init` automatically runs `shorebird doctor` checks and fixes
+- 🧹 Remove deprecated `shorebird account create` and `shorebird account usage` commands
+  - This functionality has been moved to console.shorebird.dev
+
+📚 Release notes can be found at https://github.com/shorebirdtech/shorebird/releases/tag/v0.11.0
+
+As always, you can upgrade using `shorebird upgrade`
+
+Please let us know if we can help!
+
+## 0.10.0 (July 20, 2023)
+
+We've just released Shorebird v0.10.0 🎉
+
+- ✨ `shorebird patch` warns users of incomplete releases
+- 📈 New console.shorebird.dev accounts page to view plan and usage info
+- 🧹 Remove deprecated `shorebird run` command
+
+📚 Release notes can be found at https://github.com/shorebirdtech/shorebird/releases/tag/v0.10.0
+
+As always, you can upgrade using `shorebird upgrade`
+
+Please let us know if we can help!
+
+## 0.9.2 (July 14, 2023)
+
+We've just released Shorebird v0.9.2 🎉
+
+- 🐦 Upgrading to Flutter 3.10.6
+- 👀 New `shorebird preview` command
+- 🎮 New release of [package:shorebird_code_push](https://pub.dev/packages/shorebird_code_push)
+- 🧩 `shorebird patch` allows user to proceed if java/kotlin changes are detected
+
+📚 Release notes can be found at https://github.com/shorebirdtech/shorebird/releases/tag/v0.9.2
+
+As always, you can upgrade using `shorebird upgrade`
+
+Please let us know if we can help!
+
 ## 0.9.1 (July 10, 2023)
 
 We've just released Shorebird v0.9.1 🎉

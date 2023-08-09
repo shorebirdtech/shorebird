@@ -30,27 +30,33 @@ Future<void> main() async {
 
   // Create a release artifact.
   await client.createReleaseArtifact(
+    appId: app.id,
     releaseId: release.id,
+    platform: ReleasePlatform.android,
     artifactPath: '<PATH TO ARTIFACT>', // e.g. 'libapp.so'
-    platform: '<PLATFORM>', // e.g. 'android'
     arch: '<ARCHITECTURE>', // e.g. 'aarch64'
     hash: '<HASH>', // 'sha256 hash of the artifact'
   );
 
   // Create a new patch.
-  final patch = await client.createPatch(releaseId: release.id);
+  final patch = await client.createPatch(appId: app.id, releaseId: release.id);
 
   // Create a patch artifact.
   await client.createPatchArtifact(
+    appId: app.id,
     patchId: patch.id,
+    platform: ReleasePlatform.android,
     artifactPath: '<PATH TO ARTIFACT>', // e.g. 'libapp.so'
-    platform: '<PLATFORM>', // e.g. 'android'
     arch: '<ARCHITECTURE>', // e.g. 'aarch64'
     hash: '<HASH>', // 'sha256 hash of the artifact'
   );
 
   // Promote a patch to a channel.
-  await client.promotePatch(patchId: patch.id, channelId: channel.id);
+  await client.promotePatch(
+    appId: app.id,
+    patchId: patch.id,
+    channelId: channel.id,
+  );
 
   // Close the client.
   client.close();

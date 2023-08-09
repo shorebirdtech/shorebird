@@ -5,25 +5,22 @@ import 'package:path/path.dart' as p;
 import 'package:shorebird_cli/src/code_push_client_wrapper.dart';
 import 'package:shorebird_cli/src/command.dart';
 import 'package:shorebird_cli/src/config/shorebird_yaml.dart';
+import 'package:shorebird_cli/src/doctor.dart';
 import 'package:shorebird_cli/src/logger.dart';
 import 'package:shorebird_cli/src/shorebird_build_mixin.dart';
-import 'package:shorebird_cli/src/shorebird_config_mixin.dart';
-import 'package:shorebird_cli/src/shorebird_environment.dart';
+import 'package:shorebird_cli/src/shorebird_env.dart';
 import 'package:shorebird_cli/src/shorebird_release_version_mixin.dart';
-import 'package:shorebird_cli/src/shorebird_validation_mixin.dart';
+import 'package:shorebird_cli/src/shorebird_validator.dart';
+import 'package:shorebird_code_push_client/shorebird_code_push_client.dart';
 
 /// {@template release_android_command}
 /// `shorebird release android`
 /// Create new app releases for Android.
 /// {@endtemplate}
 class ReleaseAndroidCommand extends ShorebirdCommand
-    with
-        ShorebirdConfigMixin,
-        ShorebirdValidationMixin,
-        ShorebirdBuildMixin,
-        ShorebirdReleaseVersionMixin {
+    with ShorebirdBuildMixin, ShorebirdReleaseVersionMixin {
   /// {@macro release_android_command}
-  ReleaseAndroidCommand({super.validators}) {
+  ReleaseAndroidCommand() {
     argParser
       ..addOption(
         'target',
@@ -43,6 +40,12 @@ class ReleaseAndroidCommand extends ShorebirdCommand
           'aab': 'Android App Bundle',
           'apk': 'Android Package Kit',
         },
+      )
+      ..addFlag(
+        'split-per-abi',
+        help: 'Whether to split the APKs per ABIs. '
+            'To learn more, see: https://developer.android.com/studio/build/configure-apk-splits#configure-abi-split',
+        negatable: false,
       )
       ..addFlag(
         'force',
@@ -65,31 +68,36 @@ make smaller updates to your app.
   @override
   Future<int> run() async {
     try {
-      await validatePreconditions(
+      await shorebirdValidator.validatePreconditions(
         checkUserIsAuthenticated: true,
         checkShorebirdInitialized: true,
-        checkValidators: true,
+        validators: doctor.androidCommandValidators,
       );
     } on PreconditionFailedException catch (e) {
       return e.exitCode.code;
     }
 
-    const platformName = 'android';
+    const platform = ReleasePlatform.android;
     final flavor = results['flavor'] as String?;
     final target = results['target'] as String?;
     final generateApk = results['artifact'] as String == 'apk';
     final buildProgress = logger.progress('Building release');
     try {
       await buildAppBundle(flavor: flavor, target: target);
-      if (generateApk) await buildApk(flavor: flavor, target: target);
+      if (generateApk) {
+        await buildApk(
+          flavor: flavor,
+          target: target,
+          splitPerAbi: results['split-per-abi'] == true,
+        );
+      }
       buildProgress.complete();
     } on ProcessException catch (error) {
       buildProgress.fail('Failed to build: ${error.message}');
       return ExitCode.software.code;
     }
 
-    final shorebirdYaml = ShorebirdEnvironment.getShorebirdYaml()!;
-
+    final shorebirdYaml = shorebirdEnv.getShorebirdYaml()!;
     final appId = shorebirdYaml.getAppId(flavor: flavor);
     final app = await codePushClientWrapper.getApp(appId: appId);
 
@@ -120,9 +128,9 @@ make smaller updates to your app.
     );
 
     if (existingRelease != null) {
-      await codePushClientWrapper.ensureReleaseHasNoArtifacts(
-        existingRelease: existingRelease,
-        platform: platformName,
+      codePushClientWrapper.ensureReleaseIsNotActive(
+        release: existingRelease,
+        platform: platform,
       );
     }
 
@@ -131,7 +139,7 @@ make smaller updates to your app.
       '''📱 App: ${lightCyan.wrap(app.displayName)} ${lightCyan.wrap('(${app.appId})')}''',
       if (flavor != null) '🍧 Flavor: ${lightCyan.wrap(flavor)}',
       '📦 Release Version: ${lightCyan.wrap(releaseVersion)}',
-      '''🕹️  Platform: ${lightCyan.wrap(platformName)} ${lightCyan.wrap('(${archNames.join(', ')})')}''',
+      '''🕹️  Platform: ${lightCyan.wrap(platform.name)} ${lightCyan.wrap('(${archNames.join(', ')})')}''',
     ];
 
     logger.info('''
@@ -152,31 +160,38 @@ ${summary.join('\n')}
       }
     }
 
-    final flutterRevisionProgress = logger.progress(
-      'Fetching Flutter revision',
-    );
-    final String shorebirdFlutterRevision;
-    try {
-      shorebirdFlutterRevision = await getShorebirdFlutterRevision();
-      flutterRevisionProgress.complete();
-    } catch (error) {
-      flutterRevisionProgress.fail('$error');
-      return ExitCode.software.code;
+    final Release release;
+    if (existingRelease != null) {
+      release = existingRelease;
+      await codePushClientWrapper.updateReleaseStatus(
+        appId: appId,
+        releaseId: release.id,
+        platform: platform,
+        status: ReleaseStatus.draft,
+      );
+    } else {
+      release = await codePushClientWrapper.createRelease(
+        appId: appId,
+        version: releaseVersion,
+        flutterRevision: shorebirdEnv.flutterRevision,
+        platform: platform,
+      );
     }
 
-    final release = existingRelease ??
-        await codePushClientWrapper.createRelease(
-          appId: appId,
-          version: releaseVersion,
-          flutterRevision: shorebirdFlutterRevision,
-        );
-
     await codePushClientWrapper.createAndroidReleaseArtifacts(
+      appId: app.appId,
       releaseId: release.id,
       aabPath: bundlePath,
-      platform: platformName,
+      platform: platform,
       architectures: architectures,
       flavor: flavor,
+    );
+
+    await codePushClientWrapper.updateReleaseStatus(
+      appId: app.appId,
+      releaseId: release.id,
+      platform: platform,
+      status: ReleaseStatus.active,
     );
 
     logger

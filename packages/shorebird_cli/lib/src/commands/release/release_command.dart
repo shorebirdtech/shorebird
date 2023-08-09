@@ -11,6 +11,7 @@ class ReleaseCommand extends ShorebirdCommand {
     addSubcommand(ReleaseAarCommand());
     addSubcommand(ReleaseAndroidCommand());
     addSubcommand(ReleaseIosCommand());
+    addSubcommand(ReleaseIosFrameworkCommand());
   }
 
   @override

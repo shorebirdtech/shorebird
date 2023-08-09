@@ -1,0 +1,168 @@
+[....] Waiting for iOS device to be connected
+[....] Using 82b15a4a69ad47c74fe3e71b62a6a6e2842efe25 (D22AP, iPhone X, iphoneos, arm64, 16.3.1, 20D67) a.k.a. 'Felix’s iPhone'.
+------ Install phase ------
+[  0%] Found 82b15a4a69ad47c74fe3e71b62a6a6e2842efe25 (D22AP, iPhone X, iphoneos, arm64, 16.3.1, 20D67) a.k.a. 'Felix’s iPhone' connected through USB, beginning install
+[  5%] Copying /Users/felix/Development/github.com/shorebirdtech/_shorebird/shorebird/bin/cache/previews/b3be02c7-97a8-4135-be71-814cc43d096e/ios_1.0.4+7.app/META-INF/ to device
+[  5%] Copying /Users/felix/Development/github.com/shorebirdtech/_shorebird/shorebird/bin/cache/previews/b3be02c7-97a8-4135-be71-814cc43d096e/ios_1.0.4+7.app/META-INF/com.apple.ZipMetadata.plist to device
+[  5%] Copying /Users/felix/Development/github.com/shorebirdtech/_shorebird/shorebird/bin/cache/previews/b3be02c7-97a8-4135-be71-814cc43d096e/ios_1.0.4+7.app/_CodeSignature/ to device
+[  5%] Copying /Users/felix/Development/github.com/shorebirdtech/_shorebird/shorebird/bin/cache/previews/b3be02c7-97a8-4135-be71-814cc43d096e/ios_1.0.4+7.app/_CodeSignature/CodeResources to device
+[  6%] Copying /Users/felix/Development/github.com/shorebirdtech/_shorebird/shorebird/bin/cache/previews/b3be02c7-97a8-4135-be71-814cc43d096e/ios_1.0.4+7.app/_CodeSignature/CodeResources to device
+[  6%] Copying /Users/felix/Development/github.com/shorebirdtech/_shorebird/shorebird/bin/cache/previews/b3be02c7-97a8-4135-be71-814cc43d096e/ios_1.0.4+7.app/AppIcon60x60@2x.png to device
+[  6%] Copying /Users/felix/Development/github.com/shorebirdtech/_shorebird/shorebird/bin/cache/previews/b3be02c7-97a8-4135-be71-814cc43d096e/ios_1.0.4+7.app/Runner to device
+[  6%] Copying /Users/felix/Development/github.com/shorebirdtech/_shorebird/shorebird/bin/cache/previews/b3be02c7-97a8-4135-be71-814cc43d096e/ios_1.0.4+7.app/Base.lproj/ to device
+[  7%] Copying /Users/felix/Development/github.com/shorebirdtech/_shorebird/shorebird/bin/cache/previews/b3be02c7-97a8-4135-be71-814cc43d096e/ios_1.0.4+7.app/Base.lproj/ to device
+[  7%] Copying /Users/felix/Development/github.com/shorebirdtech/_shorebird/shorebird/bin/cache/previews/b3be02c7-97a8-4135-be71-814cc43d096e/ios_1.0.4+7.app/Base.lproj/Main.storyboardc/ to device
+[  7%] Copying /Users/felix/Development/github.com/shorebirdtech/_shorebird/shorebird/bin/cache/previews/b3be02c7-97a8-4135-be71-814cc43d096e/ios_1.0.4+7.app/Base.lproj/Main.storyboardc/UIViewController-BYZ-38-t0r.nib to device
+[  7%] Copying /Users/felix/Development/github.com/shorebirdtech/_shorebird/shorebird/bin/cache/previews/b3be02c7-97a8-4135-be71-814cc43d096e/ios_1.0.4+7.app/Base.lproj/Main.storyboardc/BYZ-38-t0r-view-8bC-Xf-vdC.nib to device
+[  7%] Copying /Users/felix/Development/github.com/shorebirdtech/_shorebird/shorebird/bin/cache/previews/b3be02c7-97a8-4135-be71-814cc43d096e/ios_1.0.4+7.app/Base.lproj/Main.storyboardc/Info.plist to device
+[  8%] Copying /Users/felix/Development/github.com/shorebirdtech/_shorebird/shorebird/bin/cache/previews/b3be02c7-97a8-4135-be71-814cc43d096e/ios_1.0.4+7.app/Base.lproj/Main.storyboardc/Info.plist to device
+[  8%] Copying /Users/felix/Development/github.com/shorebirdtech/_shorebird/shorebird/bin/cache/previews/b3be02c7-97a8-4135-be71-814cc43d096e/ios_1.0.4+7.app/Base.lproj/LaunchScreen.storyboardc/ to device
+[  8%] Copying /Users/felix/Development/github.com/shorebirdtech/_shorebird/shorebird/bin/cache/previews/b3be02c7-97a8-4135-be71-814cc43d096e/ios_1.0.4+7.app/Base.lproj/LaunchScreen.storyboardc/01J-lp-oVM-view-Ze5-6b-2t3.nib to device
+[  8%] Copying /Users/felix/Development/github.com/shorebirdtech/_shorebird/shorebird/bin/cache/previews/b3be02c7-97a8-4135-be71-814cc43d096e/ios_1.0.4+7.app/Base.lproj/LaunchScreen.storyboardc/UIViewController-01J-lp-oVM.nib to device
+[  9%] Copying /Users/felix/Development/github.com/shorebirdtech/_shorebird/shorebird/bin/cache/previews/b3be02c7-97a8-4135-be71-814cc43d096e/ios_1.0.4+7.app/Base.lproj/LaunchScreen.storyboardc/UIViewController-01J-lp-oVM.nib to device
+[  9%] Copying /Users/felix/Development/github.com/shorebirdtech/_shorebird/shorebird/bin/cache/previews/b3be02c7-97a8-4135-be71-814cc43d096e/ios_1.0.4+7.app/Base.lproj/LaunchScreen.storyboardc/Info.plist to device
+[  9%] Copying /Users/felix/Development/github.com/shorebirdtech/_shorebird/shorebird/bin/cache/previews/b3be02c7-97a8-4135-be71-814cc43d096e/ios_1.0.4+7.app/Assets.car to device
+[  9%] Copying /Users/felix/Development/github.com/shorebirdtech/_shorebird/shorebird/bin/cache/previews/b3be02c7-97a8-4135-be71-814cc43d096e/ios_1.0.4+7.app/AppFrameworkInfo.plist to device
+[  9%] Copying /Users/felix/Development/github.com/shorebirdtech/_shorebird/shorebird/bin/cache/previews/b3be02c7-97a8-4135-be71-814cc43d096e/ios_1.0.4+7.app/AppIcon76x76@2x~ipad.png to device
+[ 10%] Copying /Users/felix/Development/github.com/shorebirdtech/_shorebird/shorebird/bin/cache/previews/b3be02c7-97a8-4135-be71-814cc43d096e/ios_1.0.4+7.app/AppIcon76x76@2x~ipad.png to device
+[ 10%] Copying /Users/felix/Development/github.com/shorebirdtech/_shorebird/shorebird/bin/cache/previews/b3be02c7-97a8-4135-be71-814cc43d096e/ios_1.0.4+7.app/Frameworks/ to device
+[ 10%] Copying /Users/felix/Development/github.com/shorebirdtech/_shorebird/shorebird/bin/cache/previews/b3be02c7-97a8-4135-be71-814cc43d096e/ios_1.0.4+7.app/Frameworks/libswiftCoreImage.dylib to device
+[ 10%] Copying /Users/felix/Development/github.com/shorebirdtech/_shorebird/shorebird/bin/cache/previews/b3be02c7-97a8-4135-be71-814cc43d096e/ios_1.0.4+7.app/Frameworks/libswiftObjectiveC.dylib to device
+[ 11%] Copying /Users/felix/Development/github.com/shorebirdtech/_shorebird/shorebird/bin/cache/previews/b3be02c7-97a8-4135-be71-814cc43d096e/ios_1.0.4+7.app/Frameworks/libswiftObjectiveC.dylib to device
+[ 11%] Copying /Users/felix/Development/github.com/shorebirdtech/_shorebird/shorebird/bin/cache/previews/b3be02c7-97a8-4135-be71-814cc43d096e/ios_1.0.4+7.app/Frameworks/libswiftCore.dylib to device
+[ 12%] Copying /Users/felix/Development/github.com/shorebirdtech/_shorebird/shorebird/bin/cache/previews/b3be02c7-97a8-4135-be71-814cc43d096e/ios_1.0.4+7.app/Frameworks/libswiftCore.dylib to device
+[ 13%] Copying /Users/felix/Development/github.com/shorebirdtech/_shorebird/shorebird/bin/cache/previews/b3be02c7-97a8-4135-be71-814cc43d096e/ios_1.0.4+7.app/Frameworks/libswiftCore.dylib to device
+[ 14%] Copying /Users/felix/Development/github.com/shorebirdtech/_shorebird/shorebird/bin/cache/previews/b3be02c7-97a8-4135-be71-814cc43d096e/ios_1.0.4+7.app/Frameworks/libswiftCore.dylib to device
+[ 15%] Copying /Users/felix/Development/github.com/shorebirdtech/_shorebird/shorebird/bin/cache/previews/b3be02c7-97a8-4135-be71-814cc43d096e/ios_1.0.4+7.app/Frameworks/libswiftCore.dylib to device
+[ 16%] Copying /Users/felix/Development/github.com/shorebirdtech/_shorebird/shorebird/bin/cache/previews/b3be02c7-97a8-4135-be71-814cc43d096e/ios_1.0.4+7.app/Frameworks/libswiftCore.dylib to device
+[ 17%] Copying /Users/felix/Development/github.com/shorebirdtech/_shorebird/shorebird/bin/cache/previews/b3be02c7-97a8-4135-be71-814cc43d096e/ios_1.0.4+7.app/Frameworks/libswiftCore.dylib to device
+[ 18%] Copying /Users/felix/Development/github.com/shorebirdtech/_shorebird/shorebird/bin/cache/previews/b3be02c7-97a8-4135-be71-814cc43d096e/ios_1.0.4+7.app/Frameworks/libswiftCore.dylib to device
+[ 18%] Copying /Users/felix/Development/github.com/shorebirdtech/_shorebird/shorebird/bin/cache/previews/b3be02c7-97a8-4135-be71-814cc43d096e/ios_1.0.4+7.app/Frameworks/libswiftCoreGraphics.dylib to device
+[ 19%] Copying /Users/felix/Development/github.com/shorebirdtech/_shorebird/shorebird/bin/cache/previews/b3be02c7-97a8-4135-be71-814cc43d096e/ios_1.0.4+7.app/Frameworks/libswiftCoreGraphics.dylib to device
+[ 19%] Copying /Users/felix/Development/github.com/shorebirdtech/_shorebird/shorebird/bin/cache/previews/b3be02c7-97a8-4135-be71-814cc43d096e/ios_1.0.4+7.app/Frameworks/libswiftUIKit.dylib to device
+[ 19%] Copying /Users/felix/Development/github.com/shorebirdtech/_shorebird/shorebird/bin/cache/previews/b3be02c7-97a8-4135-be71-814cc43d096e/ios_1.0.4+7.app/Frameworks/libswiftMetal.dylib to device
+[ 19%] Copying /Users/felix/Development/github.com/shorebirdtech/_shorebird/shorebird/bin/cache/previews/b3be02c7-97a8-4135-be71-814cc43d096e/ios_1.0.4+7.app/Frameworks/libswiftDispatch.dylib to device
+[ 20%] Copying /Users/felix/Development/github.com/shorebirdtech/_shorebird/shorebird/bin/cache/previews/b3be02c7-97a8-4135-be71-814cc43d096e/ios_1.0.4+7.app/Frameworks/libswiftDispatch.dylib to device
+[ 20%] Copying /Users/felix/Development/github.com/shorebirdtech/_shorebird/shorebird/bin/cache/previews/b3be02c7-97a8-4135-be71-814cc43d096e/ios_1.0.4+7.app/Frameworks/libswiftos.dylib to device
+[ 21%] Copying /Users/felix/Development/github.com/shorebirdtech/_shorebird/shorebird/bin/cache/previews/b3be02c7-97a8-4135-be71-814cc43d096e/ios_1.0.4+7.app/Frameworks/libswiftos.dylib to device
+[ 21%] Copying /Users/felix/Development/github.com/shorebirdtech/_shorebird/shorebird/bin/cache/previews/b3be02c7-97a8-4135-be71-814cc43d096e/ios_1.0.4+7.app/Frameworks/libswiftCoreFoundation.dylib to device
+[ 21%] Copying /Users/felix/Development/github.com/shorebirdtech/_shorebird/shorebird/bin/cache/previews/b3be02c7-97a8-4135-be71-814cc43d096e/ios_1.0.4+7.app/Frameworks/Flutter.framework/ to device
+[ 21%] Copying /Users/felix/Development/github.com/shorebirdtech/_shorebird/shorebird/bin/cache/previews/b3be02c7-97a8-4135-be71-814cc43d096e/ios_1.0.4+7.app/Frameworks/Flutter.framework/_CodeSignature/ to device
+[ 22%] Copying /Users/felix/Development/github.com/shorebirdtech/_shorebird/shorebird/bin/cache/previews/b3be02c7-97a8-4135-be71-814cc43d096e/ios_1.0.4+7.app/Frameworks/Flutter.framework/_CodeSignature/ to device
+[ 22%] Copying /Users/felix/Development/github.com/shorebirdtech/_shorebird/shorebird/bin/cache/previews/b3be02c7-97a8-4135-be71-814cc43d096e/ios_1.0.4+7.app/Frameworks/Flutter.framework/_CodeSignature/CodeResources to device
+[ 22%] Copying /Users/felix/Development/github.com/shorebirdtech/_shorebird/shorebird/bin/cache/previews/b3be02c7-97a8-4135-be71-814cc43d096e/ios_1.0.4+7.app/Frameworks/Flutter.framework/icudtl.dat to device
+[ 22%] Copying /Users/felix/Development/github.com/shorebirdtech/_shorebird/shorebird/bin/cache/previews/b3be02c7-97a8-4135-be71-814cc43d096e/ios_1.0.4+7.app/Frameworks/Flutter.framework/Flutter to device
+[ 23%] Copying /Users/felix/Development/github.com/shorebirdtech/_shorebird/shorebird/bin/cache/previews/b3be02c7-97a8-4135-be71-814cc43d096e/ios_1.0.4+7.app/Frameworks/Flutter.framework/Flutter to device
+[ 24%] Copying /Users/felix/Development/github.com/shorebirdtech/_shorebird/shorebird/bin/cache/previews/b3be02c7-97a8-4135-be71-814cc43d096e/ios_1.0.4+7.app/Frameworks/Flutter.framework/Flutter to device
+[ 25%] Copying /Users/felix/Development/github.com/shorebirdtech/_shorebird/shorebird/bin/cache/previews/b3be02c7-97a8-4135-be71-814cc43d096e/ios_1.0.4+7.app/Frameworks/Flutter.framework/Flutter to device
+[ 26%] Copying /Users/felix/Development/github.com/shorebirdtech/_shorebird/shorebird/bin/cache/previews/b3be02c7-97a8-4135-be71-814cc43d096e/ios_1.0.4+7.app/Frameworks/Flutter.framework/Flutter to device
+[ 27%] Copying /Users/felix/Development/github.com/shorebirdtech/_shorebird/shorebird/bin/cache/previews/b3be02c7-97a8-4135-be71-814cc43d096e/ios_1.0.4+7.app/Frameworks/Flutter.framework/Flutter to device
+[ 28%] Copying /Users/felix/Development/github.com/shorebirdtech/_shorebird/shorebird/bin/cache/previews/b3be02c7-97a8-4135-be71-814cc43d096e/ios_1.0.4+7.app/Frameworks/Flutter.framework/Flutter to device
+[ 29%] Copying /Users/felix/Development/github.com/shorebirdtech/_shorebird/shorebird/bin/cache/previews/b3be02c7-97a8-4135-be71-814cc43d096e/ios_1.0.4+7.app/Frameworks/Flutter.framework/Flutter to device
+[ 30%] Copying /Users/felix/Development/github.com/shorebirdtech/_shorebird/shorebird/bin/cache/previews/b3be02c7-97a8-4135-be71-814cc43d096e/ios_1.0.4+7.app/Frameworks/Flutter.framework/Flutter to device
+[ 31%] Copying /Users/felix/Development/github.com/shorebirdtech/_shorebird/shorebird/bin/cache/previews/b3be02c7-97a8-4135-be71-814cc43d096e/ios_1.0.4+7.app/Frameworks/Flutter.framework/Flutter to device
+[ 32%] Copying /Users/felix/Development/github.com/shorebirdtech/_shorebird/shorebird/bin/cache/previews/b3be02c7-97a8-4135-be71-814cc43d096e/ios_1.0.4+7.app/Frameworks/Flutter.framework/Flutter to device
+[ 32%] Copying /Users/felix/Development/github.com/shorebirdtech/_shorebird/shorebird/bin/cache/previews/b3be02c7-97a8-4135-be71-814cc43d096e/ios_1.0.4+7.app/Frameworks/Flutter.framework/Headers/ to device
+[ 32%] Copying /Users/felix/Development/github.com/shorebirdtech/_shorebird/shorebird/bin/cache/previews/b3be02c7-97a8-4135-be71-814cc43d096e/ios_1.0.4+7.app/Frameworks/Flutter.framework/Headers/FlutterEngine.h to device
+[ 32%] Copying /Users/felix/Development/github.com/shorebirdtech/_shorebird/shorebird/bin/cache/previews/b3be02c7-97a8-4135-be71-814cc43d096e/ios_1.0.4+7.app/Frameworks/Flutter.framework/Headers/FlutterChannels.h to device
+[ 32%] Copying /Users/felix/Development/github.com/shorebirdtech/_shorebird/shorebird/bin/cache/previews/b3be02c7-97a8-4135-be71-814cc43d096e/ios_1.0.4+7.app/Frameworks/Flutter.framework/Headers/FlutterPlugin.h to device
+[ 33%] Copying /Users/felix/Development/github.com/shorebirdtech/_shorebird/shorebird/bin/cache/previews/b3be02c7-97a8-4135-be71-814cc43d096e/ios_1.0.4+7.app/Frameworks/Flutter.framework/Headers/FlutterPlugin.h to device
+[ 33%] Copying /Users/felix/Development/github.com/shorebirdtech/_shorebird/shorebird/bin/cache/previews/b3be02c7-97a8-4135-be71-814cc43d096e/ios_1.0.4+7.app/Frameworks/Flutter.framework/Headers/FlutterAppDelegate.h to device
+[ 33%] Copying /Users/felix/Development/github.com/shorebirdtech/_shorebird/shorebird/bin/cache/previews/b3be02c7-97a8-4135-be71-814cc43d096e/ios_1.0.4+7.app/Frameworks/Flutter.framework/Headers/FlutterTexture.h to device
+[ 33%] Copying /Users/felix/Development/github.com/shorebirdtech/_shorebird/shorebird/bin/cache/previews/b3be02c7-97a8-4135-be71-814cc43d096e/ios_1.0.4+7.app/Frameworks/Flutter.framework/Headers/FlutterEngineGroup.h to device
+[ 34%] Copying /Users/felix/Development/github.com/shorebirdtech/_shorebird/shorebird/bin/cache/previews/b3be02c7-97a8-4135-be71-814cc43d096e/ios_1.0.4+7.app/Frameworks/Flutter.framework/Headers/FlutterEngineGroup.h to device
+[ 34%] Copying /Users/felix/Development/github.com/shorebirdtech/_shorebird/shorebird/bin/cache/previews/b3be02c7-97a8-4135-be71-814cc43d096e/ios_1.0.4+7.app/Frameworks/Flutter.framework/Headers/FlutterPlatformViews.h to device
+[ 34%] Copying /Users/felix/Development/github.com/shorebirdtech/_shorebird/shorebird/bin/cache/previews/b3be02c7-97a8-4135-be71-814cc43d096e/ios_1.0.4+7.app/Frameworks/Flutter.framework/Headers/FlutterHeadlessDartRunner.h to device
+[ 34%] Copying /Users/felix/Development/github.com/shorebirdtech/_shorebird/shorebird/bin/cache/previews/b3be02c7-97a8-4135-be71-814cc43d096e/ios_1.0.4+7.app/Frameworks/Flutter.framework/Headers/FlutterCodecs.h to device
+[ 34%] Copying /Users/felix/Development/github.com/shorebirdtech/_shorebird/shorebird/bin/cache/previews/b3be02c7-97a8-4135-be71-814cc43d096e/ios_1.0.4+7.app/Frameworks/Flutter.framework/Headers/Flutter.h to device
+[ 35%] Copying /Users/felix/Development/github.com/shorebirdtech/_shorebird/shorebird/bin/cache/previews/b3be02c7-97a8-4135-be71-814cc43d096e/ios_1.0.4+7.app/Frameworks/Flutter.framework/Headers/Flutter.h to device
+[ 35%] Copying /Users/felix/Development/github.com/shorebirdtech/_shorebird/shorebird/bin/cache/previews/b3be02c7-97a8-4135-be71-814cc43d096e/ios_1.0.4+7.app/Frameworks/Flutter.framework/Headers/FlutterViewController.h to device
+[ 35%] Copying /Users/felix/Development/github.com/shorebirdtech/_shorebird/shorebird/bin/cache/previews/b3be02c7-97a8-4135-be71-814cc43d096e/ios_1.0.4+7.app/Frameworks/Flutter.framework/Headers/FlutterMacros.h to device
+[ 35%] Copying /Users/felix/Development/github.com/shorebirdtech/_shorebird/shorebird/bin/cache/previews/b3be02c7-97a8-4135-be71-814cc43d096e/ios_1.0.4+7.app/Frameworks/Flutter.framework/Headers/FlutterDartProject.h to device
+[ 36%] Copying /Users/felix/Development/github.com/shorebirdtech/_shorebird/shorebird/bin/cache/previews/b3be02c7-97a8-4135-be71-814cc43d096e/ios_1.0.4+7.app/Frameworks/Flutter.framework/Headers/FlutterDartProject.h to device
+[ 36%] Copying /Users/felix/Development/github.com/shorebirdtech/_shorebird/shorebird/bin/cache/previews/b3be02c7-97a8-4135-be71-814cc43d096e/ios_1.0.4+7.app/Frameworks/Flutter.framework/Headers/FlutterPluginAppLifeCycleDelegate.h to device
+[ 36%] Copying /Users/felix/Development/github.com/shorebirdtech/_shorebird/shorebird/bin/cache/previews/b3be02c7-97a8-4135-be71-814cc43d096e/ios_1.0.4+7.app/Frameworks/Flutter.framework/Headers/FlutterBinaryMessenger.h to device
+[ 36%] Copying /Users/felix/Development/github.com/shorebirdtech/_shorebird/shorebird/bin/cache/previews/b3be02c7-97a8-4135-be71-814cc43d096e/ios_1.0.4+7.app/Frameworks/Flutter.framework/Headers/FlutterCallbackCache.h to device
+[ 36%] Copying /Users/felix/Development/github.com/shorebirdtech/_shorebird/shorebird/bin/cache/previews/b3be02c7-97a8-4135-be71-814cc43d096e/ios_1.0.4+7.app/Frameworks/Flutter.framework/Modules/ to device
+[ 37%] Copying /Users/felix/Development/github.com/shorebirdtech/_shorebird/shorebird/bin/cache/previews/b3be02c7-97a8-4135-be71-814cc43d096e/ios_1.0.4+7.app/Frameworks/Flutter.framework/Modules/ to device
+[ 37%] Copying /Users/felix/Development/github.com/shorebirdtech/_shorebird/shorebird/bin/cache/previews/b3be02c7-97a8-4135-be71-814cc43d096e/ios_1.0.4+7.app/Frameworks/Flutter.framework/Modules/module.modulemap to device
+[ 37%] Copying /Users/felix/Development/github.com/shorebirdtech/_shorebird/shorebird/bin/cache/previews/b3be02c7-97a8-4135-be71-814cc43d096e/ios_1.0.4+7.app/Frameworks/Flutter.framework/Info.plist to device
+[ 37%] Copying /Users/felix/Development/github.com/shorebirdtech/_shorebird/shorebird/bin/cache/previews/b3be02c7-97a8-4135-be71-814cc43d096e/ios_1.0.4+7.app/Frameworks/App.framework/ to device
+[ 38%] Copying /Users/felix/Development/github.com/shorebirdtech/_shorebird/shorebird/bin/cache/previews/b3be02c7-97a8-4135-be71-814cc43d096e/ios_1.0.4+7.app/Frameworks/App.framework/ to device
+[ 38%] Copying /Users/felix/Development/github.com/shorebirdtech/_shorebird/shorebird/bin/cache/previews/b3be02c7-97a8-4135-be71-814cc43d096e/ios_1.0.4+7.app/Frameworks/App.framework/_CodeSignature/ to device
+[ 38%] Copying /Users/felix/Development/github.com/shorebirdtech/_shorebird/shorebird/bin/cache/previews/b3be02c7-97a8-4135-be71-814cc43d096e/ios_1.0.4+7.app/Frameworks/App.framework/_CodeSignature/CodeResources to device
+[ 38%] Copying /Users/felix/Development/github.com/shorebirdtech/_shorebird/shorebird/bin/cache/previews/b3be02c7-97a8-4135-be71-814cc43d096e/ios_1.0.4+7.app/Frameworks/App.framework/App to device
+[ 39%] Copying /Users/felix/Development/github.com/shorebirdtech/_shorebird/shorebird/bin/cache/previews/b3be02c7-97a8-4135-be71-814cc43d096e/ios_1.0.4+7.app/Frameworks/App.framework/App to device
+[ 39%] Copying /Users/felix/Development/github.com/shorebirdtech/_shorebird/shorebird/bin/cache/previews/b3be02c7-97a8-4135-be71-814cc43d096e/ios_1.0.4+7.app/Frameworks/App.framework/flutter_assets/ to device
+[ 40%] Copying /Users/felix/Development/github.com/shorebirdtech/_shorebird/shorebird/bin/cache/previews/b3be02c7-97a8-4135-be71-814cc43d096e/ios_1.0.4+7.app/Frameworks/App.framework/flutter_assets/ to device
+[ 40%] Copying /Users/felix/Development/github.com/shorebirdtech/_shorebird/shorebird/bin/cache/previews/b3be02c7-97a8-4135-be71-814cc43d096e/ios_1.0.4+7.app/Frameworks/App.framework/flutter_assets/NOTICES.Z to device
+[ 40%] Copying /Users/felix/Development/github.com/shorebirdtech/_shorebird/shorebird/bin/cache/previews/b3be02c7-97a8-4135-be71-814cc43d096e/ios_1.0.4+7.app/Frameworks/App.framework/flutter_assets/shorebird.yaml to device
+[ 40%] Copying /Users/felix/Development/github.com/shorebirdtech/_shorebird/shorebird/bin/cache/previews/b3be02c7-97a8-4135-be71-814cc43d096e/ios_1.0.4+7.app/Frameworks/App.framework/flutter_assets/AssetManifest.json to device
+[ 41%] Copying /Users/felix/Development/github.com/shorebirdtech/_shorebird/shorebird/bin/cache/previews/b3be02c7-97a8-4135-be71-814cc43d096e/ios_1.0.4+7.app/Frameworks/App.framework/flutter_assets/AssetManifest.json to device
+[ 41%] Copying /Users/felix/Development/github.com/shorebirdtech/_shorebird/shorebird/bin/cache/previews/b3be02c7-97a8-4135-be71-814cc43d096e/ios_1.0.4+7.app/Frameworks/App.framework/flutter_assets/FontManifest.json to device
+[ 41%] Copying /Users/felix/Development/github.com/shorebirdtech/_shorebird/shorebird/bin/cache/previews/b3be02c7-97a8-4135-be71-814cc43d096e/ios_1.0.4+7.app/Frameworks/App.framework/flutter_assets/shaders/ to device
+[ 41%] Copying /Users/felix/Development/github.com/shorebirdtech/_shorebird/shorebird/bin/cache/previews/b3be02c7-97a8-4135-be71-814cc43d096e/ios_1.0.4+7.app/Frameworks/App.framework/flutter_assets/shaders/ink_sparkle.frag to device
+[ 42%] Copying /Users/felix/Development/github.com/shorebirdtech/_shorebird/shorebird/bin/cache/previews/b3be02c7-97a8-4135-be71-814cc43d096e/ios_1.0.4+7.app/Frameworks/App.framework/flutter_assets/shaders/ink_sparkle.frag to device
+[ 42%] Copying /Users/felix/Development/github.com/shorebirdtech/_shorebird/shorebird/bin/cache/previews/b3be02c7-97a8-4135-be71-814cc43d096e/ios_1.0.4+7.app/Frameworks/App.framework/flutter_assets/AssetManifest.bin to device
+[ 42%] Copying /Users/felix/Development/github.com/shorebirdtech/_shorebird/shorebird/bin/cache/previews/b3be02c7-97a8-4135-be71-814cc43d096e/ios_1.0.4+7.app/Frameworks/App.framework/flutter_assets/fonts/ to device
+[ 42%] Copying /Users/felix/Development/github.com/shorebirdtech/_shorebird/shorebird/bin/cache/previews/b3be02c7-97a8-4135-be71-814cc43d096e/ios_1.0.4+7.app/Frameworks/App.framework/flutter_assets/fonts/MaterialIcons-Regular.otf to device
+[ 42%] Copying /Users/felix/Development/github.com/shorebirdtech/_shorebird/shorebird/bin/cache/previews/b3be02c7-97a8-4135-be71-814cc43d096e/ios_1.0.4+7.app/Frameworks/App.framework/flutter_assets/assets/ to device
+[ 43%] Copying /Users/felix/Development/github.com/shorebirdtech/_shorebird/shorebird/bin/cache/previews/b3be02c7-97a8-4135-be71-814cc43d096e/ios_1.0.4+7.app/Frameworks/App.framework/flutter_assets/assets/ to device
+[ 43%] Copying /Users/felix/Development/github.com/shorebirdtech/_shorebird/shorebird/bin/cache/previews/b3be02c7-97a8-4135-be71-814cc43d096e/ios_1.0.4+7.app/Frameworks/App.framework/flutter_assets/assets/palettes.json to device
+[ 43%] Copying /Users/felix/Development/github.com/shorebirdtech/_shorebird/shorebird/bin/cache/previews/b3be02c7-97a8-4135-be71-814cc43d096e/ios_1.0.4+7.app/Frameworks/App.framework/Info.plist to device
+[ 43%] Copying /Users/felix/Development/github.com/shorebirdtech/_shorebird/shorebird/bin/cache/previews/b3be02c7-97a8-4135-be71-814cc43d096e/ios_1.0.4+7.app/Frameworks/libswiftDarwin.dylib to device
+[ 44%] Copying /Users/felix/Development/github.com/shorebirdtech/_shorebird/shorebird/bin/cache/previews/b3be02c7-97a8-4135-be71-814cc43d096e/ios_1.0.4+7.app/Frameworks/libswiftDarwin.dylib to device
+[ 44%] Copying /Users/felix/Development/github.com/shorebirdtech/_shorebird/shorebird/bin/cache/previews/b3be02c7-97a8-4135-be71-814cc43d096e/ios_1.0.4+7.app/Frameworks/libswiftQuartzCore.dylib to device
+[ 44%] Copying /Users/felix/Development/github.com/shorebirdtech/_shorebird/shorebird/bin/cache/previews/b3be02c7-97a8-4135-be71-814cc43d096e/ios_1.0.4+7.app/Frameworks/libswiftCoreAudio.dylib to device
+[ 45%] Copying /Users/felix/Development/github.com/shorebirdtech/_shorebird/shorebird/bin/cache/previews/b3be02c7-97a8-4135-be71-814cc43d096e/ios_1.0.4+7.app/Frameworks/libswiftCoreAudio.dylib to device
+[ 45%] Copying /Users/felix/Development/github.com/shorebirdtech/_shorebird/shorebird/bin/cache/previews/b3be02c7-97a8-4135-be71-814cc43d096e/ios_1.0.4+7.app/Frameworks/libswiftFoundation.dylib to device
+[ 46%] Copying /Users/felix/Development/github.com/shorebirdtech/_shorebird/shorebird/bin/cache/previews/b3be02c7-97a8-4135-be71-814cc43d096e/ios_1.0.4+7.app/Frameworks/libswiftFoundation.dylib to device
+[ 47%] Copying /Users/felix/Development/github.com/shorebirdtech/_shorebird/shorebird/bin/cache/previews/b3be02c7-97a8-4135-be71-814cc43d096e/ios_1.0.4+7.app/Frameworks/libswiftFoundation.dylib to device
+[ 48%] Copying /Users/felix/Development/github.com/shorebirdtech/_shorebird/shorebird/bin/cache/previews/b3be02c7-97a8-4135-be71-814cc43d096e/ios_1.0.4+7.app/Frameworks/libswiftFoundation.dylib to device
+[ 48%] Copying /Users/felix/Development/github.com/shorebirdtech/_shorebird/shorebird/bin/cache/previews/b3be02c7-97a8-4135-be71-814cc43d096e/ios_1.0.4+7.app/Frameworks/libswiftCoreMedia.dylib to device
+[ 49%] Copying /Users/felix/Development/github.com/shorebirdtech/_shorebird/shorebird/bin/cache/previews/b3be02c7-97a8-4135-be71-814cc43d096e/ios_1.0.4+7.app/Frameworks/libswiftCoreMedia.dylib to device
+[ 49%] Copying /Users/felix/Development/github.com/shorebirdtech/_shorebird/shorebird/bin/cache/previews/b3be02c7-97a8-4135-be71-814cc43d096e/ios_1.0.4+7.app/embedded.mobileprovision to device
+[ 49%] Copying /Users/felix/Development/github.com/shorebirdtech/_shorebird/shorebird/bin/cache/previews/b3be02c7-97a8-4135-be71-814cc43d096e/ios_1.0.4+7.app/Info.plist to device
+[ 49%] Copying /Users/felix/Development/github.com/shorebirdtech/_shorebird/shorebird/bin/cache/previews/b3be02c7-97a8-4135-be71-814cc43d096e/ios_1.0.4+7.app/PkgInfo to device
+[ 52%] CreatingStagingDirectory
+[ 57%] ExtractingPackage
+[ 60%] InspectingPackage
+[ 65%] PreflightingApplication
+[ 70%] VerifyingApplication
+[ 75%] CreatingContainer
+[ 80%] InstallingApplication
+[ 85%] PostflightingApplication
+[ 90%] SandboxingApplication
+[ 95%] GeneratingApplicationMap
+[100%] InstallComplete
+[100%] Installed package /Users/felix/Development/github.com/shorebirdtech/_shorebird/shorebird/bin/cache/previews/b3be02c7-97a8-4135-be71-814cc43d096e/ios_1.0.4+7.app
+------ Debug phase ------
+Starting debug of 82b15a4a69ad47c74fe3e71b62a6a6e2842efe25 (D22AP, iPhone X, iphoneos, arm64, 16.3.1, 20D67) a.k.a. 'Felix’s iPhone' connected through USB...
+[  0%] Looking up developer disk image
+[ 95%] Developer disk image mounted successfully
+Symbol Path: /Users/felix/Library/Developer/Xcode/iOS DeviceSupport/16.3.1 (20D67)/Symbols
+[100%] Connecting to remote debug server
+-------------------------
+(lldb) command source -s 0 '/tmp/6A794CCC-74AD-4307-B01C-BC045C28FEB0/fruitstrap-lldb-prep-cmds-82b15a4a69ad47c74fe3e71b62a6a6e2842efe25'
+Executing commands in '/tmp/6A794CCC-74AD-4307-B01C-BC045C28FEB0/fruitstrap-lldb-prep-cmds-82b15a4a69ad47c74fe3e71b62a6a6e2842efe25'.
+(lldb)     platform select remote-'ios' --sysroot '/Users/felix/Library/Developer/Xcode/iOS DeviceSupport/16.3.1 (20D67)/Symbols'
+  Platform: remote-ios
+ Connected: no
+   Sysroot: /Users/felix/Library/Developer/Xcode/iOS DeviceSupport/16.3.1 (20D67)/Symbols
+  SDK Path: "/Users/felix/Library/Developer/Xcode/iOS DeviceSupport/16.3.1 (20D67)/Symbols"
+(lldb)     target create "/Users/felix/Development/github.com/shorebirdtech/_shorebird/shorebird/bin/cache/previews/b3be02c7-97a8-4135-be71-814cc43d096e/ios_1.0.4+7.app"
+Current executable set to '/Users/felix/Development/github.com/shorebirdtech/_shorebird/shorebird/bin/cache/previews/b3be02c7-97a8-4135-be71-814cc43d096e/ios_1.0.4+7.app' (arm64).
+(lldb)     script fruitstrap_device_app="/private/var/containers/Bundle/Application/AA5DF160-3F66-4239-9F6A-88D9D10F18DC/ios_1.0.4+7.app"
+(lldb)     script fruitstrap_connect_url="connect://127.0.0.1:62320"
+(lldb)     script fruitstrap_output_path=""
+(lldb)     script fruitstrap_error_path=""
+(lldb)     target modules search-paths add /usr "/Users/felix/Library/Developer/Xcode/iOS DeviceSupport/16.3.1 (20D67)/Symbols/usr" /System "/Users/felix/Library/Developer/Xcode/iOS DeviceSupport/16.3.1 (20D67)/Symbols/System" "/private/var/containers/Bundle/Application/AA5DF160-3F66-4239-9F6A-88D9D10F18DC" "/Users/felix/Development/github.com/shorebirdtech/_shorebird/shorebird/bin/cache/previews/b3be02c7-97a8-4135-be71-814cc43d096e" "/var/containers/Bundle/Application/AA5DF160-3F66-4239-9F6A-88D9D10F18DC" "/Users/felix/Development/github.com/shorebirdtech/_shorebird/shorebird/bin/cache/previews/b3be02c7-97a8-4135-be71-814cc43d096e" /Developer "/Users/felix/Library/Developer/Xcode/iOS DeviceSupport/16.3.1 (20D67)/Symbols/Developer"
+(lldb)     command script import "/tmp/6A794CCC-74AD-4307-B01C-BC045C28FEB0/fruitstrap_82b15a4a69ad47c74fe3e71b62a6a6e2842efe25.py"
+(lldb)     command script add -f fruitstrap_82b15a4a69ad47c74fe3e71b62a6a6e2842efe25.connect_command connect
+(lldb)     command script add -s asynchronous -f fruitstrap_82b15a4a69ad47c74fe3e71b62a6a6e2842efe25.run_command run
+(lldb)     command script add -s asynchronous -f fruitstrap_82b15a4a69ad47c74fe3e71b62a6a6e2842efe25.autoexit_command autoexit
+(lldb)     command script add -s asynchronous -f fruitstrap_82b15a4a69ad47c74fe3e71b62a6a6e2842efe25.safequit_command safequit
+(lldb)     connect
+(lldb)     run
+success
+PROCESS_EXITED

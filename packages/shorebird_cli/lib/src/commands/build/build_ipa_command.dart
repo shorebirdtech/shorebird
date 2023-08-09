@@ -3,20 +3,19 @@ import 'dart:io';
 import 'package:mason_logger/mason_logger.dart';
 import 'package:path/path.dart' as p;
 import 'package:shorebird_cli/src/command.dart';
+import 'package:shorebird_cli/src/doctor.dart';
 import 'package:shorebird_cli/src/logger.dart';
 import 'package:shorebird_cli/src/shorebird_build_mixin.dart';
-import 'package:shorebird_cli/src/shorebird_config_mixin.dart';
-import 'package:shorebird_cli/src/shorebird_validation_mixin.dart';
+import 'package:shorebird_cli/src/shorebird_validator.dart';
 
 /// {@template build_ipa_command}
 /// `shorebird build ipa`
 /// Builds an .xcarchive and optionally .ipa for an iOS app to be generated for
 /// App Store submission.
 /// {@endtemplate}
-class BuildIpaCommand extends ShorebirdCommand
-    with ShorebirdConfigMixin, ShorebirdValidationMixin, ShorebirdBuildMixin {
+class BuildIpaCommand extends ShorebirdCommand with ShorebirdBuildMixin {
   /// {@macro build_ipa_command}
-  BuildIpaCommand({super.validators}) {
+  BuildIpaCommand() {
     argParser
       ..addOption(
         'target',
@@ -44,9 +43,10 @@ class BuildIpaCommand extends ShorebirdCommand
   @override
   Future<int> run() async {
     try {
-      await validatePreconditions(
+      await shorebirdValidator.validatePreconditions(
         checkUserIsAuthenticated: true,
-        checkValidators: true,
+        checkShorebirdInitialized: true,
+        validators: doctor.iosCommandValidators,
       );
     } on PreconditionFailedException catch (e) {
       return e.exitCode.code;

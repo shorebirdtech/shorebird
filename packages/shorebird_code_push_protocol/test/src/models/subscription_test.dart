@@ -1,4 +1,3 @@
-import 'package:money2/money2.dart';
 import 'package:shorebird_code_push_protocol/shorebird_code_push_protocol.dart';
 import 'package:test/test.dart';
 
@@ -14,7 +13,6 @@ void main() {
     test('can be (de)serialized', () {
       final subscription = Subscription(
         plan: plan,
-        cost: 100,
         paidThroughDate: DateTime.now(),
         willRenew: true,
       );
@@ -28,7 +26,6 @@ void main() {
       test('returns true if paidThroughDate is in the future', () {
         final subscription = Subscription(
           plan: plan,
-          cost: 100,
           paidThroughDate: DateTime.now().add(const Duration(days: 1)),
           willRenew: true,
         );
@@ -38,7 +35,6 @@ void main() {
       test('returns false if paidThroughDate is in the past', () {
         final subscription = Subscription(
           plan: plan,
-          cost: 100,
           paidThroughDate: DateTime.now().subtract(const Duration(days: 1)),
           willRenew: true,
         );

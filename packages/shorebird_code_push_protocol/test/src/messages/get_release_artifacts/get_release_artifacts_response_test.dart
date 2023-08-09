@@ -10,7 +10,7 @@ void main() {
             id: 42,
             releaseId: 1,
             arch: 'aarch64',
-            platform: 'android',
+            platform: ReleasePlatform.android,
             hash: '#',
             size: 1337,
             url: 'https://example.com',

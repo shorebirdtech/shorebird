@@ -75,31 +75,11 @@ void main() {
       (m) => ShorebirdYaml.fromJson(m!),
     );
 
-    // Run the doctor command. This should yield a warning about the
-    // AndroidManifest.xml not containing the internet permission and suggest
-    // that the user run `shorebird doctor --fix`.
-    final shorebirdDoctorResult = runCommand(
-      'shorebird doctor',
-      workingDirectory: cwd,
-    );
-    expect(shorebirdDoctorResult.stderr, isEmpty);
-    expect(shorebirdDoctorResult.stdout, contains('shorebird doctor --fix'));
-    expect(shorebirdDoctorResult.exitCode, equals(0));
-
-    // Run the suggested `doctor --fix` command.
-    final shorebirdDoctorFixResult = runCommand(
-      'shorebird doctor --fix',
-      workingDirectory: cwd,
-    );
-    expect(shorebirdDoctorFixResult.stderr, isEmpty);
-    expect(shorebirdDoctorFixResult.exitCode, equals(0));
-
     // Verify that we have no releases for this app
     final preReleaseAppsListResult = runCommand(
       'shorebird apps list',
       workingDirectory: cwd,
     );
-    expect(preReleaseAppsListResult.stderr, isEmpty);
     expect(preReleaseAppsListResult.exitCode, equals(0));
     expect(
       (preReleaseAppsListResult.stdout as String).split('\n'),
@@ -122,7 +102,6 @@ void main() {
       'shorebird apps list',
       workingDirectory: cwd,
     );
-    expect(postReleaseAppsListResult.stderr, isEmpty);
     expect(postReleaseAppsListResult.exitCode, equals(0));
     expect(
       (postReleaseAppsListResult.stdout as String).split('\n'),
@@ -135,7 +114,7 @@ void main() {
 
     // Create an Android patch.
     final shorebirdPatchResult = runCommand(
-      'shorebird patch android --force',
+      'shorebird patch android --release-version=1.0.0+1 --force',
       workingDirectory: cwd,
     );
     expect(shorebirdPatchResult.stderr, isEmpty);
@@ -147,7 +126,6 @@ void main() {
       'shorebird apps list',
       workingDirectory: cwd,
     );
-    expect(postPatchAppsListResult.stderr, isEmpty);
     expect(postPatchAppsListResult.exitCode, equals(0));
     expect(
       (postPatchAppsListResult.stdout as String).split('\n'),
@@ -163,7 +141,6 @@ void main() {
       'shorebird apps delete --app-id=${shorebirdYaml.appId} --force',
       workingDirectory: cwd,
     );
-    expect(deleteAppResult.stderr, isEmpty);
     expect(deleteAppResult.exitCode, equals(0));
     expect(
       deleteAppResult.stdout,
@@ -175,7 +152,6 @@ void main() {
       'shorebird apps list',
       workingDirectory: cwd,
     );
-    expect(deleteAppAppsListResult.stderr, isEmpty);
     expect(deleteAppAppsListResult.exitCode, equals(0));
     expect(
       (deleteAppAppsListResult.stdout as String).split('\n'),

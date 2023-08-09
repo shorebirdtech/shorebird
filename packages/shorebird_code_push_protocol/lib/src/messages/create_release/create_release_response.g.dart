@@ -15,28 +15,15 @@ CreateReleaseResponse _$CreateReleaseResponseFromJson(
       json,
       ($checkedConvert) {
         final val = CreateReleaseResponse(
-          id: $checkedConvert('id', (v) => v as int),
-          appId: $checkedConvert('app_id', (v) => v as String),
-          version: $checkedConvert('version', (v) => v as String),
-          flutterRevision:
-              $checkedConvert('flutter_revision', (v) => v as String),
-          displayName: $checkedConvert('display_name', (v) => v as String?),
+          release: $checkedConvert(
+              'release', (v) => Release.fromJson(v as Map<String, dynamic>)),
         );
         return val;
-      },
-      fieldKeyMap: const {
-        'appId': 'app_id',
-        'flutterRevision': 'flutter_revision',
-        'displayName': 'display_name'
       },
     );
 
 Map<String, dynamic> _$CreateReleaseResponseToJson(
         CreateReleaseResponse instance) =>
     <String, dynamic>{
-      'id': instance.id,
-      'app_id': instance.appId,
-      'version': instance.version,
-      'flutter_revision': instance.flutterRevision,
-      'display_name': instance.displayName,
+      'release': instance.release.toJson(),
     };

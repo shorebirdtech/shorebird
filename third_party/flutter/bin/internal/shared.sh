@@ -188,7 +188,7 @@ function shared::execute() {
   SNAPSHOT_PATH="$SHOREBIRD_ROOT/bin/cache/shorebird.snapshot"
   STAMP_PATH="$SHOREBIRD_ROOT/bin/cache/shorebird.stamp"
   SCRIPT_PATH="$SHOREBIRD_CLI_DIR/bin/shorebird.dart"
-  FLUTTER_PATH="$SHOREBIRD_ROOT/bin/cache/flutter"
+  FLUTTER_PATH="$SHOREBIRD_ROOT/bin/cache/flutter/$FLUTTER_VERSION"
   export DART_PATH="$FLUTTER_PATH/bin/cache/dart-sdk/bin/dart"
 
   # Test if running as superuser – but don't warn if running within Docker or CI.

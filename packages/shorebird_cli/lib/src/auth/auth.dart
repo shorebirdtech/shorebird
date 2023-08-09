@@ -10,7 +10,7 @@ import 'package:scoped/scoped.dart';
 import 'package:shorebird_cli/src/auth/jwt.dart';
 import 'package:shorebird_cli/src/command.dart';
 import 'package:shorebird_cli/src/command_runner.dart';
-import 'package:shorebird_cli/src/logger.dart';
+import 'package:shorebird_cli/src/http_client/http_client.dart';
 import 'package:shorebird_cli/src/platform.dart';
 import 'package:shorebird_code_push_client/shorebird_code_push_client.dart';
 
@@ -55,19 +55,7 @@ typedef OnRefreshCredentials = void Function(
   oauth2.AccessCredentials credentials,
 );
 
-class LoggingClient extends http.BaseClient {
-  LoggingClient({required http.Client httpClient}) : _baseClient = httpClient;
-
-  final http.Client _baseClient;
-
-  @override
-  Future<http.StreamedResponse> send(http.BaseRequest request) async {
-    logger.detail('[HTTP] $request');
-    return _baseClient.send(request);
-  }
-}
-
-class AuthenticatedClient extends LoggingClient {
+class AuthenticatedClient extends http.BaseClient {
   AuthenticatedClient.credentials({
     required http.Client httpClient,
     required oauth2.AccessCredentials credentials,
@@ -93,16 +81,18 @@ class AuthenticatedClient extends LoggingClient {
         );
 
   AuthenticatedClient._({
-    required super.httpClient,
+    required http.Client httpClient,
     OnRefreshCredentials? onRefreshCredentials,
     oauth2.AccessCredentials? credentials,
     String? token,
     RefreshCredentials refreshCredentials = oauth2.refreshCredentials,
-  })  : _credentials = credentials,
+  })  : _baseClient = httpClient,
+        _credentials = credentials,
         _onRefreshCredentials = onRefreshCredentials,
         _refreshCredentials = refreshCredentials,
         _token = token;
 
+  final http.Client _baseClient;
   final OnRefreshCredentials? _onRefreshCredentials;
   final RefreshCredentials _refreshCredentials;
   oauth2.AccessCredentials? _credentials;
@@ -138,7 +128,7 @@ class AuthenticatedClient extends LoggingClient {
 
     final token = credentials.idToken;
     request.headers['Authorization'] = 'Bearer $token';
-    return super.send(request);
+    return _baseClient.send(request);
   }
 }
 
@@ -148,7 +138,7 @@ class Auth {
     String? credentialsDir,
     ObtainAccessCredentials? obtainAccessCredentials,
     CodePushClientBuilder? buildCodePushClient,
-  })  : _httpClient = httpClient ?? http.Client(),
+  })  : _httpClient = httpClient ?? _defaultHttpClient,
         _credentialsDir =
             credentialsDir ?? applicationConfigHome(executableName),
         _obtainAccessCredentials = obtainAccessCredentials ??
@@ -156,6 +146,10 @@ class Auth {
         _buildCodePushClient = buildCodePushClient ?? CodePushClient.new {
     _loadCredentials();
   }
+
+  static http.Client get _defaultHttpClient => retryingHttpClient(
+        LoggingClient(httpClient: http.Client()),
+      );
 
   final http.Client _httpClient;
   final String _credentialsDir;
@@ -168,7 +162,9 @@ class Auth {
   }
 
   http.Client get client {
-    if (_credentials == null && _token == null) return _httpClient;
+    if (_credentials == null && _token == null) {
+      return _httpClient;
+    }
 
     if (_token != null) {
       return AuthenticatedClient.token(token: _token!, httpClient: _httpClient);
@@ -236,42 +232,6 @@ class Auth {
   }
 
   void logout() => _clearCredentials();
-
-  Future<User> signUp({
-    required void Function(String) authPrompt,
-    required String Function() namePrompt,
-  }) async {
-    if (_credentials != null) {
-      throw UserAlreadyLoggedInException(email: _credentials!.email!);
-    }
-
-    final client = http.Client();
-    final User newUser;
-    try {
-      _credentials = await _obtainAccessCredentials(
-        _clientId,
-        _scopes,
-        client,
-        authPrompt,
-      );
-
-      final codePushClient = _buildCodePushClient(httpClient: this.client);
-
-      final existingUser = await codePushClient.getCurrentUser();
-      if (existingUser != null) {
-        throw UserAlreadyExistsException(existingUser);
-      }
-
-      newUser = await codePushClient.createUser(name: namePrompt());
-
-      _email = newUser.email;
-      _flushCredentials(_credentials!);
-    } finally {
-      client.close();
-    }
-
-    return newUser;
-  }
 
   oauth2.AccessCredentials? _credentials;
 
@@ -355,15 +315,4 @@ class UserNotFoundException implements Exception {
   /// The email used to locate the user, as derived from the stored auth
   /// credentials.
   final String email;
-}
-
-/// {@template user_already_exists_exception}
-/// Thrown when an attempt to create a User object results in a 409.
-/// {@endtemplate}
-class UserAlreadyExistsException implements Exception {
-  /// {@macro user_already_exists_exception}
-  UserAlreadyExistsException(this.user);
-
-  /// The existing user.
-  final User user;
 }

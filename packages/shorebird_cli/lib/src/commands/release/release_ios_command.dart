@@ -1,34 +1,37 @@
-import 'dart:io';
+import 'dart:io' hide Platform;
 
 import 'package:mason_logger/mason_logger.dart';
 import 'package:path/path.dart' as p;
+import 'package:platform/platform.dart';
 import 'package:shorebird_cli/src/archive_analysis/archive_analysis.dart';
 import 'package:shorebird_cli/src/code_push_client_wrapper.dart';
 import 'package:shorebird_cli/src/command.dart';
 import 'package:shorebird_cli/src/config/config.dart';
+import 'package:shorebird_cli/src/doctor.dart';
+import 'package:shorebird_cli/src/ios.dart';
 import 'package:shorebird_cli/src/logger.dart';
 import 'package:shorebird_cli/src/shorebird_artifact_mixin.dart';
 import 'package:shorebird_cli/src/shorebird_build_mixin.dart';
-import 'package:shorebird_cli/src/shorebird_config_mixin.dart';
-import 'package:shorebird_cli/src/shorebird_environment.dart';
-import 'package:shorebird_cli/src/shorebird_validation_mixin.dart';
+import 'package:shorebird_cli/src/shorebird_env.dart';
+import 'package:shorebird_cli/src/shorebird_validator.dart';
+import 'package:shorebird_code_push_client/shorebird_code_push_client.dart';
 
 /// {@template release_ios_command}
-/// `shorebird release ios-preview`
+/// `shorebird release ios-alpha`
 /// Create new app releases for iOS.
 /// {@endtemplate}
 class ReleaseIosCommand extends ShorebirdCommand
-    with
-        ShorebirdBuildMixin,
-        ShorebirdConfigMixin,
-        ShorebirdArtifactMixin,
-        ShorebirdValidationMixin {
+    with ShorebirdBuildMixin, ShorebirdArtifactMixin {
   /// {@macro release_ios_command}
   ReleaseIosCommand({
-    super.validators,
     IpaReader? ipaReader,
   }) : _ipaReader = ipaReader ?? IpaReader() {
     argParser
+      ..addOption(
+        'target',
+        abbr: 't',
+        help: 'The main entrypoint file of the application.',
+      )
       ..addOption(
         'flavor',
         help: 'The product flavor to use when building the app.',
@@ -44,9 +47,6 @@ class ReleaseIosCommand extends ShorebirdCommand
   final IpaReader _ipaReader;
 
   @override
-  bool get hidden => true;
-
-  @override
   String get description => '''
 Builds and submits your iOS app to Shorebird.
 Shorebird saves the compiled Dart code from your application in order to
@@ -54,33 +54,33 @@ make smaller updates to your app.
 ''';
 
   @override
-  String get name => 'ios';
+  String get name => 'ios-alpha';
 
   @override
   Future<int> run() async {
     try {
-      await validatePreconditions(
+      await shorebirdValidator.validatePreconditions(
         checkUserIsAuthenticated: true,
         checkShorebirdInitialized: true,
-        checkValidators: true,
+        validators: doctor.iosCommandValidators,
+        supportedOperatingSystems: {Platform.macOS},
       );
     } on PreconditionFailedException catch (e) {
       return e.exitCode.code;
     }
 
-    logger.warn(
-      '''iOS support is in an experimental state and will not work without Flutter engine changes that have not yet been published.''',
-    );
+    showiOSStatusWarning();
 
-    const platformName = 'ios';
+    const releasePlatform = ReleasePlatform.ios;
     final flavor = results['flavor'] as String?;
-    final shorebirdYaml = ShorebirdEnvironment.getShorebirdYaml()!;
+    final target = results['target'] as String?;
+    final shorebirdYaml = shorebirdEnv.getShorebirdYaml()!;
     final appId = shorebirdYaml.getAppId(flavor: flavor);
     final app = await codePushClientWrapper.getApp(appId: appId);
 
     final buildProgress = logger.progress('Building release');
     try {
-      await buildIpa(flavor: flavor);
+      await buildIpa(flavor: flavor, target: target);
     } on ProcessException catch (error) {
       buildProgress.fail('Failed to build IPA: ${error.message}');
       return ExitCode.software.code;
@@ -93,12 +93,22 @@ make smaller updates to your app.
     buildProgress.complete();
 
     final releaseVersionProgress = logger.progress('Getting release version');
-    final ipaPath = p.join(
-      Directory.current.path,
-      'build',
-      'ios',
-      'ipa',
-      '${getIpaName()}.ipa',
+    final iosBuildDir = p.join(Directory.current.path, 'build', 'ios');
+    final String ipaPath;
+    try {
+      ipaPath = getIpaPath();
+    } catch (error) {
+      releaseVersionProgress.fail('Could not find ipa file: $error');
+      return ExitCode.software.code;
+    }
+
+    final runnerPath = p.join(
+      iosBuildDir,
+      'archive',
+      'Runner.xcarchive',
+      'Products',
+      'Applications',
+      'Runner.app',
     );
     String releaseVersion;
     try {
@@ -118,9 +128,9 @@ make smaller updates to your app.
       releaseVersion: releaseVersion,
     );
     if (existingRelease != null) {
-      await codePushClientWrapper.ensureReleaseHasNoArtifacts(
-        existingRelease: existingRelease,
-        platform: platformName,
+      codePushClientWrapper.ensureReleaseIsNotActive(
+        release: existingRelease,
+        platform: releasePlatform,
       );
     }
 
@@ -128,11 +138,13 @@ make smaller updates to your app.
       '''📱 App: ${lightCyan.wrap(app.displayName)} ${lightCyan.wrap('($appId)')}''',
       if (flavor != null) '🍧 Flavor: ${lightCyan.wrap(flavor)}',
       '📦 Release Version: ${lightCyan.wrap(releaseVersion)}',
-      '''🕹️  Platform: ${lightCyan.wrap(platformName)}''',
+      '''🕹️  Platform: ${lightCyan.wrap(releasePlatform.name)}''',
     ];
 
     logger.info('''
+
 ${styleBold.wrap(lightGreen.wrap('🚀 Ready to create a new release!'))}
+
 ${summary.join('\n')}
 ''');
 
@@ -147,30 +159,38 @@ ${summary.join('\n')}
       }
     }
 
-    final flutterRevisionProgress = logger.progress(
-      'Fetching Flutter revision',
-    );
-    final String shorebirdFlutterRevision;
-    try {
-      shorebirdFlutterRevision = await getShorebirdFlutterRevision();
-      flutterRevisionProgress.complete();
-    } catch (error) {
-      flutterRevisionProgress.fail('$error');
-      return ExitCode.software.code;
+    final Release release;
+    if (existingRelease != null) {
+      release = existingRelease;
+      await codePushClientWrapper.updateReleaseStatus(
+        appId: appId,
+        releaseId: release.id,
+        platform: releasePlatform,
+        status: ReleaseStatus.draft,
+      );
+    } else {
+      release = await codePushClientWrapper.createRelease(
+        appId: appId,
+        version: releaseVersion,
+        flutterRevision: shorebirdEnv.flutterRevision,
+        platform: releasePlatform,
+      );
     }
-
-    final release = existingRelease ??
-        await codePushClientWrapper.createRelease(
-          appId: appId,
-          version: releaseVersion,
-          flutterRevision: shorebirdFlutterRevision,
-        );
 
     final relativeIpaPath = p.relative(ipaPath);
 
-    await codePushClientWrapper.createIosReleaseArtifact(
+    await codePushClientWrapper.createIosReleaseArtifacts(
+      appId: app.appId,
       releaseId: release.id,
       ipaPath: ipaPath,
+      runnerPath: runnerPath,
+    );
+
+    await codePushClientWrapper.updateReleaseStatus(
+      appId: app.appId,
+      releaseId: release.id,
+      platform: releasePlatform,
+      status: ReleaseStatus.active,
     );
 
     logger

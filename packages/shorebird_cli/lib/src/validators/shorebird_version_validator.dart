@@ -1,31 +1,24 @@
 import 'dart:io';
 
-import 'package:path/path.dart' as p;
-import 'package:shorebird_cli/src/process.dart';
+import 'package:shorebird_cli/src/shorebird_version.dart';
 import 'package:shorebird_cli/src/validators/validators.dart';
 
 /// Verifies that the currently installed version of Shorebird is the latest.
 class ShorebirdVersionValidator extends Validator {
-  ShorebirdVersionValidator({required this.isShorebirdVersionCurrent});
-
-  final Future<bool> Function({required String workingDirectory})
-      isShorebirdVersionCurrent;
+  ShorebirdVersionValidator();
 
   @override
   String get description => 'Shorebird is up-to-date';
 
   @override
-  ValidatorScope get scope => ValidatorScope.installation;
+  bool canRunInCurrentContext() => true;
 
   @override
-  Future<List<ValidationIssue>> validate(ShorebirdProcess process) async {
-    final workingDirectory = p.dirname(Platform.script.toFilePath());
+  Future<List<ValidationIssue>> validate() async {
     final bool isShorebirdUpToDate;
 
     try {
-      isShorebirdUpToDate = await isShorebirdVersionCurrent(
-        workingDirectory: workingDirectory,
-      );
+      isShorebirdUpToDate = await shorebirdVersion.isLatest();
     } on ProcessException catch (e) {
       return [
         ValidationIssue(

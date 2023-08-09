@@ -6,10 +6,10 @@ import 'package:scoped/scoped.dart';
 import 'package:shorebird_cli/src/android_studio.dart';
 import 'package:shorebird_cli/src/platform.dart';
 
-// A reference to a [Java] instance.
+/// A reference to a [Java] instance.
 final javaRef = create(Java.new);
 
-// The [Java] instance available in the current zone.
+/// The [Java] instance available in the current zone.
 Java get java => read(javaRef);
 
 /// A wrapper around all java related functionality.

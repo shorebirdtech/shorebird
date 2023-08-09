@@ -1,21 +1,27 @@
 import 'dart:io';
 
+import 'package:collection/collection.dart';
 import 'package:crypto/crypto.dart';
 import 'package:http/http.dart' as http;
 import 'package:mason_logger/mason_logger.dart';
 import 'package:path/path.dart' as p;
+import 'package:scoped/scoped.dart';
 import 'package:shorebird_cli/src/archive_analysis/archive_analysis.dart';
+import 'package:shorebird_cli/src/archive_analysis/archive_differ.dart';
 import 'package:shorebird_cli/src/cache.dart';
 import 'package:shorebird_cli/src/code_push_client_wrapper.dart';
 import 'package:shorebird_cli/src/command.dart';
 import 'package:shorebird_cli/src/config/shorebird_yaml.dart';
+import 'package:shorebird_cli/src/doctor.dart';
 import 'package:shorebird_cli/src/formatters/formatters.dart';
 import 'package:shorebird_cli/src/logger.dart';
+import 'package:shorebird_cli/src/patch_diff_checker.dart';
 import 'package:shorebird_cli/src/shorebird_build_mixin.dart';
-import 'package:shorebird_cli/src/shorebird_config_mixin.dart';
-import 'package:shorebird_cli/src/shorebird_environment.dart';
+import 'package:shorebird_cli/src/shorebird_env.dart';
+import 'package:shorebird_cli/src/shorebird_flutter.dart';
 import 'package:shorebird_cli/src/shorebird_release_version_mixin.dart';
-import 'package:shorebird_cli/src/shorebird_validation_mixin.dart';
+import 'package:shorebird_cli/src/shorebird_validator.dart';
+import 'package:shorebird_code_push_client/shorebird_code_push_client.dart';
 
 /// {@template patch_android_command}
 /// `shorebird patch android`
@@ -23,33 +29,19 @@ import 'package:shorebird_cli/src/shorebird_validation_mixin.dart';
 /// push server.
 /// {@endtemplate}
 class PatchAndroidCommand extends ShorebirdCommand
-    with
-        ShorebirdConfigMixin,
-        ShorebirdValidationMixin,
-        ShorebirdBuildMixin,
-        ShorebirdReleaseVersionMixin {
+    with ShorebirdBuildMixin, ShorebirdReleaseVersionMixin {
   /// {@macro patch_android_command}
   PatchAndroidCommand({
-    super.validators,
     HashFunction? hashFn,
     http.Client? httpClient,
-    AabDiffer? aabDiffer,
-  })  : _aabDiffer = aabDiffer ?? AabDiffer(),
+    AndroidArchiveDiffer? archiveDiffer,
+  })  : _archiveDiffer = archiveDiffer ?? AndroidArchiveDiffer(),
         _hashFn = hashFn ?? ((m) => sha256.convert(m).toString()),
         _httpClient = httpClient ?? http.Client() {
     argParser
       ..addOption(
         'release-version',
         help: 'The version of the release (e.g. "1.0.0").',
-      )
-      ..addOption(
-        'channel',
-        help: 'The channel the patch should be promoted to (e.g. "stable").',
-        allowed: ['stable'],
-        allowedHelp: {
-          'stable': 'The stable channel which is consumed by production apps.'
-        },
-        defaultsTo: 'stable',
       )
       ..addOption(
         'target',
@@ -81,17 +73,17 @@ class PatchAndroidCommand extends ShorebirdCommand
   @override
   String get name => 'android';
 
-  final AabDiffer _aabDiffer;
+  final ArchiveDiffer _archiveDiffer;
   final HashFunction _hashFn;
   final http.Client _httpClient;
 
   @override
   Future<int> run() async {
     try {
-      await validatePreconditions(
+      await shorebirdValidator.validatePreconditions(
         checkUserIsAuthenticated: true,
         checkShorebirdInitialized: true,
-        checkValidators: true,
+        validators: doctor.androidCommandValidators,
       );
     } on PreconditionFailedException catch (e) {
       return e.exitCode.code;
@@ -107,104 +99,56 @@ class PatchAndroidCommand extends ShorebirdCommand
 
     await cache.updateAll();
 
-    const platformName = 'android';
-    final channelName = results['channel'] as String;
+    const platform = ReleasePlatform.android;
+    const channelName = 'stable';
     final flavor = results['flavor'] as String?;
     final target = results['target'] as String?;
-    final buildProgress = logger.progress('Building patch');
-    try {
-      await buildAppBundle(flavor: flavor, target: target);
-      buildProgress.complete();
-    } on ProcessException catch (error) {
-      buildProgress.fail('Failed to build: ${error.message}');
-      return ExitCode.software.code;
-    }
-
-    final shorebirdYaml = ShorebirdEnvironment.getShorebirdYaml()!;
+    final shorebirdYaml = shorebirdEnv.getShorebirdYaml()!;
     final appId = shorebirdYaml.getAppId(flavor: flavor);
     final app = await codePushClientWrapper.getApp(appId: appId);
+    final releases = await codePushClientWrapper.getReleases(appId: appId);
 
-    final bundlePath = flavor != null
-        ? './build/app/outputs/bundle/${flavor}Release/app-$flavor-release.aab'
-        : './build/app/outputs/bundle/release/app-release.aab';
-
-    final releaseVersionArg = results['release-version'] as String?;
-    final String releaseVersion;
-
-    final detectReleaseVersionProgress = logger.progress(
-      'Detecting release version',
-    );
-    try {
-      releaseVersion = releaseVersionArg ??
-          await extractReleaseVersionFromAppBundle(bundlePath);
-      detectReleaseVersionProgress.complete(
-        'Detected release version $releaseVersion',
-      );
-    } catch (error) {
-      detectReleaseVersionProgress.fail('$error');
-      return ExitCode.software.code;
-    }
-
-    if (dryRun) {
-      logger
-        ..info('No issues detected.')
-        ..info('The server may enforce additional checks.');
+    if (releases.isEmpty) {
+      logger.info('No releases found');
       return ExitCode.success.code;
     }
 
-    final release = await codePushClientWrapper.getRelease(
-      appId: appId,
-      releaseVersion: releaseVersion,
+    final releaseVersion = results['release-version'] as String? ??
+        await promptForReleaseVersion(releases);
+
+    final release = releases.firstWhereOrNull(
+      (r) => r.version == releaseVersion,
     );
 
-    final flutterRevisionProgress = logger.progress(
-      'Fetching Flutter revision',
-    );
-    final String shorebirdFlutterRevision;
-    try {
-      shorebirdFlutterRevision = await getShorebirdFlutterRevision();
-      flutterRevisionProgress.complete();
-    } catch (error) {
-      flutterRevisionProgress.fail('$error');
-      return ExitCode.software.code;
+    if (releaseVersion == null || release == null) {
+      logger.info('''
+No release found for version $releaseVersion
+
+Available release versions:
+${releases.map((r) => r.version).join('\n')}''');
+      return ExitCode.success.code;
     }
 
-    if (release.flutterRevision != shorebirdFlutterRevision) {
-      logger
-        ..err('''
-Flutter revision mismatch.
-
-The release you are trying to patch was built with a different version of Flutter.
-
-Release Flutter Revision: ${release.flutterRevision}
-Current Flutter Revision: $shorebirdFlutterRevision
-''')
-        ..info(
-          '''
-Either create a new release using:
-  ${lightCyan.wrap('shorebird release')}
-
-Or downgrade your Flutter version and try again using:
-  ${lightCyan.wrap('cd ${ShorebirdEnvironment.flutterDirectory.path}')}
-  ${lightCyan.wrap('git checkout ${release.flutterRevision}')}
-
-Shorebird plans to support this automatically, let us know if it's important to you:
-https://github.com/shorebirdtech/shorebird/issues/472
-''',
-        );
+    if (release.platformStatuses[ReleasePlatform.android] ==
+        ReleaseStatus.draft) {
+      logger.err('''
+Release $releaseVersion is in an incomplete state. It's possible that the original release was terminated or failed to complete.
+Please re-run the release command for this version or create a new release.''');
       return ExitCode.software.code;
     }
 
     final releaseArtifacts = await codePushClientWrapper.getReleaseArtifacts(
+      appId: app.appId,
       releaseId: release.id,
       architectures: architectures,
-      platform: platformName,
+      platform: platform,
     );
 
     final releaseAabArtifact = await codePushClientWrapper.getReleaseArtifact(
+      appId: app.appId,
       releaseId: release.id,
       arch: 'aab',
-      platform: platformName,
+      platform: platform,
     );
 
     final releaseArtifactPaths = <Arch, String>{};
@@ -224,55 +168,78 @@ https://github.com/shorebirdtech/shorebird/issues/472
       }
     }
 
-    String releaseAabPath;
-    try {
-      releaseAabPath = await downloadReleaseArtifact(
-        Uri.parse(releaseAabArtifact.url),
-        httpClient: _httpClient,
-      );
-    } catch (error) {
-      downloadReleaseArtifactProgress.fail('$error');
-      return ExitCode.software.code;
-    }
-
     downloadReleaseArtifactProgress.complete();
 
-    final contentDiffs = _aabDiffer.changedFiles(
-      releaseAabPath,
-      bundlePath,
-    );
-
-    logger.detail('aab content differences: $contentDiffs');
-
-    if (contentDiffs.nativeChanges.isNotEmpty) {
-      logger
-        ..err(
-          '''The Android App Bundle appears to contain Kotlin or Java changes, which cannot be applied via a patch.''',
-        )
-        ..info(yellow.wrap(contentDiffs.nativeChanges.prettyString))
-        ..info(
-          yellow.wrap(
-            '''
-Please create a new release or revert those changes to create a patch.
-
-If you believe you're seeing this in error, please reach out to us for support at https://shorebird.dev/support''',
-          ),
+    final shorebirdFlutterRevision = shorebirdEnv.flutterRevision;
+    if (release.flutterRevision != shorebirdFlutterRevision) {
+      final installFlutterRevisionProgress = logger.progress(
+        'Switching to Flutter revision ${release.flutterRevision}',
+      );
+      try {
+        await shorebirdFlutter.installRevision(
+          revision: release.flutterRevision,
         );
+        installFlutterRevisionProgress.complete();
+      } catch (error) {
+        installFlutterRevisionProgress.fail('$error');
+        return ExitCode.software.code;
+      }
+    }
+
+    final buildProgress = logger.progress('Building patch');
+    try {
+      await runScoped(
+        () => buildAppBundle(flavor: flavor, target: target),
+        values: {
+          shorebirdEnvRef.overrideWith(
+            () => ShorebirdEnv(
+              flutterRevisionOverride: release.flutterRevision,
+            ),
+          )
+        },
+      );
+      buildProgress.complete();
+    } on ProcessException catch (error) {
+      buildProgress.fail('Failed to build: ${error.message}');
       return ExitCode.software.code;
     }
 
-    if (contentDiffs.assetChanges.isNotEmpty) {
-      logger
-        ..warn(
-          '''The Android App Bundle contains asset changes, which will not be included in the patch.''',
-        )
-        ..info(yellow.wrap(contentDiffs.assetChanges.prettyString));
+    final bundlePath = flavor != null
+        ? './build/app/outputs/bundle/${flavor}Release/app-$flavor-release.aab'
+        : './build/app/outputs/bundle/release/app-release.aab';
 
-      final shouldContinue = force || logger.confirm('Continue anyways?');
-      if (!shouldContinue) {
-        return ExitCode.success.code;
-      }
+    final detectReleaseVersionProgress = logger.progress(
+      'Detecting release version',
+    );
+    final String localReleaseVersion;
+    try {
+      localReleaseVersion = await extractReleaseVersionFromAppBundle(
+        bundlePath,
+      );
+      detectReleaseVersionProgress.complete(
+        'Detected release version $localReleaseVersion',
+      );
+    } catch (error) {
+      detectReleaseVersionProgress.fail('$error');
+      return ExitCode.software.code;
     }
+
+    if (localReleaseVersion != releaseVersion) {
+      logger.err('''
+The local release version ($localReleaseVersion) does not match the remote release version ($releaseVersion).
+Please re-run the release command for this version or create a new release.''');
+      return ExitCode.software.code;
+    }
+
+    final shouldContinue =
+        await patchDiffChecker.confirmUnpatchableDiffsIfNecessary(
+      localArtifact: File(bundlePath),
+      releaseArtifactUrl: Uri.parse(releaseAabArtifact.url),
+      archiveDiffer: _archiveDiffer,
+      force: force,
+    );
+
+    if (!shouldContinue) return ExitCode.success.code;
 
     final patchArtifactBundles = <Arch, PatchArtifactBundle>{};
     final createDiffProgress = logger.progress('Creating artifacts');
@@ -318,12 +285,19 @@ If you believe you're seeing this in error, please reach out to us for support a
       return '$name ($size)';
     });
 
+    if (dryRun) {
+      logger
+        ..info('No issues detected.')
+        ..info('The server may enforce additional checks.');
+      return ExitCode.success.code;
+    }
+
     final summary = [
       '''📱 App: ${lightCyan.wrap(app.displayName)} ${lightCyan.wrap('(${app.appId})')}''',
       if (flavor != null) '🍧 Flavor: ${lightCyan.wrap(flavor)}',
       '📦 Release Version: ${lightCyan.wrap(releaseVersion)}',
       '📺 Channel: ${lightCyan.wrap(channelName)}',
-      '''🕹️  Platform: ${lightCyan.wrap(platformName)} ${lightCyan.wrap('[${archMetadata.join(', ')}]')}''',
+      '''🕹️  Platform: ${lightCyan.wrap(platform.name)} ${lightCyan.wrap('[${archMetadata.join(', ')}]')}''',
     ];
 
     logger.info(
@@ -348,13 +322,23 @@ ${summary.join('\n')}
     await codePushClientWrapper.publishPatch(
       appId: appId,
       releaseId: release.id,
-      platform: platformName,
+      platform: platform,
       channelName: channelName,
       patchArtifactBundles: patchArtifactBundles,
     );
 
     logger.success('\n✅ Published Patch!');
     return ExitCode.success.code;
+  }
+
+  Future<String?> promptForReleaseVersion(List<Release> releases) async {
+    if (releases.isEmpty) return null;
+    final release = logger.chooseOne(
+      'Which release would you like to patch?',
+      choices: releases,
+      display: (release) => release.version,
+    );
+    return release.version;
   }
 
   Future<String> downloadReleaseArtifact(

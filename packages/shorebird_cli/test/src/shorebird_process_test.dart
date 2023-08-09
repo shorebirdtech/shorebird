@@ -2,7 +2,9 @@ import 'dart:io';
 
 import 'package:mocktail/mocktail.dart';
 import 'package:path/path.dart' as p;
+import 'package:scoped/scoped.dart';
 import 'package:shorebird_cli/src/process.dart';
+import 'package:shorebird_cli/src/shorebird_env.dart';
 import 'package:test/test.dart';
 
 class _MockProcess extends Mock implements Process {}
@@ -10,6 +12,8 @@ class _MockProcess extends Mock implements Process {}
 class _MockProcessResult extends Mock implements ShorebirdProcessResult {}
 
 class _MockProcessWrapper extends Mock implements ProcessWrapper {}
+
+class _MockShorebirdEnv extends Mock implements ShorebirdEnv {}
 
 void main() {
   group('ShorebirdProcess', () {
@@ -20,16 +24,30 @@ void main() {
     late ProcessWrapper processWrapper;
     late Process startProcess;
     late ShorebirdProcessResult runProcessResult;
+    late ShorebirdEnv shorebirdEnv;
     late ShorebirdProcess shorebirdProcess;
+
+    R runWithOverrides<R>(R Function() body) {
+      return runScoped(
+        () => body(),
+        values: {
+          shorebirdEnvRef.overrideWith(() => shorebirdEnv),
+        },
+      );
+    }
 
     setUp(() {
       processWrapper = _MockProcessWrapper();
       runProcessResult = _MockProcessResult();
       startProcess = _MockProcess();
-      shorebirdProcess = ShorebirdProcess(
-        processWrapper: processWrapper,
+      shorebirdEnv = _MockShorebirdEnv();
+      shorebirdProcess = runWithOverrides(
+        () => ShorebirdProcess(processWrapper: processWrapper),
       );
 
+      when(
+        () => shorebirdEnv.flutterBinaryFile,
+      ).thenReturn(File(p.join('bin', 'cache', 'flutter', 'bin', 'flutter')));
       when(
         () => processWrapper.run(
           any(),
@@ -78,11 +96,13 @@ void main() {
       });
 
       test('replaces "flutter" with our local flutter', () async {
-        await shorebirdProcess.run(
-          'flutter',
-          ['--version'],
-          runInShell: true,
-          workingDirectory: '~',
+        await runWithOverrides(
+          () => shorebirdProcess.run(
+            'flutter',
+            ['--version'],
+            runInShell: true,
+            workingDirectory: '~',
+          ),
         );
 
         verify(
@@ -178,7 +198,7 @@ void main() {
         ),
       );
 
-      await shorebirdProcess.run('flutter', []);
+      await runWithOverrides(() => shorebirdProcess.run('flutter', []));
 
       verify(
         () => processWrapper.run(
@@ -209,7 +229,9 @@ void main() {
       });
 
       test('replaces "flutter" with our local flutter', () async {
-        await shorebirdProcess.start('flutter', ['run'], runInShell: true);
+        await runWithOverrides(
+          () => shorebirdProcess.start('flutter', ['run'], runInShell: true),
+        );
 
         verify(
           () => processWrapper.start(
@@ -247,11 +269,13 @@ void main() {
     });
 
     test('Updates environment if useVendedFlutter is true', () async {
-      await shorebirdProcess.start(
-        'flutter',
-        ['--version'],
-        runInShell: true,
-        environment: {'ENV_VAR': 'asdfasdf'},
+      await runWithOverrides(
+        () => shorebirdProcess.start(
+          'flutter',
+          ['--version'],
+          runInShell: true,
+          environment: {'ENV_VAR': 'asdfasdf'},
+        ),
       );
 
       verify(

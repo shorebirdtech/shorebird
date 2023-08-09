@@ -1,6 +1,7 @@
 import 'dart:io';
 
 import 'package:scoped/scoped.dart';
+import 'package:shorebird_cli/src/adb.dart';
 import 'package:shorebird_cli/src/android_sdk.dart';
 import 'package:shorebird_cli/src/android_studio.dart';
 import 'package:shorebird_cli/src/auth/auth.dart';
@@ -8,27 +9,48 @@ import 'package:shorebird_cli/src/bundletool.dart';
 import 'package:shorebird_cli/src/cache.dart';
 import 'package:shorebird_cli/src/code_push_client_wrapper.dart';
 import 'package:shorebird_cli/src/command_runner.dart';
+import 'package:shorebird_cli/src/doctor.dart';
+import 'package:shorebird_cli/src/git.dart';
+import 'package:shorebird_cli/src/gradlew.dart';
+import 'package:shorebird_cli/src/ios_deploy.dart';
 import 'package:shorebird_cli/src/java.dart';
 import 'package:shorebird_cli/src/logger.dart';
+import 'package:shorebird_cli/src/patch_diff_checker.dart';
 import 'package:shorebird_cli/src/platform.dart';
 import 'package:shorebird_cli/src/process.dart';
+import 'package:shorebird_cli/src/shorebird_env.dart';
+import 'package:shorebird_cli/src/shorebird_flutter.dart';
+import 'package:shorebird_cli/src/shorebird_validator.dart';
+import 'package:shorebird_cli/src/shorebird_version.dart';
+import 'package:shorebird_cli/src/xcodebuild.dart';
 
 Future<void> main(List<String> args) async {
   await _flushThenExit(
     await runScoped(
       () async => ShorebirdCliCommandRunner().run(args),
       values: {
+        adbRef,
         androidSdkRef,
         androidStudioRef,
         authRef,
         bundletoolRef,
         cacheRef,
         codePushClientWrapperRef,
+        doctorRef,
         engineConfigRef,
+        gitRef,
+        gradlewRef,
+        iosDeployRef,
         javaRef,
         loggerRef,
+        patchDiffCheckerRef,
         platformRef,
         processRef,
+        shorebirdEnvRef,
+        shorebirdFlutterRef,
+        shorebirdValidatorRef,
+        shorebirdVersionRef,
+        xcodeBuildRef,
       },
     ),
   );

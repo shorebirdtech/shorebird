@@ -1,7 +1,6 @@
 import 'package:http/http.dart' as http;
 import 'package:mason_logger/mason_logger.dart';
 import 'package:mocktail/mocktail.dart';
-import 'package:money2/money2.dart';
 import 'package:path/path.dart' as p;
 import 'package:platform/platform.dart';
 import 'package:scoped/scoped.dart';
@@ -10,6 +9,7 @@ import 'package:shorebird_cli/src/code_push_client_wrapper.dart';
 import 'package:shorebird_cli/src/logger.dart';
 import 'package:shorebird_cli/src/platform.dart';
 import 'package:shorebird_cli/src/shorebird_build_mixin.dart';
+import 'package:shorebird_cli/src/shorebird_env.dart';
 import 'package:shorebird_cli/src/third_party/flutter_tools/lib/flutter_tools.dart';
 import 'package:shorebird_code_push_client/shorebird_code_push_client.dart';
 import 'package:test/test.dart';
@@ -26,21 +26,25 @@ class _MockPlatform extends Mock implements Platform {}
 
 class _MockProgress extends Mock implements Progress {}
 
+class _MockShorebirdEnv extends Mock implements ShorebirdEnv {}
+
 void main() {
   group('scoped', () {
     late Auth auth;
     late http.Client httpClient;
     late Platform platform;
+    late ShorebirdEnv shorebirdEnv;
 
     setUp(() {
       auth = _MockAuth();
       httpClient = _MockHttpClient();
       platform = _MockPlatform();
+      shorebirdEnv = _MockShorebirdEnv();
 
       when(() => auth.client).thenReturn(httpClient);
-      when(() => platform.environment).thenReturn({
-        'SHOREBIRD_HOSTED_URL': 'http://example.com',
-      });
+      when(() => shorebirdEnv.hostedUri).thenReturn(
+        Uri.parse('http://example.com'),
+      );
     });
 
     test('creates instance from scoped Auth and ShorebirdEnvironment', () {
@@ -50,6 +54,7 @@ void main() {
           codePushClientWrapperRef,
           authRef.overrideWith(() => auth),
           platformRef.overrideWith(() => platform),
+          shorebirdEnvRef.overrideWith(() => shorebirdEnv),
         },
       );
       expect(
@@ -75,7 +80,7 @@ void main() {
     const patchId = 1;
     const patchNumber = 2;
     const patch = Patch(id: patchId, number: patchNumber);
-    const platformName = 'ios';
+    const releasePlatform = ReleasePlatform.ios;
     const releaseId = 123;
     const arch = Arch.arm64;
     const flutterRevision = '123';
@@ -87,6 +92,7 @@ void main() {
       version: releaseVersion,
       flutterRevision: flutterRevision,
       displayName: displayName,
+      platformStatuses: {},
     );
     final partchArtifactBundle = PatchArtifactBundle(
       arch: arch.name,
@@ -106,7 +112,7 @@ void main() {
       id: 1,
       releaseId: releaseId,
       arch: 'aarch64',
-      platform: platformName,
+      platform: releasePlatform,
       hash: 'asdf',
       size: 4,
       url: 'url',
@@ -128,7 +134,11 @@ void main() {
       );
     }
 
-    setUpAll(setExitFunctionForTests);
+    setUpAll(() {
+      registerFallbackValue(ReleasePlatform.android);
+      registerFallbackValue(ReleaseStatus.draft);
+      setExitFunctionForTests();
+    });
 
     tearDownAll(restoreExitFunction);
 
@@ -156,6 +166,95 @@ void main() {
     });
 
     group('app', () {
+      group('createApp', () {
+        test('prompts for displayName when not provided', () async {
+          const appName = 'test app';
+          const app = App(id: appId, displayName: 'Test App');
+          when(() => logger.prompt(any())).thenReturn(appName);
+          when(() => codePushClient.createApp(displayName: appName)).thenAnswer(
+            (_) async => app,
+          );
+
+          await runWithOverrides(
+            () => codePushClientWrapper.createApp(),
+          );
+
+          verify(() => logger.prompt(any())).called(1);
+          verify(
+            () => codePushClient.createApp(displayName: appName),
+          ).called(1);
+        });
+
+        test('does not prompt for displayName when not provided', () async {
+          const appName = 'test app';
+          const app = App(id: appId, displayName: 'Test App');
+          when(() => codePushClient.createApp(displayName: appName)).thenAnswer(
+            (_) async => app,
+          );
+
+          await runWithOverrides(
+            () => codePushClientWrapper.createApp(appName: appName),
+          );
+
+          verifyNever(() => logger.prompt(any()));
+          verify(
+            () => codePushClient.createApp(displayName: appName),
+          ).called(1);
+        });
+      });
+
+      group('getApps', () {
+        test('exits with code 70 when getting apps fails', () async {
+          const error = 'something went wrong';
+          when(() => codePushClient.getApps()).thenThrow(error);
+
+          await expectLater(
+            () async => runWithOverrides(
+              () => codePushClientWrapper.getApps(),
+            ),
+            exitsWithCode(ExitCode.software),
+          );
+          verify(() => progress.fail(error)).called(1);
+        });
+
+        test(
+          '''prints upgrade message when client throws CodePushUpgradeRequiredException''',
+          () async {
+            when(codePushClient.getApps).thenThrow(
+              const CodePushUpgradeRequiredException(
+                message: 'upgrade required',
+              ),
+            );
+            await expectLater(
+              () async => runWithOverrides(
+                () => codePushClientWrapper.getApps(),
+              ),
+              exitsWithCode(ExitCode.software),
+            );
+            verify(() => progress.fail()).called(1);
+            verify(
+              () => logger.err('Your version of shorebird is out of date.'),
+            ).called(1);
+            verify(
+              () => logger.info(
+                '''Run ${lightCyan.wrap('shorebird upgrade')} to get the latest version.''',
+              ),
+            ).called(1);
+          },
+        );
+
+        test('returns apps on success', () async {
+          when(() => codePushClient.getApps()).thenAnswer((_) async => [app]);
+
+          final apps = await runWithOverrides(
+            () => codePushClientWrapper.getApps(),
+          );
+
+          expect(apps, equals([app]));
+          verify(() => progress.complete()).called(1);
+        });
+      });
+
       group('getApp', () {
         test('exits with code 70 when getting app fails', () async {
           const error = 'something went wrong';
@@ -336,22 +435,24 @@ void main() {
     });
 
     group('release', () {
-      group('verifyCanRelease', () {
+      group('ensureReleaseIsIsNotActive', () {
         test(
-          '''exits with code 70 if release artifacts exist for the given release and platform''',
-          () async {
-            when(
-              () => codePushClient.getReleaseArtifacts(
-                releaseId: any(named: 'releaseId'),
-                platform: any(named: 'platform'),
-              ),
-            ).thenAnswer((_) async => [releaseArtifact]);
-
-            await expectLater(
-              runWithOverrides(
-                () async => codePushClientWrapper.ensureReleaseHasNoArtifacts(
-                  existingRelease: release,
-                  platform: platformName,
+          '''exits with code 70 if release is in an active state for the given platform''',
+          () {
+            expect(
+              () => runWithOverrides(
+                () => codePushClientWrapper.ensureReleaseIsNotActive(
+                  release: const Release(
+                    id: releaseId,
+                    appId: appId,
+                    version: releaseVersion,
+                    flutterRevision: flutterRevision,
+                    displayName: displayName,
+                    platformStatuses: {
+                      releasePlatform: ReleaseStatus.active,
+                    },
+                  ),
+                  platform: releasePlatform,
                 ),
               ),
               exitsWithCode(ExitCode.software),
@@ -360,7 +461,7 @@ void main() {
             verify(
               () => logger.err(
                 '''
-It looks like you have an existing $platformName release for version ${lightCyan.wrap(release.version)}.
+It looks like you have an existing ios release for version ${lightCyan.wrap(release.version)}.
 Please bump your version number and try again.''',
               ),
             ).called(1);
@@ -368,26 +469,78 @@ Please bump your version number and try again.''',
         );
 
         test(
-          '''completes without error if release artifacts exist for the given release and platform''',
+          '''completes without error if release has no status for the given platform''',
           () async {
-            when(
-              () => codePushClient.getReleaseArtifacts(
-                releaseId: any(named: 'releaseId'),
-                platform: any(named: 'platform'),
-              ),
-            ).thenAnswer((_) async => []);
-
             await expectLater(
               runWithOverrides(
-                () => codePushClientWrapper.ensureReleaseHasNoArtifacts(
-                  existingRelease: release,
-                  platform: platformName,
+                () async => codePushClientWrapper.ensureReleaseIsNotActive(
+                  release: const Release(
+                    id: releaseId,
+                    appId: appId,
+                    version: releaseVersion,
+                    flutterRevision: flutterRevision,
+                    displayName: displayName,
+                    platformStatuses: {},
+                  ),
+                  platform: releasePlatform,
                 ),
               ),
               completes,
             );
           },
         );
+
+        test(
+          '''completes without error if release has draft status for the given platform''',
+          () async {
+            await expectLater(
+              runWithOverrides(
+                () async => codePushClientWrapper.ensureReleaseIsNotActive(
+                  release: const Release(
+                    id: releaseId,
+                    appId: appId,
+                    version: releaseVersion,
+                    flutterRevision: flutterRevision,
+                    displayName: displayName,
+                    platformStatuses: {releasePlatform: ReleaseStatus.draft},
+                  ),
+                  platform: releasePlatform,
+                ),
+              ),
+              completes,
+            );
+          },
+        );
+      });
+
+      group('getReleases', () {
+        test('exits with code 70 when fetching release fails', () async {
+          const error = 'something went wrong';
+          when(
+            () => codePushClient.getReleases(appId: any(named: 'appId')),
+          ).thenThrow(error);
+
+          await expectLater(
+            () async => runWithOverrides(
+              () => codePushClientWrapper.getReleases(appId: appId),
+            ),
+            exitsWithCode(ExitCode.software),
+          );
+          verify(() => progress.fail(error)).called(1);
+        });
+
+        test('returns releases on success', () async {
+          when(
+            () => codePushClient.getReleases(appId: any(named: 'appId')),
+          ).thenAnswer((_) async => [release]);
+
+          final releases = await runWithOverrides(
+            () => codePushClientWrapper.getReleases(appId: appId),
+          );
+
+          expect(releases, equals([release]));
+          verify(() => progress.complete()).called(1);
+        });
       });
 
       group('getRelease', () {
@@ -518,6 +671,7 @@ Please bump your version number and try again.''',
                 appId: appId,
                 version: releaseVersion,
                 flutterRevision: flutterRevision,
+                platform: releasePlatform,
               ),
             ),
             exitsWithCode(ExitCode.software),
@@ -533,62 +687,33 @@ Please bump your version number and try again.''',
               flutterRevision: any(named: 'flutterRevision'),
             ),
           ).thenAnswer((_) async => release);
+          when(
+            () => codePushClient.updateReleaseStatus(
+              appId: any(named: 'appId'),
+              releaseId: any(named: 'releaseId'),
+              platform: any(named: 'platform'),
+              status: any(named: 'status'),
+            ),
+          ).thenAnswer((_) async => {});
 
           final result = await runWithOverrides(
             () async => codePushClientWrapper.createRelease(
               appId: appId,
               version: releaseVersion,
               flutterRevision: flutterRevision,
+              platform: releasePlatform,
             ),
           );
 
           expect(result, release);
-          verify(() => progress.complete()).called(1);
-        });
-      });
-
-      group('createRelease', () {
-        test('exits with code 70 when creating release fails', () async {
-          const error = 'something went wrong';
-          when(
-            () => codePushClient.createRelease(
-              appId: any(named: 'appId'),
-              version: any(named: 'version'),
-              flutterRevision: any(named: 'flutterRevision'),
-            ),
-          ).thenThrow(error);
-
-          await expectLater(
-            () async => runWithOverrides(
-              () async => codePushClientWrapper.createRelease(
-                appId: appId,
-                version: releaseVersion,
-                flutterRevision: flutterRevision,
-              ),
-            ),
-            exitsWithCode(ExitCode.software),
-          );
-          verify(() => progress.fail(error)).called(1);
-        });
-
-        test('returns release when release is successfully created', () async {
-          when(
-            () => codePushClient.createRelease(
-              appId: any(named: 'appId'),
-              version: any(named: 'version'),
-              flutterRevision: any(named: 'flutterRevision'),
-            ),
-          ).thenAnswer((_) async => release);
-
-          final result = await runWithOverrides(
-            () async => codePushClientWrapper.createRelease(
+          verify(
+            () => codePushClient.updateReleaseStatus(
               appId: appId,
-              version: releaseVersion,
-              flutterRevision: flutterRevision,
+              releaseId: result.id,
+              platform: releasePlatform,
+              status: ReleaseStatus.draft,
             ),
-          );
-
-          expect(result, release);
+          ).called(1);
           verify(() => progress.complete()).called(1);
         });
       });
@@ -600,6 +725,7 @@ Please bump your version number and try again.''',
           const error = 'something went wrong';
           when(
             () => codePushClient.getReleaseArtifacts(
+              appId: any(named: 'appId'),
               releaseId: any(named: 'releaseId'),
               arch: any(named: 'arch'),
               platform: any(named: 'platform'),
@@ -609,9 +735,10 @@ Please bump your version number and try again.''',
           await expectLater(
             () async => runWithOverrides(
               () => codePushClientWrapper.getReleaseArtifacts(
+                appId: app.appId,
                 releaseId: releaseId,
                 architectures: archMap,
-                platform: platformName,
+                platform: releasePlatform,
               ),
             ),
             exitsWithCode(ExitCode.software),
@@ -622,6 +749,7 @@ Please bump your version number and try again.''',
         test('exits with code 70 if release artifact does not exist', () async {
           when(
             () => codePushClient.getReleaseArtifacts(
+              appId: any(named: 'appId'),
               releaseId: any(named: 'releaseId'),
               arch: any(named: 'arch'),
               platform: any(named: 'platform'),
@@ -631,9 +759,10 @@ Please bump your version number and try again.''',
           await expectLater(
             () async => runWithOverrides(
               () => codePushClientWrapper.getReleaseArtifacts(
+                appId: app.appId,
                 releaseId: releaseId,
                 architectures: archMap,
-                platform: platformName,
+                platform: releasePlatform,
               ),
             ),
             exitsWithCode(ExitCode.software),
@@ -650,6 +779,7 @@ Please bump your version number and try again.''',
             () async {
           when(
             () => codePushClient.getReleaseArtifacts(
+              appId: any(named: 'appId'),
               releaseId: any(named: 'releaseId'),
               arch: any(named: 'arch'),
               platform: any(named: 'platform'),
@@ -658,9 +788,10 @@ Please bump your version number and try again.''',
 
           final result = await runWithOverrides(
             () => codePushClientWrapper.getReleaseArtifacts(
+              appId: app.appId,
               releaseId: releaseId,
               architectures: archMap,
-              platform: platformName,
+              platform: releasePlatform,
             ),
           );
 
@@ -674,6 +805,7 @@ Please bump your version number and try again.''',
           const error = 'something went wrong';
           when(
             () => codePushClient.getReleaseArtifacts(
+              appId: any(named: 'appId'),
               releaseId: any(named: 'releaseId'),
               arch: any(named: 'arch'),
               platform: any(named: 'platform'),
@@ -683,9 +815,10 @@ Please bump your version number and try again.''',
           await expectLater(
             () async => runWithOverrides(
               () => codePushClientWrapper.getReleaseArtifact(
+                appId: app.appId,
                 releaseId: releaseId,
                 arch: arch.name,
-                platform: platformName,
+                platform: releasePlatform,
               ),
             ),
             exitsWithCode(ExitCode.software),
@@ -697,6 +830,7 @@ Please bump your version number and try again.''',
         test('exits with code 70 if release artifact does not exist', () async {
           when(
             () => codePushClient.getReleaseArtifacts(
+              appId: any(named: 'appId'),
               releaseId: any(named: 'releaseId'),
               arch: any(named: 'arch'),
               platform: any(named: 'platform'),
@@ -706,9 +840,10 @@ Please bump your version number and try again.''',
           await expectLater(
             () async => runWithOverrides(
               () => codePushClientWrapper.getReleaseArtifact(
+                appId: app.appId,
                 releaseId: releaseId,
                 arch: arch.name,
-                platform: platformName,
+                platform: releasePlatform,
               ),
             ),
             exitsWithCode(ExitCode.software),
@@ -726,6 +861,7 @@ Please bump your version number and try again.''',
           () async {
             when(
               () => codePushClient.getReleaseArtifacts(
+                appId: any(named: 'appId'),
                 releaseId: any(named: 'releaseId'),
                 arch: any(named: 'arch'),
                 platform: any(named: 'platform'),
@@ -734,9 +870,10 @@ Please bump your version number and try again.''',
 
             final result = await runWithOverrides(
               () => codePushClientWrapper.getReleaseArtifact(
+                appId: app.appId,
                 releaseId: releaseId,
                 arch: arch.name,
-                platform: platformName,
+                platform: releasePlatform,
               ),
             );
 
@@ -751,6 +888,7 @@ Please bump your version number and try again.''',
           const error = 'something went wrong';
           when(
             () => codePushClient.getReleaseArtifacts(
+              appId: any(named: 'appId'),
               releaseId: any(named: 'releaseId'),
               arch: any(named: 'arch'),
               platform: any(named: 'platform'),
@@ -760,9 +898,10 @@ Please bump your version number and try again.''',
           await expectLater(
             () async => runWithOverrides(
               () => codePushClientWrapper.maybeGetReleaseArtifact(
+                appId: app.appId,
                 releaseId: releaseId,
                 arch: arch.name,
-                platform: platformName,
+                platform: releasePlatform,
               ),
             ),
             exitsWithCode(ExitCode.software),
@@ -774,6 +913,7 @@ Please bump your version number and try again.''',
         test('returns null if release artifact does not exist', () async {
           when(
             () => codePushClient.getReleaseArtifacts(
+              appId: any(named: 'appId'),
               releaseId: any(named: 'releaseId'),
               arch: any(named: 'arch'),
               platform: any(named: 'platform'),
@@ -782,9 +922,10 @@ Please bump your version number and try again.''',
 
           final result = await runWithOverrides(
             () => codePushClientWrapper.maybeGetReleaseArtifact(
+              appId: app.appId,
               releaseId: releaseId,
               arch: arch.name,
-              platform: platformName,
+              platform: releasePlatform,
             ),
           );
 
@@ -797,6 +938,7 @@ Please bump your version number and try again.''',
           () async {
             when(
               () => codePushClient.getReleaseArtifacts(
+                appId: any(named: 'appId'),
                 releaseId: any(named: 'releaseId'),
                 arch: any(named: 'arch'),
                 platform: any(named: 'platform'),
@@ -805,9 +947,10 @@ Please bump your version number and try again.''',
 
             final result = await runWithOverrides(
               () => codePushClientWrapper.maybeGetReleaseArtifact(
+                appId: app.appId,
                 releaseId: releaseId,
                 arch: arch.name,
-                platform: platformName,
+                platform: releasePlatform,
               ),
             );
 
@@ -845,6 +988,7 @@ Please bump your version number and try again.''',
         setUp(() {
           when(
             () => codePushClient.createReleaseArtifact(
+              appId: any(named: 'appId'),
               artifactPath: any(named: 'artifactPath'),
               releaseId: any(named: 'releaseId'),
               arch: any(named: 'arch'),
@@ -858,6 +1002,7 @@ Please bump your version number and try again.''',
           const error = 'something went wrong';
           when(
             () => codePushClient.createReleaseArtifact(
+              appId: any(named: 'appId'),
               artifactPath: any(named: 'artifactPath'),
               releaseId: any(named: 'releaseId'),
               arch: any(named: 'arch'),
@@ -871,8 +1016,9 @@ Please bump your version number and try again.''',
             () async => expectLater(
               () async => runWithOverrides(
                 () async => codePushClientWrapper.createAndroidReleaseArtifacts(
+                  appId: app.appId,
                   releaseId: releaseId,
-                  platform: platformName,
+                  platform: releasePlatform,
                   aabPath: p.join(tempDir.path, aabPath),
                   architectures: ShorebirdBuildMixin.allAndroidArchitectures,
                 ),
@@ -889,6 +1035,7 @@ Please bump your version number and try again.''',
           const error = 'something went wrong';
           when(
             () => codePushClient.createReleaseArtifact(
+              appId: any(named: 'appId'),
               artifactPath: any(named: 'artifactPath', that: endsWith('aab')),
               releaseId: any(named: 'releaseId'),
               arch: any(named: 'arch'),
@@ -902,8 +1049,9 @@ Please bump your version number and try again.''',
             () async => expectLater(
               () async => runWithOverrides(
                 () async => codePushClientWrapper.createAndroidReleaseArtifacts(
+                  appId: app.appId,
                   releaseId: releaseId,
-                  platform: platformName,
+                  platform: releasePlatform,
                   aabPath: p.join(tempDir.path, aabPath),
                   architectures: ShorebirdBuildMixin.allAndroidArchitectures,
                 ),
@@ -921,6 +1069,7 @@ Please bump your version number and try again.''',
           const error = 'something went wrong';
           when(
             () => codePushClient.createReleaseArtifact(
+              appId: any(named: 'appId'),
               artifactPath: any(named: 'artifactPath'),
               releaseId: any(named: 'releaseId'),
               arch: any(named: 'arch'),
@@ -933,8 +1082,9 @@ Please bump your version number and try again.''',
           await runWithOverrides(
             () async => IOOverrides.runZoned(
               () async => codePushClientWrapper.createAndroidReleaseArtifacts(
+                appId: app.appId,
                 releaseId: releaseId,
-                platform: platformName,
+                platform: releasePlatform,
                 aabPath: p.join(tempDir.path, aabPath),
                 architectures: ShorebirdBuildMixin.allAndroidArchitectures,
               ),
@@ -955,6 +1105,7 @@ Please bump your version number and try again.''',
           const error = 'something went wrong';
           when(
             () => codePushClient.createReleaseArtifact(
+              appId: any(named: 'appId'),
               artifactPath: any(named: 'artifactPath', that: endsWith('.aab')),
               releaseId: any(named: 'releaseId'),
               arch: any(named: 'arch'),
@@ -967,8 +1118,9 @@ Please bump your version number and try again.''',
           await runWithOverrides(
             () async => IOOverrides.runZoned(
               () async => codePushClientWrapper.createAndroidReleaseArtifacts(
+                appId: app.appId,
                 releaseId: releaseId,
-                platform: platformName,
+                platform: releasePlatform,
                 aabPath: p.join(tempDir.path, aabPath),
                 architectures: ShorebirdBuildMixin.allAndroidArchitectures,
               ),
@@ -987,6 +1139,7 @@ Please bump your version number and try again.''',
         test('completes successfully when all artifacts are created', () async {
           when(
             () => codePushClient.createReleaseArtifact(
+              appId: any(named: 'appId'),
               artifactPath: any(named: 'artifactPath'),
               releaseId: any(named: 'releaseId'),
               arch: any(named: 'arch'),
@@ -999,8 +1152,9 @@ Please bump your version number and try again.''',
           await runWithOverrides(
             () async => IOOverrides.runZoned(
               () async => codePushClientWrapper.createAndroidReleaseArtifacts(
+                appId: app.appId,
                 releaseId: releaseId,
-                platform: platformName,
+                platform: releasePlatform,
                 aabPath: p.join(tempDir.path, aabPath),
                 architectures: ShorebirdBuildMixin.allAndroidArchitectures,
               ),
@@ -1016,6 +1170,7 @@ Please bump your version number and try again.''',
           const flavorName = 'myFlavor';
           when(
             () => codePushClient.createReleaseArtifact(
+              appId: any(named: 'appId'),
               artifactPath: any(named: 'artifactPath'),
               releaseId: any(named: 'releaseId'),
               arch: any(named: 'arch'),
@@ -1028,8 +1183,9 @@ Please bump your version number and try again.''',
           await runWithOverrides(
             () async => IOOverrides.runZoned(
               () async => codePushClientWrapper.createAndroidReleaseArtifacts(
+                appId: app.appId,
                 releaseId: releaseId,
-                platform: platformName,
+                platform: releasePlatform,
                 aabPath: p.join(tempDir.path, aabPath),
                 architectures: ShorebirdBuildMixin.allAndroidArchitectures,
                 flavor: flavorName,
@@ -1040,11 +1196,14 @@ Please bump your version number and try again.''',
 
           verify(
             () => codePushClient.createReleaseArtifact(
-              artifactPath:
-                  any(named: 'artifactPath', that: contains(flavorName)),
+              appId: app.appId,
+              artifactPath: any(
+                named: 'artifactPath',
+                that: contains(flavorName),
+              ),
               releaseId: releaseId,
               arch: any(named: 'arch'),
-              platform: platformName,
+              platform: releasePlatform,
               hash: any(named: 'hash'),
             ),
           ).called(ShorebirdBuildMixin.allAndroidArchitectures.length);
@@ -1090,6 +1249,7 @@ Please bump your version number and try again.''',
         setUp(() {
           when(
             () => codePushClient.createReleaseArtifact(
+              appId: any(named: 'appId'),
               artifactPath: any(named: 'artifactPath'),
               releaseId: any(named: 'releaseId'),
               arch: any(named: 'arch'),
@@ -1103,6 +1263,7 @@ Please bump your version number and try again.''',
           const error = 'something went wrong';
           when(
             () => codePushClient.createReleaseArtifact(
+              appId: any(named: 'appId'),
               artifactPath: any(named: 'artifactPath'),
               releaseId: any(named: 'releaseId'),
               arch: any(named: 'arch'),
@@ -1117,8 +1278,9 @@ Please bump your version number and try again.''',
               () async => runWithOverrides(
                 () async =>
                     codePushClientWrapper.createAndroidArchiveReleaseArtifacts(
+                  appId: app.appId,
                   releaseId: releaseId,
-                  platform: platformName,
+                  platform: releasePlatform,
                   aarPath: p.join(tempDir.path, aarPath),
                   extractedAarDir: p.join(tempDir.path, extractedAarPath),
                   architectures: ShorebirdBuildMixin.allAndroidArchitectures,
@@ -1136,6 +1298,7 @@ Please bump your version number and try again.''',
           const error = 'something went wrong';
           when(
             () => codePushClient.createReleaseArtifact(
+              appId: any(named: 'appId'),
               artifactPath: any(named: 'artifactPath', that: endsWith('aar')),
               releaseId: any(named: 'releaseId'),
               arch: any(named: 'arch'),
@@ -1150,8 +1313,9 @@ Please bump your version number and try again.''',
               () async => runWithOverrides(
                 () async =>
                     codePushClientWrapper.createAndroidArchiveReleaseArtifacts(
+                  appId: app.appId,
                   releaseId: releaseId,
-                  platform: platformName,
+                  platform: releasePlatform,
                   aarPath: p.join(tempDir.path, aarPath),
                   extractedAarDir: p.join(tempDir.path, extractedAarPath),
                   architectures: ShorebirdBuildMixin.allAndroidArchitectures,
@@ -1170,6 +1334,7 @@ Please bump your version number and try again.''',
           const error = 'something went wrong';
           when(
             () => codePushClient.createReleaseArtifact(
+              appId: any(named: 'appId'),
               artifactPath: any(named: 'artifactPath'),
               releaseId: any(named: 'releaseId'),
               arch: any(named: 'arch'),
@@ -1183,8 +1348,9 @@ Please bump your version number and try again.''',
             () async => IOOverrides.runZoned(
               () async =>
                   codePushClientWrapper.createAndroidArchiveReleaseArtifacts(
+                appId: app.appId,
                 releaseId: releaseId,
-                platform: platformName,
+                platform: releasePlatform,
                 aarPath: p.join(tempDir.path, aarPath),
                 extractedAarDir: p.join(tempDir.path, extractedAarPath),
                 architectures: ShorebirdBuildMixin.allAndroidArchitectures,
@@ -1206,6 +1372,7 @@ Please bump your version number and try again.''',
           const error = 'something went wrong';
           when(
             () => codePushClient.createReleaseArtifact(
+              appId: any(named: 'appId'),
               artifactPath: any(named: 'artifactPath', that: endsWith('.aar')),
               releaseId: any(named: 'releaseId'),
               arch: any(named: 'arch'),
@@ -1219,8 +1386,9 @@ Please bump your version number and try again.''',
             () async => IOOverrides.runZoned(
               () async =>
                   codePushClientWrapper.createAndroidArchiveReleaseArtifacts(
+                appId: app.appId,
                 releaseId: releaseId,
-                platform: platformName,
+                platform: releasePlatform,
                 aarPath: p.join(tempDir.path, aarPath),
                 extractedAarDir: p.join(tempDir.path, extractedAarPath),
                 architectures: ShorebirdBuildMixin.allAndroidArchitectures,
@@ -1240,6 +1408,7 @@ Please bump your version number and try again.''',
         test('completes successfully when all artifacts are created', () async {
           when(
             () => codePushClient.createReleaseArtifact(
+              appId: any(named: 'appId'),
               artifactPath: any(named: 'artifactPath'),
               releaseId: any(named: 'releaseId'),
               arch: any(named: 'arch'),
@@ -1253,8 +1422,9 @@ Please bump your version number and try again.''',
             () async => IOOverrides.runZoned(
               () async =>
                   codePushClientWrapper.createAndroidArchiveReleaseArtifacts(
+                appId: app.appId,
                 releaseId: releaseId,
-                platform: platformName,
+                platform: releasePlatform,
                 aarPath: p.join(tempDir.path, aarPath),
                 extractedAarDir: p.join(tempDir.path, extractedAarPath),
                 architectures: ShorebirdBuildMixin.allAndroidArchitectures,
@@ -1271,6 +1441,7 @@ Please bump your version number and try again.''',
           const flavorName = 'myFlavor';
           when(
             () => codePushClient.createReleaseArtifact(
+              appId: any(named: 'appId'),
               artifactPath: any(named: 'artifactPath'),
               releaseId: any(named: 'releaseId'),
               arch: any(named: 'arch'),
@@ -1284,8 +1455,9 @@ Please bump your version number and try again.''',
             () async => IOOverrides.runZoned(
               () async =>
                   codePushClientWrapper.createAndroidArchiveReleaseArtifacts(
+                appId: app.appId,
                 releaseId: releaseId,
-                platform: platformName,
+                platform: releasePlatform,
                 aarPath: p.join(tempDir.path, aarPath),
                 extractedAarDir: p.join(tempDir.path, extractedAarPath),
                 architectures: ShorebirdBuildMixin.allAndroidArchitectures,
@@ -1296,10 +1468,11 @@ Please bump your version number and try again.''',
 
           verify(
             () => codePushClient.createReleaseArtifact(
+              appId: app.appId,
               artifactPath: any(named: 'artifactPath'),
               releaseId: releaseId,
               arch: any(named: 'arch'),
-              platform: platformName,
+              platform: releasePlatform,
               hash: any(named: 'hash'),
             ),
           ).called(ShorebirdBuildMixin.allAndroidArchitectures.length + 1);
@@ -1309,8 +1482,9 @@ Please bump your version number and try again.''',
       });
     });
 
-    group('createIosReleaseArtifact', () {
+    group('createIosReleaseArtifacts', () {
       final ipaPath = p.join('path', 'to', 'app.ipa');
+      final runnerPath = p.join('path', 'to', 'runner.app');
 
       Directory setUpTempDir({String? flavor}) {
         final tempDir = Directory.systemTemp.createTempSync();
@@ -1321,6 +1495,7 @@ Please bump your version number and try again.''',
       setUp(() {
         when(
           () => codePushClient.createReleaseArtifact(
+            appId: any(named: 'appId'),
             artifactPath: any(named: 'artifactPath'),
             releaseId: any(named: 'releaseId'),
             arch: any(named: 'arch'),
@@ -1330,11 +1505,12 @@ Please bump your version number and try again.''',
         ).thenAnswer((_) async => {});
       });
 
-      test('exits with code 70 when artifact creation fails', () async {
+      test('exits with code 70 when ipa artifact creation fails', () async {
         const error = 'something went wrong';
         when(
           () => codePushClient.createReleaseArtifact(
-            artifactPath: any(named: 'artifactPath'),
+            appId: any(named: 'appId'),
+            artifactPath: any(named: 'artifactPath', that: endsWith('.ipa')),
             releaseId: any(named: 'releaseId'),
             arch: any(named: 'arch'),
             platform: any(named: 'platform'),
@@ -1346,9 +1522,11 @@ Please bump your version number and try again.''',
         await IOOverrides.runZoned(
           () async => expectLater(
             () async => runWithOverrides(
-              () async => codePushClientWrapper.createIosReleaseArtifact(
+              () async => codePushClientWrapper.createIosReleaseArtifacts(
+                appId: app.appId,
                 releaseId: releaseId,
                 ipaPath: p.join(tempDir.path, ipaPath),
+                runnerPath: p.join(tempDir.path, runnerPath),
               ),
             ),
             exitsWithCode(ExitCode.software),
@@ -1364,6 +1542,7 @@ Please bump your version number and try again.''',
         const error = 'something went wrong';
         when(
           () => codePushClient.createReleaseArtifact(
+            appId: any(named: 'appId'),
             artifactPath: any(named: 'artifactPath', that: endsWith('.ipa')),
             releaseId: any(named: 'releaseId'),
             arch: any(named: 'arch'),
@@ -1376,9 +1555,47 @@ Please bump your version number and try again.''',
         await IOOverrides.runZoned(
           () async => expectLater(
             () async => runWithOverrides(
-              () async => codePushClientWrapper.createIosReleaseArtifact(
+              () async => codePushClientWrapper.createIosReleaseArtifacts(
+                appId: app.appId,
                 releaseId: releaseId,
                 ipaPath: p.join(tempDir.path, ipaPath),
+                runnerPath: p.join(tempDir.path, runnerPath),
+              ),
+            ),
+            exitsWithCode(ExitCode.software),
+          ),
+          getCurrentDirectory: () => tempDir,
+        );
+
+        verify(() => progress.fail(any(that: contains(error)))).called(1);
+      });
+
+      test('exits with code 70 when xcarchive artifact creation fails',
+          () async {
+        const error = 'something went wrong';
+        when(
+          () => codePushClient.createReleaseArtifact(
+            appId: any(named: 'appId'),
+            artifactPath: any(
+              named: 'artifactPath',
+              that: endsWith('runner.app.zip'),
+            ),
+            releaseId: any(named: 'releaseId'),
+            arch: any(named: 'arch'),
+            platform: any(named: 'platform'),
+            hash: any(named: 'hash'),
+          ),
+        ).thenThrow(error);
+        final tempDir = setUpTempDir();
+
+        await IOOverrides.runZoned(
+          () async => expectLater(
+            () async => runWithOverrides(
+              () async => codePushClientWrapper.createIosReleaseArtifacts(
+                appId: app.appId,
+                releaseId: releaseId,
+                ipaPath: p.join(tempDir.path, ipaPath),
+                runnerPath: p.join(tempDir.path, runnerPath),
               ),
             ),
             exitsWithCode(ExitCode.software),
@@ -1392,6 +1609,7 @@ Please bump your version number and try again.''',
       test('completes successfully when artifact is created', () async {
         when(
           () => codePushClient.createReleaseArtifact(
+            appId: any(named: 'appId'),
             artifactPath: any(named: 'artifactPath'),
             releaseId: any(named: 'releaseId'),
             arch: any(named: 'arch'),
@@ -1403,9 +1621,11 @@ Please bump your version number and try again.''',
 
         await runWithOverrides(
           () async => IOOverrides.runZoned(
-            () async => codePushClientWrapper.createIosReleaseArtifact(
+            () async => codePushClientWrapper.createIosReleaseArtifacts(
+              appId: app.appId,
               releaseId: releaseId,
               ipaPath: p.join(tempDir.path, ipaPath),
+              runnerPath: p.join(tempDir.path, runnerPath),
             ),
             getCurrentDirectory: () => tempDir,
           ),
@@ -1416,17 +1636,147 @@ Please bump your version number and try again.''',
       });
     });
 
+    group('createIosFrameworkReleaseArtifacts', () {
+      final frameworkPath = p.join('path', 'to', 'App.xcframework');
+
+      Directory setUpTempDir({String? flavor}) {
+        final tempDir = Directory.systemTemp.createTempSync();
+        File(p.join(tempDir.path, frameworkPath)).createSync(recursive: true);
+        return tempDir;
+      }
+
+      test(
+        'exits with code 70 when creating xcframework artifact fails',
+        () async {
+          when(
+            () => codePushClient.createReleaseArtifact(
+              artifactPath: any(named: 'artifactPath'),
+              appId: any(named: 'appId'),
+              releaseId: any(named: 'releaseId'),
+              arch: any(named: 'arch'),
+              platform: any(named: 'platform'),
+              hash: any(named: 'hash'),
+            ),
+          ).thenThrow(
+            Exception('oh no'),
+          );
+          final tempDir = setUpTempDir();
+
+          await expectLater(
+            () async => runWithOverrides(
+              () => codePushClientWrapper.createIosFrameworkReleaseArtifacts(
+                appId: app.appId,
+                releaseId: releaseId,
+                appFrameworkPath: p.join(tempDir.path, frameworkPath),
+              ),
+            ),
+            exitsWithCode(ExitCode.software),
+          );
+        },
+      );
+
+      test('completes successfully when release artifact is created', () async {
+        when(
+          () => codePushClient.createReleaseArtifact(
+            artifactPath: any(named: 'artifactPath'),
+            appId: any(named: 'appId'),
+            releaseId: any(named: 'releaseId'),
+            arch: any(named: 'arch'),
+            platform: any(named: 'platform'),
+            hash: any(named: 'hash'),
+          ),
+        ).thenAnswer((_) async => {});
+        final tempDir = setUpTempDir();
+
+        await IOOverrides.runZoned(
+          () async => expectLater(
+            runWithOverrides(
+              () => codePushClientWrapper.createIosFrameworkReleaseArtifacts(
+                appId: app.appId,
+                releaseId: releaseId,
+                appFrameworkPath: p.join(tempDir.path, frameworkPath),
+              ),
+            ),
+            completes,
+          ),
+          getCurrentDirectory: () => tempDir,
+        );
+      });
+    });
+
+    group('updateReleaseStatus', () {
+      test(
+        'exits with code 70 when updating release status fails',
+        () async {
+          when(
+            () => codePushClient.updateReleaseStatus(
+              appId: any(named: 'appId'),
+              releaseId: any(named: 'releaseId'),
+              platform: any(named: 'platform'),
+              status: any(named: 'status'),
+            ),
+          ).thenThrow(Exception('oh no'));
+
+          await expectLater(
+            () async => runWithOverrides(
+              () => codePushClientWrapper.updateReleaseStatus(
+                appId: app.appId,
+                releaseId: releaseId,
+                platform: releasePlatform,
+                status: ReleaseStatus.active,
+              ),
+            ),
+            exitsWithCode(ExitCode.software),
+          );
+        },
+      );
+
+      test('completes when updating release status succeeds', () async {
+        when(
+          () => codePushClient.updateReleaseStatus(
+            appId: any(named: 'appId'),
+            releaseId: any(named: 'releaseId'),
+            platform: any(named: 'platform'),
+            status: any(named: 'status'),
+          ),
+        ).thenAnswer((_) async => {});
+
+        await runWithOverrides(
+          () => codePushClientWrapper.updateReleaseStatus(
+            appId: app.appId,
+            releaseId: releaseId,
+            platform: releasePlatform,
+            status: ReleaseStatus.active,
+          ),
+        );
+
+        verify(
+          () => codePushClient.updateReleaseStatus(
+            appId: app.appId,
+            releaseId: releaseId,
+            platform: releasePlatform,
+            status: ReleaseStatus.active,
+          ),
+        ).called(1);
+        verify(() => progress.complete()).called(1);
+      });
+    });
+
     group('patch', () {
       group('createPatch', () {
         test('exits with code 70 when creating patch fails', () async {
           const error = 'something went wrong';
           when(
-            () => codePushClient.createPatch(releaseId: releaseId),
+            () => codePushClient.createPatch(
+              appId: appId,
+              releaseId: releaseId,
+            ),
           ).thenThrow(error);
 
           await expectLater(
             () async => runWithOverrides(
               () => codePushClientWrapper.createPatch(
+                appId: appId,
                 releaseId: releaseId,
               ),
             ),
@@ -1436,11 +1786,16 @@ Please bump your version number and try again.''',
         });
 
         test('returns patch when patch is successfully created', () async {
-          when(() => codePushClient.createPatch(releaseId: releaseId))
-              .thenAnswer((_) async => patch);
+          when(
+            () => codePushClient.createPatch(
+              appId: appId,
+              releaseId: releaseId,
+            ),
+          ).thenAnswer((_) async => patch);
 
           final result = await runWithOverrides(
             () => codePushClientWrapper.createPatch(
+              appId: appId,
               releaseId: releaseId,
             ),
           );
@@ -1455,6 +1810,7 @@ Please bump your version number and try again.''',
           const error = 'something went wrong';
           when(
             () => codePushClient.promotePatch(
+              appId: any(named: 'appId'),
               patchId: any(named: 'patchId'),
               channelId: any(named: 'channelId'),
             ),
@@ -1463,6 +1819,7 @@ Please bump your version number and try again.''',
           await expectLater(
             () async => runWithOverrides(
               () => codePushClientWrapper.promotePatch(
+                appId: appId,
                 patchId: patchId,
                 channel: channel,
               ),
@@ -1475,6 +1832,7 @@ Please bump your version number and try again.''',
         test('completes progress when patch is promoted', () async {
           when(
             () => codePushClient.promotePatch(
+              appId: any(named: 'appId'),
               patchId: any(named: 'patchId'),
               channelId: any(named: 'channelId'),
             ),
@@ -1482,6 +1840,7 @@ Please bump your version number and try again.''',
 
           await runWithOverrides(
             () => codePushClientWrapper.promotePatch(
+              appId: appId,
               patchId: patchId,
               channel: channel,
             ),
@@ -1498,6 +1857,7 @@ Please bump your version number and try again.''',
             const error = 'something went wrong';
             when(
               () => codePushClient.createPatchArtifact(
+                appId: any(named: 'appId'),
                 patchId: any(named: 'patchId'),
                 artifactPath: any(named: 'artifactPath'),
                 arch: any(named: 'arch'),
@@ -1509,8 +1869,9 @@ Please bump your version number and try again.''',
             await expectLater(
               () async => runWithOverrides(
                 () => codePushClientWrapper.createPatchArtifacts(
+                  appId: appId,
                   patch: patch,
-                  platform: platformName,
+                  platform: releasePlatform,
                   patchArtifactBundles: patchArtifactBundles,
                 ),
               ),
@@ -1524,6 +1885,7 @@ Please bump your version number and try again.''',
         test('creates artifacts successfully', () async {
           when(
             () => codePushClient.createPatchArtifact(
+              appId: any(named: 'appId'),
               patchId: any(named: 'patchId'),
               artifactPath: any(named: 'artifactPath'),
               arch: any(named: 'arch'),
@@ -1534,8 +1896,9 @@ Please bump your version number and try again.''',
 
           await runWithOverrides(
             () => codePushClientWrapper.createPatchArtifacts(
+              appId: appId,
               patch: patch,
-              platform: platformName,
+              platform: releasePlatform,
               patchArtifactBundles: patchArtifactBundles,
             ),
           );
@@ -1543,10 +1906,11 @@ Please bump your version number and try again.''',
           verify(() => progress.complete()).called(1);
           verify(
             () => codePushClient.createPatchArtifact(
+              appId: appId,
               artifactPath: partchArtifactBundle.path,
               patchId: patchId,
               arch: arch.name,
-              platform: platformName,
+              platform: releasePlatform,
               hash: partchArtifactBundle.hash,
             ),
           ).called(1);
@@ -1556,10 +1920,14 @@ Please bump your version number and try again.''',
       group('publishPatch', () {
         setUp(() {
           when(
-            () => codePushClient.createPatch(releaseId: releaseId),
+            () => codePushClient.createPatch(
+              appId: any(named: 'appId'),
+              releaseId: any(named: 'releaseId'),
+            ),
           ).thenAnswer((_) async => patch);
           when(
             () => codePushClient.createPatchArtifact(
+              appId: any(named: 'appId'),
               patchId: any(named: 'patchId'),
               artifactPath: any(named: 'artifactPath'),
               arch: any(named: 'arch'),
@@ -1572,6 +1940,7 @@ Please bump your version number and try again.''',
           ).thenAnswer((_) async => [channel]);
           when(
             () => codePushClient.promotePatch(
+              appId: any(named: 'appId'),
               patchId: any(named: 'patchId'),
               channelId: any(named: 'channelId'),
             ),
@@ -1583,21 +1952,25 @@ Please bump your version number and try again.''',
             () => codePushClientWrapper.publishPatch(
               appId: appId,
               releaseId: releaseId,
-              platform: platformName,
+              platform: releasePlatform,
               channelName: channelName,
               patchArtifactBundles: patchArtifactBundles,
             ),
           );
 
           verify(
-            () => codePushClient.createPatch(releaseId: releaseId),
+            () => codePushClient.createPatch(
+              appId: appId,
+              releaseId: releaseId,
+            ),
           ).called(1);
           verify(
             () => codePushClient.createPatchArtifact(
+              appId: appId,
               artifactPath: partchArtifactBundle.path,
               patchId: patchId,
               arch: arch.name,
-              platform: platformName,
+              platform: releasePlatform,
               hash: partchArtifactBundle.hash,
             ),
           ).called(1);
@@ -1610,6 +1983,7 @@ Please bump your version number and try again.''',
           );
           verify(
             () => codePushClient.promotePatch(
+              appId: appId,
               patchId: patchId,
               channelId: channel.id,
             ),
@@ -1632,21 +2006,25 @@ Please bump your version number and try again.''',
             () => codePushClientWrapper.publishPatch(
               appId: appId,
               releaseId: releaseId,
-              platform: platformName,
+              platform: releasePlatform,
               channelName: channelName,
               patchArtifactBundles: patchArtifactBundles,
             ),
           );
 
           verify(
-            () => codePushClient.createPatch(releaseId: releaseId),
+            () => codePushClient.createPatch(
+              appId: appId,
+              releaseId: releaseId,
+            ),
           ).called(1);
           verify(
             () => codePushClient.createPatchArtifact(
+              appId: appId,
               artifactPath: partchArtifactBundle.path,
               patchId: patchId,
               arch: arch.name,
-              platform: platformName,
+              platform: releasePlatform,
               hash: partchArtifactBundle.hash,
             ),
           ).called(1);
@@ -1659,53 +2037,11 @@ Please bump your version number and try again.''',
           ).called(1);
           verify(
             () => codePushClient.promotePatch(
+              appId: appId,
               patchId: patchId,
               channelId: channel.id,
             ),
           ).called(1);
-        });
-      });
-
-      group('getUsage', () {
-        test('exits with code 70 when getUsage throws an exception', () async {
-          when(() => codePushClient.getUsage()).thenThrow(Exception('oh no!'));
-
-          await expectLater(
-            () => runWithOverrides(codePushClientWrapper.getUsage),
-            exitsWithCode(ExitCode.software),
-          );
-
-          verify(() => progress.fail(any(that: contains('oh no!')))).called(1);
-        });
-
-        test('returns usage when succeeds', () async {
-          final usage = GetUsageResponse(
-            plan: ShorebirdPlan(
-              name: 'Hobby',
-              monthlyCost: Money.fromIntWithCurrency(0, usd),
-              patchInstallLimit: 1000,
-              maxTeamSize: 1,
-            ),
-            apps: const [
-              AppUsage(
-                id: 'test-app-id',
-                name: 'test app',
-                patchInstallCount: 42,
-              ),
-            ],
-            patchInstallLimit: 20000,
-            currentPeriodCost: Money.fromIntWithCurrency(0, usd),
-            currentPeriodStart: DateTime(2023),
-            currentPeriodEnd: DateTime(2023, 2),
-          );
-          when(() => codePushClient.getUsage()).thenAnswer((_) async => usage);
-
-          await expectLater(
-            runWithOverrides(codePushClientWrapper.getUsage),
-            completion(equals(usage)),
-          );
-
-          verify(() => progress.complete()).called(1);
         });
       });
     });

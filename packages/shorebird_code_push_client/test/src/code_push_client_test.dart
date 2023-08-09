@@ -4,7 +4,6 @@ import 'dart:io';
 
 import 'package:http/http.dart' as http;
 import 'package:mocktail/mocktail.dart';
-import 'package:money2/money2.dart';
 import 'package:path/path.dart' as path;
 import 'package:shorebird_code_push_client/shorebird_code_push_client.dart';
 import 'package:test/test.dart';
@@ -14,7 +13,7 @@ class _MockHttpClient extends Mock implements http.Client {}
 class _FakeBaseRequest extends Fake implements http.BaseRequest {}
 
 void main() {
-  group('CodePushClient', () {
+  group(CodePushClient, () {
     const appId = 'app-id';
     const flutterRevision = '83305b5088e6fe327fb3334a73ff190828d85713';
     const displayName = 'shorebird-example';
@@ -221,7 +220,7 @@ void main() {
     group('createPatchArtifact', () {
       const patchId = 0;
       const arch = 'aarch64';
-      const platform = 'android';
+      const platform = ReleasePlatform.android;
       const hash = 'test-hash';
       const size = 42;
 
@@ -232,6 +231,7 @@ void main() {
 
         try {
           await codePushClient.createPatchArtifact(
+            appId: appId,
             artifactPath: fixture.path,
             patchId: patchId,
             arch: arch,
@@ -244,7 +244,10 @@ void main() {
             .captured
             .single as http.BaseRequest;
         expect(request.method, equals('POST'));
-        expect(request.url, equals(v1('patches/$patchId/artifacts')));
+        expect(
+          request.url,
+          equals(v1('apps/$appId/patches/$patchId/artifacts')),
+        );
         expect(request.hasStandardHeaders, isTrue);
       });
 
@@ -262,6 +265,7 @@ void main() {
 
         expect(
           codePushClient.createPatchArtifact(
+            appId: appId,
             artifactPath: fixture.path,
             patchId: patchId,
             arch: arch,
@@ -292,6 +296,7 @@ void main() {
 
         expect(
           codePushClient.createPatchArtifact(
+            appId: appId,
             artifactPath: fixture.path,
             patchId: patchId,
             arch: arch,
@@ -346,6 +351,7 @@ void main() {
 
         await expectLater(
           codePushClient.createPatchArtifact(
+            appId: appId,
             artifactPath: fixture.path,
             patchId: patchId,
             arch: arch,
@@ -408,6 +414,7 @@ void main() {
 
         await expectLater(
           codePushClient.createPatchArtifact(
+            appId: appId,
             artifactPath: fixture.path,
             patchId: patchId,
             arch: arch,
@@ -424,7 +431,7 @@ void main() {
         expect(
           request.url,
           codePushClient.hostedUri.replace(
-            path: '/api/v1/patches/$patchId/artifacts',
+            path: '/api/v1/apps/$appId/patches/$patchId/artifacts',
           ),
         );
       });
@@ -484,9 +491,10 @@ void main() {
     });
 
     group('createReleaseArtifact', () {
+      const appId = 'test-app-id';
       const releaseId = 0;
       const arch = 'aarch64';
-      const platform = 'android';
+      const platform = ReleasePlatform.android;
       const hash = 'test-hash';
       const size = 42;
 
@@ -497,6 +505,7 @@ void main() {
 
         try {
           await codePushClient.createReleaseArtifact(
+            appId: appId,
             artifactPath: fixture.path,
             releaseId: releaseId,
             arch: arch,
@@ -509,7 +518,10 @@ void main() {
             .captured
             .single as http.BaseRequest;
         expect(request.method, equals('POST'));
-        expect(request.url, equals(v1('releases/$releaseId/artifacts')));
+        expect(
+          request.url,
+          equals(v1('apps/$appId/releases/$releaseId/artifacts')),
+        );
         expect(request.hasStandardHeaders, isTrue);
       });
 
@@ -527,6 +539,7 @@ void main() {
 
         expect(
           codePushClient.createReleaseArtifact(
+            appId: appId,
             artifactPath: fixture.path,
             releaseId: releaseId,
             arch: arch,
@@ -559,6 +572,7 @@ void main() {
 
         expect(
           codePushClient.createReleaseArtifact(
+            appId: appId,
             artifactPath: fixture.path,
             releaseId: releaseId,
             arch: arch,
@@ -585,6 +599,7 @@ void main() {
 
         expect(
           codePushClient.createReleaseArtifact(
+            appId: appId,
             artifactPath: fixture.path,
             releaseId: releaseId,
             arch: arch,
@@ -609,6 +624,7 @@ void main() {
 
         expect(
           codePushClient.createReleaseArtifact(
+            appId: appId,
             artifactPath: fixture.path,
             releaseId: releaseId,
             arch: arch,
@@ -663,6 +679,7 @@ void main() {
 
         await expectLater(
           codePushClient.createReleaseArtifact(
+            appId: appId,
             artifactPath: fixture.path,
             releaseId: releaseId,
             arch: arch,
@@ -725,6 +742,7 @@ void main() {
 
         await expectLater(
           codePushClient.createReleaseArtifact(
+            appId: appId,
             artifactPath: fixture.path,
             releaseId: releaseId,
             arch: arch,
@@ -741,7 +759,7 @@ void main() {
         expect(
           request.url,
           codePushClient.hostedUri.replace(
-            path: '/api/v1/releases/$releaseId/artifacts',
+            path: '/api/v1/apps/$appId/releases/$releaseId/artifacts',
           ),
         );
       });
@@ -841,7 +859,7 @@ void main() {
             .captured
             .single as http.BaseRequest;
         expect(request.method, equals('POST'));
-        expect(request.url, equals(v1('channels')));
+        expect(request.url, equals(v1('apps/$appId/channels')));
         expect(request.hasStandardHeaders, isTrue);
       });
 
@@ -918,7 +936,9 @@ void main() {
 
         expect(
           request.url,
-          codePushClient.hostedUri.replace(path: '/api/v1/channels'),
+          codePushClient.hostedUri.replace(
+            path: '/api/v1/apps/$appId/channels',
+          ),
         );
       });
     });
@@ -927,12 +947,12 @@ void main() {
       const releaseId = 0;
 
       test('makes the correct request', () async {
-        codePushClient.createPatch(releaseId: releaseId).ignore();
+        codePushClient.createPatch(appId: appId, releaseId: releaseId).ignore();
         final request = verify(() => httpClient.send(captureAny()))
             .captured
             .single as http.BaseRequest;
         expect(request.method, equals('POST'));
-        expect(request.url, equals(v1('patches')));
+        expect(request.url, equals(v1('apps/$appId/patches')));
         expect(request.hasStandardHeaders, isTrue);
       });
 
@@ -945,7 +965,7 @@ void main() {
         );
 
         expect(
-          codePushClient.createPatch(releaseId: releaseId),
+          codePushClient.createPatch(appId: appId, releaseId: releaseId),
           throwsA(
             isA<CodePushException>().having(
               (e) => e.message,
@@ -965,7 +985,7 @@ void main() {
         );
 
         expect(
-          codePushClient.createPatch(releaseId: releaseId),
+          codePushClient.createPatch(appId: appId, releaseId: releaseId),
           throwsA(
             isA<CodePushException>().having(
               (e) => e.message,
@@ -991,7 +1011,7 @@ void main() {
         );
 
         await expectLater(
-          codePushClient.createPatch(releaseId: releaseId),
+          codePushClient.createPatch(appId: appId, releaseId: releaseId),
           completion(
             equals(
               isA<Patch>()
@@ -1007,7 +1027,7 @@ void main() {
 
         expect(
           request.url,
-          codePushClient.hostedUri.replace(path: '/api/v1/patches'),
+          codePushClient.hostedUri.replace(path: '/api/v1/apps/$appId/patches'),
         );
       });
     });
@@ -1028,7 +1048,7 @@ void main() {
             .captured
             .single as http.BaseRequest;
         expect(request.method, equals('POST'));
-        expect(request.url, equals(v1('releases')));
+        expect(request.url, equals(v1('apps/$appId/releases')));
         expect(request.hasStandardHeaders, isTrue);
       });
 
@@ -1089,12 +1109,15 @@ void main() {
             Stream.value(
               utf8.encode(
                 json.encode(
-                  Release(
-                    id: releaseId,
-                    appId: appId,
-                    version: version,
-                    flutterRevision: flutterRevision,
-                    displayName: displayName,
+                  CreateReleaseResponse(
+                    release: Release(
+                      id: releaseId,
+                      appId: appId,
+                      version: version,
+                      flutterRevision: flutterRevision,
+                      displayName: displayName,
+                      platformStatuses: {},
+                    ),
                   ),
                 ),
               ),
@@ -1121,7 +1144,12 @@ void main() {
                     'flutterRevision',
                     flutterRevision,
                   )
-                  .having((r) => r.displayName, 'displayName', displayName),
+                  .having((r) => r.displayName, 'displayName', displayName)
+                  .having(
+                (r) => r.platformStatuses,
+                'platformStatuses',
+                <ReleasePlatform, ReleaseStatus>{},
+              ),
             ),
           ),
         );
@@ -1132,7 +1160,75 @@ void main() {
 
         expect(
           request.url,
-          codePushClient.hostedUri.replace(path: '/api/v1/releases'),
+          codePushClient.hostedUri
+              .replace(path: '/api/v1/apps/$appId/releases'),
+        );
+      });
+    });
+
+    group('updateReleaseStatus', () {
+      const appId = 'test-app-id';
+      const releaseId = 42;
+      const platform = ReleasePlatform.android;
+
+      test('makes the correct request', () async {
+        codePushClient
+            .updateReleaseStatus(
+              appId: appId,
+              releaseId: releaseId,
+              platform: platform,
+              status: ReleaseStatus.active,
+            )
+            .ignore();
+        final request = verify(() => httpClient.send(captureAny()))
+            .captured
+            .single as http.BaseRequest;
+        expect(request.method, equals('PATCH'));
+        expect(request.url, equals(v1('apps/$appId/releases/$releaseId')));
+        expect(request.hasStandardHeaders, isTrue);
+      });
+
+      test('throws an exception if the response is not a 204', () async {
+        when(() => httpClient.send(any())).thenAnswer(
+          (_) async => http.StreamedResponse(
+            const Stream.empty(),
+            HttpStatus.badRequest,
+          ),
+        );
+
+        expect(
+          codePushClient.updateReleaseStatus(
+            appId: appId,
+            releaseId: releaseId,
+            platform: platform,
+            status: ReleaseStatus.active,
+          ),
+          throwsA(
+            isA<CodePushException>().having(
+              (e) => e.message,
+              'message',
+              CodePushClient.unknownErrorMessage,
+            ),
+          ),
+        );
+      });
+
+      test('completes when the server responds with a 204', () async {
+        when(() => httpClient.send(any())).thenAnswer(
+          (_) async => http.StreamedResponse(
+            const Stream.empty(),
+            HttpStatus.noContent,
+          ),
+        );
+
+        expect(
+          codePushClient.updateReleaseStatus(
+            appId: appId,
+            releaseId: releaseId,
+            platform: platform,
+            status: ReleaseStatus.active,
+          ),
+          completes,
         );
       });
     });
@@ -1220,15 +1316,18 @@ void main() {
     });
 
     group('deleteRelease', () {
+      const appId = 'test-app-id';
       const releaseId = 42;
 
       test('makes the correct request', () async {
-        codePushClient.deleteRelease(releaseId: releaseId).ignore();
+        codePushClient
+            .deleteRelease(appId: appId, releaseId: releaseId)
+            .ignore();
         final request = verify(() => httpClient.send(captureAny()))
             .captured
             .single as http.BaseRequest;
         expect(request.method, equals('DELETE'));
-        expect(request.url, equals(v1('releases/$releaseId')));
+        expect(request.url, equals(v1('apps/$appId/releases/$releaseId')));
         expect(request.hasStandardHeaders, isTrue);
       });
 
@@ -1241,7 +1340,7 @@ void main() {
         );
 
         expect(
-          codePushClient.deleteRelease(releaseId: releaseId),
+          codePushClient.deleteRelease(appId: appId, releaseId: releaseId),
           throwsA(
             isA<CodePushException>().having(
               (e) => e.message,
@@ -1261,7 +1360,7 @@ void main() {
         );
 
         expect(
-          codePushClient.deleteRelease(releaseId: releaseId),
+          codePushClient.deleteRelease(appId: appId, releaseId: releaseId),
           throwsA(
             isA<CodePushException>().having(
               (e) => e.message,
@@ -1280,7 +1379,7 @@ void main() {
           ),
         );
 
-        await codePushClient.deleteRelease(releaseId: releaseId);
+        await codePushClient.deleteRelease(appId: appId, releaseId: releaseId);
 
         final request = verify(() => httpClient.send(captureAny()))
             .captured
@@ -1289,7 +1388,7 @@ void main() {
         expect(
           request.url,
           codePushClient.hostedUri.replace(
-            path: '/api/v1/releases/$releaseId',
+            path: '/api/v1/apps/$appId/releases/$releaseId',
           ),
         );
       });
@@ -1511,7 +1610,7 @@ void main() {
             .captured
             .single as http.BaseRequest;
         expect(request.method, equals('GET'));
-        expect(request.url, equals(v1('channels?appId=$appId')));
+        expect(request.url, equals(v1('apps/$appId/channels')));
         expect(request.hasStandardHeaders, isTrue);
       });
 
@@ -1685,7 +1784,7 @@ void main() {
             .captured
             .single as http.BaseRequest;
         expect(request.method, equals('GET'));
-        expect(request.url, equals(v1('releases?appId=$appId')));
+        expect(request.url, equals(v1('apps/$appId/releases')));
         expect(request.hasStandardHeaders, isTrue);
       });
 
@@ -1749,6 +1848,7 @@ void main() {
             version: '1.0.0',
             flutterRevision: flutterRevision,
             displayName: 'v1.0.0',
+            platformStatuses: {ReleasePlatform.android: ReleaseStatus.draft},
           ),
           Release(
             id: 1,
@@ -1756,6 +1856,7 @@ void main() {
             version: '1.0.1',
             flutterRevision: flutterRevision,
             displayName: 'v1.0.1',
+            platformStatuses: {},
           ),
         ];
 
@@ -1772,13 +1873,15 @@ void main() {
     });
 
     group('getReleaseArtifacts', () {
+      const appId = 'test-app-id';
       const releaseId = 0;
       const arch = 'aarch64';
-      const platform = 'android';
+      const platform = ReleasePlatform.android;
 
       test('makes the correct request', () async {
         codePushClient
             .getReleaseArtifacts(
+              appId: appId,
               releaseId: releaseId,
               arch: arch,
               platform: platform,
@@ -1791,7 +1894,7 @@ void main() {
         expect(
           request.url,
           equals(
-            v1('releases/$releaseId/artifacts?arch=$arch&platform=$platform'),
+            v1('apps/$appId/releases/$releaseId/artifacts?arch=$arch&platform=${platform.name}'),
           ),
         );
         expect(request.hasStandardHeaders, isTrue);
@@ -1807,6 +1910,7 @@ void main() {
 
         expect(
           codePushClient.getReleaseArtifacts(
+            appId: appId,
             releaseId: releaseId,
             arch: arch,
             platform: platform,
@@ -1831,6 +1935,7 @@ void main() {
 
         expect(
           codePushClient.getReleaseArtifacts(
+            appId: appId,
             releaseId: releaseId,
             arch: arch,
             platform: platform,
@@ -1870,6 +1975,7 @@ void main() {
         );
 
         final actual = await codePushClient.getReleaseArtifacts(
+          appId: appId,
           releaseId: releaseId,
           arch: arch,
           platform: platform,
@@ -1944,7 +2050,6 @@ void main() {
               patchInstallCount: 42,
             )
           ],
-          patchInstallLimit: 1337,
           currentPeriodCost: Money.fromIntWithCurrency(0, usd),
           currentPeriodStart: DateTime(2023),
           currentPeriodEnd: DateTime(2023, 2),
@@ -1968,13 +2073,13 @@ void main() {
 
       test('makes the correct request', () async {
         codePushClient
-            .promotePatch(patchId: patchId, channelId: channelId)
+            .promotePatch(appId: appId, patchId: patchId, channelId: channelId)
             .ignore();
         final request = verify(() => httpClient.send(captureAny()))
             .captured
             .single as http.BaseRequest;
         expect(request.method, equals('POST'));
-        expect(request.url, equals(v1('patches/promote')));
+        expect(request.url, equals(v1('apps/$appId/patches/promote')));
         expect(request.hasStandardHeaders, isTrue);
       });
 
@@ -1987,7 +2092,11 @@ void main() {
         );
 
         expect(
-          codePushClient.promotePatch(patchId: patchId, channelId: channelId),
+          codePushClient.promotePatch(
+            appId: appId,
+            patchId: patchId,
+            channelId: channelId,
+          ),
           throwsA(
             isA<CodePushException>().having(
               (e) => e.message,
@@ -2007,7 +2116,11 @@ void main() {
         );
 
         expect(
-          codePushClient.promotePatch(patchId: patchId, channelId: channelId),
+          codePushClient.promotePatch(
+            appId: appId,
+            patchId: patchId,
+            channelId: channelId,
+          ),
           throwsA(
             isA<CodePushException>().having(
               (e) => e.message,
@@ -2027,7 +2140,11 @@ void main() {
         );
 
         await expectLater(
-          codePushClient.promotePatch(patchId: patchId, channelId: channelId),
+          codePushClient.promotePatch(
+            appId: appId,
+            patchId: patchId,
+            channelId: channelId,
+          ),
           completes,
         );
 
@@ -2037,7 +2154,8 @@ void main() {
 
         expect(
           request.url,
-          codePushClient.hostedUri.replace(path: '/api/v1/patches/promote'),
+          codePushClient.hostedUri
+              .replace(path: '/api/v1/apps/$appId/patches/promote'),
         );
       });
     });

@@ -6,7 +6,7 @@ import 'package:path/path.dart' as p;
 import 'package:shorebird_cli/src/cache.dart';
 import 'package:shorebird_cli/src/command.dart';
 import 'package:shorebird_cli/src/process.dart';
-import 'package:shorebird_cli/src/shorebird_environment.dart';
+import 'package:shorebird_cli/src/shorebird_env.dart';
 
 enum Arch {
   arm64,
@@ -108,10 +108,7 @@ mixin ShorebirdBuildMixin on ShorebirdCommand {
     }
   }
 
-  Future<void> buildAar({
-    required String buildNumber,
-    String? flavor,
-  }) async {
+  Future<void> buildAar({required String buildNumber}) async {
     const executable = 'flutter';
     final arguments = [
       'build',
@@ -119,7 +116,6 @@ mixin ShorebirdBuildMixin on ShorebirdCommand {
       '--no-debug',
       '--no-profile',
       '--build-number=$buildNumber',
-      if (flavor != null) '--flavor=$flavor',
       ...results.rest,
     ];
 
@@ -139,7 +135,11 @@ mixin ShorebirdBuildMixin on ShorebirdCommand {
     }
   }
 
-  Future<void> buildApk({String? flavor, String? target}) async {
+  Future<void> buildApk({
+    String? flavor,
+    String? target,
+    bool splitPerAbi = false,
+  }) async {
     const executable = 'flutter';
     final arguments = [
       'build',
@@ -147,6 +147,7 @@ mixin ShorebirdBuildMixin on ShorebirdCommand {
       '--release',
       if (flavor != null) '--flavor=$flavor',
       if (target != null) '--target=$target',
+      if (splitPerAbi) '--split-per-abi',
       ...results.rest,
     ];
 
@@ -205,6 +206,33 @@ mixin ShorebirdBuildMixin on ShorebirdCommand {
       );
 
       throw BuildException(errorMessage);
+    }
+  }
+
+  /// Builds a release iOS framework (.xcframework) for the current project.
+  Future<void> buildIosFramework() async {
+    const executable = 'flutter';
+    final arguments = [
+      'build',
+      'ios-framework',
+      '--no-debug',
+      '--no-profile',
+      ...results.rest,
+    ];
+
+    final result = await process.run(
+      executable,
+      arguments,
+      runInShell: true,
+    );
+
+    if (result.exitCode != ExitCode.success.code) {
+      throw ProcessException(
+        'flutter',
+        arguments,
+        result.stderr.toString(),
+        result.exitCode,
+      );
     }
   }
 
@@ -303,7 +331,7 @@ mixin ShorebirdBuildMixin on ShorebirdCommand {
     ];
 
     final result = await process.run(
-      ShorebirdEnvironment.genSnapshotFile.path,
+      shorebirdEnv.genSnapshotFile.path,
       arguments,
     );
 

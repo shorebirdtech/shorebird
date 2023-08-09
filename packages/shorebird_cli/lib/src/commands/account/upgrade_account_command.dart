@@ -1,21 +1,18 @@
 import 'dart:async';
 
 import 'package:mason_logger/mason_logger.dart';
-import 'package:shorebird_cli/src/auth/auth.dart';
+import 'package:shorebird_cli/src/code_push_client_wrapper.dart';
 import 'package:shorebird_cli/src/command.dart';
 import 'package:shorebird_cli/src/logger.dart';
-import 'package:shorebird_cli/src/shorebird_config_mixin.dart';
-import 'package:shorebird_cli/src/shorebird_environment.dart';
-import 'package:shorebird_cli/src/shorebird_validation_mixin.dart';
+import 'package:shorebird_cli/src/shorebird_validator.dart';
 import 'package:shorebird_code_push_client/shorebird_code_push_client.dart';
 
 /// {@template upgrade_account_command}
 /// `shorebird account upgrade`
 /// {@endtemplate}
-class UpgradeAccountCommand extends ShorebirdCommand
-    with ShorebirdConfigMixin, ShorebirdValidationMixin {
+class UpgradeAccountCommand extends ShorebirdCommand {
   /// {@macro upgrade_account_command}
-  UpgradeAccountCommand({super.buildCodePushClient});
+  UpgradeAccountCommand();
 
   @override
   String get name => 'upgrade';
@@ -25,24 +22,26 @@ class UpgradeAccountCommand extends ShorebirdCommand
 
   @override
   Future<int> run() async {
+    final consoleLink = link(uri: Uri.parse('https://console.shorebird.dev'));
+    logger.warn(
+      '''
+This command is deprecated and will be removed in a future release.
+Please use $consoleLink instead.''',
+    );
+
     try {
-      await validatePreconditions(
+      await shorebirdValidator.validatePreconditions(
         checkUserIsAuthenticated: true,
       );
     } on PreconditionFailedException catch (e) {
       return e.exitCode.code;
     }
 
-    final client = buildCodePushClient(
-      httpClient: auth.client,
-      hostedUri: ShorebirdEnvironment.hostedUri,
-    );
-
     final progress = logger.progress('Retrieving account information');
 
     final User? user;
     try {
-      user = await client.getCurrentUser();
+      user = await codePushClientWrapper.codePushClient.getCurrentUser();
       if (user == null) {
         progress.fail('''
 We're having trouble retrieving your account information.
@@ -64,7 +63,8 @@ Please try logging out using ${lightCyan.wrap('shorebird logout')} and logging b
 
     final Uri paymentLink;
     try {
-      paymentLink = await client.createPaymentLink();
+      paymentLink =
+          await codePushClientWrapper.codePushClient.createPaymentLink();
     } catch (error) {
       progress.fail(error.toString());
       return ExitCode.software.code;

@@ -1,7 +1,6 @@
 import 'dart:io' hide Platform;
 
 import 'package:args/args.dart';
-import 'package:http/http.dart' as http;
 import 'package:mason_logger/mason_logger.dart';
 import 'package:mocktail/mocktail.dart';
 import 'package:path/path.dart' as p;
@@ -12,21 +11,25 @@ import 'package:shorebird_cli/src/archive_analysis/archive_analysis.dart';
 import 'package:shorebird_cli/src/auth/auth.dart';
 import 'package:shorebird_cli/src/code_push_client_wrapper.dart';
 import 'package:shorebird_cli/src/commands/commands.dart';
+import 'package:shorebird_cli/src/config/config.dart';
+import 'package:shorebird_cli/src/doctor.dart';
 import 'package:shorebird_cli/src/logger.dart';
 import 'package:shorebird_cli/src/platform.dart';
 import 'package:shorebird_cli/src/process.dart';
+import 'package:shorebird_cli/src/shorebird_env.dart';
+import 'package:shorebird_cli/src/shorebird_validator.dart';
 import 'package:shorebird_cli/src/validators/validators.dart';
 import 'package:shorebird_code_push_client/shorebird_code_push_client.dart';
 import 'package:test/test.dart';
 
 class _MockArgResults extends Mock implements ArgResults {}
 
-class _MockHttpClient extends Mock implements http.Client {}
-
 class _MockAuth extends Mock implements Auth {}
 
 class _MockCodePushClientWrapper extends Mock
     implements CodePushClientWrapper {}
+
+class _MockDoctor extends Mock implements Doctor {}
 
 class _MockIpa extends Mock implements Ipa {}
 
@@ -45,16 +48,26 @@ class _MockShorebirdFlutterValidator extends Mock
 
 class _MockShorebirdProcess extends Mock implements ShorebirdProcess {}
 
+class _MockShorebirdEnv extends Mock implements ShorebirdEnv {}
+
+class _MockShorebirdValidator extends Mock implements ShorebirdValidator {}
+
+class _FakeRelease extends Fake implements Release {}
+
+class _FakeShorebirdProcess extends Fake implements ShorebirdProcess {}
+
 void main() {
   group(ReleaseIosCommand, () {
     const appId = 'test-app-id';
+    const shorebirdYaml = ShorebirdYaml(appId: appId);
     const flutterRevision = '83305b5088e6fe327fb3334a73ff190828d85713';
     const versionName = '1.2.3';
     const versionCode = '1';
     const version = '$versionName+$versionCode';
     const appDisplayName = 'Test App';
     const arch = 'armv7';
-    const platformName = 'ios';
+    const releasePlatform = ReleasePlatform.ios;
+    const ipaPath = 'build/ios/ipa/Runner.ipa';
     const appMetadata = AppMetadata(appId: appId, displayName: appDisplayName);
     const release = Release(
       id: 0,
@@ -62,6 +75,7 @@ void main() {
       version: version,
       flutterRevision: flutterRevision,
       displayName: '1.2.3+1',
+      platformStatuses: {},
     );
     const infoPlistContent = '''
 <?xml version="1.0" encoding="UTF-8"?>
@@ -83,20 +97,21 @@ flutter:
     - shorebird.yaml''';
 
     late ArgResults argResults;
-    late http.Client httpClient;
     late CodePushClientWrapper codePushClientWrapper;
     late Directory shorebirdRoot;
-    late Platform environmentPlatform;
+    late Doctor doctor;
+    late Platform platform;
     late Auth auth;
     late IpaReader ipaReader;
     late Ipa ipa;
     late Progress progress;
     late Logger logger;
     late ShorebirdProcessResult flutterBuildProcessResult;
-    late ShorebirdProcessResult flutterRevisionProcessResult;
-    late ReleaseIosCommand command;
     late ShorebirdFlutterValidator flutterValidator;
     late ShorebirdProcess shorebirdProcess;
+    late ShorebirdEnv shorebirdEnv;
+    late ShorebirdValidator shorebirdValidator;
+    late ReleaseIosCommand command;
 
     R runWithOverrides<R>(R Function() body) {
       return runScoped(
@@ -104,9 +119,12 @@ flutter:
         values: {
           authRef.overrideWith(() => auth),
           codePushClientWrapperRef.overrideWith(() => codePushClientWrapper),
+          doctorRef.overrideWith(() => doctor),
           loggerRef.overrideWith(() => logger),
-          platformRef.overrideWith(() => environmentPlatform),
+          platformRef.overrideWith(() => platform),
           processRef.overrideWith(() => shorebirdProcess),
+          shorebirdEnvRef.overrideWith(() => shorebirdEnv),
+          shorebirdValidatorRef.overrideWith(() => shorebirdValidator),
         },
       );
     }
@@ -124,14 +142,22 @@ flutter:
       )
         ..createSync(recursive: true)
         ..writeAsStringSync(infoPlistContent);
+      File(p.join(tempDir.path, ipaPath)).createSync(recursive: true);
       return tempDir;
     }
+
+    setUpAll(() {
+      registerFallbackValue(ReleasePlatform.ios);
+      registerFallbackValue(ReleaseStatus.draft);
+      registerFallbackValue(_FakeRelease());
+      registerFallbackValue(_FakeShorebirdProcess());
+    });
 
     setUp(() {
       argResults = _MockArgResults();
       codePushClientWrapper = _MockCodePushClientWrapper();
-      httpClient = _MockHttpClient();
-      environmentPlatform = _MockPlatform();
+      doctor = _MockDoctor();
+      platform = _MockPlatform();
       shorebirdRoot = Directory.systemTemp.createTempSync();
       auth = _MockAuth();
       ipa = _MockIpa();
@@ -139,23 +165,14 @@ flutter:
       progress = _MockProgress();
       logger = _MockLogger();
       flutterBuildProcessResult = _MockProcessResult();
-      flutterRevisionProcessResult = _MockProcessResult();
       flutterValidator = _MockShorebirdFlutterValidator();
       shorebirdProcess = _MockShorebirdProcess();
+      shorebirdEnv = _MockShorebirdEnv();
+      shorebirdValidator = _MockShorebirdValidator();
 
-      registerFallbackValue(release);
-      registerFallbackValue(shorebirdProcess);
-
-      when(() => environmentPlatform.script).thenReturn(
-        Uri.file(
-          p.join(
-            shorebirdRoot.path,
-            'bin',
-            'cache',
-            'shorebird.snapshot',
-          ),
-        ),
-      );
+      when(() => shorebirdEnv.getShorebirdYaml()).thenReturn(shorebirdYaml);
+      when(() => shorebirdEnv.shorebirdRoot).thenReturn(shorebirdRoot);
+      when(() => shorebirdEnv.flutterRevision).thenReturn(flutterRevision);
       when(
         () => shorebirdProcess.run(
           'flutter',
@@ -163,19 +180,10 @@ flutter:
           runInShell: any(named: 'runInShell'),
         ),
       ).thenAnswer((_) async => flutterBuildProcessResult);
-      when(
-        () => shorebirdProcess.run(
-          'git',
-          any(),
-          runInShell: any(named: 'runInShell'),
-          workingDirectory: any(named: 'workingDirectory'),
-        ),
-      ).thenAnswer((_) async => flutterRevisionProcessResult);
       when(() => argResults.rest).thenReturn([]);
       when(() => argResults['arch']).thenReturn(arch);
-      when(() => argResults['platform']).thenReturn(platformName);
+      when(() => argResults['platform']).thenReturn(releasePlatform);
       when(() => auth.isAuthenticated).thenReturn(true);
-      when(() => auth.client).thenReturn(httpClient);
       when(() => ipaReader.read(any())).thenReturn(ipa);
       when(() => ipa.versionNumber).thenReturn(version);
       when(() => logger.progress(any())).thenReturn(progress);
@@ -183,15 +191,10 @@ flutter:
       when(
         () => logger.prompt(any(), defaultValue: any(named: 'defaultValue')),
       ).thenReturn(version);
+      when(() => platform.operatingSystem).thenReturn(Platform.macOS);
       when(
         () => flutterBuildProcessResult.exitCode,
       ).thenReturn(ExitCode.success.code);
-      when(
-        () => flutterRevisionProcessResult.exitCode,
-      ).thenReturn(ExitCode.success.code);
-      when(
-        () => flutterRevisionProcessResult.stdout,
-      ).thenReturn(flutterRevision);
       when(
         () => codePushClientWrapper.getApp(appId: any(named: 'appId')),
       ).thenAnswer((_) async => appMetadata);
@@ -202,8 +205,8 @@ flutter:
         ),
       ).thenAnswer((_) async => null);
       when(
-        () => codePushClientWrapper.ensureReleaseHasNoArtifacts(
-          existingRelease: any(named: 'existingRelease'),
+        () => codePushClientWrapper.ensureReleaseIsNotActive(
+          release: any(named: 'release'),
           platform: any(named: 'platform'),
         ),
       ).thenAnswer((_) async => {});
@@ -212,54 +215,66 @@ flutter:
           appId: any(named: 'appId'),
           version: any(named: 'version'),
           flutterRevision: any(named: 'flutterRevision'),
+          platform: any(named: 'platform'),
         ),
       ).thenAnswer((_) async => release);
       when(
-        () => codePushClientWrapper.createIosReleaseArtifact(
+        () => codePushClientWrapper.createIosReleaseArtifacts(
+          appId: any(named: 'appId'),
           releaseId: any(named: 'releaseId'),
           ipaPath: any(named: 'ipaPath'),
+          runnerPath: any(named: 'runnerPath'),
         ),
       ).thenAnswer((_) async => release);
-      when(() => flutterValidator.validate(any())).thenAnswer((_) async => []);
-
-      command = runWithOverrides(
-        () => ReleaseIosCommand(
-          ipaReader: ipaReader,
-          validators: [flutterValidator],
+      when(
+        () => codePushClientWrapper.updateReleaseStatus(
+          appId: any(named: 'appId'),
+          releaseId: any(named: 'releaseId'),
+          platform: any(named: 'platform'),
+          status: any(named: 'status'),
         ),
-      )..testArgResults = argResults;
+      ).thenAnswer((_) async => {});
+
+      when(() => doctor.iosCommandValidators).thenReturn([flutterValidator]);
+      when(
+        () => shorebirdValidator.validatePreconditions(
+          checkUserIsAuthenticated: any(named: 'checkUserIsAuthenticated'),
+          checkShorebirdInitialized: any(named: 'checkShorebirdInitialized'),
+          validators: any(named: 'validators'),
+          supportedOperatingSystems: any(named: 'supportedOperatingSystems'),
+        ),
+      ).thenAnswer((_) async {});
+
+      command = runWithOverrides(() => ReleaseIosCommand(ipaReader: ipaReader))
+        ..testArgResults = argResults;
     });
 
     test('has a description', () {
       expect(command.description, isNotEmpty);
     });
 
-    test('is hidden', () {
-      expect(command.hidden, isTrue);
-    });
-
-    test('throws config error when shorebird is not initialized', () async {
-      final tempDir = Directory.systemTemp.createTempSync();
-      final exitCode = await IOOverrides.runZoned(
-        () => runWithOverrides(command.run),
-        getCurrentDirectory: () => tempDir,
+    test('exits when validation fails', () async {
+      final exception = ValidationFailedException();
+      when(
+        () => shorebirdValidator.validatePreconditions(
+          checkUserIsAuthenticated: any(named: 'checkUserIsAuthenticated'),
+          checkShorebirdInitialized: any(named: 'checkShorebirdInitialized'),
+          validators: any(named: 'validators'),
+          supportedOperatingSystems: any(named: 'supportedOperatingSystems'),
+        ),
+      ).thenThrow(exception);
+      await expectLater(
+        runWithOverrides(command.run),
+        completion(equals(exception.exitCode.code)),
       );
       verify(
-        () => logger.err(
-          'Shorebird is not initialized. Did you run "shorebird init"?',
+        () => shorebirdValidator.validatePreconditions(
+          checkUserIsAuthenticated: true,
+          checkShorebirdInitialized: true,
+          validators: [flutterValidator],
+          supportedOperatingSystems: {Platform.macOS},
         ),
       ).called(1);
-      expect(exitCode, ExitCode.config.code);
-    });
-
-    test('throws no user error when user is not logged in', () async {
-      when(() => auth.isAuthenticated).thenReturn(false);
-      final tempDir = setUpTempDir();
-      final exitCode = await IOOverrides.runZoned(
-        () => runWithOverrides(command.run),
-        getCurrentDirectory: () => tempDir,
-      );
-      expect(exitCode, equals(ExitCode.noUser.code));
     });
 
     test('exits with code 70 when build fails with non-zero exit code',
@@ -334,54 +349,6 @@ error: exportArchive: No signing certificate "iOS Distribution" found
       ).called(1);
     });
 
-    test('prints flutter validation warnings', () async {
-      when(() => flutterValidator.validate(any())).thenAnswer(
-        (_) async => [
-          const ValidationIssue(
-            severity: ValidationIssueSeverity.warning,
-            message: 'Flutter issue 1',
-          ),
-          const ValidationIssue(
-            severity: ValidationIssueSeverity.warning,
-            message: 'Flutter issue 2',
-          ),
-        ],
-      );
-      final tempDir = setUpTempDir();
-
-      final exitCode = await IOOverrides.runZoned(
-        () => runWithOverrides(command.run),
-        getCurrentDirectory: () => tempDir,
-      );
-
-      expect(exitCode, ExitCode.success.code);
-      verify(
-        () => logger.info(any(that: contains('Flutter issue 1'))),
-      ).called(1);
-      verify(
-        () => logger.info(any(that: contains('Flutter issue 2'))),
-      ).called(1);
-    });
-
-    test('aborts if validation errors are present', () async {
-      when(() => flutterValidator.validate(any())).thenAnswer(
-        (_) async => [
-          const ValidationIssue(
-            severity: ValidationIssueSeverity.error,
-            message: 'There was an issue',
-          ),
-        ],
-      );
-
-      final tempDir = setUpTempDir();
-      final exitCode = await IOOverrides.runZoned(
-        () => runWithOverrides(command.run),
-        getCurrentDirectory: () => tempDir,
-      );
-      expect(exitCode, equals(ExitCode.config.code));
-      verify(() => logger.err('Aborting due to validation errors.')).called(1);
-    });
-
     test('aborts when user opts out', () async {
       when(() => logger.confirm(any())).thenReturn(false);
       final tempDir = setUpTempDir();
@@ -394,27 +361,80 @@ error: exportArchive: No signing certificate "iOS Distribution" found
       expect(exitCode, ExitCode.success.code);
       verify(() => logger.info('Aborting.')).called(1);
       verifyNever(
-        () => codePushClientWrapper.createIosReleaseArtifact(
+        () => codePushClientWrapper.createIosReleaseArtifacts(
+          appId: appId,
           releaseId: release.id,
           ipaPath: any(named: 'ipaPath', that: endsWith('.ipa')),
+          runnerPath: any(named: 'runnerPath', that: endsWith('Runner.app')),
         ),
       );
     });
 
-    test('throws error when unable to detect flutter revision', () async {
-      const error = 'oops';
-      when(() => flutterRevisionProcessResult.exitCode).thenReturn(1);
-      when(() => flutterRevisionProcessResult.stderr).thenReturn(error);
+    test('exits with code 70 if build directory does not exist', () async {
       final tempDir = setUpTempDir();
+      Directory(p.join(tempDir.path, 'build')).deleteSync(recursive: true);
 
       final exitCode = await IOOverrides.runZoned(
         () => runWithOverrides(command.run),
         getCurrentDirectory: () => tempDir,
       );
-      expect(exitCode, ExitCode.software.code);
+
+      expect(exitCode, equals(ExitCode.software.code));
       verify(
         () => progress.fail(
-          'Exception: Unable to determine flutter revision: $error',
+          any(
+            that: stringContainsInOrder([
+              'Could not find ipa file',
+              'No directory found at ${p.join(tempDir.path, 'build')}',
+            ]),
+          ),
+        ),
+      ).called(1);
+    });
+
+    test('exits with code 70 if ipa file does not exist', () async {
+      final tempDir = setUpTempDir();
+      File(p.join(tempDir.path, ipaPath)).deleteSync(recursive: true);
+
+      final exitCode = await IOOverrides.runZoned(
+        () => runWithOverrides(command.run),
+        getCurrentDirectory: () => tempDir,
+      );
+
+      expect(exitCode, equals(ExitCode.software.code));
+      verify(
+        () => progress.fail(
+          any(
+            that: stringContainsInOrder([
+              'Could not find ipa file',
+              'No .ipa files found in',
+              p.join('build', 'ios', 'ipa'),
+            ]),
+          ),
+        ),
+      ).called(1);
+    });
+
+    test('exits with code 70 if more than one ipa file is found', () async {
+      final tempDir = setUpTempDir();
+      File(p.join(tempDir.path, 'build/ios/ipa/Runner2.ipa'))
+          .createSync(recursive: true);
+
+      final exitCode = await IOOverrides.runZoned(
+        () => runWithOverrides(command.run),
+        getCurrentDirectory: () => tempDir,
+      );
+
+      expect(exitCode, equals(ExitCode.software.code));
+      verify(
+        () => progress.fail(
+          any(
+            that: stringContainsInOrder([
+              'Could not find ipa file',
+              'More than one .ipa file found in',
+              p.join('build', 'ios', 'ipa'),
+            ]),
+          ),
         ),
       ).called(1);
     });
@@ -436,6 +456,14 @@ error: exportArchive: No signing certificate "iOS Distribution" found
       verifyNever(
         () => logger.prompt(any(), defaultValue: any(named: 'defaultValue')),
       );
+      verify(
+        () => codePushClientWrapper.updateReleaseStatus(
+          appId: appId,
+          releaseId: release.id,
+          platform: releasePlatform,
+          status: ReleaseStatus.active,
+        ),
+      ).called(1);
     });
 
     test('succeeds when release is successful', () async {
@@ -453,16 +481,26 @@ error: exportArchive: No signing certificate "iOS Distribution" found
             that: stringContainsInOrder(
               [
                 'Your next step is to upload the ipa to App Store Connect.',
-                'build/ios/ipa/app_bundle_name.ipa',
+                p.join('build', 'ios', 'ipa', 'Runner.ipa'),
               ],
             ),
           ),
         ),
       ).called(1);
       verify(
-        () => codePushClientWrapper.createIosReleaseArtifact(
+        () => codePushClientWrapper.createIosReleaseArtifacts(
+          appId: appId,
           releaseId: release.id,
           ipaPath: any(named: 'ipaPath', that: endsWith('.ipa')),
+          runnerPath: any(named: 'runnerPath', that: endsWith('Runner.app')),
+        ),
+      ).called(1);
+      verify(
+        () => codePushClientWrapper.updateReleaseStatus(
+          appId: appId,
+          releaseId: release.id,
+          platform: releasePlatform,
+          status: ReleaseStatus.active,
         ),
       ).called(1);
       expect(exitCode, ExitCode.success.code);
@@ -495,16 +533,18 @@ flavors:
             that: stringContainsInOrder(
               [
                 'Your next step is to upload the ipa to App Store Connect.',
-                'build/ios/ipa/app_bundle_name.ipa',
+                p.join('build', 'ios', 'ipa', 'Runner.ipa'),
               ],
             ),
           ),
         ),
       ).called(1);
       verify(
-        () => codePushClientWrapper.createIosReleaseArtifact(
+        () => codePushClientWrapper.createIosReleaseArtifacts(
+          appId: appId,
           releaseId: release.id,
           ipaPath: any(named: 'ipaPath', that: endsWith('.ipa')),
+          runnerPath: any(named: 'runnerPath', that: endsWith('Runner.app')),
         ),
       ).called(1);
       expect(exitCode, ExitCode.success.code);
@@ -531,12 +571,23 @@ flavors:
           appId: any(named: 'appId'),
           version: any(named: 'version'),
           flutterRevision: any(named: 'flutterRevision'),
+          platform: any(named: 'platform'),
         ),
       );
       verify(
-        () => codePushClientWrapper.createIosReleaseArtifact(
+        () => codePushClientWrapper.createIosReleaseArtifacts(
+          appId: appId,
           releaseId: release.id,
           ipaPath: any(named: 'ipaPath', that: endsWith('.ipa')),
+          runnerPath: any(named: 'runnerPath', that: endsWith('Runner.app')),
+        ),
+      ).called(1);
+      verify(
+        () => codePushClientWrapper.updateReleaseStatus(
+          appId: appId,
+          releaseId: release.id,
+          platform: releasePlatform,
+          status: ReleaseStatus.active,
         ),
       ).called(1);
     });

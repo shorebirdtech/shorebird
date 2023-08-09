@@ -1,108 +1,73 @@
 import 'dart:io';
 
-import 'package:mason_logger/mason_logger.dart';
 import 'package:mocktail/mocktail.dart';
 import 'package:scoped/scoped.dart';
-import 'package:shorebird_cli/src/commands/doctor_command.dart';
-import 'package:shorebird_cli/src/process.dart';
+import 'package:shorebird_cli/src/shorebird_version.dart';
 import 'package:shorebird_cli/src/validators/validators.dart';
 import 'package:test/test.dart';
 
-class _MockProcessResult extends Mock implements ShorebirdProcessResult {}
-
-class _MockShorebirdProcess extends Mock implements ShorebirdProcess {}
+class _MockShorebirdVersion extends Mock implements ShorebirdVersion {}
 
 void main() {
-  const currentShorebirdRevision = 'revision-1';
-  const newerShorebirdRevision = 'revision-2';
-
   group('ShorebirdVersionValidator', () {
+    late ShorebirdVersion shorebirdVersion;
     late ShorebirdVersionValidator validator;
-    late ShorebirdProcessResult fetchCurrentVersionResult;
-    late ShorebirdProcessResult fetchLatestVersionResult;
-    late ShorebirdProcess shorebirdProcess;
-    late DoctorCommand command;
 
     R runWithOverrides<R>(R Function() body) {
       return runScoped(
         body,
         values: {
-          engineConfigRef.overrideWith(() => const EngineConfig.empty()),
-          processRef.overrideWith(() => shorebirdProcess),
+          shorebirdVersionRef.overrideWith(() => shorebirdVersion),
         },
       );
     }
 
     setUp(() {
-      fetchCurrentVersionResult = _MockProcessResult();
-      fetchLatestVersionResult = _MockProcessResult();
-      shorebirdProcess = _MockShorebirdProcess();
-
-      command = runWithOverrides(DoctorCommand.new);
-
-      validator = ShorebirdVersionValidator(
-        isShorebirdVersionCurrent: command.isShorebirdVersionCurrent,
-      );
+      shorebirdVersion = _MockShorebirdVersion();
+      validator = ShorebirdVersionValidator();
 
       when(
-        () => shorebirdProcess.run(
-          'git',
-          ['rev-parse', '--verify', 'HEAD'],
-          workingDirectory: any(named: 'workingDirectory'),
-        ),
-      ).thenAnswer((_) async => fetchCurrentVersionResult);
-      when(
-        () => shorebirdProcess.run(
-          'git',
-          ['rev-parse', '--verify', '@{upstream}'],
-          workingDirectory: any(named: 'workingDirectory'),
-        ),
-      ).thenAnswer((_) async => fetchLatestVersionResult);
-      when(
-        () => shorebirdProcess.run(
-          'git',
-          ['fetch', '--tags'],
-          workingDirectory: any(named: 'workingDirectory'),
-        ),
-      ).thenAnswer((_) async => _MockProcessResult());
-
-      when(
-        () => fetchCurrentVersionResult.exitCode,
-      ).thenReturn(ExitCode.success.code);
-      when(
-        () => fetchCurrentVersionResult.stdout,
-      ).thenReturn(currentShorebirdRevision);
-      when(
-        () => fetchLatestVersionResult.exitCode,
-      ).thenReturn(ExitCode.success.code);
-      when(
-        () => fetchLatestVersionResult.stdout,
-      ).thenReturn(currentShorebirdRevision);
+        shorebirdVersion.isLatest,
+      ).thenAnswer((_) async => false);
     });
 
     test('has a non-empty description', () {
       expect(validator.description, isNotEmpty);
     });
 
-    test('is not project-specific', () {
-      expect(validator.scope, ValidatorScope.installation);
+    test('canRunInContext always returns true', () {
+      expect(validator.canRunInCurrentContext(), isTrue);
     });
 
     test('returns no issues when shorebird is up-to-date', () async {
-      final results = await runWithOverrides(
-        () => validator.validate(shorebirdProcess),
-      );
+      when(shorebirdVersion.isLatest).thenAnswer((_) async => true);
+
+      final results = await runWithOverrides(validator.validate);
+
       expect(results, isEmpty);
     });
 
-    test('returns a warning when a newer shorebird is available', () async {
-      when(
-        () => fetchLatestVersionResult.stdout,
-      ).thenReturn(newerShorebirdRevision);
-
-      final results = await runWithOverrides(
-        () => validator.validate(shorebirdProcess),
+    test('retursn an error when shorebird version cannot be determined',
+        () async {
+      when(shorebirdVersion.isLatest).thenThrow(
+        const ProcessException('git', ['rev-parse', 'HEAD']),
       );
+
+      final results = await runWithOverrides(validator.validate);
+
+      expect(results, hasLength(1));
+      expect(results.first.severity, ValidationIssueSeverity.error);
+      expect(
+        results.first.message,
+        contains('Failed to get shorebird version'),
+      );
+    });
+
+    test('returns a warning when a newer shorebird is available', () async {
+      when(shorebirdVersion.isLatest).thenAnswer((_) async => false);
+
+      final results = await runWithOverrides(validator.validate);
+
       expect(results, hasLength(1));
       expect(results.first.severity, ValidationIssueSeverity.warning);
       expect(
@@ -110,31 +75,5 @@ void main() {
         contains('A new version of shorebird is available!'),
       );
     });
-
-    test(
-      'returns an error on failure to retrieve shorebird version',
-      () async {
-        when(
-          () => fetchLatestVersionResult.stdout,
-        ).thenThrow(
-          const ProcessException(
-            'git',
-            ['--rev'],
-            'Some error',
-          ),
-        );
-
-        final results = await runWithOverrides(
-          () => validator.validate(shorebirdProcess),
-        );
-
-        expect(results, hasLength(1));
-        expect(results.first.severity, ValidationIssueSeverity.error);
-        expect(
-          results.first.message,
-          'Failed to get shorebird version. Error: Some error',
-        );
-      },
-    );
   });
 }
