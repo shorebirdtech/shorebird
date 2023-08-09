@@ -138,11 +138,11 @@ ${lightCyan.wrap('shorebird release android -- --no-pub lib/main.dart')}''',
       verify(
         () => logger.err(
           '''
-To proxy an option to the flutter command, use the `-`- --<option> syntax.
+To proxy an option to the flutter command, use the '--' --<option> syntax.
 
 Example:
 
-${lightCyan.wrap('shorebird release android `-`- --no-pub lib/main.dart')}''',
+${lightCyan.wrap("shorebird release android '--' --no-pub lib/main.dart")}''',
         ),
       ).called(1);
       verify(() => logger.info('exception usage')).called(1);
