@@ -84,7 +84,12 @@ void main() {
       when(() => shorebirdEnv.flutterDirectory).thenReturn(flutterDirectory);
       when(() => shorebirdEnv.flutterRevision).thenReturn(flutterRevision);
       when(
-        () => process.run('flutter', ['--version'], runInShell: true),
+        () => process.run(
+          'flutter',
+          ['--version'],
+          runInShell: true,
+          useVendedFlutter: any(named: 'useVendedFlutter'),
+        ),
       ).thenAnswer((_) async => processResult);
       when(() => processResult.exitCode).thenReturn(0);
     });
@@ -127,6 +132,23 @@ Tools • Dart 3.0.6 • DevTools 2.23.1''');
         );
         verify(
           () => process.run('flutter', ['--version'], runInShell: true),
+        ).called(1);
+      });
+
+      test('uses system flutter when specified', () async {
+        await expectLater(
+          runWithOverrides(
+            () => shorebirdFlutter.getVersion(useVendedFlutter: false),
+          ),
+          completes,
+        );
+        verify(
+          () => process.run(
+            'flutter',
+            ['--version'],
+            runInShell: true,
+            useVendedFlutter: false,
+          ),
         ).called(1);
       });
     });

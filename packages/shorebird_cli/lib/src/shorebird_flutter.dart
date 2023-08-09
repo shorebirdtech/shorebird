@@ -68,9 +68,17 @@ class ShorebirdFlutter {
   /// Throws a [ProcessException] if the version check fails.
   /// Returns `null` if the version check succeeds but the version cannot be
   /// parsed.
-  Future<String?> getVersion() async {
+  ///
+  /// If [useVendedFlutter] is `true`, the vended Flutter is used instead of
+  /// the system Flutter. Defaults to true.
+  Future<String?> getVersion({bool useVendedFlutter = true}) async {
     const args = ['--version'];
-    final result = await process.run(executable, args, runInShell: true);
+    final result = await process.run(
+      executable,
+      args,
+      runInShell: true,
+      useVendedFlutter: useVendedFlutter,
+    );
 
     if (result.exitCode != 0) {
       throw ProcessException(
