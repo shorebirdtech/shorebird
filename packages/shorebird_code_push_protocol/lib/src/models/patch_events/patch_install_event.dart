@@ -1,29 +1,34 @@
 import 'package:json_annotation/json_annotation.dart';
 import 'package:shorebird_code_push_protocol/shorebird_code_push_protocol.dart';
 
-part 'record_patch_install_request.g.dart';
+part 'patch_install_event.g.dart';
 
-/// {@template record_patch_install_request}
-/// Request to record a patch install.
+/// {@template patch_install_event}
+/// Event for when a patch is installed.
 /// {@endtemplate}
 @JsonSerializable()
-class RecordPatchInstallRequest {
-  /// {@macro record_patch_install_request}
-  RecordPatchInstallRequest({
+class PatchInstallEvent extends PatchEvent {
+  /// {@macro patch_install_event}
+  PatchInstallEvent({
     required this.clientId,
     required this.appId,
     required this.releaseVersion,
     required this.patchNumber,
     required this.platform,
     required this.arch,
+    super.type = PatchInstallEvent.identifier,
   });
 
-  /// Converts a Map<String, dynamic> to a [RecordPatchInstallRequest]
-  factory RecordPatchInstallRequest.fromJson(Map<String, dynamic> json) =>
-      _$RecordPatchInstallRequestFromJson(json);
+  /// Converts a Map<String, dynamic> to a [PatchInstallEvent]
+  factory PatchInstallEvent.fromJson(Map<String, dynamic> json) =>
+      _$PatchInstallEventFromJson(json);
 
-  /// Converts a [RecordPatchInstallRequest] to a Map<String, dynamic>
-  Map<String, dynamic> toJson() => _$RecordPatchInstallRequestToJson(this);
+  /// Converts a [PatchInstallEvent] to a Map<String, dynamic>
+  @override
+  Map<String, dynamic> toJson() => _$PatchInstallEventToJson(this);
+
+  /// The patch install event type identifier.
+  static const identifier = '__patch_install__';
 
   /// The client id of the device being updated.
   final String clientId;

@@ -5,7 +5,7 @@ export 'create_app_collaborator/create_app_collaborator.dart';
 export 'create_channel/create_channel.dart';
 export 'create_patch/create_patch.dart';
 export 'create_patch_artifact/create_patch_artifact.dart';
-export 'record_patch_install/record_patch_install.dart';
+export 'create_patch_event/create_patch_event.dart';
 export 'create_payment_link/create_payment_link.dart';
 export 'create_release/create_release.dart';
 export 'create_release_artifact/create_release_artifact.dart';
