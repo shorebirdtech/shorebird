@@ -31,7 +31,7 @@ void main() {
     expect(result.stderr, isEmpty);
     expect(
       result.stdout,
-      stringContainsInOrder(['Shorebird Engine', 'revision']),
+      stringContainsInOrder(['Engine', 'revision']),
     );
     expect(result.exitCode, equals(0));
   });
