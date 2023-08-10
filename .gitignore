@@ -1,2 +1,5 @@
 # Cached files
 bin/cache/
+
+# IDE files
+.idea/

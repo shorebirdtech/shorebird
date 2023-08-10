@@ -81,6 +81,7 @@ class ShorebirdCliCommandRunner extends CompletionCommandRunner<int> {
   @override
   Future<int> run(Iterable<String> args) async {
     try {
+      preprocess(args);
       final topLevelResults = parse(args);
 
       // Set up our context before running the command.
