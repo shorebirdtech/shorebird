@@ -3,6 +3,7 @@ import 'package:shorebird_cli/src/command.dart';
 import 'package:shorebird_cli/src/doctor.dart';
 import 'package:shorebird_cli/src/logger.dart';
 import 'package:shorebird_cli/src/shorebird_env.dart';
+import 'package:shorebird_cli/src/shorebird_flutter.dart';
 import 'package:shorebird_cli/src/version.dart';
 
 /// {@template doctor_command}
@@ -30,15 +31,28 @@ class DoctorCommand extends ShorebirdCommand {
   @override
   Future<int> run() async {
     final shouldFix = results['fix'] == true;
-
+    final flutterVersion = await _tryGetFlutterVersion();
+    final shorebirdFlutterPrefix = StringBuffer('Flutter');
+    if (flutterVersion != null) {
+      shorebirdFlutterPrefix.write(' $flutterVersion');
+    }
     logger.info('''
-
-Shorebird v$packageVersion
-Shorebird Engine • revision ${shorebirdEnv.shorebirdEngineRevision}
+Shorebird $packageVersion • git@github.com:shorebirdtech/shorebird.git
+$shorebirdFlutterPrefix • revision ${shorebirdEnv.flutterRevision}
+Engine • revision ${shorebirdEnv.shorebirdEngineRevision}
 ''');
 
     await doctor.runValidators(doctor.allValidators, applyFixes: shouldFix);
 
     return ExitCode.success.code;
+  }
+
+  Future<String?> _tryGetFlutterVersion() async {
+    try {
+      return await shorebirdFlutter.getVersion();
+    } catch (error) {
+      logger.detail('Unable to determine Flutter version.\n$error');
+      return null;
+    }
   }
 }

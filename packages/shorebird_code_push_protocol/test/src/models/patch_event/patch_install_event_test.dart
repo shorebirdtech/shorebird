@@ -2,9 +2,9 @@ import 'package:shorebird_code_push_protocol/shorebird_code_push_protocol.dart';
 import 'package:test/test.dart';
 
 void main() {
-  group(RecordPatchInstallRequest, () {
+  group(PatchInstallEvent, () {
     test('can be (de)serialized', () {
-      final response = RecordPatchInstallRequest(
+      final event = PatchInstallEvent(
         clientId: 'some-client-id',
         appId: 'some-app-id',
         patchNumber: 2,
@@ -13,8 +13,8 @@ void main() {
         releaseVersion: '1.0.0',
       );
       expect(
-        RecordPatchInstallRequest.fromJson(response.toJson()).toJson(),
-        equals(response.toJson()),
+        PatchInstallEvent.fromJson(event.toJson()).toJson(),
+        equals(event.toJson()),
       );
     });
   });
