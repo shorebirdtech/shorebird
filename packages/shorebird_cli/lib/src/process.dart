@@ -41,7 +41,7 @@ class ShorebirdProcess {
     Logger? logger,
     ProcessWrapper? processWrapper, // For mocking ShorebirdProcess.
   })  : logger = logger ?? Logger(),
-        processWrapper = processWrapper ?? ProcessWrapper();
+        processWrapper = processWrapper ?? const ProcessWrapper();
 
   final ProcessWrapper processWrapper;
   final EngineConfig engineConfig;
@@ -157,6 +157,8 @@ class ShorebirdProcessResult {
 // coverage:ignore-start
 @visibleForTesting
 class ProcessWrapper {
+  const ProcessWrapper();
+
   Future<ShorebirdProcessResult> run(
     String executable,
     List<String> arguments, {
