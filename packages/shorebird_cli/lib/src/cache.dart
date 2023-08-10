@@ -11,9 +11,16 @@ import 'package:shorebird_cli/src/platform.dart';
 import 'package:shorebird_cli/src/process.dart';
 import 'package:shorebird_cli/src/shorebird_env.dart';
 
+/// {@template cache_update_failure}
+/// Thrown when a cache update fails.
+/// This can occur if the artifact is unreachable or
+/// if the download is interrupted.
+/// {@endtemplate}
 class CacheUpdateFailure implements Exception {
+  /// {@macro cache_update_failure}
   const CacheUpdateFailure(this.message);
 
+  /// The error message.
   final String message;
 
   @override
