@@ -43,9 +43,7 @@ class FlutterVersionsListCommand extends ShorebirdCommand {
     logger.info('📦 Flutter Versions');
     for (final version in versions.reversed) {
       logger.info(
-        version == currentVersion
-            ? lightCyan.wrap('✓ $version')
-            : '  $version',
+        version == currentVersion ? lightCyan.wrap('✓ $version') : '  $version',
       );
     }
     return ExitCode.success.code;
