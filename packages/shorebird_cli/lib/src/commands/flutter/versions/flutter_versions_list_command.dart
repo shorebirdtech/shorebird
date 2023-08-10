@@ -1,3 +1,5 @@
+import 'dart:io';
+
 import 'package:mason_logger/mason_logger.dart';
 import 'package:shorebird_cli/src/command.dart';
 import 'package:shorebird_cli/src/logger.dart';
@@ -20,10 +22,18 @@ class FlutterVersionsListCommand extends ShorebirdCommand {
   @override
   Future<int> run() async {
     final progress = logger.progress('Fetching Flutter versions');
+
+    String? currentVersion;
+    try {
+      currentVersion = await shorebirdFlutter.getVersion();
+    } on ProcessException catch (error) {
+      logger.detail('Unable to determine Flutter version.\n${error.message}');
+    }
+
     final List<String> versions;
     try {
       versions = await shorebirdFlutter.getVersions();
-      progress.complete();
+      progress.cancel();
     } catch (error) {
       progress.fail('Failed to fetch Flutter versions.');
       logger.err('$error');
@@ -32,7 +42,9 @@ class FlutterVersionsListCommand extends ShorebirdCommand {
 
     logger.info('📦 Flutter Versions');
     for (final version in versions.reversed) {
-      logger.info(version);
+      logger.info(
+        version == currentVersion ? lightCyan.wrap('✓ $version') : '  $version',
+      );
     }
     return ExitCode.success.code;
   }
