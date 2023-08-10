@@ -2,7 +2,7 @@
 
 This section contains past updates we've sent to customers via Discord.
 
-## 0.12.2 (August 9, 2023)
+## 0.12.2 (August 10, 2023)
 
 We've just released Shorebird v0.12.2 🎉
 
