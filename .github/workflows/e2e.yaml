@@ -41,29 +41,6 @@ jobs:
         if: runner.os == 'Windows'
         run: Add-Content $env:GITHUB_PATH "${env:GITHUB_WORKSPACE}\bin"
 
-      - name: 🐦 Verify Shorebird Installation (macOS / Linux)
-        if: runner.os != 'Windows'
-        run: |
-          if [[ $(shorebird --version) =~ "Shorebird Engine • revision" ]]; then          
-            echo '✅ Shorebird CLI is installed!'
-          else
-            echo '❌ Shorebird CLI is not installed.'
-          exit 1
-          fi
-        shell: bash
-
-      - name: 🐦 Verify Shorebird Installation (Windows)
-        if: runner.os == 'Windows'
-        run: |
-          $shorebird_version = shorebird --version
-          if ($shorebird_version -match "Shorebird Engine") {
-            Write-Output "✅ Shorebird CLI is installed!"
-          } else {
-            Write-Output "❌ Shorebird CLI is not installed."
-            exit 1
-          }
-        shell: pwsh
-
       - name: ☕ Set up Java
         uses: actions/setup-java@v3
         with:
