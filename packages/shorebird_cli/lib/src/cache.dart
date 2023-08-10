@@ -11,6 +11,15 @@ import 'package:shorebird_cli/src/platform.dart';
 import 'package:shorebird_cli/src/process.dart';
 import 'package:shorebird_cli/src/shorebird_env.dart';
 
+class CacheUpdateFailure implements Exception {
+  const CacheUpdateFailure(this.message);
+
+  final String message;
+
+  @override
+  String toString() => 'CacheUpdateFailure: $message';
+}
+
 typedef ArchiveExtracter = Future<void> Function(
   String archivePath,
   String outputPath,
@@ -128,7 +137,23 @@ abstract class CachedArtifact {
 
   Future<void> update() async {
     final request = http.Request('GET', Uri.parse(storageUrl));
-    final response = await cache.httpClient.send(request);
+    final http.StreamedResponse response;
+    try {
+      response = await cache.httpClient.send(request);
+    } catch (error) {
+      throw CacheUpdateFailure(
+        '''
+Failed to download $name: $error
+If you're behind a firewall/proxy, please, make sure shorebird_cli is
+allowed to access $storageUrl.''',
+      );
+    }
+
+    if (response.statusCode != HttpStatus.ok) {
+      throw CacheUpdateFailure(
+        '''Failed to download $name: ${response.statusCode} ${response.reasonPhrase}''',
+      );
+    }
 
     await extractArtifact(response.stream, location.path);
 
