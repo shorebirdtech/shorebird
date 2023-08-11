@@ -22,7 +22,7 @@ $dart = [IO.Path]::Combine($flutterPath, "bin", "cache", "dart-sdk", "bin", "dar
 # stderr with $ErrorActionPreference = "Stop" as a terminating error. This is
 # fixed in Powershell 7.1.
 # 
-# See https://github.com/PowerShell/PowerShell/issues/3996 for more info.
+# See https://github.com/PowerShell/PowerShell/issues/4002 for more info.
 function Invoke-SilentlyIfPossible($command) {
     $psVersion = $PSVersionTable.PSVersion
     $shouldRedirectStdErr = $psVersion.Major -ge 7 -and $psVersion.Minor -ge 1
