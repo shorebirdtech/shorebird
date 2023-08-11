@@ -16,6 +16,24 @@ $flutter = [IO.Path]::Combine($shorebirdCacheDir, "flutter", $flutterVersion, "b
 $shorebirdScript = [IO.Path]::Combine($shorebirdCliDir, "bin", "shorebird.dart")
 $dart = [IO.Path]::Combine($flutterPath, "bin", "cache", "dart-sdk", "bin", "dart.exe")
 
+# Executes $command and redirects all output to $null if possible.
+#
+# This is a workaround for old versions of Powershell treating any write to
+# stderr with $ErrorActionPreference = "Stop" as a terminating error. This is
+# fixed in Powershell 7.1.
+# 
+# See https://github.com/PowerShell/PowerShell/issues/3996 for more info.
+function Invoke-SilentlyIfPossible($command) {
+    $psVersion = $PSVersionTable.PSVersion
+    $shouldRedirectStdErr = $psVersion.Major -ge 7 -and $psVersion.Minor -ge 1
+    if ($shouldRedirectStdErr) {
+        & $command *> $null
+    }
+    else {
+        & $command 
+    }
+}
+
 function Test-GitInstalled {
     if (Get-Command git -ErrorAction SilentlyContinue) {
         Write-Debug "Git is installed."
@@ -78,15 +96,20 @@ function Update-Flutter {
     Write-Output "Updating Flutter..."
 
     if (!(Test-Path $flutterPath)) {
-        Write-Output "Cloning flutter, this may take a bit..."
-        git clone --filter=tree:0 https://github.com/shorebirdtech/flutter.git --no-checkout "$flutterPath" *> $null
+        Invoke-SilentlyIfPossible {
+            git clone --filter=tree:0 https://github.com/shorebirdtech/flutter.git --no-checkout "$flutterPath" 
+        }
     }
     else {
-        git -C "$flutterPath" fetch *> $null
+        Invoke-SilentlyIfPossible {
+            git -C "$flutterPath" fetch
+        }
     }
 
-    # -c to avoid printing a warning about being in a detached head state.
-    git -C "$flutterPath" -c advice.detachedHead=false checkout "$flutterVersion" *> $null
+    Invoke-SilentlyIfPossible {
+        # -c to avoid printing a warning about being in a detached head state.
+        git -C "$flutterPath" -c advice.detachedHead=false checkout "$flutterVersion"
+    }
 
     # Set FLUTTER_STORAGE_BASE_URL=https://download.shorebird.dev and execute
     # a `flutter` command to trigger a download of Dart, etc.
