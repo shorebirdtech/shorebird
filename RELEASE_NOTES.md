@@ -2,6 +2,19 @@
 
 This section contains past updates we've sent to customers via Discord.
 
+## 0.12.3 (August 11, 2023)
+
+We've just released Shorebird v0.12.3 🎉
+
+- 🩹 fix script terminating errors on older versions of powershell
+- 📝 `shorebird doctor --verbose` includes Android Toolchain information
+
+📚 Release notes can be found at https://github.com/shorebirdtech/shorebird/releases/tag/v0.12.3
+
+As always, you can upgrade using `shorebird upgrade`
+
+Please let us know if we can help!
+
 ## 0.12.2 (August 10, 2023)
 
 We've just released Shorebird v0.12.2 🎉
