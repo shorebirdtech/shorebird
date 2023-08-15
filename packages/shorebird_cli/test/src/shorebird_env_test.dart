@@ -499,5 +499,29 @@ base_url: https://example.com''');
         expect(runWithOverrides(() => shorebirdEnv.hostedUri), isNull);
       });
     });
+
+    group('isRunningOnCI', () {
+      test('returns true if CONTINUOUS_INTEGRATION variable is "true"', () {
+        when(() => platform.environment).thenReturn({
+          'CONTINUOUS_INTEGRATION': 'true',
+        });
+        expect(runWithOverrides(() => shorebirdEnv.isRunningOnCI), isTrue);
+      });
+
+      test(
+        'returns false if CONTINUOUS_INTEGRATION variable is not "true"',
+        () {
+          when(() => platform.environment).thenReturn({
+            'CONTINUOUS_INTEGRATION': 'asdf',
+          });
+          expect(runWithOverrides(() => shorebirdEnv.isRunningOnCI), isFalse);
+        },
+      );
+
+      test('returns false if CONTINUOUS_INTEGRATION variable is unset', () {
+        when(() => platform.environment).thenReturn({});
+        expect(runWithOverrides(() => shorebirdEnv.isRunningOnCI), isFalse);
+      });
+    });
   });
 }
