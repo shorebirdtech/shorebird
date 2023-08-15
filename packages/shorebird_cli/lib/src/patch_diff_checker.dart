@@ -70,7 +70,6 @@ class PatchDiffChecker {
         );
       final shouldContinue = force ||
           (!shorebirdEnv.isRunningOnCI && logger.confirm('Continue anyways?'));
-
       if (!shouldContinue) {
         return false;
       }
