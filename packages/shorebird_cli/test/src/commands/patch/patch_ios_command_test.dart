@@ -288,6 +288,7 @@ flutter:
       when(() => shorebirdEnv.flutterDirectory).thenReturn(flutterDirectory);
       when(() => shorebirdEnv.genSnapshotFile).thenReturn(genSnapshotFile);
       when(() => shorebirdEnv.flutterRevision).thenReturn(flutterRevision);
+      when(() => shorebirdEnv.isRunningOnCI).thenReturn(false);
       when(
         () => aotBuildProcessResult.exitCode,
       ).thenReturn(ExitCode.success.code);
@@ -957,6 +958,20 @@ base_url: $baseUrl''',
       expect(exportOptionsPlist['signingStyle'], 'automatic');
       expect(exportOptionsPlist['uploadBitcode'], isFalse);
       expect(exportOptionsPlist['method'], 'app-store');
+    });
+
+    test('does not prompt if running on CI', () async {
+      when(() => shorebirdEnv.isRunningOnCI).thenReturn(true);
+      final tempDir = setUpTempDir();
+      setUpTempArtifacts(tempDir);
+
+      final exitCode = await IOOverrides.runZoned(
+        () => runWithOverrides(command.run),
+        getCurrentDirectory: () => tempDir,
+      );
+
+      expect(exitCode, equals(ExitCode.success.code));
+      verifyNever(() => logger.confirm(any()));
     });
   });
 }

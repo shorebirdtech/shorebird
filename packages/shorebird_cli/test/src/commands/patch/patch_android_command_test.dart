@@ -375,6 +375,7 @@ flutter:
           force: any(named: 'force'),
         ),
       ).thenAnswer((_) async => true);
+      when(() => shorebirdEnv.isRunningOnCI).thenReturn(false);
     });
 
     test('has a description', () {
@@ -913,6 +914,20 @@ flavors:
       );
       verify(() => logger.success('\n✅ Published Patch!')).called(1);
       expect(exitCode, ExitCode.success.code);
+    });
+
+    test('does not prompt if running on CI', () async {
+      when(() => shorebirdEnv.isRunningOnCI).thenReturn(true);
+      final tempDir = setUpTempDir();
+      setUpTempArtifacts(tempDir);
+
+      final exitCode = await IOOverrides.runZoned(
+        () => runWithOverrides(command.run),
+        getCurrentDirectory: () => tempDir,
+      );
+
+      expect(exitCode, equals(ExitCode.success.code));
+      verifyNever(() => logger.confirm(any()));
     });
   });
 }

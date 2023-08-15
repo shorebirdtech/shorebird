@@ -269,7 +269,7 @@ ${summary.join('\n')}
 
     // TODO(bryanoltman): check for asset changes
 
-    final needsConfirmation = !force;
+    final needsConfirmation = !force && !shorebirdEnv.isRunningOnCI;
     if (needsConfirmation) {
       final confirm = logger.confirm('Would you like to continue?');
 

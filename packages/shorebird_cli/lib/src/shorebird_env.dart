@@ -169,4 +169,8 @@ class ShorebirdEnv {
       return null;
     }
   }
+
+  /// Whether the CONTINUOUS_INTEGRATION environment variable is set to true.
+  bool get isRunningOnCI =>
+      platform.environment['CONTINUOUS_INTEGRATION'] == 'true';
 }

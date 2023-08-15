@@ -8,6 +8,7 @@ import 'package:shorebird_cli/src/archive_analysis/archive_analysis.dart';
 import 'package:shorebird_cli/src/archive_analysis/archive_differ.dart';
 import 'package:shorebird_cli/src/logger.dart';
 import 'package:shorebird_cli/src/patch_diff_checker.dart';
+import 'package:shorebird_cli/src/shorebird_env.dart';
 import 'package:test/test.dart';
 
 class _FakeBaseRequest extends Fake implements http.BaseRequest {}
@@ -22,6 +23,8 @@ class _MockLogger extends Mock implements Logger {}
 
 class _MockProgress extends Mock implements Progress {}
 
+class _MockShorebirdEnv extends Mock implements ShorebirdEnv {}
+
 void main() {
   group(PatchDiffChecker, () {
     const assetsDiffPrettyString = 'assets diff pretty string';
@@ -35,6 +38,7 @@ void main() {
     late http.Client httpClient;
     late Logger logger;
     late Progress progress;
+    late ShorebirdEnv shorebirdEnv;
     late PatchDiffChecker patchDiffChecker;
 
     R runWithOverrides<R>(R Function() body) {
@@ -42,6 +46,7 @@ void main() {
         body,
         values: {
           loggerRef.overrideWith(() => logger),
+          shorebirdEnvRef.overrideWith(() => shorebirdEnv),
         },
       );
     }
@@ -58,6 +63,7 @@ void main() {
       httpClient = _MockHttpClient();
       logger = _MockLogger();
       progress = _MockProgress();
+      shorebirdEnv = _MockShorebirdEnv();
       patchDiffChecker = PatchDiffChecker(httpClient: httpClient);
 
       when(() => archiveDiffer.changedFiles(any(), any()))
@@ -77,6 +83,8 @@ void main() {
 
       when(() => logger.confirm(any())).thenReturn(true);
       when(() => logger.progress(any())).thenReturn(progress);
+
+      when(() => shorebirdEnv.isRunningOnCI).thenReturn(false);
 
       when(() => assetsFileSetDiff.prettyString)
           .thenReturn(assetsDiffPrettyString);
@@ -181,6 +189,21 @@ void main() {
           expect(result, isFalse);
           verify(() => logger.confirm('Continue anyways?')).called(1);
         });
+
+        test('does not prompt when running on CI', () async {
+          when(() => shorebirdEnv.isRunningOnCI).thenReturn(true);
+
+          final _ = await runWithOverrides(
+            () => patchDiffChecker.confirmUnpatchableDiffsIfNecessary(
+              localArtifact: localArtifact,
+              releaseArtifactUrl: releaseArtifactUrl,
+              archiveDiffer: archiveDiffer,
+              force: false,
+            ),
+          );
+
+          verifyNever(() => logger.confirm(any()));
+        });
       });
 
       group('when asset diffs are detected', () {
@@ -253,6 +276,21 @@ void main() {
 
           expect(result, isFalse);
           verify(() => logger.confirm('Continue anyways?')).called(1);
+        });
+
+        test('does not prompt when running on CI', () async {
+          when(() => shorebirdEnv.isRunningOnCI).thenReturn(true);
+
+          final _ = await runWithOverrides(
+            () => patchDiffChecker.confirmUnpatchableDiffsIfNecessary(
+              localArtifact: localArtifact,
+              releaseArtifactUrl: releaseArtifactUrl,
+              archiveDiffer: archiveDiffer,
+              force: false,
+            ),
+          );
+
+          verifyNever(() => logger.confirm(any()));
         });
       });
 

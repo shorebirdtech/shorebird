@@ -6,6 +6,7 @@ import 'package:path/path.dart' as p;
 import 'package:scoped/scoped.dart';
 import 'package:shorebird_cli/src/archive_analysis/archive_differ.dart';
 import 'package:shorebird_cli/src/logger.dart';
+import 'package:shorebird_cli/src/shorebird_env.dart';
 
 /// A reference to a [PatchDiffChecker] instance.
 ScopedRef<PatchDiffChecker> patchDiffCheckerRef = create(PatchDiffChecker.new);
@@ -34,6 +35,7 @@ class PatchDiffChecker {
     required ArchiveDiffer archiveDiffer,
     required bool force,
   }) async {
+    final shouldConfirm = !shorebirdEnv.isRunningOnCI;
     final progress =
         logger.progress('Verifying patch can be applied to release');
 
@@ -67,7 +69,8 @@ class PatchDiffChecker {
             archiveDiffer.nativeFileSetDiff(contentDiffs).prettyString,
           ),
         );
-      final shouldContinue = force || logger.confirm('Continue anyways?');
+      final shouldContinue =
+          force || (shouldConfirm && logger.confirm('Continue anyways?'));
 
       if (!shouldContinue) {
         return false;
@@ -85,7 +88,8 @@ class PatchDiffChecker {
           ),
         );
 
-      final shouldContinue = force || logger.confirm('Continue anyways?');
+      final shouldContinue =
+          force || (shouldConfirm && logger.confirm('Continue anyways?'));
       if (!shouldContinue) {
         return false;
       }
