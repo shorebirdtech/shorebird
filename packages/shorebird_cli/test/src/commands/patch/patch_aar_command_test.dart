@@ -212,6 +212,7 @@ void main() {
       ).thenReturn(androidPackageName);
       when(() => shorebirdEnv.getShorebirdYaml()).thenReturn(shorebirdYaml);
       when(() => shorebirdEnv.flutterRevision).thenReturn(flutterRevision);
+      when(() => shorebirdEnv.isRunningOnCI).thenReturn(false);
       when(
         () => shorebirdProcess.run(
           'flutter',
@@ -804,6 +805,20 @@ Please re-run the release command for this version or create a new release.'''),
           patchArtifactBundles: any(named: 'patchArtifactBundles'),
         ),
       ).called(1);
+    });
+
+    test('does not prompt if running on CI', () async {
+      when(() => shorebirdEnv.isRunningOnCI).thenReturn(true);
+      final tempDir = setUpTempDir();
+      setUpTempArtifacts(tempDir);
+
+      final exitCode = await IOOverrides.runZoned(
+        () => runWithOverrides(command.run),
+        getCurrentDirectory: () => tempDir,
+      );
+
+      expect(exitCode, equals(ExitCode.success.code));
+      verifyNever(() => logger.confirm(any()));
     });
   });
 }
