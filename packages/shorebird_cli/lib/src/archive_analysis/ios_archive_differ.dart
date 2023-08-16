@@ -122,6 +122,9 @@ class IosArchiveDiffer extends ArchiveDiffer {
       // coverage:ignore-start
       Process.runSync('assetutil', ['--info', outPath, '-o', assetInfoPath]);
       // coverage:ignore-end
+    } else {
+      // This is just for testing
+      File(assetInfoPath).createSync(recursive: true);
     }
 
     // Remove the timestamp line from the json file
