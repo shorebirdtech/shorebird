@@ -84,7 +84,7 @@ class IosArchiveDiffer extends ArchiveDiffer {
     return ZipDecoder()
         .decodeBuffer(InputFileStream(archivePath))
         .files
-        .where((file) => file.isFile && p.basename(file.name) == 'Assets.car')
+        .where((file) => file.isFile && p.extension(file.name) == '.car')
         .toList();
   }
 
@@ -145,7 +145,7 @@ class IosArchiveDiffer extends ArchiveDiffer {
     /// The flutter_assets directory contains the assets listed in the assets
     ///   section of the pubspec.yaml file.
     /// Assets.car is the compiled asset catalog(s) (.xcassets files).
-    return p.basename(filePath) == 'Assets.car' ||
+    return p.extension(filePath) == '.car' ||
         p.split(filePath).contains('flutter_assets');
   }
 
