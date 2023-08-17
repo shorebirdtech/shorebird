@@ -5,6 +5,7 @@ import 'package:mason_logger/mason_logger.dart';
 import 'package:path/path.dart' as p;
 import 'package:shorebird_cli/src/cache.dart';
 import 'package:shorebird_cli/src/command.dart';
+import 'package:shorebird_cli/src/logger.dart';
 import 'package:shorebird_cli/src/process.dart';
 import 'package:shorebird_cli/src/shorebird_env.dart';
 
@@ -106,6 +107,8 @@ mixin ShorebirdBuildMixin on ShorebirdCommand {
         result.exitCode,
       );
     }
+
+    await _systemFlutterPubGet();
   }
 
   Future<void> buildAar({required String buildNumber}) async {
@@ -133,6 +136,8 @@ mixin ShorebirdBuildMixin on ShorebirdCommand {
         result.exitCode,
       );
     }
+
+    await _systemFlutterPubGet();
   }
 
   Future<void> buildApk({
@@ -165,6 +170,8 @@ mixin ShorebirdBuildMixin on ShorebirdCommand {
         result.exitCode,
       );
     }
+
+    await _systemFlutterPubGet();
   }
 
   Future<void> buildIpa({
@@ -198,7 +205,11 @@ mixin ShorebirdBuildMixin on ShorebirdCommand {
         result.stderr.toString(),
         result.exitCode,
       );
-    } else if (result.stderr
+    }
+
+    await _systemFlutterPubGet();
+
+    if (result.stderr
         .toString()
         .contains('Encountered error while creating the IPA')) {
       final errorMessage = _failedToCreateIpaErrorMessage(
@@ -232,6 +243,35 @@ mixin ShorebirdBuildMixin on ShorebirdCommand {
         arguments,
         result.stderr.toString(),
         result.exitCode,
+      );
+    }
+
+    await _systemFlutterPubGet();
+  }
+
+  /// This is a hack to reset `.dart_tool/package_config.json` to point to the
+  /// Flutter SDK on the user's PATH. This is necessary because Flutter commands
+  /// run by shorebird update the package_config.json file to point to
+  /// shorebird's version of Flutter, which confuses VS Code. See
+  /// https://github.com/shorebirdtech/shorebird/issues/1101 for more info.
+  Future<void> _systemFlutterPubGet() async {
+    const executable = 'flutter';
+    final arguments = ['pub', 'get', '--offline'];
+
+    final result = await process.run(
+      executable,
+      arguments,
+      runInShell: true,
+      useVendedFlutter: false,
+    );
+
+    if (result.exitCode != ExitCode.success.code) {
+      logger.warn(
+        '''
+Build was successful, but `flutter pub get` failed to run after the build completed. You may see unexpected behavior in VS Code.
+
+Either run `flutter pub get` manually, or follow the steps in ${link(uri: Uri.parse('https://docs.shorebird.dev/troubleshooting#i-installed-shorebird-and-now-i-cant-run-my-app-in-vs-code'))}.
+''',
       );
     }
   }
