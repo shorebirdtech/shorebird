@@ -11,6 +11,7 @@ Currency get cad => Currency.create('CAD', 2);
 extension MoneyTransport on Money {
   /// Converts a [Money] to a [String] with the currency code, using a space as
   /// a delimiter.
+  /// Example: $1.00 -> "USD 100"
   String toTransportString() => '${currency.code} $minorUnits';
 
   /// Converts a string of the format "CURRENCY_CODE MINOR_UNITS" to a [Money].
