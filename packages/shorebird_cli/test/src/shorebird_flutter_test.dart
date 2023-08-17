@@ -521,6 +521,52 @@ origin/flutter_release/3.10.6''';
       });
     });
 
+    group('useRevision', () {
+      const revision = 'new-revision';
+
+      test('installs revision if it does not exist', () async {
+        await expectLater(
+          runWithOverrides(
+            () => shorebirdFlutter.useRevision(revision: revision),
+          ),
+          completes,
+        );
+        verify(
+          () => git.clone(
+            url: ShorebirdFlutter.flutterGitUrl,
+            outputDirectory: p.join(
+              flutterDirectory.parent.path,
+              revision,
+            ),
+            args: ['--filter=tree:0', '--no-checkout'],
+          ),
+        ).called(1);
+        verify(() => shorebirdEnv.flutterRevision = revision).called(1);
+      });
+
+      test('skips installation if revision already exists', () async {
+        Directory(p.join(flutterDirectory.parent.path, revision))
+            .createSync(recursive: true);
+        await expectLater(
+          runWithOverrides(
+            () => shorebirdFlutter.useRevision(revision: revision),
+          ),
+          completes,
+        );
+        verifyNever(
+          () => git.clone(
+            url: ShorebirdFlutter.flutterGitUrl,
+            outputDirectory: p.join(
+              flutterDirectory.parent.path,
+              revision,
+            ),
+            args: ['--filter=tree:0', '--no-checkout'],
+          ),
+        );
+        verify(() => shorebirdEnv.flutterRevision = revision).called(1);
+      });
+    });
+
     group('useVersion', () {
       const version = '3.10.0';
       const newRevision = 'new-revision';

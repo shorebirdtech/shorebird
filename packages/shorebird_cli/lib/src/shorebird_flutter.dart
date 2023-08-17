@@ -128,11 +128,11 @@ class ShorebirdFlutter {
       directory: _workingDirectory(),
     );
 
-    final targetDirectory = Directory(_workingDirectory(revision: revision));
-    if (!targetDirectory.existsSync()) {
-      await installRevision(revision: revision);
-    }
+    await useRevision(revision: revision);
+  }
 
+  Future<void> useRevision({required String revision}) async {
+    await installRevision(revision: revision);
     shorebirdEnv.flutterRevision = revision;
   }
 }
