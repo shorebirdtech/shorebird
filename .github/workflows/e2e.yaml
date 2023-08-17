@@ -5,6 +5,13 @@ concurrency:
   cancel-in-progress: true
 
 on:
+  pull_request:
+    branches:
+      - main
+      - stable
+    paths:
+      - packages/shorebird_cli/integration_test/**
+      - .github/workflows/e2e.yaml
   workflow_dispatch:
   schedule:
     # At the end of every day
