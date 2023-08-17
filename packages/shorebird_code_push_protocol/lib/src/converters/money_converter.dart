@@ -1,21 +1,16 @@
 import 'package:json_annotation/json_annotation.dart';
-import 'package:money2/money2.dart';
-
-/// The US dollar.
-Currency get usd => Currency.create('USD', 2);
+import 'package:shorebird_code_push_protocol/shorebird_code_push_protocol.dart';
 
 /// {@template money_converter}
 /// Converts between [Money] and [int].
 /// {@endtemplate}
-// TODO(bryanoltman): change this to use String as the transport type the next
-// time we make a breaking change to the API.
-class MoneyConverter implements JsonConverter<Money, int> {
+class MoneyConverter implements JsonConverter<Money, String> {
   /// {@macro money_converter}
   const MoneyConverter();
 
   @override
-  Money fromJson(int cents) => Money.fromIntWithCurrency(cents, usd);
+  Money fromJson(String string) => MoneyTransport.fromTransportString(string);
 
   @override
-  int toJson(Money money) => money.minorUnits.toInt();
+  String toJson(Money money) => money.toTransportString();
 }
