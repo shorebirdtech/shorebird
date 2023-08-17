@@ -114,6 +114,7 @@ void main() {
     late Progress progress;
     late Logger logger;
     late ShorebirdProcessResult flutterBuildProcessResult;
+    late ShorebirdProcessResult flutterPubGetProcessResult;
     late ShorebirdProcessResult patchProcessResult;
     late http.Client httpClient;
     late Cache cache;
@@ -194,6 +195,7 @@ void main() {
       progress = _MockProgress();
       logger = _MockLogger();
       flutterBuildProcessResult = _MockProcessResult();
+      flutterPubGetProcessResult = _MockProcessResult();
       patchProcessResult = _MockProcessResult();
       httpClient = _MockHttpClient();
       cache = _MockCache();
@@ -213,6 +215,14 @@ void main() {
       when(() => shorebirdEnv.getShorebirdYaml()).thenReturn(shorebirdYaml);
       when(() => shorebirdEnv.flutterRevision).thenReturn(flutterRevision);
       when(() => shorebirdEnv.isRunningOnCI).thenReturn(false);
+      when(
+        () => shorebirdProcess.run(
+          'flutter',
+          ['pub', 'get', '--offline'],
+          runInShell: any(named: 'runInShell'),
+          useVendedFlutter: false,
+        ),
+      ).thenAnswer((_) async => flutterPubGetProcessResult);
       when(
         () => shorebirdProcess.run(
           'flutter',
@@ -256,6 +266,9 @@ void main() {
       when(() => logger.confirm(any())).thenReturn(true);
       when(
         () => flutterBuildProcessResult.exitCode,
+      ).thenReturn(ExitCode.success.code);
+      when(
+        () => flutterPubGetProcessResult.exitCode,
       ).thenReturn(ExitCode.success.code);
       when(() => patchProcessResult.exitCode).thenReturn(ExitCode.success.code);
       when(() => httpClient.send(any())).thenAnswer(
@@ -803,6 +816,26 @@ Please re-run the release command for this version or create a new release.'''),
           platform: releasePlatform,
           channelName: channelName,
           patchArtifactBundles: any(named: 'patchArtifactBundles'),
+        ),
+      ).called(1);
+    });
+
+    test('runs flutter pub get with system flutter after successful build',
+        () async {
+      final tempDir = setUpTempDir();
+      setUpTempArtifacts(tempDir);
+
+      await IOOverrides.runZoned(
+        () => runWithOverrides(command.run),
+        getCurrentDirectory: () => tempDir,
+      );
+
+      verify(
+        () => shorebirdProcess.run(
+          'flutter',
+          ['pub', 'get', '--offline'],
+          runInShell: any(named: 'runInShell'),
+          useVendedFlutter: false,
         ),
       ).called(1);
     });

@@ -34,7 +34,8 @@ void main() {
     late Progress progress;
     late ShorebirdEnv shorebirdEnv;
     late ShorebirdProcess shorebirdProcess;
-    late ShorebirdProcessResult processResult;
+    late ShorebirdProcessResult buildProcessResult;
+    late ShorebirdProcessResult flutterPubGetProcessResult;
     late ShorebirdValidator shorebirdValidator;
     late BuildAarCommand command;
 
@@ -53,7 +54,8 @@ void main() {
     setUp(() {
       argResults = _MockArgResults();
       logger = _MockLogger();
-      processResult = _MockProcessResult();
+      flutterPubGetProcessResult = _MockProcessResult();
+      buildProcessResult = _MockProcessResult();
       progress = _MockProgress();
       shorebirdEnv = _MockShorebirdEnv();
       shorebirdProcess = _MockShorebirdProcess();
@@ -65,12 +67,22 @@ void main() {
 
       when(
         () => shorebirdProcess.run(
+          'flutter',
+          ['pub', 'get', '--offline'],
+          runInShell: any(named: 'runInShell'),
+          useVendedFlutter: false,
+        ),
+      ).thenAnswer((_) async => flutterPubGetProcessResult);
+      when(() => flutterPubGetProcessResult.exitCode)
+          .thenReturn(ExitCode.success.code);
+      when(
+        () => shorebirdProcess.run(
           any(),
           any(),
           runInShell: any(named: 'runInShell'),
         ),
       ).thenAnswer((invocation) async {
-        return processResult;
+        return buildProcessResult;
       });
 
       when(
@@ -119,8 +131,8 @@ void main() {
     });
 
     test('exits with code 70 when building aar fails', () async {
-      when(() => processResult.exitCode).thenReturn(1);
-      when(() => processResult.stderr).thenReturn('oops');
+      when(() => buildProcessResult.exitCode).thenReturn(1);
+      when(() => buildProcessResult.stderr).thenReturn('oops');
 
       final result = await runWithOverrides(command.run);
 
@@ -144,7 +156,7 @@ void main() {
     });
 
     test('exits with code 0 when building aar succeeds', () async {
-      when(() => processResult.exitCode).thenReturn(ExitCode.success.code);
+      when(() => buildProcessResult.exitCode).thenReturn(ExitCode.success.code);
       final result = await runWithOverrides(command.run);
 
       expect(result, equals(ExitCode.success.code));
@@ -180,6 +192,21 @@ ${lightCyan.wrap(
               'flutter_release-$buildNumber.aar',
             ),
           )}''',
+        ),
+      ).called(1);
+    });
+
+    test('runs flutter pub get with system flutter after successful build',
+        () async {
+      when(() => buildProcessResult.exitCode).thenReturn(ExitCode.success.code);
+      await runWithOverrides(command.run);
+
+      verify(
+        () => shorebirdProcess.run(
+          'flutter',
+          ['pub', 'get', '--offline'],
+          runInShell: any(named: 'runInShell'),
+          useVendedFlutter: false,
         ),
       ).called(1);
     });

@@ -98,6 +98,7 @@ void main() {
     late Progress progress;
     late Logger logger;
     late ShorebirdProcessResult flutterBuildProcessResult;
+    late ShorebirdProcessResult flutterPubGetProcessResult;
     late ShorebirdFlutterValidator flutterValidator;
     late ShorebirdProcess shorebirdProcess;
     late ShorebirdEnv shorebirdEnv;
@@ -145,6 +146,7 @@ void main() {
       progress = _MockProgress();
       logger = _MockLogger();
       flutterBuildProcessResult = _MockProcessResult();
+      flutterPubGetProcessResult = _MockProcessResult();
       flutterValidator = _MockShorebirdFlutterValidator();
       shorebirdProcess = _MockShorebirdProcess();
       shorebirdEnv = _MockShorebirdEnv();
@@ -155,6 +157,14 @@ void main() {
       when(() => shorebirdEnv.flutterRevision).thenReturn(flutterRevision);
       when(() => shorebirdEnv.isRunningOnCI).thenReturn(false);
 
+      when(
+        () => shorebirdProcess.run(
+          'flutter',
+          ['pub', 'get', '--offline'],
+          runInShell: any(named: 'runInShell'),
+          useVendedFlutter: false,
+        ),
+      ).thenAnswer((_) async => flutterPubGetProcessResult);
       when(
         () => shorebirdProcess.run(
           'flutter',
@@ -181,6 +191,8 @@ void main() {
       when(
         () => flutterBuildProcessResult.exitCode,
       ).thenReturn(ExitCode.success.code);
+      when(() => flutterPubGetProcessResult.exitCode)
+          .thenReturn(ExitCode.success.code);
       when(
         () => codePushClientWrapper.getApp(appId: any(named: 'appId')),
       ).thenAnswer((_) async => appMetadata);
@@ -424,6 +436,36 @@ void main() {
         ),
       ).called(1);
       expect(exitCode, ExitCode.success.code);
+    });
+
+    test('runs flutter pub get with system flutter after successful build',
+        () async {
+      await runWithOverrides(command.run);
+
+      verify(
+        () => shorebirdProcess.run(
+          'flutter',
+          ['pub', 'get', '--offline'],
+          runInShell: any(named: 'runInShell'),
+          useVendedFlutter: false,
+        ),
+      ).called(1);
+    });
+
+    test('prints error message if system flutter pub get fails', () async {
+      when(() => flutterPubGetProcessResult.exitCode).thenReturn(1);
+
+      await runWithOverrides(command.run);
+
+      verify(
+        () => logger.warn(
+          '''
+Build was successful, but `flutter pub get` failed to run after the build completed. You may see unexpected behavior in VS Code.
+
+Either run `flutter pub get` manually, or follow the steps in ${link(uri: Uri.parse('https://docs.shorebird.dev/troubleshooting#i-installed-shorebird-and-now-i-cant-run-my-app-in-vs-code'))}.
+''',
+        ),
+      ).called(1);
     });
 
     test(

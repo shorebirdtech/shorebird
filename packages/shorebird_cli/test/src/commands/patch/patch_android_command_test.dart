@@ -136,6 +136,7 @@ flutter:
     late Logger logger;
     late ShorebirdEnv shorebirdEnv;
     late ShorebirdProcessResult flutterBuildProcessResult;
+    late ShorebirdProcessResult flutterPubGetProcessResult;
     late ShorebirdProcessResult patchProcessResult;
     late http.Client httpClient;
     late Cache cache;
@@ -223,6 +224,7 @@ flutter:
       progress = _MockProgress();
       logger = _MockLogger();
       flutterBuildProcessResult = _MockProcessResult();
+      flutterPubGetProcessResult = _MockProcessResult();
       patchProcessResult = _MockProcessResult();
       httpClient = _MockHttpClient();
       flutterValidator = _MockShorebirdFlutterValidator();
@@ -249,6 +251,14 @@ flutter:
           runInShell: any(named: 'runInShell'),
         ),
       ).thenAnswer((_) async => flutterBuildProcessResult);
+      when(
+        () => shorebirdProcess.run(
+          'flutter',
+          ['pub', 'get', '--offline'],
+          runInShell: any(named: 'runInShell'),
+          useVendedFlutter: false,
+        ),
+      ).thenAnswer((_) async => flutterPubGetProcessResult);
       when(
         () => shorebirdProcess.run(
           any(that: endsWith('patch')),
@@ -296,6 +306,9 @@ flutter:
       when(
         () => flutterBuildProcessResult.exitCode,
       ).thenReturn(ExitCode.success.code);
+      when(() => flutterPubGetProcessResult.exitCode).thenReturn(
+        ExitCode.success.code,
+      );
       when(() => httpClient.send(any())).thenAnswer(
         (_) async => http.StreamedResponse(const Stream.empty(), HttpStatus.ok),
       );
@@ -749,6 +762,25 @@ Or change your Flutter version and try again using:
       ).called(1);
       verify(() => logger.success('\n✅ Published Patch!')).called(1);
       expect(exitCode, ExitCode.success.code);
+    });
+
+    test('runs flutter pub get with system flutter after successful build',
+        () async {
+      final tempDir = setUpTempDir();
+      setUpTempArtifacts(tempDir);
+      await IOOverrides.runZoned(
+        () => runWithOverrides(command.run),
+        getCurrentDirectory: () => tempDir,
+      );
+
+      verify(
+        () => shorebirdProcess.run(
+          'flutter',
+          ['pub', 'get', '--offline'],
+          runInShell: any(named: 'runInShell'),
+          useVendedFlutter: false,
+        ),
+      ).called(1);
     });
 
     test(

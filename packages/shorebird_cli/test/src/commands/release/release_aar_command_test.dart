@@ -82,6 +82,7 @@ void main() {
     late Progress progress;
     late Logger logger;
     late ShorebirdProcessResult flutterBuildProcessResult;
+    late ShorebirdProcessResult flutterPubGetProcessResult;
     late ShorebirdEnv shorebirdEnv;
     late ShorebirdProcess shorebirdProcess;
     late ShorebirdValidator shorebirdValidator;
@@ -151,6 +152,7 @@ void main() {
       progress = _MockProgress();
       logger = _MockLogger();
       flutterBuildProcessResult = _MockProcessResult();
+      flutterPubGetProcessResult = _MockProcessResult();
       shorebirdProcess = _MockShorebirdProcess();
       shorebirdRoot = Directory.systemTemp.createTempSync();
       shorebirdEnv = _MockShorebirdEnv();
@@ -174,7 +176,18 @@ void main() {
       when(
         () => flutterBuildProcessResult.exitCode,
       ).thenReturn(ExitCode.success.code);
+      when(
+        () => flutterPubGetProcessResult.exitCode,
+      ).thenReturn(ExitCode.success.code);
 
+      when(
+        () => shorebirdProcess.run(
+          'flutter',
+          ['pub', 'get', '--offline'],
+          runInShell: any(named: 'runInShell'),
+          useVendedFlutter: false,
+        ),
+      ).thenAnswer((_) async => flutterPubGetProcessResult);
       when(
         () => shorebirdProcess.run(
           any(),
@@ -381,6 +394,25 @@ void main() {
           releaseId: release.id,
           platform: releasePlatform,
           status: ReleaseStatus.active,
+        ),
+      ).called(1);
+    });
+
+    test('runs flutter pub get with system flutter after successful build',
+        () async {
+      final tempDir = setUpTempArtifacts();
+
+      await IOOverrides.runZoned(
+        () => runWithOverrides(command.run),
+        getCurrentDirectory: () => tempDir,
+      );
+
+      verify(
+        () => shorebirdProcess.run(
+          'flutter',
+          ['pub', 'get', '--offline'],
+          runInShell: any(named: 'runInShell'),
+          useVendedFlutter: false,
         ),
       ).called(1);
     });
