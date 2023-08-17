@@ -18,7 +18,7 @@ void main() {
       httpClient: Auth().client,
       hostedUri: Uri.parse(Platform.environment['SHOREBIRD_HOSTED_URL']!),
     ),
-    values: {platformRef},
+    values: {loggerRef, platformRef},
   );
 
   ProcessResult runCommand(
