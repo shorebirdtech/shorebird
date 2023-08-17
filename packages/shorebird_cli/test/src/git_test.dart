@@ -272,41 +272,6 @@ origin/flutter_release/3.10.6''';
       });
     });
 
-    group('remotePrune', () {
-      const directory = './output';
-      const name = 'origin';
-
-      test('executes correct command', () async {
-        await expectLater(
-          runWithOverrides(
-            () => git.remotePrune(name: name, directory: directory),
-          ),
-          completes,
-        );
-        verify(
-          () => process.run(
-            'git',
-            ['remote', 'prune', name],
-            workingDirectory: directory,
-          ),
-        ).called(1);
-      });
-
-      test('throws ProcessException if process exits with error', () async {
-        const error = 'oops';
-        when(() => processResult.exitCode).thenReturn(ExitCode.software.code);
-        when(() => processResult.stderr).thenReturn(error);
-        expect(
-          () => runWithOverrides(
-            () => git.remotePrune(name: name, directory: directory),
-          ),
-          throwsA(
-            isA<ProcessException>().having((e) => e.message, 'message', error),
-          ),
-        );
-      });
-    });
-
     group('reset', () {
       const directory = './output';
       const revision = 'revision';
