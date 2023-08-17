@@ -3,12 +3,18 @@ import 'dart:io';
 import 'package:checked_yaml/checked_yaml.dart';
 import 'package:mason_logger/mason_logger.dart';
 import 'package:path/path.dart' as p;
+import 'package:shorebird_cli/src/auth/auth.dart';
 import 'package:shorebird_cli/src/config/config.dart';
+import 'package:shorebird_code_push_client/shorebird_code_push_client.dart';
 import 'package:test/test.dart';
 import 'package:uuid/uuid.dart';
 
 void main() {
   final logger = Logger();
+  final client = CodePushClient(
+    httpClient: Auth().client,
+    hostedUri: Uri.parse(Platform.environment['SHOREBIRD_HOSTED_URL']!),
+  );
 
   ProcessResult runCommand(
     String command, {
@@ -36,7 +42,7 @@ void main() {
     expect(result.exitCode, equals(0));
   });
 
-  test('create an app with a release and patch', () {
+  test('create an app with a release and patch', () async {
     final authToken = Platform.environment['SHOREBIRD_TOKEN'];
     if (authToken == null || authToken.isEmpty) {
       throw Exception('SHOREBIRD_TOKEN environment variable is not set.');
@@ -76,15 +82,27 @@ void main() {
     );
 
     // Verify that we have no releases for this app
-    final preReleaseAppsListResult = runCommand(
-      'shorebird apps list',
-      workingDirectory: cwd,
-    );
-    expect(preReleaseAppsListResult.exitCode, equals(0));
-    expect(
-      (preReleaseAppsListResult.stdout as String).split('\n'),
-      anyElement(
-        matches('^.+$testAppName.+${shorebirdYaml.appId}.+--.+--.+\$'),
+    await expectLater(
+      client.getApps(),
+      completion(
+        equals([
+          isA<AppMetadata>()
+              .having(
+                (a) => a.appId,
+                'appId',
+                shorebirdYaml.appId,
+              )
+              .having(
+                (a) => a.latestReleaseVersion,
+                'latestReleaseVersion',
+                null,
+              )
+              .having(
+                (a) => a.latestPatchNumber,
+                'latestPatchNumber',
+                null,
+              ),
+        ]),
       ),
     );
 
@@ -98,23 +116,33 @@ void main() {
     expect(shorebirdReleaseResult.exitCode, equals(0));
 
     // Verify that the release was created.
-    final postReleaseAppsListResult = runCommand(
-      'shorebird apps list',
-      workingDirectory: cwd,
-    );
-    expect(postReleaseAppsListResult.exitCode, equals(0));
-    expect(
-      (postReleaseAppsListResult.stdout as String).split('\n'),
-      anyElement(
-        matches(
-          '^.+$testAppName.+${shorebirdYaml.appId}.+1\\.0\\.0\\+1.+--.+\$',
-        ),
+    await expectLater(
+      client.getApps(),
+      completion(
+        equals([
+          isA<AppMetadata>()
+              .having(
+                (a) => a.appId,
+                'appId',
+                shorebirdYaml.appId,
+              )
+              .having(
+                (a) => a.latestReleaseVersion,
+                'latestReleaseVersion',
+                '1.0.0+1',
+              )
+              .having(
+                (a) => a.latestPatchNumber,
+                'latestPatchNumber',
+                null,
+              ),
+        ]),
       ),
     );
 
     // Create an Android patch.
     final shorebirdPatchResult = runCommand(
-      'shorebird patch android --release-version=1.0.0+1 --force',
+      'shorebird patch android --force',
       workingDirectory: cwd,
     );
     expect(shorebirdPatchResult.stderr, isEmpty);
@@ -122,46 +150,34 @@ void main() {
     expect(shorebirdPatchResult.exitCode, equals(0));
 
     // Verify that the patch was created.
-    final postPatchAppsListResult = runCommand(
-      'shorebird apps list',
-      workingDirectory: cwd,
-    );
-    expect(postPatchAppsListResult.exitCode, equals(0));
-    expect(
-      (postPatchAppsListResult.stdout as String).split('\n'),
-      anyElement(
-        matches(
-          '^.+$testAppName.+${shorebirdYaml.appId}.+1\\.0\\.0\\+1.+1.+\$',
-        ),
+    await expectLater(
+      client.getApps(),
+      completion(
+        equals([
+          isA<AppMetadata>()
+              .having(
+                (a) => a.appId,
+                'appId',
+                shorebirdYaml.appId,
+              )
+              .having(
+                (a) => a.latestReleaseVersion,
+                'latestReleaseVersion',
+                '1.0.0+1',
+              )
+              .having(
+                (a) => a.latestPatchNumber,
+                'latestPatchNumber',
+                1,
+              ),
+        ]),
       ),
     );
 
     // Delete the app to clean up after ourselves.
-    final deleteAppResult = runCommand(
-      'shorebird apps delete --app-id=${shorebirdYaml.appId} --force',
-      workingDirectory: cwd,
-    );
-    expect(deleteAppResult.exitCode, equals(0));
-    expect(
-      deleteAppResult.stdout,
-      contains('Deleted app: ${shorebirdYaml.appId}'),
-    );
+    await expectLater(client.deleteApp(appId: shorebirdYaml.appId), completes);
 
     // Verify that the app was deleted.
-    final deleteAppAppsListResult = runCommand(
-      'shorebird apps list',
-      workingDirectory: cwd,
-    );
-    expect(deleteAppAppsListResult.exitCode, equals(0));
-    expect(
-      (deleteAppAppsListResult.stdout as String).split('\n'),
-      isNot(
-        anyElement(
-          matches(
-            '^.+$testAppName.+${shorebirdYaml.appId}.+\$',
-          ),
-        ),
-      ),
-    );
+    await expectLater(client.getApps(), completion(isEmpty));
   });
 }
