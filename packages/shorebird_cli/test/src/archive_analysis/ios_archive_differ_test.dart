@@ -31,6 +31,22 @@ void main() {
         differ = IosArchiveDiffer();
       });
 
+      group('appRegex', () {
+        test('identifies Runner.app/Runner as an app file', () {
+          expect(
+            IosArchiveDiffer.appRegex.hasMatch('Payload/Runner.app/Runner'),
+            isTrue,
+          );
+        });
+
+        test('does not identify Runner.app/Assets.car as an app file', () {
+          expect(
+            IosArchiveDiffer.appRegex.hasMatch('Payload/Runner.app/Assets.car'),
+            isFalse,
+          );
+        });
+      });
+
       group('ipa', () {
         group('changedPaths', () {
           test('finds no differences between the same ipa', () {

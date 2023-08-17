@@ -24,7 +24,7 @@ class IosArchiveDiffer extends ArchiveDiffer {
     'App.framework/App',
     'Flutter.framework/Flutter',
   };
-  static RegExp appRegex = RegExp(r'^Payload/[\w\-. ]+.app/[\w\-. ]+$');
+  static RegExp appRegex = RegExp(r'^Payload/[\w\-. ]+.app/[\w\- ]+$');
 
   /// Files that have been added, removed, or that have changed between the
   /// archives at the two provided paths. This method will also unisgn mach-o
