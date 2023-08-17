@@ -1,6 +1,7 @@
 import 'dart:io';
 
 import 'package:archive/archive_io.dart';
+import 'package:collection/collection.dart';
 import 'package:crypto/crypto.dart';
 import 'package:path/path.dart' as p;
 import 'package:shorebird_cli/src/archive_analysis/archive_differ.dart';
@@ -33,11 +34,11 @@ class IosArchiveDiffer extends ArchiveDiffer {
     final oldPathHashes = fileHashes(File(oldArchivePath));
     final newPathHashes = fileHashes(File(newArchivePath));
 
-    _updateToUnsignedHashes(
+    _updateHashes(
       archivePath: oldArchivePath,
       pathHashes: oldPathHashes,
     );
-    _updateToUnsignedHashes(
+    _updateHashes(
       archivePath: newArchivePath,
       pathHashes: newPathHashes,
     );
@@ -48,12 +49,20 @@ class IosArchiveDiffer extends ArchiveDiffer {
     );
   }
 
-  void _updateToUnsignedHashes({
+  /// Replaces crc32s from zip file headers where needed. This currently
+  /// includes:
+  ///   - Signed files (those with a .app extension)
+  ///   - Compiled asset catalogs (those with a .car extension)
+  void _updateHashes({
     required String archivePath,
     required PathHashes pathHashes,
   }) {
     for (final file in _filesToUnsign(archivePath)) {
       pathHashes[file.name] = _unsignedFileHash(file);
+    }
+
+    for (final file in _carFiles(archivePath)) {
+      pathHashes[file.name] = _carFileHash(file);
     }
   }
 
@@ -68,6 +77,14 @@ class IosArchiveDiffer extends ArchiveDiffer {
               file.name.endsWith('Flutter.framework/Flutter') ||
               appRegex.hasMatch(file.name),
         )
+        .toList();
+  }
+
+  List<ArchiveFile> _carFiles(String archivePath) {
+    return ZipDecoder()
+        .decodeBuffer(InputFileStream(archivePath))
+        .files
+        .where((file) => file.isFile && p.extension(file.name) == '.car')
         .toList();
   }
 
@@ -89,6 +106,35 @@ class IosArchiveDiffer extends ArchiveDiffer {
     return hash;
   }
 
+  /// Uses assetutil to write a json description of a .car file to disk and
+  /// diffs the contents of that file, less a timestamp line that chnages based
+  /// on when the .car file was created.
+  String _carFileHash(ArchiveFile file) {
+    final tempDir = Directory.systemTemp.createTempSync();
+    final outPath = p.join(tempDir.path, file.name);
+    final outputStream = OutputFileStream(outPath);
+    file.writeContent(outputStream);
+    outputStream.close();
+
+    final assetInfoPath = '$outPath.json';
+
+    if (Platform.isMacOS) {
+      // coverage:ignore-start
+      Process.runSync('assetutil', ['--info', outPath, '-o', assetInfoPath]);
+      // coverage:ignore-end
+    } else {
+      // This is just for testing
+      File(assetInfoPath).createSync(recursive: true);
+    }
+
+    // Remove the timestamp line from the json file
+    final jsonFile = File(assetInfoPath);
+    final lines = jsonFile.readAsLinesSync();
+    final timestampRegex = RegExp(r'^\W+"Timestamp" : \d+$');
+    final linesToKeep = lines.whereNot(timestampRegex.hasMatch);
+    return _hash(linesToKeep.join('\n').codeUnits);
+  }
+
   @override
   bool containsPotentiallyBreakingAssetDiffs(FileSetDiff fileSetDiff) =>
       assetsFileSetDiff(fileSetDiff).isNotEmpty;
@@ -102,7 +148,7 @@ class IosArchiveDiffer extends ArchiveDiffer {
     /// The flutter_assets directory contains the assets listed in the assets
     ///   section of the pubspec.yaml file.
     /// Assets.car is the compiled asset catalog(s) (.xcassets files).
-    return p.basename(filePath) == 'Assets.car' ||
+    return p.extension(filePath) == '.car' ||
         p.split(filePath).contains('flutter_assets');
   }
 
