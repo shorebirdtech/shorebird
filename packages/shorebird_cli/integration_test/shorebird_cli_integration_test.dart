@@ -3,17 +3,26 @@ import 'dart:io';
 import 'package:checked_yaml/checked_yaml.dart';
 import 'package:mason_logger/mason_logger.dart';
 import 'package:path/path.dart' as p;
+import 'package:scoped/scoped.dart';
 import 'package:shorebird_cli/src/auth/auth.dart';
 import 'package:shorebird_cli/src/config/config.dart';
+import 'package:shorebird_cli/src/logger.dart';
+import 'package:shorebird_cli/src/platform.dart';
 import 'package:shorebird_code_push_client/shorebird_code_push_client.dart';
 import 'package:test/test.dart';
 import 'package:uuid/uuid.dart';
 
 void main() {
   final logger = Logger();
-  final client = CodePushClient(
-    httpClient: Auth().client,
-    hostedUri: Uri.parse(Platform.environment['SHOREBIRD_HOSTED_URL']!),
+  final client = runScoped(
+    () => CodePushClient(
+      httpClient: Auth().client,
+      hostedUri: Uri.parse(Platform.environment['SHOREBIRD_HOSTED_URL']!),
+    ),
+    values: {
+      loggerRef.overrideWith(() => logger),
+      platformRef,
+    },
   );
 
   ProcessResult runCommand(
