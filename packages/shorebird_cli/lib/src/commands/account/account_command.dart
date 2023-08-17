@@ -9,7 +9,6 @@ class AccountCommand extends ShorebirdCommand {
   /// {@macro account_command}
   AccountCommand() {
     addSubcommand(DowngradeAccountCommand());
-    addSubcommand(UpgradeAccountCommand());
   }
 
   @override
