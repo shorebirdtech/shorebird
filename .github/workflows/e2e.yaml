@@ -79,6 +79,9 @@ jobs:
 
       - name: 🎯 Set up Flutter
         uses: subosito/flutter-action@v2
+        with:
+          channel: stable
+          flutter-version: 3.10.6
 
       - name: 🧪 Run Integration Tests
         run: dart test integration_test
