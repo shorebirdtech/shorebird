@@ -18,6 +18,13 @@ void main() {
     });
 
     group('to Money', () {
+      test('throws FormatException if string is not in the correct format', () {
+        expect(
+          () => MoneyTransport.fromTransportString('USD100'),
+          throwsFormatException,
+        );
+      });
+
       test('converts a USD String to a Money object', () {
         final money = MoneyTransport.fromTransportString('USD 100');
         expect(money.currency, usd);
