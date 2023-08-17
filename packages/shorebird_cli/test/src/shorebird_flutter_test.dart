@@ -64,12 +64,6 @@ void main() {
         ),
       ).thenAnswer((_) async => {});
       when(
-        () => git.remotePrune(
-          name: any(named: 'name'),
-          directory: any(named: 'directory'),
-        ),
-      ).thenAnswer((_) async {});
-      when(
         () => git.status(
           directory: p.join(flutterDirectory.parent.path, flutterRevision),
           args: ['--untracked-files=no', '--porcelain'],
@@ -391,69 +385,6 @@ origin/flutter_release/3.10.6''';
             () => shorebirdFlutter.installRevision(revision: revision),
           ),
           completes,
-        );
-      });
-    });
-
-    group('pruneRemoteOrigin', () {
-      test('completes when git command exits with code 0', () async {
-        await expectLater(
-          runWithOverrides(() => shorebirdFlutter.pruneRemoteOrigin()),
-          completes,
-        );
-        verify(
-          () => git.remotePrune(
-            name: 'origin',
-            directory: p.join(flutterDirectory.parent.path, flutterRevision),
-          ),
-        ).called(1);
-      });
-
-      test('completes when git command exits with code 0 (custom revision)',
-          () async {
-        const customRevision = 'custom-revision';
-        await expectLater(
-          runWithOverrides(
-            () => shorebirdFlutter.pruneRemoteOrigin(
-              revision: customRevision,
-            ),
-          ),
-          completes,
-        );
-        verify(
-          () => git.remotePrune(
-            name: 'origin',
-            directory: p.join(flutterDirectory.parent.path, customRevision),
-          ),
-        ).called(1);
-      });
-
-      test('throws ProcessException when git command exits non-zero code',
-          () async {
-        const errorMessage = 'oh no!';
-        when(
-          () => git.remotePrune(
-            name: any(named: 'name'),
-            directory: any(named: 'directory'),
-          ),
-        ).thenThrow(
-          ProcessException(
-            'git',
-            ['remote', 'prune', 'origin'],
-            errorMessage,
-            ExitCode.software.code,
-          ),
-        );
-
-        expect(
-          runWithOverrides(() => shorebirdFlutter.pruneRemoteOrigin()),
-          throwsA(
-            isA<ProcessException>().having(
-              (e) => e.message,
-              'message',
-              errorMessage,
-            ),
-          ),
         );
       });
     });
