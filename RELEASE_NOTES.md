@@ -2,6 +2,29 @@
 
 This section contains past updates we've sent to customers via Discord.
 
+## 0.13.0 (August 17, 2023)
+
+We've just released Shorebird v0.13.0 🎉
+
+- 🍎 iOS crash fixes
+- 🧩 `shorebird patch` no longer requires specifying a release version
+- 🐦 `shorebird flutter versions use` supports passing a commit hash
+- 🤖 no prompts when run in continuous integration
+- 🩹 `.dart_tool/package_config.json` is reset after builds to resolve VSCode issues
+- 🍎 improved iOS asset diffing (`.car` file fixes)
+- 🧹 remove deprecated commands
+  - `shorebird account upgrade`
+  - `shorebird apps list`
+  - `shorebird apps delete`
+  - `shorebird releases add`
+  - `shorebird releases list`
+  
+📚 Release notes can be found at https://github.com/shorebirdtech/shorebird/releases/tag/v0.13.0
+
+As always, you can upgrade using `shorebird upgrade`
+
+Please let us know if we can help!
+
 ## 0.12.3 (August 11, 2023)
 
 We've just released Shorebird v0.12.3 🎉
