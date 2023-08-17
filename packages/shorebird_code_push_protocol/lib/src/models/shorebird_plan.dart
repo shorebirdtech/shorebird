@@ -12,6 +12,7 @@ class ShorebirdPlan {
   const ShorebirdPlan({
     required this.name,
     required this.monthlyCost,
+    required this.currency,
     required this.patchInstallLimit,
     this.maxTeamSize,
   });
@@ -28,6 +29,9 @@ class ShorebirdPlan {
   /// Monthly billing rate.
   @MoneyConverter()
   final Money monthlyCost;
+
+  /// The currency of the plan (e.g. USD, CAD, etc.)
+  final String currency;
 
   /// The number of patch installs allowed per billing period. This will be null
   /// for accounts with unlimited patch installs.
