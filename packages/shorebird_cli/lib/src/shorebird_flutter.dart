@@ -47,14 +47,6 @@ class ShorebirdFlutter {
     await git.checkout(directory: targetDirectory.path, revision: revision);
   }
 
-  /// Prunes stale remote branches from the repository.
-  Future<void> pruneRemoteOrigin({String? revision}) async {
-    return git.remotePrune(
-      name: 'origin',
-      directory: _workingDirectory(revision: revision),
-    );
-  }
-
   /// Whether the current revision is porcelain (unmodified).
   Future<bool> isPorcelain({String? revision}) async {
     final status = await git.status(
