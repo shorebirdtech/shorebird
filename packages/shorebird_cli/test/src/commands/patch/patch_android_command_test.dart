@@ -431,8 +431,9 @@ flutter:
         () async {
       when(
         () => codePushClientWrapper.getRelease(
-            appId: any(named: 'appId'),
-            releaseVersion: any(named: 'releaseVersion')),
+          appId: any(named: 'appId'),
+          releaseVersion: any(named: 'releaseVersion'),
+        ),
       ).thenAnswer(
         (_) async => const Release(
           id: 0,
