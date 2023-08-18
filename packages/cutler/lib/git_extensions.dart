@@ -50,7 +50,7 @@ extension RepoCommands on Repo {
   void fetchAll() {
     runCommand(
       'git',
-      ['fetch', '--all'],
+      ['fetch', '--all', '--tags'],
       workingDirectory: workingDirectory,
     );
   }

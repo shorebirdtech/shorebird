@@ -1,3 +1,4 @@
+import 'package:collection/collection.dart';
 import 'package:cutler/git_extensions.dart';
 import 'package:cutler/model.dart';
 
@@ -52,8 +53,13 @@ String parseBuildrootRevision(String depsContents) {
 String parseDartRevision(String depsContents) {
   final lines = depsContents.split('\n');
   // Example:
-  //  'dart_revision': 'ce926bc6dcf649bd31a396e4e3961196115727cd',
-  final dartLine =
+  //  'dart_sdk_revision': 'ce926bc6dcf649bd31a396e4e3961196115727cd',
+  // In our fork we use dart_sdk_revision, not dart_revision, since the former
+  // points to our fork of the Dart SDK and the latter points to some base
+  // revision for dart.googlesource.com/sdk.
+  // For upstream we use 'dart_revision'.
+  final dartLine = lines
+          .firstWhereOrNull((line) => line.contains("'dart_sdk_revision': ")) ??
       lines.firstWhere((line) => line.contains("'dart_revision': "));
   final regexp = RegExp('([0-9a-f]{40})');
   final match = regexp.firstMatch(dartLine);
