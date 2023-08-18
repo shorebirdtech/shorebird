@@ -32,7 +32,7 @@ String rebaseRepo(
         '--onto',
         upstream[repo].ref,
         forkpoints[repo].ref,
-        shorebird[repo].ref
+        shorebird[repo].ref,
       ],
       workingDirectory: repo.workingDirectory,
     );

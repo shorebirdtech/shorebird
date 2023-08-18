@@ -246,7 +246,7 @@ origin/flutter_release/3.10.6''';
               pointsAt,
               '--format',
               format,
-              pattern
+              pattern,
             ],
             workingDirectory: directory,
           ),

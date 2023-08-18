@@ -367,7 +367,7 @@ Either run `flutter pub get` manually, or follow the steps in ${link(uri: Uri.pa
       '--deterministic',
       '--snapshot-kind=app-aot-elf',
       '--elf=$outFilePath',
-      appDillPath
+      appDillPath,
     ];
 
     final result = await process.run(

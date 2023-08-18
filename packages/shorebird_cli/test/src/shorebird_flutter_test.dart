@@ -171,7 +171,7 @@ Tools • Dart 3.0.6 • DevTools 2.23.1''');
               'for-each-ref',
               '--format',
               '%(refname:short)',
-              'refs/remotes/origin/flutter_release/*'
+              'refs/remotes/origin/flutter_release/*',
             ],
             error,
             ExitCode.software.code,

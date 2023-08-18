@@ -30,10 +30,10 @@ Handler gcpAlertHandler({required String webhookUrl, http.Client? client}) {
             {'name': 'State', 'value': state, 'inline': true},
             {'name': 'Resource', 'value': resource, 'inline': true},
             {'name': 'Condition', 'value': conditionName, 'inline': true},
-          ]
+          ],
         }
       ],
-      'attachments': const <dynamic>[]
+      'attachments': const <dynamic>[],
     };
 
     final post = client?.post ?? http.post;

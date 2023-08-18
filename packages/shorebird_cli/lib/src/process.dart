@@ -123,7 +123,7 @@ class ShorebirdProcess {
       return [
         '--local-engine-src-path=${engineConfig.localEngineSrcPath}',
         '--local-engine=${engineConfig.localEngine}',
-        ...arguments
+        ...arguments,
       ];
     }
     return arguments;

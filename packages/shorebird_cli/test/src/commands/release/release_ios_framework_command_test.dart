@@ -358,7 +358,7 @@ flutter:
               [
                 'Your next step is to include the .xcframework files in',
                 p.join('build', 'ios', 'framework', 'Release'),
-                'in your iOS app.'
+                'in your iOS app.',
               ],
             ),
           ),

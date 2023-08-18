@@ -45,7 +45,7 @@ void main() {
               'base/lib/x86_64/libapp.so',
               'META-INF/ANDROIDD.SF',
               'META-INF/ANDROIDD.RSA',
-              'META-INF/MANIFEST.MF'
+              'META-INF/MANIFEST.MF',
             },
           );
         });

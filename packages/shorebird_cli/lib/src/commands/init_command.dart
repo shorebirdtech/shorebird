@@ -252,7 +252,7 @@ app_id:
       editor.update(
         ['flutter'],
         {
-          'assets': ['shorebird.yaml']
+          'assets': ['shorebird.yaml'],
         },
       );
     } else {
