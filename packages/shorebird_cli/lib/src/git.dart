@@ -93,11 +93,11 @@ class Git {
     required String directory,
     required String format,
     required String pattern,
-    String? pointsAt,
+    String? contains,
   }) async {
     final arguments = [
       'for-each-ref',
-      if (pointsAt != null) ...['--points-at', pointsAt],
+      if (contains != null) ...['--contains', contains],
       '--format',
       format,
       pattern,

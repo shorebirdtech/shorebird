@@ -223,13 +223,13 @@ origin/flutter_release/3.10.6''';
         ).called(1);
       });
 
-      test('executes correct command w/points-at', () async {
-        const pointsAt = 'revision';
+      test('executes correct command w/contains', () async {
+        const contains = 'revision';
         when(() => processResult.stdout).thenReturn(output);
         await expectLater(
           runWithOverrides(
             () => git.forEachRef(
-              pointsAt: pointsAt,
+              contains: contains,
               pattern: pattern,
               format: format,
               directory: directory,
@@ -242,8 +242,8 @@ origin/flutter_release/3.10.6''';
             'git',
             [
               'for-each-ref',
-              '--points-at',
-              pointsAt,
+              '--contains',
+              contains,
               '--format',
               format,
               pattern,
