@@ -2,6 +2,18 @@
 
 This section contains past updates we've sent to customers via Discord.
 
+## 0.13.1 (August 18, 2023)
+
+We've just released Shorebird v0.13.1 🎉
+
+- 🩹 hotfix `shorebird.yaml` (de)serialization issue when using `auto_update`
+  
+📚 Release notes can be found at https://github.com/shorebirdtech/shorebird/releases/tag/v0.13.1
+
+As always, you can upgrade using `shorebird upgrade`
+
+Please let us know if we can help!
+
 ## 0.13.0 (August 17, 2023)
 
 We've just released Shorebird v0.13.0 🎉
