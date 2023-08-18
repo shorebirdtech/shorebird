@@ -100,7 +100,7 @@ class Git {
       if (pointsAt != null) ...['--points-at', pointsAt],
       '--format',
       format,
-      pattern
+      pattern,
     ];
     final result = await process.run(
       executable,

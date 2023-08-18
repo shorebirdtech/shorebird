@@ -486,7 +486,7 @@ Please re-run the release command for this version or create a new release.'''),
             flutterRevision: flutterRevision,
             displayName: '1.2.3+1',
             platformStatuses: {ReleasePlatform.ios: ReleaseStatus.draft},
-          )
+          ),
         ],
       );
       final tempDir = setUpTempDir();

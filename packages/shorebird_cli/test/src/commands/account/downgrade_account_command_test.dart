@@ -190,7 +190,7 @@ void main() {
           any(
             that: stringContainsInOrder([
               'Your plan has been downgraded.',
-              '''Note: Your current plan will continue until April 14, 2023, after which your account will be on the "hobby" tier.'''
+              '''Note: Your current plan will continue until April 14, 2023, after which your account will be on the "hobby" tier.''',
             ]),
           ),
         ),

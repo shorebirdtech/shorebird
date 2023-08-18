@@ -156,7 +156,7 @@ void main() {
             onRefreshCredentialsCalls,
             equals([
               isA<AccessCredentials>()
-                  .having((c) => c.idToken, 'token', idToken)
+                  .having((c) => c.idToken, 'token', idToken),
             ]),
           );
           final captured = verify(() => httpClient.send(captureAny())).captured;
@@ -236,7 +236,7 @@ void main() {
             onRefreshCredentialsCalls,
             equals([
               isA<AccessCredentials>()
-                  .having((c) => c.idToken, 'token', idToken)
+                  .having((c) => c.idToken, 'token', idToken),
             ]),
           );
           final captured = verify(() => httpClient.send(captureAny())).captured;

@@ -439,7 +439,7 @@ flavors:
           'test-appId-3',
           'test-appId-4',
           'test-appId-5',
-          'test-appId-6'
+          'test-appId-6',
         ];
         var index = 0;
         when(() => xcodeBuild.list(any())).thenAnswer(
@@ -509,7 +509,7 @@ flavors:
           'test-appId-4',
           'test-appId-5',
           'test-appId-6',
-          'test-appId-7'
+          'test-appId-7',
         ];
         var index = 0;
         when(() => xcodeBuild.list(any())).thenAnswer(
@@ -577,7 +577,7 @@ flavors:
           'test-appId-4',
           'test-appId-5',
           'test-appId-6',
-          'test-appId-7'
+          'test-appId-7',
         ];
         var index = 0;
         when(() => xcodeBuild.list(any())).thenAnswer(
@@ -644,7 +644,7 @@ flavors:
           'test-appId-3',
           'test-appId-4',
           'test-appId-5',
-          'test-appId-6'
+          'test-appId-6',
         ];
         const variants = {
           'development',
