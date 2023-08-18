@@ -78,7 +78,7 @@ void main() {
       when(
         () => git.forEachRef(
           directory: any(named: 'directory'),
-          pointsAt: any(named: 'pointsAt'),
+          contains: any(named: 'contains'),
           format: any(named: 'format'),
           pattern: any(named: 'pattern'),
         ),
@@ -160,7 +160,7 @@ Tools • Dart 3.0.6 • DevTools 2.23.1''');
         when(
           () => git.forEachRef(
             directory: any(named: 'directory'),
-            pointsAt: any(named: 'pointsAt'),
+            contains: any(named: 'contains'),
             format: any(named: 'format'),
             pattern: any(named: 'pattern'),
           ),
@@ -184,7 +184,7 @@ Tools • Dart 3.0.6 • DevTools 2.23.1''');
         verify(
           () => git.forEachRef(
             directory: p.join(flutterDirectory.parent.path, flutterRevision),
-            pointsAt: flutterRevision,
+            contains: flutterRevision,
             format: '%(refname:short)',
             pattern: 'refs/remotes/origin/flutter_release/*',
           ),
@@ -195,7 +195,7 @@ Tools • Dart 3.0.6 • DevTools 2.23.1''');
         when(
           () => git.forEachRef(
             directory: any(named: 'directory'),
-            pointsAt: any(named: 'pointsAt'),
+            contains: any(named: 'contains'),
             format: any(named: 'format'),
             pattern: any(named: 'pattern'),
           ),
@@ -207,7 +207,7 @@ Tools • Dart 3.0.6 • DevTools 2.23.1''');
         verify(
           () => git.forEachRef(
             directory: p.join(flutterDirectory.parent.path, flutterRevision),
-            pointsAt: flutterRevision,
+            contains: flutterRevision,
             format: '%(refname:short)',
             pattern: 'refs/remotes/origin/flutter_release/*',
           ),
@@ -222,7 +222,7 @@ Tools • Dart 3.0.6 • DevTools 2.23.1''');
         verify(
           () => git.forEachRef(
             directory: p.join(flutterDirectory.parent.path, flutterRevision),
-            pointsAt: flutterRevision,
+            contains: flutterRevision,
             format: '%(refname:short)',
             pattern: 'refs/remotes/origin/flutter_release/*',
           ),

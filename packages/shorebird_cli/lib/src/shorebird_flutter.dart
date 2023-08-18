@@ -91,7 +91,7 @@ class ShorebirdFlutter {
   /// parsed.
   Future<String?> getVersion() async {
     final result = await git.forEachRef(
-      pointsAt: shorebirdEnv.flutterRevision,
+      contains: shorebirdEnv.flutterRevision,
       format: '%(refname:short)',
       pattern: 'refs/remotes/origin/flutter_release/*',
       directory: _workingDirectory(),
