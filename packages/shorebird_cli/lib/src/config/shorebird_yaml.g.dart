@@ -14,7 +14,7 @@ ShorebirdYaml _$ShorebirdYamlFromJson(Map json) => $checkedCreate(
       ($checkedConvert) {
         $checkKeys(
           json,
-          allowedKeys: const ['app_id', 'flavors', 'base_url'],
+          allowedKeys: const ['app_id', 'flavors', 'base_url', 'auto_update'],
         );
         final val = ShorebirdYaml(
           appId: $checkedConvert('app_id', (v) => v as String),
@@ -24,8 +24,13 @@ ShorebirdYaml _$ShorebirdYamlFromJson(Map json) => $checkedCreate(
                     (k, e) => MapEntry(k as String, e as String),
                   )),
           baseUrl: $checkedConvert('base_url', (v) => v as String?),
+          autoUpdate: $checkedConvert('auto_update', (v) => v as bool?),
         );
         return val;
       },
-      fieldKeyMap: const {'appId': 'app_id', 'baseUrl': 'base_url'},
+      fieldKeyMap: const {
+        'appId': 'app_id',
+        'baseUrl': 'base_url',
+        'autoUpdate': 'auto_update'
+      },
     );
