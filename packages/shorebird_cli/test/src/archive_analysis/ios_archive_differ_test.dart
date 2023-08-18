@@ -70,7 +70,7 @@ void main() {
                   'Payload/Runner.app/Frameworks/App.framework/flutter_assets/assets/asset.json',
                   'Symbols/4C4C4411-5555-3144-A13A-E47369D8ACD5.symbols',
                   'Symbols/BC970605-0A53-3457-8736-D7A870AB6E71.symbols',
-                  'Symbols/0CBBC9EF-0745-3074-81B7-765F5B4515FD.symbols'
+                  'Symbols/0CBBC9EF-0745-3074-81B7-765F5B4515FD.symbols',
                 },
               );
             } else {
@@ -85,7 +85,7 @@ void main() {
                   'Payload/Runner.app/Frameworks/App.framework/flutter_assets/assets/asset.json',
                   'Symbols/4C4C4411-5555-3144-A13A-E47369D8ACD5.symbols',
                   'Symbols/BC970605-0A53-3457-8736-D7A870AB6E71.symbols',
-                  'Symbols/0CBBC9EF-0745-3074-81B7-765F5B4515FD.symbols'
+                  'Symbols/0CBBC9EF-0745-3074-81B7-765F5B4515FD.symbols',
                 },
               );
             }
@@ -201,7 +201,7 @@ void main() {
                   'ios-arm64_x86_64-simulator/App.framework/_CodeSignature/CodeResources',
                   'ios-arm64_x86_64-simulator/App.framework/flutter_assets/assets/asset.json',
                   'ios-arm64/App.framework/_CodeSignature/CodeResources',
-                  'ios-arm64/App.framework/flutter_assets/assets/asset.json'
+                  'ios-arm64/App.framework/flutter_assets/assets/asset.json',
                 },
               );
             } else {

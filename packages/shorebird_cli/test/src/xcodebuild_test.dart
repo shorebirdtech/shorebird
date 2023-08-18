@@ -118,7 +118,7 @@ To add iOS, run "flutter create . --platforms ios"''',
               'Release-internal',
               'Profile',
               'Profile-stable',
-              'Profile-internal'
+              'Profile-internal',
             },
           ),
         );

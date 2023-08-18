@@ -45,7 +45,7 @@ void main() {
               size: 42,
               hash: 'sha256:1234567890',
             ),
-          ]
+          ],
         },
       );
       expect(

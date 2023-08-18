@@ -426,7 +426,7 @@ void main() {
         'build',
         'apk',
         '--release',
-        '--split-per-abi'
+        '--split-per-abi',
       ];
       verify(
         () => shorebirdProcess.run(

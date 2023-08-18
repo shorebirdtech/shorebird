@@ -106,7 +106,7 @@ void main() {
         path: 'arm64-v8a',
         arch: 'aarch64',
         enginePath: 'android_release_arm64',
-      )
+      ),
     };
     const releaseArtifact = ReleaseArtifact(
       id: 1,

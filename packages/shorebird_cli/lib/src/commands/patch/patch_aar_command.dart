@@ -189,7 +189,7 @@ Please re-run the release command for this version or create a new release.''');
             () => ShorebirdEnv(
               flutterRevisionOverride: release.flutterRevision,
             ),
-          )
+          ),
         },
       );
       buildProgress.complete();

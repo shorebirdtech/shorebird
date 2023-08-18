@@ -34,7 +34,7 @@ class ShorebirdVersionValidator extends Validator {
           severity: ValidationIssueSeverity.warning,
           message: '''
 A new version of shorebird is available! Run `shorebird upgrade` to upgrade.''',
-        )
+        ),
       ];
     }
 
