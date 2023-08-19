@@ -68,7 +68,7 @@ void main() {
       when(
         () => shorebirdProcess.run(
           'flutter',
-          ['pub', 'get', '--offline'],
+          ['--no-version-check', 'pub', 'get', '--offline'],
           runInShell: any(named: 'runInShell'),
           useVendedFlutter: false,
         ),
@@ -204,7 +204,7 @@ ${lightCyan.wrap(
       verify(
         () => shorebirdProcess.run(
           'flutter',
-          ['pub', 'get', '--offline'],
+          ['--no-version-check', 'pub', 'get', '--offline'],
           runInShell: any(named: 'runInShell'),
           useVendedFlutter: false,
         ),

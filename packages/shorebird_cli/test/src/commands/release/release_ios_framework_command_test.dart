@@ -151,7 +151,7 @@ flutter:
       when(
         () => shorebirdProcess.run(
           'flutter',
-          ['pub', 'get', '--offline'],
+          ['--no-version-check', 'pub', 'get', '--offline'],
           runInShell: any(named: 'runInShell'),
           useVendedFlutter: false,
         ),
@@ -399,7 +399,7 @@ flutter:
       verify(
         () => shorebirdProcess.run(
           'flutter',
-          ['pub', 'get', '--offline'],
+          ['--no-version-check', 'pub', 'get', '--offline'],
           runInShell: any(named: 'runInShell'),
           useVendedFlutter: false,
         ),

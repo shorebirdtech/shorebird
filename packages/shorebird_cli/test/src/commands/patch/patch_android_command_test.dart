@@ -254,7 +254,7 @@ flutter:
       when(
         () => shorebirdProcess.run(
           'flutter',
-          ['pub', 'get', '--offline'],
+          ['--no-version-check', 'pub', 'get', '--offline'],
           runInShell: any(named: 'runInShell'),
           useVendedFlutter: false,
         ),
@@ -776,7 +776,7 @@ Or change your Flutter version and try again using:
       verify(
         () => shorebirdProcess.run(
           'flutter',
-          ['pub', 'get', '--offline'],
+          ['--no-version-check', 'pub', 'get', '--offline'],
           runInShell: any(named: 'runInShell'),
           useVendedFlutter: false,
         ),
