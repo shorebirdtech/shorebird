@@ -218,7 +218,7 @@ void main() {
       when(
         () => shorebirdProcess.run(
           'flutter',
-          ['pub', 'get', '--offline'],
+          ['--no-version-check', 'pub', 'get', '--offline'],
           runInShell: any(named: 'runInShell'),
           useVendedFlutter: false,
         ),
@@ -833,7 +833,7 @@ Please re-run the release command for this version or create a new release.'''),
       verify(
         () => shorebirdProcess.run(
           'flutter',
-          ['pub', 'get', '--offline'],
+          ['--no-version-check', 'pub', 'get', '--offline'],
           runInShell: any(named: 'runInShell'),
           useVendedFlutter: false,
         ),

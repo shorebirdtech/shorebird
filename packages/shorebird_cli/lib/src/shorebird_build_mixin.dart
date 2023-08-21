@@ -256,7 +256,7 @@ mixin ShorebirdBuildMixin on ShorebirdCommand {
   /// https://github.com/shorebirdtech/shorebird/issues/1101 for more info.
   Future<void> _systemFlutterPubGet() async {
     const executable = 'flutter';
-    final arguments = ['pub', 'get', '--offline'];
+    final arguments = ['--no-version-check', 'pub', 'get', '--offline'];
 
     final result = await process.run(
       executable,
