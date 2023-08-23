@@ -13,6 +13,9 @@ import 'package:shorebird_cli/src/shorebird_env.dart';
 /// user cannot be prompted to continue.
 class UnpatchableChangeException implements Exception {}
 
+/// Thrown when the user cancels after being prompted to continue.
+class UserCancelledException implements Exception {}
+
 /// A reference to a [PatchDiffChecker] instance.
 ScopedRef<PatchDiffChecker> patchDiffCheckerRef = create(PatchDiffChecker.new);
 
@@ -35,7 +38,7 @@ class PatchDiffChecker {
   /// Downloads the release artifact at [releaseArtifactUrl] and checks for
   /// differences that could cause issues when applying the patch represented by
   /// [localArtifact].
-  Future<bool> confirmUnpatchableDiffsIfNecessary({
+  Future<void> confirmUnpatchableDiffsIfNecessary({
     required File localArtifact,
     required Uri releaseArtifactUrl,
     required ArchiveDiffer archiveDiffer,
@@ -81,7 +84,7 @@ class PatchDiffChecker {
         }
 
         if (!logger.confirm('Continue anyways?')) {
-          return false;
+          throw UserCancelledException();
         }
       }
     }
@@ -103,11 +106,9 @@ class PatchDiffChecker {
         }
 
         if (!logger.confirm('Continue anyways?')) {
-          return false;
+          throw UserCancelledException();
         }
       }
     }
-
-    return true;
   }
 }

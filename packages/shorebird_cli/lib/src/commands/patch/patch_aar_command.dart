@@ -206,10 +206,8 @@ Please re-run the release command for this version or create a new release.''');
       unzipFn: _unzipFn,
     );
 
-    final bool shouldContinue;
     try {
-      shouldContinue =
-          await patchDiffChecker.confirmUnpatchableDiffsIfNecessary(
+      await patchDiffChecker.confirmUnpatchableDiffsIfNecessary(
         localArtifact: File(
           aarArtifactPath(
             packageName: shorebirdEnv.androidPackageName!,
@@ -220,12 +218,12 @@ Please re-run the release command for this version or create a new release.''');
         archiveDiffer: _archiveDiffer,
         force: force,
       );
+    } on UserCancelledException {
+      return ExitCode.success.code;
     } on UnpatchableChangeException {
       logger.info('Exiting.');
       return ExitCode.software.code;
     }
-
-    if (!shouldContinue) return ExitCode.success.code;
 
     final patchArtifactBundles = await _createPatchArtifacts(
       releaseArtifactPaths: releaseArtifactPaths,

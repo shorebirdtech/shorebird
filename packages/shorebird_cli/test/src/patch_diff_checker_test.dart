@@ -126,7 +126,7 @@ void main() {
         });
 
         test('logs warning', () async {
-          final result = await runWithOverrides(
+          await runWithOverrides(
             () => patchDiffChecker.confirmUnpatchableDiffsIfNecessary(
               localArtifact: localArtifact,
               releaseArtifactUrl: releaseArtifactUrl,
@@ -135,7 +135,6 @@ void main() {
             ),
           );
 
-          expect(result, isTrue);
           verify(
             () => logger.warn(
               '''The release artifact contains native changes, which cannot be applied with a patch.''',
@@ -147,7 +146,7 @@ void main() {
         });
 
         test('prompts user if force is false', () async {
-          final result = await runWithOverrides(
+          await runWithOverrides(
             () => patchDiffChecker.confirmUnpatchableDiffsIfNecessary(
               localArtifact: localArtifact,
               releaseArtifactUrl: releaseArtifactUrl,
@@ -156,12 +155,11 @@ void main() {
             ),
           );
 
-          expect(result, isTrue);
           verify(() => logger.confirm('Continue anyways?')).called(1);
         });
 
         test('does not prompt user if force is true', () async {
-          final result = await runWithOverrides(
+          await runWithOverrides(
             () => patchDiffChecker.confirmUnpatchableDiffsIfNecessary(
               localArtifact: localArtifact,
               releaseArtifactUrl: releaseArtifactUrl,
@@ -170,23 +168,27 @@ void main() {
             ),
           );
 
-          expect(result, isTrue);
           verifyNever(() => logger.confirm('Continue anyways?'));
         });
 
-        test('returns false if user declines to continue', () async {
+        test('throws UserCancelledException if user declines to continue',
+            () async {
           when(() => logger.confirm(any())).thenReturn(false);
 
-          final result = await runWithOverrides(
-            () => patchDiffChecker.confirmUnpatchableDiffsIfNecessary(
-              localArtifact: localArtifact,
-              releaseArtifactUrl: releaseArtifactUrl,
-              archiveDiffer: archiveDiffer,
-              force: false,
+          await expectLater(
+            runWithOverrides(
+              () => patchDiffChecker.confirmUnpatchableDiffsIfNecessary(
+                localArtifact: localArtifact,
+                releaseArtifactUrl: releaseArtifactUrl,
+                archiveDiffer: archiveDiffer,
+                force: false,
+              ),
+            ),
+            throwsA(
+              isA<UserCancelledException>(),
             ),
           );
 
-          expect(result, isFalse);
           verify(() => logger.confirm('Continue anyways?')).called(1);
         });
 
@@ -217,7 +219,7 @@ void main() {
         });
 
         test('logs warning', () async {
-          final result = await runWithOverrides(
+          await runWithOverrides(
             () => patchDiffChecker.confirmUnpatchableDiffsIfNecessary(
               localArtifact: localArtifact,
               releaseArtifactUrl: releaseArtifactUrl,
@@ -226,7 +228,6 @@ void main() {
             ),
           );
 
-          expect(result, isTrue);
           verify(
             () => logger.warn(
               '''The release artifact contains asset changes, which will not be included in the patch.''',
@@ -238,7 +239,7 @@ void main() {
         });
 
         test('prompts user if force is false', () async {
-          final result = await runWithOverrides(
+          await runWithOverrides(
             () => patchDiffChecker.confirmUnpatchableDiffsIfNecessary(
               localArtifact: localArtifact,
               releaseArtifactUrl: releaseArtifactUrl,
@@ -247,12 +248,11 @@ void main() {
             ),
           );
 
-          expect(result, isTrue);
           verify(() => logger.confirm('Continue anyways?')).called(1);
         });
 
         test('does not prompt user if force is true', () async {
-          final result = await runWithOverrides(
+          await runWithOverrides(
             () => patchDiffChecker.confirmUnpatchableDiffsIfNecessary(
               localArtifact: localArtifact,
               releaseArtifactUrl: releaseArtifactUrl,
@@ -261,23 +261,25 @@ void main() {
             ),
           );
 
-          expect(result, isTrue);
           verifyNever(() => logger.confirm('Continue anyways?'));
         });
 
-        test('returns false if user declines to continue', () async {
+        test('throws UserCancelledException if user declines to continue',
+            () async {
           when(() => logger.confirm(any())).thenReturn(false);
 
-          final result = await runWithOverrides(
-            () => patchDiffChecker.confirmUnpatchableDiffsIfNecessary(
-              localArtifact: localArtifact,
-              releaseArtifactUrl: releaseArtifactUrl,
-              archiveDiffer: archiveDiffer,
-              force: false,
+          await expectLater(
+            runWithOverrides(
+              () => patchDiffChecker.confirmUnpatchableDiffsIfNecessary(
+                localArtifact: localArtifact,
+                releaseArtifactUrl: releaseArtifactUrl,
+                archiveDiffer: archiveDiffer,
+                force: false,
+              ),
             ),
+            throwsA(isA<UserCancelledException>()),
           );
 
-          expect(result, isFalse);
           verify(() => logger.confirm('Continue anyways?')).called(1);
         });
 
@@ -302,16 +304,17 @@ void main() {
 
       test('returns true if no potentially breaking diffs are detected',
           () async {
-        final result = await runWithOverrides(
-          () => patchDiffChecker.confirmUnpatchableDiffsIfNecessary(
-            localArtifact: localArtifact,
-            releaseArtifactUrl: releaseArtifactUrl,
-            archiveDiffer: archiveDiffer,
-            force: false,
+        await expectLater(
+          runWithOverrides(
+            () => patchDiffChecker.confirmUnpatchableDiffsIfNecessary(
+              localArtifact: localArtifact,
+              releaseArtifactUrl: releaseArtifactUrl,
+              archiveDiffer: archiveDiffer,
+              force: false,
+            ),
           ),
+          completes,
         );
-
-        expect(result, isTrue);
       });
     });
   });

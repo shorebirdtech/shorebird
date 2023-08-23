@@ -333,7 +333,7 @@ void main() {
           archiveDiffer: archiveDiffer,
           force: any(named: 'force'),
         ),
-      ).thenAnswer((_) async => true);
+      ).thenAnswer((_) async => {});
 
       command = runWithOverrides(
         () => PatchAarCommand(
@@ -660,7 +660,9 @@ Please re-run the release command for this version or create a new release.'''),
       expect(exitCode, equals(ExitCode.software.code));
     });
 
-    test('exits if confirmUnpatchableDiffsIfNecessary returns false', () async {
+    test(
+        '''exits with code 0 if confirmUnpatchableDiffsIfNecessary throws UserCancelledException''',
+        () async {
       when(() => argResults['force']).thenReturn(false);
       when(
         () => patchDiffChecker.confirmUnpatchableDiffsIfNecessary(
@@ -669,7 +671,7 @@ Please re-run the release command for this version or create a new release.'''),
           archiveDiffer: archiveDiffer,
           force: any(named: 'force'),
         ),
-      ).thenAnswer((_) async => false);
+      ).thenThrow(UserCancelledException());
       final tempDir = setUpTempDir();
       setUpTempArtifacts(tempDir);
 
