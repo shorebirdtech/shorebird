@@ -12,6 +12,7 @@ import 'package:shorebird_cli/src/command.dart';
 import 'package:shorebird_cli/src/config/shorebird_yaml.dart';
 import 'package:shorebird_cli/src/doctor.dart';
 import 'package:shorebird_cli/src/formatters/formatters.dart';
+import 'package:shorebird_cli/src/http_client/http_client.dart';
 import 'package:shorebird_cli/src/logger.dart';
 import 'package:shorebird_cli/src/patch_diff_checker.dart';
 import 'package:shorebird_cli/src/shorebird_build_mixin.dart';
@@ -34,7 +35,8 @@ class PatchAndroidCommand extends ShorebirdCommand
     AndroidArchiveDiffer? archiveDiffer,
   })  : _archiveDiffer = archiveDiffer ?? AndroidArchiveDiffer(),
         _hashFn = hashFn ?? ((m) => sha256.convert(m).toString()),
-        _httpClient = httpClient ?? http.Client() {
+        _httpClient = httpClient ??
+            retryingHttpClient(LoggingClient(httpClient: http.Client())) {
     argParser
       ..addOption(
         'target',

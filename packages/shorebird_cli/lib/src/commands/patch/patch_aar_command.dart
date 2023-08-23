@@ -14,6 +14,7 @@ import 'package:shorebird_cli/src/code_push_client_wrapper.dart';
 import 'package:shorebird_cli/src/command.dart';
 import 'package:shorebird_cli/src/config/config.dart';
 import 'package:shorebird_cli/src/formatters/file_size_formatter.dart';
+import 'package:shorebird_cli/src/http_client/http_client.dart';
 import 'package:shorebird_cli/src/logger.dart';
 import 'package:shorebird_cli/src/patch_diff_checker.dart';
 import 'package:shorebird_cli/src/shorebird_artifact_mixin.dart';
@@ -38,7 +39,8 @@ class PatchAarCommand extends ShorebirdCommand
   })  : _archiveDiffer = archiveDiffer ?? AndroidArchiveDiffer(),
         _hashFn = hashFn ?? ((m) => sha256.convert(m).toString()),
         _unzipFn = unzipFn ?? extractFileToDisk,
-        _httpClient = httpClient ?? http.Client() {
+        _httpClient = httpClient ??
+            retryingHttpClient(LoggingClient(httpClient: http.Client())) {
     argParser
       ..addOption(
         'build-number',
