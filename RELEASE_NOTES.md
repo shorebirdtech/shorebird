@@ -8,7 +8,7 @@ We've just released Shorebird v0.14.0 🎉
 
 - 🐦 Flutter 3.13.0 support!
 
-📚 Release notes can be found at https://github.com/shorebirdtech/shorebird/releases/tag/v0.13.2
+📚 Release notes can be found at https://github.com/shorebirdtech/shorebird/releases/tag/v0.14.0
 
 As always, you can upgrade using `shorebird upgrade`
 
