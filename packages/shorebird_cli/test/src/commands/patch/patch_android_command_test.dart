@@ -383,7 +383,7 @@ flutter:
           archiveDiffer: archiveDiffer,
           force: any(named: 'force'),
         ),
-      ).thenAnswer((_) async => true);
+      ).thenAnswer((_) async => {});
       when(() => shorebirdEnv.isRunningOnCI).thenReturn(false);
     });
 
@@ -644,7 +644,9 @@ Or change your Flutter version and try again using:
       ).called(1);
     });
 
-    test('exits if confirmUnpatchableDiffsIfNecessary returns false', () async {
+    test(
+        '''exits with code 0 if confirmUnpatchableDiffsIfNecessary throws UserCancelledException''',
+        () async {
       when(() => argResults['force']).thenReturn(false);
       when(
         () => patchDiffChecker.confirmUnpatchableDiffsIfNecessary(
@@ -653,7 +655,7 @@ Or change your Flutter version and try again using:
           archiveDiffer: archiveDiffer,
           force: any(named: 'force'),
         ),
-      ).thenAnswer((_) async => false);
+      ).thenThrow(UserCancelledException());
       final tempDir = setUpTempDir();
       setUpTempArtifacts(tempDir);
 
@@ -663,6 +665,47 @@ Or change your Flutter version and try again using:
       );
 
       expect(exitCode, equals(ExitCode.success.code));
+      verify(
+        () => patchDiffChecker.confirmUnpatchableDiffsIfNecessary(
+          localArtifact: any(named: 'localArtifact'),
+          releaseArtifactUrl: Uri.parse(aabArtifact.url),
+          archiveDiffer: archiveDiffer,
+          force: false,
+        ),
+      ).called(1);
+      verifyNever(
+        () => codePushClientWrapper.publishPatch(
+          appId: any(named: 'appId'),
+          releaseId: any(named: 'releaseId'),
+          platform: any(named: 'platform'),
+          channelName: any(named: 'channelName'),
+          patchArtifactBundles: any(named: 'patchArtifactBundles'),
+        ),
+      );
+    });
+
+    test(
+        '''exits with code 70 if confirmUnpatchableDiffsIfNecessary throws UnpatchableChangeException''',
+        () async {
+      when(() => argResults['force']).thenReturn(false);
+      when(
+        () => patchDiffChecker.confirmUnpatchableDiffsIfNecessary(
+          localArtifact: any(named: 'localArtifact'),
+          releaseArtifactUrl: any(named: 'releaseArtifactUrl'),
+          archiveDiffer: archiveDiffer,
+          force: any(named: 'force'),
+        ),
+      ).thenThrow(UnpatchableChangeException());
+
+      final tempDir = setUpTempDir();
+      setUpTempArtifacts(tempDir);
+
+      final exitCode = await IOOverrides.runZoned(
+        () => runWithOverrides(command.run),
+        getCurrentDirectory: () => tempDir,
+      );
+
+      expect(exitCode, equals(ExitCode.software.code));
       verify(
         () => patchDiffChecker.confirmUnpatchableDiffsIfNecessary(
           localArtifact: any(named: 'localArtifact'),
