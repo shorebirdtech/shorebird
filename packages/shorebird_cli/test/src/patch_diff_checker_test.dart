@@ -193,13 +193,16 @@ void main() {
         test('does not prompt when running on CI', () async {
           when(() => shorebirdEnv.isRunningOnCI).thenReturn(true);
 
-          final _ = await runWithOverrides(
-            () => patchDiffChecker.confirmUnpatchableDiffsIfNecessary(
-              localArtifact: localArtifact,
-              releaseArtifactUrl: releaseArtifactUrl,
-              archiveDiffer: archiveDiffer,
-              force: false,
+          await expectLater(
+            () => runWithOverrides(
+              () => patchDiffChecker.confirmUnpatchableDiffsIfNecessary(
+                localArtifact: localArtifact,
+                releaseArtifactUrl: releaseArtifactUrl,
+                archiveDiffer: archiveDiffer,
+                force: false,
+              ),
             ),
+            throwsA(isA<UnpatchableChangeException>()),
           );
 
           verifyNever(() => logger.confirm(any()));
@@ -281,13 +284,16 @@ void main() {
         test('does not prompt when running on CI', () async {
           when(() => shorebirdEnv.isRunningOnCI).thenReturn(true);
 
-          final _ = await runWithOverrides(
-            () => patchDiffChecker.confirmUnpatchableDiffsIfNecessary(
-              localArtifact: localArtifact,
-              releaseArtifactUrl: releaseArtifactUrl,
-              archiveDiffer: archiveDiffer,
-              force: false,
+          await expectLater(
+            () => runWithOverrides(
+              () => patchDiffChecker.confirmUnpatchableDiffsIfNecessary(
+                localArtifact: localArtifact,
+                releaseArtifactUrl: releaseArtifactUrl,
+                archiveDiffer: archiveDiffer,
+                force: false,
+              ),
             ),
+            throwsA(isA<UnpatchableChangeException>()),
           );
 
           verifyNever(() => logger.confirm(any()));

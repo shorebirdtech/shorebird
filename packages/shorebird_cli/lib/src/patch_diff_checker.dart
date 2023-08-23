@@ -9,6 +9,10 @@ import 'package:shorebird_cli/src/http_client/http_client.dart';
 import 'package:shorebird_cli/src/logger.dart';
 import 'package:shorebird_cli/src/shorebird_env.dart';
 
+/// Thrown when an unpatchable change is detected in an environment where the
+/// user cannot be prompted to continue.
+class UnpatchableChangeException implements Exception {}
+
 /// A reference to a [PatchDiffChecker] instance.
 ScopedRef<PatchDiffChecker> patchDiffCheckerRef = create(PatchDiffChecker.new);
 
@@ -70,10 +74,15 @@ class PatchDiffChecker {
             archiveDiffer.nativeFileSetDiff(contentDiffs).prettyString,
           ),
         );
-      final shouldContinue = force ||
-          (!shorebirdEnv.isRunningOnCI && logger.confirm('Continue anyways?'));
-      if (!shouldContinue) {
-        return false;
+
+      if (!force) {
+        if (shorebirdEnv.isRunningOnCI) {
+          throw UnpatchableChangeException();
+        }
+
+        if (!logger.confirm('Continue anyways?')) {
+          return false;
+        }
       }
     }
 
@@ -88,10 +97,14 @@ class PatchDiffChecker {
           ),
         );
 
-      final shouldContinue = force ||
-          (!shorebirdEnv.isRunningOnCI && logger.confirm('Continue anyways?'));
-      if (!shouldContinue) {
-        return false;
+      if (!force) {
+        if (shorebirdEnv.isRunningOnCI) {
+          throw UnpatchableChangeException();
+        }
+
+        if (!logger.confirm('Continue anyways?')) {
+          return false;
+        }
       }
     }
 

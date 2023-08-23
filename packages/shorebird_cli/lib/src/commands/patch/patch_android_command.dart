@@ -199,13 +199,19 @@ Or change your Flutter version and try again using:
 
     downloadReleaseArtifactProgress.complete();
 
-    final shouldContinue =
-        await patchDiffChecker.confirmUnpatchableDiffsIfNecessary(
-      localArtifact: File(bundlePath),
-      releaseArtifactUrl: Uri.parse(releaseAabArtifact.url),
-      archiveDiffer: _archiveDiffer,
-      force: force,
-    );
+    final bool shouldContinue;
+    try {
+      shouldContinue =
+          await patchDiffChecker.confirmUnpatchableDiffsIfNecessary(
+        localArtifact: File(bundlePath),
+        releaseArtifactUrl: Uri.parse(releaseAabArtifact.url),
+        archiveDiffer: _archiveDiffer,
+        force: force,
+      );
+    } on UnpatchableChangeException {
+      logger.info('Exiting.');
+      return ExitCode.software.code;
+    }
 
     if (!shouldContinue) return ExitCode.success.code;
 
