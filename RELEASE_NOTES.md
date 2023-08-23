@@ -6,7 +6,7 @@ This section contains past updates we've sent to customers via Discord.
 
 We've just released Shorebird v0.14.1 🎉
 
-This is a small update to 0.14.0 that includes minor improvements
+This is a small update to 0.14.0 that includes minor improvements:
 
 - 🔎 better logging for patch commands
 
