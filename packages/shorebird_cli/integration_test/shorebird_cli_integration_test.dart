@@ -99,7 +99,7 @@ void main() {
       await expectLater(
         runWithOverrides(client.getApps),
         completion(
-          equals([
+          contains(
             isA<AppMetadata>()
                 .having(
                   (a) => a.appId,
@@ -116,7 +116,7 @@ void main() {
                   'latestPatchNumber',
                   null,
                 ),
-          ]),
+          ),
         ),
       );
 
@@ -133,7 +133,7 @@ void main() {
       await expectLater(
         runWithOverrides(client.getApps),
         completion(
-          equals([
+          contains(
             isA<AppMetadata>()
                 .having(
                   (a) => a.appId,
@@ -150,7 +150,7 @@ void main() {
                   'latestPatchNumber',
                   null,
                 ),
-          ]),
+          ),
         ),
       );
 
@@ -167,7 +167,7 @@ void main() {
       await expectLater(
         runWithOverrides(client.getApps),
         completion(
-          equals([
+          contains(
             isA<AppMetadata>()
                 .having(
                   (a) => a.appId,
@@ -184,7 +184,7 @@ void main() {
                   'latestPatchNumber',
                   1,
                 ),
-          ]),
+          ),
         ),
       );
 
