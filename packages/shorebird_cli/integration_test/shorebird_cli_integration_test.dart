@@ -1,34 +1,31 @@
 import 'dart:io';
 
 import 'package:checked_yaml/checked_yaml.dart';
-import 'package:http/http.dart' as http;
 import 'package:mason_logger/mason_logger.dart';
 import 'package:path/path.dart' as p;
 import 'package:scoped/scoped.dart';
 import 'package:shorebird_cli/src/auth/auth.dart';
 import 'package:shorebird_cli/src/config/config.dart';
-import 'package:shorebird_cli/src/http_client/http_client.dart';
 import 'package:shorebird_cli/src/logger.dart';
 import 'package:shorebird_cli/src/platform.dart';
 import 'package:shorebird_code_push_client/shorebird_code_push_client.dart';
 import 'package:test/test.dart';
 import 'package:uuid/uuid.dart';
 
+R runWithOverrides<R>(R Function() body) {
+  return runScoped(
+    body,
+    values: {authRef, loggerRef, platformRef},
+  );
+}
+
 void main() {
   final logger = Logger();
-  final client = runScoped(
-    () {
-      final auth = Auth(
-        httpClient: retryingHttpClient(
-          LoggingClient(httpClient: http.Client()),
-        ),
-      );
-      return CodePushClient(
-        httpClient: auth.client,
-        hostedUri: Uri.parse(Platform.environment['SHOREBIRD_HOSTED_URL']!),
-      );
-    },
-    values: {loggerRef, platformRef},
+  final client = runWithOverrides(
+    () => CodePushClient(
+      httpClient: Auth().client,
+      hostedUri: Uri.parse(Platform.environment['SHOREBIRD_HOSTED_URL']!),
+    ),
   );
 
   ProcessResult runCommand(
@@ -98,7 +95,7 @@ void main() {
 
     // Verify that we have no releases for this app
     await expectLater(
-      client.getApps(),
+      runWithOverrides(client.getApps),
       completion(
         equals([
           isA<AppMetadata>()
@@ -132,7 +129,7 @@ void main() {
 
     // Verify that the release was created.
     await expectLater(
-      client.getApps(),
+      runWithOverrides(client.getApps),
       completion(
         equals([
           isA<AppMetadata>()
@@ -166,7 +163,7 @@ void main() {
 
     // Verify that the patch was created.
     await expectLater(
-      client.getApps(),
+      runWithOverrides(client.getApps),
       completion(
         equals([
           isA<AppMetadata>()
@@ -190,9 +187,12 @@ void main() {
     );
 
     // Delete the app to clean up after ourselves.
-    await expectLater(client.deleteApp(appId: shorebirdYaml.appId), completes);
+    await expectLater(
+      runWithOverrides(() => client.deleteApp(appId: shorebirdYaml.appId)),
+      completes,
+    );
 
     // Verify that the app was deleted.
-    await expectLater(client.getApps(), completion(isEmpty));
+    await expectLater(runWithOverrides(client.getApps), completion(isEmpty));
   });
 }
