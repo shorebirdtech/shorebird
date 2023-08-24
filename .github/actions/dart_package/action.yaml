@@ -70,6 +70,7 @@ runs:
     - name: Upload Coverage
       uses: codecov/codecov-action@v3
       with:
+        flags: ${{ inputs.working_directory }}
         token: ${{ inputs.codecov_token }}
 
     - uses: VeryGoodOpenSource/very_good_coverage@v2
