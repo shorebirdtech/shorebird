@@ -195,7 +195,20 @@ void main() {
       );
 
       // Verify that the app was deleted.
-      await expectLater(runWithOverrides(client.getApps), completion(isEmpty));
+      await expectLater(
+        runWithOverrides(client.getApps),
+        completion(
+          isNot(
+            contains(
+              isA<AppMetadata>().having(
+                (a) => a.appId,
+                'appId',
+                shorebirdYaml.appId,
+              ),
+            ),
+          ),
+        ),
+      );
     },
     timeout: const Timeout(Duration(minutes: 5)),
   );
