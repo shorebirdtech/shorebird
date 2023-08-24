@@ -183,16 +183,19 @@ Please re-run the release command for this version or create a new release.''');
       arch: 'xcframework',
       platform: ReleasePlatform.ios,
     );
-    final shouldContinue =
-        await patchDiffChecker.confirmUnpatchableDiffsIfNecessary(
-      localArtifact: File(zippedFrameworkPath),
-      releaseArtifactUrl: Uri.parse(releaseArtifact.url),
-      archiveDiffer: _archiveDiffer,
-      force: force,
-    );
 
-    if (!shouldContinue) {
+    try {
+      await patchDiffChecker.confirmUnpatchableDiffsIfNecessary(
+        localArtifact: File(zippedFrameworkPath),
+        releaseArtifactUrl: Uri.parse(releaseArtifact.url),
+        archiveDiffer: _archiveDiffer,
+        force: force,
+      );
+    } on UserCancelledException {
       return ExitCode.success.code;
+    } on UnpatchableChangeException {
+      logger.info('Exiting.');
+      return ExitCode.software.code;
     }
 
     if (dryRun) {

@@ -2,6 +2,34 @@
 
 This section contains past updates we've sent to customers via Discord.
 
+## 0.14.3 (August 24, 2023)
+
+We've just released Shorebird v0.14.3 🎉
+
+This is a hotfix for android build failures which was only partially addressed in 0.14.2
+
+- 🐦 updates our Flutter revision to include an Android build fix
+
+📚 Release notes can be found at https://github.com/shorebirdtech/shorebird/releases/tag/v0.14.3
+
+As always, you can upgrade using `shorebird upgrade`
+
+Please let us know if we can help!
+
+## 0.14.2 (August 23, 2023)
+
+We've just released Shorebird v0.14.2 🎉
+
+This is a small update to 0.14.0 that includes minor improvements:
+
+- 🐦 updates our Flutter revision to include an Android build fix
+
+📚 Release notes can be found at https://github.com/shorebirdtech/shorebird/releases/tag/v0.14.2
+
+As always, you can upgrade using `shorebird upgrade`
+
+Please let us know if we can help!
+
 ## 0.14.1 (August 23, 2023)
 
 We've just released Shorebird v0.14.1 🎉

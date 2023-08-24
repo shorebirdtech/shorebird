@@ -206,20 +206,24 @@ Please re-run the release command for this version or create a new release.''');
       unzipFn: _unzipFn,
     );
 
-    final shouldContinue =
-        await patchDiffChecker.confirmUnpatchableDiffsIfNecessary(
-      localArtifact: File(
-        aarArtifactPath(
-          packageName: shorebirdEnv.androidPackageName!,
-          buildNumber: buildNumber,
+    try {
+      await patchDiffChecker.confirmUnpatchableDiffsIfNecessary(
+        localArtifact: File(
+          aarArtifactPath(
+            packageName: shorebirdEnv.androidPackageName!,
+            buildNumber: buildNumber,
+          ),
         ),
-      ),
-      releaseArtifactUrl: Uri.parse(releaseAarArtifact.url),
-      archiveDiffer: _archiveDiffer,
-      force: force,
-    );
-
-    if (!shouldContinue) return ExitCode.success.code;
+        releaseArtifactUrl: Uri.parse(releaseAarArtifact.url),
+        archiveDiffer: _archiveDiffer,
+        force: force,
+      );
+    } on UserCancelledException {
+      return ExitCode.success.code;
+    } on UnpatchableChangeException {
+      logger.info('Exiting.');
+      return ExitCode.software.code;
+    }
 
     final patchArtifactBundles = await _createPatchArtifacts(
       releaseArtifactPaths: releaseArtifactPaths,

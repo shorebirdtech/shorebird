@@ -188,15 +188,19 @@ Or change your Flutter version and try again using:
       platform: ReleasePlatform.ios,
     );
 
-    final shouldContinue =
-        await patchDiffChecker.confirmUnpatchableDiffsIfNecessary(
-      localArtifact: File(ipaPath),
-      releaseArtifactUrl: Uri.parse(releaseArtifact.url),
-      archiveDiffer: _archiveDiffer,
-      force: force,
-    );
-
-    if (!shouldContinue) return ExitCode.success.code;
+    try {
+      await patchDiffChecker.confirmUnpatchableDiffsIfNecessary(
+        localArtifact: File(ipaPath),
+        releaseArtifactUrl: Uri.parse(releaseArtifact.url),
+        archiveDiffer: _archiveDiffer,
+        force: force,
+      );
+    } on UserCancelledException {
+      return ExitCode.success.code;
+    } on UnpatchableChangeException {
+      logger.info('Exiting.');
+      return ExitCode.software.code;
+    }
 
     if (dryRun) {
       logger
