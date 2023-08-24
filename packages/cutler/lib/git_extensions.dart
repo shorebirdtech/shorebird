@@ -56,12 +56,27 @@ extension RepoCommands on Repo {
   }
 
   /// Returns a [Version] for the given [hash].
-  Version versionFrom(String hash, {bool lookupTags = true}) {
+  Version versionFrom(String commitish, {bool lookupTags = true}) {
+    final hash = runCommand(
+      'git',
+      ['rev-parse', commitish],
+      workingDirectory: workingDirectory,
+    );
     return Version(
       hash: hash,
       repo: this,
       aliases: lookupTags ? getTagsFor(hash) : [],
     );
+  }
+
+  /// Returns a count of commits between two commits in this repo.
+  int countCommits({required String from, required String to}) {
+    final output = runCommand(
+      'git',
+      ['rev-list', '--count', '$from..$to'],
+      workingDirectory: workingDirectory,
+    );
+    return int.parse(output);
   }
 
   /// Returns the working directory for this repo.
@@ -91,12 +106,13 @@ extension RepoCommands on Repo {
 
   /// Returns the fork point as a [Version] for this repo given a [forkBranch].
   Version getForkPoint(String forkBranch) {
-    final hash = runCommand(
+    final describeString = runCommand(
       'git',
-      ['merge-base', upstreamBranch, forkBranch],
+      ['describe', '--tags', forkBranch],
       workingDirectory: workingDirectory,
     );
-    return versionFrom(hash);
+    final tag = describeString.split('-').first;
+    return versionFrom(tag);
   }
 
   /// Returns the contents of a file at a given [path] in this repo at a given

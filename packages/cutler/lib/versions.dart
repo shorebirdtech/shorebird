@@ -3,7 +3,11 @@ import 'package:cutler/git_extensions.dart';
 import 'package:cutler/model.dart';
 
 /// Print VersionSet [versions] to stdout at a given [indent] level.
-void printVersions(VersionSet versions, {int indent = 0}) {
+void printVersions(
+  VersionSet versions, {
+  int indent = 0,
+  VersionSet? upstream,
+}) {
   final repos = [
     Repo.flutter,
     Repo.engine,
@@ -11,7 +15,19 @@ void printVersions(VersionSet versions, {int indent = 0}) {
     Repo.buildroot,
   ];
   for (final repo in repos) {
-    print("${' ' * indent}${repo.name.padRight(9)} ${versions[repo]}");
+    final string = "${' ' * indent}${repo.name.padRight(9)} ${versions[repo]}";
+    // Include number of commits ahead of upstream.
+    if (upstream != null) {
+      final upstreamVersion = upstream[repo];
+      final commitCount = repo.countCommits(
+        from: upstreamVersion.ref,
+        to: versions[repo].ref,
+      );
+      final commitsString = commitCount != 0 ? ' ($commitCount ahead)' : '';
+      print('$string$commitsString');
+    } else {
+      print(string);
+    }
   }
 }
 

@@ -31,40 +31,33 @@ class VersionsCommand extends CutlerCommand {
     late final String hash;
     if (argResults!.rest.isEmpty) {
       if (isShorebird) {
-        print('No version hash provided, using Shorebird `origin/stable`.');
         hash = 'origin/stable';
       } else {
-        print('No version hash provided, using Flutter `upstream/stable`.');
         hash = 'upstream/stable';
       }
     } else {
       hash = argResults!.rest.first;
     }
 
-    if (config.doUpdate) {
-      print('Updating checkouts (use --no-update to skip)');
-      for (final repo in Repo.values) {
-        print('Updating ${repo.name}...');
-        repo.fetchAll();
-      }
+    updateReposIfNeeded(config);
+
+    if (!isShorebird) {
+      final flutterVersions = getFlutterVersions(hash);
+      logger.info('Flutter $hash:');
+      printVersions(flutterVersions, indent: 2);
+      return ExitCode.success.code;
     }
 
-    late final String flutterHash;
-    if (isShorebird) {
-      final shorebirdFlutter =
-          Repo.shorebird.contentsAtPath(hash, 'bin/internal/flutter.version');
-      final shorebird = getFlutterVersions(shorebirdFlutter);
-      logger.info('Shorebird $hash:');
-      printVersions(shorebird, indent: 2);
-      final flutterForkpoint =
-          Repo.flutter.getForkPoint(shorebird.flutter.hash);
-      flutterHash = flutterForkpoint.hash;
-    } else {
-      flutterHash = hash;
-    }
-
+    final shorebirdFlutter =
+        Repo.shorebird.contentsAtPath(hash, 'bin/internal/flutter.version');
+    final shorebird = getFlutterVersions(shorebirdFlutter);
+    final flutterForkpoint = Repo.flutter.getForkPoint(shorebird.flutter.hash);
+    final flutterHash = flutterForkpoint.hash;
     final flutterVersions = getFlutterVersions(flutterHash);
-    logger.info('Flutter $flutterHash:');
+
+    logger.info('Shorebird @ $hash');
+    printVersions(shorebird, indent: 2, upstream: flutterVersions);
+    logger.info('\nUpstream');
     printVersions(flutterVersions, indent: 2);
 
     return ExitCode.success.code;

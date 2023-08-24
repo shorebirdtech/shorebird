@@ -56,13 +56,7 @@ class RebaseCommand extends CutlerCommand {
 
   @override
   int run() {
-    if (config.doUpdate) {
-      print('Updating checkouts (use --no-update to skip)');
-      for (final repo in Repo.values) {
-        print('Updating ${repo.name}...');
-        repo.fetchAll();
-      }
-    }
+    updateReposIfNeeded(config);
 
     final shorebirdStable =
         Repo.shorebird.getLatestCommit(config.shorebirdReleaseBranch);
