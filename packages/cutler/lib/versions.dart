@@ -1,9 +1,11 @@
 import 'package:collection/collection.dart';
-import 'package:cutler/git_extensions.dart';
+import 'package:cutler/checkout.dart';
+import 'package:cutler/logger.dart';
 import 'package:cutler/model.dart';
 
 /// Print VersionSet [versions] to stdout at a given [indent] level.
 void printVersions(
+  Checkouts checkouts,
   VersionSet versions, {
   int indent = 0,
   VersionSet? upstream,
@@ -15,18 +17,19 @@ void printVersions(
     Repo.buildroot,
   ];
   for (final repo in repos) {
+    final checkout = checkouts[repo];
     final string = "${' ' * indent}${repo.name.padRight(9)} ${versions[repo]}";
     // Include number of commits ahead of upstream.
     if (upstream != null) {
       final upstreamVersion = upstream[repo];
-      final commitCount = repo.countCommits(
+      final commitCount = checkout.countCommits(
         from: upstreamVersion.ref,
         to: versions[repo].ref,
       );
       final commitsString = commitCount != 0 ? ' ($commitCount ahead)' : '';
-      print('$string$commitsString');
+      logger.info('$string$commitsString');
     } else {
-      print(string);
+      logger.info(string);
     }
   }
 }
@@ -35,19 +38,21 @@ void printVersions(
 /// e.g. `flutterHash` might be `origin/stable` or `v1.22.0-12.1.pre`.
 /// and this would return the set of versions (engine and buildroot) that
 /// Flutter depends on for that release.
-VersionSet getFlutterVersions(String flutterHash) {
-  final engineHash = Repo.flutter
-      .contentsAtPath(flutterHash, 'bin/internal/engine.version')
-      .trim();
-  final depsContents =
-      Repo.engine.contentsAtPath(engineHash, Paths.engineDEPS.path);
+VersionSet getFlutterVersions(Checkouts checkouts, String flutterHash) {
+  final flutter = checkouts.flutter;
+  final engine = checkouts.engine;
+  final buildroot = checkouts.buildroot;
+  final dart = checkouts.dart;
+  final engineHash =
+      flutter.contentsAtPath(flutterHash, 'bin/internal/engine.version').trim();
+  final depsContents = engine.contentsAtPath(engineHash, Paths.engineDEPS.path);
   final buildrootHash = parseBuildrootRevision(depsContents);
   final dartHash = parseDartRevision(depsContents);
   return VersionSet(
-    engine: Repo.engine.versionFrom(engineHash),
-    flutter: Repo.flutter.versionFrom(flutterHash),
-    buildroot: Repo.buildroot.versionFrom(buildrootHash),
-    dart: Repo.dart.versionFrom(dartHash),
+    engine: engine.versionFrom(engineHash),
+    flutter: flutter.versionFrom(flutterHash),
+    buildroot: buildroot.versionFrom(buildrootHash),
+    dart: dart.versionFrom(dartHash),
   );
 }
 
