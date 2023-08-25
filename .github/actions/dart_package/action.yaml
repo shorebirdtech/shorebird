@@ -73,7 +73,7 @@ runs:
         PACKAGE_PATH: ${{ github.ref_name }}
       id: split
       shell: ${{ inputs.shell }}
-      run: echo "{package_name}={${PACKAGE_PATH##*/}}" >> $GITHUB_OUTPUT
+      run: echo "package_name=${PACKAGE_PATH##*/}" >> $GITHUB_OUTPUT
 
     - name: Upload Coverage
       uses: codecov/codecov-action@v3
