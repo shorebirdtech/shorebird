@@ -23,8 +23,7 @@ do
     cd $PACKAGE_DIR
     dart pub get
     dart test --coverage=coverage
-    $HOME/.pub-cache/bin/format_coverage --lcov --in=coverage \
-        --out=coverage/lcov.info --report-on=lib
+    dart pub global run coverage:format_coverage --lcov --in=coverage --out=coverage/lcov.info --packages=.dart_tool/package_config.json --report-on=lib --check-ignore
     cd ../..
 done
 
