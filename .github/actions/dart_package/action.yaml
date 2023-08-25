@@ -70,7 +70,7 @@ runs:
     # Per https://stackoverflow.com/questions/73402042/github-action-expressions-split-string
     - name: Split package name
       env:
-        PACKAGE_PATH: ${{ github.ref_name }}
+        PACKAGE_PATH: ${{ inputs.working_directory}}
       id: split
       shell: ${{ inputs.shell }}
       run: echo "package_name=${PACKAGE_PATH##*/}" >> $GITHUB_OUTPUT
