@@ -96,7 +96,7 @@ class Checkout {
     );
   }
 
-  /// Returns a [Version] for the given [hash].
+  /// Returns a [Version] for the given [commitish].
   Version versionFrom(String commitish, {bool lookupTags = true}) {
     final hash = runCommand(
       'git',
