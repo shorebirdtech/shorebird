@@ -62,6 +62,17 @@ void main() {
       final checkout = Checkout(repo, checkoutsRoot.path)
         ..writeFile('NAME', repo.name);
       runCommand('git', ['add', 'NAME'], workingDirectory: dir.path);
+      // Git requires user.email user.name to be set before committing.
+      runCommand(
+        'git',
+        ['config', 'user.email', 'test@shorebird.dev'],
+        workingDirectory: dir.path,
+      );
+      runCommand(
+        'git',
+        ['config', 'user.name', 'Cutler Checkout Test'],
+        workingDirectory: dir.path,
+      );
       checkout.commit('Test commit');
     }
     return checkoutsRoot;
