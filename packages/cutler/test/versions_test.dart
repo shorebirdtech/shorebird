@@ -8,6 +8,13 @@ void main() {
     final depsContents = File('test/fixtures/DEPS').readAsStringSync();
     final buildrootHash = parseBuildrootRevision(depsContents);
     expect(buildrootHash, 'd6c410f19de5947de40ce110c1e768c887870072');
+    expect(() => parseBuildrootRevision(''), throwsException);
+    expect(
+      () => parseBuildrootRevision(
+        "'src': 'https://github.com/flutter/buildroot.git'",
+      ),
+      throwsException,
+    );
   });
   test('parseDartVersion', () {
     final depsContents = File('test/fixtures/DEPS').readAsStringSync();

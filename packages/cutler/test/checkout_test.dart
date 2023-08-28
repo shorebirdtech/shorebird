@@ -88,6 +88,14 @@ void main() {
         expect(checkouts.flutter.contentsAtPath('HEAD', 'NAME'), 'flutter');
         expect(checkouts.buildroot.contentsAtPath('HEAD', 'NAME'), 'buildroot');
         expect(checkouts.shorebird.contentsAtPath('HEAD', 'NAME'), 'shorebird');
+
+        // Should not throw.
+        checkouts.dart.fetchAll();
+        expect(checkouts.dart.getTagsFor('HEAD'), equals([]));
+        expect(
+          checkouts.dart.getLatestCommit('HEAD'),
+          equals(checkouts.dart.localHead().hash),
+        );
       },
       values: {
         loggerRef.overrideWith(_MockLogger.new),
