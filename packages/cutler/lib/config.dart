@@ -25,24 +25,19 @@ String expandUser(String path, {Map<String, String>? env}) {
 
 // This behavior belongs in the Dart SDK somewhere.
 /// Find the package root for the current running script.
-String findPackageRoot() {
+String findPackageRoot({String? scriptPath}) {
+  final path = scriptPath ?? Platform.script.path;
   // e.g. `dart run bin/cutler.dart`
-  final scriptPath = Platform.script.path;
-  if (scriptPath.endsWith('.dart')) {
-    final cutlerBin = p.dirname(Platform.script.path);
-    return p.dirname(cutlerBin);
+  if (path.endsWith('.dart')) {
+    final binPath = p.dirname(path);
+    return p.dirname(binPath);
   }
   // `dart run` pre-compiles into a snapshot and then runs, e.g.
   // .../packages/cutler/.dart_tool/pub/bin/cutler/cutler.dart-3.0.2.snapshot
-  if (scriptPath.endsWith('.snapshot') && scriptPath.contains('.dart_tool')) {
-    return scriptPath.split('.dart_tool').first;
+  if (path.endsWith('.snapshot') && path.contains('.dart_tool')) {
+    return path.split('.dart_tool').first;
   }
-  // package test has scriptPath ending in .dill, e.g.
-  // /var/folders/fv/fqqmfjqd6zvdqrbrv78gt4m80000gn/T/dart_test.kernel.PhFW66/test.dart_4.dill
-  if (scriptPath.endsWith('.dill')) {
-    throw UnimplementedError('Running inside a test');
-  }
-  throw UnimplementedError('Could not find package root: $scriptPath');
+  throw UnimplementedError('Could not find package root: $path');
 }
 
 // Config is basically just our typed ArgResults held as a global.

@@ -61,7 +61,11 @@ String parseBuildrootRevision(String depsContents) {
   final lines = depsContents.split('\n');
   // Example:
   //   'src': 'https://github.com/flutter/buildroot.git' + '@' + '059d155b4d452efd9c4427c45cddfd9445144869',
-  final buildrootLine = lines.firstWhere((line) => line.contains("'src': "));
+  final buildrootLine =
+      lines.firstWhereOrNull((line) => line.contains("'src': "));
+  if (buildrootLine == null) {
+    throw Exception('Failed to find buildroot revision in DEPS file');
+  }
   final regexp = RegExp('([0-9a-f]{40})');
   final match = regexp.firstMatch(buildrootLine);
   if (match == null) {

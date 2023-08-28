@@ -11,9 +11,10 @@
 # don't need to run this script to see coverage on GitHub.
 # https://app.codecov.io/gh/shorebirdtech/shorebird
 
+dart pub global activate coverage
 dart pub global activate combine_coverage
 
-PACKAGES=$(ls -d packages/*/)
+PACKAGES=$(ls -d packages/*)
 echo $PACKAGES
 
 for PACKAGE_DIR in $PACKAGES
@@ -26,4 +27,4 @@ do
     cd ../..
 done
 
-combine_coverage --repo-path .
+dart pub global run combine_coverage --repo-path .
