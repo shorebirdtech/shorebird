@@ -74,7 +74,7 @@ Eventually we'll automate stable, beta and master updates in the cloud.
 Example output from updating 3.7.10 to 3.10.0:
 
 ```
-dart run cutler --no-update --root=$HOME/Documents/GitHub --flutter-channel=beta --dry-run
+dart run cutler rebase --no-update --root=$HOME/Documents/GitHub --flutter-channel=beta --dry-run
 Building package executable... 
 Built cutler:cutler.
 Shorebird stable:

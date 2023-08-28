@@ -1,8 +1,15 @@
-import 'package:cutler/git_extensions.dart';
+import 'package:collection/collection.dart';
+import 'package:cutler/checkout.dart';
+import 'package:cutler/logger.dart';
 import 'package:cutler/model.dart';
 
 /// Print VersionSet [versions] to stdout at a given [indent] level.
-void printVersions(VersionSet versions, {int indent = 0}) {
+void printVersions(
+  Checkouts checkouts,
+  VersionSet versions, {
+  int indent = 0,
+  VersionSet? upstream,
+}) {
   final repos = [
     Repo.flutter,
     Repo.engine,
@@ -10,7 +17,20 @@ void printVersions(VersionSet versions, {int indent = 0}) {
     Repo.buildroot,
   ];
   for (final repo in repos) {
-    print("${' ' * indent}${repo.name.padRight(9)} ${versions[repo]}");
+    final checkout = checkouts[repo];
+    final string = "${' ' * indent}${repo.name.padRight(9)} ${versions[repo]}";
+    // Include number of commits ahead of upstream.
+    if (upstream != null) {
+      final upstreamVersion = upstream[repo];
+      final commitCount = checkout.countCommits(
+        from: upstreamVersion.ref,
+        to: versions[repo].ref,
+      );
+      final commitsString = commitCount != 0 ? ' ($commitCount ahead)' : '';
+      logger.info('$string$commitsString');
+    } else {
+      logger.info(string);
+    }
   }
 }
 
@@ -18,19 +38,21 @@ void printVersions(VersionSet versions, {int indent = 0}) {
 /// e.g. `flutterHash` might be `origin/stable` or `v1.22.0-12.1.pre`.
 /// and this would return the set of versions (engine and buildroot) that
 /// Flutter depends on for that release.
-VersionSet getFlutterVersions(String flutterHash) {
-  final engineHash = Repo.flutter
-      .contentsAtPath(flutterHash, 'bin/internal/engine.version')
-      .trim();
-  final depsContents =
-      Repo.engine.contentsAtPath(engineHash, Paths.engineDEPS.path);
+VersionSet getFlutterVersions(Checkouts checkouts, String flutterHash) {
+  final flutter = checkouts.flutter;
+  final engine = checkouts.engine;
+  final buildroot = checkouts.buildroot;
+  final dart = checkouts.dart;
+  final engineHash =
+      flutter.contentsAtPath(flutterHash, 'bin/internal/engine.version').trim();
+  final depsContents = engine.contentsAtPath(engineHash, Paths.engineDEPS.path);
   final buildrootHash = parseBuildrootRevision(depsContents);
   final dartHash = parseDartRevision(depsContents);
   return VersionSet(
-    engine: Repo.engine.versionFrom(engineHash),
-    flutter: Repo.flutter.versionFrom(flutterHash),
-    buildroot: Repo.buildroot.versionFrom(buildrootHash),
-    dart: Repo.dart.versionFrom(dartHash),
+    engine: engine.versionFrom(engineHash),
+    flutter: flutter.versionFrom(flutterHash),
+    buildroot: buildroot.versionFrom(buildrootHash),
+    dart: dart.versionFrom(dartHash),
   );
 }
 
@@ -52,8 +74,13 @@ String parseBuildrootRevision(String depsContents) {
 String parseDartRevision(String depsContents) {
   final lines = depsContents.split('\n');
   // Example:
-  //  'dart_revision': 'ce926bc6dcf649bd31a396e4e3961196115727cd',
-  final dartLine =
+  //  'dart_sdk_revision': 'ce926bc6dcf649bd31a396e4e3961196115727cd',
+  // In our fork we use dart_sdk_revision, not dart_revision, since the former
+  // points to our fork of the Dart SDK and the latter points to some base
+  // revision for dart.googlesource.com/sdk.
+  // For upstream we use 'dart_revision'.
+  final dartLine = lines
+          .firstWhereOrNull((line) => line.contains("'dart_sdk_revision': ")) ??
       lines.firstWhere((line) => line.contains("'dart_revision': "));
   final regexp = RegExp('([0-9a-f]{40})');
   final match = regexp.firstMatch(dartLine);
