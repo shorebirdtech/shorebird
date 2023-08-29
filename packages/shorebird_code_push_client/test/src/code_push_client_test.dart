@@ -1960,7 +1960,7 @@ void main() {
             url: 'https://example.com',
             hash: '#',
             size: 42,
-          )
+          ),
         ];
 
         when(() => httpClient.send(any())).thenAnswer(
@@ -2040,6 +2040,7 @@ void main() {
           plan: ShorebirdPlan(
             name: 'Hobby',
             monthlyCost: Money.fromIntWithCurrency(0, usd),
+            currency: 'USD',
             patchInstallLimit: 1000,
             maxTeamSize: 1,
           ),
@@ -2048,7 +2049,7 @@ void main() {
               id: 'test-app-id',
               name: 'Test App',
               patchInstallCount: 42,
-            )
+            ),
           ],
           currentPeriodCost: Money.fromIntWithCurrency(0, usd),
           currentPeriodStart: DateTime(2023),

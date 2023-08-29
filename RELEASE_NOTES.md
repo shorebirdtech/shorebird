@@ -2,6 +2,149 @@
 
 This section contains past updates we've sent to customers via Discord.
 
+## 0.14.4 (August 25, 2023)
+
+We've just released Shorebird v0.14.4 🎉
+
+- 🐦 Flutter 3.13.1 support!
+
+📚 Release notes can be found at https://github.com/shorebirdtech/shorebird/releases/tag/v0.14.4
+
+As always, you can upgrade using `shorebird upgrade`
+
+Please let us know if we can help!
+
+## 0.14.3 (August 24, 2023)
+
+We've just released Shorebird v0.14.3 🎉
+
+This is a hotfix for android build failures which was only partially addressed in 0.14.2
+
+- 🐦 updates our Flutter revision to include an Android build fix
+
+📚 Release notes can be found at https://github.com/shorebirdtech/shorebird/releases/tag/v0.14.3
+
+As always, you can upgrade using `shorebird upgrade`
+
+Please let us know if we can help!
+
+## 0.14.2 (August 23, 2023)
+
+We've just released Shorebird v0.14.2 🎉
+
+This is a small update to 0.14.0 that includes minor improvements:
+
+- 🐦 updates our Flutter revision to include an Android build fix
+
+📚 Release notes can be found at https://github.com/shorebirdtech/shorebird/releases/tag/v0.14.2
+
+As always, you can upgrade using `shorebird upgrade`
+
+Please let us know if we can help!
+
+## 0.14.1 (August 23, 2023)
+
+We've just released Shorebird v0.14.1 🎉
+
+This is a small update to 0.14.0 that includes minor improvements:
+
+- 🔎 better logging for patch commands
+
+📚 Release notes can be found at https://github.com/shorebirdtech/shorebird/releases/tag/v0.14.1
+
+As always, you can upgrade using `shorebird upgrade`
+
+Please let us know if we can help!
+
+## 0.14.0 (August 23, 2023)
+
+We've just released Shorebird v0.14.0 🎉
+
+- 🐦 Flutter 3.13.0 support!
+
+📚 Release notes can be found at https://github.com/shorebirdtech/shorebird/releases/tag/v0.14.0
+
+As always, you can upgrade using `shorebird upgrade`
+
+Please let us know if we can help!
+
+## 0.13.2 (August 21, 2023)
+
+We've just released Shorebird v0.13.2 🎉
+
+- 👩‍⚕️ fix for `shorebird doctor` flutter version check
+- 🐦 skipped flutter upgrade checks when completing builds
+
+📚 Release notes can be found at https://github.com/shorebirdtech/shorebird/releases/tag/v0.13.2
+
+As always, you can upgrade using `shorebird upgrade`
+
+Please let us know if we can help!
+
+## 0.13.1 (August 18, 2023)
+
+We've just released Shorebird v0.13.1 🎉
+
+- 🩹 hotfix `shorebird.yaml` (de)serialization issue when using `auto_update`
+
+📚 Release notes can be found at https://github.com/shorebirdtech/shorebird/releases/tag/v0.13.1
+
+As always, you can upgrade using `shorebird upgrade`
+
+Please let us know if we can help!
+
+## 0.13.0 (August 17, 2023)
+
+We've just released Shorebird v0.13.0 🎉
+
+- 🍎 iOS crash fixes
+- 🧩 `shorebird patch` no longer requires specifying a release version
+- 🐦 `shorebird flutter versions use` supports passing a commit hash
+- 🤖 no prompts when run in continuous integration
+- 🩹 `.dart_tool/package_config.json` is reset after builds to resolve VSCode issues
+- 🍎 improved iOS asset diffing (`.car` file fixes)
+- 🧹 remove deprecated commands
+  - `shorebird account upgrade`
+  - `shorebird apps list`
+  - `shorebird apps delete`
+  - `shorebird releases add`
+  - `shorebird releases list`
+
+📚 Release notes can be found at https://github.com/shorebirdtech/shorebird/releases/tag/v0.13.0
+
+As always, you can upgrade using `shorebird upgrade`
+
+Please let us know if we can help!
+
+## 0.12.3 (August 11, 2023)
+
+We've just released Shorebird v0.12.3 🎉
+
+- 🩹 fix script terminating errors on older versions of powershell
+- 📝 `shorebird doctor --verbose` includes Android Toolchain information
+
+📚 Release notes can be found at https://github.com/shorebirdtech/shorebird/releases/tag/v0.12.3
+
+As always, you can upgrade using `shorebird upgrade`
+
+Please let us know if we can help!
+
+## 0.12.2 (August 10, 2023)
+
+We've just released Shorebird v0.12.2 🎉
+
+- 🗒️ See available Flutter versions using `shorebird flutter versions list`
+- 🕹️ Switch Flutter versions using `shorebird flutter versions use <version>`
+- 🍎 iOS shows warning when patch includes changes to assets and native code
+- 📝 `shorebird --version` includes Flutter version
+- 🪟 Windows installer exits on error
+
+📚 Release notes can be found at https://github.com/shorebirdtech/shorebird/releases/tag/v0.12.2
+
+As always, you can upgrade using `shorebird upgrade`
+
+Please let us know if we can help!
+
 ## 0.12.1 (August 5, 2023)
 
 We've just released Shorebird v0.12.1 🎉

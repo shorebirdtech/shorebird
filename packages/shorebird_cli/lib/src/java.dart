@@ -36,7 +36,7 @@ class Java {
       final candidateLocations = [
         p.join(androidStudioPath, 'jbr', 'Contents', 'Home'),
         p.join(androidStudioPath, 'jre', 'Contents', 'Home'),
-        p.join(androidStudioPath, 'jre', 'jdk', 'Contents', 'Home')
+        p.join(androidStudioPath, 'jre', 'jdk', 'Contents', 'Home'),
       ];
 
       return candidateLocations.firstWhereOrNull(

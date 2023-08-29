@@ -85,7 +85,7 @@ Please use "shorebird preview" instead.''',
         if (flavor != null) '--flavor=$flavor',
         if (target != null) '--target=$target',
         if (dartDefines != null) ...dartDefines.map((e) => '--dart-define=$e'),
-        ...results.rest
+        ...results.rest,
       ],
       runInShell: true,
     );

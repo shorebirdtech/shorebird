@@ -18,6 +18,7 @@ class _MockShorebirdFlutter extends Mock implements ShorebirdFlutter {}
 void main() {
   group(FlutterVersionsUseCommand, () {
     const version = '1.2.3';
+    const revision = '0fc414cbc33ee017ad509671009e8b242539ea16';
 
     late ArgResults argResults;
     late Progress progress;
@@ -50,6 +51,9 @@ void main() {
       ).thenAnswer((_) async => [version]);
       when(
         () => shorebirdFlutter.useVersion(version: any(named: 'version')),
+      ).thenAnswer((_) async {});
+      when(
+        () => shorebirdFlutter.useRevision(revision: any(named: 'revision')),
       ).thenAnswer((_) async {});
     });
 
@@ -106,11 +110,17 @@ Usage: shorebird flutter versions use <version>'''),
         runWithOverrides(command.run),
         completion(equals(ExitCode.software.code)),
       );
+      final openIssueLink = link(
+        uri: Uri.parse(
+          'https://github.com/shorebirdtech/shorebird/issues/new?assignees=&labels=feature&projects=&template=feature_request.md&title=feat%3A+',
+        ),
+        message: 'open an issue',
+      );
       verifyInOrder([
         () => logger.progress('Fetching Flutter versions'),
         () => progress.complete(),
         () => logger.err('''
-Version $version not found.
+Version $version not found. Please $openIssueLink to request a new version.
 Use `shorebird flutter versions list` to list available versions.'''),
       ]);
     });
@@ -132,7 +142,23 @@ Use `shorebird flutter versions list` to list available versions.'''),
       ]);
     });
 
-    test('exits with code 0 when install succeeds', () async {
+    test('exits with code 70 when unable to install revision', () async {
+      when(() => argResults.rest).thenReturn([revision]);
+      when(
+        () => shorebirdFlutter.useRevision(revision: any(named: 'revision')),
+      ).thenThrow('error');
+      await expectLater(
+        runWithOverrides(command.run),
+        completion(equals(ExitCode.software.code)),
+      );
+      verifyInOrder([
+        () => logger.progress('Installing Flutter $revision'),
+        () => progress.fail('Failed to install Flutter $revision.'),
+        () => logger.err('error'),
+      ]);
+    });
+
+    test('exits with code 0 when version install succeeds', () async {
       await expectLater(
         runWithOverrides(command.run),
         completion(equals(ExitCode.success.code)),
@@ -143,6 +169,19 @@ Use `shorebird flutter versions list` to list available versions.'''),
         () => progress.complete(),
         () => logger.progress('Installing Flutter $version'),
         () => shorebirdFlutter.useVersion(version: version),
+        () => progress.complete(),
+      ]);
+    });
+
+    test('exits with code 0 when revision install succeeds', () async {
+      when(() => argResults.rest).thenReturn([revision]);
+      await expectLater(
+        runWithOverrides(command.run),
+        completion(equals(ExitCode.success.code)),
+      );
+      verifyInOrder([
+        () => logger.progress('Installing Flutter $revision'),
+        () => shorebirdFlutter.useRevision(revision: revision),
         () => progress.complete(),
       ]);
     });

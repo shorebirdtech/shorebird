@@ -12,7 +12,12 @@ part 'shorebird_yaml.g.dart';
 )
 class ShorebirdYaml {
   /// {@macro shorebird_yaml}
-  const ShorebirdYaml({required this.appId, this.flavors, this.baseUrl});
+  const ShorebirdYaml({
+    required this.appId,
+    this.flavors,
+    this.baseUrl,
+    this.autoUpdate,
+  });
 
   factory ShorebirdYaml.fromJson(Map<dynamic, dynamic> json) =>
       _$ShorebirdYamlFromJson(json);
@@ -38,6 +43,9 @@ class ShorebirdYaml {
 
   /// The base url used to check for updates.
   final String? baseUrl;
+
+  /// Whether or not to automatically update the app.
+  final bool? autoUpdate;
 }
 
 extension AppIdExtension on ShorebirdYaml {

@@ -8,6 +8,7 @@ import 'package:shorebird_cli/src/archive_analysis/archive_analysis.dart';
 import 'package:shorebird_cli/src/archive_analysis/archive_differ.dart';
 import 'package:shorebird_cli/src/logger.dart';
 import 'package:shorebird_cli/src/patch_diff_checker.dart';
+import 'package:shorebird_cli/src/shorebird_env.dart';
 import 'package:test/test.dart';
 
 class _FakeBaseRequest extends Fake implements http.BaseRequest {}
@@ -22,6 +23,8 @@ class _MockLogger extends Mock implements Logger {}
 
 class _MockProgress extends Mock implements Progress {}
 
+class _MockShorebirdEnv extends Mock implements ShorebirdEnv {}
+
 void main() {
   group(PatchDiffChecker, () {
     const assetsDiffPrettyString = 'assets diff pretty string';
@@ -35,6 +38,7 @@ void main() {
     late http.Client httpClient;
     late Logger logger;
     late Progress progress;
+    late ShorebirdEnv shorebirdEnv;
     late PatchDiffChecker patchDiffChecker;
 
     R runWithOverrides<R>(R Function() body) {
@@ -42,6 +46,7 @@ void main() {
         body,
         values: {
           loggerRef.overrideWith(() => logger),
+          shorebirdEnvRef.overrideWith(() => shorebirdEnv),
         },
       );
     }
@@ -58,6 +63,7 @@ void main() {
       httpClient = _MockHttpClient();
       logger = _MockLogger();
       progress = _MockProgress();
+      shorebirdEnv = _MockShorebirdEnv();
       patchDiffChecker = PatchDiffChecker(httpClient: httpClient);
 
       when(() => archiveDiffer.changedFiles(any(), any()))
@@ -77,6 +83,8 @@ void main() {
 
       when(() => logger.confirm(any())).thenReturn(true);
       when(() => logger.progress(any())).thenReturn(progress);
+
+      when(() => shorebirdEnv.isRunningOnCI).thenReturn(false);
 
       when(() => assetsFileSetDiff.prettyString)
           .thenReturn(assetsDiffPrettyString);
@@ -118,7 +126,7 @@ void main() {
         });
 
         test('logs warning', () async {
-          final result = await runWithOverrides(
+          await runWithOverrides(
             () => patchDiffChecker.confirmUnpatchableDiffsIfNecessary(
               localArtifact: localArtifact,
               releaseArtifactUrl: releaseArtifactUrl,
@@ -127,7 +135,6 @@ void main() {
             ),
           );
 
-          expect(result, isTrue);
           verify(
             () => logger.warn(
               '''The release artifact contains native changes, which cannot be applied with a patch.''',
@@ -139,7 +146,7 @@ void main() {
         });
 
         test('prompts user if force is false', () async {
-          final result = await runWithOverrides(
+          await runWithOverrides(
             () => patchDiffChecker.confirmUnpatchableDiffsIfNecessary(
               localArtifact: localArtifact,
               releaseArtifactUrl: releaseArtifactUrl,
@@ -148,12 +155,11 @@ void main() {
             ),
           );
 
-          expect(result, isTrue);
           verify(() => logger.confirm('Continue anyways?')).called(1);
         });
 
         test('does not prompt user if force is true', () async {
-          final result = await runWithOverrides(
+          await runWithOverrides(
             () => patchDiffChecker.confirmUnpatchableDiffsIfNecessary(
               localArtifact: localArtifact,
               releaseArtifactUrl: releaseArtifactUrl,
@@ -162,24 +168,46 @@ void main() {
             ),
           );
 
-          expect(result, isTrue);
           verifyNever(() => logger.confirm('Continue anyways?'));
         });
 
-        test('returns false if user declines to continue', () async {
+        test('throws UserCancelledException if user declines to continue',
+            () async {
           when(() => logger.confirm(any())).thenReturn(false);
 
-          final result = await runWithOverrides(
-            () => patchDiffChecker.confirmUnpatchableDiffsIfNecessary(
-              localArtifact: localArtifact,
-              releaseArtifactUrl: releaseArtifactUrl,
-              archiveDiffer: archiveDiffer,
-              force: false,
+          await expectLater(
+            runWithOverrides(
+              () => patchDiffChecker.confirmUnpatchableDiffsIfNecessary(
+                localArtifact: localArtifact,
+                releaseArtifactUrl: releaseArtifactUrl,
+                archiveDiffer: archiveDiffer,
+                force: false,
+              ),
+            ),
+            throwsA(
+              isA<UserCancelledException>(),
             ),
           );
 
-          expect(result, isFalse);
           verify(() => logger.confirm('Continue anyways?')).called(1);
+        });
+
+        test('does not prompt when running on CI', () async {
+          when(() => shorebirdEnv.isRunningOnCI).thenReturn(true);
+
+          await expectLater(
+            () => runWithOverrides(
+              () => patchDiffChecker.confirmUnpatchableDiffsIfNecessary(
+                localArtifact: localArtifact,
+                releaseArtifactUrl: releaseArtifactUrl,
+                archiveDiffer: archiveDiffer,
+                force: false,
+              ),
+            ),
+            throwsA(isA<UnpatchableChangeException>()),
+          );
+
+          verifyNever(() => logger.confirm(any()));
         });
       });
 
@@ -191,7 +219,7 @@ void main() {
         });
 
         test('logs warning', () async {
-          final result = await runWithOverrides(
+          await runWithOverrides(
             () => patchDiffChecker.confirmUnpatchableDiffsIfNecessary(
               localArtifact: localArtifact,
               releaseArtifactUrl: releaseArtifactUrl,
@@ -200,7 +228,6 @@ void main() {
             ),
           );
 
-          expect(result, isTrue);
           verify(
             () => logger.warn(
               '''The release artifact contains asset changes, which will not be included in the patch.''',
@@ -212,7 +239,7 @@ void main() {
         });
 
         test('prompts user if force is false', () async {
-          final result = await runWithOverrides(
+          await runWithOverrides(
             () => patchDiffChecker.confirmUnpatchableDiffsIfNecessary(
               localArtifact: localArtifact,
               releaseArtifactUrl: releaseArtifactUrl,
@@ -221,12 +248,11 @@ void main() {
             ),
           );
 
-          expect(result, isTrue);
           verify(() => logger.confirm('Continue anyways?')).called(1);
         });
 
         test('does not prompt user if force is true', () async {
-          final result = await runWithOverrides(
+          await runWithOverrides(
             () => patchDiffChecker.confirmUnpatchableDiffsIfNecessary(
               localArtifact: localArtifact,
               releaseArtifactUrl: releaseArtifactUrl,
@@ -235,39 +261,60 @@ void main() {
             ),
           );
 
-          expect(result, isTrue);
           verifyNever(() => logger.confirm('Continue anyways?'));
         });
 
-        test('returns false if user declines to continue', () async {
+        test('throws UserCancelledException if user declines to continue',
+            () async {
           when(() => logger.confirm(any())).thenReturn(false);
 
-          final result = await runWithOverrides(
+          await expectLater(
+            runWithOverrides(
+              () => patchDiffChecker.confirmUnpatchableDiffsIfNecessary(
+                localArtifact: localArtifact,
+                releaseArtifactUrl: releaseArtifactUrl,
+                archiveDiffer: archiveDiffer,
+                force: false,
+              ),
+            ),
+            throwsA(isA<UserCancelledException>()),
+          );
+
+          verify(() => logger.confirm('Continue anyways?')).called(1);
+        });
+
+        test('does not prompt when running on CI', () async {
+          when(() => shorebirdEnv.isRunningOnCI).thenReturn(true);
+
+          await expectLater(
+            () => runWithOverrides(
+              () => patchDiffChecker.confirmUnpatchableDiffsIfNecessary(
+                localArtifact: localArtifact,
+                releaseArtifactUrl: releaseArtifactUrl,
+                archiveDiffer: archiveDiffer,
+                force: false,
+              ),
+            ),
+            throwsA(isA<UnpatchableChangeException>()),
+          );
+
+          verifyNever(() => logger.confirm(any()));
+        });
+      });
+
+      test('returns true if no potentially breaking diffs are detected',
+          () async {
+        await expectLater(
+          runWithOverrides(
             () => patchDiffChecker.confirmUnpatchableDiffsIfNecessary(
               localArtifact: localArtifact,
               releaseArtifactUrl: releaseArtifactUrl,
               archiveDiffer: archiveDiffer,
               force: false,
             ),
-          );
-
-          expect(result, isFalse);
-          verify(() => logger.confirm('Continue anyways?')).called(1);
-        });
-      });
-
-      test('returns true if no potentially breaking diffs are detected',
-          () async {
-        final result = await runWithOverrides(
-          () => patchDiffChecker.confirmUnpatchableDiffsIfNecessary(
-            localArtifact: localArtifact,
-            releaseArtifactUrl: releaseArtifactUrl,
-            archiveDiffer: archiveDiffer,
-            force: false,
           ),
+          completes,
         );
-
-        expect(result, isTrue);
       });
     });
   });

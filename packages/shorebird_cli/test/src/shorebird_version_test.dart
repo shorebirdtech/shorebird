@@ -49,12 +49,6 @@ void main() {
           args: any(named: 'args'),
         ),
       ).thenAnswer((_) async {});
-      when(
-        () => git.remotePrune(
-          name: any(named: 'name'),
-          directory: any(named: 'directory'),
-        ),
-      ).thenAnswer((_) async {});
     });
 
     group('isShorebirdVersionCurrent', () {

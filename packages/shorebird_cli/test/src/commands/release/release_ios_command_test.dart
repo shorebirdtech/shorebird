@@ -107,6 +107,7 @@ flutter:
     late Progress progress;
     late Logger logger;
     late ShorebirdProcessResult flutterBuildProcessResult;
+    late ShorebirdProcessResult flutterPubGetProcessResult;
     late ShorebirdFlutterValidator flutterValidator;
     late ShorebirdProcess shorebirdProcess;
     late ShorebirdEnv shorebirdEnv;
@@ -165,6 +166,7 @@ flutter:
       progress = _MockProgress();
       logger = _MockLogger();
       flutterBuildProcessResult = _MockProcessResult();
+      flutterPubGetProcessResult = _MockProcessResult();
       flutterValidator = _MockShorebirdFlutterValidator();
       shorebirdProcess = _MockShorebirdProcess();
       shorebirdEnv = _MockShorebirdEnv();
@@ -173,6 +175,15 @@ flutter:
       when(() => shorebirdEnv.getShorebirdYaml()).thenReturn(shorebirdYaml);
       when(() => shorebirdEnv.shorebirdRoot).thenReturn(shorebirdRoot);
       when(() => shorebirdEnv.flutterRevision).thenReturn(flutterRevision);
+      when(() => shorebirdEnv.isRunningOnCI).thenReturn(false);
+      when(
+        () => shorebirdProcess.run(
+          'flutter',
+          ['--no-version-check', 'pub', 'get', '--offline'],
+          runInShell: any(named: 'runInShell'),
+          useVendedFlutter: false,
+        ),
+      ).thenAnswer((_) async => flutterPubGetProcessResult);
       when(
         () => shorebirdProcess.run(
           'flutter',
@@ -195,6 +206,8 @@ flutter:
       when(
         () => flutterBuildProcessResult.exitCode,
       ).thenReturn(ExitCode.success.code);
+      when(() => flutterPubGetProcessResult.exitCode)
+          .thenReturn(ExitCode.success.code);
       when(
         () => codePushClientWrapper.getApp(appId: any(named: 'appId')),
       ).thenAnswer((_) async => appMetadata);
@@ -506,6 +519,25 @@ error: exportArchive: No signing certificate "iOS Distribution" found
       expect(exitCode, ExitCode.success.code);
     });
 
+    test('runs flutter pub get with system flutter after successful build',
+        () async {
+      final tempDir = setUpTempDir();
+
+      await IOOverrides.runZoned(
+        () => runWithOverrides(command.run),
+        getCurrentDirectory: () => tempDir,
+      );
+
+      verify(
+        () => shorebirdProcess.run(
+          'flutter',
+          ['--no-version-check', 'pub', 'get', '--offline'],
+          runInShell: any(named: 'runInShell'),
+          useVendedFlutter: false,
+        ),
+      ).called(1);
+    });
+
     test(
         'succeeds when release is successful '
         'with flavors and target', () async {
@@ -625,6 +657,19 @@ flavors:
       expect(exportOptionsPlist['signingStyle'], 'automatic');
       expect(exportOptionsPlist['uploadBitcode'], isFalse);
       expect(exportOptionsPlist['method'], 'app-store');
+    });
+
+    test('does not prompt if running on CI', () async {
+      when(() => shorebirdEnv.isRunningOnCI).thenReturn(true);
+      final tempDir = setUpTempDir();
+
+      final exitCode = await IOOverrides.runZoned(
+        () => runWithOverrides(command.run),
+        getCurrentDirectory: () => tempDir,
+      );
+
+      expect(exitCode, equals(ExitCode.success.code));
+      verifyNever(() => logger.confirm(any()));
     });
   });
 }

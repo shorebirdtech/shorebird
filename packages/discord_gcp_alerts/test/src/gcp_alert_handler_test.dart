@@ -49,7 +49,7 @@ void main() {
                 'observed_value': '1.0',
                 'resource': {
                   'type': 'example_resource',
-                  'labels': {'example': 'label'}
+                  'labels': {'example': 'label'},
                 },
                 'resource_type_display_name': 'Example Resource Type',
                 'resource_id': '12345',
@@ -58,11 +58,11 @@ void main() {
                 'metric': {
                   'type': 'test.googleapis.com/metric',
                   'displayName': 'Test Metric',
-                  'labels': {'example': 'label'}
+                  'labels': {'example': 'label'},
                 },
                 'metadata': {
                   'system_labels': {'example': 'label'},
-                  'user_labels': {'example': 'label'}
+                  'user_labels': {'example': 'label'},
                 },
                 'policy_name': 'projects/12345/alertPolicies/12345',
                 'policy_user_labels': {'example': 'label'},
@@ -76,12 +76,12 @@ void main() {
                     'comparison': 'COMPARISON_GT',
                     'thresholdValue': 0.5,
                     'duration': '0s',
-                    'trigger': {'count': 1}
-                  }
+                    'trigger': {'count': 1},
+                  },
                 },
                 'condition_name': 'Example condition',
-                'threshold_value': '0.5'
-              }
+                'threshold_value': '0.5',
+              },
             },
           ),
         ),
@@ -103,17 +103,17 @@ void main() {
                   {
                     'name': 'Resource',
                     'value': 'projects/12345/example_resources/12345',
-                    'inline': true
+                    'inline': true,
                   },
                   {
                     'name': 'Condition',
                     'value': 'Example condition',
-                    'inline': true
+                    'inline': true,
                   }
-                ]
+                ],
               }
             ],
-            'attachments': <dynamic>[]
+            'attachments': <dynamic>[],
           }),
         ),
       ).called(1);

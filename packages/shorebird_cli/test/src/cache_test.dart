@@ -100,6 +100,13 @@ void main() {
       expect(Cache.new, returnsNormally);
     });
 
+    group(CacheUpdateFailure, () {
+      test('overrides toString', () {
+        const exception = CacheUpdateFailure('test');
+        expect(exception.toString(), equals('CacheUpdateFailure: test'));
+      });
+    });
+
     group('getArtifactDirectory', () {
       test('returns correct directory', () {
         final directory = runWithOverrides(
@@ -172,6 +179,42 @@ void main() {
 
     group('updateAll', () {
       group('patch', () {
+        test('throws CacheUpdateFailure if a SocketException is thrown',
+            () async {
+          const exception = SocketException('test');
+          when(() => httpClient.send(any())).thenThrow(exception);
+          await expectLater(
+            runWithOverrides(cache.updateAll),
+            throwsA(
+              isA<CacheUpdateFailure>().having(
+                (e) => e.message,
+                'message',
+                contains('Failed to download patch: $exception'),
+              ),
+            ),
+          );
+        });
+
+        test('throws CacheUpdateFailure if a non-200 is returned', () async {
+          when(() => httpClient.send(any())).thenAnswer(
+            (_) async => http.StreamedResponse(
+              const Stream.empty(),
+              HttpStatus.notFound,
+              reasonPhrase: 'Not Found',
+            ),
+          );
+          await expectLater(
+            runWithOverrides(cache.updateAll),
+            throwsA(
+              isA<CacheUpdateFailure>().having(
+                (e) => e.message,
+                'message',
+                contains('Failed to download patch: 404 Not Found'),
+              ),
+            ),
+          );
+        });
+
         test('downloads correct artifacts', () async {
           final patchArtifactDirectory = runWithOverrides(
             () => cache.getArtifactDirectory('patch'),

@@ -6,6 +6,7 @@ void main() {
     final plan = ShorebirdPlan(
       name: 'Hobby',
       monthlyCost: Money.fromIntWithCurrency(0, usd),
+      currency: 'USD',
       patchInstallLimit: 1000,
       maxTeamSize: 1,
     );

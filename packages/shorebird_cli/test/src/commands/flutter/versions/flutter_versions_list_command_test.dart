@@ -1,3 +1,5 @@
+import 'dart:io';
+
 import 'package:mason_logger/mason_logger.dart';
 import 'package:mocktail/mocktail.dart';
 import 'package:scoped/scoped.dart';
@@ -45,6 +47,9 @@ void main() {
 
     test('exits with code 70 when unable to determine Flutter versions',
         () async {
+      when(
+        () => shorebirdFlutter.getVersion(),
+      ).thenAnswer((_) async => '1.0.0');
       when(() => shorebirdFlutter.getVersions()).thenThrow('error');
       await expectLater(
         runWithOverrides(command.run),
@@ -52,13 +57,24 @@ void main() {
       );
       verifyInOrder([
         () => logger.progress('Fetching Flutter versions'),
+        () => shorebirdFlutter.getVersion(),
+        () => shorebirdFlutter.getVersions(),
         () => progress.fail('Failed to fetch Flutter versions.'),
         () => logger.err('error'),
       ]);
     });
 
-    test('exits with code 0 when able to determine Flutter versions', () async {
+    test(
+        'exits with code 0 when able to determine Flutter versions w/out current version',
+        () async {
       const versions = ['1.0.0', '1.0.1'];
+      when(() => shorebirdFlutter.getVersion()).thenThrow(
+        const ProcessException(
+          'flutter',
+          ['--version'],
+          'Flutter 1.0.0',
+        ),
+      );
       when(
         () => shorebirdFlutter.getVersions(),
       ).thenAnswer((_) async => versions);
@@ -68,10 +84,38 @@ void main() {
       );
       verifyInOrder([
         () => logger.progress('Fetching Flutter versions'),
-        () => progress.complete(),
+        () => shorebirdFlutter.getVersion(),
+        () => shorebirdFlutter.getVersions(),
+        () => progress.cancel(),
         () => logger.info('📦 Flutter Versions'),
-        () => logger.info('1.0.1'),
-        () => logger.info('1.0.0'),
+        () => logger.info('  1.0.1'),
+        () => logger.info('  1.0.0'),
+      ]);
+    });
+
+    test(
+        'exits with code 0 when able to determine Flutter versions '
+        'as well as the current version', () async {
+      const versions = ['1.0.0', '1.0.1'];
+      when(
+        () => shorebirdFlutter.getVersion(),
+      ).thenAnswer((_) async => versions.first);
+
+      when(
+        () => shorebirdFlutter.getVersions(),
+      ).thenAnswer((_) async => versions);
+      await expectLater(
+        runWithOverrides(command.run),
+        completion(equals(ExitCode.success.code)),
+      );
+      verifyInOrder([
+        () => logger.progress('Fetching Flutter versions'),
+        () => shorebirdFlutter.getVersion(),
+        () => shorebirdFlutter.getVersions(),
+        () => progress.cancel(),
+        () => logger.info('📦 Flutter Versions'),
+        () => logger.info('  1.0.1'),
+        () => logger.info(lightCyan.wrap('✓ 1.0.0')),
       ]);
     });
   });

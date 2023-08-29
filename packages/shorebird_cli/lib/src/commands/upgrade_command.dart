@@ -3,7 +3,6 @@ import 'dart:io';
 import 'package:mason_logger/mason_logger.dart';
 import 'package:shorebird_cli/src/command.dart';
 import 'package:shorebird_cli/src/logger.dart';
-import 'package:shorebird_cli/src/shorebird_flutter.dart';
 import 'package:shorebird_cli/src/shorebird_version.dart';
 
 /// {@template upgrade_command}
@@ -56,23 +55,6 @@ class UpgradeCommand extends ShorebirdCommand {
 
     try {
       await shorebirdVersion.attemptReset(revision: latestVersion);
-    } on ProcessException catch (error) {
-      updateProgress.fail();
-      logger.err('Updating failed: ${error.message}');
-      return ExitCode.software.code;
-    }
-
-    try {
-      // Intended to fix an issue caused by a change in our remote branches.
-      // We deleted (origin/shorebird) and created (origin/shorebird/main)
-      //
-      // The error manifested at:
-      // $ shorebird --version
-      //   Updating Flutter...
-      //   error: cannot lock ref 'refs/remotes/origin/shorebird/main': 'refs/remotes/origin/shorebird' exists; cannot create 'refs/remotes/origin/shorebird/main'
-      //   From https://github.com/shorebirdtech/flutter
-      //    ! [new branch]          shorebird/main -> origin/shorebird/main  (unable to update local ref)
-      await shorebirdFlutter.pruneRemoteOrigin(revision: latestVersion);
     } on ProcessException catch (error) {
       updateProgress.fail();
       logger.err('Updating failed: ${error.message}');

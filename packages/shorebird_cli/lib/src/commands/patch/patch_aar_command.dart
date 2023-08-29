@@ -14,6 +14,7 @@ import 'package:shorebird_cli/src/code_push_client_wrapper.dart';
 import 'package:shorebird_cli/src/command.dart';
 import 'package:shorebird_cli/src/config/config.dart';
 import 'package:shorebird_cli/src/formatters/file_size_formatter.dart';
+import 'package:shorebird_cli/src/http_client/http_client.dart';
 import 'package:shorebird_cli/src/logger.dart';
 import 'package:shorebird_cli/src/patch_diff_checker.dart';
 import 'package:shorebird_cli/src/shorebird_artifact_mixin.dart';
@@ -38,7 +39,8 @@ class PatchAarCommand extends ShorebirdCommand
   })  : _archiveDiffer = archiveDiffer ?? AndroidArchiveDiffer(),
         _hashFn = hashFn ?? ((m) => sha256.convert(m).toString()),
         _unzipFn = unzipFn ?? extractFileToDisk,
-        _httpClient = httpClient ?? http.Client() {
+        _httpClient = httpClient ??
+            retryingHttpClient(LoggingClient(httpClient: http.Client())) {
     argParser
       ..addOption(
         'build-number',
@@ -189,7 +191,7 @@ Please re-run the release command for this version or create a new release.''');
             () => ShorebirdEnv(
               flutterRevisionOverride: release.flutterRevision,
             ),
-          )
+          ),
         },
       );
       buildProgress.complete();
@@ -204,20 +206,24 @@ Please re-run the release command for this version or create a new release.''');
       unzipFn: _unzipFn,
     );
 
-    final shouldContinue =
-        await patchDiffChecker.confirmUnpatchableDiffsIfNecessary(
-      localArtifact: File(
-        aarArtifactPath(
-          packageName: shorebirdEnv.androidPackageName!,
-          buildNumber: buildNumber,
+    try {
+      await patchDiffChecker.confirmUnpatchableDiffsIfNecessary(
+        localArtifact: File(
+          aarArtifactPath(
+            packageName: shorebirdEnv.androidPackageName!,
+            buildNumber: buildNumber,
+          ),
         ),
-      ),
-      releaseArtifactUrl: Uri.parse(releaseAarArtifact.url),
-      archiveDiffer: _archiveDiffer,
-      force: force,
-    );
-
-    if (!shouldContinue) return ExitCode.success.code;
+        releaseArtifactUrl: Uri.parse(releaseAarArtifact.url),
+        archiveDiffer: _archiveDiffer,
+        force: force,
+      );
+    } on UserCancelledException {
+      return ExitCode.success.code;
+    } on UnpatchableChangeException {
+      logger.info('Exiting.');
+      return ExitCode.software.code;
+    }
 
     final patchArtifactBundles = await _createPatchArtifacts(
       releaseArtifactPaths: releaseArtifactPaths,
@@ -257,7 +263,7 @@ ${summary.join('\n')}
 ''',
     );
 
-    final needsConfirmation = !force;
+    final needsConfirmation = !force && !shorebirdEnv.isRunningOnCI;
     if (needsConfirmation) {
       final confirm = logger.confirm('Would you like to continue?');
 

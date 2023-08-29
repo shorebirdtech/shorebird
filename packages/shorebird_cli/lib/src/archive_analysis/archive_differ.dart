@@ -76,18 +76,18 @@ abstract class ArchiveDiffer {
   /// archives at the two provided paths.
   FileSetDiff changedFiles(String oldArchivePath, String newArchivePath) =>
       FileSetDiff.fromPathHashes(
-        oldPathHashes: _fileHashes(File(oldArchivePath)),
-        newPathHashes: _fileHashes(File(newArchivePath)),
+        oldPathHashes: fileHashes(File(oldArchivePath)),
+        newPathHashes: fileHashes(File(newArchivePath)),
       );
 
-  PathHashes _fileHashes(File aar) {
-    final zipDirectory = ZipDirectory.read(InputFileStream(aar.path));
+  PathHashes fileHashes(File archive) {
+    final zipDirectory = ZipDirectory.read(InputFileStream(archive.path));
     return {
       for (final file in zipDirectory.fileHeaders)
         // Zip files contain an (optional) crc32 checksum for a file. IPAs and
         // AARs seem to always include this for files, so a quick way for us to
         // tell if file contents differ is if their checksums differ.
-        file.filename: file.crc32!.toString()
+        file.filename: file.crc32!.toString(),
     };
   }
 }

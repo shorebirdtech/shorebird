@@ -499,5 +499,68 @@ base_url: https://example.com''');
         expect(runWithOverrides(() => shorebirdEnv.hostedUri), isNull);
       });
     });
+
+    group('isRunningOnCI', () {
+      test('returns true if BOT variable is "true"', () {
+        when(() => platform.environment).thenReturn({
+          'BOT': 'true',
+        });
+        expect(runWithOverrides(() => shorebirdEnv.isRunningOnCI), isTrue);
+      });
+
+      test('returns true if TRAVIS variable is "true"', () {
+        when(() => platform.environment).thenReturn({
+          'TRAVIS': 'true',
+        });
+        expect(runWithOverrides(() => shorebirdEnv.isRunningOnCI), isTrue);
+      });
+
+      test('returns true if CONTINUOUS_INTEGRATION variable is "true"', () {
+        when(() => platform.environment).thenReturn({
+          'CONTINUOUS_INTEGRATION': 'true',
+        });
+        expect(runWithOverrides(() => shorebirdEnv.isRunningOnCI), isTrue);
+      });
+
+      test('returns true if CI variable is set', () {
+        when(() => platform.environment).thenReturn({'CI': ''});
+        expect(runWithOverrides(() => shorebirdEnv.isRunningOnCI), isTrue);
+      });
+
+      test('returns true if APPVEYOR variable is set', () {
+        when(() => platform.environment).thenReturn({'APPVEYOR': ''});
+        expect(runWithOverrides(() => shorebirdEnv.isRunningOnCI), isTrue);
+      });
+
+      test('returns true if CIRRUS_CI variable is set', () {
+        when(() => platform.environment).thenReturn({'CIRRUS_CI': ''});
+        expect(runWithOverrides(() => shorebirdEnv.isRunningOnCI), isTrue);
+      });
+
+      test(
+          '''returns true if AWS_REGION and CODEBUILD_INITIATOR variables are set''',
+          () {
+        when(() => platform.environment).thenReturn({
+          'AWS_REGION': '',
+          'CODEBUILD_INITIATOR': '',
+        });
+        expect(runWithOverrides(() => shorebirdEnv.isRunningOnCI), isTrue);
+      });
+
+      test('returns true if JENKINS_URL variable is set', () {
+        when(() => platform.environment).thenReturn({'JENKINS_URL': ''});
+        expect(runWithOverrides(() => shorebirdEnv.isRunningOnCI), isTrue);
+      });
+
+      test('returns true if GITHUB_ACTIONS variable is set', () {
+        when(() => platform.environment).thenReturn({'GITHUB_ACTIONS': ''});
+        expect(runWithOverrides(() => shorebirdEnv.isRunningOnCI), isTrue);
+      });
+
+      test('returns false if no relevant environment variables are set', () {
+        when(() => platform.environment).thenReturn({});
+        expect(runWithOverrides(() => shorebirdEnv.isRunningOnCI), isFalse);
+      });
+    });
   });
 }

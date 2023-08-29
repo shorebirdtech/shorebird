@@ -93,8 +93,15 @@ class Git {
     required String directory,
     required String format,
     required String pattern,
+    String? contains,
   }) async {
-    final arguments = ['for-each-ref', '--format', format, pattern];
+    final arguments = [
+      'for-each-ref',
+      if (contains != null) ...['--contains', contains],
+      '--format',
+      format,
+      pattern,
+    ];
     final result = await process.run(
       executable,
       arguments,
@@ -109,28 +116,6 @@ class Git {
       );
     }
     return '${result.stdout}'.trim();
-  }
-
-  /// Prunes stale remote branches from the repository at [directory]
-  /// associated with [name].
-  Future<void> remotePrune({
-    required String name,
-    required String directory,
-  }) async {
-    final arguments = ['remote', 'prune', name];
-    final result = await process.run(
-      executable,
-      arguments,
-      workingDirectory: directory,
-    );
-    if (result.exitCode != 0) {
-      throw ProcessException(
-        executable,
-        arguments,
-        '${result.stderr}',
-        result.exitCode,
-      );
-    }
   }
 
   /// Resets the git repository located at [directory] to the [revision].

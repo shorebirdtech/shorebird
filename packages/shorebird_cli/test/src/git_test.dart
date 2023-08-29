@@ -223,40 +223,31 @@ origin/flutter_release/3.10.6''';
         ).called(1);
       });
 
-      test('throws ProcessException if process exits with error', () async {
-        const error = 'oops';
-        when(() => processResult.exitCode).thenReturn(ExitCode.software.code);
-        when(() => processResult.stderr).thenReturn(error);
-        expect(
-          () => runWithOverrides(
+      test('executes correct command w/contains', () async {
+        const contains = 'revision';
+        when(() => processResult.stdout).thenReturn(output);
+        await expectLater(
+          runWithOverrides(
             () => git.forEachRef(
+              contains: contains,
               pattern: pattern,
               format: format,
               directory: directory,
             ),
           ),
-          throwsA(
-            isA<ProcessException>().having((e) => e.message, 'message', error),
-          ),
-        );
-      });
-    });
-
-    group('remotePrune', () {
-      const directory = './output';
-      const name = 'origin';
-
-      test('executes correct command', () async {
-        await expectLater(
-          runWithOverrides(
-            () => git.remotePrune(name: name, directory: directory),
-          ),
-          completes,
+          completion(equals(output.trim())),
         );
         verify(
           () => process.run(
             'git',
-            ['remote', 'prune', name],
+            [
+              'for-each-ref',
+              '--contains',
+              contains,
+              '--format',
+              format,
+              pattern,
+            ],
             workingDirectory: directory,
           ),
         ).called(1);
@@ -268,7 +259,11 @@ origin/flutter_release/3.10.6''';
         when(() => processResult.stderr).thenReturn(error);
         expect(
           () => runWithOverrides(
-            () => git.remotePrune(name: name, directory: directory),
+            () => git.forEachRef(
+              pattern: pattern,
+              format: format,
+              directory: directory,
+            ),
           ),
           throwsA(
             isA<ProcessException>().having((e) => e.message, 'message', error),

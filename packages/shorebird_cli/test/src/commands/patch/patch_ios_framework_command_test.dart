@@ -110,6 +110,7 @@ flutter:
     late Logger logger;
     late ShorebirdProcessResult aotBuildProcessResult;
     late ShorebirdProcessResult flutterBuildProcessResult;
+    late ShorebirdProcessResult flutterPubGetProcessResult;
     late ShorebirdEnv shorebirdEnv;
     late ShorebirdFlutter shorebirdFlutter;
     late ShorebirdFlutterValidator flutterValidator;
@@ -210,12 +211,21 @@ flutter:
       logger = _MockLogger();
       aotBuildProcessResult = _MockProcessResult();
       flutterBuildProcessResult = _MockProcessResult();
+      flutterPubGetProcessResult = _MockProcessResult();
       shorebirdEnv = _MockShorebirdEnv();
       shorebirdFlutter = _MockShorebirdFlutter();
       flutterValidator = _MockShorebirdFlutterValidator();
       shorebirdProcess = _MockShorebirdProcess();
       shorebirdValidator = _MockShorebirdValidator();
 
+      when(
+        () => shorebirdProcess.run(
+          'flutter',
+          ['--no-version-check', 'pub', 'get', '--offline'],
+          runInShell: any(named: 'runInShell'),
+          useVendedFlutter: false,
+        ),
+      ).thenAnswer((_) async => flutterPubGetProcessResult);
       when(
         () => shorebirdProcess.run(
           'flutter',
@@ -244,12 +254,15 @@ flutter:
       when(() => shorebirdEnv.flutterDirectory).thenReturn(flutterDirectory);
       when(() => shorebirdEnv.genSnapshotFile).thenReturn(genSnapshotFile);
       when(() => shorebirdEnv.flutterRevision).thenReturn(flutterRevision);
+      when(() => shorebirdEnv.isRunningOnCI).thenReturn(false);
       when(
         () => aotBuildProcessResult.exitCode,
       ).thenReturn(ExitCode.success.code);
       when(
         () => flutterBuildProcessResult.exitCode,
       ).thenReturn(ExitCode.success.code);
+      when(() => flutterPubGetProcessResult.exitCode)
+          .thenReturn(ExitCode.success.code);
       when(
         () => codePushClientWrapper.getApp(appId: any(named: 'appId')),
       ).thenAnswer((_) async => appMetadata);
@@ -293,7 +306,7 @@ flutter:
           archiveDiffer: archiveDiffer,
           force: any(named: 'force'),
         ),
-      ).thenAnswer((_) async => true);
+      ).thenAnswer((_) async => {});
 
       command = runWithOverrides(
         () => PatchIosFrameworkCommand(archiveDiffer: archiveDiffer),
@@ -619,7 +632,9 @@ Please re-run the release command for this version or create a new release.'''),
       expect(exitCode, ExitCode.software.code);
     });
 
-    test('exits if confirmUnpatchableDiffsIfNecessary returns false', () async {
+    test(
+        '''exits with code 0 if confirmUnpatchableDiffsIfNecessary throws UserCancelledException''',
+        () async {
       when(() => argResults['force']).thenReturn(false);
       when(
         () => patchDiffChecker.confirmUnpatchableDiffsIfNecessary(
@@ -628,7 +643,7 @@ Please re-run the release command for this version or create a new release.'''),
           archiveDiffer: archiveDiffer,
           force: any(named: 'force'),
         ),
-      ).thenAnswer((_) async => false);
+      ).thenThrow(UserCancelledException());
       final tempDir = setUpTempDir();
       setUpTempArtifacts(tempDir);
 
@@ -638,6 +653,46 @@ Please re-run the release command for this version or create a new release.'''),
       );
 
       expect(exitCode, equals(ExitCode.success.code));
+      verify(
+        () => patchDiffChecker.confirmUnpatchableDiffsIfNecessary(
+          localArtifact: any(named: 'localArtifact'),
+          releaseArtifactUrl: Uri.parse(xcframeworkArtifact.url),
+          archiveDiffer: archiveDiffer,
+          force: false,
+        ),
+      ).called(1);
+      verifyNever(
+        () => codePushClientWrapper.publishPatch(
+          appId: any(named: 'appId'),
+          releaseId: any(named: 'releaseId'),
+          platform: any(named: 'platform'),
+          channelName: any(named: 'channelName'),
+          patchArtifactBundles: any(named: 'patchArtifactBundles'),
+        ),
+      );
+    });
+
+    test(
+        '''exits with code 70 if confirmUnpatchableDiffsIfNecessary throws UnpatchableChangeException''',
+        () async {
+      when(() => argResults['force']).thenReturn(false);
+      when(
+        () => patchDiffChecker.confirmUnpatchableDiffsIfNecessary(
+          localArtifact: any(named: 'localArtifact'),
+          releaseArtifactUrl: any(named: 'releaseArtifactUrl'),
+          archiveDiffer: archiveDiffer,
+          force: any(named: 'force'),
+        ),
+      ).thenThrow(UnpatchableChangeException());
+      final tempDir = setUpTempDir();
+      setUpTempArtifacts(tempDir);
+
+      final exitCode = await IOOverrides.runZoned(
+        () => runWithOverrides(command.run),
+        getCurrentDirectory: () => tempDir,
+      );
+
+      expect(exitCode, equals(ExitCode.software.code));
       verify(
         () => patchDiffChecker.confirmUnpatchableDiffsIfNecessary(
           localArtifact: any(named: 'localArtifact'),
@@ -714,6 +769,40 @@ Please re-run the release command for this version or create a new release.'''),
       ).called(1);
       verify(() => logger.success('\n✅ Published Patch!')).called(1);
       expect(exitCode, ExitCode.success.code);
+    });
+
+    test('runs flutter pub get with system flutter after successful build',
+        () async {
+      final tempDir = setUpTempDir();
+      setUpTempArtifacts(tempDir);
+
+      await IOOverrides.runZoned(
+        () => runWithOverrides(command.run),
+        getCurrentDirectory: () => tempDir,
+      );
+
+      verify(
+        () => shorebirdProcess.run(
+          'flutter',
+          ['--no-version-check', 'pub', 'get', '--offline'],
+          runInShell: any(named: 'runInShell'),
+          useVendedFlutter: false,
+        ),
+      ).called(1);
+    });
+
+    test('does not prompt if running on CI', () async {
+      when(() => shorebirdEnv.isRunningOnCI).thenReturn(true);
+      final tempDir = setUpTempDir();
+      setUpTempArtifacts(tempDir);
+
+      final exitCode = await IOOverrides.runZoned(
+        () => runWithOverrides(command.run),
+        getCurrentDirectory: () => tempDir,
+      );
+
+      expect(exitCode, equals(ExitCode.success.code));
+      verifyNever(() => logger.confirm(any()));
     });
   });
 }

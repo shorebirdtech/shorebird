@@ -5,15 +5,12 @@ import 'package:mocktail/mocktail.dart';
 import 'package:scoped/scoped.dart';
 import 'package:shorebird_cli/src/commands/commands.dart';
 import 'package:shorebird_cli/src/logger.dart';
-import 'package:shorebird_cli/src/shorebird_flutter.dart';
 import 'package:shorebird_cli/src/shorebird_version.dart';
 import 'package:test/test.dart';
 
 class _MockLogger extends Mock implements Logger {}
 
 class _MockProgress extends Mock implements Progress {}
-
-class _MockShorebirdFlutter extends Mock implements ShorebirdFlutter {}
 
 class _MockShorebirdVersion extends Mock implements ShorebirdVersion {}
 
@@ -23,7 +20,6 @@ void main() {
 
   group('upgrade', () {
     late Logger logger;
-    late ShorebirdFlutter shorebirdFlutter;
     late ShorebirdVersion shorebirdVersion;
     late UpgradeCommand command;
 
@@ -32,7 +28,6 @@ void main() {
         body,
         values: {
           loggerRef.overrideWith(() => logger),
-          shorebirdFlutterRef.overrideWith(() => shorebirdFlutter),
           shorebirdVersionRef.overrideWith(() => shorebirdVersion),
         },
       );
@@ -43,15 +38,9 @@ void main() {
       final progressLogs = <String>[];
 
       logger = _MockLogger();
-      shorebirdFlutter = _MockShorebirdFlutter();
       shorebirdVersion = _MockShorebirdVersion();
       command = runWithOverrides(UpgradeCommand.new);
 
-      when(
-        () => shorebirdFlutter.pruneRemoteOrigin(
-          revision: any(named: 'revision'),
-        ),
-      ).thenAnswer((_) async {});
       when(
         shorebirdVersion.fetchCurrentGitHash,
       ).thenAnswer((_) async => currentShorebirdRevision);
@@ -127,25 +116,6 @@ void main() {
       expect(result, equals(ExitCode.software.code));
       verify(() => logger.progress('Checking for updates')).called(1);
       verify(() => logger.err('Updating failed: oops')).called(1);
-    });
-
-    test('handles errors on failure to prune Flutter branches', () async {
-      const exception = ProcessException('git', ['remote', 'prune'], 'oops');
-      when(
-        () => shorebirdFlutter.pruneRemoteOrigin(
-          revision: any(named: 'revision'),
-        ),
-      ).thenThrow(exception);
-      when(() => logger.progress(any())).thenReturn(_MockProgress());
-
-      final result = await runWithOverrides(command.run);
-
-      expect(result, equals(ExitCode.software.code));
-      verify(
-        () => shorebirdFlutter.pruneRemoteOrigin(
-          revision: newerShorebirdRevision,
-        ),
-      ).called(1);
     });
 
     test(

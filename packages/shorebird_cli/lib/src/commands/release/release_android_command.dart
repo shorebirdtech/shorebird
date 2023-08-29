@@ -150,7 +150,7 @@ ${summary.join('\n')}
 ''');
 
     final force = results['force'] == true;
-    final needConfirmation = !force;
+    final needConfirmation = !force && !shorebirdEnv.isRunningOnCI;
     if (needConfirmation) {
       final confirm = logger.confirm('Would you like to continue?');
 

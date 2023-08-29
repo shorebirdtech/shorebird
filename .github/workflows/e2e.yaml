@@ -44,7 +44,7 @@ jobs:
       - name: 🐦 Verify Shorebird Installation (macOS / Linux)
         if: runner.os != 'Windows'
         run: |
-          if [[ $(shorebird --version) =~ "Shorebird Engine • revision" ]]; then          
+          if [[ $(shorebird --version) =~ "Engine • revision" ]]; then          
             echo '✅ Shorebird CLI is installed!'
           else
             echo '❌ Shorebird CLI is not installed.'
@@ -56,7 +56,7 @@ jobs:
         if: runner.os == 'Windows'
         run: |
           $shorebird_version = shorebird --version
-          if ($shorebird_version -match "Shorebird Engine") {
+          if ($shorebird_version -match "Engine") {
             Write-Output "✅ Shorebird CLI is installed!"
           } else {
             Write-Output "❌ Shorebird CLI is not installed."
@@ -72,6 +72,9 @@ jobs:
 
       - name: 🎯 Set up Flutter
         uses: subosito/flutter-action@v2
+        with:
+          channel: stable
+          flutter-version: 3.10.6
 
       - name: 🧪 Run Integration Tests
         run: dart test integration_test
