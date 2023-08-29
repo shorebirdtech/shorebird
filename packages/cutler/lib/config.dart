@@ -1,5 +1,7 @@
 import 'dart:io';
 
+import 'package:path/path.dart' as p;
+
 // https://github.com/dart-lang/sdk/issues/18466
 // https://github.com/dart-lang/path/issues/117#issuecomment-1034313012
 /// Expands a path that may contain a user directory (`~`). If [env] is
@@ -21,13 +23,29 @@ String expandUser(String path, {Map<String, String>? env}) {
   return path;
 }
 
+// This behavior belongs in the Dart SDK somewhere.
+/// Find the package root for the current running script.
+String findPackageRoot({String? scriptPath}) {
+  final path = scriptPath ?? Platform.script.path;
+  // e.g. `dart run bin/cutler.dart`
+  if (path.endsWith('.dart')) {
+    final binPath = p.dirname(path);
+    return p.dirname(binPath);
+  }
+  // `dart run` pre-compiles into a snapshot and then runs, e.g.
+  // .../packages/cutler/.dart_tool/pub/bin/cutler/cutler.dart-3.0.2.snapshot
+  if (path.endsWith('.snapshot') && path.contains('.dart_tool')) {
+    return path.split('.dart_tool').first;
+  }
+  throw UnimplementedError('Could not find package root: $path');
+}
+
 // Config is basically just our typed ArgResults held as a global.
 /// Global configuration object for Cutler.
 class Config {
   /// Constructs a new [Config].
   Config({
     required this.checkoutsRoot,
-    required this.verbose,
     required this.dryRun,
     required this.doUpdate,
     required this.flutterChannel,
@@ -35,9 +53,6 @@ class Config {
 
   /// The root directory where checkouts can be found.
   final String checkoutsRoot;
-
-  /// Whether to print verbose output.
-  final bool verbose;
 
   /// Whether to perform a dry run.
   final bool dryRun;
@@ -51,6 +66,3 @@ class Config {
   /// The name of the release branch for Shorebird.
   final String shorebirdReleaseBranch = 'origin/stable';
 }
-
-/// The global configuration object for Cutler.
-late final Config config;

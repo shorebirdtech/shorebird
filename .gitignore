@@ -3,3 +3,7 @@ bin/cache/
 
 # IDE files
 .idea/
+
+# Coverage directories used by Flutter & Dart tests
+coverage/
+
