@@ -26,7 +26,7 @@ class ShorebirdFlutterValidator extends Validator {
 
   @override
   Future<List<ValidationIssue>> validate() async {
-    final issues = <ValidationIssue>[];
+    final List<ValidationIssue> issues = <ValidationIssue>[];
 
     if (!shorebirdEnv.flutterDirectory.existsSync()) {
       final message = 'No Flutter directory found at '
@@ -82,7 +82,7 @@ class ShorebirdFlutterValidator extends Validator {
       final pathFlutterVersion = Version.parse(pathFlutterVersionString);
       if (shorebirdFlutterVersion.major != pathFlutterVersion.major ||
           shorebirdFlutterVersion.minor != pathFlutterVersion.minor) {
-        final message = '''
+        final String message = '''
 The version of Flutter that Shorebird includes and the Flutter on your path are different.
 \tShorebird Flutter: $shorebirdFlutterVersionString
 \tSystem Flutter:    $pathFlutterVersionString
