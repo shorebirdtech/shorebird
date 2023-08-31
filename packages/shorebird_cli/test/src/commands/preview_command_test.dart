@@ -245,11 +245,22 @@ void main() {
           ),
         ).thenAnswer((_) async {});
         when(
-          () => bundletool.installApks(apks: any(named: 'apks')),
+          () => bundletool.installApks(
+            apks: any(named: 'apks'),
+            deviceId: any(named: 'deviceId'),
+          ),
         ).thenAnswer((_) async {});
-        when(() => adb.startApp(any())).thenAnswer((_) async {});
         when(
-          () => adb.logcat(filter: any(named: 'filter')),
+          () => adb.startApp(
+            package: any(named: 'package'),
+            deviceId: any(named: 'deviceId'),
+          ),
+        ).thenAnswer((_) async {});
+        when(
+          () => adb.logcat(
+            filter: any(named: 'filter'),
+            deviceId: any(named: 'deviceId'),
+          ),
         ).thenAnswer((_) async => process);
         when(
           () => process.exitCode,
@@ -339,10 +350,11 @@ void main() {
 
       test('exits with code 70 when starting app fails', () async {
         final exception = Exception('oops');
-        when(() => adb.startApp(any())).thenThrow(exception);
+        when(() => adb.startApp(package: any(named: 'package')))
+            .thenThrow(exception);
         final result = await runWithOverrides(command.run);
         expect(result, equals(ExitCode.software.code));
-        verify(() => adb.startApp(packageName)).called(1);
+        verify(() => adb.startApp(package: packageName)).called(1);
       });
 
       test('exits with non-zero exit code when logcat process fails', () async {
@@ -483,6 +495,28 @@ void main() {
         ).captured.single as String Function(Release);
         expect(captured(release), equals(releaseVersion));
         verify(() => codePushClientWrapper.getReleases(appId: appId)).called(1);
+      });
+
+      test('forwards deviceId to adb and bundletool', () async {
+        const deviceId = '1234';
+        when(() => argResults['device-id']).thenReturn(deviceId);
+        await runWithOverrides(command.run);
+
+        verify(
+          () => bundletool.installApks(
+            apks: any(named: 'apks'),
+            deviceId: deviceId,
+          ),
+        ).called(1);
+        verify(
+          () => adb.startApp(
+            package: any(named: 'package'),
+            deviceId: deviceId,
+          ),
+        ).called(1);
+        verify(
+          () => adb.logcat(filter: any(named: 'filter'), deviceId: deviceId),
+        ).called(1);
       });
     });
 

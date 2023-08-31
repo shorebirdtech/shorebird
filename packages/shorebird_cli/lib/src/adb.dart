@@ -28,15 +28,32 @@ class Adb {
   }
 
   /// Starts the app with the given [package] name.
-  Future<void> startApp(String package) async {
-    final result = await _exec('shell monkey -p $package 1');
+  Future<void> startApp({
+    required String package,
+    String? deviceId,
+  }) async {
+    final args = [
+      if (deviceId != null) '-s $deviceId',
+      'shell',
+      'monkey',
+      '-p $package',
+      '1',
+    ];
+    final result = await _exec(args.join(' '));
     if (result.exitCode != 0) {
       throw Exception('Unable to start app: ${result.stderr}');
     }
   }
 
-  Future<Process> logcat({String? filter}) async {
-    final expression = ['logcat', if (filter != null) '-s $filter'].join(' ');
-    return _stream(expression);
+  Future<Process> logcat({
+    String? filter,
+    String? deviceId,
+  }) async {
+    final args = [
+      if (deviceId != null) '-s $deviceId',
+      'logcat',
+      if (filter != null) '-s $filter',
+    ];
+    return _stream(args.join(' '));
   }
 }
