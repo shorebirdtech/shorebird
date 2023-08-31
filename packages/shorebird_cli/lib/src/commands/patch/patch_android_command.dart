@@ -35,8 +35,8 @@ class PatchAndroidCommand extends ShorebirdCommand
     AndroidArchiveDiffer? archiveDiffer,
   })  : _archiveDiffer = archiveDiffer ?? AndroidArchiveDiffer(),
         _hashFn = hashFn ?? ((m) => sha256.convert(m).toString()),
-        _httpClient =
-            httpClient ?? retryingHttpClient(LoggingClient(httpClient: http.Client())) {
+        _httpClient = httpClient ??
+            retryingHttpClient(LoggingClient(httpClient: http.Client())) {
     argParser
       ..addOption(
         'target',
@@ -141,7 +141,8 @@ class PatchAndroidCommand extends ShorebirdCommand
       releaseVersion: releaseVersion,
     );
 
-    if (release.platformStatuses[ReleasePlatform.android] == ReleaseStatus.draft) {
+    if (release.platformStatuses[ReleasePlatform.android] ==
+        ReleaseStatus.draft) {
       logger.err('''
 Release $releaseVersion is in an incomplete state. It's possible that the original release was terminated or failed to complete.
 Please re-run the release command for this version or create a new release.''');
