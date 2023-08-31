@@ -42,6 +42,10 @@ class PatchIosCommand extends ShorebirdCommand
         'flavor',
         help: 'The product flavor to use when building the app.',
       )
+      ..addOption(
+        'release-version',
+        help: 'The version of the release (e.g. "1.0.0").',
+      )
       ..addFlag(
         'force',
         abbr: 'f',
@@ -136,7 +140,7 @@ class PatchIosCommand extends ShorebirdCommand
     }
     try {
       final ipa = _ipaReader.read(ipaPath);
-      releaseVersion = ipa.versionNumber;
+      releaseVersion = results['release-version'] as String? ?? ipa.versionNumber;
       detectReleaseVersionProgress.complete(
         'Detected release version $releaseVersion',
       );
