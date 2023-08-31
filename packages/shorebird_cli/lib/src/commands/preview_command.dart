@@ -26,6 +26,7 @@ class PreviewCommand extends ShorebirdCommand {
     argParser
       ..addOption(
         'device-id',
+        abbr: 'd',
         help: 'The ID of the device or simulator to preview the release on.',
       )
       ..addOption(
@@ -90,9 +91,19 @@ class PreviewCommand extends ShorebirdCommand {
       results['platform'] as String? ?? await promptForPlatform(release),
     );
 
+    final deviceId = results['device-id'] as String?;
+
     return switch (platform) {
-      ReleasePlatform.android => installAndLaunchAndroid(appId, release),
-      ReleasePlatform.ios => installAndLaunchIos(appId, release),
+      ReleasePlatform.android => installAndLaunchAndroid(
+          appId: appId,
+          release: release,
+          deviceId: deviceId,
+        ),
+      ReleasePlatform.ios => installAndLaunchIos(
+          appId: appId,
+          release: release,
+          deviceId: deviceId,
+        ),
     };
   }
 
@@ -126,7 +137,11 @@ class PreviewCommand extends ShorebirdCommand {
     return platform;
   }
 
-  Future<int> installAndLaunchAndroid(String appId, Release release) async {
+  Future<int> installAndLaunchAndroid({
+    required String appId,
+    required Release release,
+    String? deviceId,
+  }) async {
     const platform = ReleasePlatform.android;
     final aabPath = getArtifactPath(
       appId: appId,
@@ -184,7 +199,7 @@ class PreviewCommand extends ShorebirdCommand {
 
     final installApksProgress = logger.progress('Installing apks');
     try {
-      await bundletool.installApks(apks: apksPath);
+      await bundletool.installApks(apks: apksPath, deviceId: deviceId);
       installApksProgress.complete();
     } catch (error) {
       installApksProgress.fail('$error');
@@ -193,14 +208,14 @@ class PreviewCommand extends ShorebirdCommand {
 
     final startAppProgress = logger.progress('Starting app');
     try {
-      await adb.startApp(package);
+      await adb.startApp(package: package, deviceId: deviceId);
       startAppProgress.complete();
     } catch (error) {
       startAppProgress.fail('$error');
       return ExitCode.software.code;
     }
 
-    final process = await adb.logcat(filter: 'flutter');
+    final process = await adb.logcat(filter: 'flutter', deviceId: deviceId);
     process.stdout.listen((event) {
       logger.info(utf8.decode(event));
     });
@@ -211,7 +226,11 @@ class PreviewCommand extends ShorebirdCommand {
     return process.exitCode;
   }
 
-  Future<int> installAndLaunchIos(String appId, Release release) async {
+  Future<int> installAndLaunchIos({
+    required String appId,
+    required Release release,
+    String? deviceId,
+  }) async {
     const platform = ReleasePlatform.ios;
     final runnerPath = getArtifactPath(
       appId: appId,
@@ -242,7 +261,6 @@ class PreviewCommand extends ShorebirdCommand {
     }
 
     try {
-      final deviceId = results['device-id'] as String?;
       final exitCode = await iosDeploy.installAndLaunchApp(
         bundlePath: runnerPath,
         deviceId: deviceId,
