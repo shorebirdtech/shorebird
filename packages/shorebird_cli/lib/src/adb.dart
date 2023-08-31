@@ -33,7 +33,7 @@ class Adb {
     String? deviceId,
   }) async {
     final args = [
-      if (deviceId != null) '-s $deviceId',
+      if (deviceId != null) ...['-s', deviceId],
       'shell',
       'monkey',
       '-p $package',
@@ -50,9 +50,9 @@ class Adb {
     String? deviceId,
   }) async {
     final args = [
-      if (deviceId != null) '-s $deviceId',
+      if (deviceId != null) ...['-s', deviceId],
       'logcat',
-      if (filter != null) '-s $filter',
+      if (filter != null) ...['-s', filter],
     ];
     return _stream(args.join(' '));
   }
