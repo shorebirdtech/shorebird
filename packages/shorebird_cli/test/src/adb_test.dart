@@ -99,6 +99,22 @@ void main() {
           () => process.run(adbPath, 'shell monkey -p $package 1'.split(' ')),
         ).called(1);
       });
+
+      test('forwards deviceId when provided', () async {
+        const deviceId = '1234';
+        await expectLater(
+          runWithOverrides(
+            () => adb.startApp(package: package, deviceId: deviceId),
+          ),
+          completes,
+        );
+        verify(
+          () => process.run(
+            adbPath,
+            '-s $deviceId shell monkey -p $package 1'.split(' '),
+          ),
+        ).called(1);
+      });
     });
 
     group('logcat', () {
