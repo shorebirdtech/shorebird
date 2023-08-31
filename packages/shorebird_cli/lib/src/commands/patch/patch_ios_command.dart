@@ -140,7 +140,8 @@ class PatchIosCommand extends ShorebirdCommand
     }
     try {
       final ipa = _ipaReader.read(ipaPath);
-      releaseVersion = results['release-version'] as String? ?? ipa.versionNumber;
+      releaseVersion =
+          results['release-version'] as String? ?? ipa.versionNumber;
       detectReleaseVersionProgress.complete(
         'Detected release version $releaseVersion',
       );
