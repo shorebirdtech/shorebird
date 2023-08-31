@@ -566,6 +566,21 @@ Or change your Flutter version and try again using:
       ).called(1);
     });
 
+    test('prints provided release version when specified', () async {
+      when(() => argResults['release-version']).thenReturn('1.2.3+4');
+     final tempDir = setUpTempDir();
+      setUpTempArtifacts(tempDir);
+      final exitCode = await IOOverrides.runZoned(
+        () => runWithOverrides(command.run),
+        getCurrentDirectory: () => tempDir,
+      );
+
+      expect(exitCode, equals(ExitCode.success.code));
+      verify(
+        () => progress.complete('Detected release version 1.2.3+4'),
+      ).called(1);
+    });
+
     test('aborts when user opts out', () async {
       when(() => logger.confirm(any())).thenReturn(false);
       final tempDir = setUpTempDir();
