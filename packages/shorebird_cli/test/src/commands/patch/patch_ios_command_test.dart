@@ -247,7 +247,8 @@ flutter:
       when(() => argResults['arch']).thenReturn(arch);
       when(() => argResults['dry-run']).thenReturn(false);
       when(() => argResults['force']).thenReturn(false);
-      when(() => argResults['release-version']).thenReturn(release.version);
+      when(() => argResults['release-version'])
+          .thenReturn(argResults['release-version']);
       when(() => argResults.rest).thenReturn([]);
       when(() => auth.isAuthenticated).thenReturn(true);
       when(() => auth.client).thenReturn(httpClient);

@@ -295,7 +295,8 @@ flutter:
       when(() => argResults['channel']).thenReturn(channelName);
       when(() => argResults['dry-run']).thenReturn(false);
       when(() => argResults['force']).thenReturn(false);
-      when(() => argResults['release-version']).thenReturn(release.version);
+      when(() => argResults['release-version'])
+          .thenReturn(argResults['release-version']);
       when(() => auth.isAuthenticated).thenReturn(true);
       when(() => auth.client).thenReturn(httpClient);
       when(() => logger.progress(any())).thenReturn(progress);
