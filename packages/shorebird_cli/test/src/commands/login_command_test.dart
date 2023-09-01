@@ -80,7 +80,7 @@ void main() {
         () => logger.err('We could not find a Shorebird account for $email.'),
       ).called(1);
       verify(
-        () => logger.info(any(that: contains('shorebird account create'))),
+        () => logger.info(any(that: contains('console.shorebird.dev'))),
       ).called(1);
     });
 
