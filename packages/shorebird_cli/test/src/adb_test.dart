@@ -57,7 +57,7 @@ void main() {
       test('throws when unable to locate adb', () async {
         when(() => androidSdk.adbPath).thenReturn(null);
         await expectLater(
-          () => runWithOverrides(() => adb.startApp(package)),
+          () => runWithOverrides(() => adb.startApp(package: package)),
           throwsA(
             isA<Exception>().having(
               (e) => e.toString(),
@@ -79,7 +79,7 @@ void main() {
           ),
         );
         await expectLater(
-          () => runWithOverrides(() => adb.startApp(package)),
+          () => runWithOverrides(() => adb.startApp(package: package)),
           throwsA(
             isA<Exception>().having(
               (e) => e.toString(),
@@ -92,11 +92,27 @@ void main() {
 
       test('completes when process exits with 0', () async {
         await expectLater(
-          runWithOverrides(() => adb.startApp(package)),
+          runWithOverrides(() => adb.startApp(package: package)),
           completes,
         );
         verify(
           () => process.run(adbPath, 'shell monkey -p $package 1'.split(' ')),
+        ).called(1);
+      });
+
+      test('forwards deviceId when provided', () async {
+        const deviceId = '1234';
+        await expectLater(
+          runWithOverrides(
+            () => adb.startApp(package: package, deviceId: deviceId),
+          ),
+          completes,
+        );
+        verify(
+          () => process.run(
+            adbPath,
+            '-s $deviceId shell monkey -p $package 1'.split(' '),
+          ),
         ).called(1);
       });
     });
@@ -146,6 +162,19 @@ void main() {
         verify(
           () => process.start(adbPath, ['logcat', '-s', filter]),
         ).called(1);
+      });
+
+      test('forwards device-id if provided', () async {
+        const deviceId = '1234';
+        final Process logcatProcess = _MockProcess();
+        when(() => process.start(any(), any())).thenAnswer((invocation) async {
+          final executable = invocation.positionalArguments[0] as String;
+          if (executable == adbPath) return logcatProcess;
+          fail('Unexpected executable: $executable');
+        });
+        await runWithOverrides(() => adb.logcat(deviceId: deviceId));
+        verify(() => process.start(adbPath, ['-s', deviceId, 'logcat']))
+            .called(1);
       });
     });
   });

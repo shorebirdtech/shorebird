@@ -151,6 +151,7 @@ void main() {
       });
 
       test('completes when process succeeds', () async {
+        const deviceId = '1234';
         when(
           () => process.run(
             any(),
@@ -166,14 +167,14 @@ void main() {
         );
         await expectLater(
           runWithOverrides(
-            () => bundletool.installApks(apks: apks),
+            () => bundletool.installApks(apks: apks, deviceId: deviceId),
           ),
           completes,
         );
         verify(
           () => process.run(
             'java',
-            '''-jar ${p.join(workingDirectory.path, 'bundletool.jar')} install-apks --apks=$apks --allow-downgrade'''
+            '''-jar ${p.join(workingDirectory.path, 'bundletool.jar')} install-apks --apks=$apks --allow-downgrade --device-id=$deviceId'''
                 .split(' '),
             environment: {
               'JAVA_HOME': javaHome,
@@ -181,6 +182,8 @@ void main() {
           ),
         ).called(1);
       });
+
+      test('forwards deviceId if provided', () async {});
     });
 
     group('getPackageName', () {

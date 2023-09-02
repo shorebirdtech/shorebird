@@ -26,13 +26,14 @@ class LoginCommand extends ShorebirdCommand {
         );
       return ExitCode.success.code;
     } on UserNotFoundException catch (error) {
+      final consoleUri = Uri.https('console.shorebird.dev');
       logger
         ..err(
           '''
 We could not find a Shorebird account for ${error.email}.''',
         )
         ..info(
-          """If you have not yet created an account, you can do so by running "${lightCyan.wrap('shorebird account create')}". If you believe this is an error, please reach out to us via Discord, we're happy to help!""",
+          """If you have not yet created an account, you can do so at "${link(uri: consoleUri)}". If you believe this is an error, please reach out to us via Discord, we're happy to help!""",
         );
       return ExitCode.software.code;
     } catch (error) {

@@ -51,8 +51,17 @@ class Bundletool {
   /// e.g. `bundletool install-apks --apks=/MyApp/my_app.apks --allow-downgrade`
   ///
   /// https://developer.android.com/tools/bundletool#deploy_with_bundletool
-  Future<void> installApks({required String apks}) async {
-    final result = await _exec('install-apks --apks=$apks --allow-downgrade');
+  Future<void> installApks({
+    required String apks,
+    String? deviceId,
+  }) async {
+    final args = [
+      'install-apks',
+      '--apks=$apks',
+      '--allow-downgrade',
+      if (deviceId != null) '--device-id=$deviceId',
+    ];
+    final result = await _exec(args.join(' '));
     if (result.exitCode != 0) {
       throw Exception('Failed to install apks: ${result.stderr}');
     }
