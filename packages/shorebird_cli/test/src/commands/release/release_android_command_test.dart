@@ -347,6 +347,17 @@ void main() {
     test('succeeds when release is successful', () async {
       final exitCode = await runWithOverrides(command.run);
       verify(() => logger.success('\n✅ Published Release!')).called(1);
+      // Verify info message does not include apk instructions.
+      verify(
+        () => logger.info('''
+
+Your next step is to upload the app bundle to the Play Store:
+${lightCyan.wrap('build/app/outputs/bundle/release/app-release.aab')}
+
+For information on uploading to the Play Store, see:
+${link(uri: Uri.parse('https://support.google.com/googleplay/android-developer/answer/9859152?hl=en'))}
+'''),
+      ).called(1);
       verify(
         () => codePushClientWrapper.createAndroidReleaseArtifacts(
           appId: appId,
@@ -371,6 +382,20 @@ void main() {
       when(() => argResults['artifact']).thenReturn('apk');
       final exitCode = await runWithOverrides(command.run);
       verify(() => logger.success('\n✅ Published Release!')).called(1);
+      // Verify info message does include apk instructions.
+      verify(
+        () => logger.info('''
+
+Your next step is to upload the app bundle to the Play Store:
+${lightCyan.wrap('build/app/outputs/bundle/release/app-release.aab')}
+
+Or distribute the apk:
+${lightCyan.wrap('build/app/outputs/apk/release/app-release.apk')}
+
+For information on uploading to the Play Store, see:
+${link(uri: Uri.parse('https://support.google.com/googleplay/android-developer/answer/9859152?hl=en'))}
+'''),
+      ).called(1);
       verify(
         () => codePushClientWrapper.createAndroidReleaseArtifacts(
           appId: appId,

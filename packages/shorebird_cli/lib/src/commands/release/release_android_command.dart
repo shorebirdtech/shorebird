@@ -194,14 +194,24 @@ ${summary.join('\n')}
       status: ReleaseStatus.active,
     );
 
+    // The extra newline before and no newline after is intentional.  See
+    // unit tests for testing of output.
+    final apkText = generateApk
+        ? '''
+
+Or distribute the apk:
+${lightCyan.wrap(apkPath)}
+'''
+        : '';
+
     logger
       ..success('\n✅ Published Release!')
       ..info('''
 
-Your next step is to upload the ${generateApk ? 'apk' : 'app bundle'} to the Play Store.
-${lightCyan.wrap(generateApk ? apkPath : bundlePath)}
-
-See the following link for more information:    
+Your next step is to upload the app bundle to the Play Store:
+${lightCyan.wrap(bundlePath)}
+$apkText
+For information on uploading to the Play Store, see:
 ${link(uri: Uri.parse('https://support.google.com/googleplay/android-developer/answer/9859152?hl=en'))}
 ''');
 
