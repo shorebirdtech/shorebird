@@ -680,6 +680,8 @@ aar artifact already exists, continuing...''',
         );
 
     await promotePatch(appId: appId, patchId: patch.id, channel: channel);
+
+    logger.success('\n✅ Published Patch ${patch.number}!');
   }
 
   /// Prints an appropriate error message for the given error and exits with

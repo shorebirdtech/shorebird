@@ -281,7 +281,6 @@ ${summary.join('\n')}
       patchArtifactBundles: patchArtifactBundles,
     );
 
-    logger.success('\n✅ Published Patch!');
     return ExitCode.success.code;
   }
 

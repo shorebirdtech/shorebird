@@ -835,7 +835,15 @@ Or change your Flutter version and try again using:
           ),
         ),
       ).called(1);
-      verify(() => logger.success('\n✅ Published Patch!')).called(1);
+      verify(
+        () => codePushClientWrapper.publishPatch(
+          appId: any(named: 'appId'),
+          releaseId: any(named: 'releaseId'),
+          platform: any(named: 'platform'),
+          channelName: any(named: 'channelName'),
+          patchArtifactBundles: any(named: 'patchArtifactBundles'),
+        ),
+      ).called(1);
       expect(exitCode, ExitCode.success.code);
     });
 
@@ -878,8 +886,16 @@ flavors:
         () => runWithOverrides(command.run),
         getCurrentDirectory: () => tempDir,
       );
-      verify(() => logger.success('\n✅ Published Patch!')).called(1);
       expect(exitCode, ExitCode.success.code);
+      verify(
+        () => codePushClientWrapper.publishPatch(
+          appId: any(named: 'appId'),
+          releaseId: any(named: 'releaseId'),
+          platform: any(named: 'platform'),
+          channelName: any(named: 'channelName'),
+          patchArtifactBundles: any(named: 'patchArtifactBundles'),
+        ),
+      ).called(1);
     });
 
     test('succeeds when patch is successful using custom base_url', () async {
