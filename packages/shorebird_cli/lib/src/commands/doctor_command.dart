@@ -56,7 +56,7 @@ Engine • revision ${shorebirdEnv.shorebirdEngineRevision}''',
     );
 
     if (verbose) {
-      const notDetected = 'not detected';
+      final notDetected = red.wrap('not detected');
       output.writeln('''
 
 Android Toolchain
