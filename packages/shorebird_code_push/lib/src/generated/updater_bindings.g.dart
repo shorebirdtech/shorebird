@@ -295,8 +295,9 @@ class UpdaterBindings {
   }
 
   late final _callocPtr = _lookup<
-      ffi.NativeFunction<
-          ffi.Pointer<ffi.Void> Function(ffi.Size, ffi.Size)>>('calloc');
+          ffi
+          .NativeFunction<ffi.Pointer<ffi.Void> Function(ffi.Size, ffi.Size)>>(
+      'calloc');
   late final _calloc =
       _callocPtr.asFunction<ffi.Pointer<ffi.Void> Function(int, int)>();
 
@@ -356,8 +357,9 @@ class UpdaterBindings {
   }
 
   late final _aligned_allocPtr = _lookup<
-      ffi.NativeFunction<
-          ffi.Pointer<ffi.Void> Function(ffi.Size, ffi.Size)>>('aligned_alloc');
+          ffi
+          .NativeFunction<ffi.Pointer<ffi.Void> Function(ffi.Size, ffi.Size)>>(
+      'aligned_alloc');
   late final _aligned_alloc =
       _aligned_allocPtr.asFunction<ffi.Pointer<ffi.Void> Function(int, int)>();
 
@@ -614,8 +616,9 @@ class UpdaterBindings {
   }
 
   late final _mblenPtr = _lookup<
-      ffi.NativeFunction<
-          ffi.Int Function(ffi.Pointer<ffi.Char>, ffi.Size)>>('mblen');
+          ffi
+          .NativeFunction<ffi.Int Function(ffi.Pointer<ffi.Char>, ffi.Size)>>(
+      'mblen');
   late final _mblen =
       _mblenPtr.asFunction<int Function(ffi.Pointer<ffi.Char>, int)>();
 
@@ -873,8 +876,9 @@ class UpdaterBindings {
   }
 
   late final _wctombPtr = _lookup<
-      ffi.NativeFunction<
-          ffi.Int Function(ffi.Pointer<ffi.Char>, ffi.WChar)>>('wctomb');
+          ffi
+          .NativeFunction<ffi.Int Function(ffi.Pointer<ffi.Char>, ffi.WChar)>>(
+      'wctomb');
   late final _wctomb =
       _wctombPtr.asFunction<int Function(ffi.Pointer<ffi.Char>, int)>();
 
@@ -942,8 +946,9 @@ class UpdaterBindings {
   }
 
   late final _erand48Ptr = _lookup<
-      ffi.NativeFunction<
-          ffi.Double Function(ffi.Pointer<ffi.UnsignedShort>)>>('erand48');
+          ffi
+          .NativeFunction<ffi.Double Function(ffi.Pointer<ffi.UnsignedShort>)>>(
+      'erand48');
   late final _erand48 =
       _erand48Ptr.asFunction<double Function(ffi.Pointer<ffi.UnsignedShort>)>();
 
@@ -1052,8 +1057,9 @@ class UpdaterBindings {
   }
 
   late final _jrand48Ptr = _lookup<
-      ffi.NativeFunction<
-          ffi.Long Function(ffi.Pointer<ffi.UnsignedShort>)>>('jrand48');
+          ffi
+          .NativeFunction<ffi.Long Function(ffi.Pointer<ffi.UnsignedShort>)>>(
+      'jrand48');
   late final _jrand48 =
       _jrand48Ptr.asFunction<int Function(ffi.Pointer<ffi.UnsignedShort>)>();
 
@@ -1079,8 +1085,9 @@ class UpdaterBindings {
   }
 
   late final _lcong48Ptr = _lookup<
-      ffi.NativeFunction<
-          ffi.Void Function(ffi.Pointer<ffi.UnsignedShort>)>>('lcong48');
+          ffi
+          .NativeFunction<ffi.Void Function(ffi.Pointer<ffi.UnsignedShort>)>>(
+      'lcong48');
   late final _lcong48 =
       _lcong48Ptr.asFunction<void Function(ffi.Pointer<ffi.UnsignedShort>)>();
 
@@ -1137,8 +1144,9 @@ class UpdaterBindings {
   }
 
   late final _nrand48Ptr = _lookup<
-      ffi.NativeFunction<
-          ffi.Long Function(ffi.Pointer<ffi.UnsignedShort>)>>('nrand48');
+          ffi
+          .NativeFunction<ffi.Long Function(ffi.Pointer<ffi.UnsignedShort>)>>(
+      'nrand48');
   late final _nrand48 =
       _nrand48Ptr.asFunction<int Function(ffi.Pointer<ffi.UnsignedShort>)>();
 
@@ -1391,9 +1399,9 @@ class UpdaterBindings {
   }
 
   late final _arc4random_bufPtr = _lookup<
-      ffi.NativeFunction<
-          ffi.Void Function(
-              ffi.Pointer<ffi.Void>, ffi.Size)>>('arc4random_buf');
+          ffi
+          .NativeFunction<ffi.Void Function(ffi.Pointer<ffi.Void>, ffi.Size)>>(
+      'arc4random_buf');
   late final _arc4random_buf = _arc4random_bufPtr
       .asFunction<void Function(ffi.Pointer<ffi.Void>, int)>();
 
@@ -1677,8 +1685,9 @@ class UpdaterBindings {
   }
 
   late final _getloadavgPtr = _lookup<
-      ffi.NativeFunction<
-          ffi.Int Function(ffi.Pointer<ffi.Double>, ffi.Int)>>('getloadavg');
+          ffi
+          .NativeFunction<ffi.Int Function(ffi.Pointer<ffi.Double>, ffi.Int)>>(
+      'getloadavg');
   late final _getloadavg =
       _getloadavgPtr.asFunction<int Function(ffi.Pointer<ffi.Double>, int)>();
 
@@ -2228,7 +2237,7 @@ final class __mbstate_t extends ffi.Union {
 
 final class __darwin_pthread_handler_rec extends ffi.Struct {
   external ffi
-          .Pointer<ffi.NativeFunction<ffi.Void Function(ffi.Pointer<ffi.Void>)>>
+      .Pointer<ffi.NativeFunction<ffi.Void Function(ffi.Pointer<ffi.Void>)>>
       __routine;
 
   external ffi.Pointer<ffi.Void> __arg;

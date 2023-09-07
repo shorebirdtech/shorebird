@@ -1,3 +1,9 @@
+# 1.2.0
+- break: `package:shorebird_code_push/shorebird_code_push_io.dart` and
+  `package:shorebird_code_push/shorebird_code_push_web.dart` have moved into
+  `src/` to discourage accidental direct import of these files.  Please import
+  `package:shorebird_code_push/shorebird_code_push.dart` instead.
+
 # 1.1.0
 
 - feat: introduce `isShorebirdAvailable` to determine whether the Shorebird Engine is detected

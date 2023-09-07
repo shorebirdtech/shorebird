@@ -1,7 +1,7 @@
 import 'dart:async';
 
 import 'package:mocktail/mocktail.dart';
-import 'package:shorebird_code_push/shorebird_code_push_io.dart';
+import 'package:shorebird_code_push/src/shorebird_code_push_io.dart';
 import 'package:shorebird_code_push/src/updater.dart';
 import 'package:test/test.dart';
 
