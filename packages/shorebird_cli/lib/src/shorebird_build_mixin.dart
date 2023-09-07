@@ -27,6 +27,10 @@ class ArchMetadata {
   final String enginePath;
 }
 
+/// Used to wrap code that invokes `flutter build` with Shorebird's fork of
+/// Flutter.
+typedef ShorebirdBuildCommand = Future<void> Function();
+
 /// {@template build_exception}
 /// Thrown when a build fails.
 /// {@endtemplate}
@@ -83,61 +87,61 @@ mixin ShorebirdBuildMixin on ShorebirdCommand {
   }
 
   Future<void> buildAppBundle({String? flavor, String? target}) async {
-    const executable = 'flutter';
-    final arguments = [
-      'build',
-      'appbundle',
-      '--release',
-      if (flavor != null) '--flavor=$flavor',
-      if (target != null) '--target=$target',
-      ...results.rest,
-    ];
+    return _runShorebirdBuildCommand(() async {
+      const executable = 'flutter';
+      final arguments = [
+        'build',
+        'appbundle',
+        '--release',
+        if (flavor != null) '--flavor=$flavor',
+        if (target != null) '--target=$target',
+        ...results.rest,
+      ];
 
-    final result = await process.run(
-      executable,
-      arguments,
-      runInShell: true,
-    );
-
-    if (result.exitCode != ExitCode.success.code) {
-      throw ProcessException(
-        'flutter',
+      final result = await process.run(
+        executable,
         arguments,
-        result.stderr.toString(),
-        result.exitCode,
+        runInShell: true,
       );
-    }
 
-    await _systemFlutterPubGet();
+      if (result.exitCode != ExitCode.success.code) {
+        throw ProcessException(
+          'flutter',
+          arguments,
+          result.stderr.toString(),
+          result.exitCode,
+        );
+      }
+    });
   }
 
   Future<void> buildAar({required String buildNumber}) async {
-    const executable = 'flutter';
-    final arguments = [
-      'build',
-      'aar',
-      '--no-debug',
-      '--no-profile',
-      '--build-number=$buildNumber',
-      ...results.rest,
-    ];
+    return _runShorebirdBuildCommand(() async {
+      const executable = 'flutter';
+      final arguments = [
+        'build',
+        'aar',
+        '--no-debug',
+        '--no-profile',
+        '--build-number=$buildNumber',
+        ...results.rest,
+      ];
 
-    final result = await process.run(
-      executable,
-      arguments,
-      runInShell: true,
-    );
-
-    if (result.exitCode != ExitCode.success.code) {
-      throw ProcessException(
-        'flutter',
+      final result = await process.run(
+        executable,
         arguments,
-        result.stderr.toString(),
-        result.exitCode,
+        runInShell: true,
       );
-    }
 
-    await _systemFlutterPubGet();
+      if (result.exitCode != ExitCode.success.code) {
+        throw ProcessException(
+          'flutter',
+          arguments,
+          result.stderr.toString(),
+          result.exitCode,
+        );
+      }
+    });
   }
 
   Future<void> buildApk({
@@ -145,33 +149,33 @@ mixin ShorebirdBuildMixin on ShorebirdCommand {
     String? target,
     bool splitPerAbi = false,
   }) async {
-    const executable = 'flutter';
-    final arguments = [
-      'build',
-      'apk',
-      '--release',
-      if (flavor != null) '--flavor=$flavor',
-      if (target != null) '--target=$target',
-      if (splitPerAbi) '--split-per-abi',
-      ...results.rest,
-    ];
+    return _runShorebirdBuildCommand(() async {
+      const executable = 'flutter';
+      final arguments = [
+        'build',
+        'apk',
+        '--release',
+        if (flavor != null) '--flavor=$flavor',
+        if (target != null) '--target=$target',
+        if (splitPerAbi) '--split-per-abi',
+        ...results.rest,
+      ];
 
-    final result = await process.run(
-      executable,
-      arguments,
-      runInShell: true,
-    );
-
-    if (result.exitCode != ExitCode.success.code) {
-      throw ProcessException(
-        'flutter',
+      final result = await process.run(
+        executable,
         arguments,
-        result.stderr.toString(),
-        result.exitCode,
+        runInShell: true,
       );
-    }
 
-    await _systemFlutterPubGet();
+      if (result.exitCode != ExitCode.success.code) {
+        throw ProcessException(
+          'flutter',
+          arguments,
+          result.stderr.toString(),
+          result.exitCode,
+        );
+      }
+    });
   }
 
   Future<void> buildIpa({
@@ -179,74 +183,86 @@ mixin ShorebirdBuildMixin on ShorebirdCommand {
     String? target,
     bool codesign = true,
   }) async {
-    const executable = 'flutter';
-    final exportPlistFile = _createExportOptionsPlist();
-    final arguments = [
-      'build',
-      'ipa',
-      '--release',
-      '--export-options-plist=${exportPlistFile.path}',
-      if (flavor != null) '--flavor=$flavor',
-      if (target != null) '--target=$target',
-      if (!codesign) '--no-codesign',
-      ...results.rest,
-    ];
+    return _runShorebirdBuildCommand(() async {
+      const executable = 'flutter';
+      final exportPlistFile = _createExportOptionsPlist();
+      final arguments = [
+        'build',
+        'ipa',
+        '--release',
+        '--export-options-plist=${exportPlistFile.path}',
+        if (flavor != null) '--flavor=$flavor',
+        if (target != null) '--target=$target',
+        if (!codesign) '--no-codesign',
+        ...results.rest,
+      ];
 
-    final result = await process.run(
-      executable,
-      arguments,
-      runInShell: true,
-    );
-
-    if (result.exitCode != ExitCode.success.code) {
-      throw ProcessException(
-        'flutter',
+      final result = await process.run(
+        executable,
         arguments,
-        result.stderr.toString(),
-        result.exitCode,
-      );
-    }
-
-    await _systemFlutterPubGet();
-
-    if (result.stderr
-        .toString()
-        .contains('Encountered error while creating the IPA')) {
-      final errorMessage = _failedToCreateIpaErrorMessage(
-        stderr: result.stderr.toString(),
+        runInShell: true,
       );
 
-      throw BuildException(errorMessage);
-    }
+      if (result.exitCode != ExitCode.success.code) {
+        throw ProcessException(
+          'flutter',
+          arguments,
+          result.stderr.toString(),
+          result.exitCode,
+        );
+      }
+
+      if (result.stderr
+          .toString()
+          .contains('Encountered error while creating the IPA')) {
+        final errorMessage = _failedToCreateIpaErrorMessage(
+          stderr: result.stderr.toString(),
+        );
+
+        throw BuildException(errorMessage);
+      }
+    });
   }
 
   /// Builds a release iOS framework (.xcframework) for the current project.
   Future<void> buildIosFramework() async {
-    const executable = 'flutter';
-    final arguments = [
-      'build',
-      'ios-framework',
-      '--no-debug',
-      '--no-profile',
-      ...results.rest,
-    ];
+    return _runShorebirdBuildCommand(() async {
+      const executable = 'flutter';
+      final arguments = [
+        'build',
+        'ios-framework',
+        '--no-debug',
+        '--no-profile',
+        ...results.rest,
+      ];
 
-    final result = await process.run(
-      executable,
-      arguments,
-      runInShell: true,
-    );
-
-    if (result.exitCode != ExitCode.success.code) {
-      throw ProcessException(
-        'flutter',
+      final result = await process.run(
+        executable,
         arguments,
-        result.stderr.toString(),
-        result.exitCode,
+        runInShell: true,
       );
-    }
 
-    await _systemFlutterPubGet();
+      if (result.exitCode != ExitCode.success.code) {
+        throw ProcessException(
+          'flutter',
+          arguments,
+          result.stderr.toString(),
+          result.exitCode,
+        );
+      }
+    });
+  }
+
+  /// A wrapper around [command] (which runs a `flutter build` command with
+  /// Shorebird's fork of Flutter) with a try/finally that runs
+  /// `flutter pub get` with the system installation of Flutter to reset
+  /// `.dart_tool/package_config.json` to the system Flutter.
+  Future<void> _runShorebirdBuildCommand(ShorebirdBuildCommand command) async {
+    try {
+      await command();
+    } finally {
+      await _systemFlutterPubGet();
+    }
   }
 
   /// This is a hack to reset `.dart_tool/package_config.json` to point to the

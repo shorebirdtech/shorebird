@@ -477,6 +477,22 @@ ${link(uri: Uri.parse('https://support.google.com/googleplay/android-developer/a
       ).called(1);
     });
 
+    test('runs flutter pub get with system flutter if build fails', () async {
+      when(() => flutterBuildProcessResult.exitCode).thenReturn(1);
+      when(() => flutterBuildProcessResult.stderr).thenReturn('oops');
+
+      await runWithOverrides(command.run);
+
+      verify(
+        () => shorebirdProcess.run(
+          'flutter',
+          ['--no-version-check', 'pub', 'get', '--offline'],
+          runInShell: any(named: 'runInShell'),
+          useVendedFlutter: false,
+        ),
+      ).called(1);
+    });
+
     test('prints error message if system flutter pub get fails', () async {
       when(() => flutterPubGetProcessResult.exitCode).thenReturn(1);
 
