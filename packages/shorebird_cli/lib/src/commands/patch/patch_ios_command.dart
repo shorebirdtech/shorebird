@@ -156,7 +156,7 @@ The release you are trying to patch was built with a different version of Flutte
 Release Flutter Revision: ${release.flutterRevision}
 Current Flutter Revision: $originalFlutterRevision''');
 
-      final flutterVersionProgress = logger.progress(
+      var flutterVersionProgress = logger.progress(
         'Switching to Flutter revision ${release.flutterRevision}',
       );
       await shorebirdFlutter.useRevision(revision: release.flutterRevision);
@@ -173,10 +173,11 @@ Current Flutter Revision: $originalFlutterRevision''');
         return ExitCode.software.code;
       }
 
-      logger.info(
+      flutterVersionProgress = logger.progress(
         'Switching back to original Flutter revision $originalFlutterRevision',
       );
       await shorebirdFlutter.useRevision(revision: originalFlutterRevision);
+      flutterVersionProgress.complete();
     }
 
     final releaseArtifact = await codePushClientWrapper.getReleaseArtifact(
