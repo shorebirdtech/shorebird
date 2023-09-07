@@ -255,7 +255,6 @@ ${summary.join('\n')}
       },
     );
 
-    logger.success('\n✅ Published Patch!');
     return ExitCode.success.code;
   }
 }

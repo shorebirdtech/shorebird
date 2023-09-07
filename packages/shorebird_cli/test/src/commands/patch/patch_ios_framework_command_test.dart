@@ -767,7 +767,15 @@ Please re-run the release command for this version or create a new release.'''),
           ),
         ),
       ).called(1);
-      verify(() => logger.success('\n✅ Published Patch!')).called(1);
+      verify(
+        () => codePushClientWrapper.publishPatch(
+          appId: any(named: 'appId'),
+          releaseId: any(named: 'releaseId'),
+          platform: any(named: 'platform'),
+          channelName: any(named: 'channelName'),
+          patchArtifactBundles: any(named: 'patchArtifactBundles'),
+        ),
+      ).called(1);
       expect(exitCode, ExitCode.success.code);
     });
 

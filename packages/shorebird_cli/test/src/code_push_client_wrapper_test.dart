@@ -2043,6 +2043,22 @@ Please bump your version number and try again.''',
             ),
           ).called(1);
         });
+
+        test('prints patch number on success', () async {
+          await runWithOverrides(
+            () => codePushClientWrapper.publishPatch(
+              appId: appId,
+              releaseId: releaseId,
+              platform: releasePlatform,
+              channelName: channelName,
+              patchArtifactBundles: patchArtifactBundles,
+            ),
+          );
+
+          verify(
+            () => logger.success(any(that: contains('Published Patch 2!'))),
+          ).called(1);
+        });
       });
     });
   });

@@ -832,7 +832,6 @@ Please re-run the release command for this version or create a new release.'''),
           ),
         ),
       ).called(1);
-      verify(() => logger.success('\n✅ Published Patch!')).called(1);
 
       verify(() => codePushClientWrapper.getApp(appId: appId)).called(1);
       verify(() => codePushClientWrapper.getReleases(appId: appId)).called(1);
