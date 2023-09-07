@@ -103,12 +103,7 @@ class PatchIosCommand extends ShorebirdCommand
 
     try {
       await _buildPatch();
-    } on ProcessException {
-      return ExitCode.software.code;
-    } on BuildException catch (error) {
-      logger.err(error.message);
-      return ExitCode.software.code;
-    } catch (error) {
+    } catch (_) {
       return ExitCode.software.code;
     }
 
@@ -164,12 +159,7 @@ Current Flutter Revision: $originalFlutterRevision''');
 
       try {
         await _buildPatch();
-      } on ProcessException {
-        return ExitCode.software.code;
-      } on BuildException catch (error) {
-        logger.err(error.message);
-        return ExitCode.software.code;
-      } catch (error) {
+      } catch (_) {
         return ExitCode.software.code;
       }
 
@@ -270,8 +260,9 @@ ${summary.join('\n')}
     } on ProcessException catch (error) {
       buildProgress.fail('Failed to build: ${error.message}');
       rethrow;
-    } on BuildException {
+    } on BuildException catch (error) {
       buildProgress.fail('Failed to build IPA');
+      logger.err(error.message);
       rethrow;
     }
 
