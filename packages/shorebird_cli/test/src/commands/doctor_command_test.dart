@@ -134,6 +134,7 @@ Engine • revision $shorebirdEngineRevision
         when(() => argResults['verbose']).thenReturn(true);
         await runWithOverrides(command.run);
 
+        final notDetectedText = red.wrap('not detected');
         verify(
           () => logger.info('''
 
@@ -142,10 +143,10 @@ Flutter • revision ${shorebirdEnv.flutterRevision}
 Engine • revision $shorebirdEngineRevision
 
 Android Toolchain
-  • Android Studio: not detected
-  • Android SDK: not detected
-  • ADB: not detected
-  • JAVA_HOME: not detected'''),
+  • Android Studio: $notDetectedText
+  • Android SDK: $notDetectedText
+  • ADB: $notDetectedText
+  • JAVA_HOME: $notDetectedText'''),
         ).called(1);
       });
 
