@@ -3,31 +3,22 @@ import 'package:test/test.dart';
 
 void main() {
   group(PatchEvent, () {
-    group(PatchInstallEvent, () {
+    group(PatchEvent, () {
       test('can be (de)serialized', () {
-        late PatchEvent event;
-        event = PatchInstallEvent(
+        const event = PatchEvent(
           clientId: 'some-client-id',
           appId: 'some-app-id',
           patchNumber: 2,
           arch: 'arm64',
           platform: ReleasePlatform.android,
           releaseVersion: '1.0.0',
+          identifier: '__patch_install__',
         );
         expect(
           event.toJson(),
           equals(
             PatchEvent.fromJson(event.toJson()).toJson(),
           ),
-        );
-      });
-    });
-
-    group('unrecognized type', () {
-      test('throws ArgumentError if type is unrecognized', () {
-        expect(
-          () => PatchEvent.fromJson(<String, dynamic>{'type': 'foo'}),
-          throwsArgumentError,
         );
       });
     });
