@@ -38,6 +38,13 @@ The version of the associated release (e.g. "1.0.0"). This should be the version
 of the iOS app that is using this module.''',
       )
       ..addFlag(
+        'no-build',
+        help:
+            'Looks for an existing app.dill instead of running a build command',
+        hide: true,
+        negatable: false,
+      )
+      ..addFlag(
         'force',
         abbr: 'f',
         help: 'Patch without confirmation if there are no errors.',
@@ -137,21 +144,24 @@ Please re-run the release command for this version or create a new release.''');
     }
 
     final buildProgress = logger.progress('Building patch');
-    try {
-      await runScoped(
-        buildIosFramework,
-        values: {
-          shorebirdEnvRef.overrideWith(
-            () => ShorebirdEnv(
-              flutterRevisionOverride: release.flutterRevision,
+    final shouldBuild = results['no-build'] != true;
+    if (shouldBuild) {
+      try {
+        await runScoped(
+          buildIosFramework,
+          values: {
+            shorebirdEnvRef.overrideWith(
+              () => ShorebirdEnv(
+                flutterRevisionOverride: release.flutterRevision,
+              ),
             ),
-          ),
-        },
-      );
-      buildProgress.complete();
-    } on ProcessException catch (error) {
-      buildProgress.fail('Failed to build: ${error.message}');
-      return ExitCode.software.code;
+          },
+        );
+        buildProgress.complete();
+      } on ProcessException catch (error) {
+        buildProgress.fail('Failed to build: ${error.message}');
+        return ExitCode.software.code;
+      }
     }
 
     final File aotFile;
@@ -165,37 +175,39 @@ Please re-run the release command for this version or create a new release.''');
 
     buildProgress.complete();
 
-    const zippedFrameworkFileName =
-        '${ShorebirdArtifactMixin.appXcframeworkName}.zip';
-    final tempDir = Directory.systemTemp.createTempSync();
-    final zippedFrameworkPath = p.join(
-      tempDir.path,
-      zippedFrameworkFileName,
-    );
-    ZipFileEncoder().zipDirectory(
-      Directory(getAppXcframeworkPath()),
-      filename: zippedFrameworkPath,
-    );
-
-    final releaseArtifact = await codePushClientWrapper.getReleaseArtifact(
-      appId: appId,
-      releaseId: release.id,
-      arch: 'xcframework',
-      platform: ReleasePlatform.ios,
-    );
-
-    try {
-      await patchDiffChecker.confirmUnpatchableDiffsIfNecessary(
-        localArtifact: File(zippedFrameworkPath),
-        releaseArtifactUrl: Uri.parse(releaseArtifact.url),
-        archiveDiffer: _archiveDiffer,
-        force: force,
+    if (shouldBuild) {
+      const zippedFrameworkFileName =
+          '${ShorebirdArtifactMixin.appXcframeworkName}.zip';
+      final tempDir = Directory.systemTemp.createTempSync();
+      final zippedFrameworkPath = p.join(
+        tempDir.path,
+        zippedFrameworkFileName,
       );
-    } on UserCancelledException {
-      return ExitCode.success.code;
-    } on UnpatchableChangeException {
-      logger.info('Exiting.');
-      return ExitCode.software.code;
+      ZipFileEncoder().zipDirectory(
+        Directory(getAppXcframeworkPath()),
+        filename: zippedFrameworkPath,
+      );
+
+      final releaseArtifact = await codePushClientWrapper.getReleaseArtifact(
+        appId: appId,
+        releaseId: release.id,
+        arch: 'xcframework',
+        platform: ReleasePlatform.ios,
+      );
+
+      try {
+        await patchDiffChecker.confirmUnpatchableDiffsIfNecessary(
+          localArtifact: File(zippedFrameworkPath),
+          releaseArtifactUrl: Uri.parse(releaseArtifact.url),
+          archiveDiffer: _archiveDiffer,
+          force: force,
+        );
+      } on UserCancelledException {
+        return ExitCode.success.code;
+      } on UnpatchableChangeException {
+        logger.info('Exiting.');
+        return ExitCode.software.code;
+      }
     }
 
     if (dryRun) {

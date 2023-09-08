@@ -25,6 +25,13 @@ of the iOS app that is using this module.''',
         mandatory: true,
       )
       ..addFlag(
+        'no-build',
+        help:
+            'Looks for an existing app.dill instead of running a build command',
+        hide: true,
+        negatable: false,
+      )
+      ..addFlag(
         'force',
         abbr: 'f',
         help: 'Release without confirmation if there are no errors.',
@@ -71,16 +78,16 @@ of the iOS app that is using this module.''',
       );
     }
 
-    final buildProgress = logger.progress('Building iOS framework');
-
-    try {
-      await buildIosFramework();
-    } catch (error) {
-      buildProgress.fail('Failed to build iOS framework: $error');
-      return ExitCode.software.code;
+    if (results['no-build'] != true) {
+      final buildProgress = logger.progress('Building iOS framework');
+      try {
+        await buildIosFramework();
+      } catch (error) {
+        buildProgress.fail('Failed to build iOS framework: $error');
+        return ExitCode.software.code;
+      }
+      buildProgress.complete();
     }
-
-    buildProgress.complete();
 
     final summary = [
       '''📱 App: ${lightCyan.wrap(app.displayName)} ${lightCyan.wrap('($appId)')}''',
