@@ -28,7 +28,7 @@ class LoginCiCommand extends ShorebirdCommand {
 We could not find a Shorebird account for ${error.email}.''',
         )
         ..info(
-          """If you have not yet created an account, you can go to "${lightCyan.wrap('https://console.shorebird.dev')}" create on. If you believe this is an error, please reach out to us via Discord, we're happy to help!""",
+          '''If you have not yet created an account, go to "${link(uri: Uri.parse('https://console.shorebird.dev'))}" to create one. If you believe this is an error, please reach out to us via Discord, we're happy to help!''',
         );
       return ExitCode.software.code;
     } catch (error) {
