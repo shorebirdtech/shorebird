@@ -532,6 +532,30 @@ Please re-run the release command for this version or create a new release.'''),
       ).called(1);
     });
 
+    test(
+      'exits with code 70 if build fails after switching flutter versions',
+      () async {
+        const otherRevision = 'other-revision';
+        when(() => shorebirdEnv.flutterRevision).thenReturn(otherRevision);
+        when(
+          () => shorebirdFlutter.useRevision(revision: any(named: 'revision')),
+        ).thenAnswer((invocation) async {
+          // Cause builds to fail after switching flutter versions.
+          when(() => flutterBuildProcessResult.exitCode).thenReturn(1);
+          when(() => flutterBuildProcessResult.stderr).thenReturn('oops');
+        });
+        final tempDir = setUpTempDir();
+        setUpTempArtifacts(tempDir);
+
+        final exitCode = await IOOverrides.runZoned(
+          () => runWithOverrides(command.run),
+          getCurrentDirectory: () => tempDir,
+        );
+
+        expect(exitCode, equals(ExitCode.software.code));
+      },
+    );
+
     test('errors when detecting release version name fails', () async {
       final exception = Exception(
         'Failed to extract version name from app bundle: oops',
