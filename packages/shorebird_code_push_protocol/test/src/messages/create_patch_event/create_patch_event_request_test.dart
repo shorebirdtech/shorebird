@@ -5,13 +5,14 @@ void main() {
   group(CreatePatchEventRequest, () {
     test('can be (de)serialized', () {
       final request = CreatePatchEventRequest(
-        event: PatchInstallEvent(
+        event: const PatchEvent(
           clientId: 'some-client-id',
           appId: 'some-app-id',
           patchNumber: 2,
           arch: 'arm64',
           platform: ReleasePlatform.android,
           releaseVersion: '1.0.0',
+          identifier: '__patch_install__',
         ),
       );
       expect(
