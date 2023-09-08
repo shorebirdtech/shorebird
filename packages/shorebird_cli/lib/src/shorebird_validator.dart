@@ -68,7 +68,7 @@ class ShorebirdValidator {
           '''If you already have an account, run ${lightCyan.wrap('shorebird login')} to sign in.''',
         )
         ..info(
-          '''If you don't have a Shorebird account, run ${lightCyan.wrap('shorebird account create')} to create one.''',
+          '''If you don't have a Shorebird account, go to ${lightCyan.wrap('https://console.shorebird.dev')} to create one.''',
         );
       throw UserNotAuthorizedException();
     }
