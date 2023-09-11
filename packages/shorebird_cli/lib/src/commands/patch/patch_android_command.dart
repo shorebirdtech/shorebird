@@ -148,10 +148,12 @@ Please re-run the release command for this version or create a new release.''');
 
     if (release.flutterRevision != originalFlutterRevision) {
       logger.info('''
+
 The release you are trying to patch was built with a different version of Flutter.
 
 Release Flutter Revision: ${release.flutterRevision}
-Current Flutter Revision: $originalFlutterRevision''');
+Current Flutter Revision: $originalFlutterRevision
+''');
 
       var flutterVersionProgress = logger.progress(
         'Switching to Flutter revision ${release.flutterRevision}',
