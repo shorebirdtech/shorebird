@@ -2,6 +2,18 @@
 
 This section contains past updates we've sent to customers via Discord.
 
+## 0.14.8 (September 8, 2023)
+
+We've just released Shorebird v0.14.8 🎉
+
+- 🐦 Flutter 3.13.3 support!
+
+📚 Release notes can be found at https://github.com/shorebirdtech/shorebird/releases/tag/v0.14.8
+
+As always, you can upgrade using `shorebird upgrade`
+
+Please let us know if we can help!
+
 ## 0.14.7 (September 8, 2023)
 
 We've just released Shorebird v0.14.7 🎉
