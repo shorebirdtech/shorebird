@@ -101,7 +101,7 @@ void main() {
                 '''If you already have an account, run ${lightCyan.wrap('shorebird login')} to sign in.''',
               ),
           () => logger.info(
-                '''If you don't have a Shorebird account, run ${lightCyan.wrap('shorebird account create')} to create one.''',
+                '''If you don't have a Shorebird account, go to ${link(uri: Uri.parse('https://console.shorebird.dev'))} to create one.''',
               ),
         ]);
       });

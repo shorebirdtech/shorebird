@@ -160,7 +160,7 @@ void main() {
         workingDirectory: cwd,
       );
       expect(shorebirdPatchResult.stderr, isEmpty);
-      expect(shorebirdPatchResult.stdout, contains('Published Patch!'));
+      expect(shorebirdPatchResult.stdout, contains('Published Patch'));
       expect(shorebirdPatchResult.exitCode, equals(0));
 
       // Verify that the patch was created.
