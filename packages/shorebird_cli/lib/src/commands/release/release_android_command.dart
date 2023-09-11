@@ -45,6 +45,7 @@ class ReleaseAndroidCommand extends ShorebirdCommand
         'split-per-abi',
         help: 'Whether to split the APKs per ABIs. '
             'To learn more, see: https://developer.android.com/studio/build/configure-apk-splits#configure-abi-split',
+        hide: true,
         negatable: false,
       )
       ..addFlag(
@@ -81,15 +82,27 @@ make smaller updates to your app.
     final flavor = results['flavor'] as String?;
     final target = results['target'] as String?;
     final generateApk = results['artifact'] as String == 'apk';
+    final splitApk = results['split-per-abi'] == true;
+    if (generateApk && splitApk) {
+      logger
+        ..err(
+          'Shorebird does not support the split-per-abi option at this time',
+        )
+        ..info(
+          '''
+Split APKs are each given a different release version than what is specified in the pubspec.yaml.
+
+See ${link(uri: Uri.parse('https://github.com/flutter/flutter/issues/39817'))} for more information about this issue.
+Please comment and upvote ${link(uri: Uri.parse('https://github.com/shorebirdtech/shorebird/issues/1141'))} if you would like shorebird to support this.''',
+        );
+      return ExitCode.unavailable.code;
+    }
+
     final buildProgress = logger.progress('Building release');
     try {
       await buildAppBundle(flavor: flavor, target: target);
       if (generateApk) {
-        await buildApk(
-          flavor: flavor,
-          target: target,
-          splitPerAbi: results['split-per-abi'] == true,
-        );
+        await buildApk(flavor: flavor, target: target);
       }
       buildProgress.complete();
     } on ProcessException catch (error) {
