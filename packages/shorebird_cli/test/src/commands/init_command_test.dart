@@ -8,6 +8,7 @@ import 'package:platform/platform.dart';
 import 'package:scoped/scoped.dart';
 import 'package:shorebird_cli/src/code_push_client_wrapper.dart';
 import 'package:shorebird_cli/src/commands/init_command.dart';
+import 'package:shorebird_cli/src/config/config.dart';
 import 'package:shorebird_cli/src/doctor.dart';
 import 'package:shorebird_cli/src/gradlew.dart';
 import 'package:shorebird_cli/src/logger.dart';
@@ -38,6 +39,8 @@ class _MockProgress extends Mock implements Progress {}
 
 class _MockShorebirdEnv extends Mock implements ShorebirdEnv {}
 
+class _MockShorebirdYaml extends Mock implements ShorebirdYaml {}
+
 class _MockShorebirdValidator extends Mock implements ShorebirdValidator {}
 
 class _MockXcodeBuild extends Mock implements XcodeBuild {}
@@ -59,6 +62,7 @@ environment:
     late Gradlew gradlew;
     late CodePushClientWrapper codePushClientWrapper;
     late File shorebirdYamlFile;
+    late ShorebirdYaml shorebirdYaml;
     late File pubspecYamlFile;
     late Logger logger;
     late Platform platform;
@@ -90,6 +94,7 @@ environment:
       doctor = _MockDoctor();
       gradlew = _MockGradlew();
       codePushClientWrapper = _MockCodePushClientWrapper();
+      shorebirdYaml = _MockShorebirdYaml();
       shorebirdYamlFile = _MockFile();
       pubspecYamlFile = _MockFile();
       logger = _MockLogger();
@@ -786,37 +791,102 @@ flavors:
               ),
         ]);
       });
-    });
 
-    test('detects existing shorebird.yaml in pubspec.yaml assets', () async {
-      when(() => pubspecYamlFile.readAsStringSync()).thenReturn('''
+      group('with new flavors added', () {
+        final existingFlavors = {
+          'a': 'test-appId-1',
+          'b': 'test-appId-2',
+        };
+
+        setUp(() {
+          when(() => shorebirdEnv.hasShorebirdYaml).thenReturn(true);
+          when(() => shorebirdEnv.getShorebirdYaml()).thenReturn(shorebirdYaml);
+          when(() => shorebirdYaml.appId).thenReturn(appId);
+          when(() => shorebirdYaml.flavors).thenReturn(existingFlavors);
+        });
+
+        test('exits with software error if retrieving existing app fails',
+            () async {
+          when(() => codePushClientWrapper.getApp(appId: any(named: 'appId')))
+              .thenThrow(Exception('oh no'));
+          final result = await runWithOverrides(command.run);
+          expect(result, ExitCode.software.code);
+        });
+
+        test('creates new flavor entries in shorebird.yaml', () async {
+          const appIds = ['test-appId-1', 'test-appId-2', 'test-appId-3'];
+          const androidVariants = {'a', 'b', 'c'};
+          const appName = 'my-app';
+          var index = 0;
+          when(
+            () => gradlew.productFlavors(any()),
+          ).thenAnswer((_) async => androidVariants);
+          when(() => codePushClientWrapper.getApp(appId: any(named: 'appId')))
+              .thenAnswer(
+            (_) async => const AppMetadata(appId: appId, displayName: appName),
+          );
+          when(
+            () =>
+                codePushClientWrapper.createApp(appName: any(named: 'appName')),
+          ).thenAnswer((invocation) async {
+            final appName = invocation.namedArguments[#appName] as String?;
+            return App(id: appIds[index++], displayName: appName ?? '-');
+          });
+
+          await runWithOverrides(command.run);
+
+          verify(
+            () => codePushClientWrapper.createApp(
+              appName: '$appName (c)',
+            ),
+          ).called(1);
+          verify(
+            () => shorebirdYamlFile.writeAsStringSync(
+              any(
+                that: contains(
+                  '''
+app_id: test_app_id
+flavors:
+  a: test-appId-1
+  b: test-appId-2
+  c: test-appId-3''',
+                ),
+              ),
+            ),
+          ).called(1);
+        });
+      });
+
+      test('detects existing shorebird.yaml in pubspec.yaml assets', () async {
+        when(() => pubspecYamlFile.readAsStringSync()).thenReturn('''
 $pubspecYamlContent
 flutter:
   assets:
     - shorebird.yaml
 ''');
-      await runWithOverrides(command.run);
-      verify(
-        () => shorebirdYamlFile.writeAsStringSync(
-          any(that: contains('app_id: $appId')),
-        ),
-      );
-    });
+        await runWithOverrides(command.run);
+        verify(
+          () => shorebirdYamlFile.writeAsStringSync(
+            any(that: contains('app_id: $appId')),
+          ),
+        );
+      });
 
-    test('creates flutter.assets and adds shorebird.yaml', () async {
-      await runWithOverrides(command.run);
-      verify(
-        () => pubspecYamlFile.writeAsStringSync(
-          any(
-            that: equals('''
+      test('creates flutter.assets and adds shorebird.yaml', () async {
+        await runWithOverrides(command.run);
+        verify(
+          () => pubspecYamlFile.writeAsStringSync(
+            any(
+              that: equals('''
 $pubspecYamlContent
 flutter:
   assets:
     - shorebird.yaml
 '''),
+            ),
           ),
-        ),
-      );
+        );
+      });
     });
 
     test('creates assets and adds shorebird.yaml', () async {
