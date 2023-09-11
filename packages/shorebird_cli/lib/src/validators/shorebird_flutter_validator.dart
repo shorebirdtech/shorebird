@@ -22,9 +22,6 @@ class ShorebirdFlutterValidator extends Validator {
   String get description => 'Flutter install is correct';
 
   @override
-  bool canRunInCurrentContext() => true;
-
-  @override
   Future<List<ValidationIssue>> validate() async {
     final issues = <ValidationIssue>[];
 
