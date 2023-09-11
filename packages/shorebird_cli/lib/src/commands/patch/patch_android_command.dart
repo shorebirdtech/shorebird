@@ -166,13 +166,13 @@ Current Flutter Revision: $originalFlutterRevision''');
       } on ProcessException catch (error) {
         buildProgress.fail('Failed to build: ${error.message}');
         return ExitCode.software.code;
+      } finally {
+        flutterVersionProgress = logger.progress(
+          'Reverting to Flutter revision $originalFlutterRevision',
+        );
+        await shorebirdFlutter.useRevision(revision: originalFlutterRevision);
+        flutterVersionProgress.complete();
       }
-
-      flutterVersionProgress = logger.progress(
-        'Reverting to Flutter revision $originalFlutterRevision',
-      );
-      await shorebirdFlutter.useRevision(revision: originalFlutterRevision);
-      flutterVersionProgress.complete();
     }
 
     final releaseArtifacts = await codePushClientWrapper.getReleaseArtifacts(

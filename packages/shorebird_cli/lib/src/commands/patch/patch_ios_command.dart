@@ -161,13 +161,13 @@ Current Flutter Revision: $originalFlutterRevision''');
         await _buildPatch();
       } catch (_) {
         return ExitCode.software.code;
+      } finally {
+        flutterVersionProgress = logger.progress(
+          'Switching back to original Flutter revision $originalFlutterRevision',
+        );
+        await shorebirdFlutter.useRevision(revision: originalFlutterRevision);
+        flutterVersionProgress.complete();
       }
-
-      flutterVersionProgress = logger.progress(
-        'Switching back to original Flutter revision $originalFlutterRevision',
-      );
-      await shorebirdFlutter.useRevision(revision: originalFlutterRevision);
-      flutterVersionProgress.complete();
     }
 
     final releaseArtifact = await codePushClientWrapper.getReleaseArtifact(
