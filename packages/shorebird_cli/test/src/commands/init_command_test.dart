@@ -799,6 +799,11 @@ flavors:
         };
 
         setUp(() {
+          const androidVariants = {'a', 'b', 'c', 'd'};
+          when(
+            () => gradlew.productFlavors(any()),
+          ).thenAnswer((_) async => androidVariants);
+
           when(() => shorebirdEnv.hasShorebirdYaml).thenReturn(true);
           when(() => shorebirdEnv.getShorebirdYaml()).thenReturn(shorebirdYaml);
           when(() => shorebirdYaml.appId).thenReturn(appId);
@@ -818,12 +823,9 @@ flavors:
             'test-appId-3',
             'test-appId-4',
           ];
-          const androidVariants = {'a', 'b', 'c', 'd'};
           const appName = 'my-app';
           var index = 0;
-          when(
-            () => gradlew.productFlavors(any()),
-          ).thenAnswer((_) async => androidVariants);
+
           when(() => codePushClientWrapper.getApp(appId: any(named: 'appId')))
               .thenAnswer(
             (_) async => const AppMetadata(appId: appId, displayName: appName),
