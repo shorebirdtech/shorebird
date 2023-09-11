@@ -876,37 +876,37 @@ flavors:
           ).called(1);
         });
       });
+    });
 
-      test('detects existing shorebird.yaml in pubspec.yaml assets', () async {
-        when(() => pubspecYamlFile.readAsStringSync()).thenReturn('''
+    test('detects existing shorebird.yaml in pubspec.yaml assets', () async {
+      when(() => pubspecYamlFile.readAsStringSync()).thenReturn('''
 $pubspecYamlContent
 flutter:
   assets:
     - shorebird.yaml
 ''');
-        await runWithOverrides(command.run);
-        verify(
-          () => shorebirdYamlFile.writeAsStringSync(
-            any(that: contains('app_id: $appId')),
-          ),
-        );
-      });
+      await runWithOverrides(command.run);
+      verify(
+        () => shorebirdYamlFile.writeAsStringSync(
+          any(that: contains('app_id: $appId')),
+        ),
+      );
+    });
 
-      test('creates flutter.assets and adds shorebird.yaml', () async {
-        await runWithOverrides(command.run);
-        verify(
-          () => pubspecYamlFile.writeAsStringSync(
-            any(
-              that: equals('''
+    test('creates flutter.assets and adds shorebird.yaml', () async {
+      await runWithOverrides(command.run);
+      verify(
+        () => pubspecYamlFile.writeAsStringSync(
+          any(
+            that: equals('''
 $pubspecYamlContent
 flutter:
   assets:
     - shorebird.yaml
 '''),
-            ),
           ),
-        );
-      });
+        ),
+      );
     });
 
     test('creates assets and adds shorebird.yaml', () async {
