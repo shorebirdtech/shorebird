@@ -27,8 +27,10 @@ class ValidationFailedException implements PreconditionFailedException {
 }
 
 class UnsupportedContextException implements PreconditionFailedException {
+  // coverage:ignore-start
   @override
   ExitCode get exitCode => ExitCode.unavailable;
+  // coverage:ignore-end
 }
 
 class UnsupportedOperatingSystemException
