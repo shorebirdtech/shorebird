@@ -3,6 +3,7 @@ import 'dart:io' hide Platform;
 
 import 'package:crypto/crypto.dart';
 import 'package:mason_logger/mason_logger.dart';
+import 'package:path/path.dart' as p;
 import 'package:platform/platform.dart';
 import 'package:shorebird_cli/src/archive_analysis/archive_analysis.dart';
 import 'package:shorebird_cli/src/code_push_client_wrapper.dart';
@@ -16,6 +17,7 @@ import 'package:shorebird_cli/src/patch_diff_checker.dart';
 import 'package:shorebird_cli/src/shorebird_artifact_mixin.dart';
 import 'package:shorebird_cli/src/shorebird_build_mixin.dart';
 import 'package:shorebird_cli/src/shorebird_env.dart';
+import 'package:shorebird_cli/src/shorebird_flutter.dart';
 import 'package:shorebird_cli/src/shorebird_validator.dart';
 import 'package:shorebird_code_push_client/shorebird_code_push_client.dart';
 
@@ -93,35 +95,17 @@ class PatchIosCommand extends ShorebirdCommand
     const arch = 'aarch64';
     const channelName = 'stable';
     const releasePlatform = ReleasePlatform.ios;
-    final target = results['target'] as String?;
     final flavor = results['flavor'] as String?;
 
     final shorebirdYaml = shorebirdEnv.getShorebirdYaml()!;
     final appId = shorebirdYaml.getAppId(flavor: flavor);
     final app = await codePushClientWrapper.getApp(appId: appId);
 
-    final buildProgress = logger.progress('Building release');
     try {
-      await buildIpa(flavor: flavor, target: target);
-    } on ProcessException catch (error) {
-      buildProgress.fail('Failed to build: ${error.message}');
-      return ExitCode.software.code;
-    } on BuildException catch (error) {
-      buildProgress.fail('Failed to build IPA');
-      logger.err(error.message);
+      await _buildPatch();
+    } catch (_) {
       return ExitCode.software.code;
     }
-
-    final File aotFile;
-    try {
-      final newestDillFile = newestAppDill();
-      aotFile = await buildElfAotSnapshot(appDillPath: newestDillFile.path);
-    } catch (error) {
-      buildProgress.fail('$error');
-      return ExitCode.software.code;
-    }
-
-    buildProgress.complete();
 
     final detectReleaseVersionProgress = logger.progress(
       'Detecting release version',
@@ -159,26 +143,31 @@ Please re-run the release command for this version or create a new release.''');
       return ExitCode.software.code;
     }
 
-    final shorebirdFlutterRevision = shorebirdEnv.flutterRevision;
-    if (release.flutterRevision != shorebirdFlutterRevision) {
-      logger
-        ..err('''
-Flutter revision mismatch.
-
+    final originalFlutterRevision = shorebirdEnv.flutterRevision;
+    if (release.flutterRevision != originalFlutterRevision) {
+      logger.info('''
 The release you are trying to patch was built with a different version of Flutter.
 
 Release Flutter Revision: ${release.flutterRevision}
-Current Flutter Revision: $shorebirdFlutterRevision
-''')
-        ..info(
-          '''
-Either create a new release using:
-  ${lightCyan.wrap('shorebird release ios-alpha')}
+Current Flutter Revision: $originalFlutterRevision''');
 
-Or change your Flutter version and try again using:
-  ${lightCyan.wrap('shorebird flutter versions use ${release.flutterRevision}')}''',
+      var flutterVersionProgress = logger.progress(
+        'Switching to Flutter revision ${release.flutterRevision}',
+      );
+      await shorebirdFlutter.useRevision(revision: release.flutterRevision);
+      flutterVersionProgress.complete();
+
+      try {
+        await _buildPatch();
+      } catch (_) {
+        return ExitCode.software.code;
+      } finally {
+        flutterVersionProgress = logger.progress(
+          'Switching back to original Flutter revision $originalFlutterRevision',
         );
-      return ExitCode.software.code;
+        await shorebirdFlutter.useRevision(revision: originalFlutterRevision);
+        flutterVersionProgress.complete();
+      }
     }
 
     final releaseArtifact = await codePushClientWrapper.getReleaseArtifact(
@@ -209,6 +198,7 @@ Or change your Flutter version and try again using:
       return ExitCode.success.code;
     }
 
+    final aotFile = File(_aotOutputPath);
     final aotFileSize = aotFile.statSync().size;
 
     final summary = [
@@ -256,5 +246,37 @@ ${summary.join('\n')}
     );
 
     return ExitCode.success.code;
+  }
+
+  String get _aotOutputPath =>
+      p.join(Directory.current.path, 'build', 'out.aot');
+
+  Future<void> _buildPatch() async {
+    final target = results['target'] as String?;
+    final flavor = results['flavor'] as String?;
+    final buildProgress = logger.progress('Building patch');
+    try {
+      await buildIpa(flavor: flavor, target: target);
+    } on ProcessException catch (error) {
+      buildProgress.fail('Failed to build: ${error.message}');
+      rethrow;
+    } on BuildException catch (error) {
+      buildProgress.fail('Failed to build IPA');
+      logger.err(error.message);
+      rethrow;
+    }
+
+    try {
+      final newestDillFile = newestAppDill();
+      await buildElfAotSnapshot(
+        appDillPath: newestDillFile.path,
+        outFilePath: _aotOutputPath,
+      );
+    } catch (error) {
+      buildProgress.fail('$error');
+      rethrow;
+    }
+
+    buildProgress.complete();
   }
 }

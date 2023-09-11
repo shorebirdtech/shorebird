@@ -374,11 +374,13 @@ Either run `flutter pub get` manually, or follow the steps in ${link(uri: Uri.pa
     return diffPath;
   }
 
-  /// Creates an AOT snapshot of the given [appDillPath] and returns the
-  /// resulting snapshot file.
+  /// Creates an AOT snapshot of the given [appDillPath] at [outFilePath] and
+  /// returns the resulting file.
   // TODO(bryanoltman): make this work with the --local-engine flag.
-  Future<File> buildElfAotSnapshot({required String appDillPath}) async {
-    final outFilePath = p.join(Directory.current.path, 'build', 'out.aot');
+  Future<File> buildElfAotSnapshot({
+    required String appDillPath,
+    required String outFilePath,
+  }) async {
     final arguments = [
       '--deterministic',
       '--snapshot-kind=app-aot-elf',

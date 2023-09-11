@@ -157,7 +157,10 @@ Please re-run the release command for this version or create a new release.''');
     final File aotFile;
     try {
       final newestDillFile = newestAppDill();
-      aotFile = await buildElfAotSnapshot(appDillPath: newestDillFile.path);
+      aotFile = await buildElfAotSnapshot(
+        appDillPath: newestDillFile.path,
+        outFilePath: p.join(Directory.current.path, 'build', 'out.aot'),
+      );
     } catch (error) {
       buildProgress.fail('$error');
       return ExitCode.software.code;

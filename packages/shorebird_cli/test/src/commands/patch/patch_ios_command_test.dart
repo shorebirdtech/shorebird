@@ -292,6 +292,8 @@ flutter:
       when(() => shorebirdEnv.genSnapshotFile).thenReturn(genSnapshotFile);
       when(() => shorebirdEnv.flutterRevision).thenReturn(flutterRevision);
       when(() => shorebirdEnv.isRunningOnCI).thenReturn(false);
+      when(() => shorebirdFlutter.useRevision(revision: any(named: 'revision')))
+          .thenAnswer((_) async {});
       when(
         () => aotBuildProcessResult.exitCode,
       ).thenReturn(ExitCode.success.code);
@@ -568,8 +570,8 @@ Please re-run the release command for this version or create a new release.'''),
     });
 
     test(
-        'errors when shorebird flutter revision '
-        'does not match release revision', () async {
+        '''switches to release flutter revision when shorebird flutter revision does not match''',
+        () async {
       const otherRevision = 'other-revision';
       when(() => shorebirdEnv.flutterRevision).thenReturn(otherRevision);
       final tempDir = setUpTempDir();
@@ -580,16 +582,49 @@ Please re-run the release command for this version or create a new release.'''),
         getCurrentDirectory: () => tempDir,
       );
 
-      expect(exitCode, ExitCode.software.code);
-      verify(
-        () => logger.info('''
-Either create a new release using:
-  ${lightCyan.wrap('shorebird release ios-alpha')}
+      expect(exitCode, ExitCode.success.code);
+      // Verify that we switch back to the original revision once we're done.
+      verifyInOrder([
+        () => shorebirdFlutter.useRevision(revision: release.flutterRevision),
+        () => shorebirdFlutter.useRevision(revision: otherRevision),
+      ]);
 
-Or change your Flutter version and try again using:
-  ${lightCyan.wrap('shorebird flutter versions use ${release.flutterRevision}')}'''),
+      verify(
+        () => logger.info(
+          any(
+            that: stringContainsInOrder([
+              '''The release you are trying to patch was built with a different version of Flutter.''',
+              'Release Flutter Revision: ${release.flutterRevision}',
+              'Current Flutter Revision: $otherRevision',
+            ]),
+          ),
+        ),
       ).called(1);
     });
+
+    test(
+      'exits with code 70 if build fails after switching flutter versions',
+      () async {
+        const otherRevision = 'other-revision';
+        when(() => shorebirdEnv.flutterRevision).thenReturn(otherRevision);
+        when(
+          () => shorebirdFlutter.useRevision(revision: any(named: 'revision')),
+        ).thenAnswer((invocation) async {
+          // Cause builds to fail after switching flutter versions.
+          when(() => flutterBuildProcessResult.exitCode).thenReturn(1);
+          when(() => flutterBuildProcessResult.stderr).thenReturn('oops');
+        });
+        final tempDir = setUpTempDir();
+        setUpTempArtifacts(tempDir);
+
+        final exitCode = await IOOverrides.runZoned(
+          () => runWithOverrides(command.run),
+          getCurrentDirectory: () => tempDir,
+        );
+
+        expect(exitCode, equals(ExitCode.software.code));
+      },
+    );
 
     test('exits with code 70 when release version cannot be determiend',
         () async {
