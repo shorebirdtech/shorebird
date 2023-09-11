@@ -85,5 +85,10 @@ abstract class Validator {
   /// Not all validators use [process].
   Future<List<ValidationIssue>> validate();
 
-  bool canRunInCurrentContext();
+  /// Whether it makes sense to run the validator in the current working
+  /// directory.
+  bool canRunInCurrentContext() => true;
+
+  /// User-facing message explaining why [canRunInCurrentContext] is false.
+  String? get incorrectContextMessage => null;
 }

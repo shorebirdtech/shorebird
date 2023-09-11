@@ -26,6 +26,11 @@ class ValidationFailedException implements PreconditionFailedException {
   ExitCode get exitCode => ExitCode.config;
 }
 
+class UnsupportedContextException implements PreconditionFailedException {
+  @override
+  ExitCode get exitCode => ExitCode.unavailable;
+}
+
 class UnsupportedOperatingSystemException
     implements PreconditionFailedException {
   @override
@@ -78,6 +83,13 @@ class ShorebirdValidator {
         'Shorebird is not initialized. Did you run "shorebird init"?',
       );
       throw ShorebirdNotInitializedException();
+    }
+
+    for (final validator in validators) {
+      if (!validator.canRunInCurrentContext()) {
+        logger.err(validator.incorrectContextMessage);
+        throw UnsupportedContextException();
+      }
     }
 
     final validationIssues = await runValidators(validators);
