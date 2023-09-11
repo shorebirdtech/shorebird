@@ -157,7 +157,11 @@ mixin ShorebirdBuildMixin on ShorebirdCommand {
         '--release',
         if (flavor != null) '--flavor=$flavor',
         if (target != null) '--target=$target',
+        // TODO(bryanoltman): reintroduce coverage when we can support this.
+        // See https://github.com/shorebirdtech/shorebird/issues/1141.
+        // coverage:ignore-start
         if (splitPerAbi) '--split-per-abi',
+        // coverage:ignore-end
         ...results.rest,
       ];
 
