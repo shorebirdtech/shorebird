@@ -48,10 +48,6 @@ jobs:
               - ./.github/workflows/main.yaml
               - ./.github/actions/dart_package/action.yaml
               - packages/discord_gcp_alerts/**
-            redis_client:
-              - ./.github/workflows/main.yaml
-              - ./.github/actions/dart_package/action.yaml
-              - packages/redis_client/**
             shorebird_cli:
               - ./.github/workflows/main.yaml
               - ./.github/actions/dart_package/action.yaml
