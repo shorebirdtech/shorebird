@@ -24,11 +24,13 @@ class AndroidInternetPermissionValidator extends Validator {
   @override
   bool canRunInCurrentContext() => _androidSrcDirectory.existsSync();
 
+  // coverage:ignore-start
   @override
   String get incorrectContextMessage => '''
 The ${_androidSrcDirectory.path} directory does not exist.
 
 The command you are running must be run at the root of a Flutter app project that supports the Android platform. If you are releasing a Flutter module, use 'aar' in place of 'android' in your shorebird command.''';
+  // coverage:ignore-end
 
   @override
   Future<List<ValidationIssue>> validate() async {

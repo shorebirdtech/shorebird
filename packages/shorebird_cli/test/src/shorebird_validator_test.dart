@@ -21,6 +21,15 @@ class _MockShorebirdEnv extends Mock implements ShorebirdEnv {}
 class _MockValidator extends Mock implements Validator {}
 
 void main() {
+  group(UnsupportedContextException, () {
+    test('exit code is "unavailable"', () {
+      expect(
+        UnsupportedContextException().exitCode,
+        equals(ExitCode.unavailable),
+      );
+    });
+  });
+
   group(ShorebirdValidator, () {
     late Auth auth;
     late Logger logger;
