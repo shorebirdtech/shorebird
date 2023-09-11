@@ -99,8 +99,10 @@ Please make sure you are running "shorebird init" from the root of your Flutter 
 
     // New flavors not being empty means that we have existing flavors, which
     // means that there is already an existing app.
-    if (newFlavors.isNotEmpty) {
-      logger.info('New flavors detected: $newFlavors');
+    // If the --force flag is present, we will completely reinit the app and
+    // don't care about which flavors are new.
+    if (!force && newFlavors.isNotEmpty) {
+      logger.info('New flavors detected: ${newFlavors.join(', ')}');
       final updateShorebirdYamlProgress =
           logger.progress('Adding flavors to shorebird.yaml');
 
@@ -114,7 +116,7 @@ Please make sure you are running "shorebird init" from the root of your Flutter 
       }
 
       final flavorsToAppIds = shorebirdYaml.flavors!;
-      for (final flavor in productFlavors) {
+      for (final flavor in newFlavors) {
         final app = await codePushClientWrapper.createApp(
           appName: '${existingApp.displayName} ($flavor)',
         );

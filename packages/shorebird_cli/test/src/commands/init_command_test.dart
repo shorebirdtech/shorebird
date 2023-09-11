@@ -814,8 +814,11 @@ flavors:
         });
 
         test('creates new flavor entries in shorebird.yaml', () async {
-          const appIds = ['test-appId-1', 'test-appId-2', 'test-appId-3'];
-          const androidVariants = {'a', 'b', 'c'};
+          const newAppIds = [
+            'test-appId-3',
+            'test-appId-4',
+          ];
+          const androidVariants = {'a', 'b', 'c', 'd'};
           const appName = 'my-app';
           var index = 0;
           when(
@@ -830,14 +833,30 @@ flavors:
                 codePushClientWrapper.createApp(appName: any(named: 'appName')),
           ).thenAnswer((invocation) async {
             final appName = invocation.namedArguments[#appName] as String?;
-            return App(id: appIds[index++], displayName: appName ?? '-');
+            return App(id: newAppIds[index++], displayName: appName ?? '-');
           });
 
           await runWithOverrides(command.run);
 
+          verify(() => logger.info('New flavors detected: c, d')).called(1);
+          verifyNever(
+            () => codePushClientWrapper.createApp(
+              appName: '$appName (a)',
+            ),
+          );
+          verifyNever(
+            () => codePushClientWrapper.createApp(
+              appName: '$appName (b)',
+            ),
+          );
           verify(
             () => codePushClientWrapper.createApp(
               appName: '$appName (c)',
+            ),
+          ).called(1);
+          verify(
+            () => codePushClientWrapper.createApp(
+              appName: '$appName (d)',
             ),
           ).called(1);
           verify(
@@ -849,7 +868,8 @@ app_id: test_app_id
 flavors:
   a: test-appId-1
   b: test-appId-2
-  c: test-appId-3''',
+  c: test-appId-3
+  d: test-appId-4''',
                 ),
               ),
             ),
