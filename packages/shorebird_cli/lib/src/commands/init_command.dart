@@ -115,10 +115,12 @@ Please make sure you are running "shorebird init" from the root of your Flutter 
         return ExitCode.software.code;
       }
 
+      final deflavoredAppName =
+          existingApp.displayName.replaceAll(RegExp(r'\(.*\)'), '').trim();
       final flavorsToAppIds = shorebirdYaml.flavors!;
       for (final flavor in newFlavors) {
         final app = await codePushClientWrapper.createApp(
-          appName: '${existingApp.displayName} ($flavor)',
+          appName: '$deflavoredAppName ($flavor)',
         );
         flavorsToAppIds[flavor] = app.id;
       }
