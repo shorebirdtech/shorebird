@@ -7,6 +7,7 @@ This section contains past updates we've sent to customers via Discord.
 We've just released Shorebird v0.14.8 🎉
 
 - 🐦 Flutter 3.13.3 support!
+- ✨ Automatically switch Flutter revisions on `shorebird patch`
 
 📚 Release notes can be found at https://github.com/shorebirdtech/shorebird/releases/tag/v0.14.8
 
