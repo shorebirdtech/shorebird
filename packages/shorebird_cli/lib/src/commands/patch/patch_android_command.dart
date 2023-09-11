@@ -169,7 +169,7 @@ Current Flutter Revision: $originalFlutterRevision''');
       }
 
       flutterVersionProgress = logger.progress(
-        'Switching back to original Flutter revision $originalFlutterRevision',
+        'Reverting to Flutter revision $originalFlutterRevision',
       );
       await shorebirdFlutter.useRevision(revision: originalFlutterRevision);
       flutterVersionProgress.complete();
