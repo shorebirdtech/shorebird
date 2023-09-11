@@ -153,6 +153,23 @@ void main() {
           ),
         ).called(1);
       });
+
+      test(
+          '''throws UnsupportedContextException if validator cannot be run in current context''',
+          () async {
+        const errorMessage = 'Cannot run in this context';
+        when(() => validator.canRunInCurrentContext()).thenReturn(false);
+        when(() => validator.incorrectContextMessage).thenReturn(errorMessage);
+        await expectLater(
+          runWithOverrides(
+            () => shorebirdValidator.validatePreconditions(
+              validators: [validator],
+            ),
+          ),
+          throwsA(isA<UnsupportedContextException>()),
+        );
+        verify(() => logger.err(errorMessage)).called(1);
+      });
     });
   });
 }
