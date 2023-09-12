@@ -8,6 +8,7 @@ import 'package:platform/platform.dart';
 import 'package:scoped/scoped.dart';
 import 'package:shorebird_cli/src/code_push_client_wrapper.dart';
 import 'package:shorebird_cli/src/commands/init_command.dart';
+import 'package:shorebird_cli/src/config/config.dart';
 import 'package:shorebird_cli/src/doctor.dart';
 import 'package:shorebird_cli/src/gradlew.dart';
 import 'package:shorebird_cli/src/logger.dart';
@@ -38,6 +39,8 @@ class _MockProgress extends Mock implements Progress {}
 
 class _MockShorebirdEnv extends Mock implements ShorebirdEnv {}
 
+class _MockShorebirdYaml extends Mock implements ShorebirdYaml {}
+
 class _MockShorebirdValidator extends Mock implements ShorebirdValidator {}
 
 class _MockXcodeBuild extends Mock implements XcodeBuild {}
@@ -59,6 +62,7 @@ environment:
     late Gradlew gradlew;
     late CodePushClientWrapper codePushClientWrapper;
     late File shorebirdYamlFile;
+    late ShorebirdYaml shorebirdYaml;
     late File pubspecYamlFile;
     late Logger logger;
     late Platform platform;
@@ -90,6 +94,7 @@ environment:
       doctor = _MockDoctor();
       gradlew = _MockGradlew();
       codePushClientWrapper = _MockCodePushClientWrapper();
+      shorebirdYaml = _MockShorebirdYaml();
       shorebirdYamlFile = _MockFile();
       pubspecYamlFile = _MockFile();
       logger = _MockLogger();
@@ -184,9 +189,11 @@ Please make sure you are running "shorebird init" from the root of your Flutter 
       final exitCode = await runWithOverrides(command.run);
       verify(
         () => logger.err(
-          '''
-A "shorebird.yaml" already exists.
-If you want to reinitialize Shorebird, please run "shorebird init --force".''',
+            'A "shorebird.yaml" file already exists and seems up-to-date.'),
+      ).called(1);
+      verify(
+        () => logger.info(
+          '''If you want to reinitialize Shorebird, please run ${lightCyan.wrap('shorebird init --force')}.''',
         ),
       ).called(1);
       expect(exitCode, ExitCode.software.code);
@@ -198,9 +205,7 @@ If you want to reinitialize Shorebird, please run "shorebird init --force".''',
       final exitCode = await runWithOverrides(command.run);
       verifyNever(
         () => logger.err(
-          '''
-A "shorebird.yaml" already exists.
-If you want to reinitialize Shorebird, please run "shorebird init --force".''',
+          'A "shorebird.yaml" file already exists and seems up-to-date.',
         ),
       );
       expect(exitCode, ExitCode.success.code);
@@ -785,6 +790,93 @@ flavors:
                 appName: '$appName (stagingInternal)',
               ),
         ]);
+      });
+
+      group('with new flavors added', () {
+        final existingFlavors = {
+          'a': 'test-appId-1',
+          'b': 'test-appId-2',
+        };
+
+        setUp(() {
+          const androidVariants = {'a', 'b', 'c', 'd'};
+          when(
+            () => gradlew.productFlavors(any()),
+          ).thenAnswer((_) async => androidVariants);
+
+          when(() => shorebirdEnv.hasShorebirdYaml).thenReturn(true);
+          when(() => shorebirdEnv.getShorebirdYaml()).thenReturn(shorebirdYaml);
+          when(() => shorebirdYaml.appId).thenReturn(appId);
+          when(() => shorebirdYaml.flavors).thenReturn(existingFlavors);
+        });
+
+        test('exits with software error if retrieving existing app fails',
+            () async {
+          when(() => codePushClientWrapper.getApp(appId: any(named: 'appId')))
+              .thenThrow(Exception('oh no'));
+          final result = await runWithOverrides(command.run);
+          expect(result, ExitCode.software.code);
+        });
+
+        test('creates new flavor entries in shorebird.yaml', () async {
+          const newAppIds = [
+            'test-appId-3',
+            'test-appId-4',
+          ];
+          const appName = 'my-app';
+          var index = 0;
+
+          when(() => codePushClientWrapper.getApp(appId: any(named: 'appId')))
+              .thenAnswer(
+            (_) async => const AppMetadata(appId: appId, displayName: appName),
+          );
+          when(
+            () =>
+                codePushClientWrapper.createApp(appName: any(named: 'appName')),
+          ).thenAnswer((invocation) async {
+            final appName = invocation.namedArguments[#appName] as String?;
+            return App(id: newAppIds[index++], displayName: appName ?? '-');
+          });
+
+          await runWithOverrides(command.run);
+
+          verify(() => logger.info('New flavors detected: c, d')).called(1);
+          verifyNever(
+            () => codePushClientWrapper.createApp(
+              appName: '$appName (a)',
+            ),
+          );
+          verifyNever(
+            () => codePushClientWrapper.createApp(
+              appName: '$appName (b)',
+            ),
+          );
+          verify(
+            () => codePushClientWrapper.createApp(
+              appName: '$appName (c)',
+            ),
+          ).called(1);
+          verify(
+            () => codePushClientWrapper.createApp(
+              appName: '$appName (d)',
+            ),
+          ).called(1);
+          verify(
+            () => shorebirdYamlFile.writeAsStringSync(
+              any(
+                that: contains(
+                  '''
+app_id: test_app_id
+flavors:
+  a: test-appId-1
+  b: test-appId-2
+  c: test-appId-3
+  d: test-appId-4''',
+                ),
+              ),
+            ),
+          ).called(1);
+        });
       });
     });
 
