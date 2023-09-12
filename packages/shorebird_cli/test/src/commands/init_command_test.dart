@@ -189,9 +189,11 @@ Please make sure you are running "shorebird init" from the root of your Flutter 
       final exitCode = await runWithOverrides(command.run);
       verify(
         () => logger.err(
-          '''
-A "shorebird.yaml" already exists.
-If you want to reinitialize Shorebird, please run "shorebird init --force".''',
+            'A "shorebird.yaml" file already exists and seems up-to-date.'),
+      ).called(1);
+      verify(
+        () => logger.info(
+          '''If you want to reinitialize Shorebird, please run ${lightCyan.wrap('shorebird init --force')}.''',
         ),
       ).called(1);
       expect(exitCode, ExitCode.software.code);
@@ -203,9 +205,7 @@ If you want to reinitialize Shorebird, please run "shorebird init --force".''',
       final exitCode = await runWithOverrides(command.run);
       verifyNever(
         () => logger.err(
-          '''
-A "shorebird.yaml" already exists.
-If you want to reinitialize Shorebird, please run "shorebird init --force".''',
+          'A "shorebird.yaml" file already exists and seems up-to-date.',
         ),
       );
       expect(exitCode, ExitCode.success.code);
