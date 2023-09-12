@@ -13,6 +13,7 @@ import 'package:shorebird_cli/src/platform.dart';
 import 'package:shorebird_cli/src/shorebird_env.dart';
 import 'package:shorebird_cli/src/shorebird_validator.dart';
 import 'package:shorebird_cli/src/xcodebuild.dart';
+import 'package:shorebird_code_push_client/shorebird_code_push_client.dart';
 import 'package:yaml/yaml.dart';
 import 'package:yaml_edit/yaml_edit.dart';
 
@@ -63,13 +64,6 @@ Please make sure you are running "shorebird init" from the root of your Flutter 
 
     final force = results['force'] == true;
 
-    if (!force && shorebirdEnv.hasShorebirdYaml) {
-      logger.err('''
-A "shorebird.yaml" already exists.
-If you want to reinitialize Shorebird, please run "shorebird init --force".''');
-      return ExitCode.software.code;
-    }
-
     Set<String>? androidFlavors;
     Set<String>? iosFlavors;
     var productFlavors = <String>{};
@@ -89,6 +83,60 @@ If you want to reinitialize Shorebird, please run "shorebird init --force".''');
     } catch (error) {
       detectFlavorsProgress.fail();
       logger.err('Unable to extract product flavors.\n$error');
+      return ExitCode.software.code;
+    }
+
+    final shorebirdYaml = shorebirdEnv.getShorebirdYaml();
+    final existingFlavors = shorebirdYaml?.flavors;
+    Set<String> newFlavors;
+    if (existingFlavors != null) {
+      final existingFlavorNames = existingFlavors.keys.toSet();
+      newFlavors = productFlavors.difference(existingFlavorNames);
+    } else {
+      newFlavors = {};
+    }
+
+    // New flavors not being empty means that we have existing flavors, which
+    // means that there is already an existing app.
+    // If the --force flag is present, we will completely reinit the app and
+    // don't care about which flavors are new.
+    if (!force && newFlavors.isNotEmpty) {
+      logger.info('New flavors detected: ${newFlavors.join(', ')}');
+      final updateShorebirdYamlProgress =
+          logger.progress('Adding flavors to shorebird.yaml');
+
+      final AppMetadata existingApp;
+      try {
+        existingApp =
+            await codePushClientWrapper.getApp(appId: shorebirdYaml!.appId);
+      } catch (e) {
+        updateShorebirdYamlProgress.fail('Failed to get existing app info: $e');
+        return ExitCode.software.code;
+      }
+
+      final deflavoredAppName =
+          existingApp.displayName.replaceAll(RegExp(r'\(.*\)'), '').trim();
+      final flavorsToAppIds = shorebirdYaml.flavors!;
+      for (final flavor in newFlavors) {
+        final app = await codePushClientWrapper.createApp(
+          appName: '$deflavoredAppName ($flavor)',
+        );
+        flavorsToAppIds[flavor] = app.id;
+      }
+      _addShorebirdYamlToProject(
+        shorebirdYaml.appId,
+        flavors: flavorsToAppIds,
+      );
+      updateShorebirdYamlProgress.complete('Flavors added to shorebird.yaml');
+      return ExitCode.success.code;
+    }
+
+    if (!force && shorebirdEnv.hasShorebirdYaml) {
+      logger
+        ..err('A "shorebird.yaml" file already exists and seems up-to-date.')
+        ..info(
+          '''If you want to reinitialize Shorebird, please run ${lightCyan.wrap('shorebird init --force')}.''',
+        );
       return ExitCode.software.code;
     }
 
