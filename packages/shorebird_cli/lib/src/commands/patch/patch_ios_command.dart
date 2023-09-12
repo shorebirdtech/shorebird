@@ -136,7 +136,11 @@ class PatchIosCommand extends ShorebirdCommand
       releaseVersion: releaseVersion,
     );
 
-    if (release.platformStatuses[ReleasePlatform.ios] == ReleaseStatus.draft) {
+    if (release.platformStatuses[ReleasePlatform.ios] == null) {
+      logger.err('No iOS release found for $releaseVersion.');
+      return ExitCode.software.code;
+    } else if (release.platformStatuses[ReleasePlatform.ios] ==
+        ReleaseStatus.draft) {
       logger.err('''
 Release $releaseVersion is in an incomplete state. It's possible that the original release was terminated or failed to complete.
 Please re-run the release command for this version or create a new release.''');

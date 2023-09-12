@@ -115,7 +115,7 @@ flutter:
     version: version,
     flutterRevision: flutterRevision,
     displayName: '1.2.3+1',
-    platformStatuses: {},
+    platformStatuses: {ReleasePlatform.ios: ReleaseStatus.active},
   );
 
   group(PatchIosCommand, () {
@@ -512,6 +512,34 @@ error: exportArchive: No signing certificate "iOS Distribution" found
     });
 
     test(
+        '''exits with code 70 if release does not exist for the ios platform''',
+        () async {
+      when(
+        () => codePushClientWrapper.getRelease(
+          appId: any(named: 'appId'),
+          releaseVersion: any(named: 'releaseVersion'),
+        ),
+      ).thenAnswer(
+        (_) async => const Release(
+          id: 0,
+          appId: appId,
+          version: version,
+          flutterRevision: flutterRevision,
+          displayName: '1.2.3+1',
+          platformStatuses: {ReleasePlatform.android: ReleaseStatus.active},
+        ),
+      );
+      final tempDir = setUpTempDir();
+      setUpTempArtifacts(tempDir);
+      final exitCode = await IOOverrides.runZoned(
+        () => runWithOverrides(command.run),
+        getCurrentDirectory: () => tempDir,
+      );
+      expect(exitCode, ExitCode.software.code);
+      verify(() => logger.err('No iOS release found for 1.2.3+1.')).called(1);
+    });
+
+    test(
         '''exits with code 70 if release is in draft state for the ios platform''',
         () async {
       when(
@@ -557,7 +585,10 @@ Please re-run the release command for this version or create a new release.'''),
           version: version,
           flutterRevision: flutterRevision,
           displayName: '1.2.3+1',
-          platformStatuses: {ReleasePlatform.android: ReleaseStatus.draft},
+          platformStatuses: {
+            ReleasePlatform.android: ReleaseStatus.draft,
+            ReleasePlatform.ios: ReleaseStatus.active,
+          },
         ),
       );
       final tempDir = setUpTempDir();
