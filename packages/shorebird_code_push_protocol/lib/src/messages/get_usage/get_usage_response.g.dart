@@ -27,13 +27,16 @@ GetUsageResponse _$GetUsageResponseFromJson(Map<String, dynamic> json) =>
               'current_period_end', (v) => DateTime.parse(v as String)),
           currentPeriodCost: $checkedConvert('current_period_cost',
               (v) => const MoneyConverter().fromJson(v as int)),
+          cancelAtPeriodEnd:
+              $checkedConvert('cancel_at_period_end', (v) => v as bool),
         );
         return val;
       },
       fieldKeyMap: const {
         'currentPeriodStart': 'current_period_start',
         'currentPeriodEnd': 'current_period_end',
-        'currentPeriodCost': 'current_period_cost'
+        'currentPeriodCost': 'current_period_cost',
+        'cancelAtPeriodEnd': 'cancel_at_period_end'
       },
     );
 
@@ -45,6 +48,7 @@ Map<String, dynamic> _$GetUsageResponseToJson(GetUsageResponse instance) =>
       'current_period_end': instance.currentPeriodEnd.toIso8601String(),
       'current_period_cost':
           const MoneyConverter().toJson(instance.currentPeriodCost),
+      'cancel_at_period_end': instance.cancelAtPeriodEnd,
     };
 
 AppUsage _$AppUsageFromJson(Map<String, dynamic> json) => $checkedCreate(

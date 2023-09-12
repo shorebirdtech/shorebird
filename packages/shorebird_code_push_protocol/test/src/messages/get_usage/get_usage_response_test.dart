@@ -18,6 +18,7 @@ void main() {
         currentPeriodCost: Money.fromIntWithCurrency(0, usd),
         currentPeriodStart: DateTime(2021),
         currentPeriodEnd: DateTime(2021, 1, 2),
+        cancelAtPeriodEnd: false,
       );
       expect(
         GetUsageResponse.fromJson(response.toJson()).toJson(),
