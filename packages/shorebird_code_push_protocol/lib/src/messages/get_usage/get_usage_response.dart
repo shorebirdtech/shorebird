@@ -15,6 +15,7 @@ class GetUsageResponse {
     required this.currentPeriodStart,
     required this.currentPeriodEnd,
     required this.currentPeriodCost,
+    required this.cancelAtPeriodEnd,
   });
 
   /// Converts a Map<String, dynamic> to a [GetUsageResponse].
@@ -40,6 +41,10 @@ class GetUsageResponse {
   /// monthly cost and any overages.
   @MoneyConverter()
   final Money currentPeriodCost;
+
+  /// Whether the subscription will be canceled
+  /// at the end of the current billing period.
+  final bool cancelAtPeriodEnd;
 }
 
 /// {@template app_usage}

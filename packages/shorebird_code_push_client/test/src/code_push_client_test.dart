@@ -2054,6 +2054,7 @@ void main() {
           currentPeriodCost: Money.fromIntWithCurrency(0, usd),
           currentPeriodStart: DateTime(2023),
           currentPeriodEnd: DateTime(2023, 2),
+          cancelAtPeriodEnd: false,
         );
 
         when(() => httpClient.send(any())).thenAnswer(
