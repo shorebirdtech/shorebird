@@ -283,6 +283,16 @@ void main() {
       ).called(1);
     });
 
+    test('exits with code unavailable when --split-per-abi is provided',
+        () async {
+      when(() => argResults['artifact']).thenReturn('apk');
+      when(() => argResults['split-per-abi']).thenReturn(true);
+
+      final exitCode = await runWithOverrides(command.run);
+
+      expect(exitCode, ExitCode.unavailable.code);
+    });
+
     test('exits with code 70 when building fails', () async {
       when(() => flutterBuildProcessResult.exitCode).thenReturn(1);
       when(() => flutterBuildProcessResult.stderr).thenReturn('oops');
@@ -414,45 +424,6 @@ ${link(uri: Uri.parse('https://support.google.com/googleplay/android-developer/a
         ),
       ).called(1);
       const buildApkArguments = ['build', 'apk', '--release'];
-      verify(
-        () => shorebirdProcess.run(
-          'flutter',
-          buildApkArguments,
-          runInShell: true,
-        ),
-      ).called(1);
-      expect(exitCode, ExitCode.success.code);
-    });
-
-    test('succeeds when release is successful (with apk + split-per-abi)',
-        () async {
-      when(() => argResults['artifact']).thenReturn('apk');
-      when(() => argResults['split-per-abi']).thenReturn(true);
-      final exitCode = await runWithOverrides(command.run);
-      verify(() => logger.success('\n✅ Published Release!')).called(1);
-      verify(
-        () => codePushClientWrapper.createAndroidReleaseArtifacts(
-          appId: appId,
-          releaseId: release.id,
-          platform: releasePlatform,
-          aabPath: any(named: 'aabPath'),
-          architectures: any(named: 'architectures'),
-        ),
-      ).called(1);
-      verify(
-        () => codePushClientWrapper.updateReleaseStatus(
-          appId: appId,
-          releaseId: release.id,
-          platform: releasePlatform,
-          status: ReleaseStatus.active,
-        ),
-      ).called(1);
-      const buildApkArguments = [
-        'build',
-        'apk',
-        '--release',
-        '--split-per-abi',
-      ];
       verify(
         () => shorebirdProcess.run(
           'flutter',
