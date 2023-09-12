@@ -87,12 +87,11 @@ Please make sure you are running "shorebird init" from the root of your Flutter 
     }
 
     final shorebirdYaml = shorebirdEnv.getShorebirdYaml();
+    final existingFlavors = shorebirdYaml?.flavors;
     Set<String> newFlavors;
-    if (shorebirdYaml?.flavors != null) {
-      final existingFlavors = shorebirdYaml!.flavors!.keys.toSet();
-      newFlavors = productFlavors
-          .where((element) => !existingFlavors.contains(element))
-          .toSet();
+    if (existingFlavors != null) {
+      final existingFlavorNames = existingFlavors.keys.toSet();
+      newFlavors = productFlavors.difference(existingFlavorNames);
     } else {
       newFlavors = {};
     }
