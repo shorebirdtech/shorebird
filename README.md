@@ -26,6 +26,7 @@ This repository is a monorepo containing the following packages:
 | [cutler](packages/cutler/README.md)                                             | A tool for managing Flutter forks                                                       |
 | [discord_gcp_alerts](packages/discord_gcp_alerts/README.md)                     | Dart server which forwards GCP alerts to Discord                                        |
 | [jwt](packages/jwt/README.md)                                                   | Dart library for verifying Json Web Tokens                                              |
+| [redis_client](packages/redis_client/README.md)                                 | Dart library for interacting with Redis                                                 |
 | [scoped](packages/scoped/README.md)                                             | A simple dependency injection library built on Zones                                    |
 
 For more information, please refer to the documentation for each package.
