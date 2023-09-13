@@ -16,36 +16,19 @@ import 'package:redis_client/redis_client.dart';
 
 Future<void> main() async {
   // Create an instance of a RedisClient.
-  final client = RedisClient(
-    // Specify the socket options for the Redis server.
-    socket: const RedisSocketOptions(host: '<HOST>'),
-  );
+  final client = RedisClient();
 
   // Connect to the Redis server.
   await client.connect();
 
-  // Authenticate with the Redis server.
-  final authenticated = await client.auth(
-    username: '<USERNAME>',
-    password: '<PASSWORD>',
-  );
-
-  if (!authenticated) {
-    print('Failed to authenticate. Exiting...');
-    await client.close();
-    return;
-  }
-
-  const key = 'HELLO';
-
   // Set the value of a key.
-  await client.set(key: key, value: 'WORLD');
+  await client.set(key: 'HELLO', value: 'WORLD');
 
   // Get the value of a key.
-  final value = await client.get(key: key); // WORLD
+  final value = await client.get(key: 'HELLO'); // WORLD
 
   // Delete the key.
-  await client.delete(key: key);
+  await client.delete(key: 'HELLO');
 
   // Close the connection to the Redis server.
   await client.close();
