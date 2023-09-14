@@ -1,5 +1,3 @@
-// ignore_for_file: avoid_print
-
 import 'dart:async';
 
 import 'package:redis_client/redis_client.dart';
@@ -8,10 +6,8 @@ Future<void> main() async {
   // Create an instance of a RedisClient.
   final client = RedisClient();
 
-  print('connecting...');
   // Connect to the Redis server.
   await client.connect();
-  print('connected.');
 
   const key = 'HELLO';
 
