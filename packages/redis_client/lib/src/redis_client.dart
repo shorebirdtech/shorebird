@@ -1,4 +1,5 @@
 import 'dart:async';
+import 'dart:convert';
 import 'dart:io';
 
 import 'package:resp_client/resp_client.dart';
@@ -82,6 +83,9 @@ class RedisClient {
   /// A future which completes when the client disconnects.
   Future<void> get disconnected => _disconnected.future;
 
+  /// The Redis JSON commands.
+  RedisJson get json => RedisJson._(client: this);
+
   /// Authenticate to the Redis server.
   /// Returns true if successful, otherwise false.
   /// Equivalent to the `AUTH` command.
@@ -164,6 +168,8 @@ class RedisClient {
     Object? error,
     StackTrace? stackTrace,
   }) async {
+    if (_closed) return;
+
     if (remainingConnectionAttempts <= 0) {
       _connected.completeError(
         error ?? const SocketException('Connection retry limit exceeded'),
@@ -236,6 +242,64 @@ class RedisClient {
         throw const SocketException('Connection timed out');
       },
     );
+  }
+}
+
+/// {@template redis_json}
+/// An object that supports executing commands provided by the RedisJSON module.
+/// https://redis.io/docs/data-types/json/
+/// {@endtemplate}
+class RedisJson {
+  RedisJson._({required RedisClient client}) : _client = client;
+
+  final RedisClient _client;
+
+  /// Set the value of a key.
+  /// Equivalent to the `JSON.SET` command.
+  /// https://redis.io/commands/json.set
+  Future<void> set({
+    required String key,
+    required Map<String, dynamic> value,
+  }) async {
+    await _client.sendCommand([
+      'JSON.SET',
+      key,
+      r'$',
+      json.encode(value),
+    ]);
+  }
+
+  /// Gets the value of a key.
+  /// Returns null if the key does not exist.
+  /// Equivalent to the `JSON.GET` command.
+  /// https://redis.io/commands/json.get
+  Future<Map<String, dynamic>?> get({
+    required String key,
+  }) async {
+    final result = await _client.sendCommand([
+      'JSON.GET',
+      key,
+      r'$',
+    ]);
+    if (result is RespBulkString) {
+      final parts = LineSplitter.split(result.payload ?? '');
+      if (parts.isNotEmpty) {
+        final decoded = json.decode(parts.first) as List;
+        if (decoded.isNotEmpty) return decoded.first as Map<String, dynamic>;
+      }
+    }
+    return null;
+  }
+
+  /// Deletes the specified key.
+  /// Equivalent to the `JSON.DEL` command.
+  /// https://redis.io/commands/json.del
+  Future<void> delete({required String key}) async {
+    await _client.sendCommand([
+      'JSON.DEL',
+      key,
+      r'$',
+    ]);
   }
 }
 

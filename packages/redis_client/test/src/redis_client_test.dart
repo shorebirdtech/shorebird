@@ -155,5 +155,28 @@ void main() {
         );
       });
     });
+
+    group('JSON', () {
+      group('GET/SET/DEL', () {
+        test('completes', () async {
+          const key = 'key';
+          const value = {
+            'hello': 'world',
+            'foo': true,
+            'nested': {'bar': 42},
+            'array': [1, 2, 3],
+          };
+          await client.auth(password: 'password');
+          await expectLater(client.json.get(key: key), completion(isNull));
+          await expectLater(client.json.set(key: key, value: value), completes);
+          await expectLater(
+            client.json.get(key: key),
+            completion(equals(value)),
+          );
+          await expectLater(client.json.delete(key: key), completes);
+          await expectLater(client.json.get(key: key), completion(isNull));
+        });
+      });
+    });
   });
 }
