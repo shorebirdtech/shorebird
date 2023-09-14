@@ -310,7 +310,8 @@ flutter:
         () => codePushClientWrapper.createIosReleaseArtifacts(
           appId: appId,
           releaseId: release.id,
-          xcarchivePath: any(named: 'ipaPath', that: endsWith('.ipa')),
+          xcarchivePath:
+              any(named: 'xcarchivePath', that: endsWith('.xcarchive')),
           runnerPath: any(named: 'runnerPath', that: endsWith('Runner.app')),
         ),
       );
