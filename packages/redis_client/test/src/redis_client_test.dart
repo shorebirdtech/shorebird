@@ -138,9 +138,7 @@ void main() {
           'throws SocketException '
           'when command timeout is exceeded', () async {
         final client = RedisClient(
-          command: const RedisCommandOptions(
-            timeout: Duration.zero,
-          ),
+          command: const RedisCommandOptions(timeout: Duration.zero),
         );
         await client.connect();
         await expectLater(

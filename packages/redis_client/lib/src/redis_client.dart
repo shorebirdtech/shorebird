@@ -233,9 +233,7 @@ class RedisClient {
   Future<T> _exec<T>(FutureOr<T> Function() fn) async {
     if (_closed) throw StateError('RedisClient has been closed.');
     await connected;
-    return Future<T>.sync(() {
-      return fn();
-    }).timeout(
+    return Future<T>.sync(fn).timeout(
       _commandOptions.timeout,
       onTimeout: () {
         _connection?.close();
