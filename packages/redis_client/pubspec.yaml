@@ -6,6 +6,9 @@ publish_to: none
 environment:
   sdk: ">=3.0.0 <4.0.0"
 
+dependencies:
+  resp_client: ^1.2.0
+
 dev_dependencies:
   test: ^1.19.2
-  very_good_analysis: ^5.0.0
+  very_good_analysis: ^5.1.0
