@@ -79,7 +79,7 @@ make smaller updates to your app.
           '''Building for device with codesigning disabled. You will have to manually codesign before deploying to device.''',
         )
         ..warn(
-          '''shorebird preview does not work for releases created with codesigning disabled. However, you can still preview your app by signing the archive in Xcode.''',
+          '''shorebird preview does not work for releases created with codesigning disabled. However, you can still preview your app by signing the generated .xcarchive in Xcode.''',
         );
     }
 
