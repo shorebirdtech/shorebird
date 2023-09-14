@@ -74,9 +74,13 @@ make smaller updates to your app.
 
     final codesign = results['codesign'] == true;
     if (!codesign) {
-      logger.info(
-        '''Building for device with codesigning disabled. You will have to manually codesign before deploying to device.''',
-      );
+      logger
+        ..info(
+          '''Building for device with codesigning disabled. You will have to manually codesign before deploying to device.''',
+        )
+        ..warn(
+          '''Shorebird patch does not work for releases created with codesigning disabled.''',
+        );
     }
 
     const releasePlatform = ReleasePlatform.ios;
