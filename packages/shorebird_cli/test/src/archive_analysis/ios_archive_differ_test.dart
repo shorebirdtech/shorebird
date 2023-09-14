@@ -83,7 +83,7 @@ void main() {
                 {
                   'Products/Applications/Runner.app/Frameworks/App.framework/_CodeSignature/CodeResources',
                   'Products/Applications/Runner.app/Frameworks/App.framework/flutter_assets/assets/asset.json',
-                  'Info.plist'
+                  'Info.plist',
                 },
               );
             } else {
@@ -109,10 +109,7 @@ void main() {
               differ.dartFileSetDiff(fileSetDiff),
               platform.isMacOS ? isEmpty : isNotEmpty,
             );
-            expect(
-              differ.nativeFileSetDiff(fileSetDiff),
-              platform.isMacOS ? isEmpty : isNotEmpty,
-            );
+            expect(differ.nativeFileSetDiff(fileSetDiff), isEmpty);
           });
 
           test('detects dart changes', () {
@@ -120,20 +117,14 @@ void main() {
                 differ.changedFiles(baseIpaPath, changedDartIpaPath);
             expect(differ.assetsFileSetDiff(fileSetDiff), isEmpty);
             expect(differ.dartFileSetDiff(fileSetDiff), isNotEmpty);
-            expect(
-              differ.nativeFileSetDiff(fileSetDiff),
-              platform.isMacOS ? isEmpty : isNotEmpty,
-            );
+            expect(differ.nativeFileSetDiff(fileSetDiff), isEmpty);
           });
 
           test('detects swift changes', () {
             final fileSetDiff =
                 differ.changedFiles(baseIpaPath, changedSwiftIpaPath);
             expect(differ.assetsFileSetDiff(fileSetDiff), isEmpty);
-            expect(
-              differ.dartFileSetDiff(fileSetDiff),
-              platform.isMacOS ? isEmpty : isNotEmpty,
-            );
+            expect(differ.dartFileSetDiff(fileSetDiff), isEmpty);
             expect(differ.nativeFileSetDiff(fileSetDiff), isNotEmpty);
           });
         });
@@ -181,7 +172,7 @@ void main() {
             );
             expect(
               differ.containsPotentiallyBreakingNativeDiffs(fileSetDiff),
-              platform.isMacOS ? isFalse : isTrue,
+              isFalse,
             );
           });
         });

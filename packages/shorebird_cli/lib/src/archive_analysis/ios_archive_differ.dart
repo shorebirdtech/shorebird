@@ -45,10 +45,11 @@ class IosArchiveDiffer extends ArchiveDiffer {
       pathHashes: newPathHashes,
     );
 
-    return FileSetDiff.fromPathHashes(
+    final diff = FileSetDiff.fromPathHashes(
       oldPathHashes: oldPathHashes,
       newPathHashes: newPathHashes,
     );
+    return diff;
   }
 
   /// Replaces crc32s from zip file headers where needed. This currently

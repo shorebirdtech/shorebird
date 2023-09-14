@@ -386,7 +386,7 @@ flutter:
                   'to the App Store using Xcode.',
                   'You can open the archive in Xcode by running',
                   'open $archivePath',
-                  '''Make sure to uncheck "Manage Version and Build Number", or else shorebird will not work.'''
+                  '''Make sure to uncheck "Manage Version and Build Number", or else shorebird will not work.''',
                 ],
               ),
             ),

@@ -357,12 +357,20 @@ void main() {
     test('succeeds when release is successful', () async {
       final exitCode = await runWithOverrides(command.run);
       verify(() => logger.success('\n✅ Published Release!')).called(1);
+      final aabPath = p.join(
+        'build',
+        'app',
+        'outputs',
+        'bundle',
+        'release',
+        'app-release.aab',
+      );
       // Verify info message does not include apk instructions.
       verify(
         () => logger.info('''
 
 Your next step is to upload the app bundle to the Play Store:
-${lightCyan.wrap('build/app/outputs/bundle/release/app-release.aab')}
+${lightCyan.wrap(aabPath)}
 
 For information on uploading to the Play Store, see:
 ${link(uri: Uri.parse('https://support.google.com/googleplay/android-developer/answer/9859152?hl=en'))}
@@ -393,14 +401,30 @@ ${link(uri: Uri.parse('https://support.google.com/googleplay/android-developer/a
       final exitCode = await runWithOverrides(command.run);
       verify(() => logger.success('\n✅ Published Release!')).called(1);
       // Verify info message does include apk instructions.
+      final aabPath = p.join(
+        'build',
+        'app',
+        'outputs',
+        'bundle',
+        'release',
+        'app-release.aab',
+      );
+      final apkPath = p.join(
+        'build',
+        'app',
+        'outputs',
+        'apk',
+        'release',
+        'app-release.apk',
+      );
       verify(
         () => logger.info('''
 
 Your next step is to upload the app bundle to the Play Store:
-${lightCyan.wrap('build/app/outputs/bundle/release/app-release.aab')}
+${lightCyan.wrap(aabPath)}
 
 Or distribute the apk:
-${lightCyan.wrap('build/app/outputs/apk/release/app-release.apk')}
+${lightCyan.wrap(apkPath)}
 
 For information on uploading to the Play Store, see:
 ${link(uri: Uri.parse('https://support.google.com/googleplay/android-developer/answer/9859152?hl=en'))}
