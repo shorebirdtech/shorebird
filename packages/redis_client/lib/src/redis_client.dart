@@ -246,7 +246,7 @@ class RedisClient {
 }
 
 /// {@template redis_json}
-/// An object that supports executing commands provided by the RedisJSON module.
+/// An object that adds support for getting and setting JSON values. Backed by the RedisJSON module.
 /// https://redis.io/docs/data-types/json/
 /// {@endtemplate}
 class RedisJson {
