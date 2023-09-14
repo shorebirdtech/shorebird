@@ -1,2 +1,2 @@
 export 'src/redis_client.dart'
-    show RedisClient, RedisCommandOptions, RedisSocketOptions;
+    show RedisClient, RedisCommandOptions, RedisJson, RedisSocketOptions;
