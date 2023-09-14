@@ -866,6 +866,33 @@ Please re-run the release command for this version or create a new release.'''),
       ).called(1);
     });
 
+    test('forwards codesign to flutter build', () async {
+      when(() => argResults['codesign']).thenReturn(false);
+      final tempDir = setUpTempDir();
+      setUpTempArtifacts(tempDir);
+      await IOOverrides.runZoned(
+        () => runWithOverrides(command.run),
+        getCurrentDirectory: () => tempDir,
+      );
+
+      verify(
+        () => shorebirdProcess.run(
+          'flutter',
+          any(
+            that: containsAllInOrder(
+              [
+                'build',
+                'ipa',
+                '--release',
+                '--no-codesign',
+              ],
+            ),
+          ),
+          runInShell: true,
+        ),
+      ).called(1);
+    });
+
     test(
         'succeeds when patch is successful '
         'with flavors and target', () async {

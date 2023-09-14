@@ -43,6 +43,11 @@ class PatchIosCommand extends ShorebirdCommand
         help: 'The product flavor to use when building the app.',
       )
       ..addFlag(
+        'codesign',
+        help: 'Codesign the application bundle.',
+        defaultsTo: true,
+      )
+      ..addFlag(
         'force',
         abbr: 'f',
         help: 'Patch without confirmation if there are no errors.',
@@ -255,11 +260,12 @@ ${summary.join('\n')}
   Future<void> _buildPatch() async {
     final target = results['target'] as String?;
     final flavor = results['flavor'] as String?;
+    final shouldCodesign = results['codesign'] == true;
     final buildProgress = logger.progress('Building patch');
     try {
-      // We never need to codesign here because the only thing we need to
-      // generate for an iOS patch is the AOT snapshot.
-      await buildIpa(codesign: false, flavor: flavor, target: target);
+      // If buildIpa is called with a different codesign value than the release
+      // was, we will erroneously report native diffs.
+      await buildIpa(codesign: shouldCodesign, flavor: flavor, target: target);
     } on ProcessException catch (error) {
       buildProgress.fail('Failed to build: ${error.message}');
       rethrow;
