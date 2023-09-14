@@ -260,22 +260,15 @@ class RedisJson {
   Future<void> set({
     required String key,
     required Map<String, dynamic> value,
-  }) async {
-    await _client.sendCommand([
-      'JSON.SET',
-      key,
-      r'$',
-      json.encode(value),
-    ]);
+  }) {
+    return _client.sendCommand(['JSON.SET', key, r'$', json.encode(value)]);
   }
 
   /// Gets the value of a key.
   /// Returns null if the key does not exist.
   /// Equivalent to the `JSON.GET` command.
   /// https://redis.io/commands/json.get
-  Future<Map<String, dynamic>?> get({
-    required String key,
-  }) async {
+  Future<Map<String, dynamic>?> get({required String key}) async {
     final result = await _client.sendCommand([
       'JSON.GET',
       key,
@@ -294,12 +287,8 @@ class RedisJson {
   /// Deletes the specified key.
   /// Equivalent to the `JSON.DEL` command.
   /// https://redis.io/commands/json.del
-  Future<void> delete({required String key}) async {
-    await _client.sendCommand([
-      'JSON.DEL',
-      key,
-      r'$',
-    ]);
+  Future<void> delete({required String key}) {
+    return _client.sendCommand(['JSON.DEL', key, r'$']);
   }
 }
 
