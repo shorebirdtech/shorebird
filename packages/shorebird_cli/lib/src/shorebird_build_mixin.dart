@@ -182,10 +182,12 @@ mixin ShorebirdBuildMixin on ShorebirdCommand {
     });
   }
 
+  /// Calls `flutter build ipa`. If [codesign] is false, this will only build
+  /// an .xcarchive and _not_ an .ipa.
   Future<void> buildIpa({
+    required bool codesign,
     String? flavor,
     String? target,
-    bool codesign = true,
   }) async {
     return _runShorebirdBuildCommand(() async {
       const executable = 'flutter';

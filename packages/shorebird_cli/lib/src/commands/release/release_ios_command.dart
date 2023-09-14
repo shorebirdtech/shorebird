@@ -23,9 +23,7 @@ import 'package:shorebird_code_push_client/shorebird_code_push_client.dart';
 class ReleaseIosCommand extends ShorebirdCommand
     with ShorebirdBuildMixin, ShorebirdArtifactMixin {
   /// {@macro release_ios_command}
-  ReleaseIosCommand({
-    IpaReader? ipaReader,
-  }) : _ipaReader = ipaReader ?? IpaReader() {
+  ReleaseIosCommand() {
     argParser
       ..addOption(
         'target',
@@ -37,14 +35,17 @@ class ReleaseIosCommand extends ShorebirdCommand
         help: 'The product flavor to use when building the app.',
       )
       ..addFlag(
+        'codesign',
+        help: 'Codesign the application bundle.',
+        defaultsTo: true,
+      )
+      ..addFlag(
         'force',
         abbr: 'f',
         help: 'Release without confirmation if there are no errors.',
         negatable: false,
       );
   }
-
-  final IpaReader _ipaReader;
 
   @override
   String get description => '''
@@ -71,6 +72,13 @@ make smaller updates to your app.
 
     showiOSStatusWarning();
 
+    final codesign = results['codesign'] == true;
+    if (!codesign) {
+      logger.info(
+        '''Building for device with codesigning disabled. You will have to manually codesign before deploying to device.''',
+      );
+    }
+
     const releasePlatform = ReleasePlatform.ios;
     final flavor = results['flavor'] as String?;
     final target = results['target'] as String?;
@@ -80,48 +88,45 @@ make smaller updates to your app.
 
     final buildProgress = logger.progress('Building release');
     try {
-      await buildIpa(flavor: flavor, target: target);
+      await buildIpa(codesign: codesign, flavor: flavor, target: target);
     } on ProcessException catch (error) {
-      buildProgress.fail('Failed to build IPA: ${error.message}');
+      buildProgress.fail('Failed to build: ${error.message}');
       return ExitCode.software.code;
     } on BuildException catch (error) {
-      buildProgress.fail('Failed to build IPA');
+      buildProgress.fail('Failed to build');
       logger.err(error.message);
       return ExitCode.software.code;
     }
 
     buildProgress.complete();
 
-    final releaseVersionProgress = logger.progress('Getting release version');
     final iosBuildDir = p.join(Directory.current.path, 'build', 'ios');
-    final String ipaPath;
-    try {
-      ipaPath = getIpaPath();
-    } catch (error) {
-      releaseVersionProgress.fail('Could not find ipa file: $error');
-      return ExitCode.software.code;
-    }
 
-    final runnerPath = p.join(
+    final archivePath = p.join(
       iosBuildDir,
       'archive',
       'Runner.xcarchive',
+    );
+    final runnerPath = p.join(
+      archivePath,
       'Products',
       'Applications',
       'Runner.app',
     );
-    String releaseVersion;
-    try {
-      final ipa = _ipaReader.read(ipaPath);
-      releaseVersion = ipa.versionNumber;
-    } catch (error) {
-      releaseVersionProgress.fail(
-        'Failed to determine release version: $error',
-      );
+    final plistFile = File(p.join(archivePath, 'Info.plist'));
+    if (!plistFile.existsSync()) {
+      logger.err('No Info.plist file found at ${plistFile.path}.');
       return ExitCode.software.code;
     }
 
-    releaseVersionProgress.complete();
+    final plist = Plist(file: plistFile);
+    final String releaseVersion;
+    try {
+      releaseVersion = plist.versionNumber;
+    } catch (error) {
+      logger.err('Failed to determine release version: $error');
+      return ExitCode.software.code;
+    }
 
     final existingRelease = await codePushClientWrapper.maybeGetRelease(
       appId: appId,
@@ -177,12 +182,10 @@ ${summary.join('\n')}
       );
     }
 
-    final relativeIpaPath = p.relative(ipaPath);
-
     await codePushClientWrapper.createIosReleaseArtifacts(
       appId: app.appId,
       releaseId: release.id,
-      ipaPath: ipaPath,
+      xcarchivePath: archivePath,
       runnerPath: runnerPath,
     );
 
@@ -193,9 +196,10 @@ ${summary.join('\n')}
       status: ReleaseStatus.active,
     );
 
-    logger
-      ..success('\n✅ Published Release!')
-      ..info('''
+    logger.success('\n✅ Published Release!');
+    if (codesign) {
+      final relativeIpaPath = p.relative(getIpaPath());
+      logger.info('''
 
 Your next step is to upload the ipa to App Store Connect.
 ${lightCyan.wrap(relativeIpaPath)}
@@ -205,6 +209,17 @@ To upload to the App Store either:
     2. Run ${lightCyan.wrap('xcrun altool --upload-app --type ios -f $relativeIpaPath --apiKey your_api_key --apiIssuer your_issuer_id')}.
        See "man altool" for details about how to authenticate with the App Store Connect API key.
 ''');
+    } else {
+      logger.info('''
+
+Your next step is to submit the archive at ${lightCyan.wrap(archivePath)} to the App Store using Xcode.
+
+You can open the archive in Xcode by running:
+    ${lightCyan.wrap('open $archivePath')}
+
+${styleBold.wrap('Make sure to uncheck "Manage Version and Build Number", or else shorebird will not work.')}
+''');
+    }
 
     return ExitCode.success.code;
   }

@@ -123,6 +123,7 @@ flutter:
     }
 
     setUpAll(() {
+      registerFallbackValue(Directory(''));
       registerFallbackValue(ReleasePlatform.ios);
       registerFallbackValue(ReleaseStatus.draft);
       registerFallbackValue(_FakeRelease());
@@ -309,7 +310,7 @@ flutter:
         () => codePushClientWrapper.createIosReleaseArtifacts(
           appId: appId,
           releaseId: release.id,
-          ipaPath: any(named: 'ipaPath', that: endsWith('.ipa')),
+          xcarchivePath: any(named: 'ipaPath', that: endsWith('.ipa')),
           runnerPath: any(named: 'runnerPath', that: endsWith('Runner.app')),
         ),
       );

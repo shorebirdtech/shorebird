@@ -20,11 +20,13 @@ import 'package:shorebird_cli/src/archive_analysis/file_set_diff.dart';
 class IosArchiveDiffer extends ArchiveDiffer {
   String _hash(List<int> bytes) => sha256.convert(bytes).toString();
 
-  static const binaryFiles = {
-    'App.framework/App',
-    'Flutter.framework/Flutter',
+  static final binaryFilePatterns = {
+    RegExp(r'App.framework/App$'),
+    RegExp(r'Flutter.framework/Flutter$'),
   };
-  static RegExp appRegex = RegExp(r'^Payload/[\w\-. ]+.app/[\w\- ]+$');
+  static RegExp appRegex = RegExp(
+    r'^Products/Applications/[\w\-. ]+.app/[\w\- ]+$',
+  );
 
   /// Files that have been added, removed, or that have changed between the
   /// archives at the two provided paths. This method will also unisgn mach-o
@@ -73,8 +75,8 @@ class IosArchiveDiffer extends ArchiveDiffer {
         .where((file) => file.isFile)
         .where(
           (file) =>
-              file.name.endsWith('App.framework/App') ||
-              file.name.endsWith('Flutter.framework/Flutter') ||
+              binaryFilePatterns
+                  .any((pattern) => pattern.hasMatch(file.name)) ||
               appRegex.hasMatch(file.name),
         )
         .toList();
@@ -84,7 +86,7 @@ class IosArchiveDiffer extends ArchiveDiffer {
     return ZipDecoder()
         .decodeBuffer(InputFileStream(archivePath))
         .files
-        .where((file) => file.isFile && p.extension(file.name) == '.car')
+        .where((file) => file.isFile && p.basename(file.name) == 'Assets.car')
         .toList();
   }
 
@@ -148,7 +150,7 @@ class IosArchiveDiffer extends ArchiveDiffer {
     /// The flutter_assets directory contains the assets listed in the assets
     ///   section of the pubspec.yaml file.
     /// Assets.car is the compiled asset catalog(s) (.xcassets files).
-    return p.extension(filePath) == '.car' ||
+    return p.basename(filePath) == 'Assets.car' ||
         p.split(filePath).contains('flutter_assets');
   }
 
