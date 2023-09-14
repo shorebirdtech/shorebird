@@ -137,8 +137,8 @@ jobs:
 
       - name: 🐳 Run Redis
         run: |
-          docker pull redis:latest
-          docker run --name test_redis -d -p 6379:6379 redis redis-server --requirepass "password"
+          docker pull redis/redis-stack-server:latest
+          docker run --name test_redis -d -p 6379:6379 --rm -e REDIS_ARGS="--requirepass password" redis/redis-stack-server:latest
 
       - name: 🎯 Build ${{ matrix.package }}
         uses: ./.github/actions/dart_package
