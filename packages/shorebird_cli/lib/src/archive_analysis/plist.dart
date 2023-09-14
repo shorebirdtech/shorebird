@@ -32,16 +32,10 @@ class Plist {
   late final Map<String, Object> properties;
 
   String get versionNumber {
-    final Map<String, Object> effectivePlist;
-    if (properties.containsKey(applicationPropertiesKey)) {
-      effectivePlist =
-          properties[applicationPropertiesKey]! as Map<String, Object>;
-    } else {
-      effectivePlist = properties;
-    }
-
-    final releaseVersion = effectivePlist[releaseVersionKey] as String?;
-    final buildNumber = effectivePlist[buildNumberKey] as String?;
+    final applicationProperties =
+        properties[applicationPropertiesKey]! as Map<String, Object>;
+    final releaseVersion = applicationProperties[releaseVersionKey] as String?;
+    final buildNumber = applicationProperties[buildNumberKey] as String?;
     if (releaseVersion == null) {
       throw Exception('Could not determine release version');
     }

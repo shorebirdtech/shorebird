@@ -514,6 +514,79 @@ error: exportArchive: No signing certificate "iOS Distribution" found
       ).called(1);
     });
 
+    test('exits with code 70 if ipa build directory does not exist', () async {
+      final tempDir = setUpTempDir();
+      final ipaDirectory =
+          Directory(p.join(tempDir.path, 'build', 'ios', 'ipa'))
+            ..deleteSync(recursive: true);
+
+      final exitCode = await IOOverrides.runZoned(
+        () => runWithOverrides(command.run),
+        getCurrentDirectory: () => tempDir,
+      );
+
+      expect(exitCode, equals(ExitCode.software.code));
+      verify(
+        () => logger.err(
+          any(
+            that: stringContainsInOrder(
+              [
+                'Could not find ipa file',
+                'No directory found at ${ipaDirectory.path}',
+              ],
+            ),
+          ),
+        ),
+      ).called(1);
+    });
+
+    test('exits with code 70 if ipa file does not exist', () async {
+      final tempDir = setUpTempDir();
+      File(p.join(tempDir.path, ipaPath)).deleteSync(recursive: true);
+
+      final exitCode = await IOOverrides.runZoned(
+        () => runWithOverrides(command.run),
+        getCurrentDirectory: () => tempDir,
+      );
+
+      expect(exitCode, equals(ExitCode.software.code));
+      verify(
+        () => logger.err(
+          any(
+            that: stringContainsInOrder([
+              'Could not find ipa file',
+              'No .ipa files found in',
+              p.join('build', 'ios', 'ipa'),
+            ]),
+          ),
+        ),
+      ).called(1);
+    });
+
+    test('exits with code 70 if more than one ipa file is found', () async {
+      final tempDir = setUpTempDir();
+      File(p.join(tempDir.path, 'build/ios/ipa/Runner2.ipa'))
+          .createSync(recursive: true);
+
+      final exitCode = await IOOverrides.runZoned(
+        () => runWithOverrides(command.run),
+        getCurrentDirectory: () => tempDir,
+      );
+
+      expect(exitCode, equals(ExitCode.software.code));
+      verify(
+        () => logger.err(
+          any(
+            that: stringContainsInOrder([
+              'Could not find ipa file',
+              'More than one .ipa file found in',
+              p.join('build', 'ios', 'ipa'),
+            ]),
+          ),
+        ),
+      ).called(1);
+    });
+
     test(
         'does not prompt for confirmation '
         'when --release-version and --force are used', () async {

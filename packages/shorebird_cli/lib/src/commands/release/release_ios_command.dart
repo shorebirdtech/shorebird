@@ -198,7 +198,15 @@ ${summary.join('\n')}
 
     logger.success('\n✅ Published Release!');
     if (codesign) {
-      final relativeIpaPath = p.relative(getIpaPath());
+      final String ipaPath;
+      try {
+        ipaPath = getIpaPath();
+      } catch (error) {
+        logger.err('Could not find ipa file: $error');
+        return ExitCode.software.code;
+      }
+
+      final relativeIpaPath = p.relative(ipaPath);
       logger.info('''
 
 Your next step is to upload the ipa to App Store Connect.
