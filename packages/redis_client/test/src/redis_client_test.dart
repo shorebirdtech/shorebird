@@ -22,66 +22,68 @@ void main() {
       }
     });
 
-    test('throws SocketException when connection times out', () async {
-      final client = RedisClient(
-        socket: const RedisSocketOptions(timeout: Duration(microseconds: 1)),
-      );
-      await expectLater(
-        () => client.connect(maxConnectionAttempts: 1),
-        throwsA(
-          isA<SocketException>().having(
-            (e) => e.message,
-            'message',
-            contains('Connection timed out'),
+    group('connect', () {
+      test('throws SocketException when connection times out', () async {
+        final client = RedisClient(
+          socket: const RedisSocketOptions(timeout: Duration(microseconds: 1)),
+        );
+        await expectLater(
+          () => client.connect(maxConnectionAttempts: 1),
+          throwsA(
+            isA<SocketException>().having(
+              (e) => e.message,
+              'message',
+              contains('Connection timed out'),
+            ),
           ),
-        ),
-      );
-    });
+        );
+      });
 
-    test('throws SocketException after max connection attempts', () async {
-      final client = RedisClient(
-        socket: const RedisSocketOptions(port: 1234),
-      );
-      await expectLater(
-        () => client.connect(maxConnectionAttempts: 1),
-        throwsA(
-          isA<SocketException>().having(
-            (e) => e.message,
-            'message',
-            contains('Connection refused'),
+      test('throws SocketException after max connection attempts', () async {
+        final client = RedisClient(
+          socket: const RedisSocketOptions(port: 1234),
+        );
+        await expectLater(
+          () => client.connect(maxConnectionAttempts: 1),
+          throwsA(
+            isA<SocketException>().having(
+              (e) => e.message,
+              'message',
+              contains('Connection refused'),
+            ),
           ),
-        ),
-      );
-    });
+        );
+      });
 
-    test('throws SocketException after disconnect', () async {
-      final client = RedisClient(
-        socket: const RedisSocketOptions(port: 1234),
-      );
-      await expectLater(
-        () => client.connect(maxConnectionAttempts: 0),
-        throwsA(
-          isA<SocketException>().having(
-            (e) => '$e',
-            'message',
-            contains('Connection retry limit exceeded'),
+      test('throws SocketException after disconnect', () async {
+        final client = RedisClient(
+          socket: const RedisSocketOptions(port: 1234),
+        );
+        await expectLater(
+          () => client.connect(maxConnectionAttempts: 0),
+          throwsA(
+            isA<SocketException>().having(
+              (e) => '$e',
+              'message',
+              contains('Connection retry limit exceeded'),
+            ),
           ),
-        ),
-      );
-    });
+        );
+      });
 
-    test('throws StateError when closed', () async {
-      await client.close();
-      await expectLater(
-        client.connect(),
-        throwsA(
-          isA<StateError>().having(
-            (e) => e.message,
-            'message',
-            'RedisClient has been closed.',
+      test('throws StateError when closed', () async {
+        await client.close();
+        await expectLater(
+          client.connect(),
+          throwsA(
+            isA<StateError>().having(
+              (e) => e.message,
+              'message',
+              'RedisClient has been closed.',
+            ),
           ),
-        ),
-      );
+        );
+      });
     });
 
     group('AUTH', () {
@@ -101,21 +103,21 @@ void main() {
       test('fails when username is incorrect', () async {
         await expectLater(
           client.auth(username: 'shorebird', password: 'password'),
-          completion(equals(false)),
+          completion(isFalse),
         );
       });
 
       test('fails when password is incorrect', () async {
         await expectLater(
           client.auth(password: 'oops'),
-          completion(equals(false)),
+          completion(isFalse),
         );
       });
 
       test('succeeds when username/password are correct', () async {
         await expectLater(
           client.auth(password: 'password'),
-          completion(equals(true)),
+          completion(isTrue),
         );
       });
     });

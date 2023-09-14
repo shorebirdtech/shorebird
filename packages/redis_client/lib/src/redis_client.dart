@@ -17,12 +17,15 @@ class RedisSocketOptions {
   });
 
   /// The host of the Redis server.
+  /// Defaults to localhost.
   final String host;
 
   /// The port of the Redis server.
+  /// Defaults to 6379.
   final int port;
 
   /// The timeout for connecting to the Redis server.
+  /// Defaults to 30 seconds.
   final Duration timeout;
 }
 
@@ -36,6 +39,7 @@ class RedisCommandOptions {
   });
 
   /// The timeout for sending commands to the Redis server.
+  /// Defaults to 10 seconds.
   final Duration timeout;
 }
 
