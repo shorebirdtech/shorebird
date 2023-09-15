@@ -1,6 +1,8 @@
+import 'dart:async';
 import 'dart:io';
 
 import 'package:redis_client/redis_client.dart';
+import 'package:resp_client/resp_client.dart';
 import 'package:test/test.dart';
 
 void main() {
@@ -8,27 +10,37 @@ void main() {
     late RedisClient client;
 
     setUp(() async {
-      client = RedisClient();
-      await client.connect();
+      client = RedisClient(
+        socket: const RedisSocketOptions(password: 'password'),
+      );
     });
 
     tearDown(() async {
-      try {
-        await client.sendCommand(['RESET']);
-        await client.sendCommand(['FLUSHALL']);
-        await client.close();
-      } catch (_) {
-        // ignore
-      }
+      await client.close();
     });
 
     group('connect', () {
-      test('throws SocketException when connection times out', () async {
+      test('authenticates automatically when credentials are provided',
+          () async {
+        await expectLater(client.connect(), completes);
+        await expectLater(
+          client.sendCommand(['PING']),
+          completion(
+            isA<RespSimpleString>().having((s) => s.payload, 'payload', 'PONG'),
+          ),
+        );
+      });
+
+      test('throws SocketException when connection times out w/retry',
+          () async {
         final client = RedisClient(
-          socket: const RedisSocketOptions(timeout: Duration(microseconds: 1)),
+          socket: const RedisSocketOptions(
+            timeout: Duration(microseconds: 1),
+            retryAttempts: 1,
+          ),
         );
         await expectLater(
-          () => client.connect(maxConnectionAttempts: 1),
+          client.connect,
           throwsA(
             isA<SocketException>().having(
               (e) => e.message,
@@ -37,14 +49,15 @@ void main() {
             ),
           ),
         );
+        await client.close();
       });
 
       test('throws SocketException after max connection attempts', () async {
         final client = RedisClient(
-          socket: const RedisSocketOptions(port: 1234),
+          socket: const RedisSocketOptions(port: 1234, retryAttempts: 1),
         );
         await expectLater(
-          () => client.connect(maxConnectionAttempts: 1),
+          client.connect,
           throwsA(
             isA<SocketException>().having(
               (e) => e.message,
@@ -53,14 +66,15 @@ void main() {
             ),
           ),
         );
+        await client.close();
       });
 
       test('throws SocketException after disconnect', () async {
         final client = RedisClient(
-          socket: const RedisSocketOptions(port: 1234),
+          socket: const RedisSocketOptions(port: 1234, retryAttempts: 0),
         );
         await expectLater(
-          () => client.connect(maxConnectionAttempts: 0),
+          client.connect,
           throwsA(
             isA<SocketException>().having(
               (e) => '$e',
@@ -69,6 +83,7 @@ void main() {
             ),
           ),
         );
+        await client.close();
       });
 
       test('throws StateError when closed', () async {
@@ -88,6 +103,8 @@ void main() {
 
     group('AUTH', () {
       test('is required', () async {
+        final client = RedisClient();
+        await client.connect();
         await expectLater(
           client.get(key: 'foo'),
           throwsA(
@@ -98,9 +115,11 @@ void main() {
             ),
           ),
         );
+        await client.close();
       });
 
       test('fails when username is incorrect', () async {
+        await client.connect();
         await expectLater(
           client.auth(username: 'shorebird', password: 'password'),
           completion(isFalse),
@@ -108,6 +127,7 @@ void main() {
       });
 
       test('fails when password is incorrect', () async {
+        await client.connect();
         await expectLater(
           client.auth(password: 'oops'),
           completion(isFalse),
@@ -115,6 +135,7 @@ void main() {
       });
 
       test('succeeds when username/password are correct', () async {
+        await client.connect();
         await expectLater(
           client.auth(password: 'password'),
           completion(isTrue),
@@ -123,10 +144,22 @@ void main() {
     });
 
     group('GET/SET/DEL', () {
+      setUp(() async {
+        await client.connect();
+      });
+
+      tearDown(() async {
+        try {
+          await client.sendCommand(['RESET']);
+          await client.sendCommand(['FLUSHALL']);
+        } catch (_) {
+          // ignore
+        }
+      });
+
       test('completes', () async {
         const key = 'key';
         const value = 'value';
-        await client.auth(password: 'password');
         await expectLater(client.get(key: key), completion(isNull));
         await expectLater(client.set(key: key, value: value), completes);
         await expectLater(client.get(key: key), completion(equals(value)));
@@ -135,7 +168,7 @@ void main() {
       });
 
       test(
-          'throws SocketException '
+          'throws TimeoutException '
           'when command timeout is exceeded', () async {
         final client = RedisClient(
           command: const RedisCommandOptions(timeout: Duration.zero),
@@ -143,19 +176,27 @@ void main() {
         await client.connect();
         await expectLater(
           client.get(key: 'foo'),
-          throwsA(
-            isA<SocketException>().having(
-              (e) => e.message,
-              'message',
-              contains('Connection timed out'),
-            ),
-          ),
+          throwsA(isA<TimeoutException>()),
         );
+        await client.close();
       });
     });
 
     group('JSON', () {
       group('GET/SET/DEL', () {
+        setUp(() async {
+          await client.connect();
+        });
+
+        tearDown(() async {
+          try {
+            await client.sendCommand(['RESET']);
+            await client.sendCommand(['FLUSHALL']);
+          } catch (_) {
+            // ignore
+          }
+        });
+
         test('completes', () async {
           const key = 'key';
           const value = {
@@ -164,7 +205,6 @@ void main() {
             'nested': {'bar': 42},
             'array': [1, 2, 3],
           };
-          await client.auth(password: 'password');
           await expectLater(client.json.get(key: key), completion(isNull));
           await expectLater(client.json.set(key: key, value: value), completes);
           await expectLater(
