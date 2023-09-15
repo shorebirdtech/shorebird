@@ -6,6 +6,20 @@ import 'package:resp_client/resp_client.dart';
 import 'package:resp_client/resp_commands.dart';
 import 'package:resp_client/resp_server.dart';
 
+/// {@template redis_exception}
+/// An exception thrown by the Redis client.
+/// {@endtemplate}
+class RedisException implements Exception {
+  /// {@macro redis_exception}
+  const RedisException(this.message);
+
+  /// The message for the exception.
+  final String message;
+
+  @override
+  String toString() => message;
+}
+
 /// {@template redis_socket_options}
 /// Options for connecting to a Redis server.
 /// {@endtemplate}
@@ -14,7 +28,11 @@ class RedisSocketOptions {
   const RedisSocketOptions({
     this.host = 'localhost',
     this.port = 6379,
+    this.username = 'default',
+    this.password,
     this.timeout = const Duration(seconds: 30),
+    this.retryInterval = const Duration(seconds: 1),
+    this.retryAttempts = 10,
   });
 
   /// The host of the Redis server.
@@ -28,6 +46,22 @@ class RedisSocketOptions {
   /// The timeout for connecting to the Redis server.
   /// Defaults to 30 seconds.
   final Duration timeout;
+
+  /// The username for authenticating to the Redis server.
+  /// Defaults to 'default'.
+  final String username;
+
+  /// The password for authenticating to the Redis server.
+  /// Defaults to null.
+  final String? password;
+
+  /// The delay between connection attempts.
+  /// Defaults to 1 second.
+  final Duration retryInterval;
+
+  /// The maximum number of connection attempts.
+  /// Defaults to 10.
+  final int retryAttempts;
 }
 
 /// {@template redis_command_options}
@@ -37,11 +71,40 @@ class RedisCommandOptions {
   /// {@macro redis_command_options}
   const RedisCommandOptions({
     this.timeout = const Duration(seconds: 10),
+    this.retryInterval = const Duration(seconds: 1),
+    this.retryAttempts = 3,
   });
 
   /// The timeout for sending commands to the Redis server.
   /// Defaults to 10 seconds.
   final Duration timeout;
+
+  /// The delay between command attempts.
+  /// Defaults to 1 second.
+  final Duration retryInterval;
+
+  /// The maximum number of command attempts.
+  /// Defaults to 3.
+  final int retryAttempts;
+}
+
+/// {@template redis_logger}
+/// A logger for the Redis client.
+/// {@endtemplate}
+abstract interface class RedisLogger {
+  // coverage:ignore-start
+  /// {@macro redis_logger}
+  const RedisLogger();
+  // coverage:ignore-end
+
+  /// Log a debug message.
+  void debug(String message);
+
+  /// Log an info message.
+  void info(String message);
+
+  /// Log an error message.
+  void error(String message, {Object? error, StackTrace? stackTrace});
 }
 
 /// {@template redis_client}
@@ -52,8 +115,10 @@ class RedisClient {
   RedisClient({
     RedisSocketOptions socket = const RedisSocketOptions(),
     RedisCommandOptions command = const RedisCommandOptions(),
+    RedisLogger logger = const _NoopRedisLogger(),
   })  : _socketOptions = socket,
-        _commandOptions = command;
+        _commandOptions = command,
+        _logger = logger;
 
   /// The socket options for the Redis server.
   final RedisSocketOptions _socketOptions;
@@ -64,6 +129,9 @@ class RedisClient {
   /// The underlying connection to the Redis server.
   RespServerConnection? _connection;
 
+  /// The logger for the Redis client.
+  final RedisLogger _logger;
+
   /// The underlying client for interacting with the Redis server.
   RespClient? _client;
 
@@ -73,84 +141,81 @@ class RedisClient {
   /// A completer which completes when the client establishes a connection.
   var _connected = Completer<void>();
 
+  /// Whether the client is connected.
+  var _isConnected = false;
+
   /// A completer which completes when the client disconnects.
   /// Begins in a completed state since the client is initially disconnected.
   var _disconnected = Completer<void>()..complete();
 
   /// A future which completes when the client establishes a connection.
-  Future<void> get connected => _connected.future;
+  Future<void> get _untilConnected => _connected.future;
 
   /// A future which completes when the client disconnects.
-  Future<void> get disconnected => _disconnected.future;
+  Future<void> get _untilDisconnected => _disconnected.future;
 
   /// The Redis JSON commands.
   RedisJson get json => RedisJson._(client: this);
 
   /// Authenticate to the Redis server.
-  /// Returns true if successful, otherwise false.
   /// Equivalent to the `AUTH` command.
   /// https://redis.io/commands/auth
-  Future<bool> auth({
+  Future<void> auth({
     required String password,
     String username = 'default',
-  }) async {
-    final result = await _exec(
-      () => sendCommand(['AUTH', username, password]),
-    );
-    if (result is RespSimpleString) return result.payload == 'OK';
-    return false;
+  }) {
+    return execute(['AUTH', username, password]);
   }
 
   /// Set the value of a key.
   /// Equivalent to the `SET` command.
   /// https://redis.io/commands/set
   Future<void> set({required String key, required String value}) {
-    return _exec(() => RespCommandsTier2(_client!).set(key, value));
+    return execute(['SET', key, value]);
   }
 
   /// Gets the value of a key.
   /// Returns null if the key does not exist.
   /// Equivalent to the `GET` command.
   /// https://redis.io/commands/get
-  Future<String?> get({required String key}) {
-    return _exec(() => RespCommandsTier2(_client!).get(key));
+  Future<String?> get({required String key}) async {
+    return await execute(['GET', key]) as String?;
   }
 
   /// Deletes the specified key.
   /// Equivalent to the `DEL` command.
   /// https://redis.io/commands/del
-  Future<void> delete({required String key}) {
-    return _exec(() => RespCommandsTier2(_client!).del([key]));
-  }
+  Future<void> delete({required String key}) => execute(['DEL', key]);
 
   /// Send a command to the Redis server.
-  Future<RespType<dynamic>> sendCommand(List<Object?> command) async {
-    return _exec(() => RespCommandsTier0(_client!).execute(command));
+  Future<dynamic> execute(List<Object?> command) async {
+    return _runWithRetry(
+      () async {
+        final result = await RespCommandsTier0(_client!).execute(command);
+        if (result.isError) throw RedisException(result.toString());
+        return result.payload;
+      },
+      command: command.join(' '),
+    );
   }
 
   /// Establish a connection to the Redis server.
   /// The delay between connection attempts.
-  Future<void> connect({
-    Duration connectionRetryDelay = const Duration(milliseconds: 100),
-    int maxConnectionAttempts = 100,
-  }) async {
+  Future<void> connect() async {
     if (_closed) throw StateError('RedisClient has been closed.');
 
-    unawaited(
-      _reconnect(
-        connectionRetryDelay: connectionRetryDelay,
-        remainingConnectionAttempts: maxConnectionAttempts,
-      ),
-    );
+    unawaited(_reconnect(retryAttempts: _socketOptions.retryAttempts));
 
-    return connected;
+    return _untilConnected;
   }
 
   /// Terminate the connection to the Redis server.
-  Future<void> disconnect() {
-    _connection?.close();
+  Future<void> disconnect() async {
+    _logger.info('Disconnecting.');
+    await _connection?.close();
     _reset();
-    return disconnected;
+    await _untilDisconnected;
+    _logger.info('Disconnected.');
   }
 
   /// Terminate the connection to the Redis server and close the client.
@@ -158,68 +223,87 @@ class RedisClient {
   /// Call this method when you are done using the client and/or wish to
   /// prevent reconnection attempts.
   Future<void> close() {
+    _logger.info('Closing connection.');
     _closed = true;
     return disconnect();
   }
 
-  Future<void> _reconnect({
-    required Duration connectionRetryDelay,
-    required int remainingConnectionAttempts,
-    Object? error,
-    StackTrace? stackTrace,
-  }) async {
-    if (_closed) return;
-
-    if (remainingConnectionAttempts <= 0) {
+  Future<void> _reconnect({required int retryAttempts}) async {
+    if (retryAttempts <= 0) {
       _connected.completeError(
-        error ?? const SocketException('Connection retry limit exceeded'),
-        stackTrace,
+        const SocketException('Connection retry limit exceeded'),
+        StackTrace.current,
       );
       return;
     }
 
-    void onConnectionOpened(RespServerConnection connection) {
+    Future<void> onConnectionOpened(RespServerConnection connection) async {
+      _logger.info('Connection opened.');
       _disconnected = Completer<void>();
       _connection = connection;
       _client = RespClient(connection);
-      _connected.complete();
+      if (_socketOptions.password != null) {
+        _logger.info('Authenticating.');
+        final username = _socketOptions.username;
+        final password = _socketOptions.password!;
+        await RespCommandsTier0(_client!).execute(['AUTH', username, password]);
+      }
+      _isConnected = true;
+      if (!_connected.isCompleted) _connected.complete();
+      _logger.info('Connected.');
     }
 
     void onConnectionClosed([Object? error, StackTrace? stackTrace]) {
-      _reset();
-      _reconnect(
-        connectionRetryDelay: connectionRetryDelay,
-        remainingConnectionAttempts: remainingConnectionAttempts - 1,
-        error: error,
-        stackTrace: stackTrace,
+      if (error == null) {
+        _logger.info('Connection closed.');
+      } else {
+        _logger.error(
+          'Connection closed with error.',
+          error: error,
+          stackTrace: stackTrace,
+        );
+      }
+
+      if (_closed) return;
+
+      final wasConnected = _isConnected;
+      _isConnected = false;
+
+      final retryInterval = _socketOptions.retryInterval;
+      final totalAttempts = _socketOptions.retryAttempts;
+      final remainingAttempts =
+          wasConnected ? totalAttempts : retryAttempts - 1;
+      final attemptsMade = totalAttempts - remainingAttempts;
+      final attemptInfo =
+          attemptsMade > 0 ? ' ($attemptsMade/$totalAttempts attempts)' : '';
+
+      if (wasConnected) _reset();
+
+      _logger.info(
+        'Reconnecting in ${retryInterval.inMilliseconds}ms$attemptInfo.',
+      );
+      Future<void>.delayed(
+        retryInterval,
+        () => _reconnect(retryAttempts: remainingAttempts),
       );
     }
 
     try {
+      _logger.info('Connecting to ${_socketOptions.connectionUri}.');
       final uri = _socketOptions.connectionUri;
       final connection = await connectSocket(
         uri.host,
         port: uri.port,
         timeout: _socketOptions.timeout,
       );
-
-      onConnectionOpened(connection);
-
+      unawaited(onConnectionOpened(connection));
       unawaited(
         connection.outputSink.done
             .then((_) => onConnectionClosed())
             .catchError(onConnectionClosed),
       );
     } catch (error, stackTrace) {
-      Future<void>.delayed(
-        connectionRetryDelay,
-        () => _reconnect(
-          connectionRetryDelay: connectionRetryDelay,
-          remainingConnectionAttempts: remainingConnectionAttempts - 1,
-          error: error,
-          stackTrace: stackTrace,
-        ),
-      );
+      onConnectionClosed(error, stackTrace);
     }
   }
 
@@ -230,16 +314,49 @@ class RedisClient {
     if (!_disconnected.isCompleted) _disconnected.complete();
   }
 
-  Future<T> _exec<T>(FutureOr<T> Function() fn) async {
+  Future<T> _runWithRetry<T>(
+    Future<T> Function() fn, {
+    required String command,
+    int? remainingAttempts,
+  }) async {
     if (_closed) throw StateError('RedisClient has been closed.');
-    await connected;
-    return Future<T>.sync(fn).timeout(
-      _commandOptions.timeout,
-      onTimeout: () {
-        _connection?.close();
-        throw const SocketException('Connection timed out');
-      },
-    );
+
+    final totalAttempts = _commandOptions.retryAttempts;
+    remainingAttempts ??= _commandOptions.retryAttempts;
+    final attemptsMade = totalAttempts - remainingAttempts;
+    final attemptInfo =
+        attemptsMade > 0 ? ' ($attemptsMade/$totalAttempts attempts)' : '';
+
+    _logger.debug('Executing "$command"$attemptInfo.');
+
+    try {
+      return await Future<T>.sync(() async {
+        await _untilConnected;
+        return fn();
+      }).timeout(_commandOptions.timeout);
+    } catch (error, stackTrace) {
+      if (error is RedisException) rethrow;
+      if (remainingAttempts > 0) {
+        _logger.error(
+          'Command failed to complete. Retrying.',
+          error: error,
+          stackTrace: stackTrace,
+        );
+        return _runWithRetry(
+          fn,
+          command: command,
+          remainingAttempts: remainingAttempts - 1,
+        );
+      }
+
+      _logger.error(
+        'Command failed to complete.',
+        error: error,
+        stackTrace: stackTrace,
+      );
+      await _connection?.close();
+      rethrow;
+    }
   }
 }
 
@@ -260,7 +377,7 @@ class RedisJson {
     required String key,
     required Map<String, dynamic> value,
   }) {
-    return _client.sendCommand(['JSON.SET', key, r'$', json.encode(value)]);
+    return _client.execute(['JSON.SET', key, r'$', json.encode(value)]);
   }
 
   /// Gets the value of a key.
@@ -268,13 +385,9 @@ class RedisJson {
   /// Equivalent to the `JSON.GET` command.
   /// https://redis.io/commands/json.get
   Future<Map<String, dynamic>?> get({required String key}) async {
-    final result = await _client.sendCommand([
-      'JSON.GET',
-      key,
-      r'$',
-    ]);
-    if (result is RespBulkString) {
-      final parts = LineSplitter.split(result.payload ?? '');
+    final result = await _client.execute(['JSON.GET', key, r'$']);
+    if (result is String) {
+      final parts = LineSplitter.split(result);
       if (parts.isNotEmpty) {
         final decoded = json.decode(parts.first) as List;
         if (decoded.isNotEmpty) return decoded.first as Map<String, dynamic>;
@@ -287,11 +400,24 @@ class RedisJson {
   /// Equivalent to the `JSON.DEL` command.
   /// https://redis.io/commands/json.del
   Future<void> delete({required String key}) {
-    return _client.sendCommand(['JSON.DEL', key, r'$']);
+    return _client.execute(['JSON.DEL', key, r'$']);
   }
 }
 
 extension on RedisSocketOptions {
   /// The connection URI for the Redis server derived from the socket options.
   Uri get connectionUri => Uri.parse('redis://$host:$port');
+}
+
+final class _NoopRedisLogger implements RedisLogger {
+  const _NoopRedisLogger();
+
+  @override
+  void debug(String message) {}
+
+  @override
+  void info(String message) {}
+
+  @override
+  void error(String message, {Object? error, StackTrace? stackTrace}) {}
 }
