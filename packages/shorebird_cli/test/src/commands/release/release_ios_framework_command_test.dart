@@ -313,6 +313,7 @@ flutter:
           xcarchivePath:
               any(named: 'xcarchivePath', that: endsWith('.xcarchive')),
           runnerPath: any(named: 'runnerPath', that: endsWith('Runner.app')),
+          isCodesigned: any(named: 'isCodesigned'),
         ),
       );
     });
