@@ -386,6 +386,7 @@ Please create a release using "shorebird release" and try again.
           arch: archMetadata.arch,
           platform: platform,
           hash: hash,
+          canSideload: true,
         );
       } on CodePushConflictException catch (_) {
         // Newlines are due to how logger.info interacts with logger.progress.
@@ -412,6 +413,7 @@ ${archMetadata.arch} artifact already exists, continuing...''',
         arch: 'aab',
         platform: platform,
         hash: sha256.convert(await File(aabPath).readAsBytes()).toString(),
+        canSideload: true,
       );
     } on CodePushConflictException catch (_) {
       // Newlines are due to how logger.info interacts with logger.progress.
@@ -460,6 +462,7 @@ aab artifact already exists, continuing...''',
           arch: archMetadata.arch,
           platform: platform,
           hash: hash,
+          canSideload: false,
         );
       } on CodePushConflictException catch (_) {
         // Newlines are due to how logger.info interacts with logger.progress.
@@ -486,6 +489,7 @@ ${archMetadata.arch} artifact already exists, continuing...''',
         arch: 'aar',
         platform: platform,
         hash: sha256.convert(await File(aarPath).readAsBytes()).toString(),
+        canSideload: false,
       );
     } on CodePushConflictException catch (_) {
       // Newlines are due to how logger.info interacts with logger.progress.
@@ -527,6 +531,7 @@ aar artifact already exists, continuing...''',
     required int releaseId,
     required String xcarchivePath,
     required String runnerPath,
+    required bool isCodesigned,
   }) async {
     final createArtifactProgress = logger.progress('Creating artifacts');
     final thinnedArchiveDirectory =
@@ -540,6 +545,7 @@ aar artifact already exists, continuing...''',
         arch: 'xcarchive',
         platform: ReleasePlatform.ios,
         hash: sha256.convert(await zippedArchive.readAsBytes()).toString(),
+        canSideload: isCodesigned,
       );
     } catch (error) {
       _handleErrorAndExit(
@@ -558,6 +564,7 @@ aar artifact already exists, continuing...''',
         arch: 'runner',
         platform: ReleasePlatform.ios,
         hash: sha256.convert(await zippedRunner.readAsBytes()).toString(),
+        canSideload: isCodesigned,
       );
     } catch (error) {
       _handleErrorAndExit(
@@ -593,6 +600,7 @@ aar artifact already exists, continuing...''',
         hash: sha256
             .convert(await zippedAppFrameworkFile.readAsBytes())
             .toString(),
+        canSideload: false,
       );
     } catch (error) {
       _handleErrorAndExit(
