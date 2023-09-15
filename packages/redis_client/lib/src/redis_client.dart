@@ -410,6 +410,7 @@ extension on RedisSocketOptions {
 
 final class _NoopRedisLogger implements RedisLogger {
   const _NoopRedisLogger();
+
   @override
   void debug(String message) {}
 
