@@ -1,4 +1,4 @@
-import 'package:redis_client/redis_client.dart';
+import 'package:shorebird_redis_client/shorebird_redis_client.dart';
 
 Future<void> main() async {
   // Create an instance of a RedisClient.
