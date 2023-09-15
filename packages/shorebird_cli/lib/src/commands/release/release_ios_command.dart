@@ -104,6 +104,15 @@ make smaller updates to your app.
 
     buildProgress.complete();
 
+    // Ensure the ipa was built
+    final String ipaPath;
+    try {
+      ipaPath = getIpaPath();
+    } catch (error) {
+      logger.err('Could not find ipa file: $error');
+      return ExitCode.software.code;
+    }
+
     final iosBuildDir = p.join(Directory.current.path, 'build', 'ios');
 
     final archivePath = p.join(
@@ -200,19 +209,11 @@ ${summary.join('\n')}
       status: ReleaseStatus.active,
     );
 
-    if (codesign) {
-      final String ipaPath;
-      try {
-        ipaPath = getIpaPath();
-      } catch (error) {
-        logger.err('Could not find ipa file: $error');
-        return ExitCode.software.code;
-      }
+    logger.success('\n✅ Published Release!');
 
+    if (codesign) {
       final relativeIpaPath = p.relative(ipaPath);
-      logger
-        ..success('\n✅ Published Release!')
-        ..info('''
+      logger.info('''
 
 Your next step is to upload the ipa to App Store Connect.
 ${lightCyan.wrap(relativeIpaPath)}
@@ -223,9 +224,7 @@ To upload to the App Store either:
        See "man altool" for details about how to authenticate with the App Store Connect API key.
 ''');
     } else {
-      logger
-        ..success('\n✅ Published Release!')
-        ..info('''
+      logger.info('''
 
 Your next step is to submit the archive at ${lightCyan.wrap(archivePath)} to the App Store using Xcode.
 

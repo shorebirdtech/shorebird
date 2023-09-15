@@ -510,7 +510,7 @@ error: exportArchive: No signing certificate "iOS Distribution" found
 
       expect(exitCode, equals(ExitCode.software.code));
       verify(
-        () => logger.err(any(that: contains('No Info.plist file found'))),
+        () => logger.err(any(that: contains('No directory found'))),
       ).called(1);
     });
 
