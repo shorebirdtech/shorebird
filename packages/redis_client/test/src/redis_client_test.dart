@@ -104,6 +104,10 @@ void main() {
     });
 
     group('AUTH', () {
+      setUp(() async {
+        await client.connect();
+      });
+
       test('is required', () async {
         final client = RedisClient();
         await client.connect();
@@ -121,7 +125,6 @@ void main() {
       });
 
       test('fails when username is incorrect', () async {
-        await client.connect();
         await expectLater(
           client.auth(username: 'shorebird', password: 'password'),
           throwsA(
@@ -135,7 +138,6 @@ void main() {
       });
 
       test('fails when password is incorrect', () async {
-        await client.connect();
         await expectLater(
           client.auth(password: 'oops'),
           throwsA(
@@ -149,7 +151,6 @@ void main() {
       });
 
       test('succeeds when username/password are correct', () async {
-        await client.connect();
         await expectLater(
           client.auth(password: 'password'),
           completes,
