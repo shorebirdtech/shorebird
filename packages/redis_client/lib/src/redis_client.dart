@@ -151,7 +151,7 @@ class RedisClient {
     required String password,
     String username = 'default',
   }) async {
-    final result = await sendCommand(['AUTH', username, password]);
+    final result = await execute(['AUTH', username, password]);
     if (result is RespSimpleString) return result.payload == 'OK';
     return false;
   }
@@ -160,31 +160,29 @@ class RedisClient {
   /// Equivalent to the `SET` command.
   /// https://redis.io/commands/set
   Future<void> set({required String key, required String value}) {
-    _logger.debug('Executing SET command for key: $key, value: $value');
-    return _exec(() => RespCommandsTier2(_client!).set(key, value));
+    return execute(['SET', key, value]);
   }
 
   /// Gets the value of a key.
   /// Returns null if the key does not exist.
   /// Equivalent to the `GET` command.
   /// https://redis.io/commands/get
-  Future<String?> get({required String key}) {
-    _logger.debug('Executing GET command for key: $key');
-    return _exec(() => RespCommandsTier2(_client!).get(key));
+  Future<String?> get({required String key}) async {
+    final result = await execute(['GET', key]);
+    return result?.toBulkString().payload;
   }
 
   /// Deletes the specified key.
   /// Equivalent to the `DEL` command.
   /// https://redis.io/commands/del
-  Future<void> delete({required String key}) {
-    _logger.debug('Executing DEL command for key: $key');
-    return _exec(() => RespCommandsTier2(_client!).del([key]));
-  }
+  Future<void> delete({required String key}) => execute(['DEL', key]);
 
   /// Send a command to the Redis server.
-  Future<RespType<dynamic>?> sendCommand(List<Object?> command) async {
-    _logger.debug('Executing $command');
-    return _exec(() => RespCommandsTier0(_client!).execute(command));
+  Future<RespType<dynamic>?> execute(List<Object?> command) async {
+    return _runWithRetry(
+      () => RespCommandsTier0(_client!).execute(command),
+      command: command.join(' '),
+    );
   }
 
   /// Establish a connection to the Redis server.
@@ -267,13 +265,17 @@ class RedisClient {
       final wasConnected = _isConnected;
       _isConnected = false;
 
+      final totalAttempts = _socketOptions.retryAttempts;
       final remainingAttempts =
-          wasConnected ? _socketOptions.retryAttempts : retryAttempts - 1;
+          wasConnected ? totalAttempts : retryAttempts - 1;
+      final attemptsMade = totalAttempts - remainingAttempts;
+      final attemptInfo =
+          attemptsMade > 0 ? ' ($attemptsMade/$totalAttempts attempts)' : '';
 
       if (wasConnected) _reset();
 
       _logger.info(
-        '''Reconnecting in $retryInterval ($remainingAttempts attempts remaining).''',
+        'Reconnecting in ${retryInterval.inMilliseconds}ms$attemptInfo.',
       );
       Future<void>.delayed(retryInterval, () {
         _reconnect(
@@ -311,14 +313,20 @@ class RedisClient {
     if (!_disconnected.isCompleted) _disconnected.complete();
   }
 
-  Future<T> _exec<T>(
+  Future<T> _runWithRetry<T>(
     Future<T> Function() fn, {
+    required String command,
     int? remainingAttempts,
   }) async {
-    remainingAttempts ??= _commandOptions.retryAttempts;
-    _logger.debug('Executing command ($remainingAttempts attempts remaining).');
-
     if (_closed) throw StateError('RedisClient has been closed.');
+
+    final totalAttempts = _commandOptions.retryAttempts;
+    remainingAttempts ??= _commandOptions.retryAttempts;
+    final attemptsMade = totalAttempts - remainingAttempts;
+    final attemptInfo =
+        attemptsMade > 0 ? ' ($attemptsMade/$totalAttempts attempts)' : '';
+
+    _logger.debug('Executing "$command"$attemptInfo.');
 
     await _untilConnected;
 
@@ -331,7 +339,11 @@ class RedisClient {
           error: error,
           stackTrace: stackTrace,
         );
-        return _exec(fn, remainingAttempts: remainingAttempts - 1);
+        return _runWithRetry(
+          fn,
+          command: command,
+          remainingAttempts: remainingAttempts - 1,
+        );
       }
 
       _logger.error(
@@ -362,10 +374,7 @@ class RedisJson {
     required String key,
     required Map<String, dynamic> value,
   }) {
-    _client._logger.debug(
-      'Executing JSON.SET command for key: $key, value: $value',
-    );
-    return _client.sendCommand(['JSON.SET', key, r'$', json.encode(value)]);
+    return _client.execute(['JSON.SET', key, r'$', json.encode(value)]);
   }
 
   /// Gets the value of a key.
@@ -373,12 +382,7 @@ class RedisJson {
   /// Equivalent to the `JSON.GET` command.
   /// https://redis.io/commands/json.get
   Future<Map<String, dynamic>?> get({required String key}) async {
-    _client._logger.debug('Executing JSON.GET command for key: $key');
-    final result = await _client.sendCommand([
-      'JSON.GET',
-      key,
-      r'$',
-    ]);
+    final result = await _client.execute(['JSON.GET', key, r'$']);
     if (result is RespBulkString) {
       final parts = LineSplitter.split(result.payload ?? '');
       if (parts.isNotEmpty) {
@@ -393,8 +397,7 @@ class RedisJson {
   /// Equivalent to the `JSON.DEL` command.
   /// https://redis.io/commands/json.del
   Future<void> delete({required String key}) {
-    _client._logger.debug('Executing JSON.DEL command for key: $key');
-    return _client.sendCommand(['JSON.DEL', key, r'$']);
+    return _client.execute(['JSON.DEL', key, r'$']);
   }
 }
 

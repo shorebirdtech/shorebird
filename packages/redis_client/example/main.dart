@@ -7,8 +7,8 @@ Future<void> main() async {
   // Connect to the Redis server.
   await client.connect();
 
-  // Send a command to the Redis server.
-  await client.sendCommand(['PING']); // PONG
+  // Execute a command.
+  await client.execute(['PING']); // PONG
 
   // Close the connection.
   await client.close();

@@ -24,7 +24,7 @@ void main() {
           () async {
         await expectLater(client.connect(), completes);
         await expectLater(
-          client.sendCommand(['PING']),
+          client.execute(['PING']),
           completion(
             isA<RespSimpleString>().having((s) => s.payload, 'payload', 'PONG'),
           ),
@@ -150,8 +150,8 @@ void main() {
 
       tearDown(() async {
         try {
-          await client.sendCommand(['RESET']);
-          await client.sendCommand(['FLUSHALL']);
+          await client.execute(['RESET']);
+          await client.execute(['FLUSHALL']);
         } catch (_) {
           // ignore
         }
@@ -190,8 +190,8 @@ void main() {
 
         tearDown(() async {
           try {
-            await client.sendCommand(['RESET']);
-            await client.sendCommand(['FLUSHALL']);
+            await client.execute(['RESET']);
+            await client.execute(['FLUSHALL']);
           } catch (_) {
             // ignore
           }
