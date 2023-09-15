@@ -209,6 +209,7 @@ class CodePushClient {
       'platform': platform.name,
       'hash': hash,
       'size': '${file.length}',
+      'canSideload': 'true',
     });
     final response = await _httpClient.send(request);
     final body = await response.stream.bytesToString();

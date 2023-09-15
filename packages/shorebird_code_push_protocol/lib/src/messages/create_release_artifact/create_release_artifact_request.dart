@@ -14,6 +14,7 @@ class CreateReleaseArtifactRequest {
     required this.platform,
     required this.hash,
     required this.size,
+    required this.canSideload,
   });
 
   /// Converts a Map<String, dynamic> to a [CreateReleaseArtifactRequest]
@@ -31,6 +32,9 @@ class CreateReleaseArtifactRequest {
 
   /// The hash of the artifact.
   final String hash;
+
+  /// Whether the artifact can installed and run on a device/emulator as-is.
+  final bool canSideload;
 
   /// The size of the artifact in bytes.
   @JsonKey(fromJson: _parseStringToInt, toJson: _parseIntToString)
