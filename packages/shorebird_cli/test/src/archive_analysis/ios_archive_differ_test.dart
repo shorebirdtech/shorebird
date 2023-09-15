@@ -4,11 +4,23 @@ import 'package:shorebird_cli/src/platform.dart';
 import 'package:test/test.dart';
 
 void main() {
-  final ipaFixturesBasePath = p.join('test', 'fixtures', 'ipas');
-  final baseIpaPath = p.join(ipaFixturesBasePath, 'base.ipa');
-  final changedAssetIpaPath = p.join(ipaFixturesBasePath, 'asset_changes.ipa');
-  final changedDartIpaPath = p.join(ipaFixturesBasePath, 'dart_changes.ipa');
-  final changedSwiftIpaPath = p.join(ipaFixturesBasePath, 'swift_changes.ipa');
+  final xcarchiveFixturesBasePath = p.join('test', 'fixtures', 'xcarchives');
+  final baseIpaPath = p.join(
+    xcarchiveFixturesBasePath,
+    'base.xcarchive.zip',
+  );
+  final changedAssetIpaPath = p.join(
+    xcarchiveFixturesBasePath,
+    'changed_asset.xcarchive.zip',
+  );
+  final changedDartIpaPath = p.join(
+    xcarchiveFixturesBasePath,
+    'changed_dart.xcarchive.zip',
+  );
+  final changedSwiftIpaPath = p.join(
+    xcarchiveFixturesBasePath,
+    'changed_swift.xcarchive.zip',
+  );
 
   final xcframeworkFixturesBasePath = p.join(
     'test',
@@ -34,29 +46,33 @@ void main() {
       group('appRegex', () {
         test('identifies Runner.app/Runner as an app file', () {
           expect(
-            IosArchiveDiffer.appRegex.hasMatch('Payload/Runner.app/Runner'),
+            IosArchiveDiffer.appRegex.hasMatch(
+              'Products/Applications/Runner.app/Runner',
+            ),
             isTrue,
           );
         });
 
         test('does not identify Runner.app/Assets.car as an app file', () {
           expect(
-            IosArchiveDiffer.appRegex.hasMatch('Payload/Runner.app/Assets.car'),
+            IosArchiveDiffer.appRegex.hasMatch(
+              'Products/Applications/Runner.app/Assets.car',
+            ),
             isFalse,
           );
         });
       });
 
-      group('ipa', () {
+      group('xcarchive', () {
         group('changedPaths', () {
-          test('finds no differences between the same ipa', () {
+          test('finds no differences between the same xcarchive', () {
             expect(
               differ.changedFiles(baseIpaPath, baseIpaPath),
               isEmpty,
             );
           });
 
-          test('finds differences between two different ipas', () {
+          test('finds differences between two different xcarchives', () {
             final fileSetDiff = differ.changedFiles(
               baseIpaPath,
               changedAssetIpaPath,
@@ -65,27 +81,19 @@ void main() {
               expect(
                 fileSetDiff.changedPaths,
                 {
-                  'Payload/Runner.app/_CodeSignature/CodeResources',
-                  'Payload/Runner.app/Frameworks/App.framework/_CodeSignature/CodeResources',
-                  'Payload/Runner.app/Frameworks/App.framework/flutter_assets/assets/asset.json',
-                  'Symbols/4C4C4411-5555-3144-A13A-E47369D8ACD5.symbols',
-                  'Symbols/BC970605-0A53-3457-8736-D7A870AB6E71.symbols',
-                  'Symbols/0CBBC9EF-0745-3074-81B7-765F5B4515FD.symbols',
+                  'Products/Applications/Runner.app/Frameworks/App.framework/_CodeSignature/CodeResources',
+                  'Products/Applications/Runner.app/Frameworks/App.framework/flutter_assets/assets/asset.json',
+                  'Info.plist',
                 },
               );
             } else {
               expect(
                 fileSetDiff.changedPaths,
                 {
-                  'Payload/Runner.app/_CodeSignature/CodeResources',
-                  'Payload/Runner.app/Runner',
-                  'Payload/Runner.app/Frameworks/Flutter.framework/Flutter',
-                  'Payload/Runner.app/Frameworks/App.framework/_CodeSignature/CodeResources',
-                  'Payload/Runner.app/Frameworks/App.framework/App',
-                  'Payload/Runner.app/Frameworks/App.framework/flutter_assets/assets/asset.json',
-                  'Symbols/4C4C4411-5555-3144-A13A-E47369D8ACD5.symbols',
-                  'Symbols/BC970605-0A53-3457-8736-D7A870AB6E71.symbols',
-                  'Symbols/0CBBC9EF-0745-3074-81B7-765F5B4515FD.symbols',
+                  'Products/Applications/Runner.app/Frameworks/App.framework/_CodeSignature/CodeResources',
+                  'Products/Applications/Runner.app/Frameworks/App.framework/App',
+                  'Products/Applications/Runner.app/Frameworks/App.framework/flutter_assets/assets/asset.json',
+                  'Info.plist',
                 },
               );
             }
@@ -101,10 +109,7 @@ void main() {
               differ.dartFileSetDiff(fileSetDiff),
               platform.isMacOS ? isEmpty : isNotEmpty,
             );
-            expect(
-              differ.nativeFileSetDiff(fileSetDiff),
-              platform.isMacOS ? isEmpty : isNotEmpty,
-            );
+            expect(differ.nativeFileSetDiff(fileSetDiff), isEmpty);
           });
 
           test('detects dart changes', () {
@@ -112,20 +117,14 @@ void main() {
                 differ.changedFiles(baseIpaPath, changedDartIpaPath);
             expect(differ.assetsFileSetDiff(fileSetDiff), isEmpty);
             expect(differ.dartFileSetDiff(fileSetDiff), isNotEmpty);
-            expect(
-              differ.nativeFileSetDiff(fileSetDiff),
-              platform.isMacOS ? isEmpty : isNotEmpty,
-            );
+            expect(differ.nativeFileSetDiff(fileSetDiff), isEmpty);
           });
 
           test('detects swift changes', () {
             final fileSetDiff =
                 differ.changedFiles(baseIpaPath, changedSwiftIpaPath);
             expect(differ.assetsFileSetDiff(fileSetDiff), isEmpty);
-            expect(
-              differ.dartFileSetDiff(fileSetDiff),
-              platform.isMacOS ? isEmpty : isNotEmpty,
-            );
+            expect(differ.dartFileSetDiff(fileSetDiff), isEmpty);
             expect(differ.nativeFileSetDiff(fileSetDiff), isNotEmpty);
           });
         });
@@ -173,7 +172,7 @@ void main() {
             );
             expect(
               differ.containsPotentiallyBreakingNativeDiffs(fileSetDiff),
-              platform.isMacOS ? isFalse : isTrue,
+              isFalse,
             );
           });
         });

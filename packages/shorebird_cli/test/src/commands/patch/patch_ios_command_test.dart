@@ -37,11 +37,7 @@ class _MockCodePushClientWrapper extends Mock
 
 class _MockDoctor extends Mock implements Doctor {}
 
-class _MockIpa extends Mock implements Ipa {}
-
 class _MockIpaDiffer extends Mock implements IosArchiveDiffer {}
-
-class _MockIpaReader extends Mock implements IpaReader {}
 
 class _MockLogger extends Mock implements Logger {}
 
@@ -85,10 +81,40 @@ void main() {
 <!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
 <plist version="1.0">
 <dict>
-	<key>CFBundleName</key>
-	<string>app_bundle_name</string>
+	<key>ApplicationProperties</key>
+	<dict>
+		<key>ApplicationPath</key>
+		<string>Applications/Runner.app</string>
+		<key>Architectures</key>
+		<array>
+			<string>arm64</string>
+		</array>
+		<key>CFBundleIdentifier</key>
+		<string>com.shorebird.timeShift</string>
+		<key>CFBundleShortVersionString</key>
+		<string>1.2.3</string>
+		<key>CFBundleVersion</key>
+		<string>1</string>
+	</dict>
+	<key>ArchiveVersion</key>
+	<integer>2</integer>
+	<key>Name</key>
+	<string>Runner</string>
+	<key>SchemeName</key>
+	<string>Runner</string>
 </dict>
 </plist>''';
+  const emptyPlistContent = '''
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+<plist version="1.0">
+<dict>
+	<key>ApplicationProperties</key>
+	<dict>
+	</dict>
+</dict>
+</plist>'
+''';
   const pubspecYamlContent = '''
 name: example
 version: $version
@@ -126,9 +152,7 @@ flutter:
     late Directory shorebirdRoot;
     late File genSnapshotFile;
     late Doctor doctor;
-    late Ipa ipa;
     late IosArchiveDiffer archiveDiffer;
-    late IpaReader ipaReader;
     late Progress progress;
     late Logger logger;
     late PatchDiffChecker patchDiffChecker;
@@ -171,7 +195,14 @@ flutter:
         p.join(tempDir.path, 'shorebird.yaml'),
       ).writeAsStringSync('app_id: $appId');
       File(
-        p.join(tempDir.path, 'ios', 'Runner', 'Info.plist'),
+        p.join(
+          tempDir.path,
+          'build',
+          'ios',
+          'archive',
+          'Runner.xcarchive',
+          'Info.plist',
+        ),
       )
         ..createSync(recursive: true)
         ..writeAsStringSync(infoPlistContent);
@@ -199,6 +230,7 @@ flutter:
     }
 
     setUpAll(() {
+      registerFallbackValue(Directory(''));
       registerFallbackValue(File(''));
       registerFallbackValue(FileSetDiff.empty());
       registerFallbackValue(ReleasePlatform.ios);
@@ -227,9 +259,7 @@ flutter:
           'gen_snapshot_arm64',
         ),
       );
-      ipa = _MockIpa();
       archiveDiffer = _MockIpaDiffer();
-      ipaReader = _MockIpaReader();
       progress = _MockProgress();
       logger = _MockLogger();
       platform = _MockPlatform();
@@ -277,8 +307,6 @@ flutter:
           patchArtifactBundles: any(named: 'patchArtifactBundles'),
         ),
       ).thenAnswer((_) async {});
-      when(() => ipa.versionNumber).thenReturn(version);
-      when(() => ipaReader.read(any())).thenReturn(ipa);
       when(() => doctor.iosCommandValidators).thenReturn([flutterValidator]);
       when(flutterValidator.validate).thenAnswer((_) async => []);
       when(() => logger.confirm(any())).thenReturn(true);
@@ -333,8 +361,8 @@ flutter:
         ),
       ).thenAnswer((_) async {});
       when(
-        () => patchDiffChecker.confirmUnpatchableDiffsIfNecessary(
-          localArtifact: any(named: 'localArtifact'),
+        () => patchDiffChecker.zipAndConfirmUnpatchableDiffsIfNecessary(
+          localArtifactDirectory: any(named: 'localArtifactDirectory'),
           releaseArtifactUrl: any(named: 'releaseArtifactUrl'),
           archiveDiffer: archiveDiffer,
           force: any(named: 'force'),
@@ -342,8 +370,7 @@ flutter:
       ).thenAnswer((_) async => {});
 
       command = runWithOverrides(
-        () =>
-            PatchIosCommand(archiveDiffer: archiveDiffer, ipaReader: ipaReader),
+        () => PatchIosCommand(archiveDiffer: archiveDiffer),
       )..testArgResults = argResults;
     });
 
@@ -451,63 +478,7 @@ error: exportArchive: No signing certificate "iOS Distribution" found
 
       expect(exitCode, equals(ExitCode.software.code));
       verify(
-        () => progress.fail(
-          any(
-            that: stringContainsInOrder([
-              'Could not find ipa file',
-              'No directory found at ${p.join(tempDir.path, 'build')}',
-            ]),
-          ),
-        ),
-      ).called(1);
-    });
-
-    test('exits with code 70 if ipa file does not exist', () async {
-      final tempDir = setUpTempDir();
-      setUpTempArtifacts(tempDir);
-      File(p.join(tempDir.path, ipaPath)).deleteSync(recursive: true);
-
-      final exitCode = await IOOverrides.runZoned(
-        () => runWithOverrides(command.run),
-        getCurrentDirectory: () => tempDir,
-      );
-
-      expect(exitCode, equals(ExitCode.software.code));
-      verify(
-        () => progress.fail(
-          any(
-            that: stringContainsInOrder([
-              'Could not find ipa file',
-              'No .ipa files found in',
-              'build/ios/ipa',
-            ]),
-          ),
-        ),
-      ).called(1);
-    });
-
-    test('exits with code 70 if more than one ipa file is found', () async {
-      final tempDir = setUpTempDir();
-      setUpTempArtifacts(tempDir);
-      File(p.join(tempDir.path, 'build/ios/ipa/Runner2.ipa'))
-          .createSync(recursive: true);
-
-      final exitCode = await IOOverrides.runZoned(
-        () => runWithOverrides(command.run),
-        getCurrentDirectory: () => tempDir,
-      );
-
-      expect(exitCode, equals(ExitCode.software.code));
-      verify(
-        () => progress.fail(
-          any(
-            that: stringContainsInOrder([
-              'Could not find ipa file',
-              'More than one .ipa file found in',
-              'build/ios/ipa',
-            ]),
-          ),
-        ),
+        () => logger.err(any(that: contains('No Info.plist file found'))),
       ).called(1);
     });
 
@@ -659,10 +630,21 @@ Please re-run the release command for this version or create a new release.'''),
 
     test('exits with code 70 when release version cannot be determiend',
         () async {
-      when(() => ipa.versionNumber).thenThrow(Exception('oops'));
-
       final tempDir = setUpTempDir();
       setUpTempArtifacts(tempDir);
+      File(
+        p.join(
+          tempDir.path,
+          'build',
+          'ios',
+          'archive',
+          'Runner.xcarchive',
+          'Info.plist',
+        ),
+      )
+        ..createSync(recursive: true)
+        ..writeAsStringSync(emptyPlistContent);
+
       final exitCode = await IOOverrides.runZoned(
         () => runWithOverrides(command.run),
         getCurrentDirectory: () => tempDir,
@@ -670,7 +652,7 @@ Please re-run the release command for this version or create a new release.'''),
 
       expect(exitCode, equals(ExitCode.software.code));
       verify(
-        () => progress.fail(
+        () => logger.err(
           any(that: contains('Failed to determine release version')),
         ),
       ).called(1);
@@ -679,14 +661,14 @@ Please re-run the release command for this version or create a new release.'''),
     test('prints release version when detected', () async {
       final tempDir = setUpTempDir();
       setUpTempArtifacts(tempDir);
+
       final exitCode = await IOOverrides.runZoned(
         () => runWithOverrides(command.run),
         getCurrentDirectory: () => tempDir,
       );
 
       expect(exitCode, equals(ExitCode.success.code));
-      verify(() => progress.complete('Detected release version 1.2.3+1'))
-          .called(1);
+      verify(() => logger.info('Detected release version 1.2.3+1')).called(1);
     });
 
     test('aborts when user opts out', () async {
@@ -717,62 +699,13 @@ Please re-run the release command for this version or create a new release.'''),
       expect(exitCode, ExitCode.software.code);
     });
 
-    test('exits with code 70 when ipa not found', () async {
-      final tempDir = setUpTempDir();
-      setUpTempArtifacts(tempDir);
-      File(p.join(tempDir.path, ipaPath)).deleteSync();
-
-      final exitCode = await IOOverrides.runZoned(
-        () => runWithOverrides(command.run),
-        getCurrentDirectory: () => tempDir,
-      );
-
-      expect(exitCode, equals(ExitCode.software.code));
-      verify(
-        () => progress.fail(any(that: contains('Could not find ipa file'))),
-      ).called(1);
-    });
-
-    test('exits with code 70 when local release version cannot be determiend',
-        () async {
-      when(() => ipa.versionNumber).thenThrow(Exception('oops'));
-
-      final tempDir = setUpTempDir();
-      setUpTempArtifacts(tempDir);
-      final exitCode = await IOOverrides.runZoned(
-        () => runWithOverrides(command.run),
-        getCurrentDirectory: () => tempDir,
-      );
-
-      expect(exitCode, equals(ExitCode.software.code));
-      verify(
-        () => progress.fail(
-          any(that: contains('Failed to determine release version')),
-        ),
-      ).called(1);
-    });
-
-    test('prints local release version when detected', () async {
-      final tempDir = setUpTempDir();
-      setUpTempArtifacts(tempDir);
-      final exitCode = await IOOverrides.runZoned(
-        () => runWithOverrides(command.run),
-        getCurrentDirectory: () => tempDir,
-      );
-
-      expect(exitCode, equals(ExitCode.success.code));
-      verify(
-        () => progress.complete('Detected release version 1.2.3+1'),
-      ).called(1);
-    });
-
     test(
-        '''exits with code 0 if confirmUnpatchableDiffsIfNecessary throws UserCancelledException''',
+        '''exits with code 0 if zipAndConfirmUnpatchableDiffsIfNecessary throws UserCancelledException''',
         () async {
       when(() => argResults['force']).thenReturn(false);
       when(
-        () => patchDiffChecker.confirmUnpatchableDiffsIfNecessary(
-          localArtifact: any(named: 'localArtifact'),
+        () => patchDiffChecker.zipAndConfirmUnpatchableDiffsIfNecessary(
+          localArtifactDirectory: any(named: 'localArtifactDirectory'),
           releaseArtifactUrl: any(named: 'releaseArtifactUrl'),
           archiveDiffer: archiveDiffer,
           force: any(named: 'force'),
@@ -788,8 +721,8 @@ Please re-run the release command for this version or create a new release.'''),
 
       expect(exitCode, equals(ExitCode.success.code));
       verify(
-        () => patchDiffChecker.confirmUnpatchableDiffsIfNecessary(
-          localArtifact: any(named: 'localArtifact'),
+        () => patchDiffChecker.zipAndConfirmUnpatchableDiffsIfNecessary(
+          localArtifactDirectory: any(named: 'localArtifactDirectory'),
           releaseArtifactUrl: Uri.parse(ipaArtifact.url),
           archiveDiffer: archiveDiffer,
           force: false,
@@ -807,12 +740,12 @@ Please re-run the release command for this version or create a new release.'''),
     });
 
     test(
-        '''exits with code 70 if confirmUnpatchableDiffsIfNecessary throws UnpatchableChangeException''',
+        '''exits with code 70 if zipAndConfirmUnpatchableDiffsIfNecessary throws UnpatchableChangeException''',
         () async {
       when(() => argResults['force']).thenReturn(false);
       when(
-        () => patchDiffChecker.confirmUnpatchableDiffsIfNecessary(
-          localArtifact: any(named: 'localArtifact'),
+        () => patchDiffChecker.zipAndConfirmUnpatchableDiffsIfNecessary(
+          localArtifactDirectory: any(named: 'localArtifactDirectory'),
           releaseArtifactUrl: any(named: 'releaseArtifactUrl'),
           archiveDiffer: archiveDiffer,
           force: any(named: 'force'),
@@ -828,8 +761,8 @@ Please re-run the release command for this version or create a new release.'''),
 
       expect(exitCode, equals(ExitCode.software.code));
       verify(
-        () => patchDiffChecker.confirmUnpatchableDiffsIfNecessary(
-          localArtifact: any(named: 'localArtifact'),
+        () => patchDiffChecker.zipAndConfirmUnpatchableDiffsIfNecessary(
+          localArtifactDirectory: any(named: 'localArtifactDirectory'),
           releaseArtifactUrl: Uri.parse(ipaArtifact.url),
           archiveDiffer: archiveDiffer,
           force: false,
@@ -929,6 +862,33 @@ Please re-run the release command for this version or create a new release.'''),
           ['--no-version-check', 'pub', 'get', '--offline'],
           runInShell: any(named: 'runInShell'),
           useVendedFlutter: false,
+        ),
+      ).called(1);
+    });
+
+    test('forwards codesign to flutter build', () async {
+      when(() => argResults['codesign']).thenReturn(false);
+      final tempDir = setUpTempDir();
+      setUpTempArtifacts(tempDir);
+      await IOOverrides.runZoned(
+        () => runWithOverrides(command.run),
+        getCurrentDirectory: () => tempDir,
+      );
+
+      verify(
+        () => shorebirdProcess.run(
+          'flutter',
+          any(
+            that: containsAllInOrder(
+              [
+                'build',
+                'ipa',
+                '--release',
+                '--no-codesign',
+              ],
+            ),
+          ),
+          runInShell: true,
         ),
       ).called(1);
     });

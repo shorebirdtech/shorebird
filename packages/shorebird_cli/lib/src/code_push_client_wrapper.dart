@@ -3,10 +3,12 @@ import 'dart:isolate';
 import 'package:archive/archive_io.dart';
 import 'package:collection/collection.dart';
 import 'package:crypto/crypto.dart';
+import 'package:io/io.dart' as io;
 import 'package:mason_logger/mason_logger.dart';
 import 'package:meta/meta.dart';
 import 'package:path/path.dart' as p;
 import 'package:scoped/scoped.dart';
+import 'package:shorebird_cli/src/archive/directory_archive.dart';
 import 'package:shorebird_cli/src/auth/auth.dart';
 import 'package:shorebird_cli/src/logger.dart';
 import 'package:shorebird_cli/src/shorebird_build_mixin.dart';
@@ -503,35 +505,51 @@ aar artifact already exists, continuing...''',
     createArtifactProgress.complete();
   }
 
-  /// Uploads a release ipa to the Shorebird server.
+  /// Removes all .dylib files from the given .xcarchive to reduce the size of
+  /// the uploaded artifact.
+  Future<Directory> _thinXcarchive({required String xcarchivePath}) async {
+    final xcarchiveDirectoryName = p.basename(xcarchivePath);
+    final tempDir = Directory.systemTemp.createTempSync();
+    final thinnedArchiveDirectory =
+        Directory(p.join(tempDir.path, xcarchiveDirectoryName));
+    await io.copyPath(xcarchivePath, thinnedArchiveDirectory.path);
+    thinnedArchiveDirectory
+        .listSync(recursive: true)
+        .whereType<File>()
+        .where((file) => p.extension(file.path) == '.dylib')
+        .forEach((file) => file.deleteSync());
+    return thinnedArchiveDirectory;
+  }
+
+  /// Uploads a release .xcarchive and .app to the Shorebird server.
   Future<void> createIosReleaseArtifacts({
     required String appId,
     required int releaseId,
-    required String ipaPath,
+    required String xcarchivePath,
     required String runnerPath,
   }) async {
     final createArtifactProgress = logger.progress('Creating artifacts');
-    final ipaFile = File(ipaPath);
+    final thinnedArchiveDirectory =
+        await _thinXcarchive(xcarchivePath: xcarchivePath);
+    final zippedArchive = await thinnedArchiveDirectory.zipToTempFile();
     try {
       await codePushClient.createReleaseArtifact(
         appId: appId,
         releaseId: releaseId,
-        artifactPath: ipaPath,
-        arch: 'ipa',
+        artifactPath: zippedArchive.path,
+        arch: 'xcarchive',
         platform: ReleasePlatform.ios,
-        hash: sha256.convert(await ipaFile.readAsBytes()).toString(),
+        hash: sha256.convert(await zippedArchive.readAsBytes()).toString(),
       );
     } catch (error) {
       _handleErrorAndExit(
         error,
         progress: createArtifactProgress,
-        message: 'Error uploading ipa: $error',
+        message: 'Error uploading xcarchive: $error',
       );
     }
 
-    final runnerDirectory = Directory(runnerPath);
-    await Isolate.run(() => ZipFileEncoder().zipDirectory(runnerDirectory));
-    final zippedRunner = File('$runnerPath.zip');
+    final zippedRunner = await Directory(runnerPath).zipToTempFile();
     try {
       await codePushClient.createReleaseArtifact(
         appId: appId,

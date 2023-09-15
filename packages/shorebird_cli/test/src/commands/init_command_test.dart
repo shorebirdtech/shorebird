@@ -189,7 +189,8 @@ Please make sure you are running "shorebird init" from the root of your Flutter 
       final exitCode = await runWithOverrides(command.run);
       verify(
         () => logger.err(
-            'A "shorebird.yaml" file already exists and seems up-to-date.'),
+          'A "shorebird.yaml" file already exists and seems up-to-date.',
+        ),
       ).called(1);
       verify(
         () => logger.info(

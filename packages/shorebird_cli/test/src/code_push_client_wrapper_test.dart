@@ -1483,12 +1483,14 @@ Please bump your version number and try again.''',
     });
 
     group('createIosReleaseArtifacts', () {
-      final ipaPath = p.join('path', 'to', 'app.ipa');
+      final xcarchivePath = p.join('path', 'to', 'app.xcarchive');
       final runnerPath = p.join('path', 'to', 'runner.app');
 
       Directory setUpTempDir({String? flavor}) {
         final tempDir = Directory.systemTemp.createTempSync();
-        File(p.join(tempDir.path, ipaPath)).createSync(recursive: true);
+        Directory(p.join(tempDir.path, xcarchivePath))
+            .createSync(recursive: true);
+        Directory(p.join(tempDir.path, runnerPath)).createSync(recursive: true);
         return tempDir;
       }
 
@@ -1505,12 +1507,14 @@ Please bump your version number and try again.''',
         ).thenAnswer((_) async => {});
       });
 
-      test('exits with code 70 when ipa artifact creation fails', () async {
+      test('exits with code 70 when xcarchive artifact creation fails',
+          () async {
         const error = 'something went wrong';
         when(
           () => codePushClient.createReleaseArtifact(
             appId: any(named: 'appId'),
-            artifactPath: any(named: 'artifactPath', that: endsWith('.ipa')),
+            artifactPath:
+                any(named: 'artifactPath', that: endsWith('.xcarchive.zip')),
             releaseId: any(named: 'releaseId'),
             arch: any(named: 'arch'),
             platform: any(named: 'platform'),
@@ -1525,7 +1529,7 @@ Please bump your version number and try again.''',
               () async => codePushClientWrapper.createIosReleaseArtifacts(
                 appId: app.appId,
                 releaseId: releaseId,
-                ipaPath: p.join(tempDir.path, ipaPath),
+                xcarchivePath: p.join(tempDir.path, xcarchivePath),
                 runnerPath: p.join(tempDir.path, runnerPath),
               ),
             ),
@@ -1537,13 +1541,14 @@ Please bump your version number and try again.''',
         verify(() => progress.fail(any(that: contains(error)))).called(1);
       });
 
-      test('exits with code 70 when uploading ipa that already exists',
+      test('exits with code 70 when uploading xcarchive that already exists',
           () async {
         const error = 'something went wrong';
         when(
           () => codePushClient.createReleaseArtifact(
             appId: any(named: 'appId'),
-            artifactPath: any(named: 'artifactPath', that: endsWith('.ipa')),
+            artifactPath:
+                any(named: 'artifactPath', that: endsWith('.xcarchive.zip')),
             releaseId: any(named: 'releaseId'),
             arch: any(named: 'arch'),
             platform: any(named: 'platform'),
@@ -1558,7 +1563,7 @@ Please bump your version number and try again.''',
               () async => codePushClientWrapper.createIosReleaseArtifacts(
                 appId: app.appId,
                 releaseId: releaseId,
-                ipaPath: p.join(tempDir.path, ipaPath),
+                xcarchivePath: p.join(tempDir.path, xcarchivePath),
                 runnerPath: p.join(tempDir.path, runnerPath),
               ),
             ),
@@ -1594,7 +1599,7 @@ Please bump your version number and try again.''',
               () async => codePushClientWrapper.createIosReleaseArtifacts(
                 appId: app.appId,
                 releaseId: releaseId,
-                ipaPath: p.join(tempDir.path, ipaPath),
+                xcarchivePath: p.join(tempDir.path, xcarchivePath),
                 runnerPath: p.join(tempDir.path, runnerPath),
               ),
             ),
@@ -1624,7 +1629,7 @@ Please bump your version number and try again.''',
             () async => codePushClientWrapper.createIosReleaseArtifacts(
               appId: app.appId,
               releaseId: releaseId,
-              ipaPath: p.join(tempDir.path, ipaPath),
+              xcarchivePath: p.join(tempDir.path, xcarchivePath),
               runnerPath: p.join(tempDir.path, runnerPath),
             ),
             getCurrentDirectory: () => tempDir,
