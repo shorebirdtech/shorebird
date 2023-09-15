@@ -1,7 +1,7 @@
 import 'dart:async';
 import 'dart:io';
 
-import 'package:redis_client/redis_client.dart';
+import 'package:shorebird_redis_client/shorebird_redis_client.dart';
 import 'package:test/test.dart';
 
 void main() {

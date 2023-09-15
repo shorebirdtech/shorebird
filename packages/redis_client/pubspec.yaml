@@ -1,7 +1,9 @@
-name: redis_client
-description: A Dart library for interacting with Redis.
-version: 1.0.0+1
-publish_to: none
+name: shorebird_redis_client
+description: A lightweight Dart client library for communicating with a Redis server. Built by Shorebird.
+version: 0.0.1
+homepage: https://shorebird.dev
+repository: https://github.com/shorebirdtech/shorebird/tree/main/packages/redis_client
+topics: [redis, cache, shorebird]
 
 environment:
   sdk: ">=3.0.0 <4.0.0"
