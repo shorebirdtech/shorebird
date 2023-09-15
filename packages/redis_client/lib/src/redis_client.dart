@@ -6,6 +6,20 @@ import 'package:resp_client/resp_client.dart';
 import 'package:resp_client/resp_commands.dart';
 import 'package:resp_client/resp_server.dart';
 
+/// {@template redis_exception}
+/// An exception thrown by the Redis client.
+/// {@endtemplate}
+class RedisException implements Exception {
+  /// {@macro redis_exception}
+  const RedisException(this.message);
+
+  /// The message for the exception.
+  final String message;
+
+  @override
+  String toString() => message;
+}
+
 /// {@template redis_socket_options}
 /// Options for connecting to a Redis server.
 /// {@endtemplate}
@@ -144,16 +158,13 @@ class RedisClient {
   RedisJson get json => RedisJson._(client: this);
 
   /// Authenticate to the Redis server.
-  /// Returns true if successful, otherwise false.
   /// Equivalent to the `AUTH` command.
   /// https://redis.io/commands/auth
-  Future<bool> auth({
+  Future<void> auth({
     required String password,
     String username = 'default',
-  }) async {
-    final result = await execute(['AUTH', username, password]);
-    if (result is RespSimpleString) return result.payload == 'OK';
-    return false;
+  }) {
+    return execute(['AUTH', username, password]);
   }
 
   /// Set the value of a key.
@@ -168,8 +179,7 @@ class RedisClient {
   /// Equivalent to the `GET` command.
   /// https://redis.io/commands/get
   Future<String?> get({required String key}) async {
-    final result = await execute(['GET', key]);
-    return result?.toBulkString().payload;
+    return await execute(['GET', key]) as String?;
   }
 
   /// Deletes the specified key.
@@ -178,9 +188,13 @@ class RedisClient {
   Future<void> delete({required String key}) => execute(['DEL', key]);
 
   /// Send a command to the Redis server.
-  Future<RespType<dynamic>?> execute(List<Object?> command) async {
+  Future<dynamic> execute(List<Object?> command) async {
     return _runWithRetry(
-      () => RespCommandsTier0(_client!).execute(command),
+      () async {
+        final result = await RespCommandsTier0(_client!).execute(command);
+        if (result.isError) throw RedisException(result.toString());
+        return result.payload;
+      },
       command: command.join(' '),
     );
   }
@@ -333,6 +347,7 @@ class RedisClient {
     try {
       return await Future<T>.sync(fn).timeout(_commandOptions.timeout);
     } catch (error, stackTrace) {
+      if (error is RedisException) rethrow;
       if (remainingAttempts > 0) {
         _logger.error(
           'Command failed to complete. Retrying.',
@@ -383,8 +398,8 @@ class RedisJson {
   /// https://redis.io/commands/json.get
   Future<Map<String, dynamic>?> get({required String key}) async {
     final result = await _client.execute(['JSON.GET', key, r'$']);
-    if (result is RespBulkString) {
-      final parts = LineSplitter.split(result.payload ?? '');
+    if (result is String) {
+      final parts = LineSplitter.split(result);
       if (parts.isNotEmpty) {
         final decoded = json.decode(parts.first) as List;
         if (decoded.isNotEmpty) return decoded.first as Map<String, dynamic>;

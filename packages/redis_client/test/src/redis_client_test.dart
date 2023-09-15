@@ -2,7 +2,6 @@ import 'dart:async';
 import 'dart:io';
 
 import 'package:redis_client/redis_client.dart';
-import 'package:resp_client/resp_client.dart';
 import 'package:test/test.dart';
 
 void main() {
@@ -19,16 +18,19 @@ void main() {
       await client.close();
     });
 
+    group(RedisException, () {
+      test('overrides toString', () {
+        const message = 'A RedisException occurred.';
+        const exception = RedisException(message);
+        expect(exception.toString(), equals(message));
+      });
+    });
+
     group('connect', () {
       test('authenticates automatically when credentials are provided',
           () async {
         await expectLater(client.connect(), completes);
-        await expectLater(
-          client.execute(['PING']),
-          completion(
-            isA<RespSimpleString>().having((s) => s.payload, 'payload', 'PONG'),
-          ),
-        );
+        await expectLater(client.execute(['PING']), completion(equals('PONG')));
       });
 
       test('throws SocketException when connection times out w/retry',
@@ -108,7 +110,7 @@ void main() {
         await expectLater(
           client.get(key: 'foo'),
           throwsA(
-            isA<StateError>().having(
+            isA<RedisException>().having(
               (e) => e.message,
               'message',
               contains('-NOAUTH Authentication required.'),
@@ -122,7 +124,13 @@ void main() {
         await client.connect();
         await expectLater(
           client.auth(username: 'shorebird', password: 'password'),
-          completion(isFalse),
+          throwsA(
+            isA<RedisException>().having(
+              (e) => e.message,
+              'message',
+              contains('-WRONGPASS invalid username-password pair'),
+            ),
+          ),
         );
       });
 
@@ -130,7 +138,13 @@ void main() {
         await client.connect();
         await expectLater(
           client.auth(password: 'oops'),
-          completion(isFalse),
+          throwsA(
+            isA<RedisException>().having(
+              (e) => e.message,
+              'message',
+              contains('-WRONGPASS invalid username-password pair'),
+            ),
+          ),
         );
       });
 
@@ -138,7 +152,7 @@ void main() {
         await client.connect();
         await expectLater(
           client.auth(password: 'password'),
-          completion(isTrue),
+          completes,
         );
       });
     });
