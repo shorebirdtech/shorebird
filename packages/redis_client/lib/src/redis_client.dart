@@ -204,12 +204,7 @@ class RedisClient {
   Future<void> connect() async {
     if (_closed) throw StateError('RedisClient has been closed.');
 
-    unawaited(
-      _reconnect(
-        retryInterval: _socketOptions.retryInterval,
-        retryAttempts: _socketOptions.retryAttempts,
-      ),
-    );
+    unawaited(_reconnect(retryAttempts: _socketOptions.retryAttempts));
 
     return _untilConnected;
   }
@@ -233,16 +228,11 @@ class RedisClient {
     return disconnect();
   }
 
-  Future<void> _reconnect({
-    required Duration retryInterval,
-    required int retryAttempts,
-    Object? error,
-    StackTrace? stackTrace,
-  }) async {
+  Future<void> _reconnect({required int retryAttempts}) async {
     if (retryAttempts <= 0) {
       _connected.completeError(
-        error ?? const SocketException('Connection retry limit exceeded'),
-        stackTrace,
+        const SocketException('Connection retry limit exceeded'),
+        StackTrace.current,
       );
       return;
     }
@@ -279,6 +269,7 @@ class RedisClient {
       final wasConnected = _isConnected;
       _isConnected = false;
 
+      final retryInterval = _socketOptions.retryInterval;
       final totalAttempts = _socketOptions.retryAttempts;
       final remainingAttempts =
           wasConnected ? totalAttempts : retryAttempts - 1;
@@ -291,14 +282,10 @@ class RedisClient {
       _logger.info(
         'Reconnecting in ${retryInterval.inMilliseconds}ms$attemptInfo.',
       );
-      Future<void>.delayed(retryInterval, () {
-        _reconnect(
-          retryInterval: retryInterval,
-          retryAttempts: remainingAttempts,
-          error: error,
-          stackTrace: stackTrace,
-        );
-      });
+      Future<void>.delayed(
+        retryInterval,
+        () => _reconnect(retryAttempts: remainingAttempts),
+      );
     }
 
     try {

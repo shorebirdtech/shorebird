@@ -47,7 +47,7 @@ void main() {
             isA<SocketException>().having(
               (e) => e.message,
               'message',
-              contains('Connection timed out'),
+              contains('Connection retry limit exceeded'),
             ),
           ),
         );
@@ -64,14 +64,14 @@ void main() {
             isA<SocketException>().having(
               (e) => e.message,
               'message',
-              contains('Connection refused'),
+              contains('Connection retry limit exceeded'),
             ),
           ),
         );
         await client.close();
       });
 
-      test('throws SocketException after disconnect', () async {
+      test('throws SocketException after disconnect w/out retry', () async {
         final client = RedisClient(
           socket: const RedisSocketOptions(port: 1234, retryAttempts: 0),
         );
