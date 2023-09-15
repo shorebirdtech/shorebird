@@ -103,6 +103,14 @@ void main() {
       });
     });
 
+    group('disconnect', () {
+      test('closes the connection and reconnects', () async {
+        await client.connect();
+        await client.disconnect();
+        await expectLater(client.execute(['PING']), completion(equals('PONG')));
+      });
+    });
+
     group('AUTH', () {
       setUp(() async {
         await client.connect();
@@ -188,12 +196,10 @@ void main() {
         final client = RedisClient(
           command: const RedisCommandOptions(timeout: Duration.zero),
         );
-        await client.connect();
         await expectLater(
           client.get(key: 'foo'),
           throwsA(isA<TimeoutException>()),
         );
-        await client.close();
       });
     });
 

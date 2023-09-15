@@ -329,10 +329,11 @@ class RedisClient {
 
     _logger.debug('Executing "$command"$attemptInfo.');
 
-    await _untilConnected;
-
     try {
-      return await Future<T>.sync(fn).timeout(_commandOptions.timeout);
+      return await Future<T>.sync(() async {
+        await _untilConnected;
+        return fn();
+      }).timeout(_commandOptions.timeout);
     } catch (error, stackTrace) {
       if (error is RedisException) rethrow;
       if (remainingAttempts > 0) {
