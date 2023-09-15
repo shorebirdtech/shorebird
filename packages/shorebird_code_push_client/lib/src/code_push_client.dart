@@ -198,6 +198,7 @@ class CodePushClient {
     required String arch,
     required ReleasePlatform platform,
     required String hash,
+    required bool canSideload,
   }) async {
     final request = http.MultipartRequest(
       'POST',
@@ -209,7 +210,7 @@ class CodePushClient {
       'platform': platform.name,
       'hash': hash,
       'size': '${file.length}',
-      'canSideload': 'true',
+      'canSideload': '$canSideload',
     });
     final response = await _httpClient.send(request);
     final body = await response.stream.bytesToString();
