@@ -1,13 +1,15 @@
 # 🐦 Shorebird Redis Client
 
-[![pub package](https://img.shields.io/pub/v/shorebird_redis_client.svg)](https://pub.dev/packages/shorebird_redis_client)
-[![ci](https://github.com/shorebirdtech/shorebird/actions/workflows/main.yaml/badge.svg)](https://github.com/shorebirdtech/shorebird/actions/workflows/main.yaml)
-[![codecov](https://codecov.io/gh/shorebirdtech/shorebird/branch/main/graph/badge.svg)](https://codecov.io/gh/shorebirdtech/shorebird)
+[![Discord][discord_badge]][discord_link]
+
+[![pub package][pub_badge]][pub_link]
+[![ci][ci_badge]][ci_link]
+[![codecov][codecov_badge]][codecov_link]
 [![License: MIT][license_badge]][license_link]
 
-A Dart library for interacting with a [Redis](https://redis.io) server.
+A Dart library for interacting with a [Redis][redis_link] server.
 
-Built with 💙 by [Shorebird](https://shorebird.dev).
+Built with 💙 by [Shorebird][shorebird_link].
 
 ## Quick Start 🚀
 
@@ -35,35 +37,35 @@ Future<void> main() async {
 }
 ```
 
-## Testing 🧪
+## Join us on Discord! 💬
 
-To run the tests locally, ensure you have [Docker](https://www.docker.com) installed and pull the redis-stack-server image:
+We have an active [Discord server][discord_link] where you can
+ask questions and get help.
 
-```sh
-docker pull redis/redis-stack-server
-```
+## Contributing 🤝
 
-Then, start the server:
-
-```sh
-docker run -p 6379:6379 --rm -e REDIS_ARGS="--requirepass password" redis/redis-stack-server
-```
-
-Now you can run the tests locally:
-
-```sh
-dart test
-```
+See [CONTRIBUTING.md](CONTRIBUTING.md).
 
 ## License 📃
 
-Shorebird packages are licensed for use under either Apache License, Version 2.0
-(LICENSE-APACHE or http://www.apache.org/licenses/LICENSE-2.0) MIT license
-(LICENSE-MIT or http://opensource.org/licenses/MIT) at your option.
+Shorebird packages are licensed for use under either of the following at your option:
 
-See our license philosophy for more information on why we license files this
-way:
-https://github.com/shorebirdtech/handbook/blob/main/engineering.md#licensing-philosophy
+- [Apache License, Version 2.0][apache_link]
+- [MIT license][mit_link]
 
+See our [license philosophy](https://github.com/shorebirdtech/handbook/blob/main/engineering.md#licensing-philosophy) for more information on why we license files this way.
+
+[apache_link]: http://www.apache.org/licenses/LICENSE-2.0
+[ci_badge]: https://github.com/shorebirdtech/shorebird/actions/workflows/main.yaml/badge.svg
+[ci_link]: https://github.com/shorebirdtech/shorebird/actions/workflows/main.yaml
+[codecov_badge]: https://codecov.io/gh/shorebirdtech/shorebird/branch/main/graph/badge.svg
+[codecov_link]: https://codecov.io/gh/shorebirdtech/shorebird
+[discord_badge]: https://dcbadge.vercel.app/api/server/shorebird
+[discord_link]: https://discord.gg/shorebird
 [license_badge]: https://img.shields.io/badge/license-MIT-blue.svg
 [license_link]: https://opensource.org/licenses/MIT
+[mit_link]: http://opensource.org/licenses/MIT
+[pub_badge]: https://img.shields.io/pub/v/shorebird_redis_client.svg
+[pub_link]: https://pub.dev/packages/shorebird_redis_client
+[redis_link]: https://redis.io
+[shorebird_link]: https://shorebird.dev
