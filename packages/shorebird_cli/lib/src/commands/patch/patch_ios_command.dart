@@ -30,10 +30,8 @@ class PatchIosCommand extends ShorebirdCommand
   PatchIosCommand({
     HashFunction? hashFn,
     IosArchiveDiffer? archiveDiffer,
-    IpaReader? ipaReader,
   })  : _hashFn = hashFn ?? ((m) => sha256.convert(m).toString()),
-        _archiveDiffer = archiveDiffer ?? IosArchiveDiffer(),
-        _ipaReader = ipaReader ?? IpaReader() {
+        _archiveDiffer = archiveDiffer ?? IosArchiveDiffer() {
     argParser
       ..addOption(
         'target',
@@ -43,6 +41,11 @@ class PatchIosCommand extends ShorebirdCommand
       ..addOption(
         'flavor',
         help: 'The product flavor to use when building the app.',
+      )
+      ..addFlag(
+        'codesign',
+        help: 'Codesign the application bundle.',
+        defaultsTo: true,
       )
       ..addFlag(
         'force',
@@ -67,7 +70,6 @@ class PatchIosCommand extends ShorebirdCommand
 
   final HashFunction _hashFn;
   final IosArchiveDiffer _archiveDiffer;
-  final IpaReader _ipaReader;
 
   @override
   Future<int> run() async {
@@ -107,29 +109,29 @@ class PatchIosCommand extends ShorebirdCommand
       return ExitCode.software.code;
     }
 
-    final detectReleaseVersionProgress = logger.progress(
-      'Detecting release version',
+    final archivePath = p.join(
+      Directory.current.path,
+      'build',
+      'ios',
+      'archive',
+      'Runner.xcarchive',
     );
-    final String ipaPath;
+    final plistFile = File(p.join(archivePath, 'Info.plist'));
+    if (!plistFile.existsSync()) {
+      logger.err('No Info.plist file found at ${plistFile.path}.');
+      return ExitCode.software.code;
+    }
+
+    final plist = Plist(file: plistFile);
     final String releaseVersion;
     try {
-      ipaPath = getIpaPath();
+      releaseVersion = plist.versionNumber;
     } catch (error) {
-      detectReleaseVersionProgress.fail('Could not find ipa file: $error');
+      logger.err('Failed to determine release version: $error');
       return ExitCode.software.code;
     }
-    try {
-      final ipa = _ipaReader.read(ipaPath);
-      releaseVersion = ipa.versionNumber;
-      detectReleaseVersionProgress.complete(
-        'Detected release version $releaseVersion',
-      );
-    } catch (error) {
-      detectReleaseVersionProgress.fail(
-        'Failed to determine release version: $error',
-      );
-      return ExitCode.software.code;
-    }
+
+    logger.info('Detected release version $releaseVersion');
 
     final release = await codePushClientWrapper.getRelease(
       appId: appId,
@@ -169,7 +171,7 @@ Current Flutter Revision: $originalFlutterRevision
         return ExitCode.software.code;
       } finally {
         flutterVersionProgress = logger.progress(
-          'Switching back to original Flutter revision $originalFlutterRevision',
+          '''Switching back to original Flutter revision $originalFlutterRevision''',
         );
         await shorebirdFlutter.useRevision(revision: originalFlutterRevision);
         flutterVersionProgress.complete();
@@ -179,13 +181,13 @@ Current Flutter Revision: $originalFlutterRevision
     final releaseArtifact = await codePushClientWrapper.getReleaseArtifact(
       appId: appId,
       releaseId: release.id,
-      arch: 'ipa',
+      arch: 'xcarchive',
       platform: ReleasePlatform.ios,
     );
 
     try {
-      await patchDiffChecker.confirmUnpatchableDiffsIfNecessary(
-        localArtifact: File(ipaPath),
+      await patchDiffChecker.zipAndConfirmUnpatchableDiffsIfNecessary(
+        localArtifactDirectory: Directory(archivePath),
         releaseArtifactUrl: Uri.parse(releaseArtifact.url),
         archiveDiffer: _archiveDiffer,
         force: force,
@@ -224,8 +226,6 @@ ${summary.join('\n')}
 ''',
     );
 
-    // TODO(bryanoltman): check for asset changes
-
     final needsConfirmation = !force && !shorebirdEnv.isRunningOnCI;
     if (needsConfirmation) {
       final confirm = logger.confirm('Would you like to continue?');
@@ -260,9 +260,12 @@ ${summary.join('\n')}
   Future<void> _buildPatch() async {
     final target = results['target'] as String?;
     final flavor = results['flavor'] as String?;
+    final shouldCodesign = results['codesign'] == true;
     final buildProgress = logger.progress('Building patch');
     try {
-      await buildIpa(flavor: flavor, target: target);
+      // If buildIpa is called with a different codesign value than the release
+      // was, we will erroneously report native diffs.
+      await buildIpa(codesign: shouldCodesign, flavor: flavor, target: target);
     } on ProcessException catch (error) {
       buildProgress.fail('Failed to build: ${error.message}');
       rethrow;

@@ -1,6 +1,5 @@
 import 'dart:io' hide Platform;
 
-import 'package:archive/archive_io.dart';
 import 'package:collection/collection.dart';
 import 'package:crypto/crypto.dart';
 import 'package:mason_logger/mason_logger.dart';
@@ -168,18 +167,6 @@ Please re-run the release command for this version or create a new release.''');
 
     buildProgress.complete();
 
-    const zippedFrameworkFileName =
-        '${ShorebirdArtifactMixin.appXcframeworkName}.zip';
-    final tempDir = Directory.systemTemp.createTempSync();
-    final zippedFrameworkPath = p.join(
-      tempDir.path,
-      zippedFrameworkFileName,
-    );
-    ZipFileEncoder().zipDirectory(
-      Directory(getAppXcframeworkPath()),
-      filename: zippedFrameworkPath,
-    );
-
     final releaseArtifact = await codePushClientWrapper.getReleaseArtifact(
       appId: appId,
       releaseId: release.id,
@@ -188,8 +175,8 @@ Please re-run the release command for this version or create a new release.''');
     );
 
     try {
-      await patchDiffChecker.confirmUnpatchableDiffsIfNecessary(
-        localArtifact: File(zippedFrameworkPath),
+      await patchDiffChecker.zipAndConfirmUnpatchableDiffsIfNecessary(
+        localArtifactDirectory: Directory(getAppXcframeworkPath()),
         releaseArtifactUrl: Uri.parse(releaseArtifact.url),
         archiveDiffer: _archiveDiffer,
         force: force,

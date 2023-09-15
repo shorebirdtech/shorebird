@@ -7,7 +7,6 @@ import 'package:path/path.dart' as p;
 import 'package:platform/platform.dart';
 import 'package:propertylistserialization/propertylistserialization.dart';
 import 'package:scoped/scoped.dart';
-import 'package:shorebird_cli/src/archive_analysis/archive_analysis.dart';
 import 'package:shorebird_cli/src/auth/auth.dart';
 import 'package:shorebird_cli/src/code_push_client_wrapper.dart';
 import 'package:shorebird_cli/src/commands/commands.dart';
@@ -30,10 +29,6 @@ class _MockCodePushClientWrapper extends Mock
     implements CodePushClientWrapper {}
 
 class _MockDoctor extends Mock implements Doctor {}
-
-class _MockIpa extends Mock implements Ipa {}
-
-class _MockIpaReader extends Mock implements IpaReader {}
 
 class _MockLogger extends Mock implements Logger {}
 
@@ -82,10 +77,40 @@ void main() {
 <!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
 <plist version="1.0">
 <dict>
-	<key>CFBundleName</key>
-	<string>app_bundle_name</string>
+	<key>ApplicationProperties</key>
+	<dict>
+		<key>ApplicationPath</key>
+		<string>Applications/Runner.app</string>
+		<key>Architectures</key>
+		<array>
+			<string>arm64</string>
+		</array>
+		<key>CFBundleIdentifier</key>
+		<string>com.shorebird.timeShift</string>
+		<key>CFBundleShortVersionString</key>
+		<string>1.2.3</string>
+		<key>CFBundleVersion</key>
+		<string>1</string>
+	</dict>
+	<key>ArchiveVersion</key>
+	<integer>2</integer>
+	<key>Name</key>
+	<string>Runner</string>
+	<key>SchemeName</key>
+	<string>Runner</string>
 </dict>
 </plist>''';
+    const emptyPlistContent = '''
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+<plist version="1.0">
+<dict>
+	<key>ApplicationProperties</key>
+	<dict>
+	</dict>
+</dict>
+</plist>'
+''';
     const pubspecYamlContent = '''
 name: example
 version: $version
@@ -102,8 +127,6 @@ flutter:
     late Doctor doctor;
     late Platform platform;
     late Auth auth;
-    late IpaReader ipaReader;
-    late Ipa ipa;
     late Progress progress;
     late Logger logger;
     late ShorebirdProcessResult flutterBuildProcessResult;
@@ -139,7 +162,14 @@ flutter:
         p.join(tempDir.path, 'shorebird.yaml'),
       ).writeAsStringSync('app_id: $appId');
       File(
-        p.join(tempDir.path, 'ios', 'Runner', 'Info.plist'),
+        p.join(
+          tempDir.path,
+          'build',
+          'ios',
+          'archive',
+          'Runner.xcarchive',
+          'Info.plist',
+        ),
       )
         ..createSync(recursive: true)
         ..writeAsStringSync(infoPlistContent);
@@ -161,8 +191,6 @@ flutter:
       platform = _MockPlatform();
       shorebirdRoot = Directory.systemTemp.createTempSync();
       auth = _MockAuth();
-      ipa = _MockIpa();
-      ipaReader = _MockIpaReader();
       progress = _MockProgress();
       logger = _MockLogger();
       flutterBuildProcessResult = _MockProcessResult();
@@ -193,10 +221,9 @@ flutter:
       ).thenAnswer((_) async => flutterBuildProcessResult);
       when(() => argResults.rest).thenReturn([]);
       when(() => argResults['arch']).thenReturn(arch);
+      when(() => argResults['codesign']).thenReturn(true);
       when(() => argResults['platform']).thenReturn(releasePlatform);
       when(() => auth.isAuthenticated).thenReturn(true);
-      when(() => ipaReader.read(any())).thenReturn(ipa);
-      when(() => ipa.versionNumber).thenReturn(version);
       when(() => logger.progress(any())).thenReturn(progress);
       when(() => logger.confirm(any())).thenReturn(true);
       when(
@@ -235,7 +262,7 @@ flutter:
         () => codePushClientWrapper.createIosReleaseArtifacts(
           appId: any(named: 'appId'),
           releaseId: any(named: 'releaseId'),
-          ipaPath: any(named: 'ipaPath'),
+          xcarchivePath: any(named: 'xcarchivePath'),
           runnerPath: any(named: 'runnerPath'),
         ),
       ).thenAnswer((_) async => release);
@@ -258,7 +285,7 @@ flutter:
         ),
       ).thenAnswer((_) async {});
 
-      command = runWithOverrides(() => ReleaseIosCommand(ipaReader: ipaReader))
+      command = runWithOverrides(ReleaseIosCommand.new)
         ..testArgResults = argResults;
     });
 
@@ -288,6 +315,84 @@ flutter:
           supportedOperatingSystems: {Platform.macOS},
         ),
       ).called(1);
+    });
+
+    group('when codesign is disabled', () {
+      setUp(() {
+        when(() => argResults['codesign']).thenReturn(false);
+      });
+
+      test('prints instructions to manually codesign', () async {
+        final tempDir = setUpTempDir();
+        await IOOverrides.runZoned(
+          () => runWithOverrides(command.run),
+          getCurrentDirectory: () => tempDir,
+        );
+
+        verify(
+          () => logger.info(
+            '''Building for device with codesigning disabled. You will have to manually codesign before deploying to device.''',
+          ),
+        ).called(1);
+      });
+
+      test('builds without codesigning', () async {
+        final tempDir = setUpTempDir();
+        await IOOverrides.runZoned(
+          () => runWithOverrides(command.run),
+          getCurrentDirectory: () => tempDir,
+        );
+
+        verify(
+          () => shorebirdProcess.run(
+            'flutter',
+            any(
+              that: containsAllInOrder(
+                [
+                  'build',
+                  'ipa',
+                  '--release',
+                  '--no-codesign',
+                ],
+              ),
+            ),
+            runInShell: true,
+          ),
+        ).called(1);
+      });
+
+      test('prints archive upload instructions on success', () async {
+        final tempDir = setUpTempDir();
+        final result = await IOOverrides.runZoned(
+          () => runWithOverrides(command.run),
+          getCurrentDirectory: () => tempDir,
+        );
+
+        expect(result, equals(ExitCode.success.code));
+        final archivePath = p.join(
+          tempDir.path,
+          'build',
+          'ios',
+          'archive',
+          'Runner.xcarchive',
+        );
+        verify(
+          () => logger.info(
+            any(
+              that: stringContainsInOrder(
+                [
+                  'Your next step is to submit the archive',
+                  archivePath,
+                  'to the App Store using Xcode.',
+                  'You can open the archive in Xcode by running',
+                  'open $archivePath',
+                  '''Make sure to uncheck "Manage Version and Build Number", or else shorebird will not work.''',
+                ],
+              ),
+            ),
+          ),
+        ).called(1);
+      });
     });
 
     test('exits with code 70 when build fails with non-zero exit code',
@@ -346,9 +451,19 @@ error: exportArchive: No signing certificate "iOS Distribution" found
 
     test('exits with code 70 when release version cannot be determiend',
         () async {
-      when(() => ipa.versionNumber).thenThrow(Exception('oops'));
-
       final tempDir = setUpTempDir();
+      File(
+        p.join(
+          tempDir.path,
+          'build',
+          'ios',
+          'archive',
+          'Runner.xcarchive',
+          'Info.plist',
+        ),
+      )
+        ..createSync(recursive: true)
+        ..writeAsStringSync(emptyPlistContent);
       final exitCode = await IOOverrides.runZoned(
         () => runWithOverrides(command.run),
         getCurrentDirectory: () => tempDir,
@@ -356,7 +471,7 @@ error: exportArchive: No signing certificate "iOS Distribution" found
 
       expect(exitCode, equals(ExitCode.software.code));
       verify(
-        () => progress.fail(
+        () => logger.err(
           any(that: contains('Failed to determine release version')),
         ),
       ).called(1);
@@ -377,10 +492,35 @@ error: exportArchive: No signing certificate "iOS Distribution" found
         () => codePushClientWrapper.createIosReleaseArtifacts(
           appId: appId,
           releaseId: release.id,
-          ipaPath: any(named: 'ipaPath', that: endsWith('.ipa')),
+          xcarchivePath:
+              any(named: 'xcarchivePath', that: endsWith('.xcarchive')),
           runnerPath: any(named: 'runnerPath', that: endsWith('Runner.app')),
         ),
       );
+    });
+
+    test('exits with code 70 if Info.plist does not exist', () async {
+      final tempDir = setUpTempDir();
+      final infoPlistFile = File(
+        p.join(
+          tempDir.path,
+          'build',
+          'ios',
+          'archive',
+          'Runner.xcarchive',
+          'Info.plist',
+        ),
+      )..deleteSync(recursive: true);
+
+      final exitCode = await IOOverrides.runZoned(
+        () => runWithOverrides(command.run),
+        getCurrentDirectory: () => tempDir,
+      );
+
+      expect(exitCode, equals(ExitCode.software.code));
+      verify(
+        () => logger.err('No Info.plist file found at ${infoPlistFile.path}.'),
+      ).called(1);
     });
 
     test('exits with code 70 if build directory does not exist', () async {
@@ -394,12 +534,31 @@ error: exportArchive: No signing certificate "iOS Distribution" found
 
       expect(exitCode, equals(ExitCode.software.code));
       verify(
-        () => progress.fail(
+        () => logger.err(any(that: contains('No directory found'))),
+      ).called(1);
+    });
+
+    test('exits with code 70 if ipa build directory does not exist', () async {
+      final tempDir = setUpTempDir();
+      final ipaDirectory =
+          Directory(p.join(tempDir.path, 'build', 'ios', 'ipa'))
+            ..deleteSync(recursive: true);
+
+      final exitCode = await IOOverrides.runZoned(
+        () => runWithOverrides(command.run),
+        getCurrentDirectory: () => tempDir,
+      );
+
+      expect(exitCode, equals(ExitCode.software.code));
+      verify(
+        () => logger.err(
           any(
-            that: stringContainsInOrder([
-              'Could not find ipa file',
-              'No directory found at ${p.join(tempDir.path, 'build')}',
-            ]),
+            that: stringContainsInOrder(
+              [
+                'Could not find ipa file',
+                'No directory found at ${ipaDirectory.path}',
+              ],
+            ),
           ),
         ),
       ).called(1);
@@ -416,7 +575,7 @@ error: exportArchive: No signing certificate "iOS Distribution" found
 
       expect(exitCode, equals(ExitCode.software.code));
       verify(
-        () => progress.fail(
+        () => logger.err(
           any(
             that: stringContainsInOrder([
               'Could not find ipa file',
@@ -440,7 +599,7 @@ error: exportArchive: No signing certificate "iOS Distribution" found
 
       expect(exitCode, equals(ExitCode.software.code));
       verify(
-        () => progress.fail(
+        () => logger.err(
           any(
             that: stringContainsInOrder([
               'Could not find ipa file',
@@ -504,7 +663,8 @@ error: exportArchive: No signing certificate "iOS Distribution" found
         () => codePushClientWrapper.createIosReleaseArtifacts(
           appId: appId,
           releaseId: release.id,
-          ipaPath: any(named: 'ipaPath', that: endsWith('.ipa')),
+          xcarchivePath:
+              any(named: 'xcarchivePath', that: endsWith('.xcarchive')),
           runnerPath: any(named: 'runnerPath', that: endsWith('Runner.app')),
         ),
       ).called(1);
@@ -575,7 +735,8 @@ flavors:
         () => codePushClientWrapper.createIosReleaseArtifacts(
           appId: appId,
           releaseId: release.id,
-          ipaPath: any(named: 'ipaPath', that: endsWith('.ipa')),
+          xcarchivePath:
+              any(named: 'xcarchivePath', that: endsWith('.xcarchive')),
           runnerPath: any(named: 'runnerPath', that: endsWith('Runner.app')),
         ),
       ).called(1);
@@ -610,7 +771,8 @@ flavors:
         () => codePushClientWrapper.createIosReleaseArtifacts(
           appId: appId,
           releaseId: release.id,
-          ipaPath: any(named: 'ipaPath', that: endsWith('.ipa')),
+          xcarchivePath:
+              any(named: 'xcarchivePath', that: endsWith('.xcarchive')),
           runnerPath: any(named: 'runnerPath', that: endsWith('Runner.app')),
         ),
       ).called(1);

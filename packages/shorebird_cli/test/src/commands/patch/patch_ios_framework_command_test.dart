@@ -179,6 +179,7 @@ flutter:
     }
 
     setUpAll(() {
+      registerFallbackValue(Directory(''));
       registerFallbackValue(File(''));
       registerFallbackValue(ReleasePlatform.ios);
       registerFallbackValue(Uri.parse('https://example.com'));
@@ -300,8 +301,8 @@ flutter:
         ),
       ).thenAnswer((_) async {});
       when(
-        () => patchDiffChecker.confirmUnpatchableDiffsIfNecessary(
-          localArtifact: any(named: 'localArtifact'),
+        () => patchDiffChecker.zipAndConfirmUnpatchableDiffsIfNecessary(
+          localArtifactDirectory: any(named: 'localArtifactDirectory'),
           releaseArtifactUrl: any(named: 'releaseArtifactUrl'),
           archiveDiffer: archiveDiffer,
           force: any(named: 'force'),
@@ -633,12 +634,12 @@ Please re-run the release command for this version or create a new release.'''),
     });
 
     test(
-        '''exits with code 0 if confirmUnpatchableDiffsIfNecessary throws UserCancelledException''',
+        '''exits with code 0 if zipAndConfirmUnpatchableDiffsIfNecessary throws UserCancelledException''',
         () async {
       when(() => argResults['force']).thenReturn(false);
       when(
-        () => patchDiffChecker.confirmUnpatchableDiffsIfNecessary(
-          localArtifact: any(named: 'localArtifact'),
+        () => patchDiffChecker.zipAndConfirmUnpatchableDiffsIfNecessary(
+          localArtifactDirectory: any(named: 'localArtifactDirectory'),
           releaseArtifactUrl: any(named: 'releaseArtifactUrl'),
           archiveDiffer: archiveDiffer,
           force: any(named: 'force'),
@@ -654,8 +655,8 @@ Please re-run the release command for this version or create a new release.'''),
 
       expect(exitCode, equals(ExitCode.success.code));
       verify(
-        () => patchDiffChecker.confirmUnpatchableDiffsIfNecessary(
-          localArtifact: any(named: 'localArtifact'),
+        () => patchDiffChecker.zipAndConfirmUnpatchableDiffsIfNecessary(
+          localArtifactDirectory: any(named: 'localArtifactDirectory'),
           releaseArtifactUrl: Uri.parse(xcframeworkArtifact.url),
           archiveDiffer: archiveDiffer,
           force: false,
@@ -673,12 +674,12 @@ Please re-run the release command for this version or create a new release.'''),
     });
 
     test(
-        '''exits with code 70 if confirmUnpatchableDiffsIfNecessary throws UnpatchableChangeException''',
+        '''exits with code 70 if zipAndConfirmUnpatchableDiffsIfNecessary throws UnpatchableChangeException''',
         () async {
       when(() => argResults['force']).thenReturn(false);
       when(
-        () => patchDiffChecker.confirmUnpatchableDiffsIfNecessary(
-          localArtifact: any(named: 'localArtifact'),
+        () => patchDiffChecker.zipAndConfirmUnpatchableDiffsIfNecessary(
+          localArtifactDirectory: any(named: 'localArtifactDirectory'),
           releaseArtifactUrl: any(named: 'releaseArtifactUrl'),
           archiveDiffer: archiveDiffer,
           force: any(named: 'force'),
@@ -694,8 +695,8 @@ Please re-run the release command for this version or create a new release.'''),
 
       expect(exitCode, equals(ExitCode.software.code));
       verify(
-        () => patchDiffChecker.confirmUnpatchableDiffsIfNecessary(
-          localArtifact: any(named: 'localArtifact'),
+        () => patchDiffChecker.zipAndConfirmUnpatchableDiffsIfNecessary(
+          localArtifactDirectory: any(named: 'localArtifactDirectory'),
           releaseArtifactUrl: Uri.parse(xcframeworkArtifact.url),
           archiveDiffer: archiveDiffer,
           force: false,

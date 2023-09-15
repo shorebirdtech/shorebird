@@ -4,6 +4,7 @@ import 'package:http/http.dart' as http;
 import 'package:mason_logger/mason_logger.dart';
 import 'package:path/path.dart' as p;
 import 'package:scoped/scoped.dart';
+import 'package:shorebird_cli/src/archive/archive.dart';
 import 'package:shorebird_cli/src/archive_analysis/archive_differ.dart';
 import 'package:shorebird_cli/src/http_client/http_client.dart';
 import 'package:shorebird_cli/src/logger.dart';
@@ -34,6 +35,26 @@ class PatchDiffChecker {
   // coverage:ignore-end
 
   final http.Client _httpClient;
+
+  /// Zips the contents of [localArtifactDirectory] to a temporary file and
+  /// forwards to [confirmUnpatchableDiffsIfNecessary].
+  Future<void> zipAndConfirmUnpatchableDiffsIfNecessary({
+    required Directory localArtifactDirectory,
+    required Uri releaseArtifactUrl,
+    required ArchiveDiffer archiveDiffer,
+    required bool force,
+  }) async {
+    final zipProgress = logger.progress('Compressing archive');
+    final zippedFile = await localArtifactDirectory.zipToTempFile();
+    zipProgress.complete();
+
+    return confirmUnpatchableDiffsIfNecessary(
+      localArtifact: zippedFile,
+      releaseArtifactUrl: releaseArtifactUrl,
+      archiveDiffer: archiveDiffer,
+      force: force,
+    );
+  }
 
   /// Downloads the release artifact at [releaseArtifactUrl] and checks for
   /// differences that could cause issues when applying the patch represented by
