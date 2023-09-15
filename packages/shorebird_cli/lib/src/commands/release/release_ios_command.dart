@@ -200,7 +200,6 @@ ${summary.join('\n')}
       status: ReleaseStatus.active,
     );
 
-    logger.success('\n✅ Published Release!');
     if (codesign) {
       final String ipaPath;
       try {
@@ -211,7 +210,9 @@ ${summary.join('\n')}
       }
 
       final relativeIpaPath = p.relative(ipaPath);
-      logger.info('''
+      logger
+        ..success('\n✅ Published Release!')
+        ..info('''
 
 Your next step is to upload the ipa to App Store Connect.
 ${lightCyan.wrap(relativeIpaPath)}
@@ -222,7 +223,9 @@ To upload to the App Store either:
        See "man altool" for details about how to authenticate with the App Store Connect API key.
 ''');
     } else {
-      logger.info('''
+      logger
+        ..success('\n✅ Published Release!')
+        ..info('''
 
 Your next step is to submit the archive at ${lightCyan.wrap(archivePath)} to the App Store using Xcode.
 
