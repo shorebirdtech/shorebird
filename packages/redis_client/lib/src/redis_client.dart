@@ -77,7 +77,7 @@ class RedisCommandOptions {
 /// {@template redis_logger}
 /// A logger for the Redis client.
 /// {@endtemplate}
-abstract class RedisLogger {
+abstract interface class RedisLogger {
   // coverage:ignore-start
   /// {@macro redis_logger}
   const RedisLogger();
@@ -91,18 +91,6 @@ abstract class RedisLogger {
 
   /// Log an error message.
   void error(String message, {Object? error, StackTrace? stackTrace});
-}
-
-final class _NoopRedisLogger implements RedisLogger {
-  const _NoopRedisLogger();
-  @override
-  void debug(String message) {}
-
-  @override
-  void error(String message, {Object? error, StackTrace? stackTrace}) {}
-
-  @override
-  void info(String message) {}
 }
 
 /// {@template redis_client}
@@ -215,11 +203,12 @@ class RedisClient {
   }
 
   /// Terminate the connection to the Redis server.
-  Future<void> disconnect() {
+  Future<void> disconnect() async {
     _logger.info('Disconnecting.');
-    _connection?.close();
+    await _connection?.close();
     _reset();
-    return _untilDisconnected;
+    await _untilDisconnected;
+    _logger.info('Disconnected.');
   }
 
   /// Terminate the connection to the Redis server and close the client.
@@ -227,7 +216,7 @@ class RedisClient {
   /// Call this method when you are done using the client and/or wish to
   /// prevent reconnection attempts.
   Future<void> close() {
-    _logger.info('Closing connection permanently.');
+    _logger.info('Closing connection.');
     _closed = true;
     return disconnect();
   }
@@ -238,11 +227,6 @@ class RedisClient {
     Object? error,
     StackTrace? stackTrace,
   }) async {
-    if (_closed) {
-      _logger.info('Connection closed permanently.');
-      return;
-    }
-
     if (retryAttempts <= 0) {
       _connected.completeError(
         error ?? const SocketException('Connection retry limit exceeded'),
@@ -264,7 +248,7 @@ class RedisClient {
       }
       _isConnected = true;
       if (!_connected.isCompleted) _connected.complete();
-      _logger.info('Ready.');
+      _logger.info('Connected.');
     }
 
     void onConnectionClosed([Object? error, StackTrace? stackTrace]) {
@@ -278,8 +262,11 @@ class RedisClient {
         );
       }
 
+      if (_closed) return;
+
       final wasConnected = _isConnected;
       _isConnected = false;
+
       final remainingAttempts =
           wasConnected ? _socketOptions.retryAttempts : retryAttempts - 1;
 
@@ -318,7 +305,6 @@ class RedisClient {
   }
 
   void _reset() {
-    _logger.info('Resetting connection.');
     _connected = Completer<void>();
     _connection = null;
     _client = null;
@@ -415,4 +401,16 @@ class RedisJson {
 extension on RedisSocketOptions {
   /// The connection URI for the Redis server derived from the socket options.
   Uri get connectionUri => Uri.parse('redis://$host:$port');
+}
+
+final class _NoopRedisLogger implements RedisLogger {
+  const _NoopRedisLogger();
+  @override
+  void debug(String message) {}
+
+  @override
+  void info(String message) {}
+
+  @override
+  void error(String message, {Object? error, StackTrace? stackTrace}) {}
 }
