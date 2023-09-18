@@ -73,7 +73,10 @@ class PreviewCommand extends ShorebirdCommand {
       return ExitCode.success.code;
     }
 
-    final releases = await codePushClientWrapper.getReleases(appId: appId);
+    final releases = await codePushClientWrapper.getReleases(
+      appId: appId,
+      sideloadableOnly: true,
+    );
 
     final releaseVersion = results['release-version'] as String? ??
         await promptForReleaseVersion(releases);
@@ -83,7 +86,9 @@ class PreviewCommand extends ShorebirdCommand {
     );
 
     if (releaseVersion == null || release == null) {
-      logger.info('No releases found');
+      // TODO(bryanoltman): link to FAQ explaining which releases are
+      // previewable.
+      logger.info('No previewable releases found');
       return ExitCode.success.code;
     }
 

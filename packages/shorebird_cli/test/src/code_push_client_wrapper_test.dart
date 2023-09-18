@@ -539,7 +539,31 @@ Please bump your version number and try again.''',
           );
 
           expect(releases, equals([release]));
+
           verify(() => progress.complete()).called(1);
+        });
+
+        test('forwards sideloadableOnly value to codePushClient', () async {
+          when(
+            () => codePushClient.getReleases(
+              appId: any(named: 'appId'),
+              sideloadableOnly: any(named: 'sideloadableOnly'),
+            ),
+          ).thenAnswer((_) async => []);
+
+          await runWithOverrides(
+            () => codePushClientWrapper.getReleases(
+              appId: appId,
+              sideloadableOnly: true,
+            ),
+          );
+
+          verify(
+            () => codePushClient.getReleases(
+              appId: appId,
+              sideloadableOnly: true,
+            ),
+          );
         });
       });
 

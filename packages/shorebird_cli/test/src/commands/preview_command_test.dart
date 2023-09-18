@@ -125,7 +125,10 @@ void main() {
         () => codePushClientWrapper.getApps(),
       ).thenAnswer((_) async => [app]);
       when(
-        () => codePushClientWrapper.getReleases(appId: appId),
+        () => codePushClientWrapper.getReleases(
+          appId: appId,
+          sideloadableOnly: true,
+        ),
       ).thenAnswer((_) async => [release]);
       when(
         () => codePushClientWrapper.getReleaseArtifact(
@@ -172,14 +175,20 @@ void main() {
     test('exits with code 70 when querying for releases fails', () async {
       final exception = Exception('oops');
       when(
-        () => codePushClientWrapper.getReleases(appId: any(named: 'appId')),
+        () => codePushClientWrapper.getReleases(
+          appId: any(named: 'appId'),
+          sideloadableOnly: any(named: 'sideloadableOnly'),
+        ),
       ).thenThrow(exception);
       await expectLater(
         () => runWithOverrides(command.run),
         throwsA(exception),
       );
       verify(
-        () => codePushClientWrapper.getReleases(appId: appId),
+        () => codePushClientWrapper.getReleases(
+          appId: appId,
+          sideloadableOnly: true,
+        ),
       ).called(1);
     });
 
@@ -458,7 +467,10 @@ void main() {
       test('exits early when no releases are found', () async {
         when(() => argResults['release-version']).thenReturn(null);
         when(
-          () => codePushClientWrapper.getReleases(appId: any(named: 'appId')),
+          () => codePushClientWrapper.getReleases(
+            appId: any(named: 'appId'),
+            sideloadableOnly: any(named: 'sideloadableOnly'),
+          ),
         ).thenAnswer((_) async => []);
         final result = await runWithOverrides(command.run);
         expect(result, equals(ExitCode.success.code));
@@ -469,8 +481,13 @@ void main() {
             display: captureAny(named: 'display'),
           ),
         );
-        verify(() => codePushClientWrapper.getReleases(appId: appId)).called(1);
-        verify(() => logger.info('No releases found')).called(1);
+        verify(
+          () => codePushClientWrapper.getReleases(
+            appId: appId,
+            sideloadableOnly: true,
+          ),
+        ).called(1);
+        verify(() => logger.info('No previewable releases found')).called(1);
       });
 
       test(
@@ -494,7 +511,12 @@ void main() {
           ),
         ).captured.single as String Function(Release);
         expect(captured(release), equals(releaseVersion));
-        verify(() => codePushClientWrapper.getReleases(appId: appId)).called(1);
+        verify(
+          () => codePushClientWrapper.getReleases(
+            appId: appId,
+            sideloadableOnly: true,
+          ),
+        ).called(1);
       });
 
       test('forwards deviceId to adb and bundletool', () async {
