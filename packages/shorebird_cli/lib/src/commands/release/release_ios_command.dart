@@ -219,7 +219,7 @@ ${summary.join('\n')}
 
 Your next step is to upload your app to App Store Connect.
 
-To upload to the App Store either:
+To upload to the App Store, do one of the following:
     1. Open ${lightCyan.wrap(relativeArchivePath)} in Xcode and use the "Distribute App" flow.
     2. Drag and drop the ${lightCyan.wrap(relativeIpaPath)} bundle into the Apple Transporter macOS app (https://apps.apple.com/us/app/transporter/id1450874784).
     3. Run ${lightCyan.wrap('xcrun altool --upload-app --type ios -f $relativeIpaPath --apiKey your_api_key --apiIssuer your_issuer_id')}.
