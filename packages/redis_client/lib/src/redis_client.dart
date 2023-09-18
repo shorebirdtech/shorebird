@@ -187,6 +187,11 @@ class RedisClient {
   /// https://redis.io/commands/del
   Future<void> delete({required String key}) => execute(['DEL', key]);
 
+  /// Unlinks the specified key.
+  /// Equivalent to the `UNLINK` command.
+  /// https://redis.io/commands/unlink
+  Future<void> unlink({required String key}) => execute(['UNLINK', key]);
+
   /// Send a command to the Redis server.
   Future<dynamic> execute(List<Object?> command) async {
     return _runWithRetry(
@@ -401,6 +406,16 @@ class RedisJson {
   /// https://redis.io/commands/json.del
   Future<void> delete({required String key}) {
     return _client.execute(['JSON.DEL', key, r'$']);
+  }
+
+  /// Merges the value of a key with the specified value.
+  /// Equivalent to the `JSON.MERGE` command.
+  /// https://redis.io/commands/json.merge
+  Future<void> merge({
+    required String key,
+    required Map<String, dynamic> value,
+  }) {
+    return _client.execute(['JSON.MERGE', key, r'$', json.encode(value)]);
   }
 }
 

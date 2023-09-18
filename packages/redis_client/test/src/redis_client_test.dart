@@ -186,7 +186,13 @@ void main() {
         await expectLater(client.get(key: key), completion(isNull));
         await expectLater(client.set(key: key, value: value), completes);
         await expectLater(client.get(key: key), completion(equals(value)));
+
         await expectLater(client.delete(key: key), completes);
+        await expectLater(client.get(key: key), completion(isNull));
+
+        await expectLater(client.set(key: key, value: value), completes);
+        await expectLater(client.get(key: key), completion(equals(value)));
+        await expectLater(client.unlink(key: key), completes);
         await expectLater(client.get(key: key), completion(isNull));
       });
 
@@ -226,11 +232,22 @@ void main() {
             'nested': {'bar': 42},
             'array': [1, 2, 3],
           };
+          const other = {
+            'bar': 'baz',
+          };
           await expectLater(client.json.get(key: key), completion(isNull));
           await expectLater(client.json.set(key: key, value: value), completes);
           await expectLater(
             client.json.get(key: key),
             completion(equals(value)),
+          );
+          await expectLater(
+            client.json.merge(key: key, value: other),
+            completes,
+          );
+          await expectLater(
+            client.json.get(key: key),
+            completion(equals({...value, ...other})),
           );
           await expectLater(client.json.delete(key: key), completes);
           await expectLater(client.json.get(key: key), completion(isNull));
