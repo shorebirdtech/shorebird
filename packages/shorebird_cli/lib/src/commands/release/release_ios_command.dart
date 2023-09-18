@@ -200,6 +200,7 @@ ${summary.join('\n')}
       releaseId: release.id,
       xcarchivePath: archivePath,
       runnerPath: runnerPath,
+      isCodesigned: codesign,
     );
 
     await codePushClientWrapper.updateReleaseStatus(

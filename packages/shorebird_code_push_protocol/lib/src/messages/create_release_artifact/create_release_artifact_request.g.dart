@@ -21,9 +21,12 @@ CreateReleaseArtifactRequest _$CreateReleaseArtifactRequestFromJson(
           hash: $checkedConvert('hash', (v) => v as String),
           size: $checkedConvert(
               'size', (v) => CreateReleaseArtifactRequest._parseStringToInt(v)),
+          canSideload: $checkedConvert('can_sideload',
+              (v) => CreateReleaseArtifactRequest._parseStringToBool(v)),
         );
         return val;
       },
+      fieldKeyMap: const {'canSideload': 'can_sideload'},
     );
 
 Map<String, dynamic> _$CreateReleaseArtifactRequestToJson(
@@ -32,6 +35,8 @@ Map<String, dynamic> _$CreateReleaseArtifactRequestToJson(
       'arch': instance.arch,
       'platform': _$ReleasePlatformEnumMap[instance.platform]!,
       'hash': instance.hash,
+      'can_sideload':
+          CreateReleaseArtifactRequest._parseBoolToString(instance.canSideload),
       'size': CreateReleaseArtifactRequest._parseIntToString(instance.size),
     };
 

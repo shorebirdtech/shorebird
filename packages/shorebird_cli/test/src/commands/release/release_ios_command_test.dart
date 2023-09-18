@@ -264,6 +264,7 @@ flutter:
           releaseId: any(named: 'releaseId'),
           xcarchivePath: any(named: 'xcarchivePath'),
           runnerPath: any(named: 'runnerPath'),
+          isCodesigned: any(named: 'isCodesigned'),
         ),
       ).thenAnswer((_) async => release);
       when(
@@ -393,6 +394,27 @@ flutter:
           ),
         ).called(1);
       });
+
+      test('creates unsigned release artifacts', () async {
+        final tempDir = setUpTempDir();
+        final result = await IOOverrides.runZoned(
+          () => runWithOverrides(command.run),
+          getCurrentDirectory: () => tempDir,
+        );
+
+        expect(result, equals(ExitCode.success.code));
+
+        verify(
+          () => codePushClientWrapper.createIosReleaseArtifacts(
+            appId: appId,
+            releaseId: release.id,
+            xcarchivePath:
+                any(named: 'xcarchivePath', that: endsWith('.xcarchive')),
+            runnerPath: any(named: 'runnerPath', that: endsWith('Runner.app')),
+            isCodesigned: false,
+          ),
+        ).called(1);
+      });
     });
 
     test('exits with code 70 when build fails with non-zero exit code',
@@ -495,6 +517,7 @@ error: exportArchive: No signing certificate "iOS Distribution" found
           xcarchivePath:
               any(named: 'xcarchivePath', that: endsWith('.xcarchive')),
           runnerPath: any(named: 'runnerPath', that: endsWith('Runner.app')),
+          isCodesigned: any(named: 'isCodesigned'),
         ),
       );
     });
@@ -666,6 +689,7 @@ error: exportArchive: No signing certificate "iOS Distribution" found
           xcarchivePath:
               any(named: 'xcarchivePath', that: endsWith('.xcarchive')),
           runnerPath: any(named: 'runnerPath', that: endsWith('Runner.app')),
+          isCodesigned: true,
         ),
       ).called(1);
       verify(
@@ -738,6 +762,7 @@ flavors:
           xcarchivePath:
               any(named: 'xcarchivePath', that: endsWith('.xcarchive')),
           runnerPath: any(named: 'runnerPath', that: endsWith('Runner.app')),
+          isCodesigned: true,
         ),
       ).called(1);
       expect(exitCode, ExitCode.success.code);
@@ -774,6 +799,7 @@ flavors:
           xcarchivePath:
               any(named: 'xcarchivePath', that: endsWith('.xcarchive')),
           runnerPath: any(named: 'runnerPath', that: endsWith('Runner.app')),
+          isCodesigned: true,
         ),
       ).called(1);
       verify(

@@ -9,6 +9,7 @@ void main() {
         platform: ReleasePlatform.android,
         hash: '1234',
         size: 9876,
+        canSideload: true,
       );
       expect(
         CreateReleaseArtifactRequest.fromJson(request.toJson()).toJson(),

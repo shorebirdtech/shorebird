@@ -497,6 +497,7 @@ void main() {
       const platform = ReleasePlatform.android;
       const hash = 'test-hash';
       const size = 42;
+      const canSideload = true;
 
       test('makes the correct request', () async {
         final tempDir = Directory.systemTemp.createTempSync();
@@ -511,6 +512,7 @@ void main() {
             arch: arch,
             platform: platform,
             hash: hash,
+            canSideload: canSideload,
           );
         } catch (_) {}
 
@@ -545,6 +547,7 @@ void main() {
             arch: arch,
             platform: platform,
             hash: hash,
+            canSideload: canSideload,
           ),
           throwsA(
             isA<CodePushException>().having(
@@ -578,6 +581,7 @@ void main() {
             arch: arch,
             platform: platform,
             hash: hash,
+            canSideload: canSideload,
           ),
           throwsA(isA<CodePushNotFoundException>()),
         );
@@ -605,6 +609,7 @@ void main() {
             arch: arch,
             platform: platform,
             hash: hash,
+            canSideload: canSideload,
           ),
           throwsA(isA<CodePushConflictException>()),
         );
@@ -630,6 +635,7 @@ void main() {
             arch: arch,
             platform: platform,
             hash: hash,
+            canSideload: canSideload,
           ),
           throwsA(
             isA<CodePushException>().having(
@@ -685,6 +691,7 @@ void main() {
             arch: arch,
             platform: platform,
             hash: hash,
+            canSideload: canSideload,
           ),
           throwsA(
             isA<CodePushException>().having(
@@ -748,6 +755,7 @@ void main() {
             arch: arch,
             platform: platform,
             hash: hash,
+            canSideload: canSideload,
           ),
           completes,
         );

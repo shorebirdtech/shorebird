@@ -994,6 +994,7 @@ Please bump your version number and try again.''',
               arch: any(named: 'arch'),
               platform: any(named: 'platform'),
               hash: any(named: 'hash'),
+              canSideload: any(named: 'canSideload'),
             ),
           ).thenAnswer((_) async => {});
         });
@@ -1008,6 +1009,7 @@ Please bump your version number and try again.''',
               arch: any(named: 'arch'),
               platform: any(named: 'platform'),
               hash: any(named: 'hash'),
+              canSideload: any(named: 'canSideload'),
             ),
           ).thenThrow(error);
           final tempDir = setUpTempDir();
@@ -1041,6 +1043,7 @@ Please bump your version number and try again.''',
               arch: any(named: 'arch'),
               platform: any(named: 'platform'),
               hash: any(named: 'hash'),
+              canSideload: any(named: 'canSideload'),
             ),
           ).thenThrow(error);
           final tempDir = setUpTempDir();
@@ -1075,6 +1078,7 @@ Please bump your version number and try again.''',
               arch: any(named: 'arch'),
               platform: any(named: 'platform'),
               hash: any(named: 'hash'),
+              canSideload: any(named: 'canSideload'),
             ),
           ).thenThrow(const CodePushConflictException(message: error));
           final tempDir = setUpTempDir();
@@ -1111,6 +1115,7 @@ Please bump your version number and try again.''',
               arch: any(named: 'arch'),
               platform: any(named: 'platform'),
               hash: any(named: 'hash'),
+              canSideload: any(named: 'canSideload'),
             ),
           ).thenThrow(const CodePushConflictException(message: error));
           final tempDir = setUpTempDir();
@@ -1145,6 +1150,7 @@ Please bump your version number and try again.''',
               arch: any(named: 'arch'),
               platform: any(named: 'platform'),
               hash: any(named: 'hash'),
+              canSideload: any(named: 'canSideload'),
             ),
           ).thenAnswer((_) async => {});
           final tempDir = setUpTempDir();
@@ -1176,6 +1182,7 @@ Please bump your version number and try again.''',
               arch: any(named: 'arch'),
               platform: any(named: 'platform'),
               hash: any(named: 'hash'),
+              canSideload: any(named: 'canSideload'),
             ),
           ).thenAnswer((_) async => {});
           final tempDir = setUpTempDir(flavor: flavorName);
@@ -1205,6 +1212,7 @@ Please bump your version number and try again.''',
               arch: any(named: 'arch'),
               platform: releasePlatform,
               hash: any(named: 'hash'),
+              canSideload: any(named: 'canSideload'),
             ),
           ).called(ShorebirdBuildMixin.allAndroidArchitectures.length);
           verify(() => progress.complete()).called(1);
@@ -1255,6 +1263,7 @@ Please bump your version number and try again.''',
               arch: any(named: 'arch'),
               platform: any(named: 'platform'),
               hash: any(named: 'hash'),
+              canSideload: any(named: 'canSideload'),
             ),
           ).thenAnswer((_) async => {});
         });
@@ -1269,6 +1278,7 @@ Please bump your version number and try again.''',
               arch: any(named: 'arch'),
               platform: any(named: 'platform'),
               hash: any(named: 'hash'),
+              canSideload: any(named: 'canSideload'),
             ),
           ).thenThrow(error);
           final tempDir = setUpTempDir();
@@ -1304,6 +1314,7 @@ Please bump your version number and try again.''',
               arch: any(named: 'arch'),
               platform: any(named: 'platform'),
               hash: any(named: 'hash'),
+              canSideload: any(named: 'canSideload'),
             ),
           ).thenThrow(error);
           final tempDir = setUpTempDir();
@@ -1340,6 +1351,7 @@ Please bump your version number and try again.''',
               arch: any(named: 'arch'),
               platform: any(named: 'platform'),
               hash: any(named: 'hash'),
+              canSideload: any(named: 'canSideload'),
             ),
           ).thenThrow(const CodePushConflictException(message: error));
           final tempDir = setUpTempDir();
@@ -1378,6 +1390,7 @@ Please bump your version number and try again.''',
               arch: any(named: 'arch'),
               platform: any(named: 'platform'),
               hash: any(named: 'hash'),
+              canSideload: any(named: 'canSideload'),
             ),
           ).thenThrow(const CodePushConflictException(message: error));
           final tempDir = setUpTempDir();
@@ -1414,6 +1427,7 @@ Please bump your version number and try again.''',
               arch: any(named: 'arch'),
               platform: any(named: 'platform'),
               hash: any(named: 'hash'),
+              canSideload: any(named: 'canSideload'),
             ),
           ).thenAnswer((_) async => {});
           final tempDir = setUpTempDir();
@@ -1447,6 +1461,7 @@ Please bump your version number and try again.''',
               arch: any(named: 'arch'),
               platform: any(named: 'platform'),
               hash: any(named: 'hash'),
+              canSideload: any(named: 'canSideload'),
             ),
           ).thenAnswer((_) async => {});
           final tempDir = setUpTempDir(flavor: flavorName);
@@ -1474,6 +1489,7 @@ Please bump your version number and try again.''',
               arch: any(named: 'arch'),
               platform: releasePlatform,
               hash: any(named: 'hash'),
+              canSideload: any(named: 'canSideload'),
             ),
           ).called(ShorebirdBuildMixin.allAndroidArchitectures.length + 1);
           verify(() => progress.complete()).called(1);
@@ -1503,6 +1519,7 @@ Please bump your version number and try again.''',
             arch: any(named: 'arch'),
             platform: any(named: 'platform'),
             hash: any(named: 'hash'),
+            canSideload: any(named: 'canSideload'),
           ),
         ).thenAnswer((_) async => {});
       });
@@ -1519,6 +1536,7 @@ Please bump your version number and try again.''',
             arch: any(named: 'arch'),
             platform: any(named: 'platform'),
             hash: any(named: 'hash'),
+            canSideload: any(named: 'canSideload'),
           ),
         ).thenThrow(error);
         final tempDir = setUpTempDir();
@@ -1531,6 +1549,7 @@ Please bump your version number and try again.''',
                 releaseId: releaseId,
                 xcarchivePath: p.join(tempDir.path, xcarchivePath),
                 runnerPath: p.join(tempDir.path, runnerPath),
+                isCodesigned: true,
               ),
             ),
             exitsWithCode(ExitCode.software),
@@ -1553,6 +1572,7 @@ Please bump your version number and try again.''',
             arch: any(named: 'arch'),
             platform: any(named: 'platform'),
             hash: any(named: 'hash'),
+            canSideload: any(named: 'canSideload'),
           ),
         ).thenThrow(const CodePushConflictException(message: error));
         final tempDir = setUpTempDir();
@@ -1565,6 +1585,7 @@ Please bump your version number and try again.''',
                 releaseId: releaseId,
                 xcarchivePath: p.join(tempDir.path, xcarchivePath),
                 runnerPath: p.join(tempDir.path, runnerPath),
+                isCodesigned: false,
               ),
             ),
             exitsWithCode(ExitCode.software),
@@ -1589,6 +1610,7 @@ Please bump your version number and try again.''',
             arch: any(named: 'arch'),
             platform: any(named: 'platform'),
             hash: any(named: 'hash'),
+            canSideload: any(named: 'canSideload'),
           ),
         ).thenThrow(error);
         final tempDir = setUpTempDir();
@@ -1601,6 +1623,7 @@ Please bump your version number and try again.''',
                 releaseId: releaseId,
                 xcarchivePath: p.join(tempDir.path, xcarchivePath),
                 runnerPath: p.join(tempDir.path, runnerPath),
+                isCodesigned: false,
               ),
             ),
             exitsWithCode(ExitCode.software),
@@ -1620,6 +1643,7 @@ Please bump your version number and try again.''',
             arch: any(named: 'arch'),
             platform: any(named: 'platform'),
             hash: any(named: 'hash'),
+            canSideload: any(named: 'canSideload'),
           ),
         ).thenAnswer((_) async => {});
         final tempDir = setUpTempDir();
@@ -1631,6 +1655,7 @@ Please bump your version number and try again.''',
               releaseId: releaseId,
               xcarchivePath: p.join(tempDir.path, xcarchivePath),
               runnerPath: p.join(tempDir.path, runnerPath),
+              isCodesigned: true,
             ),
             getCurrentDirectory: () => tempDir,
           ),
@@ -1661,6 +1686,7 @@ Please bump your version number and try again.''',
               arch: any(named: 'arch'),
               platform: any(named: 'platform'),
               hash: any(named: 'hash'),
+              canSideload: any(named: 'canSideload'),
             ),
           ).thenThrow(
             Exception('oh no'),
@@ -1689,6 +1715,7 @@ Please bump your version number and try again.''',
             arch: any(named: 'arch'),
             platform: any(named: 'platform'),
             hash: any(named: 'hash'),
+            canSideload: any(named: 'canSideload'),
           ),
         ).thenAnswer((_) async => {});
         final tempDir = setUpTempDir();

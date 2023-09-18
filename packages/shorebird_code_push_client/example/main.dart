@@ -36,6 +36,7 @@ Future<void> main() async {
     artifactPath: '<PATH TO ARTIFACT>', // e.g. 'libapp.so'
     arch: '<ARCHITECTURE>', // e.g. 'aarch64'
     hash: '<HASH>', // 'sha256 hash of the artifact'
+    canSideload: true,
   );
 
   // Create a new patch.
