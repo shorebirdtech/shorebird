@@ -371,7 +371,6 @@ flutter:
 
         expect(result, equals(ExitCode.success.code));
         final archivePath = p.join(
-          tempDir.path,
           'build',
           'ios',
           'archive',

@@ -212,6 +212,7 @@ ${summary.join('\n')}
 
     logger.success('\n✅ Published Release!');
 
+    final relativeArchivePath = p.relative(archivePath);
     if (codesign) {
       final relativeIpaPath = p.relative(ipaPath);
       logger.info('''
@@ -220,17 +221,18 @@ Your next step is to upload the ipa to App Store Connect.
 ${lightCyan.wrap(relativeIpaPath)}
 
 To upload to the App Store either:
-    1. Drag and drop the "$relativeIpaPath" bundle into the Apple Transporter macOS app (https://apps.apple.com/us/app/transporter/id1450874784)
-    2. Run ${lightCyan.wrap('xcrun altool --upload-app --type ios -f $relativeIpaPath --apiKey your_api_key --apiIssuer your_issuer_id')}.
+    1. Open ${lightCyan.wrap(relativeArchivePath)} in Xcode and use the "Distribute App" flow.
+    2. Drag and drop the ${lightCyan.wrap(relativeIpaPath)} bundle into the Apple Transporter macOS app (https://apps.apple.com/us/app/transporter/id1450874784).
+    3. Run ${lightCyan.wrap('xcrun altool --upload-app --type ios -f $relativeIpaPath --apiKey your_api_key --apiIssuer your_issuer_id')}.
        See "man altool" for details about how to authenticate with the App Store Connect API key.
 ''');
     } else {
       logger.info('''
 
-Your next step is to submit the archive at ${lightCyan.wrap(archivePath)} to the App Store using Xcode.
+Your next step is to submit the archive at ${lightCyan.wrap(relativeArchivePath)} to the App Store using Xcode.
 
 You can open the archive in Xcode by running:
-    ${lightCyan.wrap('open $archivePath')}
+    ${lightCyan.wrap('open $relativeArchivePath')}
 
 ${styleBold.wrap('Make sure to uncheck "Manage Version and Build Number", or else shorebird will not work.')}
 ''');
