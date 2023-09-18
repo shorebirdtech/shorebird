@@ -449,11 +449,18 @@ class CodePushClient {
     required String appId,
     bool sideloadableOnly = false,
   }) async {
-    final response = await _httpClient.get(
-      Uri.parse(
-        '$_v1/apps/$appId/releases${sideloadableOnly ? '?sideloadable=true' : ''}',
-      ),
+    var uri = Uri.parse(
+      '$_v1/apps/$appId/releases',
     );
+    if (sideloadableOnly) {
+      uri = uri.replace(
+        queryParameters: {
+          if (sideloadableOnly) 'sideloadable': 'true',
+        },
+      );
+    }
+
+    final response = await _httpClient.get(uri);
 
     if (response.statusCode != HttpStatus.ok) {
       throw _parseErrorResponse(response.statusCode, response.body);
