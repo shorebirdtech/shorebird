@@ -205,13 +205,16 @@ class CodePushClient {
       Uri.parse('$_v1/apps/$appId/releases/$releaseId/artifacts'),
     );
     final file = await http.MultipartFile.fromPath('file', artifactPath);
-    request.fields.addAll({
-      'arch': arch,
-      'platform': platform.name,
-      'hash': hash,
-      'size': '${file.length}',
-      'canSideload': '$canSideload',
-    });
+
+    final payload = CreateReleaseArtifactRequest(
+      arch: arch,
+      platform: platform,
+      hash: hash,
+      size: file.length,
+      canSideload: canSideload,
+    ).toJson().map((key, value) => MapEntry(key, '$value'));
+    request.fields.addAll(payload);
+
     final response = await _httpClient.send(request);
     final body = await response.stream.bytesToString();
 
