@@ -386,7 +386,7 @@ Please create a release using "shorebird release" and try again.
           arch: archMetadata.arch,
           platform: platform,
           hash: hash,
-          canSideload: true,
+          canSideload: false,
         );
       } on CodePushConflictException catch (_) {
         // Newlines are due to how logger.info interacts with logger.progress.
@@ -545,7 +545,7 @@ aar artifact already exists, continuing...''',
         arch: 'xcarchive',
         platform: ReleasePlatform.ios,
         hash: sha256.convert(await zippedArchive.readAsBytes()).toString(),
-        canSideload: isCodesigned,
+        canSideload: false,
       );
     } catch (error) {
       _handleErrorAndExit(
