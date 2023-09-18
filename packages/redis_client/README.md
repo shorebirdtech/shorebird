@@ -55,7 +55,7 @@ Shorebird packages are licensed for use under either of the following at your op
 
 See our [license philosophy](https://github.com/shorebirdtech/handbook/blob/main/engineering.md#licensing-philosophy) for more information on why we license files this way.
 
-[apache_link]: http://www.apache.org/licenses/LICENSE-2.0
+[apache_link]: https://www.apache.org/licenses/LICENSE-2.0
 [ci_badge]: https://github.com/shorebirdtech/shorebird/actions/workflows/main.yaml/badge.svg
 [ci_link]: https://github.com/shorebirdtech/shorebird/actions/workflows/main.yaml
 [codecov_badge]: https://codecov.io/gh/shorebirdtech/shorebird/branch/main/graph/badge.svg
@@ -64,7 +64,7 @@ See our [license philosophy](https://github.com/shorebirdtech/handbook/blob/main
 [discord_link]: https://discord.gg/shorebird
 [license_badge]: https://img.shields.io/badge/license-MIT-blue.svg
 [license_link]: https://opensource.org/licenses/MIT
-[mit_link]: http://opensource.org/licenses/MIT
+[mit_link]: https://opensource.org/licenses/MIT
 [pub_badge]: https://img.shields.io/pub/v/shorebird_redis_client.svg
 [pub_link]: https://pub.dev/packages/shorebird_redis_client
 [redis_link]: https://redis.io
