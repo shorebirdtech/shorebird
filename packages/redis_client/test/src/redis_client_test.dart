@@ -247,7 +247,7 @@ void main() {
           await expectLater(
             client.json.get(key: key),
             completion(equals(value)),
-          );          
+          );
           await expectLater(
             client.json.get(key: key, path: r'$.string'),
             completion(equals('hello')),
