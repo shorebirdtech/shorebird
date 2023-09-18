@@ -217,8 +217,7 @@ ${summary.join('\n')}
       final relativeIpaPath = p.relative(ipaPath);
       logger.info('''
 
-Your next step is to upload the ipa to App Store Connect.
-${lightCyan.wrap(relativeIpaPath)}
+Your next step is to upload your app to App Store Connect.
 
 To upload to the App Store either:
     1. Open ${lightCyan.wrap(relativeArchivePath)} in Xcode and use the "Distribute App" flow.
