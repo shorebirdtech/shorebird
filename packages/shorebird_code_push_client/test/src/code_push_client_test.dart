@@ -1786,14 +1786,31 @@ void main() {
     group('getReleases', () {
       const appId = 'test-app-id';
 
-      test('makes the correct request', () async {
-        codePushClient.getReleases(appId: appId).ignore();
-        final request = verify(() => httpClient.send(captureAny()))
-            .captured
-            .single as http.BaseRequest;
-        expect(request.method, equals('GET'));
-        expect(request.url, equals(v1('apps/$appId/releases')));
-        expect(request.hasStandardHeaders, isTrue);
+      group('makes the correct request', () {
+        test('when sideloadableOnly is not specified', () async {
+          codePushClient.getReleases(appId: appId).ignore();
+          final request = verify(() => httpClient.send(captureAny()))
+              .captured
+              .single as http.BaseRequest;
+          expect(request.method, equals('GET'));
+          expect(request.url, equals(v1('apps/$appId/releases')));
+          expect(request.hasStandardHeaders, isTrue);
+        });
+
+        test('when sideloadableOnly is true', () async {
+          codePushClient
+              .getReleases(appId: appId, sideloadableOnly: true)
+              .ignore();
+          final request = verify(() => httpClient.send(captureAny()))
+              .captured
+              .single as http.BaseRequest;
+          expect(request.method, equals('GET'));
+          expect(
+            request.url,
+            equals(v1('apps/$appId/releases?sideloadable=true')),
+          );
+          expect(request.hasStandardHeaders, isTrue);
+        });
       });
 
       test('throws an exception if the http request fails (unknown)', () async {

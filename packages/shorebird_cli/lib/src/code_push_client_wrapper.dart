@@ -190,10 +190,16 @@ Please create a release using "shorebird release" and try again.
     return release;
   }
 
-  Future<List<Release>> getReleases({required String appId}) async {
+  Future<List<Release>> getReleases({
+    required String appId,
+    bool sideloadableOnly = false,
+  }) async {
     final fetchReleasesProgress = logger.progress('Fetching releases');
     try {
-      final releases = await codePushClient.getReleases(appId: appId);
+      final releases = await codePushClient.getReleases(
+        appId: appId,
+        sideloadableOnly: sideloadableOnly,
+      );
       fetchReleasesProgress.complete();
       return releases;
     } catch (error) {

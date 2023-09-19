@@ -445,10 +445,20 @@ class CodePushClient {
   }
 
   /// List all release for the provided [appId].
-  Future<List<Release>> getReleases({required String appId}) async {
-    final response = await _httpClient.get(
-      Uri.parse('$_v1/apps/$appId/releases'),
+  Future<List<Release>> getReleases({
+    required String appId,
+    bool sideloadableOnly = false,
+  }) async {
+    var uri = Uri.parse(
+      '$_v1/apps/$appId/releases',
     );
+    if (sideloadableOnly) {
+      uri = uri.replace(
+        queryParameters: {'sideloadable': 'true'},
+      );
+    }
+
+    final response = await _httpClient.get(uri);
 
     if (response.statusCode != HttpStatus.ok) {
       throw _parseErrorResponse(response.statusCode, response.body);
