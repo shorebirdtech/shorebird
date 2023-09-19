@@ -15,7 +15,7 @@ dependencies:
   args: ^2.4.0
   collection: ^1.18.0
   io: ^1.0.4
-  mason_logger: ^0.2.6
+  mason_logger: ^0.2.9
   meta: ^1.9.1
   mocktail: ^1.0.0
   path: ^1.8.3
