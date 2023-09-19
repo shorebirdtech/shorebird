@@ -466,20 +466,51 @@ error: exportArchive: No signing certificate "iOS Distribution" found
       ).called(1);
     });
 
-    test('exits with code 70 if build directory does not exist', () async {
-      final tempDir = setUpTempDir();
-      setUpTempArtifacts(tempDir);
-      Directory(p.join(tempDir.path, 'build')).deleteSync(recursive: true);
+    group('when build directory has non-default structure', () {
+      test('exits with code 70 if xcarchive is not found', () async {
+        final tempDir = setUpTempDir();
+        setUpTempArtifacts(tempDir);
+        Directory(p.join(tempDir.path, 'build')).deleteSync(recursive: true);
 
-      final exitCode = await IOOverrides.runZoned(
-        () => runWithOverrides(command.run),
-        getCurrentDirectory: () => tempDir,
-      );
+        final exitCode = await IOOverrides.runZoned(
+          () => runWithOverrides(command.run),
+          getCurrentDirectory: () => tempDir,
+        );
 
-      expect(exitCode, equals(ExitCode.software.code));
-      verify(
-        () => logger.err(any(that: contains('No Info.plist file found'))),
-      ).called(1);
+        expect(exitCode, equals(ExitCode.software.code));
+        verify(
+          () => logger.err(any(that: contains('Unable to find .xcarchive'))),
+        ).called(1);
+      });
+
+      test('finds xcarchive that has been renamed from Runner', () async {
+        final tempDir = setUpTempDir();
+        setUpTempArtifacts(tempDir);
+        Directory(
+          p.join(
+            tempDir.path,
+            'build',
+            'ios',
+            'archive',
+            'Runner.xcarchive',
+          ),
+        ).renameSync(
+          p.join(
+            tempDir.path,
+            'build',
+            'ios',
+            'archive',
+            'شوربيرد | Shorebird.xcarchive',
+          ),
+        );
+
+        final exitCode = await IOOverrides.runZoned(
+          () => runWithOverrides(command.run),
+          getCurrentDirectory: () => tempDir,
+        );
+
+        expect(exitCode, equals(ExitCode.success.code));
+      });
     });
 
     test(

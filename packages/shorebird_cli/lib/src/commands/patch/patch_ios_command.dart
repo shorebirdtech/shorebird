@@ -111,7 +111,7 @@ class PatchIosCommand extends ShorebirdCommand
 
     final archivePath = getXcarchiveDirectory()?.path;
     if (archivePath == null) {
-      logger.err('No .xcarchive found');
+      logger.err('Unable to find .xcarchive');
       return ExitCode.software.code;
     }
 
