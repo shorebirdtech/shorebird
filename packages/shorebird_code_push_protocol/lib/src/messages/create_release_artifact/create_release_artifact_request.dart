@@ -38,7 +38,7 @@ class CreateReleaseArtifactRequest {
 
   /// Whether the artifact can installed and run on a device/emulator as-is.
   @JsonKey(fromJson: _parseStringToBool, toJson: _parseBoolToString)
-  final bool canSideload;
+  final bool? canSideload;
 
   /// The size of the artifact in bytes.
   @JsonKey(fromJson: _parseStringToInt, toJson: _parseIntToString)
@@ -48,7 +48,9 @@ class CreateReleaseArtifactRequest {
 
   static String _parseIntToString(dynamic value) => value.toString();
 
-  static bool _parseStringToBool(dynamic value) => value == 'true';
+  // Default to true
+  static bool _parseStringToBool(dynamic value) =>
+      value == null || value == 'true';
 
   static String _parseBoolToString(dynamic value) => value.toString();
 }
