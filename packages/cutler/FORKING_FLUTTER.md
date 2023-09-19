@@ -1,7 +1,29 @@
-These are our old docs for our manual update process.
+`cutler` intends to replaces some of this, but not all of it.
+Keeping these docs until `cutler` is fully functional.
 
-`cutler` replaces some of this, but not all of it. Keeping these until
-`cutler` is fully functional.
+`dart run cutler versions` is able to print out all of the hashes in the forked
+repos for a given Shorebird hash (including any Shorebird channel or release
+tag).
+
+Example:
+```
+ % dart run cutler versions
+Building package executable... 
+Built cutler:cutler.
+Using /Users/eseidel/Documents/GitHub as checkouts root.
+✓ Checkouts updated! (15.9s)
+Shorebird @ origin/stable
+  flutter   012153de178d4a51cd6f9adc792ad63ae3cfb1b3 (8 ahead)
+  engine    5a1c263ce5313c8f5e93a11dd2a3af0e19d90262 (54 ahead)
+  dart      37f38201922b071c5494e35fe09b56336f03a4f6 (13 ahead)
+  buildroot 320eae0a60e36365e90b4380f5eb0b3fd4392f67 (1 ahead)
+
+Upstream
+  flutter   2524052335ec76bb03e04ede244b071f1b86d190 (3.13.3)
+  engine    b8d35810e91ab8fc39ba5e7a41bff6f697e8e3a8 (3.13.3)
+  dart      efd81da467c5cfeaa39652bd865ce91830a66ab7 (3.1.1)
+  buildroot 6e71c38443c0bf9d8954c87bf69bb4e019f44f94
+```
 
 ## Repository structure
 
@@ -9,39 +31,39 @@ We maintain forks of:
 * flutter/flutter
 * flutter/engine
 * flutter/buildroot
+* dart-lang/sdk
 
-We keep our forked changes on the `shorebird/main` branch of each repo which we rebase
-periodically on top of `main` from the upstream repo.
+We keep our forked changes on the `shorebird/dev` branch of each repo which we
+rebase periodically on top of the latest stable from the upstream repos.
 
-When Flutter makes a release, we make a branch in each repo for the Flutter
-release and rebase necessary changes from main onto that branch.
+When Flutter makes a release, we rebase our `shorebird/dev` branches onto
+the branch points for Flutter's release branches.  We then create our own
+release branches for the Shorebird release (e.g. flutter_release/3.7.10).
 
 The only reason we need to create branches is to keep our forked commits alive.
 You don't directly check out these branches (unless you plan to make a hotfix)
 but instead Shorebird will pull them using its `flutter.version` file, etc.
 
-We keep channel branches (e.g. `beta`, `stable`) in the `shorebird` repo but
+We keep channel branches (e.g. `stable`) in the `shorebird` repo but
 do not do so in the other repos.
 
 The forked repos have branches corresponding to a Flutter release but do not
 keep branches corresponding to Shorebird or Flutter channels.
-
-`cutler print-versions` is able to print out all of the hashes in the forked
-repos for a given Shorebird hash (including any Shorebird channel or release
-tag).
 
 For example, when updating to the Flutter 3.7.10 release, we created the
 following branches:
 * flutter/flutter: `flutter_release/3.7.10`
 * flutter/engine: `flutter_release/3.7.10`
 * flutter/buildroot: `flutter_release/3.7.10`
-* shorebird: no branch or tag, just a commit to the `shorebird/main` branch which will
-  eventually get pushed to `beta` and `stable` branches for Shorebird.
+* dart-lang/sdk: `flutter_release/3.7.10`
+* shorebird: no branch or tag, just a commit to the `main` branch which
+  will eventually get pushed to the `stable` branch for Shorebird.
 
 It's rare that we will ever need to add commits to one of these branches,
-since changes to our fork are rare.  We might also chose not to back-port
-changes to our fork to previous releases, but instead wait for the next
-Flutter release to include them.
+since changes to our fork are rare.  We currently do not try to back-port
+any Shorebird changes to older Flutter revisions, rather we just update
+to the latest Flutter release and include our new fixes there.
+https://github.com/shorebirdtech/shorebird/issues/1100
 
 ## Keeping our fork up to date
 
@@ -53,57 +75,19 @@ to check out `shorebird`.  Example:
 cd $HOME/Documents/GitHub
 git clone https://github.com/shorebirdtech/_shorebird
 ```
+
 To check out the engine, you should follow:
 https://github.com/shorebirdtech/updater/blob/main/BUILDING_ENGINE.md
 which will result in an `engine` directory in the same directory as `_shorebird`.
 
 Run `cutler` to get the git commands you need.
 
-For a stable update:
-```
-dart run cutler --dry-run --root=$HOME/Documents/GitHub
-```
+`cutler` has a set of fallback paths it will search to find your checkouts root
+if you checked out `_shorebird` into the same directory as `engine`, it should
+find it.
 
-For a beta update:
-```
-dart run cutler --dry-run --root=$HOME/Documents/GitHub --flutter-channel=beta
-```
 
-Eventually we'll automate stable, beta and master updates in the cloud.
-
-Example output from updating 3.7.10 to 3.10.0:
-
-```
-dart run cutler rebase --no-update --root=$HOME/Documents/GitHub --flutter-channel=beta --dry-run
-Building package executable... 
-Built cutler:cutler.
-Shorebird stable:
-  flutter   83305b5088e6fe327fb3334a73ff190828d85713
-  engine    c415419390e4751ddfa3110e0808e7abb3d45a18
-  buildroot 7383548fa2306b5d53979ac5e9d176b35258811b
-Forkpoints:
-  flutter   4d9e56e694b656610ab87fcf2efbcd226e0ed8cf (3.7.12)
-  engine    1a65d409c7a1438a34d21b60bf30a6fd5db59314 (3.7.12)
-  buildroot 8747bce41d0dc6d9dc45c4d1b46d2100bb9ee688
-Upstream beta:
-  flutter   b1c77b7ed32346fe829c0ca97bd85d19290d54ae (3.10.0-1.5.pre)
-  engine    50e509c2bd0d7788feb675e38321cc5711c8d2d6 (3.10.0-1.5.pre)
-  buildroot f24f62fa5381c0e415b6ca2000600fc0600c11c8
-Rebasing buildroot...
-git rebase --onto f24f62fa5381c0e415b6ca2000600fc0600c11c8 8747bce41d0dc6d9dc45c4d1b46d2100bb9ee688 7383548fa2306b5d53979ac5e9d176b35258811b
-Rebasing engine...
-git rebase --onto 3.10.0-1.5.pre 3.7.12 c415419390e4751ddfa3110e0808e7abb3d45a18
-Rebasing flutter...
-git rebase --onto 3.10.0-1.5.pre 3.7.12 83305b5088e6fe327fb3334a73ff190828d85713
-Updating engine DEPS...
-Would have changed DEPS lines:
-(  'src': 'https://github.com/shorebirdtech/buildroot.git' + '@' + 'new-buildroot-hash',)
-Updating flutter engine version...
-  Change engine.version: b426644a712b0cfd32c896d947ddd1a1245eb713 from c415419390e4751ddfa3110e0808e7abb3d45a18
-Updating shorebird flutter version...
-  Change flutter.version: f0f67059dfa254be219b07d6d784eebec89c4fae from 83305b5088e6fe327fb3334a73ff190828d85713
-```
-
+The steps to update our repos:
 
 1. Rebase buildroot on top of the new buildroot hash, e.g.
 ```
