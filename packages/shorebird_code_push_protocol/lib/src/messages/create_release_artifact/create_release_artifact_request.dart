@@ -38,7 +38,7 @@ class CreateReleaseArtifactRequest {
 
   /// Whether the artifact can installed and run on a device/emulator as-is.
   @JsonKey(fromJson: _parseStringToBool, toJson: _parseBoolToString)
-  final bool canSideload;
+  final bool? canSideload;
 
   /// The size of the artifact in bytes.
   @JsonKey(fromJson: _parseStringToInt, toJson: _parseIntToString)
