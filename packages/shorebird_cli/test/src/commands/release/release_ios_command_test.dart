@@ -371,7 +371,6 @@ flutter:
 
         expect(result, equals(ExitCode.success.code));
         final archivePath = p.join(
-          tempDir.path,
           'build',
           'ios',
           'archive',
@@ -675,7 +674,7 @@ error: exportArchive: No signing certificate "iOS Distribution" found
           any(
             that: stringContainsInOrder(
               [
-                'Your next step is to upload the ipa to App Store Connect.',
+                'Your next step is to upload your app to App Store Connect.',
                 p.join('build', 'ios', 'ipa', 'Runner.ipa'),
               ],
             ),
@@ -748,7 +747,7 @@ flavors:
           any(
             that: stringContainsInOrder(
               [
-                'Your next step is to upload the ipa to App Store Connect.',
+                'Your next step is to upload your app to App Store Connect.',
                 p.join('build', 'ios', 'ipa', 'Runner.ipa'),
               ],
             ),
