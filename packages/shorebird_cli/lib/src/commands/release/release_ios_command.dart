@@ -113,19 +113,17 @@ make smaller updates to your app.
       return ExitCode.software.code;
     }
 
-    final iosBuildDir = p.join(Directory.current.path, 'build', 'ios');
+    final archivePath = getXcarchiveDirectory()?.path;
+    if (archivePath == null) {
+      logger.err('Could not find xcarchive directory');
+      return ExitCode.software.code;
+    }
+    final runnerPath = getAppDirectory()?.path;
+    if (runnerPath == null) {
+      logger.err('Could not find app directory');
+      return ExitCode.software.code;
+    }
 
-    final archivePath = p.join(
-      iosBuildDir,
-      'archive',
-      'Runner.xcarchive',
-    );
-    final runnerPath = p.join(
-      archivePath,
-      'Products',
-      'Applications',
-      'Runner.app',
-    );
     final plistFile = File(p.join(archivePath, 'Info.plist'));
     if (!plistFile.existsSync()) {
       logger.err('No Info.plist file found at ${plistFile.path}.');
