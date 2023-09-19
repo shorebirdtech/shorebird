@@ -1,3 +1,7 @@
+# 0.0.3
+
+- feat: add [`JSONPath`](https://redis.io/docs/data-types/json/path) support
+
 # 0.0.2
 
 - feat: add new commands:
