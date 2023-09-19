@@ -126,8 +126,8 @@ void main() {
       ).thenAnswer((_) async => [app]);
       when(
         () => codePushClientWrapper.getReleases(
-          appId: appId,
-          sideloadableOnly: true,
+          appId: any(named: 'appId'),
+          sideloadableOnly: any(named: 'sideloadableOnly'),
         ),
       ).thenAnswer((_) async => [release]);
       when(

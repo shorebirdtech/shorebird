@@ -454,9 +454,7 @@ class CodePushClient {
     );
     if (sideloadableOnly) {
       uri = uri.replace(
-        queryParameters: {
-          if (sideloadableOnly) 'sideloadable': 'true',
-        },
+        queryParameters: {'sideloadable': 'true'},
       );
     }
 
