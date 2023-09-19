@@ -2,6 +2,20 @@
 
 This section contains past updates we've sent to customers via Discord.
 
+## 0.14.9 (September 19, 2023)
+
+We've just released Shorebird v0.14.9 🎉
+
+- 🍎 `shorebird release ios-alpha` supports `--no-codesign`
+- 🍧 automatically add new flavors if detected by `shorebird init`
+- 👀 only list previewable releases when running `shorebird preview`
+
+📚 Release notes can be found at https://github.com/shorebirdtech/shorebird/releases/tag/v0.14.9
+
+As always, you can upgrade using `shorebird upgrade`
+
+Please let us know if we can help!
+
 ## 0.14.8 (September 8, 2023)
 
 We've just released Shorebird v0.14.8 🎉
