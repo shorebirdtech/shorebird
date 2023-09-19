@@ -6,7 +6,7 @@ This section contains past updates we've sent to customers via Discord.
 
 We've just released Shorebird v0.14.9 🎉
 
-- 🍎 iOS release with `--no-codesign`
+- 🍎 `shorebird release ios-alpha` supports `--no-codesign`
 - 🍧 automatically add new flavors if detected by `shorebird init`
 - 👀 only list previewable releases when running `shorebird preview`
 
