@@ -380,22 +380,26 @@ class RedisJson {
   /// https://redis.io/commands/json.set
   Future<void> set({
     required String key,
-    required Map<String, dynamic> value,
+    required dynamic value,
+    String path = r'$',
   }) {
-    return _client.execute(['JSON.SET', key, r'$', json.encode(value)]);
+    return _client.execute(['JSON.SET', key, path, json.encode(value)]);
   }
 
   /// Gets the value of a key.
   /// Returns null if the key does not exist.
   /// Equivalent to the `JSON.GET` command.
   /// https://redis.io/commands/json.get
-  Future<Map<String, dynamic>?> get({required String key}) async {
-    final result = await _client.execute(['JSON.GET', key, r'$']);
+  Future<dynamic> get({
+    required String key,
+    String path = r'$',
+  }) async {
+    final result = await _client.execute(['JSON.GET', key, path]);
     if (result is String) {
       final parts = LineSplitter.split(result);
       if (parts.isNotEmpty) {
         final decoded = json.decode(parts.first) as List;
-        if (decoded.isNotEmpty) return decoded.first as Map<String, dynamic>;
+        if (decoded.isNotEmpty) return decoded.first;
       }
     }
     return null;
@@ -404,8 +408,8 @@ class RedisJson {
   /// Deletes the specified key.
   /// Equivalent to the `JSON.DEL` command.
   /// https://redis.io/commands/json.del
-  Future<void> delete({required String key}) {
-    return _client.execute(['JSON.DEL', key, r'$']);
+  Future<void> delete({required String key, String path = r'$'}) {
+    return _client.execute(['JSON.DEL', key, path]);
   }
 
   /// Merges the value of a key with the specified value.
@@ -413,9 +417,10 @@ class RedisJson {
   /// https://redis.io/commands/json.merge
   Future<void> merge({
     required String key,
-    required Map<String, dynamic> value,
+    required dynamic value,
+    String path = r'$',
   }) {
-    return _client.execute(['JSON.MERGE', key, r'$', json.encode(value)]);
+    return _client.execute(['JSON.MERGE', key, path, json.encode(value)]);
   }
 }
 

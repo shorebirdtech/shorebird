@@ -210,7 +210,7 @@ void main() {
     });
 
     group('JSON', () {
-      group('GET/SET/DEL', () {
+      group('GET/SET/DEL/MERGE', () {
         setUp(() async {
           await client.connect();
         });
@@ -227,19 +227,86 @@ void main() {
         test('completes', () async {
           const key = 'key';
           const value = {
-            'hello': 'world',
-            'foo': true,
-            'nested': {'bar': 42},
+            'string': 'hello',
+            'bool': true,
+            'map': {'bar': 42},
             'array': [1, 2, 3],
+            'nested': {
+              '1.0.0+1': {
+                'android': {
+                  'arch64': {
+                    'url': 'http://example.com',
+                  },
+                },
+              },
+            },
           };
-          const other = {
-            'bar': 'baz',
-          };
+          const other = {'qux': 'quux'};
           await expectLater(client.json.get(key: key), completion(isNull));
           await expectLater(client.json.set(key: key, value: value), completes);
           await expectLater(
             client.json.get(key: key),
             completion(equals(value)),
+          );
+          await expectLater(
+            client.json.get(key: key, path: r'$.string'),
+            completion(equals('hello')),
+          );
+          await expectLater(
+            client.json.get(key: key, path: r'$.bool'),
+            completion(equals(true)),
+          );
+          await expectLater(
+            client.json.get(key: key, path: r'$.nested'),
+            completion(
+              equals(
+                {
+                  '1.0.0+1': {
+                    'android': {
+                      'arch64': {
+                        'url': 'http://example.com',
+                      },
+                    },
+                  },
+                },
+              ),
+            ),
+          );
+          await expectLater(
+            client.json.get(
+              key: key,
+              path: r'$.nested["1.0.0+1"]["android"]["arch64"]["url"]',
+            ),
+            completion(equals('http://example.com')),
+          );
+          await expectLater(
+            client.json.get(key: key, path: r'$.array'),
+            completion(equals([1, 2, 3])),
+          );
+          await expectLater(
+            client.json.get(key: key, path: r'$.array[0]'),
+            completion(equals(1)),
+          );
+          await expectLater(
+            client.json.get(key: key, path: r'$.map'),
+            completion(equals({'bar': 42})),
+          );
+          await expectLater(
+            client.json.merge(key: key, value: other, path: r'$.map'),
+            completes,
+          );
+          await expectLater(
+            client.json.get(key: key, path: r'$.map'),
+            completion(
+              equals({
+                ...{'bar': 42},
+                ...other,
+              }),
+            ),
+          );
+          await expectLater(
+            client.json.delete(key: key, path: r'$.map.qux'),
+            completes,
           );
           await expectLater(
             client.json.merge(key: key, value: other),
@@ -248,6 +315,14 @@ void main() {
           await expectLater(
             client.json.get(key: key),
             completion(equals({...value, ...other})),
+          );
+          await expectLater(
+            client.json.set(key: key, value: false, path: r'$.bool'),
+            completes,
+          );
+          await expectLater(
+            client.json.get(key: key, path: r'$.bool'),
+            completion(equals(false)),
           );
           await expectLater(client.json.delete(key: key), completes);
           await expectLater(client.json.get(key: key), completion(isNull));
