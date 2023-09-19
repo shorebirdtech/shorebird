@@ -48,7 +48,9 @@ class CreateReleaseArtifactRequest {
 
   static String _parseIntToString(dynamic value) => value.toString();
 
-  static bool _parseStringToBool(dynamic value) => value == 'true';
+  // Default to true
+  static bool _parseStringToBool(dynamic value) =>
+      value == null || value == 'true';
 
   static String _parseBoolToString(dynamic value) => value.toString();
 }
