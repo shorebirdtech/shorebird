@@ -1,3 +1,10 @@
+# 0.0.4
+
+- feat: add `ttl` (time to live) on `set` API
+  ```dart
+  redis.set(key: 'hello', value: 'world', ttl: Duration(seconds: 10));
+  ```
+
 # 0.0.3
 
 - feat: add [`JSONPath`](https://redis.io/docs/data-types/json/path) support
