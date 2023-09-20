@@ -483,6 +483,30 @@ error: exportArchive: No signing certificate "iOS Distribution" found
         ).called(1);
       });
 
+      test('prints error and exits with code 70 if Info.plist does not exist',
+          () async {
+        final tempDir = setUpTempDir();
+        setUpTempArtifacts(tempDir);
+        final plistPath = p.join(
+          tempDir.path,
+          'build',
+          'ios',
+          'archive',
+          'Runner.xcarchive',
+          'Info.plist',
+        );
+        File(plistPath).deleteSync();
+
+        final exitCode = await IOOverrides.runZoned(
+          () => runWithOverrides(command.run),
+          getCurrentDirectory: () => tempDir,
+        );
+
+        expect(exitCode, equals(ExitCode.software.code));
+        verify(() => logger.err('No Info.plist file found at $plistPath.'))
+            .called(1);
+      });
+
       test('finds xcarchive that has been renamed from Runner', () async {
         final tempDir = setUpTempDir();
         setUpTempArtifacts(tempDir);
