@@ -173,6 +173,18 @@ flutter:
       )
         ..createSync(recursive: true)
         ..writeAsStringSync(infoPlistContent);
+      Directory(
+        p.join(
+          tempDir.path,
+          'build',
+          'ios',
+          'archive',
+          'Runner.xcarchive',
+          'Products',
+          'Applications',
+          'Runner.app',
+        ),
+      ).createSync(recursive: true);
       File(p.join(tempDir.path, ipaPath)).createSync(recursive: true);
       return tempDir;
     }
