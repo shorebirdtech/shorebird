@@ -422,6 +422,43 @@ flutter:
           expect(result, equals(ExitCode.software.code));
           verify(() => logger.err('Could not find app directory')).called(1);
         });
+
+        test(
+            '''finds .xcarchive and .app when they do not have the default "Runner" name''',
+            () async {
+          final tempDir = setUpTempDir();
+          final archivePath = p.join(
+            tempDir.path,
+            'build',
+            'ios',
+            'archive',
+          );
+          final applicationsPath = p.join(
+            archivePath,
+            'Runner.xcarchive',
+            'Products',
+            'Applications',
+          );
+          Directory(p.join(applicationsPath, 'Runner.app')).renameSync(
+            p.join(
+              applicationsPath,
+              'شوربيرد | Shorebird.app',
+            ),
+          );
+          Directory(p.join(archivePath, 'Runner.xcarchive')).renameSync(
+            p.join(
+              archivePath,
+              'شوربيرد | Shorebird.xcarchive',
+            ),
+          );
+
+          final result = await IOOverrides.runZoned(
+            () => runWithOverrides(command.run),
+            getCurrentDirectory: () => tempDir,
+          );
+
+          expect(result, equals(ExitCode.success.code));
+        });
       });
 
       test('prints archive upload instructions on success', () async {
