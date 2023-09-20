@@ -109,13 +109,12 @@ class PatchIosCommand extends ShorebirdCommand
       return ExitCode.software.code;
     }
 
-    final archivePath = p.join(
-      Directory.current.path,
-      'build',
-      'ios',
-      'archive',
-      'Runner.xcarchive',
-    );
+    final archivePath = getXcarchiveDirectory()?.path;
+    if (archivePath == null) {
+      logger.err('Unable to find .xcarchive directory');
+      return ExitCode.software.code;
+    }
+
     final plistFile = File(p.join(archivePath, 'Info.plist'));
     if (!plistFile.existsSync()) {
       logger.err('No Info.plist file found at ${plistFile.path}.');

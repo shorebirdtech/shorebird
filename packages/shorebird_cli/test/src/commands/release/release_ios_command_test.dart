@@ -173,6 +173,18 @@ flutter:
       )
         ..createSync(recursive: true)
         ..writeAsStringSync(infoPlistContent);
+      Directory(
+        p.join(
+          tempDir.path,
+          'build',
+          'ios',
+          'archive',
+          'Runner.xcarchive',
+          'Products',
+          'Applications',
+          'Runner.app',
+        ),
+      ).createSync(recursive: true);
       File(p.join(tempDir.path, ipaPath)).createSync(recursive: true);
       return tempDir;
     }
@@ -360,6 +372,93 @@ flutter:
             runInShell: true,
           ),
         ).called(1);
+      });
+
+      group('when build directory has non-default structure', () {
+        test('prints error and exits with code 70 if xcarchive does not exist',
+            () async {
+          final tempDir = setUpTempDir();
+          Directory(
+            p.join(
+              tempDir.path,
+              'build',
+              'ios',
+              'archive',
+              'Runner.xcarchive',
+            ),
+          ).deleteSync(recursive: true);
+
+          final result = await IOOverrides.runZoned(
+            () => runWithOverrides(command.run),
+            getCurrentDirectory: () => tempDir,
+          );
+
+          expect(result, equals(ExitCode.software.code));
+          verify(() => logger.err('Unable to find .xcarchive directory'))
+              .called(1);
+        });
+
+        test(
+            '''prints error and exits with code 70 if .app directory does not exist''',
+            () async {
+          final tempDir = setUpTempDir();
+          Directory(
+            p.join(
+              tempDir.path,
+              'build',
+              'ios',
+              'archive',
+              'Runner.xcarchive',
+              'Products',
+              'Applications',
+            ),
+          ).deleteSync(recursive: true);
+
+          final result = await IOOverrides.runZoned(
+            () => runWithOverrides(command.run),
+            getCurrentDirectory: () => tempDir,
+          );
+
+          expect(result, equals(ExitCode.software.code));
+          verify(() => logger.err('Unable to find .app directory')).called(1);
+        });
+
+        test(
+            '''finds .xcarchive and .app when they do not have the default "Runner" name''',
+            () async {
+          final tempDir = setUpTempDir();
+          final archivePath = p.join(
+            tempDir.path,
+            'build',
+            'ios',
+            'archive',
+          );
+          final applicationsPath = p.join(
+            archivePath,
+            'Runner.xcarchive',
+            'Products',
+            'Applications',
+          );
+          Directory(p.join(applicationsPath, 'Runner.app')).renameSync(
+            p.join(
+              applicationsPath,
+              'شوربيرد | Shorebird.app',
+            ),
+          );
+          Directory(p.join(archivePath, 'Runner.xcarchive')).renameSync(
+            p.join(
+              archivePath,
+              'شوربيرد | Shorebird.xcarchive',
+            ),
+          );
+
+          final result = await IOOverrides.runZoned(
+            () => runWithOverrides(command.run),
+            getCurrentDirectory: () => tempDir,
+          );
+
+          expect(result, equals(ExitCode.success.code));
+        });
       });
 
       test('prints archive upload instructions on success', () async {
