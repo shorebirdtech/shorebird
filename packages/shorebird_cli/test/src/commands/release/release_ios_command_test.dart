@@ -394,7 +394,7 @@ flutter:
           );
 
           expect(result, equals(ExitCode.software.code));
-          verify(() => logger.err('Could not find xcarchive directory'))
+          verify(() => logger.err('Unable to find .xcarchive directory'))
               .called(1);
         });
 
@@ -420,7 +420,7 @@ flutter:
           );
 
           expect(result, equals(ExitCode.software.code));
-          verify(() => logger.err('Could not find app directory')).called(1);
+          verify(() => logger.err('Unable to find .app directory')).called(1);
         });
 
         test(

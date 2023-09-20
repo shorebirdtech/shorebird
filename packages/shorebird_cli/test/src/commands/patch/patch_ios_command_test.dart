@@ -479,7 +479,8 @@ error: exportArchive: No signing certificate "iOS Distribution" found
 
         expect(exitCode, equals(ExitCode.software.code));
         verify(
-          () => logger.err(any(that: contains('Unable to find .xcarchive'))),
+          () => logger
+              .err(any(that: contains('Unable to find .xcarchive directory'))),
         ).called(1);
       });
 
