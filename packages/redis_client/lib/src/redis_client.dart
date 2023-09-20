@@ -170,8 +170,19 @@ class RedisClient {
   /// Set the value of a key.
   /// Equivalent to the `SET` command.
   /// https://redis.io/commands/set
-  Future<void> set({required String key, required String value}) {
-    return execute(['SET', key, value]);
+  ///
+  /// If [ttl] is provided, the key will expire after the specified duration.
+  Future<void> set({
+    required String key,
+    required String value,
+    Duration? ttl,
+  }) {
+    return execute([
+      'SET',
+      key,
+      value,
+      if (ttl != null) ...['EX', ttl.inSeconds],
+    ]);
   }
 
   /// Gets the value of a key.
