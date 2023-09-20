@@ -374,6 +374,56 @@ flutter:
         ).called(1);
       });
 
+      group('with non-default build directory structure', () {
+        test('prints error and exits with code 70 if xcarchive does not exist',
+            () async {
+          final tempDir = setUpTempDir();
+          Directory(
+            p.join(
+              tempDir.path,
+              'build',
+              'ios',
+              'archive',
+              'Runner.xcarchive',
+            ),
+          ).deleteSync(recursive: true);
+
+          final result = await IOOverrides.runZoned(
+            () => runWithOverrides(command.run),
+            getCurrentDirectory: () => tempDir,
+          );
+
+          expect(result, equals(ExitCode.software.code));
+          verify(() => logger.err('Could not find xcarchive directory'))
+              .called(1);
+        });
+
+        test(
+            '''prints error and exits with code 70 if .app directory does not exist''',
+            () async {
+          final tempDir = setUpTempDir();
+          Directory(
+            p.join(
+              tempDir.path,
+              'build',
+              'ios',
+              'archive',
+              'Runner.xcarchive',
+              'Products',
+              'Applications',
+            ),
+          ).deleteSync(recursive: true);
+
+          final result = await IOOverrides.runZoned(
+            () => runWithOverrides(command.run),
+            getCurrentDirectory: () => tempDir,
+          );
+
+          expect(result, equals(ExitCode.software.code));
+          verify(() => logger.err('Could not find app directory')).called(1);
+        });
+      });
+
       test('prints archive upload instructions on success', () async {
         final tempDir = setUpTempDir();
         final result = await IOOverrides.runZoned(
