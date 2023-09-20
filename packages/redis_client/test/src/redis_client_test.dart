@@ -183,6 +183,8 @@ void main() {
       test('completes', () async {
         const key = 'key';
         const value = 'value';
+        const expireIn = Duration(seconds: 1);
+
         await expectLater(client.get(key: key), completion(isNull));
         await expectLater(client.set(key: key, value: value), completes);
         await expectLater(client.get(key: key), completion(equals(value)));
@@ -193,6 +195,13 @@ void main() {
         await expectLater(client.set(key: key, value: value), completes);
         await expectLater(client.get(key: key), completion(equals(value)));
         await expectLater(client.unlink(key: key), completes);
+        await expectLater(client.get(key: key), completion(isNull));
+        await expectLater(
+          client.set(key: key, value: value, expireIn: expireIn),
+          completes,
+        );
+        await expectLater(client.get(key: key), completion(equals(value)));
+        await Future<void>.delayed(expireIn);
         await expectLater(client.get(key: key), completion(isNull));
       });
 
