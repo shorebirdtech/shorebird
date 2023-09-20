@@ -374,7 +374,7 @@ flutter:
         ).called(1);
       });
 
-      group('with non-default build directory structure', () {
+      group('when build directory has non-default structure', () {
         test('prints error and exits with code 70 if xcarchive does not exist',
             () async {
           final tempDir = setUpTempDir();
