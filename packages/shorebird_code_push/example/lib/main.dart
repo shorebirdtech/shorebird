@@ -89,7 +89,7 @@ class _MyHomePageState extends State<MyHomePage> {
             child: CircularProgressIndicator(
               strokeWidth: 2,
             ),
-          )
+          ),
         ],
       ),
     );
