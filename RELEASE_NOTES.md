@@ -2,6 +2,18 @@
 
 This section contains past updates we've sent to customers via Discord.
 
+## 0.14.10 (September 20, 2023)
+
+- 🔨 Support XCode projects with names other than "Runner"
+- 🍎 Fixed iOS patches sometimes failing to install with download error.
+- 🐦 Flutter 3.13.4 support!
+
+📚 Release notes can be found at https://github.com/shorebirdtech/shorebird/releases/tag/v0.14.10
+
+As always, you can upgrade using `shorebird upgrade`
+
+Please let us know if we can help!
+
 ## 0.14.9 (September 19, 2023)
 
 We've just released Shorebird v0.14.9 🎉
