@@ -73,6 +73,8 @@ class MockHttpClientRequest extends Mock implements HttpClientRequest {}
 
 class MockHttpClientResponse extends Mock implements HttpClientResponse {}
 
+class MockIoHttpClient extends Mock implements HttpClient {}
+
 class MockIOSDeploy extends Mock implements IOSDeploy {}
 
 class MockIOSink extends Mock implements IOSink {}
