@@ -14,19 +14,7 @@ import 'package:shorebird_cli/src/third_party/flutter_tools/lib/flutter_tools.da
 import 'package:shorebird_code_push_client/shorebird_code_push_client.dart';
 import 'package:test/test.dart';
 
-class MockAuth extends Mock implements Auth {}
-
-class MockCodePushClient extends Mock implements CodePushClient {}
-
-class MockHttpClient extends Mock implements http.Client {}
-
-class MockLogger extends Mock implements Logger {}
-
-class MockPlatform extends Mock implements Platform {}
-
-class MockProgress extends Mock implements Progress {}
-
-class MockShorebirdEnv extends Mock implements ShorebirdEnv {}
+import 'mocks.dart';
 
 void main() {
   group('scoped', () {

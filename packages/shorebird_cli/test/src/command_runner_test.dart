@@ -12,15 +12,7 @@ import 'package:shorebird_cli/src/shorebird_flutter.dart';
 import 'package:shorebird_cli/src/version.dart';
 import 'package:test/test.dart';
 
-class MockLogger extends Mock implements Logger {}
-
-class MockPlatform extends Mock implements Platform {}
-
-class MockShorebirdEnv extends Mock implements ShorebirdEnv {}
-
-class MockProcessResult extends Mock implements ShorebirdProcessResult {}
-
-class MockShorebirdFlutter extends Mock implements ShorebirdFlutter {}
+import 'mocks.dart';
 
 void main() {
   group(ShorebirdCliCommandRunner, () {

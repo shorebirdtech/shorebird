@@ -89,6 +89,8 @@ class MockPlatform extends Mock implements Platform {}
 
 class MockProcessResult extends Mock implements ShorebirdProcessResult {}
 
+class MockProcessSignal extends Mock implements ProcessSignal {}
+
 class MockProcessWrapper extends Mock implements ProcessWrapper {}
 
 class MockProcess extends Mock implements Process {}
