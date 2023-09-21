@@ -9,14 +9,7 @@ import 'package:shorebird_cli/src/shorebird_validator.dart';
 import 'package:shorebird_code_push_client/shorebird_code_push_client.dart';
 import 'package:test/test.dart';
 
-class _MockArgResults extends Mock implements ArgResults {}
-
-class _MockCodePushClientWrapper extends Mock
-    implements CodePushClientWrapper {}
-
-class _MockLogger extends Mock implements Logger {}
-
-class _MockShorebirdValidator extends Mock implements ShorebirdValidator {}
+import '../../mocks.dart';
 
 void main() {
   group(CreateAppCommand, () {
@@ -41,10 +34,10 @@ void main() {
     }
 
     setUp(() {
-      argResults = _MockArgResults();
-      logger = _MockLogger();
-      codePushClientWrapper = _MockCodePushClientWrapper();
-      shorebirdValidator = _MockShorebirdValidator();
+      argResults = MockArgResults();
+      logger = MockLogger();
+      codePushClientWrapper = MockCodePushClientWrapper();
+      shorebirdValidator = MockShorebirdValidator();
 
       when(() => argResults['app-name']).thenReturn(appName);
       when(

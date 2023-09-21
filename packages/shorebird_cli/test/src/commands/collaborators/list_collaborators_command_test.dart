@@ -11,18 +11,7 @@ import 'package:shorebird_cli/src/shorebird_validator.dart';
 import 'package:shorebird_code_push_client/shorebird_code_push_client.dart';
 import 'package:test/test.dart';
 
-class _MockArgResults extends Mock implements ArgResults {}
-
-class _MockCodePushClientWrapper extends Mock
-    implements CodePushClientWrapper {}
-
-class _MockCodePushClient extends Mock implements CodePushClient {}
-
-class _MockLogger extends Mock implements Logger {}
-
-class _MockShorebirdEnv extends Mock implements ShorebirdEnv {}
-
-class _MockShorebirdValidator extends Mock implements ShorebirdValidator {}
+import '../../mocks.dart';
 
 void main() {
   group(ListCollaboratorsCommand, () {
@@ -50,12 +39,12 @@ void main() {
     }
 
     setUp(() {
-      argResults = _MockArgResults();
-      codePushClientWrapper = _MockCodePushClientWrapper();
-      codePushClient = _MockCodePushClient();
-      logger = _MockLogger();
-      shorebirdEnv = _MockShorebirdEnv();
-      shorebirdValidator = _MockShorebirdValidator();
+      argResults = MockArgResults();
+      codePushClientWrapper = MockCodePushClientWrapper();
+      codePushClient = MockCodePushClient();
+      logger = MockLogger();
+      shorebirdEnv = MockShorebirdEnv();
+      shorebirdValidator = MockShorebirdValidator();
 
       when(() => argResults['app-id']).thenReturn(appId);
       when(

@@ -13,24 +13,8 @@ import 'package:shorebird_cli/src/shorebird_validator.dart';
 import 'package:shorebird_cli/src/validators/validators.dart';
 import 'package:test/test.dart';
 
-class _MockArgResults extends Mock implements ArgResults {}
-
-class _MockDoctor extends Mock implements Doctor {}
-
-class _MockLogger extends Mock implements Logger {}
-
-class _MockProgress extends Mock implements Progress {}
-
-class _MockProcessResult extends Mock implements ShorebirdProcessResult {}
-
-class _MockShorebirdFlutterValidator extends Mock
-    implements ShorebirdFlutterValidator {}
-
-class _MockShorebirdProcess extends Mock implements ShorebirdProcess {}
-
-class _MockShorebirdValidator extends Mock implements ShorebirdValidator {}
-
-class _FakeShorebirdProcess extends Fake implements ShorebirdProcess {}
+import '../../fakes.dart';
+import '../../mocks.dart';
 
 void main() {
   group(BuildApkCommand, () {
@@ -57,18 +41,18 @@ void main() {
     }
 
     setUpAll(() {
-      registerFallbackValue(_FakeShorebirdProcess());
+      registerFallbackValue(FakeShorebirdProcess());
     });
 
     setUp(() {
-      argResults = _MockArgResults();
-      doctor = _MockDoctor();
-      logger = _MockLogger();
-      shorebirdProcess = _MockShorebirdProcess();
-      buildProcessResult = _MockProcessResult();
-      flutterPubGetProcessResult = _MockProcessResult();
-      flutterValidator = _MockShorebirdFlutterValidator();
-      shorebirdValidator = _MockShorebirdValidator();
+      argResults = MockArgResults();
+      doctor = MockDoctor();
+      logger = MockLogger();
+      shorebirdProcess = MockShorebirdProcess();
+      buildProcessResult = MockProcessResult();
+      flutterPubGetProcessResult = MockProcessResult();
+      flutterValidator = MockShorebirdFlutterValidator();
+      shorebirdValidator = MockShorebirdValidator();
 
       when(
         () => shorebirdProcess.run(
@@ -88,7 +72,7 @@ void main() {
         ),
       ).thenAnswer((_) async => buildProcessResult);
       when(() => argResults.rest).thenReturn([]);
-      when(() => logger.progress(any())).thenReturn(_MockProgress());
+      when(() => logger.progress(any())).thenReturn(MockProgress());
       when(() => logger.info(any())).thenReturn(null);
       when(
         () => shorebirdValidator.validatePreconditions(

@@ -21,34 +21,8 @@ import 'package:shorebird_cli/src/shorebird_validator.dart';
 import 'package:shorebird_code_push_client/shorebird_code_push_client.dart';
 import 'package:test/test.dart';
 
-class _MockArgResults extends Mock implements ArgResults {}
-
-class _MockHttpClient extends Mock implements http.Client {}
-
-class _MockAuth extends Mock implements Auth {}
-
-class _MockJava extends Mock implements Java {}
-
-class _MockLogger extends Mock implements Logger {}
-
-class _MockPlatform extends Mock implements Platform {}
-
-class _MockProgress extends Mock implements Progress {}
-
-class _MockProcessResult extends Mock implements ShorebirdProcessResult {}
-
-class _MockCodePushClientWrapper extends Mock
-    implements CodePushClientWrapper {}
-
-class _MockShorebirdProcess extends Mock implements ShorebirdProcess {}
-
-class _MockShorebirdEnv extends Mock implements ShorebirdEnv {}
-
-class _MockShorebirdValidator extends Mock implements ShorebirdValidator {}
-
-class _FakeRelease extends Fake implements Release {}
-
-class _FakeShorebirdProcess extends Fake implements ShorebirdProcess {}
+import '../../fakes.dart';
+import '../../mocks.dart';
 
 void main() {
   group(ReleaseAarCommand, () {
@@ -138,25 +112,25 @@ void main() {
     setUpAll(() {
       registerFallbackValue(ReleasePlatform.android);
       registerFallbackValue(ReleaseStatus.draft);
-      registerFallbackValue(_FakeRelease());
-      registerFallbackValue(_FakeShorebirdProcess());
+      registerFallbackValue(FakeRelease());
+      registerFallbackValue(FakeShorebirdProcess());
     });
 
     setUp(() {
-      argResults = _MockArgResults();
-      httpClient = _MockHttpClient();
-      auth = _MockAuth();
-      codePushClientWrapper = _MockCodePushClientWrapper();
-      java = _MockJava();
-      platform = _MockPlatform();
-      progress = _MockProgress();
-      logger = _MockLogger();
-      flutterBuildProcessResult = _MockProcessResult();
-      flutterPubGetProcessResult = _MockProcessResult();
-      shorebirdProcess = _MockShorebirdProcess();
+      argResults = MockArgResults();
+      httpClient = MockHttpClient();
+      auth = MockAuth();
+      codePushClientWrapper = MockCodePushClientWrapper();
+      java = MockJava();
+      platform = MockPlatform();
+      progress = MockProgress();
+      logger = MockLogger();
+      flutterBuildProcessResult = MockProcessResult();
+      flutterPubGetProcessResult = MockProcessResult();
+      shorebirdProcess = MockShorebirdProcess();
       shorebirdRoot = Directory.systemTemp.createTempSync();
-      shorebirdEnv = _MockShorebirdEnv();
-      shorebirdValidator = _MockShorebirdValidator();
+      shorebirdEnv = MockShorebirdEnv();
+      shorebirdValidator = MockShorebirdValidator();
 
       when(() => auth.client).thenReturn(httpClient);
       when(() => argResults['build-number']).thenReturn(buildNumber);

@@ -7,9 +7,9 @@ import 'package:shorebird_cli/src/git.dart';
 import 'package:shorebird_cli/src/process.dart';
 import 'package:test/test.dart';
 
-class _MockShorebirdProcess extends Mock implements ShorebirdProcess {}
+class MockShorebirdProcess extends Mock implements ShorebirdProcess {}
 
-class _MockShorebirdProcessResult extends Mock
+class MockShorebirdProcessResult extends Mock
     implements ShorebirdProcessResult {}
 
 void main() {
@@ -28,8 +28,8 @@ void main() {
     }
 
     setUp(() {
-      processResult = _MockShorebirdProcessResult();
-      process = _MockShorebirdProcess();
+      processResult = MockShorebirdProcessResult();
+      process = MockShorebirdProcess();
       git = runWithOverrides(Git.new);
 
       when(

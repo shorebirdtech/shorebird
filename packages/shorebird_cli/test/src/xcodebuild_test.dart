@@ -8,7 +8,7 @@ import 'package:shorebird_cli/src/process.dart';
 import 'package:shorebird_cli/src/xcodebuild.dart';
 import 'package:test/test.dart';
 
-class _MockProcess extends Mock implements ShorebirdProcess {}
+import 'mocks.dart';
 
 void main() {
   group(XcodeBuild, () {
@@ -31,7 +31,7 @@ void main() {
     }
 
     setUp(() {
-      process = _MockProcess();
+      process = MockShorebirdProcess();
       xcodeBuild = runWithOverrides(XcodeBuild.new);
     });
 

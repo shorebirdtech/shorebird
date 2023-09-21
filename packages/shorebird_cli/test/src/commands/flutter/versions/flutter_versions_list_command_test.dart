@@ -8,11 +8,7 @@ import 'package:shorebird_cli/src/logger.dart';
 import 'package:shorebird_cli/src/shorebird_flutter.dart';
 import 'package:test/test.dart';
 
-class _MockLogger extends Mock implements Logger {}
-
-class _MockProgress extends Mock implements Progress {}
-
-class _MockShorebirdFlutter extends Mock implements ShorebirdFlutter {}
+import '../../../mocks.dart';
 
 void main() {
   group(FlutterVersionsListCommand, () {
@@ -32,9 +28,9 @@ void main() {
     }
 
     setUp(() {
-      progress = _MockProgress();
-      logger = _MockLogger();
-      shorebirdFlutter = _MockShorebirdFlutter();
+      progress = MockProgress();
+      logger = MockLogger();
+      shorebirdFlutter = MockShorebirdFlutter();
       command = runWithOverrides(FlutterVersionsListCommand.new);
 
       when(() => logger.progress(any())).thenReturn(progress);

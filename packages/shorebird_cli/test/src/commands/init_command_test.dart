@@ -20,30 +20,7 @@ import 'package:shorebird_cli/src/xcodebuild.dart';
 import 'package:shorebird_code_push_client/shorebird_code_push_client.dart';
 import 'package:test/test.dart';
 
-class _MockArgResults extends Mock implements ArgResults {}
-
-class _MockCodePushClientWrapper extends Mock
-    implements CodePushClientWrapper {}
-
-class _MockDoctor extends Mock implements Doctor {}
-
-class _MockGradlew extends Mock implements Gradlew {}
-
-class _MockFile extends Mock implements File {}
-
-class _MockLogger extends Mock implements Logger {}
-
-class _MockPlatform extends Mock implements Platform {}
-
-class _MockProgress extends Mock implements Progress {}
-
-class _MockShorebirdEnv extends Mock implements ShorebirdEnv {}
-
-class _MockShorebirdYaml extends Mock implements ShorebirdYaml {}
-
-class _MockShorebirdValidator extends Mock implements ShorebirdValidator {}
-
-class _MockXcodeBuild extends Mock implements XcodeBuild {}
+import '../mocks.dart';
 
 void main() {
   group(InitCommand, () {
@@ -90,19 +67,19 @@ environment:
     }
 
     setUp(() {
-      argResults = _MockArgResults();
-      doctor = _MockDoctor();
-      gradlew = _MockGradlew();
-      codePushClientWrapper = _MockCodePushClientWrapper();
-      shorebirdYaml = _MockShorebirdYaml();
-      shorebirdYamlFile = _MockFile();
-      pubspecYamlFile = _MockFile();
-      logger = _MockLogger();
-      platform = _MockPlatform();
-      progress = _MockProgress();
-      shorebirdEnv = _MockShorebirdEnv();
-      shorebirdValidator = _MockShorebirdValidator();
-      xcodeBuild = _MockXcodeBuild();
+      argResults = MockArgResults();
+      doctor = MockDoctor();
+      gradlew = MockGradlew();
+      codePushClientWrapper = MockCodePushClientWrapper();
+      shorebirdYaml = MockShorebirdYaml();
+      shorebirdYamlFile = MockFile();
+      pubspecYamlFile = MockFile();
+      logger = MockLogger();
+      platform = MockPlatform();
+      progress = MockProgress();
+      shorebirdEnv = MockShorebirdEnv();
+      shorebirdValidator = MockShorebirdValidator();
+      xcodeBuild = MockXcodeBuild();
 
       when(
         () => codePushClientWrapper.createApp(appName: any(named: 'appName')),

@@ -12,15 +12,15 @@ import 'package:shorebird_cli/src/shorebird_flutter.dart';
 import 'package:shorebird_cli/src/version.dart';
 import 'package:test/test.dart';
 
-class _MockLogger extends Mock implements Logger {}
+class MockLogger extends Mock implements Logger {}
 
-class _MockPlatform extends Mock implements Platform {}
+class MockPlatform extends Mock implements Platform {}
 
-class _MockShorebirdEnv extends Mock implements ShorebirdEnv {}
+class MockShorebirdEnv extends Mock implements ShorebirdEnv {}
 
-class _MockProcessResult extends Mock implements ShorebirdProcessResult {}
+class MockProcessResult extends Mock implements ShorebirdProcessResult {}
 
-class _MockShorebirdFlutter extends Mock implements ShorebirdFlutter {}
+class MockShorebirdFlutter extends Mock implements ShorebirdFlutter {}
 
 void main() {
   group(ShorebirdCliCommandRunner, () {
@@ -48,11 +48,11 @@ void main() {
     }
 
     setUp(() {
-      logger = _MockLogger();
-      platform = _MockPlatform();
-      shorebirdEnv = _MockShorebirdEnv();
-      shorebirdFlutter = _MockShorebirdFlutter();
-      processResult = _MockProcessResult();
+      logger = MockLogger();
+      platform = MockPlatform();
+      shorebirdEnv = MockShorebirdEnv();
+      shorebirdFlutter = MockShorebirdFlutter();
+      processResult = MockProcessResult();
       when(() => processResult.exitCode).thenReturn(ExitCode.success.code);
       when(
         () => shorebirdEnv.shorebirdEngineRevision,

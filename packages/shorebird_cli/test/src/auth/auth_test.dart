@@ -16,15 +16,8 @@ import 'package:shorebird_cli/src/platform.dart';
 import 'package:shorebird_code_push_client/shorebird_code_push_client.dart';
 import 'package:test/test.dart';
 
-class _FakeBaseRequest extends Fake implements http.BaseRequest {}
-
-class _MockCodePushClient extends Mock implements CodePushClient {}
-
-class _MockLogger extends Mock implements Logger {}
-
-class _MockHttpClient extends Mock implements http.Client {}
-
-class _MockPlatform extends Mock implements Platform {}
+import '../fakes.dart';
+import '../mocks.dart';
 
 void main() {
   group('scoped', () {
@@ -65,7 +58,7 @@ void main() {
     late Platform platform;
 
     setUpAll(() {
-      registerFallbackValue(_FakeBaseRequest());
+      registerFallbackValue(FakeBaseRequest());
     });
 
     R runWithOverrides<R>(R Function() body) {
@@ -102,10 +95,10 @@ void main() {
 
     setUp(() {
       credentialsDir = Directory.systemTemp.createTempSync().path;
-      httpClient = _MockHttpClient();
-      codePushClient = _MockCodePushClient();
-      logger = _MockLogger();
-      platform = _MockPlatform();
+      httpClient = MockHttpClient();
+      codePushClient = MockCodePushClient();
+      logger = MockLogger();
+      platform = MockPlatform();
 
       when(() => codePushClient.getCurrentUser()).thenAnswer((_) async => user);
       when(() => platform.environment).thenReturn(<String, String>{});

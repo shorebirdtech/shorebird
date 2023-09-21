@@ -20,35 +20,8 @@ import 'package:shorebird_cli/src/validators/validators.dart';
 import 'package:shorebird_code_push_client/shorebird_code_push_client.dart';
 import 'package:test/test.dart';
 
-class _MockArgResults extends Mock implements ArgResults {}
-
-class _MockAuth extends Mock implements Auth {}
-
-class _MockCodePushClientWrapper extends Mock
-    implements CodePushClientWrapper {}
-
-class _MockDoctor extends Mock implements Doctor {}
-
-class _MockLogger extends Mock implements Logger {}
-
-class _MockPlatform extends Mock implements Platform {}
-
-class _MockProgress extends Mock implements Progress {}
-
-class _MockProcessResult extends Mock implements ShorebirdProcessResult {}
-
-class _MockShorebirdFlutterValidator extends Mock
-    implements ShorebirdFlutterValidator {}
-
-class _MockShorebirdProcess extends Mock implements ShorebirdProcess {}
-
-class _MockShorebirdEnv extends Mock implements ShorebirdEnv {}
-
-class _MockShorebirdValidator extends Mock implements ShorebirdValidator {}
-
-class _FakeRelease extends Fake implements Release {}
-
-class _FakeShorebirdProcess extends Fake implements ShorebirdProcess {}
+import '../../fakes.dart';
+import '../../mocks.dart';
 
 void main() {
   group(ReleaseIosFrameworkCommand, () {
@@ -126,25 +99,25 @@ flutter:
       registerFallbackValue(Directory(''));
       registerFallbackValue(ReleasePlatform.ios);
       registerFallbackValue(ReleaseStatus.draft);
-      registerFallbackValue(_FakeRelease());
-      registerFallbackValue(_FakeShorebirdProcess());
+      registerFallbackValue(FakeRelease());
+      registerFallbackValue(FakeShorebirdProcess());
     });
 
     setUp(() {
-      argResults = _MockArgResults();
-      codePushClientWrapper = _MockCodePushClientWrapper();
-      doctor = _MockDoctor();
-      platform = _MockPlatform();
+      argResults = MockArgResults();
+      codePushClientWrapper = MockCodePushClientWrapper();
+      doctor = MockDoctor();
+      platform = MockPlatform();
       shorebirdRoot = Directory.systemTemp.createTempSync();
-      auth = _MockAuth();
-      progress = _MockProgress();
-      logger = _MockLogger();
-      flutterBuildProcessResult = _MockProcessResult();
-      flutterPubGetProcessResult = _MockProcessResult();
-      flutterValidator = _MockShorebirdFlutterValidator();
-      shorebirdProcess = _MockShorebirdProcess();
-      shorebirdEnv = _MockShorebirdEnv();
-      shorebirdValidator = _MockShorebirdValidator();
+      auth = MockAuth();
+      progress = MockProgress();
+      logger = MockLogger();
+      flutterBuildProcessResult = MockProcessResult();
+      flutterPubGetProcessResult = MockProcessResult();
+      flutterValidator = MockShorebirdFlutterValidator();
+      shorebirdProcess = MockShorebirdProcess();
+      shorebirdEnv = MockShorebirdEnv();
+      shorebirdValidator = MockShorebirdValidator();
 
       when(() => shorebirdEnv.getShorebirdYaml()).thenReturn(shorebirdYaml);
       when(() => shorebirdEnv.shorebirdRoot).thenReturn(shorebirdRoot);

@@ -7,11 +7,7 @@ import 'package:shorebird_cli/src/android_sdk.dart';
 import 'package:shorebird_cli/src/process.dart';
 import 'package:test/test.dart';
 
-class _MockAndroidSdk extends Mock implements AndroidSdk {}
-
-class _MockShorebirdProcess extends Mock implements ShorebirdProcess {}
-
-class _MockProcess extends Mock implements Process {}
+import 'mocks.dart';
 
 void main() {
   group(Adb, () {
@@ -36,8 +32,8 @@ void main() {
     });
 
     setUp(() {
-      androidSdk = _MockAndroidSdk();
-      process = _MockShorebirdProcess();
+      androidSdk = MockAndroidSdk();
+      process = MockShorebirdProcess();
       adb = Adb();
 
       when(() => androidSdk.adbPath).thenReturn(adbPath);
@@ -133,7 +129,7 @@ void main() {
       });
 
       test('returns correct process (unfiltered)', () async {
-        final Process logcatProcess = _MockProcess();
+        final Process logcatProcess = MockProcess();
         when(() => process.start(any(), any())).thenAnswer((invocation) async {
           final executable = invocation.positionalArguments[0] as String;
           if (executable == adbPath) return logcatProcess;
@@ -146,7 +142,7 @@ void main() {
 
       test('returns correct process (filtered)', () async {
         const filter = 'flutter';
-        final logcatProcess = _MockProcess();
+        final logcatProcess = MockProcess();
         const logcatStdout = Stream<List<int>>.empty();
 
         when(
@@ -166,7 +162,7 @@ void main() {
 
       test('forwards device-id if provided', () async {
         const deviceId = '1234';
-        final Process logcatProcess = _MockProcess();
+        final Process logcatProcess = MockProcess();
         when(() => process.start(any(), any())).thenAnswer((invocation) async {
           final executable = invocation.positionalArguments[0] as String;
           if (executable == adbPath) return logcatProcess;

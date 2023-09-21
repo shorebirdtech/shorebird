@@ -8,11 +8,7 @@ import 'package:shorebird_cli/src/logger.dart';
 import 'package:shorebird_cli/src/shorebird_version.dart';
 import 'package:test/test.dart';
 
-class _MockLogger extends Mock implements Logger {}
-
-class _MockProgress extends Mock implements Progress {}
-
-class _MockShorebirdVersion extends Mock implements ShorebirdVersion {}
+import '../mocks.dart';
 
 void main() {
   const currentShorebirdRevision = 'revision-1';
@@ -34,11 +30,11 @@ void main() {
     }
 
     setUp(() {
-      final progress = _MockProgress();
+      final progress = MockProgress();
       final progressLogs = <String>[];
 
-      logger = _MockLogger();
-      shorebirdVersion = _MockShorebirdVersion();
+      logger = MockLogger();
+      shorebirdVersion = MockShorebirdVersion();
       command = runWithOverrides(UpgradeCommand.new);
 
       when(
@@ -121,7 +117,7 @@ void main() {
     test(
       'updates when newer version exists',
       () async {
-        when(() => logger.progress(any())).thenReturn(_MockProgress());
+        when(() => logger.progress(any())).thenReturn(MockProgress());
 
         final result = await runWithOverrides(command.run);
 
@@ -136,7 +132,7 @@ void main() {
       () async {
         when(shorebirdVersion.fetchLatestGitHash)
             .thenAnswer((_) async => currentShorebirdRevision);
-        when(() => logger.progress(any())).thenReturn(_MockProgress());
+        when(() => logger.progress(any())).thenReturn(MockProgress());
 
         final result = await runWithOverrides(command.run);
 

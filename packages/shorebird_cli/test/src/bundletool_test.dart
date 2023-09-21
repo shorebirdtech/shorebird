@@ -9,11 +9,7 @@ import 'package:shorebird_cli/src/java.dart';
 import 'package:shorebird_cli/src/process.dart';
 import 'package:test/test.dart';
 
-class _MockCache extends Mock implements Cache {}
-
-class _MockJava extends Mock implements Java {}
-
-class _MockShorebirdProcess extends Mock implements ShorebirdProcess {}
+import 'mocks.dart';
 
 void main() {
   group(Bundletool, () {
@@ -39,9 +35,9 @@ void main() {
 
     setUp(() {
       workingDirectory = Directory.systemTemp.createTempSync();
-      cache = _MockCache();
-      java = _MockJava();
-      process = _MockShorebirdProcess();
+      cache = MockCache();
+      java = MockJava();
+      process = MockShorebirdProcess();
       bundletool = Bundletool();
 
       when(() => cache.updateAll()).thenAnswer((_) async {});

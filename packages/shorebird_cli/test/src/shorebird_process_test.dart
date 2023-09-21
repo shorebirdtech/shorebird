@@ -7,13 +7,7 @@ import 'package:shorebird_cli/src/process.dart';
 import 'package:shorebird_cli/src/shorebird_env.dart';
 import 'package:test/test.dart';
 
-class _MockProcess extends Mock implements Process {}
-
-class _MockProcessResult extends Mock implements ShorebirdProcessResult {}
-
-class _MockProcessWrapper extends Mock implements ProcessWrapper {}
-
-class _MockShorebirdEnv extends Mock implements ShorebirdEnv {}
+import 'mocks.dart';
 
 void main() {
   group('ShorebirdProcess', () {
@@ -37,10 +31,10 @@ void main() {
     }
 
     setUp(() {
-      processWrapper = _MockProcessWrapper();
-      runProcessResult = _MockProcessResult();
-      startProcess = _MockProcess();
-      shorebirdEnv = _MockShorebirdEnv();
+      processWrapper = MockProcessWrapper();
+      runProcessResult = MockProcessResult();
+      startProcess = MockProcess();
+      shorebirdEnv = MockShorebirdEnv();
       shorebirdProcess = runWithOverrides(
         () => ShorebirdProcess(processWrapper: processWrapper),
       );

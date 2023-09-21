@@ -28,49 +28,8 @@ import 'package:shorebird_cli/src/validators/validators.dart';
 import 'package:shorebird_code_push_client/shorebird_code_push_client.dart';
 import 'package:test/test.dart';
 
-class _FakeBaseRequest extends Fake implements http.BaseRequest {}
-
-class _MockAndroidArchiveDiffer extends Mock implements AndroidArchiveDiffer {}
-
-class _MockArgResults extends Mock implements ArgResults {}
-
-class _MockAuth extends Mock implements Auth {}
-
-class _MockBundleTool extends Mock implements Bundletool {}
-
-class _MockCache extends Mock implements Cache {}
-
-class _MockCodePushClientWrapper extends Mock
-    implements CodePushClientWrapper {}
-
-class _MockDoctor extends Mock implements Doctor {}
-
-class _MockJava extends Mock implements Java {}
-
-class _MockLogger extends Mock implements Logger {}
-
-class _MockPatchDiffChecker extends Mock implements PatchDiffChecker {}
-
-class _MockPlatform extends Mock implements Platform {}
-
-class _MockProgress extends Mock implements Progress {}
-
-class _MockProcessResult extends Mock implements ShorebirdProcessResult {}
-
-class _MockHttpClient extends Mock implements http.Client {}
-
-class _MockShorebirdEnv extends Mock implements ShorebirdEnv {}
-
-class _MockShorebirdFlutter extends Mock implements ShorebirdFlutter {}
-
-class _MockShorebirdFlutterValidator extends Mock
-    implements ShorebirdFlutterValidator {}
-
-class _MockShorebirdProcess extends Mock implements ShorebirdProcess {}
-
-class _MockShorebirdValidator extends Mock implements ShorebirdValidator {}
-
-class _FakeShorebirdProcess extends Fake implements ShorebirdProcess {}
+import '../../fakes.dart';
+import '../../mocks.dart';
 
 void main() {
   group(PatchAndroidCommand, () {
@@ -203,36 +162,36 @@ flutter:
       registerFallbackValue(FileSetDiff.empty());
       registerFallbackValue(Uri.parse('https://example.com'));
       registerFallbackValue(ReleasePlatform.android);
-      registerFallbackValue(_FakeBaseRequest());
-      registerFallbackValue(_FakeShorebirdProcess());
+      registerFallbackValue(FakeBaseRequest());
+      registerFallbackValue(FakeShorebirdProcess());
     });
 
     setUp(() {
-      archiveDiffer = _MockAndroidArchiveDiffer();
-      argResults = _MockArgResults();
-      auth = _MockAuth();
-      bundletool = _MockBundleTool();
-      codePushClientWrapper = _MockCodePushClientWrapper();
-      doctor = _MockDoctor();
-      java = _MockJava();
+      archiveDiffer = MockAndroidArchiveDiffer();
+      argResults = MockArgResults();
+      auth = MockAuth();
+      bundletool = MockBundleTool();
+      codePushClientWrapper = MockCodePushClientWrapper();
+      doctor = MockDoctor();
+      java = MockJava();
       shorebirdRoot = Directory.systemTemp.createTempSync();
       flutterDirectory = Directory(
         p.join(shorebirdRoot.path, 'bin', 'cache', 'flutter'),
       );
-      patchDiffChecker = _MockPatchDiffChecker();
-      platform = _MockPlatform();
-      progress = _MockProgress();
-      logger = _MockLogger();
-      flutterBuildProcessResult = _MockProcessResult();
-      flutterPubGetProcessResult = _MockProcessResult();
-      patchProcessResult = _MockProcessResult();
-      httpClient = _MockHttpClient();
-      flutterValidator = _MockShorebirdFlutterValidator();
-      cache = _MockCache();
-      shorebirdEnv = _MockShorebirdEnv();
-      shorebirdProcess = _MockShorebirdProcess();
-      shorebirdFlutter = _MockShorebirdFlutter();
-      shorebirdValidator = _MockShorebirdValidator();
+      patchDiffChecker = MockPatchDiffChecker();
+      platform = MockPlatform();
+      progress = MockProgress();
+      logger = MockLogger();
+      flutterBuildProcessResult = MockProcessResult();
+      flutterPubGetProcessResult = MockProcessResult();
+      patchProcessResult = MockProcessResult();
+      httpClient = MockHttpClient();
+      flutterValidator = MockShorebirdFlutterValidator();
+      cache = MockCache();
+      shorebirdEnv = MockShorebirdEnv();
+      shorebirdProcess = MockShorebirdProcess();
+      shorebirdFlutter = MockShorebirdFlutter();
+      shorebirdValidator = MockShorebirdValidator();
       command = runWithOverrides(
         () => PatchAndroidCommand(
           archiveDiffer: archiveDiffer,

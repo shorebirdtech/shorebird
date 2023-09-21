@@ -26,43 +26,8 @@ import 'package:shorebird_cli/src/validators/validators.dart';
 import 'package:shorebird_code_push_client/shorebird_code_push_client.dart';
 import 'package:test/test.dart';
 
-class _FakeBaseRequest extends Fake implements http.BaseRequest {}
-
-class _MockArgResults extends Mock implements ArgResults {}
-
-class _MockAuth extends Mock implements Auth {}
-
-class _MockCodePushClientWrapper extends Mock
-    implements CodePushClientWrapper {}
-
-class _MockDoctor extends Mock implements Doctor {}
-
-class _MockIpaDiffer extends Mock implements IosArchiveDiffer {}
-
-class _MockLogger extends Mock implements Logger {}
-
-class _MockPatchDiffChecker extends Mock implements PatchDiffChecker {}
-
-class _MockPlatform extends Mock implements Platform {}
-
-class _MockProgress extends Mock implements Progress {}
-
-class _MockProcessResult extends Mock implements ShorebirdProcessResult {}
-
-class _MockHttpClient extends Mock implements http.Client {}
-
-class _MockShorebirdEnv extends Mock implements ShorebirdEnv {}
-
-class _MockShorebirdFlutter extends Mock implements ShorebirdFlutter {}
-
-class _MockShorebirdFlutterValidator extends Mock
-    implements ShorebirdFlutterValidator {}
-
-class _MockShorebirdProcess extends Mock implements ShorebirdProcess {}
-
-class _MockShorebirdValidator extends Mock implements ShorebirdValidator {}
-
-class _FakeShorebirdProcess extends Fake implements ShorebirdProcess {}
+import '../../fakes.dart';
+import '../../mocks.dart';
 
 void main() {
   const flutterRevision = '83305b5088e6fe327fb3334a73ff190828d85713';
@@ -235,15 +200,15 @@ flutter:
       registerFallbackValue(FileSetDiff.empty());
       registerFallbackValue(ReleasePlatform.ios);
       registerFallbackValue(Uri.parse('https://example.com'));
-      registerFallbackValue(_FakeBaseRequest());
-      registerFallbackValue(_FakeShorebirdProcess());
+      registerFallbackValue(FakeBaseRequest());
+      registerFallbackValue(FakeShorebirdProcess());
     });
 
     setUp(() {
-      argResults = _MockArgResults();
-      auth = _MockAuth();
-      codePushClientWrapper = _MockCodePushClientWrapper();
-      doctor = _MockDoctor();
+      argResults = MockArgResults();
+      auth = MockAuth();
+      codePushClientWrapper = MockCodePushClientWrapper();
+      doctor = MockDoctor();
       shorebirdRoot = Directory.systemTemp.createTempSync();
       flutterDirectory = Directory(
         p.join(shorebirdRoot.path, 'bin', 'cache', 'flutter'),
@@ -259,20 +224,20 @@ flutter:
           'gen_snapshot_arm64',
         ),
       );
-      archiveDiffer = _MockIpaDiffer();
-      progress = _MockProgress();
-      logger = _MockLogger();
-      platform = _MockPlatform();
-      aotBuildProcessResult = _MockProcessResult();
-      flutterBuildProcessResult = _MockProcessResult();
-      flutterPubGetProcessResult = _MockProcessResult();
-      httpClient = _MockHttpClient();
-      patchDiffChecker = _MockPatchDiffChecker();
-      shorebirdEnv = _MockShorebirdEnv();
-      shorebirdFlutter = _MockShorebirdFlutter();
-      flutterValidator = _MockShorebirdFlutterValidator();
-      shorebirdProcess = _MockShorebirdProcess();
-      shorebirdValidator = _MockShorebirdValidator();
+      archiveDiffer = MockIosArchiveDiffer();
+      progress = MockProgress();
+      logger = MockLogger();
+      platform = MockPlatform();
+      aotBuildProcessResult = MockProcessResult();
+      flutterBuildProcessResult = MockProcessResult();
+      flutterPubGetProcessResult = MockProcessResult();
+      httpClient = MockHttpClient();
+      patchDiffChecker = MockPatchDiffChecker();
+      shorebirdEnv = MockShorebirdEnv();
+      shorebirdFlutter = MockShorebirdFlutter();
+      flutterValidator = MockShorebirdFlutterValidator();
+      shorebirdProcess = MockShorebirdProcess();
+      shorebirdValidator = MockShorebirdValidator();
 
       when(() => argResults['arch']).thenReturn(arch);
       when(() => argResults['dry-run']).thenReturn(false);

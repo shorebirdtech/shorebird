@@ -7,7 +7,7 @@ import 'package:shorebird_cli/src/git.dart';
 import 'package:shorebird_cli/src/shorebird_version.dart';
 import 'package:test/test.dart';
 
-class _MockGit extends Mock implements Git {}
+import 'mocks.dart';
 
 void main() {
   group(ShorebirdVersion, () {
@@ -27,7 +27,7 @@ void main() {
     }
 
     setUp(() {
-      git = _MockGit();
+      git = MockGit();
       shorebirdVersionManager = ShorebirdVersion();
 
       when(

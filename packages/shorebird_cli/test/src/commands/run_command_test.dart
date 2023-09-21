@@ -14,23 +14,7 @@ import 'package:shorebird_cli/src/shorebird_validator.dart';
 import 'package:shorebird_cli/src/validators/validators.dart';
 import 'package:test/test.dart';
 
-class _MockArgResults extends Mock implements ArgResults {}
-
-class _MockDoctor extends Mock implements Doctor {}
-
-class _MockLogger extends Mock implements Logger {}
-
-class _MockProgress extends Mock implements Progress {}
-
-class _MockProcess extends Mock implements Process {}
-
-class _MockShorebirdProcess extends Mock implements ShorebirdProcess {}
-
-class _MockIOSink extends Mock implements IOSink {}
-
-class _MockShorebirdValidator extends Mock implements ShorebirdValidator {}
-
-class _MockValidator extends Mock implements Validator {}
+import '../mocks.dart';
 
 void main() {
   group(RunCommand, () {
@@ -61,14 +45,14 @@ void main() {
     });
 
     setUp(() {
-      argResults = _MockArgResults();
-      doctor = _MockDoctor();
-      logger = _MockLogger();
-      process = _MockProcess();
-      shorebirdProcess = _MockShorebirdProcess();
-      ioSink = _MockIOSink();
-      shorebirdValidator = _MockShorebirdValidator();
-      validator = _MockValidator();
+      argResults = MockArgResults();
+      doctor = MockDoctor();
+      logger = MockLogger();
+      process = MockProcess();
+      shorebirdProcess = MockShorebirdProcess();
+      ioSink = MockIOSink();
+      shorebirdValidator = MockShorebirdValidator();
+      validator = MockValidator();
 
       when(
         () => shorebirdProcess.start(
@@ -79,7 +63,7 @@ void main() {
       ).thenAnswer((_) async => process);
       when(() => argResults.rest).thenReturn([]);
       when(() => doctor.allValidators).thenReturn([validator]);
-      when(() => logger.progress(any())).thenReturn(_MockProgress());
+      when(() => logger.progress(any())).thenReturn(MockProgress());
       when(() => ioSink.addStream(any())).thenAnswer((_) async {});
       when(
         () => shorebirdValidator.validatePreconditions(
@@ -132,7 +116,7 @@ Please use "shorebird preview" instead.'''),
     test('exits with code when running the app fails', () async {
       final tempDir = Directory.systemTemp.createTempSync();
 
-      final progress = _MockProgress();
+      final progress = MockProgress();
       when(() => logger.progress(any())).thenReturn(progress);
 
       const error = 'oops something went wrong';
@@ -158,7 +142,7 @@ Please use "shorebird preview" instead.'''),
     test('exits with code 0 when running the app succeeds', () async {
       final tempDir = Directory.systemTemp.createTempSync();
 
-      final progress = _MockProgress();
+      final progress = MockProgress();
       when(() => logger.progress(any())).thenReturn(progress);
 
       const output = 'some output';
@@ -184,7 +168,7 @@ Please use "shorebird preview" instead.'''),
     test('passes additional args when specified', () async {
       final tempDir = Directory.systemTemp.createTempSync();
 
-      final progress = _MockProgress();
+      final progress = MockProgress();
       when(() => logger.progress(any())).thenReturn(progress);
 
       const deviceId = 'test-device-id';

@@ -9,7 +9,7 @@ import 'package:shorebird_cli/src/platform.dart';
 import 'package:shorebird_cli/src/shorebird_env.dart';
 import 'package:test/test.dart';
 
-class _MockPlatform extends Mock implements Platform {}
+import 'mocks.dart';
 
 void main() {
   group(ShorebirdEnv, () {
@@ -38,7 +38,7 @@ void main() {
       )
         ..createSync(recursive: true)
         ..writeAsStringSync(flutterRevision, flush: true);
-      platform = _MockPlatform();
+      platform = MockPlatform();
       shorebirdEnv = runWithOverrides(ShorebirdEnv.new);
 
       when(() => platform.environment).thenReturn(const {});

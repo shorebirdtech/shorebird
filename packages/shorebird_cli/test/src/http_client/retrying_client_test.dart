@@ -6,12 +6,12 @@ import 'package:mocktail/mocktail.dart';
 import 'package:shorebird_cli/src/http_client/retrying_client.dart';
 import 'package:test/test.dart';
 
-class _MockHttpClient extends Mock implements http.Client {}
+class MockHttpClient extends Mock implements http.Client {}
 
 void main() {
   group('retryingHttpClient', () {
     test('returns a RetryClient', () {
-      final client = retryingHttpClient(_MockHttpClient());
+      final client = retryingHttpClient(MockHttpClient());
       expect(client, isA<RetryClient>());
     });
 

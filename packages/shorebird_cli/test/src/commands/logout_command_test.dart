@@ -7,13 +7,7 @@ import 'package:shorebird_cli/src/commands/logout_command.dart';
 import 'package:shorebird_cli/src/logger.dart';
 import 'package:test/test.dart';
 
-class _MockAuth extends Mock implements Auth {}
-
-class _MockLogger extends Mock implements Logger {}
-
-class _MockHttpClient extends Mock implements http.Client {}
-
-class _MockProgress extends Mock implements Progress {}
+import '../mocks.dart';
 
 void main() {
   group(LogoutCommand, () {
@@ -33,12 +27,12 @@ void main() {
     }
 
     setUp(() {
-      auth = _MockAuth();
-      httpClient = _MockHttpClient();
-      logger = _MockLogger();
+      auth = MockAuth();
+      httpClient = MockHttpClient();
+      logger = MockLogger();
 
       when(() => auth.client).thenReturn(httpClient);
-      when(() => logger.progress(any())).thenReturn(_MockProgress());
+      when(() => logger.progress(any())).thenReturn(MockProgress());
 
       command = runWithOverrides(LogoutCommand.new);
     });
@@ -56,7 +50,7 @@ void main() {
     test('exits with code 0 when logged out successfully', () async {
       when(() => auth.isAuthenticated).thenReturn(true);
 
-      final progress = _MockProgress();
+      final progress = MockProgress();
       when(() => progress.complete(any())).thenAnswer((invocation) {});
       when(() => logger.progress(any())).thenReturn(progress);
 

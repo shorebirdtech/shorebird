@@ -8,11 +8,8 @@ import 'package:shorebird_cli/src/http_client/http_client.dart';
 import 'package:shorebird_cli/src/logger.dart';
 import 'package:test/test.dart';
 
-class _FakeBaseRequest extends Fake implements http.BaseRequest {}
-
-class _MockHttpClient extends Mock implements http.Client {}
-
-class _MockLogger extends Mock implements Logger {}
+import '../fakes.dart';
+import '../mocks.dart';
 
 void main() {
   group(LoggingClient, () {
@@ -30,12 +27,12 @@ void main() {
     }
 
     setUpAll(() {
-      registerFallbackValue(_FakeBaseRequest());
+      registerFallbackValue(FakeBaseRequest());
     });
 
     setUp(() {
-      httpClient = _MockHttpClient();
-      logger = _MockLogger();
+      httpClient = MockHttpClient();
+      logger = MockLogger();
       loggingClient = LoggingClient(httpClient: httpClient);
 
       when(() => httpClient.send(any())).thenAnswer(

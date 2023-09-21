@@ -23,39 +23,7 @@ import 'package:shorebird_cli/src/validators/validators.dart';
 import 'package:shorebird_code_push_client/shorebird_code_push_client.dart';
 import 'package:test/test.dart';
 
-class _MockArgResults extends Mock implements ArgResults {}
-
-class _MockAuth extends Mock implements Auth {}
-
-class _MockCodePushClientWrapper extends Mock
-    implements CodePushClientWrapper {}
-
-class _MockDoctor extends Mock implements Doctor {}
-
-class _MockIosArchiveDiffer extends Mock implements IosArchiveDiffer {}
-
-class _MockLogger extends Mock implements Logger {}
-
-class _MockPatchDiffChecker extends Mock implements PatchDiffChecker {}
-
-class _MockPlatform extends Mock implements Platform {}
-
-class _MockProgress extends Mock implements Progress {}
-
-class _MockProcessResult extends Mock implements ShorebirdProcessResult {}
-
-class _MockProcessWrapper extends Mock implements ProcessWrapper {}
-
-class _MockShorebirdEnv extends Mock implements ShorebirdEnv {}
-
-class _MockShorebirdFlutterValidator extends Mock
-    implements ShorebirdFlutterValidator {}
-
-class _MockShorebirdFlutter extends Mock implements ShorebirdFlutter {}
-
-class _MockShorebirdProcess extends Mock implements ShorebirdProcess {}
-
-class _MockShorebirdValidator extends Mock implements ShorebirdValidator {}
+import '../../mocks.dart';
 
 void main() {
   group(PatchIosFrameworkCommand, () {
@@ -186,12 +154,12 @@ flutter:
     });
 
     setUp(() {
-      argResults = _MockArgResults();
-      archiveDiffer = _MockIosArchiveDiffer();
-      codePushClientWrapper = _MockCodePushClientWrapper();
-      doctor = _MockDoctor();
-      patchDiffChecker = _MockPatchDiffChecker();
-      platform = _MockPlatform();
+      argResults = MockArgResults();
+      archiveDiffer = MockIosArchiveDiffer();
+      codePushClientWrapper = MockCodePushClientWrapper();
+      doctor = MockDoctor();
+      patchDiffChecker = MockPatchDiffChecker();
+      platform = MockPlatform();
       shorebirdRoot = Directory.systemTemp.createTempSync();
       flutterDirectory = Directory(
         p.join(shorebirdRoot.path, 'bin', 'cache', 'flutter'),
@@ -207,17 +175,17 @@ flutter:
           'gen_snapshot_arm64',
         ),
       );
-      auth = _MockAuth();
-      progress = _MockProgress();
-      logger = _MockLogger();
-      aotBuildProcessResult = _MockProcessResult();
-      flutterBuildProcessResult = _MockProcessResult();
-      flutterPubGetProcessResult = _MockProcessResult();
-      shorebirdEnv = _MockShorebirdEnv();
-      shorebirdFlutter = _MockShorebirdFlutter();
-      flutterValidator = _MockShorebirdFlutterValidator();
-      shorebirdProcess = _MockShorebirdProcess();
-      shorebirdValidator = _MockShorebirdValidator();
+      auth = MockAuth();
+      progress = MockProgress();
+      logger = MockLogger();
+      aotBuildProcessResult = MockProcessResult();
+      flutterBuildProcessResult = MockProcessResult();
+      flutterPubGetProcessResult = MockProcessResult();
+      shorebirdEnv = MockShorebirdEnv();
+      shorebirdFlutter = MockShorebirdFlutter();
+      flutterValidator = MockShorebirdFlutterValidator();
+      shorebirdProcess = MockShorebirdProcess();
+      shorebirdValidator = MockShorebirdValidator();
 
       when(
         () => shorebirdProcess.run(
@@ -512,7 +480,7 @@ Please re-run the release command for this version or create a new release.'''),
       );
       const otherRevision = 'other-revision';
       when(() => shorebirdEnv.flutterRevision).thenReturn(otherRevision);
-      final processWrapper = _MockProcessWrapper();
+      final processWrapper = MockProcessWrapper();
       when(
         () => processWrapper.run(
           any(),

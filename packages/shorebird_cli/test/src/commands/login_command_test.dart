@@ -10,11 +10,7 @@ import 'package:shorebird_cli/src/commands/login_command.dart';
 import 'package:shorebird_cli/src/logger.dart';
 import 'package:test/test.dart';
 
-class _MockAuth extends Mock implements Auth {}
-
-class _MockHttpClient extends Mock implements http.Client {}
-
-class _MockLogger extends Mock implements Logger {}
+import '../mocks.dart';
 
 void main() {
   group(LoginCommand, () {
@@ -38,9 +34,9 @@ void main() {
 
     setUp(() {
       applicationConfigHome = Directory.systemTemp.createTempSync();
-      auth = _MockAuth();
-      httpClient = _MockHttpClient();
-      logger = _MockLogger();
+      auth = MockAuth();
+      httpClient = MockHttpClient();
+      logger = MockLogger();
 
       when(() => auth.client).thenReturn(httpClient);
       when(() => auth.credentialsFilePath).thenReturn(
