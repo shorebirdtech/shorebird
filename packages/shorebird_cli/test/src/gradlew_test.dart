@@ -37,7 +37,7 @@ void main() {
     setUp(() {
       java = MockJava();
       platform = MockPlatform();
-      process = MockProcess();
+      process = MockShorebirdProcess();
       result = MockProcessResult();
       gradlew = runWithOverrides(Gradlew.new);
 
