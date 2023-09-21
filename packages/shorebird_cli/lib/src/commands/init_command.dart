@@ -107,8 +107,9 @@ Please make sure you are running "shorebird init" from the root of your Flutter 
 
       final AppMetadata existingApp;
       try {
-        existingApp =
-            await codePushClientWrapper.getApp(appId: shorebirdYaml!.appId);
+        existingApp = await codePushClientWrapper.getApp(
+          appId: shorebirdYaml!.appId,
+        );
       } catch (e) {
         updateShorebirdYamlProgress.fail('Failed to get existing app info: $e');
         return ExitCode.software.code;
@@ -295,8 +296,7 @@ app_id:
     final pubspecContents = pubspecFile.readAsStringSync();
     final yaml = loadYaml(pubspecContents, sourceUrl: pubspecFile.uri) as Map;
     final editor = YamlEditor(pubspecContents);
-
-    if (!yaml.containsKey('flutter')) {
+    if (!yaml.containsKey('flutter') || yaml['flutter'] == null) {
       editor.update(
         ['flutter'],
         {
