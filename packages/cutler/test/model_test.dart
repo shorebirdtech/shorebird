@@ -95,5 +95,27 @@ void main() {
       equals(const Version(repo: Repo.buildroot, hash: 'b2')),
     );
     expect(two[Repo.dart], equals(const Version(repo: Repo.dart, hash: 'd2')));
+    final three = one.copyWith();
+    expect(one, equals(three));
+    expect(one.hashCode, equals(three.hashCode));
+  });
+
+  test('Repo', () {
+    expect(Repo.engine.name, equals('engine'));
+    expect(Repo.engine.path, equals('engine/src/flutter'));
+    expect(Repo.engine.directDependencies, equals({Repo.dart, Repo.buildroot}));
+    expect(Repo.engine.dependencies, equals({Repo.dart, Repo.buildroot}));
+
+    expect(Repo.dart.name, equals('dart'));
+    expect(Repo.dart.path, equals('engine/src/third_party/dart'));
+    expect(Repo.dart.directDependencies, isEmpty);
+    expect(Repo.dart.dependencies, isEmpty);
+
+    expect(Repo.shorebird.name, equals('shorebird'));
+    expect(Repo.shorebird.directDependencies, equals({Repo.flutter}));
+    expect(
+      Repo.shorebird.dependencies,
+      equals({Repo.flutter, Repo.engine, Repo.dart, Repo.buildroot}),
+    );
   });
 }
