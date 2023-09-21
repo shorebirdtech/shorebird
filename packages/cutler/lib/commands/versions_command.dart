@@ -7,7 +7,7 @@ import 'package:io/io.dart';
 
 /// Print the versions a given Shorebird or Flutter hash depends on.
 class VersionsCommand extends CutlerCommand {
-  /// Constructs a new [VersionsCommand].
+  /// Constructs a new [VersionsCommand] with a given [logger].
   VersionsCommand() {
     argParser.addOption(
       'repo',
@@ -61,13 +61,8 @@ class VersionsCommand extends CutlerCommand {
       indent: 2,
       upstream: flutterVersions,
     );
-    logger.info('Upstream');
-    printVersions(
-      checkouts,
-      flutterVersions,
-      indent: 2,
-      trailingNewline: false,
-    );
+    logger.info('\nUpstream');
+    printVersions(checkouts, flutterVersions, indent: 2);
 
     return ExitCode.success.code;
   }

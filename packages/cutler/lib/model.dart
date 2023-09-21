@@ -7,9 +7,7 @@ enum Repo {
     name: 'shorebird',
     path: '_shorebird/shorebird',
     url: 'https://github.com/shorebirdtech/shorebird.git',
-    // TODO(eseidel): There is no upstream for Shorebird, this should be null.
     upstreamBranch: 'origin/main',
-    directDependencies: [Repo.flutter],
   ),
 
   /// Repo configuration representing the Flutter repo.
@@ -18,7 +16,6 @@ enum Repo {
     path: 'flutter',
     url: 'https://github.com/shorebirdtech/flutter.git',
     upstreamBranch: 'upstream/stable',
-    directDependencies: [Repo.engine],
   ),
 
   /// Repo configuration representing the engine repo.
@@ -27,7 +24,6 @@ enum Repo {
     path: 'engine/src/flutter',
     url: 'https://github.com/shorebirdtech/engine.git',
     upstreamBranch: 'upstream/master',
-    directDependencies: [Repo.dart],
   ),
 
   /// Repo configuration representing the dart-lang/sdk repo.
@@ -36,7 +32,6 @@ enum Repo {
     path: 'engine/src/third_party/dart',
     url: 'https://github.com/shorebirdtech/dart-sdk.git',
     upstreamBranch: 'upstream/master',
-    directDependencies: [],
   ),
 
   /// Repo configuration representing the buildroot repo.
@@ -45,7 +40,6 @@ enum Repo {
     path: 'engine/src',
     url: 'https://github.com/shorebirdtech/builddoor.git',
     upstreamBranch: 'upstream/master',
-    directDependencies: [],
   );
 
   const Repo({
@@ -53,7 +47,6 @@ enum Repo {
     required this.path,
     required this.url,
     required this.upstreamBranch,
-    required this.directDependencies,
   });
 
   /// Returns the name (e.g. 'engine') of the repo.
@@ -67,20 +60,6 @@ enum Repo {
 
   /// Returns the name of the upstream branch.
   final String upstreamBranch;
-
-  /// Returns the direct dependencies of the repo.
-  final List<Repo> directDependencies;
-
-  /// Returns the transitive dependencies of a given repo.
-  Iterable<Repo> get dependencies {
-    final deps = <Repo>{};
-    for (final dep in directDependencies) {
-      deps
-        ..add(dep)
-        ..addAll(dep.dependencies);
-    }
-    return deps;
-  }
 }
 
 /// Paths to version files in each repo.
@@ -142,7 +121,6 @@ class Version {
 }
 
 /// An object to hold a set of versions that make up a Flutter release.
-@immutable
 class VersionSet {
   /// Constructs a new [VersionSet] with a given [engine], [flutter], and
   /// [buildroot] version.
@@ -187,18 +165,4 @@ class VersionSet {
       dart: dart ?? this.dart,
     );
   }
-
-  @override
-  bool operator ==(Object other) {
-    if (other is! VersionSet) {
-      return false;
-    }
-    return other.engine == engine &&
-        other.flutter == flutter &&
-        other.buildroot == buildroot &&
-        other.dart == dart;
-  }
-
-  @override
-  int get hashCode => Object.hashAll([engine, flutter, buildroot, dart]);
 }
