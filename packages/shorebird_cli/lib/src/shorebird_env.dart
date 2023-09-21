@@ -144,6 +144,7 @@ class ShorebirdEnv {
     final pubspecContents = file.readAsStringSync();
     final yaml = loadYaml(pubspecContents, sourceUrl: file.uri) as Map;
     if (!yaml.containsKey('flutter')) return false;
+    if (yaml['flutter'] is! Map) return false;
     if (!(yaml['flutter'] as Map).containsKey('assets')) return false;
     final assets = (yaml['flutter'] as Map)['assets'] as List;
     return assets.contains('shorebird.yaml');
