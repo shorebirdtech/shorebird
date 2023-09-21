@@ -27,7 +27,7 @@ enum Repo {
     path: 'engine/src/flutter',
     url: 'https://github.com/shorebirdtech/engine.git',
     upstreamBranch: 'upstream/master',
-    directDependencies: [Repo.dart],
+    directDependencies: [Repo.dart, Repo.buildroot],
   ),
 
   /// Repo configuration representing the dart-lang/sdk repo.
