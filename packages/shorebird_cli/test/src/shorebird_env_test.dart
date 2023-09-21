@@ -204,6 +204,24 @@ void main() {
         );
       });
 
+      test('returns false when pubspec.yaml contains empty flutter config', () {
+        final tempDir = Directory.systemTemp.createTempSync();
+        File(
+          p.join(tempDir.path, 'pubspec.yaml'),
+        ).writeAsStringSync('''
+name: test
+flutter:''');
+        expect(
+          IOOverrides.runZoned(
+            () => runWithOverrides(
+              () => shorebirdEnv.pubspecContainsShorebirdYaml,
+            ),
+            getCurrentDirectory: () => tempDir,
+          ),
+          isFalse,
+        );
+      });
+
       test(
           'returns true when pubspec.yaml does '
           'contain shorebird.yaml in assets', () {
