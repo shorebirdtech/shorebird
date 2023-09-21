@@ -9,7 +9,6 @@ void printVersions(
   VersionSet versions, {
   int indent = 0,
   VersionSet? upstream,
-  bool trailingNewline = true,
 }) {
   final repos = [
     Repo.flutter,
@@ -32,9 +31,6 @@ void printVersions(
     } else {
       logger.info(string);
     }
-  }
-  if (trailingNewline) {
-    logger.info('');
   }
 }
 
