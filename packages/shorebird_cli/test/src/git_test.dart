@@ -7,10 +7,7 @@ import 'package:shorebird_cli/src/git.dart';
 import 'package:shorebird_cli/src/process.dart';
 import 'package:test/test.dart';
 
-class MockShorebirdProcess extends Mock implements ShorebirdProcess {}
-
-class MockShorebirdProcessResult extends Mock
-    implements ShorebirdProcessResult {}
+import 'mocks.dart';
 
 void main() {
   group(Git, () {

@@ -6,11 +6,7 @@ import 'package:shorebird_cli/src/logger.dart';
 import 'package:shorebird_cli/src/validators/validators.dart';
 import 'package:test/test.dart';
 
-class MockLogger extends Mock implements Logger {}
-
-class MockProgress extends Mock implements Progress {}
-
-class MockValidator extends Mock implements Validator {}
+import 'mocks.dart';
 
 void main() {
   group(Doctor, () {

@@ -22,8 +22,6 @@ import 'package:test/test.dart';
 
 import '../mocks.dart';
 
-class _MockHttpClient extends Mock implements HttpClient {}
-
 void main() {
   group(PreviewCommand, () {
     const appId = 'test-app-id';
@@ -75,7 +73,7 @@ void main() {
       auth = MockAuth();
       cache = MockCache();
       codePushClientWrapper = MockCodePushClientWrapper();
-      httpClient = _MockHttpClient();
+      httpClient = MockIoHttpClient();
       httpClientRequest = MockHttpClientRequest();
       httpClientResponse = MockHttpClientResponse();
       logger = MockLogger();

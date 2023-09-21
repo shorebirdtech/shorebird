@@ -2,11 +2,10 @@ import 'dart:io';
 
 import 'package:http/http.dart' as http;
 import 'package:http/retry.dart';
-import 'package:mocktail/mocktail.dart';
 import 'package:shorebird_cli/src/http_client/retrying_client.dart';
 import 'package:test/test.dart';
 
-class MockHttpClient extends Mock implements http.Client {}
+import '../mocks.dart';
 
 void main() {
   group('retryingHttpClient', () {

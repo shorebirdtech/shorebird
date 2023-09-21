@@ -14,21 +14,7 @@ import 'package:shorebird_cli/src/process.dart';
 import 'package:shorebird_cli/src/shorebird_env.dart';
 import 'package:test/test.dart';
 
-class MockLogger extends Mock implements Logger {}
-
-class MockPlatform extends Mock implements Platform {}
-
-class MockProgress extends Mock implements Progress {}
-
-class MockShorebirdProcess extends Mock implements ShorebirdProcess {}
-
-class MockProcess extends Mock implements Process {}
-
-class MockIOSink extends Mock implements IOSink {}
-
-class MockProcessSignal extends Mock implements ProcessSignal {}
-
-class MockShorebirdEnv extends Mock implements ShorebirdEnv {}
+import 'mocks.dart';
 
 void main() {
   group(IOSDeploy, () {

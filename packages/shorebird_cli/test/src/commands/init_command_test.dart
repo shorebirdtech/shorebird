@@ -889,7 +889,27 @@ flutter:
       );
     });
 
-    test('creates assets and adds shorebird.yaml', () async {
+    test('creates assets and adds shorebird.yaml (empty)', () async {
+      when(() => pubspecYamlFile.readAsStringSync()).thenReturn('''
+$pubspecYamlContent
+flutter:
+''');
+      await runWithOverrides(command.run);
+      verify(
+        () => pubspecYamlFile.writeAsStringSync(
+          any(
+            that: equals('''
+$pubspecYamlContent
+flutter:
+  assets:
+    - shorebird.yaml
+'''),
+          ),
+        ),
+      );
+    });
+
+    test('creates assets and adds shorebird.yaml (non-empty)', () async {
       when(() => pubspecYamlFile.readAsStringSync()).thenReturn('''
 $pubspecYamlContent
 flutter:
