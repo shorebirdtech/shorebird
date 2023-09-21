@@ -1,4 +1,3 @@
-import 'package:googleapis_auth/googleapis_auth.dart';
 import 'package:http/http.dart' as http;
 import 'package:mason_logger/mason_logger.dart';
 import 'package:mocktail/mocktail.dart';
@@ -8,13 +7,7 @@ import 'package:shorebird_cli/src/commands/commands.dart';
 import 'package:shorebird_cli/src/logger.dart';
 import 'package:test/test.dart';
 
-class _MockAccessCredentials extends Mock implements AccessCredentials {}
-
-class _MockAuth extends Mock implements Auth {}
-
-class _MockHttpClient extends Mock implements http.Client {}
-
-class _MockLogger extends Mock implements Logger {}
+import '../mocks.dart';
 
 void main() {
   group(LoginCiCommand, () {
@@ -36,9 +29,9 @@ void main() {
     }
 
     setUp(() {
-      auth = _MockAuth();
-      httpClient = _MockHttpClient();
-      logger = _MockLogger();
+      auth = MockAuth();
+      httpClient = MockHttpClient();
+      logger = MockLogger();
 
       when(() => auth.client).thenReturn(httpClient);
       command = runWithOverrides(LoginCiCommand.new);
@@ -73,7 +66,7 @@ void main() {
 
     test('exits with code 0 when logged in successfully', () async {
       const token = 'shorebird-token';
-      final credentials = _MockAccessCredentials();
+      final credentials = MockAccessCredentials();
       when(() => credentials.refreshToken).thenReturn(token);
       when(() => auth.loginCI(any())).thenAnswer((_) async => credentials);
       when(() => auth.email).thenReturn(email);

@@ -13,17 +13,8 @@ import 'package:shorebird_cli/src/process.dart';
 import 'package:shorebird_cli/src/shorebird_env.dart';
 import 'package:test/test.dart';
 
-class _FakeBaseRequest extends Fake implements http.BaseRequest {}
-
-class _MockHttpClient extends Mock implements http.Client {}
-
-class _MockPlatform extends Mock implements Platform {}
-
-class _MockProcess extends Mock implements Process {}
-
-class _MockShorebirdEnv extends Mock implements ShorebirdEnv {}
-
-class _MockShorebirdProcess extends Mock implements ShorebirdProcess {}
+import 'fakes.dart';
+import 'mocks.dart';
 
 class TestCachedArtifact extends CachedArtifact {
   TestCachedArtifact({required super.cache, required super.platform});
@@ -60,15 +51,15 @@ void main() {
     }
 
     setUpAll(() {
-      registerFallbackValue(_FakeBaseRequest());
+      registerFallbackValue(FakeBaseRequest());
     });
 
     setUp(() {
-      httpClient = _MockHttpClient();
-      platform = _MockPlatform();
-      chmodProcess = _MockProcess();
-      shorebirdEnv = _MockShorebirdEnv();
-      shorebirdProcess = _MockShorebirdProcess();
+      httpClient = MockHttpClient();
+      platform = MockPlatform();
+      chmodProcess = MockProcess();
+      shorebirdEnv = MockShorebirdEnv();
+      shorebirdProcess = MockShorebirdProcess();
 
       shorebirdRoot = Directory.systemTemp.createTempSync();
       when(

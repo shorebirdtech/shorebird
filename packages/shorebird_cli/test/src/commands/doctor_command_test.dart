@@ -14,23 +14,7 @@ import 'package:shorebird_cli/src/validators/validators.dart';
 import 'package:shorebird_cli/src/version.dart';
 import 'package:test/test.dart';
 
-class _MockArgResults extends Mock implements ArgResults {}
-
-class _MockAndroidStudio extends Mock implements AndroidStudio {}
-
-class _MockAndroidSdk extends Mock implements AndroidSdk {}
-
-class _MockDoctor extends Mock implements Doctor {}
-
-class _MockJava extends Mock implements Java {}
-
-class _MockLogger extends Mock implements Logger {}
-
-class _MockShorebirdEnv extends Mock implements ShorebirdEnv {}
-
-class _MockShorebirdFlutter extends Mock implements ShorebirdFlutter {}
-
-class _MockValidator extends Mock implements Validator {}
+import '../mocks.dart';
 
 void main() {
   group('doctor', () {
@@ -64,15 +48,15 @@ void main() {
     }
 
     setUp(() {
-      argResults = _MockArgResults();
-      androidStudio = _MockAndroidStudio();
-      androidSdk = _MockAndroidSdk();
-      doctor = _MockDoctor();
-      java = _MockJava();
-      logger = _MockLogger();
-      shorebirdEnv = _MockShorebirdEnv();
-      shorebirdFlutter = _MockShorebirdFlutter();
-      validator = _MockValidator();
+      argResults = MockArgResults();
+      androidStudio = MockAndroidStudio();
+      androidSdk = MockAndroidSdk();
+      doctor = MockDoctor();
+      java = MockJava();
+      logger = MockLogger();
+      shorebirdEnv = MockShorebirdEnv();
+      shorebirdFlutter = MockShorebirdFlutter();
+      validator = MockValidator();
 
       when(() => argResults['verbose']).thenReturn(false);
       when(() => argResults['fix']).thenReturn(false);

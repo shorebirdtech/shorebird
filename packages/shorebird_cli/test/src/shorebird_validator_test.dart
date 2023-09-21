@@ -10,15 +10,7 @@ import 'package:shorebird_cli/src/shorebird_validator.dart';
 import 'package:shorebird_cli/src/validators/validators.dart';
 import 'package:test/test.dart';
 
-class _MockAuth extends Mock implements Auth {}
-
-class _MockLogger extends Mock implements Logger {}
-
-class _MockPlatform extends Mock implements Platform {}
-
-class _MockShorebirdEnv extends Mock implements ShorebirdEnv {}
-
-class _MockValidator extends Mock implements Validator {}
+import 'mocks.dart';
 
 void main() {
   group(ShorebirdValidator, () {
@@ -42,11 +34,11 @@ void main() {
     }
 
     setUp(() {
-      auth = _MockAuth();
-      logger = _MockLogger();
-      platform = _MockPlatform();
-      shorebirdEnv = _MockShorebirdEnv();
-      validator = _MockValidator();
+      auth = MockAuth();
+      logger = MockLogger();
+      platform = MockPlatform();
+      shorebirdEnv = MockShorebirdEnv();
+      validator = MockValidator();
       shorebirdValidator = runWithOverrides(ShorebirdValidator.new);
     });
 

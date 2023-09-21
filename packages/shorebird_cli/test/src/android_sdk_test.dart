@@ -8,7 +8,7 @@ import 'package:shorebird_cli/src/android_sdk.dart';
 import 'package:shorebird_cli/src/platform.dart';
 import 'package:test/test.dart';
 
-class _MockPlatform extends Mock implements Platform {}
+import 'mocks.dart';
 
 void main() {
   group(AndroidSdk, () {
@@ -27,7 +27,7 @@ void main() {
 
     setUp(() {
       homeDirectory = Directory.systemTemp.createTempSync();
-      platform = _MockPlatform();
+      platform = MockPlatform();
       androidSdk = AndroidSdk();
 
       when(() => platform.isLinux).thenReturn(false);

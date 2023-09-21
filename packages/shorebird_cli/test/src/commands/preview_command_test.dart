@@ -20,40 +20,7 @@ import 'package:shorebird_cli/src/shorebird_validator.dart';
 import 'package:shorebird_code_push_client/shorebird_code_push_client.dart';
 import 'package:test/test.dart';
 
-class _MockAdb extends Mock implements Adb {}
-
-class _MockAppMetadata extends Mock implements AppMetadata {}
-
-class _MockArgResults extends Mock implements ArgResults {}
-
-class _MockAuth extends Mock implements Auth {}
-
-class _MockBundletool extends Mock implements Bundletool {}
-
-class _MockCache extends Mock implements Cache {}
-
-class _MockCodePushClientWrapper extends Mock
-    implements CodePushClientWrapper {}
-
-class _MockHttpClient extends Mock implements HttpClient {}
-
-class _MockHttpClientRequest extends Mock implements HttpClientRequest {}
-
-class _MockHttpClientResponse extends Mock implements HttpClientResponse {}
-
-class _MockLogger extends Mock implements Logger {}
-
-class _MockProgress extends Mock implements Progress {}
-
-class _MockProcess extends Mock implements Process {}
-
-class _MockRelease extends Mock implements Release {}
-
-class _MockReleaseArtifact extends Mock implements ReleaseArtifact {}
-
-class _MockIOSDeploy extends Mock implements IOSDeploy {}
-
-class _MockShorebirdValidator extends Mock implements ShorebirdValidator {}
+import '../mocks.dart';
 
 void main() {
   group(PreviewCommand, () {
@@ -101,20 +68,20 @@ void main() {
     });
 
     setUp(() {
-      app = _MockAppMetadata();
-      argResults = _MockArgResults();
-      auth = _MockAuth();
-      cache = _MockCache();
-      codePushClientWrapper = _MockCodePushClientWrapper();
-      httpClient = _MockHttpClient();
-      httpClientRequest = _MockHttpClientRequest();
-      httpClientResponse = _MockHttpClientResponse();
-      logger = _MockLogger();
+      app = MockAppMetadata();
+      argResults = MockArgResults();
+      auth = MockAuth();
+      cache = MockCache();
+      codePushClientWrapper = MockCodePushClientWrapper();
+      httpClient = MockIoHttpClient();
+      httpClientRequest = MockHttpClientRequest();
+      httpClientResponse = MockHttpClientResponse();
+      logger = MockLogger();
       previewDirectory = Directory.systemTemp.createTempSync();
-      progress = _MockProgress();
-      release = _MockRelease();
-      releaseArtifact = _MockReleaseArtifact();
-      shorebirdValidator = _MockShorebirdValidator();
+      progress = MockProgress();
+      release = MockRelease();
+      releaseArtifact = MockReleaseArtifact();
+      shorebirdValidator = MockShorebirdValidator();
       command = PreviewCommand()..testArgResults = argResults;
 
       when(() => argResults['app-id']).thenReturn(appId);
@@ -231,9 +198,9 @@ void main() {
       }
 
       setUp(() {
-        adb = _MockAdb();
-        bundletool = _MockBundletool();
-        process = _MockProcess();
+        adb = MockAdb();
+        bundletool = MockBundleTool();
+        process = MockProcess();
 
         when(() => argResults['platform']).thenReturn(platform.name);
         when(
@@ -573,7 +540,7 @@ void main() {
       }
 
       setUp(() {
-        iosDeploy = _MockIOSDeploy();
+        iosDeploy = MockIOSDeploy();
         when(() => argResults['platform']).thenReturn(platform.name);
         when(
           () => httpClient.getUrl(any()),

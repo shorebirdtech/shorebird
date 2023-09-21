@@ -6,7 +6,7 @@ import 'package:shorebird_cli/src/shorebird_version.dart';
 import 'package:shorebird_cli/src/validators/validators.dart';
 import 'package:test/test.dart';
 
-class _MockShorebirdVersion extends Mock implements ShorebirdVersion {}
+import '../mocks.dart';
 
 void main() {
   group('ShorebirdVersionValidator', () {
@@ -23,7 +23,7 @@ void main() {
     }
 
     setUp(() {
-      shorebirdVersion = _MockShorebirdVersion();
+      shorebirdVersion = MockShorebirdVersion();
       validator = ShorebirdVersionValidator();
 
       when(

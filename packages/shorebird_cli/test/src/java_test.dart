@@ -9,9 +9,7 @@ import 'package:shorebird_cli/src/java.dart';
 import 'package:shorebird_cli/src/platform.dart';
 import 'package:test/test.dart';
 
-class _MockAndroidStudio extends Mock implements AndroidStudio {}
-
-class _MockPlatform extends Mock implements Platform {}
+import 'mocks.dart';
 
 void main() {
   group(Java, () {
@@ -36,8 +34,8 @@ void main() {
     }
 
     setUp(() {
-      androidStudio = _MockAndroidStudio();
-      platform = _MockPlatform();
+      androidStudio = MockAndroidStudio();
+      platform = MockPlatform();
       java = Java();
     });
 

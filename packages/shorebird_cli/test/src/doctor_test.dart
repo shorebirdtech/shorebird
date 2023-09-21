@@ -6,11 +6,7 @@ import 'package:shorebird_cli/src/logger.dart';
 import 'package:shorebird_cli/src/validators/validators.dart';
 import 'package:test/test.dart';
 
-class _MockLogger extends Mock implements Logger {}
-
-class _MockProgress extends Mock implements Progress {}
-
-class _MockValidator extends Mock implements Validator {}
+import 'mocks.dart';
 
 void main() {
   group(Doctor, () {
@@ -40,11 +36,11 @@ void main() {
     }
 
     setUp(() {
-      logger = _MockLogger();
-      progress = _MockProgress();
-      noIssuesValidator = _MockValidator();
-      warningValidator = _MockValidator();
-      errorValidator = _MockValidator();
+      logger = MockLogger();
+      progress = MockProgress();
+      noIssuesValidator = MockValidator();
+      warningValidator = MockValidator();
+      errorValidator = MockValidator();
 
       doctor = Doctor();
 
@@ -138,7 +134,7 @@ void main() {
 
         setUp(() {
           wasFixCalled = false;
-          fixableWarningValidator = _MockValidator();
+          fixableWarningValidator = MockValidator();
 
           when(fixableWarningValidator.validate).thenAnswer(
             (_) async => [fixableValidationWarning],

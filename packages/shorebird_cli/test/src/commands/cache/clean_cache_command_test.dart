@@ -11,15 +11,7 @@ import 'package:shorebird_cli/src/platform.dart';
 import 'package:shorebird_cli/src/shorebird_env.dart';
 import 'package:test/test.dart';
 
-class _MockCache extends Mock implements Cache {}
-
-class _MockLogger extends Mock implements Logger {}
-
-class _MockPlatform extends Mock implements Platform {}
-
-class _MockProgress extends Mock implements Progress {}
-
-class _MockShorebirdEnv extends Mock implements ShorebirdEnv {}
+import '../../mocks.dart';
 
 void main() {
   group('cache clean', () {
@@ -43,11 +35,11 @@ void main() {
     }
 
     setUp(() {
-      cache = _MockCache();
-      logger = _MockLogger();
-      platform = _MockPlatform();
-      progress = _MockProgress();
-      shorebirdEnv = _MockShorebirdEnv();
+      cache = MockCache();
+      logger = MockLogger();
+      platform = MockPlatform();
+      progress = MockProgress();
+      shorebirdEnv = MockShorebirdEnv();
       command = runWithOverrides(CleanCacheCommand.new);
 
       when(() => logger.progress(any())).thenReturn(progress);

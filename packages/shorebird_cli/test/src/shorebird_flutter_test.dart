@@ -10,14 +10,7 @@ import 'package:shorebird_cli/src/shorebird_env.dart';
 import 'package:shorebird_cli/src/shorebird_flutter.dart';
 import 'package:test/test.dart';
 
-class _MockGit extends Mock implements Git {}
-
-class _MockShorebirdEnv extends Mock implements ShorebirdEnv {}
-
-class _MockShorebirdProcess extends Mock implements ShorebirdProcess {}
-
-class _MockShorebirdProcessResult extends Mock
-    implements ShorebirdProcessResult {}
+import 'mocks.dart';
 
 void main() {
   group(ShorebirdFlutter, () {
@@ -44,10 +37,10 @@ void main() {
     setUp(() {
       shorebirdRoot = Directory.systemTemp.createTempSync();
       flutterDirectory = Directory(p.join(shorebirdRoot.path, 'flutter'));
-      git = _MockGit();
-      shorebirdEnv = _MockShorebirdEnv();
-      process = _MockShorebirdProcess();
-      processResult = _MockShorebirdProcessResult();
+      git = MockGit();
+      shorebirdEnv = MockShorebirdEnv();
+      process = MockShorebirdProcess();
+      processResult = MockShorebirdProcessResult();
       shorebirdFlutter = runWithOverrides(ShorebirdFlutter.new);
 
       when(

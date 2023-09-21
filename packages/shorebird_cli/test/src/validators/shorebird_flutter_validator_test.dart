@@ -10,11 +10,7 @@ import 'package:shorebird_cli/src/shorebird_flutter.dart';
 import 'package:shorebird_cli/src/validators/validators.dart';
 import 'package:test/test.dart';
 
-class _MockPlatform extends Mock implements Platform {}
-
-class _MockShorebirdEnv extends Mock implements ShorebirdEnv {}
-
-class _MockShorebirdFlutter extends Mock implements ShorebirdFlutter {}
+import '../mocks.dart';
 
 void main() {
   group(ShorebirdFlutterValidator, () {
@@ -49,9 +45,9 @@ void main() {
 
     setUp(() {
       tempDir = setupTempDirectory();
-      platform = _MockPlatform();
-      shorebirdEnv = _MockShorebirdEnv();
-      shorebirdFlutter = _MockShorebirdFlutter();
+      platform = MockPlatform();
+      shorebirdEnv = MockShorebirdEnv();
+      shorebirdFlutter = MockShorebirdFlutter();
 
       when(() => shorebirdEnv.flutterRevision).thenReturn(flutterRevision);
       when(

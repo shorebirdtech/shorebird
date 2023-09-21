@@ -8,16 +8,7 @@ import 'package:shorebird_cli/src/shorebird_validator.dart';
 import 'package:shorebird_code_push_client/shorebird_code_push_client.dart';
 import 'package:test/test.dart';
 
-class _MockCodePushClientWrapper extends Mock
-    implements CodePushClientWrapper {}
-
-class _MockCodePushClient extends Mock implements CodePushClient {}
-
-class _MockLogger extends Mock implements Logger {}
-
-class _MockProgress extends Mock implements Progress {}
-
-class _MockShorebirdValidator extends Mock implements ShorebirdValidator {}
+import '../../mocks.dart';
 
 void main() {
   group(DowngradeAccountCommand, () {
@@ -47,11 +38,11 @@ void main() {
     }
 
     setUp(() {
-      codePushClientWrapper = _MockCodePushClientWrapper();
-      codePushClient = _MockCodePushClient();
-      logger = _MockLogger();
-      progress = _MockProgress();
-      shorebirdValidator = _MockShorebirdValidator();
+      codePushClientWrapper = MockCodePushClientWrapper();
+      codePushClient = MockCodePushClient();
+      logger = MockLogger();
+      progress = MockProgress();
+      shorebirdValidator = MockShorebirdValidator();
 
       when(
         () => codePushClientWrapper.codePushClient,

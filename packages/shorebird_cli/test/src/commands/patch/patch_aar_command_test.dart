@@ -24,42 +24,8 @@ import 'package:shorebird_cli/src/shorebird_validator.dart';
 import 'package:shorebird_code_push_client/shorebird_code_push_client.dart';
 import 'package:test/test.dart';
 
-class _FakeBaseRequest extends Fake implements http.BaseRequest {}
-
-class _MockAndroidArchiveDiffer extends Mock implements AndroidArchiveDiffer {}
-
-class _MockArgResults extends Mock implements ArgResults {}
-
-class _MockAuth extends Mock implements Auth {}
-
-class _MockCache extends Mock implements Cache {}
-
-class _MockCodePushClientWrapper extends Mock
-    implements CodePushClientWrapper {}
-
-class _MockLogger extends Mock implements Logger {}
-
-class _MockPatchDiffChecker extends Mock implements PatchDiffChecker {}
-
-class _MockPlatform extends Mock implements Platform {}
-
-class _MockProgress extends Mock implements Progress {}
-
-class _MockProcessResult extends Mock implements ShorebirdProcessResult {}
-
-class _MockProcessWrapper extends Mock implements ProcessWrapper {}
-
-class _MockHttpClient extends Mock implements http.Client {}
-
-class _MockShorebirdEnv extends Mock implements ShorebirdEnv {}
-
-class _MockShorebirdFlutter extends Mock implements ShorebirdFlutter {}
-
-class _MockShorebirdProcess extends Mock implements ShorebirdProcess {}
-
-class _MockShorebirdValidator extends Mock implements ShorebirdValidator {}
-
-class _FakeShorebirdProcess extends Fake implements ShorebirdProcess {}
+import '../../fakes.dart';
+import '../../mocks.dart';
 
 void main() {
   group(PatchAarCommand, () {
@@ -177,32 +143,32 @@ void main() {
       registerFallbackValue(File(''));
       registerFallbackValue(FileSetDiff.empty());
       registerFallbackValue(Uri.parse('https://example.com'));
-      registerFallbackValue(_FakeBaseRequest());
-      registerFallbackValue(_FakeShorebirdProcess());
+      registerFallbackValue(FakeBaseRequest());
+      registerFallbackValue(FakeShorebirdProcess());
     });
 
     setUp(() {
-      archiveDiffer = _MockAndroidArchiveDiffer();
-      argResults = _MockArgResults();
-      auth = _MockAuth();
-      codePushClientWrapper = _MockCodePushClientWrapper();
+      archiveDiffer = MockAndroidArchiveDiffer();
+      argResults = MockArgResults();
+      auth = MockAuth();
+      codePushClientWrapper = MockCodePushClientWrapper();
       shorebirdRoot = Directory.systemTemp.createTempSync();
       flutterDirectory = Directory(
         p.join(shorebirdRoot.path, 'bin', 'cache', 'flutter'),
       );
-      patchDiffChecker = _MockPatchDiffChecker();
-      platform = _MockPlatform();
-      progress = _MockProgress();
-      logger = _MockLogger();
-      flutterBuildProcessResult = _MockProcessResult();
-      flutterPubGetProcessResult = _MockProcessResult();
-      patchProcessResult = _MockProcessResult();
-      httpClient = _MockHttpClient();
-      cache = _MockCache();
-      shorebirdEnv = _MockShorebirdEnv();
-      shorebirdFlutter = _MockShorebirdFlutter();
-      shorebirdProcess = _MockShorebirdProcess();
-      shorebirdValidator = _MockShorebirdValidator();
+      patchDiffChecker = MockPatchDiffChecker();
+      platform = MockPlatform();
+      progress = MockProgress();
+      logger = MockLogger();
+      flutterBuildProcessResult = MockProcessResult();
+      flutterPubGetProcessResult = MockProcessResult();
+      patchProcessResult = MockProcessResult();
+      httpClient = MockHttpClient();
+      cache = MockCache();
+      shorebirdEnv = MockShorebirdEnv();
+      shorebirdFlutter = MockShorebirdFlutter();
+      shorebirdProcess = MockShorebirdProcess();
+      shorebirdValidator = MockShorebirdValidator();
 
       registerFallbackValue(ReleasePlatform.android);
 
@@ -574,7 +540,7 @@ Please re-run the release command for this version or create a new release.'''),
       );
       const otherRevision = 'other-revision';
       when(() => shorebirdEnv.flutterRevision).thenReturn(otherRevision);
-      final processWrapper = _MockProcessWrapper();
+      final processWrapper = MockProcessWrapper();
       when(
         () => processWrapper.run(
           any(),

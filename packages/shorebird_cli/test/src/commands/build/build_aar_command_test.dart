@@ -10,19 +10,7 @@ import 'package:shorebird_cli/src/shorebird_env.dart';
 import 'package:shorebird_cli/src/shorebird_validator.dart';
 import 'package:test/test.dart';
 
-class _MockArgResults extends Mock implements ArgResults {}
-
-class _MockLogger extends Mock implements Logger {}
-
-class _MockProcessResult extends Mock implements ShorebirdProcessResult {}
-
-class _MockProgress extends Mock implements Progress {}
-
-class _MockShorebirdEnv extends Mock implements ShorebirdEnv {}
-
-class _MockShorebirdProcess extends Mock implements ShorebirdProcess {}
-
-class _MockShorebirdValidator extends Mock implements ShorebirdValidator {}
+import '../../mocks.dart';
 
 void main() {
   group(BuildAarCommand, () {
@@ -52,14 +40,14 @@ void main() {
     }
 
     setUp(() {
-      argResults = _MockArgResults();
-      logger = _MockLogger();
-      flutterPubGetProcessResult = _MockProcessResult();
-      buildProcessResult = _MockProcessResult();
-      progress = _MockProgress();
-      shorebirdEnv = _MockShorebirdEnv();
-      shorebirdProcess = _MockShorebirdProcess();
-      shorebirdValidator = _MockShorebirdValidator();
+      argResults = MockArgResults();
+      logger = MockLogger();
+      flutterPubGetProcessResult = MockProcessResult();
+      buildProcessResult = MockProcessResult();
+      progress = MockProgress();
+      shorebirdEnv = MockShorebirdEnv();
+      shorebirdProcess = MockShorebirdProcess();
+      shorebirdValidator = MockShorebirdValidator();
 
       when(() => argResults['build-number']).thenReturn(buildNumber);
       when(() => argResults.rest).thenReturn([]);

@@ -14,21 +14,7 @@ import 'package:shorebird_cli/src/process.dart';
 import 'package:shorebird_cli/src/shorebird_env.dart';
 import 'package:test/test.dart';
 
-class _MockLogger extends Mock implements Logger {}
-
-class _MockPlatform extends Mock implements Platform {}
-
-class _MockProgress extends Mock implements Progress {}
-
-class _MockShorebirdProcess extends Mock implements ShorebirdProcess {}
-
-class _MockProcess extends Mock implements Process {}
-
-class _MockIOSink extends Mock implements IOSink {}
-
-class _MockProcessSignal extends Mock implements ProcessSignal {}
-
-class _MockShorebirdEnv extends Mock implements ShorebirdEnv {}
+import 'mocks.dart';
 
 void main() {
   group(IOSDeploy, () {
@@ -54,13 +40,13 @@ void main() {
     }
 
     setUp(() {
-      logger = _MockLogger();
-      platform = _MockPlatform();
-      shorebirdProcess = _MockShorebirdProcess();
-      process = _MockProcess();
-      progress = _MockProgress();
-      ioSink = _MockIOSink();
-      shorebirdEnv = _MockShorebirdEnv();
+      logger = MockLogger();
+      platform = MockPlatform();
+      shorebirdProcess = MockShorebirdProcess();
+      process = MockProcess();
+      progress = MockProgress();
+      ioSink = MockIOSink();
+      shorebirdEnv = MockShorebirdEnv();
       iosDeploy = IOSDeploy();
 
       final tempDir = Directory.systemTemp.createTempSync();
@@ -278,7 +264,7 @@ void main() {
       });
 
       test('kills process on sigint', () async {
-        final signal = _MockProcessSignal();
+        final signal = MockProcessSignal();
         final controller = StreamController<ProcessSignal>();
         iosDeploy = IOSDeploy(sigint: signal);
         when(signal.watch).thenAnswer((_) => controller.stream);

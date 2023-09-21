@@ -12,19 +12,8 @@ import 'package:shorebird_cli/src/patch_diff_checker.dart';
 import 'package:shorebird_cli/src/shorebird_env.dart';
 import 'package:test/test.dart';
 
-class _FakeBaseRequest extends Fake implements http.BaseRequest {}
-
-class _MockArchiveDiffer extends Mock implements ArchiveDiffer {}
-
-class _MockFileSetDiff extends Mock implements FileSetDiff {}
-
-class _MockHttpClient extends Mock implements http.Client {}
-
-class _MockLogger extends Mock implements Logger {}
-
-class _MockProgress extends Mock implements Progress {}
-
-class _MockShorebirdEnv extends Mock implements ShorebirdEnv {}
+import 'fakes.dart';
+import 'mocks.dart';
 
 void main() {
   group(PatchDiffChecker, () {
@@ -54,17 +43,17 @@ void main() {
 
     setUpAll(() {
       registerFallbackValue(FileSetDiff.empty());
-      registerFallbackValue(_FakeBaseRequest());
+      registerFallbackValue(FakeBaseRequest());
     });
 
     setUp(() {
-      archiveDiffer = _MockArchiveDiffer();
-      assetsFileSetDiff = _MockFileSetDiff();
-      nativeFileSetDiff = _MockFileSetDiff();
-      httpClient = _MockHttpClient();
-      logger = _MockLogger();
-      progress = _MockProgress();
-      shorebirdEnv = _MockShorebirdEnv();
+      archiveDiffer = MockArchiveDiffer();
+      assetsFileSetDiff = MockFileSetDiff();
+      nativeFileSetDiff = MockFileSetDiff();
+      httpClient = MockHttpClient();
+      logger = MockLogger();
+      progress = MockProgress();
+      shorebirdEnv = MockShorebirdEnv();
       patchDiffChecker = PatchDiffChecker(httpClient: httpClient);
 
       when(() => archiveDiffer.changedFiles(any(), any()))

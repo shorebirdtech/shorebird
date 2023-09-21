@@ -14,19 +14,7 @@ import 'package:shorebird_cli/src/third_party/flutter_tools/lib/flutter_tools.da
 import 'package:shorebird_code_push_client/shorebird_code_push_client.dart';
 import 'package:test/test.dart';
 
-class _MockAuth extends Mock implements Auth {}
-
-class _MockCodePushClient extends Mock implements CodePushClient {}
-
-class _MockHttpClient extends Mock implements http.Client {}
-
-class _MockLogger extends Mock implements Logger {}
-
-class _MockPlatform extends Mock implements Platform {}
-
-class _MockProgress extends Mock implements Progress {}
-
-class _MockShorebirdEnv extends Mock implements ShorebirdEnv {}
+import 'mocks.dart';
 
 void main() {
   group('scoped', () {
@@ -36,10 +24,10 @@ void main() {
     late ShorebirdEnv shorebirdEnv;
 
     setUp(() {
-      auth = _MockAuth();
-      httpClient = _MockHttpClient();
-      platform = _MockPlatform();
-      shorebirdEnv = _MockShorebirdEnv();
+      auth = MockAuth();
+      httpClient = MockHttpClient();
+      platform = MockPlatform();
+      shorebirdEnv = MockShorebirdEnv();
 
       when(() => auth.client).thenReturn(httpClient);
       when(() => shorebirdEnv.hostedUri).thenReturn(
@@ -143,10 +131,10 @@ void main() {
     tearDownAll(restoreExitFunction);
 
     setUp(() {
-      codePushClient = _MockCodePushClient();
-      logger = _MockLogger();
-      platform = _MockPlatform();
-      progress = _MockProgress();
+      codePushClient = MockCodePushClient();
+      logger = MockLogger();
+      platform = MockPlatform();
+      progress = MockProgress();
 
       codePushClientWrapper = runWithOverrides(
         () => CodePushClientWrapper(codePushClient: codePushClient),

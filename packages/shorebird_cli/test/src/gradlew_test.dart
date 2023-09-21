@@ -11,13 +11,7 @@ import 'package:shorebird_cli/src/platform.dart';
 import 'package:shorebird_cli/src/process.dart';
 import 'package:test/test.dart';
 
-class _MockJava extends Mock implements Java {}
-
-class _MockPlatform extends Mock implements Platform {}
-
-class _MockProcess extends Mock implements ShorebirdProcess {}
-
-class _MockProcessResult extends Mock implements ShorebirdProcessResult {}
+import 'mocks.dart';
 
 void main() {
   group(Gradlew, () {
@@ -41,10 +35,10 @@ void main() {
     }
 
     setUp(() {
-      java = _MockJava();
-      platform = _MockPlatform();
-      process = _MockProcess();
-      result = _MockProcessResult();
+      java = MockJava();
+      platform = MockPlatform();
+      process = MockShorebirdProcess();
+      result = MockProcessResult();
       gradlew = runWithOverrides(Gradlew.new);
 
       when(() => java.home).thenReturn(javaHome);
