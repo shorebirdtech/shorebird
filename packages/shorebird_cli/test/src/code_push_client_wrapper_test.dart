@@ -79,13 +79,15 @@ void main() {
     const flutterRevision = '123';
     const displayName = 'TestApp';
     const releaseVersion = '1.0.0';
-    const release = Release(
+    final release = Release(
       id: 1,
       appId: appId,
       version: releaseVersion,
       flutterRevision: flutterRevision,
       displayName: displayName,
       platformStatuses: {},
+      createdAt: DateTime(2023),
+      updatedAt: DateTime(2023),
     );
     final partchArtifactBundle = PatchArtifactBundle(
       arch: arch.name,
@@ -435,7 +437,7 @@ void main() {
             expect(
               () => runWithOverrides(
                 () => codePushClientWrapper.ensureReleaseIsNotActive(
-                  release: const Release(
+                  release: Release(
                     id: releaseId,
                     appId: appId,
                     version: releaseVersion,
@@ -444,6 +446,8 @@ void main() {
                     platformStatuses: {
                       releasePlatform: ReleaseStatus.active,
                     },
+                    createdAt: DateTime(2023),
+                    updatedAt: DateTime(2023),
                   ),
                   platform: releasePlatform,
                 ),
@@ -467,13 +471,15 @@ Please bump your version number and try again.''',
             await expectLater(
               runWithOverrides(
                 () async => codePushClientWrapper.ensureReleaseIsNotActive(
-                  release: const Release(
+                  release: Release(
                     id: releaseId,
                     appId: appId,
                     version: releaseVersion,
                     flutterRevision: flutterRevision,
                     displayName: displayName,
                     platformStatuses: {},
+                    createdAt: DateTime(2023),
+                    updatedAt: DateTime(2023),
                   ),
                   platform: releasePlatform,
                 ),
@@ -489,13 +495,15 @@ Please bump your version number and try again.''',
             await expectLater(
               runWithOverrides(
                 () async => codePushClientWrapper.ensureReleaseIsNotActive(
-                  release: const Release(
+                  release: Release(
                     id: releaseId,
                     appId: appId,
                     version: releaseVersion,
                     flutterRevision: flutterRevision,
                     displayName: displayName,
                     platformStatuses: {releasePlatform: ReleaseStatus.draft},
+                    createdAt: DateTime(2023),
+                    updatedAt: DateTime(2023),
                   ),
                   platform: releasePlatform,
                 ),

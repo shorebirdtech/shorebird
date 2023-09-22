@@ -25,6 +25,10 @@ Release _$ReleaseFromJson(Map<String, dynamic> json) => $checkedCreate(
                     (k, e) => MapEntry($enumDecode(_$ReleasePlatformEnumMap, k),
                         $enumDecode(_$ReleaseStatusEnumMap, e)),
                   )),
+          createdAt:
+              $checkedConvert('created_at', (v) => DateTime.parse(v as String)),
+          updatedAt:
+              $checkedConvert('updated_at', (v) => DateTime.parse(v as String)),
         );
         return val;
       },
@@ -32,7 +36,9 @@ Release _$ReleaseFromJson(Map<String, dynamic> json) => $checkedCreate(
         'appId': 'app_id',
         'flutterRevision': 'flutter_revision',
         'displayName': 'display_name',
-        'platformStatuses': 'platform_statuses'
+        'platformStatuses': 'platform_statuses',
+        'createdAt': 'created_at',
+        'updatedAt': 'updated_at'
       },
     );
 
@@ -44,6 +50,8 @@ Map<String, dynamic> _$ReleaseToJson(Release instance) => <String, dynamic>{
       'display_name': instance.displayName,
       'platform_statuses': instance.platformStatuses.map((k, e) =>
           MapEntry(_$ReleasePlatformEnumMap[k]!, _$ReleaseStatusEnumMap[e]!)),
+      'created_at': instance.createdAt.toIso8601String(),
+      'updated_at': instance.updatedAt.toIso8601String(),
     };
 
 const _$ReleaseStatusEnumMap = {

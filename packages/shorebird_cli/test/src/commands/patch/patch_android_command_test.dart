@@ -68,13 +68,15 @@ void main() {
       size: 42,
       url: 'https://example.com/release.aab',
     );
-    const release = Release(
+    final release = Release(
       id: 0,
       appId: appId,
       version: version,
       flutterRevision: flutterRevision,
       displayName: '1.2.3+1',
       platformStatuses: {},
+      createdAt: DateTime(2023),
+      updatedAt: DateTime(2023),
     );
     const pubspecYamlContent = '''
 name: example
@@ -417,13 +419,15 @@ flutter:
           releaseVersion: any(named: 'releaseVersion'),
         ),
       ).thenAnswer(
-        (_) async => const Release(
+        (_) async => Release(
           id: 0,
           appId: appId,
           version: version,
           flutterRevision: flutterRevision,
           displayName: '1.2.3+1',
           platformStatuses: {releasePlatform: ReleaseStatus.draft},
+          createdAt: DateTime(2023),
+          updatedAt: DateTime(2023),
         ),
       );
       final tempDir = setUpTempDir();
@@ -447,7 +451,7 @@ Please re-run the release command for this version or create a new release.'''),
           appId: any(named: 'appId'),
         ),
       ).thenAnswer(
-        (_) async => const [
+        (_) async => [
           Release(
             id: 0,
             appId: appId,
@@ -455,6 +459,8 @@ Please re-run the release command for this version or create a new release.'''),
             flutterRevision: flutterRevision,
             displayName: '1.2.3+1',
             platformStatuses: {ReleasePlatform.ios: ReleaseStatus.draft},
+            createdAt: DateTime(2023),
+            updatedAt: DateTime(2023),
           ),
         ],
       );

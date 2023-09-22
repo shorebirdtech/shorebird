@@ -40,13 +40,15 @@ void main() {
     const versionName = '1.2.3';
     const versionCode = '1';
     const version = '$versionName+$versionCode';
-    const release = Release(
+    final release = Release(
       id: 0,
       appId: appId,
       version: version,
       flutterRevision: flutterRevision,
       displayName: '1.2.3+1',
       platformStatuses: {},
+      createdAt: DateTime(2023),
+      updatedAt: DateTime(2023),
     );
     const releasePlatform = ReleasePlatform.android;
     const buildNumber = '1.0';
