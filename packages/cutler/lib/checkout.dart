@@ -110,6 +110,45 @@ class Checkout {
     );
   }
 
+  Version remoteBranch({required String branch, required String remote}) {
+    final output = runCommand(
+      'git',
+      ['ls-remote', '--refs', remote, branch],
+      workingDirectory: workingDirectory,
+    );
+    final hash = output.split('\t').first;
+    final name = output.split('\t').last;
+    return Version(
+      hash: hash,
+      repo: repo,
+      aliases: [name],
+    );
+  }
+
+  Version remoteTag({required String tag, required String remote}) {
+    final output = runCommand(
+      'git',
+      ['ls-remote', '--tags', remote, tag],
+      workingDirectory: workingDirectory,
+    );
+    final hash = output.split('\t').first;
+    final name = output.split('\t').last;
+    return Version(
+      hash: hash,
+      repo: repo,
+      aliases: [name],
+    );
+  }
+
+  bool isAncestor({required String ancestor, required String descendant}) {
+    final output = runCommand(
+      'git',
+      ['merge-base', '--is-ancestor', ancestor, descendant],
+      workingDirectory: workingDirectory,
+    );
+    return output == 'true';
+  }
+
   /// Returns a count of commits between two commits in this repo.
   int countCommits({required String from, required String to}) {
     final output = runCommand(
