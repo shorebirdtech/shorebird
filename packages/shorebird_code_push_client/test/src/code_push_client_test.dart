@@ -1580,9 +1580,12 @@ void main() {
       });
 
       test('completes when request succeeds (empty)', () async {
+        final expected = <AppMetadata>[];
         when(() => httpClient.send(any())).thenAnswer(
           (_) async => http.StreamedResponse(
-            Stream.value(utf8.encode(json.encode([]))),
+            Stream.value(
+              utf8.encode(json.encode(GetAppsResponse(apps: expected))),
+            ),
             HttpStatus.ok,
           ),
         );
@@ -1609,7 +1612,9 @@ void main() {
 
         when(() => httpClient.send(any())).thenAnswer(
           (_) async => http.StreamedResponse(
-            Stream.value(utf8.encode(json.encode(expected))),
+            Stream.value(
+              utf8.encode(json.encode(GetAppsResponse(apps: expected))),
+            ),
             HttpStatus.ok,
           ),
         );
