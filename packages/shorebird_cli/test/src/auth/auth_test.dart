@@ -76,7 +76,7 @@ void main() {
         () => Auth(
           credentialsDir: credentialsDir,
           httpClient: httpClient,
-          buildCodePushClient: ({Uri? hostedUri, http.Client? httpClient}) {
+          codePushClientWrapper: ({Uri? hostedUri, http.Client? httpClient}) {
             return codePushClient;
           },
           obtainAccessCredentials:

@@ -137,13 +137,13 @@ class Auth {
     http.Client? httpClient,
     String? credentialsDir,
     ObtainAccessCredentials? obtainAccessCredentials,
-    CodePushClientBuilder? buildCodePushClient,
+    CodePushClientBuilder? codePushClientWrapper,
   })  : _httpClient = httpClient ?? _defaultHttpClient,
         _credentialsDir =
             credentialsDir ?? applicationConfigHome(executableName),
         _obtainAccessCredentials = obtainAccessCredentials ??
             oauth2.obtainAccessCredentialsViaUserConsent,
-        _buildCodePushClient = buildCodePushClient ?? CodePushClient.new {
+        _codePushClientWrapper = codePushClientWrapper ?? CodePushClient.new {
     _loadCredentials();
   }
 
@@ -154,7 +154,7 @@ class Auth {
   final http.Client _httpClient;
   final String _credentialsDir;
   final ObtainAccessCredentials _obtainAccessCredentials;
-  final CodePushClientBuilder _buildCodePushClient;
+  final CodePushClientBuilder _codePushClientWrapper;
   String? _token;
 
   String get credentialsFilePath {
@@ -187,7 +187,7 @@ class Auth {
         prompt,
       );
 
-      final codePushClient = _buildCodePushClient(
+      final codePushClient = _codePushClientWrapper(
         httpClient: AuthenticatedClient.credentials(
           credentials: credentials,
           httpClient: _httpClient,
@@ -217,7 +217,7 @@ class Auth {
         prompt,
       );
 
-      final codePushClient = _buildCodePushClient(httpClient: this.client);
+      final codePushClient = _codePushClientWrapper(httpClient: this.client);
 
       final user = await codePushClient.getCurrentUser();
       if (user == null) {
