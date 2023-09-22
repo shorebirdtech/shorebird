@@ -5,4 +5,4 @@
 # See https://docs.codecov.com/docs/flags
 flag_management:
   default_rules: # the rules that will be followed for any flag added, generally
-    carryforward: true
+    carryforward: false
