@@ -111,7 +111,7 @@ jobs:
         with:
           codecov_token: ${{ secrets.CODECOV_TOKEN }}
           working_directory: packages/${{ matrix.package }}
-          min_coverage: ${{ '100' }}
+          min_coverage: 100
 
   build_redis:
     needs: changes
