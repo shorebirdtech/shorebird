@@ -23,7 +23,6 @@ This repository is a monorepo containing the following packages:
 | [shorebird_cli](packages/shorebird_cli/README.md)                               | Command-line which allows developers to interact with various Shorebird services        |
 | [shorebird_code_push_client](packages/shorebird_code_push_client/README.md)     | Dart library which allows Dart applications to interact with the ShoreBird CodePush API |
 | [shorebird_code_push_protocol](packages/shorebird_code_push_protocol/README.md) | Dart library which contains common interfaces used by Shorebird CodePush                |
-| [cutler](packages/cutler/README.md)                                             | A tool for managing Flutter forks                                                       |
 | [discord_gcp_alerts](packages/discord_gcp_alerts/README.md)                     | Dart server which forwards GCP alerts to Discord                                        |
 | [jwt](packages/jwt/README.md)                                                   | Dart library for verifying Json Web Tokens                                              |
 | [redis_client](packages/redis_client/README.md)                                 | Dart library for interacting with Redis                                                 |
