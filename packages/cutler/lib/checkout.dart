@@ -8,7 +8,8 @@ import 'package:path/path.dart' as p;
 /// That lets the models be pure data objects, and keeps the command-running
 /// code separate.  Unsure if this is a good design or not.
 
-String runCommand(
+/// Runs a command and returns the result.
+ProcessResult runCommandInner(
   String executable,
   List<String> arguments, {
   String? workingDirectory,
@@ -23,7 +24,20 @@ String runCommand(
       : ' (in $workingDirectory)';
   logger.detail("$executable ${arguments.join(' ')}$workingDirectoryString");
 
-  final result = Process.runSync(
+  return Process.runSync(
+    executable,
+    arguments,
+    workingDirectory: workingDirectory,
+  );
+}
+
+/// Runs a command and returns stdout, trimmed.
+String runCommand(
+  String executable,
+  List<String> arguments, {
+  String? workingDirectory,
+}) {
+  final result = runCommandInner(
     executable,
     arguments,
     workingDirectory: workingDirectory,
@@ -110,6 +124,7 @@ class Checkout {
     );
   }
 
+  /// Returns a [Version] for the given [branch] in the given [remote].
   Version remoteBranch({required String branch, required String remote}) {
     final output = runCommand(
       'git',
@@ -125,6 +140,7 @@ class Checkout {
     );
   }
 
+  /// Returns a [Version] for the given [tag] in the given [remote].
   Version remoteTag({required String tag, required String remote}) {
     final output = runCommand(
       'git',
@@ -140,13 +156,14 @@ class Checkout {
     );
   }
 
+  /// Returns true if [ancestor] is an ancestor of [descendant] in this repo.
   bool isAncestor({required String ancestor, required String descendant}) {
-    final output = runCommand(
+    final result = runCommandInner(
       'git',
       ['merge-base', '--is-ancestor', ancestor, descendant],
       workingDirectory: workingDirectory,
     );
-    return output == 'true';
+    return result.exitCode == 0;
   }
 
   /// Returns a count of commits between two commits in this repo.
