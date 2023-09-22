@@ -301,7 +301,6 @@ diffing for iOS. Uploading full artifact as patch.''',
         return ExitCode.software.code;
       }
 
-      logger.detail('Creating artifact for $_aotOutputPath');
       try {
         patchFile = File(
           await artifactManager.createDiff(
