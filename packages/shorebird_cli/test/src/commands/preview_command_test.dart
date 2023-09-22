@@ -213,7 +213,7 @@ void main() {
         when(
           () => artifactManager.extractZip(
             zipFile: any(named: 'zipFile'),
-            outputPath: any(named: 'outputPath'),
+            outputDirectory: any(named: 'outputDirectory'),
           ),
         ).thenAnswer((_) async {});
         when(
@@ -549,7 +549,7 @@ void main() {
         when(
           () => artifactManager.extractZip(
             zipFile: any(named: 'zipFile'),
-            outputPath: any(named: 'outputPath'),
+            outputDirectory: any(named: 'outputDirectory'),
           ),
         ).thenAnswer((_) async {});
         when(
@@ -605,7 +605,7 @@ void main() {
         when(
           () => artifactManager.extractZip(
             zipFile: any(named: 'zipFile'),
-            outputPath: any(named: 'outputPath'),
+            outputDirectory: any(named: 'outputDirectory'),
           ),
         ).thenThrow(exception);
         final result = await runWithOverrides(command.run);

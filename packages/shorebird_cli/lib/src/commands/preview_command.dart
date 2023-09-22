@@ -276,7 +276,7 @@ class PreviewCommand extends ShorebirdCommand {
         );
         await artifactManager.extractZip(
           zipFile: File(archivePath),
-          outputPath: runnerDirectory,
+          outputDirectory: runnerDirectory,
         );
         downloadArtifactProgress.complete();
       } catch (error) {
