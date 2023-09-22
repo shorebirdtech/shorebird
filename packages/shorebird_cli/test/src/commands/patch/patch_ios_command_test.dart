@@ -32,6 +32,8 @@ import '../../mocks.dart';
 
 void main() {
   const nonDiffFlutterRevision = '83305b5088e6fe327fb3334a73ff190828d85713';
+  // TODO(bryanoltman): replace this with a real flutter revision once we
+  // release a version of the engine that supports iOS patch diffs.
   const flutterRevision = '1234';
   const appId = 'test-app-id';
   const shorebirdYaml = ShorebirdYaml(appId: appId);

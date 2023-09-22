@@ -36,6 +36,8 @@ void main() {
     const version = '$versionName+$versionCode';
     const elfAotSnapshotFileName = 'out.aot';
     const nonDiffFlutterRevision = '83305b5088e6fe327fb3334a73ff190828d85713';
+    // TODO(bryanoltman): replace this with a real flutter revision once we
+    // release a version of the engine that supports iOS patch diffs.
     const flutterRevision = '1234';
     const pubspecYamlContent = '''
 name: example
