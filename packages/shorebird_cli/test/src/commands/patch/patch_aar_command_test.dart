@@ -703,7 +703,8 @@ Please re-run the release command for this version or create a new release.'''),
       );
     });
 
-    test('throws error when creating diff fails', () async {
+    test('exits with code 70 and prints error when creating diff fails',
+        () async {
       final error = Exception('oops something went wrong');
       when(
         () => artifactManager.createDiff(

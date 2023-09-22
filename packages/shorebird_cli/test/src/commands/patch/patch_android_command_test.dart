@@ -719,6 +719,25 @@ Please re-run the release command for this version or create a new release.'''),
       );
     });
 
+    test('exits with code 70 and prints error when creating diff fails',
+        () async {
+      final error = Exception('oops something went wrong');
+      when(
+        () => artifactManager.createDiff(
+          releaseArtifactPath: any(named: 'releaseArtifactPath'),
+          patchArtifactPath: any(named: 'patchArtifactPath'),
+        ),
+      ).thenThrow(error);
+      final tempDir = setUpTempDir();
+      setUpTempArtifacts(tempDir);
+      final exitCode = await IOOverrides.runZoned(
+        () => runWithOverrides(command.run),
+        getCurrentDirectory: () => tempDir,
+      );
+      verify(() => progress.fail('$error')).called(1);
+      expect(exitCode, ExitCode.software.code);
+    });
+
     test('does not create patch on --dry-run', () async {
       when(() => argResults['dry-run']).thenReturn(true);
       final tempDir = setUpTempDir();
