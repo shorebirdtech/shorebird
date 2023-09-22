@@ -141,19 +141,41 @@ class Checkout {
   }
 
   /// Returns a [Version] for the given [tag] in the given [remote].
-  Version remoteTag({required String tag, required String remote}) {
-    final output = runCommand(
-      'git',
-      ['ls-remote', '--tags', remote, tag],
-      workingDirectory: workingDirectory,
-    );
-    final hash = output.split('\t').first;
-    final name = output.split('\t').last;
-    return Version(
-      hash: hash,
-      repo: repo,
-      aliases: [name],
-    );
+  Version remoteTag({
+    required String remote,
+    required String tag,
+  }) {
+    final tags = remoteTags(remote: remote, pattern: tag);
+    if (tags.isEmpty) {
+      throw Exception('No tags found for $tag in $remote');
+    }
+    if (tags.length > 1) {
+      throw Exception('Multiple tags found for $tag in $remote');
+    }
+    return tags.first;
+  }
+
+  /// Returns a list of Versions for the given [pattern] in the given [remote].
+  Iterable<Version> remoteTags({
+    required String remote,
+    String? pattern,
+  }) {
+    final args = ['ls-remote', '--tags', remote];
+    if (pattern != null) {
+      args.add(pattern);
+    }
+    final output = runCommand('git', args, workingDirectory: workingDirectory);
+    // split lines
+    final lines = output.split('\n');
+    return lines.map<Version>((line) {
+      final hash = line.split('\t').first;
+      final name = line.split('\t').last;
+      return Version(
+        hash: hash,
+        repo: repo,
+        aliases: [name],
+      );
+    });
   }
 
   /// Returns true if [ancestor] is an ancestor of [descendant] in this repo.
@@ -247,12 +269,3 @@ class Checkout {
     );
   }
 }
-
-/// Extension methods for [Version] to do actual `git` actions.
-// extension VersionCommands on Version {
-//   /// Returns the contents of a file at a given [path] in this repo at this
-//   /// version.
-//   String contentsAtPath(String path) {
-//     return Checkout(repo).contentsAtPath(hash, path);
-//   }
-// }
