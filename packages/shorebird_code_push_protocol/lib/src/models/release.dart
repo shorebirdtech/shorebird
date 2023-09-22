@@ -46,9 +46,9 @@ class Release {
   /// The status of the release for each platform.
   final Map<ReleasePlatform, ReleaseStatus> platformStatuses;
 
-  /// The date and time the app was created.
+  /// The date and time the release was created.
   final DateTime createdAt;
 
-  /// The date and time the app was last updated.
+  /// The date and time the release was last updated.
   final DateTime updatedAt;
 }
