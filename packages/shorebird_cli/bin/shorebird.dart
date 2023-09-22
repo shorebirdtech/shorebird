@@ -4,6 +4,7 @@ import 'package:scoped/scoped.dart';
 import 'package:shorebird_cli/src/adb.dart';
 import 'package:shorebird_cli/src/android_sdk.dart';
 import 'package:shorebird_cli/src/android_studio.dart';
+import 'package:shorebird_cli/src/artifact_manager.dart';
 import 'package:shorebird_cli/src/auth/auth.dart';
 import 'package:shorebird_cli/src/bundletool.dart';
 import 'package:shorebird_cli/src/cache.dart';
@@ -32,6 +33,7 @@ Future<void> main(List<String> args) async {
         adbRef,
         androidSdkRef,
         androidStudioRef,
+        artifactManagerRef,
         authRef,
         bundletoolRef,
         cacheRef,

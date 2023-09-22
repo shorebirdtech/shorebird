@@ -62,7 +62,12 @@ void main() {
           ),
         );
     const appId = 'test-app-id';
-    const app = AppMetadata(appId: appId, displayName: 'Test App');
+    final app = AppMetadata(
+      appId: appId,
+      displayName: 'Test App',
+      createdAt: DateTime(2023),
+      updatedAt: DateTime(2023),
+    );
     const channelName = 'my-channel';
     const channel = Channel(id: 0, appId: appId, name: channelName);
     const patchId = 1;

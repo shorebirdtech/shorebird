@@ -36,7 +36,12 @@ void main() {
     const arch = 'armv7';
     const releasePlatform = ReleasePlatform.ios;
     const ipaPath = 'build/ios/ipa/Runner.ipa';
-    const appMetadata = AppMetadata(appId: appId, displayName: appDisplayName);
+    final appMetadata = AppMetadata(
+      appId: appId,
+      displayName: appDisplayName,
+      createdAt: DateTime(2023),
+      updatedAt: DateTime(2023),
+    );
     const release = Release(
       id: 0,
       appId: appId,
