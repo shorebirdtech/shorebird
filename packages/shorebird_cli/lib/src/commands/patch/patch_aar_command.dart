@@ -207,6 +207,22 @@ Please re-run the release command for this version or create a new release.''');
       unzipFn: _unzipFn,
     );
 
+    final releaseArtifactDownloadProgress =
+        logger.progress('Downloading release artifact');
+    final String releaseAarArtifactPath;
+    try {
+      releaseAarArtifactPath = await artifactManager.downloadFile(
+        Uri.parse(releaseAarArtifact.url),
+        httpClient: _httpClient,
+      );
+    } catch (error) {
+      releaseArtifactDownloadProgress
+          .fail('Failed to download release artifact: $error');
+      return ExitCode.software.code;
+    }
+
+    releaseArtifactDownloadProgress.complete();
+
     try {
       await patchDiffChecker.confirmUnpatchableDiffsIfNecessary(
         localArtifact: File(
@@ -215,7 +231,7 @@ Please re-run the release command for this version or create a new release.''');
             buildNumber: buildNumber,
           ),
         ),
-        releaseArtifactUrl: Uri.parse(releaseAarArtifact.url),
+        releaseArtifact: File(releaseAarArtifactPath),
         archiveDiffer: _archiveDiffer,
         force: force,
       );

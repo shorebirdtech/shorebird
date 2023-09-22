@@ -343,7 +343,7 @@ flutter:
       when(
         () => patchDiffChecker.confirmUnpatchableDiffsIfNecessary(
           localArtifact: any(named: 'localArtifact'),
-          releaseArtifactUrl: any(named: 'releaseArtifactUrl'),
+          releaseArtifact: any(named: 'releaseArtifact'),
           archiveDiffer: archiveDiffer,
           force: any(named: 'force'),
         ),
@@ -645,7 +645,7 @@ Please re-run the release command for this version or create a new release.'''),
       when(
         () => patchDiffChecker.confirmUnpatchableDiffsIfNecessary(
           localArtifact: any(named: 'localArtifact'),
-          releaseArtifactUrl: any(named: 'releaseArtifactUrl'),
+          releaseArtifact: any(named: 'releaseArtifact'),
           archiveDiffer: archiveDiffer,
           force: any(named: 'force'),
         ),
@@ -662,7 +662,8 @@ Please re-run the release command for this version or create a new release.'''),
       verify(
         () => patchDiffChecker.confirmUnpatchableDiffsIfNecessary(
           localArtifact: any(named: 'localArtifact'),
-          releaseArtifactUrl: Uri.parse(aabArtifact.url),
+          releaseArtifact: any(named: 'releaseArtifact'),
+          // releaseArtifactUrl: Uri.parse(aabArtifact.url),
           archiveDiffer: archiveDiffer,
           force: false,
         ),
@@ -685,7 +686,7 @@ Please re-run the release command for this version or create a new release.'''),
       when(
         () => patchDiffChecker.confirmUnpatchableDiffsIfNecessary(
           localArtifact: any(named: 'localArtifact'),
-          releaseArtifactUrl: any(named: 'releaseArtifactUrl'),
+          releaseArtifact: any(named: 'releaseArtifact'),
           archiveDiffer: archiveDiffer,
           force: any(named: 'force'),
         ),
@@ -703,7 +704,8 @@ Please re-run the release command for this version or create a new release.'''),
       verify(
         () => patchDiffChecker.confirmUnpatchableDiffsIfNecessary(
           localArtifact: any(named: 'localArtifact'),
-          releaseArtifactUrl: Uri.parse(aabArtifact.url),
+          releaseArtifact: any(named: 'releaseArtifact'),
+          // releaseArtifactUrl: Uri.parse(aabArtifact.url),
           archiveDiffer: archiveDiffer,
           force: false,
         ),

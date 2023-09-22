@@ -9,6 +9,7 @@ import 'package:platform/platform.dart';
 import 'package:propertylistserialization/propertylistserialization.dart';
 import 'package:scoped/scoped.dart';
 import 'package:shorebird_cli/src/archive_analysis/archive_analysis.dart';
+import 'package:shorebird_cli/src/artifact_manager.dart';
 import 'package:shorebird_cli/src/auth/auth.dart';
 import 'package:shorebird_cli/src/code_push_client_wrapper.dart';
 import 'package:shorebird_cli/src/commands/patch/patch.dart';
@@ -30,7 +31,8 @@ import '../../fakes.dart';
 import '../../mocks.dart';
 
 void main() {
-  const flutterRevision = '83305b5088e6fe327fb3334a73ff190828d85713';
+  const nonDiffFlutterRevision = '83305b5088e6fe327fb3334a73ff190828d85713';
+  const flutterRevision = '1234';
   const appId = 'test-app-id';
   const shorebirdYaml = ShorebirdYaml(appId: appId);
   const versionName = '1.2.3';
@@ -111,6 +113,7 @@ flutter:
 
   group(PatchIosCommand, () {
     late ArgResults argResults;
+    late ArtifactManager artifactManager;
     late Auth auth;
     late CodePushClientWrapper codePushClientWrapper;
     late Directory flutterDirectory;
@@ -137,6 +140,7 @@ flutter:
       return runScoped(
         body,
         values: {
+          artifactManagerRef.overrideWith(() => artifactManager),
           authRef.overrideWith(() => auth),
           codePushClientWrapperRef.overrideWith(() => codePushClientWrapper),
           doctorRef.overrideWith(() => doctor),
@@ -198,6 +202,7 @@ flutter:
       registerFallbackValue(Directory(''));
       registerFallbackValue(File(''));
       registerFallbackValue(FileSetDiff.empty());
+      registerFallbackValue(MockHttpClient());
       registerFallbackValue(ReleasePlatform.ios);
       registerFallbackValue(Uri.parse('https://example.com'));
       registerFallbackValue(FakeBaseRequest());
@@ -206,6 +211,7 @@ flutter:
 
     setUp(() {
       argResults = MockArgResults();
+      artifactManager = MockArtifactManager();
       auth = MockAuth();
       codePushClientWrapper = MockCodePushClientWrapper();
       doctor = MockDoctor();
@@ -244,6 +250,36 @@ flutter:
       when(() => argResults['force']).thenReturn(false);
       when(() => argResults['release-version']).thenReturn(release.version);
       when(() => argResults.rest).thenReturn([]);
+      when(
+        () => artifactManager.createDiff(
+          patchArtifactPath: any(named: 'patchArtifactPath'),
+          releaseArtifactPath: any(named: 'releaseArtifactPath'),
+        ),
+      ).thenAnswer((_) async {
+        final tempDir = await Directory.systemTemp.createTemp();
+        final diffPath = p.join(tempDir.path, 'diff.patch');
+        File(diffPath)
+          ..createSync(recursive: true)
+          ..writeAsStringSync('diff');
+        return diffPath;
+      });
+      when(
+        () => artifactManager.downloadFile(
+          any(),
+          httpClient: any(named: 'httpClient'),
+        ),
+      ).thenAnswer((_) async => '');
+      when(
+        () => artifactManager.extractZip(
+          zipFile: any(named: 'zipFile'),
+          outputDirectory: any(named: 'outputDirectory'),
+        ),
+      ).thenAnswer((invocation) async {
+        final outputDirectory =
+            invocation.namedArguments[#outputDirectory] as Directory;
+        File(p.join(outputDirectory.path, 'App.framework', 'App'))
+            .createSync(recursive: true);
+      });
       when(() => auth.isAuthenticated).thenReturn(true);
       when(() => auth.client).thenReturn(httpClient);
       when(
@@ -328,7 +364,7 @@ flutter:
       when(
         () => patchDiffChecker.zipAndConfirmUnpatchableDiffsIfNecessary(
           localArtifactDirectory: any(named: 'localArtifactDirectory'),
-          releaseArtifactUrl: any(named: 'releaseArtifactUrl'),
+          releaseArtifact: any(named: 'releaseArtifact'),
           archiveDiffer: archiveDiffer,
           force: any(named: 'force'),
         ),
@@ -516,7 +552,7 @@ error: exportArchive: No signing certificate "iOS Distribution" found
           id: 0,
           appId: appId,
           version: version,
-          flutterRevision: flutterRevision,
+          flutterRevision: nonDiffFlutterRevision,
           displayName: '1.2.3+1',
           platformStatuses: {ReleasePlatform.android: ReleaseStatus.active},
         ),
@@ -544,7 +580,7 @@ error: exportArchive: No signing certificate "iOS Distribution" found
           id: 0,
           appId: appId,
           version: version,
-          flutterRevision: flutterRevision,
+          flutterRevision: nonDiffFlutterRevision,
           displayName: '1.2.3+1',
           platformStatuses: {ReleasePlatform.ios: ReleaseStatus.draft},
         ),
@@ -575,7 +611,7 @@ Please re-run the release command for this version or create a new release.'''),
           id: 0,
           appId: appId,
           version: version,
-          flutterRevision: flutterRevision,
+          flutterRevision: nonDiffFlutterRevision,
           displayName: '1.2.3+1',
           platformStatuses: {
             ReleasePlatform.android: ReleaseStatus.draft,
@@ -720,6 +756,26 @@ Please re-run the release command for this version or create a new release.'''),
       expect(exitCode, ExitCode.software.code);
     });
 
+    test('exits with code 70 when downloading release artifact fails',
+        () async {
+      final exception = Exception('oops');
+      when(
+        () => artifactManager.downloadFile(
+          any(),
+          httpClient: any(named: 'httpClient'),
+          outputPath: any(named: 'outputPath'),
+        ),
+      ).thenThrow(exception);
+      final tempDir = setUpTempDir();
+      setUpTempArtifacts(tempDir);
+      final exitCode = await IOOverrides.runZoned(
+        () => runWithOverrides(command.run),
+        getCurrentDirectory: () => tempDir,
+      );
+      verify(() => progress.fail('$exception')).called(1);
+      expect(exitCode, ExitCode.software.code);
+    });
+
     test(
         '''exits with code 0 if zipAndConfirmUnpatchableDiffsIfNecessary throws UserCancelledException''',
         () async {
@@ -727,7 +783,7 @@ Please re-run the release command for this version or create a new release.'''),
       when(
         () => patchDiffChecker.zipAndConfirmUnpatchableDiffsIfNecessary(
           localArtifactDirectory: any(named: 'localArtifactDirectory'),
-          releaseArtifactUrl: any(named: 'releaseArtifactUrl'),
+          releaseArtifact: any(named: 'releaseArtifact'),
           archiveDiffer: archiveDiffer,
           force: any(named: 'force'),
         ),
@@ -744,7 +800,7 @@ Please re-run the release command for this version or create a new release.'''),
       verify(
         () => patchDiffChecker.zipAndConfirmUnpatchableDiffsIfNecessary(
           localArtifactDirectory: any(named: 'localArtifactDirectory'),
-          releaseArtifactUrl: Uri.parse(ipaArtifact.url),
+          releaseArtifact: any(named: 'releaseArtifact'),
           archiveDiffer: archiveDiffer,
           force: false,
         ),
@@ -767,7 +823,7 @@ Please re-run the release command for this version or create a new release.'''),
       when(
         () => patchDiffChecker.zipAndConfirmUnpatchableDiffsIfNecessary(
           localArtifactDirectory: any(named: 'localArtifactDirectory'),
-          releaseArtifactUrl: any(named: 'releaseArtifactUrl'),
+          releaseArtifact: any(named: 'releaseArtifact'),
           archiveDiffer: archiveDiffer,
           force: any(named: 'force'),
         ),
@@ -784,7 +840,7 @@ Please re-run the release command for this version or create a new release.'''),
       verify(
         () => patchDiffChecker.zipAndConfirmUnpatchableDiffsIfNecessary(
           localArtifactDirectory: any(named: 'localArtifactDirectory'),
-          releaseArtifactUrl: Uri.parse(ipaArtifact.url),
+          releaseArtifact: any(named: 'releaseArtifact'),
           archiveDiffer: archiveDiffer,
           force: false,
         ),
@@ -798,6 +854,80 @@ Please re-run the release command for this version or create a new release.'''),
           patchArtifactBundles: any(named: 'patchArtifactBundles'),
         ),
       );
+    });
+
+    group('diffing', () {
+      test('does not diff releases with old flutter revisions', () async {
+        final oldRelease = Release(
+          id: release.id,
+          appId: release.appId,
+          version: release.version,
+          flutterRevision: nonDiffFlutterRevision,
+          displayName: release.displayName,
+          platformStatuses: release.platformStatuses,
+        );
+        when(
+          () => codePushClientWrapper.getRelease(
+            appId: any(named: 'appId'),
+            releaseVersion: any(named: 'releaseVersion'),
+          ),
+        ).thenAnswer((_) async => oldRelease);
+        final tempDir = setUpTempDir();
+        setUpTempArtifacts(tempDir);
+
+        final exitCode = await IOOverrides.runZoned(
+          () => runWithOverrides(command.run),
+          getCurrentDirectory: () => tempDir,
+        );
+
+        expect(exitCode, equals(ExitCode.success.code));
+        verifyNever(
+          () => artifactManager.createDiff(
+            releaseArtifactPath: any(named: 'releaseArtifactPath'),
+            patchArtifactPath: any(named: 'patchArtifactPath'),
+          ),
+        );
+      });
+
+      test('exits with code 70 when diff creation fails', () async {
+        final error = Exception('failed to create diff');
+        when(
+          () => artifactManager.createDiff(
+            releaseArtifactPath: any(named: 'releaseArtifactPath'),
+            patchArtifactPath: any(named: 'patchArtifactPath'),
+          ),
+        ).thenThrow(error);
+
+        final tempDir = setUpTempDir();
+        setUpTempArtifacts(tempDir);
+
+        final exitCode = await IOOverrides.runZoned(
+          () => runWithOverrides(command.run),
+          getCurrentDirectory: () => tempDir,
+        );
+
+        expect(exitCode, equals(ExitCode.software.code));
+        verify(() => progress.fail('$error')).called(1);
+      });
+
+      test('creates diff if release flutter rev is not in no diff set',
+          () async {
+        final tempDir = setUpTempDir();
+        setUpTempArtifacts(tempDir);
+
+        final exitCode = await IOOverrides.runZoned(
+          () => runWithOverrides(command.run),
+          getCurrentDirectory: () => tempDir,
+        );
+
+        expect(exitCode, equals(ExitCode.success.code));
+        verify(
+          () => artifactManager.createDiff(
+            releaseArtifactPath: any(named: 'releaseArtifactPath'),
+            patchArtifactPath: any(named: 'patchArtifactPath'),
+          ),
+        ).called(1);
+      });
     });
 
     test('does not create patch on --dry-run', () async {
@@ -850,7 +980,7 @@ Please re-run the release command for this version or create a new release.'''),
         () => logger.info(
           any(
             that: contains(
-              '''🕹️  Platform: ${lightCyan.wrap(platformName)} ${lightCyan.wrap('[aarch64 (0 B)]')}''',
+              '''🕹️  Platform: ${lightCyan.wrap(platformName)} ${lightCyan.wrap('[aarch64 (4 B)]')}''',
             ),
           ),
         ),

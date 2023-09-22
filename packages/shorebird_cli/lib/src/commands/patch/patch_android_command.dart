@@ -209,12 +209,23 @@ Current Flutter Revision: $originalFlutterRevision
       }
     }
 
+    final String releaseAabArtifactPath;
+    try {
+      releaseAabArtifactPath = await artifactManager.downloadFile(
+        Uri.parse(releaseAabArtifact.url),
+        httpClient: _httpClient,
+      );
+    } catch (error) {
+      downloadReleaseArtifactProgress.fail('$error');
+      return ExitCode.software.code;
+    }
+
     downloadReleaseArtifactProgress.complete();
 
     try {
       await patchDiffChecker.confirmUnpatchableDiffsIfNecessary(
         localArtifact: File(bundlePath),
-        releaseArtifactUrl: Uri.parse(releaseAabArtifact.url),
+        releaseArtifact: File(releaseAabArtifactPath),
         archiveDiffer: _archiveDiffer,
         force: force,
       );
