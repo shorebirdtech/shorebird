@@ -258,8 +258,11 @@ Please re-run the release command for this version or create a new release.''');
 
     final File patchFile;
     if (_nonIosDiffFlutterRevisions.contains(release.flutterRevision)) {
+      // If the release was created before we introduced diffing for iOS, we
+      // need to upload the entire AOT file.
       patchFile = aotFile;
     } else {
+      // Otherwise, we can generate a diff.
       final diffProgress = logger.progress('Generating diff');
       try {
         final patchFilePath = await artifactManager.createDiff(
