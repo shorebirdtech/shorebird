@@ -36,6 +36,9 @@ class RebaseContext {
   // FIXME(eseidel): This should move onto Repo.
   final String devBranch;
 
+  /// Returns the fully qualified branch name for `shorebird/dev`.
+  String get fullyQualifiedBranch => 'origin/$devBranch';
+
   /// Print the commands needed to rebase `shorebird/dev` to a new revision.
   void printRebase(Repo repo) {
     final path = repo.path;
@@ -51,7 +54,7 @@ class RebaseContext {
       ..info('# ${repo.name}')
       ..info('git -C $path fetch --all --tags')
       ..info('git -C $path rebase --onto $upstreamRef '
-          '$forkpointRef $devBranch')
+          '$forkpointRef $fullyQualifiedBranch')
       ..info('# Handle conflicts');
   }
 
@@ -114,10 +117,11 @@ class RebaseContext {
     for (final repo in forks) {
       if (needsPush(repo)) {
         final path = repo.path;
-        // TODO(eseidel): This uses `shorebird/dev` not `origin/shorebird/dev`
+        final releaseBranch = 'flutter_release/$flutterVersionName';
         logger
-          ..info('git -C $path push origin -f HEAD:shorebird/dev')
+          ..info('git -C $path push origin -f HEAD:$devBranch')
           ..info('git -C $path push --tags')
+          ..info('git -C $path push origin -f $devBranch:$releaseBranch')
           ..info('');
       }
     }
@@ -146,9 +150,8 @@ class RebaseCommand extends CutlerCommand {
 
     // Figure out our current versions, use `shorebird/dev` as our main branch
     // This isn't necessarily a self-consistent set of versions.
-    // TODO(eseidel): move devBranch onto Repo?
-    const devBranch = 'origin/shorebird/dev';
-    final dev = getHeadVersions(checkouts, devBranch);
+    const devBranch = 'shorebird/dev';
+    final dev = getHeadVersions(checkouts, 'origin/$devBranch');
     printVersions(checkouts, dev);
 
     // Check if the VersionSet described by our Flutter fork actually matches
@@ -159,7 +162,7 @@ class RebaseCommand extends CutlerCommand {
     final flutterVersions = getFlutterVersions(checkouts, dev.flutter.hash);
     if (flutterVersions != dev) {
       logger.warn('shorebirdtech/flutter:HEAD version set does not match '
-          'the latest `shorebird/dev` version set, this means this script '
+          'the latest `$devBranch` version set, this means this script '
           'will include new commits in its resulting VersionSet which were '
           'not previously included in the Flutter described by '
           'shorebirdtech/flutter:HEAD.');

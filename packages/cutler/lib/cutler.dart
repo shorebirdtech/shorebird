@@ -15,6 +15,7 @@ class Cutler extends CommandRunner<int> {
   Cutler() : super('cutler', 'A tool for maintaining forks of Flutter.') {
     addCommand(VersionsCommand());
     addCommand(RebaseCommand());
+    addCommand(ValidateCommand());
 
     argParser
       ..addFlag('verbose', abbr: 'v')
