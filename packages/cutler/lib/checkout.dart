@@ -8,7 +8,8 @@ import 'package:path/path.dart' as p;
 /// That lets the models be pure data objects, and keeps the command-running
 /// code separate.  Unsure if this is a good design or not.
 
-String runCommand(
+/// Runs a command and returns the result.
+ProcessResult runCommandInner(
   String executable,
   List<String> arguments, {
   String? workingDirectory,
@@ -23,7 +24,20 @@ String runCommand(
       : ' (in $workingDirectory)';
   logger.detail("$executable ${arguments.join(' ')}$workingDirectoryString");
 
-  final result = Process.runSync(
+  return Process.runSync(
+    executable,
+    arguments,
+    workingDirectory: workingDirectory,
+  );
+}
+
+/// Runs a command and returns stdout, trimmed.
+String runCommand(
+  String executable,
+  List<String> arguments, {
+  String? workingDirectory,
+}) {
+  final result = runCommandInner(
     executable,
     arguments,
     workingDirectory: workingDirectory,
@@ -110,6 +124,70 @@ class Checkout {
     );
   }
 
+  /// Returns a [Version] for the given [branch] in the given [remote].
+  Version remoteBranch({required String branch, required String remote}) {
+    final output = runCommand(
+      'git',
+      ['ls-remote', '--refs', remote, branch],
+      workingDirectory: workingDirectory,
+    );
+    final hash = output.split('\t').first;
+    final name = output.split('\t').last;
+    return Version(
+      hash: hash,
+      repo: repo,
+      aliases: [name],
+    );
+  }
+
+  /// Returns a [Version] for the given [tag] in the given [remote].
+  Version remoteTag({
+    required String remote,
+    required String tag,
+  }) {
+    final tags = remoteTags(remote: remote, pattern: tag);
+    if (tags.isEmpty) {
+      throw Exception('No tags found for $tag in $remote');
+    }
+    if (tags.length > 1) {
+      throw Exception('Multiple tags found for $tag in $remote');
+    }
+    return tags.first;
+  }
+
+  /// Returns a list of Versions for the given [pattern] in the given [remote].
+  Iterable<Version> remoteTags({
+    required String remote,
+    String? pattern,
+  }) {
+    final args = ['ls-remote', '--tags', remote];
+    if (pattern != null) {
+      args.add(pattern);
+    }
+    final output = runCommand('git', args, workingDirectory: workingDirectory);
+    // split lines
+    final lines = output.split('\n');
+    return lines.map<Version>((line) {
+      final hash = line.split('\t').first;
+      final name = line.split('\t').last;
+      return Version(
+        hash: hash,
+        repo: repo,
+        aliases: [name],
+      );
+    });
+  }
+
+  /// Returns true if [ancestor] is an ancestor of [descendant] in this repo.
+  bool isAncestor({required String ancestor, required String descendant}) {
+    final result = runCommandInner(
+      'git',
+      ['merge-base', '--is-ancestor', ancestor, descendant],
+      workingDirectory: workingDirectory,
+    );
+    return result.exitCode == 0;
+  }
+
   /// Returns a count of commits between two commits in this repo.
   int countCommits({required String from, required String to}) {
     final output = runCommand(
@@ -191,12 +269,3 @@ class Checkout {
     );
   }
 }
-
-/// Extension methods for [Version] to do actual `git` actions.
-// extension VersionCommands on Version {
-//   /// Returns the contents of a file at a given [path] in this repo at this
-//   /// version.
-//   String contentsAtPath(String path) {
-//     return Checkout(repo).contentsAtPath(hash, path);
-//   }
-// }
