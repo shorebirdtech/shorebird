@@ -935,6 +935,35 @@ Please re-run the release command for this version or create a new release.'''),
       });
     });
 
+    test(
+        'exits with code 70 if App.framework/App is not found in release artifact',
+        () async {
+      when(
+        () => artifactManager.extractZip(
+          zipFile: any(named: 'zipFile'),
+          outputDirectory: any(named: 'outputDirectory'),
+        ),
+      ).thenAnswer((invocation) async {
+        // The mock of this function in setUp creates App.framework/App. Do
+        // nothing in this case to simulate the file not being found.
+      });
+
+      final tempDir = setUpTempDir();
+      setUpTempArtifacts(tempDir);
+
+      final exitCode = await IOOverrides.runZoned(
+        () => runWithOverrides(command.run),
+        getCurrentDirectory: () => tempDir,
+      );
+
+      expect(exitCode, equals(ExitCode.software.code));
+      verify(
+        () => logger.err(
+          'Could not find App.framework/App in release artifact.',
+        ),
+      ).called(1);
+    });
+
     test('does not create patch on --dry-run', () async {
       when(() => argResults['dry-run']).thenReturn(true);
       final tempDir = setUpTempDir();

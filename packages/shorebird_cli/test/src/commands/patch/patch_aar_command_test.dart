@@ -506,6 +506,26 @@ Please re-run the release command for this version or create a new release.'''),
       expect(exitCode, ExitCode.software.code);
     });
 
+    test('exits with code 70 when downloading aar release artifact fails',
+        () async {
+      final exception = Exception('oops');
+      when(
+        () => artifactManager.downloadFile(
+          Uri.parse(aarArtifact.url),
+          httpClient: any(named: 'httpClient'),
+          outputPath: any(named: 'outputPath'),
+        ),
+      ).thenThrow(exception);
+      final tempDir = setUpTempDir();
+      setUpTempArtifacts(tempDir);
+      final exitCode = await IOOverrides.runZoned(
+        () => runWithOverrides(command.run),
+        getCurrentDirectory: () => tempDir,
+      );
+      verify(() => progress.fail('$exception')).called(1);
+      expect(exitCode, ExitCode.software.code);
+    });
+
     test(
         'installs correct flutter revision '
         'when release flutter revision differs', () async {

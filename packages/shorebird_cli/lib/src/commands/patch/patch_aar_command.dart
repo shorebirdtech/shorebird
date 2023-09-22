@@ -216,8 +216,7 @@ Please re-run the release command for this version or create a new release.''');
         httpClient: _httpClient,
       );
     } catch (error) {
-      releaseArtifactDownloadProgress
-          .fail('Failed to download release artifact: $error');
+      releaseArtifactDownloadProgress.fail('$error');
       return ExitCode.software.code;
     }
 
