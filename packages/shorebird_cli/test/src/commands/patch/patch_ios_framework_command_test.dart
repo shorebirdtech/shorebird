@@ -46,7 +46,12 @@ environment:
 flutter:
   assets:
     - shorebird.yaml''';
-    const appMetadata = AppMetadata(appId: appId, displayName: appDisplayName);
+    final appMetadata = AppMetadata(
+      appId: appId,
+      displayName: appDisplayName,
+      createdAt: DateTime(2023),
+      updatedAt: DateTime(2023),
+    );
     const arch = 'aarch64';
     const xcframeworkArtifact = ReleaseArtifact(
       id: 0,

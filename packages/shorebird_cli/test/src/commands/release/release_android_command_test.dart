@@ -38,7 +38,12 @@ void main() {
     const appDisplayName = 'Test App';
     const arch = 'aarch64';
     const releasePlatform = ReleasePlatform.android;
-    const appMetadata = AppMetadata(appId: appId, displayName: appDisplayName);
+    final appMetadata = AppMetadata(
+      appId: appId,
+      displayName: appDisplayName,
+      createdAt: DateTime(2023),
+      updatedAt: DateTime(2023),
+    );
     const release = Release(
       id: 0,
       appId: appId,

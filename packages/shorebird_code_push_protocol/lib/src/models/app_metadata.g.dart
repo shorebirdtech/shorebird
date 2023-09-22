@@ -15,6 +15,10 @@ AppMetadata _$AppMetadataFromJson(Map<String, dynamic> json) => $checkedCreate(
         final val = AppMetadata(
           appId: $checkedConvert('app_id', (v) => v as String),
           displayName: $checkedConvert('display_name', (v) => v as String),
+          createdAt:
+              $checkedConvert('created_at', (v) => DateTime.parse(v as String)),
+          updatedAt:
+              $checkedConvert('updated_at', (v) => DateTime.parse(v as String)),
           latestReleaseVersion:
               $checkedConvert('latest_release_version', (v) => v as String?),
           latestPatchNumber:
@@ -25,6 +29,8 @@ AppMetadata _$AppMetadataFromJson(Map<String, dynamic> json) => $checkedCreate(
       fieldKeyMap: const {
         'appId': 'app_id',
         'displayName': 'display_name',
+        'createdAt': 'created_at',
+        'updatedAt': 'updated_at',
         'latestReleaseVersion': 'latest_release_version',
         'latestPatchNumber': 'latest_patch_number'
       },
@@ -36,4 +42,6 @@ Map<String, dynamic> _$AppMetadataToJson(AppMetadata instance) =>
       'display_name': instance.displayName,
       'latest_release_version': instance.latestReleaseVersion,
       'latest_patch_number': instance.latestPatchNumber,
+      'created_at': instance.createdAt.toIso8601String(),
+      'updated_at': instance.updatedAt.toIso8601String(),
     };

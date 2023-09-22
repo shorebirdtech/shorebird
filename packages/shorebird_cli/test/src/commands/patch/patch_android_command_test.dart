@@ -44,7 +44,12 @@ void main() {
     const releasePlatform = ReleasePlatform.android;
     const channelName = 'stable';
     const appDisplayName = 'Test App';
-    const app = AppMetadata(appId: appId, displayName: appDisplayName);
+    final appMetadata = AppMetadata(
+      appId: appId,
+      displayName: appDisplayName,
+      createdAt: DateTime(2023),
+      updatedAt: DateTime(2023),
+    );
     const releaseArtifact = ReleaseArtifact(
       id: 0,
       releaseId: 0,
@@ -284,7 +289,7 @@ flutter:
         () => codePushClientWrapper.getApp(
           appId: any(named: 'appId'),
         ),
-      ).thenAnswer((_) async => app);
+      ).thenAnswer((_) async => appMetadata);
       when(
         () => codePushClientWrapper.getRelease(
           appId: any(named: 'appId'),
