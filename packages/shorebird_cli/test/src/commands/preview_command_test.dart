@@ -2,13 +2,13 @@ import 'dart:async';
 import 'dart:convert';
 import 'dart:io';
 
-import 'package:archive/archive.dart';
 import 'package:args/args.dart';
 import 'package:mason_logger/mason_logger.dart';
 import 'package:mocktail/mocktail.dart';
 import 'package:path/path.dart' as p;
 import 'package:scoped/scoped.dart';
 import 'package:shorebird_cli/src/adb.dart';
+import 'package:shorebird_cli/src/artifact_manager.dart';
 import 'package:shorebird_cli/src/auth/auth.dart';
 import 'package:shorebird_cli/src/bundletool.dart';
 import 'package:shorebird_cli/src/cache.dart';
@@ -31,12 +31,10 @@ void main() {
 
     late AppMetadata app;
     late ArgResults argResults;
+    late ArtifactManager artifactManager;
     late Auth auth;
     late Cache cache;
     late CodePushClientWrapper codePushClientWrapper;
-    late HttpClient httpClient;
-    late HttpClientRequest httpClientRequest;
-    late HttpClientResponse httpClientResponse;
     late Logger logger;
     late Directory previewDirectory;
     late Progress progress;
@@ -50,6 +48,7 @@ void main() {
         () => runScoped(
           body,
           values: {
+            artifactManagerRef.overrideWith(() => artifactManager),
             authRef.overrideWith(() => auth),
             cacheRef.overrideWith(() => cache),
             codePushClientWrapperRef.overrideWith(() => codePushClientWrapper),
@@ -57,11 +56,12 @@ void main() {
             shorebirdValidatorRef.overrideWith(() => shorebirdValidator),
           },
         ),
-        createHttpClient: (_) => httpClient,
       );
     }
 
     setUpAll(() {
+      registerFallbackValue(File(''));
+      registerFallbackValue(MockHttpClient());
       registerFallbackValue(ReleasePlatform.android);
       registerFallbackValue(StreamController<List<int>>());
       registerFallbackValue(Uri());
@@ -70,12 +70,10 @@ void main() {
     setUp(() {
       app = MockAppMetadata();
       argResults = MockArgResults();
+      artifactManager = MockArtifactManager();
       auth = MockAuth();
       cache = MockCache();
       codePushClientWrapper = MockCodePushClientWrapper();
-      httpClient = MockIoHttpClient();
-      httpClientRequest = MockHttpClientRequest();
-      httpClientResponse = MockHttpClientResponse();
       logger = MockLogger();
       previewDirectory = Directory.systemTemp.createTempSync();
       progress = MockProgress();
@@ -114,6 +112,7 @@ void main() {
         ReleasePlatform.ios: ReleaseStatus.active,
       });
       when(() => logger.progress(any())).thenReturn(progress);
+      when(() => progress.fail(any())).thenReturn(null);
       when(
         () => shorebirdValidator.validatePreconditions(
           checkUserIsAuthenticated: any(named: 'checkUserIsAuthenticated'),
@@ -184,6 +183,7 @@ void main() {
             body,
             values: {
               adbRef.overrideWith(() => adb),
+              artifactManagerRef.overrideWith(() => artifactManager),
               authRef.overrideWith(() => auth),
               bundletoolRef.overrideWith(() => bundletool),
               cacheRef.overrideWith(() => cache),
@@ -193,7 +193,6 @@ void main() {
               shorebirdValidatorRef.overrideWith(() => shorebirdValidator),
             },
           ),
-          createHttpClient: (_) => httpClient,
         );
       }
 
@@ -204,13 +203,18 @@ void main() {
 
         when(() => argResults['platform']).thenReturn(platform.name);
         when(
-          () => httpClient.getUrl(any()),
-        ).thenAnswer((_) async => httpClientRequest);
+          () => artifactManager.downloadFile(
+            any(),
+            httpClient: any(named: 'httpClient'),
+            outputPath: any(named: 'outputPath'),
+          ),
+        ).thenAnswer((_) async => '');
         when(
-          () => httpClientRequest.close(),
-        ).thenAnswer((_) async => httpClientResponse);
-        when(() => httpClientResponse.statusCode).thenReturn(HttpStatus.ok);
-        when(() => httpClientResponse.pipe(any())).thenAnswer((_) async {});
+          () => artifactManager.extractZip(
+            zipFile: any(named: 'zipFile'),
+            outputPath: any(named: 'outputPath'),
+          ),
+        ).thenAnswer((_) async {});
         when(
           () => bundletool.getPackageName(any()),
         ).thenAnswer((_) async => packageName);
@@ -272,23 +276,16 @@ void main() {
       test('exits with code 70 when downloading release artifact fails',
           () async {
         final exception = Exception('oops');
-        when(() => httpClient.getUrl(any())).thenThrow(exception);
-        final result = await runWithOverrides(command.run);
-        expect(result, equals(ExitCode.software.code));
-        verify(() => httpClient.getUrl(Uri.parse(releaseArtifactUrl)))
-            .called(1);
-      });
-
-      test(
-          'exits with code 70 when downloading release artifact '
-          'returns non-200 response', () async {
         when(
-          () => httpClientResponse.statusCode,
-        ).thenReturn(HttpStatus.badRequest);
+          () => artifactManager.downloadFile(
+            any(),
+            httpClient: any(named: 'httpClient'),
+            outputPath: any(named: 'outputPath'),
+          ),
+        ).thenThrow(exception);
         final result = await runWithOverrides(command.run);
         expect(result, equals(ExitCode.software.code));
-        verify(() => httpClientRequest.close()).called(1);
-        verify(() => httpClientResponse.statusCode).called(1);
+        verify(() => progress.fail('$exception')).called(1);
       });
 
       test('exits with code 70 when extracting metadata fails', () async {
@@ -525,6 +522,7 @@ void main() {
             body,
             values: {
               adbRef.overrideWith(() => adb),
+              artifactManagerRef.overrideWith(() => artifactManager),
               authRef.overrideWith(() => auth),
               bundletoolRef.overrideWith(() => bundletool),
               cacheRef.overrideWith(() => cache),
@@ -535,7 +533,6 @@ void main() {
               shorebirdValidatorRef.overrideWith(() => shorebirdValidator),
             },
           ),
-          createHttpClient: (_) => httpClient,
         );
       }
 
@@ -543,19 +540,17 @@ void main() {
         iosDeploy = MockIOSDeploy();
         when(() => argResults['platform']).thenReturn(platform.name);
         when(
-          () => httpClient.getUrl(any()),
-        ).thenAnswer((_) async => httpClientRequest);
+          () => artifactManager.downloadFile(
+            any(),
+            httpClient: any(named: 'httpClient'),
+          ),
+        ).thenAnswer((_) async => '');
         when(
-          () => httpClientRequest.close(),
-        ).thenAnswer((_) async => httpClientResponse);
-        when(() => httpClientResponse.statusCode).thenReturn(HttpStatus.ok);
-        when(() => httpClientResponse.pipe(any()))
-            .thenAnswer((invocation) async {
-          (invocation.positionalArguments.single as IOSink)
-              .add(ZipEncoder().encode(Archive())!);
-          // Wait for Isolate to finish.
-          await Future<void>.delayed(const Duration(milliseconds: 1));
-        });
+          () => artifactManager.extractZip(
+            zipFile: any(named: 'zipFile'),
+            outputPath: any(named: 'outputPath'),
+          ),
+        ).thenAnswer((_) async {});
         when(
           () => iosDeploy.installAndLaunchApp(
             bundlePath: any(named: 'bundlePath'),
@@ -591,37 +586,30 @@ void main() {
       test('exits with code 70 when downloading release artifact fails',
           () async {
         final exception = Exception('oops');
-        when(() => httpClient.getUrl(any())).thenThrow(exception);
-        final result = await runWithOverrides(command.run);
-        expect(result, equals(ExitCode.software.code));
-        verify(
-          () => httpClient.getUrl(Uri.parse(releaseArtifactUrl)),
-        ).called(1);
-      });
-
-      test(
-          'exits with code 70 when downloading release artifact '
-          'returns non-200 response', () async {
         when(
-          () => httpClientResponse.statusCode,
-        ).thenReturn(HttpStatus.badRequest);
+          () => artifactManager.downloadFile(
+            any(),
+            httpClient: any(named: 'httpClient'),
+          ),
+        ).thenThrow(exception);
         final result = await runWithOverrides(command.run);
         expect(result, equals(ExitCode.software.code));
-        verify(() => httpClientRequest.close()).called(1);
-        verify(() => httpClientResponse.statusCode).called(1);
+        verify(() => progress.fail('$exception')).called(1);
       });
 
       test(
           'exits with code 70 when extracting '
           'release artifact fails', () async {
+        final exception = Exception('oops');
         when(
-          () => httpClientResponse.pipe(any()),
-        ).thenThrow(Exception());
+          () => artifactManager.extractZip(
+            zipFile: any(named: 'zipFile'),
+            outputPath: any(named: 'outputPath'),
+          ),
+        ).thenThrow(exception);
         final result = await runWithOverrides(command.run);
         expect(result, equals(ExitCode.software.code));
-        verify(() => httpClientRequest.close()).called(1);
-        verify(() => httpClientResponse.statusCode).called(1);
-        verify(() => httpClientResponse.pipe(any())).called(1);
+        verify(() => progress.fail('$exception')).called(1);
       });
 
       test('exits with code 70 when install/launch throws', () async {

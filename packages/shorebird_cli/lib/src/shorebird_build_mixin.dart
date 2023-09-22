@@ -3,7 +3,6 @@ import 'dart:io';
 import 'package:collection/collection.dart';
 import 'package:mason_logger/mason_logger.dart';
 import 'package:path/path.dart' as p;
-import 'package:shorebird_cli/src/cache.dart';
 import 'package:shorebird_cli/src/command.dart';
 import 'package:shorebird_cli/src/logger.dart';
 import 'package:shorebird_cli/src/process.dart';
@@ -353,31 +352,6 @@ Either run `flutter pub get` manually, or follow the steps in ${link(uri: Uri.pa
         .whereType<Match>()
         .map((m) => '    ${m.group(1)!}')
         .join('\n');
-  }
-
-  Future<String> createDiff({
-    required String releaseArtifactPath,
-    required String patchArtifactPath,
-  }) async {
-    final tempDir = await Directory.systemTemp.createTemp();
-    final diffPath = p.join(tempDir.path, 'diff.patch');
-    final diffExecutable = p.join(
-      cache.getArtifactDirectory('patch').path,
-      'patch',
-    );
-    final diffArguments = [
-      releaseArtifactPath,
-      patchArtifactPath,
-      diffPath,
-    ];
-
-    final result = await process.run(diffExecutable, diffArguments);
-
-    if (result.exitCode != 0) {
-      throw Exception('Failed to create diff: ${result.stderr}');
-    }
-
-    return diffPath;
   }
 
   /// Creates an AOT snapshot of the given [appDillPath] at [outFilePath] and

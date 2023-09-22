@@ -8,6 +8,7 @@ import 'package:path/path.dart' as p;
 import 'package:platform/platform.dart';
 import 'package:scoped/scoped.dart';
 import 'package:shorebird_cli/src/archive_analysis/archive_analysis.dart';
+import 'package:shorebird_cli/src/artifact_manager.dart';
 import 'package:shorebird_cli/src/auth/auth.dart';
 import 'package:shorebird_cli/src/bundletool.dart';
 import 'package:shorebird_cli/src/cache.dart' show Cache, cacheRef;
@@ -82,6 +83,7 @@ flutter:
 
     late AndroidArchiveDiffer archiveDiffer;
     late ArgResults argResults;
+    late ArtifactManager artifactManager;
     late Auth auth;
     late Bundletool bundletool;
     late CodePushClientWrapper codePushClientWrapper;
@@ -96,7 +98,6 @@ flutter:
     late ShorebirdEnv shorebirdEnv;
     late ShorebirdProcessResult flutterBuildProcessResult;
     late ShorebirdProcessResult flutterPubGetProcessResult;
-    late ShorebirdProcessResult patchProcessResult;
     late http.Client httpClient;
     late Cache cache;
     late ShorebirdFlutter shorebirdFlutter;
@@ -109,6 +110,7 @@ flutter:
       return runScoped(
         body,
         values: {
+          artifactManagerRef.overrideWith(() => artifactManager),
           authRef.overrideWith(() => auth),
           bundletoolRef.overrideWith(() => bundletool),
           cacheRef.overrideWith(() => cache),
@@ -160,6 +162,7 @@ flutter:
     setUpAll(() {
       registerFallbackValue(File(''));
       registerFallbackValue(FileSetDiff.empty());
+      registerFallbackValue(MockHttpClient());
       registerFallbackValue(Uri.parse('https://example.com'));
       registerFallbackValue(ReleasePlatform.android);
       registerFallbackValue(FakeBaseRequest());
@@ -169,6 +172,7 @@ flutter:
     setUp(() {
       archiveDiffer = MockAndroidArchiveDiffer();
       argResults = MockArgResults();
+      artifactManager = MockArtifactManager();
       auth = MockAuth();
       bundletool = MockBundleTool();
       codePushClientWrapper = MockCodePushClientWrapper();
@@ -184,7 +188,6 @@ flutter:
       logger = MockLogger();
       flutterBuildProcessResult = MockProcessResult();
       flutterPubGetProcessResult = MockProcessResult();
-      patchProcessResult = MockProcessResult();
       httpClient = MockHttpClient();
       flutterValidator = MockShorebirdFlutterValidator();
       cache = MockCache();
@@ -221,21 +224,24 @@ flutter:
         ),
       ).thenAnswer((_) async => flutterPubGetProcessResult);
       when(
-        () => shorebirdProcess.run(
-          any(that: endsWith('patch')),
-          any(),
-          runInShell: any(named: 'runInShell'),
+        () => artifactManager.createDiff(
+          patchArtifactPath: any(named: 'patchArtifactPath'),
+          releaseArtifactPath: any(named: 'releaseArtifactPath'),
         ),
-      ).thenAnswer((invocation) async {
-        final args = invocation.positionalArguments[1] as List<String>;
-        final diffPath = args[2];
+      ).thenAnswer((_) async {
+        final tempDir = await Directory.systemTemp.createTemp();
+        final diffPath = p.join(tempDir.path, 'diff.patch');
         File(diffPath)
           ..createSync(recursive: true)
           ..writeAsStringSync('diff');
-        return patchProcessResult;
+        return diffPath;
       });
-      when(() => patchProcessResult.exitCode).thenReturn(ExitCode.success.code);
-
+      when(
+        () => artifactManager.downloadFile(
+          any(),
+          httpClient: any(named: 'httpClient'),
+        ),
+      ).thenAnswer((_) async => '');
       when(
         () => archiveDiffer.changedFiles(any(), any()),
       ).thenReturn(FileSetDiff.empty());
@@ -321,9 +327,6 @@ flutter:
       ).thenReturn([flutterValidator]);
       when(flutterValidator.validate).thenAnswer((_) async => []);
       when(() => cache.updateAll()).thenAnswer((_) async => {});
-      when(
-        () => cache.getArtifactDirectory(any()),
-      ).thenReturn(Directory.systemTemp.createTempSync());
       when(() => bundletool.getVersionName(any())).thenAnswer(
         (_) async => versionName,
       );
@@ -571,25 +574,23 @@ Please re-run the release command for this version or create a new release.'''),
       verify(() => logger.info('Aborting.')).called(1);
     });
 
-    test('throws error when release artifact does not exist.', () async {
-      when(() => httpClient.send(any())).thenAnswer(
-        (_) async => http.StreamedResponse(
-          const Stream.empty(),
-          HttpStatus.notFound,
-          reasonPhrase: 'Not Found',
+    test('exits with code 70 when downloading release artifact fails',
+        () async {
+      final exception = Exception('oops');
+      when(
+        () => artifactManager.downloadFile(
+          any(),
+          httpClient: any(named: 'httpClient'),
+          outputPath: any(named: 'outputPath'),
         ),
-      );
+      ).thenThrow(exception);
       final tempDir = setUpTempDir();
       setUpTempArtifacts(tempDir);
       final exitCode = await IOOverrides.runZoned(
         () => runWithOverrides(command.run),
         getCurrentDirectory: () => tempDir,
       );
-      verify(
-        () => progress.fail(
-          'Exception: Failed to download release artifact: 404 Not Found',
-        ),
-      ).called(1);
+      verify(() => progress.fail('$exception')).called(1);
       expect(exitCode, ExitCode.software.code);
     });
 
@@ -716,22 +717,6 @@ Please re-run the release command for this version or create a new release.'''),
           patchArtifactBundles: any(named: 'patchArtifactBundles'),
         ),
       );
-    });
-
-    test('throws error when creating diff fails', () async {
-      const error = 'oops something went wrong';
-      when(() => patchProcessResult.exitCode).thenReturn(1);
-      when(() => patchProcessResult.stderr).thenReturn(error);
-      final tempDir = setUpTempDir();
-      setUpTempArtifacts(tempDir);
-      final exitCode = await IOOverrides.runZoned(
-        () => runWithOverrides(command.run),
-        getCurrentDirectory: () => tempDir,
-      );
-      verify(
-        () => progress.fail('Exception: Failed to create diff: $error'),
-      ).called(1);
-      expect(exitCode, ExitCode.software.code);
     });
 
     test('does not create patch on --dry-run', () async {
