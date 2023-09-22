@@ -60,13 +60,15 @@ flutter:
       size: 42,
       url: 'https://example.com/release.xcframework',
     );
-    const release = Release(
+    final release = Release(
       id: 0,
       appId: appId,
       version: version,
       flutterRevision: flutterRevision,
       displayName: '1.2.3+1',
       platformStatuses: {},
+      createdAt: DateTime(2023),
+      updatedAt: DateTime(2023),
     );
 
     late ArgResults argResults;
@@ -400,7 +402,7 @@ ${release.version}'''),
       when(
         () => codePushClientWrapper.getReleases(appId: any(named: 'appId')),
       ).thenAnswer(
-        (_) async => const [
+        (_) async => [
           Release(
             id: 0,
             appId: appId,
@@ -408,6 +410,8 @@ ${release.version}'''),
             flutterRevision: flutterRevision,
             displayName: '1.2.3+1',
             platformStatuses: {ReleasePlatform.ios: ReleaseStatus.draft},
+            createdAt: DateTime(2023),
+            updatedAt: DateTime(2023),
           ),
         ],
       );
@@ -430,7 +434,7 @@ Please re-run the release command for this version or create a new release.'''),
       when(
         () => codePushClientWrapper.getReleases(appId: any(named: 'appId')),
       ).thenAnswer(
-        (_) async => const [
+        (_) async => [
           Release(
             id: 0,
             appId: appId,
@@ -438,6 +442,8 @@ Please re-run the release command for this version or create a new release.'''),
             flutterRevision: flutterRevision,
             displayName: '1.2.3+1',
             platformStatuses: {ReleasePlatform.android: ReleaseStatus.draft},
+            createdAt: DateTime(2023),
+            updatedAt: DateTime(2023),
           ),
         ],
       );

@@ -42,13 +42,15 @@ void main() {
       createdAt: DateTime(2023),
       updatedAt: DateTime(2023),
     );
-    const release = Release(
+    final release = Release(
       id: 0,
       appId: appId,
       version: version,
       flutterRevision: flutterRevision,
       displayName: '1.2.3+1',
       platformStatuses: {},
+      createdAt: DateTime(2023),
+      updatedAt: DateTime(2023),
     );
     const infoPlistContent = '''
 <?xml version="1.0" encoding="UTF-8"?>

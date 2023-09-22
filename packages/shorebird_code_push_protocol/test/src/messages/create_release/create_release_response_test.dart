@@ -4,7 +4,7 @@ import 'package:test/test.dart';
 void main() {
   group(CreateReleaseResponse, () {
     test('can be (de)serialized', () {
-      const response = CreateReleaseResponse(
+      final response = CreateReleaseResponse(
         release: Release(
           id: 0,
           appId: 'test-app-id',
@@ -12,6 +12,8 @@ void main() {
           displayName: 'v1.0.0',
           flutterRevision: 'flutter-revision',
           platformStatuses: {},
+          createdAt: DateTime(2023),
+          updatedAt: DateTime(2023),
         ),
       );
       expect(

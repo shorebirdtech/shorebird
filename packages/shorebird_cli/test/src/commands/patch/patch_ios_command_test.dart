@@ -105,13 +105,15 @@ flutter:
     size: 42,
     url: 'https://example.com/release.ipa',
   );
-  const release = Release(
+  final release = Release(
     id: 0,
     appId: appId,
     version: version,
     flutterRevision: flutterRevision,
     displayName: '1.2.3+1',
     platformStatuses: {ReleasePlatform.ios: ReleaseStatus.active},
+    createdAt: DateTime(2023),
+    updatedAt: DateTime(2023),
   );
 
   group(PatchIosCommand, () {
@@ -517,13 +519,15 @@ error: exportArchive: No signing certificate "iOS Distribution" found
           releaseVersion: any(named: 'releaseVersion'),
         ),
       ).thenAnswer(
-        (_) async => const Release(
+        (_) async => Release(
           id: 0,
           appId: appId,
           version: version,
           flutterRevision: flutterRevision,
           displayName: '1.2.3+1',
           platformStatuses: {ReleasePlatform.android: ReleaseStatus.active},
+          createdAt: DateTime(2023),
+          updatedAt: DateTime(2023),
         ),
       );
       final tempDir = setUpTempDir();
@@ -545,13 +549,15 @@ error: exportArchive: No signing certificate "iOS Distribution" found
           releaseVersion: any(named: 'releaseVersion'),
         ),
       ).thenAnswer(
-        (_) async => const Release(
+        (_) async => Release(
           id: 0,
           appId: appId,
           version: version,
           flutterRevision: flutterRevision,
           displayName: '1.2.3+1',
           platformStatuses: {ReleasePlatform.ios: ReleaseStatus.draft},
+          createdAt: DateTime(2023),
+          updatedAt: DateTime(2023),
         ),
       );
       final tempDir = setUpTempDir();
@@ -576,7 +582,7 @@ Please re-run the release command for this version or create a new release.'''),
           releaseVersion: any(named: 'releaseVersion'),
         ),
       ).thenAnswer(
-        (_) async => const Release(
+        (_) async => Release(
           id: 0,
           appId: appId,
           version: version,
@@ -586,6 +592,8 @@ Please re-run the release command for this version or create a new release.'''),
             ReleasePlatform.android: ReleaseStatus.draft,
             ReleasePlatform.ios: ReleaseStatus.active,
           },
+          createdAt: DateTime(2023),
+          updatedAt: DateTime(2023),
         ),
       );
       final tempDir = setUpTempDir();
