@@ -11,6 +11,7 @@ import 'package:shorebird_cli/src/android_sdk.dart';
 import 'package:shorebird_cli/src/android_studio.dart';
 import 'package:shorebird_cli/src/archive_analysis/archive_analysis.dart';
 import 'package:shorebird_cli/src/archive_analysis/archive_differ.dart';
+import 'package:shorebird_cli/src/artifact_manager.dart';
 import 'package:shorebird_cli/src/auth/auth.dart';
 import 'package:shorebird_cli/src/bundletool.dart';
 import 'package:shorebird_cli/src/cache.dart' show Cache;
@@ -47,6 +48,8 @@ class MockArchiveDiffer extends Mock implements ArchiveDiffer {}
 
 class MockArgResults extends Mock implements ArgResults {}
 
+class MockArtifactManager extends Mock implements ArtifactManager {}
+
 class MockAuth extends Mock implements Auth {}
 
 class MockBundleTool extends Mock implements Bundletool {}
@@ -68,12 +71,6 @@ class MockGit extends Mock implements Git {}
 class MockGradlew extends Mock implements Gradlew {}
 
 class MockHttpClient extends Mock implements http.Client {}
-
-class MockHttpClientRequest extends Mock implements HttpClientRequest {}
-
-class MockHttpClientResponse extends Mock implements HttpClientResponse {}
-
-class MockIoHttpClient extends Mock implements HttpClient {}
 
 class MockIOSDeploy extends Mock implements IOSDeploy {}
 

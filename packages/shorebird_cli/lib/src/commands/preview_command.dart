@@ -1,16 +1,17 @@
 import 'dart:async';
 import 'dart:convert';
-import 'dart:isolate';
 
-import 'package:archive/archive_io.dart';
 import 'package:collection/collection.dart';
+import 'package:http/http.dart' as http;
 import 'package:mason_logger/mason_logger.dart';
 import 'package:path/path.dart' as p;
 import 'package:shorebird_cli/src/adb.dart';
+import 'package:shorebird_cli/src/artifact_manager.dart';
 import 'package:shorebird_cli/src/bundletool.dart';
 import 'package:shorebird_cli/src/cache.dart';
 import 'package:shorebird_cli/src/code_push_client_wrapper.dart';
 import 'package:shorebird_cli/src/command.dart';
+import 'package:shorebird_cli/src/http_client/http_client.dart';
 import 'package:shorebird_cli/src/ios_deploy.dart';
 import 'package:shorebird_cli/src/logger.dart';
 import 'package:shorebird_cli/src/shorebird_validator.dart';
@@ -22,7 +23,10 @@ import 'package:shorebird_code_push_client/shorebird_code_push_client.dart';
 /// {@endtemplate}
 class PreviewCommand extends ShorebirdCommand {
   /// {@macro preview_command}
-  PreviewCommand() {
+  PreviewCommand({
+    http.Client? httpClient,
+  }) : _httpClient = httpClient ??
+            retryingHttpClient(LoggingClient(httpClient: http.Client())) {
     argParser
       ..addOption(
         'device-id',
@@ -47,6 +51,8 @@ class PreviewCommand extends ShorebirdCommand {
         help: 'The platform of the release.',
       );
   }
+
+  final http.Client _httpClient;
 
   @override
   String get name => 'preview';
@@ -148,14 +154,17 @@ class PreviewCommand extends ShorebirdCommand {
     String? deviceId,
   }) async {
     const platform = ReleasePlatform.android;
-    final aabPath = getArtifactPath(
-      appId: appId,
-      release: release,
-      platform: platform,
-      extension: 'aab',
+    final aabFile = File(
+      getArtifactPath(
+        appId: appId,
+        release: release,
+        platform: platform,
+        extension: 'aab',
+      ),
     );
 
-    if (!File(aabPath).existsSync()) {
+    if (!aabFile.existsSync()) {
+      aabFile.createSync(recursive: true);
       final downloadArtifactProgress = logger.progress('Downloading release');
       try {
         final releaseAabArtifact =
@@ -166,7 +175,11 @@ class PreviewCommand extends ShorebirdCommand {
           platform: platform,
         );
 
-        await releaseAabArtifact.url.download(outputPath: aabPath);
+        await artifactManager.downloadFile(
+          Uri.parse(releaseAabArtifact.url),
+          httpClient: _httpClient,
+          outputPath: aabFile.path,
+        );
         downloadArtifactProgress.complete();
       } catch (error) {
         downloadArtifactProgress.fail('$error');
@@ -177,7 +190,7 @@ class PreviewCommand extends ShorebirdCommand {
     final extractMetadataProgress = logger.progress('Extracting metadata');
     late String package;
     try {
-      package = await bundletool.getPackageName(aabPath);
+      package = await bundletool.getPackageName(aabFile.path);
       extractMetadataProgress.complete();
     } catch (error) {
       extractMetadataProgress.fail('$error');
@@ -194,7 +207,7 @@ class PreviewCommand extends ShorebirdCommand {
     if (!File(apksPath).existsSync()) {
       final buildApksProgress = logger.progress('Building apks');
       try {
-        await bundletool.buildApks(bundle: aabPath, output: apksPath);
+        await bundletool.buildApks(bundle: aabFile.path, output: apksPath);
         buildApksProgress.complete();
       } catch (error) {
         buildApksProgress.fail('$error');
@@ -237,14 +250,16 @@ class PreviewCommand extends ShorebirdCommand {
     String? deviceId,
   }) async {
     const platform = ReleasePlatform.ios;
-    final runnerPath = getArtifactPath(
-      appId: appId,
-      release: release,
-      platform: platform,
-      extension: 'app',
+    final runnerDirectory = Directory(
+      getArtifactPath(
+        appId: appId,
+        release: release,
+        platform: platform,
+        extension: 'app',
+      ),
     );
 
-    if (!Directory(runnerPath).existsSync()) {
+    if (!runnerDirectory.existsSync()) {
       final downloadArtifactProgress = logger.progress('Downloading release');
       try {
         final releaseRunnerArtifact =
@@ -255,8 +270,13 @@ class PreviewCommand extends ShorebirdCommand {
           platform: platform,
         );
 
-        await releaseRunnerArtifact.url.downloadAndExtract(
-          outputPath: runnerPath,
+        final archivePath = await artifactManager.downloadFile(
+          Uri.parse(releaseRunnerArtifact.url),
+          httpClient: _httpClient,
+        );
+        await artifactManager.extractZip(
+          zipFile: File(archivePath),
+          outputDirectory: runnerDirectory,
         );
         downloadArtifactProgress.complete();
       } catch (error) {
@@ -267,7 +287,7 @@ class PreviewCommand extends ShorebirdCommand {
 
     try {
       final exitCode = await iosDeploy.installAndLaunchApp(
-        bundlePath: runnerPath,
+        bundlePath: runnerDirectory.path,
         deviceId: deviceId,
       );
       return exitCode;
@@ -287,39 +307,5 @@ class PreviewCommand extends ShorebirdCommand {
       previewDirectory.path,
       '${platform.name}_${release.version}.$extension',
     );
-  }
-}
-
-extension on String {
-  Future<void> download({required String outputPath}) async {
-    final uri = Uri.parse(this);
-    final client = HttpClient();
-    final request = await client.getUrl(uri);
-    final response = await request.close();
-    if (response.statusCode != 200) {
-      throw Exception('Failed to download artifact at $this');
-    }
-    final file = File(outputPath)..createSync(recursive: true);
-    await response.pipe(file.openWrite());
-  }
-
-  Future<void> downloadAndExtract({required String outputPath}) async {
-    final uri = Uri.parse(this);
-    final client = HttpClient();
-    final request = await client.getUrl(uri);
-    final response = await request.close();
-    if (response.statusCode != 200) {
-      throw Exception('Failed to download artifact at $this');
-    }
-    final tempDir = Directory.systemTemp.createTempSync();
-    final file = File(p.join(tempDir.path, p.basename(outputPath)))
-      ..createSync(recursive: true);
-    await response.pipe(file.openWrite());
-    logger.detail('Extracting ${file.path} to $outputPath');
-    await Isolate.run(() async {
-      final inputStream = InputFileStream(file.path);
-      final archive = ZipDecoder().decodeBuffer(inputStream);
-      extractArchiveToDisk(archive, outputPath);
-    });
   }
 }
