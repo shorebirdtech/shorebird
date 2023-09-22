@@ -66,6 +66,10 @@ class ArtifactManager {
       outFile = File(p.join(tempDir.path, 'artifact'));
     }
 
+    if (!outFile.existsSync()) {
+      outFile.createSync();
+    }
+
     await outFile.openWrite().addStream(response.stream);
     return outFile.path;
   }
