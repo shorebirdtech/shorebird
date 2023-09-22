@@ -41,7 +41,12 @@ void main() {
     const releasePlatform = ReleasePlatform.android;
     const channelName = 'stable';
     const appDisplayName = 'Test App';
-    const appMetadata = AppMetadata(appId: appId, displayName: appDisplayName);
+    final appMetadata = AppMetadata(
+      appId: appId,
+      displayName: appDisplayName,
+      createdAt: DateTime(2023),
+      updatedAt: DateTime(2023),
+    );
     const androidPackageName = 'com.example.my_flutter_module';
     const releaseArtifact = ReleaseArtifact(
       id: 0,

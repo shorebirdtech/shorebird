@@ -11,6 +11,8 @@ class AppMetadata {
   const AppMetadata({
     required this.appId,
     required this.displayName,
+    required this.createdAt,
+    required this.updatedAt,
     this.latestReleaseVersion,
     this.latestPatchNumber,
   });
@@ -33,4 +35,10 @@ class AppMetadata {
 
   /// The latest patch number of the app.
   final int? latestPatchNumber;
+
+  /// The date and time the app was created.
+  final DateTime createdAt;
+
+  /// The date and time the app was last updated.
+  final DateTime updatedAt;
 }

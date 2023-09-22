@@ -1593,8 +1593,18 @@ void main() {
 
       test('completes when request succeeds (populated)', () async {
         final expected = [
-          AppMetadata(appId: '1', displayName: 'Shorebird Example'),
-          AppMetadata(appId: '2', displayName: 'Shorebird Clock'),
+          AppMetadata(
+            appId: '1',
+            displayName: 'Shorebird Example',
+            createdAt: DateTime(2022),
+            updatedAt: DateTime(2023),
+          ),
+          AppMetadata(
+            appId: '2',
+            displayName: 'Shorebird Clock',
+            createdAt: DateTime(2022),
+            updatedAt: DateTime(2023),
+          ),
         ];
 
         when(() => httpClient.send(any())).thenAnswer(

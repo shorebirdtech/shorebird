@@ -806,7 +806,12 @@ flavors:
 
           when(() => codePushClientWrapper.getApp(appId: any(named: 'appId')))
               .thenAnswer(
-            (_) async => const AppMetadata(appId: appId, displayName: appName),
+            (_) async => AppMetadata(
+              appId: appId,
+              displayName: appName,
+              createdAt: DateTime(2023),
+              updatedAt: DateTime(2023),
+            ),
           );
           when(
             () =>
