@@ -38,10 +38,6 @@ jobs:
               - ./.github/workflows/main.yaml
               - ./.github/actions/dart_package/action.yaml
               - packages/artifact_proxy/**
-            cutler:
-              - ./.github/workflows/main.yaml
-              - ./.github/actions/dart_package/action.yaml
-              - packages/cutler/**
             discord_gcp_alerts:
               - ./.github/workflows/main.yaml
               - ./.github/actions/dart_package/action.yaml
@@ -115,7 +111,7 @@ jobs:
         with:
           codecov_token: ${{ secrets.CODECOV_TOKEN }}
           working_directory: packages/${{ matrix.package }}
-          min_coverage: ${{ matrix.package == 'cutler' && '10' || '100' }}
+          min_coverage: ${{ '100' }}
 
   build_redis:
     needs: changes
