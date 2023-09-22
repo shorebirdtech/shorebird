@@ -154,14 +154,17 @@ class PreviewCommand extends ShorebirdCommand {
     String? deviceId,
   }) async {
     const platform = ReleasePlatform.android;
-    final aabPath = getArtifactPath(
-      appId: appId,
-      release: release,
-      platform: platform,
-      extension: 'aab',
+    final aabFile = File(
+      getArtifactPath(
+        appId: appId,
+        release: release,
+        platform: platform,
+        extension: 'aab',
+      ),
     );
 
-    if (!File(aabPath).existsSync()) {
+    if (!aabFile.existsSync()) {
+      aabFile.createSync(recursive: true);
       final downloadArtifactProgress = logger.progress('Downloading release');
       try {
         final releaseAabArtifact =
@@ -175,7 +178,7 @@ class PreviewCommand extends ShorebirdCommand {
         await artifactManager.downloadFile(
           Uri.parse(releaseAabArtifact.url),
           httpClient: _httpClient,
-          outputPath: aabPath,
+          outputPath: aabFile.path,
         );
         downloadArtifactProgress.complete();
       } catch (error) {
@@ -187,7 +190,7 @@ class PreviewCommand extends ShorebirdCommand {
     final extractMetadataProgress = logger.progress('Extracting metadata');
     late String package;
     try {
-      package = await bundletool.getPackageName(aabPath);
+      package = await bundletool.getPackageName(aabFile.path);
       extractMetadataProgress.complete();
     } catch (error) {
       extractMetadataProgress.fail('$error');
@@ -204,7 +207,7 @@ class PreviewCommand extends ShorebirdCommand {
     if (!File(apksPath).existsSync()) {
       final buildApksProgress = logger.progress('Building apks');
       try {
-        await bundletool.buildApks(bundle: aabPath, output: apksPath);
+        await bundletool.buildApks(bundle: aabFile.path, output: apksPath);
         buildApksProgress.complete();
       } catch (error) {
         buildApksProgress.fail('$error');
@@ -247,14 +250,16 @@ class PreviewCommand extends ShorebirdCommand {
     String? deviceId,
   }) async {
     const platform = ReleasePlatform.ios;
-    final runnerPath = getArtifactPath(
-      appId: appId,
-      release: release,
-      platform: platform,
-      extension: 'app',
+    final runnerDirectory = Directory(
+      getArtifactPath(
+        appId: appId,
+        release: release,
+        platform: platform,
+        extension: 'app',
+      ),
     );
 
-    if (!Directory(runnerPath).existsSync()) {
+    if (!runnerDirectory.existsSync()) {
       final downloadArtifactProgress = logger.progress('Downloading release');
       try {
         final releaseRunnerArtifact =
@@ -271,7 +276,7 @@ class PreviewCommand extends ShorebirdCommand {
         );
         await artifactManager.extractZip(
           zipFile: File(archivePath),
-          outputPath: runnerPath,
+          outputPath: runnerDirectory,
         );
         downloadArtifactProgress.complete();
       } catch (error) {
@@ -282,7 +287,7 @@ class PreviewCommand extends ShorebirdCommand {
 
     try {
       final exitCode = await iosDeploy.installAndLaunchApp(
-        bundlePath: runnerPath,
+        bundlePath: runnerDirectory.path,
         deviceId: deviceId,
       );
       return exitCode;

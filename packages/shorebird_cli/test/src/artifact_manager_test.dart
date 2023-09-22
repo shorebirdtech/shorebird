@@ -189,7 +189,7 @@ void main() {
           runWithOverrides(
             () => artifactManager.extractZip(
               zipFile: zipFile,
-              outputPath: tempDir.path,
+              outputPath: tempDir,
             ),
           ),
           completes,

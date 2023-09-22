@@ -70,14 +70,15 @@ class ArtifactManager {
     return outFile.path;
   }
 
+  /// Extracts the [zipFile] to the [outputPath] directory.
   Future<void> extractZip({
     required File zipFile,
-    required String outputPath,
+    required Directory outputPath,
   }) async {
     await Isolate.run(() async {
       final inputStream = InputFileStream(zipFile.path);
       final archive = ZipDecoder().decodeBuffer(inputStream);
-      extractArchiveToDisk(archive, outputPath);
+      extractArchiveToDisk(archive, outputPath.path);
     });
   }
 }

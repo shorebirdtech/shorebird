@@ -60,6 +60,7 @@ void main() {
     }
 
     setUpAll(() {
+      registerFallbackValue(Directory(''));
       registerFallbackValue(File(''));
       registerFallbackValue(MockHttpClient());
       registerFallbackValue(ReleasePlatform.android);
