@@ -13,7 +13,6 @@ void main() {
         size: 42,
         hash: 'sha256:1234567890',
         createdAt: DateTime(2023),
-        updatedAt: DateTime(2023),
       );
       expect(
         PatchArtifact.fromJson(artifact.toJson()).toJson(),

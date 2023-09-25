@@ -24,16 +24,10 @@ PatchArtifact _$PatchArtifactFromJson(Map<String, dynamic> json) =>
           url: $checkedConvert('url', (v) => v as String),
           createdAt:
               $checkedConvert('created_at', (v) => DateTime.parse(v as String)),
-          updatedAt:
-              $checkedConvert('updated_at', (v) => DateTime.parse(v as String)),
         );
         return val;
       },
-      fieldKeyMap: const {
-        'patchId': 'patch_id',
-        'createdAt': 'created_at',
-        'updatedAt': 'updated_at'
-      },
+      fieldKeyMap: const {'patchId': 'patch_id', 'createdAt': 'created_at'},
     );
 
 Map<String, dynamic> _$PatchArtifactToJson(PatchArtifact instance) =>
@@ -46,7 +40,6 @@ Map<String, dynamic> _$PatchArtifactToJson(PatchArtifact instance) =>
       'size': instance.size,
       'url': instance.url,
       'created_at': instance.createdAt.toIso8601String(),
-      'updated_at': instance.updatedAt.toIso8601String(),
     };
 
 const _$ReleasePlatformEnumMap = {
