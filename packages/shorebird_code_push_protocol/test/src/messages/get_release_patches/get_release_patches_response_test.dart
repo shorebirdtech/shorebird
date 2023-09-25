@@ -16,7 +16,6 @@ void main() {
               size: 42,
               hash: 'sha256:1234567890',
               createdAt: DateTime(2023),
-              updatedAt: DateTime(2023),
             ),
             PatchArtifact(
               id: 2,
@@ -27,7 +26,6 @@ void main() {
               size: 42,
               hash: 'sha256:1234567890',
               createdAt: DateTime(2023),
-              updatedAt: DateTime(2023),
             ),
           ],
           2: [
@@ -40,7 +38,6 @@ void main() {
               size: 42,
               hash: 'sha256:1234567890',
               createdAt: DateTime(2023),
-              updatedAt: DateTime(2023),
             ),
             PatchArtifact(
               id: 4,
@@ -51,7 +48,6 @@ void main() {
               size: 42,
               hash: 'sha256:1234567890',
               createdAt: DateTime(2023),
-              updatedAt: DateTime(2023),
             ),
           ],
         },

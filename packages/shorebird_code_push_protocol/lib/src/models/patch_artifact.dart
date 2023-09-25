@@ -19,7 +19,6 @@ class PatchArtifact {
     required this.size,
     required this.url,
     required this.createdAt,
-    required this.updatedAt,
   });
 
   /// Converts a Map<String, dynamic> to a [PatchArtifact]
@@ -52,7 +51,4 @@ class PatchArtifact {
 
   /// The date and time the artifact was created.
   final DateTime createdAt;
-
-  /// The date and time the artifact was last updated.
-  final DateTime updatedAt;
 }
