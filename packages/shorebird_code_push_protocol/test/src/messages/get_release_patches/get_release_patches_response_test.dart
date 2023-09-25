@@ -4,7 +4,7 @@ import 'package:test/test.dart';
 void main() {
   group(GetReleasePatchesResponse, () {
     test('can be (de)serialized', () {
-      const response = GetReleasePatchesResponse(
+      final response = GetReleasePatchesResponse(
         patches: {
           1: [
             PatchArtifact(
@@ -15,6 +15,8 @@ void main() {
               url: 'https://example.com',
               size: 42,
               hash: 'sha256:1234567890',
+              createdAt: DateTime(2023),
+              updatedAt: DateTime(2023),
             ),
             PatchArtifact(
               id: 2,
@@ -24,6 +26,8 @@ void main() {
               url: 'https://example.com',
               size: 42,
               hash: 'sha256:1234567890',
+              createdAt: DateTime(2023),
+              updatedAt: DateTime(2023),
             ),
           ],
           2: [
@@ -35,6 +39,8 @@ void main() {
               url: 'https://example.com',
               size: 42,
               hash: 'sha256:1234567890',
+              createdAt: DateTime(2023),
+              updatedAt: DateTime(2023),
             ),
             PatchArtifact(
               id: 4,
@@ -44,6 +50,8 @@ void main() {
               url: 'https://example.com',
               size: 42,
               hash: 'sha256:1234567890',
+              createdAt: DateTime(2023),
+              updatedAt: DateTime(2023),
             ),
           ],
         },
