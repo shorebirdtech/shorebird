@@ -2,6 +2,17 @@
 
 This section contains past updates we've sent to customers via Discord.
 
+## 0.15.0 (September 25, 2023)
+
+- 🍄 use upgraded backend to provide more additional metrics for console
+- 🧹 internal refactoring of artifact management
+
+📚 Release notes can be found at https://github.com/shorebirdtech/shorebird/releases/tag/v0.15.0
+
+As always, you can upgrade using `shorebird upgrade`
+
+Please let us know if we can help!
+
 ## 0.14.11 (September 22, 2023)
 
 - 🐦 Flutter 3.13.5 support!
