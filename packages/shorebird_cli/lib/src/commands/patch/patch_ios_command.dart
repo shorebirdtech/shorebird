@@ -9,6 +9,7 @@ import 'package:path/path.dart' as p;
 import 'package:platform/platform.dart';
 import 'package:shorebird_cli/src/archive_analysis/archive_analysis.dart';
 import 'package:shorebird_cli/src/artifact_manager.dart';
+import 'package:shorebird_cli/src/cache.dart';
 import 'package:shorebird_cli/src/code_push_client_wrapper.dart';
 import 'package:shorebird_cli/src/command.dart';
 import 'package:shorebird_cli/src/config/config.dart';
@@ -134,6 +135,8 @@ class PatchIosCommand extends ShorebirdCommand
     }
 
     showiOSStatusWarning();
+
+    await cache.updateAll();
 
     final force = results['force'] == true;
     final dryRun = results['dry-run'] == true;

@@ -9,6 +9,7 @@ import 'package:platform/platform.dart';
 import 'package:scoped/scoped.dart';
 import 'package:shorebird_cli/src/archive_analysis/archive_analysis.dart';
 import 'package:shorebird_cli/src/artifact_manager.dart';
+import 'package:shorebird_cli/src/cache.dart';
 import 'package:shorebird_cli/src/code_push_client_wrapper.dart';
 import 'package:shorebird_cli/src/command.dart';
 import 'package:shorebird_cli/src/config/shorebird_yaml.dart';
@@ -130,6 +131,8 @@ of the iOS app that is using this module.''',
     }
 
     showiOSStatusWarning();
+
+    await cache.updateAll();
 
     const arch = 'aarch64';
     const channelName = 'stable';
@@ -263,18 +266,36 @@ Please re-run the release command for this version or create a new release.''');
       patchFile = aotFile;
     } else {
       // Otherwise, we can generate a diff.
-      final diffProgress = logger.progress('Generating diff');
-      try {
-        final patchFilePath = await artifactManager.createDiff(
-          releaseArtifactPath: releaseArtifactPath,
-          patchArtifactPath: aotFile.path,
-        );
-        patchFile = File(patchFilePath);
-        diffProgress.complete();
-      } catch (error) {
-        diffProgress.fail('$error');
+      final createDiffProgress = logger.progress('Creating artifacts');
+
+      final tempDir = Directory.systemTemp.createTempSync();
+      await artifactManager.extractZip(
+        zipFile: File(releaseArtifactPath),
+        outputDirectory: tempDir,
+      );
+
+      final baseReleaseDiffArtifact = tempDir
+          .listSync(recursive: true)
+          .whereType<File>()
+          .firstWhereOrNull((file) => file.path.endsWith('App.framework/App'));
+
+      if (baseReleaseDiffArtifact == null) {
+        logger.err('Could not find App.framework/App in release artifact.');
         return ExitCode.software.code;
       }
+
+      try {
+        patchFile = File(
+          await artifactManager.createDiff(
+            releaseArtifactPath: baseReleaseDiffArtifact.path,
+            patchArtifactPath: aotFile.path,
+          ),
+        );
+      } catch (error) {
+        createDiffProgress.fail('$error');
+        return ExitCode.software.code;
+      }
+      createDiffProgress.complete();
     }
 
     final patchFileSize = patchFile.statSync().size;
@@ -312,7 +333,7 @@ ${summary.join('\n')}
       patchArtifactBundles: {
         Arch.arm64: PatchArtifactBundle(
           arch: arch,
-          path: aotFile.path,
+          path: patchFile.path,
           hash: _hashFn(aotFile.readAsBytesSync()),
           size: patchFileSize,
         ),
