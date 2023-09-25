@@ -30,18 +30,25 @@ void main() {
     const appId = 'test-app-id';
     const shorebirdYaml = ShorebirdYaml(appId: appId);
     const androidPackageName = 'com.example.my_flutter_module';
-    const appMetadata = AppMetadata(appId: appId, displayName: appDisplayName);
+    final appMetadata = AppMetadata(
+      appId: appId,
+      displayName: appDisplayName,
+      createdAt: DateTime(2023),
+      updatedAt: DateTime(2023),
+    );
     const flutterRevision = '83305b5088e6fe327fb3334a73ff190828d85713';
     const versionName = '1.2.3';
     const versionCode = '1';
     const version = '$versionName+$versionCode';
-    const release = Release(
+    final release = Release(
       id: 0,
       appId: appId,
       version: version,
       flutterRevision: flutterRevision,
       displayName: '1.2.3+1',
       platformStatuses: {},
+      createdAt: DateTime(2023),
+      updatedAt: DateTime(2023),
     );
     const releasePlatform = ReleasePlatform.android;
     const buildNumber = '1.0';

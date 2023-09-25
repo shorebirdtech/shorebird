@@ -8,6 +8,7 @@ import 'package:path/path.dart' as p;
 import 'package:platform/platform.dart';
 import 'package:scoped/scoped.dart';
 import 'package:shorebird_cli/src/archive_analysis/archive_analysis.dart';
+import 'package:shorebird_cli/src/artifact_manager.dart';
 import 'package:shorebird_cli/src/auth/auth.dart';
 import 'package:shorebird_cli/src/cache.dart' show Cache, cacheRef;
 import 'package:shorebird_cli/src/code_push_client_wrapper.dart';
@@ -40,7 +41,12 @@ void main() {
     const releasePlatform = ReleasePlatform.android;
     const channelName = 'stable';
     const appDisplayName = 'Test App';
-    const appMetadata = AppMetadata(appId: appId, displayName: appDisplayName);
+    final appMetadata = AppMetadata(
+      appId: appId,
+      displayName: appDisplayName,
+      createdAt: DateTime(2023),
+      updatedAt: DateTime(2023),
+    );
     const androidPackageName = 'com.example.my_flutter_module';
     const releaseArtifact = ReleaseArtifact(
       id: 0,
@@ -60,17 +66,20 @@ void main() {
       size: 42,
       url: 'https://example.com/release.aar',
     );
-    const release = Release(
+    final release = Release(
       id: 0,
       appId: appId,
       version: version,
       flutterRevision: flutterRevision,
       displayName: '1.2.3+1',
       platformStatuses: {},
+      createdAt: DateTime(2023),
+      updatedAt: DateTime(2023),
     );
 
     late AndroidArchiveDiffer archiveDiffer;
     late ArgResults argResults;
+    late ArtifactManager artifactManager;
     late Auth auth;
     late CodePushClientWrapper codePushClientWrapper;
     late Directory shorebirdRoot;
@@ -81,7 +90,6 @@ void main() {
     late Logger logger;
     late ShorebirdProcessResult flutterBuildProcessResult;
     late ShorebirdProcessResult flutterPubGetProcessResult;
-    late ShorebirdProcessResult patchProcessResult;
     late http.Client httpClient;
     late Cache cache;
     late ShorebirdEnv shorebirdEnv;
@@ -94,6 +102,7 @@ void main() {
       return runScoped(
         body,
         values: {
+          artifactManagerRef.overrideWith(() => artifactManager),
           authRef.overrideWith(() => auth),
           cacheRef.overrideWith(() => cache),
           codePushClientWrapperRef.overrideWith(() => codePushClientWrapper),
@@ -142,6 +151,7 @@ void main() {
     setUpAll(() {
       registerFallbackValue(File(''));
       registerFallbackValue(FileSetDiff.empty());
+      registerFallbackValue(MockHttpClient());
       registerFallbackValue(Uri.parse('https://example.com'));
       registerFallbackValue(FakeBaseRequest());
       registerFallbackValue(FakeShorebirdProcess());
@@ -150,6 +160,7 @@ void main() {
     setUp(() {
       archiveDiffer = MockAndroidArchiveDiffer();
       argResults = MockArgResults();
+      artifactManager = MockArtifactManager();
       auth = MockAuth();
       codePushClientWrapper = MockCodePushClientWrapper();
       shorebirdRoot = Directory.systemTemp.createTempSync();
@@ -162,7 +173,6 @@ void main() {
       logger = MockLogger();
       flutterBuildProcessResult = MockProcessResult();
       flutterPubGetProcessResult = MockProcessResult();
-      patchProcessResult = MockProcessResult();
       httpClient = MockHttpClient();
       cache = MockCache();
       shorebirdEnv = MockShorebirdEnv();
@@ -197,20 +207,24 @@ void main() {
         ),
       ).thenAnswer((_) async => flutterBuildProcessResult);
       when(
-        () => shorebirdProcess.run(
-          any(that: endsWith('patch')),
-          any(),
-          runInShell: any(named: 'runInShell'),
+        () => artifactManager.createDiff(
+          patchArtifactPath: any(named: 'patchArtifactPath'),
+          releaseArtifactPath: any(named: 'releaseArtifactPath'),
         ),
-      ).thenAnswer((invocation) async {
-        final args = invocation.positionalArguments[1] as List<String>;
-        final diffPath = args[2];
+      ).thenAnswer((_) async {
+        final tempDir = await Directory.systemTemp.createTemp();
+        final diffPath = p.join(tempDir.path, 'diff.patch');
         File(diffPath)
           ..createSync(recursive: true)
           ..writeAsStringSync('diff');
-        return patchProcessResult;
+        return diffPath;
       });
-
+      when(
+        () => artifactManager.downloadFile(
+          any(),
+          httpClient: any(named: 'httpClient'),
+        ),
+      ).thenAnswer((_) async => '');
       when(
         () => archiveDiffer.changedFiles(any(), any()),
       ).thenReturn(FileSetDiff.empty());
@@ -236,7 +250,6 @@ void main() {
       when(
         () => flutterPubGetProcessResult.exitCode,
       ).thenReturn(ExitCode.success.code);
-      when(() => patchProcessResult.exitCode).thenReturn(ExitCode.success.code);
       when(() => httpClient.send(any())).thenAnswer(
         (_) async => http.StreamedResponse(const Stream.empty(), HttpStatus.ok),
       );
@@ -425,7 +438,7 @@ ${release.version}'''),
       when(
         () => codePushClientWrapper.getReleases(appId: any(named: 'appId')),
       ).thenAnswer(
-        (_) async => const [
+        (_) async => [
           Release(
             id: 0,
             appId: appId,
@@ -433,6 +446,8 @@ ${release.version}'''),
             flutterRevision: flutterRevision,
             displayName: '1.2.3+1',
             platformStatuses: {ReleasePlatform.android: ReleaseStatus.draft},
+            createdAt: DateTime(2023),
+            updatedAt: DateTime(2023),
           ),
         ],
       );
@@ -455,7 +470,7 @@ Please re-run the release command for this version or create a new release.'''),
       when(
         () => codePushClientWrapper.getReleases(appId: any(named: 'appId')),
       ).thenAnswer(
-        (_) async => const [
+        (_) async => [
           Release(
             id: 0,
             appId: appId,
@@ -463,6 +478,8 @@ Please re-run the release command for this version or create a new release.'''),
             flutterRevision: flutterRevision,
             displayName: '1.2.3+1',
             platformStatuses: {ReleasePlatform.ios: ReleaseStatus.draft},
+            createdAt: DateTime(2023),
+            updatedAt: DateTime(2023),
           ),
         ],
       );
@@ -475,33 +492,23 @@ Please re-run the release command for this version or create a new release.'''),
       expect(exitCode, ExitCode.success.code);
     });
 
-    test('throws error when release artifact does not exist.', () async {
+    test('exits with code 70 when downloading release artifact fails',
+        () async {
+      final exception = Exception('oops');
       when(
-        () => httpClient.send(
-          any(
-            that: isA<http.Request>().having(
-              (req) => req.url.toString(),
-              'url',
-              endsWith('so'),
-            ),
-          ),
+        () => artifactManager.downloadFile(
+          any(),
+          httpClient: any(named: 'httpClient'),
+          outputPath: any(named: 'outputPath'),
         ),
-      ).thenAnswer(
-        (_) async => http.StreamedResponse(
-          const Stream.empty(),
-          HttpStatus.notFound,
-          reasonPhrase: 'Not Found',
-        ),
-      );
+      ).thenThrow(exception);
       final tempDir = setUpTempDir();
       setUpTempArtifacts(tempDir);
       final exitCode = await IOOverrides.runZoned(
         () => runWithOverrides(command.run),
         getCurrentDirectory: () => tempDir,
       );
-      verify(
-        () => progress.fail(any(that: contains('404 Not Found'))),
-      ).called(1);
+      verify(() => progress.fail('$exception')).called(1);
       expect(exitCode, ExitCode.software.code);
     });
 
@@ -707,19 +714,22 @@ Please re-run the release command for this version or create a new release.'''),
       );
     });
 
-    test('throws error when creating diff fails', () async {
-      const error = 'oops something went wrong';
-      when(() => patchProcessResult.exitCode).thenReturn(1);
-      when(() => patchProcessResult.stderr).thenReturn(error);
+    test('exits with code 70 and prints error when creating diff fails',
+        () async {
+      final error = Exception('oops something went wrong');
+      when(
+        () => artifactManager.createDiff(
+          releaseArtifactPath: any(named: 'releaseArtifactPath'),
+          patchArtifactPath: any(named: 'patchArtifactPath'),
+        ),
+      ).thenThrow(error);
       final tempDir = setUpTempDir();
       setUpTempArtifacts(tempDir);
       final exitCode = await IOOverrides.runZoned(
         () => runWithOverrides(command.run),
         getCurrentDirectory: () => tempDir,
       );
-      verify(
-        () => progress.fail('Exception: Failed to create diff: $error'),
-      ).called(1);
+      verify(() => progress.fail('$error')).called(1);
       expect(exitCode, ExitCode.software.code);
     });
 

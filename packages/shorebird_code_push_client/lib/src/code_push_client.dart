@@ -402,10 +402,10 @@ class CodePushClient {
       throw _parseErrorResponse(response.statusCode, response.body);
     }
 
-    final apps = json.decode(response.body) as List;
-    return apps
-        .map((app) => AppMetadata.fromJson(app as Map<String, dynamic>))
-        .toList();
+    final decoded = GetAppsResponse.fromJson(
+      json.decode(response.body) as Map<String, dynamic>,
+    );
+    return decoded.apps;
   }
 
   /// List all channels for the provided [appId].
@@ -464,10 +464,10 @@ class CodePushClient {
       throw _parseErrorResponse(response.statusCode, response.body);
     }
 
-    final releases = json.decode(response.body) as List;
-    return releases
-        .map((release) => Release.fromJson(release as Map<String, dynamic>))
-        .toList();
+    final decoded = GetReleasesResponse.fromJson(
+      json.decode(response.body) as Map<String, dynamic>,
+    );
+    return decoded.releases;
   }
 
   /// Get all release artifacts for a specific [releaseId]

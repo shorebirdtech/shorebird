@@ -35,37 +35,40 @@ jobs:
         with:
           filters: |
             artifact_proxy:
+              - ./.github/codecov.yml
               - ./.github/workflows/main.yaml
               - ./.github/actions/dart_package/action.yaml
               - packages/artifact_proxy/**
-            cutler:
-              - ./.github/workflows/main.yaml
-              - ./.github/actions/dart_package/action.yaml
-              - packages/cutler/**
             discord_gcp_alerts:
+              - ./.github/codecov.yml
               - ./.github/workflows/main.yaml
               - ./.github/actions/dart_package/action.yaml
               - packages/discord_gcp_alerts/**
             shorebird_cli:
+              - ./.github/codecov.yml
               - ./.github/workflows/main.yaml
               - ./.github/actions/dart_package/action.yaml
               - packages/shorebird_cli/**
               - packages/shorebird_code_push_client/**
               - packages/shorebird_code_push_protocol/**
             shorebird_code_push_client:
+              - ./.github/codecov.yml
               - ./.github/workflows/main.yaml
               - ./.github/actions/dart_package/action.yaml
               - packages/shorebird_code_push_client/**
               - packages/shorebird_code_push_protocol/**
             shorebird_code_push_protocol:
+              - ./.github/codecov.yml
               - ./.github/workflows/main.yaml
               - ./.github/actions/dart_package/action.yaml
               - packages/shorebird_code_push_protocol/**
             jwt:
+              - ./.github/codecov.yml
               - ./.github/workflows/main.yaml
               - ./.github/actions/dart_package/action.yaml
               - packages/jwt/**
             scoped:
+              - ./.github/codecov.yml
               - ./.github/workflows/main.yaml
               - ./.github/actions/dart_package/action.yaml
               - packages/scoped/**
@@ -76,6 +79,7 @@ jobs:
         with:
           filters: |
             redis_client:
+              - ./.github/codecov.yml
               - ./.github/workflows/main.yaml
               - ./.github/actions/dart_package/action.yaml
               - packages/redis_client/**
@@ -86,10 +90,12 @@ jobs:
         with:
           filters: |
             shorebird_cli:
+              - ./.github/codecov.yml
               - ./.github/workflows/main.yaml
               - ./.github/actions/verify_version/action.yaml
               - packages/shorebird_cli/**
             shorebird_code_push_client:
+              - ./.github/codecov.yml
               - ./.github/workflows/main.yaml
               - ./.github/actions/verify_version/action.yaml
               - packages/shorebird_code_push_client/**
@@ -115,7 +121,7 @@ jobs:
         with:
           codecov_token: ${{ secrets.CODECOV_TOKEN }}
           working_directory: packages/${{ matrix.package }}
-          min_coverage: ${{ matrix.package == 'cutler' && '10' || '100' }}
+          min_coverage: 100
 
   build_redis:
     needs: changes

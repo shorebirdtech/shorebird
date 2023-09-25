@@ -9,7 +9,7 @@ environment:
   sdk: ">=3.0.0 <4.0.0"
 
 dependencies:
-  json_annotation: ^4.8.0
+  json_annotation: ^4.8.1
   money2: ^3.4.1
 
 dev_dependencies:

@@ -1125,6 +1125,8 @@ void main() {
                       flutterRevision: flutterRevision,
                       displayName: displayName,
                       platformStatuses: {},
+                      createdAt: DateTime(2023),
+                      updatedAt: DateTime(2023),
                     ),
                   ),
                 ),
@@ -1580,9 +1582,12 @@ void main() {
       });
 
       test('completes when request succeeds (empty)', () async {
+        final expected = <AppMetadata>[];
         when(() => httpClient.send(any())).thenAnswer(
           (_) async => http.StreamedResponse(
-            Stream.value(utf8.encode(json.encode([]))),
+            Stream.value(
+              utf8.encode(json.encode(GetAppsResponse(apps: expected))),
+            ),
             HttpStatus.ok,
           ),
         );
@@ -1593,13 +1598,25 @@ void main() {
 
       test('completes when request succeeds (populated)', () async {
         final expected = [
-          AppMetadata(appId: '1', displayName: 'Shorebird Example'),
-          AppMetadata(appId: '2', displayName: 'Shorebird Clock'),
+          AppMetadata(
+            appId: '1',
+            displayName: 'Shorebird Example',
+            createdAt: DateTime(2022),
+            updatedAt: DateTime(2023),
+          ),
+          AppMetadata(
+            appId: '2',
+            displayName: 'Shorebird Clock',
+            createdAt: DateTime(2022),
+            updatedAt: DateTime(2023),
+          ),
         ];
 
         when(() => httpClient.send(any())).thenAnswer(
           (_) async => http.StreamedResponse(
-            Stream.value(utf8.encode(json.encode(expected))),
+            Stream.value(
+              utf8.encode(json.encode(GetAppsResponse(apps: expected))),
+            ),
             HttpStatus.ok,
           ),
         );
@@ -1856,13 +1873,15 @@ void main() {
       test('completes when request succeeds (empty)', () async {
         when(() => httpClient.send(any())).thenAnswer(
           (_) async => http.StreamedResponse(
-            Stream.value(utf8.encode(json.encode([]))),
+            Stream.value(
+              utf8.encode(json.encode(GetReleasesResponse(releases: []))),
+            ),
             HttpStatus.ok,
           ),
         );
 
-        final apps = await codePushClient.getReleases(appId: appId);
-        expect(apps, isEmpty);
+        final releases = await codePushClient.getReleases(appId: appId);
+        expect(releases, isEmpty);
       });
 
       test('completes when request succeeds (populated)', () async {
@@ -1874,6 +1893,8 @@ void main() {
             flutterRevision: flutterRevision,
             displayName: 'v1.0.0',
             platformStatuses: {ReleasePlatform.android: ReleaseStatus.draft},
+            createdAt: DateTime(2022),
+            updatedAt: DateTime(2023),
           ),
           Release(
             id: 1,
@@ -1882,12 +1903,16 @@ void main() {
             flutterRevision: flutterRevision,
             displayName: 'v1.0.1',
             platformStatuses: {},
+            createdAt: DateTime(2022),
+            updatedAt: DateTime(2023),
           ),
         ];
 
         when(() => httpClient.send(any())).thenAnswer(
           (_) async => http.StreamedResponse(
-            Stream.value(utf8.encode(json.encode(expected))),
+            Stream.value(
+              utf8.encode(json.encode(GetReleasesResponse(releases: expected))),
+            ),
             HttpStatus.ok,
           ),
         );

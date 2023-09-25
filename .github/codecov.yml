@@ -1,5 +1,3 @@
-# Not sure if .yaml suffix would work, currently using .yml to match examples:
-# https://docs.codecov.com/docs/codecov-yaml
 # Validate with:
 # curl -X POST --data-binary @codecov.yml https://codecov.io/validate
 # See https://docs.codecov.com/docs/flags
