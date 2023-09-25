@@ -4,7 +4,7 @@ This section contains past updates we've sent to customers via Discord.
 
 ## 0.15.0 (September 25, 2023)
 
-**BREAKING CHANGE - Upgrade Required**
+**🚨 BREAKING CHANGE - Upgrade Required 🚨**
 
 - 🍄 use upgraded backend to provide more additional metrics for console
 - 🧹 internal refactoring of artifact management
