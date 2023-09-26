@@ -1,6 +1,7 @@
 import 'dart:io' hide Platform;
 
 import 'package:args/args.dart';
+import 'package:collection/collection.dart';
 import 'package:http/http.dart' as http;
 import 'package:mason_logger/mason_logger.dart';
 import 'package:mocktail/mocktail.dart';
@@ -250,6 +251,7 @@ flutter:
       when(() => argResults['dry-run']).thenReturn(false);
       when(() => argResults['force']).thenReturn(false);
       when(() => argResults['release-version']).thenReturn(release.version);
+      when(() => argResults['codesign']).thenReturn(true);
       when(() => argResults.rest).thenReturn([]);
       when(() => auth.isAuthenticated).thenReturn(true);
       when(() => auth.client).thenReturn(httpClient);
@@ -925,6 +927,31 @@ Please re-run the release command for this version or create a new release.'''),
           runInShell: true,
         ),
       ).called(1);
+    });
+
+    test('does not provide export options when codesign is false', () async {
+      when(() => argResults['codesign']).thenReturn(false);
+      final tempDir = setUpTempDir();
+      setUpTempArtifacts(tempDir);
+
+      await IOOverrides.runZoned(
+        () => runWithOverrides(command.run),
+        getCurrentDirectory: () => tempDir,
+      );
+
+      final capturedArgs = verify(
+        () => shorebirdProcess.run(
+          'flutter',
+          captureAny(),
+          runInShell: any(named: 'runInShell'),
+        ),
+      ).captured.first as List<String>;
+      expect(
+        capturedArgs
+            .whereType<String>()
+            .firstWhereOrNull((arg) => arg.contains('export-options-plist')),
+        isNull,
+      );
     });
 
     test(

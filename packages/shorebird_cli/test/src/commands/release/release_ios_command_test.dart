@@ -1,6 +1,7 @@
 import 'dart:io' hide Platform;
 
 import 'package:args/args.dart';
+import 'package:collection/collection.dart';
 import 'package:mason_logger/mason_logger.dart';
 import 'package:mocktail/mocktail.dart';
 import 'package:path/path.dart' as p;
@@ -923,6 +924,30 @@ flavors:
       expect(exportOptionsPlist['signingStyle'], 'automatic');
       expect(exportOptionsPlist['uploadBitcode'], isFalse);
       expect(exportOptionsPlist['method'], 'app-store');
+    });
+
+    test('does not provide export options when codesign is false', () async {
+      when(() => argResults['codesign']).thenReturn(false);
+      final tempDir = setUpTempDir();
+
+      await IOOverrides.runZoned(
+        () => runWithOverrides(command.run),
+        getCurrentDirectory: () => tempDir,
+      );
+
+      final capturedArgs = verify(
+        () => shorebirdProcess.run(
+          'flutter',
+          captureAny(),
+          runInShell: any(named: 'runInShell'),
+        ),
+      ).captured.first as List<String>;
+      expect(
+        capturedArgs
+            .whereType<String>()
+            .firstWhereOrNull((arg) => arg.contains('export-options-plist')),
+        isNull,
+      );
     });
 
     test('does not prompt if running on CI', () async {
