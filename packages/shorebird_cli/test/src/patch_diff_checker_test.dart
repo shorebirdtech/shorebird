@@ -154,6 +154,14 @@ void main() {
           verify(
             () => logger.info(yellow.wrap(nativeDiffPrettyString)),
           ).called(1);
+          verify(
+            () => logger.info(
+              any(
+                that:
+                    contains("If you don't know why you're seeing this error"),
+              ),
+            ),
+          ).called(1);
         });
 
         test('prompts user if force is false', () async {
