@@ -97,6 +97,11 @@ class PatchDiffChecker {
           yellow.wrap(
             archiveDiffer.nativeFileSetDiff(contentDiffs).prettyString,
           ),
+        )
+        ..info(
+          yellow.wrap('''
+
+If you don't know why you're seeing this error, visit our troublshooting page at ${link(uri: Uri.parse('https://docs.shorebird.dev/troubleshooting#unexpected-native-changes'))}'''),
         );
 
       if (!force) {
