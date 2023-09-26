@@ -195,10 +195,10 @@ mixin ShorebirdBuildMixin on ShorebirdCommand {
         'build',
         'ipa',
         '--release',
-        '--export-options-plist=${exportPlistFile.path}',
         if (flavor != null) '--flavor=$flavor',
         if (target != null) '--target=$target',
         if (!codesign) '--no-codesign',
+        if (codesign) '--export-options-plist=${exportPlistFile.path}',
         ...results.rest,
       ];
 
