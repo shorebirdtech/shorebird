@@ -933,6 +933,7 @@ Please re-run the release command for this version or create a new release.'''),
       when(() => argResults['codesign']).thenReturn(false);
       final tempDir = setUpTempDir();
       setUpTempArtifacts(tempDir);
+
       await IOOverrides.runZoned(
         () => runWithOverrides(command.run),
         getCurrentDirectory: () => tempDir,
@@ -945,7 +946,6 @@ Please re-run the release command for this version or create a new release.'''),
           runInShell: any(named: 'runInShell'),
         ),
       ).captured.first as List<String>;
-
       expect(
         capturedArgs
             .whereType<String>()
