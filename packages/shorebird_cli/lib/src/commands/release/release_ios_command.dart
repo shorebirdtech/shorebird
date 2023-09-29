@@ -104,15 +104,6 @@ make smaller updates to your app.
 
     buildProgress.complete();
 
-    // Ensure the ipa was built
-    final String ipaPath;
-    try {
-      ipaPath = getIpaPath();
-    } catch (error) {
-      logger.err('Could not find ipa file: $error');
-      return ExitCode.software.code;
-    }
-
     final archivePath = getXcarchiveDirectory()?.path;
     if (archivePath == null) {
       logger.err('Unable to find .xcarchive directory');
@@ -212,6 +203,15 @@ ${summary.join('\n')}
 
     final relativeArchivePath = p.relative(archivePath);
     if (codesign) {
+      // Ensure the ipa was built
+      final String ipaPath;
+      try {
+        ipaPath = getIpaPath();
+      } catch (error) {
+        logger.err('Could not find ipa file: $error');
+        return ExitCode.software.code;
+      }
+
       final relativeIpaPath = p.relative(ipaPath);
       logger.info('''
 
