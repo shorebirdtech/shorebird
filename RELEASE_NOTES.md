@@ -2,6 +2,17 @@
 
 This section contains past updates we've sent to customers via Discord.
 
+## 0.15.1 (September 29, 2023)
+
+- 🔗 Adds link to troubleshooting page when native changes are detected
+- 🍎 Fixes issues with the `--no-codesign` flag for `shorebird release ios-alpha`
+
+📚 Release notes can be found at https://github.com/shorebirdtech/shorebird/releases/tag/v0.15.1
+
+As always, you can upgrade using `shorebird upgrade`
+
+Please let us know if we can help!
+
 ## 0.15.0 (September 25, 2023)
 
 **🚨 BREAKING CHANGE - Upgrade Required 🚨**
