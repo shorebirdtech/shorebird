@@ -635,9 +635,7 @@ error: exportArchive: No signing certificate "iOS Distribution" found
       );
 
       expect(exitCode, equals(ExitCode.software.code));
-      verify(
-        () => logger.err(any(that: contains('No directory found'))),
-      ).called(1);
+      verify(() => logger.err('Unable to find .xcarchive directory')).called(1);
     });
 
     test('exits with code 70 if ipa build directory does not exist', () async {
