@@ -27,6 +27,7 @@ void main() {
     const appId = 'test-app-id';
     const appDisplayName = 'Test App';
     const releaseVersion = '1.2.3';
+    const channel = 'stable';
     const releaseId = 42;
 
     late AppMetadata app;
@@ -85,6 +86,7 @@ void main() {
 
       when(() => argResults['app-id']).thenReturn(appId);
       when(() => argResults['release-version']).thenReturn(releaseVersion);
+      when(() => argResults['channel']).thenReturn(channel);
       when(() => auth.isAuthenticated).thenReturn(true);
       when(() => cache.getPreviewDirectory(any())).thenReturn(previewDirectory);
       when(
@@ -188,8 +190,9 @@ void main() {
               authRef.overrideWith(() => auth),
               bundletoolRef.overrideWith(() => bundletool),
               cacheRef.overrideWith(() => cache),
-              codePushClientWrapperRef
-                  .overrideWith(() => codePushClientWrapper),
+              codePushClientWrapperRef.overrideWith(
+                () => codePushClientWrapper,
+              ),
               loggerRef.overrideWith(() => logger),
               shorebirdValidatorRef.overrideWith(() => shorebirdValidator),
             },

@@ -1,6 +1,8 @@
 import 'dart:async';
 import 'dart:convert';
+import 'dart:isolate';
 
+import 'package:archive/archive_io.dart';
 import 'package:collection/collection.dart';
 import 'package:http/http.dart' as http;
 import 'package:mason_logger/mason_logger.dart';
@@ -17,6 +19,7 @@ import 'package:shorebird_cli/src/logger.dart';
 import 'package:shorebird_cli/src/shorebird_validator.dart';
 import 'package:shorebird_cli/src/third_party/flutter_tools/lib/flutter_tools.dart';
 import 'package:shorebird_code_push_client/shorebird_code_push_client.dart';
+import 'package:yaml_edit/yaml_edit.dart';
 
 /// {@template preview_command}
 /// `shorebird preview` command.
@@ -49,6 +52,10 @@ class PreviewCommand extends ShorebirdCommand {
           ReleasePlatform.ios.name: 'iOS',
         },
         help: 'The platform of the release.',
+      )
+      ..addOption(
+        'channel',
+        help: 'The channel to preview the release for.',
       );
   }
 
@@ -103,17 +110,20 @@ class PreviewCommand extends ShorebirdCommand {
     );
 
     final deviceId = results['device-id'] as String?;
+    final channel = results['channel'] as String?;
 
     return switch (platform) {
       ReleasePlatform.android => installAndLaunchAndroid(
           appId: appId,
           release: release,
           deviceId: deviceId,
+          channel: channel,
         ),
       ReleasePlatform.ios => installAndLaunchIos(
           appId: appId,
           release: release,
           deviceId: deviceId,
+          channel: channel,
         ),
     };
   }
@@ -152,6 +162,7 @@ class PreviewCommand extends ShorebirdCommand {
     required String appId,
     required Release release,
     String? deviceId,
+    String? channel,
   }) async {
     const platform = ReleasePlatform.android;
     final aabFile = File(
@@ -187,6 +198,25 @@ class PreviewCommand extends ShorebirdCommand {
       }
     }
 
+    final apksPath = getArtifactPath(
+      appId: appId,
+      release: release,
+      platform: platform,
+      extension: 'apks',
+    );
+
+    if (channel != null) {
+      if (File(apksPath).existsSync()) File(apksPath).deleteSync();
+      final progress = logger.progress('Setting channel: $channel');
+      try {
+        await setChannelOnAab(aabFile: aabFile, channel: channel);
+        progress.complete();
+      } catch (error) {
+        progress.fail('$error');
+        return ExitCode.software.code;
+      }
+    }
+
     final extractMetadataProgress = logger.progress('Extracting metadata');
     late String package;
     try {
@@ -196,13 +226,6 @@ class PreviewCommand extends ShorebirdCommand {
       extractMetadataProgress.fail('$error');
       return ExitCode.software.code;
     }
-
-    final apksPath = getArtifactPath(
-      appId: appId,
-      release: release,
-      platform: platform,
-      extension: 'apks',
-    );
 
     if (!File(apksPath).existsSync()) {
       final buildApksProgress = logger.progress('Building apks');
@@ -248,6 +271,7 @@ class PreviewCommand extends ShorebirdCommand {
     required String appId,
     required Release release,
     String? deviceId,
+    String? channel,
   }) async {
     const platform = ReleasePlatform.ios;
     final runnerDirectory = Directory(
@@ -285,6 +309,20 @@ class PreviewCommand extends ShorebirdCommand {
       }
     }
 
+    if (channel != null) {
+      final progress = logger.progress('Setting channel: $channel');
+      try {
+        await setChannelOnRunner(
+          runnerDirectory: runnerDirectory,
+          channel: channel,
+        );
+        progress.complete();
+      } catch (error) {
+        progress.fail('$error');
+        return ExitCode.software.code;
+      }
+    }
+
     try {
       final exitCode = await iosDeploy.installAndLaunchApp(
         bundlePath: runnerDirectory.path,
@@ -307,5 +345,85 @@ class PreviewCommand extends ShorebirdCommand {
       previewDirectory.path,
       '${platform.name}_${release.version}.$extension',
     );
+  }
+
+  Future<void> setChannelOnRunner({
+    required Directory runnerDirectory,
+    required String channel,
+  }) async {
+    await Isolate.run(() async {
+      final shorebirdYaml = File(
+        p.join(
+          runnerDirectory.path,
+          'Frameworks',
+          'App.framework',
+          'flutter_assets',
+          'shorebird.yaml',
+        ),
+      );
+
+      if (!shorebirdYaml.existsSync()) {
+        throw Exception('Unable to find shorebird.yaml');
+      }
+
+      final yaml = YamlEditor(shorebirdYaml.readAsStringSync())
+        ..update(['channel'], channel);
+
+      shorebirdYaml.writeAsStringSync(yaml.toString(), flush: true);
+    });
+  }
+
+  Future<void> setChannelOnAab({
+    required File aabFile,
+    required String channel,
+  }) async {
+    // Getting the reference here since we cannot inside the isolate.
+    final extractZip = artifactManager.extractZip;
+
+    await Isolate.run(() async {
+      final tempDir = Directory.systemTemp.createTempSync();
+      final basename = p.basenameWithoutExtension(aabFile.path);
+      final outputPath = p.join(tempDir.path, basename);
+
+      await extractZip(
+        zipFile: aabFile,
+        outputDirectory: Directory(outputPath),
+      );
+
+      final shorebirdYaml = File(
+        p.join(
+          outputPath,
+          'base',
+          'assets',
+          'flutter_assets',
+          'shorebird.yaml',
+        ),
+      );
+
+      if (!shorebirdYaml.existsSync()) {
+        throw Exception('Unable to find shorebird.yaml');
+      }
+
+      final yaml = YamlEditor(shorebirdYaml.readAsStringSync())
+        ..update(['channel'], channel);
+
+      shorebirdYaml.writeAsStringSync(yaml.toString(), flush: true);
+
+      // This is equivalent to `zip --no-dir-entries`
+      // Which does NOT create entries in the zip archive for directories.
+      // It's important to do this because bundletool expects the
+      // .aab not to contain any directories.
+      final encoder = ZipFileEncoder()..create(aabFile.path);
+      for (final file in Directory(outputPath).listSync(recursive: true)) {
+        if (file is File) {
+          await encoder.addFile(
+            file,
+            file.path.replaceFirst('$outputPath/', ''),
+          );
+        }
+      }
+      encoder.close();
+      tempDir.deleteSync(recursive: true);
+    });
   }
 }
