@@ -1,6 +1,8 @@
+import 'dart:convert';
 import 'dart:io';
 
 import 'package:checked_yaml/checked_yaml.dart';
+import 'package:http/http.dart' as http;
 import 'package:mason_logger/mason_logger.dart';
 import 'package:path/path.dart' as p;
 import 'package:scoped/scoped.dart';
@@ -61,6 +63,10 @@ void main() {
       if (authToken == null || authToken.isEmpty) {
         throw Exception('SHOREBIRD_TOKEN environment variable is not set.');
       }
+      const releaseVersion = '1.0.0+1';
+      const platform = 'android';
+      const arch = 'aarch64';
+      const channel = 'stable';
 
       final uuid = const Uuid().v4().replaceAll('-', '_');
       final testAppName = 'test_app_$uuid';
@@ -129,6 +135,18 @@ void main() {
       expect(shorebirdReleaseResult.stdout, contains('Published Release!'));
       expect(shorebirdReleaseResult.exitCode, equals(0));
 
+      // Verify that no patch is available.
+      await expectLater(
+        isPatchAvailable(
+          appId: shorebirdYaml.appId,
+          releaseVersion: releaseVersion,
+          platform: platform,
+          arch: arch,
+          channel: channel,
+        ),
+        completion(isFalse),
+      );
+
       // Verify that the release was created.
       await expectLater(
         runWithOverrides(client.getApps),
@@ -143,7 +161,7 @@ void main() {
                 .having(
                   (a) => a.latestReleaseVersion,
                   'latestReleaseVersion',
-                  '1.0.0+1',
+                  releaseVersion,
                 )
                 .having(
                   (a) => a.latestPatchNumber,
@@ -162,6 +180,18 @@ void main() {
       expect(shorebirdPatchResult.stderr, isEmpty);
       expect(shorebirdPatchResult.stdout, contains('Published Patch'));
       expect(shorebirdPatchResult.exitCode, equals(0));
+
+      // Verify that the patch is available.
+      await expectLater(
+        isPatchAvailable(
+          appId: shorebirdYaml.appId,
+          releaseVersion: releaseVersion,
+          platform: platform,
+          arch: arch,
+          channel: channel,
+        ),
+        completion(isTrue),
+      );
 
       // Verify that the patch was created.
       await expectLater(
@@ -209,7 +239,45 @@ void main() {
           ),
         ),
       );
+
+      // Verify that no patch is available.
+      await expectLater(
+        isPatchAvailable(
+          appId: shorebirdYaml.appId,
+          releaseVersion: releaseVersion,
+          platform: platform,
+          arch: arch,
+          channel: channel,
+        ),
+        completion(isFalse),
+      );
     },
     timeout: const Timeout(Duration(minutes: 5)),
   );
+}
+
+Future<bool> isPatchAvailable({
+  required String appId,
+  required String releaseVersion,
+  required String platform,
+  required String arch,
+  required String channel,
+}) async {
+  final response = await http.post(
+    Uri.parse(Platform.environment['SHOREBIRD_HOSTED_URL']!),
+    body: jsonEncode(
+      {
+        'release_version': releaseVersion,
+        'platform': platform,
+        'arch': arch,
+        'app_id': appId,
+        'channel': channel,
+      },
+    ),
+  );
+  if (response.statusCode != HttpStatus.ok) {
+    throw Exception('Patch Check Failure: ${response.statusCode}');
+  }
+  final json = jsonDecode(response.body) as Map<String, dynamic>;
+  return json['patch_available'] as bool;
 }
