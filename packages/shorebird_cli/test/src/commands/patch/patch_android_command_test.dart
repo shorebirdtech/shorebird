@@ -42,7 +42,7 @@ void main() {
     const version = '$versionName+$versionCode';
     const arch = 'aarch64';
     const releasePlatform = ReleasePlatform.android;
-    const channelName = 'test-channel';
+    const channelName = 'stable';
     const appDisplayName = 'Test App';
     final appMetadata = AppMetadata(
       appId: appId,

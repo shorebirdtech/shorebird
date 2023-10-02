@@ -42,11 +42,6 @@ class PatchIosCommand extends ShorebirdCommand
         'flavor',
         help: 'The product flavor to use when building the app.',
       )
-      ..addOption(
-        'channel',
-        help: 'The channel to publish the patch to.',
-        defaultsTo: 'stable',
-      )
       ..addFlag(
         'codesign',
         help: 'Codesign the application bundle.',
@@ -100,7 +95,7 @@ class PatchIosCommand extends ShorebirdCommand
     }
 
     const arch = 'aarch64';
-    final channelName = results['channel'] as String;
+    const channelName = 'stable';
     const releasePlatform = ReleasePlatform.ios;
     final flavor = results['flavor'] as String?;
 
