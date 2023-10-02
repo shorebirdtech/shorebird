@@ -264,7 +264,9 @@ Future<bool> isPatchAvailable({
   required String channel,
 }) async {
   final response = await http.post(
-    Uri.parse(Platform.environment['SHOREBIRD_HOSTED_URL']!),
+    Uri.parse(Platform.environment['SHOREBIRD_HOSTED_URL']!).replace(
+      path: '/api/v1/patches/check',
+    ),
     body: jsonEncode(
       {
         'release_version': releaseVersion,
