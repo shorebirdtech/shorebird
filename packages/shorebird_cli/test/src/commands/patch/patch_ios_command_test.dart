@@ -38,7 +38,9 @@ void main() {
   const versionCode = '1';
   const version = '$versionName+$versionCode';
   const arch = 'aarch64';
+  const channelName = 'test-channel';
   const appDisplayName = 'Test App';
+  const releasePlatform = ReleasePlatform.ios;
   const platformName = 'ios';
   const elfAotSnapshotFileName = 'out.aot';
   const ipaPath = 'build/ios/ipa/Runner.ipa';
@@ -252,6 +254,7 @@ flutter:
       when(() => argResults['force']).thenReturn(false);
       when(() => argResults['release-version']).thenReturn(release.version);
       when(() => argResults['codesign']).thenReturn(true);
+      when(() => argResults['channel']).thenReturn(channelName);
       when(() => argResults.rest).thenReturn([]);
       when(() => auth.isAuthenticated).thenReturn(true);
       when(() => auth.client).thenReturn(httpClient);
@@ -845,10 +848,10 @@ Please re-run the release command for this version or create a new release.'''),
       verifyNever(() => logger.confirm(any()));
       verify(
         () => codePushClientWrapper.publishPatch(
-          appId: any(named: 'appId'),
-          releaseId: any(named: 'releaseId'),
-          platform: any(named: 'platform'),
-          channelName: any(named: 'channelName'),
+          appId: appId,
+          releaseId: release.id,
+          platform: releasePlatform,
+          channelName: channelName,
           patchArtifactBundles: any(named: 'patchArtifactBundles'),
         ),
       ).called(1);
@@ -872,10 +875,10 @@ Please re-run the release command for this version or create a new release.'''),
       ).called(1);
       verify(
         () => codePushClientWrapper.publishPatch(
-          appId: any(named: 'appId'),
-          releaseId: any(named: 'releaseId'),
-          platform: any(named: 'platform'),
-          channelName: any(named: 'channelName'),
+          appId: appId,
+          releaseId: release.id,
+          platform: releasePlatform,
+          channelName: channelName,
           patchArtifactBundles: any(named: 'patchArtifactBundles'),
         ),
       ).called(1);
@@ -976,10 +979,10 @@ flavors:
       expect(exitCode, ExitCode.success.code);
       verify(
         () => codePushClientWrapper.publishPatch(
-          appId: any(named: 'appId'),
-          releaseId: any(named: 'releaseId'),
-          platform: any(named: 'platform'),
-          channelName: any(named: 'channelName'),
+          appId: appId,
+          releaseId: release.id,
+          platform: releasePlatform,
+          channelName: channelName,
           patchArtifactBundles: any(named: 'patchArtifactBundles'),
         ),
       ).called(1);
