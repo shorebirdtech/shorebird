@@ -2,6 +2,16 @@
 
 This section contains past updates we've sent to customers via Discord.
 
+## 0.15.2 (October 2, 2023)
+
+- 🐦 Flutter 3.13.6 support!
+
+📚 Release notes can be found at https://github.com/shorebirdtech/shorebird/releases/tag/v0.15.2
+
+As always, you can upgrade using `shorebird upgrade`
+
+Please let us know if we can help!
+
 ## 0.15.1 (September 29, 2023)
 
 - 🔗 Adds link to troubleshooting page when native changes are detected
