@@ -18,7 +18,7 @@ void main() {
             },
             createdAt: DateTime(2022),
             updatedAt: DateTime(2023),
-          )
+          ),
         ],
       );
       expect(

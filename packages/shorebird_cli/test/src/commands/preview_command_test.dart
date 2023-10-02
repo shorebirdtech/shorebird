@@ -27,6 +27,7 @@ void main() {
     const appId = 'test-app-id';
     const appDisplayName = 'Test App';
     const releaseVersion = '1.2.3';
+    const channel = 'stable';
     const releaseId = 42;
 
     late AppMetadata app;
@@ -85,6 +86,7 @@ void main() {
 
       when(() => argResults['app-id']).thenReturn(appId);
       when(() => argResults['release-version']).thenReturn(releaseVersion);
+      when(() => argResults['channel']).thenReturn(channel);
       when(() => auth.isAuthenticated).thenReturn(true);
       when(() => cache.getPreviewDirectory(any())).thenReturn(previewDirectory);
       when(
@@ -188,13 +190,28 @@ void main() {
               authRef.overrideWith(() => auth),
               bundletoolRef.overrideWith(() => bundletool),
               cacheRef.overrideWith(() => cache),
-              codePushClientWrapperRef
-                  .overrideWith(() => codePushClientWrapper),
+              codePushClientWrapperRef.overrideWith(
+                () => codePushClientWrapper,
+              ),
               loggerRef.overrideWith(() => logger),
               shorebirdValidatorRef.overrideWith(() => shorebirdValidator),
             },
           ),
         );
+      }
+
+      Future<void> createShorebirdYaml(Invocation invocation) async {
+        File(
+          p.join(
+            (invocation.namedArguments[#outputDirectory] as Directory).path,
+            'base',
+            'assets',
+            'flutter_assets',
+            'shorebird.yaml',
+          ),
+        )
+          ..createSync(recursive: true)
+          ..writeAsStringSync('app_id: $appId', flush: true);
       }
 
       setUp(() {
@@ -289,7 +306,22 @@ void main() {
         verify(() => progress.fail('$exception')).called(1);
       });
 
+      test('exits with code 70 when unable to find shorebird.yaml', () async {
+        final result = await runWithOverrides(command.run);
+        expect(result, equals(ExitCode.software.code));
+        verify(
+          () => progress.fail('Exception: Unable to find shorebird.yaml'),
+        ).called(1);
+      });
+
       test('exits with code 70 when extracting metadata fails', () async {
+        when(
+          () => artifactManager.extractZip(
+            zipFile: any(named: 'zipFile'),
+            outputDirectory: any(named: 'outputDirectory'),
+          ),
+        ).thenAnswer(createShorebirdYaml);
+
         final exception = Exception('oops');
         when(() => bundletool.getPackageName(any())).thenThrow(exception);
         final result = await runWithOverrides(command.run);
@@ -298,6 +330,13 @@ void main() {
       });
 
       test('exits with code 70 when building apks fails', () async {
+        when(
+          () => artifactManager.extractZip(
+            zipFile: any(named: 'zipFile'),
+            outputDirectory: any(named: 'outputDirectory'),
+          ),
+        ).thenAnswer(createShorebirdYaml);
+
         final exception = Exception('oops');
         when(
           () => bundletool.buildApks(
@@ -313,6 +352,13 @@ void main() {
       });
 
       test('exits with code 70 when installing apks fails', () async {
+        when(
+          () => artifactManager.extractZip(
+            zipFile: any(named: 'zipFile'),
+            outputDirectory: any(named: 'outputDirectory'),
+          ),
+        ).thenAnswer(createShorebirdYaml);
+
         final exception = Exception('oops');
         when(
           () => bundletool.installApks(apks: any(named: 'apks')),
@@ -323,6 +369,13 @@ void main() {
       });
 
       test('exits with code 70 when starting app fails', () async {
+        when(
+          () => artifactManager.extractZip(
+            zipFile: any(named: 'zipFile'),
+            outputDirectory: any(named: 'outputDirectory'),
+          ),
+        ).thenAnswer(createShorebirdYaml);
+
         final exception = Exception('oops');
         when(() => adb.startApp(package: any(named: 'package')))
             .thenThrow(exception);
@@ -332,6 +385,13 @@ void main() {
       });
 
       test('exits with non-zero exit code when logcat process fails', () async {
+        when(
+          () => artifactManager.extractZip(
+            zipFile: any(named: 'zipFile'),
+            outputDirectory: any(named: 'outputDirectory'),
+          ),
+        ).thenAnswer(createShorebirdYaml);
+
         when(() => process.exitCode).thenAnswer((_) async => 1);
         final result = await runWithOverrides(command.run);
         expect(result, equals(1));
@@ -339,6 +399,13 @@ void main() {
       });
 
       test('pipes stdout output to logger', () async {
+        when(
+          () => artifactManager.extractZip(
+            zipFile: any(named: 'zipFile'),
+            outputDirectory: any(named: 'outputDirectory'),
+          ),
+        ).thenAnswer(createShorebirdYaml);
+
         final completer = Completer<int>();
         when(() => process.exitCode).thenAnswer((_) => completer.future);
         const output = 'hello world';
@@ -352,6 +419,13 @@ void main() {
       });
 
       test('pipes stderr output to logger', () async {
+        when(
+          () => artifactManager.extractZip(
+            zipFile: any(named: 'zipFile'),
+            outputDirectory: any(named: 'outputDirectory'),
+          ),
+        ).thenAnswer(createShorebirdYaml);
+
         final completer = Completer<int>();
         when(() => process.exitCode).thenAnswer((_) => completer.future);
         const output = 'hello world';
@@ -365,6 +439,13 @@ void main() {
       });
 
       test('queries for apps when app-id is not specified', () async {
+        when(
+          () => artifactManager.extractZip(
+            zipFile: any(named: 'zipFile'),
+            outputDirectory: any(named: 'outputDirectory'),
+          ),
+        ).thenAnswer(createShorebirdYaml);
+
         when(() => argResults['app-id']).thenReturn(null);
         when(
           () => logger.chooseOne<AppMetadata>(
@@ -387,6 +468,13 @@ void main() {
       });
 
       test('prompts for platforms when platform is not specified', () async {
+        when(
+          () => artifactManager.extractZip(
+            zipFile: any(named: 'zipFile'),
+            outputDirectory: any(named: 'outputDirectory'),
+          ),
+        ).thenAnswer(createShorebirdYaml);
+
         when(() => argResults['platform']).thenReturn(null);
         when(
           () => logger.chooseOne<String>(
@@ -458,6 +546,13 @@ void main() {
       test(
           'queries for releases when '
           'release-version is not specified', () async {
+        when(
+          () => artifactManager.extractZip(
+            zipFile: any(named: 'zipFile'),
+            outputDirectory: any(named: 'outputDirectory'),
+          ),
+        ).thenAnswer(createShorebirdYaml);
+
         when(() => argResults['release-version']).thenReturn(null);
         when(
           () => logger.chooseOne<Release>(
@@ -485,6 +580,13 @@ void main() {
       });
 
       test('forwards deviceId to adb and bundletool', () async {
+        when(
+          () => artifactManager.extractZip(
+            zipFile: any(named: 'zipFile'),
+            outputDirectory: any(named: 'outputDirectory'),
+          ),
+        ).thenAnswer(createShorebirdYaml);
+
         const deviceId = '1234';
         when(() => argResults['device-id']).thenReturn(deviceId);
         await runWithOverrides(command.run);
@@ -613,7 +715,29 @@ void main() {
         verify(() => progress.fail('$exception')).called(1);
       });
 
+      test('exits with code 70 when unable to find shorebird.yaml', () async {
+        final result = await runWithOverrides(command.run);
+        expect(result, equals(ExitCode.software.code));
+        verify(
+          () => progress.fail('Exception: Unable to find shorebird.yaml'),
+        ).called(1);
+        verifyNever(
+          () => iosDeploy.installAndLaunchApp(bundlePath: runnerPath()),
+        );
+      });
+
       test('exits with code 70 when install/launch throws', () async {
+        File(
+          p.join(
+            runnerPath(),
+            'Frameworks',
+            'App.framework',
+            'flutter_assets',
+            'shorebird.yaml',
+          ),
+        )
+          ..createSync(recursive: true)
+          ..writeAsStringSync('app_id: $appId', flush: true);
         final exception = Exception('oops');
         when(
           () => iosDeploy.installAndLaunchApp(
@@ -629,6 +753,17 @@ void main() {
       });
 
       test('exits with code 0 when install/launch succeeds', () async {
+        final shorebirdYaml = File(
+          p.join(
+            runnerPath(),
+            'Frameworks',
+            'App.framework',
+            'flutter_assets',
+            'shorebird.yaml',
+          ),
+        )
+          ..createSync(recursive: true)
+          ..writeAsStringSync('app_id: $appId', flush: true);
         when(
           () => iosDeploy.installAndLaunchApp(
             bundlePath: any(named: 'bundlePath'),
@@ -640,6 +775,13 @@ void main() {
         verify(
           () => iosDeploy.installAndLaunchApp(bundlePath: runnerPath()),
         ).called(1);
+        expect(
+          shorebirdYaml.readAsStringSync(),
+          equals('''
+app_id: $appId
+channel: $channel
+'''),
+        );
       });
     });
   });

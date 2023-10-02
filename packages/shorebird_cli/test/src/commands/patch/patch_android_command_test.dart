@@ -42,7 +42,7 @@ void main() {
     const version = '$versionName+$versionCode';
     const arch = 'aarch64';
     const releasePlatform = ReleasePlatform.android;
-    const channelName = 'stable';
+    const channelName = 'test-channel';
     const appDisplayName = 'Test App';
     final appMetadata = AppMetadata(
       appId: appId,
@@ -786,10 +786,10 @@ Please re-run the release command for this version or create a new release.'''),
       verifyNever(() => logger.confirm(any()));
       verify(
         () => codePushClientWrapper.publishPatch(
-          appId: any(named: 'appId'),
-          releaseId: any(named: 'releaseId'),
-          platform: any(named: 'platform'),
-          channelName: any(named: 'channelName'),
+          appId: appId,
+          releaseId: release.id,
+          platform: releasePlatform,
+          channelName: channelName,
           patchArtifactBundles: any(named: 'patchArtifactBundles'),
         ),
       ).called(1);
@@ -813,10 +813,10 @@ Please re-run the release command for this version or create a new release.'''),
       ).called(1);
       verify(
         () => codePushClientWrapper.publishPatch(
-          appId: any(named: 'appId'),
-          releaseId: any(named: 'releaseId'),
-          platform: any(named: 'platform'),
-          channelName: any(named: 'channelName'),
+          appId: appId,
+          releaseId: release.id,
+          platform: releasePlatform,
+          channelName: channelName,
           patchArtifactBundles: any(named: 'patchArtifactBundles'),
         ),
       ).called(1);
@@ -863,10 +863,10 @@ flavors:
       );
       verify(
         () => codePushClientWrapper.publishPatch(
-          appId: any(named: 'appId'),
-          releaseId: any(named: 'releaseId'),
-          platform: any(named: 'platform'),
-          channelName: any(named: 'channelName'),
+          appId: appId,
+          releaseId: release.id,
+          platform: releasePlatform,
+          channelName: channelName,
           patchArtifactBundles: any(named: 'patchArtifactBundles'),
         ),
       ).called(1);

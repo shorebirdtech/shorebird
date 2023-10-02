@@ -11,7 +11,7 @@ void main() {
             displayName: 'display-name',
             createdAt: DateTime(2022),
             updatedAt: DateTime(2023),
-          )
+          ),
         ],
       );
       expect(
