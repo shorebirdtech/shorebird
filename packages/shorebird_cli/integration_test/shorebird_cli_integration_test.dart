@@ -26,10 +26,7 @@ void main() {
   final client = runWithOverrides(
     () => CodePushClient(
       httpClient: Auth().client,
-      hostedUri: Uri.parse(
-        Platform.environment['SHOREBIRD_HOSTED_URL'] ??
-            'https://api-dev.shorebird.dev',
-      ),
+      hostedUri: Uri.parse(Platform.environment['SHOREBIRD_HOSTED_URL']!),
     ),
   );
 
