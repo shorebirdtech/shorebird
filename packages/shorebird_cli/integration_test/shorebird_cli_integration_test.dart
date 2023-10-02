@@ -138,6 +138,7 @@ void main() {
       // Verify that no patch is available.
       await expectLater(
         isPatchAvailable(
+          appId: shorebirdYaml.appId,
           releaseVersion: releaseVersion,
           platform: platform,
           arch: arch,
@@ -183,6 +184,7 @@ void main() {
       // Verify that the patch is available.
       await expectLater(
         isPatchAvailable(
+          appId: shorebirdYaml.appId,
           releaseVersion: releaseVersion,
           platform: platform,
           arch: arch,
@@ -241,6 +243,7 @@ void main() {
       // Verify that no patch is available.
       await expectLater(
         isPatchAvailable(
+          appId: shorebirdYaml.appId,
           releaseVersion: releaseVersion,
           platform: platform,
           arch: arch,
@@ -254,13 +257,23 @@ void main() {
 }
 
 Future<bool> isPatchAvailable({
+  required String appId,
   required String releaseVersion,
   required String platform,
   required String arch,
   required String channel,
 }) async {
-  final response = await http.get(
+  final response = await http.post(
     Uri.parse(Platform.environment['SHOREBIRD_HOSTED_URL']!),
+    body: jsonEncode(
+      {
+        'release_version': releaseVersion,
+        'platform': platform,
+        'arch': arch,
+        'app_id': appId,
+        'channel': channel,
+      },
+    ),
   );
   if (response.statusCode != HttpStatus.ok) {
     throw Exception('Patch Check Failure: ${response.statusCode}');
