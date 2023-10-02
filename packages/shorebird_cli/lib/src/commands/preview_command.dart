@@ -342,6 +342,7 @@ class PreviewCommand extends ShorebirdCommand {
     );
   }
 
+  /// Sets the channel property in the shorebird.yaml file inside the Runner.app
   Future<void> setChannelOnRunner({
     required Directory runnerDirectory,
     required String channel,
@@ -368,6 +369,8 @@ class PreviewCommand extends ShorebirdCommand {
     });
   }
 
+  /// Unzips the `.aab` and sets the channel property in the shorebird.yaml
+  /// file inside the base module and then re-zips the `.aab`.
   Future<void> setChannelOnAab({
     required File aabFile,
     required String channel,

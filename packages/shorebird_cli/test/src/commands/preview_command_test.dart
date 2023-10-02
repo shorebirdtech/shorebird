@@ -200,25 +200,18 @@ void main() {
         );
       }
 
-      void setupExtractArtifactStub() {
-        when(
-          () => artifactManager.extractZip(
-            zipFile: any(named: 'zipFile'),
-            outputDirectory: any(named: 'outputDirectory'),
+      Future<void> createShorebirdYaml(Invocation invocation) async {
+        File(
+          p.join(
+            (invocation.namedArguments[#outputDirectory] as Directory).path,
+            'base',
+            'assets',
+            'flutter_assets',
+            'shorebird.yaml',
           ),
-        ).thenAnswer((invocation) async {
-          File(
-            p.join(
-              (invocation.namedArguments[#outputDirectory] as Directory).path,
-              'base',
-              'assets',
-              'flutter_assets',
-              'shorebird.yaml',
-            ),
-          )
-            ..createSync(recursive: true)
-            ..writeAsStringSync('app_id: $appId', flush: true);
-        });
+        )
+          ..createSync(recursive: true)
+          ..writeAsStringSync('app_id: $appId', flush: true);
       }
 
       setUp(() {
@@ -322,7 +315,12 @@ void main() {
       });
 
       test('exits with code 70 when extracting metadata fails', () async {
-        setupExtractArtifactStub();
+        when(
+          () => artifactManager.extractZip(
+            zipFile: any(named: 'zipFile'),
+            outputDirectory: any(named: 'outputDirectory'),
+          ),
+        ).thenAnswer(createShorebirdYaml);
 
         final exception = Exception('oops');
         when(() => bundletool.getPackageName(any())).thenThrow(exception);
@@ -332,7 +330,12 @@ void main() {
       });
 
       test('exits with code 70 when building apks fails', () async {
-        setupExtractArtifactStub();
+        when(
+          () => artifactManager.extractZip(
+            zipFile: any(named: 'zipFile'),
+            outputDirectory: any(named: 'outputDirectory'),
+          ),
+        ).thenAnswer(createShorebirdYaml);
 
         final exception = Exception('oops');
         when(
@@ -349,7 +352,12 @@ void main() {
       });
 
       test('exits with code 70 when installing apks fails', () async {
-        setupExtractArtifactStub();
+        when(
+          () => artifactManager.extractZip(
+            zipFile: any(named: 'zipFile'),
+            outputDirectory: any(named: 'outputDirectory'),
+          ),
+        ).thenAnswer(createShorebirdYaml);
 
         final exception = Exception('oops');
         when(
@@ -361,7 +369,12 @@ void main() {
       });
 
       test('exits with code 70 when starting app fails', () async {
-        setupExtractArtifactStub();
+        when(
+          () => artifactManager.extractZip(
+            zipFile: any(named: 'zipFile'),
+            outputDirectory: any(named: 'outputDirectory'),
+          ),
+        ).thenAnswer(createShorebirdYaml);
 
         final exception = Exception('oops');
         when(() => adb.startApp(package: any(named: 'package')))
@@ -372,7 +385,12 @@ void main() {
       });
 
       test('exits with non-zero exit code when logcat process fails', () async {
-        setupExtractArtifactStub();
+        when(
+          () => artifactManager.extractZip(
+            zipFile: any(named: 'zipFile'),
+            outputDirectory: any(named: 'outputDirectory'),
+          ),
+        ).thenAnswer(createShorebirdYaml);
 
         when(() => process.exitCode).thenAnswer((_) async => 1);
         final result = await runWithOverrides(command.run);
@@ -381,7 +399,12 @@ void main() {
       });
 
       test('pipes stdout output to logger', () async {
-        setupExtractArtifactStub();
+        when(
+          () => artifactManager.extractZip(
+            zipFile: any(named: 'zipFile'),
+            outputDirectory: any(named: 'outputDirectory'),
+          ),
+        ).thenAnswer(createShorebirdYaml);
 
         final completer = Completer<int>();
         when(() => process.exitCode).thenAnswer((_) => completer.future);
@@ -396,7 +419,12 @@ void main() {
       });
 
       test('pipes stderr output to logger', () async {
-        setupExtractArtifactStub();
+        when(
+          () => artifactManager.extractZip(
+            zipFile: any(named: 'zipFile'),
+            outputDirectory: any(named: 'outputDirectory'),
+          ),
+        ).thenAnswer(createShorebirdYaml);
 
         final completer = Completer<int>();
         when(() => process.exitCode).thenAnswer((_) => completer.future);
@@ -411,7 +439,12 @@ void main() {
       });
 
       test('queries for apps when app-id is not specified', () async {
-        setupExtractArtifactStub();
+        when(
+          () => artifactManager.extractZip(
+            zipFile: any(named: 'zipFile'),
+            outputDirectory: any(named: 'outputDirectory'),
+          ),
+        ).thenAnswer(createShorebirdYaml);
 
         when(() => argResults['app-id']).thenReturn(null);
         when(
@@ -435,7 +468,12 @@ void main() {
       });
 
       test('prompts for platforms when platform is not specified', () async {
-        setupExtractArtifactStub();
+        when(
+          () => artifactManager.extractZip(
+            zipFile: any(named: 'zipFile'),
+            outputDirectory: any(named: 'outputDirectory'),
+          ),
+        ).thenAnswer(createShorebirdYaml);
 
         when(() => argResults['platform']).thenReturn(null);
         when(
@@ -508,7 +546,12 @@ void main() {
       test(
           'queries for releases when '
           'release-version is not specified', () async {
-        setupExtractArtifactStub();
+        when(
+          () => artifactManager.extractZip(
+            zipFile: any(named: 'zipFile'),
+            outputDirectory: any(named: 'outputDirectory'),
+          ),
+        ).thenAnswer(createShorebirdYaml);
 
         when(() => argResults['release-version']).thenReturn(null);
         when(
@@ -537,7 +580,12 @@ void main() {
       });
 
       test('forwards deviceId to adb and bundletool', () async {
-        setupExtractArtifactStub();
+        when(
+          () => artifactManager.extractZip(
+            zipFile: any(named: 'zipFile'),
+            outputDirectory: any(named: 'outputDirectory'),
+          ),
+        ).thenAnswer(createShorebirdYaml);
 
         const deviceId = '1234';
         when(() => argResults['device-id']).thenReturn(deviceId);
