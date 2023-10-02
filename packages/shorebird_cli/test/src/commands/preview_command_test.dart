@@ -616,7 +616,29 @@ void main() {
         verify(() => progress.fail('$exception')).called(1);
       });
 
+      test('exits with code 70 when unable to find shorebird.yaml', () async {
+        final result = await runWithOverrides(command.run);
+        expect(result, equals(ExitCode.software.code));
+        verify(
+          () => progress.fail('Exception: Unable to find shorebird.yaml'),
+        ).called(1);
+        verifyNever(
+          () => iosDeploy.installAndLaunchApp(bundlePath: runnerPath()),
+        );
+      });
+
       test('exits with code 70 when install/launch throws', () async {
+        File(
+          p.join(
+            runnerPath(),
+            'Frameworks',
+            'App.framework',
+            'flutter_assets',
+            'shorebird.yaml',
+          ),
+        )
+          ..createSync(recursive: true)
+          ..writeAsStringSync('app_id: $appId', flush: true);
         final exception = Exception('oops');
         when(
           () => iosDeploy.installAndLaunchApp(
@@ -632,6 +654,17 @@ void main() {
       });
 
       test('exits with code 0 when install/launch succeeds', () async {
+        final shorebirdYaml = File(
+          p.join(
+            runnerPath(),
+            'Frameworks',
+            'App.framework',
+            'flutter_assets',
+            'shorebird.yaml',
+          ),
+        )
+          ..createSync(recursive: true)
+          ..writeAsStringSync('app_id: $appId', flush: true);
         when(
           () => iosDeploy.installAndLaunchApp(
             bundlePath: any(named: 'bundlePath'),
@@ -643,6 +676,13 @@ void main() {
         verify(
           () => iosDeploy.installAndLaunchApp(bundlePath: runnerPath()),
         ).called(1);
+        expect(
+          shorebirdYaml.readAsStringSync(),
+          equals('''
+app_id: $appId
+channel: $channel
+'''),
+        );
       });
     });
   });

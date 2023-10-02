@@ -55,6 +55,7 @@ class PreviewCommand extends ShorebirdCommand {
       )
       ..addOption(
         'channel',
+        defaultsTo: 'stable',
         help: 'The channel to preview the release for.',
       );
   }
@@ -110,7 +111,7 @@ class PreviewCommand extends ShorebirdCommand {
     );
 
     final deviceId = results['device-id'] as String?;
-    final channel = results['channel'] as String?;
+    final channel = results['channel'] as String;
 
     return switch (platform) {
       ReleasePlatform.android => installAndLaunchAndroid(
@@ -161,8 +162,8 @@ class PreviewCommand extends ShorebirdCommand {
   Future<int> installAndLaunchAndroid({
     required String appId,
     required Release release,
+    required String channel,
     String? deviceId,
-    String? channel,
   }) async {
     const platform = ReleasePlatform.android;
     final aabFile = File(
@@ -205,16 +206,14 @@ class PreviewCommand extends ShorebirdCommand {
       extension: 'apks',
     );
 
-    if (channel != null) {
-      if (File(apksPath).existsSync()) File(apksPath).deleteSync();
-      final progress = logger.progress('Setting channel: $channel');
-      try {
-        await setChannelOnAab(aabFile: aabFile, channel: channel);
-        progress.complete();
-      } catch (error) {
-        progress.fail('$error');
-        return ExitCode.software.code;
-      }
+    if (File(apksPath).existsSync()) File(apksPath).deleteSync();
+    final progress = logger.progress('Using channel $channel');
+    try {
+      await setChannelOnAab(aabFile: aabFile, channel: channel);
+      progress.complete();
+    } catch (error) {
+      progress.fail('$error');
+      return ExitCode.software.code;
     }
 
     final extractMetadataProgress = logger.progress('Extracting metadata');
@@ -227,15 +226,13 @@ class PreviewCommand extends ShorebirdCommand {
       return ExitCode.software.code;
     }
 
-    if (!File(apksPath).existsSync()) {
-      final buildApksProgress = logger.progress('Building apks');
-      try {
-        await bundletool.buildApks(bundle: aabFile.path, output: apksPath);
-        buildApksProgress.complete();
-      } catch (error) {
-        buildApksProgress.fail('$error');
-        return ExitCode.software.code;
-      }
+    final buildApksProgress = logger.progress('Building apks');
+    try {
+      await bundletool.buildApks(bundle: aabFile.path, output: apksPath);
+      buildApksProgress.complete();
+    } catch (error) {
+      buildApksProgress.fail('$error');
+      return ExitCode.software.code;
     }
 
     final installApksProgress = logger.progress('Installing apks');
@@ -270,8 +267,8 @@ class PreviewCommand extends ShorebirdCommand {
   Future<int> installAndLaunchIos({
     required String appId,
     required Release release,
+    required String channel,
     String? deviceId,
-    String? channel,
   }) async {
     const platform = ReleasePlatform.ios;
     final runnerDirectory = Directory(
@@ -309,18 +306,16 @@ class PreviewCommand extends ShorebirdCommand {
       }
     }
 
-    if (channel != null) {
-      final progress = logger.progress('Setting channel: $channel');
-      try {
-        await setChannelOnRunner(
-          runnerDirectory: runnerDirectory,
-          channel: channel,
-        );
-        progress.complete();
-      } catch (error) {
-        progress.fail('$error');
-        return ExitCode.software.code;
-      }
+    final progress = logger.progress('Using channel $channel');
+    try {
+      await setChannelOnRunner(
+        runnerDirectory: runnerDirectory,
+        channel: channel,
+      );
+      progress.complete();
+    } catch (error) {
+      progress.fail('$error');
+      return ExitCode.software.code;
     }
 
     try {
