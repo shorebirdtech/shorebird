@@ -49,11 +49,6 @@ class PatchAndroidCommand extends ShorebirdCommand
         'flavor',
         help: 'The product flavor to use when building the app.',
       )
-      ..addOption(
-        'channel',
-        help: 'The channel to publish the patch to.',
-        defaultsTo: 'stable',
-      )
       ..addFlag(
         'force',
         abbr: 'f',
@@ -102,7 +97,7 @@ class PatchAndroidCommand extends ShorebirdCommand
     await cache.updateAll();
 
     const platform = ReleasePlatform.android;
-    final channelName = results['channel'] as String;
+    const channelName = 'stable';
     final flavor = results['flavor'] as String?;
     final target = results['target'] as String?;
 

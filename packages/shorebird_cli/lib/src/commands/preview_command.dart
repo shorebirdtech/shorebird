@@ -52,11 +52,6 @@ class PreviewCommand extends ShorebirdCommand {
           ReleasePlatform.ios.name: 'iOS',
         },
         help: 'The platform of the release.',
-      )
-      ..addOption(
-        'channel',
-        defaultsTo: 'stable',
-        help: 'The channel to preview the release for.',
       );
   }
 
@@ -111,7 +106,7 @@ class PreviewCommand extends ShorebirdCommand {
     );
 
     final deviceId = results['device-id'] as String?;
-    final channel = results['channel'] as String;
+    const channel = 'stable';
 
     return switch (platform) {
       ReleasePlatform.android => installAndLaunchAndroid(

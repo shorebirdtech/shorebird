@@ -38,7 +38,7 @@ void main() {
   const versionCode = '1';
   const version = '$versionName+$versionCode';
   const arch = 'aarch64';
-  const channelName = 'test-channel';
+  const channelName = 'stable';
   const appDisplayName = 'Test App';
   const releasePlatform = ReleasePlatform.ios;
   const platformName = 'ios';
