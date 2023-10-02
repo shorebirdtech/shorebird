@@ -200,6 +200,27 @@ void main() {
         );
       }
 
+      void setupExtractArtifactStub() {
+        when(
+          () => artifactManager.extractZip(
+            zipFile: any(named: 'zipFile'),
+            outputDirectory: any(named: 'outputDirectory'),
+          ),
+        ).thenAnswer((invocation) async {
+          File(
+            p.join(
+              (invocation.namedArguments[#outputDirectory] as Directory).path,
+              'base',
+              'assets',
+              'flutter_assets',
+              'shorebird.yaml',
+            ),
+          )
+            ..createSync(recursive: true)
+            ..writeAsStringSync('app_id: $appId', flush: true);
+        });
+      }
+
       setUp(() {
         adb = MockAdb();
         bundletool = MockBundleTool();
@@ -292,7 +313,17 @@ void main() {
         verify(() => progress.fail('$exception')).called(1);
       });
 
+      test('exits with code 70 when unable to find shorebird.yaml', () async {
+        final result = await runWithOverrides(command.run);
+        expect(result, equals(ExitCode.software.code));
+        verify(
+          () => progress.fail('Exception: Unable to find shorebird.yaml'),
+        ).called(1);
+      });
+
       test('exits with code 70 when extracting metadata fails', () async {
+        setupExtractArtifactStub();
+
         final exception = Exception('oops');
         when(() => bundletool.getPackageName(any())).thenThrow(exception);
         final result = await runWithOverrides(command.run);
@@ -301,6 +332,8 @@ void main() {
       });
 
       test('exits with code 70 when building apks fails', () async {
+        setupExtractArtifactStub();
+
         final exception = Exception('oops');
         when(
           () => bundletool.buildApks(
@@ -316,6 +349,8 @@ void main() {
       });
 
       test('exits with code 70 when installing apks fails', () async {
+        setupExtractArtifactStub();
+
         final exception = Exception('oops');
         when(
           () => bundletool.installApks(apks: any(named: 'apks')),
@@ -326,6 +361,8 @@ void main() {
       });
 
       test('exits with code 70 when starting app fails', () async {
+        setupExtractArtifactStub();
+
         final exception = Exception('oops');
         when(() => adb.startApp(package: any(named: 'package')))
             .thenThrow(exception);
@@ -335,6 +372,8 @@ void main() {
       });
 
       test('exits with non-zero exit code when logcat process fails', () async {
+        setupExtractArtifactStub();
+
         when(() => process.exitCode).thenAnswer((_) async => 1);
         final result = await runWithOverrides(command.run);
         expect(result, equals(1));
@@ -342,6 +381,8 @@ void main() {
       });
 
       test('pipes stdout output to logger', () async {
+        setupExtractArtifactStub();
+
         final completer = Completer<int>();
         when(() => process.exitCode).thenAnswer((_) => completer.future);
         const output = 'hello world';
@@ -355,6 +396,8 @@ void main() {
       });
 
       test('pipes stderr output to logger', () async {
+        setupExtractArtifactStub();
+
         final completer = Completer<int>();
         when(() => process.exitCode).thenAnswer((_) => completer.future);
         const output = 'hello world';
@@ -368,6 +411,8 @@ void main() {
       });
 
       test('queries for apps when app-id is not specified', () async {
+        setupExtractArtifactStub();
+
         when(() => argResults['app-id']).thenReturn(null);
         when(
           () => logger.chooseOne<AppMetadata>(
@@ -390,6 +435,8 @@ void main() {
       });
 
       test('prompts for platforms when platform is not specified', () async {
+        setupExtractArtifactStub();
+
         when(() => argResults['platform']).thenReturn(null);
         when(
           () => logger.chooseOne<String>(
@@ -461,6 +508,8 @@ void main() {
       test(
           'queries for releases when '
           'release-version is not specified', () async {
+        setupExtractArtifactStub();
+
         when(() => argResults['release-version']).thenReturn(null);
         when(
           () => logger.chooseOne<Release>(
@@ -488,6 +537,8 @@ void main() {
       });
 
       test('forwards deviceId to adb and bundletool', () async {
+        setupExtractArtifactStub();
+
         const deviceId = '1234';
         when(() => argResults['device-id']).thenReturn(deviceId);
         await runWithOverrides(command.run);
