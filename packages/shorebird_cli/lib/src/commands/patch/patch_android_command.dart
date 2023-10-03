@@ -102,7 +102,7 @@ class PatchAndroidCommand extends ShorebirdCommand
 
     await cache.updateAll();
 
-    const platform = ReleasePlatform.android;    
+    const platform = ReleasePlatform.android;
     final flavor = results['flavor'] as String?;
     final target = results['target'] as String?;
 
