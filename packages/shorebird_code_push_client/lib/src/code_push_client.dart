@@ -333,20 +333,6 @@ class CodePushClient {
     }
   }
 
-  /// Delete the release with the provided [releaseId].
-  Future<void> deleteRelease({
-    required String appId,
-    required int releaseId,
-  }) async {
-    final response = await _httpClient.delete(
-      Uri.parse('$_v1/apps/$appId/releases/$releaseId'),
-    );
-
-    if (response.statusCode != HttpStatus.noContent) {
-      throw _parseErrorResponse(response.statusCode, response.body);
-    }
-  }
-
   /// Create a new Shorebird user with the provided [name].
   ///
   /// The email associated with the user's JWT will be used as the user's email.
