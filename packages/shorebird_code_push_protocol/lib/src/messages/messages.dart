@@ -3,7 +3,6 @@ export 'create_app_collaborator/create_app_collaborator.dart';
 export 'create_channel/create_channel.dart';
 export 'create_patch/create_patch.dart';
 export 'create_patch_artifact/create_patch_artifact.dart';
-export 'create_patch_event/create_patch_event.dart';
 export 'create_release/create_release.dart';
 export 'create_release_artifact/create_release_artifact.dart';
 export 'create_user/create_user.dart';
