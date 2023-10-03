@@ -11,6 +11,7 @@ import 'package:shorebird_cli/src/cache.dart';
 import 'package:shorebird_cli/src/code_push_client_wrapper.dart';
 import 'package:shorebird_cli/src/command.dart';
 import 'package:shorebird_cli/src/config/shorebird_yaml.dart';
+import 'package:shorebird_cli/src/deployment_track.dart';
 import 'package:shorebird_cli/src/doctor.dart';
 import 'package:shorebird_cli/src/formatters/formatters.dart';
 import 'package:shorebird_cli/src/http_client/http_client.dart';
@@ -60,6 +61,10 @@ class PatchAndroidCommand extends ShorebirdCommand
         abbr: 'n',
         negatable: false,
         help: 'Validate but do not upload the patch.',
+      )
+      ..addFlag(
+        'prod',
+        help: 'Whether to publish the patch to production',
       );
   }
 
@@ -88,6 +93,7 @@ class PatchAndroidCommand extends ShorebirdCommand
 
     final force = results['force'] == true;
     final dryRun = results['dry-run'] == true;
+    final isProd = results['prod'] == true;
 
     if (force && dryRun) {
       logger.err('Cannot use both --force and --dry-run.');
@@ -96,8 +102,7 @@ class PatchAndroidCommand extends ShorebirdCommand
 
     await cache.updateAll();
 
-    const platform = ReleasePlatform.android;
-    const channelName = 'stable';
+    const platform = ReleasePlatform.android;    
     final flavor = results['flavor'] as String?;
     final target = results['target'] as String?;
 
@@ -280,8 +285,8 @@ Current Flutter Revision: $originalFlutterRevision
       '''📱 App: ${lightCyan.wrap(app.displayName)} ${lightCyan.wrap('(${app.appId})')}''',
       if (flavor != null) '🍧 Flavor: ${lightCyan.wrap(flavor)}',
       '📦 Release Version: ${lightCyan.wrap(releaseVersion)}',
-      '📺 Channel: ${lightCyan.wrap(channelName)}',
       '''🕹️  Platform: ${lightCyan.wrap(platform.name)} ${lightCyan.wrap('[${archMetadata.join(', ')}]')}''',
+      if (isProd) '🟢 Track: Production' else '🟠 Track: Staging',
     ];
 
     logger.info(
@@ -307,7 +312,7 @@ ${summary.join('\n')}
       appId: appId,
       releaseId: release.id,
       platform: platform,
-      channelName: channelName,
+      track: isProd ? DeploymentTrack.production : DeploymentTrack.staging,
       patchArtifactBundles: patchArtifactBundles,
     );
 

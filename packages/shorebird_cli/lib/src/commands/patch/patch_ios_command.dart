@@ -9,6 +9,7 @@ import 'package:shorebird_cli/src/archive_analysis/archive_analysis.dart';
 import 'package:shorebird_cli/src/code_push_client_wrapper.dart';
 import 'package:shorebird_cli/src/command.dart';
 import 'package:shorebird_cli/src/config/config.dart';
+import 'package:shorebird_cli/src/deployment_track.dart';
 import 'package:shorebird_cli/src/doctor.dart';
 import 'package:shorebird_cli/src/formatters/file_size_formatter.dart';
 import 'package:shorebird_cli/src/ios.dart';
@@ -58,6 +59,10 @@ class PatchIosCommand extends ShorebirdCommand
         abbr: 'n',
         negatable: false,
         help: 'Validate but do not upload the patch.',
+      )
+      ..addFlag(
+        'prod',
+        help: 'Whether to publish the patch to production',
       );
   }
 
@@ -88,6 +93,7 @@ class PatchIosCommand extends ShorebirdCommand
 
     final force = results['force'] == true;
     final dryRun = results['dry-run'] == true;
+    final isProd = results['prod'] == true;
 
     if (force && dryRun) {
       logger.err('Cannot use both --force and --dry-run.');
@@ -95,7 +101,6 @@ class PatchIosCommand extends ShorebirdCommand
     }
 
     const arch = 'aarch64';
-    const channelName = 'stable';
     const releasePlatform = ReleasePlatform.ios;
     final flavor = results['flavor'] as String?;
 
@@ -212,8 +217,8 @@ Current Flutter Revision: $originalFlutterRevision
       '''📱 App: ${lightCyan.wrap(app.displayName)} ${lightCyan.wrap('($appId)')}''',
       if (flavor != null) '🍧 Flavor: ${lightCyan.wrap(flavor)}',
       '📦 Release Version: ${lightCyan.wrap(releaseVersion)}',
-      '📺 Channel: ${lightCyan.wrap(channelName)}',
       '''🕹️  Platform: ${lightCyan.wrap(releasePlatform.name)} ${lightCyan.wrap('[$arch (${formatBytes(aotFileSize)})]')}''',
+      if (isProd) '🟢 Track: Production' else '🟠 Track: Staging',
     ];
 
     logger.info(
@@ -239,7 +244,7 @@ ${summary.join('\n')}
       appId: appId,
       releaseId: release.id,
       platform: releasePlatform,
-      channelName: channelName,
+      track: isProd ? DeploymentTrack.production : DeploymentTrack.staging,
       patchArtifactBundles: {
         Arch.arm64: PatchArtifactBundle(
           arch: arch,

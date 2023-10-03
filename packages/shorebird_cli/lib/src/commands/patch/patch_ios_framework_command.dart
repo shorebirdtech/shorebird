@@ -10,6 +10,7 @@ import 'package:shorebird_cli/src/archive_analysis/archive_analysis.dart';
 import 'package:shorebird_cli/src/code_push_client_wrapper.dart';
 import 'package:shorebird_cli/src/command.dart';
 import 'package:shorebird_cli/src/config/shorebird_yaml.dart';
+import 'package:shorebird_cli/src/deployment_track.dart';
 import 'package:shorebird_cli/src/doctor.dart';
 import 'package:shorebird_cli/src/formatters/file_size_formatter.dart';
 import 'package:shorebird_cli/src/ios.dart';
@@ -84,7 +85,6 @@ of the iOS app that is using this module.''',
     showiOSStatusWarning();
 
     const arch = 'aarch64';
-    const channelName = 'stable';
     const releasePlatform = ReleasePlatform.ios;
     final shorebirdYaml = shorebirdEnv.getShorebirdYaml()!;
     final appId = shorebirdYaml.getAppId();
@@ -199,8 +199,8 @@ Please re-run the release command for this version or create a new release.''');
     final summary = [
       '''📱 App: ${lightCyan.wrap(app.displayName)} ${lightCyan.wrap('($appId)')}''',
       '📦 Release Version: ${lightCyan.wrap(releaseVersion)}',
-      '📺 Channel: ${lightCyan.wrap(channelName)}',
       '''🕹️  Platform: ${lightCyan.wrap(releasePlatform.name)} ${lightCyan.wrap('[$arch (${formatBytes(aotFileSize)})]')}''',
+      '🟢 Track: Production',
     ];
 
     logger.info(
@@ -227,7 +227,7 @@ ${summary.join('\n')}
       appId: appId,
       releaseId: release.id,
       platform: releasePlatform,
-      channelName: channelName,
+      track: DeploymentTrack.production,
       patchArtifactBundles: {
         Arch.arm64: PatchArtifactBundle(
           arch: arch,
