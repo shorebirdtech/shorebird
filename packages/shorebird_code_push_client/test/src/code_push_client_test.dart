@@ -437,59 +437,6 @@ void main() {
       });
     });
 
-    group('createPaymentLink', () {
-      test('makes the correct request', () async {
-        codePushClient.createPaymentLink().ignore();
-        final request = verify(() => httpClient.send(captureAny()))
-            .captured
-            .single as http.BaseRequest;
-        expect(request.method, equals('POST'));
-        expect(request.url, equals(v1('subscriptions/payment_link')));
-        expect(request.hasStandardHeaders, isTrue);
-      });
-
-      test('throws an exception if the http request fails', () {
-        when(() => httpClient.send(any())).thenAnswer((_) async {
-          return http.StreamedResponse(
-            const Stream.empty(),
-            HttpStatus.badRequest,
-          );
-        });
-
-        expect(
-          codePushClient.createPaymentLink(),
-          throwsA(
-            isA<CodePushException>().having(
-              (e) => e.message,
-              'message',
-              CodePushClient.unknownErrorMessage,
-            ),
-          ),
-        );
-      });
-
-      test('returns a payment link if the http request succeeds', () {
-        final link = Uri.parse('http://test.com');
-        when(() => httpClient.send(any())).thenAnswer((_) async {
-          return http.StreamedResponse(
-            Stream.value(
-              utf8.encode(
-                json.encode(
-                  CreatePaymentLinkResponse(paymentLink: link).toJson(),
-                ),
-              ),
-            ),
-            HttpStatus.ok,
-          );
-        });
-
-        expect(
-          codePushClient.createPaymentLink(),
-          completion(link),
-        );
-      });
-    });
-
     group('createReleaseArtifact', () {
       const appId = 'test-app-id';
       const releaseId = 0;
