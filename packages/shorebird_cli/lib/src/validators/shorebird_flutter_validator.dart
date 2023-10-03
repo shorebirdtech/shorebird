@@ -1,9 +1,9 @@
+import 'package:pub_semver/pub_semver.dart';
 import 'package:shorebird_cli/src/platform.dart';
 import 'package:shorebird_cli/src/shorebird_env.dart';
 import 'package:shorebird_cli/src/shorebird_flutter.dart';
 import 'package:shorebird_cli/src/third_party/flutter_tools/lib/flutter_tools.dart';
 import 'package:shorebird_cli/src/validators/validators.dart';
-import 'package:version/version.dart';
 
 class FlutterValidationException implements Exception {
   const FlutterValidationException(this.message);
