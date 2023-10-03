@@ -14,6 +14,7 @@ import 'package:shorebird_cli/src/bundletool.dart';
 import 'package:shorebird_cli/src/cache.dart';
 import 'package:shorebird_cli/src/code_push_client_wrapper.dart';
 import 'package:shorebird_cli/src/commands/commands.dart';
+import 'package:shorebird_cli/src/deployment_track.dart';
 import 'package:shorebird_cli/src/ios_deploy.dart';
 import 'package:shorebird_cli/src/logger.dart';
 import 'package:shorebird_cli/src/shorebird_validator.dart';
@@ -27,7 +28,7 @@ void main() {
     const appId = 'test-app-id';
     const appDisplayName = 'Test App';
     const releaseVersion = '1.2.3';
-    const channel = 'stable';
+    const track = DeploymentTrack.production;
     const releaseId = 42;
 
     late AppMetadata app;
@@ -86,7 +87,7 @@ void main() {
 
       when(() => argResults['app-id']).thenReturn(appId);
       when(() => argResults['release-version']).thenReturn(releaseVersion);
-      when(() => argResults['channel']).thenReturn(channel);
+      when(() => argResults['staging']).thenReturn(false);
       when(() => auth.isAuthenticated).thenReturn(true);
       when(() => cache.getPreviewDirectory(any())).thenReturn(previewDirectory);
       when(
@@ -752,7 +753,8 @@ void main() {
         ).called(1);
       });
 
-      test('exits with code 0 when install/launch succeeds', () async {
+      test('exits with code 0 when install/launch succeeds (production)',
+          () async {
         final shorebirdYaml = File(
           p.join(
             runnerPath(),
@@ -779,7 +781,41 @@ void main() {
           shorebirdYaml.readAsStringSync(),
           equals('''
 app_id: $appId
-channel: $channel
+channel: ${track.channel}
+'''),
+        );
+      });
+
+      test('exits with code 0 when install/launch succeeds (staging)',
+          () async {
+        when(() => argResults['staging']).thenReturn(true);
+        final shorebirdYaml = File(
+          p.join(
+            runnerPath(),
+            'Frameworks',
+            'App.framework',
+            'flutter_assets',
+            'shorebird.yaml',
+          ),
+        )
+          ..createSync(recursive: true)
+          ..writeAsStringSync('app_id: $appId', flush: true);
+        when(
+          () => iosDeploy.installAndLaunchApp(
+            bundlePath: any(named: 'bundlePath'),
+            deviceId: any(named: 'deviceId'),
+          ),
+        ).thenAnswer((_) async => ExitCode.success.code);
+        final result = await runWithOverrides(command.run);
+        expect(result, equals(ExitCode.success.code));
+        verify(
+          () => iosDeploy.installAndLaunchApp(bundlePath: runnerPath()),
+        ).called(1);
+        expect(
+          shorebirdYaml.readAsStringSync(),
+          equals('''
+app_id: $appId
+channel: ${DeploymentTrack.staging.channel}
 '''),
         );
       });

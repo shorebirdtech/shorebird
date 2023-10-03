@@ -10,6 +10,7 @@ import 'package:path/path.dart' as p;
 import 'package:scoped/scoped.dart';
 import 'package:shorebird_cli/src/archive/directory_archive.dart';
 import 'package:shorebird_cli/src/auth/auth.dart';
+import 'package:shorebird_cli/src/deployment_track.dart';
 import 'package:shorebird_cli/src/logger.dart';
 import 'package:shorebird_cli/src/shorebird_build_mixin.dart';
 import 'package:shorebird_cli/src/shorebird_env.dart';
@@ -687,7 +688,7 @@ aar artifact already exists, continuing...''',
     required String appId,
     required int releaseId,
     required ReleasePlatform platform,
-    required String channelName,
+    required DeploymentTrack track,
     required Map<Arch, PatchArtifactBundle> patchArtifactBundles,
   }) async {
     final patch = await createPatch(
@@ -704,11 +705,11 @@ aar artifact already exists, continuing...''',
 
     final channel = await maybeGetChannel(
           appId: appId,
-          name: channelName,
+          name: track.channel,
         ) ??
         await createChannel(
           appId: appId,
-          name: channelName,
+          name: track.channel,
         );
 
     await promotePatch(appId: appId, patchId: patch.id, channel: channel);

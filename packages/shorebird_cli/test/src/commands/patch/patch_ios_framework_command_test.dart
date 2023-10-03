@@ -11,6 +11,7 @@ import 'package:shorebird_cli/src/auth/auth.dart';
 import 'package:shorebird_cli/src/code_push_client_wrapper.dart';
 import 'package:shorebird_cli/src/commands/patch/patch.dart';
 import 'package:shorebird_cli/src/config/config.dart';
+import 'package:shorebird_cli/src/deployment_track.dart';
 import 'package:shorebird_cli/src/doctor.dart';
 import 'package:shorebird_cli/src/logger.dart';
 import 'package:shorebird_cli/src/patch_diff_checker.dart';
@@ -32,6 +33,7 @@ void main() {
     const shorebirdYaml = ShorebirdYaml(appId: appId);
     const versionName = '1.2.3';
     const versionCode = '1';
+    const track = DeploymentTrack.production;
     const version = '$versionName+$versionCode';
     const elfAotSnapshotFileName = 'out.aot';
     const flutterRevision = '83305b5088e6fe327fb3334a73ff190828d85713';
@@ -158,6 +160,7 @@ flutter:
       registerFallbackValue(File(''));
       registerFallbackValue(ReleasePlatform.ios);
       registerFallbackValue(Uri.parse('https://example.com'));
+      registerFallbackValue(DeploymentTrack.production);
     });
 
     setUp(() {
@@ -258,7 +261,7 @@ flutter:
           appId: any(named: 'appId'),
           releaseId: any(named: 'releaseId'),
           platform: any(named: 'platform'),
-          channelName: any(named: 'channelName'),
+          track: any(named: 'track'),
           patchArtifactBundles: any(named: 'patchArtifactBundles'),
         ),
       ).thenAnswer((_) async {});
@@ -646,7 +649,7 @@ Please re-run the release command for this version or create a new release.'''),
           appId: any(named: 'appId'),
           releaseId: any(named: 'releaseId'),
           platform: any(named: 'platform'),
-          channelName: any(named: 'channelName'),
+          track: any(named: 'track'),
           patchArtifactBundles: any(named: 'patchArtifactBundles'),
         ),
       );
@@ -686,7 +689,7 @@ Please re-run the release command for this version or create a new release.'''),
           appId: any(named: 'appId'),
           releaseId: any(named: 'releaseId'),
           platform: any(named: 'platform'),
-          channelName: any(named: 'channelName'),
+          track: any(named: 'track'),
           patchArtifactBundles: any(named: 'patchArtifactBundles'),
         ),
       );
@@ -722,10 +725,10 @@ Please re-run the release command for this version or create a new release.'''),
       verifyNever(() => logger.confirm(any()));
       verify(
         () => codePushClientWrapper.publishPatch(
-          appId: any(named: 'appId'),
-          releaseId: any(named: 'releaseId'),
-          platform: any(named: 'platform'),
-          channelName: any(named: 'channelName'),
+          appId: appId,
+          releaseId: release.id,
+          platform: ReleasePlatform.ios,
+          track: track,
           patchArtifactBundles: any(named: 'patchArtifactBundles'),
         ),
       ).called(1);
@@ -742,17 +745,19 @@ Please re-run the release command for this version or create a new release.'''),
         () => logger.info(
           any(
             that: contains(
-              '''🕹️  Platform: ${lightCyan.wrap('ios')} ${lightCyan.wrap('[aarch64 (0 B)]')}''',
+              '''
+🕹️  Platform: ${lightCyan.wrap('ios')} ${lightCyan.wrap('[aarch64 (0 B)]')}
+🟢 Track: Production''',
             ),
           ),
         ),
       ).called(1);
       verify(
         () => codePushClientWrapper.publishPatch(
-          appId: any(named: 'appId'),
-          releaseId: any(named: 'releaseId'),
-          platform: any(named: 'platform'),
-          channelName: any(named: 'channelName'),
+          appId: appId,
+          releaseId: release.id,
+          platform: ReleasePlatform.ios,
+          track: track,
           patchArtifactBundles: any(named: 'patchArtifactBundles'),
         ),
       ).called(1);
