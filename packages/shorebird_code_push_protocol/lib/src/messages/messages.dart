@@ -13,7 +13,6 @@ export 'create_user/create_user.dart';
 export 'get_apps/get_apps.dart';
 export 'get_overages/get_overages.dart';
 export 'get_release_artifacts/get_release_artifacts.dart';
-export 'get_release_patches/get_release_patches.dart';
 export 'get_releases/get_releases.dart';
 export 'get_usage/get_usage.dart';
 export 'promote_patch/promote_patch.dart';
