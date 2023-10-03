@@ -3,11 +3,11 @@ import 'dart:io';
 import 'package:mason_logger/mason_logger.dart';
 import 'package:mocktail/mocktail.dart';
 import 'package:scoped/scoped.dart';
-import 'package:shorebird_cli/src/git.dart';
+import 'package:shorebird_cli/src/executables/executables.dart';
 import 'package:shorebird_cli/src/process.dart';
 import 'package:test/test.dart';
 
-import 'mocks.dart';
+import '../mocks.dart';
 
 void main() {
   group(Git, () {
