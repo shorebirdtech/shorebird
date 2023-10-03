@@ -175,21 +175,6 @@ class CodePushClient {
     }
   }
 
-  /// Generates a Stripe payment link for the current user.
-  Future<Uri> createPaymentLink() async {
-    final response = await _httpClient.post(
-      Uri.parse('$_v1/subscriptions/payment_link'),
-    );
-
-    if (response.statusCode != HttpStatus.ok) {
-      throw _parseErrorResponse(response.statusCode, response.body);
-    }
-
-    return CreatePaymentLinkResponse.fromJson(
-      json.decode(response.body) as Json,
-    ).paymentLink;
-  }
-
   /// Create a new artifact for a specific [releaseId].
   Future<void> createReleaseArtifact({
     required String artifactPath,
