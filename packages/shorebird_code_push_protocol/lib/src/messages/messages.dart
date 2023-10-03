@@ -1,4 +1,3 @@
-export 'check_for_patches/check_for_patches.dart';
 export 'create_app/create_app.dart';
 export 'create_app_collaborator/create_app_collaborator.dart';
 export 'create_channel/create_channel.dart';
