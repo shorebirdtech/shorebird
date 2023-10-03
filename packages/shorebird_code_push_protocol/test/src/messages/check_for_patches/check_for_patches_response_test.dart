@@ -2,7 +2,7 @@ import 'package:shorebird_code_push_protocol/shorebird_code_push_protocol.dart';
 import 'package:test/test.dart';
 
 void main() {
-  group(CancelSubscriptionResponse, () {
+  group(CheckForPatchesRequest, () {
     test('can be serialized to json without patch metadata', () {
       const response = CheckForPatchesResponse(patchAvailable: true);
       expect(response.toJson(), {'patch_available': true, 'patch': null});

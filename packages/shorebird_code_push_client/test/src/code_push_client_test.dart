@@ -2074,64 +2074,6 @@ void main() {
       });
     });
 
-    group('cancelSubscription', () {
-      late Uri uri;
-
-      setUp(() {
-        uri = Uri.parse('${codePushClient.hostedUri}/api/v1/subscriptions');
-      });
-
-      test('makes the correct request', () async {
-        codePushClient.cancelSubscription().ignore();
-        final request = verify(() => httpClient.send(captureAny()))
-            .captured
-            .single as http.BaseRequest;
-        expect(request.method, equals('DELETE'));
-        expect(request.url, equals(v1('subscriptions')));
-        expect(request.hasStandardHeaders, isTrue);
-      });
-
-      test('throws an exception if the http request fails', () {
-        when(() => httpClient.send(any())).thenAnswer(
-          (_) async => http.StreamedResponse(
-            const Stream.empty(),
-            HttpStatus.badRequest,
-          ),
-        );
-
-        expect(
-          codePushClient.cancelSubscription(),
-          throwsA(
-            isA<CodePushException>().having(
-              (e) => e.message,
-              'message',
-              CodePushClient.unknownErrorMessage,
-            ),
-          ),
-        );
-      });
-
-      test('completes when request succeeds', () async {
-        const timestamp = 1681455600;
-        when(() => httpClient.send(any())).thenAnswer(
-          (_) async => http.StreamedResponse(
-            Stream.value(
-              utf8.encode(json.encode({'expiration_date': 1681455600})),
-            ),
-            HttpStatus.ok,
-          ),
-        );
-
-        final response = await codePushClient.cancelSubscription();
-
-        expect(response.millisecondsSinceEpoch, timestamp * 1000);
-        final request = verify(() => httpClient.send(captureAny()))
-            .captured
-            .single as http.BaseRequest;
-        expect(request.url, equals(uri));
-      });
-    });
-
     group('close', () {
       test('closes the underlying client', () {
         codePushClient.close();
