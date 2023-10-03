@@ -132,7 +132,13 @@ class _MyHomePageState extends State<MyHomePage> {
 
   Future<void> _downloadUpdate() async {
     _showDownloadingBanner();
-    await _shorebirdCodePush.downloadUpdateIfAvailable();
+
+    await Future.wait([
+      _shorebirdCodePush.downloadUpdateIfAvailable(),
+      // Add an artificial delay so the banner has enough time to animate in.
+      Future<void>.delayed(const Duration(milliseconds: 250)),
+    ]);
+
     if (!mounted) return;
 
     ScaffoldMessenger.of(context).hideCurrentMaterialBanner();
