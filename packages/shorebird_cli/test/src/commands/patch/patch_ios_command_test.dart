@@ -872,7 +872,7 @@ Please re-run the release command for this version or create a new release.'''),
             that: contains(
               '''
 🕹️  Platform: ${lightCyan.wrap(platformName)} ${lightCyan.wrap('[aarch64 (0 B)]')}
-🟢 Track: Production''',
+🟢 Track: ${lightCyan.wrap('Production')}''',
             ),
           ),
         ),
@@ -903,7 +903,7 @@ Please re-run the release command for this version or create a new release.'''),
             that: contains(
               '''
 🕹️  Platform: ${lightCyan.wrap(platformName)} ${lightCyan.wrap('[aarch64 (0 B)]')}
-🟠 Track: Staging''',
+🟠 Track: ${lightCyan.wrap('Staging')}''',
             ),
           ),
         ),
