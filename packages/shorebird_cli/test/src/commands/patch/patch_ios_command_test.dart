@@ -14,6 +14,7 @@ import 'package:shorebird_cli/src/auth/auth.dart';
 import 'package:shorebird_cli/src/code_push_client_wrapper.dart';
 import 'package:shorebird_cli/src/commands/patch/patch.dart';
 import 'package:shorebird_cli/src/config/config.dart';
+import 'package:shorebird_cli/src/deployment_track.dart';
 import 'package:shorebird_cli/src/doctor.dart';
 import 'package:shorebird_cli/src/logger.dart';
 import 'package:shorebird_cli/src/patch_diff_checker.dart';
@@ -38,7 +39,7 @@ void main() {
   const versionCode = '1';
   const version = '$versionName+$versionCode';
   const arch = 'aarch64';
-  const channelName = 'stable';
+  const track = DeploymentTrack.production;
   const appDisplayName = 'Test App';
   const releasePlatform = ReleasePlatform.ios;
   const platformName = 'ios';
@@ -212,6 +213,7 @@ flutter:
       registerFallbackValue(Uri.parse('https://example.com'));
       registerFallbackValue(FakeBaseRequest());
       registerFallbackValue(FakeShorebirdProcess());
+      registerFallbackValue(DeploymentTrack.production);
     });
 
     setUp(() {
@@ -254,7 +256,7 @@ flutter:
       when(() => argResults['force']).thenReturn(false);
       when(() => argResults['release-version']).thenReturn(release.version);
       when(() => argResults['codesign']).thenReturn(true);
-      when(() => argResults['channel']).thenReturn(channelName);
+      when(() => argResults['prod']).thenReturn(true);
       when(() => argResults.rest).thenReturn([]);
       when(() => auth.isAuthenticated).thenReturn(true);
       when(() => auth.client).thenReturn(httpClient);
@@ -280,7 +282,7 @@ flutter:
           appId: any(named: 'appId'),
           releaseId: any(named: 'releaseId'),
           platform: any(named: 'platform'),
-          channelName: any(named: 'channelName'),
+          track: any(named: 'track'),
           patchArtifactBundles: any(named: 'patchArtifactBundles'),
         ),
       ).thenAnswer((_) async {});
@@ -772,7 +774,7 @@ Please re-run the release command for this version or create a new release.'''),
           appId: any(named: 'appId'),
           releaseId: any(named: 'releaseId'),
           platform: any(named: 'platform'),
-          channelName: any(named: 'channelName'),
+          track: any(named: 'track'),
           patchArtifactBundles: any(named: 'patchArtifactBundles'),
         ),
       );
@@ -812,7 +814,7 @@ Please re-run the release command for this version or create a new release.'''),
           appId: any(named: 'appId'),
           releaseId: any(named: 'releaseId'),
           platform: any(named: 'platform'),
-          channelName: any(named: 'channelName'),
+          track: any(named: 'track'),
           patchArtifactBundles: any(named: 'patchArtifactBundles'),
         ),
       );
@@ -851,13 +853,13 @@ Please re-run the release command for this version or create a new release.'''),
           appId: appId,
           releaseId: release.id,
           platform: releasePlatform,
-          channelName: channelName,
+          track: track,
           patchArtifactBundles: any(named: 'patchArtifactBundles'),
         ),
       ).called(1);
     });
 
-    test('succeeds when patch is successful', () async {
+    test('succeeds when patch is successful (production)', () async {
       final tempDir = setUpTempDir();
       setUpTempArtifacts(tempDir);
       final exitCode = await IOOverrides.runZoned(
@@ -868,7 +870,9 @@ Please re-run the release command for this version or create a new release.'''),
         () => logger.info(
           any(
             that: contains(
-              '''🕹️  Platform: ${lightCyan.wrap(platformName)} ${lightCyan.wrap('[aarch64 (0 B)]')}''',
+              '''
+🕹️  Platform: ${lightCyan.wrap(platformName)} ${lightCyan.wrap('[aarch64 (0 B)]')}
+🟢 Track: Production''',
             ),
           ),
         ),
@@ -878,7 +882,38 @@ Please re-run the release command for this version or create a new release.'''),
           appId: appId,
           releaseId: release.id,
           platform: releasePlatform,
-          channelName: channelName,
+          track: track,
+          patchArtifactBundles: any(named: 'patchArtifactBundles'),
+        ),
+      ).called(1);
+      expect(exitCode, ExitCode.success.code);
+    });
+
+    test('succeeds when patch is successful (staging)', () async {
+      when(() => argResults['prod']).thenReturn(false);
+      final tempDir = setUpTempDir();
+      setUpTempArtifacts(tempDir);
+      final exitCode = await IOOverrides.runZoned(
+        () => runWithOverrides(command.run),
+        getCurrentDirectory: () => tempDir,
+      );
+      verify(
+        () => logger.info(
+          any(
+            that: contains(
+              '''
+🕹️  Platform: ${lightCyan.wrap(platformName)} ${lightCyan.wrap('[aarch64 (0 B)]')}
+🟠 Track: Staging''',
+            ),
+          ),
+        ),
+      ).called(1);
+      verify(
+        () => codePushClientWrapper.publishPatch(
+          appId: appId,
+          releaseId: release.id,
+          platform: releasePlatform,
+          track: DeploymentTrack.staging,
           patchArtifactBundles: any(named: 'patchArtifactBundles'),
         ),
       ).called(1);
@@ -982,7 +1017,7 @@ flavors:
           appId: appId,
           releaseId: release.id,
           platform: releasePlatform,
-          channelName: channelName,
+          track: track,
           patchArtifactBundles: any(named: 'patchArtifactBundles'),
         ),
       ).called(1);

@@ -14,6 +14,7 @@ import 'package:shorebird_cli/src/cache.dart' show Cache, cacheRef;
 import 'package:shorebird_cli/src/code_push_client_wrapper.dart';
 import 'package:shorebird_cli/src/commands/commands.dart';
 import 'package:shorebird_cli/src/config/config.dart';
+import 'package:shorebird_cli/src/deployment_track.dart';
 import 'package:shorebird_cli/src/logger.dart';
 import 'package:shorebird_cli/src/patch_diff_checker.dart';
 import 'package:shorebird_cli/src/platform.dart';
@@ -39,7 +40,7 @@ void main() {
     const version = '$versionName+$versionCode';
     const arch = 'aarch64';
     const releasePlatform = ReleasePlatform.android;
-    const channelName = 'stable';
+    const track = DeploymentTrack.production;
     const appDisplayName = 'Test App';
     final appMetadata = AppMetadata(
       appId: appId,
@@ -155,6 +156,8 @@ void main() {
       registerFallbackValue(Uri.parse('https://example.com'));
       registerFallbackValue(FakeBaseRequest());
       registerFallbackValue(FakeShorebirdProcess());
+      registerFallbackValue(ReleasePlatform.android);
+      registerFallbackValue(DeploymentTrack.production);
     });
 
     setUp(() {
@@ -179,8 +182,6 @@ void main() {
       shorebirdFlutter = MockShorebirdFlutter();
       shorebirdProcess = MockShorebirdProcess();
       shorebirdValidator = MockShorebirdValidator();
-
-      registerFallbackValue(ReleasePlatform.android);
 
       when(() => platform.environment).thenReturn({});
       when(() => shorebirdEnv.shorebirdRoot).thenReturn(shorebirdRoot);
@@ -232,7 +233,6 @@ void main() {
         () => archiveDiffer.containsPotentiallyBreakingAssetDiffs(any()),
       ).thenReturn(false);
       when(() => argResults.rest).thenReturn([]);
-      when(() => argResults['channel']).thenReturn(channelName);
       when(() => argResults['dry-run']).thenReturn(false);
       when(() => argResults['force']).thenReturn(false);
       when(() => argResults['build-number']).thenReturn(buildNumber);
@@ -286,7 +286,7 @@ void main() {
           appId: any(named: 'appId'),
           releaseId: any(named: 'releaseId'),
           platform: any(named: 'platform'),
-          channelName: any(named: 'channelName'),
+          track: any(named: 'track'),
           patchArtifactBundles: any(named: 'patchArtifactBundles'),
         ),
       ).thenAnswer((_) async {});
@@ -667,7 +667,7 @@ Please re-run the release command for this version or create a new release.'''),
           appId: any(named: 'appId'),
           releaseId: any(named: 'releaseId'),
           platform: any(named: 'platform'),
-          channelName: any(named: 'channelName'),
+          track: any(named: 'track'),
           patchArtifactBundles: any(named: 'patchArtifactBundles'),
         ),
       );
@@ -708,7 +708,7 @@ Please re-run the release command for this version or create a new release.'''),
           appId: any(named: 'appId'),
           releaseId: any(named: 'releaseId'),
           platform: any(named: 'platform'),
-          channelName: any(named: 'channelName'),
+          track: any(named: 'track'),
           patchArtifactBundles: any(named: 'patchArtifactBundles'),
         ),
       );
@@ -747,7 +747,7 @@ Please re-run the release command for this version or create a new release.'''),
           appId: any(named: 'appId'),
           releaseId: any(named: 'releaseId'),
           platform: any(named: 'platform'),
-          channelName: any(named: 'channelName'),
+          track: any(named: 'track'),
           patchArtifactBundles: any(named: 'patchArtifactBundles'),
         ),
       );
@@ -780,10 +780,10 @@ Please re-run the release command for this version or create a new release.'''),
       verifyNever(() => logger.confirm(any()));
       verify(
         () => codePushClientWrapper.publishPatch(
-          appId: any(named: 'appId'),
-          releaseId: any(named: 'releaseId'),
-          platform: any(named: 'platform'),
-          channelName: any(named: 'channelName'),
+          appId: appId,
+          releaseId: release.id,
+          platform: releasePlatform,
+          track: track,
           patchArtifactBundles: any(named: 'patchArtifactBundles'),
         ),
       ).called(1);
@@ -803,7 +803,9 @@ Please re-run the release command for this version or create a new release.'''),
         () => logger.info(
           any(
             that: contains(
-              '''🕹️  Platform: ${lightCyan.wrap(releasePlatform.name)} ${lightCyan.wrap('[arm32 (4 B), arm64 (4 B), x86_64 (4 B)]')}''',
+              '''
+🕹️  Platform: ${lightCyan.wrap(releasePlatform.name)} ${lightCyan.wrap('[arm32 (4 B), arm64 (4 B), x86_64 (4 B)]')}
+🟢 Track: Production''',
             ),
           ),
         ),
@@ -832,7 +834,7 @@ Please re-run the release command for this version or create a new release.'''),
           appId: appId,
           releaseId: release.id,
           platform: releasePlatform,
-          channelName: channelName,
+          track: track,
           patchArtifactBundles: any(named: 'patchArtifactBundles'),
         ),
       ).called(1);

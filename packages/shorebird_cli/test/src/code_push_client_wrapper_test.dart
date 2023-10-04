@@ -6,6 +6,7 @@ import 'package:platform/platform.dart';
 import 'package:scoped/scoped.dart';
 import 'package:shorebird_cli/src/auth/auth.dart';
 import 'package:shorebird_cli/src/code_push_client_wrapper.dart';
+import 'package:shorebird_cli/src/deployment_track.dart';
 import 'package:shorebird_cli/src/logger.dart';
 import 'package:shorebird_cli/src/platform.dart';
 import 'package:shorebird_cli/src/shorebird_build_mixin.dart';
@@ -68,8 +69,8 @@ void main() {
       createdAt: DateTime(2023),
       updatedAt: DateTime(2023),
     );
-    const channelName = 'my-channel';
-    const channel = Channel(id: 0, appId: appId, name: channelName);
+    const track = DeploymentTrack.production;
+    final channel = Channel(id: 0, appId: appId, name: track.channel);
     const patchId = 1;
     const patchNumber = 2;
     const patch = Patch(id: patchId, number: patchNumber);
@@ -345,7 +346,7 @@ void main() {
             () async => runWithOverrides(
               () => codePushClientWrapper.maybeGetChannel(
                 appId: appId,
-                name: channelName,
+                name: track.channel,
               ),
             ),
             exitsWithCode(ExitCode.software),
@@ -361,7 +362,7 @@ void main() {
           final result = await runWithOverrides(
             () => codePushClientWrapper.maybeGetChannel(
               appId: appId,
-              name: channelName,
+              name: track.channel,
             ),
           );
 
@@ -377,7 +378,7 @@ void main() {
           final result = await runWithOverrides(
             () => codePushClientWrapper.maybeGetChannel(
               appId: appId,
-              name: channelName,
+              name: track.channel,
             ),
           );
 
@@ -400,7 +401,7 @@ void main() {
             () async => runWithOverrides(
               () => codePushClientWrapper.createChannel(
                 appId: appId,
-                name: channelName,
+                name: track.channel,
               ),
             ),
             exitsWithCode(ExitCode.software),
@@ -412,14 +413,14 @@ void main() {
           when(
             () => codePushClient.createChannel(
               appId: appId,
-              channel: channelName,
+              channel: track.channel,
             ),
           ).thenAnswer((_) async => channel);
 
           final result = await runWithOverrides(
             () => codePushClientWrapper.createChannel(
               appId: appId,
-              name: channelName,
+              name: track.channel,
             ),
           );
 
@@ -2010,7 +2011,7 @@ Please bump your version number and try again.''',
               appId: appId,
               releaseId: releaseId,
               platform: releasePlatform,
-              channelName: channelName,
+              track: track,
               patchArtifactBundles: patchArtifactBundles,
             ),
           );
@@ -2064,7 +2065,7 @@ Please bump your version number and try again.''',
               appId: appId,
               releaseId: releaseId,
               platform: releasePlatform,
-              channelName: channelName,
+              track: track,
               patchArtifactBundles: patchArtifactBundles,
             ),
           );
@@ -2089,7 +2090,7 @@ Please bump your version number and try again.''',
           verify(
             () => codePushClient.createChannel(
               appId: appId,
-              channel: channelName,
+              channel: track.channel,
             ),
           ).called(1);
           verify(
@@ -2107,7 +2108,7 @@ Please bump your version number and try again.''',
               appId: appId,
               releaseId: releaseId,
               platform: releasePlatform,
-              channelName: channelName,
+              track: track,
               patchArtifactBundles: patchArtifactBundles,
             ),
           );

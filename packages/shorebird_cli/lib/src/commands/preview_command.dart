@@ -11,6 +11,7 @@ import 'package:shorebird_cli/src/artifact_manager.dart';
 import 'package:shorebird_cli/src/cache.dart';
 import 'package:shorebird_cli/src/code_push_client_wrapper.dart';
 import 'package:shorebird_cli/src/command.dart';
+import 'package:shorebird_cli/src/deployment_track.dart';
 import 'package:shorebird_cli/src/executables/executables.dart';
 import 'package:shorebird_cli/src/http_client/http_client.dart';
 import 'package:shorebird_cli/src/logger.dart';
@@ -50,6 +51,10 @@ class PreviewCommand extends ShorebirdCommand {
           ReleasePlatform.ios.name: 'iOS',
         },
         help: 'The platform of the release.',
+      )
+      ..addFlag(
+        'staging',
+        help: 'Preview the release on the staging environment.',
       );
   }
 
@@ -104,20 +109,22 @@ class PreviewCommand extends ShorebirdCommand {
     );
 
     final deviceId = results['device-id'] as String?;
-    const channel = 'stable';
+    final isStaging = results['staging'] == true;
+    final track =
+        isStaging ? DeploymentTrack.staging : DeploymentTrack.production;
 
     return switch (platform) {
       ReleasePlatform.android => installAndLaunchAndroid(
           appId: appId,
           release: release,
           deviceId: deviceId,
-          channel: channel,
+          track: track,
         ),
       ReleasePlatform.ios => installAndLaunchIos(
           appId: appId,
           release: release,
           deviceId: deviceId,
-          channel: channel,
+          track: track,
         ),
     };
   }
@@ -155,7 +162,7 @@ class PreviewCommand extends ShorebirdCommand {
   Future<int> installAndLaunchAndroid({
     required String appId,
     required Release release,
-    required String channel,
+    required DeploymentTrack track,
     String? deviceId,
   }) async {
     const platform = ReleasePlatform.android;
@@ -200,9 +207,9 @@ class PreviewCommand extends ShorebirdCommand {
     );
 
     if (File(apksPath).existsSync()) File(apksPath).deleteSync();
-    final progress = logger.progress('Using channel $channel');
+    final progress = logger.progress('Using ${track.name} track');
     try {
-      await setChannelOnAab(aabFile: aabFile, channel: channel);
+      await setChannelOnAab(aabFile: aabFile, channel: track.channel);
       progress.complete();
     } catch (error) {
       progress.fail('$error');
@@ -260,7 +267,7 @@ class PreviewCommand extends ShorebirdCommand {
   Future<int> installAndLaunchIos({
     required String appId,
     required Release release,
-    required String channel,
+    required DeploymentTrack track,
     String? deviceId,
   }) async {
     const platform = ReleasePlatform.ios;
@@ -299,11 +306,11 @@ class PreviewCommand extends ShorebirdCommand {
       }
     }
 
-    final progress = logger.progress('Using channel $channel');
+    final progress = logger.progress('Using ${track.name} track');
     try {
       await setChannelOnRunner(
         runnerDirectory: runnerDirectory,
-        channel: channel,
+        channel: track.channel,
       );
       progress.complete();
     } catch (error) {

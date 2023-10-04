@@ -14,6 +14,7 @@ import 'package:shorebird_cli/src/cache.dart';
 import 'package:shorebird_cli/src/code_push_client_wrapper.dart';
 import 'package:shorebird_cli/src/command.dart';
 import 'package:shorebird_cli/src/config/config.dart';
+import 'package:shorebird_cli/src/deployment_track.dart';
 import 'package:shorebird_cli/src/formatters/file_size_formatter.dart';
 import 'package:shorebird_cli/src/http_client/http_client.dart';
 import 'package:shorebird_cli/src/logger.dart';
@@ -247,12 +248,11 @@ Please re-run the release command for this version or create a new release.''');
       return ExitCode.success.code;
     }
 
-    const channelName = 'stable';
     final summary = [
       '''📱 App: ${lightCyan.wrap(app.displayName)} ${lightCyan.wrap('(${app.appId})')}''',
       '📦 Release Version: ${lightCyan.wrap(releaseVersion)}',
-      '📺 Channel: ${lightCyan.wrap(channelName)}',
       '''🕹️  Platform: ${lightCyan.wrap(platform.name)} ${lightCyan.wrap('[${archMetadata.join(', ')}]')}''',
+      '🟢 Track: Production',
     ];
 
     logger.info(
@@ -278,7 +278,7 @@ ${summary.join('\n')}
       appId: appId,
       releaseId: release.id,
       platform: platform,
-      channelName: channelName,
+      track: DeploymentTrack.production,
       patchArtifactBundles: patchArtifactBundles,
     );
 
