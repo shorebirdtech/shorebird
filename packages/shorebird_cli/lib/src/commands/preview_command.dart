@@ -12,7 +12,7 @@ import 'package:shorebird_cli/src/cache.dart';
 import 'package:shorebird_cli/src/code_push_client_wrapper.dart';
 import 'package:shorebird_cli/src/command.dart';
 import 'package:shorebird_cli/src/deployment_track.dart';
-import 'package:shorebird_cli/src/executables/devicectl/ios_device_info.dart';
+import 'package:shorebird_cli/src/executables/devicectl/apple_device.dart';
 import 'package:shorebird_cli/src/executables/executables.dart';
 import 'package:shorebird_cli/src/http_client/http_client.dart';
 import 'package:shorebird_cli/src/logger.dart';
@@ -67,14 +67,14 @@ class PreviewCommand extends ShorebirdCommand {
   @override
   String get description => 'Preview a specific release on a device.';
 
-  Future<IosDeviceInfo?> _deviceForRun({String? deviceId}) async {
-    final devices = await devicectl.listDevices();
-    if (deviceId != null) {
-      return devices.firstWhereOrNull((d) => d.udid == deviceId);
-    } else {
-      return devices.firstOrNull;
-    }
-  }
+  // Future<AppleDevice?> _deviceForRun({String? deviceId}) async {
+  //   final devices = await devicectl.listIosDevices();
+  //   if (deviceId != null) {
+  //     return devices.firstWhereOrNull((d) => d.udid == deviceId);
+  //   } else {
+  //     return devices.firstOrNull;
+  //   }
+  // }
 
   @override
   Future<int> run() async {
@@ -328,30 +328,29 @@ class PreviewCommand extends ShorebirdCommand {
       return ExitCode.software.code;
     }
 
-    final deviceIdArg = results['device-id'] as String?;
-    final device = await _deviceForRun(deviceId: deviceIdArg);
-    if (device == null) {
-      logger.err('No devices found');
-      return ExitCode.software.code;
-    }
-    final deviceInfo = await devicectl.deviceInfo(deviceId: device.udid);
-    final xcodeVersion = await xcodeBuild.xcodeVersion();
+    final deviceId = results['device-id'] as String?;
+    // final device = await _deviceForRun(deviceId: deviceIdArg);
+    // if (device == null) {
+    //   logger.err('No devices found');
+    //   return ExitCode.software.code;
+    // }
+    // final xcodeVersion = await xcodeBuild.xcodeVersion();
 
     try {
-      if (deviceInfo.iosVersion.major >= 17 && xcodeVersion.major >= 15) {
-        final bundleId = await devicectl.installApp(
-          runnerApp: runnerDirectory,
-          deviceId: deviceInfo.udid,
-        );
-        await devicectl.launchApp(deviceId: device.udid, bundleId: bundleId);
-        return ExitCode.success.code;
-      } else {
-        final exitCode = await iosDeploy.installAndLaunchApp(
-          bundlePath: runnerDirectory.path,
-          deviceId: deviceId,
-        );
-        return exitCode;
-      }
+      // if (deviceInfo.iosVersion.major >= 17 && xcodeVersion.major >= 15) {
+      //   final bundleId = await devicectl.installApp(
+      //     runnerApp: runnerDirectory,
+      //     deviceId: deviceInfo.udid,
+      //   );
+      //   await devicectl.launchApp(deviceId: device.udid, bundleId: bundleId);
+      //   return ExitCode.success.code;
+      // } else {
+      final exitCode = await iosDeploy.installAndLaunchApp(
+        bundlePath: runnerDirectory.path,
+        deviceId: deviceId,
+      );
+      return exitCode;
+      // }
     } catch (error) {
       print(error);
       return ExitCode.software.code;

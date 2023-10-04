@@ -1,0 +1,52 @@
+{
+  "info": {
+    "arguments": [
+      "devicectl",
+      "device",
+      "process",
+      "launch",
+      "--device",
+      "00008110-000265A10E92801E",
+      "dev.shorebird.ios-test",
+      "--json-output",
+      "launch.json"
+    ],
+    "commandType": "devicectl.device.process.launch",
+    "environment": {
+      "TERM": "xterm-256color"
+    },
+    "jsonVersion": 2,
+    "outcome": "success",
+    "version": "348.1"
+  },
+  "result": {
+    "deviceIdentifier": "9B36F5CD-D2B8-490D-B8F1-FE1F21EFE041",
+    "launchOptions": {
+      "activatedWhenStarted": true,
+      "arguments": [],
+      "environmentVariables": {
+        "TERM": "xterm-256color"
+      },
+      "platformSpecificOptions": {},
+      "startStopped": false,
+      "terminateExistingInstances": false,
+      "user": {
+        "active": true
+      }
+    },
+    "process": {
+      "auditToken": [
+        4294967295,
+        501,
+        501,
+        501,
+        501,
+        15443,
+        0,
+        44511
+      ],
+      "executable": "file:///private/var/containers/Bundle/Application/692A13CD-3F67-482B-985C-7F0D803AFBAB/Runner.app/Runner",
+      "processIdentifier": 15443
+    }
+  }
+}
