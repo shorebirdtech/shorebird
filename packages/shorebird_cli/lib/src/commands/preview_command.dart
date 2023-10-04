@@ -335,11 +335,10 @@ class PreviewCommand extends ShorebirdCommand {
       return ExitCode.software.code;
     }
     final deviceInfo = await devicectl.deviceInfo(deviceId: device.udid);
-
-    const xcodeVersion = 15;
+    final xcodeVersion = await xcodeBuild.xcodeVersion();
 
     try {
-      if (deviceInfo.iosVersion.major >= 17 && xcodeVersion >= 15) {
+      if (deviceInfo.iosVersion.major >= 17 && xcodeVersion.major >= 15) {
         final bundleId = await devicectl.installApp(
           runnerApp: runnerDirectory,
           deviceId: deviceInfo.udid,
