@@ -2,7 +2,7 @@ import 'dart:io';
 
 import 'package:path/path.dart' as p;
 import 'package:scoped/scoped.dart';
-import 'package:shorebird_cli/src/git.dart';
+import 'package:shorebird_cli/src/executables/executables.dart';
 
 /// A reference to a [ShorebirdVersion] instance.
 final shorebirdVersionRef = create(ShorebirdVersion.new);

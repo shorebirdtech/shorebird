@@ -1,6 +1,6 @@
-import 'package:shorebird_cli/src/bundletool.dart';
 import 'package:shorebird_cli/src/cache.dart';
 import 'package:shorebird_cli/src/command.dart';
+import 'package:shorebird_cli/src/executables/executables.dart';
 
 /// Mixin on [ShorebirdCommand] which exposes methods
 /// to extract the release version from an app bundle.

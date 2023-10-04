@@ -5,11 +5,11 @@ import 'package:path/path.dart' as p;
 import 'package:platform/platform.dart';
 import 'package:scoped/scoped.dart';
 import 'package:shorebird_cli/src/android_studio.dart';
-import 'package:shorebird_cli/src/java.dart';
+import 'package:shorebird_cli/src/executables/executables.dart';
 import 'package:shorebird_cli/src/platform.dart';
 import 'package:test/test.dart';
 
-import 'mocks.dart';
+import '../mocks.dart';
 
 void main() {
   group(Java, () {

@@ -3,7 +3,7 @@ import 'package:shorebird_cli/src/android_sdk.dart';
 import 'package:shorebird_cli/src/android_studio.dart';
 import 'package:shorebird_cli/src/command.dart';
 import 'package:shorebird_cli/src/doctor.dart';
-import 'package:shorebird_cli/src/java.dart';
+import 'package:shorebird_cli/src/executables/executables.dart';
 import 'package:shorebird_cli/src/logger.dart';
 import 'package:shorebird_cli/src/shorebird_env.dart';
 import 'package:shorebird_cli/src/shorebird_flutter.dart';

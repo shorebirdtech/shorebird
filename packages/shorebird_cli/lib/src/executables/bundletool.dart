@@ -1,7 +1,7 @@
 import 'package:path/path.dart' as p;
 import 'package:scoped/scoped.dart';
 import 'package:shorebird_cli/src/cache.dart';
-import 'package:shorebird_cli/src/java.dart';
+import 'package:shorebird_cli/src/executables/java.dart';
 import 'package:shorebird_cli/src/process.dart';
 
 /// A reference to a [Bundletool] instance.

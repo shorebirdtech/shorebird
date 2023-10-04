@@ -2,12 +2,12 @@ import 'dart:io';
 
 import 'package:mocktail/mocktail.dart';
 import 'package:scoped/scoped.dart';
-import 'package:shorebird_cli/src/adb.dart';
 import 'package:shorebird_cli/src/android_sdk.dart';
+import 'package:shorebird_cli/src/executables/executables.dart';
 import 'package:shorebird_cli/src/process.dart';
 import 'package:test/test.dart';
 
-import 'mocks.dart';
+import '../mocks.dart';
 
 void main() {
   group(Adb, () {

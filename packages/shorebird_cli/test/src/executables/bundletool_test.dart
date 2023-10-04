@@ -3,13 +3,12 @@ import 'dart:io';
 import 'package:mocktail/mocktail.dart';
 import 'package:path/path.dart' as p;
 import 'package:scoped/scoped.dart';
-import 'package:shorebird_cli/src/bundletool.dart';
 import 'package:shorebird_cli/src/cache.dart';
-import 'package:shorebird_cli/src/java.dart';
+import 'package:shorebird_cli/src/executables/executables.dart';
 import 'package:shorebird_cli/src/process.dart';
 import 'package:test/test.dart';
 
-import 'mocks.dart';
+import '../mocks.dart';
 
 void main() {
   group(Bundletool, () {
