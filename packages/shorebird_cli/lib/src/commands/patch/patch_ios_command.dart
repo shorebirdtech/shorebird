@@ -61,9 +61,9 @@ class PatchIosCommand extends ShorebirdCommand
         help: 'Validate but do not upload the patch.',
       )
       ..addFlag(
-        'prod',
+        'staging',
         negatable: false,
-        help: 'Whether to publish the patch to production',
+        help: 'Whether to publish the patch to the staging environment.',
       );
   }
 
@@ -94,7 +94,7 @@ class PatchIosCommand extends ShorebirdCommand
 
     final force = results['force'] == true;
     final dryRun = results['dry-run'] == true;
-    final isProd = results['prod'] == true;
+    final isStaging = results['staging'] == true;
 
     if (force && dryRun) {
       logger.err('Cannot use both --force and --dry-run.');
@@ -219,10 +219,10 @@ Current Flutter Revision: $originalFlutterRevision
       if (flavor != null) '🍧 Flavor: ${lightCyan.wrap(flavor)}',
       '📦 Release Version: ${lightCyan.wrap(releaseVersion)}',
       '''🕹️  Platform: ${lightCyan.wrap(releasePlatform.name)} ${lightCyan.wrap('[$arch (${formatBytes(aotFileSize)})]')}''',
-      if (isProd)
-        '🟢 Track: ${lightCyan.wrap('Production')}'
+      if (isStaging)
+        '🟠 Track: ${lightCyan.wrap('Staging')}'
       else
-        '🟠 Track: ${lightCyan.wrap('Staging')}',
+        '🟢 Track: ${lightCyan.wrap('Production')}',
     ];
 
     logger.info(
@@ -248,7 +248,7 @@ ${summary.join('\n')}
       appId: appId,
       releaseId: release.id,
       platform: releasePlatform,
-      track: isProd ? DeploymentTrack.production : DeploymentTrack.staging,
+      track: isStaging ? DeploymentTrack.staging : DeploymentTrack.production,
       patchArtifactBundles: {
         Arch.arm64: PatchArtifactBundle(
           arch: arch,
