@@ -3,6 +3,7 @@ import 'dart:io';
 
 import 'package:mason_logger/mason_logger.dart';
 import 'package:path/path.dart' as p;
+import 'package:pub_semver/pub_semver.dart';
 import 'package:scoped/scoped.dart';
 import 'package:shorebird_cli/src/process.dart';
 
@@ -105,5 +106,42 @@ class XcodeBuild {
       buildConfigurations: buildConfigurations,
       schemes: schemes,
     );
+  }
+
+  /// Gets the currently installed version of Xcode.
+  ///
+  /// Invokes `xcodebuild -version` and parses the output.
+  /// Output is expected to be of the form:
+  ///
+  ///   $ /usr/bin/xcodebuild -version
+  ///   Xcode 15.0
+  ///   Build version 15A240d
+  Future<Version> xcodeVersion() async {
+    const arguments = ['-version'];
+    final result = await process.run(
+      executable,
+      arguments,
+    );
+
+    if (result.exitCode != ExitCode.success.code) {
+      throw ProcessException(executable, arguments, '${result.stderr}');
+    }
+
+    final lines = LineSplitter.split('${result.stdout}').map((e) => e.trim());
+    var versionString = lines.firstOrNull?.split(' ').lastOrNull;
+    if (versionString == null) {
+      throw FormatException(
+        'Could not parse Xcode version from output: "${result.stdout}".',
+      );
+    }
+
+    // [Version.parse] requires a patch number. If Xcode does not report a patch
+    // number (e.g. "12.0"), add a patch number of 0 (e.g. "12.0.0")
+    final noPachNumberRegex = RegExp(r'^\d+\.\d+$');
+    if (noPachNumberRegex.hasMatch(versionString)) {
+      versionString += '.0';
+    }
+
+    return Version.parse(versionString);
   }
 }
