@@ -27,6 +27,21 @@ class Adb {
     return process.start(adbPath, command.split(' '));
   }
 
+  /// Clears the app data for the given [package] name.
+  Future<void> clearAppData({required String package, String? deviceId}) async {
+    final args = [
+      if (deviceId != null) ...['-s', deviceId],
+      'shell',
+      'pm',
+      'clear',
+      package,
+    ];
+    final result = await _exec(args.join(' '));
+    if (result.exitCode != 0) {
+      throw Exception('Unable to clear app data: ${result.stderr}');
+    }
+  }
+
   /// Starts the app with the given [package] name.
   Future<void> startApp({
     required String package,

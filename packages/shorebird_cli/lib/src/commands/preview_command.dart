@@ -247,6 +247,7 @@ class PreviewCommand extends ShorebirdCommand {
 
     final startAppProgress = logger.progress('Starting app');
     try {
+      await adb.clearAppData(package: package, deviceId: deviceId);
       await adb.startApp(package: package, deviceId: deviceId);
       startAppProgress.complete();
     } catch (error) {
