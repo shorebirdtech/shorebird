@@ -418,7 +418,7 @@ class PreviewCommand extends ShorebirdCommand {
         if (file is File) {
           await encoder.addFile(
             file,
-            file.path.replaceFirst('$outputPath/', ''),
+            file.path.replaceFirst('$outputPath${p.separator}', ''),
           );
         }
       }
