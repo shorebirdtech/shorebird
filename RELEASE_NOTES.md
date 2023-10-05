@@ -4,7 +4,7 @@ This section contains past updates we've sent to customers via Discord.
 
 # 0.16.1 (October 5, 2023)
 
-- 🍎 iOS crash fix
+- 💥 fix rare crasher seen by large apps
 - 🪟 "shorebird preview" fix on windows
 
 📚 Release notes can be found at https://github.com/shorebirdtech/shorebird/releases/tag/v0.16.1
