@@ -1,4 +1,6 @@
 import 'package:json_annotation/json_annotation.dart';
+import 'package:pub_semver/pub_semver.dart';
+import 'package:shorebird_cli/src/extensions/version.dart';
 
 part 'apple_device.g.dart';
 
@@ -8,6 +10,7 @@ class AppleDevice {
     required this.identifier,
     required this.deviceProperties,
     required this.hardwareProperties,
+    required this.connectionProperties,
   });
 
   static AppleDevice fromJson(Map<String, dynamic> json) =>
@@ -20,11 +23,17 @@ class AppleDevice {
 
   final HardwareProperties hardwareProperties;
 
+  final ConnectionProperties connectionProperties;
+
   String get platform => hardwareProperties.platform;
 
   String get name => deviceProperties.name;
 
   String get osVersionString => deviceProperties.osVersionNumber;
+
+  Version get osVersion => VersionParsing.tryParse(osVersionString)!;
+
+  bool get isAavailable => connectionProperties.tunnelState != 'unavailable';
 }
 
 @JsonSerializable(createToJson: false, fieldRename: FieldRename.none)
@@ -50,4 +59,14 @@ class DeviceProperties {
 
   static DeviceProperties fromJson(Map<String, dynamic> json) =>
       _$DevicePropertiesFromJson(json);
+}
+
+@JsonSerializable(createToJson: false, fieldRename: FieldRename.none)
+class ConnectionProperties {
+  ConnectionProperties({required this.tunnelState});
+
+  final String tunnelState;
+
+  static ConnectionProperties fromJson(Map<String, dynamic> json) =>
+      _$ConnectionPropertiesFromJson(json);
 }

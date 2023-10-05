@@ -70,7 +70,7 @@ class PreviewCommand extends ShorebirdCommand {
   String get description => 'Preview a specific release on a device.';
 
   Future<AppleDevice?> _deviceForRun({String? deviceId}) async {
-    final devices = await devicectl.listIosDevices();
+    final devices = await devicectl.listAvailableIosDevices();
     if (deviceId != null) {
       return devices.firstWhereOrNull((d) => d.identifier == deviceId);
     } else {
@@ -331,14 +331,6 @@ class PreviewCommand extends ShorebirdCommand {
     }
 
     final deviceId = results['device-id'] as String?;
-    final deviceProgress = logger.progress('Finding device for run');
-    final device = await _deviceForRun(deviceId: deviceId);
-    if (device == null) {
-      deviceProgress.fail('No devices found');
-      return ExitCode.software.code;
-    }
-    deviceProgress.complete();
-
     final xcodeProgress = logger.progress('Getting Xcode version');
     final Version xcodeVersion;
     try {
@@ -347,16 +339,43 @@ class PreviewCommand extends ShorebirdCommand {
       xcodeProgress.fail('Failed to determine Xcode version: $e');
       return ExitCode.software.code;
     }
-
     xcodeProgress.complete();
 
+    bool shouldUseDeviceCtl;
+    if (xcodeVersion.major >= 15) {
+      final deviceProgress = logger.progress('Finding device for run');
+      final device = await _deviceForRun(deviceId: deviceId);
+      if (device == null) {
+        deviceProgress.complete(
+          'No devices found, falling back to default behavior',
+        );
+        shouldUseDeviceCtl = false;
+        // return ExitCode.software.code;
+      } else {
+        deviceProgress.complete();
+
+        print('device version is ${device.osVersion}');
+        shouldUseDeviceCtl = device.osVersion.major >= 17;
+      }
+    } else {
+      shouldUseDeviceCtl = false;
+    }
+
     try {
-      // if (deviceInfo.iosVersion.major >= 17 && xcodeVersion.major >= 15) {
-      if (xcodeVersion.major >= 15) {
+      if (shouldUseDeviceCtl) {
+        logger.detail(
+          'Detected Xcode 15+. Using devicectl to install and launch',
+        );
         final installProgress = logger.progress('Installing app');
 
+        final deviceProgress = logger.progress('Finding device for run');
+        final device = await _deviceForRun(deviceId: deviceId);
+        if (device == null) {
+          deviceProgress.fail('No devices found');
+          return ExitCode.software.code;
+        }
+        deviceProgress.complete();
         final String bundleId;
-
         try {
           bundleId = await devicectl.installApp(
             deviceId: device.identifier,

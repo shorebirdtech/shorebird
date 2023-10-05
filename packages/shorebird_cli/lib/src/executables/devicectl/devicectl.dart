@@ -146,7 +146,7 @@ class Devicectl {
     // }
   }
 
-  Future<List<AppleDevice>> listIosDevices() async {
+  Future<List<AppleDevice>> listAvailableIosDevices() async {
     const failureErrorMessage = 'Failed to list devices';
 
     final args = [
@@ -174,7 +174,7 @@ class Devicectl {
     return (devicesMatch!.value! as List)
         .whereType<Json>()
         .map(AppleDevice.fromJson)
-        .where((device) => device.platform == 'iOS')
+        .where((device) => device.platform == 'iOS' && device.isAavailable)
         .toList();
   }
 

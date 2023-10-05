@@ -18,6 +18,8 @@ AppleDevice _$AppleDeviceFromJson(Map<String, dynamic> json) => $checkedCreate(
               (v) => DeviceProperties.fromJson(v as Map<String, dynamic>)),
           hardwareProperties: $checkedConvert('hardwareProperties',
               (v) => HardwareProperties.fromJson(v as Map<String, dynamic>)),
+          connectionProperties: $checkedConvert('connectionProperties',
+              (v) => ConnectionProperties.fromJson(v as Map<String, dynamic>)),
         );
         return val;
       },
@@ -44,6 +46,19 @@ DeviceProperties _$DevicePropertiesFromJson(Map<String, dynamic> json) =>
           name: $checkedConvert('name', (v) => v as String),
           osVersionNumber:
               $checkedConvert('osVersionNumber', (v) => v as String),
+        );
+        return val;
+      },
+    );
+
+ConnectionProperties _$ConnectionPropertiesFromJson(
+        Map<String, dynamic> json) =>
+    $checkedCreate(
+      'ConnectionProperties',
+      json,
+      ($checkedConvert) {
+        final val = ConnectionProperties(
+          tunnelState: $checkedConvert('tunnelState', (v) => v as String),
         );
         return val;
       },

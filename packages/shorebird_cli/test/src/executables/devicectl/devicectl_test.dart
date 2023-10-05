@@ -289,7 +289,7 @@ void main() {
 
         test('throws a DevicectlException', () {
           expect(
-            runWithOverrides(devicectl.listIosDevices),
+            runWithOverrides(devicectl.listAvailableIosDevices),
             throwsA(
               isA<DevicectlException>().having(
                 (e) => e.message,
@@ -308,7 +308,8 @@ void main() {
         });
 
         test('returns a list of iOS devices', () async {
-          final devices = await runWithOverrides(devicectl.listIosDevices);
+          final devices =
+              await runWithOverrides(devicectl.listAvailableIosDevices);
           expect(devices, hasLength(1));
           final device = devices.first;
           expect(device.name, equals('Bryan Oltman’s iPhone'));
