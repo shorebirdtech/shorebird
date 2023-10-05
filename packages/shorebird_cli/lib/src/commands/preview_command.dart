@@ -7,6 +7,7 @@ import 'package:collection/collection.dart';
 import 'package:http/http.dart' as http;
 import 'package:mason_logger/mason_logger.dart';
 import 'package:path/path.dart' as p;
+import 'package:pub_semver/pub_semver.dart';
 import 'package:shorebird_cli/src/artifact_manager.dart';
 import 'package:shorebird_cli/src/cache.dart';
 import 'package:shorebird_cli/src/code_push_client_wrapper.dart';
@@ -68,14 +69,14 @@ class PreviewCommand extends ShorebirdCommand {
   @override
   String get description => 'Preview a specific release on a device.';
 
-  // Future<AppleDevice?> _deviceForRun({String? deviceId}) async {
-  //   final devices = await devicectl.listIosDevices();
-  //   if (deviceId != null) {
-  //     return devices.firstWhereOrNull((d) => d.udid == deviceId);
-  //   } else {
-  //     return devices.firstOrNull;
-  //   }
-  // }
+  Future<AppleDevice?> _deviceForRun({String? deviceId}) async {
+    final devices = await devicectl.listIosDevices();
+    if (deviceId != null) {
+      return devices.firstWhereOrNull((d) => d.identifier == deviceId);
+    } else {
+      return devices.firstOrNull;
+    }
+  }
 
   @override
   Future<int> run() async {
@@ -330,28 +331,63 @@ class PreviewCommand extends ShorebirdCommand {
     }
 
     final deviceId = results['device-id'] as String?;
-    // final device = await _deviceForRun(deviceId: deviceIdArg);
-    // if (device == null) {
-    //   logger.err('No devices found');
-    //   return ExitCode.software.code;
-    // }
-    // final xcodeVersion = await xcodeBuild.xcodeVersion();
+    final deviceProgress = logger.progress('Finding device for run');
+    final device = await _deviceForRun(deviceId: deviceId);
+    if (device == null) {
+      deviceProgress.fail('No devices found');
+      return ExitCode.software.code;
+    }
+    deviceProgress.complete();
+
+    final xcodeProgress = logger.progress('Getting Xcode version');
+    final Version xcodeVersion;
+    try {
+      xcodeVersion = await xcodeBuild.xcodeVersion();
+    } catch (e) {
+      xcodeProgress.fail('Failed to determine Xcode version: $e');
+      return ExitCode.software.code;
+    }
+
+    xcodeProgress.complete();
 
     try {
       // if (deviceInfo.iosVersion.major >= 17 && xcodeVersion.major >= 15) {
-      //   final bundleId = await devicectl.installApp(
-      //     runnerApp: runnerDirectory,
-      //     deviceId: deviceInfo.udid,
-      //   );
-      //   await devicectl.launchApp(deviceId: device.udid, bundleId: bundleId);
-      //   return ExitCode.success.code;
-      // } else {
-      final exitCode = await iosDeploy.installAndLaunchApp(
-        bundlePath: runnerDirectory.path,
-        deviceId: deviceId,
-      );
-      return exitCode;
-      // }
+      if (xcodeVersion.major >= 15) {
+        final installProgress = logger.progress('Installing app');
+
+        final String bundleId;
+
+        try {
+          bundleId = await devicectl.installApp(
+            deviceId: device.identifier,
+            runnerApp: runnerDirectory,
+          );
+        } catch (e) {
+          installProgress.fail('Failed to install app: $e');
+          return ExitCode.software.code;
+        }
+        installProgress.complete();
+
+        final launchProgress = logger.progress('Launching app');
+        try {
+          await devicectl.launchApp(
+            deviceId: device.identifier,
+            bundleId: bundleId,
+          );
+        } catch (e) {
+          launchProgress.fail('Failed to launch app: $e');
+          return ExitCode.software.code;
+        }
+        launchProgress.complete();
+
+        return ExitCode.success.code;
+      } else {
+        final exitCode = await iosDeploy.installAndLaunchApp(
+          bundlePath: runnerDirectory.path,
+          deviceId: deviceId,
+        );
+        return exitCode;
+      }
     } catch (error) {
       print(error);
       return ExitCode.software.code;

@@ -1,3 +1,4 @@
+import 'dart:async';
 import 'dart:convert';
 
 import 'package:io/io.dart';
@@ -6,6 +7,7 @@ import 'package:path/path.dart' as p;
 import 'package:scoped/scoped.dart';
 import 'package:shorebird_cli/src/executables/devicectl/apple_device.dart';
 import 'package:shorebird_cli/src/executables/devicectl/nserror.dart';
+import 'package:shorebird_cli/src/logger.dart';
 import 'package:shorebird_cli/src/process.dart';
 import 'package:shorebird_cli/src/third_party/flutter_tools/lib/flutter_tools.dart';
 import 'package:shorebird_code_push_client/shorebird_code_push_client.dart';
@@ -102,7 +104,7 @@ class Devicectl {
     required String deviceId,
     required String bundleId,
   }) async {
-    const failureErrorMessage = 'App launch failed';
+    // const failureErrorMessage = 'App launch failed';
 
     final args = [
       ...baseArgs,
@@ -113,14 +115,35 @@ class Devicectl {
       deviceId,
       bundleId,
     ];
-    try {
-      await _runJsonCommand(args: args);
-    } catch (error) {
-      throw DevicectlException(
-        message: failureErrorMessage,
-        underlyingException: error as Exception,
-      );
+
+    final Process launchProcess;
+    launchProcess = await process.start(executableName, args);
+
+    void onStdout(String line) {
+      logger.info(line);
     }
+
+    void onStderr(String line) {
+      logger.detail(line);
+    }
+
+    final stdoutSubscription = launchProcess.stdout.asLines().listen(onStdout);
+
+    final stderrSubscription = launchProcess.stderr.asLines().listen(onStderr);
+
+    final status = await launchProcess.exitCode;
+    logger.detail('[devicectl] exited with code: $status');
+    unawaited(stdoutSubscription.cancel());
+    unawaited(stderrSubscription.cancel());
+
+    // try {
+    //   await _runJsonCommand(args: args);
+    // } catch (error) {
+    //   throw DevicectlException(
+    //     message: failureErrorMessage,
+    //     underlyingException: error as Exception,
+    //   );
+    // }
   }
 
   Future<List<AppleDevice>> listIosDevices() async {
@@ -201,5 +224,12 @@ class Devicectl {
 
     return rootError.userInfo.localizedFailureReason?.string ??
         'uknown failure reason';
+  }
+}
+
+extension on Stream<List<int>> {
+  Stream<String> asLines() {
+    return transform<String>(utf8.decoder)
+        .transform<String>(const LineSplitter());
   }
 }

@@ -312,8 +312,11 @@ void main() {
           expect(devices, hasLength(1));
           final device = devices.first;
           expect(device.name, equals('Bryan Oltman’s iPhone'));
-          expect(device.identifier, equals('11111111-1111111111111111'));
-          expect(device.iosVersionString, equals('17.0.2'));
+          expect(
+            device.identifier,
+            equals('DEADBEEF-DEAD-BEEF-DEAD-BEEFDEADBEEF'),
+          );
+          expect(device.osVersionString, equals('17.0.2'));
           expect(device.platform, equals('iOS'));
         });
       });
