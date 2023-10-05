@@ -55,6 +55,7 @@ class PreviewCommand extends ShorebirdCommand {
       )
       ..addFlag(
         'staging',
+        negatable: false,
         help: 'Preview the release on the staging environment.',
       );
   }

@@ -252,7 +252,7 @@ Please re-run the release command for this version or create a new release.''');
       '''📱 App: ${lightCyan.wrap(app.displayName)} ${lightCyan.wrap('(${app.appId})')}''',
       '📦 Release Version: ${lightCyan.wrap(releaseVersion)}',
       '''🕹️  Platform: ${lightCyan.wrap(platform.name)} ${lightCyan.wrap('[${archMetadata.join(', ')}]')}''',
-      '🟢 Track: Production',
+      '🟢 Track: ${lightCyan.wrap('Production')}',
     ];
 
     logger.info(

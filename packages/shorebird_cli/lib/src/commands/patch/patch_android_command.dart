@@ -64,6 +64,7 @@ class PatchAndroidCommand extends ShorebirdCommand
       )
       ..addFlag(
         'prod',
+        negatable: false,
         help: 'Whether to publish the patch to production',
       );
   }
@@ -286,7 +287,10 @@ Current Flutter Revision: $originalFlutterRevision
       if (flavor != null) '🍧 Flavor: ${lightCyan.wrap(flavor)}',
       '📦 Release Version: ${lightCyan.wrap(releaseVersion)}',
       '''🕹️  Platform: ${lightCyan.wrap(platform.name)} ${lightCyan.wrap('[${archMetadata.join(', ')}]')}''',
-      if (isProd) '🟢 Track: Production' else '🟠 Track: Staging',
+      if (isProd)
+        '🟢 Track: ${lightCyan.wrap('Production')}'
+      else
+        '🟠 Track: ${lightCyan.wrap('Staging')}',
     ];
 
     logger.info(
