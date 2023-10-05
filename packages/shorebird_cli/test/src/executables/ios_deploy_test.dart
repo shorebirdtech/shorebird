@@ -93,6 +93,7 @@ void main() {
             '--debug',
             '--id',
             deviceId,
+            '-r',
             '--bundle',
             bundlePath,
           ]),
@@ -113,6 +114,7 @@ void main() {
         verify(
           () => shorebirdProcess.start(any(that: endsWith('ios-deploy')), [
             '--debug',
+            '-r',
             '--bundle',
             bundlePath,
           ]),
@@ -132,6 +134,7 @@ void main() {
         verify(
           () => shorebirdProcess.start(any(that: endsWith('ios-deploy')), [
             '--debug',
+            '-r',
             '--bundle',
             bundlePath,
           ]),
@@ -157,6 +160,7 @@ void main() {
         verify(
           () => shorebirdProcess.start(any(that: endsWith('ios-deploy')), [
             '--debug',
+            '-r',
             '--bundle',
             bundlePath,
           ]),
@@ -183,6 +187,7 @@ void main() {
         verify(
           () => shorebirdProcess.start(any(that: endsWith('ios-deploy')), [
             '--debug',
+            '-r',
             '--bundle',
             bundlePath,
           ]),
@@ -207,6 +212,7 @@ void main() {
         verify(
           () => shorebirdProcess.start(any(that: endsWith('ios-deploy')), [
             '--debug',
+            '-r',
             '--bundle',
             bundlePath,
           ]),
@@ -232,6 +238,7 @@ void main() {
         verify(
           () => shorebirdProcess.start(any(that: endsWith('ios-deploy')), [
             '--debug',
+            '-r',
             '--bundle',
             bundlePath,
           ]),
@@ -257,6 +264,7 @@ void main() {
         verify(
           () => shorebirdProcess.start(any(that: endsWith('ios-deploy')), [
             '--debug',
+            '-r',
             '--bundle',
             bundlePath,
           ]),
@@ -287,6 +295,7 @@ void main() {
         verify(
           () => shorebirdProcess.start(any(that: endsWith('ios-deploy')), [
             '--debug',
+            '-r',
             '--bundle',
             bundlePath,
           ]),
@@ -312,6 +321,7 @@ void main() {
         verify(
           () => shorebirdProcess.start(any(that: endsWith('ios-deploy')), [
             '--debug',
+            '-r',
             '--bundle',
             bundlePath,
           ]),
@@ -336,6 +346,7 @@ void main() {
         verify(
           () => shorebirdProcess.start(any(that: endsWith('ios-deploy')), [
             '--debug',
+            '-r',
             '--bundle',
             bundlePath,
           ]),
