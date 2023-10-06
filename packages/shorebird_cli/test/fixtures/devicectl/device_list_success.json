@@ -65,7 +65,7 @@
             "type": 16777228
           },
           "deviceType": "iPhone",
-          "ecid": 674692362043422,
+          "ecid": 111111111111111,
           "hardwareModel": "D63AP",
           "internalStorageCapacity": 512000000000,
           "isProductionFused": true,
@@ -73,7 +73,7 @@
           "platform": "iOS",
           "productType": "iPhone14,2",
           "reality": "physical",
-          "serialNumber": "R0Q5WPK7CY",
+          "serialNumber": "AAAAAAAAAA",
           "supportedCPUTypes": [
             {
               "name": "arm64e",
@@ -148,14 +148,14 @@
             "type": 33554444
           },
           "deviceType": "appleWatch",
-          "ecid": 3162487739580462,
+          "ecid": 2222222222222222,
           "hardwareModel": "N146bAP",
           "isProductionFused": true,
           "marketingName": "Apple Watch Series 5",
           "platform": "watchOS",
           "productType": "Watch5,4",
           "reality": "physical",
-          "serialNumber": "D92Z5046MLDP",
+          "serialNumber": "BBBBBBBBBBBB",
           "thinningProductType": "Watch5,4",
           "udid": "22222222-2222222222222222"
         },
