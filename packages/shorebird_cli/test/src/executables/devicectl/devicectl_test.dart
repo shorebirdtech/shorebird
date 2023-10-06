@@ -17,12 +17,6 @@ void main() {
     const deviceId = 'test_device_id';
 
     late ExitCode exitCode;
-
-    // late ExitCode versionExitCode;
-    // late ExitCode listDevicesExitCode;
-    // late ExitCode installAppExitCode;
-    // late ExitCode launchAppExitCode;
-
     late String jsonOutput;
 
     late ShorebirdProcess process;
@@ -47,9 +41,11 @@ void main() {
         final processRunArgs =
             invocation.positionalArguments.last as List<String>;
         final jsonFilePath = processRunArgs.last;
-        File(jsonFilePath)
-          ..createSync()
-          ..writeAsStringSync(jsonOutput);
+        if (jsonFilePath.endsWith('.json')) {
+          File(jsonFilePath)
+            ..createSync()
+            ..writeAsStringSync(jsonOutput);
+        }
         return processResult;
       });
       when(() => processResult.exitCode).thenAnswer((_) => exitCode.code);
@@ -127,30 +123,6 @@ void main() {
         jsonOutput = '';
         runnerApp = Directory.systemTemp.createTempSync();
       });
-
-      // group('when the command returns a non-zero exit code', () {
-      //   setUp(() {
-      //     exitCode = ExitCode.cantCreate;
-      //   });
-
-      //   test('throws a DevicectlException', () {
-      //     expect(
-      //       runWithOverrides(
-      //         () => devicectl.installApp(
-      //           runnerApp: runnerApp,
-      //           deviceId: deviceId,
-      //         ),
-      //       ),
-      //       throwsA(
-      //         isA<DevicectlException>().having(
-      //           (e) => e.underlyingException,
-      //           'underlyingException',
-      //           isA<ProcessException>(),
-      //         ),
-      //       ),
-      //     );
-      //   });
-      // });
 
       group('when no json output file is found', () {
         setUp(() {
