@@ -420,7 +420,17 @@ void main() {
               File('$fixturesPath/launch_failure.json').readAsStringSync();
         });
 
-        test('returns exit code 70 ', () async {});
+        test('returns exit code 70 ', () async {
+          expect(
+            await runWithOverrides(
+              () => devicectl.installAndLaunchApp(
+                runnerAppDirectory: Directory.systemTemp.createTempSync(),
+                deviceId: deviceId,
+              ),
+            ),
+            equals(ExitCode.software.code),
+          );
+        });
       });
 
       group('when install and launch succeed', () {

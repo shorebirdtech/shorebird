@@ -206,7 +206,7 @@ class Devicectl {
       );
     } catch (e) {
       launchProgress.fail('Failed to launch app: $e');
-      rethrow;
+      return ExitCode.software.code;
     }
     launchProgress.complete();
 
