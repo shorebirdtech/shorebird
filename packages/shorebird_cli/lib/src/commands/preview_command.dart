@@ -343,7 +343,7 @@ class PreviewCommand extends ShorebirdCommand {
       }
 
       return exitCode;
-    } catch (e) {
+    } catch (_) {
       return ExitCode.software.code;
     }
   }
