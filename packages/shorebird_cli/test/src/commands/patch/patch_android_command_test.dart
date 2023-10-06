@@ -267,7 +267,7 @@ flutter:
       ).thenReturn(false);
       when(() => argResults.rest).thenReturn([]);
       when(() => argResults['arch']).thenReturn(arch);
-      when(() => argResults['prod']).thenReturn(true);
+      when(() => argResults['staging']).thenReturn(false);
       when(() => argResults['dry-run']).thenReturn(false);
       when(() => argResults['force']).thenReturn(false);
       when(() => argResults['release-version']).thenReturn(release.version);
@@ -827,7 +827,7 @@ Please re-run the release command for this version or create a new release.'''),
     });
 
     test('succeeds when patch is successful (staging)', () async {
-      when(() => argResults['prod']).thenReturn(false);
+      when(() => argResults['staging']).thenReturn(true);
       final tempDir = setUpTempDir();
       setUpTempArtifacts(tempDir);
       final exitCode = await IOOverrides.runZoned(

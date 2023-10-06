@@ -248,6 +248,12 @@ void main() {
           ),
         ).thenAnswer((_) async {});
         when(
+          () => adb.clearAppData(
+            package: any(named: 'package'),
+            deviceId: any(named: 'deviceId'),
+          ),
+        ).thenAnswer((_) async {});
+        when(
           () => adb.startApp(
             package: any(named: 'package'),
             deviceId: any(named: 'deviceId'),
@@ -365,6 +371,23 @@ void main() {
         final result = await runWithOverrides(command.run);
         expect(result, equals(ExitCode.software.code));
         verify(() => bundletool.installApks(apks: apksPath())).called(1);
+      });
+
+      test('exits with code 70 when clearing app data fails', () async {
+        when(
+          () => artifactManager.extractZip(
+            zipFile: any(named: 'zipFile'),
+            outputDirectory: any(named: 'outputDirectory'),
+          ),
+        ).thenAnswer(createShorebirdYaml);
+
+        final exception = Exception('oops');
+        when(
+          () => adb.clearAppData(package: any(named: 'package')),
+        ).thenThrow(exception);
+        final result = await runWithOverrides(command.run);
+        expect(result, equals(ExitCode.software.code));
+        verify(() => adb.clearAppData(package: packageName)).called(1);
       });
 
       test('exits with code 70 when starting app fails', () async {

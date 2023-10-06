@@ -48,6 +48,71 @@ void main() {
       );
     });
 
+    group('clearAppData', () {
+      const package = 'com.example.app';
+      test('throws when unable to locate adb', () async {
+        when(() => androidSdk.adbPath).thenReturn(null);
+        await expectLater(
+          () => runWithOverrides(() => adb.clearAppData(package: package)),
+          throwsA(
+            isA<Exception>().having(
+              (e) => e.toString(),
+              'exception()',
+              contains('Unable to locate adb'),
+            ),
+          ),
+        );
+      });
+
+      test('throws process exits with non-zero exit code', () async {
+        when(
+          () => process.run(any(), any()),
+        ).thenAnswer(
+          (_) async => const ShorebirdProcessResult(
+            exitCode: 1,
+            stdout: '',
+            stderr: 'oops',
+          ),
+        );
+        await expectLater(
+          () => runWithOverrides(() => adb.clearAppData(package: package)),
+          throwsA(
+            isA<Exception>().having(
+              (e) => e.toString(),
+              'exception()',
+              contains('Unable to clear app data: oops'),
+            ),
+          ),
+        );
+      });
+
+      test('completes when process exits with 0', () async {
+        await expectLater(
+          runWithOverrides(() => adb.clearAppData(package: package)),
+          completes,
+        );
+        verify(
+          () => process.run(adbPath, 'shell pm clear $package'.split(' ')),
+        ).called(1);
+      });
+
+      test('forwards deviceId when provided', () async {
+        const deviceId = '1234';
+        await expectLater(
+          runWithOverrides(
+            () => adb.clearAppData(package: package, deviceId: deviceId),
+          ),
+          completes,
+        );
+        verify(
+          () => process.run(
+            adbPath,
+            '-s $deviceId shell pm clear $package'.split(' '),
+          ),
+        ).called(1);
+      });
+    });
+
     group('startApp', () {
       const package = 'com.example.app';
       test('throws when unable to locate adb', () async {

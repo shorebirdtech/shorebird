@@ -160,6 +160,7 @@ Or run on an iOS simulator without code signing
         [
           '--debug',
           if (deviceId != null) ...['--id', deviceId],
+          '-r', // uninstall the app before reinstalling and clear app data
           '--bundle',
           bundlePath,
         ],

@@ -171,32 +171,19 @@ To add iOS, run "flutter create . --platforms ios"''',
           exitCode = ExitCode.success;
         });
 
-        test('throws FormatException if output is empty', () async {
+        test('reutrns null if output is empty', () async {
           stdout = '';
           expect(
-            () => runWithOverrides(xcodeBuild.xcodeVersion),
-            throwsA(
-              isA<FormatException>().having(
-                (e) => e.message,
-                'message',
-                'Could not parse Xcode version from output: "".',
-              ),
-            ),
+            await runWithOverrides(xcodeBuild.xcodeVersion),
+            isNull,
           );
         });
 
-        test('throws FormatException if output does not contain version',
-            () async {
+        test('returns null if output does not contain version', () async {
           stdout = 'unexpected output';
           expect(
-            () => runWithOverrides(xcodeBuild.xcodeVersion),
-            throwsA(
-              isA<FormatException>().having(
-                (e) => e.message,
-                'message',
-                'Could not parse "output".',
-              ),
-            ),
+            await runWithOverrides(xcodeBuild.xcodeVersion),
+            isNull,
           );
         });
       });

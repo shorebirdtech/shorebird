@@ -257,6 +257,7 @@ class PreviewCommand extends ShorebirdCommand {
 
     final startAppProgress = logger.progress('Starting app');
     try {
+      await adb.clearAppData(package: package, deviceId: deviceId);
       await adb.startApp(package: package, deviceId: deviceId);
       startAppProgress.complete();
     } catch (error) {
@@ -444,7 +445,7 @@ class PreviewCommand extends ShorebirdCommand {
         if (file is File) {
           await encoder.addFile(
             file,
-            file.path.replaceFirst('$outputPath/', ''),
+            file.path.replaceFirst('$outputPath${p.separator}', ''),
           );
         }
       }
