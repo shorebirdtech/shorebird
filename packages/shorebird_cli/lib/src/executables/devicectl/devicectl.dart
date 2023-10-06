@@ -274,6 +274,13 @@ class Devicectl {
     }
 
     final json = jsonDecode(jsonOutputFile.readAsStringSync()) as Json;
+
+    // The json output file contains two top-level objects:
+    //  - "info", which contains information about the command that was run
+    //  - "result" or "error", which contains the actual output of the command
+    //    or the error the occurred when attempting to run the command.
+    //
+    // If the output contains an error, throw an exception with the error
     final maybeError = _getErrorFromOutputJson(json);
     if (maybeError != null) {
       throw Exception(maybeError);
@@ -290,12 +297,15 @@ class Devicectl {
       return null;
     }
 
+    // NSErrors can have infinitely nested underlying errors, and the original
+    // error is usually the most useful, so we find the root error and use that
+    // to get the error message.
     var rootError = NSError.fromJson(maybeErrorJson);
     while (rootError.userInfo.underlyingError?.error != null) {
       rootError = rootError.userInfo.underlyingError!.error!;
     }
 
     return rootError.userInfo.localizedFailureReason?.string ??
-        'uknown failure reason';
+        'unknown failure reason';
   }
 }
