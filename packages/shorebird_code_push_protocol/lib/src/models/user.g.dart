@@ -18,12 +18,15 @@ User _$UserFromJson(Map<String, dynamic> json) => $checkedCreate(
           hasActiveSubscription: $checkedConvert(
               'has_active_subscription', (v) => v as bool? ?? false),
           displayName: $checkedConvert('display_name', (v) => v as String?),
+          stripeCustomerId:
+              $checkedConvert('stripe_customer_id', (v) => v as String?),
         );
         return val;
       },
       fieldKeyMap: const {
         'hasActiveSubscription': 'has_active_subscription',
-        'displayName': 'display_name'
+        'displayName': 'display_name',
+        'stripeCustomerId': 'stripe_customer_id'
       },
     );
 
@@ -32,4 +35,5 @@ Map<String, dynamic> _$UserToJson(User instance) => <String, dynamic>{
       'email': instance.email,
       'display_name': instance.displayName,
       'has_active_subscription': instance.hasActiveSubscription,
+      'stripe_customer_id': instance.stripeCustomerId,
     };

@@ -7,6 +7,8 @@ void main() {
       const user = User(
         id: 1,
         email: 'test@shorebird.dev',
+        stripeCustomerId: 'test-customer-id',
+        displayName: 'Test User',
       );
       expect(
         User.fromJson(user.toJson()).toJson(),
