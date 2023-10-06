@@ -485,6 +485,28 @@ void main() {
         });
       });
 
+      group('when command outputs incomplete json', () {
+        setUp(() {
+          // This fixture is synthetic, as I was not able to get this command
+          // to fail.
+          jsonOutput = File('$fixturesPath/device_list_success_no_devices.json')
+              .readAsStringSync();
+        });
+
+        test('throws a DevicectlException', () {
+          expect(
+            runWithOverrides(devicectl.listAvailableIosDevices),
+            throwsA(
+              isA<DevicectlException>().having(
+                (e) => e.message,
+                'message',
+                'Failed to list devices',
+              ),
+            ),
+          );
+        });
+      });
+
       group('when command succeeds', () {
         setUp(() {
           jsonOutput =
