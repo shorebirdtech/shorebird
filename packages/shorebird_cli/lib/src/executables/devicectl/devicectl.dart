@@ -109,10 +109,10 @@ class Devicectl {
     final Json jsonResult;
     try {
       jsonResult = await _runJsonCommand(args: args);
-    } catch (error) {
+    } on Exception catch (error) {
       throw DevicectlException(
         message: failureErrorMessage,
-        underlyingException: error as Exception,
+        underlyingException: error,
       );
     }
 
@@ -130,10 +130,10 @@ class Devicectl {
       }
 
       bundleId = maybeBundleId;
-    } catch (error) {
+    } on Exception catch (error) {
       throw DevicectlException(
         message: failureErrorMessage,
-        underlyingException: error as Exception,
+        underlyingException: error,
       );
     }
 
@@ -161,10 +161,10 @@ class Devicectl {
 
     try {
       await _runJsonCommand(args: args);
-    } catch (error) {
+    } on Exception catch (error) {
       throw DevicectlException(
         message: failureErrorMessage,
-        underlyingException: error as Exception,
+        underlyingException: error,
       );
     }
   }
@@ -228,10 +228,10 @@ class Devicectl {
     final Json jsonResult;
     try {
       jsonResult = await _runJsonCommand(args: args);
-    } catch (error) {
+    } on Exception catch (error) {
       throw DevicectlException(
         message: failureErrorMessage,
-        underlyingException: error as Exception,
+        underlyingException: error,
       );
     }
 
