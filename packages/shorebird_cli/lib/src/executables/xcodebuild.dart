@@ -5,6 +5,7 @@ import 'package:mason_logger/mason_logger.dart';
 import 'package:path/path.dart' as p;
 import 'package:pub_semver/pub_semver.dart';
 import 'package:scoped/scoped.dart';
+import 'package:shorebird_cli/src/extensions/version.dart';
 import 'package:shorebird_cli/src/process.dart';
 
 /// {@template missing_ios_project_exception}
@@ -116,7 +117,7 @@ class XcodeBuild {
   ///   $ /usr/bin/xcodebuild -version
   ///   Xcode 15.0
   ///   Build version 15A240d
-  Future<Version> xcodeVersion() async {
+  Future<Version?> xcodeVersion() async {
     const arguments = ['-version'];
     final result = await process.run(
       executable,
@@ -128,20 +129,13 @@ class XcodeBuild {
     }
 
     final lines = LineSplitter.split('${result.stdout}').map((e) => e.trim());
-    var versionString = lines.firstOrNull?.split(' ').lastOrNull;
+    final versionString = lines.firstOrNull?.split(' ').lastOrNull;
     if (versionString == null) {
       throw FormatException(
-        'Could not parse Xcode version from output: "${result.stdout}".',
+        'Could not find Xcode version in output: "${result.stdout}".',
       );
     }
 
-    // [Version.parse] requires a patch number. If Xcode does not report a patch
-    // number (e.g. "12.0"), add a patch number of 0 (e.g. "12.0.0")
-    final noPachNumberRegex = RegExp(r'^\d+\.\d+$');
-    if (noPachNumberRegex.hasMatch(versionString)) {
-      versionString += '.0';
-    }
-
-    return Version.parse(versionString);
+    return VersionParsing.tryParse(versionString);
   }
 }
