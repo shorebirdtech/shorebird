@@ -3,7 +3,6 @@ import 'dart:io';
 import 'package:mason_logger/mason_logger.dart';
 import 'package:mocktail/mocktail.dart';
 import 'package:path/path.dart' as p;
-import 'package:pub_semver/pub_semver.dart';
 import 'package:scoped/scoped.dart';
 import 'package:shorebird_cli/src/executables/executables.dart';
 import 'package:shorebird_cli/src/process.dart';
@@ -14,7 +13,6 @@ import '../mocks.dart';
 void main() {
   group(XcodeBuild, () {
     late ShorebirdProcess process;
-    late ShorebirdProcessResult processResult;
     late XcodeBuild xcodeBuild;
 
     R runWithOverrides<R>(R Function() body) {
@@ -34,7 +32,6 @@ void main() {
 
     setUp(() {
       process = MockShorebirdProcess();
-      processResult = MockShorebirdProcessResult();
       xcodeBuild = runWithOverrides(XcodeBuild.new);
     });
 
