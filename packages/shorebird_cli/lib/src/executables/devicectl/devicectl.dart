@@ -130,10 +130,10 @@ class Devicectl {
       }
 
       bundleId = maybeBundleId;
-    } catch (e) {
+    } catch (error) {
       throw DevicectlException(
         message: failureErrorMessage,
-        underlyingException: e as Exception,
+        underlyingException: error as Exception,
       );
     }
 
@@ -192,8 +192,8 @@ class Devicectl {
         deviceId: device.identifier,
         runnerApp: runnerAppDirectory,
       );
-    } catch (e) {
-      installProgress.fail('Failed to install app: $e');
+    } catch (error) {
+      installProgress.fail('Failed to install app: $error');
       return ExitCode.software.code;
     }
     installProgress.complete();
@@ -204,8 +204,8 @@ class Devicectl {
         deviceId: device.identifier,
         bundleId: bundleId,
       );
-    } catch (e) {
-      launchProgress.fail('Failed to launch app: $e');
+    } catch (error) {
+      launchProgress.fail('Failed to launch app: $error');
       return ExitCode.software.code;
     }
     launchProgress.complete();
