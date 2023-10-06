@@ -134,6 +134,6 @@ class XcodeBuild {
       return null;
     }
 
-    return VersionParsing.tryParse(versionString, strict: false);
+    return tryParseVersion(versionString, strict: false);
   }
 }
