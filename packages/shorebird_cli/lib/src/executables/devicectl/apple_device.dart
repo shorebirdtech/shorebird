@@ -47,9 +47,8 @@ class AppleDevice {
 
   /// The device's OS version as a [Version], or `null` if the version string
   /// cannot be parsed.
-  Version? get osVersion => osVersionString == null
-      ? null
-      : VersionParsing.tryParse(osVersionString!);
+  Version? get osVersion =>
+      osVersionString == null ? null : tryParseVersion(osVersionString!);
 
   /// Whether the device is available for use. See the docs for
   /// [ConnectionProperties.tunnelState] for more information about known
