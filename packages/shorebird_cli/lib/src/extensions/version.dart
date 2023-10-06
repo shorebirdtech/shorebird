@@ -8,21 +8,16 @@ extension VersionParsing on Version {
     try {
       return Version.parse(versionString);
     } on FormatException {
-      if (strict) {
+      final noPatchNumberRegex = RegExp(r'^\d+\.\d+$');
+      if (strict || !noPatchNumberRegex.hasMatch(versionString)) {
         return null;
       }
 
-      var updatedVersionString = versionString;
       // [Version.parse] requires a patch number. If we are not in strict mode,
       // and the version string is of the form "12.0", add a patch number of 0
       // and try again.
-      final noPatchNumberRegex = RegExp(r'^\d+\.\d+$');
-      if (noPatchNumberRegex.hasMatch(versionString)) {
-        updatedVersionString += '.0';
-      }
-
       try {
-        return Version.parse(updatedVersionString);
+        return Version.parse('$versionString.0');
       } catch (_) {
         return null;
       }

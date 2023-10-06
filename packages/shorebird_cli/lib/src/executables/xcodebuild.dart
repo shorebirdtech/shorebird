@@ -131,11 +131,9 @@ class XcodeBuild {
     final lines = LineSplitter.split('${result.stdout}').map((e) => e.trim());
     final versionString = lines.firstOrNull?.split(' ').lastOrNull;
     if (versionString == null) {
-      throw FormatException(
-        'Could not find Xcode version in output: "${result.stdout}".',
-      );
+      return null;
     }
 
-    return VersionParsing.tryParse(versionString);
+    return VersionParsing.tryParse(versionString, strict: false);
   }
 }
