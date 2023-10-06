@@ -329,7 +329,7 @@ class PreviewCommand extends ShorebirdCommand {
 
       final int exitCode;
       if (shouldUseDeviceCtl) {
-        logger.detail('Using devicectl for install and launch.');
+        logger.detail('Using devicectl to install and launch.');
         exitCode = await devicectl.installAndLaunchApp(
           runnerAppDirectory: runnerDirectory,
           deviceId: deviceId,
