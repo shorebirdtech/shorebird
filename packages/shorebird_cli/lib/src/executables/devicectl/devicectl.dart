@@ -263,7 +263,7 @@ class Devicectl {
 
     // The `devicectl` command will still write json output if it fails, so in
     // the event of a non-zero exit code, only throw a ProcessException if we
-    //can't find the output file.
+    // can't find the output file.
     if (!jsonOutputFile.existsSync()) {
       if (result.exitCode != ExitCode.success.code) {
         throw ProcessException(executableName, args, '${result.stderr}');
