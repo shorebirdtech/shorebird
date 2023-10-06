@@ -5,6 +5,7 @@ import 'package:mocktail/mocktail.dart';
 import 'package:path/path.dart' as p;
 import 'package:scoped/scoped.dart';
 import 'package:shorebird_cli/src/executables/executables.dart';
+import 'package:shorebird_cli/src/logger.dart';
 import 'package:shorebird_cli/src/process.dart';
 import 'package:test/test.dart';
 
@@ -14,7 +15,7 @@ void main() {
   group(Devicectl, () {
     final fixturesPath = p.join('test', 'fixtures', 'devicectl');
 
-    const deviceId = 'test_device_id';
+    const deviceId = 'DEADBEEF-DEAD-BEEF-DEAD-BEEFDEADBEEF';
 
     late ExitCode exitCode;
     late String jsonOutput;
@@ -305,7 +306,149 @@ void main() {
       });
     });
 
-    group('listIosDevices', () {
+    group('installAndLaunchApp', () {
+      late Logger logger;
+      late Progress progress;
+
+      late String deviceListJsonOutput;
+      late String installJsonOutput;
+      late String launchJsonOutput;
+
+      R runWithOverrides<R>(R Function() body) {
+        return runScoped(
+          body,
+          values: {
+            loggerRef.overrideWith(() => logger),
+            processRef.overrideWith(() => process),
+          },
+        );
+      }
+
+      setUp(() {
+        logger = MockLogger();
+        progress = MockProgress();
+
+        when(() => logger.progress(any())).thenReturn(progress);
+        when(() => process.run(any(), any(that: contains('list'))))
+            .thenAnswer((invocation) async {
+          final processRunArgs =
+              invocation.positionalArguments.last as List<String>;
+          final jsonFilePath = processRunArgs.last;
+          if (jsonFilePath.endsWith('.json')) {
+            File(jsonFilePath)
+              ..createSync()
+              ..writeAsStringSync(deviceListJsonOutput);
+          }
+          return processResult;
+        });
+        when(() => process.run(any(), any(that: contains('install'))))
+            .thenAnswer((invocation) async {
+          final processRunArgs =
+              invocation.positionalArguments.last as List<String>;
+          final jsonFilePath = processRunArgs.last;
+          if (jsonFilePath.endsWith('.json')) {
+            File(jsonFilePath)
+              ..createSync()
+              ..writeAsStringSync(installJsonOutput);
+          }
+          return processResult;
+        });
+        when(() => process.run(any(), any(that: contains('launch'))))
+            .thenAnswer((invocation) async {
+          final processRunArgs =
+              invocation.positionalArguments.last as List<String>;
+          final jsonFilePath = processRunArgs.last;
+          if (jsonFilePath.endsWith('.json')) {
+            File(jsonFilePath)
+              ..createSync()
+              ..writeAsStringSync(launchJsonOutput);
+          }
+          return processResult;
+        });
+      });
+
+      group('when no device is found', () {
+        setUp(() {
+          deviceListJsonOutput = File(
+            '$fixturesPath/device_list_success_empty.json',
+          ).readAsStringSync();
+        });
+
+        test('returns exit code 70', () async {
+          expect(
+            await runWithOverrides(
+              () => devicectl.installAndLaunchApp(
+                runnerAppDirectory: Directory.systemTemp.createTempSync(),
+                deviceId: deviceId,
+              ),
+            ),
+            equals(ExitCode.software.code),
+          );
+        });
+      });
+
+      group('when install fails', () {
+        setUp(() {
+          deviceListJsonOutput = File(
+            '$fixturesPath/device_list_success.json',
+          ).readAsStringSync();
+          installJsonOutput =
+              File('$fixturesPath/install_failure.json').readAsStringSync();
+        });
+
+        test('returns exit code 70 ', () async {
+          expect(
+            await runWithOverrides(
+              () => devicectl.installAndLaunchApp(
+                runnerAppDirectory: Directory.systemTemp.createTempSync(),
+                deviceId: deviceId,
+              ),
+            ),
+            equals(ExitCode.software.code),
+          );
+        });
+      });
+
+      group('when launch fails', () {
+        setUp(() {
+          deviceListJsonOutput = File(
+            '$fixturesPath/device_list_success.json',
+          ).readAsStringSync();
+          installJsonOutput =
+              File('$fixturesPath/install_success.json').readAsStringSync();
+          launchJsonOutput =
+              File('$fixturesPath/launch_failure.json').readAsStringSync();
+        });
+
+        test('returns exit code 70 ', () async {});
+      });
+
+      group('when install and launch succeed', () {
+        setUp(() {
+          deviceListJsonOutput = File(
+            '$fixturesPath/device_list_success.json',
+          ).readAsStringSync();
+          installJsonOutput =
+              File('$fixturesPath/install_success.json').readAsStringSync();
+          launchJsonOutput =
+              File('$fixturesPath/launch_success.json').readAsStringSync();
+        });
+
+        test('returns exit code 0', () async {
+          expect(
+            await runWithOverrides(
+              () => devicectl.installAndLaunchApp(
+                runnerAppDirectory: Directory.systemTemp.createTempSync(),
+                deviceId: deviceId,
+              ),
+            ),
+            equals(ExitCode.success.code),
+          );
+        });
+      });
+    });
+
+    group('listAvailableIosDevices', () {
       setUp(() {
         exitCode = ExitCode.success;
       });
