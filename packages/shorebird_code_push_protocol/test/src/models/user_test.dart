@@ -15,23 +15,5 @@ void main() {
         equals(user.toJson()),
       );
     });
-
-    test(
-        'supports creating a user without a stripeCustomerId '
-        'for backward compatibility', () {
-      const user = User(
-        id: 1,
-        email: 'test@shorebird.dev',
-        displayName: 'Test User',
-      );
-      expect(
-        User.fromJson({
-          'id': 1,
-          'email': 'test@shorebird.dev',
-          'display_name': 'Test User',
-        }).toJson(),
-        equals(user.toJson()),
-      );
-    });
   });
 }
