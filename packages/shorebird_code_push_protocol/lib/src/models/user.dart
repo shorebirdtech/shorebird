@@ -13,6 +13,7 @@ class User {
     required this.email,
     this.hasActiveSubscription = false,
     this.displayName,
+    this.stripeCustomerId,
   });
 
   /// Converts a Map<String, dynamic> to a [User]
@@ -32,4 +33,7 @@ class User {
 
   /// Whether the user is currently a paying customer.
   final bool hasActiveSubscription;
+
+  /// The user's Stripe customer ID, if they have one.
+  final String? stripeCustomerId;
 }
