@@ -10,7 +10,7 @@ part 'nserror.g.dart';
 @JsonSerializable(createToJson: false, fieldRename: FieldRename.none)
 class NSError {
   /// {@macro nserror}
-  NSError({
+  const NSError({
     required this.code,
     required this.domain,
     required this.userInfo,
@@ -26,7 +26,7 @@ class NSError {
 
 @JsonSerializable(createToJson: false, fieldRename: FieldRename.none)
 class UserInfo {
-  UserInfo({
+  const UserInfo({
     this.localizedDescription,
     this.localizedFailureReason,
     this.underlyingError,
@@ -47,7 +47,7 @@ class UserInfo {
 
 @JsonSerializable(createToJson: false, fieldRename: FieldRename.none)
 class StringContainer {
-  StringContainer({required this.string});
+  const StringContainer({required this.string});
 
   final String string;
 
@@ -57,7 +57,7 @@ class StringContainer {
 
 @JsonSerializable(createToJson: false, fieldRename: FieldRename.none)
 class NSUnderlyingError {
-  NSUnderlyingError({required this.error});
+  const NSUnderlyingError({required this.error});
 
   final NSError? error;
 
