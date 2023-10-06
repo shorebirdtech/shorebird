@@ -1,0 +1,35 @@
+{
+  "info": {
+    "arguments": [
+      "devicectl",
+      "device",
+      "install",
+      "app",
+      "--device",
+      "00008110-000265A10E92801E",
+      "/path/to/Runner.app",
+      "--json-output",
+      "install.json"
+    ],
+    "commandType": "devicectl.device.install.app",
+    "environment": {
+      "TERM": "xterm-256color"
+    },
+    "jsonVersion": 2,
+    "outcome": "success",
+    "version": "348.1"
+  },
+  "result": {
+    "deviceIdentifier": "DEADBEEF-DEAD-BEEF-DEAD-BEEFDEADBEEF",
+    "installedApplications": [
+      {
+        "bundleID": "dev.shorebird.ios-test",
+        "databaseSequenceNumber": 2728,
+        "databaseUUID": "DEADBEEF-DEAD-BEEF-DEAD-BEEFDEADBEEF",
+        "installationURL": "file:///private/var/containers/Bundle/Application/DEADBEEF-DEAD-BEEF-DEAD-BEEFDEADBEEF/Runner.app/",
+        "launchServicesIdentifier": "unknown",
+        "options": {}
+      }
+    ]
+  }
+}

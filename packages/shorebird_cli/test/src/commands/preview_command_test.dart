@@ -634,6 +634,7 @@ void main() {
     group('ios', () {
       const releaseArtifactUrl = 'https://example.com/runner.app';
       const platform = ReleasePlatform.ios;
+      late Devicectl devicectl;
       late IOSDeploy iosDeploy;
 
       String runnerPath() => p.join(
@@ -653,6 +654,7 @@ void main() {
               cacheRef.overrideWith(() => cache),
               codePushClientWrapperRef
                   .overrideWith(() => codePushClientWrapper),
+              devicectlRef.overrideWith(() => devicectl),
               iosDeployRef.overrideWith(() => iosDeploy),
               loggerRef.overrideWith(() => logger),
               shorebirdValidatorRef.overrideWith(() => shorebirdValidator),
@@ -662,6 +664,7 @@ void main() {
       }
 
       setUp(() {
+        devicectl = MockDevicectl();
         iosDeploy = MockIOSDeploy();
         when(() => argResults['platform']).thenReturn(platform.name);
         when(
@@ -677,6 +680,15 @@ void main() {
           ),
         ).thenAnswer((_) async {});
         when(
+          () => devicectl.isSupported(deviceId: any(named: 'deviceId')),
+        ).thenAnswer((_) async => false);
+        when(
+          () => devicectl.installAndLaunchApp(
+            runnerAppDirectory: any(named: 'runnerAppDirectory'),
+            deviceId: any(named: 'deviceId'),
+          ),
+        ).thenAnswer((_) async => ExitCode.success.code);
+        when(
           () => iosDeploy.installAndLaunchApp(
             bundlePath: any(named: 'bundlePath'),
             deviceId: any(named: 'deviceId'),
@@ -684,6 +696,18 @@ void main() {
         ).thenAnswer((_) async => ExitCode.success.code);
         when(() => releaseArtifact.url).thenReturn(releaseArtifactUrl);
       });
+
+      File setupShorebirdYaml() => File(
+            p.join(
+              runnerPath(),
+              'Frameworks',
+              'App.framework',
+              'flutter_assets',
+              'shorebird.yaml',
+            ),
+          )
+            ..createSync(recursive: true)
+            ..writeAsStringSync('app_id: $appId', flush: true);
 
       test('exits with code 70 when querying for release artifact fails',
           () async {
@@ -748,18 +772,28 @@ void main() {
         );
       });
 
-      test('exits with code 70 when install/launch throws', () async {
-        File(
-          p.join(
-            runnerPath(),
-            'Frameworks',
-            'App.framework',
-            'flutter_assets',
-            'shorebird.yaml',
+      test('uses devicectl if devicectl says to', () async {
+        when(
+          () => devicectl.isSupported(deviceId: any(named: 'deviceId')),
+        ).thenAnswer((_) async => true);
+        setupShorebirdYaml();
+        await runWithOverrides(command.run);
+        verify(
+          () => devicectl.installAndLaunchApp(
+            runnerAppDirectory: any(named: 'runnerAppDirectory'),
+            deviceId: any(named: 'deviceId'),
           ),
-        )
-          ..createSync(recursive: true)
-          ..writeAsStringSync('app_id: $appId', flush: true);
+        ).called(1);
+        verifyNever(
+          () => iosDeploy.installAndLaunchApp(
+            bundlePath: any(named: 'bundlePath'),
+            deviceId: any(named: 'deviceId'),
+          ),
+        );
+      });
+
+      test('exits with code 70 when install/launch throws', () async {
+        setupShorebirdYaml();
         final exception = Exception('oops');
         when(
           () => iosDeploy.installAndLaunchApp(
@@ -776,17 +810,7 @@ void main() {
 
       test('exits with code 0 when install/launch succeeds (production)',
           () async {
-        final shorebirdYaml = File(
-          p.join(
-            runnerPath(),
-            'Frameworks',
-            'App.framework',
-            'flutter_assets',
-            'shorebird.yaml',
-          ),
-        )
-          ..createSync(recursive: true)
-          ..writeAsStringSync('app_id: $appId', flush: true);
+        final shorebirdYaml = setupShorebirdYaml();
         when(
           () => iosDeploy.installAndLaunchApp(
             bundlePath: any(named: 'bundlePath'),

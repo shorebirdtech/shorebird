@@ -1,5 +1,6 @@
 export 'adb.dart';
 export 'bundletool.dart';
+export 'devicectl/devicectl.dart';
 export 'git.dart';
 export 'gradlew.dart';
 export 'ios_deploy.dart';

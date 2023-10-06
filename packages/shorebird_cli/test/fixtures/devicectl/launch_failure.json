@@ -1,0 +1,68 @@
+{
+  "error": {
+    "code": 10002,
+    "domain": "com.apple.dt.CoreDeviceError",
+    "userInfo": {
+      "BundleIdentifier": {
+        "string": "dev.shorebird.ios-test"
+      },
+      "NSLocalizedDescription": {
+        "string": "The application failed to launch."
+      },
+      "NSUnderlyingError": {
+        "error": {
+          "code": 1,
+          "domain": "FBSOpenApplicationServiceErrorDomain",
+          "userInfo": {
+            "BSErrorCodeDescription": {
+              "string": "RequestDenied"
+            },
+            "FBSOpenApplicationRequestID": {
+              "string": "0x9f09"
+            },
+            "NSLocalizedDescription": {
+              "string": "The request to open \"dev.shorebird.ios-test\" failed."
+            },
+            "NSLocalizedFailureReason": {
+              "string": "The request was denied by service delegate (SBMainWorkspace) for reason: Locked (\"Unable to launch dev.shorebird.ios-test because the device was not, or could not be, unlocked\")."
+            },
+            "NSUnderlyingError": {
+              "error": {
+                "code": 7,
+                "domain": "FBSOpenApplicationErrorDomain",
+                "userInfo": {
+                  "BSErrorCodeDescription": {
+                    "string": "Locked"
+                  },
+                  "NSLocalizedFailureReason": {
+                    "string": "Unable to launch dev.shorebird.ios-test because the device was not, or could not be, unlocked."
+                  }
+                }
+              }
+            }
+          }
+        }
+      }
+    }
+  },
+  "info": {
+    "arguments": [
+      "devicectl",
+      "device",
+      "process",
+      "launch",
+      "--device",
+      "00008110-000265A10E92801E",
+      "dev.shorebird.ios-test",
+      "--json-output",
+      "launch.json"
+    ],
+    "commandType": "devicectl.device.process.launch",
+    "environment": {
+      "TERM": "xterm-256color"
+    },
+    "jsonVersion": 2,
+    "outcome": "failed",
+    "version": "348.1"
+  }
+}
