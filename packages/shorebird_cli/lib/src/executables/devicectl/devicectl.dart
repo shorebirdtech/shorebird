@@ -216,13 +216,14 @@ class Devicectl {
   /// Lists iOS devices that we can install and launch apps on.
   Future<List<AppleDevice>> listAvailableIosDevices() async {
     const failureErrorMessage = 'Failed to list devices';
+    const timeout = Duration(seconds: 5);
 
     final args = [
       ...baseArgs,
       'list',
       'devices',
       '--timeout',
-      '5',
+      '${timeout.inSeconds}',
     ];
 
     final Json jsonResult;
