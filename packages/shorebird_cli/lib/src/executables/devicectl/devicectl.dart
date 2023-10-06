@@ -118,9 +118,11 @@ class Devicectl {
 
     final String bundleId;
     try {
-      final bundleIds = JsonPath(r'$.result.installedApplications[0].bundleID')
-          .read(jsonResult);
-      final maybeBundleId = bundleIds.firstOrNull?.value as String?;
+      final maybeBundleId =
+          JsonPath(r'$.result.installedApplications[0].bundleID')
+              .read(jsonResult)
+              .firstOrNull
+              ?.value as String?;
       if (maybeBundleId == null) {
         throw Exception(
           'Unable to find installed app bundleID in devicectl output',
