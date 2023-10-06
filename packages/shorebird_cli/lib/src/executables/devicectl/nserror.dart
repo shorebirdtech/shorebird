@@ -2,11 +2,14 @@ import 'package:json_annotation/json_annotation.dart';
 
 part 'nserror.g.dart';
 
-/// A representation of the NSError class.
+/// {@template nserror}
+/// A pared-down representation of the NSError class.
 ///
 /// See https://developer.apple.com/documentation/foundation/nserror.
+/// {@endtemplate}
 @JsonSerializable(createToJson: false, fieldRename: FieldRename.none)
 class NSError {
+  /// {@macro nserror}
   NSError({
     required this.code,
     required this.domain,
@@ -17,6 +20,7 @@ class NSError {
   final String domain;
   final UserInfo userInfo;
 
+  /// Creates an [NSError] from JSON.
   static NSError fromJson(Map<String, dynamic> json) => _$NSErrorFromJson(json);
 }
 
