@@ -221,6 +221,8 @@ class Devicectl {
       ...baseArgs,
       'list',
       'devices',
+      '--timeout',
+      '5',
     ];
 
     final Json jsonResult;

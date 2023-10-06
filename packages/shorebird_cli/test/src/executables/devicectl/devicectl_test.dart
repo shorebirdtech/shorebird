@@ -382,8 +382,9 @@ void main() {
           deviceListJsonOutput = File(
             '$fixturesPath/device_list_success.json',
           ).readAsStringSync();
-          installJsonOutput =
-              File('$fixturesPath/install_failure.json').readAsStringSync();
+          // I was not able to get this command to fail, so just use an empty
+          // string as the output.
+          installJsonOutput = '';
         });
 
         test('returns exit code 70 ', () async {
