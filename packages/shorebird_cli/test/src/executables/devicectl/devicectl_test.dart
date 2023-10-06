@@ -96,16 +96,6 @@ void main() {
         );
       });
 
-      test("returns false if device's OS version is less than 17", () async {
-        exitCode = ExitCode.success;
-        jsonOutput = File('$fixturesPath/device_list_success_ios_15.json')
-            .readAsStringSync();
-        expect(
-          await runWithOverrides(() => devicectl.shouldUseDevicectl()),
-          isFalse,
-        );
-      });
-
       test("returns true if device's OS version is 17 or greater", () async {
         exitCode = ExitCode.success;
         jsonOutput =

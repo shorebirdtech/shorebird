@@ -85,12 +85,7 @@ class Devicectl {
       return false;
     }
 
-    final maybeDevice = await _deviceForLaunch(deviceId: deviceId);
-    final maybeOsVersion = maybeDevice?.osVersion;
-
-    // iOS devices running iOS <17 are not "CoreDevice"s and are not visible to
-    // devicectl.
-    return maybeOsVersion != null && maybeOsVersion.major >= 17;
+    return await _deviceForLaunch(deviceId: deviceId) != null;
   }
 
   /// Installs the given [runnerApp] on the device with the given [deviceId].
