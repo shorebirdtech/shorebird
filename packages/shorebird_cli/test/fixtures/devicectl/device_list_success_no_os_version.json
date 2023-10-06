@@ -1,0 +1,166 @@
+{
+  "info": {
+    "arguments": [
+      "devicectl",
+      "list",
+      "devices",
+      "--timeout",
+      "5",
+      "--json-output",
+      "list_devices_success.json"
+    ],
+    "commandType": "devicectl.list.devices",
+    "environment": {
+      "TERM": "xterm-256color"
+    },
+    "jsonVersion": 2,
+    "outcome": "success",
+    "version": "355.5"
+  },
+  "result": {
+    "devices": [
+      {
+        "capabilities": [
+          {
+            "featureIdentifier": "com.apple.coredevice.feature.connectdevice",
+            "name": "Connect to Device"
+          },
+          {
+            "featureIdentifier": "com.apple.coredevice.feature.unpairdevice",
+            "name": "Unpair Device"
+          },
+          {
+            "featureIdentifier": "com.apple.coredevice.feature.acquireusageassertion",
+            "name": "Acquire Usage Assertion"
+          }
+        ],
+        "connectionProperties": {
+          "authenticationType": "manualPairing",
+          "isMobileDeviceOnly": false,
+          "lastConnectionDate": "2023-10-03T21:28:19.128Z",
+          "pairingState": "paired",
+          "potentialHostnames": [
+            "11111111-1111111111111111.coredevice.local",
+            "DEADBEEF-DEAD-BEEF-DEAD-BEEFDEADBEEF.coredevice.local"
+          ],
+          "transportType": "localNetwork",
+          "tunnelState": "disconnected",
+          "tunnelTransportProtocol": "tcp"
+        },
+        "deviceProperties": {
+          "bootedFromSnapshot": true,
+          "bootedSnapshotName": "com.apple.os.update-2032C7C20E6386FE017D367331D8BCED1D351550063E2C198A3742AE4EFD15909E24A67E375BA998127EAECDA987B3D9",
+          "ddiServicesAvailable": false,
+          "developerModeStatus": "enabled",
+          "hasInternalOSBuild": false,
+          "name": "Bryan Oltman’s iPhone",
+          "osBuildUpdate": "21A351",
+          "rootFileSystemIsWritable": false
+        },
+        "hardwareProperties": {
+          "cpuType": {
+            "name": "arm64e",
+            "subType": 2,
+            "type": 16777228
+          },
+          "deviceType": "iPhone",
+          "ecid": 674692362043422,
+          "hardwareModel": "D63AP",
+          "internalStorageCapacity": 512000000000,
+          "isProductionFused": true,
+          "marketingName": "iPhone 13 Pro",
+          "platform": "iOS",
+          "productType": "iPhone14,2",
+          "reality": "physical",
+          "serialNumber": "R0Q5WPK7CY",
+          "supportedCPUTypes": [
+            {
+              "name": "arm64e",
+              "subType": 2,
+              "type": 16777228
+            },
+            {
+              "name": "arm64",
+              "subType": 0,
+              "type": 16777228
+            },
+            {
+              "name": "arm64",
+              "subType": 1,
+              "type": 16777228
+            },
+            {
+              "name": "arm64_32",
+              "subType": 1,
+              "type": 33554444
+            }
+          ],
+          "supportedDeviceFamilies": [
+            1
+          ],
+          "thinningProductType": "iPhone14,2",
+          "udid": "11111111-1111111111111111"
+        },
+        "identifier": "DEADBEEF-DEAD-BEEF-DEAD-BEEFDEADBEEF",
+        "visibilityClass": "default"
+      },
+      {
+        "capabilities": [
+          {
+            "featureIdentifier": "com.apple.coredevice.feature.acquireusageassertion",
+            "name": "Acquire Usage Assertion"
+          },
+          {
+            "featureIdentifier": "com.apple.coredevice.feature.unpairdevice",
+            "name": "Unpair Device"
+          },
+          {
+            "featureIdentifier": "com.apple.coredevice.feature.connectdevice",
+            "name": "Connect to Device"
+          }
+        ],
+        "connectionProperties": {
+          "authenticationType": "manualPairing",
+          "isMobileDeviceOnly": false,
+          "lastConnectionDate": "2023-10-03T14:36:43.740Z",
+          "pairingState": "paired",
+          "potentialHostnames": [
+            "22222222-2222222222222222.coredevice.local",
+            "AAAAAAAA-AAAA-AAAA-AAAA-AAAAAAAAAAAA.coredevice.local"
+          ],
+          "transportType": "localNetwork",
+          "tunnelState": "disconnected",
+          "tunnelTransportProtocol": "tcp"
+        },
+        "deviceProperties": {
+          "ddiServicesAvailable": false,
+          "developerModeStatus": "disabled",
+          "hasInternalOSBuild": false,
+          "name": "Bryan’s Apple Watch",
+          "osBuildUpdate": "21R360",
+          "osVersionNumber": "10.0.1"
+        },
+        "hardwareProperties": {
+          "cpuType": {
+            "name": "arm64_32",
+            "subType": 1,
+            "type": 33554444
+          },
+          "deviceType": "appleWatch",
+          "ecid": 3162487739580462,
+          "hardwareModel": "N146bAP",
+          "isProductionFused": true,
+          "marketingName": "Apple Watch Series 5",
+          "platform": "watchOS",
+          "productType": "Watch5,4",
+          "reality": "physical",
+          "serialNumber": "D92Z5046MLDP",
+          "thinningProductType": "Watch5,4",
+          "udid": "22222222-2222222222222222"
+        },
+        "identifier": "AAAAAAAA-AAAA-AAAA-AAAA-AAAAAAAAAAAA",
+        "visibilityClass": "default"
+      }
+    ]
+  }
+}

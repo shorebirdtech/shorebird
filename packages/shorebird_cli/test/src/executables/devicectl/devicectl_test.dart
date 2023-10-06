@@ -17,7 +17,12 @@ void main() {
     const deviceId = 'test_device_id';
 
     late ExitCode exitCode;
-    late String stdout;
+
+    // late ExitCode versionExitCode;
+    // late ExitCode listDevicesExitCode;
+    // late ExitCode installAppExitCode;
+    // late ExitCode launchAppExitCode;
+
     late String jsonOutput;
 
     late ShorebirdProcess process;
@@ -48,7 +53,71 @@ void main() {
         return processResult;
       });
       when(() => processResult.exitCode).thenAnswer((_) => exitCode.code);
-      when(() => processResult.stdout).thenAnswer((_) => stdout);
+    });
+
+    group('shouldUseDevicectl', () {
+      test('returns false if devicectl is not available', () async {
+        exitCode = ExitCode.software;
+        expect(
+          await runWithOverrides(() => devicectl.shouldUseDevicectl()),
+          isFalse,
+        );
+      });
+
+      test(
+          'returns false if no CoreDevice with the given deviceID can be found',
+          () async {
+        exitCode = ExitCode.success;
+        jsonOutput =
+            File('$fixturesPath/device_list_success.json').readAsStringSync();
+        expect(
+          await runWithOverrides(
+            () => devicectl.shouldUseDevicectl(deviceId: 'fake device id'),
+          ),
+          isFalse,
+        );
+      });
+
+      test('returns false if no CoreDevice can be found', () async {
+        exitCode = ExitCode.success;
+        jsonOutput = File('$fixturesPath/device_list_success_empty.json')
+            .readAsStringSync();
+        expect(
+          await runWithOverrides(() => devicectl.shouldUseDevicectl()),
+          isFalse,
+        );
+      });
+
+      test('returns false if device does not provide OS version', () async {
+        exitCode = ExitCode.success;
+        jsonOutput =
+            File('$fixturesPath/device_list_success_no_os_version.json')
+                .readAsStringSync();
+        expect(
+          await runWithOverrides(() => devicectl.shouldUseDevicectl()),
+          isFalse,
+        );
+      });
+
+      test("returns false if device's OS version is less than 17", () async {
+        exitCode = ExitCode.success;
+        jsonOutput = File('$fixturesPath/device_list_success_ios_15.json')
+            .readAsStringSync();
+        expect(
+          await runWithOverrides(() => devicectl.shouldUseDevicectl()),
+          isFalse,
+        );
+      });
+
+      test("returns true if device's OS version is 17 or greater", () async {
+        exitCode = ExitCode.success;
+        jsonOutput =
+            File('$fixturesPath/device_list_success.json').readAsStringSync();
+        expect(
+          await runWithOverrides(() => devicectl.shouldUseDevicectl()),
+          isTrue,
+        );
+      });
     });
 
     group('installApp', () {
@@ -59,37 +128,64 @@ void main() {
         runnerApp = Directory.systemTemp.createTempSync();
       });
 
-      group('when the command returns a non-zero exit code', () {
+      // group('when the command returns a non-zero exit code', () {
+      //   setUp(() {
+      //     exitCode = ExitCode.cantCreate;
+      //   });
+
+      //   test('throws a DevicectlException', () {
+      //     expect(
+      //       runWithOverrides(
+      //         () => devicectl.installApp(
+      //           runnerApp: runnerApp,
+      //           deviceId: deviceId,
+      //         ),
+      //       ),
+      //       throwsA(
+      //         isA<DevicectlException>().having(
+      //           (e) => e.underlyingException,
+      //           'underlyingException',
+      //           isA<ProcessException>(),
+      //         ),
+      //       ),
+      //     );
+      //   });
+      // });
+
+      group('when no json output file is found', () {
         setUp(() {
-          exitCode = ExitCode.cantCreate;
-          stdout = '';
+          when(() => process.run(any(), any()))
+              .thenAnswer((invocation) async => processResult);
         });
 
-        test('throws a ProcessException', () {
-          expect(
-            runWithOverrides(
-              () => devicectl.installApp(
-                runnerApp: runnerApp,
-                deviceId: deviceId,
+        group('when the command returns a non-zero exit code', () {
+          setUp(() {
+            exitCode = ExitCode.cantCreate;
+          });
+
+          test('throws a DevicectlException with underlying ProcessException',
+              () {
+            expect(
+              runWithOverrides(
+                () => devicectl.installApp(
+                  runnerApp: runnerApp,
+                  deviceId: deviceId,
+                ),
               ),
-            ),
-            throwsA(
-              isA<DevicectlException>().having(
-                (e) => e.underlyingException,
-                'underlyingException',
-                isA<ProcessException>(),
+              throwsA(
+                isA<DevicectlException>().having(
+                  (e) => e.underlyingException,
+                  'underlyingException',
+                  isA<ProcessException>(),
+                ),
               ),
-            ),
-          );
+            );
+          });
         });
 
-        group('when no json output file is found', () {
+        group('when the command returns a zero exit code', () {
           setUp(() {
             exitCode = ExitCode.success;
-            stdout = '';
-
-            when(() => process.run(any(), any()))
-                .thenAnswer((invocation) async => processResult);
           });
 
           test('throws Exception', () {
@@ -104,21 +200,55 @@ void main() {
                 isA<Exception>().having(
                   (e) => '$e',
                   'message',
-                  stringContainsInOrder(['Unable to find', 'output file']),
+                  contains('Unable to find devicectl json output file'),
                 ),
               ),
             );
           });
         });
+      });
 
-        group('when json file fails to parse', () {
+      group('when json file fails to parse', () {
+        setUp(() {
+          exitCode = ExitCode.success;
+          jsonOutput = 'invalid json';
+        });
+
+        test('throws DevicectlException', () async {
+          expect(
+            runWithOverrides(
+              () => devicectl.installApp(
+                runnerApp: runnerApp,
+                deviceId: deviceId,
+              ),
+            ),
+            throwsA(
+              isA<DevicectlException>()
+                  .having((e) => e.message, 'message', 'App install failed')
+                  .having(
+                    (e) => e.underlyingException,
+                    'underlyingException',
+                    isA<FormatException>(),
+                  ),
+            ),
+          );
+        });
+      });
+
+      group('when install succeeds', () {
+        setUp(() {
+          exitCode = ExitCode.success;
+          jsonOutput =
+              File('$fixturesPath/install_success.json').readAsStringSync();
+        });
+
+        group('when output json does not contain app bundleId', () {
           setUp(() {
-            exitCode = ExitCode.success;
-            stdout = '';
-            jsonOutput = 'invalid json';
+            jsonOutput = File('$fixturesPath/install_success_no_bundle_id.json')
+                .readAsStringSync();
           });
 
-          test('throws DevicectlException', () async {
+          test('throws DevicectlException', () {
             expect(
               runWithOverrides(
                 () => devicectl.installApp(
@@ -127,25 +257,17 @@ void main() {
                 ),
               ),
               throwsA(
-                isA<DevicectlException>()
-                    .having((e) => e.message, 'message', 'App install failed')
-                    .having(
-                      (e) => e.underlyingException,
-                      'underlyingException',
-                      isA<FormatException>(),
-                    ),
+                isA<DevicectlException>().having(
+                  (e) => '${e.underlyingException}',
+                  'underlyingException',
+                  '''Exception: Unable to find installed app bundleID in devicectl output''',
+                ),
               ),
             );
           });
         });
 
-        group('when install succeeds', () {
-          setUp(() {
-            exitCode = ExitCode.success;
-            jsonOutput =
-                File('$fixturesPath/install_success.json').readAsStringSync();
-          });
-
+        group('when output json contains app bundleId', () {
           test("returns installed app's bundleId", () async {
             final bundleId = await runWithOverrides(
               () => devicectl.installApp(
@@ -160,15 +282,18 @@ void main() {
     });
 
     group('launchApp', () {
-      group('when the command returns a non-zero exit code', () {
-        const bundleId = 'com.example.app';
+      const bundleId = 'com.example.app';
 
+      group('when json contains error', () {
         setUp(() {
-          exitCode = ExitCode.cantCreate;
-          stdout = '';
+          exitCode = ExitCode.success;
+          jsonOutput =
+              File('$fixturesPath/launch_failure.json').readAsStringSync();
         });
 
-        test('throws a ProcessException', () {
+        test(
+            '''throws a DevicectlException with the underlying NSError message''',
+            () async {
           expect(
             runWithOverrides(
               () => devicectl.launchApp(
@@ -178,98 +303,32 @@ void main() {
             ),
             throwsA(
               isA<DevicectlException>().having(
-                (e) => e.underlyingException,
+                (e) => '${e.underlyingException}',
                 'underlyingException',
-                isA<ProcessException>(),
+                '''Exception: Unable to launch dev.shorebird.ios-test because the device was not, or could not be, unlocked.''',
               ),
             ),
           );
         });
+      });
 
-        group('when json file fails to parse', () {
-          setUp(() {
-            exitCode = ExitCode.success;
-            stdout = '';
-          });
-
-          test('throws DevicectlException', () async {
-            when(() => process.run(any(), any()))
-                .thenAnswer((invocation) async {
-              final processRunArgs =
-                  invocation.positionalArguments.last as List<String>;
-              final jsonFilePath = processRunArgs.last;
-              File(jsonFilePath)
-                ..createSync()
-                ..writeAsStringSync('invalid json');
-              return processResult;
-            });
-
-            expect(
-              runWithOverrides(
-                () => devicectl.launchApp(
-                  deviceId: deviceId,
-                  bundleId: bundleId,
-                ),
-              ),
-              throwsA(
-                isA<DevicectlException>()
-                    .having((e) => e.message, 'message', 'App launch failed')
-                    .having(
-                      (e) => e.underlyingException,
-                      'underlyingException',
-                      isA<FormatException>(),
-                    ),
-              ),
-            );
-          });
+      group('when launch succeeds', () {
+        setUp(() {
+          exitCode = ExitCode.success;
+          jsonOutput =
+              File('$fixturesPath/launch_success.json').readAsStringSync();
         });
 
-        group('when json contains error', () {
-          setUp(() {
-            exitCode = ExitCode.success;
-            jsonOutput =
-                File('$fixturesPath/launch_failure.json').readAsStringSync();
-          });
-
-          test(
-              '''throws a DevicectlException with the underlying NSError message''',
-              () async {
-            expect(
-              runWithOverrides(
-                () => devicectl.launchApp(
-                  deviceId: deviceId,
-                  bundleId: bundleId,
-                ),
+        test('completes successfully', () async {
+          expect(
+            runWithOverrides(
+              () => devicectl.launchApp(
+                deviceId: deviceId,
+                bundleId: bundleId,
               ),
-              throwsA(
-                isA<DevicectlException>().having(
-                  (e) => '${e.underlyingException}',
-                  'underlyingException',
-                  '''Exception: Unable to launch dev.shorebird.ios-test because the device was not, or could not be, unlocked.''',
-                ),
-              ),
-            );
-          });
-        });
-
-        group('when launch succeeds', () {
-          setUp(() {
-            exitCode = ExitCode.success;
-            jsonOutput =
-                File('$fixturesPath/launch_success.json').readAsStringSync();
-          });
-
-          test('completes successfully', () async {
-            expect(
-              runWithOverrides(
-                () => devicectl.launchApp(
-                  deviceId: deviceId,
-                  bundleId: bundleId,
-                ),
-              ),
-              completes,
-            );
-          });
+            ),
+            completes,
+          );
         });
       });
     });

@@ -64,6 +64,16 @@ class Devicectl {
     }
   }
 
+  Future<AppleDevice?> _deviceForLaunch({String? deviceId}) async {
+    final devices = await listAvailableIosDevices();
+
+    if (deviceId != null) {
+      return devices.firstWhereOrNull((d) => d.identifier == deviceId);
+    } else {
+      return devices.firstOrNull;
+    }
+  }
+
   /// Whether we should use `devicectl` to install and launch the app on the
   /// device with the given [deviceId], or the first available device we find if
   /// [deviceId] is not provided.
@@ -78,16 +88,6 @@ class Devicectl {
     // iOS devices running iOS <17 are not "CoreDevice"s and are not visible to
     // devicectl.
     return maybeOsVersion != null && maybeOsVersion.major >= 17;
-  }
-
-  Future<AppleDevice?> _deviceForLaunch({String? deviceId}) async {
-    final devices = await devicectl.listAvailableIosDevices();
-
-    if (deviceId != null) {
-      return devices.firstWhereOrNull((d) => d.identifier == deviceId);
-    } else {
-      return devices.firstOrNull;
-    }
   }
 
   /// Installs the given [runnerApp] on the device with the given [deviceId].
@@ -188,7 +188,7 @@ class Devicectl {
 
     final String bundleId;
     try {
-      bundleId = await devicectl.installApp(
+      bundleId = await installApp(
         deviceId: device.identifier,
         runnerApp: runnerAppDirectory,
       );
@@ -200,7 +200,7 @@ class Devicectl {
 
     final launchProgress = logger.progress('Launching app');
     try {
-      await devicectl.launchApp(
+      await launchApp(
         deviceId: device.identifier,
         bundleId: bundleId,
       );
@@ -266,7 +266,7 @@ class Devicectl {
         throw ProcessException(executableName, args, '${result.stderr}');
       } else {
         throw Exception(
-          'Unable to find $executableName output file: ${jsonOutputFile.path}',
+          'Unable to find devicectl json output file: ${jsonOutputFile.path}',
         );
       }
     }
