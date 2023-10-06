@@ -68,15 +68,6 @@ class PreviewCommand extends ShorebirdCommand {
   @override
   String get description => 'Preview a specific release on a device.';
 
-  Future<AppleDevice?> _deviceForRun({String? deviceId}) async {
-    final devices = await devicectl.listAvailableIosDevices();
-    if (deviceId != null) {
-      return devices.firstWhereOrNull((d) => d.identifier == deviceId);
-    } else {
-      return devices.firstOrNull;
-    }
-  }
-
   @override
   Future<int> run() async {
     // TODO(bryanoltman): check preview target and run either
