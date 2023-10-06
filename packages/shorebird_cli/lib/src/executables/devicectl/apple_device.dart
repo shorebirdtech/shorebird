@@ -29,9 +29,11 @@ class AppleDevice {
 
   String get name => deviceProperties.name;
 
-  String get osVersionString => deviceProperties.osVersionNumber;
+  String? get osVersionString => deviceProperties.osVersionNumber;
 
-  Version get osVersion => VersionParsing.tryParse(osVersionString)!;
+  Version? get osVersion => osVersionString == null
+      ? null
+      : VersionParsing.tryParse(osVersionString!);
 
   bool get isAavailable => connectionProperties.tunnelState != 'unavailable';
 }
@@ -49,13 +51,13 @@ class HardwareProperties {
 
 @JsonSerializable(createToJson: false, fieldRename: FieldRename.none)
 class DeviceProperties {
-  DeviceProperties({required this.name, required this.osVersionNumber});
+  DeviceProperties({required this.name, this.osVersionNumber});
 
   /// Human-readable name of the device (e.g., "Joe's iPhone").
   final String name;
 
   /// The device's OS version as a string (e.g., "14.4.1").
-  final String osVersionNumber;
+  final String? osVersionNumber;
 
   static DeviceProperties fromJson(Map<String, dynamic> json) =>
       _$DevicePropertiesFromJson(json);

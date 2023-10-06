@@ -1,6 +1,7 @@
 import 'dart:async';
 import 'dart:convert';
 
+import 'package:collection/collection.dart';
 import 'package:io/io.dart';
 import 'package:json_path/json_path.dart';
 import 'package:path/path.dart' as p;
@@ -49,6 +50,45 @@ class Devicectl {
   static const baseArgs = [
     'devicectl',
   ];
+
+  /// Whether the `devicectl` command is available.
+  Future<bool> _isAvailable() async {
+    try {
+      final result = await process.run(executableName, [
+        ...baseArgs,
+        '--version',
+      ]);
+      return result.exitCode == ExitCode.success.code;
+    } catch (_) {
+      return false;
+    }
+  }
+
+  /// Whether we should use `devicectl` to install and launch the app on the
+  /// device with the given [deviceId], or the first available device we find if
+  /// [deviceId] is not provided.
+  Future<bool> shouldUseDevicectl({String? deviceId}) async {
+    if (!await _isAvailable()) {
+      return false;
+    }
+
+    final maybeDevice = await _deviceForLaunch(deviceId: deviceId);
+    final maybeOsVersion = maybeDevice?.osVersion;
+
+    // iOS devices running iOS <17 are not "CoreDevice"s and are not visible to
+    // devicectl.
+    return maybeOsVersion != null && maybeOsVersion.major >= 17;
+  }
+
+  Future<AppleDevice?> _deviceForLaunch({String? deviceId}) async {
+    final devices = await devicectl.listAvailableIosDevices();
+
+    if (deviceId != null) {
+      return devices.firstWhereOrNull((d) => d.identifier == deviceId);
+    } else {
+      return devices.firstOrNull;
+    }
+  }
 
   /// Installs the given [runnerApp] on the device with the given [deviceId].
   ///
@@ -100,11 +140,14 @@ class Devicectl {
     return bundleId;
   }
 
+  /// Launches the app with the given [bundleId] on the device with the given
+  /// [deviceId]. This will fail if the app is not already installed on the
+  /// device. Use [installAndLaunchApp] to both install and launch the app.
   Future<void> launchApp({
     required String deviceId,
     required String bundleId,
   }) async {
-    // const failureErrorMessage = 'App launch failed';
+    const failureErrorMessage = 'App launch failed';
 
     final args = [
       ...baseArgs,
@@ -116,36 +159,61 @@ class Devicectl {
       bundleId,
     ];
 
-    final Process launchProcess;
-    launchProcess = await process.start(executableName, args);
-
-    void onStdout(String line) {
-      logger.info(line);
+    try {
+      await _runJsonCommand(args: args);
+    } catch (error) {
+      throw DevicectlException(
+        message: failureErrorMessage,
+        underlyingException: error as Exception,
+      );
     }
-
-    void onStderr(String line) {
-      logger.detail(line);
-    }
-
-    final stdoutSubscription = launchProcess.stdout.asLines().listen(onStdout);
-
-    final stderrSubscription = launchProcess.stderr.asLines().listen(onStderr);
-
-    final status = await launchProcess.exitCode;
-    logger.detail('[devicectl] exited with code: $status');
-    unawaited(stdoutSubscription.cancel());
-    unawaited(stderrSubscription.cancel());
-
-    // try {
-    //   await _runJsonCommand(args: args);
-    // } catch (error) {
-    //   throw DevicectlException(
-    //     message: failureErrorMessage,
-    //     underlyingException: error as Exception,
-    //   );
-    // }
   }
 
+  /// Installs and launches the given [runnerAppDirectory] on the device with
+  /// the given [deviceId]. If no [deviceId] is provided, the first available
+  /// device returned by [listAvailableIosDevices] will be used.
+  Future<int> installAndLaunchApp({
+    required Directory runnerAppDirectory,
+    String? deviceId,
+  }) async {
+    final deviceProgress = logger.progress('Finding device for run');
+    final device = await _deviceForLaunch(deviceId: deviceId);
+    if (device == null) {
+      deviceProgress.fail('No devices found');
+      return ExitCode.software.code;
+    }
+    deviceProgress.complete();
+
+    final installProgress = logger.progress('Installing app');
+
+    final String bundleId;
+    try {
+      bundleId = await devicectl.installApp(
+        deviceId: device.identifier,
+        runnerApp: runnerAppDirectory,
+      );
+    } catch (e) {
+      installProgress.fail('Failed to install app: $e');
+      return ExitCode.software.code;
+    }
+    installProgress.complete();
+
+    final launchProgress = logger.progress('Launching app');
+    try {
+      await devicectl.launchApp(
+        deviceId: device.identifier,
+        bundleId: bundleId,
+      );
+    } catch (e) {
+      launchProgress.fail('Failed to launch app: $e');
+      rethrow;
+    }
+    launchProgress.complete();
+
+    return ExitCode.success.code;
+  }
+
+  /// Lists iOS devices that we can install and launch apps on.
   Future<List<AppleDevice>> listAvailableIosDevices() async {
     const failureErrorMessage = 'Failed to list devices';
 
@@ -165,13 +233,13 @@ class Devicectl {
       );
     }
 
-    final devicesMatch =
-        JsonPath(r'$.result.devices').read(jsonResult).firstOrNull;
-    if (devicesMatch?.value == null) {
+    final devicesMatchValue =
+        JsonPath(r'$.result.devices').read(jsonResult).firstOrNull?.value;
+    if (devicesMatchValue == null) {
       throw DevicectlException(message: failureErrorMessage);
     }
 
-    return (devicesMatch!.value! as List)
+    return (devicesMatchValue as List)
         .whereType<Json>()
         .map(AppleDevice.fromJson)
         .where((device) => device.platform == 'iOS' && device.isAavailable)
@@ -182,25 +250,28 @@ class Devicectl {
   /// runs the command, and returns the parsed JSON output.
   Future<Json> _runJsonCommand({required List<String> args}) async {
     final tempDir = Directory.systemTemp.createTempSync();
-    final jsonOutputFile = File(p.join(tempDir.path, 'info.json'));
+    final jsonOutputFile = File(p.join(tempDir.path, 'devicectl.out.json'));
 
     final result = await process.run(executableName, [
       ...args,
       '--json-output',
       jsonOutputFile.path,
     ]);
-    if (result.exitCode != ExitCode.success.code) {
-      throw ProcessException(executableName, args, '${result.stderr}');
-    }
 
+    // The `devicectl` command will still write json output if it fails, so in
+    // the event of a non-zero exit code, only throw a ProcessException if we
+    //can't find the output file.
     if (!jsonOutputFile.existsSync()) {
-      throw Exception(
-        'Unable to find $executableName output file: ${jsonOutputFile.path}',
-      );
+      if (result.exitCode != ExitCode.success.code) {
+        throw ProcessException(executableName, args, '${result.stderr}');
+      } else {
+        throw Exception(
+          'Unable to find $executableName output file: ${jsonOutputFile.path}',
+        );
+      }
     }
 
     final json = jsonDecode(jsonOutputFile.readAsStringSync()) as Json;
-
     final maybeError = _getErrorFromOutputJson(json);
     if (maybeError != null) {
       throw Exception(maybeError);
@@ -224,12 +295,5 @@ class Devicectl {
 
     return rootError.userInfo.localizedFailureReason?.string ??
         'uknown failure reason';
-  }
-}
-
-extension on Stream<List<int>> {
-  Stream<String> asLines() {
-    return transform<String>(utf8.decoder)
-        .transform<String>(const LineSplitter());
   }
 }

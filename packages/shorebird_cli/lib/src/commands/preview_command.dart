@@ -7,7 +7,6 @@ import 'package:collection/collection.dart';
 import 'package:http/http.dart' as http;
 import 'package:mason_logger/mason_logger.dart';
 import 'package:path/path.dart' as p;
-import 'package:pub_semver/pub_semver.dart';
 import 'package:shorebird_cli/src/artifact_manager.dart';
 import 'package:shorebird_cli/src/cache.dart';
 import 'package:shorebird_cli/src/code_push_client_wrapper.dart';
@@ -331,84 +330,29 @@ class PreviewCommand extends ShorebirdCommand {
     }
 
     final deviceId = results['device-id'] as String?;
-    final xcodeProgress = logger.progress('Getting Xcode version');
-    final Version xcodeVersion;
-    try {
-      xcodeVersion = await xcodeBuild.xcodeVersion();
-    } catch (e) {
-      xcodeProgress.fail('Failed to determine Xcode version: $e');
-      return ExitCode.software.code;
-    }
-    xcodeProgress.complete();
-
-    bool shouldUseDeviceCtl;
-    if (xcodeVersion.major >= 15) {
-      final deviceProgress = logger.progress('Finding device for run');
-      final device = await _deviceForRun(deviceId: deviceId);
-      if (device == null) {
-        deviceProgress.complete(
-          'No devices found, falling back to default behavior',
-        );
-        shouldUseDeviceCtl = false;
-        // return ExitCode.software.code;
-      } else {
-        deviceProgress.complete();
-
-        print('device version is ${device.osVersion}');
-        shouldUseDeviceCtl = device.osVersion.major >= 17;
-      }
-    } else {
-      shouldUseDeviceCtl = false;
-    }
 
     try {
+      final shouldUseDeviceCtl = await devicectl.shouldUseDevicectl(
+        deviceId: deviceId,
+      );
+
+      final int exitCode;
       if (shouldUseDeviceCtl) {
-        logger.detail(
-          'Detected Xcode 15+. Using devicectl to install and launch',
+        logger.detail('Using devicectl for install and launch.');
+        exitCode = await devicectl.installAndLaunchApp(
+          runnerAppDirectory: runnerDirectory,
+          deviceId: deviceId,
         );
-        final installProgress = logger.progress('Installing app');
-
-        final deviceProgress = logger.progress('Finding device for run');
-        final device = await _deviceForRun(deviceId: deviceId);
-        if (device == null) {
-          deviceProgress.fail('No devices found');
-          return ExitCode.software.code;
-        }
-        deviceProgress.complete();
-        final String bundleId;
-        try {
-          bundleId = await devicectl.installApp(
-            deviceId: device.identifier,
-            runnerApp: runnerDirectory,
-          );
-        } catch (e) {
-          installProgress.fail('Failed to install app: $e');
-          return ExitCode.software.code;
-        }
-        installProgress.complete();
-
-        final launchProgress = logger.progress('Launching app');
-        try {
-          await devicectl.launchApp(
-            deviceId: device.identifier,
-            bundleId: bundleId,
-          );
-        } catch (e) {
-          launchProgress.fail('Failed to launch app: $e');
-          return ExitCode.software.code;
-        }
-        launchProgress.complete();
-
-        return ExitCode.success.code;
       } else {
-        final exitCode = await iosDeploy.installAndLaunchApp(
+        logger.detail('Using iosDeploy for install and launch.');
+        exitCode = await iosDeploy.installAndLaunchApp(
           bundlePath: runnerDirectory.path,
           deviceId: deviceId,
         );
-        return exitCode;
       }
-    } catch (error) {
-      print(error);
+
+      return exitCode;
+    } catch (e) {
       return ExitCode.software.code;
     }
   }
