@@ -29,7 +29,7 @@ class DevicectlException implements Exception {
   final String message;
 
   /// The exception that caused this exception to be thrown, if any.
-  final Exception? underlyingException;
+  final Object? underlyingException;
 
   @override
   String toString() => '''
@@ -109,7 +109,7 @@ class Devicectl {
     final Json jsonResult;
     try {
       jsonResult = await _runJsonCommand(args: args);
-    } on Exception catch (error) {
+    } catch (error) {
       throw DevicectlException(
         message: failureErrorMessage,
         underlyingException: error,
@@ -130,7 +130,7 @@ class Devicectl {
       }
 
       bundleId = maybeBundleId;
-    } on Exception catch (error) {
+    } catch (error) {
       throw DevicectlException(
         message: failureErrorMessage,
         underlyingException: error,
@@ -161,7 +161,7 @@ class Devicectl {
 
     try {
       await _runJsonCommand(args: args);
-    } on Exception catch (error) {
+    } catch (error) {
       throw DevicectlException(
         message: failureErrorMessage,
         underlyingException: error,
@@ -229,7 +229,7 @@ class Devicectl {
     final Json jsonResult;
     try {
       jsonResult = await _runJsonCommand(args: args);
-    } on Exception catch (error) {
+    } catch (error) {
       throw DevicectlException(
         message: failureErrorMessage,
         underlyingException: error,
