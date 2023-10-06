@@ -335,7 +335,7 @@ class PreviewCommand extends ShorebirdCommand {
           deviceId: deviceId,
         );
       } else {
-        logger.detail('Using ios-deploy for install and launch.');
+        logger.detail('Using ios-deploy to install and launch.');
         exitCode = await iosDeploy.installAndLaunchApp(
           bundlePath: runnerDirectory.path,
           deviceId: deviceId,
