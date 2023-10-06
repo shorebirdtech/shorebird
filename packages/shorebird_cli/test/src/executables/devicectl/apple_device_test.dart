@@ -7,15 +7,15 @@ void main() {
     group('osVersion', () {
       const identifier = 'DEADBEEF-DEAD-BEEF-DEAD-BEEFDEADBEEF';
       const deviceName = "Joe's iPhone";
-      final connectionProperties =
+      const connectionProperties =
           ConnectionProperties(tunnelState: 'disconnected');
-      final hardwareProperties = HardwareProperties(platform: 'iOS');
+      const hardwareProperties = HardwareProperties(platform: 'iOS');
 
       late AppleDevice device;
 
       group('when version string is null', () {
         setUp(() {
-          device = AppleDevice(
+          device = const AppleDevice(
             identifier: identifier,
             deviceProperties: DeviceProperties(name: deviceName),
             hardwareProperties: hardwareProperties,
@@ -30,7 +30,7 @@ void main() {
 
       group('when version string not parseable', () {
         setUp(() {
-          device = AppleDevice(
+          device = const AppleDevice(
             identifier: identifier,
             deviceProperties: DeviceProperties(
               name: deviceName,
@@ -48,7 +48,7 @@ void main() {
 
       group('when version string is valid', () {
         setUp(() {
-          device = AppleDevice(
+          device = const AppleDevice(
             identifier: identifier,
             deviceProperties: DeviceProperties(
               name: deviceName,

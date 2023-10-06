@@ -12,7 +12,7 @@ part 'apple_device.g.dart';
 
 /// {@macro apple_device}
 class AppleDevice {
-  AppleDevice({
+  const AppleDevice({
     required this.identifier,
     required this.deviceProperties,
     required this.hardwareProperties,
@@ -58,7 +58,7 @@ class AppleDevice {
 
 @JsonSerializable(createToJson: false, fieldRename: FieldRename.none)
 class HardwareProperties {
-  HardwareProperties({required this.platform});
+  const HardwareProperties({required this.platform});
 
   /// The device's platform (e.g., "iOS").
   final String platform;
@@ -69,7 +69,7 @@ class HardwareProperties {
 
 @JsonSerializable(createToJson: false, fieldRename: FieldRename.none)
 class DeviceProperties {
-  DeviceProperties({required this.name, this.osVersionNumber});
+  const DeviceProperties({required this.name, this.osVersionNumber});
 
   /// Human-readable name of the device (e.g., "Joe's iPhone").
   final String name;
@@ -83,7 +83,7 @@ class DeviceProperties {
 
 @JsonSerializable(createToJson: false, fieldRename: FieldRename.none)
 class ConnectionProperties {
-  ConnectionProperties({required this.tunnelState});
+  const ConnectionProperties({required this.tunnelState});
 
   /// The device's connection state. Values seen in development (as devicectl
   /// is seemingly undocumented) include:
