@@ -244,7 +244,7 @@ class Devicectl {
     return (devicesMatchValue as List)
         .whereType<Json>()
         .map(AppleDevice.fromJson)
-        .where((device) => device.platform == 'iOS' && device.isAavailable)
+        .where((device) => device.platform == 'iOS' && device.isAvailable)
         .toList();
   }
 

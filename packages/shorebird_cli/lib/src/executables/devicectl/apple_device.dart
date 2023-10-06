@@ -53,7 +53,7 @@ class AppleDevice {
   /// Whether the device is available for use. See the docs for
   /// [ConnectionProperties.tunnelState] for more information about known
   /// tunnelState values and what they (seem to) represent.
-  bool get isAavailable => connectionProperties.tunnelState != 'unavailable';
+  bool get isAvailable => connectionProperties.tunnelState != 'unavailable';
 }
 
 @JsonSerializable(createToJson: false, fieldRename: FieldRename.none)
