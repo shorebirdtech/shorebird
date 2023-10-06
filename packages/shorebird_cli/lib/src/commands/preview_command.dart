@@ -323,7 +323,7 @@ class PreviewCommand extends ShorebirdCommand {
     final deviceId = results['device-id'] as String?;
 
     try {
-      final shouldUseDeviceCtl = await devicectl.shouldUseDevicectl(
+      final shouldUseDeviceCtl = await devicectl.isSupported(
         deviceId: deviceId,
       );
 

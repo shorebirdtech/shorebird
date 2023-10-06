@@ -52,11 +52,11 @@ void main() {
       when(() => processResult.exitCode).thenAnswer((_) => exitCode.code);
     });
 
-    group('shouldUseDevicectl', () {
+    group('isSupported', () {
       test('returns false if devicectl is not available', () async {
         exitCode = ExitCode.software;
         expect(
-          await runWithOverrides(() => devicectl.shouldUseDevicectl()),
+          await runWithOverrides(() => devicectl.isSupported()),
           isFalse,
         );
       });
@@ -69,7 +69,7 @@ void main() {
             File('$fixturesPath/device_list_success.json').readAsStringSync();
         expect(
           await runWithOverrides(
-            () => devicectl.shouldUseDevicectl(deviceId: 'fake device id'),
+            () => devicectl.isSupported(deviceId: 'fake device id'),
           ),
           isFalse,
         );
@@ -80,7 +80,7 @@ void main() {
         jsonOutput = File('$fixturesPath/device_list_success_empty.json')
             .readAsStringSync();
         expect(
-          await runWithOverrides(() => devicectl.shouldUseDevicectl()),
+          await runWithOverrides(() => devicectl.isSupported()),
           isFalse,
         );
       });
@@ -90,7 +90,7 @@ void main() {
         jsonOutput =
             File('$fixturesPath/device_list_success.json').readAsStringSync();
         expect(
-          await runWithOverrides(() => devicectl.shouldUseDevicectl()),
+          await runWithOverrides(() => devicectl.isSupported()),
           isTrue,
         );
       });

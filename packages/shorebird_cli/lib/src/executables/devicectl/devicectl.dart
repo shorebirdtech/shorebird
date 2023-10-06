@@ -80,7 +80,7 @@ class Devicectl {
   /// Whether we should use `devicectl` to install and launch the app on the
   /// device with the given [deviceId], or the first available device we find if
   /// [deviceId] is not provided.
-  Future<bool> shouldUseDevicectl({String? deviceId}) async {
+  Future<bool> isSupported({String? deviceId}) async {
     if (!await _isAvailable()) {
       return false;
     }

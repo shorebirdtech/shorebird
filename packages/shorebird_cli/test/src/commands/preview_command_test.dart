@@ -680,7 +680,7 @@ void main() {
           ),
         ).thenAnswer((_) async {});
         when(
-          () => devicectl.shouldUseDevicectl(deviceId: any(named: 'deviceId')),
+          () => devicectl.isSupported(deviceId: any(named: 'deviceId')),
         ).thenAnswer((_) async => false);
         when(
           () => devicectl.installAndLaunchApp(
@@ -774,7 +774,7 @@ void main() {
 
       test('uses devicectl if devicectl says to', () async {
         when(
-          () => devicectl.shouldUseDevicectl(deviceId: any(named: 'deviceId')),
+          () => devicectl.isSupported(deviceId: any(named: 'deviceId')),
         ).thenAnswer((_) async => true);
         setupShorebirdYaml();
         await runWithOverrides(command.run);
