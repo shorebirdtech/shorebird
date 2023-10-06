@@ -320,13 +320,30 @@ class PreviewCommand extends ShorebirdCommand {
       return ExitCode.software.code;
     }
 
+    final deviceId = results['device-id'] as String?;
+
     try {
-      final exitCode = await iosDeploy.installAndLaunchApp(
-        bundlePath: runnerDirectory.path,
+      final shouldUseDeviceCtl = await devicectl.isSupported(
         deviceId: deviceId,
       );
+
+      final int exitCode;
+      if (shouldUseDeviceCtl) {
+        logger.detail('Using devicectl to install and launch.');
+        exitCode = await devicectl.installAndLaunchApp(
+          runnerAppDirectory: runnerDirectory,
+          deviceId: deviceId,
+        );
+      } else {
+        logger.detail('Using ios-deploy to install and launch.');
+        exitCode = await iosDeploy.installAndLaunchApp(
+          bundlePath: runnerDirectory.path,
+          deviceId: deviceId,
+        );
+      }
+
       return exitCode;
-    } catch (error) {
+    } catch (_) {
       return ExitCode.software.code;
     }
   }

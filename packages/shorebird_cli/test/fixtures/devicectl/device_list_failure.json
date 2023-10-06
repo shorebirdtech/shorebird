@@ -1,0 +1,30 @@
+{
+  "error": {
+    "code": 10002,
+    "domain": "com.apple.dt.CoreDeviceError",
+    "userInfo": {
+      "BundleIdentifier": {
+        "string": "dev.shorebird.ios-test"
+      },
+      "NSLocalizedDescription": {
+        "string": "Failed to list devices"
+      }
+    }
+  },
+  "info": {
+    "arguments": [
+      "devicectl",
+      "list",
+      "devices",
+      "--json-output",
+      "list_devices_success.json"
+    ],
+    "commandType": "devicectl.list.devices",
+    "environment": {
+      "TERM": "xterm-256color"
+    },
+    "jsonVersion": 2,
+    "outcome": "failed",
+    "version": "355.5"
+  }
+}

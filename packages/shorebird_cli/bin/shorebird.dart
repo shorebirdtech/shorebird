@@ -32,6 +32,7 @@ Future<void> main(List<String> args) async {
         bundletoolRef,
         cacheRef,
         codePushClientWrapperRef,
+        devicectlRef,
         doctorRef,
         engineConfigRef,
         gitRef,

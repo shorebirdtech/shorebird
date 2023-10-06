@@ -3,9 +3,7 @@ import 'dart:io';
 
 import 'package:mason_logger/mason_logger.dart';
 import 'package:path/path.dart' as p;
-import 'package:pub_semver/pub_semver.dart';
 import 'package:scoped/scoped.dart';
-import 'package:shorebird_cli/src/extensions/version.dart';
 import 'package:shorebird_cli/src/process.dart';
 
 /// {@template missing_ios_project_exception}
@@ -107,33 +105,5 @@ class XcodeBuild {
       buildConfigurations: buildConfigurations,
       schemes: schemes,
     );
-  }
-
-  /// Gets the currently installed version of Xcode.
-  ///
-  /// Invokes `xcodebuild -version` and parses the output.
-  /// Output is expected to be of the form:
-  ///
-  ///   $ /usr/bin/xcodebuild -version
-  ///   Xcode 15.0
-  ///   Build version 15A240d
-  Future<Version?> xcodeVersion() async {
-    const arguments = ['-version'];
-    final result = await process.run(
-      executable,
-      arguments,
-    );
-
-    if (result.exitCode != ExitCode.success.code) {
-      throw ProcessException(executable, arguments, '${result.stderr}');
-    }
-
-    final lines = LineSplitter.split('${result.stdout}').map((e) => e.trim());
-    final versionString = lines.firstOrNull?.split(' ').lastOrNull;
-    if (versionString == null) {
-      return null;
-    }
-
-    return tryParseVersion(versionString, strict: false);
   }
 }
