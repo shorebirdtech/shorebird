@@ -64,6 +64,9 @@ class Devicectl {
     }
   }
 
+  /// Returns the first available iOS device, or the device with the given
+  /// [deviceId] if provided. Devices that are running iOS <17 are not
+  /// "CoreDevice"s and are not visible to devicectl.
   Future<AppleDevice?> _deviceForLaunch({String? deviceId}) async {
     final devices = await listAvailableIosDevices();
 
