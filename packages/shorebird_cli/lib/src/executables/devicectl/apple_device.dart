@@ -1,6 +1,7 @@
 import 'package:json_annotation/json_annotation.dart';
 import 'package:pub_semver/pub_semver.dart';
 import 'package:shorebird_cli/src/extensions/version.dart';
+import 'package:shorebird_code_push_client/shorebird_code_push_client.dart';
 
 part 'apple_device.g.dart';
 
@@ -20,8 +21,7 @@ class AppleDevice {
   });
 
   /// Creates an [AppleDevice] from JSON.
-  static AppleDevice fromJson(Map<String, dynamic> json) =>
-      _$AppleDeviceFromJson(json);
+  static AppleDevice fromJson(Json json) => _$AppleDeviceFromJson(json);
 
   /// The device's unique identifier of the form
   /// DEADBEEF-DEAD-BEEF-DEAD-BEEFDEADBEEF.
@@ -63,7 +63,7 @@ class HardwareProperties {
   /// The device's platform (e.g., "iOS").
   final String platform;
 
-  static HardwareProperties fromJson(Map<String, dynamic> json) =>
+  static HardwareProperties fromJson(Json json) =>
       _$HardwarePropertiesFromJson(json);
 }
 
@@ -77,7 +77,7 @@ class DeviceProperties {
   /// The device's OS version as a string (e.g., "14.4.1").
   final String? osVersionNumber;
 
-  static DeviceProperties fromJson(Map<String, dynamic> json) =>
+  static DeviceProperties fromJson(Json json) =>
       _$DevicePropertiesFromJson(json);
 }
 
@@ -93,6 +93,6 @@ class ConnectionProperties {
   /// - "unavailable" when the device is not connected via USB or wifi.
   final String tunnelState;
 
-  static ConnectionProperties fromJson(Map<String, dynamic> json) =>
+  static ConnectionProperties fromJson(Json json) =>
       _$ConnectionPropertiesFromJson(json);
 }

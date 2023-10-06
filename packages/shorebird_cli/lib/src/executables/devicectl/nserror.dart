@@ -1,4 +1,5 @@
 import 'package:json_annotation/json_annotation.dart';
+import 'package:shorebird_code_push_client/shorebird_code_push_client.dart';
 
 part 'nserror.g.dart';
 
@@ -21,7 +22,7 @@ class NSError {
   final UserInfo userInfo;
 
   /// Creates an [NSError] from JSON.
-  static NSError fromJson(Map<String, dynamic> json) => _$NSErrorFromJson(json);
+  static NSError fromJson(Json json) => _$NSErrorFromJson(json);
 }
 
 @JsonSerializable(createToJson: false, fieldRename: FieldRename.none)
@@ -41,8 +42,7 @@ class UserInfo {
   @JsonKey(name: 'NSUnderlyingError')
   final NSUnderlyingError? underlyingError;
 
-  static UserInfo fromJson(Map<String, dynamic> json) =>
-      _$UserInfoFromJson(json);
+  static UserInfo fromJson(Json json) => _$UserInfoFromJson(json);
 }
 
 @JsonSerializable(createToJson: false, fieldRename: FieldRename.none)
@@ -51,8 +51,7 @@ class StringContainer {
 
   final String string;
 
-  static StringContainer fromJson(Map<String, dynamic> json) =>
-      _$StringContainerFromJson(json);
+  static StringContainer fromJson(Json json) => _$StringContainerFromJson(json);
 }
 
 @JsonSerializable(createToJson: false, fieldRename: FieldRename.none)
@@ -61,6 +60,6 @@ class NSUnderlyingError {
 
   final NSError? error;
 
-  static NSUnderlyingError fromJson(Map<String, dynamic> json) =>
+  static NSUnderlyingError fromJson(Json json) =>
       _$NSUnderlyingErrorFromJson(json);
 }
