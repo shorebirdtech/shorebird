@@ -1,8 +1,10 @@
-# 1.2.0
+# 1.1.1
+
 - break: `package:shorebird_code_push/shorebird_code_push_io.dart` and
   `package:shorebird_code_push/shorebird_code_push_web.dart` have moved into
-  `src/` to discourage accidental direct import of these files.  Please import
+  `src/` to discourage accidental direct import of these files. Please import
   `package:shorebird_code_push/shorebird_code_push.dart` instead.
+- Fixes repository link in pubspec.yaml
 
 # 1.1.0
 
