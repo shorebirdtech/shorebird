@@ -37,8 +37,8 @@ import 'package:shorebird_code_push/shorebird_code_push.dart';
 // Create an instance of the ShorebirdCodePush class
 final shorebirdCodePush = ShorebirdCodePush();
 
-// Get the current patch version, or null if no patch is installed.
-final currentPatchversion = shorebirdCodePush.currentPatchVersion();
+// Get the current patch number, or null if no patch is installed.
+final currentPatchversion = shorebirdCodePush.currentPatchNumber();
 
 // Check whether a patch is available to install.
 final isUpdateAvailable = await shorebirdCodePush.isNewPatchAvailableForDownload();

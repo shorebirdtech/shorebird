@@ -1,3 +1,7 @@
+# 1.1.2
+
+- update README
+
 # 1.1.1
 
 - break: `package:shorebird_code_push/shorebird_code_push_io.dart` and

@@ -1,6 +1,6 @@
 name: shorebird_code_push
 description: Check for and download Shorebird code push updates from your app.
-version: 1.1.1
+version: 1.1.2
 homepage: https://shorebird.dev
 repository: https://github.com/shorebirdtech/updater/tree/main/shorebird_code_push
 
