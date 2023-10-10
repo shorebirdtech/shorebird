@@ -78,7 +78,16 @@ Please make sure you are running "shorebird init" from the root of your Flutter 
         if (androidFlavors != null) ...androidFlavors,
         if (iosFlavors != null) ...iosFlavors,
       };
-      detectFlavorsProgress.complete();
+      if (productFlavors.isEmpty) {
+        detectFlavorsProgress.complete('No product flavors detected.');
+      } else {
+        detectFlavorsProgress.complete(
+          '${productFlavors.length} product flavors detected:',
+        );
+        for (final flavor in productFlavors) {
+          logger.info('  - $flavor');
+        }
+      }
     } catch (error) {
       detectFlavorsProgress.fail();
       logger.err('Unable to extract product flavors.\n$error');
