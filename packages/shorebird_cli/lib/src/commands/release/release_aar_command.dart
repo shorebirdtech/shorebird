@@ -204,8 +204,19 @@ Your next steps:
 Note: The maven url needs to be a relative path from your settings.gradle file to the aar library. The code below assumes your Flutter module is in a sibling directory of your Android app.
 
 ${lightCyan.wrap('''
-maven {
-  url '../${p.basename(Directory.current.path)}/${p.relative(targetLibraryDirectory.path)}'
+dependencyResolutionManagement {
+    repositoriesMode.set(RepositoriesMode.FAIL_ON_PROJECT_REPOS)
+    repositories {
+        google()
+        mavenCentral()
++       maven {
++           url '../${p.basename(Directory.current.path)}/${p.relative(targetLibraryDirectory.path)}'
++       }
++       maven {
+-           url 'https://storage.googleapis.com/download.flutter.io'
++           url 'https://download.shorebird.dev/download.flutter.io'
++       }
+    }
 }
 ''')}
 
