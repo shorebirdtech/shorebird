@@ -281,6 +281,8 @@ Please make sure you are running "shorebird init" from the root of your Flutter 
             any(that: contains('app_id: $appId')),
           ),
         ).called(1);
+        verify(() => progress.complete('No product flavors detected.'))
+            .called(1);
         verifyNever(() => xcodeBuild.list(any()));
       });
 
@@ -318,6 +320,10 @@ Please make sure you are running "shorebird init" from the root of your Flutter 
           getCurrentDirectory: () => tempDir,
         );
         expect(exitCode, equals(ExitCode.success.code));
+        verify(() => progress.complete('2 product flavors detected:'))
+            .called(1);
+        verify(() => logger.info('  - internal')).called(1);
+        verify(() => logger.info('  - stable')).called(1);
         verify(
           () => shorebirdYamlFile.writeAsStringSync(
             any(
