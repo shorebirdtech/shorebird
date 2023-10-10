@@ -199,7 +199,7 @@ ${summary.join('\n')}
 
 Your next steps:
 
-1. Add the aar repo to your app's settings.gradle:
+1. Add the aar repo and Shorebird's maven url to your app's settings.gradle:
 
 Note: The maven url needs to be a relative path from your settings.gradle file to the aar library. The code below assumes your Flutter module is in a sibling directory of your Android app.
 
