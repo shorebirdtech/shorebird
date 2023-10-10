@@ -6,16 +6,20 @@ import 'package:shorebird_cli/src/command.dart';
 import 'package:shorebird_cli/src/logger.dart';
 
 mixin ShorebirdArtifactMixin on ShorebirdCommand {
-  String aarArtifactDirectory({
-    required String packageName,
-    required String buildNumber,
-  }) =>
-      p.joinAll([
+  String aarLibraryPath({required String packageName}) => p.joinAll([
         Directory.current.path,
         'build',
         'host',
         'outputs',
         'repo',
+      ]);
+
+  String aarArtifactDirectory({
+    required String packageName,
+    required String buildNumber,
+  }) =>
+      p.joinAll([
+        aarLibraryPath(packageName: packageName),
         ...packageName.split('.'),
         'flutter_release',
         buildNumber,
