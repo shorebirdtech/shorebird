@@ -386,10 +386,7 @@ void main() {
         getCurrentDirectory: () => tempDir,
       );
       expect(exitCode, ExitCode.success.code);
-      expect(
-        Directory(p.join(tempDir.path, 'releases', versionName)).existsSync(),
-        isTrue,
-      );
+      expect(Directory(p.join(tempDir.path, 'release')).existsSync(), isTrue);
     });
 
     test('runs flutter pub get with system flutter after successful build',

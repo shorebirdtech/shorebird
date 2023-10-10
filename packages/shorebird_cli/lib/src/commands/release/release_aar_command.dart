@@ -161,9 +161,8 @@ ${summary.join('\n')}
         packageName: shorebirdEnv.androidPackageName!,
       ),
     );
-    final targetLibraryDirectory = Directory(
-      p.join(Directory.current.path, 'releases', releaseVersion),
-    );
+    final targetLibraryDirectory =
+        Directory(p.join(Directory.current.path, 'release'));
     await copyPath(sourceLibraryDirectory.path, targetLibraryDirectory.path);
 
     final extractAarProgress = logger.progress('Creating artifacts');
