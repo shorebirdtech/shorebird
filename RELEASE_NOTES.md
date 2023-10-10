@@ -2,7 +2,7 @@
 
 This section contains past updates we've sent to customers via Discord.
 
-# 0.16.1 (October 5, 2023)
+## 0.16.1 (October 5, 2023)
 
 - 💥 fix rare crasher seen by large apps
 - 🪟 "shorebird preview" fix on windows
@@ -13,7 +13,7 @@ As always, you can upgrade using `shorebird upgrade`
 
 Please let us know if we can help!
 
-# 0.16.0 (October 5, 2023)
+## 0.16.0 (October 5, 2023)
 
 - 🧯 Support staging and previewing patches before sending to production
   - `shorebird patch android --staging`
