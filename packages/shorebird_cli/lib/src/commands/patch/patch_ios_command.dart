@@ -43,6 +43,13 @@ class PatchIosCommand extends ShorebirdCommand
         'flavor',
         help: 'The product flavor to use when building the app.',
       )
+      ..addOption(
+        'release-version',
+        help: '''
+The version of the release being patched (e.g. "1.0.0+1").
+        
+If this option is not provided, the version number will be determined from the patch artifact.''',
+      )
       ..addFlag(
         'codesign',
         help: 'Codesign the application bundle.',
@@ -129,14 +136,21 @@ class PatchIosCommand extends ShorebirdCommand
 
     final plist = Plist(file: plistFile);
     final String releaseVersion;
-    try {
-      releaseVersion = plist.versionNumber;
-    } catch (error) {
-      logger.err('Failed to determine release version: $error');
-      return ExitCode.software.code;
-    }
+    final argReleaseVersion = results['release-version'] as String?;
+    if (argReleaseVersion != null) {
+      logger.detail('Using release version $argReleaseVersion from argument.');
+      releaseVersion = argReleaseVersion;
+    } else {
+      logger.detail('No release version provided. Determining from archive.');
+      try {
+        releaseVersion = plist.versionNumber;
+      } catch (error) {
+        logger.err('Failed to determine release version: $error');
+        return ExitCode.software.code;
+      }
 
-    logger.info('Detected release version $releaseVersion');
+      logger.info('Detected release version $releaseVersion');
+    }
 
     final release = await codePushClientWrapper.getRelease(
       appId: appId,

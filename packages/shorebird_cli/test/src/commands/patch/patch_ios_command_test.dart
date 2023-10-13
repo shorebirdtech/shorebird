@@ -254,7 +254,7 @@ flutter:
       when(() => argResults['arch']).thenReturn(arch);
       when(() => argResults['dry-run']).thenReturn(false);
       when(() => argResults['force']).thenReturn(false);
-      when(() => argResults['release-version']).thenReturn(release.version);
+      when(() => argResults['release-version']).thenReturn(null);
       when(() => argResults['codesign']).thenReturn(true);
       when(() => argResults['staging']).thenReturn(false);
       when(() => argResults.rest).thenReturn([]);
@@ -668,6 +668,53 @@ Please re-run the release command for this version or create a new release.'''),
         expect(exitCode, equals(ExitCode.software.code));
       },
     );
+
+    group('when release-version option is provided', () {
+      const customReleaseVersion = 'custom-release-version';
+
+      setUp(() {
+        when(() => argResults['release-version'])
+            .thenReturn(customReleaseVersion);
+      });
+
+      test('does not extract release version from archive', () async {
+        final tempDir = setUpTempDir();
+        setUpTempArtifacts(tempDir);
+        await IOOverrides.runZoned(
+          () => runWithOverrides(command.run),
+          getCurrentDirectory: () => tempDir,
+        );
+
+        verify(
+          () => codePushClientWrapper.getRelease(
+            appId: appId,
+            releaseVersion: customReleaseVersion,
+          ),
+        ).called(1);
+      });
+    });
+
+    group('when release-version option is not provided', () {
+      setUp(() {
+        when(() => argResults['release-version']).thenReturn(null);
+      });
+
+      test('extracts release version from app bundle', () async {
+        final tempDir = setUpTempDir();
+        setUpTempArtifacts(tempDir);
+        await IOOverrides.runZoned(
+          () => runWithOverrides(command.run),
+          getCurrentDirectory: () => tempDir,
+        );
+
+        verify(
+          () => codePushClientWrapper.getRelease(
+            appId: appId,
+            releaseVersion: release.version,
+          ),
+        ).called(1);
+      });
+    });
 
     test('exits with code 70 when release version cannot be determiend',
         () async {

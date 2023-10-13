@@ -270,7 +270,7 @@ flutter:
       when(() => argResults['staging']).thenReturn(false);
       when(() => argResults['dry-run']).thenReturn(false);
       when(() => argResults['force']).thenReturn(false);
-      when(() => argResults['release-version']).thenReturn(release.version);
+      when(() => argResults['release-version']).thenReturn(null);
       when(() => auth.isAuthenticated).thenReturn(true);
       when(() => auth.client).thenReturn(httpClient);
       when(() => logger.progress(any())).thenReturn(progress);
@@ -529,6 +529,42 @@ Please re-run the release command for this version or create a new release.'''),
         expect(exitCode, equals(ExitCode.software.code));
       },
     );
+
+    group('when release-version option is provided', () {
+      setUp(() {
+        when(() => argResults['release-version']).thenReturn(release.version);
+      });
+
+      test('does not extract release version from app bundle', () async {
+        final tempDir = setUpTempDir();
+        setUpTempArtifacts(tempDir);
+        await IOOverrides.runZoned(
+          () => runWithOverrides(command.run),
+          getCurrentDirectory: () => tempDir,
+        );
+        verifyNever(() => bundletool.getVersionName(any()));
+        verifyNever(() => bundletool.getVersionCode(any()));
+        verifyNever(() => logger.progress('Detecting release version'));
+      });
+    });
+
+    group('when release-version option is not provided', () {
+      setUp(() {
+        when(() => argResults['release-version']).thenReturn(null);
+      });
+
+      test('extracts release version from app bundle', () async {
+        final tempDir = setUpTempDir();
+        setUpTempArtifacts(tempDir);
+        await IOOverrides.runZoned(
+          () => runWithOverrides(command.run),
+          getCurrentDirectory: () => tempDir,
+        );
+        verify(() => bundletool.getVersionName(any())).called(1);
+        verify(() => bundletool.getVersionCode(any())).called(1);
+        verify(() => logger.progress('Detecting release version')).called(1);
+      });
+    });
 
     test('errors when detecting release version name fails', () async {
       final exception = Exception(
