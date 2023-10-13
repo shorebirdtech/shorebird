@@ -2,7 +2,9 @@ import 'dart:async';
 import 'dart:io';
 
 import 'package:archive/archive_io.dart';
+import 'package:io/io.dart' show copyPath;
 import 'package:mason_logger/mason_logger.dart';
+import 'package:path/path.dart' as p;
 import 'package:shorebird_cli/src/code_push_client_wrapper.dart';
 import 'package:shorebird_cli/src/command.dart';
 import 'package:shorebird_cli/src/config/config.dart';
@@ -152,6 +154,17 @@ ${summary.join('\n')}
       );
     }
 
+    // Copy release AAR to a new directory to avoid overwriting with subsequent
+    // patch builds.
+    final sourceLibraryDirectory = Directory(
+      aarLibraryPath(
+        packageName: shorebirdEnv.androidPackageName!,
+      ),
+    );
+    final targetLibraryDirectory =
+        Directory(p.join(Directory.current.path, 'release'));
+    await copyPath(sourceLibraryDirectory.path, targetLibraryDirectory.path);
+
     final extractAarProgress = logger.progress('Creating artifacts');
     final extractedAarDir = await extractAar(
       packageName: shorebirdEnv.androidPackageName!,
@@ -183,7 +196,30 @@ ${summary.join('\n')}
       ..success('\n✅ Published Release!')
       ..info('''
 
-Your next step is to add this module as a dependency in your app's build.gradle:
+Your next steps:
+
+1. Add the aar repo and Shorebird's maven url to your app's settings.gradle:
+
+Note: The maven url needs to be a relative path from your settings.gradle file to the aar library. The code below assumes your Flutter module is in a sibling directory of your Android app.
+
+${lightCyan.wrap('''
+dependencyResolutionManagement {
+    repositoriesMode.set(RepositoriesMode.FAIL_ON_PROJECT_REPOS)
+    repositories {
+        google()
+        mavenCentral()
++       maven {
++           url '../${p.basename(Directory.current.path)}/${p.relative(targetLibraryDirectory.path)}'
++       }
++       maven {
+-           url 'https://storage.googleapis.com/download.flutter.io'
++           url 'https://download.shorebird.dev/download.flutter.io'
++       }
+    }
+}
+''')}
+
+2. Add this module as a dependency in your app's build.gradle:
 ${lightCyan.wrap('''
 dependencies {
   // ...

@@ -379,6 +379,16 @@ void main() {
       ).called(1);
     });
 
+    test('copies aar library to a releases folder', () async {
+      final tempDir = setUpTempArtifacts();
+      final exitCode = await IOOverrides.runZoned(
+        () => runWithOverrides(command.run),
+        getCurrentDirectory: () => tempDir,
+      );
+      expect(exitCode, ExitCode.success.code);
+      expect(Directory(p.join(tempDir.path, 'release')).existsSync(), isTrue);
+    });
+
     test('runs flutter pub get with system flutter after successful build',
         () async {
       final tempDir = setUpTempArtifacts();
