@@ -2,6 +2,19 @@
 
 This section contains past updates we've sent to customers via Discord.
 
+## 0.16.2 (October 13, 2023)
+
+- 🍎 Support shorebird preview for iOS 17 devices
+- 🧾 Additional pricing tiers for Team plan
+- 🎮 https://console.shorebird.dev/account supports managing your subscription
+- 🍨 shorebird init now lists flavors it detects
+
+📚 Release notes can be found at https://github.com/shorebirdtech/shorebird/releases/tag/v0.16.2
+
+As always, you can upgrade using `shorebird upgrade`
+
+Please let us know if we can help!
+
 ## 0.16.1 (October 5, 2023)
 
 - 💥 fix rare crasher seen by large apps
