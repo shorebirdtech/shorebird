@@ -50,6 +50,13 @@ class PatchAndroidCommand extends ShorebirdCommand
         'flavor',
         help: 'The product flavor to use when building the app.',
       )
+      ..addOption(
+        'release-version',
+        help: '''
+The version of the release being patched (e.g. "1.0.0+1").
+        
+If this option is not provided, the version number will be determined from the patch artifact.''',
+      )
       ..addFlag(
         'force',
         abbr: 'f',
@@ -125,19 +132,26 @@ class PatchAndroidCommand extends ShorebirdCommand
         ? './build/app/outputs/bundle/${flavor}Release/app-$flavor-release.aab'
         : './build/app/outputs/bundle/release/app-release.aab';
 
-    final detectReleaseVersionProgress = logger.progress(
-      'Detecting release version',
-    );
-
     final String releaseVersion;
-    try {
-      releaseVersion = await extractReleaseVersionFromAppBundle(bundlePath);
-      detectReleaseVersionProgress.complete(
-        'Detected release version $releaseVersion',
+    final argReleaseVersion = results['release-version'] as String?;
+    if (argReleaseVersion != null) {
+      logger.detail('Using release version $argReleaseVersion from argument.');
+      releaseVersion = argReleaseVersion;
+    } else {
+      logger.detail('No release version provided. Determining from bundle.');
+      final detectReleaseVersionProgress = logger.progress(
+        'Detecting release version',
       );
-    } catch (error) {
-      detectReleaseVersionProgress.fail('$error');
-      return ExitCode.software.code;
+
+      try {
+        releaseVersion = await extractReleaseVersionFromAppBundle(bundlePath);
+        detectReleaseVersionProgress.complete(
+          'Detected release version $releaseVersion',
+        );
+      } catch (error) {
+        detectReleaseVersionProgress.fail('$error');
+        return ExitCode.software.code;
+      }
     }
 
     final release = await codePushClientWrapper.getRelease(
