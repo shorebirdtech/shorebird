@@ -270,7 +270,6 @@ flutter:
       when(() => argResults['staging']).thenReturn(false);
       when(() => argResults['dry-run']).thenReturn(false);
       when(() => argResults['force']).thenReturn(false);
-      when(() => argResults['release-version']).thenReturn(null);
       when(() => auth.isAuthenticated).thenReturn(true);
       when(() => auth.client).thenReturn(httpClient);
       when(() => logger.progress(any())).thenReturn(progress);

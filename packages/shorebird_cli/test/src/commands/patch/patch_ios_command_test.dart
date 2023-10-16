@@ -254,7 +254,6 @@ flutter:
       when(() => argResults['arch']).thenReturn(arch);
       when(() => argResults['dry-run']).thenReturn(false);
       when(() => argResults['force']).thenReturn(false);
-      when(() => argResults['release-version']).thenReturn(null);
       when(() => argResults['codesign']).thenReturn(true);
       when(() => argResults['staging']).thenReturn(false);
       when(() => argResults.rest).thenReturn([]);
