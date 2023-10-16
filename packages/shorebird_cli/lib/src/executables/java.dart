@@ -1,4 +1,3 @@
-import 'dart:async';
 import 'dart:io' hide Platform;
 
 import 'package:collection/collection.dart';
@@ -17,10 +16,10 @@ Java get java => read(javaRef);
 /// A wrapper around all java related functionality.
 class Java {
   /// Returns the path to the java executable.
-  Future<String?> executable() async {
+  String? get executable {
     if (!platform.isWindows) return 'java';
 
-    final javaHome = await home();
+    final javaHome = home;
     if (javaHome == null) return null;
     return p.join(javaHome, 'bin', 'java.exe');
   }
@@ -35,10 +34,10 @@ class Java {
   /// 1. the runtime environment bundled with Android Studio;
   /// 2. the runtime environment found in the JAVA_HOME env variable, if set; or
   /// 3. the java binary found on PATH.
-  FutureOr<String?> home() async =>
+  String? get home =>
       androidStudioJavaPath ??
       platform.environment['JAVA_HOME'] ??
-      (await os.which('java'));
+      os.which('java');
 
   String? get androidStudioJavaPath {
     final androidStudioPath = androidStudio.path;

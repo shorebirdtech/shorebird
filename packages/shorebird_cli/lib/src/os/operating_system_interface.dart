@@ -15,7 +15,7 @@ abstract class OperatingSystemInterface {
   ///
   /// This is the equivalent of the `which` command on Linux and macOS and
   /// `where.exe` on Windows.
-  Future<String?> which(String executableName);
+  String? which(String executableName);
 
   static OperatingSystemInterface get instance {
     if (Platform.isWindows) {
@@ -32,8 +32,8 @@ abstract class OperatingSystemInterface {
 
 class _PosixOperatingSystemInterface implements OperatingSystemInterface {
   @override
-  Future<String?> which(String executableName) async {
-    final result = await process.run('which', [executableName]);
+  String? which(String executableName) {
+    final result = process.runSync('which', [executableName]);
     if (result.exitCode != ExitCode.success.code) {
       return null;
     }
@@ -46,8 +46,8 @@ class _PosixOperatingSystemInterface implements OperatingSystemInterface {
 
 class _WindowsOperatingSystemInterface implements OperatingSystemInterface {
   @override
-  Future<String?> which(String executableName) async {
-    final result = await process.run('where.exe', [executableName]);
+  String? which(String executableName) {
+    final result = process.runSync('where.exe', [executableName]);
     if (result.exitCode != ExitCode.success.code) {
       return null;
     }

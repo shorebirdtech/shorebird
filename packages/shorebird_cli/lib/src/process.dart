@@ -80,6 +80,39 @@ class ShorebirdProcess {
     );
   }
 
+  ShorebirdProcessResult runSync(
+    String executable,
+    List<String> arguments, {
+    bool runInShell = false,
+    Map<String, String>? environment,
+    String? workingDirectory,
+    bool useVendedFlutter = true,
+  }) {
+    final resolvedEnvironment = environment ?? {};
+    if (useVendedFlutter) {
+      // Note: this will overwrite existing environment values.
+      resolvedEnvironment.addAll(
+        _environmentOverrides(executable: executable),
+      );
+    }
+
+    final resolvedExecutable =
+        useVendedFlutter ? _resolveExecutable(executable) : executable;
+    final resolvedArguments =
+        useVendedFlutter ? _resolveArguments(executable, arguments) : arguments;
+    logger.detail(
+      '''[Process.run] $resolvedExecutable ${resolvedArguments.join(' ')}${workingDirectory == null ? '' : ' (in $workingDirectory)'}''',
+    );
+
+    return processWrapper.runSync(
+      resolvedExecutable,
+      resolvedArguments,
+      runInShell: runInShell,
+      workingDirectory: workingDirectory,
+      environment: resolvedEnvironment,
+    );
+  }
+
   Future<Process> start(
     String executable,
     List<String> arguments, {
@@ -165,6 +198,27 @@ class ProcessWrapper {
     String? workingDirectory,
   }) async {
     final result = await Process.run(
+      executable,
+      arguments,
+      environment: environment,
+      runInShell: runInShell,
+      workingDirectory: workingDirectory,
+    );
+    return ShorebirdProcessResult(
+      exitCode: result.exitCode,
+      stdout: result.stdout,
+      stderr: result.stderr,
+    );
+  }
+
+  ShorebirdProcessResult runSync(
+    String executable,
+    List<String> arguments, {
+    bool runInShell = false,
+    Map<String, String>? environment,
+    String? workingDirectory,
+  }) {
+    final result = Process.runSync(
       executable,
       arguments,
       environment: environment,

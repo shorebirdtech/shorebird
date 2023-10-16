@@ -57,7 +57,7 @@ class Gradlew {
   /// Return the set of product flavors configured for the app at [projectPath].
   /// Returns an empty set for apps that do not use product flavors.
   Future<Set<String>> productFlavors(String projectPath) async {
-    final javaHome = await java.home();
+    final javaHome = java.home;
     final androidRoot = Directory(p.join(projectPath, 'android'));
 
     if (!androidRoot.existsSync()) {
