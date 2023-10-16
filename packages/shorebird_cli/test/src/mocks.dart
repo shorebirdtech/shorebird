@@ -17,6 +17,7 @@ import 'package:shorebird_cli/src/code_push_client_wrapper.dart';
 import 'package:shorebird_cli/src/config/config.dart';
 import 'package:shorebird_cli/src/doctor.dart';
 import 'package:shorebird_cli/src/executables/executables.dart';
+import 'package:shorebird_cli/src/os/os.dart';
 import 'package:shorebird_cli/src/patch_diff_checker.dart';
 import 'package:shorebird_cli/src/process.dart';
 import 'package:shorebird_cli/src/shorebird_env.dart';
@@ -77,6 +78,9 @@ class MockIosArchiveDiffer extends Mock implements IosArchiveDiffer {}
 class MockJava extends Mock implements Java {}
 
 class MockLogger extends Mock implements Logger {}
+
+class MockOperatingSystemInterface extends Mock
+    implements OperatingSystemInterface {}
 
 class MockPatchDiffChecker extends Mock implements PatchDiffChecker {}
 
