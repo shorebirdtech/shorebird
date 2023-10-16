@@ -36,10 +36,14 @@ class AndroidSdk {
     final home = platform.environment['HOME'];
     if (home == null) return null;
 
+    // TODO: reference Flutter tool
     if (platform.isLinux) {
+      // Don't assume this is right
       return p.join(home, 'Android', 'Sdk');
     }
+
     if (platform.isMacOS) {
+      // Don't assume this is right
       return p.join(home, 'Library', 'Android', 'sdk');
     }
 
