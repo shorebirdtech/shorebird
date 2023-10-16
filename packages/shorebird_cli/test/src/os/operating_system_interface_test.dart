@@ -39,6 +39,16 @@ void main() {
       when(() => processResult.exitCode).thenReturn(ExitCode.success.code);
     });
 
+    group('init', () {
+      test('throws UnsupportedError when operating system is not supported',
+          () {
+        expect(
+          () => runWithOverrides(OperatingSystemInterface.new),
+          throwsUnsupportedError,
+        );
+      });
+    });
+
     group('on macOS/Linux', () {
       setUp(() {
         when(() => platform.isMacOS).thenReturn(true);
