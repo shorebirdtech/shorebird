@@ -549,10 +549,6 @@ Please re-run the release command for this version or create a new release.'''),
     });
 
     group('when release-version option is not provided', () {
-      setUp(() {
-        when(() => argResults['release-version']).thenReturn(null);
-      });
-
       test('extracts release version from app bundle', () async {
         final tempDir = setUpTempDir();
         setUpTempArtifacts(tempDir);
