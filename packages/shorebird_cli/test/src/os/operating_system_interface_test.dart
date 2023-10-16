@@ -14,7 +14,7 @@ void main() {
     late Platform platform;
     late ShorebirdProcess process;
     late ShorebirdProcessResult processResult;
-    late OperatingSystemInterface os;
+    late OperatingSystemInterface osInterface;
 
     R runWithOverrides<R>(R Function() body) {
       return runScoped(
@@ -53,7 +53,7 @@ void main() {
       setUp(() {
         when(() => platform.isMacOS).thenReturn(true);
 
-        os = runWithOverrides(OperatingSystemInterface.new);
+        osInterface = runWithOverrides(OperatingSystemInterface.new);
       });
 
       group('which()', () {
@@ -63,7 +63,10 @@ void main() {
           });
 
           test('returns null', () {
-            expect(runWithOverrides(() => os.which('shorebird')), isNull);
+            expect(
+              runWithOverrides(() => osInterface.which('shorebird')),
+              isNull,
+            );
           });
         });
 
@@ -75,7 +78,7 @@ void main() {
 
           test('returns path to executable', () {
             expect(
-              runWithOverrides(() => os.which('shorebird')),
+              runWithOverrides(() => osInterface.which('shorebird')),
               shorebirdPath,
             );
           });
@@ -86,7 +89,7 @@ void main() {
     group('on Windows', () {
       setUp(() {
         when(() => platform.isWindows).thenReturn(true);
-        os = runWithOverrides(OperatingSystemInterface.new);
+        osInterface = runWithOverrides(OperatingSystemInterface.new);
       });
 
       group('which()', () {
@@ -96,7 +99,8 @@ void main() {
           });
 
           test('returns null', () {
-            expect(runWithOverrides(() => os.which('shorebird')), isNull);
+            expect(
+                runWithOverrides(() => osInterface.which('shorebird')), isNull);
           });
         });
 
@@ -108,7 +112,7 @@ void main() {
 
           test('returns path to executable', () {
             expect(
-              runWithOverrides(() => os.which('shorebird')),
+              runWithOverrides(() => osInterface.which('shorebird')),
               shorebirdPath,
             );
           });
@@ -128,7 +132,7 @@ C:\path\to\shorebird3''';
 
           test('returns first path to executable', () {
             expect(
-              runWithOverrides(() => os.which('shorebird')),
+              runWithOverrides(() => osInterface.which('shorebird')),
               shorebirdPath,
             );
           });
