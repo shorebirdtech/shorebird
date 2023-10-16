@@ -43,7 +43,7 @@ void main() {
       setUp(() {
         when(() => platform.isMacOS).thenReturn(true);
 
-        os = OperatingSystemInterface();
+        os = runWithOverrides(OperatingSystemInterface.new);
       });
 
       group('which()', () {
@@ -76,7 +76,7 @@ void main() {
     group('on Windows', () {
       setUp(() {
         when(() => platform.isWindows).thenReturn(true);
-        os = OperatingSystemInterface();
+        os = runWithOverrides(OperatingSystemInterface.new);
       });
 
       group('which()', () {

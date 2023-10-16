@@ -55,14 +55,11 @@ class ShorebirdProcess {
     String? workingDirectory,
     bool useVendedFlutter = true,
   }) {
-    final resolvedEnvironment = environment ?? {};
-    if (useVendedFlutter) {
-      // Note: this will overwrite existing environment values.
-      resolvedEnvironment.addAll(
-        _environmentOverrides(executable: executable),
-      );
-    }
-
+    final resolvedEnvironment = _resolveEnvironment(
+      environment,
+      executable: executable,
+      useVendedFlutter: useVendedFlutter,
+    );
     final resolvedExecutable =
         useVendedFlutter ? _resolveExecutable(executable) : executable;
     final resolvedArguments =
@@ -88,14 +85,11 @@ class ShorebirdProcess {
     String? workingDirectory,
     bool useVendedFlutter = true,
   }) {
-    final resolvedEnvironment = environment ?? {};
-    if (useVendedFlutter) {
-      // Note: this will overwrite existing environment values.
-      resolvedEnvironment.addAll(
-        _environmentOverrides(executable: executable),
-      );
-    }
-
+    final resolvedEnvironment = _resolveEnvironment(
+      environment,
+      executable: executable,
+      useVendedFlutter: useVendedFlutter,
+    );
     final resolvedExecutable =
         useVendedFlutter ? _resolveExecutable(executable) : executable;
     final resolvedArguments =
@@ -141,6 +135,22 @@ class ShorebirdProcess {
       runInShell: runInShell,
       environment: resolvedEnvironment,
     );
+  }
+
+  Map<String, String> _resolveEnvironment(
+    Map<String, String>? baseEnvironment, {
+    required String executable,
+    required bool useVendedFlutter,
+  }) {
+    final resolvedEnvironment = baseEnvironment ?? {};
+    if (useVendedFlutter) {
+      // Note: this will overwrite existing environment values.
+      resolvedEnvironment.addAll(
+        _environmentOverrides(executable: executable),
+      );
+    }
+
+    return resolvedEnvironment;
   }
 
   String _resolveExecutable(String executable) {

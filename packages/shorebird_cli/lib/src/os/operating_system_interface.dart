@@ -43,8 +43,6 @@ class _PosixOperatingSystemInterface implements OperatingSystemInterface {
       return null;
     }
 
-    print('which stdout is ${result.stdout}');
-
     return result.stdout as String?;
   }
 }
