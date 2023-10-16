@@ -41,7 +41,7 @@ Future<void> main(List<String> args) async {
         iosDeployRef,
         javaRef,
         loggerRef,
-        osRef,
+        osInterfaceRef,
         patchDiffCheckerRef,
         platformRef,
         processRef,

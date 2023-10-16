@@ -8,10 +8,10 @@ import 'package:shorebird_cli/src/process.dart';
 // TODO(bryanoltman): remove this once os is used.
 // coverage:ignore-start
 /// A reference to a [OperatingSystemInterface] instance.
-final osRef = create(OperatingSystemInterface.new);
+final osInterfaceRef = create(OperatingSystemInterface.new);
 
 /// The [OperatingSystemInterface] instance available in the current zone.
-OperatingSystemInterface get os => read(osRef);
+OperatingSystemInterface get osInterface => read(osInterfaceRef);
 // coverage:ignore-end
 
 /// {@template operating_system_interface}
