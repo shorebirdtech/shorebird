@@ -104,8 +104,6 @@ void main() {
           });
         });
 
-        // By default, where.exe will list all matching executables on PATH. We
-        // want to return the first one.
         group('when multiple executables are found on PATH', () {
           const shorebirdPath = r'C:\path\to\shorebird';
           const shorebirdPaths = r'''
