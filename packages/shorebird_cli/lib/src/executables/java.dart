@@ -24,12 +24,11 @@ class Java {
     return p.join(javaHome, 'bin', 'java.exe');
   }
 
-  /// Returns the JAVA_HOME environment variable if set.
-  /// Otherwise, returns the location where the Android Studio JDK/JRE is installed.
+  /// Returns the path to the user's JDK, if one is found.
   ///
   /// Our goal is to match the behavior of the flutter tool. As per the docs at
-  /// https://github.com/flutter/flutter/blob/stable/packages/flutter_tools/lib/src/android/java.dart#L45-L54:
-  /// We search for Java in the following places, in order:
+  /// https://github.com/flutter/flutter/blob/stable/packages/flutter_tools/lib/src/android/java.dart#L45-L54,
+  /// we search for Java in the following places, in order:
   ///
   /// 1. the runtime environment bundled with Android Studio;
   /// 2. the runtime environment found in the JAVA_HOME env variable, if set; or
