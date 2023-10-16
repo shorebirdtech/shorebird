@@ -34,10 +34,13 @@ class Java {
   /// 1. the runtime environment bundled with Android Studio;
   /// 2. the runtime environment found in the JAVA_HOME env variable, if set; or
   /// 3. the java binary found on PATH.
-  String? get home =>
-      androidStudioJavaPath ??
-      platform.environment['JAVA_HOME'] ??
-      os.which('java');
+  String? get home {
+    print('getting java home');
+    print('which shorebird: ${os.which('shorebird')}');
+    return androidStudioJavaPath ??
+        platform.environment['JAVA_HOME'] ??
+        os.which('java');
+  }
 
   String? get androidStudioJavaPath {
     final androidStudioPath = androidStudio.path;

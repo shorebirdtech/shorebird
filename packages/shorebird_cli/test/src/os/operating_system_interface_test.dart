@@ -1,32 +1,129 @@
+import 'package:mason_logger/mason_logger.dart';
+import 'package:mocktail/mocktail.dart';
+import 'package:platform/platform.dart';
+import 'package:scoped/scoped.dart';
 import 'package:shorebird_cli/src/os/os.dart';
+import 'package:shorebird_cli/src/platform.dart';
+import 'package:shorebird_cli/src/process.dart';
 import 'package:test/test.dart';
+
+import '../mocks.dart';
 
 void main() {
   group(OperatingSystemInterface, () {
+    late Platform platform;
+    late ShorebirdProcess process;
+    late ShorebirdProcessResult processResult;
+    late OperatingSystemInterface os;
+
+    R runWithOverrides<R>(R Function() body) {
+      return runScoped(
+        () => body(),
+        values: {
+          platformRef.overrideWith(() => platform),
+          processRef.overrideWith(() => process),
+        },
+      );
+    }
+
+    setUp(() {
+      platform = MockPlatform();
+      process = MockShorebirdProcess();
+      processResult = MockProcessResult();
+
+      when(() => platform.isLinux).thenReturn(false);
+      when(() => platform.isMacOS).thenReturn(false);
+      when(() => platform.isWindows).thenReturn(false);
+
+      when(() => process.runSync(any(), any())).thenReturn(processResult);
+      when(() => processResult.exitCode).thenReturn(ExitCode.success.code);
+    });
+
     group('on macOS/Linux', () {
-      group('which', () {
-        group('when no executable is found on path', () {
-          test('returns null', () {});
+      setUp(() {
+        when(() => platform.isMacOS).thenReturn(true);
+
+        os = OperatingSystemInterface();
+      });
+
+      group('which()', () {
+        group('when no executable is found on PATH', () {
+          setUp(() {
+            when(() => processResult.exitCode).thenReturn(1);
+          });
+
+          test('returns null', () {
+            expect(runWithOverrides(() => os.which('shorebird')), isNull);
+          });
         });
 
-        group('when executable is found on path', () {
-          test('returns path to executable', () {});
+        group('when executable is found on PATH', () {
+          const shorebirdPath = '/path/to/shorebird';
+          setUp(() {
+            when(() => processResult.stdout).thenReturn(shorebirdPath);
+          });
+
+          test('returns path to executable', () {
+            expect(
+              runWithOverrides(() => os.which('shorebird')),
+              shorebirdPath,
+            );
+          });
         });
       });
     });
 
     group('on Windows', () {
-      group('which', () {
-        group('when no executable is found on path', () {
-          test('returns null', () {});
+      setUp(() {
+        when(() => platform.isWindows).thenReturn(true);
+        os = OperatingSystemInterface();
+      });
+
+      group('which()', () {
+        group('when no executable is found on PATH', () {
+          setUp(() {
+            when(() => processResult.exitCode).thenReturn(1);
+          });
+
+          test('returns null', () {
+            expect(runWithOverrides(() => os.which('shorebird')), isNull);
+          });
         });
 
-        group('when executable is found on path', () {
-          test('returns path to executable', () {});
+        group('when executable is found on PATH', () {
+          const shorebirdPath = r'C:\path\to\shorebird';
+          setUp(() {
+            when(() => processResult.stdout).thenReturn(shorebirdPath);
+          });
+
+          test('returns path to executable', () {
+            expect(
+              runWithOverrides(() => os.which('shorebird')),
+              shorebirdPath,
+            );
+          });
         });
 
-        group('when multiple executables are found on path', () {
-          test('returns path to executable', () {});
+        // By default, where.exe will list all matching executables on PATH. We
+        // want to return the first one.
+        group('when multiple executables are found on PATH', () {
+          const shorebirdPath = r'C:\path\to\shorebird';
+          const shorebirdPaths = r'''
+C:\path\to\shorebird
+C:\path\to\shorebird1
+C:\path\to\shorebird2
+C:\path\to\shorebird3''';
+
+          setUp(() {
+            when(() => processResult.stdout).thenReturn(shorebirdPaths);
+          });
+
+          test('returns first path to executable', () {
+            expect(
+              runWithOverrides(() => os.which('shorebird')),
+              shorebirdPath,
+            );
+          });
         });
       });
     });
