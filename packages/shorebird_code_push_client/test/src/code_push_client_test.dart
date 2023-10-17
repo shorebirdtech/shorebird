@@ -74,6 +74,20 @@ void main() {
       );
     });
 
+    test('throws CodePushForbiddenException on 403 response', () async {
+      when(() => httpClient.send(any())).thenAnswer(
+        (_) async => http.StreamedResponse(
+          Stream.empty(),
+          HttpStatus.forbidden,
+        ),
+      );
+
+      expect(
+        codePushClient.getApps(),
+        throwsA(isA<CodePushForbiddenException>()),
+      );
+    });
+
     group('getCurrentUser', () {
       const user = User(id: 123, email: 'tester@shorebird.dev');
 
