@@ -101,22 +101,6 @@ class CodePushClient {
 
   Uri get _v1 => Uri.parse('$hostedUri/api/v1');
 
-  /// Add a new collaborator to the app.
-  /// Collaborators can manage the app including its releases and patches.
-  Future<void> createCollaborator({
-    required String appId,
-    required String email,
-  }) async {
-    final response = await _httpClient.post(
-      Uri.parse('$_v1/apps/$appId/collaborators'),
-      body: json.encode(CreateAppCollaboratorRequest(email: email).toJson()),
-    );
-
-    if (response.statusCode != HttpStatus.created) {
-      throw _parseErrorResponse(response.statusCode, response.body);
-    }
-  }
-
   /// Fetches the currently logged-in user.
   Future<User?> getCurrentUser() async {
     final uri = Uri.parse('$_v1/users/me');
@@ -319,20 +303,6 @@ class CodePushClient {
     }
   }
 
-  /// Remove [userId] as a collaborator from [appId].
-  Future<void> deleteCollaborator({
-    required String appId,
-    required int userId,
-  }) async {
-    final response = await _httpClient.delete(
-      Uri.parse('$_v1/apps/$appId/collaborators/$userId'),
-    );
-
-    if (response.statusCode != HttpStatus.noContent) {
-      throw _parseErrorResponse(response.statusCode, response.body);
-    }
-  }
-
   /// Create a new Shorebird user with the provided [name].
   ///
   /// The email associated with the user's JWT will be used as the user's email.
@@ -392,26 +362,6 @@ class CodePushClient {
     final channels = json.decode(response.body) as List;
     return channels
         .map((channel) => Channel.fromJson(channel as Map<String, dynamic>))
-        .toList();
-  }
-
-  /// List all collaborators for the provided [appId].
-  Future<List<Collaborator>> getCollaborators({required String appId}) async {
-    final response = await _httpClient.get(
-      Uri.parse('$_v1/apps/$appId/collaborators'),
-    );
-
-    if (response.statusCode != HttpStatus.ok) {
-      throw _parseErrorResponse(response.statusCode, response.body);
-    }
-
-    final collaborators = json.decode(response.body) as List;
-    return collaborators
-        .map(
-          (collaborator) => Collaborator.fromJson(
-            collaborator as Map<String, dynamic>,
-          ),
-        )
         .toList();
   }
 

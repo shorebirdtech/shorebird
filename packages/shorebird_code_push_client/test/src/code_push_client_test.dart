@@ -74,88 +74,18 @@ void main() {
       );
     });
 
-    group('createCollaborator', () {
-      const appId = 'test-app-id';
-      const email = 'jane.doe@shorebird.dev';
+    test('throws CodePushForbiddenException on 403 response', () async {
+      when(() => httpClient.send(any())).thenAnswer(
+        (_) async => http.StreamedResponse(
+          Stream.empty(),
+          HttpStatus.forbidden,
+        ),
+      );
 
-      test('makes the correct request', () async {
-        codePushClient.createCollaborator(appId: appId, email: email).ignore();
-        final request = verify(() => httpClient.send(captureAny()))
-            .captured
-            .single as http.BaseRequest;
-        expect(request.method, equals('POST'));
-        expect(request.url, equals(v1('apps/$appId/collaborators')));
-        expect(request.hasStandardHeaders, isTrue);
-      });
-
-      test('throws an exception if the http request fails (unknown)', () async {
-        when(() => httpClient.send(any())).thenAnswer(
-          (_) async => http.StreamedResponse(
-            const Stream.empty(),
-            HttpStatus.failedDependency,
-          ),
-        );
-
-        expect(
-          codePushClient.createCollaborator(appId: appId, email: email),
-          throwsA(
-            isA<CodePushException>().having(
-              (e) => e.message,
-              'message',
-              CodePushClient.unknownErrorMessage,
-            ),
-          ),
-        );
-      });
-
-      test('throws a permission exception if the http response code is 403',
-          () async {
-        when(() => httpClient.send(any())).thenAnswer(
-          (_) async => http.StreamedResponse(
-            Stream.value(utf8.encode(json.encode(errorResponse.toJson()))),
-            HttpStatus.forbidden,
-          ),
-        );
-
-        expect(
-          codePushClient.createCollaborator(appId: appId, email: email),
-          throwsA(isA<CodePushForbiddenException>()),
-        );
-      });
-
-      test('throws an exception if the http request fails', () async {
-        when(() => httpClient.send(any())).thenAnswer(
-          (_) async => http.StreamedResponse(
-            Stream.value(utf8.encode(json.encode(errorResponse.toJson()))),
-            HttpStatus.failedDependency,
-          ),
-        );
-
-        expect(
-          codePushClient.createCollaborator(appId: appId, email: email),
-          throwsA(
-            isA<CodePushException>().having(
-              (e) => e.message,
-              'message',
-              errorResponse.message,
-            ),
-          ),
-        );
-      });
-
-      test('completes when request succeeds', () async {
-        when(() => httpClient.send(any())).thenAnswer(
-          (_) async => http.StreamedResponse(
-            const Stream.empty(),
-            HttpStatus.created,
-          ),
-        );
-
-        await expectLater(
-          codePushClient.createCollaborator(appId: appId, email: email),
-          completes,
-        );
-      });
+      expect(
+        codePushClient.getApps(),
+        throwsA(isA<CodePushForbiddenException>()),
+      );
     });
 
     group('getCurrentUser', () {
@@ -1190,88 +1120,6 @@ void main() {
       });
     });
 
-    group('deleteCollaborator', () {
-      const appId = 'test-app-id';
-      const userId = 42;
-
-      test('makes the correct request', () async {
-        codePushClient
-            .deleteCollaborator(appId: appId, userId: userId)
-            .ignore();
-        final request = verify(() => httpClient.send(captureAny()))
-            .captured
-            .single as http.BaseRequest;
-        expect(request.method, equals('DELETE'));
-        expect(request.url, equals(v1('apps/$appId/collaborators/$userId')));
-        expect(request.hasStandardHeaders, isTrue);
-      });
-
-      test('throws an exception if the http request fails (unknown)', () async {
-        when(() => httpClient.send(any())).thenAnswer(
-          (_) async => http.StreamedResponse(
-            const Stream.empty(),
-            HttpStatus.badRequest,
-          ),
-        );
-
-        expect(
-          codePushClient.deleteCollaborator(appId: appId, userId: userId),
-          throwsA(
-            isA<CodePushException>().having(
-              (e) => e.message,
-              'message',
-              CodePushClient.unknownErrorMessage,
-            ),
-          ),
-        );
-      });
-
-      test('throws an exception if the http request fails', () async {
-        when(() => httpClient.send(any())).thenAnswer(
-          (_) async => http.StreamedResponse(
-            Stream.value(utf8.encode(json.encode(errorResponse.toJson()))),
-            HttpStatus.failedDependency,
-          ),
-        );
-
-        expect(
-          codePushClient.deleteCollaborator(appId: appId, userId: userId),
-          throwsA(
-            isA<CodePushException>().having(
-              (e) => e.message,
-              'message',
-              errorResponse.message,
-            ),
-          ),
-        );
-      });
-
-      test('completes when request succeeds', () async {
-        when(() => httpClient.send(any())).thenAnswer(
-          (_) async => http.StreamedResponse(
-            const Stream.empty(),
-            HttpStatus.noContent,
-          ),
-        );
-
-        await codePushClient.deleteCollaborator(
-          appId: appId,
-          userId: userId,
-        );
-
-        final request = verify(() => httpClient.send(captureAny()))
-            .captured
-            .single as http.BaseRequest;
-
-        expect(
-          request.url,
-          codePushClient.hostedUri.replace(
-            path: '/api/v1/apps/$appId/collaborators/$userId',
-          ),
-        );
-      });
-    });
-
     group('createUser', () {
       const userName = 'Jane Doe';
       final user = User(
@@ -1573,97 +1421,6 @@ void main() {
         );
 
         final actual = await codePushClient.getChannels(appId: appId);
-        expect(json.encode(actual), equals(json.encode(expected)));
-      });
-    });
-
-    group('getCollaborators', () {
-      const appId = 'test-app-id';
-
-      test('makes the correct request', () async {
-        codePushClient.getCollaborators(appId: appId).ignore();
-        final request = verify(() => httpClient.send(captureAny()))
-            .captured
-            .single as http.BaseRequest;
-        expect(request.method, equals('GET'));
-        expect(request.url, equals(v1('apps/$appId/collaborators')));
-        expect(request.hasStandardHeaders, isTrue);
-      });
-
-      test('throws an exception if the http request fails (unknown)', () async {
-        when(() => httpClient.send(any())).thenAnswer(
-          (_) async => http.StreamedResponse(
-            const Stream.empty(),
-            HttpStatus.failedDependency,
-          ),
-        );
-
-        expect(
-          codePushClient.getCollaborators(appId: appId),
-          throwsA(
-            isA<CodePushException>().having(
-              (e) => e.message,
-              'message',
-              CodePushClient.unknownErrorMessage,
-            ),
-          ),
-        );
-      });
-
-      test('throws an exception if the http request fails', () async {
-        when(() => httpClient.send(any())).thenAnswer(
-          (_) async => http.StreamedResponse(
-            Stream.value(utf8.encode(json.encode(errorResponse.toJson()))),
-            HttpStatus.failedDependency,
-          ),
-        );
-
-        expect(
-          codePushClient.getCollaborators(appId: appId),
-          throwsA(
-            isA<CodePushException>().having(
-              (e) => e.message,
-              'message',
-              errorResponse.message,
-            ),
-          ),
-        );
-      });
-
-      test('completes when request succeeds (empty)', () async {
-        when(() => httpClient.send(any())).thenAnswer(
-          (_) async => http.StreamedResponse(
-            Stream.value(utf8.encode(json.encode([]))),
-            HttpStatus.ok,
-          ),
-        );
-
-        final apps = await codePushClient.getCollaborators(appId: appId);
-        expect(apps, isEmpty);
-      });
-
-      test('completes when request succeeds (populated)', () async {
-        final expected = [
-          Collaborator(
-            userId: 0,
-            email: 'jane.doe@shorebird.dev',
-            role: CollaboratorRole.developer,
-          ),
-          Collaborator(
-            userId: 1,
-            email: 'john.doe@shorebird.dev',
-            role: CollaboratorRole.admin,
-          ),
-        ];
-
-        when(() => httpClient.send(any())).thenAnswer(
-          (_) async => http.StreamedResponse(
-            Stream.value(utf8.encode(json.encode(expected))),
-            HttpStatus.ok,
-          ),
-        );
-
-        final actual = await codePushClient.getCollaborators(appId: appId);
         expect(json.encode(actual), equals(json.encode(expected)));
       });
     });
