@@ -3,6 +3,7 @@ import 'dart:io';
 import 'package:collection/collection.dart';
 import 'package:path/path.dart' as p;
 import 'package:scoped/scoped.dart';
+import 'package:shorebird_cli/src/os/operating_system_interface.dart';
 import 'package:shorebird_cli/src/platform.dart';
 
 // https://developer.android.com/studio/command-line/variables.html#envar
@@ -18,32 +19,63 @@ AndroidSdk get androidSdk => read(androidSdkRef);
 /// A wrapper around Android SDK.
 class AndroidSdk {
   /// The path to the Android SDK installation.
+  ///
+  /// This is based on the `flutter_tools` implementation. We check the
+  /// following places in order for the Android SDK:
+  ///   - ANDROID_HOME on the PATH
+  ///   - ANDROID_SDK_ROOT on the PATH
+  ///   - ~/Android/sdk (on Linux)
+  ///   - ~/Library/Android/sdk (on macOS)
+  ///   - $HOME\AppData\Local\Android\Sdk (on Windows)
+  ///   - build-tools/$version/aapt
+  ///   - platform-tools/adb
   String? get path {
+    final candidatePaths = <String>[];
     if (platform.environment.containsKey(kAndroidHome)) {
-      return platform.environment[kAndroidHome];
+      candidatePaths.add(platform.environment[kAndroidHome]!);
     }
 
     if (platform.environment.containsKey(kAndroidSdkRoot)) {
-      return platform.environment[kAndroidSdkRoot];
+      candidatePaths.add(platform.environment[kAndroidSdkRoot]!);
     }
 
-    if (platform.isWindows) {
-      final home = platform.environment['USERPROFILE'];
-      if (home == null) return null;
-      return p.join(home, 'AppData', 'Local', 'Android', 'sdk');
+    final home = platform.isWindows
+        ? platform.environment['USERPROFILE']
+        : platform.environment['HOME'];
+
+    if (home != null) {
+      if (platform.isWindows) {
+        candidatePaths.add(p.join(home, 'AppData', 'Local', 'Android', 'Sdk'));
+      } else if (platform.isLinux) {
+        candidatePaths.add(p.join(home, 'Android', 'Sdk'));
+      } else if (platform.isMacOS) {
+        candidatePaths.add(p.join(home, 'Library', 'Android', 'sdk'));
+      }
     }
 
-    final home = platform.environment['HOME'];
-    if (home == null) return null;
-
-    if (platform.isLinux) {
-      return p.join(home, 'Android', 'Sdk');
-    }
-    if (platform.isMacOS) {
-      return p.join(home, 'Library', 'Android', 'sdk');
+    final maybeAaptPath = osInterface.which('aapt');
+    if (maybeAaptPath != null) {
+      // Resolve path to aapt if it is a symlink.
+      final resolvedAaptPath = File(maybeAaptPath).resolveSymbolicLinksSync();
+      candidatePaths.add(File(resolvedAaptPath).parent.parent.parent.path);
     }
 
-    return null;
+    final maybeAdbPath = osInterface.which('adb');
+    if (maybeAdbPath != null) {
+      // Resolve path to adb if it is a symlink.
+      final resolvedAdbPath = File(maybeAdbPath).resolveSymbolicLinksSync();
+      candidatePaths.add(File(resolvedAdbPath).parent.parent.path);
+    }
+
+    return candidatePaths.firstWhereOrNull(_isValidSdkPath);
+  }
+
+  bool _isValidSdkPath(String path) {
+    final directory = Directory(path);
+    final licensesDirectory = Directory(p.join(path, 'licenses'));
+    final platformToolsDirectory = Directory(p.join(path, 'platform-tools'));
+    return directory.existsSync() &&
+        (licensesDirectory.existsSync() || platformToolsDirectory.existsSync());
   }
 
   /// The path to the `adb` executable.

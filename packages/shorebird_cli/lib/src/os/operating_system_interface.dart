@@ -5,14 +5,11 @@ import 'package:scoped/scoped.dart';
 import 'package:shorebird_cli/src/platform.dart';
 import 'package:shorebird_cli/src/process.dart';
 
-// TODO(bryanoltman): remove this once os is used.
-// coverage:ignore-start
 /// A reference to a [OperatingSystemInterface] instance.
 final osInterfaceRef = create(OperatingSystemInterface.new);
 
 /// The [OperatingSystemInterface] instance available in the current zone.
 OperatingSystemInterface get osInterface => read(osInterfaceRef);
-// coverage:ignore-end
 
 /// {@template operating_system_interface}
 /// A wrapper around operating system specific functionality.
@@ -46,7 +43,7 @@ class _PosixOperatingSystemInterface implements OperatingSystemInterface {
       return null;
     }
 
-    return result.stdout as String?;
+    return (result.stdout as String?)?.trim();
   }
 }
 

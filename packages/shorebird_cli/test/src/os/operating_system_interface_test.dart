@@ -83,6 +83,25 @@ void main() {
             );
           });
         });
+
+        group('when executable contains leading and trailing newlines', () {
+          const shorebirdPath = '''
+
+
+/path/to/shorebird
+
+''';
+          setUp(() {
+            when(() => processResult.stdout).thenReturn(shorebirdPath);
+          });
+
+          test('returns trimmed path to binary', () {
+            expect(
+              runWithOverrides(() => osInterface.which('shorebird')),
+              equals('/path/to/shorebird'),
+            );
+          });
+        });
       });
     });
 
