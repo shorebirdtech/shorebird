@@ -2,6 +2,17 @@
 
 This section contains past updates we've sent to customers via Discord.
 
+## 0.16.3 (October 17, 2023)
+
+- 🧩 Added `release-version` option to `shorebird patch [android|ios-alpha]` to allow specifying a release version.
+- 🩹 Better support for custom Android SDK/java locations.
+
+📚 Release notes can be found at https://github.com/shorebirdtech/shorebird/releases/tag/v0.16.3
+
+As always, you can upgrade using `shorebird upgrade`
+
+Please let us know if we can help!
+
 ## 0.16.2 (October 13, 2023)
 
 - 🍎 Support shorebird preview for iOS 17 devices
