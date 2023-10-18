@@ -91,7 +91,7 @@ class PatchDiffChecker {
     if (archiveDiffer.containsPotentiallyBreakingNativeDiffs(contentDiffs)) {
       logger
         ..warn(
-          '''The release artifact contains native changes, which cannot be applied with a patch.''',
+          '''Your app contains native changes, which cannot be applied with a patch.''',
         )
         ..info(
           yellow.wrap(
@@ -118,7 +118,7 @@ If you don't know why you're seeing this error, visit our troublshooting page at
     if (archiveDiffer.containsPotentiallyBreakingAssetDiffs(contentDiffs)) {
       logger
         ..warn(
-          '''The release artifact contains asset changes, which will not be included in the patch.''',
+          '''Your app contains asset changes, which will not be included in the patch.''',
         )
         ..info(
           yellow.wrap(
