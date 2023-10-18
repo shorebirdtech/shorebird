@@ -20,13 +20,16 @@ User _$UserFromJson(Map<String, dynamic> json) => $checkedCreate(
           displayName: $checkedConvert('display_name', (v) => v as String?),
           stripeCustomerId:
               $checkedConvert('stripe_customer_id', (v) => v as String?),
+          tosAcceptedAt: $checkedConvert('tos_accepted_at',
+              (v) => v == null ? null : DateTime.parse(v as String)),
         );
         return val;
       },
       fieldKeyMap: const {
         'hasActiveSubscription': 'has_active_subscription',
         'displayName': 'display_name',
-        'stripeCustomerId': 'stripe_customer_id'
+        'stripeCustomerId': 'stripe_customer_id',
+        'tosAcceptedAt': 'tos_accepted_at'
       },
     );
 
@@ -36,4 +39,5 @@ Map<String, dynamic> _$UserToJson(User instance) => <String, dynamic>{
       'display_name': instance.displayName,
       'has_active_subscription': instance.hasActiveSubscription,
       'stripe_customer_id': instance.stripeCustomerId,
+      'tos_accepted_at': instance.tosAcceptedAt?.toIso8601String(),
     };
