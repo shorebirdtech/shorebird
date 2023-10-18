@@ -148,7 +148,7 @@ void main() {
 
           verify(
             () => logger.warn(
-              '''The release artifact contains native changes, which cannot be applied with a patch.''',
+              '''Your app contains native changes, which cannot be applied with a patch.''',
             ),
           ).called(1);
           verify(
@@ -249,7 +249,7 @@ void main() {
 
           verify(
             () => logger.warn(
-              '''The release artifact contains asset changes, which will not be included in the patch.''',
+              '''Your app contains asset changes, which will not be included in the patch.''',
             ),
           ).called(1);
           verify(
