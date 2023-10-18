@@ -14,6 +14,7 @@ class User {
     this.hasActiveSubscription = false,
     this.displayName,
     this.stripeCustomerId,
+    this.tosAcceptedAt,
   });
 
   /// Converts a Map<String, dynamic> to a [User]
@@ -36,4 +37,7 @@ class User {
 
   /// The user's Stripe customer ID, if they have one.
   final String? stripeCustomerId;
+
+  /// The latest date and time the user accepted the terms of service, if ever.
+  final DateTime? tosAcceptedAt;
 }
