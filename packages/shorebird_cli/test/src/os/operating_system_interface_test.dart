@@ -119,7 +119,9 @@ void main() {
 
           test('returns null', () {
             expect(
-                runWithOverrides(() => osInterface.which('shorebird')), isNull);
+              runWithOverrides(() => osInterface.which('shorebird')),
+              isNull,
+            );
           });
         });
 
