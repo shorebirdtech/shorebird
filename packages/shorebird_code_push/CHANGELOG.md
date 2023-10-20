@@ -1,3 +1,8 @@
+# 1.1.3
+
+- Update README to improve example.
+- Remove confusing log message printed when Shorebird is not available.
+
 # 1.1.2
 
 - update README
