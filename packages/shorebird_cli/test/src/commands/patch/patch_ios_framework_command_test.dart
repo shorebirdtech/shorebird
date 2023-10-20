@@ -513,10 +513,7 @@ Please re-run the release command for this version or create a new release.'''),
             () => command.run(),
             values: {
               processRef.overrideWith(
-                () => ShorebirdProcess(
-                  logger: logger,
-                  processWrapper: processWrapper,
-                ),
+                () => ShorebirdProcess(processWrapper: processWrapper),
               ),
             },
           ),

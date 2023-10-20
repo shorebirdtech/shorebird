@@ -3,6 +3,7 @@ import 'dart:io';
 import 'package:mason_logger/mason_logger.dart';
 import 'package:meta/meta.dart';
 import 'package:scoped/scoped.dart';
+import 'package:shorebird_cli/src/logger.dart';
 import 'package:shorebird_cli/src/shorebird_env.dart';
 
 // A reference to a [EngineConfig] instance.
@@ -38,14 +39,11 @@ ShorebirdProcess get process => read(processRef);
 class ShorebirdProcess {
   ShorebirdProcess({
     this.engineConfig = const EngineConfig.empty(),
-    Logger? logger,
     ProcessWrapper? processWrapper, // For mocking ShorebirdProcess.
-  })  : logger = logger ?? Logger(),
-        processWrapper = processWrapper ?? ProcessWrapper();
+  }) : processWrapper = processWrapper ?? ProcessWrapper();
 
   final ProcessWrapper processWrapper;
   final EngineConfig engineConfig;
-  final Logger logger;
 
   Future<ShorebirdProcessResult> run(
     String executable,

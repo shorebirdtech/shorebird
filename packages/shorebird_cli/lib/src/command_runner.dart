@@ -85,10 +85,7 @@ class ShorebirdCliCommandRunner extends CompletionCommandRunner<int> {
         localEngineSrcPath: topLevelResults['local-engine-src-path'] as String?,
         localEngine: topLevelResults['local-engine'] as String?,
       );
-      final process = ShorebirdProcess(
-        engineConfig: engineConfig,
-        logger: logger,
-      );
+      final process = ShorebirdProcess(engineConfig: engineConfig);
 
       return await runScoped<Future<int?>>(
             () => runCommand(topLevelResults),
