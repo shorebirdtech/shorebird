@@ -37,15 +37,50 @@ import 'package:shorebird_code_push/shorebird_code_push.dart';
 // Create an instance of the ShorebirdCodePush class
 final shorebirdCodePush = ShorebirdCodePush();
 
-// Get the current patch number, or null if no patch is installed.
-final currentPatchversion = shorebirdCodePush.currentPatchNumber();
+// Launch your app
+void main() {
+  runApp(const MyApp());
+}
 
-// Check whether a patch is available to install.
-final isUpdateAvailable = await shorebirdCodePush.isNewPatchAvailableForDownload();
+// [Other code here]
 
-// Download a new patch.
-await shorebirdCodePush.downloadUpdateIfAvailable();
+class _MyHomePageState extends State<MyHomePage> {
+  @override
+  void initState() {
+    super.initState();
+
+    // Get the current patch number and print it to the console. It will be
+    // null if no patches are installed.
+    shorebirdCodePush
+        .currentPatchNumber()
+        .then((value) => print('current patch number is $value'));
+  }
+
+  Future<void> _checkForUpdates() async {
+    // Check whether a patch is available to install.
+    final isUpdateAvailable = await shorebirdCodePush.isNewPatchAvailableForDownload();
+
+    if (isUpdateAvailable) {
+      // Download the new patch if it's available.
+      await shorebirdCodePush.downloadUpdateIfAvailable();
+    }
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return Scaffold(
+      // [Other code here]
+      ElevatedButton(
+        child: Text('Check for update'),
+        onPressed: _checkForUpdates,
+      )
+      // [Other code here]
+    );
+  }
+}
 ```
+
+See the example for a complete working app.
 
 ## Join us on Discord!
 
