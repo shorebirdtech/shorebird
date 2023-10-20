@@ -35,14 +35,11 @@ void main() {
       expect(shorebirdCodePush, isNotNull);
       expect(
         printLogs,
-        [
-          startsWith(
-            '''[ShorebirdCodePush]: Error initializing updater: Invalid argument(s): Failed to lookup symbol''',
-          ),
-          equals(
+        equals(
+          [
             '''[ShorebirdCodePush]: Shorebird Engine not available, using no-op implementation.\n''',
-          ),
-        ],
+          ],
+        ),
       );
     });
 
@@ -58,12 +55,11 @@ void main() {
       );
       expect(
         printLogs,
-        [
-          equals('[ShorebirdCodePush]: Error initializing updater: $exception'),
-          equals(
+        equals(
+          [
             '''[ShorebirdCodePush]: Shorebird Engine not available, using no-op implementation.\n''',
-          ),
-        ],
+          ],
+        ),
       );
     });
 

@@ -25,8 +25,6 @@ class ShorebirdCodePush implements ShorebirdCodePushBase {
       updater.currentPatchNumber();
       _delegate = ShorebirdCodePushFfi(updater: updater);
     } catch (error) {
-      // ignore: avoid_print
-      print('[ShorebirdCodePush]: Error initializing updater: $error');
       _delegate = ShorebirdCodePushNoop();
     }
   }
