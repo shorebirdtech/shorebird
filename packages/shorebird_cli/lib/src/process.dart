@@ -54,27 +54,36 @@ class ShorebirdProcess {
     Map<String, String>? environment,
     String? workingDirectory,
     bool useVendedFlutter = true,
-  }) {
+  }) async {
     final resolvedEnvironment = _resolveEnvironment(
       environment,
       executable: executable,
       useVendedFlutter: useVendedFlutter,
     );
-    final resolvedExecutable =
-        useVendedFlutter ? _resolveExecutable(executable) : executable;
-    final resolvedArguments =
-        useVendedFlutter ? _resolveArguments(executable, arguments) : arguments;
+    final resolvedExecutable = _resolveExecutable(
+      executable,
+      useVendedFlutter: useVendedFlutter,
+    );
+    final resolvedArguments = _resolveArguments(
+      executable,
+      arguments,
+      useVendedFlutter: useVendedFlutter,
+    );
     logger.detail(
       '''[Process.run] $resolvedExecutable ${resolvedArguments.join(' ')}${workingDirectory == null ? '' : ' (in $workingDirectory)'}''',
     );
 
-    return processWrapper.run(
+    final result = await processWrapper.run(
       resolvedExecutable,
       resolvedArguments,
       runInShell: runInShell,
       workingDirectory: workingDirectory,
       environment: resolvedEnvironment,
     );
+
+    _logResult(result);
+
+    return result;
   }
 
   ShorebirdProcessResult runSync(
@@ -90,21 +99,30 @@ class ShorebirdProcess {
       executable: executable,
       useVendedFlutter: useVendedFlutter,
     );
-    final resolvedExecutable =
-        useVendedFlutter ? _resolveExecutable(executable) : executable;
-    final resolvedArguments =
-        useVendedFlutter ? _resolveArguments(executable, arguments) : arguments;
+    final resolvedExecutable = _resolveExecutable(
+      executable,
+      useVendedFlutter: useVendedFlutter,
+    );
+    final resolvedArguments = _resolveArguments(
+      executable,
+      arguments,
+      useVendedFlutter: useVendedFlutter,
+    );
     logger.detail(
       '''[Process.runSync] $resolvedExecutable ${resolvedArguments.join(' ')}${workingDirectory == null ? '' : ' (in $workingDirectory)'}''',
     );
 
-    return processWrapper.runSync(
+    final result = processWrapper.runSync(
       resolvedExecutable,
       resolvedArguments,
       runInShell: runInShell,
       workingDirectory: workingDirectory,
       environment: resolvedEnvironment,
     );
+
+    _logResult(result);
+
+    return result;
   }
 
   Future<Process> start(
@@ -121,10 +139,15 @@ class ShorebirdProcess {
         _environmentOverrides(executable: executable),
       );
     }
-    final resolvedExecutable =
-        useVendedFlutter ? _resolveExecutable(executable) : executable;
-    final resolvedArguments =
-        useVendedFlutter ? _resolveArguments(executable, arguments) : arguments;
+    final resolvedExecutable = _resolveExecutable(
+      executable,
+      useVendedFlutter: useVendedFlutter,
+    );
+    final resolvedArguments = _resolveArguments(
+      executable,
+      arguments,
+      useVendedFlutter: useVendedFlutter,
+    );
     logger.detail(
       '[Process.start] $resolvedExecutable ${resolvedArguments.join(' ')}',
     );
@@ -153,23 +176,62 @@ class ShorebirdProcess {
     return resolvedEnvironment;
   }
 
-  String _resolveExecutable(String executable) {
-    if (executable == 'flutter') return shorebirdEnv.flutterBinaryFile.path;
+  String _resolveExecutable(
+    String executable, {
+    required bool useVendedFlutter,
+  }) {
+    if (useVendedFlutter && executable == 'flutter') {
+      return shorebirdEnv.flutterBinaryFile.path;
+    }
+
     return executable;
   }
 
   List<String> _resolveArguments(
     String executable,
-    List<String> arguments,
-  ) {
-    if (executable == 'flutter' && engineConfig.localEngine != null) {
-      return [
-        '--local-engine-src-path=${engineConfig.localEngineSrcPath}',
-        '--local-engine=${engineConfig.localEngine}',
-        ...arguments,
-      ];
+    List<String> arguments, {
+    required bool useVendedFlutter,
+  }) {
+    var resolvedArguments = arguments;
+    if (executable == 'flutter') {
+      // Ideally we'd use this for all commands, but not all commands recognize
+      // `--verbose` and some error if it's provided.
+      if (logger.level == Level.verbose) {
+        resolvedArguments = [...resolvedArguments, '--verbose'];
+      }
+
+      if (useVendedFlutter && engineConfig.localEngine != null) {
+        resolvedArguments = [
+          '--local-engine-src-path=${engineConfig.localEngineSrcPath}',
+          '--local-engine=${engineConfig.localEngine}',
+          ...resolvedArguments,
+        ];
+      }
     }
-    return arguments;
+
+    return resolvedArguments;
+  }
+
+  void _logResult(ShorebirdProcessResult result) {
+    if (result.exitCode != ExitCode.success.code) {
+      logger.detail('Exit code was ${result.exitCode}');
+    }
+
+    final stdout = result.stdout as String?;
+    if (stdout != null && stdout.isNotEmpty) {
+      logger.detail('''
+
+stdout:
+$stdout''');
+    }
+
+    final stderr = result.stderr as String?;
+    if (stderr != null && stderr.isNotEmpty) {
+      logger.detail('''
+
+stderr:
+$stderr''');
+    }
   }
 
   Map<String, String> _environmentOverrides({

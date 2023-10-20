@@ -239,6 +239,7 @@ void main() {
       when(() => argResults['release-version']).thenReturn(version);
       when(() => auth.isAuthenticated).thenReturn(true);
       when(() => auth.client).thenReturn(httpClient);
+      when(() => logger.level).thenReturn(Level.info);
       when(() => logger.progress(any())).thenReturn(progress);
       when(
         () => logger.prompt(any(), defaultValue: any(named: 'defaultValue')),

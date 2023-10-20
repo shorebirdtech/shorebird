@@ -1,5 +1,6 @@
 import 'dart:io';
 
+import 'package:mason_logger/mason_logger.dart';
 import 'package:mocktail/mocktail.dart';
 import 'package:path/path.dart' as p;
 import 'package:scoped/scoped.dart';
@@ -42,6 +43,10 @@ void main() {
       when(
         () => shorebirdEnv.flutterBinaryFile,
       ).thenReturn(File(p.join('bin', 'cache', 'flutter', 'bin', 'flutter')));
+
+      when(() => runProcessResult.stderr).thenReturn('');
+      when(() => runProcessResult.stdout).thenReturn('');
+      when(() => runProcessResult.exitCode).thenReturn(ExitCode.success.code);
     });
 
     test('ShorebirdProcessResult can be instantiated as a const', () {
