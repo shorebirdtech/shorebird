@@ -2,6 +2,17 @@
 
 This section contains past updates we've sent to customers via Discord.
 
+## 0.17.0 (October 20, 2023)
+
+- ⬆️ Updated to Flutter 3.13.8
+- 🔨 Removed `shorebird collaborators` in favor of console.shorebird.dev
+
+📚 Release notes can be found at https://github.com/shorebirdtech/shorebird/releases/tag/v0.17.0
+
+As always, you can upgrade using `shorebird upgrade`
+
+Please let us know if we can help!
+
 ## 0.16.3 (October 17, 2023)
 
 - 🧩 Added `release-version` option to `shorebird patch [android|ios-alpha]` to allow specifying a release version.
