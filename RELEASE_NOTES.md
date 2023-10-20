@@ -4,8 +4,6 @@ This section contains past updates we've sent to customers via Discord.
 
 ## 0.17.0 (October 20, 2023)
 
-**🚨 BREAKING CHANGE - Upgrade Required 🚨**
-
 - ⬆️ Updated to Flutter 3.13.8
 - 🔨 Removed `shorebird collaborators` in favor of console.shorebird.dev
 
