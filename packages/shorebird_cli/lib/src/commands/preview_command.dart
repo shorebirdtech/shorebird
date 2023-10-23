@@ -15,6 +15,7 @@ import 'package:shorebird_cli/src/deployment_track.dart';
 import 'package:shorebird_cli/src/executables/executables.dart';
 import 'package:shorebird_cli/src/http_client/http_client.dart';
 import 'package:shorebird_cli/src/logger.dart';
+import 'package:shorebird_cli/src/platform.dart';
 import 'package:shorebird_cli/src/shorebird_validator.dart';
 import 'package:shorebird_cli/src/third_party/flutter_tools/lib/flutter_tools.dart';
 import 'package:shorebird_code_push_client/shorebird_code_push_client.dart';
@@ -45,10 +46,9 @@ class PreviewCommand extends ShorebirdCommand {
       )
       ..addOption(
         'platform',
-        allowed: [ReleasePlatform.android.name, ReleasePlatform.ios.name],
+        allowed: ReleasePlatform.values.map((e) => e.name),
         allowedHelp: {
-          ReleasePlatform.android.name: 'Android',
-          ReleasePlatform.ios.name: 'iOS',
+          for (final p in ReleasePlatform.values) p.name: p.displayName,
         },
         help: 'The platform of the release.',
       )
@@ -57,6 +57,17 @@ class PreviewCommand extends ShorebirdCommand {
         negatable: false,
         help: 'Preview the release on the staging environment.',
       );
+  }
+
+  /// Returns the platforms that can be previewed on the current OS.
+  static List<ReleasePlatform> get supportedReleasePlatforms {
+    if (platform.isMacOS) {
+      return ReleasePlatform.values;
+    } else {
+      return ReleasePlatform.values
+          .where((p) => p != ReleasePlatform.ios)
+          .toList();
+    }
   }
 
   final http.Client _httpClient;
@@ -99,22 +110,38 @@ class PreviewCommand extends ShorebirdCommand {
     );
 
     if (releaseVersion == null || release == null) {
-      // TODO(bryanoltman): link to FAQ explaining which releases are
-      // previewable.
       logger.info('No previewable releases found');
       return ExitCode.success.code;
     }
 
-    final platform = ReleasePlatform.values.byName(
-      results['platform'] as String? ?? await promptForPlatform(release),
-    );
+    final availablePlatforms = release.activePlatforms
+        .where((p) => supportedReleasePlatforms.contains(p))
+        .toList();
+    if (availablePlatforms.isEmpty) {
+      final activePlatformsString =
+          release.activePlatforms.map((p) => p.displayName).join(', ');
+      logger.err(
+        '''This release can only be previewed on platforms that support $activePlatformsString''',
+      );
+      return ExitCode.software.code;
+    }
+
+    final ReleasePlatform releasePlatform;
+    if (availablePlatforms.length == 1) {
+      releasePlatform = release.activePlatforms.first;
+    } else {
+      releasePlatform = ReleasePlatform.values.byName(
+        results['platform'] as String? ??
+            await promptForPlatform(availablePlatforms),
+      );
+    }
 
     final deviceId = results['device-id'] as String?;
     final isStaging = results['staging'] == true;
     final track =
         isStaging ? DeploymentTrack.staging : DeploymentTrack.production;
 
-    return switch (platform) {
+    return switch (releasePlatform) {
       ReleasePlatform.android => installAndLaunchAndroid(
           appId: appId,
           release: release,
@@ -151,11 +178,11 @@ class PreviewCommand extends ShorebirdCommand {
     return release.version;
   }
 
-  Future<String> promptForPlatform(Release release) async {
-    final platforms = release.platformStatuses.keys.map((p) => p.name).toList();
+  Future<String> promptForPlatform(List<ReleasePlatform> platforms) async {
+    final platformNames = platforms.map((p) => p.displayName).toList();
     final platform = logger.chooseOne(
       'Which platform would you like to preview?',
-      choices: platforms,
+      choices: platformNames,
     );
     return platform;
   }
@@ -443,4 +470,11 @@ class PreviewCommand extends ShorebirdCommand {
       tempDir.deleteSync(recursive: true);
     });
   }
+}
+
+extension Previewable on Release {
+  List<ReleasePlatform> get activePlatforms => platformStatuses.entries
+      .where((e) => e.value == ReleaseStatus.active)
+      .map((e) => e.key)
+      .toList();
 }
