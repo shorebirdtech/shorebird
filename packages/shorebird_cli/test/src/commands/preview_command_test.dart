@@ -169,6 +169,28 @@ void main() {
       ).called(1);
     });
 
+    group('when release is not supported on the current OS', () {
+      setUp(() {
+        when(() => platform.isLinux).thenReturn(false);
+        when(() => platform.isMacOS).thenReturn(false);
+        when(() => platform.isWindows).thenReturn(true);
+
+        when(() => release.platformStatuses).thenReturn({
+          ReleasePlatform.ios: ReleaseStatus.active,
+        });
+      });
+
+      test('prints error message and exits with code 70', () async {
+        final result = await runWithOverrides(command.run);
+        expect(result, ExitCode.software.code);
+        verify(
+          () => logger.err(
+            'This release can only be previewed on platforms that support iOS',
+          ),
+        ).called(1);
+      });
+    });
+
     group('android', () {
       const releasePlatform = ReleasePlatform.android;
       const releaseArtifactUrl = 'https://example.com/release.aab';
@@ -497,79 +519,6 @@ void main() {
         ).captured.single as String Function(AppMetadata);
         expect(captured(app), equals(app.displayName));
         verify(() => codePushClientWrapper.getApps()).called(1);
-      });
-
-      group('when platform is not specified', () {
-        setUp(() {
-          when(
-            () => artifactManager.extractZip(
-              zipFile: any(named: 'zipFile'),
-              outputDirectory: any(named: 'outputDirectory'),
-            ),
-          ).thenAnswer(createShorebirdYaml);
-
-          when(() => argResults['platform']).thenReturn(null);
-          when(
-            () => logger.chooseOne<String>(
-              any(),
-              choices: any(named: 'choices'),
-              display: any(named: 'display'),
-            ),
-          ).thenReturn(releasePlatform.name);
-
-          when(() => release.platformStatuses).thenReturn({
-            ReleasePlatform.android: ReleaseStatus.active,
-            ReleasePlatform.ios: ReleaseStatus.active,
-          });
-        });
-
-        group('on macOS', () {
-          setUp(() {
-            when(() => platform.isMacOS).thenReturn(true);
-            command = runWithOverrides(
-              () => PreviewCommand()..testArgResults = argResults,
-            );
-          });
-
-          test('prompts for iOS and Android', () async {
-            final result = await runWithOverrides(command.run);
-            expect(result, equals(ExitCode.success.code));
-            final platforms = verify(
-              () => logger.chooseOne<String>(
-                any(),
-                choices: captureAny(named: 'choices'),
-                display: any(named: 'display'),
-              ),
-            ).captured.single as List<String>;
-            expect(
-              platforms,
-              equals([
-                ReleasePlatform.android.displayName,
-                ReleasePlatform.ios.displayName,
-              ]),
-            );
-          });
-        });
-
-        group('not on non-macOS', () {
-          setUp(() {
-            when(() => platform.isWindows).thenReturn(true);
-          });
-
-          test('does not prompt for platform', () async {
-            final result = await runWithOverrides(command.run);
-            expect(result, equals(ExitCode.success.code));
-            verifyNever(
-              () => logger.chooseOne(any(), choices: any(named: 'choices')),
-            );
-            verify(
-              () => bundletool.buildApks(
-                bundle: any(named: 'bundle'),
-                output: any(named: 'output'),
-              ),
-            ).called(1);
-          });
-        });
       });
 
       test('exits early when no apps are found', () async {
