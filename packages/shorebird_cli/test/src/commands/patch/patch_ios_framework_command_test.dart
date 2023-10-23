@@ -225,6 +225,7 @@ flutter:
       when(() => auth.isAuthenticated).thenReturn(true);
       when(() => doctor.iosCommandValidators).thenReturn([flutterValidator]);
       when(flutterValidator.validate).thenAnswer((_) async => []);
+      when(() => logger.level).thenReturn(Level.info);
       when(() => logger.progress(any())).thenReturn(progress);
       when(() => logger.confirm(any())).thenReturn(true);
       when(() => platform.operatingSystem).thenReturn(Platform.macOS);
@@ -512,10 +513,7 @@ Please re-run the release command for this version or create a new release.'''),
             () => command.run(),
             values: {
               processRef.overrideWith(
-                () => ShorebirdProcess(
-                  logger: logger,
-                  processWrapper: processWrapper,
-                ),
+                () => ShorebirdProcess(processWrapper: processWrapper),
               ),
             },
           ),

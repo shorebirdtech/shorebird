@@ -239,6 +239,7 @@ void main() {
       when(() => argResults['release-version']).thenReturn(version);
       when(() => auth.isAuthenticated).thenReturn(true);
       when(() => auth.client).thenReturn(httpClient);
+      when(() => logger.level).thenReturn(Level.info);
       when(() => logger.progress(any())).thenReturn(progress);
       when(
         () => logger.prompt(any(), defaultValue: any(named: 'defaultValue')),
@@ -565,10 +566,7 @@ Please re-run the release command for this version or create a new release.'''),
             () => command.run(),
             values: {
               processRef.overrideWith(
-                () => ShorebirdProcess(
-                  logger: logger,
-                  processWrapper: processWrapper,
-                ),
+                () => ShorebirdProcess(processWrapper: processWrapper),
               ),
             },
           ),
