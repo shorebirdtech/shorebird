@@ -212,7 +212,7 @@ class ShorebirdProcess {
 
   void _logResult(ShorebirdProcessResult result) {
     if (result.exitCode != ExitCode.success.code) {
-      logger.detail('Exit code was ${result.exitCode}');
+      logger.detail('Exited with code ${result.exitCode}');
 
       final stdout = result.stdout as String?;
       if (stdout != null && stdout.isNotEmpty) {
