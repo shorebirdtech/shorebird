@@ -1,11 +1,12 @@
 import 'dart:async';
 import 'dart:convert';
-import 'dart:io';
+import 'dart:io' hide Platform;
 
 import 'package:args/args.dart';
 import 'package:mason_logger/mason_logger.dart';
 import 'package:mocktail/mocktail.dart';
 import 'package:path/path.dart' as p;
+import 'package:platform/platform.dart';
 import 'package:scoped/scoped.dart';
 import 'package:shorebird_cli/src/artifact_manager.dart';
 import 'package:shorebird_cli/src/auth/auth.dart';
@@ -15,6 +16,7 @@ import 'package:shorebird_cli/src/commands/commands.dart';
 import 'package:shorebird_cli/src/deployment_track.dart';
 import 'package:shorebird_cli/src/executables/executables.dart';
 import 'package:shorebird_cli/src/logger.dart';
+import 'package:shorebird_cli/src/platform.dart';
 import 'package:shorebird_cli/src/shorebird_validator.dart';
 import 'package:shorebird_code_push_client/shorebird_code_push_client.dart';
 import 'package:test/test.dart';
@@ -37,6 +39,7 @@ void main() {
     late CodePushClientWrapper codePushClientWrapper;
     late Logger logger;
     late Directory previewDirectory;
+    late Platform platform;
     late Progress progress;
     late Release release;
     late ReleaseArtifact releaseArtifact;
@@ -53,6 +56,7 @@ void main() {
             cacheRef.overrideWith(() => cache),
             codePushClientWrapperRef.overrideWith(() => codePushClientWrapper),
             loggerRef.overrideWith(() => logger),
+            platformRef.overrideWith(() => platform),
             shorebirdValidatorRef.overrideWith(() => shorebirdValidator),
           },
         ),
@@ -76,6 +80,7 @@ void main() {
       cache = MockCache();
       codePushClientWrapper = MockCodePushClientWrapper();
       logger = MockLogger();
+      platform = MockPlatform();
       previewDirectory = Directory.systemTemp.createTempSync();
       progress = MockProgress();
       release = MockRelease();
@@ -120,6 +125,10 @@ void main() {
           checkUserIsAuthenticated: any(named: 'checkUserIsAuthenticated'),
         ),
       ).thenAnswer((_) async {});
+
+      when(() => platform.isLinux).thenReturn(false);
+      when(() => platform.isMacOS).thenReturn(false);
+      when(() => platform.isWindows).thenReturn(false);
     });
 
     test('exits when validation fails', () async {
@@ -160,8 +169,30 @@ void main() {
       ).called(1);
     });
 
+    group('when release is not supported on the current OS', () {
+      setUp(() {
+        when(() => platform.isLinux).thenReturn(false);
+        when(() => platform.isMacOS).thenReturn(false);
+        when(() => platform.isWindows).thenReturn(true);
+
+        when(() => release.platformStatuses).thenReturn({
+          ReleasePlatform.ios: ReleaseStatus.active,
+        });
+      });
+
+      test('prints error message and exits with code 70', () async {
+        final result = await runWithOverrides(command.run);
+        expect(result, ExitCode.software.code);
+        verify(
+          () => logger.err(
+            'This release can only be previewed on platforms that support iOS',
+          ),
+        ).called(1);
+      });
+    });
+
     group('android', () {
-      const platform = ReleasePlatform.android;
+      const releasePlatform = ReleasePlatform.android;
       const releaseArtifactUrl = 'https://example.com/release.aab';
       const packageName = 'com.example.app';
 
@@ -171,12 +202,12 @@ void main() {
 
       String aabPath() => p.join(
             previewDirectory.path,
-            '${platform.name}_$releaseVersion.aab',
+            '${releasePlatform.name}_$releaseVersion.aab',
           );
 
       String apksPath() => p.join(
             previewDirectory.path,
-            '${platform.name}_$releaseVersion.apks',
+            '${releasePlatform.name}_$releaseVersion.apks',
           );
 
       R runWithOverrides<R>(R Function() body) {
@@ -193,6 +224,7 @@ void main() {
                 () => codePushClientWrapper,
               ),
               loggerRef.overrideWith(() => logger),
+              platformRef.overrideWith(() => platform),
               shorebirdValidatorRef.overrideWith(() => shorebirdValidator),
             },
           ),
@@ -218,7 +250,7 @@ void main() {
         bundletool = MockBundleTool();
         process = MockProcess();
 
-        when(() => argResults['platform']).thenReturn(platform.name);
+        when(() => argResults['platform']).thenReturn(releasePlatform.name);
         when(
           () => artifactManager.downloadFile(
             any(),
@@ -271,6 +303,10 @@ void main() {
         when(() => process.stdout).thenAnswer((_) => const Stream.empty());
         when(() => process.stderr).thenAnswer((_) => const Stream.empty());
         when(() => releaseArtifact.url).thenReturn(releaseArtifactUrl);
+        when(() => release.platformStatuses).thenReturn({
+          ReleasePlatform.android: ReleaseStatus.active,
+          ReleasePlatform.ios: ReleaseStatus.active,
+        });
       });
 
       test('exits with code 70 when querying for release artifact fails',
@@ -291,7 +327,7 @@ void main() {
             appId: appId,
             releaseId: releaseId,
             arch: 'aab',
-            platform: platform,
+            platform: releasePlatform,
           ),
         ).called(1);
       });
@@ -496,6 +532,8 @@ void main() {
             outputDirectory: any(named: 'outputDirectory'),
           ),
         ).thenAnswer(createShorebirdYaml);
+        // We only prompt when there are multiple platforms to choose from
+        when(() => platform.isMacOS).thenReturn(true);
 
         when(() => argResults['platform']).thenReturn(null);
         when(
@@ -504,7 +542,7 @@ void main() {
             choices: any(named: 'choices'),
             display: any(named: 'display'),
           ),
-        ).thenReturn(platform.name);
+        ).thenReturn(releasePlatform.name);
         final result = await runWithOverrides(command.run);
         expect(result, equals(ExitCode.success.code));
         final platforms = verify(
@@ -517,8 +555,8 @@ void main() {
         expect(
           platforms,
           equals([
-            ReleasePlatform.android.name,
-            ReleasePlatform.ios.name,
+            ReleasePlatform.android.displayName,
+            ReleasePlatform.ios.displayName,
           ]),
         );
       });
@@ -633,13 +671,13 @@ void main() {
 
     group('ios', () {
       const releaseArtifactUrl = 'https://example.com/runner.app';
-      const platform = ReleasePlatform.ios;
+      const releasePlatform = ReleasePlatform.ios;
       late Devicectl devicectl;
       late IOSDeploy iosDeploy;
 
       String runnerPath() => p.join(
             previewDirectory.path,
-            '${platform.name}_$releaseVersion.app',
+            '${releasePlatform.name}_$releaseVersion.app',
           );
 
       R runWithOverrides<R>(R Function() body) {
@@ -657,6 +695,7 @@ void main() {
               devicectlRef.overrideWith(() => devicectl),
               iosDeployRef.overrideWith(() => iosDeploy),
               loggerRef.overrideWith(() => logger),
+              platformRef.overrideWith(() => platform),
               shorebirdValidatorRef.overrideWith(() => shorebirdValidator),
             },
           ),
@@ -666,7 +705,7 @@ void main() {
       setUp(() {
         devicectl = MockDevicectl();
         iosDeploy = MockIOSDeploy();
-        when(() => argResults['platform']).thenReturn(platform.name);
+        when(() => argResults['platform']).thenReturn(releasePlatform.name);
         when(
           () => artifactManager.downloadFile(
             any(),
@@ -694,7 +733,12 @@ void main() {
             deviceId: any(named: 'deviceId'),
           ),
         ).thenAnswer((_) async => ExitCode.success.code);
+        when(() => release.platformStatuses).thenReturn({
+          ReleasePlatform.android: ReleaseStatus.active,
+          ReleasePlatform.ios: ReleaseStatus.active,
+        });
         when(() => releaseArtifact.url).thenReturn(releaseArtifactUrl);
+        when(() => platform.isMacOS).thenReturn(true);
       });
 
       File setupShorebirdYaml() => File(
@@ -727,7 +771,7 @@ void main() {
             appId: appId,
             releaseId: releaseId,
             arch: 'runner',
-            platform: platform,
+            platform: releasePlatform,
           ),
         ).called(1);
       });
