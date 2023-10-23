@@ -303,6 +303,10 @@ void main() {
         when(() => process.stdout).thenAnswer((_) => const Stream.empty());
         when(() => process.stderr).thenAnswer((_) => const Stream.empty());
         when(() => releaseArtifact.url).thenReturn(releaseArtifactUrl);
+        when(() => release.platformStatuses).thenReturn({
+          ReleasePlatform.android: ReleaseStatus.active,
+          ReleasePlatform.ios: ReleaseStatus.active,
+        });
       });
 
       test('exits with code 70 when querying for release artifact fails',
@@ -519,6 +523,42 @@ void main() {
         ).captured.single as String Function(AppMetadata);
         expect(captured(app), equals(app.displayName));
         verify(() => codePushClientWrapper.getApps()).called(1);
+      });
+
+      test('prompts for platforms when platform is not specified', () async {
+        when(
+          () => artifactManager.extractZip(
+            zipFile: any(named: 'zipFile'),
+            outputDirectory: any(named: 'outputDirectory'),
+          ),
+        ).thenAnswer(createShorebirdYaml);
+        // We only prompt when there are multiple platforms to choose from
+        when(() => platform.isMacOS).thenReturn(true);
+
+        when(() => argResults['platform']).thenReturn(null);
+        when(
+          () => logger.chooseOne<String>(
+            any(),
+            choices: any(named: 'choices'),
+            display: any(named: 'display'),
+          ),
+        ).thenReturn(releasePlatform.name);
+        final result = await runWithOverrides(command.run);
+        expect(result, equals(ExitCode.success.code));
+        final platforms = verify(
+          () => logger.chooseOne<String>(
+            any(),
+            choices: captureAny(named: 'choices'),
+            display: any(named: 'display'),
+          ),
+        ).captured.single as List<String>;
+        expect(
+          platforms,
+          equals([
+            ReleasePlatform.android.displayName,
+            ReleasePlatform.ios.displayName,
+          ]),
+        );
       });
 
       test('exits early when no apps are found', () async {
