@@ -2,6 +2,18 @@
 
 This section contains past updates we've sent to customers via Discord.
 
+## 0.17.1 (October 26, 2023)
+
+- ⬆️ Updated to Flutter 3.13.9
+- 📝 Turn up verbosity of `-v` flag
+- 👀 Print error message when trying to preview iOS on non MacOS host
+
+📚 Release notes can be found at https://github.com/shorebirdtech/shorebird/releases/tag/v0.17.1
+
+As always, you can upgrade using `shorebird upgrade`
+
+Please let us know if we can help!
+
 ## 0.17.0 (October 20, 2023)
 
 - ⬆️ Updated to Flutter 3.13.8
