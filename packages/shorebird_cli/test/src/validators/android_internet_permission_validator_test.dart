@@ -1,6 +1,5 @@
 import 'dart:io';
 
-import 'package:collection/collection.dart';
 import 'package:path/path.dart' as p;
 import 'package:shorebird_cli/src/validators/validators.dart';
 import 'package:test/test.dart';
@@ -75,14 +74,9 @@ void main() {
     });
 
     test(
-      'returns successful result if all AndroidManifest.xml files have the '
-      'INTERNET permission',
+      '''returns successful result if the main AndroidManifest.xml file has the INTERNET permission''',
       () async {
         final tempDirectory = createTempDir();
-        writeManifestToPath(
-          manifestWithInternetPermission,
-          p.join(tempDirectory.path, 'android', 'app', 'src', 'debug'),
-        );
         writeManifestToPath(
           manifestWithInternetPermission,
           p.join(tempDirectory.path, 'android', 'app', 'src', 'main'),
@@ -97,10 +91,10 @@ void main() {
       },
     );
 
-    test('returns an error if no AndroidManifest.xml files are found',
+    test('returns an error if AndroidManifest.xml file does not exist',
         () async {
       final tempDirectory = createTempDir();
-      Directory(p.join(tempDirectory.path, 'android', 'app', 'src', 'debug'))
+      Directory(p.join(tempDirectory.path, 'android', 'app', 'src', 'main'))
           .createSync(recursive: true);
 
       final results = await IOOverrides.runZoned(
@@ -112,51 +106,20 @@ void main() {
       expect(results.first.severity, ValidationIssueSeverity.error);
       expect(
         results.first.message,
-        startsWith('No AndroidManifest.xml files found in'),
+        startsWith('No AndroidManifest.xml file found at'),
       );
       expect(results.first.fix, isNull);
     });
 
-    test(
-      'returns separate errors for all AndroidManifest.xml files without the '
-      'INTERNET permission',
-      () async {
+    group('when the INTERNET permission is commented out', () {
+      test('returns error', () async {
         final tempDirectory = createTempDir();
-        final relativeManifestPaths = [
-          'internet_permission',
-          'debug',
-          'main',
-          'profile',
-        ]
-            .map(
-              (dir) => p.join(
-                'android',
-                'app',
-                'src',
-                dir,
-              ),
-            )
-            .toList();
-        final absoluteManifestPaths = relativeManifestPaths
-            .map((path) => p.join(tempDirectory.path, path))
-            .toList();
-        final badManifestPaths = relativeManifestPaths.slice(1);
+        final manifestPath =
+            p.join(tempDirectory.path, 'android', 'app', 'src', 'main');
 
         writeManifestToPath(
-          manifestWithInternetPermission,
-          absoluteManifestPaths[0],
-        );
-        writeManifestToPath(
           manifestWithCommentedOutInternetPermission,
-          absoluteManifestPaths[1],
-        );
-        writeManifestToPath(
-          manifestWithNonInternetPermissions,
-          absoluteManifestPaths[2],
-        );
-        writeManifestToPath(
-          manifestWithNoPermissions,
-          absoluteManifestPaths[3],
+          manifestPath,
         );
 
         final results = await IOOverrides.runZoned(
@@ -164,54 +127,103 @@ void main() {
           getCurrentDirectory: () => tempDirectory,
         );
 
-        expect(results, hasLength(3));
-
+        expect(results, hasLength(1));
         expect(
-          results,
-          containsAll(
-            badManifestPaths.map(
-              (path) => ValidationIssue(
-                // The AndroidManifest.xml used for release builds is located at
-                // android/app/src/main/AndroidManifest.xml. This is the only
-                // manifest file that fail validation with an error if the
-                // INTERNET permission is missing.
-                severity: path.contains('main')
-                    ? ValidationIssueSeverity.error
-                    : ValidationIssueSeverity.warning,
-                message:
-                    '${p.join(path, 'AndroidManifest.xml')} is missing the '
-                    'INTERNET permission.',
-              ),
+          results.first,
+          equals(
+            const ValidationIssue(
+              severity: ValidationIssueSeverity.error,
+              message:
+                  '''android/app/src/main/AndroidManifest.xml is missing the INTERNET permission.''',
             ),
           ),
         );
-      },
-    );
+      });
+    });
 
-    test('fix() adds permission to manifest file', () async {
-      final tempDirectory = createTempDir();
-      writeManifestToPath(
-        manifestWithNonInternetPermissions,
-        p.join(tempDirectory.path, 'android', 'app', 'src', 'debug'),
-      );
+    group('when the INTERNET permission is missing', () {
+      test('returns error', () async {
+        final tempDirectory = createTempDir();
+        final manifestPath =
+            p.join(tempDirectory.path, 'android', 'app', 'src', 'main');
 
-      var results = await IOOverrides.runZoned(
-        AndroidInternetPermissionValidator().validate,
-        getCurrentDirectory: () => tempDirectory,
-      );
-      expect(results, hasLength(1));
-      expect(results.first.fix, isNotNull);
+        writeManifestToPath(manifestWithNoPermissions, manifestPath);
 
-      await IOOverrides.runZoned(
-        () => results.first.fix!(),
-        getCurrentDirectory: () => tempDirectory,
-      );
+        final results = await IOOverrides.runZoned(
+          AndroidInternetPermissionValidator().validate,
+          getCurrentDirectory: () => tempDirectory,
+        );
 
-      results = await IOOverrides.runZoned(
-        AndroidInternetPermissionValidator().validate,
-        getCurrentDirectory: () => tempDirectory,
-      );
-      expect(results, isEmpty);
+        expect(results, hasLength(1));
+        expect(
+          results.first,
+          equals(
+            const ValidationIssue(
+              severity: ValidationIssueSeverity.error,
+              message:
+                  '''android/app/src/main/AndroidManifest.xml is missing the INTERNET permission.''',
+            ),
+          ),
+        );
+      });
+    });
+
+    group('when manifest has non-INTERNET permissions', () {
+      test('returns error', () async {
+        final tempDirectory = createTempDir();
+        final manifestPath =
+            p.join(tempDirectory.path, 'android', 'app', 'src', 'main');
+
+        writeManifestToPath(
+          manifestWithNonInternetPermissions,
+          manifestPath,
+        );
+
+        final results = await IOOverrides.runZoned(
+          AndroidInternetPermissionValidator().validate,
+          getCurrentDirectory: () => tempDirectory,
+        );
+
+        expect(results, hasLength(1));
+        expect(
+          results.first,
+          equals(
+            const ValidationIssue(
+              severity: ValidationIssueSeverity.error,
+              message:
+                  '''android/app/src/main/AndroidManifest.xml is missing the INTERNET permission.''',
+            ),
+          ),
+        );
+      });
+    });
+
+    group('fix', () {
+      test('adds permission to manifest file', () async {
+        final tempDirectory = createTempDir();
+        writeManifestToPath(
+          manifestWithNonInternetPermissions,
+          p.join(tempDirectory.path, 'android', 'app', 'src', 'main'),
+        );
+
+        var results = await IOOverrides.runZoned(
+          AndroidInternetPermissionValidator().validate,
+          getCurrentDirectory: () => tempDirectory,
+        );
+        expect(results, hasLength(1));
+        expect(results.first.fix, isNotNull);
+
+        await IOOverrides.runZoned(
+          () => results.first.fix!(),
+          getCurrentDirectory: () => tempDirectory,
+        );
+
+        results = await IOOverrides.runZoned(
+          AndroidInternetPermissionValidator().validate,
+          getCurrentDirectory: () => tempDirectory,
+        );
+        expect(results, isEmpty);
+      });
     });
   });
 }
