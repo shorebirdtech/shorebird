@@ -16,6 +16,7 @@ import 'package:shorebird_cli/src/commands/commands.dart';
 import 'package:shorebird_cli/src/config/config.dart';
 import 'package:shorebird_cli/src/deployment_track.dart';
 import 'package:shorebird_cli/src/logger.dart';
+import 'package:shorebird_cli/src/os/operating_system_interface.dart';
 import 'package:shorebird_cli/src/patch_diff_checker.dart';
 import 'package:shorebird_cli/src/platform.dart';
 import 'package:shorebird_cli/src/process.dart';
@@ -85,6 +86,7 @@ void main() {
     late CodePushClientWrapper codePushClientWrapper;
     late Directory shorebirdRoot;
     late Directory flutterDirectory;
+    late OperatingSystemInterface operatingSystemInterface;
     late PatchDiffChecker patchDiffChecker;
     late Platform platform;
     late Progress progress;
@@ -109,6 +111,7 @@ void main() {
           codePushClientWrapperRef.overrideWith(() => codePushClientWrapper),
           engineConfigRef.overrideWith(() => const EngineConfig.empty()),
           loggerRef.overrideWith(() => logger),
+          osInterfaceRef.overrideWith(() => operatingSystemInterface),
           patchDiffCheckerRef.overrideWith(() => patchDiffChecker),
           platformRef.overrideWith(() => platform),
           processRef.overrideWith(() => shorebirdProcess),
@@ -170,6 +173,7 @@ void main() {
       flutterDirectory = Directory(
         p.join(shorebirdRoot.path, 'bin', 'cache', 'flutter'),
       );
+      operatingSystemInterface = MockOperatingSystemInterface();
       patchDiffChecker = MockPatchDiffChecker();
       platform = MockPlatform();
       progress = MockProgress();
@@ -183,6 +187,8 @@ void main() {
       shorebirdProcess = MockShorebirdProcess();
       shorebirdValidator = MockShorebirdValidator();
 
+      when(() => operatingSystemInterface.which('flutter'))
+          .thenReturn('/path/to/flutter');
       when(() => platform.environment).thenReturn({});
       when(() => shorebirdEnv.shorebirdRoot).thenReturn(shorebirdRoot);
       when(() => shorebirdEnv.flutterDirectory).thenReturn(flutterDirectory);

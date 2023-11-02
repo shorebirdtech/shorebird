@@ -14,6 +14,7 @@ import 'package:shorebird_cli/src/commands/commands.dart';
 import 'package:shorebird_cli/src/config/config.dart';
 import 'package:shorebird_cli/src/doctor.dart';
 import 'package:shorebird_cli/src/logger.dart';
+import 'package:shorebird_cli/src/os/operating_system_interface.dart';
 import 'package:shorebird_cli/src/platform.dart';
 import 'package:shorebird_cli/src/process.dart';
 import 'package:shorebird_cli/src/shorebird_env.dart';
@@ -110,6 +111,7 @@ flutter:
     late Auth auth;
     late Progress progress;
     late Logger logger;
+    late OperatingSystemInterface operatingSystemInterface;
     late ShorebirdProcessResult flutterBuildProcessResult;
     late ShorebirdProcessResult flutterPubGetProcessResult;
     late ShorebirdFlutterValidator flutterValidator;
@@ -126,6 +128,7 @@ flutter:
           codePushClientWrapperRef.overrideWith(() => codePushClientWrapper),
           doctorRef.overrideWith(() => doctor),
           loggerRef.overrideWith(() => logger),
+          osInterfaceRef.overrideWith(() => operatingSystemInterface),
           platformRef.overrideWith(() => platform),
           processRef.overrideWith(() => shorebirdProcess),
           shorebirdEnvRef.overrideWith(() => shorebirdEnv),
@@ -184,6 +187,7 @@ flutter:
       platform = MockPlatform();
       shorebirdRoot = Directory.systemTemp.createTempSync();
       auth = MockAuth();
+      operatingSystemInterface = MockOperatingSystemInterface();
       progress = MockProgress();
       logger = MockLogger();
       flutterBuildProcessResult = MockProcessResult();
@@ -222,6 +226,8 @@ flutter:
       when(
         () => logger.prompt(any(), defaultValue: any(named: 'defaultValue')),
       ).thenReturn(version);
+      when(() => operatingSystemInterface.which('flutter'))
+          .thenReturn('/path/to/flutter');
       when(() => platform.operatingSystem).thenReturn(Platform.macOS);
       when(
         () => flutterBuildProcessResult.exitCode,

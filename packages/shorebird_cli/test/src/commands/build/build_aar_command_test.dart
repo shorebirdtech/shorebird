@@ -5,6 +5,7 @@ import 'package:path/path.dart' as p;
 import 'package:scoped/scoped.dart';
 import 'package:shorebird_cli/src/commands/build/build.dart';
 import 'package:shorebird_cli/src/logger.dart';
+import 'package:shorebird_cli/src/os/operating_system_interface.dart';
 import 'package:shorebird_cli/src/process.dart';
 import 'package:shorebird_cli/src/shorebird_env.dart';
 import 'package:shorebird_cli/src/shorebird_validator.dart';
@@ -19,6 +20,7 @@ void main() {
 
     late ArgResults argResults;
     late Logger logger;
+    late OperatingSystemInterface operatingSystemInterface;
     late Progress progress;
     late ShorebirdEnv shorebirdEnv;
     late ShorebirdProcess shorebirdProcess;
@@ -32,6 +34,7 @@ void main() {
         body,
         values: {
           loggerRef.overrideWith(() => logger),
+          osInterfaceRef.overrideWith(() => operatingSystemInterface),
           processRef.overrideWith(() => shorebirdProcess),
           shorebirdEnvRef.overrideWith(() => shorebirdEnv),
           shorebirdValidatorRef.overrideWith(() => shorebirdValidator),
@@ -44,6 +47,7 @@ void main() {
       logger = MockLogger();
       flutterPubGetProcessResult = MockProcessResult();
       buildProcessResult = MockProcessResult();
+      operatingSystemInterface = MockOperatingSystemInterface();
       progress = MockProgress();
       shorebirdEnv = MockShorebirdEnv();
       shorebirdProcess = MockShorebirdProcess();
@@ -73,6 +77,8 @@ void main() {
         return buildProcessResult;
       });
 
+      when(() => operatingSystemInterface.which('flutter'))
+          .thenReturn('/path/to/flutter');
       when(
         () => shorebirdValidator.validatePreconditions(
           checkUserIsAuthenticated: any(named: 'checkUserIsAuthenticated'),
