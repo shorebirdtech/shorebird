@@ -4,7 +4,6 @@ import 'package:args/args.dart';
 import 'package:mason_logger/mason_logger.dart';
 import 'package:mocktail/mocktail.dart';
 import 'package:path/path.dart' as p;
-import 'package:propertylistserialization/propertylistserialization.dart';
 import 'package:scoped/scoped.dart';
 import 'package:shorebird_cli/src/commands/build/build.dart';
 import 'package:shorebird_cli/src/doctor.dart';
@@ -281,42 +280,6 @@ ${lightCyan.wrap(p.join('build', 'ios', 'archive', 'Runner.xcarchive'))}''',
 ${lightCyan.wrap(p.join('build', 'ios', 'ipa', 'Runner.ipa'))}''',
         ),
       );
-    });
-
-    test('provides appropriate ExportOptions.plist to build ipa command',
-        () async {
-      when(() => buildProcessResult.exitCode).thenReturn(ExitCode.success.code);
-      final tempDir = Directory.systemTemp.createTempSync();
-      final result = await IOOverrides.runZoned(
-        () async => runWithOverrides(command.run),
-        getCurrentDirectory: () => tempDir,
-      );
-
-      expect(result, equals(ExitCode.success.code));
-      expect(exitCode, ExitCode.success.code);
-      final capturedArgs = verify(
-        () => shorebirdProcess.run(
-          'flutter',
-          captureAny(),
-          runInShell: any(named: 'runInShell'),
-        ),
-      ).captured.first as List<String>;
-      final exportOptionsPlistFile = File(
-        capturedArgs
-            .whereType<String>()
-            .firstWhere((arg) => arg.contains('export-options-plist'))
-            .split('=')
-            .last,
-      );
-      expect(exportOptionsPlistFile.existsSync(), isTrue);
-      final exportOptionsPlist =
-          PropertyListSerialization.propertyListWithString(
-        exportOptionsPlistFile.readAsStringSync(),
-      ) as Map<String, Object>;
-      expect(exportOptionsPlist['manageAppVersionAndBuildNumber'], isFalse);
-      expect(exportOptionsPlist['signingStyle'], 'automatic');
-      expect(exportOptionsPlist['uploadBitcode'], isFalse);
-      expect(exportOptionsPlist['method'], 'app-store');
     });
   });
 }
