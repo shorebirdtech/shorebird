@@ -8,6 +8,7 @@ import 'package:path/path.dart' as p;
 import 'package:platform/platform.dart';
 import 'package:propertylistserialization/propertylistserialization.dart';
 import 'package:scoped/scoped.dart';
+import 'package:shorebird_cli/src/archive_analysis/archive_analysis.dart';
 import 'package:shorebird_cli/src/auth/auth.dart';
 import 'package:shorebird_cli/src/code_push_client_wrapper.dart';
 import 'package:shorebird_cli/src/commands/commands.dart';
@@ -220,6 +221,12 @@ flutter:
       when(() => argResults['arch']).thenReturn(arch);
       when(() => argResults['codesign']).thenReturn(true);
       when(() => argResults['platform']).thenReturn(releasePlatform);
+      when(() => argResults['export-options-plist']).thenReturn(null);
+      // This is the default value in ReleaseIosCommand.
+      when(() => argResults['export-method']).thenReturn(
+        ExportMethod.appStore.argName,
+      );
+      when(() => argResults.wasParsed('export-method')).thenReturn(false);
       when(() => auth.isAuthenticated).thenReturn(true);
       when(() => logger.progress(any())).thenReturn(progress);
       when(() => logger.confirm(any())).thenReturn(true);
@@ -499,6 +506,159 @@ flutter:
             isCodesigned: false,
           ),
         ).called(1);
+      });
+    });
+
+    group('when both export-method and export-options-plist are provided', () {
+      setUp(() {
+        when(() => argResults.wasParsed(exportMethodArgName)).thenReturn(true);
+        when(() => argResults[exportOptionsPlistArgName])
+            .thenReturn('/path/to/export.plist');
+      });
+
+      test('logs error and exits with usage code', () async {
+        final tempDir = setUpTempDir();
+        final result = await IOOverrides.runZoned(
+          () => runWithOverrides(command.run),
+          getCurrentDirectory: () => tempDir,
+        );
+
+        expect(result, equals(ExitCode.usage.code));
+        verify(
+          () => logger.err(
+            'Cannot specify both --export-method and --export-options-plist.',
+          ),
+        ).called(1);
+      });
+    });
+
+    group('when export-method is provided', () {
+      setUp(() {
+        when(() => argResults.wasParsed(exportMethodArgName)).thenReturn(true);
+        when(() => argResults[exportMethodArgName])
+            .thenReturn(ExportMethod.enterprise.argName);
+        when(() => argResults[exportOptionsPlistArgName]).thenReturn(null);
+      });
+
+      test('generates an export options plist with that export method',
+          () async {
+        final tempDir = setUpTempDir();
+        await IOOverrides.runZoned(
+          () => runWithOverrides(command.run),
+          getCurrentDirectory: () => tempDir,
+        );
+
+        final capturedArgs = verify(
+          () => shorebirdProcess.run(
+            'flutter',
+            captureAny(),
+            runInShell: any(named: 'runInShell'),
+          ),
+        ).captured.first as List<String>;
+        final exportOptionsPlistFile = File(
+          capturedArgs
+              .whereType<String>()
+              .firstWhere((arg) => arg.contains(exportOptionsPlistArgName))
+              .split('=')
+              .last,
+        );
+        final exportOptionsPlist = Plist(file: exportOptionsPlistFile);
+        expect(
+          exportOptionsPlist.properties['method'],
+          ExportMethod.enterprise.argName,
+        );
+      });
+    });
+
+    group('when export-options-plist is provided', () {
+      group('when file does not exist', () {
+        setUp(() {
+          when(() => argResults[exportOptionsPlistArgName])
+              .thenReturn('/does/not/exist');
+        });
+
+        test('exits with usage code', () async {
+          final tempDir = setUpTempDir();
+          final result = await IOOverrides.runZoned(
+            () => runWithOverrides(command.run),
+            getCurrentDirectory: () => tempDir,
+          );
+
+          expect(result, equals(ExitCode.usage.code));
+          verify(
+            () => logger.err(
+              'Exception: Export options plist file /does/not/exist does not exist',
+            ),
+          ).called(1);
+        });
+      });
+
+      group('when manageAppVersionAndBuildNumber is not set to false', () {
+        const exportPlistContent = '''
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+<plist version="1.0">
+<dict>
+</dict>
+</plist>
+''';
+
+        test('exits with usage code', () async {
+          final tempDir = setUpTempDir();
+          final exportPlistFile = File(
+            p.join(tempDir.path, 'export.plist'),
+          )..writeAsStringSync(exportPlistContent);
+          when(() => argResults[exportOptionsPlistArgName])
+              .thenReturn(exportPlistFile.path);
+          final result = await IOOverrides.runZoned(
+            () => runWithOverrides(command.run),
+            getCurrentDirectory: () => tempDir,
+          );
+
+          expect(result, equals(ExitCode.usage.code));
+          verify(
+            () => logger.err(
+              '''Exception: Export options plist ${exportPlistFile.path} does not set manageAppVersionAndBuildNumber to false. This is required for shorebird to work.''',
+            ),
+          ).called(1);
+        });
+      });
+    });
+
+    group('when neither export-method nor export-options-plist is provided',
+        () {
+      setUp(() {
+        when(() => argResults.wasParsed(exportMethodArgName)).thenReturn(false);
+        when(() => argResults[exportOptionsPlistArgName]).thenReturn(null);
+      });
+
+      test('generates an export options plist with app-store export method',
+          () async {
+        final tempDir = setUpTempDir();
+        await IOOverrides.runZoned(
+          () => runWithOverrides(command.run),
+          getCurrentDirectory: () => tempDir,
+        );
+
+        final capturedArgs = verify(
+          () => shorebirdProcess.run(
+            'flutter',
+            captureAny(),
+            runInShell: any(named: 'runInShell'),
+          ),
+        ).captured.first as List<String>;
+        final exportOptionsPlistFile = File(
+          capturedArgs
+              .whereType<String>()
+              .firstWhere((arg) => arg.contains(exportOptionsPlistArgName))
+              .split('=')
+              .last,
+        );
+        final exportOptionsPlist = Plist(file: exportOptionsPlistFile);
+        expect(
+          exportOptionsPlist.properties['method'],
+          ExportMethod.appStore.argName,
+        );
       });
     });
 
