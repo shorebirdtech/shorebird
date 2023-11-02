@@ -2,7 +2,6 @@ import 'dart:io';
 
 import 'package:collection/collection.dart';
 import 'package:mason_logger/mason_logger.dart';
-import 'package:path/path.dart' as p;
 import 'package:shorebird_cli/src/command.dart';
 import 'package:shorebird_cli/src/logger.dart';
 import 'package:shorebird_cli/src/process.dart';
@@ -185,12 +184,12 @@ mixin ShorebirdBuildMixin on ShorebirdCommand {
   /// an .xcarchive and _not_ an .ipa.
   Future<void> buildIpa({
     required bool codesign,
+    File? exportOptionsPlist,
     String? flavor,
     String? target,
   }) async {
     return _runShorebirdBuildCommand(() async {
       const executable = 'flutter';
-      final exportPlistFile = _createExportOptionsPlist();
       final arguments = [
         'build',
         'ipa',
@@ -198,7 +197,8 @@ mixin ShorebirdBuildMixin on ShorebirdCommand {
         if (flavor != null) '--flavor=$flavor',
         if (target != null) '--target=$target',
         if (!codesign) '--no-codesign',
-        if (codesign) '--export-options-plist=${exportPlistFile.path}',
+        if (codesign && exportOptionsPlist != null)
+          '--export-options-plist=${exportOptionsPlist.path}',
         ...results.rest,
       ];
 
@@ -295,38 +295,6 @@ Either run `flutter pub get` manually, or follow the steps in ${link(uri: Uri.pa
 ''',
       );
     }
-  }
-
-  /// Creates an ExportOptions.plist file, which is used to tell xcodebuild to
-  /// not manage the app version and build number. If we don't do this, then
-  /// xcodebuild will increment the build number if it detects an App Store
-  /// Connect build with the same version and build number. This is a problem
-  /// for us when patching, as patches need to have the same version and build
-  /// number as the release they are patching.
-  /// See
-  /// https://developer.apple.com/forums/thread/690647?answerId=689925022#689925022
-  File _createExportOptionsPlist() {
-    const plistContents = '''
-<?xml version="1.0" encoding="UTF-8"?>
-<!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
-<plist version="1.0">
-<dict>
-  <key>manageAppVersionAndBuildNumber</key>
-  <false/>
-  <key>signingStyle</key>
-  <string>automatic</string>
-  <key>uploadBitcode</key>
-  <false/>
-  <key>method</key>
-  <string>app-store</string>
-</dict>
-</plist>
-''';
-    final tempDir = Directory.systemTemp.createTempSync();
-    final exportPlistFile = File(p.join(tempDir.path, 'ExportOptions.plist'))
-      ..createSync(recursive: true)
-      ..writeAsStringSync(plistContents);
-    return exportPlistFile;
   }
 
   String _failedToCreateIpaErrorMessage({required String stderr}) {

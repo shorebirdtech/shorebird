@@ -16,6 +16,39 @@ import 'package:shorebird_cli/src/shorebird_env.dart';
 import 'package:shorebird_cli/src/shorebird_validator.dart';
 import 'package:shorebird_code_push_client/shorebird_code_push_client.dart';
 
+const exportMethodArgName = 'export-method';
+const exportOptionsPlistArgName = 'export-options-plist';
+
+/// {@template export_method}
+/// The method used to export the IPA.
+/// {@endtemplate}
+enum ExportMethod {
+  appStore('app-store', 'Upload to the App Store'),
+  adHoc(
+    'ad-hoc',
+    '''
+Test on designated devices that do not need to be registered with the Apple developer account.
+    Requires a distribution certificate.''',
+  ),
+  development(
+    'development',
+    '''Test only on development devices registered with the Apple developer account.''',
+  ),
+  enterprise(
+    'enterprise',
+    'Distribute an app registered with the Apple Developer Enterprise Program.',
+  );
+
+  /// {@macro export_method}
+  const ExportMethod(this.argName, this.description);
+
+  /// The command-line argument name for this export method.
+  final String argName;
+
+  /// A description of this method and how/when it should be used.
+  final String description;
+}
+
 /// {@template release_ios_command}
 /// `shorebird release ios-alpha`
 /// Create new app releases for iOS.
@@ -38,6 +71,21 @@ class ReleaseIosCommand extends ShorebirdCommand
         'codesign',
         help: 'Codesign the application bundle.',
         defaultsTo: true,
+      )
+      ..addOption(
+        exportMethodArgName,
+        defaultsTo: ExportMethod.appStore.argName,
+        allowed: ExportMethod.values.map((e) => e.argName),
+        help: 'Specify how the IPA will be distributed.',
+        allowedHelp: {
+          for (final method in ExportMethod.values)
+            method.argName: method.description,
+        },
+      )
+      ..addOption(
+        exportOptionsPlistArgName,
+        help:
+            '''Export an IPA with these options. See "xcodebuild -h" for available exportOptionsPlist keys.''',
       )
       ..addFlag(
         'force',
@@ -83,6 +131,25 @@ make smaller updates to your app.
         );
     }
 
+    final exportPlistArg = results[exportOptionsPlistArgName] as String?;
+    if (exportPlistArg != null && results.wasParsed(exportMethodArgName)) {
+      logger.err(
+        '''Cannot specify both --$exportMethodArgName and --$exportOptionsPlistArgName.''',
+      );
+      return ExitCode.usage.code;
+    }
+    final exportOptionsPlist = exportPlistArg != null
+        ? File(exportPlistArg)
+        : _createExportOptionsPlist(
+            exportMethod: results[exportMethodArgName] as String,
+          );
+    try {
+      _validateExportOptionsPlist(exportOptionsPlist);
+    } catch (error) {
+      logger.err('$error');
+      return ExitCode.usage.code;
+    }
+
     const releasePlatform = ReleasePlatform.ios;
     final flavor = results['flavor'] as String?;
     final target = results['target'] as String?;
@@ -92,7 +159,12 @@ make smaller updates to your app.
 
     final buildProgress = logger.progress('Building release');
     try {
-      await buildIpa(codesign: codesign, flavor: flavor, target: target);
+      await buildIpa(
+        codesign: codesign,
+        exportOptionsPlist: exportOptionsPlist,
+        flavor: flavor,
+        target: target,
+      );
     } on ProcessException catch (error) {
       buildProgress.fail('Failed to build: ${error.message}');
       return ExitCode.software.code;
@@ -236,5 +308,58 @@ ${styleBold.wrap('Make sure to uncheck "Manage Version and Build Number", or els
     }
 
     return ExitCode.success.code;
+  }
+
+  /// Verifies that [exportOptionsPlistFile] exists and sets
+  /// manageAppVersionAndBuildNumber to false, which prevents Xcode from
+  /// changing the version number out from under us.
+  ///
+  /// Throws an exception if validation fails, exits normally if validation
+  /// succeeds.
+  void _validateExportOptionsPlist(File exportOptionsPlistFile) {
+    if (!exportOptionsPlistFile.existsSync()) {
+      throw Exception(
+        '''Export options plist file ${exportOptionsPlistFile.path} does not exist''',
+      );
+    }
+
+    final plist = Plist(file: exportOptionsPlistFile);
+    if (plist.properties['manageAppVersionAndBuildNumber'] != false) {
+      throw Exception(
+        '''Export options plist ${exportOptionsPlistFile.path} does not set manageAppVersionAndBuildNumber to false. This is required for shorebird to work.''',
+      );
+    }
+  }
+
+  /// Creates an ExportOptions.plist file, which is used to tell xcodebuild to
+  /// not manage the app version and build number. If we don't do this, then
+  /// xcodebuild will increment the build number if it detects an App Store
+  /// Connect build with the same version and build number. This is a problem
+  /// for us when patching, as patches need to have the same version and build
+  /// number as the release they are patching.
+  /// See
+  /// https://developer.apple.com/forums/thread/690647?answerId=689925022#689925022
+  File _createExportOptionsPlist({required String exportMethod}) {
+    final plistContents = '''
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+<plist version="1.0">
+<dict>
+  <key>manageAppVersionAndBuildNumber</key>
+  <false/>
+  <key>signingStyle</key>
+  <string>automatic</string>
+  <key>uploadBitcode</key>
+  <false/>
+  <key>method</key>
+  <string>$exportMethod</string>
+</dict>
+</plist>
+''';
+    final tempDir = Directory.systemTemp.createTempSync();
+    final exportPlistFile = File(p.join(tempDir.path, 'ExportOptions.plist'))
+      ..createSync(recursive: true)
+      ..writeAsStringSync(plistContents);
+    return exportPlistFile;
   }
 }
