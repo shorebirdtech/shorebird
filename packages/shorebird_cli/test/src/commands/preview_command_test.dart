@@ -542,7 +542,7 @@ void main() {
             choices: any(named: 'choices'),
             display: any(named: 'display'),
           ),
-        ).thenReturn(releasePlatform.name);
+        ).thenReturn(releasePlatform.displayName);
         final result = await runWithOverrides(command.run);
         expect(result, equals(ExitCode.success.code));
         final platforms = verify(
