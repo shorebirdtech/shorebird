@@ -2,6 +2,18 @@
 
 This section contains past updates we've sent to customers via Discord.
 
+## 0.17.2 (November 3, 2023)
+
+- 🧑‍⚕️ `shorebird doctor` now ignores non-main AndroidManifest.xml files.
+- 📦 Added `export-method` option to `shorebird release ios-alpha` command.
+- 🔎 Fixed a bug with `shorebird preview` platform selection.
+
+📚 Release notes can be found at https://github.com/shorebirdtech/shorebird/releases/tag/v0.17.2
+
+As always, you can upgrade using `shorebird upgrade`
+
+Please let us know if we can help!
+
 ## 0.17.1 (October 26, 2023)
 
 - ⬆️ Updated to Flutter 3.13.9

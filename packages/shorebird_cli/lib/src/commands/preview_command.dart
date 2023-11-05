@@ -129,11 +129,11 @@ class PreviewCommand extends ShorebirdCommand {
     final ReleasePlatform releasePlatform;
     if (availablePlatforms.length == 1) {
       releasePlatform = release.activePlatforms.first;
+    } else if (results['platform'] != null) {
+      releasePlatform =
+          ReleasePlatform.values.byName(results['platform'] as String);
     } else {
-      releasePlatform = ReleasePlatform.values.byName(
-        results['platform'] as String? ??
-            await promptForPlatform(availablePlatforms),
-      );
+      releasePlatform = await promptForPlatform(availablePlatforms);
     }
 
     final deviceId = results['device-id'] as String?;
@@ -178,13 +178,15 @@ class PreviewCommand extends ShorebirdCommand {
     return release.version;
   }
 
-  Future<String> promptForPlatform(List<ReleasePlatform> platforms) async {
+  Future<ReleasePlatform> promptForPlatform(
+    List<ReleasePlatform> platforms,
+  ) async {
     final platformNames = platforms.map((p) => p.displayName).toList();
     final platform = logger.chooseOne(
       'Which platform would you like to preview?',
       choices: platformNames,
     );
-    return platform;
+    return ReleasePlatform.values.firstWhere((p) => p.displayName == platform);
   }
 
   Future<int> installAndLaunchAndroid({
