@@ -13,6 +13,7 @@ import 'package:shorebird_cli/src/commands/commands.dart';
 import 'package:shorebird_cli/src/config/config.dart';
 import 'package:shorebird_cli/src/executables/executables.dart';
 import 'package:shorebird_cli/src/logger.dart';
+import 'package:shorebird_cli/src/os/operating_system_interface.dart';
 import 'package:shorebird_cli/src/platform.dart';
 import 'package:shorebird_cli/src/process.dart';
 import 'package:shorebird_cli/src/shorebird_build_mixin.dart';
@@ -59,6 +60,7 @@ void main() {
     late CodePushClientWrapper codePushClientWrapper;
     late Directory shorebirdRoot;
     late Java java;
+    late OperatingSystemInterface operatingSystemInterface;
     late Platform platform;
     late Progress progress;
     late Logger logger;
@@ -78,6 +80,7 @@ void main() {
           engineConfigRef.overrideWith(() => const EngineConfig.empty()),
           javaRef.overrideWith(() => java),
           loggerRef.overrideWith(() => logger),
+          osInterfaceRef.overrideWith(() => operatingSystemInterface),
           platformRef.overrideWith(() => platform),
           processRef.overrideWith(() => shorebirdProcess),
           shorebirdEnvRef.overrideWith(() => shorebirdEnv),
@@ -129,6 +132,7 @@ void main() {
       auth = MockAuth();
       codePushClientWrapper = MockCodePushClientWrapper();
       java = MockJava();
+      operatingSystemInterface = MockOperatingSystemInterface();
       platform = MockPlatform();
       progress = MockProgress();
       logger = MockLogger();
@@ -146,6 +150,8 @@ void main() {
       when(() => auth.isAuthenticated).thenReturn(true);
       when(() => logger.confirm(any())).thenReturn(true);
       when(() => logger.progress(any())).thenReturn(progress);
+      when(() => operatingSystemInterface.which('flutter'))
+          .thenReturn('/path/to/flutter');
 
       when(() => shorebirdEnv.getShorebirdYaml()).thenReturn(shorebirdYaml);
       when(() => shorebirdEnv.shorebirdRoot).thenReturn(shorebirdRoot);

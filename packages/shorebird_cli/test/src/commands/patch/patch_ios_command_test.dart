@@ -16,6 +16,7 @@ import 'package:shorebird_cli/src/config/config.dart';
 import 'package:shorebird_cli/src/deployment_track.dart';
 import 'package:shorebird_cli/src/doctor.dart';
 import 'package:shorebird_cli/src/logger.dart';
+import 'package:shorebird_cli/src/os/operating_system_interface.dart';
 import 'package:shorebird_cli/src/patch_diff_checker.dart';
 import 'package:shorebird_cli/src/platform.dart';
 import 'package:shorebird_cli/src/process.dart';
@@ -130,6 +131,7 @@ flutter:
     late IosArchiveDiffer archiveDiffer;
     late Progress progress;
     late Logger logger;
+    late OperatingSystemInterface operatingSystemInterface;
     late PatchDiffChecker patchDiffChecker;
     late Platform platform;
     late ShorebirdProcessResult aotBuildProcessResult;
@@ -151,6 +153,7 @@ flutter:
           codePushClientWrapperRef.overrideWith(() => codePushClientWrapper),
           doctorRef.overrideWith(() => doctor),
           loggerRef.overrideWith(() => logger),
+          osInterfaceRef.overrideWith(() => operatingSystemInterface),
           patchDiffCheckerRef.overrideWith(() => patchDiffChecker),
           platformRef.overrideWith(() => platform),
           processRef.overrideWith(() => shorebirdProcess),
@@ -243,6 +246,7 @@ flutter:
       flutterBuildProcessResult = MockProcessResult();
       flutterPubGetProcessResult = MockProcessResult();
       httpClient = MockHttpClient();
+      operatingSystemInterface = MockOperatingSystemInterface();
       patchDiffChecker = MockPatchDiffChecker();
       shorebirdEnv = MockShorebirdEnv();
       shorebirdFlutter = MockShorebirdFlutter();
@@ -288,6 +292,8 @@ flutter:
       when(flutterValidator.validate).thenAnswer((_) async => []);
       when(() => logger.confirm(any())).thenReturn(true);
       when(() => logger.progress(any())).thenReturn(progress);
+      when(() => operatingSystemInterface.which('flutter'))
+          .thenReturn('/path/to/flutter');
       when(() => platform.operatingSystem).thenReturn(Platform.macOS);
       when(() => platform.environment).thenReturn({});
       when(() => platform.script).thenReturn(shorebirdRoot.uri);

@@ -8,6 +8,7 @@ import 'package:scoped/scoped.dart';
 import 'package:shorebird_cli/src/commands/build/build.dart';
 import 'package:shorebird_cli/src/doctor.dart';
 import 'package:shorebird_cli/src/logger.dart';
+import 'package:shorebird_cli/src/os/operating_system_interface.dart';
 import 'package:shorebird_cli/src/process.dart';
 import 'package:shorebird_cli/src/shorebird_validator.dart';
 import 'package:shorebird_cli/src/validators/validators.dart';
@@ -21,6 +22,7 @@ void main() {
     late ArgResults argResults;
     late Doctor doctor;
     late Logger logger;
+    late OperatingSystemInterface operatingSystemInterface;
     late ShorebirdProcessResult flutterPubGetProcessResult;
     late ShorebirdProcessResult buildProcessResult;
     late BuildApkCommand command;
@@ -34,6 +36,7 @@ void main() {
         values: {
           doctorRef.overrideWith(() => doctor),
           loggerRef.overrideWith(() => logger),
+          osInterfaceRef.overrideWith(() => operatingSystemInterface),
           processRef.overrideWith(() => shorebirdProcess),
           shorebirdValidatorRef.overrideWith(() => shorebirdValidator),
         },
@@ -48,6 +51,7 @@ void main() {
       argResults = MockArgResults();
       doctor = MockDoctor();
       logger = MockLogger();
+      operatingSystemInterface = MockOperatingSystemInterface();
       shorebirdProcess = MockShorebirdProcess();
       buildProcessResult = MockProcessResult();
       flutterPubGetProcessResult = MockProcessResult();
@@ -74,6 +78,8 @@ void main() {
       when(() => argResults.rest).thenReturn([]);
       when(() => logger.progress(any())).thenReturn(MockProgress());
       when(() => logger.info(any())).thenReturn(null);
+      when(() => operatingSystemInterface.which('flutter'))
+          .thenReturn('/path/to/flutter');
       when(
         () => shorebirdValidator.validatePreconditions(
           checkUserIsAuthenticated: any(named: 'checkUserIsAuthenticated'),

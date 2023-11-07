@@ -4,6 +4,7 @@ import 'package:collection/collection.dart';
 import 'package:mason_logger/mason_logger.dart';
 import 'package:shorebird_cli/src/command.dart';
 import 'package:shorebird_cli/src/logger.dart';
+import 'package:shorebird_cli/src/os/operating_system_interface.dart';
 import 'package:shorebird_cli/src/process.dart';
 import 'package:shorebird_cli/src/shorebird_env.dart';
 
@@ -277,6 +278,12 @@ mixin ShorebirdBuildMixin on ShorebirdCommand {
   /// https://github.com/shorebirdtech/shorebird/issues/1101 for more info.
   Future<void> _systemFlutterPubGet() async {
     const executable = 'flutter';
+    if (osInterface.which(executable) == null) {
+      // If the user doesn't have Flutter on their PATH, then we can't run
+      // `flutter pub get` with the system Flutter.
+      return;
+    }
+
     final arguments = ['--no-version-check', 'pub', 'get', '--offline'];
 
     final result = await process.run(

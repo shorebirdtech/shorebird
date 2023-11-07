@@ -18,6 +18,7 @@ import 'package:shorebird_cli/src/deployment_track.dart';
 import 'package:shorebird_cli/src/doctor.dart';
 import 'package:shorebird_cli/src/executables/executables.dart';
 import 'package:shorebird_cli/src/logger.dart';
+import 'package:shorebird_cli/src/os/operating_system_interface.dart';
 import 'package:shorebird_cli/src/patch_diff_checker.dart';
 import 'package:shorebird_cli/src/platform.dart';
 import 'package:shorebird_cli/src/process.dart';
@@ -98,6 +99,7 @@ flutter:
     late Directory shorebirdRoot;
     late Doctor doctor;
     late Java java;
+    late OperatingSystemInterface operatingSystemInterface;
     late PatchDiffChecker patchDiffChecker;
     late Platform platform;
     late Progress progress;
@@ -126,6 +128,7 @@ flutter:
           engineConfigRef.overrideWith(() => const EngineConfig.empty()),
           javaRef.overrideWith(() => java),
           loggerRef.overrideWith(() => logger),
+          osInterfaceRef.overrideWith(() => operatingSystemInterface),
           patchDiffCheckerRef.overrideWith(() => patchDiffChecker),
           shorebirdEnvRef.overrideWith(() => shorebirdEnv),
           platformRef.overrideWith(() => platform),
@@ -199,6 +202,7 @@ flutter:
       httpClient = MockHttpClient();
       flutterValidator = MockShorebirdFlutterValidator();
       cache = MockCache();
+      operatingSystemInterface = MockOperatingSystemInterface();
       shorebirdEnv = MockShorebirdEnv();
       shorebirdProcess = MockShorebirdProcess();
       shorebirdFlutter = MockShorebirdFlutter();
@@ -347,6 +351,8 @@ flutter:
           validators: any(named: 'validators'),
         ),
       ).thenAnswer((_) async {});
+      when(() => operatingSystemInterface.which('flutter'))
+          .thenReturn('/path/to/flutter');
       when(
         () => patchDiffChecker.confirmUnpatchableDiffsIfNecessary(
           localArtifact: any(named: 'localArtifact'),

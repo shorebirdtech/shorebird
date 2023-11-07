@@ -15,6 +15,7 @@ import 'package:shorebird_cli/src/config/config.dart';
 import 'package:shorebird_cli/src/doctor.dart';
 import 'package:shorebird_cli/src/executables/executables.dart';
 import 'package:shorebird_cli/src/logger.dart';
+import 'package:shorebird_cli/src/os/operating_system_interface.dart';
 import 'package:shorebird_cli/src/platform.dart';
 import 'package:shorebird_cli/src/process.dart';
 import 'package:shorebird_cli/src/shorebird_env.dart';
@@ -66,8 +67,9 @@ void main() {
     late Auth auth;
     late Cache cache;
     late Java java;
-    late Progress progress;
     late Logger logger;
+    late OperatingSystemInterface operatingSystemInterface;
+    late Progress progress;
     late ShorebirdProcessResult flutterBuildProcessResult;
     late ShorebirdProcessResult flutterPubGetProcessResult;
     late ShorebirdFlutterValidator flutterValidator;
@@ -88,6 +90,7 @@ void main() {
           engineConfigRef.overrideWith(() => const EngineConfig.empty()),
           javaRef.overrideWith(() => java),
           loggerRef.overrideWith(() => logger),
+          osInterfaceRef.overrideWith(() => operatingSystemInterface),
           platformRef.overrideWith(() => platform),
           processRef.overrideWith(() => shorebirdProcess),
           shorebirdEnvRef.overrideWith(() => shorebirdEnv),
@@ -109,6 +112,7 @@ void main() {
       codePushClientWrapper = MockCodePushClientWrapper();
       doctor = MockDoctor();
       httpClient = MockHttpClient();
+      operatingSystemInterface = MockOperatingSystemInterface();
       platform = MockPlatform();
       shorebirdRoot = Directory.systemTemp.createTempSync();
       auth = MockAuth();
@@ -215,6 +219,8 @@ void main() {
       when(
         () => bundletool.getVersionCode(any()),
       ).thenAnswer((_) async => versionCode);
+      when(() => operatingSystemInterface.which('flutter'))
+          .thenReturn('/path/to/flutter');
       when(
         () => shorebirdValidator.validatePreconditions(
           checkUserIsAuthenticated: any(named: 'checkUserIsAuthenticated'),
@@ -429,50 +435,117 @@ ${link(uri: Uri.parse('https://support.google.com/googleplay/android-developer/a
       expect(exitCode, ExitCode.success.code);
     });
 
-    test('runs flutter pub get with system flutter after successful build',
-        () async {
-      await runWithOverrides(command.run);
+    group('after a build', () {
+      group('when the build is successful', () {
+        setUp(() {
+          when(() => flutterBuildProcessResult.exitCode)
+              .thenReturn(ExitCode.success.code);
+        });
 
-      verify(
-        () => shorebirdProcess.run(
-          'flutter',
-          ['--no-version-check', 'pub', 'get', '--offline'],
-          runInShell: any(named: 'runInShell'),
-          useVendedFlutter: false,
-        ),
-      ).called(1);
-    });
+        group('when flutter is installed', () {
+          setUp(() {
+            when(() => operatingSystemInterface.which('flutter'))
+                .thenReturn('/path/to/flutter');
+          });
 
-    test('runs flutter pub get with system flutter if build fails', () async {
-      when(() => flutterBuildProcessResult.exitCode).thenReturn(1);
-      when(() => flutterBuildProcessResult.stderr).thenReturn('oops');
+          test('runs flutter pub get with system flutter', () async {
+            await runWithOverrides(command.run);
 
-      await runWithOverrides(command.run);
+            verify(
+              () => shorebirdProcess.run(
+                'flutter',
+                ['--no-version-check', 'pub', 'get', '--offline'],
+                runInShell: any(named: 'runInShell'),
+                useVendedFlutter: false,
+              ),
+            ).called(1);
+          });
+        });
 
-      verify(
-        () => shorebirdProcess.run(
-          'flutter',
-          ['--no-version-check', 'pub', 'get', '--offline'],
-          runInShell: any(named: 'runInShell'),
-          useVendedFlutter: false,
-        ),
-      ).called(1);
-    });
+        group('when flutter is not installed', () {
+          setUp(() {
+            when(() => operatingSystemInterface.which('flutter'))
+                .thenReturn(null);
+          });
 
-    test('prints error message if system flutter pub get fails', () async {
-      when(() => flutterPubGetProcessResult.exitCode).thenReturn(1);
+          test('does not attempt to run flutter pub get', () async {
+            await runWithOverrides(command.run);
 
-      await runWithOverrides(command.run);
+            verifyNever(
+              () => shorebirdProcess.run(
+                'flutter',
+                ['--no-version-check', 'pub', 'get', '--offline'],
+                runInShell: any(named: 'runInShell'),
+                useVendedFlutter: false,
+              ),
+            );
+          });
+        });
+      });
 
-      verify(
-        () => logger.warn(
-          '''
+      group('when the build fails', () {
+        setUp(() {
+          when(() => flutterBuildProcessResult.exitCode)
+              .thenReturn(ExitCode.software.code);
+        });
+
+        group('when flutter is installed', () {
+          setUp(() {
+            when(() => operatingSystemInterface.which('flutter'))
+                .thenReturn('/path/to/flutter');
+          });
+
+          test('runs flutter pub get with system flutter', () async {
+            await runWithOverrides(command.run);
+
+            verify(
+              () => shorebirdProcess.run(
+                'flutter',
+                ['--no-version-check', 'pub', 'get', '--offline'],
+                runInShell: any(named: 'runInShell'),
+                useVendedFlutter: false,
+              ),
+            ).called(1);
+          });
+
+          test('prints error message if system flutter pub get fails',
+              () async {
+            when(() => flutterPubGetProcessResult.exitCode).thenReturn(1);
+
+            await runWithOverrides(command.run);
+
+            verify(
+              () => logger.warn(
+                '''
 Build was successful, but `flutter pub get` failed to run after the build completed. You may see unexpected behavior in VS Code.
 
 Either run `flutter pub get` manually, or follow the steps in ${link(uri: Uri.parse('https://docs.shorebird.dev/troubleshooting#i-installed-shorebird-and-now-i-cant-run-my-app-in-vs-code'))}.
 ''',
-        ),
-      ).called(1);
+              ),
+            ).called(1);
+          });
+        });
+
+        group('when flutter is not installed', () {
+          setUp(() {
+            when(() => operatingSystemInterface.which('flutter'))
+                .thenReturn(null);
+          });
+
+          test('does not attempt to run flutter pub get', () async {
+            await runWithOverrides(command.run);
+
+            verifyNever(
+              () => shorebirdProcess.run(
+                'flutter',
+                ['--no-version-check', 'pub', 'get', '--offline'],
+                runInShell: any(named: 'runInShell'),
+                useVendedFlutter: false,
+              ),
+            );
+          });
+        });
+      });
     });
 
     test(
