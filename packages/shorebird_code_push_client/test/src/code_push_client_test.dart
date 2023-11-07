@@ -246,34 +246,30 @@ void main() {
       test('throws an exception if the upload fails', () async {
         const artifactId = 42;
         const uploadUrl = 'https://example.com';
-        when(() => httpClient.send(any())).thenAnswer((invocation) async {
-          final request =
-              invocation.positionalArguments.first as http.BaseRequest;
-          if (request.method == 'POST') {
-            return http.StreamedResponse(
-              Stream.value(
-                utf8.encode(
-                  json.encode(
-                    CreatePatchArtifactResponse(
-                      id: artifactId,
-                      patchId: patchId,
-                      arch: arch,
-                      platform: platform,
-                      hash: hash,
-                      size: size,
-                      url: uploadUrl,
-                    ),
+        final responses = [
+          http.StreamedResponse(
+            Stream.value(
+              utf8.encode(
+                json.encode(
+                  CreatePatchArtifactResponse(
+                    id: artifactId,
+                    patchId: patchId,
+                    arch: arch,
+                    platform: platform,
+                    hash: hash,
+                    size: size,
+                    url: uploadUrl,
                   ),
                 ),
               ),
-              HttpStatus.ok,
-            );
-          }
-          return http.StreamedResponse(
-            const Stream.empty(),
-            HttpStatus.badRequest,
-          );
-        });
+            ),
+            HttpStatus.ok,
+          ),
+          http.StreamedResponse(Stream.empty(), HttpStatus.badRequest),
+        ];
+        when(() => httpClient.send(any())).thenAnswer(
+          (_) async => responses.removeAt(0),
+        );
 
         final tempDir = Directory.systemTemp.createTempSync();
         final fixture = File(path.join(tempDir.path, 'release.txt'))
@@ -301,7 +297,7 @@ void main() {
             .last as http.BaseRequest;
         expect(request.url, equals(Uri.parse(uploadUrl)));
         expect(
-          request.contentLength,
+          (request as http.MultipartRequest).files.single.length,
           equals(fixture.readAsBytesSync().lengthInBytes),
         );
       });
@@ -309,34 +305,30 @@ void main() {
       test('completes when request succeeds', () async {
         const artifactId = 42;
         const uploadUrl = 'https://example.com';
-        when(() => httpClient.send(any())).thenAnswer((invocation) async {
-          final request =
-              invocation.positionalArguments.first as http.BaseRequest;
-          if (request.method == 'POST') {
-            return http.StreamedResponse(
-              Stream.value(
-                utf8.encode(
-                  json.encode(
-                    CreatePatchArtifactResponse(
-                      id: artifactId,
-                      patchId: patchId,
-                      arch: arch,
-                      platform: platform,
-                      hash: hash,
-                      size: size,
-                      url: uploadUrl,
-                    ),
+        final responses = [
+          http.StreamedResponse(
+            Stream.value(
+              utf8.encode(
+                json.encode(
+                  CreatePatchArtifactResponse(
+                    id: artifactId,
+                    patchId: patchId,
+                    arch: arch,
+                    platform: platform,
+                    hash: hash,
+                    size: size,
+                    url: uploadUrl,
                   ),
                 ),
               ),
-              HttpStatus.ok,
-            );
-          }
-          return http.StreamedResponse(
-            const Stream.empty(),
+            ),
             HttpStatus.ok,
-          );
-        });
+          ),
+          http.StreamedResponse(Stream.empty(), HttpStatus.noContent),
+        ];
+        when(() => httpClient.send(any())).thenAnswer(
+          (_) async => responses.removeAt(0),
+        );
 
         final tempDir = Directory.systemTemp.createTempSync();
         final fixture = File(path.join(tempDir.path, 'release.txt'))
@@ -527,34 +519,30 @@ void main() {
       test('throws an exception if the upload fails', () async {
         const artifactId = 42;
         const uploadUrl = 'https://example.com';
-        when(() => httpClient.send(any())).thenAnswer((invocation) async {
-          final request =
-              invocation.positionalArguments.first as http.BaseRequest;
-          if (request.method == 'POST') {
-            return http.StreamedResponse(
-              Stream.value(
-                utf8.encode(
-                  json.encode(
-                    CreateReleaseArtifactResponse(
-                      id: artifactId,
-                      releaseId: releaseId,
-                      arch: arch,
-                      platform: platform,
-                      hash: hash,
-                      size: size,
-                      url: uploadUrl,
-                    ),
+        final responses = [
+          http.StreamedResponse(
+            Stream.value(
+              utf8.encode(
+                json.encode(
+                  CreateReleaseArtifactResponse(
+                    id: artifactId,
+                    releaseId: releaseId,
+                    arch: arch,
+                    platform: platform,
+                    hash: hash,
+                    size: size,
+                    url: uploadUrl,
                   ),
                 ),
               ),
-              HttpStatus.ok,
-            );
-          }
-          return http.StreamedResponse(
-            const Stream.empty(),
-            HttpStatus.badRequest,
-          );
-        });
+            ),
+            HttpStatus.ok,
+          ),
+          http.StreamedResponse(Stream.empty(), HttpStatus.badRequest),
+        ];
+        when(() => httpClient.send(any())).thenAnswer(
+          (_) async => responses.removeAt(0),
+        );
 
         final tempDir = Directory.systemTemp.createTempSync();
         final fixture = File(path.join(tempDir.path, 'release.txt'))
@@ -583,7 +571,7 @@ void main() {
         ).captured.last as http.BaseRequest;
         expect(request.url, equals(Uri.parse(uploadUrl)));
         expect(
-          request.contentLength,
+          (request as http.MultipartRequest).files.single.length,
           equals(fixture.readAsBytesSync().lengthInBytes),
         );
       });
@@ -591,34 +579,30 @@ void main() {
       test('completes when request succeeds', () async {
         const artifactId = 42;
         const uploadUrl = 'https://example.com';
-        when(() => httpClient.send(any())).thenAnswer((invocation) async {
-          final request =
-              invocation.positionalArguments.first as http.BaseRequest;
-          if (request.method == 'POST') {
-            return http.StreamedResponse(
-              Stream.value(
-                utf8.encode(
-                  json.encode(
-                    CreateReleaseArtifactResponse(
-                      id: artifactId,
-                      releaseId: releaseId,
-                      arch: arch,
-                      platform: platform,
-                      hash: hash,
-                      size: size,
-                      url: uploadUrl,
-                    ),
+        final responses = [
+          http.StreamedResponse(
+            Stream.value(
+              utf8.encode(
+                json.encode(
+                  CreateReleaseArtifactResponse(
+                    id: artifactId,
+                    releaseId: releaseId,
+                    arch: arch,
+                    platform: platform,
+                    hash: hash,
+                    size: size,
+                    url: uploadUrl,
                   ),
                 ),
               ),
-              HttpStatus.ok,
-            );
-          }
-          return http.StreamedResponse(
-            const Stream.empty(),
+            ),
             HttpStatus.ok,
-          );
-        });
+          ),
+          http.StreamedResponse(Stream.empty(), HttpStatus.noContent),
+        ];
+        when(() => httpClient.send(any())).thenAnswer(
+          (_) async => responses.removeAt(0),
+        );
 
         final tempDir = Directory.systemTemp.createTempSync();
         final fixture = File(path.join(tempDir.path, 'release.txt'))
