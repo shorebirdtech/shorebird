@@ -147,14 +147,11 @@ class CodePushClient {
       json.decode(body) as Map<String, dynamic>,
     );
 
-    final uploadRequest = http.MultipartRequest(
-      'POST',
-      Uri.parse(decoded.url),
-    );
-
-    uploadRequest.files.add(file);
+    final uploadRequest = http.MultipartRequest('POST', Uri.parse(decoded.url))
+      ..files.add(file);
 
     final uploadResponse = await _httpClient.send(uploadRequest);
+
     if (uploadResponse.statusCode != HttpStatus.noContent) {
       throw CodePushException(
         message:
@@ -199,12 +196,8 @@ class CodePushClient {
       json.decode(body) as Map<String, dynamic>,
     );
 
-    final uploadRequest = http.MultipartRequest(
-      'POST',
-      Uri.parse(decoded.url),
-    );
-
-    uploadRequest.files.add(file);
+    final uploadRequest = http.MultipartRequest('POST', Uri.parse(decoded.url))
+      ..files.add(file);
 
     final uploadResponse = await _httpClient.send(uploadRequest);
 
