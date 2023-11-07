@@ -147,11 +147,15 @@ class CodePushClient {
       json.decode(body) as Map<String, dynamic>,
     );
 
-    final uploadResponse = await _httpClient.put(
+    final uploadRequest = http.MultipartRequest(
+      'POST',
       Uri.parse(decoded.url),
-      body: File(artifactPath).readAsBytesSync(),
     );
-    if (uploadResponse.statusCode != HttpStatus.ok) {
+
+    uploadRequest.files.add(file);
+
+    final uploadResponse = await _httpClient.send(uploadRequest);
+    if (uploadResponse.statusCode != HttpStatus.noContent) {
       throw CodePushException(
         message:
             '''Failed to upload artifact (${uploadResponse.reasonPhrase} '${uploadResponse.statusCode})''',
@@ -195,11 +199,16 @@ class CodePushClient {
       json.decode(body) as Map<String, dynamic>,
     );
 
-    final uploadResponse = await _httpClient.put(
+    final uploadRequest = http.MultipartRequest(
+      'POST',
       Uri.parse(decoded.url),
-      body: File(artifactPath).readAsBytesSync(),
     );
-    if (uploadResponse.statusCode != HttpStatus.ok) {
+
+    uploadRequest.files.add(file);
+
+    final uploadResponse = await _httpClient.send(uploadRequest);
+
+    if (uploadResponse.statusCode != HttpStatus.noContent) {
       throw CodePushException(
         message:
             '''Failed to upload artifact (${uploadResponse.reasonPhrase} '${uploadResponse.statusCode})''',
