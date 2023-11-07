@@ -1697,7 +1697,8 @@ Please bump your version number and try again.''',
 
       Directory setUpTempDir({String? flavor}) {
         final tempDir = Directory.systemTemp.createTempSync();
-        File(p.join(tempDir.path, frameworkPath)).createSync(recursive: true);
+        Directory(p.join(tempDir.path, frameworkPath))
+            .createSync(recursive: true);
         return tempDir;
       }
 
