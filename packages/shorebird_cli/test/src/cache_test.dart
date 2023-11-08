@@ -8,6 +8,7 @@ import 'package:path/path.dart' as p;
 import 'package:platform/platform.dart';
 import 'package:scoped/scoped.dart';
 import 'package:shorebird_cli/src/cache.dart';
+import 'package:shorebird_cli/src/logger.dart';
 import 'package:shorebird_cli/src/platform.dart';
 import 'package:shorebird_cli/src/process.dart';
 import 'package:shorebird_cli/src/shorebird_env.dart';
@@ -32,6 +33,7 @@ void main() {
 
     late Directory shorebirdRoot;
     late http.Client httpClient;
+    late Logger logger;
     late Platform platform;
     late Process chmodProcess;
     late ShorebirdEnv shorebirdEnv;
@@ -43,6 +45,7 @@ void main() {
         () => body(),
         values: {
           cacheRef.overrideWith(() => cache),
+          loggerRef.overrideWith(() => logger),
           platformRef.overrideWith(() => platform),
           processRef.overrideWith(() => shorebirdProcess),
           shorebirdEnvRef.overrideWith(() => shorebirdEnv),
@@ -56,6 +59,7 @@ void main() {
 
     setUp(() {
       httpClient = MockHttpClient();
+      logger = MockLogger();
       platform = MockPlatform();
       chmodProcess = MockProcess();
       shorebirdEnv = MockShorebirdEnv();
@@ -204,6 +208,35 @@ void main() {
               ),
             ),
           );
+        });
+
+        test('skips optional artifacts if a 404 is returned', () async {
+          when(() => httpClient.send(any())).thenAnswer(
+            (invocation) async {
+              final request =
+                  invocation.positionalArguments.first as http.BaseRequest;
+              if (request.url.path.endsWith('linker-darwin-x64')) {
+                return http.StreamedResponse(
+                  const Stream.empty(),
+                  HttpStatus.notFound,
+                  reasonPhrase: 'Not Found',
+                );
+              }
+              return http.StreamedResponse(
+                Stream.value(ZipEncoder().encode(Archive())!),
+                HttpStatus.ok,
+              );
+            },
+          );
+          await expectLater(
+            runWithOverrides(cache.updateAll),
+            completes,
+          );
+          verify(
+            () => logger.detail(
+              '''[cache] optional artifact: "shorebird_linker" was not found, skipping...''',
+            ),
+          ).called(1);
         });
 
         test('downloads correct artifacts', () async {
