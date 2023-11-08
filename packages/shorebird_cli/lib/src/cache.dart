@@ -196,8 +196,9 @@ class ShorebirdLinkerArtifact extends CachedArtifact {
   @override
   List<String> get executables => ['shorebird_linker'];
 
+  /// The linker is only available for revisions that support mixed-mode.
   @override
-  bool get required => false; // Only supported for newer engine revisions.
+  bool get required => false;
 
   @override
   String get storageUrl {
