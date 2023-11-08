@@ -7,6 +7,7 @@ import 'package:path/path.dart' as p;
 import 'package:platform/platform.dart';
 import 'package:scoped/scoped.dart';
 import 'package:shorebird_cli/src/http_client/http_client.dart';
+import 'package:shorebird_cli/src/logger.dart';
 import 'package:shorebird_cli/src/platform.dart';
 import 'package:shorebird_cli/src/process.dart';
 import 'package:shorebird_cli/src/shorebird_env.dart';
@@ -53,6 +54,7 @@ class Cache {
   }) : httpClient = httpClient ?? retryingHttpClient(http.Client()) {
     registerArtifact(PatchArtifact(cache: this, platform: platform));
     registerArtifact(BundleToolArtifact(cache: this, platform: platform));
+    registerArtifact(ShorebirdLinkerArtifact(cache: this, platform: platform));
   }
 
   final http.Client httpClient;
@@ -133,6 +135,8 @@ abstract class CachedArtifact {
 
   List<String> get executables => [];
 
+  bool get required => true;
+
   Future<void> extractArtifact(http.ByteStream stream, String outputPath) {
     final file = File(p.join(outputPath, name))..createSync(recursive: true);
     return stream.pipe(file.openWrite());
@@ -157,6 +161,13 @@ allowed to access $storageUrl.''',
     }
 
     if (response.statusCode != HttpStatus.ok) {
+      if (!required && response.statusCode == HttpStatus.notFound) {
+        logger.detail(
+          '[cache] optional artifact: "$name" was not found, skipping...',
+        );
+        return;
+      }
+
       throw CacheUpdateFailure(
         '''Failed to download $name: ${response.statusCode} ${response.reasonPhrase}''',
       );
@@ -173,6 +184,34 @@ allowed to access $storageUrl.''',
       );
       await result.exitCode;
     }
+  }
+}
+
+class ShorebirdLinkerArtifact extends CachedArtifact {
+  ShorebirdLinkerArtifact({required super.cache, required super.platform});
+
+  @override
+  String get name => 'shorebird_linker';
+
+  @override
+  List<String> get executables => ['shorebird_linker'];
+
+  /// The linker is only available for revisions that support mixed-mode.
+  @override
+  bool get required => false;
+
+  @override
+  String get storageUrl {
+    var artifactName = 'linker-';
+    if (platform.isMacOS) {
+      artifactName += 'darwin-x64';
+    } else if (platform.isLinux) {
+      artifactName += 'linux-x64';
+    } else if (platform.isWindows) {
+      artifactName += 'windows-x64';
+    }
+
+    return '${cache.storageBaseUrl}/${cache.storageBucket}/shorebird/${shorebirdEnv.shorebirdEngineRevision}/$artifactName';
   }
 }
 
