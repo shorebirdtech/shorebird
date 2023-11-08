@@ -4,8 +4,8 @@ This section contains past updates we've sent to customers via Discord.
 
 ## 0.17.3 (November 8, 2023)
 
-- 🗂️ use multipart file uploads for release and patch artifacts
-- 🩹 only run `flutter pub get` if separate `flutter` installation exists
+- 🗂️ Use multipart file uploads for release and patch artifacts
+- 🩹 Only run `flutter pub get` if separate `flutter` installation exists
 
 📚 Release notes can be found at https://github.com/shorebirdtech/shorebird/releases/tag/v0.17.3
 
