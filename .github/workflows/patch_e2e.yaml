@@ -96,7 +96,7 @@ jobs:
           script: echo "Generated AVD Snapshot"
 
       - name: Create Flutter App
-        run: flutter create e2e_test --empty
+        run: flutter create e2e_test --empty --platforms android
 
       - name: Shorebird Init
         run: shorebird init --force -v
