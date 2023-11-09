@@ -99,11 +99,13 @@ jobs:
           script: echo "Generated AVD Snapshot"
 
       - name: Create Flutter App
-        run: flutter create e2e_test --empty
+        run: flutter create e2e_test --empty                    
 
       - name: E2E Tests
         uses: reactivecircus/android-emulator-runner@v2
         with:
           api-level: 29
-          script: fluttium test ../.github/fluttium/empty_flutter_test.yaml -d android
+          script: |
+            echo -e "description: Expect 'Hello World!' is visible.\n---\n- expectVisible: 'Hello World!'" >> ./flow.yaml
+            fluttium test flow.yaml -d android
           working-directory: ./e2e_test
