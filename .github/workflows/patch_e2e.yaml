@@ -5,6 +5,7 @@ concurrency:
   cancel-in-progress: true
 
 on:
+  pull_request:
   workflow_dispatch:
   schedule:
     # At the end of every day
