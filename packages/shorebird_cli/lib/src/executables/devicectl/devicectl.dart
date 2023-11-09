@@ -67,7 +67,7 @@ class Devicectl {
   /// Returns the first available iOS device, or the device with the given
   /// [deviceId] if provided. Devices that are running iOS <17 are not
   /// "CoreDevice"s and are not visible to devicectl.
-  Future<AppleDevice?> _deviceForLaunch({String? deviceId}) async {
+  Future<AppleDevice?> deviceForLaunch({String? deviceId}) async {
     final devices = await listAvailableIosDevices();
 
     if (deviceId != null) {
@@ -85,7 +85,7 @@ class Devicectl {
       return false;
     }
 
-    return await _deviceForLaunch(deviceId: deviceId) != null;
+    return await deviceForLaunch(deviceId: deviceId) != null;
   }
 
   /// Installs the given [runnerApp] on the device with the given [deviceId].
@@ -177,7 +177,7 @@ class Devicectl {
     String? deviceId,
   }) async {
     final deviceProgress = logger.progress('Finding device for run');
-    final device = await _deviceForLaunch(deviceId: deviceId);
+    final device = await deviceForLaunch(deviceId: deviceId);
     if (device == null) {
       deviceProgress.fail('No devices found');
       return ExitCode.software.code;

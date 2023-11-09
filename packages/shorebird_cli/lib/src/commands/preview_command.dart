@@ -13,9 +13,11 @@ import 'package:shorebird_cli/src/code_push_client_wrapper.dart';
 import 'package:shorebird_cli/src/command.dart';
 import 'package:shorebird_cli/src/deployment_track.dart';
 import 'package:shorebird_cli/src/executables/executables.dart';
+import 'package:shorebird_cli/src/executables/idevicesyslog.dart';
 import 'package:shorebird_cli/src/http_client/http_client.dart';
 import 'package:shorebird_cli/src/logger.dart';
 import 'package:shorebird_cli/src/platform.dart';
+import 'package:shorebird_cli/src/process.dart';
 import 'package:shorebird_cli/src/shorebird_validator.dart';
 import 'package:shorebird_cli/src/third_party/flutter_tools/lib/flutter_tools.dart';
 import 'package:shorebird_code_push_client/shorebird_code_push_client.dart';
@@ -71,6 +73,7 @@ class PreviewCommand extends ShorebirdCommand {
   }
 
   final http.Client _httpClient;
+  final idevicesyslog = IDeviceSysLog();
 
   @override
   String get name => 'preview';
@@ -349,30 +352,50 @@ class PreviewCommand extends ShorebirdCommand {
       return ExitCode.software.code;
     }
 
-    final deviceId = results['device-id'] as String?;
+    var deviceId = results['device-id'] as String?;
 
     try {
       final shouldUseDeviceCtl = await devicectl.isSupported(
         deviceId: deviceId,
       );
 
-      final int exitCode;
+      final int installExitCode;
+
       if (shouldUseDeviceCtl) {
-        logger.detail('Using devicectl to install and launch.');
-        exitCode = await devicectl.installAndLaunchApp(
+        deviceId ??= (await devicectl.deviceForLaunch())?.identifier;
+        logger.detail(
+          'Using devicectl to install and launch on device $deviceId.',
+        );
+        installExitCode = await devicectl.installAndLaunchApp(
           runnerAppDirectory: runnerDirectory,
           deviceId: deviceId,
         );
+        print('installed app');
+
+        print('starting logger');
+        final loggerProcess = await idevicesyslog.startLogger(deviceId!);
+        print('logger process is $loggerProcess');
+        loggerProcess.stdout
+            .transform<String>(utf8.decoder)
+            .transform<String>(const LineSplitter())
+            .listen((line) => print('logger: $line'));
+        loggerProcess.stderr
+            .transform<String>(utf8.decoder)
+            .transform<String>(const LineSplitter())
+            .listen((line) => print('logger: $line'));
+        print('awaiting logger exit');
+        await loggerProcess.exitCode;
       } else {
         logger.detail('Using ios-deploy to install and launch.');
-        exitCode = await iosDeploy.installAndLaunchApp(
+        installExitCode = await iosDeploy.installAndLaunchApp(
           bundlePath: runnerDirectory.path,
           deviceId: deviceId,
         );
       }
 
-      return exitCode;
-    } catch (_) {
+      return installExitCode;
+    } catch (error) {
+      logger.detail('error launching app. $error');
       return ExitCode.software.code;
     }
   }
