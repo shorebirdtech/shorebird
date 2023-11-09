@@ -76,9 +76,6 @@ jobs:
           channel: stable
           flutter-version: 3.10.6
 
-      - name: 🧪 Setup Fluttium
-        run: flutter pub global activate fluttium_cli
-
       - name: AVD Cache
         uses: actions/cache@v3
         id: avd-cache
@@ -99,13 +96,17 @@ jobs:
           script: echo "Generated AVD Snapshot"
 
       - name: Create Flutter App
-        run: flutter create e2e_test --empty                    
+        run: flutter create e2e_test --empty
+
+      - name: Shorebird Init
+        run: shorebird init --force -v
+
+      - name: Shorebird Release
+        run: shorebird release android --force -v
 
       - name: E2E Tests
         uses: reactivecircus/android-emulator-runner@v2
         with:
           api-level: 29
-          script: |
-            echo -e "description: Expect 'Hello World!' is visible.\n---\n- expectVisible: 'Hello World!'" >> ./flow.yaml
-            fluttium test flow.yaml -d android
+          script: shorebird run -d android -v
           working-directory: ./e2e_test
