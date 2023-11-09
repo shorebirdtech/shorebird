@@ -1,0 +1,108 @@
+name: patch_e2e
+
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+on:
+  workflow_dispatch:
+  schedule:
+    # At the end of every day
+    - cron: "0 0 * * *"
+
+jobs:
+  test:
+    strategy:
+      fail-fast: false
+      matrix:
+        os: [macos-latest]
+        branch: [main]
+
+    runs-on: ${{ matrix.os }}
+
+    env:
+      SHOREBIRD_TOKEN: ${{ secrets.SHOREBIRD_TOKEN }}
+      SHOREBIRD_HOSTED_URL: ${{ matrix.branch == 'stable' && 'https://api.shorebird.dev' || 'https://api-dev.shorebird.dev' }}
+
+    steps:
+      - name: 📚 Git Checkout
+        uses: actions/checkout@v3
+        with:
+          ref: ${{ matrix.branch }}
+
+      - name: 🖥️ Add Shorebird to macOS/Linux PATH
+        shell: bash
+        if: runner.os != 'Windows'
+        run: echo "${GITHUB_WORKSPACE}/bin/" >> $GITHUB_PATH
+
+      - name: 🖥️ Add Shorebird to Windows PATH
+        shell: pwsh
+        if: runner.os == 'Windows'
+        run: Add-Content $env:GITHUB_PATH "${env:GITHUB_WORKSPACE}\bin"
+
+      - name: 🐦 Verify Shorebird Installation (macOS / Linux)
+        if: runner.os != 'Windows'
+        run: |
+          if [[ $(shorebird --version) =~ "Engine • revision" ]]; then          
+            echo '✅ Shorebird CLI is installed!'
+          else
+            echo '❌ Shorebird CLI is not installed.'
+          exit 1
+          fi
+        shell: bash
+
+      - name: 🐦 Verify Shorebird Installation (Windows)
+        if: runner.os == 'Windows'
+        run: |
+          $shorebird_version = shorebird --version
+          if ($shorebird_version -match "Engine") {
+            Write-Output "✅ Shorebird CLI is installed!"
+          } else {
+            Write-Output "❌ Shorebird CLI is not installed."
+            exit 1
+          }
+        shell: pwsh
+
+      - name: ☕ Set up Java
+        uses: actions/setup-java@v3
+        with:
+          distribution: "temurin"
+          java-version: "17"
+
+      - name: 🎯 Set up Flutter
+        uses: subosito/flutter-action@v2
+        with:
+          channel: stable
+          flutter-version: 3.10.6
+
+      - name: 🧪 Setup Fluttium
+        run: flutter pub global activate fluttium_cli
+
+      - name: AVD Cache
+        uses: actions/cache@v3
+        id: avd-cache
+        with:
+          path: |
+            ~/.android/avd/*
+            ~/.android/adb*
+          key: avd-29
+
+      - name: Cache AVD Snapshot
+        if: steps.avd-cache.outputs.cache-hit != 'true'
+        uses: reactivecircus/android-emulator-runner@v2
+        with:
+          api-level: 29
+          force-avd-creation: false
+          emulator-options: -no-window -gpu swiftshader_indirect -noaudio -no-boot-anim -camera-back none
+          disable-animations: false
+          script: echo "Generated AVD Snapshot"
+
+      - name: Create Flutter App
+        run: flutter create e2e_test --empty
+
+      - name: E2E Tests
+        uses: reactivecircus/android-emulator-runner@v2
+        with:
+          api-level: 29
+          script: fluttium test ../.github/fluttium/empty_flutter_test.yaml -d android
+          working-directory: ./e2e_test
