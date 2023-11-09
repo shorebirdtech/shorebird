@@ -16,7 +16,7 @@ jobs:
     strategy:
       fail-fast: false
       matrix:
-        os: [ubuntu-latest]
+        os: [macos-latest]
         branch: [main]
 
     runs-on: ${{ matrix.os }}
