@@ -54,7 +54,7 @@ class Cache {
   }) : httpClient = httpClient ?? retryingHttpClient(http.Client()) {
     registerArtifact(PatchArtifact(cache: this, platform: platform));
     registerArtifact(BundleToolArtifact(cache: this, platform: platform));
-    registerArtifact(ShorebirdLinkerArtifact(cache: this, platform: platform));
+    registerArtifact(AotToolsArtifact(cache: this, platform: platform));
   }
 
   final http.Client httpClient;
@@ -187,22 +187,22 @@ allowed to access $storageUrl.''',
   }
 }
 
-class ShorebirdLinkerArtifact extends CachedArtifact {
-  ShorebirdLinkerArtifact({required super.cache, required super.platform});
+class AotToolsArtifact extends CachedArtifact {
+  AotToolsArtifact({required super.cache, required super.platform});
 
   @override
-  String get name => 'shorebird_linker';
+  String get name => 'aot-tools';
 
   @override
-  List<String> get executables => ['shorebird_linker'];
+  List<String> get executables => ['aot-tools'];
 
-  /// The linker is only available for revisions that support mixed-mode.
+  /// The aot-tools are only available for revisions that support mixed-mode.
   @override
   bool get required => false;
 
   @override
   String get storageUrl {
-    var artifactName = 'linker-';
+    var artifactName = 'aot-tools-';
     if (platform.isMacOS) {
       artifactName += 'darwin-x64';
     } else if (platform.isLinux) {

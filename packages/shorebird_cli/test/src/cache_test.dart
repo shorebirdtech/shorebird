@@ -215,7 +215,7 @@ void main() {
             (invocation) async {
               final request =
                   invocation.positionalArguments.first as http.BaseRequest;
-              if (request.url.path.endsWith('linker-darwin-x64')) {
+              if (request.url.path.endsWith('aot-tools-darwin-x64')) {
                 return http.StreamedResponse(
                   const Stream.empty(),
                   HttpStatus.notFound,
@@ -234,7 +234,7 @@ void main() {
           );
           verify(
             () => logger.detail(
-              '''[cache] optional artifact: "shorebird_linker" was not found, skipping...''',
+              '''[cache] optional artifact: "aot-tools" was not found, skipping...''',
             ),
           ).called(1);
         });
