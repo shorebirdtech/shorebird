@@ -100,9 +100,11 @@ jobs:
 
       - name: Shorebird Init
         run: shorebird init --force -v
+        working-directory: ./e2e_test
 
       - name: Shorebird Release
         run: shorebird release android --force -v
+        working-directory: ./e2e_test
 
       - name: E2E Tests
         uses: reactivecircus/android-emulator-runner@v2
