@@ -350,16 +350,15 @@ class PreviewCommand extends ShorebirdCommand {
       return ExitCode.software.code;
     }
 
-    final deviceIdArg = results['device-id'] as String?;
     try {
       final deviceLocateProgress = logger.progress('Locating device for run');
       final AppleDevice? deviceForLaunch;
       // Try to find a device using devicectl first. If that fails, fall back to
       // ios-deploy.
-      if (deviceIdArg != null) {
+      if (deviceId != null) {
         final deviceCtlDevices = await devicectl.listAvailableIosDevices();
         deviceForLaunch = deviceCtlDevices.firstWhereOrNull(
-          (device) => device.udid == deviceIdArg,
+          (device) => device.udid == deviceId,
         );
       } else {
         deviceForLaunch = await devicectl.deviceForLaunch();
@@ -374,7 +373,7 @@ class PreviewCommand extends ShorebirdCommand {
       final int installExitCode;
       if (shouldUseDeviceCtl) {
         logger.detail(
-          'Using devicectl to install and launch on device $deviceIdArg.',
+          'Using devicectl to install and launch on device $deviceId.',
         );
         installExitCode = await devicectl.installAndLaunchApp(
           runnerAppDirectory: runnerDirectory,
@@ -384,7 +383,7 @@ class PreviewCommand extends ShorebirdCommand {
         logger.detail('Using ios-deploy to install and launch.');
         installExitCode = await iosDeploy.installAndLaunchApp(
           bundlePath: runnerDirectory.path,
-          deviceId: deviceIdArg,
+          deviceId: deviceId,
         );
       }
 

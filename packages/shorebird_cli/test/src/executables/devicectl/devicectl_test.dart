@@ -74,6 +74,50 @@ void main() {
       when(() => processResult.exitCode).thenAnswer((_) => exitCode.code);
     });
 
+    group('deviceForLaunch', () {
+      test('returns null if devicectl is not available', () async {
+        exitCode = ExitCode.software;
+        expect(
+          await runWithOverrides(() => devicectl.deviceForLaunch()),
+          isNull,
+        );
+      });
+
+      test('returns null if no CoreDevice with the given deviceID can be found',
+          () async {
+        exitCode = ExitCode.success;
+        jsonOutput =
+            File('$fixturesPath/device_list_success.json').readAsStringSync();
+        expect(
+          await runWithOverrides(
+            () => devicectl.deviceForLaunch(deviceId: 'fake device id'),
+          ),
+          isNull,
+        );
+      });
+
+      test('returns null if no CoreDevice can be found', () async {
+        exitCode = ExitCode.success;
+        jsonOutput = File('$fixturesPath/device_list_success_empty.json')
+            .readAsStringSync();
+        expect(
+          await runWithOverrides(() => devicectl.deviceForLaunch()),
+          isNull,
+        );
+      });
+
+      test("returns a device if device's OS version is 17 or greater",
+          () async {
+        exitCode = ExitCode.success;
+        jsonOutput =
+            File('$fixturesPath/device_list_success.json').readAsStringSync();
+        expect(
+          await runWithOverrides(() => devicectl.deviceForLaunch()),
+          isNotNull,
+        );
+      });
+    });
+
     group('installApp', () {
       late Directory runnerApp;
 

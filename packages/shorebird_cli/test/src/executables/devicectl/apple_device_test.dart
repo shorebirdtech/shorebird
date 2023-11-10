@@ -4,29 +4,42 @@ import 'package:test/test.dart';
 
 void main() {
   group(AppleDevice, () {
+    const udid = '12345678-1234567890ABCDEF';
+    const deviceName = "Joe's iPhone";
+    const connectionProperties = ConnectionProperties(
+      transportType: 'wired',
+      tunnelState: 'disconnected',
+    );
+    const deviceProperties = DeviceProperties(
+      name: deviceName,
+      osVersionNumber: '17.1',
+    );
+    const hardwareProperties = HardwareProperties(
+      platform: 'iOS',
+      udid: udid,
+    );
+
+    late AppleDevice device;
+
+    setUp(() {
+      device = const AppleDevice(
+        deviceProperties: deviceProperties,
+        hardwareProperties: hardwareProperties,
+        connectionProperties: connectionProperties,
+      );
+    });
+
+    group('toString', () {
+      test('includes name, OS version, and UDID', () {
+        expect(
+          device.toString(),
+          equals('$deviceName (${deviceProperties.osVersionNumber} $udid)'),
+        );
+      });
+    });
+
     group('osVersion', () {
-      const udid = '12345678-1234567890ABCDEF';
-      const deviceName = "Joe's iPhone";
-      const connectionProperties = ConnectionProperties(
-        transportType: 'wired',
-        tunnelState: 'disconnected',
-      );
-      const hardwareProperties = HardwareProperties(
-        platform: 'iOS',
-        udid: udid,
-      );
-
-      late AppleDevice device;
-
       group('when version string is null', () {
-        setUp(() {
-          device = const AppleDevice(
-            deviceProperties: DeviceProperties(name: deviceName),
-            hardwareProperties: hardwareProperties,
-            connectionProperties: connectionProperties,
-          );
-        });
-
         test('returns null', () {
           expect(device.osVersion, isNull);
         });

@@ -834,6 +834,43 @@ void main() {
         );
       });
 
+      group('when device-id arg is provided', () {
+        const devicectlDeviceId = '12345';
+        setUp(() {
+          when(() => appleDevice.udid).thenReturn(devicectlDeviceId);
+          when(() => devicectl.listAvailableIosDevices())
+              .thenAnswer((_) async => [appleDevice]);
+        });
+
+        test('uses matching devicectl device if found', () async {
+          when(() => argResults['device-id'])
+              .thenAnswer((_) => devicectlDeviceId);
+
+          setupShorebirdYaml();
+          await runWithOverrides(command.run);
+
+          verifyNever(
+            () => iosDeploy.installAndLaunchApp(bundlePath: runnerPath()),
+          );
+        });
+
+        test(
+            'falls back to ios-deploy if no devicectl devices have matching id',
+            () async {
+          when(() => argResults['device-id'])
+              .thenAnswer((_) => 'not-a-device-id');
+          setupShorebirdYaml();
+          await runWithOverrides(command.run);
+
+          verify(
+            () => iosDeploy.installAndLaunchApp(
+              bundlePath: runnerPath(),
+              deviceId: 'not-a-device-id',
+            ),
+          ).called(1);
+        });
+      });
+
       test('uses devicectl if devicectl returns a usable device', () async {
         when(() => devicectl.deviceForLaunch(deviceId: any(named: 'deviceId')))
             .thenAnswer((_) async => appleDevice);
