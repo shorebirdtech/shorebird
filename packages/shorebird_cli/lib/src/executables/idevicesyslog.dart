@@ -20,11 +20,11 @@ class IDeviceSysLog {
       );
 
   Future<Process> startLogger(String deviceId) async {
-    print(
-      'starting logger process with env DYLD_LIBRARY_PATH=${libimobiledeviceDirectory.path}',
-    );
     final dyldPathEntry =
         '/Users/bryanoltman/shorebirdtech/_shorebird/shorebird/bin/cache/flutter/e744c831b8355bcb9f3b541d42431d9145eea677/bin/cache/artifacts/libimobiledevice:/Users/bryanoltman/shorebirdtech/_shorebird/shorebird/bin/cache/flutter/e744c831b8355bcb9f3b541d42431d9145eea677/bin/cache/artifacts/usbmuxd:/Users/bryanoltman/shorebirdtech/_shorebird/shorebird/bin/cache/flutter/e744c831b8355bcb9f3b541d42431d9145eea677/bin/cache/artifacts/libplist:/Users/bryanoltman/shorebirdtech/_shorebird/shorebird/bin/cache/flutter/e744c831b8355bcb9f3b541d42431d9145eea677/bin/cache/artifacts/openssl:/Users/bryanoltman/shorebirdtech/_shorebird/shorebird/bin/cache/flutter/e744c831b8355bcb9f3b541d42431d9145eea677/bin/cache/artifacts/ios-deploy';
+    print(
+      'starting logger process with env DYLD_LIBRARY_PATH=$dyldPathEntry',
+    );
     //  [
     //   libimobiledeviceDirectory.path,
     //   p.join(
