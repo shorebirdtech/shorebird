@@ -79,5 +79,41 @@ void main() {
         });
       });
     });
+
+    group('isWired', () {
+      group('when connectionProperties.transportType is "wired"', () {
+        setUp(() {
+          device = const AppleDevice(
+            deviceProperties: deviceProperties,
+            hardwareProperties: hardwareProperties,
+            connectionProperties: ConnectionProperties(
+              tunnelState: 'disconnected',
+              transportType: 'wired',
+            ),
+          );
+        });
+
+        test('returns true', () {
+          expect(device.isWired, isTrue);
+        });
+      });
+
+      group('when connectionProperties.transportType is "network"', () {
+        setUp(() {
+          device = const AppleDevice(
+            deviceProperties: deviceProperties,
+            hardwareProperties: hardwareProperties,
+            connectionProperties: ConnectionProperties(
+              tunnelState: 'disconnected',
+              transportType: 'network',
+            ),
+          );
+        });
+
+        test('returns false', () {
+          expect(device.isWired, isFalse);
+        });
+      });
+    });
   });
 }
