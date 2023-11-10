@@ -4,6 +4,7 @@ import 'package:mason_logger/mason_logger.dart';
 import 'package:mocktail/mocktail.dart';
 import 'package:path/path.dart' as p;
 import 'package:scoped/scoped.dart';
+import 'package:shorebird_cli/src/executables/devicectl/apple_device.dart';
 import 'package:shorebird_cli/src/executables/executables.dart';
 import 'package:shorebird_cli/src/logger.dart';
 import 'package:shorebird_cli/src/process.dart';
@@ -20,6 +21,7 @@ void main() {
     late ExitCode exitCode;
     late String jsonOutput;
 
+    late AppleDevice device;
     late ShorebirdProcess process;
     late ShorebirdProcessResult processResult;
     late Devicectl devicectl;
@@ -28,15 +30,35 @@ void main() {
       return runScoped(
         body,
         values: {
+          idevicesyslogRef.overrideWith(() => idevicesyslog),
           processRef.overrideWith(() => process),
         },
       );
     }
 
+    setUpAll(() {
+      registerFallbackValue(
+        const AppleDevice(
+          deviceProperties: DeviceProperties(name: 'iPhone 12'),
+          hardwareProperties: HardwareProperties(
+            platform: 'iOS',
+            udid: '12345678-1234567890ABCDEF',
+          ),
+          connectionProperties: ConnectionProperties(
+            transportType: 'wired',
+            tunnelState: 'disconnected',
+          ),
+        ),
+      );
+    });
+
     setUp(() {
+      device = MockAppleDevice();
       process = MockShorebirdProcess();
       processResult = MockShorebirdProcessResult();
       devicectl = Devicectl();
+
+      when(() => device.udid).thenReturn(deviceId);
 
       when(() => process.run(any(), any())).thenAnswer((invocation) async {
         final processRunArgs =
@@ -50,50 +72,6 @@ void main() {
         return processResult;
       });
       when(() => processResult.exitCode).thenAnswer((_) => exitCode.code);
-    });
-
-    group('isSupported', () {
-      test('returns false if devicectl is not available', () async {
-        exitCode = ExitCode.software;
-        expect(
-          await runWithOverrides(() => devicectl.isSupported()),
-          isFalse,
-        );
-      });
-
-      test(
-          'returns false if no CoreDevice with the given deviceID can be found',
-          () async {
-        exitCode = ExitCode.success;
-        jsonOutput =
-            File('$fixturesPath/device_list_success.json').readAsStringSync();
-        expect(
-          await runWithOverrides(
-            () => devicectl.isSupported(deviceId: 'fake device id'),
-          ),
-          isFalse,
-        );
-      });
-
-      test('returns false if no CoreDevice can be found', () async {
-        exitCode = ExitCode.success;
-        jsonOutput = File('$fixturesPath/device_list_success_empty.json')
-            .readAsStringSync();
-        expect(
-          await runWithOverrides(() => devicectl.isSupported()),
-          isFalse,
-        );
-      });
-
-      test("returns true if device's OS version is 17 or greater", () async {
-        exitCode = ExitCode.success;
-        jsonOutput =
-            File('$fixturesPath/device_list_success.json').readAsStringSync();
-        expect(
-          await runWithOverrides(() => devicectl.isSupported()),
-          isTrue,
-        );
-      });
     });
 
     group('installApp', () {
@@ -286,6 +264,7 @@ void main() {
     });
 
     group('installAndLaunchApp', () {
+      late IDeviceSysLog idevicesyslog;
       late Logger logger;
       late Progress progress;
 
@@ -297,6 +276,7 @@ void main() {
         return runScoped(
           body,
           values: {
+            idevicesyslogRef.overrideWith(() => idevicesyslog),
             loggerRef.overrideWith(() => logger),
             processRef.overrideWith(() => process),
           },
@@ -304,9 +284,12 @@ void main() {
       }
 
       setUp(() {
+        idevicesyslog = MockIDeviceSysLog();
         logger = MockLogger();
         progress = MockProgress();
 
+        when(() => idevicesyslog.startLogger(device: any(named: 'device')))
+            .thenAnswer((_) async => ExitCode.success.code);
         when(() => logger.progress(any())).thenReturn(progress);
         when(() => process.run(any(), any(that: contains('list'))))
             .thenAnswer((invocation) async {
@@ -358,7 +341,7 @@ void main() {
             await runWithOverrides(
               () => devicectl.installAndLaunchApp(
                 runnerAppDirectory: Directory.systemTemp.createTempSync(),
-                deviceId: deviceId,
+                device: device,
               ),
             ),
             equals(ExitCode.software.code),
@@ -381,7 +364,7 @@ void main() {
             await runWithOverrides(
               () => devicectl.installAndLaunchApp(
                 runnerAppDirectory: Directory.systemTemp.createTempSync(),
-                deviceId: deviceId,
+                device: device,
               ),
             ),
             equals(ExitCode.software.code),
@@ -405,7 +388,7 @@ void main() {
             await runWithOverrides(
               () => devicectl.installAndLaunchApp(
                 runnerAppDirectory: Directory.systemTemp.createTempSync(),
-                deviceId: deviceId,
+                device: device,
               ),
             ),
             equals(ExitCode.software.code),
@@ -429,7 +412,7 @@ void main() {
             await runWithOverrides(
               () => devicectl.installAndLaunchApp(
                 runnerAppDirectory: Directory.systemTemp.createTempSync(),
-                deviceId: deviceId,
+                device: device,
               ),
             ),
             equals(ExitCode.success.code),
@@ -497,14 +480,11 @@ void main() {
           final devices =
               await runWithOverrides(devicectl.listAvailableIosDevices);
           expect(devices, hasLength(1));
-          final device = devices.first;
-          expect(device.name, equals('Bryan Oltman’s iPhone'));
-          expect(
-            device.identifier,
-            equals('DEADBEEF-DEAD-BEEF-DEAD-BEEFDEADBEEF'),
-          );
-          expect(device.osVersionString, equals('17.0.2'));
-          expect(device.platform, equals('iOS'));
+          final outputDevice = devices.first;
+          expect(outputDevice.name, equals('Bryan Oltman’s iPhone'));
+          expect(outputDevice.udid, equals('11111111-1111111111111111'));
+          expect(outputDevice.osVersionString, equals('17.0.2'));
+          expect(outputDevice.platform, equals('iOS'));
         });
       });
     });

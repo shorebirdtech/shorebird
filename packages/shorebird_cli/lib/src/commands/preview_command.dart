@@ -12,12 +12,11 @@ import 'package:shorebird_cli/src/cache.dart';
 import 'package:shorebird_cli/src/code_push_client_wrapper.dart';
 import 'package:shorebird_cli/src/command.dart';
 import 'package:shorebird_cli/src/deployment_track.dart';
+import 'package:shorebird_cli/src/executables/devicectl/apple_device.dart';
 import 'package:shorebird_cli/src/executables/executables.dart';
-import 'package:shorebird_cli/src/executables/idevicesyslog.dart';
 import 'package:shorebird_cli/src/http_client/http_client.dart';
 import 'package:shorebird_cli/src/logger.dart';
 import 'package:shorebird_cli/src/platform.dart';
-import 'package:shorebird_cli/src/process.dart';
 import 'package:shorebird_cli/src/shorebird_validator.dart';
 import 'package:shorebird_cli/src/third_party/flutter_tools/lib/flutter_tools.dart';
 import 'package:shorebird_code_push_client/shorebird_code_push_client.dart';
@@ -73,7 +72,6 @@ class PreviewCommand extends ShorebirdCommand {
   }
 
   final http.Client _httpClient;
-  final idevicesyslog = IDeviceSysLog();
 
   @override
   String get name => 'preview';
@@ -352,50 +350,47 @@ class PreviewCommand extends ShorebirdCommand {
       return ExitCode.software.code;
     }
 
-    var deviceId = results['device-id'] as String?;
-
+    final deviceIdArg = results['device-id'] as String?;
     try {
-      final shouldUseDeviceCtl = await devicectl.isSupported(
-        deviceId: deviceId,
-      );
+      final deviceLocateProgress = logger.progress('Locating device for run');
+      final AppleDevice? deviceForLaunch;
+      // Try to find a device using devicectl first. If that fails, fall back to
+      // ios-deploy.
+      if (deviceIdArg != null) {
+        final deviceCtlDevices = await devicectl.listAvailableIosDevices();
+        deviceForLaunch = deviceCtlDevices.firstWhereOrNull(
+          (device) => device.udid == deviceIdArg,
+        );
+      } else {
+        deviceForLaunch = await devicectl.deviceForLaunch();
+      }
+
+      final shouldUseDeviceCtl = deviceForLaunch != null;
+      final progressCompleteMessage = deviceForLaunch != null
+          ? 'Using device ${deviceForLaunch.name}'
+          : 'No iOS 17+ device found, falling back to ios-deploy';
+      deviceLocateProgress.complete(progressCompleteMessage);
 
       final int installExitCode;
-
       if (shouldUseDeviceCtl) {
-        deviceId ??= (await devicectl.deviceForLaunch())?.identifier;
         logger.detail(
-          'Using devicectl to install and launch on device $deviceId.',
+          'Using devicectl to install and launch on device $deviceIdArg.',
         );
         installExitCode = await devicectl.installAndLaunchApp(
           runnerAppDirectory: runnerDirectory,
-          deviceId: deviceId,
+          device: deviceForLaunch,
         );
-        print('installed app');
-
-        print('starting logger');
-        final loggerProcess = await idevicesyslog.startLogger(deviceId!);
-        print('logger process is $loggerProcess');
-        loggerProcess.stdout
-            .transform<String>(utf8.decoder)
-            .transform<String>(const LineSplitter())
-            .listen((line) => print('logger: $line'));
-        loggerProcess.stderr
-            .transform<String>(utf8.decoder)
-            .transform<String>(const LineSplitter())
-            .listen((line) => print('logger: $line'));
-        print('awaiting logger exit');
-        await loggerProcess.exitCode;
       } else {
         logger.detail('Using ios-deploy to install and launch.');
         installExitCode = await iosDeploy.installAndLaunchApp(
           bundlePath: runnerDirectory.path,
-          deviceId: deviceId,
+          deviceId: deviceIdArg,
         );
       }
 
       return installExitCode;
-    } catch (error) {
-      logger.detail('error launching app. $error');
+    } catch (error, stackTrace) {
+      logger.detail('Error launching app. $error $stackTrace');
       return ExitCode.software.code;
     }
   }

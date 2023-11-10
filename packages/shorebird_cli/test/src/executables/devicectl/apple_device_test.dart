@@ -5,18 +5,22 @@ import 'package:test/test.dart';
 void main() {
   group(AppleDevice, () {
     group('osVersion', () {
-      const identifier = 'DEADBEEF-DEAD-BEEF-DEAD-BEEFDEADBEEF';
+      const udid = '12345678-1234567890ABCDEF';
       const deviceName = "Joe's iPhone";
-      const connectionProperties =
-          ConnectionProperties(tunnelState: 'disconnected');
-      const hardwareProperties = HardwareProperties(platform: 'iOS');
+      const connectionProperties = ConnectionProperties(
+        transportType: 'wired',
+        tunnelState: 'disconnected',
+      );
+      const hardwareProperties = HardwareProperties(
+        platform: 'iOS',
+        udid: udid,
+      );
 
       late AppleDevice device;
 
       group('when version string is null', () {
         setUp(() {
           device = const AppleDevice(
-            identifier: identifier,
             deviceProperties: DeviceProperties(name: deviceName),
             hardwareProperties: hardwareProperties,
             connectionProperties: connectionProperties,
@@ -31,7 +35,6 @@ void main() {
       group('when version string not parseable', () {
         setUp(() {
           device = const AppleDevice(
-            identifier: identifier,
             deviceProperties: DeviceProperties(
               name: deviceName,
               osVersionNumber: 'unparseable version number',
@@ -49,7 +52,6 @@ void main() {
       group('when version string is valid', () {
         setUp(() {
           device = const AppleDevice(
-            identifier: identifier,
             deviceProperties: DeviceProperties(
               name: deviceName,
               osVersionNumber: '1.2.3',

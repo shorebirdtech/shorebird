@@ -14,6 +14,7 @@ import 'package:shorebird_cli/src/cache.dart';
 import 'package:shorebird_cli/src/code_push_client_wrapper.dart';
 import 'package:shorebird_cli/src/commands/commands.dart';
 import 'package:shorebird_cli/src/deployment_track.dart';
+import 'package:shorebird_cli/src/executables/devicectl/apple_device.dart';
 import 'package:shorebird_cli/src/executables/executables.dart';
 import 'package:shorebird_cli/src/logger.dart';
 import 'package:shorebird_cli/src/platform.dart';
@@ -32,6 +33,7 @@ void main() {
     const releaseId = 42;
 
     late AppMetadata app;
+    late AppleDevice appleDevice;
     late ArgResults argResults;
     late ArtifactManager artifactManager;
     late Auth auth;
@@ -64,6 +66,19 @@ void main() {
     }
 
     setUpAll(() {
+      registerFallbackValue(
+        const AppleDevice(
+          deviceProperties: DeviceProperties(name: 'iPhone 12'),
+          hardwareProperties: HardwareProperties(
+            platform: 'iOS',
+            udid: '12345678-1234567890ABCDEF',
+          ),
+          connectionProperties: ConnectionProperties(
+            transportType: 'wired',
+            tunnelState: 'disconnected',
+          ),
+        ),
+      );
       registerFallbackValue(Directory(''));
       registerFallbackValue(File(''));
       registerFallbackValue(MockHttpClient());
@@ -74,6 +89,7 @@ void main() {
 
     setUp(() {
       app = MockAppMetadata();
+      appleDevice = MockAppleDevice();
       argResults = MockArgResults();
       artifactManager = MockArtifactManager();
       auth = MockAuth();
@@ -705,6 +721,8 @@ void main() {
       setUp(() {
         devicectl = MockDevicectl();
         iosDeploy = MockIOSDeploy();
+
+        when(() => appleDevice.name).thenReturn('iPhone 12');
         when(() => argResults['platform']).thenReturn(releasePlatform.name);
         when(
           () => artifactManager.downloadFile(
@@ -718,13 +736,13 @@ void main() {
             outputDirectory: any(named: 'outputDirectory'),
           ),
         ).thenAnswer((_) async {});
-        when(
-          () => devicectl.isSupported(deviceId: any(named: 'deviceId')),
-        ).thenAnswer((_) async => false);
+
+        when(() => devicectl.deviceForLaunch(deviceId: any(named: 'deviceId')))
+            .thenAnswer((_) async => null);
         when(
           () => devicectl.installAndLaunchApp(
             runnerAppDirectory: any(named: 'runnerAppDirectory'),
-            deviceId: any(named: 'deviceId'),
+            device: any(named: 'device'),
           ),
         ).thenAnswer((_) async => ExitCode.success.code);
         when(
@@ -816,16 +834,15 @@ void main() {
         );
       });
 
-      test('uses devicectl if devicectl says to', () async {
-        when(
-          () => devicectl.isSupported(deviceId: any(named: 'deviceId')),
-        ).thenAnswer((_) async => true);
+      test('uses devicectl if devicectl returns a usable device', () async {
+        when(() => devicectl.deviceForLaunch(deviceId: any(named: 'deviceId')))
+            .thenAnswer((_) async => appleDevice);
         setupShorebirdYaml();
         await runWithOverrides(command.run);
         verify(
           () => devicectl.installAndLaunchApp(
             runnerAppDirectory: any(named: 'runnerAppDirectory'),
-            deviceId: any(named: 'deviceId'),
+            device: any(named: 'device'),
           ),
         ).called(1);
         verifyNever(

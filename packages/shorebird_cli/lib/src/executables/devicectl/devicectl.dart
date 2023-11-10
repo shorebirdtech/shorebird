@@ -8,6 +8,7 @@ import 'package:path/path.dart' as p;
 import 'package:scoped/scoped.dart';
 import 'package:shorebird_cli/src/executables/devicectl/apple_device.dart';
 import 'package:shorebird_cli/src/executables/devicectl/nserror.dart';
+import 'package:shorebird_cli/src/executables/idevicesyslog.dart';
 import 'package:shorebird_cli/src/logger.dart';
 import 'package:shorebird_cli/src/process.dart';
 import 'package:shorebird_cli/src/third_party/flutter_tools/lib/flutter_tools.dart';
@@ -66,26 +67,20 @@ class Devicectl {
 
   /// Returns the first available iOS device, or the device with the given
   /// [deviceId] if provided. Devices that are running iOS <17 are not
-  /// "CoreDevice"s and are not visible to devicectl.
+  /// "CoreDevice"s and are not visible to devicectl. Returns null if devicectl
+  /// is not available or no devices are found.
   Future<AppleDevice?> deviceForLaunch({String? deviceId}) async {
+    if (!await _isAvailable()) {
+      return null;
+    }
+
     final devices = await listAvailableIosDevices();
 
     if (deviceId != null) {
-      return devices.firstWhereOrNull((d) => d.identifier == deviceId);
+      return devices.firstWhereOrNull((d) => d.udid == deviceId);
     } else {
       return devices.firstOrNull;
     }
-  }
-
-  /// Whether we should use `devicectl` to install and launch the app on the
-  /// device with the given [deviceId], or the first available device we find if
-  /// [deviceId] is not provided.
-  Future<bool> isSupported({String? deviceId}) async {
-    if (!await _isAvailable()) {
-      return false;
-    }
-
-    return await deviceForLaunch(deviceId: deviceId) != null;
   }
 
   /// Installs the given [runnerApp] on the device with the given [deviceId].
@@ -169,27 +164,25 @@ class Devicectl {
     }
   }
 
-  /// Installs and launches the given [runnerAppDirectory] on the device with
-  /// the given [deviceId]. If no [deviceId] is provided, the first available
-  /// device returned by [listAvailableIosDevices] will be used.
+  /// Installs and launches the given [runnerAppDirectory] on [device]. [device]
+  /// should be obtained using [listAvailableIosDevices]. After successfully
+  /// launching the app, this method will start a logger process to capture
+  /// logs from the device.
   Future<int> installAndLaunchApp({
     required Directory runnerAppDirectory,
-    String? deviceId,
+    required AppleDevice device,
   }) async {
-    final deviceProgress = logger.progress('Finding device for run');
-    final device = await deviceForLaunch(deviceId: deviceId);
-    if (device == null) {
-      deviceProgress.fail('No devices found');
-      return ExitCode.software.code;
-    }
-    deviceProgress.complete();
-
     final installProgress = logger.progress('Installing app');
+
+    // Start the logger before launching the app to ensure we capture all
+    // logs. Starting the logger process after launching the app can result
+    // in missing some shorebird logs.
+    final loggerExitCodeFuture = idevicesyslog.startLogger(device: device);
 
     final String bundleId;
     try {
       bundleId = await installApp(
-        deviceId: device.identifier,
+        deviceId: device.udid,
         runnerApp: runnerAppDirectory,
       );
     } catch (error) {
@@ -200,15 +193,15 @@ class Devicectl {
 
     final launchProgress = logger.progress('Launching app');
     try {
-      await launchApp(
-        deviceId: device.identifier,
-        bundleId: bundleId,
-      );
+      await launchApp(deviceId: device.udid, bundleId: bundleId);
     } catch (error) {
       launchProgress.fail('Failed to launch app: $error');
       return ExitCode.software.code;
     }
     launchProgress.complete();
+
+    final loggerExitCode = await loggerExitCodeFuture;
+    logger.detail('idevicesyslog exited with code $loggerExitCode');
 
     return ExitCode.success.code;
   }
