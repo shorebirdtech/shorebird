@@ -56,7 +56,6 @@ class ShorebirdCliCommandRunner extends CompletionCommandRunner<int> {
             'are building Flutter locally.',
       );
 
-    addCommand(AppsCommand());
     addCommand(BuildCommand());
     addCommand(CacheCommand());
     addCommand(DoctorCommand());
