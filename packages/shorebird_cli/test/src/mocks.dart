@@ -16,6 +16,7 @@ import 'package:shorebird_cli/src/cache.dart' show Cache;
 import 'package:shorebird_cli/src/code_push_client_wrapper.dart';
 import 'package:shorebird_cli/src/config/config.dart';
 import 'package:shorebird_cli/src/doctor.dart';
+import 'package:shorebird_cli/src/executables/devicectl/apple_device.dart';
 import 'package:shorebird_cli/src/executables/executables.dart';
 import 'package:shorebird_cli/src/os/os.dart';
 import 'package:shorebird_cli/src/patch_diff_checker.dart';
@@ -38,6 +39,8 @@ class MockAndroidSdk extends Mock implements AndroidSdk {}
 class MockAndroidStudio extends Mock implements AndroidStudio {}
 
 class MockAppMetadata extends Mock implements AppMetadata {}
+
+class MockAppleDevice extends Mock implements AppleDevice {}
 
 class MockArchiveDiffer extends Mock implements ArchiveDiffer {}
 
@@ -68,6 +71,8 @@ class MockGit extends Mock implements Git {}
 class MockGradlew extends Mock implements Gradlew {}
 
 class MockHttpClient extends Mock implements http.Client {}
+
+class MockIDeviceSysLog extends Mock implements IDeviceSysLog {}
 
 class MockIOSDeploy extends Mock implements IOSDeploy {}
 

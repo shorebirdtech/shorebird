@@ -13,7 +13,6 @@ AppleDevice _$AppleDeviceFromJson(Map<String, dynamic> json) => $checkedCreate(
       json,
       ($checkedConvert) {
         final val = AppleDevice(
-          identifier: $checkedConvert('identifier', (v) => v as String),
           deviceProperties: $checkedConvert('deviceProperties',
               (v) => DeviceProperties.fromJson(v as Map<String, dynamic>)),
           hardwareProperties: $checkedConvert('hardwareProperties',
@@ -32,6 +31,7 @@ HardwareProperties _$HardwarePropertiesFromJson(Map<String, dynamic> json) =>
       ($checkedConvert) {
         final val = HardwareProperties(
           platform: $checkedConvert('platform', (v) => v as String),
+          udid: $checkedConvert('udid', (v) => v as String),
         );
         return val;
       },
@@ -59,6 +59,7 @@ ConnectionProperties _$ConnectionPropertiesFromJson(
       ($checkedConvert) {
         final val = ConnectionProperties(
           tunnelState: $checkedConvert('tunnelState', (v) => v as String),
+          transportType: $checkedConvert('transportType', (v) => v as String?),
         );
         return val;
       },

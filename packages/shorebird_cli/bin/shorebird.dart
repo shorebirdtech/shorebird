@@ -10,6 +10,7 @@ import 'package:shorebird_cli/src/code_push_client_wrapper.dart';
 import 'package:shorebird_cli/src/command_runner.dart';
 import 'package:shorebird_cli/src/doctor.dart';
 import 'package:shorebird_cli/src/executables/executables.dart';
+import 'package:shorebird_cli/src/executables/idevicesyslog.dart';
 import 'package:shorebird_cli/src/logger.dart';
 import 'package:shorebird_cli/src/os/os.dart';
 import 'package:shorebird_cli/src/patch_diff_checker.dart';
@@ -38,6 +39,7 @@ Future<void> main(List<String> args) async {
         engineConfigRef,
         gitRef,
         gradlewRef,
+        idevicesyslogRef,
         iosDeployRef,
         javaRef,
         loggerRef,
