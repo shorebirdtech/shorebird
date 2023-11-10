@@ -58,8 +58,8 @@ ConnectionProperties _$ConnectionPropertiesFromJson(
       json,
       ($checkedConvert) {
         final val = ConnectionProperties(
-          transportType: $checkedConvert('transportType', (v) => v as String),
           tunnelState: $checkedConvert('tunnelState', (v) => v as String),
+          transportType: $checkedConvert('transportType', (v) => v as String?),
         );
         return val;
       },

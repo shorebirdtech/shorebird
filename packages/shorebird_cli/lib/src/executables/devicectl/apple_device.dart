@@ -90,14 +90,11 @@ class DeviceProperties {
 
 @JsonSerializable(createToJson: false, fieldRename: FieldRename.none)
 class ConnectionProperties {
-  const ConnectionProperties({
-    required this.transportType,
-    required this.tunnelState,
-  });
+  const ConnectionProperties({required this.tunnelState, this.transportType});
 
   /// How the device is connected. Values seen in development include
-  /// "localNetwork" and "wired".
-  final String transportType;
+  /// "localNetwork" and "wired". Will be absent if the device is not connected.
+  final String? transportType;
 
   /// The device's connection state. Values seen in development (as devicectl
   /// is seemingly undocumented) include:
