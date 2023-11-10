@@ -4,7 +4,7 @@ This section contains past updates we've sent to customers via Discord.
 
 ## 0.17.4 (November 10, 2023)
 
-- 💿 includes our new custom Dart Virtual Machine "mixed-mode" (not yet enabled)
+- 💿 Includes our new custom Dart Virtual Machine "mixed-mode" (not yet enabled)
 
 📚 Release notes can be found at https://github.com/shorebirdtech/shorebird/releases/tag/v0.17.4
 
