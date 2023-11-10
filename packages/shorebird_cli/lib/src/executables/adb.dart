@@ -67,6 +67,8 @@ class Adb {
     final args = [
       if (deviceId != null) ...['-s', deviceId],
       'logcat',
+      // This arg prevents old logs from being displayed.
+      ...['-T', '1'],
       if (filter != null) ...['-s', filter],
     ];
     return _stream(args.join(' '));
