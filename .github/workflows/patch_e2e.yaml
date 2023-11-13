@@ -96,23 +96,9 @@ jobs:
           disable-animations: false
           script: echo "Generated AVD Snapshot"
 
-      - name: Create Flutter App
-        run: flutter create e2e_test --empty --platforms android
-
-      - name: Shorebird Init
-        run: shorebird init --force -v
-        working-directory: ./e2e_test
-
-      - name: Extract App ID
-        run: echo "APP_ID=$(cat e2e_test/shorebird.yaml | grep 'app_id:' | awk '{print $2}')" >> $GITHUB_ENV
-
-      - name: Shorebird Release
-        run: shorebird release android --force -v
-        working-directory: ./e2e_test
-
-      - name: E2E Tests
+      - name: Patch E2E Tests
         uses: reactivecircus/android-emulator-runner@v2
         with:
           api-level: 29
-          script: shorebird preview --release-version 0.1.0+1 --app-id ${{ env.APP_ID }}
+          script: ../scripts/patch_e2e.sh
           working-directory: ./e2e_test
