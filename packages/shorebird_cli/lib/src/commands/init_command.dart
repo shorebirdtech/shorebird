@@ -52,7 +52,7 @@ class InitCommand extends ShorebirdCommand {
       if (!shorebirdEnv.hasPubspecYaml) {
         logger.err('''
 Could not find a "pubspec.yaml".
-Please make sure you are running "shorebird init" from the root of your Flutter project.
+Please make sure you are running "shorebird init" from within a Flutter project.
 ''');
         return ExitCode.noInput.code;
       }
@@ -66,11 +66,12 @@ Please make sure you are running "shorebird init" from the root of your Flutter 
     Set<String>? androidFlavors;
     Set<String>? iosFlavors;
     var productFlavors = <String>{};
+    final projectRoot = shorebirdEnv.getFlutterProjectRoot()!;
     final detectFlavorsProgress = logger.progress('Detecting product flavors');
     try {
       final flavors = await Future.wait([
-        _maybeGetAndroidFlavors(Directory.current.path),
-        _maybeGetiOSFlavors(Directory.current.path),
+        _maybeGetAndroidFlavors(projectRoot.path),
+        _maybeGetiOSFlavors(projectRoot.path),
       ]);
       androidFlavors = flavors[0];
       iosFlavors = flavors[1];
@@ -299,13 +300,17 @@ app_id:
 
     if (flavors != null) editor.update(['flavors'], flavors);
 
-    shorebirdEnv.getShorebirdYamlFile().writeAsStringSync(editor.toString());
+    shorebirdEnv
+        .getShorebirdYamlFile(cwd: shorebirdEnv.getFlutterProjectRoot())
+        .writeAsStringSync(editor.toString());
 
     return ShorebirdYaml(appId: appId);
   }
 
   void _addShorebirdYamlToPubspecAssets() {
-    final pubspecFile = shorebirdEnv.getPubspecYamlFile();
+    final pubspecFile = shorebirdEnv.getPubspecYamlFile(
+      cwd: shorebirdEnv.getFlutterProjectRoot(),
+    );
     final pubspecContents = pubspecFile.readAsStringSync();
     final yaml = loadYaml(pubspecContents, sourceUrl: pubspecFile.uri) as Map;
     final editor = YamlEditor(pubspecContents);

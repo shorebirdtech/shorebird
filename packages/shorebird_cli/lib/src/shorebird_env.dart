@@ -7,7 +7,6 @@ import 'package:scoped/scoped.dart';
 import 'package:shorebird_cli/src/config/shorebird_yaml.dart';
 import 'package:shorebird_cli/src/platform.dart';
 import 'package:shorebird_code_push_client/shorebird_code_push_client.dart';
-import 'package:yaml/yaml.dart';
 
 /// A reference to a [ShorebirdEnv] instance.
 final shorebirdEnvRef = create(ShorebirdEnv.new);
@@ -94,13 +93,50 @@ class ShorebirdEnv {
   }
 
   /// The `shorebird.yaml` file for this project.
-  File getShorebirdYamlFile() {
-    return File(p.join(Directory.current.path, 'shorebird.yaml'));
+  File getShorebirdYamlFile({Directory? cwd}) {
+    final dir = cwd ?? Directory.current;
+    return File(p.join(dir.path, 'shorebird.yaml'));
   }
 
   /// The `pubspec.yaml` file for this project.
-  File getPubspecYamlFile() {
-    return File(p.join(Directory.current.path, 'pubspec.yaml'));
+  File getPubspecYamlFile({Directory? cwd}) {
+    final dir = cwd ?? Directory.current;
+    return File(p.join(dir.path, 'pubspec.yaml'));
+  }
+
+  /// Finds nearest ancestor file
+  /// relative to the [cwd] that satisfies [where].
+  File? findNearestAncestor({
+    required File? Function(String path) where,
+    Directory? cwd,
+  }) {
+    Directory? prev;
+    var dir = cwd ?? Directory.current;
+    while (prev?.path != dir.path) {
+      final file = where(dir.path);
+      if (file?.existsSync() ?? false) return file;
+      prev = dir;
+      dir = dir.parent;
+    }
+    return null;
+  }
+
+  /// Returns the root directory of the nearest Shorebird project.
+  Directory? getShorebirdProjectRoot() {
+    final file = findNearestAncestor(
+      where: (path) => getShorebirdYamlFile(cwd: Directory(path)),
+    );
+    if (file == null || !file.existsSync()) return null;
+    return Directory(p.dirname(file.path));
+  }
+
+  /// Returns the root directory of the nearest Flutter project.
+  Directory? getFlutterProjectRoot() {
+    final file = findNearestAncestor(
+      where: (path) => getPubspecYamlFile(cwd: Directory(path)),
+    );
+    if (file == null || !file.existsSync()) return null;
+    return Directory(p.dirname(file.path));
   }
 
   /// The `shorebird.yaml` file for this project, parsed into a [ShorebirdYaml]
@@ -109,8 +145,10 @@ class ShorebirdEnv {
   /// Returns `null` if the file does not exist.
   /// Throws a [ParsedYamlException] if the file exists but is invalid.
   ShorebirdYaml? getShorebirdYaml() {
-    final file = getShorebirdYamlFile();
-    if (!file.existsSync()) return null;
+    final file = findNearestAncestor(
+      where: (path) => getShorebirdYamlFile(cwd: Directory(path)),
+    );
+    if (file == null || !file.existsSync()) return null;
     final yaml = file.readAsStringSync();
     return checkedYamlDecode(yaml, (m) => ShorebirdYaml.fromJson(m!));
   }
@@ -120,10 +158,16 @@ class ShorebirdEnv {
   /// Returns `null` if the file does not exist.
   /// Throws a [ParsedYamlException] if the file exists but is invalid.
   Pubspec? getPubspecYaml() {
-    final file = getPubspecYamlFile();
-    if (!file.existsSync()) return null;
+    final file = findNearestAncestor(
+      where: (path) => getPubspecYamlFile(cwd: Directory(path)),
+    );
+    if (file == null || !file.existsSync()) return null;
     final yaml = file.readAsStringSync();
-    return Pubspec.parse(yaml);
+    try {
+      return Pubspec.parse(yaml);
+    } catch (_) {
+      return null;
+    }
   }
 
   /// Whether `shorebird init` has been run in the current project.
@@ -132,7 +176,7 @@ class ShorebirdEnv {
   }
 
   /// Whether the current project has a `shorebird.yaml` file.
-  bool get hasShorebirdYaml => getShorebirdYamlFile().existsSync();
+  bool get hasShorebirdYaml => getShorebirdYaml() != null;
 
   /// Whether the current project has a `pubspec.yaml` file.
   bool get hasPubspecYaml => getPubspecYaml() != null;
@@ -140,13 +184,11 @@ class ShorebirdEnv {
   /// Whether the current project's `pubspec.yaml` file contains a reference to
   /// `shorebird.yaml` in its `assets` section.
   bool get pubspecContainsShorebirdYaml {
-    final file = File(p.join(Directory.current.path, 'pubspec.yaml'));
-    final pubspecContents = file.readAsStringSync();
-    final yaml = loadYaml(pubspecContents, sourceUrl: file.uri) as Map;
-    if (!yaml.containsKey('flutter')) return false;
-    if (yaml['flutter'] is! Map) return false;
-    if (!(yaml['flutter'] as Map).containsKey('assets')) return false;
-    final assets = (yaml['flutter'] as Map)['assets'] as List;
+    final pubspec = getPubspecYaml();
+    if (pubspec == null) return false;
+    if (pubspec.flutter == null) return false;
+    if (pubspec.flutter!['assets'] == null) return false;
+    final assets = pubspec.flutter!['assets'] as List;
     return assets.contains('shorebird.yaml');
   }
 

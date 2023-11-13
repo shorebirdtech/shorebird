@@ -110,15 +110,28 @@ Please comment and upvote ${link(uri: Uri.parse('https://github.com/shorebirdtec
       return ExitCode.software.code;
     }
 
+    final projectRoot = shorebirdEnv.getShorebirdProjectRoot()!;
     final shorebirdYaml = shorebirdEnv.getShorebirdYaml()!;
     final appId = shorebirdYaml.getAppId(flavor: flavor);
     final app = await codePushClientWrapper.getApp(appId: appId);
 
-    final bundleDirPath = p.join('build', 'app', 'outputs', 'bundle');
+    final bundleDirPath = p.join(
+      projectRoot.path,
+      'build',
+      'app',
+      'outputs',
+      'bundle',
+    );
+    final apkDirPath = p.join(
+      projectRoot.path,
+      'build',
+      'app',
+      'outputs',
+      'apk',
+    );
     final bundlePath = flavor != null
         ? p.join(bundleDirPath, '${flavor}Release', 'app-$flavor-release.aab')
         : p.join(bundleDirPath, 'release', 'app-release.aab');
-    final apkDirPath = p.join('build', 'app', 'outputs', 'apk');
     final apkPath = flavor != null
         ? p.join(apkDirPath, flavor, 'release', 'app-$flavor-release.apk')
         : p.join(apkDirPath, 'release', 'app-release.apk');
@@ -194,6 +207,7 @@ ${summary.join('\n')}
     await codePushClientWrapper.createAndroidReleaseArtifacts(
       appId: app.appId,
       releaseId: release.id,
+      projectRoot: projectRoot.path,
       aabPath: bundlePath,
       platform: platform,
       architectures: architectures,

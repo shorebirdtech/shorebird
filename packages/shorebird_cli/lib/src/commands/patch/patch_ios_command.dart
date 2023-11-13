@@ -278,8 +278,11 @@ ${summary.join('\n')}
     return ExitCode.success.code;
   }
 
-  String get _aotOutputPath =>
-      p.join(Directory.current.path, 'build', 'out.aot');
+  String get _aotOutputPath => p.join(
+        shorebirdEnv.getShorebirdProjectRoot()!.path,
+        'build',
+        'out.aot',
+      );
 
   Future<void> _buildPatch() async {
     final target = results['target'] as String?;
