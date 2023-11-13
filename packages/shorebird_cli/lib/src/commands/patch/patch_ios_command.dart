@@ -145,7 +145,9 @@ If this option is not provided, the version number will be determined from the p
       try {
         releaseVersion = plist.versionNumber;
       } catch (error) {
-        logger.err('Failed to determine release version: $error');
+        logger.err(
+          'Failed to determine release version from ${plistFile.path}: $error',
+        );
         return ExitCode.software.code;
       }
 
