@@ -10,19 +10,83 @@ on:
     # At the end of every day
     - cron: "0 0 * * *"
 
+env:
+  SHOREBIRD_TOKEN: ${{ secrets.SHOREBIRD_TOKEN }}
+  FLUTTER_VERSION: 3.13.9
+
 jobs:
-  test:
+  patch:
+    runs-on: macos-latest
+
+    env:
+      SHOREBIRD_HOSTED_URL: https://api-dev.shorebird.dev
+
+    steps:
+      - name: 📚 Git Checkout
+        uses: actions/checkout@v3
+
+      - name: 🖥️ Add Shorebird to PATH
+        shell: bash
+        run: echo "${GITHUB_WORKSPACE}/bin/" >> $GITHUB_PATH
+
+      - name: 🐦 Verify Shorebird Installation
+        run: |
+          if [[ $(shorebird --version) =~ "Engine • revision" ]]; then          
+            echo '✅ Shorebird CLI is installed!'
+          else
+            echo '❌ Shorebird CLI is not installed.'
+          exit 1
+          fi
+        shell: bash
+
+      - name: ☕ Set up Java
+        uses: actions/setup-java@v3
+        with:
+          distribution: "temurin"
+          java-version: "17"
+
+      - name: 🎯 Set up Flutter
+        uses: subosito/flutter-action@v2
+        with:
+          channel: stable
+          flutter-version: ${{ env.FLUTTER_VERSION }}
+          cache: true
+
+      - name: 🤖 AVD Cache
+        uses: actions/cache@v3
+        id: avd-cache
+        with:
+          path: |
+            ~/.android/avd/*
+            ~/.android/adb*
+          key: avd-29
+
+      - name: 🤖 Cache AVD Snapshot
+        if: steps.avd-cache.outputs.cache-hit != 'true'
+        uses: reactivecircus/android-emulator-runner@v2
+        with:
+          api-level: 29
+          force-avd-creation: false
+          emulator-options: -no-window -gpu swiftshader_indirect -noaudio -no-boot-anim -camera-back none
+          disable-animations: false
+          script: echo "Generated AVD Snapshot"
+
+      - name: 🧪 Run Patch E2E Tests
+        uses: reactivecircus/android-emulator-runner@v2
+        with:
+          api-level: 29
+          script: ./scripts/patch_e2e.sh
+
+  cli:
     strategy:
       fail-fast: false
       matrix:
         os: [macos-latest, windows-latest, ubuntu-latest]
-        package: [packages/shorebird_cli]
         branch: [stable, main]
 
     runs-on: ${{ matrix.os }}
 
     env:
-      SHOREBIRD_TOKEN: ${{ secrets.SHOREBIRD_TOKEN }}
       SHOREBIRD_HOSTED_URL: ${{ matrix.branch == 'stable' && 'https://api.shorebird.dev' || 'https://api-dev.shorebird.dev' }}
 
     steps:
@@ -74,8 +138,9 @@ jobs:
         uses: subosito/flutter-action@v2
         with:
           channel: stable
-          flutter-version: 3.10.6
+          flutter-version: ${{ env.FLUTTER_VERSION }}
+          cache: true
 
       - name: 🧪 Run Integration Tests
         run: dart test integration_test
-        working-directory: ${{ matrix.package }}
+        working-directory: packages/shorebird_cli
