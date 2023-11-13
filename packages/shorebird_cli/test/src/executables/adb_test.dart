@@ -202,7 +202,7 @@ void main() {
         });
         final result = await runWithOverrides(() => adb.logcat());
         expect(result, equals(logcatProcess));
-        verify(() => process.start(adbPath, ['logcat'])).called(1);
+        verify(() => process.start(adbPath, ['logcat', '-T', '1'])).called(1);
       });
 
       test('returns correct process (filtered)', () async {
@@ -221,7 +221,7 @@ void main() {
         final result = await runWithOverrides(() => adb.logcat(filter: filter));
         expect(result, equals(logcatProcess));
         verify(
-          () => process.start(adbPath, ['logcat', '-s', filter]),
+          () => process.start(adbPath, ['logcat', '-T', '1', '-s', filter]),
         ).called(1);
       });
 
@@ -234,8 +234,9 @@ void main() {
           fail('Unexpected executable: $executable');
         });
         await runWithOverrides(() => adb.logcat(deviceId: deviceId));
-        verify(() => process.start(adbPath, ['-s', deviceId, 'logcat']))
-            .called(1);
+        verify(
+          () => process.start(adbPath, ['-s', deviceId, 'logcat', '-T', '1']),
+        ).called(1);
       });
     });
   });

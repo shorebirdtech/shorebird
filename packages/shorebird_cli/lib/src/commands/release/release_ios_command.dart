@@ -198,7 +198,9 @@ make smaller updates to your app.
     try {
       releaseVersion = plist.versionNumber;
     } catch (error) {
-      logger.err('Failed to determine release version: $error');
+      logger.err(
+        'Failed to determine release version from ${plistFile.path}: $error',
+      );
       return ExitCode.software.code;
     }
 

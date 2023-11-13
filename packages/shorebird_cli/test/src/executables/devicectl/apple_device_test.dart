@@ -4,25 +4,42 @@ import 'package:test/test.dart';
 
 void main() {
   group(AppleDevice, () {
+    const udid = '12345678-1234567890ABCDEF';
+    const deviceName = "Joe's iPhone";
+    const connectionProperties = ConnectionProperties(
+      transportType: 'wired',
+      tunnelState: 'disconnected',
+    );
+    const deviceProperties = DeviceProperties(
+      name: deviceName,
+      osVersionNumber: '17.1',
+    );
+    const hardwareProperties = HardwareProperties(
+      platform: 'iOS',
+      udid: udid,
+    );
+
+    late AppleDevice device;
+
+    setUp(() {
+      device = const AppleDevice(
+        deviceProperties: deviceProperties,
+        hardwareProperties: hardwareProperties,
+        connectionProperties: connectionProperties,
+      );
+    });
+
+    group('toString', () {
+      test('includes name, OS version, and UDID', () {
+        expect(
+          device.toString(),
+          equals('$deviceName (${deviceProperties.osVersionNumber} $udid)'),
+        );
+      });
+    });
+
     group('osVersion', () {
-      const identifier = 'DEADBEEF-DEAD-BEEF-DEAD-BEEFDEADBEEF';
-      const deviceName = "Joe's iPhone";
-      const connectionProperties =
-          ConnectionProperties(tunnelState: 'disconnected');
-      const hardwareProperties = HardwareProperties(platform: 'iOS');
-
-      late AppleDevice device;
-
       group('when version string is null', () {
-        setUp(() {
-          device = const AppleDevice(
-            identifier: identifier,
-            deviceProperties: DeviceProperties(name: deviceName),
-            hardwareProperties: hardwareProperties,
-            connectionProperties: connectionProperties,
-          );
-        });
-
         test('returns null', () {
           expect(device.osVersion, isNull);
         });
@@ -31,7 +48,6 @@ void main() {
       group('when version string not parseable', () {
         setUp(() {
           device = const AppleDevice(
-            identifier: identifier,
             deviceProperties: DeviceProperties(
               name: deviceName,
               osVersionNumber: 'unparseable version number',
@@ -49,7 +65,6 @@ void main() {
       group('when version string is valid', () {
         setUp(() {
           device = const AppleDevice(
-            identifier: identifier,
             deviceProperties: DeviceProperties(
               name: deviceName,
               osVersionNumber: '1.2.3',
@@ -61,6 +76,42 @@ void main() {
 
         test('returns a Version', () {
           expect(device.osVersion, equals(Version(1, 2, 3)));
+        });
+      });
+    });
+
+    group('isWired', () {
+      group('when connectionProperties.transportType is "wired"', () {
+        setUp(() {
+          device = const AppleDevice(
+            deviceProperties: deviceProperties,
+            hardwareProperties: hardwareProperties,
+            connectionProperties: ConnectionProperties(
+              tunnelState: 'disconnected',
+              transportType: 'wired',
+            ),
+          );
+        });
+
+        test('returns true', () {
+          expect(device.isWired, isTrue);
+        });
+      });
+
+      group('when connectionProperties.transportType is "network"', () {
+        setUp(() {
+          device = const AppleDevice(
+            deviceProperties: deviceProperties,
+            hardwareProperties: hardwareProperties,
+            connectionProperties: ConnectionProperties(
+              tunnelState: 'disconnected',
+              transportType: 'network',
+            ),
+          );
+        });
+
+        test('returns false', () {
+          expect(device.isWired, isFalse);
         });
       });
     });

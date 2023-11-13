@@ -14,7 +14,6 @@ part 'apple_device.g.dart';
 /// {@macro apple_device}
 class AppleDevice {
   const AppleDevice({
-    required this.identifier,
     required this.deviceProperties,
     required this.hardwareProperties,
     required this.connectionProperties,
@@ -22,10 +21,6 @@ class AppleDevice {
 
   /// Creates an [AppleDevice] from JSON.
   static AppleDevice fromJson(Json json) => _$AppleDeviceFromJson(json);
-
-  /// The device's unique identifier of the form
-  /// DEADBEEF-DEAD-BEEF-DEAD-BEEFDEADBEEF.
-  final String identifier;
 
   /// Information about the device itself.
   final DeviceProperties deviceProperties;
@@ -54,14 +49,26 @@ class AppleDevice {
   /// [ConnectionProperties.tunnelState] for more information about known
   /// tunnelState values and what they (seem to) represent.
   bool get isAvailable => connectionProperties.tunnelState != 'unavailable';
+
+  /// The device's unique identifier of the form 12345678-1234567890ABCDEF
+  String get udid => hardwareProperties.udid;
+
+  /// Whether the device is connected via USB.
+  bool get isWired => connectionProperties.transportType == 'wired';
+
+  @override
+  String toString() => '$name ($osVersionString ${hardwareProperties.udid})';
 }
 
 @JsonSerializable(createToJson: false, fieldRename: FieldRename.none)
 class HardwareProperties {
-  const HardwareProperties({required this.platform});
+  const HardwareProperties({required this.platform, required this.udid});
 
   /// The device's platform (e.g., "iOS").
   final String platform;
+
+  /// The unique identifier of this device
+  final String udid;
 
   static HardwareProperties fromJson(Json json) =>
       _$HardwarePropertiesFromJson(json);
@@ -83,7 +90,11 @@ class DeviceProperties {
 
 @JsonSerializable(createToJson: false, fieldRename: FieldRename.none)
 class ConnectionProperties {
-  const ConnectionProperties({required this.tunnelState});
+  const ConnectionProperties({required this.tunnelState, this.transportType});
+
+  /// How the device is connected. Values seen in development include
+  /// "localNetwork" and "wired". Will be absent if the device is not connected.
+  final String? transportType;
 
   /// The device's connection state. Values seen in development (as devicectl
   /// is seemingly undocumented) include:

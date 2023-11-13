@@ -2,6 +2,18 @@
 
 This section contains past updates we've sent to customers via Discord.
 
+## 0.17.4 (November 10, 2023)
+
+- 💿 Includes our new custom Dart Virtual Machine "mixed-mode" (not yet enabled)
+
+  - We rewrote how Dart code is executed on iOS in this release. We haven't yet enabled the new faster "mixed-mode" execution so there should be no observable change, but the faster VM is now included and in partial use. Because this was such a large (multi-month!) change, there could be unanticipated changes on iOS devices. If you see anything surprising, please let us know!
+
+📚 Release notes can be found at https://github.com/shorebirdtech/shorebird/releases/tag/v0.17.4
+
+As always, you can upgrade using `shorebird upgrade`
+
+Please let us know if we can help!
+
 ## 0.17.3 (November 8, 2023)
 
 - 🗂️ Use multipart file uploads for release and patch artifacts
