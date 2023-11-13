@@ -207,8 +207,6 @@ Please make sure you are running "shorebird init" from the root of your Flutter 
       _addShorebirdYamlToPubspecAssets();
     }
 
-    await doctor.runValidators(doctor.allValidators, applyFixes: true);
-
     logger.info(
       '''
 
@@ -226,6 +224,9 @@ Reference the following commands to get started:
 
 For more information about Shorebird, visit ${link(uri: Uri.parse('https://shorebird.dev'))}''',
     );
+
+    await doctor.runValidators(doctor.allValidators, applyFixes: true);
+
     return ExitCode.success.code;
   }
 
