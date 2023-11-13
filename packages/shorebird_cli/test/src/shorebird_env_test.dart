@@ -106,7 +106,7 @@ void main() {
 
     group('getPubspecYaml', () {
       test('returns null when pubspec.yaml does not exist', () {
-        final tempDir = Directory('temp');
+        final tempDir = Directory.systemTemp.createTempSync();
         expect(
           IOOverrides.runZoned(
             () => runWithOverrides(() => shorebirdEnv.getPubspecYaml()),
@@ -133,7 +133,7 @@ void main() {
 
     group('hasPubspecYaml', () {
       test('returns false when pubspec.yaml does not exist', () {
-        final tempDir = Directory('temp');
+        final tempDir = Directory.systemTemp.createTempSync();
         expect(
           IOOverrides.runZoned(
             () => runWithOverrides(() => shorebirdEnv.hasPubspecYaml),
