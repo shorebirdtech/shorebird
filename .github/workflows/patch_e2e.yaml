@@ -103,6 +103,9 @@ jobs:
         run: shorebird init --force -v
         working-directory: ./e2e_test
 
+      - name: Extract App ID
+        run: echo "APP_ID=$(cat e2e_test/shorebird.yaml | grep 'app_id:' | awk '{print $2}')" >> $GITHUB_ENV
+
       - name: Shorebird Release
         run: shorebird release android --force -v
         working-directory: ./e2e_test
@@ -111,5 +114,5 @@ jobs:
         uses: reactivecircus/android-emulator-runner@v2
         with:
           api-level: 29
-          script: shorebird run -d android -v
+          script: shorebird preview --release-version 0.1.0+1 --app-id ${{ env.APP_ID }}}
           working-directory: ./e2e_test
