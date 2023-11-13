@@ -152,10 +152,14 @@ Please make sure you are running "shorebird init" from the root of your Flutter 
     final String appId;
     Map<String, String>? flavors;
     try {
-      final displayName = logger.prompt(
-        '${lightGreen.wrap('?')} How should we refer to this app?',
-        defaultValue: shorebirdEnv.getPubspecYaml()?.name,
-      );
+      final needsConfirmation = !force && !shorebirdEnv.isRunningOnCI;
+      final pubspecName = shorebirdEnv.getPubspecYaml()!.name;
+      final displayName = needsConfirmation
+          ? logger.prompt(
+              '${lightGreen.wrap('?')} How should we refer to this app?',
+              defaultValue: pubspecName,
+            )
+          : pubspecName;
       final hasNoFlavors = productFlavors.isEmpty;
       final hasSomeFlavors = productFlavors.isNotEmpty &&
           ((androidFlavors?.isEmpty ?? false) ||
