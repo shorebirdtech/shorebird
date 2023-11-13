@@ -5,6 +5,7 @@ import 'package:mason_logger/mason_logger.dart';
 import 'package:mocktail/mocktail.dart';
 import 'package:path/path.dart' as p;
 import 'package:platform/platform.dart';
+import 'package:pubspec_parse/pubspec_parse.dart';
 import 'package:scoped/scoped.dart';
 import 'package:shorebird_cli/src/code_push_client_wrapper.dart';
 import 'package:shorebird_cli/src/commands/init_command.dart';
@@ -104,8 +105,12 @@ environment:
       when(() => gradlew.productFlavors(any())).thenAnswer((_) async => {});
       when(() => platform.isMacOS).thenReturn(true);
       when(() => shorebirdEnv.hasPubspecYaml).thenReturn(true);
+      when(
+        () => shorebirdEnv.getPubspecYaml(),
+      ).thenReturn(Pubspec.parse(pubspecYamlContent));
       when(() => shorebirdEnv.hasShorebirdYaml).thenReturn(false);
       when(() => shorebirdEnv.pubspecContainsShorebirdYaml).thenReturn(false);
+      when(() => shorebirdEnv.isRunningOnCI).thenReturn(false);
       when(
         () => shorebirdValidator.validatePreconditions(
           checkUserIsAuthenticated: any(named: 'checkUserIsAuthenticated'),
@@ -174,6 +179,28 @@ Please make sure you are running "shorebird init" from the root of your Flutter 
         ),
       ).called(1);
       expect(exitCode, ExitCode.software.code);
+    });
+
+    test('does not prompt for name when running on ci', () async {
+      when(() => shorebirdEnv.isRunningOnCI).thenReturn(true);
+      await runWithOverrides(command.run);
+      verifyNever(
+        () => logger.prompt(any(), defaultValue: any(named: 'defaultValue')),
+      );
+      verify(
+        () => codePushClientWrapper.createApp(appName: appName),
+      ).called(1);
+    });
+
+    test('does not prompt for name when --force', () async {
+      when(() => argResults['force']).thenReturn(true);
+      await runWithOverrides(command.run);
+      verifyNever(
+        () => logger.prompt(any(), defaultValue: any(named: 'defaultValue')),
+      );
+      verify(
+        () => codePushClientWrapper.createApp(appName: appName),
+      ).called(1);
     });
 
     test('--force overwrites existing shorebird.yaml', () async {
