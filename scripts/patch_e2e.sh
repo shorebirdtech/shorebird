@@ -27,6 +27,9 @@ echo "void main() { print('hello world'); }" >lib/main.dart
 # Initialize Shorebird
 shorebird init --force -v
 
+# Point to the development environment
+echo "base_url: https://api-dev.shorebird.dev" >> shorebird.yaml
+
 # Extract the app_id from the "shorebird.yaml"
 APP_ID=$(cat shorebird.yaml | grep 'app_id:' | awk '{print $2}')
 
