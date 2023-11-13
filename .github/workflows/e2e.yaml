@@ -139,6 +139,7 @@ jobs:
         with:
           channel: stable
           flutter-version: ${{ env.FLUTTER_VERSION }}
+          cache: true
 
       - name: 🧪 Run Integration Tests
         run: dart test integration_test
