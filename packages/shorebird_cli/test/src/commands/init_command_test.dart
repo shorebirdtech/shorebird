@@ -993,7 +993,16 @@ flutter:
 
     test('fixes fixable validation errors', () async {
       await runWithOverrides(command.run);
-      verify(() => doctor.runValidators(any(), applyFixes: true)).called(1);
+      verifyInOrder([
+        () => logger.info(
+              any(
+                that: contains(
+                  lightGreen.wrap('🐦 Shorebird initialized successfully!'),
+                ),
+              ),
+            ),
+        () => doctor.runValidators(any(), applyFixes: true)
+      ]);
     });
   });
 }
