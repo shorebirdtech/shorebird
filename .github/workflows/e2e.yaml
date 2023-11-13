@@ -5,18 +5,20 @@ concurrency:
   cancel-in-progress: true
 
 on:
-  pull_request:
   workflow_dispatch:
   schedule:
     # At the end of every day
     - cron: "0 0 * * *"
+
+env:
+  SHOREBIRD_TOKEN: ${{ secrets.SHOREBIRD_TOKEN }}
+  FLUTTER_VERSION: 3.13.9
 
 jobs:
   patch:
     runs-on: macos-latest
 
     env:
-      SHOREBIRD_TOKEN: ${{ secrets.SHOREBIRD_TOKEN }}
       SHOREBIRD_HOSTED_URL: https://api-dev.shorebird.dev
 
     steps:
@@ -47,7 +49,7 @@ jobs:
         uses: subosito/flutter-action@v2
         with:
           channel: stable
-          flutter-version: 3.13.9
+          flutter-version: ${{ env.FLUTTER_VERSION }}
           cache: true
 
       - name: 🤖 AVD Cache
@@ -75,18 +77,16 @@ jobs:
           api-level: 29
           script: ./scripts/patch_e2e.sh
 
-  test:
+  cli:
     strategy:
       fail-fast: false
       matrix:
         os: [macos-latest, windows-latest, ubuntu-latest]
-        package: [packages/shorebird_cli]
         branch: [stable, main]
 
     runs-on: ${{ matrix.os }}
 
     env:
-      SHOREBIRD_TOKEN: ${{ secrets.SHOREBIRD_TOKEN }}
       SHOREBIRD_HOSTED_URL: ${{ matrix.branch == 'stable' && 'https://api.shorebird.dev' || 'https://api-dev.shorebird.dev' }}
 
     steps:
@@ -138,8 +138,8 @@ jobs:
         uses: subosito/flutter-action@v2
         with:
           channel: stable
-          flutter-version: 3.10.6
+          flutter-version: ${{ env.FLUTTER_VERSION }}
 
       - name: 🧪 Run Integration Tests
         run: dart test integration_test
-        working-directory: ${{ matrix.package }}
+        working-directory: packages/shorebird_cli
