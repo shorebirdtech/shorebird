@@ -720,7 +720,7 @@ Please re-run the release command for this version or create a new release.'''),
         () async {
       final tempDir = setUpTempDir();
       setUpTempArtifacts(tempDir);
-      File(
+      final file = File(
         p.join(
           tempDir.path,
           'build',
@@ -741,7 +741,8 @@ Please re-run the release command for this version or create a new release.'''),
       expect(exitCode, equals(ExitCode.software.code));
       verify(
         () => logger.err(
-          any(that: contains('Failed to determine release version')),
+          'Failed to determine release version from ${file.path}: '
+          'Exception: Could not determine release version',
         ),
       ).called(1);
     });

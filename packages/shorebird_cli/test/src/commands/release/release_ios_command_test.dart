@@ -716,10 +716,10 @@ error: exportArchive: No signing certificate "iOS Distribution" found
       ).called(1);
     });
 
-    test('exits with code 70 when release version cannot be determiend',
+    test('exits with code 70 when release version cannot be determined',
         () async {
       final tempDir = setUpTempDir();
-      File(
+      final file = File(
         p.join(
           tempDir.path,
           'build',
@@ -739,7 +739,8 @@ error: exportArchive: No signing certificate "iOS Distribution" found
       expect(exitCode, equals(ExitCode.software.code));
       verify(
         () => logger.err(
-          any(that: contains('Failed to determine release version')),
+          'Failed to determine release version from ${file.path}: '
+          'Exception: Could not determine release version',
         ),
       ).called(1);
     });
