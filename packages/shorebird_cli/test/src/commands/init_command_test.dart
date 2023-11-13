@@ -148,7 +148,7 @@ environment:
         () => logger.err(
           '''
 Could not find a "pubspec.yaml".
-Please make sure you are running "shorebird init" from the root of your Flutter project.
+Please make sure you are running "shorebird init" from within your Flutter project.
 ''',
         ),
       ).called(1);

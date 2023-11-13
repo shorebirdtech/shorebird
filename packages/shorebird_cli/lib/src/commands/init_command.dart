@@ -52,7 +52,7 @@ class InitCommand extends ShorebirdCommand {
       if (!shorebirdEnv.hasPubspecYaml) {
         logger.err('''
 Could not find a "pubspec.yaml".
-Please make sure you are running "shorebird init" from within a Flutter project.
+Please make sure you are running "shorebird init" from within your Flutter project.
 ''');
         return ExitCode.noInput.code;
       }

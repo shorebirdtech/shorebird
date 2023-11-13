@@ -145,11 +145,9 @@ class ShorebirdEnv {
   /// Returns `null` if the file does not exist.
   /// Throws a [ParsedYamlException] if the file exists but is invalid.
   ShorebirdYaml? getShorebirdYaml() {
-    final file = findNearestAncestor(
-      where: (path) => getShorebirdYamlFile(cwd: Directory(path)),
-    );
-    if (file == null || !file.existsSync()) return null;
-    final yaml = file.readAsStringSync();
+    final root = getShorebirdProjectRoot();
+    if (root == null) return null;
+    final yaml = getShorebirdYamlFile(cwd: root).readAsStringSync();
     return checkedYamlDecode(yaml, (m) => ShorebirdYaml.fromJson(m!));
   }
 
@@ -158,11 +156,9 @@ class ShorebirdEnv {
   /// Returns `null` if the file does not exist.
   /// Throws a [ParsedYamlException] if the file exists but is invalid.
   Pubspec? getPubspecYaml() {
-    final file = findNearestAncestor(
-      where: (path) => getPubspecYamlFile(cwd: Directory(path)),
-    );
-    if (file == null || !file.existsSync()) return null;
-    final yaml = file.readAsStringSync();
+    final root = getFlutterProjectRoot();
+    if (root == null) return null;
+    final yaml = getPubspecYamlFile(cwd: root).readAsStringSync();
     try {
       return Pubspec.parse(yaml);
     } catch (_) {
