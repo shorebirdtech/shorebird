@@ -1,11 +1,10 @@
-name: patch_e2e
+name: Patch E2E Tests
 
 concurrency:
   group: ${{ github.workflow }}-${{ github.ref }}
   cancel-in-progress: true
 
 on:
-  pull_request:
   workflow_dispatch:
   schedule:
     # At the end of every day
