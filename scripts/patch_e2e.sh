@@ -14,6 +14,9 @@
 #
 # Usage: ./patch_e2e.sh
 
+TEMP_DIR=$(mktemp -d)
+cd $TEMP_DIR
+
 # Create a new empty flutter project
 flutter create e2e_test --empty --platforms android
 cd e2e_test

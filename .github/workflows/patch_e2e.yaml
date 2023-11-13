@@ -100,4 +100,4 @@ jobs:
         uses: reactivecircus/android-emulator-runner@v2
         with:
           api-level: 29
-          script: timeout 10 ../scripts/patch_e2e.sh
+          script: ./scripts/patch_e2e.sh
