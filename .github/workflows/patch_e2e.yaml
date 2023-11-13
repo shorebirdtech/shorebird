@@ -114,5 +114,5 @@ jobs:
         uses: reactivecircus/android-emulator-runner@v2
         with:
           api-level: 29
-          script: shorebird preview --release-version 0.1.0+1 --app-id ${{ env.APP_ID }}}
+          script: shorebird preview --release-version 0.1.0+1 --app-id ${{ env.APP_ID }}
           working-directory: ./e2e_test
