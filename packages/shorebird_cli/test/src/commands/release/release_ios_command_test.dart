@@ -336,10 +336,7 @@ flutter:
 
       test('prints instructions to manually codesign', () async {
         setUpProjectRoot();
-        await IOOverrides.runZoned(
-          () => runWithOverrides(command.run),
-          getCurrentDirectory: () => projectRoot,
-        );
+        await runWithOverrides(command.run);
 
         verify(
           () => logger.info(
@@ -350,10 +347,7 @@ flutter:
 
       test('builds without codesigning', () async {
         setUpProjectRoot();
-        await IOOverrides.runZoned(
-          () => runWithOverrides(command.run),
-          getCurrentDirectory: () => projectRoot,
-        );
+        await runWithOverrides(command.run);
 
         verify(
           () => shorebirdProcess.run(
@@ -387,14 +381,12 @@ flutter:
             ),
           ).deleteSync(recursive: true);
 
-          final result = await IOOverrides.runZoned(
-            () => runWithOverrides(command.run),
-            getCurrentDirectory: () => projectRoot,
-          );
+          final exitCode = await runWithOverrides(command.run);
 
-          expect(result, equals(ExitCode.software.code));
-          verify(() => logger.err('Unable to find .xcarchive directory'))
-              .called(1);
+          expect(exitCode, equals(ExitCode.software.code));
+          verify(
+            () => logger.err('Unable to find .xcarchive directory'),
+          ).called(1);
         });
 
         test(
@@ -413,12 +405,9 @@ flutter:
             ),
           ).deleteSync(recursive: true);
 
-          final result = await IOOverrides.runZoned(
-            () => runWithOverrides(command.run),
-            getCurrentDirectory: () => projectRoot,
-          );
+          final exitCode = await runWithOverrides(command.run);
 
-          expect(result, equals(ExitCode.software.code));
+          expect(exitCode, equals(ExitCode.software.code));
           verify(() => logger.err('Unable to find .app directory')).called(1);
         });
 
@@ -451,24 +440,19 @@ flutter:
             ),
           );
 
-          final result = await IOOverrides.runZoned(
-            () => runWithOverrides(command.run),
-            getCurrentDirectory: () => projectRoot,
-          );
+          final exitCode = await runWithOverrides(command.run);
 
-          expect(result, equals(ExitCode.success.code));
+          expect(exitCode, equals(ExitCode.success.code));
         });
       });
 
       test('prints archive upload instructions on success', () async {
         setUpProjectRoot();
-        final result = await IOOverrides.runZoned(
-          () => runWithOverrides(command.run),
-          getCurrentDirectory: () => projectRoot,
-        );
+        final exitCode = await runWithOverrides(command.run);
 
-        expect(result, equals(ExitCode.success.code));
+        expect(exitCode, equals(ExitCode.success.code));
         final archivePath = p.join(
+          projectRoot.path,
           'build',
           'ios',
           'archive',
@@ -480,10 +464,10 @@ flutter:
               that: stringContainsInOrder(
                 [
                   'Your next step is to submit the archive',
-                  archivePath,
+                  p.relative(archivePath),
                   'to the App Store using Xcode.',
                   'You can open the archive in Xcode by running',
-                  'open $archivePath',
+                  'open ${p.relative(archivePath)}',
                   '''Make sure to uncheck "Manage Version and Build Number", or else shorebird will not work.''',
                 ],
               ),
@@ -494,19 +478,18 @@ flutter:
 
       test('creates unsigned release artifacts', () async {
         setUpProjectRoot();
-        final result = await IOOverrides.runZoned(
-          () => runWithOverrides(command.run),
-          getCurrentDirectory: () => projectRoot,
-        );
+        final exitCode = await runWithOverrides(command.run);
 
-        expect(result, equals(ExitCode.success.code));
+        expect(exitCode, equals(ExitCode.success.code));
 
         verify(
           () => codePushClientWrapper.createIosReleaseArtifacts(
             appId: appId,
             releaseId: release.id,
-            xcarchivePath:
-                any(named: 'xcarchivePath', that: endsWith('.xcarchive')),
+            xcarchivePath: any(
+              named: 'xcarchivePath',
+              that: endsWith('.xcarchive'),
+            ),
             runnerPath: any(named: 'runnerPath', that: endsWith('Runner.app')),
             isCodesigned: false,
           ),
@@ -517,18 +500,16 @@ flutter:
     group('when both export-method and export-options-plist are provided', () {
       setUp(() {
         when(() => argResults.wasParsed(exportMethodArgName)).thenReturn(true);
-        when(() => argResults[exportOptionsPlistArgName])
-            .thenReturn('/path/to/export.plist');
+        when(
+          () => argResults[exportOptionsPlistArgName],
+        ).thenReturn('/path/to/export.plist');
       });
 
       test('logs error and exits with usage code', () async {
         setUpProjectRoot();
-        final result = await IOOverrides.runZoned(
-          () => runWithOverrides(command.run),
-          getCurrentDirectory: () => projectRoot,
-        );
+        final exitCode = await runWithOverrides(command.run);
 
-        expect(result, equals(ExitCode.usage.code));
+        expect(exitCode, equals(ExitCode.usage.code));
         verify(
           () => logger.err(
             'Cannot specify both --export-method and --export-options-plist.',
@@ -548,10 +529,7 @@ flutter:
       test('generates an export options plist with that export method',
           () async {
         setUpProjectRoot();
-        await IOOverrides.runZoned(
-          () => runWithOverrides(command.run),
-          getCurrentDirectory: () => projectRoot,
-        );
+        await runWithOverrides(command.run);
 
         final capturedArgs = verify(
           () => shorebirdProcess.run(
@@ -584,12 +562,9 @@ flutter:
 
         test('exits with usage code', () async {
           setUpProjectRoot();
-          final result = await IOOverrides.runZoned(
-            () => runWithOverrides(command.run),
-            getCurrentDirectory: () => projectRoot,
-          );
+          final exitCode = await runWithOverrides(command.run);
 
-          expect(result, equals(ExitCode.usage.code));
+          expect(exitCode, equals(ExitCode.usage.code));
           verify(
             () => logger.err(
               'Exception: Export options plist file /does/not/exist does not exist',
@@ -613,14 +588,12 @@ flutter:
           final exportPlistFile = File(
             p.join(projectRoot.path, 'export.plist'),
           )..writeAsStringSync(exportPlistContent);
-          when(() => argResults[exportOptionsPlistArgName])
-              .thenReturn(exportPlistFile.path);
-          final result = await IOOverrides.runZoned(
-            () => runWithOverrides(command.run),
-            getCurrentDirectory: () => projectRoot,
-          );
+          when(
+            () => argResults[exportOptionsPlistArgName],
+          ).thenReturn(exportPlistFile.path);
+          final exitCode = await runWithOverrides(command.run);
 
-          expect(result, equals(ExitCode.usage.code));
+          expect(exitCode, equals(ExitCode.usage.code));
           verify(
             () => logger.err(
               '''Exception: Export options plist ${exportPlistFile.path} does not set manageAppVersionAndBuildNumber to false. This is required for shorebird to work.''',
@@ -640,10 +613,7 @@ flutter:
       test('generates an export options plist with app-store export method',
           () async {
         setUpProjectRoot();
-        await IOOverrides.runZoned(
-          () => runWithOverrides(command.run),
-          getCurrentDirectory: () => projectRoot,
-        );
+        await runWithOverrides(command.run);
 
         final capturedArgs = verify(
           () => shorebirdProcess.run(

@@ -306,10 +306,7 @@ void main() {
         ),
       ).thenAnswer((_) => '1.0.0');
       setUpProjectRootArtifacts();
-      final exitCode = await IOOverrides.runZoned(
-        () => runWithOverrides(command.run),
-        getCurrentDirectory: () => projectRoot,
-      );
+      final exitCode = await runWithOverrides(command.run);
       expect(exitCode, ExitCode.success.code);
       verify(() => logger.info('Aborting.')).called(1);
     });
@@ -317,10 +314,7 @@ void main() {
     test('does not prompt for confirmation when --force is used', () async {
       when(() => argResults['force']).thenReturn(true);
       setUpProjectRootArtifacts();
-      final exitCode = await IOOverrides.runZoned(
-        () => runWithOverrides(command.run),
-        getCurrentDirectory: () => projectRoot,
-      );
+      final exitCode = await runWithOverrides(command.run);
       expect(exitCode, ExitCode.success.code);
       verify(() => logger.success('\n✅ Published Release!')).called(1);
       verifyNever(
@@ -330,10 +324,7 @@ void main() {
 
     test('succeeds when release is successful', () async {
       setUpProjectRootArtifacts();
-      final exitCode = await IOOverrides.runZoned(
-        () => runWithOverrides(command.run),
-        getCurrentDirectory: () => projectRoot,
-      );
+      final exitCode = await runWithOverrides(command.run);
       expect(exitCode, ExitCode.success.code);
       verify(() => logger.success('\n✅ Published Release!')).called(1);
       verify(
@@ -390,10 +381,7 @@ void main() {
 
     test('copies aar library to a releases folder', () async {
       setUpProjectRootArtifacts();
-      final exitCode = await IOOverrides.runZoned(
-        () => runWithOverrides(command.run),
-        getCurrentDirectory: () => projectRoot,
-      );
+      final exitCode = await runWithOverrides(command.run);
       expect(exitCode, ExitCode.success.code);
       expect(
         Directory(p.join(projectRoot.path, 'release')).existsSync(),
@@ -405,10 +393,7 @@ void main() {
         () async {
       setUpProjectRootArtifacts();
 
-      await IOOverrides.runZoned(
-        () => runWithOverrides(command.run),
-        getCurrentDirectory: () => projectRoot,
-      );
+      await runWithOverrides(command.run);
 
       verify(
         () => shorebirdProcess.run(
@@ -429,10 +414,7 @@ void main() {
         ),
       ).thenAnswer((_) async => release);
       setUpProjectRootArtifacts();
-      final exitCode = await IOOverrides.runZoned(
-        () => runWithOverrides(command.run),
-        getCurrentDirectory: () => projectRoot,
-      );
+      final exitCode = await runWithOverrides(command.run);
       expect(exitCode, ExitCode.success.code);
       verifyNever(
         () => codePushClientWrapper.createRelease(

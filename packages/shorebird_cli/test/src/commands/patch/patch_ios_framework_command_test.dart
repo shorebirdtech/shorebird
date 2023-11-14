@@ -432,10 +432,7 @@ ${release.version}'''),
       );
       setUpProjectRoot();
       setUpProjectRootArtifacts();
-      final exitCode = await IOOverrides.runZoned(
-        () => runWithOverrides(command.run),
-        getCurrentDirectory: () => projectRoot,
-      );
+      final exitCode = await runWithOverrides(command.run);
       expect(exitCode, ExitCode.software.code);
       verify(
         () => logger.err('''
@@ -464,10 +461,7 @@ Please re-run the release command for this version or create a new release.'''),
       );
       setUpProjectRoot();
       setUpProjectRootArtifacts();
-      final exitCode = await IOOverrides.runZoned(
-        () => runWithOverrides(command.run),
-        getCurrentDirectory: () => projectRoot,
-      );
+      final exitCode = await runWithOverrides(command.run);
       expect(exitCode, ExitCode.success.code);
     });
 
@@ -479,10 +473,7 @@ Please re-run the release command for this version or create a new release.'''),
       setUpProjectRoot();
       setUpProjectRootArtifacts();
 
-      final exitCode = await IOOverrides.runZoned(
-        () => runWithOverrides(command.run),
-        getCurrentDirectory: () => projectRoot,
-      );
+      final exitCode = await runWithOverrides(command.run);
       expect(exitCode, equals(ExitCode.success.code));
       verify(
         () => logger.progress(
@@ -518,18 +509,15 @@ Please re-run the release command for this version or create a new release.'''),
       ).thenAnswer((_) async => flutterBuildProcessResult);
       setUpProjectRoot();
       setUpProjectRootArtifacts();
-      await IOOverrides.runZoned(
-        () => runWithOverrides(
-          () => runScoped(
-            () => command.run(),
-            values: {
-              processRef.overrideWith(
-                () => ShorebirdProcess(processWrapper: processWrapper),
-              ),
-            },
-          ),
+      await runWithOverrides(
+        () => runScoped(
+          () => command.run(),
+          values: {
+            processRef.overrideWith(
+              () => ShorebirdProcess(processWrapper: processWrapper),
+            ),
+          },
         ),
-        getCurrentDirectory: () => projectRoot,
       );
       verify(
         () => processWrapper.run(
@@ -564,10 +552,7 @@ Please re-run the release command for this version or create a new release.'''),
       setUpProjectRoot();
       setUpProjectRootArtifacts();
 
-      final exitCode = await IOOverrides.runZoned(
-        () => runWithOverrides(command.run),
-        getCurrentDirectory: () => projectRoot,
-      );
+      final exitCode = await runWithOverrides(command.run);
       expect(exitCode, equals(ExitCode.software.code));
       verify(
         () => logger.progress(
@@ -586,10 +571,7 @@ Please re-run the release command for this version or create a new release.'''),
       when(() => logger.confirm(any())).thenReturn(false);
       setUpProjectRoot();
       setUpProjectRootArtifacts();
-      final exitCode = await IOOverrides.runZoned(
-        () => runWithOverrides(command.run),
-        getCurrentDirectory: () => projectRoot,
-      );
+      final exitCode = await runWithOverrides(command.run);
       expect(exitCode, ExitCode.success.code);
       verify(() => logger.info('Aborting.')).called(1);
     });
@@ -600,10 +582,7 @@ Please re-run the release command for this version or create a new release.'''),
 
       setUpProjectRoot();
       setUpProjectRootArtifacts();
-      final exitCode = await IOOverrides.runZoned(
-        () => runWithOverrides(command.run),
-        getCurrentDirectory: () => projectRoot,
-      );
+      final exitCode = await runWithOverrides(command.run);
       expect(exitCode, ExitCode.software.code);
       verify(() => progress.fail('Failed to build: oh no')).called(1);
     });
@@ -614,10 +593,7 @@ Please re-run the release command for this version or create a new release.'''),
       when(() => aotBuildProcessResult.stderr).thenReturn(error);
       setUpProjectRoot();
       setUpProjectRootArtifacts();
-      final exitCode = await IOOverrides.runZoned(
-        () => runWithOverrides(command.run),
-        getCurrentDirectory: () => projectRoot,
-      );
+      final exitCode = await runWithOverrides(command.run);
       verify(
         () => progress.fail('Exception: Failed to create snapshot: $error'),
       ).called(1);
@@ -639,10 +615,7 @@ Please re-run the release command for this version or create a new release.'''),
       setUpProjectRoot();
       setUpProjectRootArtifacts();
 
-      final exitCode = await IOOverrides.runZoned(
-        () => runWithOverrides(command.run),
-        getCurrentDirectory: () => projectRoot,
-      );
+      final exitCode = await runWithOverrides(command.run);
 
       expect(exitCode, equals(ExitCode.success.code));
       verify(
@@ -679,10 +652,7 @@ Please re-run the release command for this version or create a new release.'''),
       setUpProjectRoot();
       setUpProjectRootArtifacts();
 
-      final exitCode = await IOOverrides.runZoned(
-        () => runWithOverrides(command.run),
-        getCurrentDirectory: () => projectRoot,
-      );
+      final exitCode = await runWithOverrides(command.run);
 
       expect(exitCode, equals(ExitCode.software.code));
       verify(
@@ -708,10 +678,7 @@ Please re-run the release command for this version or create a new release.'''),
       when(() => argResults['dry-run']).thenReturn(true);
       setUpProjectRoot();
       setUpProjectRootArtifacts();
-      final exitCode = await IOOverrides.runZoned(
-        () => runWithOverrides(command.run),
-        getCurrentDirectory: () => projectRoot,
-      );
+      final exitCode = await runWithOverrides(command.run);
       expect(exitCode, equals(ExitCode.success.code));
       verifyNever(
         () => codePushClientWrapper.createPatch(
@@ -726,10 +693,7 @@ Please re-run the release command for this version or create a new release.'''),
       when(() => argResults['force']).thenReturn(true);
       setUpProjectRoot();
       setUpProjectRootArtifacts();
-      final exitCode = await IOOverrides.runZoned(
-        () => runWithOverrides(command.run),
-        getCurrentDirectory: () => projectRoot,
-      );
+      final exitCode = await runWithOverrides(command.run);
       expect(exitCode, equals(ExitCode.success.code));
       verifyNever(() => logger.confirm(any()));
       verify(
@@ -746,10 +710,7 @@ Please re-run the release command for this version or create a new release.'''),
     test('succeeds when patch is successful', () async {
       setUpProjectRoot();
       setUpProjectRootArtifacts();
-      final exitCode = await IOOverrides.runZoned(
-        () => runWithOverrides(command.run),
-        getCurrentDirectory: () => projectRoot,
-      );
+      final exitCode = await runWithOverrides(command.run);
       verify(
         () => logger.info(
           any(
@@ -778,10 +739,7 @@ Please re-run the release command for this version or create a new release.'''),
       setUpProjectRoot();
       setUpProjectRootArtifacts();
 
-      await IOOverrides.runZoned(
-        () => runWithOverrides(command.run),
-        getCurrentDirectory: () => projectRoot,
-      );
+      await runWithOverrides(command.run);
 
       verify(
         () => shorebirdProcess.run(
@@ -798,10 +756,7 @@ Please re-run the release command for this version or create a new release.'''),
       setUpProjectRoot();
       setUpProjectRootArtifacts();
 
-      final exitCode = await IOOverrides.runZoned(
-        () => runWithOverrides(command.run),
-        getCurrentDirectory: () => projectRoot,
-      );
+      final exitCode = await runWithOverrides(command.run);
 
       expect(exitCode, equals(ExitCode.success.code));
       verifyNever(() => logger.confirm(any()));
