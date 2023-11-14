@@ -1,5 +1,3 @@
-import 'dart:io';
-
 import 'package:args/args.dart';
 import 'package:mason_logger/mason_logger.dart';
 import 'package:mocktail/mocktail.dart';
@@ -124,14 +122,10 @@ void main() {
     test('exits with code 70 when building apk fails', () async {
       when(() => buildProcessResult.exitCode).thenReturn(1);
       when(() => buildProcessResult.stderr).thenReturn('oops');
-      final tempDir = Directory.systemTemp.createTempSync();
 
-      final result = await IOOverrides.runZoned(
-        () async => runWithOverrides(command.run),
-        getCurrentDirectory: () => tempDir,
-      );
+      final exitCode = await runWithOverrides(command.run);
 
-      expect(result, equals(ExitCode.software.code));
+      expect(exitCode, equals(ExitCode.software.code));
       verify(
         () => shorebirdProcess.run(
           'flutter',
@@ -143,13 +137,9 @@ void main() {
 
     test('exits with code 0 when building apk succeeds', () async {
       when(() => buildProcessResult.exitCode).thenReturn(ExitCode.success.code);
-      final tempDir = Directory.systemTemp.createTempSync();
-      final result = await IOOverrides.runZoned(
-        () async => runWithOverrides(command.run),
-        getCurrentDirectory: () => tempDir,
-      );
+      final exitCode = await runWithOverrides(command.run);
 
-      expect(result, equals(ExitCode.success.code));
+      expect(exitCode, equals(ExitCode.success.code));
 
       verify(
         () => shorebirdProcess.run(
@@ -170,12 +160,8 @@ ${lightCyan.wrap(p.join('build', 'app', 'outputs', 'apk', 'release', 'app-releas
     test('runs flutter pub get with system flutter after successful build',
         () async {
       when(() => buildProcessResult.exitCode).thenReturn(ExitCode.success.code);
-      final tempDir = Directory.systemTemp.createTempSync();
 
-      await IOOverrides.runZoned(
-        () async => runWithOverrides(command.run),
-        getCurrentDirectory: () => tempDir,
-      );
+      await runWithOverrides(command.run);
 
       verify(
         () => shorebirdProcess.run(
@@ -195,13 +181,9 @@ ${lightCyan.wrap(p.join('build', 'app', 'outputs', 'apk', 'release', 'app-releas
       when(() => argResults['flavor']).thenReturn(flavor);
       when(() => argResults['target']).thenReturn(target);
       when(() => buildProcessResult.exitCode).thenReturn(ExitCode.success.code);
-      final tempDir = Directory.systemTemp.createTempSync();
-      final result = await IOOverrides.runZoned(
-        () async => runWithOverrides(command.run),
-        getCurrentDirectory: () => tempDir,
-      );
+      final exitCode = await runWithOverrides(command.run);
 
-      expect(result, equals(ExitCode.success.code));
+      expect(exitCode, equals(ExitCode.success.code));
 
       verify(
         () => shorebirdProcess.run(

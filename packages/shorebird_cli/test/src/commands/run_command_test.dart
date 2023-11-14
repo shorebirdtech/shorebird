@@ -114,13 +114,11 @@ Please use "shorebird preview" instead.'''),
     });
 
     test('exits with code when running the app fails', () async {
-      final tempDir = Directory.systemTemp.createTempSync();
-
       final progress = MockProgress();
       when(() => logger.progress(any())).thenReturn(progress);
 
       const error = 'oops something went wrong';
-      const exitCode = 1;
+      const expectedExitCode = 1;
       when(
         () => process.stdout,
       ).thenAnswer((_) => const Stream.empty());
@@ -128,20 +126,15 @@ Please use "shorebird preview" instead.'''),
       when(() => process.stderr).thenAnswer(
         (_) => Stream.value(utf8.encode(error)),
       );
-      when(() => process.exitCode).thenAnswer((_) async => exitCode);
+      when(() => process.exitCode).thenAnswer((_) async => expectedExitCode);
 
-      final result = await IOOverrides.runZoned(
-        () => runWithOverrides(command.run),
-        getCurrentDirectory: () => tempDir,
-      );
+      final exitCode = await runWithOverrides(command.run);
 
-      await expectLater(result, equals(exitCode));
+      await expectLater(exitCode, equals(expectedExitCode));
       verify(() => logger.err(error)).called(1);
     });
 
     test('exits with code 0 when running the app succeeds', () async {
-      final tempDir = Directory.systemTemp.createTempSync();
-
       final progress = MockProgress();
       when(() => logger.progress(any())).thenReturn(progress);
 
@@ -155,19 +148,14 @@ Please use "shorebird preview" instead.'''),
         () => process.exitCode,
       ).thenAnswer((_) async => ExitCode.success.code);
 
-      final result = await IOOverrides.runZoned(
-        () => runWithOverrides(command.run),
-        getCurrentDirectory: () => tempDir,
-      );
+      final exitCode = await runWithOverrides(command.run);
 
-      await expectLater(result, equals(ExitCode.success.code));
+      await expectLater(exitCode, equals(ExitCode.success.code));
       verify(() => logger.info(output)).called(1);
       verify(() => ioSink.addStream(any())).called(1);
     });
 
     test('passes additional args when specified', () async {
-      final tempDir = Directory.systemTemp.createTempSync();
-
       final progress = MockProgress();
       when(() => logger.progress(any())).thenReturn(progress);
 
@@ -187,10 +175,7 @@ Please use "shorebird preview" instead.'''),
         () => process.exitCode,
       ).thenAnswer((_) async => ExitCode.success.code);
 
-      final result = await IOOverrides.runZoned(
-        () => runWithOverrides(command.run),
-        getCurrentDirectory: () => tempDir,
-      );
+      final exitCode = await runWithOverrides(command.run);
 
       final args = verify(
         () => shorebirdProcess.start(
@@ -212,7 +197,7 @@ Please use "shorebird preview" instead.'''),
         ]),
       );
 
-      await expectLater(result, equals(ExitCode.success.code));
+      await expectLater(exitCode, equals(ExitCode.success.code));
     });
   });
 }

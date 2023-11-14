@@ -643,10 +643,7 @@ flutter:
       when(() => flutterBuildProcessResult.stderr).thenReturn('oops');
 
       setUpProjectRoot();
-      final exitCode = await IOOverrides.runZoned(
-        () => runWithOverrides(command.run),
-        getCurrentDirectory: () => projectRoot,
-      );
+      final exitCode = await runWithOverrides(command.run);
 
       expect(exitCode, equals(ExitCode.software.code));
       verify(
@@ -673,10 +670,7 @@ error: exportArchive: No signing certificate "iOS Distribution" found
 ''');
 
       setUpProjectRoot();
-      final exitCode = await IOOverrides.runZoned(
-        () => runWithOverrides(command.run),
-        getCurrentDirectory: () => projectRoot,
-      );
+      final exitCode = await runWithOverrides(command.run);
 
       expect(exitCode, equals(ExitCode.software.code));
       verify(
@@ -706,10 +700,7 @@ error: exportArchive: No signing certificate "iOS Distribution" found
       )
         ..createSync(recursive: true)
         ..writeAsStringSync(emptyPlistContent);
-      final exitCode = await IOOverrides.runZoned(
-        () => runWithOverrides(command.run),
-        getCurrentDirectory: () => projectRoot,
-      );
+      final exitCode = await runWithOverrides(command.run);
 
       expect(exitCode, equals(ExitCode.software.code));
       verify(
@@ -724,10 +715,7 @@ error: exportArchive: No signing certificate "iOS Distribution" found
       when(() => logger.confirm(any())).thenReturn(false);
       setUpProjectRoot();
 
-      final exitCode = await IOOverrides.runZoned(
-        () => runWithOverrides(command.run),
-        getCurrentDirectory: () => projectRoot,
-      );
+      final exitCode = await runWithOverrides(command.run);
 
       expect(exitCode, ExitCode.success.code);
       verify(() => logger.info('Aborting.')).called(1);
@@ -756,10 +744,7 @@ error: exportArchive: No signing certificate "iOS Distribution" found
         ),
       )..deleteSync(recursive: true);
 
-      final exitCode = await IOOverrides.runZoned(
-        () => runWithOverrides(command.run),
-        getCurrentDirectory: () => projectRoot,
-      );
+      final exitCode = await runWithOverrides(command.run);
 
       expect(exitCode, equals(ExitCode.software.code));
       verify(
@@ -771,10 +756,7 @@ error: exportArchive: No signing certificate "iOS Distribution" found
       setUpProjectRoot();
       Directory(p.join(projectRoot.path, 'build')).deleteSync(recursive: true);
 
-      final exitCode = await IOOverrides.runZoned(
-        () => runWithOverrides(command.run),
-        getCurrentDirectory: () => projectRoot,
-      );
+      final exitCode = await runWithOverrides(command.run);
 
       expect(exitCode, equals(ExitCode.software.code));
       verify(() => logger.err('Unable to find .xcarchive directory')).called(1);
@@ -786,10 +768,7 @@ error: exportArchive: No signing certificate "iOS Distribution" found
         p.join(projectRoot.path, 'build', 'ios', 'ipa'),
       )..deleteSync(recursive: true);
 
-      final exitCode = await IOOverrides.runZoned(
-        () => runWithOverrides(command.run),
-        getCurrentDirectory: () => projectRoot,
-      );
+      final exitCode = await runWithOverrides(command.run);
 
       expect(exitCode, equals(ExitCode.software.code));
       verify(
@@ -810,10 +789,7 @@ error: exportArchive: No signing certificate "iOS Distribution" found
       setUpProjectRoot();
       File(p.join(projectRoot.path, ipaPath)).deleteSync(recursive: true);
 
-      final exitCode = await IOOverrides.runZoned(
-        () => runWithOverrides(command.run),
-        getCurrentDirectory: () => projectRoot,
-      );
+      final exitCode = await runWithOverrides(command.run);
 
       expect(exitCode, equals(ExitCode.software.code));
       verify(
@@ -835,10 +811,7 @@ error: exportArchive: No signing certificate "iOS Distribution" found
         p.join(projectRoot.path, 'build/ios/ipa/Runner2.ipa'),
       ).createSync(recursive: true);
 
-      final exitCode = await IOOverrides.runZoned(
-        () => runWithOverrides(command.run),
-        getCurrentDirectory: () => projectRoot,
-      );
+      final exitCode = await runWithOverrides(command.run);
 
       expect(exitCode, equals(ExitCode.software.code));
       verify(
@@ -861,10 +834,7 @@ error: exportArchive: No signing certificate "iOS Distribution" found
       when(() => argResults['release-version']).thenReturn(version);
       setUpProjectRoot();
 
-      final exitCode = await IOOverrides.runZoned(
-        () => runWithOverrides(command.run),
-        getCurrentDirectory: () => projectRoot,
-      );
+      final exitCode = await runWithOverrides(command.run);
 
       verify(() => logger.success('\n✅ Published Release!')).called(1);
       expect(exitCode, ExitCode.success.code);
@@ -884,10 +854,7 @@ error: exportArchive: No signing certificate "iOS Distribution" found
     test('succeeds when release is successful', () async {
       setUpProjectRoot();
 
-      final exitCode = await IOOverrides.runZoned(
-        () => runWithOverrides(command.run),
-        getCurrentDirectory: () => projectRoot,
-      );
+      final exitCode = await runWithOverrides(command.run);
 
       verify(() => logger.success('\n✅ Published Release!')).called(1);
       verify(
@@ -927,10 +894,7 @@ error: exportArchive: No signing certificate "iOS Distribution" found
         () async {
       setUpProjectRoot();
 
-      await IOOverrides.runZoned(
-        () => runWithOverrides(command.run),
-        getCurrentDirectory: () => projectRoot,
-      );
+      await runWithOverrides(command.run);
 
       verify(
         () => shorebirdProcess.run(
@@ -957,10 +921,7 @@ app_id: productionAppId
 flavors:
   development: $appId''');
 
-      final exitCode = await IOOverrides.runZoned(
-        () => runWithOverrides(command.run),
-        getCurrentDirectory: () => projectRoot,
-      );
+      final exitCode = await runWithOverrides(command.run);
 
       verify(() => logger.success('\n✅ Published Release!')).called(1);
       verify(
@@ -998,10 +959,7 @@ flavors:
       ).thenAnswer((_) async => release);
       setUpProjectRoot();
 
-      final exitCode = await IOOverrides.runZoned(
-        () => runWithOverrides(command.run),
-        getCurrentDirectory: () => projectRoot,
-      );
+      final exitCode = await runWithOverrides(command.run);
 
       expect(exitCode, ExitCode.success.code);
       verifyNever(
@@ -1036,10 +994,7 @@ flavors:
         () async {
       setUpProjectRoot();
 
-      final exitCode = await IOOverrides.runZoned(
-        () => runWithOverrides(command.run),
-        getCurrentDirectory: () => projectRoot,
-      );
+      final exitCode = await runWithOverrides(command.run);
 
       expect(exitCode, ExitCode.success.code);
       final capturedArgs = verify(
@@ -1071,10 +1026,7 @@ flavors:
       when(() => argResults['codesign']).thenReturn(false);
       setUpProjectRoot();
 
-      await IOOverrides.runZoned(
-        () => runWithOverrides(command.run),
-        getCurrentDirectory: () => projectRoot,
-      );
+      await runWithOverrides(command.run);
 
       final capturedArgs = verify(
         () => shorebirdProcess.run(
@@ -1095,10 +1047,7 @@ flavors:
       when(() => shorebirdEnv.isRunningOnCI).thenReturn(true);
       setUpProjectRoot();
 
-      final exitCode = await IOOverrides.runZoned(
-        () => runWithOverrides(command.run),
-        getCurrentDirectory: () => projectRoot,
-      );
+      final exitCode = await runWithOverrides(command.run);
 
       expect(exitCode, equals(ExitCode.success.code));
       verifyNever(() => logger.confirm(any()));
