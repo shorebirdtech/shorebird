@@ -132,7 +132,10 @@ void main() {
         workingDirectory: cwd,
       );
       expect(shorebirdReleaseResult.stderr, isEmpty);
-      expect(shorebirdReleaseResult.stdout, contains('Published Release!'));
+      expect(
+        shorebirdReleaseResult.stdout,
+        contains('Published Release $releaseVersion!'),
+      );
       expect(shorebirdReleaseResult.exitCode, equals(0));
 
       // Verify that no patch is available.
@@ -178,7 +181,7 @@ void main() {
         workingDirectory: cwd,
       );
       expect(shorebirdPatchResult.stderr, isEmpty);
-      expect(shorebirdPatchResult.stdout, contains('Published Patch'));
+      expect(shorebirdPatchResult.stdout, contains('Published Patch 1!'));
       expect(shorebirdPatchResult.exitCode, equals(0));
 
       // Verify that the patch is available.
