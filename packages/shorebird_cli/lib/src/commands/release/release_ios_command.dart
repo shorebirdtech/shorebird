@@ -273,7 +273,7 @@ ${summary.join('\n')}
       status: ReleaseStatus.active,
     );
 
-    logger.success('\n✅ Published Release!');
+    logger.success('\n✅ Published Release ${release.version}!');
 
     final relativeArchivePath = p.relative(archivePath);
     if (codesign) {

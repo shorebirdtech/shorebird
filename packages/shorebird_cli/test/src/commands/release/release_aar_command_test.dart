@@ -316,7 +316,7 @@ void main() {
       setUpProjectRootArtifacts();
       final exitCode = await runWithOverrides(command.run);
       expect(exitCode, ExitCode.success.code);
-      verify(() => logger.success('\n✅ Published Release!')).called(1);
+      verify(() => logger.success('\n✅ Published Release $version!')).called(1);
       verifyNever(
         () => logger.prompt(any(), defaultValue: any(named: 'defaultValue')),
       );
@@ -326,7 +326,7 @@ void main() {
       setUpProjectRootArtifacts();
       final exitCode = await runWithOverrides(command.run);
       expect(exitCode, ExitCode.success.code);
-      verify(() => logger.success('\n✅ Published Release!')).called(1);
+      verify(() => logger.success('\n✅ Published Release $version!')).called(1);
       verify(
         () => codePushClientWrapper.createAndroidArchiveReleaseArtifacts(
           appId: appId,

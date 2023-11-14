@@ -232,7 +232,7 @@ ${lightCyan.wrap(apkPath)}
         : '';
 
     logger
-      ..success('\n✅ Published Release!')
+      ..success('\n✅ Published Release ${release.version}!')
       ..info('''
 
 Your next step is to upload the app bundle to the Play Store:

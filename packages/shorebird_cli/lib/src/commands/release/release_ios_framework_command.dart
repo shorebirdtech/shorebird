@@ -134,7 +134,7 @@ ${summary.join('\n')}
     final relativeFrameworkDirectoryPath =
         p.relative(getAppXcframeworkDirectory().path);
     logger
-      ..success('\n✅ Published Release!')
+      ..success('\n✅ Published Release ${release.version}!')
       ..info('''
 
 Your next step is to include the .xcframework files in ${lightCyan.wrap(relativeFrameworkDirectoryPath)} in your iOS app.

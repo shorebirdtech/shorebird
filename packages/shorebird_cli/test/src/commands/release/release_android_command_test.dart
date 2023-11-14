@@ -330,7 +330,9 @@ void main() {
       when(() => argResults['force']).thenReturn(true);
       when(() => argResults['release-version']).thenReturn(version);
       final exitCode = await runWithOverrides(command.run);
-      verify(() => logger.success('\n✅ Published Release!')).called(1);
+      verify(
+        () => logger.success('\n✅ Published Release $version!'),
+      ).called(1);
       expect(exitCode, ExitCode.success.code);
       verifyNever(
         () => logger.prompt(any(), defaultValue: any(named: 'defaultValue')),
@@ -339,7 +341,7 @@ void main() {
 
     test('succeeds when release is successful', () async {
       final exitCode = await runWithOverrides(command.run);
-      verify(() => logger.success('\n✅ Published Release!')).called(1);
+      verify(() => logger.success('\n✅ Published Release $version!')).called(1);
       final aabPath = p.join(
         projectRoot.path,
         'build',
@@ -384,7 +386,7 @@ ${link(uri: Uri.parse('https://support.google.com/googleplay/android-developer/a
     test('succeeds when release is successful (with apk)', () async {
       when(() => argResults['artifact']).thenReturn('apk');
       final exitCode = await runWithOverrides(command.run);
-      verify(() => logger.success('\n✅ Published Release!')).called(1);
+      verify(() => logger.success('\n✅ Published Release $version!')).called(1);
       // Verify info message does include apk instructions.
       final aabPath = p.join(
         projectRoot.path,
@@ -573,7 +575,7 @@ Either run `flutter pub get` manually, or follow the steps in ${link(uri: Uri.pa
       when(() => shorebirdEnv.getShorebirdYaml()).thenReturn(shorebirdYaml);
       final exitCode = await runWithOverrides(command.run);
 
-      verify(() => logger.success('\n✅ Published Release!')).called(1);
+      verify(() => logger.success('\n✅ Published Release $version!')).called(1);
       verify(
         () => codePushClientWrapper.createAndroidReleaseArtifacts(
           appId: appId,
