@@ -45,6 +45,118 @@ void main() {
       when(() => platform.script).thenReturn(platformScript);
     });
 
+    group('getShorebirdYamlFile', () {
+      test('returns correct file (default cwd)', () {
+        final tempDir = Directory('temp');
+        expect(
+          IOOverrides.runZoned(
+            () {
+              return runWithOverrides(
+                () => shorebirdEnv.getShorebirdYamlFile().path,
+              );
+            },
+            getCurrentDirectory: () => tempDir,
+          ),
+          equals(p.join(tempDir.path, 'shorebird.yaml')),
+        );
+      });
+
+      test('returns correct file (custom cwd)', () {
+        final tempDir = Directory.systemTemp.createTempSync();
+        expect(
+          runWithOverrides(
+            () => shorebirdEnv.getShorebirdYamlFile(cwd: tempDir).path,
+          ),
+          equals(p.join(tempDir.path, 'shorebird.yaml')),
+        );
+      });
+    });
+
+    group('getFlutterProjectRoot', () {
+      test('returns null when no Flutter project exists', () {
+        final tempDir = Directory.systemTemp.createTempSync();
+        expect(
+          IOOverrides.runZoned(
+            () => runWithOverrides(() => shorebirdEnv.getFlutterProjectRoot()),
+            getCurrentDirectory: () => tempDir,
+          ),
+          isNull,
+        );
+      });
+
+      test('returns correct directory when Flutter project exists (root)', () {
+        final tempDir = Directory.systemTemp.createTempSync();
+        File(p.join(tempDir.path, 'pubspec.yaml')).createSync(recursive: true);
+        final projectRoot = IOOverrides.runZoned(
+          () => runWithOverrides(
+            () => shorebirdEnv.getFlutterProjectRoot(),
+          ),
+          getCurrentDirectory: () => tempDir,
+        );
+        expect(projectRoot!.path, equals(tempDir.path));
+      });
+
+      test('returns correct directory when Flutter project exists (nested)',
+          () {
+        final tempDir = Directory.systemTemp.createTempSync();
+        final nestedDir = Directory(p.join(tempDir.path, 'nested'));
+        File(p.join(tempDir.path, 'pubspec.yaml')).createSync(recursive: true);
+        final projectRoot = IOOverrides.runZoned(
+          () => runWithOverrides(
+            () => shorebirdEnv.getFlutterProjectRoot(),
+          ),
+          getCurrentDirectory: () => nestedDir,
+        );
+        expect(projectRoot!.path, equals(tempDir.path));
+      });
+    });
+
+    group('getShorebirdProjectRoot', () {
+      test('returns null when no Shorebird project exists', () {
+        final tempDir = Directory.systemTemp.createTempSync();
+        expect(
+          IOOverrides.runZoned(
+            () => runWithOverrides(
+              () => shorebirdEnv.getShorebirdProjectRoot(),
+            ),
+            getCurrentDirectory: () => tempDir,
+          ),
+          isNull,
+        );
+      });
+
+      test('returns correct directory when Shorebird project exists (root)',
+          () {
+        final tempDir = Directory.systemTemp.createTempSync();
+        File(
+          p.join(tempDir.path, 'shorebird.yaml'),
+        ).createSync(recursive: true);
+        final projectRoot = IOOverrides.runZoned(
+          () => runWithOverrides(
+            () => shorebirdEnv.getShorebirdProjectRoot(),
+          ),
+          getCurrentDirectory: () => tempDir,
+        );
+        expect(projectRoot!.path, equals(tempDir.path));
+      });
+
+      test('returns correct directory when Flutter project exists (nested)',
+          () {
+        final tempDir = Directory.systemTemp.createTempSync();
+        final nestedDir = Directory(p.join(tempDir.path, 'nested'));
+        File(
+          p.join(tempDir.path, 'shorebird.yaml'),
+        ).createSync(recursive: true);
+        final projectRoot = IOOverrides.runZoned(
+          () => runWithOverrides(
+            () => shorebirdEnv.getShorebirdProjectRoot(),
+          ),
+          getCurrentDirectory: () => nestedDir,
+        );
+        expect(projectRoot!.path, equals(tempDir.path));
+      });
+    });
+
     group('flutterBinaryFile', () {
       test('returns correct path', () {
         expect(
@@ -88,7 +200,7 @@ void main() {
     });
 
     group('getPubspecYamlFile', () {
-      test('returns correct file', () {
+      test('returns correct file (default cwd)', () {
         final tempDir = Directory('temp');
         expect(
           IOOverrides.runZoned(
@@ -98,6 +210,16 @@ void main() {
               );
             },
             getCurrentDirectory: () => tempDir,
+          ),
+          equals(p.join(tempDir.path, 'pubspec.yaml')),
+        );
+      });
+
+      test('returns correct file (custom cwd)', () {
+        final tempDir = Directory.systemTemp.createTempSync();
+        expect(
+          runWithOverrides(
+            () => shorebirdEnv.getPubspecYamlFile(cwd: tempDir).path,
           ),
           equals(p.join(tempDir.path, 'pubspec.yaml')),
         );
