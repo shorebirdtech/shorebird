@@ -5,9 +5,9 @@ This section contains past updates we've sent to customers via Discord.
 ## 0.18.0 (November 14, 2023)
 
 - ❌ Remove `shorebird apps create` command
-  - use `shorebird init --force` instead
-- 🪹 shorebird commands work within child directories
-- 🪵 Only show current adb logs in `shorebird preview`
+  - Use `shorebird init --force` instead
+- 🪹 `shorebird` commands work within child directories
+- 🪵 Only show current `adb` logs in `shorebird preview`
 - 🍎 Tail logs in `shorebird preview` for iOS 17+
 - 📦 `shorebird init` does not prompt when in CI or using `--force`
 - 🛠️ `shorebird init` runs validators last
