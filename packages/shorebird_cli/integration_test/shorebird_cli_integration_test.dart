@@ -88,7 +88,7 @@ void main() {
 
       // Initialize Shorebird
       final initShorebirdResult = runCommand(
-        'shorebird init',
+        'shorebird init --verbose',
         workingDirectory: cwd,
       );
       expect(initShorebirdResult.stderr, isEmpty);
@@ -128,7 +128,7 @@ void main() {
 
       // Create an Android release.
       final shorebirdReleaseResult = runCommand(
-        'shorebird release android --force',
+        'shorebird release android --force --verbose',
         workingDirectory: cwd,
       );
       expect(shorebirdReleaseResult.stderr, isEmpty);
@@ -174,7 +174,7 @@ void main() {
 
       // Create an Android patch.
       final shorebirdPatchResult = runCommand(
-        'shorebird patch android --force',
+        'shorebird patch android --force --verbose',
         workingDirectory: cwd,
       );
       expect(shorebirdPatchResult.stderr, isEmpty);
