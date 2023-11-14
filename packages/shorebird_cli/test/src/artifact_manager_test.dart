@@ -66,9 +66,11 @@ void main() {
       const patchArtifactPath = 'path/to/patch_artifact';
 
       test('throws error when creating diff fails', () async {
-        const error = 'oops something went wrong';
+        const stdout = 'uh oh';
+        const stderr = 'oops something went wrong';
         when(() => patchProcessResult.exitCode).thenReturn(1);
-        when(() => patchProcessResult.stderr).thenReturn(error);
+        when(() => patchProcessResult.stderr).thenReturn(stderr);
+        when(() => patchProcessResult.stdout).thenReturn(stdout);
 
         await expectLater(
           () => runWithOverrides(
@@ -81,7 +83,9 @@ void main() {
             isA<Exception>().having(
               (e) => e.toString(),
               'exception',
-              'Exception: Failed to create diff: $error',
+              'Exception: Failed to create diff (exit code 1).\n'
+                  '  stdout: $stdout\n'
+                  '  stderr: $stderr',
             ),
           ),
         );
