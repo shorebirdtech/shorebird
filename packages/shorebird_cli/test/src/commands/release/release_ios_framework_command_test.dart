@@ -309,7 +309,7 @@ flutter:
 
       final exitCode = await runWithOverrides(command.run);
 
-      verify(() => logger.success('\n✅ Published Release!')).called(1);
+      verify(() => logger.success('\n✅ Published Release $version!')).called(1);
       expect(exitCode, ExitCode.success.code);
       verifyNever(
         () => logger.prompt(any(), defaultValue: any(named: 'defaultValue')),
@@ -329,7 +329,7 @@ flutter:
 
       final exitCode = await runWithOverrides(command.run);
 
-      verify(() => logger.success('\n✅ Published Release!')).called(1);
+      verify(() => logger.success('\n✅ Published Release $version!')).called(1);
       verify(
         () => logger.info(
           any(

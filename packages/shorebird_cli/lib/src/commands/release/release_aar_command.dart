@@ -190,7 +190,7 @@ ${summary.join('\n')}
     );
 
     logger
-      ..success('\n✅ Published Release!')
+      ..success('\n✅ Published Release ${release.version}!')
       ..info('''
 
 Your next steps:
