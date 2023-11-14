@@ -40,6 +40,7 @@ environment:
     late CodePushClientWrapper codePushClientWrapper;
     late File shorebirdYamlFile;
     late ShorebirdYaml shorebirdYaml;
+    late Directory projectRoot;
     late File pubspecYamlFile;
     late Logger logger;
     late Platform platform;
@@ -74,6 +75,7 @@ environment:
       shorebirdYaml = MockShorebirdYaml();
       shorebirdYamlFile = MockFile();
       pubspecYamlFile = MockFile();
+      projectRoot = Directory.systemTemp.createTempSync();
       logger = MockLogger();
       platform = MockPlatform();
       progress = MockProgress();
@@ -89,9 +91,12 @@ environment:
       ).thenAnswer((_) async => {});
       when(() => doctor.allValidators).thenReturn([]);
       when(
-        () => shorebirdEnv.getShorebirdYamlFile(),
+        () => shorebirdEnv.getShorebirdYamlFile(cwd: any(named: 'cwd')),
       ).thenReturn(shorebirdYamlFile);
-      when(() => shorebirdEnv.getPubspecYamlFile()).thenReturn(pubspecYamlFile);
+      when(
+        () => shorebirdEnv.getPubspecYamlFile(cwd: any(named: 'cwd')),
+      ).thenReturn(pubspecYamlFile);
+      when(() => shorebirdEnv.getFlutterProjectRoot()).thenReturn(projectRoot);
       when(
         () => pubspecYamlFile.readAsStringSync(),
       ).thenReturn(pubspecYamlContent);
@@ -253,11 +258,10 @@ Please make sure you are running "shorebird init" from within your Flutter proje
       });
 
       test('throws software error when unable to detect schemes', () async {
-        final tempDir = Directory.systemTemp.createTempSync();
-        Directory(p.join(tempDir.path, 'ios')).createSync(recursive: true);
+        Directory(p.join(projectRoot.path, 'ios')).createSync(recursive: true);
         final exitCode = await IOOverrides.runZoned(
           () => runWithOverrides(command.run),
-          getCurrentDirectory: () => tempDir,
+          getCurrentDirectory: () => projectRoot,
         );
         expect(exitCode, equals(ExitCode.software.code));
         verify(
@@ -269,10 +273,9 @@ Please make sure you are running "shorebird init" from within your Flutter proje
       });
 
       test('creates shorebird for an android-only app', () async {
-        final tempDir = Directory.systemTemp.createTempSync();
         final exitCode = await IOOverrides.runZoned(
           () => runWithOverrides(command.run),
-          getCurrentDirectory: () => tempDir,
+          getCurrentDirectory: () => projectRoot,
         );
         expect(exitCode, equals(ExitCode.success.code));
         verify(
@@ -284,13 +287,12 @@ Please make sure you are running "shorebird init" from within your Flutter proje
       });
 
       test('creates shorebird for an app without flavors', () async {
-        final tempDir = Directory.systemTemp.createTempSync();
         when(
           () => gradlew.productFlavors(any()),
-        ).thenThrow(MissingAndroidProjectException(tempDir.path));
+        ).thenThrow(MissingAndroidProjectException(projectRoot.path));
         File(
           p.join(
-            tempDir.path,
+            projectRoot.path,
             'ios',
             'Runner.xcodeproj',
             'xcshareddata',
@@ -300,7 +302,7 @@ Please make sure you are running "shorebird init" from within your Flutter proje
         ).createSync(recursive: true);
         final exitCode = await IOOverrides.runZoned(
           () => runWithOverrides(command.run),
-          getCurrentDirectory: () => tempDir,
+          getCurrentDirectory: () => projectRoot,
         );
         expect(exitCode, equals(ExitCode.success.code));
         verify(
@@ -322,12 +324,11 @@ Please make sure you are running "shorebird init" from within your Flutter proje
           final appName = invocation.namedArguments[#appName] as String?;
           return App(id: appIds[index++], displayName: appName ?? '-');
         });
-        final tempDir = Directory.systemTemp.createTempSync();
         when(
           () => gradlew.productFlavors(any()),
-        ).thenThrow(MissingAndroidProjectException(tempDir.path));
+        ).thenThrow(MissingAndroidProjectException(projectRoot.path));
         final schemesPath = p.join(
-          tempDir.path,
+          projectRoot.path,
           'ios',
           'Runner.xcodeproj',
           'xcshareddata',
@@ -344,7 +345,7 @@ Please make sure you are running "shorebird init" from within your Flutter proje
         ).createSync(recursive: true);
         final exitCode = await IOOverrides.runZoned(
           () => runWithOverrides(command.run),
-          getCurrentDirectory: () => tempDir,
+          getCurrentDirectory: () => projectRoot,
         );
         expect(exitCode, equals(ExitCode.success.code));
         verify(() => progress.complete('2 product flavors detected:'))
