@@ -33,7 +33,7 @@ void main() {
     }
 
     setUp(() {
-      workingDirectory = Directory.systemTemp.createTempSync();
+      workingDirectory = Directory.systemTemp.createTempSync('bundletool test');
       cache = MockCache();
       java = MockJava();
       process = MockShorebirdProcess();
@@ -106,8 +106,15 @@ void main() {
         verify(
           () => process.run(
             'java',
-            '''-jar ${p.join(workingDirectory.path, 'bundletool.jar')} build-apks --overwrite --bundle=$appBundlePath --output=$output --mode=universal'''
-                .split(' '),
+            [
+              '-jar',
+              p.join(workingDirectory.path, 'bundletool.jar'),
+              'build-apks',
+              '--overwrite',
+              '--bundle=$appBundlePath',
+              '--output=$output',
+              '--mode=universal',
+            ],
             environment: {
               'JAVA_HOME': javaHome,
             },
@@ -169,16 +176,20 @@ void main() {
         verify(
           () => process.run(
             'java',
-            '''-jar ${p.join(workingDirectory.path, 'bundletool.jar')} install-apks --apks=$apks --allow-downgrade --device-id=$deviceId'''
-                .split(' '),
+            [
+              '-jar',
+              p.join(workingDirectory.path, 'bundletool.jar'),
+              'install-apks',
+              '--apks=$apks',
+              '--allow-downgrade',
+              '--device-id=$deviceId',
+            ],
             environment: {
               'JAVA_HOME': javaHome,
             },
           ),
         ).called(1);
       });
-
-      test('forwards deviceId if provided', () async {});
     });
 
     group('getPackageName', () {
@@ -232,8 +243,15 @@ void main() {
         verify(
           () => process.run(
             'java',
-            '-jar ${p.join(workingDirectory.path, 'bundletool.jar')} dump manifest --bundle=$appBundlePath --xpath /manifest/@package'
-                .split(' '),
+            [
+              '-jar',
+              p.join(workingDirectory.path, 'bundletool.jar'),
+              'dump',
+              'manifest',
+              '--bundle=$appBundlePath',
+              '--xpath',
+              '/manifest/@package',
+            ],
             environment: {
               'JAVA_HOME': javaHome,
             },
@@ -293,8 +311,15 @@ void main() {
         verify(
           () => process.run(
             'java',
-            '-jar ${p.join(workingDirectory.path, 'bundletool.jar')} dump manifest --bundle=$appBundlePath --xpath /manifest/@android:versionName'
-                .split(' '),
+            [
+              '-jar',
+              p.join(workingDirectory.path, 'bundletool.jar'),
+              'dump',
+              'manifest',
+              '--bundle=$appBundlePath',
+              '--xpath',
+              '/manifest/@android:versionName',
+            ],
             environment: {
               'JAVA_HOME': javaHome,
             },
@@ -353,8 +378,15 @@ void main() {
         verify(
           () => process.run(
             'java',
-            '-jar ${p.join(workingDirectory.path, 'bundletool.jar')} dump manifest --bundle=$appBundlePath --xpath /manifest/@android:versionCode'
-                .split(' '),
+            [
+              '-jar',
+              p.join(workingDirectory.path, 'bundletool.jar'),
+              'dump',
+              'manifest',
+              '--bundle=$appBundlePath',
+              '--xpath',
+              '/manifest/@android:versionCode',
+            ],
             environment: {
               'JAVA_HOME': javaHome,
             },
