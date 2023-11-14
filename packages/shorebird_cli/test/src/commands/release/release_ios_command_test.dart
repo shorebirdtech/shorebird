@@ -107,6 +107,7 @@ flutter:
     late ArgResults argResults;
     late CodePushClientWrapper codePushClientWrapper;
     late Directory shorebirdRoot;
+    late Directory projectRoot;
     late Doctor doctor;
     late Platform platform;
     late Auth auth;
@@ -138,17 +139,16 @@ flutter:
       );
     }
 
-    Directory setUpTempDir() {
-      final tempDir = Directory.systemTemp.createTempSync();
+    void setUpProjectRoot() {
       File(
-        p.join(tempDir.path, 'pubspec.yaml'),
+        p.join(projectRoot.path, 'pubspec.yaml'),
       ).writeAsStringSync(pubspecYamlContent);
       File(
-        p.join(tempDir.path, 'shorebird.yaml'),
+        p.join(projectRoot.path, 'shorebird.yaml'),
       ).writeAsStringSync('app_id: $appId');
       File(
         p.join(
-          tempDir.path,
+          projectRoot.path,
           'build',
           'ios',
           'archive',
@@ -160,7 +160,7 @@ flutter:
         ..writeAsStringSync(infoPlistContent);
       Directory(
         p.join(
-          tempDir.path,
+          projectRoot.path,
           'build',
           'ios',
           'archive',
@@ -170,8 +170,7 @@ flutter:
           'Runner.app',
         ),
       ).createSync(recursive: true);
-      File(p.join(tempDir.path, ipaPath)).createSync(recursive: true);
-      return tempDir;
+      File(p.join(projectRoot.path, ipaPath)).createSync(recursive: true);
     }
 
     setUpAll(() {
@@ -187,6 +186,7 @@ flutter:
       doctor = MockDoctor();
       platform = MockPlatform();
       shorebirdRoot = Directory.systemTemp.createTempSync();
+      projectRoot = Directory.systemTemp.createTempSync();
       auth = MockAuth();
       operatingSystemInterface = MockOperatingSystemInterface();
       progress = MockProgress();
@@ -200,6 +200,9 @@ flutter:
 
       when(() => shorebirdEnv.getShorebirdYaml()).thenReturn(shorebirdYaml);
       when(() => shorebirdEnv.shorebirdRoot).thenReturn(shorebirdRoot);
+      when(
+        () => shorebirdEnv.getShorebirdProjectRoot(),
+      ).thenReturn(projectRoot);
       when(() => shorebirdEnv.flutterRevision).thenReturn(flutterRevision);
       when(() => shorebirdEnv.isRunningOnCI).thenReturn(false);
       when(
@@ -233,14 +236,16 @@ flutter:
       when(
         () => logger.prompt(any(), defaultValue: any(named: 'defaultValue')),
       ).thenReturn(version);
-      when(() => operatingSystemInterface.which('flutter'))
-          .thenReturn('/path/to/flutter');
+      when(
+        () => operatingSystemInterface.which('flutter'),
+      ).thenReturn('/path/to/flutter');
       when(() => platform.operatingSystem).thenReturn(Platform.macOS);
       when(
         () => flutterBuildProcessResult.exitCode,
       ).thenReturn(ExitCode.success.code);
-      when(() => flutterPubGetProcessResult.exitCode)
-          .thenReturn(ExitCode.success.code);
+      when(
+        () => flutterPubGetProcessResult.exitCode,
+      ).thenReturn(ExitCode.success.code);
       when(
         () => codePushClientWrapper.getApp(appId: any(named: 'appId')),
       ).thenAnswer((_) async => appMetadata);
@@ -330,10 +335,10 @@ flutter:
       });
 
       test('prints instructions to manually codesign', () async {
-        final tempDir = setUpTempDir();
+        setUpProjectRoot();
         await IOOverrides.runZoned(
           () => runWithOverrides(command.run),
-          getCurrentDirectory: () => tempDir,
+          getCurrentDirectory: () => projectRoot,
         );
 
         verify(
@@ -344,10 +349,10 @@ flutter:
       });
 
       test('builds without codesigning', () async {
-        final tempDir = setUpTempDir();
+        setUpProjectRoot();
         await IOOverrides.runZoned(
           () => runWithOverrides(command.run),
-          getCurrentDirectory: () => tempDir,
+          getCurrentDirectory: () => projectRoot,
         );
 
         verify(
@@ -371,10 +376,10 @@ flutter:
       group('when build directory has non-default structure', () {
         test('prints error and exits with code 70 if xcarchive does not exist',
             () async {
-          final tempDir = setUpTempDir();
+          setUpProjectRoot();
           Directory(
             p.join(
-              tempDir.path,
+              projectRoot.path,
               'build',
               'ios',
               'archive',
@@ -384,7 +389,7 @@ flutter:
 
           final result = await IOOverrides.runZoned(
             () => runWithOverrides(command.run),
-            getCurrentDirectory: () => tempDir,
+            getCurrentDirectory: () => projectRoot,
           );
 
           expect(result, equals(ExitCode.software.code));
@@ -395,10 +400,10 @@ flutter:
         test(
             '''prints error and exits with code 70 if .app directory does not exist''',
             () async {
-          final tempDir = setUpTempDir();
+          setUpProjectRoot();
           Directory(
             p.join(
-              tempDir.path,
+              projectRoot.path,
               'build',
               'ios',
               'archive',
@@ -410,7 +415,7 @@ flutter:
 
           final result = await IOOverrides.runZoned(
             () => runWithOverrides(command.run),
-            getCurrentDirectory: () => tempDir,
+            getCurrentDirectory: () => projectRoot,
           );
 
           expect(result, equals(ExitCode.software.code));
@@ -420,9 +425,9 @@ flutter:
         test(
             '''finds .xcarchive and .app when they do not have the default "Runner" name''',
             () async {
-          final tempDir = setUpTempDir();
+          setUpProjectRoot();
           final archivePath = p.join(
-            tempDir.path,
+            projectRoot.path,
             'build',
             'ios',
             'archive',
@@ -448,7 +453,7 @@ flutter:
 
           final result = await IOOverrides.runZoned(
             () => runWithOverrides(command.run),
-            getCurrentDirectory: () => tempDir,
+            getCurrentDirectory: () => projectRoot,
           );
 
           expect(result, equals(ExitCode.success.code));
@@ -456,10 +461,10 @@ flutter:
       });
 
       test('prints archive upload instructions on success', () async {
-        final tempDir = setUpTempDir();
+        setUpProjectRoot();
         final result = await IOOverrides.runZoned(
           () => runWithOverrides(command.run),
-          getCurrentDirectory: () => tempDir,
+          getCurrentDirectory: () => projectRoot,
         );
 
         expect(result, equals(ExitCode.success.code));
@@ -488,10 +493,10 @@ flutter:
       });
 
       test('creates unsigned release artifacts', () async {
-        final tempDir = setUpTempDir();
+        setUpProjectRoot();
         final result = await IOOverrides.runZoned(
           () => runWithOverrides(command.run),
-          getCurrentDirectory: () => tempDir,
+          getCurrentDirectory: () => projectRoot,
         );
 
         expect(result, equals(ExitCode.success.code));
@@ -517,10 +522,10 @@ flutter:
       });
 
       test('logs error and exits with usage code', () async {
-        final tempDir = setUpTempDir();
+        setUpProjectRoot();
         final result = await IOOverrides.runZoned(
           () => runWithOverrides(command.run),
-          getCurrentDirectory: () => tempDir,
+          getCurrentDirectory: () => projectRoot,
         );
 
         expect(result, equals(ExitCode.usage.code));
@@ -542,10 +547,10 @@ flutter:
 
       test('generates an export options plist with that export method',
           () async {
-        final tempDir = setUpTempDir();
+        setUpProjectRoot();
         await IOOverrides.runZoned(
           () => runWithOverrides(command.run),
-          getCurrentDirectory: () => tempDir,
+          getCurrentDirectory: () => projectRoot,
         );
 
         final capturedArgs = verify(
@@ -578,10 +583,10 @@ flutter:
         });
 
         test('exits with usage code', () async {
-          final tempDir = setUpTempDir();
+          setUpProjectRoot();
           final result = await IOOverrides.runZoned(
             () => runWithOverrides(command.run),
-            getCurrentDirectory: () => tempDir,
+            getCurrentDirectory: () => projectRoot,
           );
 
           expect(result, equals(ExitCode.usage.code));
@@ -604,15 +609,15 @@ flutter:
 ''';
 
         test('exits with usage code', () async {
-          final tempDir = setUpTempDir();
+          setUpProjectRoot();
           final exportPlistFile = File(
-            p.join(tempDir.path, 'export.plist'),
+            p.join(projectRoot.path, 'export.plist'),
           )..writeAsStringSync(exportPlistContent);
           when(() => argResults[exportOptionsPlistArgName])
               .thenReturn(exportPlistFile.path);
           final result = await IOOverrides.runZoned(
             () => runWithOverrides(command.run),
-            getCurrentDirectory: () => tempDir,
+            getCurrentDirectory: () => projectRoot,
           );
 
           expect(result, equals(ExitCode.usage.code));
@@ -634,10 +639,10 @@ flutter:
 
       test('generates an export options plist with app-store export method',
           () async {
-        final tempDir = setUpTempDir();
+        setUpProjectRoot();
         await IOOverrides.runZoned(
           () => runWithOverrides(command.run),
-          getCurrentDirectory: () => tempDir,
+          getCurrentDirectory: () => projectRoot,
         );
 
         final capturedArgs = verify(
@@ -667,10 +672,10 @@ flutter:
       when(() => flutterBuildProcessResult.exitCode).thenReturn(1);
       when(() => flutterBuildProcessResult.stderr).thenReturn('oops');
 
-      final tempDir = setUpTempDir();
+      setUpProjectRoot();
       final exitCode = await IOOverrides.runZoned(
         () => runWithOverrides(command.run),
-        getCurrentDirectory: () => tempDir,
+        getCurrentDirectory: () => projectRoot,
       );
 
       expect(exitCode, equals(ExitCode.software.code));
@@ -697,10 +702,10 @@ error: exportArchive: Communication with Apple failed
 error: exportArchive: No signing certificate "iOS Distribution" found
 ''');
 
-      final tempDir = setUpTempDir();
+      setUpProjectRoot();
       final exitCode = await IOOverrides.runZoned(
         () => runWithOverrides(command.run),
-        getCurrentDirectory: () => tempDir,
+        getCurrentDirectory: () => projectRoot,
       );
 
       expect(exitCode, equals(ExitCode.software.code));
@@ -718,10 +723,10 @@ error: exportArchive: No signing certificate "iOS Distribution" found
 
     test('exits with code 70 when release version cannot be determined',
         () async {
-      final tempDir = setUpTempDir();
+      setUpProjectRoot();
       final file = File(
         p.join(
-          tempDir.path,
+          projectRoot.path,
           'build',
           'ios',
           'archive',
@@ -733,7 +738,7 @@ error: exportArchive: No signing certificate "iOS Distribution" found
         ..writeAsStringSync(emptyPlistContent);
       final exitCode = await IOOverrides.runZoned(
         () => runWithOverrides(command.run),
-        getCurrentDirectory: () => tempDir,
+        getCurrentDirectory: () => projectRoot,
       );
 
       expect(exitCode, equals(ExitCode.software.code));
@@ -747,11 +752,11 @@ error: exportArchive: No signing certificate "iOS Distribution" found
 
     test('aborts when user opts out', () async {
       when(() => logger.confirm(any())).thenReturn(false);
-      final tempDir = setUpTempDir();
+      setUpProjectRoot();
 
       final exitCode = await IOOverrides.runZoned(
         () => runWithOverrides(command.run),
-        getCurrentDirectory: () => tempDir,
+        getCurrentDirectory: () => projectRoot,
       );
 
       expect(exitCode, ExitCode.success.code);
@@ -769,10 +774,10 @@ error: exportArchive: No signing certificate "iOS Distribution" found
     });
 
     test('exits with code 70 if Info.plist does not exist', () async {
-      final tempDir = setUpTempDir();
+      setUpProjectRoot();
       final infoPlistFile = File(
         p.join(
-          tempDir.path,
+          projectRoot.path,
           'build',
           'ios',
           'archive',
@@ -783,7 +788,7 @@ error: exportArchive: No signing certificate "iOS Distribution" found
 
       final exitCode = await IOOverrides.runZoned(
         () => runWithOverrides(command.run),
-        getCurrentDirectory: () => tempDir,
+        getCurrentDirectory: () => projectRoot,
       );
 
       expect(exitCode, equals(ExitCode.software.code));
@@ -793,12 +798,12 @@ error: exportArchive: No signing certificate "iOS Distribution" found
     });
 
     test('exits with code 70 if build directory does not exist', () async {
-      final tempDir = setUpTempDir();
-      Directory(p.join(tempDir.path, 'build')).deleteSync(recursive: true);
+      setUpProjectRoot();
+      Directory(p.join(projectRoot.path, 'build')).deleteSync(recursive: true);
 
       final exitCode = await IOOverrides.runZoned(
         () => runWithOverrides(command.run),
-        getCurrentDirectory: () => tempDir,
+        getCurrentDirectory: () => projectRoot,
       );
 
       expect(exitCode, equals(ExitCode.software.code));
@@ -806,14 +811,14 @@ error: exportArchive: No signing certificate "iOS Distribution" found
     });
 
     test('exits with code 70 if ipa build directory does not exist', () async {
-      final tempDir = setUpTempDir();
-      final ipaDirectory =
-          Directory(p.join(tempDir.path, 'build', 'ios', 'ipa'))
-            ..deleteSync(recursive: true);
+      setUpProjectRoot();
+      final ipaDirectory = Directory(
+        p.join(projectRoot.path, 'build', 'ios', 'ipa'),
+      )..deleteSync(recursive: true);
 
       final exitCode = await IOOverrides.runZoned(
         () => runWithOverrides(command.run),
-        getCurrentDirectory: () => tempDir,
+        getCurrentDirectory: () => projectRoot,
       );
 
       expect(exitCode, equals(ExitCode.software.code));
@@ -832,12 +837,12 @@ error: exportArchive: No signing certificate "iOS Distribution" found
     });
 
     test('exits with code 70 if ipa file does not exist', () async {
-      final tempDir = setUpTempDir();
-      File(p.join(tempDir.path, ipaPath)).deleteSync(recursive: true);
+      setUpProjectRoot();
+      File(p.join(projectRoot.path, ipaPath)).deleteSync(recursive: true);
 
       final exitCode = await IOOverrides.runZoned(
         () => runWithOverrides(command.run),
-        getCurrentDirectory: () => tempDir,
+        getCurrentDirectory: () => projectRoot,
       );
 
       expect(exitCode, equals(ExitCode.software.code));
@@ -855,13 +860,14 @@ error: exportArchive: No signing certificate "iOS Distribution" found
     });
 
     test('exits with code 70 if more than one ipa file is found', () async {
-      final tempDir = setUpTempDir();
-      File(p.join(tempDir.path, 'build/ios/ipa/Runner2.ipa'))
-          .createSync(recursive: true);
+      setUpProjectRoot();
+      File(
+        p.join(projectRoot.path, 'build/ios/ipa/Runner2.ipa'),
+      ).createSync(recursive: true);
 
       final exitCode = await IOOverrides.runZoned(
         () => runWithOverrides(command.run),
-        getCurrentDirectory: () => tempDir,
+        getCurrentDirectory: () => projectRoot,
       );
 
       expect(exitCode, equals(ExitCode.software.code));
@@ -883,11 +889,11 @@ error: exportArchive: No signing certificate "iOS Distribution" found
         'when --release-version and --force are used', () async {
       when(() => argResults['force']).thenReturn(true);
       when(() => argResults['release-version']).thenReturn(version);
-      final tempDir = setUpTempDir();
+      setUpProjectRoot();
 
       final exitCode = await IOOverrides.runZoned(
         () => runWithOverrides(command.run),
-        getCurrentDirectory: () => tempDir,
+        getCurrentDirectory: () => projectRoot,
       );
 
       verify(() => logger.success('\n✅ Published Release!')).called(1);
@@ -906,11 +912,11 @@ error: exportArchive: No signing certificate "iOS Distribution" found
     });
 
     test('succeeds when release is successful', () async {
-      final tempDir = setUpTempDir();
+      setUpProjectRoot();
 
       final exitCode = await IOOverrides.runZoned(
         () => runWithOverrides(command.run),
-        getCurrentDirectory: () => tempDir,
+        getCurrentDirectory: () => projectRoot,
       );
 
       verify(() => logger.success('\n✅ Published Release!')).called(1);
@@ -949,11 +955,11 @@ error: exportArchive: No signing certificate "iOS Distribution" found
 
     test('runs flutter pub get with system flutter after successful build',
         () async {
-      final tempDir = setUpTempDir();
+      setUpProjectRoot();
 
       await IOOverrides.runZoned(
         () => runWithOverrides(command.run),
-        getCurrentDirectory: () => tempDir,
+        getCurrentDirectory: () => projectRoot,
       );
 
       verify(
@@ -973,9 +979,9 @@ error: exportArchive: No signing certificate "iOS Distribution" found
       final target = p.join('lib', 'main_development.dart');
       when(() => argResults['flavor']).thenReturn(flavor);
       when(() => argResults['target']).thenReturn(target);
-      final tempDir = setUpTempDir();
+      setUpProjectRoot();
       File(
-        p.join(tempDir.path, 'shorebird.yaml'),
+        p.join(projectRoot.path, 'shorebird.yaml'),
       ).writeAsStringSync('''
 app_id: productionAppId
 flavors:
@@ -983,7 +989,7 @@ flavors:
 
       final exitCode = await IOOverrides.runZoned(
         () => runWithOverrides(command.run),
-        getCurrentDirectory: () => tempDir,
+        getCurrentDirectory: () => projectRoot,
       );
 
       verify(() => logger.success('\n✅ Published Release!')).called(1);
@@ -1020,11 +1026,11 @@ flavors:
           releaseVersion: any(named: 'releaseVersion'),
         ),
       ).thenAnswer((_) async => release);
-      final tempDir = setUpTempDir();
+      setUpProjectRoot();
 
       final exitCode = await IOOverrides.runZoned(
         () => runWithOverrides(command.run),
-        getCurrentDirectory: () => tempDir,
+        getCurrentDirectory: () => projectRoot,
       );
 
       expect(exitCode, ExitCode.success.code);
@@ -1058,11 +1064,11 @@ flavors:
 
     test('provides appropriate ExportOptions.plist to build ipa command',
         () async {
-      final tempDir = setUpTempDir();
+      setUpProjectRoot();
 
       final exitCode = await IOOverrides.runZoned(
         () => runWithOverrides(command.run),
-        getCurrentDirectory: () => tempDir,
+        getCurrentDirectory: () => projectRoot,
       );
 
       expect(exitCode, ExitCode.success.code);
@@ -1093,11 +1099,11 @@ flavors:
 
     test('does not provide export options when codesign is false', () async {
       when(() => argResults['codesign']).thenReturn(false);
-      final tempDir = setUpTempDir();
+      setUpProjectRoot();
 
       await IOOverrides.runZoned(
         () => runWithOverrides(command.run),
-        getCurrentDirectory: () => tempDir,
+        getCurrentDirectory: () => projectRoot,
       );
 
       final capturedArgs = verify(
@@ -1117,11 +1123,11 @@ flavors:
 
     test('does not prompt if running on CI', () async {
       when(() => shorebirdEnv.isRunningOnCI).thenReturn(true);
-      final tempDir = setUpTempDir();
+      setUpProjectRoot();
 
       final exitCode = await IOOverrides.runZoned(
         () => runWithOverrides(command.run),
-        getCurrentDirectory: () => tempDir,
+        getCurrentDirectory: () => projectRoot,
       );
 
       expect(exitCode, equals(ExitCode.success.code));
