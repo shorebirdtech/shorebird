@@ -5,6 +5,7 @@ concurrency:
   cancel-in-progress: true
 
 on:
+  pull_request:
   workflow_dispatch:
   schedule:
     # At the end of every day
@@ -87,13 +88,12 @@ jobs:
     runs-on: ${{ matrix.os }}
 
     env:
-      SHOREBIRD_HOSTED_URL: ${{ matrix.branch == 'stable' && 'https://api.shorebird.dev' || 'https://api-dev.shorebird.dev' }}
+      SHOREBIRD_HOSTED_URL: https://api-dev.shorebird.dev
+      # SHOREBIRD_HOSTED_URL: ${{ matrix.branch == 'stable' && 'https://api.shorebird.dev' || 'https://api-dev.shorebird.dev' }}
 
     steps:
       - name: 📚 Git Checkout
         uses: actions/checkout@v3
-        with:
-          ref: ${{ matrix.branch }}
 
       - name: 🖥️ Add Shorebird to macOS/Linux PATH
         shell: bash
