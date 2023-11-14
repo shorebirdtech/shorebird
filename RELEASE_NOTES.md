@@ -2,6 +2,23 @@
 
 This section contains past updates we've sent to customers via Discord.
 
+## 0.18.0 (November 14, 2023)
+
+- ❌ Remove `shorebird apps create` command
+  - use `shorebird init --force` instead
+- 🪹 shorebird commands work within child directories
+- 🪵 Only show current adb logs in `shorebird preview`
+- 🍎 Tail logs in `shorebird preview` for iOS 17+
+- 📦 `shorebird init` does not prompt when in CI or using `--force`
+- 🛠️ `shorebird init` runs validators last
+- 🚨 Improve various error messages
+
+📚 Release notes can be found at https://github.com/shorebirdtech/shorebird/releases/tag/v0.18.0
+
+As always, you can upgrade using `shorebird upgrade`
+
+Please let us know if we can help!
+
 ## 0.17.4 (November 10, 2023)
 
 - 💿 Includes our new custom Dart Virtual Machine "mixed-mode" (not yet enabled)
