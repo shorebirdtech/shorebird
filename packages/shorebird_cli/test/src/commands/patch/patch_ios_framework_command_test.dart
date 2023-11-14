@@ -77,6 +77,7 @@ flutter:
     late ArgResults argResults;
     late CodePushClientWrapper codePushClientWrapper;
     late Directory shorebirdRoot;
+    late Directory projectRoot;
     late Directory flutterDirectory;
     late File genSnapshotFile;
     late Doctor doctor;
@@ -116,11 +117,11 @@ flutter:
       );
     }
 
-    void setUpTempArtifacts(Directory dir) {
+    void setUpProjectRootArtifacts() {
       // Create a second app.dill for coverage of newestAppDill file.
       File(
         p.join(
-          dir.path,
+          projectRoot.path,
           '.dart_tool',
           'flutter_build',
           'subdir',
@@ -128,14 +129,15 @@ flutter:
         ),
       ).createSync(recursive: true);
       File(
-        p.join(dir.path, '.dart_tool', 'flutter_build', 'app.dill'),
+        p.join(projectRoot.path, '.dart_tool', 'flutter_build', 'app.dill'),
       ).createSync(recursive: true);
-      File(p.join(dir.path, 'build', elfAotSnapshotFileName)).createSync(
+      File(p.join(projectRoot.path, 'build', elfAotSnapshotFileName))
+          .createSync(
         recursive: true,
       );
       Directory(
         p.join(
-          dir.path,
+          projectRoot.path,
           'build',
           'ios',
           'framework',
@@ -147,15 +149,13 @@ flutter:
       );
     }
 
-    Directory setUpTempDir() {
-      final tempDir = Directory.systemTemp.createTempSync();
+    void setUpProjectRoot() {
       File(
-        p.join(tempDir.path, 'pubspec.yaml'),
+        p.join(projectRoot.path, 'pubspec.yaml'),
       ).writeAsStringSync(pubspecYamlContent);
       File(
-        p.join(tempDir.path, 'shorebird.yaml'),
+        p.join(projectRoot.path, 'shorebird.yaml'),
       ).writeAsStringSync('app_id: $appId');
-      return tempDir;
     }
 
     setUpAll(() {
@@ -174,6 +174,7 @@ flutter:
       patchDiffChecker = MockPatchDiffChecker();
       platform = MockPlatform();
       shorebirdRoot = Directory.systemTemp.createTempSync();
+      projectRoot = Directory.systemTemp.createTempSync();
       flutterDirectory = Directory(
         p.join(shorebirdRoot.path, 'bin', 'cache', 'flutter'),
       );
@@ -232,11 +233,15 @@ flutter:
       when(() => logger.level).thenReturn(Level.info);
       when(() => logger.progress(any())).thenReturn(progress);
       when(() => logger.confirm(any())).thenReturn(true);
-      when(() => operatingSystemInterface.which('flutter'))
-          .thenReturn('/path/to/flutter');
+      when(
+        () => operatingSystemInterface.which('flutter'),
+      ).thenReturn('/path/to/flutter');
       when(() => platform.operatingSystem).thenReturn(Platform.macOS);
       when(() => shorebirdEnv.getShorebirdYaml()).thenReturn(shorebirdYaml);
       when(() => shorebirdEnv.shorebirdRoot).thenReturn(shorebirdRoot);
+      when(
+        () => shorebirdEnv.getShorebirdProjectRoot(),
+      ).thenReturn(projectRoot);
       when(() => shorebirdEnv.flutterDirectory).thenReturn(flutterDirectory);
       when(() => shorebirdEnv.genSnapshotFile).thenReturn(genSnapshotFile);
       when(() => shorebirdEnv.flutterRevision).thenReturn(flutterRevision);
@@ -425,11 +430,11 @@ ${release.version}'''),
           ),
         ],
       );
-      final tempDir = setUpTempDir();
-      setUpTempArtifacts(tempDir);
+      setUpProjectRoot();
+      setUpProjectRootArtifacts();
       final exitCode = await IOOverrides.runZoned(
         () => runWithOverrides(command.run),
-        getCurrentDirectory: () => tempDir,
+        getCurrentDirectory: () => projectRoot,
       );
       expect(exitCode, ExitCode.software.code);
       verify(
@@ -457,11 +462,11 @@ Please re-run the release command for this version or create a new release.'''),
           ),
         ],
       );
-      final tempDir = setUpTempDir();
-      setUpTempArtifacts(tempDir);
+      setUpProjectRoot();
+      setUpProjectRootArtifacts();
       final exitCode = await IOOverrides.runZoned(
         () => runWithOverrides(command.run),
-        getCurrentDirectory: () => tempDir,
+        getCurrentDirectory: () => projectRoot,
       );
       expect(exitCode, ExitCode.success.code);
     });
@@ -471,12 +476,12 @@ Please re-run the release command for this version or create a new release.'''),
         'when release flutter revision differs', () async {
       const otherRevision = 'other-revision';
       when(() => shorebirdEnv.flutterRevision).thenReturn(otherRevision);
-      final tempDir = setUpTempDir();
-      setUpTempArtifacts(tempDir);
+      setUpProjectRoot();
+      setUpProjectRootArtifacts();
 
       final exitCode = await IOOverrides.runZoned(
         () => runWithOverrides(command.run),
-        getCurrentDirectory: () => tempDir,
+        getCurrentDirectory: () => projectRoot,
       );
       expect(exitCode, equals(ExitCode.success.code));
       verify(
@@ -511,8 +516,8 @@ Please re-run the release command for this version or create a new release.'''),
           environment: any(named: 'environment'),
         ),
       ).thenAnswer((_) async => flutterBuildProcessResult);
-      final tempDir = setUpTempDir();
-      setUpTempArtifacts(tempDir);
+      setUpProjectRoot();
+      setUpProjectRootArtifacts();
       await IOOverrides.runZoned(
         () => runWithOverrides(
           () => runScoped(
@@ -524,7 +529,7 @@ Please re-run the release command for this version or create a new release.'''),
             },
           ),
         ),
-        getCurrentDirectory: () => tempDir,
+        getCurrentDirectory: () => projectRoot,
       );
       verify(
         () => processWrapper.run(
@@ -556,12 +561,12 @@ Please re-run the release command for this version or create a new release.'''),
           revision: any(named: 'revision'),
         ),
       ).thenThrow(exception);
-      final tempDir = setUpTempDir();
-      setUpTempArtifacts(tempDir);
+      setUpProjectRoot();
+      setUpProjectRootArtifacts();
 
       final exitCode = await IOOverrides.runZoned(
         () => runWithOverrides(command.run),
-        getCurrentDirectory: () => tempDir,
+        getCurrentDirectory: () => projectRoot,
       );
       expect(exitCode, equals(ExitCode.software.code));
       verify(
@@ -579,11 +584,11 @@ Please re-run the release command for this version or create a new release.'''),
 
     test('aborts when user opts out', () async {
       when(() => logger.confirm(any())).thenReturn(false);
-      final tempDir = setUpTempDir();
-      setUpTempArtifacts(tempDir);
+      setUpProjectRoot();
+      setUpProjectRootArtifacts();
       final exitCode = await IOOverrides.runZoned(
         () => runWithOverrides(command.run),
-        getCurrentDirectory: () => tempDir,
+        getCurrentDirectory: () => projectRoot,
       );
       expect(exitCode, ExitCode.success.code);
       verify(() => logger.info('Aborting.')).called(1);
@@ -593,11 +598,11 @@ Please re-run the release command for this version or create a new release.'''),
       when(() => flutterBuildProcessResult.exitCode).thenReturn(1);
       when(() => flutterBuildProcessResult.stderr).thenReturn('oh no');
 
-      final tempDir = setUpTempDir();
-      setUpTempArtifacts(tempDir);
+      setUpProjectRoot();
+      setUpProjectRootArtifacts();
       final exitCode = await IOOverrides.runZoned(
         () => runWithOverrides(command.run),
-        getCurrentDirectory: () => tempDir,
+        getCurrentDirectory: () => projectRoot,
       );
       expect(exitCode, ExitCode.software.code);
       verify(() => progress.fail('Failed to build: oh no')).called(1);
@@ -607,11 +612,11 @@ Please re-run the release command for this version or create a new release.'''),
       const error = 'oops something went wrong';
       when(() => aotBuildProcessResult.exitCode).thenReturn(1);
       when(() => aotBuildProcessResult.stderr).thenReturn(error);
-      final tempDir = setUpTempDir();
-      setUpTempArtifacts(tempDir);
+      setUpProjectRoot();
+      setUpProjectRootArtifacts();
       final exitCode = await IOOverrides.runZoned(
         () => runWithOverrides(command.run),
-        getCurrentDirectory: () => tempDir,
+        getCurrentDirectory: () => projectRoot,
       );
       verify(
         () => progress.fail('Exception: Failed to create snapshot: $error'),
@@ -631,12 +636,12 @@ Please re-run the release command for this version or create a new release.'''),
           force: any(named: 'force'),
         ),
       ).thenThrow(UserCancelledException());
-      final tempDir = setUpTempDir();
-      setUpTempArtifacts(tempDir);
+      setUpProjectRoot();
+      setUpProjectRootArtifacts();
 
       final exitCode = await IOOverrides.runZoned(
         () => runWithOverrides(command.run),
-        getCurrentDirectory: () => tempDir,
+        getCurrentDirectory: () => projectRoot,
       );
 
       expect(exitCode, equals(ExitCode.success.code));
@@ -671,12 +676,12 @@ Please re-run the release command for this version or create a new release.'''),
           force: any(named: 'force'),
         ),
       ).thenThrow(UnpatchableChangeException());
-      final tempDir = setUpTempDir();
-      setUpTempArtifacts(tempDir);
+      setUpProjectRoot();
+      setUpProjectRootArtifacts();
 
       final exitCode = await IOOverrides.runZoned(
         () => runWithOverrides(command.run),
-        getCurrentDirectory: () => tempDir,
+        getCurrentDirectory: () => projectRoot,
       );
 
       expect(exitCode, equals(ExitCode.software.code));
@@ -701,11 +706,11 @@ Please re-run the release command for this version or create a new release.'''),
 
     test('does not create patch on --dry-run', () async {
       when(() => argResults['dry-run']).thenReturn(true);
-      final tempDir = setUpTempDir();
-      setUpTempArtifacts(tempDir);
+      setUpProjectRoot();
+      setUpProjectRootArtifacts();
       final exitCode = await IOOverrides.runZoned(
         () => runWithOverrides(command.run),
-        getCurrentDirectory: () => tempDir,
+        getCurrentDirectory: () => projectRoot,
       );
       expect(exitCode, equals(ExitCode.success.code));
       verifyNever(
@@ -719,11 +724,11 @@ Please re-run the release command for this version or create a new release.'''),
 
     test('does not prompt on --force', () async {
       when(() => argResults['force']).thenReturn(true);
-      final tempDir = setUpTempDir();
-      setUpTempArtifacts(tempDir);
+      setUpProjectRoot();
+      setUpProjectRootArtifacts();
       final exitCode = await IOOverrides.runZoned(
         () => runWithOverrides(command.run),
-        getCurrentDirectory: () => tempDir,
+        getCurrentDirectory: () => projectRoot,
       );
       expect(exitCode, equals(ExitCode.success.code));
       verifyNever(() => logger.confirm(any()));
@@ -739,11 +744,11 @@ Please re-run the release command for this version or create a new release.'''),
     });
 
     test('succeeds when patch is successful', () async {
-      final tempDir = setUpTempDir();
-      setUpTempArtifacts(tempDir);
+      setUpProjectRoot();
+      setUpProjectRootArtifacts();
       final exitCode = await IOOverrides.runZoned(
         () => runWithOverrides(command.run),
-        getCurrentDirectory: () => tempDir,
+        getCurrentDirectory: () => projectRoot,
       );
       verify(
         () => logger.info(
@@ -770,12 +775,12 @@ Please re-run the release command for this version or create a new release.'''),
 
     test('runs flutter pub get with system flutter after successful build',
         () async {
-      final tempDir = setUpTempDir();
-      setUpTempArtifacts(tempDir);
+      setUpProjectRoot();
+      setUpProjectRootArtifacts();
 
       await IOOverrides.runZoned(
         () => runWithOverrides(command.run),
-        getCurrentDirectory: () => tempDir,
+        getCurrentDirectory: () => projectRoot,
       );
 
       verify(
@@ -790,12 +795,12 @@ Please re-run the release command for this version or create a new release.'''),
 
     test('does not prompt if running on CI', () async {
       when(() => shorebirdEnv.isRunningOnCI).thenReturn(true);
-      final tempDir = setUpTempDir();
-      setUpTempArtifacts(tempDir);
+      setUpProjectRoot();
+      setUpProjectRootArtifacts();
 
       final exitCode = await IOOverrides.runZoned(
         () => runWithOverrides(command.run),
-        getCurrentDirectory: () => tempDir,
+        getCurrentDirectory: () => projectRoot,
       );
 
       expect(exitCode, equals(ExitCode.success.code));
