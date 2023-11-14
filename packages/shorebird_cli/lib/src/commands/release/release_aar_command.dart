@@ -156,13 +156,10 @@ ${summary.join('\n')}
 
     // Copy release AAR to a new directory to avoid overwriting with subsequent
     // patch builds.
-    final sourceLibraryDirectory = Directory(
-      aarLibraryPath(
-        packageName: shorebirdEnv.androidPackageName!,
-      ),
+    final sourceLibraryDirectory = Directory(aarLibraryPath);
+    final targetLibraryDirectory = Directory(
+      p.join(shorebirdEnv.getShorebirdProjectRoot()!.path, 'release'),
     );
-    final targetLibraryDirectory =
-        Directory(p.join(Directory.current.path, 'release'));
     await copyPath(sourceLibraryDirectory.path, targetLibraryDirectory.path);
 
     final extractAarProgress = logger.progress('Creating artifacts');
@@ -209,7 +206,7 @@ dependencyResolutionManagement {
         google()
         mavenCentral()
 +       maven {
-+           url '../${p.basename(Directory.current.path)}/${p.relative(targetLibraryDirectory.path)}'
++           url '../${p.basename(shorebirdEnv.getShorebirdProjectRoot()!.path)}/${p.relative(targetLibraryDirectory.path)}'
 +       }
 +       maven {
 -           url 'https://storage.googleapis.com/download.flutter.io'

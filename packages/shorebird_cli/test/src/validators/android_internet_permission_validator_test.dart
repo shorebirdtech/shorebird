@@ -1,8 +1,13 @@
 import 'dart:io';
 
+import 'package:mocktail/mocktail.dart';
 import 'package:path/path.dart' as p;
+import 'package:scoped/scoped.dart';
+import 'package:shorebird_cli/src/shorebird_env.dart';
 import 'package:shorebird_cli/src/validators/validators.dart';
 import 'package:test/test.dart';
+
+import '../mocks.dart';
 
 void main() {
   const manifestWithInternetPermission = '''
@@ -33,13 +38,31 @@ void main() {
 ''';
 
   group(AndroidInternetPermissionValidator, () {
-    Directory createTempDir() => Directory.systemTemp.createTempSync();
+    late Directory projectRoot;
+    late ShorebirdEnv shorebirdEnv;
 
     void writeManifestToPath(String manifestContents, String path) {
       Directory(path).createSync(recursive: true);
-      File(p.join(path, 'AndroidManifest.xml'))
-          .writeAsStringSync(manifestContents);
+      File(
+        p.join(path, 'AndroidManifest.xml'),
+      ).writeAsStringSync(manifestContents);
     }
+
+    R runWithOverrides<R>(R Function() body) {
+      return runScoped(
+        body,
+        values: {
+          shorebirdEnvRef.overrideWith(() => shorebirdEnv),
+        },
+      );
+    }
+
+    setUp(() {
+      projectRoot = Directory.systemTemp.createTempSync();
+      shorebirdEnv = MockShorebirdEnv();
+
+      when(() => shorebirdEnv.getFlutterProjectRoot()).thenReturn(projectRoot);
+    });
 
     test('has a non-empty description', () {
       expect(AndroidInternetPermissionValidator().description, isNotEmpty);
@@ -47,26 +70,21 @@ void main() {
 
     group('canRunInContext', () {
       test('returns false if no android src directory exists', () {
-        final tempDirectory = createTempDir();
-
-        final result = IOOverrides.runZoned(
+        final result = runWithOverrides(
           () => AndroidInternetPermissionValidator().canRunInCurrentContext(),
-          getCurrentDirectory: () => tempDirectory,
         );
 
         expect(result, isFalse);
       });
 
       test('returns true if an android src directory exists', () {
-        final tempDirectory = createTempDir();
         writeManifestToPath(
           manifestWithInternetPermission,
-          p.join(tempDirectory.path, 'android', 'app', 'src', 'main'),
+          p.join(projectRoot.path, 'android', 'app', 'src', 'main'),
         );
 
-        final result = IOOverrides.runZoned(
+        final result = runWithOverrides(
           () => AndroidInternetPermissionValidator().canRunInCurrentContext(),
-          getCurrentDirectory: () => tempDirectory,
         );
 
         expect(result, isTrue);
@@ -76,15 +94,13 @@ void main() {
     test(
       '''returns successful result if the main AndroidManifest.xml file has the INTERNET permission''',
       () async {
-        final tempDirectory = createTempDir();
         writeManifestToPath(
           manifestWithInternetPermission,
-          p.join(tempDirectory.path, 'android', 'app', 'src', 'main'),
+          p.join(projectRoot.path, 'android', 'app', 'src', 'main'),
         );
 
-        final results = await IOOverrides.runZoned(
+        final results = await runWithOverrides(
           AndroidInternetPermissionValidator().validate,
-          getCurrentDirectory: () => tempDirectory,
         );
 
         expect(results.map((res) => res.severity), isEmpty);
@@ -93,13 +109,12 @@ void main() {
 
     test('returns an error if AndroidManifest.xml file does not exist',
         () async {
-      final tempDirectory = createTempDir();
-      Directory(p.join(tempDirectory.path, 'android', 'app', 'src', 'main'))
-          .createSync(recursive: true);
+      Directory(
+        p.join(projectRoot.path, 'android', 'app', 'src', 'main'),
+      ).createSync(recursive: true);
 
-      final results = await IOOverrides.runZoned(
+      final results = await runWithOverrides(
         AndroidInternetPermissionValidator().validate,
-        getCurrentDirectory: () => tempDirectory,
       );
 
       expect(results, hasLength(1));
@@ -113,18 +128,21 @@ void main() {
 
     group('when the INTERNET permission is commented out', () {
       test('returns error', () async {
-        final tempDirectory = createTempDir();
-        final manifestPath =
-            p.join(tempDirectory.path, 'android', 'app', 'src', 'main');
+        final manifestPath = p.join(
+          projectRoot.path,
+          'android',
+          'app',
+          'src',
+          'main',
+        );
 
         writeManifestToPath(
           manifestWithCommentedOutInternetPermission,
           manifestPath,
         );
 
-        final results = await IOOverrides.runZoned(
+        final results = await runWithOverrides(
           AndroidInternetPermissionValidator().validate,
-          getCurrentDirectory: () => tempDirectory,
         );
 
         expect(results, hasLength(1));
@@ -143,15 +161,18 @@ void main() {
 
     group('when the INTERNET permission is missing', () {
       test('returns error', () async {
-        final tempDirectory = createTempDir();
-        final manifestPath =
-            p.join(tempDirectory.path, 'android', 'app', 'src', 'main');
+        final manifestPath = p.join(
+          projectRoot.path,
+          'android',
+          'app',
+          'src',
+          'main',
+        );
 
         writeManifestToPath(manifestWithNoPermissions, manifestPath);
 
-        final results = await IOOverrides.runZoned(
+        final results = await runWithOverrides(
           AndroidInternetPermissionValidator().validate,
-          getCurrentDirectory: () => tempDirectory,
         );
 
         expect(results, hasLength(1));
@@ -170,18 +191,21 @@ void main() {
 
     group('when manifest has non-INTERNET permissions', () {
       test('returns error', () async {
-        final tempDirectory = createTempDir();
-        final manifestPath =
-            p.join(tempDirectory.path, 'android', 'app', 'src', 'main');
+        final manifestPath = p.join(
+          projectRoot.path,
+          'android',
+          'app',
+          'src',
+          'main',
+        );
 
         writeManifestToPath(
           manifestWithNonInternetPermissions,
           manifestPath,
         );
 
-        final results = await IOOverrides.runZoned(
+        final results = await runWithOverrides(
           AndroidInternetPermissionValidator().validate,
-          getCurrentDirectory: () => tempDirectory,
         );
 
         expect(results, hasLength(1));
@@ -200,27 +224,21 @@ void main() {
 
     group('fix', () {
       test('adds permission to manifest file', () async {
-        final tempDirectory = createTempDir();
         writeManifestToPath(
           manifestWithNonInternetPermissions,
-          p.join(tempDirectory.path, 'android', 'app', 'src', 'main'),
+          p.join(projectRoot.path, 'android', 'app', 'src', 'main'),
         );
 
-        var results = await IOOverrides.runZoned(
+        var results = await runWithOverrides(
           AndroidInternetPermissionValidator().validate,
-          getCurrentDirectory: () => tempDirectory,
         );
         expect(results, hasLength(1));
         expect(results.first.fix, isNotNull);
 
-        await IOOverrides.runZoned(
-          () => results.first.fix!(),
-          getCurrentDirectory: () => tempDirectory,
-        );
+        await runWithOverrides(() => results.first.fix!());
 
-        results = await IOOverrides.runZoned(
+        results = await runWithOverrides(
           AndroidInternetPermissionValidator().validate,
-          getCurrentDirectory: () => tempDirectory,
         );
         expect(results, isEmpty);
       });

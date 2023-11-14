@@ -85,6 +85,7 @@ void main() {
     late Auth auth;
     late CodePushClientWrapper codePushClientWrapper;
     late Directory shorebirdRoot;
+    late Directory projectRoot;
     late Directory flutterDirectory;
     late OperatingSystemInterface operatingSystemInterface;
     late PatchDiffChecker patchDiffChecker;
@@ -122,11 +123,9 @@ void main() {
       );
     }
 
-    Directory setUpTempDir() => Directory.systemTemp.createTempSync();
-
-    void setUpTempArtifacts(Directory dir) {
+    void setUpProjectRootArtifacts() {
       final aarDir = p.join(
-        dir.path,
+        projectRoot.path,
         'build',
         'host',
         'outputs',
@@ -170,6 +169,7 @@ void main() {
       auth = MockAuth();
       codePushClientWrapper = MockCodePushClientWrapper();
       shorebirdRoot = Directory.systemTemp.createTempSync();
+      projectRoot = Directory.systemTemp.createTempSync();
       flutterDirectory = Directory(
         p.join(shorebirdRoot.path, 'bin', 'cache', 'flutter'),
       );
@@ -191,6 +191,9 @@ void main() {
           .thenReturn('/path/to/flutter');
       when(() => platform.environment).thenReturn({});
       when(() => shorebirdEnv.shorebirdRoot).thenReturn(shorebirdRoot);
+      when(
+        () => shorebirdEnv.getShorebirdProjectRoot(),
+      ).thenReturn(projectRoot);
       when(() => shorebirdEnv.flutterDirectory).thenReturn(flutterDirectory);
       when(
         () => shorebirdEnv.androidPackageName,
@@ -458,12 +461,8 @@ ${release.version}'''),
           ),
         ],
       );
-      final tempDir = setUpTempDir();
-      setUpTempArtifacts(tempDir);
-      final exitCode = await IOOverrides.runZoned(
-        () => runWithOverrides(command.run),
-        getCurrentDirectory: () => tempDir,
-      );
+      setUpProjectRootArtifacts();
+      final exitCode = await runWithOverrides(command.run);
       expect(exitCode, ExitCode.software.code);
       verify(
         () => logger.err('''
@@ -490,12 +489,8 @@ Please re-run the release command for this version or create a new release.'''),
           ),
         ],
       );
-      final tempDir = setUpTempDir();
-      setUpTempArtifacts(tempDir);
-      final exitCode = await IOOverrides.runZoned(
-        () => runWithOverrides(command.run),
-        getCurrentDirectory: () => tempDir,
-      );
+      setUpProjectRootArtifacts();
+      final exitCode = await runWithOverrides(command.run);
       expect(exitCode, ExitCode.success.code);
     });
 
@@ -509,12 +504,8 @@ Please re-run the release command for this version or create a new release.'''),
           outputPath: any(named: 'outputPath'),
         ),
       ).thenThrow(exception);
-      final tempDir = setUpTempDir();
-      setUpTempArtifacts(tempDir);
-      final exitCode = await IOOverrides.runZoned(
-        () => runWithOverrides(command.run),
-        getCurrentDirectory: () => tempDir,
-      );
+      setUpProjectRootArtifacts();
+      final exitCode = await runWithOverrides(command.run);
       verify(() => progress.fail('$exception')).called(1);
       expect(exitCode, ExitCode.software.code);
     });
@@ -524,13 +515,9 @@ Please re-run the release command for this version or create a new release.'''),
         'when release flutter revision differs', () async {
       const otherRevision = 'other-revision';
       when(() => shorebirdEnv.flutterRevision).thenReturn(otherRevision);
-      final tempDir = setUpTempDir();
-      setUpTempArtifacts(tempDir);
+      setUpProjectRootArtifacts();
 
-      final exitCode = await IOOverrides.runZoned(
-        () => runWithOverrides(command.run),
-        getCurrentDirectory: () => tempDir,
-      );
+      final exitCode = await runWithOverrides(command.run);
       expect(exitCode, equals(ExitCode.success.code));
       verify(
         () => logger.progress(
@@ -564,20 +551,16 @@ Please re-run the release command for this version or create a new release.'''),
           environment: any(named: 'environment'),
         ),
       ).thenAnswer((_) async => flutterBuildProcessResult);
-      final tempDir = setUpTempDir();
-      setUpTempArtifacts(tempDir);
-      await IOOverrides.runZoned(
-        () => runWithOverrides(
-          () => runScoped(
-            () => command.run(),
-            values: {
-              processRef.overrideWith(
-                () => ShorebirdProcess(processWrapper: processWrapper),
-              ),
-            },
-          ),
+      setUpProjectRootArtifacts();
+      await runWithOverrides(
+        () => runScoped(
+          () => command.run(),
+          values: {
+            processRef.overrideWith(
+              () => ShorebirdProcess(processWrapper: processWrapper),
+            ),
+          },
         ),
-        getCurrentDirectory: () => tempDir,
       );
       verify(
         () => processWrapper.run(
@@ -609,13 +592,9 @@ Please re-run the release command for this version or create a new release.'''),
           revision: any(named: 'revision'),
         ),
       ).thenThrow(exception);
-      final tempDir = setUpTempDir();
-      setUpTempArtifacts(tempDir);
+      setUpProjectRootArtifacts();
 
-      final exitCode = await IOOverrides.runZoned(
-        () => runWithOverrides(command.run),
-        getCurrentDirectory: () => tempDir,
-      );
+      final exitCode = await runWithOverrides(command.run);
       expect(exitCode, equals(ExitCode.software.code));
       verify(
         () => logger.progress(
@@ -649,13 +628,9 @@ Please re-run the release command for this version or create a new release.'''),
           force: any(named: 'force'),
         ),
       ).thenThrow(UserCancelledException());
-      final tempDir = setUpTempDir();
-      setUpTempArtifacts(tempDir);
+      setUpProjectRootArtifacts();
 
-      final exitCode = await IOOverrides.runZoned(
-        () => runWithOverrides(command.run),
-        getCurrentDirectory: () => tempDir,
-      );
+      final exitCode = await runWithOverrides(command.run);
 
       expect(exitCode, equals(ExitCode.success.code));
       verify(
@@ -690,13 +665,9 @@ Please re-run the release command for this version or create a new release.'''),
         ),
       ).thenThrow(UnpatchableChangeException());
 
-      final tempDir = setUpTempDir();
-      setUpTempArtifacts(tempDir);
+      setUpProjectRootArtifacts();
 
-      final exitCode = await IOOverrides.runZoned(
-        () => runWithOverrides(command.run),
-        getCurrentDirectory: () => tempDir,
-      );
+      final exitCode = await runWithOverrides(command.run);
 
       expect(exitCode, equals(ExitCode.software.code));
       verify(
@@ -727,24 +698,16 @@ Please re-run the release command for this version or create a new release.'''),
           patchArtifactPath: any(named: 'patchArtifactPath'),
         ),
       ).thenThrow(error);
-      final tempDir = setUpTempDir();
-      setUpTempArtifacts(tempDir);
-      final exitCode = await IOOverrides.runZoned(
-        () => runWithOverrides(command.run),
-        getCurrentDirectory: () => tempDir,
-      );
+      setUpProjectRootArtifacts();
+      final exitCode = await runWithOverrides(command.run);
       verify(() => progress.fail('$error')).called(1);
       expect(exitCode, ExitCode.software.code);
     });
 
     test('does not create patch on --dry-run', () async {
       when(() => argResults['dry-run']).thenReturn(true);
-      final tempDir = setUpTempDir();
-      setUpTempArtifacts(tempDir);
-      final exitCode = await IOOverrides.runZoned(
-        () => runWithOverrides(command.run),
-        getCurrentDirectory: () => tempDir,
-      );
+      setUpProjectRootArtifacts();
+      final exitCode = await runWithOverrides(command.run);
       expect(exitCode, equals(ExitCode.success.code));
       verifyNever(
         () => codePushClientWrapper.publishPatch(
@@ -760,25 +723,17 @@ Please re-run the release command for this version or create a new release.'''),
 
     test('aborts when user opts out', () async {
       when(() => logger.confirm(any())).thenReturn(false);
-      final tempDir = setUpTempDir();
-      setUpTempArtifacts(tempDir);
-      final exitCode = await IOOverrides.runZoned(
-        () => runWithOverrides(command.run),
-        getCurrentDirectory: () => tempDir,
-      );
+      setUpProjectRootArtifacts();
+      final exitCode = await runWithOverrides(command.run);
       expect(exitCode, ExitCode.success.code);
       verify(() => logger.info('Aborting.')).called(1);
     });
 
     test('does not prompt on --force', () async {
       when(() => argResults['force']).thenReturn(true);
-      final tempDir = setUpTempDir();
-      setUpTempArtifacts(tempDir);
+      setUpProjectRootArtifacts();
 
-      final exitCode = await IOOverrides.runZoned(
-        () => runWithOverrides(command.run),
-        getCurrentDirectory: () => tempDir,
-      );
+      final exitCode = await runWithOverrides(command.run);
 
       expect(exitCode, equals(ExitCode.success.code));
       verifyNever(() => logger.confirm(any()));
@@ -794,13 +749,9 @@ Please re-run the release command for this version or create a new release.'''),
     });
 
     test('succeeds when patch is successful', () async {
-      final tempDir = setUpTempDir();
-      setUpTempArtifacts(tempDir);
+      setUpProjectRootArtifacts();
 
-      final exitCode = await IOOverrides.runZoned(
-        () => runWithOverrides(command.run),
-        getCurrentDirectory: () => tempDir,
-      );
+      final exitCode = await runWithOverrides(command.run);
 
       expect(exitCode, ExitCode.success.code);
       verify(
@@ -846,13 +797,9 @@ Please re-run the release command for this version or create a new release.'''),
 
     test('runs flutter pub get with system flutter after successful build',
         () async {
-      final tempDir = setUpTempDir();
-      setUpTempArtifacts(tempDir);
+      setUpProjectRootArtifacts();
 
-      await IOOverrides.runZoned(
-        () => runWithOverrides(command.run),
-        getCurrentDirectory: () => tempDir,
-      );
+      await runWithOverrides(command.run);
 
       verify(
         () => shorebirdProcess.run(
@@ -866,13 +813,9 @@ Please re-run the release command for this version or create a new release.'''),
 
     test('does not prompt if running on CI', () async {
       when(() => shorebirdEnv.isRunningOnCI).thenReturn(true);
-      final tempDir = setUpTempDir();
-      setUpTempArtifacts(tempDir);
+      setUpProjectRootArtifacts();
 
-      final exitCode = await IOOverrides.runZoned(
-        () => runWithOverrides(command.run),
-        getCurrentDirectory: () => tempDir,
-      );
+      final exitCode = await runWithOverrides(command.run);
 
       expect(exitCode, equals(ExitCode.success.code));
       verifyNever(() => logger.confirm(any()));

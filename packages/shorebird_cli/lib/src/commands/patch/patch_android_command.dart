@@ -128,9 +128,18 @@ If this option is not provided, the version number will be determined from the p
       return ExitCode.software.code;
     }
 
+    final projectRoot = shorebirdEnv.getShorebirdProjectRoot()!;
+
+    final bundleDirPath = p.join(
+      projectRoot.path,
+      'build',
+      'app',
+      'outputs',
+      'bundle',
+    );
     final bundlePath = flavor != null
-        ? './build/app/outputs/bundle/${flavor}Release/app-$flavor-release.aab'
-        : './build/app/outputs/bundle/release/app-release.aab';
+        ? p.join(bundleDirPath, '${flavor}Release', 'app-$flavor-release.aab')
+        : p.join(bundleDirPath, 'release', 'app-release.aab');
 
     final String releaseVersion;
     final argReleaseVersion = results['release-version'] as String?;
@@ -251,7 +260,7 @@ Current Flutter Revision: $originalFlutterRevision
     for (final releaseArtifactPath in releaseArtifactPaths.entries) {
       final archMetadata = architectures[releaseArtifactPath.key]!;
       final patchArtifactPath = p.join(
-        Directory.current.path,
+        projectRoot.path,
         'build',
         'app',
         'intermediates',

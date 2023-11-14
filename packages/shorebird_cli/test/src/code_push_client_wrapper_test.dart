@@ -119,6 +119,7 @@ void main() {
     late Progress progress;
     late CodePushClientWrapper codePushClientWrapper;
     late Platform platform;
+    late Directory projectRoot;
 
     R runWithOverrides<R>(R Function() body) {
       return runScoped(
@@ -143,6 +144,7 @@ void main() {
       logger = MockLogger();
       platform = MockPlatform();
       progress = MockProgress();
+      projectRoot = Directory.systemTemp.createTempSync();
 
       codePushClientWrapper = runWithOverrides(
         () => CodePushClientWrapper(codePushClient: codePushClient),
@@ -720,7 +722,7 @@ Please bump your version number and try again.''',
               platform: any(named: 'platform'),
               status: any(named: 'status'),
             ),
-          ).thenAnswer((_) async => {});
+          ).thenAnswer((_) async {});
 
           final result = await runWithOverrides(
             () async => codePushClientWrapper.createRelease(
@@ -989,13 +991,12 @@ Please bump your version number and try again.''',
       group('createAndroidReleaseArtifacts', () {
         final aabPath = p.join('path', 'to', 'app.aab');
 
-        Directory setUpTempDir({String? flavor}) {
-          final tempDir = Directory.systemTemp.createTempSync();
-          File(p.join(tempDir.path, aabPath)).createSync(recursive: true);
+        void setUpProjectRoot({String? flavor}) {
+          File(p.join(projectRoot.path, aabPath)).createSync(recursive: true);
           for (final archMetadata
               in ShorebirdBuildMixin.allAndroidArchitectures.values) {
             final artifactPath = p.join(
-              tempDir.path,
+              projectRoot.path,
               'build',
               'app',
               'intermediates',
@@ -1008,7 +1009,6 @@ Please bump your version number and try again.''',
             );
             File(artifactPath).createSync(recursive: true);
           }
-          return tempDir;
         }
 
         setUp(() {
@@ -1022,7 +1022,7 @@ Please bump your version number and try again.''',
               hash: any(named: 'hash'),
               canSideload: any(named: 'canSideload'),
             ),
-          ).thenAnswer((_) async => {});
+          ).thenAnswer((_) async {});
         });
 
         test('exits with code 70 when artifact creation fails', () async {
@@ -1038,22 +1038,20 @@ Please bump your version number and try again.''',
               canSideload: any(named: 'canSideload'),
             ),
           ).thenThrow(error);
-          final tempDir = setUpTempDir();
+          setUpProjectRoot();
 
-          await IOOverrides.runZoned(
-            () async => expectLater(
-              () async => runWithOverrides(
-                () async => codePushClientWrapper.createAndroidReleaseArtifacts(
-                  appId: app.appId,
-                  releaseId: releaseId,
-                  platform: releasePlatform,
-                  aabPath: p.join(tempDir.path, aabPath),
-                  architectures: ShorebirdBuildMixin.allAndroidArchitectures,
-                ),
+          await expectLater(
+            () async => runWithOverrides(
+              () async => codePushClientWrapper.createAndroidReleaseArtifacts(
+                appId: app.appId,
+                releaseId: releaseId,
+                platform: releasePlatform,
+                projectRoot: projectRoot.path,
+                aabPath: p.join(projectRoot.path, aabPath),
+                architectures: ShorebirdBuildMixin.allAndroidArchitectures,
               ),
-              exitsWithCode(ExitCode.software),
             ),
-            getCurrentDirectory: () => tempDir,
+            exitsWithCode(ExitCode.software),
           );
 
           verify(() => progress.fail(any(that: contains(error)))).called(1);
@@ -1072,22 +1070,20 @@ Please bump your version number and try again.''',
               canSideload: any(named: 'canSideload'),
             ),
           ).thenThrow(error);
-          final tempDir = setUpTempDir();
+          setUpProjectRoot();
 
-          await IOOverrides.runZoned(
-            () async => expectLater(
-              () async => runWithOverrides(
-                () async => codePushClientWrapper.createAndroidReleaseArtifacts(
-                  appId: app.appId,
-                  releaseId: releaseId,
-                  platform: releasePlatform,
-                  aabPath: p.join(tempDir.path, aabPath),
-                  architectures: ShorebirdBuildMixin.allAndroidArchitectures,
-                ),
+          await expectLater(
+            () async => runWithOverrides(
+              () async => codePushClientWrapper.createAndroidReleaseArtifacts(
+                appId: app.appId,
+                releaseId: releaseId,
+                platform: releasePlatform,
+                projectRoot: projectRoot.path,
+                aabPath: p.join(projectRoot.path, aabPath),
+                architectures: ShorebirdBuildMixin.allAndroidArchitectures,
               ),
-              exitsWithCode(ExitCode.software),
             ),
-            getCurrentDirectory: () => tempDir,
+            exitsWithCode(ExitCode.software),
           );
 
           verify(() => progress.fail(any(that: contains(error)))).called(1);
@@ -1107,18 +1103,16 @@ Please bump your version number and try again.''',
               canSideload: any(named: 'canSideload'),
             ),
           ).thenThrow(const CodePushConflictException(message: error));
-          final tempDir = setUpTempDir();
+          setUpProjectRoot();
 
           await runWithOverrides(
-            () async => IOOverrides.runZoned(
-              () async => codePushClientWrapper.createAndroidReleaseArtifacts(
-                appId: app.appId,
-                releaseId: releaseId,
-                platform: releasePlatform,
-                aabPath: p.join(tempDir.path, aabPath),
-                architectures: ShorebirdBuildMixin.allAndroidArchitectures,
-              ),
-              getCurrentDirectory: () => tempDir,
+            () => codePushClientWrapper.createAndroidReleaseArtifacts(
+              appId: app.appId,
+              releaseId: releaseId,
+              platform: releasePlatform,
+              projectRoot: projectRoot.path,
+              aabPath: p.join(projectRoot.path, aabPath),
+              architectures: ShorebirdBuildMixin.allAndroidArchitectures,
             ),
           );
 
@@ -1144,18 +1138,16 @@ Please bump your version number and try again.''',
               canSideload: any(named: 'canSideload'),
             ),
           ).thenThrow(const CodePushConflictException(message: error));
-          final tempDir = setUpTempDir();
+          setUpProjectRoot();
 
           await runWithOverrides(
-            () async => IOOverrides.runZoned(
-              () async => codePushClientWrapper.createAndroidReleaseArtifacts(
-                appId: app.appId,
-                releaseId: releaseId,
-                platform: releasePlatform,
-                aabPath: p.join(tempDir.path, aabPath),
-                architectures: ShorebirdBuildMixin.allAndroidArchitectures,
-              ),
-              getCurrentDirectory: () => tempDir,
+            () async => codePushClientWrapper.createAndroidReleaseArtifacts(
+              appId: app.appId,
+              releaseId: releaseId,
+              platform: releasePlatform,
+              projectRoot: projectRoot.path,
+              aabPath: p.join(projectRoot.path, aabPath),
+              architectures: ShorebirdBuildMixin.allAndroidArchitectures,
             ),
           );
 
@@ -1178,19 +1170,17 @@ Please bump your version number and try again.''',
               hash: any(named: 'hash'),
               canSideload: any(named: 'canSideload'),
             ),
-          ).thenAnswer((_) async => {});
-          final tempDir = setUpTempDir();
+          ).thenAnswer((_) async {});
+          setUpProjectRoot();
 
           await runWithOverrides(
-            () async => IOOverrides.runZoned(
-              () async => codePushClientWrapper.createAndroidReleaseArtifacts(
-                appId: app.appId,
-                releaseId: releaseId,
-                platform: releasePlatform,
-                aabPath: p.join(tempDir.path, aabPath),
-                architectures: ShorebirdBuildMixin.allAndroidArchitectures,
-              ),
-              getCurrentDirectory: () => tempDir,
+            () async => codePushClientWrapper.createAndroidReleaseArtifacts(
+              appId: app.appId,
+              releaseId: releaseId,
+              platform: releasePlatform,
+              projectRoot: projectRoot.path,
+              aabPath: p.join(projectRoot.path, aabPath),
+              architectures: ShorebirdBuildMixin.allAndroidArchitectures,
             ),
           );
 
@@ -1210,20 +1200,18 @@ Please bump your version number and try again.''',
               hash: any(named: 'hash'),
               canSideload: any(named: 'canSideload'),
             ),
-          ).thenAnswer((_) async => {});
-          final tempDir = setUpTempDir(flavor: flavorName);
+          ).thenAnswer((_) async {});
+          setUpProjectRoot(flavor: flavorName);
 
           await runWithOverrides(
-            () async => IOOverrides.runZoned(
-              () async => codePushClientWrapper.createAndroidReleaseArtifacts(
-                appId: app.appId,
-                releaseId: releaseId,
-                platform: releasePlatform,
-                aabPath: p.join(tempDir.path, aabPath),
-                architectures: ShorebirdBuildMixin.allAndroidArchitectures,
-                flavor: flavorName,
-              ),
-              getCurrentDirectory: () => tempDir,
+            () async => codePushClientWrapper.createAndroidReleaseArtifacts(
+              appId: app.appId,
+              releaseId: releaseId,
+              platform: releasePlatform,
+              projectRoot: projectRoot.path,
+              aabPath: p.join(projectRoot.path, aabPath),
+              architectures: ShorebirdBuildMixin.allAndroidArchitectures,
+              flavor: flavorName,
             ),
           );
 
@@ -1263,12 +1251,11 @@ Please bump your version number and try again.''',
         final aarPath = p.join(aarDir, 'flutter_release-$buildNumber.aar');
         final extractedAarPath = p.join(aarDir, 'flutter_release-$buildNumber');
 
-        Directory setUpTempDir({String? flavor}) {
-          final tempDir = Directory.systemTemp.createTempSync();
+        void setUpProjectRoot({String? flavor}) {
           for (final archMetadata
               in ShorebirdBuildMixin.allAndroidArchitectures.values) {
             final artifactPath = p.join(
-              tempDir.path,
+              projectRoot.path,
               extractedAarPath,
               'jni',
               archMetadata.path,
@@ -1276,8 +1263,7 @@ Please bump your version number and try again.''',
             );
             File(artifactPath).createSync(recursive: true);
           }
-          File(p.join(tempDir.path, aarPath)).createSync(recursive: true);
-          return tempDir;
+          File(p.join(projectRoot.path, aarPath)).createSync(recursive: true);
         }
 
         setUp(() {
@@ -1291,7 +1277,7 @@ Please bump your version number and try again.''',
               hash: any(named: 'hash'),
               canSideload: any(named: 'canSideload'),
             ),
-          ).thenAnswer((_) async => {});
+          ).thenAnswer((_) async {});
         });
 
         test('exits with code 70 when artifact creation fails', () async {
@@ -1307,24 +1293,21 @@ Please bump your version number and try again.''',
               canSideload: any(named: 'canSideload'),
             ),
           ).thenThrow(error);
-          final tempDir = setUpTempDir();
+          setUpProjectRoot();
 
-          await IOOverrides.runZoned(
-            () async => expectLater(
-              () async => runWithOverrides(
-                () async =>
-                    codePushClientWrapper.createAndroidArchiveReleaseArtifacts(
-                  appId: app.appId,
-                  releaseId: releaseId,
-                  platform: releasePlatform,
-                  aarPath: p.join(tempDir.path, aarPath),
-                  extractedAarDir: p.join(tempDir.path, extractedAarPath),
-                  architectures: ShorebirdBuildMixin.allAndroidArchitectures,
-                ),
+          await expectLater(
+            () async => runWithOverrides(
+              () async =>
+                  codePushClientWrapper.createAndroidArchiveReleaseArtifacts(
+                appId: app.appId,
+                releaseId: releaseId,
+                platform: releasePlatform,
+                aarPath: p.join(projectRoot.path, aarPath),
+                extractedAarDir: p.join(projectRoot.path, extractedAarPath),
+                architectures: ShorebirdBuildMixin.allAndroidArchitectures,
               ),
-              exitsWithCode(ExitCode.software),
             ),
-            getCurrentDirectory: () => tempDir,
+            exitsWithCode(ExitCode.software),
           );
 
           verify(() => progress.fail(any(that: contains(error)))).called(1);
@@ -1343,24 +1326,21 @@ Please bump your version number and try again.''',
               canSideload: any(named: 'canSideload'),
             ),
           ).thenThrow(error);
-          final tempDir = setUpTempDir();
+          setUpProjectRoot();
 
-          await IOOverrides.runZoned(
-            () async => expectLater(
-              () async => runWithOverrides(
-                () async =>
-                    codePushClientWrapper.createAndroidArchiveReleaseArtifacts(
-                  appId: app.appId,
-                  releaseId: releaseId,
-                  platform: releasePlatform,
-                  aarPath: p.join(tempDir.path, aarPath),
-                  extractedAarDir: p.join(tempDir.path, extractedAarPath),
-                  architectures: ShorebirdBuildMixin.allAndroidArchitectures,
-                ),
+          await expectLater(
+            () async => runWithOverrides(
+              () async =>
+                  codePushClientWrapper.createAndroidArchiveReleaseArtifacts(
+                appId: app.appId,
+                releaseId: releaseId,
+                platform: releasePlatform,
+                aarPath: p.join(projectRoot.path, aarPath),
+                extractedAarDir: p.join(projectRoot.path, extractedAarPath),
+                architectures: ShorebirdBuildMixin.allAndroidArchitectures,
               ),
-              exitsWithCode(ExitCode.software),
             ),
-            getCurrentDirectory: () => tempDir,
+            exitsWithCode(ExitCode.software),
           );
 
           verify(() => progress.fail(any(that: contains(error)))).called(1);
@@ -1380,20 +1360,17 @@ Please bump your version number and try again.''',
               canSideload: any(named: 'canSideload'),
             ),
           ).thenThrow(const CodePushConflictException(message: error));
-          final tempDir = setUpTempDir();
+          setUpProjectRoot();
 
           await runWithOverrides(
-            () async => IOOverrides.runZoned(
-              () async =>
-                  codePushClientWrapper.createAndroidArchiveReleaseArtifacts(
-                appId: app.appId,
-                releaseId: releaseId,
-                platform: releasePlatform,
-                aarPath: p.join(tempDir.path, aarPath),
-                extractedAarDir: p.join(tempDir.path, extractedAarPath),
-                architectures: ShorebirdBuildMixin.allAndroidArchitectures,
-              ),
-              getCurrentDirectory: () => tempDir,
+            () async =>
+                codePushClientWrapper.createAndroidArchiveReleaseArtifacts(
+              appId: app.appId,
+              releaseId: releaseId,
+              platform: releasePlatform,
+              aarPath: p.join(projectRoot.path, aarPath),
+              extractedAarDir: p.join(projectRoot.path, extractedAarPath),
+              architectures: ShorebirdBuildMixin.allAndroidArchitectures,
             ),
           );
 
@@ -1419,20 +1396,17 @@ Please bump your version number and try again.''',
               canSideload: any(named: 'canSideload'),
             ),
           ).thenThrow(const CodePushConflictException(message: error));
-          final tempDir = setUpTempDir();
+          setUpProjectRoot();
 
           await runWithOverrides(
-            () async => IOOverrides.runZoned(
-              () async =>
-                  codePushClientWrapper.createAndroidArchiveReleaseArtifacts(
-                appId: app.appId,
-                releaseId: releaseId,
-                platform: releasePlatform,
-                aarPath: p.join(tempDir.path, aarPath),
-                extractedAarDir: p.join(tempDir.path, extractedAarPath),
-                architectures: ShorebirdBuildMixin.allAndroidArchitectures,
-              ),
-              getCurrentDirectory: () => tempDir,
+            () async =>
+                codePushClientWrapper.createAndroidArchiveReleaseArtifacts(
+              appId: app.appId,
+              releaseId: releaseId,
+              platform: releasePlatform,
+              aarPath: p.join(projectRoot.path, aarPath),
+              extractedAarDir: p.join(projectRoot.path, extractedAarPath),
+              architectures: ShorebirdBuildMixin.allAndroidArchitectures,
             ),
           );
 
@@ -1455,21 +1429,18 @@ Please bump your version number and try again.''',
               hash: any(named: 'hash'),
               canSideload: any(named: 'canSideload'),
             ),
-          ).thenAnswer((_) async => {});
-          final tempDir = setUpTempDir();
+          ).thenAnswer((_) async {});
+          setUpProjectRoot();
 
           await runWithOverrides(
-            () async => IOOverrides.runZoned(
-              () async =>
-                  codePushClientWrapper.createAndroidArchiveReleaseArtifacts(
-                appId: app.appId,
-                releaseId: releaseId,
-                platform: releasePlatform,
-                aarPath: p.join(tempDir.path, aarPath),
-                extractedAarDir: p.join(tempDir.path, extractedAarPath),
-                architectures: ShorebirdBuildMixin.allAndroidArchitectures,
-              ),
-              getCurrentDirectory: () => tempDir,
+            () async =>
+                codePushClientWrapper.createAndroidArchiveReleaseArtifacts(
+              appId: app.appId,
+              releaseId: releaseId,
+              platform: releasePlatform,
+              aarPath: p.join(projectRoot.path, aarPath),
+              extractedAarDir: p.join(projectRoot.path, extractedAarPath),
+              architectures: ShorebirdBuildMixin.allAndroidArchitectures,
             ),
           );
 
@@ -1489,21 +1460,18 @@ Please bump your version number and try again.''',
               hash: any(named: 'hash'),
               canSideload: any(named: 'canSideload'),
             ),
-          ).thenAnswer((_) async => {});
-          final tempDir = setUpTempDir(flavor: flavorName);
+          ).thenAnswer((_) async {});
+          setUpProjectRoot(flavor: flavorName);
 
           await runWithOverrides(
-            () async => IOOverrides.runZoned(
-              () async =>
-                  codePushClientWrapper.createAndroidArchiveReleaseArtifacts(
-                appId: app.appId,
-                releaseId: releaseId,
-                platform: releasePlatform,
-                aarPath: p.join(tempDir.path, aarPath),
-                extractedAarDir: p.join(tempDir.path, extractedAarPath),
-                architectures: ShorebirdBuildMixin.allAndroidArchitectures,
-              ),
-              getCurrentDirectory: () => tempDir,
+            () async =>
+                codePushClientWrapper.createAndroidArchiveReleaseArtifacts(
+              appId: app.appId,
+              releaseId: releaseId,
+              platform: releasePlatform,
+              aarPath: p.join(projectRoot.path, aarPath),
+              extractedAarDir: p.join(projectRoot.path, extractedAarPath),
+              architectures: ShorebirdBuildMixin.allAndroidArchitectures,
             ),
           );
 
@@ -1528,12 +1496,13 @@ Please bump your version number and try again.''',
       final xcarchivePath = p.join('path', 'to', 'app.xcarchive');
       final runnerPath = p.join('path', 'to', 'runner.app');
 
-      Directory setUpTempDir({String? flavor}) {
-        final tempDir = Directory.systemTemp.createTempSync();
-        Directory(p.join(tempDir.path, xcarchivePath))
-            .createSync(recursive: true);
-        Directory(p.join(tempDir.path, runnerPath)).createSync(recursive: true);
-        return tempDir;
+      void setUpProjectRoot({String? flavor}) {
+        Directory(
+          p.join(projectRoot.path, xcarchivePath),
+        ).createSync(recursive: true);
+        Directory(
+          p.join(projectRoot.path, runnerPath),
+        ).createSync(recursive: true);
       }
 
       setUp(() {
@@ -1547,7 +1516,7 @@ Please bump your version number and try again.''',
             hash: any(named: 'hash'),
             canSideload: any(named: 'canSideload'),
           ),
-        ).thenAnswer((_) async => {});
+        ).thenAnswer((_) async {});
       });
 
       test('exits with code 70 when xcarchive artifact creation fails',
@@ -1565,22 +1534,19 @@ Please bump your version number and try again.''',
             canSideload: any(named: 'canSideload'),
           ),
         ).thenThrow(error);
-        final tempDir = setUpTempDir();
+        setUpProjectRoot();
 
-        await IOOverrides.runZoned(
-          () async => expectLater(
-            () async => runWithOverrides(
-              () async => codePushClientWrapper.createIosReleaseArtifacts(
-                appId: app.appId,
-                releaseId: releaseId,
-                xcarchivePath: p.join(tempDir.path, xcarchivePath),
-                runnerPath: p.join(tempDir.path, runnerPath),
-                isCodesigned: true,
-              ),
+        await expectLater(
+          () async => runWithOverrides(
+            () async => codePushClientWrapper.createIosReleaseArtifacts(
+              appId: app.appId,
+              releaseId: releaseId,
+              xcarchivePath: p.join(projectRoot.path, xcarchivePath),
+              runnerPath: p.join(projectRoot.path, runnerPath),
+              isCodesigned: true,
             ),
-            exitsWithCode(ExitCode.software),
           ),
-          getCurrentDirectory: () => tempDir,
+          exitsWithCode(ExitCode.software),
         );
 
         verify(() => progress.fail(any(that: contains(error)))).called(1);
@@ -1592,8 +1558,10 @@ Please bump your version number and try again.''',
         when(
           () => codePushClient.createReleaseArtifact(
             appId: any(named: 'appId'),
-            artifactPath:
-                any(named: 'artifactPath', that: endsWith('.xcarchive.zip')),
+            artifactPath: any(
+              named: 'artifactPath',
+              that: endsWith('.xcarchive.zip'),
+            ),
             releaseId: any(named: 'releaseId'),
             arch: any(named: 'arch'),
             platform: any(named: 'platform'),
@@ -1601,22 +1569,19 @@ Please bump your version number and try again.''',
             canSideload: any(named: 'canSideload'),
           ),
         ).thenThrow(const CodePushConflictException(message: error));
-        final tempDir = setUpTempDir();
+        setUpProjectRoot();
 
-        await IOOverrides.runZoned(
-          () async => expectLater(
-            () async => runWithOverrides(
-              () async => codePushClientWrapper.createIosReleaseArtifacts(
-                appId: app.appId,
-                releaseId: releaseId,
-                xcarchivePath: p.join(tempDir.path, xcarchivePath),
-                runnerPath: p.join(tempDir.path, runnerPath),
-                isCodesigned: false,
-              ),
+        await expectLater(
+          () async => runWithOverrides(
+            () async => codePushClientWrapper.createIosReleaseArtifacts(
+              appId: app.appId,
+              releaseId: releaseId,
+              xcarchivePath: p.join(projectRoot.path, xcarchivePath),
+              runnerPath: p.join(projectRoot.path, runnerPath),
+              isCodesigned: false,
             ),
-            exitsWithCode(ExitCode.software),
           ),
-          getCurrentDirectory: () => tempDir,
+          exitsWithCode(ExitCode.software),
         );
 
         verify(() => progress.fail(any(that: contains(error)))).called(1);
@@ -1639,22 +1604,19 @@ Please bump your version number and try again.''',
             canSideload: any(named: 'canSideload'),
           ),
         ).thenThrow(error);
-        final tempDir = setUpTempDir();
+        setUpProjectRoot();
 
-        await IOOverrides.runZoned(
-          () async => expectLater(
-            () async => runWithOverrides(
-              () async => codePushClientWrapper.createIosReleaseArtifacts(
-                appId: app.appId,
-                releaseId: releaseId,
-                xcarchivePath: p.join(tempDir.path, xcarchivePath),
-                runnerPath: p.join(tempDir.path, runnerPath),
-                isCodesigned: false,
-              ),
+        await expectLater(
+          () async => runWithOverrides(
+            () async => codePushClientWrapper.createIosReleaseArtifacts(
+              appId: app.appId,
+              releaseId: releaseId,
+              xcarchivePath: p.join(projectRoot.path, xcarchivePath),
+              runnerPath: p.join(projectRoot.path, runnerPath),
+              isCodesigned: false,
             ),
-            exitsWithCode(ExitCode.software),
           ),
-          getCurrentDirectory: () => tempDir,
+          exitsWithCode(ExitCode.software),
         );
 
         verify(() => progress.fail(any(that: contains(error)))).called(1);
@@ -1671,19 +1633,16 @@ Please bump your version number and try again.''',
             hash: any(named: 'hash'),
             canSideload: any(named: 'canSideload'),
           ),
-        ).thenAnswer((_) async => {});
-        final tempDir = setUpTempDir();
+        ).thenAnswer((_) async {});
+        setUpProjectRoot();
 
         await runWithOverrides(
-          () async => IOOverrides.runZoned(
-            () async => codePushClientWrapper.createIosReleaseArtifacts(
-              appId: app.appId,
-              releaseId: releaseId,
-              xcarchivePath: p.join(tempDir.path, xcarchivePath),
-              runnerPath: p.join(tempDir.path, runnerPath),
-              isCodesigned: true,
-            ),
-            getCurrentDirectory: () => tempDir,
+          () async => codePushClientWrapper.createIosReleaseArtifacts(
+            appId: app.appId,
+            releaseId: releaseId,
+            xcarchivePath: p.join(projectRoot.path, xcarchivePath),
+            runnerPath: p.join(projectRoot.path, runnerPath),
+            isCodesigned: true,
           ),
         );
 
@@ -1695,11 +1654,10 @@ Please bump your version number and try again.''',
     group('createIosFrameworkReleaseArtifacts', () {
       final frameworkPath = p.join('path', 'to', 'App.xcframework');
 
-      Directory setUpTempDir({String? flavor}) {
-        final tempDir = Directory.systemTemp.createTempSync();
-        Directory(p.join(tempDir.path, frameworkPath))
-            .createSync(recursive: true);
-        return tempDir;
+      void setUpProjectRoot({String? flavor}) {
+        Directory(
+          p.join(projectRoot.path, frameworkPath),
+        ).createSync(recursive: true);
       }
 
       test(
@@ -1715,17 +1673,15 @@ Please bump your version number and try again.''',
               hash: any(named: 'hash'),
               canSideload: any(named: 'canSideload'),
             ),
-          ).thenThrow(
-            Exception('oh no'),
-          );
-          final tempDir = setUpTempDir();
+          ).thenThrow(Exception('oh no'));
+          setUpProjectRoot();
 
           await expectLater(
             () async => runWithOverrides(
               () => codePushClientWrapper.createIosFrameworkReleaseArtifacts(
                 appId: app.appId,
                 releaseId: releaseId,
-                appFrameworkPath: p.join(tempDir.path, frameworkPath),
+                appFrameworkPath: p.join(projectRoot.path, frameworkPath),
               ),
             ),
             exitsWithCode(ExitCode.software),
@@ -1744,21 +1700,18 @@ Please bump your version number and try again.''',
             hash: any(named: 'hash'),
             canSideload: any(named: 'canSideload'),
           ),
-        ).thenAnswer((_) async => {});
-        final tempDir = setUpTempDir();
+        ).thenAnswer((_) async {});
+        setUpProjectRoot();
 
-        await IOOverrides.runZoned(
-          () async => expectLater(
-            runWithOverrides(
-              () => codePushClientWrapper.createIosFrameworkReleaseArtifacts(
-                appId: app.appId,
-                releaseId: releaseId,
-                appFrameworkPath: p.join(tempDir.path, frameworkPath),
-              ),
+        await expectLater(
+          runWithOverrides(
+            () => codePushClientWrapper.createIosFrameworkReleaseArtifacts(
+              appId: app.appId,
+              releaseId: releaseId,
+              appFrameworkPath: p.join(projectRoot.path, frameworkPath),
             ),
-            completes,
           ),
-          getCurrentDirectory: () => tempDir,
+          completes,
         );
       });
     });
@@ -1798,7 +1751,7 @@ Please bump your version number and try again.''',
             platform: any(named: 'platform'),
             status: any(named: 'status'),
           ),
-        ).thenAnswer((_) async => {});
+        ).thenAnswer((_) async {});
 
         await runWithOverrides(
           () => codePushClientWrapper.updateReleaseStatus(

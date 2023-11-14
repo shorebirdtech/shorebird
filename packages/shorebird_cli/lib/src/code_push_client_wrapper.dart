@@ -363,6 +363,7 @@ Please create a release using "shorebird release" and try again.
     required String appId,
     required int releaseId,
     required ReleasePlatform platform,
+    required String projectRoot,
     required String aabPath,
     required Map<Arch, ArchMetadata> architectures,
     String? flavor,
@@ -370,7 +371,7 @@ Please create a release using "shorebird release" and try again.
     final createArtifactProgress = logger.progress('Creating artifacts');
     for (final archMetadata in architectures.values) {
       final artifactPath = p.join(
-        Directory.current.path,
+        projectRoot,
         'build',
         'app',
         'intermediates',

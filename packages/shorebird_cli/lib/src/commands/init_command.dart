@@ -52,7 +52,7 @@ class InitCommand extends ShorebirdCommand {
       if (!shorebirdEnv.hasPubspecYaml) {
         logger.err('''
 Could not find a "pubspec.yaml".
-Please make sure you are running "shorebird init" from the root of your Flutter project.
+Please make sure you are running "shorebird init" from within your Flutter project.
 ''');
         return ExitCode.noInput.code;
       }
@@ -66,11 +66,12 @@ Please make sure you are running "shorebird init" from the root of your Flutter 
     Set<String>? androidFlavors;
     Set<String>? iosFlavors;
     var productFlavors = <String>{};
+    final projectRoot = shorebirdEnv.getFlutterProjectRoot()!;
     final detectFlavorsProgress = logger.progress('Detecting product flavors');
     try {
       final flavors = await Future.wait([
-        _maybeGetAndroidFlavors(Directory.current.path),
-        _maybeGetiOSFlavors(Directory.current.path),
+        _maybeGetAndroidFlavors(projectRoot.path),
+        _maybeGetiOSFlavors(projectRoot.path),
       ]);
       androidFlavors = flavors[0];
       iosFlavors = flavors[1];
@@ -133,7 +134,8 @@ Please make sure you are running "shorebird init" from the root of your Flutter 
         flavorsToAppIds[flavor] = app.id;
       }
       _addShorebirdYamlToProject(
-        shorebirdYaml.appId,
+        projectRoot: projectRoot,
+        appId: shorebirdYaml.appId,
         flavors: flavorsToAppIds,
       );
       updateShorebirdYamlProgress.complete('Flavors added to shorebird.yaml');
@@ -201,10 +203,16 @@ Please make sure you are running "shorebird init" from the root of your Flutter 
       return ExitCode.software.code;
     }
 
-    _addShorebirdYamlToProject(appId, flavors: flavors);
+    _addShorebirdYamlToProject(
+      projectRoot: projectRoot,
+      appId: appId,
+      flavors: flavors,
+    );
 
     if (!shorebirdEnv.pubspecContainsShorebirdYaml) {
-      _addShorebirdYamlToPubspecAssets();
+      _addShorebirdYamlToPubspecAssets(
+        shorebirdEnv.getPubspecYamlFile(cwd: projectRoot),
+      );
     }
 
     logger.info(
@@ -274,8 +282,9 @@ For more information about Shorebird, visit ${link(uri: Uri.parse('https://shore
     }
   }
 
-  ShorebirdYaml _addShorebirdYamlToProject(
-    String appId, {
+  ShorebirdYaml _addShorebirdYamlToProject({
+    required String appId,
+    required Directory projectRoot,
     Map<String, String>? flavors,
   }) {
     const content = '''
@@ -299,13 +308,14 @@ app_id:
 
     if (flavors != null) editor.update(['flavors'], flavors);
 
-    shorebirdEnv.getShorebirdYamlFile().writeAsStringSync(editor.toString());
+    shorebirdEnv
+        .getShorebirdYamlFile(cwd: projectRoot)
+        .writeAsStringSync(editor.toString());
 
     return ShorebirdYaml(appId: appId);
   }
 
-  void _addShorebirdYamlToPubspecAssets() {
-    final pubspecFile = shorebirdEnv.getPubspecYamlFile();
+  void _addShorebirdYamlToPubspecAssets(File pubspecFile) {
     final pubspecContents = pubspecFile.readAsStringSync();
     final yaml = loadYaml(pubspecContents, sourceUrl: pubspecFile.uri) as Map;
     final editor = YamlEditor(pubspecContents);

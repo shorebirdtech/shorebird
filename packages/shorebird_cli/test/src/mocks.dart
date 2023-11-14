@@ -60,6 +60,8 @@ class MockCodePushClientWrapper extends Mock implements CodePushClientWrapper {}
 
 class MockDevicectl extends Mock implements Devicectl {}
 
+class MockDirectory extends Mock implements Directory {}
+
 class MockDoctor extends Mock implements Doctor {}
 
 class MockFile extends Mock implements File {}

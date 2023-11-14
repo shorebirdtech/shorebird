@@ -62,6 +62,7 @@ void main() {
     late http.Client httpClient;
     late CodePushClientWrapper codePushClientWrapper;
     late Directory shorebirdRoot;
+    late Directory projectRoot;
     late Doctor doctor;
     late Platform platform;
     late Auth auth;
@@ -115,6 +116,7 @@ void main() {
       operatingSystemInterface = MockOperatingSystemInterface();
       platform = MockPlatform();
       shorebirdRoot = Directory.systemTemp.createTempSync();
+      projectRoot = Directory.systemTemp.createTempSync();
       auth = MockAuth();
       cache = MockCache();
       java = MockJava();
@@ -129,6 +131,9 @@ void main() {
 
       when(() => shorebirdEnv.getShorebirdYaml()).thenReturn(shorebirdYaml);
       when(() => shorebirdEnv.shorebirdRoot).thenReturn(shorebirdRoot);
+      when(
+        () => shorebirdEnv.getShorebirdProjectRoot(),
+      ).thenReturn(projectRoot);
       when(() => shorebirdEnv.flutterRevision).thenReturn(flutterRevision);
       when(() => shorebirdEnv.isRunningOnCI).thenReturn(false);
 
@@ -195,6 +200,7 @@ void main() {
         () => codePushClientWrapper.createAndroidReleaseArtifacts(
           appId: any(named: 'appId'),
           releaseId: any(named: 'releaseId'),
+          projectRoot: any(named: 'projectRoot'),
           aabPath: any(named: 'aabPath'),
           platform: any(named: 'platform'),
           architectures: any(named: 'architectures'),
@@ -335,6 +341,7 @@ void main() {
       final exitCode = await runWithOverrides(command.run);
       verify(() => logger.success('\n✅ Published Release!')).called(1);
       final aabPath = p.join(
+        projectRoot.path,
         'build',
         'app',
         'outputs',
@@ -358,6 +365,7 @@ ${link(uri: Uri.parse('https://support.google.com/googleplay/android-developer/a
           appId: appId,
           releaseId: release.id,
           platform: releasePlatform,
+          projectRoot: any(named: 'projectRoot'),
           aabPath: any(named: 'aabPath'),
           architectures: any(named: 'architectures'),
         ),
@@ -379,6 +387,7 @@ ${link(uri: Uri.parse('https://support.google.com/googleplay/android-developer/a
       verify(() => logger.success('\n✅ Published Release!')).called(1);
       // Verify info message does include apk instructions.
       final aabPath = p.join(
+        projectRoot.path,
         'build',
         'app',
         'outputs',
@@ -387,6 +396,7 @@ ${link(uri: Uri.parse('https://support.google.com/googleplay/android-developer/a
         'app-release.aab',
       );
       final apkPath = p.join(
+        projectRoot.path,
         'build',
         'app',
         'outputs',
@@ -412,6 +422,7 @@ ${link(uri: Uri.parse('https://support.google.com/googleplay/android-developer/a
           appId: appId,
           releaseId: release.id,
           platform: releasePlatform,
+          projectRoot: any(named: 'projectRoot'),
           aabPath: any(named: 'aabPath'),
           architectures: any(named: 'architectures'),
         ),
@@ -568,6 +579,7 @@ Either run `flutter pub get` manually, or follow the steps in ${link(uri: Uri.pa
           appId: appId,
           releaseId: release.id,
           platform: releasePlatform,
+          projectRoot: any(named: 'projectRoot'),
           aabPath: any(named: 'aabPath'),
           architectures: any(named: 'architectures'),
           flavor: flavor,

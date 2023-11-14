@@ -1,6 +1,7 @@
 import 'dart:io';
 
 import 'package:path/path.dart' as p;
+import 'package:shorebird_cli/src/shorebird_env.dart';
 import 'package:shorebird_cli/src/validators/validators.dart';
 import 'package:xml/xml.dart';
 
@@ -22,20 +23,20 @@ class AndroidInternetPermissionValidator extends Validator {
       'AndroidManifest.xml files contain INTERNET permission';
 
   @override
-  bool canRunInCurrentContext() => _androidSrcDirectory.existsSync();
+  bool canRunInCurrentContext() => _androidSrcDirectory?.existsSync() ?? false;
 
   // coverage:ignore-start
   @override
   String get incorrectContextMessage => '''
-The ${_androidSrcDirectory.path} directory does not exist.
+The ${_androidSrcDirectory?.path ?? 'android/app/src'} directory does not exist.
 
-The command you are running must be run at the root of a Flutter app project that supports the Android platform. If you are releasing a Flutter module, use 'aar' in place of 'android' in your shorebird command.''';
+The command you are running must be run within a Flutter app project that supports the Android platform. If you are releasing a Flutter module, use 'aar' in place of 'android' in your shorebird command.''';
   // coverage:ignore-end
 
   @override
   Future<List<ValidationIssue>> validate() async {
     final manifestFilePath = p.join(
-      _androidSrcDirectory.path,
+      _androidSrcDirectory!.path,
       'main',
       'AndroidManifest.xml',
     );
@@ -63,14 +64,18 @@ The command you are running must be run at the root of a Flutter app project tha
     return [];
   }
 
-  Directory get _androidSrcDirectory => Directory(
-        p.join(
-          Directory.current.path,
-          'android',
-          'app',
-          'src',
-        ),
-      );
+  Directory? get _androidSrcDirectory {
+    final root = shorebirdEnv.getFlutterProjectRoot();
+    if (root == null) return null;
+    return Directory(
+      p.join(
+        root.path,
+        'android',
+        'app',
+        'src',
+      ),
+    );
+  }
 
   bool _androidManifestHasInternetPermission(String path) {
     final xmlDocument = XmlDocument.parse(File(path).readAsStringSync());

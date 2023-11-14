@@ -63,6 +63,7 @@ flutter:
     late ArgResults argResults;
     late CodePushClientWrapper codePushClientWrapper;
     late Directory shorebirdRoot;
+    late Directory projectRoot;
     late Doctor doctor;
     late Platform platform;
     late Auth auth;
@@ -94,15 +95,13 @@ flutter:
       );
     }
 
-    Directory setUpTempDir() {
-      final tempDir = Directory.systemTemp.createTempSync();
+    void setUpProjectRoot() {
       File(
-        p.join(tempDir.path, 'pubspec.yaml'),
+        p.join(projectRoot.path, 'pubspec.yaml'),
       ).writeAsStringSync(pubspecYamlContent);
       File(
-        p.join(tempDir.path, 'shorebird.yaml'),
+        p.join(projectRoot.path, 'shorebird.yaml'),
       ).writeAsStringSync('app_id: $appId');
-      return tempDir;
     }
 
     setUpAll(() {
@@ -119,6 +118,7 @@ flutter:
       doctor = MockDoctor();
       platform = MockPlatform();
       shorebirdRoot = Directory.systemTemp.createTempSync();
+      projectRoot = Directory.systemTemp.createTempSync();
       auth = MockAuth();
       progress = MockProgress();
       logger = MockLogger();
@@ -132,6 +132,9 @@ flutter:
 
       when(() => shorebirdEnv.getShorebirdYaml()).thenReturn(shorebirdYaml);
       when(() => shorebirdEnv.shorebirdRoot).thenReturn(shorebirdRoot);
+      when(
+        () => shorebirdEnv.getShorebirdProjectRoot(),
+      ).thenReturn(projectRoot);
       when(() => shorebirdEnv.flutterRevision).thenReturn(flutterRevision);
       when(
         () => shorebirdProcess.run(
@@ -247,11 +250,8 @@ flutter:
       when(() => flutterBuildProcessResult.exitCode).thenReturn(1);
       when(() => flutterBuildProcessResult.stderr).thenReturn('oops');
 
-      final tempDir = setUpTempDir();
-      final exitCode = await IOOverrides.runZoned(
-        () => runWithOverrides(command.run),
-        getCurrentDirectory: () => tempDir,
-      );
+      setUpProjectRoot();
+      final exitCode = await runWithOverrides(command.run);
 
       expect(exitCode, equals(ExitCode.software.code));
       verify(
@@ -266,12 +266,9 @@ flutter:
           releaseVersion: any(named: 'releaseVersion'),
         ),
       ).thenAnswer((_) async => release);
-      final tempDir = setUpTempDir();
+      setUpProjectRoot();
 
-      await IOOverrides.runZoned(
-        () => runWithOverrides(command.run),
-        getCurrentDirectory: () => tempDir,
-      );
+      await runWithOverrides(command.run);
 
       verify(
         () => codePushClientWrapper.ensureReleaseIsNotActive(
@@ -283,12 +280,9 @@ flutter:
 
     test('aborts when user opts out', () async {
       when(() => logger.confirm(any())).thenReturn(false);
-      final tempDir = setUpTempDir();
+      setUpProjectRoot();
 
-      final exitCode = await IOOverrides.runZoned(
-        () => runWithOverrides(command.run),
-        getCurrentDirectory: () => tempDir,
-      );
+      final exitCode = await runWithOverrides(command.run);
 
       expect(exitCode, ExitCode.success.code);
       verify(() => logger.info('Aborting.')).called(1);
@@ -296,8 +290,10 @@ flutter:
         () => codePushClientWrapper.createIosReleaseArtifacts(
           appId: appId,
           releaseId: release.id,
-          xcarchivePath:
-              any(named: 'xcarchivePath', that: endsWith('.xcarchive')),
+          xcarchivePath: any(
+            named: 'xcarchivePath',
+            that: endsWith('.xcarchive'),
+          ),
           runnerPath: any(named: 'runnerPath', that: endsWith('Runner.app')),
           isCodesigned: any(named: 'isCodesigned'),
         ),
@@ -309,12 +305,9 @@ flutter:
         'when --release-version and --force are used', () async {
       when(() => argResults['force']).thenReturn(true);
       when(() => argResults['release-version']).thenReturn(version);
-      final tempDir = setUpTempDir();
+      setUpProjectRoot();
 
-      final exitCode = await IOOverrides.runZoned(
-        () => runWithOverrides(command.run),
-        getCurrentDirectory: () => tempDir,
-      );
+      final exitCode = await runWithOverrides(command.run);
 
       verify(() => logger.success('\n✅ Published Release!')).called(1);
       expect(exitCode, ExitCode.success.code);
@@ -332,12 +325,9 @@ flutter:
     });
 
     test('succeeds when release is successful', () async {
-      final tempDir = setUpTempDir();
+      setUpProjectRoot();
 
-      final exitCode = await IOOverrides.runZoned(
-        () => runWithOverrides(command.run),
-        getCurrentDirectory: () => tempDir,
-      );
+      final exitCode = await runWithOverrides(command.run);
 
       verify(() => logger.success('\n✅ Published Release!')).called(1);
       verify(
@@ -378,12 +368,9 @@ flutter:
 
     test('runs flutter pub get with system flutter after successful build',
         () async {
-      final tempDir = setUpTempDir();
+      setUpProjectRoot();
 
-      await IOOverrides.runZoned(
-        () => runWithOverrides(command.run),
-        getCurrentDirectory: () => tempDir,
-      );
+      await runWithOverrides(command.run);
 
       verify(
         () => shorebirdProcess.run(
