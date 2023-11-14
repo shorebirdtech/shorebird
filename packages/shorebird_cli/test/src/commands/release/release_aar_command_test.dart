@@ -59,6 +59,7 @@ void main() {
     late Auth auth;
     late CodePushClientWrapper codePushClientWrapper;
     late Directory shorebirdRoot;
+    late Directory projectRoot;
     late Java java;
     late OperatingSystemInterface operatingSystemInterface;
     late Platform platform;
@@ -89,10 +90,9 @@ void main() {
       );
     }
 
-    Directory setUpTempArtifacts() {
-      final dir = Directory.systemTemp.createTempSync();
+    void setUpProjectRootArtifacts() {
       final aarDir = p.join(
-        dir.path,
+        projectRoot.path,
         'build',
         'host',
         'outputs',
@@ -116,7 +116,6 @@ void main() {
         File(artifactPath).createSync(recursive: true);
       }
       File(aarPath).createSync(recursive: true);
-      return dir;
     }
 
     setUpAll(() {
@@ -140,6 +139,7 @@ void main() {
       flutterPubGetProcessResult = MockProcessResult();
       shorebirdProcess = MockShorebirdProcess();
       shorebirdRoot = Directory.systemTemp.createTempSync();
+      projectRoot = Directory.systemTemp.createTempSync();
       shorebirdEnv = MockShorebirdEnv();
       shorebirdValidator = MockShorebirdValidator();
 
@@ -155,6 +155,9 @@ void main() {
 
       when(() => shorebirdEnv.getShorebirdYaml()).thenReturn(shorebirdYaml);
       when(() => shorebirdEnv.shorebirdRoot).thenReturn(shorebirdRoot);
+      when(
+        () => shorebirdEnv.getShorebirdProjectRoot(),
+      ).thenReturn(projectRoot);
       when(
         () => shorebirdEnv.androidPackageName,
       ).thenReturn(androidPackageName);
@@ -302,10 +305,10 @@ void main() {
           defaultValue: any(named: 'defaultValue'),
         ),
       ).thenAnswer((_) => '1.0.0');
-      final tempDir = setUpTempArtifacts();
+      setUpProjectRootArtifacts();
       final exitCode = await IOOverrides.runZoned(
         () => runWithOverrides(command.run),
-        getCurrentDirectory: () => tempDir,
+        getCurrentDirectory: () => projectRoot,
       );
       expect(exitCode, ExitCode.success.code);
       verify(() => logger.info('Aborting.')).called(1);
@@ -313,10 +316,10 @@ void main() {
 
     test('does not prompt for confirmation when --force is used', () async {
       when(() => argResults['force']).thenReturn(true);
-      final tempDir = setUpTempArtifacts();
+      setUpProjectRootArtifacts();
       final exitCode = await IOOverrides.runZoned(
         () => runWithOverrides(command.run),
-        getCurrentDirectory: () => tempDir,
+        getCurrentDirectory: () => projectRoot,
       );
       expect(exitCode, ExitCode.success.code);
       verify(() => logger.success('\n✅ Published Release!')).called(1);
@@ -326,10 +329,10 @@ void main() {
     });
 
     test('succeeds when release is successful', () async {
-      final tempDir = setUpTempArtifacts();
+      setUpProjectRootArtifacts();
       final exitCode = await IOOverrides.runZoned(
         () => runWithOverrides(command.run),
-        getCurrentDirectory: () => tempDir,
+        getCurrentDirectory: () => projectRoot,
       );
       expect(exitCode, ExitCode.success.code);
       verify(() => logger.success('\n✅ Published Release!')).called(1);
@@ -386,22 +389,25 @@ void main() {
     });
 
     test('copies aar library to a releases folder', () async {
-      final tempDir = setUpTempArtifacts();
+      setUpProjectRootArtifacts();
       final exitCode = await IOOverrides.runZoned(
         () => runWithOverrides(command.run),
-        getCurrentDirectory: () => tempDir,
+        getCurrentDirectory: () => projectRoot,
       );
       expect(exitCode, ExitCode.success.code);
-      expect(Directory(p.join(tempDir.path, 'release')).existsSync(), isTrue);
+      expect(
+        Directory(p.join(projectRoot.path, 'release')).existsSync(),
+        isTrue,
+      );
     });
 
     test('runs flutter pub get with system flutter after successful build',
         () async {
-      final tempDir = setUpTempArtifacts();
+      setUpProjectRootArtifacts();
 
       await IOOverrides.runZoned(
         () => runWithOverrides(command.run),
-        getCurrentDirectory: () => tempDir,
+        getCurrentDirectory: () => projectRoot,
       );
 
       verify(
@@ -422,10 +428,10 @@ void main() {
           releaseVersion: any(named: 'releaseVersion'),
         ),
       ).thenAnswer((_) async => release);
-      final tempDir = setUpTempArtifacts();
+      setUpProjectRootArtifacts();
       final exitCode = await IOOverrides.runZoned(
         () => runWithOverrides(command.run),
-        getCurrentDirectory: () => tempDir,
+        getCurrentDirectory: () => projectRoot,
       );
       expect(exitCode, ExitCode.success.code);
       verifyNever(
