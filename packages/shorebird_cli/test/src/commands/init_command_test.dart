@@ -67,6 +67,10 @@ environment:
       );
     }
 
+    setUpAll(() {
+      registerFallbackValue(MockDirectory());
+    });
+
     setUp(() {
       argResults = MockArgResults();
       doctor = MockDoctor();

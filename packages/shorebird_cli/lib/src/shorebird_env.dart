@@ -93,15 +93,13 @@ class ShorebirdEnv {
   }
 
   /// The `shorebird.yaml` file for this project.
-  File getShorebirdYamlFile({Directory? cwd}) {
-    final dir = cwd ?? Directory.current;
-    return File(p.join(dir.path, 'shorebird.yaml'));
+  File getShorebirdYamlFile({required Directory cwd}) {
+    return File(p.join(cwd.path, 'shorebird.yaml'));
   }
 
   /// The `pubspec.yaml` file for this project.
-  File getPubspecYamlFile({Directory? cwd}) {
-    final dir = cwd ?? Directory.current;
-    return File(p.join(dir.path, 'pubspec.yaml'));
+  File getPubspecYamlFile({required Directory cwd}) {
+    return File(p.join(cwd.path, 'pubspec.yaml'));
   }
 
   /// Finds nearest ancestor file

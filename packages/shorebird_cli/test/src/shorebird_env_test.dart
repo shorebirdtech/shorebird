@@ -46,22 +46,7 @@ void main() {
     });
 
     group('getShorebirdYamlFile', () {
-      test('returns correct file (default cwd)', () {
-        final tempDir = Directory('temp');
-        expect(
-          IOOverrides.runZoned(
-            () {
-              return runWithOverrides(
-                () => shorebirdEnv.getShorebirdYamlFile().path,
-              );
-            },
-            getCurrentDirectory: () => tempDir,
-          ),
-          equals(p.join(tempDir.path, 'shorebird.yaml')),
-        );
-      });
-
-      test('returns correct file (custom cwd)', () {
+      test('returns correct file', () {
         final tempDir = Directory.systemTemp.createTempSync();
         expect(
           runWithOverrides(
@@ -200,22 +185,7 @@ void main() {
     });
 
     group('getPubspecYamlFile', () {
-      test('returns correct file (default cwd)', () {
-        final tempDir = Directory('temp');
-        expect(
-          IOOverrides.runZoned(
-            () {
-              return runWithOverrides(
-                () => shorebirdEnv.getPubspecYamlFile().path,
-              );
-            },
-            getCurrentDirectory: () => tempDir,
-          ),
-          equals(p.join(tempDir.path, 'pubspec.yaml')),
-        );
-      });
-
-      test('returns correct file (custom cwd)', () {
+      test('returns correct file', () {
         final tempDir = Directory.systemTemp.createTempSync();
         expect(
           runWithOverrides(
