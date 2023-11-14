@@ -134,7 +134,8 @@ Please make sure you are running "shorebird init" from within your Flutter proje
         flavorsToAppIds[flavor] = app.id;
       }
       _addShorebirdYamlToProject(
-        shorebirdYaml.appId,
+        projectRoot: projectRoot,
+        appId: shorebirdYaml.appId,
         flavors: flavorsToAppIds,
       );
       updateShorebirdYamlProgress.complete('Flavors added to shorebird.yaml');
@@ -202,10 +203,16 @@ Please make sure you are running "shorebird init" from within your Flutter proje
       return ExitCode.software.code;
     }
 
-    _addShorebirdYamlToProject(appId, flavors: flavors);
+    _addShorebirdYamlToProject(
+      projectRoot: projectRoot,
+      appId: appId,
+      flavors: flavors,
+    );
 
     if (!shorebirdEnv.pubspecContainsShorebirdYaml) {
-      _addShorebirdYamlToPubspecAssets();
+      _addShorebirdYamlToPubspecAssets(
+        shorebirdEnv.getPubspecYamlFile(cwd: projectRoot),
+      );
     }
 
     logger.info(
@@ -275,8 +282,9 @@ For more information about Shorebird, visit ${link(uri: Uri.parse('https://shore
     }
   }
 
-  ShorebirdYaml _addShorebirdYamlToProject(
-    String appId, {
+  ShorebirdYaml _addShorebirdYamlToProject({
+    required String appId,
+    required Directory projectRoot,
     Map<String, String>? flavors,
   }) {
     const content = '''
@@ -301,16 +309,13 @@ app_id:
     if (flavors != null) editor.update(['flavors'], flavors);
 
     shorebirdEnv
-        .getShorebirdYamlFile(cwd: shorebirdEnv.getFlutterProjectRoot())
+        .getShorebirdYamlFile(cwd: projectRoot)
         .writeAsStringSync(editor.toString());
 
     return ShorebirdYaml(appId: appId);
   }
 
-  void _addShorebirdYamlToPubspecAssets() {
-    final pubspecFile = shorebirdEnv.getPubspecYamlFile(
-      cwd: shorebirdEnv.getFlutterProjectRoot(),
-    );
+  void _addShorebirdYamlToPubspecAssets(File pubspecFile) {
     final pubspecContents = pubspecFile.readAsStringSync();
     final yaml = loadYaml(pubspecContents, sourceUrl: pubspecFile.uri) as Map;
     final editor = YamlEditor(pubspecContents);
