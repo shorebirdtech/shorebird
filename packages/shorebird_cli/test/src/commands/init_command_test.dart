@@ -263,10 +263,7 @@ Please make sure you are running "shorebird init" from within your Flutter proje
 
       test('throws software error when unable to detect schemes', () async {
         Directory(p.join(projectRoot.path, 'ios')).createSync(recursive: true);
-        final exitCode = await IOOverrides.runZoned(
-          () => runWithOverrides(command.run),
-          getCurrentDirectory: () => projectRoot,
-        );
+        final exitCode = await runWithOverrides(command.run);
         expect(exitCode, equals(ExitCode.software.code));
         verify(
           () => logger.err(
@@ -277,10 +274,7 @@ Please make sure you are running "shorebird init" from within your Flutter proje
       });
 
       test('creates shorebird for an android-only app', () async {
-        final exitCode = await IOOverrides.runZoned(
-          () => runWithOverrides(command.run),
-          getCurrentDirectory: () => projectRoot,
-        );
+        final exitCode = await runWithOverrides(command.run);
         expect(exitCode, equals(ExitCode.success.code));
         verify(
           () => shorebirdYamlFile.writeAsStringSync(
@@ -304,10 +298,7 @@ Please make sure you are running "shorebird init" from within your Flutter proje
             'Runner.xcscheme',
           ),
         ).createSync(recursive: true);
-        final exitCode = await IOOverrides.runZoned(
-          () => runWithOverrides(command.run),
-          getCurrentDirectory: () => projectRoot,
-        );
+        final exitCode = await runWithOverrides(command.run);
         expect(exitCode, equals(ExitCode.success.code));
         verify(
           () => shorebirdYamlFile.writeAsStringSync(
@@ -347,10 +338,7 @@ Please make sure you are running "shorebird init" from within your Flutter proje
         File(
           p.join(schemesPath, 'stable.xcscheme'),
         ).createSync(recursive: true);
-        final exitCode = await IOOverrides.runZoned(
-          () => runWithOverrides(command.run),
-          getCurrentDirectory: () => projectRoot,
-        );
+        final exitCode = await runWithOverrides(command.run);
         expect(exitCode, equals(ExitCode.success.code));
         verify(() => progress.complete('2 product flavors detected:'))
             .called(1);
