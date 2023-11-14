@@ -36,7 +36,12 @@ class ArtifactManager {
     final result = await process.run(diffExecutable, diffArguments);
 
     if (result.exitCode != 0) {
-      throw Exception('Failed to create diff: ${result.stderr}');
+      throw Exception(
+        '''
+Failed to create diff (exit code ${result.exitCode}).
+  stdout: ${result.stdout}
+  stderr: ${result.stderr}''',
+      );
     }
 
     return diffPath;
