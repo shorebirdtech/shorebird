@@ -11,6 +11,7 @@ import 'package:shorebird_cli/src/platform.dart';
 import 'package:shorebird_cli/src/process.dart';
 import 'package:shorebird_cli/src/shorebird_env.dart';
 import 'package:shorebird_cli/src/shorebird_flutter.dart';
+import 'package:shorebird_cli/src/shorebird_version.dart';
 import 'package:shorebird_cli/src/version.dart';
 
 const executableName = 'shorebird';
@@ -156,6 +157,17 @@ ${lightCyan.wrap('shorebird release android -- --no-pub lib/main.dart')}''';
 Shorebird $packageVersion • git@github.com:shorebirdtech/shorebird.git
 $shorebirdFlutterPrefix • revision ${shorebirdEnv.flutterRevision}
 Engine • revision ${shorebirdEnv.shorebirdEngineRevision}''');
+
+      try {
+        final isUpToDate = await shorebirdVersion.isLatest();
+        if (!isUpToDate) {
+          logger.info('''
+A new version of shorebird is available!
+Run ${lightCyan.wrap('shorebird upgrade')} to upgrade.''');
+        }
+      } catch (error) {
+        logger.detail('Unable to check for updates.\n$error');
+      }
       exitCode = ExitCode.success.code;
     } else {
       exitCode = await super.runCommand(topLevelResults);
