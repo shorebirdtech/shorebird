@@ -12,6 +12,7 @@ import 'package:shorebird_cli/src/logger.dart';
 import 'package:shorebird_cli/src/shorebird_artifact_mixin.dart';
 import 'package:shorebird_cli/src/shorebird_build_mixin.dart';
 import 'package:shorebird_cli/src/shorebird_env.dart';
+import 'package:shorebird_cli/src/shorebird_flutter.dart';
 import 'package:shorebird_cli/src/shorebird_release_version_mixin.dart';
 import 'package:shorebird_cli/src/shorebird_validator.dart';
 import 'package:shorebird_code_push_client/shorebird_code_push_client.dart';
@@ -109,13 +110,13 @@ make smaller updates to your app.
 
     buildProgress.complete();
 
-    final archNames = architectures.keys.map(
-      (arch) => arch.name,
-    );
+    final flutterVersion = await shorebirdFlutter.getVersionAndRevision();
+    final archNames = architectures.keys.map((arch) => arch.name);
     final summary = [
       '''📱 App: ${lightCyan.wrap(app.displayName)} ${lightCyan.wrap('(${app.appId})')}''',
       '📦 Release Version: ${lightCyan.wrap(releaseVersion)}',
       '''🕹️  Platform: ${lightCyan.wrap(platform.name)} ${lightCyan.wrap('(${archNames.join(', ')})')}''',
+      '🐦 Flutter Version: ${lightCyan.wrap(flutterVersion)}',
     ];
 
     logger.info('''

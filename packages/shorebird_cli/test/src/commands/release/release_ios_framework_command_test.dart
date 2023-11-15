@@ -16,6 +16,7 @@ import 'package:shorebird_cli/src/os/operating_system_interface.dart';
 import 'package:shorebird_cli/src/platform.dart';
 import 'package:shorebird_cli/src/process.dart';
 import 'package:shorebird_cli/src/shorebird_env.dart';
+import 'package:shorebird_cli/src/shorebird_flutter.dart';
 import 'package:shorebird_cli/src/shorebird_validator.dart';
 import 'package:shorebird_cli/src/validators/validators.dart';
 import 'package:shorebird_code_push_client/shorebird_code_push_client.dart';
@@ -29,6 +30,7 @@ void main() {
     const appId = 'test-app-id';
     const shorebirdYaml = ShorebirdYaml(appId: appId);
     const flutterRevision = '83305b5088e6fe327fb3334a73ff190828d85713';
+    const flutterVersionAndRevision = '3.10.6 (83305b5088)';
     const versionName = '1.2.3';
     const versionCode = '1';
     const version = '$versionName+$versionCode';
@@ -75,6 +77,7 @@ flutter:
     late ShorebirdFlutterValidator flutterValidator;
     late ShorebirdProcess shorebirdProcess;
     late ShorebirdEnv shorebirdEnv;
+    late ShorebirdFlutter shorebirdFlutter;
     late ShorebirdValidator shorebirdValidator;
     late ReleaseIosFrameworkCommand command;
 
@@ -90,6 +93,7 @@ flutter:
           platformRef.overrideWith(() => platform),
           processRef.overrideWith(() => shorebirdProcess),
           shorebirdEnvRef.overrideWith(() => shorebirdEnv),
+          shorebirdFlutterRef.overrideWith(() => shorebirdFlutter),
           shorebirdValidatorRef.overrideWith(() => shorebirdValidator),
         },
       );
@@ -128,6 +132,7 @@ flutter:
       flutterValidator = MockShorebirdFlutterValidator();
       shorebirdProcess = MockShorebirdProcess();
       shorebirdEnv = MockShorebirdEnv();
+      shorebirdFlutter = MockShorebirdFlutter();
       shorebirdValidator = MockShorebirdValidator();
 
       when(() => shorebirdEnv.getShorebirdYaml()).thenReturn(shorebirdYaml);
@@ -136,6 +141,9 @@ flutter:
         () => shorebirdEnv.getShorebirdProjectRoot(),
       ).thenReturn(projectRoot);
       when(() => shorebirdEnv.flutterRevision).thenReturn(flutterRevision);
+      when(
+        () => shorebirdFlutter.getVersionAndRevision(),
+      ).thenAnswer((_) async => flutterVersionAndRevision);
       when(
         () => shorebirdProcess.run(
           'flutter',
