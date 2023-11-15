@@ -9,6 +9,7 @@ import 'package:shorebird_cli/src/platform.dart';
 import 'package:shorebird_cli/src/process.dart';
 import 'package:shorebird_cli/src/shorebird_env.dart';
 import 'package:shorebird_cli/src/shorebird_flutter.dart';
+import 'package:shorebird_cli/src/shorebird_version.dart';
 import 'package:shorebird_cli/src/version.dart';
 import 'package:test/test.dart';
 
@@ -24,6 +25,7 @@ void main() {
     late Platform platform;
     late ShorebirdEnv shorebirdEnv;
     late ShorebirdFlutter shorebirdFlutter;
+    late ShorebirdVersion shorebirdVersion;
     late ShorebirdProcessResult processResult;
     late ShorebirdCliCommandRunner commandRunner;
 
@@ -35,6 +37,7 @@ void main() {
           platformRef.overrideWith(() => platform),
           shorebirdEnvRef.overrideWith(() => shorebirdEnv),
           shorebirdFlutterRef.overrideWith(() => shorebirdFlutter),
+          shorebirdVersionRef.overrideWith(() => shorebirdVersion),
         },
       );
     }
@@ -44,6 +47,7 @@ void main() {
       platform = MockPlatform();
       shorebirdEnv = MockShorebirdEnv();
       shorebirdFlutter = MockShorebirdFlutter();
+      shorebirdVersion = MockShorebirdVersion();
       processResult = MockProcessResult();
       when(() => processResult.exitCode).thenReturn(ExitCode.success.code);
       when(
@@ -54,6 +58,7 @@ void main() {
       when(
         () => shorebirdFlutter.getVersion(),
       ).thenAnswer((_) async => flutterVersion);
+      when(() => shorebirdVersion.isLatest()).thenAnswer((_) async => true);
       commandRunner = runWithOverrides(ShorebirdCliCommandRunner.new);
     });
 
@@ -185,6 +190,39 @@ Engine • revision $shorebirdEngineRevision''',
         ).called(1);
         verify(
           () => logger.detail('Unable to determine Flutter version.\nerror'),
+        ).called(1);
+      });
+
+      test('gracefully handles case when latest version cannot be determined',
+          () async {
+        when(() => shorebirdVersion.isLatest()).thenThrow('error');
+        final result = await runWithOverrides(
+          () => commandRunner.run(['--version']),
+        );
+        expect(result, equals(ExitCode.success.code));
+        verify(
+          () => logger.info(
+            '''
+Shorebird $packageVersion • git@github.com:shorebirdtech/shorebird.git
+Flutter $flutterVersion • revision $flutterRevision
+Engine • revision $shorebirdEngineRevision''',
+          ),
+        ).called(1);
+        verify(
+          () => logger.detail('Unable to check for updates.\nerror'),
+        ).called(1);
+      });
+
+      test('logs update message when update is available', () async {
+        when(() => shorebirdVersion.isLatest()).thenAnswer((_) async => false);
+        final result = await runWithOverrides(
+          () => commandRunner.run(['--version']),
+        );
+        expect(result, equals(ExitCode.success.code));
+        verify(
+          () => logger.info('''
+A new version of shorebird is available!
+Run ${lightCyan.wrap('shorebird upgrade')} to upgrade.'''),
         ).called(1);
       });
     });
