@@ -85,6 +85,17 @@ class ShorebirdFlutter {
     return match?.group(1);
   }
 
+  /// Returns the current Shorebird Flutter version and revision.
+  /// Returns unknown if the version check fails.
+  Future<String> getVersionAndRevision() async {
+    String? version = 'unknown';
+    try {
+      version = await getVersion();
+    } catch (_) {}
+
+    return '$version (${shorebirdEnv.flutterRevision.substring(0, 10)})';
+  }
+
   /// Returns the current Shorebird Flutter version.
   /// Throws a [ProcessException] if the version check fails.
   /// Returns `null` if the version check succeeds but the version cannot be

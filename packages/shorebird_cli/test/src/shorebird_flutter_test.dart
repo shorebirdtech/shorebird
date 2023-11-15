@@ -146,6 +146,44 @@ Tools • Dart 3.0.6 • DevTools 2.23.1''');
       });
     });
 
+    group('getVersionAndRevision', () {
+      test('returns unknown (<revision>) when unable to determine version',
+          () async {
+        const error = 'oops';
+        when(
+          () => git.forEachRef(
+            directory: any(named: 'directory'),
+            contains: any(named: 'contains'),
+            format: any(named: 'format'),
+            pattern: any(named: 'pattern'),
+          ),
+        ).thenThrow(
+          ProcessException(
+            'git',
+            [
+              'for-each-ref',
+              '--format',
+              '%(refname:short)',
+              'refs/remotes/origin/flutter_release/*',
+            ],
+            error,
+            ExitCode.software.code,
+          ),
+        );
+        await expectLater(
+          runWithOverrides(shorebirdFlutter.getVersionAndRevision),
+          completion(equals('unknown (${flutterRevision.substring(0, 10)})')),
+        );
+      });
+
+      test('returns correct version and revision', () async {
+        await expectLater(
+          runWithOverrides(shorebirdFlutter.getVersionAndRevision),
+          completion(equals('3.10.6 (${flutterRevision.substring(0, 10)})')),
+        );
+      });
+    });
+
     group('getVersion', () {
       test('throws ProcessException when process exits with non-zero code',
           () async {

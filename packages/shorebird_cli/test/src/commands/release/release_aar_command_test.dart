@@ -18,6 +18,7 @@ import 'package:shorebird_cli/src/platform.dart';
 import 'package:shorebird_cli/src/process.dart';
 import 'package:shorebird_cli/src/shorebird_build_mixin.dart';
 import 'package:shorebird_cli/src/shorebird_env.dart';
+import 'package:shorebird_cli/src/shorebird_flutter.dart';
 import 'package:shorebird_cli/src/shorebird_validator.dart';
 import 'package:shorebird_code_push_client/shorebird_code_push_client.dart';
 import 'package:test/test.dart';
@@ -38,6 +39,7 @@ void main() {
       updatedAt: DateTime(2023),
     );
     const flutterRevision = '83305b5088e6fe327fb3334a73ff190828d85713';
+    const flutterVersionAndRevision = '3.10.6 (83305b5088)';
     const versionName = '1.2.3';
     const versionCode = '1';
     const version = '$versionName+$versionCode';
@@ -68,6 +70,7 @@ void main() {
     late ShorebirdProcessResult flutterBuildProcessResult;
     late ShorebirdProcessResult flutterPubGetProcessResult;
     late ShorebirdEnv shorebirdEnv;
+    late ShorebirdFlutter shorebirdFlutter;
     late ShorebirdProcess shorebirdProcess;
     late ShorebirdValidator shorebirdValidator;
     late ReleaseAarCommand command;
@@ -85,6 +88,7 @@ void main() {
           platformRef.overrideWith(() => platform),
           processRef.overrideWith(() => shorebirdProcess),
           shorebirdEnvRef.overrideWith(() => shorebirdEnv),
+          shorebirdFlutterRef.overrideWith(() => shorebirdFlutter),
           shorebirdValidatorRef.overrideWith(() => shorebirdValidator),
         },
       );
@@ -141,6 +145,7 @@ void main() {
       shorebirdRoot = Directory.systemTemp.createTempSync();
       projectRoot = Directory.systemTemp.createTempSync();
       shorebirdEnv = MockShorebirdEnv();
+      shorebirdFlutter = MockShorebirdFlutter();
       shorebirdValidator = MockShorebirdValidator();
 
       when(() => auth.client).thenReturn(httpClient);
@@ -150,8 +155,9 @@ void main() {
       when(() => auth.isAuthenticated).thenReturn(true);
       when(() => logger.confirm(any())).thenReturn(true);
       when(() => logger.progress(any())).thenReturn(progress);
-      when(() => operatingSystemInterface.which('flutter'))
-          .thenReturn('/path/to/flutter');
+      when(
+        () => operatingSystemInterface.which('flutter'),
+      ).thenReturn('/path/to/flutter');
 
       when(() => shorebirdEnv.getShorebirdYaml()).thenReturn(shorebirdYaml);
       when(() => shorebirdEnv.shorebirdRoot).thenReturn(shorebirdRoot);
@@ -162,6 +168,10 @@ void main() {
         () => shorebirdEnv.androidPackageName,
       ).thenReturn(androidPackageName);
       when(() => shorebirdEnv.flutterRevision).thenReturn(flutterRevision);
+
+      when(
+        () => shorebirdFlutter.getVersionAndRevision(),
+      ).thenAnswer((_) async => flutterVersionAndRevision);
 
       when(
         () => flutterBuildProcessResult.exitCode,
