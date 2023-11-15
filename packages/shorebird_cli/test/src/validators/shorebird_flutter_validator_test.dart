@@ -108,6 +108,21 @@ void main() {
     });
 
     test(
+      'does not warn if system flutter does not exist',
+      () async {
+        when(
+          () => shorebirdFlutter.getSystemVersion(),
+        ).thenThrow(const ProcessException('flutter', ['--version'], '', 127));
+
+        final results = await runWithOverrides(
+          () => validator.validate(),
+        );
+
+        expect(results, isEmpty);
+      },
+    );
+
+    test(
       'does not warn if flutter version and shorebird flutter version have same'
       ' major and minor but different patch versions',
       () async {
