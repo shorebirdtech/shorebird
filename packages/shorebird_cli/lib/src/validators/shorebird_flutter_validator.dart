@@ -15,6 +15,8 @@ class FlutterValidationException implements Exception {
   String toString() => 'FlutterValidationException: $message';
 }
 
+class CommandNotFoundException implements Exception {}
+
 class ShorebirdFlutterValidator extends Validator {
   ShorebirdFlutterValidator();
 
@@ -63,6 +65,8 @@ class ShorebirdFlutterValidator extends Validator {
       pathFlutterVersionString = await _getFlutterVersion(
         useVendedFlutter: false,
       );
+    } on CommandNotFoundException catch (_) {
+      // If there is no system Flutter, we don't throw a validation exception.
     } catch (error) {
       issues.add(
         ValidationIssue(
@@ -117,6 +121,8 @@ This can cause unexpected behavior if you are switching between the tools and th
           ? await shorebirdFlutter.getVersion()
           : await shorebirdFlutter.getSystemVersion();
     } on ProcessException catch (error) {
+      if (error.errorCode == 127) throw CommandNotFoundException();
+
       throw FlutterValidationException(
         'Flutter version check did not complete successfully. ${error.message}',
       );
