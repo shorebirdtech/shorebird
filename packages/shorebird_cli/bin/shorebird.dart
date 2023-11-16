@@ -28,7 +28,6 @@ Future<void> main(List<String> args) async {
         adbRef,
         androidSdkRef,
         androidStudioRef,
-        aotToolsRef,
         artifactManagerRef,
         authRef,
         bundletoolRef,
