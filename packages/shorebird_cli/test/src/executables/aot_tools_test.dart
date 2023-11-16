@@ -45,7 +45,11 @@ void main() {
 
       test('throws Exception when process exits with non-zero code', () async {
         when(
-          () => process.run(any(), any()),
+          () => process.run(
+            any(),
+            any(),
+            workingDirectory: any(named: 'workingDirectory'),
+          ),
         ).thenAnswer(
           (_) async => const ShorebirdProcessResult(
             exitCode: 1,
@@ -73,7 +77,11 @@ void main() {
 
       test('completes when linking exits with code: 0', () async {
         when(
-          () => process.run(any(), any()),
+          () => process.run(
+            any(),
+            any(),
+            workingDirectory: any(named: 'workingDirectory'),
+          ),
         ).thenAnswer(
           (_) async => const ShorebirdProcessResult(
             exitCode: 0,
@@ -87,10 +95,23 @@ void main() {
               base: base,
               patch: patch,
               analyzeSnapshot: analyzeSnapshot,
+              workingDirectory: workingDirectory.path,
             ),
           ),
           completes,
         );
+        verify(
+          () => process.run(
+            any(that: endsWith(AotTools.executableName)),
+            [
+              'link',
+              '--base=$base',
+              '--patch=$patch',
+              '--analyze-snapshot=$analyzeSnapshot',
+            ],
+            workingDirectory: any(named: 'workingDirectory'),
+          ),
+        ).called(1);
       });
     });
   });
