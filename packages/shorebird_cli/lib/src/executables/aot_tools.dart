@@ -1,6 +1,13 @@
 import 'package:path/path.dart' as p;
+import 'package:scoped/scoped.dart';
 import 'package:shorebird_cli/src/cache.dart';
 import 'package:shorebird_cli/src/process.dart';
+
+/// A reference to a [AotTools] instance.
+final aotToolsRef = create(AotTools.new);
+
+/// The [AotTools] instance available in the current zone.
+AotTools get aotTools => read(aotToolsRef);
 
 /// Wrapper around the shorebird `aot-tools` executable.
 class AotTools {

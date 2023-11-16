@@ -184,6 +184,30 @@ void main() {
       });
     });
 
+    group('analyzeSnapshotFile', () {
+      test('returns correct path', () {
+        expect(
+          runWithOverrides(() => shorebirdEnv.analyzeSnapshotFile.path),
+          equals(
+            p.join(
+              shorebirdRoot.path,
+              'bin',
+              'cache',
+              'flutter',
+              flutterRevision,
+              'bin',
+              'cache',
+              'artifacts',
+              'engine',
+              'android-arm-release',
+              'darwin-x64',
+              'analyze_snapshot',
+            ),
+          ),
+        );
+      });
+    });
+
     group('getPubspecYamlFile', () {
       test('returns correct file', () {
         final tempDir = Directory.systemTemp.createTempSync();

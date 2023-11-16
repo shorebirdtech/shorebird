@@ -15,6 +15,7 @@ import 'package:shorebird_cli/src/commands/patch/patch.dart';
 import 'package:shorebird_cli/src/config/config.dart';
 import 'package:shorebird_cli/src/deployment_track.dart';
 import 'package:shorebird_cli/src/doctor.dart';
+import 'package:shorebird_cli/src/executables/aot_tools.dart';
 import 'package:shorebird_cli/src/logger.dart';
 import 'package:shorebird_cli/src/os/operating_system_interface.dart';
 import 'package:shorebird_cli/src/patch_diff_checker.dart';
@@ -44,6 +45,7 @@ void main() {
   const releasePlatform = ReleasePlatform.ios;
   const platformName = 'ios';
   const elfAotSnapshotFileName = 'out.aot';
+  const linkFileName = 'out.vmcode';
   const ipaPath = 'build/ios/ipa/Runner.ipa';
   const infoPlistContent = '''
 <?xml version="1.0" encoding="UTF-8"?>
@@ -122,12 +124,14 @@ flutter:
 
   group(PatchIosCommand, () {
     late ArgResults argResults;
+    late AotTools aotTools;
     late Auth auth;
     late CodePushClientWrapper codePushClientWrapper;
     late Directory flutterDirectory;
     late Directory shorebirdRoot;
     late Directory projectRoot;
     late File genSnapshotFile;
+    late File analyzeSnapshotFile;
     late Doctor doctor;
     late IosArchiveDiffer archiveDiffer;
     late Progress progress;
@@ -150,6 +154,7 @@ flutter:
       return runScoped(
         body,
         values: {
+          aotToolsRef.overrideWith(() => aotTools),
           authRef.overrideWith(() => auth),
           codePushClientWrapperRef.overrideWith(() => codePushClientWrapper),
           doctorRef.overrideWith(() => doctor),
@@ -184,6 +189,21 @@ flutter:
       )
         ..createSync(recursive: true)
         ..writeAsStringSync(infoPlistContent);
+      File(
+        p.join(
+          projectRoot.path,
+          'build',
+          'ios',
+          'archive',
+          'Runner.xcarchive',
+          'Products',
+          'Applications',
+          'Runner.app',
+          'Frameworks',
+          'App.framework',
+          'App',
+        ),
+      ).createSync(recursive: true);
       File(p.join(projectRoot.path, ipaPath)).createSync(recursive: true);
     }
 
@@ -204,6 +224,9 @@ flutter:
       File(
         p.join(projectRoot.path, 'build', elfAotSnapshotFileName),
       ).createSync(recursive: true);
+      File(
+        p.join(projectRoot.path, 'build', linkFileName),
+      ).createSync(recursive: true);
     }
 
     setUpAll(() {
@@ -219,6 +242,7 @@ flutter:
 
     setUp(() {
       argResults = MockArgResults();
+      aotTools = MockAotTools();
       auth = MockAuth();
       codePushClientWrapper = MockCodePushClientWrapper();
       doctor = MockDoctor();
@@ -238,6 +262,18 @@ flutter:
           'gen_snapshot_arm64',
         ),
       );
+      analyzeSnapshotFile = File(
+        p.join(
+          flutterDirectory.path,
+          'bin',
+          'cache',
+          'artifacts',
+          'engine',
+          'android-arm-release',
+          'darwin-x64',
+          'analyze_snapshot',
+        ),
+      )..createSync(recursive: true);
       archiveDiffer = MockIosArchiveDiffer();
       progress = MockProgress();
       logger = MockLogger();
@@ -260,6 +296,14 @@ flutter:
       when(() => argResults['codesign']).thenReturn(true);
       when(() => argResults['staging']).thenReturn(false);
       when(() => argResults.rest).thenReturn([]);
+      when(
+        () => aotTools.link(
+          base: any(named: 'base'),
+          patch: any(named: 'patch'),
+          analyzeSnapshot: any(named: 'analyzeSnapshot'),
+          workingDirectory: any(named: 'workingDirectory'),
+        ),
+      ).thenAnswer((_) async {});
       when(() => auth.isAuthenticated).thenReturn(true);
       when(() => auth.client).thenReturn(httpClient);
       when(
@@ -292,8 +336,9 @@ flutter:
       when(flutterValidator.validate).thenAnswer((_) async => []);
       when(() => logger.confirm(any())).thenReturn(true);
       when(() => logger.progress(any())).thenReturn(progress);
-      when(() => operatingSystemInterface.which('flutter'))
-          .thenReturn('/path/to/flutter');
+      when(
+        () => operatingSystemInterface.which('flutter'),
+      ).thenReturn('/path/to/flutter');
       when(() => platform.operatingSystem).thenReturn(Platform.macOS);
       when(() => platform.environment).thenReturn({});
       when(() => platform.script).thenReturn(shorebirdRoot.uri);
@@ -304,6 +349,9 @@ flutter:
       ).thenReturn(projectRoot);
       when(() => shorebirdEnv.flutterDirectory).thenReturn(flutterDirectory);
       when(() => shorebirdEnv.genSnapshotFile).thenReturn(genSnapshotFile);
+      when(
+        () => shorebirdEnv.analyzeSnapshotFile,
+      ).thenReturn(analyzeSnapshotFile);
       when(() => shorebirdEnv.flutterRevision).thenReturn(flutterRevision);
       when(() => shorebirdEnv.isRunningOnCI).thenReturn(false);
       when(() => shorebirdFlutter.useRevision(revision: any(named: 'revision')))
@@ -817,6 +865,113 @@ Please re-run the release command for this version or create a new release.'''),
           patchArtifactBundles: any(named: 'patchArtifactBundles'),
         ),
       );
+    });
+
+    test('exits with code 70 if appDirectory is not found', () async {
+      setUpProjectRoot();
+      setUpProjectRootArtifacts();
+
+      File(
+        p.join(
+          projectRoot.path,
+          'build',
+          'ios',
+          'archive',
+          'Runner.xcarchive',
+          'Products',
+          'Applications',
+          'Runner.app',
+        ),
+      ).deleteSync(recursive: true);
+
+      final exitCode = await runWithOverrides(command.run);
+
+      expect(exitCode, equals(ExitCode.software.code));
+      verify(
+        () => logger.err('Unable to find .app directory within .xcarchive.'),
+      ).called(1);
+    });
+
+    test('exits with code 70 if base app is not found', () async {
+      setUpProjectRoot();
+      setUpProjectRootArtifacts();
+
+      final base = File(
+        p.join(
+          projectRoot.path,
+          'build',
+          'ios',
+          'archive',
+          'Runner.xcarchive',
+          'Products',
+          'Applications',
+          'Runner.app',
+          'Frameworks',
+          'App.framework',
+          'App',
+        ),
+      )..deleteSync(recursive: true);
+
+      final exitCode = await runWithOverrides(command.run);
+
+      expect(exitCode, equals(ExitCode.software.code));
+      verify(
+        () => logger.err('Unable to find base AOT file at ${base.path}'),
+      ).called(1);
+    });
+
+    test('exits with code 70 if patch AOT file is not found', () async {
+      setUpProjectRoot();
+      setUpProjectRootArtifacts();
+
+      final patch = File(
+        p.join(projectRoot.path, 'build', elfAotSnapshotFileName),
+      )..deleteSync(recursive: true);
+
+      final exitCode = await runWithOverrides(command.run);
+
+      expect(exitCode, equals(ExitCode.software.code));
+      verify(
+        () => logger.err('Unable to find patch AOT file at ${patch.path}'),
+      ).called(1);
+    });
+
+    test('exits with code 70 if analyze snapshot is not found', () async {
+      setUpProjectRoot();
+      setUpProjectRootArtifacts();
+
+      analyzeSnapshotFile.deleteSync(recursive: true);
+
+      final exitCode = await runWithOverrides(command.run);
+
+      expect(exitCode, equals(ExitCode.software.code));
+      verify(
+        () => logger.err(
+          'Unable to find analyze_snapshot at ${analyzeSnapshotFile.path}',
+        ),
+      ).called(1);
+    });
+
+    test('exits with code 70 if linking fails', () async {
+      final exception = Exception('oops');
+      when(
+        () => aotTools.link(
+          base: any(named: 'base'),
+          patch: any(named: 'patch'),
+          analyzeSnapshot: any(named: 'analyzeSnapshot'),
+          workingDirectory: any(named: 'workingDirectory'),
+        ),
+      ).thenThrow(exception);
+
+      setUpProjectRoot();
+      setUpProjectRootArtifacts();
+
+      final exitCode = await runWithOverrides(command.run);
+
+      expect(exitCode, equals(ExitCode.software.code));
+      verify(
+        () => progress.fail('Failed to link AOT files: $exception'),
+      ).called(1);
     });
 
     test('does not create patch on --dry-run', () async {

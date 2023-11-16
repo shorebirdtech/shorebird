@@ -92,6 +92,21 @@ class ShorebirdEnv {
     );
   }
 
+  File get analyzeSnapshotFile {
+    return File(
+      p.join(
+        flutterDirectory.path,
+        'bin',
+        'cache',
+        'artifacts',
+        'engine',
+        'android-arm-release',
+        'darwin-x64',
+        'analyze_snapshot',
+      ),
+    );
+  }
+
   /// The `shorebird.yaml` file for this project.
   File getShorebirdYamlFile({required Directory cwd}) {
     return File(p.join(cwd.path, 'shorebird.yaml'));

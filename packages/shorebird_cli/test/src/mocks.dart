@@ -38,6 +38,8 @@ class MockAndroidSdk extends Mock implements AndroidSdk {}
 
 class MockAndroidStudio extends Mock implements AndroidStudio {}
 
+class MockAotTools extends Mock implements AotTools {}
+
 class MockAppMetadata extends Mock implements AppMetadata {}
 
 class MockAppleDevice extends Mock implements AppleDevice {}
