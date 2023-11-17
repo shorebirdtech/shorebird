@@ -15,7 +15,7 @@ class StorageAccessValidator extends Validator {
         // ping on Windows auto-terminates, but will go on indefinitely on
         // other linux and mac unless we set a count. 2 was chosen arbitrarily.
         if (!platform.isWindows) ...['-c', '2'],
-        'https://storage.googleapis.com',
+        'storage.googleapis.com',
       ],
     );
     if (result.exitCode != ExitCode.success.code) {

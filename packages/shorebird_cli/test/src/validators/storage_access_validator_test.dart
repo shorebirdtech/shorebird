@@ -91,7 +91,7 @@ void main() {
           verify(
             () => process.run(
               'ping',
-              ['https://storage.googleapis.com'],
+              ['storage.googleapis.com'],
             ),
           ).called(1);
         });
@@ -109,7 +109,7 @@ void main() {
           verify(
             () => process.run(
               'ping',
-              ['-c', '2', 'https://storage.googleapis.com'],
+              ['-c', '2', 'storage.googleapis.com'],
             ),
           ).called(1);
         });
