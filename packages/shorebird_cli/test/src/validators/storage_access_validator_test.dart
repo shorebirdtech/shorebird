@@ -57,7 +57,20 @@ void main() {
               .thenReturn(ExitCode.software.code);
         });
 
-        test('returns empty list of validation issues', () async {});
+        test('returns validation error', () async {
+          final results = await runWithOverrides(validator.validate);
+          expect(
+            results,
+            equals(
+              [
+                const ValidationIssue(
+                  severity: ValidationIssueSeverity.error,
+                  message: 'Unable to access storage.googleapis.com',
+                ),
+              ],
+            ),
+          );
+        });
       });
 
       group('when run on Windows', () {
