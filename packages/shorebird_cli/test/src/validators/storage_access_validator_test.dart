@@ -38,6 +38,12 @@ void main() {
       when(() => platform.isWindows).thenReturn(false);
     });
 
+    group('description', () {
+      test('has a non-empty description', () {
+        expect(validator.description, isNotEmpty);
+      });
+    });
+
     group('validate', () {
       group('when storage url is accessible', () {
         setUp(() {
