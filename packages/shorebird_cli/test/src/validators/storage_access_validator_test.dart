@@ -86,12 +86,12 @@ void main() {
           when(() => platform.isWindows).thenReturn(true);
         });
 
-        test('does not provide count argument', () async {
+        test('provides appropriate count argument', () async {
           await runWithOverrides(validator.validate);
           verify(
             () => process.run(
               'ping',
-              ['storage.googleapis.com'],
+              ['/n', '1', 'storage.googleapis.com'],
             ),
           ).called(1);
         });
@@ -104,12 +104,12 @@ void main() {
           when(() => platform.isWindows).thenReturn(false);
         });
 
-        test('provides count argument', () async {
+        test('provides appropriate count argument', () async {
           await runWithOverrides(validator.validate);
           verify(
             () => process.run(
               'ping',
-              ['-c', '2', 'storage.googleapis.com'],
+              ['-c', '1', 'storage.googleapis.com'],
             ),
           ).called(1);
         });

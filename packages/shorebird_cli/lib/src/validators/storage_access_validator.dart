@@ -12,9 +12,8 @@ class StorageAccessValidator extends Validator {
     final result = await process.run(
       'ping',
       [
-        // ping on Windows auto-terminates, but will go on indefinitely on
-        // other linux and mac unless we set a count. 2 was chosen arbitrarily.
-        if (!platform.isWindows) ...['-c', '2'],
+        // Execute a single ping.
+        if (platform.isWindows) ...['/n', '1'] else ...['-c', '1'],
         'storage.googleapis.com',
       ],
     );
