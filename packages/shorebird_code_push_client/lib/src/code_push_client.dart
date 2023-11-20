@@ -1,9 +1,11 @@
+import 'dart:async';
 import 'dart:convert';
 import 'dart:io';
 
 import 'package:http/http.dart' as http;
+import 'package:http/io_client.dart';
+import 'package:shorebird_code_push_client/shorebird_code_push_client.dart';
 import 'package:shorebird_code_push_client/src/version.dart';
-import 'package:shorebird_code_push_protocol/shorebird_code_push_protocol.dart';
 
 /// {@template code_push_exception}
 /// Base class for all CodePush exceptions.
@@ -77,6 +79,107 @@ class _CodePushHttpClient extends http.BaseClient {
   }
 }
 
+/// Based on the [IOClient] from the `http` package. The primary difference is
+/// that this implementation uses `stream.addStream` instead of `stream.pipe`
+/// to allow for progress reporting.
+class _UploadProgressHttpClient extends http.BaseClient {
+  _UploadProgressHttpClient([HttpClient? inner])
+      : _inner = inner ?? HttpClient(),
+        _uploadProgressController =
+            StreamController<DataTransferProgress>.broadcast();
+
+  /// The underlying `dart:io` HTTP client.
+  HttpClient? _inner;
+
+  final StreamController<DataTransferProgress> _uploadProgressController;
+
+  Stream<DataTransferProgress> get progressStream =>
+      _uploadProgressController.stream;
+
+  /// Sends an HTTP request and asynchronously returns the response.
+  @override
+  Future<IOStreamedResponse> send(http.BaseRequest request) async {
+    if (_inner == null) {
+      throw Exception('HTTP request failed. Client is already closed.');
+    }
+
+    final stream = request.finalize();
+
+    try {
+      final ioRequest = (await _inner!.openUrl(request.method, request.url))
+        ..followRedirects = request.followRedirects
+        ..maxRedirects = request.maxRedirects
+        ..contentLength = (request.contentLength ?? -1)
+        ..persistentConnection = request.persistentConnection;
+      request.headers.forEach((name, value) {
+        ioRequest.headers.set(name, value);
+      });
+
+      final totalBytes = request.contentLength ?? 0;
+      var bytesTransferred = 0;
+
+      await ioRequest.addStream(
+        stream.map((chunk) {
+          bytesTransferred += chunk.length;
+          _uploadProgressController.add(
+            DataTransferProgress(
+              bytesTransferred: bytesTransferred,
+              totalBytes: totalBytes,
+              url: request.url,
+            ),
+          );
+          return chunk;
+        }),
+      );
+
+      final response = await ioRequest.close();
+
+      final headers = <String, String>{};
+      response.headers.forEach((key, values) {
+        headers[key] = values.join(',');
+      });
+
+      return IOStreamedResponse(
+        response.handleError(
+          (Object error) {
+            final httpException = error as HttpException;
+            throw http.ClientException(
+              httpException.message,
+              httpException.uri,
+            );
+          },
+          test: (error) => error is HttpException,
+        ),
+        response.statusCode,
+        contentLength:
+            response.contentLength == -1 ? null : response.contentLength,
+        request: request,
+        headers: headers,
+        isRedirect: response.isRedirect,
+        persistentConnection: response.persistentConnection,
+        reasonPhrase: response.reasonPhrase,
+        inner: response,
+      );
+    } on SocketException catch (error) {
+      throw http.ClientException(error.message, request.url);
+    } on HttpException catch (error) {
+      throw http.ClientException(error.message, error.uri);
+    }
+  }
+
+  /// Closes the client.
+  ///
+  /// Terminates all active connections. If a client remains unclosed, the Dart
+  /// process may not terminate.
+  @override
+  void close() {
+    if (_inner != null) {
+      _inner!.close(force: true);
+      _inner = null;
+    }
+  }
+}
+
 /// {@template code_push_client}
 /// Dart client for the Shorebird CodePush API.
 /// {@endtemplate}
@@ -86,6 +189,7 @@ class CodePushClient {
     http.Client? httpClient,
     Uri? hostedUri,
   })  : _httpClient = _CodePushHttpClient(httpClient ?? http.Client()),
+        _uploadProgressClient = _UploadProgressHttpClient(),
         hostedUri = hostedUri ?? Uri.https('api.shorebird.dev');
 
   /// The standard headers applied to all requests.
@@ -95,6 +199,8 @@ class CodePushClient {
   static const unknownErrorMessage = 'An unknown error occurred.';
 
   final http.Client _httpClient;
+
+  final _UploadProgressHttpClient _uploadProgressClient;
 
   /// The hosted uri for the Shorebird CodePush API.
   final Uri hostedUri;
@@ -124,12 +230,14 @@ class CodePushClient {
     required String arch,
     required ReleasePlatform platform,
     required String hash,
+    ProgressCallback? onProgress,
   }) async {
     final request = http.MultipartRequest(
       'POST',
       Uri.parse('$_v1/apps/$appId/patches/$patchId/artifacts'),
     );
     final file = await http.MultipartFile.fromPath('file', artifactPath);
+
     request.fields.addAll({
       'arch': arch,
       'platform': platform.name,
@@ -149,8 +257,12 @@ class CodePushClient {
 
     final uploadRequest = http.MultipartRequest('POST', Uri.parse(decoded.url))
       ..files.add(file);
+    final streamSubscription =
+        _uploadProgressClient.progressStream.listen(onProgress);
 
-    final uploadResponse = await _httpClient.send(uploadRequest);
+    final uploadResponse = await _uploadProgressClient.send(uploadRequest);
+
+    await streamSubscription.cancel();
 
     if (uploadResponse.statusCode != HttpStatus.noContent) {
       throw CodePushException(
@@ -169,11 +281,13 @@ class CodePushClient {
     required ReleasePlatform platform,
     required String hash,
     required bool canSideload,
+    ProgressCallback? onProgress,
   }) async {
     final request = http.MultipartRequest(
       'POST',
       Uri.parse('$_v1/apps/$appId/releases/$releaseId/artifacts'),
     );
+
     final file = await http.MultipartFile.fromPath('file', artifactPath);
 
     final payload = CreateReleaseArtifactRequest(
@@ -199,7 +313,12 @@ class CodePushClient {
     final uploadRequest = http.MultipartRequest('POST', Uri.parse(decoded.url))
       ..files.add(file);
 
-    final uploadResponse = await _httpClient.send(uploadRequest);
+    final streamSubscription =
+        _uploadProgressClient.progressStream.listen(onProgress);
+
+    final uploadResponse = await _uploadProgressClient.send(uploadRequest);
+
+    await streamSubscription.cancel();
 
     if (uploadResponse.statusCode != HttpStatus.noContent) {
       throw CodePushException(

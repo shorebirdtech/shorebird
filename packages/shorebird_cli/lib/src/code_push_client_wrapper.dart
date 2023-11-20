@@ -368,8 +368,9 @@ Please create a release using "shorebird release" and try again.
     required Map<Arch, ArchMetadata> architectures,
     String? flavor,
   }) async {
-    final createArtifactProgress = logger.progress('Creating artifacts');
     for (final archMetadata in architectures.values) {
+      final baseLogMessage = 'Creating ${archMetadata.arch} artifact';
+      final createArtifactProgress = logger.progress(baseLogMessage);
       final artifactPath = p.join(
         projectRoot,
         'build',
@@ -395,7 +396,13 @@ Please create a release using "shorebird release" and try again.
           platform: platform,
           hash: hash,
           canSideload: false,
+          onProgress: (progress) {
+            createArtifactProgress.update(
+              '$baseLogMessage (${progress.progressPercentage.round()}%)',
+            );
+          },
         );
+        createArtifactProgress.complete();
       } on CodePushConflictException catch (_) {
         // Newlines are due to how logger.info interacts with logger.progress.
         logger.info(
@@ -412,6 +419,8 @@ ${archMetadata.arch} artifact already exists, continuing...''',
       }
     }
 
+    const baseLogMessage = 'Creating aab artifact';
+    final createArtifactProgress = logger.progress(baseLogMessage);
     try {
       logger.detail('Creating artifact for $aabPath');
       await codePushClient.createReleaseArtifact(
@@ -422,6 +431,12 @@ ${archMetadata.arch} artifact already exists, continuing...''',
         platform: platform,
         hash: sha256.convert(await File(aabPath).readAsBytes()).toString(),
         canSideload: true,
+        onProgress: (progress) {
+          // final progressPercentage = (bytesTransferred / totalBytes) * 100;
+          createArtifactProgress.update(
+            '$baseLogMessage (${progress.progressPercentage.round()}%)',
+          );
+        },
       );
     } on CodePushConflictException catch (_) {
       // Newlines are due to how logger.info interacts with logger.progress.
@@ -437,7 +452,6 @@ aab artifact already exists, continuing...''',
         message: 'Error uploading $aabPath: $error',
       );
     }
-
     createArtifactProgress.complete();
   }
 
