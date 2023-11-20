@@ -93,5 +93,22 @@ void main() {
         });
       });
     });
+
+    group('progressStream', () {
+      test('reports progress as transfer occurs', () async {
+        expect(
+          client.progressStream,
+          emits(
+            DataTransferProgress(
+              bytesTransferred: 0,
+              totalBytes: 0,
+              url: request.url,
+            ),
+          ),
+        );
+
+        final response = await client.send(request);
+      });
+    });
   });
 }

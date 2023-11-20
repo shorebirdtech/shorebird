@@ -3,6 +3,7 @@ import 'dart:io';
 
 import 'package:http/http.dart' as http;
 import 'package:http/io_client.dart';
+import 'package:meta/meta.dart';
 import 'package:shorebird_code_push_client/shorebird_code_push_client.dart';
 
 /// {@template upload_progress_http_client}
@@ -14,17 +15,19 @@ class UploadProgressHttpClient extends http.BaseClient {
   /// {@macro upload_progress_http_client}
   UploadProgressHttpClient([HttpClient? inner])
       : _inner = inner ?? HttpClient(),
-        _uploadProgressController =
+        uploadProgressController =
             StreamController<DataTransferProgress>.broadcast();
 
   /// The underlying `dart:io` HTTP client.
   HttpClient? _inner;
 
-  final StreamController<DataTransferProgress> _uploadProgressController;
+  /// The owner of [progressStream].
+  @visibleForTesting
+  final StreamController<DataTransferProgress> uploadProgressController;
 
   /// Publishes data transfer progress updates.
   Stream<DataTransferProgress> get progressStream =>
-      _uploadProgressController.stream;
+      uploadProgressController.stream;
 
   /// Sends an HTTP request and asynchronously returns the response.
   @override
@@ -45,9 +48,9 @@ class UploadProgressHttpClient extends http.BaseClient {
       var bytesTransferred = 0;
 
       await ioRequest.addStream(
-        stream.map((chunk) {
+        stream.map((List<int> chunk) {
           bytesTransferred += chunk.length;
-          _uploadProgressController.add(
+          uploadProgressController.add(
             DataTransferProgress(
               bytesTransferred: bytesTransferred,
               totalBytes: totalBytes,
