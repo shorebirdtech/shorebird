@@ -72,6 +72,11 @@ If this option is not provided, the version number will be determined from the p
         'staging',
         negatable: false,
         help: 'Whether to publish the patch to the staging environment.',
+      )
+      ..addFlag(
+        'use-linker',
+        negatable: false,
+        help: 'Whether to use the new linker when building the patch.',
       );
   }
 
@@ -103,10 +108,17 @@ If this option is not provided, the version number will be determined from the p
     final force = results['force'] == true;
     final dryRun = results['dry-run'] == true;
     final isStaging = results['staging'] == true;
+    final useLinker = results['use-linker'] == true;
 
     if (force && dryRun) {
       logger.err('Cannot use both --force and --dry-run.');
       return ExitCode.usage.code;
+    }
+
+    if (useLinker) {
+      logger.warn(
+        '--use-linker is an experimental feature and may not work as expected.',
+      );
     }
 
     const arch = 'aarch64';
@@ -221,55 +233,58 @@ Current Flutter Revision: $originalFlutterRevision
       return ExitCode.software.code;
     }
 
-    final appDirectory = getAppDirectory();
+    if (useLinker) {
+      final appDirectory = getAppDirectory();
 
-    if (appDirectory == null) {
-      logger.err('Unable to find .app directory within .xcarchive.');
-      return ExitCode.software.code;
-    }
+      if (appDirectory == null) {
+        logger.err('Unable to find .app directory within .xcarchive.');
+        return ExitCode.software.code;
+      }
 
-    final base = File(
-      p.join(
-        appDirectory.path,
-        'Frameworks',
-        'App.framework',
-        'App',
-      ),
-    );
-
-    if (!base.existsSync()) {
-      logger.err('Unable to find base AOT file at ${base.path}');
-      return ExitCode.software.code;
-    }
-
-    final patch = File(_aotOutputPath);
-
-    if (!patch.existsSync()) {
-      logger.err('Unable to find patch AOT file at ${patch.path}');
-      return ExitCode.software.code;
-    }
-
-    final analyzeSnapshot = shorebirdEnv.analyzeSnapshotFile;
-
-    if (!analyzeSnapshot.existsSync()) {
-      logger.err('Unable to find analyze_snapshot at ${analyzeSnapshot.path}');
-      return ExitCode.software.code;
-    }
-
-    final linkProgress = logger.progress('Linking AOT files');
-    try {
-      await aotTools.link(
-        base: base.path,
-        patch: patch.path,
-        analyzeSnapshot: analyzeSnapshot.path,
-        workingDirectory: _buildDirectory,
+      final base = File(
+        p.join(
+          appDirectory.path,
+          'Frameworks',
+          'App.framework',
+          'App',
+        ),
       );
-    } catch (error) {
-      linkProgress.fail('Failed to link AOT files: $error');
-      return ExitCode.software.code;
-    }
 
-    linkProgress.complete();
+      if (!base.existsSync()) {
+        logger.err('Unable to find base AOT file at ${base.path}');
+        return ExitCode.software.code;
+      }
+
+      final patch = File(_aotOutputPath);
+
+      if (!patch.existsSync()) {
+        logger.err('Unable to find patch AOT file at ${patch.path}');
+        return ExitCode.software.code;
+      }
+
+      final analyzeSnapshot = shorebirdEnv.analyzeSnapshotFile;
+
+      if (!analyzeSnapshot.existsSync()) {
+        logger
+            .err('Unable to find analyze_snapshot at ${analyzeSnapshot.path}');
+        return ExitCode.software.code;
+      }
+
+      final linkProgress = logger.progress('Linking AOT files');
+      try {
+        await aotTools.link(
+          base: base.path,
+          patch: patch.path,
+          analyzeSnapshot: analyzeSnapshot.path,
+          workingDirectory: _buildDirectory,
+        );
+      } catch (error) {
+        linkProgress.fail('Failed to link AOT files: $error');
+        return ExitCode.software.code;
+      }
+
+      linkProgress.complete();
+    }
 
     if (dryRun) {
       logger
@@ -278,7 +293,7 @@ Current Flutter Revision: $originalFlutterRevision
       return ExitCode.success.code;
     }
 
-    final patchFile = File(_vmcodeOutputPath);
+    final patchFile = File(useLinker ? _vmcodeOutputPath : _aotOutputPath);
     final patchFileSize = patchFile.statSync().size;
 
     final summary = [
