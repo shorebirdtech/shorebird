@@ -369,8 +369,10 @@ Please create a release using "shorebird release" and try again.
     String? flavor,
   }) async {
     for (final archMetadata in architectures.values) {
-      final baseLogMessage = 'Creating ${archMetadata.arch} artifact';
-      final createArtifactProgress = logger.progress(baseLogMessage);
+      final createArtifactProgress = _UploadProgress(
+        logger: logger,
+        baseMessage: 'Uploading ${archMetadata.arch} artifact',
+      );
       final artifactPath = p.join(
         projectRoot,
         'build',
@@ -386,7 +388,6 @@ Please create a release using "shorebird release" and try again.
       final artifact = File(artifactPath);
       final hash = sha256.convert(await artifact.readAsBytes()).toString();
       logger.detail('Creating artifact for $artifactPath');
-
       try {
         await codePushClient.createReleaseArtifact(
           appId: appId,
@@ -396,11 +397,7 @@ Please create a release using "shorebird release" and try again.
           platform: platform,
           hash: hash,
           canSideload: false,
-          onProgress: (progress) {
-            createArtifactProgress.update(
-              '$baseLogMessage (${progress.progressPercentage.round()}%)',
-            );
-          },
+          onProgress: createArtifactProgress.updateProgress,
         );
         createArtifactProgress.complete();
       } on CodePushConflictException catch (_) {
@@ -419,8 +416,10 @@ ${archMetadata.arch} artifact already exists, continuing...''',
       }
     }
 
-    const baseLogMessage = 'Creating aab artifact';
-    final createArtifactProgress = logger.progress(baseLogMessage);
+    final createArtifactProgress = _UploadProgress(
+      logger: logger,
+      baseMessage: 'Uploading aab artifact',
+    );
     try {
       logger.detail('Creating artifact for $aabPath');
       await codePushClient.createReleaseArtifact(
@@ -431,12 +430,7 @@ ${archMetadata.arch} artifact already exists, continuing...''',
         platform: platform,
         hash: sha256.convert(await File(aabPath).readAsBytes()).toString(),
         canSideload: true,
-        onProgress: (progress) {
-          // final progressPercentage = (bytesTransferred / totalBytes) * 100;
-          createArtifactProgress.update(
-            '$baseLogMessage (${progress.progressPercentage.round()}%)',
-          );
-        },
+        onProgress: createArtifactProgress.updateProgress,
       );
     } on CodePushConflictException catch (_) {
       // Newlines are due to how logger.info interacts with logger.progress.
@@ -555,7 +549,10 @@ aar artifact already exists, continuing...''',
     required String runnerPath,
     required bool isCodesigned,
   }) async {
-    final createArtifactProgress = logger.progress('Creating artifacts');
+    final uploadXcarchiveProgress = _UploadProgress(
+      logger: logger,
+      baseMessage: 'Uploading xcarchive',
+    );
     final thinnedArchiveDirectory =
         await _thinXcarchive(xcarchivePath: xcarchivePath);
     final zippedArchive = await thinnedArchiveDirectory.zipToTempFile();
@@ -568,15 +565,21 @@ aar artifact already exists, continuing...''',
         platform: ReleasePlatform.ios,
         hash: sha256.convert(await zippedArchive.readAsBytes()).toString(),
         canSideload: false,
+        onProgress: uploadXcarchiveProgress.updateProgress,
       );
     } catch (error) {
       _handleErrorAndExit(
         error,
-        progress: createArtifactProgress,
+        progress: uploadXcarchiveProgress,
         message: 'Error uploading xcarchive: $error',
       );
     }
+    uploadXcarchiveProgress.complete();
 
+    final uploadRunnerProgress = _UploadProgress(
+      logger: logger,
+      baseMessage: 'Uploading app bundle',
+    );
     final zippedRunner = await Directory(runnerPath).zipToTempFile();
     try {
       await codePushClient.createReleaseArtifact(
@@ -587,16 +590,16 @@ aar artifact already exists, continuing...''',
         platform: ReleasePlatform.ios,
         hash: sha256.convert(await zippedRunner.readAsBytes()).toString(),
         canSideload: isCodesigned,
+        onProgress: uploadRunnerProgress.updateProgress,
       );
     } catch (error) {
       _handleErrorAndExit(
         error,
-        progress: createArtifactProgress,
+        progress: uploadRunnerProgress,
         message: 'Error uploading runner.app: $error',
       );
     }
-
-    createArtifactProgress.complete();
+    uploadRunnerProgress.complete();
   }
 
   /// Zips and uploads a release xcframework to the Shorebird server.
@@ -605,7 +608,11 @@ aar artifact already exists, continuing...''',
     required int releaseId,
     required String appFrameworkPath,
   }) async {
-    final createArtifactProgress = logger.progress('Creating artifacts');
+    final uploadXcframeworkProgress = _UploadProgress(
+      logger: logger,
+      baseMessage: 'Uploading xcframework',
+    );
+
     final appFrameworkDirectory = Directory(appFrameworkPath);
     await Isolate.run(
       () => ZipFileEncoder().zipDirectory(appFrameworkDirectory),
@@ -623,16 +630,17 @@ aar artifact already exists, continuing...''',
             .convert(await zippedAppFrameworkFile.readAsBytes())
             .toString(),
         canSideload: false,
+        onProgress: uploadXcframeworkProgress.updateProgress,
       );
     } catch (error) {
       _handleErrorAndExit(
         error,
-        progress: createArtifactProgress,
+        progress: uploadXcframeworkProgress,
         message: 'Error uploading xcframework: $error',
       );
     }
 
-    createArtifactProgress.complete();
+    uploadXcframeworkProgress.complete();
   }
 
   @visibleForTesting
@@ -660,8 +668,11 @@ aar artifact already exists, continuing...''',
     required ReleasePlatform platform,
     required Map<Arch, PatchArtifactBundle> patchArtifactBundles,
   }) async {
-    final createArtifactProgress = logger.progress('Uploading artifacts');
     for (final artifact in patchArtifactBundles.values) {
+      final uploadArtifactProgress = _UploadProgress(
+        logger: logger,
+        baseMessage: 'Uploading ${artifact.arch} artifact',
+      );
       try {
         await codePushClient.createPatchArtifact(
           appId: appId,
@@ -670,12 +681,13 @@ aar artifact already exists, continuing...''',
           arch: artifact.arch,
           platform: platform,
           hash: artifact.hash,
+          onProgress: uploadArtifactProgress.updateProgress,
         );
       } catch (error) {
-        _handleErrorAndExit(error, progress: createArtifactProgress);
+        _handleErrorAndExit(error, progress: uploadArtifactProgress);
       }
+      uploadArtifactProgress.complete();
     }
-    createArtifactProgress.complete();
   }
 
   @visibleForTesting
@@ -753,4 +765,31 @@ aar artifact already exists, continuing...''',
 
     exit(ExitCode.software.code);
   }
+}
+
+class _UploadProgress implements Progress {
+  _UploadProgress({required Logger logger, required String baseMessage})
+      : _baseMessage = baseMessage,
+        _progress = logger.progress(baseMessage);
+
+  final Progress _progress;
+  final String _baseMessage;
+
+  void updateProgress(DataTransferProgress progress) {
+    _progress.update(
+      '$_baseMessage (${progress.progressPercentage.round()}%)',
+    );
+  }
+
+  @override
+  void cancel() => _progress.cancel();
+
+  @override
+  void complete([String? update]) => _progress.complete(update);
+
+  @override
+  void fail([String? update]) => _progress.fail(update);
+
+  @override
+  void update(String update) => _progress.update(update);
 }
