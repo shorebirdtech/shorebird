@@ -3,12 +3,16 @@ import 'dart:convert';
 import 'dart:io';
 
 import 'package:http/http.dart' as http;
+import 'package:http/io_client.dart';
 import 'package:mocktail/mocktail.dart';
 import 'package:path/path.dart' as path;
 import 'package:shorebird_code_push_client/shorebird_code_push_client.dart';
 import 'package:test/test.dart';
 
 class _MockHttpClient extends Mock implements http.Client {}
+
+class _MockUploadProgressHttpClient extends Mock
+    implements UploadProgressHttpClient {}
 
 class _FakeBaseRequest extends Fake implements http.BaseRequest {}
 
@@ -24,6 +28,7 @@ void main() {
     );
 
     late http.Client httpClient;
+    late UploadProgressHttpClient uploadClient;
     late CodePushClient codePushClient;
 
     Uri v1(String endpoint) {
@@ -37,10 +42,18 @@ void main() {
 
     setUp(() {
       httpClient = _MockHttpClient();
-      codePushClient = CodePushClient(httpClient: httpClient);
+      uploadClient = _MockUploadProgressHttpClient();
+      codePushClient = CodePushClient(
+        httpClient: httpClient,
+        uploadProgressClient: uploadClient,
+      );
       when(() => httpClient.send(any())).thenAnswer(
         (_) async => http.StreamedResponse(Stream.empty(), HttpStatus.ok),
       );
+      when(() => uploadClient.send(any())).thenAnswer(
+        (_) async => IOStreamedResponse(Stream.empty(), HttpStatus.ok),
+      );
+      when(() => uploadClient.progressStream).thenAnswer((_) => Stream.empty());
     });
 
     test('can be instantiated', () {
@@ -292,7 +305,7 @@ void main() {
             ),
           ),
         );
-        final request = verify(() => httpClient.send(captureAny()))
+        final request = verify(() => uploadClient.send(captureAny()))
             .captured
             .last as http.BaseRequest;
         expect(request.url, equals(Uri.parse(uploadUrl)));
@@ -328,6 +341,9 @@ void main() {
         ];
         when(() => httpClient.send(any())).thenAnswer(
           (_) async => responses.removeAt(0),
+        );
+        when(() => uploadClient.send(any())).thenAnswer(
+          (_) async => IOStreamedResponse(Stream.empty(), HttpStatus.noContent),
         );
 
         final tempDir = Directory.systemTemp.createTempSync();
@@ -543,6 +559,12 @@ void main() {
         when(() => httpClient.send(any())).thenAnswer(
           (_) async => responses.removeAt(0),
         );
+        when(() => uploadClient.send(any())).thenAnswer(
+          (_) async => IOStreamedResponse(
+            Stream.empty(),
+            HttpStatus.badRequest,
+          ),
+        );
 
         final tempDir = Directory.systemTemp.createTempSync();
         final fixture = File(path.join(tempDir.path, 'release.txt'))
@@ -567,7 +589,7 @@ void main() {
           ),
         );
         final request = verify(
-          () => httpClient.send(captureAny()),
+          () => uploadClient.send(captureAny()),
         ).captured.last as http.BaseRequest;
         expect(request.url, equals(Uri.parse(uploadUrl)));
         expect(
@@ -602,6 +624,9 @@ void main() {
         ];
         when(() => httpClient.send(any())).thenAnswer(
           (_) async => responses.removeAt(0),
+        );
+        when(() => uploadClient.send(any())).thenAnswer(
+          (_) async => IOStreamedResponse(Stream.empty(), HttpStatus.noContent),
         );
 
         final tempDir = Directory.systemTemp.createTempSync();

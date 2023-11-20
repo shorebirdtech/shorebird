@@ -79,11 +79,14 @@ class _CodePushHttpClient extends http.BaseClient {
   }
 }
 
+/// {@template upload_progress_http_client}
 /// Based on the [IOClient] from the `http` package. The primary difference is
 /// that this implementation uses `stream.addStream` instead of `stream.pipe`
 /// to allow for progress reporting.
-class _UploadProgressHttpClient extends http.BaseClient {
-  _UploadProgressHttpClient([HttpClient? inner])
+/// {@endtemplate}
+class UploadProgressHttpClient extends http.BaseClient {
+  /// {@macro upload_progress_http_client}
+  UploadProgressHttpClient([HttpClient? inner])
       : _inner = inner ?? HttpClient(),
         _uploadProgressController =
             StreamController<DataTransferProgress>.broadcast();
@@ -187,9 +190,11 @@ class CodePushClient {
   /// {@macro code_push_client}
   CodePushClient({
     http.Client? httpClient,
+    UploadProgressHttpClient? uploadProgressClient,
     Uri? hostedUri,
   })  : _httpClient = _CodePushHttpClient(httpClient ?? http.Client()),
-        _uploadProgressClient = _UploadProgressHttpClient(),
+        _uploadProgressClient =
+            uploadProgressClient ?? UploadProgressHttpClient(),
         hostedUri = hostedUri ?? Uri.https('api.shorebird.dev');
 
   /// The standard headers applied to all requests.
@@ -200,7 +205,7 @@ class CodePushClient {
 
   final http.Client _httpClient;
 
-  final _UploadProgressHttpClient _uploadProgressClient;
+  final UploadProgressHttpClient _uploadProgressClient;
 
   /// The hosted uri for the Shorebird CodePush API.
   final Uri hostedUri;
