@@ -11,6 +11,7 @@ import 'package:shorebird_cli/src/command.dart';
 import 'package:shorebird_cli/src/config/config.dart';
 import 'package:shorebird_cli/src/deployment_track.dart';
 import 'package:shorebird_cli/src/doctor.dart';
+import 'package:shorebird_cli/src/executables/executables.dart';
 import 'package:shorebird_cli/src/formatters/file_size_formatter.dart';
 import 'package:shorebird_cli/src/ios.dart';
 import 'package:shorebird_cli/src/logger.dart';
@@ -220,6 +221,56 @@ Current Flutter Revision: $originalFlutterRevision
       return ExitCode.software.code;
     }
 
+    final appDirectory = getAppDirectory();
+
+    if (appDirectory == null) {
+      logger.err('Unable to find .app directory within .xcarchive.');
+      return ExitCode.software.code;
+    }
+
+    final base = File(
+      p.join(
+        appDirectory.path,
+        'Frameworks',
+        'App.framework',
+        'App',
+      ),
+    );
+
+    if (!base.existsSync()) {
+      logger.err('Unable to find base AOT file at ${base.path}');
+      return ExitCode.software.code;
+    }
+
+    final patch = File(_aotOutputPath);
+
+    if (!patch.existsSync()) {
+      logger.err('Unable to find patch AOT file at ${patch.path}');
+      return ExitCode.software.code;
+    }
+
+    final analyzeSnapshot = shorebirdEnv.analyzeSnapshotFile;
+
+    if (!analyzeSnapshot.existsSync()) {
+      logger.err('Unable to find analyze_snapshot at ${analyzeSnapshot.path}');
+      return ExitCode.software.code;
+    }
+
+    final linkProgress = logger.progress('Linking AOT files');
+    try {
+      await aotTools.link(
+        base: base.path,
+        patch: patch.path,
+        analyzeSnapshot: analyzeSnapshot.path,
+        workingDirectory: _buildDirectory,
+      );
+    } catch (error) {
+      linkProgress.fail('Failed to link AOT files: $error');
+      return ExitCode.software.code;
+    }
+
+    linkProgress.complete();
+
     if (dryRun) {
       logger
         ..info('No issues detected.')
@@ -227,14 +278,14 @@ Current Flutter Revision: $originalFlutterRevision
       return ExitCode.success.code;
     }
 
-    final aotFile = File(_aotOutputPath);
-    final aotFileSize = aotFile.statSync().size;
+    final patchFile = File(_vmcodeOutputPath);
+    final patchFileSize = patchFile.statSync().size;
 
     final summary = [
       '''📱 App: ${lightCyan.wrap(app.displayName)} ${lightCyan.wrap('($appId)')}''',
       if (flavor != null) '🍧 Flavor: ${lightCyan.wrap(flavor)}',
       '📦 Release Version: ${lightCyan.wrap(releaseVersion)}',
-      '''🕹️  Platform: ${lightCyan.wrap(releasePlatform.name)} ${lightCyan.wrap('[$arch (${formatBytes(aotFileSize)})]')}''',
+      '''🕹️  Platform: ${lightCyan.wrap(releasePlatform.name)} ${lightCyan.wrap('[$arch (${formatBytes(patchFileSize)})]')}''',
       if (isStaging)
         '🟠 Track: ${lightCyan.wrap('Staging')}'
       else
@@ -268,9 +319,9 @@ ${summary.join('\n')}
       patchArtifactBundles: {
         Arch.arm64: PatchArtifactBundle(
           arch: arch,
-          path: aotFile.path,
-          hash: _hashFn(aotFile.readAsBytesSync()),
-          size: aotFileSize,
+          path: patchFile.path,
+          hash: _hashFn(patchFile.readAsBytesSync()),
+          size: patchFileSize,
         ),
       },
     );
@@ -278,10 +329,19 @@ ${summary.join('\n')}
     return ExitCode.success.code;
   }
 
-  String get _aotOutputPath => p.join(
+  String get _buildDirectory => p.join(
         shorebirdEnv.getShorebirdProjectRoot()!.path,
         'build',
+      );
+
+  String get _aotOutputPath => p.join(
+        _buildDirectory,
         'out.aot',
+      );
+
+  String get _vmcodeOutputPath => p.join(
+        _buildDirectory,
+        'out.vmcode',
       );
 
   Future<void> _buildPatch() async {
