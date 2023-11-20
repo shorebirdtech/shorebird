@@ -1021,6 +1021,7 @@ Please bump your version number and try again.''',
               platform: any(named: 'platform'),
               hash: any(named: 'hash'),
               canSideload: any(named: 'canSideload'),
+              onProgress: any(named: 'onProgress'),
             ),
           ).thenAnswer((_) async {});
         });
@@ -1036,6 +1037,7 @@ Please bump your version number and try again.''',
               platform: any(named: 'platform'),
               hash: any(named: 'hash'),
               canSideload: any(named: 'canSideload'),
+              onProgress: any(named: 'onProgress'),
             ),
           ).thenThrow(error);
           setUpProjectRoot();
@@ -1068,6 +1070,7 @@ Please bump your version number and try again.''',
               platform: any(named: 'platform'),
               hash: any(named: 'hash'),
               canSideload: any(named: 'canSideload'),
+              onProgress: any(named: 'onProgress'),
             ),
           ).thenThrow(error);
           setUpProjectRoot();
@@ -1101,6 +1104,7 @@ Please bump your version number and try again.''',
               platform: any(named: 'platform'),
               hash: any(named: 'hash'),
               canSideload: any(named: 'canSideload'),
+              onProgress: any(named: 'onProgress'),
             ),
           ).thenThrow(const CodePushConflictException(message: error));
           setUpProjectRoot();
@@ -1136,6 +1140,7 @@ Please bump your version number and try again.''',
               platform: any(named: 'platform'),
               hash: any(named: 'hash'),
               canSideload: any(named: 'canSideload'),
+              onProgress: any(named: 'onProgress'),
             ),
           ).thenThrow(const CodePushConflictException(message: error));
           setUpProjectRoot();
@@ -1169,6 +1174,7 @@ Please bump your version number and try again.''',
               platform: any(named: 'platform'),
               hash: any(named: 'hash'),
               canSideload: any(named: 'canSideload'),
+              onProgress: any(named: 'onProgress'),
             ),
           ).thenAnswer((_) async {});
           setUpProjectRoot();
@@ -1184,7 +1190,8 @@ Please bump your version number and try again.''',
             ),
           );
 
-          verify(() => progress.complete()).called(1);
+          verify(() => progress.complete())
+              .called(ShorebirdBuildMixin.allAndroidArchitectures.length + 1);
           verifyNever(() => progress.fail(any()));
         });
 
@@ -1199,6 +1206,7 @@ Please bump your version number and try again.''',
               platform: any(named: 'platform'),
               hash: any(named: 'hash'),
               canSideload: any(named: 'canSideload'),
+              onProgress: any(named: 'onProgress'),
             ),
           ).thenAnswer((_) async {});
           setUpProjectRoot(flavor: flavorName);
@@ -1227,9 +1235,11 @@ Please bump your version number and try again.''',
               platform: releasePlatform,
               hash: any(named: 'hash'),
               canSideload: any(named: 'canSideload'),
+              onProgress: any(named: 'onProgress'),
             ),
           ).called(ShorebirdBuildMixin.allAndroidArchitectures.length);
-          verify(() => progress.complete()).called(1);
+          verify(() => progress.complete())
+              .called(ShorebirdBuildMixin.allAndroidArchitectures.length + 1);
           verifyNever(() => progress.fail(any()));
         });
       });
@@ -1276,6 +1286,7 @@ Please bump your version number and try again.''',
               platform: any(named: 'platform'),
               hash: any(named: 'hash'),
               canSideload: any(named: 'canSideload'),
+              onProgress: any(named: 'onProgress'),
             ),
           ).thenAnswer((_) async {});
         });
@@ -1291,6 +1302,7 @@ Please bump your version number and try again.''',
               platform: any(named: 'platform'),
               hash: any(named: 'hash'),
               canSideload: any(named: 'canSideload'),
+              onProgress: any(named: 'onProgress'),
             ),
           ).thenThrow(error);
           setUpProjectRoot();
@@ -1324,6 +1336,7 @@ Please bump your version number and try again.''',
               platform: any(named: 'platform'),
               hash: any(named: 'hash'),
               canSideload: any(named: 'canSideload'),
+              onProgress: any(named: 'onProgress'),
             ),
           ).thenThrow(error);
           setUpProjectRoot();
@@ -1358,6 +1371,7 @@ Please bump your version number and try again.''',
               platform: any(named: 'platform'),
               hash: any(named: 'hash'),
               canSideload: any(named: 'canSideload'),
+              onProgress: any(named: 'onProgress'),
             ),
           ).thenThrow(const CodePushConflictException(message: error));
           setUpProjectRoot();
@@ -1394,6 +1408,7 @@ Please bump your version number and try again.''',
               platform: any(named: 'platform'),
               hash: any(named: 'hash'),
               canSideload: any(named: 'canSideload'),
+              onProgress: any(named: 'onProgress'),
             ),
           ).thenThrow(const CodePushConflictException(message: error));
           setUpProjectRoot();
@@ -1428,6 +1443,7 @@ Please bump your version number and try again.''',
               platform: any(named: 'platform'),
               hash: any(named: 'hash'),
               canSideload: any(named: 'canSideload'),
+              onProgress: any(named: 'onProgress'),
             ),
           ).thenAnswer((_) async {});
           setUpProjectRoot();
@@ -1459,6 +1475,7 @@ Please bump your version number and try again.''',
               platform: any(named: 'platform'),
               hash: any(named: 'hash'),
               canSideload: any(named: 'canSideload'),
+              onProgress: any(named: 'onProgress'),
             ),
           ).thenAnswer((_) async {});
           setUpProjectRoot(flavor: flavorName);
@@ -1484,6 +1501,7 @@ Please bump your version number and try again.''',
               platform: releasePlatform,
               hash: any(named: 'hash'),
               canSideload: any(named: 'canSideload'),
+              onProgress: any(named: 'onProgress'),
             ),
           ).called(ShorebirdBuildMixin.allAndroidArchitectures.length + 1);
           verify(() => progress.complete()).called(1);
@@ -1515,6 +1533,7 @@ Please bump your version number and try again.''',
             platform: any(named: 'platform'),
             hash: any(named: 'hash'),
             canSideload: any(named: 'canSideload'),
+            onProgress: any(named: 'onProgress'),
           ),
         ).thenAnswer((_) async {});
       });
@@ -1532,6 +1551,7 @@ Please bump your version number and try again.''',
             platform: any(named: 'platform'),
             hash: any(named: 'hash'),
             canSideload: any(named: 'canSideload'),
+            onProgress: any(named: 'onProgress'),
           ),
         ).thenThrow(error);
         setUpProjectRoot();
@@ -1567,6 +1587,7 @@ Please bump your version number and try again.''',
             platform: any(named: 'platform'),
             hash: any(named: 'hash'),
             canSideload: any(named: 'canSideload'),
+            onProgress: any(named: 'onProgress'),
           ),
         ).thenThrow(const CodePushConflictException(message: error));
         setUpProjectRoot();
@@ -1602,6 +1623,7 @@ Please bump your version number and try again.''',
             platform: any(named: 'platform'),
             hash: any(named: 'hash'),
             canSideload: any(named: 'canSideload'),
+            onProgress: any(named: 'onProgress'),
           ),
         ).thenThrow(error);
         setUpProjectRoot();
@@ -1632,6 +1654,7 @@ Please bump your version number and try again.''',
             platform: any(named: 'platform'),
             hash: any(named: 'hash'),
             canSideload: any(named: 'canSideload'),
+            onProgress: any(named: 'onProgress'),
           ),
         ).thenAnswer((_) async {});
         setUpProjectRoot();
@@ -1646,7 +1669,8 @@ Please bump your version number and try again.''',
           ),
         );
 
-        verify(() => progress.complete()).called(1);
+        // Called once for xcarchive and once for Runner.app.
+        verify(() => progress.complete()).called(2);
         verifyNever(() => progress.fail(any()));
       });
     });
@@ -1672,6 +1696,7 @@ Please bump your version number and try again.''',
               platform: any(named: 'platform'),
               hash: any(named: 'hash'),
               canSideload: any(named: 'canSideload'),
+              onProgress: any(named: 'onProgress'),
             ),
           ).thenThrow(Exception('oh no'));
           setUpProjectRoot();
@@ -1699,6 +1724,7 @@ Please bump your version number and try again.''',
             platform: any(named: 'platform'),
             hash: any(named: 'hash'),
             canSideload: any(named: 'canSideload'),
+            onProgress: any(named: 'onProgress'),
           ),
         ).thenAnswer((_) async {});
         setUpProjectRoot();
@@ -1875,6 +1901,7 @@ Please bump your version number and try again.''',
                 arch: any(named: 'arch'),
                 platform: any(named: 'platform'),
                 hash: any(named: 'hash'),
+                onProgress: any(named: 'onProgress'),
               ),
             ).thenThrow(error);
 
@@ -1903,6 +1930,7 @@ Please bump your version number and try again.''',
               arch: any(named: 'arch'),
               platform: any(named: 'platform'),
               hash: any(named: 'hash'),
+              onProgress: any(named: 'onProgress'),
             ),
           ).thenAnswer((_) async {});
 
@@ -1924,6 +1952,7 @@ Please bump your version number and try again.''',
               arch: arch.name,
               platform: releasePlatform,
               hash: partchArtifactBundle.hash,
+              onProgress: any(named: 'onProgress'),
             ),
           ).called(1);
         });
@@ -1945,6 +1974,7 @@ Please bump your version number and try again.''',
               arch: any(named: 'arch'),
               platform: any(named: 'platform'),
               hash: any(named: 'hash'),
+              onProgress: any(named: 'onProgress'),
             ),
           ).thenAnswer((_) async {});
           when(
@@ -1984,6 +2014,7 @@ Please bump your version number and try again.''',
               arch: arch.name,
               platform: releasePlatform,
               hash: partchArtifactBundle.hash,
+              onProgress: any(named: 'onProgress'),
             ),
           ).called(1);
           verify(() => codePushClient.getChannels(appId: appId)).called(1);
@@ -2038,6 +2069,7 @@ Please bump your version number and try again.''',
               arch: arch.name,
               platform: releasePlatform,
               hash: partchArtifactBundle.hash,
+              onProgress: any(named: 'onProgress'),
             ),
           ).called(1);
           verify(() => codePushClient.getChannels(appId: appId)).called(1);
