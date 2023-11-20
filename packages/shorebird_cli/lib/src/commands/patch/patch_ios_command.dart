@@ -115,12 +115,6 @@ If this option is not provided, the version number will be determined from the p
       return ExitCode.usage.code;
     }
 
-    if (useLinker) {
-      logger.warn(
-        '--use-linker is an experimental feature and may not work as expected.',
-      );
-    }
-
     const arch = 'aarch64';
     const releasePlatform = ReleasePlatform.ios;
     final flavor = results['flavor'] as String?;
@@ -344,6 +338,10 @@ ${summary.join('\n')}
   }
 
   Future<int> _runLinker() async {
+    logger.warn(
+      '--use-linker is an experimental feature and may not work as expected.',
+    );
+
     final appDirectory = getAppDirectory();
 
     if (appDirectory == null) {
