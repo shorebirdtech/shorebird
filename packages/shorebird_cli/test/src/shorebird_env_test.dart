@@ -199,9 +199,8 @@ void main() {
               'cache',
               'artifacts',
               'engine',
-              'android-arm-release',
-              'darwin-x64',
-              'analyze_snapshot',
+              'ios-release',
+              'analyze_snapshot_arm64',
             ),
           ),
         );

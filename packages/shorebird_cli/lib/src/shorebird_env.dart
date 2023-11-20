@@ -100,11 +100,8 @@ class ShorebirdEnv {
         'cache',
         'artifacts',
         'engine',
-        // TODO(felangel): update to use ios-release
-        // https://github.com/shorebirdtech/shorebird/issues/1508
-        'android-arm-release',
-        'darwin-x64',
-        'analyze_snapshot',
+        'ios-release',
+        'analyze_snapshot_arm64',
       ),
     );
   }
