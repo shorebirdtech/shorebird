@@ -27,6 +27,7 @@ class Doctor {
     ShorebirdVersionValidator(),
     ShorebirdFlutterValidator(),
     AndroidInternetPermissionValidator(),
+    StorageAccessValidator(),
   ];
 
   /// Run the provided [validators]. If [applyFixes] is `true`, any validation
