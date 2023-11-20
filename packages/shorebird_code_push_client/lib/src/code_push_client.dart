@@ -310,15 +310,20 @@ class CodePushClient {
       json.decode(body) as Map<String, dynamic>,
     );
 
-    final uploadRequest = http.MultipartRequest('POST', Uri.parse(decoded.url))
-      ..files.add(file);
+    final uploadRequest = MultipartRequest(
+      'POST',
+      Uri.parse(decoded.url),
+      onProgress: (bytes, totalBytes) => print('$bytes / $totalBytes'),
+    )..files.add(file);
+    // final uploadRequest = http.MultipartRequest('POST', Uri.parse(decoded.url))
+    //   ..files.add(file);
 
-    final streamSubscription =
-        _uploadProgressClient.progressStream.listen(onProgress);
+    // final streamSubscription =
+    //     _uploadProgressClient.progressStream.listen(onProgress);
 
-    final uploadResponse = await _uploadProgressClient.send(uploadRequest);
+    final uploadResponse = await _httpClient.send(uploadRequest);
 
-    await streamSubscription.cancel();
+    // await streamSubscription.cancel();
 
     if (uploadResponse.statusCode != HttpStatus.noContent) {
       throw CodePushException(
@@ -575,5 +580,33 @@ class CodePushClient {
       throw exceptionBuilder(message: unknownErrorMessage);
     }
     return exceptionBuilder(message: error.message, details: error.details);
+  }
+}
+
+class MultipartRequest extends http.MultipartRequest {
+  MultipartRequest(
+    String method,
+    Uri url, {
+    this.onProgress,
+  }) : super(method, url);
+
+  final void Function(int bytes, int totalBytes)? onProgress;
+
+  @override
+  http.ByteStream finalize() {
+    if (onProgress == null) return super.finalize();
+    final byteStream = super.finalize();
+
+    final totalBytes = contentLength;
+    var bytes = 0;
+
+    final transformer = StreamTransformer.fromHandlers(
+      handleData: (List<int> data, EventSink<List<int>> sink) {
+        bytes += data.length;
+        onProgress?.call(bytes, totalBytes);
+        sink.add(data);
+      },
+    );
+    return http.ByteStream(byteStream.transform(transformer));
   }
 }
