@@ -447,17 +447,6 @@ flutter:
       expect(exitCode, equals(ExitCode.usage.code));
     });
 
-    test('logs warning when use-linker is true', () async {
-      when(() => argResults['use-linker']).thenReturn(true);
-      setUpProjectRoot();
-      await runWithOverrides(command.run);
-      verify(
-        () => logger.warn(
-          '''--use-linker is an experimental feature and may not work as expected.''',
-        ),
-      ).called(1);
-    });
-
     test('exits with code 70 when building fails', () async {
       when(() => flutterBuildProcessResult.exitCode).thenReturn(1);
       when(() => flutterBuildProcessResult.stderr).thenReturn('oops');
@@ -882,6 +871,17 @@ Please re-run the release command for this version or create a new release.'''),
     group('when --use-linker', () {
       setUp(() {
         when(() => argResults['use-linker']).thenReturn(true);
+      });
+
+      test('logs warning', () async {
+        when(() => argResults['use-linker']).thenReturn(true);
+        setUpProjectRoot();
+        await runWithOverrides(command.run);
+        verify(
+          () => logger.warn(
+            '''--use-linker is an experimental feature and may not work as expected.''',
+          ),
+        ).called(1);
       });
 
       test('exits with code 70 if appDirectory is not found', () async {

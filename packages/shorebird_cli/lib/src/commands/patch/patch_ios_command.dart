@@ -234,56 +234,8 @@ Current Flutter Revision: $originalFlutterRevision
     }
 
     if (useLinker) {
-      final appDirectory = getAppDirectory();
-
-      if (appDirectory == null) {
-        logger.err('Unable to find .app directory within .xcarchive.');
-        return ExitCode.software.code;
-      }
-
-      final base = File(
-        p.join(
-          appDirectory.path,
-          'Frameworks',
-          'App.framework',
-          'App',
-        ),
-      );
-
-      if (!base.existsSync()) {
-        logger.err('Unable to find base AOT file at ${base.path}');
-        return ExitCode.software.code;
-      }
-
-      final patch = File(_aotOutputPath);
-
-      if (!patch.existsSync()) {
-        logger.err('Unable to find patch AOT file at ${patch.path}');
-        return ExitCode.software.code;
-      }
-
-      final analyzeSnapshot = shorebirdEnv.analyzeSnapshotFile;
-
-      if (!analyzeSnapshot.existsSync()) {
-        logger
-            .err('Unable to find analyze_snapshot at ${analyzeSnapshot.path}');
-        return ExitCode.software.code;
-      }
-
-      final linkProgress = logger.progress('Linking AOT files');
-      try {
-        await aotTools.link(
-          base: base.path,
-          patch: patch.path,
-          analyzeSnapshot: analyzeSnapshot.path,
-          workingDirectory: _buildDirectory,
-        );
-      } catch (error) {
-        linkProgress.fail('Failed to link AOT files: $error');
-        return ExitCode.software.code;
-      }
-
-      linkProgress.complete();
+      final exitCode = await _runLinker();
+      if (exitCode != ExitCode.success.code) return exitCode;
     }
 
     if (dryRun) {
@@ -389,5 +341,58 @@ ${summary.join('\n')}
     }
 
     buildProgress.complete();
+  }
+
+  Future<int> _runLinker() async {
+    final appDirectory = getAppDirectory();
+
+    if (appDirectory == null) {
+      logger.err('Unable to find .app directory within .xcarchive.');
+      return ExitCode.software.code;
+    }
+
+    final base = File(
+      p.join(
+        appDirectory.path,
+        'Frameworks',
+        'App.framework',
+        'App',
+      ),
+    );
+
+    if (!base.existsSync()) {
+      logger.err('Unable to find base AOT file at ${base.path}');
+      return ExitCode.software.code;
+    }
+
+    final patch = File(_aotOutputPath);
+
+    if (!patch.existsSync()) {
+      logger.err('Unable to find patch AOT file at ${patch.path}');
+      return ExitCode.software.code;
+    }
+
+    final analyzeSnapshot = shorebirdEnv.analyzeSnapshotFile;
+
+    if (!analyzeSnapshot.existsSync()) {
+      logger.err('Unable to find analyze_snapshot at ${analyzeSnapshot.path}');
+      return ExitCode.software.code;
+    }
+
+    final linkProgress = logger.progress('Linking AOT files');
+    try {
+      await aotTools.link(
+        base: base.path,
+        patch: patch.path,
+        analyzeSnapshot: analyzeSnapshot.path,
+        workingDirectory: _buildDirectory,
+      );
+    } catch (error) {
+      linkProgress.fail('Failed to link AOT files: $error');
+      return ExitCode.software.code;
+    }
+
+    linkProgress.complete();
+    return ExitCode.success.code;
   }
 }
