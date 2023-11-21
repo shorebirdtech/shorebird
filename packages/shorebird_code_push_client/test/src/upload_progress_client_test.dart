@@ -167,7 +167,7 @@ void main() {
           ]),
         );
 
-        final _ = await client.send(request);
+        await client.send(request);
 
         // Cause the stream to be consumed.
         await capturedStream.toList();
