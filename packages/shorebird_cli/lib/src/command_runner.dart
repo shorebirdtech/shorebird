@@ -6,6 +6,7 @@ import 'package:cli_completion/cli_completion.dart';
 import 'package:mason_logger/mason_logger.dart';
 import 'package:scoped/scoped.dart';
 import 'package:shorebird_cli/src/commands/commands.dart';
+import 'package:shorebird_cli/src/flutter_artifacts.dart';
 import 'package:shorebird_cli/src/logger.dart';
 import 'package:shorebird_cli/src/platform.dart';
 import 'package:shorebird_cli/src/process.dart';
@@ -92,6 +93,10 @@ class ShorebirdCliCommandRunner extends CompletionCommandRunner<int> {
             values: {
               engineConfigRef.overrideWith(() => engineConfig),
               processRef.overrideWith(() => process),
+              if (engineConfig.localEngineSrcPath != null)
+                flutterArtifactsRef.overrideWith(
+                  () => const FlutterLocalEngineArtifacts(),
+                ),
             },
           ) ??
           ExitCode.success.code;

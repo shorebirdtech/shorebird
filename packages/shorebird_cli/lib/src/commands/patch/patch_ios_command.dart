@@ -12,6 +12,7 @@ import 'package:shorebird_cli/src/config/config.dart';
 import 'package:shorebird_cli/src/deployment_track.dart';
 import 'package:shorebird_cli/src/doctor.dart';
 import 'package:shorebird_cli/src/executables/executables.dart';
+import 'package:shorebird_cli/src/flutter_artifacts.dart';
 import 'package:shorebird_cli/src/formatters/file_size_formatter.dart';
 import 'package:shorebird_cli/src/ios.dart';
 import 'package:shorebird_cli/src/logger.dart';
@@ -371,7 +372,11 @@ ${summary.join('\n')}
       return ExitCode.software.code;
     }
 
-    final analyzeSnapshot = shorebirdEnv.analyzeSnapshotFile;
+    final analyzeSnapshot = File(
+      flutterArtifacts.getArtifactPath(
+        artifact: FlutterArtifact.analyzeSnapshot,
+      ),
+    );
 
     if (!analyzeSnapshot.existsSync()) {
       logger.err('Unable to find analyze_snapshot at ${analyzeSnapshot.path}');
