@@ -157,13 +157,7 @@ class CodePushClient {
 
     final uploadRequest = http.MultipartRequest('POST', Uri.parse(decoded.url))
       ..files.add(file);
-    final streamSubscription =
-        _uploadProgressClient.progressStream.listen(onProgress);
-
     final uploadResponse = await _uploadProgressClient.send(uploadRequest);
-
-    await streamSubscription.cancel();
-
     if (uploadResponse.statusCode != HttpStatus.noContent) {
       throw CodePushException(
         message:
@@ -212,14 +206,7 @@ class CodePushClient {
 
     final uploadRequest = http.MultipartRequest('POST', Uri.parse(decoded.url))
       ..files.add(file);
-
-    final streamSubscription =
-        _uploadProgressClient.progressStream.listen(onProgress);
-
     final uploadResponse = await _uploadProgressClient.send(uploadRequest);
-
-    await streamSubscription.cancel();
-
     if (uploadResponse.statusCode != HttpStatus.noContent) {
       throw CodePushException(
         message:
