@@ -295,6 +295,7 @@ flutter:
       when(() => argResults['force']).thenReturn(false);
       when(() => argResults['codesign']).thenReturn(true);
       when(() => argResults['staging']).thenReturn(false);
+      when(() => argResults['use-linker']).thenReturn(false);
       when(() => argResults.rest).thenReturn([]);
       when(
         () => aotTools.link(
@@ -867,111 +868,128 @@ Please re-run the release command for this version or create a new release.'''),
       );
     });
 
-    test('exits with code 70 if appDirectory is not found', () async {
-      setUpProjectRoot();
-      setUpProjectRootArtifacts();
+    group('when --use-linker', () {
+      setUp(() {
+        when(() => argResults['use-linker']).thenReturn(true);
+      });
 
-      File(
-        p.join(
-          projectRoot.path,
-          'build',
-          'ios',
-          'archive',
-          'Runner.xcarchive',
-          'Products',
-          'Applications',
-          'Runner.app',
-        ),
-      ).deleteSync(recursive: true);
+      test('logs warning', () async {
+        setUpProjectRoot();
+        setUpProjectRootArtifacts();
+        await runWithOverrides(command.run);
+        verify(
+          () => logger.warn(
+            '''--use-linker is an experimental feature and may not work as expected.''',
+          ),
+        ).called(1);
+      });
 
-      final exitCode = await runWithOverrides(command.run);
+      test('exits with code 70 if appDirectory is not found', () async {
+        setUpProjectRoot();
+        setUpProjectRootArtifacts();
 
-      expect(exitCode, equals(ExitCode.software.code));
-      verify(
-        () => logger.err('Unable to find .app directory within .xcarchive.'),
-      ).called(1);
-    });
+        File(
+          p.join(
+            projectRoot.path,
+            'build',
+            'ios',
+            'archive',
+            'Runner.xcarchive',
+            'Products',
+            'Applications',
+            'Runner.app',
+          ),
+        ).deleteSync(recursive: true);
 
-    test('exits with code 70 if base app is not found', () async {
-      setUpProjectRoot();
-      setUpProjectRootArtifacts();
+        final exitCode = await runWithOverrides(command.run);
 
-      final base = File(
-        p.join(
-          projectRoot.path,
-          'build',
-          'ios',
-          'archive',
-          'Runner.xcarchive',
-          'Products',
-          'Applications',
-          'Runner.app',
-          'Frameworks',
-          'App.framework',
-          'App',
-        ),
-      )..deleteSync(recursive: true);
+        expect(exitCode, equals(ExitCode.software.code));
+        verify(
+          () => logger.err('Unable to find .app directory within .xcarchive.'),
+        ).called(1);
+      });
 
-      final exitCode = await runWithOverrides(command.run);
+      test('exits with code 70 if base app is not found', () async {
+        setUpProjectRoot();
+        setUpProjectRootArtifacts();
 
-      expect(exitCode, equals(ExitCode.software.code));
-      verify(
-        () => logger.err('Unable to find base AOT file at ${base.path}'),
-      ).called(1);
-    });
+        final base = File(
+          p.join(
+            projectRoot.path,
+            'build',
+            'ios',
+            'archive',
+            'Runner.xcarchive',
+            'Products',
+            'Applications',
+            'Runner.app',
+            'Frameworks',
+            'App.framework',
+            'App',
+          ),
+        )..deleteSync(recursive: true);
 
-    test('exits with code 70 if patch AOT file is not found', () async {
-      setUpProjectRoot();
-      setUpProjectRootArtifacts();
+        final exitCode = await runWithOverrides(command.run);
 
-      final patch = File(
-        p.join(projectRoot.path, 'build', elfAotSnapshotFileName),
-      )..deleteSync(recursive: true);
+        expect(exitCode, equals(ExitCode.software.code));
+        verify(
+          () => logger.err('Unable to find base AOT file at ${base.path}'),
+        ).called(1);
+      });
 
-      final exitCode = await runWithOverrides(command.run);
+      test('exits with code 70 if patch AOT file is not found', () async {
+        setUpProjectRoot();
+        setUpProjectRootArtifacts();
 
-      expect(exitCode, equals(ExitCode.software.code));
-      verify(
-        () => logger.err('Unable to find patch AOT file at ${patch.path}'),
-      ).called(1);
-    });
+        final patch = File(
+          p.join(projectRoot.path, 'build', elfAotSnapshotFileName),
+        )..deleteSync(recursive: true);
 
-    test('exits with code 70 if analyze snapshot is not found', () async {
-      setUpProjectRoot();
-      setUpProjectRootArtifacts();
+        final exitCode = await runWithOverrides(command.run);
 
-      analyzeSnapshotFile.deleteSync(recursive: true);
+        expect(exitCode, equals(ExitCode.software.code));
+        verify(
+          () => logger.err('Unable to find patch AOT file at ${patch.path}'),
+        ).called(1);
+      });
 
-      final exitCode = await runWithOverrides(command.run);
+      test('exits with code 70 if analyze snapshot is not found', () async {
+        setUpProjectRoot();
+        setUpProjectRootArtifacts();
 
-      expect(exitCode, equals(ExitCode.software.code));
-      verify(
-        () => logger.err(
-          'Unable to find analyze_snapshot at ${analyzeSnapshotFile.path}',
-        ),
-      ).called(1);
-    });
+        analyzeSnapshotFile.deleteSync(recursive: true);
 
-    test('exits with code 70 if linking fails', () async {
-      final exception = Exception('oops');
-      when(
-        () => aotTools.link(
-          base: any(named: 'base'),
-          patch: any(named: 'patch'),
-          analyzeSnapshot: any(named: 'analyzeSnapshot'),
-          workingDirectory: any(named: 'workingDirectory'),
-        ),
-      ).thenThrow(exception);
+        final exitCode = await runWithOverrides(command.run);
 
-      setUpProjectRoot();
-      setUpProjectRootArtifacts();
+        expect(exitCode, equals(ExitCode.software.code));
+        verify(
+          () => logger.err(
+            'Unable to find analyze_snapshot at ${analyzeSnapshotFile.path}',
+          ),
+        ).called(1);
+      });
 
-      final exitCode = await runWithOverrides(command.run);
+      test('exits with code 70 if linking fails', () async {
+        final exception = Exception('oops');
+        when(
+          () => aotTools.link(
+            base: any(named: 'base'),
+            patch: any(named: 'patch'),
+            analyzeSnapshot: any(named: 'analyzeSnapshot'),
+            workingDirectory: any(named: 'workingDirectory'),
+          ),
+        ).thenThrow(exception);
 
-      expect(exitCode, equals(ExitCode.software.code));
-      verify(
-        () => progress.fail('Failed to link AOT files: $exception'),
-      ).called(1);
+        setUpProjectRoot();
+        setUpProjectRootArtifacts();
+
+        final exitCode = await runWithOverrides(command.run);
+
+        expect(exitCode, equals(ExitCode.software.code));
+        verify(
+          () => progress.fail('Failed to link AOT files: $exception'),
+        ).called(1);
+      });
     });
 
     test('does not create patch on --dry-run', () async {
