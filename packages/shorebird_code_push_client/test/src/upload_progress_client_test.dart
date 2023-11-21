@@ -98,7 +98,7 @@ void main() {
 
       group('when no errors are thrown', () {
         test('argument to handle error throws ClientException', () async {
-          final response = await client.send(request);
+          await client.send(request);
           final captured = verify(
             () => innerResponse.handleError(
               captureAny(),
@@ -114,7 +114,7 @@ void main() {
 
         test('handleError test function returns true if error is HttpException',
             () async {
-          final response = await client.send(request);
+          await client.send(request);
           final captured = verify(
             () => innerResponse.handleError(
               captureAny(),
