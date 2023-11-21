@@ -14,12 +14,12 @@ enum FlutterArtifact {
   analyzeSnapshot,
 }
 
-// A reference to a [FlutterArtifacts] instance.
+/// A reference to a [FlutterArtifacts] instance.
 final flutterArtifactsRef = create<FlutterArtifacts>(
   () => const FlutterCachedArtifacts(),
 );
 
-// The [FlutterArtifacts] instance available in the current zone.
+/// The [FlutterArtifacts] instance available in the current zone.
 FlutterArtifacts get flutterArtifacts => read(flutterArtifactsRef);
 
 /// {@template flutter_artifacts}
