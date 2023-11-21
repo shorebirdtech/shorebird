@@ -157,7 +157,9 @@ class CodePushClient {
 
     final uploadRequest = http.MultipartRequest('POST', Uri.parse(decoded.url))
       ..files.add(file);
+
     final uploadResponse = await _uploadProgressClient.send(uploadRequest);
+
     if (uploadResponse.statusCode != HttpStatus.noContent) {
       throw CodePushException(
         message:
@@ -206,7 +208,9 @@ class CodePushClient {
 
     final uploadRequest = http.MultipartRequest('POST', Uri.parse(decoded.url))
       ..files.add(file);
+
     final uploadResponse = await _uploadProgressClient.send(uploadRequest);
+
     if (uploadResponse.statusCode != HttpStatus.noContent) {
       throw CodePushException(
         message:
