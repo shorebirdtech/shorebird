@@ -874,8 +874,8 @@ Please re-run the release command for this version or create a new release.'''),
       });
 
       test('logs warning', () async {
-        when(() => argResults['use-linker']).thenReturn(true);
         setUpProjectRoot();
+        setUpProjectRootArtifacts();
         await runWithOverrides(command.run);
         verify(
           () => logger.warn(
