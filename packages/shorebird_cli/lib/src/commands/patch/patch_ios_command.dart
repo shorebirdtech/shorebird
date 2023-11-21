@@ -76,6 +76,7 @@ If this option is not provided, the version number will be determined from the p
       ..addFlag(
         'use-linker',
         negatable: false,
+        hide: true,
         help: 'Whether to use the new linker when building the patch.',
       );
   }
