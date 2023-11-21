@@ -87,16 +87,16 @@ class ShorebirdCliCommandRunner extends CompletionCommandRunner<int> {
         localEngine: topLevelResults['local-engine'] as String?,
       );
       final process = ShorebirdProcess(engineConfig: engineConfig);
+      final flutterArtifacts = engineConfig.localEngineSrcPath != null
+          ? const FlutterLocalEngineArtifacts()
+          : const FlutterCachedArtifacts();
 
       return await runScoped<Future<int?>>(
             () => runCommand(topLevelResults),
             values: {
               engineConfigRef.overrideWith(() => engineConfig),
               processRef.overrideWith(() => process),
-              if (engineConfig.localEngineSrcPath != null)
-                flutterArtifactsRef.overrideWith(
-                  () => const FlutterLocalEngineArtifacts(),
-                ),
+              flutterArtifactsRef.overrideWith(() => flutterArtifacts),
             },
           ) ??
           ExitCode.success.code;

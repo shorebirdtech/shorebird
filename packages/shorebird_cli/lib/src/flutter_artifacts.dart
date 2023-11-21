@@ -1,3 +1,5 @@
+// ignore_for_file: one_member_abstracts
+
 import 'dart:io';
 
 import 'package:path/path.dart' as p;
@@ -16,7 +18,7 @@ enum FlutterArtifact {
 
 /// A reference to a [FlutterArtifacts] instance.
 final flutterArtifactsRef = create<FlutterArtifacts>(
-  () => const FlutterCachedArtifacts(),
+  FlutterCachedArtifacts.new,
 );
 
 /// The [FlutterArtifacts] instance available in the current zone.
@@ -26,9 +28,6 @@ FlutterArtifacts get flutterArtifacts => read(flutterArtifactsRef);
 /// A class that provides access to Flutter artifacts.
 /// {@endtemplate}
 abstract class FlutterArtifacts {
-  /// {@macro flutter_artifacts}
-  const FlutterArtifacts();
-
   /// Returns the path to the given [artifact].
   String getArtifactPath({required FlutterArtifact artifact});
 }
