@@ -388,6 +388,7 @@ Please create a release using "shorebird release" and try again.
       final artifact = File(artifactPath);
       final hash = sha256.convert(await artifact.readAsBytes()).toString();
       logger.detail('Creating artifact for $artifactPath');
+
       try {
         await codePushClient.createReleaseArtifact(
           appId: appId,
