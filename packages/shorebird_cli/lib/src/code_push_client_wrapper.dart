@@ -612,7 +612,6 @@ aar artifact already exists, continuing...''',
       logger: logger,
       baseMessage: 'Uploading xcframework',
     );
-
     final appFrameworkDirectory = Directory(appFrameworkPath);
     await Isolate.run(
       () => ZipFileEncoder().zipDirectory(appFrameworkDirectory),
