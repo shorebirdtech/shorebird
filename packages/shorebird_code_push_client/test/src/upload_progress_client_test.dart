@@ -3,6 +3,7 @@ import 'dart:io';
 import 'package:http/http.dart' as http;
 import 'package:http/io_client.dart';
 import 'package:mocktail/mocktail.dart';
+import 'package:path/path.dart' as p;
 import 'package:shorebird_code_push_client/shorebird_code_push_client.dart';
 import 'package:test/test.dart';
 
@@ -16,6 +17,8 @@ class _MockHttpClientResponse extends Mock implements HttpClientResponse {}
 
 void main() {
   group(UploadProgressHttpClient, () {
+    final url = Uri.parse('https://example.com');
+
     late HttpClient innerClient;
     late HttpClientRequest ioRequest;
     late HttpClientResponse innerResponse;
@@ -25,16 +28,22 @@ void main() {
 
     setUpAll(() {
       registerFallbackValue(const Stream<List<int>>.empty());
-      registerFallbackValue(Uri.parse('https://example.com'));
+      registerFallbackValue(url);
     });
 
-    setUp(() {
+    setUp(() async {
       innerClient = _MockHttpClient();
       ioRequest = _MockHttpClientRequest();
       client = UploadProgressHttpClient(innerClient);
       headers = _MockHttpHeaders();
       innerResponse = _MockHttpClientResponse();
-      request = http.MultipartRequest('POST', Uri.parse('https://example.com'));
+
+      final tempDir = Directory.systemTemp.createTempSync();
+      final file = File(p.join(tempDir.path, 'test.txt'))
+        ..writeAsStringSync('1');
+      final multipartFile =
+          await http.MultipartFile.fromPath('file', file.path);
+      request = http.MultipartRequest('POST', url)..files.add(multipartFile);
 
       when(() => innerClient.openUrl(any(), any()))
           .thenAnswer((_) async => ioRequest);
@@ -95,19 +104,36 @@ void main() {
     });
 
     group('progressStream', () {
+      late Stream<List<int>> capturedStream;
+
+      setUp(() {
+        when(() => ioRequest.addStream(any())).thenAnswer((invocation) async {
+          capturedStream =
+              invocation.positionalArguments.first as Stream<List<int>>;
+        });
+      });
+
       test('reports progress as transfer occurs', () async {
         expect(
           client.progressStream,
-          emits(
+          emitsInOrder([
             DataTransferProgress(
-              bytesTransferred: 0,
-              totalBytes: 0,
-              url: request.url,
+              bytesTransferred: 74,
+              totalBytes: 261,
+              url: url,
             ),
-          ),
+            DataTransferProgress(
+              bytesTransferred: 182,
+              totalBytes: 261,
+              url: url,
+            ),
+          ]),
         );
 
-        final response = await client.send(request);
+        final _ = await client.send(request);
+
+        // Cause the stream to be consumed.
+        await capturedStream.toList();
       });
     });
   });

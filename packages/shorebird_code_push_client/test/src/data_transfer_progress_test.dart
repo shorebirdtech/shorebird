@@ -13,5 +13,51 @@ void main() {
         expect(progress.progressPercentage, 5);
       });
     });
+
+    group('toString', () {
+      test('has a sensible string representation', () {
+        final progress = DataTransferProgress(
+          bytesTransferred: 5,
+          totalBytes: 100,
+          url: Uri.parse('http://example.com'),
+        );
+
+        expect(
+          progress.toString(),
+          equals('5/100 (5.0% from http://example.com)'),
+        );
+      });
+    });
+
+    group('equatable', () {
+      test('returns true for equal instances', () {
+        final progress1 = DataTransferProgress(
+          bytesTransferred: 5,
+          totalBytes: 100,
+          url: Uri.parse('http://example.com'),
+        );
+        final progress2 = DataTransferProgress(
+          bytesTransferred: 5,
+          totalBytes: 100,
+          url: Uri.parse('http://example.com'),
+        );
+        expect(progress1, equals(progress2));
+      });
+
+      test('returns false for nonequal instances', () {
+        final progress1 = DataTransferProgress(
+          bytesTransferred: 5,
+          totalBytes: 100,
+          url: Uri.parse('http://example.com'),
+        );
+        final progress2 = DataTransferProgress(
+          bytesTransferred: 50,
+          totalBytes: 100,
+          url: Uri.parse('http://example.com'),
+        );
+
+        expect(progress1, isNot(equals(progress2)));
+      });
+    });
   });
 }
