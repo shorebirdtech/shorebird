@@ -2106,4 +2106,31 @@ Please bump your version number and try again.''',
       });
     });
   });
+
+  group(UploadProgress, () {
+    const baseMessage = 'Testing';
+    late Logger logger;
+    late Progress logProgress;
+    late UploadProgress progress;
+
+    setUp(() {
+      logger = MockLogger();
+      logProgress = MockProgress();
+      when(() => logger.progress(any())).thenReturn(logProgress);
+
+      progress = UploadProgress(logger: logger, baseMessage: baseMessage);
+    });
+
+    test('updateProgress updates message to include percentage progress', () {
+      progress.updateProgress(
+        DataTransferProgress(
+          bytesTransferred: 25,
+          totalBytes: 100,
+          url: Uri.parse('http://example.com'),
+        ),
+      );
+
+      verify(() => logProgress.update('Testing (25%)')).called(1);
+    });
+  });
 }

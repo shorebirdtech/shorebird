@@ -369,7 +369,7 @@ Please create a release using "shorebird release" and try again.
     String? flavor,
   }) async {
     for (final archMetadata in architectures.values) {
-      final createArtifactProgress = _UploadProgress(
+      final createArtifactProgress = UploadProgress(
         logger: logger,
         baseMessage: 'Uploading ${archMetadata.arch} artifact',
       );
@@ -416,7 +416,7 @@ ${archMetadata.arch} artifact already exists, continuing...''',
       }
     }
 
-    final createArtifactProgress = _UploadProgress(
+    final createArtifactProgress = UploadProgress(
       logger: logger,
       baseMessage: 'Uploading aab artifact',
     );
@@ -549,7 +549,7 @@ aar artifact already exists, continuing...''',
     required String runnerPath,
     required bool isCodesigned,
   }) async {
-    final uploadXcarchiveProgress = _UploadProgress(
+    final uploadXcarchiveProgress = UploadProgress(
       logger: logger,
       baseMessage: 'Uploading xcarchive',
     );
@@ -576,7 +576,7 @@ aar artifact already exists, continuing...''',
     }
     uploadXcarchiveProgress.complete();
 
-    final uploadRunnerProgress = _UploadProgress(
+    final uploadRunnerProgress = UploadProgress(
       logger: logger,
       baseMessage: 'Uploading app bundle',
     );
@@ -608,7 +608,7 @@ aar artifact already exists, continuing...''',
     required int releaseId,
     required String appFrameworkPath,
   }) async {
-    final uploadXcframeworkProgress = _UploadProgress(
+    final uploadXcframeworkProgress = UploadProgress(
       logger: logger,
       baseMessage: 'Uploading xcframework',
     );
@@ -669,7 +669,7 @@ aar artifact already exists, continuing...''',
     required Map<Arch, PatchArtifactBundle> patchArtifactBundles,
   }) async {
     for (final artifact in patchArtifactBundles.values) {
-      final uploadArtifactProgress = _UploadProgress(
+      final uploadArtifactProgress = UploadProgress(
         logger: logger,
         baseMessage: 'Uploading ${artifact.arch} artifact',
       );
@@ -767,8 +767,9 @@ aar artifact already exists, continuing...''',
   }
 }
 
-class _UploadProgress implements Progress {
-  _UploadProgress({required Logger logger, required String baseMessage})
+@visibleForTesting
+class UploadProgress implements Progress {
+  UploadProgress({required Logger logger, required String baseMessage})
       : _baseMessage = baseMessage,
         _progress = logger.progress(baseMessage);
 
