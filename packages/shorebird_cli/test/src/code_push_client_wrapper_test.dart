@@ -2132,5 +2132,27 @@ Please bump your version number and try again.''',
 
       verify(() => logProgress.update('Testing (25%)')).called(1);
     });
+
+    group('other overrides', () {
+      test('forwards cancel logger.progress', () {
+        progress.cancel();
+        verify(() => logProgress.cancel()).called(1);
+      });
+
+      test('forwards complete logger.progress', () {
+        progress.complete('completed!');
+        verify(() => logProgress.complete('completed!')).called(1);
+      });
+
+      test('forwards fail logger.progress', () {
+        progress.fail('failure message');
+        verify(() => logProgress.fail('failure message')).called(1);
+      });
+
+      test('forwards update logger.progress', () {
+        progress.update('new message');
+        verify(() => logProgress.update('new message')).called(1);
+      });
+    });
   });
 }
