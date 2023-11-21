@@ -2133,7 +2133,7 @@ Please bump your version number and try again.''',
       verify(() => logProgress.update('Testing (25%)')).called(1);
     });
 
-    group('other overrides', () {
+    group('overrides', () {
       test('forwards cancel logger.progress', () {
         progress.cancel();
         verify(() => logProgress.cancel()).called(1);
