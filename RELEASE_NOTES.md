@@ -2,6 +2,20 @@
 
 This section contains past updates we've sent to customers via Discord.
 
+## 0.18.2 (November 21, 2023)
+
+- 🩺 `shorebird doctor`
+  - Supports no system Flutter installation
+  - Validates that `storage.googleapis.com` is reachable
+- ✅ `shorebird --version` checks for updates
+- 🚀 `shorebird release` lists the Flutter version
+
+📚 Release notes can be found at https://github.com/shorebirdtech/shorebird/releases/tag/v0.18.2
+
+As always, you can upgrade using `shorebird upgrade`
+
+Please let us know if we can help!
+
 ## 0.18.1 (November 14, 2023)
 
 - 🚀 `shorebird release` outputs release version
