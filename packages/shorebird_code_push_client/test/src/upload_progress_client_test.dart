@@ -7,13 +7,21 @@ import 'package:path/path.dart' as p;
 import 'package:shorebird_code_push_client/shorebird_code_push_client.dart';
 import 'package:test/test.dart';
 
-class _MockHttpHeaders extends Mock implements HttpHeaders {}
-
 class _MockHttpClient extends Mock implements HttpClient {}
 
 class _MockHttpClientRequest extends Mock implements HttpClientRequest {}
 
 class _MockHttpClientResponse extends Mock implements HttpClientResponse {}
+
+class _FakeHttpHeaders extends Fake implements HttpHeaders {
+  @override
+  void forEach(void Function(String name, List<String> values) action) {
+    action('content-length', ['42']);
+  }
+
+  @override
+  void set(String name, Object value, {bool preserveHeaderCase = false}) {}
+}
 
 void main() {
   group(UploadProgressHttpClient, () {
@@ -35,7 +43,7 @@ void main() {
       innerClient = _MockHttpClient();
       ioRequest = _MockHttpClientRequest();
       client = UploadProgressHttpClient(innerClient);
-      headers = _MockHttpHeaders();
+      headers = _FakeHttpHeaders();
       innerResponse = _MockHttpClientResponse();
 
       final tempDir = Directory.systemTemp.createTempSync();
@@ -134,6 +142,13 @@ void main() {
 
         // Cause the stream to be consumed.
         await capturedStream.toList();
+      });
+    });
+
+    group('close', () {
+      test('closes inner client', () {
+        client.close();
+        verify(() => innerClient.close(force: true)).called(1);
       });
     });
   });
