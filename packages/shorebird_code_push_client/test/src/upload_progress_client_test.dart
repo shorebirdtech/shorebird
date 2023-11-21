@@ -97,6 +97,35 @@ void main() {
       });
 
       group('when no errors are thrown', () {
+        test('argument to handle error throws ClientException', () async {
+          final response = await client.send(request);
+          final captured = verify(
+            () => innerResponse.handleError(
+              captureAny(),
+              test: captureAny(named: 'test'),
+            ),
+          ).captured;
+          final onError = captured.first as void Function(Object);
+          expect(
+            () => onError(const HttpException('HttpException')),
+            throwsA(isA<http.ClientException>()),
+          );
+        });
+
+        test('handleError test function returns true if error is HttpException',
+            () async {
+          final response = await client.send(request);
+          final captured = verify(
+            () => innerResponse.handleError(
+              captureAny(),
+              test: captureAny(named: 'test'),
+            ),
+          ).captured;
+          final test = captured.last as bool Function(Object);
+          expect(test(Exception('not an HttpException')), isFalse);
+          expect(test(const HttpException('HttpException')), isTrue);
+        });
+
         test('returns streamed response', () async {
           final response = await client.send(request);
           expect(response, isA<IOStreamedResponse>());
