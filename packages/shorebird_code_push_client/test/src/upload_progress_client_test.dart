@@ -97,7 +97,7 @@ void main() {
       });
 
       group('when no errors are thrown', () {
-        test('argument to handle error throws ClientException', () async {
+        test('argument to handleError throws ClientException', () async {
           await client.send(request);
           final captured = verify(
             () => innerResponse.handleError(
