@@ -16,6 +16,7 @@ import 'package:shorebird_cli/src/config/config.dart';
 import 'package:shorebird_cli/src/deployment_track.dart';
 import 'package:shorebird_cli/src/doctor.dart';
 import 'package:shorebird_cli/src/executables/aot_tools.dart';
+import 'package:shorebird_cli/src/flutter_artifacts.dart';
 import 'package:shorebird_cli/src/logger.dart';
 import 'package:shorebird_cli/src/os/operating_system_interface.dart';
 import 'package:shorebird_cli/src/patch_diff_checker.dart';
@@ -132,6 +133,7 @@ flutter:
     late Directory projectRoot;
     late File genSnapshotFile;
     late File analyzeSnapshotFile;
+    late FlutterArtifacts flutterArtifacts;
     late Doctor doctor;
     late IosArchiveDiffer archiveDiffer;
     late Progress progress;
@@ -158,6 +160,7 @@ flutter:
           authRef.overrideWith(() => auth),
           codePushClientWrapperRef.overrideWith(() => codePushClientWrapper),
           doctorRef.overrideWith(() => doctor),
+          flutterArtifactsRef.overrideWith(() => flutterArtifacts),
           loggerRef.overrideWith(() => logger),
           osInterfaceRef.overrideWith(() => operatingSystemInterface),
           patchDiffCheckerRef.overrideWith(() => patchDiffChecker),
@@ -246,6 +249,7 @@ flutter:
       auth = MockAuth();
       codePushClientWrapper = MockCodePushClientWrapper();
       doctor = MockDoctor();
+      flutterArtifacts = MockFlutterArtifacts();
       shorebirdRoot = Directory.systemTemp.createTempSync();
       projectRoot = Directory.systemTemp.createTempSync();
       flutterDirectory = Directory(
@@ -349,10 +353,16 @@ flutter:
         () => shorebirdEnv.getShorebirdProjectRoot(),
       ).thenReturn(projectRoot);
       when(() => shorebirdEnv.flutterDirectory).thenReturn(flutterDirectory);
-      when(() => shorebirdEnv.genSnapshotFile).thenReturn(genSnapshotFile);
       when(
-        () => shorebirdEnv.analyzeSnapshotFile,
-      ).thenReturn(analyzeSnapshotFile);
+        () => flutterArtifacts.getArtifactPath(
+          artifact: FlutterArtifact.genSnapshot,
+        ),
+      ).thenReturn(genSnapshotFile.path);
+      when(
+        () => flutterArtifacts.getArtifactPath(
+          artifact: FlutterArtifact.analyzeSnapshot,
+        ),
+      ).thenReturn(analyzeSnapshotFile.path);
       when(() => shorebirdEnv.flutterRevision).thenReturn(flutterRevision);
       when(() => shorebirdEnv.isRunningOnCI).thenReturn(false);
       when(() => shorebirdFlutter.useRevision(revision: any(named: 'revision')))

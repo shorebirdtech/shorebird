@@ -78,34 +78,6 @@ class ShorebirdEnv {
     return File(p.join(flutterDirectory.path, 'bin', 'flutter'));
   }
 
-  File get genSnapshotFile {
-    return File(
-      p.join(
-        flutterDirectory.path,
-        'bin',
-        'cache',
-        'artifacts',
-        'engine',
-        'ios-release',
-        'gen_snapshot_arm64',
-      ),
-    );
-  }
-
-  File get analyzeSnapshotFile {
-    return File(
-      p.join(
-        flutterDirectory.path,
-        'bin',
-        'cache',
-        'artifacts',
-        'engine',
-        'ios-release',
-        'analyze_snapshot_arm64',
-      ),
-    );
-  }
-
   /// The `shorebird.yaml` file for this project.
   File getShorebirdYamlFile({required Directory cwd}) {
     return File(p.join(cwd.path, 'shorebird.yaml'));
