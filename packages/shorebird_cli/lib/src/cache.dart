@@ -254,6 +254,6 @@ class BundleToolArtifact extends CachedArtifact {
 
   @override
   String get storageUrl {
-    return 'https://github.com/google/bundletool/releases/download/1.14.1/bundletool-all-1.14.1.jar';
+    return 'https://github.com/google/bundletool/releases/download/1.15.6/bundletool-all-1.15.6.jar';
   }
 }
