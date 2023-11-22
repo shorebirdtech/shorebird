@@ -1,6 +1,7 @@
 import 'dart:io';
 
 import 'package:scoped/scoped.dart';
+import 'package:shorebird_cli/src/args.dart';
 import 'package:shorebird_cli/src/process.dart';
 
 /// A reference to a [Git] instance.
@@ -97,8 +98,8 @@ class Git {
   }) async {
     final arguments = [
       'for-each-ref',
-      if (contains != null) ...['--contains', contains],
-      '--format',
+      if (contains != null) ...['--${ArgsKey.contains}', contains],
+      '--${ArgsKey.format}',
       format,
       pattern,
     ];
@@ -145,7 +146,7 @@ class Git {
     required String revision,
     required String directory,
   }) async {
-    final arguments = ['rev-parse', '--verify', revision];
+    final arguments = ['rev-parse', '--${ArgsKey.verify}', revision];
     final result = await process.run(
       executable,
       arguments,

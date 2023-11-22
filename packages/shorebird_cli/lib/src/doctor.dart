@@ -1,5 +1,6 @@
 import 'package:mason_logger/mason_logger.dart';
 import 'package:scoped/scoped.dart';
+import 'package:shorebird_cli/src/args.dart';
 import 'package:shorebird_cli/src/logger.dart';
 import 'package:shorebird_cli/src/validators/validators.dart';
 
@@ -114,7 +115,7 @@ No issues detected!''');
         final fixableIssueCount = allFixableIssues.length;
         logger.info(
           '''
-$fixableIssueCount issue${fixableIssueCount == 1 ? '' : 's'} can be fixed automatically with ${lightCyan.wrap('shorebird doctor --fix')}.''',
+$fixableIssueCount issue${fixableIssueCount == 1 ? '' : 's'} can be fixed automatically with ${lightCyan.wrap('shorebird doctor --${ArgsKey.fix}')}.''',
         );
       }
     }

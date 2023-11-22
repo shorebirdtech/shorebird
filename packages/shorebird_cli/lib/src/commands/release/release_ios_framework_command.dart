@@ -1,6 +1,7 @@
 import 'package:mason_logger/mason_logger.dart';
 import 'package:path/path.dart' as p;
 import 'package:platform/platform.dart';
+import 'package:shorebird_cli/src/args.dart';
 import 'package:shorebird_cli/src/code_push_client_wrapper.dart';
 import 'package:shorebird_cli/src/command.dart';
 import 'package:shorebird_cli/src/config/config.dart';
@@ -19,14 +20,14 @@ class ReleaseIosFrameworkCommand extends ShorebirdCommand
   ReleaseIosFrameworkCommand() {
     argParser
       ..addOption(
-        'release-version',
+        ArgsKey.releaseVersion,
         help: '''
 The version of the associated release (e.g. "1.0.0"). This should be the version
 of the iOS app that is using this module.''',
         mandatory: true,
       )
       ..addFlag(
-        'force',
+        ArgsKey.force,
         abbr: 'f',
         help: 'Release without confirmation if there are no errors.',
         negatable: false,
@@ -56,7 +57,7 @@ of the iOS app that is using this module.''',
     showiOSStatusWarning();
 
     const releasePlatform = ReleasePlatform.ios;
-    final releaseVersion = results['release-version'] as String;
+    final releaseVersion = results[ArgsKey.releaseVersion] as String;
     final shorebirdYaml = shorebirdEnv.getShorebirdYaml()!;
     final appId = shorebirdYaml.getAppId();
     final app = await codePushClientWrapper.getApp(appId: appId);
@@ -98,7 +99,7 @@ ${styleBold.wrap(lightGreen.wrap('🚀 Ready to create a new release!'))}
 ${summary.join('\n')}
 ''');
 
-    final force = results['force'] == true;
+    final force = results[ArgsKey.force] == true;
     final needConfirmation = !force;
     if (needConfirmation) {
       final confirm = logger.confirm('Would you like to continue?');

@@ -2,6 +2,7 @@ import 'dart:io';
 
 import 'package:mason_logger/mason_logger.dart';
 import 'package:path/path.dart' as p;
+import 'package:shorebird_cli/src/args.dart';
 import 'package:shorebird_cli/src/command.dart';
 import 'package:shorebird_cli/src/doctor.dart';
 import 'package:shorebird_cli/src/logger.dart';
@@ -18,12 +19,12 @@ class BuildAppBundleCommand extends ShorebirdCommand with ShorebirdBuildMixin {
   BuildAppBundleCommand() {
     argParser
       ..addOption(
-        'target',
+        ArgsKey.target,
         abbr: 't',
         help: 'The main entrypoint file of the application.',
       )
       ..addOption(
-        'flavor',
+        ArgsKey.flavor,
         help: 'The product flavor to use when building the app.',
       );
   }
@@ -46,8 +47,8 @@ class BuildAppBundleCommand extends ShorebirdCommand with ShorebirdBuildMixin {
       return e.exitCode.code;
     }
 
-    final flavor = results['flavor'] as String?;
-    final target = results['target'] as String?;
+    final flavor = results[ArgsKey.flavor] as String?;
+    final target = results[ArgsKey.target] as String?;
     final buildProgress = logger.progress('Building appbundle');
     try {
       await buildAppBundle(flavor: flavor, target: target);

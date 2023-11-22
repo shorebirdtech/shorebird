@@ -4,6 +4,7 @@ import 'dart:io';
 import 'package:meta/meta.dart';
 import 'package:path/path.dart' as p;
 import 'package:scoped/scoped.dart';
+import 'package:shorebird_cli/src/args.dart';
 import 'package:shorebird_cli/src/executables/devicectl/apple_device.dart';
 import 'package:shorebird_cli/src/logger.dart';
 import 'package:shorebird_cli/src/process.dart';
@@ -83,7 +84,7 @@ class IDeviceSysLog {
         device.udid,
         // If the device is not connected via USB, we need to specify the
         // network flag.
-        if (!device.isWired) '--network',
+        if (!device.isWired) '--${ArgsKey.network}',
       ],
       environment: {
         'DYLD_LIBRARY_PATH': _dyldPathEntry,

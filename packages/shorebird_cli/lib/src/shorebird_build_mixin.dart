@@ -2,6 +2,7 @@ import 'dart:io';
 
 import 'package:collection/collection.dart';
 import 'package:mason_logger/mason_logger.dart';
+import 'package:shorebird_cli/src/args.dart';
 import 'package:shorebird_cli/src/command.dart';
 import 'package:shorebird_cli/src/flutter_artifacts.dart';
 import 'package:shorebird_cli/src/logger.dart';
@@ -75,7 +76,7 @@ mixin ShorebirdBuildMixin on ShorebirdCommand {
       if (metaDataEntry == null) {
         throw Exception(
           'Unknown local engine architecture for '
-          '--local-engine=$localEngineOutName\n'
+          '--${ArgsKey.localEngine}=$localEngineOutName\n'
           'Known values: '
           '${allAndroidArchitectures.values.map((e) => e.enginePath)}',
         );
@@ -91,9 +92,9 @@ mixin ShorebirdBuildMixin on ShorebirdCommand {
       final arguments = [
         'build',
         'appbundle',
-        '--release',
-        if (flavor != null) '--flavor=$flavor',
-        if (target != null) '--target=$target',
+        '--${ArgsKey.release}',
+        if (flavor != null) '--${ArgsKey.flavor}=$flavor',
+        if (target != null) '--${ArgsKey.target}=$target',
         ...results.rest,
       ];
 
@@ -120,9 +121,9 @@ mixin ShorebirdBuildMixin on ShorebirdCommand {
       final arguments = [
         'build',
         'aar',
-        '--no-debug',
-        '--no-profile',
-        '--build-number=$buildNumber',
+        '--${ArgsKey.noDebug}',
+        '--${ArgsKey.noProfile}',
+        '--${ArgsKey.buildNumber}=$buildNumber',
         ...results.rest,
       ];
 
@@ -153,13 +154,13 @@ mixin ShorebirdBuildMixin on ShorebirdCommand {
       final arguments = [
         'build',
         'apk',
-        '--release',
-        if (flavor != null) '--flavor=$flavor',
-        if (target != null) '--target=$target',
+        '--${ArgsKey.release}',
+        if (flavor != null) '--${ArgsKey.flavor}=$flavor',
+        if (target != null) '--${ArgsKey.target}=$target',
         // TODO(bryanoltman): reintroduce coverage when we can support this.
         // See https://github.com/shorebirdtech/shorebird/issues/1141.
         // coverage:ignore-start
-        if (splitPerAbi) '--split-per-abi',
+        if (splitPerAbi) '--${ArgsKey.splitPerAbi}',
         // coverage:ignore-end
         ...results.rest,
       ];
@@ -194,12 +195,12 @@ mixin ShorebirdBuildMixin on ShorebirdCommand {
       final arguments = [
         'build',
         'ipa',
-        '--release',
-        if (flavor != null) '--flavor=$flavor',
-        if (target != null) '--target=$target',
-        if (!codesign) '--no-codesign',
+        '--${ArgsKey.release}',
+        if (flavor != null) '--${ArgsKey.flavor}=$flavor',
+        if (target != null) '--${ArgsKey.target}=$target',
+        if (!codesign) '--${ArgsKey.noCodesign}',
         if (codesign && exportOptionsPlist != null)
-          '--export-options-plist=${exportOptionsPlist.path}',
+          '--${ArgsKey.exportOptionsPlist}=${exportOptionsPlist.path}',
         ...results.rest,
       ];
 
@@ -237,8 +238,8 @@ mixin ShorebirdBuildMixin on ShorebirdCommand {
       final arguments = [
         'build',
         'ios-framework',
-        '--no-debug',
-        '--no-profile',
+        '--${ArgsKey.noDebug}',
+        '--${ArgsKey.noProfile}',
         ...results.rest,
       ];
 
@@ -284,7 +285,12 @@ mixin ShorebirdBuildMixin on ShorebirdCommand {
       return;
     }
 
-    final arguments = ['--no-version-check', 'pub', 'get', '--offline'];
+    final arguments = [
+      '--${ArgsKey.noVersionCheck}',
+      'pub',
+      'get',
+      '--${ArgsKey.offline}',
+    ];
 
     final result = await process.run(
       executable,
@@ -341,9 +347,9 @@ Either run `flutter pub get` manually, or follow the steps in ${link(uri: Uri.pa
     required String outFilePath,
   }) async {
     final arguments = [
-      '--deterministic',
-      '--snapshot-kind=app-aot-elf',
-      '--elf=$outFilePath',
+      '--${ArgsKey.deterministic}',
+      '--${ArgsKey.snapshotKind}=app-aot-elf',
+      '--${ArgsKey.elf}=$outFilePath',
       appDillPath,
     ];
 

@@ -2,6 +2,7 @@ import 'dart:async';
 import 'dart:convert';
 import 'dart:io';
 
+import 'package:shorebird_cli/src/args.dart';
 import 'package:shorebird_cli/src/command.dart';
 import 'package:shorebird_cli/src/doctor.dart';
 import 'package:shorebird_cli/src/logger.dart';
@@ -17,26 +18,26 @@ class RunCommand extends ShorebirdCommand {
   RunCommand() {
     argParser
       ..addOption(
-        'device-id',
+        ArgsKey.deviceId,
         abbr: 'd',
         help: 'Target device id or name.',
       )
       ..addOption(
-        'target',
+        ArgsKey.target,
         abbr: 't',
         help: 'The main entrypoint file of the application.',
       )
       ..addMultiOption(
-        'dart-define',
+        ArgsKey.dartDefine,
         help: 'Additional key-value pairs that will be available as constants '
             '''from the String.fromEnvironment, bool.fromEnvironment, and int.fromEnvironment '''
             'constructors.\n'
-            '''Multiple defines can be passed by repeating "--dart-define" multiple times.''',
+            '''Multiple defines can be passed by repeating "--${ArgsKey.dartDefine}" multiple times.''',
         splitCommas: false,
         valueHelp: 'foo=bar',
       )
       ..addOption(
-        'flavor',
+        ArgsKey.flavor,
         help: 'The product flavor to use when building the app.',
       );
   }
@@ -71,20 +72,21 @@ Please use "shorebird preview" instead.''',
 
     logger.info('Running app...');
 
-    final deviceId = results['device-id'] as String?;
-    final flavor = results['flavor'] as String?;
-    final target = results['target'] as String?;
-    final dartDefines = results['dart-define'] as List<String>?;
+    final deviceId = results[ArgsKey.deviceId] as String?;
+    final flavor = results[ArgsKey.flavor] as String?;
+    final target = results[ArgsKey.target] as String?;
+    final dartDefines = results[ArgsKey.dartDefine] as List<String>?;
     final flutter = await process.start(
       'flutter',
       [
         'run',
         // Eventually we should support running in both debug and release mode.
-        '--release',
-        if (deviceId != null) '--device-id=$deviceId',
-        if (flavor != null) '--flavor=$flavor',
-        if (target != null) '--target=$target',
-        if (dartDefines != null) ...dartDefines.map((e) => '--dart-define=$e'),
+        '--${ArgsKey.release}',
+        if (deviceId != null) '--${ArgsKey.deviceId}=$deviceId',
+        if (flavor != null) '--${ArgsKey.flavor}=$flavor',
+        if (target != null) '--${ArgsKey.target}=$target',
+        if (dartDefines != null)
+          ...dartDefines.map((e) => '--${ArgsKey.dartDefine}=$e'),
         ...results.rest,
       ],
       runInShell: true,

@@ -7,6 +7,7 @@ import 'package:collection/collection.dart';
 import 'package:http/http.dart' as http;
 import 'package:mason_logger/mason_logger.dart';
 import 'package:path/path.dart' as p;
+import 'package:shorebird_cli/src/args.dart';
 import 'package:shorebird_cli/src/artifact_manager.dart';
 import 'package:shorebird_cli/src/cache.dart';
 import 'package:shorebird_cli/src/code_push_client_wrapper.dart';
@@ -33,20 +34,20 @@ class PreviewCommand extends ShorebirdCommand {
             retryingHttpClient(LoggingClient(httpClient: http.Client())) {
     argParser
       ..addOption(
-        'device-id',
+        ArgsKey.deviceId,
         abbr: 'd',
         help: 'The ID of the device or simulator to preview the release on.',
       )
       ..addOption(
-        'app-id',
+        ArgsKey.appId,
         help: 'The ID of the app to preview the release for.',
       )
       ..addOption(
-        'release-version',
+        ArgsKey.releaseVersion,
         help: 'The version of the release (e.g. "1.0.0").',
       )
       ..addOption(
-        'platform',
+        ArgsKey.platform,
         allowed: ReleasePlatform.values.map((e) => e.name),
         allowedHelp: {
           for (final p in ReleasePlatform.values) p.name: p.displayName,
@@ -54,7 +55,7 @@ class PreviewCommand extends ShorebirdCommand {
         help: 'The platform of the release.',
       )
       ..addFlag(
-        'staging',
+        ArgsKey.staging,
         negatable: false,
         help: 'Preview the release on the staging environment.',
       );
@@ -91,7 +92,7 @@ class PreviewCommand extends ShorebirdCommand {
       return error.exitCode.code;
     }
 
-    final appId = results['app-id'] as String? ?? await promptForApp();
+    final appId = results[ArgsKey.appId] as String? ?? await promptForApp();
 
     if (appId == null) {
       logger.info('No apps found');
@@ -103,7 +104,7 @@ class PreviewCommand extends ShorebirdCommand {
       sideloadableOnly: true,
     );
 
-    final releaseVersion = results['release-version'] as String? ??
+    final releaseVersion = results[ArgsKey.releaseVersion] as String? ??
         await promptForReleaseVersion(releases);
 
     final release = releases.firstWhereOrNull(
@@ -130,15 +131,15 @@ class PreviewCommand extends ShorebirdCommand {
     final ReleasePlatform releasePlatform;
     if (availablePlatforms.length == 1) {
       releasePlatform = release.activePlatforms.first;
-    } else if (results['platform'] != null) {
+    } else if (results[ArgsKey.platform] != null) {
       releasePlatform =
-          ReleasePlatform.values.byName(results['platform'] as String);
+          ReleasePlatform.values.byName(results[ArgsKey.platform] as String);
     } else {
       releasePlatform = await promptForPlatform(availablePlatforms);
     }
 
-    final deviceId = results['device-id'] as String?;
-    final isStaging = results['staging'] == true;
+    final deviceId = results[ArgsKey.deviceId] as String?;
+    final isStaging = results[ArgsKey.staging] == true;
     final track =
         isStaging ? DeploymentTrack.staging : DeploymentTrack.production;
 

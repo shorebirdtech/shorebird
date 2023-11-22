@@ -6,6 +6,7 @@ import 'package:mason_logger/mason_logger.dart';
 import 'package:path/path.dart' as p;
 import 'package:shorebird_cli/src/archive_analysis/archive_analysis.dart';
 import 'package:shorebird_cli/src/archive_analysis/archive_differ.dart';
+import 'package:shorebird_cli/src/args.dart';
 import 'package:shorebird_cli/src/artifact_manager.dart';
 import 'package:shorebird_cli/src/cache.dart';
 import 'package:shorebird_cli/src/code_push_client_wrapper.dart';
@@ -42,35 +43,35 @@ class PatchAndroidCommand extends ShorebirdCommand
             retryingHttpClient(LoggingClient(httpClient: http.Client())) {
     argParser
       ..addOption(
-        'target',
+        ArgsKey.target,
         abbr: 't',
         help: 'The main entrypoint file of the application.',
       )
       ..addOption(
-        'flavor',
+        ArgsKey.flavor,
         help: 'The product flavor to use when building the app.',
       )
       ..addOption(
-        'release-version',
+        ArgsKey.releaseVersion,
         help: '''
 The version of the release being patched (e.g. "1.0.0+1").
         
 If this option is not provided, the version number will be determined from the patch artifact.''',
       )
       ..addFlag(
-        'force',
+        ArgsKey.force,
         abbr: 'f',
         help: 'Patch without confirmation if there are no errors.',
         negatable: false,
       )
       ..addFlag(
-        'dry-run',
+        ArgsKey.dryRun,
         abbr: 'n',
         negatable: false,
         help: 'Validate but do not upload the patch.',
       )
       ..addFlag(
-        'staging',
+        ArgsKey.staging,
         negatable: false,
         help: 'Whether to publish the patch to the staging environment.',
       );
@@ -99,20 +100,20 @@ If this option is not provided, the version number will be determined from the p
       return e.exitCode.code;
     }
 
-    final force = results['force'] == true;
-    final dryRun = results['dry-run'] == true;
-    final isStaging = results['staging'] == true;
+    final force = results[ArgsKey.force] == true;
+    final dryRun = results[ArgsKey.dryRun] == true;
+    final isStaging = results[ArgsKey.staging] == true;
 
     if (force && dryRun) {
-      logger.err('Cannot use both --force and --dry-run.');
+      logger.err('Cannot use both --${ArgsKey.force} and --${ArgsKey.dryRun}.');
       return ExitCode.usage.code;
     }
 
     await cache.updateAll();
 
     const platform = ReleasePlatform.android;
-    final flavor = results['flavor'] as String?;
-    final target = results['target'] as String?;
+    final flavor = results[ArgsKey.flavor] as String?;
+    final target = results[ArgsKey.target] as String?;
 
     final shorebirdYaml = shorebirdEnv.getShorebirdYaml()!;
     final appId = shorebirdYaml.getAppId(flavor: flavor);
@@ -142,7 +143,7 @@ If this option is not provided, the version number will be determined from the p
         : p.join(bundleDirPath, 'release', 'app-release.aab');
 
     final String releaseVersion;
-    final argReleaseVersion = results['release-version'] as String?;
+    final argReleaseVersion = results[ArgsKey.releaseVersion] as String?;
     if (argReleaseVersion != null) {
       logger.detail('Using release version $argReleaseVersion from argument.');
       releaseVersion = argReleaseVersion;

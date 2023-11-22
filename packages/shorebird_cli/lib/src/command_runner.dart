@@ -5,6 +5,7 @@ import 'package:args/command_runner.dart';
 import 'package:cli_completion/cli_completion.dart';
 import 'package:mason_logger/mason_logger.dart';
 import 'package:scoped/scoped.dart';
+import 'package:shorebird_cli/src/args.dart';
 import 'package:shorebird_cli/src/commands/commands.dart';
 import 'package:shorebird_cli/src/flutter_artifacts.dart';
 import 'package:shorebird_cli/src/logger.dart';
@@ -31,12 +32,12 @@ class ShorebirdCliCommandRunner extends CompletionCommandRunner<int> {
   ShorebirdCliCommandRunner() : super(executableName, description) {
     argParser
       ..addFlag(
-        'version',
+        ArgsKey.version,
         negatable: false,
         help: 'Print the current version.',
       )
       ..addFlag(
-        'verbose',
+        ArgsKey.verbose,
         abbr: 'v',
         help: 'Noisy logging, including all shell commands executed.',
         callback: (verbose) {
@@ -46,13 +47,13 @@ class ShorebirdCliCommandRunner extends CompletionCommandRunner<int> {
         },
       )
       ..addOption(
-        'local-engine-src-path',
+        ArgsKey.localEngineSrcPath,
         hide: true,
         help: 'Path to your engine src directory, if you are building Flutter '
             'locally.',
       )
       ..addOption(
-        'local-engine',
+        ArgsKey.localEngine,
         hide: true,
         help: 'Name of a build output within the engine out directory, if you '
             'are building Flutter locally.',
@@ -83,8 +84,9 @@ class ShorebirdCliCommandRunner extends CompletionCommandRunner<int> {
 
       // Set up our context before running the command.
       final engineConfig = EngineConfig(
-        localEngineSrcPath: topLevelResults['local-engine-src-path'] as String?,
-        localEngine: topLevelResults['local-engine'] as String?,
+        localEngineSrcPath:
+            topLevelResults[ArgsKey.localEngineSrcPath] as String?,
+        localEngine: topLevelResults[ArgsKey.localEngine] as String?,
       );
       final process = ShorebirdProcess(engineConfig: engineConfig);
       final flutterArtifacts = engineConfig.localEngineSrcPath != null
@@ -152,7 +154,7 @@ ${lightCyan.wrap('shorebird release android -- --no-pub lib/main.dart')}''';
 
     // Run the command or show version
     final int? exitCode;
-    if (topLevelResults['version'] == true) {
+    if (topLevelResults[ArgsKey.version] == true) {
       final flutterVersion = await _tryGetFlutterVersion();
       final shorebirdFlutterPrefix = StringBuffer('Flutter');
       if (flutterVersion != null) {

@@ -7,6 +7,7 @@ import 'package:path/path.dart' as p;
 import 'package:platform/platform.dart';
 import 'package:scoped/scoped.dart';
 import 'package:shorebird_cli/src/archive_analysis/archive_analysis.dart';
+import 'package:shorebird_cli/src/args.dart';
 import 'package:shorebird_cli/src/code_push_client_wrapper.dart';
 import 'package:shorebird_cli/src/command.dart';
 import 'package:shorebird_cli/src/config/shorebird_yaml.dart';
@@ -32,19 +33,19 @@ class PatchIosFrameworkCommand extends ShorebirdCommand
         _archiveDiffer = archiveDiffer ?? IosArchiveDiffer() {
     argParser
       ..addOption(
-        'release-version',
+        ArgsKey.releaseVersion,
         help: '''
 The version of the associated release (e.g. "1.0.0"). This should be the version
 of the iOS app that is using this module.''',
       )
       ..addFlag(
-        'force',
+        ArgsKey.force,
         abbr: 'f',
         help: 'Patch without confirmation if there are no errors.',
         negatable: false,
       )
       ..addFlag(
-        'dry-run',
+        ArgsKey.dryRun,
         abbr: 'n',
         negatable: false,
         help: 'Validate but do not upload the patch.',
@@ -74,11 +75,11 @@ of the iOS app that is using this module.''',
       return e.exitCode.code;
     }
 
-    final force = results['force'] == true;
-    final dryRun = results['dry-run'] == true;
+    final force = results[ArgsKey.force] == true;
+    final dryRun = results[ArgsKey.dryRun] == true;
 
     if (force && dryRun) {
-      logger.err('Cannot use both --force and --dry-run.');
+      logger.err('Cannot use both --${ArgsKey.force} and --${ArgsKey.dryRun}.');
       return ExitCode.usage.code;
     }
 
@@ -96,7 +97,7 @@ of the iOS app that is using this module.''',
       return ExitCode.success.code;
     }
 
-    final releaseVersion = results['release-version'] as String? ??
+    final releaseVersion = results[ArgsKey.releaseVersion] as String? ??
         await _promptForReleaseVersion(releases);
 
     final release = releases.firstWhereOrNull(

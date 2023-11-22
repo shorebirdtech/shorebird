@@ -6,6 +6,7 @@ import 'package:mason_logger/mason_logger.dart';
 import 'package:path/path.dart' as p;
 import 'package:platform/platform.dart';
 import 'package:shorebird_cli/src/archive_analysis/archive_analysis.dart';
+import 'package:shorebird_cli/src/args.dart';
 import 'package:shorebird_cli/src/code_push_client_wrapper.dart';
 import 'package:shorebird_cli/src/command.dart';
 import 'package:shorebird_cli/src/config/config.dart';
@@ -37,45 +38,45 @@ class PatchIosCommand extends ShorebirdCommand
         _archiveDiffer = archiveDiffer ?? IosArchiveDiffer() {
     argParser
       ..addOption(
-        'target',
+        ArgsKey.target,
         abbr: 't',
         help: 'The main entrypoint file of the application.',
       )
       ..addOption(
-        'flavor',
+        ArgsKey.flavor,
         help: 'The product flavor to use when building the app.',
       )
       ..addOption(
-        'release-version',
+        ArgsKey.releaseVersion,
         help: '''
 The version of the release being patched (e.g. "1.0.0+1").
         
 If this option is not provided, the version number will be determined from the patch artifact.''',
       )
       ..addFlag(
-        'codesign',
+        ArgsKey.codesign,
         help: 'Codesign the application bundle.',
         defaultsTo: true,
       )
       ..addFlag(
-        'force',
+        ArgsKey.force,
         abbr: 'f',
         help: 'Patch without confirmation if there are no errors.',
         negatable: false,
       )
       ..addFlag(
-        'dry-run',
+        ArgsKey.dryRun,
         abbr: 'n',
         negatable: false,
         help: 'Validate but do not upload the patch.',
       )
       ..addFlag(
-        'staging',
+        ArgsKey.staging,
         negatable: false,
         help: 'Whether to publish the patch to the staging environment.',
       )
       ..addFlag(
-        'use-linker',
+        ArgsKey.useLinker,
         negatable: false,
         hide: true,
         help: 'Whether to use the new linker when building the patch.',
@@ -107,19 +108,19 @@ If this option is not provided, the version number will be determined from the p
 
     showiOSStatusWarning();
 
-    final force = results['force'] == true;
-    final dryRun = results['dry-run'] == true;
-    final isStaging = results['staging'] == true;
-    final useLinker = results['use-linker'] == true;
+    final force = results[ArgsKey.force] == true;
+    final dryRun = results[ArgsKey.dryRun] == true;
+    final isStaging = results[ArgsKey.staging] == true;
+    final useLinker = results[ArgsKey.useLinker] == true;
 
     if (force && dryRun) {
-      logger.err('Cannot use both --force and --dry-run.');
+      logger.err('Cannot use both --${ArgsKey.force} and --${ArgsKey.dryRun}.');
       return ExitCode.usage.code;
     }
 
     const arch = 'aarch64';
     const releasePlatform = ReleasePlatform.ios;
-    final flavor = results['flavor'] as String?;
+    final flavor = results[ArgsKey.flavor] as String?;
 
     final shorebirdYaml = shorebirdEnv.getShorebirdYaml()!;
     final appId = shorebirdYaml.getAppId(flavor: flavor);
@@ -145,7 +146,7 @@ If this option is not provided, the version number will be determined from the p
 
     final plist = Plist(file: plistFile);
     final String releaseVersion;
-    final argReleaseVersion = results['release-version'] as String?;
+    final argReleaseVersion = results[ArgsKey.releaseVersion] as String?;
     if (argReleaseVersion != null) {
       logger.detail('Using release version $argReleaseVersion from argument.');
       releaseVersion = argReleaseVersion;
@@ -308,9 +309,9 @@ ${summary.join('\n')}
       );
 
   Future<void> _buildPatch() async {
-    final target = results['target'] as String?;
-    final flavor = results['flavor'] as String?;
-    final shouldCodesign = results['codesign'] == true;
+    final target = results[ArgsKey.target] as String?;
+    final flavor = results[ArgsKey.flavor] as String?;
+    final shouldCodesign = results[ArgsKey.codesign] == true;
     final buildProgress = logger.progress('Building patch');
     try {
       // If buildIpa is called with a different codesign value than the release

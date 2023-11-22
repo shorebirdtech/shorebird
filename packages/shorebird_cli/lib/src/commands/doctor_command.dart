@@ -1,6 +1,7 @@
 import 'package:mason_logger/mason_logger.dart';
 import 'package:shorebird_cli/src/android_sdk.dart';
 import 'package:shorebird_cli/src/android_studio.dart';
+import 'package:shorebird_cli/src/args.dart';
 import 'package:shorebird_cli/src/command.dart';
 import 'package:shorebird_cli/src/doctor.dart';
 import 'package:shorebird_cli/src/executables/executables.dart';
@@ -19,13 +20,13 @@ class DoctorCommand extends ShorebirdCommand {
   DoctorCommand() {
     argParser
       ..addFlag(
-        'fix',
+        ArgsKey.fix,
         abbr: 'f',
         help: 'Fix issues where possible.',
         negatable: false,
       )
       ..addFlag(
-        'verbose',
+        ArgsKey.verbose,
         abbr: 'v',
         help: 'Enable verbose output.',
         negatable: false,
@@ -40,8 +41,8 @@ class DoctorCommand extends ShorebirdCommand {
 
   @override
   Future<int> run() async {
-    final verbose = results['verbose'] == true;
-    final shouldFix = results['fix'] == true;
+    final verbose = results[ArgsKey.verbose] == true;
+    final shouldFix = results[ArgsKey.fix] == true;
     final flutterVersion = await _tryGetFlutterVersion();
     final output = StringBuffer();
     final shorebirdFlutterPrefix = StringBuffer('Flutter');

@@ -3,6 +3,7 @@ import 'dart:io';
 import 'package:collection/collection.dart';
 import 'package:mason_logger/mason_logger.dart';
 import 'package:path/path.dart' as p;
+import 'package:shorebird_cli/src/args.dart';
 import 'package:shorebird_cli/src/code_push_client_wrapper.dart';
 import 'package:shorebird_cli/src/command.dart';
 import 'package:shorebird_cli/src/config/config.dart';
@@ -146,7 +147,7 @@ Please make sure you are running "shorebird init" from within your Flutter proje
       logger
         ..err('A "shorebird.yaml" file already exists and seems up-to-date.')
         ..info(
-          '''If you want to reinitialize Shorebird, please run ${lightCyan.wrap('shorebird init --force')}.''',
+          '''If you want to reinitialize Shorebird, please run ${lightCyan.wrap('shorebird init --${ArgsKey.force}')}.''',
         );
       return ExitCode.software.code;
     }

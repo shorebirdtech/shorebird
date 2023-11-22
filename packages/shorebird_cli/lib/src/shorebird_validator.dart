@@ -1,6 +1,7 @@
 import 'package:collection/collection.dart';
 import 'package:mason_logger/mason_logger.dart';
 import 'package:scoped/scoped.dart';
+import 'package:shorebird_cli/src/args.dart';
 import 'package:shorebird_cli/src/auth/auth.dart';
 import 'package:shorebird_cli/src/logger.dart';
 import 'package:shorebird_cli/src/platform.dart';
@@ -133,7 +134,7 @@ class ShorebirdValidator {
     final fixableIssues = issues.where((issue) => issue.fix != null);
     if (fixableIssues.isNotEmpty) {
       logger.info(
-        '''${fixableIssues.length} issue${fixableIssues.length == 1 ? '' : 's'} can be fixed automatically with ${lightCyan.wrap('shorebird doctor --fix')}.''',
+        '''${fixableIssues.length} issue${fixableIssues.length == 1 ? '' : 's'} can be fixed automatically with ${lightCyan.wrap('shorebird doctor --${ArgsKey.fix}')}.''',
       );
     }
   }

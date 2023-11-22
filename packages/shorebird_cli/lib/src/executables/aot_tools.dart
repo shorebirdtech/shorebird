@@ -1,5 +1,6 @@
 import 'package:path/path.dart' as p;
 import 'package:scoped/scoped.dart';
+import 'package:shorebird_cli/src/args.dart';
 import 'package:shorebird_cli/src/cache.dart';
 import 'package:shorebird_cli/src/process.dart';
 
@@ -36,9 +37,9 @@ class AotTools {
     final result = await _exec(
       [
         'link',
-        '--base=$base',
-        '--patch=$patch',
-        '--analyze-snapshot=$analyzeSnapshot',
+        '--${ArgsKey.base}=$base',
+        '--${ArgsKey.patch}=$patch',
+        '--${ArgsKey.analyzeSnapshot}=$analyzeSnapshot',
       ],
       workingDirectory: workingDirectory,
     );

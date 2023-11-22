@@ -1,5 +1,6 @@
 import 'package:path/path.dart' as p;
 import 'package:scoped/scoped.dart';
+import 'package:shorebird_cli/src/args.dart';
 import 'package:shorebird_cli/src/cache.dart';
 import 'package:shorebird_cli/src/executables/java.dart';
 import 'package:shorebird_cli/src/process.dart';
@@ -41,10 +42,10 @@ class Bundletool {
     final result = await _exec(
       [
         'build-apks',
-        '--overwrite',
-        '--bundle=$bundle',
-        '--output=$output',
-        '--mode=universal',
+        '--${ArgsKey.overwrite}',
+        '--${ArgsKey.bundle}=$bundle',
+        '--${ArgsKey.output}=$output',
+        '--${ArgsKey.mode}=universal',
       ],
     );
     if (result.exitCode != 0) {
@@ -63,9 +64,9 @@ class Bundletool {
   }) async {
     final args = [
       'install-apks',
-      '--apks=$apks',
-      '--allow-downgrade',
-      if (deviceId != null) '--device-id=$deviceId',
+      '--${ArgsKey.apks}=$apks',
+      '--${ArgsKey.allowDowngrade}',
+      if (deviceId != null) '--${ArgsKey.deviceId}=$deviceId',
     ];
     final result = await _exec(args);
     if (result.exitCode != 0) {
@@ -79,8 +80,8 @@ class Bundletool {
       [
         'dump',
         'manifest',
-        '--bundle=$appBundlePath',
-        '--xpath',
+        '--${ArgsKey.bundle}=$appBundlePath',
+        '--${ArgsKey.xpath}',
         '/manifest/@package',
       ],
     );
@@ -100,8 +101,8 @@ class Bundletool {
       [
         'dump',
         'manifest',
-        '--bundle=$appBundlePath',
-        '--xpath',
+        '--${ArgsKey.bundle}=$appBundlePath',
+        '--${ArgsKey.xpath}',
         '/manifest/@android:versionName',
       ],
     );
@@ -121,8 +122,8 @@ class Bundletool {
       [
         'dump',
         'manifest',
-        '--bundle=$appBundlePath',
-        '--xpath',
+        '--${ArgsKey.bundle}=$appBundlePath',
+        '--${ArgsKey.xpath}',
         '/manifest/@android:versionCode',
       ],
     );

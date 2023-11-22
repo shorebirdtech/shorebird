@@ -4,6 +4,7 @@ import 'dart:io';
 import 'package:mason_logger/mason_logger.dart';
 import 'package:path/path.dart' as p;
 import 'package:scoped/scoped.dart';
+import 'package:shorebird_cli/src/args.dart';
 import 'package:shorebird_cli/src/process.dart';
 
 /// {@template missing_ios_project_exception}
@@ -19,7 +20,7 @@ class MissingIOSProjectException implements Exception {
   String toString() {
     return '''
 Could not find an iOS project in $projectPath.
-To add iOS, run "flutter create . --platforms ios"''';
+To add iOS, run "flutter create . --${ArgsKey.platforms} ios"''';
   }
 }
 

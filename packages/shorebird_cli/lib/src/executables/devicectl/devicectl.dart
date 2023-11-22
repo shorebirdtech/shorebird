@@ -6,6 +6,7 @@ import 'package:io/io.dart';
 import 'package:json_path/json_path.dart';
 import 'package:path/path.dart' as p;
 import 'package:scoped/scoped.dart';
+import 'package:shorebird_cli/src/args.dart';
 import 'package:shorebird_cli/src/executables/devicectl/apple_device.dart';
 import 'package:shorebird_cli/src/executables/devicectl/nserror.dart';
 import 'package:shorebird_cli/src/executables/idevicesyslog.dart';
@@ -57,7 +58,7 @@ class Devicectl {
     try {
       final result = await process.run(executableName, [
         ...baseArgs,
-        '--version',
+        '--${ArgsKey.version}',
       ]);
       return result.exitCode == ExitCode.success.code;
     } catch (_) {
@@ -97,7 +98,7 @@ class Devicectl {
       'device',
       'install',
       'app',
-      '--device',
+      '--${ArgsKey.device}',
       deviceId,
       runnerApp.path,
     ];
@@ -149,7 +150,7 @@ class Devicectl {
       'device',
       'process',
       'launch',
-      '--device',
+      '--{$ArgsKey.device}',
       deviceId,
       bundleId,
     ];
@@ -215,7 +216,7 @@ class Devicectl {
       ...baseArgs,
       'list',
       'devices',
-      '--timeout',
+      '--${ArgsKey.timeout}',
       '${timeout.inSeconds}',
     ];
 
@@ -250,7 +251,7 @@ class Devicectl {
 
     final result = await process.run(executableName, [
       ...args,
-      '--json-output',
+      '--${ArgsKey.jsonOutput}',
       jsonOutputFile.path,
     ]);
 

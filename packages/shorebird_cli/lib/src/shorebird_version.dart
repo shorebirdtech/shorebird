@@ -2,6 +2,7 @@ import 'dart:io';
 
 import 'package:path/path.dart' as p;
 import 'package:scoped/scoped.dart';
+import 'package:shorebird_cli/src/args.dart';
 import 'package:shorebird_cli/src/executables/executables.dart';
 
 /// A reference to a [ShorebirdVersion] instance.
@@ -29,7 +30,7 @@ class ShorebirdVersion {
   /// Exits if HEAD isn't pointing to a branch, or there is no upstream.
   Future<String> fetchLatestGitHash() async {
     // Fetch upstream branch's commits and tags
-    await git.fetch(directory: _workingDirectory, args: ['--tags']);
+    await git.fetch(directory: _workingDirectory, args: ['--${ArgsKey.tags}']);
     // Get the latest commit revision of the upstream
     return git.revParse(revision: '@{upstream}', directory: _workingDirectory);
   }
@@ -51,7 +52,7 @@ class ShorebirdVersion {
     return git.reset(
       revision: revision,
       directory: _workingDirectory,
-      args: ['--hard'],
+      args: ['--${ArgsKey.hard}'],
     );
   }
 }

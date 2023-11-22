@@ -3,6 +3,7 @@ import 'dart:io';
 import 'package:mason_logger/mason_logger.dart';
 import 'package:meta/meta.dart';
 import 'package:scoped/scoped.dart';
+import 'package:shorebird_cli/src/args.dart';
 import 'package:shorebird_cli/src/logger.dart';
 import 'package:shorebird_cli/src/shorebird_env.dart';
 
@@ -195,13 +196,13 @@ class ShorebirdProcess {
       // Ideally we'd use this for all commands, but not all commands recognize
       // `--verbose` and some error if it's provided.
       if (logger.level == Level.verbose) {
-        resolvedArguments = [...resolvedArguments, '--verbose'];
+        resolvedArguments = [...resolvedArguments, '--${ArgsKey.verbose}'];
       }
 
       if (useVendedFlutter && engineConfig.localEngine != null) {
         resolvedArguments = [
-          '--local-engine-src-path=${engineConfig.localEngineSrcPath}',
-          '--local-engine=${engineConfig.localEngine}',
+          '--${ArgsKey.localEngineSrcPath}=${engineConfig.localEngineSrcPath}',
+          '--${ArgsKey.localEngine}=${engineConfig.localEngine}',
           ...resolvedArguments,
         ];
       }

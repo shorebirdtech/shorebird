@@ -3,6 +3,7 @@ import 'dart:io';
 import 'package:collection/collection.dart';
 import 'package:path/path.dart' as p;
 import 'package:scoped/scoped.dart';
+import 'package:shorebird_cli/src/args.dart';
 import 'package:shorebird_cli/src/executables/executables.dart';
 import 'package:shorebird_cli/src/platform.dart';
 import 'package:shorebird_cli/src/process.dart';
@@ -21,7 +22,7 @@ class MissingAndroidProjectException implements Exception {
   String toString() {
     return '''
 Could not find an android project in $projectPath.
-To add android, run "flutter create . --platforms android"''';
+To add android, run "flutter create . --${ArgsKey.platforms} android"''';
   }
 }
 
@@ -73,7 +74,11 @@ class Gradlew {
     final executablePath = executableFile.path;
     final result = await process.run(
       executablePath,
-      ['app:tasks', '--all', '--console=auto'],
+      [
+        'app:tasks',
+        '--${ArgsKey.all}',
+        '--${ArgsKey.console}=auto',
+      ],
       runInShell: true,
       workingDirectory: p.dirname(executablePath),
       environment: {

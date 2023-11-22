@@ -9,6 +9,7 @@ import 'package:platform/platform.dart';
 import 'package:propertylistserialization/propertylistserialization.dart';
 import 'package:scoped/scoped.dart';
 import 'package:shorebird_cli/src/archive_analysis/archive_analysis.dart';
+import 'package:shorebird_cli/src/args.dart';
 import 'package:shorebird_cli/src/auth/auth.dart';
 import 'package:shorebird_cli/src/code_push_client_wrapper.dart';
 import 'package:shorebird_cli/src/commands/commands.dart';
@@ -507,9 +508,9 @@ flutter:
 
     group('when both export-method and export-options-plist are provided', () {
       setUp(() {
-        when(() => argResults.wasParsed(exportMethodArgName)).thenReturn(true);
+        when(() => argResults.wasParsed(ArgsKey.exportMethod)).thenReturn(true);
         when(
-          () => argResults[exportOptionsPlistArgName],
+          () => argResults[ArgsKey.exportOptionsPlist],
         ).thenReturn('/path/to/export.plist');
       });
 
@@ -528,10 +529,10 @@ flutter:
 
     group('when export-method is provided', () {
       setUp(() {
-        when(() => argResults.wasParsed(exportMethodArgName)).thenReturn(true);
-        when(() => argResults[exportMethodArgName])
+        when(() => argResults.wasParsed(ArgsKey.exportMethod)).thenReturn(true);
+        when(() => argResults[ArgsKey.exportMethod])
             .thenReturn(ExportMethod.enterprise.argName);
-        when(() => argResults[exportOptionsPlistArgName]).thenReturn(null);
+        when(() => argResults[ArgsKey.exportOptionsPlist]).thenReturn(null);
       });
 
       test('generates an export options plist with that export method',
@@ -549,7 +550,7 @@ flutter:
         final exportOptionsPlistFile = File(
           capturedArgs
               .whereType<String>()
-              .firstWhere((arg) => arg.contains(exportOptionsPlistArgName))
+              .firstWhere((arg) => arg.contains(ArgsKey.exportOptionsPlist))
               .split('=')
               .last,
         );
@@ -564,7 +565,7 @@ flutter:
     group('when export-options-plist is provided', () {
       group('when file does not exist', () {
         setUp(() {
-          when(() => argResults[exportOptionsPlistArgName])
+          when(() => argResults[ArgsKey.exportOptionsPlist])
               .thenReturn('/does/not/exist');
         });
 
@@ -597,7 +598,7 @@ flutter:
             p.join(projectRoot.path, 'export.plist'),
           )..writeAsStringSync(exportPlistContent);
           when(
-            () => argResults[exportOptionsPlistArgName],
+            () => argResults[ArgsKey.exportOptionsPlist],
           ).thenReturn(exportPlistFile.path);
           final exitCode = await runWithOverrides(command.run);
 
@@ -614,8 +615,9 @@ flutter:
     group('when neither export-method nor export-options-plist is provided',
         () {
       setUp(() {
-        when(() => argResults.wasParsed(exportMethodArgName)).thenReturn(false);
-        when(() => argResults[exportOptionsPlistArgName]).thenReturn(null);
+        when(() => argResults.wasParsed(ArgsKey.exportMethod))
+            .thenReturn(false);
+        when(() => argResults[ArgsKey.exportOptionsPlist]).thenReturn(null);
       });
 
       test('generates an export options plist with app-store export method',
@@ -633,7 +635,7 @@ flutter:
         final exportOptionsPlistFile = File(
           capturedArgs
               .whereType<String>()
-              .firstWhere((arg) => arg.contains(exportOptionsPlistArgName))
+              .firstWhere((arg) => arg.contains(ArgsKey.exportOptionsPlist))
               .split('=')
               .last,
         );

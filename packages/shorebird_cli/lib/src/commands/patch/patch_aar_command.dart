@@ -9,6 +9,7 @@ import 'package:mason_logger/mason_logger.dart';
 import 'package:path/path.dart' as p;
 import 'package:scoped/scoped.dart';
 import 'package:shorebird_cli/src/archive_analysis/archive_analysis.dart';
+import 'package:shorebird_cli/src/args.dart';
 import 'package:shorebird_cli/src/artifact_manager.dart';
 import 'package:shorebird_cli/src/cache.dart';
 import 'package:shorebird_cli/src/code_push_client_wrapper.dart';
@@ -45,25 +46,25 @@ class PatchAarCommand extends ShorebirdCommand
             retryingHttpClient(LoggingClient(httpClient: http.Client())) {
     argParser
       ..addOption(
-        'build-number',
+        ArgsKey.buildNumber,
         help: 'The build number of the module (e.g. "1.0.0").',
         defaultsTo: '1.0',
       )
       ..addOption(
-        'release-version',
+        ArgsKey.releaseVersion,
         help: '''
 The version of the associated release (e.g. "1.0.0"). This should be the version
 of the Android app that is using this module.''',
         mandatory: true,
       )
       ..addFlag(
-        'force',
+        ArgsKey.force,
         abbr: 'f',
         help: 'Patch without confirmation if there are no errors.',
         negatable: false,
       )
       ..addFlag(
-        'dry-run',
+        ArgsKey.dryRun,
         abbr: 'n',
         negatable: false,
         help: 'Validate but do not upload the patch.',
@@ -93,11 +94,11 @@ of the Android app that is using this module.''',
       return e.exitCode.code;
     }
 
-    final force = results['force'] == true;
-    final dryRun = results['dry-run'] == true;
+    final force = results[ArgsKey.force] == true;
+    final dryRun = results[ArgsKey.dryRun] == true;
 
     if (force && dryRun) {
-      logger.err('Cannot use both --force and --dry-run.');
+      logger.err('Cannot use both --${ArgsKey.force} and --${ArgsKey.dryRun}.');
       return ExitCode.usage.code;
     }
 
@@ -118,7 +119,7 @@ of the Android app that is using this module.''',
       return ExitCode.success.code;
     }
 
-    final releaseVersion = results['release-version'] as String? ??
+    final releaseVersion = results[ArgsKey.releaseVersion] as String? ??
         await _promptForReleaseVersion(releases);
 
     final release = releases.firstWhereOrNull(
@@ -183,7 +184,7 @@ Please re-run the release command for this version or create a new release.''');
       return ExitCode.software.code;
     }
 
-    final buildNumber = results['build-number'] as String;
+    final buildNumber = results[ArgsKey.buildNumber] as String;
     final buildProgress = logger.progress('Building patch');
     try {
       await runScoped(

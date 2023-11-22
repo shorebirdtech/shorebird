@@ -6,6 +6,7 @@ import 'package:mason_logger/mason_logger.dart';
 import 'package:meta/meta.dart';
 import 'package:path/path.dart' as p;
 import 'package:scoped/scoped.dart';
+import 'package:shorebird_cli/src/args.dart';
 import 'package:shorebird_cli/src/logger.dart';
 import 'package:shorebird_cli/src/process.dart';
 import 'package:shorebird_cli/src/shorebird_env.dart';
@@ -158,10 +159,10 @@ Or run on an iOS simulator without code signing
       launchProcess = await process.start(
         iosDeployExecutable.path,
         [
-          '--debug',
-          if (deviceId != null) ...['--id', deviceId],
+          '--${ArgsKey.debug}',
+          if (deviceId != null) ...['--${ArgsKey.id}', deviceId],
           '-r', // uninstall the app before reinstalling and clear app data
-          '--bundle',
+          '--${ArgsKey.bundle}',
           bundlePath,
         ],
       );
@@ -299,7 +300,7 @@ Or run on an iOS simulator without code signing
     if (_isInstalled) return;
 
     const executable = 'flutter';
-    const arguments = ['precache', '--ios'];
+    const arguments = ['precache', '--${ArgsKey.ios}'];
     final progress = logger.progress('Installing ios-deploy');
 
     final result = await process.run(executable, arguments);

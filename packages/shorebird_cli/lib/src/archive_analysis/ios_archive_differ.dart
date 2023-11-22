@@ -6,6 +6,7 @@ import 'package:crypto/crypto.dart';
 import 'package:path/path.dart' as p;
 import 'package:shorebird_cli/src/archive_analysis/archive_differ.dart';
 import 'package:shorebird_cli/src/archive_analysis/file_set_diff.dart';
+import 'package:shorebird_cli/src/args.dart';
 
 /// Finds differences between two IPAs or zipped Xcframeworks.
 ///
@@ -99,7 +100,13 @@ class IosArchiveDiffer extends ArchiveDiffer {
 
     if (Platform.isMacOS) {
       // coverage:ignore-start
-      Process.runSync('codesign', ['--remove-signature', outPath]);
+      Process.runSync(
+        'codesign',
+        [
+          '--${ArgsKey.removeSignature}',
+          outPath,
+        ],
+      );
       // coverage:ignore-end
     }
 
@@ -121,7 +128,15 @@ class IosArchiveDiffer extends ArchiveDiffer {
 
     if (Platform.isMacOS) {
       // coverage:ignore-start
-      Process.runSync('assetutil', ['--info', outPath, '-o', assetInfoPath]);
+      Process.runSync(
+        'assetutil',
+        [
+          '--${ArgsKey.info}',
+          outPath,
+          '-o',
+          assetInfoPath,
+        ],
+      );
       // coverage:ignore-end
     } else {
       // This is just for testing

@@ -3,6 +3,7 @@ import 'dart:io';
 
 import 'package:path/path.dart' as p;
 import 'package:scoped/scoped.dart';
+import 'package:shorebird_cli/src/args.dart';
 import 'package:shorebird_cli/src/executables/executables.dart';
 import 'package:shorebird_cli/src/process.dart';
 import 'package:shorebird_cli/src/shorebird_env.dart';
@@ -38,8 +39,8 @@ class ShorebirdFlutter {
       url: flutterGitUrl,
       outputDirectory: targetDirectory.path,
       args: [
-        '--filter=tree:0',
-        '--no-checkout',
+        '--${ArgsKey.filter}=tree:0',
+        '--${ArgsKey.noCheckout}',
       ],
     );
 
@@ -51,7 +52,10 @@ class ShorebirdFlutter {
   Future<bool> isPorcelain({String? revision}) async {
     final status = await git.status(
       directory: _workingDirectory(revision: revision),
-      args: ['--untracked-files=no', '--porcelain'],
+      args: [
+        '--${ArgsKey.untrackedFiles}=no',
+        '--${ArgsKey.porcelain}',
+      ],
     );
     return status.isEmpty;
   }
@@ -61,7 +65,7 @@ class ShorebirdFlutter {
   /// Returns `null` if the version check succeeds but the version cannot be
   /// parsed.
   Future<String?> getSystemVersion() async {
-    const args = ['--version'];
+    const args = ['--${ArgsKey.version}'];
     final result = await process.run(
       executable,
       args,

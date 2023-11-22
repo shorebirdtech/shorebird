@@ -5,6 +5,7 @@ import 'package:archive/archive_io.dart';
 import 'package:io/io.dart' show copyPath;
 import 'package:mason_logger/mason_logger.dart';
 import 'package:path/path.dart' as p;
+import 'package:shorebird_cli/src/args.dart';
 import 'package:shorebird_cli/src/code_push_client_wrapper.dart';
 import 'package:shorebird_cli/src/command.dart';
 import 'package:shorebird_cli/src/config/config.dart';
@@ -32,7 +33,7 @@ class ReleaseAarCommand extends ShorebirdCommand
   }) : _unzipFn = unzipFn ?? extractFileToDisk {
     argParser
       ..addOption(
-        'release-version',
+        ArgsKey.releaseVersion,
         help: '''
 The version of the associated release (e.g. "1.0.0"). This should be the version
 of the Android app that is using this module.''',
@@ -41,12 +42,12 @@ of the Android app that is using this module.''',
       // `flutter build aar` defaults to a build number of 1.0, so we do the
       // same.
       ..addOption(
-        'build-number',
+        ArgsKey.buildNumber,
         help: 'The build number of the aar',
         defaultsTo: '1.0',
       )
       ..addFlag(
-        'force',
+        ArgsKey.force,
         abbr: 'f',
         help: 'Release without confirmation if there are no errors.',
         negatable: false,
@@ -82,8 +83,8 @@ make smaller updates to your app.
     }
 
     const platform = ReleasePlatform.android;
-    final buildNumber = results['build-number'] as String;
-    final releaseVersion = results['release-version'] as String;
+    final buildNumber = results[ArgsKey.buildNumber] as String;
+    final releaseVersion = results[ArgsKey.releaseVersion] as String;
     final buildProgress = logger.progress('Building aar');
 
     final shorebirdYaml = shorebirdEnv.getShorebirdYaml()!;
@@ -126,7 +127,7 @@ ${styleBold.wrap(lightGreen.wrap('🚀 Ready to create a new release!'))}
 ${summary.join('\n')}
 ''');
 
-    final force = results['force'] == true;
+    final force = results[ArgsKey.force] == true;
     final needConfirmation = !force;
     if (needConfirmation) {
       final confirm = logger.confirm('Would you like to continue?');

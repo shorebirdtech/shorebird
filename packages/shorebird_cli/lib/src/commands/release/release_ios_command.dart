@@ -4,6 +4,7 @@ import 'package:mason_logger/mason_logger.dart';
 import 'package:path/path.dart' as p;
 import 'package:platform/platform.dart';
 import 'package:shorebird_cli/src/archive_analysis/archive_analysis.dart';
+import 'package:shorebird_cli/src/args.dart';
 import 'package:shorebird_cli/src/code_push_client_wrapper.dart';
 import 'package:shorebird_cli/src/command.dart';
 import 'package:shorebird_cli/src/config/config.dart';
@@ -16,9 +17,6 @@ import 'package:shorebird_cli/src/shorebird_env.dart';
 import 'package:shorebird_cli/src/shorebird_flutter.dart';
 import 'package:shorebird_cli/src/shorebird_validator.dart';
 import 'package:shorebird_code_push_client/shorebird_code_push_client.dart';
-
-const exportMethodArgName = 'export-method';
-const exportOptionsPlistArgName = 'export-options-plist';
 
 /// {@template export_method}
 /// The method used to export the IPA.
@@ -60,21 +58,21 @@ class ReleaseIosCommand extends ShorebirdCommand
   ReleaseIosCommand() {
     argParser
       ..addOption(
-        'target',
+        ArgsKey.target,
         abbr: 't',
         help: 'The main entrypoint file of the application.',
       )
       ..addOption(
-        'flavor',
+        ArgsKey.flavor,
         help: 'The product flavor to use when building the app.',
       )
       ..addFlag(
-        'codesign',
+        ArgsKey.codesign,
         help: 'Codesign the application bundle.',
         defaultsTo: true,
       )
       ..addOption(
-        exportMethodArgName,
+        ArgsKey.exportMethod,
         defaultsTo: ExportMethod.appStore.argName,
         allowed: ExportMethod.values.map((e) => e.argName),
         help: 'Specify how the IPA will be distributed.',
@@ -84,12 +82,12 @@ class ReleaseIosCommand extends ShorebirdCommand
         },
       )
       ..addOption(
-        exportOptionsPlistArgName,
+        ArgsKey.exportOptionsPlist,
         help:
             '''Export an IPA with these options. See "xcodebuild -h" for available exportOptionsPlist keys.''',
       )
       ..addFlag(
-        'force',
+        ArgsKey.force,
         abbr: 'f',
         help: 'Release without confirmation if there are no errors.',
         negatable: false,
@@ -121,28 +119,28 @@ make smaller updates to your app.
 
     showiOSStatusWarning();
 
-    final codesign = results['codesign'] == true;
+    final codesign = results[ArgsKey.codesign] == true;
     if (!codesign) {
       logger
         ..info(
           '''Building for device with codesigning disabled. You will have to manually codesign before deploying to device.''',
         )
         ..warn(
-          '''shorebird preview will not work for releases created with "--no-codesign". However, you can still preview your app by signing the generated .xcarchive in Xcode.''',
+          '''shorebird preview will not work for releases created with "--${ArgsKey.noCodesign}". However, you can still preview your app by signing the generated .xcarchive in Xcode.''',
         );
     }
 
-    final exportPlistArg = results[exportOptionsPlistArgName] as String?;
-    if (exportPlistArg != null && results.wasParsed(exportMethodArgName)) {
+    final exportPlistArg = results[ArgsKey.exportOptionsPlist] as String?;
+    if (exportPlistArg != null && results.wasParsed(ArgsKey.exportMethod)) {
       logger.err(
-        '''Cannot specify both --$exportMethodArgName and --$exportOptionsPlistArgName.''',
+        '''Cannot specify both --${ArgsKey.exportMethod} and --${ArgsKey.exportOptionsPlist}.''',
       );
       return ExitCode.usage.code;
     }
     final exportOptionsPlist = exportPlistArg != null
         ? File(exportPlistArg)
         : _createExportOptionsPlist(
-            exportMethod: results[exportMethodArgName] as String,
+            exportMethod: results[ArgsKey.exportMethod] as String,
           );
     try {
       _validateExportOptionsPlist(exportOptionsPlist);
@@ -152,8 +150,8 @@ make smaller updates to your app.
     }
 
     const releasePlatform = ReleasePlatform.ios;
-    final flavor = results['flavor'] as String?;
-    final target = results['target'] as String?;
+    final flavor = results[ArgsKey.flavor] as String?;
+    final target = results[ArgsKey.target] as String?;
     final shorebirdYaml = shorebirdEnv.getShorebirdYaml()!;
     final appId = shorebirdYaml.getAppId(flavor: flavor);
     final app = await codePushClientWrapper.getApp(appId: appId);
@@ -232,7 +230,7 @@ ${styleBold.wrap(lightGreen.wrap('🚀 Ready to create a new release!'))}
 ${summary.join('\n')}
 ''');
 
-    final force = results['force'] == true;
+    final force = results[ArgsKey.force] == true;
     final needConfirmation = !force && !shorebirdEnv.isRunningOnCI;
     if (needConfirmation) {
       final confirm = logger.confirm('Would you like to continue?');

@@ -2,6 +2,7 @@ import 'dart:io';
 
 import 'package:mason_logger/mason_logger.dart';
 import 'package:path/path.dart' as p;
+import 'package:shorebird_cli/src/args.dart';
 import 'package:shorebird_cli/src/code_push_client_wrapper.dart';
 import 'package:shorebird_cli/src/command.dart';
 import 'package:shorebird_cli/src/config/shorebird_yaml.dart';
@@ -24,16 +25,16 @@ class ReleaseAndroidCommand extends ShorebirdCommand
   ReleaseAndroidCommand() {
     argParser
       ..addOption(
-        'target',
+        ArgsKey.target,
         abbr: 't',
         help: 'The main entrypoint file of the application.',
       )
       ..addOption(
-        'flavor',
+        ArgsKey.flavor,
         help: 'The product flavor to use when building the app.',
       )
       ..addOption(
-        'artifact',
+        ArgsKey.artifact,
         help: 'They type of artifact to generate.',
         allowed: ['aab', 'apk'],
         defaultsTo: 'aab',
@@ -43,14 +44,14 @@ class ReleaseAndroidCommand extends ShorebirdCommand
         },
       )
       ..addFlag(
-        'split-per-abi',
+        ArgsKey.splitPerAbi,
         help: 'Whether to split the APKs per ABIs. '
             'To learn more, see: https://developer.android.com/studio/build/configure-apk-splits#configure-abi-split',
         hide: true,
         negatable: false,
       )
       ..addFlag(
-        'force',
+        ArgsKey.force,
         abbr: 'f',
         help: 'Release without confirmation if there are no errors.',
         negatable: false,
@@ -80,10 +81,10 @@ make smaller updates to your app.
     }
 
     const platform = ReleasePlatform.android;
-    final flavor = results['flavor'] as String?;
-    final target = results['target'] as String?;
-    final generateApk = results['artifact'] as String == 'apk';
-    final splitApk = results['split-per-abi'] == true;
+    final flavor = results[ArgsKey.flavor] as String?;
+    final target = results[ArgsKey.target] as String?;
+    final generateApk = results[ArgsKey.artifact] as String == 'apk';
+    final splitApk = results[ArgsKey.splitPerAbi] == true;
     if (generateApk && splitApk) {
       logger
         ..err(
@@ -178,7 +179,7 @@ ${styleBold.wrap(lightGreen.wrap('🚀 Ready to create a new release!'))}
 ${summary.join('\n')}
 ''');
 
-    final force = results['force'] == true;
+    final force = results[ArgsKey.force] == true;
     final needConfirmation = !force && !shorebirdEnv.isRunningOnCI;
     if (needConfirmation) {
       final confirm = logger.confirm('Would you like to continue?');
