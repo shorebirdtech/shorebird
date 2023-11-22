@@ -48,16 +48,12 @@ final cacheRef = create(Cache.new);
 Cache get cache => read(cacheRef);
 
 class Cache {
-  Cache({
-    http.Client? httpClient,
-    this.extractArchive = _defaultArchiveExtractor,
-  }) : httpClient = httpClient ?? retryingHttpClient(http.Client()) {
+  Cache({this.extractArchive = _defaultArchiveExtractor}) {
     registerArtifact(PatchArtifact(cache: this, platform: platform));
     registerArtifact(BundleToolArtifact(cache: this, platform: platform));
     registerArtifact(AotToolsArtifact(cache: this, platform: platform));
   }
 
-  final http.Client httpClient;
   final ArchiveExtracter extractArchive;
 
   void registerArtifact(CachedArtifact artifact) => _artifacts.add(artifact);
@@ -150,7 +146,7 @@ abstract class CachedArtifact {
     final request = http.Request('GET', Uri.parse(storageUrl));
     final http.StreamedResponse response;
     try {
-      response = await cache.httpClient.send(request);
+      response = await httpClient.send(request);
     } catch (error) {
       throw CacheUpdateFailure(
         '''

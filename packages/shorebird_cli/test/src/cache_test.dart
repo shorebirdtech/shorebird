@@ -8,6 +8,7 @@ import 'package:path/path.dart' as p;
 import 'package:platform/platform.dart';
 import 'package:scoped/scoped.dart';
 import 'package:shorebird_cli/src/cache.dart';
+import 'package:shorebird_cli/src/http_client/http_client.dart';
 import 'package:shorebird_cli/src/logger.dart';
 import 'package:shorebird_cli/src/platform.dart';
 import 'package:shorebird_cli/src/process.dart';
@@ -28,7 +29,7 @@ class TestCachedArtifact extends CachedArtifact {
 }
 
 void main() {
-  group('Cache', () {
+  group(Cache, () {
     const shorebirdEngineRevision = 'test-revision';
 
     late Directory shorebirdRoot;
@@ -45,6 +46,7 @@ void main() {
         () => body(),
         values: {
           cacheRef.overrideWith(() => cache),
+          httpClientRef.overrideWith(() => httpClient),
           loggerRef.overrideWith(() => logger),
           platformRef.overrideWith(() => platform),
           processRef.overrideWith(() => shorebirdProcess),
@@ -88,7 +90,7 @@ void main() {
         ),
       );
 
-      cache = runWithOverrides(() => Cache(httpClient: httpClient));
+      cache = runWithOverrides(Cache.new);
     });
 
     test('can be instantiated w/out args', () {
