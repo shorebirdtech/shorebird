@@ -161,52 +161,6 @@ void main() {
       });
     });
 
-    group('genSnapshotFile', () {
-      test('returns correct path', () {
-        expect(
-          runWithOverrides(() => shorebirdEnv.genSnapshotFile.path),
-          equals(
-            p.join(
-              shorebirdRoot.path,
-              'bin',
-              'cache',
-              'flutter',
-              flutterRevision,
-              'bin',
-              'cache',
-              'artifacts',
-              'engine',
-              'ios-release',
-              'gen_snapshot_arm64',
-            ),
-          ),
-        );
-      });
-    });
-
-    group('analyzeSnapshotFile', () {
-      test('returns correct path', () {
-        expect(
-          runWithOverrides(() => shorebirdEnv.analyzeSnapshotFile.path),
-          equals(
-            p.join(
-              shorebirdRoot.path,
-              'bin',
-              'cache',
-              'flutter',
-              flutterRevision,
-              'bin',
-              'cache',
-              'artifacts',
-              'engine',
-              'ios-release',
-              'analyze_snapshot_arm64',
-            ),
-          ),
-        );
-      });
-    });
-
     group('getPubspecYamlFile', () {
       test('returns correct file', () {
         final tempDir = Directory.systemTemp.createTempSync();

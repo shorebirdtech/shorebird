@@ -13,6 +13,7 @@ import 'package:shorebird_cli/src/commands/patch/patch.dart';
 import 'package:shorebird_cli/src/config/config.dart';
 import 'package:shorebird_cli/src/deployment_track.dart';
 import 'package:shorebird_cli/src/doctor.dart';
+import 'package:shorebird_cli/src/flutter_artifacts.dart';
 import 'package:shorebird_cli/src/logger.dart';
 import 'package:shorebird_cli/src/os/operating_system_interface.dart';
 import 'package:shorebird_cli/src/patch_diff_checker.dart';
@@ -80,6 +81,7 @@ flutter:
     late Directory projectRoot;
     late Directory flutterDirectory;
     late File genSnapshotFile;
+    late FlutterArtifacts flutterArtifacts;
     late Doctor doctor;
     late IosArchiveDiffer archiveDiffer;
     late PatchDiffChecker patchDiffChecker;
@@ -105,6 +107,7 @@ flutter:
           authRef.overrideWith(() => auth),
           codePushClientWrapperRef.overrideWith(() => codePushClientWrapper),
           doctorRef.overrideWith(() => doctor),
+          flutterArtifactsRef.overrideWith(() => flutterArtifacts),
           loggerRef.overrideWith(() => logger),
           osInterfaceRef.overrideWith(() => operatingSystemInterface),
           patchDiffCheckerRef.overrideWith(() => patchDiffChecker),
@@ -171,6 +174,7 @@ flutter:
       archiveDiffer = MockIosArchiveDiffer();
       codePushClientWrapper = MockCodePushClientWrapper();
       doctor = MockDoctor();
+      flutterArtifacts = MockFlutterArtifacts();
       patchDiffChecker = MockPatchDiffChecker();
       platform = MockPlatform();
       shorebirdRoot = Directory.systemTemp.createTempSync();
@@ -243,7 +247,11 @@ flutter:
         () => shorebirdEnv.getShorebirdProjectRoot(),
       ).thenReturn(projectRoot);
       when(() => shorebirdEnv.flutterDirectory).thenReturn(flutterDirectory);
-      when(() => shorebirdEnv.genSnapshotFile).thenReturn(genSnapshotFile);
+      when(
+        () => flutterArtifacts.getArtifactPath(
+          artifact: FlutterArtifact.genSnapshot,
+        ),
+      ).thenReturn(genSnapshotFile.path);
       when(() => shorebirdEnv.flutterRevision).thenReturn(flutterRevision);
       when(() => shorebirdEnv.isRunningOnCI).thenReturn(false);
       when(

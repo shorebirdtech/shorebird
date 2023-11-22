@@ -994,7 +994,7 @@ flutter:
                 ),
               ),
             ),
-        () => doctor.runValidators(any(), applyFixes: true)
+        () => doctor.runValidators(any(), applyFixes: true),
       ]);
     });
   });
