@@ -15,6 +15,7 @@ import 'package:shorebird_cli/src/code_push_client_wrapper.dart';
 import 'package:shorebird_cli/src/commands/commands.dart';
 import 'package:shorebird_cli/src/config/config.dart';
 import 'package:shorebird_cli/src/deployment_track.dart';
+import 'package:shorebird_cli/src/http_client/http_client.dart';
 import 'package:shorebird_cli/src/logger.dart';
 import 'package:shorebird_cli/src/os/operating_system_interface.dart';
 import 'package:shorebird_cli/src/patch_diff_checker.dart';
@@ -111,6 +112,7 @@ void main() {
           cacheRef.overrideWith(() => cache),
           codePushClientWrapperRef.overrideWith(() => codePushClientWrapper),
           engineConfigRef.overrideWith(() => const EngineConfig.empty()),
+          httpClientRef.overrideWith(() => httpClient),
           loggerRef.overrideWith(() => logger),
           osInterfaceRef.overrideWith(() => operatingSystemInterface),
           patchDiffCheckerRef.overrideWith(() => patchDiffChecker),
@@ -229,12 +231,8 @@ void main() {
           ..writeAsStringSync('diff');
         return diffPath;
       });
-      when(
-        () => artifactManager.downloadFile(
-          any(),
-          httpClient: any(named: 'httpClient'),
-        ),
-      ).thenAnswer((_) async => '');
+      when(() => artifactManager.downloadFile(any()))
+          .thenAnswer((_) async => '');
       when(
         () => archiveDiffer.changedFiles(any(), any()),
       ).thenReturn(FileSetDiff.empty());
@@ -327,7 +325,6 @@ void main() {
       command = runWithOverrides(
         () => PatchAarCommand(
           archiveDiffer: archiveDiffer,
-          httpClient: httpClient,
           unzipFn: (_, __) async {},
         ),
       )..testArgResults = argResults;
@@ -500,7 +497,6 @@ Please re-run the release command for this version or create a new release.'''),
       when(
         () => artifactManager.downloadFile(
           any(),
-          httpClient: any(named: 'httpClient'),
           outputPath: any(named: 'outputPath'),
         ),
       ).thenThrow(exception);

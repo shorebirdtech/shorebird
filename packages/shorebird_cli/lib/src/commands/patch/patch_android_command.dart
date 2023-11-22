@@ -1,7 +1,6 @@
 import 'dart:io';
 
 import 'package:crypto/crypto.dart';
-import 'package:http/http.dart' as http;
 import 'package:mason_logger/mason_logger.dart';
 import 'package:path/path.dart' as p;
 import 'package:shorebird_cli/src/archive_analysis/archive_analysis.dart';
@@ -14,7 +13,6 @@ import 'package:shorebird_cli/src/config/shorebird_yaml.dart';
 import 'package:shorebird_cli/src/deployment_track.dart';
 import 'package:shorebird_cli/src/doctor.dart';
 import 'package:shorebird_cli/src/formatters/formatters.dart';
-import 'package:shorebird_cli/src/http_client/http_client.dart';
 import 'package:shorebird_cli/src/logger.dart';
 import 'package:shorebird_cli/src/patch_diff_checker.dart';
 import 'package:shorebird_cli/src/shorebird_build_mixin.dart';
@@ -34,12 +32,9 @@ class PatchAndroidCommand extends ShorebirdCommand
   /// {@macro patch_android_command}
   PatchAndroidCommand({
     HashFunction? hashFn,
-    http.Client? httpClient,
     AndroidArchiveDiffer? archiveDiffer,
   })  : _archiveDiffer = archiveDiffer ?? AndroidArchiveDiffer(),
-        _hashFn = hashFn ?? ((m) => sha256.convert(m).toString()),
-        _httpClient = httpClient ??
-            retryingHttpClient(LoggingClient(httpClient: http.Client())) {
+        _hashFn = hashFn ?? ((m) => sha256.convert(m).toString()) {
     argParser
       ..addOption(
         'target',
@@ -85,7 +80,6 @@ If this option is not provided, the version number will be determined from the p
 
   final ArchiveDiffer _archiveDiffer;
   final HashFunction _hashFn;
-  final http.Client _httpClient;
 
   @override
   Future<int> run() async {
@@ -229,7 +223,6 @@ Current Flutter Revision: $originalFlutterRevision
       try {
         final releaseArtifactPath = await artifactManager.downloadFile(
           Uri.parse(releaseArtifact.value.url),
-          httpClient: _httpClient,
         );
         releaseArtifactPaths[releaseArtifact.key] = releaseArtifactPath;
       } catch (error) {

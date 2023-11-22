@@ -4,7 +4,6 @@ import 'dart:isolate';
 
 import 'package:archive/archive_io.dart';
 import 'package:collection/collection.dart';
-import 'package:http/http.dart' as http;
 import 'package:mason_logger/mason_logger.dart';
 import 'package:path/path.dart' as p;
 import 'package:shorebird_cli/src/artifact_manager.dart';
@@ -14,7 +13,6 @@ import 'package:shorebird_cli/src/command.dart';
 import 'package:shorebird_cli/src/deployment_track.dart';
 import 'package:shorebird_cli/src/executables/devicectl/apple_device.dart';
 import 'package:shorebird_cli/src/executables/executables.dart';
-import 'package:shorebird_cli/src/http_client/http_client.dart';
 import 'package:shorebird_cli/src/logger.dart';
 import 'package:shorebird_cli/src/platform.dart';
 import 'package:shorebird_cli/src/shorebird_validator.dart';
@@ -27,10 +25,7 @@ import 'package:yaml_edit/yaml_edit.dart';
 /// {@endtemplate}
 class PreviewCommand extends ShorebirdCommand {
   /// {@macro preview_command}
-  PreviewCommand({
-    http.Client? httpClient,
-  }) : _httpClient = httpClient ??
-            retryingHttpClient(LoggingClient(httpClient: http.Client())) {
+  PreviewCommand() {
     argParser
       ..addOption(
         'device-id',
@@ -70,8 +65,6 @@ class PreviewCommand extends ShorebirdCommand {
           .toList();
     }
   }
-
-  final http.Client _httpClient;
 
   @override
   String get name => 'preview';
@@ -220,7 +213,6 @@ class PreviewCommand extends ShorebirdCommand {
 
         await artifactManager.downloadFile(
           Uri.parse(releaseAabArtifact.url),
-          httpClient: _httpClient,
           outputPath: aabFile.path,
         );
         downloadArtifactProgress.complete();
@@ -325,7 +317,6 @@ class PreviewCommand extends ShorebirdCommand {
 
         final archivePath = await artifactManager.downloadFile(
           Uri.parse(releaseRunnerArtifact.url),
-          httpClient: _httpClient,
         );
         await artifactManager.extractZip(
           zipFile: File(archivePath),

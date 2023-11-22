@@ -6,6 +6,7 @@ import 'package:http/http.dart' as http;
 import 'package:path/path.dart' as p;
 import 'package:scoped/scoped.dart';
 import 'package:shorebird_cli/src/cache.dart';
+import 'package:shorebird_cli/src/http_client/http_client.dart';
 import 'package:shorebird_cli/src/process.dart';
 
 /// A reference to a [ArtifactManager] instance.
@@ -51,7 +52,6 @@ Failed to create diff (exit code ${result.exitCode}).
   /// the path to the downloaded file.
   Future<String> downloadFile(
     Uri uri, {
-    required http.Client httpClient,
     String? outputPath,
   }) async {
     final request = http.Request('GET', uri);

@@ -27,15 +27,6 @@ PatchDiffChecker get patchDiffChecker => read(patchDiffCheckerRef);
 /// Verifies that a patch can successfully be applied to a release artifact.
 /// {@endtemplate}
 class PatchDiffChecker {
-  /// {@macro patch_verifier}
-  PatchDiffChecker({http.Client? httpClient})
-      // coverage:ignore-start
-      : _httpClient = httpClient ??
-            retryingHttpClient(LoggingClient(httpClient: http.Client()));
-  // coverage:ignore-end
-
-  final http.Client _httpClient;
-
   /// Zips the contents of [localArtifactDirectory] to a temporary file and
   /// forwards to [confirmUnpatchableDiffsIfNecessary].
   Future<void> zipAndConfirmUnpatchableDiffsIfNecessary({
@@ -69,7 +60,7 @@ class PatchDiffChecker {
         logger.progress('Verifying patch can be applied to release');
 
     final request = http.Request('GET', releaseArtifactUrl);
-    final response = await _httpClient.send(request);
+    final response = await httpClient.send(request);
 
     if (response.statusCode != HttpStatus.ok) {
       progress.fail();

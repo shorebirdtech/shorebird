@@ -4,7 +4,6 @@ import 'dart:io';
 import 'package:archive/archive_io.dart';
 import 'package:collection/collection.dart';
 import 'package:crypto/crypto.dart';
-import 'package:http/http.dart' as http;
 import 'package:mason_logger/mason_logger.dart';
 import 'package:path/path.dart' as p;
 import 'package:scoped/scoped.dart';
@@ -16,7 +15,6 @@ import 'package:shorebird_cli/src/command.dart';
 import 'package:shorebird_cli/src/config/config.dart';
 import 'package:shorebird_cli/src/deployment_track.dart';
 import 'package:shorebird_cli/src/formatters/file_size_formatter.dart';
-import 'package:shorebird_cli/src/http_client/http_client.dart';
 import 'package:shorebird_cli/src/logger.dart';
 import 'package:shorebird_cli/src/patch_diff_checker.dart';
 import 'package:shorebird_cli/src/shorebird_artifact_mixin.dart';
@@ -36,13 +34,10 @@ class PatchAarCommand extends ShorebirdCommand
   PatchAarCommand({
     HashFunction? hashFn,
     UnzipFn? unzipFn,
-    http.Client? httpClient,
     AndroidArchiveDiffer? archiveDiffer,
   })  : _archiveDiffer = archiveDiffer ?? AndroidArchiveDiffer(),
         _hashFn = hashFn ?? ((m) => sha256.convert(m).toString()),
-        _unzipFn = unzipFn ?? extractFileToDisk,
-        _httpClient = httpClient ??
-            retryingHttpClient(LoggingClient(httpClient: http.Client())) {
+        _unzipFn = unzipFn ?? extractFileToDisk {
     argParser
       ..addOption(
         'build-number',
@@ -80,7 +75,6 @@ of the Android app that is using this module.''',
   final AndroidArchiveDiffer _archiveDiffer;
   final HashFunction _hashFn;
   final UnzipFn _unzipFn;
-  final http.Client _httpClient;
 
   @override
   Future<int> run() async {
@@ -177,7 +171,6 @@ Please re-run the release command for this version or create a new release.''');
     try {
       releaseArtifactPaths = await _downloadReleaseArtifacts(
         releaseArtifacts: releaseArtifacts,
-        httpClient: _httpClient,
       );
     } catch (_) {
       return ExitCode.software.code;
@@ -336,7 +329,6 @@ ${summary.join('\n')}
 
   Future<Map<Arch, String>> _downloadReleaseArtifacts({
     required Map<Arch, ReleaseArtifact> releaseArtifacts,
-    required http.Client httpClient,
   }) async {
     final releaseArtifactPaths = <Arch, String>{};
     final downloadReleaseArtifactProgress = logger.progress(
@@ -346,7 +338,6 @@ ${summary.join('\n')}
       try {
         final releaseArtifactPath = await artifactManager.downloadFile(
           Uri.parse(releaseArtifact.value.url),
-          httpClient: httpClient,
         );
         releaseArtifactPaths[releaseArtifact.key] = releaseArtifactPath;
       } catch (error) {
