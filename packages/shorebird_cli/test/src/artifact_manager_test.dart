@@ -7,6 +7,7 @@ import 'package:path/path.dart' as p;
 import 'package:scoped/scoped.dart';
 import 'package:shorebird_cli/src/artifact_manager.dart';
 import 'package:shorebird_cli/src/cache.dart';
+import 'package:shorebird_cli/src/http_client/http_client.dart';
 import 'package:shorebird_cli/src/process.dart';
 import 'package:test/test.dart';
 
@@ -17,6 +18,7 @@ void main() {
   group(ArtifactManager, () {
     late Cache cache;
     late Directory cacheArtifactDirectory;
+    late http.Client httpClient;
     late ShorebirdProcessResult patchProcessResult;
     late ShorebirdProcess shorebirdProcess;
     late ArtifactManager artifactManager;
@@ -26,6 +28,7 @@ void main() {
         body,
         values: {
           cacheRef.overrideWith(() => cache),
+          httpClientRef.overrideWith(() => httpClient),
           processRef.overrideWith(() => shorebirdProcess),
         },
       );
@@ -38,12 +41,16 @@ void main() {
     setUp(() {
       cacheArtifactDirectory = Directory.systemTemp.createTempSync();
       cache = MockCache();
+      httpClient = MockHttpClient();
       patchProcessResult = MockProcessResult();
       shorebirdProcess = MockShorebirdProcess();
       artifactManager = ArtifactManager();
 
       when(() => cache.getArtifactDirectory(any()))
           .thenReturn(cacheArtifactDirectory);
+      when(() => httpClient.send(any())).thenAnswer(
+        (_) async => http.StreamedResponse(const Stream.empty(), HttpStatus.ok),
+      );
       when(
         () => shorebirdProcess.run(
           any(that: endsWith('patch')),
@@ -116,17 +123,6 @@ void main() {
     });
 
     group('downloadFile', () {
-      late http.Client httpClient;
-
-      setUp(() {
-        httpClient = MockHttpClient();
-
-        when(() => httpClient.send(any())).thenAnswer(
-          (_) async =>
-              http.StreamedResponse(const Stream.empty(), HttpStatus.ok),
-        );
-      });
-
       test('throws exception when file download fails', () async {
         const error = 'Not Found';
         when(() => httpClient.send(any())).thenAnswer(
@@ -141,7 +137,6 @@ void main() {
           () => runWithOverrides(
             () async => artifactManager.downloadFile(
               Uri.parse('https://example.com'),
-              httpClient: httpClient,
             ),
           ),
           throwsA(
@@ -158,7 +153,6 @@ void main() {
         final result = runWithOverrides(
           () async => artifactManager.downloadFile(
             Uri.parse('https://example.com'),
-            httpClient: httpClient,
           ),
         );
 
@@ -174,7 +168,6 @@ void main() {
         final result = runWithOverrides(
           () async => artifactManager.downloadFile(
             Uri.parse('https://example.com'),
-            httpClient: httpClient,
             outputPath: outFile.path,
           ),
         );

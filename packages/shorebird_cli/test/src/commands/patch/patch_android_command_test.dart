@@ -17,6 +17,7 @@ import 'package:shorebird_cli/src/config/config.dart';
 import 'package:shorebird_cli/src/deployment_track.dart';
 import 'package:shorebird_cli/src/doctor.dart';
 import 'package:shorebird_cli/src/executables/executables.dart';
+import 'package:shorebird_cli/src/http_client/http_client.dart';
 import 'package:shorebird_cli/src/logger.dart';
 import 'package:shorebird_cli/src/os/operating_system_interface.dart';
 import 'package:shorebird_cli/src/patch_diff_checker.dart';
@@ -127,6 +128,7 @@ flutter:
           codePushClientWrapperRef.overrideWith(() => codePushClientWrapper),
           doctorRef.overrideWith(() => doctor),
           engineConfigRef.overrideWith(() => const EngineConfig.empty()),
+          httpClientRef.overrideWith(() => httpClient),
           javaRef.overrideWith(() => java),
           loggerRef.overrideWith(() => logger),
           osInterfaceRef.overrideWith(() => operatingSystemInterface),
@@ -208,10 +210,7 @@ flutter:
       shorebirdFlutter = MockShorebirdFlutter();
       shorebirdValidator = MockShorebirdValidator();
       command = runWithOverrides(
-        () => PatchAndroidCommand(
-          archiveDiffer: archiveDiffer,
-          httpClient: httpClient,
-        ),
+        () => PatchAndroidCommand(archiveDiffer: archiveDiffer),
       )..testArgResults = argResults;
 
       when(() => shorebirdEnv.getShorebirdYaml()).thenReturn(shorebirdYaml);
@@ -251,12 +250,8 @@ flutter:
           ..writeAsStringSync('diff');
         return diffPath;
       });
-      when(
-        () => artifactManager.downloadFile(
-          any(),
-          httpClient: any(named: 'httpClient'),
-        ),
-      ).thenAnswer((_) async => '');
+      when(() => artifactManager.downloadFile(any()))
+          .thenAnswer((_) async => '');
       when(
         () => archiveDiffer.changedFiles(any(), any()),
       ).thenReturn(FileSetDiff.empty());
@@ -596,7 +591,6 @@ Please re-run the release command for this version or create a new release.'''),
       when(
         () => artifactManager.downloadFile(
           any(),
-          httpClient: any(named: 'httpClient'),
           outputPath: any(named: 'outputPath'),
         ),
       ).thenThrow(exception);

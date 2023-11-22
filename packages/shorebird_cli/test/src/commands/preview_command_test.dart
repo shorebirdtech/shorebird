@@ -16,6 +16,7 @@ import 'package:shorebird_cli/src/commands/commands.dart';
 import 'package:shorebird_cli/src/deployment_track.dart';
 import 'package:shorebird_cli/src/executables/devicectl/apple_device.dart';
 import 'package:shorebird_cli/src/executables/executables.dart';
+import 'package:shorebird_cli/src/http_client/http_client.dart';
 import 'package:shorebird_cli/src/logger.dart';
 import 'package:shorebird_cli/src/platform.dart';
 import 'package:shorebird_cli/src/shorebird_validator.dart';
@@ -57,6 +58,7 @@ void main() {
             authRef.overrideWith(() => auth),
             cacheRef.overrideWith(() => cache),
             codePushClientWrapperRef.overrideWith(() => codePushClientWrapper),
+            httpClientRef.overrideWith(() => httpClient),
             loggerRef.overrideWith(() => logger),
             platformRef.overrideWith(() => platform),
             shorebirdValidatorRef.overrideWith(() => shorebirdValidator),
@@ -239,6 +241,7 @@ void main() {
               codePushClientWrapperRef.overrideWith(
                 () => codePushClientWrapper,
               ),
+              httpClientRef.overrideWith(() => httpClient),
               loggerRef.overrideWith(() => logger),
               platformRef.overrideWith(() => platform),
               shorebirdValidatorRef.overrideWith(() => shorebirdValidator),
@@ -270,7 +273,6 @@ void main() {
         when(
           () => artifactManager.downloadFile(
             any(),
-            httpClient: any(named: 'httpClient'),
             outputPath: any(named: 'outputPath'),
           ),
         ).thenAnswer((_) async => '');
@@ -354,7 +356,6 @@ void main() {
         when(
           () => artifactManager.downloadFile(
             any(),
-            httpClient: any(named: 'httpClient'),
             outputPath: any(named: 'outputPath'),
           ),
         ).thenThrow(exception);
@@ -709,6 +710,7 @@ void main() {
               codePushClientWrapperRef
                   .overrideWith(() => codePushClientWrapper),
               devicectlRef.overrideWith(() => devicectl),
+              httpClientRef.overrideWith(() => httpClient),
               iosDeployRef.overrideWith(() => iosDeploy),
               loggerRef.overrideWith(() => logger),
               platformRef.overrideWith(() => platform),
@@ -725,10 +727,7 @@ void main() {
         when(() => appleDevice.name).thenReturn('iPhone 12');
         when(() => argResults['platform']).thenReturn(releasePlatform.name);
         when(
-          () => artifactManager.downloadFile(
-            any(),
-            httpClient: any(named: 'httpClient'),
-          ),
+          () => artifactManager.downloadFile(any()),
         ).thenAnswer((_) async => '');
         when(
           () => artifactManager.extractZip(
@@ -798,10 +797,7 @@ void main() {
           () async {
         final exception = Exception('oops');
         when(
-          () => artifactManager.downloadFile(
-            any(),
-            httpClient: any(named: 'httpClient'),
-          ),
+          () => artifactManager.downloadFile(any()),
         ).thenThrow(exception);
         final result = await runWithOverrides(command.run);
         expect(result, equals(ExitCode.software.code));

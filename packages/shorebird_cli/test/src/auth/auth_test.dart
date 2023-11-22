@@ -11,6 +11,7 @@ import 'package:platform/platform.dart';
 import 'package:scoped/scoped.dart';
 import 'package:shorebird_cli/src/auth/auth.dart';
 import 'package:shorebird_cli/src/command_runner.dart';
+import 'package:shorebird_cli/src/http_client/http_client.dart';
 import 'package:shorebird_cli/src/logger.dart';
 import 'package:shorebird_cli/src/platform.dart';
 import 'package:shorebird_code_push_client/shorebird_code_push_client.dart';
@@ -22,7 +23,13 @@ import '../mocks.dart';
 void main() {
   group('scoped', () {
     test('creates instance with default constructor', () {
-      final instance = runScoped(() => auth, values: {authRef});
+      final instance = runScoped(
+        () => auth,
+        values: {
+          authRef,
+          httpClientRef.overrideWith(MockHttpClient.new),
+        },
+      );
       expect(
         instance.credentialsFilePath,
         p.join(applicationConfigHome(executableName), 'credentials.json'),
@@ -65,6 +72,7 @@ void main() {
       return runScoped(
         body,
         values: {
+          httpClientRef.overrideWith(() => httpClient),
           loggerRef.overrideWith(() => logger),
           platformRef.overrideWith(() => platform),
         },

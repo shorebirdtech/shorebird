@@ -7,6 +7,7 @@ import 'package:path/path.dart' as p;
 import 'package:scoped/scoped.dart';
 import 'package:shorebird_cli/src/archive_analysis/archive_analysis.dart';
 import 'package:shorebird_cli/src/archive_analysis/archive_differ.dart';
+import 'package:shorebird_cli/src/http_client/http_client.dart';
 import 'package:shorebird_cli/src/logger.dart';
 import 'package:shorebird_cli/src/patch_diff_checker.dart';
 import 'package:shorebird_cli/src/shorebird_env.dart';
@@ -35,6 +36,7 @@ void main() {
       return runScoped(
         body,
         values: {
+          httpClientRef.overrideWith(() => httpClient),
           loggerRef.overrideWith(() => logger),
           shorebirdEnvRef.overrideWith(() => shorebirdEnv),
         },
@@ -54,7 +56,7 @@ void main() {
       logger = MockLogger();
       progress = MockProgress();
       shorebirdEnv = MockShorebirdEnv();
-      patchDiffChecker = PatchDiffChecker(httpClient: httpClient);
+      patchDiffChecker = PatchDiffChecker();
 
       when(() => archiveDiffer.changedFiles(any(), any()))
           .thenReturn(FileSetDiff.empty());
