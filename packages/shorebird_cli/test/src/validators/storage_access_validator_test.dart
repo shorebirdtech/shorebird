@@ -46,7 +46,7 @@ void main() {
       group('when storage url is accessible', () {
         setUp(() {
           when(() => httpClient.get(any())).thenAnswer(
-            (_) async => http.Response('', HttpStatus.ok),
+            (_) async => http.Response('hello', HttpStatus.ok),
           );
         });
 
