@@ -12,7 +12,7 @@ class StorageAccessValidator extends Validator {
       'https://storage.googleapis.com/shorebird_doctor/hello',
     );
     final result = await httpClient.get(testFileUrl);
-    if (result.statusCode != HttpStatus.ok) {
+    if (result.statusCode != HttpStatus.ok || result.body != 'hello') {
       return [
         const ValidationIssue(
           severity: ValidationIssueSeverity.error,
