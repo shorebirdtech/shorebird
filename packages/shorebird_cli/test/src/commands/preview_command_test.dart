@@ -13,12 +13,14 @@ import 'package:shorebird_cli/src/auth/auth.dart';
 import 'package:shorebird_cli/src/cache.dart';
 import 'package:shorebird_cli/src/code_push_client_wrapper.dart';
 import 'package:shorebird_cli/src/commands/commands.dart';
+import 'package:shorebird_cli/src/config/shorebird_yaml.dart';
 import 'package:shorebird_cli/src/deployment_track.dart';
 import 'package:shorebird_cli/src/executables/devicectl/apple_device.dart';
 import 'package:shorebird_cli/src/executables/executables.dart';
 import 'package:shorebird_cli/src/http_client/http_client.dart';
 import 'package:shorebird_cli/src/logger.dart';
 import 'package:shorebird_cli/src/platform.dart';
+import 'package:shorebird_cli/src/shorebird_env.dart';
 import 'package:shorebird_cli/src/shorebird_validator.dart';
 import 'package:shorebird_code_push_client/shorebird_code_push_client.dart';
 import 'package:test/test.dart';
@@ -46,6 +48,7 @@ void main() {
     late Progress progress;
     late Release release;
     late ReleaseArtifact releaseArtifact;
+    late ShorebirdEnv shorebirdEnv;
     late ShorebirdValidator shorebirdValidator;
     late PreviewCommand command;
 
@@ -61,6 +64,7 @@ void main() {
             httpClientRef.overrideWith(() => httpClient),
             loggerRef.overrideWith(() => logger),
             platformRef.overrideWith(() => platform),
+            shorebirdEnvRef.overrideWith(() => shorebirdEnv),
             shorebirdValidatorRef.overrideWith(() => shorebirdValidator),
           },
         ),
@@ -103,6 +107,7 @@ void main() {
       progress = MockProgress();
       release = MockRelease();
       releaseArtifact = MockReleaseArtifact();
+      shorebirdEnv = MockShorebirdEnv();
       shorebirdValidator = MockShorebirdValidator();
       command = PreviewCommand()..testArgResults = argResults;
 
@@ -138,6 +143,7 @@ void main() {
       });
       when(() => logger.progress(any())).thenReturn(progress);
       when(() => progress.fail(any())).thenReturn(null);
+      when(() => shorebirdEnv.getShorebirdYaml()).thenReturn(null);
       when(
         () => shorebirdValidator.validatePreconditions(
           checkUserIsAuthenticated: any(named: 'checkUserIsAuthenticated'),
@@ -244,6 +250,7 @@ void main() {
               httpClientRef.overrideWith(() => httpClient),
               loggerRef.overrideWith(() => logger),
               platformRef.overrideWith(() => platform),
+              shorebirdEnvRef.overrideWith(() => shorebirdEnv),
               shorebirdValidatorRef.overrideWith(() => shorebirdValidator),
             },
           ),
@@ -513,6 +520,24 @@ void main() {
         verify(() => logger.err(output)).called(1);
       });
 
+      test('does not prompt or query for app when in a shorebird project',
+          () async {
+        when(() => shorebirdEnv.getShorebirdYaml())
+            .thenReturn(const ShorebirdYaml(appId: 'test-app-id'));
+        when(() => argResults['app-id']).thenReturn(null);
+
+        await runWithOverrides(command.run);
+
+        verifyNever(
+          () => logger.chooseOne<AppMetadata>(
+            'Which app would you like to preview?',
+            choices: any(named: 'choices'),
+            display: any(named: 'display'),
+          ),
+        );
+        verifyNever(() => codePushClientWrapper.getApps());
+      });
+
       test('queries for apps when app-id is not specified', () async {
         when(
           () => artifactManager.extractZip(
@@ -714,6 +739,7 @@ void main() {
               iosDeployRef.overrideWith(() => iosDeploy),
               loggerRef.overrideWith(() => logger),
               platformRef.overrideWith(() => platform),
+              shorebirdEnvRef.overrideWith(() => shorebirdEnv),
               shorebirdValidatorRef.overrideWith(() => shorebirdValidator),
             },
           ),
