@@ -1,6 +1,5 @@
-import 'package:mason_logger/mason_logger.dart';
-import 'package:shorebird_cli/src/platform.dart';
-import 'package:shorebird_cli/src/process.dart';
+import 'package:shorebird_cli/src/http_client/http_client.dart';
+import 'package:shorebird_cli/src/third_party/flutter_tools/lib/flutter_tools.dart';
 import 'package:shorebird_cli/src/validators/validators.dart';
 
 class StorageAccessValidator extends Validator {
@@ -9,15 +8,11 @@ class StorageAccessValidator extends Validator {
 
   @override
   Future<List<ValidationIssue>> validate() async {
-    final result = await process.run(
-      'ping',
-      [
-        // Execute a single ping.
-        if (platform.isWindows) ...['/n', '1'] else ...['-c', '1'],
-        'storage.googleapis.com',
-      ],
+    final testFileUrl = Uri.parse(
+      'https://storage.googleapis.com/shorebird_doctor/hello',
     );
-    if (result.exitCode != ExitCode.success.code) {
+    final result = await httpClient.get(testFileUrl);
+    if (result.statusCode != HttpStatus.ok || result.body != 'hello') {
       return [
         const ValidationIssue(
           severity: ValidationIssueSeverity.error,
