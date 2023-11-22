@@ -15,6 +15,7 @@ import 'package:shorebird_cli/src/executables/devicectl/apple_device.dart';
 import 'package:shorebird_cli/src/executables/executables.dart';
 import 'package:shorebird_cli/src/logger.dart';
 import 'package:shorebird_cli/src/platform.dart';
+import 'package:shorebird_cli/src/shorebird_env.dart';
 import 'package:shorebird_cli/src/shorebird_validator.dart';
 import 'package:shorebird_cli/src/third_party/flutter_tools/lib/flutter_tools.dart';
 import 'package:shorebird_code_push_client/shorebird_code_push_client.dart';
@@ -84,7 +85,9 @@ class PreviewCommand extends ShorebirdCommand {
       return error.exitCode.code;
     }
 
-    final appId = results['app-id'] as String? ?? await promptForApp();
+    final appId = results['app-id'] as String? ??
+        shorebirdEnv.getShorebirdYaml()?.appId ??
+        await promptForApp();
 
     if (appId == null) {
       logger.info('No apps found');
