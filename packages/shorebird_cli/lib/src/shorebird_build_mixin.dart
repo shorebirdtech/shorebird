@@ -334,8 +334,7 @@ Either run `flutter pub get` manually, or follow the steps in ${link(uri: Uri.pa
   }
 
   /// Creates an AOT snapshot of the given [appDillPath] at [outFilePath] and
-  /// returns the resulting file.
-  // TODO(bryanoltman): make this work with the --local-engine flag.
+  /// returns the resulting file.  
   Future<File> buildElfAotSnapshot({
     required String appDillPath,
     required String outFilePath,
