@@ -2,6 +2,18 @@
 
 This section contains past updates we've sent to customers via Discord.
 
+## 0.18.3 (November 27, 2023)
+
+- 🩹 Fixed `adb` not found when running `shorebird preview`
+- 👀 `shorebird preview` defaults to current app
+- 🩺 `shorebird doctor` improved `storage` reachability
+
+📚 Release notes can be found at https://github.com/shorebirdtech/shorebird/releases/tag/v0.18.3
+
+As always, you can upgrade using `shorebird upgrade`
+
+Please let us know if we can help!
+
 ## 0.18.2 (November 21, 2023)
 
 - 🩺 `shorebird doctor`
