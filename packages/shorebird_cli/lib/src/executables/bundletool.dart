@@ -1,5 +1,6 @@
 import 'package:path/path.dart' as p;
 import 'package:scoped/scoped.dart';
+import 'package:shorebird_cli/src/android_sdk.dart';
 import 'package:shorebird_cli/src/cache.dart';
 import 'package:shorebird_cli/src/executables/java.dart';
 import 'package:shorebird_cli/src/process.dart';
@@ -18,11 +19,13 @@ class Bundletool {
     final bundletool = p.join(cache.getArtifactDirectory(jar).path, jar);
     final javaHome = java.home;
     final javaExecutable = java.executable ?? 'java';
+    final androidSdkPath = androidSdk.path;
 
     return process.run(
       javaExecutable,
       ['-jar', bundletool, ...command],
       environment: {
+        if (androidSdkPath != null) 'ANDROID_HOME': androidSdkPath,
         if (javaHome != null) 'JAVA_HOME': javaHome,
       },
     );

@@ -3,6 +3,7 @@ import 'dart:io';
 import 'package:mocktail/mocktail.dart';
 import 'package:path/path.dart' as p;
 import 'package:scoped/scoped.dart';
+import 'package:shorebird_cli/src/android_sdk.dart';
 import 'package:shorebird_cli/src/cache.dart';
 import 'package:shorebird_cli/src/executables/executables.dart';
 import 'package:shorebird_cli/src/process.dart';
@@ -13,9 +14,11 @@ import '../mocks.dart';
 void main() {
   group(Bundletool, () {
     const appBundlePath = 'test-app-bundle.aab';
+    const androidSdkPath = 'test-android-sdk';
     const javaHome = 'test-java-home';
 
     late Directory workingDirectory;
+    late AndroidSdk androidSdk;
     late Cache cache;
     late Java java;
     late ShorebirdProcess process;
@@ -25,6 +28,7 @@ void main() {
       return runScoped(
         body,
         values: {
+          androidSdkRef.overrideWith(() => androidSdk),
           cacheRef.overrideWith(() => cache),
           javaRef.overrideWith(() => java),
           processRef.overrideWith(() => process),
@@ -34,11 +38,13 @@ void main() {
 
     setUp(() {
       workingDirectory = Directory.systemTemp.createTempSync('bundletool test');
+      androidSdk = MockAndroidSdk();
       cache = MockCache();
       java = MockJava();
       process = MockShorebirdProcess();
       bundletool = Bundletool();
 
+      when(() => androidSdk.path).thenReturn(androidSdkPath);
       when(() => cache.updateAll()).thenAnswer((_) async {});
       when(
         () => cache.getArtifactDirectory(any()),
@@ -116,6 +122,7 @@ void main() {
               '--mode=universal',
             ],
             environment: {
+              'ANDROID_HOME': androidSdkPath,
               'JAVA_HOME': javaHome,
             },
           ),
@@ -185,6 +192,7 @@ void main() {
               '--device-id=$deviceId',
             ],
             environment: {
+              'ANDROID_HOME': androidSdkPath,
               'JAVA_HOME': javaHome,
             },
           ),
@@ -253,6 +261,7 @@ void main() {
               '/manifest/@package',
             ],
             environment: {
+              'ANDROID_HOME': androidSdkPath,
               'JAVA_HOME': javaHome,
             },
           ),
@@ -321,6 +330,7 @@ void main() {
               '/manifest/@android:versionName',
             ],
             environment: {
+              'ANDROID_HOME': androidSdkPath,
               'JAVA_HOME': javaHome,
             },
           ),
@@ -388,6 +398,7 @@ void main() {
               '/manifest/@android:versionCode',
             ],
             environment: {
+              'ANDROID_HOME': androidSdkPath,
               'JAVA_HOME': javaHome,
             },
           ),
