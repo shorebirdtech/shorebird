@@ -8,6 +8,7 @@ import 'package:path/path.dart' as p;
 import 'package:scoped/scoped.dart';
 import 'package:shorebird_cli/src/auth/auth.dart';
 import 'package:shorebird_cli/src/config/config.dart';
+import 'package:shorebird_cli/src/http_client/http_client.dart';
 import 'package:shorebird_cli/src/logger.dart';
 import 'package:shorebird_cli/src/platform.dart';
 import 'package:shorebird_code_push_client/shorebird_code_push_client.dart';
@@ -17,7 +18,7 @@ import 'package:uuid/uuid.dart';
 R runWithOverrides<R>(R Function() body) {
   return runScoped(
     body,
-    values: {authRef, loggerRef, platformRef},
+    values: {authRef, httpClientRef, loggerRef, platformRef},
   );
 }
 
