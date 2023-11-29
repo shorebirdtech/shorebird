@@ -49,8 +49,8 @@ Failed to create diff (exit code ${result.exitCode}).
   }
 
   /// Downloads the file at the given [uri] to a temporary directory and returns
-  /// the path to the downloaded file.
-  Future<String> downloadFile(
+  /// the downloaded [File].
+  Future<File> downloadFile(
     Uri uri, {
     String? outputPath,
   }) async {
@@ -76,7 +76,7 @@ Failed to create diff (exit code ${result.exitCode}).
     }
 
     await outFile.openWrite().addStream(response.stream);
-    return outFile.path;
+    return outFile;
   }
 
   /// Extracts the [zipFile] to the [outputDirectory] directory in a separate

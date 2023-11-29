@@ -7,6 +7,7 @@ import 'package:path/path.dart' as p;
 import 'package:platform/platform.dart';
 import 'package:scoped/scoped.dart';
 import 'package:shorebird_cli/src/archive_analysis/archive_analysis.dart';
+import 'package:shorebird_cli/src/artifact_manager.dart';
 import 'package:shorebird_cli/src/auth/auth.dart';
 import 'package:shorebird_cli/src/code_push_client_wrapper.dart';
 import 'package:shorebird_cli/src/commands/patch/patch.dart';
@@ -74,8 +75,10 @@ flutter:
       createdAt: DateTime(2023),
       updatedAt: DateTime(2023),
     );
+    final releaseArtifactFile = File('release.artifact');
 
     late ArgResults argResults;
+    late ArtifactManager artifactManager;
     late CodePushClientWrapper codePushClientWrapper;
     late Directory shorebirdRoot;
     late Directory projectRoot;
@@ -104,6 +107,7 @@ flutter:
       return runScoped(
         body,
         values: {
+          artifactManagerRef.overrideWith(() => artifactManager),
           authRef.overrideWith(() => auth),
           codePushClientWrapperRef.overrideWith(() => codePushClientWrapper),
           doctorRef.overrideWith(() => doctor),
@@ -172,6 +176,7 @@ flutter:
     setUp(() {
       argResults = MockArgResults();
       archiveDiffer = MockIosArchiveDiffer();
+      artifactManager = MockArtifactManager();
       codePushClientWrapper = MockCodePushClientWrapper();
       doctor = MockDoctor();
       flutterArtifacts = MockFlutterArtifacts();
@@ -231,6 +236,8 @@ flutter:
       when(() => argResults['force']).thenReturn(false);
       when(() => argResults['release-version']).thenReturn(version);
       when(() => argResults.rest).thenReturn([]);
+      when(() => artifactManager.downloadFile(any()))
+          .thenAnswer((_) async => releaseArtifactFile);
       when(() => auth.isAuthenticated).thenReturn(true);
       when(() => doctor.iosCommandValidators).thenReturn([flutterValidator]);
       when(flutterValidator.validate).thenAnswer((_) async => []);
@@ -301,7 +308,7 @@ flutter:
       when(
         () => patchDiffChecker.zipAndConfirmUnpatchableDiffsIfNecessary(
           localArtifactDirectory: any(named: 'localArtifactDirectory'),
-          releaseArtifactUrl: any(named: 'releaseArtifactUrl'),
+          releaseArtifact: any(named: 'releaseArtifact'),
           archiveDiffer: archiveDiffer,
           force: any(named: 'force'),
         ),
@@ -615,7 +622,7 @@ Please re-run the release command for this version or create a new release.'''),
       when(
         () => patchDiffChecker.zipAndConfirmUnpatchableDiffsIfNecessary(
           localArtifactDirectory: any(named: 'localArtifactDirectory'),
-          releaseArtifactUrl: any(named: 'releaseArtifactUrl'),
+          releaseArtifact: any(named: 'releaseArtifact'),
           archiveDiffer: archiveDiffer,
           force: any(named: 'force'),
         ),
@@ -629,7 +636,7 @@ Please re-run the release command for this version or create a new release.'''),
       verify(
         () => patchDiffChecker.zipAndConfirmUnpatchableDiffsIfNecessary(
           localArtifactDirectory: any(named: 'localArtifactDirectory'),
-          releaseArtifactUrl: Uri.parse(xcframeworkArtifact.url),
+          releaseArtifact: releaseArtifactFile,
           archiveDiffer: archiveDiffer,
           force: false,
         ),
@@ -652,7 +659,7 @@ Please re-run the release command for this version or create a new release.'''),
       when(
         () => patchDiffChecker.zipAndConfirmUnpatchableDiffsIfNecessary(
           localArtifactDirectory: any(named: 'localArtifactDirectory'),
-          releaseArtifactUrl: any(named: 'releaseArtifactUrl'),
+          releaseArtifact: any(named: 'releaseArtifact'),
           archiveDiffer: archiveDiffer,
           force: any(named: 'force'),
         ),
@@ -666,7 +673,7 @@ Please re-run the release command for this version or create a new release.'''),
       verify(
         () => patchDiffChecker.zipAndConfirmUnpatchableDiffsIfNecessary(
           localArtifactDirectory: any(named: 'localArtifactDirectory'),
-          releaseArtifactUrl: Uri.parse(xcframeworkArtifact.url),
+          releaseArtifact: releaseArtifactFile,
           archiveDiffer: archiveDiffer,
           force: false,
         ),
