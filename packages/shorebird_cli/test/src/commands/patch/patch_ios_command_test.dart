@@ -49,6 +49,7 @@ void main() {
   const elfAotSnapshotFileName = 'out.aot';
   const linkFileName = 'out.vmcode';
   const ipaPath = 'build/ios/ipa/Runner.ipa';
+  const releaseArtifactFilePath = 'downloads/release.artifact';
   const infoPlistContent = '''
 <?xml version="1.0" encoding="UTF-8"?>
 <!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
@@ -123,7 +124,6 @@ flutter:
     createdAt: DateTime(2023),
     updatedAt: DateTime(2023),
   );
-  final releaseArtifactFile = File('release.artifact');
 
   group(PatchIosCommand, () {
     late ArgResults argResults;
@@ -136,6 +136,7 @@ flutter:
     late Directory projectRoot;
     late File genSnapshotFile;
     late File analyzeSnapshotFile;
+    late File releaseArtifactFile;
     late FlutterArtifacts flutterArtifacts;
     late Doctor doctor;
     late IosArchiveDiffer archiveDiffer;
@@ -283,6 +284,9 @@ flutter:
           'analyze_snapshot',
         ),
       )..createSync(recursive: true);
+      releaseArtifactFile =
+          File(p.join(projectRoot.path, releaseArtifactFilePath))
+            ..createSync(recursive: true);
       archiveDiffer = MockIosArchiveDiffer();
       progress = MockProgress();
       logger = MockLogger();
@@ -930,27 +934,15 @@ Please re-run the release command for this version or create a new release.'''),
         setUpProjectRoot();
         setUpProjectRootArtifacts();
 
-        final base = File(
-          p.join(
-            projectRoot.path,
-            'build',
-            'ios',
-            'archive',
-            'Runner.xcarchive',
-            'Products',
-            'Applications',
-            'Runner.app',
-            'Frameworks',
-            'App.framework',
-            'App',
-          ),
-        )..deleteSync(recursive: true);
+        releaseArtifactFile.deleteSync();
 
         final exitCode = await runWithOverrides(command.run);
 
         expect(exitCode, equals(ExitCode.software.code));
         verify(
-          () => logger.err('Unable to find base AOT file at ${base.path}'),
+          () => logger.err(
+            'Unable to find base AOT file at ${releaseArtifactFile.path}',
+          ),
         ).called(1);
       });
 

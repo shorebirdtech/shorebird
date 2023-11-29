@@ -235,7 +235,7 @@ Current Flutter Revision: $originalFlutterRevision
     }
 
     if (useLinker) {
-      final exitCode = await _runLinker();
+      final exitCode = await _runLinker(releaseArtifact: releaseArtifactFile);
       if (exitCode != ExitCode.success.code) return exitCode;
     }
 
@@ -344,7 +344,7 @@ ${summary.join('\n')}
     buildProgress.complete();
   }
 
-  Future<int> _runLinker() async {
+  Future<int> _runLinker({required File releaseArtifact}) async {
     logger.warn(
       '--use-linker is an experimental feature and may not work as expected.',
     );
@@ -356,17 +356,8 @@ ${summary.join('\n')}
       return ExitCode.software.code;
     }
 
-    final base = File(
-      p.join(
-        appDirectory.path,
-        'Frameworks',
-        'App.framework',
-        'App',
-      ),
-    );
-
-    if (!base.existsSync()) {
-      logger.err('Unable to find base AOT file at ${base.path}');
+    if (!releaseArtifact.existsSync()) {
+      logger.err('Unable to find base AOT file at ${releaseArtifact.path}');
       return ExitCode.software.code;
     }
 
@@ -391,7 +382,7 @@ ${summary.join('\n')}
     final linkProgress = logger.progress('Linking AOT files');
     try {
       await aotTools.link(
-        base: base.path,
+        base: releaseArtifact.path,
         patch: patch.path,
         analyzeSnapshot: analyzeSnapshot.path,
         workingDirectory: _buildDirectory,

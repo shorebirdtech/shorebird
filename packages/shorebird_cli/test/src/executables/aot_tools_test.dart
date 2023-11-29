@@ -10,7 +10,7 @@ import 'package:test/test.dart';
 import '../mocks.dart';
 
 void main() {
-  group('AotTools', () {
+  group(AotTools, () {
     late Cache cache;
     late ShorebirdProcess process;
     late Directory workingDirectory;
