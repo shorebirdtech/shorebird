@@ -320,6 +320,12 @@ flutter:
       ).thenAnswer((_) async {});
       when(() => artifactManager.downloadFile(any()))
           .thenAnswer((_) async => releaseArtifactFile);
+      when(
+        () => artifactManager.extractZip(
+          zipFile: any(named: 'zipFile'),
+          outputDirectory: any(named: 'outputDirectory'),
+        ),
+      ).thenAnswer((_) async {});
       when(() => auth.isAuthenticated).thenReturn(true);
       when(() => auth.client).thenReturn(httpClient);
       when(
@@ -852,6 +858,20 @@ Please re-run the release command for this version or create a new release.'''),
       );
     });
 
+    test('exits with code 70 if release artifact fails to download', () async {
+      setUpProjectRoot();
+      setUpProjectRootArtifacts();
+
+      releaseArtifactFile.deleteSync();
+
+      final exitCode = await runWithOverrides(command.run);
+
+      expect(exitCode, equals(ExitCode.software.code));
+      verify(
+        () => progress.fail('Exception: Failed to download release artifact'),
+      ).called(1);
+    });
+
     test(
         '''exits with code 70 if zipAndConfirmUnpatchableDiffsIfNecessary throws UnpatchableChangeException''',
         () async {
@@ -901,47 +921,6 @@ Please re-run the release command for this version or create a new release.'''),
         verify(
           () => logger.warn(
             '''--use-linker is an experimental feature and may not work as expected.''',
-          ),
-        ).called(1);
-      });
-
-      test('exits with code 70 if appDirectory is not found', () async {
-        setUpProjectRoot();
-        setUpProjectRootArtifacts();
-
-        File(
-          p.join(
-            projectRoot.path,
-            'build',
-            'ios',
-            'archive',
-            'Runner.xcarchive',
-            'Products',
-            'Applications',
-            'Runner.app',
-          ),
-        ).deleteSync(recursive: true);
-
-        final exitCode = await runWithOverrides(command.run);
-
-        expect(exitCode, equals(ExitCode.software.code));
-        verify(
-          () => logger.err('Unable to find .app directory within .xcarchive.'),
-        ).called(1);
-      });
-
-      test('exits with code 70 if base app is not found', () async {
-        setUpProjectRoot();
-        setUpProjectRootArtifacts();
-
-        releaseArtifactFile.deleteSync();
-
-        final exitCode = await runWithOverrides(command.run);
-
-        expect(exitCode, equals(ExitCode.software.code));
-        verify(
-          () => logger.err(
-            'Unable to find base AOT file at ${releaseArtifactFile.path}',
           ),
         ).called(1);
       });
