@@ -79,6 +79,7 @@ void main() {
       createdAt: DateTime(2023),
       updatedAt: DateTime(2023),
     );
+    final releaseArtifactFile = File('release.artifact');
 
     late AndroidArchiveDiffer archiveDiffer;
     late ArgResults argResults;
@@ -232,7 +233,7 @@ void main() {
         return diffPath;
       });
       when(() => artifactManager.downloadFile(any()))
-          .thenAnswer((_) async => '');
+          .thenAnswer((_) async => releaseArtifactFile);
       when(
         () => archiveDiffer.changedFiles(any(), any()),
       ).thenReturn(FileSetDiff.empty());
@@ -316,7 +317,7 @@ void main() {
       when(
         () => patchDiffChecker.confirmUnpatchableDiffsIfNecessary(
           localArtifact: any(named: 'localArtifact'),
-          releaseArtifactUrl: any(named: 'releaseArtifactUrl'),
+          releaseArtifact: any(named: 'releaseArtifact'),
           archiveDiffer: archiveDiffer,
           force: any(named: 'force'),
         ),
@@ -619,7 +620,7 @@ Please re-run the release command for this version or create a new release.'''),
       when(
         () => patchDiffChecker.confirmUnpatchableDiffsIfNecessary(
           localArtifact: any(named: 'localArtifact'),
-          releaseArtifactUrl: any(named: 'releaseArtifactUrl'),
+          releaseArtifact: any(named: 'releaseArtifact'),
           archiveDiffer: archiveDiffer,
           force: any(named: 'force'),
         ),
@@ -632,7 +633,7 @@ Please re-run the release command for this version or create a new release.'''),
       verify(
         () => patchDiffChecker.confirmUnpatchableDiffsIfNecessary(
           localArtifact: any(named: 'localArtifact'),
-          releaseArtifactUrl: Uri.parse(aarArtifact.url),
+          releaseArtifact: releaseArtifactFile,
           archiveDiffer: archiveDiffer,
           force: false,
         ),
@@ -655,7 +656,7 @@ Please re-run the release command for this version or create a new release.'''),
       when(
         () => patchDiffChecker.confirmUnpatchableDiffsIfNecessary(
           localArtifact: any(named: 'localArtifact'),
-          releaseArtifactUrl: any(named: 'releaseArtifactUrl'),
+          releaseArtifact: any(named: 'releaseArtifact'),
           archiveDiffer: archiveDiffer,
           force: any(named: 'force'),
         ),
@@ -669,7 +670,7 @@ Please re-run the release command for this version or create a new release.'''),
       verify(
         () => patchDiffChecker.confirmUnpatchableDiffsIfNecessary(
           localArtifact: any(named: 'localArtifact'),
-          releaseArtifactUrl: Uri.parse(aarArtifact.url),
+          releaseArtifact: releaseArtifactFile,
           archiveDiffer: archiveDiffer,
           force: false,
         ),

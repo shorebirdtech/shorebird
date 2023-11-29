@@ -7,6 +7,7 @@ import 'package:path/path.dart' as p;
 import 'package:platform/platform.dart';
 import 'package:scoped/scoped.dart';
 import 'package:shorebird_cli/src/archive_analysis/archive_analysis.dart';
+import 'package:shorebird_cli/src/artifact_manager.dart';
 import 'package:shorebird_cli/src/code_push_client_wrapper.dart';
 import 'package:shorebird_cli/src/command.dart';
 import 'package:shorebird_cli/src/config/shorebird_yaml.dart';
@@ -181,7 +182,8 @@ Please re-run the release command for this version or create a new release.''');
     try {
       await patchDiffChecker.zipAndConfirmUnpatchableDiffsIfNecessary(
         localArtifactDirectory: Directory(getAppXcframeworkPath()),
-        releaseArtifactUrl: Uri.parse(releaseArtifact.url),
+        releaseArtifact:
+            await artifactManager.downloadFile(Uri.parse(releaseArtifact.url)),
         archiveDiffer: _archiveDiffer,
         force: force,
       );

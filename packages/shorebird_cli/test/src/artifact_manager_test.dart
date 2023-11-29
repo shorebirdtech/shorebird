@@ -150,29 +150,26 @@ void main() {
       });
 
       test('returns path to file when download succeeds', () async {
-        final result = runWithOverrides(
+        final result = await runWithOverrides(
           () async => artifactManager.downloadFile(
             Uri.parse('https://example.com'),
           ),
         );
 
-        await expectLater(
-          result,
-          completion(endsWith('artifact')),
-        );
+        expect(result.path, endsWith('artifact'));
       });
 
       test('returns provided output path when specified', () async {
         final tempDir = Directory.systemTemp.createTempSync();
         final outFile = File(p.join(tempDir.path, 'file.out'));
-        final result = runWithOverrides(
+        final result = await runWithOverrides(
           () async => artifactManager.downloadFile(
             Uri.parse('https://example.com'),
             outputPath: outFile.path,
           ),
         );
 
-        await expectLater(result, completion(outFile.path));
+        expect(result.path, equals(outFile.path));
       });
     });
 

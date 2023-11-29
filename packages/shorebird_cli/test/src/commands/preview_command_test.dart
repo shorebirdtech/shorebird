@@ -283,7 +283,7 @@ void main() {
             any(),
             outputPath: any(named: 'outputPath'),
           ),
-        ).thenAnswer((_) async => '');
+        ).thenAnswer((_) async => File(''));
         when(
           () => artifactManager.extractZip(
             zipFile: any(named: 'zipFile'),
@@ -788,7 +788,7 @@ void main() {
         when(() => argResults['platform']).thenReturn(releasePlatform.name);
         when(
           () => artifactManager.downloadFile(any()),
-        ).thenAnswer((_) async => '');
+        ).thenAnswer((_) async => File(''));
         when(
           () => artifactManager.extractZip(
             zipFile: any(named: 'zipFile'),

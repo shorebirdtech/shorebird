@@ -6,6 +6,7 @@ import 'package:mason_logger/mason_logger.dart';
 import 'package:path/path.dart' as p;
 import 'package:platform/platform.dart';
 import 'package:shorebird_cli/src/archive_analysis/archive_analysis.dart';
+import 'package:shorebird_cli/src/artifact_manager.dart';
 import 'package:shorebird_cli/src/code_push_client_wrapper.dart';
 import 'package:shorebird_cli/src/command.dart';
 import 'package:shorebird_cli/src/config/config.dart';
@@ -215,10 +216,14 @@ Current Flutter Revision: $originalFlutterRevision
       platform: ReleasePlatform.ios,
     );
 
+    final releaseArtifactFile = await artifactManager.downloadFile(
+      Uri.parse(releaseArtifact.url),
+    );
+
     try {
       await patchDiffChecker.zipAndConfirmUnpatchableDiffsIfNecessary(
         localArtifactDirectory: Directory(archivePath),
-        releaseArtifactUrl: Uri.parse(releaseArtifact.url),
+        releaseArtifact: releaseArtifactFile,
         archiveDiffer: _archiveDiffer,
         force: force,
       );

@@ -9,6 +9,7 @@ import 'package:path/path.dart' as p;
 import 'package:platform/platform.dart';
 import 'package:scoped/scoped.dart';
 import 'package:shorebird_cli/src/archive_analysis/archive_analysis.dart';
+import 'package:shorebird_cli/src/artifact_manager.dart';
 import 'package:shorebird_cli/src/auth/auth.dart';
 import 'package:shorebird_cli/src/code_push_client_wrapper.dart';
 import 'package:shorebird_cli/src/commands/patch/patch.dart';
@@ -122,10 +123,12 @@ flutter:
     createdAt: DateTime(2023),
     updatedAt: DateTime(2023),
   );
+  final releaseArtifactFile = File('release.artifact');
 
   group(PatchIosCommand, () {
     late ArgResults argResults;
     late AotTools aotTools;
+    late ArtifactManager artifactManager;
     late Auth auth;
     late CodePushClientWrapper codePushClientWrapper;
     late Directory flutterDirectory;
@@ -157,6 +160,7 @@ flutter:
         body,
         values: {
           aotToolsRef.overrideWith(() => aotTools),
+          artifactManagerRef.overrideWith(() => artifactManager),
           authRef.overrideWith(() => auth),
           codePushClientWrapperRef.overrideWith(() => codePushClientWrapper),
           doctorRef.overrideWith(() => doctor),
@@ -245,6 +249,7 @@ flutter:
 
     setUp(() {
       argResults = MockArgResults();
+      artifactManager = MockArtifactManager();
       aotTools = MockAotTools();
       auth = MockAuth();
       codePushClientWrapper = MockCodePushClientWrapper();
@@ -309,6 +314,8 @@ flutter:
           workingDirectory: any(named: 'workingDirectory'),
         ),
       ).thenAnswer((_) async {});
+      when(() => artifactManager.downloadFile(any()))
+          .thenAnswer((_) async => releaseArtifactFile);
       when(() => auth.isAuthenticated).thenReturn(true);
       when(() => auth.client).thenReturn(httpClient);
       when(
@@ -408,7 +415,7 @@ flutter:
       when(
         () => patchDiffChecker.zipAndConfirmUnpatchableDiffsIfNecessary(
           localArtifactDirectory: any(named: 'localArtifactDirectory'),
-          releaseArtifactUrl: any(named: 'releaseArtifactUrl'),
+          releaseArtifact: any(named: 'releaseArtifact'),
           archiveDiffer: archiveDiffer,
           force: any(named: 'force'),
         ),
@@ -811,7 +818,7 @@ Please re-run the release command for this version or create a new release.'''),
       when(
         () => patchDiffChecker.zipAndConfirmUnpatchableDiffsIfNecessary(
           localArtifactDirectory: any(named: 'localArtifactDirectory'),
-          releaseArtifactUrl: any(named: 'releaseArtifactUrl'),
+          releaseArtifact: any(named: 'releaseArtifact'),
           archiveDiffer: archiveDiffer,
           force: any(named: 'force'),
         ),
@@ -825,7 +832,7 @@ Please re-run the release command for this version or create a new release.'''),
       verify(
         () => patchDiffChecker.zipAndConfirmUnpatchableDiffsIfNecessary(
           localArtifactDirectory: any(named: 'localArtifactDirectory'),
-          releaseArtifactUrl: Uri.parse(ipaArtifact.url),
+          releaseArtifact: releaseArtifactFile,
           archiveDiffer: archiveDiffer,
           force: false,
         ),
@@ -848,7 +855,7 @@ Please re-run the release command for this version or create a new release.'''),
       when(
         () => patchDiffChecker.zipAndConfirmUnpatchableDiffsIfNecessary(
           localArtifactDirectory: any(named: 'localArtifactDirectory'),
-          releaseArtifactUrl: any(named: 'releaseArtifactUrl'),
+          releaseArtifact: any(named: 'releaseArtifact'),
           archiveDiffer: archiveDiffer,
           force: any(named: 'force'),
         ),
@@ -862,7 +869,7 @@ Please re-run the release command for this version or create a new release.'''),
       verify(
         () => patchDiffChecker.zipAndConfirmUnpatchableDiffsIfNecessary(
           localArtifactDirectory: any(named: 'localArtifactDirectory'),
-          releaseArtifactUrl: Uri.parse(ipaArtifact.url),
+          releaseArtifact: releaseArtifactFile,
           archiveDiffer: archiveDiffer,
           force: false,
         ),

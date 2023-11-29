@@ -209,7 +209,8 @@ Please re-run the release command for this version or create a new release.''');
             buildNumber: buildNumber,
           ),
         ),
-        releaseArtifactUrl: Uri.parse(releaseAarArtifact.url),
+        releaseArtifact: await artifactManager
+            .downloadFile(Uri.parse(releaseAarArtifact.url)),
         archiveDiffer: _archiveDiffer,
         force: force,
       );
@@ -336,10 +337,10 @@ ${summary.join('\n')}
     );
     for (final releaseArtifact in releaseArtifacts.entries) {
       try {
-        final releaseArtifactPath = await artifactManager.downloadFile(
+        final releaseArtifactFile = await artifactManager.downloadFile(
           Uri.parse(releaseArtifact.value.url),
         );
-        releaseArtifactPaths[releaseArtifact.key] = releaseArtifactPath;
+        releaseArtifactPaths[releaseArtifact.key] = releaseArtifactFile.path;
       } catch (error) {
         downloadReleaseArtifactProgress.fail('$error');
         rethrow;

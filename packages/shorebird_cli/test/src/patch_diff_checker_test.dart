@@ -21,7 +21,7 @@ void main() {
     const assetsDiffPrettyString = 'assets diff pretty string';
     const nativeDiffPrettyString = 'native diff pretty string';
     final localArtifact = File('local.artifact');
-    final releaseArtifactUrl = Uri.parse('https://example.com');
+    final releaseArtifact = File('release.artifact');
 
     late ArchiveDiffer archiveDiffer;
     late FileSetDiff assetsFileSetDiff;
@@ -95,7 +95,7 @@ void main() {
         await runWithOverrides(
           () => patchDiffChecker.zipAndConfirmUnpatchableDiffsIfNecessary(
             localArtifactDirectory: localArtifactDirectory,
-            releaseArtifactUrl: releaseArtifactUrl,
+            releaseArtifact: releaseArtifact,
             archiveDiffer: archiveDiffer,
             force: false,
           ),
@@ -106,31 +106,6 @@ void main() {
     });
 
     group('confirmUnpatchableDiffsIfNecessary', () {
-      test('throws Exception when release artifact fails to download',
-          () async {
-        when(() => httpClient.send(any())).thenAnswer(
-          (_) async => http.StreamedResponse(
-            const Stream.empty(),
-            HttpStatus.internalServerError,
-            reasonPhrase: 'Internal Server Error',
-          ),
-        );
-
-        await expectLater(
-          runWithOverrides(
-            () => patchDiffChecker.confirmUnpatchableDiffsIfNecessary(
-              localArtifact: localArtifact,
-              releaseArtifactUrl: releaseArtifactUrl,
-              archiveDiffer: archiveDiffer,
-              force: false,
-            ),
-          ),
-          throwsA(isA<Exception>()),
-        );
-
-        verify(() => progress.fail()).called(1);
-      });
-
       group('when native diffs are detected', () {
         setUp(() {
           when(
@@ -142,7 +117,7 @@ void main() {
           await runWithOverrides(
             () => patchDiffChecker.confirmUnpatchableDiffsIfNecessary(
               localArtifact: localArtifact,
-              releaseArtifactUrl: releaseArtifactUrl,
+              releaseArtifact: releaseArtifact,
               archiveDiffer: archiveDiffer,
               force: false,
             ),
@@ -170,7 +145,7 @@ void main() {
           await runWithOverrides(
             () => patchDiffChecker.confirmUnpatchableDiffsIfNecessary(
               localArtifact: localArtifact,
-              releaseArtifactUrl: releaseArtifactUrl,
+              releaseArtifact: releaseArtifact,
               archiveDiffer: archiveDiffer,
               force: false,
             ),
@@ -183,7 +158,7 @@ void main() {
           await runWithOverrides(
             () => patchDiffChecker.confirmUnpatchableDiffsIfNecessary(
               localArtifact: localArtifact,
-              releaseArtifactUrl: releaseArtifactUrl,
+              releaseArtifact: releaseArtifact,
               archiveDiffer: archiveDiffer,
               force: true,
             ),
@@ -200,7 +175,7 @@ void main() {
             runWithOverrides(
               () => patchDiffChecker.confirmUnpatchableDiffsIfNecessary(
                 localArtifact: localArtifact,
-                releaseArtifactUrl: releaseArtifactUrl,
+                releaseArtifact: releaseArtifact,
                 archiveDiffer: archiveDiffer,
                 force: false,
               ),
@@ -220,7 +195,7 @@ void main() {
             () => runWithOverrides(
               () => patchDiffChecker.confirmUnpatchableDiffsIfNecessary(
                 localArtifact: localArtifact,
-                releaseArtifactUrl: releaseArtifactUrl,
+                releaseArtifact: releaseArtifact,
                 archiveDiffer: archiveDiffer,
                 force: false,
               ),
@@ -243,7 +218,7 @@ void main() {
           await runWithOverrides(
             () => patchDiffChecker.confirmUnpatchableDiffsIfNecessary(
               localArtifact: localArtifact,
-              releaseArtifactUrl: releaseArtifactUrl,
+              releaseArtifact: releaseArtifact,
               archiveDiffer: archiveDiffer,
               force: false,
             ),
@@ -263,7 +238,7 @@ void main() {
           await runWithOverrides(
             () => patchDiffChecker.confirmUnpatchableDiffsIfNecessary(
               localArtifact: localArtifact,
-              releaseArtifactUrl: releaseArtifactUrl,
+              releaseArtifact: releaseArtifact,
               archiveDiffer: archiveDiffer,
               force: false,
             ),
@@ -276,7 +251,7 @@ void main() {
           await runWithOverrides(
             () => patchDiffChecker.confirmUnpatchableDiffsIfNecessary(
               localArtifact: localArtifact,
-              releaseArtifactUrl: releaseArtifactUrl,
+              releaseArtifact: releaseArtifact,
               archiveDiffer: archiveDiffer,
               force: true,
             ),
@@ -293,7 +268,7 @@ void main() {
             runWithOverrides(
               () => patchDiffChecker.confirmUnpatchableDiffsIfNecessary(
                 localArtifact: localArtifact,
-                releaseArtifactUrl: releaseArtifactUrl,
+                releaseArtifact: releaseArtifact,
                 archiveDiffer: archiveDiffer,
                 force: false,
               ),
@@ -311,7 +286,7 @@ void main() {
             () => runWithOverrides(
               () => patchDiffChecker.confirmUnpatchableDiffsIfNecessary(
                 localArtifact: localArtifact,
-                releaseArtifactUrl: releaseArtifactUrl,
+                releaseArtifact: releaseArtifact,
                 archiveDiffer: archiveDiffer,
                 force: false,
               ),
@@ -329,7 +304,7 @@ void main() {
           runWithOverrides(
             () => patchDiffChecker.confirmUnpatchableDiffsIfNecessary(
               localArtifact: localArtifact,
-              releaseArtifactUrl: releaseArtifactUrl,
+              releaseArtifact: releaseArtifact,
               archiveDiffer: archiveDiffer,
               force: false,
             ),

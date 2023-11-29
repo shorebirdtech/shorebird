@@ -221,10 +221,10 @@ Current Flutter Revision: $originalFlutterRevision
     );
     for (final releaseArtifact in releaseArtifacts.entries) {
       try {
-        final releaseArtifactPath = await artifactManager.downloadFile(
+        final releaseArtifactFile = await artifactManager.downloadFile(
           Uri.parse(releaseArtifact.value.url),
         );
-        releaseArtifactPaths[releaseArtifact.key] = releaseArtifactPath;
+        releaseArtifactPaths[releaseArtifact.key] = releaseArtifactFile.path;
       } catch (error) {
         downloadReleaseArtifactProgress.fail('$error');
         return ExitCode.software.code;
@@ -236,7 +236,9 @@ Current Flutter Revision: $originalFlutterRevision
     try {
       await patchDiffChecker.confirmUnpatchableDiffsIfNecessary(
         localArtifact: File(bundlePath),
-        releaseArtifactUrl: Uri.parse(releaseAabArtifact.url),
+        releaseArtifact: await artifactManager.downloadFile(
+          Uri.parse(releaseAabArtifact.url),
+        ),
         archiveDiffer: _archiveDiffer,
         force: force,
       );

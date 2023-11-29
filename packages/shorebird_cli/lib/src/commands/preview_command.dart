@@ -324,11 +324,11 @@ class PreviewCommand extends ShorebirdCommand {
           platform: platform,
         );
 
-        final archivePath = await artifactManager.downloadFile(
+        final archiveFile = await artifactManager.downloadFile(
           Uri.parse(releaseRunnerArtifact.url),
         );
         await artifactManager.extractZip(
-          zipFile: File(archivePath),
+          zipFile: archiveFile,
           outputDirectory: runnerDirectory,
         );
         downloadArtifactProgress.complete();
