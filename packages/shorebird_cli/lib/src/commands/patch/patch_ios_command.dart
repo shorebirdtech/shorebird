@@ -1,5 +1,6 @@
 import 'dart:async';
 import 'dart:io' hide Platform;
+import 'dart:isolate';
 
 import 'package:crypto/crypto.dart';
 import 'package:mason_logger/mason_logger.dart';
@@ -216,14 +217,25 @@ Current Flutter Revision: $originalFlutterRevision
       platform: ReleasePlatform.ios,
     );
 
-    final releaseArtifactFile = await artifactManager.downloadFile(
-      Uri.parse(releaseArtifact.url),
-    );
+    final downloadProgress = logger.progress('Downloading release artifact');
+    final File releaseArtifactZipFile;
+    try {
+      releaseArtifactZipFile = await artifactManager.downloadFile(
+        Uri.parse(releaseArtifact.url),
+      );
+      if (!releaseArtifactZipFile.existsSync()) {
+        throw Exception('Failed to download release artifact');
+      }
+    } catch (error) {
+      downloadProgress.fail('$error');
+      return ExitCode.software.code;
+    }
+    downloadProgress.complete();
 
     try {
       await patchDiffChecker.zipAndConfirmUnpatchableDiffsIfNecessary(
         localArtifactDirectory: Directory(archivePath),
-        releaseArtifact: releaseArtifactFile,
+        releaseArtifact: releaseArtifactZipFile,
         archiveDiffer: _archiveDiffer,
         force: force,
       );
@@ -235,7 +247,30 @@ Current Flutter Revision: $originalFlutterRevision
     }
 
     if (useLinker) {
-      final exitCode = await _runLinker();
+      final extractZip = artifactManager.extractZip;
+      final unzipProgress = logger.progress('Extracting release artifact');
+      final releaseXcarchivePath = await Isolate.run(() async {
+        final tempDir = Directory.systemTemp.createTempSync();
+        await extractZip(
+          zipFile: releaseArtifactZipFile,
+          outputDirectory: tempDir,
+        );
+        return tempDir.path;
+      });
+      unzipProgress.complete();
+
+      final releaseArtifactFile = File(
+        p.join(
+          releaseXcarchivePath,
+          'Products',
+          'Applications',
+          'Runner.app',
+          'Frameworks',
+          'App.framework',
+          'App',
+        ),
+      );
+      final exitCode = await _runLinker(releaseArtifact: releaseArtifactFile);
       if (exitCode != ExitCode.success.code) return exitCode;
     }
 
@@ -344,31 +379,10 @@ ${summary.join('\n')}
     buildProgress.complete();
   }
 
-  Future<int> _runLinker() async {
+  Future<int> _runLinker({required File releaseArtifact}) async {
     logger.warn(
       '--use-linker is an experimental feature and may not work as expected.',
     );
-
-    final appDirectory = getAppDirectory();
-
-    if (appDirectory == null) {
-      logger.err('Unable to find .app directory within .xcarchive.');
-      return ExitCode.software.code;
-    }
-
-    final base = File(
-      p.join(
-        appDirectory.path,
-        'Frameworks',
-        'App.framework',
-        'App',
-      ),
-    );
-
-    if (!base.existsSync()) {
-      logger.err('Unable to find base AOT file at ${base.path}');
-      return ExitCode.software.code;
-    }
 
     final patch = File(_aotOutputPath);
 
@@ -391,7 +405,7 @@ ${summary.join('\n')}
     final linkProgress = logger.progress('Linking AOT files');
     try {
       await aotTools.link(
-        base: base.path,
+        base: releaseArtifact.path,
         patch: patch.path,
         analyzeSnapshot: analyzeSnapshot.path,
         workingDirectory: _buildDirectory,

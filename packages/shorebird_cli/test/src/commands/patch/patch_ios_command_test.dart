@@ -49,6 +49,7 @@ void main() {
   const elfAotSnapshotFileName = 'out.aot';
   const linkFileName = 'out.vmcode';
   const ipaPath = 'build/ios/ipa/Runner.ipa';
+  const releaseArtifactFilePath = 'downloads/release.artifact';
   const infoPlistContent = '''
 <?xml version="1.0" encoding="UTF-8"?>
 <!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
@@ -123,7 +124,6 @@ flutter:
     createdAt: DateTime(2023),
     updatedAt: DateTime(2023),
   );
-  final releaseArtifactFile = File('release.artifact');
 
   group(PatchIosCommand, () {
     late ArgResults argResults;
@@ -136,6 +136,7 @@ flutter:
     late Directory projectRoot;
     late File genSnapshotFile;
     late File analyzeSnapshotFile;
+    late File releaseArtifactFile;
     late FlutterArtifacts flutterArtifacts;
     late Doctor doctor;
     late IosArchiveDiffer archiveDiffer;
@@ -283,6 +284,9 @@ flutter:
           'analyze_snapshot',
         ),
       )..createSync(recursive: true);
+      releaseArtifactFile =
+          File(p.join(projectRoot.path, releaseArtifactFilePath))
+            ..createSync(recursive: true);
       archiveDiffer = MockIosArchiveDiffer();
       progress = MockProgress();
       logger = MockLogger();
@@ -316,6 +320,12 @@ flutter:
       ).thenAnswer((_) async {});
       when(() => artifactManager.downloadFile(any()))
           .thenAnswer((_) async => releaseArtifactFile);
+      when(
+        () => artifactManager.extractZip(
+          zipFile: any(named: 'zipFile'),
+          outputDirectory: any(named: 'outputDirectory'),
+        ),
+      ).thenAnswer((_) async {});
       when(() => auth.isAuthenticated).thenReturn(true);
       when(() => auth.client).thenReturn(httpClient);
       when(
@@ -848,6 +858,20 @@ Please re-run the release command for this version or create a new release.'''),
       );
     });
 
+    test('exits with code 70 if release artifact fails to download', () async {
+      setUpProjectRoot();
+      setUpProjectRootArtifacts();
+
+      releaseArtifactFile.deleteSync();
+
+      final exitCode = await runWithOverrides(command.run);
+
+      expect(exitCode, equals(ExitCode.software.code));
+      verify(
+        () => progress.fail('Exception: Failed to download release artifact'),
+      ).called(1);
+    });
+
     test(
         '''exits with code 70 if zipAndConfirmUnpatchableDiffsIfNecessary throws UnpatchableChangeException''',
         () async {
@@ -898,59 +922,6 @@ Please re-run the release command for this version or create a new release.'''),
           () => logger.warn(
             '''--use-linker is an experimental feature and may not work as expected.''',
           ),
-        ).called(1);
-      });
-
-      test('exits with code 70 if appDirectory is not found', () async {
-        setUpProjectRoot();
-        setUpProjectRootArtifacts();
-
-        File(
-          p.join(
-            projectRoot.path,
-            'build',
-            'ios',
-            'archive',
-            'Runner.xcarchive',
-            'Products',
-            'Applications',
-            'Runner.app',
-          ),
-        ).deleteSync(recursive: true);
-
-        final exitCode = await runWithOverrides(command.run);
-
-        expect(exitCode, equals(ExitCode.software.code));
-        verify(
-          () => logger.err('Unable to find .app directory within .xcarchive.'),
-        ).called(1);
-      });
-
-      test('exits with code 70 if base app is not found', () async {
-        setUpProjectRoot();
-        setUpProjectRootArtifacts();
-
-        final base = File(
-          p.join(
-            projectRoot.path,
-            'build',
-            'ios',
-            'archive',
-            'Runner.xcarchive',
-            'Products',
-            'Applications',
-            'Runner.app',
-            'Frameworks',
-            'App.framework',
-            'App',
-          ),
-        )..deleteSync(recursive: true);
-
-        final exitCode = await runWithOverrides(command.run);
-
-        expect(exitCode, equals(ExitCode.software.code));
-        verify(
-          () => logger.err('Unable to find base AOT file at ${base.path}'),
         ).called(1);
       });
 
