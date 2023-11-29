@@ -49,7 +49,7 @@ Failed to create diff (exit code ${result.exitCode}).
   }
 
   /// Downloads the file at the given [uri] to a temporary directory and returns
-  /// the path to the downloaded file.
+  /// the downloaded [File].
   Future<File> downloadFile(
     Uri uri, {
     String? outputPath,
