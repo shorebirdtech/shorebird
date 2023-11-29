@@ -232,30 +232,6 @@ Current Flutter Revision: $originalFlutterRevision
     }
     downloadProgress.complete();
 
-    final extractZip = artifactManager.extractZip;
-    final unzipProgress = logger.progress('Extracting release artifact');
-    final releaseXcarchivePath = await Isolate.run(() async {
-      final tempDir = Directory.systemTemp.createTempSync();
-      await extractZip(
-        zipFile: releaseArtifactZipFile,
-        outputDirectory: tempDir,
-      );
-      return tempDir.path;
-    });
-    unzipProgress.complete();
-
-    final releaseArtifactFile = File(
-      p.join(
-        releaseXcarchivePath,
-        'Products',
-        'Applications',
-        'Runner.app',
-        'Frameworks',
-        'App.framework',
-        'App',
-      ),
-    );
-
     try {
       await patchDiffChecker.zipAndConfirmUnpatchableDiffsIfNecessary(
         localArtifactDirectory: Directory(archivePath),
@@ -271,6 +247,29 @@ Current Flutter Revision: $originalFlutterRevision
     }
 
     if (useLinker) {
+      final extractZip = artifactManager.extractZip;
+      final unzipProgress = logger.progress('Extracting release artifact');
+      final releaseXcarchivePath = await Isolate.run(() async {
+        final tempDir = Directory.systemTemp.createTempSync();
+        await extractZip(
+          zipFile: releaseArtifactZipFile,
+          outputDirectory: tempDir,
+        );
+        return tempDir.path;
+      });
+      unzipProgress.complete();
+
+      final releaseArtifactFile = File(
+        p.join(
+          releaseXcarchivePath,
+          'Products',
+          'Applications',
+          'Runner.app',
+          'Frameworks',
+          'App.framework',
+          'App',
+        ),
+      );
       final exitCode = await _runLinker(releaseArtifact: releaseArtifactFile);
       if (exitCode != ExitCode.success.code) return exitCode;
     }
