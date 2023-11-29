@@ -111,6 +111,7 @@ void main() {
       shorebirdValidator = MockShorebirdValidator();
       command = PreviewCommand()..testArgResults = argResults;
 
+      when(() => argResults.wasParsed('app-id')).thenReturn(true);
       when(() => argResults['app-id']).thenReturn(appId);
       when(() => argResults['release-version']).thenReturn(releaseVersion);
       when(() => argResults['staging']).thenReturn(false);
@@ -520,10 +521,12 @@ void main() {
         verify(() => logger.err(output)).called(1);
       });
 
-      test('does not prompt or query for app when in a shorebird project',
+      test(
+          '''does not prompt or query for app when in a shorebird project without flavors''',
           () async {
         when(() => shorebirdEnv.getShorebirdYaml())
             .thenReturn(const ShorebirdYaml(appId: 'test-app-id'));
+        when(() => argResults.wasParsed('app-id')).thenReturn(false);
         when(() => argResults['app-id']).thenReturn(null);
 
         await runWithOverrides(command.run);
@@ -538,6 +541,35 @@ void main() {
         verifyNever(() => codePushClientWrapper.getApps());
       });
 
+      test('prompts for app id when in shorebird project with flavors',
+          () async {
+        when(() => shorebirdEnv.getShorebirdYaml()).thenReturn(
+          const ShorebirdYaml(
+            appId: 'test-app-id',
+            flavors: {'dev': 'dev-app-id'},
+          ),
+        );
+        when(() => argResults.wasParsed('app-id')).thenReturn(false);
+        when(() => argResults['app-id']).thenReturn(null);
+        when(
+          () => logger.chooseOne<AppMetadata>(
+            any(),
+            choices: any(named: 'choices'),
+            display: any(named: 'display'),
+          ),
+        ).thenReturn(app);
+
+        await runWithOverrides(command.run);
+
+        verify(
+          () => logger.chooseOne<AppMetadata>(
+            'Which app would you like to preview?',
+            choices: any(named: 'choices'),
+            display: any(named: 'display'),
+          ),
+        ).called(1);
+      });
+
       test('queries for apps when app-id is not specified', () async {
         when(
           () => artifactManager.extractZip(
@@ -546,6 +578,7 @@ void main() {
           ),
         ).thenAnswer(createShorebirdYaml);
 
+        when(() => argResults.wasParsed('app-id')).thenReturn(false);
         when(() => argResults['app-id']).thenReturn(null);
         when(
           () => logger.chooseOne<AppMetadata>(
@@ -604,6 +637,7 @@ void main() {
       });
 
       test('exits early when no apps are found', () async {
+        when(() => argResults.wasParsed('app-id')).thenReturn(false);
         when(() => argResults['app-id']).thenReturn(null);
         when(() => codePushClientWrapper.getApps()).thenAnswer((_) async => []);
         final result = await runWithOverrides(command.run);

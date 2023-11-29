@@ -85,9 +85,15 @@ class PreviewCommand extends ShorebirdCommand {
       return error.exitCode.code;
     }
 
-    final appId = results['app-id'] as String? ??
-        shorebirdEnv.getShorebirdYaml()?.appId ??
-        await promptForApp();
+    final shorebirdYaml = shorebirdEnv.getShorebirdYaml();
+    final String? appId;
+    if (results.wasParsed('app-id')) {
+      appId = results['app-id'] as String;
+    } else if (shorebirdYaml != null && shorebirdYaml.flavors == null) {
+      appId = shorebirdYaml.appId;
+    } else {
+      appId = await promptForApp();
+    }
 
     if (appId == null) {
       logger.info('No apps found');
