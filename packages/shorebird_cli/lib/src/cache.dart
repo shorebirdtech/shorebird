@@ -53,8 +53,7 @@ Cache get cache => read(cacheRef);
 /// This class handles fetching and unpacking artifacts from various sources.
 ///
 /// To access specific artifacts, it's generally recommended to use
-/// [ShorebirdCachedArtifacts] since it takes into account
-/// the current Shorebird environment.
+/// [ShorebirdArtifacts] since uses the current Shorebird environment.
 /// {@endtemplate}
 class Cache {
   Cache({this.extractArchive = _defaultArchiveExtractor}) {
