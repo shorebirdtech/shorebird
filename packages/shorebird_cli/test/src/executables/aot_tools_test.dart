@@ -16,7 +16,6 @@ void main() {
     late ShorebirdCachedArtifacts shorebirdCachedArtifacts;
     late ShorebirdProcess process;
     late Directory workingDirectory;
-    late File aotToolsFile;
     late AotTools aotTools;
 
     R runWithOverrides<R>(R Function() body) {
@@ -35,15 +34,9 @@ void main() {
       process = MockShorebirdProcess();
       shorebirdCachedArtifacts = MockShorebirdCachedArtifacts();
       workingDirectory = Directory('aot-tools test');
-      aotToolsFile = File('aot-tools');
       aotTools = AotTools();
 
       when(() => cache.updateAll()).thenAnswer((_) async {});
-      when(
-        () => shorebirdCachedArtifacts.getArtifactPath(
-          artifact: ShorebirdArtifact.aotTools,
-        ),
-      ).thenReturn(aotToolsFile.path);
     });
 
     group('link', () {
@@ -52,6 +45,11 @@ void main() {
       const analyzeSnapshot = './path/to/analyze_snapshot.aot';
 
       test('throws Exception when process exits with non-zero code', () async {
+        when(
+          () => shorebirdCachedArtifacts.getArtifactPath(
+            artifact: ShorebirdArtifact.aotTools,
+          ),
+        ).thenReturn('aot-tools');
         when(
           () => process.run(
             any(),
@@ -83,43 +81,107 @@ void main() {
         );
       });
 
-      test('completes when linking exits with code: 0', () async {
-        when(
-          () => process.run(
-            any(),
-            any(),
-            workingDirectory: any(named: 'workingDirectory'),
-          ),
-        ).thenAnswer(
-          (_) async => const ShorebirdProcessResult(
-            exitCode: 0,
-            stdout: '',
-            stderr: '',
-          ),
-        );
-        await expectLater(
-          runWithOverrides(
-            () => aotTools.link(
-              base: base,
-              patch: patch,
-              analyzeSnapshot: analyzeSnapshot,
-              workingDirectory: workingDirectory.path,
+      group('when using cached aot tools', () {
+        const aotToolsPath = 'aot-tools';
+
+        setUp(() {
+          when(
+            () => shorebirdCachedArtifacts.getArtifactPath(
+              artifact: ShorebirdArtifact.aotTools,
             ),
-          ),
-          completes,
-        );
-        verify(
-          () => process.run(
-            any(that: endsWith('aot-tools')),
-            [
-              'link',
-              '--base=$base',
-              '--patch=$patch',
-              '--analyze-snapshot=$analyzeSnapshot',
-            ],
-            workingDirectory: any(named: 'workingDirectory'),
-          ),
-        ).called(1);
+          ).thenReturn(aotToolsPath);
+        });
+
+        test('completes when linking exits with code 0', () async {
+          when(
+            () => process.run(
+              any(),
+              any(),
+              workingDirectory: any(named: 'workingDirectory'),
+            ),
+          ).thenAnswer(
+            (_) async => const ShorebirdProcessResult(
+              exitCode: 0,
+              stdout: '',
+              stderr: '',
+            ),
+          );
+          await expectLater(
+            runWithOverrides(
+              () => aotTools.link(
+                base: base,
+                patch: patch,
+                analyzeSnapshot: analyzeSnapshot,
+                workingDirectory: workingDirectory.path,
+              ),
+            ),
+            completes,
+          );
+          verify(
+            () => process.run(
+              any(that: endsWith('aot-tools')),
+              [
+                'link',
+                '--base=$base',
+                '--patch=$patch',
+                '--analyze-snapshot=$analyzeSnapshot',
+              ],
+              workingDirectory: any(named: 'workingDirectory'),
+            ),
+          ).called(1);
+        });
+      });
+
+      group('when using local aot_tools', () {
+        const aotToolsPath = 'aot_tools.dart';
+
+        setUp(() {
+          when(
+            () => shorebirdCachedArtifacts.getArtifactPath(
+              artifact: ShorebirdArtifact.aotTools,
+            ),
+          ).thenReturn(aotToolsPath);
+        });
+
+        test('completes when linking exits with code 0', () async {
+          when(
+            () => process.run(
+              any(),
+              any(),
+              workingDirectory: any(named: 'workingDirectory'),
+            ),
+          ).thenAnswer(
+            (_) async => const ShorebirdProcessResult(
+              exitCode: 0,
+              stdout: '',
+              stderr: '',
+            ),
+          );
+          await expectLater(
+            runWithOverrides(
+              () => aotTools.link(
+                base: base,
+                patch: patch,
+                analyzeSnapshot: analyzeSnapshot,
+                workingDirectory: workingDirectory.path,
+              ),
+            ),
+            completes,
+          );
+          verify(
+            () => process.run(
+              'dart',
+              [
+                aotToolsPath,
+                'link',
+                '--base=$base',
+                '--patch=$patch',
+                '--analyze-snapshot=$analyzeSnapshot',
+              ],
+              workingDirectory: any(named: 'workingDirectory'),
+            ),
+          ).called(1);
+        });
       });
     });
   });
