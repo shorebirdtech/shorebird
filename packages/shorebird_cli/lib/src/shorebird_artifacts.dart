@@ -66,8 +66,7 @@ class ShorebirdCachedArtifacts implements ShorebirdArtifacts {
         'artifacts',
         'engine',
         'ios-release',
-        'darwin-x64',
-        'analyze_snapshot',
+        'analyze_snapshot_arm64',
       ),
     );
   }
