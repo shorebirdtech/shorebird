@@ -3,42 +3,62 @@ import 'dart:io';
 import 'package:mocktail/mocktail.dart';
 import 'package:path/path.dart' as p;
 import 'package:scoped/scoped.dart';
-import 'package:shorebird_cli/src/flutter_artifacts.dart';
+import 'package:shorebird_cli/src/cache.dart';
 import 'package:shorebird_cli/src/process.dart';
+import 'package:shorebird_cli/src/shorebird_artifacts.dart';
 import 'package:shorebird_cli/src/shorebird_env.dart';
 import 'package:test/test.dart';
 
 import 'mocks.dart';
 
 void main() {
-  group(FlutterCachedArtifacts, () {
+  group(ShorebirdCachedArtifacts, () {
+    late Cache cache;
     late Directory flutterDirectory;
+    late Directory artifactDirectory;
     late ShorebirdEnv shorebirdEnv;
-    late FlutterCachedArtifacts artifacts;
+    late ShorebirdCachedArtifacts artifacts;
 
     R runWithOverrides<R>(R Function() body) {
       return runScoped(
         () => body(),
         values: {
+          cacheRef.overrideWith(() => cache),
           shorebirdEnvRef.overrideWith(() => shorebirdEnv),
         },
       );
     }
 
     setUp(() {
+      cache = MockCache();
       flutterDirectory = Directory('flutter');
+      artifactDirectory = Directory('artifacts');
       shorebirdEnv = MockShorebirdEnv();
-      artifacts = const FlutterCachedArtifacts();
+      artifacts = const ShorebirdCachedArtifacts();
 
+      when(
+        () => cache.getArtifactDirectory(any()),
+      ).thenReturn(artifactDirectory);
       when(() => shorebirdEnv.flutterDirectory).thenReturn(flutterDirectory);
     });
 
     group('getArtifactPath', () {
+      test('returns correct path for aot tools', () {
+        expect(
+          runWithOverrides(
+            () => artifacts.getArtifactPath(
+              artifact: ShorebirdArtifact.aotTools,
+            ),
+          ),
+          equals(p.join(artifactDirectory.path, 'aot-tools')),
+        );
+      });
+
       test('returns correct path for gen_snapshot', () {
         expect(
           runWithOverrides(
             () => artifacts.getArtifactPath(
-              artifact: FlutterArtifact.genSnapshot,
+              artifact: ShorebirdArtifact.genSnapshot,
             ),
           ),
           equals(
@@ -59,7 +79,7 @@ void main() {
         expect(
           runWithOverrides(
             () => artifacts.getArtifactPath(
-              artifact: FlutterArtifact.analyzeSnapshot,
+              artifact: ShorebirdArtifact.analyzeSnapshot,
             ),
           ),
           equals(
@@ -70,7 +90,8 @@ void main() {
               'artifacts',
               'engine',
               'ios-release',
-              'analyze_snapshot_arm64',
+              'darwin-x64',
+              'analyze_snapshot',
             ),
           ),
         );
@@ -78,10 +99,10 @@ void main() {
     });
   });
 
-  group(FlutterLocalEngineArtifacts, () {
+  group(ShorebirdLocalEngineArtifacts, () {
     late String localEngineSrcPath;
     late EngineConfig engineConfig;
-    late FlutterLocalEngineArtifacts artifacts;
+    late ShorebirdLocalEngineArtifacts artifacts;
 
     R runWithOverrides<R>(R Function() body) {
       return runScoped(
@@ -95,7 +116,7 @@ void main() {
     setUp(() {
       localEngineSrcPath = 'local_engine_src_path';
       engineConfig = MockEngineConfig();
-      artifacts = const FlutterLocalEngineArtifacts();
+      artifacts = const ShorebirdLocalEngineArtifacts();
 
       when(
         () => engineConfig.localEngineSrcPath,
@@ -103,11 +124,32 @@ void main() {
     });
 
     group('getArtifactPath', () {
+      test('returns correct path for aot tools', () {
+        expect(
+          runWithOverrides(
+            () => artifacts.getArtifactPath(
+              artifact: ShorebirdArtifact.aotTools,
+            ),
+          ),
+          equals(
+            p.join(
+              localEngineSrcPath,
+              'third_party',
+              'dart',
+              'pkg',
+              'aot_tools',
+              'bin',
+              'aot_tools.dart',
+            ),
+          ),
+        );
+      });
+
       test('returns correct path for gen_snapshot', () {
         expect(
           runWithOverrides(
             () => artifacts.getArtifactPath(
-              artifact: FlutterArtifact.genSnapshot,
+              artifact: ShorebirdArtifact.genSnapshot,
             ),
           ),
           equals(
@@ -126,7 +168,7 @@ void main() {
         expect(
           runWithOverrides(
             () => artifacts.getArtifactPath(
-              artifact: FlutterArtifact.analyzeSnapshot,
+              artifact: ShorebirdArtifact.analyzeSnapshot,
             ),
           ),
           equals(

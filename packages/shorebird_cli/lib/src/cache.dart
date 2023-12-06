@@ -10,6 +10,7 @@ import 'package:shorebird_cli/src/http_client/http_client.dart';
 import 'package:shorebird_cli/src/logger.dart';
 import 'package:shorebird_cli/src/platform.dart';
 import 'package:shorebird_cli/src/process.dart';
+import 'package:shorebird_cli/src/shorebird_artifacts.dart';
 import 'package:shorebird_cli/src/shorebird_env.dart';
 
 /// {@template cache_update_failure}
@@ -47,6 +48,13 @@ final cacheRef = create(Cache.new);
 // The [Cache] instance available in the current zone.
 Cache get cache => read(cacheRef);
 
+/// {@template cache}
+/// A class that manages the artifacts cached by Shorebird.
+/// This class handles fetching and unpacking artifacts from various sources.
+///
+/// To access specific artifacts, it's generally recommended to use
+/// [ShorebirdArtifacts] since uses the current Shorebird environment.
+/// {@endtemplate}
 class Cache {
   Cache({this.extractArchive = _defaultArchiveExtractor}) {
     registerArtifact(PatchArtifact(cache: this, platform: platform));

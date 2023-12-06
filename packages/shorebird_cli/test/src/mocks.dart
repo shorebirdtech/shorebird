@@ -18,10 +18,10 @@ import 'package:shorebird_cli/src/config/config.dart';
 import 'package:shorebird_cli/src/doctor.dart';
 import 'package:shorebird_cli/src/executables/devicectl/apple_device.dart';
 import 'package:shorebird_cli/src/executables/executables.dart';
-import 'package:shorebird_cli/src/flutter_artifacts.dart';
 import 'package:shorebird_cli/src/os/os.dart';
 import 'package:shorebird_cli/src/patch_diff_checker.dart';
 import 'package:shorebird_cli/src/process.dart';
+import 'package:shorebird_cli/src/shorebird_artifacts.dart';
 import 'package:shorebird_cli/src/shorebird_env.dart';
 import 'package:shorebird_cli/src/shorebird_flutter.dart';
 import 'package:shorebird_cli/src/shorebird_validator.dart';
@@ -73,8 +73,6 @@ class MockFile extends Mock implements File {}
 
 class MockFileSetDiff extends Mock implements FileSetDiff {}
 
-class MockFlutterArtifacts extends Mock implements FlutterArtifacts {}
-
 class MockGit extends Mock implements Git {}
 
 class MockGradlew extends Mock implements Gradlew {}
@@ -113,6 +111,8 @@ class MockProgress extends Mock implements Progress {}
 class MockRelease extends Mock implements Release {}
 
 class MockReleaseArtifact extends Mock implements ReleaseArtifact {}
+
+class MockShorebirdArtifacts extends Mock implements ShorebirdArtifacts {}
 
 class MockShorebirdEnv extends Mock implements ShorebirdEnv {}
 

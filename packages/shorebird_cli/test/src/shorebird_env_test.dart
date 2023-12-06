@@ -142,6 +142,25 @@ void main() {
       });
     });
 
+    group('dartBinaryFile', () {
+      test('returns correct path', () {
+        expect(
+          runWithOverrides(() => shorebirdEnv.dartBinaryFile.path),
+          equals(
+            p.join(
+              shorebirdRoot.path,
+              'bin',
+              'cache',
+              'flutter',
+              flutterRevision,
+              'bin',
+              'dart',
+            ),
+          ),
+        );
+      });
+    });
+
     group('flutterBinaryFile', () {
       test('returns correct path', () {
         expect(
