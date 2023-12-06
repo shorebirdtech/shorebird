@@ -5,6 +5,7 @@ import 'package:scoped/scoped.dart';
 import 'package:shorebird_cli/src/cache.dart';
 import 'package:shorebird_cli/src/executables/executables.dart';
 import 'package:shorebird_cli/src/process.dart';
+import 'package:shorebird_cli/src/shorebird_artifacts.dart';
 import 'package:test/test.dart';
 
 import '../mocks.dart';
@@ -12,8 +13,10 @@ import '../mocks.dart';
 void main() {
   group(AotTools, () {
     late Cache cache;
+    late ShorebirdCachedArtifacts shorebirdCachedArtifacts;
     late ShorebirdProcess process;
     late Directory workingDirectory;
+    late File aotToolsFile;
     late AotTools aotTools;
 
     R runWithOverrides<R>(R Function() body) {
@@ -22,6 +25,7 @@ void main() {
         values: {
           cacheRef.overrideWith(() => cache),
           processRef.overrideWith(() => process),
+          shorebirdArtifactsRef.overrideWith(() => shorebirdCachedArtifacts),
         },
       );
     }
@@ -29,13 +33,17 @@ void main() {
     setUp(() {
       cache = MockCache();
       process = MockShorebirdProcess();
-      workingDirectory = Directory.systemTemp.createTempSync('aot-tool test');
+      shorebirdCachedArtifacts = MockShorebirdCachedArtifacts();
+      workingDirectory = Directory('aot-tools test');
+      aotToolsFile = File('aot-tools');
       aotTools = AotTools();
 
       when(() => cache.updateAll()).thenAnswer((_) async {});
       when(
-        () => cache.getArtifactDirectory(any()),
-      ).thenReturn(workingDirectory);
+        () => shorebirdCachedArtifacts.getArtifactPath(
+          artifact: ShorebirdArtifact.aotTools,
+        ),
+      ).thenReturn(aotToolsFile.path);
     });
 
     group('link', () {
@@ -102,7 +110,7 @@ void main() {
         );
         verify(
           () => process.run(
-            any(that: endsWith(AotTools.executableName)),
+            any(that: endsWith('aot-tools')),
             [
               'link',
               '--base=$base',

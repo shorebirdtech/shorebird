@@ -17,6 +17,7 @@ import 'package:shorebird_cli/src/os/os.dart';
 import 'package:shorebird_cli/src/patch_diff_checker.dart';
 import 'package:shorebird_cli/src/platform.dart';
 import 'package:shorebird_cli/src/process.dart';
+import 'package:shorebird_cli/src/shorebird_artifacts.dart';
 import 'package:shorebird_cli/src/shorebird_env.dart';
 import 'package:shorebird_cli/src/shorebird_flutter.dart';
 import 'package:shorebird_cli/src/shorebird_validator.dart';
@@ -51,6 +52,7 @@ Future<void> main(List<String> args) async {
         patchDiffCheckerRef,
         platformRef,
         processRef,
+        shorebirdArtifactsRef,
         shorebirdEnvRef,
         shorebirdFlutterRef,
         shorebirdValidatorRef,

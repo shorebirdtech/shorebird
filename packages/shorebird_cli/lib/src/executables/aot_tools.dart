@@ -2,6 +2,7 @@ import 'package:path/path.dart' as p;
 import 'package:scoped/scoped.dart';
 import 'package:shorebird_cli/src/cache.dart';
 import 'package:shorebird_cli/src/process.dart';
+import 'package:shorebird_cli/src/shorebird_artifacts.dart';
 
 /// A reference to a [AotTools] instance.
 final aotToolsRef = create(AotTools.new);
@@ -11,17 +12,22 @@ AotTools get aotTools => read(aotToolsRef);
 
 /// Wrapper around the shorebird `aot-tools` executable.
 class AotTools {
-  static const executableName = 'aot-tools';
-
   Future<ShorebirdProcessResult> _exec(
     List<String> command, {
     String? workingDirectory,
   }) async {
     await cache.updateAll();
-    final executable = p.join(
-      cache.getArtifactDirectory(executableName).path,
-      executableName,
+    final executable = shorebirdArtifacts.getArtifactPath(
+      artifact: ShorebirdArtifact.aotTools,
     );
+
+    if (p.extension(executable) == '.dart') {
+      return process.run(
+        'dart',
+        [executable, ...command],
+        workingDirectory: workingDirectory,
+      );
+    }
 
     return process.run(executable, command, workingDirectory: workingDirectory);
   }

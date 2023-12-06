@@ -22,6 +22,7 @@ import 'package:shorebird_cli/src/flutter_artifacts.dart';
 import 'package:shorebird_cli/src/os/os.dart';
 import 'package:shorebird_cli/src/patch_diff_checker.dart';
 import 'package:shorebird_cli/src/process.dart';
+import 'package:shorebird_cli/src/shorebird_artifacts.dart';
 import 'package:shorebird_cli/src/shorebird_env.dart';
 import 'package:shorebird_cli/src/shorebird_flutter.dart';
 import 'package:shorebird_cli/src/shorebird_validator.dart';
@@ -113,6 +114,9 @@ class MockProgress extends Mock implements Progress {}
 class MockRelease extends Mock implements Release {}
 
 class MockReleaseArtifact extends Mock implements ReleaseArtifact {}
+
+class MockShorebirdCachedArtifacts extends Mock
+    implements ShorebirdCachedArtifacts {}
 
 class MockShorebirdEnv extends Mock implements ShorebirdEnv {}
 

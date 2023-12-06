@@ -10,6 +10,7 @@ import 'package:shorebird_cli/src/flutter_artifacts.dart';
 import 'package:shorebird_cli/src/logger.dart';
 import 'package:shorebird_cli/src/platform.dart';
 import 'package:shorebird_cli/src/process.dart';
+import 'package:shorebird_cli/src/shorebird_artifacts.dart';
 import 'package:shorebird_cli/src/shorebird_env.dart';
 import 'package:shorebird_cli/src/shorebird_flutter.dart';
 import 'package:shorebird_cli/src/shorebird_version.dart';
@@ -90,13 +91,16 @@ class ShorebirdCliCommandRunner extends CompletionCommandRunner<int> {
       final flutterArtifacts = engineConfig.localEngineSrcPath != null
           ? const FlutterLocalEngineArtifacts()
           : const FlutterCachedArtifacts();
-
+      final shorebirdArtifacts = engineConfig.localEngineSrcPath != null
+          ? const ShorebirdLocalEngineArtifacts()
+          : const ShorebirdCachedArtifacts();
       return await runScoped<Future<int?>>(
             () => runCommand(topLevelResults),
             values: {
               engineConfigRef.overrideWith(() => engineConfig),
               processRef.overrideWith(() => process),
               flutterArtifactsRef.overrideWith(() => flutterArtifacts),
+              shorebirdArtifactsRef.overrideWith(() => shorebirdArtifacts),
             },
           ) ??
           ExitCode.success.code;
