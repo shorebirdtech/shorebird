@@ -10,7 +10,6 @@ import 'package:shorebird_cli/src/code_push_client_wrapper.dart';
 import 'package:shorebird_cli/src/command_runner.dart';
 import 'package:shorebird_cli/src/doctor.dart';
 import 'package:shorebird_cli/src/executables/executables.dart';
-import 'package:shorebird_cli/src/flutter_artifacts.dart';
 import 'package:shorebird_cli/src/http_client/http_client.dart';
 import 'package:shorebird_cli/src/logger.dart';
 import 'package:shorebird_cli/src/os/os.dart';
@@ -40,7 +39,6 @@ Future<void> main(List<String> args) async {
         devicectlRef,
         doctorRef,
         engineConfigRef,
-        flutterArtifactsRef,
         gitRef,
         gradlewRef,
         httpClientRef,

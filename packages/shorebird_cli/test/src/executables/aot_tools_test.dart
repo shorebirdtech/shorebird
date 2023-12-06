@@ -6,6 +6,7 @@ import 'package:shorebird_cli/src/cache.dart';
 import 'package:shorebird_cli/src/executables/executables.dart';
 import 'package:shorebird_cli/src/process.dart';
 import 'package:shorebird_cli/src/shorebird_artifacts.dart';
+import 'package:shorebird_cli/src/shorebird_env.dart';
 import 'package:test/test.dart';
 
 import '../mocks.dart';
@@ -13,9 +14,11 @@ import '../mocks.dart';
 void main() {
   group(AotTools, () {
     late Cache cache;
-    late ShorebirdCachedArtifacts shorebirdCachedArtifacts;
+    late ShorebirdArtifacts shorebirdArtifacts;
     late ShorebirdProcess process;
+    late ShorebirdEnv shorebirdEnv;
     late Directory workingDirectory;
+    late File dartBinaryFile;
     late AotTools aotTools;
 
     R runWithOverrides<R>(R Function() body) {
@@ -24,7 +27,8 @@ void main() {
         values: {
           cacheRef.overrideWith(() => cache),
           processRef.overrideWith(() => process),
-          shorebirdArtifactsRef.overrideWith(() => shorebirdCachedArtifacts),
+          shorebirdArtifactsRef.overrideWith(() => shorebirdArtifacts),
+          shorebirdEnvRef.overrideWith(() => shorebirdEnv),
         },
       );
     }
@@ -32,11 +36,14 @@ void main() {
     setUp(() {
       cache = MockCache();
       process = MockShorebirdProcess();
-      shorebirdCachedArtifacts = MockShorebirdCachedArtifacts();
+      shorebirdArtifacts = MockShorebirdArtifacts();
+      shorebirdEnv = MockShorebirdEnv();
+      dartBinaryFile = File('dart');
       workingDirectory = Directory('aot-tools test');
       aotTools = AotTools();
 
       when(() => cache.updateAll()).thenAnswer((_) async {});
+      when(() => shorebirdEnv.dartBinaryFile).thenReturn(dartBinaryFile);
     });
 
     group('link', () {
@@ -46,7 +53,7 @@ void main() {
 
       test('throws Exception when process exits with non-zero code', () async {
         when(
-          () => shorebirdCachedArtifacts.getArtifactPath(
+          () => shorebirdArtifacts.getArtifactPath(
             artifact: ShorebirdArtifact.aotTools,
           ),
         ).thenReturn('aot-tools');
@@ -86,7 +93,7 @@ void main() {
 
         setUp(() {
           when(
-            () => shorebirdCachedArtifacts.getArtifactPath(
+            () => shorebirdArtifacts.getArtifactPath(
               artifact: ShorebirdArtifact.aotTools,
             ),
           ).thenReturn(aotToolsPath);
@@ -137,7 +144,7 @@ void main() {
 
         setUp(() {
           when(
-            () => shorebirdCachedArtifacts.getArtifactPath(
+            () => shorebirdArtifacts.getArtifactPath(
               artifact: ShorebirdArtifact.aotTools,
             ),
           ).thenReturn(aotToolsPath);
@@ -170,7 +177,7 @@ void main() {
           );
           verify(
             () => process.run(
-              'dart',
+              dartBinaryFile.path,
               [
                 aotToolsPath,
                 'link',

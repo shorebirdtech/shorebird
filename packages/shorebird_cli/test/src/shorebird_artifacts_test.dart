@@ -14,6 +14,7 @@ import 'mocks.dart';
 void main() {
   group(ShorebirdCachedArtifacts, () {
     late Cache cache;
+    late Directory flutterDirectory;
     late Directory artifactDirectory;
     late ShorebirdEnv shorebirdEnv;
     late ShorebirdCachedArtifacts artifacts;
@@ -30,6 +31,7 @@ void main() {
 
     setUp(() {
       cache = MockCache();
+      flutterDirectory = Directory('flutter');
       artifactDirectory = Directory('artifacts');
       shorebirdEnv = MockShorebirdEnv();
       artifacts = const ShorebirdCachedArtifacts();
@@ -37,6 +39,7 @@ void main() {
       when(
         () => cache.getArtifactDirectory(any()),
       ).thenReturn(artifactDirectory);
+      when(() => shorebirdEnv.flutterDirectory).thenReturn(flutterDirectory);
     });
 
     group('getArtifactPath', () {
@@ -48,6 +51,49 @@ void main() {
             ),
           ),
           equals(p.join(artifactDirectory.path, 'aot-tools')),
+        );
+      });
+
+      test('returns correct path for gen_snapshot', () {
+        expect(
+          runWithOverrides(
+            () => artifacts.getArtifactPath(
+              artifact: ShorebirdArtifact.genSnapshot,
+            ),
+          ),
+          equals(
+            p.join(
+              flutterDirectory.path,
+              'bin',
+              'cache',
+              'artifacts',
+              'engine',
+              'ios-release',
+              'gen_snapshot_arm64',
+            ),
+          ),
+        );
+      });
+
+      test('returns correct path for analyze_snapshot', () {
+        expect(
+          runWithOverrides(
+            () => artifacts.getArtifactPath(
+              artifact: ShorebirdArtifact.analyzeSnapshot,
+            ),
+          ),
+          equals(
+            p.join(
+              flutterDirectory.path,
+              'bin',
+              'cache',
+              'artifacts',
+              'engine',
+              'ios-release',
+              'darwin-x64',
+              'analyze_snapshot',
+            ),
+          ),
         );
       });
     });
@@ -94,6 +140,44 @@ void main() {
               'aot_tools',
               'bin',
               'aot_tools.dart',
+            ),
+          ),
+        );
+      });
+
+      test('returns correct path for gen_snapshot', () {
+        expect(
+          runWithOverrides(
+            () => artifacts.getArtifactPath(
+              artifact: ShorebirdArtifact.genSnapshot,
+            ),
+          ),
+          equals(
+            p.join(
+              localEngineSrcPath,
+              'out',
+              'ios_release',
+              'clang_x64',
+              'gen_snapshot_arm64',
+            ),
+          ),
+        );
+      });
+
+      test('returns correct path for analyze_snapshot', () {
+        expect(
+          runWithOverrides(
+            () => artifacts.getArtifactPath(
+              artifact: ShorebirdArtifact.analyzeSnapshot,
+            ),
+          ),
+          equals(
+            p.join(
+              localEngineSrcPath,
+              'out',
+              'ios_release',
+              'clang_x64',
+              'analyze_snapshot_arm64',
             ),
           ),
         );

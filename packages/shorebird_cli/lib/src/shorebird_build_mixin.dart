@@ -3,10 +3,10 @@ import 'dart:io';
 import 'package:collection/collection.dart';
 import 'package:mason_logger/mason_logger.dart';
 import 'package:shorebird_cli/src/command.dart';
-import 'package:shorebird_cli/src/flutter_artifacts.dart';
 import 'package:shorebird_cli/src/logger.dart';
 import 'package:shorebird_cli/src/os/operating_system_interface.dart';
 import 'package:shorebird_cli/src/process.dart';
+import 'package:shorebird_cli/src/shorebird_artifacts.dart';
 
 enum Arch {
   arm64,
@@ -347,7 +347,9 @@ Either run `flutter pub get` manually, or follow the steps in ${link(uri: Uri.pa
     ];
 
     final result = await process.run(
-      flutterArtifacts.getArtifactPath(artifact: FlutterArtifact.genSnapshot),
+      shorebirdArtifacts.getArtifactPath(
+        artifact: ShorebirdArtifact.genSnapshot,
+      ),
       arguments,
     );
 

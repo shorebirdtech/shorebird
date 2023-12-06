@@ -78,6 +78,11 @@ class ShorebirdEnv {
     return File(p.join(flutterDirectory.path, 'bin', 'flutter'));
   }
 
+  /// The Shorebird-vended Dart binary.
+  File get dartBinaryFile {
+    return File(p.join(flutterDirectory.path, 'bin', 'dart'));
+  }
+
   /// The `shorebird.yaml` file for this project.
   File getShorebirdYamlFile({required Directory cwd}) {
     return File(p.join(cwd.path, 'shorebird.yaml'));

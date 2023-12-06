@@ -6,7 +6,6 @@ import 'package:http/http.dart' as http;
 import 'package:path/path.dart' as p;
 import 'package:platform/platform.dart';
 import 'package:scoped/scoped.dart';
-import 'package:shorebird_cli/src/flutter_artifacts.dart';
 import 'package:shorebird_cli/src/http_client/http_client.dart';
 import 'package:shorebird_cli/src/logger.dart';
 import 'package:shorebird_cli/src/platform.dart';
@@ -54,12 +53,8 @@ Cache get cache => read(cacheRef);
 /// This class handles fetching and unpacking artifacts from various sources.
 ///
 /// To access specific artifacts, it's generally recommended to use
-/// [FlutterCachedArtifacts] or [ShorebirdCachedArtifacts] respectively
-/// since they take into account the current Shorebird environment.
-///
-/// See also:
-/// * [FlutterCachedArtifacts], provides a list of Flutter cached artifacts.
-/// * [ShorebirdCachedArtifacts], provides a list of Shorebird cached artifacts.
+/// [ShorebirdCachedArtifacts] since it takes into account
+/// the current Shorebird environment.
 /// {@endtemplate}
 class Cache {
   Cache({this.extractArchive = _defaultArchiveExtractor}) {

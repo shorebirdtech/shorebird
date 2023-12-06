@@ -14,12 +14,12 @@ import 'package:shorebird_cli/src/commands/patch/patch.dart';
 import 'package:shorebird_cli/src/config/config.dart';
 import 'package:shorebird_cli/src/deployment_track.dart';
 import 'package:shorebird_cli/src/doctor.dart';
-import 'package:shorebird_cli/src/flutter_artifacts.dart';
 import 'package:shorebird_cli/src/logger.dart';
 import 'package:shorebird_cli/src/os/operating_system_interface.dart';
 import 'package:shorebird_cli/src/patch_diff_checker.dart';
 import 'package:shorebird_cli/src/platform.dart';
 import 'package:shorebird_cli/src/process.dart';
+import 'package:shorebird_cli/src/shorebird_artifacts.dart';
 import 'package:shorebird_cli/src/shorebird_env.dart';
 import 'package:shorebird_cli/src/shorebird_flutter.dart';
 import 'package:shorebird_cli/src/shorebird_validator.dart';
@@ -84,7 +84,7 @@ flutter:
     late Directory projectRoot;
     late Directory flutterDirectory;
     late File genSnapshotFile;
-    late FlutterArtifacts flutterArtifacts;
+    late ShorebirdArtifacts shorebirdArtifacts;
     late Doctor doctor;
     late IosArchiveDiffer archiveDiffer;
     late PatchDiffChecker patchDiffChecker;
@@ -111,7 +111,7 @@ flutter:
           authRef.overrideWith(() => auth),
           codePushClientWrapperRef.overrideWith(() => codePushClientWrapper),
           doctorRef.overrideWith(() => doctor),
-          flutterArtifactsRef.overrideWith(() => flutterArtifacts),
+          shorebirdArtifactsRef.overrideWith(() => shorebirdArtifacts),
           loggerRef.overrideWith(() => logger),
           osInterfaceRef.overrideWith(() => operatingSystemInterface),
           patchDiffCheckerRef.overrideWith(() => patchDiffChecker),
@@ -179,7 +179,7 @@ flutter:
       artifactManager = MockArtifactManager();
       codePushClientWrapper = MockCodePushClientWrapper();
       doctor = MockDoctor();
-      flutterArtifacts = MockFlutterArtifacts();
+      shorebirdArtifacts = MockShorebirdArtifacts();
       patchDiffChecker = MockPatchDiffChecker();
       platform = MockPlatform();
       shorebirdRoot = Directory.systemTemp.createTempSync();
@@ -255,8 +255,8 @@ flutter:
       ).thenReturn(projectRoot);
       when(() => shorebirdEnv.flutterDirectory).thenReturn(flutterDirectory);
       when(
-        () => flutterArtifacts.getArtifactPath(
-          artifact: FlutterArtifact.genSnapshot,
+        () => shorebirdArtifacts.getArtifactPath(
+          artifact: ShorebirdArtifact.genSnapshot,
         ),
       ).thenReturn(genSnapshotFile.path);
       when(() => shorebirdEnv.flutterRevision).thenReturn(flutterRevision);
