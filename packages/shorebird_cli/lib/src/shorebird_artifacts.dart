@@ -120,7 +120,7 @@ class ShorebirdLocalEngineArtifacts implements ShorebirdArtifacts {
       p.join(
         engineConfig.localEngineSrcPath!,
         'out',
-        'ios_release',
+        engineConfig.localEngine,
         'clang_x64',
         'analyze_snapshot_arm64',
       ),
@@ -146,7 +146,7 @@ class ShorebirdLocalEngineArtifacts implements ShorebirdArtifacts {
       p.join(
         engineConfig.localEngineSrcPath!,
         'out',
-        'ios_release',
+        engineConfig.localEngine,
         'clang_x64',
         'gen_snapshot_arm64',
       ),
