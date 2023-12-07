@@ -100,6 +100,7 @@ void main() {
 
   group(ShorebirdLocalEngineArtifacts, () {
     late String localEngineSrcPath;
+    late String localEngine;
     late EngineConfig engineConfig;
     late ShorebirdLocalEngineArtifacts artifacts;
 
@@ -114,12 +115,16 @@ void main() {
 
     setUp(() {
       localEngineSrcPath = 'local_engine_src_path';
+      localEngine = 'local_engine';
       engineConfig = MockEngineConfig();
       artifacts = const ShorebirdLocalEngineArtifacts();
 
       when(
         () => engineConfig.localEngineSrcPath,
       ).thenReturn(localEngineSrcPath);
+      when(
+        () => engineConfig.localEngine,
+      ).thenReturn(localEngine);
     });
 
     group('getArtifactPath', () {
@@ -155,7 +160,7 @@ void main() {
             p.join(
               localEngineSrcPath,
               'out',
-              'ios_release',
+              localEngine,
               'clang_x64',
               'gen_snapshot_arm64',
             ),
@@ -174,7 +179,7 @@ void main() {
             p.join(
               localEngineSrcPath,
               'out',
-              'ios_release',
+              localEngine,
               'clang_x64',
               'analyze_snapshot_arm64',
             ),
