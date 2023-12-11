@@ -2,6 +2,16 @@
 
 This section contains past updates we've sent to customers via Discord.
 
+## 0.18.5 (December 11, 2023)
+
+- 🍎 Additional changes for iOS mixed-mode (turned off by default)
+
+📚 Release notes can be found at https://github.com/shorebirdtech/shorebird/releases/tag/v0.18.5
+
+As always, you can upgrade using `shorebird upgrade`
+
+Please let us know if we can help!
+
 ## 0.18.4 (December 8, 2023)
 
 - 🩹 Fixed `shorebird preview` bug when running with flavors (https://github.com/shorebirdtech/shorebird/issues/1542)
