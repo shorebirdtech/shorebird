@@ -201,6 +201,7 @@ void main() {
           engineConfig: EngineConfig(
             localEngineSrcPath: localEngineSrcPath,
             localEngine: 'android_release_arm64',
+            localEngineHost: 'host_release',
           ),
         );
 
@@ -212,6 +213,7 @@ void main() {
             [
               '--local-engine-src-path=$localEngineSrcPath',
               '--local-engine=android_release_arm64',
+              '--local-engine-host=host_release',
             ],
             runInShell: any(named: 'runInShell'),
             environment: any(named: 'environment'),

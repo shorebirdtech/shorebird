@@ -16,14 +16,17 @@ class EngineConfig {
   const EngineConfig({
     required this.localEngineSrcPath,
     required this.localEngine,
+    required this.localEngineHost,
   });
 
   const EngineConfig.empty()
       : localEngineSrcPath = null,
-        localEngine = null;
+        localEngine = null,
+        localEngineHost = null;
 
   final String? localEngineSrcPath;
   final String? localEngine;
+  final String? localEngineHost;
 }
 
 // A reference to a [ShorebirdProcess] instance.
@@ -202,6 +205,7 @@ class ShorebirdProcess {
         resolvedArguments = [
           '--local-engine-src-path=${engineConfig.localEngineSrcPath}',
           '--local-engine=${engineConfig.localEngine}',
+          '--local-engine-host=${engineConfig.localEngineHost}',
           ...resolvedArguments,
         ];
       }

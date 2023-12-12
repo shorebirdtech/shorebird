@@ -56,6 +56,11 @@ class ShorebirdCliCommandRunner extends CompletionCommandRunner<int> {
         hide: true,
         help: 'Name of a build output within the engine out directory, if you '
             'are building Flutter locally.',
+      )
+      ..addOption(
+        'local-engine-host',
+        hide: true,
+        help: 'The build of the local engine to use as the host platform.',
       );
 
     addCommand(BuildCommand());
@@ -85,6 +90,7 @@ class ShorebirdCliCommandRunner extends CompletionCommandRunner<int> {
       final engineConfig = EngineConfig(
         localEngineSrcPath: topLevelResults['local-engine-src-path'] as String?,
         localEngine: topLevelResults['local-engine'] as String?,
+        localEngineHost: topLevelResults['local-engine-host'] as String?,
       );
       final process = ShorebirdProcess(engineConfig: engineConfig);
       final shorebirdArtifacts = engineConfig.localEngineSrcPath != null
