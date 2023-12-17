@@ -77,8 +77,8 @@ If this option is not provided, the version number will be determined from the p
         help: 'Whether to publish the patch to the staging environment.',
       )
       ..addFlag(
-        'use-linker',
-        negatable: false,
+        'mix',
+        defaultsTo: true,
         hide: true,
         help: 'Whether to use the new linker when building the patch.',
       );
@@ -112,7 +112,7 @@ If this option is not provided, the version number will be determined from the p
     final force = results['force'] == true;
     final dryRun = results['dry-run'] == true;
     final isStaging = results['staging'] == true;
-    final useLinker = results['use-linker'] == true;
+    final useLinker = results['mix'] == true;
 
     if (force && dryRun) {
       logger.err('Cannot use both --force and --dry-run.');
@@ -380,10 +380,6 @@ ${summary.join('\n')}
   }
 
   Future<int> _runLinker({required File releaseArtifact}) async {
-    logger.warn(
-      '--use-linker is an experimental feature and may not work as expected.',
-    );
-
     final patch = File(_aotOutputPath);
 
     if (!patch.existsSync()) {

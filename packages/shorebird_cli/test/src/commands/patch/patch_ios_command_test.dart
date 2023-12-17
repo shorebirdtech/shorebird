@@ -308,7 +308,7 @@ flutter:
       when(() => argResults['force']).thenReturn(false);
       when(() => argResults['codesign']).thenReturn(true);
       when(() => argResults['staging']).thenReturn(false);
-      when(() => argResults['use-linker']).thenReturn(false);
+      when(() => argResults['mix']).thenReturn(false);
       when(() => argResults.rest).thenReturn([]);
       when(
         () => aotTools.link(
@@ -909,20 +909,9 @@ Please re-run the release command for this version or create a new release.'''),
       );
     });
 
-    group('when --use-linker', () {
+    group('when --mix', () {
       setUp(() {
-        when(() => argResults['use-linker']).thenReturn(true);
-      });
-
-      test('logs warning', () async {
-        setUpProjectRoot();
-        setUpProjectRootArtifacts();
-        await runWithOverrides(command.run);
-        verify(
-          () => logger.warn(
-            '''--use-linker is an experimental feature and may not work as expected.''',
-          ),
-        ).called(1);
+        when(() => argResults['mix']).thenReturn(true);
       });
 
       test('exits with code 70 if patch AOT file is not found', () async {
