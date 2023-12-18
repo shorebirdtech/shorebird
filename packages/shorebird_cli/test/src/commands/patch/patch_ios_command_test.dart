@@ -35,7 +35,8 @@ import '../../fakes.dart';
 import '../../mocks.dart';
 
 void main() {
-  const flutterRevision = '83305b5088e6fe327fb3334a73ff190828d85713';
+  const preLinkerFlutterRevision = '83305b5088e6fe327fb3334a73ff190828d85713';
+  const postLinkerFlutterRevision = 'deadbeefdeadbeefdeadbeefdeadbeefdeadbeef';
   const appId = 'test-app-id';
   const shorebirdYaml = ShorebirdYaml(appId: appId);
   const versionName = '1.2.3';
@@ -114,12 +115,22 @@ flutter:
     size: 42,
     url: 'https://example.com/release.ipa',
   );
-  final release = Release(
+  final preLinkerRelease = Release(
     id: 0,
     appId: appId,
     version: version,
-    flutterRevision: flutterRevision,
+    flutterRevision: preLinkerFlutterRevision,
     displayName: '1.2.3+1',
+    platformStatuses: {ReleasePlatform.ios: ReleaseStatus.active},
+    createdAt: DateTime(2023),
+    updatedAt: DateTime(2023),
+  );
+  final postLinkerRelease = Release(
+    id: 0,
+    appId: appId,
+    version: version,
+    flutterRevision: postLinkerFlutterRevision,
+    displayName: '1.2.4+1',
     platformStatuses: {ReleasePlatform.ios: ReleaseStatus.active},
     createdAt: DateTime(2023),
     updatedAt: DateTime(2023),
@@ -336,7 +347,7 @@ flutter:
           appId: any(named: 'appId'),
           releaseVersion: any(named: 'releaseVersion'),
         ),
-      ).thenAnswer((_) async => release);
+      ).thenAnswer((_) async => preLinkerRelease);
       when(
         () => codePushClientWrapper.getReleaseArtifact(
           appId: any(named: 'appId'),
@@ -380,7 +391,8 @@ flutter:
           artifact: ShorebirdArtifact.analyzeSnapshot,
         ),
       ).thenReturn(analyzeSnapshotFile.path);
-      when(() => shorebirdEnv.flutterRevision).thenReturn(flutterRevision);
+      when(() => shorebirdEnv.flutterRevision)
+          .thenReturn(preLinkerFlutterRevision);
       when(() => shorebirdEnv.isRunningOnCI).thenReturn(false);
       when(() => shorebirdFlutter.useRevision(revision: any(named: 'revision')))
           .thenAnswer((_) async {});
@@ -599,7 +611,7 @@ error: exportArchive: No signing certificate "iOS Distribution" found
           id: 0,
           appId: appId,
           version: version,
-          flutterRevision: flutterRevision,
+          flutterRevision: preLinkerFlutterRevision,
           displayName: '1.2.3+1',
           platformStatuses: {ReleasePlatform.android: ReleaseStatus.active},
           createdAt: DateTime(2023),
@@ -626,7 +638,7 @@ error: exportArchive: No signing certificate "iOS Distribution" found
           id: 0,
           appId: appId,
           version: version,
-          flutterRevision: flutterRevision,
+          flutterRevision: preLinkerFlutterRevision,
           displayName: '1.2.3+1',
           platformStatuses: {ReleasePlatform.ios: ReleaseStatus.draft},
           createdAt: DateTime(2023),
@@ -656,7 +668,7 @@ Please re-run the release command for this version or create a new release.'''),
           id: 0,
           appId: appId,
           version: version,
-          flutterRevision: flutterRevision,
+          flutterRevision: preLinkerFlutterRevision,
           displayName: '1.2.3+1',
           platformStatuses: {
             ReleasePlatform.android: ReleaseStatus.draft,
@@ -685,7 +697,8 @@ Please re-run the release command for this version or create a new release.'''),
       expect(exitCode, ExitCode.success.code);
       // Verify that we switch back to the original revision once we're done.
       verifyInOrder([
-        () => shorebirdFlutter.useRevision(revision: release.flutterRevision),
+        () => shorebirdFlutter.useRevision(
+            revision: preLinkerRelease.flutterRevision),
         () => shorebirdFlutter.useRevision(revision: otherRevision),
       ]);
 
@@ -694,7 +707,7 @@ Please re-run the release command for this version or create a new release.'''),
           any(
             that: stringContainsInOrder([
               '''The release you are trying to patch was built with a different version of Flutter.''',
-              'Release Flutter Revision: ${release.flutterRevision}',
+              'Release Flutter Revision: ${preLinkerRelease.flutterRevision}',
               'Current Flutter Revision: $otherRevision',
             ]),
           ),
@@ -755,7 +768,7 @@ Please re-run the release command for this version or create a new release.'''),
         verify(
           () => codePushClientWrapper.getRelease(
             appId: appId,
-            releaseVersion: release.version,
+            releaseVersion: preLinkerRelease.version,
           ),
         ).called(1);
       });
@@ -909,63 +922,103 @@ Please re-run the release command for this version or create a new release.'''),
       );
     });
 
-    group('when --mix', () {
+    group('when the release flutter revision is pre-linker', () {
       setUp(() {
-        when(() => argResults['mix']).thenReturn(true);
-      });
-
-      test('exits with code 70 if patch AOT file is not found', () async {
         setUpProjectRoot();
         setUpProjectRootArtifacts();
-
-        final patch = File(
-          p.join(projectRoot.path, 'build', elfAotSnapshotFileName),
-        )..deleteSync(recursive: true);
-
-        final exitCode = await runWithOverrides(command.run);
-
-        expect(exitCode, equals(ExitCode.software.code));
-        verify(
-          () => logger.err('Unable to find patch AOT file at ${patch.path}'),
-        ).called(1);
       });
 
-      test('exits with code 70 if analyze snapshot is not found', () async {
-        setUpProjectRoot();
-        setUpProjectRootArtifacts();
+      test('we do not attempt to link the AOT file', () async {
+        await runWithOverrides(command.run);
 
-        analyzeSnapshotFile.deleteSync(recursive: true);
-
-        final exitCode = await runWithOverrides(command.run);
-
-        expect(exitCode, equals(ExitCode.software.code));
-        verify(
-          () => logger.err(
-            'Unable to find analyze_snapshot at ${analyzeSnapshotFile.path}',
-          ),
-        ).called(1);
-      });
-
-      test('exits with code 70 if linking fails', () async {
-        final exception = Exception('oops');
-        when(
+        verifyNever(
           () => aotTools.link(
             base: any(named: 'base'),
             patch: any(named: 'patch'),
             analyzeSnapshot: any(named: 'analyzeSnapshot'),
             workingDirectory: any(named: 'workingDirectory'),
           ),
-        ).thenThrow(exception);
+        );
+      });
+    });
 
+    group('when the release flutter revision supports the linker', () {
+      setUp(() {
         setUpProjectRoot();
         setUpProjectRootArtifacts();
+        when(
+          () => codePushClientWrapper.getRelease(
+            appId: any(named: 'appId'),
+            releaseVersion: any(named: 'releaseVersion'),
+          ),
+        ).thenAnswer((_) async => postLinkerRelease);
+      });
 
-        final exitCode = await runWithOverrides(command.run);
-
-        expect(exitCode, equals(ExitCode.software.code));
+      test('we attempt to link the AOT file', () async {
+        await runWithOverrides(command.run);
         verify(
-          () => progress.fail('Failed to link AOT files: $exception'),
+          () => aotTools.link(
+            base: any(named: 'base'),
+            patch: any(named: 'patch'),
+            analyzeSnapshot: any(named: 'analyzeSnapshot'),
+            workingDirectory: any(named: 'workingDirectory'),
+          ),
         ).called(1);
+      });
+
+      group('when patch AOT file is not found', () {
+        test('exits with code 70', () async {
+          final patch = File(
+            p.join(projectRoot.path, 'build', elfAotSnapshotFileName),
+          )..deleteSync(recursive: true);
+
+          final exitCode = await runWithOverrides(command.run);
+
+          expect(exitCode, equals(ExitCode.software.code));
+          verify(
+            () => logger.err('Unable to find patch AOT file at ${patch.path}'),
+          ).called(1);
+        });
+      });
+
+      group('when analyze snapshot is not found', () {
+        setUp(() {
+          analyzeSnapshotFile.deleteSync(recursive: true);
+        });
+
+        test('exits with code 70', () async {
+          final exitCode = await runWithOverrides(command.run);
+
+          expect(exitCode, equals(ExitCode.software.code));
+          verify(
+            () => logger.err(
+              'Unable to find analyze_snapshot at ${analyzeSnapshotFile.path}',
+            ),
+          ).called(1);
+        });
+      });
+
+      group('when linking fails', () {
+        final exception = Exception('failed to link');
+        setUp(() {
+          when(
+            () => aotTools.link(
+              base: any(named: 'base'),
+              patch: any(named: 'patch'),
+              analyzeSnapshot: any(named: 'analyzeSnapshot'),
+              workingDirectory: any(named: 'workingDirectory'),
+            ),
+          ).thenThrow(exception);
+        });
+
+        test('exits with code 70', () async {
+          final exitCode = await runWithOverrides(command.run);
+
+          expect(exitCode, equals(ExitCode.software.code));
+          verify(
+            () => progress.fail('Failed to link AOT files: $exception'),
+          ).called(1);
+        });
       });
     });
 
@@ -994,7 +1047,7 @@ Please re-run the release command for this version or create a new release.'''),
       verify(
         () => codePushClientWrapper.publishPatch(
           appId: appId,
-          releaseId: release.id,
+          releaseId: preLinkerRelease.id,
           platform: releasePlatform,
           track: track,
           patchArtifactBundles: any(named: 'patchArtifactBundles'),
@@ -1020,7 +1073,7 @@ Please re-run the release command for this version or create a new release.'''),
       verify(
         () => codePushClientWrapper.publishPatch(
           appId: appId,
-          releaseId: release.id,
+          releaseId: preLinkerRelease.id,
           platform: releasePlatform,
           track: track,
           patchArtifactBundles: any(named: 'patchArtifactBundles'),
@@ -1048,7 +1101,7 @@ Please re-run the release command for this version or create a new release.'''),
       verify(
         () => codePushClientWrapper.publishPatch(
           appId: appId,
-          releaseId: release.id,
+          releaseId: preLinkerRelease.id,
           platform: releasePlatform,
           track: DeploymentTrack.staging,
           patchArtifactBundles: any(named: 'patchArtifactBundles'),
@@ -1140,7 +1193,7 @@ flavors:
       verify(
         () => codePushClientWrapper.publishPatch(
           appId: appId,
-          releaseId: release.id,
+          releaseId: preLinkerRelease.id,
           platform: releasePlatform,
           track: track,
           patchArtifactBundles: any(named: 'patchArtifactBundles'),
