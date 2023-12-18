@@ -53,7 +53,6 @@ void main() {
     group('executable', () {
       group('when on Windows', () {
         const javaHome = r'C:\Program Files\Java\jdk-11.0.1';
-
         setUp(() {
           when(() => platform.isWindows).thenReturn(true);
           when(() => platform.environment).thenReturn({'JAVA_HOME': javaHome});
@@ -69,13 +68,15 @@ void main() {
 
       group('when on a non-Windows OS', () {
         setUp(() {
+          const javaHome = '/path/to/jdk';
           when(() => platform.isWindows).thenReturn(false);
+          when(() => platform.environment).thenReturn({'JAVA_HOME': javaHome});
         });
 
         test('returns correct executable on non-windows', () async {
           expect(
             runWithOverrides(() => java.executable),
-            equals('java'),
+            equals('/path/to/jdk/bin/java'),
           );
         });
       });
@@ -210,17 +211,9 @@ void main() {
         });
 
         group('when JAVA_HOME is not set', () {
-          group("when java is on the user's path", () {
-            const javaPath = '/path/to/java';
-            setUp(() {
-              when(() => osInterface.which('java')).thenReturn(javaPath);
-            });
-
+          group('returns null', () {
             test('returns path to java', () {
-              expect(
-                runWithOverrides(() => java.home),
-                equals('/path/to/java'),
-              );
+              expect(runWithOverrides(() => java.home), isNull);
             });
           });
 
