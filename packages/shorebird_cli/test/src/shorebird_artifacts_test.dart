@@ -40,6 +40,8 @@ void main() {
         () => cache.getArtifactDirectory(any()),
       ).thenReturn(artifactDirectory);
       when(() => shorebirdEnv.flutterDirectory).thenReturn(flutterDirectory);
+      when(() => shorebirdEnv.shorebirdEngineRevision)
+          .thenReturn('engine-revision');
     });
 
     group('getArtifactPath', () {

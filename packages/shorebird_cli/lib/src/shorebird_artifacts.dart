@@ -76,6 +76,7 @@ class ShorebirdCachedArtifacts implements ShorebirdArtifacts {
     return File(
       p.join(
         cache.getArtifactDirectory(executableName).path,
+        shorebirdEnv.shorebirdEngineRevision,
         executableName,
       ),
     );

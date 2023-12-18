@@ -205,6 +205,14 @@ class AotToolsArtifact extends CachedArtifact {
   bool get required => false;
 
   @override
+  Directory get location => Directory(
+        p.join(
+          cache.getArtifactDirectory(name).path,
+          shorebirdEnv.shorebirdEngineRevision,
+        ),
+      );
+
+  @override
   String get storageUrl {
     var artifactName = 'aot-tools-';
     if (platform.isMacOS) {
