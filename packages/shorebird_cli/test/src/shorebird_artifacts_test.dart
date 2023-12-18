@@ -52,7 +52,9 @@ void main() {
               artifact: ShorebirdArtifact.aotTools,
             ),
           ),
-          equals(p.join(artifactDirectory.path, 'aot-tools')),
+          equals(
+            p.join(artifactDirectory.path, 'engine-revision', 'aot-tools'),
+          ),
         );
       });
 
