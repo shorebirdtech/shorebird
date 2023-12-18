@@ -50,26 +50,17 @@ class AndroidStudio {
         final androidStudioVersionsToPaths = <Version, String>{};
         for (final directory in matchingDirectories) {
           final directoryName = p.basename(directory.path);
+          // Because we've already performed this match above, we can safely
+          // assume that this will match.
           final versionMatch = studioRegex.firstMatch(directoryName)!.group(1);
-          final version = tryParseVersion(versionMatch!, strict: false);
-          if (version == null) {
-            logger.detail('Unable to parse version from $directoryName');
-            continue;
-          }
+          final version = tryParseVersion(versionMatch!, strict: false)!;
 
           final homeFile = File(p.join(directory.path, '.home'));
           if (!homeFile.existsSync()) {
             continue;
           }
 
-          final String androidStudioPath;
-          try {
-            androidStudioPath = homeFile.readAsStringSync();
-          } catch (e) {
-            logger.detail('Unable to read $homeFile: $e');
-            continue;
-          }
-
+          final androidStudioPath = homeFile.readAsStringSync();
           if (Directory(androidStudioPath).existsSync()) {
             androidStudioVersionsToPaths[version] = androidStudioPath;
             if (highestVersion == null || version > highestVersion) {
