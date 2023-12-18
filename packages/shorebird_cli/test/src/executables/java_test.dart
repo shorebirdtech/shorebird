@@ -80,6 +80,19 @@ void main() {
           );
         });
       });
+
+      group('when no jdk is found', () {
+        setUp(() {
+          when(() => osInterface.which('java')).thenReturn('/bin/java');
+        });
+
+        test('returns java found on path', () async {
+          expect(
+            runWithOverrides(() => java.executable),
+            equals('/bin/java'),
+          );
+        });
+      });
     });
 
     group('home', () {
