@@ -785,6 +785,7 @@ void main() {
         iosDeploy = MockIOSDeploy();
 
         when(() => appleDevice.name).thenReturn('iPhone 12');
+        when(() => appleDevice.udid).thenReturn('12345678-1234567890ABCDEF');
         when(() => argResults['platform']).thenReturn(releasePlatform.name);
         when(
           () => artifactManager.downloadFile(any()),
