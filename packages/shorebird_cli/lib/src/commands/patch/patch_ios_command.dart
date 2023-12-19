@@ -286,7 +286,7 @@ Current Flutter Revision: $originalFlutterRevision
       return ExitCode.software.code;
     }
 
-    final useLinker = engineConfig.localEngine == null &&
+    final useLinker = engineConfig.localEngine != null ||
         !preLinkerFlutterRevisions.contains(release.flutterRevision);
     if (useLinker) {
       final extractZip = artifactManager.extractZip;
