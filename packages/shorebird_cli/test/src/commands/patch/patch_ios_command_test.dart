@@ -962,7 +962,7 @@ Please re-run the release command for this version or create a new release.'''),
           when(() => engineConfig.localEngine).thenReturn('engine');
         });
 
-        test('does attempt to link', () async {
+        test('attempts to link', () async {
           await runWithOverrides(command.run);
 
           verify(
