@@ -3,6 +3,7 @@ import 'package:scoped/scoped.dart';
 import 'package:shorebird_cli/src/android_sdk.dart';
 import 'package:shorebird_cli/src/cache.dart';
 import 'package:shorebird_cli/src/executables/java.dart';
+import 'package:shorebird_cli/src/extensions/string.dart';
 import 'package:shorebird_cli/src/process.dart';
 
 /// A reference to a [Bundletool] instance.
@@ -25,8 +26,8 @@ class Bundletool {
       javaExecutable,
       ['-jar', bundletool, ...command],
       environment: {
-        if (androidSdkPath != null) 'ANDROID_HOME': androidSdkPath,
-        if (javaHome != null) 'JAVA_HOME': javaHome,
+        if (!androidSdkPath.isNullOrEmpty) 'ANDROID_HOME': androidSdkPath!,
+        if (!javaHome.isNullOrEmpty) 'JAVA_HOME': javaHome!,
       },
     );
   }
