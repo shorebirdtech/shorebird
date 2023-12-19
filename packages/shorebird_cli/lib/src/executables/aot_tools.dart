@@ -22,6 +22,8 @@ class AotTools {
       artifact: ShorebirdArtifact.aotTools,
     );
 
+    // This enables us to run Dart scripts directly, as is needed when running
+    // with a local engine.
     if (p.extension(executable) == '.dart') {
       return process.run(
         shorebirdEnv.dartBinaryFile.path,
