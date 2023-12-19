@@ -40,18 +40,19 @@ class AndroidStudio {
         // file that contains the path to the Android Studio installation. We
         // want to find the directory with the highest version number that
         // points to a valid installation and return that.
-        final studioRegex = RegExp(r'AndroidStudio(\d+\.\d+)');
+        final androidStudioRegex = RegExp(r'AndroidStudio(\d+\.\d+)');
         final matchingDirectories = cacheDir
             .listSync()
             .whereType<Directory>()
-            .where((dir) => studioRegex.hasMatch(dir.path));
+            .where((dir) => androidStudioRegex.hasMatch(dir.path));
         Version? highestVersion;
         final androidStudioVersionsToPaths = <Version, String>{};
         for (final directory in matchingDirectories) {
           final directoryName = p.basename(directory.path);
           // Because we've already performed this match above, we can safely
           // assume that this will match.
-          final versionMatch = studioRegex.firstMatch(directoryName)!.group(1);
+          final versionMatch =
+              androidStudioRegex.firstMatch(directoryName)!.group(1);
           final version = tryParseVersion(versionMatch!, strict: false)!;
 
           final homeFile = File(p.join(directory.path, '.home'));
