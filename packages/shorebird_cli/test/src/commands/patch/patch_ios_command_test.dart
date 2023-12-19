@@ -145,6 +145,7 @@ flutter:
     late Directory flutterDirectory;
     late Directory shorebirdRoot;
     late Directory projectRoot;
+    late EngineConfig engineConfig;
     late File genSnapshotFile;
     late File analyzeSnapshotFile;
     late File releaseArtifactFile;
@@ -176,6 +177,7 @@ flutter:
           authRef.overrideWith(() => auth),
           codePushClientWrapperRef.overrideWith(() => codePushClientWrapper),
           doctorRef.overrideWith(() => doctor),
+          engineConfigRef.overrideWith(() => engineConfig),
           shorebirdArtifactsRef.overrideWith(() => shorebirdArtifacts),
           loggerRef.overrideWith(() => logger),
           osInterfaceRef.overrideWith(() => operatingSystemInterface),
@@ -266,6 +268,7 @@ flutter:
       auth = MockAuth();
       codePushClientWrapper = MockCodePushClientWrapper();
       doctor = MockDoctor();
+      engineConfig = MockEngineConfig();
       shorebirdArtifacts = MockShorebirdArtifacts();
       shorebirdRoot = Directory.systemTemp.createTempSync();
       projectRoot = Directory.systemTemp.createTempSync();
@@ -319,7 +322,6 @@ flutter:
       when(() => argResults['force']).thenReturn(false);
       when(() => argResults['codesign']).thenReturn(true);
       when(() => argResults['staging']).thenReturn(false);
-      when(() => argResults['mix']).thenReturn(false);
       when(() => argResults.rest).thenReturn([]);
       when(
         () => aotTools.link(
@@ -366,6 +368,7 @@ flutter:
         ),
       ).thenAnswer((_) async {});
       when(() => doctor.iosCommandValidators).thenReturn([flutterValidator]);
+      when(() => engineConfig.localEngine).thenReturn(null);
       when(flutterValidator.validate).thenAnswer((_) async => []);
       when(() => logger.confirm(any())).thenReturn(true);
       when(() => logger.progress(any())).thenReturn(progress);
@@ -922,7 +925,7 @@ Please re-run the release command for this version or create a new release.'''),
       );
     });
 
-    group('when the release flutter revision is pre-linker', () {
+    group('when the engine revision is pre-linker', () {
       setUp(() {
         setUpProjectRoot();
         setUpProjectRootArtifacts();
@@ -942,7 +945,7 @@ Please re-run the release command for this version or create a new release.'''),
       });
     });
 
-    group('when the release flutter revision supports the linker', () {
+    group('when the engine revision supports the linker', () {
       setUp(() {
         setUpProjectRoot();
         setUpProjectRootArtifacts();
@@ -952,6 +955,25 @@ Please re-run the release command for this version or create a new release.'''),
             releaseVersion: any(named: 'releaseVersion'),
           ),
         ).thenAnswer((_) async => postLinkerRelease);
+      });
+
+      group('when using a local engine build', () {
+        setUp(() {
+          when(() => engineConfig.localEngine).thenReturn('engine');
+        });
+
+        test('does not attempt to link', () async {
+          await runWithOverrides(command.run);
+
+          verifyNever(
+            () => aotTools.link(
+              base: any(named: 'base'),
+              patch: any(named: 'patch'),
+              analyzeSnapshot: any(named: 'analyzeSnapshot'),
+              workingDirectory: any(named: 'workingDirectory'),
+            ),
+          );
+        });
       });
 
       test('we attempt to link the AOT file', () async {
