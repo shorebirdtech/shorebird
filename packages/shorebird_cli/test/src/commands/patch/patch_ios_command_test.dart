@@ -777,7 +777,7 @@ Please re-run the release command for this version or create a new release.'''),
       });
     });
 
-    test('exits with code 70 when release version cannot be determiend',
+    test('exits with code 70 when release version cannot be determined',
         () async {
       setUpProjectRoot();
       setUpProjectRootArtifacts();
@@ -962,17 +962,17 @@ Please re-run the release command for this version or create a new release.'''),
           when(() => engineConfig.localEngine).thenReturn('engine');
         });
 
-        test('does not attempt to link', () async {
+        test('attempts to link', () async {
           await runWithOverrides(command.run);
 
-          verifyNever(
+          verify(
             () => aotTools.link(
               base: any(named: 'base'),
               patch: any(named: 'patch'),
               analyzeSnapshot: any(named: 'analyzeSnapshot'),
               workingDirectory: any(named: 'workingDirectory'),
             ),
-          );
+          ).called(1);
         });
       });
 
