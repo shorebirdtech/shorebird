@@ -335,6 +335,42 @@ void main() {
         });
       });
 
+      // This should probably be outside of the android group, but because
+      // we want to verify that android-specific behavior is used, here it is.
+      group('when release has a mix of supported and unsupported platforms',
+          () {
+        setUp(() {
+          when(() => platform.isLinux).thenReturn(false);
+          when(() => platform.isMacOS).thenReturn(false);
+          when(() => platform.isWindows).thenReturn(true);
+
+          when(
+            () => artifactManager.extractZip(
+              zipFile: any(named: 'zipFile'),
+              outputDirectory: any(named: 'outputDirectory'),
+            ),
+          ).thenAnswer(createShorebirdYaml);
+
+          when(() => release.platformStatuses).thenReturn({
+            ReleasePlatform.ios: ReleaseStatus.active,
+            ReleasePlatform.android: ReleaseStatus.active,
+          });
+        });
+
+        test('does not prompt for platform, uses android', () async {
+          await runWithOverrides(command.run);
+
+          verify(() => bundletool.installApks(apks: apksPath())).called(1);
+          verifyNever(
+            () => logger.chooseOne<String>(
+              any(),
+              choices: any(named: 'choices'),
+              display: any(named: 'display'),
+            ),
+          );
+        });
+      });
+
       test('exits with code 70 when querying for release artifact fails',
           () async {
         final exception = Exception('oops');
