@@ -71,6 +71,7 @@ const preLinkerFlutterRevisions = <String>{
   '5567fb431a2ddbb70c05ff7cd8fcd58bb91f2dbc',
   '914d5b5fcacc794fd0319f2928ceb514e1e0da33',
   'e744c831b8355bcb9f3b541d42431d9145eea677',
+  '1a6115bebe31e63508c312d14e69e973e1a59dbf',
 };
 
 /// {@template patch_ios_command}

@@ -2,6 +2,19 @@
 
 This section contains past updates we've sent to customers via Discord.
 
+## 0.19.1 (December 20, 2023)
+
+- ⬆️ Updated to Flutter 3.16.4
+- 🩹 Improved `JDK` lookup and handle empty `JAVA_HOME`
+- 👀 `shorebird preview` fixed to only use available platforms
+- 🪟 Android Studio path fixes on Windows
+
+📚 Release notes can be found at https://github.com/shorebirdtech/shorebird/releases/tag/v0.19.1
+
+As always, you can upgrade using `shorebird upgrade`
+
+Please let us know if we can help!
+
 ## 0.19.0 (December 12, 2023)
 
 - ⬆️ Updated to Flutter 3.16.3
