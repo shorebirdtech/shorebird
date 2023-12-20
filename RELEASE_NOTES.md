@@ -2,6 +2,19 @@
 
 This section contains past updates we've sent to customers via Discord.
 
+## 0.20.0 (December 20, 2023)
+
+- New Dart VM "mixed-mode" is now enabled by default on iOS.
+  - iOS patches now use the release's Dart code (on the CPU) for faster execution when possible.
+  - No performance or user visible changes expected. Performance improvements will be coming in future releases.
+  - This is a major change to how Dart code is executed on iOS. If you see anything surprising, please let us know!
+
+📚 Release notes can be found at https://github.com/shorebirdtech/shorebird/releases/tag/v0.20.0
+
+As always, you can upgrade using `shorebird upgrade`
+
+Please let us know if we can help!
+
 ## 0.19.1 (December 20, 2023)
 
 - ⬆️ Updated to Flutter 3.16.4
