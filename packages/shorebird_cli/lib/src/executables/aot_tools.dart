@@ -24,7 +24,8 @@ class AotTools {
 
     // This enables us to run Dart scripts directly, as is needed when running
     // with a local engine.
-    if (p.extension(executable) == '.dart') {
+    final ext = p.extension(executable);
+    if (ext == '.dart' || ext == '.dill') {
       return process.run(
         shorebirdEnv.dartBinaryFile.path,
         [executable, ...command],

@@ -99,7 +99,7 @@ void main() {
           ).thenReturn(aotToolsPath);
         });
 
-        test('completes when linking exits with code 0', () async {
+        test('links and exits with code 0', () async {
           when(
             () => process.run(
               any(),
@@ -139,7 +139,59 @@ void main() {
         });
       });
 
-      group('when using local aot_tools', () {
+      group('when aot-tools is a kernel file', () {
+        const aotToolsPath = 'aot_tools.dill';
+
+        setUp(() {
+          when(
+            () => shorebirdArtifacts.getArtifactPath(
+              artifact: ShorebirdArtifact.aotTools,
+            ),
+          ).thenReturn(aotToolsPath);
+        });
+
+        test('links and exits with code 0', () async {
+          when(
+            () => process.run(
+              any(),
+              any(),
+              workingDirectory: any(named: 'workingDirectory'),
+            ),
+          ).thenAnswer(
+            (_) async => const ShorebirdProcessResult(
+              exitCode: 0,
+              stdout: '',
+              stderr: '',
+            ),
+          );
+          await expectLater(
+            runWithOverrides(
+              () => aotTools.link(
+                base: base,
+                patch: patch,
+                analyzeSnapshot: analyzeSnapshot,
+                workingDirectory: workingDirectory.path,
+              ),
+            ),
+            completes,
+          );
+          verify(
+            () => process.run(
+              dartBinaryFile.path,
+              [
+                aotToolsPath,
+                'link',
+                '--base=$base',
+                '--patch=$patch',
+                '--analyze-snapshot=$analyzeSnapshot',
+              ],
+              workingDirectory: any(named: 'workingDirectory'),
+            ),
+          ).called(1);
+        });
+      });
+
+      group('when aot_tools is a dart file', () {
         const aotToolsPath = 'aot_tools.dart';
 
         setUp(() {
@@ -150,7 +202,7 @@ void main() {
           ).thenReturn(aotToolsPath);
         });
 
-        test('completes when linking exits with code 0', () async {
+        test('links and exits with code 0', () async {
           when(
             () => process.run(
               any(),

@@ -13,7 +13,7 @@ enum ShorebirdArtifact {
   /// The analyze_snapshot executable.
   analyzeSnapshot,
 
-  /// The aot_tools executable.
+  /// The aot_tools kernel (.dill file).
   aotTools,
 
   /// The gen_snapshot executable.
@@ -73,6 +73,19 @@ class ShorebirdCachedArtifacts implements ShorebirdArtifacts {
 
   File get _aotToolsFile {
     const executableName = 'aot-tools';
+    final kernelFile = File(
+      p.join(
+        cache.getArtifactDirectory(executableName).path,
+        shorebirdEnv.shorebirdEngineRevision,
+        '$executableName.dill',
+      ),
+    );
+    if (kernelFile.existsSync()) {
+      return kernelFile;
+    }
+
+    // We shipped aot-tools as an executable in the past, so we return that if
+    // no kernel file is found.
     return File(
       p.join(
         cache.getArtifactDirectory(executableName).path,
