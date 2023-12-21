@@ -52,16 +52,21 @@ void main() {
       group('aot-tools', () {
         const aotToolsKernel = 'aot-tools.dill';
         const aotToolsExe = 'aot-tools';
-        final aotToolsKernelPath = p.join(
-          artifactDirectory.path,
-          engineRevision,
-          aotToolsKernel,
-        );
-        final aotToolsExePath = p.join(
-          artifactDirectory.path,
-          engineRevision,
-          aotToolsExe,
-        );
+        late String aotToolsKernelPath;
+        late String aotToolsExePath;
+
+        setUp(() {
+          aotToolsKernelPath = p.join(
+            artifactDirectory.path,
+            engineRevision,
+            aotToolsKernel,
+          );
+          aotToolsExePath = p.join(
+            artifactDirectory.path,
+            engineRevision,
+            aotToolsExe,
+          );
+        });
 
         group('when kernel and executable are present', () {
           setUp(() {
