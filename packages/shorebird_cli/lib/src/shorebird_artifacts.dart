@@ -13,7 +13,7 @@ enum ShorebirdArtifact {
   /// The analyze_snapshot executable.
   analyzeSnapshot,
 
-  /// The aot_tools kernel (.dill file).
+  /// The aot_tools executable or kernel file.
   aotTools,
 
   /// The gen_snapshot executable.
