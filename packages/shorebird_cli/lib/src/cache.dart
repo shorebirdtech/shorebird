@@ -198,8 +198,6 @@ class AotToolsArtifact extends CachedArtifact {
   @override
   String get name => 'aot-tools';
 
-  // Not technically an executable, but this is where the file should end up and
-  // is how it will be consumed.
   @override
   String get fileName => 'aot-tools.dill';
 
