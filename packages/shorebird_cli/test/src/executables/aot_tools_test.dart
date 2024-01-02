@@ -88,57 +88,6 @@ void main() {
         );
       });
 
-      group('when using cached aot tools', () {
-        const aotToolsPath = 'aot-tools';
-
-        setUp(() {
-          when(
-            () => shorebirdArtifacts.getArtifactPath(
-              artifact: ShorebirdArtifact.aotTools,
-            ),
-          ).thenReturn(aotToolsPath);
-        });
-
-        test('links and exits with code 0', () async {
-          when(
-            () => process.run(
-              any(),
-              any(),
-              workingDirectory: any(named: 'workingDirectory'),
-            ),
-          ).thenAnswer(
-            (_) async => const ShorebirdProcessResult(
-              exitCode: 0,
-              stdout: '',
-              stderr: '',
-            ),
-          );
-          await expectLater(
-            runWithOverrides(
-              () => aotTools.link(
-                base: base,
-                patch: patch,
-                analyzeSnapshot: analyzeSnapshot,
-                workingDirectory: workingDirectory.path,
-              ),
-            ),
-            completes,
-          );
-          verify(
-            () => process.run(
-              any(that: endsWith('aot-tools')),
-              [
-                'link',
-                '--base=$base',
-                '--patch=$patch',
-                '--analyze-snapshot=$analyzeSnapshot',
-              ],
-              workingDirectory: any(named: 'workingDirectory'),
-            ),
-          ).called(1);
-        });
-      });
-
       group('when aot-tools is a kernel file', () {
         const aotToolsPath = 'aot_tools.dill';
 

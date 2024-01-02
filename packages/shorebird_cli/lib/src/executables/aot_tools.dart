@@ -1,4 +1,3 @@
-import 'package:path/path.dart' as p;
 import 'package:scoped/scoped.dart';
 import 'package:shorebird_cli/src/cache.dart';
 import 'package:shorebird_cli/src/process.dart';
@@ -18,22 +17,18 @@ class AotTools {
     String? workingDirectory,
   }) async {
     await cache.updateAll();
-    final executable = shorebirdArtifacts.getArtifactPath(
+
+    // This will be a path to either a kernel (.dill) file or a Dart script if
+    // we're running with a local engine.
+    final artifactPath = shorebirdArtifacts.getArtifactPath(
       artifact: ShorebirdArtifact.aotTools,
     );
 
-    // This enables us to run Dart scripts directly, as is needed when running
-    // with a local engine.
-    final ext = p.extension(executable);
-    if (ext == '.dart' || ext == '.dill') {
-      return process.run(
-        shorebirdEnv.dartBinaryFile.path,
-        [executable, ...command],
-        workingDirectory: workingDirectory,
-      );
-    }
-
-    return process.run(executable, command, workingDirectory: workingDirectory);
+    return process.run(
+      shorebirdEnv.dartBinaryFile.path,
+      [artifactPath, ...command],
+      workingDirectory: workingDirectory,
+    );
   }
 
   /// Generate a link vmcode file from two AOT snapshots.
