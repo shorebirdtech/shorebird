@@ -25,6 +25,12 @@ class TestCachedArtifact extends CachedArtifact {
   String get name => 'test';
 
   @override
+  String get fileName => 'test';
+
+  @override
+  bool get isExecutable => true;
+
+  @override
   String get storageUrl => 'test-url';
 }
 
@@ -142,18 +148,6 @@ void main() {
       });
     });
 
-    group('CachedArtifact', () {
-      late CachedArtifact artifact;
-
-      setUp(() {
-        artifact = TestCachedArtifact(cache: cache, platform: platform);
-      });
-
-      test('has empty executables by default', () {
-        expect(artifact.executables, isEmpty);
-      });
-    });
-
     group('clear', () {
       test('deletes the cache directory', () async {
         final shorebirdCacheDirectory = runWithOverrides(
@@ -217,7 +211,7 @@ void main() {
             (invocation) async {
               final request =
                   invocation.positionalArguments.first as http.BaseRequest;
-              if (request.url.path.endsWith('aot-tools-darwin-x64')) {
+              if (request.url.path.endsWith('aot-tools.dill')) {
                 return http.StreamedResponse(
                   const Stream.empty(),
                   HttpStatus.notFound,

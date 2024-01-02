@@ -701,7 +701,8 @@ Please re-run the release command for this version or create a new release.'''),
       // Verify that we switch back to the original revision once we're done.
       verifyInOrder([
         () => shorebirdFlutter.useRevision(
-            revision: preLinkerRelease.flutterRevision),
+              revision: preLinkerRelease.flutterRevision,
+            ),
         () => shorebirdFlutter.useRevision(revision: otherRevision),
       ]);
 
