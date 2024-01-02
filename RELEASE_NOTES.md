@@ -2,6 +2,17 @@
 
 This section contains past updates we've sent to customers via Discord.
 
+## 0.21.0 (January 2, 2024)
+
+- ⬆️ Updated to Flutter 3.16.4
+- 🩹 Fixed ios patch support for x64 macs.
+
+📚 Release notes can be found at https://github.com/shorebirdtech/shorebird/releases/tag/v0.21.0
+
+As always, you can upgrade using `shorebird upgrade`
+
+Please let us know if we can help!
+
 ## 0.20.0 (December 20, 2023)
 
 - New Dart VM "mixed-mode" is now enabled by default on iOS.
