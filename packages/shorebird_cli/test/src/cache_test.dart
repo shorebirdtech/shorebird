@@ -25,7 +25,10 @@ class TestCachedArtifact extends CachedArtifact {
   String get name => 'test';
 
   @override
-  String get executable => 'test';
+  String get fileName => 'test';
+
+  @override
+  bool get isExecutable => true;
 
   @override
   String get storageUrl => 'test-url';

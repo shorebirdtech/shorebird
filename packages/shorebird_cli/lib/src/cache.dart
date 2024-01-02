@@ -137,12 +137,14 @@ abstract class CachedArtifact {
 
   String get storageUrl;
 
-  String get executable;
+  String get fileName;
+
+  bool get isExecutable;
 
   bool get required => true;
 
   Future<void> extractArtifact(http.ByteStream stream, String outputPath) {
-    final file = File(p.join(outputPath, executable))
+    final file = File(p.join(outputPath, fileName))
       ..createSync(recursive: true);
     return stream.pipe(file.openWrite());
   }
@@ -180,10 +182,10 @@ allowed to access $storageUrl.''',
 
     await extractArtifact(response.stream, location.path);
 
-    if (!platform.isWindows) {
+    if (!platform.isWindows && isExecutable) {
       final result = await process.start(
         'chmod',
-        ['+x', p.join(location.path, executable)],
+        ['+x', p.join(location.path, fileName)],
       );
       await result.exitCode;
     }
@@ -199,7 +201,10 @@ class AotToolsArtifact extends CachedArtifact {
   // Not technically an executable, but this is where the file should end up and
   // is how it will be consumed.
   @override
-  String get executable => 'aot-tools.dill';
+  String get fileName => 'aot-tools.dill';
+
+  @override
+  bool get isExecutable => false;
 
   /// The aot-tools are only available for revisions that support mixed-mode.
   @override
@@ -225,7 +230,10 @@ class PatchArtifact extends CachedArtifact {
   String get name => 'patch';
 
   @override
-  String get executable => 'patch';
+  String get fileName => 'patch';
+
+  @override
+  bool get isExecutable => true;
 
   @override
   Future<void> extractArtifact(
@@ -260,7 +268,10 @@ class BundleToolArtifact extends CachedArtifact {
   String get name => 'bundletool.jar';
 
   @override
-  String get executable => 'bundletool.jar';
+  String get fileName => 'bundletool.jar';
+
+  @override
+  bool get isExecutable => false;
 
   @override
   String get storageUrl {
