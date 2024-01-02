@@ -137,12 +137,13 @@ abstract class CachedArtifact {
 
   String get storageUrl;
 
-  List<String> get executables => [];
+  String get executable;
 
   bool get required => true;
 
   Future<void> extractArtifact(http.ByteStream stream, String outputPath) {
-    final file = File(p.join(outputPath, name))..createSync(recursive: true);
+    final file = File(p.join(outputPath, executable))
+      ..createSync(recursive: true);
     return stream.pipe(file.openWrite());
   }
 
@@ -179,9 +180,7 @@ allowed to access $storageUrl.''',
 
     await extractArtifact(response.stream, location.path);
 
-    if (platform.isWindows) return;
-
-    for (final executable in executables) {
+    if (!platform.isWindows) {
       final result = await process.start(
         'chmod',
         ['+x', p.join(location.path, executable)],
@@ -197,8 +196,10 @@ class AotToolsArtifact extends CachedArtifact {
   @override
   String get name => 'aot-tools';
 
+  // Not technically an executable, but this is where the file should end up and
+  // is how it will be consumed.
   @override
-  List<String> get executables => ['aot-tools'];
+  String get executable => 'aot-tools.dill';
 
   /// The aot-tools are only available for revisions that support mixed-mode.
   @override
@@ -213,18 +214,8 @@ class AotToolsArtifact extends CachedArtifact {
       );
 
   @override
-  String get storageUrl {
-    var artifactName = 'aot-tools-';
-    if (platform.isMacOS) {
-      artifactName += 'darwin-x64';
-    } else if (platform.isLinux) {
-      artifactName += 'linux-x64';
-    } else if (platform.isWindows) {
-      artifactName += 'windows-x64';
-    }
-
-    return '${cache.storageBaseUrl}/${cache.storageBucket}/shorebird/${shorebirdEnv.shorebirdEngineRevision}/$artifactName';
-  }
+  String get storageUrl =>
+      '${cache.storageBaseUrl}/${cache.storageBucket}/shorebird/${shorebirdEnv.shorebirdEngineRevision}/aot-tools.dill';
 }
 
 class PatchArtifact extends CachedArtifact {
@@ -234,7 +225,7 @@ class PatchArtifact extends CachedArtifact {
   String get name => 'patch';
 
   @override
-  List<String> get executables => ['patch'];
+  String get executable => 'patch';
 
   @override
   Future<void> extractArtifact(
@@ -267,6 +258,9 @@ class BundleToolArtifact extends CachedArtifact {
 
   @override
   String get name => 'bundletool.jar';
+
+  @override
+  String get executable => 'bundletool.jar';
 
   @override
   String get storageUrl {
