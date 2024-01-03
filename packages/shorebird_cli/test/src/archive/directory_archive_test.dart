@@ -17,7 +17,6 @@ void main() {
           ..writeAsStringSync('b');
 
         final zipFile = await directoryToZip.zipToTempFile();
-
         expect(zipFile.existsSync(), isTrue);
         expect(p.extension(zipFile.path), equals('.zip'));
 
