@@ -1,7 +1,6 @@
 import 'dart:isolate';
 
 import 'package:archive/archive_io.dart';
-import 'package:io/io.dart';
 import 'package:path/path.dart' as p;
 import 'package:shorebird_cli/src/third_party/flutter_tools/lib/flutter_tools.dart';
 
@@ -11,8 +10,7 @@ extension DirectoryArchive on Directory {
     final tempDir = await Directory.systemTemp.createTemp();
     final outFile = File(p.join(tempDir.path, '${p.basename(path)}.zip'));
     await Isolate.run(() {
-      copyPathSync(path, tempDir.path);
-      ZipFileEncoder().zipDirectory(tempDir, filename: outFile.path);
+      ZipFileEncoder().zipDirectory(this, filename: outFile.path);
     });
     return outFile;
   }
