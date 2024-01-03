@@ -4,7 +4,6 @@
 .dart_tool/
 .packages
 /build/
-pubspec.lock
 
 # Files generated during tests
 .test_coverage.dart
