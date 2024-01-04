@@ -5,6 +5,7 @@ import 'package:path/path.dart' as p;
 import 'package:scoped/scoped.dart';
 import 'package:shorebird_cli/src/commands/build/build.dart';
 import 'package:shorebird_cli/src/doctor.dart';
+import 'package:shorebird_cli/src/engine_config.dart';
 import 'package:shorebird_cli/src/logger.dart';
 import 'package:shorebird_cli/src/os/operating_system_interface.dart';
 import 'package:shorebird_cli/src/process.dart';
@@ -203,7 +204,7 @@ ${lightCyan.wrap(p.join('build', 'app', 'outputs', 'bundle', '${flavor}Release',
           () => command.architectures.length,
           values: {
             engineConfigRef.overrideWith(
-              () => const EngineConfig(
+              () => EngineConfig(
                 localEngine: 'android_release_arm64',
                 localEngineSrcPath: 'path/to/engine/src',
                 localEngineHost: 'host_release',
@@ -220,7 +221,7 @@ ${lightCyan.wrap(p.join('build', 'app', 'outputs', 'bundle', '${flavor}Release',
           () => command.architectures.length,
           values: {
             engineConfigRef.overrideWith(
-              () => const EngineConfig(
+              () => EngineConfig(
                 localEngine: 'android_debug_unopt',
                 localEngineSrcPath: 'path/to/engine/src',
                 localEngineHost: 'host_debug_unopt',
