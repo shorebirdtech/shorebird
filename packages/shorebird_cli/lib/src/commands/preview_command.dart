@@ -476,7 +476,9 @@ class PreviewCommand extends ShorebirdCommand {
       // Which does NOT create entries in the zip archive for directories.
       // It's important to do this because bundletool expects the
       // .aab not to contain any directories.
-      final encoder = ZipFileEncoder()..create(aabFile.path);
+      final aabFileName = p.basename(aabFile.path);
+      final tmpAabFile = File(p.join(tempDir.path, aabFileName));
+      final encoder = ZipFileEncoder()..create(tmpAabFile.path);
       for (final file in Directory(outputPath).listSync(recursive: true)) {
         if (file is File) {
           await encoder.addFile(
@@ -486,6 +488,9 @@ class PreviewCommand extends ShorebirdCommand {
         }
       }
       encoder.close();
+
+      // Replace the existing preview artifact with the updated one.
+      tmpAabFile.copySync(aabFile.path);
       tempDir.deleteSync(recursive: true);
     });
   }
