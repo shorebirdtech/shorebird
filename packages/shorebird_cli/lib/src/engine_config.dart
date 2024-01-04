@@ -8,9 +8,9 @@ EngineConfig get engineConfig => read(engineConfigRef);
 
 class EngineConfig {
   const EngineConfig({
-    this.localEngineSrcPath,
-    this.localEngine,
-    this.localEngineHost,
+    required this.localEngineSrcPath,
+    required this.localEngine,
+    required this.localEngineHost,
   });
 
   const EngineConfig.empty()
