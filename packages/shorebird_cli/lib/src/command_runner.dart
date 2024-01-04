@@ -6,10 +6,10 @@ import 'package:cli_completion/cli_completion.dart';
 import 'package:mason_logger/mason_logger.dart';
 import 'package:scoped/scoped.dart';
 import 'package:shorebird_cli/src/commands/commands.dart';
+import 'package:shorebird_cli/src/engine_config.dart';
 import 'package:shorebird_cli/src/logger.dart';
 import 'package:shorebird_cli/src/platform.dart';
 import 'package:shorebird_cli/src/shorebird_artifacts.dart';
-import 'package:shorebird_cli/src/shorebird_engine_config.dart';
 import 'package:shorebird_cli/src/shorebird_env.dart';
 import 'package:shorebird_cli/src/shorebird_flutter.dart';
 import 'package:shorebird_cli/src/shorebird_process.dart';
@@ -87,12 +87,36 @@ class ShorebirdCliCommandRunner extends CompletionCommandRunner<int> {
     try {
       final topLevelResults = parse(args);
 
-      // Set up our context before running the command.
-      final engineConfig = EngineConfig(
-        localEngineSrcPath: topLevelResults['local-engine-src-path'] as String?,
-        localEngine: topLevelResults['local-engine'] as String?,
-        localEngineHost: topLevelResults['local-engine-host'] as String?,
-      );
+      final localEngineSrcPath =
+          topLevelResults['local-engine-src-path'] as String?;
+      final localEngine = topLevelResults['local-engine'] as String?;
+      final localEngineHost = topLevelResults['local-engine-host'] as String?;
+
+      final localEngineArgs = [
+        localEngineSrcPath,
+        localEngine,
+        localEngineHost,
+      ];
+      final localEngineArgsAreNull =
+          localEngineArgs.every((arg) => arg == null);
+      final localEngineArgsAreNotNull =
+          localEngineArgs.every((arg) => arg != null);
+      final EngineConfig engineConfig;
+      if (localEngineArgsAreNotNull) {
+        engineConfig = EngineConfig(
+          localEngineSrcPath: localEngineSrcPath,
+          localEngine: localEngine,
+          localEngineHost: localEngineHost,
+        );
+      } else if (localEngineArgsAreNull) {
+        engineConfig = const EngineConfig.empty();
+      } else {
+        // Only some local engine args were provided, this is invalid.
+        throw ArgumentError(
+          '''local-engine, local-engine-src, and local-engine-host must all be provided''',
+        );
+      }
+
       final process = ShorebirdProcess();
       final shorebirdArtifacts = engineConfig.localEngineSrcPath != null
           ? const ShorebirdLocalEngineArtifacts()
