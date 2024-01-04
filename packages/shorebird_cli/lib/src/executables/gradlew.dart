@@ -6,7 +6,7 @@ import 'package:scoped/scoped.dart';
 import 'package:shorebird_cli/src/executables/executables.dart';
 import 'package:shorebird_cli/src/extensions/string.dart';
 import 'package:shorebird_cli/src/platform.dart';
-import 'package:shorebird_cli/src/process.dart';
+import 'package:shorebird_cli/src/shorebird_process.dart';
 
 /// {@template missing_android_project_exception}
 /// Thrown when the Flutter project does not have

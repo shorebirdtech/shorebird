@@ -3,7 +3,7 @@ import 'dart:io';
 import 'package:mason_logger/mason_logger.dart';
 import 'package:scoped/scoped.dart';
 import 'package:shorebird_cli/src/platform.dart';
-import 'package:shorebird_cli/src/process.dart';
+import 'package:shorebird_cli/src/shorebird_process.dart';
 
 /// A reference to a [OperatingSystemInterface] instance.
 final osInterfaceRef = create(OperatingSystemInterface.new);

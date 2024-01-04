@@ -8,7 +8,7 @@ import 'package:scoped/scoped.dart';
 import 'package:shorebird_cli/src/artifact_manager.dart';
 import 'package:shorebird_cli/src/cache.dart';
 import 'package:shorebird_cli/src/http_client/http_client.dart';
-import 'package:shorebird_cli/src/process.dart';
+import 'package:shorebird_cli/src/shorebird_process.dart';
 import 'package:test/test.dart';
 
 import 'fakes.dart';

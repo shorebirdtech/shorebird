@@ -9,7 +9,7 @@ import 'package:scoped/scoped.dart';
 import 'package:shorebird_cli/src/commands/run_command.dart';
 import 'package:shorebird_cli/src/doctor.dart';
 import 'package:shorebird_cli/src/logger.dart';
-import 'package:shorebird_cli/src/process.dart';
+import 'package:shorebird_cli/src/shorebird_process.dart';
 import 'package:shorebird_cli/src/shorebird_validator.dart';
 import 'package:shorebird_cli/src/validators/validators.dart';
 import 'package:test/test.dart';

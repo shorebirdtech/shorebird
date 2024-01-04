@@ -4,7 +4,7 @@ import 'dart:io';
 import 'package:mason_logger/mason_logger.dart';
 import 'package:path/path.dart' as p;
 import 'package:scoped/scoped.dart';
-import 'package:shorebird_cli/src/process.dart';
+import 'package:shorebird_cli/src/shorebird_process.dart';
 
 /// {@template missing_ios_project_exception}
 /// Thrown when the Flutter project does not have iOS configured as a platform.

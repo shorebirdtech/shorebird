@@ -6,8 +6,8 @@ import 'package:scoped/scoped.dart';
 import 'package:shorebird_cli/src/commands/build/build.dart';
 import 'package:shorebird_cli/src/logger.dart';
 import 'package:shorebird_cli/src/os/operating_system_interface.dart';
-import 'package:shorebird_cli/src/process.dart';
 import 'package:shorebird_cli/src/shorebird_env.dart';
+import 'package:shorebird_cli/src/shorebird_process.dart';
 import 'package:shorebird_cli/src/shorebird_validator.dart';
 import 'package:test/test.dart';
 
