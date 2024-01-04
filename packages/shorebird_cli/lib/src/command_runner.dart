@@ -10,6 +10,7 @@ import 'package:shorebird_cli/src/logger.dart';
 import 'package:shorebird_cli/src/platform.dart';
 import 'package:shorebird_cli/src/process.dart';
 import 'package:shorebird_cli/src/shorebird_artifacts.dart';
+import 'package:shorebird_cli/src/shorebird_engine_config.dart';
 import 'package:shorebird_cli/src/shorebird_env.dart';
 import 'package:shorebird_cli/src/shorebird_flutter.dart';
 import 'package:shorebird_cli/src/shorebird_version.dart';
@@ -92,7 +93,7 @@ class ShorebirdCliCommandRunner extends CompletionCommandRunner<int> {
         localEngine: topLevelResults['local-engine'] as String?,
         localEngineHost: topLevelResults['local-engine-host'] as String?,
       );
-      final process = ShorebirdProcess(engineConfig: engineConfig);
+      final process = ShorebirdProcess();
       final shorebirdArtifacts = engineConfig.localEngineSrcPath != null
           ? const ShorebirdLocalEngineArtifacts()
           : const ShorebirdCachedArtifacts();

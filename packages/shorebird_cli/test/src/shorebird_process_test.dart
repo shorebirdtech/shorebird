@@ -6,6 +6,7 @@ import 'package:path/path.dart' as p;
 import 'package:scoped/scoped.dart';
 import 'package:shorebird_cli/src/logger.dart';
 import 'package:shorebird_cli/src/process.dart';
+import 'package:shorebird_cli/src/shorebird_engine_config.dart';
 import 'package:shorebird_cli/src/shorebird_env.dart';
 import 'package:test/test.dart';
 
@@ -17,6 +18,7 @@ void main() {
       'FLUTTER_STORAGE_BASE_URL': 'https://download.shorebird.dev',
     };
 
+    late EngineConfig engineConfig;
     late Logger logger;
     late ProcessWrapper processWrapper;
     late Process startProcess;
@@ -28,6 +30,7 @@ void main() {
       return runScoped(
         () => body(),
         values: {
+          engineConfigRef.overrideWith(() => engineConfig),
           loggerRef.overrideWith(() => logger),
           shorebirdEnvRef.overrideWith(() => shorebirdEnv),
         },
@@ -35,6 +38,7 @@ void main() {
     }
 
     setUp(() {
+      engineConfig = const EngineConfig.empty();
       logger = MockLogger();
       processWrapper = MockProcessWrapper();
       runProcessResult = MockProcessResult();
@@ -195,14 +199,14 @@ void main() {
       );
 
       test('adds local-engine arguments if set', () async {
+        engineConfig = EngineConfig(
+          localEngineSrcPath: 'path/to/engine/src',
+          localEngine: 'android_release_arm64',
+          localEngineHost: 'host_release',
+        );
         final localEngineSrcPath = p.join('path', 'to', 'engine', 'src');
         shorebirdProcess = ShorebirdProcess(
           processWrapper: processWrapper,
-          engineConfig: EngineConfig(
-            localEngineSrcPath: localEngineSrcPath,
-            localEngine: 'android_release_arm64',
-            localEngineHost: 'host_release',
-          ),
         );
 
         await runWithOverrides(() => shorebirdProcess.run('flutter', []));
