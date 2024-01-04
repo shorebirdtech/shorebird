@@ -12,7 +12,7 @@ void main() {
       expect(
         config.toString(),
         equals(
-          '''ShorebirdEngineConfig(localEngineSrcPath: a, localEngine: b, localEngineHost: c)''',
+          '''EngineConfig(localEngineSrcPath: a, localEngine: b, localEngineHost: c)''',
         ),
       );
     });
