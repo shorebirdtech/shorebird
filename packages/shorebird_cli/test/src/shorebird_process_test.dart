@@ -6,8 +6,8 @@ import 'package:path/path.dart' as p;
 import 'package:scoped/scoped.dart';
 import 'package:shorebird_cli/src/engine_config.dart';
 import 'package:shorebird_cli/src/logger.dart';
-import 'package:shorebird_cli/src/process.dart';
 import 'package:shorebird_cli/src/shorebird_env.dart';
+import 'package:shorebird_cli/src/shorebird_process.dart';
 import 'package:test/test.dart';
 
 import 'mocks.dart';
@@ -199,7 +199,7 @@ void main() {
       );
 
       test('adds local-engine arguments if set', () async {
-        engineConfig = EngineConfig(
+        engineConfig = const EngineConfig(
           localEngineSrcPath: 'path/to/engine/src',
           localEngine: 'android_release_arm64',
           localEngineHost: 'host_release',

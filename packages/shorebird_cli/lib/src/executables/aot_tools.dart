@@ -1,8 +1,8 @@
 import 'package:scoped/scoped.dart';
 import 'package:shorebird_cli/src/cache.dart';
-import 'package:shorebird_cli/src/process.dart';
 import 'package:shorebird_cli/src/shorebird_artifacts.dart';
 import 'package:shorebird_cli/src/shorebird_env.dart';
+import 'package:shorebird_cli/src/shorebird_process.dart';
 
 /// A reference to a [AotTools] instance.
 final aotToolsRef = create(AotTools.new);
