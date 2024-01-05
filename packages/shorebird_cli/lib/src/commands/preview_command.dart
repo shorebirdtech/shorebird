@@ -19,6 +19,7 @@ import 'package:shorebird_cli/src/shorebird_env.dart';
 import 'package:shorebird_cli/src/shorebird_validator.dart';
 import 'package:shorebird_cli/src/third_party/flutter_tools/lib/flutter_tools.dart';
 import 'package:shorebird_code_push_client/shorebird_code_push_client.dart';
+import 'package:yaml/yaml.dart';
 import 'package:yaml_edit/yaml_edit.dart';
 
 /// {@template preview_command}
@@ -445,15 +446,14 @@ class PreviewCommand extends ShorebirdCommand {
 
     await Isolate.run(() async {
       final tempDir = Directory.systemTemp.createTempSync();
-      final basename = p.basenameWithoutExtension(aabFile.path);
-      final outputPath = p.join(tempDir.path, basename);
+      final outputPath = p.join(tempDir.path, 'tmp.aab');
 
       await extractZip(
         zipFile: aabFile,
         outputDirectory: Directory(outputPath),
       );
 
-      final shorebirdYaml = File(
+      final shorebirdYamlFile = File(
         p.join(
           outputPath,
           'base',
@@ -463,14 +463,27 @@ class PreviewCommand extends ShorebirdCommand {
         ),
       );
 
-      if (!shorebirdYaml.existsSync()) {
+      if (!shorebirdYamlFile.existsSync()) {
         throw Exception('Unable to find shorebird.yaml');
       }
 
-      final yaml = YamlEditor(shorebirdYaml.readAsStringSync())
-        ..update(['channel'], channel);
+      final yamlText = shorebirdYamlFile.readAsStringSync();
+      final yaml = loadYaml(yamlText) as YamlMap;
+      final yamlChannel = yaml['channel'];
 
-      shorebirdYaml.writeAsStringSync(yaml.toString(), flush: true);
+      if (yamlChannel == null &&
+          channel == DeploymentTrack.production.channel) {
+        // We would be updating the channel to the default value.
+        return;
+      }
+
+      if (yamlChannel == channel) {
+        // Updating this channel would be a no-op.
+        return;
+      }
+
+      final yamlEditor = YamlEditor(yamlText)..update(['channel'], channel);
+      shorebirdYamlFile.writeAsStringSync(yamlEditor.toString(), flush: true);
 
       // This is equivalent to `zip --no-dir-entries`
       // Which does NOT create entries in the zip archive for directories.
