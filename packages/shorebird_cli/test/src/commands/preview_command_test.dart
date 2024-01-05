@@ -2,6 +2,7 @@ import 'dart:async';
 import 'dart:convert';
 import 'dart:io' hide Platform;
 
+import 'package:archive/archive_io.dart';
 import 'package:args/args.dart';
 import 'package:mason_logger/mason_logger.dart';
 import 'package:mocktail/mocktail.dart';
@@ -368,6 +369,140 @@ void main() {
               display: any(named: 'display'),
             ),
           );
+        });
+      });
+
+      group('setChannelOnAab', () {
+        late File aabFile;
+
+        File createAabFile({required String? channel}) {
+          final tempDir = Directory.systemTemp.createTempSync();
+          final aabDirectory = Directory(p.join(tempDir.path, 'app-release'))
+            ..createSync(recursive: true);
+          final yamlContents = [
+            'app_id: $appId\n',
+            if (channel != null) 'channel: $channel\n',
+          ].join();
+          File(
+            p.join(
+              aabDirectory.path,
+              'base',
+              'assets',
+              'flutter_assets',
+              'shorebird.yaml',
+            ),
+          )
+            ..createSync(recursive: true)
+            ..writeAsStringSync(yamlContents);
+
+          ZipFileEncoder().zipDirectory(aabDirectory, filename: aabPath());
+
+          return File(aabPath());
+        }
+
+        Future<File> shorebirdYamlFileFromAab(File aab) async {
+          final tempDir = Directory.systemTemp.createTempSync();
+          final aabDirectory = Directory(p.join(tempDir.path, 'app-release'))
+            ..createSync(recursive: true);
+
+          await artifactManager.extractZip(
+            zipFile: aab,
+            outputDirectory: aabDirectory,
+          );
+          return File(
+            p.join(
+              aabDirectory.path,
+              'base',
+              'assets',
+              'flutter_assets',
+              'shorebird.yaml',
+            ),
+          );
+        }
+
+        setUp(() {
+          artifactManager = ArtifactManager();
+        });
+
+        group('when channel is not set', () {
+          group('when target channel is  production', () {
+            test('does not change shorebird.yaml', () async {
+              aabFile = createAabFile(channel: null);
+              await runWithOverrides(
+                () => command.setChannelOnAab(
+                  aabFile: aabFile,
+                  channel: DeploymentTrack.production.channel,
+                ),
+              );
+
+              final updatedShorebirdYamlFile =
+                  await shorebirdYamlFileFromAab(aabFile);
+              expect(
+                updatedShorebirdYamlFile.readAsStringSync(),
+                'app_id: $appId\n',
+              );
+            });
+          });
+
+          group('when target channel is not production', () {
+            test('sets shorebird.yaml channel to target channel', () async {
+              aabFile = createAabFile(channel: null);
+              await runWithOverrides(
+                () => command.setChannelOnAab(
+                  aabFile: aabFile,
+                  channel: 'live',
+                ),
+              );
+
+              final updatedShorebirdYamlFile =
+                  await shorebirdYamlFileFromAab(aabFile);
+              expect(updatedShorebirdYamlFile.readAsStringSync(), '''
+app_id: $appId
+channel: live
+''');
+            });
+          });
+        });
+
+        group('when channel is set to target channel', () {
+          test('does not attempt to set channel', () async {
+            aabFile = createAabFile(channel: track.channel);
+            final originalModificationTime = aabFile.statSync().modified;
+            await runWithOverrides(
+              () => command.setChannelOnAab(
+                aabFile: aabFile,
+                channel: track.channel,
+              ),
+            );
+
+            final updatedShorebirdYamlFile =
+                await shorebirdYamlFileFromAab(aabFile);
+            expect(updatedShorebirdYamlFile.readAsStringSync(), '''
+app_id: $appId
+channel: ${track.channel}
+''');
+            // Verify that we didn't touch the file.
+            expect(originalModificationTime, aabFile.statSync().modified);
+          });
+        });
+
+        group('when channel is set to a different channel', () {
+          test('sets shorebird.yaml channel to target channel', () async {
+            aabFile = createAabFile(channel: 'dev');
+            await runWithOverrides(
+              () => command.setChannelOnAab(
+                aabFile: aabFile,
+                channel: track.channel,
+              ),
+            );
+
+            final updatedShorebirdYamlFile =
+                await shorebirdYamlFileFromAab(aabFile);
+            expect(updatedShorebirdYamlFile.readAsStringSync(), '''
+app_id: $appId
+channel: ${track.channel}
+''');
+          });
         });
       });
 
