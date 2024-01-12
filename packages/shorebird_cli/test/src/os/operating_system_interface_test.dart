@@ -141,14 +141,17 @@ void main() {
 
         group('when multiple executables are found on PATH', () {
           const shorebirdPath = r'C:\path\to\shorebird';
-          const shorebirdPaths = r'''
-C:\path\to\shorebird
-C:\path\to\shorebird1
-C:\path\to\shorebird2
-C:\path\to\shorebird3''';
+          const shorebirdPaths = [
+            r'C:\path\to\shorebird',
+            r'C:\path\to\shorebird1',
+            r'C:\path\to\shorebird2',
+            r'C:\path\to\shorebird3',
+          ];
 
           setUp(() {
-            when(() => processResult.stdout).thenReturn(shorebirdPaths);
+            when(
+              () => processResult.stdout,
+            ).thenReturn(shorebirdPaths.join('\r\n'));
           });
 
           test('returns first path to executable', () {
