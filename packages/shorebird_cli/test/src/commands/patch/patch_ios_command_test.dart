@@ -330,8 +330,17 @@ flutter:
           patch: any(named: 'patch'),
           analyzeSnapshot: any(named: 'analyzeSnapshot'),
           workingDirectory: any(named: 'workingDirectory'),
+          outputPath: any(named: 'outputPath'),
         ),
       ).thenAnswer((_) async {});
+      when(() => aotTools.isGeneratePatchDiffBaseSupported())
+          .thenAnswer((_) async => false);
+      when(
+        () => aotTools.generatePatchDiffBase(
+          releaseSnapshot: any(named: 'releaseSnapshot'),
+          analyzeSnapshotPath: any(named: 'analyzeSnapshotPath'),
+        ),
+      ).thenAnswer((_) async => File(''));
       when(() => artifactManager.downloadFile(any()))
           .thenAnswer((_) async => releaseArtifactFile);
       when(
@@ -942,6 +951,7 @@ Please re-run the release command for this version or create a new release.'''),
             patch: any(named: 'patch'),
             analyzeSnapshot: any(named: 'analyzeSnapshot'),
             workingDirectory: any(named: 'workingDirectory'),
+            outputPath: any(named: 'outputPath'),
           ),
         );
       });
@@ -973,6 +983,7 @@ Please re-run the release command for this version or create a new release.'''),
               patch: any(named: 'patch'),
               analyzeSnapshot: any(named: 'analyzeSnapshot'),
               workingDirectory: any(named: 'workingDirectory'),
+              outputPath: any(named: 'outputPath'),
             ),
           ).called(1);
         });
@@ -986,6 +997,7 @@ Please re-run the release command for this version or create a new release.'''),
             patch: any(named: 'patch'),
             analyzeSnapshot: any(named: 'analyzeSnapshot'),
             workingDirectory: any(named: 'workingDirectory'),
+            outputPath: any(named: 'outputPath'),
           ),
         ).called(1);
       });
@@ -1031,6 +1043,7 @@ Please re-run the release command for this version or create a new release.'''),
               patch: any(named: 'patch'),
               analyzeSnapshot: any(named: 'analyzeSnapshot'),
               workingDirectory: any(named: 'workingDirectory'),
+              outputPath: any(named: 'outputPath'),
             ),
           ).thenThrow(exception);
         });

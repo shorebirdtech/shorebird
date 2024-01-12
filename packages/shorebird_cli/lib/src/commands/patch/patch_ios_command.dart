@@ -287,33 +287,33 @@ Current Flutter Revision: $originalFlutterRevision
       return ExitCode.software.code;
     }
 
+    final extractZip = artifactManager.extractZip;
+    final unzipProgress = logger.progress('Extracting release artifact');
+    final releaseXcarchivePath = await Isolate.run(() async {
+      final tempDir = Directory.systemTemp.createTempSync();
+      await extractZip(
+        zipFile: releaseArtifactZipFile,
+        outputDirectory: tempDir,
+      );
+      return tempDir.path;
+    });
+    unzipProgress.complete();
+
+    final releaseArtifactFile = File(
+      p.join(
+        releaseXcarchivePath,
+        'Products',
+        'Applications',
+        'Runner.app',
+        'Frameworks',
+        'App.framework',
+        'App',
+      ),
+    );
+
     final useLinker = engineConfig.localEngine != null ||
         !preLinkerFlutterRevisions.contains(release.flutterRevision);
     if (useLinker) {
-      final extractZip = artifactManager.extractZip;
-      final unzipProgress = logger.progress('Extracting release artifact');
-      final releaseXcarchivePath = await Isolate.run(() async {
-        final tempDir = Directory.systemTemp.createTempSync();
-        await extractZip(
-          zipFile: releaseArtifactZipFile,
-          outputDirectory: tempDir,
-        );
-        return tempDir.path;
-      });
-      unzipProgress.complete();
-
-      final releaseArtifactFile = File(
-        p.join(
-          releaseXcarchivePath,
-          'Products',
-          'Applications',
-          'Runner.app',
-          'Frameworks',
-          'App.framework',
-          'App',
-        ),
-      );
-
       // Because aot-tools is versioned with the engine, we need to use the
       // original Flutter revision to link the patch. We have already switched
       // to and from the release's Flutter revision before and could
@@ -342,7 +342,38 @@ Current Flutter Revision: $originalFlutterRevision
       return ExitCode.success.code;
     }
 
-    final patchFile = File(useLinker ? _vmcodeOutputPath : _aotOutputPath);
+    final patchBuildFile = File(useLinker ? _vmcodeOutputPath : _aotOutputPath);
+    final File patchFile;
+    if (await aotTools.isGeneratePatchDiffBaseSupported()) {
+      final patchBaseProgress = logger.progress('Generating patch diff base');
+      final analyzeSnapshotPath = shorebirdArtifacts.getArtifactPath(
+        artifact: ShorebirdArtifact.analyzeSnapshot,
+      );
+
+      final File patchBaseFile;
+      try {
+        // If the aot_tools executable supports the dump_blobs command, we
+        // can generate a diff base file and use that to create a smaller patch.
+        patchBaseFile = await aotTools.generatePatchDiffBase(
+          analyzeSnapshotPath: analyzeSnapshotPath,
+          releaseSnapshot: releaseArtifactFile,
+        );
+        patchBaseProgress.complete();
+      } catch (error) {
+        patchBaseProgress.fail('$error');
+        return ExitCode.software.code;
+      }
+
+      patchFile = File(
+        await artifactManager.createDiff(
+          releaseArtifactPath: patchBaseFile.path,
+          patchArtifactPath: patchBuildFile.path,
+        ),
+      );
+    } else {
+      patchFile = patchBuildFile;
+    }
+
     final patchFileSize = patchFile.statSync().size;
 
     final summary = [
@@ -384,7 +415,7 @@ ${summary.join('\n')}
         Arch.arm64: PatchArtifactBundle(
           arch: arch,
           path: patchFile.path,
-          hash: _hashFn(patchFile.readAsBytesSync()),
+          hash: _hashFn(patchBuildFile.readAsBytesSync()),
           size: patchFileSize,
         ),
       },
@@ -465,6 +496,7 @@ ${summary.join('\n')}
         base: releaseArtifact.path,
         patch: patch.path,
         analyzeSnapshot: analyzeSnapshot.path,
+        outputPath: _vmcodeOutputPath,
         workingDirectory: _buildDirectory,
       );
     } catch (error) {
