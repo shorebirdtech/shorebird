@@ -55,8 +55,8 @@ class _WindowsOperatingSystemInterface implements OperatingSystemInterface {
       return null;
     }
 
-    // By default, where.exe will list all matching executables on PATH. We want
-    // to return the first one.
-    return (result.stdout as String).split('\n').firstOrNull;
+    // By default, where.exe will list all matching executables on PATH.
+    // We want to return the first one.
+    return (result.stdout as String).split('\r\n').firstOrNull;
   }
 }
