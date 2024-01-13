@@ -23,6 +23,7 @@ import 'package:shorebird_cli/src/os/operating_system_interface.dart';
 import 'package:shorebird_cli/src/patch_diff_checker.dart';
 import 'package:shorebird_cli/src/platform.dart';
 import 'package:shorebird_cli/src/shorebird_artifacts.dart';
+import 'package:shorebird_cli/src/shorebird_build_mixin.dart';
 import 'package:shorebird_cli/src/shorebird_env.dart';
 import 'package:shorebird_cli/src/shorebird_flutter.dart';
 import 'package:shorebird_cli/src/shorebird_process.dart';
@@ -349,6 +350,12 @@ flutter:
           outputDirectory: any(named: 'outputDirectory'),
         ),
       ).thenAnswer((_) async {});
+      when(
+        () => artifactManager.createDiff(
+          releaseArtifactPath: any(named: 'releaseArtifactPath'),
+          patchArtifactPath: any(named: 'patchArtifactPath'),
+        ),
+      ).thenAnswer((_) async => '');
       when(() => auth.isAuthenticated).thenReturn(true);
       when(() => auth.client).thenReturn(httpClient);
       when(
@@ -1056,6 +1063,40 @@ Please re-run the release command for this version or create a new release.'''),
             () => progress.fail('Failed to link AOT files: $exception'),
           ).called(1);
         });
+      });
+    });
+
+    group('when aot-tools supports generating patch diff base', () {
+      const diffPath = 'path/to/diff';
+      setUp(() {
+        setUpProjectRoot();
+        setUpProjectRootArtifacts();
+
+        when(() => aotTools.isGeneratePatchDiffBaseSupported())
+            .thenAnswer((_) async => true);
+        when(
+          () => artifactManager.createDiff(
+            releaseArtifactPath: any(named: 'releaseArtifactPath'),
+            patchArtifactPath: any(named: 'patchArtifactPath'),
+          ),
+        ).thenAnswer((_) async => diffPath);
+      });
+
+      test('calls generate ', () async {
+        await runWithOverrides(command.run);
+        verify(
+          () => codePushClientWrapper.publishPatch(
+            appId: appId,
+            releaseId: postLinkerRelease.id,
+            platform: releasePlatform,
+            track: track,
+            patchArtifactBundles: any(
+              named: 'patchArtifactBundles',
+              that: isA<Map<Arch, PatchArtifactBundle>>()
+                  .having((e) => e[Arch.arm64]!.path, 'patch path', diffPath),
+            ),
+          ),
+        ).called(1);
       });
     });
 
