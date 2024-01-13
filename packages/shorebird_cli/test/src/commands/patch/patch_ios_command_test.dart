@@ -1082,6 +1082,25 @@ Please re-run the release command for this version or create a new release.'''),
         ).thenAnswer((_) async => diffPath);
       });
 
+      group('when generatePatchDiffBase fails', () {
+        const errorMessage = 'oops something went wrong';
+        setUp(() {
+          when(
+            () => aotTools.generatePatchDiffBase(
+              analyzeSnapshotPath: any(named: 'analyzeSnapshotPath'),
+              releaseSnapshot: any(named: 'releaseSnapshot'),
+            ),
+          ).thenThrow(Exception(errorMessage));
+        });
+
+        test('prints error and exits with code 70', () async {
+          final result = await runWithOverrides(command.run);
+
+          expect(result, equals(ExitCode.software.code));
+          verify(() => progress.fail('Exception: $errorMessage')).called(1);
+        });
+      });
+
       test('calls generate ', () async {
         await runWithOverrides(command.run);
         verify(
