@@ -837,6 +837,23 @@ Please re-run the release command for this version or create a new release.'''),
         ).thenAnswer((_) async => diffPath);
       });
 
+      group('when release artifact fails to download', () {
+        setUp(() {
+          when(() => artifactManager.downloadFile(any()))
+              .thenAnswer((_) async => File(''));
+        });
+
+        test('prints error and exits with code 70', () async {
+          final exitCode = await runWithOverrides(command.run);
+
+          expect(exitCode, equals(ExitCode.software.code));
+          verify(
+            () =>
+                progress.fail('Exception: Failed to download release artifact'),
+          ).called(1);
+        });
+      });
+
       group('when generatePatchDiffBase errors', () {
         const errorMessage = 'oops something went wrong';
         setUp(() {
