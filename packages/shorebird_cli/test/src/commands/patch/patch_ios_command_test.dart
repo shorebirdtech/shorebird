@@ -139,8 +139,8 @@ flutter:
   );
 
   group(PatchIosCommand, () {
-    late ArgResults argResults;
     late AotTools aotTools;
+    late ArgResults argResults;
     late ArtifactManager artifactManager;
     late Auth auth;
     late CodePushClientWrapper codePushClientWrapper;
@@ -1101,7 +1101,7 @@ Please re-run the release command for this version or create a new release.'''),
         });
       });
 
-      test('calls generate ', () async {
+      test('generates diff base and publishes the appropriate patch', () async {
         await runWithOverrides(command.run);
         verify(
           () => codePushClientWrapper.publishPatch(
