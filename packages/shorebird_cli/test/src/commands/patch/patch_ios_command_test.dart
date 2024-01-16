@@ -330,6 +330,7 @@ flutter:
           patch: any(named: 'patch'),
           analyzeSnapshot: any(named: 'analyzeSnapshot'),
           workingDirectory: any(named: 'workingDirectory'),
+          outputPath: any(named: 'outputPath'),
         ),
       ).thenAnswer((_) async {});
       when(() => artifactManager.downloadFile(any()))
@@ -942,6 +943,7 @@ Please re-run the release command for this version or create a new release.'''),
             patch: any(named: 'patch'),
             analyzeSnapshot: any(named: 'analyzeSnapshot'),
             workingDirectory: any(named: 'workingDirectory'),
+            outputPath: any(named: 'outputPath'),
           ),
         );
       });
@@ -973,6 +975,7 @@ Please re-run the release command for this version or create a new release.'''),
               patch: any(named: 'patch'),
               analyzeSnapshot: any(named: 'analyzeSnapshot'),
               workingDirectory: any(named: 'workingDirectory'),
+              outputPath: any(named: 'outputPath'),
             ),
           ).called(1);
         });
@@ -986,6 +989,7 @@ Please re-run the release command for this version or create a new release.'''),
             patch: any(named: 'patch'),
             analyzeSnapshot: any(named: 'analyzeSnapshot'),
             workingDirectory: any(named: 'workingDirectory'),
+            outputPath: any(named: 'outputPath'),
           ),
         ).called(1);
       });
@@ -1031,6 +1035,7 @@ Please re-run the release command for this version or create a new release.'''),
               patch: any(named: 'patch'),
               analyzeSnapshot: any(named: 'analyzeSnapshot'),
               workingDirectory: any(named: 'workingDirectory'),
+              outputPath: any(named: 'outputPath'),
             ),
           ).thenThrow(exception);
         });

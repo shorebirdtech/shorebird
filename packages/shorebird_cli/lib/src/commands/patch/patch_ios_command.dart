@@ -466,6 +466,7 @@ ${summary.join('\n')}
         patch: patch.path,
         analyzeSnapshot: analyzeSnapshot.path,
         workingDirectory: _buildDirectory,
+        outputPath: _vmcodeOutputPath,
       );
     } catch (error) {
       linkProgress.fail('Failed to link AOT files: $error');
