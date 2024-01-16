@@ -36,6 +36,7 @@ class AotTools {
     required String base,
     required String patch,
     required String analyzeSnapshot,
+    required String outputPath,
     String? workingDirectory,
   }) async {
     final result = await _exec(
@@ -44,6 +45,7 @@ class AotTools {
         '--base=$base',
         '--patch=$patch',
         '--analyze-snapshot=$analyzeSnapshot',
+        '--output=$outputPath',
       ],
       workingDirectory: workingDirectory,
     );

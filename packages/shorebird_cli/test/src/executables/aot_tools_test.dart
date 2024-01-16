@@ -50,6 +50,7 @@ void main() {
       const base = './path/to/base.aot';
       const patch = './path/to/patch.aot';
       const analyzeSnapshot = './path/to/analyze_snapshot.aot';
+      const outputPath = './path/to/out.vmcode';
 
       test('throws Exception when process exits with non-zero code', () async {
         when(
@@ -76,6 +77,7 @@ void main() {
               base: base,
               patch: patch,
               analyzeSnapshot: analyzeSnapshot,
+              outputPath: outputPath,
             ),
           ),
           throwsA(
@@ -120,6 +122,7 @@ void main() {
                 patch: patch,
                 analyzeSnapshot: analyzeSnapshot,
                 workingDirectory: workingDirectory.path,
+                outputPath: outputPath,
               ),
             ),
             completes,
@@ -133,6 +136,7 @@ void main() {
                 '--base=$base',
                 '--patch=$patch',
                 '--analyze-snapshot=$analyzeSnapshot',
+                '--output=$outputPath',
               ],
               workingDirectory: any(named: 'workingDirectory'),
             ),
@@ -172,6 +176,7 @@ void main() {
                 patch: patch,
                 analyzeSnapshot: analyzeSnapshot,
                 workingDirectory: workingDirectory.path,
+                outputPath: outputPath,
               ),
             ),
             completes,
@@ -185,6 +190,7 @@ void main() {
                 '--base=$base',
                 '--patch=$patch',
                 '--analyze-snapshot=$analyzeSnapshot',
+                '--output=$outputPath',
               ],
               workingDirectory: any(named: 'workingDirectory'),
             ),
