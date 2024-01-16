@@ -23,6 +23,7 @@ import 'package:shorebird_cli/src/os/operating_system_interface.dart';
 import 'package:shorebird_cli/src/patch_diff_checker.dart';
 import 'package:shorebird_cli/src/platform.dart';
 import 'package:shorebird_cli/src/shorebird_artifacts.dart';
+import 'package:shorebird_cli/src/shorebird_build_mixin.dart';
 import 'package:shorebird_cli/src/shorebird_env.dart';
 import 'package:shorebird_cli/src/shorebird_flutter.dart';
 import 'package:shorebird_cli/src/shorebird_process.dart';
@@ -138,8 +139,8 @@ flutter:
   );
 
   group(PatchIosCommand, () {
-    late ArgResults argResults;
     late AotTools aotTools;
+    late ArgResults argResults;
     late ArtifactManager artifactManager;
     late Auth auth;
     late CodePushClientWrapper codePushClientWrapper;
@@ -333,6 +334,14 @@ flutter:
           outputPath: any(named: 'outputPath'),
         ),
       ).thenAnswer((_) async {});
+      when(() => aotTools.isGeneratePatchDiffBaseSupported())
+          .thenAnswer((_) async => false);
+      when(
+        () => aotTools.generatePatchDiffBase(
+          releaseSnapshot: any(named: 'releaseSnapshot'),
+          analyzeSnapshotPath: any(named: 'analyzeSnapshotPath'),
+        ),
+      ).thenAnswer((_) async => File(''));
       when(() => artifactManager.downloadFile(any()))
           .thenAnswer((_) async => releaseArtifactFile);
       when(
@@ -341,6 +350,12 @@ flutter:
           outputDirectory: any(named: 'outputDirectory'),
         ),
       ).thenAnswer((_) async {});
+      when(
+        () => artifactManager.createDiff(
+          releaseArtifactPath: any(named: 'releaseArtifactPath'),
+          patchArtifactPath: any(named: 'patchArtifactPath'),
+        ),
+      ).thenAnswer((_) async => '');
       when(() => auth.isAuthenticated).thenReturn(true);
       when(() => auth.client).thenReturn(httpClient);
       when(
@@ -1048,6 +1063,59 @@ Please re-run the release command for this version or create a new release.'''),
             () => progress.fail('Failed to link AOT files: $exception'),
           ).called(1);
         });
+      });
+    });
+
+    group('when aot-tools supports generating patch diff base', () {
+      const diffPath = 'path/to/diff';
+      setUp(() {
+        setUpProjectRoot();
+        setUpProjectRootArtifacts();
+
+        when(() => aotTools.isGeneratePatchDiffBaseSupported())
+            .thenAnswer((_) async => true);
+        when(
+          () => artifactManager.createDiff(
+            releaseArtifactPath: any(named: 'releaseArtifactPath'),
+            patchArtifactPath: any(named: 'patchArtifactPath'),
+          ),
+        ).thenAnswer((_) async => diffPath);
+      });
+
+      group('when generatePatchDiffBase fails', () {
+        const errorMessage = 'oops something went wrong';
+        setUp(() {
+          when(
+            () => aotTools.generatePatchDiffBase(
+              analyzeSnapshotPath: any(named: 'analyzeSnapshotPath'),
+              releaseSnapshot: any(named: 'releaseSnapshot'),
+            ),
+          ).thenThrow(Exception(errorMessage));
+        });
+
+        test('prints error and exits with code 70', () async {
+          final result = await runWithOverrides(command.run);
+
+          expect(result, equals(ExitCode.software.code));
+          verify(() => progress.fail('Exception: $errorMessage')).called(1);
+        });
+      });
+
+      test('generates diff base and publishes the appropriate patch', () async {
+        await runWithOverrides(command.run);
+        verify(
+          () => codePushClientWrapper.publishPatch(
+            appId: appId,
+            releaseId: postLinkerRelease.id,
+            platform: releasePlatform,
+            track: track,
+            patchArtifactBundles: any(
+              named: 'patchArtifactBundles',
+              that: isA<Map<Arch, PatchArtifactBundle>>()
+                  .having((e) => e[Arch.arm64]!.path, 'patch path', diffPath),
+            ),
+          ),
+        ).called(1);
       });
     });
 
