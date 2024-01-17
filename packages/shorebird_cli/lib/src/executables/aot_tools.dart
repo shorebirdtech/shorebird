@@ -28,9 +28,21 @@ class AotTools {
       artifact: ShorebirdArtifact.aotTools,
     );
 
+    // Fallback behavior for older versions of shorebird where aot-tools was
+    // distributed as an executable.
+    final extension = p.extension(artifactPath);
+    if (extension != '.dill' && extension != '.dart') {
+      return process.run(
+        artifactPath,
+        command,
+        workingDirectory: workingDirectory,
+      );
+    }
+
+    // local engine versions use .dart and we distribute aot-tools as a .dill
     return process.run(
       shorebirdEnv.dartBinaryFile.path,
-      [artifactPath, ...command],
+      ['run', artifactPath, ...command],
       workingDirectory: workingDirectory,
     );
   }
@@ -69,8 +81,11 @@ class AotTools {
     // "Unrecognized flags: dump_blobs"
     final result = await _exec(
       [
+        // TODO(eseidel): add a --help, or --version or some other way to
+        // get a non-zero exit code without needing to pass in a path to a
+        // snapshot.  This shows up during verbose mode and is confusing.
         'dump_blobs',
-        '--analyze-snapshot=nonexistent_analzye_snapshot',
+        '--analyze-snapshot=nonexistent_analyze_snapshot',
         '--output=out',
         '--snapshot=nonexistent_snapshot',
       ],
