@@ -1,4 +1,5 @@
 import 'dart:io' hide Platform;
+import 'dart:isolate';
 
 import 'package:collection/collection.dart';
 import 'package:crypto/crypto.dart';
@@ -13,11 +14,13 @@ import 'package:shorebird_cli/src/command.dart';
 import 'package:shorebird_cli/src/config/shorebird_yaml.dart';
 import 'package:shorebird_cli/src/deployment_track.dart';
 import 'package:shorebird_cli/src/doctor.dart';
+import 'package:shorebird_cli/src/executables/aot_tools.dart';
 import 'package:shorebird_cli/src/formatters/file_size_formatter.dart';
 import 'package:shorebird_cli/src/ios.dart';
 import 'package:shorebird_cli/src/logger.dart';
 import 'package:shorebird_cli/src/patch_diff_checker.dart';
 import 'package:shorebird_cli/src/shorebird_artifact_mixin.dart';
+import 'package:shorebird_cli/src/shorebird_artifacts.dart';
 import 'package:shorebird_cli/src/shorebird_build_mixin.dart';
 import 'package:shorebird_cli/src/shorebird_env.dart';
 import 'package:shorebird_cli/src/shorebird_flutter.dart';
@@ -154,10 +157,10 @@ Please re-run the release command for this version or create a new release.''');
       return ExitCode.software.code;
     }
 
-    final File aotFile;
+    final File patchBuildFile;
     try {
       final newestDillFile = newestAppDill();
-      aotFile = await buildElfAotSnapshot(
+      patchBuildFile = await buildElfAotSnapshot(
         appDillPath: newestDillFile.path,
         outFilePath: p.join(
           shorebirdEnv.getShorebirdProjectRoot()!.path,
@@ -179,11 +182,25 @@ Please re-run the release command for this version or create a new release.''');
       platform: ReleasePlatform.ios,
     );
 
+    final downloadProgress = logger.progress('Downloading release artifact');
+    final File releaseArtifactZipFile;
+    try {
+      releaseArtifactZipFile = await artifactManager.downloadFile(
+        Uri.parse(releaseArtifact.url),
+      );
+      if (!releaseArtifactZipFile.existsSync()) {
+        throw Exception('Failed to download release artifact');
+      }
+    } catch (error) {
+      downloadProgress.fail('$error');
+      return ExitCode.software.code;
+    }
+    downloadProgress.complete();
+
     try {
       await patchDiffChecker.zipAndConfirmUnpatchableDiffsIfNecessary(
         localArtifactDirectory: Directory(getAppXcframeworkPath()),
-        releaseArtifact:
-            await artifactManager.downloadFile(Uri.parse(releaseArtifact.url)),
+        releaseArtifact: releaseArtifactZipFile,
         archiveDiffer: _archiveDiffer,
         force: force,
       );
@@ -194,6 +211,61 @@ Please re-run the release command for this version or create a new release.''');
       return ExitCode.software.code;
     }
 
+    // TODO use linker if available
+
+    final File patchFile;
+    if (await aotTools.isGeneratePatchDiffBaseSupported()) {
+      final extractZip = artifactManager.extractZip;
+      final unzipProgress = logger.progress('Extracting release artifact');
+      final releaseXcframeworkPath = await Isolate.run(() async {
+        final tempDir = Directory.systemTemp.createTempSync();
+        await extractZip(
+          zipFile: releaseArtifactZipFile,
+          outputDirectory: tempDir,
+        );
+        return tempDir.path;
+      });
+
+      unzipProgress
+          .complete('Extracted release artifact to $releaseXcframeworkPath');
+      final releaseArtifactFile = File(
+        p.join(
+          releaseXcframeworkPath,
+          'ios-arm64',
+          'App.framework',
+          'App',
+        ),
+      );
+
+      final patchBaseProgress = logger.progress('Generating patch diff base');
+      final analyzeSnapshotPath = shorebirdArtifacts.getArtifactPath(
+        artifact: ShorebirdArtifact.analyzeSnapshot,
+      );
+
+      final File patchBaseFile;
+      try {
+        // If the aot_tools executable supports the dump_blobs command, we
+        // can generate a stable diff base and use that to create a patch.
+        patchBaseFile = await aotTools.generatePatchDiffBase(
+          analyzeSnapshotPath: analyzeSnapshotPath,
+          releaseSnapshot: releaseArtifactFile,
+        );
+        patchBaseProgress.complete();
+      } catch (error) {
+        patchBaseProgress.fail('$error');
+        return ExitCode.software.code;
+      }
+
+      patchFile = File(
+        await artifactManager.createDiff(
+          releaseArtifactPath: patchBaseFile.path,
+          patchArtifactPath: patchBuildFile.path,
+        ),
+      );
+    } else {
+      patchFile = patchBuildFile;
+    }
+
     if (dryRun) {
       logger
         ..info('No issues detected.')
@@ -201,11 +273,11 @@ Please re-run the release command for this version or create a new release.''');
       return ExitCode.success.code;
     }
 
-    final aotFileSize = aotFile.statSync().size;
+    final patchFileSize = patchFile.statSync().size;
     final summary = [
       '''📱 App: ${lightCyan.wrap(app.displayName)} ${lightCyan.wrap('($appId)')}''',
       '📦 Release Version: ${lightCyan.wrap(releaseVersion)}',
-      '''🕹️  Platform: ${lightCyan.wrap(releasePlatform.name)} ${lightCyan.wrap('[$arch (${formatBytes(aotFileSize)})]')}''',
+      '''🕹️  Platform: ${lightCyan.wrap(releasePlatform.name)} ${lightCyan.wrap('[$arch (${formatBytes(patchFileSize)})]')}''',
       '🟢 Track: ${lightCyan.wrap('Production')}',
     ];
 
@@ -218,7 +290,6 @@ ${summary.join('\n')}
 ''',
     );
 
-    // TODO(bryanoltman): check for asset changes
     final needsConfirmation = !force && !shorebirdEnv.isRunningOnCI;
     if (needsConfirmation) {
       final confirm = logger.confirm('Would you like to continue?');
@@ -237,9 +308,9 @@ ${summary.join('\n')}
       patchArtifactBundles: {
         Arch.arm64: PatchArtifactBundle(
           arch: arch,
-          path: aotFile.path,
-          hash: _hashFn(aotFile.readAsBytesSync()),
-          size: aotFileSize,
+          path: patchFile.path,
+          hash: _hashFn(patchBuildFile.readAsBytesSync()),
+          size: patchFileSize,
         ),
       },
     );

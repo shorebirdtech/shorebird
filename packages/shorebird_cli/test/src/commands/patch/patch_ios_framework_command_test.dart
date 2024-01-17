@@ -15,11 +15,13 @@ import 'package:shorebird_cli/src/config/config.dart';
 import 'package:shorebird_cli/src/deployment_track.dart';
 import 'package:shorebird_cli/src/doctor.dart';
 import 'package:shorebird_cli/src/engine_config.dart';
+import 'package:shorebird_cli/src/executables/aot_tools.dart';
 import 'package:shorebird_cli/src/logger.dart';
 import 'package:shorebird_cli/src/os/operating_system_interface.dart';
 import 'package:shorebird_cli/src/patch_diff_checker.dart';
 import 'package:shorebird_cli/src/platform.dart';
 import 'package:shorebird_cli/src/shorebird_artifacts.dart';
+import 'package:shorebird_cli/src/shorebird_build_mixin.dart';
 import 'package:shorebird_cli/src/shorebird_env.dart';
 import 'package:shorebird_cli/src/shorebird_flutter.dart';
 import 'package:shorebird_cli/src/shorebird_process.dart';
@@ -76,8 +78,9 @@ flutter:
       createdAt: DateTime(2023),
       updatedAt: DateTime(2023),
     );
-    final releaseArtifactFile = File('release.artifact');
+    late File releaseArtifactFile;
 
+    late AotTools aotTools;
     late ArgResults argResults;
     late ArtifactManager artifactManager;
     late CodePushClientWrapper codePushClientWrapper;
@@ -85,6 +88,7 @@ flutter:
     late Directory projectRoot;
     late Directory flutterDirectory;
     late EngineConfig engineConfig;
+    late File analyzeSnapshotFile;
     late File genSnapshotFile;
     late ShorebirdArtifacts shorebirdArtifacts;
     late Doctor doctor;
@@ -109,6 +113,7 @@ flutter:
       return runScoped(
         body,
         values: {
+          aotToolsRef.overrideWith(() => aotTools),
           artifactManagerRef.overrideWith(() => artifactManager),
           authRef.overrideWith(() => auth),
           codePushClientWrapperRef.overrideWith(() => codePushClientWrapper),
@@ -177,6 +182,7 @@ flutter:
     });
 
     setUp(() {
+      aotTools = MockAotTools();
       argResults = MockArgResults();
       archiveDiffer = MockIosArchiveDiffer();
       artifactManager = MockArtifactManager();
@@ -200,6 +206,17 @@ flutter:
           'engine',
           'ios-release',
           'gen_snapshot_arm64',
+        ),
+      );
+      analyzeSnapshotFile = File(
+        p.join(
+          flutterDirectory.path,
+          'bin',
+          'cache',
+          'artifacts',
+          'engine',
+          'ios-release',
+          'analyze_snapshot_arm64',
         ),
       );
       auth = MockAuth();
@@ -237,11 +254,29 @@ flutter:
           runInShell: any(named: 'runInShell'),
         ),
       ).thenAnswer((_) async => aotBuildProcessResult);
+      when(() => aotTools.isGeneratePatchDiffBaseSupported())
+          .thenAnswer((_) async => false);
+      when(
+        () => aotTools.generatePatchDiffBase(
+          releaseSnapshot: any(named: 'releaseSnapshot'),
+          analyzeSnapshotPath: any(named: 'analyzeSnapshotPath'),
+        ),
+      ).thenAnswer((_) async => File(''));
       when(() => argResults['force']).thenReturn(false);
       when(() => argResults['release-version']).thenReturn(version);
       when(() => argResults.rest).thenReturn([]);
-      when(() => artifactManager.downloadFile(any()))
-          .thenAnswer((_) async => releaseArtifactFile);
+      when(() => artifactManager.downloadFile(any())).thenAnswer((_) async {
+        final tmpDir = Directory.systemTemp.createTempSync();
+        return releaseArtifactFile =
+            File(p.join(tmpDir.path, 'release.artifact'))
+              ..createSync(recursive: true);
+      });
+      when(
+        () => artifactManager.extractZip(
+          zipFile: any(named: 'zipFile'),
+          outputDirectory: any(named: 'outputDirectory'),
+        ),
+      ).thenAnswer((_) async {});
       when(() => auth.isAuthenticated).thenReturn(true);
       when(() => doctor.iosCommandValidators).thenReturn([flutterValidator]);
       when(flutterValidator.validate).thenAnswer((_) async => []);
@@ -258,6 +293,11 @@ flutter:
         () => shorebirdEnv.getShorebirdProjectRoot(),
       ).thenReturn(projectRoot);
       when(() => shorebirdEnv.flutterDirectory).thenReturn(flutterDirectory);
+      when(
+        () => shorebirdArtifacts.getArtifactPath(
+          artifact: ShorebirdArtifact.analyzeSnapshot,
+        ),
+      ).thenReturn(analyzeSnapshotFile.path);
       when(
         () => shorebirdArtifacts.getArtifactPath(
           artifact: ShorebirdArtifact.genSnapshot,
@@ -779,6 +819,76 @@ Please re-run the release command for this version or create a new release.'''),
 
       expect(exitCode, equals(ExitCode.success.code));
       verifyNever(() => logger.confirm(any()));
+    });
+
+    group('when aot-tools supports generating patch diff base', () {
+      const diffPath = 'path/to/diff';
+      setUp(() {
+        setUpProjectRoot();
+        setUpProjectRootArtifacts();
+
+        when(() => aotTools.isGeneratePatchDiffBaseSupported())
+            .thenAnswer((_) async => true);
+        when(
+          () => artifactManager.createDiff(
+            releaseArtifactPath: any(named: 'releaseArtifactPath'),
+            patchArtifactPath: any(named: 'patchArtifactPath'),
+          ),
+        ).thenAnswer((_) async => diffPath);
+      });
+
+      group('when release artifact fails to download', () {
+        setUp(() {
+          when(() => artifactManager.downloadFile(any()))
+              .thenAnswer((_) async => File(''));
+        });
+
+        test('prints error and exits with code 70', () async {
+          final exitCode = await runWithOverrides(command.run);
+
+          expect(exitCode, equals(ExitCode.software.code));
+          verify(
+            () =>
+                progress.fail('Exception: Failed to download release artifact'),
+          ).called(1);
+        });
+      });
+
+      group('when generatePatchDiffBase errors', () {
+        const errorMessage = 'oops something went wrong';
+        setUp(() {
+          when(
+            () => aotTools.generatePatchDiffBase(
+              releaseSnapshot: any(named: 'releaseSnapshot'),
+              analyzeSnapshotPath: any(named: 'analyzeSnapshotPath'),
+            ),
+          ).thenThrow(Exception(errorMessage));
+        });
+
+        test('prints error and exits with code 70', () async {
+          final result = await runWithOverrides(command.run);
+
+          expect(result, equals(ExitCode.software.code));
+          verify(() => progress.fail('Exception: $errorMessage')).called(1);
+        });
+      });
+
+      test('generates diff base and publishes the appropriate patch', () async {
+        await runWithOverrides(command.run);
+        verify(
+          () => codePushClientWrapper.publishPatch(
+            appId: appId,
+            releaseId: release.id,
+            platform: ReleasePlatform.ios,
+            track: track,
+            patchArtifactBundles: any(
+              named: 'patchArtifactBundles',
+              that: isA<Map<Arch, PatchArtifactBundle>>()
+                  .having((e) => e[Arch.arm64]!.path, 'patch path', diffPath),
+            ),
+          ),
+        ).called(1);
+      });
     });
   });
 }
