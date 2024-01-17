@@ -29,33 +29,33 @@ required less developer effort to maintain.
 ## Code push approaches
 
 Many approaches one could take:
-1. Compile Release Flutter with DartVM in JIT mode
-   Implementation Difficulty: Medium
-   Application Performance: Unreliable (due to JIT compiles), but good once warmed up.
+1. Compile Release Flutter with DartVM in JIT mode\
+   Implementation Difficulty: Medium\
+   Application Performance: Unreliable (due to JIT compiles), but good once warmed up.\
    Platform Restrictions: Some restrict executing dynamically compiled code (either technically or by store agreement)
-1. Replace libapp.so with new libapp.so
-   Implementation Difficulty: Simple
-   Application Performance: Great (AOT level performance)
-   Platform Restrictions: Some restrict loading dynamic libraries (either technically or by store agreement)
-   Developer Experience: OK (need to recompile for each platform)
+1. Replace libapp.so with new libapp.so\
+   Implementation Difficulty: Simple\
+   Application Performance: Great (AOT level performance)\
+   Platform Restrictions: Some restrict loading dynamic libraries (either technically or by store agreement)\
+   Developer Experience: OK (need to recompile for each platform)\
    Notes:
     * A naive implementation has large update sizes (can be mitigated)
-1. Flutter Web (JS or WASM) + C++ Engine
-   Implementation Difficulty: Hard (no known implementations)
-   Application Performance: Unknown, likely good? (JS JIT level performance)
-   Platform Restrictions: None known.
+1. Flutter Web (JS or WASM) + C++ Engine\
+   Implementation Difficulty: Hard (no known implementations)\
+   Application Performance: Unknown, likely good? (JS JIT level performance)\
+   Platform Restrictions: None known.\
    Notes:
     * No per-platform work for developers.
     * Possible developer headaches due to Dart -> JS compilation quirks.
-1. Flutter Web (JS or WASM) in a WebView
-    Implementation Difficulty: Medium
-    Application Performance: Poor (untested)
+1. Flutter Web (JS or WASM) in a WebView\
+    Implementation Difficulty: Medium\
+    Application Performance: Poor (untested)\
     Platform Restrictions: None known.
-1. (Custom) Dart Interpreter (for some or all application code)
-    Implementation Difficulty: Hard
-    Application Performance: Unknown
-    Developer Experience: Unknown
-    Platform Restrictions: None known.
+1. (Custom) Dart Interpreter (for some or all application code)\
+    Implementation Difficulty: Hard\
+    Application Performance: Unknown\
+    Developer Experience: Unknown\
+    Platform Restrictions: None known.\
     Pros:
      * There have been several implementations of this approach, I'm not aware
        of any being publicly available/supported at this time.
