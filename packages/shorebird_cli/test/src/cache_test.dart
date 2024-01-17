@@ -254,18 +254,22 @@ void main() {
 
           await expectLater(runWithOverrides(cache.updateAll), completes);
 
-          final request = verify(() => httpClient.send(captureAny()))
+          final requests = verify(() => httpClient.send(captureAny()))
               .captured
-              .first as http.BaseRequest;
+              .cast<http.BaseRequest>()
+              .map((r) => r.url)
+              .toList();
 
-          expect(
-            request.url,
-            equals(
-              Uri.parse(
-                '${cache.storageBaseUrl}/${cache.storageBucket}/shorebird/$shorebirdEngineRevision/patch-darwin-x64.zip',
-              ),
-            ),
-          );
+          String perEngine(String name) =>
+              '${cache.storageBaseUrl}/${cache.storageBucket}/shorebird/$shorebirdEngineRevision/$name';
+
+          final expected = [
+            perEngine('patch-darwin-x64.zip'),
+            'https://github.com/google/bundletool/releases/download/1.15.6/bundletool-all-1.15.6.jar',
+            perEngine('aot-tools.dill'),
+          ].map(Uri.parse).toList();
+
+          expect(requests, equals(expected));
         });
 
         test('pull correct artifact for Windows', () async {
@@ -275,18 +279,22 @@ void main() {
 
           await expectLater(runWithOverrides(cache.updateAll), completes);
 
-          final request = verify(() => httpClient.send(captureAny()))
+          final requests = verify(() => httpClient.send(captureAny()))
               .captured
-              .first as http.BaseRequest;
+              .cast<http.BaseRequest>()
+              .map((r) => r.url)
+              .toList();
 
-          expect(
-            request.url,
-            equals(
-              Uri.parse(
-                '${cache.storageBaseUrl}/${cache.storageBucket}/shorebird/$shorebirdEngineRevision/patch-windows-x64.zip',
-              ),
-            ),
-          );
+          String perEngine(String name) =>
+              '${cache.storageBaseUrl}/${cache.storageBucket}/shorebird/$shorebirdEngineRevision/$name';
+
+          final expected = [
+            perEngine('patch-windows-x64.zip'),
+            'https://github.com/google/bundletool/releases/download/1.15.6/bundletool-all-1.15.6.jar',
+            perEngine('aot-tools.dill'),
+          ].map(Uri.parse).toList();
+
+          expect(requests, equals(expected));
         });
 
         test('pull correct artifact for Linux', () async {
@@ -296,17 +304,22 @@ void main() {
 
           await expectLater(runWithOverrides(cache.updateAll), completes);
 
-          final request = verify(() => httpClient.send(captureAny()))
+          final requests = verify(() => httpClient.send(captureAny()))
               .captured
-              .first as http.BaseRequest;
-          expect(
-            request.url,
-            equals(
-              Uri.parse(
-                '${cache.storageBaseUrl}/${cache.storageBucket}/shorebird/$shorebirdEngineRevision/patch-linux-x64.zip',
-              ),
-            ),
-          );
+              .cast<http.BaseRequest>()
+              .map((r) => r.url)
+              .toList();
+
+          String perEngine(String name) =>
+              '${cache.storageBaseUrl}/${cache.storageBucket}/shorebird/$shorebirdEngineRevision/$name';
+
+          final expected = [
+            perEngine('patch-linux-x64.zip'),
+            'https://github.com/google/bundletool/releases/download/1.15.6/bundletool-all-1.15.6.jar',
+            perEngine('aot-tools.dill'),
+          ].map(Uri.parse).toList();
+
+          expect(requests, equals(expected));
         });
       });
     });
