@@ -62,7 +62,7 @@ void main() {
           () => shorebirdArtifacts.getArtifactPath(
             artifact: ShorebirdArtifact.aotTools,
           ),
-        ).thenReturn('aot-tools');
+        ).thenReturn('aot-tools.dill');
         when(
           () => process.run(
             dartBinaryFile.path,
@@ -136,6 +136,7 @@ void main() {
             () => process.run(
               dartBinaryFile.path,
               [
+                'run',
                 aotToolsPath,
                 'link',
                 '--base=$base',
@@ -190,6 +191,7 @@ void main() {
             () => process.run(
               dartBinaryFile.path,
               [
+                'run',
                 aotToolsPath,
                 'link',
                 '--base=$base',

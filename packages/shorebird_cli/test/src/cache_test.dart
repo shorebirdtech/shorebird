@@ -25,9 +25,6 @@ class TestCachedArtifact extends CachedArtifact {
   String get name => 'test';
 
   @override
-  String get fileName => 'test';
-
-  @override
   bool get isExecutable => true;
 
   @override
@@ -230,7 +227,7 @@ void main() {
           );
           verify(
             () => logger.detail(
-              '''[cache] optional artifact: "aot-tools" was not found, skipping...''',
+              '''[cache] optional artifact: "aot-tools.dill" was not found, skipping...''',
             ),
           ).called(1);
         });
