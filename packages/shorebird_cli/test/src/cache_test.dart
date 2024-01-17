@@ -18,19 +18,6 @@ import 'package:test/test.dart';
 import 'fakes.dart';
 import 'mocks.dart';
 
-class TestCachedArtifact extends CachedArtifact {
-  TestCachedArtifact({required super.cache, required super.platform});
-
-  @override
-  String get name => 'test';
-
-  @override
-  bool get isExecutable => true;
-
-  @override
-  String get storageUrl => 'test-url';
-}
-
 void main() {
   group(Cache, () {
     const shorebirdEngineRevision = 'test-revision';
@@ -58,6 +45,19 @@ void main() {
       );
     }
 
+    void setMockPlatform(String name) {
+      assert(
+        Platform.operatingSystemValues.contains(name),
+        'Unrecognized platform name',
+      );
+      when(() => platform.isMacOS).thenReturn(name == 'macos');
+      when(() => platform.isWindows).thenReturn(name == 'windows');
+      when(() => platform.isLinux).thenReturn(name == 'linux');
+      when(() => platform.isAndroid).thenReturn(name == 'android');
+      when(() => platform.isFuchsia).thenReturn(name == 'fuchsia');
+      when(() => platform.isIOS).thenReturn(name == 'ios');
+    }
+
     setUpAll(() {
       registerFallbackValue(FakeBaseRequest());
     });
@@ -77,9 +77,7 @@ void main() {
       when(() => shorebirdEnv.shorebirdRoot).thenReturn(shorebirdRoot);
 
       when(() => platform.environment).thenReturn({});
-      when(() => platform.isMacOS).thenReturn(true);
-      when(() => platform.isWindows).thenReturn(false);
-      when(() => platform.isLinux).thenReturn(false);
+      setMockPlatform(Platform.macOS);
       when(() => shorebirdProcess.start(any(), any())).thenAnswer(
         (_) async => chmodProcess,
       );
@@ -248,9 +246,7 @@ void main() {
         });
 
         test('pull correct artifact for MacOS', () async {
-          when(() => platform.isMacOS).thenReturn(true);
-          when(() => platform.isWindows).thenReturn(false);
-          when(() => platform.isLinux).thenReturn(false);
+          setMockPlatform(Platform.macOS);
 
           await expectLater(runWithOverrides(cache.updateAll), completes);
 
@@ -273,9 +269,7 @@ void main() {
         });
 
         test('aot-tools falls back to executable', () async {
-          when(() => platform.isMacOS).thenReturn(true);
-          when(() => platform.isWindows).thenReturn(false);
-          when(() => platform.isLinux).thenReturn(false);
+          setMockPlatform(Platform.macOS);
 
           when(() => httpClient.send(any())).thenAnswer(
             (invocation) async {
@@ -318,10 +312,35 @@ void main() {
           expect(requests, equals(expected));
         });
 
+        test('aot-tools executable paths by platform', () async {
+          setMockPlatform(Platform.windows);
+          expect(
+            runWithOverrides(
+              () => AotToolsExeArtifact(cache: cache, platform: platform)
+                  .storageUrl,
+            ),
+            endsWith('aot-tools-windows-x64'),
+          );
+          setMockPlatform(Platform.linux);
+          expect(
+            runWithOverrides(
+              () => AotToolsExeArtifact(cache: cache, platform: platform)
+                  .storageUrl,
+            ),
+            endsWith('aot-tools-linux-x64'),
+          );
+          setMockPlatform(Platform.macOS);
+          expect(
+            runWithOverrides(
+              () => AotToolsExeArtifact(cache: cache, platform: platform)
+                  .storageUrl,
+            ),
+            endsWith('aot-tools-darwin-x64'),
+          );
+        });
+
         test('pull correct artifact for Windows', () async {
-          when(() => platform.isMacOS).thenReturn(false);
-          when(() => platform.isWindows).thenReturn(true);
-          when(() => platform.isLinux).thenReturn(false);
+          setMockPlatform(Platform.windows);
 
           await expectLater(runWithOverrides(cache.updateAll), completes);
 
@@ -344,9 +363,7 @@ void main() {
         });
 
         test('pull correct artifact for Linux', () async {
-          when(() => platform.isMacOS).thenReturn(false);
-          when(() => platform.isWindows).thenReturn(false);
-          when(() => platform.isLinux).thenReturn(true);
+          setMockPlatform(Platform.linux);
 
           await expectLater(runWithOverrides(cache.updateAll), completes);
 
