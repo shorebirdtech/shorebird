@@ -31,13 +31,15 @@ void main() {
 
     group('aab', () {
       group('changedFiles', () {
-        test('finds no differences between the same aab', () {
-          expect(differ.changedFiles(baseAabPath, baseAabPath), isEmpty);
+        test('finds no differences between the same aab', () async {
+          expect(await differ.changedFiles(baseAabPath, baseAabPath), isEmpty);
         });
 
-        test('finds differences between two different aabs', () {
+        test('finds differences between two different aabs', () async {
+          final fileSetDiff =
+              await differ.changedFiles(baseAabPath, changedDartAabPath);
           expect(
-            differ.changedFiles(baseAabPath, changedDartAabPath).changedPaths,
+            fileSetDiff.changedPaths,
             {
               'BUNDLE-METADATA/com.android.tools.build.libraries/dependencies.pb',
               'base/lib/arm64-v8a/libapp.so',
@@ -52,37 +54,39 @@ void main() {
       });
 
       group('contentDifferences', () {
-        test('detects no differences between the same aab', () {
-          expect(differ.changedFiles(baseAabPath, baseAabPath), isEmpty);
+        test('detects no differences between the same aab', () async {
+          expect(await differ.changedFiles(baseAabPath, baseAabPath), isEmpty);
         });
 
-        test('detects asset changes', () {
+        test('detects asset changes', () async {
           final fileSetDiff =
-              differ.changedFiles(baseAabPath, changedAssetAabPath);
+              await differ.changedFiles(baseAabPath, changedAssetAabPath);
           expect(differ.assetsFileSetDiff(fileSetDiff), isNotEmpty);
           expect(differ.dartFileSetDiff(fileSetDiff), isEmpty);
           expect(differ.nativeFileSetDiff(fileSetDiff), isEmpty);
         });
 
-        test('detects kotlin changes', () {
+        test('detects kotlin changes', () async {
           final fileSetDiff =
-              differ.changedFiles(baseAabPath, changedKotlinAabPath);
+              await differ.changedFiles(baseAabPath, changedKotlinAabPath);
           expect(differ.assetsFileSetDiff(fileSetDiff), isEmpty);
           expect(differ.dartFileSetDiff(fileSetDiff), isEmpty);
           expect(differ.nativeFileSetDiff(fileSetDiff), isNotEmpty);
         });
 
-        test('detects dart changes', () {
+        test('detects dart changes', () async {
           final fileSetDiff =
-              differ.changedFiles(baseAabPath, changedDartAabPath);
+              await differ.changedFiles(baseAabPath, changedDartAabPath);
           expect(differ.assetsFileSetDiff(fileSetDiff), isEmpty);
           expect(differ.dartFileSetDiff(fileSetDiff), isNotEmpty);
           expect(differ.nativeFileSetDiff(fileSetDiff), isEmpty);
         });
 
-        test('detects dart and asset changes', () {
-          final fileSetDiff =
-              differ.changedFiles(baseAabPath, changedDartAndAssetAabPath);
+        test('detects dart and asset changes', () async {
+          final fileSetDiff = await differ.changedFiles(
+            baseAabPath,
+            changedDartAndAssetAabPath,
+          );
           expect(differ.assetsFileSetDiff(fileSetDiff), isNotEmpty);
           expect(differ.dartFileSetDiff(fileSetDiff), isNotEmpty);
           expect(differ.nativeFileSetDiff(fileSetDiff), isEmpty);
@@ -92,42 +96,43 @@ void main() {
 
     group('aar', () {
       group('changedFiles', () {
-        test('finds no differences between the same aar', () {
-          expect(differ.changedFiles(baseAarPath, baseAarPath), isEmpty);
+        test('finds no differences between the same aar', () async {
+          expect(await differ.changedFiles(baseAarPath, baseAarPath), isEmpty);
         });
 
-        test('finds differences between two different aars', () {
-          expect(
-            differ.changedFiles(baseAarPath, changedDartAarPath).changedPaths,
-            {'jni/arm64-v8a/libapp.so'},
-          );
+        test('finds differences between two different aars', () async {
+          final fileSetDiff =
+              await differ.changedFiles(baseAarPath, changedDartAarPath);
+          expect(fileSetDiff.changedPaths, {'jni/arm64-v8a/libapp.so'});
         });
       });
 
       group('changedFiles', () {
-        test('detects no differences between the same aar', () {
-          expect(differ.changedFiles(baseAarPath, baseAarPath), isEmpty);
+        test('detects no differences between the same aar', () async {
+          expect(await differ.changedFiles(baseAarPath, baseAarPath), isEmpty);
         });
 
-        test('detects asset changes', () {
+        test('detects asset changes', () async {
           final fileSetDiff =
-              differ.changedFiles(baseAarPath, changedAssetAarPath);
+              await differ.changedFiles(baseAarPath, changedAssetAarPath);
           expect(differ.assetsFileSetDiff(fileSetDiff), isNotEmpty);
           expect(differ.dartFileSetDiff(fileSetDiff), isEmpty);
           expect(differ.nativeFileSetDiff(fileSetDiff), isEmpty);
         });
 
-        test('detects dart changes', () {
+        test('detects dart changes', () async {
           final fileSetDiff =
-              differ.changedFiles(baseAarPath, changedDartAarPath);
+              await differ.changedFiles(baseAarPath, changedDartAarPath);
           expect(differ.assetsFileSetDiff(fileSetDiff), isEmpty);
           expect(differ.dartFileSetDiff(fileSetDiff), isNotEmpty);
           expect(differ.nativeFileSetDiff(fileSetDiff), isEmpty);
         });
 
-        test('detects dart and asset changes', () {
-          final fileSetDiff =
-              differ.changedFiles(baseAarPath, changedDartAndAssetAarPath);
+        test('detects dart and asset changes', () async {
+          final fileSetDiff = await differ.changedFiles(
+            baseAarPath,
+            changedDartAndAssetAarPath,
+          );
           expect(differ.assetsFileSetDiff(fileSetDiff), isNotEmpty);
           expect(differ.dartFileSetDiff(fileSetDiff), isNotEmpty);
           expect(differ.nativeFileSetDiff(fileSetDiff), isEmpty);

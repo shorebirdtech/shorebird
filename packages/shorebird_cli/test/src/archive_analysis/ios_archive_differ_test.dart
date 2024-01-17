@@ -65,15 +65,15 @@ void main() {
 
       group('xcarchive', () {
         group('changedPaths', () {
-          test('finds no differences between the same xcarchive', () {
+          test('finds no differences between the same xcarchive', () async {
             expect(
-              differ.changedFiles(baseIpaPath, baseIpaPath),
+              await differ.changedFiles(baseIpaPath, baseIpaPath),
               isEmpty,
             );
           });
 
-          test('finds differences between two different xcarchives', () {
-            final fileSetDiff = differ.changedFiles(
+          test('finds differences between two different xcarchives', () async {
+            final fileSetDiff = await differ.changedFiles(
               baseIpaPath,
               changedAssetIpaPath,
             );
@@ -101,9 +101,9 @@ void main() {
         });
 
         group('changedFiles', () {
-          test('detects asset changes', () {
+          test('detects asset changes', () async {
             final fileSetDiff =
-                differ.changedFiles(baseIpaPath, changedAssetIpaPath);
+                await differ.changedFiles(baseIpaPath, changedAssetIpaPath);
             expect(differ.assetsFileSetDiff(fileSetDiff), isNotEmpty);
             expect(
               differ.dartFileSetDiff(fileSetDiff),
@@ -112,17 +112,17 @@ void main() {
             expect(differ.nativeFileSetDiff(fileSetDiff), isEmpty);
           });
 
-          test('detects dart changes', () {
+          test('detects dart changes', () async {
             final fileSetDiff =
-                differ.changedFiles(baseIpaPath, changedDartIpaPath);
+                await differ.changedFiles(baseIpaPath, changedDartIpaPath);
             expect(differ.assetsFileSetDiff(fileSetDiff), isEmpty);
             expect(differ.dartFileSetDiff(fileSetDiff), isNotEmpty);
             expect(differ.nativeFileSetDiff(fileSetDiff), isEmpty);
           });
 
-          test('detects swift changes', () {
+          test('detects swift changes', () async {
             final fileSetDiff =
-                differ.changedFiles(baseIpaPath, changedSwiftIpaPath);
+                await differ.changedFiles(baseIpaPath, changedSwiftIpaPath);
             expect(differ.assetsFileSetDiff(fileSetDiff), isEmpty);
             expect(differ.dartFileSetDiff(fileSetDiff), isEmpty);
             expect(differ.nativeFileSetDiff(fileSetDiff), isNotEmpty);
@@ -130,8 +130,9 @@ void main() {
         });
 
         group('containsPotentiallyBreakingAssetDiffs', () {
-          test('returns true if a file in flutter_assets has changed', () {
-            final fileSetDiff = differ.changedFiles(
+          test('returns true if a file in flutter_assets has changed',
+              () async {
+            final fileSetDiff = await differ.changedFiles(
               baseIpaPath,
               changedAssetIpaPath,
             );
@@ -141,8 +142,9 @@ void main() {
             );
           });
 
-          test('returns false if no files in flutter_assets has changed', () {
-            final fileSetDiff = differ.changedFiles(
+          test('returns false if no files in flutter_assets has changed',
+              () async {
+            final fileSetDiff = await differ.changedFiles(
               baseIpaPath,
               changedDartIpaPath,
             );
@@ -154,8 +156,8 @@ void main() {
         });
 
         group('containsPotentiallyBreakingNativeDiffs', () {
-          test('returns true if Swift files have been changed', () {
-            final fileSetDiff = differ.changedFiles(
+          test('returns true if Swift files have been changed', () async {
+            final fileSetDiff = await differ.changedFiles(
               baseIpaPath,
               changedSwiftIpaPath,
             );
@@ -165,8 +167,8 @@ void main() {
             );
           });
 
-          test('returns false if Swift files have not been changed', () {
-            final fileSetDiff = differ.changedFiles(
+          test('returns false if Swift files have not been changed', () async {
+            final fileSetDiff = await differ.changedFiles(
               baseIpaPath,
               changedAssetIpaPath,
             );
@@ -180,16 +182,20 @@ void main() {
 
       group('xcframework', () {
         group('changedPaths', () {
-          test('finds no differences between the same zipped xcframeworks', () {
+          test('finds no differences between the same zipped xcframeworks',
+              () async {
             expect(
-              differ.changedFiles(baseXcframeworkPath, baseXcframeworkPath),
+              await differ.changedFiles(
+                baseXcframeworkPath,
+                baseXcframeworkPath,
+              ),
               isEmpty,
             );
           });
 
           test('finds differences between two differed zipped xcframeworks',
-              () {
-            final fileSetDiff = differ.changedFiles(
+              () async {
+            final fileSetDiff = await differ.changedFiles(
               baseXcframeworkPath,
               changedAssetXcframeworkPath,
             );
@@ -220,8 +226,8 @@ void main() {
         });
 
         group('changedFiles', () {
-          test('detects asset changes', () {
-            final fileSetDiff = differ.changedFiles(
+          test('detects asset changes', () async {
+            final fileSetDiff = await differ.changedFiles(
               baseXcframeworkPath,
               changedAssetXcframeworkPath,
             );
@@ -233,8 +239,8 @@ void main() {
             expect(differ.nativeFileSetDiff(fileSetDiff), isEmpty);
           });
 
-          test('detects dart changes', () {
-            final fileSetDiff = differ.changedFiles(
+          test('detects dart changes', () async {
+            final fileSetDiff = await differ.changedFiles(
               baseXcframeworkPath,
               changedDartXcframeworkPath,
             );

@@ -1,4 +1,5 @@
 import 'dart:io';
+import 'dart:isolate';
 
 import 'package:archive/archive_io.dart';
 import 'package:collection/collection.dart';
@@ -32,15 +33,18 @@ class IosArchiveDiffer extends ArchiveDiffer {
   /// archives at the two provided paths. This method will also unisgn mach-o
   /// binaries in the archives before computing the diff.
   @override
-  FileSetDiff changedFiles(String oldArchivePath, String newArchivePath) {
-    final oldPathHashes = fileHashes(File(oldArchivePath));
-    final newPathHashes = fileHashes(File(newArchivePath));
+  Future<FileSetDiff> changedFiles(
+    String oldArchivePath,
+    String newArchivePath,
+  ) async {
+    var oldPathHashes = await fileHashes(File(oldArchivePath));
+    var newPathHashes = await fileHashes(File(newArchivePath));
 
-    _updateHashes(
+    oldPathHashes = await _updateHashes(
       archivePath: oldArchivePath,
       pathHashes: oldPathHashes,
     );
-    _updateHashes(
+    newPathHashes = await _updateHashes(
       archivePath: newArchivePath,
       pathHashes: newPathHashes,
     );
@@ -55,17 +59,21 @@ class IosArchiveDiffer extends ArchiveDiffer {
   /// includes:
   ///   - Signed files (those with a .app extension)
   ///   - Compiled asset catalogs (those with a .car extension)
-  void _updateHashes({
+  Future<PathHashes> _updateHashes({
     required String archivePath,
     required PathHashes pathHashes,
-  }) {
-    for (final file in _filesToUnsign(archivePath)) {
-      pathHashes[file.name] = _unsignedFileHash(file);
-    }
+  }) async {
+    return Isolate.run(() async {
+      for (final file in _filesToUnsign(archivePath)) {
+        pathHashes[file.name] = await _unsignedFileHash(file);
+      }
 
-    for (final file in _carFiles(archivePath)) {
-      pathHashes[file.name] = _carFileHash(file);
-    }
+      for (final file in _carFiles(archivePath)) {
+        pathHashes[file.name] = await _carFileHash(file);
+      }
+
+      return pathHashes;
+    });
   }
 
   List<ArchiveFile> _filesToUnsign(String archivePath) {
@@ -90,12 +98,12 @@ class IosArchiveDiffer extends ArchiveDiffer {
         .toList();
   }
 
-  String _unsignedFileHash(ArchiveFile file) {
+  Future<String> _unsignedFileHash(ArchiveFile file) async {
     final tempDir = Directory.systemTemp.createTempSync();
     final outPath = p.join(tempDir.path, file.name);
     final outputStream = OutputFileStream(outPath);
     file.writeContent(outputStream);
-    outputStream.close();
+    await outputStream.close();
 
     if (Platform.isMacOS) {
       // coverage:ignore-start
@@ -110,12 +118,12 @@ class IosArchiveDiffer extends ArchiveDiffer {
   /// Uses assetutil to write a json description of a .car file to disk and
   /// diffs the contents of that file, less a timestamp line that chnages based
   /// on when the .car file was created.
-  String _carFileHash(ArchiveFile file) {
+  Future<String> _carFileHash(ArchiveFile file) async {
     final tempDir = Directory.systemTemp.createTempSync();
     final outPath = p.join(tempDir.path, file.name);
     final outputStream = OutputFileStream(outPath);
     file.writeContent(outputStream);
-    outputStream.close();
+    await outputStream.close();
 
     final assetInfoPath = '$outPath.json';
 
