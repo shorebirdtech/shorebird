@@ -208,7 +208,8 @@ void main() {
             (invocation) async {
               final request =
                   invocation.positionalArguments.first as http.BaseRequest;
-              if (request.url.path.endsWith('aot-tools.dill')) {
+              final fileName = p.basename(request.url.path);
+              if (fileName.startsWith('aot-tools')) {
                 return http.StreamedResponse(
                   const Stream.empty(),
                   HttpStatus.notFound,
@@ -228,6 +229,11 @@ void main() {
           verify(
             () => logger.detail(
               '''[cache] optional artifact: "aot-tools.dill" was not found, skipping...''',
+            ),
+          ).called(1);
+          verify(
+            () => logger.detail(
+              '''[cache] optional artifact: "aot-tools" was not found, skipping...''',
             ),
           ).called(1);
         });

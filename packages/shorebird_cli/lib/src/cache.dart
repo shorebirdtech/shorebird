@@ -59,7 +59,8 @@ class Cache {
   Cache({this.extractArchive = _defaultArchiveExtractor}) {
     registerArtifact(PatchArtifact(cache: this, platform: platform));
     registerArtifact(BundleToolArtifact(cache: this, platform: platform));
-    registerArtifact(AotToolsArtifact(cache: this, platform: platform));
+    registerArtifact(AotToolsDillArtifact(cache: this, platform: platform));
+    registerArtifact(AotToolsExeArtifact(cache: this, platform: platform));
   }
 
   final ArchiveExtractor extractArchive;
@@ -194,8 +195,8 @@ allowed to access $storageUrl.''',
   }
 }
 
-class AotToolsArtifact extends CachedArtifact {
-  AotToolsArtifact({required super.cache, required super.platform});
+class AotToolsDillArtifact extends CachedArtifact {
+  AotToolsDillArtifact({required super.cache, required super.platform});
 
   @override
   String get name => 'aot-tools.dill';
@@ -218,6 +219,44 @@ class AotToolsArtifact extends CachedArtifact {
   @override
   String get storageUrl =>
       '${cache.storageBaseUrl}/${cache.storageBucket}/shorebird/${shorebirdEnv.shorebirdEngineRevision}/$name';
+}
+
+/// For a few revisions in Dec 2023, we distributed aot-tools as an executable.
+/// Should be removed sometime after June 2024.
+class AotToolsExeArtifact extends CachedArtifact {
+  AotToolsExeArtifact({required super.cache, required super.platform});
+
+  @override
+  String get name => 'aot-tools';
+
+  @override
+  bool get isExecutable => true;
+
+  /// The aot-tools are only available for revisions that support mixed-mode.
+  @override
+  bool get required => false;
+
+  @override
+  Directory get location => Directory(
+        p.join(
+          cache.getArtifactDirectory(name).path,
+          shorebirdEnv.shorebirdEngineRevision,
+        ),
+      );
+
+  @override
+  String get storageUrl {
+    var artifactName = 'aot-tools-';
+    if (platform.isMacOS) {
+      artifactName += 'darwin-x64';
+    } else if (platform.isLinux) {
+      artifactName += 'linux-x64';
+    } else if (platform.isWindows) {
+      artifactName += 'windows-x64';
+    }
+
+    return '${cache.storageBaseUrl}/${cache.storageBucket}/shorebird/${shorebirdEnv.shorebirdEngineRevision}/$artifactName';
+  }
 }
 
 class PatchArtifact extends CachedArtifact {

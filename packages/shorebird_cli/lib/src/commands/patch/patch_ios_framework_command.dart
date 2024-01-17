@@ -211,7 +211,7 @@ Please re-run the release command for this version or create a new release.''');
       return ExitCode.software.code;
     }
 
-    // TODO use linker if available
+    // TODO(bryanoltman): use linker if available
 
     final File patchFile;
     if (await aotTools.isGeneratePatchDiffBaseSupported()) {

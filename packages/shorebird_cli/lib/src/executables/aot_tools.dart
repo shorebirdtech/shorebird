@@ -81,8 +81,11 @@ class AotTools {
     // "Unrecognized flags: dump_blobs"
     final result = await _exec(
       [
+        // TODO(eseidel): add a --help, or --version or some other way to
+        // get a non-zero exit code without needing to pass in a path to a
+        // snapshot.  This shows up during verbose mode and is confusing.
         'dump_blobs',
-        '--analyze-snapshot=nonexistent_analzye_snapshot',
+        '--analyze-snapshot=nonexistent_analyze_snapshot',
         '--output=out',
         '--snapshot=nonexistent_snapshot',
       ],
