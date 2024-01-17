@@ -272,6 +272,52 @@ void main() {
           expect(requests, equals(expected));
         });
 
+        test('aot-tools falls back to executable', () async {
+          when(() => platform.isMacOS).thenReturn(true);
+          when(() => platform.isWindows).thenReturn(false);
+          when(() => platform.isLinux).thenReturn(false);
+
+          when(() => httpClient.send(any())).thenAnswer(
+            (invocation) async {
+              final request =
+                  invocation.positionalArguments.first as http.BaseRequest;
+              final fileName = p.basename(request.url.path);
+              if (fileName == 'aot-tools.dill') {
+                return http.StreamedResponse(
+                  const Stream.empty(),
+                  HttpStatus.notFound,
+                  reasonPhrase: 'Not Found',
+                );
+              }
+              return http.StreamedResponse(
+                Stream.value(ZipEncoder().encode(Archive())!),
+                HttpStatus.ok,
+              );
+            },
+          );
+
+          await expectLater(runWithOverrides(cache.updateAll), completes);
+
+          final requests = verify(() => httpClient.send(captureAny()))
+              .captured
+              .cast<http.BaseRequest>()
+              .map((r) => r.url)
+              .toList();
+
+          String perEngine(String name) =>
+              '${cache.storageBaseUrl}/${cache.storageBucket}/shorebird/$shorebirdEngineRevision/$name';
+
+          final expected = [
+            perEngine('patch-darwin-x64.zip'),
+            'https://github.com/google/bundletool/releases/download/1.15.6/bundletool-all-1.15.6.jar',
+            // Requests the .dill, fails and falls back to executable:
+            perEngine('aot-tools.dill'),
+            perEngine('aot-tools-darwin-x64'),
+          ].map(Uri.parse).toList();
+
+          expect(requests, equals(expected));
+        });
+
         test('pull correct artifact for Windows', () async {
           when(() => platform.isMacOS).thenReturn(false);
           when(() => platform.isWindows).thenReturn(true);
