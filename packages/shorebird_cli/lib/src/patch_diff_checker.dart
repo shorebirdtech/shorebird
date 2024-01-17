@@ -35,7 +35,6 @@ class PatchDiffChecker {
     final zipProgress = logger.progress('Compressing archive');
     final zippedFile = await localArtifactDirectory.zipToTempFile();
     zipProgress.complete();
-    print('archive compressed');
 
     return confirmUnpatchableDiffsIfNecessary(
       localArtifact: zippedFile,

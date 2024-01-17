@@ -76,7 +76,9 @@ abstract class ArchiveDiffer {
   /// Files that have been added, removed, or that have changed between the
   /// archives at the two provided paths.
   Future<FileSetDiff> changedFiles(
-      String oldArchivePath, String newArchivePath) async {
+    String oldArchivePath,
+    String newArchivePath,
+  ) async {
     return FileSetDiff.fromPathHashes(
       oldPathHashes: await fileHashes(File(oldArchivePath)),
       newPathHashes: await fileHashes(File(newArchivePath)),
