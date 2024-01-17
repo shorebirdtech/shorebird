@@ -18,22 +18,6 @@ import 'package:test/test.dart';
 import 'fakes.dart';
 import 'mocks.dart';
 
-class TestCachedArtifact extends CachedArtifact {
-  TestCachedArtifact({required super.cache, required super.platform});
-
-  @override
-  String get name => 'test';
-
-  @override
-  String get fileName => 'test';
-
-  @override
-  bool get isExecutable => true;
-
-  @override
-  String get storageUrl => 'test-url';
-}
-
 void main() {
   group(Cache, () {
     const shorebirdEngineRevision = 'test-revision';
@@ -61,6 +45,19 @@ void main() {
       );
     }
 
+    void setMockPlatform(String name) {
+      assert(
+        Platform.operatingSystemValues.contains(name),
+        'Unrecognized platform name',
+      );
+      when(() => platform.isMacOS).thenReturn(name == 'macos');
+      when(() => platform.isWindows).thenReturn(name == 'windows');
+      when(() => platform.isLinux).thenReturn(name == 'linux');
+      when(() => platform.isAndroid).thenReturn(name == 'android');
+      when(() => platform.isFuchsia).thenReturn(name == 'fuchsia');
+      when(() => platform.isIOS).thenReturn(name == 'ios');
+    }
+
     setUpAll(() {
       registerFallbackValue(FakeBaseRequest());
     });
@@ -80,9 +77,7 @@ void main() {
       when(() => shorebirdEnv.shorebirdRoot).thenReturn(shorebirdRoot);
 
       when(() => platform.environment).thenReturn({});
-      when(() => platform.isMacOS).thenReturn(true);
-      when(() => platform.isWindows).thenReturn(false);
-      when(() => platform.isLinux).thenReturn(false);
+      setMockPlatform(Platform.macOS);
       when(() => shorebirdProcess.start(any(), any())).thenAnswer(
         (_) async => chmodProcess,
       );
@@ -211,7 +206,8 @@ void main() {
             (invocation) async {
               final request =
                   invocation.positionalArguments.first as http.BaseRequest;
-              if (request.url.path.endsWith('aot-tools.dill')) {
+              final fileName = p.basename(request.url.path);
+              if (fileName.startsWith('aot-tools')) {
                 return http.StreamedResponse(
                   const Stream.empty(),
                   HttpStatus.notFound,
@@ -230,6 +226,11 @@ void main() {
           );
           verify(
             () => logger.detail(
+              '''[cache] optional artifact: "aot-tools.dill" was not found, skipping...''',
+            ),
+          ).called(1);
+          verify(
+            () => logger.detail(
               '''[cache] optional artifact: "aot-tools" was not found, skipping...''',
             ),
           ).called(1);
@@ -245,65 +246,143 @@ void main() {
         });
 
         test('pull correct artifact for MacOS', () async {
-          when(() => platform.isMacOS).thenReturn(true);
-          when(() => platform.isWindows).thenReturn(false);
-          when(() => platform.isLinux).thenReturn(false);
+          setMockPlatform(Platform.macOS);
 
           await expectLater(runWithOverrides(cache.updateAll), completes);
 
-          final request = verify(() => httpClient.send(captureAny()))
+          final requests = verify(() => httpClient.send(captureAny()))
               .captured
-              .first as http.BaseRequest;
+              .cast<http.BaseRequest>()
+              .map((r) => r.url)
+              .toList();
 
+          String perEngine(String name) =>
+              '${cache.storageBaseUrl}/${cache.storageBucket}/shorebird/$shorebirdEngineRevision/$name';
+
+          final expected = [
+            perEngine('patch-darwin-x64.zip'),
+            'https://github.com/google/bundletool/releases/download/1.15.6/bundletool-all-1.15.6.jar',
+            perEngine('aot-tools.dill'),
+          ].map(Uri.parse).toList();
+
+          expect(requests, equals(expected));
+        });
+
+        test('aot-tools falls back to executable', () async {
+          setMockPlatform(Platform.macOS);
+
+          when(() => httpClient.send(any())).thenAnswer(
+            (invocation) async {
+              final request =
+                  invocation.positionalArguments.first as http.BaseRequest;
+              final fileName = p.basename(request.url.path);
+              if (fileName == 'aot-tools.dill') {
+                return http.StreamedResponse(
+                  const Stream.empty(),
+                  HttpStatus.notFound,
+                  reasonPhrase: 'Not Found',
+                );
+              }
+              return http.StreamedResponse(
+                Stream.value(ZipEncoder().encode(Archive())!),
+                HttpStatus.ok,
+              );
+            },
+          );
+
+          await expectLater(runWithOverrides(cache.updateAll), completes);
+
+          final requests = verify(() => httpClient.send(captureAny()))
+              .captured
+              .cast<http.BaseRequest>()
+              .map((r) => r.url)
+              .toList();
+
+          String perEngine(String name) =>
+              '${cache.storageBaseUrl}/${cache.storageBucket}/shorebird/$shorebirdEngineRevision/$name';
+
+          final expected = [
+            perEngine('patch-darwin-x64.zip'),
+            'https://github.com/google/bundletool/releases/download/1.15.6/bundletool-all-1.15.6.jar',
+            // Requests the .dill, fails and falls back to executable:
+            perEngine('aot-tools.dill'),
+            perEngine('aot-tools-darwin-x64'),
+          ].map(Uri.parse).toList();
+
+          expect(requests, equals(expected));
+        });
+
+        test('aot-tools executable paths by platform', () async {
+          setMockPlatform(Platform.windows);
           expect(
-            request.url,
-            equals(
-              Uri.parse(
-                '${cache.storageBaseUrl}/${cache.storageBucket}/shorebird/$shorebirdEngineRevision/patch-darwin-x64.zip',
-              ),
+            runWithOverrides(
+              () => AotToolsExeArtifact(cache: cache, platform: platform)
+                  .storageUrl,
             ),
+            endsWith('aot-tools-windows-x64'),
+          );
+          setMockPlatform(Platform.linux);
+          expect(
+            runWithOverrides(
+              () => AotToolsExeArtifact(cache: cache, platform: platform)
+                  .storageUrl,
+            ),
+            endsWith('aot-tools-linux-x64'),
+          );
+          setMockPlatform(Platform.macOS);
+          expect(
+            runWithOverrides(
+              () => AotToolsExeArtifact(cache: cache, platform: platform)
+                  .storageUrl,
+            ),
+            endsWith('aot-tools-darwin-x64'),
           );
         });
 
         test('pull correct artifact for Windows', () async {
-          when(() => platform.isMacOS).thenReturn(false);
-          when(() => platform.isWindows).thenReturn(true);
-          when(() => platform.isLinux).thenReturn(false);
+          setMockPlatform(Platform.windows);
 
           await expectLater(runWithOverrides(cache.updateAll), completes);
 
-          final request = verify(() => httpClient.send(captureAny()))
+          final requests = verify(() => httpClient.send(captureAny()))
               .captured
-              .first as http.BaseRequest;
+              .cast<http.BaseRequest>()
+              .map((r) => r.url)
+              .toList();
 
-          expect(
-            request.url,
-            equals(
-              Uri.parse(
-                '${cache.storageBaseUrl}/${cache.storageBucket}/shorebird/$shorebirdEngineRevision/patch-windows-x64.zip',
-              ),
-            ),
-          );
+          String perEngine(String name) =>
+              '${cache.storageBaseUrl}/${cache.storageBucket}/shorebird/$shorebirdEngineRevision/$name';
+
+          final expected = [
+            perEngine('patch-windows-x64.zip'),
+            'https://github.com/google/bundletool/releases/download/1.15.6/bundletool-all-1.15.6.jar',
+            perEngine('aot-tools.dill'),
+          ].map(Uri.parse).toList();
+
+          expect(requests, equals(expected));
         });
 
         test('pull correct artifact for Linux', () async {
-          when(() => platform.isMacOS).thenReturn(false);
-          when(() => platform.isWindows).thenReturn(false);
-          when(() => platform.isLinux).thenReturn(true);
+          setMockPlatform(Platform.linux);
 
           await expectLater(runWithOverrides(cache.updateAll), completes);
 
-          final request = verify(() => httpClient.send(captureAny()))
+          final requests = verify(() => httpClient.send(captureAny()))
               .captured
-              .first as http.BaseRequest;
-          expect(
-            request.url,
-            equals(
-              Uri.parse(
-                '${cache.storageBaseUrl}/${cache.storageBucket}/shorebird/$shorebirdEngineRevision/patch-linux-x64.zip',
-              ),
-            ),
-          );
+              .cast<http.BaseRequest>()
+              .map((r) => r.url)
+              .toList();
+
+          String perEngine(String name) =>
+              '${cache.storageBaseUrl}/${cache.storageBucket}/shorebird/$shorebirdEngineRevision/$name';
+
+          final expected = [
+            perEngine('patch-linux-x64.zip'),
+            'https://github.com/google/bundletool/releases/download/1.15.6/bundletool-all-1.15.6.jar',
+            perEngine('aot-tools.dill'),
+          ].map(Uri.parse).toList();
+
+          expect(requests, equals(expected));
         });
       });
     });

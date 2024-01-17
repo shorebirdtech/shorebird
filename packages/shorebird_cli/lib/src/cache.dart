@@ -29,7 +29,7 @@ class CacheUpdateFailure implements Exception {
   String toString() => 'CacheUpdateFailure: $message';
 }
 
-typedef ArchiveExtracter = Future<void> Function(
+typedef ArchiveExtractor = Future<void> Function(
   String archivePath,
   String outputPath,
 );
@@ -59,10 +59,11 @@ class Cache {
   Cache({this.extractArchive = _defaultArchiveExtractor}) {
     registerArtifact(PatchArtifact(cache: this, platform: platform));
     registerArtifact(BundleToolArtifact(cache: this, platform: platform));
-    registerArtifact(AotToolsArtifact(cache: this, platform: platform));
+    registerArtifact(AotToolsDillArtifact(cache: this, platform: platform));
+    registerArtifact(AotToolsExeArtifact(cache: this, platform: platform));
   }
 
-  final ArchiveExtracter extractArchive;
+  final ArchiveExtractor extractArchive;
 
   void registerArtifact(CachedArtifact artifact) => _artifacts.add(artifact);
 
@@ -133,19 +134,21 @@ abstract class CachedArtifact {
   final Cache cache;
   final Platform platform;
 
+  /// The on-disk name of the artifact.
   String get name;
 
-  String get storageUrl;
-
-  String get fileName;
-
+  /// Should the artifact be marked executable.
   bool get isExecutable;
 
+  /// The URL from which the artifact can be downloaded.
+  String get storageUrl;
+
+  /// Whether the artifact is required for Shorebird to function.
+  /// If we fail to fetch it we will exit with an error.
   bool get required => true;
 
   Future<void> extractArtifact(http.ByteStream stream, String outputPath) {
-    final file = File(p.join(outputPath, fileName))
-      ..createSync(recursive: true);
+    final file = File(p.join(outputPath, name))..createSync(recursive: true);
     return stream.pipe(file.openWrite());
   }
 
@@ -185,21 +188,18 @@ allowed to access $storageUrl.''',
     if (!platform.isWindows && isExecutable) {
       final result = await process.start(
         'chmod',
-        ['+x', p.join(location.path, fileName)],
+        ['+x', p.join(location.path, name)],
       );
       await result.exitCode;
     }
   }
 }
 
-class AotToolsArtifact extends CachedArtifact {
-  AotToolsArtifact({required super.cache, required super.platform});
+class AotToolsDillArtifact extends CachedArtifact {
+  AotToolsDillArtifact({required super.cache, required super.platform});
 
   @override
-  String get name => 'aot-tools';
-
-  @override
-  String get fileName => 'aot-tools.dill';
+  String get name => 'aot-tools.dill';
 
   @override
   bool get isExecutable => false;
@@ -218,7 +218,45 @@ class AotToolsArtifact extends CachedArtifact {
 
   @override
   String get storageUrl =>
-      '${cache.storageBaseUrl}/${cache.storageBucket}/shorebird/${shorebirdEnv.shorebirdEngineRevision}/aot-tools.dill';
+      '${cache.storageBaseUrl}/${cache.storageBucket}/shorebird/${shorebirdEnv.shorebirdEngineRevision}/$name';
+}
+
+/// For a few revisions in Dec 2023, we distributed aot-tools as an executable.
+/// Should be removed sometime after June 2024.
+class AotToolsExeArtifact extends CachedArtifact {
+  AotToolsExeArtifact({required super.cache, required super.platform});
+
+  @override
+  String get name => 'aot-tools';
+
+  @override
+  bool get isExecutable => true;
+
+  /// The aot-tools are only available for revisions that support mixed-mode.
+  @override
+  bool get required => false;
+
+  @override
+  Directory get location => Directory(
+        p.join(
+          cache.getArtifactDirectory(name).path,
+          shorebirdEnv.shorebirdEngineRevision,
+        ),
+      );
+
+  @override
+  String get storageUrl {
+    var artifactName = 'aot-tools-';
+    if (platform.isMacOS) {
+      artifactName += 'darwin-x64';
+    } else if (platform.isLinux) {
+      artifactName += 'linux-x64';
+    } else if (platform.isWindows) {
+      artifactName += 'windows-x64';
+    }
+
+    return '${cache.storageBaseUrl}/${cache.storageBucket}/shorebird/${shorebirdEnv.shorebirdEngineRevision}/$artifactName';
+  }
 }
 
 class PatchArtifact extends CachedArtifact {
@@ -226,9 +264,6 @@ class PatchArtifact extends CachedArtifact {
 
   @override
   String get name => 'patch';
-
-  @override
-  String get fileName => 'patch';
 
   @override
   bool get isExecutable => true;
@@ -264,9 +299,6 @@ class BundleToolArtifact extends CachedArtifact {
 
   @override
   String get name => 'bundletool.jar';
-
-  @override
-  String get fileName => 'bundletool.jar';
 
   @override
   bool get isExecutable => false;

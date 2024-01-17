@@ -62,7 +62,7 @@ void main() {
           () => shorebirdArtifacts.getArtifactPath(
             artifact: ShorebirdArtifact.aotTools,
           ),
-        ).thenReturn('aot-tools');
+        ).thenReturn('aot-tools.dill');
         when(
           () => process.run(
             dartBinaryFile.path,
@@ -93,6 +93,59 @@ void main() {
             ),
           ),
         );
+      });
+
+      group('when aot-tools is an executable', () {
+        const aotToolsPath = 'aot_tools';
+
+        setUp(() {
+          when(
+            () => shorebirdArtifacts.getArtifactPath(
+              artifact: ShorebirdArtifact.aotTools,
+            ),
+          ).thenReturn(aotToolsPath);
+        });
+
+        test('links and exits with code 0', () async {
+          when(
+            () => process.run(
+              aotToolsPath,
+              any(),
+              workingDirectory: any(named: 'workingDirectory'),
+            ),
+          ).thenAnswer(
+            (_) async => const ShorebirdProcessResult(
+              exitCode: 0,
+              stdout: '',
+              stderr: '',
+            ),
+          );
+          await expectLater(
+            runWithOverrides(
+              () => aotTools.link(
+                base: base,
+                patch: patch,
+                analyzeSnapshot: analyzeSnapshot,
+                workingDirectory: workingDirectory.path,
+                outputPath: outputPath,
+              ),
+            ),
+            completes,
+          );
+          verify(
+            () => process.run(
+              aotToolsPath,
+              [
+                'link',
+                '--base=$base',
+                '--patch=$patch',
+                '--analyze-snapshot=$analyzeSnapshot',
+                '--output=$outputPath',
+              ],
+              workingDirectory: any(named: 'workingDirectory'),
+            ),
+          ).called(1);
+        });
       });
 
       group('when aot-tools is a kernel file', () {
@@ -136,6 +189,7 @@ void main() {
             () => process.run(
               dartBinaryFile.path,
               [
+                'run',
                 aotToolsPath,
                 'link',
                 '--base=$base',
@@ -190,6 +244,7 @@ void main() {
             () => process.run(
               dartBinaryFile.path,
               [
+                'run',
                 aotToolsPath,
                 'link',
                 '--base=$base',
