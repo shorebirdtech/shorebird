@@ -301,7 +301,7 @@ Current Flutter Revision: $originalFlutterRevision
     final appDirectory =
         getAppDirectory(xcarchiveDirectory: Directory(releaseXcarchivePath));
     if (appDirectory == null) {
-      logger.err('Unable to find .app directory');
+      logger.err('Unable to find release artifact .app directory');
       return ExitCode.software.code;
     }
     final releaseArtifactFile = File(

@@ -920,6 +920,29 @@ Please re-run the release command for this version or create a new release.'''),
       ).called(1);
     });
 
+    group('when release artifact fails to extract', () {
+      setUp(() {
+        setUpProjectRoot();
+        setUpProjectRootArtifacts();
+
+        when(
+          () => artifactManager.extractZip(
+            zipFile: any(named: 'zipFile'),
+            outputDirectory: any(named: 'outputDirectory'),
+          ),
+        ).thenAnswer((invocation) async {});
+      });
+
+      test('prints error message and exits with code 70', () async {
+        final exitCode = await runWithOverrides(command.run);
+
+        expect(exitCode, equals(ExitCode.software.code));
+        verify(
+          () => logger.err('Unable to find release artifact .app directory'),
+        ).called(1);
+      });
+    });
+
     test(
         '''exits with code 70 if zipAndConfirmUnpatchableDiffsIfNecessary throws UnpatchableChangeException''',
         () async {
