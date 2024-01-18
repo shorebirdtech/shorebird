@@ -182,7 +182,14 @@ make smaller updates to your app.
       logger.err('Unable to find .xcarchive directory');
       return ExitCode.software.code;
     }
-    final runnerPath = getAppDirectory()?.path;
+    final archiveDirectory = getXcarchiveDirectory();
+    if (archiveDirectory == null) {
+      logger.err('Unable to find .xcarchive directory');
+      return ExitCode.software.code;
+    }
+
+    final runnerPath =
+        getAppDirectory(xcarchiveDirectory: archiveDirectory)?.path;
     if (runnerPath == null) {
       logger.err('Unable to find .app directory');
       return ExitCode.software.code;

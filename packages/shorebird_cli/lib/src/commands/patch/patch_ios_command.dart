@@ -298,13 +298,15 @@ Current Flutter Revision: $originalFlutterRevision
       return tempDir.path;
     });
     unzipProgress.complete();
-
+    final appDirectory =
+        getAppDirectory(xcarchiveDirectory: Directory(releaseXcarchivePath));
+    if (appDirectory == null) {
+      logger.err('Unable to find .app directory');
+      return ExitCode.software.code;
+    }
     final releaseArtifactFile = File(
       p.join(
-        releaseXcarchivePath,
-        'Products',
-        'Applications',
-        'Runner.app',
+        appDirectory.path,
         'Frameworks',
         'App.framework',
         'App',
