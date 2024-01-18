@@ -184,7 +184,7 @@ make smaller updates to your app.
     }
     final archivePath = archiveDirectory.path;
 
-    final appDirectory = getAppDirectory(xcarchiveDirectory: archiveDirectory!);
+    final appDirectory = getAppDirectory(xcarchiveDirectory: archiveDirectory);
     if (appDirectory == null) {
       logger.err('Unable to find .app directory');
       return ExitCode.software.code;
