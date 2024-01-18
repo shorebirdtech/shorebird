@@ -2,6 +2,36 @@
 
 This section contains past updates we've sent to customers via Discord.
 
+## 0.22.0 (January 18, 2024)
+
+- ⬆️ Updated to Flutter 3.16.6
+- Fixed `shorebird ios-alpha patch` to work with older Flutter versions.
+- Fixed `patch` commands to be faster.
+- Fixed bad merge with Flutter causing errors in CupertinoSwitch.
+
+Most of this release is fixes for our new iOS engine (aka "mixed mode").
+We believe we've squashed all the known crashers introduced from the new
+engine (in 0.20.0), but if you're seeing any issues on iOS, please let us know!
+
+If you encounter problems with the new engine, you can use the older one by
+running: `shorebird flutter versions use 3.16.4`
+
+- Reduced memory usage on iOS by 30mb or more (depends on app size).
+- Reduced iOS patch sizes by 10x (from 5MB avg to 500kb avg)
+- Fixed several crashers on iOS.
+
+Known issues on iOS:
+- Obfuscated iOS builds fail to patch:
+  https://github.com/shorebirdtech/shorebird/issues/1619
+- iOS Apps with renamed Runner.app fail to patch:
+  https://github.com/shorebirdtech/shorebird/issues/1648
+
+📚 Release notes can be found at https://github.com/shorebirdtech/shorebird/releases/tag/v0.22.0
+
+As always, you can upgrade using `shorebird upgrade`
+
+Please let us know if we can help!
+
 ## 0.21.1 (January 3, 2024)
 
 - 🩹 Fixes an issue where releasing iOS apps would fail when zipping an archive (https://github.com/shorebirdtech/shorebird/pull/1612)
