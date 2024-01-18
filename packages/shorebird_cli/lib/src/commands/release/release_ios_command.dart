@@ -178,18 +178,18 @@ make smaller updates to your app.
     buildProgress.complete();
 
     final archiveDirectory = getXcarchiveDirectory();
-    final archivePath = archiveDirectory?.path;
-    if (archivePath == null) {
+    if (archiveDirectory == null) {
       logger.err('Unable to find .xcarchive directory');
       return ExitCode.software.code;
     }
+    final archivePath = archiveDirectory.path;
 
-    final runnerPath =
-        getAppDirectory(xcarchiveDirectory: archiveDirectory!)?.path;
-    if (runnerPath == null) {
+    final appDirectory = getAppDirectory(xcarchiveDirectory: archiveDirectory!);
+    if (appDirectory == null) {
       logger.err('Unable to find .app directory');
       return ExitCode.software.code;
     }
+    final runnerPath = appDirectory.path;
 
     final plistFile = File(p.join(archivePath, 'Info.plist'));
     if (!plistFile.existsSync()) {
