@@ -256,7 +256,7 @@ flutter:
           .thenAnswer((_) async => releaseArtifactFile);
       when(
         () => archiveDiffer.changedFiles(any(), any()),
-      ).thenReturn(FileSetDiff.empty());
+      ).thenAnswer((_) async => FileSetDiff.empty());
       when(
         () => archiveDiffer.assetsFileSetDiff(any()),
       ).thenReturn(FileSetDiff.empty());

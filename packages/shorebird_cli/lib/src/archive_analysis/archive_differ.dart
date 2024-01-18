@@ -1,4 +1,5 @@
 import 'dart:io';
+import 'dart:isolate';
 
 import 'package:archive/archive_io.dart';
 import 'package:collection/collection.dart';
@@ -74,20 +75,27 @@ abstract class ArchiveDiffer {
 
   /// Files that have been added, removed, or that have changed between the
   /// archives at the two provided paths.
-  FileSetDiff changedFiles(String oldArchivePath, String newArchivePath) =>
-      FileSetDiff.fromPathHashes(
-        oldPathHashes: fileHashes(File(oldArchivePath)),
-        newPathHashes: fileHashes(File(newArchivePath)),
-      );
+  Future<FileSetDiff> changedFiles(
+    String oldArchivePath,
+    String newArchivePath,
+  ) async {
+    return FileSetDiff.fromPathHashes(
+      oldPathHashes: await fileHashes(File(oldArchivePath)),
+      newPathHashes: await fileHashes(File(newArchivePath)),
+    );
+  }
 
-  PathHashes fileHashes(File archive) {
-    final zipDirectory = ZipDirectory.read(InputFileStream(archive.path));
-    return {
-      for (final file in zipDirectory.fileHeaders)
-        // Zip files contain an (optional) crc32 checksum for a file. IPAs and
-        // AARs seem to always include this for files, so a quick way for us to
-        // tell if file contents differ is if their checksums differ.
-        file.filename: file.crc32!.toString(),
-    };
+  Future<PathHashes> fileHashes(File archive) async {
+    return Isolate.run(() {
+      final zipDirectory = ZipDirectory.read(InputFileStream(archive.path));
+
+      return {
+        for (final file in zipDirectory.fileHeaders)
+          // Zip files contain an (optional) crc32 checksum for a file. IPAs and
+          // AARs seem to always include this for files, so a quick way for us
+          // to tell if file contents differ is if their checksums differ.
+          file.filename: file.crc32!.toString(),
+      };
+    });
   }
 }

@@ -62,7 +62,10 @@ class TestArchiveDiffer extends ArchiveDiffer {
   FileSetDiff changedFileSetDiff = FileSetDiff.empty();
 
   @override
-  FileSetDiff changedFiles(String oldArchivePath, String newArchivePath) =>
+  Future<FileSetDiff> changedFiles(
+    String oldArchivePath,
+    String newArchivePath,
+  ) async =>
       changedFileSetDiff;
 
   @override
