@@ -4,30 +4,26 @@ This section contains past updates we've sent to customers via Discord.
 
 ## 0.22.0 (January 18, 2024)
 
+This release focused on stabilizing the new iOS engine released in 0.20.0.
+We've squashed all known crashers. If you're seeing issues, please let us know!
+
 - ⬆️ Updated to Flutter 3.16.6
-- Fixed `shorebird ios-alpha patch` to work with older Flutter versions.
-- Removed hangs in `patch` command.
-- Fixed bad merge with Flutter causing errors in CupertinoSwitch.
-- Made `shorebird preview` faster for most Android cases.
-- Fixed Windows adb location bug.
+- 💥 Fixed several crashers found in the new iOS engine.
+- ⚖️ Reduced memory usage on iOS by over 30mb.
+- 📉 Reduced iOS patch sizes by 10x -- now scale by amount changed rather than the size of the app.
+- 🩹 Fixed `shorebird ios-alpha patch` to work with older Flutter versions.
+- 🏃 Made `shorebird preview` faster on Android.
+- 🔍 Fixed sometimes failing to find `adb` on Windows.
+- 🧈 Fixed progress indicator hangs in `patch` command.
+- 🍎 Fixed errors in CupertinoSwitch (caused by bad merge with Flutter).
 
-Most of this release is fixes for our new iOS engine (aka "mixed mode").
-We believe we've squashed all the known crashers introduced from the new
-engine (in 0.20.0), but if you're seeing any issues on iOS, please let us know!
-
-If you encounter problems with the new engine, you can use the older one by
+If you encounter problems with the new iOS engine, you can use the older one by
 running: `shorebird flutter versions use 3.16.4`
 
-- Reduced memory usage on iOS by 30mb or more (depends on app size).
-- Reduced iOS patch sizes by 10x (from 5MB avg to 500kb avg)
-- Fixed several crashers on iOS.
-
-Known issues on iOS:
+Known issues:
 
 - Obfuscated iOS builds fail to patch:
   https://github.com/shorebirdtech/shorebird/issues/1619
-- iOS Apps with renamed Runner.app fail to patch:
-  https://github.com/shorebirdtech/shorebird/issues/1648
 
 📚 Release notes can be found at https://github.com/shorebirdtech/shorebird/releases/tag/v0.22.0
 
