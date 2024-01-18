@@ -177,19 +177,15 @@ make smaller updates to your app.
 
     buildProgress.complete();
 
-    final archivePath = getXcarchiveDirectory()?.path;
-    if (archivePath == null) {
-      logger.err('Unable to find .xcarchive directory');
-      return ExitCode.software.code;
-    }
     final archiveDirectory = getXcarchiveDirectory();
-    if (archiveDirectory == null) {
+    final archivePath = archiveDirectory?.path;
+    if (archivePath == null) {
       logger.err('Unable to find .xcarchive directory');
       return ExitCode.software.code;
     }
 
     final runnerPath =
-        getAppDirectory(xcarchiveDirectory: archiveDirectory)?.path;
+        getAppDirectory(xcarchiveDirectory: archiveDirectory!)?.path;
     if (runnerPath == null) {
       logger.err('Unable to find .app directory');
       return ExitCode.software.code;
