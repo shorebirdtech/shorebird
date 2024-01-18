@@ -349,7 +349,21 @@ flutter:
           zipFile: any(named: 'zipFile'),
           outputDirectory: any(named: 'outputDirectory'),
         ),
-      ).thenAnswer((_) async {});
+      ).thenAnswer((invocation) async {
+        final outputDirectory =
+            invocation.namedArguments[#outputDirectory] as Directory;
+        File(
+          p.join(
+            outputDirectory.path,
+            'Products',
+            'Applications',
+            'App.app',
+            'Frameworks',
+            'App.framework',
+            'App',
+          ),
+        ).createSync(recursive: true);
+      });
       when(
         () => artifactManager.createDiff(
           releaseArtifactPath: any(named: 'releaseArtifactPath'),
@@ -904,6 +918,29 @@ Please re-run the release command for this version or create a new release.'''),
       verify(
         () => progress.fail('Exception: Failed to download release artifact'),
       ).called(1);
+    });
+
+    group('when release artifact fails to extract', () {
+      setUp(() {
+        setUpProjectRoot();
+        setUpProjectRootArtifacts();
+
+        when(
+          () => artifactManager.extractZip(
+            zipFile: any(named: 'zipFile'),
+            outputDirectory: any(named: 'outputDirectory'),
+          ),
+        ).thenAnswer((invocation) async {});
+      });
+
+      test('prints error message and exits with code 70', () async {
+        final exitCode = await runWithOverrides(command.run);
+
+        expect(exitCode, equals(ExitCode.software.code));
+        verify(
+          () => logger.err('Unable to find release artifact .app directory'),
+        ).called(1);
+      });
     });
 
     test(
