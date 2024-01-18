@@ -6,8 +6,10 @@ This section contains past updates we've sent to customers via Discord.
 
 - ⬆️ Updated to Flutter 3.16.6
 - Fixed `shorebird ios-alpha patch` to work with older Flutter versions.
-- Fixed `patch` commands to be faster.
+- Removed hangs in `patch` command.
 - Fixed bad merge with Flutter causing errors in CupertinoSwitch.
+- Made `shorebird preview` faster for most Android cases.
+- Fixed Windows adb location bug.
 
 Most of this release is fixes for our new iOS engine (aka "mixed mode").
 We believe we've squashed all the known crashers introduced from the new
@@ -21,6 +23,7 @@ running: `shorebird flutter versions use 3.16.4`
 - Fixed several crashers on iOS.
 
 Known issues on iOS:
+
 - Obfuscated iOS builds fail to patch:
   https://github.com/shorebirdtech/shorebird/issues/1619
 - iOS Apps with renamed Runner.app fail to patch:
