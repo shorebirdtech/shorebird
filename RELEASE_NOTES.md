@@ -7,7 +7,7 @@ This section contains past updates we've sent to customers via Discord.
 This release focused on stabilizing the new iOS engine released in 0.20.0.
 We've squashed all known crashers. If you're seeing issues, please let us know!
 
-- ⬆️ Updated to Flutter 3.16.6
+- ⬆️ Updated to Flutter 3.16.7
 - 💥 Fixed several crashers found in the new iOS engine.
 - ⚖️ Reduced memory usage on iOS by over 30mb.
 - 📉 Reduced iOS patch sizes by 10x -- now scale by amount changed rather than the size of the app.
