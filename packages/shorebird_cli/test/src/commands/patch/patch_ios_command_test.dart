@@ -353,8 +353,15 @@ flutter:
         final outputDirectory =
             invocation.namedArguments[#outputDirectory] as Directory;
         File(
-          p.join(outputDirectory.path, 'Products', 'Applications', 'App.app',
-              'Frameworks', 'App.framework', 'App'),
+          p.join(
+            outputDirectory.path,
+            'Products',
+            'Applications',
+            'App.app',
+            'Frameworks',
+            'App.framework',
+            'App',
+          ),
         ).createSync(recursive: true);
       });
       when(
