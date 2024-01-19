@@ -15,6 +15,7 @@ import 'package:shorebird_cli/src/deployment_track.dart';
 import 'package:shorebird_cli/src/doctor.dart';
 import 'package:shorebird_cli/src/engine_config.dart';
 import 'package:shorebird_cli/src/executables/executables.dart';
+import 'package:shorebird_cli/src/extensions/arg_results.dart';
 import 'package:shorebird_cli/src/formatters/file_size_formatter.dart';
 import 'package:shorebird_cli/src/ios.dart';
 import 'package:shorebird_cli/src/logger.dart';
@@ -162,14 +163,15 @@ If this option is not provided, the version number will be determined from the p
 
     const arch = 'aarch64';
     const releasePlatform = ReleasePlatform.ios;
-    final flavor = results['flavor'] as String?;
+    final flavor = results.findOption('flavor');
+    final target = results.findOption('target');
 
     final shorebirdYaml = shorebirdEnv.getShorebirdYaml()!;
     final appId = shorebirdYaml.getAppId(flavor: flavor);
     final app = await codePushClientWrapper.getApp(appId: appId);
 
     try {
-      await _buildPatch();
+      await _buildPatch(flavor: flavor, target: target);
     } catch (_) {
       return ExitCode.software.code;
     }
@@ -239,7 +241,7 @@ Current Flutter Revision: $originalFlutterRevision
       flutterVersionProgress.complete();
 
       try {
-        await _buildPatch();
+        await _buildPatch(flavor: flavor, target: target);
       } catch (_) {
         return ExitCode.software.code;
       } finally {
@@ -441,9 +443,10 @@ ${summary.join('\n')}
         'out.vmcode',
       );
 
-  Future<void> _buildPatch() async {
-    final target = results['target'] as String?;
-    final flavor = results['flavor'] as String?;
+  Future<void> _buildPatch({
+    required String? flavor,
+    required String? target,
+  }) async {
     final shouldCodesign = results['codesign'] == true;
     final buildProgress = logger.progress('Building patch');
     try {

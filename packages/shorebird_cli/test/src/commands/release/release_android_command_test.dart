@@ -163,10 +163,11 @@ void main() {
         ),
       ).thenAnswer((_) async => flutterBuildProcessResult);
 
-      when(() => argResults.rest).thenReturn([]);
       when(() => argResults['arch']).thenReturn(arch);
       when(() => argResults['platform']).thenReturn(releasePlatform);
       when(() => argResults['artifact']).thenReturn('aab');
+      when(() => argResults.rest).thenReturn([]);
+      when(() => argResults.wasParsed(any())).thenReturn(true);
       when(() => auth.isAuthenticated).thenReturn(true);
       when(() => auth.client).thenReturn(httpClient);
       when(() => cache.updateAll()).thenAnswer((_) async => {});

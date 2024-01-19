@@ -8,6 +8,7 @@ import 'package:shorebird_cli/src/code_push_client_wrapper.dart';
 import 'package:shorebird_cli/src/command.dart';
 import 'package:shorebird_cli/src/config/config.dart';
 import 'package:shorebird_cli/src/doctor.dart';
+import 'package:shorebird_cli/src/extensions/arg_results.dart';
 import 'package:shorebird_cli/src/ios.dart';
 import 'package:shorebird_cli/src/logger.dart';
 import 'package:shorebird_cli/src/shorebird_artifact_mixin.dart';
@@ -152,8 +153,8 @@ make smaller updates to your app.
     }
 
     const releasePlatform = ReleasePlatform.ios;
-    final flavor = results['flavor'] as String?;
-    final target = results['target'] as String?;
+    final flavor = results.findOption('flavor');
+    final target = results.findOption('target');
     final shorebirdYaml = shorebirdEnv.getShorebirdYaml()!;
     final appId = shorebirdYaml.getAppId(flavor: flavor);
     final app = await codePushClientWrapper.getApp(appId: appId);
