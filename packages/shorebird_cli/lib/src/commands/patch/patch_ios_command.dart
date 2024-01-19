@@ -163,8 +163,8 @@ If this option is not provided, the version number will be determined from the p
 
     const arch = 'aarch64';
     const releasePlatform = ReleasePlatform.ios;
-    final flavor = results.findOption('flavor');
-    final target = results.findOption('target');
+    final flavor = results.findOption('flavor', argParser: argParser);
+    final target = results.findOption('target', argParser: argParser);
 
     final shorebirdYaml = shorebirdEnv.getShorebirdYaml()!;
     final appId = shorebirdYaml.getAppId(flavor: flavor);

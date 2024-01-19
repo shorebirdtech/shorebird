@@ -153,8 +153,8 @@ make smaller updates to your app.
     }
 
     const releasePlatform = ReleasePlatform.ios;
-    final flavor = results.findOption('flavor');
-    final target = results.findOption('target');
+    final flavor = results.findOption('flavor', argParser: argParser);
+    final target = results.findOption('target', argParser: argParser);
     final shorebirdYaml = shorebirdEnv.getShorebirdYaml()!;
     final appId = shorebirdYaml.getAppId(flavor: flavor);
     final app = await codePushClientWrapper.getApp(appId: appId);

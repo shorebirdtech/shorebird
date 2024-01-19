@@ -8,7 +8,7 @@ void main() {
 
     setUp(() {
       argParser = ArgParser()
-        ..addOption('foo')
+        ..addOption('foo', abbr: 'f')
         ..addOption('bar');
     });
 
@@ -17,15 +17,10 @@ void main() {
         test('returns value', () {
           final args = ['--foo=value'];
           final argResults = argParser.parse(args);
-          expect(argResults.findOption('foo'), equals('value'));
-        });
-      });
-
-      group('when option is in rest', () {
-        test('returns value', () {
-          final args = ['--bar=baz', '--', '--foo=value'];
-          final argResults = argParser.parse(args);
-          expect(argResults.findOption('foo'), equals('value'));
+          expect(
+            argResults.findOption('foo', argParser: argParser),
+            equals('value'),
+          );
         });
       });
 
@@ -33,7 +28,56 @@ void main() {
         test('returns null', () {
           final args = ['--bar=value'];
           final argResults = argParser.parse(args);
-          expect(argResults.findOption('foo'), isNull);
+          expect(
+            argResults.findOption('foo', argParser: argParser),
+            isNull,
+          );
+        });
+      });
+
+      group('when option is in rest', () {
+        group('when option is passed with full name and equals', () {
+          test('returns value', () {
+            final args = ['--', '--foo=value'];
+            final argResults = argParser.parse(args);
+            expect(
+              argResults.findOption('foo', argParser: argParser),
+              equals('value'),
+            );
+          });
+        });
+
+        group('when option is passed with full name and space', () {
+          test('returns value', () {
+            final args = ['--', '--foo', 'value', '--bar', 'value2'];
+            final argResults = argParser.parse(args);
+            expect(
+              argResults.findOption('foo', argParser: argParser),
+              equals('value'),
+            );
+          });
+        });
+
+        group('when option is passed with abbreviation and equals', () {
+          test('returns value', () {
+            final args = ['--', '-f=value'];
+            final argResults = argParser.parse(args);
+            expect(
+              argResults.findOption('foo', argParser: argParser),
+              equals('value'),
+            );
+          });
+        });
+
+        group('when option is passed with abbreviation and space', () {
+          test('returns value', () {
+            final args = ['--', '-f', 'value'];
+            final argResults = argParser.parse(args);
+            expect(
+              argResults.findOption('foo', argParser: argParser),
+              equals('value'),
+            );
+          });
         });
       });
     });

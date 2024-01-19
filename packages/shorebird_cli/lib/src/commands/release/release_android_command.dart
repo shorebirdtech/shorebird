@@ -81,8 +81,8 @@ make smaller updates to your app.
     }
 
     const platform = ReleasePlatform.android;
-    final flavor = results.findOption('flavor');
-    final target = results.findOption('target');
+    final flavor = results.findOption('flavor', argParser: argParser);
+    final target = results.findOption('target', argParser: argParser);
     final generateApk = results['artifact'] as String == 'apk';
     final splitApk = results['split-per-abi'] == true;
     if (generateApk && splitApk) {

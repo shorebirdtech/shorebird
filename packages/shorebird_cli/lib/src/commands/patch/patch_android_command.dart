@@ -106,8 +106,8 @@ If this option is not provided, the version number will be determined from the p
     await cache.updateAll();
 
     const platform = ReleasePlatform.android;
-    final flavor = results.findOption('flavor');
-    final target = results.findOption('target');
+    final flavor = results.findOption('flavor', argParser: argParser);
+    final target = results.findOption('target', argParser: argParser);
 
     final shorebirdYaml = shorebirdEnv.getShorebirdYaml()!;
     final appId = shorebirdYaml.getAppId(flavor: flavor);
