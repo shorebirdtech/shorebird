@@ -7,6 +7,9 @@ extension OptionFinder on ArgResults {
       return this[name] as String?;
     }
 
+    // We would ideally check for abbrevations here as well, but ArgResults
+    // doesn't expose its parser (which we could use to get the list of
+    // [Options] being parsed) or an abbrevations map.
     final flagStart = '--$name=';
     return rest
         .firstWhereOrNull((extra) => extra.startsWith(flagStart))
