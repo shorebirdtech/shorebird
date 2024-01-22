@@ -2,6 +2,8 @@ import 'package:args/args.dart';
 import 'package:collection/collection.dart';
 
 extension OptionFinder on ArgResults {
+  /// // Detects flags even when passed to underlying commands via a `--`
+  /// separator.
   String? findOption(
     String name, {
     required ArgParser argParser,
