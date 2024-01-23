@@ -2,6 +2,37 @@
 
 This section contains past updates we've sent to customers via Discord.
 
+## 0.23.0 (January 23, 2024)
+
+This release includes a new iOS "linker" which allows running much more code on
+the CPU when patching on iOS. Some benchmarks improved 10-50x. We still have
+work to do before we declare 1.0, but we're very close now.
+
+This release contains fundamental changes as to how Dart executes and may
+still have instabilities we failed to catch in our testing.
+
+We recommend Shorebird users test apps and patches before distributing to users.
+`shorebird preview` can be used to test patches before releasing to users:
+https://docs.shorebird.dev/guides/staging-patches
+
+If you encounter problems, you can release with an older (known stable) iOS
+engine by running: `shorebird flutter versions use 3.16.4`
+
+- 🚀 Enabled new linker on iOS, improving Dart execution after patching by 10-50x.
+
+Known issues:
+
+- Obfuscated iOS builds fail to patch:
+  https://github.com/shorebirdtech/shorebird/issues/1619
+- Unpatched iOS builds are sometimes *slower* than patched builds:
+  https://github.com/shorebirdtech/shorebird/issues/1661
+
+📚 Release notes can be found at https://github.com/shorebirdtech/shorebird/releases/tag/v0.22.0
+
+As always, you can upgrade using `shorebird upgrade`
+
+Please let us know if we can help!
+
 ## 0.22.0 (January 18, 2024)
 
 This release focused on stabilizing the new iOS engine released in 0.20.0.
