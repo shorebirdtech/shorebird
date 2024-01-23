@@ -6,6 +6,7 @@ import 'package:shorebird_cli/src/code_push_client_wrapper.dart';
 import 'package:shorebird_cli/src/command.dart';
 import 'package:shorebird_cli/src/config/shorebird_yaml.dart';
 import 'package:shorebird_cli/src/doctor.dart';
+import 'package:shorebird_cli/src/extensions/arg_results.dart';
 import 'package:shorebird_cli/src/logger.dart';
 import 'package:shorebird_cli/src/shorebird_build_mixin.dart';
 import 'package:shorebird_cli/src/shorebird_env.dart';
@@ -80,8 +81,8 @@ make smaller updates to your app.
     }
 
     const platform = ReleasePlatform.android;
-    final flavor = results['flavor'] as String?;
-    final target = results['target'] as String?;
+    final flavor = results.findOption('flavor', argParser: argParser);
+    final target = results.findOption('target', argParser: argParser);
     final generateApk = results['artifact'] as String == 'apk';
     final splitApk = results['split-per-abi'] == true;
     if (generateApk && splitApk) {

@@ -325,6 +325,7 @@ flutter:
       when(() => argResults['codesign']).thenReturn(true);
       when(() => argResults['staging']).thenReturn(false);
       when(() => argResults.rest).thenReturn([]);
+      when(() => argResults.wasParsed(any())).thenReturn(true);
       when(
         () => aotTools.link(
           base: any(named: 'base'),

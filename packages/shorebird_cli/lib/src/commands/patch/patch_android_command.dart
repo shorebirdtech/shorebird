@@ -12,6 +12,7 @@ import 'package:shorebird_cli/src/command.dart';
 import 'package:shorebird_cli/src/config/shorebird_yaml.dart';
 import 'package:shorebird_cli/src/deployment_track.dart';
 import 'package:shorebird_cli/src/doctor.dart';
+import 'package:shorebird_cli/src/extensions/arg_results.dart';
 import 'package:shorebird_cli/src/formatters/formatters.dart';
 import 'package:shorebird_cli/src/logger.dart';
 import 'package:shorebird_cli/src/patch_diff_checker.dart';
@@ -105,8 +106,8 @@ If this option is not provided, the version number will be determined from the p
     await cache.updateAll();
 
     const platform = ReleasePlatform.android;
-    final flavor = results['flavor'] as String?;
-    final target = results['target'] as String?;
+    final flavor = results.findOption('flavor', argParser: argParser);
+    final target = results.findOption('target', argParser: argParser);
 
     final shorebirdYaml = shorebirdEnv.getShorebirdYaml()!;
     final appId = shorebirdYaml.getAppId(flavor: flavor);

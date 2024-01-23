@@ -228,7 +228,6 @@ flutter:
           runInShell: any(named: 'runInShell'),
         ),
       ).thenAnswer((_) async => flutterBuildProcessResult);
-      when(() => argResults.rest).thenReturn([]);
       when(() => argResults['arch']).thenReturn(arch);
       when(() => argResults['codesign']).thenReturn(true);
       when(() => argResults['platform']).thenReturn(releasePlatform);
@@ -237,6 +236,8 @@ flutter:
       when(() => argResults['export-method']).thenReturn(
         ExportMethod.appStore.argName,
       );
+      when(() => argResults.rest).thenReturn([]);
+      when(() => argResults.wasParsed(any())).thenReturn(true);
       when(() => argResults.wasParsed('export-method')).thenReturn(false);
       when(() => auth.isAuthenticated).thenReturn(true);
       when(() => logger.progress(any())).thenReturn(progress);
