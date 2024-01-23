@@ -18,7 +18,7 @@ https://docs.shorebird.dev/guides/staging-patches
 If you encounter problems, you can release with an older (known stable) iOS
 engine by running: `shorebird flutter versions use 3.16.4`
 
-- 🚀 Enabled new linker on iOS, improving Dart execution after patching by 10-50x.
+- 🚀 Enabled new linker on iOS, improving Dart execution after patching.
 
 Known issues:
 
