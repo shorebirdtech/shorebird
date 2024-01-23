@@ -998,6 +998,7 @@ Please re-run the release command for this version or create a new release.'''),
             outputPath: any(named: 'outputPath'),
           ),
         );
+        verifyNever(() => aotTools.isGeneratePatchDiffBaseSupported());
       });
     });
 

@@ -346,7 +346,7 @@ Current Flutter Revision: $originalFlutterRevision
 
     final patchBuildFile = File(useLinker ? _vmcodeOutputPath : _aotOutputPath);
     final File patchFile;
-    if (await aotTools.isGeneratePatchDiffBaseSupported()) {
+    if (useLinker && await aotTools.isGeneratePatchDiffBaseSupported()) {
       final patchBaseProgress = logger.progress('Generating patch diff base');
       final analyzeSnapshotPath = shorebirdArtifacts.getArtifactPath(
         artifact: ShorebirdArtifact.analyzeSnapshot,
