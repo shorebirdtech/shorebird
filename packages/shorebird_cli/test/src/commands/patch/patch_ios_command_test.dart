@@ -1117,7 +1117,6 @@ Please re-run the release command for this version or create a new release.'''),
             releaseVersion: any(named: 'releaseVersion'),
           ),
         ).thenAnswer((_) async => postLinkerRelease);
-
         when(() => aotTools.isGeneratePatchDiffBaseSupported())
             .thenAnswer((_) async => true);
         when(
