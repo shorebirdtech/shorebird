@@ -27,7 +27,7 @@ Known issues:
 - Unpatched iOS builds are sometimes *slower* than patched builds:
   https://github.com/shorebirdtech/shorebird/issues/1661
 
-📚 Release notes can be found at https://github.com/shorebirdtech/shorebird/releases/tag/v0.22.0
+📚 Release notes can be found at https://github.com/shorebirdtech/shorebird/releases/tag/v0.23.0
 
 As always, you can upgrade using `shorebird upgrade`
 
