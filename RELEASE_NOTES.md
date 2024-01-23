@@ -5,7 +5,7 @@ This section contains past updates we've sent to customers via Discord.
 ## 0.22.1 (January 23, 2024)
 
 - 🔍 Adds checks for `flavor` and `target` flags after the `--` separator.
-- 🩹 Fixes iOS patch crash when patching with older Flutter version.
+- 🩹 Fixes iOS patch crash when patching with older Flutter versions.
 
 📚 Release notes can be found at https://github.com/shorebirdtech/shorebird/releases/tag/v0.22.2
 
