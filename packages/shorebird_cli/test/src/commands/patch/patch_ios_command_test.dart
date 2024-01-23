@@ -325,6 +325,7 @@ flutter:
       when(() => argResults['codesign']).thenReturn(true);
       when(() => argResults['staging']).thenReturn(false);
       when(() => argResults.rest).thenReturn([]);
+      when(() => argResults.wasParsed(any())).thenReturn(true);
       when(
         () => aotTools.link(
           base: any(named: 'base'),
@@ -998,6 +999,7 @@ Please re-run the release command for this version or create a new release.'''),
             outputPath: any(named: 'outputPath'),
           ),
         );
+        verifyNever(() => aotTools.isGeneratePatchDiffBaseSupported());
       });
     });
 
@@ -1109,6 +1111,12 @@ Please re-run the release command for this version or create a new release.'''),
         setUpProjectRoot();
         setUpProjectRootArtifacts();
 
+        when(
+          () => codePushClientWrapper.getRelease(
+            appId: any(named: 'appId'),
+            releaseVersion: any(named: 'releaseVersion'),
+          ),
+        ).thenAnswer((_) async => postLinkerRelease);
         when(() => aotTools.isGeneratePatchDiffBaseSupported())
             .thenAnswer((_) async => true);
         when(

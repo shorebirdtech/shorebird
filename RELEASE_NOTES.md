@@ -29,6 +29,13 @@ Known issues:
 
 📚 Release notes can be found at https://github.com/shorebirdtech/shorebird/releases/tag/v0.23.0
 
+## 0.22.1 (January 23, 2024)
+
+- 🔍 Adds checks for `flavor` and `target` flags after the `--` separator.
+- 🩹 Fixes iOS patch crash when patching with older Flutter versions.
+
+📚 Release notes can be found at https://github.com/shorebirdtech/shorebird/releases/tag/v0.22.2
+
 As always, you can upgrade using `shorebird upgrade`
 
 Please let us know if we can help!
