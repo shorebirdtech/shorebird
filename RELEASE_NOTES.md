@@ -2,6 +2,17 @@
 
 This section contains past updates we've sent to customers via Discord.
 
+## 0.22.1 (January 23, 2024)
+
+- 🔍 Makes checks for flavor and target flags after the `--` separator.
+- 🩹 Fixes iOS patch crash when patching with older Flutter version.
+
+📚 Release notes can be found at https://github.com/shorebirdtech/shorebird/releases/tag/v0.22.2
+
+As always, you can upgrade using `shorebird upgrade`
+
+Please let us know if we can help!
+
 ## 0.22.0 (January 18, 2024)
 
 This release focused on stabilizing the new iOS engine released in 0.20.0.
