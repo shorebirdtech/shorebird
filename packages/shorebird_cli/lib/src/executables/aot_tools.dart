@@ -79,20 +79,8 @@ class AotTools {
     // the error message will contain something like: "Snapshot file does not
     // exist". If the flag is not supported, the error message will contain
     // "Unrecognized flags: dump_blobs"
-    final result = await _exec(
-      [
-        // TODO(eseidel): add a --help, or --version or some other way to
-        // get a non-zero exit code without needing to pass in a path to a
-        // snapshot.  This shows up during verbose mode and is confusing.
-        'dump_blobs',
-        '--analyze-snapshot=nonexistent_analyze_snapshot',
-        '--output=out',
-        '--snapshot=nonexistent_snapshot',
-      ],
-    );
-    return !result.stderr
-        .toString()
-        .contains('Could not find a command named "dump_blobs"');
+    final result = await _exec(['--help']);
+    return result.stdout.toString().contains('dump_blobs');
   }
 
   /// Uses the analyze_snapshot executable to write the data and isolate
