@@ -191,24 +191,22 @@ class ShorebirdProcess {
   }
 
   void _logResult(ShorebirdProcessResult result) {
-    if (result.exitCode != ExitCode.success.code) {
-      logger.detail('Exited with code ${result.exitCode}');
+    logger.detail('Exited with code ${result.exitCode}');
 
-      final stdout = result.stdout as String?;
-      if (stdout != null && stdout.isNotEmpty) {
-        logger.detail('''
+    final stdout = result.stdout as String?;
+    if (stdout != null && stdout.isNotEmpty) {
+      logger.detail('''
 
 stdout:
 $stdout''');
-      }
+    }
 
-      final stderr = result.stderr as String?;
-      if (stderr != null && stderr.isNotEmpty) {
-        logger.detail('''
+    final stderr = result.stderr as String?;
+    if (stderr != null && stderr.isNotEmpty) {
+      logger.detail('''
 
 stderr:
 $stderr''');
-      }
     }
   }
 
