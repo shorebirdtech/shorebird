@@ -5,7 +5,6 @@ import 'package:shorebird_cli/src/code_push_client_wrapper.dart';
 import 'package:shorebird_cli/src/command.dart';
 import 'package:shorebird_cli/src/config/config.dart';
 import 'package:shorebird_cli/src/doctor.dart';
-import 'package:shorebird_cli/src/ios.dart';
 import 'package:shorebird_cli/src/logger.dart';
 import 'package:shorebird_cli/src/shorebird_artifact_mixin.dart';
 import 'package:shorebird_cli/src/shorebird_build_mixin.dart';
@@ -52,8 +51,6 @@ of the iOS app that is using this module.''',
     } on PreconditionFailedException catch (e) {
       return e.exitCode.code;
     }
-
-    showiOSStatusWarning();
 
     const releasePlatform = ReleasePlatform.ios;
     final releaseVersion = results['release-version'] as String;
