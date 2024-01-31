@@ -1,5 +1,6 @@
 import 'dart:io';
 
+import 'package:mason_logger/mason_logger.dart';
 import 'package:mocktail/mocktail.dart';
 import 'package:scoped/scoped.dart';
 import 'package:shorebird_cli/src/cache.dart';
@@ -260,7 +261,7 @@ void main() {
     });
 
     group('isGeneratePatchDiffBaseSupported', () {
-      var stderr = '';
+      var stdout = '';
       setUp(() {
         when(
           () => process.run(
@@ -269,14 +270,30 @@ void main() {
             workingDirectory: any(named: 'workingDirectory'),
           ),
         ).thenAnswer(
-          (_) async =>
-              ShorebirdProcessResult(exitCode: 1, stdout: '', stderr: stderr),
+          (_) async => ShorebirdProcessResult(
+            exitCode: ExitCode.success.code,
+            stdout: stdout,
+            stderr: '',
+          ),
         );
       });
 
       group('when dump_blobs flag is not recognized', () {
         setUp(() {
-          stderr = 'Could not find a command named "dump_blobs"';
+          stdout = '''
+Dart equivalent of bintools
+
+Usage: aot_tools <command> [arguments]
+
+Global options:
+-h, --help       Print this usage information.
+-v, --verbose    Noisy logging.
+
+Available commands:
+  link   Link two aot snapshots.
+
+Run "aot_tools help <command>" for more information about a command.
+''';
         });
 
         test('returns false', () async {
@@ -289,7 +306,22 @@ void main() {
 
       group('when dump_blobs is recognized', () {
         setUp(() {
-          stderr = 'Invalid snapshot';
+          stdout = '''
+Dart equivalent of bintools
+
+Usage: aot_tools <command> [arguments]
+
+Global options:
+-h, --help            Print this usage information.
+-v, --[no-]verbose    Noisy logging.
+
+Available commands:
+  dump_blobs              Reads the isolate and vm snapshot data from an aot snapshot file, concatenates them, and writes them to the specified out path.
+  dump_linker_overrides   Statically analyzes dart code and dumps the overrides to the specified output path.
+  link                    Link two aot snapshots.
+
+Run "aot_tools help <command>" for more information about a command.
+''';
         });
 
         test('returns true', () async {

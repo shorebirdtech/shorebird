@@ -2,7 +2,17 @@
 
 This section contains past updates we've sent to customers via Discord.
 
-## 0.23.0 (January 23, 2024)
+## 0.23.1 (January 25, 2024)
+
+- 🩹 Fixes iOS patch for Flutter version 3.16.5
+
+📚 Release notes can be found at https://github.com/shorebirdtech/shorebird/releases/tag/v0.23.1
+
+As always, you can upgrade using `shorebird upgrade`
+
+Please let us know if we can help!
+
+## 0.23.0 (January 24, 2024)
 
 This release includes a new iOS "linker" which allows running much more code on
 the CPU when patching on iOS. Some benchmarks improved 10-50x. We still have
