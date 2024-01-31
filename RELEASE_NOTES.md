@@ -4,20 +4,16 @@ This section contains past updates we've sent to customers via Discord.
 
 ## 0.24.0 (January 30, 2024)
 
-This is our last planned release before iOS beta.
+This is our last planned release before iOS beta.  We believe iOS is stable
+enough for general use.  We plan to release beta later this week once we hear
+back from early adopters.  iOS releases and patches are still slower than
+Android, but they will continue to get faster in the coming weeks.
 
 Please test and let us know if you encounter any issues!
 
 * iOS patches now run ~2x faster.
 * Fixed several crashers in the new iOS engine.
 * `shorebird -v` now shows all output from underlying commands, not just errors.
-
-Known issues:
-
-- Obfuscated iOS builds fail to patch:
-  https://github.com/shorebirdtech/shorebird/issues/1619
-- Unpatched iOS builds are sometimes *slower* than patched builds:
-  https://github.com/shorebirdtech/shorebird/issues/1661
 
 📚 Release notes can be found at https://github.com/shorebirdtech/shorebird/releases/tag/v0.24.0
 
