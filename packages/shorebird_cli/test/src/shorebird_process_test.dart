@@ -247,6 +247,25 @@ void main() {
           ).called(1);
         });
 
+        group('when result has 0 exit code', () {
+          setUp(() {
+            when(() => runProcessResult.exitCode).thenReturn(0);
+            when(() => runProcessResult.stdout).thenReturn('out');
+            when(() => runProcessResult.stderr).thenReturn('err');
+          });
+
+          test('logs stdout and stderr if present', () async {
+            await runWithOverrides(() => shorebirdProcess.run('flutter', []));
+
+            verify(
+              () => logger.detail(any(that: contains('stdout'))),
+            ).called(1);
+            verify(
+              () => logger.detail(any(that: contains('stderr'))),
+            ).called(1);
+          });
+        });
+
         group('when result has non-zero exit code', () {
           setUp(() {
             when(() => runProcessResult.exitCode).thenReturn(1);
@@ -257,10 +276,12 @@ void main() {
           test('logs stdout and stderr if present', () async {
             await runWithOverrides(() => shorebirdProcess.run('flutter', []));
 
-            verify(() => logger.detail(any(that: contains('stdout'))))
-                .called(1);
-            verify(() => logger.detail(any(that: contains('stderr'))))
-                .called(1);
+            verify(
+              () => logger.detail(any(that: contains('stdout'))),
+            ).called(1);
+            verify(
+              () => logger.detail(any(that: contains('stderr'))),
+            ).called(1);
           });
         });
       });
