@@ -2,6 +2,12 @@
 
 This section contains past updates we've sent to customers via Discord.
 
+## 0.24.1 (January 31, 2024)
+
+* iOS release builds now run at full speed.  iOS patches remain slower than releases.
+
+📚 Release notes can be found at https://github.com/shorebirdtech/shorebird/releases/tag/v0.24.1
+
 ## 0.24.0 (January 30, 2024)
 
 This is our last planned release before iOS beta.  We believe iOS is stable

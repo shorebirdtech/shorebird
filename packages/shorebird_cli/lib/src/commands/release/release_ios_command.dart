@@ -9,7 +9,6 @@ import 'package:shorebird_cli/src/command.dart';
 import 'package:shorebird_cli/src/config/config.dart';
 import 'package:shorebird_cli/src/doctor.dart';
 import 'package:shorebird_cli/src/extensions/arg_results.dart';
-import 'package:shorebird_cli/src/ios.dart';
 import 'package:shorebird_cli/src/logger.dart';
 import 'package:shorebird_cli/src/shorebird_artifact_mixin.dart';
 import 'package:shorebird_cli/src/shorebird_build_mixin.dart';
@@ -119,8 +118,6 @@ make smaller updates to your app.
     } on PreconditionFailedException catch (e) {
       return e.exitCode.code;
     }
-
-    showiOSStatusWarning();
 
     final codesign = results['codesign'] == true;
     if (!codesign) {
