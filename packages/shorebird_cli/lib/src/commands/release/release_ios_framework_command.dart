@@ -34,11 +34,14 @@ of the iOS app that is using this module.''',
   }
 
   @override
-  String get description =>
-      'Builds and submits your iOS framework to Shorebird.';
+  String get name => 'ios-framework';
 
   @override
-  String get name => 'ios-framework-alpha';
+  List<String> get aliases => ['ios-framework-alpha'];
+
+  @override
+  String get description =>
+      'Builds and submits your iOS framework to Shorebird.';
 
   @override
   Future<int> run() async {

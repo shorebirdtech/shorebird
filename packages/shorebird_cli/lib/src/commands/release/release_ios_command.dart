@@ -52,7 +52,7 @@ Test on designated devices that do not need to be registered with the Apple deve
 }
 
 /// {@template release_ios_command}
-/// `shorebird release ios-alpha`
+/// `shorebird release ios`
 /// Create new app releases for iOS.
 /// {@endtemplate}
 class ReleaseIosCommand extends ShorebirdCommand
@@ -98,14 +98,17 @@ class ReleaseIosCommand extends ShorebirdCommand
   }
 
   @override
+  String get name => 'ios';
+
+  @override
+  List<String> get aliases => ['ios-alpha'];
+
+  @override
   String get description => '''
 Builds and submits your iOS app to Shorebird.
 Shorebird saves the compiled Dart code from your application in order to
 make smaller updates to your app.
 ''';
-
-  @override
-  String get name => 'ios-alpha';
 
   @override
   Future<int> run() async {

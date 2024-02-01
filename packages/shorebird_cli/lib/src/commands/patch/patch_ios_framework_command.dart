@@ -59,7 +59,10 @@ of the iOS app that is using this module.''',
   final IosArchiveDiffer _archiveDiffer;
 
   @override
-  String get name => 'ios-framework-alpha';
+  String get name => 'ios-framework';
+
+  @override
+  List<String> get aliases => ['ios-framework-alpha'];
 
   @override
   String get description =>
