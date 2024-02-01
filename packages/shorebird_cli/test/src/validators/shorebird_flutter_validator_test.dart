@@ -55,7 +55,7 @@ void main() {
       ).thenReturn(flutterDirectory(tempDir));
       when(() => platform.environment).thenReturn({});
       when(
-        () => shorebirdFlutter.getVersion(),
+        () => shorebirdFlutter.getVersionString(),
       ).thenAnswer((_) async => flutterVersion);
       when(
         () => shorebirdFlutter.getSystemVersion(),
@@ -63,7 +63,7 @@ void main() {
 
       validator = ShorebirdFlutterValidator();
       when(
-        () => shorebirdFlutter.isPorcelain(
+        () => shorebirdFlutter.isUnmodified(
           revision: any(named: 'revision'),
         ),
       ).thenAnswer((_) async => true);
@@ -95,7 +95,7 @@ void main() {
 
     test('warns when Flutter has local modifications', () async {
       when(
-        () => shorebirdFlutter.isPorcelain(
+        () => shorebirdFlutter.isUnmodified(
           revision: any(named: 'revision'),
         ),
       ).thenAnswer((_) async => false);
@@ -207,7 +207,7 @@ void main() {
     test('throws exception if shorebird flutter version lookup fails',
         () async {
       when(
-        () => shorebirdFlutter.getVersion(),
+        () => shorebirdFlutter.getVersionString(),
       ).thenThrow(
         const ProcessException(
           'flutter',

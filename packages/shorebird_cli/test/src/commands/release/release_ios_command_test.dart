@@ -337,7 +337,7 @@ flutter:
         () => shorebirdValidator.validatePreconditions(
           checkUserIsAuthenticated: true,
           checkShorebirdInitialized: true,
-          validators: [flutterValidator],
+          validators: any(named: 'validators'),
           supportedOperatingSystems: {Platform.macOS},
         ),
       ).called(1);
