@@ -51,7 +51,7 @@ Test on designated devices that do not need to be registered with the Apple deve
 }
 
 /// {@template release_ios_command}
-/// `shorebird release ios-alpha`
+/// `shorebird release ios`
 /// Create new app releases for iOS.
 /// {@endtemplate}
 class ReleaseIosCommand extends ShorebirdCommand
@@ -104,7 +104,7 @@ make smaller updates to your app.
 ''';
 
   @override
-  String get name => 'ios-alpha';
+  String get name => 'ios';
 
   @override
   Future<int> run() async {

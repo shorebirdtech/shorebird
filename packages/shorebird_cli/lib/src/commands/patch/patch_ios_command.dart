@@ -76,7 +76,7 @@ const preLinkerFlutterRevisions = <String>{
 };
 
 /// {@template patch_ios_command}
-/// `shorebird patch ios-alpha` command.
+/// `shorebird patch ios` command.
 /// {@endtemplate}
 class PatchIosCommand extends ShorebirdCommand
     with ShorebirdBuildMixin, ShorebirdArtifactMixin {
@@ -128,7 +128,7 @@ If this option is not provided, the version number will be determined from the p
   }
 
   @override
-  String get name => 'ios-alpha';
+  String get name => 'ios';
 
   @override
   String get description =>
