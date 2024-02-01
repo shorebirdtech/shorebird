@@ -4,16 +4,16 @@ This section contains past updates we've sent to customers via Discord.
 
 ## 0.25.0 (February 1, 2024)
 
-**iOS IS NOW BETA!**
+🎉🎉🎉 **iOS IS NOW BETA!** 🎉🎉🎉
 
-See our blog post at https://shorebird.dev/blogs/ios-beta/.
+📰 See our blog post at https://shorebird.dev/blogs/ios-beta/.
 
 This release includes:
 
-- Support for Flutter 3.16.9.
-- iOS hybrid app patches are now much faster (at parity with non-hybrid iOS patches).
-- Fixes issues where `shorebird patch ios` might not work if an export options plist is required.
-- Dropped support for Flutter 3.16.4-3.16.7 on iOS due to crashes discovered in those versions.
+- 🐦 Support for Flutter 3.16.9.
+- 🦿 iOS hybrid app patches are now much faster (at parity with non-hybrid iOS patches).
+- 🩹 Fixes issues where `shorebird patch ios` might not work if an export options plist is required.
+- 🗑️ Dropped support for Flutter 3.16.4-3.16.7 on iOS due to crashes discovered in those versions.
 
 📚 Release notes can be found at https://github.com/shorebirdtech/shorebird/releases/tag/v0.25.0
 
