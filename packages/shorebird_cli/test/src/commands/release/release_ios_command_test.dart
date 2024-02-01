@@ -310,6 +310,10 @@ flutter:
         ..testArgResults = argResults;
     });
 
+    test('supports alpha alias', () {
+      expect(command.aliases, contains('ios-alpha'));
+    });
+
     test('has a description', () {
       expect(command.description, isNotEmpty);
     });
