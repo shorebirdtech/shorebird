@@ -123,7 +123,14 @@ class ShorebirdFlutter {
       return null;
     }
 
-    return Version.parse(versionString);
+    final Version version;
+    try {
+      version = Version.parse(versionString);
+    } on FormatException {
+      return null;
+    }
+
+    return version;
   }
 
   Future<List<String>> getVersions({String? revision}) async {

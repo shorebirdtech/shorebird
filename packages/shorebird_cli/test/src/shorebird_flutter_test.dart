@@ -3,6 +3,7 @@ import 'dart:io';
 import 'package:mason_logger/mason_logger.dart';
 import 'package:mocktail/mocktail.dart';
 import 'package:path/path.dart' as p;
+import 'package:pub_semver/pub_semver.dart';
 import 'package:scoped/scoped.dart';
 import 'package:shorebird_cli/src/executables/executables.dart';
 import 'package:shorebird_cli/src/shorebird_env.dart';
@@ -184,7 +185,7 @@ Tools • Dart 3.0.6 • DevTools 2.23.1''');
       });
     });
 
-    group('getVersion', () {
+    group('getVersionString', () {
       test('throws ProcessException when process exits with non-zero code',
           () async {
         const error = 'oops';
@@ -258,6 +259,68 @@ Tools • Dart 3.0.6 • DevTools 2.23.1''');
             pattern: 'refs/remotes/origin/flutter_release/*',
           ),
         ).called(1);
+      });
+    });
+
+    group('getVersion', () {
+      group('when getVersionString returns null', () {
+        setUp(() {
+          when(
+            () => git.forEachRef(
+              directory: any(named: 'directory'),
+              contains: any(named: 'contains'),
+              format: any(named: 'format'),
+              pattern: any(named: 'pattern'),
+            ),
+          ).thenAnswer((_) async => '');
+        });
+
+        test('returns null', () {
+          expect(
+            runWithOverrides(shorebirdFlutter.getVersion),
+            completion(isNull),
+          );
+        });
+      });
+
+      group('when getVersionStringReturns an invalid string', () {
+        setUp(() {
+          when(
+            () => git.forEachRef(
+              directory: any(named: 'directory'),
+              contains: any(named: 'contains'),
+              format: any(named: 'format'),
+              pattern: any(named: 'pattern'),
+            ),
+          ).thenAnswer((_) async => 'not a version');
+        });
+
+        test('returns null', () {
+          expect(
+            runWithOverrides(shorebirdFlutter.getVersion),
+            completion(isNull),
+          );
+        });
+      });
+
+      group('when getVersionStringReturns a valid string', () {
+        setUp(() {
+          when(
+            () => git.forEachRef(
+              directory: any(named: 'directory'),
+              contains: any(named: 'contains'),
+              format: any(named: 'format'),
+              pattern: any(named: 'pattern'),
+            ),
+          ).thenAnswer((_) async => '3.10.6');
+        });
+
+        test('returns the version', () {
+          expect(
+            runWithOverrides(shorebirdFlutter.getVersion),
+            completion(equals(Version(3, 10, 6))),
+          );
+        });
       });
     });
 
