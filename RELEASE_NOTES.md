@@ -4,7 +4,7 @@ This section contains past updates we've sent to customers via Discord.
 
 ## 0.25.0 (February 1, 2024)
 
-**iOS IS NOW IN BETA!**
+**iOS IS NOW BETA!**
 
 See our blog post at https://shorebird.dev/blogs/ios-beta/.
 
