@@ -26,6 +26,10 @@ void main() {
       validator = ShorebirdFlutterVersionSupportsIOSValidator();
     });
 
+    test('has a non-empty description', () {
+      expect(validator.description, isNotEmpty);
+    });
+
     group('when flutter version lookup fails', () {
       setUp(() {
         when(() => shorebirdFlutter.getVersion()).thenAnswer((_) async => null);
