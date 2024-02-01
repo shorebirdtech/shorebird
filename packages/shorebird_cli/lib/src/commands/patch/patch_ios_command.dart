@@ -131,6 +131,9 @@ If this option is not provided, the version number will be determined from the p
   String get name => 'ios';
 
   @override
+  List<String> get aliases => ['ios-alpha'];
+
+  @override
   String get description =>
       'Publish new patches for a specific iOS release to Shorebird.';
 

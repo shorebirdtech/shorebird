@@ -62,6 +62,9 @@ of the iOS app that is using this module.''',
   String get name => 'ios-framework';
 
   @override
+  List<String> get aliases => ['ios-framework-alpha'];
+
+  @override
   String get description =>
       'Publish new patches for a specific iOS framework release to Shorebird.';
 
