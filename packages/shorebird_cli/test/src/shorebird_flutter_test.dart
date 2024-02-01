@@ -209,7 +209,7 @@ Tools • Dart 3.0.6 • DevTools 2.23.1''');
           ),
         );
         await expectLater(
-          runWithOverrides(shorebirdFlutter.getVersion),
+          runWithOverrides(shorebirdFlutter.getVersionString),
           throwsA(isA<ProcessException>()),
         );
         verify(
@@ -232,7 +232,7 @@ Tools • Dart 3.0.6 • DevTools 2.23.1''');
           ),
         ).thenAnswer((_) async => '');
         await expectLater(
-          runWithOverrides(shorebirdFlutter.getVersion),
+          runWithOverrides(shorebirdFlutter.getVersionString),
           completion(isNull),
         );
         verify(
@@ -247,7 +247,7 @@ Tools • Dart 3.0.6 • DevTools 2.23.1''');
 
       test('returns version when able to parse the string', () async {
         await expectLater(
-          runWithOverrides(shorebirdFlutter.getVersion),
+          runWithOverrides(shorebirdFlutter.getVersionString),
           completion(equals('3.10.6')),
         );
         verify(

@@ -13,26 +13,12 @@ class ShorebirdFlutterVersionSupportsIOSValidator extends Validator {
     final issues = <ValidationIssue>[];
 
     // TODO(eseidel): Share "parse version" logic with the ShorebirdFlutterValidator.
-    final flutterVersionString = await shorebirdFlutter.getVersion();
-    if (flutterVersionString == null) {
+    final flutterVersion = await shorebirdFlutter.getVersion();
+    if (flutterVersion == null) {
       issues.add(
         const ValidationIssue(
           severity: ValidationIssueSeverity.error,
-          message: 'Failed to determine Shorebird Flutter version.',
-        ),
-      );
-      return issues;
-    }
-
-    final Version flutterVersion;
-    try {
-      flutterVersion = Version.parse(flutterVersionString);
-    } on FormatException {
-      issues.add(
-        ValidationIssue(
-          severity: ValidationIssueSeverity.error,
-          message:
-              'Failed to parse Shorebird Flutter version: $flutterVersionString',
+          message: 'Failed to determine Shorebird Flutter version',
         ),
       );
       return issues;
@@ -46,7 +32,8 @@ class ShorebirdFlutterVersionSupportsIOSValidator extends Validator {
     final lastBadFlutter = Version(3, 16, 7);
     final recommendedFlutter = Version(3, 16, 9);
     final useCommand = 'shorebird flutter versions use $recommendedFlutter';
-    // This is a warning to encourage those patching older versions of Flutter to upgrade.
+    // This is a warning to encourage those patching older versions of Flutter
+    // to upgrade.
     if (flutterVersion < firstBadFlutter) {
       issues.add(
         ValidationIssue(
@@ -64,7 +51,7 @@ Please run `$useCommand`.
         ValidationIssue(
           severity: ValidationIssueSeverity.error,
           message: '''
-Shorebird iOS does not support Flutter $flutterVersionString
+Shorebird iOS does not support Flutter $flutterVersion.
 Please run `$useCommand`.
 ''',
         ),

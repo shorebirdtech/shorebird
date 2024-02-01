@@ -118,7 +118,7 @@ This can cause unexpected behavior if you are switching between the tools and th
     final String? version;
     try {
       version = useVendedFlutter
-          ? await shorebirdFlutter.getVersion()
+          ? await shorebirdFlutter.getVersionString()
           : await shorebirdFlutter.getSystemVersion();
     } on ProcessException catch (error) {
       if (error.errorCode == 127) throw CommandNotFoundException();

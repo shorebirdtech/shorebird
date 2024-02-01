@@ -55,7 +55,7 @@ void main() {
       ).thenReturn(flutterDirectory(tempDir));
       when(() => platform.environment).thenReturn({});
       when(
-        () => shorebirdFlutter.getVersion(),
+        () => shorebirdFlutter.getVersionString(),
       ).thenAnswer((_) async => flutterVersion);
       when(
         () => shorebirdFlutter.getSystemVersion(),
@@ -207,7 +207,7 @@ void main() {
     test('throws exception if shorebird flutter version lookup fails',
         () async {
       when(
-        () => shorebirdFlutter.getVersion(),
+        () => shorebirdFlutter.getVersionString(),
       ).thenThrow(
         const ProcessException(
           'flutter',

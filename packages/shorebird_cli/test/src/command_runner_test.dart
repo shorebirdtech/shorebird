@@ -56,7 +56,7 @@ void main() {
       when(() => platform.isWindows).thenReturn(false);
       when(() => shorebirdEnv.flutterRevision).thenReturn(flutterRevision);
       when(
-        () => shorebirdFlutter.getVersion(),
+        () => shorebirdFlutter.getVersionString(),
       ).thenAnswer((_) async => flutterVersion);
       when(() => shorebirdVersion.isLatest()).thenAnswer((_) async => true);
       commandRunner = runWithOverrides(ShorebirdCliCommandRunner.new);
@@ -175,7 +175,7 @@ Engine • revision $shorebirdEngineRevision''',
 
       test('gracefully handles case when flutter version cannot be determined',
           () async {
-        when(() => shorebirdFlutter.getVersion()).thenThrow('error');
+        when(() => shorebirdFlutter.getVersionString()).thenThrow('error');
         final result = await runWithOverrides(
           () => commandRunner.run(['--version']),
         );
