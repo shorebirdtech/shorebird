@@ -15,6 +15,7 @@ import 'package:shorebird_cli/src/shorebird_build_mixin.dart';
 import 'package:shorebird_cli/src/shorebird_env.dart';
 import 'package:shorebird_cli/src/shorebird_flutter.dart';
 import 'package:shorebird_cli/src/shorebird_validator.dart';
+import 'package:shorebird_cli/src/validators/shorebird_flutter_version_supports_ios_validator.dart';
 import 'package:shorebird_code_push_client/shorebird_code_push_client.dart';
 
 const exportMethodArgName = 'export-method';
@@ -112,7 +113,10 @@ make smaller updates to your app.
       await shorebirdValidator.validatePreconditions(
         checkUserIsAuthenticated: true,
         checkShorebirdInitialized: true,
-        validators: doctor.iosCommandValidators,
+        validators: [
+          ...doctor.iosCommandValidators,
+          ShorebirdFlutterVersionSupportsIOSValidator(),
+        ],
         supportedOperatingSystems: {Platform.macOS},
       );
     } on PreconditionFailedException catch (e) {

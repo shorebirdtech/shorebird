@@ -47,8 +47,8 @@ class ShorebirdFlutter {
     await git.checkout(directory: targetDirectory.path, revision: revision);
   }
 
-  /// Whether the current revision is porcelain (unmodified).
-  Future<bool> isPorcelain({String? revision}) async {
+  /// Whether the current revision is unmodified.
+  Future<bool> isUnmodified({String? revision}) async {
     final status = await git.status(
       directory: _workingDirectory(revision: revision),
       args: ['--untracked-files=no', '--porcelain'],

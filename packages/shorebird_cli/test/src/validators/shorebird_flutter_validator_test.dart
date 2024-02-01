@@ -63,7 +63,7 @@ void main() {
 
       validator = ShorebirdFlutterValidator();
       when(
-        () => shorebirdFlutter.isPorcelain(
+        () => shorebirdFlutter.isUnmodified(
           revision: any(named: 'revision'),
         ),
       ).thenAnswer((_) async => true);
@@ -95,7 +95,7 @@ void main() {
 
     test('warns when Flutter has local modifications', () async {
       when(
-        () => shorebirdFlutter.isPorcelain(
+        () => shorebirdFlutter.isUnmodified(
           revision: any(named: 'revision'),
         ),
       ).thenAnswer((_) async => false);

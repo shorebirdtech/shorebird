@@ -423,7 +423,7 @@ origin/flutter_release/3.10.6''';
     group('isPorcelain', () {
       test('returns true when status is empty', () async {
         await expectLater(
-          runWithOverrides(() => shorebirdFlutter.isPorcelain()),
+          runWithOverrides(() => shorebirdFlutter.isUnmodified()),
           completion(isTrue),
         );
         verify(
@@ -442,7 +442,7 @@ origin/flutter_release/3.10.6''';
           ),
         ).thenAnswer((_) async => 'M some/file');
         await expectLater(
-          runWithOverrides(() => shorebirdFlutter.isPorcelain()),
+          runWithOverrides(() => shorebirdFlutter.isUnmodified()),
           completion(isFalse),
         );
         verify(
@@ -471,7 +471,7 @@ origin/flutter_release/3.10.6''';
         );
 
         expect(
-          runWithOverrides(() => shorebirdFlutter.isPorcelain()),
+          runWithOverrides(() => shorebirdFlutter.isUnmodified()),
           throwsA(
             isA<ProcessException>().having(
               (e) => e.message,

@@ -38,7 +38,7 @@ class ShorebirdFlutterValidator extends Validator {
       );
     }
 
-    if (!await shorebirdFlutter.isPorcelain()) {
+    if (!await shorebirdFlutter.isUnmodified()) {
       issues.add(
         ValidationIssue(
           severity: ValidationIssueSeverity.warning,
