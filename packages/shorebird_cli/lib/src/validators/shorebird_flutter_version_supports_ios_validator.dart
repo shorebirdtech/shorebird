@@ -1,3 +1,4 @@
+import 'package:mason_logger/mason_logger.dart';
 import 'package:pub_semver/pub_semver.dart';
 import 'package:shorebird_cli/src/shorebird_flutter.dart';
 import 'package:shorebird_cli/src/validators/validators.dart';
@@ -31,7 +32,9 @@ class ShorebirdFlutterVersionSupportsIOSValidator extends Validator {
     final firstBadFlutter = Version(3, 16, 4);
     final lastBadFlutter = Version(3, 16, 7);
     final recommendedFlutter = Version(3, 16, 9);
-    final useCommand = 'shorebird flutter versions use $recommendedFlutter';
+    final useFlutterVersionCommand = lightCyan.wrap(
+      'shorebird flutter versions use $recommendedFlutter',
+    );
     // This is a warning to encourage those patching older versions of Flutter
     // to upgrade.
     if (flutterVersion < firstBadFlutter) {
@@ -40,7 +43,7 @@ class ShorebirdFlutterVersionSupportsIOSValidator extends Validator {
           severity: ValidationIssueSeverity.warning,
           message: '''
 Shorebird iOS recommends Flutter $recommendedFlutter or later.
-Please run `$useCommand`.
+Run $useFlutterVersionCommand to upgrade.
 ''',
         ),
       );
@@ -52,7 +55,7 @@ Please run `$useCommand`.
           severity: ValidationIssueSeverity.error,
           message: '''
 Shorebird iOS does not support Flutter $flutterVersion.
-Please run `$useCommand`.
+Run $useFlutterVersionCommand to upgrade.
 ''',
         ),
       );

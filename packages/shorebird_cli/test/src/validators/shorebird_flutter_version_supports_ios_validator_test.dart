@@ -1,3 +1,4 @@
+import 'package:mason_logger/mason_logger.dart';
 import 'package:mocktail/mocktail.dart';
 import 'package:pub_semver/pub_semver.dart';
 import 'package:scoped/scoped.dart';
@@ -64,11 +65,11 @@ void main() {
           results,
           equals(
             [
-              const ValidationIssue(
+              ValidationIssue(
                 severity: ValidationIssueSeverity.warning,
                 message: '''
 Shorebird iOS recommends Flutter 3.16.9 or later.
-Please run `shorebird flutter versions use 3.16.9`.
+Run ${lightCyan.wrap('shorebird flutter versions use 3.16.9')} to upgrade.
 ''',
               ),
             ],
@@ -90,11 +91,11 @@ Please run `shorebird flutter versions use 3.16.9`.
             results,
             equals(
               [
-                const ValidationIssue(
+                ValidationIssue(
                   severity: ValidationIssueSeverity.error,
                   message: '''
 Shorebird iOS does not support Flutter 3.16.7.
-Please run `shorebird flutter versions use 3.16.9`.
+Run ${lightCyan.wrap('shorebird flutter versions use 3.16.9')} to upgrade.
 ''',
                 ),
               ],
