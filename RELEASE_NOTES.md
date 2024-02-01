@@ -6,6 +6,10 @@ This section contains past updates we've sent to customers via Discord.
 
 **iOS IS NOW IN BETA!**
 
+See our blog post at https://shorebird.dev/blogs/ios-beta/.
+
+This release includes:
+
 - Support for Flutter 3.16.9.
 - iOS hybrid app patches are now much faster (at parity with non-hybrid iOS patches).
 - Fixes issues where `shorebird patch ios` might not work if an export options plist is required.
