@@ -1225,6 +1225,22 @@ Please re-run the release command for this version or create a new release.'''),
           patchArtifactBundles: any(named: 'patchArtifactBundles'),
         ),
       ).called(1);
+
+      // Verify that an export options plist was provided to the build ipa
+      // command.
+      const exportOptionsPlistArgName = 'export-options-plist';
+      final capturedArgs = verify(
+        () => shorebirdProcess.run(
+          'flutter',
+          captureAny(),
+          runInShell: any(named: 'runInShell'),
+        ),
+      ).captured.first as List<String>;
+      final exportOptionsPlistArg = capturedArgs
+          .whereType<String>()
+          .firstWhereOrNull((arg) => arg.contains(exportOptionsPlistArgName));
+      expect(exportOptionsPlistArg, isNotNull);
+
       expect(exitCode, ExitCode.success.code);
     });
 
