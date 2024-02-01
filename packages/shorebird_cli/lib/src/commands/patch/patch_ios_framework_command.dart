@@ -14,6 +14,7 @@ import 'package:shorebird_cli/src/command.dart';
 import 'package:shorebird_cli/src/config/shorebird_yaml.dart';
 import 'package:shorebird_cli/src/deployment_track.dart';
 import 'package:shorebird_cli/src/doctor.dart';
+import 'package:shorebird_cli/src/engine_config.dart';
 import 'package:shorebird_cli/src/executables/aot_tools.dart';
 import 'package:shorebird_cli/src/formatters/file_size_formatter.dart';
 import 'package:shorebird_cli/src/ios.dart';
@@ -57,6 +58,16 @@ of the iOS app that is using this module.''',
 
   final HashFunction _hashFn;
   final IosArchiveDiffer _archiveDiffer;
+
+  String get _buildDirectory => p.join(
+        shorebirdEnv.getShorebirdProjectRoot()!.path,
+        'build',
+      );
+
+  String get _vmcodeOutputPath => p.join(
+        _buildDirectory,
+        'out.vmcode',
+      );
 
   @override
   String get name => 'ios-framework';
@@ -126,8 +137,8 @@ Please re-run the release command for this version or create a new release.''');
       return ExitCode.software.code;
     }
 
-    final shorebirdFlutterRevision = shorebirdEnv.flutterRevision;
-    if (release.flutterRevision != shorebirdFlutterRevision) {
+    final currentFlutterRevision = shorebirdEnv.flutterRevision;
+    if (release.flutterRevision != currentFlutterRevision) {
       final installFlutterRevisionProgress = logger.progress(
         'Switching to Flutter revision ${release.flutterRevision}',
       );
@@ -160,10 +171,10 @@ Please re-run the release command for this version or create a new release.''');
       return ExitCode.software.code;
     }
 
-    final File patchBuildFile;
+    final File aotSnapshotFile;
     try {
       final newestDillFile = newestAppDill();
-      patchBuildFile = await buildElfAotSnapshot(
+      aotSnapshotFile = await buildElfAotSnapshot(
         appDillPath: newestDillFile.path,
         outFilePath: p.join(
           shorebirdEnv.getShorebirdProjectRoot()!.path,
@@ -214,32 +225,57 @@ Please re-run the release command for this version or create a new release.''');
       return ExitCode.software.code;
     }
 
-    // TODO(bryanoltman): use linker if available
+    final extractZip = artifactManager.extractZip;
+    final unzipProgress = logger.progress('Extracting release artifact');
+    final releaseXcframeworkPath = await Isolate.run(() async {
+      final tempDir = Directory.systemTemp.createTempSync();
+      await extractZip(
+        zipFile: releaseArtifactZipFile,
+        outputDirectory: tempDir,
+      );
+      return tempDir.path;
+    });
 
+    unzipProgress
+        .complete('Extracted release artifact to $releaseXcframeworkPath');
+    final releaseArtifactFile = File(
+      p.join(
+        releaseXcframeworkPath,
+        'ios-arm64',
+        'App.framework',
+        'App',
+      ),
+    );
+
+    final useLinker = engineConfig.localEngine != null ||
+        !preLinkerFlutterRevisions.contains(release.flutterRevision);
+    if (useLinker) {
+      // Because aot-tools is versioned with the engine, we need to use the
+      // original Flutter revision to link the patch. We have already switched
+      // to and from the release's Flutter revision before and could
+      // theoretically have just stayed on that revision until after _runLinker,
+      // but this approach makes it less likely that we will leave the user on
+      // a different version of Flutter than they started with if something
+      // goes wrong.
+      if (release.flutterRevision != currentFlutterRevision) {
+        await shorebirdFlutter.useRevision(revision: release.flutterRevision);
+      }
+      final exitCode = await _runLinker(
+        aotSnapshot: aotSnapshotFile,
+        releaseArtifact: releaseArtifactFile,
+      );
+      if (release.flutterRevision != currentFlutterRevision) {
+        await shorebirdFlutter.useRevision(revision: currentFlutterRevision);
+      }
+      if (exitCode != ExitCode.success.code) {
+        return exitCode;
+      }
+    }
+
+    final patchBuildFile =
+        useLinker ? File(_vmcodeOutputPath) : aotSnapshotFile;
     final File patchFile;
     if (await aotTools.isGeneratePatchDiffBaseSupported()) {
-      final extractZip = artifactManager.extractZip;
-      final unzipProgress = logger.progress('Extracting release artifact');
-      final releaseXcframeworkPath = await Isolate.run(() async {
-        final tempDir = Directory.systemTemp.createTempSync();
-        await extractZip(
-          zipFile: releaseArtifactZipFile,
-          outputDirectory: tempDir,
-        );
-        return tempDir.path;
-      });
-
-      unzipProgress
-          .complete('Extracted release artifact to $releaseXcframeworkPath');
-      final releaseArtifactFile = File(
-        p.join(
-          releaseXcframeworkPath,
-          'ios-arm64',
-          'App.framework',
-          'App',
-        ),
-      );
-
       final patchBaseProgress = logger.progress('Generating patch diff base');
       final analyzeSnapshotPath = shorebirdArtifacts.getArtifactPath(
         artifact: ShorebirdArtifact.analyzeSnapshot,
@@ -329,5 +365,43 @@ ${summary.join('\n')}
       display: (release) => release.version,
     );
     return release.version;
+  }
+
+  Future<int> _runLinker({
+    required File aotSnapshot,
+    required File releaseArtifact,
+  }) async {
+    if (!aotSnapshot.existsSync()) {
+      logger.err('Unable to find patch AOT file at ${aotSnapshot.path}');
+      return ExitCode.software.code;
+    }
+
+    final analyzeSnapshot = File(
+      shorebirdArtifacts.getArtifactPath(
+        artifact: ShorebirdArtifact.analyzeSnapshot,
+      ),
+    );
+
+    if (!analyzeSnapshot.existsSync()) {
+      logger.err('Unable to find analyze_snapshot at ${analyzeSnapshot.path}');
+      return ExitCode.software.code;
+    }
+
+    final linkProgress = logger.progress('Linking AOT files');
+    try {
+      await aotTools.link(
+        base: releaseArtifact.path,
+        patch: aotSnapshot.path,
+        analyzeSnapshot: analyzeSnapshot.path,
+        outputPath: _vmcodeOutputPath,
+        workingDirectory: _buildDirectory,
+      );
+    } catch (error) {
+      linkProgress.fail('Failed to link AOT files: $error');
+      return ExitCode.software.code;
+    }
+
+    linkProgress.complete();
+    return ExitCode.success.code;
   }
 }

@@ -13,7 +13,8 @@ class ShorebirdFlutterVersionSupportsIOSValidator extends Validator {
   Future<List<ValidationIssue>> validate() async {
     final issues = <ValidationIssue>[];
 
-    // TODO(eseidel): Share "parse version" logic with the ShorebirdFlutterValidator.
+    // TODO(eseidel): Share "parse version" logic with the
+    // ShorebirdFlutterValidator.
     final flutterVersion = await shorebirdFlutter.getVersion();
     if (flutterVersion == null) {
       issues.add(
