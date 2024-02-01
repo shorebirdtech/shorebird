@@ -225,7 +225,6 @@ Please re-run the release command for this version or create a new release.''');
       return ExitCode.software.code;
     }
 
-    // TODO(bryanoltman): use linker if available
     final extractZip = artifactManager.extractZip;
     final unzipProgress = logger.progress('Extracting release artifact');
     final releaseXcframeworkPath = await Isolate.run(() async {
