@@ -25,7 +25,7 @@ class FlutterVersionsListCommand extends ShorebirdCommand {
 
     String? currentVersion;
     try {
-      currentVersion = await shorebirdFlutter.getVersion();
+      currentVersion = await shorebirdFlutter.getVersionString();
     } on ProcessException catch (error) {
       logger.detail('Unable to determine Flutter version.\n${error.message}');
     }

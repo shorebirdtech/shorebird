@@ -2,6 +2,7 @@ import 'dart:convert';
 import 'dart:io';
 
 import 'package:path/path.dart' as p;
+import 'package:pub_semver/pub_semver.dart';
 import 'package:scoped/scoped.dart';
 import 'package:shorebird_cli/src/executables/executables.dart';
 import 'package:shorebird_cli/src/shorebird_env.dart';
@@ -47,8 +48,8 @@ class ShorebirdFlutter {
     await git.checkout(directory: targetDirectory.path, revision: revision);
   }
 
-  /// Whether the current revision is porcelain (unmodified).
-  Future<bool> isPorcelain({String? revision}) async {
+  /// Whether the current revision is unmodified.
+  Future<bool> isUnmodified({String? revision}) async {
     final status = await git.status(
       directory: _workingDirectory(revision: revision),
       args: ['--untracked-files=no', '--porcelain'],
@@ -90,7 +91,7 @@ class ShorebirdFlutter {
   Future<String> getVersionAndRevision() async {
     String? version = 'unknown';
     try {
-      version = await getVersion();
+      version = await getVersionString();
     } catch (_) {}
 
     return '$version (${shorebirdEnv.flutterRevision.substring(0, 10)})';
@@ -100,7 +101,7 @@ class ShorebirdFlutter {
   /// Throws a [ProcessException] if the version check fails.
   /// Returns `null` if the version check succeeds but the version cannot be
   /// parsed.
-  Future<String?> getVersion() async {
+  Future<String?> getVersionString() async {
     final result = await git.forEachRef(
       contains: shorebirdEnv.flutterRevision,
       format: '%(refname:short)',
@@ -112,6 +113,24 @@ class ShorebirdFlutter {
         .map((e) => e.replaceFirst('origin/flutter_release/', ''))
         .toList()
         .firstOrNull;
+  }
+
+  /// The current Shorebird Flutter version as a [Version]. Returns null if the
+  /// version cannot be parsed.
+  Future<Version?> getVersion() async {
+    final versionString = await getVersionString();
+    if (versionString == null) {
+      return null;
+    }
+
+    final Version version;
+    try {
+      version = Version.parse(versionString);
+    } on FormatException {
+      return null;
+    }
+
+    return version;
   }
 
   Future<List<String>> getVersions({String? revision}) async {
