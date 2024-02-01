@@ -13,6 +13,7 @@ This release includes:
 - Support for Flutter 3.16.9.
 - iOS hybrid app patches are now much faster (at parity with non-hybrid iOS patches).
 - Fixes issues where `shorebird patch ios` might not work if an export options plist is required.
+- Dropped support for Flutter 3.16.4-3.16.7 on iOS due to crashes discovered in those versions.
 
 📚 Release notes can be found at https://github.com/shorebirdtech/shorebird/releases/tag/v0.25.0
 
