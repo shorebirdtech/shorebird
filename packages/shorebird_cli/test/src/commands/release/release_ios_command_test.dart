@@ -2,6 +2,7 @@ import 'dart:io' hide Platform;
 
 import 'package:args/args.dart';
 import 'package:collection/collection.dart';
+import 'package:http/http.dart' as http;
 import 'package:mason_logger/mason_logger.dart';
 import 'package:mocktail/mocktail.dart';
 import 'package:path/path.dart' as p;
@@ -14,6 +15,7 @@ import 'package:shorebird_cli/src/code_push_client_wrapper.dart';
 import 'package:shorebird_cli/src/commands/commands.dart';
 import 'package:shorebird_cli/src/config/config.dart';
 import 'package:shorebird_cli/src/doctor.dart';
+import 'package:shorebird_cli/src/http_client/http_client.dart';
 import 'package:shorebird_cli/src/logger.dart';
 import 'package:shorebird_cli/src/os/operating_system_interface.dart';
 import 'package:shorebird_cli/src/platform.dart';
@@ -34,6 +36,7 @@ void main() {
     const appId = 'test-app-id';
     const shorebirdYaml = ShorebirdYaml(appId: appId);
     const flutterRevision = '83305b5088e6fe327fb3334a73ff190828d85713';
+    const engineRevision = 'dcbbf162662ed6c2539db27d4322d719808cb5f9';
     const flutterVersionAndRevision = '3.10.6 (83305b5088)';
     const versionName = '1.2.3';
     const versionCode = '1';
@@ -112,6 +115,7 @@ flutter:
     late Directory shorebirdRoot;
     late Directory projectRoot;
     late Doctor doctor;
+    late http.Client httpClient;
     late Platform platform;
     late Auth auth;
     late Progress progress;
@@ -133,6 +137,7 @@ flutter:
           authRef.overrideWith(() => auth),
           codePushClientWrapperRef.overrideWith(() => codePushClientWrapper),
           doctorRef.overrideWith(() => doctor),
+          httpClientRef.overrideWith(() => httpClient),
           loggerRef.overrideWith(() => logger),
           osInterfaceRef.overrideWith(() => operatingSystemInterface),
           platformRef.overrideWith(() => platform),
@@ -181,14 +186,17 @@ flutter:
     setUpAll(() {
       registerFallbackValue(ReleasePlatform.ios);
       registerFallbackValue(ReleaseStatus.draft);
+      registerFallbackValue(FakeBaseRequest());
       registerFallbackValue(FakeRelease());
       registerFallbackValue(FakeShorebirdProcess());
+      registerFallbackValue(Uri.parse('https://shorebird.dev'));
     });
 
     setUp(() {
       argResults = MockArgResults();
       codePushClientWrapper = MockCodePushClientWrapper();
       doctor = MockDoctor();
+      httpClient = MockHttpClient();
       platform = MockPlatform();
       shorebirdRoot = Directory.systemTemp.createTempSync();
       projectRoot = Directory.systemTemp.createTempSync();
@@ -210,6 +218,8 @@ flutter:
         () => shorebirdEnv.getShorebirdProjectRoot(),
       ).thenReturn(projectRoot);
       when(() => shorebirdEnv.flutterRevision).thenReturn(flutterRevision);
+      when(() => shorebirdEnv.shorebirdEngineRevision)
+          .thenReturn(engineRevision);
       when(() => shorebirdEnv.isRunningOnCI).thenReturn(false);
       when(
         () => shorebirdFlutter.getVersionAndRevision(),
@@ -241,6 +251,10 @@ flutter:
       when(() => argResults.wasParsed(any())).thenReturn(true);
       when(() => argResults.wasParsed('export-method')).thenReturn(false);
       when(() => auth.isAuthenticated).thenReturn(true);
+      when(() => httpClient.head(any())).thenAnswer(
+        (_) async =>
+            http.Response('', HttpStatus.ok, request: FakeBaseRequest()),
+      );
       when(() => logger.progress(any())).thenReturn(progress);
       when(() => logger.confirm(any())).thenReturn(true);
       when(
@@ -1065,6 +1079,49 @@ flavors:
 
       expect(exitCode, equals(ExitCode.success.code));
       verifyNever(() => logger.confirm(any()));
+    });
+
+    group('when dSYM file is available for download', () {
+      setUp(() {
+        when(() => httpClient.head(any())).thenAnswer(
+          (_) async =>
+              http.Response('', HttpStatus.ok, request: FakeBaseRequest()),
+        );
+      });
+
+      test('prints download link', () async {
+        setUpProjectRoot();
+
+        final exitCode = await runWithOverrides(command.run);
+
+        expect(exitCode, equals(ExitCode.success.code));
+
+        final dsymUri = Uri.parse(
+          'https://storage.googleapis.com/download.shorebird.dev/flutter_infra_release/flutter/dcbbf162662ed6c2539db27d4322d719808cb5f9/ios-release/Flutter.dSYM.zip',
+        );
+        verify(
+          () => logger.info(
+            '''If you use Crashlytics or another crash reporting tool, make sure to upload the dSYM file at ${lightCyan.wrap(link(uri: dsymUri))} for better crash reports.''',
+          ),
+        ).called(1);
+      });
+    });
+
+    group('when dSYM file is not available for download', () {
+      setUp(() {
+        when(() => httpClient.head(any())).thenAnswer(
+          (_) async => http.Response('', HttpStatus.notFound),
+        );
+      });
+
+      test('does not print download link', () async {
+        setUpProjectRoot();
+
+        final exitCode = await runWithOverrides(command.run);
+
+        expect(exitCode, equals(ExitCode.success.code));
+        verifyNever(() => logger.info(any(that: contains('dSYM'))));
+      });
     });
   });
 }

@@ -9,6 +9,7 @@ import 'package:shorebird_cli/src/command.dart';
 import 'package:shorebird_cli/src/config/config.dart';
 import 'package:shorebird_cli/src/doctor.dart';
 import 'package:shorebird_cli/src/extensions/arg_results.dart';
+import 'package:shorebird_cli/src/http_client/http_client.dart';
 import 'package:shorebird_cli/src/logger.dart';
 import 'package:shorebird_cli/src/shorebird_artifact_mixin.dart';
 import 'package:shorebird_cli/src/shorebird_build_mixin.dart';
@@ -294,6 +295,16 @@ You can open the archive in Xcode by running:
 
 ${styleBold.wrap('Make sure to uncheck "Manage Version and Build Number", or else shorebird will not work.')}
 ''');
+    }
+
+    final dsymUrl = Uri.parse(
+      '''https://storage.googleapis.com/download.shorebird.dev/flutter_infra_release/flutter/${shorebirdEnv.shorebirdEngineRevision}/ios-release/Flutter.dSYM.zip''',
+    );
+    final dsymExists = (await httpClient.head(dsymUrl)).statusCode == 200;
+    if (dsymExists) {
+      logger.info(
+        '''If you use Crashlytics or another crash reporting tool, make sure to upload the dSYM file at ${lightCyan.wrap(link(uri: dsymUrl))} for better crash reports.''',
+      );
     }
 
     return ExitCode.success.code;
