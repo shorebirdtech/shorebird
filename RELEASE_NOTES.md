@@ -2,6 +2,12 @@
 
 This section contains past updates we've sent to customers via Discord.
 
+## 0.25.1 (February 5, 2024)
+
+- 🩹 Fixes an issue where our Flutter fork was reporting the incorrect version.
+
+📚 Release notes can be found at https://github.com/shorebirdtech/shorebird/releases/tag/v0.25.1
+
 ## 0.25.0 (February 1, 2024)
 
 🎉🎉🎉 **iOS IS NOW BETA!** 🎉🎉🎉
