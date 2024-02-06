@@ -147,12 +147,13 @@ void main() {
       expect(response.readAsString(), completion(contains('Shorebird')));
     });
 
+    // artifact_proxy only runs on linux currently.
     test('generate_manifest matches config', () async {
       // Make a temp directory, run generate_manifest, parse the yaml
       // and make sure all urls are handled.
       const engineRevision = '8b89f8bd9fc6982aa9c4557fd0e5e89db1ff9986';
       final result = Process.runSync('/bin/sh', [
-        p.join('tool', 'generate_manifest.sh'),
+        'tool/generate_manifest.sh',
         engineRevision,
       ]);
       expect(result.exitCode, equals(0));
