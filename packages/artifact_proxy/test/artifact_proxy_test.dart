@@ -152,7 +152,7 @@ void main() {
       // and make sure all urls are handled.
       const engineRevision = '8b89f8bd9fc6982aa9c4557fd0e5e89db1ff9986';
       final result = Process.runSync('/bin/sh', [
-        'tool/generate_manifest.sh',
+        p.join('tool', 'generate_manifest.sh'),
         engineRevision,
       ]);
       expect(result.exitCode, equals(0));
