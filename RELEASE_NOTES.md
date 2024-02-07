@@ -2,6 +2,19 @@
 
 This section contains past updates we've sent to customers via Discord.
 
+## 0.25.2 (February 7, 2024)
+
+💥 Fixes a crash on iOS releases without a patch.
+🚑 Now publishing .dSYM files for iOS builds to help with crash reporting.
+
+We have received multiple reports of iOS builds crashing at 0xfffffffffffffffe.
+https://github.com/shorebirdtech/shorebird/issues/1700
+We expect this is a bug in our new iOS engine relating to `async`/`await`, but
+have not yet been able to reproduce this ourselves. We would *love* to work
+with you to debug this issue if you are seeing it.
+
+If you see any issues, please let us know!
+
 ## 0.25.1 (February 5, 2024)
 
 - 🩹 Fixes an issue where our Flutter fork was reporting the incorrect version.
