@@ -536,7 +536,7 @@ flutter:
       setUp(() {
         when(() => argResults.wasParsed(exportMethodArgName)).thenReturn(true);
         when(() => argResults[exportMethodArgName])
-            .thenReturn(ExportMethod.enterprise.argName);
+            .thenReturn(ExportMethod.adHoc.argName);
         when(() => argResults[exportOptionsPlistArgName]).thenReturn(null);
       });
 
@@ -562,7 +562,7 @@ flutter:
         final exportOptionsPlist = Plist(file: exportOptionsPlistFile);
         expect(
           exportOptionsPlist.properties['method'],
-          ExportMethod.enterprise.argName,
+          ExportMethod.adHoc.argName,
         );
       });
     });
