@@ -125,8 +125,9 @@ make smaller updates to your app.
         return ExitCode.usage.code;
       }
     } else if (results.wasParsed(exportMethodArgName)) {
-      final exportMethod =
-          ExportMethod.values.byName(results[exportMethodArgName] as String);
+      final exportMethod = ExportMethod.values.firstWhere(
+        (element) => element.argName == results[exportMethodArgName] as String,
+      );
       exportOptionsPlist = createExportOptionsPlist(exportMethod: exportMethod);
     } else {
       exportOptionsPlist = null;
