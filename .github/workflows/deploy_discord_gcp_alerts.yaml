@@ -26,18 +26,23 @@ jobs:
 
     steps:
       - name: 📚 Git Checkout
-        uses: actions/checkout@v3
+        uses: actions/checkout@v4
         with:
           submodules: recursive
 
       - uses: dart-lang/setup-dart@v1
 
-      - name: Setup Cloud SDK
-        uses: google-github-actions/setup-gcloud@v0.2.0
+      - name: GCloud Auth
+        uses: "google-github-actions/auth@v2"
         with:
           project_id: ${{ env.PROJECT_ID }}
-          service_account_key: ${{ secrets.CLOUD_RUN_SA_PROD }}
-          export_default_credentials: true
+          credentials_json: ${{ secrets.CLOUD_RUN_SA_PROD }}
+          export_environment_variables: true
+
+      - name: Setup Cloud SDK
+        uses: google-github-actions/setup-gcloud@v2.1.0
+        with:
+          project_id: ${{ env.PROJECT_ID }}
 
       - name: Authorize Docker Push
         run: gcloud auth configure-docker
@@ -49,7 +54,7 @@ jobs:
 
       - name: Deploy to Cloud Run
         id: deploy
-        uses: google-github-actions/deploy-cloudrun@v0.4.0
+        uses: google-github-actions/deploy-cloudrun@v2.2.0
         with:
           service: ${{ env.SERVICE }}
           image: gcr.io/${{ env.PROJECT_ID }}/${{ env.SERVICE }}:${{ github.sha }}

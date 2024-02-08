@@ -27,9 +27,9 @@ jobs:
 
     steps:
       - name: 📚 Git Checkout
-        uses: actions/checkout@v3
+        uses: actions/checkout@v4
 
-      - uses: dorny/paths-filter@v2
+      - uses: dorny/paths-filter@v3
         name: Build Detection
         id: needs_dart_build
         with:
@@ -73,7 +73,7 @@ jobs:
               - ./.github/actions/dart_package/action.yaml
               - packages/scoped/**
 
-      - uses: dorny/paths-filter@v2
+      - uses: dorny/paths-filter@v3
         name: Redis Detection
         id: needs_redis_build
         with:
@@ -84,7 +84,7 @@ jobs:
               - ./.github/actions/dart_package/action.yaml
               - packages/redis_client/**
 
-      - uses: dorny/paths-filter@v2
+      - uses: dorny/paths-filter@v3
         name: Verify Detection
         id: needs_verify
         with:
@@ -114,7 +114,7 @@ jobs:
 
     steps:
       - name: 📚 Git Checkout
-        uses: actions/checkout@v3
+        uses: actions/checkout@v4
 
       - name: 🎯 Build ${{ matrix.package }}
         uses: ./.github/actions/dart_package
@@ -139,7 +139,7 @@ jobs:
 
     steps:
       - name: 📚 Git Checkout
-        uses: actions/checkout@v3
+        uses: actions/checkout@v4
 
       - name: 🐳 Run Redis
         run: |
@@ -166,7 +166,7 @@ jobs:
 
     steps:
       - name: 📚 Git Checkout
-        uses: actions/checkout@v3
+        uses: actions/checkout@v4
 
       - name: 🔎 Verify ${{ matrix.package }}
         uses: ./.github/actions/verify_version
