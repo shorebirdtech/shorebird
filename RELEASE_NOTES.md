@@ -2,18 +2,45 @@
 
 This section contains past updates we've sent to customers via Discord.
 
+## 0.25.1 (February 5, 2024)
+
+- 🩹 Fixes an issue where our Flutter fork was reporting the incorrect version.
+
+📚 Release notes can be found at https://github.com/shorebirdtech/shorebird/releases/tag/v0.25.1
+
+## 0.25.0 (February 1, 2024)
+
+🎉🎉🎉 **iOS IS NOW BETA!** 🎉🎉🎉
+
+📰 See our blog post at https://shorebird.dev/blogs/ios-beta/.
+
+This release includes:
+
+- 🐦 Support for Flutter 3.16.9.
+- 🦿 iOS hybrid app patches are now much faster (at parity with non-hybrid iOS patches).
+- 🩹 Fixes issues where `shorebird patch ios` might not work if an export options plist is required.
+- 🗑️ Dropped support for Flutter 3.16.4-3.16.7 on iOS due to crashes discovered in those versions.
+
+📚 Release notes can be found at https://github.com/shorebirdtech/shorebird/releases/tag/v0.25.0
+
+## 0.24.1 (January 31, 2024)
+
+- iOS release builds now run at full speed. iOS patches remain slower than releases.
+
+📚 Release notes can be found at https://github.com/shorebirdtech/shorebird/releases/tag/v0.24.1
+
 ## 0.24.0 (January 30, 2024)
 
-This is our last planned release before iOS beta.  We believe iOS is stable
-enough for general use.  We plan to release beta later this week once we hear
-back from early adopters.  iOS releases and patches are still slower than
+This is our last planned release before iOS beta. We believe iOS is stable
+enough for general use. We plan to release beta later this week once we hear
+back from early adopters. iOS releases and patches are still slower than
 Android, but they will continue to get faster in the coming weeks.
 
 Please test and let us know if you encounter any issues!
 
-* iOS patches now run ~2x faster.
-* Fixed several crashers in the new iOS engine.
-* `shorebird -v` now shows all output from underlying commands, not just errors.
+- iOS patches now run ~2x faster.
+- Fixed several crashers in the new iOS engine.
+- `shorebird -v` now shows all output from underlying commands, not just errors.
 
 📚 Release notes can be found at https://github.com/shorebirdtech/shorebird/releases/tag/v0.24.0
 
@@ -49,7 +76,7 @@ Known issues:
 
 - Obfuscated iOS builds fail to patch:
   https://github.com/shorebirdtech/shorebird/issues/1619
-- Unpatched iOS builds are sometimes *slower* than patched builds:
+- Unpatched iOS builds are sometimes _slower_ than patched builds:
   https://github.com/shorebirdtech/shorebird/issues/1661
 
 📚 Release notes can be found at https://github.com/shorebirdtech/shorebird/releases/tag/v0.23.0

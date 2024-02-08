@@ -99,7 +99,7 @@ Engine • revision $shorebirdEngineRevision
         'flutter version, and engine revision', () async {
       const flutterVersion = '1.2.3';
       when(
-        () => shorebirdFlutter.getVersion(),
+        () => shorebirdFlutter.getVersionString(),
       ).thenAnswer((_) async => flutterVersion);
       await runWithOverrides(command.run);
 

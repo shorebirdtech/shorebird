@@ -5,6 +5,8 @@ title: "fix: "
 labels: bug
 ---
 
+App ID: (insert your app ID here)
+
 **Description**
 
 A clear and concise description of what the bug is.

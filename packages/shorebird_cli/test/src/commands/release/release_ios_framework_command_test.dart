@@ -225,6 +225,10 @@ flutter:
         ..testArgResults = argResults;
     });
 
+    test('supports alpha alias', () {
+      expect(command.aliases, contains('ios-framework-alpha'));
+    });
+
     test('has a description', () {
       expect(command.description, isNotEmpty);
     });
@@ -247,7 +251,7 @@ flutter:
         () => shorebirdValidator.validatePreconditions(
           checkUserIsAuthenticated: true,
           checkShorebirdInitialized: true,
-          validators: [flutterValidator],
+          validators: any(named: 'validators'),
           supportedOperatingSystems: {Platform.macOS},
         ),
       ).called(1);

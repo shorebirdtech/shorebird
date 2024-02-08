@@ -7,6 +7,9 @@
 
 set -e
 
+# NOTE: If you edit this file you also may need to edit the global list
+# of all known artifacts in config.dart
+
 if [ "$#" -ne 1 ]; then
   echo "Usage: ./generate_manifest.sh <flutter_engine_revision>"
   exit 1
@@ -61,3 +64,4 @@ artifact_overrides:
   # iOS release artifacts
   # Includes unified Flutter.framework for device and simulator (debug)
   - flutter_infra_release/flutter/\$engine/ios-release/artifacts.zip
+  - flutter_infra_release/flutter/\$engine/ios-release/Flutter.dSYM.zip

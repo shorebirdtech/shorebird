@@ -5,13 +5,13 @@ import 'package:shorebird_cli/src/code_push_client_wrapper.dart';
 import 'package:shorebird_cli/src/command.dart';
 import 'package:shorebird_cli/src/config/config.dart';
 import 'package:shorebird_cli/src/doctor.dart';
-import 'package:shorebird_cli/src/ios.dart';
 import 'package:shorebird_cli/src/logger.dart';
 import 'package:shorebird_cli/src/shorebird_artifact_mixin.dart';
 import 'package:shorebird_cli/src/shorebird_build_mixin.dart';
 import 'package:shorebird_cli/src/shorebird_env.dart';
 import 'package:shorebird_cli/src/shorebird_flutter.dart';
 import 'package:shorebird_cli/src/shorebird_validator.dart';
+import 'package:shorebird_cli/src/validators/validators.dart';
 import 'package:shorebird_code_push_client/shorebird_code_push_client.dart';
 
 class ReleaseIosFrameworkCommand extends ShorebirdCommand
@@ -34,11 +34,14 @@ of the iOS app that is using this module.''',
   }
 
   @override
-  String get description =>
-      'Builds and submits your iOS framework to Shorebird.';
+  String get name => 'ios-framework';
 
   @override
-  String get name => 'ios-framework-alpha';
+  List<String> get aliases => ['ios-framework-alpha'];
+
+  @override
+  String get description =>
+      'Builds and submits your iOS framework to Shorebird.';
 
   @override
   Future<int> run() async {
@@ -46,14 +49,15 @@ of the iOS app that is using this module.''',
       await shorebirdValidator.validatePreconditions(
         checkUserIsAuthenticated: true,
         checkShorebirdInitialized: true,
-        validators: doctor.iosCommandValidators,
         supportedOperatingSystems: {Platform.macOS},
+        validators: [
+          ...doctor.iosCommandValidators,
+          ShorebirdFlutterVersionSupportsIOSValidator(),
+        ],
       );
     } on PreconditionFailedException catch (e) {
       return e.exitCode.code;
     }
-
-    showiOSStatusWarning();
 
     const releasePlatform = ReleasePlatform.ios;
     final releaseVersion = results['release-version'] as String;

@@ -17,6 +17,7 @@ import 'package:shorebird_cli/src/doctor.dart';
 import 'package:shorebird_cli/src/logger.dart';
 import 'package:shorebird_cli/src/os/operating_system_interface.dart';
 import 'package:shorebird_cli/src/platform.dart';
+import 'package:shorebird_cli/src/shorebird_build_mixin.dart';
 import 'package:shorebird_cli/src/shorebird_env.dart';
 import 'package:shorebird_cli/src/shorebird_flutter.dart';
 import 'package:shorebird_cli/src/shorebird_process.dart';
@@ -310,6 +311,10 @@ flutter:
         ..testArgResults = argResults;
     });
 
+    test('supports alpha alias', () {
+      expect(command.aliases, contains('ios-alpha'));
+    });
+
     test('has a description', () {
       expect(command.description, isNotEmpty);
     });
@@ -332,7 +337,7 @@ flutter:
         () => shorebirdValidator.validatePreconditions(
           checkUserIsAuthenticated: true,
           checkShorebirdInitialized: true,
-          validators: [flutterValidator],
+          validators: any(named: 'validators'),
           supportedOperatingSystems: {Platform.macOS},
         ),
       ).called(1);
@@ -531,7 +536,7 @@ flutter:
       setUp(() {
         when(() => argResults.wasParsed(exportMethodArgName)).thenReturn(true);
         when(() => argResults[exportMethodArgName])
-            .thenReturn(ExportMethod.enterprise.argName);
+            .thenReturn(ExportMethod.adHoc.argName);
         when(() => argResults[exportOptionsPlistArgName]).thenReturn(null);
       });
 
@@ -557,7 +562,7 @@ flutter:
         final exportOptionsPlist = Plist(file: exportOptionsPlistFile);
         expect(
           exportOptionsPlist.properties['method'],
-          ExportMethod.enterprise.argName,
+          ExportMethod.adHoc.argName,
         );
       });
     });

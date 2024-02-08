@@ -44,7 +44,7 @@ void main() {
     test('exits with code 70 when unable to determine Flutter versions',
         () async {
       when(
-        () => shorebirdFlutter.getVersion(),
+        () => shorebirdFlutter.getVersionString(),
       ).thenAnswer((_) async => '1.0.0');
       when(() => shorebirdFlutter.getVersions()).thenThrow('error');
       await expectLater(
@@ -53,7 +53,7 @@ void main() {
       );
       verifyInOrder([
         () => logger.progress('Fetching Flutter versions'),
-        () => shorebirdFlutter.getVersion(),
+        () => shorebirdFlutter.getVersionString(),
         () => shorebirdFlutter.getVersions(),
         () => progress.fail('Failed to fetch Flutter versions.'),
         () => logger.err('error'),
@@ -64,7 +64,7 @@ void main() {
         'exits with code 0 when able to determine Flutter versions w/out current version',
         () async {
       const versions = ['1.0.0', '1.0.1'];
-      when(() => shorebirdFlutter.getVersion()).thenThrow(
+      when(() => shorebirdFlutter.getVersionString()).thenThrow(
         const ProcessException(
           'flutter',
           ['--version'],
@@ -80,7 +80,7 @@ void main() {
       );
       verifyInOrder([
         () => logger.progress('Fetching Flutter versions'),
-        () => shorebirdFlutter.getVersion(),
+        () => shorebirdFlutter.getVersionString(),
         () => shorebirdFlutter.getVersions(),
         () => progress.cancel(),
         () => logger.info('📦 Flutter Versions'),
@@ -94,7 +94,7 @@ void main() {
         'as well as the current version', () async {
       const versions = ['1.0.0', '1.0.1'];
       when(
-        () => shorebirdFlutter.getVersion(),
+        () => shorebirdFlutter.getVersionString(),
       ).thenAnswer((_) async => versions.first);
 
       when(
@@ -106,7 +106,7 @@ void main() {
       );
       verifyInOrder([
         () => logger.progress('Fetching Flutter versions'),
-        () => shorebirdFlutter.getVersion(),
+        () => shorebirdFlutter.getVersionString(),
         () => shorebirdFlutter.getVersions(),
         () => progress.cancel(),
         () => logger.info('📦 Flutter Versions'),

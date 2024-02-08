@@ -9,50 +9,20 @@ import 'package:shorebird_cli/src/command.dart';
 import 'package:shorebird_cli/src/config/config.dart';
 import 'package:shorebird_cli/src/doctor.dart';
 import 'package:shorebird_cli/src/extensions/arg_results.dart';
-import 'package:shorebird_cli/src/ios.dart';
 import 'package:shorebird_cli/src/logger.dart';
 import 'package:shorebird_cli/src/shorebird_artifact_mixin.dart';
 import 'package:shorebird_cli/src/shorebird_build_mixin.dart';
 import 'package:shorebird_cli/src/shorebird_env.dart';
 import 'package:shorebird_cli/src/shorebird_flutter.dart';
 import 'package:shorebird_cli/src/shorebird_validator.dart';
+import 'package:shorebird_cli/src/validators/validators.dart';
 import 'package:shorebird_code_push_client/shorebird_code_push_client.dart';
 
 const exportMethodArgName = 'export-method';
 const exportOptionsPlistArgName = 'export-options-plist';
 
-/// {@template export_method}
-/// The method used to export the IPA.
-/// {@endtemplate}
-enum ExportMethod {
-  appStore('app-store', 'Upload to the App Store'),
-  adHoc(
-    'ad-hoc',
-    '''
-Test on designated devices that do not need to be registered with the Apple developer account.
-    Requires a distribution certificate.''',
-  ),
-  development(
-    'development',
-    '''Test only on development devices registered with the Apple developer account.''',
-  ),
-  enterprise(
-    'enterprise',
-    'Distribute an app registered with the Apple Developer Enterprise Program.',
-  );
-
-  /// {@macro export_method}
-  const ExportMethod(this.argName, this.description);
-
-  /// The command-line argument name for this export method.
-  final String argName;
-
-  /// A description of this method and how/when it should be used.
-  final String description;
-}
-
 /// {@template release_ios_command}
-/// `shorebird release ios-alpha`
+/// `shorebird release ios`
 /// Create new app releases for iOS.
 /// {@endtemplate}
 class ReleaseIosCommand extends ShorebirdCommand
@@ -98,6 +68,12 @@ class ReleaseIosCommand extends ShorebirdCommand
   }
 
   @override
+  String get name => 'ios';
+
+  @override
+  List<String> get aliases => ['ios-alpha'];
+
+  @override
   String get description => '''
 Builds and submits your iOS app to Shorebird.
 Shorebird saves the compiled Dart code from your application in order to
@@ -105,22 +81,20 @@ make smaller updates to your app.
 ''';
 
   @override
-  String get name => 'ios-alpha';
-
-  @override
   Future<int> run() async {
     try {
       await shorebirdValidator.validatePreconditions(
         checkUserIsAuthenticated: true,
         checkShorebirdInitialized: true,
-        validators: doctor.iosCommandValidators,
+        validators: [
+          ...doctor.iosCommandValidators,
+          ShorebirdFlutterVersionSupportsIOSValidator(),
+        ],
         supportedOperatingSystems: {Platform.macOS},
       );
     } on PreconditionFailedException catch (e) {
       return e.exitCode.code;
     }
-
-    showiOSStatusWarning();
 
     final codesign = results['codesign'] == true;
     if (!codesign) {
@@ -140,16 +114,23 @@ make smaller updates to your app.
       );
       return ExitCode.usage.code;
     }
-    final exportOptionsPlist = exportPlistArg != null
-        ? File(exportPlistArg)
-        : _createExportOptionsPlist(
-            exportMethod: results[exportMethodArgName] as String,
-          );
-    try {
-      _validateExportOptionsPlist(exportOptionsPlist);
-    } catch (error) {
-      logger.err('$error');
-      return ExitCode.usage.code;
+
+    final File? exportOptionsPlist;
+    if (exportPlistArg != null) {
+      exportOptionsPlist = File(exportPlistArg);
+      try {
+        _validateExportOptionsPlist(exportOptionsPlist);
+      } catch (error) {
+        logger.err('$error');
+        return ExitCode.usage.code;
+      }
+    } else if (results.wasParsed(exportMethodArgName)) {
+      final exportMethod = ExportMethod.values.firstWhere(
+        (element) => element.argName == results[exportMethodArgName] as String,
+      );
+      exportOptionsPlist = createExportOptionsPlist(exportMethod: exportMethod);
+    } else {
+      exportOptionsPlist = null;
     }
 
     const releasePlatform = ReleasePlatform.ios;
@@ -338,37 +319,5 @@ ${styleBold.wrap('Make sure to uncheck "Manage Version and Build Number", or els
         '''Export options plist ${exportOptionsPlistFile.path} does not set manageAppVersionAndBuildNumber to false. This is required for shorebird to work.''',
       );
     }
-  }
-
-  /// Creates an ExportOptions.plist file, which is used to tell xcodebuild to
-  /// not manage the app version and build number. If we don't do this, then
-  /// xcodebuild will increment the build number if it detects an App Store
-  /// Connect build with the same version and build number. This is a problem
-  /// for us when patching, as patches need to have the same version and build
-  /// number as the release they are patching.
-  /// See
-  /// https://developer.apple.com/forums/thread/690647?answerId=689925022#689925022
-  File _createExportOptionsPlist({required String exportMethod}) {
-    final plistContents = '''
-<?xml version="1.0" encoding="UTF-8"?>
-<!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
-<plist version="1.0">
-<dict>
-  <key>manageAppVersionAndBuildNumber</key>
-  <false/>
-  <key>signingStyle</key>
-  <string>automatic</string>
-  <key>uploadBitcode</key>
-  <false/>
-  <key>method</key>
-  <string>$exportMethod</string>
-</dict>
-</plist>
-''';
-    final tempDir = Directory.systemTemp.createTempSync();
-    final exportPlistFile = File(p.join(tempDir.path, 'ExportOptions.plist'))
-      ..createSync(recursive: true)
-      ..writeAsStringSync(plistContents);
-    return exportPlistFile;
   }
 }

@@ -75,7 +75,7 @@ Android Toolchain
 
   Future<String?> _tryGetFlutterVersion() async {
     try {
-      return await shorebirdFlutter.getVersion();
+      return await shorebirdFlutter.getVersionString();
     } catch (error) {
       logger.detail('Unable to determine Flutter version.\n$error');
       return null;
