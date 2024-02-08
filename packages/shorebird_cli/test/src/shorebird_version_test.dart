@@ -37,6 +37,12 @@ void main() {
         ),
       ).thenAnswer((_) async => {});
       when(
+        () => git.remote(
+          directory: any(named: 'directory'),
+          args: any(named: 'args'),
+        ),
+      ).thenAnswer((_) async => {});
+      when(
         () => git.revParse(
           revision: any(named: 'revision'),
           directory: any(named: 'directory'),
