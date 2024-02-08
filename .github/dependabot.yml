@@ -5,11 +5,75 @@
 
 version: 2
 updates:
-  - package-ecosystem: "pub" # See documentation for possible values
-    directory: "/" # Location of package manifests
+  - package-ecosystem: "pub"
+    directory: "/packages/artifact_proxy"
     schedule:
       interval: "weekly"
+    groups:
+      artifact_proxy-deps:
+        patterns:
+          - "*"
+  - package-ecosystem: "pub"
+    directory: "/packages/discord_gcp_alerts"
+    schedule:
+      interval: "weekly"
+    groups:
+      discord_gcp_alerts-deps:
+        patterns:
+          - "*"
+  - package-ecosystem: "pub"
+    directory: "/packages/jwt"
+    schedule:
+      interval: "weekly"
+    groups:
+      jwt-deps:
+        patterns:
+          - "*"
+  - package-ecosystem: "pub"
+    directory: "/packages/redis_client"
+    schedule:
+      interval: "weekly"
+    groups:
+      redis_client-deps:
+        patterns:
+          - "*"
+  - package-ecosystem: "pub"
+    directory: "/packages/scoped"
+    schedule:
+      interval: "weekly"
+    groups:
+      scoped-deps:
+        patterns:
+          - "*"
+  - package-ecosystem: "pub"
+    directory: "/packages/shorebird_cli"
+    schedule:
+      interval: "weekly"
+    groups:
+      shorebird_cli-deps:
+        patterns:
+          - "*"
+  - package-ecosystem: "pub"
+    directory: "/packages/shorebird_code_push_client"
+    schedule:
+      interval: "weekly"
+    groups:
+      shorebird_code_push_client-deps:
+        patterns:
+          - "*"
+  - package-ecosystem: "pub"
+    directory: "/packages/shorebird_code_push_protocol"
+    schedule:
+      interval: "weekly"
+    groups:
+      shorebird_code_push_protocol-deps:
+        patterns:
+          - "*"
   - package-ecosystem: "github-actions"
     directory: "/"
     schedule:
       interval: "weekly"
+    groups:
+      gh-deps:
+        patterns:
+          - "*"
