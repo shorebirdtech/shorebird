@@ -28,6 +28,9 @@ class ShorebirdVersion {
   ///
   /// Exits if HEAD isn't pointing to a branch, or there is no upstream.
   Future<String> fetchLatestGitHash() async {
+    // Dependabot pushed branches with the same name breaking all clients
+    // and requiring a prune to repair them.
+    await git.remote(directory: _workingDirectory, args: ['prune', 'origin']);
     // Fetch upstream branch's commits and tags
     await git.fetch(directory: _workingDirectory, args: ['--tags']);
     // Get the latest commit revision of the upstream

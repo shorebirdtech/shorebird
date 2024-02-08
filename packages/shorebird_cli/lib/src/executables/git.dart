@@ -87,6 +87,29 @@ class Git {
     }
   }
 
+  /// Run `git remote` at [directory].
+  // TODO(eseidel): add a generic `git` method for running arbitrary git
+  // commands and removing duplication between these methods.
+  Future<void> remote({
+    required String directory,
+    List<String>? args,
+  }) async {
+    final arguments = ['remote', ...?args];
+    final result = await process.run(
+      executable,
+      arguments,
+      workingDirectory: directory,
+    );
+    if (result.exitCode != 0) {
+      throw ProcessException(
+        executable,
+        arguments,
+        '${result.stderr}',
+        result.exitCode,
+      );
+    }
+  }
+
   /// Iterate over all refs that match [pattern] and show them
   /// according to the given [format].
   Future<String> forEachRef({
