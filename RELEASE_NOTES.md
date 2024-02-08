@@ -5,7 +5,8 @@ This section contains past updates we've sent to customers via Discord.
 ## 0.25.2 (February 7, 2024)
 
 💥 Fixes a crash on iOS releases without a patch.
-🚑 Now publishing .dSYM files for iOS builds to help with crash reporting.
+🚑 Now publishing .dSYM files for iOS builds to help with crash reporting, see
+   https://docs.shorebird.dev/guides/crash-reporting for usage instructions.
 🪵 Fixed logs from Shorebird updater not appearing on iOS.
 
 We have received multiple reports of iOS builds crashing at 0xfffffffffffffffe.
