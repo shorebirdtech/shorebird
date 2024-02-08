@@ -17,10 +17,6 @@ env:
 
 jobs:
   deploy:
-    permissions:
-      contents: "read"
-      id-token: "write"
-
     runs-on: ubuntu-latest
 
     defaults:
@@ -40,7 +36,9 @@ jobs:
       - name: GCloud Auth
         uses: "google-github-actions/auth@v2"
         with:
-          credentials_json: ${{ secrets.GCP_SA_PROD }}
+          project_id: ${{ env.PROJECT_ID }}
+          credentials_json: ${{ secrets.CLOUD_RUN_SA_PROD }}
+          export_environment_variables: true
 
       - name: Setup Cloud SDK
         uses: google-github-actions/setup-gcloud@v2.1.0
