@@ -19,8 +19,8 @@ class ShorebirdFlutterVersionSupportsIOSValidator extends Validator {
     if (flutterVersion == null) {
       issues.add(
         const ValidationIssue(
-          severity: ValidationIssueSeverity.error,
-          message: 'Failed to determine Shorebird Flutter version',
+          severity: ValidationIssueSeverity.warning,
+          message: 'Unable to determine Shorebird Flutter version',
         ),
       );
       return issues;

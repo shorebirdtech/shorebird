@@ -36,15 +36,15 @@ void main() {
         when(() => shorebirdFlutter.getVersion()).thenAnswer((_) async => null);
       });
 
-      test('returns validation error', () async {
+      test('returns validation warning', () async {
         final results = await runWithOverrides(validator.validate);
 
         expect(
           results,
           equals([
             const ValidationIssue(
-              severity: ValidationIssueSeverity.error,
-              message: 'Failed to determine Shorebird Flutter version',
+              severity: ValidationIssueSeverity.warning,
+              message: 'Unable to determine Shorebird Flutter version',
             ),
           ]),
         );
