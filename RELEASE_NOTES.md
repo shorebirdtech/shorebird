@@ -6,6 +6,7 @@ This section contains past updates we've sent to customers via Discord.
 
 💥 Fixes a crash on iOS releases without a patch.
 🚑 Now publishing .dSYM files for iOS builds to help with crash reporting.
+🪵 Fixed logs from Shorebird updater not appearing on iOS.
 
 We have received multiple reports of iOS builds crashing at 0xfffffffffffffffe.
 https://github.com/shorebirdtech/shorebird/issues/1700
