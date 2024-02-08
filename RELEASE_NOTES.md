@@ -17,6 +17,8 @@ with you to debug this issue if you are seeing it.
 
 If you see any issues, please let us know!
 
+📚 Release notes can be found at https://github.com/shorebirdtech/shorebird/releases/tag/v0.25.2
+
 ## 0.25.1 (February 5, 2024)
 
 - 🩹 Fixes an issue where our Flutter fork was reporting the incorrect version.
