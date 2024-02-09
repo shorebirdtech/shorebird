@@ -2,6 +2,22 @@
 
 This section contains past updates we've sent to customers via Discord.
 
+## 0.25.3 (February 9, 2024)
+
+💥 Fixes our last known crasher on iOS.
+   https://github.com/shorebirdtech/shorebird/issues/1698
+
+This one was a doozy.  We had a crasher on iOS caused by a subtle bug in
+upstream Dart that was triggered by `package:dio`, but only when handling json
+blobs larger than 50kb.  It took us a long time to find a reproduction, but once
+we did, was a very easy fix.  Thanks to all who helped us track this down!
+
+We're now returning our focus to finishing 1.0 which we hope to release in
+another week or two.  We believe this release to be stable and safe to use
+on iOS and Android.  Please let us know if you encounter any issues!
+
+📚 Release notes can be found at https://github.com/shorebirdtech/shorebird/releases/tag/v0.25.3
+
 ## 0.25.2 (February 7, 2024)
 
 💥 Fixes a crash on iOS releases without a patch.
