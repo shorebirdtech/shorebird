@@ -99,7 +99,10 @@ make smaller updates to your app.
     if (results.rest.contains('--obfuscate')) {
       // Obfuscated releases break patching, so we don't support them.
       // See https://github.com/shorebirdtech/shorebird/issues/1619
-      logger.err('Shorebird does not currently support obfuscation on iOS.');
+      logger
+        ..err('Shorebird does not currently support obfuscation on iOS.')
+        ..info(
+            '''We hope to support obfuscation in the future. We are tracking this work at ${link(uri: Uri.parse('https://github.com/shorebirdtech/shorebird/issues/1619'))}.''');
       return ExitCode.usage.code;
     }
 
