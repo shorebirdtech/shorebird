@@ -343,6 +343,22 @@ flutter:
       ).called(1);
     });
 
+    group('when obfuscate flag is passed', () {
+      setUp(() {
+        when(() => argResults.rest).thenReturn(['--obfuscate']);
+      });
+
+      test('prints error and exits with usage code', () async {
+        final exitCode = await runWithOverrides(command.run);
+
+        expect(exitCode, equals(ExitCode.usage.code));
+        verify(
+          () => logger
+              .err('Shorebird does not currently support obfuscation on iOS.'),
+        ).called(1);
+      });
+    });
+
     group('when codesign is disabled', () {
       setUp(() {
         when(() => argResults['codesign']).thenReturn(false);
