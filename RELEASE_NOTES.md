@@ -8,7 +8,7 @@ This section contains past updates we've sent to customers via Discord.
    https://github.com/shorebirdtech/shorebird/issues/1698
 
 This one was a doozy.  We had a crasher on iOS caused by a subtle bug in
-upstream Dart that was triggered by package:dio, but only when handling json
+upstream Dart that was triggered by `package:dio`, but only when handling json
 blobs larger than 50kb.  It took us a long time to find a reproduction, but once
 we did, was a very easy fix.  Thanks to all who helped us track this down!
 
