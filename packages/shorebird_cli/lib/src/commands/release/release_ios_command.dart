@@ -39,11 +39,6 @@ class ReleaseIosCommand extends ShorebirdCommand
         'flavor',
         help: 'The product flavor to use when building the app.',
       )
-      ..addFlag(
-        'codesign',
-        help: 'Codesign the application bundle.',
-        defaultsTo: true,
-      )
       ..addOption(
         exportMethodArgName,
         defaultsTo: ExportMethod.appStore.argName,
@@ -58,6 +53,15 @@ class ReleaseIosCommand extends ShorebirdCommand
         exportOptionsPlistArgName,
         help:
             '''Export an IPA with these options. See "xcodebuild -h" for available exportOptionsPlist keys.''',
+      )
+      ..addOption(
+        'flutter-version',
+        help: 'The Flutter version to use when building the app (e.g: 3.16.3).',
+      )
+      ..addFlag(
+        'codesign',
+        help: 'Codesign the application bundle.',
+        defaultsTo: true,
       )
       ..addFlag(
         'force',
@@ -102,7 +106,8 @@ make smaller updates to your app.
       logger
         ..err('Shorebird does not currently support obfuscation on iOS.')
         ..info(
-            '''We hope to support obfuscation in the future. We are tracking this work at ${link(uri: Uri.parse('https://github.com/shorebirdtech/shorebird/issues/1619'))}.''');
+          '''We hope to support obfuscation in the future. We are tracking this work at ${link(uri: Uri.parse('https://github.com/shorebirdtech/shorebird/issues/1619'))}.''',
+        );
       return ExitCode.usage.code;
     }
 
@@ -146,11 +151,60 @@ make smaller updates to your app.
     const releasePlatform = ReleasePlatform.ios;
     final flavor = results.findOption('flavor', argParser: argParser);
     final target = results.findOption('target', argParser: argParser);
+    final flutterVersion = results.findOption(
+      'flutter-version',
+      argParser: argParser,
+    );
     final shorebirdYaml = shorebirdEnv.getShorebirdYaml()!;
     final appId = shorebirdYaml.getAppId(flavor: flavor);
     final app = await codePushClientWrapper.getApp(appId: appId);
 
-    final buildProgress = logger.progress('Building release');
+    var flutterRevision = shorebirdEnv.flutterRevision;
+    if (flutterVersion != null) {
+      final String? revision;
+      try {
+        revision = await shorebirdFlutter.getRevisionForVersion(
+          flutterVersion,
+        );
+      } catch (error) {
+        logger.err(
+          '''
+Unable to determine revision for Flutter version: $flutterVersion.
+$error''',
+        );
+        return ExitCode.software.code;
+      }
+
+      if (revision == null) {
+        final openIssueLink = link(
+          uri: Uri.parse(
+            'https://github.com/shorebirdtech/shorebird/issues/new?assignees=&labels=feature&projects=&template=feature_request.md&title=feat%3A+',
+          ),
+          message: 'open an issue',
+        );
+        logger.err('''
+Version $flutterVersion not found. Please $openIssueLink to request a new version.
+Use `shorebird flutter versions list` to list available versions.
+''');
+        return ExitCode.software.code;
+      }
+
+      flutterRevision = revision;
+    }
+
+    final originalFlutterRevision = shorebirdEnv.flutterRevision;
+    final switchFlutterRevision = flutterRevision != originalFlutterRevision;
+
+    if (switchFlutterRevision) {
+      await shorebirdFlutter.useRevision(revision: flutterRevision);
+    }
+
+    final flutterVersionString = await shorebirdFlutter.getVersionAndRevision();
+
+    final buildProgress = logger.progress(
+      'Building release with Flutter $flutterVersionString',
+    );
+
     try {
       await buildIpa(
         codesign: codesign,
@@ -165,6 +219,10 @@ make smaller updates to your app.
       buildProgress.fail('Failed to build');
       logger.err(error.message);
       return ExitCode.software.code;
+    } finally {
+      if (switchFlutterRevision) {
+        await shorebirdFlutter.useRevision(revision: originalFlutterRevision);
+      }
     }
 
     buildProgress.complete();
@@ -211,13 +269,12 @@ make smaller updates to your app.
       );
     }
 
-    final flutterVersion = await shorebirdFlutter.getVersionAndRevision();
     final summary = [
       '''📱 App: ${lightCyan.wrap(app.displayName)} ${lightCyan.wrap('($appId)')}''',
       if (flavor != null) '🍧 Flavor: ${lightCyan.wrap(flavor)}',
       '📦 Release Version: ${lightCyan.wrap(releaseVersion)}',
       '''🕹️  Platform: ${lightCyan.wrap(releasePlatform.name)}''',
-      '🐦 Flutter Version: ${lightCyan.wrap(flutterVersion)}',
+      '🐦 Flutter Version: ${lightCyan.wrap(flutterVersionString)}',
     ];
 
     logger.info('''
