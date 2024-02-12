@@ -2,10 +2,11 @@
 
 This section contains past updates we've sent to customers via Discord.
 
-## 0.25.3 (February 12, 2024)
+## 0.26.0 (February 12, 2024)
 
 💥 Fixes our last known crasher on iOS.
    https://github.com/shorebirdtech/shorebird/issues/1698
+🐦 Upgrade to Flutter `3.19.0-0.4.pre` (beta channel)
 
 This one was a doozy.  We had a crasher on iOS caused by a subtle bug in
 upstream Dart that was triggered by `package:dio`, but only when handling json
