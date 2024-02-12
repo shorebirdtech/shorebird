@@ -13,7 +13,7 @@ dependencies:
   args: ^2.3.1
   barbecue: ^0.5.0
   checked_yaml: ^2.0.2
-  cli_completion: ^0.4.0
+  cli_completion: ^0.5.0
   cli_util: ^0.4.0
   collection: ^1.17.1
   crypto: ^3.0.2
@@ -23,7 +23,7 @@ dependencies:
   io: ^1.0.4
   json_annotation: ^4.8.0
   json_path: ^0.7.0
-  mason_logger: ^0.2.9
+  mason_logger: ^0.2.12
   meta: ^1.9.0
   path: ^1.8.3
   platform: ^3.1.0
