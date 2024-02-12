@@ -45,6 +45,10 @@ of the Android app that is using this module.''',
         help: 'The build number of the aar',
         defaultsTo: '1.0',
       )
+      ..addOption(
+        'flutter-version',
+        help: 'The Flutter version to use when building the app (e.g: 3.16.3).',
+      )
       ..addFlag(
         'force',
         abbr: 'f',
@@ -84,8 +88,7 @@ make smaller updates to your app.
     const platform = ReleasePlatform.android;
     final buildNumber = results['build-number'] as String;
     final releaseVersion = results['release-version'] as String;
-    final buildProgress = logger.progress('Building aar');
-
+    final flutterVersion = results['flutter-version'] as String?;
     final shorebirdYaml = shorebirdEnv.getShorebirdYaml()!;
     final appId = shorebirdYaml.getAppId();
     final app = await codePushClientWrapper.getApp(appId: appId);
@@ -94,6 +97,7 @@ make smaller updates to your app.
       appId: appId,
       releaseVersion: releaseVersion,
     );
+
     if (existingRelease != null) {
       codePushClientWrapper.ensureReleaseIsNotActive(
         release: existingRelease,
@@ -101,22 +105,70 @@ make smaller updates to your app.
       );
     }
 
+    var flutterRevision = shorebirdEnv.flutterRevision;
+    if (flutterVersion != null) {
+      final String? revision;
+      try {
+        revision = await shorebirdFlutter.getRevisionForVersion(
+          flutterVersion,
+        );
+      } catch (error) {
+        logger.err(
+          '''
+Unable to determine revision for Flutter version: $flutterVersion.
+$error''',
+        );
+        return ExitCode.software.code;
+      }
+
+      if (revision == null) {
+        final openIssueLink = link(
+          uri: Uri.parse(
+            'https://github.com/shorebirdtech/shorebird/issues/new?assignees=&labels=feature&projects=&template=feature_request.md&title=feat%3A+',
+          ),
+          message: 'open an issue',
+        );
+        logger.err('''
+Version $flutterVersion not found. Please $openIssueLink to request a new version.
+Use `shorebird flutter versions list` to list available versions.
+''');
+        return ExitCode.software.code;
+      }
+
+      flutterRevision = revision;
+    }
+
+    final originalFlutterRevision = shorebirdEnv.flutterRevision;
+    final switchFlutterRevision = flutterRevision != originalFlutterRevision;
+
+    if (switchFlutterRevision) {
+      await shorebirdFlutter.useRevision(revision: flutterRevision);
+    }
+
+    final flutterVersionString = await shorebirdFlutter.getVersionAndRevision();
+
+    final buildProgress = logger.progress(
+      'Building release with Flutter $flutterVersionString',
+    );
+
     try {
       await buildAar(buildNumber: buildNumber);
     } on ProcessException catch (error) {
       buildProgress.fail('Failed to build: ${error.message}');
       return ExitCode.software.code;
+    } finally {
+      if (switchFlutterRevision) {
+        await shorebirdFlutter.useRevision(revision: originalFlutterRevision);
+      }
     }
-
     buildProgress.complete();
 
-    final flutterVersion = await shorebirdFlutter.getVersionAndRevision();
     final archNames = architectures.keys.map((arch) => arch.name);
     final summary = [
       '''📱 App: ${lightCyan.wrap(app.displayName)} ${lightCyan.wrap('(${app.appId})')}''',
       '📦 Release Version: ${lightCyan.wrap(releaseVersion)}',
       '''🕹️  Platform: ${lightCyan.wrap(platform.name)} ${lightCyan.wrap('(${archNames.join(', ')})')}''',
-      '🐦 Flutter Version: ${lightCyan.wrap(flutterVersion)}',
+      '🐦 Flutter Version: ${lightCyan.wrap(flutterVersionString)}',
     ];
 
     logger.info('''

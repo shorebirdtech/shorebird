@@ -21,6 +21,13 @@ class FlutterVersionsUseCommand extends ShorebirdCommand {
 
   @override
   Future<int> run() async {
+    logger.warn(
+      '''
+This command has been deprecated and will be removed in the next major version.
+Please use: "shorebird release <target> --flutter-version <version>" instead.
+''',
+    );
+
     if (results.rest.isEmpty) {
       logger.err(
         '''
