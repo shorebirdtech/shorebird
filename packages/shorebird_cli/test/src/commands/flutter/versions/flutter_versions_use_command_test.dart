@@ -56,6 +56,18 @@ void main() {
       expect(command.description, equals('Use a different Flutter version.'));
     });
 
+    test('logs deprecation warning', () async {
+      await runWithOverrides(command.run);
+      verify(
+        () => logger.warn(
+          '''
+This command has been deprecated and will be removed in the next major version.
+Please use: "shorebird release <target> --flutter-version <version>" instead.
+''',
+        ),
+      ).called(1);
+    });
+
     test('exits with code 64 when no version is specified', () async {
       when(() => argResults.rest).thenReturn([]);
       await expectLater(
