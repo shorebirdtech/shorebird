@@ -16,6 +16,14 @@ we did, was a very easy fix.  Thanks to all who helped us track this down!
 Note, the fix required pulling in changes from upstream Dart so we've temporarily
 moved to using the beta Flutter channel (3.19.0-0.4.pre).
 
+To use the beta version we recommend switching to the Flutter beta channel and
+verifying that your app runs smoothly before releasing with shorebird.
+
+```sh
+flutter channel beta
+flutter upgrade
+```
+
 We expect a new stable Flutter release very soon and plan to move back to using
 stable Flutter releases as soon as Flutter 3.19.0 is out.
 
