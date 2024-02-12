@@ -185,6 +185,79 @@ Tools • Dart 3.0.6 • DevTools 2.23.1''');
       });
     });
 
+    group('getRevisionForVersion', () {
+      const version = '3.16.3';
+
+      test('throws exception when process exits with non-zero code', () async {
+        const exception = ProcessException('git', ['rev-parse']);
+        when(
+          () => git.revParse(
+            revision: any(named: 'revision'),
+            directory: any(named: 'directory'),
+          ),
+        ).thenThrow(exception);
+        await expectLater(
+          runWithOverrides(
+            () => shorebirdFlutter.getRevisionForVersion(version),
+          ),
+          throwsA(exception),
+        );
+        verify(
+          () => git.revParse(
+            revision: 'refs/remotes/origin/flutter_release/$version',
+            directory: any(named: 'directory'),
+          ),
+        ).called(1);
+      });
+
+      test('returns null when cannot parse revision', () async {
+        when(
+          () => git.revParse(
+            revision: any(named: 'revision'),
+            directory: any(named: 'directory'),
+          ),
+        ).thenAnswer((_) async => '');
+        await expectLater(
+          runWithOverrides(
+            () => shorebirdFlutter.getRevisionForVersion(version),
+          ),
+          completion(isNull),
+        );
+        verify(
+          () => git.revParse(
+            revision: 'refs/remotes/origin/flutter_release/$version',
+            directory: any(named: 'directory'),
+          ),
+        ).called(1);
+      });
+
+      test('returns revision when able to parse the string', () async {
+        const revision = '771d07b2cf97cf107bae6eeedcf41bdc9db772fa';
+        when(
+          () => git.revParse(
+            revision: any(named: 'revision'),
+            directory: any(named: 'directory'),
+          ),
+        ).thenAnswer(
+          (_) async => '''
+$revision
+        ''',
+        );
+        await expectLater(
+          runWithOverrides(
+            () => shorebirdFlutter.getRevisionForVersion(version),
+          ),
+          completion(equals(revision)),
+        );
+        verify(
+          () => git.revParse(
+            revision: 'refs/remotes/origin/flutter_release/$version',
+            directory: any(named: 'directory'),
+          ),
+        ).called(1);
+      });
+    });
+
     group('getVersionString', () {
       test('throws ProcessException when process exits with non-zero code',
           () async {
