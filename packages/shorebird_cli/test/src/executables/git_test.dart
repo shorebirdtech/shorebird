@@ -142,9 +142,7 @@ void main() {
       const directory = 'repository';
       test('executes correct command', () async {
         await expectLater(
-          runWithOverrides(
-            () => git.fetch(directory: directory),
-          ),
+          runWithOverrides(() => git.fetch(directory: directory)),
           completes,
         );
         verify(
@@ -159,9 +157,7 @@ void main() {
       test('executes correct command w/args', () async {
         final args = ['--tags'];
         await expectLater(
-          runWithOverrides(
-            () => git.fetch(directory: directory, args: args),
-          ),
+          runWithOverrides(() => git.fetch(directory: directory, args: args)),
           completes,
         );
         verify(
