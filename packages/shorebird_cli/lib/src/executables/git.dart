@@ -13,6 +13,29 @@ Git get git => read(gitRef);
 class Git {
   static const executable = 'git';
 
+  /// Execute a git command with the provided [arguments].
+  Future<ShorebirdProcessResult> git(
+    List<String> arguments, {
+    String? workingDirectory,
+    bool runInShell = false,
+  }) async {
+    final result = await process.run(
+      executable,
+      arguments,
+      runInShell: runInShell,
+      workingDirectory: workingDirectory,
+    );
+    if (result.exitCode != 0) {
+      throw ProcessException(
+        executable,
+        arguments,
+        '${result.stderr}',
+        result.exitCode,
+      );
+    }
+    return result;
+  }
+
   /// Clones the git repository located at [url] into the [outputDirectory].
   /// `git clone <url> ...<args> <outputDirectory>`
   Future<void> clone({
@@ -20,25 +43,15 @@ class Git {
     required String outputDirectory,
     List<String>? args,
   }) async {
-    final arguments = [
-      'clone',
-      url,
-      ...?args,
-      outputDirectory,
-    ];
-    final result = await process.run(
-      executable,
-      arguments,
+    await git(
+      [
+        'clone',
+        url,
+        ...?args,
+        outputDirectory,
+      ],
       runInShell: true,
     );
-    if (result.exitCode != 0) {
-      throw ProcessException(
-        executable,
-        arguments,
-        '${result.stderr}',
-        result.exitCode,
-      );
-    }
   }
 
   /// Checks out the git repository located at [directory] to the [revision].
@@ -46,68 +59,30 @@ class Git {
     required String directory,
     required String revision,
   }) async {
-    final arguments = [
-      '-C',
-      directory,
-      '-c',
-      'advice.detachedHead=false',
-      'checkout',
-      revision,
-    ];
-    final result = await process.run(
-      executable,
-      arguments,
+    await git(
+      [
+        '-C',
+        directory,
+        '-c',
+        'advice.detachedHead=false',
+        'checkout',
+        revision,
+      ],
       runInShell: true,
     );
-    if (result.exitCode != 0) {
-      throw ProcessException(
-        executable,
-        arguments,
-        '${result.stderr}',
-        result.exitCode,
-      );
-    }
   }
 
   /// Fetch branches/tags from the repository at [directory].
   Future<void> fetch({required String directory, List<String>? args}) async {
-    final arguments = ['fetch', ...?args];
-    final result = await process.run(
-      executable,
-      arguments,
-      workingDirectory: directory,
-    );
-    if (result.exitCode != 0) {
-      throw ProcessException(
-        executable,
-        arguments,
-        '${result.stderr}',
-        result.exitCode,
-      );
-    }
+    await git(['fetch', ...?args], workingDirectory: directory);
   }
 
   /// Run `git remote` at [directory].
-  // TODO(eseidel): add a generic `git` method for running arbitrary git
-  // commands and removing duplication between these methods.
   Future<void> remote({
     required String directory,
     List<String>? args,
   }) async {
-    final arguments = ['remote', ...?args];
-    final result = await process.run(
-      executable,
-      arguments,
-      workingDirectory: directory,
-    );
-    if (result.exitCode != 0) {
-      throw ProcessException(
-        executable,
-        arguments,
-        '${result.stderr}',
-        result.exitCode,
-      );
-    }
+    await git(['remote', ...?args], workingDirectory: directory);
   }
 
   /// Iterate over all refs that match [pattern] and show them
@@ -118,26 +93,16 @@ class Git {
     required String pattern,
     String? contains,
   }) async {
-    final arguments = [
-      'for-each-ref',
-      if (contains != null) ...['--contains', contains],
-      '--format',
-      format,
-      pattern,
-    ];
-    final result = await process.run(
-      executable,
-      arguments,
+    final result = await git(
+      [
+        'for-each-ref',
+        if (contains != null) ...['--contains', contains],
+        '--format',
+        format,
+        pattern,
+      ],
       workingDirectory: directory,
     );
-    if (result.exitCode != 0) {
-      throw ProcessException(
-        executable,
-        arguments,
-        '${result.stderr}',
-        result.exitCode,
-      );
-    }
     return '${result.stdout}'.trim();
   }
 
@@ -147,20 +112,7 @@ class Git {
     required String directory,
     List<String>? args,
   }) async {
-    final arguments = ['reset', ...?args, revision];
-    final result = await process.run(
-      executable,
-      arguments,
-      workingDirectory: directory,
-    );
-    if (result.exitCode != 0) {
-      throw ProcessException(
-        executable,
-        arguments,
-        '${result.stderr}',
-        result.exitCode,
-      );
-    }
+    await git(['reset', ...?args, revision], workingDirectory: directory);
   }
 
   /// Returns the revision of the git repository located at [directory].
@@ -168,39 +120,16 @@ class Git {
     required String revision,
     required String directory,
   }) async {
-    final arguments = ['rev-parse', '--verify', revision];
-    final result = await process.run(
-      executable,
-      arguments,
+    final result = await git(
+      ['rev-parse', '--verify', revision],
       workingDirectory: directory,
     );
-    if (result.exitCode != 0) {
-      throw ProcessException(
-        executable,
-        arguments,
-        '${result.stderr}',
-        result.exitCode,
-      );
-    }
     return '${result.stdout}'.trim();
   }
 
   /// Returns the status of the git repository located at [directory].
   Future<String> status({required String directory, List<String>? args}) async {
-    final arguments = ['status', ...?args];
-    final result = await process.run(
-      executable,
-      arguments,
-      workingDirectory: directory,
-    );
-    if (result.exitCode != 0) {
-      throw ProcessException(
-        executable,
-        arguments,
-        '${result.stderr}',
-        result.exitCode,
-      );
-    }
+    final result = await git(['status', ...?args], workingDirectory: directory);
     return '${result.stdout}'.trim();
   }
 }
