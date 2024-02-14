@@ -1091,6 +1091,11 @@ channel: ${track.channel}
           await runWithOverrides(command.run);
 
           verify(
+            () => progress.complete(
+              '''No iOS 17+ device found, looking for devices running iOS 16 or lower''',
+            ),
+          ).called(1);
+          verify(
             () => iosDeploy.installAndLaunchApp(
               bundlePath: runnerPath(),
               deviceId: 'not-a-device-id',
