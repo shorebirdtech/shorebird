@@ -62,6 +62,12 @@ class IOSDeploy {
   // (lldb) Process 1234 resuming
   static final _lldbProcessResuming = RegExp(r'Process \d+ resuming');
 
+  /// [....] Waiting for device to connect
+  static final _preConnectProgressUpdate = RegExp(r'\[\.+\] (.*)');
+
+  /// [  0%] Downloading package
+  static final _postConnectProgressUpdate = RegExp(r'\[\s+\d+\%\]');
+
   // Send signal to stop (pause) the app. Used before a backtrace dump.
   static const String _signalStop = 'process signal SIGSTOP';
 
@@ -250,7 +256,10 @@ Or run on an iOS simulator without code signing
           if (line.contains('Copying') && line.endsWith('to device')) {
             final abbreviatedLine = line.replaceFirst('$bundlePath/', '');
             launchProgress.update(abbreviatedLine);
-          } else if (line.startsWith(RegExp(r'\[\s+\d+\%\]'))) {
+          } else if (_preConnectProgressUpdate.hasMatch(line)) {
+            final match = _preConnectProgressUpdate.firstMatch(line)!;
+            launchProgress.update(match.group(1)!);
+          } else if (_postConnectProgressUpdate.hasMatch(line)) {
             launchProgress.update(line);
           } else {
             logger.detail(line);

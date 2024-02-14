@@ -368,7 +368,7 @@ class PreviewCommand extends ShorebirdCommand {
       final shouldUseDeviceCtl = deviceForLaunch != null;
       final progressCompleteMessage = deviceForLaunch != null
           ? 'Using device ${deviceForLaunch.name}'
-          : null;
+          : '''No iOS 17+ device found, looking for devices running iOS 16 or lower''';
       deviceLocateProgress.complete(progressCompleteMessage);
 
       final int installExitCode;

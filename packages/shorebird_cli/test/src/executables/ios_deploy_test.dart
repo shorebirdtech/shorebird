@@ -269,6 +269,20 @@ void main() {
             bundlePath,
           ]),
         ).called(1);
+
+        // Removes leading [...] from lines that start with [...]
+        verify(
+          () => progress.update(
+            """Using 82b15a4a69ad47c74fe3e71b62a6a6e2842efe25 (D22AP, iPhone X, iphoneos, arm64, 16.3.1, 20D67) a.k.a. 'Felix’s iPhone'.""",
+          ),
+        ).called(1);
+
+        // Does not remove leading [  x%] from lines that start with [  x%]
+        verify(
+          () => progress.update(
+            '''[  7%] Copying /Users/felix/Development/github.com/shorebirdtech/_shorebird/shorebird/bin/cache/previews/b3be02c7-97a8-4135-be71-814cc43d096e/ios_1.0.4+7.app/Base.lproj/Main.storyboardc/BYZ-38-t0r-view-8bC-Xf-vdC.nib to device''',
+          ),
+        ).called(1);
       });
 
       test('kills process on sigint', () async {
