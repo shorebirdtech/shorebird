@@ -206,7 +206,7 @@ jobs:
       - name: 🔎 Verify ${{ matrix.package }}
         uses: ./.github/actions/verify_version
         with:
-          working_directory: package/${{ matrix.package }}
+          working_directory: packages/${{ matrix.package }}
 
   ci:
     needs:
