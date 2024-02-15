@@ -2,6 +2,21 @@
 # curl -X POST --data-binary @codecov.yml https://codecov.io/validate
 # See https://docs.codecov.com/docs/flags
 
+# Setting coverage targets per flag
+coverage:
+  status:
+    project:
+      default:
+        target: 98% #overall project/ repo coverage
+      packages:
+        target: 100%
+        flags:
+          - packages
+      third_party:
+        target: 85%
+        flags:
+          - third_party
+
 flag_management:
   default_rules: # the rules that will be followed for any flag added, generally
     carryforward: true
@@ -10,7 +25,6 @@ flag_management:
         target: 98%
       - type: patch
         target: 85% # To merge the fork of googleauth_apis
-
   individual_flags:
     - name: packages
       paths:
