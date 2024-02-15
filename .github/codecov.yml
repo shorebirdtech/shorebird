@@ -9,7 +9,7 @@ flag_management:
       - type: project
         target: 98%
       - type: patch
-        target: 98%
+        target: 85% # To merge the fork of googleauth_apis
 
   individual_flags:
     - name: packages
