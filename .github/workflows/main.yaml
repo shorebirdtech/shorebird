@@ -137,7 +137,7 @@ jobs:
 
   build_third_party_packages:
     needs: changes
-    if: ${{ needs.changes.outputs.needs_dart_build != '[]' }}
+    if: ${{ needs.changes.outputs.needs_third_party_build != '[]' }}
 
     strategy:
       matrix:
