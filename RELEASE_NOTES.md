@@ -2,21 +2,22 @@
 
 This section contains past updates we've sent to customers via Discord.
 
-## 0.25.3 (February 9, 2024)
+## 0.26.0 (February 15, 2024)
 
-💥 Fixes our last known crasher on iOS.
-   https://github.com/shorebirdtech/shorebird/issues/1698
+🆕 Updated to Flutter 3.19.0.
+🗑 Deprecated `flutter versions use` in favor of `shorebird release --flutter-version`.
+💥 Fixed a crash on iOS involving package:dio.
 
-This one was a doozy.  We had a crasher on iOS caused by a subtle bug in
-upstream Dart that was triggered by `package:dio`, but only when handling json
-blobs larger than 50kb.  It took us a long time to find a reproduction, but once
-we did, was a very easy fix.  Thanks to all who helped us track this down!
+The iOS crasher was caused by a subtle bug in the upstream Dart dill compiler,
+triggered by code in `package:dio`, which only executed when parsing json blobs
+larger than 50kb. The full fix required changes to upstream Dart which is why
+we waited until Flutter 3.19.0 to release this fix.
 
-We're now returning our focus to finishing 1.0 which we hope to release in
-another week or two.  We believe this release to be stable and safe to use
-on iOS and Android.  Please let us know if you encounter any issues!
+We're now returning our focus to finishing 1.0. We believe this release to be
+stable and safe to use on iOS and Android. Please let us know if you encounter
+any issues!
 
-📚 Release notes can be found at https://github.com/shorebirdtech/shorebird/releases/tag/v0.25.3
+📚 Release notes can be found at https://github.com/shorebirdtech/shorebird/releases/tag/v0.26.0
 
 ## 0.25.2 (February 7, 2024)
 
