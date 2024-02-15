@@ -12,7 +12,7 @@ on:
 
 env:
   SHOREBIRD_TOKEN: ${{ secrets.SHOREBIRD_TOKEN }}
-  FLUTTER_VERSION: 3.13.9
+  FLUTTER_VERSION: 3.19.0
 
 jobs:
   patch:
