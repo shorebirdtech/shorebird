@@ -44,6 +44,11 @@ jobs:
               - ./.github/workflows/main.yaml
               - ./.github/actions/dart_package/action.yaml
               - packages/discord_gcp_alerts/**
+            googleapis_auth:
+              - ./.github/codecov.yml
+              - ./.github/workflows/main.yaml
+              - ./.github/actions/dart_package/action.yaml
+              - third_party/googleapis_auth/**
             shorebird_cli:
               - ./.github/codecov.yml
               - ./.github/workflows/main.yaml
@@ -51,6 +56,7 @@ jobs:
               - packages/shorebird_cli/**
               - packages/shorebird_code_push_client/**
               - packages/shorebird_code_push_protocol/**
+              - third_party/googleapis_auth/**
             shorebird_code_push_client:
               - ./.github/codecov.yml
               - ./.github/workflows/main.yaml
