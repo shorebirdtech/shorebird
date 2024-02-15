@@ -440,7 +440,10 @@ class CodePushClient {
   void close() => _httpClient.close();
 
   CodePushException _parseErrorResponse(int statusCode, String response) {
+    // No idea why, but Dart 3.3.0 claims this line is not covered by tests.
+    // coverage:ignore-start
     final exceptionBuilder = switch (statusCode) {
+      // coverage:ignore-end
       HttpStatus.conflict => CodePushConflictException.new,
       HttpStatus.notFound => CodePushNotFoundException.new,
       HttpStatus.upgradeRequired => CodePushUpgradeRequiredException.new,
