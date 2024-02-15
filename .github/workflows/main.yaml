@@ -141,7 +141,7 @@ jobs:
 
     strategy:
       matrix:
-        package: ${{ fromJSON(needs.changes.outputs.needs_dart_build) }}
+        package: ${{ fromJSON(needs.changes.outputs.needs_third_party_build) }}
 
     runs-on: ubuntu-latest
 
