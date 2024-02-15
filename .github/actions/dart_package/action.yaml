@@ -78,7 +78,6 @@ runs:
     - name: Upload Coverage
       uses: codecov/codecov-action@v4
       with:
-        codecov_yml_path: codecov.yml
         flags: ${{ steps.split.outputs.package_name }}
         token: ${{ inputs.codecov_token }}
 
