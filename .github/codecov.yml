@@ -2,15 +2,15 @@
 # curl -X POST --data-binary @codecov.yml https://codecov.io/validate
 # See https://docs.codecov.com/docs/flags
 
-coverage:
-  status:
-    project:
-      default:
-        target: 98% #overall project/ repo coverage
-
 flag_management:
   default_rules: # the rules that will be followed for any flag added, generally
     carryforward: true
+    statuses:
+      - type: project
+        target: 98%
+      - type: patch
+        target: 98%
+
   individual_flags:
     - name: packages
       paths:
