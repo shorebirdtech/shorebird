@@ -1,0 +1,13 @@
+# Validate with:
+# curl -X POST --data-binary @codecov.yml https://codecov.io/validate
+# See https://docs.codecov.com/docs/flags
+
+# Packages in third_party don't have 100% coverage, which shouldn't prevent
+# us from landing. Ideally, this would be configured to allow a non-100% base
+# and enforce that all changes have 100% coverage of affected lines.
+ignore:
+  - third_party
+
+flag_management:
+  default_rules: # the rules that will be followed for any flag added, generally
+    carryforward: true

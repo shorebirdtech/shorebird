@@ -1,0 +1,8 @@
+.dart_tool/
+.packages
+pubspec.lock
+
+# User files
+test_integration/*.json
+test_integration/client_id*.yaml
+test_integration/config.yaml

@@ -276,10 +276,9 @@ packages:
   googleapis_auth:
     dependency: "direct main"
     description:
-      name: googleapis_auth
-      sha256: af7c3a3edf9d0de2e1e0a77e994fae0a581c525fa7012af4fa0d4a52ed9484da
-      url: "https://pub.dev"
-    source: hosted
+      path: "../../third_party/googleapis_auth"
+      relative: true
+    source: path
     version: "1.4.1"
   graphs:
     dependency: transitive
