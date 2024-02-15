@@ -76,7 +76,7 @@ runs:
       run: echo "package_name=${PACKAGE_PATH##*/}" >> $GITHUB_OUTPUT
 
     - name: Upload Coverage
-      uses: codecov/codecov-action@v3
+      uses: codecov/codecov-action@v4
       with:
         codecov_yml_path: ${GITHUB_WORKSPACE}/codecov.yml
         flags: ${{ steps.split.outputs.package_name }}
