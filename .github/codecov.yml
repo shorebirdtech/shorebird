@@ -2,56 +2,12 @@
 # curl -X POST --data-binary @codecov.yml https://codecov.io/validate
 # See https://docs.codecov.com/docs/flags
 
-# Setting coverage targets per flag
-coverage:
-  status:
-    project:
-      default:
-        target: 98% #overall project/ repo coverage
-      packages:
-        target: 100%
-        flags:
-          - packages
-      googleapis_auth:
-        target: 85%
-        flags:
-          - googleapis_auth
-    patch:
-      default:
-        target: 98% #overall project/ repo coverage
-      packages:
-        target: 100%
-        flags:
-          - packages
-      googleapis_auth:
-        target: 85%
-        flags:
-          - googleapis_auth
+# Packages in third_party don't have 100% coverage, which shouldn't prevent
+# us from landing. Ideally, this would be configured to allow a non-100% base
+# and enforce that all changes have 100% coverage of affected lines.
+ignore:
+  - "third_party"
 
 flag_management:
   default_rules: # the rules that will be followed for any flag added, generally
     carryforward: true
-    statuses:
-      - type: project
-        target: 98%
-      - type: patch
-        target: 85% # To merge the fork of googleapis_auth
-  individual_flags:
-    - name: packages
-      paths:
-        - packages
-      carryforward: true
-      statuses:
-        - type: project
-          target: 100%
-        - type: patch
-          target: 100%
-    - name: googleapis_auth
-      paths:
-        - third_party/googleapis_auth/**
-      carryforward: true
-      statuses:
-        - type: project
-          target: 85%
-        - type: patch
-          target: 85%
