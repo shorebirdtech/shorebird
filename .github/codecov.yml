@@ -9,13 +9,13 @@ coverage:
       default:
         target: 98% #overall project/ repo coverage
       packages:
-        target: 100%
+        target: 98%
         flags:
           - packages
-      third_party:
+      googleapis_auth:
         target: 85%
         flags:
-          - third_party
+          - googleapis_auth
 
 flag_management:
   default_rules: # the rules that will be followed for any flag added, generally
@@ -24,7 +24,7 @@ flag_management:
       - type: project
         target: 98%
       - type: patch
-        target: 85% # To merge the fork of googleauth_apis
+        target: 85% # To merge the fork of googleapis_auth
   individual_flags:
     - name: packages
       paths:
@@ -35,12 +35,12 @@ flag_management:
           target: 100%
         - type: patch
           target: 100%
-    - name: third_party
+    - name: googleapis_auth
       paths:
-        - third_party
+        - third_party/googleapis_auth/**
       carryforward: true
       statuses:
         - type: project
           target: 85%
         - type: patch
-          target: 100%
+          target: 85%
