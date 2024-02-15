@@ -34,22 +34,22 @@ jobs:
         id: needs_dart_build
         with:
           filters: |
-            artifact_proxy:
+            packages/artifact_proxy:
               - ./.github/codecov.yml
               - ./.github/workflows/main.yaml
               - ./.github/actions/dart_package/action.yaml
               - packages/artifact_proxy/**
-            discord_gcp_alerts:
+            packages/discord_gcp_alerts:
               - ./.github/codecov.yml
               - ./.github/workflows/main.yaml
               - ./.github/actions/dart_package/action.yaml
               - packages/discord_gcp_alerts/**
-            googleapis_auth:
+            third_party/googleapis_auth:
               - ./.github/codecov.yml
               - ./.github/workflows/main.yaml
               - ./.github/actions/dart_package/action.yaml
               - third_party/googleapis_auth/**
-            shorebird_cli:
+            packages/shorebird_cli:
               - ./.github/codecov.yml
               - ./.github/workflows/main.yaml
               - ./.github/actions/dart_package/action.yaml
@@ -57,23 +57,23 @@ jobs:
               - packages/shorebird_code_push_client/**
               - packages/shorebird_code_push_protocol/**
               - third_party/googleapis_auth/**
-            shorebird_code_push_client:
+            packages/shorebird_code_push_client:
               - ./.github/codecov.yml
               - ./.github/workflows/main.yaml
               - ./.github/actions/dart_package/action.yaml
               - packages/shorebird_code_push_client/**
               - packages/shorebird_code_push_protocol/**
-            shorebird_code_push_protocol:
+            packages/shorebird_code_push_protocol:
               - ./.github/codecov.yml
               - ./.github/workflows/main.yaml
               - ./.github/actions/dart_package/action.yaml
               - packages/shorebird_code_push_protocol/**
-            jwt:
+            packages/jwt:
               - ./.github/codecov.yml
               - ./.github/workflows/main.yaml
               - ./.github/actions/dart_package/action.yaml
               - packages/jwt/**
-            scoped:
+            packages/scoped:
               - ./.github/codecov.yml
               - ./.github/workflows/main.yaml
               - ./.github/actions/dart_package/action.yaml
@@ -84,7 +84,7 @@ jobs:
         id: needs_redis_build
         with:
           filters: |
-            redis_client:
+            packages/redis_client:
               - ./.github/codecov.yml
               - ./.github/workflows/main.yaml
               - ./.github/actions/dart_package/action.yaml
@@ -95,12 +95,12 @@ jobs:
         id: needs_verify
         with:
           filters: |
-            shorebird_cli:
+            packages/shorebird_cli:
               - ./.github/codecov.yml
               - ./.github/workflows/main.yaml
               - ./.github/actions/verify_version/action.yaml
               - packages/shorebird_cli/**
-            shorebird_code_push_client:
+            packages/shorebird_code_push_client:
               - ./.github/codecov.yml
               - ./.github/workflows/main.yaml
               - ./.github/actions/verify_version/action.yaml
@@ -126,7 +126,7 @@ jobs:
         uses: ./.github/actions/dart_package
         with:
           codecov_token: ${{ secrets.CODECOV_TOKEN }}
-          working_directory: packages/${{ matrix.package }}
+          working_directory: ${{ matrix.package }}
           min_coverage: 100
 
   build_redis:
@@ -156,7 +156,7 @@ jobs:
         uses: ./.github/actions/dart_package
         with:
           codecov_token: ${{ secrets.CODECOV_TOKEN }}
-          working_directory: packages/${{ matrix.package }}
+          working_directory: ${{ matrix.package }}
 
   verify_packages:
     needs: changes
@@ -177,7 +177,7 @@ jobs:
       - name: 🔎 Verify ${{ matrix.package }}
         uses: ./.github/actions/verify_version
         with:
-          working_directory: packages/${{ matrix.package }}
+          working_directory: ${{ matrix.package }}
 
   ci:
     needs:
