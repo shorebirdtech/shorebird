@@ -21,6 +21,7 @@ jobs:
     outputs:
       needs_dart_build: ${{ steps.needs_dart_build.outputs.changes }}
       needs_redis_build: ${{ steps.needs_redis_build.outputs.changes }}
+      needs_third_party_build: ${{ steps.needs_third_party_build.outputs.changes }}
       needs_verify: ${{ steps.needs_verify.outputs.changes }}
 
     name: 👀 Detect Changes
