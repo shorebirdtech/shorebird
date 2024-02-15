@@ -4,3 +4,19 @@
 flag_management:
   default_rules: # the rules that will be followed for any flag added, generally
     carryforward: true
+    statuses:
+      - type: project
+        target: auto
+        threshold: 99%
+      - type: patch
+        target: 100%
+  individual_flags:
+    - name: third_party
+      paths:
+        - third_party
+      carryforward: true
+      statuses:
+        - type: project
+          target: 85%
+        - type: patch
+          target: 100%
