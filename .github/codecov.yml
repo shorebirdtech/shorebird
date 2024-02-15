@@ -9,7 +9,18 @@ coverage:
       default:
         target: 98% #overall project/ repo coverage
       packages:
-        target: 98%
+        target: 100%
+        flags:
+          - packages
+      googleapis_auth:
+        target: 85%
+        flags:
+          - googleapis_auth
+    patch:
+      default:
+        target: 98% #overall project/ repo coverage
+      packages:
+        target: 100%
         flags:
           - packages
       googleapis_auth:
