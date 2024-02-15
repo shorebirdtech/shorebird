@@ -5,28 +5,22 @@
 coverage:
   status:
     project:
-      packages:
-        target: 98%
-      third_party:
-        target: 85%
-        flags:
-          - third_party
-
-# component_management:
-#   individual_components:
-#     - component_id: packages # this is an identifier that should not be changed
-#       name: packages # this is a display name, and can be changed freely
-#       paths:
-#         - packages/
-#     - component_id: third_party # this is an identifier that should not be changed
-#       name: third_party # this is a display name, and can be changed freely
-#       paths:
-#         - third_party/
+      default:
+        target: 98% #overall project/ repo coverage
 
 flag_management:
   default_rules: # the rules that will be followed for any flag added, generally
     carryforward: true
   individual_flags:
+    - name: packages
+      paths:
+        - packages
+      carryforward: true
+      statuses:
+        - type: project
+          target: 100%
+        - type: patch
+          target: 100%
     - name: third_party
       paths:
         - third_party
