@@ -2,14 +2,10 @@
 // for details. All rights reserved. Use of this source code is governed by a
 // BSD-style license that can be found in the LICENSE file.
 
-import 'dart:io';
-
+import 'package:googleapis_auth/src/auth_provider.dart';
 import 'package:http/http.dart';
 
-import 'src/adc_utils.dart';
 import 'src/auth_http_utils.dart';
-import 'src/http_client_base.dart';
-import 'src/metadata_server_client.dart' show clientViaMetadataServer;
 import 'src/oauth2_flows/authorization_code_grant_manual_flow.dart';
 import 'src/oauth2_flows/authorization_code_grant_server_flow.dart';
 import 'src/service_account_credentials.dart';
@@ -21,79 +17,6 @@ export 'src/oauth2_flows/auth_code.dart'
     show obtainAccessCredentialsViaCodeExchange;
 export 'src/service_account_client.dart';
 export 'src/typedefs.dart';
-
-/// Create a client using
-/// [Application Default Credentials](https://cloud.google.com/docs/authentication/production).
-///
-/// Looks for credentials in the following order of preference:
-///  1. A JSON file whose path is specified by `GOOGLE_APPLICATION_CREDENTIALS`,
-///     this file typically contains [exported service account keys][svc-keys].
-///  2. A JSON file created by
-///     [`gcloud auth application-default login`][gcloud-login]
-///     in a well-known location (`%APPDATA%/gcloud/application_default_credentials.json`
-///     on Windows and `$HOME/.config/gcloud/application_default_credentials.json` on Linux/Mac).
-///  3. On Google Compute Engine and App Engine Flex we fetch credentials from
-///     [GCE metadata service][meta-data].
-///
-/// [meta-data]: https://cloud.google.com/compute/docs/storing-retrieving-metadata
-/// [svc-keys]: https://cloud.google.com/docs/authentication/getting-started
-/// [gcloud-login]: https://cloud.google.com/sdk/gcloud/reference/auth/application-default/login
-///
-/// {@macro googleapis_auth_baseClient_param}
-///
-/// {@macro googleapis_auth_returned_auto_refresh_client}
-Future<AutoRefreshingAuthClient> clientViaApplicationDefaultCredentials({
-  required List<String> scopes,
-  Client? baseClient,
-}) async {
-  if (baseClient == null) {
-    baseClient = Client();
-  } else {
-    baseClient = nonClosingClient(baseClient);
-  }
-
-  // If env var specifies a file to load credentials from we'll do that.
-  final credsEnv = Platform.environment['GOOGLE_APPLICATION_CREDENTIALS'];
-  if (credsEnv != null && credsEnv.isNotEmpty) {
-    // If env var is specific and not empty, we always try to load, even if
-    // the file doesn't exist.
-    return await fromApplicationsCredentialsFile(
-      File(credsEnv),
-      'GOOGLE_APPLICATION_CREDENTIALS',
-      scopes,
-      baseClient,
-    );
-  }
-
-  // Attempt to use file created by `gcloud auth application-default login`
-  File credFile;
-  if (Platform.isWindows) {
-    credFile = File.fromUri(
-      Uri.directory(Platform.environment['APPDATA']!)
-          .resolve('gcloud/application_default_credentials.json'),
-    );
-  } else {
-    final homeVar = Platform.environment['HOME'];
-    if (homeVar == null) {
-      throw StateError('The expected environment variable HOME must be set.');
-    }
-    credFile = File.fromUri(
-      Uri.directory(homeVar)
-          .resolve('.config/gcloud/application_default_credentials.json'),
-    );
-  }
-  // Only try to load from credFile if it exists.
-  if (await credFile.exists()) {
-    return await fromApplicationsCredentialsFile(
-      credFile,
-      '`gcloud auth application-default login`',
-      scopes,
-      baseClient,
-    );
-  }
-
-  return await clientViaMetadataServer(baseClient: baseClient);
-}
 
 /// Obtains oauth2 credentials and returns an authenticated HTTP client.
 ///
@@ -116,6 +39,7 @@ Future<AutoRefreshingAuthClient> clientViaApplicationDefaultCredentials({
 /// {@macro googleapis_auth_not_close_the_baseClient}
 /// {@macro googleapis_auth_listen_port}
 Future<AutoRefreshingAuthClient> clientViaUserConsent(
+  AuthProvider authProvider,
   ClientId clientId,
   List<String> scopes,
   PromptUserForConsent userPrompt, {
@@ -130,6 +54,7 @@ Future<AutoRefreshingAuthClient> clientViaUserConsent(
   }
 
   final flow = AuthorizationCodeGrantServerFlow(
+    authProvider,
     clientId,
     scopes,
     baseClient,
@@ -150,6 +75,7 @@ Future<AutoRefreshingAuthClient> clientViaUserConsent(
   }
   return AutoRefreshingClient(
     baseClient,
+    authProvider,
     clientId,
     credentials,
     closeUnderlyingClient: closeUnderlyingClient,
@@ -172,6 +98,7 @@ Future<AutoRefreshingAuthClient> clientViaUserConsent(
 /// {@macro googleapis_auth_close_the_client}
 /// {@macro googleapis_auth_not_close_the_baseClient}
 Future<AutoRefreshingAuthClient> clientViaUserConsentManual(
+  AuthProvider authProvider,
   ClientId clientId,
   List<String> scopes,
   PromptUserForConsentManual userPrompt, {
@@ -185,6 +112,7 @@ Future<AutoRefreshingAuthClient> clientViaUserConsentManual(
   }
 
   final flow = AuthorizationCodeGrantManualFlow(
+    authProvider,
     clientId,
     scopes,
     baseClient,
@@ -205,6 +133,7 @@ Future<AutoRefreshingAuthClient> clientViaUserConsentManual(
 
   return AutoRefreshingClient(
     baseClient,
+    authProvider,
     clientId,
     credentials,
     closeUnderlyingClient: closeUnderlyingClient,
@@ -232,6 +161,7 @@ Future<AutoRefreshingAuthClient> clientViaUserConsentManual(
 /// on the Google Cloud console.
 /// {@endtemplate}
 Future<AccessCredentials> obtainAccessCredentialsViaUserConsent(
+  AuthProvider authProvider,
   ClientId clientId,
   List<String> scopes,
   Client client,
@@ -240,6 +170,7 @@ Future<AccessCredentials> obtainAccessCredentialsViaUserConsent(
   int listenPort = 0,
 }) =>
     AuthorizationCodeGrantServerFlow(
+      authProvider,
       clientId,
       scopes,
       client,
@@ -261,6 +192,7 @@ Future<AccessCredentials> obtainAccessCredentialsViaUserConsent(
 ///
 /// {@macro googleapis_auth_user_consent_return}
 Future<AccessCredentials> obtainAccessCredentialsViaUserConsentManual(
+  AuthProvider authProvider,
   ClientId clientId,
   List<String> scopes,
   Client client,
@@ -268,6 +200,7 @@ Future<AccessCredentials> obtainAccessCredentialsViaUserConsentManual(
   String? hostedDomain,
 }) =>
     AuthorizationCodeGrantManualFlow(
+      authProvider,
       clientId,
       scopes,
       client,

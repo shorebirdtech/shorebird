@@ -4,6 +4,7 @@
 
 import 'dart:async';
 
+import 'package:googleapis_auth/auth_io.dart';
 import 'package:http/http.dart';
 
 import 'access_credentials.dart';
@@ -91,9 +92,11 @@ class AutoRefreshingClient extends AutoRefreshDelegatingClient {
   @override
   AccessCredentials credentials;
   late Client authClient;
+  final AuthProvider authProvider;
 
   AutoRefreshingClient(
     super.client,
+    this.authProvider,
     this.clientId,
     this.credentials, {
     super.closeUnderlyingClient,
@@ -114,7 +117,12 @@ class AutoRefreshingClient extends AutoRefreshDelegatingClient {
       // If so, we should handle it.
       return authClient.send(request);
     } else {
-      final cred = await refreshCredentials(clientId, credentials, baseClient);
+      final cred = await refreshCredentials(
+        authProvider,
+        clientId,
+        credentials,
+        baseClient,
+      );
       notifyAboutNewCredentials(cred);
       credentials = cred;
       authClient = AuthenticatedClient(

@@ -4,6 +4,7 @@
 
 import 'dart:async';
 
+import 'package:googleapis_auth/auth_io.dart';
 import 'package:http/http.dart';
 
 import 'access_credentials.dart';
@@ -82,6 +83,7 @@ AuthClient authenticatedClient(
 /// {@macro googleapis_auth_close_the_client}
 /// {@macro googleapis_auth_not_close_the_baseClient}
 AutoRefreshingAuthClient autoRefreshingClient(
+  AuthProvider authProvider,
   ClientId clientId,
   AccessCredentials credentials,
   Client baseClient,
@@ -92,7 +94,7 @@ AutoRefreshingAuthClient autoRefreshingClient(
   if (credentials.refreshToken == null) {
     throw ArgumentError('Refresh token in AccessCredentials was `null`.');
   }
-  return AutoRefreshingClient(baseClient, clientId, credentials);
+  return AutoRefreshingClient(baseClient, authProvider, clientId, credentials);
 }
 
 /// Obtains refreshed [AccessCredentials] for [clientId] and [credentials].
@@ -101,6 +103,7 @@ AutoRefreshingAuthClient autoRefreshingClient(
 ///
 /// {@macro googleapis_auth_client_for_creds}
 Future<AccessCredentials> refreshCredentials(
+  AuthProvider authProvider,
   ClientId clientId,
   AccessCredentials credentials,
   Client client,
@@ -116,12 +119,15 @@ Future<AccessCredentials> refreshCredentials(
   }
 
   // https://developers.google.com/identity/protocols/oauth2/native-app#offline
-  final jsonMap = await client.oauthTokenRequest({
-    'client_id': clientId.identifier,
-    'client_secret': secret,
-    'refresh_token': refreshToken,
-    'grant_type': 'refresh_token',
-  });
+  final jsonMap = await client.oauthTokenRequest(
+    {
+      'client_id': clientId.identifier,
+      'client_secret': secret,
+      'refresh_token': refreshToken,
+      'grant_type': 'refresh_token',
+    },
+    authProvider: authProvider,
+  );
 
   final accessToken = parseAccessToken(jsonMap);
 
