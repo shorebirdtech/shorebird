@@ -279,7 +279,7 @@ class Auth {
   }
 }
 
-extension on oauth2.AccessCredentials {
+extension AccessCredentialsEmail on oauth2.AccessCredentials {
   String? get email {
     final encodedToken = idToken;
 

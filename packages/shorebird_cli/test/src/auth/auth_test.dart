@@ -37,6 +37,25 @@ void main() {
     });
   });
 
+  group('AccessCredentials extension', () {
+    group('email', () {
+      test('returns null when idToken is not a valid jwt', () {
+        final credentials = AccessCredentials(
+          AccessToken(
+            'Bearer',
+            'accessToken',
+            DateTime.now().add(const Duration(minutes: 10)).toUtc(),
+          ),
+          '',
+          [],
+          idToken: 'not a valid id token',
+        );
+
+        expect(credentials.email, isNull);
+      });
+    });
+  });
+
   group('Auth', () {
     const idToken =
         '''eyJhbGciOiJSUzI1NiIsImN0eSI6IkpXVCJ9.eyJlbWFpbCI6InRlc3RAZW1haWwuY29tIn0.pD47BhF3MBLyIpfsgWCzP9twzC1HJxGukpcR36DqT6yfiOMHTLcjDbCjRLAnklWEHiT0BQTKTfhs8IousU90Fm5bVKObudfKu8pP5iZZ6Ls4ohDjTrXky9j3eZpZjwv8CnttBVgRfMJG-7YASTFRYFcOLUpnb4Zm5R6QdoCDUYg''';
