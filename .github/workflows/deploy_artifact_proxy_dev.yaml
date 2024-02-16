@@ -36,7 +36,7 @@ jobs:
         uses: "google-github-actions/auth@v2"
         with:
           project_id: ${{ env.PROJECT_ID }}
-          service_account_key: ${{ secrets.CLOUD_RUN_SA_DEV  }}
+          credentials_json: ${{ secrets.CLOUD_RUN_SA_DEV  }}
           export_environment_variables: true
 
       - name: Setup Cloud SDK
