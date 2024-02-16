@@ -5,9 +5,9 @@ import 'package:cli_util/cli_util.dart';
 import 'package:googleapis_auth/auth_io.dart' as oauth2;
 import 'package:googleapis_auth/googleapis_auth.dart';
 import 'package:http/http.dart' as http;
+import 'package:jose/jose.dart';
 import 'package:path/path.dart' as p;
 import 'package:scoped/scoped.dart';
-import 'package:shorebird_cli/src/auth/jwt.dart';
 import 'package:shorebird_cli/src/command.dart';
 import 'package:shorebird_cli/src/command_runner.dart';
 import 'package:shorebird_cli/src/http_client/http_client.dart';
@@ -281,15 +281,18 @@ class Auth {
 
 extension on oauth2.AccessCredentials {
   String? get email {
-    final token = idToken;
+    final encodedToken = idToken;
 
-    if (token == null) return null;
+    if (encodedToken == null) return null;
 
-    final claims = Jwt.decodeClaims(token);
+    final JsonWebToken jwt;
+    try {
+      jwt = JsonWebToken.unverified(encodedToken);
+    } catch (_) {
+      return null;
+    }
 
-    if (claims == null) return null;
-
-    return claims['email'] as String?;
+    return jwt.claims['email'] as String?;
   }
 }
 
