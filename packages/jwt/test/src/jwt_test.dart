@@ -37,24 +37,40 @@ void main() {
         );
       };
 
-      try {
-        await verify(
+      await expectLater(
+        () => verify(
           token,
           audience: {audience},
           issuer: issuer,
           publicKeysUrl: publicKeysUrl,
-        );
-        fail('should throw');
-      } catch (error) {
-        expect(
-          error,
+        ),
+        throwsA(
           isA<JwtVerificationFailure>().having(
             (e) => e.reason,
             'reason',
             'Token has expired.',
           ),
-        );
-      }
+        ),
+      );
+    });
+
+    test('throws a JwtVerificationFailure if string is not valid jwt',
+        () async {
+      await expectLater(
+        () => verify(
+          'not.a.jwt',
+          audience: {audience},
+          issuer: issuer,
+          publicKeysUrl: publicKeysUrl,
+        ),
+        throwsA(
+          isA<JwtVerificationFailure>().having(
+            (e) => e.reason,
+            'reason',
+            'JWT header is malformed.',
+          ),
+        ),
+      );
     });
 
     test('can verify an invalid audience', () async {
