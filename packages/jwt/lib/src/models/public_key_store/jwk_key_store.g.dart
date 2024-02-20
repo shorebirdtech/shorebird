@@ -22,8 +22,3 @@ JwkKeyStore _$JwkKeyStoreFromJson(Map<String, dynamic> json) => $checkedCreate(
         return val;
       },
     );
-
-Map<String, dynamic> _$JwkKeyStoreToJson(JwkKeyStore instance) =>
-    <String, dynamic>{
-      'keys': instance.keys,
-    };

@@ -10,7 +10,7 @@ part 'jwk_key_store.g.dart';
 ///
 /// Ex: https://login.microsoftonline.com/common/discovery/v2.0/keys
 /// {@endtemplate}
-@JsonSerializable()
+@JsonSerializable(createToJson: false)
 class JwkKeyStore extends PublicKeyStore {
   /// {@macro jwk_key_store}
   JwkKeyStore({required this.keys});
