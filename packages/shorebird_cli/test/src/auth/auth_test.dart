@@ -37,9 +37,28 @@ void main() {
     });
   });
 
-  group('Auth', () {
+  group('JwtClaims', () {
+    group('email', () {
+      test('returns null when idToken is not a valid jwt', () {
+        final credentials = AccessCredentials(
+          AccessToken(
+            'Bearer',
+            'accessToken',
+            DateTime.now().add(const Duration(minutes: 10)).toUtc(),
+          ),
+          '',
+          [],
+          idToken: 'not a valid jwt',
+        );
+
+        expect(credentials.email, isNull);
+      });
+    });
+  });
+
+  group(Auth, () {
     const idToken =
-        '''eyJhbGciOiJSUzI1NiIsImN0eSI6IkpXVCJ9.eyJlbWFpbCI6InRlc3RAZW1haWwuY29tIn0.pD47BhF3MBLyIpfsgWCzP9twzC1HJxGukpcR36DqT6yfiOMHTLcjDbCjRLAnklWEHiT0BQTKTfhs8IousU90Fm5bVKObudfKu8pP5iZZ6Ls4ohDjTrXky9j3eZpZjwv8CnttBVgRfMJG-7YASTFRYFcOLUpnb4Zm5R6QdoCDUYg''';
+        '''eyJhbGciOiJIUzI1NiIsImtpZCI6IjEyMzQiLCJ0eXAiOiJKV1QifQ.eyJpc3MiOiJodHRwczovL2FjY291bnRzLmdvb2dsZS5jb20iLCJhenAiOiI1MjMzMDIyMzMyOTMtZWlhNWFudG0wdGd2ZWsyNDB0NDZvcmN0a3RpYWJyZWsuYXBwcy5nb29nbGV1c2VyY29udGVudC5jb20iLCJhdWQiOiI1MjMzMDIyMzMyOTMtZWlhNWFudG0wdGd2ZWsyNDB0NDZvcmN0a3RpYWJyZWsuYXBwcy5nb29nbGV1c2VyY29udGVudC5jb20iLCJzdWIiOiIxMjM0NSIsImhkIjoic2hvcmViaXJkLmRldiIsImVtYWlsIjoidGVzdEBlbWFpbC5jb20iLCJlbWFpbF92ZXJpZmllZCI6dHJ1ZSwiaWF0IjoxMjM0LCJleHAiOjY3ODl9.MYbITALvKsGYTYjw1o7AQ0ObkqRWVBSr9cFYJrvA46g''';
     const email = 'test@email.com';
     const user = User(id: 42, email: email);
     const refreshToken = '';
@@ -317,9 +336,8 @@ void main() {
         expect(client, isA<AuthenticatedClient>());
       });
 
-      test(
-          'returns a plain http client '
-          'when credentials are not present.', () async {
+      test('returns a plain http client when credentials are not present.',
+          () async {
         final client = auth.client;
         expect(client, isA<http.Client>());
         expect(client, isNot(isA<AutoRefreshingAuthClient>()));
@@ -327,9 +345,8 @@ void main() {
     });
 
     group('login', () {
-      test(
-          'should set the email when claims are valid '
-          'and current user exists', () async {
+      test('should set the email when claims are valid and current user exists',
+          () async {
         await auth.login((_) {});
         expect(auth.email, email);
         expect(auth.isAuthenticated, isTrue);

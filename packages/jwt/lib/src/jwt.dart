@@ -74,49 +74,25 @@ Future<Jwt> verify(
   required Set<String> audience,
   required String publicKeysUrl,
 }) async {
-  final parts = jwt.split('.');
-
-  if (parts.length != 3) {
-    throw const JwtVerificationFailure('JWT is malformed');
+  final Jwt unverified;
+  try {
+    unverified = Jwt.unverifiedFromString(jwt);
+  } on FormatException catch (e) {
+    throw JwtVerificationFailure(e.message);
   }
 
   final publicKeys = await _getPublicKeys(publicKeysUrl);
 
-  final JwtHeader header;
-  try {
-    header = JwtHeader.fromJson(_decodePart(parts[0]));
-  } catch (_) {
-    throw const JwtVerificationFailure('JWT header is malformed.');
-  }
-  await _verifyHeader(header, publicKeys);
+  await _verifyHeader(unverified.header, publicKeys);
+  _verifyPayload(unverified.payload, issuer, audience);
 
-  final JwtPayload payload;
-  try {
-    payload = JwtPayload.fromJson(_decodePart(parts[1]));
-  } catch (_) {
-    throw const JwtVerificationFailure('JWT payload is malformed.');
-  }
-  _verifyPayload(payload, issuer, audience);
-
-  final isValid = _verifySignature(jwt, publicKeys[header.kid]!);
+  final isValid = _verifySignature(jwt, publicKeys[unverified.header.kid]!);
   if (!isValid) {
     throw const JwtVerificationFailure('Invalid signature.');
   }
 
-  return Jwt(
-    header: header,
-    payload: payload,
-    signature: parts[2],
-    claims: _decodePart(parts[1]),
-  );
-}
-
-Map<String, dynamic> _decodePart(String part) {
-  final normalized = base64.normalize(part);
-  final base64Decoded = base64.decode(normalized);
-  final utf8Decoded = utf8.decode(base64Decoded);
-  final jsonDecoded = json.decode(utf8Decoded) as Map<String, dynamic>;
-  return jsonDecoded;
+  // If we've made it this far, the JWT is now verified.
+  return unverified;
 }
 
 Future<void> _verifyHeader(
