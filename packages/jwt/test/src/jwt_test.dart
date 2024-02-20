@@ -5,7 +5,6 @@ import 'dart:io';
 import 'package:clock/clock.dart';
 import 'package:http/http.dart';
 import 'package:jwt/jwt.dart';
-import 'package:jwt/src/encoding.dart';
 import 'package:test/test.dart';
 
 void main() {

@@ -184,6 +184,7 @@ bool _verifySignature(String jwt, String publicKey) {
   }
 }
 
+/// Visible for testing only
 @visibleForTesting
 String base64Padded(String value) {
   final mod = value.length % 4;
