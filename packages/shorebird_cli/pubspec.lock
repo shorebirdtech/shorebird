@@ -716,6 +716,14 @@ packages:
       url: "https://pub.dev"
     source: hosted
     version: "1.0.1"
+  ttl_cache:
+    dependency: transitive
+    description:
+      name: ttl_cache
+      sha256: "3c8d00de287cd646032af85411412becac3fd8889b12e5b07c9f8809e66cf132"
+      url: "https://pub.dev"
+    source: hosted
+    version: "0.3.0"
   typed_data:
     dependency: transitive
     description:
