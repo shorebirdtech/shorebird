@@ -84,12 +84,9 @@ Future<Jwt> verify(
   await _verifyHeader(jwt.header, publicKeys.keyIds);
   _verifyPayload(jwt.payload, issuer, audience);
 
-  final publicKey = publicKeys.getPublicKey(jwt.header.kid);
-  if (publicKey == null) {
-    throw JwtVerificationFailure(
-      'No public key found for key id ${jwt.header.kid}',
-    );
-  }
+  // By using this keystore's key IDs to validate the header above, we've
+  // guaranteed that there is a public key for this key ID.
+  final publicKey = publicKeys.getPublicKey(jwt.header.kid)!;
 
   final isValid = _verifySignature(encodedJwt, publicKey);
   if (!isValid) {

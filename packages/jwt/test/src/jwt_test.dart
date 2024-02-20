@@ -86,24 +86,21 @@ void main() {
 
       test('throws exception if jwt has no matching public key id', () async {
         await withClock(Clock.fixed(validTime), () async {
-          try {
-            await verify(
+          await expectLater(
+            () => verify(
               tokenWithNoMatchingKid,
               audience: {audience},
               issuer: issuer,
               publicKeysUrl: keyValuePublicKeysUrl,
-            );
-            fail('should throw');
-          } catch (error) {
-            expect(
-              error,
+            ),
+            throwsA(
               isA<JwtVerificationFailure>().having(
                 (e) => e.reason,
                 'reason',
                 'Invalid key id.',
               ),
-            );
-          }
+            ),
+          );
         });
       });
 
