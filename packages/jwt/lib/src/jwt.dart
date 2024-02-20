@@ -5,7 +5,6 @@ import 'dart:typed_data';
 import 'package:clock/clock.dart';
 import 'package:http/http.dart' as http;
 import 'package:jwt/jwt.dart';
-import 'package:jwt/src/encoding.dart';
 import 'package:jwt/src/models/public_key_store/public_key_store.dart';
 import 'package:meta/meta.dart';
 import 'package:pointycastle/pointycastle.dart';
