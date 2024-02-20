@@ -8,11 +8,13 @@ environment:
 
 dependencies:
   clock: ^1.1.0
+  collection: ^1.18.0
   http: ^1.0.0
   json_annotation: ^4.4.0
   meta: ^1.7.0
   pointycastle: ^3.5.0
   rsa_pkcs: ^2.0.0
+  ttl_cache: ^0.2.0
 
 dev_dependencies:
   build_runner: ^2.0.0

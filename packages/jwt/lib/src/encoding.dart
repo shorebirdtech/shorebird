@@ -8,3 +8,16 @@ Map<String, dynamic> jwtPartToJson(String part) {
   final jsonDecoded = json.decode(utf8Decoded) as Map<String, dynamic>;
   return jsonDecoded;
 }
+
+String base64Padded(String value) {
+  final mod = value.length % 4;
+  if (mod == 0) {
+    return value;
+  } else if (mod == 3) {
+    return value.padRight(value.length + 1, '=');
+  } else if (mod == 2) {
+    return value.padRight(value.length + 2, '=');
+  } else {
+    return value; // let it fail when decoding
+  }
+}

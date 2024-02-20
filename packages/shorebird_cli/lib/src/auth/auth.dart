@@ -20,25 +20,8 @@ final authRef = create(Auth.new);
 // The [Auth] instance available in the current zone.
 Auth get auth => read(authRef);
 
-final _clientId = oauth2.ClientId(
-  /// Shorebird CLI's OAuth 2.0 identifier.
-  '523302233293-eia5antm0tgvek240t46orctktiabrek.apps.googleusercontent.com',
-
-  /// Shorebird CLI's OAuth 2.0 secret.
-  ///
-  /// This isn't actually meant to be kept secret.
-  /// There is no way to properly secure a secret for installed/console applications.
-  /// Fortunately the OAuth2 flow used in this case assumes that the app cannot
-  /// keep secrets so this particular secret DOES NOT need to be kept secret.
-  /// You should however make sure not to re-use the same secret
-  /// anywhere secrecy is required.
-  ///
-  /// For more info see: https://developers.google.com/identity/protocols/oauth2/native-app
-  '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',
-);
-final _scopes = ['openid', 'https://www.googleapis.com/auth/userinfo.email'];
-
 typedef ObtainAccessCredentials = Future<oauth2.AccessCredentials> Function(
+  AuthProvider authProvider,
   oauth2.ClientId clientId,
   List<String> scopes,
   http.Client client,
@@ -46,6 +29,7 @@ typedef ObtainAccessCredentials = Future<oauth2.AccessCredentials> Function(
 );
 
 typedef RefreshCredentials = Future<oauth2.AccessCredentials> Function(
+  AuthProvider authProvider,
   oauth2.ClientId clientId,
   oauth2.AccessCredentials credentials,
   http.Client client,
@@ -104,22 +88,29 @@ class AuthenticatedClient extends http.BaseClient {
 
     if (credentials == null) {
       final token = _token!;
+      final jwt = Jwt.unverifiedFromString(token);
+      final authProvider = jwt.authProvider;
       credentials = _credentials = await _refreshCredentials(
-        _clientId,
+        authProvider,
+        authProvider.clientId,
         oauth2.AccessCredentials(
           // This isn't relevant for a refresh operation.
           AccessToken('Bearer', '', DateTime.timestamp()),
           token,
-          _scopes,
+          authProvider.scopes,
         ),
         _baseClient,
       );
       _onRefreshCredentials?.call(credentials);
     }
 
-    if (credentials.accessToken.hasExpired) {
+    if (credentials.accessToken.hasExpired && credentials.idToken != null) {
+      final jwt = Jwt.unverifiedFromString(credentials.idToken!);
+      final authProvider = jwt.authProvider;
+
       credentials = _credentials = await _refreshCredentials(
-        _clientId,
+        authProvider,
+        authProvider.clientId,
         credentials,
         _baseClient,
       );
@@ -175,12 +166,16 @@ class Auth {
     );
   }
 
-  Future<AccessCredentials> loginCI(void Function(String) prompt) async {
+  Future<AccessCredentials> loginCI(
+    AuthProvider authProvider, {
+    required void Function(String) prompt,
+  }) async {
     final client = http.Client();
     try {
       final credentials = await _obtainAccessCredentials(
-        _clientId,
-        _scopes,
+        authProvider,
+        authProvider.clientId,
+        authProvider.scopes,
         client,
         prompt,
       );
@@ -201,7 +196,10 @@ class Auth {
     }
   }
 
-  Future<void> login(void Function(String) prompt) async {
+  Future<void> login(
+    AuthProvider authProvider, {
+    required void Function(String) prompt,
+  }) async {
     if (_credentials != null) {
       throw UserAlreadyLoggedInException(email: _credentials!.email!);
     }
@@ -209,8 +207,9 @@ class Auth {
     final client = http.Client();
     try {
       _credentials = await _obtainAccessCredentials(
-        _clientId,
-        _scopes,
+        authProvider,
+        authProvider.clientId,
+        authProvider.scopes,
         client,
         prompt,
       );
@@ -316,4 +315,49 @@ class UserNotFoundException implements Exception {
   /// The email used to locate the user, as derived from the stored auth
   /// credentials.
   final String email;
+}
+
+extension OauthAuthProvider on Jwt {
+  oauth2.AuthProvider get authProvider {
+    return oauth2.AuthProvider.google;
+  }
+}
+
+extension OauthValues on AuthProvider {
+  oauth2.ClientId get clientId {
+    switch (this) {
+      case oauth2.AuthProvider.google:
+        return oauth2.ClientId(
+          /// Shorebird CLI's OAuth 2.0 identifier.
+          '523302233293-eia5antm0tgvek240t46orctktiabrek.apps.googleusercontent.com',
+
+          /// Shorebird CLI's OAuth 2.0 secret.
+          ///
+          /// This isn't actually meant to be kept secret.
+          /// There is no way to properly secure a secret for installed/console applications.
+          /// Fortunately the OAuth2 flow used in this case assumes that the app cannot
+          /// keep secrets so this particular secret DOES NOT need to be kept secret.
+          /// You should however make sure not to re-use the same secret
+          /// anywhere secrecy is required.
+          ///
+          /// For more info see: https://developers.google.com/identity/protocols/oauth2/native-app
+          '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',
+        );
+      // TODO: Handle this case.
+      case oauth2.AuthProvider.microsoft:
+        return oauth2.ClientId(
+          /// Shorebird CLI's OAuth 2.0 identifier.
+          'c4af9566-8a36-4348-b413-dab665b8717d',
+        );
+    }
+  }
+
+  List<String> get scopes {
+    switch (this) {
+      case oauth2.AuthProvider.google:
+        return ['openid', 'https://www.googleapis.com/auth/userinfo.email'];
+      case oauth2.AuthProvider.microsoft:
+        return ['openid'];
+    }
+  }
 }

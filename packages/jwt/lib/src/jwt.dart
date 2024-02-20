@@ -5,29 +5,19 @@ import 'dart:typed_data';
 import 'package:clock/clock.dart';
 import 'package:http/http.dart' as http;
 import 'package:jwt/jwt.dart';
+import 'package:jwt/src/encoding.dart';
+import 'package:jwt/src/models/public_key_store/public_key_store.dart';
 import 'package:meta/meta.dart';
 import 'package:pointycastle/pointycastle.dart';
 import 'package:rsa_pkcs/rsa_pkcs.dart' as rsa;
+import 'package:ttl_cache/ttl_cache.dart';
 
-/// {@template public_key_store}
-/// A store for the public keys.
-/// {@endtemplate}
-class PublicKeyStore {
-  /// {@macro public_key_store}
-  const PublicKeyStore({required this.keys, required this.expiration});
+final _publicKeyStores = TtlCache<String, PublicKeyStore>();
 
-  /// Map of all public key id/value pairs.
-  final Map<String, String> keys;
-
-  /// Expiration time.
-  final DateTime expiration;
-}
-
-PublicKeyStore? _publicKeyStore;
-
-Future<Map<String, String>> _getPublicKeys(String url) async {
-  if (_publicKeyStore?.expiration.isAfter(clock.now()) ?? false) {
-    return _publicKeyStore!.keys;
+Future<PublicKeyStore?> _getPublicKeys(String url) async {
+  final store = _publicKeyStores.get(url);
+  if (store != null) {
+    return store;
   }
 
   final get = getOverride ?? http.get;
@@ -39,15 +29,22 @@ Future<Map<String, String>> _getPublicKeys(String url) async {
   final maxAgeRegExp = RegExp(r'max-age=(\d+)');
   final match = maxAgeRegExp.firstMatch(response.headers['cache-control']!);
   final maxAge = int.parse(match!.group(1)!);
-  final publicKeys = (json.decode(response.body) as Map<String, dynamic>)
-      .cast<String, String>();
 
-  _publicKeyStore = PublicKeyStore(
-    keys: publicKeys,
-    expiration: clock.now().add(Duration(seconds: maxAge)),
+  final publicKeyStore = PublicKeyStore.tryDeserialize(
+    json.decode(response.body) as Map<String, dynamic>,
   );
 
-  return publicKeys;
+  if (publicKeyStore == null) {
+    return null;
+  }
+
+  _publicKeyStores.set(
+    url,
+    publicKeyStore,
+    ttl: Duration(seconds: maxAge),
+  );
+
+  return publicKeyStore;
 }
 
 /// Typedef for a function that returns the public keys asynchronously.
@@ -82,11 +79,21 @@ Future<Jwt> verify(
   }
 
   final publicKeys = await _getPublicKeys(publicKeysUrl);
+  if (publicKeys == null) {
+    throw const JwtVerificationFailure('Invalid public keys.');
+  }
 
-  await _verifyHeader(unverified.header, publicKeys);
+  await _verifyHeader(unverified.header, publicKeys.keyIds);
   _verifyPayload(unverified.payload, issuer, audience);
 
-  final isValid = _verifySignature(jwt, publicKeys[unverified.header.kid]!);
+  final publicKey = publicKeys.getPublicKey(unverified.header.kid);
+  if (publicKey == null) {
+    throw JwtVerificationFailure(
+      'No public key found for key id ${unverified.header.kid}',
+    );
+  }
+
+  final isValid = _verifySignature(jwt, publicKey);
   if (!isValid) {
     throw const JwtVerificationFailure('Invalid signature.');
   }
@@ -97,7 +104,7 @@ Future<Jwt> verify(
 
 Future<void> _verifyHeader(
   JwtHeader header,
-  Map<String, dynamic> publicKeys,
+  Iterable<String> keyIds,
 ) async {
   if (header.typ != 'JWT') {
     throw const JwtVerificationFailure('Invalid token type.');
@@ -107,7 +114,7 @@ Future<void> _verifyHeader(
     throw const JwtVerificationFailure('Invalid algorithm.');
   }
 
-  if (!publicKeys.containsKey(header.kid)) {
+  if (!keyIds.contains(header.kid)) {
     throw const JwtVerificationFailure('Invalid key id.');
   }
 }
@@ -175,21 +182,6 @@ bool _verifySignature(String jwt, String publicKey) {
     return signer.verifySignature(Uint8List.fromList(body), rsaSignature);
   } catch (_) {
     return false;
-  }
-}
-
-/// Visible for testing only
-@visibleForTesting
-String base64Padded(String value) {
-  final mod = value.length % 4;
-  if (mod == 0) {
-    return value;
-  } else if (mod == 3) {
-    return value.padRight(value.length + 1, '=');
-  } else if (mod == 2) {
-    return value.padRight(value.length + 2, '=');
-  } else {
-    return value; // let it fail when decoding
   }
 }
 
