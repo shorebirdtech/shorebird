@@ -6,6 +6,7 @@
 # us from landing. Ideally, this would be configured to allow a non-100% base
 # and enforce that all changes have 100% coverage of affected lines.
 ignore:
+  - "**/*.g.dart"
   - third_party
 
 flag_management:
