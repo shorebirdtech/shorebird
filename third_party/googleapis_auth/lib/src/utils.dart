@@ -8,10 +8,7 @@ import 'package:googleapis_auth/auth_io.dart';
 import 'package:http/http.dart' show BaseRequest, Client, StreamedResponse;
 import 'package:http_parser/http_parser.dart';
 
-import 'access_token.dart';
-import 'exceptions.dart';
 import 'http_client_base.dart';
-import 'known_uris.dart';
 
 /// Due to differences of clock speed, network latency, etc. we
 /// will shorten expiry dates by 20 seconds.

@@ -5,9 +5,9 @@
 import 'dart:async';
 import 'dart:convert';
 
-import 'package:googleapis_auth/auth_io.dart';
 import 'package:http/http.dart' as http;
 
+import '../../auth_io.dart';
 import '../crypto/rsa.dart';
 import '../crypto/rsa_sign.dart';
 import '../known_uris.dart';
