@@ -3,10 +3,8 @@ import 'known_uris.dart';
 /// The entity being used to authenticate the user.
 enum AuthProvider {
   google,
-  microsoft,
-}
+  microsoft;
 
-extension Endpoints on AuthProvider {
   Uri get authorizationEndpoint {
     switch (this) {
       case AuthProvider.google:
