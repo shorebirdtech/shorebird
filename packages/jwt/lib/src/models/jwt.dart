@@ -15,7 +15,7 @@ class Jwt {
 
   /// Decodes a JWT string of the format `header.payload.signature`. This does
   /// _not_ perform any verification that the JWT is valid.
-  factory Jwt.unverifiedFromString(String string) {
+  factory Jwt.parse(String string) {
     final parts = string.split('.');
     if (parts.length != 3) {
       throw const FormatException('Invalid JWT format');
@@ -23,14 +23,14 @@ class Jwt {
 
     final JwtHeader header;
     try {
-      header = JwtHeader.fromJson(jwtPartToJson(parts[0]));
+      header = JwtHeader.fromJson(decodeJwtPart(parts[0]));
     } catch (_) {
       throw const FormatException('JWT header is malformed.');
     }
 
     final JwtPayload payload;
     try {
-      payload = JwtPayload.fromJson(jwtPartToJson(parts[1]));
+      payload = JwtPayload.fromJson(decodeJwtPart(parts[1]));
     } catch (_) {
       throw const FormatException('JWT payload is malformed.');
     }
@@ -41,7 +41,7 @@ class Jwt {
       header: header,
       payload: payload,
       signature: signature,
-      claims: jwtPartToJson(parts[1]),
+      claims: decodeJwtPart(parts[1]),
     );
   }
 

@@ -64,16 +64,16 @@ class JwtVerificationFailure implements Exception {
   String toString() => 'JwtVerificationFailure: $reason';
 }
 
-/// Verify the provided [jwt].
+/// Verify the encoded [encodedJwt].
 Future<Jwt> verify(
-  String jwt, {
+  String encodedJwt, {
   required String issuer,
   required Set<String> audience,
   required String publicKeysUrl,
 }) async {
-  final Jwt unverified;
+  final Jwt jwt;
   try {
-    unverified = Jwt.unverifiedFromString(jwt);
+    jwt = Jwt.parse(jwt);
   } on FormatException catch (e) {
     throw JwtVerificationFailure(e.message);
   }
@@ -83,13 +83,13 @@ Future<Jwt> verify(
     throw const JwtVerificationFailure('Invalid public keys.');
   }
 
-  await _verifyHeader(unverified.header, publicKeys.keyIds);
-  _verifyPayload(unverified.payload, issuer, audience);
+  await _verifyHeader(jwt.header, publicKeys.keyIds);
+  _verifyPayload(jwt.payload, issuer, audience);
 
-  final publicKey = publicKeys.getPublicKey(unverified.header.kid);
+  final publicKey = publicKeys.getPublicKey(jwt.header.kid);
   if (publicKey == null) {
     throw JwtVerificationFailure(
-      'No public key found for key id ${unverified.header.kid}',
+      'No public key found for key id ${jwt.header.kid}',
     );
   }
 
@@ -99,7 +99,7 @@ Future<Jwt> verify(
   }
 
   // If we've made it this far, the JWT is now verified.
-  return unverified;
+  return jwt;
 }
 
 Future<void> _verifyHeader(
