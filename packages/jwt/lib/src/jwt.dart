@@ -78,7 +78,9 @@ Future<Jwt> verify(
 
   final publicKeys = await _getPublicKeys(publicKeysUrl);
   if (publicKeys == null) {
-    throw const JwtVerificationFailure('Invalid public keys.');
+    throw JwtVerificationFailure(
+      'Invalid public keys returned by $publicKeysUrl.',
+    );
   }
 
   await _verifyHeader(jwt.header, publicKeys.keyIds);
