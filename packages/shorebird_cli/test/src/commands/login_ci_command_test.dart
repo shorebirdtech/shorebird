@@ -1,3 +1,4 @@
+import 'package:googleapis_auth/auth_io.dart';
 import 'package:http/http.dart' as http;
 import 'package:mason_logger/mason_logger.dart';
 import 'package:mocktail/mocktail.dart';
@@ -28,6 +29,10 @@ void main() {
       );
     }
 
+    setUpAll(() {
+      registerFallbackValue(AuthProvider.google);
+    });
+
     setUp(() {
       auth = MockAuth();
       httpClient = MockHttpClient();
@@ -39,7 +44,10 @@ void main() {
 
     test('exits with code 70 if no user is found', () async {
       when(
-        () => auth.loginCI(any()),
+        () => auth.loginCI(
+          any(),
+          prompt: any(named: 'prompt'),
+        ),
       ).thenThrow(UserNotFoundException(email: email));
 
       final result = await runWithOverrides(command.run);
@@ -55,12 +63,22 @@ void main() {
 
     test('exits with code 70 when error occurs', () async {
       final error = Exception('oops something went wrong!');
-      when(() => auth.loginCI(any())).thenThrow(error);
+      when(
+        () => auth.loginCI(
+          any(),
+          prompt: any(named: 'prompt'),
+        ),
+      ).thenThrow(error);
 
       final result = await runWithOverrides(command.run);
       expect(result, equals(ExitCode.software.code));
 
-      verify(() => auth.loginCI(any())).called(1);
+      verify(
+        () => auth.loginCI(
+          any(),
+          prompt: any(named: 'prompt'),
+        ),
+      ).called(1);
       verify(() => logger.err(error.toString())).called(1);
     });
 
@@ -68,13 +86,23 @@ void main() {
       const token = 'shorebird-token';
       final credentials = MockAccessCredentials();
       when(() => credentials.refreshToken).thenReturn(token);
-      when(() => auth.loginCI(any())).thenAnswer((_) async => credentials);
+      when(
+        () => auth.loginCI(
+          any(),
+          prompt: any(named: 'prompt'),
+        ),
+      ).thenAnswer((_) async => credentials);
       when(() => auth.email).thenReturn(email);
 
       final result = await runWithOverrides(command.run);
       expect(result, equals(ExitCode.success.code));
 
-      verify(() => auth.loginCI(any())).called(1);
+      verify(
+        () => auth.loginCI(
+          any(),
+          prompt: any(named: 'prompt'),
+        ),
+      ).called(1);
       verify(
         () => logger.info(any(that: contains('${lightCyan.wrap(token)}'))),
       ).called(1);

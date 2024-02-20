@@ -107,7 +107,7 @@ void main() {
             return codePushClient;
           },
           obtainAccessCredentials:
-              (clientId, scopes, client, userPrompt) async {
+              (authProvider, clientId, scopes, client, userPrompt) async {
             return accessCredentials;
           },
         ),
@@ -135,15 +135,17 @@ void main() {
 
     group('AuthenticatedClient', () {
       group('token', () {
-        const token = 'shorebird-token';
+        const token =
+            '''eyJhbGciOiJIUzI1NiIsImtpZCI6IjEyMzQiLCJ0eXAiOiJKV1QifQ.eyJpc3MiOiJodHRwczovL2FjY291bnRzLmdvb2dsZS5jb20iLCJhenAiOiI1MjMzMDIyMzMyOTMtZWlhNWFudG0wdGd2ZWsyNDB0NDZvcmN0a3RpYWJyZWsuYXBwcy5nb29nbGV1c2VyY29udGVudC5jb20iLCJhdWQiOiI1MjMzMDIyMzMyOTMtZWlhNWFudG0wdGd2ZWsyNDB0NDZvcmN0a3RpYWJyZWsuYXBwcy5nb29nbGV1c2VyY29udGVudC5jb20iLCJzdWIiOiIxMjM0NSIsImhkIjoic2hvcmViaXJkLmRldiIsImVtYWlsIjoidGVzdEBlbWFpbC5jb20iLCJlbWFpbF92ZXJpZmllZCI6dHJ1ZSwiaWF0IjoxMjM0LCJleHAiOjY3ODl9.MYbITALvKsGYTYjw1o7AQ0ObkqRWVBSr9cFYJrvA46g''';
 
         test('does not require an onRefreshCredentials callback', () {
           expect(
             () => AuthenticatedClient.token(
               token: token,
               httpClient: httpClient,
-              refreshCredentials: (clientId, credentials, client) async =>
-                  accessCredentials,
+              refreshCredentials:
+                  (authProvider, clientId, credentials, client) async =>
+                      accessCredentials,
             ),
             returnsNormally,
           );
@@ -164,8 +166,9 @@ void main() {
             token: token,
             httpClient: httpClient,
             onRefreshCredentials: onRefreshCredentialsCalls.add,
-            refreshCredentials: (clientId, credentials, client) async =>
-                accessCredentials,
+            refreshCredentials:
+                (authProvider, clientId, credentials, client) async =>
+                    accessCredentials,
           );
 
           await runWithOverrides(
@@ -197,8 +200,9 @@ void main() {
             token: token,
             httpClient: httpClient,
             onRefreshCredentials: onRefreshCredentialsCalls.add,
-            refreshCredentials: (clientId, credentials, client) async =>
-                accessCredentials,
+            refreshCredentials:
+                (authProvider, clientId, credentials, client) async =>
+                    accessCredentials,
           );
 
           await runWithOverrides(
@@ -228,6 +232,8 @@ void main() {
             ),
           );
 
+          const expiredIdToken =
+              '''eyJhbGciOiJIUzI1NiIsImtpZCI6IjEyMzQiLCJ0eXAiOiJKV1QifQ.eyJpc3MiOiJodHRwczovL2FjY291bnRzLmdvb2dsZS5jb20iLCJhenAiOiI1MjMzMDIyMzMyOTMtZWlhNWFudG0wdGd2ZWsyNDB0NDZvcmN0a3RpYWJyZWsuYXBwcy5nb29nbGV1c2VyY29udGVudC5jb20iLCJhdWQiOiI1MjMzMDIyMzMyOTMtZWlhNWFudG0wdGd2ZWsyNDB0NDZvcmN0a3RpYWJyZWsuYXBwcy5nb29nbGV1c2VyY29udGVudC5jb20iLCJzdWIiOiIxMjM0NSIsImhkIjoic2hvcmViaXJkLmRldiIsImVtYWlsIjoidGVzdEBlbWFpbC5jb20iLCJlbWFpbF92ZXJpZmllZCI6dHJ1ZSwiaWF0IjoxMjM0LCJleHAiOjY3ODl9.MYbITALvKsGYTYjw1o7AQ0ObkqRWVBSr9cFYJrvA46g''';
           final onRefreshCredentialsCalls = <AccessCredentials>[];
           final expiredCredentials = AccessCredentials(
             AccessToken(
@@ -237,15 +243,16 @@ void main() {
             ),
             '',
             [],
-            idToken: 'expiredIdToken',
+            idToken: expiredIdToken,
           );
 
           final client = AuthenticatedClient.credentials(
             credentials: expiredCredentials,
             httpClient: httpClient,
             onRefreshCredentials: onRefreshCredentialsCalls.add,
-            refreshCredentials: (clientId, credentials, client) async =>
-                accessCredentials,
+            refreshCredentials:
+                (authProvider, clientId, credentials, client) async =>
+                    accessCredentials,
           );
 
           await runWithOverrides(
@@ -302,7 +309,7 @@ void main() {
             HttpStatus.ok,
           ),
         );
-        await auth.login((_) {});
+        await auth.login(AuthProvider.google, prompt: (_) {});
         final client = auth.client;
         expect(client, isA<http.Client>());
         expect(client, isA<AuthenticatedClient>());
@@ -347,7 +354,7 @@ void main() {
     group('login', () {
       test('should set the email when claims are valid and current user exists',
           () async {
-        await auth.login((_) {});
+        await auth.login(AuthProvider.google, prompt: (_) {});
         expect(auth.email, email);
         expect(auth.isAuthenticated, isTrue);
         expect(buildAuth().email, email);
@@ -360,7 +367,7 @@ void main() {
         auth = buildAuth();
 
         await expectLater(
-          auth.login((_) {}),
+          auth.login(AuthProvider.google, prompt: (_) {}),
           throwsA(isA<UserAlreadyLoggedInException>()),
         );
 
@@ -373,7 +380,7 @@ void main() {
             .thenAnswer((_) async => null);
 
         await expectLater(
-          auth.login((_) {}),
+          auth.login(AuthProvider.google, prompt: (_) {}),
           throwsA(isA<UserNotFoundException>()),
         );
 
@@ -395,7 +402,7 @@ void main() {
           'returns credentials and does not set the email or cache credentials',
           () async {
         await expectLater(
-          auth.loginCI((_) {}),
+          auth.loginCI(AuthProvider.google, prompt: (_) {}),
           completion(equals(accessCredentials)),
         );
         expect(auth.email, isNull);
@@ -412,7 +419,7 @@ void main() {
         ).thenAnswer((_) async => null);
 
         await expectLater(
-          auth.loginCI((_) {}),
+          auth.loginCI(AuthProvider.google, prompt: (_) {}),
           throwsA(isA<UserNotFoundException>()),
         );
 
@@ -422,7 +429,7 @@ void main() {
 
     group('logout', () {
       test('clears session and wipes state', () async {
-        await auth.login((_) {});
+        await auth.login(AuthProvider.google, prompt: (_) {});
         expect(auth.email, email);
         expect(auth.isAuthenticated, isTrue);
 
