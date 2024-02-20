@@ -5,17 +5,19 @@ import 'dart:typed_data';
 import 'package:clock/clock.dart';
 import 'package:http/http.dart' as http;
 import 'package:jwt/jwt.dart';
-import 'package:jwt/src/encoding.dart';
 import 'package:jwt/src/models/public_key_store/public_key_store.dart';
 import 'package:meta/meta.dart';
 import 'package:pointycastle/pointycastle.dart';
 import 'package:rsa_pkcs/rsa_pkcs.dart' as rsa;
 import 'package:ttl_cache/ttl_cache.dart';
 
-final _publicKeyStores = TtlCache<String, PublicKeyStore>();
+/// A mapping of URLs to the public keys they contain.
+/// Example URL: https://login.microsoftonline.com/common/discovery/v2.0/keys
+@visibleForTesting
+final publicKeyStores = TtlCache<String, PublicKeyStore>();
 
 Future<PublicKeyStore?> _getPublicKeys(String url) async {
-  final store = _publicKeyStores.get(url);
+  final store = publicKeyStores.get(url);
   if (store != null) {
     return store;
   }
@@ -38,7 +40,7 @@ Future<PublicKeyStore?> _getPublicKeys(String url) async {
     return null;
   }
 
-  _publicKeyStores.set(
+  publicKeyStores.set(
     url,
     publicKeyStore,
     ttl: Duration(seconds: maxAge),
@@ -46,9 +48,6 @@ Future<PublicKeyStore?> _getPublicKeys(String url) async {
 
   return publicKeyStore;
 }
-
-/// Typedef for a function that returns the public keys asynchronously.
-typedef GetPublicKeys = Future<Map<String, String>> Function();
 
 /// {@template jwt_verification_failure}
 /// An exception thrown during JWT verification.
@@ -73,27 +72,26 @@ Future<Jwt> verify(
 }) async {
   final Jwt jwt;
   try {
-    jwt = Jwt.parse(jwt);
+    jwt = Jwt.parse(encodedJwt);
   } on FormatException catch (e) {
     throw JwtVerificationFailure(e.message);
   }
 
   final publicKeys = await _getPublicKeys(publicKeysUrl);
   if (publicKeys == null) {
-    throw const JwtVerificationFailure('Invalid public keys.');
+    throw JwtVerificationFailure(
+      'Invalid public keys returned by $publicKeysUrl.',
+    );
   }
 
   await _verifyHeader(jwt.header, publicKeys.keyIds);
   _verifyPayload(jwt.payload, issuer, audience);
 
-  final publicKey = publicKeys.getPublicKey(jwt.header.kid);
-  if (publicKey == null) {
-    throw JwtVerificationFailure(
-      'No public key found for key id ${jwt.header.kid}',
-    );
-  }
+  // By using this keystore's key IDs to validate the header above, we've
+  // guaranteed that there is a public key for this key ID.
+  final publicKey = publicKeys.getPublicKey(jwt.header.kid)!;
 
-  final isValid = _verifySignature(jwt, publicKey);
+  final isValid = _verifySignature(encodedJwt, publicKey);
   if (!isValid) {
     throw const JwtVerificationFailure('Invalid signature.');
   }
@@ -182,6 +180,21 @@ bool _verifySignature(String jwt, String publicKey) {
     return signer.verifySignature(Uint8List.fromList(body), rsaSignature);
   } catch (_) {
     return false;
+  }
+}
+
+/// Visible for testing only
+@visibleForTesting
+String base64Padded(String value) {
+  final mod = value.length % 4;
+  if (mod == 0) {
+    return value;
+  } else if (mod == 3) {
+    return value.padRight(value.length + 1, '=');
+  } else if (mod == 2) {
+    return value.padRight(value.length + 2, '=');
+  } else {
+    return value; // let it fail when decoding
   }
 }
 

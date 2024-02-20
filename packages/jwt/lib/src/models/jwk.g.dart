@@ -25,13 +25,3 @@ Jwk _$JwkFromJson(Map<String, dynamic> json) => $checkedCreate(
         return val;
       },
     );
-
-Map<String, dynamic> _$JwkToJson(Jwk instance) => <String, dynamic>{
-      'kty': instance.kty,
-      'use': instance.use,
-      'kid': instance.kid,
-      'x5t': instance.x5t,
-      'x5c': instance.x5c,
-      'n': instance.n,
-      'e': instance.e,
-    };

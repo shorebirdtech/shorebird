@@ -5,7 +5,7 @@ part 'jwk.g.dart';
 /// {@template jwk}
 /// A JSON Web Key (JWK) (https://datatracker.ietf.org/doc/html/rfc7517)
 /// {@endtemplate}
-@JsonSerializable()
+@JsonSerializable(createToJson: false)
 class Jwk {
   /// {@macro jwk}
   const Jwk({
