@@ -88,7 +88,7 @@ class AuthenticatedClient extends http.BaseClient {
 
     if (credentials == null) {
       final token = _token!;
-      final jwt = Jwt.unverifiedFromString(token);
+      final jwt = Jwt.parse(token);
       final authProvider = jwt.authProvider;
       credentials = _credentials = await _refreshCredentials(
         authProvider,
@@ -105,7 +105,7 @@ class AuthenticatedClient extends http.BaseClient {
     }
 
     if (credentials.accessToken.hasExpired && credentials.idToken != null) {
-      final jwt = Jwt.unverifiedFromString(credentials.idToken!);
+      final jwt = Jwt.parse(credentials.idToken!);
       final authProvider = jwt.authProvider;
 
       credentials = _credentials = await _refreshCredentials(
