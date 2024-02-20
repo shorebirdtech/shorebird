@@ -76,7 +76,7 @@ Future<Jwt> verify(
 }) async {
   final Jwt unverified;
   try {
-    unverified = Jwt.unverifiedFromString(jwt);
+    unverified = Jwt.parse(jwt);
   } on FormatException catch (e) {
     throw JwtVerificationFailure(e.message);
   }

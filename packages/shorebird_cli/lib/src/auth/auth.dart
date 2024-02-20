@@ -287,7 +287,7 @@ extension JwtClaims on oauth2.AccessCredentials {
 
     final Jwt jwt;
     try {
-      jwt = Jwt.unverifiedFromString(token);
+      jwt = Jwt.parse(token);
     } catch (_) {
       return null;
     }

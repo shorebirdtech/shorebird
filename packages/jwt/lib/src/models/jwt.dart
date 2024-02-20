@@ -15,7 +15,7 @@ class Jwt {
 
   /// Decodes a JWT string of the format `header.payload.signature`. This does
   /// _not_ perform any verification that the JWT is valid.
-  factory Jwt.unverifiedFromString(String string) {
+  factory Jwt.parse(String string) {
     final parts = string.split('.');
     if (parts.length != 3) {
       throw const FormatException('Invalid JWT format');
