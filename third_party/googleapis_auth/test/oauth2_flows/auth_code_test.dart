@@ -136,6 +136,7 @@ void main() {
 
       test('successful', () async {
         final flow = AuthorizationCodeGrantManualFlow(
+          AuthProvider.google,
           clientId,
           scopes,
           mockClient(successFullResponse(manual: true), expectClose: false),
@@ -150,6 +151,7 @@ void main() {
             Future.error(TransportException());
 
         final flow = AuthorizationCodeGrantManualFlow(
+          AuthProvider.google,
           clientId,
           scopes,
           mockClient(successFullResponse(manual: true), expectClose: false),
@@ -160,6 +162,7 @@ void main() {
 
       test('transport-exception', () async {
         final flow = AuthorizationCodeGrantManualFlow(
+          AuthProvider.google,
           clientId,
           scopes,
           transportFailure,
@@ -170,6 +173,7 @@ void main() {
 
       test('invalid-server-response', () async {
         final flow = AuthorizationCodeGrantManualFlow(
+          AuthProvider.google,
           clientId,
           scopes,
           mockClient(invalidResponse, expectClose: false),
@@ -224,6 +228,7 @@ void main() {
 
       test('successful', () async {
         final flow = AuthorizationCodeGrantServerFlow(
+          AuthProvider.google,
           clientId,
           scopes,
           mockClient(successFullResponse(manual: false), expectClose: false),
@@ -234,6 +239,7 @@ void main() {
 
       test('transport-exception', () async {
         final flow = AuthorizationCodeGrantServerFlow(
+          AuthProvider.google,
           clientId,
           scopes,
           transportFailure,
@@ -244,6 +250,7 @@ void main() {
 
       test('invalid-server-response', () async {
         final flow = AuthorizationCodeGrantServerFlow(
+          AuthProvider.google,
           clientId,
           scopes,
           mockClient(invalidResponse, expectClose: false),
@@ -254,6 +261,7 @@ void main() {
 
       test('failed-authentication', () async {
         final flow = AuthorizationCodeGrantServerFlow(
+          AuthProvider.google,
           clientId,
           scopes,
           mockClient(successFullResponse(manual: false), expectClose: false),
