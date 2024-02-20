@@ -29,6 +29,7 @@ void main() {
   late String keyStoreResponseBody;
 
   setUp(() {
+    publicKeyStores.clear();
     getOverride = (Uri uri) async {
       return Response(
         keyStoreResponseBody,
@@ -98,6 +99,35 @@ void main() {
                 (e) => e.reason,
                 'reason',
                 'Invalid key id.',
+              ),
+            ),
+          );
+        });
+      });
+
+      test('throws exception if invalid keys are provided by the publicKeysUrl',
+          () async {
+        getOverride = (Uri uri) async {
+          return Response(
+            '{"123": 456}',
+            HttpStatus.ok,
+            headers: {'cache-control': 'max-age=3600'},
+          );
+        };
+
+        await withClock(Clock.fixed(validTime), () async {
+          await expectLater(
+            () => verify(
+              tokenWithNoMatchingKid,
+              audience: {audience},
+              issuer: issuer,
+              publicKeysUrl: keyValuePublicKeysUrl,
+            ),
+            throwsA(
+              isA<JwtVerificationFailure>().having(
+                (e) => e.reason,
+                'reason',
+                '''Invalid public keys returned by https://www.googleapis.com/robot/v1/metadata/x509/securetoken@system.gserviceaccount.com.''',
               ),
             ),
           );

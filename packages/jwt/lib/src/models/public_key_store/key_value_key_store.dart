@@ -11,7 +11,7 @@ class KeyValueKeyStore extends PublicKeyStore {
 
   /// Decodes a JSON object into a [KeyValueKeyStore].
   factory KeyValueKeyStore.fromJson(Map<String, dynamic> json) =>
-      KeyValueKeyStore(keys: json.cast<String, String>());
+      KeyValueKeyStore(keys: json.map((k, v) => MapEntry(k, v as String)));
 
   /// Map of all public key id/value pairs.
   final Map<String, String> keys;

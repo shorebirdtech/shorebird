@@ -13,10 +13,11 @@ import 'package:ttl_cache/ttl_cache.dart';
 
 /// A mapping of URLs to the public keys they contain.
 /// Example URL: https://login.microsoftonline.com/common/discovery/v2.0/keys
-final _publicKeyStores = TtlCache<String, PublicKeyStore>();
+@visibleForTesting
+final publicKeyStores = TtlCache<String, PublicKeyStore>();
 
 Future<PublicKeyStore?> _getPublicKeys(String url) async {
-  final store = _publicKeyStores.get(url);
+  final store = publicKeyStores.get(url);
   if (store != null) {
     return store;
   }
@@ -39,7 +40,7 @@ Future<PublicKeyStore?> _getPublicKeys(String url) async {
     return null;
   }
 
-  _publicKeyStores.set(
+  publicKeyStores.set(
     url,
     publicKeyStore,
     ttl: Duration(seconds: maxAge),
