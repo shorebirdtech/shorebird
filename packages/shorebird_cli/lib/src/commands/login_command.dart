@@ -18,7 +18,7 @@ class LoginCommand extends ShorebirdCommand {
   @override
   Future<int> run() async {
     try {
-      await auth.login(AuthProvider.microsoft, prompt: prompt);
+      await auth.login(AuthProvider.google, prompt: prompt);
     } on UserAlreadyLoggedInException catch (error) {
       logger
         ..info('You are already logged in as <${error.email}>.')

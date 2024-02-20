@@ -319,7 +319,13 @@ class UserNotFoundException implements Exception {
 
 extension OauthAuthProvider on Jwt {
   oauth2.AuthProvider get authProvider {
-    return oauth2.AuthProvider.google;
+    if (payload.iss.startsWith('https://login.microsoftonline.com/')) {
+      return oauth2.AuthProvider.microsoft;
+    } else if (payload.iss == 'https://accounts.google.com') {
+      return oauth2.AuthProvider.google;
+    }
+
+    throw Exception('Unknown jwt issuer: ${payload.iss}');
   }
 }
 
@@ -328,25 +334,24 @@ extension OauthValues on AuthProvider {
     switch (this) {
       case oauth2.AuthProvider.google:
         return oauth2.ClientId(
-          /// Shorebird CLI's OAuth 2.0 identifier.
-          '523302233293-eia5antm0tgvek240t46orctktiabrek.apps.googleusercontent.com',
+          /// Shorebird CLI's OAuth 2.0 identifier for GCP,
+          '''523302233293-eia5antm0tgvek240t46orctktiabrek.apps.googleusercontent.com''',
 
-          /// Shorebird CLI's OAuth 2.0 secret.
+          /// Shorebird CLI's OAuth 2.0 secret for GCP.
           ///
           /// This isn't actually meant to be kept secret.
           /// There is no way to properly secure a secret for installed/console applications.
-          /// Fortunately the OAuth2 flow used in this case assumes that the app cannot
-          /// keep secrets so this particular secret DOES NOT need to be kept secret.
-          /// You should however make sure not to re-use the same secret
-          /// anywhere secrecy is required.
+          /// Fortunately the OAuth2 flow used in this case assumes that the app
+          /// cannot keep secrets so this particular secret DOES NOT need to be
+          /// kept secret. You should however make sure not to re-use the same
+          /// secret anywhere secrecy is required.
           ///
           /// For more info see: https://developers.google.com/identity/protocols/oauth2/native-app
           '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',
         );
-      // TODO: Handle this case.
       case oauth2.AuthProvider.microsoft:
         return oauth2.ClientId(
-          /// Shorebird CLI's OAuth 2.0 identifier.
+          /// Shorebird CLI's OAuth 2.0 identifier for Azure/Entra.
           'c4af9566-8a36-4348-b413-dab665b8717d',
         );
     }
