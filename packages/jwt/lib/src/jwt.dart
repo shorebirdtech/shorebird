@@ -67,32 +67,32 @@ class JwtVerificationFailure implements Exception {
   String toString() => 'JwtVerificationFailure: $reason';
 }
 
-/// Verify the provided [jwt].
+/// Verify the encoded [encodedJwt].
 Future<Jwt> verify(
-  String jwt, {
+  String encodedJwt, {
   required String issuer,
   required Set<String> audience,
   required String publicKeysUrl,
 }) async {
-  final Jwt unverified;
+  final Jwt jwt;
   try {
-    unverified = Jwt.parse(jwt);
+    jwt = Jwt.parse(encodedJwt);
   } on FormatException catch (e) {
     throw JwtVerificationFailure(e.message);
   }
 
   final publicKeys = await _getPublicKeys(publicKeysUrl);
 
-  await _verifyHeader(unverified.header, publicKeys);
-  _verifyPayload(unverified.payload, issuer, audience);
+  await _verifyHeader(jwt.header, publicKeys);
+  _verifyPayload(jwt.payload, issuer, audience);
 
-  final isValid = _verifySignature(jwt, publicKeys[unverified.header.kid]!);
+  final isValid = _verifySignature(encodedJwt, publicKeys[jwt.header.kid]!);
   if (!isValid) {
     throw const JwtVerificationFailure('Invalid signature.');
   }
 
   // If we've made it this far, the JWT is now verified.
-  return unverified;
+  return jwt;
 }
 
 Future<void> _verifyHeader(
