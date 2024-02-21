@@ -4,6 +4,7 @@ import 'dart:io' hide Platform;
 import 'package:cli_util/cli_util.dart';
 import 'package:googleapis_auth/googleapis_auth.dart';
 import 'package:http/http.dart' as http;
+import 'package:jwt/jwt.dart' show Jwt, JwtPayload;
 import 'package:mason_logger/mason_logger.dart';
 import 'package:mocktail/mocktail.dart';
 import 'package:path/path.dart' as p;
@@ -52,6 +53,62 @@ void main() {
         );
 
         expect(credentials.email, isNull);
+      });
+    });
+  });
+
+  group('OauthAuthProvider', () {
+    late Jwt jwt;
+    late JwtPayload payload;
+
+    setUp(() {
+      payload = MockJwtPayload();
+      jwt = Jwt(
+        header: MockJwtHeader(),
+        payload: payload,
+        signature: 'signature',
+      );
+    });
+
+    group('authProvider', () {
+      group('when issuer is login.microsoft.online', () {
+        setUp(() {
+          when(() => payload.iss)
+              .thenReturn('https://login.microsoftonline.com');
+        });
+
+        test('returns AuthProvider.microsoft', () {
+          expect(jwt.authProvider, equals(AuthProvider.microsoft));
+        });
+      });
+
+      group('when issuer is accounts.google.com', () {
+        setUp(() {
+          when(() => payload.iss).thenReturn('https://accounts.google.com');
+        });
+
+        test('returns AuthProvider.google', () {
+          expect(jwt.authProvider, equals(AuthProvider.google));
+        });
+      });
+
+      group('when issuer is unknown', () {
+        setUp(() {
+          when(() => payload.iss).thenReturn('https://example.com');
+        });
+
+        test('throws exception', () {
+          expect(
+            () => jwt.authProvider,
+            throwsA(
+              isA<Exception>().having(
+                (e) => e.toString(),
+                'message',
+                'Exception: Unknown jwt issuer: https://example.com',
+              ),
+            ),
+          );
+        });
       });
     });
   });

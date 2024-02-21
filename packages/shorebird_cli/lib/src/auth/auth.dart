@@ -319,7 +319,7 @@ class UserNotFoundException implements Exception {
 
 extension OauthAuthProvider on Jwt {
   oauth2.AuthProvider get authProvider {
-    if (payload.iss.startsWith('https://login.microsoftonline.com/')) {
+    if (payload.iss.startsWith('https://login.microsoftonline.com')) {
       return oauth2.AuthProvider.microsoft;
     } else if (payload.iss == 'https://accounts.google.com') {
       return oauth2.AuthProvider.google;
