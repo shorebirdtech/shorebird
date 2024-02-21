@@ -122,6 +122,7 @@ void main() {
     const refreshToken = '';
     const scopes = <String>[];
     final googleAuthProvider = GoogleAuthProvider();
+    final microsoftAuthProvider = MicrosoftAuthProvider();
     final accessToken = AccessToken(
       'Bearer',
       'accessToken',
@@ -418,6 +419,18 @@ void main() {
         expect(auth.isAuthenticated, isTrue);
         expect(buildAuth().email, email);
         expect(buildAuth().isAuthenticated, isTrue);
+      });
+
+      group('with a custom auth provider', () {
+        test(
+            '''should set the email when claims are valid and current user exists''',
+            () async {
+          await auth.login(microsoftAuthProvider, prompt: (_) {});
+          expect(auth.email, email);
+          expect(auth.isAuthenticated, isTrue);
+          expect(buildAuth().email, email);
+          expect(buildAuth().isAuthenticated, isTrue);
+        });
       });
 
       test('throws UserAlreadyLoggedInException if user is authenticated',
