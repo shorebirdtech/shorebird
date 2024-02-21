@@ -11,6 +11,7 @@ import 'package:path/path.dart' as p;
 import 'package:platform/platform.dart';
 import 'package:scoped/scoped.dart';
 import 'package:shorebird_cli/src/auth/auth.dart';
+import 'package:shorebird_cli/src/auth/providers/providers.dart';
 import 'package:shorebird_cli/src/command_runner.dart';
 import 'package:shorebird_cli/src/http_client/http_client.dart';
 import 'package:shorebird_cli/src/logger.dart';
@@ -78,7 +79,7 @@ void main() {
         });
 
         test('returns AuthProvider.microsoft', () {
-          expect(jwt.authProvider, equals(AuthProvider.microsoft));
+          expect(jwt.authProvider, isA<MicrosoftAuthProvider>());
         });
       });
 
@@ -88,7 +89,7 @@ void main() {
         });
 
         test('returns AuthProvider.google', () {
-          expect(jwt.authProvider, equals(AuthProvider.google));
+          expect(jwt.authProvider, isA<GoogleAuthProvider>());
         });
       });
 
@@ -120,6 +121,7 @@ void main() {
     const user = User(id: 42, email: email);
     const refreshToken = '';
     const scopes = <String>[];
+    final googleAuthProvider = GoogleAuthProvider();
     final accessToken = AccessToken(
       'Bearer',
       'accessToken',
@@ -366,7 +368,7 @@ void main() {
             HttpStatus.ok,
           ),
         );
-        await auth.login(AuthProvider.google, prompt: (_) {});
+        await auth.login(googleAuthProvider, prompt: (_) {});
         final client = auth.client;
         expect(client, isA<http.Client>());
         expect(client, isA<AuthenticatedClient>());
@@ -411,7 +413,7 @@ void main() {
     group('login', () {
       test('should set the email when claims are valid and current user exists',
           () async {
-        await auth.login(AuthProvider.google, prompt: (_) {});
+        await auth.login(googleAuthProvider, prompt: (_) {});
         expect(auth.email, email);
         expect(auth.isAuthenticated, isTrue);
         expect(buildAuth().email, email);
@@ -424,7 +426,7 @@ void main() {
         auth = buildAuth();
 
         await expectLater(
-          auth.login(AuthProvider.google, prompt: (_) {}),
+          auth.login(googleAuthProvider, prompt: (_) {}),
           throwsA(isA<UserAlreadyLoggedInException>()),
         );
 
@@ -437,7 +439,7 @@ void main() {
             .thenAnswer((_) async => null);
 
         await expectLater(
-          auth.login(AuthProvider.google, prompt: (_) {}),
+          auth.login(googleAuthProvider, prompt: (_) {}),
           throwsA(isA<UserNotFoundException>()),
         );
 
@@ -459,7 +461,7 @@ void main() {
           'returns credentials and does not set the email or cache credentials',
           () async {
         await expectLater(
-          auth.loginCI(AuthProvider.google, prompt: (_) {}),
+          auth.loginCI(googleAuthProvider, prompt: (_) {}),
           completion(equals(accessCredentials)),
         );
         expect(auth.email, isNull);
@@ -476,7 +478,7 @@ void main() {
         ).thenAnswer((_) async => null);
 
         await expectLater(
-          auth.loginCI(AuthProvider.google, prompt: (_) {}),
+          auth.loginCI(googleAuthProvider, prompt: (_) {}),
           throwsA(isA<UserNotFoundException>()),
         );
 
@@ -486,7 +488,7 @@ void main() {
 
     group('logout', () {
       test('clears session and wipes state', () async {
-        await auth.login(AuthProvider.google, prompt: (_) {});
+        await auth.login(googleAuthProvider, prompt: (_) {});
         expect(auth.email, email);
         expect(auth.isAuthenticated, isTrue);
 

@@ -7,10 +7,7 @@ import 'dart:async';
 import 'package:googleapis_auth/auth_io.dart';
 import 'package:http/http.dart';
 
-import 'access_credentials.dart';
-import 'auth_client.dart';
 import 'auth_http_utils.dart';
-import 'client_id.dart';
 import 'http_client_base.dart';
 import 'utils.dart';
 

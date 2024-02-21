@@ -8,6 +8,7 @@ import 'package:http/http.dart' as http;
 import 'package:jwt/jwt.dart';
 import 'package:path/path.dart' as p;
 import 'package:scoped/scoped.dart';
+import 'package:shorebird_cli/src/auth/providers/providers.dart';
 import 'package:shorebird_cli/src/command.dart';
 import 'package:shorebird_cli/src/command_runner.dart';
 import 'package:shorebird_cli/src/http_client/http_client.dart';
@@ -320,9 +321,9 @@ class UserNotFoundException implements Exception {
 extension OauthAuthProvider on Jwt {
   oauth2.AuthProvider get authProvider {
     if (payload.iss.startsWith('https://login.microsoftonline.com')) {
-      return oauth2.AuthProvider.microsoft;
+      return MicrosoftAuthProvider();
     } else if (payload.iss == 'https://accounts.google.com') {
-      return oauth2.AuthProvider.google;
+      return oauth2.GoogleAuthProvider();
     }
 
     throw Exception('Unknown jwt issuer: ${payload.iss}');
@@ -331,8 +332,8 @@ extension OauthAuthProvider on Jwt {
 
 extension OauthValues on AuthProvider {
   oauth2.ClientId get clientId {
-    switch (this) {
-      case oauth2.AuthProvider.google:
+    switch (runtimeType) {
+      case oauth2.GoogleAuthProvider:
         return oauth2.ClientId(
           /// Shorebird CLI's OAuth 2.0 identifier for GCP,
           '''523302233293-eia5antm0tgvek240t46orctktiabrek.apps.googleusercontent.com''',
@@ -349,20 +350,24 @@ extension OauthValues on AuthProvider {
           /// For more info see: https://developers.google.com/identity/protocols/oauth2/native-app
           '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',
         );
-      case oauth2.AuthProvider.microsoft:
+      case MicrosoftAuthProvider:
         return oauth2.ClientId(
           /// Shorebird CLI's OAuth 2.0 identifier for Azure/Entra.
           'c4af9566-8a36-4348-b413-dab665b8717d',
         );
     }
+
+    throw UnsupportedError('Unknown auth provider: $this');
   }
 
   List<String> get scopes {
-    switch (this) {
-      case oauth2.AuthProvider.google:
+    switch (runtimeType) {
+      case oauth2.GoogleAuthProvider:
         return ['openid', 'https://www.googleapis.com/auth/userinfo.email'];
-      case oauth2.AuthProvider.microsoft:
+      case MicrosoftAuthProvider:
         return ['openid'];
     }
+
+    throw UnsupportedError('Unknown auth provider: $this');
   }
 }

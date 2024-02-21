@@ -34,7 +34,7 @@ void main() {
     }
 
     setUpAll(() {
-      registerFallbackValue(AuthProvider.google);
+      registerFallbackValue(GoogleAuthProvider());
     });
 
     setUp(() {

@@ -20,7 +20,7 @@ class LoginCiCommand extends ShorebirdCommand {
     final AccessCredentials credentials;
 
     try {
-      credentials = await auth.loginCI(AuthProvider.google, prompt: prompt);
+      credentials = await auth.loginCI(GoogleAuthProvider(), prompt: prompt);
     } on UserNotFoundException catch (error) {
       logger
         ..err(

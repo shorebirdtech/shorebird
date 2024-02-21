@@ -64,7 +64,7 @@ class JwtFlow extends BaseFlow {
         'grant_type': _uri,
         'assertion': jwt,
       },
-      authProvider: AuthProvider.google,
+      authProvider: GoogleAuthProvider(),
     );
     final accessToken = parseAccessToken(response);
     return AccessCredentials(accessToken, null, _scopes);

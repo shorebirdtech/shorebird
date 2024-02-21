@@ -15,6 +15,7 @@ import 'test_utils.dart';
 
 void main() {
   test('fromApplicationsCredentialsFile', () async {
+    final authProvider = GoogleAuthProvider();
     final tmp = await Directory.systemTemp.createTemp('googleapis_auth-test');
     try {
       final credsFile = File.fromUri(tmp.uri.resolve('creds.json'));
@@ -26,7 +27,7 @@ void main() {
       }));
       final c = await fromApplicationsCredentialsFile(
         credsFile,
-        AuthProvider.google,
+        authProvider,
         'test-credentials-file',
         [],
         mockClient((Request request) async {
@@ -82,7 +83,7 @@ void main() {
       }));
       final c = await fromApplicationsCredentialsFile(
         credsFile,
-        AuthProvider.google,
+        GoogleAuthProvider(),
         'test-credentials-file',
         [],
         mockClient((Request request) async {
