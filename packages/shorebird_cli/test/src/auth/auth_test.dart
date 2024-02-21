@@ -22,6 +22,14 @@ import 'package:test/test.dart';
 import '../fakes.dart';
 import '../mocks.dart';
 
+class FakeProvider extends AuthProvider {
+  @override
+  Uri get authorizationEndpoint => Uri.https('example.com');
+
+  @override
+  Uri get tokenEndpoint => Uri.https('example.com');
+}
+
 void main() {
   group('scoped', () {
     test('creates instance with default constructor', () {
@@ -36,6 +44,22 @@ void main() {
         instance.credentialsFilePath,
         p.join(applicationConfigHome(executableName), 'credentials.json'),
       );
+    });
+  });
+
+  group('OauthValues', () {
+    final fakeAuthProvider = FakeProvider();
+
+    group('clientId', () {
+      test('throws UnsupportedError when provider is not a known type', () {
+        expect(() => fakeAuthProvider.clientId, throwsUnsupportedError);
+      });
+    });
+
+    group('scopes', () {
+      test('throws UnsupportedError when provider is not a known type', () {
+        expect(() => fakeAuthProvider.scopes, throwsUnsupportedError);
+      });
     });
   });
 
