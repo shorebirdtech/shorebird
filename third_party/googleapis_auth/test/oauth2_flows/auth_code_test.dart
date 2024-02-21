@@ -199,6 +199,20 @@ void main() {
         }
       }
 
+      Future<void> postToRedirectionEndpoint(Uri authCodeCall) async {
+        final ioClient = HttpClient();
+
+        final closeMe = expectAsync0(ioClient.close);
+
+        try {
+          final request = await ioClient.postUrl(authCodeCall);
+          final response = await request.close();
+          await response.drain();
+        } finally {
+          closeMe();
+        }
+      }
+
       void userPrompt(String url) {
         final redirectUri = validateUserPromptUri(url);
         final authCodeCall = Uri(
@@ -208,6 +222,34 @@ void main() {
             path: redirectUri.path,
             queryParameters: {
               'state': Uri.parse(url).queryParameters['state'],
+              'code': 'mycode',
+            });
+        callRedirectionEndpoint(authCodeCall);
+      }
+
+      void userPromptInvalidHttpVerb(String url) {
+        final redirectUri = validateUserPromptUri(url);
+        final authCodeCall = Uri(
+            scheme: redirectUri.scheme,
+            host: redirectUri.host,
+            port: redirectUri.port,
+            path: redirectUri.path,
+            queryParameters: {
+              'state': Uri.parse(url).queryParameters['state'],
+              'code': 'mycode',
+            });
+        postToRedirectionEndpoint(authCodeCall);
+      }
+
+      void userPromptNonMatchingState(String url) {
+        final redirectUri = validateUserPromptUri(url);
+        final authCodeCall = Uri(
+            scheme: redirectUri.scheme,
+            host: redirectUri.host,
+            port: redirectUri.port,
+            path: redirectUri.path,
+            queryParameters: {
+              'state': 'not-the-right-state',
               'code': 'mycode',
             });
         callRedirectionEndpoint(authCodeCall);
@@ -247,6 +289,46 @@ void main() {
           expectAsync1(userPrompt),
         );
         await expectLater(flow.run(), throwsA(isTransportException));
+      });
+
+      test('non-GET request', () async {
+        final flow = AuthorizationCodeGrantServerFlow(
+          authProvider,
+          clientId,
+          scopes,
+          mockClient(successFullResponse(manual: false), expectClose: false),
+          expectAsync1(userPromptInvalidHttpVerb),
+        );
+        await expectLater(
+          flow.run,
+          throwsA(
+            isA<Exception>().having(
+              (e) => e.toString(),
+              'message',
+              'Exception: Invalid response from server (expected GET request callback, got: POST).',
+            ),
+          ),
+        );
+      });
+
+      test('request with invalid state parameter', () async {
+        final flow = AuthorizationCodeGrantServerFlow(
+          authProvider,
+          clientId,
+          scopes,
+          mockClient(successFullResponse(manual: false), expectClose: false),
+          expectAsync1(userPromptNonMatchingState),
+        );
+        await expectLater(
+          flow.run,
+          throwsA(
+            isA<Exception>().having(
+              (e) => e.toString(),
+              'message',
+              'Exception: Invalid response from server (state did not match).',
+            ),
+          ),
+        );
       });
 
       test('invalid-server-response', () async {
