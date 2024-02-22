@@ -9,6 +9,7 @@ void main() {
         email: 'test@shorebird.dev',
         stripeCustomerId: 'test-customer-id',
         displayName: 'Test User',
+        authProvider: AuthProvider.google,
       );
       expect(
         User.fromJson(user.toJson()).toJson(),

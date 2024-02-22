@@ -1,4 +1,5 @@
 import 'package:json_annotation/json_annotation.dart';
+import 'package:shorebird_code_push_protocol/shorebird_code_push_protocol.dart';
 
 part 'user.g.dart';
 
@@ -11,6 +12,7 @@ class User {
   const User({
     required this.id,
     required this.email,
+    required this.authProvider,
     this.hasActiveSubscription = false,
     this.displayName,
     this.stripeCustomerId,
@@ -36,4 +38,7 @@ class User {
 
   /// The user's Stripe customer ID, if they have one.
   final String? stripeCustomerId;
+
+  /// The SSO provider used to create the user.
+  final AuthProvider authProvider;
 }
