@@ -1,3 +1,4 @@
+import 'package:googleapis_auth/auth_io.dart';
 import 'package:mason_logger/mason_logger.dart';
 import 'package:shorebird_cli/src/auth/auth.dart';
 import 'package:shorebird_cli/src/command.dart';
@@ -17,7 +18,7 @@ class LoginCommand extends ShorebirdCommand {
   @override
   Future<int> run() async {
     try {
-      await auth.login(prompt);
+      await auth.login(GoogleAuthProvider(), prompt: prompt);
     } on UserAlreadyLoggedInException catch (error) {
       logger
         ..info('You are already logged in as <${error.email}>.')

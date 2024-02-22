@@ -4,12 +4,14 @@ import 'dart:io' hide Platform;
 import 'package:cli_util/cli_util.dart';
 import 'package:googleapis_auth/googleapis_auth.dart';
 import 'package:http/http.dart' as http;
+import 'package:jwt/jwt.dart' show Jwt, JwtPayload;
 import 'package:mason_logger/mason_logger.dart';
 import 'package:mocktail/mocktail.dart';
 import 'package:path/path.dart' as p;
 import 'package:platform/platform.dart';
 import 'package:scoped/scoped.dart';
 import 'package:shorebird_cli/src/auth/auth.dart';
+import 'package:shorebird_cli/src/auth/providers/providers.dart';
 import 'package:shorebird_cli/src/command_runner.dart';
 import 'package:shorebird_cli/src/http_client/http_client.dart';
 import 'package:shorebird_cli/src/logger.dart';
@@ -19,6 +21,14 @@ import 'package:test/test.dart';
 
 import '../fakes.dart';
 import '../mocks.dart';
+
+class FakeProvider extends AuthProvider {
+  @override
+  Uri get authorizationEndpoint => Uri.https('example.com');
+
+  @override
+  Uri get tokenEndpoint => Uri.https('example.com');
+}
 
 void main() {
   group('scoped', () {
@@ -34,6 +44,22 @@ void main() {
         instance.credentialsFilePath,
         p.join(applicationConfigHome(executableName), 'credentials.json'),
       );
+    });
+  });
+
+  group('OauthValues', () {
+    final fakeAuthProvider = FakeProvider();
+
+    group('clientId', () {
+      test('throws UnsupportedError when provider is not a known type', () {
+        expect(() => fakeAuthProvider.clientId, throwsUnsupportedError);
+      });
+    });
+
+    group('scopes', () {
+      test('throws UnsupportedError when provider is not a known type', () {
+        expect(() => fakeAuthProvider.scopes, throwsUnsupportedError);
+      });
     });
   });
 
@@ -56,6 +82,62 @@ void main() {
     });
   });
 
+  group('OauthAuthProvider', () {
+    late Jwt jwt;
+    late JwtPayload payload;
+
+    setUp(() {
+      payload = MockJwtPayload();
+      jwt = Jwt(
+        header: MockJwtHeader(),
+        payload: payload,
+        signature: 'signature',
+      );
+    });
+
+    group('authProvider', () {
+      group('when issuer is login.microsoft.online', () {
+        setUp(() {
+          when(() => payload.iss)
+              .thenReturn('https://login.microsoftonline.com');
+        });
+
+        test('returns AuthProvider.microsoft', () {
+          expect(jwt.authProvider, isA<MicrosoftAuthProvider>());
+        });
+      });
+
+      group('when issuer is accounts.google.com', () {
+        setUp(() {
+          when(() => payload.iss).thenReturn('https://accounts.google.com');
+        });
+
+        test('returns AuthProvider.google', () {
+          expect(jwt.authProvider, isA<GoogleAuthProvider>());
+        });
+      });
+
+      group('when issuer is unknown', () {
+        setUp(() {
+          when(() => payload.iss).thenReturn('https://example.com');
+        });
+
+        test('throws exception', () {
+          expect(
+            () => jwt.authProvider,
+            throwsA(
+              isA<Exception>().having(
+                (e) => e.toString(),
+                'message',
+                'Exception: Unknown jwt issuer: https://example.com',
+              ),
+            ),
+          );
+        });
+      });
+    });
+  });
+
   group(Auth, () {
     const idToken =
         '''eyJhbGciOiJIUzI1NiIsImtpZCI6IjEyMzQiLCJ0eXAiOiJKV1QifQ.eyJpc3MiOiJodHRwczovL2FjY291bnRzLmdvb2dsZS5jb20iLCJhenAiOiI1MjMzMDIyMzMyOTMtZWlhNWFudG0wdGd2ZWsyNDB0NDZvcmN0a3RpYWJyZWsuYXBwcy5nb29nbGV1c2VyY29udGVudC5jb20iLCJhdWQiOiI1MjMzMDIyMzMyOTMtZWlhNWFudG0wdGd2ZWsyNDB0NDZvcmN0a3RpYWJyZWsuYXBwcy5nb29nbGV1c2VyY29udGVudC5jb20iLCJzdWIiOiIxMjM0NSIsImhkIjoic2hvcmViaXJkLmRldiIsImVtYWlsIjoidGVzdEBlbWFpbC5jb20iLCJlbWFpbF92ZXJpZmllZCI6dHJ1ZSwiaWF0IjoxMjM0LCJleHAiOjY3ODl9.MYbITALvKsGYTYjw1o7AQ0ObkqRWVBSr9cFYJrvA46g''';
@@ -63,6 +145,8 @@ void main() {
     const user = User(id: 42, email: email);
     const refreshToken = '';
     const scopes = <String>[];
+    final googleAuthProvider = GoogleAuthProvider();
+    final microsoftAuthProvider = MicrosoftAuthProvider();
     final accessToken = AccessToken(
       'Bearer',
       'accessToken',
@@ -107,7 +191,7 @@ void main() {
             return codePushClient;
           },
           obtainAccessCredentials:
-              (clientId, scopes, client, userPrompt) async {
+              (authProvider, clientId, scopes, client, userPrompt) async {
             return accessCredentials;
           },
         ),
@@ -135,15 +219,17 @@ void main() {
 
     group('AuthenticatedClient', () {
       group('token', () {
-        const token = 'shorebird-token';
+        const token =
+            '''eyJhbGciOiJIUzI1NiIsImtpZCI6IjEyMzQiLCJ0eXAiOiJKV1QifQ.eyJpc3MiOiJodHRwczovL2FjY291bnRzLmdvb2dsZS5jb20iLCJhenAiOiI1MjMzMDIyMzMyOTMtZWlhNWFudG0wdGd2ZWsyNDB0NDZvcmN0a3RpYWJyZWsuYXBwcy5nb29nbGV1c2VyY29udGVudC5jb20iLCJhdWQiOiI1MjMzMDIyMzMyOTMtZWlhNWFudG0wdGd2ZWsyNDB0NDZvcmN0a3RpYWJyZWsuYXBwcy5nb29nbGV1c2VyY29udGVudC5jb20iLCJzdWIiOiIxMjM0NSIsImhkIjoic2hvcmViaXJkLmRldiIsImVtYWlsIjoidGVzdEBlbWFpbC5jb20iLCJlbWFpbF92ZXJpZmllZCI6dHJ1ZSwiaWF0IjoxMjM0LCJleHAiOjY3ODl9.MYbITALvKsGYTYjw1o7AQ0ObkqRWVBSr9cFYJrvA46g''';
 
         test('does not require an onRefreshCredentials callback', () {
           expect(
             () => AuthenticatedClient.token(
               token: token,
               httpClient: httpClient,
-              refreshCredentials: (clientId, credentials, client) async =>
-                  accessCredentials,
+              refreshCredentials:
+                  (authProvider, clientId, credentials, client) async =>
+                      accessCredentials,
             ),
             returnsNormally,
           );
@@ -164,8 +250,9 @@ void main() {
             token: token,
             httpClient: httpClient,
             onRefreshCredentials: onRefreshCredentialsCalls.add,
-            refreshCredentials: (clientId, credentials, client) async =>
-                accessCredentials,
+            refreshCredentials:
+                (authProvider, clientId, credentials, client) async =>
+                    accessCredentials,
           );
 
           await runWithOverrides(
@@ -197,8 +284,9 @@ void main() {
             token: token,
             httpClient: httpClient,
             onRefreshCredentials: onRefreshCredentialsCalls.add,
-            refreshCredentials: (clientId, credentials, client) async =>
-                accessCredentials,
+            refreshCredentials:
+                (authProvider, clientId, credentials, client) async =>
+                    accessCredentials,
           );
 
           await runWithOverrides(
@@ -228,6 +316,8 @@ void main() {
             ),
           );
 
+          const expiredIdToken =
+              '''eyJhbGciOiJIUzI1NiIsImtpZCI6IjEyMzQiLCJ0eXAiOiJKV1QifQ.eyJpc3MiOiJodHRwczovL2FjY291bnRzLmdvb2dsZS5jb20iLCJhenAiOiI1MjMzMDIyMzMyOTMtZWlhNWFudG0wdGd2ZWsyNDB0NDZvcmN0a3RpYWJyZWsuYXBwcy5nb29nbGV1c2VyY29udGVudC5jb20iLCJhdWQiOiI1MjMzMDIyMzMyOTMtZWlhNWFudG0wdGd2ZWsyNDB0NDZvcmN0a3RpYWJyZWsuYXBwcy5nb29nbGV1c2VyY29udGVudC5jb20iLCJzdWIiOiIxMjM0NSIsImhkIjoic2hvcmViaXJkLmRldiIsImVtYWlsIjoidGVzdEBlbWFpbC5jb20iLCJlbWFpbF92ZXJpZmllZCI6dHJ1ZSwiaWF0IjoxMjM0LCJleHAiOjY3ODl9.MYbITALvKsGYTYjw1o7AQ0ObkqRWVBSr9cFYJrvA46g''';
           final onRefreshCredentialsCalls = <AccessCredentials>[];
           final expiredCredentials = AccessCredentials(
             AccessToken(
@@ -237,15 +327,16 @@ void main() {
             ),
             '',
             [],
-            idToken: 'expiredIdToken',
+            idToken: expiredIdToken,
           );
 
           final client = AuthenticatedClient.credentials(
             credentials: expiredCredentials,
             httpClient: httpClient,
             onRefreshCredentials: onRefreshCredentialsCalls.add,
-            refreshCredentials: (clientId, credentials, client) async =>
-                accessCredentials,
+            refreshCredentials:
+                (authProvider, clientId, credentials, client) async =>
+                    accessCredentials,
           );
 
           await runWithOverrides(
@@ -302,7 +393,7 @@ void main() {
             HttpStatus.ok,
           ),
         );
-        await auth.login((_) {});
+        await auth.login(googleAuthProvider, prompt: (_) {});
         final client = auth.client;
         expect(client, isA<http.Client>());
         expect(client, isA<AuthenticatedClient>());
@@ -347,11 +438,23 @@ void main() {
     group('login', () {
       test('should set the email when claims are valid and current user exists',
           () async {
-        await auth.login((_) {});
+        await auth.login(googleAuthProvider, prompt: (_) {});
         expect(auth.email, email);
         expect(auth.isAuthenticated, isTrue);
         expect(buildAuth().email, email);
         expect(buildAuth().isAuthenticated, isTrue);
+      });
+
+      group('with a custom auth provider', () {
+        test(
+            '''should set the email when claims are valid and current user exists''',
+            () async {
+          await auth.login(microsoftAuthProvider, prompt: (_) {});
+          expect(auth.email, email);
+          expect(auth.isAuthenticated, isTrue);
+          expect(buildAuth().email, email);
+          expect(buildAuth().isAuthenticated, isTrue);
+        });
       });
 
       test('throws UserAlreadyLoggedInException if user is authenticated',
@@ -360,7 +463,7 @@ void main() {
         auth = buildAuth();
 
         await expectLater(
-          auth.login((_) {}),
+          auth.login(googleAuthProvider, prompt: (_) {}),
           throwsA(isA<UserAlreadyLoggedInException>()),
         );
 
@@ -373,7 +476,7 @@ void main() {
             .thenAnswer((_) async => null);
 
         await expectLater(
-          auth.login((_) {}),
+          auth.login(googleAuthProvider, prompt: (_) {}),
           throwsA(isA<UserNotFoundException>()),
         );
 
@@ -395,7 +498,7 @@ void main() {
           'returns credentials and does not set the email or cache credentials',
           () async {
         await expectLater(
-          auth.loginCI((_) {}),
+          auth.loginCI(googleAuthProvider, prompt: (_) {}),
           completion(equals(accessCredentials)),
         );
         expect(auth.email, isNull);
@@ -412,7 +515,7 @@ void main() {
         ).thenAnswer((_) async => null);
 
         await expectLater(
-          auth.loginCI((_) {}),
+          auth.loginCI(googleAuthProvider, prompt: (_) {}),
           throwsA(isA<UserNotFoundException>()),
         );
 
@@ -422,7 +525,7 @@ void main() {
 
     group('logout', () {
       test('clears session and wipes state', () async {
-        await auth.login((_) {});
+        await auth.login(googleAuthProvider, prompt: (_) {});
         expect(auth.email, email);
         expect(auth.isAuthenticated, isTrue);
 

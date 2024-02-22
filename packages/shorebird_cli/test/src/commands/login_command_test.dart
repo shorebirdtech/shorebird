@@ -1,5 +1,6 @@
 import 'dart:io';
 
+import 'package:googleapis_auth/auth_io.dart';
 import 'package:http/http.dart' as http;
 import 'package:mason_logger/mason_logger.dart';
 import 'package:mocktail/mocktail.dart';
@@ -32,6 +33,10 @@ void main() {
       );
     }
 
+    setUpAll(() {
+      registerFallbackValue(GoogleAuthProvider());
+    });
+
     setUp(() {
       applicationConfigHome = Directory.systemTemp.createTempSync();
       auth = MockAuth();
@@ -48,7 +53,10 @@ void main() {
 
     test('exits with code 0 when already logged in', () async {
       when(
-        () => auth.login(any()),
+        () => auth.login(
+          any(),
+          prompt: any(named: 'prompt'),
+        ),
       ).thenThrow(UserAlreadyLoggedInException(email: email));
 
       final result = await runWithOverrides(command.run);
@@ -66,7 +74,10 @@ void main() {
 
     test('exits with code 70 if no user is found', () async {
       when(
-        () => auth.login(any()),
+        () => auth.login(
+          any(),
+          prompt: any(named: 'prompt'),
+        ),
       ).thenThrow(UserNotFoundException(email: email));
 
       final result = await runWithOverrides(command.run);
@@ -82,23 +93,43 @@ void main() {
 
     test('exits with code 70 when error occurs', () async {
       final error = Exception('oops something went wrong!');
-      when(() => auth.login(any())).thenThrow(error);
+      when(
+        () => auth.login(
+          any(),
+          prompt: any(named: 'prompt'),
+        ),
+      ).thenThrow(error);
 
       final result = await runWithOverrides(command.run);
       expect(result, equals(ExitCode.software.code));
 
-      verify(() => auth.login(any())).called(1);
+      verify(
+        () => auth.login(
+          any(),
+          prompt: any(named: 'prompt'),
+        ),
+      ).called(1);
       verify(() => logger.err(error.toString())).called(1);
     });
 
     test('exits with code 0 when logged in successfully', () async {
-      when(() => auth.login(any())).thenAnswer((_) async {});
+      when(
+        () => auth.login(
+          any(),
+          prompt: any(named: 'prompt'),
+        ),
+      ).thenAnswer((_) async {});
       when(() => auth.email).thenReturn(email);
 
       final result = await runWithOverrides(command.run);
       expect(result, equals(ExitCode.success.code));
 
-      verify(() => auth.login(any())).called(1);
+      verify(
+        () => auth.login(
+          any(),
+          prompt: any(named: 'prompt'),
+        ),
+      ).called(1);
       verify(
         () => logger.info(
           any(that: contains('You are now logged in as <$email>.')),

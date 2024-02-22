@@ -4,13 +4,11 @@
 
 import 'dart:convert';
 
+import 'package:googleapis_auth/auth_io.dart';
 import 'package:http/http.dart' show BaseRequest, Client, StreamedResponse;
 import 'package:http_parser/http_parser.dart';
 
-import 'access_token.dart';
-import 'exceptions.dart';
 import 'http_client_base.dart';
-import 'known_uris.dart';
 
 /// Due to differences of clock speed, network latency, etc. we
 /// will shorten expiry dates by 20 seconds.
@@ -109,8 +107,9 @@ extension ClientExtensions on Client {
   }
 
   Future<Map<String, dynamic>> oauthTokenRequest(
-    Map<String, String> postValues,
-  ) async {
+    Map<String, String> postValues, {
+    required AuthProvider authProvider,
+  }) async {
     final body = Stream<List<int>>.value(
       ascii.encode(
         postValues.entries
@@ -118,7 +117,7 @@ extension ClientExtensions on Client {
             .join('&'),
       ),
     );
-    final request = RequestImpl('POST', googleOauth2TokenEndpoint, body)
+    final request = RequestImpl('POST', authProvider.tokenEndpoint, body)
       ..headers['content-type'] = _contentTypeUrlEncoded;
 
     return requestJson(request, 'Failed to obtain access credentials.');
