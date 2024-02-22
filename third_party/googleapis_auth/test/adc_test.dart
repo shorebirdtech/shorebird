@@ -4,6 +4,7 @@ library googleapis_auth.adc_test;
 import 'dart:convert';
 import 'dart:io';
 
+import 'package:googleapis_auth/auth_io.dart';
 import 'package:googleapis_auth/src/adc_utils.dart'
     show fromApplicationsCredentialsFile;
 import 'package:googleapis_auth/src/known_uris.dart';
@@ -14,6 +15,7 @@ import 'test_utils.dart';
 
 void main() {
   test('fromApplicationsCredentialsFile', () async {
+    final authProvider = GoogleAuthProvider();
     final tmp = await Directory.systemTemp.createTemp('googleapis_auth-test');
     try {
       final credsFile = File.fromUri(tmp.uri.resolve('creds.json'));
@@ -25,6 +27,7 @@ void main() {
       }));
       final c = await fromApplicationsCredentialsFile(
         credsFile,
+        authProvider,
         'test-credentials-file',
         [],
         mockClient((Request request) async {
@@ -80,6 +83,7 @@ void main() {
       }));
       final c = await fromApplicationsCredentialsFile(
         credsFile,
+        GoogleAuthProvider(),
         'test-credentials-file',
         [],
         mockClient((Request request) async {

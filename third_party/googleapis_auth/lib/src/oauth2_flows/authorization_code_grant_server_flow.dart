@@ -27,6 +27,7 @@ class AuthorizationCodeGrantServerFlow
   final int listenPort;
 
   AuthorizationCodeGrantServerFlow(
+    super.authProvider,
     super.clientId,
     super.scopes,
     super.client,
@@ -89,6 +90,7 @@ class AuthorizationCodeGrantServerFlow
         final credentials = await obtainAccessCredentialsUsingCodeImpl(
           code,
           redirectionUri,
+          authProvider: authProvider,
           codeVerifier: codeVerifier,
         );
 

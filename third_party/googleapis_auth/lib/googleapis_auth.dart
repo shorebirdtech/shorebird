@@ -27,6 +27,7 @@ library googleapis_auth;
 
 export 'src/auth_client.dart';
 export 'src/auth_functions.dart';
+export 'src/auth_provider.dart';
 export 'src/client_id.dart';
 export 'src/exceptions.dart';
 export 'src/response_type.dart';
