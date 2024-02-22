@@ -2,7 +2,7 @@ import 'dart:convert';
 import 'dart:io' hide Platform;
 
 import 'package:cli_util/cli_util.dart';
-import 'package:googleapis_auth/googleapis_auth.dart';
+import 'package:googleapis_auth/googleapis_auth.dart' as oauth2;
 import 'package:http/http.dart' as http;
 import 'package:jwt/jwt.dart' show Jwt, JwtPayload;
 import 'package:mason_logger/mason_logger.dart';
@@ -22,7 +22,7 @@ import 'package:test/test.dart';
 import '../fakes.dart';
 import '../mocks.dart';
 
-class FakeProvider extends AuthProvider {
+class FakeProvider extends oauth2.AuthProvider {
   @override
   Uri get authorizationEndpoint => Uri.https('example.com');
 
@@ -66,8 +66,8 @@ void main() {
   group('JwtClaims', () {
     group('email', () {
       test('returns null when idToken is not a valid jwt', () {
-        final credentials = AccessCredentials(
-          AccessToken(
+        final credentials = oauth2.AccessCredentials(
+          oauth2.AccessToken(
             'Bearer',
             'accessToken',
             DateTime.now().add(const Duration(minutes: 10)).toUtc(),
@@ -147,13 +147,13 @@ void main() {
     const scopes = <String>[];
     final googleAuthProvider = GoogleAuthProvider();
     final microsoftAuthProvider = MicrosoftAuthProvider();
-    final accessToken = AccessToken(
+    final accessToken = oauth2.AccessToken(
       'Bearer',
       'accessToken',
       DateTime.now().add(const Duration(minutes: 10)).toUtc(),
     );
 
-    final accessCredentials = AccessCredentials(
+    final accessCredentials = oauth2.AccessCredentials(
       accessToken,
       refreshToken,
       scopes,
@@ -244,7 +244,7 @@ void main() {
             ),
           );
 
-          final onRefreshCredentialsCalls = <AccessCredentials>[];
+          final onRefreshCredentialsCalls = <oauth2.AccessCredentials>[];
 
           final client = AuthenticatedClient.token(
             token: token,
@@ -262,7 +262,7 @@ void main() {
           expect(
             onRefreshCredentialsCalls,
             equals([
-              isA<AccessCredentials>()
+              isA<oauth2.AccessCredentials>()
                   .having((c) => c.idToken, 'token', idToken),
             ]),
           );
@@ -279,7 +279,7 @@ void main() {
               HttpStatus.ok,
             ),
           );
-          final onRefreshCredentialsCalls = <AccessCredentials>[];
+          final onRefreshCredentialsCalls = <oauth2.AccessCredentials>[];
           final client = AuthenticatedClient.token(
             token: token,
             httpClient: httpClient,
@@ -318,9 +318,9 @@ void main() {
 
           const expiredIdToken =
               '''eyJhbGciOiJIUzI1NiIsImtpZCI6IjEyMzQiLCJ0eXAiOiJKV1QifQ.eyJpc3MiOiJodHRwczovL2FjY291bnRzLmdvb2dsZS5jb20iLCJhenAiOiI1MjMzMDIyMzMyOTMtZWlhNWFudG0wdGd2ZWsyNDB0NDZvcmN0a3RpYWJyZWsuYXBwcy5nb29nbGV1c2VyY29udGVudC5jb20iLCJhdWQiOiI1MjMzMDIyMzMyOTMtZWlhNWFudG0wdGd2ZWsyNDB0NDZvcmN0a3RpYWJyZWsuYXBwcy5nb29nbGV1c2VyY29udGVudC5jb20iLCJzdWIiOiIxMjM0NSIsImhkIjoic2hvcmViaXJkLmRldiIsImVtYWlsIjoidGVzdEBlbWFpbC5jb20iLCJlbWFpbF92ZXJpZmllZCI6dHJ1ZSwiaWF0IjoxMjM0LCJleHAiOjY3ODl9.MYbITALvKsGYTYjw1o7AQ0ObkqRWVBSr9cFYJrvA46g''';
-          final onRefreshCredentialsCalls = <AccessCredentials>[];
-          final expiredCredentials = AccessCredentials(
-            AccessToken(
+          final onRefreshCredentialsCalls = <oauth2.AccessCredentials>[];
+          final expiredCredentials = oauth2.AccessCredentials(
+            oauth2.AccessToken(
               'Bearer',
               'accessToken',
               DateTime.now().subtract(const Duration(minutes: 1)).toUtc(),
@@ -346,7 +346,7 @@ void main() {
           expect(
             onRefreshCredentialsCalls,
             equals([
-              isA<AccessCredentials>()
+              isA<oauth2.AccessCredentials>()
                   .having((c) => c.idToken, 'token', idToken),
             ]),
           );
@@ -363,7 +363,7 @@ void main() {
               HttpStatus.ok,
             ),
           );
-          final onRefreshCredentialsCalls = <AccessCredentials>[];
+          final onRefreshCredentialsCalls = <oauth2.AccessCredentials>[];
           final client = AuthenticatedClient.credentials(
             credentials: accessCredentials,
             httpClient: httpClient,
@@ -431,7 +431,7 @@ void main() {
           () async {
         final client = auth.client;
         expect(client, isA<http.Client>());
-        expect(client, isNot(isA<AutoRefreshingAuthClient>()));
+        expect(client, isNot(isA<oauth2.AutoRefreshingAuthClient>()));
       });
     });
 
