@@ -21,6 +21,16 @@ final authRef = create(Auth.new);
 // The [Auth] instance available in the current zone.
 Auth get auth => read(authRef);
 
+/// Matches 'https://accounts.google.com' exactly.
+final googleJwtIssuerRegexp = RegExp(r'https:\/\/accounts\.google\.com');
+
+/// Matches lines like
+/// https://login.microsoftonline.com/{tenant-id}/v2.0/.well-known/openid-configuration
+/// Captures the tenant ID as a group.
+final microsoftJwtIssuerRegexp = RegExp(
+  r'https:\/\/login\.microsoftonline\.com\/([\w-]+)\/v2\.0',
+);
+
 typedef ObtainAccessCredentials = Future<oauth2.AccessCredentials> Function(
   oauth2.AuthProvider authProvider,
   oauth2.ClientId clientId,
@@ -320,10 +330,10 @@ class UserNotFoundException implements Exception {
 
 extension OauthAuthProvider on Jwt {
   oauth2.AuthProvider get authProvider {
-    if (payload.iss.startsWith('https://login.microsoftonline.com')) {
-      return MicrosoftAuthProvider();
-    } else if (payload.iss == 'https://accounts.google.com') {
+    if (googleJwtIssuerRegexp.hasMatch(payload.iss)) {
       return oauth2.GoogleAuthProvider();
+    } else if (microsoftJwtIssuerRegexp.hasMatch(payload.iss)) {
+      return MicrosoftAuthProvider();
     }
 
     throw Exception('Unknown jwt issuer: ${payload.iss}');
