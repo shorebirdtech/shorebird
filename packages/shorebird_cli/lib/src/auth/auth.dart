@@ -353,7 +353,7 @@ extension OauthValues on oauth2.AuthProvider {
       case MicrosoftAuthProvider:
         return oauth2.ClientId(
           /// Shorebird CLI's OAuth 2.0 identifier for Azure/Entra.
-          'c4af9566-8a36-4348-b413-dab665b8717d',
+          'e389e829-42b2-47ab-8868-581475f90313',
         );
     }
 
