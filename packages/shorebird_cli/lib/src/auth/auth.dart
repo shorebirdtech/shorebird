@@ -22,13 +22,13 @@ final authRef = create(Auth.new);
 Auth get auth => read(authRef);
 
 /// Matches 'https://accounts.google.com' exactly.
-final googleJwtIssuerRegexp = RegExp(r'https:\/\/accounts\.google\.com');
+final googleJwtIssuerRegexp = RegExp(r'^https:\/\/accounts\.google\.com$');
 
 /// Matches lines like
 /// https://login.microsoftonline.com/{tenant-id}/v2.0/.well-known/openid-configuration
 /// Captures the tenant ID as a group.
 final microsoftJwtIssuerRegexp = RegExp(
-  r'https:\/\/login\.microsoftonline\.com\/([\w-]+)\/v2\.0',
+  r'^https:\/\/login\.microsoftonline\.com\/([\w-]+)\/v2\.0$',
 );
 
 typedef ObtainAccessCredentials = Future<oauth2.AccessCredentials> Function(
