@@ -92,7 +92,7 @@ void main() {
       const user = User(
         id: 123,
         email: 'tester@shorebird.dev',
-        authProvider: AuthProvider.google,
+        jwtIssuer: 'https://accounts.google.com',
       );
 
       test('makes the correct request', () async {
@@ -1114,7 +1114,8 @@ void main() {
         id: 1,
         email: 'tester@shorebird.dev',
         displayName: userName,
-        authProvider: AuthProvider.microsoft,
+        jwtIssuer:
+            'https://login.microsoftonline.com/9188040d-6c67-4c5b-b112-36a304b66dad/v2.0',
       );
 
       test('makes the correct request', () async {

@@ -15,8 +15,7 @@ User _$UserFromJson(Map<String, dynamic> json) => $checkedCreate(
         final val = User(
           id: $checkedConvert('id', (v) => v as int),
           email: $checkedConvert('email', (v) => v as String),
-          authProvider: $checkedConvert(
-              'auth_provider', (v) => $enumDecode(_$AuthProviderEnumMap, v)),
+          jwtIssuer: $checkedConvert('jwt_issuer', (v) => v as String),
           hasActiveSubscription: $checkedConvert(
               'has_active_subscription', (v) => v as bool? ?? false),
           displayName: $checkedConvert('display_name', (v) => v as String?),
@@ -26,7 +25,7 @@ User _$UserFromJson(Map<String, dynamic> json) => $checkedCreate(
         return val;
       },
       fieldKeyMap: const {
-        'authProvider': 'auth_provider',
+        'jwtIssuer': 'jwt_issuer',
         'hasActiveSubscription': 'has_active_subscription',
         'displayName': 'display_name',
         'stripeCustomerId': 'stripe_customer_id'
@@ -39,10 +38,5 @@ Map<String, dynamic> _$UserToJson(User instance) => <String, dynamic>{
       'display_name': instance.displayName,
       'has_active_subscription': instance.hasActiveSubscription,
       'stripe_customer_id': instance.stripeCustomerId,
-      'auth_provider': _$AuthProviderEnumMap[instance.authProvider]!,
+      'jwt_issuer': instance.jwtIssuer,
     };
-
-const _$AuthProviderEnumMap = {
-  AuthProvider.google: 'google',
-  AuthProvider.microsoft: 'microsoft',
-};

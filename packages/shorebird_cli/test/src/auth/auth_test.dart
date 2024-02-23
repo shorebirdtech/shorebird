@@ -30,6 +30,10 @@ class FakeProvider extends oauth2.AuthProvider {
   Uri get tokenEndpoint => Uri.https('example.com');
 }
 
+const googleJwtIssuer = 'https://accounts.google.com';
+const microsoftJwtIssuer =
+    'https://login.microsoftonline.com/9188040d-6c67-4c5b-b112-36a304b66dad/v2.0';
+
 void main() {
   group('scoped', () {
     test('creates instance with default constructor', () {
@@ -98,8 +102,7 @@ void main() {
     group('authProvider', () {
       group('when issuer is login.microsoft.online', () {
         setUp(() {
-          when(() => payload.iss)
-              .thenReturn('https://login.microsoftonline.com');
+          when(() => payload.iss).thenReturn(microsoftJwtIssuer);
         });
 
         test('returns AuthProvider.microsoft', () {
@@ -109,7 +112,7 @@ void main() {
 
       group('when issuer is accounts.google.com', () {
         setUp(() {
-          when(() => payload.iss).thenReturn('https://accounts.google.com');
+          when(() => payload.iss).thenReturn(googleJwtIssuer);
         });
 
         test('returns AuthProvider.google', () {
@@ -142,7 +145,11 @@ void main() {
     const idToken =
         '''eyJhbGciOiJIUzI1NiIsImtpZCI6IjEyMzQiLCJ0eXAiOiJKV1QifQ.eyJpc3MiOiJodHRwczovL2FjY291bnRzLmdvb2dsZS5jb20iLCJhenAiOiI1MjMzMDIyMzMyOTMtZWlhNWFudG0wdGd2ZWsyNDB0NDZvcmN0a3RpYWJyZWsuYXBwcy5nb29nbGV1c2VyY29udGVudC5jb20iLCJhdWQiOiI1MjMzMDIyMzMyOTMtZWlhNWFudG0wdGd2ZWsyNDB0NDZvcmN0a3RpYWJyZWsuYXBwcy5nb29nbGV1c2VyY29udGVudC5jb20iLCJzdWIiOiIxMjM0NSIsImhkIjoic2hvcmViaXJkLmRldiIsImVtYWlsIjoidGVzdEBlbWFpbC5jb20iLCJlbWFpbF92ZXJpZmllZCI6dHJ1ZSwiaWF0IjoxMjM0LCJleHAiOjY3ODl9.MYbITALvKsGYTYjw1o7AQ0ObkqRWVBSr9cFYJrvA46g''';
     const email = 'test@email.com';
-    const user = User(id: 42, email: email, authProvider: AuthProvider.google);
+    const user = User(
+      id: 42,
+      email: email,
+      jwtIssuer: googleJwtIssuer,
+    );
     const refreshToken = '';
     const scopes = <String>[];
     final googleAuthProvider = GoogleAuthProvider();

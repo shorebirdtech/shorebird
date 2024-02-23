@@ -21,6 +21,14 @@ final authRef = create(Auth.new);
 // The [Auth] instance available in the current zone.
 Auth get auth => read(authRef);
 
+/// The JWT issuer field for Google-issued JWTs.
+const googleJwtIssuer = 'https://accounts.google.com';
+
+/// Microsoft-issued JWTs are of the form
+/// https://login.microsoftonline.com/{tenant-id}/v2.0. We don't care about the
+/// tenant ID, so we just match the prefix.
+const microsoftJwtIssuerPrefix = 'https://login.microsoftonline.com/';
+
 typedef ObtainAccessCredentials = Future<oauth2.AccessCredentials> Function(
   oauth2.AuthProvider authProvider,
   oauth2.ClientId clientId,
@@ -320,10 +328,10 @@ class UserNotFoundException implements Exception {
 
 extension OauthAuthProvider on Jwt {
   oauth2.AuthProvider get authProvider {
-    if (payload.iss.startsWith('https://login.microsoftonline.com')) {
-      return MicrosoftAuthProvider();
-    } else if (payload.iss == 'https://accounts.google.com') {
+    if (payload.iss == googleJwtIssuer) {
       return oauth2.GoogleAuthProvider();
+    } else if (payload.iss.startsWith(microsoftJwtIssuerPrefix)) {
+      return MicrosoftAuthProvider();
     }
 
     throw Exception('Unknown jwt issuer: ${payload.iss}');
@@ -353,7 +361,7 @@ extension OauthValues on oauth2.AuthProvider {
       case MicrosoftAuthProvider:
         return oauth2.ClientId(
           /// Shorebird CLI's OAuth 2.0 identifier for Azure/Entra.
-          'e389e829-42b2-47ab-8868-581475f90313',
+          '0ff83897-ec85-4642-a250-48d5f595137c',
         );
     }
 
