@@ -2,6 +2,14 @@
 
 This section contains past updates we've sent to customers via Discord.
 
+## 0.26.1 (February 26, 2024)
+
+🆕 Updated to Flutter 3.19.1.
+🪟 Fixed that `shorebird patch` could fail on some Windows installs (missing .dll).
+☁️ Support Microsoft Login for `shorebird login` and console.shorebird.dev.
+
+📚 Release notes can be found at https://github.com/shorebirdtech/shorebird/releases/tag/v0.26.1
+
 ## 0.26.0 (February 15, 2024)
 
 🆕 Updated to Flutter 3.19.0.
