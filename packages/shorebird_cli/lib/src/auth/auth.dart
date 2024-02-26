@@ -100,7 +100,7 @@ class AuthenticatedClient extends http.BaseClient {
       final jwt = Jwt.parse(token);
       final authProvider = jwt.authProvider;
       credentials = _credentials = await _refreshCredentials(
-        authProvider,
+        authProvider.authEndpoints,
         authProvider.clientId,
         oauth2.AccessCredentials(
           // This isn't relevant for a refresh operation.
@@ -118,7 +118,7 @@ class AuthenticatedClient extends http.BaseClient {
       final authProvider = jwt.authProvider;
 
       credentials = _credentials = await _refreshCredentials(
-        authProvider,
+        authProvider.authEndpoints,
         authProvider.clientId,
         credentials,
         _baseClient,
@@ -176,15 +176,15 @@ class Auth {
   }
 
   Future<AccessCredentials> loginCI(
-    oauth2.AuthEndpoints authEndpoints, {
+    AuthProvider authProvider, {
     required void Function(String) prompt,
   }) async {
     final client = http.Client();
     try {
       final credentials = await _obtainAccessCredentials(
-        authEndpoints,
-        authEndpoints.clientId,
-        authEndpoints.scopes,
+        authProvider.authEndpoints,
+        authProvider.clientId,
+        authProvider.scopes,
         client,
         prompt,
       );
@@ -206,7 +206,7 @@ class Auth {
   }
 
   Future<void> login(
-    oauth2.AuthEndpoints authEndpoints, {
+    AuthProvider authProvider, {
     required void Function(String) prompt,
   }) async {
     if (_credentials != null) {
@@ -216,9 +216,9 @@ class Auth {
     final client = http.Client();
     try {
       _credentials = await _obtainAccessCredentials(
-        authEndpoints,
-        authEndpoints.clientId,
-        authEndpoints.scopes,
+        authProvider.authEndpoints,
+        authProvider.clientId,
+        authProvider.scopes,
         client,
         prompt,
       );
@@ -327,21 +327,26 @@ class UserNotFoundException implements Exception {
 }
 
 extension OauthAuthProvider on Jwt {
-  oauth2.AuthEndpoints get authProvider {
+  AuthProvider get authProvider {
     if (payload.iss == googleJwtIssuer) {
-      return oauth2.GoogleAuthEndpoints();
+      return AuthProvider.google;
     } else if (payload.iss.startsWith(microsoftJwtIssuerPrefix)) {
-      return MicrosoftAuthEndpoints();
+      return AuthProvider.microsoft;
     }
 
     throw Exception('Unknown jwt issuer: ${payload.iss}');
   }
 }
 
-extension OauthValues on oauth2.AuthEndpoints {
+extension OauthValues on AuthProvider {
+  oauth2.AuthEndpoints get authEndpoints => switch (this) {
+        (AuthProvider.google) => oauth2.GoogleAuthEndpoints(),
+        (AuthProvider.microsoft) => MicrosoftAuthEndpoints(),
+      };
+
   oauth2.ClientId get clientId {
-    switch (runtimeType) {
-      case oauth2.GoogleAuthEndpoints:
+    switch (this) {
+      case AuthProvider.google:
         return oauth2.ClientId(
           /// Shorebird CLI's OAuth 2.0 identifier for GCP,
           '''523302233293-eia5antm0tgvek240t46orctktiabrek.apps.googleusercontent.com''',
@@ -358,24 +363,20 @@ extension OauthValues on oauth2.AuthEndpoints {
           /// For more info see: https://developers.google.com/identity/protocols/oauth2/native-app
           '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',
         );
-      case MicrosoftAuthEndpoints:
+      case AuthProvider.microsoft:
         return oauth2.ClientId(
           /// Shorebird CLI's OAuth 2.0 identifier for Azure/Entra.
-          '0ff83897-ec85-4642-a250-48d5f595137c',
+          // '0ff83897-ec85-4642-a250-48d5f595137c',
+          '952c7a01-9b08-47b7-9ba9-95d89dcc29f1',
         );
     }
-
-    throw UnsupportedError('Unknown auth provider: $this');
   }
 
-  List<String> get scopes {
-    switch (runtimeType) {
-      case oauth2.GoogleAuthEndpoints:
-        return ['openid', 'https://www.googleapis.com/auth/userinfo.email'];
-      case MicrosoftAuthEndpoints:
-        return ['openid'];
-    }
-
-    throw UnsupportedError('Unknown auth provider: $this');
-  }
+  List<String> get scopes => switch (this) {
+        (AuthProvider.google) => [
+            'openid',
+            'https://www.googleapis.com/auth/userinfo.email',
+          ],
+        (AuthProvider.microsoft) => ['openid', 'email'],
+      };
 }
