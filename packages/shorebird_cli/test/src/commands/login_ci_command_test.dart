@@ -86,7 +86,7 @@ void main() {
             () => logger.chooseOne<AuthProvider>(
               any(),
               choices: any(named: 'choices'),
-              display: any(named: 'display'),
+              display: captureAny(named: 'display'),
             ),
           ).thenReturn(provider);
         });
@@ -100,6 +100,14 @@ void main() {
               prompt: any(named: 'prompt'),
             ),
           ).called(1);
+          final captured = verify(
+            () => logger.chooseOne<AuthProvider>(
+              any(),
+              choices: any(named: 'choices'),
+              display: captureAny(named: 'display'),
+            ),
+          ).captured.single as String Function(AuthProvider);
+          expect(captured(AuthProvider.google), contains('Google'));
         });
       });
     });
