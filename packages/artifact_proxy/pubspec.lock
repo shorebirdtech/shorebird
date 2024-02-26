@@ -205,10 +205,10 @@ packages:
     dependency: transitive
     description:
       name: hotreloader
-      sha256: "728c0613556c1d153f7e7f4a367cffacc3f5a677d7f6497a1c2b35add4e6dacf"
+      sha256: ed56fdc1f3a8ac924e717257621d09e9ec20e308ab6352a73a50a1d7a4d9158e
       url: "https://pub.dev"
     source: hosted
-    version: "3.0.6"
+    version: "4.2.0"
   http:
     dependency: "direct main"
     description:
@@ -373,10 +373,10 @@ packages:
     dependency: "direct main"
     description:
       name: shelf_hotreload
-      sha256: "5e7a68273d64a095384325d769c6a4885ea15c6aafee361098c0d8a5ecb5dcf6"
+      sha256: d7099618b18d3c63ba5272491c1812c306629495129ef9996115f0417902f963
       url: "https://pub.dev"
     source: hosted
-    version: "1.4.0"
+    version: "1.5.0"
   shelf_packages_handler:
     dependency: transitive
     description:
