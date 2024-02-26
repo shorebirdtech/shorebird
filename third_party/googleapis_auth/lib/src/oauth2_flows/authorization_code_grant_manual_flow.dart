@@ -24,7 +24,7 @@ class AuthorizationCodeGrantManualFlow
   final PromptUserForConsentManual userPrompt;
 
   AuthorizationCodeGrantManualFlow(
-    super.authProvider,
+    super.authEndpoints,
     super.clientId,
     super.scopes,
     super.client,
@@ -48,7 +48,7 @@ class AuthorizationCodeGrantManualFlow
     return obtainAccessCredentialsUsingCodeImpl(
       code,
       _redirectionUri,
-      authProvider: authProvider,
+      authEndpoints: authEndpoints,
       codeVerifier: codeVerifier,
     );
   }

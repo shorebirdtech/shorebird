@@ -87,11 +87,11 @@ class AutoRefreshingClient extends AutoRefreshDelegatingClient {
   @override
   AccessCredentials credentials;
   late Client authClient;
-  final AuthProvider authProvider;
+  final AuthEndpoints authEndpoints;
 
   AutoRefreshingClient(
     super.client,
-    this.authProvider,
+    this.authEndpoints,
     this.clientId,
     this.credentials, {
     super.closeUnderlyingClient,
@@ -113,7 +113,7 @@ class AutoRefreshingClient extends AutoRefreshDelegatingClient {
       return authClient.send(request);
     } else {
       final cred = await refreshCredentials(
-        authProvider,
+        authEndpoints,
         clientId,
         credentials,
         baseClient,

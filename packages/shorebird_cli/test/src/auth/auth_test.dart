@@ -22,7 +22,7 @@ import 'package:test/test.dart';
 import '../fakes.dart';
 import '../mocks.dart';
 
-class FakeProvider extends oauth2.AuthProvider {
+class FakeProvider extends oauth2.AuthEndpoints {
   @override
   Uri get authorizationEndpoint => Uri.https('example.com');
 
@@ -106,7 +106,7 @@ void main() {
         });
 
         test('returns AuthProvider.microsoft', () {
-          expect(jwt.authProvider, isA<MicrosoftAuthProvider>());
+          expect(jwt.authProvider, isA<MicrosoftAuthEndpoints>());
         });
       });
 
@@ -116,7 +116,7 @@ void main() {
         });
 
         test('returns AuthProvider.google', () {
-          expect(jwt.authProvider, isA<GoogleAuthProvider>());
+          expect(jwt.authProvider, isA<GoogleAuthEndpoints>());
         });
       });
 
@@ -152,8 +152,8 @@ void main() {
     );
     const refreshToken = '';
     const scopes = <String>[];
-    final googleAuthProvider = GoogleAuthProvider();
-    final microsoftAuthProvider = MicrosoftAuthProvider();
+    final googleAuthProvider = GoogleAuthEndpoints();
+    final microsoftAuthProvider = MicrosoftAuthEndpoints();
     final accessToken = oauth2.AccessToken(
       'Bearer',
       'accessToken',

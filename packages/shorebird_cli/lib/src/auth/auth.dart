@@ -30,7 +30,7 @@ const googleJwtIssuer = 'https://accounts.google.com';
 const microsoftJwtIssuerPrefix = 'https://login.microsoftonline.com/';
 
 typedef ObtainAccessCredentials = Future<oauth2.AccessCredentials> Function(
-  oauth2.AuthProvider authProvider,
+  oauth2.AuthEndpoints authProvider,
   oauth2.ClientId clientId,
   List<String> scopes,
   http.Client client,
@@ -38,7 +38,7 @@ typedef ObtainAccessCredentials = Future<oauth2.AccessCredentials> Function(
 );
 
 typedef RefreshCredentials = Future<oauth2.AccessCredentials> Function(
-  oauth2.AuthProvider authProvider,
+  oauth2.AuthEndpoints authProvider,
   oauth2.ClientId clientId,
   oauth2.AccessCredentials credentials,
   http.Client client,
@@ -176,7 +176,7 @@ class Auth {
   }
 
   Future<AccessCredentials> loginCI(
-    oauth2.AuthProvider authProvider, {
+    api.AuthProvider authProvider, {
     required void Function(String) prompt,
   }) async {
     final client = http.Client();
@@ -206,7 +206,7 @@ class Auth {
   }
 
   Future<void> login(
-    oauth2.AuthProvider authProvider, {
+    api.AuthProvider authProvider, {
     required void Function(String) prompt,
   }) async {
     if (_credentials != null) {

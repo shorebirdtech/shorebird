@@ -37,7 +37,7 @@ export 'src/typedefs.dart';
 /// {@macro googleapis_auth_not_close_the_baseClient}
 /// {@macro googleapis_auth_listen_port}
 Future<AutoRefreshingAuthClient> clientViaUserConsent(
-  AuthProvider authProvider,
+  AuthEndpoints authEndpoints,
   ClientId clientId,
   List<String> scopes,
   PromptUserForConsent userPrompt, {
@@ -52,7 +52,7 @@ Future<AutoRefreshingAuthClient> clientViaUserConsent(
   }
 
   final flow = AuthorizationCodeGrantServerFlow(
-    authProvider,
+    authEndpoints,
     clientId,
     scopes,
     baseClient,
@@ -73,7 +73,7 @@ Future<AutoRefreshingAuthClient> clientViaUserConsent(
   }
   return AutoRefreshingClient(
     baseClient,
-    authProvider,
+    authEndpoints,
     clientId,
     credentials,
     closeUnderlyingClient: closeUnderlyingClient,
@@ -96,7 +96,7 @@ Future<AutoRefreshingAuthClient> clientViaUserConsent(
 /// {@macro googleapis_auth_close_the_client}
 /// {@macro googleapis_auth_not_close_the_baseClient}
 Future<AutoRefreshingAuthClient> clientViaUserConsentManual(
-  AuthProvider authProvider,
+  AuthEndpoints authEndpoints,
   ClientId clientId,
   List<String> scopes,
   PromptUserForConsentManual userPrompt, {
@@ -110,7 +110,7 @@ Future<AutoRefreshingAuthClient> clientViaUserConsentManual(
   }
 
   final flow = AuthorizationCodeGrantManualFlow(
-    authProvider,
+    authEndpoints,
     clientId,
     scopes,
     baseClient,
@@ -131,7 +131,7 @@ Future<AutoRefreshingAuthClient> clientViaUserConsentManual(
 
   return AutoRefreshingClient(
     baseClient,
-    authProvider,
+    authEndpoints,
     clientId,
     credentials,
     closeUnderlyingClient: closeUnderlyingClient,
@@ -159,7 +159,7 @@ Future<AutoRefreshingAuthClient> clientViaUserConsentManual(
 /// on the Google Cloud console.
 /// {@endtemplate}
 Future<AccessCredentials> obtainAccessCredentialsViaUserConsent(
-  AuthProvider authProvider,
+  AuthEndpoints authEndpoints,
   ClientId clientId,
   List<String> scopes,
   Client client,
@@ -168,7 +168,7 @@ Future<AccessCredentials> obtainAccessCredentialsViaUserConsent(
   int listenPort = 0,
 }) =>
     AuthorizationCodeGrantServerFlow(
-      authProvider,
+      authEndpoints,
       clientId,
       scopes,
       client,
@@ -190,7 +190,7 @@ Future<AccessCredentials> obtainAccessCredentialsViaUserConsent(
 ///
 /// {@macro googleapis_auth_user_consent_return}
 Future<AccessCredentials> obtainAccessCredentialsViaUserConsentManual(
-  AuthProvider authProvider,
+  AuthEndpoints authEndpoints,
   ClientId clientId,
   List<String> scopes,
   Client client,
@@ -198,7 +198,7 @@ Future<AccessCredentials> obtainAccessCredentialsViaUserConsentManual(
   String? hostedDomain,
 }) =>
     AuthorizationCodeGrantManualFlow(
-      authProvider,
+      authEndpoints,
       clientId,
       scopes,
       client,
