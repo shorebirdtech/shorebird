@@ -171,7 +171,7 @@ void main() {
             return codePushClient;
           },
           obtainAccessCredentials:
-              (authProvider, clientId, scopes, client, userPrompt) async {
+              (authEndpoints, clientId, scopes, client, userPrompt) async {
             return accessCredentials;
           },
         ),
@@ -208,7 +208,7 @@ void main() {
               token: token,
               httpClient: httpClient,
               refreshCredentials:
-                  (authProvider, clientId, credentials, client) async =>
+                  (authEndpoints, clientId, credentials, client) async =>
                       accessCredentials,
             ),
             returnsNormally,
@@ -231,7 +231,7 @@ void main() {
             httpClient: httpClient,
             onRefreshCredentials: onRefreshCredentialsCalls.add,
             refreshCredentials:
-                (authProvider, clientId, credentials, client) async =>
+                (authEndpoints, clientId, credentials, client) async =>
                     accessCredentials,
           );
 
@@ -265,7 +265,7 @@ void main() {
             httpClient: httpClient,
             onRefreshCredentials: onRefreshCredentialsCalls.add,
             refreshCredentials:
-                (authProvider, clientId, credentials, client) async =>
+                (authEndpoints, clientId, credentials, client) async =>
                     accessCredentials,
           );
 
@@ -315,7 +315,7 @@ void main() {
             httpClient: httpClient,
             onRefreshCredentials: onRefreshCredentialsCalls.add,
             refreshCredentials:
-                (authProvider, clientId, credentials, client) async =>
+                (authEndpoints, clientId, credentials, client) async =>
                     accessCredentials,
           );
 
@@ -425,7 +425,7 @@ void main() {
         expect(buildAuth().isAuthenticated, isTrue);
       });
 
-      group('with a custom auth provider', () {
+      group('with custom auth provider', () {
         test(
             '''should set the email when claims are valid and current user exists''',
             () async {
