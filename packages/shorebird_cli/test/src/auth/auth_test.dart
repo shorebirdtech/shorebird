@@ -11,7 +11,6 @@ import 'package:path/path.dart' as p;
 import 'package:platform/platform.dart';
 import 'package:scoped/scoped.dart';
 import 'package:shorebird_cli/src/auth/auth.dart';
-import 'package:shorebird_cli/src/auth/endpoints/endpoints.dart';
 import 'package:shorebird_cli/src/command_runner.dart';
 import 'package:shorebird_cli/src/http_client/http_client.dart';
 import 'package:shorebird_cli/src/logger.dart';
@@ -21,14 +20,6 @@ import 'package:test/test.dart';
 
 import '../fakes.dart';
 import '../mocks.dart';
-
-class FakeAuthEndpoints extends oauth2.AuthEndpoints {
-  @override
-  Uri get authorizationEndpoint => Uri.https('example.com');
-
-  @override
-  Uri get tokenEndpoint => Uri.https('example.com');
-}
 
 const googleJwtIssuer = 'https://accounts.google.com';
 const microsoftJwtIssuer =
@@ -51,22 +42,6 @@ void main() {
     });
   });
 
-  group('OauthValues', () {
-    final fakeAuthEndpoints = FakeAuthEndpoints();
-
-    group('clientId', () {
-      test('throws UnsupportedError when endpoints is not a known type', () {
-        expect(() => fakeAuthEndpoints.clientId, throwsUnsupportedError);
-      });
-    });
-
-    group('scopes', () {
-      test('throws UnsupportedError when endpoints is not a known type', () {
-        expect(() => fakeAuthEndpoints.scopes, throwsUnsupportedError);
-      });
-    });
-  });
-
   group('JwtClaims', () {
     group('email', () {
       test('returns null when idToken is not a valid jwt', () {
@@ -86,7 +61,7 @@ void main() {
     });
   });
 
-  group('OauthAuthEndpoints', () {
+  group('OauthAuthProvider', () {
     late Jwt jwt;
     late JwtPayload payload;
 
@@ -99,14 +74,14 @@ void main() {
       );
     });
 
-    group('authEndpoints', () {
+    group('authProvider', () {
       group('when issuer is login.microsoft.online', () {
         setUp(() {
           when(() => payload.iss).thenReturn(microsoftJwtIssuer);
         });
 
-        test('returns MicrosoftAuthEndpoints', () {
-          expect(jwt.authEndpoints, isA<MicrosoftAuthEndpoints>());
+        test('returns AuthProvider.microsoft', () {
+          expect(jwt.authProvider, equals(AuthProvider.microsoft));
         });
       });
 
@@ -115,8 +90,8 @@ void main() {
           when(() => payload.iss).thenReturn(googleJwtIssuer);
         });
 
-        test('returns GoogleAuthEndpoints', () {
-          expect(jwt.authEndpoints, isA<GoogleAuthEndpoints>());
+        test('returns AuthProvider.google', () {
+          expect(jwt.authProvider, equals(AuthProvider.google));
         });
       });
 
@@ -127,7 +102,7 @@ void main() {
 
         test('throws exception', () {
           expect(
-            () => jwt.authEndpoints,
+            () => jwt.authProvider,
             throwsA(
               isA<Exception>().having(
                 (e) => e.toString(),
@@ -152,8 +127,6 @@ void main() {
     );
     const refreshToken = '';
     const scopes = <String>[];
-    final googleAuthEndpoints = GoogleAuthEndpoints();
-    final microsoftAuthEndpoints = MicrosoftAuthEndpoints();
     final accessToken = oauth2.AccessToken(
       'Bearer',
       'accessToken',
@@ -400,7 +373,7 @@ void main() {
             HttpStatus.ok,
           ),
         );
-        await auth.login(googleAuthEndpoints, prompt: (_) {});
+        await auth.login(AuthProvider.google, prompt: (_) {});
         final client = auth.client;
         expect(client, isA<http.Client>());
         expect(client, isA<AuthenticatedClient>());
@@ -445,18 +418,18 @@ void main() {
     group('login', () {
       test('should set the email when claims are valid and current user exists',
           () async {
-        await auth.login(googleAuthEndpoints, prompt: (_) {});
+        await auth.login(AuthProvider.google, prompt: (_) {});
         expect(auth.email, email);
         expect(auth.isAuthenticated, isTrue);
         expect(buildAuth().email, email);
         expect(buildAuth().isAuthenticated, isTrue);
       });
 
-      group('with custom auth endpoints', () {
+      group('with custom auth provider', () {
         test(
             '''should set the email when claims are valid and current user exists''',
             () async {
-          await auth.login(microsoftAuthEndpoints, prompt: (_) {});
+          await auth.login(AuthProvider.microsoft, prompt: (_) {});
           expect(auth.email, email);
           expect(auth.isAuthenticated, isTrue);
           expect(buildAuth().email, email);
@@ -470,7 +443,7 @@ void main() {
         auth = buildAuth();
 
         await expectLater(
-          auth.login(googleAuthEndpoints, prompt: (_) {}),
+          auth.login(AuthProvider.google, prompt: (_) {}),
           throwsA(isA<UserAlreadyLoggedInException>()),
         );
 
@@ -483,7 +456,7 @@ void main() {
             .thenAnswer((_) async => null);
 
         await expectLater(
-          auth.login(googleAuthEndpoints, prompt: (_) {}),
+          auth.login(AuthProvider.google, prompt: (_) {}),
           throwsA(isA<UserNotFoundException>()),
         );
 
@@ -505,7 +478,7 @@ void main() {
           'returns credentials and does not set the email or cache credentials',
           () async {
         await expectLater(
-          auth.loginCI(googleAuthEndpoints, prompt: (_) {}),
+          auth.loginCI(AuthProvider.google, prompt: (_) {}),
           completion(equals(accessCredentials)),
         );
         expect(auth.email, isNull);
@@ -522,7 +495,7 @@ void main() {
         ).thenAnswer((_) async => null);
 
         await expectLater(
-          auth.loginCI(googleAuthEndpoints, prompt: (_) {}),
+          auth.loginCI(AuthProvider.google, prompt: (_) {}),
           throwsA(isA<UserNotFoundException>()),
         );
 
@@ -532,7 +505,7 @@ void main() {
 
     group('logout', () {
       test('clears session and wipes state', () async {
-        await auth.login(googleAuthEndpoints, prompt: (_) {});
+        await auth.login(AuthProvider.google, prompt: (_) {});
         expect(auth.email, email);
         expect(auth.isAuthenticated, isTrue);
 

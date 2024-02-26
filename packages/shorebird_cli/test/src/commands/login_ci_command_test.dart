@@ -1,12 +1,12 @@
-import 'package:googleapis_auth/auth_io.dart';
+import 'package:args/args.dart';
 import 'package:http/http.dart' as http;
 import 'package:mason_logger/mason_logger.dart';
 import 'package:mocktail/mocktail.dart';
 import 'package:scoped/scoped.dart';
 import 'package:shorebird_cli/src/auth/auth.dart';
-import 'package:shorebird_cli/src/auth/endpoints/endpoints.dart';
 import 'package:shorebird_cli/src/commands/commands.dart';
 import 'package:shorebird_cli/src/logger.dart';
+import 'package:shorebird_code_push_protocol/shorebird_code_push_protocol.dart';
 import 'package:test/test.dart';
 
 import '../mocks.dart';
@@ -15,6 +15,7 @@ void main() {
   group(LoginCiCommand, () {
     const email = 'test@email.com';
 
+    late ArgResults results;
     late Auth auth;
     late http.Client httpClient;
     late Logger logger;
@@ -31,16 +32,84 @@ void main() {
     }
 
     setUpAll(() {
-      registerFallbackValue(GoogleAuthEndpoints());
+      registerFallbackValue(AuthProvider.google);
     });
 
     setUp(() {
       auth = MockAuth();
       httpClient = MockHttpClient();
       logger = MockLogger();
+      results = MockArgResults();
 
+      when(() => results.wasParsed('provider')).thenReturn(false);
+      when(() => results['provider']).thenReturn(null);
       when(() => auth.client).thenReturn(httpClient);
-      command = runWithOverrides(LoginCiCommand.new);
+      when(
+        () => logger.chooseOne<AuthProvider>(
+          any(),
+          choices: any(named: 'choices'),
+          display: any(named: 'display'),
+        ),
+      ).thenReturn(AuthProvider.google);
+
+      command =
+          runWithOverrides(() => LoginCiCommand()..testArgResults = results);
+    });
+
+    group('provider', () {
+      group('when provider is passed as an arg', () {
+        const provider = AuthProvider.google;
+
+        setUp(() {
+          when(() => results.wasParsed('provider')).thenReturn(true);
+          when(() => results['provider']).thenReturn(provider.name);
+        });
+
+        test('uses the passed provider', () async {
+          await runWithOverrides(() => command.run());
+
+          verify(
+            () => auth.loginCI(
+              provider,
+              prompt: any(named: 'prompt'),
+            ),
+          ).called(1);
+        });
+      });
+
+      group('when provider is not passed as an arg', () {
+        const provider = AuthProvider.microsoft;
+
+        setUp(() {
+          when(() => results.wasParsed('provider')).thenReturn(false);
+          when(
+            () => logger.chooseOne<AuthProvider>(
+              any(),
+              choices: any(named: 'choices'),
+              display: captureAny(named: 'display'),
+            ),
+          ).thenReturn(provider);
+        });
+
+        test('uses the provider chosen by the user', () async {
+          await runWithOverrides(() => command.run());
+
+          verify(
+            () => auth.loginCI(
+              provider,
+              prompt: any(named: 'prompt'),
+            ),
+          ).called(1);
+          final captured = verify(
+            () => logger.chooseOne<AuthProvider>(
+              any(),
+              choices: any(named: 'choices'),
+              display: captureAny(named: 'display'),
+            ),
+          ).captured.single as String Function(AuthProvider);
+          expect(captured(AuthProvider.google), contains('Google'));
+        });
+      });
     });
 
     test('exits with code 70 if no user is found', () async {
