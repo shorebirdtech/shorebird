@@ -4,6 +4,7 @@ import 'package:mason_logger/mason_logger.dart';
 import 'package:mocktail/mocktail.dart';
 import 'package:scoped/scoped.dart';
 import 'package:shorebird_cli/src/auth/auth.dart';
+import 'package:shorebird_cli/src/auth/endpoints/endpoints.dart';
 import 'package:shorebird_cli/src/commands/commands.dart';
 import 'package:shorebird_cli/src/logger.dart';
 import 'package:test/test.dart';
@@ -30,7 +31,7 @@ void main() {
     }
 
     setUpAll(() {
-      registerFallbackValue(GoogleAuthProvider());
+      registerFallbackValue(GoogleAuthEndpoints());
     });
 
     setUp(() {

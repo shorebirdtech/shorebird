@@ -8,7 +8,7 @@ import 'package:http/http.dart' as http;
 import 'package:jwt/jwt.dart';
 import 'package:path/path.dart' as p;
 import 'package:scoped/scoped.dart';
-import 'package:shorebird_cli/src/auth/providers/providers.dart';
+import 'package:shorebird_cli/src/auth/endpoints/endpoints.dart';
 import 'package:shorebird_cli/src/command.dart';
 import 'package:shorebird_cli/src/command_runner.dart';
 import 'package:shorebird_cli/src/http_client/http_client.dart';
@@ -30,7 +30,7 @@ const googleJwtIssuer = 'https://accounts.google.com';
 const microsoftJwtIssuerPrefix = 'https://login.microsoftonline.com/';
 
 typedef ObtainAccessCredentials = Future<oauth2.AccessCredentials> Function(
-  oauth2.AuthProvider authProvider,
+  oauth2.AuthEndpoints authEndpoints,
   oauth2.ClientId clientId,
   List<String> scopes,
   http.Client client,
@@ -38,7 +38,7 @@ typedef ObtainAccessCredentials = Future<oauth2.AccessCredentials> Function(
 );
 
 typedef RefreshCredentials = Future<oauth2.AccessCredentials> Function(
-  oauth2.AuthProvider authProvider,
+  oauth2.AuthEndpoints authEndpoints,
   oauth2.ClientId clientId,
   oauth2.AccessCredentials credentials,
   http.Client client,
@@ -98,7 +98,7 @@ class AuthenticatedClient extends http.BaseClient {
     if (credentials == null) {
       final token = _token!;
       final jwt = Jwt.parse(token);
-      final authProvider = jwt.authProvider;
+      final authProvider = jwt.authEndpoints;
       credentials = _credentials = await _refreshCredentials(
         authProvider,
         authProvider.clientId,
@@ -115,7 +115,7 @@ class AuthenticatedClient extends http.BaseClient {
 
     if (credentials.accessToken.hasExpired && credentials.idToken != null) {
       final jwt = Jwt.parse(credentials.idToken!);
-      final authProvider = jwt.authProvider;
+      final authProvider = jwt.authEndpoints;
 
       credentials = _credentials = await _refreshCredentials(
         authProvider,
@@ -176,15 +176,15 @@ class Auth {
   }
 
   Future<AccessCredentials> loginCI(
-    oauth2.AuthProvider authProvider, {
+    oauth2.AuthEndpoints authEndpoints, {
     required void Function(String) prompt,
   }) async {
     final client = http.Client();
     try {
       final credentials = await _obtainAccessCredentials(
-        authProvider,
-        authProvider.clientId,
-        authProvider.scopes,
+        authEndpoints,
+        authEndpoints.clientId,
+        authEndpoints.scopes,
         client,
         prompt,
       );
@@ -206,7 +206,7 @@ class Auth {
   }
 
   Future<void> login(
-    oauth2.AuthProvider authProvider, {
+    oauth2.AuthEndpoints authEndpoints, {
     required void Function(String) prompt,
   }) async {
     if (_credentials != null) {
@@ -216,9 +216,9 @@ class Auth {
     final client = http.Client();
     try {
       _credentials = await _obtainAccessCredentials(
-        authProvider,
-        authProvider.clientId,
-        authProvider.scopes,
+        authEndpoints,
+        authEndpoints.clientId,
+        authEndpoints.scopes,
         client,
         prompt,
       );
@@ -326,22 +326,22 @@ class UserNotFoundException implements Exception {
   final String email;
 }
 
-extension OauthAuthProvider on Jwt {
-  oauth2.AuthProvider get authProvider {
+extension OauthAuthEndpoints on Jwt {
+  oauth2.AuthEndpoints get authEndpoints {
     if (payload.iss == googleJwtIssuer) {
-      return oauth2.GoogleAuthProvider();
+      return oauth2.GoogleAuthEndpoints();
     } else if (payload.iss.startsWith(microsoftJwtIssuerPrefix)) {
-      return MicrosoftAuthProvider();
+      return MicrosoftAuthEndpoints();
     }
 
     throw Exception('Unknown jwt issuer: ${payload.iss}');
   }
 }
 
-extension OauthValues on oauth2.AuthProvider {
+extension OauthValues on oauth2.AuthEndpoints {
   oauth2.ClientId get clientId {
     switch (runtimeType) {
-      case oauth2.GoogleAuthProvider:
+      case oauth2.GoogleAuthEndpoints:
         return oauth2.ClientId(
           /// Shorebird CLI's OAuth 2.0 identifier for GCP,
           '''523302233293-eia5antm0tgvek240t46orctktiabrek.apps.googleusercontent.com''',
@@ -358,7 +358,7 @@ extension OauthValues on oauth2.AuthProvider {
           /// For more info see: https://developers.google.com/identity/protocols/oauth2/native-app
           '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',
         );
-      case MicrosoftAuthProvider:
+      case MicrosoftAuthEndpoints:
         return oauth2.ClientId(
           /// Shorebird CLI's OAuth 2.0 identifier for Azure/Entra.
           '0ff83897-ec85-4642-a250-48d5f595137c',
@@ -370,9 +370,9 @@ extension OauthValues on oauth2.AuthProvider {
 
   List<String> get scopes {
     switch (runtimeType) {
-      case oauth2.GoogleAuthProvider:
+      case oauth2.GoogleAuthEndpoints:
         return ['openid', 'https://www.googleapis.com/auth/userinfo.email'];
-      case MicrosoftAuthProvider:
+      case MicrosoftAuthEndpoints:
         return ['openid'];
     }
 

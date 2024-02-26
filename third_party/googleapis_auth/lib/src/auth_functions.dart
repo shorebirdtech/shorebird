@@ -80,7 +80,7 @@ AuthClient authenticatedClient(
 /// {@macro googleapis_auth_close_the_client}
 /// {@macro googleapis_auth_not_close_the_baseClient}
 AutoRefreshingAuthClient autoRefreshingClient(
-  AuthProvider authProvider,
+  AuthEndpoints authEndpoints,
   ClientId clientId,
   AccessCredentials credentials,
   Client baseClient,
@@ -91,7 +91,7 @@ AutoRefreshingAuthClient autoRefreshingClient(
   if (credentials.refreshToken == null) {
     throw ArgumentError('Refresh token in AccessCredentials was `null`.');
   }
-  return AutoRefreshingClient(baseClient, authProvider, clientId, credentials);
+  return AutoRefreshingClient(baseClient, authEndpoints, clientId, credentials);
 }
 
 /// Obtains refreshed [AccessCredentials] for [clientId] and [credentials].
@@ -100,7 +100,7 @@ AutoRefreshingAuthClient autoRefreshingClient(
 ///
 /// {@macro googleapis_auth_client_for_creds}
 Future<AccessCredentials> refreshCredentials(
-  AuthProvider authProvider,
+  AuthEndpoints authEndpoints,
   ClientId clientId,
   AccessCredentials credentials,
   Client client,
@@ -123,7 +123,7 @@ Future<AccessCredentials> refreshCredentials(
       'refresh_token': refreshToken,
       'grant_type': 'refresh_token',
     },
-    authProvider: authProvider,
+    authEndpoints: authEndpoints,
   );
 
   final accessToken = parseAccessToken(jsonMap);

@@ -7,6 +7,7 @@ import 'package:mocktail/mocktail.dart';
 import 'package:path/path.dart' as p;
 import 'package:scoped/scoped.dart';
 import 'package:shorebird_cli/src/auth/auth.dart';
+import 'package:shorebird_cli/src/auth/endpoints/endpoints.dart';
 import 'package:shorebird_cli/src/commands/login_command.dart';
 import 'package:shorebird_cli/src/logger.dart';
 import 'package:test/test.dart';
@@ -34,7 +35,7 @@ void main() {
     }
 
     setUpAll(() {
-      registerFallbackValue(GoogleAuthProvider());
+      registerFallbackValue(GoogleAuthEndpoints());
     });
 
     setUp(() {

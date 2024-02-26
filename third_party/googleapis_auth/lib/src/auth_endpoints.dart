@@ -1,11 +1,11 @@
 import 'known_uris.dart';
 
-abstract class AuthProvider {
+abstract class AuthEndpoints {
   Uri get authorizationEndpoint;
   Uri get tokenEndpoint;
 }
 
-class GoogleAuthProvider extends AuthProvider {
+class GoogleAuthEndpoints extends AuthEndpoints {
   @override
   Uri get authorizationEndpoint => googleOauth2AuthorizationEndpoint;
 

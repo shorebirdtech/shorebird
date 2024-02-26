@@ -14,7 +14,7 @@ import 'package:http/http.dart' as http;
 import '../utils.dart';
 
 Uri createAuthenticationUri({
-  required AuthProvider authProvider,
+  required AuthEndpoints authEndpoints,
   required String redirectUri,
   required String clientId,
   required Iterable<String> scopes,
@@ -34,7 +34,7 @@ Uri createAuthenticationUri({
     if (hostedDomain != null) 'hd': hostedDomain,
     if (state != null) 'state': state,
   };
-  return authProvider.authorizationEndpoint.replace(
+  return authEndpoints.authorizationEndpoint.replace(
     queryParameters: queryValues,
   );
 }
@@ -104,7 +104,7 @@ String _stripBase64Equals(String value) {
 /// to the server. You should use "anti-request forgery state tokens" to guard
 /// against "cross site request forgery" attacks.
 Future<AccessCredentials> obtainAccessCredentialsViaCodeExchange(
-  AuthProvider authProvider,
+  AuthEndpoints authEndpoints,
   http.Client client,
   ClientId clientId,
   String code, {
@@ -120,7 +120,7 @@ Future<AccessCredentials> obtainAccessCredentialsViaCodeExchange(
       'grant_type': 'authorization_code',
       'redirect_uri': redirectUrl,
     },
-    authProvider: authProvider,
+    authEndpoints: authEndpoints,
   );
   final accessToken = parseAccessToken(jsonMap);
 
