@@ -22,7 +22,7 @@ import 'package:test/test.dart';
 import '../fakes.dart';
 import '../mocks.dart';
 
-class FakeProvider extends oauth2.AuthEndpoints {
+class FakeAuthEndpoints extends oauth2.AuthEndpoints {
   @override
   Uri get authorizationEndpoint => Uri.https('example.com');
 
@@ -52,17 +52,17 @@ void main() {
   });
 
   group('OauthValues', () {
-    final fakeAuthProvider = FakeProvider();
+    final fakeAuthEndpoints = FakeAuthEndpoints();
 
     group('clientId', () {
-      test('throws UnsupportedError when provider is not a known type', () {
-        expect(() => fakeAuthProvider.clientId, throwsUnsupportedError);
+      test('throws UnsupportedError when endpoints is not a known type', () {
+        expect(() => fakeAuthEndpoints.clientId, throwsUnsupportedError);
       });
     });
 
     group('scopes', () {
-      test('throws UnsupportedError when provider is not a known type', () {
-        expect(() => fakeAuthProvider.scopes, throwsUnsupportedError);
+      test('throws UnsupportedError when endpoints is not a known type', () {
+        expect(() => fakeAuthEndpoints.scopes, throwsUnsupportedError);
       });
     });
   });
@@ -86,7 +86,7 @@ void main() {
     });
   });
 
-  group('OauthAuthProvider', () {
+  group('OauthAuthEndpoints', () {
     late Jwt jwt;
     late JwtPayload payload;
 
@@ -99,14 +99,14 @@ void main() {
       );
     });
 
-    group('authProvider', () {
+    group('authEndpoints', () {
       group('when issuer is login.microsoft.online', () {
         setUp(() {
           when(() => payload.iss).thenReturn(microsoftJwtIssuer);
         });
 
-        test('returns AuthProvider.microsoft', () {
-          expect(jwt.authProvider, isA<MicrosoftAuthEndpoints>());
+        test('returns MicrosoftAuthEndpoints', () {
+          expect(jwt.authEndpoints, isA<MicrosoftAuthEndpoints>());
         });
       });
 
@@ -115,8 +115,8 @@ void main() {
           when(() => payload.iss).thenReturn(googleJwtIssuer);
         });
 
-        test('returns AuthProvider.google', () {
-          expect(jwt.authProvider, isA<GoogleAuthEndpoints>());
+        test('returns GoogleAuthEndpoints', () {
+          expect(jwt.authEndpoints, isA<GoogleAuthEndpoints>());
         });
       });
 
@@ -127,7 +127,7 @@ void main() {
 
         test('throws exception', () {
           expect(
-            () => jwt.authProvider,
+            () => jwt.authEndpoints,
             throwsA(
               isA<Exception>().having(
                 (e) => e.toString(),
@@ -152,8 +152,8 @@ void main() {
     );
     const refreshToken = '';
     const scopes = <String>[];
-    final googleAuthProvider = GoogleAuthEndpoints();
-    final microsoftAuthProvider = MicrosoftAuthEndpoints();
+    final googleAuthEndpoints = GoogleAuthEndpoints();
+    final microsoftAuthEndpoints = MicrosoftAuthEndpoints();
     final accessToken = oauth2.AccessToken(
       'Bearer',
       'accessToken',
@@ -198,7 +198,7 @@ void main() {
             return codePushClient;
           },
           obtainAccessCredentials:
-              (authProvider, clientId, scopes, client, userPrompt) async {
+              (authEndpoints, clientId, scopes, client, userPrompt) async {
             return accessCredentials;
           },
         ),
@@ -235,7 +235,7 @@ void main() {
               token: token,
               httpClient: httpClient,
               refreshCredentials:
-                  (authProvider, clientId, credentials, client) async =>
+                  (authEndpoints, clientId, credentials, client) async =>
                       accessCredentials,
             ),
             returnsNormally,
@@ -258,7 +258,7 @@ void main() {
             httpClient: httpClient,
             onRefreshCredentials: onRefreshCredentialsCalls.add,
             refreshCredentials:
-                (authProvider, clientId, credentials, client) async =>
+                (authEndpoints, clientId, credentials, client) async =>
                     accessCredentials,
           );
 
@@ -292,7 +292,7 @@ void main() {
             httpClient: httpClient,
             onRefreshCredentials: onRefreshCredentialsCalls.add,
             refreshCredentials:
-                (authProvider, clientId, credentials, client) async =>
+                (authEndpoints, clientId, credentials, client) async =>
                     accessCredentials,
           );
 
@@ -342,7 +342,7 @@ void main() {
             httpClient: httpClient,
             onRefreshCredentials: onRefreshCredentialsCalls.add,
             refreshCredentials:
-                (authProvider, clientId, credentials, client) async =>
+                (authEndpoints, clientId, credentials, client) async =>
                     accessCredentials,
           );
 
@@ -400,7 +400,7 @@ void main() {
             HttpStatus.ok,
           ),
         );
-        await auth.login(googleAuthProvider, prompt: (_) {});
+        await auth.login(googleAuthEndpoints, prompt: (_) {});
         final client = auth.client;
         expect(client, isA<http.Client>());
         expect(client, isA<AuthenticatedClient>());
@@ -445,18 +445,18 @@ void main() {
     group('login', () {
       test('should set the email when claims are valid and current user exists',
           () async {
-        await auth.login(googleAuthProvider, prompt: (_) {});
+        await auth.login(googleAuthEndpoints, prompt: (_) {});
         expect(auth.email, email);
         expect(auth.isAuthenticated, isTrue);
         expect(buildAuth().email, email);
         expect(buildAuth().isAuthenticated, isTrue);
       });
 
-      group('with a custom auth provider', () {
+      group('with custom auth endpoints', () {
         test(
             '''should set the email when claims are valid and current user exists''',
             () async {
-          await auth.login(microsoftAuthProvider, prompt: (_) {});
+          await auth.login(microsoftAuthEndpoints, prompt: (_) {});
           expect(auth.email, email);
           expect(auth.isAuthenticated, isTrue);
           expect(buildAuth().email, email);
@@ -470,7 +470,7 @@ void main() {
         auth = buildAuth();
 
         await expectLater(
-          auth.login(googleAuthProvider, prompt: (_) {}),
+          auth.login(googleAuthEndpoints, prompt: (_) {}),
           throwsA(isA<UserAlreadyLoggedInException>()),
         );
 
@@ -483,7 +483,7 @@ void main() {
             .thenAnswer((_) async => null);
 
         await expectLater(
-          auth.login(googleAuthProvider, prompt: (_) {}),
+          auth.login(googleAuthEndpoints, prompt: (_) {}),
           throwsA(isA<UserNotFoundException>()),
         );
 
@@ -505,7 +505,7 @@ void main() {
           'returns credentials and does not set the email or cache credentials',
           () async {
         await expectLater(
-          auth.loginCI(googleAuthProvider, prompt: (_) {}),
+          auth.loginCI(googleAuthEndpoints, prompt: (_) {}),
           completion(equals(accessCredentials)),
         );
         expect(auth.email, isNull);
@@ -522,7 +522,7 @@ void main() {
         ).thenAnswer((_) async => null);
 
         await expectLater(
-          auth.loginCI(googleAuthProvider, prompt: (_) {}),
+          auth.loginCI(googleAuthEndpoints, prompt: (_) {}),
           throwsA(isA<UserNotFoundException>()),
         );
 
@@ -532,7 +532,7 @@ void main() {
 
     group('logout', () {
       test('clears session and wipes state', () async {
-        await auth.login(googleAuthProvider, prompt: (_) {});
+        await auth.login(googleAuthEndpoints, prompt: (_) {});
         expect(auth.email, email);
         expect(auth.isAuthenticated, isTrue);
 

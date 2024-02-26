@@ -98,7 +98,7 @@ class AuthenticatedClient extends http.BaseClient {
     if (credentials == null) {
       final token = _token!;
       final jwt = Jwt.parse(token);
-      final authProvider = jwt.authProvider;
+      final authProvider = jwt.authEndpoints;
       credentials = _credentials = await _refreshCredentials(
         authProvider,
         authProvider.clientId,
@@ -115,7 +115,7 @@ class AuthenticatedClient extends http.BaseClient {
 
     if (credentials.accessToken.hasExpired && credentials.idToken != null) {
       final jwt = Jwt.parse(credentials.idToken!);
-      final authProvider = jwt.authProvider;
+      final authProvider = jwt.authEndpoints;
 
       credentials = _credentials = await _refreshCredentials(
         authProvider,
@@ -326,8 +326,8 @@ class UserNotFoundException implements Exception {
   final String email;
 }
 
-extension OauthAuthProvider on Jwt {
-  oauth2.AuthEndpoints get authProvider {
+extension OauthAuthEndpoints on Jwt {
+  oauth2.AuthEndpoints get authEndpoints {
     if (payload.iss == googleJwtIssuer) {
       return oauth2.GoogleAuthEndpoints();
     } else if (payload.iss.startsWith(microsoftJwtIssuerPrefix)) {
