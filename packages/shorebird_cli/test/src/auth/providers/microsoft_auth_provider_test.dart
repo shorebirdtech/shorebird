@@ -1,4 +1,4 @@
-import 'package:shorebird_cli/src/auth/providers/providers.dart';
+import 'package:shorebird_cli/src/auth/endpoints/endpoints.dart';
 import 'package:test/test.dart';
 
 void main() {
