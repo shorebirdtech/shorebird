@@ -13,6 +13,7 @@ import 'package:shorebird_cli/src/auth/endpoints/endpoints.dart';
 import 'package:shorebird_cli/src/command.dart';
 import 'package:shorebird_cli/src/command_runner.dart';
 import 'package:shorebird_cli/src/http_client/http_client.dart';
+import 'package:shorebird_cli/src/logger.dart';
 import 'package:shorebird_cli/src/platform.dart';
 import 'package:shorebird_code_push_client/shorebird_code_push_client.dart';
 
@@ -264,7 +265,13 @@ class Auth {
   void _loadCredentials() {
     final base64Token = platform.environment[shorebirdTokenEnvVar];
     if (base64Token != null) {
-      _token = CiToken.fromBase64(base64Token);
+      try {
+        _token = CiToken.fromBase64(base64Token);
+      } on FormatException {
+        logger.err(
+          '$shorebirdTokenEnvVar is set but its value could not be parsed',
+        );
+      }
       return;
     }
 

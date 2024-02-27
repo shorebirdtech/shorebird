@@ -389,6 +389,22 @@ void main() {
         expect(request.headers['Authorization'], equals('Bearer $idToken'));
       });
 
+      group('when token is invalid', () {
+        setUp(() {
+          when(() => platform.environment).thenReturn(
+            <String, String>{shorebirdTokenEnvVar: 'not a base64 string'},
+          );
+        });
+
+        test('prints error message when token string is invalid', () async {
+          auth = buildAuth();
+          verify(
+            () => logger
+              ..err('SHOREBIRD_TOKEN is set but its value could not be parsed'),
+          ).called(1);
+        });
+      });
+
       test(
           'returns an authenticated client '
           'when a token and token provider is present.', () async {
