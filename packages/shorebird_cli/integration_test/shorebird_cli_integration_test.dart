@@ -15,6 +15,12 @@ import 'package:shorebird_code_push_client/shorebird_code_push_client.dart';
 import 'package:test/test.dart';
 import 'package:uuid/uuid.dart';
 
+const tokenWarningMessage = '''
+[WARN] The value of SHOREBIRD_TOKEN is not a valid base64-encoded token. This
+will become an error in the next major release. Run `shorebird login:ci` before
+then to obtain a new token.
+''';
+
 R runWithOverrides<R>(R Function() body) {
   return runScoped(
     body,
@@ -94,7 +100,7 @@ void main() {
         'shorebird init --verbose',
         workingDirectory: cwd,
       );
-      expect(initShorebirdResult.stderr, isEmpty);
+      expect(initShorebirdResult.stderr, equals(tokenWarningMessage));
       expect(initShorebirdResult.exitCode, equals(0));
 
       final shorebirdYamlPath = p.join(cwd, 'shorebird.yaml');
@@ -134,7 +140,7 @@ void main() {
         'shorebird release android --force --verbose',
         workingDirectory: cwd,
       );
-      expect(shorebirdReleaseResult.stderr, isEmpty);
+      expect(shorebirdReleaseResult.stderr, equals(tokenWarningMessage));
       expect(
         shorebirdReleaseResult.stdout,
         contains('Published Release $releaseVersion!'),
@@ -183,7 +189,7 @@ void main() {
         'shorebird patch android --force --verbose',
         workingDirectory: cwd,
       );
-      expect(shorebirdPatchResult.stderr, isEmpty);
+      expect(shorebirdPatchResult.stderr, equals(tokenWarningMessage));
       expect(shorebirdPatchResult.stdout, contains('Published Patch 1!'));
       expect(shorebirdPatchResult.exitCode, equals(0));
 
