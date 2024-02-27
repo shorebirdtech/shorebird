@@ -263,13 +263,20 @@ class Auth {
   bool get isAuthenticated => _email != null || _token != null;
 
   void _loadCredentials() {
-    final base64Token = platform.environment[shorebirdTokenEnvVar];
-    if (base64Token != null) {
+    final envToken = platform.environment[shorebirdTokenEnvVar];
+    if (envToken != null) {
       try {
-        _token = CiToken.fromBase64(base64Token);
+        _token = CiToken.fromBase64(envToken);
       } catch (_) {
-        logger.err(
-          '$shorebirdTokenEnvVar is set but its value could not be parsed',
+        // TODO(bryanoltman): Remove this legacy behavior after July 2024 or
+        // next major release.
+        logger.warn('''
+The value of $shorebirdTokenEnvVar is not a valid base64-encoded token. This
+will become an error in the next major release. Run `shorebird login:ci` before
+then to obtain a new token.''');
+        _token = CiToken(
+          refreshToken: envToken,
+          authProvider: AuthProvider.google,
         );
       }
       return;

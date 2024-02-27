@@ -396,11 +396,14 @@ void main() {
           );
         });
 
-        test('prints error message when token string is invalid', () async {
+        test('prints warning message when token string is not valid base64',
+            () async {
           auth = buildAuth();
           verify(
-            () => logger
-              ..err('SHOREBIRD_TOKEN is set but its value could not be parsed'),
+            () => logger.warn('''
+The value of $shorebirdTokenEnvVar is not a valid base64-encoded token. This
+will become an error in the next major release. Run `shorebird login:ci` before
+then to obtain a new token.'''),
           ).called(1);
         });
       });
