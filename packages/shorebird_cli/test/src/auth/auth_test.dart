@@ -501,7 +501,10 @@ void main() {
       const token = 'shorebird-token';
       setUp(() {
         when(() => platform.environment).thenReturn(
-          <String, String>{shorebirdTokenEnvVar: token},
+          <String, String>{
+            shorebirdTokenEnvVar: token,
+            shorebirdTokenProviderEnvVar: AuthProvider.google.name,
+          },
         );
         auth = buildAuth();
       });
