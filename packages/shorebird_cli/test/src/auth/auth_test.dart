@@ -119,13 +119,18 @@ void main() {
   group(Auth, () {
     const idToken =
         '''eyJhbGciOiJIUzI1NiIsImtpZCI6IjEyMzQiLCJ0eXAiOiJKV1QifQ.eyJpc3MiOiJodHRwczovL2FjY291bnRzLmdvb2dsZS5jb20iLCJhenAiOiI1MjMzMDIyMzMyOTMtZWlhNWFudG0wdGd2ZWsyNDB0NDZvcmN0a3RpYWJyZWsuYXBwcy5nb29nbGV1c2VyY29udGVudC5jb20iLCJhdWQiOiI1MjMzMDIyMzMyOTMtZWlhNWFudG0wdGd2ZWsyNDB0NDZvcmN0a3RpYWJyZWsuYXBwcy5nb29nbGV1c2VyY29udGVudC5jb20iLCJzdWIiOiIxMjM0NSIsImhkIjoic2hvcmViaXJkLmRldiIsImVtYWlsIjoidGVzdEBlbWFpbC5jb20iLCJlbWFpbF92ZXJpZmllZCI6dHJ1ZSwiaWF0IjoxMjM0LCJleHAiOjY3ODl9.MYbITALvKsGYTYjw1o7AQ0ObkqRWVBSr9cFYJrvA46g''';
+    // "shorebird-token" in base64
+    const refreshToken = 'c2hvcmViaXJkLXRva2Vu';
+    const ciToken = CiToken(
+      refreshToken: refreshToken,
+      authProvider: AuthProvider.google,
+    );
     const email = 'test@email.com';
     const user = User(
       id: 42,
       email: email,
       jwtIssuer: googleJwtIssuer,
     );
-    const refreshToken = '';
     const scopes = <String>[];
     final accessToken = oauth2.AccessToken(
       'Bearer',
@@ -199,15 +204,10 @@ void main() {
 
     group('AuthenticatedClient', () {
       group('token', () {
-        const token =
-            '''eyJhbGciOiJIUzI1NiIsImtpZCI6IjEyMzQiLCJ0eXAiOiJKV1QifQ.eyJpc3MiOiJodHRwczovL2FjY291bnRzLmdvb2dsZS5jb20iLCJhenAiOiI1MjMzMDIyMzMyOTMtZWlhNWFudG0wdGd2ZWsyNDB0NDZvcmN0a3RpYWJyZWsuYXBwcy5nb29nbGV1c2VyY29udGVudC5jb20iLCJhdWQiOiI1MjMzMDIyMzMyOTMtZWlhNWFudG0wdGd2ZWsyNDB0NDZvcmN0a3RpYWJyZWsuYXBwcy5nb29nbGV1c2VyY29udGVudC5jb20iLCJzdWIiOiIxMjM0NSIsImhkIjoic2hvcmViaXJkLmRldiIsImVtYWlsIjoidGVzdEBlbWFpbC5jb20iLCJlbWFpbF92ZXJpZmllZCI6dHJ1ZSwiaWF0IjoxMjM0LCJleHAiOjY3ODl9.MYbITALvKsGYTYjw1o7AQ0ObkqRWVBSr9cFYJrvA46g''';
-        const tokenProvider = AuthProvider.google;
-
         test('does not require an onRefreshCredentials callback', () {
           expect(
             () => AuthenticatedClient.token(
-              token: token,
-              tokenProvider: tokenProvider,
+              token: ciToken,
               httpClient: httpClient,
               refreshCredentials:
                   (authEndpoints, clientId, credentials, client) async =>
@@ -229,8 +229,7 @@ void main() {
           final onRefreshCredentialsCalls = <oauth2.AccessCredentials>[];
 
           final client = AuthenticatedClient.token(
-            token: token,
-            tokenProvider: tokenProvider,
+            token: ciToken,
             httpClient: httpClient,
             onRefreshCredentials: onRefreshCredentialsCalls.add,
             refreshCredentials:
@@ -264,8 +263,7 @@ void main() {
           );
           final onRefreshCredentialsCalls = <oauth2.AccessCredentials>[];
           final client = AuthenticatedClient.token(
-            token: token,
-            tokenProvider: tokenProvider,
+            token: ciToken,
             httpClient: httpClient,
             onRefreshCredentials: onRefreshCredentialsCalls.add,
             refreshCredentials:
@@ -393,34 +391,8 @@ void main() {
       });
 
       test(
-          '''throws exception if SHOREBIRD_TOKEN is present but SHOREBIRD_TOKEN_PROVIDER is not''',
-          () async {
-        const token = 'shorebird-token';
-        when(() => httpClient.send(any())).thenAnswer(
-          (_) async => http.StreamedResponse(
-            const Stream.empty(),
-            HttpStatus.ok,
-          ),
-        );
-        when(() => platform.environment).thenReturn(
-          <String, String>{shorebirdTokenEnvVar: token},
-        );
-        expect(
-          buildAuth,
-          throwsA(
-            isA<Exception>().having(
-              (e) => e.toString(),
-              'message',
-              '''Exception: To use SHOREBIRD_TOKEN, you must also set SHOREBIRD_TOKEN_PROVIDER.''',
-            ),
-          ),
-        );
-      });
-
-      test(
           'returns an authenticated client '
           'when a token and token provider is present.', () async {
-        const token = 'shorebird-token';
         when(() => httpClient.send(any())).thenAnswer(
           (_) async => http.StreamedResponse(
             const Stream.empty(),
@@ -428,10 +400,7 @@ void main() {
           ),
         );
         when(() => platform.environment).thenReturn(
-          <String, String>{
-            shorebirdTokenEnvVar: token,
-            shorebirdTokenProviderEnvVar: AuthProvider.google.name,
-          },
+          <String, String>{shorebirdTokenEnvVar: ciToken.toBase64()},
         );
         auth = buildAuth();
         final client = auth.client;
@@ -498,24 +467,18 @@ void main() {
     });
 
     group('loginCI', () {
-      const token = 'shorebird-token';
       setUp(() {
         when(() => platform.environment).thenReturn(
-          <String, String>{
-            shorebirdTokenEnvVar: token,
-            shorebirdTokenProviderEnvVar: AuthProvider.google.name,
-          },
+          <String, String>{shorebirdTokenEnvVar: ciToken.toBase64()},
         );
         auth = buildAuth();
       });
 
-      test(
-          'returns credentials and does not set the email or cache credentials',
+      test('returns a CI token and does not set the email or cache credentials',
           () async {
-        await expectLater(
-          auth.loginCI(AuthProvider.google, prompt: (_) {}),
-          completion(equals(accessCredentials)),
-        );
+        final token = await auth.loginCI(AuthProvider.google, prompt: (_) {});
+        expect(token.authProvider, ciToken.authProvider);
+        expect(token.refreshToken, ciToken.refreshToken);
         expect(auth.email, isNull);
         expect(auth.isAuthenticated, isTrue);
         expect(buildAuth().email, isNull);

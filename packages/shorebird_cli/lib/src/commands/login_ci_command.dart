@@ -1,4 +1,3 @@
-import 'package:googleapis_auth/auth_io.dart';
 import 'package:mason_logger/mason_logger.dart';
 import 'package:shorebird_cli/src/auth/auth.dart';
 import 'package:shorebird_cli/src/command.dart';
@@ -40,9 +39,9 @@ class LoginCiCommand extends ShorebirdCommand {
       );
     }
 
-    final AccessCredentials credentials;
+    final CiToken ciToken;
     try {
-      credentials = await auth.loginCI(provider, prompt: prompt);
+      ciToken = await auth.loginCI(provider, prompt: prompt);
     } on UserNotFoundException catch (error) {
       logger
         ..err(
@@ -62,11 +61,11 @@ We could not find a Shorebird account for ${error.email}.''',
 
 🎉 ${lightGreen.wrap('Success! Use the following token to login on a CI server:')}
 
-${lightCyan.wrap(credentials.refreshToken)}
+${lightCyan.wrap(ciToken.toBase64())}
 
 Example:
   
-${lightCyan.wrap('export $shorebirdTokenEnvVar="\$SHOREBIRD_TOKEN" $shorebirdTokenProviderEnvVar="${provider.name}" && shorebird patch android')}
+${lightCyan.wrap('export $shorebirdTokenEnvVar="\$SHOREBIRD_TOKEN" && shorebird patch android')}
 ''');
     return ExitCode.success.code;
   }

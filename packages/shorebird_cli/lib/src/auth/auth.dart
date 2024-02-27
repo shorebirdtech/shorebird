@@ -8,13 +8,15 @@ import 'package:http/http.dart' as http;
 import 'package:jwt/jwt.dart';
 import 'package:path/path.dart' as p;
 import 'package:scoped/scoped.dart';
+import 'package:shorebird_cli/src/auth/ci_token.dart';
 import 'package:shorebird_cli/src/auth/endpoints/endpoints.dart';
 import 'package:shorebird_cli/src/command.dart';
 import 'package:shorebird_cli/src/command_runner.dart';
 import 'package:shorebird_cli/src/http_client/http_client.dart';
 import 'package:shorebird_cli/src/platform.dart';
 import 'package:shorebird_code_push_client/shorebird_code_push_client.dart';
-import 'package:shorebird_code_push_protocol/shorebird_code_push_protocol.dart';
+
+export 'ci_token.dart';
 
 // A reference to a [Auth] instance.
 final authRef = create(Auth.new);
@@ -32,9 +34,6 @@ const microsoftJwtIssuerPrefix = 'https://login.microsoftonline.com/';
 
 /// The environment variable that holds the Shorebird CI token.
 const shorebirdTokenEnvVar = 'SHOREBIRD_TOKEN';
-
-/// The auth provider that issued the Shorebird CI token.
-const shorebirdTokenProviderEnvVar = 'SHOREBIRD_TOKEN_PROVIDER';
 
 typedef ObtainAccessCredentials = Future<oauth2.AccessCredentials> Function(
   oauth2.AuthEndpoints authEndpoints,
@@ -70,14 +69,12 @@ class AuthenticatedClient extends http.BaseClient {
 
   AuthenticatedClient.token({
     required http.Client httpClient,
-    required String token,
-    required AuthProvider tokenProvider,
+    required CiToken token,
     OnRefreshCredentials? onRefreshCredentials,
     RefreshCredentials refreshCredentials = oauth2.refreshCredentials,
   }) : this._(
           httpClient: httpClient,
           token: token,
-          tokenProvider: tokenProvider,
           onRefreshCredentials: onRefreshCredentials,
           refreshCredentials: refreshCredentials,
         );
@@ -86,22 +83,19 @@ class AuthenticatedClient extends http.BaseClient {
     required http.Client httpClient,
     OnRefreshCredentials? onRefreshCredentials,
     oauth2.AccessCredentials? credentials,
-    String? token,
-    AuthProvider? tokenProvider,
+    CiToken? token,
     RefreshCredentials refreshCredentials = oauth2.refreshCredentials,
   })  : _baseClient = httpClient,
         _credentials = credentials,
         _onRefreshCredentials = onRefreshCredentials,
         _refreshCredentials = refreshCredentials,
-        _token = token,
-        _tokenProvider = tokenProvider;
+        _token = token;
 
   final http.Client _baseClient;
   final OnRefreshCredentials? _onRefreshCredentials;
   final RefreshCredentials _refreshCredentials;
   oauth2.AccessCredentials? _credentials;
-  final String? _token;
-  final AuthProvider? _tokenProvider;
+  final CiToken? _token;
 
   @override
   Future<http.StreamedResponse> send(http.BaseRequest request) async {
@@ -109,15 +103,14 @@ class AuthenticatedClient extends http.BaseClient {
 
     if (credentials == null) {
       final token = _token!;
-      final authProvider = _tokenProvider!;
       credentials = _credentials = await _refreshCredentials(
-        authProvider.authEndpoints,
-        authProvider.clientId,
+        token.authProvider.authEndpoints,
+        token.authProvider.clientId,
         oauth2.AccessCredentials(
           // This isn't relevant for a refresh operation.
           AccessToken('Bearer', '', DateTime.timestamp()),
-          token,
-          authProvider.scopes,
+          token.refreshToken,
+          token.authProvider.scopes,
         ),
         _baseClient,
       );
@@ -164,8 +157,7 @@ class Auth {
   final String _credentialsDir;
   final ObtainAccessCredentials _obtainAccessCredentials;
   final CodePushClientBuilder _buildCodePushClient;
-  String? _token;
-  AuthProvider? _tokenProvider;
+  CiToken? _token;
 
   String get credentialsFilePath {
     return p.join(_credentialsDir, 'credentials.json');
@@ -176,10 +168,9 @@ class Auth {
       return _httpClient;
     }
 
-    if (_token != null && _tokenProvider != null) {
+    if (_token != null) {
       return AuthenticatedClient.token(
         token: _token!,
-        tokenProvider: _tokenProvider!,
         httpClient: _httpClient,
       );
     }
@@ -191,7 +182,7 @@ class Auth {
     );
   }
 
-  Future<AccessCredentials> loginCI(
+  Future<CiToken> loginCI(
     AuthProvider authProvider, {
     required void Function(String) prompt,
   }) async {
@@ -215,7 +206,14 @@ class Auth {
       if (user == null) {
         throw UserNotFoundException(email: credentials.email!);
       }
-      return credentials;
+      if (credentials.refreshToken == null) {
+        throw Exception('No refresh token found');
+      }
+
+      return CiToken(
+        refreshToken: credentials.refreshToken!,
+        authProvider: authProvider,
+      );
     } finally {
       client.close();
     }
@@ -264,16 +262,9 @@ class Auth {
   bool get isAuthenticated => _email != null || _token != null;
 
   void _loadCredentials() {
-    final token = platform.environment[shorebirdTokenEnvVar];
-    final tokenProvider = platform.environment[shorebirdTokenProviderEnvVar];
-    if (token != null && tokenProvider == null) {
-      throw Exception(
-        'To use SHOREBIRD_TOKEN, you must also set SHOREBIRD_TOKEN_PROVIDER.',
-      );
-    }
-    if (token != null && tokenProvider != null) {
-      _token = token;
-      _tokenProvider = AuthProvider.values.byName(tokenProvider);
+    final base64Token = platform.environment[shorebirdTokenEnvVar];
+    if (base64Token != null) {
+      _token = CiToken.fromBase64(base64Token);
       return;
     }
 
