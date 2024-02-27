@@ -105,11 +105,6 @@ Future<AccessCredentials> refreshCredentials(
   AccessCredentials credentials,
   Client client,
 ) async {
-  final secret = clientId.secret;
-  if (secret == null) {
-    throw ArgumentError('clientId.secret cannot be null.');
-  }
-
   final refreshToken = credentials.refreshToken;
   if (refreshToken == null) {
     throw ArgumentError('clientId.refreshToken cannot be null.');
@@ -119,7 +114,9 @@ Future<AccessCredentials> refreshCredentials(
   final jsonMap = await client.oauthTokenRequest(
     {
       'client_id': clientId.identifier,
-      'client_secret': secret,
+      // Not all providers require a client secret,
+      // e.g. https://learn.microsoft.com/en-us/entra/identity-platform/v2-oauth2-auth-code-flow#refresh-the-access-token
+      if (clientId.secret != null) 'client_secret': clientId.secret!,
       'refresh_token': refreshToken,
       'grant_type': 'refresh_token',
     },

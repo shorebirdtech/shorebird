@@ -14,6 +14,7 @@ import 'package:shorebird_cli/src/command_runner.dart';
 import 'package:shorebird_cli/src/http_client/http_client.dart';
 import 'package:shorebird_cli/src/platform.dart';
 import 'package:shorebird_code_push_client/shorebird_code_push_client.dart';
+import 'package:shorebird_code_push_protocol/shorebird_code_push_protocol.dart';
 
 // A reference to a [Auth] instance.
 final authRef = create(Auth.new);
@@ -28,6 +29,12 @@ const googleJwtIssuer = 'https://accounts.google.com';
 /// https://login.microsoftonline.com/{tenant-id}/v2.0. We don't care about the
 /// tenant ID, so we just match the prefix.
 const microsoftJwtIssuerPrefix = 'https://login.microsoftonline.com/';
+
+/// The environment variable that holds the Shorebird CI token.
+const shorebirdTokenEnvVar = 'SHOREBIRD_TOKEN';
+
+/// The auth provider that issued the Shorebird CI token.
+const shorebirdTokenProviderEnvVar = 'SHOREBIRD_TOKEN_PROVIDER';
 
 typedef ObtainAccessCredentials = Future<oauth2.AccessCredentials> Function(
   oauth2.AuthEndpoints authEndpoints,
@@ -64,11 +71,13 @@ class AuthenticatedClient extends http.BaseClient {
   AuthenticatedClient.token({
     required http.Client httpClient,
     required String token,
+    required AuthProvider tokenProvider,
     OnRefreshCredentials? onRefreshCredentials,
     RefreshCredentials refreshCredentials = oauth2.refreshCredentials,
   }) : this._(
           httpClient: httpClient,
           token: token,
+          tokenProvider: tokenProvider,
           onRefreshCredentials: onRefreshCredentials,
           refreshCredentials: refreshCredentials,
         );
@@ -78,18 +87,21 @@ class AuthenticatedClient extends http.BaseClient {
     OnRefreshCredentials? onRefreshCredentials,
     oauth2.AccessCredentials? credentials,
     String? token,
+    AuthProvider? tokenProvider,
     RefreshCredentials refreshCredentials = oauth2.refreshCredentials,
   })  : _baseClient = httpClient,
         _credentials = credentials,
         _onRefreshCredentials = onRefreshCredentials,
         _refreshCredentials = refreshCredentials,
-        _token = token;
+        _token = token,
+        _tokenProvider = tokenProvider;
 
   final http.Client _baseClient;
   final OnRefreshCredentials? _onRefreshCredentials;
   final RefreshCredentials _refreshCredentials;
   oauth2.AccessCredentials? _credentials;
   final String? _token;
+  final AuthProvider? _tokenProvider;
 
   @override
   Future<http.StreamedResponse> send(http.BaseRequest request) async {
@@ -97,8 +109,7 @@ class AuthenticatedClient extends http.BaseClient {
 
     if (credentials == null) {
       final token = _token!;
-      final jwt = Jwt.parse(token);
-      final authProvider = jwt.authProvider;
+      final authProvider = _tokenProvider!;
       credentials = _credentials = await _refreshCredentials(
         authProvider.authEndpoints,
         authProvider.clientId,
@@ -154,6 +165,7 @@ class Auth {
   final ObtainAccessCredentials _obtainAccessCredentials;
   final CodePushClientBuilder _buildCodePushClient;
   String? _token;
+  AuthProvider? _tokenProvider;
 
   String get credentialsFilePath {
     return p.join(_credentialsDir, 'credentials.json');
@@ -164,8 +176,12 @@ class Auth {
       return _httpClient;
     }
 
-    if (_token != null) {
-      return AuthenticatedClient.token(token: _token!, httpClient: _httpClient);
+    if (_token != null && _tokenProvider != null) {
+      return AuthenticatedClient.token(
+        token: _token!,
+        tokenProvider: _tokenProvider!,
+        httpClient: _httpClient,
+      );
     }
 
     return AuthenticatedClient.credentials(
@@ -248,9 +264,11 @@ class Auth {
   bool get isAuthenticated => _email != null || _token != null;
 
   void _loadCredentials() {
-    final token = platform.environment['SHOREBIRD_TOKEN'];
-    if (token != null) {
+    final token = platform.environment[shorebirdTokenEnvVar];
+    final tokenProvider = platform.environment[shorebirdTokenProviderEnvVar];
+    if (token != null && tokenProvider != null) {
       _token = token;
+      _tokenProvider = AuthProvider.values.byName(tokenProvider);
       return;
     }
 
@@ -376,6 +394,11 @@ extension OauthValues on AuthProvider {
             'openid',
             'https://www.googleapis.com/auth/userinfo.email',
           ],
-        (AuthProvider.microsoft) => ['openid', 'email'],
+        (AuthProvider.microsoft) => [
+            'openid',
+            'email',
+            // Required to get refresh tokens.
+            'offline_access',
+          ],
       };
 }
