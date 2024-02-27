@@ -368,7 +368,7 @@ extension OauthAuthProvider on Jwt {
 
 extension OauthValues on AuthProvider {
   oauth2.AuthEndpoints get authEndpoints => switch (this) {
-        (AuthProvider.google) => oauth2.GoogleAuthEndpoints(),
+        (AuthProvider.google) => const oauth2.GoogleAuthEndpoints(),
         (AuthProvider.microsoft) => MicrosoftAuthEndpoints(),
       };
 
