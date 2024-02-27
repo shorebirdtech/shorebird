@@ -266,6 +266,11 @@ class Auth {
   void _loadCredentials() {
     final token = platform.environment[shorebirdTokenEnvVar];
     final tokenProvider = platform.environment[shorebirdTokenProviderEnvVar];
+    if (token != null && tokenProvider == null) {
+      throw Exception(
+        'To use SHOREBIRD_TOKEN, you must also set SHOREBIRD_TOKEN_PROVIDER.',
+      );
+    }
     if (token != null && tokenProvider != null) {
       _token = token;
       _tokenProvider = AuthProvider.values.byName(tokenProvider);

@@ -201,11 +201,13 @@ void main() {
       group('token', () {
         const token =
             '''eyJhbGciOiJIUzI1NiIsImtpZCI6IjEyMzQiLCJ0eXAiOiJKV1QifQ.eyJpc3MiOiJodHRwczovL2FjY291bnRzLmdvb2dsZS5jb20iLCJhenAiOiI1MjMzMDIyMzMyOTMtZWlhNWFudG0wdGd2ZWsyNDB0NDZvcmN0a3RpYWJyZWsuYXBwcy5nb29nbGV1c2VyY29udGVudC5jb20iLCJhdWQiOiI1MjMzMDIyMzMyOTMtZWlhNWFudG0wdGd2ZWsyNDB0NDZvcmN0a3RpYWJyZWsuYXBwcy5nb29nbGV1c2VyY29udGVudC5jb20iLCJzdWIiOiIxMjM0NSIsImhkIjoic2hvcmViaXJkLmRldiIsImVtYWlsIjoidGVzdEBlbWFpbC5jb20iLCJlbWFpbF92ZXJpZmllZCI6dHJ1ZSwiaWF0IjoxMjM0LCJleHAiOjY3ODl9.MYbITALvKsGYTYjw1o7AQ0ObkqRWVBSr9cFYJrvA46g''';
+        const tokenProvider = AuthProvider.google;
 
         test('does not require an onRefreshCredentials callback', () {
           expect(
             () => AuthenticatedClient.token(
               token: token,
+              tokenProvider: tokenProvider,
               httpClient: httpClient,
               refreshCredentials:
                   (authEndpoints, clientId, credentials, client) async =>
@@ -228,6 +230,7 @@ void main() {
 
           final client = AuthenticatedClient.token(
             token: token,
+            tokenProvider: tokenProvider,
             httpClient: httpClient,
             onRefreshCredentials: onRefreshCredentialsCalls.add,
             refreshCredentials:
@@ -262,6 +265,7 @@ void main() {
           final onRefreshCredentialsCalls = <oauth2.AccessCredentials>[];
           final client = AuthenticatedClient.token(
             token: token,
+            tokenProvider: tokenProvider,
             httpClient: httpClient,
             onRefreshCredentials: onRefreshCredentialsCalls.add,
             refreshCredentials:
@@ -389,8 +393,8 @@ void main() {
       });
 
       test(
-          'returns an authenticated client '
-          'when a token is present.', () async {
+          '''throws exception if SHOREBIRD_TOKEN is present but SHOREBIRD_TOKEN_PROVIDER is not''',
+          () async {
         const token = 'shorebird-token';
         when(() => httpClient.send(any())).thenAnswer(
           (_) async => http.StreamedResponse(
@@ -399,7 +403,35 @@ void main() {
           ),
         );
         when(() => platform.environment).thenReturn(
-          <String, String>{'SHOREBIRD_TOKEN': token},
+          <String, String>{shorebirdTokenEnvVar: token},
+        );
+        expect(
+          buildAuth,
+          throwsA(
+            isA<Exception>().having(
+              (e) => e.toString(),
+              'message',
+              '''Exception: To use SHOREBIRD_TOKEN, you must also set SHOREBIRD_TOKEN_PROVIDER.''',
+            ),
+          ),
+        );
+      });
+
+      test(
+          'returns an authenticated client '
+          'when a token and token provider is present.', () async {
+        const token = 'shorebird-token';
+        when(() => httpClient.send(any())).thenAnswer(
+          (_) async => http.StreamedResponse(
+            const Stream.empty(),
+            HttpStatus.ok,
+          ),
+        );
+        when(() => platform.environment).thenReturn(
+          <String, String>{
+            shorebirdTokenEnvVar: token,
+            shorebirdTokenProviderEnvVar: AuthProvider.google.name,
+          },
         );
         auth = buildAuth();
         final client = auth.client;
@@ -469,7 +501,7 @@ void main() {
       const token = 'shorebird-token';
       setUp(() {
         when(() => platform.environment).thenReturn(
-          <String, String>{'SHOREBIRD_TOKEN': token},
+          <String, String>{shorebirdTokenEnvVar: token},
         );
         auth = buildAuth();
       });

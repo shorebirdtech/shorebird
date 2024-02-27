@@ -66,7 +66,7 @@ ${lightCyan.wrap(credentials.refreshToken)}
 
 Example:
   
-${lightCyan.wrap('export SHOREBIRD_TOKEN="\$SHOREBIRD_TOKEN" SHOREBIRD_TOKEN_PROVIDER="${provider.name}" && shorebird patch android')}
+${lightCyan.wrap('export $shorebirdTokenEnvVar="\$SHOREBIRD_TOKEN" $shorebirdTokenProviderEnvVar="${provider.name}" && shorebird patch android')}
 ''');
     return ExitCode.success.code;
   }
