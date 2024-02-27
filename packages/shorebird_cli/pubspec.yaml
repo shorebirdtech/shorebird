@@ -17,8 +17,7 @@ dependencies:
   cli_util: ^0.4.0
   collection: ^1.17.1
   crypto: ^3.0.2
-  googleapis_auth:
-    path: ../../third_party/googleapis_auth
+  googleapis_auth: ^1.5.0
   http: ^1.0.0
   intl: ^0.19.0
   io: ^1.0.4
