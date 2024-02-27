@@ -267,7 +267,7 @@ class Auth {
     if (base64Token != null) {
       try {
         _token = CiToken.fromBase64(base64Token);
-      } on FormatException {
+      } catch (_) {
         logger.err(
           '$shorebirdTokenEnvVar is set but its value could not be parsed',
         );
