@@ -108,7 +108,7 @@ extension ClientExtensions on Client {
 
   Future<Map<String, dynamic>> oauthTokenRequest(
     Map<String, String> postValues, {
-    required AuthProvider authProvider,
+    required AuthEndpoints authEndpoints,
   }) async {
     final body = Stream<List<int>>.value(
       ascii.encode(
@@ -117,7 +117,7 @@ extension ClientExtensions on Client {
             .join('&'),
       ),
     );
-    final request = RequestImpl('POST', authProvider.tokenEndpoint, body)
+    final request = RequestImpl('POST', authEndpoints.tokenEndpoint, body)
       ..headers['content-type'] = _contentTypeUrlEncoded;
 
     return requestJson(request, 'Failed to obtain access credentials.');

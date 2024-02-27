@@ -13,7 +13,7 @@ import 'auth_http_utils.dart';
 
 Future<AutoRefreshingAuthClient> fromApplicationsCredentialsFile(
   File file,
-  AuthProvider authProvider,
+  AuthEndpoints authEndpoints,
   String fileSource,
   List<String> scopes,
   Client baseClient,
@@ -38,10 +38,10 @@ Future<AutoRefreshingAuthClient> fromApplicationsCredentialsFile(
     );
     return AutoRefreshingClient(
       baseClient,
-      authProvider,
+      authEndpoints,
       clientId,
       await refreshCredentials(
-        authProvider,
+        authEndpoints,
         clientId,
         AccessCredentials(
           // Hack: Create empty credentials that have expired.

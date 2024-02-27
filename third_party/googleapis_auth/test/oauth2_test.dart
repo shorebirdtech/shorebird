@@ -19,7 +19,7 @@ final _defaultResponse = Response('', 500);
 Future<Response> _defaultResponseHandler(Request _) async => _defaultResponse;
 
 void main() {
-  final authProvider = GoogleAuthProvider();
+  final authEndpoints = GoogleAuthEndpoints();
 
   test('access-token', () {
     final expiry = DateTime.now().subtract(const Duration(seconds: 1));
@@ -165,7 +165,7 @@ void main() {
 
     test('refreshCredentials-successful', () async {
       final newCredentials = await refreshCredentials(
-        authProvider,
+        authEndpoints,
         clientId,
         credentials,
         mockClient(expectAsync1(successfulRefresh), expectClose: false),
@@ -187,7 +187,7 @@ void main() {
     test('refreshCredentials-http-error', () async {
       await expectLater(
         refreshCredentials(
-          authProvider,
+          authEndpoints,
           clientId,
           credentials,
           mockClient(serverError, expectClose: false),
@@ -205,7 +205,7 @@ void main() {
     test('refreshCredentials-error-response', () async {
       await expectLater(
         refreshCredentials(
-          authProvider,
+          authEndpoints,
           clientId,
           credentials,
           mockClient(refreshErrorResponse, expectClose: false),
@@ -276,7 +276,7 @@ void main() {
 
       test('up-to-date', () async {
         final client = autoRefreshingClient(
-          authProvider,
+          authEndpoints,
           clientId,
           credentials,
           mockClient(
@@ -296,7 +296,7 @@ void main() {
 
         expect(
           () => autoRefreshingClient(
-            authProvider,
+            authEndpoints,
             clientId,
             credentials,
             mockClient(_defaultResponseHandler, expectClose: false),
@@ -310,7 +310,7 @@ void main() {
             AccessToken('Bearer', 'bar', yesterday), 'refresh', ['s1', 's2']);
 
         final client = autoRefreshingClient(
-          authProvider,
+          authEndpoints,
           clientId,
           credentials,
           mockClient(expectAsync1((request) {
@@ -331,7 +331,7 @@ void main() {
             AccessToken('Bearer', 'bar', yesterday), 'refresh', ['s1', 's2']);
 
         final client = autoRefreshingClient(
-          authProvider,
+          authEndpoints,
           clientId,
           credentials,
           mockClient(expectAsync1((request) async {
@@ -356,7 +356,7 @@ void main() {
             AccessToken('Bearer', 'bar', yesterday), 'refresh', ['s1']);
 
         final client = autoRefreshingClient(
-            authProvider,
+            authEndpoints,
             clientId,
             credentials,
             mockClient(

@@ -31,7 +31,7 @@ final _browserFlowRedirectMatcher = predicate<String>((object) {
 void main() {
   final clientId = ClientId('id', 'secret');
   final scopes = ['s1', 's2'];
-  final authProvider = GoogleAuthProvider();
+  final authEndpoints = GoogleAuthEndpoints();
 
   // Validation + Responses from the authorization server.
 
@@ -137,7 +137,7 @@ void main() {
 
       test('successful', () async {
         final flow = AuthorizationCodeGrantManualFlow(
-          authProvider,
+          authEndpoints,
           clientId,
           scopes,
           mockClient(successFullResponse(manual: true), expectClose: false),
@@ -152,7 +152,7 @@ void main() {
             Future.error(TransportException());
 
         final flow = AuthorizationCodeGrantManualFlow(
-          authProvider,
+          authEndpoints,
           clientId,
           scopes,
           mockClient(successFullResponse(manual: true), expectClose: false),
@@ -163,7 +163,7 @@ void main() {
 
       test('transport-exception', () async {
         final flow = AuthorizationCodeGrantManualFlow(
-          authProvider,
+          authEndpoints,
           clientId,
           scopes,
           transportFailure,
@@ -174,7 +174,7 @@ void main() {
 
       test('invalid-server-response', () async {
         final flow = AuthorizationCodeGrantManualFlow(
-          authProvider,
+          authEndpoints,
           clientId,
           scopes,
           mockClient(invalidResponse, expectClose: false),
@@ -271,7 +271,7 @@ void main() {
 
       test('successful', () async {
         final flow = AuthorizationCodeGrantServerFlow(
-          authProvider,
+          authEndpoints,
           clientId,
           scopes,
           mockClient(successFullResponse(manual: false), expectClose: false),
@@ -282,7 +282,7 @@ void main() {
 
       test('transport-exception', () async {
         final flow = AuthorizationCodeGrantServerFlow(
-          authProvider,
+          authEndpoints,
           clientId,
           scopes,
           transportFailure,
@@ -293,7 +293,7 @@ void main() {
 
       test('non-GET request', () async {
         final flow = AuthorizationCodeGrantServerFlow(
-          authProvider,
+          authEndpoints,
           clientId,
           scopes,
           mockClient(successFullResponse(manual: false), expectClose: false),
@@ -313,7 +313,7 @@ void main() {
 
       test('request with invalid state parameter', () async {
         final flow = AuthorizationCodeGrantServerFlow(
-          authProvider,
+          authEndpoints,
           clientId,
           scopes,
           mockClient(successFullResponse(manual: false), expectClose: false),
@@ -333,7 +333,7 @@ void main() {
 
       test('invalid-server-response', () async {
         final flow = AuthorizationCodeGrantServerFlow(
-          authProvider,
+          authEndpoints,
           clientId,
           scopes,
           mockClient(invalidResponse, expectClose: false),
@@ -344,7 +344,7 @@ void main() {
 
       test('failed-authentication', () async {
         final flow = AuthorizationCodeGrantServerFlow(
-          authProvider,
+          authEndpoints,
           clientId,
           scopes,
           mockClient(successFullResponse(manual: false), expectClose: false),

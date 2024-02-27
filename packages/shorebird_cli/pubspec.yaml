@@ -1,6 +1,6 @@
 name: shorebird_cli
 description: Command-line tool to interact with Shorebird's services.
-version: 0.26.0
+version: 0.26.1
 repository: https://github.com/shorebirdtech/shorebird
 
 publish_to: none
@@ -37,6 +37,8 @@ dependencies:
     path: ../scoped
   shorebird_code_push_client:
     path: ../shorebird_code_push_client
+  shorebird_code_push_protocol:
+    path: ../shorebird_code_push_protocol
   uuid: ^4.3.3
   xml: ^6.2.2
   yaml: ^3.1.1
