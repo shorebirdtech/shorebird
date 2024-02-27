@@ -207,7 +207,7 @@ class Auth {
         throw UserNotFoundException(email: credentials.email!);
       }
       if (credentials.refreshToken == null) {
-        throw Exception('No refresh token found');
+        throw Exception('No refresh token found.');
       }
 
       return CiToken(

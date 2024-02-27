@@ -137,13 +137,7 @@ void main() {
       DateTime.now().add(const Duration(minutes: 10)).toUtc(),
     );
 
-    final accessCredentials = oauth2.AccessCredentials(
-      accessToken,
-      refreshToken,
-      scopes,
-      idToken: idToken,
-    );
-
+    late oauth2.AccessCredentials accessCredentials;
     late String credentialsDir;
     late http.Client httpClient;
     late CodePushClient codePushClient;
@@ -189,6 +183,12 @@ void main() {
     }
 
     setUp(() {
+      accessCredentials = oauth2.AccessCredentials(
+        accessToken,
+        refreshToken,
+        scopes,
+        idToken: idToken,
+      );
       credentialsDir = Directory.systemTemp.createTempSync().path;
       httpClient = MockHttpClient();
       codePushClient = MockCodePushClient();
@@ -497,6 +497,30 @@ void main() {
         );
 
         expect(auth.email, isNull);
+      });
+
+      group('when credentials are missing a refresh token', () {
+        setUp(() {
+          accessCredentials = oauth2.AccessCredentials(
+            accessToken,
+            null,
+            scopes,
+            idToken: idToken,
+          );
+        });
+
+        test('throws if credentials are missing a refresh token', () async {
+          await expectLater(
+            auth.loginCI(AuthProvider.google, prompt: (_) {}),
+            throwsA(
+              isA<Exception>().having(
+                (e) => e.toString(),
+                'toString',
+                'Exception: No refresh token found.',
+              ),
+            ),
+          );
+        });
       });
     });
 
