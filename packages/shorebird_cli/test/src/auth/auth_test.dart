@@ -119,13 +119,17 @@ void main() {
   group(Auth, () {
     const idToken =
         '''eyJhbGciOiJIUzI1NiIsImtpZCI6IjEyMzQiLCJ0eXAiOiJKV1QifQ.eyJpc3MiOiJodHRwczovL2FjY291bnRzLmdvb2dsZS5jb20iLCJhenAiOiI1MjMzMDIyMzMyOTMtZWlhNWFudG0wdGd2ZWsyNDB0NDZvcmN0a3RpYWJyZWsuYXBwcy5nb29nbGV1c2VyY29udGVudC5jb20iLCJhdWQiOiI1MjMzMDIyMzMyOTMtZWlhNWFudG0wdGd2ZWsyNDB0NDZvcmN0a3RpYWJyZWsuYXBwcy5nb29nbGV1c2VyY29udGVudC5jb20iLCJzdWIiOiIxMjM0NSIsImhkIjoic2hvcmViaXJkLmRldiIsImVtYWlsIjoidGVzdEBlbWFpbC5jb20iLCJlbWFpbF92ZXJpZmllZCI6dHJ1ZSwiaWF0IjoxMjM0LCJleHAiOjY3ODl9.MYbITALvKsGYTYjw1o7AQ0ObkqRWVBSr9cFYJrvA46g''';
+    const refreshToken = 'shorebird-token';
+    const ciToken = CiToken(
+      refreshToken: refreshToken,
+      authProvider: AuthProvider.google,
+    );
     const email = 'test@email.com';
     const user = User(
       id: 42,
       email: email,
       jwtIssuer: googleJwtIssuer,
     );
-    const refreshToken = '';
     const scopes = <String>[];
     final accessToken = oauth2.AccessToken(
       'Bearer',
@@ -133,13 +137,7 @@ void main() {
       DateTime.now().add(const Duration(minutes: 10)).toUtc(),
     );
 
-    final accessCredentials = oauth2.AccessCredentials(
-      accessToken,
-      refreshToken,
-      scopes,
-      idToken: idToken,
-    );
-
+    late oauth2.AccessCredentials accessCredentials;
     late String credentialsDir;
     late http.Client httpClient;
     late CodePushClient codePushClient;
@@ -185,6 +183,12 @@ void main() {
     }
 
     setUp(() {
+      accessCredentials = oauth2.AccessCredentials(
+        accessToken,
+        refreshToken,
+        scopes,
+        idToken: idToken,
+      );
       credentialsDir = Directory.systemTemp.createTempSync().path;
       httpClient = MockHttpClient();
       codePushClient = MockCodePushClient();
@@ -199,13 +203,10 @@ void main() {
 
     group('AuthenticatedClient', () {
       group('token', () {
-        const token =
-            '''eyJhbGciOiJIUzI1NiIsImtpZCI6IjEyMzQiLCJ0eXAiOiJKV1QifQ.eyJpc3MiOiJodHRwczovL2FjY291bnRzLmdvb2dsZS5jb20iLCJhenAiOiI1MjMzMDIyMzMyOTMtZWlhNWFudG0wdGd2ZWsyNDB0NDZvcmN0a3RpYWJyZWsuYXBwcy5nb29nbGV1c2VyY29udGVudC5jb20iLCJhdWQiOiI1MjMzMDIyMzMyOTMtZWlhNWFudG0wdGd2ZWsyNDB0NDZvcmN0a3RpYWJyZWsuYXBwcy5nb29nbGV1c2VyY29udGVudC5jb20iLCJzdWIiOiIxMjM0NSIsImhkIjoic2hvcmViaXJkLmRldiIsImVtYWlsIjoidGVzdEBlbWFpbC5jb20iLCJlbWFpbF92ZXJpZmllZCI6dHJ1ZSwiaWF0IjoxMjM0LCJleHAiOjY3ODl9.MYbITALvKsGYTYjw1o7AQ0ObkqRWVBSr9cFYJrvA46g''';
-
         test('does not require an onRefreshCredentials callback', () {
           expect(
             () => AuthenticatedClient.token(
-              token: token,
+              token: ciToken,
               httpClient: httpClient,
               refreshCredentials:
                   (authEndpoints, clientId, credentials, client) async =>
@@ -227,7 +228,7 @@ void main() {
           final onRefreshCredentialsCalls = <oauth2.AccessCredentials>[];
 
           final client = AuthenticatedClient.token(
-            token: token,
+            token: ciToken,
             httpClient: httpClient,
             onRefreshCredentials: onRefreshCredentialsCalls.add,
             refreshCredentials:
@@ -261,7 +262,7 @@ void main() {
           );
           final onRefreshCredentialsCalls = <oauth2.AccessCredentials>[];
           final client = AuthenticatedClient.token(
-            token: token,
+            token: ciToken,
             httpClient: httpClient,
             onRefreshCredentials: onRefreshCredentialsCalls.add,
             refreshCredentials:
@@ -388,10 +389,28 @@ void main() {
         expect(request.headers['Authorization'], equals('Bearer $idToken'));
       });
 
+      group('when token is invalid', () {
+        setUp(() {
+          when(() => platform.environment).thenReturn(
+            <String, String>{shorebirdTokenEnvVar: 'not a base64 string'},
+          );
+        });
+
+        test('prints warning message when token string is not valid base64',
+            () async {
+          auth = buildAuth();
+          verify(
+            () => logger.warn('''
+The value of $shorebirdTokenEnvVar is not a valid base64-encoded token. This
+will become an error in the next major release. Run `shorebird login:ci` before
+then to obtain a new token.'''),
+          ).called(1);
+        });
+      });
+
       test(
           'returns an authenticated client '
-          'when a token is present.', () async {
-        const token = 'shorebird-token';
+          'when a token and token provider is present.', () async {
         when(() => httpClient.send(any())).thenAnswer(
           (_) async => http.StreamedResponse(
             const Stream.empty(),
@@ -399,7 +418,7 @@ void main() {
           ),
         );
         when(() => platform.environment).thenReturn(
-          <String, String>{'SHOREBIRD_TOKEN': token},
+          <String, String>{shorebirdTokenEnvVar: ciToken.toBase64()},
         );
         auth = buildAuth();
         final client = auth.client;
@@ -466,21 +485,18 @@ void main() {
     });
 
     group('loginCI', () {
-      const token = 'shorebird-token';
       setUp(() {
         when(() => platform.environment).thenReturn(
-          <String, String>{'SHOREBIRD_TOKEN': token},
+          <String, String>{shorebirdTokenEnvVar: ciToken.toBase64()},
         );
         auth = buildAuth();
       });
 
-      test(
-          'returns credentials and does not set the email or cache credentials',
+      test('returns a CI token and does not set the email or cache credentials',
           () async {
-        await expectLater(
-          auth.loginCI(AuthProvider.google, prompt: (_) {}),
-          completion(equals(accessCredentials)),
-        );
+        final token = await auth.loginCI(AuthProvider.google, prompt: (_) {});
+        expect(token.authProvider, ciToken.authProvider);
+        expect(token.refreshToken, ciToken.refreshToken);
         expect(auth.email, isNull);
         expect(auth.isAuthenticated, isTrue);
         expect(buildAuth().email, isNull);
@@ -500,6 +516,30 @@ void main() {
         );
 
         expect(auth.email, isNull);
+      });
+
+      group('when credentials are missing a refresh token', () {
+        setUp(() {
+          accessCredentials = oauth2.AccessCredentials(
+            accessToken,
+            null,
+            scopes,
+            idToken: idToken,
+          );
+        });
+
+        test('throws if credentials are missing a refresh token', () async {
+          await expectLater(
+            auth.loginCI(AuthProvider.google, prompt: (_) {}),
+            throwsA(
+              isA<Exception>().having(
+                (e) => e.toString(),
+                'toString',
+                'Exception: No refresh token found.',
+              ),
+            ),
+          );
+        });
       });
     });
 

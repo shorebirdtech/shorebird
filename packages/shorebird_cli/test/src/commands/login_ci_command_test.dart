@@ -153,15 +153,17 @@ void main() {
     });
 
     test('exits with code 0 when logged in successfully', () async {
-      const token = 'shorebird-token';
-      final credentials = MockAccessCredentials();
-      when(() => credentials.refreshToken).thenReturn(token);
+      const token = CiToken(
+        // "shorebird-token" in base64
+        refreshToken: 'c2hvcmViaXJkLXRva2Vu',
+        authProvider: AuthProvider.google,
+      );
       when(
         () => auth.loginCI(
           any(),
           prompt: any(named: 'prompt'),
         ),
-      ).thenAnswer((_) async => credentials);
+      ).thenAnswer((_) async => token);
       when(() => auth.email).thenReturn(email);
 
       final result = await runWithOverrides(command.run);
@@ -174,7 +176,9 @@ void main() {
         ),
       ).called(1);
       verify(
-        () => logger.info(any(that: contains('${lightCyan.wrap(token)}'))),
+        () => logger.info(
+          any(that: contains('${lightCyan.wrap(token.toBase64())}')),
+        ),
       ).called(1);
     });
 
