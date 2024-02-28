@@ -48,6 +48,7 @@ void main() {
 
       when(() => results.wasParsed('provider')).thenReturn(false);
       when(() => results['provider']).thenReturn(null);
+      when(() => auth.isAuthenticated).thenReturn(false);
       when(() => auth.client).thenReturn(httpClient);
       when(() => auth.credentialsFilePath).thenReturn(
         p.join(applicationConfigHome.path, 'credentials.json'),
@@ -120,25 +121,27 @@ void main() {
       });
     });
 
-    test('exits with code 0 when already logged in', () async {
-      when(
-        () => auth.login(
-          any(),
-          prompt: any(named: 'prompt'),
-        ),
-      ).thenThrow(UserAlreadyLoggedInException(email: email));
+    group('when user is already logged in', () {
+      setUp(() {
+        when(() => auth.isAuthenticated).thenReturn(true);
+        when(() => auth.email).thenReturn(email);
+      });
 
-      final result = await runWithOverrides(command.run);
-      expect(result, equals(ExitCode.success.code));
+      test('prints message and exits with code 0 when already logged in',
+          () async {
+        final result = await runWithOverrides(command.run);
 
-      verify(
-        () => logger.info('You are already logged in as <$email>.'),
-      ).called(1);
-      verify(
-        () => logger.info(
-          "Run ${lightCyan.wrap('shorebird logout')} to log out and try again.",
-        ),
-      ).called(1);
+        expect(result, equals(ExitCode.success.code));
+        verify(
+          () => logger.info('You are already logged in as <$email>.'),
+        ).called(1);
+        verify(
+          () => logger.info(
+            "Run ${lightCyan.wrap('shorebird logout')} to log out and try again.",
+          ),
+        ).called(1);
+        verifyNever(() => auth.login(any(), prompt: any(named: 'prompt')));
+      });
     });
 
     test('exits with code 70 if no user is found', () async {
