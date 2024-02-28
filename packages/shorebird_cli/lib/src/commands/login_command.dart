@@ -27,6 +27,15 @@ class LoginCommand extends ShorebirdCommand {
 
   @override
   Future<int> run() async {
+    if (auth.isAuthenticated) {
+      logger
+        ..info('You are already logged in as <${auth.email}>.')
+        ..info(
+          'Run ${lightCyan.wrap('shorebird logout')} to log out and try again.',
+        );
+      return ExitCode.success.code;
+    }
+
     final api.AuthProvider provider;
     if (results.wasParsed('provider')) {
       provider = api.AuthProvider.values.byName(results['provider'] as String);
@@ -40,13 +49,6 @@ class LoginCommand extends ShorebirdCommand {
 
     try {
       await auth.login(provider, prompt: prompt);
-    } on UserAlreadyLoggedInException catch (error) {
-      logger
-        ..info('You are already logged in as <${error.email}>.')
-        ..info(
-          'Run ${lightCyan.wrap('shorebird logout')} to log out and try again.',
-        );
-      return ExitCode.success.code;
     } on UserNotFoundException catch (error) {
       final consoleUri = Uri.https('console.shorebird.dev');
       logger
