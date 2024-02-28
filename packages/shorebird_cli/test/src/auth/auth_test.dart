@@ -2,6 +2,7 @@ import 'dart:convert';
 import 'dart:io' hide Platform;
 
 import 'package:cli_util/cli_util.dart';
+import 'package:googleapis_auth/auth_io.dart';
 import 'package:googleapis_auth/googleapis_auth.dart' as oauth2;
 import 'package:http/http.dart' as http;
 import 'package:jwt/jwt.dart' show Jwt, JwtPayload;
@@ -168,8 +169,13 @@ void main() {
           buildCodePushClient: ({Uri? hostedUri, http.Client? httpClient}) {
             return codePushClient;
           },
-          obtainAccessCredentials:
-              (authEndpoints, clientId, scopes, client, userPrompt) async {
+          obtainAccessCredentials: (
+            clientId,
+            scopes,
+            client,
+            userPrompt, {
+            AuthEndpoints authEndpoints = const GoogleAuthEndpoints(),
+          }) async {
             return accessCredentials;
           },
         ),
@@ -208,9 +214,13 @@ void main() {
             () => AuthenticatedClient.token(
               token: ciToken,
               httpClient: httpClient,
-              refreshCredentials:
-                  (authEndpoints, clientId, credentials, client) async =>
-                      accessCredentials,
+              refreshCredentials: (
+                clientId,
+                credentials,
+                client, {
+                AuthEndpoints authEndpoints = const GoogleAuthEndpoints(),
+              }) async =>
+                  accessCredentials,
             ),
             returnsNormally,
           );
@@ -231,9 +241,13 @@ void main() {
             token: ciToken,
             httpClient: httpClient,
             onRefreshCredentials: onRefreshCredentialsCalls.add,
-            refreshCredentials:
-                (authEndpoints, clientId, credentials, client) async =>
-                    accessCredentials,
+            refreshCredentials: (
+              clientId,
+              credentials,
+              client, {
+              AuthEndpoints authEndpoints = const GoogleAuthEndpoints(),
+            }) async =>
+                accessCredentials,
           );
 
           await runWithOverrides(
@@ -265,9 +279,13 @@ void main() {
             token: ciToken,
             httpClient: httpClient,
             onRefreshCredentials: onRefreshCredentialsCalls.add,
-            refreshCredentials:
-                (authEndpoints, clientId, credentials, client) async =>
-                    accessCredentials,
+            refreshCredentials: (
+              clientId,
+              credentials,
+              client, {
+              AuthEndpoints authEndpoints = const GoogleAuthEndpoints(),
+            }) async =>
+                accessCredentials,
           );
 
           await runWithOverrides(
@@ -315,9 +333,13 @@ void main() {
             credentials: expiredCredentials,
             httpClient: httpClient,
             onRefreshCredentials: onRefreshCredentialsCalls.add,
-            refreshCredentials:
-                (authEndpoints, clientId, credentials, client) async =>
-                    accessCredentials,
+            refreshCredentials: (
+              clientId,
+              credentials,
+              client, {
+              AuthEndpoints authEndpoints = const GoogleAuthEndpoints(),
+            }) async =>
+                accessCredentials,
           );
 
           await runWithOverrides(
