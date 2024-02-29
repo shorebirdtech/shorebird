@@ -271,9 +271,8 @@ class Auth {
         // TODO(bryanoltman): Remove this legacy behavior after July 2024 or
         // next major release.
         logger.warn('''
-The value of $shorebirdTokenEnvVar is not a valid base64-encoded token. This
-will become an error in the next major release. Run `shorebird login:ci` before
-then to obtain a new token.''');
+[WARN] $shorebirdTokenEnvVar needs to be updated before the next major release.
+Run `shorebird login:ci` to obtain a new token.''');
         _token = CiToken(
           refreshToken: envToken,
           authProvider: AuthProvider.google,
