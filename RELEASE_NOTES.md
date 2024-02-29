@@ -2,6 +2,12 @@
 
 This section contains past updates we've sent to customers via Discord.
 
+## 0.26.2 (February 29, 2024)
+
+⬇️ Lower required Dart version to 3.0
+
+📚 Release notes can be found at https://github.com/shorebirdtech/shorebird/releases/tag/v0.26.2
+
 ## 0.26.1 (February 28, 2024)
 
 🆕 Updated to Flutter 3.19.2.
