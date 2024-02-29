@@ -423,9 +423,8 @@ void main() {
           auth = buildAuth();
           verify(
             () => logger.warn('''
-The value of $shorebirdTokenEnvVar is not a valid base64-encoded token. This
-will become an error in the next major release. Run `shorebird login:ci` before
-then to obtain a new token.'''),
+[WARN] SHOREBIRD_TOKEN needs to be updated before the next major release.
+Run `shorebird login:ci` to obtain a new token.'''),
           ).called(1);
         });
       });
