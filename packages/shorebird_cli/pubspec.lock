@@ -292,10 +292,11 @@ packages:
   googleapis_auth:
     dependency: "direct main"
     description:
-      name: googleapis_auth
-      sha256: cafc46446574fd42826aa4cd4d623c94482598fda0a5a5649bf2781bcbc09258
-      url: "https://pub.dev"
-    source: hosted
+      path: googleapis_auth
+      ref: "shorebird/dev"
+      resolved-ref: "98f25a9f746ec438029fced875e4b44f35a244ad"
+      url: "https://github.com/shorebirdtech/googleapis.dart.git"
+    source: git
     version: "1.5.0"
   graphs:
     dependency: transitive
