@@ -22,11 +22,11 @@ dependencies:
       url: https://github.com/shorebirdtech/googleapis.dart.git
       path: googleapis_auth
       ref: 647f96d5ffdae63e41aeea091c34acfffff533e7
-  http: ^1.0.0
+  http: ^1.2.1
   intl: ^0.19.0
   io: ^1.0.4
   json_annotation: ^4.8.0
-  json_path: ^0.7.0
+  json_path: ^0.7.1
   jwt:
     path: ../jwt
   mason_logger: ^0.2.12
@@ -43,7 +43,7 @@ dependencies:
   shorebird_code_push_protocol:
     path: ../shorebird_code_push_protocol
   uuid: ^4.3.3
-  xml: ^6.2.2
+  xml: ^6.5.0
   yaml: ^3.1.1
   yaml_edit: ^2.1.0
 
