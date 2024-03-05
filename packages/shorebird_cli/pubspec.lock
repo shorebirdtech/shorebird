@@ -229,10 +229,10 @@ packages:
     dependency: transitive
     description:
       name: dart_style
-      sha256: "99e066ce75c89d6b29903d788a7bb9369cf754f7b24bf70bf4b6d6d6b26853b9"
+      sha256: "40ae61a5d43feea6d24bd22c0537a6629db858963b99b4bc1c3db80676f32368"
       url: "https://pub.dev"
     source: hosted
-    version: "2.3.6"
+    version: "2.3.4"
   equatable:
     dependency: transitive
     description:
@@ -374,10 +374,10 @@ packages:
     dependency: "direct main"
     description:
       name: json_path
-      sha256: "149d32ceb7dc22422ea6d09e401fd688f54e1343bc9ff8c3cb1900ca3b1ad8b1"
+      sha256: b1a3e5e34c862a6ca598e226e725647e462bde9fd98dbfa21bb53e105efeb177
       url: "https://pub.dev"
     source: hosted
-    version: "0.7.1"
+    version: "0.7.0"
   json_serializable:
     dependency: "direct dev"
     description:
@@ -590,7 +590,7 @@ packages:
       path: "../shorebird_code_push_client"
       relative: true
     source: path
-    version: "0.7.0+1"
+    version: "0.6.0+2"
   shorebird_code_push_protocol:
     dependency: "direct main"
     description:
@@ -794,10 +794,10 @@ packages:
     dependency: transitive
     description:
       name: win32
-      sha256: b0f37db61ba2f2e9b7a78a1caece0052564d1bc70668156cf3a29d676fe4e574
+      sha256: "350a11abd2d1d97e0cc7a28a81b781c08002aa2864d9e3f192ca0ffa18b06ed3"
       url: "https://pub.dev"
     source: hosted
-    version: "5.1.1"
+    version: "5.0.9"
   xml:
     dependency: "direct main"
     description:
@@ -823,4 +823,4 @@ packages:
     source: hosted
     version: "2.2.0"
 sdks:
-  dart: ">=3.1.0 <4.0.0"
+  dart: ">=3.0.0 <4.0.0"
