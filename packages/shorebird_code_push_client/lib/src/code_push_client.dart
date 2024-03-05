@@ -86,7 +86,7 @@ class CodePushClient {
     http.Client? httpClient,
     Uri? hostedUri,
   })  : _httpClient = _CodePushHttpClient(httpClient ?? http.Client()),
-        hostedUri = hostedUri ?? Uri.http('localhost:8080');
+        hostedUri = hostedUri ?? Uri.https('api.shorebird.dev');
 
   /// The standard headers applied to all requests.
   static const headers = <String, String>{'x-version': packageVersion};
