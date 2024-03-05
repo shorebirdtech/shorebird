@@ -211,8 +211,10 @@ Please re-run the release command for this version or create a new release.''');
     }
     downloadProgress.complete();
 
+    final DiffStatus diffStatus;
     try {
-      await patchDiffChecker.zipAndConfirmUnpatchableDiffsIfNecessary(
+      diffStatus =
+          await patchDiffChecker.zipAndConfirmUnpatchableDiffsIfNecessary(
         localArtifactDirectory: Directory(getAppXcframeworkPath()),
         releaseArtifact: releaseArtifactZipFile,
         archiveDiffer: _archiveDiffer,
@@ -342,6 +344,9 @@ ${summary.join('\n')}
     await codePushClientWrapper.publishPatch(
       appId: appId,
       releaseId: release.id,
+      wasForced: force,
+      hasAssetChanges: diffStatus.hasAssetChanges,
+      hasNativeChanges: diffStatus.hasNativeChanges,
       platform: releasePlatform,
       track: DeploymentTrack.production,
       patchArtifactBundles: {

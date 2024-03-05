@@ -1782,6 +1782,9 @@ Please bump your version number and try again.''',
             () => codePushClient.createPatch(
               appId: appId,
               releaseId: releaseId,
+              wasForced: any(named: 'wasForced'),
+              hasAssetChanges: any(named: 'hasAssetChanges'),
+              hasNativeChanges: any(named: 'hasNativeChanges'),
             ),
           ).thenThrow(error);
 
@@ -1790,6 +1793,9 @@ Please bump your version number and try again.''',
               () => codePushClientWrapper.createPatch(
                 appId: appId,
                 releaseId: releaseId,
+                wasForced: false,
+                hasAssetChanges: false,
+                hasNativeChanges: false,
               ),
             ),
             exitsWithCode(ExitCode.software),
@@ -1802,6 +1808,9 @@ Please bump your version number and try again.''',
             () => codePushClient.createPatch(
               appId: appId,
               releaseId: releaseId,
+              wasForced: any(named: 'wasForced'),
+              hasAssetChanges: any(named: 'hasAssetChanges'),
+              hasNativeChanges: any(named: 'hasNativeChanges'),
             ),
           ).thenAnswer((_) async => patch);
 
@@ -1809,6 +1818,9 @@ Please bump your version number and try again.''',
             () => codePushClientWrapper.createPatch(
               appId: appId,
               releaseId: releaseId,
+              wasForced: false,
+              hasAssetChanges: false,
+              hasNativeChanges: false,
             ),
           );
 
@@ -1935,6 +1947,9 @@ Please bump your version number and try again.''',
             () => codePushClient.createPatch(
               appId: any(named: 'appId'),
               releaseId: any(named: 'releaseId'),
+              wasForced: any(named: 'wasForced'),
+              hasAssetChanges: any(named: 'hasAssetChanges'),
+              hasNativeChanges: any(named: 'hasNativeChanges'),
             ),
           ).thenAnswer((_) async => patch);
           when(
@@ -1964,6 +1979,9 @@ Please bump your version number and try again.''',
             () => codePushClientWrapper.publishPatch(
               appId: appId,
               releaseId: releaseId,
+              wasForced: false,
+              hasAssetChanges: true,
+              hasNativeChanges: false,
               platform: releasePlatform,
               track: track,
               patchArtifactBundles: patchArtifactBundles,
@@ -1974,6 +1992,9 @@ Please bump your version number and try again.''',
             () => codePushClient.createPatch(
               appId: appId,
               releaseId: releaseId,
+              wasForced: false,
+              hasAssetChanges: true,
+              hasNativeChanges: false,
             ),
           ).called(1);
           verify(
@@ -2018,6 +2039,9 @@ Please bump your version number and try again.''',
             () => codePushClientWrapper.publishPatch(
               appId: appId,
               releaseId: releaseId,
+              wasForced: true,
+              hasAssetChanges: false,
+              hasNativeChanges: true,
               platform: releasePlatform,
               track: track,
               patchArtifactBundles: patchArtifactBundles,
@@ -2028,6 +2052,9 @@ Please bump your version number and try again.''',
             () => codePushClient.createPatch(
               appId: appId,
               releaseId: releaseId,
+              wasForced: true,
+              hasAssetChanges: false,
+              hasNativeChanges: true,
             ),
           ).called(1);
           verify(
@@ -2061,6 +2088,9 @@ Please bump your version number and try again.''',
             () => codePushClientWrapper.publishPatch(
               appId: appId,
               releaseId: releaseId,
+              wasForced: false,
+              hasAssetChanges: false,
+              hasNativeChanges: false,
               platform: releasePlatform,
               track: track,
               patchArtifactBundles: patchArtifactBundles,

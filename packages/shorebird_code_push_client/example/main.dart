@@ -40,7 +40,13 @@ Future<void> main() async {
   );
 
   // Create a new patch.
-  final patch = await client.createPatch(appId: app.id, releaseId: release.id);
+  final patch = await client.createPatch(
+    appId: app.id,
+    releaseId: release.id,
+    wasForced: false,
+    hasAssetChanges: false,
+    hasNativeChanges: false,
+  );
 
   // Create a patch artifact.
   await client.createPatchArtifact(

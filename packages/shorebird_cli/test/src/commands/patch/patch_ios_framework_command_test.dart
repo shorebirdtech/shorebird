@@ -193,6 +193,7 @@ flutter:
     setUpAll(() {
       registerFallbackValue(Directory(''));
       registerFallbackValue(File(''));
+      registerFallbackValue(FileSetDiff.empty());
       registerFallbackValue(ReleasePlatform.ios);
       registerFallbackValue(Uri.parse('https://example.com'));
       registerFallbackValue(DeploymentTrack.production);
@@ -359,6 +360,9 @@ flutter:
         () => codePushClientWrapper.publishPatch(
           appId: any(named: 'appId'),
           releaseId: any(named: 'releaseId'),
+          wasForced: any(named: 'wasForced'),
+          hasAssetChanges: any(named: 'hasAssetChanges'),
+          hasNativeChanges: any(named: 'hasNativeChanges'),
           platform: any(named: 'platform'),
           track: any(named: 'track'),
           patchArtifactBundles: any(named: 'patchArtifactBundles'),
@@ -386,7 +390,12 @@ flutter:
           archiveDiffer: archiveDiffer,
           force: any(named: 'force'),
         ),
-      ).thenAnswer((_) async => {});
+      ).thenAnswer(
+        (_) async => DiffStatus(
+          hasAssetChanges: false,
+          hasNativeChanges: false,
+        ),
+      );
 
       command = runWithOverrides(
         () => PatchIosFrameworkCommand(archiveDiffer: archiveDiffer),
@@ -723,6 +732,9 @@ Please re-run the release command for this version or create a new release.'''),
         () => codePushClientWrapper.publishPatch(
           appId: any(named: 'appId'),
           releaseId: any(named: 'releaseId'),
+          wasForced: any(named: 'wasForced'),
+          hasAssetChanges: any(named: 'hasAssetChanges'),
+          hasNativeChanges: any(named: 'hasNativeChanges'),
           platform: any(named: 'platform'),
           track: any(named: 'track'),
           patchArtifactBundles: any(named: 'patchArtifactBundles'),
@@ -760,6 +772,9 @@ Please re-run the release command for this version or create a new release.'''),
         () => codePushClientWrapper.publishPatch(
           appId: any(named: 'appId'),
           releaseId: any(named: 'releaseId'),
+          wasForced: any(named: 'wasForced'),
+          hasAssetChanges: any(named: 'hasAssetChanges'),
+          hasNativeChanges: any(named: 'hasNativeChanges'),
           platform: any(named: 'platform'),
           track: any(named: 'track'),
           patchArtifactBundles: any(named: 'patchArtifactBundles'),
@@ -777,6 +792,9 @@ Please re-run the release command for this version or create a new release.'''),
         () => codePushClientWrapper.createPatch(
           appId: any(named: 'appId'),
           releaseId: any(named: 'releaseId'),
+          wasForced: any(named: 'wasForced'),
+          hasAssetChanges: any(named: 'hasAssetChanges'),
+          hasNativeChanges: any(named: 'hasNativeChanges'),
         ),
       );
       verify(() => logger.info('No issues detected.')).called(1);
@@ -793,6 +811,51 @@ Please re-run the release command for this version or create a new release.'''),
         () => codePushClientWrapper.publishPatch(
           appId: appId,
           releaseId: preLinkerRelease.id,
+          wasForced: true,
+          hasAssetChanges: false,
+          hasNativeChanges: false,
+          platform: ReleasePlatform.ios,
+          track: track,
+          patchArtifactBundles: any(named: 'patchArtifactBundles'),
+        ),
+      ).called(1);
+    });
+
+    test('reports when patch has asset and native changes', () async {
+      when(() => argResults['force']).thenReturn(true);
+      when(() => archiveDiffer.containsPotentiallyBreakingAssetDiffs(any()))
+          .thenReturn(true);
+      when(() => archiveDiffer.containsPotentiallyBreakingNativeDiffs(any()))
+          .thenReturn(true);
+      when(() => archiveDiffer.changedFiles(any(), any()))
+          .thenAnswer((_) async => FileSetDiff.empty());
+      when(
+        () => patchDiffChecker.zipAndConfirmUnpatchableDiffsIfNecessary(
+          localArtifactDirectory: any(named: 'localArtifactDirectory'),
+          releaseArtifact: any(named: 'releaseArtifact'),
+          archiveDiffer: archiveDiffer,
+          force: any(named: 'force'),
+        ),
+      ).thenAnswer(
+        (_) async => DiffStatus(
+          hasAssetChanges: true,
+          hasNativeChanges: true,
+        ),
+      );
+
+      setUpProjectRootArtifacts();
+
+      final exitCode = await runWithOverrides(command.run);
+
+      expect(exitCode, equals(ExitCode.success.code));
+      verifyNever(() => logger.confirm(any()));
+      verify(
+        () => codePushClientWrapper.publishPatch(
+          appId: appId,
+          releaseId: postLinkerRelease.id,
+          wasForced: true,
+          hasAssetChanges: true,
+          hasNativeChanges: true,
           platform: ReleasePlatform.ios,
           track: track,
           patchArtifactBundles: any(named: 'patchArtifactBundles'),
@@ -819,6 +882,9 @@ Please re-run the release command for this version or create a new release.'''),
         () => codePushClientWrapper.publishPatch(
           appId: appId,
           releaseId: preLinkerRelease.id,
+          wasForced: false,
+          hasAssetChanges: false,
+          hasNativeChanges: false,
           platform: ReleasePlatform.ios,
           track: track,
           patchArtifactBundles: any(named: 'patchArtifactBundles'),
@@ -1021,6 +1087,9 @@ Please re-run the release command for this version or create a new release.'''),
           () => codePushClientWrapper.publishPatch(
             appId: appId,
             releaseId: preLinkerRelease.id,
+            wasForced: false,
+            hasAssetChanges: false,
+            hasNativeChanges: false,
             platform: ReleasePlatform.ios,
             track: track,
             patchArtifactBundles: any(

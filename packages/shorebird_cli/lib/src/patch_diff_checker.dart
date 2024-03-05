@@ -7,6 +7,24 @@ import 'package:shorebird_cli/src/archive_analysis/archive_differ.dart';
 import 'package:shorebird_cli/src/logger.dart';
 import 'package:shorebird_cli/src/shorebird_env.dart';
 
+/// {@template diff_status}
+/// Describes the types of changes that have been detected between a patch
+/// and its release.
+/// {@endtemplate}
+class DiffStatus {
+  /// {@macro diff_status}
+  DiffStatus({
+    required this.hasAssetChanges,
+    required this.hasNativeChanges,
+  });
+
+  /// Whether the patch contains asset changes.
+  final bool hasAssetChanges;
+
+  /// Whether the patch contains native code changes.
+  final bool hasNativeChanges;
+}
+
 /// Thrown when an unpatchable change is detected in an environment where the
 /// user cannot be prompted to continue.
 class UnpatchableChangeException implements Exception {}
@@ -26,7 +44,7 @@ PatchDiffChecker get patchDiffChecker => read(patchDiffCheckerRef);
 class PatchDiffChecker {
   /// Zips the contents of [localArtifactDirectory] to a temporary file and
   /// forwards to [confirmUnpatchableDiffsIfNecessary].
-  Future<void> zipAndConfirmUnpatchableDiffsIfNecessary({
+  Future<DiffStatus> zipAndConfirmUnpatchableDiffsIfNecessary({
     required Directory localArtifactDirectory,
     required File releaseArtifact,
     required ArchiveDiffer archiveDiffer,
@@ -46,7 +64,7 @@ class PatchDiffChecker {
 
   /// Checks for differences that could cause issues when applying the
   /// [localArtifact] patch to the [releaseArtifact].
-  Future<void> confirmUnpatchableDiffsIfNecessary({
+  Future<DiffStatus> confirmUnpatchableDiffsIfNecessary({
     required File localArtifact,
     required File releaseArtifact,
     required ArchiveDiffer archiveDiffer,
@@ -61,7 +79,14 @@ class PatchDiffChecker {
     );
     progress.complete();
 
-    if (archiveDiffer.containsPotentiallyBreakingNativeDiffs(contentDiffs)) {
+    final status = DiffStatus(
+      hasAssetChanges:
+          archiveDiffer.containsPotentiallyBreakingAssetDiffs(contentDiffs),
+      hasNativeChanges:
+          archiveDiffer.containsPotentiallyBreakingNativeDiffs(contentDiffs),
+    );
+
+    if (status.hasNativeChanges) {
       logger
         ..warn(
           '''Your app contains native changes, which cannot be applied with a patch.''',
@@ -88,7 +113,7 @@ If you don't know why you're seeing this error, visit our troublshooting page at
       }
     }
 
-    if (archiveDiffer.containsPotentiallyBreakingAssetDiffs(contentDiffs)) {
+    if (status.hasAssetChanges) {
       logger
         ..warn(
           '''Your app contains asset changes, which will not be included in the patch.''',
@@ -109,5 +134,7 @@ If you don't know why you're seeing this error, visit our troublshooting page at
         }
       }
     }
+
+    return status;
   }
 }

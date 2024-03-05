@@ -86,7 +86,7 @@ class CodePushClient {
     http.Client? httpClient,
     Uri? hostedUri,
   })  : _httpClient = _CodePushHttpClient(httpClient ?? http.Client()),
-        hostedUri = hostedUri ?? Uri.https('api.shorebird.dev');
+        hostedUri = hostedUri ?? Uri.http('localhost:8080');
 
   /// The standard headers applied to all requests.
   static const headers = <String, String>{'x-version': packageVersion};
@@ -245,10 +245,19 @@ class CodePushClient {
   Future<Patch> createPatch({
     required String appId,
     required int releaseId,
+    required bool wasForced,
+    required bool hasAssetChanges,
+    required bool hasNativeChanges,
   }) async {
+    final request = CreatePatchRequest(
+      releaseId: releaseId,
+      wasForced: wasForced,
+      hasAssetChanges: hasAssetChanges,
+      hasNativeChanges: hasNativeChanges,
+    );
     final response = await _httpClient.post(
       Uri.parse('$_v1/apps/$appId/patches'),
-      body: json.encode({'release_id': releaseId}),
+      body: json.encode(request.toJson()),
     );
 
     if (response.statusCode != HttpStatus.ok) {

@@ -820,7 +820,15 @@ void main() {
       const releaseId = 0;
 
       test('makes the correct request', () async {
-        codePushClient.createPatch(appId: appId, releaseId: releaseId).ignore();
+        codePushClient
+            .createPatch(
+              appId: appId,
+              releaseId: releaseId,
+              wasForced: true,
+              hasAssetChanges: false,
+              hasNativeChanges: true,
+            )
+            .ignore();
         final request = verify(() => httpClient.send(captureAny()))
             .captured
             .single as http.BaseRequest;
@@ -838,7 +846,13 @@ void main() {
         );
 
         expect(
-          codePushClient.createPatch(appId: appId, releaseId: releaseId),
+          codePushClient.createPatch(
+            appId: appId,
+            releaseId: releaseId,
+            wasForced: true,
+            hasAssetChanges: false,
+            hasNativeChanges: true,
+          ),
           throwsA(
             isA<CodePushException>().having(
               (e) => e.message,
@@ -858,7 +872,13 @@ void main() {
         );
 
         expect(
-          codePushClient.createPatch(appId: appId, releaseId: releaseId),
+          codePushClient.createPatch(
+            appId: appId,
+            releaseId: releaseId,
+            wasForced: true,
+            hasAssetChanges: false,
+            hasNativeChanges: true,
+          ),
           throwsA(
             isA<CodePushException>().having(
               (e) => e.message,
@@ -884,7 +904,13 @@ void main() {
         );
 
         await expectLater(
-          codePushClient.createPatch(appId: appId, releaseId: releaseId),
+          codePushClient.createPatch(
+            appId: appId,
+            releaseId: releaseId,
+            wasForced: true,
+            hasAssetChanges: false,
+            hasNativeChanges: true,
+          ),
           completion(
             equals(
               isA<Patch>()
