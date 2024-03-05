@@ -201,8 +201,9 @@ Please re-run the release command for this version or create a new release.''');
       unzipFn: _unzipFn,
     );
 
+    final DiffStatus diffStatus;
     try {
-      await patchDiffChecker.confirmUnpatchableDiffsIfNecessary(
+      diffStatus = await patchDiffChecker.confirmUnpatchableDiffsIfNecessary(
         localArtifact: File(
           aarArtifactPath(
             packageName: shorebirdEnv.androidPackageName!,
@@ -271,6 +272,9 @@ ${summary.join('\n')}
     await codePushClientWrapper.publishPatch(
       appId: appId,
       releaseId: release.id,
+      wasForced: force,
+      hasAssetChanges: diffStatus.hasAssetChanges,
+      hasNativeChanges: diffStatus.hasNativeChanges,
       platform: platform,
       track: DeploymentTrack.production,
       patchArtifactBundles: patchArtifactBundles,

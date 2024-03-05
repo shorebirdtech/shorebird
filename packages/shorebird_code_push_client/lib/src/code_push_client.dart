@@ -245,10 +245,19 @@ class CodePushClient {
   Future<Patch> createPatch({
     required String appId,
     required int releaseId,
+    required bool wasForced,
+    required bool hasAssetChanges,
+    required bool hasNativeChanges,
   }) async {
+    final request = CreatePatchRequest(
+      releaseId: releaseId,
+      wasForced: wasForced,
+      hasAssetChanges: hasAssetChanges,
+      hasNativeChanges: hasNativeChanges,
+    );
     final response = await _httpClient.post(
       Uri.parse('$_v1/apps/$appId/patches'),
-      body: json.encode({'release_id': releaseId}),
+      body: json.encode(request.toJson()),
     );
 
     if (response.statusCode != HttpStatus.ok) {

@@ -625,12 +625,18 @@ aar artifact already exists, continuing...''',
   Future<Patch> createPatch({
     required String appId,
     required int releaseId,
+    required bool wasForced,
+    required bool hasAssetChanges,
+    required bool hasNativeChanges,
   }) async {
     final createPatchProgress = logger.progress('Creating patch');
     try {
       final patch = await codePushClient.createPatch(
         appId: appId,
         releaseId: releaseId,
+        wasForced: wasForced,
+        hasAssetChanges: hasAssetChanges,
+        hasNativeChanges: hasNativeChanges,
       );
       createPatchProgress.complete();
       return patch;
@@ -688,6 +694,9 @@ aar artifact already exists, continuing...''',
   Future<void> publishPatch({
     required String appId,
     required int releaseId,
+    required bool wasForced,
+    required bool hasAssetChanges,
+    required bool hasNativeChanges,
     required ReleasePlatform platform,
     required DeploymentTrack track,
     required Map<Arch, PatchArtifactBundle> patchArtifactBundles,
@@ -695,6 +704,9 @@ aar artifact already exists, continuing...''',
     final patch = await createPatch(
       appId: appId,
       releaseId: releaseId,
+      wasForced: wasForced,
+      hasAssetChanges: hasAssetChanges,
+      hasNativeChanges: hasNativeChanges,
     );
 
     await createPatchArtifacts(

@@ -137,7 +137,7 @@ void main() {
         ).called(1);
         verify(
           () => logger.info(
-            "Run ${lightCyan.wrap('shorebird logout')} to log out and try again.",
+            '''Run ${lightCyan.wrap('shorebird logout')} to log out and try again.''',
           ),
         ).called(1);
         verifyNever(() => auth.login(any(), prompt: any(named: 'prompt')));

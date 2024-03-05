@@ -238,9 +238,9 @@ Current Flutter Revision: $originalFlutterRevision
 
     downloadReleaseArtifactProgress.complete();
 
+    final DiffStatus diffStatus;
     try {
-      final diffChecker = patchDiffChecker;
-      await diffChecker.confirmUnpatchableDiffsIfNecessary(
+      diffStatus = await patchDiffChecker.confirmUnpatchableDiffsIfNecessary(
         localArtifact: File(bundlePath),
         releaseArtifact: releaseAabArtifactFile,
         archiveDiffer: _archiveDiffer,
@@ -337,6 +337,9 @@ ${summary.join('\n')}
     await codePushClientWrapper.publishPatch(
       appId: appId,
       releaseId: release.id,
+      wasForced: force,
+      hasAssetChanges: diffStatus.hasAssetChanges,
+      hasNativeChanges: diffStatus.hasNativeChanges,
       platform: platform,
       track: isStaging ? DeploymentTrack.staging : DeploymentTrack.production,
       patchArtifactBundles: patchArtifactBundles,
