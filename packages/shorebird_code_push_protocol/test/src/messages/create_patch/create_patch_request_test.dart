@@ -4,7 +4,12 @@ import 'package:test/test.dart';
 void main() {
   group(CreatePatchRequest, () {
     test('can be (de)serialized', () {
-      const request = CreatePatchRequest(releaseId: 1234);
+      const request = CreatePatchRequest(
+        releaseId: 1234,
+        wasForced: true,
+        hasAssetChanges: true,
+        hasNativeChanges: false,
+      );
       expect(
         CreatePatchRequest.fromJson(request.toJson()).toJson(),
         equals(request.toJson()),

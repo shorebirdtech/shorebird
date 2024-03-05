@@ -8,7 +8,12 @@ part 'create_patch_request.g.dart';
 @JsonSerializable()
 class CreatePatchRequest {
   /// {@macro create_patch_request}
-  const CreatePatchRequest({required this.releaseId});
+  const CreatePatchRequest({
+    required this.releaseId,
+    required this.wasForced,
+    required this.hasAssetChanges,
+    required this.hasNativeChanges,
+  });
 
   /// Converts a Map<String, dynamic> to a [CreatePatchRequest]
   factory CreatePatchRequest.fromJson(Map<String, dynamic> json) =>
@@ -19,4 +24,13 @@ class CreatePatchRequest {
 
   /// The ID of the release.
   final int releaseId;
+
+  /// Whether the user used the --force flag when authoring this patch.
+  final bool? wasForced;
+
+  /// Whether the patch's assets were not the same as those of the release
+  final bool? hasAssetChanges;
+
+  /// Whether the patch's native code is different than that of the release.
+  final bool? hasNativeChanges;
 }
