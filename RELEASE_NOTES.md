@@ -4,7 +4,7 @@ This section contains past updates we've sent to customers via Discord.
 
 ## 0.26.3 (March 5, 2024)
 
-🧑‍🔬 Improved analytics to help us better diagnose problems with patches.
+🧑‍🔬 Record more diagnostic information to help solve problems with patches.
 🪵 Improved messaging for expiring CI tokens.
 
 📚 Release notes can be found at https://github.com/shorebirdtech/shorebird/releases/tag/v0.26.3
