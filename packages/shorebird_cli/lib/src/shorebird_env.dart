@@ -155,11 +155,6 @@ class ShorebirdEnv {
     }
   }
 
-  /// Whether `shorebird init` has been run in the current project.
-  bool get isShorebirdInitialized {
-    return hasShorebirdYaml && pubspecContainsShorebirdYaml;
-  }
-
   /// Whether the current project has a `shorebird.yaml` file.
   bool get hasShorebirdYaml => getShorebirdYaml() != null;
 
