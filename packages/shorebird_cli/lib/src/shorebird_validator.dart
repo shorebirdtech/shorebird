@@ -95,7 +95,7 @@ class ShorebirdValidator {
       if (!shorebirdEnv.pubspecContainsShorebirdYaml) {
         logger
           ..err(
-            'Your pubspec.yaml does not have shorebird.yaml as a flutter asset.',
+            '''Your pubspec.yaml does not have shorebird.yaml as a flutter asset.''',
           )
           ..info('''
 To fix, update your pubspec.yaml to include the following:

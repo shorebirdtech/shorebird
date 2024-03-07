@@ -99,7 +99,7 @@ void main() {
       });
 
       group(
-          'when shorebird has not been properly initialized for the current app',
+          '''when shorebird has not been properly initialized for the current app''',
           () {
         group("when shorebird.yaml doesn't exist", () {
           setUp(() {
@@ -107,7 +107,7 @@ void main() {
           });
 
           test(
-              'prints error message and throws ShorebirdNotInitializedException',
+              '''prints error message and throws ShorebirdNotInitializedException''',
               () async {
             await expectLater(
               runWithOverrides(
@@ -138,7 +138,7 @@ void main() {
           });
 
           test(
-              'prints error message and throws ShorebirdNotInitializedException',
+              '''prints error message and throws ShorebirdNotInitializedException''',
               () async {
             await expectLater(
               runWithOverrides(
