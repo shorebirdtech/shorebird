@@ -82,9 +82,13 @@ class ShorebirdValidator {
 
     if (checkShorebirdInitialized) {
       if (!shorebirdEnv.hasShorebirdYaml) {
-        logger.err(
-          'Unable to find shorebird.yaml. Did you run "shorebird init"?',
-        );
+        logger
+          ..err(
+            '''Unable to find shorebird.yaml. Are you in a shorebird app directory?''',
+          )
+          ..info(
+            '''If you have not yet initialized your app, run ${lightCyan.wrap('shorebird init')} to get started.''',
+          );
         throw ShorebirdNotInitializedException();
       }
 

@@ -117,11 +117,14 @@ void main() {
               ),
               throwsA(isA<ShorebirdNotInitializedException>()),
             );
-            verify(
+            verifyInOrder([
               () => logger.err(
-                'Unable to find shorebird.yaml. Did you run "shorebird init"?',
-              ),
-            ).called(1);
+                    '''Unable to find shorebird.yaml. Are you in a shorebird app directory?''',
+                  ),
+              () => logger.info(
+                    '''If you have not yet initialized your app, run ${lightCyan.wrap('shorebird init')} to get started.''',
+                  ),
+            ]);
           });
         });
 
