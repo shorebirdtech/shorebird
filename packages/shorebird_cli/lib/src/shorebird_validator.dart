@@ -80,11 +80,28 @@ class ShorebirdValidator {
       throw UserNotAuthorizedException();
     }
 
-    if (checkShorebirdInitialized && !shorebirdEnv.isShorebirdInitialized) {
-      logger.err(
-        'Shorebird is not initialized. Did you run "shorebird init"?',
-      );
-      throw ShorebirdNotInitializedException();
+    if (checkShorebirdInitialized) {
+      if (!shorebirdEnv.hasShorebirdYaml) {
+        logger.err(
+          'Unable to find shorebird.yaml. Did you run "shorebird init"?',
+        );
+        throw ShorebirdNotInitializedException();
+      }
+
+      if (!shorebirdEnv.pubspecContainsShorebirdYaml) {
+        logger
+          ..err(
+            'Your pubspec.yaml does not have shorebird.yaml as a flutter asset.',
+          )
+          ..info('''
+To fix, update your pubspec.yaml to include the following:
+
+  flutter:
+    assets:
+      - shorebird.yaml # Add this line
+''');
+        throw ShorebirdNotInitializedException();
+      }
     }
 
     for (final validator in validators) {

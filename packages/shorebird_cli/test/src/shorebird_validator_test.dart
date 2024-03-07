@@ -98,23 +98,67 @@ void main() {
         ]);
       });
 
-      test(
-          'throws ShorebirdNotInitializedException '
-          'when shorebird has not been initialized', () async {
-        when(() => shorebirdEnv.isShorebirdInitialized).thenReturn(false);
-        await expectLater(
-          runWithOverrides(
-            () => shorebirdValidator.validatePreconditions(
-              checkShorebirdInitialized: true,
-            ),
-          ),
-          throwsA(isA<ShorebirdNotInitializedException>()),
-        );
-        verify(
-          () => logger.err(
-            'Shorebird is not initialized. Did you run "shorebird init"?',
-          ),
-        ).called(1);
+      group(
+          'when shorebird has not been properly initialized for the current app',
+          () {
+        group("when shorebird.yaml doesn't exist", () {
+          setUp(() {
+            when(() => shorebirdEnv.hasShorebirdYaml).thenReturn(false);
+          });
+
+          test(
+              'prints error message and throws ShorebirdNotInitializedException',
+              () async {
+            await expectLater(
+              runWithOverrides(
+                () => shorebirdValidator.validatePreconditions(
+                  checkShorebirdInitialized: true,
+                ),
+              ),
+              throwsA(isA<ShorebirdNotInitializedException>()),
+            );
+            verify(
+              () => logger.err(
+                'Unable to find shorebird.yaml. Did you run "shorebird init"?',
+              ),
+            ).called(1);
+          });
+        });
+
+        group("when pubspec.yaml doesn't contain shorebird.yaml as an asset",
+            () {
+          setUp(() {
+            when(() => shorebirdEnv.hasShorebirdYaml).thenReturn(true);
+            when(() => shorebirdEnv.pubspecContainsShorebirdYaml).thenReturn(
+              false,
+            );
+          });
+
+          test(
+              'prints error message and throws ShorebirdNotInitializedException',
+              () async {
+            await expectLater(
+              runWithOverrides(
+                () => shorebirdValidator.validatePreconditions(
+                  checkShorebirdInitialized: true,
+                ),
+              ),
+              throwsA(isA<ShorebirdNotInitializedException>()),
+            );
+            verifyInOrder([
+              () => logger.err(
+                    '''Your pubspec.yaml does not have shorebird.yaml as a flutter asset.''',
+                  ),
+              () => logger.info('''
+To fix, update your pubspec.yaml to include the following:
+
+  flutter:
+    assets:
+      - shorebird.yaml # Add this line
+'''),
+            ]);
+          });
+        });
       });
 
       test('throws ValidationFailedException if validator fails', () async {
