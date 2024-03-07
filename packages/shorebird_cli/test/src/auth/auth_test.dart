@@ -423,7 +423,7 @@ void main() {
           auth = buildAuth();
           verify(
             () => logger.warn('''
-[WARN] SHOREBIRD_TOKEN needs to be updated before the next major release.
+SHOREBIRD_TOKEN needs to be updated before the next major release.
 Run `shorebird login:ci` to obtain a new token.'''),
           ).called(1);
         });

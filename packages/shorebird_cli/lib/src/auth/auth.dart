@@ -271,7 +271,7 @@ class Auth {
         // TODO(bryanoltman): Remove this legacy behavior after July 2024 or
         // next major release.
         logger.warn('''
-[WARN] $shorebirdTokenEnvVar needs to be updated before the next major release.
+$shorebirdTokenEnvVar needs to be updated before the next major release.
 Run `shorebird login:ci` to obtain a new token.''');
         _token = CiToken(
           refreshToken: envToken,
