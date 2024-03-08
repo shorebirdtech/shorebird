@@ -1,5 +1,6 @@
 import 'dart:io';
 import 'dart:isolate';
+import 'dart:typed_data';
 
 import 'package:archive/archive_io.dart';
 import 'package:collection/collection.dart';
@@ -7,6 +8,7 @@ import 'package:crypto/crypto.dart';
 import 'package:path/path.dart' as p;
 import 'package:shorebird_cli/src/archive_analysis/archive_differ.dart';
 import 'package:shorebird_cli/src/archive_analysis/file_set_diff.dart';
+import 'package:shorebird_cli/src/archive_analysis/macho.dart';
 
 /// Finds differences between two IPAs or zipped Xcframeworks.
 ///
@@ -112,7 +114,14 @@ class IosArchiveDiffer extends ArchiveDiffer {
     }
 
     final outFile = File(outPath);
-    return _hash(outFile.readAsBytesSync());
+    final Uint8List bytes;
+    if (MachO.isMachOFile(outFile)) {
+      bytes = MachO.bytesWithZeroedUUID(outFile);
+    } else {
+      bytes = outFile.readAsBytesSync();
+    }
+
+    return _hash(bytes);
   }
 
   /// Uses assetutil to write a json description of a .car file to disk and
