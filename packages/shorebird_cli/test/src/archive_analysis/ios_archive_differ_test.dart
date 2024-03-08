@@ -9,15 +9,19 @@ void main() {
     xcarchiveFixturesBasePath,
     'base.xcarchive.zip',
   );
-  final changedAssetIpaPath = p.join(
+  final baseChangedUuidPath = p.join(
+    xcarchiveFixturesBasePath,
+    'base_changed_uuid.xcarchive.zip',
+  );
+  final changedAssetXcarchivePath = p.join(
     xcarchiveFixturesBasePath,
     'changed_asset.xcarchive.zip',
   );
-  final changedDartIpaPath = p.join(
+  final changedDartXcarchivePath = p.join(
     xcarchiveFixturesBasePath,
     'changed_dart.xcarchive.zip',
   );
-  final changedSwiftIpaPath = p.join(
+  final changedSwiftXcarchivePath = p.join(
     xcarchiveFixturesBasePath,
     'changed_swift.xcarchive.zip',
   );
@@ -72,10 +76,21 @@ void main() {
             );
           });
 
+          test('finds no differences when only Mach-O UUID differs', () async {
+            final fileSetDiff = await differ.changedFiles(
+              baseIpaPath,
+              baseChangedUuidPath,
+            );
+            expect(
+              fileSetDiff,
+              isEmpty,
+            );
+          });
+
           test('finds differences between two different xcarchives', () async {
             final fileSetDiff = await differ.changedFiles(
               baseIpaPath,
-              changedAssetIpaPath,
+              changedAssetXcarchivePath,
             );
             if (platform.isMacOS) {
               expect(
@@ -102,8 +117,10 @@ void main() {
 
         group('changedFiles', () {
           test('detects asset changes', () async {
-            final fileSetDiff =
-                await differ.changedFiles(baseIpaPath, changedAssetIpaPath);
+            final fileSetDiff = await differ.changedFiles(
+              baseIpaPath,
+              changedAssetXcarchivePath,
+            );
             expect(differ.assetsFileSetDiff(fileSetDiff), isNotEmpty);
             expect(
               differ.dartFileSetDiff(fileSetDiff),
@@ -113,16 +130,20 @@ void main() {
           });
 
           test('detects dart changes', () async {
-            final fileSetDiff =
-                await differ.changedFiles(baseIpaPath, changedDartIpaPath);
+            final fileSetDiff = await differ.changedFiles(
+              baseIpaPath,
+              changedDartXcarchivePath,
+            );
             expect(differ.assetsFileSetDiff(fileSetDiff), isEmpty);
             expect(differ.dartFileSetDiff(fileSetDiff), isNotEmpty);
             expect(differ.nativeFileSetDiff(fileSetDiff), isEmpty);
           });
 
           test('detects swift changes', () async {
-            final fileSetDiff =
-                await differ.changedFiles(baseIpaPath, changedSwiftIpaPath);
+            final fileSetDiff = await differ.changedFiles(
+              baseIpaPath,
+              changedSwiftXcarchivePath,
+            );
             expect(differ.assetsFileSetDiff(fileSetDiff), isEmpty);
             expect(differ.dartFileSetDiff(fileSetDiff), isEmpty);
             expect(differ.nativeFileSetDiff(fileSetDiff), isNotEmpty);
@@ -134,7 +155,7 @@ void main() {
               () async {
             final fileSetDiff = await differ.changedFiles(
               baseIpaPath,
-              changedAssetIpaPath,
+              changedAssetXcarchivePath,
             );
             expect(
               differ.containsPotentiallyBreakingAssetDiffs(fileSetDiff),
@@ -146,7 +167,7 @@ void main() {
               () async {
             final fileSetDiff = await differ.changedFiles(
               baseIpaPath,
-              changedDartIpaPath,
+              changedDartXcarchivePath,
             );
             expect(
               differ.containsPotentiallyBreakingAssetDiffs(fileSetDiff),
@@ -159,7 +180,7 @@ void main() {
           test('returns true if Swift files have been changed', () async {
             final fileSetDiff = await differ.changedFiles(
               baseIpaPath,
-              changedSwiftIpaPath,
+              changedSwiftXcarchivePath,
             );
             expect(
               differ.containsPotentiallyBreakingNativeDiffs(fileSetDiff),
@@ -170,7 +191,7 @@ void main() {
           test('returns false if Swift files have not been changed', () async {
             final fileSetDiff = await differ.changedFiles(
               baseIpaPath,
-              changedAssetIpaPath,
+              changedAssetXcarchivePath,
             );
             expect(
               differ.containsPotentiallyBreakingNativeDiffs(fileSetDiff),
