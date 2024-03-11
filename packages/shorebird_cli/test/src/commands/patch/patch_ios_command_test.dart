@@ -805,6 +805,65 @@ Please re-run the release command for this version or create a new release.'''),
           ),
         ).called(1);
       });
+
+      test('exits with code 70 if xcarchive is not found', () async {
+        setUpProjectRoot();
+        setUpProjectRootArtifacts();
+        Directory(
+          p.join(projectRoot.path, 'build'),
+        ).deleteSync(recursive: true);
+
+        final exitCode = await runWithOverrides(command.run);
+
+        expect(exitCode, equals(ExitCode.software.code));
+        verify(
+          () => logger.err(
+            any(that: contains('Unable to find .xcarchive directory')),
+          ),
+        ).called(1);
+      });
+
+      test('exits with code 70 if build fails', () async {
+        when(() => flutterBuildProcessResult.exitCode).thenReturn(1);
+        when(() => flutterBuildProcessResult.stderr).thenReturn('oops');
+
+        setUpProjectRoot();
+        setUpProjectRootArtifacts();
+        final exitCode = await runWithOverrides(command.run);
+        expect(exitCode, ExitCode.software.code);
+      });
+
+      test('only builds once if release uses different flutter revision',
+          () async {
+        const otherRevision = 'other-revision';
+        when(() => shorebirdEnv.flutterRevision).thenReturn(otherRevision);
+
+        setUpProjectRoot();
+        setUpProjectRootArtifacts();
+        final exitCode = await runWithOverrides(command.run);
+        expect(exitCode, ExitCode.success.code);
+
+        verify(
+          () => shorebirdFlutter.useRevision(
+              revision: preLinkerRelease.flutterRevision),
+        ).called(1);
+        verify(
+          () => shorebirdProcess.run(
+            'flutter',
+            any(
+              that: containsAll([
+                'build',
+                'ipa',
+                '--release',
+              ]),
+            ),
+            runInShell: any(named: 'runInShell'),
+          ),
+        ).called(1);
+        verify(
+          () => shorebirdFlutter.useRevision(revision: otherRevision),
+        ).called(1);
+      });
     });
 
     group('when release-version option is not provided', () {
