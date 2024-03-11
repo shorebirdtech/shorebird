@@ -732,41 +732,6 @@ Please re-run the release command for this version or create a new release.'''),
     });
 
     test(
-        '''only builds once if release-version is specified and release uses different flutter revision''',
-        () async {
-      const otherRevision = 'other-revision';
-      when(() => shorebirdEnv.flutterRevision).thenReturn(otherRevision);
-      when(() => argResults['release-version'])
-          .thenReturn(preLinkerRelease.version);
-
-      setUpProjectRoot();
-      setUpProjectRootArtifacts();
-      final exitCode = await runWithOverrides(command.run);
-      expect(exitCode, ExitCode.success.code);
-
-      verify(
-        () => shorebirdFlutter.useRevision(
-            revision: preLinkerRelease.flutterRevision),
-      ).called(1);
-      verify(
-        () => shorebirdProcess.run(
-          'flutter',
-          any(
-            that: containsAll([
-              'build',
-              'ipa',
-              '--release',
-            ]),
-          ),
-          runInShell: any(named: 'runInShell'),
-        ),
-      ).called(1);
-      verify(
-        () => shorebirdFlutter.useRevision(revision: otherRevision),
-      ).called(1);
-    });
-
-    test(
         '''switches to release flutter revision when shorebird flutter revision does not match''',
         () async {
       const otherRevision = 'other-revision';
@@ -838,6 +803,48 @@ Please re-run the release command for this version or create a new release.'''),
             appId: appId,
             releaseVersion: customReleaseVersion,
           ),
+        ).called(1);
+      });
+
+      test('exits with code 70 if build fails', () async {
+        when(() => flutterBuildProcessResult.exitCode).thenReturn(1);
+        when(() => flutterBuildProcessResult.stderr).thenReturn('oops');
+
+        setUpProjectRoot();
+        setUpProjectRootArtifacts();
+        final exitCode = await runWithOverrides(command.run);
+        expect(exitCode, ExitCode.software.code);
+      });
+
+      test('only builds once if release uses different flutter revision',
+          () async {
+        const otherRevision = 'other-revision';
+        when(() => shorebirdEnv.flutterRevision).thenReturn(otherRevision);
+
+        setUpProjectRoot();
+        setUpProjectRootArtifacts();
+        final exitCode = await runWithOverrides(command.run);
+        expect(exitCode, ExitCode.success.code);
+
+        verify(
+          () => shorebirdFlutter.useRevision(
+              revision: preLinkerRelease.flutterRevision),
+        ).called(1);
+        verify(
+          () => shorebirdProcess.run(
+            'flutter',
+            any(
+              that: containsAll([
+                'build',
+                'ipa',
+                '--release',
+              ]),
+            ),
+            runInShell: any(named: 'runInShell'),
+          ),
+        ).called(1);
+        verify(
+          () => shorebirdFlutter.useRevision(revision: otherRevision),
         ).called(1);
       });
     });

@@ -216,6 +216,7 @@ Current Flutter Revision: $originalFlutterRevision
         buildProgress.fail('Failed to build: ${error.message}');
         return ExitCode.software.code;
       }
+      hasBuiltWithLatestFlutter = true;
     }
 
     final releaseArtifacts = await codePushClientWrapper.getReleaseArtifacts(

@@ -218,6 +218,7 @@ Current Flutter Revision: $currentFlutterRevision
       } catch (_) {
         return ExitCode.software.code;
       }
+      hasBuiltWithLatestFlutter = true;
     }
 
     final archivePath = getXcarchiveDirectory()?.path;
