@@ -2,6 +2,16 @@
 
 This section contains past updates we've sent to customers via Discord.
 
+## 0.26.4 (March 11, 2024)
+
+🪵 Clearer error messages for cases where shorebird is not properly set up in a project.
+🍎 Fix incorrect native code change warning for iOS patches created in different
+    directory or machine than release.
+🩹 Fix issue where patch commands would unnecessarily recompile the app when a
+    release version is specified.
+
+📚 Release notes can be found at https://github.com/shorebirdtech/shorebird/releases/tag/v0.26.4
+
 ## 0.26.3 (March 5, 2024)
 
 🧑‍🔬 Record more diagnostic information to help solve problems with patches.
