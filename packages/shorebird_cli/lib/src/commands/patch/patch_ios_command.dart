@@ -121,30 +121,11 @@ If this option is not provided, the version number will be determined from the p
     const releasePlatform = ReleasePlatform.ios;
     final flavor = results.findOption('flavor', argParser: argParser);
     final target = results.findOption('target', argParser: argParser);
-
     final shorebirdYaml = shorebirdEnv.getShorebirdYaml()!;
     final appId = shorebirdYaml.getAppId(flavor: flavor);
     final app = await codePushClientWrapper.getApp(appId: appId);
+    var hasBuiltWithLatestFlutter = false;
 
-    try {
-      await _buildPatch(flavor: flavor, target: target);
-    } catch (_) {
-      return ExitCode.software.code;
-    }
-
-    final archivePath = getXcarchiveDirectory()?.path;
-    if (archivePath == null) {
-      logger.err('Unable to find .xcarchive directory');
-      return ExitCode.software.code;
-    }
-
-    final plistFile = File(p.join(archivePath, 'Info.plist'));
-    if (!plistFile.existsSync()) {
-      logger.err('No Info.plist file found at ${plistFile.path}.');
-      return ExitCode.software.code;
-    }
-
-    final plist = Plist(file: plistFile);
     final String releaseVersion;
     final argReleaseVersion = results['release-version'] as String?;
     if (argReleaseVersion != null) {
@@ -152,6 +133,26 @@ If this option is not provided, the version number will be determined from the p
       releaseVersion = argReleaseVersion;
     } else {
       logger.detail('No release version provided. Determining from archive.');
+      try {
+        await _buildPatch(flavor: flavor, target: target);
+      } catch (_) {
+        return ExitCode.software.code;
+      }
+      hasBuiltWithLatestFlutter = true;
+
+      final archivePath = getXcarchiveDirectory()?.path;
+      if (archivePath == null) {
+        logger.err('Unable to find .xcarchive directory');
+        return ExitCode.software.code;
+      }
+
+      final plistFile = File(p.join(archivePath, 'Info.plist'));
+      if (!plistFile.existsSync()) {
+        logger.err('No Info.plist file found at ${plistFile.path}.');
+        return ExitCode.software.code;
+      }
+
+      final plist = Plist(file: plistFile);
       try {
         releaseVersion = plist.versionNumber;
       } catch (error) {
@@ -207,6 +208,22 @@ Current Flutter Revision: $currentFlutterRevision
         await shorebirdFlutter.useRevision(revision: currentFlutterRevision);
         flutterVersionProgress.complete();
       }
+    } else if (!hasBuiltWithLatestFlutter) {
+      // If we haven't already built the patch with the latest version of
+      // Flutter (i.e., if the release version was provided as an argument and
+      // we didn't need to build the patch to determine the release version),
+      // build it now.
+      try {
+        await _buildPatch(flavor: flavor, target: target);
+      } catch (_) {
+        return ExitCode.software.code;
+      }
+    }
+
+    final archivePath = getXcarchiveDirectory()?.path;
+    if (archivePath == null) {
+      logger.err('Unable to find .xcarchive directory');
+      return ExitCode.software.code;
     }
 
     final releaseArtifact = await codePushClientWrapper.getReleaseArtifact(

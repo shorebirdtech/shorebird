@@ -112,19 +112,11 @@ If this option is not provided, the version number will be determined from the p
     final shorebirdYaml = shorebirdEnv.getShorebirdYaml()!;
     final appId = shorebirdYaml.getAppId(flavor: flavor);
     final app = await codePushClientWrapper.getApp(appId: appId);
-
     final originalFlutterRevision = shorebirdEnv.flutterRevision;
-    final buildProgress = logger.progress('Building patch');
-    try {
-      await buildAppBundle(flavor: flavor, target: target);
-      buildProgress.complete();
-    } on ProcessException catch (error) {
-      buildProgress.fail('Failed to build: ${error.message}');
-      return ExitCode.software.code;
-    }
+
+    var hasBuiltWithLatestFlutter = false;
 
     final projectRoot = shorebirdEnv.getShorebirdProjectRoot()!;
-
     final bundleDirPath = p.join(
       projectRoot.path,
       'build',
@@ -143,6 +135,17 @@ If this option is not provided, the version number will be determined from the p
       releaseVersion = argReleaseVersion;
     } else {
       logger.detail('No release version provided. Determining from bundle.');
+      final buildProgress = logger.progress('Building patch');
+      try {
+        await buildAppBundle(flavor: flavor, target: target);
+        buildProgress.complete();
+      } on ProcessException catch (error) {
+        buildProgress.fail('Failed to build: ${error.message}');
+        return ExitCode.software.code;
+      }
+
+      hasBuiltWithLatestFlutter = true;
+
       final detectReleaseVersionProgress = logger.progress(
         'Detecting release version',
       );
@@ -199,6 +202,20 @@ Current Flutter Revision: $originalFlutterRevision
         );
         await shorebirdFlutter.useRevision(revision: originalFlutterRevision);
         flutterVersionProgress.complete();
+      }
+    } else if (!hasBuiltWithLatestFlutter) {
+      // If we haven't already built the patch with the latest version of
+      // Flutter (i.e., if the release version was provided as an argument and
+      // we didn't need to build the patch to determine the release version),
+      // build it now.
+
+      final buildProgress = logger.progress('Building patch');
+      try {
+        await buildAppBundle(flavor: flavor, target: target);
+        buildProgress.complete();
+      } on ProcessException catch (error) {
+        buildProgress.fail('Failed to build: ${error.message}');
+        return ExitCode.software.code;
       }
     }
 
