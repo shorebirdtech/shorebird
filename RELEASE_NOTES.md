@@ -6,9 +6,9 @@ This section contains past updates we've sent to customers via Discord.
 
 🪵 Clearer error messages for cases where shorebird is not properly set up in a project.
 🍎 Fix incorrect native code change warning for iOS patches created in different
-    directory or machine than release.
+   directory or machine than release.
 🩹 Fix issue where patch commands would unnecessarily recompile the app when a
-    release version is specified.
+   release version is specified.
 
 📚 Release notes can be found at https://github.com/shorebirdtech/shorebird/releases/tag/v0.26.4
 
