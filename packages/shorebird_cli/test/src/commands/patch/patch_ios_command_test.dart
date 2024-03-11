@@ -806,6 +806,23 @@ Please re-run the release command for this version or create a new release.'''),
         ).called(1);
       });
 
+      test('exits with code 70 if xcarchive is not found', () async {
+        setUpProjectRoot();
+        setUpProjectRootArtifacts();
+        Directory(
+          p.join(projectRoot.path, 'build'),
+        ).deleteSync(recursive: true);
+
+        final exitCode = await runWithOverrides(command.run);
+
+        expect(exitCode, equals(ExitCode.software.code));
+        verify(
+          () => logger.err(
+            any(that: contains('Unable to find .xcarchive directory')),
+          ),
+        ).called(1);
+      });
+
       test('exits with code 70 if build fails', () async {
         when(() => flutterBuildProcessResult.exitCode).thenReturn(1);
         when(() => flutterBuildProcessResult.stderr).thenReturn('oops');
