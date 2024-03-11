@@ -208,7 +208,6 @@ Current Flutter Revision: $originalFlutterRevision
       // Flutter (i.e., if the release version was provided as an argument and
       // we didn't need to build the patch to determine the release version),
       // build it now.
-
       final buildProgress = logger.progress('Building patch');
       try {
         await buildAppBundle(flavor: flavor, target: target);
