@@ -8,6 +8,7 @@ import 'package:shorebird_cli/src/doctor.dart';
 import 'package:shorebird_cli/src/engine_config.dart';
 import 'package:shorebird_cli/src/logger.dart';
 import 'package:shorebird_cli/src/os/operating_system_interface.dart';
+import 'package:shorebird_cli/src/shorebird_env.dart';
 import 'package:shorebird_cli/src/shorebird_process.dart';
 import 'package:shorebird_cli/src/shorebird_validator.dart';
 import 'package:shorebird_cli/src/validators/validators.dart';
@@ -25,6 +26,7 @@ void main() {
     late ShorebirdProcessResult flutterPubGetProcessResult;
     late ShorebirdProcessResult buildProcessResult;
     late BuildAppBundleCommand command;
+    late ShorebirdEnv shorebirdEnv;
     late ShorebirdFlutterValidator flutterValidator;
     late ShorebirdProcess shorebirdProcess;
     late ShorebirdValidator shorebirdValidator;
@@ -38,6 +40,7 @@ void main() {
           loggerRef.overrideWith(() => logger),
           osInterfaceRef.overrideWith(() => operatingSystemInterface),
           processRef.overrideWith(() => shorebirdProcess),
+          shorebirdEnvRef.overrideWith(() => shorebirdEnv),
           shorebirdValidatorRef.overrideWith(() => shorebirdValidator),
         },
       );
@@ -55,6 +58,7 @@ void main() {
       buildProcessResult = MockProcessResult();
       flutterPubGetProcessResult = MockProcessResult();
       flutterValidator = MockShorebirdFlutterValidator();
+      shorebirdEnv = MockShorebirdEnv();
       shorebirdProcess = MockShorebirdProcess();
       shorebirdValidator = MockShorebirdValidator();
 
@@ -83,6 +87,7 @@ void main() {
       when(
         () => doctor.androidCommandValidators,
       ).thenReturn([flutterValidator]);
+      when(() => shorebirdEnv.flutterRevision).thenReturn('1234');
       when(
         () => shorebirdValidator.validatePreconditions(
           checkUserIsAuthenticated: any(named: 'checkUserIsAuthenticated'),

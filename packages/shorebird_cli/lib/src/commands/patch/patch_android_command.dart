@@ -18,7 +18,6 @@ import 'package:shorebird_cli/src/logger.dart';
 import 'package:shorebird_cli/src/patch_diff_checker.dart';
 import 'package:shorebird_cli/src/shorebird_build_mixin.dart';
 import 'package:shorebird_cli/src/shorebird_env.dart';
-import 'package:shorebird_cli/src/shorebird_flutter.dart';
 import 'package:shorebird_cli/src/shorebird_release_version_mixin.dart';
 import 'package:shorebird_cli/src/shorebird_validator.dart';
 import 'package:shorebird_code_push_client/shorebird_code_push_client.dart';
@@ -112,9 +111,8 @@ If this option is not provided, the version number will be determined from the p
     final shorebirdYaml = shorebirdEnv.getShorebirdYaml()!;
     final appId = shorebirdYaml.getAppId(flavor: flavor);
     final app = await codePushClientWrapper.getApp(appId: appId);
-    final originalFlutterRevision = shorebirdEnv.flutterRevision;
 
-    var hasBuiltWithLatestFlutter = false;
+    var hasBuiltWithActiveFlutter = false;
 
     final projectRoot = shorebirdEnv.getShorebirdProjectRoot()!;
     final bundleDirPath = p.join(
@@ -144,7 +142,7 @@ If this option is not provided, the version number will be determined from the p
         return ExitCode.software.code;
       }
 
-      hasBuiltWithLatestFlutter = true;
+      hasBuiltWithActiveFlutter = true;
 
       final detectReleaseVersionProgress = logger.progress(
         'Detecting release version',
@@ -174,49 +172,31 @@ Please re-run the release command for this version or create a new release.''');
       return ExitCode.software.code;
     }
 
-    if (release.flutterRevision != originalFlutterRevision) {
+    final currentFlutterRevision = shorebirdEnv.flutterRevision;
+    if (release.flutterRevision != currentFlutterRevision) {
       logger.info('''
 
 The release you are trying to patch was built with a different version of Flutter.
 
 Release Flutter Revision: ${release.flutterRevision}
-Current Flutter Revision: $originalFlutterRevision
+Current Flutter Revision: $currentFlutterRevision
 ''');
+    }
 
-      var flutterVersionProgress = logger.progress(
-        'Switching to Flutter revision ${release.flutterRevision}',
-      );
-      await shorebirdFlutter.useRevision(revision: release.flutterRevision);
-      flutterVersionProgress.complete();
-
+    if (!hasBuiltWithActiveFlutter ||
+        currentFlutterRevision != release.flutterRevision) {
       final buildProgress = logger.progress('Building patch');
       try {
-        await buildAppBundle(flavor: flavor, target: target);
-        buildProgress.complete();
-      } on ProcessException catch (error) {
-        buildProgress.fail('Failed to build: ${error.message}');
-        return ExitCode.software.code;
-      } finally {
-        flutterVersionProgress = logger.progress(
-          'Reverting to Flutter revision $originalFlutterRevision',
+        await buildAppBundle(
+          flavor: flavor,
+          target: target,
+          flutterRevision: release.flutterRevision,
         );
-        await shorebirdFlutter.useRevision(revision: originalFlutterRevision);
-        flutterVersionProgress.complete();
-      }
-    } else if (!hasBuiltWithLatestFlutter) {
-      // If we haven't already built the patch with the latest version of
-      // Flutter (i.e., if the release version was provided as an argument and
-      // we didn't need to build the patch to determine the release version),
-      // build it now.
-      final buildProgress = logger.progress('Building patch');
-      try {
-        await buildAppBundle(flavor: flavor, target: target);
         buildProgress.complete();
       } on ProcessException catch (error) {
         buildProgress.fail('Failed to build: ${error.message}');
         return ExitCode.software.code;
       }
-      hasBuiltWithLatestFlutter = true;
     }
 
     final releaseArtifacts = await codePushClientWrapper.getReleaseArtifacts(
