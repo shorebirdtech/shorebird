@@ -140,29 +140,13 @@ If this option is not provided, the version number will be determined from the p
       }
       hasBuiltWithLatestFlutter = true;
 
-      final archivePath = getXcarchiveDirectory()?.path;
-      if (archivePath == null) {
-        logger.err('Unable to find .xcarchive directory');
-        return ExitCode.software.code;
-      }
-
-      final plistFile = File(p.join(archivePath, 'Info.plist'));
-      if (!plistFile.existsSync()) {
-        logger.err('No Info.plist file found at ${plistFile.path}.');
-        return ExitCode.software.code;
-      }
-
-      final plist = Plist(file: plistFile);
       try {
-        releaseVersion = plist.versionNumber;
-      } catch (error) {
-        logger.err(
-          'Failed to determine release version from ${plistFile.path}: $error',
-        );
+        releaseVersion = _readVersionFromPlist();
+        logger.info('Detected release version $releaseVersion');
+      } on _ReadVersionException catch (error) {
+        logger.err(error.message);
         return ExitCode.software.code;
       }
-
-      logger.info('Detected release version $releaseVersion');
     }
 
     final release = await codePushClientWrapper.getRelease(
@@ -422,6 +406,29 @@ ${summary.join('\n')}
         'out.vmcode',
       );
 
+  String _readVersionFromPlist() {
+    final archivePath = getXcarchiveDirectory()?.path;
+    if (archivePath == null) {
+      throw _ReadVersionException('Unable to find .xcarchive directory');
+    }
+
+    final plistFile = File(p.join(archivePath, 'Info.plist'));
+    if (!plistFile.existsSync()) {
+      throw _ReadVersionException(
+        'No Info.plist file found at ${plistFile.path}.',
+      );
+    }
+
+    final plist = Plist(file: plistFile);
+    try {
+      return plist.versionNumber;
+    } catch (error) {
+      throw _ReadVersionException(
+        'Failed to determine release version from ${plistFile.path}: $error',
+      );
+    }
+  }
+
   Future<void> _buildPatch({
     required String? flavor,
     required String? target,
@@ -491,4 +498,14 @@ ${summary.join('\n')}
     linkProgress.complete();
     return ExitCode.success.code;
   }
+}
+
+/// {@template _ReadVersionException}
+/// Exception thrown when the release version cannot be determined.
+/// {@endtemplate}
+class _ReadVersionException implements Exception {
+  /// {@macro _ReadVersionException}
+  _ReadVersionException(this.message);
+
+  final String message;
 }
