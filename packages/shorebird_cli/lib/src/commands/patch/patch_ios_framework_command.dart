@@ -6,7 +6,6 @@ import 'package:crypto/crypto.dart';
 import 'package:mason_logger/mason_logger.dart';
 import 'package:path/path.dart' as p;
 import 'package:platform/platform.dart';
-import 'package:scoped/scoped.dart';
 import 'package:shorebird_cli/src/archive_analysis/archive_analysis.dart';
 import 'package:shorebird_cli/src/artifact_manager.dart';
 import 'package:shorebird_cli/src/code_push_client_wrapper.dart';
@@ -137,34 +136,9 @@ Please re-run the release command for this version or create a new release.''');
       return ExitCode.software.code;
     }
 
-    final currentFlutterRevision = shorebirdEnv.flutterRevision;
-    if (release.flutterRevision != currentFlutterRevision) {
-      final installFlutterRevisionProgress = logger.progress(
-        'Switching to Flutter revision ${release.flutterRevision}',
-      );
-      try {
-        await shorebirdFlutter.installRevision(
-          revision: release.flutterRevision,
-        );
-        installFlutterRevisionProgress.complete();
-      } catch (error) {
-        installFlutterRevisionProgress.fail('$error');
-        return ExitCode.software.code;
-      }
-    }
-
     final buildProgress = logger.progress('Building patch');
     try {
-      await runScoped(
-        buildIosFramework,
-        values: {
-          shorebirdEnvRef.overrideWith(
-            () => ShorebirdEnv(
-              flutterRevisionOverride: release.flutterRevision,
-            ),
-          ),
-        },
-      );
+      await buildIosFramework(flutterRevision: release.flutterRevision);
       buildProgress.complete();
     } on ProcessException catch (error) {
       buildProgress.fail('Failed to build: ${error.message}');
@@ -249,6 +223,7 @@ Please re-run the release command for this version or create a new release.''');
       ),
     );
 
+    final currentFlutterRevision = shorebirdEnv.flutterRevision;
     final useLinker = engineConfig.localEngine != null ||
         !preLinkerFlutterRevisions.contains(release.flutterRevision);
     if (useLinker) {

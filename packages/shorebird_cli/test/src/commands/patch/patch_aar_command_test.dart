@@ -308,9 +308,7 @@ void main() {
         () => cache.getArtifactDirectory(any()),
       ).thenReturn(Directory.systemTemp.createTempSync());
       when(
-        () => shorebirdFlutter.installRevision(
-          revision: any(named: 'revision'),
-        ),
+        () => shorebirdFlutter.useRevision(revision: any(named: 'revision')),
       ).thenAnswer((_) async {});
       when(
         () => shorebirdValidator.validatePreconditions(
@@ -531,7 +529,7 @@ Please re-run the release command for this version or create a new release.'''),
         ),
       ).called(1);
       verify(
-        () => shorebirdFlutter.installRevision(
+        () => shorebirdFlutter.useRevision(
           revision: release.flutterRevision,
         ),
       ).called(1);
@@ -557,11 +555,24 @@ Please re-run the release command for this version or create a new release.'''),
           environment: any(named: 'environment'),
         ),
       ).thenAnswer((_) async => flutterBuildProcessResult);
+      final flutterFile = File(
+        p.join(
+          '.',
+          'bin',
+          'cache',
+          'flutter',
+          release.flutterRevision,
+          'bin',
+          'flutter',
+        ),
+      );
+      when(() => shorebirdEnv.flutterBinaryFile).thenReturn(flutterFile);
       setUpProjectRootArtifacts();
       await runWithOverrides(
         () => runScoped(
           () => command.run(),
           values: {
+            shorebirdEnvRef.overrideWith(() => shorebirdEnv),
             processRef.overrideWith(
               () => ShorebirdProcess(processWrapper: processWrapper),
             ),
@@ -570,49 +581,13 @@ Please re-run the release command for this version or create a new release.'''),
       );
       verify(
         () => processWrapper.run(
-          p.join(
-            '.',
-            'bin',
-            'cache',
-            'flutter',
-            release.flutterRevision,
-            'bin',
-            'flutter',
-          ),
+          flutterFile.path,
           any(),
           runInShell: true,
           workingDirectory: any(named: 'workingDirectory'),
           environment: any(named: 'environment'),
         ),
       ).called(1);
-    });
-
-    test(
-        'exits with code 70 when '
-        'unable to install correct flutter revision', () async {
-      final exception = Exception('oops');
-      const otherRevision = 'other-revision';
-      when(() => shorebirdEnv.flutterRevision).thenReturn(otherRevision);
-      when(
-        () => shorebirdFlutter.installRevision(
-          revision: any(named: 'revision'),
-        ),
-      ).thenThrow(exception);
-      setUpProjectRootArtifacts();
-
-      final exitCode = await runWithOverrides(command.run);
-      expect(exitCode, equals(ExitCode.software.code));
-      verify(
-        () => logger.progress(
-          'Switching to Flutter revision ${release.flutterRevision}',
-        ),
-      ).called(1);
-      verify(
-        () => shorebirdFlutter.installRevision(
-          revision: release.flutterRevision,
-        ),
-      ).called(1);
-      verify(() => progress.fail('$exception')).called(1);
     });
 
     test('exits with code 70 when building fails', () async {

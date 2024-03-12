@@ -6,7 +6,6 @@ import 'package:collection/collection.dart';
 import 'package:crypto/crypto.dart';
 import 'package:mason_logger/mason_logger.dart';
 import 'package:path/path.dart' as p;
-import 'package:scoped/scoped.dart';
 import 'package:shorebird_cli/src/archive_analysis/archive_analysis.dart';
 import 'package:shorebird_cli/src/artifact_manager.dart';
 import 'package:shorebird_cli/src/cache.dart';
@@ -20,7 +19,6 @@ import 'package:shorebird_cli/src/patch_diff_checker.dart';
 import 'package:shorebird_cli/src/shorebird_artifact_mixin.dart';
 import 'package:shorebird_cli/src/shorebird_build_mixin.dart';
 import 'package:shorebird_cli/src/shorebird_env.dart';
-import 'package:shorebird_cli/src/shorebird_flutter.dart';
 import 'package:shorebird_cli/src/shorebird_validator.dart';
 import 'package:shorebird_code_push_client/shorebird_code_push_client.dart';
 
@@ -136,22 +134,6 @@ Please re-run the release command for this version or create a new release.''');
       return ExitCode.software.code;
     }
 
-    final shorebirdFlutterRevision = shorebirdEnv.flutterRevision;
-    if (release.flutterRevision != shorebirdFlutterRevision) {
-      final installFlutterRevisionProgress = logger.progress(
-        'Switching to Flutter revision ${release.flutterRevision}',
-      );
-      try {
-        await shorebirdFlutter.installRevision(
-          revision: release.flutterRevision,
-        );
-        installFlutterRevisionProgress.complete();
-      } catch (error) {
-        installFlutterRevisionProgress.fail('$error');
-        return ExitCode.software.code;
-      }
-    }
-
     const platform = ReleasePlatform.android;
     final releaseArtifacts = await codePushClientWrapper.getReleaseArtifacts(
       appId: appId,
@@ -179,15 +161,9 @@ Please re-run the release command for this version or create a new release.''');
     final buildNumber = results['build-number'] as String;
     final buildProgress = logger.progress('Building patch');
     try {
-      await runScoped(
-        () => buildAar(buildNumber: buildNumber),
-        values: {
-          shorebirdEnvRef.overrideWith(
-            () => ShorebirdEnv(
-              flutterRevisionOverride: release.flutterRevision,
-            ),
-          ),
-        },
+      await buildAar(
+        buildNumber: buildNumber,
+        flutterRevision: release.flutterRevision,
       );
       buildProgress.complete();
     } on ProcessException catch (error) {

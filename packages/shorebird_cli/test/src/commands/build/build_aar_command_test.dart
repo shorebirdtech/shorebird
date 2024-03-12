@@ -89,6 +89,7 @@ void main() {
       when(
         () => shorebirdEnv.androidPackageName,
       ).thenReturn(androidPackageName);
+      when(() => shorebirdEnv.flutterRevision).thenReturn('1234');
 
       command = runWithOverrides(BuildAarCommand.new)
         ..testArgResults = argResults;
