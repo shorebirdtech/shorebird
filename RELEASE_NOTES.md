@@ -2,6 +2,13 @@
 
 This section contains past updates we've sent to customers via Discord.
 
+## 0.26.5 (March 13, 2024)
+
+🩹 Fix issue where releases created with `--flutter-version` flag were reporting
+   incorrect Flutter version.
+
+📚 Release notes can be found at https://github.com/shorebirdtech/shorebird/releases/tag/v0.26.5
+
 ## 0.26.4 (March 11, 2024)
 
 🪵 Clearer error messages for cases where shorebird is not properly set up in a project.
