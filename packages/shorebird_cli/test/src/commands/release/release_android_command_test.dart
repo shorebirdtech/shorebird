@@ -353,6 +353,14 @@ $exception''',
             () => shorebirdFlutter.useRevision(revision: revision),
             () => shorebirdFlutter.useRevision(revision: flutterRevision),
           ]);
+          verify(
+            () => codePushClientWrapper.createRelease(
+              appId: appId,
+              version: version,
+              flutterRevision: revision,
+              platform: releasePlatform,
+            ),
+          ).called(1);
         });
       });
     });

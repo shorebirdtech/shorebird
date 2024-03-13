@@ -715,6 +715,7 @@ $exception''',
       group('when flutter version is supported', () {
         const revision = '771d07b2cf';
         setUp(() {
+          setUpProjectRoot();
           when(
             () => shorebirdFlutter.getRevisionForVersion(any()),
           ).thenAnswer((_) async => revision);
@@ -733,6 +734,14 @@ $exception''',
             () => shorebirdFlutter.useRevision(revision: revision),
             () => shorebirdFlutter.useRevision(revision: flutterRevision),
           ]);
+          verify(
+            () => codePushClientWrapper.createRelease(
+              appId: appId,
+              version: version,
+              flutterRevision: revision,
+              platform: releasePlatform,
+            ),
+          ).called(1);
         });
       });
     });
