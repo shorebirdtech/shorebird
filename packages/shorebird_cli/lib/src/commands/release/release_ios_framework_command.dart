@@ -1,3 +1,6 @@
+import 'dart:io';
+
+import 'package:io/io.dart' show copyPath;
 import 'package:mason_logger/mason_logger.dart';
 import 'package:path/path.dart' as p;
 import 'package:platform/platform.dart';
@@ -166,6 +169,31 @@ ${summary.join('\n')}
       }
     }
 
+    // Copy release xcframework to a new directory to avoid overwriting with
+    // subsequent patch builds.
+    final sourceLibraryDirectory = getAppXcframeworkDirectory();
+    final targetLibraryDirectory = Directory(
+      p.join(shorebirdEnv.getShorebirdProjectRoot()!.path, 'release'),
+    );
+    if (targetLibraryDirectory.existsSync()) {
+      targetLibraryDirectory.deleteSync(recursive: true);
+    }
+    await copyPath(sourceLibraryDirectory.path, targetLibraryDirectory.path);
+
+    // Rename Flutter.xcframework to ShorebirdFlutter.xcframework to avoid
+    // Xcode warning users about the .xcframework signature changing.
+    Directory(
+      p.join(
+        targetLibraryDirectory.path,
+        'Flutter.xcframework',
+      ),
+    ).renameSync(
+      p.join(
+        targetLibraryDirectory.path,
+        'ShorebirdFlutter.xcframework',
+      ),
+    );
+
     final Release release;
     if (existingRelease != null) {
       release = existingRelease;
@@ -183,7 +211,7 @@ ${summary.join('\n')}
     await codePushClientWrapper.createIosFrameworkReleaseArtifacts(
       appId: appId,
       releaseId: release.id,
-      appFrameworkPath: getAppXcframeworkPath(),
+      appFrameworkPath: p.join(targetLibraryDirectory.path, 'App.xcframework'),
     );
 
     await codePushClientWrapper.updateReleaseStatus(
@@ -194,16 +222,16 @@ ${summary.join('\n')}
     );
 
     final relativeFrameworkDirectoryPath =
-        p.relative(getAppXcframeworkDirectory().path);
+        p.relative(targetLibraryDirectory.path);
     logger
       ..success('\n✅ Published Release ${release.version}!')
       ..info('''
 
-Your next step is to include the .xcframework files in ${lightCyan.wrap(relativeFrameworkDirectoryPath)} in your iOS app.
+Your next step is to add the .xcframework files found in the ${lightCyan.wrap(relativeFrameworkDirectoryPath)} directory to your iOS app.
 
 To do this:
-    1. Add the relative path to $relativeFrameworkDirectoryPath to your app's Framework Search Paths in your Xcode build settings.
-    2. Embed the App.xcframework and Flutter.framework in your Xcode project.
+    1. Add the relative path to the ${lightCyan.wrap(relativeFrameworkDirectoryPath)} directory to your app's Framework Search Paths in your Xcode build settings.
+    2. Embed the App.xcframework and ShorebirdFlutter.framework in your Xcode project.
 
 Instructions for these steps can be found at https://docs.flutter.dev/add-to-app/ios/project-setup#option-b---embed-frameworks-in-xcode.
 ''');

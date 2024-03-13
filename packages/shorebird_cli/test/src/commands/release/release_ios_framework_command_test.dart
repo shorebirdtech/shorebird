@@ -106,6 +106,20 @@ flutter:
       File(
         p.join(projectRoot.path, 'shorebird.yaml'),
       ).writeAsStringSync('app_id: $appId');
+      // Create an xcframework in the release directory to simulate running this
+      // command a subsequent time.
+      Directory(p.join(projectRoot.path, 'release', 'Flutter.xcframework'))
+          .createSync(recursive: true);
+      Directory(
+        p.join(
+          projectRoot.path,
+          'build',
+          'ios',
+          'framework',
+          'Release',
+          'Flutter.xcframework',
+        ),
+      ).createSync(recursive: true);
     }
 
     setUpAll(() {
@@ -316,9 +330,12 @@ $exception''',
         });
 
         test(
-            'uses specified flutter version to build '
-            'and reverts to original flutter version', () async {
+            '''uses specified flutter version to build and reverts to original flutter version''',
+            () async {
+          setUpProjectRoot();
+
           await runWithOverrides(command.run);
+
           verifyInOrder([
             () => shorebirdFlutter.useRevision(revision: revision),
             () => shorebirdFlutter.useRevision(revision: flutterRevision),
@@ -425,9 +442,10 @@ $exception''',
           any(
             that: stringContainsInOrder(
               [
-                'Your next step is to include the .xcframework files in',
-                p.join('build', 'ios', 'framework', 'Release'),
-                'in your iOS app.',
+                'Your next step is to add the .xcframework files found in',
+                'release',
+                'to your iOS app.',
+                '''Embed the App.xcframework and ShorebirdFlutter.framework in your Xcode project''',
               ],
             ),
           ),
@@ -440,7 +458,7 @@ $exception''',
           appFrameworkPath: any(
             named: 'appFrameworkPath',
             that: endsWith(
-              p.join('build', 'ios', 'framework', 'Release', 'App.xcframework'),
+              p.join('release', 'App.xcframework'),
             ),
           ),
         ),
