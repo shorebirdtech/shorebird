@@ -258,6 +258,8 @@ ${summary.join('\n')}
       release = await codePushClientWrapper.createRelease(
         appId: appId,
         version: releaseVersion,
+        // Intentionally not using shorebirdEnv.flutterRevision here because
+        // the revision may have changed for the build.
         flutterRevision: flutterRevisionForRelease,
         platform: platform,
       );
