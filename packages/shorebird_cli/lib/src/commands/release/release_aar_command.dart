@@ -202,7 +202,7 @@ ${summary.join('\n')}
       release = await codePushClientWrapper.createRelease(
         appId: appId,
         version: releaseVersion,
-        flutterRevision: shorebirdEnv.flutterRevision,
+        flutterRevision: flutterRevision,
         platform: platform,
       );
     }

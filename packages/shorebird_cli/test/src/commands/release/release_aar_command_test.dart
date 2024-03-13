@@ -151,7 +151,7 @@ void main() {
 
       when(() => auth.client).thenReturn(httpClient);
       when(() => argResults['build-number']).thenReturn(buildNumber);
-      when(() => argResults['release-version']).thenReturn(versionName);
+      when(() => argResults['release-version']).thenReturn(version);
       when(() => argResults.rest).thenReturn([]);
       when(() => auth.isAuthenticated).thenReturn(true);
       when(() => logger.confirm(any())).thenReturn(true);
@@ -352,6 +352,14 @@ $exception''',
             () => shorebirdFlutter.useRevision(revision: revision),
             () => shorebirdFlutter.useRevision(revision: flutterRevision),
           ]);
+          verify(
+            () => codePushClientWrapper.createRelease(
+              appId: appId,
+              version: version,
+              flutterRevision: revision,
+              platform: releasePlatform,
+            ),
+          ).called(1);
         });
       });
     });
