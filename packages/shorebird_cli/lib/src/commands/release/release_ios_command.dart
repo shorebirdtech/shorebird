@@ -159,7 +159,7 @@ make smaller updates to your app.
     final appId = shorebirdYaml.getAppId(flavor: flavor);
     final app = await codePushClientWrapper.getApp(appId: appId);
 
-    var flutterRevision = shorebirdEnv.flutterRevision;
+    var flutterRevisionForRelease = shorebirdEnv.flutterRevision;
     if (flutterVersion != null) {
       final String? revision;
       try {
@@ -189,14 +189,15 @@ Use `shorebird flutter versions list` to list available versions.
         return ExitCode.software.code;
       }
 
-      flutterRevision = revision;
+      flutterRevisionForRelease = revision;
     }
 
     final originalFlutterRevision = shorebirdEnv.flutterRevision;
-    final switchFlutterRevision = flutterRevision != originalFlutterRevision;
+    final switchFlutterRevision =
+        flutterRevisionForRelease != originalFlutterRevision;
 
     if (switchFlutterRevision) {
-      await shorebirdFlutter.useRevision(revision: flutterRevision);
+      await shorebirdFlutter.useRevision(revision: flutterRevisionForRelease);
     }
 
     final flutterVersionString = await shorebirdFlutter.getVersionAndRevision();
@@ -308,7 +309,7 @@ ${summary.join('\n')}
       release = await codePushClientWrapper.createRelease(
         appId: appId,
         version: releaseVersion,
-        flutterRevision: flutterRevision,
+        flutterRevision: flutterRevisionForRelease,
         platform: releasePlatform,
       );
     }
