@@ -2,6 +2,15 @@
 
 This section contains past updates we've sent to customers via Discord.
 
+## 0.26.6 (March 14, 2024)
+
+📝 Update iOS hybrid app workflow to use signed xcframeworks to comply with
+Apple's privacy requirements. Note: this changes the workflow for iOS hybrid
+apps that use Shorebird. If you have an iOS hybrid app, please see the updated
+documentation at https://docs.shorebird.dev/guides/hybrid-app/ios.
+
+📚 Release notes can be found at https://github.com/shorebirdtech/shorebird/releases/tag/v0.26.6
+
 ## 0.26.5 (March 13, 2024)
 
 🩹 Fix issue where releases created with `--flutter-version` flag were reporting
