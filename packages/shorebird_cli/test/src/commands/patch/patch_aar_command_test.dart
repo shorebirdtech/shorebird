@@ -196,6 +196,16 @@ void main() {
       when(() => platform.environment).thenReturn({});
       when(() => shorebirdEnv.shorebirdRoot).thenReturn(shorebirdRoot);
       when(
+        () => shorebirdEnv.copyWith(
+          flutterRevisionOverride: any(named: 'flutterRevisionOverride'),
+        ),
+      ).thenAnswer((invocation) {
+        when(() => shorebirdEnv.flutterRevision).thenReturn(
+          invocation.namedArguments[#flutterRevisionOverride] as String,
+        );
+        return shorebirdEnv;
+      });
+      when(
         () => shorebirdEnv.getShorebirdProjectRoot(),
       ).thenReturn(projectRoot);
       when(() => shorebirdEnv.flutterDirectory).thenReturn(flutterDirectory);
@@ -515,27 +525,6 @@ Please re-run the release command for this version or create a new release.'''),
     });
 
     test(
-        'installs correct flutter revision '
-        'when release flutter revision differs', () async {
-      const otherRevision = 'other-revision';
-      when(() => shorebirdEnv.flutterRevision).thenReturn(otherRevision);
-      setUpProjectRootArtifacts();
-
-      final exitCode = await runWithOverrides(command.run);
-      expect(exitCode, equals(ExitCode.success.code));
-      verify(
-        () => logger.progress(
-          'Switching to Flutter revision ${release.flutterRevision}',
-        ),
-      ).called(1);
-      verify(
-        () => shorebirdFlutter.useRevision(
-          revision: release.flutterRevision,
-        ),
-      ).called(1);
-    });
-
-    test(
         'builds using correct flutter revision '
         'when release flutter revision differs', () async {
       when(
@@ -567,7 +556,19 @@ Please re-run the release command for this version or create a new release.'''),
         ),
       );
       when(() => shorebirdEnv.flutterBinaryFile).thenReturn(flutterFile);
+      when(
+        () => shorebirdProcess.run(
+          'flutter',
+          any(),
+          runInShell: any(named: 'runInShell'),
+        ),
+      ).thenAnswer((_) async {
+        // Ensure we're building with the correct flutter revision.
+        expect(shorebirdEnv.flutterRevision, equals(release.flutterRevision));
+        return flutterBuildProcessResult;
+      });
       setUpProjectRootArtifacts();
+
       await runWithOverrides(
         () => runScoped(
           () => command.run(),
@@ -579,6 +580,7 @@ Please re-run the release command for this version or create a new release.'''),
           },
         ),
       );
+
       verify(
         () => processWrapper.run(
           flutterFile.path,

@@ -414,6 +414,16 @@ flutter:
       when(() => platform.environment).thenReturn({});
       when(() => platform.script).thenReturn(shorebirdRoot.uri);
       when(() => shorebirdEnv.getShorebirdYaml()).thenReturn(shorebirdYaml);
+      when(
+        () => shorebirdEnv.copyWith(
+          flutterRevisionOverride: any(named: 'flutterRevisionOverride'),
+        ),
+      ).thenAnswer((invocation) {
+        when(() => shorebirdEnv.flutterRevision).thenReturn(
+          invocation.namedArguments[#flutterRevisionOverride] as String,
+        );
+        return shorebirdEnv;
+      });
       when(() => shorebirdEnv.shorebirdRoot).thenReturn(shorebirdRoot);
       when(
         () => shorebirdEnv.getShorebirdProjectRoot(),
@@ -736,19 +746,69 @@ Please re-run the release command for this version or create a new release.'''),
         () async {
       const otherRevision = 'other-revision';
       when(() => shorebirdEnv.flutterRevision).thenReturn(otherRevision);
+
+      // If a release version is not specified as a command argument, we
+      // build the app with the default Flutter revision to determine the
+      // release version. We then build the app with the release Flutter
+      // revision to determine the release version.
+      var hasBuiltToDetermineReleaseVersion = false;
+      var hasRunGenSnapshotToDetermineReleaseVersion = false;
+      when(
+        () => shorebirdProcess.run(
+          'flutter',
+          any(),
+          runInShell: any(named: 'runInShell'),
+        ),
+      ).thenAnswer((_) async {
+        if (!hasBuiltToDetermineReleaseVersion) {
+          hasBuiltToDetermineReleaseVersion = true;
+          return flutterBuildProcessResult;
+        }
+
+        // Ensure we're using the correct flutter revision.
+        expect(shorebirdEnv.flutterRevision, equals(preLinkerFlutterRevision));
+        return flutterBuildProcessResult;
+      });
+      when(
+        () => shorebirdProcess.run(
+          any(that: endsWith('gen_snapshot_arm64')),
+          any(),
+          runInShell: any(named: 'runInShell'),
+        ),
+      ).thenAnswer((_) async {
+        if (!hasRunGenSnapshotToDetermineReleaseVersion) {
+          hasRunGenSnapshotToDetermineReleaseVersion = true;
+          return aotBuildProcessResult;
+        }
+
+        // Ensure we're using the correct flutter revision.
+        expect(shorebirdEnv.flutterRevision, equals(preLinkerFlutterRevision));
+        return aotBuildProcessResult;
+      });
+      when(
+        () => aotTools.link(
+          base: any(named: 'base'),
+          patch: any(named: 'patch'),
+          analyzeSnapshot: any(named: 'analyzeSnapshot'),
+          workingDirectory: any(named: 'workingDirectory'),
+          outputPath: any(named: 'outputPath'),
+        ),
+      ).thenAnswer((_) async {
+        // Ensure we're using the correct flutter revision.
+        expect(shorebirdEnv.flutterRevision, equals(preLinkerFlutterRevision));
+      });
+
       setUpProjectRoot();
       setUpProjectRootArtifacts();
 
       final exitCode = await runWithOverrides(command.run);
 
       expect(exitCode, ExitCode.success.code);
-      // Verify that we switch back to the original revision once we're done.
-      verifyInOrder([
-        () => shorebirdFlutter.useRevision(
-              revision: preLinkerRelease.flutterRevision,
-            ),
-        () => shorebirdFlutter.useRevision(revision: otherRevision),
-      ]);
+      verify(
+        () => shorebirdEnv.copyWith(
+          flutterRevisionOverride: preLinkerFlutterRevision,
+        ),
+      ).called(1);
 
       verify(
         () => logger.info(
@@ -762,27 +822,6 @@ Please re-run the release command for this version or create a new release.'''),
         ),
       ).called(1);
     });
-
-    test(
-      'exits with code 70 if build fails after switching flutter versions',
-      () async {
-        const otherRevision = 'other-revision';
-        when(() => shorebirdEnv.flutterRevision).thenReturn(otherRevision);
-        when(
-          () => shorebirdFlutter.useRevision(revision: any(named: 'revision')),
-        ).thenAnswer((invocation) async {
-          // Cause builds to fail after switching flutter versions.
-          when(() => flutterBuildProcessResult.exitCode).thenReturn(1);
-          when(() => flutterBuildProcessResult.stderr).thenReturn('oops');
-        });
-        setUpProjectRoot();
-        setUpProjectRootArtifacts();
-
-        final exitCode = await runWithOverrides(command.run);
-
-        expect(exitCode, equals(ExitCode.software.code));
-      },
-    );
 
     group('when release-version option is provided', () {
       const customReleaseVersion = 'custom-release-version';
@@ -844,10 +883,6 @@ Please re-run the release command for this version or create a new release.'''),
         expect(exitCode, ExitCode.success.code);
 
         verify(
-          () => shorebirdFlutter.useRevision(
-              revision: preLinkerRelease.flutterRevision),
-        ).called(1);
-        verify(
           () => shorebirdProcess.run(
             'flutter',
             any(
@@ -858,24 +893,6 @@ Please re-run the release command for this version or create a new release.'''),
               ]),
             ),
             runInShell: any(named: 'runInShell'),
-          ),
-        ).called(1);
-        verify(
-          () => shorebirdFlutter.useRevision(revision: otherRevision),
-        ).called(1);
-      });
-    });
-
-    group('when release-version option is not provided', () {
-      test('extracts release version from app bundle', () async {
-        setUpProjectRoot();
-        setUpProjectRootArtifacts();
-        await runWithOverrides(command.run);
-
-        verify(
-          () => codePushClientWrapper.getRelease(
-            appId: appId,
-            releaseVersion: preLinkerRelease.version,
           ),
         ).called(1);
       });

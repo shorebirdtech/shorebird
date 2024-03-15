@@ -4,6 +4,7 @@ import 'package:io/io.dart' show copyPath;
 import 'package:mason_logger/mason_logger.dart';
 import 'package:path/path.dart' as p;
 import 'package:platform/platform.dart';
+import 'package:scoped/scoped.dart';
 import 'package:shorebird_cli/src/code_push_client_wrapper.dart';
 import 'package:shorebird_cli/src/command.dart';
 import 'package:shorebird_cli/src/config/config.dart';
@@ -117,115 +118,112 @@ Use `shorebird flutter versions list` to list available versions.
       flutterRevisionForRelease = revision;
     }
 
-    final originalFlutterRevision = shorebirdEnv.flutterRevision;
-    final switchFlutterRevision =
-        flutterRevisionForRelease != originalFlutterRevision;
-
-    if (switchFlutterRevision) {
-      await shorebirdFlutter.useRevision(revision: flutterRevisionForRelease);
-    }
-
-    final flutterVersionString = await shorebirdFlutter.getVersionAndRevision();
-
-    final buildProgress = logger.progress(
-      'Building iOS framework with Flutter $flutterVersionString',
+    final releaseFlutterShorebirdEnv = shorebirdEnv.copyWith(
+      flutterRevisionOverride: flutterRevisionForRelease,
     );
 
-    try {
-      await buildIosFramework();
-    } catch (error) {
-      buildProgress.fail('Failed to build iOS framework: $error');
-      return ExitCode.software.code;
-    } finally {
-      if (switchFlutterRevision) {
-        await shorebirdFlutter.useRevision(revision: originalFlutterRevision);
-      }
-    }
+    return await runScoped(
+      () async {
+        final flutterVersionString =
+            await shorebirdFlutter.getVersionAndRevision();
 
-    buildProgress.complete();
+        final buildProgress = logger.progress(
+          'Building iOS framework with Flutter $flutterVersionString',
+        );
 
-    final summary = [
-      '''📱 App: ${lightCyan.wrap(app.displayName)} ${lightCyan.wrap('($appId)')}''',
-      '📦 Release Version: ${lightCyan.wrap(releaseVersion)}',
-      '''🕹️  Platform: ${lightCyan.wrap(releasePlatform.name)}''',
-      '🐦 Flutter Version: ${lightCyan.wrap(flutterVersionString)}',
-    ];
+        try {
+          await buildIosFramework();
+        } catch (error) {
+          buildProgress.fail('Failed to build iOS framework: $error');
+          return ExitCode.software.code;
+        }
 
-    logger.info('''
+        buildProgress.complete();
+
+        final summary = [
+          '''📱 App: ${lightCyan.wrap(app.displayName)} ${lightCyan.wrap('($appId)')}''',
+          '📦 Release Version: ${lightCyan.wrap(releaseVersion)}',
+          '''🕹️  Platform: ${lightCyan.wrap(releasePlatform.name)}''',
+          '🐦 Flutter Version: ${lightCyan.wrap(flutterVersionString)}',
+        ];
+
+        logger.info('''
 
 ${styleBold.wrap(lightGreen.wrap('🚀 Ready to create a new release!'))}
 
 ${summary.join('\n')}
 ''');
 
-    final force = results['force'] == true;
-    final needConfirmation = !force;
-    if (needConfirmation) {
-      final confirm = logger.confirm('Would you like to continue?');
+        final force = results['force'] == true;
+        final needConfirmation = !force;
+        if (needConfirmation) {
+          final confirm = logger.confirm('Would you like to continue?');
 
-      if (!confirm) {
-        logger.info('Aborting.');
-        return ExitCode.success.code;
-      }
-    }
+          if (!confirm) {
+            logger.info('Aborting.');
+            return ExitCode.success.code;
+          }
+        }
 
-    // Copy release xcframework to a new directory to avoid overwriting with
-    // subsequent patch builds.
-    final sourceLibraryDirectory = getAppXcframeworkDirectory();
-    final targetLibraryDirectory = Directory(
-      p.join(shorebirdEnv.getShorebirdProjectRoot()!.path, 'release'),
-    );
-    if (targetLibraryDirectory.existsSync()) {
-      targetLibraryDirectory.deleteSync(recursive: true);
-    }
-    await copyPath(sourceLibraryDirectory.path, targetLibraryDirectory.path);
+        // Copy release xcframework to a new directory to avoid overwriting with
+        // subsequent patch builds.
+        final sourceLibraryDirectory = getAppXcframeworkDirectory();
+        final targetLibraryDirectory = Directory(
+          p.join(shorebirdEnv.getShorebirdProjectRoot()!.path, 'release'),
+        );
+        if (targetLibraryDirectory.existsSync()) {
+          targetLibraryDirectory.deleteSync(recursive: true);
+        }
+        await copyPath(
+          sourceLibraryDirectory.path,
+          targetLibraryDirectory.path,
+        );
 
-    // Rename Flutter.xcframework to ShorebirdFlutter.xcframework to avoid
-    // Xcode warning users about the .xcframework signature changing.
-    Directory(
-      p.join(
-        targetLibraryDirectory.path,
-        'Flutter.xcframework',
-      ),
-    ).renameSync(
-      p.join(
-        targetLibraryDirectory.path,
-        'ShorebirdFlutter.xcframework',
-      ),
-    );
+        // Rename Flutter.xcframework to ShorebirdFlutter.xcframework to avoid
+        // Xcode warning users about the .xcframework signature changing.
+        Directory(
+          p.join(
+            targetLibraryDirectory.path,
+            'Flutter.xcframework',
+          ),
+        ).renameSync(
+          p.join(
+            targetLibraryDirectory.path,
+            'ShorebirdFlutter.xcframework',
+          ),
+        );
 
-    final Release release;
-    if (existingRelease != null) {
-      release = existingRelease;
-    } else {
-      release = await codePushClientWrapper.createRelease(
-        appId: appId,
-        version: releaseVersion,
-        // Intentionally not using shorebirdEnv.flutterRevision here because
-        // the revision may have changed for the build.
-        flutterRevision: flutterRevisionForRelease,
-        platform: releasePlatform,
-      );
-    }
+        final Release release;
+        if (existingRelease != null) {
+          release = existingRelease;
+        } else {
+          release = await codePushClientWrapper.createRelease(
+            appId: appId,
+            version: releaseVersion,
+            flutterRevision: shorebirdEnv.flutterRevision,
+            platform: releasePlatform,
+          );
+        }
 
-    await codePushClientWrapper.createIosFrameworkReleaseArtifacts(
-      appId: appId,
-      releaseId: release.id,
-      appFrameworkPath: p.join(targetLibraryDirectory.path, 'App.xcframework'),
-    );
+        await codePushClientWrapper.createIosFrameworkReleaseArtifacts(
+          appId: appId,
+          releaseId: release.id,
+          appFrameworkPath:
+              p.join(targetLibraryDirectory.path, 'App.xcframework'),
+        );
 
-    await codePushClientWrapper.updateReleaseStatus(
-      appId: app.appId,
-      releaseId: release.id,
-      platform: releasePlatform,
-      status: ReleaseStatus.active,
-    );
+        await codePushClientWrapper.updateReleaseStatus(
+          appId: app.appId,
+          releaseId: release.id,
+          platform: releasePlatform,
+          status: ReleaseStatus.active,
+        );
 
-    final relativeFrameworkDirectoryPath =
-        p.relative(targetLibraryDirectory.path);
-    logger
-      ..success('\n✅ Published Release ${release.version}!')
-      ..info('''
+        final relativeFrameworkDirectoryPath =
+            p.relative(targetLibraryDirectory.path);
+        logger
+          ..success('\n✅ Published Release ${release.version}!')
+          ..info('''
 
 Your next step is to add the .xcframework files found in the ${lightCyan.wrap(relativeFrameworkDirectoryPath)} directory to your iOS app.
 
@@ -236,6 +234,11 @@ To do this:
 Instructions for these steps can be found at https://docs.flutter.dev/add-to-app/ios/project-setup#option-b---embed-frameworks-in-xcode.
 ''');
 
-    return ExitCode.success.code;
+        return ExitCode.success.code;
+      },
+      values: {
+        shorebirdEnvRef.overrideWith(() => releaseFlutterShorebirdEnv),
+      },
+    );
   }
 }

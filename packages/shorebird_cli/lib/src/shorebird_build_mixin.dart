@@ -8,8 +8,6 @@ import 'package:shorebird_cli/src/engine_config.dart';
 import 'package:shorebird_cli/src/logger.dart';
 import 'package:shorebird_cli/src/os/operating_system_interface.dart';
 import 'package:shorebird_cli/src/shorebird_artifacts.dart';
-import 'package:shorebird_cli/src/shorebird_env.dart';
-import 'package:shorebird_cli/src/shorebird_flutter.dart';
 import 'package:shorebird_cli/src/shorebird_process.dart';
 
 enum Arch {
@@ -119,117 +117,100 @@ mixin ShorebirdBuildMixin on ShorebirdCommand {
     return allAndroidArchitectures;
   }
 
-  Future<void> buildAppBundle({
-    String? flavor,
-    String? target,
-    String? flutterRevision,
-  }) async {
-    return _runShorebirdBuildCommand(
-      flutterRevision: flutterRevision,
-      command: () async {
-        const executable = 'flutter';
-        final arguments = [
-          'build',
-          'appbundle',
-          '--release',
-          if (flavor != null) '--flavor=$flavor',
-          if (target != null) '--target=$target',
-          ...results.rest,
-        ];
+  Future<void> buildAppBundle({String? flavor, String? target}) async {
+    return _runShorebirdBuildCommand(() async {
+      const executable = 'flutter';
+      final arguments = [
+        'build',
+        'appbundle',
+        '--release',
+        if (flavor != null) '--flavor=$flavor',
+        if (target != null) '--target=$target',
+        ...results.rest,
+      ];
 
-        final result = await process.run(
-          executable,
+      final result = await process.run(
+        executable,
+        arguments,
+        runInShell: true,
+      );
+
+      if (result.exitCode != ExitCode.success.code) {
+        throw ProcessException(
+          'flutter',
           arguments,
-          runInShell: true,
+          result.stderr.toString(),
+          result.exitCode,
         );
-
-        if (result.exitCode != ExitCode.success.code) {
-          throw ProcessException(
-            'flutter',
-            arguments,
-            result.stderr.toString(),
-            result.exitCode,
-          );
-        }
-      },
-    );
+      }
+    });
   }
 
-  Future<void> buildAar({
-    required String buildNumber,
-    String? flutterRevision,
-  }) async {
-    return _runShorebirdBuildCommand(
-      flutterRevision: flutterRevision,
-      command: () async {
-        const executable = 'flutter';
-        final arguments = [
-          'build',
-          'aar',
-          '--no-debug',
-          '--no-profile',
-          '--build-number=$buildNumber',
-          ...results.rest,
-        ];
+  Future<void> buildAar({required String buildNumber}) async {
+    return _runShorebirdBuildCommand(() async {
+      const executable = 'flutter';
+      final arguments = [
+        'build',
+        'aar',
+        '--no-debug',
+        '--no-profile',
+        '--build-number=$buildNumber',
+        ...results.rest,
+      ];
 
-        final result = await process.run(
-          executable,
+      final result = await process.run(
+        executable,
+        arguments,
+        runInShell: true,
+      );
+
+      if (result.exitCode != ExitCode.success.code) {
+        throw ProcessException(
+          'flutter',
           arguments,
-          runInShell: true,
+          result.stderr.toString(),
+          result.exitCode,
         );
-
-        if (result.exitCode != ExitCode.success.code) {
-          throw ProcessException(
-            'flutter',
-            arguments,
-            result.stderr.toString(),
-            result.exitCode,
-          );
-        }
-      },
-    );
+      }
+    });
   }
 
   Future<void> buildApk({
     String? flavor,
     String? target,
     bool splitPerAbi = false,
-    String? flutterRevision,
   }) async {
-    return _runShorebirdBuildCommand(
-      flutterRevision: flutterRevision,
-      command: () async {
-        const executable = 'flutter';
-        final arguments = [
-          'build',
-          'apk',
-          '--release',
-          if (flavor != null) '--flavor=$flavor',
-          if (target != null) '--target=$target',
-          // TODO(bryanoltman): reintroduce coverage when we can support this.
-          // See https://github.com/shorebirdtech/shorebird/issues/1141.
-          // coverage:ignore-start
-          if (splitPerAbi) '--split-per-abi',
-          // coverage:ignore-end
-          ...results.rest,
-        ];
+    return _runShorebirdBuildCommand(() async {
+      const executable = 'flutter';
+      final arguments = [
+        'build',
+        'apk',
+        '--release',
+        if (flavor != null) '--flavor=$flavor',
+        if (target != null) '--target=$target',
+        // TODO(bryanoltman): reintroduce coverage when we can support this.
+        // See https://github.com/shorebirdtech/shorebird/issues/1141.
+        // coverage:ignore-start
+        if (splitPerAbi) '--split-per-abi',
+        // coverage:ignore-end
+        ...results.rest,
+      ];
 
-        final result = await process.run(
-          executable,
+      final result = await process.run(
+        executable,
+        arguments,
+        runInShell: true,
+      );
+
+      if (result.exitCode != ExitCode.success.code) {
+        throw ProcessException(
+          'flutter',
           arguments,
-          runInShell: true,
+          result.stderr.toString(),
+          result.exitCode,
         );
-
-        if (result.exitCode != ExitCode.success.code) {
-          throw ProcessException(
-            'flutter',
-            arguments,
-            result.stderr.toString(),
-            result.exitCode,
-          );
-        }
-      },
-    );
+      }
+    });
   }
 
   /// Calls `flutter build ipa`. If [codesign] is false, this will only build
@@ -239,50 +220,46 @@ mixin ShorebirdBuildMixin on ShorebirdCommand {
     File? exportOptionsPlist,
     String? flavor,
     String? target,
-    String? flutterRevision,
   }) async {
-    return _runShorebirdBuildCommand(
-      flutterRevision: flutterRevision,
-      command: () async {
-        const executable = 'flutter';
-        final arguments = [
-          'build',
-          'ipa',
-          '--release',
-          if (flavor != null) '--flavor=$flavor',
-          if (target != null) '--target=$target',
-          if (!codesign) '--no-codesign',
-          if (codesign)
-            '''--export-options-plist=${(exportOptionsPlist ?? createExportOptionsPlist()).path}''',
-          ...results.rest,
-        ];
+    return _runShorebirdBuildCommand(() async {
+      const executable = 'flutter';
+      final arguments = [
+        'build',
+        'ipa',
+        '--release',
+        if (flavor != null) '--flavor=$flavor',
+        if (target != null) '--target=$target',
+        if (!codesign) '--no-codesign',
+        if (codesign)
+          '''--export-options-plist=${(exportOptionsPlist ?? createExportOptionsPlist()).path}''',
+        ...results.rest,
+      ];
 
-        final result = await process.run(
-          executable,
+      final result = await process.run(
+        executable,
+        arguments,
+        runInShell: true,
+      );
+
+      if (result.exitCode != ExitCode.success.code) {
+        throw ProcessException(
+          'flutter',
           arguments,
-          runInShell: true,
+          result.stderr.toString(),
+          result.exitCode,
+        );
+      }
+
+      if (result.stderr
+          .toString()
+          .contains('Encountered error while creating the IPA')) {
+        final errorMessage = _failedToCreateIpaErrorMessage(
+          stderr: result.stderr.toString(),
         );
 
-        if (result.exitCode != ExitCode.success.code) {
-          throw ProcessException(
-            'flutter',
-            arguments,
-            result.stderr.toString(),
-            result.exitCode,
-          );
-        }
-
-        if (result.stderr
-            .toString()
-            .contains('Encountered error while creating the IPA')) {
-          final errorMessage = _failedToCreateIpaErrorMessage(
-            stderr: result.stderr.toString(),
-          );
-
-          throw BuildException(errorMessage);
-        }
-      },
-    );
+        throw BuildException(errorMessage);
+      }
+    });
   }
 
   /// Creates an ExportOptions.plist file, which is used to tell xcodebuild to
@@ -320,67 +297,42 @@ mixin ShorebirdBuildMixin on ShorebirdCommand {
   }
 
   /// Builds a release iOS framework (.xcframework) for the current project.
-  Future<void> buildIosFramework({String? flutterRevision}) async {
-    return _runShorebirdBuildCommand(
-      flutterRevision: flutterRevision,
-      command: () async {
-        const executable = 'flutter';
-        final arguments = [
-          'build',
-          'ios-framework',
-          '--no-debug',
-          '--no-profile',
-          ...results.rest,
-        ];
+  Future<void> buildIosFramework() async {
+    return _runShorebirdBuildCommand(() async {
+      const executable = 'flutter';
+      final arguments = [
+        'build',
+        'ios-framework',
+        '--no-debug',
+        '--no-profile',
+        ...results.rest,
+      ];
 
-        final result = await process.run(
-          executable,
+      final result = await process.run(
+        executable,
+        arguments,
+        runInShell: true,
+      );
+
+      if (result.exitCode != ExitCode.success.code) {
+        throw ProcessException(
+          'flutter',
           arguments,
-          runInShell: true,
+          result.stderr.toString(),
+          result.exitCode,
         );
-
-        if (result.exitCode != ExitCode.success.code) {
-          throw ProcessException(
-            'flutter',
-            arguments,
-            result.stderr.toString(),
-            result.exitCode,
-          );
-        }
-      },
-    );
+      }
+    });
   }
 
   /// A wrapper around [command] (which runs a `flutter build` command with
   /// Shorebird's fork of Flutter) with a try/finally that runs
   /// `flutter pub get` with the system installation of Flutter to reset
   /// `.dart_tool/package_config.json` to the system Flutter.
-  Future<void> _runShorebirdBuildCommand({
-    required ShorebirdBuildCommand command,
-    String? flutterRevision,
-  }) async {
-    final currentFlutterRevision = shorebirdEnv.flutterRevision;
-    flutterRevision ??= currentFlutterRevision;
-
+  Future<void> _runShorebirdBuildCommand(ShorebirdBuildCommand command) async {
     try {
-      if (currentFlutterRevision != flutterRevision) {
-        final flutterVersionProgress = logger.progress(
-          'Switching to Flutter revision $flutterRevision',
-        );
-        await shorebirdFlutter.useRevision(revision: flutterRevision);
-        flutterVersionProgress.complete();
-      }
-
       await command();
     } finally {
-      if (currentFlutterRevision != flutterRevision) {
-        final flutterVersionProgress = logger.progress(
-          '''Switching back to original Flutter revision $currentFlutterRevision''',
-        );
-        await shorebirdFlutter.useRevision(revision: currentFlutterRevision);
-        flutterVersionProgress.complete();
-      }
-
       await _systemFlutterPubGet();
     }
   }

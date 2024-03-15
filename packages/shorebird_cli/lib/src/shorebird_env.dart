@@ -22,6 +22,11 @@ class ShorebirdEnv {
   const ShorebirdEnv({String? flutterRevisionOverride})
       : _flutterRevisionOverride = flutterRevisionOverride;
 
+  ShorebirdEnv copyWith({String? flutterRevisionOverride}) => ShorebirdEnv(
+        flutterRevisionOverride:
+            flutterRevisionOverride ?? _flutterRevisionOverride,
+      );
+
   final String? _flutterRevisionOverride;
 
   /// The root directory of the Shorebird install.

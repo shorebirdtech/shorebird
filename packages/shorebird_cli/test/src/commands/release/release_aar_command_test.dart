@@ -161,6 +161,16 @@ void main() {
       ).thenReturn('/path/to/flutter');
 
       when(() => shorebirdEnv.getShorebirdYaml()).thenReturn(shorebirdYaml);
+      when(
+        () => shorebirdEnv.copyWith(
+          flutterRevisionOverride: any(named: 'flutterRevisionOverride'),
+        ),
+      ).thenAnswer((invocation) {
+        when(() => shorebirdEnv.flutterRevision).thenReturn(
+          invocation.namedArguments[#flutterRevisionOverride] as String,
+        );
+        return shorebirdEnv;
+      });
       when(() => shorebirdEnv.shorebirdRoot).thenReturn(shorebirdRoot);
       when(
         () => shorebirdEnv.getShorebirdProjectRoot(),
@@ -336,22 +346,23 @@ $exception''',
           when(
             () => shorebirdFlutter.getRevisionForVersion(any()),
           ).thenAnswer((_) async => revision);
-          when(
-            () => shorebirdFlutter.useRevision(
-              revision: any(named: 'revision'),
-            ),
-          ).thenAnswer((_) async {});
         });
 
-        test(
-            'uses specified flutter version to build '
-            'and reverts to original flutter version', () async {
+        test('uses specified flutter version to build', () async {
           setUpProjectRootArtifacts();
+          when(
+            () => shorebirdProcess.run(
+              any(),
+              any(that: containsAll(['build', 'aar'])),
+              runInShell: any(named: 'runInShell'),
+            ),
+          ).thenAnswer((invocation) async {
+            // Ensure we're using the correct flutter revision.
+            expect(shorebirdEnv.flutterRevision, equals(revision));
+            return flutterBuildProcessResult;
+          });
+
           await runWithOverrides(command.run);
-          verifyInOrder([
-            () => shorebirdFlutter.useRevision(revision: revision),
-            () => shorebirdFlutter.useRevision(revision: flutterRevision),
-          ]);
           verify(
             () => codePushClientWrapper.createRelease(
               appId: appId,

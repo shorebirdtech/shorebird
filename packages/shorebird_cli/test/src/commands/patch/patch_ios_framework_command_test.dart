@@ -23,7 +23,6 @@ import 'package:shorebird_cli/src/platform.dart';
 import 'package:shorebird_cli/src/shorebird_artifacts.dart';
 import 'package:shorebird_cli/src/shorebird_build_mixin.dart';
 import 'package:shorebird_cli/src/shorebird_env.dart';
-import 'package:shorebird_cli/src/shorebird_flutter.dart';
 import 'package:shorebird_cli/src/shorebird_process.dart';
 import 'package:shorebird_cli/src/shorebird_validator.dart';
 import 'package:shorebird_cli/src/validators/validators.dart';
@@ -117,7 +116,6 @@ flutter:
     late ShorebirdProcessResult flutterBuildProcessResult;
     late ShorebirdProcessResult flutterPubGetProcessResult;
     late ShorebirdEnv shorebirdEnv;
-    late ShorebirdFlutter shorebirdFlutter;
     late ShorebirdFlutterValidator flutterValidator;
     late ShorebirdProcess shorebirdProcess;
     late ShorebirdValidator shorebirdValidator;
@@ -140,7 +138,6 @@ flutter:
           platformRef.overrideWith(() => platform),
           processRef.overrideWith(() => shorebirdProcess),
           shorebirdEnvRef.overrideWith(() => shorebirdEnv),
-          shorebirdFlutterRef.overrideWith(() => shorebirdFlutter),
           shorebirdValidatorRef.overrideWith(() => shorebirdValidator),
         },
       );
@@ -245,7 +242,6 @@ flutter:
       flutterPubGetProcessResult = MockProcessResult();
       operatingSystemInterface = MockOperatingSystemInterface();
       shorebirdEnv = MockShorebirdEnv();
-      shorebirdFlutter = MockShorebirdFlutter();
       flutterValidator = MockShorebirdFlutterValidator();
       shorebirdProcess = MockShorebirdProcess();
       shorebirdValidator = MockShorebirdValidator();
@@ -333,6 +329,16 @@ flutter:
       ).thenReturn(genSnapshotFile.path);
       when(() => shorebirdEnv.flutterRevision)
           .thenReturn(preLinkerFlutterRevision);
+      when(
+        () => shorebirdEnv.copyWith(
+          flutterRevisionOverride: any(named: 'flutterRevisionOverride'),
+        ),
+      ).thenAnswer((invocation) {
+        when(() => shorebirdEnv.flutterRevision).thenReturn(
+          invocation.namedArguments[#flutterRevisionOverride] as String,
+        );
+        return shorebirdEnv;
+      });
       when(() => shorebirdEnv.isRunningOnCI).thenReturn(false);
       when(
         () => aotBuildProcessResult.exitCode,
@@ -368,13 +374,6 @@ flutter:
           patchArtifactBundles: any(named: 'patchArtifactBundles'),
         ),
       ).thenAnswer((_) async {});
-      when(
-        () => shorebirdFlutter.installRevision(
-          revision: any(named: 'revision'),
-        ),
-      ).thenAnswer((_) async {});
-      when(() => shorebirdFlutter.useRevision(revision: any(named: 'revision')))
-          .thenAnswer((_) async {});
       when(
         () => shorebirdValidator.validatePreconditions(
           checkUserIsAuthenticated: any(named: 'checkUserIsAuthenticated'),
@@ -568,20 +567,48 @@ Please re-run the release command for this version or create a new release.'''),
     });
 
     test(
-        'installs correct flutter revision '
-        'when release flutter revision differs', () async {
+        '''uses release flutter revision if different than default flutter revision''',
+        () async {
       const otherRevision = 'other-revision';
       when(() => shorebirdEnv.flutterRevision).thenReturn(otherRevision);
+      when(
+        () => aotTools.link(
+          base: any(named: 'base'),
+          patch: any(named: 'patch'),
+          analyzeSnapshot: any(named: 'analyzeSnapshot'),
+          workingDirectory: any(named: 'workingDirectory'),
+          outputPath: any(named: 'outputPath'),
+        ),
+      ).thenAnswer((_) async {
+        expect(shorebirdEnv.flutterRevision, equals(preLinkerFlutterRevision));
+      });
+      when(
+        () => shorebirdProcess.run(
+          'flutter',
+          any(),
+          runInShell: any(named: 'runInShell'),
+        ),
+      ).thenAnswer((_) async {
+        expect(shorebirdEnv.flutterRevision, equals(preLinkerFlutterRevision));
+        return flutterBuildProcessResult;
+      });
+      when(
+        () => shorebirdProcess.run(
+          any(that: endsWith('gen_snapshot_arm64')),
+          any(),
+          runInShell: any(named: 'runInShell'),
+        ),
+      ).thenAnswer((_) async {
+        expect(shorebirdEnv.flutterRevision, equals(preLinkerFlutterRevision));
+        return aotBuildProcessResult;
+      });
+
       setUpProjectRoot();
       setUpProjectRootArtifacts();
 
       final exitCode = await runWithOverrides(command.run);
+
       expect(exitCode, equals(ExitCode.success.code));
-      verify(
-        () => shorebirdFlutter.useRevision(
-          revision: preLinkerRelease.flutterRevision,
-        ),
-      ).called(1);
     });
 
     test(
