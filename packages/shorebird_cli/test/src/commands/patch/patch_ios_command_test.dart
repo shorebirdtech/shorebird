@@ -442,8 +442,11 @@ flutter:
       when(() => shorebirdEnv.flutterRevision)
           .thenReturn(preLinkerFlutterRevision);
       when(() => shorebirdEnv.isRunningOnCI).thenReturn(false);
-      when(() => shorebirdFlutter.useRevision(revision: any(named: 'revision')))
-          .thenAnswer((_) async {});
+      when(
+        () => shorebirdFlutter.installRevision(
+          revision: any(named: 'revision'),
+        ),
+      ).thenAnswer((_) async {});
       when(
         () => aotBuildProcessResult.exitCode,
       ).thenReturn(ExitCode.success.code);
@@ -804,12 +807,12 @@ Please re-run the release command for this version or create a new release.'''),
       final exitCode = await runWithOverrides(command.run);
 
       expect(exitCode, ExitCode.success.code);
-      verify(
-        () => shorebirdEnv.copyWith(
-          flutterRevisionOverride: preLinkerFlutterRevision,
-        ),
-      ).called(1);
 
+      when(
+        () => shorebirdFlutter.installRevision(
+          revision: any(named: 'revision'),
+        ),
+      ).thenAnswer((_) async {});
       verify(
         () => logger.info(
           any(

@@ -137,6 +137,12 @@ Please re-run the release command for this version or create a new release.''');
       return ExitCode.software.code;
     }
 
+    final flutterInstallProgress = logger.progress(
+      'Installing Flutter ${release.flutterRevision}',
+    );
+    await shorebirdFlutter.installRevision(revision: release.flutterRevision);
+    flutterInstallProgress.complete();
+
     final releaseFlutterShorebirdEnv = shorebirdEnv.copyWith(
       flutterRevisionOverride: release.flutterRevision,
     );

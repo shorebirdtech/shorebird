@@ -232,8 +232,11 @@ flutter:
       });
       when(() => shorebirdEnv.flutterDirectory).thenReturn(flutterDirectory);
       when(() => shorebirdEnv.flutterRevision).thenReturn(flutterRevision);
-      when(() => shorebirdFlutter.useRevision(revision: any(named: 'revision')))
-          .thenAnswer((_) async {});
+      when(
+        () => shorebirdFlutter.installRevision(
+          revision: any(named: 'revision'),
+        ),
+      ).thenAnswer((_) async {});
       when(
         () => shorebirdProcess.run(
           'flutter',
@@ -877,7 +880,14 @@ Please re-run the release command for this version or create a new release.'''),
       });
       setUpProjectRoot();
       setUpProjectRootArtifacts();
+
       final exitCode = await runWithOverrides(command.run);
+
+      verify(
+        () => shorebirdFlutter.installRevision(
+          revision: release.flutterRevision,
+        ),
+      ).called(1);
       verify(
         () => logger.info(
           any(

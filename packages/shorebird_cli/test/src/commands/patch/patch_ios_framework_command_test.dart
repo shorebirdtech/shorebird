@@ -23,6 +23,7 @@ import 'package:shorebird_cli/src/platform.dart';
 import 'package:shorebird_cli/src/shorebird_artifacts.dart';
 import 'package:shorebird_cli/src/shorebird_build_mixin.dart';
 import 'package:shorebird_cli/src/shorebird_env.dart';
+import 'package:shorebird_cli/src/shorebird_flutter.dart';
 import 'package:shorebird_cli/src/shorebird_process.dart';
 import 'package:shorebird_cli/src/shorebird_validator.dart';
 import 'package:shorebird_cli/src/validators/validators.dart';
@@ -116,6 +117,7 @@ flutter:
     late ShorebirdProcessResult flutterBuildProcessResult;
     late ShorebirdProcessResult flutterPubGetProcessResult;
     late ShorebirdEnv shorebirdEnv;
+    late ShorebirdFlutter shorebirdFlutter;
     late ShorebirdFlutterValidator flutterValidator;
     late ShorebirdProcess shorebirdProcess;
     late ShorebirdValidator shorebirdValidator;
@@ -138,6 +140,7 @@ flutter:
           platformRef.overrideWith(() => platform),
           processRef.overrideWith(() => shorebirdProcess),
           shorebirdEnvRef.overrideWith(() => shorebirdEnv),
+          shorebirdFlutterRef.overrideWith(() => shorebirdFlutter),
           shorebirdValidatorRef.overrideWith(() => shorebirdValidator),
         },
       );
@@ -242,6 +245,7 @@ flutter:
       flutterPubGetProcessResult = MockProcessResult();
       operatingSystemInterface = MockOperatingSystemInterface();
       shorebirdEnv = MockShorebirdEnv();
+      shorebirdFlutter = MockShorebirdFlutter();
       flutterValidator = MockShorebirdFlutterValidator();
       shorebirdProcess = MockShorebirdProcess();
       shorebirdValidator = MockShorebirdValidator();
@@ -322,6 +326,11 @@ flutter:
           artifact: ShorebirdArtifact.analyzeSnapshot,
         ),
       ).thenReturn(analyzeSnapshotFile.path);
+      when(
+        () => shorebirdFlutter.installRevision(
+          revision: any(named: 'revision'),
+        ),
+      ).thenAnswer((_) async {});
       when(
         () => shorebirdArtifacts.getArtifactPath(
           artifact: ShorebirdArtifact.genSnapshot,
@@ -609,6 +618,11 @@ Please re-run the release command for this version or create a new release.'''),
       final exitCode = await runWithOverrides(command.run);
 
       expect(exitCode, equals(ExitCode.success.code));
+      verify(
+        () => shorebirdFlutter.installRevision(
+          revision: preLinkerFlutterRevision,
+        ),
+      ).called(1);
     });
 
     test(
@@ -646,6 +660,7 @@ Please re-run the release command for this version or create a new release.'''),
 
       setUpProjectRoot();
       setUpProjectRootArtifacts();
+
       await runWithOverrides(
         () => runScoped(
           () => command.run(),
@@ -656,6 +671,12 @@ Please re-run the release command for this version or create a new release.'''),
           },
         ),
       );
+
+      verify(
+        () => shorebirdFlutter.installRevision(
+          revision: preLinkerFlutterRevision,
+        ),
+      ).called(1);
       verify(
         () => processWrapper.run(
           flutterFile.path,

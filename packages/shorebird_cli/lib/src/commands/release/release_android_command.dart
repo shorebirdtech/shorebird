@@ -140,6 +140,12 @@ Use `shorebird flutter versions list` to list available versions.
       flutterRevisionForRelease = revision;
     }
 
+    final flutterInstallProgress = logger.progress(
+      'Installing Flutter $flutterRevisionForRelease',
+    );
+    await shorebirdFlutter.installRevision(revision: flutterRevisionForRelease);
+    flutterInstallProgress.complete();
+
     final releaseFlutterShorebirdEnv = shorebirdEnv.copyWith(
       flutterRevisionOverride: flutterRevisionForRelease,
     );

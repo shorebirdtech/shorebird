@@ -20,6 +20,7 @@ import 'package:shorebird_cli/src/patch_diff_checker.dart';
 import 'package:shorebird_cli/src/shorebird_artifact_mixin.dart';
 import 'package:shorebird_cli/src/shorebird_build_mixin.dart';
 import 'package:shorebird_cli/src/shorebird_env.dart';
+import 'package:shorebird_cli/src/shorebird_flutter.dart';
 import 'package:shorebird_cli/src/shorebird_validator.dart';
 import 'package:shorebird_code_push_client/shorebird_code_push_client.dart';
 
@@ -159,9 +160,16 @@ Please re-run the release command for this version or create a new release.''');
       return ExitCode.software.code;
     }
 
+    final flutterInstallProgress = logger.progress(
+      'Installing Flutter ${release.flutterRevision}',
+    );
+    await shorebirdFlutter.installRevision(revision: release.flutterRevision);
+    flutterInstallProgress.complete();
+
     final releaseFlutterShorebirdEnv = shorebirdEnv.copyWith(
       flutterRevisionOverride: release.flutterRevision,
     );
+
     return await runScoped(
       () async {
         final buildNumber = results['build-number'] as String;

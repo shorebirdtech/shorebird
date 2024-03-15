@@ -25,6 +25,7 @@ import 'package:shorebird_cli/src/shorebird_artifact_mixin.dart';
 import 'package:shorebird_cli/src/shorebird_artifacts.dart';
 import 'package:shorebird_cli/src/shorebird_build_mixin.dart';
 import 'package:shorebird_cli/src/shorebird_env.dart';
+import 'package:shorebird_cli/src/shorebird_flutter.dart';
 import 'package:shorebird_cli/src/shorebird_validator.dart';
 import 'package:shorebird_code_push_client/shorebird_code_push_client.dart';
 
@@ -178,9 +179,16 @@ Current Flutter Revision: $currentFlutterRevision
       );
     }
 
+    final flutterInstallProgress = logger.progress(
+      'Installing Flutter ${release.flutterRevision}',
+    );
+    await shorebirdFlutter.installRevision(revision: release.flutterRevision);
+    flutterInstallProgress.complete();
+
     final releaseFlutterShorebirdEnv = shorebirdEnv.copyWith(
       flutterRevisionOverride: release.flutterRevision,
     );
+
     return await runScoped(
       () async {
         if (!hasBuiltWithActiveFlutter ||

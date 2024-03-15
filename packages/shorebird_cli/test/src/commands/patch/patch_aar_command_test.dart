@@ -318,7 +318,9 @@ void main() {
         () => cache.getArtifactDirectory(any()),
       ).thenReturn(Directory.systemTemp.createTempSync());
       when(
-        () => shorebirdFlutter.useRevision(revision: any(named: 'revision')),
+        () => shorebirdFlutter.installRevision(
+          revision: any(named: 'revision'),
+        ),
       ).thenAnswer((_) async {});
       when(
         () => shorebirdValidator.validatePreconditions(
@@ -581,6 +583,11 @@ Please re-run the release command for this version or create a new release.'''),
         ),
       );
 
+      verify(
+        () => shorebirdFlutter.installRevision(
+          revision: release.flutterRevision,
+        ),
+      ).called(1);
       verify(
         () => processWrapper.run(
           flutterFile.path,

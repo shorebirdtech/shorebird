@@ -225,6 +225,11 @@ flutter:
         () => shorebirdFlutter.getVersionAndRevision(),
       ).thenAnswer((_) async => flutterVersionAndRevision);
       when(
+        () => shorebirdFlutter.installRevision(
+          revision: any(named: 'revision'),
+        ),
+      ).thenAnswer((_) async => {});
+      when(
         () => shorebirdProcess.run(
           'flutter',
           ['--no-version-check', 'pub', 'get', '--offline'],
@@ -750,6 +755,9 @@ $exception''',
           });
 
           await runWithOverrides(command.run);
+
+          verify(() => shorebirdFlutter.installRevision(revision: revision))
+              .called(1);
           verify(
             () => codePushClientWrapper.createRelease(
               appId: appId,
