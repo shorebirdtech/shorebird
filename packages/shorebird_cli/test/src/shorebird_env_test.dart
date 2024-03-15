@@ -47,9 +47,20 @@ void main() {
 
     group('copyWith', () {
       test('creates a new instance with the provided values', () {
-        final newEnv = shorebirdEnv.copyWith(flutterRevisionOverride: 'test');
+        final newEnv = runWithOverrides(
+          () => shorebirdEnv.copyWith(flutterRevisionOverride: 'test'),
+        );
         expect(newEnv, isNot(same(shorebirdEnv)));
         expect(newEnv.flutterRevision, equals('test'));
+      });
+
+      test('uses existing values when not provided', () {
+        final newEnv = runWithOverrides(() => shorebirdEnv.copyWith());
+        expect(newEnv, isNot(same(shorebirdEnv)));
+        expect(
+          runWithOverrides(() => newEnv.flutterRevision),
+          equals(flutterRevision),
+        );
       });
     });
 
