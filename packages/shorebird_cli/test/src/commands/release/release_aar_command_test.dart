@@ -361,7 +361,7 @@ $exception''',
               any(that: containsAll(['build', 'aar'])),
               runInShell: any(named: 'runInShell'),
             ),
-          ).thenAnswer((invocation) async {
+          ).thenAnswer((_) async {
             // Ensure we're using the correct flutter revision.
             expect(shorebirdEnv.flutterRevision, equals(revision));
             return flutterBuildProcessResult;
