@@ -38,7 +38,7 @@ class ShorebirdFlutter {
     final version = await getVersionString(revision: revision);
 
     final installProgress =
-        logger.progress('Installing Flutter revision $version ($revision)');
+        logger.progress('Installing Flutter $version ($revision)');
 
     try {
       // Clone the Shorebird Flutter repo into the target directory.
@@ -55,7 +55,7 @@ class ShorebirdFlutter {
       await git.checkout(directory: targetDirectory.path, revision: revision);
     } catch (error) {
       installProgress.fail(
-        'Failed to install Flutter revision $version ($revision)',
+        'Failed to install Flutter $version ($revision)',
       );
       logger.err('$error');
       rethrow;

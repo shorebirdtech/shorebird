@@ -553,12 +553,12 @@ origin/flutter_release/3.10.6''';
         ).called(1);
         verify(
           () => logger.progress(
-            'Installing Flutter revision 3.10.6 (test-revision)',
+            'Installing Flutter 3.10.6 (test-revision)',
           ),
         ).called(1);
         verify(
           () => progress.fail(
-            'Failed to install Flutter revision 3.10.6 (test-revision)',
+            'Failed to install Flutter 3.10.6 (test-revision)',
           ),
         ).called(1);
       });
@@ -572,7 +572,7 @@ origin/flutter_release/3.10.6''';
         );
         verify(
           () => logger.progress(
-            'Installing Flutter revision 3.10.6 (test-revision)',
+            'Installing Flutter 3.10.6 (test-revision)',
           ),
         ).called(1);
         verify(() => progress.complete()).called(1);
