@@ -1,5 +1,4 @@
 import 'dart:io' hide Platform;
-import 'dart:isolate';
 
 import 'package:collection/collection.dart';
 import 'package:crypto/crypto.dart';
@@ -234,29 +233,13 @@ Please re-run the release command for this version or create a new release.''');
           ),
         );
 
-        final currentFlutterRevision = shorebirdEnv.flutterRevision;
         final useLinker = engineConfig.localEngine != null ||
             !preLinkerFlutterRevisions.contains(release.flutterRevision);
         if (useLinker) {
-          // Because aot-tools is versioned with the engine, we need to use the
-          // original Flutter revision to link the patch. We have already switched
-          // to and from the release's Flutter revision before and could
-          // theoretically have just stayed on that revision until after _runLinker,
-          // but this approach makes it less likely that we will leave the user on
-          // a different version of Flutter than they started with if something
-          // goes wrong.
-          if (release.flutterRevision != currentFlutterRevision) {
-            await shorebirdFlutter.useRevision(
-                revision: release.flutterRevision);
-          }
           final exitCode = await _runLinker(
             aotSnapshot: aotSnapshotFile,
             releaseArtifact: releaseArtifactFile,
           );
-          if (release.flutterRevision != currentFlutterRevision) {
-            await shorebirdFlutter.useRevision(
-                revision: currentFlutterRevision);
-          }
           if (exitCode != ExitCode.success.code) {
             return exitCode;
           }

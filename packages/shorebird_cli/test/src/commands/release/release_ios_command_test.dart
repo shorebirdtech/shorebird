@@ -734,11 +734,6 @@ $exception''',
           when(
             () => shorebirdFlutter.getRevisionForVersion(any()),
           ).thenAnswer((_) async => revision);
-          when(
-            () => shorebirdFlutter.useRevision(
-              revision: any(named: 'revision'),
-            ),
-          ).thenAnswer((_) async {});
         });
 
         test('uses specified flutter version to build', () async {
