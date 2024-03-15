@@ -215,16 +215,13 @@ Please re-run the release command for this version or create a new release.''');
           return ExitCode.software.code;
         }
 
-        final extractZip = artifactManager.extractZip;
         final unzipProgress = logger.progress('Extracting release artifact');
-        final releaseXcframeworkPath = await Isolate.run(() async {
-          final tempDir = Directory.systemTemp.createTempSync();
-          await extractZip(
-            zipFile: releaseArtifactZipFile,
-            outputDirectory: tempDir,
-          );
-          return tempDir.path;
-        });
+        final tempDir = Directory.systemTemp.createTempSync();
+        await artifactManager.extractZip(
+          zipFile: releaseArtifactZipFile,
+          outputDirectory: tempDir,
+        );
+        final releaseXcframeworkPath = tempDir.path;
 
         unzipProgress
             .complete('Extracted release artifact to $releaseXcframeworkPath');

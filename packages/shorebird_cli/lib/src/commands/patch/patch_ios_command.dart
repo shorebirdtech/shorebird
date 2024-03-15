@@ -1,6 +1,5 @@
 import 'dart:async';
 import 'dart:io' hide Platform;
-import 'dart:isolate';
 
 import 'package:crypto/crypto.dart';
 import 'package:mason_logger/mason_logger.dart';
@@ -245,16 +244,14 @@ Current Flutter Revision: $currentFlutterRevision
           return ExitCode.software.code;
         }
 
-        final extractZip = artifactManager.extractZip;
         final unzipProgress = logger.progress('Extracting release artifact');
-        final releaseXcarchivePath = await Isolate.run(() async {
-          final tempDir = Directory.systemTemp.createTempSync();
-          await extractZip(
-            zipFile: releaseArtifactZipFile,
-            outputDirectory: tempDir,
-          );
-          return tempDir.path;
-        });
+        final tempDir = Directory.systemTemp.createTempSync();
+        await artifactManager.extractZip(
+          zipFile: releaseArtifactZipFile,
+          outputDirectory: tempDir,
+        );
+        final releaseXcarchivePath = tempDir.path;
+
         unzipProgress.complete();
         final appDirectory = getAppDirectory(
           xcarchiveDirectory: Directory(releaseXcarchivePath),
