@@ -45,6 +45,14 @@ void main() {
       when(() => platform.script).thenReturn(platformScript);
     });
 
+    group('copyWith', () {
+      test('creates a new instance with the provided values', () {
+        final newEnv = shorebirdEnv.copyWith(flutterRevisionOverride: 'test');
+        expect(newEnv, isNot(same(shorebirdEnv)));
+        expect(newEnv.flutterRevision, equals('test'));
+      });
+    });
+
     group('getShorebirdYamlFile', () {
       test('returns correct file', () {
         final tempDir = Directory.systemTemp.createTempSync();
