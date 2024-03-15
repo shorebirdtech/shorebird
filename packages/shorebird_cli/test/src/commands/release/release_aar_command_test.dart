@@ -161,6 +161,16 @@ void main() {
       ).thenReturn('/path/to/flutter');
 
       when(() => shorebirdEnv.getShorebirdYaml()).thenReturn(shorebirdYaml);
+      when(
+        () => shorebirdEnv.copyWith(
+          flutterRevisionOverride: any(named: 'flutterRevisionOverride'),
+        ),
+      ).thenAnswer((invocation) {
+        when(() => shorebirdEnv.flutterRevision).thenReturn(
+          invocation.namedArguments[#flutterRevisionOverride] as String,
+        );
+        return shorebirdEnv;
+      });
       when(() => shorebirdEnv.shorebirdRoot).thenReturn(shorebirdRoot);
       when(
         () => shorebirdEnv.getShorebirdProjectRoot(),
@@ -173,6 +183,11 @@ void main() {
       when(
         () => shorebirdFlutter.getVersionAndRevision(),
       ).thenAnswer((_) async => flutterVersionAndRevision);
+      when(
+        () => shorebirdFlutter.installRevision(
+          revision: any(named: 'revision'),
+        ),
+      ).thenAnswer((_) async => {});
 
       when(
         () => flutterBuildProcessResult.exitCode,
@@ -336,22 +351,26 @@ $exception''',
           when(
             () => shorebirdFlutter.getRevisionForVersion(any()),
           ).thenAnswer((_) async => revision);
-          when(
-            () => shorebirdFlutter.useRevision(
-              revision: any(named: 'revision'),
-            ),
-          ).thenAnswer((_) async {});
         });
 
-        test(
-            'uses specified flutter version to build '
-            'and reverts to original flutter version', () async {
+        test('uses specified flutter version to build', () async {
           setUpProjectRootArtifacts();
+          when(
+            () => shorebirdProcess.run(
+              any(),
+              any(that: containsAll(['build', 'aar'])),
+              runInShell: any(named: 'runInShell'),
+            ),
+          ).thenAnswer((_) async {
+            // Ensure we're using the correct flutter revision.
+            expect(shorebirdEnv.flutterRevision, equals(revision));
+            return flutterBuildProcessResult;
+          });
+
           await runWithOverrides(command.run);
-          verifyInOrder([
-            () => shorebirdFlutter.useRevision(revision: revision),
-            () => shorebirdFlutter.useRevision(revision: flutterRevision),
-          ]);
+
+          verify(() => shorebirdFlutter.installRevision(revision: revision))
+              .called(1);
           verify(
             () => codePushClientWrapper.createRelease(
               appId: appId,
@@ -360,6 +379,26 @@ $exception''',
               platform: releasePlatform,
             ),
           ).called(1);
+        });
+
+        group('when flutter version install fails', () {
+          setUp(() {
+            when(
+              () => shorebirdFlutter.installRevision(
+                revision: any(named: 'revision'),
+              ),
+            ).thenThrow(Exception('oops'));
+          });
+
+          test('exits with code 70', () async {
+            setUpProjectRootArtifacts();
+            final result = await runWithOverrides(command.run);
+
+            expect(result, equals(ExitCode.software.code));
+            verify(
+              () => shorebirdFlutter.installRevision(revision: revision),
+            ).called(1);
+          });
         });
       });
     });

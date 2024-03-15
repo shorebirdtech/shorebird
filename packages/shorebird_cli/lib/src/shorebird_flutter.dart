@@ -5,6 +5,7 @@ import 'package:path/path.dart' as p;
 import 'package:pub_semver/pub_semver.dart';
 import 'package:scoped/scoped.dart';
 import 'package:shorebird_cli/src/executables/executables.dart';
+import 'package:shorebird_cli/src/logger.dart';
 import 'package:shorebird_cli/src/shorebird_env.dart';
 import 'package:shorebird_cli/src/shorebird_process.dart';
 
@@ -34,18 +35,34 @@ class ShorebirdFlutter {
     final targetDirectory = Directory(_workingDirectory(revision: revision));
     if (targetDirectory.existsSync()) return;
 
-    // Clone the Shorebird Flutter repo into the target directory.
-    await git.clone(
-      url: flutterGitUrl,
-      outputDirectory: targetDirectory.path,
-      args: [
-        '--filter=tree:0',
-        '--no-checkout',
-      ],
+    final version = await getVersionString(revision: revision);
+
+    final installProgress = logger.progress(
+      'Installing Flutter $version (${shortRevisionString(revision)})',
     );
 
-    // Checkout the correct revision.
-    await git.checkout(directory: targetDirectory.path, revision: revision);
+    try {
+      // Clone the Shorebird Flutter repo into the target directory.
+      await git.clone(
+        url: flutterGitUrl,
+        outputDirectory: targetDirectory.path,
+        args: [
+          '--filter=tree:0',
+          '--no-checkout',
+        ],
+      );
+
+      // Checkout the correct revision.
+      await git.checkout(directory: targetDirectory.path, revision: revision);
+    } catch (error) {
+      installProgress.fail(
+        'Failed to install Flutter $version (${shortRevisionString(revision)})',
+      );
+      logger.err('$error');
+      rethrow;
+    }
+
+    installProgress.complete();
   }
 
   /// Whether the current revision is unmodified.
@@ -86,6 +103,9 @@ class ShorebirdFlutter {
     return match?.group(1);
   }
 
+  /// Converts a full git revision to a short revision string.
+  String shortRevisionString(String revision) => revision.substring(0, 10);
+
   /// Returns the current Shorebird Flutter version and revision.
   /// Returns unknown if the version check fails.
   Future<String> getVersionAndRevision() async {
@@ -94,16 +114,16 @@ class ShorebirdFlutter {
       version = await getVersionString();
     } catch (_) {}
 
-    return '$version (${shorebirdEnv.flutterRevision.substring(0, 10)})';
+    return '$version (${shortRevisionString(shorebirdEnv.flutterRevision)})';
   }
 
   /// Returns the current Shorebird Flutter version.
   /// Throws a [ProcessException] if the version check fails.
   /// Returns `null` if the version check succeeds but the version cannot be
   /// parsed.
-  Future<String?> getVersionString() async {
+  Future<String?> getVersionString({String? revision}) async {
     final result = await git.forEachRef(
-      contains: shorebirdEnv.flutterRevision,
+      contains: revision ?? shorebirdEnv.flutterRevision,
       format: '%(refname:short)',
       pattern: 'refs/remotes/origin/flutter_release/*',
       directory: _workingDirectory(),
@@ -165,6 +185,10 @@ class ShorebirdFlutter {
 
   Future<void> useRevision({required String revision}) async {
     await installRevision(revision: revision);
+
+    final version = await getVersionString(revision: revision);
+    final useFlutterProgress = logger.progress('Using Flutter $version');
     shorebirdEnv.flutterRevision = revision;
+    useFlutterProgress.complete();
   }
 }

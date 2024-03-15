@@ -327,12 +327,27 @@ flutter:
         ),
       ).thenReturn(analyzeSnapshotFile.path);
       when(
+        () => shorebirdFlutter.installRevision(
+          revision: any(named: 'revision'),
+        ),
+      ).thenAnswer((_) async {});
+      when(
         () => shorebirdArtifacts.getArtifactPath(
           artifact: ShorebirdArtifact.genSnapshot,
         ),
       ).thenReturn(genSnapshotFile.path);
       when(() => shorebirdEnv.flutterRevision)
           .thenReturn(preLinkerFlutterRevision);
+      when(
+        () => shorebirdEnv.copyWith(
+          flutterRevisionOverride: any(named: 'flutterRevisionOverride'),
+        ),
+      ).thenAnswer((invocation) {
+        when(() => shorebirdEnv.flutterRevision).thenReturn(
+          invocation.namedArguments[#flutterRevisionOverride] as String,
+        );
+        return shorebirdEnv;
+      });
       when(() => shorebirdEnv.isRunningOnCI).thenReturn(false);
       when(
         () => aotBuildProcessResult.exitCode,
@@ -368,13 +383,6 @@ flutter:
           patchArtifactBundles: any(named: 'patchArtifactBundles'),
         ),
       ).thenAnswer((_) async {});
-      when(
-        () => shorebirdFlutter.installRevision(
-          revision: any(named: 'revision'),
-        ),
-      ).thenAnswer((_) async {});
-      when(() => shorebirdFlutter.useRevision(revision: any(named: 'revision')))
-          .thenAnswer((_) async {});
       when(
         () => shorebirdValidator.validatePreconditions(
           checkUserIsAuthenticated: any(named: 'checkUserIsAuthenticated'),
@@ -568,18 +576,51 @@ Please re-run the release command for this version or create a new release.'''),
     });
 
     test(
-        'installs correct flutter revision '
-        'when release flutter revision differs', () async {
+        '''uses release flutter revision if different than default flutter revision''',
+        () async {
       const otherRevision = 'other-revision';
       when(() => shorebirdEnv.flutterRevision).thenReturn(otherRevision);
+      when(
+        () => aotTools.link(
+          base: any(named: 'base'),
+          patch: any(named: 'patch'),
+          analyzeSnapshot: any(named: 'analyzeSnapshot'),
+          workingDirectory: any(named: 'workingDirectory'),
+          outputPath: any(named: 'outputPath'),
+        ),
+      ).thenAnswer((_) async {
+        expect(shorebirdEnv.flutterRevision, equals(preLinkerFlutterRevision));
+      });
+      when(
+        () => shorebirdProcess.run(
+          'flutter',
+          any(),
+          runInShell: any(named: 'runInShell'),
+        ),
+      ).thenAnswer((_) async {
+        expect(shorebirdEnv.flutterRevision, equals(preLinkerFlutterRevision));
+        return flutterBuildProcessResult;
+      });
+      when(
+        () => shorebirdProcess.run(
+          any(that: endsWith('gen_snapshot_arm64')),
+          any(),
+          runInShell: any(named: 'runInShell'),
+        ),
+      ).thenAnswer((_) async {
+        expect(shorebirdEnv.flutterRevision, equals(preLinkerFlutterRevision));
+        return aotBuildProcessResult;
+      });
+
       setUpProjectRoot();
       setUpProjectRootArtifacts();
 
       final exitCode = await runWithOverrides(command.run);
+
       expect(exitCode, equals(ExitCode.success.code));
       verify(
-        () => shorebirdFlutter.useRevision(
-          revision: preLinkerRelease.flutterRevision,
+        () => shorebirdFlutter.installRevision(
+          revision: preLinkerFlutterRevision,
         ),
       ).called(1);
     });
@@ -619,6 +660,7 @@ Please re-run the release command for this version or create a new release.'''),
 
       setUpProjectRoot();
       setUpProjectRootArtifacts();
+
       await runWithOverrides(
         () => runScoped(
           () => command.run(),
@@ -629,6 +671,12 @@ Please re-run the release command for this version or create a new release.'''),
           },
         ),
       );
+
+      verify(
+        () => shorebirdFlutter.installRevision(
+          revision: preLinkerFlutterRevision,
+        ),
+      ).called(1);
       verify(
         () => processWrapper.run(
           flutterFile.path,
@@ -638,6 +686,30 @@ Please re-run the release command for this version or create a new release.'''),
           environment: any(named: 'environment'),
         ),
       ).called(1);
+    });
+
+    group('when flutter version install fails', () {
+      setUp(() {
+        when(
+          () => shorebirdFlutter.installRevision(
+            revision: any(named: 'revision'),
+          ),
+        ).thenThrow(Exception('oops'));
+      });
+
+      test('exits with code 70', () async {
+        setUpProjectRoot();
+        setUpProjectRootArtifacts();
+
+        final result = await runWithOverrides(command.run);
+
+        expect(result, equals(ExitCode.software.code));
+        verify(
+          () => shorebirdFlutter.installRevision(
+            revision: preLinkerFlutterRevision,
+          ),
+        ).called(1);
+      });
     });
 
     test('aborts when user opts out', () async {

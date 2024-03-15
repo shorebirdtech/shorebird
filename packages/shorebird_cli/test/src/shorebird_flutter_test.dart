@@ -6,6 +6,7 @@ import 'package:path/path.dart' as p;
 import 'package:pub_semver/pub_semver.dart';
 import 'package:scoped/scoped.dart';
 import 'package:shorebird_cli/src/executables/executables.dart';
+import 'package:shorebird_cli/src/logger.dart';
 import 'package:shorebird_cli/src/shorebird_env.dart';
 import 'package:shorebird_cli/src/shorebird_flutter.dart';
 import 'package:shorebird_cli/src/shorebird_process.dart';
@@ -19,6 +20,8 @@ void main() {
     late Directory shorebirdRoot;
     late Directory flutterDirectory;
     late Git git;
+    late Logger logger;
+    late Progress progress;
     late ShorebirdEnv shorebirdEnv;
     late ShorebirdProcess process;
     late ShorebirdProcessResult processResult;
@@ -29,6 +32,7 @@ void main() {
         body,
         values: {
           gitRef.overrideWith(() => git),
+          loggerRef.overrideWith(() => logger),
           processRef.overrideWith(() => process),
           shorebirdEnvRef.overrideWith(() => shorebirdEnv),
         },
@@ -39,6 +43,8 @@ void main() {
       shorebirdRoot = Directory.systemTemp.createTempSync();
       flutterDirectory = Directory(p.join(shorebirdRoot.path, 'flutter'));
       git = MockGit();
+      logger = MockLogger();
+      progress = MockProgress();
       shorebirdEnv = MockShorebirdEnv();
       process = MockShorebirdProcess();
       processResult = MockShorebirdProcessResult();
@@ -77,6 +83,7 @@ void main() {
           pattern: any(named: 'pattern'),
         ),
       ).thenAnswer((_) async => 'origin/flutter_release/3.10.6');
+      when(() => logger.progress(any())).thenReturn(progress);
       when(() => shorebirdEnv.flutterDirectory).thenReturn(flutterDirectory);
       when(() => shorebirdEnv.flutterRevision).thenReturn(flutterRevision);
       when(
@@ -544,6 +551,16 @@ origin/flutter_release/3.10.6''';
             revision: revision,
           ),
         ).called(1);
+        verify(
+          () => logger.progress(
+            'Installing Flutter 3.10.6 (test-revis)',
+          ),
+        ).called(1);
+        verify(
+          () => progress.fail(
+            'Failed to install Flutter 3.10.6 (test-revis)',
+          ),
+        ).called(1);
       });
 
       test('completes when clone and checkout succeed', () async {
@@ -553,6 +570,12 @@ origin/flutter_release/3.10.6''';
           ),
           completes,
         );
+        verify(
+          () => logger.progress(
+            'Installing Flutter 3.10.6 (test-revis)',
+          ),
+        ).called(1);
+        verify(() => progress.complete()).called(1);
       });
     });
 

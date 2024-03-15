@@ -47,15 +47,9 @@ Usage: shorebird flutter versions use <version>''');
 
     final version = results.rest.first;
     if (_shaRegExp.hasMatch(version)) {
-      final installRevisionProgress = logger.progress(
-        'Installing Flutter $version',
-      );
       try {
         await shorebirdFlutter.useRevision(revision: version);
-        installRevisionProgress.complete();
-      } catch (error) {
-        installRevisionProgress.fail('Failed to install Flutter $version.');
-        logger.err('$error');
+      } catch (_) {
         return ExitCode.software.code;
       }
 
@@ -88,15 +82,9 @@ Use `shorebird flutter versions list` to list available versions.''');
       return ExitCode.software.code;
     }
 
-    final installRevisionProgress = logger.progress(
-      'Installing Flutter $version',
-    );
     try {
       await shorebirdFlutter.useVersion(version: version);
-      installRevisionProgress.complete();
-    } catch (error) {
-      installRevisionProgress.fail('Failed to install Flutter $version.');
-      logger.err('$error');
+    } catch (_) {
       return ExitCode.software.code;
     }
 

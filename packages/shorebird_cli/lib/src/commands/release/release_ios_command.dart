@@ -3,6 +3,7 @@ import 'dart:io' hide Platform;
 import 'package:mason_logger/mason_logger.dart';
 import 'package:path/path.dart' as p;
 import 'package:platform/platform.dart';
+import 'package:scoped/scoped.dart';
 import 'package:shorebird_cli/src/archive_analysis/archive_analysis.dart';
 import 'package:shorebird_cli/src/code_push_client_wrapper.dart';
 import 'package:shorebird_cli/src/command.dart';
@@ -192,160 +193,162 @@ Use `shorebird flutter versions list` to list available versions.
       flutterRevisionForRelease = revision;
     }
 
-    final originalFlutterRevision = shorebirdEnv.flutterRevision;
-    final switchFlutterRevision =
-        flutterRevisionForRelease != originalFlutterRevision;
-
-    if (switchFlutterRevision) {
-      await shorebirdFlutter.useRevision(revision: flutterRevisionForRelease);
+    try {
+      await shorebirdFlutter.installRevision(
+        revision: flutterRevisionForRelease,
+      );
+    } catch (_) {
+      return ExitCode.software.code;
     }
 
-    final flutterVersionString = await shorebirdFlutter.getVersionAndRevision();
-
-    final buildProgress = logger.progress(
-      'Building release with Flutter $flutterVersionString',
+    final releaseFlutterShorebirdEnv = shorebirdEnv.copyWith(
+      flutterRevisionOverride: flutterRevisionForRelease,
     );
 
-    try {
-      await buildIpa(
-        codesign: codesign,
-        exportOptionsPlist: exportOptionsPlist,
-        flavor: flavor,
-        target: target,
-      );
-    } on ProcessException catch (error) {
-      buildProgress.fail('Failed to build: ${error.message}');
-      return ExitCode.software.code;
-    } on BuildException catch (error) {
-      buildProgress.fail('Failed to build');
-      logger.err(error.message);
-      return ExitCode.software.code;
-    } finally {
-      if (switchFlutterRevision) {
-        await shorebirdFlutter.useRevision(revision: originalFlutterRevision);
-      }
-    }
+    return await runScoped(
+      () async {
+        final flutterVersionString =
+            await shorebirdFlutter.getVersionAndRevision();
 
-    buildProgress.complete();
+        final buildProgress = logger.progress(
+          'Building release with Flutter $flutterVersionString',
+        );
 
-    final archiveDirectory = getXcarchiveDirectory();
-    if (archiveDirectory == null) {
-      logger.err('Unable to find .xcarchive directory');
-      return ExitCode.software.code;
-    }
-    final archivePath = archiveDirectory.path;
+        try {
+          await buildIpa(
+            codesign: codesign,
+            exportOptionsPlist: exportOptionsPlist,
+            flavor: flavor,
+            target: target,
+          );
+        } on ProcessException catch (error) {
+          buildProgress.fail('Failed to build: ${error.message}');
+          return ExitCode.software.code;
+        } on BuildException catch (error) {
+          buildProgress.fail('Failed to build');
+          logger.err(error.message);
+          return ExitCode.software.code;
+        }
 
-    final appDirectory = getAppDirectory(xcarchiveDirectory: archiveDirectory);
-    if (appDirectory == null) {
-      logger.err('Unable to find .app directory');
-      return ExitCode.software.code;
-    }
-    final runnerPath = appDirectory.path;
+        buildProgress.complete();
 
-    final plistFile = File(p.join(archivePath, 'Info.plist'));
-    if (!plistFile.existsSync()) {
-      logger.err('No Info.plist file found at ${plistFile.path}.');
-      return ExitCode.software.code;
-    }
+        final archiveDirectory = getXcarchiveDirectory();
+        if (archiveDirectory == null) {
+          logger.err('Unable to find .xcarchive directory');
+          return ExitCode.software.code;
+        }
+        final archivePath = archiveDirectory.path;
 
-    final plist = Plist(file: plistFile);
-    final String releaseVersion;
-    try {
-      releaseVersion = plist.versionNumber;
-    } catch (error) {
-      logger.err(
-        'Failed to determine release version from ${plistFile.path}: $error',
-      );
-      return ExitCode.software.code;
-    }
+        final appDirectory =
+            getAppDirectory(xcarchiveDirectory: archiveDirectory);
+        if (appDirectory == null) {
+          logger.err('Unable to find .app directory');
+          return ExitCode.software.code;
+        }
+        final runnerPath = appDirectory.path;
 
-    final existingRelease = await codePushClientWrapper.maybeGetRelease(
-      appId: appId,
-      releaseVersion: releaseVersion,
-    );
-    if (existingRelease != null) {
-      codePushClientWrapper.ensureReleaseIsNotActive(
-        release: existingRelease,
-        platform: releasePlatform,
-      );
-    }
+        final plistFile = File(p.join(archivePath, 'Info.plist'));
+        if (!plistFile.existsSync()) {
+          logger.err('No Info.plist file found at ${plistFile.path}.');
+          return ExitCode.software.code;
+        }
 
-    final summary = [
-      '''📱 App: ${lightCyan.wrap(app.displayName)} ${lightCyan.wrap('($appId)')}''',
-      if (flavor != null) '🍧 Flavor: ${lightCyan.wrap(flavor)}',
-      '📦 Release Version: ${lightCyan.wrap(releaseVersion)}',
-      '''🕹️  Platform: ${lightCyan.wrap(releasePlatform.name)}''',
-      '🐦 Flutter Version: ${lightCyan.wrap(flutterVersionString)}',
-    ];
+        final plist = Plist(file: plistFile);
+        final String releaseVersion;
+        try {
+          releaseVersion = plist.versionNumber;
+        } catch (error) {
+          logger.err(
+            '''Failed to determine release version from ${plistFile.path}: $error''',
+          );
+          return ExitCode.software.code;
+        }
 
-    logger.info('''
+        final existingRelease = await codePushClientWrapper.maybeGetRelease(
+          appId: appId,
+          releaseVersion: releaseVersion,
+        );
+        if (existingRelease != null) {
+          codePushClientWrapper.ensureReleaseIsNotActive(
+            release: existingRelease,
+            platform: releasePlatform,
+          );
+        }
+
+        final summary = [
+          '''📱 App: ${lightCyan.wrap(app.displayName)} ${lightCyan.wrap('($appId)')}''',
+          if (flavor != null) '🍧 Flavor: ${lightCyan.wrap(flavor)}',
+          '📦 Release Version: ${lightCyan.wrap(releaseVersion)}',
+          '''🕹️  Platform: ${lightCyan.wrap(releasePlatform.name)}''',
+          '🐦 Flutter Version: ${lightCyan.wrap(flutterVersionString)}',
+        ];
+
+        logger.info('''
 
 ${styleBold.wrap(lightGreen.wrap('🚀 Ready to create a new release!'))}
 
 ${summary.join('\n')}
 ''');
 
-    final force = results['force'] == true;
-    final needConfirmation = !force && !shorebirdEnv.isRunningOnCI;
-    if (needConfirmation) {
-      final confirm = logger.confirm('Would you like to continue?');
+        final force = results['force'] == true;
+        final needConfirmation = !force && !shorebirdEnv.isRunningOnCI;
+        if (needConfirmation) {
+          final confirm = logger.confirm('Would you like to continue?');
 
-      if (!confirm) {
-        logger.info('Aborting.');
-        return ExitCode.success.code;
-      }
-    }
+          if (!confirm) {
+            logger.info('Aborting.');
+            return ExitCode.success.code;
+          }
+        }
 
-    final Release release;
-    if (existingRelease != null) {
-      release = existingRelease;
-      await codePushClientWrapper.updateReleaseStatus(
-        appId: appId,
-        releaseId: release.id,
-        platform: releasePlatform,
-        status: ReleaseStatus.draft,
-      );
-    } else {
-      release = await codePushClientWrapper.createRelease(
-        appId: appId,
-        version: releaseVersion,
-        // Intentionally not using shorebirdEnv.flutterRevision here because
-        // the revision may have changed for the build.
-        flutterRevision: flutterRevisionForRelease,
-        platform: releasePlatform,
-      );
-    }
+        final Release release;
+        if (existingRelease != null) {
+          release = existingRelease;
+          await codePushClientWrapper.updateReleaseStatus(
+            appId: appId,
+            releaseId: release.id,
+            platform: releasePlatform,
+            status: ReleaseStatus.draft,
+          );
+        } else {
+          release = await codePushClientWrapper.createRelease(
+            appId: appId,
+            version: releaseVersion,
+            flutterRevision: shorebirdEnv.flutterRevision,
+            platform: releasePlatform,
+          );
+        }
 
-    await codePushClientWrapper.createIosReleaseArtifacts(
-      appId: app.appId,
-      releaseId: release.id,
-      xcarchivePath: archivePath,
-      runnerPath: runnerPath,
-      isCodesigned: codesign,
-    );
+        await codePushClientWrapper.createIosReleaseArtifacts(
+          appId: app.appId,
+          releaseId: release.id,
+          xcarchivePath: archivePath,
+          runnerPath: runnerPath,
+          isCodesigned: codesign,
+        );
 
-    await codePushClientWrapper.updateReleaseStatus(
-      appId: app.appId,
-      releaseId: release.id,
-      platform: releasePlatform,
-      status: ReleaseStatus.active,
-    );
+        await codePushClientWrapper.updateReleaseStatus(
+          appId: app.appId,
+          releaseId: release.id,
+          platform: releasePlatform,
+          status: ReleaseStatus.active,
+        );
 
-    logger.success('\n✅ Published Release ${release.version}!');
+        logger.success('\n✅ Published Release ${release.version}!');
 
-    final relativeArchivePath = p.relative(archivePath);
-    if (codesign) {
-      // Ensure the ipa was built
-      final String ipaPath;
-      try {
-        ipaPath = getIpaPath();
-      } catch (error) {
-        logger.err('Could not find ipa file: $error');
-        return ExitCode.software.code;
-      }
+        final relativeArchivePath = p.relative(archivePath);
+        if (codesign) {
+          // Ensure the ipa was built
+          final String ipaPath;
+          try {
+            ipaPath = getIpaPath();
+          } catch (error) {
+            logger.err('Could not find ipa file: $error');
+            return ExitCode.software.code;
+          }
 
-      final relativeIpaPath = p.relative(ipaPath);
-      logger.info('''
+          final relativeIpaPath = p.relative(ipaPath);
+          logger.info('''
 
 Your next step is to upload your app to App Store Connect.
 
@@ -355,8 +358,8 @@ To upload to the App Store, do one of the following:
     3. Run ${lightCyan.wrap('xcrun altool --upload-app --type ios -f $relativeIpaPath --apiKey your_api_key --apiIssuer your_issuer_id')}.
        See "man altool" for details about how to authenticate with the App Store Connect API key.
 ''');
-    } else {
-      logger.info('''
+        } else {
+          logger.info('''
 
 Your next step is to submit the archive at ${lightCyan.wrap(relativeArchivePath)} to the App Store using Xcode.
 
@@ -365,9 +368,14 @@ You can open the archive in Xcode by running:
 
 ${styleBold.wrap('Make sure to uncheck "Manage Version and Build Number", or else shorebird will not work.')}
 ''');
-    }
+        }
 
-    return ExitCode.success.code;
+        return ExitCode.success.code;
+      },
+      values: {
+        shorebirdEnvRef.overrideWith(() => releaseFlutterShorebirdEnv),
+      },
+    );
   }
 
   /// Verifies that [exportOptionsPlistFile] exists and sets

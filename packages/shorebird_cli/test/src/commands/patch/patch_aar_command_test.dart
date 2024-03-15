@@ -196,6 +196,16 @@ void main() {
       when(() => platform.environment).thenReturn({});
       when(() => shorebirdEnv.shorebirdRoot).thenReturn(shorebirdRoot);
       when(
+        () => shorebirdEnv.copyWith(
+          flutterRevisionOverride: any(named: 'flutterRevisionOverride'),
+        ),
+      ).thenAnswer((invocation) {
+        when(() => shorebirdEnv.flutterRevision).thenReturn(
+          invocation.namedArguments[#flutterRevisionOverride] as String,
+        );
+        return shorebirdEnv;
+      });
+      when(
         () => shorebirdEnv.getShorebirdProjectRoot(),
       ).thenReturn(projectRoot);
       when(() => shorebirdEnv.flutterDirectory).thenReturn(flutterDirectory);
@@ -308,7 +318,9 @@ void main() {
         () => cache.getArtifactDirectory(any()),
       ).thenReturn(Directory.systemTemp.createTempSync());
       when(
-        () => shorebirdFlutter.useRevision(revision: any(named: 'revision')),
+        () => shorebirdFlutter.installRevision(
+          revision: any(named: 'revision'),
+        ),
       ).thenAnswer((_) async {});
       when(
         () => shorebirdValidator.validatePreconditions(
@@ -499,6 +511,29 @@ Please re-run the release command for this version or create a new release.'''),
       expect(exitCode, ExitCode.success.code);
     });
 
+    group('when flutter version install fails', () {
+      setUp(() {
+        when(
+          () => shorebirdFlutter.installRevision(
+            revision: any(named: 'revision'),
+          ),
+        ).thenThrow(Exception('oops'));
+      });
+
+      test('exits with code 70', () async {
+        setUpProjectRootArtifacts();
+
+        final result = await runWithOverrides(command.run);
+
+        expect(result, equals(ExitCode.software.code));
+        verify(
+          () => shorebirdFlutter.installRevision(
+            revision: release.flutterRevision,
+          ),
+        ).called(1);
+      });
+    });
+
     test('exits with code 70 when downloading release artifact fails',
         () async {
       final exception = Exception('oops');
@@ -512,27 +547,6 @@ Please re-run the release command for this version or create a new release.'''),
       final exitCode = await runWithOverrides(command.run);
       verify(() => progress.fail('$exception')).called(1);
       expect(exitCode, ExitCode.software.code);
-    });
-
-    test(
-        'installs correct flutter revision '
-        'when release flutter revision differs', () async {
-      const otherRevision = 'other-revision';
-      when(() => shorebirdEnv.flutterRevision).thenReturn(otherRevision);
-      setUpProjectRootArtifacts();
-
-      final exitCode = await runWithOverrides(command.run);
-      expect(exitCode, equals(ExitCode.success.code));
-      verify(
-        () => logger.progress(
-          'Switching to Flutter revision ${release.flutterRevision}',
-        ),
-      ).called(1);
-      verify(
-        () => shorebirdFlutter.useRevision(
-          revision: release.flutterRevision,
-        ),
-      ).called(1);
     });
 
     test(
@@ -567,7 +581,19 @@ Please re-run the release command for this version or create a new release.'''),
         ),
       );
       when(() => shorebirdEnv.flutterBinaryFile).thenReturn(flutterFile);
+      when(
+        () => shorebirdProcess.run(
+          'flutter',
+          any(),
+          runInShell: any(named: 'runInShell'),
+        ),
+      ).thenAnswer((_) async {
+        // Ensure we're building with the correct flutter revision.
+        expect(shorebirdEnv.flutterRevision, equals(release.flutterRevision));
+        return flutterBuildProcessResult;
+      });
       setUpProjectRootArtifacts();
+
       await runWithOverrides(
         () => runScoped(
           () => command.run(),
@@ -579,6 +605,12 @@ Please re-run the release command for this version or create a new release.'''),
           },
         ),
       );
+
+      verify(
+        () => shorebirdFlutter.installRevision(
+          revision: release.flutterRevision,
+        ),
+      ).called(1);
       verify(
         () => processWrapper.run(
           flutterFile.path,

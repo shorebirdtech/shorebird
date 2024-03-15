@@ -5,6 +5,7 @@ import 'package:archive/archive_io.dart';
 import 'package:io/io.dart' show copyPath;
 import 'package:mason_logger/mason_logger.dart';
 import 'package:path/path.dart' as p;
+import 'package:scoped/scoped.dart';
 import 'package:shorebird_cli/src/code_push_client_wrapper.dart';
 import 'package:shorebird_cli/src/command.dart';
 import 'package:shorebird_cli/src/config/config.dart';
@@ -138,116 +139,120 @@ Use `shorebird flutter versions list` to list available versions.
       flutterRevisionForRelease = revision;
     }
 
-    final originalFlutterRevision = shorebirdEnv.flutterRevision;
-    final switchFlutterRevision =
-        flutterRevisionForRelease != originalFlutterRevision;
-
-    if (switchFlutterRevision) {
-      await shorebirdFlutter.useRevision(revision: flutterRevisionForRelease);
+    try {
+      await shorebirdFlutter.installRevision(
+        revision: flutterRevisionForRelease,
+      );
+    } catch (_) {
+      return ExitCode.software.code;
     }
 
-    final flutterVersionString = await shorebirdFlutter.getVersionAndRevision();
-
-    final buildProgress = logger.progress(
-      'Building release with Flutter $flutterVersionString',
+    final releaseFlutterShorebirdEnv = shorebirdEnv.copyWith(
+      flutterRevisionOverride: flutterRevisionForRelease,
     );
 
-    try {
-      await buildAar(buildNumber: buildNumber);
-    } on ProcessException catch (error) {
-      buildProgress.fail('Failed to build: ${error.message}');
-      return ExitCode.software.code;
-    } finally {
-      if (switchFlutterRevision) {
-        await shorebirdFlutter.useRevision(revision: originalFlutterRevision);
-      }
-    }
-    buildProgress.complete();
+    return await runScoped(
+      () async {
+        final flutterVersionString =
+            await shorebirdFlutter.getVersionAndRevision();
 
-    final archNames = architectures.keys.map((arch) => arch.name);
-    final summary = [
-      '''📱 App: ${lightCyan.wrap(app.displayName)} ${lightCyan.wrap('(${app.appId})')}''',
-      '📦 Release Version: ${lightCyan.wrap(releaseVersion)}',
-      '''🕹️  Platform: ${lightCyan.wrap(platform.name)} ${lightCyan.wrap('(${archNames.join(', ')})')}''',
-      '🐦 Flutter Version: ${lightCyan.wrap(flutterVersionString)}',
-    ];
+        final buildProgress = logger.progress(
+          'Building release with Flutter $flutterVersionString',
+        );
 
-    logger.info('''
+        try {
+          await buildAar(buildNumber: buildNumber);
+        } on ProcessException catch (error) {
+          buildProgress.fail('Failed to build: ${error.message}');
+          return ExitCode.software.code;
+        }
+        buildProgress.complete();
+
+        final archNames = architectures.keys.map((arch) => arch.name);
+        final summary = [
+          '''📱 App: ${lightCyan.wrap(app.displayName)} ${lightCyan.wrap('(${app.appId})')}''',
+          '📦 Release Version: ${lightCyan.wrap(releaseVersion)}',
+          '''🕹️  Platform: ${lightCyan.wrap(platform.name)} ${lightCyan.wrap('(${archNames.join(', ')})')}''',
+          '🐦 Flutter Version: ${lightCyan.wrap(flutterVersionString)}',
+        ];
+
+        logger.info('''
 
 ${styleBold.wrap(lightGreen.wrap('🚀 Ready to create a new release!'))}
 
 ${summary.join('\n')}
 ''');
 
-    final force = results['force'] == true;
-    final needConfirmation = !force;
-    if (needConfirmation) {
-      final confirm = logger.confirm('Would you like to continue?');
+        final force = results['force'] == true;
+        final needConfirmation = !force;
+        if (needConfirmation) {
+          final confirm = logger.confirm('Would you like to continue?');
 
-      if (!confirm) {
-        logger.info('Aborting.');
-        return ExitCode.success.code;
-      }
-    }
+          if (!confirm) {
+            logger.info('Aborting.');
+            return ExitCode.success.code;
+          }
+        }
 
-    final Release release;
-    if (existingRelease != null) {
-      release = existingRelease;
-      await codePushClientWrapper.updateReleaseStatus(
-        appId: appId,
-        releaseId: release.id,
-        platform: platform,
-        status: ReleaseStatus.draft,
-      );
-    } else {
-      release = await codePushClientWrapper.createRelease(
-        appId: appId,
-        version: releaseVersion,
-        // Intentionally not using shorebirdEnv.flutterRevision here because
-        // the revision may have changed for the build.
-        flutterRevision: flutterRevisionForRelease,
-        platform: platform,
-      );
-    }
+        final Release release;
+        if (existingRelease != null) {
+          release = existingRelease;
+          await codePushClientWrapper.updateReleaseStatus(
+            appId: appId,
+            releaseId: release.id,
+            platform: platform,
+            status: ReleaseStatus.draft,
+          );
+        } else {
+          release = await codePushClientWrapper.createRelease(
+            appId: appId,
+            version: releaseVersion,
+            flutterRevision: shorebirdEnv.flutterRevision,
+            platform: platform,
+          );
+        }
 
-    // Copy release AAR to a new directory to avoid overwriting with subsequent
-    // patch builds.
-    final sourceLibraryDirectory = Directory(aarLibraryPath);
-    final targetLibraryDirectory = Directory(
-      p.join(shorebirdEnv.getShorebirdProjectRoot()!.path, 'release'),
-    );
-    await copyPath(sourceLibraryDirectory.path, targetLibraryDirectory.path);
+        // Copy release AAR to a new directory to avoid overwriting with
+        // subsequent patch builds.
+        final sourceLibraryDirectory = Directory(aarLibraryPath);
+        final targetLibraryDirectory = Directory(
+          p.join(shorebirdEnv.getShorebirdProjectRoot()!.path, 'release'),
+        );
+        await copyPath(
+          sourceLibraryDirectory.path,
+          targetLibraryDirectory.path,
+        );
 
-    final extractAarProgress = logger.progress('Creating artifacts');
-    final extractedAarDir = await extractAar(
-      packageName: shorebirdEnv.androidPackageName!,
-      buildNumber: buildNumber,
-      unzipFn: _unzipFn,
-    );
-    extractAarProgress.complete();
+        final extractAarProgress = logger.progress('Creating artifacts');
+        final extractedAarDir = await extractAar(
+          packageName: shorebirdEnv.androidPackageName!,
+          buildNumber: buildNumber,
+          unzipFn: _unzipFn,
+        );
+        extractAarProgress.complete();
 
-    await codePushClientWrapper.createAndroidArchiveReleaseArtifacts(
-      appId: app.appId,
-      releaseId: release.id,
-      platform: platform,
-      aarPath: aarArtifactPath(
-        packageName: shorebirdEnv.androidPackageName!,
-        buildNumber: buildNumber,
-      ),
-      extractedAarDir: extractedAarDir,
-      architectures: architectures,
-    );
+        await codePushClientWrapper.createAndroidArchiveReleaseArtifacts(
+          appId: app.appId,
+          releaseId: release.id,
+          platform: platform,
+          aarPath: aarArtifactPath(
+            packageName: shorebirdEnv.androidPackageName!,
+            buildNumber: buildNumber,
+          ),
+          extractedAarDir: extractedAarDir,
+          architectures: architectures,
+        );
 
-    await codePushClientWrapper.updateReleaseStatus(
-      appId: app.appId,
-      releaseId: release.id,
-      platform: platform,
-      status: ReleaseStatus.active,
-    );
+        await codePushClientWrapper.updateReleaseStatus(
+          appId: app.appId,
+          releaseId: release.id,
+          platform: platform,
+          status: ReleaseStatus.active,
+        );
 
-    logger
-      ..success('\n✅ Published Release ${release.version}!')
-      ..info('''
+        logger
+          ..success('\n✅ Published Release ${release.version}!')
+          ..info('''
 
 Your next steps:
 
@@ -281,6 +286,11 @@ dependencies {
 }''')}
 ''');
 
-    return ExitCode.success.code;
+        return ExitCode.success.code;
+      },
+      values: {
+        shorebirdEnvRef.overrideWith(() => releaseFlutterShorebirdEnv),
+      },
+    );
   }
 }
