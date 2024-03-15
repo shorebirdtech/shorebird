@@ -459,6 +459,50 @@ origin/flutter_release/3.10.6''';
           ),
         );
       });
+
+      group('lsRemoteHeads', () {
+        final directory = Directory('repository');
+        const output = '''
+
+origin/flutter_release/3.10.0
+origin/flutter_release/3.10.1
+origin/flutter_release/3.10.2
+origin/flutter_release/3.10.3
+origin/flutter_release/3.10.4
+origin/flutter_release/3.10.5
+origin/flutter_release/3.10.6''';
+        test('executes correct command', () async {
+          when(() => processResult.stdout).thenReturn(output);
+          await expectLater(
+            runWithOverrides(
+              () => git.lsRemoteHeads(directory: directory),
+            ),
+            completion(equals(output.trim().split(Platform.lineTerminator))),
+          );
+          verify(
+            () => process.run(
+              'git',
+              ['ls-remote', '--heads'],
+              workingDirectory: directory.path,
+            ),
+          ).called(1);
+        });
+
+        test('throws ProcessException if process exits with error', () async {
+          const error = 'oops';
+          when(() => processResult.exitCode).thenReturn(ExitCode.software.code);
+          when(() => processResult.stderr).thenReturn(error);
+          expect(
+            () => runWithOverrides(
+              () => git.lsRemoteHeads(directory: directory),
+            ),
+            throwsA(
+              isA<ProcessException>()
+                  .having((e) => e.message, 'message', error),
+            ),
+          );
+        });
+      });
     });
   });
 }

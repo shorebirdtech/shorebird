@@ -6,6 +6,7 @@ import 'package:path/path.dart' as p;
 import 'package:pub_semver/pub_semver.dart';
 import 'package:scoped/scoped.dart';
 import 'package:shorebird_cli/src/executables/executables.dart';
+import 'package:shorebird_cli/src/logger.dart';
 import 'package:shorebird_cli/src/shorebird_env.dart';
 import 'package:shorebird_cli/src/shorebird_flutter.dart';
 import 'package:shorebird_cli/src/shorebird_process.dart';
@@ -19,6 +20,8 @@ void main() {
     late Directory shorebirdRoot;
     late Directory flutterDirectory;
     late Git git;
+    late Logger logger;
+    late Progress progress;
     late ShorebirdEnv shorebirdEnv;
     late ShorebirdProcess process;
     late ShorebirdProcessResult processResult;
@@ -29,6 +32,7 @@ void main() {
         body,
         values: {
           gitRef.overrideWith(() => git),
+          loggerRef.overrideWith(() => logger),
           processRef.overrideWith(() => process),
           shorebirdEnvRef.overrideWith(() => shorebirdEnv),
         },
@@ -39,6 +43,8 @@ void main() {
       shorebirdRoot = Directory.systemTemp.createTempSync();
       flutterDirectory = Directory(p.join(shorebirdRoot.path, 'flutter'));
       git = MockGit();
+      logger = MockLogger();
+      progress = MockProgress();
       shorebirdEnv = MockShorebirdEnv();
       process = MockShorebirdProcess();
       processResult = MockShorebirdProcessResult();
@@ -77,6 +83,15 @@ void main() {
           pattern: any(named: 'pattern'),
         ),
       ).thenAnswer((_) async => 'origin/flutter_release/3.10.6');
+      when(
+        () => git.lsRemoteHeads(directory: any(named: 'directory')),
+      ).thenAnswer(
+        (_) async => [
+          'flutter-revision refs/heads/flutter_release/3.10.6',
+          'test-revision refs/heads/flutter_release/3.10.7',
+        ],
+      );
+      when(() => logger.progress(any())).thenReturn(progress);
       when(() => shorebirdEnv.flutterDirectory).thenReturn(flutterDirectory);
       when(() => shorebirdEnv.flutterRevision).thenReturn(flutterRevision);
       when(
@@ -397,6 +412,46 @@ $revision
       });
     });
 
+    group('getVersionForRevision', () {
+      const output = [
+        '8679396700d040e779463461c7c79ba08d130209	refs/heads/flutter_release/3.19.0',
+        '9d3f4fcf6f9adf1e4951e0b35adde89ca1be5899	refs/heads/flutter_release/3.19.0-0.4.pre',
+        'f6e79dd6ccfd36e5d2b7a289bd37cb5236c7fed7	refs/heads/flutter_release/3.19.1',
+        '5b9d29d67adb059103beefb65710ee3dabae2f85	refs/heads/flutter_release/3.19.2',
+        'a6d1747d7f573b2ba2e2b96db1b76ed2f3f024da	refs/heads/flutter_release/3.19.3',
+        '8dd30c5c027a440d15696d3bc48d01dd47d9aab7	refs/heads/fuchsia_r49',
+        'afda8153fd2d2c32c8495ad008d6c25fa8203df1	refs/heads/fuchsia_r51',
+        '7673108d7eeebd9d1558535ea7a1cf94877a0c4e	refs/heads/fuchsia_r51a',
+      ];
+
+      setUp(() {
+        when(() => git.lsRemoteHeads(directory: any(named: 'directory')))
+            .thenAnswer((_) async => output);
+      });
+
+      test('returns null if revision not found', () async {
+        await expectLater(
+          runWithOverrides(
+            () => shorebirdFlutter.getVersionForRevision('not-a-revision'),
+          ),
+          completion(isNull),
+        );
+        verify(() => git.lsRemoteHeads(directory: flutterDirectory)).called(1);
+      });
+
+      test('returns version if revision is found', () async {
+        await expectLater(
+          runWithOverrides(
+            () => shorebirdFlutter.getVersionForRevision(
+              '5b9d29d67adb059103beefb65710ee3dabae2f85',
+            ),
+          ),
+          completion('3.19.2'),
+        );
+        verify(() => git.lsRemoteHeads(directory: flutterDirectory)).called(1);
+      });
+    });
+
     group('getVersions', () {
       const format = '%(refname:short)';
       const pattern = 'refs/remotes/origin/flutter_release/*';
@@ -544,6 +599,16 @@ origin/flutter_release/3.10.6''';
             revision: revision,
           ),
         ).called(1);
+        verify(
+          () => logger.progress(
+            'Installing Flutter revision 3.10.7 (test-revision)',
+          ),
+        ).called(1);
+        verify(
+          () => progress.fail(
+            'Failed to install Flutter revision 3.10.7 (test-revision)',
+          ),
+        ).called(1);
       });
 
       test('completes when clone and checkout succeed', () async {
@@ -553,6 +618,12 @@ origin/flutter_release/3.10.6''';
           ),
           completes,
         );
+        verify(
+          () => logger.progress(
+            'Installing Flutter revision 3.10.7 (test-revision)',
+          ),
+        ).called(1);
+        verify(() => progress.complete()).called(1);
       });
     });
 

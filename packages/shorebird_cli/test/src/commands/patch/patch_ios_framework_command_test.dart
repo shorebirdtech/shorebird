@@ -688,6 +688,30 @@ Please re-run the release command for this version or create a new release.'''),
       ).called(1);
     });
 
+    group('when flutter version install fails', () {
+      setUp(() {
+        when(
+          () => shorebirdFlutter.installRevision(
+            revision: any(named: 'revision'),
+          ),
+        ).thenThrow(Exception('oops'));
+      });
+
+      test('exits with code 70', () async {
+        setUpProjectRoot();
+        setUpProjectRootArtifacts();
+
+        final result = await runWithOverrides(command.run);
+
+        expect(result, equals(ExitCode.software.code));
+        verify(
+          () => shorebirdFlutter.installRevision(
+            revision: preLinkerFlutterRevision,
+          ),
+        ).called(1);
+      });
+    });
+
     test('aborts when user opts out', () async {
       when(() => logger.confirm(any())).thenReturn(false);
       setUpProjectRoot();

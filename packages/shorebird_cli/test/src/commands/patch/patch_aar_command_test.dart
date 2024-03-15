@@ -511,6 +511,29 @@ Please re-run the release command for this version or create a new release.'''),
       expect(exitCode, ExitCode.success.code);
     });
 
+    group('when flutter version install fails', () {
+      setUp(() {
+        when(
+          () => shorebirdFlutter.installRevision(
+            revision: any(named: 'revision'),
+          ),
+        ).thenThrow(Exception('oops'));
+      });
+
+      test('exits with code 70', () async {
+        setUpProjectRootArtifacts();
+
+        final result = await runWithOverrides(command.run);
+
+        expect(result, equals(ExitCode.software.code));
+        verify(
+          () => shorebirdFlutter.installRevision(
+            revision: release.flutterRevision,
+          ),
+        ).called(1);
+      });
+    });
+
     test('exits with code 70 when downloading release artifact fails',
         () async {
       final exception = Exception('oops');

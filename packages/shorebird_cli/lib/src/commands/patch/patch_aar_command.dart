@@ -160,11 +160,11 @@ Please re-run the release command for this version or create a new release.''');
       return ExitCode.software.code;
     }
 
-    final flutterInstallProgress = logger.progress(
-      'Installing Flutter ${release.flutterRevision}',
-    );
-    await shorebirdFlutter.installRevision(revision: release.flutterRevision);
-    flutterInstallProgress.complete();
+    try {
+      await shorebirdFlutter.installRevision(revision: release.flutterRevision);
+    } catch (_) {
+      return ExitCode.software.code;
+    }
 
     final releaseFlutterShorebirdEnv = shorebirdEnv.copyWith(
       flutterRevisionOverride: release.flutterRevision,

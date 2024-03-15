@@ -762,6 +762,25 @@ $exception''',
             ),
           ).called(1);
         });
+
+        group('when flutter version install fails', () {
+          setUp(() {
+            when(
+              () => shorebirdFlutter.installRevision(
+                revision: any(named: 'revision'),
+              ),
+            ).thenThrow(Exception('oops'));
+          });
+
+          test('exits with code 70', () async {
+            final result = await runWithOverrides(command.run);
+
+            expect(result, equals(ExitCode.software.code));
+            verify(
+              () => shorebirdFlutter.installRevision(revision: revision),
+            ).called(1);
+          });
+        });
       });
     });
 

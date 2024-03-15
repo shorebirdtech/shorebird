@@ -5,6 +5,7 @@ import 'package:path/path.dart' as p;
 import 'package:pub_semver/pub_semver.dart';
 import 'package:scoped/scoped.dart';
 import 'package:shorebird_cli/src/executables/executables.dart';
+import 'package:shorebird_cli/src/logger.dart';
 import 'package:shorebird_cli/src/shorebird_env.dart';
 import 'package:shorebird_cli/src/shorebird_process.dart';
 
@@ -34,18 +35,33 @@ class ShorebirdFlutter {
     final targetDirectory = Directory(_workingDirectory(revision: revision));
     if (targetDirectory.existsSync()) return;
 
-    // Clone the Shorebird Flutter repo into the target directory.
-    await git.clone(
-      url: flutterGitUrl,
-      outputDirectory: targetDirectory.path,
-      args: [
-        '--filter=tree:0',
-        '--no-checkout',
-      ],
-    );
+    final version = await getVersionForRevision(revision);
 
-    // Checkout the correct revision.
-    await git.checkout(directory: targetDirectory.path, revision: revision);
+    final installProgress =
+        logger.progress('Installing Flutter revision $version ($revision)');
+
+    try {
+      // Clone the Shorebird Flutter repo into the target directory.
+      await git.clone(
+        url: flutterGitUrl,
+        outputDirectory: targetDirectory.path,
+        args: [
+          '--filter=tree:0',
+          '--no-checkout',
+        ],
+      );
+
+      // Checkout the correct revision.
+      await git.checkout(directory: targetDirectory.path, revision: revision);
+    } catch (error) {
+      installProgress.fail(
+        'Failed to install Flutter revision $version ($revision)',
+      );
+      logger.err('$error');
+      rethrow;
+    }
+
+    installProgress.complete();
   }
 
   /// Whether the current revision is unmodified.
@@ -143,6 +159,23 @@ class ShorebirdFlutter {
     return LineSplitter.split(result).toList().firstOrNull;
   }
 
+  /// Returns the Flutter version for [revision].
+  ///
+  /// If [revision] is the HEAD of a branch in the Shorebird Flutter repo, the
+  /// version is returned. Otherwise, `null` is returned.
+  Future<String?> getVersionForRevision(String revision) async {
+    final refHeads = await git.lsRemoteHeads(
+      directory: shorebirdEnv.flutterDirectory,
+    );
+    for (final line in refHeads) {
+      if (line.startsWith(revision)) {
+        return line.split('/').last;
+      }
+    }
+
+    return null;
+  }
+
   Future<List<String>> getVersions({String? revision}) async {
     final result = await git.forEachRef(
       format: '%(refname:short)',
@@ -165,6 +198,10 @@ class ShorebirdFlutter {
 
   Future<void> useRevision({required String revision}) async {
     await installRevision(revision: revision);
+
+    final version = await getVersionForRevision(revision);
+    final useFlutterProgress = logger.progress('Using Flutter $version');
     shorebirdEnv.flutterRevision = revision;
+    useFlutterProgress.complete();
   }
 }
