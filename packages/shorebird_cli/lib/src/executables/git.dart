@@ -133,15 +133,4 @@ class Git {
     final result = await git(['status', ...?args], workingDirectory: directory);
     return '${result.stdout}'.trim();
   }
-
-  /// Runs `git ls-remote --heads` in [directory]. Returns output lines as a
-  /// list of strings. Used to find the HEAD revisions of all branches.
-  Future<List<String>> lsRemoteHeads({Directory? directory}) async {
-    final result = await git(
-      ['ls-remote', '--heads'],
-      workingDirectory: directory?.path,
-    );
-    final stdout = result.stdout as String;
-    return LineSplitter.split(stdout.trim()).toList();
-  }
 }

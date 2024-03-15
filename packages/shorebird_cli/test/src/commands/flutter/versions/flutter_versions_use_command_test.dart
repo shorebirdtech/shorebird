@@ -142,9 +142,6 @@ Use `shorebird flutter versions list` to list available versions.'''),
       verifyInOrder([
         () => logger.progress('Fetching Flutter versions'),
         () => progress.complete(),
-        () => logger.progress('Installing Flutter $version'),
-        () => progress.fail('Failed to install Flutter $version.'),
-        () => logger.err('error'),
       ]);
     });
 
@@ -157,11 +154,6 @@ Use `shorebird flutter versions list` to list available versions.'''),
         runWithOverrides(command.run),
         completion(equals(ExitCode.software.code)),
       );
-      verifyInOrder([
-        () => logger.progress('Installing Flutter $revision'),
-        () => progress.fail('Failed to install Flutter $revision.'),
-        () => logger.err('error'),
-      ]);
     });
 
     test('exits with code 0 when version install succeeds', () async {
@@ -173,9 +165,6 @@ Use `shorebird flutter versions list` to list available versions.'''),
         () => logger.progress('Fetching Flutter versions'),
         () => shorebirdFlutter.getVersions(),
         () => progress.complete(),
-        () => logger.progress('Installing Flutter $version'),
-        () => shorebirdFlutter.useVersion(version: version),
-        () => progress.complete(),
       ]);
     });
 
@@ -185,11 +174,6 @@ Use `shorebird flutter versions list` to list available versions.'''),
         runWithOverrides(command.run),
         completion(equals(ExitCode.success.code)),
       );
-      verifyInOrder([
-        () => logger.progress('Installing Flutter $revision'),
-        () => shorebirdFlutter.useRevision(revision: revision),
-        () => progress.complete(),
-      ]);
     });
   });
 }

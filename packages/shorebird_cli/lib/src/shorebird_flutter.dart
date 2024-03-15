@@ -35,7 +35,7 @@ class ShorebirdFlutter {
     final targetDirectory = Directory(_workingDirectory(revision: revision));
     if (targetDirectory.existsSync()) return;
 
-    final version = await getVersionForRevision(revision);
+    final version = await getVersionString(revision: revision);
 
     final installProgress =
         logger.progress('Installing Flutter revision $version ($revision)');
@@ -117,9 +117,9 @@ class ShorebirdFlutter {
   /// Throws a [ProcessException] if the version check fails.
   /// Returns `null` if the version check succeeds but the version cannot be
   /// parsed.
-  Future<String?> getVersionString() async {
+  Future<String?> getVersionString({String? revision}) async {
     final result = await git.forEachRef(
-      contains: shorebirdEnv.flutterRevision,
+      contains: revision ?? shorebirdEnv.flutterRevision,
       format: '%(refname:short)',
       pattern: 'refs/remotes/origin/flutter_release/*',
       directory: _workingDirectory(),
@@ -159,23 +159,6 @@ class ShorebirdFlutter {
     return LineSplitter.split(result).toList().firstOrNull;
   }
 
-  /// Returns the Flutter version for [revision].
-  ///
-  /// If [revision] is the HEAD of a branch in the Shorebird Flutter repo, the
-  /// version is returned. Otherwise, `null` is returned.
-  Future<String?> getVersionForRevision(String revision) async {
-    final refHeads = await git.lsRemoteHeads(
-      directory: shorebirdEnv.flutterDirectory,
-    );
-    for (final line in refHeads) {
-      if (line.startsWith(revision)) {
-        return line.split('/').last;
-      }
-    }
-
-    return null;
-  }
-
   Future<List<String>> getVersions({String? revision}) async {
     final result = await git.forEachRef(
       format: '%(refname:short)',
@@ -199,7 +182,7 @@ class ShorebirdFlutter {
   Future<void> useRevision({required String revision}) async {
     await installRevision(revision: revision);
 
-    final version = await getVersionForRevision(revision);
+    final version = await getVersionString(revision: revision);
     final useFlutterProgress = logger.progress('Using Flutter $version');
     shorebirdEnv.flutterRevision = revision;
     useFlutterProgress.complete();
