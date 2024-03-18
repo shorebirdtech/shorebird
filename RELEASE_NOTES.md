@@ -2,6 +2,13 @@
 
 This section contains past updates we've sent to customers via Discord.
 
+## 0.26.7 (March 18, 2024)
+
+🐦 Support for Flutter 3.19.3
+🩹 Fixes an issue where the wrong version of Flutter was being used for some patches
+
+📚 Release notes can be found at https://github.com/shorebirdtech/shorebird/releases/tag/v0.26.7
+
 ## 0.26.6 (March 14, 2024)
 
 📝 Update iOS hybrid app workflow to use signed xcframeworks to comply with
