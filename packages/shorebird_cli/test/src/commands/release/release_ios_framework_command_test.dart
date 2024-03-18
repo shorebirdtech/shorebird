@@ -164,7 +164,7 @@ flutter:
       when(
         () => shorebirdEnv.getShorebirdProjectRoot(),
       ).thenReturn(projectRoot);
-      when(() => shorebirdEnv.isRunningOnCI).thenReturn(true);
+      when(() => shorebirdEnv.isRunningOnCI).thenReturn(false);
       when(() => shorebirdEnv.flutterRevision).thenReturn(flutterRevision);
       when(
         () => shorebirdFlutter.getVersionAndRevision(),
