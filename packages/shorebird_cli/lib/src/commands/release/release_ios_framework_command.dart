@@ -32,12 +32,6 @@ of the iOS app that is using this module.''',
       ..addOption(
         'flutter-version',
         help: 'The Flutter version to use when building the app (e.g: 3.16.3).',
-      )
-      ..addFlag(
-        'force',
-        abbr: 'f',
-        help: 'Release without confirmation if there are no errors.',
-        negatable: false,
       );
   }
 
@@ -162,9 +156,8 @@ ${styleBold.wrap(lightGreen.wrap('🚀 Ready to create a new release!'))}
 ${summary.join('\n')}
 ''');
 
-        final force = results['force'] == true;
-        final needConfirmation = !force;
-        if (needConfirmation) {
+        final needsConfirmation = !shorebirdEnv.isRunningOnCI;
+        if (needsConfirmation) {
           final confirm = logger.confirm('Would you like to continue?');
 
           if (!confirm) {

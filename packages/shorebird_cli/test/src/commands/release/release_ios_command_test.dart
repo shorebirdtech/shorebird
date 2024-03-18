@@ -974,30 +974,6 @@ error: exportArchive: No signing certificate "iOS Distribution" found
       ).called(1);
     });
 
-    test(
-        'does not prompt for confirmation '
-        'when --release-version and --force are used', () async {
-      when(() => argResults['force']).thenReturn(true);
-      when(() => argResults['release-version']).thenReturn(version);
-      setUpProjectRoot();
-
-      final exitCode = await runWithOverrides(command.run);
-
-      verify(() => logger.success('\n✅ Published Release $version!')).called(1);
-      expect(exitCode, ExitCode.success.code);
-      verifyNever(
-        () => logger.prompt(any(), defaultValue: any(named: 'defaultValue')),
-      );
-      verify(
-        () => codePushClientWrapper.updateReleaseStatus(
-          appId: appId,
-          releaseId: release.id,
-          platform: releasePlatform,
-          status: ReleaseStatus.active,
-        ),
-      ).called(1);
-    });
-
     test('succeeds when release is successful', () async {
       setUpProjectRoot();
 

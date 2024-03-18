@@ -63,12 +63,6 @@ class ReleaseIosCommand extends ShorebirdCommand
         'codesign',
         help: 'Codesign the application bundle.',
         defaultsTo: true,
-      )
-      ..addFlag(
-        'force',
-        abbr: 'f',
-        help: 'Release without confirmation if there are no errors.',
-        negatable: false,
       );
   }
 
@@ -290,8 +284,7 @@ ${styleBold.wrap(lightGreen.wrap('🚀 Ready to create a new release!'))}
 ${summary.join('\n')}
 ''');
 
-        final force = results['force'] == true;
-        final needConfirmation = !force && !shorebirdEnv.isRunningOnCI;
+        final needConfirmation = !shorebirdEnv.isRunningOnCI;
         if (needConfirmation) {
           final confirm = logger.confirm('Would you like to continue?');
 

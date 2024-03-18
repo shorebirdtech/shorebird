@@ -245,13 +245,12 @@ class CodePushClient {
   Future<Patch> createPatch({
     required String appId,
     required int releaseId,
-    required bool wasForced,
     required bool hasAssetChanges,
     required bool hasNativeChanges,
   }) async {
     final request = CreatePatchRequest(
       releaseId: releaseId,
-      wasForced: wasForced,
+      wasForced: false,
       hasAssetChanges: hasAssetChanges,
       hasNativeChanges: hasNativeChanges,
     );

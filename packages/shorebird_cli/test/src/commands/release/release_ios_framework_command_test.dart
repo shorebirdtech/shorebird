@@ -164,6 +164,7 @@ flutter:
       when(
         () => shorebirdEnv.getShorebirdProjectRoot(),
       ).thenReturn(projectRoot);
+      when(() => shorebirdEnv.isRunningOnCI).thenReturn(true);
       when(() => shorebirdEnv.flutterRevision).thenReturn(flutterRevision);
       when(
         () => shorebirdFlutter.getVersionAndRevision(),
@@ -189,7 +190,6 @@ flutter:
         ),
       ).thenAnswer((_) async => flutterBuildProcessResult);
       when(() => argResults['release-version']).thenReturn(version);
-      when(() => argResults['force']).thenReturn(false);
       when(() => argResults.rest).thenReturn([]);
       when(() => auth.isAuthenticated).thenReturn(true);
       when(() => doctor.iosCommandValidators).thenReturn([flutterValidator]);
@@ -445,10 +445,8 @@ $exception''',
       );
     });
 
-    test(
-        'does not prompt for confirmation '
-        'when --release-version and --force are used', () async {
-      when(() => argResults['force']).thenReturn(true);
+    test('does not prompt for confirmation when running on CI', () async {
+      when(() => shorebirdEnv.isRunningOnCI).thenReturn(true);
       when(() => argResults['release-version']).thenReturn(version);
       setUpProjectRoot();
 

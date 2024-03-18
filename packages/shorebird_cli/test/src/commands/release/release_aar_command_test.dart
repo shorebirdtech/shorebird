@@ -179,6 +179,7 @@ void main() {
         () => shorebirdEnv.androidPackageName,
       ).thenReturn(androidPackageName);
       when(() => shorebirdEnv.flutterRevision).thenReturn(flutterRevision);
+      when(() => shorebirdEnv.isRunningOnCI).thenReturn(false);
 
       when(
         () => shorebirdFlutter.getVersionAndRevision(),
@@ -440,8 +441,8 @@ $exception''',
       verify(() => logger.info('Aborting.')).called(1);
     });
 
-    test('does not prompt for confirmation when --force is used', () async {
-      when(() => argResults['force']).thenReturn(true);
+    test('does not prompt for confirmation when running on CI', () async {
+      when(() => shorebirdEnv.isRunningOnCI).thenReturn(true);
       setUpProjectRootArtifacts();
       final exitCode = await runWithOverrides(command.run);
       expect(exitCode, ExitCode.success.code);

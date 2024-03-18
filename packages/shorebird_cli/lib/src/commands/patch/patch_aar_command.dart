@@ -52,9 +52,17 @@ of the Android app that is using this module.''',
         mandatory: true,
       )
       ..addFlag(
-        'force',
-        abbr: 'f',
-        help: 'Patch without confirmation if there are no errors.',
+        'allow-native-diffs',
+        help: '''
+Patch even if native code diffs are detected.
+NOTE: this is **not** recommended.''',
+        negatable: false,
+      )
+      ..addFlag(
+        'allow-asset-diffs',
+        help: '''
+Patch even if asset diffs are detected
+NOTE: this is **not** recommended.''',
         negatable: false,
       )
       ..addFlag(
@@ -87,13 +95,9 @@ of the Android app that is using this module.''',
       return e.exitCode.code;
     }
 
-    final force = results['force'] == true;
     final dryRun = results['dry-run'] == true;
-
-    if (force && dryRun) {
-      logger.err('Cannot use both --force and --dry-run.');
-      return ExitCode.usage.code;
-    }
+    final allowAssetDiffs = results['allow-asset-diffs'] == true;
+    final allowNativeDiffs = results['allow-native-diffs'] == true;
 
     await cache.updateAll();
 
@@ -201,8 +205,8 @@ Please re-run the release command for this version or create a new release.''');
             releaseArtifact: await artifactManager
                 .downloadFile(Uri.parse(releaseAarArtifact.url)),
             archiveDiffer: _archiveDiffer,
-            allowAssetChanges: force,
-            allowNativeChanges: force,
+            allowAssetChanges: allowAssetDiffs,
+            allowNativeChanges: allowNativeDiffs,
           );
         } on UserCancelledException {
           return ExitCode.success.code;
@@ -248,7 +252,7 @@ ${summary.join('\n')}
 ''',
         );
 
-        final needsConfirmation = !force && !shorebirdEnv.isRunningOnCI;
+        final needsConfirmation = !shorebirdEnv.isRunningOnCI;
         if (needsConfirmation) {
           final confirm = logger.confirm('Would you like to continue?');
 
@@ -261,7 +265,6 @@ ${summary.join('\n')}
         await codePushClientWrapper.publishPatch(
           appId: appId,
           releaseId: release.id,
-          wasForced: force,
           hasAssetChanges: diffStatus.hasAssetChanges,
           hasNativeChanges: diffStatus.hasNativeChanges,
           platform: platform,
