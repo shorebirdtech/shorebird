@@ -278,7 +278,8 @@ Looked in:
             localArtifact: File(bundlePath),
             releaseArtifact: releaseAabArtifactFile,
             archiveDiffer: _archiveDiffer,
-            force: force,
+            allowAssetChanges: force,
+            allowNativeChanges: force,
           );
         } on UserCancelledException {
           return ExitCode.success.code;
