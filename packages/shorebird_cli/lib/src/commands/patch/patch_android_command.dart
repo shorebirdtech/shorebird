@@ -209,6 +209,29 @@ Current Flutter Revision: $currentFlutterRevision
           }
         }
 
+        final patchArchsBuildDir = ArtifactManager.androidArchsDirectory(
+          projectRoot: projectRoot,
+          flavor: flavor,
+        );
+
+        if (patchArchsBuildDir == null) {
+          logger
+            ..err('Cannot find patch build artifacts.')
+            ..info(
+              '''
+Please run `shorebird cache clean` and try again. If the issue persists, please
+file a bug report at https://github.com/shorebirdtech/shorebird/issues/new.
+
+Looked in:
+  - build/app/intermediates/stripped_native_libs/stripReleaseDebugSymbols/release/out/lib
+  - build/app/intermediates/stripped_native_libs/strip{flavor}ReleaseDebugSymbols/{flavor}Release/out/lib
+  - build/app/intermediates/stripped_native_libs/release/out/lib
+  - build/app/intermediates/stripped_native_libs/{flavor}Release/out/lib''',
+            );
+
+          return ExitCode.software.code;
+        }
+
         final releaseArtifacts =
             await codePushClientWrapper.getReleaseArtifacts(
           appId: app.appId,
@@ -266,18 +289,10 @@ Current Flutter Revision: $currentFlutterRevision
 
         final patchArtifactBundles = <Arch, PatchArtifactBundle>{};
         final createDiffProgress = logger.progress('Creating artifacts');
-
         for (final releaseArtifactPath in releaseArtifactPaths.entries) {
           final archMetadata = architectures[releaseArtifactPath.key]!;
           final patchArtifactPath = p.join(
-            projectRoot.path,
-            'build',
-            'app',
-            'intermediates',
-            'stripped_native_libs',
-            flavor != null ? '${flavor}Release' : 'release',
-            'out',
-            'lib',
+            patchArchsBuildDir.path,
             archMetadata.path,
             'libapp.so',
           );

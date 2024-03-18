@@ -9,6 +9,7 @@ import 'package:meta/meta.dart';
 import 'package:path/path.dart' as p;
 import 'package:scoped/scoped.dart';
 import 'package:shorebird_cli/src/archive/directory_archive.dart';
+import 'package:shorebird_cli/src/artifact_manager.dart';
 import 'package:shorebird_cli/src/auth/auth.dart';
 import 'package:shorebird_cli/src/deployment_track.dart';
 import 'package:shorebird_cli/src/logger.dart';
@@ -369,16 +370,32 @@ Please create a release using "shorebird release" and try again.
     String? flavor,
   }) async {
     final createArtifactProgress = logger.progress('Creating artifacts');
+    final archsDir = ArtifactManager.androidArchsDirectory(
+      projectRoot: Directory(projectRoot),
+      flavor: flavor,
+    );
+
+    if (archsDir == null) {
+      _handleErrorAndExit(
+        Exception('Cannot find patch build artifacts.'),
+        progress: createArtifactProgress,
+        message: '''
+Cannot find release build artifacts.
+
+Please run `shorebird cache clean` and try again. If the issue persists, please
+file a bug report at https://github.com/shorebirdtech/shorebird/issues/new.
+
+Looked in:
+  - build/app/intermediates/stripped_native_libs/stripReleaseDebugSymbols/release/out/lib
+  - build/app/intermediates/stripped_native_libs/strip{flavor}ReleaseDebugSymbols/{flavor}Release/out/lib
+  - build/app/intermediates/stripped_native_libs/release/out/lib
+  - build/app/intermediates/stripped_native_libs/{flavor}Release/out/lib''',
+      );
+    }
+
     for (final archMetadata in architectures.values) {
       final artifactPath = p.join(
-        projectRoot,
-        'build',
-        'app',
-        'intermediates',
-        'stripped_native_libs',
-        flavor != null ? '${flavor}Release' : 'release',
-        'out',
-        'lib',
+        archsDir.path,
         archMetadata.path,
         'libapp.so',
       );

@@ -191,5 +191,155 @@ void main() {
         expect(tempDir.listSync(recursive: true), hasLength(146));
       });
     });
+
+    group('androidArchsDirectory', () {
+      late Directory projectRoot;
+      late Directory strippedNativeLibsDirectory;
+
+      setUp(() {
+        projectRoot = Directory.systemTemp.createTempSync();
+        strippedNativeLibsDirectory = Directory(
+          p.join(
+            projectRoot.path,
+            'build',
+            'app',
+            'intermediates',
+            'stripped_native_libs',
+          ),
+        )..createSync(recursive: true);
+      });
+
+      group('without flavor', () {
+        setUp(() {});
+
+        test('returns null if no directories exist at the expected paths', () {
+          final result = ArtifactManager.androidArchsDirectory(
+            projectRoot: projectRoot,
+          );
+
+          expect(result, isNull);
+        });
+
+        test('returns a path containing stripReleaseDebugSymbols if it exists',
+            () {
+          final stripNativeDebugLibsDirectory = Directory(
+            p.join(
+              strippedNativeLibsDirectory.path,
+              'release',
+              'stripReleaseDebugSymbols',
+              'out',
+              'lib',
+            ),
+          )..createSync(recursive: true);
+
+          // Create paths with and without the stripReleaseDebugSymbols
+          // directory to ensure the method returns the correct path when both
+          // exist.
+          Directory(
+            p.join(
+              strippedNativeLibsDirectory.path,
+              'release',
+              'out',
+              'lib',
+            ),
+          ).createSync(recursive: true);
+
+          final result = ArtifactManager.androidArchsDirectory(
+            projectRoot: projectRoot,
+          );
+
+          expect(result, isNotNull);
+          expect(result!.path, equals(stripNativeDebugLibsDirectory.path));
+        });
+
+        test(
+            '''returns a path not containing stripReleaseDebugSymbols no path containing stripReleaseDebugSymbols exists''',
+            () {
+          final noStripReleaseDebugSymbolsPath = Directory(
+            p.join(
+              strippedNativeLibsDirectory.path,
+              'release',
+              'out',
+              'lib',
+            ),
+          )..createSync(recursive: true);
+
+          final result = ArtifactManager.androidArchsDirectory(
+            projectRoot: projectRoot,
+          );
+
+          expect(result, isNotNull);
+          expect(result!.path, equals(noStripReleaseDebugSymbolsPath.path));
+        });
+      });
+
+      group('with a flavor named "internal"', () {
+        const flavor = 'internal';
+
+        test('returns null if no directories exist at the expected paths', () {
+          final result = ArtifactManager.androidArchsDirectory(
+            projectRoot: projectRoot,
+            flavor: flavor,
+          );
+
+          expect(result, isNull);
+        });
+
+        test(
+            '''returns a path containing stripInternalReleaseDebugSymbols if it exists''',
+            () {
+          final stripNativeDebugLibsDirectory = Directory(
+            p.join(
+              strippedNativeLibsDirectory.path,
+              'internalRelease',
+              'stripInternalReleaseDebugSymbols',
+              'out',
+              'lib',
+            ),
+          )..createSync(recursive: true);
+
+          // Create paths with and without the stripReleaseDebugSymbols
+          // directory to ensure the method returns the correct path when both
+          // exist.
+          Directory(
+            p.join(
+              strippedNativeLibsDirectory.path,
+              'internalRelease',
+              'out',
+              'lib',
+            ),
+          ).createSync(recursive: true);
+
+          final result = ArtifactManager.androidArchsDirectory(
+            projectRoot: projectRoot,
+            flavor: flavor,
+          );
+
+          expect(result, isNotNull);
+          expect(result!.path, equals(stripNativeDebugLibsDirectory.path));
+        });
+
+        test(
+            '''returns a path not containing stripInternalReleaseDebugSymbols no path containing stripInternalReleaseDebugSymbols exists''',
+            () {
+          final noStripReleaseDebugSymbolsPath = Directory(
+            p.join(
+              strippedNativeLibsDirectory.path,
+              'internalRelease',
+              'out',
+              'lib',
+            ),
+          )..createSync(recursive: true);
+
+          final result = ArtifactManager.androidArchsDirectory(
+            projectRoot: projectRoot,
+            flavor: flavor,
+          );
+
+          expect(result, isNotNull);
+          expect(result!.path, equals(noStripReleaseDebugSymbolsPath.path));
+        });
+      });
+    });
   });
 }
