@@ -1025,6 +1025,28 @@ Please bump your version number and try again.''',
           ).thenAnswer((_) async {});
         });
 
+        test('exits with code 70 when artifacts cannot be found', () async {
+          await expectLater(
+            () async => runWithOverrides(
+              () async => codePushClientWrapper.createAndroidReleaseArtifacts(
+                appId: app.appId,
+                releaseId: releaseId,
+                platform: releasePlatform,
+                projectRoot: projectRoot.path,
+                aabPath: p.join(projectRoot.path, aabPath),
+                architectures: ShorebirdBuildMixin.allAndroidArchitectures,
+              ),
+            ),
+            exitsWithCode(ExitCode.software),
+          );
+
+          verify(
+            () => progress.fail(
+              any(that: contains('Cannot find release build artifacts')),
+            ),
+          ).called(1);
+        });
+
         test('exits with code 70 when artifact creation fails', () async {
           const error = 'something went wrong';
           when(

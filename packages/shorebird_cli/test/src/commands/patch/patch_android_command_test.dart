@@ -432,6 +432,20 @@ flutter:
       expect(exitCode, equals(ExitCode.software.code));
     });
 
+    test('exits with code 70 when build artifacts cannot be found', () async {
+      final exitCode = await runWithOverrides(command.run);
+
+      expect(exitCode, equals(ExitCode.software.code));
+      verify(() => logger.err('Cannot find patch build artifacts.')).called(1);
+      verify(
+        () => logger.info(
+          any(
+            that: contains('Please run `shorebird cache clean` and try again'),
+          ),
+        ),
+      ).called(1);
+    });
+
     test(
         '''exits with code 70 if release is in draft state for the android platform''',
         () async {

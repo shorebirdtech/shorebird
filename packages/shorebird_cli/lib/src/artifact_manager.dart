@@ -91,4 +91,71 @@ Failed to create diff (exit code ${result.exitCode}).
       extractArchiveToDisk(archive, outputDirectory.path);
     });
   }
+
+  /// Returns the path to the directory containing the architecture-specific
+  /// libraries for the given [flavor] (if provided). Will return null if no
+  /// directory is found in the expected locations.
+  /// Expected locations are:
+  /// - `build/app/intermediates/stripped_native_libs/stripReleaseDebugSymbols/release/out/lib`
+  /// - `build/app/intermediates/stripped_native_libs/strip{flavor}ReleaseDebugSymbols/{flavor}Release/out/lib`
+  /// - `build/app/intermediates/stripped_native_libs/release/out/lib`
+  /// - `build/app/intermediates/stripped_native_libs/{flavor}Release/out/lib`
+  static Directory? androidArchsDirectory({
+    required Directory projectRoot,
+    String? flavor,
+  }) {
+    final releasePath = p.join(
+      projectRoot.path,
+      'build',
+      'app',
+      'intermediates',
+      'stripped_native_libs',
+      flavor != null ? '${flavor}Release' : 'release',
+    );
+
+    final String stripReleaseDebugSymbolsDirName;
+    if (flavor != null) {
+      // Capitalize the first letter of the flavor name.
+      final flavorName =
+          flavor.substring(0, 1).toUpperCase() + flavor.substring(1);
+      stripReleaseDebugSymbolsDirName = 'strip${flavorName}ReleaseDebugSymbols';
+    } else {
+      stripReleaseDebugSymbolsDirName = 'stripReleaseDebugSymbols';
+    }
+
+    // An upgrade in the `com.android.application` Gradle plugin from 7.3.0 to
+    // 8.3.0 introduced an extra directory layer named
+    // "strip{flavor}ReleaseDebugSymbols". We check first for the new
+    // directory and then fallback to the old one.
+    //
+    // See https://github.com/shorebirdtech/shorebird/issues/1798
+    final strippedSymbolsDir = Directory(
+      p.join(
+        releasePath,
+        stripReleaseDebugSymbolsDirName,
+      ),
+    );
+
+    final Directory archsDirectory;
+    if (strippedSymbolsDir.existsSync()) {
+      archsDirectory = Directory(
+        p.join(
+          strippedSymbolsDir.path,
+          'out',
+          'lib',
+        ),
+      );
+    } else {
+      // If the new path doesn't exist, fallback to the old path.
+      archsDirectory = Directory(
+        p.join(
+          releasePath,
+          'out',
+          'lib',
+        ),
+      );
+    }
+
+    return archsDirectory.existsSync() ? archsDirectory : null;
+  }
 }
