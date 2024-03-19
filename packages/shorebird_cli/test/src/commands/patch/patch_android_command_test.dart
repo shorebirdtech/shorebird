@@ -12,7 +12,7 @@ import 'package:shorebird_cli/src/artifact_manager.dart';
 import 'package:shorebird_cli/src/auth/auth.dart';
 import 'package:shorebird_cli/src/cache.dart' show Cache, cacheRef;
 import 'package:shorebird_cli/src/code_push_client_wrapper.dart';
-import 'package:shorebird_cli/src/commands/patch/patch_android_command.dart';
+import 'package:shorebird_cli/src/commands/commands.dart';
 import 'package:shorebird_cli/src/config/config.dart';
 import 'package:shorebird_cli/src/deployment_track.dart';
 import 'package:shorebird_cli/src/doctor.dart';
@@ -410,6 +410,20 @@ flutter:
           validators: [flutterValidator],
         ),
       ).called(1);
+    });
+
+    test('exits with explanation if force flag is used', () async {
+      when(() => argResults['force']).thenReturn(true);
+
+      await expectLater(
+        runWithOverrides(command.run),
+        completion(equals(ExitCode.usage.code)),
+      );
+
+      verify(() => logger.err(PatchCommand.forceDeprecationErrorMessage))
+          .called(1);
+      verify(() => logger.info(PatchCommand.forceDeprecationExplanation))
+          .called(1);
     });
 
     test('exits with code 70 when building fails', () async {

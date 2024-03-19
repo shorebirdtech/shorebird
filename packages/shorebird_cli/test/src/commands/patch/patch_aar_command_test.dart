@@ -380,6 +380,20 @@ void main() {
       expect(exitCode, ExitCode.config.code);
     });
 
+    test('exits with explanation if force flag is used', () async {
+      when(() => argResults['force']).thenReturn(true);
+
+      await expectLater(
+        runWithOverrides(command.run),
+        completion(equals(ExitCode.usage.code)),
+      );
+
+      verify(() => logger.err(PatchCommand.forceDeprecationErrorMessage))
+          .called(1);
+      verify(() => logger.info(PatchCommand.forceDeprecationExplanation))
+          .called(1);
+    });
+
     test('prompts for release when release-version is not specified', () async {
       when(() => argResults['release-version']).thenReturn(null);
       when(

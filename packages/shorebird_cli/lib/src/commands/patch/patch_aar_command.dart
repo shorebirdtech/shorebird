@@ -12,6 +12,7 @@ import 'package:shorebird_cli/src/artifact_manager.dart';
 import 'package:shorebird_cli/src/cache.dart';
 import 'package:shorebird_cli/src/code_push_client_wrapper.dart';
 import 'package:shorebird_cli/src/command.dart';
+import 'package:shorebird_cli/src/commands/patch/patch.dart';
 import 'package:shorebird_cli/src/config/config.dart';
 import 'package:shorebird_cli/src/deployment_track.dart';
 import 'package:shorebird_cli/src/formatters/file_size_formatter.dart';
@@ -52,17 +53,19 @@ of the Android app that is using this module.''',
         mandatory: true,
       )
       ..addFlag(
+        'force',
+        abbr: 'f',
+        help: PatchCommand.forceHelpText,
+        negatable: false,
+      )
+      ..addFlag(
         'allow-native-diffs',
-        help: '''
-Patch even if native code diffs are detected.
-NOTE: this is **not** recommended.''',
+        help: PatchCommand.allowNativeDiffsHelpText,
         negatable: false,
       )
       ..addFlag(
         'allow-asset-diffs',
-        help: '''
-Patch even if asset diffs are detected
-NOTE: this is **not** recommended.''',
+        help: PatchCommand.allowAssetDiffsHelpText,
         negatable: false,
       )
       ..addFlag(
@@ -93,6 +96,14 @@ NOTE: this is **not** recommended.''',
       );
     } on PreconditionFailedException catch (e) {
       return e.exitCode.code;
+    }
+
+    final force = results['force'] == true;
+    if (force) {
+      logger
+        ..err(PatchCommand.forceDeprecationErrorMessage)
+        ..info(PatchCommand.forceDeprecationExplanation);
+      return ExitCode.usage.code;
     }
 
     final dryRun = results['dry-run'] == true;

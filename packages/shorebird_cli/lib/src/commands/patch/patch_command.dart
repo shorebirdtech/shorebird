@@ -14,6 +14,32 @@ class PatchCommand extends ShorebirdCommand {
     addSubcommand(PatchIosFrameworkCommand());
   }
 
+  static const forceHelpText = '''
+**Deprecated**
+
+If your app has known safe native code or asset changes, you can use the
+--allow-native-diffs or --allow-asset-diffs flags instead. We do not recommend
+using these flags unless you are *absolutely* sure that the changes are safe.
+''';
+
+  static const allowNativeDiffsHelpText = '''
+Patch even if native code diffs are detected.
+NOTE: this is **not** recommended.''';
+
+  static const allowAssetDiffsHelpText = '''
+Patch even if asset diffs are detected.
+NOTE: this is **not** recommended.''';
+
+  static const forceDeprecationErrorMessage =
+      'The --force flag has been deprecated';
+
+  static const forceDeprecationExplanation = '''
+If your app has known safe native code or asset changes, you can use the
+--allow-native-diffs or --allow-asset-diffs flags. We do not recommend using
+these flags unless you are *absolutely* sure that the changes are safe.
+
+Note: the --force flag is not required for use in CI environments.''';
+
   @override
   String get description =>
       'Manage patches for a specific release in Shorebird.';
