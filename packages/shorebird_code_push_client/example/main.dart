@@ -43,7 +43,6 @@ Future<void> main() async {
   final patch = await client.createPatch(
     appId: app.id,
     releaseId: release.id,
-    wasForced: false,
     hasAssetChanges: false,
     hasNativeChanges: false,
   );

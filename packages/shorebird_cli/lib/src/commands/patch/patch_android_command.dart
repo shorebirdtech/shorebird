@@ -10,6 +10,7 @@ import 'package:shorebird_cli/src/artifact_manager.dart';
 import 'package:shorebird_cli/src/cache.dart';
 import 'package:shorebird_cli/src/code_push_client_wrapper.dart';
 import 'package:shorebird_cli/src/command.dart';
+import 'package:shorebird_cli/src/commands/commands.dart';
 import 'package:shorebird_cli/src/config/shorebird_yaml.dart';
 import 'package:shorebird_cli/src/deployment_track.dart';
 import 'package:shorebird_cli/src/doctor.dart';
@@ -57,7 +58,17 @@ If this option is not provided, the version number will be determined from the p
       ..addFlag(
         'force',
         abbr: 'f',
-        help: 'Patch without confirmation if there are no errors.',
+        help: PatchCommand.forceHelpText,
+        negatable: false,
+      )
+      ..addFlag(
+        'allow-native-diffs',
+        help: PatchCommand.allowNativeDiffsHelpText,
+        negatable: false,
+      )
+      ..addFlag(
+        'allow-asset-diffs',
+        help: PatchCommand.allowAssetDiffsHelpText,
         negatable: false,
       )
       ..addFlag(
@@ -96,13 +107,17 @@ If this option is not provided, the version number will be determined from the p
     }
 
     final force = results['force'] == true;
-    final dryRun = results['dry-run'] == true;
-    final isStaging = results['staging'] == true;
-
-    if (force && dryRun) {
-      logger.err('Cannot use both --force and --dry-run.');
+    if (force) {
+      logger
+        ..err(PatchCommand.forceDeprecationErrorMessage)
+        ..info(PatchCommand.forceDeprecationExplanation);
       return ExitCode.usage.code;
     }
+
+    final allowAssetDiffs = results['allow-asset-diffs'] == true;
+    final allowNativeDiffs = results['allow-native-diffs'] == true;
+    final dryRun = results['dry-run'] == true;
+    final isStaging = results['staging'] == true;
 
     await cache.updateAll();
 
@@ -278,8 +293,8 @@ Looked in:
             localArtifact: File(bundlePath),
             releaseArtifact: releaseAabArtifactFile,
             archiveDiffer: _archiveDiffer,
-            allowAssetChanges: force,
-            allowNativeChanges: force,
+            allowAssetChanges: allowAssetDiffs,
+            allowNativeChanges: allowNativeDiffs,
           );
         } on UserCancelledException {
           return ExitCode.success.code;
@@ -351,7 +366,7 @@ ${summary.join('\n')}
 ''',
         );
 
-        final needsConfirmation = !force && !shorebirdEnv.isRunningOnCI;
+        final needsConfirmation = !shorebirdEnv.isRunningOnCI;
         if (needsConfirmation) {
           final confirm = logger.confirm('Would you like to continue?');
 
@@ -364,7 +379,6 @@ ${summary.join('\n')}
         await codePushClientWrapper.publishPatch(
           appId: appId,
           releaseId: release.id,
-          wasForced: force,
           hasAssetChanges: diffStatus.hasAssetChanges,
           hasNativeChanges: diffStatus.hasNativeChanges,
           platform: platform,

@@ -292,6 +292,20 @@ void main() {
       ).called(1);
     });
 
+    test('exits with explanation if force flag is used', () async {
+      when(() => argResults['force']).thenReturn(true);
+
+      await expectLater(
+        runWithOverrides(command.run),
+        completion(equals(ExitCode.usage.code)),
+      );
+
+      verify(() => logger.err(ReleaseCommand.forceDeprecationErrorMessage))
+          .called(1);
+      verify(() => logger.info(ReleaseCommand.forceDeprecationExplanation))
+          .called(1);
+    });
+
     test('exits with code unavailable when --split-per-abi is provided',
         () async {
       when(() => argResults['artifact']).thenReturn('apk');
@@ -450,21 +464,6 @@ $exception''',
           platform: any(named: 'platform'),
           status: any(named: 'status'),
         ),
-      );
-    });
-
-    test(
-        'does not prompt for confirmation '
-        'when --release-version and --force are used', () async {
-      when(() => argResults['force']).thenReturn(true);
-      when(() => argResults['release-version']).thenReturn(version);
-      final exitCode = await runWithOverrides(command.run);
-      verify(
-        () => logger.success('\n✅ Published Release $version!'),
-      ).called(1);
-      expect(exitCode, ExitCode.success.code);
-      verifyNever(
-        () => logger.prompt(any(), defaultValue: any(named: 'defaultValue')),
       );
     });
 

@@ -164,6 +164,7 @@ flutter:
       when(
         () => shorebirdEnv.getShorebirdProjectRoot(),
       ).thenReturn(projectRoot);
+      when(() => shorebirdEnv.isRunningOnCI).thenReturn(false);
       when(() => shorebirdEnv.flutterRevision).thenReturn(flutterRevision);
       when(
         () => shorebirdFlutter.getVersionAndRevision(),
@@ -189,7 +190,6 @@ flutter:
         ),
       ).thenAnswer((_) async => flutterBuildProcessResult);
       when(() => argResults['release-version']).thenReturn(version);
-      when(() => argResults['force']).thenReturn(false);
       when(() => argResults.rest).thenReturn([]);
       when(() => auth.isAuthenticated).thenReturn(true);
       when(() => doctor.iosCommandValidators).thenReturn([flutterValidator]);
@@ -284,6 +284,20 @@ flutter:
           supportedOperatingSystems: {Platform.macOS},
         ),
       ).called(1);
+    });
+
+    test('exits with explanation if force flag is used', () async {
+      when(() => argResults['force']).thenReturn(true);
+
+      await expectLater(
+        runWithOverrides(command.run),
+        completion(equals(ExitCode.usage.code)),
+      );
+
+      verify(() => logger.err(ReleaseCommand.forceDeprecationErrorMessage))
+          .called(1);
+      verify(() => logger.info(ReleaseCommand.forceDeprecationExplanation))
+          .called(1);
     });
 
     group('when flutter-version is provided', () {
@@ -445,10 +459,8 @@ $exception''',
       );
     });
 
-    test(
-        'does not prompt for confirmation '
-        'when --release-version and --force are used', () async {
-      when(() => argResults['force']).thenReturn(true);
+    test('does not prompt for confirmation when running on CI', () async {
+      when(() => shorebirdEnv.isRunningOnCI).thenReturn(true);
       when(() => argResults['release-version']).thenReturn(version);
       setUpProjectRoot();
 

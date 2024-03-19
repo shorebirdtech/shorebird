@@ -5,6 +5,7 @@ import 'package:path/path.dart' as p;
 import 'package:scoped/scoped.dart';
 import 'package:shorebird_cli/src/code_push_client_wrapper.dart';
 import 'package:shorebird_cli/src/command.dart';
+import 'package:shorebird_cli/src/commands/commands.dart';
 import 'package:shorebird_cli/src/config/shorebird_yaml.dart';
 import 'package:shorebird_cli/src/doctor.dart';
 import 'package:shorebird_cli/src/extensions/arg_results.dart';
@@ -58,7 +59,7 @@ class ReleaseAndroidCommand extends ShorebirdCommand
       ..addFlag(
         'force',
         abbr: 'f',
-        help: 'Release without confirmation if there are no errors.',
+        help: ReleaseCommand.forceHelpText,
         negatable: false,
       );
   }
@@ -83,6 +84,14 @@ make smaller updates to your app.
       );
     } on PreconditionFailedException catch (e) {
       return e.exitCode.code;
+    }
+
+    final force = results['force'] == true;
+    if (force) {
+      logger
+        ..err(ReleaseCommand.forceDeprecationErrorMessage)
+        ..info(ReleaseCommand.forceDeprecationExplanation);
+      return ExitCode.usage.code;
     }
 
     const platform = ReleasePlatform.android;
@@ -242,8 +251,7 @@ ${styleBold.wrap(lightGreen.wrap('🚀 Ready to create a new release!'))}
 ${summary.join('\n')}
 ''');
 
-        final force = results['force'] == true;
-        final needConfirmation = !force && !shorebirdEnv.isRunningOnCI;
+        final needConfirmation = !shorebirdEnv.isRunningOnCI;
         if (needConfirmation) {
           final confirm = logger.confirm('Would you like to continue?');
 

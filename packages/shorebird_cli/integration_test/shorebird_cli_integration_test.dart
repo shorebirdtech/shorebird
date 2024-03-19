@@ -136,7 +136,7 @@ void main() {
 
       // Create an Android release.
       final shorebirdReleaseResult = runCommand(
-        'shorebird release android --force --verbose',
+        'shorebird release android --verbose',
         workingDirectory: cwd,
       );
       expect(shorebirdReleaseResult.stderr, equals(tokenWarningMessage));
@@ -185,7 +185,7 @@ void main() {
 
       // Create an Android patch.
       final shorebirdPatchResult = runCommand(
-        'shorebird patch android --force --verbose',
+        'shorebird patch android --verbose',
         workingDirectory: cwd,
       );
       expect(shorebirdPatchResult.stderr, equals(tokenWarningMessage));

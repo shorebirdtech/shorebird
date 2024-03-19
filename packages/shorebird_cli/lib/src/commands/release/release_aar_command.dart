@@ -8,6 +8,7 @@ import 'package:path/path.dart' as p;
 import 'package:scoped/scoped.dart';
 import 'package:shorebird_cli/src/code_push_client_wrapper.dart';
 import 'package:shorebird_cli/src/command.dart';
+import 'package:shorebird_cli/src/commands/release/release.dart';
 import 'package:shorebird_cli/src/config/config.dart';
 import 'package:shorebird_cli/src/logger.dart';
 import 'package:shorebird_cli/src/shorebird_artifact_mixin.dart';
@@ -46,15 +47,15 @@ of the Android app that is using this module.''',
         help: 'The build number of the aar',
         defaultsTo: '1.0',
       )
-      ..addOption(
-        'flutter-version',
-        help: 'The Flutter version to use when building the app (e.g: 3.16.3).',
-      )
       ..addFlag(
         'force',
         abbr: 'f',
-        help: 'Release without confirmation if there are no errors.',
+        help: ReleaseCommand.forceHelpText,
         negatable: false,
+      )
+      ..addOption(
+        'flutter-version',
+        help: 'The Flutter version to use when building the app (e.g: 3.16.3).',
       );
   }
 
@@ -79,6 +80,14 @@ make smaller updates to your app.
       );
     } on PreconditionFailedException catch (e) {
       return e.exitCode.code;
+    }
+
+    final force = results['force'] == true;
+    if (force) {
+      logger
+        ..err(ReleaseCommand.forceDeprecationErrorMessage)
+        ..info(ReleaseCommand.forceDeprecationExplanation);
+      return ExitCode.usage.code;
     }
 
     if (shorebirdEnv.androidPackageName == null) {
@@ -183,9 +192,8 @@ ${styleBold.wrap(lightGreen.wrap('🚀 Ready to create a new release!'))}
 ${summary.join('\n')}
 ''');
 
-        final force = results['force'] == true;
-        final needConfirmation = !force;
-        if (needConfirmation) {
+        final needsConfirmation = !shorebirdEnv.isRunningOnCI;
+        if (needsConfirmation) {
           final confirm = logger.confirm('Would you like to continue?');
 
           if (!confirm) {

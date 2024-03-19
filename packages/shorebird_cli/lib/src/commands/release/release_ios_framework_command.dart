@@ -7,6 +7,7 @@ import 'package:platform/platform.dart';
 import 'package:scoped/scoped.dart';
 import 'package:shorebird_cli/src/code_push_client_wrapper.dart';
 import 'package:shorebird_cli/src/command.dart';
+import 'package:shorebird_cli/src/commands/commands.dart';
 import 'package:shorebird_cli/src/config/config.dart';
 import 'package:shorebird_cli/src/doctor.dart';
 import 'package:shorebird_cli/src/logger.dart';
@@ -36,7 +37,7 @@ of the iOS app that is using this module.''',
       ..addFlag(
         'force',
         abbr: 'f',
-        help: 'Release without confirmation if there are no errors.',
+        help: ReleaseCommand.forceHelpText,
         negatable: false,
       );
   }
@@ -65,6 +66,14 @@ of the iOS app that is using this module.''',
       );
     } on PreconditionFailedException catch (e) {
       return e.exitCode.code;
+    }
+
+    final force = results['force'] == true;
+    if (force) {
+      logger
+        ..err(ReleaseCommand.forceDeprecationErrorMessage)
+        ..info(ReleaseCommand.forceDeprecationExplanation);
+      return ExitCode.usage.code;
     }
 
     const releasePlatform = ReleasePlatform.ios;
@@ -162,9 +171,8 @@ ${styleBold.wrap(lightGreen.wrap('🚀 Ready to create a new release!'))}
 ${summary.join('\n')}
 ''');
 
-        final force = results['force'] == true;
-        final needConfirmation = !force;
-        if (needConfirmation) {
+        final needsConfirmation = !shorebirdEnv.isRunningOnCI;
+        if (needsConfirmation) {
           final confirm = logger.confirm('Would you like to continue?');
 
           if (!confirm) {

@@ -824,7 +824,6 @@ void main() {
             .createPatch(
               appId: appId,
               releaseId: releaseId,
-              wasForced: true,
               hasAssetChanges: false,
               hasNativeChanges: true,
             )
@@ -849,7 +848,6 @@ void main() {
           codePushClient.createPatch(
             appId: appId,
             releaseId: releaseId,
-            wasForced: true,
             hasAssetChanges: false,
             hasNativeChanges: true,
           ),
@@ -875,7 +873,6 @@ void main() {
           codePushClient.createPatch(
             appId: appId,
             releaseId: releaseId,
-            wasForced: true,
             hasAssetChanges: false,
             hasNativeChanges: true,
           ),
@@ -907,7 +904,6 @@ void main() {
           codePushClient.createPatch(
             appId: appId,
             releaseId: releaseId,
-            wasForced: true,
             hasAssetChanges: false,
             hasNativeChanges: true,
           ),

@@ -358,6 +358,20 @@ flutter:
       ).called(1);
     });
 
+    test('exits with explanation if force flag is used', () async {
+      when(() => argResults['force']).thenReturn(true);
+
+      await expectLater(
+        runWithOverrides(command.run),
+        completion(equals(ExitCode.usage.code)),
+      );
+
+      verify(() => logger.err(ReleaseCommand.forceDeprecationErrorMessage))
+          .called(1);
+      verify(() => logger.info(ReleaseCommand.forceDeprecationExplanation))
+          .called(1);
+    });
+
     group('when obfuscate flag is passed', () {
       setUp(() {
         when(() => argResults.rest).thenReturn(['--obfuscate']);
@@ -970,30 +984,6 @@ error: exportArchive: No signing certificate "iOS Distribution" found
               p.join('build', 'ios', 'ipa'),
             ]),
           ),
-        ),
-      ).called(1);
-    });
-
-    test(
-        'does not prompt for confirmation '
-        'when --release-version and --force are used', () async {
-      when(() => argResults['force']).thenReturn(true);
-      when(() => argResults['release-version']).thenReturn(version);
-      setUpProjectRoot();
-
-      final exitCode = await runWithOverrides(command.run);
-
-      verify(() => logger.success('\n✅ Published Release $version!')).called(1);
-      expect(exitCode, ExitCode.success.code);
-      verifyNever(
-        () => logger.prompt(any(), defaultValue: any(named: 'defaultValue')),
-      );
-      verify(
-        () => codePushClientWrapper.updateReleaseStatus(
-          appId: appId,
-          releaseId: release.id,
-          platform: releasePlatform,
-          status: ReleaseStatus.active,
         ),
       ).called(1);
     });
