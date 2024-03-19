@@ -15,13 +15,14 @@ class PatchCommand extends ShorebirdCommand {
     addSubcommand(PatchIosFrameworkCommand());
   }
 
-  static const forceHelpText = '''
-**Deprecated**
-
-If your app has known safe native code or asset changes, you can use the
---allow-native-diffs or --allow-asset-diffs flags instead. We do not recommend
-using these flags unless you are *absolutely* sure that the changes are safe.
-''';
+  static final forceHelpText = '''
+${styleBold.wrap('Deprecated')}
+'''
+      'If your app has known safe native code or asset changes, you can use '
+      'the ${cyan.wrap('--allow-native-diffs')} or '
+      '${cyan.wrap('--allow-asset-diffs')} flags instead. We do not recommend '
+      'using these flags unless you are '
+      '${styleBold.wrap('absolutely')} sure that the changes are safe.';
 
   static final allowNativeDiffsHelpText = '''
 Patch even if native code diffs are detected.

@@ -8,6 +8,7 @@ import 'package:path/path.dart' as p;
 import 'package:scoped/scoped.dart';
 import 'package:shorebird_cli/src/code_push_client_wrapper.dart';
 import 'package:shorebird_cli/src/command.dart';
+import 'package:shorebird_cli/src/commands/release/release.dart';
 import 'package:shorebird_cli/src/config/config.dart';
 import 'package:shorebird_cli/src/logger.dart';
 import 'package:shorebird_cli/src/shorebird_artifact_mixin.dart';
@@ -46,6 +47,12 @@ of the Android app that is using this module.''',
         help: 'The build number of the aar',
         defaultsTo: '1.0',
       )
+      ..addFlag(
+        'force',
+        abbr: 'f',
+        help: ReleaseCommand.forceHelpText,
+        negatable: false,
+      )
       ..addOption(
         'flutter-version',
         help: 'The Flutter version to use when building the app (e.g: 3.16.3).',
@@ -73,6 +80,14 @@ make smaller updates to your app.
       );
     } on PreconditionFailedException catch (e) {
       return e.exitCode.code;
+    }
+
+    final force = results['force'] == true;
+    if (force) {
+      logger
+        ..err(ReleaseCommand.forceDeprecationErrorMessage)
+        ..info(ReleaseCommand.forceDeprecationExplanation);
+      return ExitCode.usage.code;
     }
 
     if (shorebirdEnv.androidPackageName == null) {

@@ -7,6 +7,7 @@ import 'package:platform/platform.dart';
 import 'package:scoped/scoped.dart';
 import 'package:shorebird_cli/src/code_push_client_wrapper.dart';
 import 'package:shorebird_cli/src/command.dart';
+import 'package:shorebird_cli/src/commands/commands.dart';
 import 'package:shorebird_cli/src/config/config.dart';
 import 'package:shorebird_cli/src/doctor.dart';
 import 'package:shorebird_cli/src/logger.dart';
@@ -32,6 +33,12 @@ of the iOS app that is using this module.''',
       ..addOption(
         'flutter-version',
         help: 'The Flutter version to use when building the app (e.g: 3.16.3).',
+      )
+      ..addFlag(
+        'force',
+        abbr: 'f',
+        help: ReleaseCommand.forceHelpText,
+        negatable: false,
       );
   }
 
@@ -59,6 +66,14 @@ of the iOS app that is using this module.''',
       );
     } on PreconditionFailedException catch (e) {
       return e.exitCode.code;
+    }
+
+    final force = results['force'] == true;
+    if (force) {
+      logger
+        ..err(ReleaseCommand.forceDeprecationErrorMessage)
+        ..info(ReleaseCommand.forceDeprecationExplanation);
+      return ExitCode.usage.code;
     }
 
     const releasePlatform = ReleasePlatform.ios;

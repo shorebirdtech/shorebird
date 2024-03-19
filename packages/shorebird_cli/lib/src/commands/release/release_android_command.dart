@@ -5,6 +5,7 @@ import 'package:path/path.dart' as p;
 import 'package:scoped/scoped.dart';
 import 'package:shorebird_cli/src/code_push_client_wrapper.dart';
 import 'package:shorebird_cli/src/command.dart';
+import 'package:shorebird_cli/src/commands/commands.dart';
 import 'package:shorebird_cli/src/config/shorebird_yaml.dart';
 import 'package:shorebird_cli/src/doctor.dart';
 import 'package:shorebird_cli/src/extensions/arg_results.dart';
@@ -54,6 +55,12 @@ class ReleaseAndroidCommand extends ShorebirdCommand
             'To learn more, see: https://developer.android.com/studio/build/configure-apk-splits#configure-abi-split',
         hide: true,
         negatable: false,
+      )
+      ..addFlag(
+        'force',
+        abbr: 'f',
+        help: ReleaseCommand.forceHelpText,
+        negatable: false,
       );
   }
 
@@ -77,6 +84,14 @@ make smaller updates to your app.
       );
     } on PreconditionFailedException catch (e) {
       return e.exitCode.code;
+    }
+
+    final force = results['force'] == true;
+    if (force) {
+      logger
+        ..err(ReleaseCommand.forceDeprecationErrorMessage)
+        ..info(ReleaseCommand.forceDeprecationExplanation);
+      return ExitCode.usage.code;
     }
 
     const platform = ReleasePlatform.android;

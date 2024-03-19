@@ -292,6 +292,20 @@ void main() {
       ).called(1);
     });
 
+    test('exits with explanation if force flag is used', () async {
+      when(() => argResults['force']).thenReturn(true);
+
+      await expectLater(
+        runWithOverrides(command.run),
+        completion(equals(ExitCode.usage.code)),
+      );
+
+      verify(() => logger.err(ReleaseCommand.forceDeprecationErrorMessage))
+          .called(1);
+      verify(() => logger.info(ReleaseCommand.forceDeprecationExplanation))
+          .called(1);
+    });
+
     test('exits with code unavailable when --split-per-abi is provided',
         () async {
       when(() => argResults['artifact']).thenReturn('apk');

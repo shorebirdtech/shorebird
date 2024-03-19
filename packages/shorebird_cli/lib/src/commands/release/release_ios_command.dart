@@ -7,6 +7,7 @@ import 'package:scoped/scoped.dart';
 import 'package:shorebird_cli/src/archive_analysis/archive_analysis.dart';
 import 'package:shorebird_cli/src/code_push_client_wrapper.dart';
 import 'package:shorebird_cli/src/command.dart';
+import 'package:shorebird_cli/src/commands/commands.dart';
 import 'package:shorebird_cli/src/config/config.dart';
 import 'package:shorebird_cli/src/doctor.dart';
 import 'package:shorebird_cli/src/extensions/arg_results.dart';
@@ -63,6 +64,12 @@ class ReleaseIosCommand extends ShorebirdCommand
         'codesign',
         help: 'Codesign the application bundle.',
         defaultsTo: true,
+      )
+      ..addFlag(
+        'force',
+        abbr: 'f',
+        help: ReleaseCommand.forceHelpText,
+        negatable: false,
       );
   }
 
@@ -93,6 +100,14 @@ make smaller updates to your app.
       );
     } on PreconditionFailedException catch (e) {
       return e.exitCode.code;
+    }
+
+    final force = results['force'] == true;
+    if (force) {
+      logger
+        ..err(ReleaseCommand.forceDeprecationErrorMessage)
+        ..info(ReleaseCommand.forceDeprecationExplanation);
+      return ExitCode.usage.code;
     }
 
     if (results.rest.contains('--obfuscate')) {
