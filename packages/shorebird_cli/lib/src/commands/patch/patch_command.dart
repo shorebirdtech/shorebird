@@ -41,7 +41,8 @@ NOTE: this is ${styleBold.wrap('not')} recommended.''';
       '${cyan.wrap('--allow-asset-diffs')} '
       'flags. We do not recommend using these flags unless you are '
       '${styleBold.wrap('absolutely sure')} that the changes are safe. '
-      'Note: the ${cyan.wrap('--force flag')} is not required for use in CI environments.';
+      'Note: the ${cyan.wrap('--force flag')} is not required for use in CI '
+      'environments.';
 
   @override
   String get description =>
