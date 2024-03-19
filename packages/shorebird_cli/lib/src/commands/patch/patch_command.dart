@@ -1,3 +1,4 @@
+import 'package:mason_logger/mason_logger.dart';
 import 'package:shorebird_cli/src/command.dart';
 import 'package:shorebird_cli/src/commands/commands.dart';
 
@@ -22,23 +23,24 @@ If your app has known safe native code or asset changes, you can use the
 using these flags unless you are *absolutely* sure that the changes are safe.
 ''';
 
-  static const allowNativeDiffsHelpText = '''
+  static final allowNativeDiffsHelpText = '''
 Patch even if native code diffs are detected.
-NOTE: this is **not** recommended.''';
+NOTE: this is ${styleBold.wrap('not')} recommended.''';
 
-  static const allowAssetDiffsHelpText = '''
+  static final allowAssetDiffsHelpText = '''
 Patch even if asset diffs are detected.
-NOTE: this is **not** recommended.''';
+NOTE: this is ${styleBold.wrap('not')} recommended.''';
 
   static const forceDeprecationErrorMessage =
       'The --force flag has been deprecated';
 
-  static const forceDeprecationExplanation = '''
-If your app has known safe native code or asset changes, you can use the
---allow-native-diffs or --allow-asset-diffs flags. We do not recommend using
-these flags unless you are *absolutely* sure that the changes are safe.
-
-Note: the --force flag is not required for use in CI environments.''';
+  static final forceDeprecationExplanation =
+      'If your app has known safe native code or asset changes, you can use '
+      'the ${cyan.wrap('--allow-native-diffs')} or '
+      '${cyan.wrap('--allow-asset-diffs')} '
+      'flags. We do not recommend using these flags unless you are '
+      '${styleBold.wrap('absolutely sure')} that the changes are safe. '
+      'Note: the --force flag is not required for use in CI environments.';
 
   @override
   String get description =>
