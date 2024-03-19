@@ -48,7 +48,8 @@ class PatchDiffChecker {
     required Directory localArtifactDirectory,
     required File releaseArtifact,
     required ArchiveDiffer archiveDiffer,
-    required bool force,
+    required bool allowAssetChanges,
+    required bool allowNativeChanges,
   }) async {
     final zipProgress = logger.progress('Compressing archive');
     final zippedFile = await localArtifactDirectory.zipToTempFile();
@@ -58,7 +59,8 @@ class PatchDiffChecker {
       localArtifact: zippedFile,
       releaseArtifact: releaseArtifact,
       archiveDiffer: archiveDiffer,
-      force: force,
+      allowAssetChanges: allowAssetChanges,
+      allowNativeChanges: allowNativeChanges,
     );
   }
 
@@ -68,7 +70,8 @@ class PatchDiffChecker {
     required File localArtifact,
     required File releaseArtifact,
     required ArchiveDiffer archiveDiffer,
-    required bool force,
+    required bool allowAssetChanges,
+    required bool allowNativeChanges,
   }) async {
     final progress =
         logger.progress('Verifying patch can be applied to release');
@@ -102,7 +105,7 @@ class PatchDiffChecker {
 If you don't know why you're seeing this error, visit our troublshooting page at ${link(uri: Uri.parse('https://docs.shorebird.dev/troubleshooting#unexpected-native-changes'))}'''),
         );
 
-      if (!force) {
+      if (!allowNativeChanges) {
         if (shorebirdEnv.isRunningOnCI) {
           throw UnpatchableChangeException();
         }
@@ -124,7 +127,7 @@ If you don't know why you're seeing this error, visit our troublshooting page at
           ),
         );
 
-      if (!force) {
+      if (!allowAssetChanges) {
         if (shorebirdEnv.isRunningOnCI) {
           throw UnpatchableChangeException();
         }

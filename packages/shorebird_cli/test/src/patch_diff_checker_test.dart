@@ -97,7 +97,8 @@ void main() {
             localArtifactDirectory: localArtifactDirectory,
             releaseArtifact: releaseArtifact,
             archiveDiffer: archiveDiffer,
-            force: false,
+            allowAssetChanges: false,
+            allowNativeChanges: false,
           ),
         );
 
@@ -119,7 +120,8 @@ void main() {
               localArtifact: localArtifact,
               releaseArtifact: releaseArtifact,
               archiveDiffer: archiveDiffer,
-              force: false,
+              allowAssetChanges: false,
+              allowNativeChanges: false,
             ),
           );
 
@@ -141,26 +143,28 @@ void main() {
           ).called(1);
         });
 
-        test('prompts user if force is false', () async {
+        test('prompts user if allowNativeChanges is false', () async {
           await runWithOverrides(
             () => patchDiffChecker.confirmUnpatchableDiffsIfNecessary(
               localArtifact: localArtifact,
               releaseArtifact: releaseArtifact,
               archiveDiffer: archiveDiffer,
-              force: false,
+              allowAssetChanges: false,
+              allowNativeChanges: false,
             ),
           );
 
           verify(() => logger.confirm('Continue anyways?')).called(1);
         });
 
-        test('does not prompt user if force is true', () async {
+        test('does not prompt user if allowNativeChanges is true', () async {
           await runWithOverrides(
             () => patchDiffChecker.confirmUnpatchableDiffsIfNecessary(
               localArtifact: localArtifact,
               releaseArtifact: releaseArtifact,
               archiveDiffer: archiveDiffer,
-              force: true,
+              allowAssetChanges: false,
+              allowNativeChanges: true,
             ),
           );
 
@@ -177,7 +181,8 @@ void main() {
                 localArtifact: localArtifact,
                 releaseArtifact: releaseArtifact,
                 archiveDiffer: archiveDiffer,
-                force: false,
+                allowAssetChanges: false,
+                allowNativeChanges: false,
               ),
             ),
             throwsA(
@@ -197,7 +202,8 @@ void main() {
                 localArtifact: localArtifact,
                 releaseArtifact: releaseArtifact,
                 archiveDiffer: archiveDiffer,
-                force: false,
+                allowAssetChanges: false,
+                allowNativeChanges: false,
               ),
             ),
             throwsA(isA<UnpatchableChangeException>()),
@@ -220,7 +226,8 @@ void main() {
               localArtifact: localArtifact,
               releaseArtifact: releaseArtifact,
               archiveDiffer: archiveDiffer,
-              force: false,
+              allowAssetChanges: false,
+              allowNativeChanges: false,
             ),
           );
 
@@ -234,26 +241,28 @@ void main() {
           ).called(1);
         });
 
-        test('prompts user if force is false', () async {
+        test('prompts user if allowAssetChanges is false', () async {
           await runWithOverrides(
             () => patchDiffChecker.confirmUnpatchableDiffsIfNecessary(
               localArtifact: localArtifact,
               releaseArtifact: releaseArtifact,
               archiveDiffer: archiveDiffer,
-              force: false,
+              allowAssetChanges: false,
+              allowNativeChanges: false,
             ),
           );
 
           verify(() => logger.confirm('Continue anyways?')).called(1);
         });
 
-        test('does not prompt user if force is true', () async {
+        test('does not prompt user if allowAssetChanges is true', () async {
           await runWithOverrides(
             () => patchDiffChecker.confirmUnpatchableDiffsIfNecessary(
               localArtifact: localArtifact,
               releaseArtifact: releaseArtifact,
               archiveDiffer: archiveDiffer,
-              force: true,
+              allowAssetChanges: true,
+              allowNativeChanges: false,
             ),
           );
 
@@ -270,7 +279,8 @@ void main() {
                 localArtifact: localArtifact,
                 releaseArtifact: releaseArtifact,
                 archiveDiffer: archiveDiffer,
-                force: false,
+                allowAssetChanges: false,
+                allowNativeChanges: false,
               ),
             ),
             throwsA(isA<UserCancelledException>()),
@@ -288,7 +298,8 @@ void main() {
                 localArtifact: localArtifact,
                 releaseArtifact: releaseArtifact,
                 archiveDiffer: archiveDiffer,
-                force: false,
+                allowAssetChanges: false,
+                allowNativeChanges: false,
               ),
             ),
             throwsA(isA<UnpatchableChangeException>()),
@@ -306,7 +317,8 @@ void main() {
               localArtifact: localArtifact,
               releaseArtifact: releaseArtifact,
               archiveDiffer: archiveDiffer,
-              force: false,
+              allowAssetChanges: false,
+              allowNativeChanges: false,
             ),
           ),
           completes,

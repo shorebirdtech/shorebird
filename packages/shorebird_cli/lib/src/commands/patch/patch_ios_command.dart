@@ -235,7 +235,8 @@ Current Flutter Revision: $currentFlutterRevision
             localArtifactDirectory: Directory(archivePath),
             releaseArtifact: releaseArtifactZipFile,
             archiveDiffer: _archiveDiffer,
-            force: force,
+            allowAssetChanges: force,
+            allowNativeChanges: force,
           );
         } on UserCancelledException {
           return ExitCode.success.code;

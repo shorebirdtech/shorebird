@@ -201,7 +201,8 @@ Please re-run the release command for this version or create a new release.''');
             releaseArtifact: await artifactManager
                 .downloadFile(Uri.parse(releaseAarArtifact.url)),
             archiveDiffer: _archiveDiffer,
-            force: force,
+            allowAssetChanges: force,
+            allowNativeChanges: force,
           );
         } on UserCancelledException {
           return ExitCode.success.code;

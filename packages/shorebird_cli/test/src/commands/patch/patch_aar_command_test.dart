@@ -333,7 +333,8 @@ void main() {
           localArtifact: any(named: 'localArtifact'),
           releaseArtifact: any(named: 'releaseArtifact'),
           archiveDiffer: archiveDiffer,
-          force: any(named: 'force'),
+          allowAssetChanges: any(named: 'allowAssetChanges'),
+          allowNativeChanges: any(named: 'allowNativeChanges'),
         ),
       ).thenAnswer(
         (_) async => DiffStatus(
@@ -638,7 +639,8 @@ Please re-run the release command for this version or create a new release.'''),
           localArtifact: any(named: 'localArtifact'),
           releaseArtifact: any(named: 'releaseArtifact'),
           archiveDiffer: archiveDiffer,
-          force: any(named: 'force'),
+          allowAssetChanges: any(named: 'allowAssetChanges'),
+          allowNativeChanges: any(named: 'allowNativeChanges'),
         ),
       ).thenThrow(UserCancelledException());
       setUpProjectRootArtifacts();
@@ -651,7 +653,8 @@ Please re-run the release command for this version or create a new release.'''),
           localArtifact: any(named: 'localArtifact'),
           releaseArtifact: releaseArtifactFile,
           archiveDiffer: archiveDiffer,
-          force: false,
+          allowAssetChanges: false,
+          allowNativeChanges: false,
         ),
       ).called(1);
       verifyNever(
@@ -677,7 +680,8 @@ Please re-run the release command for this version or create a new release.'''),
           localArtifact: any(named: 'localArtifact'),
           releaseArtifact: any(named: 'releaseArtifact'),
           archiveDiffer: archiveDiffer,
-          force: any(named: 'force'),
+          allowAssetChanges: any(named: 'allowAssetChanges'),
+          allowNativeChanges: any(named: 'allowNativeChanges'),
         ),
       ).thenThrow(UnpatchableChangeException());
 
@@ -691,7 +695,8 @@ Please re-run the release command for this version or create a new release.'''),
           localArtifact: any(named: 'localArtifact'),
           releaseArtifact: releaseArtifactFile,
           archiveDiffer: archiveDiffer,
-          force: false,
+          allowAssetChanges: false,
+          allowNativeChanges: false,
         ),
       ).called(1);
       verifyNever(
@@ -786,7 +791,8 @@ Please re-run the release command for this version or create a new release.'''),
           localArtifact: any(named: 'localArtifact'),
           releaseArtifact: any(named: 'releaseArtifact'),
           archiveDiffer: archiveDiffer,
-          force: any(named: 'force'),
+          allowAssetChanges: any(named: 'allowAssetChanges'),
+          allowNativeChanges: any(named: 'allowNativeChanges'),
         ),
       ).thenAnswer(
         (_) async => DiffStatus(

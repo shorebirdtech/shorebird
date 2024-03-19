@@ -205,7 +205,8 @@ Please re-run the release command for this version or create a new release.''');
             localArtifactDirectory: Directory(getAppXcframeworkPath()),
             releaseArtifact: releaseArtifactZipFile,
             archiveDiffer: _archiveDiffer,
-            force: force,
+            allowAssetChanges: force,
+            allowNativeChanges: force,
           );
         } on UserCancelledException {
           return ExitCode.success.code;
