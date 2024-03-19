@@ -26,11 +26,11 @@ ${styleBold.wrap('Deprecated')}
 
   static final allowNativeDiffsHelpText = '''
 Patch even if native code diffs are detected.
-NOTE: this is ${styleBold.wrap('not')} recommended.''';
+NOTE: this is ${styleBold.wrap('not')} recommended. Native code changes cannot be included in a patch and attempting to do so can cause your app to crash or behave unexpectedly.''';
 
   static final allowAssetDiffsHelpText = '''
 Patch even if asset diffs are detected.
-NOTE: this is ${styleBold.wrap('not')} recommended.''';
+NOTE: this is ${styleBold.wrap('not')} recommended. Asset changes cannot be included in a patch can cause your app to behave unexpectedly.''';
 
   static const forceDeprecationErrorMessage =
       'The --force flag has been deprecated';
