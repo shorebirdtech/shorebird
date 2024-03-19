@@ -9,7 +9,6 @@ class FlutterVersionsCommand extends ShorebirdCommand {
   /// {@macro flutter_versions_command}
   FlutterVersionsCommand() {
     addSubcommand(FlutterVersionsListCommand());
-    addSubcommand(FlutterVersionsUseCommand());
   }
 
   @override
