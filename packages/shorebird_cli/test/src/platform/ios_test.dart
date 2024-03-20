@@ -25,6 +25,10 @@ void main() {
         argResults = MockArgResults();
 
         when(() => argResults.wasParsed(any())).thenReturn(false);
+        when(() => argResults.options).thenReturn([
+          exportMethodArgName,
+          exportOptionsPlistArgName,
+        ]);
       });
 
       group('when both export-method and export-options-plist are provided',
@@ -151,6 +155,18 @@ void main() {
           expect(exportOptionsPlistMap['signingStyle'], 'automatic');
           expect(exportOptionsPlistMap['uploadBitcode'], isFalse);
           expect(exportOptionsPlistMap['method'], 'app-store');
+        });
+      });
+
+      group('when export-method option does not exist', () {
+        setUp(() {
+          when(() => argResults.options)
+              .thenReturn([exportOptionsPlistArgName]);
+        });
+
+        test('does not check whether export-method was parsed', () {
+          ios.exportOptionsPlistFromArgs(argResults);
+          verifyNever(() => argResults.wasParsed(exportMethodArgName));
         });
       });
     });
