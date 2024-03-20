@@ -53,6 +53,7 @@ Test on designated devices that do not need to be registered with the Apple deve
 /// Thrown when an invalid export options plist is provided.
 /// {@endtemplate}
 class InvalidExportOptionsPlistException implements Exception {
+  /// {@macro invalid_export_options_plist_exception}
   InvalidExportOptionsPlistException(this.message);
 
   final String message;
