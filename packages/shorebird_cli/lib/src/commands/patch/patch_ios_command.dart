@@ -62,6 +62,11 @@ If this option is not provided, the version number will be determined from the p
         help: 'Codesign the application bundle.',
         defaultsTo: true,
       )
+      ..addOption(
+        exportOptionsPlistArgName,
+        help:
+            '''Export an IPA with these options. See "xcodebuild -h" for available exportOptionsPlist keys.''',
+      )
       ..addFlag(
         'force',
         abbr: 'f',
@@ -141,6 +146,14 @@ If this option is not provided, the version number will be determined from the p
     final app = await codePushClientWrapper.getApp(appId: appId);
     var hasBuiltWithActiveFlutter = false;
 
+    final File exportOptionsPlist;
+    try {
+      exportOptionsPlist = ios.exportOptionsPlistFromArgs(results);
+    } catch (error) {
+      logger.err('$error');
+      return ExitCode.usage.code;
+    }
+
     final String releaseVersion;
     final argReleaseVersion = results['release-version'] as String?;
     if (argReleaseVersion != null) {
@@ -149,7 +162,11 @@ If this option is not provided, the version number will be determined from the p
     } else {
       logger.detail('No release version provided. Determining from archive.');
       try {
-        await _buildPatch(flavor: flavor, target: target);
+        await _buildPatch(
+          exportOptionsPlist: exportOptionsPlist,
+          flavor: flavor,
+          target: target,
+        );
       } catch (_) {
         return ExitCode.software.code;
       }
@@ -208,7 +225,11 @@ Current Flutter Revision: $currentFlutterRevision
         if (!hasBuiltWithActiveFlutter ||
             release.flutterRevision != currentFlutterRevision) {
           try {
-            await _buildPatch(flavor: flavor, target: target);
+            await _buildPatch(
+              exportOptionsPlist: exportOptionsPlist,
+              flavor: flavor,
+              target: target,
+            );
           } catch (_) {
             return ExitCode.software.code;
           }
@@ -435,6 +456,7 @@ ${summary.join('\n')}
   }
 
   Future<void> _buildPatch({
+    required File exportOptionsPlist,
     required String? flavor,
     required String? target,
   }) async {
@@ -445,6 +467,7 @@ ${summary.join('\n')}
       // was, we will erroneously report native diffs.
       await buildIpa(
         codesign: shouldCodesign,
+        exportOptionsPlist: exportOptionsPlist,
         flavor: flavor,
         target: target,
       );
