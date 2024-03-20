@@ -6,9 +6,7 @@ import 'package:mason_logger/mason_logger.dart';
 import 'package:mocktail/mocktail.dart';
 import 'package:path/path.dart' as p;
 import 'package:platform/platform.dart';
-import 'package:propertylistserialization/propertylistserialization.dart';
 import 'package:scoped/scoped.dart';
-import 'package:shorebird_cli/src/archive_analysis/archive_analysis.dart';
 import 'package:shorebird_cli/src/auth/auth.dart';
 import 'package:shorebird_cli/src/code_push_client_wrapper.dart';
 import 'package:shorebird_cli/src/commands/commands.dart';
@@ -17,7 +15,7 @@ import 'package:shorebird_cli/src/doctor.dart';
 import 'package:shorebird_cli/src/logger.dart';
 import 'package:shorebird_cli/src/os/operating_system_interface.dart';
 import 'package:shorebird_cli/src/platform.dart';
-import 'package:shorebird_cli/src/shorebird_build_mixin.dart';
+import 'package:shorebird_cli/src/platform/platform.dart';
 import 'package:shorebird_cli/src/shorebird_env.dart';
 import 'package:shorebird_cli/src/shorebird_flutter.dart';
 import 'package:shorebird_cli/src/shorebird_process.dart';
@@ -116,6 +114,7 @@ flutter:
     late Auth auth;
     late Progress progress;
     late Logger logger;
+    late Ios ios;
     late OperatingSystemInterface operatingSystemInterface;
     late ShorebirdProcessResult flutterBuildProcessResult;
     late ShorebirdProcessResult flutterPubGetProcessResult;
@@ -133,6 +132,7 @@ flutter:
           authRef.overrideWith(() => auth),
           codePushClientWrapperRef.overrideWith(() => codePushClientWrapper),
           doctorRef.overrideWith(() => doctor),
+          iosRef.overrideWith(() => ios),
           loggerRef.overrideWith(() => logger),
           osInterfaceRef.overrideWith(() => operatingSystemInterface),
           platformRef.overrideWith(() => platform),
@@ -179,6 +179,7 @@ flutter:
     }
 
     setUpAll(() {
+      registerFallbackValue(File(''));
       registerFallbackValue(ReleasePlatform.ios);
       registerFallbackValue(ReleaseStatus.draft);
       registerFallbackValue(FakeRelease());
@@ -196,6 +197,7 @@ flutter:
       operatingSystemInterface = MockOperatingSystemInterface();
       progress = MockProgress();
       logger = MockLogger();
+      ios = MockIos();
       flutterBuildProcessResult = MockProcessResult();
       flutterPubGetProcessResult = MockProcessResult();
       flutterValidator = MockShorebirdFlutterValidator();
@@ -247,20 +249,17 @@ flutter:
       when(() => argResults['arch']).thenReturn(arch);
       when(() => argResults['codesign']).thenReturn(true);
       when(() => argResults['platform']).thenReturn(releasePlatform);
-      when(() => argResults['export-options-plist']).thenReturn(null);
-      // This is the default value in ReleaseIosCommand.
-      when(() => argResults['export-method']).thenReturn(
-        ExportMethod.appStore.argName,
-      );
       when(() => argResults.rest).thenReturn([]);
       when(() => argResults.wasParsed(any())).thenReturn(true);
-      when(() => argResults.wasParsed('export-method')).thenReturn(false);
       when(() => auth.isAuthenticated).thenReturn(true);
       when(() => logger.progress(any())).thenReturn(progress);
       when(() => logger.confirm(any())).thenReturn(true);
       when(
         () => logger.prompt(any(), defaultValue: any(named: 'defaultValue')),
       ).thenReturn(version);
+      when(() => ios.exportOptionsPlistFromArgs(argResults)).thenReturn(
+        File('.'),
+      );
       when(
         () => operatingSystemInterface.which('flutter'),
       ).thenReturn('/path/to/flutter');
@@ -556,12 +555,10 @@ flutter:
       });
     });
 
-    group('when both export-method and export-options-plist are provided', () {
+    group('when exportOptionsPlistFromArgs throws exception', () {
       setUp(() {
-        when(() => argResults.wasParsed(exportMethodArgName)).thenReturn(true);
-        when(
-          () => argResults[exportOptionsPlistArgName],
-        ).thenReturn('/path/to/export.plist');
+        when(() => ios.exportOptionsPlistFromArgs(argResults))
+            .thenThrow(ArgumentError('bad args'));
       });
 
       test('logs error and exits with usage code', () async {
@@ -569,130 +566,7 @@ flutter:
         final exitCode = await runWithOverrides(command.run);
 
         expect(exitCode, equals(ExitCode.usage.code));
-        verify(
-          () => logger.err(
-            'Cannot specify both --export-method and --export-options-plist.',
-          ),
-        ).called(1);
-      });
-    });
-
-    group('when export-method is provided', () {
-      setUp(() {
-        when(() => argResults.wasParsed(exportMethodArgName)).thenReturn(true);
-        when(() => argResults[exportMethodArgName])
-            .thenReturn(ExportMethod.adHoc.argName);
-        when(() => argResults[exportOptionsPlistArgName]).thenReturn(null);
-      });
-
-      test('generates an export options plist with that export method',
-          () async {
-        setUpProjectRoot();
-        await runWithOverrides(command.run);
-
-        final capturedArgs = verify(
-          () => shorebirdProcess.run(
-            'flutter',
-            captureAny(),
-            runInShell: any(named: 'runInShell'),
-          ),
-        ).captured.first as List<String>;
-        final exportOptionsPlistFile = File(
-          capturedArgs
-              .whereType<String>()
-              .firstWhere((arg) => arg.contains(exportOptionsPlistArgName))
-              .split('=')
-              .last,
-        );
-        final exportOptionsPlist = Plist(file: exportOptionsPlistFile);
-        expect(
-          exportOptionsPlist.properties['method'],
-          ExportMethod.adHoc.argName,
-        );
-      });
-    });
-
-    group('when export-options-plist is provided', () {
-      group('when file does not exist', () {
-        setUp(() {
-          when(() => argResults[exportOptionsPlistArgName])
-              .thenReturn('/does/not/exist');
-        });
-
-        test('exits with usage code', () async {
-          setUpProjectRoot();
-          final exitCode = await runWithOverrides(command.run);
-
-          expect(exitCode, equals(ExitCode.usage.code));
-          verify(
-            () => logger.err(
-              'Exception: Export options plist file /does/not/exist does not exist',
-            ),
-          ).called(1);
-        });
-      });
-
-      group('when manageAppVersionAndBuildNumber is not set to false', () {
-        const exportPlistContent = '''
-<?xml version="1.0" encoding="UTF-8"?>
-<!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
-<plist version="1.0">
-<dict>
-</dict>
-</plist>
-''';
-
-        test('exits with usage code', () async {
-          setUpProjectRoot();
-          final exportPlistFile = File(
-            p.join(projectRoot.path, 'export.plist'),
-          )..writeAsStringSync(exportPlistContent);
-          when(
-            () => argResults[exportOptionsPlistArgName],
-          ).thenReturn(exportPlistFile.path);
-          final exitCode = await runWithOverrides(command.run);
-
-          expect(exitCode, equals(ExitCode.usage.code));
-          verify(
-            () => logger.err(
-              '''Exception: Export options plist ${exportPlistFile.path} does not set manageAppVersionAndBuildNumber to false. This is required for shorebird to work.''',
-            ),
-          ).called(1);
-        });
-      });
-    });
-
-    group('when neither export-method nor export-options-plist is provided',
-        () {
-      setUp(() {
-        when(() => argResults.wasParsed(exportMethodArgName)).thenReturn(false);
-        when(() => argResults[exportOptionsPlistArgName]).thenReturn(null);
-      });
-
-      test('generates an export options plist with app-store export method',
-          () async {
-        setUpProjectRoot();
-        await runWithOverrides(command.run);
-
-        final capturedArgs = verify(
-          () => shorebirdProcess.run(
-            'flutter',
-            captureAny(),
-            runInShell: any(named: 'runInShell'),
-          ),
-        ).captured.first as List<String>;
-        final exportOptionsPlistFile = File(
-          capturedArgs
-              .whereType<String>()
-              .firstWhere((arg) => arg.contains(exportOptionsPlistArgName))
-              .split('=')
-              .last,
-        );
-        final exportOptionsPlist = Plist(file: exportOptionsPlistFile);
-        expect(
-          exportOptionsPlist.properties['method'],
-          ExportMethod.appStore.argName,
-        );
+        verify(() => logger.err('Invalid argument(s): bad args')).called(1);
       });
     });
 
@@ -1125,38 +999,6 @@ flavors:
           status: ReleaseStatus.active,
         ),
       ).called(1);
-    });
-
-    test('provides appropriate ExportOptions.plist to build ipa command',
-        () async {
-      setUpProjectRoot();
-
-      final exitCode = await runWithOverrides(command.run);
-
-      expect(exitCode, ExitCode.success.code);
-      final capturedArgs = verify(
-        () => shorebirdProcess.run(
-          'flutter',
-          captureAny(),
-          runInShell: any(named: 'runInShell'),
-        ),
-      ).captured.first as List<String>;
-      final exportOptionsPlistFile = File(
-        capturedArgs
-            .whereType<String>()
-            .firstWhere((arg) => arg.contains('export-options-plist'))
-            .split('=')
-            .last,
-      );
-      expect(exportOptionsPlistFile.existsSync(), isTrue);
-      final exportOptionsPlist =
-          PropertyListSerialization.propertyListWithString(
-        exportOptionsPlistFile.readAsStringSync(),
-      ) as Map<String, Object>;
-      expect(exportOptionsPlist['manageAppVersionAndBuildNumber'], isFalse);
-      expect(exportOptionsPlist['signingStyle'], 'automatic');
-      expect(exportOptionsPlist['uploadBitcode'], isFalse);
-      expect(exportOptionsPlist['method'], 'app-store');
     });
 
     test('does not provide export options when codesign is false', () async {

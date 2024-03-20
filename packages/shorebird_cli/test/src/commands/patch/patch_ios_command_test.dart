@@ -22,6 +22,7 @@ import 'package:shorebird_cli/src/logger.dart';
 import 'package:shorebird_cli/src/os/operating_system_interface.dart';
 import 'package:shorebird_cli/src/patch_diff_checker.dart';
 import 'package:shorebird_cli/src/platform.dart';
+import 'package:shorebird_cli/src/platform/ios.dart';
 import 'package:shorebird_cli/src/shorebird_artifacts.dart';
 import 'package:shorebird_cli/src/shorebird_build_mixin.dart';
 import 'package:shorebird_cli/src/shorebird_env.dart';
@@ -153,6 +154,7 @@ flutter:
     late File releaseArtifactFile;
     late ShorebirdArtifacts shorebirdArtifacts;
     late Doctor doctor;
+    late Ios ios;
     late IosArchiveDiffer archiveDiffer;
     late Progress progress;
     late Logger logger;
@@ -180,6 +182,7 @@ flutter:
           codePushClientWrapperRef.overrideWith(() => codePushClientWrapper),
           doctorRef.overrideWith(() => doctor),
           engineConfigRef.overrideWith(() => engineConfig),
+          iosRef.overrideWith(() => ios),
           shorebirdArtifactsRef.overrideWith(() => shorebirdArtifacts),
           loggerRef.overrideWith(() => logger),
           osInterfaceRef.overrideWith(() => operatingSystemInterface),
@@ -271,6 +274,7 @@ flutter:
       codePushClientWrapper = MockCodePushClientWrapper();
       doctor = MockDoctor();
       engineConfig = MockEngineConfig();
+      ios = MockIos();
       shorebirdArtifacts = MockShorebirdArtifacts();
       shorebirdRoot = Directory.systemTemp.createTempSync();
       projectRoot = Directory.systemTemp.createTempSync();
@@ -404,6 +408,7 @@ flutter:
       ).thenAnswer((_) async {});
       when(() => doctor.iosCommandValidators).thenReturn([flutterValidator]);
       when(() => engineConfig.localEngine).thenReturn(null);
+      when(() => ios.createExportOptionsPlist()).thenReturn(File('.'));
       when(flutterValidator.validate).thenAnswer((_) async => []);
       when(() => logger.confirm(any())).thenReturn(true);
       when(() => logger.progress(any())).thenReturn(progress);

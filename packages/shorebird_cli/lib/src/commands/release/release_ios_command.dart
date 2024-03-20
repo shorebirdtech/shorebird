@@ -12,6 +12,7 @@ import 'package:shorebird_cli/src/config/config.dart';
 import 'package:shorebird_cli/src/doctor.dart';
 import 'package:shorebird_cli/src/extensions/arg_results.dart';
 import 'package:shorebird_cli/src/logger.dart';
+import 'package:shorebird_cli/src/platform/platform.dart';
 import 'package:shorebird_cli/src/shorebird_artifact_mixin.dart';
 import 'package:shorebird_cli/src/shorebird_build_mixin.dart';
 import 'package:shorebird_cli/src/shorebird_env.dart';
@@ -19,9 +20,6 @@ import 'package:shorebird_cli/src/shorebird_flutter.dart';
 import 'package:shorebird_cli/src/shorebird_validator.dart';
 import 'package:shorebird_cli/src/validators/validators.dart';
 import 'package:shorebird_code_push_client/shorebird_code_push_client.dart';
-
-const exportMethodArgName = 'export-method';
-const exportOptionsPlistArgName = 'export-options-plist';
 
 /// {@template release_ios_command}
 /// `shorebird release ios`
@@ -132,30 +130,12 @@ make smaller updates to your app.
         );
     }
 
-    final exportPlistArg = results[exportOptionsPlistArgName] as String?;
-    if (exportPlistArg != null && results.wasParsed(exportMethodArgName)) {
-      logger.err(
-        '''Cannot specify both --$exportMethodArgName and --$exportOptionsPlistArgName.''',
-      );
+    final File exportOptionsPlist;
+    try {
+      exportOptionsPlist = ios.exportOptionsPlistFromArgs(results);
+    } catch (error) {
+      logger.err('$error');
       return ExitCode.usage.code;
-    }
-
-    final File? exportOptionsPlist;
-    if (exportPlistArg != null) {
-      exportOptionsPlist = File(exportPlistArg);
-      try {
-        _validateExportOptionsPlist(exportOptionsPlist);
-      } catch (error) {
-        logger.err('$error');
-        return ExitCode.usage.code;
-      }
-    } else if (results.wasParsed(exportMethodArgName)) {
-      final exportMethod = ExportMethod.values.firstWhere(
-        (element) => element.argName == results[exportMethodArgName] as String,
-      );
-      exportOptionsPlist = createExportOptionsPlist(exportMethod: exportMethod);
-    } else {
-      exportOptionsPlist = null;
     }
 
     const releasePlatform = ReleasePlatform.ios;
@@ -384,26 +364,5 @@ ${styleBold.wrap('Make sure to uncheck "Manage Version and Build Number", or els
         shorebirdEnvRef.overrideWith(() => releaseFlutterShorebirdEnv),
       },
     );
-  }
-
-  /// Verifies that [exportOptionsPlistFile] exists and sets
-  /// manageAppVersionAndBuildNumber to false, which prevents Xcode from
-  /// changing the version number out from under us.
-  ///
-  /// Throws an exception if validation fails, exits normally if validation
-  /// succeeds.
-  void _validateExportOptionsPlist(File exportOptionsPlistFile) {
-    if (!exportOptionsPlistFile.existsSync()) {
-      throw Exception(
-        '''Export options plist file ${exportOptionsPlistFile.path} does not exist''',
-      );
-    }
-
-    final plist = Plist(file: exportOptionsPlistFile);
-    if (plist.properties['manageAppVersionAndBuildNumber'] != false) {
-      throw Exception(
-        '''Export options plist ${exportOptionsPlistFile.path} does not set manageAppVersionAndBuildNumber to false. This is required for shorebird to work.''',
-      );
-    }
   }
 }

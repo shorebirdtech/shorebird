@@ -22,6 +22,7 @@ import 'package:shorebird_cli/src/executables/devicectl/apple_device.dart';
 import 'package:shorebird_cli/src/executables/executables.dart';
 import 'package:shorebird_cli/src/os/os.dart';
 import 'package:shorebird_cli/src/patch_diff_checker.dart';
+import 'package:shorebird_cli/src/platform/platform.dart';
 import 'package:shorebird_cli/src/shorebird_artifacts.dart';
 import 'package:shorebird_cli/src/shorebird_env.dart';
 import 'package:shorebird_cli/src/shorebird_flutter.dart';
@@ -86,6 +87,8 @@ class MockIDeviceSysLog extends Mock implements IDeviceSysLog {}
 class MockIOSDeploy extends Mock implements IOSDeploy {}
 
 class MockIOSink extends Mock implements IOSink {}
+
+class MockIos extends Mock implements Ios {}
 
 class MockIosArchiveDiffer extends Mock implements IosArchiveDiffer {}
 
