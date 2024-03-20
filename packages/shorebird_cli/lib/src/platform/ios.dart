@@ -57,9 +57,6 @@ class InvalidExportOptionsPlistException implements Exception {
   InvalidExportOptionsPlistException(this.message);
 
   final String message;
-
-  @override
-  String toString() => message;
 }
 
 /// A reference to a [Ios] instance.
