@@ -2,11 +2,11 @@ import 'dart:io';
 
 import 'package:collection/collection.dart';
 import 'package:mason_logger/mason_logger.dart';
-import 'package:path/path.dart' as p;
 import 'package:shorebird_cli/src/command.dart';
 import 'package:shorebird_cli/src/engine_config.dart';
 import 'package:shorebird_cli/src/logger.dart';
 import 'package:shorebird_cli/src/os/operating_system_interface.dart';
+import 'package:shorebird_cli/src/platform/platform.dart';
 import 'package:shorebird_cli/src/shorebird_artifacts.dart';
 import 'package:shorebird_cli/src/shorebird_process.dart';
 
@@ -41,36 +41,6 @@ class BuildException implements Exception {
 
   /// Information about the build failure.
   final String message;
-}
-
-/// {@template export_method}
-/// The method used to export the IPA.
-/// {@endtemplate}
-enum ExportMethod {
-  appStore('app-store', 'Upload to the App Store'),
-  adHoc(
-    'ad-hoc',
-    '''
-Test on designated devices that do not need to be registered with the Apple developer account.
-    Requires a distribution certificate.''',
-  ),
-  development(
-    'development',
-    '''Test only on development devices registered with the Apple developer account.''',
-  ),
-  enterprise(
-    'enterprise',
-    'Distribute an app registered with the Apple Developer Enterprise Program.',
-  );
-
-  /// {@macro export_method}
-  const ExportMethod(this.argName, this.description);
-
-  /// The command-line argument name for this export method.
-  final String argName;
-
-  /// A description of this method and how/when it should be used.
-  final String description;
 }
 
 mixin ShorebirdBuildMixin on ShorebirdCommand {
@@ -223,6 +193,8 @@ mixin ShorebirdBuildMixin on ShorebirdCommand {
   }) async {
     return _runShorebirdBuildCommand(() async {
       const executable = 'flutter';
+      final exportOptionsPlistPath =
+          (exportOptionsPlist ?? ios.createExportOptionsPlist()).path;
       final arguments = [
         'build',
         'ipa',
@@ -230,8 +202,7 @@ mixin ShorebirdBuildMixin on ShorebirdCommand {
         if (flavor != null) '--flavor=$flavor',
         if (target != null) '--target=$target',
         if (!codesign) '--no-codesign',
-        if (codesign)
-          '''--export-options-plist=${(exportOptionsPlist ?? createExportOptionsPlist()).path}''',
+        if (codesign) '''--export-options-plist=$exportOptionsPlistPath''',
         ...results.rest,
       ];
 
@@ -260,40 +231,6 @@ mixin ShorebirdBuildMixin on ShorebirdCommand {
         throw BuildException(errorMessage);
       }
     });
-  }
-
-  /// Creates an ExportOptions.plist file, which is used to tell xcodebuild to
-  /// not manage the app version and build number. If we don't do this, then
-  /// xcodebuild will increment the build number if it detects an App Store
-  /// Connect build with the same version and build number. This is a problem
-  /// for us when patching, as patches need to have the same version and build
-  /// number as the release they are patching.
-  /// See
-  /// https://developer.apple.com/forums/thread/690647?answerId=689925022#689925022
-  File createExportOptionsPlist({
-    ExportMethod exportMethod = ExportMethod.appStore,
-  }) {
-    final plistContents = '''
-<?xml version="1.0" encoding="UTF-8"?>
-<!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
-<plist version="1.0">
-<dict>
-  <key>manageAppVersionAndBuildNumber</key>
-  <false/>
-  <key>signingStyle</key>
-  <string>automatic</string>
-  <key>uploadBitcode</key>
-  <false/>
-  <key>method</key>
-  <string>${exportMethod.argName}</string>
-</dict>
-</plist>
-''';
-    final tempDir = Directory.systemTemp.createTempSync();
-    final exportPlistFile = File(p.join(tempDir.path, 'ExportOptions.plist'))
-      ..createSync(recursive: true)
-      ..writeAsStringSync(plistContents);
-    return exportPlistFile;
   }
 
   /// Builds a release iOS framework (.xcframework) for the current project.

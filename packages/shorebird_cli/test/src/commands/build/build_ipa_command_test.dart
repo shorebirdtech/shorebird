@@ -1,3 +1,5 @@
+import 'dart:io';
+
 import 'package:args/args.dart';
 import 'package:mason_logger/mason_logger.dart';
 import 'package:mocktail/mocktail.dart';
@@ -7,6 +9,7 @@ import 'package:shorebird_cli/src/commands/build/build.dart';
 import 'package:shorebird_cli/src/doctor.dart';
 import 'package:shorebird_cli/src/logger.dart';
 import 'package:shorebird_cli/src/os/operating_system_interface.dart';
+import 'package:shorebird_cli/src/platform/platform.dart';
 import 'package:shorebird_cli/src/shorebird_env.dart';
 import 'package:shorebird_cli/src/shorebird_process.dart';
 import 'package:shorebird_cli/src/shorebird_validator.dart';
@@ -20,6 +23,7 @@ void main() {
   group(BuildIpaCommand, () {
     late ArgResults argResults;
     late Doctor doctor;
+    late Ios ios;
     late Logger logger;
     late OperatingSystemInterface operatingSystemInterface;
     late ShorebirdProcessResult buildProcessResult;
@@ -35,6 +39,7 @@ void main() {
         body,
         values: {
           doctorRef.overrideWith(() => doctor),
+          iosRef.overrideWith(() => ios),
           loggerRef.overrideWith(() => logger),
           osInterfaceRef.overrideWith(() => operatingSystemInterface),
           processRef.overrideWith(() => shorebirdProcess),
@@ -51,6 +56,7 @@ void main() {
     setUp(() {
       argResults = MockArgResults();
       doctor = MockDoctor();
+      ios = MockIos();
       logger = MockLogger();
       operatingSystemInterface = MockOperatingSystemInterface();
       shorebirdProcess = MockShorebirdProcess();
@@ -79,6 +85,7 @@ void main() {
       ).thenAnswer((_) async => buildProcessResult);
       when(() => argResults['codesign']).thenReturn(true);
       when(() => argResults.rest).thenReturn([]);
+      when(() => ios.createExportOptionsPlist()).thenReturn(File('.'));
       when(() => logger.progress(any())).thenReturn(MockProgress());
       when(() => logger.info(any())).thenReturn(null);
       when(() => operatingSystemInterface.which('flutter'))
