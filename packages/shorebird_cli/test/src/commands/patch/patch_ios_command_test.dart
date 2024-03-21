@@ -408,7 +408,8 @@ flutter:
       ).thenAnswer((_) async {});
       when(() => doctor.iosCommandValidators).thenReturn([flutterValidator]);
       when(() => engineConfig.localEngine).thenReturn(null);
-      when(() => ios.createExportOptionsPlist()).thenReturn(File('.'));
+      when(() => ios.exportOptionsPlistFromArgs(argResults))
+          .thenReturn(File('.'));
       when(flutterValidator.validate).thenAnswer((_) async => []);
       when(() => logger.confirm(any())).thenReturn(true);
       when(() => logger.progress(any())).thenReturn(progress);
@@ -554,6 +555,21 @@ flutter:
           .called(1);
       verify(() => logger.info(PatchCommand.forceDeprecationExplanation))
           .called(1);
+    });
+
+    group('when exportOptionsPlistFromArgs throws exception', () {
+      setUp(() {
+        when(() => ios.exportOptionsPlistFromArgs(argResults))
+            .thenThrow(ArgumentError('bad args'));
+      });
+
+      test('logs error and exits with usage code', () async {
+        setUpProjectRoot();
+        final exitCode = await runWithOverrides(command.run);
+
+        expect(exitCode, equals(ExitCode.usage.code));
+        verify(() => logger.err('Invalid argument(s): bad args')).called(1);
+      });
     });
 
     test('exits with code 70 when building fails', () async {

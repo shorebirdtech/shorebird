@@ -68,7 +68,10 @@ Ios get ios => read(iosRef);
 class Ios {
   File exportOptionsPlistFromArgs(ArgResults results) {
     final exportPlistArg = results[exportOptionsPlistArgName] as String?;
-    if (exportPlistArg != null && results.wasParsed(exportMethodArgName)) {
+    final exportMethodArgExists = results.options.contains(exportMethodArgName);
+    if (exportPlistArg != null &&
+        exportMethodArgExists &&
+        results.wasParsed(exportMethodArgName)) {
       throw ArgumentError(
         '''Cannot specify both --$exportMethodArgName and --$exportOptionsPlistArgName.''',
       );
@@ -82,7 +85,7 @@ class Ios {
     }
 
     final ExportMethod? exportMethod;
-    if (results.wasParsed(exportMethodArgName)) {
+    if (exportMethodArgExists && results.wasParsed(exportMethodArgName)) {
       exportMethod = ExportMethod.values.firstWhere(
         (element) => element.argName == results[exportMethodArgName] as String,
       );
