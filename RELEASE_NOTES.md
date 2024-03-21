@@ -2,6 +2,26 @@
 
 This section contains past updates we've sent to customers via Discord.
 
+## 0.27.0 (March 21, 2024)
+
+🛑 Removes support for the `--force` flag for release and patch commands (see below)
+🚢 Adds --export-options-plist option to `patch ios` command.
+🤖 Fixes an issue where some Android builds were not able to find release
+artifacts due to a change in the artifact output location (see
+https://github.com/shorebirdtech/shorebird/issues/1798).
+
+If you have previously used the `--force` flag for release or patch commands, now
+is a good time to revisit whether this is necessary. `--force` is _not_ required
+to run Shorebird on CI. If your patches include **known good** native code and/or
+asset changes, you can use `--allow-native-diffs` and/or `--allow-asset-diffs`
+as an argument to the patch command to bypass warnings. We caution against these,
+however, as native code or asset changes can cause crashes or other issues in
+your app.
+
+If you have any questions about this change, please feel free to reach out!
+
+📚 Release notes can be found at https://github.com/shorebirdtech/shorebird/releases/tag/v0.27.0
+
 ## 0.26.7 (March 18, 2024)
 
 🐦 Support for Flutter 3.19.3
@@ -21,9 +41,9 @@ documentation at https://docs.shorebird.dev/guides/hybrid-app/ios.
 ## 0.26.5 (March 13, 2024)
 
 🩹 Fix issue where releases created with `--flutter-version` flag were reporting
-   incorrect Flutter version, causing `shorebird patch` to later fail. If you've
-   created a release using `--flutter-version`, you may not be able to patch.
-   To resolve this, create a new release after upgrading to this version.
+incorrect Flutter version, causing `shorebird patch` to later fail. If you've
+created a release using `--flutter-version`, you may not be able to patch.
+To resolve this, create a new release after upgrading to this version.
 
 📚 Release notes can be found at https://github.com/shorebirdtech/shorebird/releases/tag/v0.26.5
 
@@ -31,9 +51,9 @@ documentation at https://docs.shorebird.dev/guides/hybrid-app/ios.
 
 🪵 Clearer error messages for cases where shorebird is not properly set up in a project.
 🍎 Fix incorrect native code change warning for iOS patches created in different
-   directory or machine than release.
+directory or machine than release.
 🩹 Fix issue where patch commands would unnecessarily recompile the app when a
-   release version is specified.
+release version is specified.
 
 📚 Release notes can be found at https://github.com/shorebirdtech/shorebird/releases/tag/v0.26.4
 
@@ -55,7 +75,7 @@ documentation at https://docs.shorebird.dev/guides/hybrid-app/ios.
 🆕 Updated to Flutter 3.19.2.
 🪟 Fixed `shorebird patch` failing on some Windows installs (missing .dll).
 ☁️ Added Microsoft login to `shorebird login`, `shorebird login:ci`, and
-  console.shorebird.dev.
+console.shorebird.dev.
 
 Microsoft login will show Shorebird as an "unverified" app for a few more
 days until our Microsoft Partner Program application completes.
@@ -83,13 +103,13 @@ any issues!
 
 💥 Fixes a crash on iOS releases without a patch.
 🚑 Now publishing .dSYM files for iOS builds to help with crash reporting, see
-   https://docs.shorebird.dev/guides/crash-reporting for usage instructions.
+https://docs.shorebird.dev/guides/crash-reporting for usage instructions.
 🪵 Fixed logs from Shorebird updater not appearing on iOS.
 
 We have received multiple reports of iOS builds crashing at 0xfffffffffffffffe.
 https://github.com/shorebirdtech/shorebird/issues/1700
 We expect this is a bug in our new iOS engine relating to `async`/`await`, but
-have not yet been able to reproduce this ourselves. We would *love* to work
+have not yet been able to reproduce this ourselves. We would _love_ to work
 with you to debug this issue if you are seeing it.
 
 If you see any issues, please let us know!
