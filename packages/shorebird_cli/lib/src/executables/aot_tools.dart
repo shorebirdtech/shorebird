@@ -99,6 +99,8 @@ class AotTools {
     required String base,
     required String patch,
     required String analyzeSnapshot,
+    required String genSnapshot,
+    required String kernel,
     required String outputPath,
     String? workingDirectory,
   }) async {
@@ -108,6 +110,8 @@ class AotTools {
         '--base=$base',
         '--patch=$patch',
         '--analyze-snapshot=$analyzeSnapshot',
+        '--gen-snapshot=$genSnapshot',
+        '--kernel=$kernel',
         '--output=$outputPath',
       ],
       workingDirectory: workingDirectory,

@@ -390,6 +390,8 @@ ${summary.join('\n')}
         base: releaseArtifact.path,
         patch: aotSnapshot.path,
         analyzeSnapshot: analyzeSnapshot.path,
+        genSnapshot: '',
+        kernel: '',
         outputPath: _vmcodeOutputPath,
         workingDirectory: _buildDirectory,
       );
