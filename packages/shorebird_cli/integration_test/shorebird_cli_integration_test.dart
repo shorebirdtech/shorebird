@@ -16,7 +16,7 @@ import 'package:test/test.dart';
 import 'package:uuid/uuid.dart';
 
 const tokenWarningMessage = '''
-$shorebirdTokenEnvVar needs to be updated before the next major release.
+[WARN] $shorebirdTokenEnvVar needs to be updated before the next major release.
 Run `shorebird login:ci` to obtain a new token.
 ''';
 
