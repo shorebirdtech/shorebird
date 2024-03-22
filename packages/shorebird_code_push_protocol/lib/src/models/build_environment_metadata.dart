@@ -1,0 +1,33 @@
+import 'package:json_annotation/json_annotation.dart';
+
+part 'build_environment_metadata.g.dart';
+
+/// {@template build_environment_metadata}
+/// Information about the environment used to build a release or patch.
+/// {@endtemplate}
+@JsonSerializable()
+class BuildEnvironmentMetadata {
+  /// {@macro build_environment_metadata}
+  const BuildEnvironmentMetadata({
+    required this.operatingSystem,
+    required this.operatingSystemVersion,
+    required this.xcodeVersion,
+  });
+
+  /// Converts a Map<String, dynamic> to a [BuildEnvironmentMetadata]
+  factory BuildEnvironmentMetadata.fromJson(Map<String, dynamic> json) =>
+      _$BuildEnvironmentMetadataFromJson(json);
+
+  /// Converts a [BuildEnvironmentMetadata] to a Map<String, dynamic>
+  Map<String, dynamic> toJson() => _$BuildEnvironmentMetadataToJson(this);
+
+  /// The operating system used to run the release command.
+  final String operatingSystem;
+
+  /// The version of [operatingSystem].
+  final String operatingSystemVersion;
+
+  /// The version of Xcode used to build the patch. Only provided for iOS
+  /// patches.
+  final String? xcodeVersion;
+}

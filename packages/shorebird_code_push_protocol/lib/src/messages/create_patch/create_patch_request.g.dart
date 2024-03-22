@@ -20,6 +20,11 @@ CreatePatchRequest _$CreatePatchRequestFromJson(Map<String, dynamic> json) =>
               $checkedConvert('has_asset_changes', (v) => v as bool?),
           hasNativeChanges:
               $checkedConvert('has_native_changes', (v) => v as bool?),
+          metadata: $checkedConvert(
+              'metadata',
+              (v) => v == null
+                  ? null
+                  : CreatePatchMetadata.fromJson(v as Map<String, dynamic>)),
         );
         return val;
       },
@@ -37,4 +42,5 @@ Map<String, dynamic> _$CreatePatchRequestToJson(CreatePatchRequest instance) =>
       'was_forced': instance.wasForced,
       'has_asset_changes': instance.hasAssetChanges,
       'has_native_changes': instance.hasNativeChanges,
+      'metadata': instance.metadata?.toJson(),
     };
