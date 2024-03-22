@@ -304,6 +304,8 @@ class PreviewCommand extends ShorebirdCommand {
     required DeploymentTrack track,
     String? deviceId,
   }) async {
+    await iosDeploy.installIfNeeded();
+
     const platform = ReleasePlatform.ios;
     final runnerDirectory = Directory(
       getArtifactPath(
