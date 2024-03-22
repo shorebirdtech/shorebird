@@ -230,5 +230,9 @@ class ShorebirdEnv {
 
       // https://help.github.com/en/actions/configuring-and-managing-workflows/using-environment-variables#default-environment-variables
       ||
-      platform.environment.containsKey('GITHUB_ACTIONS');
+      platform.environment.containsKey('GITHUB_ACTIONS')
+
+      // https://learn.microsoft.com/en-us/azure/devops/pipelines/build/variables?view=azure-devops&tabs=yaml
+      ||
+      platform.environment.containsKey('TF_BUILD');
 }

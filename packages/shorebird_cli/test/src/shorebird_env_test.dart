@@ -607,6 +607,11 @@ base_url: https://example.com''');
         expect(runWithOverrides(() => shorebirdEnv.isRunningOnCI), isTrue);
       });
 
+      test('returns true if TF_BUILD is set', () {
+        when(() => platform.environment).thenReturn({'TF_BUILD': 'True'});
+        expect(runWithOverrides(() => shorebirdEnv.isRunningOnCI), isTrue);
+      });
+
       test('returns false if no relevant environment variables are set', () {
         when(() => platform.environment).thenReturn({});
         expect(runWithOverrides(() => shorebirdEnv.isRunningOnCI), isFalse);
