@@ -15,11 +15,6 @@ import 'package:shorebird_code_push_client/shorebird_code_push_client.dart';
 import 'package:test/test.dart';
 import 'package:uuid/uuid.dart';
 
-const tokenWarningMessage = '''
-[WARN] $shorebirdTokenEnvVar needs to be updated before the next major release.
-Run `shorebird login:ci` to obtain a new token.
-''';
-
 R runWithOverrides<R>(R Function() body) {
   return runScoped(
     body,
@@ -99,7 +94,7 @@ void main() {
         'shorebird init --verbose',
         workingDirectory: cwd,
       );
-      expect(initShorebirdResult.stderr, equals(tokenWarningMessage));
+      expect(initShorebirdResult.stderr, isEmpty);
       expect(initShorebirdResult.exitCode, equals(0));
 
       final shorebirdYamlPath = p.join(cwd, 'shorebird.yaml');
@@ -139,7 +134,7 @@ void main() {
         'shorebird release android --verbose',
         workingDirectory: cwd,
       );
-      expect(shorebirdReleaseResult.stderr, equals(tokenWarningMessage));
+      expect(shorebirdReleaseResult.stderr, isEmpty);
       expect(
         shorebirdReleaseResult.stdout,
         contains('Published Release $releaseVersion!'),
@@ -188,7 +183,7 @@ void main() {
         'shorebird patch android --verbose',
         workingDirectory: cwd,
       );
-      expect(shorebirdPatchResult.stderr, equals(tokenWarningMessage));
+      expect(shorebirdPatchResult.stderr, isEmpty);
       expect(shorebirdPatchResult.stdout, contains('Published Patch 1!'));
       expect(shorebirdPatchResult.exitCode, equals(0));
 
