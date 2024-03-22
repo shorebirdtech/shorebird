@@ -2,6 +2,12 @@
 
 This section contains past updates we've sent to customers via Discord.
 
+## 0.27.2 (March 22, 2024)
+
+🐦 Support for Flutter 3.19.4
+
+📚 Release notes can be found at https://github.com/shorebirdtech/shorebird/releases/tag/v0.27.2
+
 ## 0.27.1 (March 22, 2024)
 
 🪟 Automatically detects a CI environment when running on an Azure pipeline.
