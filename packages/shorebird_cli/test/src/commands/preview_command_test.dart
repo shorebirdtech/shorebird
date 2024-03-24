@@ -976,6 +976,7 @@ channel: ${track.channel}
             device: any(named: 'device'),
           ),
         ).thenAnswer((_) async => ExitCode.success.code);
+        when(() => iosDeploy.installIfNeeded()).thenAnswer((_) async {});
         when(
           () => iosDeploy.installAndLaunchApp(
             bundlePath: any(named: 'bundlePath'),
@@ -1001,6 +1002,11 @@ channel: ${track.channel}
           )
             ..createSync(recursive: true)
             ..writeAsStringSync('app_id: $appId', flush: true);
+
+      test('ensures ios-deploy is installed', () async {
+        await runWithOverrides(command.run);
+        verify(() => iosDeploy.installIfNeeded()).called(1);
+      });
 
       test('exits with code 70 when querying for release artifact fails',
           () async {
