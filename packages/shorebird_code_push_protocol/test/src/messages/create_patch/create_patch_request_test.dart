@@ -10,6 +10,7 @@ void main() {
         hasAssetChanges: true,
         hasNativeChanges: false,
         metadata: CreatePatchMetadata(
+          releasePlatform: ReleasePlatform.android,
           usedIgnoreAssetChangesFlag: true,
           usedIgnoreNativeChangesFlag: false,
           hasAssetChanges: true,
@@ -17,6 +18,7 @@ void main() {
           environment: BuildEnvironmentMetadata(
             operatingSystem: 'linux',
             operatingSystemVersion: '1.0.0',
+            shorebirdVersion: '1.2.3',
             xcodeVersion: null,
           ),
         ),

@@ -8,10 +8,13 @@ void main() {
         platform: ReleasePlatform.android,
         status: ReleaseStatus.active,
         metadata: UpdateReleaseMetadata(
+          releasePlatform: ReleasePlatform.ios,
+          flutterVersionOverride: null,
           generatedApks: null,
           environment: BuildEnvironmentMetadata(
             operatingSystem: 'macos',
             operatingSystemVersion: '11.1',
+            shorebirdVersion: '1.2.3',
             xcodeVersion: '15.3',
           ),
         ),

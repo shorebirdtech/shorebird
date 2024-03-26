@@ -10,6 +10,7 @@ part 'create_patch_metadata.g.dart';
 class CreatePatchMetadata {
   /// {@macro create_patch_metadata}
   const CreatePatchMetadata({
+    required this.releasePlatform,
     required this.usedIgnoreAssetChangesFlag,
     required this.hasAssetChanges,
     required this.usedIgnoreNativeChangesFlag,
@@ -23,6 +24,9 @@ class CreatePatchMetadata {
 
   /// Converts a [CreatePatchMetadata] to a Map<String, dynamic>
   Map<String, dynamic> toJson() => _$CreatePatchMetadataToJson(this);
+
+  /// The platform for which the patch was created.
+  final ReleasePlatform releasePlatform;
 
   /// Whether the `--allow-asset-diffs` flag was used.
   final bool usedIgnoreAssetChangesFlag;

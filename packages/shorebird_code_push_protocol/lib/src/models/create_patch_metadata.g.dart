@@ -14,6 +14,8 @@ CreatePatchMetadata _$CreatePatchMetadataFromJson(Map<String, dynamic> json) =>
       json,
       ($checkedConvert) {
         final val = CreatePatchMetadata(
+          releasePlatform: $checkedConvert('release_platform',
+              (v) => $enumDecode(_$ReleasePlatformEnumMap, v)),
           usedIgnoreAssetChangesFlag: $checkedConvert(
               'used_ignore_asset_changes_flag', (v) => v as bool),
           hasAssetChanges:
@@ -30,6 +32,7 @@ CreatePatchMetadata _$CreatePatchMetadataFromJson(Map<String, dynamic> json) =>
         return val;
       },
       fieldKeyMap: const {
+        'releasePlatform': 'release_platform',
         'usedIgnoreAssetChangesFlag': 'used_ignore_asset_changes_flag',
         'hasAssetChanges': 'has_asset_changes',
         'usedIgnoreNativeChangesFlag': 'used_ignore_native_changes_flag',
@@ -40,9 +43,15 @@ CreatePatchMetadata _$CreatePatchMetadataFromJson(Map<String, dynamic> json) =>
 Map<String, dynamic> _$CreatePatchMetadataToJson(
         CreatePatchMetadata instance) =>
     <String, dynamic>{
+      'release_platform': _$ReleasePlatformEnumMap[instance.releasePlatform]!,
       'used_ignore_asset_changes_flag': instance.usedIgnoreAssetChangesFlag,
       'has_asset_changes': instance.hasAssetChanges,
       'used_ignore_native_changes_flag': instance.usedIgnoreNativeChangesFlag,
       'has_native_changes': instance.hasNativeChanges,
       'environment': instance.environment.toJson(),
     };
+
+const _$ReleasePlatformEnumMap = {
+  ReleasePlatform.android: 'android',
+  ReleasePlatform.ios: 'ios',
+};

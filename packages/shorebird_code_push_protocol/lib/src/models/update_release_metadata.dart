@@ -10,6 +10,8 @@ part 'update_release_metadata.g.dart';
 class UpdateReleaseMetadata {
   /// {@macro release_metadata}
   const UpdateReleaseMetadata({
+    required this.releasePlatform,
+    required this.flutterVersionOverride,
     required this.generatedApks,
     required this.environment,
   });
@@ -20,6 +22,12 @@ class UpdateReleaseMetadata {
 
   /// Converts a [UpdateReleaseMetadata] to a Map<String, dynamic>.
   Map<String, dynamic> toJson() => _$UpdateReleaseMetadataToJson(this);
+
+  /// The platform for which the patch was created.
+  final ReleasePlatform releasePlatform;
+
+  /// The Flutter version specified by the user, if any.
+  final String? flutterVersionOverride;
 
   /// Whether the user opted to generate an APK for the release (android-only).
   final bool? generatedApks;

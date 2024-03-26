@@ -9,6 +9,7 @@ part 'build_environment_metadata.g.dart';
 class BuildEnvironmentMetadata {
   /// {@macro build_environment_metadata}
   const BuildEnvironmentMetadata({
+    required this.shorebirdVersion,
     required this.operatingSystem,
     required this.operatingSystemVersion,
     required this.xcodeVersion,
@@ -20,6 +21,9 @@ class BuildEnvironmentMetadata {
 
   /// Converts a [BuildEnvironmentMetadata] to a Map<String, dynamic>
   Map<String, dynamic> toJson() => _$BuildEnvironmentMetadataToJson(this);
+
+  /// The version of Shorebird used to run the command.
+  final String shorebirdVersion;
 
   /// The operating system used to run the release command.
   final String operatingSystem;

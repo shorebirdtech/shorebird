@@ -15,6 +15,10 @@ UpdateReleaseMetadata _$UpdateReleaseMetadataFromJson(
       json,
       ($checkedConvert) {
         final val = UpdateReleaseMetadata(
+          releasePlatform: $checkedConvert('release_platform',
+              (v) => $enumDecode(_$ReleasePlatformEnumMap, v)),
+          flutterVersionOverride:
+              $checkedConvert('flutter_version_override', (v) => v as String?),
           generatedApks: $checkedConvert('generated_apks', (v) => v as bool?),
           environment: $checkedConvert(
               'environment',
@@ -23,12 +27,23 @@ UpdateReleaseMetadata _$UpdateReleaseMetadataFromJson(
         );
         return val;
       },
-      fieldKeyMap: const {'generatedApks': 'generated_apks'},
+      fieldKeyMap: const {
+        'releasePlatform': 'release_platform',
+        'flutterVersionOverride': 'flutter_version_override',
+        'generatedApks': 'generated_apks'
+      },
     );
 
 Map<String, dynamic> _$UpdateReleaseMetadataToJson(
         UpdateReleaseMetadata instance) =>
     <String, dynamic>{
+      'release_platform': _$ReleasePlatformEnumMap[instance.releasePlatform]!,
+      'flutter_version_override': instance.flutterVersionOverride,
       'generated_apks': instance.generatedApks,
       'environment': instance.environment.toJson(),
     };
+
+const _$ReleasePlatformEnumMap = {
+  ReleasePlatform.android: 'android',
+  ReleasePlatform.ios: 'ios',
+};

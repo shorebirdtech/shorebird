@@ -31,9 +31,11 @@ class CreatePatchRequest {
   final bool? wasForced;
 
   /// Whether the patch's assets were not the same as those of the release
+  // TODO(bryanoltman): remove this after metadata change is fully rolled out.
   final bool? hasAssetChanges;
 
   /// Whether the patch's native code is different than that of the release.
+  // TODO(bryanoltman): remove this after metadata change is fully rolled out.
   final bool? hasNativeChanges;
 
   /// Additional information about the creation of the patch.
