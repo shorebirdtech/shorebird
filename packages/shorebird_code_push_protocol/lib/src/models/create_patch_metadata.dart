@@ -1,3 +1,4 @@
+import 'package:equatable/equatable.dart';
 import 'package:json_annotation/json_annotation.dart';
 import 'package:shorebird_code_push_protocol/src/models/models.dart';
 
@@ -7,7 +8,7 @@ part 'create_patch_metadata.g.dart';
 /// Information about a patch, used for debugging purposes.
 /// {@endtemplate}
 @JsonSerializable()
-class CreatePatchMetadata {
+class CreatePatchMetadata extends Equatable {
   /// {@macro create_patch_metadata}
   const CreatePatchMetadata({
     required this.releasePlatform,
@@ -42,4 +43,14 @@ class CreatePatchMetadata {
 
   /// Properties about the environment in which the patch was created.
   final BuildEnvironmentMetadata environment;
+
+  @override
+  List<Object?> get props => [
+        releasePlatform,
+        usedIgnoreAssetChangesFlag,
+        hasAssetChanges,
+        usedIgnoreNativeChangesFlag,
+        hasNativeChanges,
+        environment,
+      ];
 }

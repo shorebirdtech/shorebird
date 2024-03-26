@@ -9,7 +9,8 @@ environment:
   sdk: ">=3.0.0 <4.0.0"
 
 dependencies:
-  json_annotation: ^4.8.1  
+  equatable: ^2.0.5
+  json_annotation: ^4.8.1
 
 dev_dependencies:
   build_runner: ^2.0.0

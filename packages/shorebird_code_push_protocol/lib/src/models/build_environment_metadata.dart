@@ -1,3 +1,4 @@
+import 'package:equatable/equatable.dart';
 import 'package:json_annotation/json_annotation.dart';
 
 part 'build_environment_metadata.g.dart';
@@ -6,7 +7,7 @@ part 'build_environment_metadata.g.dart';
 /// Information about the environment used to build a release or patch.
 /// {@endtemplate}
 @JsonSerializable()
-class BuildEnvironmentMetadata {
+class BuildEnvironmentMetadata extends Equatable {
   /// {@macro build_environment_metadata}
   const BuildEnvironmentMetadata({
     required this.shorebirdVersion,
@@ -34,4 +35,12 @@ class BuildEnvironmentMetadata {
   /// The version of Xcode used to build the patch. Only provided for iOS
   /// patches.
   final String? xcodeVersion;
+
+  @override
+  List<Object?> get props => [
+        shorebirdVersion,
+        operatingSystem,
+        operatingSystemVersion,
+        xcodeVersion,
+      ];
 }
