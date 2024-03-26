@@ -20,6 +20,7 @@ import 'package:shorebird_cli/src/extensions/arg_results.dart';
 import 'package:shorebird_cli/src/formatters/file_size_formatter.dart';
 import 'package:shorebird_cli/src/logger.dart';
 import 'package:shorebird_cli/src/patch_diff_checker.dart';
+import 'package:shorebird_cli/src/platform.dart';
 import 'package:shorebird_cli/src/platform/platform.dart';
 import 'package:shorebird_cli/src/shorebird_artifact_mixin.dart';
 import 'package:shorebird_cli/src/shorebird_artifacts.dart';
@@ -27,6 +28,7 @@ import 'package:shorebird_cli/src/shorebird_build_mixin.dart';
 import 'package:shorebird_cli/src/shorebird_env.dart';
 import 'package:shorebird_cli/src/shorebird_flutter.dart';
 import 'package:shorebird_cli/src/shorebird_validator.dart';
+import 'package:shorebird_cli/src/version.dart';
 import 'package:shorebird_code_push_client/shorebird_code_push_client.dart';
 
 /// {@template patch_ios_command}
@@ -394,8 +396,6 @@ ${summary.join('\n')}
         await codePushClientWrapper.publishPatch(
           appId: appId,
           releaseId: release.id,
-          hasAssetChanges: diffStatus.hasAssetChanges,
-          hasNativeChanges: diffStatus.hasNativeChanges,
           platform: releasePlatform,
           track:
               isStaging ? DeploymentTrack.staging : DeploymentTrack.production,
@@ -407,6 +407,19 @@ ${summary.join('\n')}
               size: patchFileSize,
             ),
           },
+          metadata: CreatePatchMetadata(
+            releasePlatform: releasePlatform,
+            usedIgnoreAssetChangesFlag: allowNativeDiffs,
+            hasAssetChanges: diffStatus.hasAssetChanges,
+            usedIgnoreNativeChangesFlag: allowNativeDiffs,
+            hasNativeChanges: diffStatus.hasNativeChanges,
+            environment: BuildEnvironmentMetadata(
+              operatingSystem: platform.operatingSystem,
+              operatingSystemVersion: platform.operatingSystemVersion,
+              shorebirdVersion: packageVersion,
+              xcodeVersion: await xcodeBuild.version(),
+            ),
+          ),
         );
 
         return ExitCode.success.code;

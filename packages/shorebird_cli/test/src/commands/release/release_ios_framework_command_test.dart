@@ -11,6 +11,7 @@ import 'package:shorebird_cli/src/code_push_client_wrapper.dart';
 import 'package:shorebird_cli/src/commands/release/release.dart';
 import 'package:shorebird_cli/src/config/config.dart';
 import 'package:shorebird_cli/src/doctor.dart';
+import 'package:shorebird_cli/src/executables/xcodebuild.dart';
 import 'package:shorebird_cli/src/logger.dart';
 import 'package:shorebird_cli/src/os/operating_system_interface.dart';
 import 'package:shorebird_cli/src/platform.dart';
@@ -79,6 +80,7 @@ flutter:
     late ShorebirdEnv shorebirdEnv;
     late ShorebirdFlutter shorebirdFlutter;
     late ShorebirdValidator shorebirdValidator;
+    late XcodeBuild xcodeBuild;
     late ReleaseIosFrameworkCommand command;
 
     R runWithOverrides<R>(R Function() body) {
@@ -95,6 +97,7 @@ flutter:
           shorebirdEnvRef.overrideWith(() => shorebirdEnv),
           shorebirdFlutterRef.overrideWith(() => shorebirdFlutter),
           shorebirdValidatorRef.overrideWith(() => shorebirdValidator),
+          xcodeBuildRef.overrideWith(() => xcodeBuild),
         },
       );
     }
@@ -148,6 +151,7 @@ flutter:
       shorebirdEnv = MockShorebirdEnv();
       shorebirdFlutter = MockShorebirdFlutter();
       shorebirdValidator = MockShorebirdValidator();
+      xcodeBuild = MockXcodeBuild();
 
       when(() => shorebirdEnv.getShorebirdYaml()).thenReturn(shorebirdYaml);
       when(() => shorebirdEnv.shorebirdRoot).thenReturn(shorebirdRoot);
@@ -203,6 +207,7 @@ flutter:
       when(() => operatingSystemInterface.which('flutter'))
           .thenReturn('/path/to/flutter');
       when(() => platform.operatingSystem).thenReturn(Platform.macOS);
+      when(() => platform.operatingSystemVersion).thenReturn('1.2.3');
       when(
         () => codePushClientWrapper.getApp(appId: any(named: 'appId')),
       ).thenAnswer((_) async => appMetadata);
@@ -249,6 +254,7 @@ flutter:
           supportedOperatingSystems: any(named: 'supportedOperatingSystems'),
         ),
       ).thenAnswer((_) async {});
+      when(() => xcodeBuild.version()).thenAnswer((_) async => '15.0');
 
       command = runWithOverrides(ReleaseIosFrameworkCommand.new)
         ..testArgResults = argResults;

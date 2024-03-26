@@ -12,6 +12,7 @@ import 'package:shorebird_cli/src/code_push_client_wrapper.dart';
 import 'package:shorebird_cli/src/commands/commands.dart';
 import 'package:shorebird_cli/src/config/config.dart';
 import 'package:shorebird_cli/src/doctor.dart';
+import 'package:shorebird_cli/src/executables/xcodebuild.dart';
 import 'package:shorebird_cli/src/logger.dart';
 import 'package:shorebird_cli/src/os/operating_system_interface.dart';
 import 'package:shorebird_cli/src/platform.dart';
@@ -123,6 +124,7 @@ flutter:
     late ShorebirdEnv shorebirdEnv;
     late ShorebirdFlutter shorebirdFlutter;
     late ShorebirdValidator shorebirdValidator;
+    late XcodeBuild xcodeBuild;
     late ReleaseIosCommand command;
 
     R runWithOverrides<R>(R Function() body) {
@@ -140,6 +142,7 @@ flutter:
           shorebirdEnvRef.overrideWith(() => shorebirdEnv),
           shorebirdFlutterRef.overrideWith(() => shorebirdFlutter),
           shorebirdValidatorRef.overrideWith(() => shorebirdValidator),
+          xcodeBuildRef.overrideWith(() => xcodeBuild),
         },
       );
     }
@@ -205,6 +208,7 @@ flutter:
       shorebirdEnv = MockShorebirdEnv();
       shorebirdFlutter = MockShorebirdFlutter();
       shorebirdValidator = MockShorebirdValidator();
+      xcodeBuild = MockXcodeBuild();
 
       when(() => shorebirdEnv.getShorebirdYaml()).thenReturn(shorebirdYaml);
       when(() => shorebirdEnv.shorebirdRoot).thenReturn(shorebirdRoot);
@@ -264,6 +268,7 @@ flutter:
         () => operatingSystemInterface.which('flutter'),
       ).thenReturn('/path/to/flutter');
       when(() => platform.operatingSystem).thenReturn(Platform.macOS);
+      when(() => platform.operatingSystemVersion).thenReturn('1.2.3');
       when(
         () => flutterBuildProcessResult.exitCode,
       ).thenReturn(ExitCode.success.code);
@@ -308,6 +313,7 @@ flutter:
           releaseId: any(named: 'releaseId'),
           platform: any(named: 'platform'),
           status: any(named: 'status'),
+          metadata: any(named: 'metadata'),
         ),
       ).thenAnswer((_) async => {});
 
@@ -320,6 +326,7 @@ flutter:
           supportedOperatingSystems: any(named: 'supportedOperatingSystems'),
         ),
       ).thenAnswer((_) async {});
+      when(() => xcodeBuild.version()).thenAnswer((_) async => '15.0');
 
       command = runWithOverrides(ReleaseIosCommand.new)
         ..testArgResults = argResults;
