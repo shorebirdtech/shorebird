@@ -2,6 +2,12 @@
 
 This section contains past updates we've sent to customers via Discord.
 
+## 0.27.3 (March 26, 2024)
+
+🪟 Updates the Azure app used for Microsoft login.
+
+📚 Release notes can be found at https://github.com/shorebirdtech/shorebird/releases/tag/v0.27.3
+
 ## 0.27.2 (March 22, 2024)
 
 🐦 Support for Flutter 3.19.4
