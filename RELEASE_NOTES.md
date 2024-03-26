@@ -2,6 +2,26 @@
 
 This section contains past updates we've sent to customers via Discord.
 
+## 0.27.3 (March 26, 2024)
+
+🪟 Updates the Azure app used for Microsoft login.
+
+📚 Release notes can be found at https://github.com/shorebirdtech/shorebird/releases/tag/v0.27.3
+
+## 0.27.2 (March 22, 2024)
+
+🐦 Support for Flutter 3.19.4
+
+📚 Release notes can be found at https://github.com/shorebirdtech/shorebird/releases/tag/v0.27.2
+
+## 0.27.1 (March 22, 2024)
+
+🪟 Automatically detects a CI environment when running on an Azure pipeline.
+👀 Fixes a bug in `shorebird preview` where the command could fail if Flutter
+had not downloaded the necessary dependencies.
+
+📚 Release notes can be found at https://github.com/shorebirdtech/shorebird/releases/tag/v0.27.1
+
 ## 0.27.0 (March 21, 2024)
 
 🛑 Removes support for the `--force` flag for release and patch commands (see below)
