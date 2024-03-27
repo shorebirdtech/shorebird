@@ -52,13 +52,22 @@ class UpdateReleaseMetadata extends Equatable {
   final ReleasePlatform releasePlatform;
 
   /// The Flutter version specified by the user, if any.
+  ///
+  /// Reason: different Flutter versions have different performance
+  /// characteristics and features. Additionally, this helps us understand which
+  /// versions of Flutter are most commonly used.
   final String? flutterVersionOverride;
 
   /// Whether the user opted to generate an APK for the release (android-only).
+  ///
+  /// Reason: if this flag is present, it produces different build artifacts,
+  /// which may affect the build process.
   final bool? generatedApks;
 
   /// Properties about the environment in which the update to the release was
   /// performed.
+  ///
+  /// Reason: see [BuildEnvironmentMetadata].
   final BuildEnvironmentMetadata environment;
 
   @override
