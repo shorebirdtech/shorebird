@@ -1,3 +1,4 @@
+import 'package:equatable/equatable.dart';
 import 'package:json_annotation/json_annotation.dart';
 import 'package:shorebird_code_push_protocol/src/models/models.dart';
 
@@ -7,7 +8,7 @@ part 'update_release_metadata.g.dart';
 /// Information about the creation of patch, used for debugging purposes.
 /// {@endtemplate}
 @JsonSerializable()
-class UpdateReleaseMetadata {
+class UpdateReleaseMetadata extends Equatable {
   /// {@macro release_metadata}
   const UpdateReleaseMetadata({
     required this.releasePlatform,
@@ -35,4 +36,12 @@ class UpdateReleaseMetadata {
   /// Properties about the environment in which the update to the release was
   /// performed.
   final BuildEnvironmentMetadata environment;
+
+  @override
+  List<Object?> get props => [
+        releasePlatform,
+        flutterVersionOverride,
+        generatedApks,
+        environment,
+      ];
 }
