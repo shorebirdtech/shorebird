@@ -6,6 +6,13 @@ part 'create_patch_metadata.g.dart';
 
 /// {@template create_patch_metadata}
 /// Information about a patch, used for debugging purposes.
+///
+/// Collection of this information is done to help Shorebird users debug any
+/// later failures in their builds.
+///
+/// We do not collect Personally Identifying Information (e.g. no paths,
+/// argument lists, etc.) in accordance with our privacy policy:
+/// https://shorebird.dev/privacy/
 /// {@endtemplate}
 @JsonSerializable()
 class CreatePatchMetadata extends Equatable {

@@ -5,6 +5,13 @@ part 'build_environment_metadata.g.dart';
 
 /// {@template build_environment_metadata}
 /// Information about the environment used to build a release or patch.
+///
+/// Collection of this information is done to help Shorebird users debug any
+/// later failures in their builds.
+///
+/// We do not collect Personally Identifying Information (e.g. no paths,
+/// argument lists, etc.) in accordance with our privacy policy:
+/// https://shorebird.dev/privacy/
 /// {@endtemplate}
 @JsonSerializable()
 class BuildEnvironmentMetadata extends Equatable {
