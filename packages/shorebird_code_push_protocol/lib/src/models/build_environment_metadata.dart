@@ -16,6 +16,22 @@ class BuildEnvironmentMetadata extends Equatable {
     required this.xcodeVersion,
   });
 
+  /// coverage:ignore-start
+  /// Creates a [BuildEnvironmentMetadata] with overridable default values for
+  /// testing purposes.
+  factory BuildEnvironmentMetadata.forTest({
+    String shorebirdVersion = '4.5.6',
+    String operatingSystem = 'macos',
+    String operatingSystemVersion = '1.2.3',
+    String? xcodeVersion = '15.0',
+  }) =>
+      BuildEnvironmentMetadata(
+        shorebirdVersion: shorebirdVersion,
+        operatingSystem: operatingSystem,
+        operatingSystemVersion: operatingSystemVersion,
+        xcodeVersion: xcodeVersion,
+      );
+
   /// Converts a Map<String, dynamic> to a [BuildEnvironmentMetadata]
   factory BuildEnvironmentMetadata.fromJson(Map<String, dynamic> json) =>
       _$BuildEnvironmentMetadataFromJson(json);

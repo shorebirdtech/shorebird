@@ -17,6 +17,23 @@ class UpdateReleaseMetadata extends Equatable {
     required this.environment,
   });
 
+  // coverage:ignore-start
+  /// Creates a [UpdateReleaseMetadata] with overridable default values for
+  /// testing purposes.
+  factory UpdateReleaseMetadata.forTest({
+    ReleasePlatform releasePlatform = ReleasePlatform.android,
+    String? flutterVersionOverride = '1.2.3',
+    bool? generatedApks = false,
+    BuildEnvironmentMetadata? environment,
+  }) =>
+      UpdateReleaseMetadata(
+        releasePlatform: releasePlatform,
+        flutterVersionOverride: flutterVersionOverride,
+        generatedApks: generatedApks,
+        environment: environment ?? BuildEnvironmentMetadata.forTest(),
+      );
+  // coverage:ignore-end
+
   /// Converts a Map<String, dynamic> to a [UpdateReleaseMetadata].
   factory UpdateReleaseMetadata.fromJson(Map<String, dynamic> json) =>
       _$UpdateReleaseMetadataFromJson(json);

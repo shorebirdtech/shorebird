@@ -19,6 +19,27 @@ class CreatePatchMetadata extends Equatable {
     required this.environment,
   });
 
+  // coverage:ignore-start
+  /// Creates a [CreatePatchMetadata] with overridable default values for
+  /// testing purposes.
+  factory CreatePatchMetadata.forTest({
+    ReleasePlatform releasePlatform = ReleasePlatform.android,
+    bool usedIgnoreAssetChangesFlag = false,
+    bool hasAssetChanges = false,
+    bool usedIgnoreNativeChangesFlag = false,
+    bool hasNativeChanges = false,
+    BuildEnvironmentMetadata? environment,
+  }) =>
+      CreatePatchMetadata(
+        releasePlatform: releasePlatform,
+        usedIgnoreAssetChangesFlag: usedIgnoreAssetChangesFlag,
+        hasAssetChanges: hasAssetChanges,
+        usedIgnoreNativeChangesFlag: usedIgnoreNativeChangesFlag,
+        hasNativeChanges: hasNativeChanges,
+        environment: environment ?? BuildEnvironmentMetadata.forTest(),
+      );
+  // coverage:ignore-end
+
   /// Converts a Map<String, dynamic> to a [CreatePatchMetadata]
   factory CreatePatchMetadata.fromJson(Map<String, dynamic> json) =>
       _$CreatePatchMetadataFromJson(json);
