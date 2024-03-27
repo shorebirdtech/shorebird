@@ -27,6 +27,7 @@ import 'package:shorebird_cli/src/shorebird_flutter.dart';
 import 'package:shorebird_cli/src/shorebird_process.dart';
 import 'package:shorebird_cli/src/shorebird_validator.dart';
 import 'package:shorebird_cli/src/validators/validators.dart';
+import 'package:shorebird_cli/src/version.dart';
 import 'package:shorebird_code_push_client/shorebird_code_push_client.dart';
 import 'package:test/test.dart';
 
@@ -43,6 +44,9 @@ void main() {
     const version = '$versionName+$versionCode';
     const linkFileName = 'out.vmcode';
     const elfAotSnapshotFileName = 'out.aot';
+    const operatingSystem = 'macOS';
+    const operatingSystemVersion = '11.0.0';
+    const xcodeVersion = '12.0';
     const postLinkerFlutterRevision =
         'deadbeefdeadbeefdeadbeefdeadbeefdeadbeef';
     const preLinkerFlutterRevision = '83305b5088e6fe327fb3334a73ff190828d85713';
@@ -317,8 +321,9 @@ flutter:
       when(
         () => operatingSystemInterface.which('flutter'),
       ).thenReturn('/path/to/flutter');
-      when(() => platform.operatingSystem).thenReturn(Platform.macOS);
-      when(() => platform.operatingSystemVersion).thenReturn('14.3.1');
+      when(() => platform.operatingSystem).thenReturn(operatingSystem);
+      when(() => platform.operatingSystemVersion)
+          .thenReturn(operatingSystemVersion);
       when(() => shorebirdEnv.getShorebirdYaml()).thenReturn(shorebirdYaml);
       when(() => shorebirdEnv.shorebirdRoot).thenReturn(shorebirdRoot);
       when(
@@ -407,7 +412,7 @@ flutter:
           hasNativeChanges: false,
         ),
       );
-      when(() => xcodeBuild.version()).thenAnswer((_) async => '15.0');
+      when(() => xcodeBuild.version()).thenAnswer((_) async => xcodeVersion);
 
       command = runWithOverrides(
         () => PatchIosFrameworkCommand(archiveDiffer: archiveDiffer),
@@ -964,7 +969,19 @@ Please re-run the release command for this version or create a new release.'''),
           platform: ReleasePlatform.ios,
           track: track,
           patchArtifactBundles: any(named: 'patchArtifactBundles'),
-          metadata: any(named: 'metadata'),
+          metadata: const CreatePatchMetadata(
+            releasePlatform: ReleasePlatform.ios,
+            usedIgnoreAssetChangesFlag: false,
+            hasAssetChanges: false,
+            usedIgnoreNativeChangesFlag: false,
+            hasNativeChanges: false,
+            environment: BuildEnvironmentMetadata(
+              shorebirdVersion: packageVersion,
+              operatingSystem: operatingSystem,
+              operatingSystemVersion: operatingSystemVersion,
+              xcodeVersion: xcodeVersion,
+            ),
+          ),
         ),
       ).called(1);
       expect(exitCode, ExitCode.success.code);

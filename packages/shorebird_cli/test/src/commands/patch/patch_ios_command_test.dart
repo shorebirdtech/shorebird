@@ -32,6 +32,7 @@ import 'package:shorebird_cli/src/shorebird_process.dart';
 import 'package:shorebird_cli/src/shorebird_validator.dart';
 import 'package:shorebird_cli/src/third_party/flutter_tools/lib/flutter_tools.dart';
 import 'package:shorebird_cli/src/validators/validators.dart';
+import 'package:shorebird_cli/src/version.dart';
 import 'package:shorebird_code_push_client/shorebird_code_push_client.dart';
 import 'package:test/test.dart';
 
@@ -47,6 +48,9 @@ void main() {
   const versionCode = '1';
   const version = '$versionName+$versionCode';
   const arch = 'aarch64';
+  const operatingSystem = 'macOS';
+  const operatingSystemVersion = '11.0.0';
+  const xcodeVersion = '12.0';
   const track = DeploymentTrack.production;
   const appDisplayName = 'Test App';
   const releasePlatform = ReleasePlatform.ios;
@@ -420,8 +424,9 @@ flutter:
       when(
         () => operatingSystemInterface.which('flutter'),
       ).thenReturn('/path/to/flutter');
-      when(() => platform.operatingSystem).thenReturn(Platform.macOS);
-      when(() => platform.operatingSystemVersion).thenReturn('1.2.3');
+      when(() => platform.operatingSystem).thenReturn(operatingSystem);
+      when(() => platform.operatingSystemVersion)
+          .thenReturn(operatingSystemVersion);
       when(() => platform.environment).thenReturn({});
       when(() => platform.script).thenReturn(shorebirdRoot.uri);
       when(() => shorebirdEnv.getShorebirdYaml()).thenReturn(shorebirdYaml);
@@ -510,7 +515,7 @@ flutter:
           hasNativeChanges: false,
         ),
       );
-      when(() => xcodeBuild.version()).thenAnswer((_) async => '15.0');
+      when(() => xcodeBuild.version()).thenAnswer((_) async => xcodeVersion);
 
       command = runWithOverrides(
         () => PatchIosCommand(archiveDiffer: archiveDiffer),
@@ -1310,7 +1315,19 @@ Please re-run the release command for this version or create a new release.'''),
               that: isA<Map<Arch, PatchArtifactBundle>>()
                   .having((e) => e[Arch.arm64]!.path, 'patch path', diffPath),
             ),
-            metadata: any(named: 'metadata'),
+            metadata: const CreatePatchMetadata(
+              releasePlatform: releasePlatform,
+              usedIgnoreAssetChangesFlag: false,
+              hasAssetChanges: false,
+              usedIgnoreNativeChangesFlag: false,
+              hasNativeChanges: false,
+              environment: BuildEnvironmentMetadata(
+                shorebirdVersion: packageVersion,
+                operatingSystem: operatingSystem,
+                operatingSystemVersion: operatingSystemVersion,
+                xcodeVersion: xcodeVersion,
+              ),
+            ),
           ),
         ).called(1);
       });
@@ -1587,7 +1604,19 @@ flavors:
           platform: releasePlatform,
           track: track,
           patchArtifactBundles: any(named: 'patchArtifactBundles'),
-          metadata: any(named: 'metadata'),
+          metadata: const CreatePatchMetadata(
+            releasePlatform: releasePlatform,
+            usedIgnoreAssetChangesFlag: false,
+            hasAssetChanges: false,
+            usedIgnoreNativeChangesFlag: false,
+            hasNativeChanges: false,
+            environment: BuildEnvironmentMetadata(
+              shorebirdVersion: packageVersion,
+              operatingSystem: operatingSystem,
+              operatingSystemVersion: operatingSystemVersion,
+              xcodeVersion: xcodeVersion,
+            ),
+          ),
         ),
       ).called(1);
     });

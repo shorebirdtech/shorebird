@@ -299,7 +299,7 @@ ${summary.join('\n')}
           metadata: UpdateReleaseMetadata(
             releasePlatform: releasePlatform,
             flutterVersionOverride: flutterVersion,
-            generatedApks: false,
+            generatedApks: generateApk,
             environment: BuildEnvironmentMetadata(
               operatingSystem: platform.operatingSystem,
               operatingSystemVersion: platform.operatingSystemVersion,

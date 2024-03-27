@@ -21,6 +21,7 @@ import 'package:shorebird_cli/src/shorebird_env.dart';
 import 'package:shorebird_cli/src/shorebird_flutter.dart';
 import 'package:shorebird_cli/src/shorebird_process.dart';
 import 'package:shorebird_cli/src/shorebird_validator.dart';
+import 'package:shorebird_cli/src/version.dart';
 import 'package:shorebird_code_push_client/shorebird_code_push_client.dart';
 import 'package:test/test.dart';
 
@@ -44,6 +45,8 @@ void main() {
     const versionName = '1.2.3';
     const versionCode = '1';
     const version = '$versionName+$versionCode';
+    const operatingSystem = 'macOS';
+    const operatingSystemVersion = '11.0.0';
     final release = Release(
       id: 0,
       appId: appId,
@@ -159,6 +162,9 @@ void main() {
       when(
         () => operatingSystemInterface.which('flutter'),
       ).thenReturn('/path/to/flutter');
+      when(() => platform.operatingSystem).thenReturn(operatingSystem);
+      when(() => platform.operatingSystemVersion)
+          .thenReturn(operatingSystemVersion);
 
       when(() => shorebirdEnv.getShorebirdYaml()).thenReturn(shorebirdYaml);
       when(
@@ -254,6 +260,7 @@ void main() {
           releaseId: any(named: 'releaseId'),
           platform: any(named: 'platform'),
           status: any(named: 'status'),
+          metadata: any(named: 'metadata'),
         ),
       ).thenAnswer((_) async => {});
 
@@ -519,6 +526,17 @@ $exception''',
           releaseId: release.id,
           platform: releasePlatform,
           status: ReleaseStatus.active,
+          metadata: const UpdateReleaseMetadata(
+            releasePlatform: releasePlatform,
+            flutterVersionOverride: null,
+            generatedApks: false,
+            environment: BuildEnvironmentMetadata(
+              operatingSystem: operatingSystem,
+              operatingSystemVersion: operatingSystemVersion,
+              shorebirdVersion: packageVersion,
+              xcodeVersion: null,
+            ),
+          ),
         ),
       ).called(1);
     });
@@ -574,6 +592,7 @@ $exception''',
           releaseId: release.id,
           platform: releasePlatform,
           status: ReleaseStatus.active,
+          metadata: any(named: 'metadata'),
         ),
       ).called(1);
     });
