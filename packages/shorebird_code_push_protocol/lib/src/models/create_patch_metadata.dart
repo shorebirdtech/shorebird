@@ -6,6 +6,13 @@ part 'create_patch_metadata.g.dart';
 
 /// {@template create_patch_metadata}
 /// Information about a patch, used for debugging purposes.
+///
+/// Collection of this information is done to help Shorebird users debug any
+/// later failures in their builds.
+///
+/// We do not collect Personally Identifying Information (e.g. no paths,
+/// argument lists, etc.) in accordance with our privacy policy:
+/// https://shorebird.dev/privacy/
 /// {@endtemplate}
 @JsonSerializable()
 class CreatePatchMetadata extends Equatable {
@@ -51,18 +58,34 @@ class CreatePatchMetadata extends Equatable {
   final ReleasePlatform releasePlatform;
 
   /// Whether the `--allow-asset-diffs` flag was used.
+  ///
+  /// Reason: this helps us understand how often prevalent the need to ignore
+  /// asset changes is.
   final bool usedIgnoreAssetChangesFlag;
 
   /// Whether asset changes were detected in the patch.
+  ///
+  /// Reason: shorebird does not support asset changes in patches, and knowing
+  /// that asset changes were detected can help explain unexpected behavior in
+  /// a patch.
   final bool hasAssetChanges;
 
   /// Whether the `--allow-native-diffs` flag was used.
+  ///
+  /// Reason: this helps us understand how often prevalent the need to ignore
+  /// native code changes is.
   final bool usedIgnoreNativeChangesFlag;
 
   /// Whether native code changes were detected in the patch.
+  ///
+  /// Reason: shorebird does not support native code changes in patches, and
+  /// knowing that native code changes were detected can help explain unexpected
+  /// behavior in a patch.
   final bool hasNativeChanges;
 
   /// Properties about the environment in which the patch was created.
+  ///
+  /// Reason: see [BuildEnvironmentMetadata].
   final BuildEnvironmentMetadata environment;
 
   @override
