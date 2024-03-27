@@ -31,6 +31,7 @@ class BuildEnvironmentMetadata extends Equatable {
         operatingSystemVersion: operatingSystemVersion,
         xcodeVersion: xcodeVersion,
       );
+  // coverage:ignore-end
 
   /// Converts a Map<String, dynamic> to a [BuildEnvironmentMetadata]
   factory BuildEnvironmentMetadata.fromJson(Map<String, dynamic> json) =>
