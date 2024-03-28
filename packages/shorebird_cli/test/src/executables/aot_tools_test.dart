@@ -366,7 +366,7 @@ void main() {
             ),
           ).thenAnswer(
             (_) async {
-              File(p.join(workingDirectory.path, 'link.json'))
+              File(p.join(workingDirectory.path, 'link.jsonl'))
                   .writeAsStringSync(
                 '''
 {"type":"link_success","base_codes_length":3036,"patch_codes_length":3036,"base_code_size":861816,"patch_code_size":861816,"linked_code_size":860460,"link_percentage":99.8426578295135}
