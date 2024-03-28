@@ -55,7 +55,9 @@ void main() {
     group('link', () {
       const base = './path/to/base.aot';
       const patch = './path/to/patch.aot';
-      const analyzeSnapshot = './path/to/analyze_snapshot.aot';
+      const analyzeSnapshot = './path/to/analyze_snapshot';
+      const genSnapshot = './path/to/gen_snapshot';
+      const kernel = './path/to/kernel.dill';
       const outputPath = './path/to/out.vmcode';
 
       test('throws Exception when process exits with non-zero code', () async {
@@ -83,6 +85,8 @@ void main() {
               base: base,
               patch: patch,
               analyzeSnapshot: analyzeSnapshot,
+              genSnapshot: genSnapshot,
+              kernel: kernel,
               outputPath: outputPath,
             ),
           ),
@@ -127,6 +131,8 @@ void main() {
                 base: base,
                 patch: patch,
                 analyzeSnapshot: analyzeSnapshot,
+                genSnapshot: genSnapshot,
+                kernel: kernel,
                 workingDirectory: workingDirectory.path,
                 outputPath: outputPath,
               ),
@@ -180,6 +186,8 @@ void main() {
                 base: base,
                 patch: patch,
                 analyzeSnapshot: analyzeSnapshot,
+                genSnapshot: genSnapshot,
+                kernel: kernel,
                 workingDirectory: workingDirectory.path,
                 outputPath: outputPath,
               ),
@@ -235,6 +243,8 @@ void main() {
                 base: base,
                 patch: patch,
                 analyzeSnapshot: analyzeSnapshot,
+                genSnapshot: genSnapshot,
+                kernel: kernel,
                 workingDirectory: workingDirectory.path,
                 outputPath: outputPath,
               ),

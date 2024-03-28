@@ -2,8 +2,10 @@ import 'dart:io';
 
 import 'package:mason_logger/mason_logger.dart';
 import 'package:path/path.dart' as p;
+import 'package:pub_semver/pub_semver.dart';
 import 'package:scoped/scoped.dart';
 import 'package:shorebird_cli/src/cache.dart';
+import 'package:shorebird_cli/src/extensions/version.dart';
 import 'package:shorebird_cli/src/shorebird_artifacts.dart';
 import 'package:shorebird_cli/src/shorebird_env.dart';
 import 'package:shorebird_cli/src/shorebird_process.dart';
@@ -94,6 +96,20 @@ class AotTools {
     );
   }
 
+  Future<bool> _linkerUsesGenSnapshot() async {
+    final version = await _getVersion();
+    return version != null && version >= Version(0, 0, 1);
+  }
+
+  Future<Version?> _getVersion() async {
+    final result = await _exec(['--version']);
+    if (result.exitCode != 0) {
+      return null;
+    }
+    final version = result.stdout.toString().trim();
+    return tryParseVersion(version);
+  }
+
   /// Generate a link vmcode file from two AOT snapshots.
   Future<void> link({
     required String base,
@@ -104,14 +120,15 @@ class AotTools {
     required String outputPath,
     String? workingDirectory,
   }) async {
+    final linkerUsesGenSnapshot = await _linkerUsesGenSnapshot();
     final result = await _exec(
       [
         'link',
         '--base=$base',
         '--patch=$patch',
         '--analyze-snapshot=$analyzeSnapshot',
-        '--gen-snapshot=$genSnapshot',
-        '--kernel=$kernel',
+        if (linkerUsesGenSnapshot) '--gen-snapshot=$genSnapshot',
+        if (linkerUsesGenSnapshot) '--kernel=$kernel',
         '--output=$outputPath',
       ],
       workingDirectory: workingDirectory,
