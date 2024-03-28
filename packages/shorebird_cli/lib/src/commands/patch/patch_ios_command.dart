@@ -108,6 +108,17 @@ If this option is not provided, the version number will be determined from the p
   final HashFunction _hashFn;
   final IosArchiveDiffer _archiveDiffer;
 
+  // Link percentage that is considered the minimum for acceptable perfromance.
+  // This was selected arbitrarily and may need to be adjusted.
+  static const double minLinkPercentage = 50;
+
+  static String lowLinkPercentageWarning(double linkPercentage) {
+    return '''
+${lightCyan.wrap('shorebird patch')} was only able to share ${linkPercentage.toStringAsFixed(2)}% of Dart code with the released app.
+This means the patched code may execute slower than expected.
+https://docs.shorebird.dev/status#ios_link_percentage''';
+  }
+
   @override
   Future<int> run() async {
     try {
@@ -305,6 +316,7 @@ Current Flutter Revision: $currentFlutterRevision
           ),
         );
 
+        double? percentLinked;
         final useLinker = AotTools.usesLinker(release.flutterRevision);
         if (useLinker) {
           final (:exitCode, :linkPercentage) = await _runLinker(
@@ -313,14 +325,10 @@ Current Flutter Revision: $currentFlutterRevision
 
           if (exitCode != ExitCode.success.code) return exitCode;
 
-          if (linkPercentage != null && linkPercentage < 50) {
-            // TODO(felangel): update copy and link to issue/docs.
-            logger.warn(
-              '''
-The linker was only able to link ${styleBold.wrap(linkPercentage.toStringAsFixed(2))}%.
-This will likely result in slower patch performance.''',
-            );
+          if (linkPercentage != null && linkPercentage < minLinkPercentage) {
+            logger.warn(lowLinkPercentageWarning(linkPercentage));
           }
+          percentLinked = linkPercentage;
         }
 
         if (dryRun) {
@@ -375,6 +383,8 @@ This will likely result in slower patch performance.''',
             '🟠 Track: ${lightCyan.wrap('Staging')}'
           else
             '🟢 Track: ${lightCyan.wrap('Production')}',
+          if (percentLinked != null)
+            '''🔗 Running ${lightCyan.wrap(percentLinked.toStringAsFixed(1))}% on CPU''',
         ];
 
         logger.info(

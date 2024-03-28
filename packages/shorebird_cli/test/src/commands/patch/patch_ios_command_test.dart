@@ -341,7 +341,7 @@ flutter:
           workingDirectory: any(named: 'workingDirectory'),
           outputPath: any(named: 'outputPath'),
         ),
-      ).thenAnswer((_) async {});
+      ).thenAnswer((_) async => null);
       when(() => aotTools.isGeneratePatchDiffBaseSupported())
           .thenAnswer((_) async => false);
       when(
@@ -410,8 +410,9 @@ flutter:
       ).thenAnswer((_) async {});
       when(() => doctor.iosCommandValidators).thenReturn([flutterValidator]);
       when(() => engineConfig.localEngine).thenReturn(null);
-      when(() => ios.exportOptionsPlistFromArgs(argResults))
-          .thenReturn(File('.'));
+      when(
+        () => ios.exportOptionsPlistFromArgs(argResults),
+      ).thenReturn(File('.'));
       when(flutterValidator.validate).thenAnswer((_) async => []);
       when(() => logger.confirm(any())).thenReturn(true);
       when(() => logger.progress(any())).thenReturn(progress);
@@ -829,6 +830,7 @@ Please re-run the release command for this version or create a new release.'''),
       ).thenAnswer((_) async {
         // Ensure we're using the correct flutter revision.
         expect(shorebirdEnv.flutterRevision, equals(preLinkerFlutterRevision));
+        return null;
       });
 
       setUpProjectRoot();
@@ -1259,6 +1261,33 @@ Please re-run the release command for this version or create a new release.'''),
           expect(exitCode, equals(ExitCode.software.code));
           verify(
             () => progress.fail('Failed to link AOT files: $exception'),
+          ).called(1);
+        });
+      });
+
+      group('when aot_tools returns a low link percentage', () {
+        setUp(() {
+          when(
+            () => aotTools.link(
+              base: any(named: 'base'),
+              patch: any(named: 'patch'),
+              analyzeSnapshot: any(named: 'analyzeSnapshot'),
+              genSnapshot: any(named: 'genSnapshot'),
+              kernel: any(named: 'kernel'),
+              workingDirectory: any(named: 'workingDirectory'),
+              outputPath: any(named: 'outputPath'),
+            ),
+          ).thenAnswer((_) async => PatchIosCommand.minLinkPercentage - 1);
+        });
+
+        test('logs a warning', () async {
+          await runWithOverrides(command.run);
+          verify(
+            () => logger.warn(
+              PatchIosCommand.lowLinkPercentageWarning(
+                PatchIosCommand.minLinkPercentage - 1,
+              ),
+            ),
           ).called(1);
         });
       });
