@@ -24,6 +24,7 @@ class CreatePatchMetadata extends Equatable {
     required this.usedIgnoreNativeChangesFlag,
     required this.hasNativeChanges,
     required this.environment,
+    this.linkPercentage,
   });
 
   // coverage:ignore-start
@@ -35,6 +36,7 @@ class CreatePatchMetadata extends Equatable {
     bool hasAssetChanges = false,
     bool usedIgnoreNativeChangesFlag = false,
     bool hasNativeChanges = false,
+    double? linkPercentage,
     BuildEnvironmentMetadata? environment,
   }) =>
       CreatePatchMetadata(
@@ -43,6 +45,7 @@ class CreatePatchMetadata extends Equatable {
         hasAssetChanges: hasAssetChanges,
         usedIgnoreNativeChangesFlag: usedIgnoreNativeChangesFlag,
         hasNativeChanges: hasNativeChanges,
+        linkPercentage: linkPercentage,
         environment: environment ?? BuildEnvironmentMetadata.forTest(),
       );
   // coverage:ignore-end
@@ -83,6 +86,12 @@ class CreatePatchMetadata extends Equatable {
   /// behavior in a patch.
   final bool hasNativeChanges;
 
+  /// The percentage of code that was linked in the patch.
+  /// Generally, the higher the percentage, the better the patch performance
+  /// since more code will be run on the CPU as opposed to the simulator.
+  /// Note: link percentage is currently only available for iOS patches.
+  final double? linkPercentage;
+
   /// Properties about the environment in which the patch was created.
   ///
   /// Reason: see [BuildEnvironmentMetadata].
@@ -95,6 +104,7 @@ class CreatePatchMetadata extends Equatable {
         hasAssetChanges,
         usedIgnoreNativeChangesFlag,
         hasNativeChanges,
+        linkPercentage,
         environment,
       ];
 }
