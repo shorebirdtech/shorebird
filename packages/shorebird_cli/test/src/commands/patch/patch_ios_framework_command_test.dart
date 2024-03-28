@@ -290,7 +290,7 @@ flutter:
           workingDirectory: any(named: 'workingDirectory'),
           outputPath: any(named: 'outputPath'),
         ),
-      ).thenAnswer((_) async {});
+      ).thenAnswer((_) async => null);
       when(() => argResults['release-version']).thenReturn(version);
       when(() => argResults.rest).thenReturn([]);
       when(() => artifactManager.downloadFile(any())).thenAnswer((_) async {
@@ -598,6 +598,7 @@ Please re-run the release command for this version or create a new release.'''),
         ),
       ).thenAnswer((_) async {
         expect(shorebirdEnv.flutterRevision, equals(preLinkerFlutterRevision));
+        return null;
       });
       when(
         () => shorebirdProcess.run(
