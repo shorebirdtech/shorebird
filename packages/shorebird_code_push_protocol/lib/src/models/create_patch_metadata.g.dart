@@ -24,12 +24,12 @@ CreatePatchMetadata _$CreatePatchMetadataFromJson(Map<String, dynamic> json) =>
               'used_ignore_native_changes_flag', (v) => v as bool),
           hasNativeChanges:
               $checkedConvert('has_native_changes', (v) => v as bool),
+          linkPercentage: $checkedConvert(
+              'link_percentage', (v) => (v as num?)?.toDouble()),
           environment: $checkedConvert(
               'environment',
               (v) =>
                   BuildEnvironmentMetadata.fromJson(v as Map<String, dynamic>)),
-          linkPercentage: $checkedConvert(
-              'link_percentage', (v) => (v as num?)?.toDouble()),
         );
         return val;
       },

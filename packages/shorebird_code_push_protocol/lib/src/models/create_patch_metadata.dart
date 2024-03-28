@@ -23,8 +23,8 @@ class CreatePatchMetadata extends Equatable {
     required this.hasAssetChanges,
     required this.usedIgnoreNativeChangesFlag,
     required this.hasNativeChanges,
+    required this.linkPercentage,
     required this.environment,
-    this.linkPercentage,
   });
 
   // coverage:ignore-start

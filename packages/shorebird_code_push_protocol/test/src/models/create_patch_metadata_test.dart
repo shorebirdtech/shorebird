@@ -64,6 +64,7 @@ void main() {
           hasAssetChanges: false,
           usedIgnoreNativeChangesFlag: false,
           hasNativeChanges: false,
+          linkPercentage: null,
           environment: BuildEnvironmentMetadata(
             operatingSystem: 'macos',
             operatingSystemVersion: '1.2.3',
@@ -77,6 +78,7 @@ void main() {
           hasAssetChanges: false,
           usedIgnoreNativeChangesFlag: false,
           hasNativeChanges: false,
+          linkPercentage: null,
           environment: BuildEnvironmentMetadata(
             operatingSystem: 'macos',
             operatingSystemVersion: '1.2.3',

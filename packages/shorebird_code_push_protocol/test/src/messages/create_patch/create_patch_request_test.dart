@@ -15,6 +15,7 @@ void main() {
           usedIgnoreNativeChangesFlag: false,
           hasAssetChanges: true,
           hasNativeChanges: false,
+          linkPercentage: 99.9,
           environment: BuildEnvironmentMetadata(
             operatingSystem: 'linux',
             operatingSystemVersion: '1.0.0',
