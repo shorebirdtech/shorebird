@@ -118,7 +118,7 @@ class AotTools {
 
   Future<Version?> _getVersion() async {
     final result = await _exec(['--version']);
-    if (result.exitCode != 0) {
+    if (result.exitCode != ExitCode.success.code) {
       return null;
     }
     final version = result.stdout.toString().trim();
