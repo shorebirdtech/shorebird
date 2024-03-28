@@ -22,7 +22,7 @@ Note: `shorebird patch ios` now takes a little longer as it has to do
 more work when building a patch.
 
 This is probably our last iOS beta before we declare Shorebird Code Push 1.0.
-We still have one more slowdown for un-patched builds we need to fix, but we
+We still have one more slowdown for unpatched builds we need to fix, but we
 expect that to only take a couple days and be ready for a 1.0 next week.
 
 📚 Release notes can be found at https://github.com/shorebirdtech/shorebird/releases/tag/v0.28.0
