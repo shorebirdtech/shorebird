@@ -10,13 +10,16 @@ import 'package:shorebird_cli/src/command.dart';
 import 'package:shorebird_cli/src/commands/commands.dart';
 import 'package:shorebird_cli/src/config/config.dart';
 import 'package:shorebird_cli/src/doctor.dart';
+import 'package:shorebird_cli/src/executables/xcodebuild.dart';
 import 'package:shorebird_cli/src/logger.dart';
+import 'package:shorebird_cli/src/platform.dart';
 import 'package:shorebird_cli/src/shorebird_artifact_mixin.dart';
 import 'package:shorebird_cli/src/shorebird_build_mixin.dart';
 import 'package:shorebird_cli/src/shorebird_env.dart';
 import 'package:shorebird_cli/src/shorebird_flutter.dart';
 import 'package:shorebird_cli/src/shorebird_validator.dart';
 import 'package:shorebird_cli/src/validators/validators.dart';
+import 'package:shorebird_cli/src/version.dart';
 import 'package:shorebird_code_push_client/shorebird_code_push_client.dart';
 
 class ReleaseIosFrameworkCommand extends ShorebirdCommand
@@ -233,6 +236,17 @@ ${summary.join('\n')}
           releaseId: release.id,
           platform: releasePlatform,
           status: ReleaseStatus.active,
+          metadata: UpdateReleaseMetadata(
+            releasePlatform: releasePlatform,
+            flutterVersionOverride: flutterVersion,
+            generatedApks: false,
+            environment: BuildEnvironmentMetadata(
+              operatingSystem: platform.operatingSystem,
+              operatingSystemVersion: platform.operatingSystemVersion,
+              shorebirdVersion: packageVersion,
+              xcodeVersion: await xcodeBuild.version(),
+            ),
+          ),
         );
 
         final relativeFrameworkDirectoryPath =

@@ -824,8 +824,7 @@ void main() {
             .createPatch(
               appId: appId,
               releaseId: releaseId,
-              hasAssetChanges: false,
-              hasNativeChanges: true,
+              metadata: CreatePatchMetadata.forTest(),
             )
             .ignore();
         final request = verify(() => httpClient.send(captureAny()))
@@ -848,8 +847,7 @@ void main() {
           codePushClient.createPatch(
             appId: appId,
             releaseId: releaseId,
-            hasAssetChanges: false,
-            hasNativeChanges: true,
+            metadata: CreatePatchMetadata.forTest(),
           ),
           throwsA(
             isA<CodePushException>().having(
@@ -873,8 +871,7 @@ void main() {
           codePushClient.createPatch(
             appId: appId,
             releaseId: releaseId,
-            hasAssetChanges: false,
-            hasNativeChanges: true,
+            metadata: CreatePatchMetadata.forTest(),
           ),
           throwsA(
             isA<CodePushException>().having(
@@ -904,8 +901,7 @@ void main() {
           codePushClient.createPatch(
             appId: appId,
             releaseId: releaseId,
-            hasAssetChanges: false,
-            hasNativeChanges: true,
+            metadata: CreatePatchMetadata.forTest(),
           ),
           completion(
             equals(

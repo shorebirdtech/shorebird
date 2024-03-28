@@ -106,4 +106,15 @@ class XcodeBuild {
       schemes: schemes,
     );
   }
+
+  /// Get the current Xcode version.
+  Future<String> version() async {
+    final result = await process.run(executable, ['-version']);
+    if (result.exitCode != ExitCode.success.code) {
+      throw ProcessException(executable, ['-version'], '${result.stderr}');
+    }
+
+    final lines = LineSplitter.split('${result.stdout}').map((e) => e.trim());
+    return lines.join(' ');
+  }
 }

@@ -12,6 +12,7 @@ import 'package:shorebird_cli/src/code_push_client_wrapper.dart';
 import 'package:shorebird_cli/src/commands/commands.dart';
 import 'package:shorebird_cli/src/config/config.dart';
 import 'package:shorebird_cli/src/doctor.dart';
+import 'package:shorebird_cli/src/executables/xcodebuild.dart';
 import 'package:shorebird_cli/src/logger.dart';
 import 'package:shorebird_cli/src/os/operating_system_interface.dart';
 import 'package:shorebird_cli/src/platform.dart';
@@ -21,6 +22,7 @@ import 'package:shorebird_cli/src/shorebird_flutter.dart';
 import 'package:shorebird_cli/src/shorebird_process.dart';
 import 'package:shorebird_cli/src/shorebird_validator.dart';
 import 'package:shorebird_cli/src/validators/validators.dart';
+import 'package:shorebird_cli/src/version.dart';
 import 'package:shorebird_code_push_client/shorebird_code_push_client.dart';
 import 'package:test/test.dart';
 
@@ -36,6 +38,9 @@ void main() {
     const versionName = '1.2.3';
     const versionCode = '1';
     const version = '$versionName+$versionCode';
+    const operatingSystem = 'macOS';
+    const operatingSystemVersion = '11.0.0';
+    const xcodeVersion = '12.0';
     const appDisplayName = 'Test App';
     const arch = 'armv7';
     const releasePlatform = ReleasePlatform.ios;
@@ -123,6 +128,7 @@ flutter:
     late ShorebirdEnv shorebirdEnv;
     late ShorebirdFlutter shorebirdFlutter;
     late ShorebirdValidator shorebirdValidator;
+    late XcodeBuild xcodeBuild;
     late ReleaseIosCommand command;
 
     R runWithOverrides<R>(R Function() body) {
@@ -140,6 +146,7 @@ flutter:
           shorebirdEnvRef.overrideWith(() => shorebirdEnv),
           shorebirdFlutterRef.overrideWith(() => shorebirdFlutter),
           shorebirdValidatorRef.overrideWith(() => shorebirdValidator),
+          xcodeBuildRef.overrideWith(() => xcodeBuild),
         },
       );
     }
@@ -205,6 +212,7 @@ flutter:
       shorebirdEnv = MockShorebirdEnv();
       shorebirdFlutter = MockShorebirdFlutter();
       shorebirdValidator = MockShorebirdValidator();
+      xcodeBuild = MockXcodeBuild();
 
       when(() => shorebirdEnv.getShorebirdYaml()).thenReturn(shorebirdYaml);
       when(() => shorebirdEnv.shorebirdRoot).thenReturn(shorebirdRoot);
@@ -263,7 +271,9 @@ flutter:
       when(
         () => operatingSystemInterface.which('flutter'),
       ).thenReturn('/path/to/flutter');
-      when(() => platform.operatingSystem).thenReturn(Platform.macOS);
+      when(() => platform.operatingSystem).thenReturn(operatingSystem);
+      when(() => platform.operatingSystemVersion)
+          .thenReturn(operatingSystemVersion);
       when(
         () => flutterBuildProcessResult.exitCode,
       ).thenReturn(ExitCode.success.code);
@@ -308,6 +318,7 @@ flutter:
           releaseId: any(named: 'releaseId'),
           platform: any(named: 'platform'),
           status: any(named: 'status'),
+          metadata: any(named: 'metadata'),
         ),
       ).thenAnswer((_) async => {});
 
@@ -320,6 +331,7 @@ flutter:
           supportedOperatingSystems: any(named: 'supportedOperatingSystems'),
         ),
       ).thenAnswer((_) async {});
+      when(() => xcodeBuild.version()).thenAnswer((_) async => xcodeVersion);
 
       command = runWithOverrides(ReleaseIosCommand.new)
         ..testArgResults = argResults;
@@ -649,6 +661,25 @@ $exception''',
               platform: releasePlatform,
             ),
           ).called(1);
+          verify(
+            () => codePushClientWrapper.updateReleaseStatus(
+              appId: appId,
+              releaseId: release.id,
+              platform: releasePlatform,
+              status: ReleaseStatus.active,
+              metadata: const UpdateReleaseMetadata(
+                releasePlatform: releasePlatform,
+                flutterVersionOverride: flutterVersion,
+                generatedApks: false,
+                environment: BuildEnvironmentMetadata(
+                  operatingSystem: operatingSystem,
+                  operatingSystemVersion: operatingSystemVersion,
+                  shorebirdVersion: packageVersion,
+                  xcodeVersion: xcodeVersion,
+                ),
+              ),
+            ),
+          ).called(1);
         });
 
         group('when flutter version install fails', () {
@@ -896,6 +927,17 @@ error: exportArchive: No signing certificate "iOS Distribution" found
           releaseId: release.id,
           platform: releasePlatform,
           status: ReleaseStatus.active,
+          metadata: const UpdateReleaseMetadata(
+            releasePlatform: releasePlatform,
+            flutterVersionOverride: null,
+            generatedApks: false,
+            environment: BuildEnvironmentMetadata(
+              operatingSystem: operatingSystem,
+              operatingSystemVersion: operatingSystemVersion,
+              shorebirdVersion: packageVersion,
+              xcodeVersion: xcodeVersion,
+            ),
+          ),
         ),
       ).called(1);
       expect(exitCode, ExitCode.success.code);
@@ -997,6 +1039,7 @@ flavors:
           releaseId: release.id,
           platform: releasePlatform,
           status: ReleaseStatus.active,
+          metadata: any(named: 'metadata'),
         ),
       ).called(1);
     });

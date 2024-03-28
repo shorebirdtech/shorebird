@@ -1,23 +1,12 @@
 import 'dart:io';
 
 import 'package:args/args.dart';
-import 'package:mason_logger/mason_logger.dart';
 import 'package:path/path.dart' as p;
 import 'package:scoped/scoped.dart';
 import 'package:shorebird_cli/src/archive_analysis/archive_analysis.dart';
-import 'package:shorebird_cli/src/logger.dart';
 
 const exportMethodArgName = 'export-method';
 const exportOptionsPlistArgName = 'export-options-plist';
-
-void showiOSStatusWarning() {
-  final url = link(
-    uri: Uri.parse('https://docs.shorebird.dev/status'),
-  );
-  logger
-    ..warn('iOS support is beta. Some apps may run slower after patching.')
-    ..info('See $url for more information.');
-}
 
 /// {@template export_method}
 /// The method used to export the IPA.
