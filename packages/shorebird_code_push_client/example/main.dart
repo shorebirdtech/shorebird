@@ -49,6 +49,7 @@ Future<void> main() async {
       hasAssetChanges: false,
       usedIgnoreNativeChangesFlag: false,
       hasNativeChanges: false,
+      linkPercentage: null,
       environment: BuildEnvironmentMetadata(
         operatingSystem: 'Windows',
         operatingSystemVersion: '10',
