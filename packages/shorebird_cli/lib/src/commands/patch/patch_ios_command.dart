@@ -116,9 +116,10 @@ If this option is not provided, the version number will be determined from the p
 
   static String lowLinkPercentageWarning(double linkPercentage) {
     return '''
-${lightCyan.wrap('shorebird patch')} was only able to share ${linkPercentage.toStringAsFixed(2)}% of Dart code with the released app.
+${lightCyan.wrap('shorebird patch')} was only able to share ${linkPercentage.toStringAsFixed(1)}% of Dart code with the released app.
 This means the patched code may execute slower than expected.
-https://docs.shorebird.dev/status#ios_link_percentage''';
+https://docs.shorebird.dev/status#ios_link_percentage
+''';
   }
 
   @override
@@ -384,7 +385,7 @@ Current Flutter Revision: $currentFlutterRevision
           else
             '🟢 Track: ${lightCyan.wrap('Production')}',
           if (percentLinked != null)
-            '''🔗 Running ${lightCyan.wrap(percentLinked.toStringAsFixed(1))}% on CPU''',
+            '''🔗 Running ${lightCyan.wrap('${percentLinked.toStringAsFixed(1)}%')} on CPU''',
         ];
 
         logger.info(
