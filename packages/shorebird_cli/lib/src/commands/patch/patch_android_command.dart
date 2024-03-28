@@ -18,11 +18,13 @@ import 'package:shorebird_cli/src/extensions/arg_results.dart';
 import 'package:shorebird_cli/src/formatters/formatters.dart';
 import 'package:shorebird_cli/src/logger.dart';
 import 'package:shorebird_cli/src/patch_diff_checker.dart';
+import 'package:shorebird_cli/src/platform.dart';
 import 'package:shorebird_cli/src/shorebird_build_mixin.dart';
 import 'package:shorebird_cli/src/shorebird_env.dart';
 import 'package:shorebird_cli/src/shorebird_flutter.dart';
 import 'package:shorebird_cli/src/shorebird_release_version_mixin.dart';
 import 'package:shorebird_cli/src/shorebird_validator.dart';
+import 'package:shorebird_cli/src/version.dart';
 import 'package:shorebird_code_push_client/shorebird_code_push_client.dart';
 
 /// {@template patch_android_command}
@@ -121,7 +123,7 @@ If this option is not provided, the version number will be determined from the p
 
     await cache.updateAll();
 
-    const platform = ReleasePlatform.android;
+    const releasePlatform = ReleasePlatform.android;
     final flavor = results.findOption('flavor', argParser: argParser);
     final target = results.findOption('target', argParser: argParser);
 
@@ -252,7 +254,7 @@ Looked in:
           appId: app.appId,
           releaseId: release.id,
           architectures: architectures,
-          platform: platform,
+          platform: releasePlatform,
         );
 
         final releaseAabArtifact =
@@ -260,7 +262,7 @@ Looked in:
           appId: app.appId,
           releaseId: release.id,
           arch: 'aab',
-          platform: platform,
+          platform: releasePlatform,
         );
 
         final releaseArtifactPaths = <Arch, String>{};
@@ -350,7 +352,7 @@ Looked in:
           '''📱 App: ${lightCyan.wrap(app.displayName)} ${lightCyan.wrap('(${app.appId})')}''',
           if (flavor != null) '🍧 Flavor: ${lightCyan.wrap(flavor)}',
           '📦 Release Version: ${lightCyan.wrap(releaseVersion)}',
-          '''🕹️  Platform: ${lightCyan.wrap(platform.name)} ${lightCyan.wrap('[${archMetadata.join(', ')}]')}''',
+          '''🕹️  Platform: ${lightCyan.wrap(releasePlatform.name)} ${lightCyan.wrap('[${archMetadata.join(', ')}]')}''',
           if (isStaging)
             '🟠 Track: ${lightCyan.wrap('Staging')}'
           else
@@ -379,9 +381,21 @@ ${summary.join('\n')}
         await codePushClientWrapper.publishPatch(
           appId: appId,
           releaseId: release.id,
-          hasAssetChanges: diffStatus.hasAssetChanges,
-          hasNativeChanges: diffStatus.hasNativeChanges,
-          platform: platform,
+          metadata: CreatePatchMetadata(
+            releasePlatform: releasePlatform,
+            usedIgnoreAssetChangesFlag: allowAssetDiffs,
+            hasAssetChanges: diffStatus.hasAssetChanges,
+            usedIgnoreNativeChangesFlag: allowNativeDiffs,
+            hasNativeChanges: diffStatus.hasNativeChanges,
+            linkPercentage: null,
+            environment: BuildEnvironmentMetadata(
+              operatingSystem: platform.operatingSystem,
+              operatingSystemVersion: platform.operatingSystemVersion,
+              shorebirdVersion: packageVersion,
+              xcodeVersion: null,
+            ),
+          ),
+          platform: releasePlatform,
           track:
               isStaging ? DeploymentTrack.staging : DeploymentTrack.production,
           patchArtifactBundles: patchArtifactBundles,

@@ -132,5 +132,48 @@ To add iOS, run "flutter create . --platforms ios"''',
         ).called(1);
       });
     });
+
+    group('version', () {
+      group('when command exits with non-zero code', () {
+        setUp(() {
+          when(() => process.run('xcodebuild', ['-version'])).thenAnswer(
+            (_) async => ShorebirdProcessResult(
+              exitCode: ExitCode.software.code,
+              stdout: '',
+              stderr: 'error',
+            ),
+          );
+        });
+
+        test('throws ProcessException', () async {
+          expect(
+            () => runWithOverrides(xcodeBuild.version),
+            throwsA(isA<ProcessException>()),
+          );
+        });
+      });
+
+      group('when command exits with success code', () {
+        setUp(() {
+          when(() => process.run('xcodebuild', ['-version'])).thenAnswer(
+            (_) async => ShorebirdProcessResult(
+              exitCode: ExitCode.success.code,
+              stdout: '''
+Xcode 15.3
+Build version 15E204a
+''',
+              stderr: '',
+            ),
+          );
+        });
+
+        test('returns output lines joined by spaces', () async {
+          expect(
+            await runWithOverrides(xcodeBuild.version),
+            equals('Xcode 15.3 Build version 15E204a'),
+          );
+        });
+      });
+    });
   });
 }

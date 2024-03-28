@@ -10,11 +10,13 @@ import 'package:shorebird_cli/src/config/shorebird_yaml.dart';
 import 'package:shorebird_cli/src/doctor.dart';
 import 'package:shorebird_cli/src/extensions/arg_results.dart';
 import 'package:shorebird_cli/src/logger.dart';
+import 'package:shorebird_cli/src/platform.dart';
 import 'package:shorebird_cli/src/shorebird_build_mixin.dart';
 import 'package:shorebird_cli/src/shorebird_env.dart';
 import 'package:shorebird_cli/src/shorebird_flutter.dart';
 import 'package:shorebird_cli/src/shorebird_release_version_mixin.dart';
 import 'package:shorebird_cli/src/shorebird_validator.dart';
+import 'package:shorebird_cli/src/version.dart';
 import 'package:shorebird_code_push_client/shorebird_code_push_client.dart';
 
 /// {@template release_android_command}
@@ -94,7 +96,7 @@ make smaller updates to your app.
       return ExitCode.usage.code;
     }
 
-    const platform = ReleasePlatform.android;
+    const releasePlatform = ReleasePlatform.android;
     final flavor = results.findOption('flavor', argParser: argParser);
     final target = results.findOption('target', argParser: argParser);
     final generateApk = results['artifact'] as String == 'apk';
@@ -231,7 +233,7 @@ Use `shorebird flutter versions list` to list available versions.
         if (existingRelease != null) {
           codePushClientWrapper.ensureReleaseIsNotActive(
             release: existingRelease,
-            platform: platform,
+            platform: releasePlatform,
           );
         }
 
@@ -240,7 +242,7 @@ Use `shorebird flutter versions list` to list available versions.
           '''📱 App: ${lightCyan.wrap(app.displayName)} ${lightCyan.wrap('(${app.appId})')}''',
           if (flavor != null) '🍧 Flavor: ${lightCyan.wrap(flavor)}',
           '📦 Release Version: ${lightCyan.wrap(releaseVersion)}',
-          '''🕹️  Platform: ${lightCyan.wrap(platform.name)} ${lightCyan.wrap('(${archNames.join(', ')})')}''',
+          '''🕹️  Platform: ${lightCyan.wrap(releasePlatform.name)} ${lightCyan.wrap('(${archNames.join(', ')})')}''',
           '🐦 Flutter Version: ${lightCyan.wrap(flutterVersionString)}',
         ];
 
@@ -267,7 +269,7 @@ ${summary.join('\n')}
           await codePushClientWrapper.updateReleaseStatus(
             appId: appId,
             releaseId: release.id,
-            platform: platform,
+            platform: releasePlatform,
             status: ReleaseStatus.draft,
           );
         } else {
@@ -275,7 +277,7 @@ ${summary.join('\n')}
             appId: appId,
             version: releaseVersion,
             flutterRevision: shorebirdEnv.flutterRevision,
-            platform: platform,
+            platform: releasePlatform,
           );
         }
 
@@ -284,7 +286,7 @@ ${summary.join('\n')}
           releaseId: release.id,
           projectRoot: projectRoot.path,
           aabPath: bundlePath,
-          platform: platform,
+          platform: releasePlatform,
           architectures: architectures,
           flavor: flavor,
         );
@@ -292,8 +294,19 @@ ${summary.join('\n')}
         await codePushClientWrapper.updateReleaseStatus(
           appId: app.appId,
           releaseId: release.id,
-          platform: platform,
+          platform: releasePlatform,
           status: ReleaseStatus.active,
+          metadata: UpdateReleaseMetadata(
+            releasePlatform: releasePlatform,
+            flutterVersionOverride: flutterVersion,
+            generatedApks: generateApk,
+            environment: BuildEnvironmentMetadata(
+              operatingSystem: platform.operatingSystem,
+              operatingSystemVersion: platform.operatingSystemVersion,
+              shorebirdVersion: packageVersion,
+              xcodeVersion: null,
+            ),
+          ),
         );
 
         // The extra newline before and no newline after is intentional.  See

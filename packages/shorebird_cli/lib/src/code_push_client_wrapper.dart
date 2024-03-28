@@ -248,6 +248,7 @@ Please create a release using "shorebird release" and try again.
     required int releaseId,
     required ReleasePlatform platform,
     required ReleaseStatus status,
+    UpdateReleaseMetadata? metadata,
   }) async {
     final updateStatusProgress = logger.progress('Updating release status');
     try {
@@ -256,6 +257,7 @@ Please create a release using "shorebird release" and try again.
         releaseId: releaseId,
         platform: platform,
         status: status,
+        metadata: metadata,
       );
       updateStatusProgress.complete();
     } catch (error) {
@@ -642,16 +644,14 @@ aar artifact already exists, continuing...''',
   Future<Patch> createPatch({
     required String appId,
     required int releaseId,
-    required bool hasAssetChanges,
-    required bool hasNativeChanges,
+    required CreatePatchMetadata metadata,
   }) async {
     final createPatchProgress = logger.progress('Creating patch');
     try {
       final patch = await codePushClient.createPatch(
         appId: appId,
         releaseId: releaseId,
-        hasAssetChanges: hasAssetChanges,
-        hasNativeChanges: hasNativeChanges,
+        metadata: metadata,
       );
       createPatchProgress.complete();
       return patch;
@@ -709,8 +709,7 @@ aar artifact already exists, continuing...''',
   Future<void> publishPatch({
     required String appId,
     required int releaseId,
-    required bool hasAssetChanges,
-    required bool hasNativeChanges,
+    required CreatePatchMetadata metadata,
     required ReleasePlatform platform,
     required DeploymentTrack track,
     required Map<Arch, PatchArtifactBundle> patchArtifactBundles,
@@ -718,8 +717,7 @@ aar artifact already exists, continuing...''',
     final patch = await createPatch(
       appId: appId,
       releaseId: releaseId,
-      hasAssetChanges: hasAssetChanges,
-      hasNativeChanges: hasNativeChanges,
+      metadata: metadata,
     );
 
     await createPatchArtifacts(

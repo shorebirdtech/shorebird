@@ -11,12 +11,14 @@ import 'package:shorebird_cli/src/command.dart';
 import 'package:shorebird_cli/src/commands/release/release.dart';
 import 'package:shorebird_cli/src/config/config.dart';
 import 'package:shorebird_cli/src/logger.dart';
+import 'package:shorebird_cli/src/platform.dart';
 import 'package:shorebird_cli/src/shorebird_artifact_mixin.dart';
 import 'package:shorebird_cli/src/shorebird_build_mixin.dart';
 import 'package:shorebird_cli/src/shorebird_env.dart';
 import 'package:shorebird_cli/src/shorebird_flutter.dart';
 import 'package:shorebird_cli/src/shorebird_release_version_mixin.dart';
 import 'package:shorebird_cli/src/shorebird_validator.dart';
+import 'package:shorebird_cli/src/version.dart';
 import 'package:shorebird_code_push_client/shorebird_code_push_client.dart';
 
 /// {@template release_aar_command}
@@ -95,7 +97,7 @@ make smaller updates to your app.
       return ExitCode.config.code;
     }
 
-    const platform = ReleasePlatform.android;
+    const releasePlatform = ReleasePlatform.android;
     final buildNumber = results['build-number'] as String;
     final releaseVersion = results['release-version'] as String;
     final flutterVersion = results['flutter-version'] as String?;
@@ -111,7 +113,7 @@ make smaller updates to your app.
     if (existingRelease != null) {
       codePushClientWrapper.ensureReleaseIsNotActive(
         release: existingRelease,
-        platform: platform,
+        platform: releasePlatform,
       );
     }
 
@@ -181,7 +183,7 @@ Use `shorebird flutter versions list` to list available versions.
         final summary = [
           '''📱 App: ${lightCyan.wrap(app.displayName)} ${lightCyan.wrap('(${app.appId})')}''',
           '📦 Release Version: ${lightCyan.wrap(releaseVersion)}',
-          '''🕹️  Platform: ${lightCyan.wrap(platform.name)} ${lightCyan.wrap('(${archNames.join(', ')})')}''',
+          '''🕹️  Platform: ${lightCyan.wrap(releasePlatform.name)} ${lightCyan.wrap('(${archNames.join(', ')})')}''',
           '🐦 Flutter Version: ${lightCyan.wrap(flutterVersionString)}',
         ];
 
@@ -208,7 +210,7 @@ ${summary.join('\n')}
           await codePushClientWrapper.updateReleaseStatus(
             appId: appId,
             releaseId: release.id,
-            platform: platform,
+            platform: releasePlatform,
             status: ReleaseStatus.draft,
           );
         } else {
@@ -216,7 +218,7 @@ ${summary.join('\n')}
             appId: appId,
             version: releaseVersion,
             flutterRevision: shorebirdEnv.flutterRevision,
-            platform: platform,
+            platform: releasePlatform,
           );
         }
 
@@ -242,7 +244,7 @@ ${summary.join('\n')}
         await codePushClientWrapper.createAndroidArchiveReleaseArtifacts(
           appId: app.appId,
           releaseId: release.id,
-          platform: platform,
+          platform: releasePlatform,
           aarPath: aarArtifactPath(
             packageName: shorebirdEnv.androidPackageName!,
             buildNumber: buildNumber,
@@ -254,8 +256,19 @@ ${summary.join('\n')}
         await codePushClientWrapper.updateReleaseStatus(
           appId: app.appId,
           releaseId: release.id,
-          platform: platform,
+          platform: releasePlatform,
           status: ReleaseStatus.active,
+          metadata: UpdateReleaseMetadata(
+            releasePlatform: releasePlatform,
+            flutterVersionOverride: flutterVersion,
+            generatedApks: false,
+            environment: BuildEnvironmentMetadata(
+              operatingSystem: platform.operatingSystem,
+              operatingSystemVersion: platform.operatingSystemVersion,
+              shorebirdVersion: packageVersion,
+              xcodeVersion: null,
+            ),
+          ),
         );
 
         logger

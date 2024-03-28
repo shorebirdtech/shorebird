@@ -43,8 +43,19 @@ Future<void> main() async {
   final patch = await client.createPatch(
     appId: app.id,
     releaseId: release.id,
-    hasAssetChanges: false,
-    hasNativeChanges: false,
+    metadata: const CreatePatchMetadata(
+      releasePlatform: ReleasePlatform.android,
+      usedIgnoreAssetChangesFlag: false,
+      hasAssetChanges: false,
+      usedIgnoreNativeChangesFlag: false,
+      hasNativeChanges: false,
+      environment: BuildEnvironmentMetadata(
+        operatingSystem: 'Windows',
+        operatingSystemVersion: '10',
+        shorebirdVersion: '1.2.3',
+        xcodeVersion: null,
+      ),
+    ),
   );
 
   // Create a patch artifact.

@@ -2,6 +2,7 @@ import 'dart:io';
 
 import 'package:mason_logger/mason_logger.dart';
 import 'package:mocktail/mocktail.dart';
+import 'package:path/path.dart' as p;
 import 'package:scoped/scoped.dart';
 import 'package:shorebird_cli/src/cache.dart';
 import 'package:shorebird_cli/src/executables/executables.dart';
@@ -55,8 +56,11 @@ void main() {
     group('link', () {
       const base = './path/to/base.aot';
       const patch = './path/to/patch.aot';
-      const analyzeSnapshot = './path/to/analyze_snapshot.aot';
+      const analyzeSnapshot = './path/to/analyze_snapshot';
+      const genSnapshot = './path/to/gen_snapshot';
+      const kernel = './path/to/kernel.dill';
       const outputPath = './path/to/out.vmcode';
+      const linkJsonPath = './path/to/link.jsonl';
 
       test('throws Exception when process exits with non-zero code', () async {
         when(
@@ -83,6 +87,8 @@ void main() {
               base: base,
               patch: patch,
               analyzeSnapshot: analyzeSnapshot,
+              genSnapshot: genSnapshot,
+              kernel: kernel,
               outputPath: outputPath,
             ),
           ),
@@ -127,6 +133,8 @@ void main() {
                 base: base,
                 patch: patch,
                 analyzeSnapshot: analyzeSnapshot,
+                genSnapshot: genSnapshot,
+                kernel: kernel,
                 workingDirectory: workingDirectory.path,
                 outputPath: outputPath,
               ),
@@ -180,6 +188,8 @@ void main() {
                 base: base,
                 patch: patch,
                 analyzeSnapshot: analyzeSnapshot,
+                genSnapshot: genSnapshot,
+                kernel: kernel,
                 workingDirectory: workingDirectory.path,
                 outputPath: outputPath,
               ),
@@ -235,6 +245,8 @@ void main() {
                 base: base,
                 patch: patch,
                 analyzeSnapshot: analyzeSnapshot,
+                genSnapshot: genSnapshot,
+                kernel: kernel,
                 workingDirectory: workingDirectory.path,
                 outputPath: outputPath,
               ),
@@ -252,6 +264,149 @@ void main() {
                 '--patch=$patch',
                 '--analyze-snapshot=$analyzeSnapshot',
                 '--output=$outputPath',
+              ],
+              workingDirectory: any(named: 'workingDirectory'),
+            ),
+          ).called(1);
+        });
+      });
+
+      group('when when link expects gen_snapshot', () {
+        const aotToolsPath = 'aot_tools';
+
+        setUp(() {
+          when(
+            () => shorebirdArtifacts.getArtifactPath(
+              artifact: ShorebirdArtifact.aotTools,
+            ),
+          ).thenReturn(aotToolsPath);
+        });
+
+        test('passes gen_snapshot to aot_tools', () async {
+          when(
+            () => process.run(
+              aotToolsPath,
+              ['--version'],
+              workingDirectory: any(named: 'workingDirectory'),
+            ),
+          ).thenAnswer(
+            (_) async => const ShorebirdProcessResult(
+              exitCode: 0,
+              stdout: '0.0.1',
+              stderr: '',
+            ),
+          );
+          when(
+            () => process.run(
+              aotToolsPath,
+              any(that: contains('--gen-snapshot=$genSnapshot')),
+              workingDirectory: any(named: 'workingDirectory'),
+            ),
+          ).thenAnswer(
+            (_) async => const ShorebirdProcessResult(
+              exitCode: 0,
+              stdout: '',
+              stderr: '',
+            ),
+          );
+          await expectLater(
+            runWithOverrides(
+              () => aotTools.link(
+                base: base,
+                patch: patch,
+                analyzeSnapshot: analyzeSnapshot,
+                genSnapshot: genSnapshot,
+                kernel: kernel,
+                workingDirectory: workingDirectory.path,
+                outputPath: outputPath,
+              ),
+            ),
+            completes,
+          );
+
+          verify(
+            () => process.run(
+              aotToolsPath,
+              [
+                'link',
+                '--base=$base',
+                '--patch=$patch',
+                '--analyze-snapshot=$analyzeSnapshot',
+                '--output=$outputPath',
+                '--gen-snapshot=$genSnapshot',
+                '--kernel=$kernel',
+                '--reporter=json',
+                '--redirect-to=$linkJsonPath',
+              ],
+              workingDirectory: any(named: 'workingDirectory'),
+            ),
+          ).called(1);
+        });
+
+        test('returns link percentage', () async {
+          workingDirectory = Directory.systemTemp.createTempSync();
+          when(
+            () => process.run(
+              aotToolsPath,
+              ['--version'],
+              workingDirectory: any(named: 'workingDirectory'),
+            ),
+          ).thenAnswer((_) async {
+            return const ShorebirdProcessResult(
+              exitCode: 0,
+              stdout: '0.0.1',
+              stderr: '',
+            );
+          });
+          when(
+            () => process.run(
+              aotToolsPath,
+              any(that: contains('--gen-snapshot=$genSnapshot')),
+              workingDirectory: any(named: 'workingDirectory'),
+            ),
+          ).thenAnswer(
+            (_) async {
+              File(p.join(workingDirectory.path, 'link.jsonl'))
+                  .writeAsStringSync(
+                '''
+{"type":"link_success","base_codes_length":3036,"patch_codes_length":3036,"base_code_size":861816,"patch_code_size":861816,"linked_code_size":860460,"link_percentage":99.8426578295135}
+{"type":"link_debug","message":"wrote vmcode file to out.vmcode"}''',
+              );
+              return const ShorebirdProcessResult(
+                exitCode: 0,
+                stdout: '',
+                stderr: '',
+              );
+            },
+          );
+          await expectLater(
+            runWithOverrides(
+              () => aotTools.link(
+                base: base,
+                patch: patch,
+                analyzeSnapshot: analyzeSnapshot,
+                genSnapshot: genSnapshot,
+                kernel: kernel,
+                workingDirectory: workingDirectory.path,
+                outputPath: outputPath,
+              ),
+            ),
+            completion(equals(99.8426578295135)),
+          );
+
+          verify(
+            () => process.run(
+              aotToolsPath,
+              [
+                'link',
+                '--base=$base',
+                '--patch=$patch',
+                '--analyze-snapshot=$analyzeSnapshot',
+                '--output=$outputPath',
+                '--gen-snapshot=$genSnapshot',
+                '--kernel=$kernel',
+                '--reporter=json',
+                '--redirect-to=$linkJsonPath',
               ],
               workingDirectory: any(named: 'workingDirectory'),
             ),

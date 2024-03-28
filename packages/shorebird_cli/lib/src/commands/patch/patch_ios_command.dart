@@ -14,12 +14,12 @@ import 'package:shorebird_cli/src/commands/commands.dart';
 import 'package:shorebird_cli/src/config/config.dart';
 import 'package:shorebird_cli/src/deployment_track.dart';
 import 'package:shorebird_cli/src/doctor.dart';
-import 'package:shorebird_cli/src/engine_config.dart';
 import 'package:shorebird_cli/src/executables/executables.dart';
 import 'package:shorebird_cli/src/extensions/arg_results.dart';
 import 'package:shorebird_cli/src/formatters/file_size_formatter.dart';
 import 'package:shorebird_cli/src/logger.dart';
 import 'package:shorebird_cli/src/patch_diff_checker.dart';
+import 'package:shorebird_cli/src/platform.dart';
 import 'package:shorebird_cli/src/platform/platform.dart';
 import 'package:shorebird_cli/src/shorebird_artifact_mixin.dart';
 import 'package:shorebird_cli/src/shorebird_artifacts.dart';
@@ -27,6 +27,7 @@ import 'package:shorebird_cli/src/shorebird_build_mixin.dart';
 import 'package:shorebird_cli/src/shorebird_env.dart';
 import 'package:shorebird_cli/src/shorebird_flutter.dart';
 import 'package:shorebird_cli/src/shorebird_validator.dart';
+import 'package:shorebird_cli/src/version.dart';
 import 'package:shorebird_code_push_client/shorebird_code_push_client.dart';
 
 /// {@template patch_ios_command}
@@ -109,6 +110,18 @@ If this option is not provided, the version number will be determined from the p
   final HashFunction _hashFn;
   final IosArchiveDiffer _archiveDiffer;
 
+  // Link percentage that is considered the minimum for acceptable perfromance.
+  // This was selected arbitrarily and may need to be adjusted.
+  static const double minLinkPercentage = 50;
+
+  static String lowLinkPercentageWarning(double linkPercentage) {
+    return '''
+${lightCyan.wrap('shorebird patch')} was only able to share ${linkPercentage.toStringAsFixed(1)}% of Dart code with the released app.
+This means the patched code may execute slower than expected.
+https://docs.shorebird.dev/status#ios_link_percentage
+''';
+  }
+
   @override
   Future<int> run() async {
     try {
@@ -129,8 +142,6 @@ If this option is not provided, the version number will be determined from the p
         ..info(PatchCommand.forceDeprecationExplanation);
       return ExitCode.usage.code;
     }
-
-    showiOSStatusWarning();
 
     final allowAssetDiffs = results['allow-asset-diffs'] == true;
     final allowNativeDiffs = results['allow-native-diffs'] == true;
@@ -306,16 +317,19 @@ Current Flutter Revision: $currentFlutterRevision
           ),
         );
 
-        final useLinker = engineConfig.localEngine != null ||
-            !preLinkerFlutterRevisions.contains(release.flutterRevision);
+        double? percentLinked;
+        final useLinker = AotTools.usesLinker(release.flutterRevision);
         if (useLinker) {
-          final exitCode = await _runLinker(
+          final (:exitCode, :linkPercentage) = await _runLinker(
             releaseArtifact: releaseArtifactFile,
           );
 
-          if (exitCode != ExitCode.success.code) {
-            return exitCode;
+          if (exitCode != ExitCode.success.code) return exitCode;
+
+          if (linkPercentage != null && linkPercentage < minLinkPercentage) {
+            logger.warn(lowLinkPercentageWarning(linkPercentage));
           }
+          percentLinked = linkPercentage;
         }
 
         if (dryRun) {
@@ -370,6 +384,8 @@ Current Flutter Revision: $currentFlutterRevision
             '🟠 Track: ${lightCyan.wrap('Staging')}'
           else
             '🟢 Track: ${lightCyan.wrap('Production')}',
+          if (percentLinked != null)
+            '''🔗 Running ${lightCyan.wrap('${percentLinked.toStringAsFixed(1)}%')} on CPU''',
         ];
 
         logger.info(
@@ -394,8 +410,6 @@ ${summary.join('\n')}
         await codePushClientWrapper.publishPatch(
           appId: appId,
           releaseId: release.id,
-          hasAssetChanges: diffStatus.hasAssetChanges,
-          hasNativeChanges: diffStatus.hasNativeChanges,
           platform: releasePlatform,
           track:
               isStaging ? DeploymentTrack.staging : DeploymentTrack.production,
@@ -407,6 +421,20 @@ ${summary.join('\n')}
               size: patchFileSize,
             ),
           },
+          metadata: CreatePatchMetadata(
+            releasePlatform: releasePlatform,
+            usedIgnoreAssetChangesFlag: allowAssetDiffs,
+            hasAssetChanges: diffStatus.hasAssetChanges,
+            usedIgnoreNativeChangesFlag: allowNativeDiffs,
+            hasNativeChanges: diffStatus.hasNativeChanges,
+            linkPercentage: percentLinked,
+            environment: BuildEnvironmentMetadata(
+              operatingSystem: platform.operatingSystem,
+              operatingSystemVersion: platform.operatingSystemVersion,
+              shorebirdVersion: packageVersion,
+              xcodeVersion: await xcodeBuild.version(),
+            ),
+          ),
         );
 
         return ExitCode.success.code;
@@ -494,12 +522,12 @@ ${summary.join('\n')}
     buildProgress.complete();
   }
 
-  Future<int> _runLinker({required File releaseArtifact}) async {
+  Future<_LinkResult> _runLinker({required File releaseArtifact}) async {
     final patch = File(_aotOutputPath);
 
     if (!patch.existsSync()) {
       logger.err('Unable to find patch AOT file at ${patch.path}');
-      return ExitCode.software.code;
+      return (exitCode: ExitCode.software.code, linkPercentage: null);
     }
 
     final analyzeSnapshot = File(
@@ -510,27 +538,35 @@ ${summary.join('\n')}
 
     if (!analyzeSnapshot.existsSync()) {
       logger.err('Unable to find analyze_snapshot at ${analyzeSnapshot.path}');
-      return ExitCode.software.code;
+      return (exitCode: ExitCode.software.code, linkPercentage: null);
     }
 
+    final genSnapshot = shorebirdArtifacts.getArtifactPath(
+      artifact: ShorebirdArtifact.genSnapshot,
+    );
+
     final linkProgress = logger.progress('Linking AOT files');
+    double? linkPercentage;
     try {
-      await aotTools.link(
+      linkPercentage = await aotTools.link(
         base: releaseArtifact.path,
         patch: patch.path,
         analyzeSnapshot: analyzeSnapshot.path,
+        genSnapshot: genSnapshot,
         outputPath: _vmcodeOutputPath,
         workingDirectory: _buildDirectory,
+        kernel: newestAppDill().path,
       );
     } catch (error) {
       linkProgress.fail('Failed to link AOT files: $error');
-      return ExitCode.software.code;
+      return (exitCode: ExitCode.software.code, linkPercentage: null);
     }
-
     linkProgress.complete();
-    return ExitCode.success.code;
+    return (exitCode: ExitCode.success.code, linkPercentage: linkPercentage);
   }
 }
+
+typedef _LinkResult = ({int exitCode, double? linkPercentage});
 
 /// {@template _ReadVersionException}
 /// Exception thrown when the release version cannot be determined.

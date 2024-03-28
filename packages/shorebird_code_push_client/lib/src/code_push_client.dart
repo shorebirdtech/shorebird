@@ -2,6 +2,7 @@ import 'dart:convert';
 import 'dart:io';
 
 import 'package:http/http.dart' as http;
+import 'package:shorebird_code_push_client/shorebird_code_push_client.dart';
 import 'package:shorebird_code_push_client/src/version.dart';
 import 'package:shorebird_code_push_protocol/shorebird_code_push_protocol.dart';
 
@@ -245,16 +246,14 @@ class CodePushClient {
   Future<Patch> createPatch({
     required String appId,
     required int releaseId,
-    required bool hasAssetChanges,
-    required bool hasNativeChanges,
+    required CreatePatchMetadata metadata,
   }) async {
     final request = CreatePatchRequest(
       releaseId: releaseId,
       wasForced: false,
-      hasAssetChanges: hasAssetChanges,
-      hasNativeChanges: hasNativeChanges,
-      // TODO(bryanoltman): add metadata
-      metadata: null,
+      hasAssetChanges: metadata.hasAssetChanges,
+      hasNativeChanges: metadata.hasNativeChanges,
+      metadata: metadata,
     );
     final response = await _httpClient.post(
       Uri.parse('$_v1/apps/$appId/patches'),
@@ -299,6 +298,7 @@ class CodePushClient {
     required int releaseId,
     required ReleasePlatform platform,
     required ReleaseStatus status,
+    UpdateReleaseMetadata? metadata,
   }) async {
     final response = await _httpClient.patch(
       Uri.parse('$_v1/apps/$appId/releases/$releaseId'),
@@ -306,8 +306,7 @@ class CodePushClient {
         UpdateReleaseRequest(
           status: status,
           platform: platform,
-          // TODO(bryanoltman): add metadata
-          metadata: null,
+          metadata: metadata,
         ).toJson(),
       ),
     );
