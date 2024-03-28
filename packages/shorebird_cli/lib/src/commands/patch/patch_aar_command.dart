@@ -283,7 +283,7 @@ ${summary.join('\n')}
           patchArtifactBundles: patchArtifactBundles,
           metadata: CreatePatchMetadata(
             releasePlatform: releasePlatform,
-            usedIgnoreAssetChangesFlag: allowNativeDiffs,
+            usedIgnoreAssetChangesFlag: allowAssetDiffs,
             hasAssetChanges: diffStatus.hasAssetChanges,
             usedIgnoreNativeChangesFlag: allowNativeDiffs,
             hasNativeChanges: diffStatus.hasNativeChanges,

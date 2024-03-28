@@ -383,7 +383,7 @@ ${summary.join('\n')}
           releaseId: release.id,
           metadata: CreatePatchMetadata(
             releasePlatform: releasePlatform,
-            usedIgnoreAssetChangesFlag: allowNativeDiffs,
+            usedIgnoreAssetChangesFlag: allowAssetDiffs,
             hasAssetChanges: diffStatus.hasAssetChanges,
             usedIgnoreNativeChangesFlag: allowNativeDiffs,
             hasNativeChanges: diffStatus.hasNativeChanges,
