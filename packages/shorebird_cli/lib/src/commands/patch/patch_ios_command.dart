@@ -118,7 +118,7 @@ If this option is not provided, the version number will be determined from the p
     return '''
 ${lightCyan.wrap('shorebird patch')} was only able to share ${linkPercentage.toStringAsFixed(1)}% of Dart code with the released app.
 This means the patched code may execute slower than expected.
-https://docs.shorebird.dev/status#ios_link_percentage
+https://docs.shorebird.dev/status#link-percentage-ios
 ''';
   }
 
