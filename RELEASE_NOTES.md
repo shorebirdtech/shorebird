@@ -2,6 +2,31 @@
 
 This section contains past updates we've sent to customers via Discord.
 
+## 0.28.0 (March 28, 2024)
+
+🚀 Apps with a patch applied on iOS run much faster than previously.
+💾 `shorebird release` saves XCode Version and OS to console.shorebird.dev
+   to help diagnose any later issues during patching.
+
+Shorebird's Flutter 3.19.4 contains a re-write of our Dart build pipeline on iOS
+which eliminates any slowdowns caused by patching Dart code in most cases. We
+built a new mechanism to make patched code build much more similarly to
+unpatched code, thus allowing more code sharing between the "patch" and
+"release" builds resulting in much faster execution at runtime.
+
+Most patches on iOS should now run at speeds indistinguishable from releases.
+If the toolchain detects a case where the patch will run slower, it will
+provide a warning. If you see any of these warnings, please let us know!
+
+Note: `shorebird patch ios` now takes a little longer as it has to do
+more work when building a patch.
+
+This is probably our last iOS beta before we declare Shorebird Code Push 1.0.
+We still have one more slowdown for unpatched builds we need to fix, but we
+expect that to only take a couple days and be ready for a 1.0 next week.
+
+📚 Release notes can be found at https://github.com/shorebirdtech/shorebird/releases/tag/v0.28.0
+
 ## 0.27.3 (March 26, 2024)
 
 🪟 Updates the Azure app used for Microsoft login.
