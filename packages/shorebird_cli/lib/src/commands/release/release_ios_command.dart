@@ -300,7 +300,6 @@ ${summary.join('\n')}
             releaseId: release.id,
             platform: releasePlatform,
             status: ReleaseStatus.draft,
-            metadata: null,
           );
         } else {
           release = await codePushClientWrapper.createRelease(

@@ -131,8 +131,6 @@ If this option is not provided, the version number will be determined from the p
       return ExitCode.usage.code;
     }
 
-    showiOSStatusWarning();
-
     final allowAssetDiffs = results['allow-asset-diffs'] == true;
     final allowNativeDiffs = results['allow-native-diffs'] == true;
     final dryRun = results['dry-run'] == true;
