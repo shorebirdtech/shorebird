@@ -15,7 +15,7 @@ unpatched code, thus allowing more code sharing between the "patch" and
 "release" builds resulting in much faster execution at runtime.
 
 Most patches on iOS should now run at speeds indistinguishable from releases.
-If the tool-chain detects a case where the patch will run slower, it will
+If the toolchain detects a case where the patch will run slower, it will
 provide a warning. If you see any of these warnings, please let us know!
 
 Note: `shorebird patch ios` now takes a little longer as it has to do
