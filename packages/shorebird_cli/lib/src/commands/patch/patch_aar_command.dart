@@ -18,11 +18,13 @@ import 'package:shorebird_cli/src/deployment_track.dart';
 import 'package:shorebird_cli/src/formatters/file_size_formatter.dart';
 import 'package:shorebird_cli/src/logger.dart';
 import 'package:shorebird_cli/src/patch_diff_checker.dart';
+import 'package:shorebird_cli/src/platform.dart';
 import 'package:shorebird_cli/src/shorebird_artifact_mixin.dart';
 import 'package:shorebird_cli/src/shorebird_build_mixin.dart';
 import 'package:shorebird_cli/src/shorebird_env.dart';
 import 'package:shorebird_cli/src/shorebird_flutter.dart';
 import 'package:shorebird_cli/src/shorebird_validator.dart';
+import 'package:shorebird_cli/src/version.dart';
 import 'package:shorebird_code_push_client/shorebird_code_push_client.dart';
 
 /// {@template patch_aar_command}
@@ -151,19 +153,19 @@ Please re-run the release command for this version or create a new release.''');
       return ExitCode.software.code;
     }
 
-    const platform = ReleasePlatform.android;
+    const releasePlatform = ReleasePlatform.android;
     final releaseArtifacts = await codePushClientWrapper.getReleaseArtifacts(
       appId: appId,
       releaseId: release.id,
       architectures: architectures,
-      platform: platform,
+      platform: releasePlatform,
     );
 
     final releaseAarArtifact = await codePushClientWrapper.getReleaseArtifact(
       appId: appId,
       releaseId: release.id,
       arch: 'aar',
-      platform: platform,
+      platform: releasePlatform,
     );
 
     final Map<Arch, String> releaseArtifactPaths;
@@ -250,7 +252,7 @@ Please re-run the release command for this version or create a new release.''');
         final summary = [
           '''📱 App: ${lightCyan.wrap(app.displayName)} ${lightCyan.wrap('(${app.appId})')}''',
           '📦 Release Version: ${lightCyan.wrap(releaseVersion)}',
-          '''🕹️  Platform: ${lightCyan.wrap(platform.name)} ${lightCyan.wrap('[${archMetadata.join(', ')}]')}''',
+          '''🕹️  Platform: ${lightCyan.wrap(releasePlatform.name)} ${lightCyan.wrap('[${archMetadata.join(', ')}]')}''',
           '🟢 Track: ${lightCyan.wrap('Production')}',
         ];
 
@@ -276,11 +278,22 @@ ${summary.join('\n')}
         await codePushClientWrapper.publishPatch(
           appId: appId,
           releaseId: release.id,
-          hasAssetChanges: diffStatus.hasAssetChanges,
-          hasNativeChanges: diffStatus.hasNativeChanges,
-          platform: platform,
+          platform: releasePlatform,
           track: DeploymentTrack.production,
           patchArtifactBundles: patchArtifactBundles,
+          metadata: CreatePatchMetadata(
+            releasePlatform: releasePlatform,
+            usedIgnoreAssetChangesFlag: allowNativeDiffs,
+            hasAssetChanges: diffStatus.hasAssetChanges,
+            usedIgnoreNativeChangesFlag: allowNativeDiffs,
+            hasNativeChanges: diffStatus.hasNativeChanges,
+            environment: BuildEnvironmentMetadata(
+              operatingSystem: platform.operatingSystem,
+              operatingSystemVersion: platform.operatingSystemVersion,
+              shorebirdVersion: packageVersion,
+              xcodeVersion: null,
+            ),
+          ),
         );
 
         return ExitCode.success.code;

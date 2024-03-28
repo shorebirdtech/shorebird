@@ -17,6 +17,7 @@ import 'package:shorebird_cli/src/shorebird_build_mixin.dart';
 import 'package:shorebird_cli/src/shorebird_env.dart';
 import 'package:shorebird_cli/src/third_party/flutter_tools/lib/flutter_tools.dart';
 import 'package:shorebird_code_push_client/shorebird_code_push_client.dart';
+import 'package:shorebird_code_push_protocol/shorebird_code_push_protocol.dart';
 
 /// {@template patch_artifact_bundle}
 /// Metadata about a patch artifact that we are about to upload.
@@ -248,6 +249,7 @@ Please create a release using "shorebird release" and try again.
     required int releaseId,
     required ReleasePlatform platform,
     required ReleaseStatus status,
+    UpdateReleaseMetadata? metadata,
   }) async {
     final updateStatusProgress = logger.progress('Updating release status');
     try {
@@ -256,6 +258,7 @@ Please create a release using "shorebird release" and try again.
         releaseId: releaseId,
         platform: platform,
         status: status,
+        metadata: metadata,
       );
       updateStatusProgress.complete();
     } catch (error) {
@@ -642,16 +645,14 @@ aar artifact already exists, continuing...''',
   Future<Patch> createPatch({
     required String appId,
     required int releaseId,
-    required bool hasAssetChanges,
-    required bool hasNativeChanges,
+    required CreatePatchMetadata metadata,
   }) async {
     final createPatchProgress = logger.progress('Creating patch');
     try {
       final patch = await codePushClient.createPatch(
         appId: appId,
         releaseId: releaseId,
-        hasAssetChanges: hasAssetChanges,
-        hasNativeChanges: hasNativeChanges,
+        metadata: metadata,
       );
       createPatchProgress.complete();
       return patch;
@@ -709,8 +710,7 @@ aar artifact already exists, continuing...''',
   Future<void> publishPatch({
     required String appId,
     required int releaseId,
-    required bool hasAssetChanges,
-    required bool hasNativeChanges,
+    required CreatePatchMetadata metadata,
     required ReleasePlatform platform,
     required DeploymentTrack track,
     required Map<Arch, PatchArtifactBundle> patchArtifactBundles,
@@ -718,8 +718,7 @@ aar artifact already exists, continuing...''',
     final patch = await createPatch(
       appId: appId,
       releaseId: releaseId,
-      hasAssetChanges: hasAssetChanges,
-      hasNativeChanges: hasNativeChanges,
+      metadata: metadata,
     );
 
     await createPatchArtifacts(

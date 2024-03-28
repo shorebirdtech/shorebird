@@ -15,7 +15,7 @@ import 'package:shorebird_cli/src/config/config.dart';
 import 'package:shorebird_cli/src/deployment_track.dart';
 import 'package:shorebird_cli/src/doctor.dart';
 import 'package:shorebird_cli/src/engine_config.dart';
-import 'package:shorebird_cli/src/executables/aot_tools.dart';
+import 'package:shorebird_cli/src/executables/executables.dart';
 import 'package:shorebird_cli/src/logger.dart';
 import 'package:shorebird_cli/src/os/operating_system_interface.dart';
 import 'package:shorebird_cli/src/patch_diff_checker.dart';
@@ -27,6 +27,7 @@ import 'package:shorebird_cli/src/shorebird_flutter.dart';
 import 'package:shorebird_cli/src/shorebird_process.dart';
 import 'package:shorebird_cli/src/shorebird_validator.dart';
 import 'package:shorebird_cli/src/validators/validators.dart';
+import 'package:shorebird_cli/src/version.dart';
 import 'package:shorebird_code_push_client/shorebird_code_push_client.dart';
 import 'package:test/test.dart';
 
@@ -43,6 +44,9 @@ void main() {
     const version = '$versionName+$versionCode';
     const linkFileName = 'out.vmcode';
     const elfAotSnapshotFileName = 'out.aot';
+    const operatingSystem = 'macOS';
+    const operatingSystemVersion = '11.0.0';
+    const xcodeVersion = '12.0';
     const postLinkerFlutterRevision =
         'deadbeefdeadbeefdeadbeefdeadbeefdeadbeef';
     const preLinkerFlutterRevision = '83305b5088e6fe327fb3334a73ff190828d85713';
@@ -121,6 +125,7 @@ flutter:
     late ShorebirdFlutterValidator flutterValidator;
     late ShorebirdProcess shorebirdProcess;
     late ShorebirdValidator shorebirdValidator;
+    late XcodeBuild xcodeBuild;
     late PatchIosFrameworkCommand command;
 
     R runWithOverrides<R>(R Function() body) {
@@ -142,6 +147,7 @@ flutter:
           shorebirdEnvRef.overrideWith(() => shorebirdEnv),
           shorebirdFlutterRef.overrideWith(() => shorebirdFlutter),
           shorebirdValidatorRef.overrideWith(() => shorebirdValidator),
+          xcodeBuildRef.overrideWith(() => xcodeBuild),
         },
       );
     }
@@ -191,6 +197,7 @@ flutter:
     }
 
     setUpAll(() {
+      registerFallbackValue(CreatePatchMetadata.forTest());
       registerFallbackValue(Directory(''));
       registerFallbackValue(File(''));
       registerFallbackValue(FileSetDiff.empty());
@@ -210,6 +217,7 @@ flutter:
       shorebirdArtifacts = MockShorebirdArtifacts();
       patchDiffChecker = MockPatchDiffChecker();
       platform = MockPlatform();
+      xcodeBuild = MockXcodeBuild();
       shorebirdRoot = Directory.systemTemp.createTempSync();
       projectRoot = Directory.systemTemp.createTempSync();
       flutterDirectory = Directory(
@@ -315,7 +323,9 @@ flutter:
       when(
         () => operatingSystemInterface.which('flutter'),
       ).thenReturn('/path/to/flutter');
-      when(() => platform.operatingSystem).thenReturn(Platform.macOS);
+      when(() => platform.operatingSystem).thenReturn(operatingSystem);
+      when(() => platform.operatingSystemVersion)
+          .thenReturn(operatingSystemVersion);
       when(() => shorebirdEnv.getShorebirdYaml()).thenReturn(shorebirdYaml);
       when(() => shorebirdEnv.shorebirdRoot).thenReturn(shorebirdRoot);
       when(
@@ -376,11 +386,10 @@ flutter:
         () => codePushClientWrapper.publishPatch(
           appId: any(named: 'appId'),
           releaseId: any(named: 'releaseId'),
-          hasAssetChanges: any(named: 'hasAssetChanges'),
-          hasNativeChanges: any(named: 'hasNativeChanges'),
           platform: any(named: 'platform'),
           track: any(named: 'track'),
           patchArtifactBundles: any(named: 'patchArtifactBundles'),
+          metadata: any(named: 'metadata'),
         ),
       ).thenAnswer((_) async {});
       when(
@@ -405,6 +414,7 @@ flutter:
           hasNativeChanges: false,
         ),
       );
+      when(() => xcodeBuild.version()).thenAnswer((_) async => xcodeVersion);
 
       command = runWithOverrides(
         () => PatchIosFrameworkCommand(archiveDiffer: archiveDiffer),
@@ -784,11 +794,10 @@ Please re-run the release command for this version or create a new release.'''),
         () => codePushClientWrapper.publishPatch(
           appId: any(named: 'appId'),
           releaseId: any(named: 'releaseId'),
-          hasAssetChanges: any(named: 'hasAssetChanges'),
-          hasNativeChanges: any(named: 'hasNativeChanges'),
           platform: any(named: 'platform'),
           track: any(named: 'track'),
           patchArtifactBundles: any(named: 'patchArtifactBundles'),
+          metadata: any(named: 'metadata'),
         ),
       );
     });
@@ -824,11 +833,10 @@ Please re-run the release command for this version or create a new release.'''),
         () => codePushClientWrapper.publishPatch(
           appId: any(named: 'appId'),
           releaseId: any(named: 'releaseId'),
-          hasAssetChanges: any(named: 'hasAssetChanges'),
-          hasNativeChanges: any(named: 'hasNativeChanges'),
           platform: any(named: 'platform'),
           track: any(named: 'track'),
           patchArtifactBundles: any(named: 'patchArtifactBundles'),
+          metadata: any(named: 'metadata'),
         ),
       );
     });
@@ -843,8 +851,7 @@ Please re-run the release command for this version or create a new release.'''),
         () => codePushClientWrapper.createPatch(
           appId: any(named: 'appId'),
           releaseId: any(named: 'releaseId'),
-          hasAssetChanges: any(named: 'hasAssetChanges'),
-          hasNativeChanges: any(named: 'hasNativeChanges'),
+          metadata: any(named: 'metadata'),
         ),
       );
       verify(() => logger.info('No issues detected.')).called(1);
@@ -918,11 +925,28 @@ Please re-run the release command for this version or create a new release.'''),
         () => codePushClientWrapper.publishPatch(
           appId: appId,
           releaseId: postLinkerRelease.id,
-          hasAssetChanges: true,
-          hasNativeChanges: true,
           platform: ReleasePlatform.ios,
           track: track,
           patchArtifactBundles: any(named: 'patchArtifactBundles'),
+          metadata: any(
+            named: 'metadata',
+            that: isA<CreatePatchMetadata>()
+                .having(
+                  (m) => m.releasePlatform,
+                  'releasePlatform',
+                  ReleasePlatform.ios,
+                )
+                .having(
+                  (m) => m.hasAssetChanges,
+                  'hasAssetChanges',
+                  true,
+                )
+                .having(
+                  (m) => m.hasNativeChanges,
+                  'hasNativeChanges',
+                  true,
+                ),
+          ),
         ),
       ).called(1);
     });
@@ -946,11 +970,22 @@ Please re-run the release command for this version or create a new release.'''),
         () => codePushClientWrapper.publishPatch(
           appId: appId,
           releaseId: preLinkerRelease.id,
-          hasAssetChanges: false,
-          hasNativeChanges: false,
           platform: ReleasePlatform.ios,
           track: track,
           patchArtifactBundles: any(named: 'patchArtifactBundles'),
+          metadata: const CreatePatchMetadata(
+            releasePlatform: ReleasePlatform.ios,
+            usedIgnoreAssetChangesFlag: false,
+            hasAssetChanges: false,
+            usedIgnoreNativeChangesFlag: false,
+            hasNativeChanges: false,
+            environment: BuildEnvironmentMetadata(
+              shorebirdVersion: packageVersion,
+              operatingSystem: operatingSystem,
+              operatingSystemVersion: operatingSystemVersion,
+              xcodeVersion: xcodeVersion,
+            ),
+          ),
         ),
       ).called(1);
       expect(exitCode, ExitCode.success.code);
@@ -1156,8 +1191,6 @@ Please re-run the release command for this version or create a new release.'''),
           () => codePushClientWrapper.publishPatch(
             appId: appId,
             releaseId: preLinkerRelease.id,
-            hasAssetChanges: false,
-            hasNativeChanges: false,
             platform: ReleasePlatform.ios,
             track: track,
             patchArtifactBundles: any(
@@ -1165,6 +1198,7 @@ Please re-run the release command for this version or create a new release.'''),
               that: isA<Map<Arch, PatchArtifactBundle>>()
                   .having((e) => e[Arch.arm64]!.path, 'patch path', diffPath),
             ),
+            metadata: any(named: 'metadata'),
           ),
         ).called(1);
       });

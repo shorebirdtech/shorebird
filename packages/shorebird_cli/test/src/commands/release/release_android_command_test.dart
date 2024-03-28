@@ -23,6 +23,7 @@ import 'package:shorebird_cli/src/shorebird_flutter.dart';
 import 'package:shorebird_cli/src/shorebird_process.dart';
 import 'package:shorebird_cli/src/shorebird_validator.dart';
 import 'package:shorebird_cli/src/validators/validators.dart';
+import 'package:shorebird_cli/src/version.dart';
 import 'package:shorebird_code_push_client/shorebird_code_push_client.dart';
 import 'package:test/test.dart';
 
@@ -38,6 +39,8 @@ void main() {
     const versionName = '1.2.3';
     const versionCode = '1';
     const version = '$versionName+$versionCode';
+    const operatingSystem = 'macOS';
+    const operatingSystemVersion = '11.0.0';
     const appDisplayName = 'Test App';
     const arch = 'aarch64';
     const releasePlatform = ReleasePlatform.android;
@@ -194,6 +197,9 @@ void main() {
       when(
         () => logger.prompt(any(), defaultValue: any(named: 'defaultValue')),
       ).thenReturn(version);
+      when(() => platform.operatingSystem).thenReturn(operatingSystem);
+      when(() => platform.operatingSystemVersion)
+          .thenReturn(operatingSystemVersion);
       when(
         () => flutterBuildProcessResult.exitCode,
       ).thenReturn(ExitCode.success.code);
@@ -239,6 +245,7 @@ void main() {
           releaseId: any(named: 'releaseId'),
           platform: any(named: 'platform'),
           status: any(named: 'status'),
+          metadata: any(named: 'metadata'),
         ),
       ).thenAnswer((_) async {});
       when(() => doctor.androidCommandValidators)
@@ -396,6 +403,25 @@ $exception''',
               platform: releasePlatform,
             ),
           ).called(1);
+          verify(
+            () => codePushClientWrapper.updateReleaseStatus(
+              appId: appId,
+              releaseId: release.id,
+              platform: releasePlatform,
+              status: ReleaseStatus.active,
+              metadata: const UpdateReleaseMetadata(
+                releasePlatform: releasePlatform,
+                flutterVersionOverride: flutterVersion,
+                generatedApks: false,
+                environment: BuildEnvironmentMetadata(
+                  operatingSystem: operatingSystem,
+                  operatingSystemVersion: operatingSystemVersion,
+                  shorebirdVersion: packageVersion,
+                  xcodeVersion: null,
+                ),
+              ),
+            ),
+          ).called(1);
         });
 
         group('when flutter version install fails', () {
@@ -506,6 +532,17 @@ ${link(uri: Uri.parse('https://support.google.com/googleplay/android-developer/a
           releaseId: release.id,
           platform: releasePlatform,
           status: ReleaseStatus.active,
+          metadata: const UpdateReleaseMetadata(
+            releasePlatform: releasePlatform,
+            flutterVersionOverride: null,
+            generatedApks: false,
+            environment: BuildEnvironmentMetadata(
+              operatingSystem: operatingSystem,
+              operatingSystemVersion: operatingSystemVersion,
+              shorebirdVersion: packageVersion,
+              xcodeVersion: null,
+            ),
+          ),
         ),
       ).called(1);
       expect(exitCode, ExitCode.success.code);
@@ -563,6 +600,17 @@ ${link(uri: Uri.parse('https://support.google.com/googleplay/android-developer/a
           releaseId: release.id,
           platform: releasePlatform,
           status: ReleaseStatus.active,
+          metadata: const UpdateReleaseMetadata(
+            releasePlatform: releasePlatform,
+            flutterVersionOverride: null,
+            generatedApks: true,
+            environment: BuildEnvironmentMetadata(
+              operatingSystem: operatingSystem,
+              operatingSystemVersion: operatingSystemVersion,
+              shorebirdVersion: packageVersion,
+              xcodeVersion: null,
+            ),
+          ),
         ),
       ).called(1);
       const buildApkArguments = ['build', 'apk', '--release'];
@@ -721,6 +769,7 @@ Either run `flutter pub get` manually, or follow the steps in ${link(uri: Uri.pa
           releaseId: release.id,
           platform: releasePlatform,
           status: ReleaseStatus.active,
+          metadata: any(named: 'metadata'),
         ),
       ).called(1);
       expect(exitCode, ExitCode.success.code);

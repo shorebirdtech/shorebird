@@ -24,6 +24,10 @@ void main() {
     late Platform platform;
     late ShorebirdEnv shorebirdEnv;
 
+    setUpAll(() {
+      registerFallbackValue(CreatePatchMetadata.forTest());
+    });
+
     setUp(() {
       auth = MockAuth();
       httpClient = MockHttpClient();
@@ -1804,8 +1808,7 @@ Please bump your version number and try again.''',
             () => codePushClient.createPatch(
               appId: appId,
               releaseId: releaseId,
-              hasAssetChanges: any(named: 'hasAssetChanges'),
-              hasNativeChanges: any(named: 'hasNativeChanges'),
+              metadata: any(named: 'metadata'),
             ),
           ).thenThrow(error);
 
@@ -1814,8 +1817,7 @@ Please bump your version number and try again.''',
               () => codePushClientWrapper.createPatch(
                 appId: appId,
                 releaseId: releaseId,
-                hasAssetChanges: false,
-                hasNativeChanges: false,
+                metadata: CreatePatchMetadata.forTest(),
               ),
             ),
             exitsWithCode(ExitCode.software),
@@ -1828,8 +1830,7 @@ Please bump your version number and try again.''',
             () => codePushClient.createPatch(
               appId: appId,
               releaseId: releaseId,
-              hasAssetChanges: any(named: 'hasAssetChanges'),
-              hasNativeChanges: any(named: 'hasNativeChanges'),
+              metadata: any(named: 'metadata'),
             ),
           ).thenAnswer((_) async => patch);
 
@@ -1837,8 +1838,7 @@ Please bump your version number and try again.''',
             () => codePushClientWrapper.createPatch(
               appId: appId,
               releaseId: releaseId,
-              hasAssetChanges: false,
-              hasNativeChanges: false,
+              metadata: CreatePatchMetadata.forTest(),
             ),
           );
 
@@ -1965,8 +1965,7 @@ Please bump your version number and try again.''',
             () => codePushClient.createPatch(
               appId: any(named: 'appId'),
               releaseId: any(named: 'releaseId'),
-              hasAssetChanges: any(named: 'hasAssetChanges'),
-              hasNativeChanges: any(named: 'hasNativeChanges'),
+              metadata: any(named: 'metadata'),
             ),
           ).thenAnswer((_) async => patch);
           when(
@@ -1996,11 +1995,10 @@ Please bump your version number and try again.''',
             () => codePushClientWrapper.publishPatch(
               appId: appId,
               releaseId: releaseId,
-              hasAssetChanges: true,
-              hasNativeChanges: false,
               platform: releasePlatform,
               track: track,
               patchArtifactBundles: patchArtifactBundles,
+              metadata: CreatePatchMetadata.forTest(),
             ),
           );
 
@@ -2008,8 +2006,7 @@ Please bump your version number and try again.''',
             () => codePushClient.createPatch(
               appId: appId,
               releaseId: releaseId,
-              hasAssetChanges: true,
-              hasNativeChanges: false,
+              metadata: CreatePatchMetadata.forTest(),
             ),
           ).called(1);
           verify(
@@ -2054,11 +2051,10 @@ Please bump your version number and try again.''',
             () => codePushClientWrapper.publishPatch(
               appId: appId,
               releaseId: releaseId,
-              hasAssetChanges: false,
-              hasNativeChanges: true,
               platform: releasePlatform,
               track: track,
               patchArtifactBundles: patchArtifactBundles,
+              metadata: CreatePatchMetadata.forTest(),
             ),
           );
 
@@ -2066,8 +2062,7 @@ Please bump your version number and try again.''',
             () => codePushClient.createPatch(
               appId: appId,
               releaseId: releaseId,
-              hasAssetChanges: false,
-              hasNativeChanges: true,
+              metadata: CreatePatchMetadata.forTest(),
             ),
           ).called(1);
           verify(
@@ -2101,11 +2096,10 @@ Please bump your version number and try again.''',
             () => codePushClientWrapper.publishPatch(
               appId: appId,
               releaseId: releaseId,
-              hasAssetChanges: false,
-              hasNativeChanges: false,
               platform: releasePlatform,
               track: track,
               patchArtifactBundles: patchArtifactBundles,
+              metadata: CreatePatchMetadata.forTest(),
             ),
           );
 

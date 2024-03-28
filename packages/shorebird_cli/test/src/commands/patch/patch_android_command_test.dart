@@ -29,6 +29,7 @@ import 'package:shorebird_cli/src/shorebird_flutter.dart';
 import 'package:shorebird_cli/src/shorebird_process.dart';
 import 'package:shorebird_cli/src/shorebird_validator.dart';
 import 'package:shorebird_cli/src/validators/validators.dart';
+import 'package:shorebird_cli/src/version.dart';
 import 'package:shorebird_code_push_client/shorebird_code_push_client.dart';
 import 'package:test/test.dart';
 
@@ -43,6 +44,8 @@ void main() {
     const versionName = '1.2.3';
     const versionCode = '1';
     const version = '$versionName+$versionCode';
+    const operatingSystem = 'macOS';
+    const operatingSystemVersion = '11.0.0';
     const arch = 'aarch64';
     const releasePlatform = ReleasePlatform.android;
     const track = DeploymentTrack.production;
@@ -173,6 +176,7 @@ flutter:
     }
 
     setUpAll(() {
+      registerFallbackValue(CreatePatchMetadata.forTest());
       registerFallbackValue(Directory(''));
       registerFallbackValue(File(''));
       registerFallbackValue(FileSetDiff.empty());
@@ -342,11 +346,10 @@ flutter:
         () => codePushClientWrapper.publishPatch(
           appId: any(named: 'appId'),
           releaseId: any(named: 'releaseId'),
-          hasAssetChanges: any(named: 'hasAssetChanges'),
-          hasNativeChanges: any(named: 'hasNativeChanges'),
           platform: any(named: 'platform'),
           track: any(named: 'track'),
           patchArtifactBundles: any(named: 'patchArtifactBundles'),
+          metadata: any(named: 'metadata'),
         ),
       ).thenAnswer((_) async {});
       when(
@@ -383,6 +386,9 @@ flutter:
           hasNativeChanges: false,
         ),
       );
+      when(() => platform.operatingSystem).thenReturn(operatingSystem);
+      when(() => platform.operatingSystemVersion)
+          .thenReturn(operatingSystemVersion);
       when(() => shorebirdEnv.isRunningOnCI).thenReturn(false);
     });
 
@@ -754,11 +760,10 @@ Please re-run the release command for this version or create a new release.'''),
         () => codePushClientWrapper.publishPatch(
           appId: any(named: 'appId'),
           releaseId: any(named: 'releaseId'),
-          hasAssetChanges: any(named: 'hasAssetChanges'),
-          hasNativeChanges: any(named: 'hasNativeChanges'),
           platform: any(named: 'platform'),
           track: any(named: 'track'),
           patchArtifactBundles: any(named: 'patchArtifactBundles'),
+          metadata: any(named: 'metadata'),
         ),
       );
     });
@@ -795,11 +800,10 @@ Please re-run the release command for this version or create a new release.'''),
         () => codePushClientWrapper.publishPatch(
           appId: any(named: 'appId'),
           releaseId: any(named: 'releaseId'),
-          hasAssetChanges: any(named: 'hasAssetChanges'),
-          hasNativeChanges: any(named: 'hasNativeChanges'),
           platform: any(named: 'platform'),
           track: any(named: 'track'),
           patchArtifactBundles: any(named: 'patchArtifactBundles'),
+          metadata: any(named: 'metadata'),
         ),
       );
     });
@@ -830,11 +834,10 @@ Please re-run the release command for this version or create a new release.'''),
         () => codePushClientWrapper.publishPatch(
           appId: any(named: 'appId'),
           releaseId: any(named: 'releaseId'),
-          hasAssetChanges: any(named: 'hasAssetChanges'),
-          hasNativeChanges: any(named: 'hasNativeChanges'),
           platform: any(named: 'platform'),
           track: any(named: 'track'),
           patchArtifactBundles: any(named: 'patchArtifactBundles'),
+          metadata: any(named: 'metadata'),
         ),
       );
       verify(() => logger.info('No issues detected.')).called(1);
@@ -908,11 +911,28 @@ Please re-run the release command for this version or create a new release.'''),
         () => codePushClientWrapper.publishPatch(
           appId: appId,
           releaseId: release.id,
-          hasAssetChanges: true,
-          hasNativeChanges: true,
           platform: releasePlatform,
           track: track,
           patchArtifactBundles: any(named: 'patchArtifactBundles'),
+          metadata: any(
+            named: 'metadata',
+            that: isA<CreatePatchMetadata>()
+                .having(
+                  (m) => m.releasePlatform,
+                  'releasePlatform',
+                  ReleasePlatform.android,
+                )
+                .having(
+                  (m) => m.hasAssetChanges,
+                  'hasAssetChanges',
+                  true,
+                )
+                .having(
+                  (m) => m.hasNativeChanges,
+                  'hasNativeChanges',
+                  true,
+                ),
+          ),
         ),
       ).called(1);
     });
@@ -954,11 +974,22 @@ Please re-run the release command for this version or create a new release.'''),
         () => codePushClientWrapper.publishPatch(
           appId: appId,
           releaseId: release.id,
-          hasAssetChanges: false,
-          hasNativeChanges: false,
           platform: releasePlatform,
           track: track,
           patchArtifactBundles: any(named: 'patchArtifactBundles'),
+          metadata: const CreatePatchMetadata(
+            releasePlatform: releasePlatform,
+            usedIgnoreAssetChangesFlag: false,
+            hasAssetChanges: false,
+            usedIgnoreNativeChangesFlag: false,
+            hasNativeChanges: false,
+            environment: BuildEnvironmentMetadata(
+              shorebirdVersion: packageVersion,
+              operatingSystem: operatingSystem,
+              operatingSystemVersion: operatingSystemVersion,
+              xcodeVersion: null,
+            ),
+          ),
         ),
       ).called(1);
       expect(exitCode, ExitCode.success.code);
@@ -984,11 +1015,10 @@ Please re-run the release command for this version or create a new release.'''),
         () => codePushClientWrapper.publishPatch(
           appId: appId,
           releaseId: release.id,
-          hasAssetChanges: false,
-          hasNativeChanges: false,
           platform: releasePlatform,
           track: DeploymentTrack.staging,
           patchArtifactBundles: any(named: 'patchArtifactBundles'),
+          metadata: any(named: 'metadata'),
         ),
       ).called(1);
       expect(exitCode, ExitCode.success.code);
@@ -1039,11 +1069,10 @@ flavors:
         () => codePushClientWrapper.publishPatch(
           appId: appId,
           releaseId: release.id,
-          hasAssetChanges: false,
-          hasNativeChanges: false,
           platform: releasePlatform,
           track: track,
           patchArtifactBundles: any(named: 'patchArtifactBundles'),
+          metadata: any(named: 'metadata'),
         ),
       ).called(1);
       expect(exitCode, ExitCode.success.code);
