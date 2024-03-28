@@ -2,8 +2,11 @@ import 'dart:io';
 
 import 'package:mason_logger/mason_logger.dart';
 import 'package:path/path.dart' as p;
+import 'package:pub_semver/pub_semver.dart';
 import 'package:scoped/scoped.dart';
 import 'package:shorebird_cli/src/cache.dart';
+import 'package:shorebird_cli/src/engine_config.dart';
+import 'package:shorebird_cli/src/extensions/version.dart';
 import 'package:shorebird_cli/src/shorebird_artifacts.dart';
 import 'package:shorebird_cli/src/shorebird_env.dart';
 import 'package:shorebird_cli/src/shorebird_process.dart';
@@ -15,7 +18,7 @@ final aotToolsRef = create(AotTools.new);
 AotTools get aotTools => read(aotToolsRef);
 
 /// Revisions of Flutter that were released before the linker was enabled.
-const preLinkerFlutterRevisions = <String>{
+const _preLinkerFlutterRevisions = <String>{
   '45d609090a2313d47a4e657d449ff25710abc853',
   '0b0086ffa92c25c22f50cbadc3851054f08a9cd8',
   'a3d5f7c614aa1cc4d6cb1506e74fd1c81678e68e',
@@ -63,6 +66,20 @@ const preLinkerFlutterRevisions = <String>{
 
 /// Wrapper around the shorebird `aot-tools` executable.
 class AotTools {
+  /// Returns true if the linker should be used for the given Flutter revision.
+  static bool usesLinker(String flutterRevision) {
+    // We always use the linker when we have a localEngine build.
+    // This will be wrong if we ever need new shorebird to work with old local
+    // engine build.
+    if (engineConfig.localEngine != null) {
+      return true;
+    }
+    // We could also probably just check if aot_tools exists in the flutter
+    // revision, although I think we released a couple versions of Flutter that
+    // included a broken aot_tools before we enabled the linker.
+    return !_preLinkerFlutterRevisions.contains(flutterRevision);
+  }
+
   Future<ShorebirdProcessResult> _exec(
     List<String> command, {
     String? workingDirectory,
@@ -94,20 +111,43 @@ class AotTools {
     );
   }
 
+  Future<bool> _linkerUsesGenSnapshot() async {
+    final version = await _getVersion();
+    return version >= Version(0, 0, 1);
+  }
+
+  Future<Version> _getVersion() async {
+    // Use 0.0.0 to allow callers to easily compare w/o checking for null.
+    // If callers need to care about null, we can change this function to
+    // return Version?.
+    final noVersion = Version(0, 0, 0);
+    final result = await _exec(['--version']);
+    if (result.exitCode != ExitCode.success.code) {
+      return noVersion;
+    }
+    final version = result.stdout.toString().trim();
+    return tryParseVersion(version) ?? noVersion;
+  }
+
   /// Generate a link vmcode file from two AOT snapshots.
   Future<void> link({
     required String base,
     required String patch,
     required String analyzeSnapshot,
+    required String genSnapshot,
+    required String kernel,
     required String outputPath,
     String? workingDirectory,
   }) async {
+    final linkerUsesGenSnapshot = await _linkerUsesGenSnapshot();
     final result = await _exec(
       [
         'link',
         '--base=$base',
         '--patch=$patch',
         '--analyze-snapshot=$analyzeSnapshot',
+        if (linkerUsesGenSnapshot) '--gen-snapshot=$genSnapshot',
+        if (linkerUsesGenSnapshot) '--kernel=$kernel',
         '--output=$outputPath',
       ],
       workingDirectory: workingDirectory,

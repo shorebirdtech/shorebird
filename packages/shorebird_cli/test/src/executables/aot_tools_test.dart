@@ -55,7 +55,9 @@ void main() {
     group('link', () {
       const base = './path/to/base.aot';
       const patch = './path/to/patch.aot';
-      const analyzeSnapshot = './path/to/analyze_snapshot.aot';
+      const analyzeSnapshot = './path/to/analyze_snapshot';
+      const genSnapshot = './path/to/gen_snapshot';
+      const kernel = './path/to/kernel.dill';
       const outputPath = './path/to/out.vmcode';
 
       test('throws Exception when process exits with non-zero code', () async {
@@ -83,6 +85,8 @@ void main() {
               base: base,
               patch: patch,
               analyzeSnapshot: analyzeSnapshot,
+              genSnapshot: genSnapshot,
+              kernel: kernel,
               outputPath: outputPath,
             ),
           ),
@@ -127,6 +131,8 @@ void main() {
                 base: base,
                 patch: patch,
                 analyzeSnapshot: analyzeSnapshot,
+                genSnapshot: genSnapshot,
+                kernel: kernel,
                 workingDirectory: workingDirectory.path,
                 outputPath: outputPath,
               ),
@@ -180,6 +186,8 @@ void main() {
                 base: base,
                 patch: patch,
                 analyzeSnapshot: analyzeSnapshot,
+                genSnapshot: genSnapshot,
+                kernel: kernel,
                 workingDirectory: workingDirectory.path,
                 outputPath: outputPath,
               ),
@@ -235,6 +243,8 @@ void main() {
                 base: base,
                 patch: patch,
                 analyzeSnapshot: analyzeSnapshot,
+                genSnapshot: genSnapshot,
+                kernel: kernel,
                 workingDirectory: workingDirectory.path,
                 outputPath: outputPath,
               ),
@@ -251,6 +261,77 @@ void main() {
                 '--base=$base',
                 '--patch=$patch',
                 '--analyze-snapshot=$analyzeSnapshot',
+                '--output=$outputPath',
+              ],
+              workingDirectory: any(named: 'workingDirectory'),
+            ),
+          ).called(1);
+        });
+      });
+
+      group('when when link expects gen_snapshot', () {
+        const aotToolsPath = 'aot_tools';
+
+        setUp(() {
+          when(
+            () => shorebirdArtifacts.getArtifactPath(
+              artifact: ShorebirdArtifact.aotTools,
+            ),
+          ).thenReturn(aotToolsPath);
+        });
+
+        test('passes gen_snapshot to aot_tools', () async {
+          when(
+            () => process.run(
+              aotToolsPath,
+              ['--version'],
+              workingDirectory: any(named: 'workingDirectory'),
+            ),
+          ).thenAnswer(
+            (_) async => const ShorebirdProcessResult(
+              exitCode: 0,
+              stdout: '0.0.1',
+              stderr: '',
+            ),
+          );
+          when(
+            () => process.run(
+              aotToolsPath,
+              any(that: contains('--gen-snapshot=$genSnapshot')),
+              workingDirectory: any(named: 'workingDirectory'),
+            ),
+          ).thenAnswer(
+            (_) async => const ShorebirdProcessResult(
+              exitCode: 0,
+              stdout: '',
+              stderr: '',
+            ),
+          );
+          await expectLater(
+            runWithOverrides(
+              () => aotTools.link(
+                base: base,
+                patch: patch,
+                analyzeSnapshot: analyzeSnapshot,
+                genSnapshot: genSnapshot,
+                kernel: kernel,
+                workingDirectory: workingDirectory.path,
+                outputPath: outputPath,
+              ),
+            ),
+            completes,
+          );
+
+          verify(
+            () => process.run(
+              aotToolsPath,
+              [
+                'link',
+                '--base=$base',
+                '--patch=$patch',
+                '--analyze-snapshot=$analyzeSnapshot',
+                '--gen-snapshot=$genSnapshot',
+                '--kernel=$kernel',
                 '--output=$outputPath',
               ],
               workingDirectory: any(named: 'workingDirectory'),

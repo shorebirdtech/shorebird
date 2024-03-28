@@ -14,7 +14,6 @@ import 'package:shorebird_cli/src/commands/commands.dart';
 import 'package:shorebird_cli/src/config/config.dart';
 import 'package:shorebird_cli/src/deployment_track.dart';
 import 'package:shorebird_cli/src/doctor.dart';
-import 'package:shorebird_cli/src/engine_config.dart';
 import 'package:shorebird_cli/src/executables/executables.dart';
 import 'package:shorebird_cli/src/extensions/arg_results.dart';
 import 'package:shorebird_cli/src/formatters/file_size_formatter.dart';
@@ -308,8 +307,7 @@ Current Flutter Revision: $currentFlutterRevision
           ),
         );
 
-        final useLinker = engineConfig.localEngine != null ||
-            !preLinkerFlutterRevisions.contains(release.flutterRevision);
+        final useLinker = AotTools.usesLinker(release.flutterRevision);
         if (useLinker) {
           final exitCode = await _runLinker(
             releaseArtifact: releaseArtifactFile,
@@ -526,14 +524,20 @@ ${summary.join('\n')}
       return ExitCode.software.code;
     }
 
+    final genSnapshot = shorebirdArtifacts.getArtifactPath(
+      artifact: ShorebirdArtifact.genSnapshot,
+    );
+
     final linkProgress = logger.progress('Linking AOT files');
     try {
       await aotTools.link(
         base: releaseArtifact.path,
         patch: patch.path,
         analyzeSnapshot: analyzeSnapshot.path,
+        genSnapshot: genSnapshot,
         outputPath: _vmcodeOutputPath,
         workingDirectory: _buildDirectory,
+        kernel: newestAppDill().path,
       );
     } catch (error) {
       linkProgress.fail('Failed to link AOT files: $error');
