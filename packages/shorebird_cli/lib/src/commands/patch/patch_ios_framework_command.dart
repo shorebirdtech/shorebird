@@ -14,7 +14,6 @@ import 'package:shorebird_cli/src/commands/commands.dart';
 import 'package:shorebird_cli/src/config/shorebird_yaml.dart';
 import 'package:shorebird_cli/src/deployment_track.dart';
 import 'package:shorebird_cli/src/doctor.dart';
-import 'package:shorebird_cli/src/engine_config.dart';
 import 'package:shorebird_cli/src/executables/aot_tools.dart';
 import 'package:shorebird_cli/src/formatters/file_size_formatter.dart';
 import 'package:shorebird_cli/src/logger.dart';
@@ -249,8 +248,7 @@ Please re-run the release command for this version or create a new release.''');
           ),
         );
 
-        final useLinker = engineConfig.localEngine != null ||
-            !preLinkerFlutterRevisions.contains(release.flutterRevision);
+        final useLinker = AotTools.usesLinker(release.flutterRevision);
         if (useLinker) {
           final exitCode = await _runLinker(
             aotSnapshot: aotSnapshotFile,
