@@ -900,6 +900,7 @@ Please re-run the release command for this version or create a new release.'''),
             hasAssetChanges: false,
             usedIgnoreNativeChangesFlag: false,
             hasNativeChanges: false,
+            linkPercentage: null,
             environment: BuildEnvironmentMetadata(
               shorebirdVersion: packageVersion,
               operatingSystem: operatingSystem,

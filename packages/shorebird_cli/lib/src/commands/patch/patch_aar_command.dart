@@ -287,6 +287,7 @@ ${summary.join('\n')}
             hasAssetChanges: diffStatus.hasAssetChanges,
             usedIgnoreNativeChangesFlag: allowNativeDiffs,
             hasNativeChanges: diffStatus.hasNativeChanges,
+            linkPercentage: null,
             environment: BuildEnvironmentMetadata(
               operatingSystem: platform.operatingSystem,
               operatingSystemVersion: platform.operatingSystemVersion,

@@ -1666,6 +1666,7 @@ flavors:
             hasAssetChanges: false,
             usedIgnoreNativeChangesFlag: false,
             hasNativeChanges: false,
+            linkPercentage: null,
             environment: BuildEnvironmentMetadata(
               shorebirdVersion: packageVersion,
               operatingSystem: operatingSystem,
