@@ -142,6 +142,7 @@ class AotTools {
     String? workingDirectory,
   }) async {
     const linkJson = 'link.json';
+    final outputDir = Directory(p.dirname(outputPath));
     final linkerUsesGenSnapshot = await _linkerUsesGenSnapshot();
     final result = await _exec(
       [
@@ -154,7 +155,7 @@ class AotTools {
           '--gen-snapshot=$genSnapshot',
           '--kernel=$kernel',
           '--reporter=json',
-          '--redirect-to=$linkJson',
+          '--redirect-to=${p.join(outputDir.path, linkJson)}',
         ],
       ],
       workingDirectory: workingDirectory,

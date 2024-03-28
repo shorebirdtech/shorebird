@@ -60,6 +60,7 @@ void main() {
       const genSnapshot = './path/to/gen_snapshot';
       const kernel = './path/to/kernel.dill';
       const outputPath = './path/to/out.vmcode';
+      const linkJsonPath = './path/to/link.json';
 
       test('throws Exception when process exits with non-zero code', () async {
         when(
@@ -335,7 +336,7 @@ void main() {
                 '--gen-snapshot=$genSnapshot',
                 '--kernel=$kernel',
                 '--reporter=json',
-                '--redirect-to=link.json',
+                '--redirect-to=$linkJsonPath',
               ],
               workingDirectory: any(named: 'workingDirectory'),
             ),
@@ -405,7 +406,7 @@ void main() {
                 '--gen-snapshot=$genSnapshot',
                 '--kernel=$kernel',
                 '--reporter=json',
-                '--redirect-to=link.json',
+                '--redirect-to=$linkJsonPath',
               ],
               workingDirectory: any(named: 'workingDirectory'),
             ),
