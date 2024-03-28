@@ -2,7 +2,7 @@
 
 This section contains past updates we've sent to customers via Discord.
 
-## 0.28.0 (March 27, 2024)
+## 0.28.0 (March 28, 2024)
 
 🚀 Apps with a patch applied on iOS run much faster than previously.
 💾 `shorebird release` saves XCode Version and OS to console.shorebird.dev
