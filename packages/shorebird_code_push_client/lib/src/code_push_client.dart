@@ -253,6 +253,8 @@ class CodePushClient {
       wasForced: false,
       hasAssetChanges: hasAssetChanges,
       hasNativeChanges: hasNativeChanges,
+      // TODO(bryanoltman): add metadata
+      metadata: null,
     );
     final response = await _httpClient.post(
       Uri.parse('$_v1/apps/$appId/patches'),
@@ -304,6 +306,8 @@ class CodePushClient {
         UpdateReleaseRequest(
           status: status,
           platform: platform,
+          // TODO(bryanoltman): add metadata
+          metadata: null,
         ).toJson(),
       ),
     );

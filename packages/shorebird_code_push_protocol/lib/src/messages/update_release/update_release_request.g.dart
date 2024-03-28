@@ -19,6 +19,11 @@ UpdateReleaseRequest _$UpdateReleaseRequestFromJson(
               'status', (v) => $enumDecode(_$ReleaseStatusEnumMap, v)),
           platform: $checkedConvert(
               'platform', (v) => $enumDecode(_$ReleasePlatformEnumMap, v)),
+          metadata: $checkedConvert(
+              'metadata',
+              (v) => v == null
+                  ? null
+                  : UpdateReleaseMetadata.fromJson(v as Map<String, dynamic>)),
         );
         return val;
       },
@@ -29,6 +34,7 @@ Map<String, dynamic> _$UpdateReleaseRequestToJson(
     <String, dynamic>{
       'status': _$ReleaseStatusEnumMap[instance.status]!,
       'platform': _$ReleasePlatformEnumMap[instance.platform]!,
+      'metadata': instance.metadata?.toJson(),
     };
 
 const _$ReleaseStatusEnumMap = {

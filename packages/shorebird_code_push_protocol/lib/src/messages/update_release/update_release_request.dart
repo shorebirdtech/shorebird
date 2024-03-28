@@ -12,6 +12,7 @@ class UpdateReleaseRequest {
   const UpdateReleaseRequest({
     required this.status,
     required this.platform,
+    required this.metadata,
   });
 
   /// Converts a Map<String, dynamic> to a [UpdateReleaseRequest].
@@ -26,4 +27,7 @@ class UpdateReleaseRequest {
 
   /// The platform of the release.
   final ReleasePlatform platform;
+
+  /// Additional information about the release.
+  final UpdateReleaseMetadata? metadata;
 }

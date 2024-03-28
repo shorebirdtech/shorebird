@@ -14,7 +14,6 @@ import 'package:shorebird_cli/src/commands/commands.dart';
 import 'package:shorebird_cli/src/config/config.dart';
 import 'package:shorebird_cli/src/deployment_track.dart';
 import 'package:shorebird_cli/src/doctor.dart';
-import 'package:shorebird_cli/src/engine_config.dart';
 import 'package:shorebird_cli/src/executables/executables.dart';
 import 'package:shorebird_cli/src/extensions/arg_results.dart';
 import 'package:shorebird_cli/src/formatters/file_size_formatter.dart';
@@ -306,8 +305,7 @@ Current Flutter Revision: $currentFlutterRevision
           ),
         );
 
-        final useLinker = engineConfig.localEngine != null ||
-            !preLinkerFlutterRevisions.contains(release.flutterRevision);
+        final useLinker = AotTools.usesLinker(release.flutterRevision);
         if (useLinker) {
           final exitCode = await _runLinker(
             releaseArtifact: releaseArtifactFile,
