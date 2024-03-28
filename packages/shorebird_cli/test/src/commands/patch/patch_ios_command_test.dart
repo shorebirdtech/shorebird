@@ -1344,6 +1344,20 @@ Please re-run the release command for this version or create a new release.'''),
       });
 
       test('generates diff base and publishes the appropriate patch', () async {
+        const linkPercentage = 99.9;
+        when(
+          () => aotTools.link(
+            base: any(named: 'base'),
+            patch: any(named: 'patch'),
+            analyzeSnapshot: any(named: 'analyzeSnapshot'),
+            genSnapshot: any(named: 'genSnapshot'),
+            kernel: any(named: 'kernel'),
+            workingDirectory: any(named: 'workingDirectory'),
+            outputPath: any(named: 'outputPath'),
+          ),
+        ).thenAnswer(
+          (_) async => linkPercentage,
+        );
         await runWithOverrides(command.run);
         verify(
           () => codePushClientWrapper.publishPatch(
@@ -1362,6 +1376,7 @@ Please re-run the release command for this version or create a new release.'''),
               hasAssetChanges: false,
               usedIgnoreNativeChangesFlag: false,
               hasNativeChanges: false,
+              linkPercentage: linkPercentage,
               environment: BuildEnvironmentMetadata(
                 shorebirdVersion: packageVersion,
                 operatingSystem: operatingSystem,
@@ -1651,6 +1666,7 @@ flavors:
             hasAssetChanges: false,
             usedIgnoreNativeChangesFlag: false,
             hasNativeChanges: false,
+            linkPercentage: null,
             environment: BuildEnvironmentMetadata(
               shorebirdVersion: packageVersion,
               operatingSystem: operatingSystem,
