@@ -268,6 +268,77 @@ void main() {
           ).called(1);
         });
       });
+
+      group('when when link expects gen_snapshot', () {
+        const aotToolsPath = 'aot_tools';
+
+        setUp(() {
+          when(
+            () => shorebirdArtifacts.getArtifactPath(
+              artifact: ShorebirdArtifact.aotTools,
+            ),
+          ).thenReturn(aotToolsPath);
+        });
+
+        test('passes gen_snapshot to aot_tools', () async {
+          when(
+            () => process.run(
+              aotToolsPath,
+              ['--version'],
+              workingDirectory: any(named: 'workingDirectory'),
+            ),
+          ).thenAnswer(
+            (_) async => const ShorebirdProcessResult(
+              exitCode: 0,
+              stdout: '0.0.1',
+              stderr: '',
+            ),
+          );
+          when(
+            () => process.run(
+              aotToolsPath,
+              any(that: contains('--gen-snapshot=$genSnapshot')),
+              workingDirectory: any(named: 'workingDirectory'),
+            ),
+          ).thenAnswer(
+            (_) async => const ShorebirdProcessResult(
+              exitCode: 0,
+              stdout: '',
+              stderr: '',
+            ),
+          );
+          await expectLater(
+            runWithOverrides(
+              () => aotTools.link(
+                base: base,
+                patch: patch,
+                analyzeSnapshot: analyzeSnapshot,
+                genSnapshot: genSnapshot,
+                kernel: kernel,
+                workingDirectory: workingDirectory.path,
+                outputPath: outputPath,
+              ),
+            ),
+            completes,
+          );
+
+          verify(
+            () => process.run(
+              aotToolsPath,
+              [
+                'link',
+                '--base=$base',
+                '--patch=$patch',
+                '--analyze-snapshot=$analyzeSnapshot',
+                '--gen-snapshot=$genSnapshot',
+                '--kernel=$kernel',
+                '--output=$outputPath',
+              ],
+              workingDirectory: any(named: 'workingDirectory'),
+            ),
+          ).called(1);
+        });
+      });
     });
 
     group('isGeneratePatchDiffBaseSupported', () {
