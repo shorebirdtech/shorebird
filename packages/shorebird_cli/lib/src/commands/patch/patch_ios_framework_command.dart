@@ -382,12 +382,18 @@ ${summary.join('\n')}
       return ExitCode.software.code;
     }
 
+    final genSnapshot = shorebirdArtifacts.getArtifactPath(
+      artifact: ShorebirdArtifact.genSnapshot,
+    );
+
     final linkProgress = logger.progress('Linking AOT files');
     try {
       await aotTools.link(
         base: releaseArtifact.path,
         patch: aotSnapshot.path,
         analyzeSnapshot: analyzeSnapshot.path,
+        genSnapshot: genSnapshot,
+        kernel: newestAppDill().path,
         outputPath: _vmcodeOutputPath,
         workingDirectory: _buildDirectory,
       );
