@@ -19,7 +19,6 @@ import 'package:shorebird_cli/src/formatters/file_size_formatter.dart';
 import 'package:shorebird_cli/src/logger.dart';
 import 'package:shorebird_cli/src/patch_diff_checker.dart';
 import 'package:shorebird_cli/src/platform.dart';
-import 'package:shorebird_cli/src/platform/ios.dart';
 import 'package:shorebird_cli/src/shorebird_artifact_mixin.dart';
 import 'package:shorebird_cli/src/shorebird_artifacts.dart';
 import 'package:shorebird_cli/src/shorebird_build_mixin.dart';
@@ -114,8 +113,6 @@ of the iOS app that is using this module.''',
     final allowAssetDiffs = results['allow-asset-diffs'] == true;
     final allowNativeDiffs = results['allow-native-diffs'] == true;
     final dryRun = results['dry-run'] == true;
-
-    showiOSStatusWarning();
 
     const arch = 'aarch64';
     const releasePlatform = ReleasePlatform.ios;
