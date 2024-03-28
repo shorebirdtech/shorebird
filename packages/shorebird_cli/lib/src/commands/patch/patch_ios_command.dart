@@ -110,6 +110,17 @@ If this option is not provided, the version number will be determined from the p
   final HashFunction _hashFn;
   final IosArchiveDiffer _archiveDiffer;
 
+  // Link percentage that is considered the minimum for acceptable perfromance.
+  // This was selected arbitrarily and may need to be adjusted.
+  static const double minLinkPercentage = 50;
+
+  static String lowLinkPercentageWarning(double linkPercentage) {
+    return '''
+${lightCyan.wrap('shorebird patch')} was only able to share ${linkPercentage.toStringAsFixed(2)}% of Dart code with the released app.
+This means the patched code may execute slower than expected.
+https://docs.shorebird.dev/status#ios_link_percentage''';
+  }
+
   @override
   Future<int> run() async {
     try {
@@ -305,15 +316,19 @@ Current Flutter Revision: $currentFlutterRevision
           ),
         );
 
+        double? percentLinked;
         final useLinker = AotTools.usesLinker(release.flutterRevision);
         if (useLinker) {
-          final exitCode = await _runLinker(
+          final (:exitCode, :linkPercentage) = await _runLinker(
             releaseArtifact: releaseArtifactFile,
           );
 
-          if (exitCode != ExitCode.success.code) {
-            return exitCode;
+          if (exitCode != ExitCode.success.code) return exitCode;
+
+          if (linkPercentage != null && linkPercentage < minLinkPercentage) {
+            logger.warn(lowLinkPercentageWarning(linkPercentage));
           }
+          percentLinked = linkPercentage;
         }
 
         if (dryRun) {
@@ -368,6 +383,8 @@ Current Flutter Revision: $currentFlutterRevision
             '🟠 Track: ${lightCyan.wrap('Staging')}'
           else
             '🟢 Track: ${lightCyan.wrap('Production')}',
+          if (percentLinked != null)
+            '''🔗 Running ${lightCyan.wrap(percentLinked.toStringAsFixed(1))}% on CPU''',
         ];
 
         logger.info(
@@ -503,12 +520,12 @@ ${summary.join('\n')}
     buildProgress.complete();
   }
 
-  Future<int> _runLinker({required File releaseArtifact}) async {
+  Future<_LinkResult> _runLinker({required File releaseArtifact}) async {
     final patch = File(_aotOutputPath);
 
     if (!patch.existsSync()) {
       logger.err('Unable to find patch AOT file at ${patch.path}');
-      return ExitCode.software.code;
+      return (exitCode: ExitCode.software.code, linkPercentage: null);
     }
 
     final analyzeSnapshot = File(
@@ -519,7 +536,7 @@ ${summary.join('\n')}
 
     if (!analyzeSnapshot.existsSync()) {
       logger.err('Unable to find analyze_snapshot at ${analyzeSnapshot.path}');
-      return ExitCode.software.code;
+      return (exitCode: ExitCode.software.code, linkPercentage: null);
     }
 
     final genSnapshot = shorebirdArtifacts.getArtifactPath(
@@ -527,8 +544,9 @@ ${summary.join('\n')}
     );
 
     final linkProgress = logger.progress('Linking AOT files');
+    double? linkPercentage;
     try {
-      await aotTools.link(
+      linkPercentage = await aotTools.link(
         base: releaseArtifact.path,
         patch: patch.path,
         analyzeSnapshot: analyzeSnapshot.path,
@@ -539,13 +557,14 @@ ${summary.join('\n')}
       );
     } catch (error) {
       linkProgress.fail('Failed to link AOT files: $error');
-      return ExitCode.software.code;
+      return (exitCode: ExitCode.software.code, linkPercentage: null);
     }
-
     linkProgress.complete();
-    return ExitCode.success.code;
+    return (exitCode: ExitCode.success.code, linkPercentage: linkPercentage);
   }
 }
+
+typedef _LinkResult = ({int exitCode, double? linkPercentage});
 
 /// {@template _ReadVersionException}
 /// Exception thrown when the release version cannot be determined.
