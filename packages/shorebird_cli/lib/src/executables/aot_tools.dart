@@ -1,5 +1,7 @@
+import 'dart:convert';
 import 'dart:io';
 
+import 'package:collection/collection.dart';
 import 'package:mason_logger/mason_logger.dart';
 import 'package:path/path.dart' as p;
 import 'package:pub_semver/pub_semver.dart';
@@ -130,7 +132,7 @@ class AotTools {
   }
 
   /// Generate a link vmcode file from two AOT snapshots.
-  Future<void> link({
+  Future<double?> link({
     required String base,
     required String patch,
     required String analyzeSnapshot,
@@ -139,6 +141,7 @@ class AotTools {
     required String outputPath,
     String? workingDirectory,
   }) async {
+    const linkJson = 'link.json';
     final linkerUsesGenSnapshot = await _linkerUsesGenSnapshot();
     final result = await _exec(
       [
@@ -146,9 +149,13 @@ class AotTools {
         '--base=$base',
         '--patch=$patch',
         '--analyze-snapshot=$analyzeSnapshot',
-        if (linkerUsesGenSnapshot) '--gen-snapshot=$genSnapshot',
-        if (linkerUsesGenSnapshot) '--kernel=$kernel',
         '--output=$outputPath',
+        if (linkerUsesGenSnapshot) ...[
+          '--gen-snapshot=$genSnapshot',
+          '--kernel=$kernel',
+          '--reporter=json',
+          '--redirect-to=$linkJson',
+        ],
       ],
       workingDirectory: workingDirectory,
     );
@@ -156,6 +163,24 @@ class AotTools {
     if (result.exitCode != 0) {
       throw Exception('Failed to link: ${result.stderr}');
     }
+
+    return linkerUsesGenSnapshot
+        ? _extractLinkPercentage(File(p.join(workingDirectory!, linkJson)))
+        : null;
+  }
+
+  double? _extractLinkPercentage(File file) {
+    if (!file.existsSync()) return null;
+    final status = const LineSplitter()
+        .convert(file.readAsStringSync())
+        .map(json.decode)
+        .cast<Map<String, dynamic>>()
+        .toList();
+
+    final linkSuccess = status.firstWhereOrNull(
+      (line) => line['type'] == 'link_success',
+    );
+    return linkSuccess?['link_percentage'] as double?;
   }
 
   /// Whether the current analyze_snapshot executable supports the
