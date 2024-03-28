@@ -307,12 +307,19 @@ Current Flutter Revision: $currentFlutterRevision
 
         final useLinker = AotTools.usesLinker(release.flutterRevision);
         if (useLinker) {
-          final exitCode = await _runLinker(
+          final (:exitCode, :linkPercentage) = await _runLinker(
             releaseArtifact: releaseArtifactFile,
           );
 
-          if (exitCode != ExitCode.success.code) {
-            return exitCode;
+          if (exitCode != ExitCode.success.code) return exitCode;
+
+          if (linkPercentage != null && linkPercentage < 50) {
+            // TODO(felangel): update copy and link to issue/docs.
+            logger.warn(
+              '''
+The linker was only able to link ${styleBold.wrap(linkPercentage.toStringAsFixed(2))}%.
+This will likely result in slower patch performance.''',
+            );
           }
         }
 
@@ -492,12 +499,12 @@ ${summary.join('\n')}
     buildProgress.complete();
   }
 
-  Future<int> _runLinker({required File releaseArtifact}) async {
+  Future<_LinkResult> _runLinker({required File releaseArtifact}) async {
     final patch = File(_aotOutputPath);
 
     if (!patch.existsSync()) {
       logger.err('Unable to find patch AOT file at ${patch.path}');
-      return ExitCode.software.code;
+      return (exitCode: ExitCode.software.code, linkPercentage: null);
     }
 
     final analyzeSnapshot = File(
@@ -508,7 +515,7 @@ ${summary.join('\n')}
 
     if (!analyzeSnapshot.existsSync()) {
       logger.err('Unable to find analyze_snapshot at ${analyzeSnapshot.path}');
-      return ExitCode.software.code;
+      return (exitCode: ExitCode.software.code, linkPercentage: null);
     }
 
     final genSnapshot = shorebirdArtifacts.getArtifactPath(
@@ -516,8 +523,9 @@ ${summary.join('\n')}
     );
 
     final linkProgress = logger.progress('Linking AOT files');
+    double? linkPercentage;
     try {
-      await aotTools.link(
+      linkPercentage = await aotTools.link(
         base: releaseArtifact.path,
         patch: patch.path,
         analyzeSnapshot: analyzeSnapshot.path,
@@ -528,13 +536,14 @@ ${summary.join('\n')}
       );
     } catch (error) {
       linkProgress.fail('Failed to link AOT files: $error');
-      return ExitCode.software.code;
+      return (exitCode: ExitCode.software.code, linkPercentage: null);
     }
-
     linkProgress.complete();
-    return ExitCode.success.code;
+    return (exitCode: ExitCode.success.code, linkPercentage: linkPercentage);
   }
 }
+
+typedef _LinkResult = ({int exitCode, double? linkPercentage});
 
 /// {@template _ReadVersionException}
 /// Exception thrown when the release version cannot be determined.
