@@ -5,8 +5,8 @@ import 'package:path/path.dart' as p;
 import 'package:pub_semver/pub_semver.dart';
 import 'package:scoped/scoped.dart';
 import 'package:shorebird_cli/src/cache.dart';
-import 'package:shorebird_cli/src/extensions/version.dart';
 import 'package:shorebird_cli/src/engine_config.dart';
+import 'package:shorebird_cli/src/extensions/version.dart';
 import 'package:shorebird_cli/src/shorebird_artifacts.dart';
 import 'package:shorebird_cli/src/shorebird_env.dart';
 import 'package:shorebird_cli/src/shorebird_process.dart';
@@ -113,16 +113,20 @@ class AotTools {
 
   Future<bool> _linkerUsesGenSnapshot() async {
     final version = await _getVersion();
-    return version != null && version >= Version(0, 0, 1);
+    return version >= Version(0, 0, 1);
   }
 
-  Future<Version?> _getVersion() async {
+  Future<Version> _getVersion() async {
+    // Use 0.0.0 to allow callers to easily compare w/o checking for null.
+    // If callers need to care about null, we can change this function to
+    // return Version?.
+    final noVersion = Version(0, 0, 0);
     final result = await _exec(['--version']);
     if (result.exitCode != ExitCode.success.code) {
-      return null;
+      return noVersion;
     }
     final version = result.stdout.toString().trim();
-    return tryParseVersion(version);
+    return tryParseVersion(version) ?? noVersion;
   }
 
   /// Generate a link vmcode file from two AOT snapshots.
