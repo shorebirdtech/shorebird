@@ -60,7 +60,7 @@ void main() {
       const genSnapshot = './path/to/gen_snapshot';
       const kernel = './path/to/kernel.dill';
       const outputPath = './path/to/out.vmcode';
-      const linkJsonPath = './path/to/link.json';
+      const linkJsonPath = './path/to/link.jsonl';
 
       test('throws Exception when process exits with non-zero code', () async {
         when(

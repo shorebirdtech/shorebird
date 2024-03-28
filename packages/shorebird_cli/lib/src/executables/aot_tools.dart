@@ -141,7 +141,8 @@ class AotTools {
     required String outputPath,
     String? workingDirectory,
   }) async {
-    const linkJson = 'link.json';
+    // We use the json lines format. https://jsonlines.org
+    const linkJson = 'link.jsonl';
     final outputDir = p.dirname(outputPath);
     final linkerUsesGenSnapshot = await _linkerUsesGenSnapshot();
     final result = await _exec(
