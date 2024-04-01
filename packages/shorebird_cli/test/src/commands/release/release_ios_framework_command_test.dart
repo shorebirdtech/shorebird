@@ -172,7 +172,7 @@ flutter:
       when(
         () => shorebirdEnv.getShorebirdProjectRoot(),
       ).thenReturn(projectRoot);
-      when(() => shorebirdEnv.isRunningOnCI).thenReturn(false);
+      when(() => shorebirdEnv.canAcceptUserInput).thenReturn(true);
       when(() => shorebirdEnv.flutterRevision).thenReturn(flutterRevision);
       when(
         () => shorebirdFlutter.getVersionAndRevision(),
@@ -490,8 +490,9 @@ $exception''',
       );
     });
 
-    test('does not prompt for confirmation when running on CI', () async {
-      when(() => shorebirdEnv.isRunningOnCI).thenReturn(true);
+    test('does not prompt for confirmation if unable to accept user input',
+        () async {
+      when(() => shorebirdEnv.canAcceptUserInput).thenReturn(false);
       when(() => argResults['release-version']).thenReturn(version);
       setUpProjectRoot();
 

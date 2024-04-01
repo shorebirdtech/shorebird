@@ -222,7 +222,7 @@ void main() {
       ).thenReturn(androidPackageName);
       when(() => shorebirdEnv.getShorebirdYaml()).thenReturn(shorebirdYaml);
       when(() => shorebirdEnv.flutterRevision).thenReturn(flutterRevision);
-      when(() => shorebirdEnv.isRunningOnCI).thenReturn(false);
+      when(() => shorebirdEnv.canAcceptUserInput).thenReturn(true);
       when(
         () => shorebirdProcess.run(
           'flutter',
@@ -928,8 +928,8 @@ Please re-run the release command for this version or create a new release.'''),
       ).called(1);
     });
 
-    test('does not prompt if running on CI', () async {
-      when(() => shorebirdEnv.isRunningOnCI).thenReturn(true);
+    test('does not prompt if unable to accept user input', () async {
+      when(() => shorebirdEnv.canAcceptUserInput).thenReturn(false);
       setUpProjectRootArtifacts();
 
       final exitCode = await runWithOverrides(command.run);

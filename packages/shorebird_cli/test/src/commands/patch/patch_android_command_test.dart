@@ -389,7 +389,7 @@ flutter:
       when(() => platform.operatingSystem).thenReturn(operatingSystem);
       when(() => platform.operatingSystemVersion)
           .thenReturn(operatingSystemVersion);
-      when(() => shorebirdEnv.isRunningOnCI).thenReturn(false);
+      when(() => shorebirdEnv.canAcceptUserInput).thenReturn(true);
     });
 
     test('has a description', () {
@@ -1079,8 +1079,8 @@ flavors:
       expect(exitCode, ExitCode.success.code);
     });
 
-    test('does not prompt if running on CI', () async {
-      when(() => shorebirdEnv.isRunningOnCI).thenReturn(true);
+    test('does not prompt if unable to accept user input', () async {
+      when(() => shorebirdEnv.canAcceptUserInput).thenReturn(false);
       setUpProjectRoot();
       setUpProjectRootArtifacts();
 

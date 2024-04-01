@@ -154,7 +154,7 @@ Please make sure you are running "shorebird init" from within your Flutter proje
     final String appId;
     Map<String, String>? flavors;
     try {
-      final needsConfirmation = !force && !shorebirdEnv.isRunningOnCI;
+      final needsConfirmation = !force && shorebirdEnv.canAcceptUserInput;
       final pubspecName = shorebirdEnv.getPubspecYaml()!.name;
       final displayName = needsConfirmation
           ? logger.prompt(
