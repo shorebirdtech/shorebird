@@ -460,7 +460,7 @@ flutter:
       ).thenReturn(analyzeSnapshotFile.path);
       when(() => shorebirdEnv.flutterRevision)
           .thenReturn(preLinkerFlutterRevision);
-      when(() => shorebirdEnv.isRunningOnCI).thenReturn(false);
+      when(() => shorebirdEnv.canAcceptUserInput).thenReturn(true);
       when(
         () => shorebirdFlutter.installRevision(
           revision: any(named: 'revision'),
@@ -1692,8 +1692,8 @@ base_url: $baseUrl''',
       await runWithOverrides(command.run);
     });
 
-    test('does not prompt if running on CI', () async {
-      when(() => shorebirdEnv.isRunningOnCI).thenReturn(true);
+    test('does not prompt if unable to accept user input', () async {
+      when(() => shorebirdEnv.canAcceptUserInput).thenReturn(false);
       setUpProjectRoot();
       setUpProjectRootArtifacts();
 

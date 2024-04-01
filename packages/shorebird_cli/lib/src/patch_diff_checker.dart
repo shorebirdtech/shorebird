@@ -106,7 +106,7 @@ If you don't know why you're seeing this error, visit our troublshooting page at
         );
 
       if (!allowNativeChanges) {
-        if (shorebirdEnv.isRunningOnCI) {
+        if (!shorebirdEnv.canAcceptUserInput) {
           throw UnpatchableChangeException();
         }
 
@@ -128,7 +128,7 @@ If you don't know why you're seeing this error, visit our troublshooting page at
         );
 
       if (!allowAssetChanges) {
-        if (shorebirdEnv.isRunningOnCI) {
+        if (!shorebirdEnv.canAcceptUserInput) {
           throw UnpatchableChangeException();
         }
 

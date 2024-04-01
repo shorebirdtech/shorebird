@@ -220,7 +220,7 @@ flutter:
         () => shorebirdEnv.getShorebirdProjectRoot(),
       ).thenReturn(projectRoot);
       when(() => shorebirdEnv.flutterRevision).thenReturn(flutterRevision);
-      when(() => shorebirdEnv.isRunningOnCI).thenReturn(false);
+      when(() => shorebirdEnv.canAcceptUserInput).thenReturn(true);
       when(
         () => shorebirdEnv.copyWith(
           flutterRevisionOverride: any(named: 'flutterRevisionOverride'),
@@ -1065,8 +1065,8 @@ flavors:
       );
     });
 
-    test('does not prompt if running on CI', () async {
-      when(() => shorebirdEnv.isRunningOnCI).thenReturn(true);
+    test('does not prompt if unable to accept user input', () async {
+      when(() => shorebirdEnv.canAcceptUserInput).thenReturn(false);
       setUpProjectRoot();
 
       final exitCode = await runWithOverrides(command.run);

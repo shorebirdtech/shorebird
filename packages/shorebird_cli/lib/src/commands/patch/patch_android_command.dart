@@ -368,8 +368,7 @@ ${summary.join('\n')}
 ''',
         );
 
-        final needsConfirmation = !shorebirdEnv.isRunningOnCI;
-        if (needsConfirmation) {
+        if (shorebirdEnv.canAcceptUserInput) {
           final confirm = logger.confirm('Would you like to continue?');
 
           if (!confirm) {

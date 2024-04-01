@@ -119,7 +119,7 @@ environment:
       ).thenReturn(Pubspec.parse(pubspecYamlContent));
       when(() => shorebirdEnv.hasShorebirdYaml).thenReturn(false);
       when(() => shorebirdEnv.pubspecContainsShorebirdYaml).thenReturn(false);
-      when(() => shorebirdEnv.isRunningOnCI).thenReturn(false);
+      when(() => shorebirdEnv.canAcceptUserInput).thenReturn(true);
       when(
         () => shorebirdValidator.validatePreconditions(
           checkUserIsAuthenticated: any(named: 'checkUserIsAuthenticated'),
@@ -190,8 +190,8 @@ Please make sure you are running "shorebird init" from within your Flutter proje
       expect(exitCode, ExitCode.software.code);
     });
 
-    test('does not prompt for name when running on ci', () async {
-      when(() => shorebirdEnv.isRunningOnCI).thenReturn(true);
+    test('does not prompt for name when unable to accept user input', () async {
+      when(() => shorebirdEnv.canAcceptUserInput).thenReturn(false);
       await runWithOverrides(command.run);
       verifyNever(
         () => logger.prompt(any(), defaultValue: any(named: 'defaultValue')),

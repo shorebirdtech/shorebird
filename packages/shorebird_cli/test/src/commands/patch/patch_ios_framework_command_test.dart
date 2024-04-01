@@ -359,7 +359,7 @@ flutter:
         );
         return shorebirdEnv;
       });
-      when(() => shorebirdEnv.isRunningOnCI).thenReturn(false);
+      when(() => shorebirdEnv.canAcceptUserInput).thenReturn(true);
       when(
         () => aotBuildProcessResult.exitCode,
       ).thenReturn(ExitCode.success.code);
@@ -1010,8 +1010,8 @@ Please re-run the release command for this version or create a new release.'''),
       ).called(1);
     });
 
-    test('does not prompt if running on CI', () async {
-      when(() => shorebirdEnv.isRunningOnCI).thenReturn(true);
+    test('does not prompt if unable to accept user input', () async {
+      when(() => shorebirdEnv.canAcceptUserInput).thenReturn(false);
       setUpProjectRoot();
       setUpProjectRootArtifacts();
 
