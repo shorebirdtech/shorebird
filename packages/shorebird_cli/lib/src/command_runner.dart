@@ -181,7 +181,7 @@ ${lightCyan.wrap('shorebird release android -- --no-pub lib/main.dart')}''';
     }
 
     // Run the command or show version
-    final int? exitCode;
+    int? exitCode;
     if (topLevelResults['version'] == true) {
       final flutterVersion = await _tryGetFlutterVersion();
       final shorebirdFlutterPrefix = StringBuffer('Flutter');
@@ -205,7 +205,22 @@ Run ${lightCyan.wrap('shorebird upgrade')} to upgrade.''');
       }
       exitCode = ExitCode.success.code;
     } else {
-      exitCode = await super.runCommand(topLevelResults);
+      try {
+        exitCode = await super.runCommand(topLevelResults);
+      } catch (error, stackTrace) {
+        logger
+          ..err('$error')
+          ..info('$stackTrace');
+        exitCode = ExitCode.software.code;
+      }
+    }
+
+    if (exitCode == ExitCode.software.code && logger.level != Level.verbose) {
+      logger.info(
+        '''
+
+If you aren't sure why this command failed, re-run with the ${lightCyan.wrap('--verbose')} flag to see more information.''',
+      );
     }
 
     return exitCode;
