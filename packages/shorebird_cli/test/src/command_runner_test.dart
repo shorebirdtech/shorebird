@@ -278,7 +278,8 @@ Run ${lightCyan.wrap('shorebird upgrade')} to upgrade.'''),
         });
 
         test('does not suggest running with --verbose', () async {
-          // This will fail due to missing scoped overrides.
+          // This will fail due to the release android command missing scoped
+          // dependencies.
           // Note: the --verbose flag is here for illustrative purposes only.
           // Because logger is a mock, setting the log level in code does
           // nothing.
@@ -291,7 +292,8 @@ Run ${lightCyan.wrap('shorebird upgrade')} to upgrade.'''),
 
       group('when running without --verbose', () {
         test('suggests using --verbose flag', () async {
-          // This will fail due to missing scoped overrides.
+          // This will fail due to the release android command missing scoped
+          // dependencies.
           await runWithOverrides(
             () => commandRunner.run(['release', 'android']),
           );
