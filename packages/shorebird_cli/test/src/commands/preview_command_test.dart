@@ -734,7 +734,7 @@ channel: ${track.channel}
         verify(
           () => logger.chooseOne<String>(
             any(),
-            choices: any(named: 'choices'),
+            choices: ['dev'],
           ),
         ).called(1);
       });

@@ -97,7 +97,10 @@ class PreviewCommand extends ShorebirdCommand {
       appId = shorebirdYaml.appId;
     } else if (shorebirdYaml != null && flavors != null) {
       final flavorOptions = flavors.keys.toList();
-      final choosenFlavor = await promptForFlavor(flavorOptions);
+      final choosenFlavor = logger.chooseOne<String>(
+        'Which app flavor?',
+        choices: flavorOptions,
+      );
       appId = flavors[choosenFlavor];
     } else {
       appId = await promptForApp();
@@ -177,15 +180,6 @@ class PreviewCommand extends ShorebirdCommand {
       display: (app) => app.displayName,
     );
     return app.appId;
-  }
-
-  Future<String?> promptForFlavor(
-    List<String> flavors,
-  ) async {
-    return logger.chooseOne<String>(
-      'Which app flavor?',
-      choices: flavors,
-    );
   }
 
   Future<String?> promptForReleaseVersion(List<Release> releases) async {
