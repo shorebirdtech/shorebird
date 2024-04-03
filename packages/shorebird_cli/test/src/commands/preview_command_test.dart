@@ -712,7 +712,7 @@ channel: ${track.channel}
         verifyNever(() => codePushClientWrapper.getApps());
       });
 
-      test('prompts for app id when in shorebird project with flavors',
+      test('prompts for the flavor when in shorebird project with flavors',
           () async {
         when(() => shorebirdEnv.getShorebirdYaml()).thenReturn(
           const ShorebirdYaml(
@@ -723,20 +723,18 @@ channel: ${track.channel}
         when(() => argResults.wasParsed('app-id')).thenReturn(false);
         when(() => argResults['app-id']).thenReturn(null);
         when(
-          () => logger.chooseOne<AppMetadata>(
+          () => logger.chooseOne<String>(
             any(),
             choices: any(named: 'choices'),
-            display: any(named: 'display'),
           ),
-        ).thenReturn(app);
+        ).thenReturn('dev');
 
         await runWithOverrides(command.run);
 
         verify(
-          () => logger.chooseOne<AppMetadata>(
-            'Which app would you like to preview?',
+          () => logger.chooseOne<String>(
+            any(),
             choices: any(named: 'choices'),
-            display: any(named: 'display'),
           ),
         ).called(1);
       });

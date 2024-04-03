@@ -76,6 +76,7 @@ class PreviewCommand extends ShorebirdCommand {
 
   @override
   Future<int> run() async {
+    print('Helloo');
     // TODO(bryanoltman): check preview target and run either
     // doctor.iosValidators or doctor.androidValidators as appropriate.
     try {
@@ -88,10 +89,17 @@ class PreviewCommand extends ShorebirdCommand {
 
     final shorebirdYaml = shorebirdEnv.getShorebirdYaml();
     final String? appId;
+
+    final flavors = shorebirdYaml?.flavors;
+
     if (results.wasParsed('app-id')) {
       appId = results['app-id'] as String;
-    } else if (shorebirdYaml != null && shorebirdYaml.flavors == null) {
+    } else if (shorebirdYaml != null && flavors == null) {
       appId = shorebirdYaml.appId;
+    } else if (shorebirdYaml != null && flavors != null) {
+      final flavorOptions = flavors.keys.toList();
+      final choosenOne = await promptForFlavor(flavorOptions);
+      appId = flavors[choosenOne];
     } else {
       appId = await promptForApp();
     }
@@ -170,6 +178,15 @@ class PreviewCommand extends ShorebirdCommand {
       display: (app) => app.displayName,
     );
     return app.appId;
+  }
+
+  Future<String?> promptForFlavor(
+    List<String> flavors,
+  ) async {
+    return logger.chooseOne<String>(
+      'Which app flavor?',
+      choices: flavors,
+    );
   }
 
   Future<String?> promptForReleaseVersion(List<Release> releases) async {
