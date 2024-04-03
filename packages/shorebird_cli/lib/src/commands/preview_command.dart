@@ -97,8 +97,8 @@ class PreviewCommand extends ShorebirdCommand {
       appId = shorebirdYaml.appId;
     } else if (shorebirdYaml != null && flavors != null) {
       final flavorOptions = flavors.keys.toList();
-      final choosenOne = await promptForFlavor(flavorOptions);
-      appId = flavors[choosenOne];
+      final choosenFlavor = await promptForFlavor(flavorOptions);
+      appId = flavors[choosenFlavor];
     } else {
       appId = await promptForApp();
     }
