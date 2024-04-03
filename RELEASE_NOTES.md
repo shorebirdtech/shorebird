@@ -4,10 +4,11 @@ This section contains past updates we've sent to customers via Discord.
 
 ## 0.28.1 (April 3, 2024)
 
-🐦 Support for Flutter 3.19.5
-🛣️ Fix hang when creating release with Fastlane
-💬 Suggest re-running command with --verbose on failure
-🍦 Detect flavors when running `shorebird preview` for better prompting (@erickzanardo's first contribution! 🎉)
+- 🐦 Support for Flutter 3.19.5
+- 💥 Fix iOS crash when booting from patch due to a bug in our canonical pc implementation
+- 🛣️ Fix hang when creating release with Fastlane
+- 💬 Suggest re-running command with --verbose on failure
+- 🍦 Detect flavors when running `shorebird preview` for better prompting (@erickzanardo's first contribution! 🎉)
 
 📚 Release notes can be found at https://github.com/shorebirdtech/shorebird/releases/tag/v0.28.1
 
