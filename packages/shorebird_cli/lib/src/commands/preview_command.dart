@@ -88,10 +88,20 @@ class PreviewCommand extends ShorebirdCommand {
 
     final shorebirdYaml = shorebirdEnv.getShorebirdYaml();
     final String? appId;
+
+    final flavors = shorebirdYaml?.flavors;
+
     if (results.wasParsed('app-id')) {
       appId = results['app-id'] as String;
-    } else if (shorebirdYaml != null && shorebirdYaml.flavors == null) {
+    } else if (shorebirdYaml != null && flavors == null) {
       appId = shorebirdYaml.appId;
+    } else if (shorebirdYaml != null && flavors != null) {
+      final flavorOptions = flavors.keys.toList();
+      final choosenFlavor = logger.chooseOne<String>(
+        'Which app flavor?',
+        choices: flavorOptions,
+      );
+      appId = flavors[choosenFlavor];
     } else {
       appId = await promptForApp();
     }
