@@ -76,7 +76,6 @@ class PreviewCommand extends ShorebirdCommand {
 
   @override
   Future<int> run() async {
-    print('Helloo');
     // TODO(bryanoltman): check preview target and run either
     // doctor.iosValidators or doctor.androidValidators as appropriate.
     try {
