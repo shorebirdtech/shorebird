@@ -717,7 +717,10 @@ channel: ${track.channel}
         when(() => shorebirdEnv.getShorebirdYaml()).thenReturn(
           const ShorebirdYaml(
             appId: 'test-app-id',
-            flavors: {'dev': 'dev-app-id'},
+            flavors: {
+              'dev': 'dev-app-id',
+              'prod': 'prod-app-id',
+            },
           ),
         );
         when(() => argResults.wasParsed('app-id')).thenReturn(false);
@@ -734,7 +737,7 @@ channel: ${track.channel}
         verify(
           () => logger.chooseOne<String>(
             any(),
-            choices: ['dev'],
+            choices: ['dev', 'prod'],
           ),
         ).called(1);
       });
