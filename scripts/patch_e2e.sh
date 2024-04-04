@@ -34,7 +34,7 @@ echo "base_url: https://api-dev.shorebird.dev" >> shorebird.yaml
 APP_ID=$(cat shorebird.yaml | grep 'app_id:' | awk '{print $2}')
 
 # Create a new release on Android
-shorebird release android --force -v
+shorebird release android -v
 
 # Run the app on Android and ensure that the print statement is printed.
 while IFS= read -r line; do
@@ -49,7 +49,7 @@ done < <(shorebird preview --release-version 0.1.0+1 --app-id $APP_ID --platform
 sed -i '' 's/hello world/hello shorebird/g' lib/main.dart
 
 # Create a patch
-shorebird patch android --force -v
+shorebird patch android -v
 
 # Run the app on Android and ensure that the original print statement is printed.
 while IFS= read -r line; do
