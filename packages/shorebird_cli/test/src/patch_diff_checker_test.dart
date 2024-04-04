@@ -76,7 +76,7 @@ void main() {
       when(() => logger.confirm(any())).thenReturn(true);
       when(() => logger.progress(any())).thenReturn(progress);
 
-      when(() => shorebirdEnv.isRunningOnCI).thenReturn(false);
+      when(() => shorebirdEnv.canAcceptUserInput).thenReturn(true);
 
       when(() => assetsFileSetDiff.prettyString)
           .thenReturn(assetsDiffPrettyString);
@@ -193,8 +193,8 @@ void main() {
           verify(() => logger.confirm('Continue anyways?')).called(1);
         });
 
-        test('does not prompt when running on CI', () async {
-          when(() => shorebirdEnv.isRunningOnCI).thenReturn(true);
+        test('does not prompt when unable to accept user input', () async {
+          when(() => shorebirdEnv.canAcceptUserInput).thenReturn(false);
 
           await expectLater(
             () => runWithOverrides(
@@ -289,8 +289,8 @@ void main() {
           verify(() => logger.confirm('Continue anyways?')).called(1);
         });
 
-        test('does not prompt when running on CI', () async {
-          when(() => shorebirdEnv.isRunningOnCI).thenReturn(true);
+        test('does not prompt when unable to accept user input', () async {
+          when(() => shorebirdEnv.canAcceptUserInput).thenReturn(false);
 
           await expectLater(
             () => runWithOverrides(

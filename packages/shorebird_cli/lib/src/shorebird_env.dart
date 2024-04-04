@@ -198,6 +198,9 @@ class ShorebirdEnv {
     }
   }
 
+  /// Whether the CLI can accept user input via stdin.
+  bool get canAcceptUserInput => stdin.hasTerminal && !isRunningOnCI;
+
   /// Whether platform.environment indicates that we are running on a CI
   /// platform. This implementation is intended to behave similar to the Flutter
   /// tool's:

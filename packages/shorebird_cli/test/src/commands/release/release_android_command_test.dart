@@ -154,7 +154,7 @@ void main() {
         () => shorebirdEnv.getShorebirdProjectRoot(),
       ).thenReturn(projectRoot);
       when(() => shorebirdEnv.flutterRevision).thenReturn(flutterRevision);
-      when(() => shorebirdEnv.isRunningOnCI).thenReturn(false);
+      when(() => shorebirdEnv.canAcceptUserInput).thenReturn(true);
 
       when(
         () => shorebirdFlutter.getVersionAndRevision(),
@@ -795,8 +795,8 @@ Either run `flutter pub get` manually, or follow the steps in ${link(uri: Uri.pa
       );
     });
 
-    test('does not prompt if running on CI', () async {
-      when(() => shorebirdEnv.isRunningOnCI).thenReturn(true);
+    test('does not prompt if unable to accept user input', () async {
+      when(() => shorebirdEnv.canAcceptUserInput).thenReturn(false);
 
       final exitCode = await runWithOverrides(command.run);
 

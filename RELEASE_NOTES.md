@@ -2,11 +2,21 @@
 
 This section contains past updates we've sent to customers via Discord.
 
+## 0.28.1 (April 3, 2024)
+
+- 🐦 Support for Flutter 3.19.5
+- 💥 Fix iOS crash when booting from patch due to a bug in our canonical pc implementation
+- 🛣️ Fix hang when creating release with Fastlane
+- 💬 Suggest re-running command with --verbose on failure
+- 🍦 Detect flavors when running `shorebird preview` for better prompting (@erickzanardo's first contribution! 🎉)
+
+📚 Release notes can be found at https://github.com/shorebirdtech/shorebird/releases/tag/v0.28.1
+
 ## 0.28.0 (March 28, 2024)
 
 🚀 Apps with a patch applied on iOS run much faster than previously.
 💾 `shorebird release` saves XCode Version and OS to console.shorebird.dev
-   to help diagnose any later issues during patching.
+to help diagnose any later issues during patching.
 
 Shorebird's Flutter 3.19.4 contains a re-write of our Dart build pipeline on iOS
 which eliminates any slowdowns caused by patching Dart code in most cases. We

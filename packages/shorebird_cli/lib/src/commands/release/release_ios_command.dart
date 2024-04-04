@@ -282,8 +282,7 @@ ${styleBold.wrap(lightGreen.wrap('🚀 Ready to create a new release!'))}
 ${summary.join('\n')}
 ''');
 
-        final needConfirmation = !shorebirdEnv.isRunningOnCI;
-        if (needConfirmation) {
+        if (shorebirdEnv.canAcceptUserInput) {
           final confirm = logger.confirm('Would you like to continue?');
 
           if (!confirm) {

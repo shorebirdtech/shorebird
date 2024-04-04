@@ -8,7 +8,6 @@ import 'package:shorebird_cli/src/logger.dart' hide logger;
 import 'package:shorebird_cli/src/platform.dart';
 import 'package:shorebird_cli/src/shorebird_env.dart';
 import 'package:shorebird_cli/src/shorebird_flutter.dart';
-import 'package:shorebird_cli/src/shorebird_process.dart';
 import 'package:shorebird_cli/src/shorebird_version.dart';
 import 'package:shorebird_cli/src/version.dart';
 import 'package:test/test.dart';
@@ -26,7 +25,6 @@ void main() {
     late ShorebirdEnv shorebirdEnv;
     late ShorebirdFlutter shorebirdFlutter;
     late ShorebirdVersion shorebirdVersion;
-    late ShorebirdProcessResult processResult;
     late ShorebirdCliCommandRunner commandRunner;
 
     R runWithOverrides<R>(R Function() body) {
@@ -48,8 +46,7 @@ void main() {
       shorebirdEnv = MockShorebirdEnv();
       shorebirdFlutter = MockShorebirdFlutter();
       shorebirdVersion = MockShorebirdVersion();
-      processResult = MockProcessResult();
-      when(() => processResult.exitCode).thenReturn(ExitCode.success.code);
+      when(() => logger.level).thenReturn(Level.info);
       when(
         () => shorebirdEnv.shorebirdEngineRevision,
       ).thenReturn(shorebirdEngineRevision);
@@ -270,6 +267,37 @@ Run ${lightCyan.wrap('shorebird upgrade')} to upgrade.'''),
             ),
             throwsArgumentError,
           );
+        });
+      });
+    });
+
+    group('on command failure', () {
+      group('when running with --verbose', () {
+        setUp(() {
+          when(() => logger.level).thenReturn(Level.verbose);
+        });
+
+        test('does not suggest running with --verbose', () async {
+          // This will fail due to the release android command missing scoped
+          // dependencies.
+          // Note: the --verbose flag is here for illustrative purposes only.
+          // Because logger is a mock, setting the log level in code does
+          // nothing.
+          await runWithOverrides(
+            () => commandRunner.run(['release', 'android', '--verbose']),
+          );
+          verifyNever(() => logger.info(any(that: contains('--verbose'))));
+        });
+      });
+
+      group('when running without --verbose', () {
+        test('suggests using --verbose flag', () async {
+          // This will fail due to the release android command missing scoped
+          // dependencies.
+          await runWithOverrides(
+            () => commandRunner.run(['release', 'android']),
+          );
+          verify(() => logger.info(any(that: contains('--verbose')))).called(1);
         });
       });
     });

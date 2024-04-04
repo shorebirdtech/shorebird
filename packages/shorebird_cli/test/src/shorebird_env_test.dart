@@ -550,6 +550,68 @@ base_url: https://example.com''');
       });
     });
 
+    group('canAcceptUserInput', () {
+      late Stdin stdin;
+
+      setUp(() {
+        stdin = MockStdin();
+      });
+
+      group('when stdin has terminal', () {
+        setUp(() {
+          when(() => stdin.hasTerminal).thenReturn(true);
+        });
+
+        group('when not running on CI', () {
+          setUp(() {
+            when(() => platform.environment).thenReturn({});
+          });
+
+          test('returns true', () {
+            expect(
+              IOOverrides.runZoned(
+                () => runWithOverrides(() => shorebirdEnv.canAcceptUserInput),
+                stdin: () => stdin,
+              ),
+              isTrue,
+            );
+          });
+        });
+
+        group('when running on CI', () {
+          setUp(() {
+            when(() => platform.environment).thenReturn({'CI': ''});
+          });
+
+          test('returns false', () {
+            expect(
+              IOOverrides.runZoned(
+                () => runWithOverrides(() => shorebirdEnv.canAcceptUserInput),
+                stdin: () => stdin,
+              ),
+              isFalse,
+            );
+          });
+        });
+      });
+
+      group('when stdin has terminal', () {
+        setUp(() {
+          when(() => stdin.hasTerminal).thenReturn(false);
+        });
+
+        test('returns true', () {
+          expect(
+            IOOverrides.runZoned(
+              () => runWithOverrides(() => shorebirdEnv.canAcceptUserInput),
+              stdin: () => stdin,
+            ),
+            isFalse,
+          );
+        });
+      });
+    });
+
     group('isRunningOnCI', () {
       test('returns true if BOT variable is "true"', () {
         when(() => platform.environment).thenReturn({
