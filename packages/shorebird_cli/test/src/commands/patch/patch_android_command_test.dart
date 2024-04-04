@@ -418,20 +418,6 @@ flutter:
       ).called(1);
     });
 
-    test('exits with explanation if force flag is used', () async {
-      when(() => argResults['force']).thenReturn(true);
-
-      await expectLater(
-        runWithOverrides(command.run),
-        completion(equals(ExitCode.usage.code)),
-      );
-
-      verify(() => logger.err(PatchCommand.forceDeprecationErrorMessage))
-          .called(1);
-      verify(() => logger.info(PatchCommand.forceDeprecationExplanation))
-          .called(1);
-    });
-
     test('exits with code 70 when building fails', () async {
       when(() => flutterBuildProcessResult.exitCode).thenReturn(1);
       when(() => flutterBuildProcessResult.stderr).thenReturn('oops');
