@@ -58,12 +58,6 @@ The version of the release being patched (e.g. "1.0.0+1").
 If this option is not provided, the version number will be determined from the patch artifact.''',
       )
       ..addFlag(
-        'force',
-        abbr: 'f',
-        help: PatchCommand.forceHelpText,
-        negatable: false,
-      )
-      ..addFlag(
         'allow-native-diffs',
         help: PatchCommand.allowNativeDiffsHelpText,
         negatable: false,
@@ -106,14 +100,6 @@ If this option is not provided, the version number will be determined from the p
       );
     } on PreconditionFailedException catch (e) {
       return e.exitCode.code;
-    }
-
-    final force = results['force'] == true;
-    if (force) {
-      logger
-        ..err(PatchCommand.forceDeprecationErrorMessage)
-        ..info(PatchCommand.forceDeprecationExplanation);
-      return ExitCode.usage.code;
     }
 
     final allowAssetDiffs = results['allow-asset-diffs'] == true;

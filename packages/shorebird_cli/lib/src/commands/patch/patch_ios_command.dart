@@ -69,12 +69,6 @@ If this option is not provided, the version number will be determined from the p
             '''Export an IPA with these options. See "xcodebuild -h" for available exportOptionsPlist keys.''',
       )
       ..addFlag(
-        'force',
-        abbr: 'f',
-        help: PatchCommand.forceHelpText,
-        negatable: false,
-      )
-      ..addFlag(
         'allow-native-diffs',
         help: PatchCommand.allowNativeDiffsHelpText,
         negatable: false,
@@ -133,14 +127,6 @@ https://docs.shorebird.dev/status#link-percentage-ios
       );
     } on PreconditionFailedException catch (error) {
       return error.exitCode.code;
-    }
-
-    final force = results['force'] == true;
-    if (force) {
-      logger
-        ..err(PatchCommand.forceDeprecationErrorMessage)
-        ..info(PatchCommand.forceDeprecationExplanation);
-      return ExitCode.usage.code;
     }
 
     final allowAssetDiffs = results['allow-asset-diffs'] == true;

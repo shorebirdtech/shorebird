@@ -55,12 +55,6 @@ of the Android app that is using this module.''',
         mandatory: true,
       )
       ..addFlag(
-        'force',
-        abbr: 'f',
-        help: PatchCommand.forceHelpText,
-        negatable: false,
-      )
-      ..addFlag(
         'allow-native-diffs',
         help: PatchCommand.allowNativeDiffsHelpText,
         negatable: false,
@@ -98,14 +92,6 @@ of the Android app that is using this module.''',
       );
     } on PreconditionFailedException catch (e) {
       return e.exitCode.code;
-    }
-
-    final force = results['force'] == true;
-    if (force) {
-      logger
-        ..err(PatchCommand.forceDeprecationErrorMessage)
-        ..info(PatchCommand.forceDeprecationExplanation);
-      return ExitCode.usage.code;
     }
 
     final dryRun = results['dry-run'] == true;
