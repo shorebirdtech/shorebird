@@ -32,18 +32,6 @@ NOTE: this is ${styleBold.wrap('not')} recommended. Native code changes cannot b
 Patch even if asset diffs are detected.
 NOTE: this is ${styleBold.wrap('not')} recommended. Asset changes cannot be included in a patch can cause your app to behave unexpectedly.''';
 
-  static const forceDeprecationErrorMessage =
-      'The --force flag has been deprecated';
-
-  static final forceDeprecationExplanation =
-      'If your app has known safe native code or asset changes, you can use '
-      'the ${cyan.wrap('--allow-native-diffs')} or '
-      '${cyan.wrap('--allow-asset-diffs')} '
-      'flags. We do not recommend using these flags unless you are '
-      '${styleBold.wrap('absolutely sure')} that the changes are safe. '
-      'Note: the ${cyan.wrap('--force flag')} is not required for use in CI '
-      'environments.';
-
   @override
   String get description =>
       'Manage patches for a specific release in Shorebird.';

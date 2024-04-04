@@ -43,12 +43,6 @@ The version of the associated release (e.g. "1.0.0"). This should be the version
 of the iOS app that is using this module.''',
       )
       ..addFlag(
-        'force',
-        abbr: 'f',
-        help: PatchCommand.forceHelpText,
-        negatable: false,
-      )
-      ..addFlag(
         'allow-native-diffs',
         help: PatchCommand.allowNativeDiffsHelpText,
         negatable: false,
@@ -100,14 +94,6 @@ of the iOS app that is using this module.''',
       );
     } on PreconditionFailedException catch (e) {
       return e.exitCode.code;
-    }
-
-    final force = results['force'] == true;
-    if (force) {
-      logger
-        ..err(PatchCommand.forceDeprecationErrorMessage)
-        ..info(PatchCommand.forceDeprecationExplanation);
-      return ExitCode.usage.code;
     }
 
     final allowAssetDiffs = results['allow-asset-diffs'] == true;
