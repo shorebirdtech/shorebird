@@ -6,7 +6,6 @@ import 'package:shorebird_cli/src/shorebird_process.dart';
 
 export 'android_internet_permission_validator.dart';
 export 'shorebird_flutter_validator.dart';
-export 'shorebird_flutter_version_supports_ios_validator.dart';
 export 'shorebird_version_validator.dart';
 export 'storage_access_validator.dart';
 

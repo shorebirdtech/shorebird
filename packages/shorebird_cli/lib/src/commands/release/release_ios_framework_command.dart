@@ -20,7 +20,6 @@ import 'package:shorebird_cli/src/shorebird_build_mixin.dart';
 import 'package:shorebird_cli/src/shorebird_env.dart';
 import 'package:shorebird_cli/src/shorebird_flutter.dart';
 import 'package:shorebird_cli/src/shorebird_validator.dart';
-import 'package:shorebird_cli/src/validators/validators.dart';
 import 'package:shorebird_cli/src/version.dart';
 import 'package:shorebird_code_push_client/shorebird_code_push_client.dart';
 
@@ -64,10 +63,7 @@ of the iOS app that is using this module.''',
         checkUserIsAuthenticated: true,
         checkShorebirdInitialized: true,
         supportedOperatingSystems: {Platform.macOS},
-        validators: [
-          ...doctor.iosCommandValidators,
-          ShorebirdFlutterVersionSupportsIOSValidator(),
-        ],
+        validators: doctor.iosCommandValidators,
       );
     } on PreconditionFailedException catch (e) {
       return e.exitCode.code;
