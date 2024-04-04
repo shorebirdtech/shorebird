@@ -4,7 +4,7 @@ This section contains past updates we've sent to customers via Discord.
 
 ## 1.0.0-rc.1 (April 4, 2024)
 
-- ⭐ Speed up handling of sync* methods on iOS by 100x
+- ⭐ Fix sync* to be much faster.
 
 This release contains all fixes we intended for 1.0.  Unless any critical bugs
 come in in the next few days, we will release 1.0 next Monday!
