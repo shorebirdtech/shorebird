@@ -4,6 +4,7 @@ import 'package:io/io.dart' show copyPath;
 import 'package:mason_logger/mason_logger.dart';
 import 'package:path/path.dart' as p;
 import 'package:platform/platform.dart';
+import 'package:pub_semver/pub_semver.dart';
 import 'package:scoped/scoped.dart';
 import 'package:shorebird_cli/src/code_push_client_wrapper.dart';
 import 'package:shorebird_cli/src/command.dart';
@@ -13,12 +14,12 @@ import 'package:shorebird_cli/src/doctor.dart';
 import 'package:shorebird_cli/src/executables/xcodebuild.dart';
 import 'package:shorebird_cli/src/logger.dart';
 import 'package:shorebird_cli/src/platform.dart';
+import 'package:shorebird_cli/src/platform/ios.dart';
 import 'package:shorebird_cli/src/shorebird_artifact_mixin.dart';
 import 'package:shorebird_cli/src/shorebird_build_mixin.dart';
 import 'package:shorebird_cli/src/shorebird_env.dart';
 import 'package:shorebird_cli/src/shorebird_flutter.dart';
 import 'package:shorebird_cli/src/shorebird_validator.dart';
-import 'package:shorebird_cli/src/validators/validators.dart';
 import 'package:shorebird_cli/src/version.dart';
 import 'package:shorebird_code_push_client/shorebird_code_push_client.dart';
 
@@ -62,10 +63,7 @@ of the iOS app that is using this module.''',
         checkUserIsAuthenticated: true,
         checkShorebirdInitialized: true,
         supportedOperatingSystems: {Platform.macOS},
-        validators: [
-          ...doctor.iosCommandValidators,
-          ShorebirdFlutterVersionSupportsIOSValidator(),
-        ],
+        validators: doctor.iosCommandValidators,
       );
     } on PreconditionFailedException catch (e) {
       return e.exitCode.code;
@@ -99,6 +97,13 @@ of the iOS app that is using this module.''',
 
     var flutterRevisionForRelease = shorebirdEnv.flutterRevision;
     if (flutterVersion != null) {
+      if (Version.parse(flutterVersion) < minimumSupportedIosFlutterVersion) {
+        logger.err(
+          '''iOS releases are not supported with Flutter versions older than $minimumSupportedIosFlutterVersion.''',
+        );
+        return ExitCode.usage.code;
+      }
+
       final String? revision;
       try {
         revision = await shorebirdFlutter.getRevisionForVersion(
