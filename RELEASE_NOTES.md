@@ -13,7 +13,7 @@ Dropped support for `shorebird release ios` for flutter versions earlier than
 3.19.5 since those all contain the "beta" and "alpha" iOS engines.  Patching
 is still possible for existing releases.
 
-📚 Release notes can be found at https://github.com/shorebirdtech/shorebird/releases/tag/v1.0.0-rc1
+📚 Release notes can be found at https://github.com/shorebirdtech/shorebird/releases/tag/v1.0.0-rc.1
 
 ## 0.28.1 (April 3, 2024)
 
