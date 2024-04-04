@@ -140,7 +140,8 @@ class CodePushClient {
     final response = await _httpClient.send(request);
     final body = await response.stream.bytesToString();
 
-    if (response.statusCode != HttpStatus.ok) {
+    if (response.statusCode != HttpStatus.ok ||
+        response.statusCode != HttpStatus.created) {
       throw _parseErrorResponse(response.statusCode, body);
     }
 
@@ -189,7 +190,8 @@ class CodePushClient {
     final response = await _httpClient.send(request);
     final body = await response.stream.bytesToString();
 
-    if (response.statusCode != HttpStatus.ok) {
+    if (response.statusCode != HttpStatus.ok ||
+        response.statusCode != HttpStatus.created) {
       throw _parseErrorResponse(response.statusCode, body);
     }
 
@@ -218,7 +220,8 @@ class CodePushClient {
       body: json.encode({'display_name': displayName}),
     );
 
-    if (response.statusCode != HttpStatus.ok) {
+    if (response.statusCode != HttpStatus.ok ||
+        response.statusCode != HttpStatus.created) {
       throw _parseErrorResponse(response.statusCode, response.body);
     }
     final body = json.decode(response.body) as Map<String, dynamic>;
@@ -235,7 +238,8 @@ class CodePushClient {
       body: json.encode({'channel': channel}),
     );
 
-    if (response.statusCode != HttpStatus.ok) {
+    if (response.statusCode != HttpStatus.ok ||
+        response.statusCode != HttpStatus.created) {
       throw _parseErrorResponse(response.statusCode, response.body);
     }
     final body = json.decode(response.body) as Map<String, dynamic>;
@@ -260,7 +264,8 @@ class CodePushClient {
       body: json.encode(request.toJson()),
     );
 
-    if (response.statusCode != HttpStatus.ok) {
+    if (response.statusCode != HttpStatus.ok ||
+        response.statusCode != HttpStatus.created) {
       throw _parseErrorResponse(response.statusCode, response.body);
     }
 
@@ -284,7 +289,8 @@ class CodePushClient {
       }),
     );
 
-    if (response.statusCode != HttpStatus.ok) {
+    if (response.statusCode != HttpStatus.ok ||
+        response.statusCode != HttpStatus.created) {
       throw _parseErrorResponse(response.statusCode, response.body);
     }
     final body = json.decode(response.body) as Map<String, dynamic>;
