@@ -2,7 +2,7 @@
 
 This section contains past updates we've sent to customers via Discord.
 
-## 1.0.0-rc1 (April 4, 2024)
+## 1.0.0-rc.1 (April 4, 2024)
 
 - ⭐ Speed up handling of sync* methods on iOS by 100x
 
