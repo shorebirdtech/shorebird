@@ -15,8 +15,12 @@ jobs:
     name: ✅ Semantic Pull Request
     uses: VeryGoodOpenSource/very_good_workflows/.github/workflows/semantic_pull_request.yml@v1
 
+  strategy:
+    matrix:
+      os: [macos-latest, windows-latest, ubuntu-latest]
+
   changes:
-    runs-on: ubuntu-latest
+    runs-on: ${{ matrix.os }}
 
     outputs:
       needs_dart_build: ${{ steps.needs_dart_build.outputs.changes }}
