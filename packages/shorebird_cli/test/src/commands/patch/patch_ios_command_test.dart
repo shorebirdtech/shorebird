@@ -657,31 +657,37 @@ error: exportArchive: No signing certificate "iOS Distribution" found
         ).called(1);
       });
 
-      test('finds xcarchive that has been renamed from Runner', () async {
-        setUpProjectRoot();
-        setUpProjectRootArtifacts();
-        Directory(
-          p.join(
-            projectRoot.path,
-            'build',
-            'ios',
-            'archive',
-            'Runner.xcarchive',
-          ),
-        ).renameSync(
-          p.join(
-            projectRoot.path,
-            'build',
-            'ios',
-            'archive',
-            'شوربيرد | Shorebird.xcarchive',
-          ),
-        );
+      test(
+        'finds xcarchive that has been renamed from Runner',
+        () async {
+          setUpProjectRoot();
+          setUpProjectRootArtifacts();
+          Directory(
+            p.join(
+              projectRoot.path,
+              'build',
+              'ios',
+              'archive',
+              'Runner.xcarchive',
+            ),
+          ).renameSync(
+            p.join(
+              projectRoot.path,
+              'build',
+              'ios',
+              'archive',
+              'شوربيرد | Shorebird.xcarchive',
+            ),
+          );
 
-        final exitCode = await runWithOverrides(command.run);
+          final exitCode = await runWithOverrides(command.run);
 
-        expect(exitCode, equals(ExitCode.success.code));
-      });
+          expect(exitCode, equals(ExitCode.success.code));
+        },
+        onPlatform: {
+          'windows': const Skip('Test is not valid on Windows OS'),
+        },
+      );
     });
 
     test(

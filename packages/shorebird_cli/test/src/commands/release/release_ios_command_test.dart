@@ -468,38 +468,42 @@ flutter:
         });
 
         test(
-            '''finds .xcarchive and .app when they do not have the default "Runner" name''',
-            () async {
-          setUpProjectRoot();
-          final archivePath = p.join(
-            projectRoot.path,
-            'build',
-            'ios',
-            'archive',
-          );
-          final applicationsPath = p.join(
-            archivePath,
-            'Runner.xcarchive',
-            'Products',
-            'Applications',
-          );
-          Directory(p.join(applicationsPath, 'Runner.app')).renameSync(
-            p.join(
-              applicationsPath,
-              'شوربيرد | Shorebird.app',
-            ),
-          );
-          Directory(p.join(archivePath, 'Runner.xcarchive')).renameSync(
-            p.join(
+          '''finds .xcarchive and .app when they do not have the default "Runner" name''',
+          () async {
+            setUpProjectRoot();
+            final archivePath = p.join(
+              projectRoot.path,
+              'build',
+              'ios',
+              'archive',
+            );
+            final applicationsPath = p.join(
               archivePath,
-              'شوربيرد | Shorebird.xcarchive',
-            ),
-          );
+              'Runner.xcarchive',
+              'Products',
+              'Applications',
+            );
+            Directory(p.join(applicationsPath, 'Runner.app')).renameSync(
+              p.join(
+                applicationsPath,
+                'شوربيرد | Shorebird.app',
+              ),
+            );
+            Directory(p.join(archivePath, 'Runner.xcarchive')).renameSync(
+              p.join(
+                archivePath,
+                'شوربيرد | Shorebird.xcarchive',
+              ),
+            );
 
-          final exitCode = await runWithOverrides(command.run);
+            final exitCode = await runWithOverrides(command.run);
 
-          expect(exitCode, equals(ExitCode.success.code));
-        });
+            expect(exitCode, equals(ExitCode.success.code));
+          },
+          onPlatform: {
+            'windows': const Skip('Test is not valid on Windows OS'),
+          },
+        );
       });
 
       test('prints archive upload instructions on success', () async {
