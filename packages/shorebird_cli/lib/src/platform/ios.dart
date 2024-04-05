@@ -2,6 +2,7 @@ import 'dart:io';
 
 import 'package:args/args.dart';
 import 'package:path/path.dart' as p;
+import 'package:pub_semver/pub_semver.dart';
 import 'package:scoped/scoped.dart';
 import 'package:shorebird_cli/src/archive_analysis/archive_analysis.dart';
 
@@ -47,6 +48,9 @@ class InvalidExportOptionsPlistException implements Exception {
 
   final String message;
 }
+
+/// The minimum allowed Flutter version for creating iOS releases.
+final minimumSupportedIosFlutterVersion = Version(3, 19, 5);
 
 /// A reference to a [Ios] instance.
 final iosRef = create(Ios.new);

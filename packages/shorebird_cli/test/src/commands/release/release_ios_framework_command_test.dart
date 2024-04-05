@@ -298,22 +298,8 @@ flutter:
       ).called(1);
     });
 
-    test('exits with explanation if force flag is used', () async {
-      when(() => argResults['force']).thenReturn(true);
-
-      await expectLater(
-        runWithOverrides(command.run),
-        completion(equals(ExitCode.usage.code)),
-      );
-
-      verify(() => logger.err(ReleaseCommand.forceDeprecationErrorMessage))
-          .called(1);
-      verify(() => logger.info(ReleaseCommand.forceDeprecationExplanation))
-          .called(1);
-    });
-
     group('when flutter-version is provided', () {
-      const flutterVersion = '3.16.3';
+      const flutterVersion = '3.19.5';
       setUp(() {
         when(() => argResults['flutter-version']).thenReturn(flutterVersion);
       });
@@ -334,6 +320,22 @@ flutter:
               '''
 Unable to determine revision for Flutter version: $flutterVersion.
 $exception''',
+            ),
+          ).called(1);
+        });
+      });
+
+      group('when flutter version is too old', () {
+        setUp(() {
+          when(() => argResults['flutter-version']).thenReturn('3.16.3');
+        });
+
+        test('prints error log and exits with code 64 (usage)', () async {
+          final exitCode = await runWithOverrides(command.run);
+          expect(exitCode, equals(ExitCode.usage.code));
+          verify(
+            () => logger.err(
+              '''iOS releases are not supported with Flutter versions older than 3.19.5.''',
             ),
           ).called(1);
         });

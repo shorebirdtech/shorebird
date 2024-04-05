@@ -3,11 +3,11 @@ import 'dart:io' hide Platform;
 import 'package:mason_logger/mason_logger.dart';
 import 'package:path/path.dart' as p;
 import 'package:platform/platform.dart';
+import 'package:pub_semver/pub_semver.dart';
 import 'package:scoped/scoped.dart';
 import 'package:shorebird_cli/src/archive_analysis/archive_analysis.dart';
 import 'package:shorebird_cli/src/code_push_client_wrapper.dart';
 import 'package:shorebird_cli/src/command.dart';
-import 'package:shorebird_cli/src/commands/commands.dart';
 import 'package:shorebird_cli/src/config/config.dart';
 import 'package:shorebird_cli/src/doctor.dart';
 import 'package:shorebird_cli/src/executables/xcodebuild.dart';
@@ -20,7 +20,6 @@ import 'package:shorebird_cli/src/shorebird_build_mixin.dart';
 import 'package:shorebird_cli/src/shorebird_env.dart';
 import 'package:shorebird_cli/src/shorebird_flutter.dart';
 import 'package:shorebird_cli/src/shorebird_validator.dart';
-import 'package:shorebird_cli/src/validators/validators.dart';
 import 'package:shorebird_cli/src/version.dart';
 import 'package:shorebird_code_push_client/shorebird_code_push_client.dart';
 
@@ -59,18 +58,12 @@ class ReleaseIosCommand extends ShorebirdCommand
       )
       ..addOption(
         'flutter-version',
-        help: 'The Flutter version to use when building the app (e.g: 3.16.3).',
+        help: 'The Flutter version to use when building the app (e.g: 3.19.5).',
       )
       ..addFlag(
         'codesign',
         help: 'Codesign the application bundle.',
         defaultsTo: true,
-      )
-      ..addFlag(
-        'force',
-        abbr: 'f',
-        help: ReleaseCommand.forceHelpText,
-        negatable: false,
       );
   }
 
@@ -93,22 +86,11 @@ make smaller updates to your app.
       await shorebirdValidator.validatePreconditions(
         checkUserIsAuthenticated: true,
         checkShorebirdInitialized: true,
-        validators: [
-          ...doctor.iosCommandValidators,
-          ShorebirdFlutterVersionSupportsIOSValidator(),
-        ],
+        validators: doctor.iosCommandValidators,
         supportedOperatingSystems: {Platform.macOS},
       );
     } on PreconditionFailedException catch (e) {
       return e.exitCode.code;
-    }
-
-    final force = results['force'] == true;
-    if (force) {
-      logger
-        ..err(ReleaseCommand.forceDeprecationErrorMessage)
-        ..info(ReleaseCommand.forceDeprecationExplanation);
-      return ExitCode.usage.code;
     }
 
     if (results.rest.contains('--obfuscate')) {
@@ -154,6 +136,13 @@ make smaller updates to your app.
 
     var flutterRevisionForRelease = shorebirdEnv.flutterRevision;
     if (flutterVersion != null) {
+      if (Version.parse(flutterVersion) < minimumSupportedIosFlutterVersion) {
+        logger.err(
+          '''iOS releases are not supported with Flutter versions older than $minimumSupportedIosFlutterVersion.''',
+        );
+        return ExitCode.usage.code;
+      }
+
       final String? revision;
       try {
         revision = await shorebirdFlutter.getRevisionForVersion(

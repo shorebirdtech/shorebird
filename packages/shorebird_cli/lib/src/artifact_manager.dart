@@ -90,6 +90,7 @@ Failed to create diff (exit code ${result.exitCode}).
       final archive = ZipDecoder().decodeBuffer(inputStream);
       inputStream.closeSync();
       extractArchiveToDisk(archive, outputDirectory.path);
+      inputStream.closeSync();
     });
   }
 

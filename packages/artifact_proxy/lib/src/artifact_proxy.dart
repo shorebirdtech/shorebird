@@ -117,16 +117,6 @@ String getFlutterArtifactLocation({
       ? artifactPath.replaceAll(r'$engine', engine)
       : artifactPath;
 
-  final isChromeInfra = adjustedPath.contains('flutter_infra_release/cipd');
-
-  // TODO(felangel): remove this after 3.8 is released.
-  if (isChromeInfra) {
-    return adjustedPath.replaceAll(
-      'flutter_infra_release/cipd',
-      'https://chrome-infra-packages.appspot.com/dl',
-    );
-  }
-
   return 'https://storage.googleapis.com/$adjustedPath';
 }
 

@@ -120,23 +120,6 @@ void main() {
       verifyNever(() => client.getManifest(shorebirdEngineRevision));
     });
 
-    test(
-        'should proxy to Flutter '
-        'when no override is found '
-        'and path is chrome infra', () async {
-      const path =
-          'flutter_infra_release/cipd/flutter/web/canvaskit_bundle/+/ztaLvbs5GPmlAwUosC7VVp7EQnNVknRpNuKdv7vmzaAC';
-      final request = buildRequest(path);
-      final response = await handler(request);
-      expect(
-        response,
-        isRedirectTo(
-          'https://chrome-infra-packages.appspot.com/dl/flutter/web/canvaskit_bundle/+/ztaLvbs5GPmlAwUosC7VVp7EQnNVknRpNuKdv7vmzaAC',
-        ),
-      );
-      verifyNever(() => client.getManifest(any()));
-    });
-
     test('should return explainer at /', () async {
       const path = '/';
       final request = buildRequest(path);
