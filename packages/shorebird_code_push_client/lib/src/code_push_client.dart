@@ -109,7 +109,7 @@ class CodePushClient {
 
     if (response.statusCode == HttpStatus.notFound) {
       return null;
-    } else if (response.statusCode != HttpStatus.ok) {
+    } else if (!response.isSuccess) {
       throw _parseErrorResponse(response.statusCode, response.body);
     }
 
@@ -140,7 +140,7 @@ class CodePushClient {
     final response = await _httpClient.send(request);
     final body = await response.stream.bytesToString();
 
-    if (response.statusCode != HttpStatus.ok) {
+    if (!response.isSuccess) {
       throw _parseErrorResponse(response.statusCode, body);
     }
 
@@ -153,7 +153,7 @@ class CodePushClient {
 
     final uploadResponse = await _httpClient.send(uploadRequest);
 
-    if (uploadResponse.statusCode != HttpStatus.noContent) {
+    if (!uploadResponse.isSuccess) {
       throw CodePushException(
         message:
             '''Failed to upload artifact (${uploadResponse.reasonPhrase} '${uploadResponse.statusCode})''',
@@ -189,7 +189,7 @@ class CodePushClient {
     final response = await _httpClient.send(request);
     final body = await response.stream.bytesToString();
 
-    if (response.statusCode != HttpStatus.ok) {
+    if (!response.isSuccess) {
       throw _parseErrorResponse(response.statusCode, body);
     }
 
@@ -202,7 +202,7 @@ class CodePushClient {
 
     final uploadResponse = await _httpClient.send(uploadRequest);
 
-    if (uploadResponse.statusCode != HttpStatus.noContent) {
+    if (!uploadResponse.isSuccess) {
       throw CodePushException(
         message:
             '''Failed to upload artifact (${uploadResponse.reasonPhrase} '${uploadResponse.statusCode})''',
@@ -218,7 +218,7 @@ class CodePushClient {
       body: json.encode({'display_name': displayName}),
     );
 
-    if (response.statusCode != HttpStatus.ok) {
+    if (!response.isSuccess) {
       throw _parseErrorResponse(response.statusCode, response.body);
     }
     final body = json.decode(response.body) as Map<String, dynamic>;
@@ -235,7 +235,7 @@ class CodePushClient {
       body: json.encode({'channel': channel}),
     );
 
-    if (response.statusCode != HttpStatus.ok) {
+    if (!response.isSuccess) {
       throw _parseErrorResponse(response.statusCode, response.body);
     }
     final body = json.decode(response.body) as Map<String, dynamic>;
@@ -260,7 +260,7 @@ class CodePushClient {
       body: json.encode(request.toJson()),
     );
 
-    if (response.statusCode != HttpStatus.ok) {
+    if (!response.isSuccess) {
       throw _parseErrorResponse(response.statusCode, response.body);
     }
 
@@ -284,7 +284,7 @@ class CodePushClient {
       }),
     );
 
-    if (response.statusCode != HttpStatus.ok) {
+    if (!response.isSuccess) {
       throw _parseErrorResponse(response.statusCode, response.body);
     }
     final body = json.decode(response.body) as Map<String, dynamic>;
@@ -311,7 +311,7 @@ class CodePushClient {
       ),
     );
 
-    if (response.statusCode != HttpStatus.noContent) {
+    if (!response.isSuccess) {
       throw _parseErrorResponse(response.statusCode, response.body);
     }
   }
@@ -327,7 +327,7 @@ class CodePushClient {
       body: jsonEncode(CreateUserRequest(name: name).toJson()),
     );
 
-    if (response.statusCode != HttpStatus.created) {
+    if (!response.isSuccess) {
       throw _parseErrorResponse(response.statusCode, response.body);
     }
 
@@ -341,7 +341,7 @@ class CodePushClient {
       Uri.parse('$_v1/apps/$appId'),
     );
 
-    if (response.statusCode != HttpStatus.noContent) {
+    if (!response.isSuccess) {
       throw _parseErrorResponse(response.statusCode, response.body);
     }
   }
@@ -352,7 +352,7 @@ class CodePushClient {
       Uri.parse('$_v1/apps'),
     );
 
-    if (response.statusCode != HttpStatus.ok) {
+    if (!response.isSuccess) {
       throw _parseErrorResponse(response.statusCode, response.body);
     }
 
@@ -368,7 +368,7 @@ class CodePushClient {
       Uri.parse('$_v1/apps/$appId/channels'),
     );
 
-    if (response.statusCode != HttpStatus.ok) {
+    if (!response.isSuccess) {
       throw _parseErrorResponse(response.statusCode, response.body);
     }
 
@@ -394,7 +394,7 @@ class CodePushClient {
 
     final response = await _httpClient.get(uri);
 
-    if (response.statusCode != HttpStatus.ok) {
+    if (!response.isSuccess) {
       throw _parseErrorResponse(response.statusCode, response.body);
     }
 
@@ -421,7 +421,7 @@ class CodePushClient {
       ),
     );
 
-    if (response.statusCode != HttpStatus.ok) {
+    if (!response.isSuccess) {
       throw _parseErrorResponse(response.statusCode, response.body);
     }
 
@@ -442,7 +442,7 @@ class CodePushClient {
       body: json.encode({'patch_id': patchId, 'channel_id': channelId}),
     );
 
-    if (response.statusCode != HttpStatus.created) {
+    if (!response.isSuccess) {
       throw _parseErrorResponse(response.statusCode, response.body);
     }
   }
@@ -471,4 +471,9 @@ class CodePushClient {
     }
     return exceptionBuilder(message: error.message, details: error.details);
   }
+}
+
+extension on http.BaseResponse {
+  /// Whether the response has a 2xx status code.
+  bool get isSuccess => statusCode >= 200 && statusCode < 300;
 }
