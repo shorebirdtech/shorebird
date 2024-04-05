@@ -15,12 +15,8 @@ jobs:
     name: ✅ Semantic Pull Request
     uses: VeryGoodOpenSource/very_good_workflows/.github/workflows/semantic_pull_request.yml@v1
 
-  strategy:
-    matrix:
-      os: [macos-latest, windows-latest, ubuntu-latest]
-
   changes:
-    runs-on: ${{ matrix.os }}
+    runs-on: ubuntu-latest
 
     outputs:
       needs_dart_build: ${{ steps.needs_dart_build.outputs.changes }}
@@ -110,11 +106,12 @@ jobs:
 
     strategy:
       matrix:
+        os: [macos-latest, windows-latest, ubuntu-latest]
         package: ${{ fromJSON(needs.changes.outputs.needs_dart_build) }}
 
-    runs-on: ubuntu-latest
+    runs-on: ${{ matrix.os }}
 
-    name: 🎯 Build ${{ matrix.package }}
+    name: 🎯 Build ${{ matrix.package }} ( {{ matrix.os }})
 
     steps:
       - name: 📚 Git Checkout
@@ -134,11 +131,12 @@ jobs:
 
     strategy:
       matrix:
+        os: [macos-latest, windows-latest, ubuntu-latest]
         package: ${{ fromJSON(needs.changes.outputs.needs_redis_build) }}
 
-    runs-on: ubuntu-latest
+    runs-on: ${{ matrix.os }}
 
-    name: 🎯 Build ${{ matrix.package }}
+    name: 🎯 Build ${{ matrix.package }} (${{ matrix.os }})
 
     steps:
       - name: 📚 Git Checkout
