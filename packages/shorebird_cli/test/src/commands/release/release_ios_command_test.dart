@@ -1087,9 +1087,6 @@ flavors:
         verifyNever(() => logger.confirm(any()));
       });
     },
-    onPlatform: {
-      'windows': const Skip('Cannot build for iOS on Windows'),
-      'linux': const Skip('Cannot build for iOS on Linux'),
-    },
+    testOn: 'mac-os',
   );
 }

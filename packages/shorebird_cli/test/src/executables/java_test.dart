@@ -51,41 +51,47 @@ void main() {
     });
 
     group('executable', () {
-      group('when on Windows', () {
-        const javaHome = r'C:\Program Files\Java\jdk-11.0.1';
-        setUp(() {
-          when(() => platform.isWindows).thenReturn(true);
-          when(() => platform.environment).thenReturn({'JAVA_HOME': javaHome});
-        });
+      group(
+        'when on Windows',
+        () {
+          const javaHome = r'C:\Program Files\Java\jdk-11.0.1';
+          setUp(() {
+            when(() => platform.isWindows).thenReturn(true);
+            when(() => platform.environment)
+                .thenReturn({'JAVA_HOME': javaHome});
+          });
 
-        test('returns correct executable on windows', () async {
-          expect(
-            runWithOverrides(() => java.executable),
-            equals(p.join(javaHome, 'bin', 'java.exe')),
-          );
-        });
-      });
+          test('returns correct executable on windows', () async {
+            expect(
+              runWithOverrides(() => java.executable),
+              equals(p.join(javaHome, 'bin', 'java.exe')),
+            );
+          });
+        },
+        testOn: 'windows',
+      );
 
-      group('when on a non-Windows OS', () {
-        setUp(() {
-          const javaHome = '/path/to/jdk';
-          when(() => platform.isWindows).thenReturn(false);
-          when(() => platform.environment).thenReturn({'JAVA_HOME': javaHome});
-        });
+      group(
+        'when on a non-Windows OS',
+        () {
+          setUp(() {
+            const javaHome = '/path/to/jdk';
+            when(() => platform.isWindows).thenReturn(false);
+            when(() => platform.environment)
+                .thenReturn({'JAVA_HOME': javaHome});
+          });
 
-        test(
-          'returns correct executable on non-windows',
-          () async {
+          test('returns correct executable on non-windows', () async {
             expect(
               runWithOverrides(() => java.executable),
               equals('/path/to/jdk/bin/java'),
             );
-          },
-          onPlatform: {
-            'windows': Skip('Test is not valid on Windows OS'),
-          },
-        );
-      });
+          });
+        },
+        onPlatform: {
+          'windows': const Skip(),
+        },
+      );
 
       group('when no jdk is found', () {
         setUp(() {

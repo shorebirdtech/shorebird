@@ -1201,9 +1201,6 @@ Please re-run the release command for this version or create a new release.'''),
         });
       });
     },
-    onPlatform: {
-      'windows': const Skip('Cannot build for iOS on Windows'),
-      'linux': const Skip('Cannot build for iOS on Linux'),
-    },
+    testOn: 'mac-os',
   );
 }
