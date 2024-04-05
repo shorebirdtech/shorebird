@@ -2,6 +2,14 @@
 
 This section contains past updates we've sent to customers via Discord.
 
+## 1.0.0 (April 8, 2024)
+
+🎉🎉🎉🎉🎉🎉 It's here! 🎉🎉🎉🎉🎉🎉
+
+🚀 iOS is production-ready!
+
+📚 Release notes can be found at https://github.com/shorebirdtech/shorebird/releases/tag/v1.0.0
+
 ## 1.0.0-rc.1 (April 4, 2024)
 
 - ⭐ Fix sync\* to be much faster on iOS.
@@ -10,7 +18,7 @@ This section contains past updates we've sent to customers via Discord.
 This release contains all fixes we intended for 1.0. Unless any critical bugs
 come in in the next few days, we will release 1.0 next Monday!
 
-Removed support for creating new iOS releases with Flutter versions older than 3.19.5 in `shorebird release ios` 
+Removed support for creating new iOS releases with Flutter versions older than 3.19.5 in `shorebird release ios`
 since those versions contain the "beta" and "alpha" iOS engines. Patching
 is still possible for any existing iOS releases.
 
