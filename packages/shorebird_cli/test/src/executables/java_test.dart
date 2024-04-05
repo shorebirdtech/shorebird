@@ -73,12 +73,18 @@ void main() {
           when(() => platform.environment).thenReturn({'JAVA_HOME': javaHome});
         });
 
-        test('returns correct executable on non-windows', () async {
-          expect(
-            runWithOverrides(() => java.executable),
-            equals('/path/to/jdk/bin/java'),
-          );
-        });
+        test(
+          'returns correct executable on non-windows',
+          () async {
+            expect(
+              runWithOverrides(() => java.executable),
+              equals('/path/to/jdk/bin/java'),
+            );
+          },
+          onPlatform: {
+            'windows': Skip('Test is not valid on Windows OS'),
+          },
+        );
       });
 
       group('when no jdk is found', () {
