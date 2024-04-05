@@ -164,7 +164,7 @@ jobs:
 
     runs-on: ubuntu-latest
 
-    name: 🎯 Build ${{ matrix.package }} (${{ matrix.os }})
+    name: 🎯 Build ${{ matrix.package }}
 
     steps:
       - name: 📚 Git Checkout
