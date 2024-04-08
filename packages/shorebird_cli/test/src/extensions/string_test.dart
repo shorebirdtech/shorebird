@@ -7,4 +7,11 @@ void main() {
     expect(''.isNullOrEmpty, true);
     expect('test'.isNullOrEmpty, false);
   });
+
+   test('ToKebabCase', () async {
+    expect('sentanceCase'.toKebabCase, 'sentance-case');
+    expect('SentanceCase'.toKebabCase, 'sentance-case');
+    expect('sentance_case'.toKebabCase, 'sentance-case');
+    expect('sentance-case'.toKebabCase, 'sentance-case');
+  });
 }

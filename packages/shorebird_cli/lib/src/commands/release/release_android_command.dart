@@ -197,7 +197,8 @@ Use `shorebird flutter versions list` to list available versions.
               )
             : p.join(bundleDirPath, 'release', 'app-release.aab');
         final apkPath = flavor != null
-            ? p.join(apkDirPath, flavor, 'release', 'app-${flavor.toKebabCase}-release.apk')
+            ? p.join(apkDirPath, flavor, 'release',
+                'app-${flavor.toKebabCase}-release.apk')
             : p.join(apkDirPath, 'release', 'app-release.apk');
 
         final String releaseVersion;
