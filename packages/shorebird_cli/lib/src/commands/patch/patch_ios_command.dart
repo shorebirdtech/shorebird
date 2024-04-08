@@ -104,9 +104,14 @@ If this option is not provided, the version number will be determined from the p
   final HashFunction _hashFn;
   final IosArchiveDiffer _archiveDiffer;
 
-  // Link percentage that is considered the minimum for acceptable perfromance.
-  // This was selected arbitrarily and may need to be adjusted.
-  static const double minLinkPercentage = 50;
+  // Link percentage that is considered the minimum before a user might notice.
+  // Our early testing has shown that about:
+  // - 1/3rd of patches link at 99%
+  // - 1/3rd of patches link between 20% and 99%
+  // - 1/3rd of patches link below 20%
+  // Most lowering is likely due to:
+  // https://github.com/shorebirdtech/shorebird/issues/1825
+  static const double minLinkPercentage = 75;
 
   static String lowLinkPercentageWarning(double linkPercentage) {
     return '''
