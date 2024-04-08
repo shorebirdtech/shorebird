@@ -115,8 +115,8 @@ flutter:
         File(
           p.join(projectRoot.path, 'shorebird.yaml'),
         ).writeAsStringSync('app_id: $appId');
-        // Create an xcframework in the release directory to simulate running this
-        // command a subsequent time.
+        // Create an xcframework in the release directory to simulate running
+        // this command a subsequent time.
         Directory(p.join(projectRoot.path, 'release', 'Flutter.xcframework'))
             .createSync(recursive: true);
         Directory(

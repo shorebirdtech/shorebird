@@ -598,7 +598,9 @@ Please re-run the release command for this version or create a new release.'''),
           ),
         ).thenAnswer((_) async {
           expect(
-              shorebirdEnv.flutterRevision, equals(preLinkerFlutterRevision));
+            shorebirdEnv.flutterRevision,
+            equals(preLinkerFlutterRevision),
+          );
           return null;
         });
         when(
@@ -609,7 +611,9 @@ Please re-run the release command for this version or create a new release.'''),
           ),
         ).thenAnswer((_) async {
           expect(
-              shorebirdEnv.flutterRevision, equals(preLinkerFlutterRevision));
+            shorebirdEnv.flutterRevision,
+            equals(preLinkerFlutterRevision),
+          );
           return flutterBuildProcessResult;
         });
         when(
@@ -620,7 +624,9 @@ Please re-run the release command for this version or create a new release.'''),
           ),
         ).thenAnswer((_) async {
           expect(
-              shorebirdEnv.flutterRevision, equals(preLinkerFlutterRevision));
+            shorebirdEnv.flutterRevision,
+            equals(preLinkerFlutterRevision),
+          );
           return aotBuildProcessResult;
         });
 
@@ -1096,7 +1102,7 @@ Please re-run the release command for this version or create a new release.'''),
             expect(exitCode, equals(ExitCode.software.code));
             verify(
               () => logger.err(
-                'Unable to find analyze_snapshot at ${analyzeSnapshotFile.path}',
+                '''Unable to find analyze_snapshot at ${analyzeSnapshotFile.path}''',
               ),
             ).called(1);
           });

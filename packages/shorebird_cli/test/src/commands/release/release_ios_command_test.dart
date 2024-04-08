@@ -382,7 +382,8 @@ flutter:
           expect(exitCode, equals(ExitCode.usage.code));
           verify(
             () => logger.err(
-                'Shorebird does not currently support obfuscation on iOS.'),
+              'Shorebird does not currently support obfuscation on iOS.',
+            ),
           ).called(1);
         });
       });
