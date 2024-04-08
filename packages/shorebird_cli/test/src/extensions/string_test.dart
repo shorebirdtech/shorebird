@@ -9,9 +9,9 @@ void main() {
   });
 
    test('ToKebabCase', () async {
-    expect('sentanceCase'.toKebabCase, 'sentance-case');
-    expect('SentanceCase'.toKebabCase, 'sentance-case');
-    expect('sentance_case'.toKebabCase, 'sentance-case');
-    expect('sentance-case'.toKebabCase, 'sentance-case');
+    expect('sentenceCase'.toKebabCase, 'sentence-case');
+    expect('SentenceCase'.toKebabCase, 'sentence-case');
+    expect('sentence_case'.toKebabCase, 'sentence-case');
+    expect('sentence-case'.toKebabCase, 'sentence-case');
   });
 }
