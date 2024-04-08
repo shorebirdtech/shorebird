@@ -6,6 +6,8 @@ This section contains past updates we've sent to customers via Discord.
 
 🎉🎉🎉🎉🎉🎉 It's here! 🎉🎉🎉🎉🎉🎉
 
+We’re excited to announce Shorebird 1.0, including stable support for iOS!
+
 🚀 iOS is production-ready!
 
 📚 Release notes can be found at https://github.com/shorebirdtech/shorebird/releases/tag/v1.0.0
