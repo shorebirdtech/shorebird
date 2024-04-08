@@ -4,7 +4,7 @@ extension NullOrEmtpy on String? {
 }
 
 extension Case on String {
-  /// returns `sentance-case` (kebab case)
+  /// Converts to kebab-case.
   String get toKebabCase {
     final exp = RegExp('(?<=[a-z])[A-Z]');
     return replaceAllMapped(exp, (m) => '-${m.group(0)}')
