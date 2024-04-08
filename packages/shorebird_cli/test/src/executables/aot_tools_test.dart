@@ -54,13 +54,13 @@ void main() {
     });
 
     group('link', () {
-      const base = './path/to/base.aot';
-      const patch = './path/to/patch.aot';
-      const analyzeSnapshot = './path/to/analyze_snapshot';
-      const genSnapshot = './path/to/gen_snapshot';
-      const kernel = './path/to/kernel.dill';
-      const outputPath = './path/to/out.vmcode';
-      const linkJsonPath = './path/to/link.jsonl';
+      final base = p.join('.', 'path', 'to', 'base.aot');
+      final patch = p.join('.', 'path', 'to', 'patch.aot');
+      final analyzeSnapshot = p.join('.', 'path', 'to', 'analyze_snapshot');
+      final genSnapshot = p.join('.', 'path', 'to', 'gen_snapshot');
+      final kernel = p.join('.', 'path', 'to', 'kernel.dill');
+      final outputPath = p.join('.', 'path', 'to', 'out.vmcode');
+      final linkJsonPath = p.join('.', 'path', 'to', 'link.jsonl');
 
       test('throws Exception when process exits with non-zero code', () async {
         when(

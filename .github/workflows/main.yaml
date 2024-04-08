@@ -19,6 +19,7 @@ jobs:
     runs-on: ubuntu-latest
 
     outputs:
+      needs_cross_platform_dart_build: ${{ steps.needs_cross_platform_dart_build.outputs.changes }}
       needs_dart_build: ${{ steps.needs_dart_build.outputs.changes }}
       needs_redis_build: ${{ steps.needs_redis_build.outputs.changes }}
       needs_verify: ${{ steps.needs_verify.outputs.changes }}
@@ -44,6 +45,12 @@ jobs:
               - ./.github/workflows/main.yaml
               - ./.github/actions/dart_package/action.yaml
               - packages/discord_gcp_alerts/**
+
+      - uses: dorny/paths-filter@v3
+        name: Build Detection
+        id: needs_cross_platform_dart_build
+        with:
+          filters: |
             shorebird_cli:
               - ./.github/codecov.yml
               - ./.github/workflows/main.yaml
@@ -122,6 +129,29 @@ jobs:
           codecov_token: ${{ secrets.CODECOV_TOKEN }}
           working_directory: packages/${{ matrix.package }}
 
+  build_cross_platform_dart_packages:
+    needs: changes
+    if: ${{ needs.changes.outputs.needs_cross_platform_dart_build != '[]' }}
+
+    strategy:
+      matrix:
+        os: [macos-latest, windows-latest, ubuntu-latest]
+        package: ${{ fromJSON(needs.changes.outputs.needs_cross_platform_dart_build) }}
+
+    runs-on: ${{ matrix.os }}
+
+    name: 🎯 Build ${{ matrix.package }} (${{ matrix.os }})
+
+    steps:
+      - name: 📚 Git Checkout
+        uses: actions/checkout@v4
+
+      - name: 🎯 Build ${{ matrix.package }}
+        uses: ./.github/actions/dart_package
+        with:
+          codecov_token: ${{ secrets.CODECOV_TOKEN }}
+          working_directory: packages/${{ matrix.package }}
+
   build_redis:
     needs: changes
     if: ${{ needs.changes.outputs.needs_redis_build != '[]' }}
@@ -174,7 +204,13 @@ jobs:
 
   ci:
     needs:
-      [semantic_pull_request, build_dart_packages, build_redis, verify_packages]
+      [
+        semantic_pull_request,
+        build_cross_platform_dart_packages,
+        build_dart_packages,
+        build_redis,
+        verify_packages,
+      ]
     if: ${{ always() }}
 
     runs-on: ubuntu-latest

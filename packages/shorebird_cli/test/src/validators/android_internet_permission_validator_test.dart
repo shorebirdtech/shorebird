@@ -149,10 +149,10 @@ void main() {
         expect(
           results.first,
           equals(
-            const ValidationIssue(
+            ValidationIssue(
               severity: ValidationIssueSeverity.error,
               message:
-                  '''android/app/src/main/AndroidManifest.xml is missing the INTERNET permission.''',
+                  '''${p.join('android', 'app', 'src', 'main', 'AndroidManifest.xml')} is missing the INTERNET permission.''',
             ),
           ),
         );
@@ -179,10 +179,10 @@ void main() {
         expect(
           results.first,
           equals(
-            const ValidationIssue(
+            ValidationIssue(
               severity: ValidationIssueSeverity.error,
               message:
-                  '''android/app/src/main/AndroidManifest.xml is missing the INTERNET permission.''',
+                  '''${p.join('android', 'app', 'src', 'main', 'AndroidManifest.xml')} is missing the INTERNET permission.''',
             ),
           ),
         );
@@ -212,10 +212,10 @@ void main() {
         expect(
           results.first,
           equals(
-            const ValidationIssue(
+            ValidationIssue(
               severity: ValidationIssueSeverity.error,
               message:
-                  '''android/app/src/main/AndroidManifest.xml is missing the INTERNET permission.''',
+                  '''${p.join('android', 'app', 'src', 'main', 'AndroidManifest.xml')} is missing the INTERNET permission.''',
             ),
           ),
         );
