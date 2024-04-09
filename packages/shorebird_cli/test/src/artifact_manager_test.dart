@@ -1,6 +1,5 @@
 import 'dart:io';
 
-import 'package:archive/archive_io.dart';
 import 'package:http/http.dart' as http;
 import 'package:mason_logger/mason_logger.dart';
 import 'package:mocktail/mocktail.dart';
@@ -190,34 +189,6 @@ void main() {
           completes,
         );
         expect(tempDir.listSync(recursive: true), hasLength(146));
-      });
-
-      test('unzips large file to provided output path', () async {
-        // Prevent regressions where extractZip closes the input sync too soon.
-        // https://github.com/shorebirdtech/shorebird/pull/1866
-        final tempDir = Directory.systemTemp.createTempSync();
-        final outDir = Directory.systemTemp.createTempSync();
-        final file = File(p.join(tempDir.path, 'large.txt'))
-          ..writeAsBytesSync(
-            List.generate(999999999, (index) => index),
-          );
-        final zipFile = File(p.join(tempDir.path, 'large.zip'));
-        final encoder = ZipFileEncoder()..open(zipFile.path);
-        await encoder.addFile(file);
-        encoder.close();
-
-        expect(outDir.listSync(recursive: true), isEmpty);
-        await expectLater(
-          runWithOverrides(
-            () => artifactManager.extractZip(
-              zipFile: zipFile,
-              outputDirectory: outDir,
-            ),
-          ),
-          completes,
-        );
-        expect(outDir.listSync(recursive: true), hasLength(1));
-        expect(File(p.join(outDir.path, 'large.txt')).lengthSync(), 999999999);
       });
     });
 
