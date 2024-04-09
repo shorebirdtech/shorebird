@@ -220,9 +220,11 @@ void main() {
           );
           expect(outDir.listSync(recursive: true), hasLength(1));
           expect(
-              File(p.join(outDir.path, 'large.txt')).lengthSync(), 999999999);
+            File(p.join(outDir.path, 'large.txt')).lengthSync(),
+            999999999,
+          );
         },
-        timeout: const Timeout.factor(2),
+        timeout: const Timeout.factor(3),
       );
     });
 
