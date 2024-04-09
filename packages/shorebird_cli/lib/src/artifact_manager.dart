@@ -88,7 +88,6 @@ Failed to create diff (exit code ${result.exitCode}).
     await Isolate.run(() async {
       final inputStream = InputFileStream(zipFile.path);
       final archive = ZipDecoder().decodeBuffer(inputStream);
-      inputStream.closeSync();
       extractArchiveToDisk(archive, outputDirectory.path);
       inputStream.closeSync();
     });
