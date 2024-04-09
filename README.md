@@ -1,14 +1,15 @@
 ## Shorebird 🐦
 
-[![Discord](https://dcbadge.vercel.app/api/server/shorebird)](https://discord.gg/shorebird)
+Shorebird is now 1.0! 🎉
+https://shorebird.dev/blogs/1.0/
+
+[![Discord](https://dcbadge.vercel.app/api/server/shorebird)](https://discord.gg/shorebird) <a href="https://www.producthunt.com/posts/shorebird-code-push?utm_source=badge-featured&utm_medium=badge&utm_souce=badge-shorebird&#0045;code&#0045;push" target="_blank"><img src="https://api.producthunt.com/widgets/embed-image/v1/featured.svg?post_id=449946&theme=neutral" alt="Shorebird&#0032;Code&#0032;Push - Flutter&#0032;over&#0032;the&#0032;air&#0032;updates | Product Hunt" style="width: 128px; height: 27px;" width="128" height="27" /></a>
 
 [![ci](https://github.com/shorebirdtech/shorebird/actions/workflows/main.yaml/badge.svg)](https://github.com/shorebirdtech/shorebird/actions/workflows/main.yaml)
 [![e2e](https://github.com/shorebirdtech/shorebird/actions/workflows/e2e.yaml/badge.svg)](https://github.com/shorebirdtech/shorebird/actions/workflows/e2e.yaml)
 [![codecov](https://codecov.io/gh/shorebirdtech/shorebird/branch/main/graph/badge.svg)](https://codecov.io/gh/shorebirdtech/shorebird)
 [![License: MIT](https://img.shields.io/badge/license-MIT-blue.svg)](./LICENSE-MIT)
 [![License: Apache](https://img.shields.io/badge/license-Apache-orange.svg)](./LICENSE-APACHE)
-
-Home of the Shorebird Tools
 
 ## Getting Started
 
@@ -38,10 +39,9 @@ If you're interested in contributing, please join us on
 
 ### Environment setup
 
-Working on Shorebird requires Dart and Rust.
+Working on Shorebird requires Dart.
 
-Once both are installed, `./scripts/bootstrap.sh` will run `pub get` all
-packages in the repository.
+`./scripts/bootstrap.sh` will run `pub get` all packages in the repository.
 
 ### Running tests
 

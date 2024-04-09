@@ -2,6 +2,15 @@
 # curl -X POST --data-binary @codecov.yml https://codecov.io/validate
 # See https://docs.codecov.com/docs/flags
 
+coverage:
+  status:
+    project:
+      default:
+        target: 100%
+    patch:
+      default:
+        target: 100%
+
 # Packages in third_party don't have 100% coverage, which shouldn't prevent
 # us from landing. Ideally, this would be configured to allow a non-100% base
 # and enforce that all changes have 100% coverage of affected lines.

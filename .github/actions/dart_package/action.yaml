@@ -80,9 +80,3 @@ runs:
       with:
         flags: ${{ steps.split.outputs.package_name }}
         token: ${{ inputs.codecov_token }}
-
-    - uses: VeryGoodOpenSource/very_good_coverage@v2
-      with:
-        path: ${{inputs.working_directory}}/coverage/lcov.info
-        exclude: ${{inputs.coverage_excludes}}
-        min_coverage: ${{inputs.min_coverage}}

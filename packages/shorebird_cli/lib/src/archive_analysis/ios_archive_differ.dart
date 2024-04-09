@@ -137,9 +137,7 @@ class IosArchiveDiffer extends ArchiveDiffer {
     final assetInfoPath = '$outPath.json';
 
     if (Platform.isMacOS) {
-      // coverage:ignore-start
       Process.runSync('assetutil', ['--info', outPath, '-o', assetInfoPath]);
-      // coverage:ignore-end
     } else {
       // This is just for testing
       File(assetInfoPath).createSync(recursive: true);
