@@ -265,6 +265,9 @@ Please create a release using "shorebird release" and try again.
     }
   }
 
+  /// Returns release artifacts for the given [appId], [releaseId],
+  /// [architectures], and [platform]. Not all architectures may have artifacts,
+  /// so the returned map may not contain all the requested architectures.
   Future<Map<Arch, ReleaseArtifact>> getReleaseArtifacts({
     required String appId,
     required int releaseId,
@@ -286,10 +289,7 @@ Please create a release using "shorebird release" and try again.
           platform: platform,
         );
         if (artifacts.isEmpty) {
-          throw CodePushNotFoundException(
-            message:
-                '''No artifact found for architecture ${arch.arch} in release $releaseId''',
-          );
+          continue;
         }
         releaseArtifacts[arch] = artifacts.first;
       } catch (error) {

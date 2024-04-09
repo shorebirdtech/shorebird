@@ -172,9 +172,17 @@ Use `shorebird flutter versions list` to list available versions.
         );
 
         try {
-          await buildAppBundle(flavor: flavor, target: target);
+          await buildAppBundle(
+            flavor: flavor,
+            target: target,
+            targetPlatforms: architectures,
+          );
           if (generateApk) {
-            await buildApk(flavor: flavor, target: target);
+            await buildApk(
+              flavor: flavor,
+              target: target,
+              targetPlatforms: architectures,
+            );
           }
         } on ProcessException catch (error) {
           buildProgress.fail('Failed to build: ${error.message}');

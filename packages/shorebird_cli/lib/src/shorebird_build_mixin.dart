@@ -24,15 +24,21 @@ class BuildException implements Exception {
 }
 
 mixin ShorebirdBuildMixin on ShorebirdCommand {
-  Future<void> buildAppBundle({String? flavor, String? target}) async {
+  Future<void> buildAppBundle({
+    String? flavor,
+    String? target,
+    Iterable<Arch>? targetPlatforms,
+  }) async {
     return _runShorebirdBuildCommand(() async {
       const executable = 'flutter';
+      final targetPlatformArgs = targetPlatforms?.targetPlatformArg;
       final arguments = [
         'build',
         'appbundle',
         '--release',
         if (flavor != null) '--flavor=$flavor',
         if (target != null) '--target=$target',
+        if (targetPlatformArgs != null) '--target-platform=$targetPlatformArgs',
         ...results.rest,
       ];
 
@@ -53,15 +59,20 @@ mixin ShorebirdBuildMixin on ShorebirdCommand {
     });
   }
 
-  Future<void> buildAar({required String buildNumber}) async {
+  Future<void> buildAar({
+    required String buildNumber,
+    Iterable<Arch>? targetPlatforms,
+  }) async {
     return _runShorebirdBuildCommand(() async {
       const executable = 'flutter';
+      final targetPlatformArgs = targetPlatforms?.targetPlatformArg;
       final arguments = [
         'build',
         'aar',
         '--no-debug',
         '--no-profile',
         '--build-number=$buildNumber',
+        if (targetPlatformArgs != null) '--target-platform=$targetPlatformArgs',
         ...results.rest,
       ];
 
@@ -85,16 +96,19 @@ mixin ShorebirdBuildMixin on ShorebirdCommand {
   Future<void> buildApk({
     String? flavor,
     String? target,
+    Iterable<Arch>? targetPlatforms,
     bool splitPerAbi = false,
   }) async {
     return _runShorebirdBuildCommand(() async {
       const executable = 'flutter';
+      final targetPlatformArgs = targetPlatforms?.targetPlatformArg;
       final arguments = [
         'build',
         'apk',
         '--release',
         if (flavor != null) '--flavor=$flavor',
         if (target != null) '--target=$target',
+        if (targetPlatformArgs != null) '--target-platform=$targetPlatformArgs',
         // TODO(bryanoltman): reintroduce coverage when we can support this.
         // See https://github.com/shorebirdtech/shorebird/issues/1141.
         // coverage:ignore-start

@@ -309,6 +309,28 @@ void main() {
       expect(result, ExitCode.config.code);
     });
 
+    group('when target-platforms is specified', () {
+      setUp(() {
+        when(() => argResults['target-platform']).thenReturn(['android-arm']);
+      });
+
+      test('only creates artifcats for the specified archs', () async {
+        setUpProjectRootArtifacts();
+        final exitCode = await runWithOverrides(command.run);
+        expect(exitCode, equals(ExitCode.success.code));
+        verify(
+          () => logger.info(
+            any(
+              that: contains(
+                '''
+🕹️  Platform: ${lightCyan.wrap('android')} ${lightCyan.wrap('(arm32)')}''',
+              ),
+            ),
+          ),
+        ).called(1);
+      });
+    });
+
     group('when flutter-version is provided', () {
       const flutterVersion = '3.16.3';
       setUp(() {

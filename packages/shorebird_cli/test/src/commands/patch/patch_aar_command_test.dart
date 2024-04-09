@@ -262,8 +262,6 @@ void main() {
       when(() => argResults['dry-run']).thenReturn(false);
       when(() => argResults['build-number']).thenReturn(buildNumber);
       when(() => argResults['release-version']).thenReturn(version);
-      when(() => argResults['target-platform'])
-          .thenReturn(Arch.values.map((a) => a.targetPlatformCliArg).toList());
       when(() => auth.isAuthenticated).thenReturn(true);
       when(() => auth.client).thenReturn(httpClient);
       when(() => logger.level).thenReturn(Level.info);

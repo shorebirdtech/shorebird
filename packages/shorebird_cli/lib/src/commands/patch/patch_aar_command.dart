@@ -70,12 +70,6 @@ of the Android app that is using this module.''',
         abbr: 'n',
         negatable: false,
         help: 'Validate but do not upload the patch.',
-      )
-      ..addMultiOption(
-        'target-platform',
-        help: 'The target platforms for which the app is compiled.',
-        defaultsTo: Arch.values.map((arch) => arch.targetPlatformCliArg),
-        allowed: Arch.values.map((arch) => arch.targetPlatformCliArg),
       );
   }
 
@@ -104,12 +98,6 @@ of the Android app that is using this module.''',
     final dryRun = results['dry-run'] == true;
     final allowAssetDiffs = results['allow-asset-diffs'] == true;
     final allowNativeDiffs = results['allow-native-diffs'] == true;
-    final architectures = (results['target-platform'] as List<String>)
-        .map(
-          (platform) => Arch.values
-              .firstWhere((arch) => arch.targetPlatformCliArg == platform),
-        )
-        .toSet();
 
     await cache.updateAll();
 
@@ -156,7 +144,7 @@ Please re-run the release command for this version or create a new release.''');
     final releaseArtifacts = await codePushClientWrapper.getReleaseArtifacts(
       appId: appId,
       releaseId: release.id,
-      architectures: architectures,
+      architectures: AndroidArch.availableAndroidArchs,
       platform: releasePlatform,
     );
 

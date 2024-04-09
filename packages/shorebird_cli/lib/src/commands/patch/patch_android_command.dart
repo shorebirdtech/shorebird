@@ -78,12 +78,6 @@ If this option is not provided, the version number will be determined from the p
         'staging',
         negatable: false,
         help: 'Whether to publish the patch to the staging environment.',
-      )
-      ..addMultiOption(
-        'target-platform',
-        help: 'The target platforms for which the app is compiled.',
-        defaultsTo: Arch.values.map((arch) => arch.targetPlatformCliArg),
-        allowed: Arch.values.map((arch) => arch.targetPlatformCliArg),
       );
   }
 
@@ -113,12 +107,6 @@ If this option is not provided, the version number will be determined from the p
     final allowNativeDiffs = results['allow-native-diffs'] == true;
     final dryRun = results['dry-run'] == true;
     final isStaging = results['staging'] == true;
-    final architectures = (results['target-platform'] as List<String>)
-        .map(
-          (platform) => Arch.values
-              .firstWhere((arch) => arch.targetPlatformCliArg == platform),
-        )
-        .toSet();
 
     await cache.updateAll();
 
@@ -252,7 +240,7 @@ Looked in:
             await codePushClientWrapper.getReleaseArtifacts(
           appId: app.appId,
           releaseId: release.id,
-          architectures: architectures,
+          architectures: AndroidArch.availableAndroidArchs,
           platform: releasePlatform,
         );
 

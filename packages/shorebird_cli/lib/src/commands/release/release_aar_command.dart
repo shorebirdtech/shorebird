@@ -170,14 +170,17 @@ Use `shorebird flutter versions list` to list available versions.
         );
 
         try {
-          await buildAar(buildNumber: buildNumber);
+          await buildAar(
+            buildNumber: buildNumber,
+            targetPlatforms: architectures,
+          );
         } on ProcessException catch (error) {
           buildProgress.fail('Failed to build: ${error.message}');
           return ExitCode.software.code;
         }
         buildProgress.complete();
 
-        final archNames = architectures.map((arch) => arch.arch);
+        final archNames = architectures.map((arch) => arch.name);
         final summary = [
           '''📱 App: ${lightCyan.wrap(app.displayName)} ${lightCyan.wrap('(${app.appId})')}''',
           '📦 Release Version: ${lightCyan.wrap(releaseVersion)}',

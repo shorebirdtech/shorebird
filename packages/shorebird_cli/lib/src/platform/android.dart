@@ -60,3 +60,8 @@ extension AndroidArch on Arch {
     return Arch.values;
   }
 }
+
+extension TargetPlatformArgs on Iterable<Arch> {
+  /// The value to pass to the --target-platforms flag.
+  String get targetPlatformArg => map((e) => e.targetPlatformCliArg).join(',');
+}
