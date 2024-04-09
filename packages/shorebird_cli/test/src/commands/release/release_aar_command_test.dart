@@ -328,6 +328,20 @@ void main() {
             ),
           ),
         ).called(1);
+        verify(
+          () => shorebirdProcess.run(
+            'flutter',
+            [
+              'build',
+              'aar',
+              '--no-debug',
+              '--no-profile',
+              '--build-number=$buildNumber',
+              '--target-platform=android-arm',
+            ],
+            runInShell: any(named: 'runInShell'),
+          ),
+        ).called(1);
       });
     });
 
@@ -448,6 +462,7 @@ $exception''',
             '--no-debug',
             '--no-profile',
             '--build-number=$buildNumber',
+            '--target-platform=android-arm,android-arm64,android-x64',
           ],
           runInShell: any(named: 'runInShell'),
         ),

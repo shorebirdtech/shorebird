@@ -772,7 +772,7 @@ Please bump your version number and try again.''',
           verify(() => progress.fail(error)).called(1);
         });
 
-        test('exits with code 70 if release artifact does not exist', () async {
+        test('only returns release artifacts that exist', () async {
           when(
             () => codePushClient.getReleaseArtifacts(
               appId: any(named: 'appId'),
@@ -781,24 +781,26 @@ Please bump your version number and try again.''',
               platform: any(named: 'platform'),
             ),
           ).thenAnswer((_) async => []);
+          when(
+            () => codePushClient.getReleaseArtifacts(
+              appId: any(named: 'appId'),
+              releaseId: any(named: 'releaseId'),
+              arch: 'aarch64',
+              platform: any(named: 'platform'),
+            ),
+          ).thenAnswer((_) async => [releaseArtifact]);
 
-          await expectLater(
-            () async => runWithOverrides(
+          expect(
+            await runWithOverrides(
               () => codePushClientWrapper.getReleaseArtifacts(
                 appId: app.appId,
                 releaseId: releaseId,
-                architectures: archs,
+                architectures: Arch.values,
                 platform: releasePlatform,
               ),
             ),
-            exitsWithCode(ExitCode.software),
+            equals({Arch.arm64: releaseArtifact}),
           );
-
-          verify(
-            () => progress.fail(
-              '''No artifact found for architecture aarch64 in release $releaseId''',
-            ),
-          ).called(1);
         });
 
         test('returns release artifacts when release artifacts exist',

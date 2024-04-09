@@ -623,7 +623,12 @@ ${link(uri: Uri.parse('https://support.google.com/googleplay/android-developer/a
           ),
         ),
       ).called(1);
-      const buildApkArguments = ['build', 'apk', '--release'];
+      const buildApkArguments = [
+        'build',
+        'apk',
+        '--release',
+        '--target-platform=android-arm,android-arm64,android-x64',
+      ];
       verify(
         () => shorebirdProcess.run(
           'flutter',
