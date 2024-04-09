@@ -238,7 +238,7 @@ Use `shorebird flutter versions list` to list available versions.
           );
         }
 
-        final archNames = architectures.map((a) => a.arch);
+        final archNames = architectures.map((a) => a.name);
         final summary = [
           '''📱 App: ${lightCyan.wrap(app.displayName)} ${lightCyan.wrap('(${app.appId})')}''',
           if (flavor != null) '🍧 Flavor: ${lightCyan.wrap(flavor)}',
