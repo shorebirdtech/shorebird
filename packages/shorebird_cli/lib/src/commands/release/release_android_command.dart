@@ -61,7 +61,7 @@ class ReleaseAndroidCommand extends ShorebirdCommand
       )
       ..addMultiOption(
         'target-platform',
-        help: 'The target platforms for which the app is compiled.',
+        help: 'The target platform(s) for which the app is compiled.',
         defaultsTo: Arch.values.map((arch) => arch.targetPlatformCliArg),
         allowed: Arch.values.map((arch) => arch.targetPlatformCliArg),
       );
