@@ -8,10 +8,11 @@ void main() {
     expect('test'.isNullOrEmpty, false);
   });
 
-   test('ToKebabCase', () async {
+  test('ToKebabCase', () async {
     expect('sentenceCase'.toKebabCase, 'sentence-case');
     expect('SentenceCase'.toKebabCase, 'sentence-case');
     expect('sentence_case'.toKebabCase, 'sentence-case');
     expect('sentence-case'.toKebabCase, 'sentence-case');
+    expect('sentence case'.toKebabCase, 'sentence-case');
   });
 }
