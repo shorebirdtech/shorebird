@@ -11,6 +11,7 @@ import 'package:shorebird_cli/src/command.dart';
 import 'package:shorebird_cli/src/config/config.dart';
 import 'package:shorebird_cli/src/logger.dart';
 import 'package:shorebird_cli/src/platform.dart';
+import 'package:shorebird_cli/src/platform/platform.dart';
 import 'package:shorebird_cli/src/shorebird_artifact_mixin.dart';
 import 'package:shorebird_cli/src/shorebird_build_mixin.dart';
 import 'package:shorebird_cli/src/shorebird_env.dart';
@@ -51,6 +52,12 @@ of the Android app that is using this module.''',
       ..addOption(
         'flutter-version',
         help: 'The Flutter version to use when building the app (e.g: 3.16.3).',
+      )
+      ..addMultiOption(
+        'target-platform',
+        help: 'The target platforms for which the app is compiled.',
+        defaultsTo: Arch.values.map((arch) => arch.targetPlatformCliArg),
+        allowed: Arch.values.map((arch) => arch.targetPlatformCliArg),
       );
   }
 
@@ -89,6 +96,12 @@ make smaller updates to your app.
     final shorebirdYaml = shorebirdEnv.getShorebirdYaml()!;
     final appId = shorebirdYaml.getAppId();
     final app = await codePushClientWrapper.getApp(appId: appId);
+    final architectures = (results['target-platform'] as List<String>)
+        .map(
+          (platform) => AndroidArch.availableAndroidArchs
+              .firstWhere((arch) => arch.targetPlatformCliArg == platform),
+        )
+        .toSet();
 
     final existingRelease = await codePushClientWrapper.maybeGetRelease(
       appId: appId,
@@ -164,7 +177,7 @@ Use `shorebird flutter versions list` to list available versions.
         }
         buildProgress.complete();
 
-        final archNames = architectures.keys.map((arch) => arch.name);
+        final archNames = architectures.map((arch) => arch.arch);
         final summary = [
           '''📱 App: ${lightCyan.wrap(app.displayName)} ${lightCyan.wrap('(${app.appId})')}''',
           '📦 Release Version: ${lightCyan.wrap(releaseVersion)}',

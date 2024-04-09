@@ -19,6 +19,7 @@ import 'package:shorebird_cli/src/formatters/file_size_formatter.dart';
 import 'package:shorebird_cli/src/logger.dart';
 import 'package:shorebird_cli/src/patch_diff_checker.dart';
 import 'package:shorebird_cli/src/platform.dart';
+import 'package:shorebird_cli/src/platform/platform.dart';
 import 'package:shorebird_cli/src/shorebird_artifact_mixin.dart';
 import 'package:shorebird_cli/src/shorebird_build_mixin.dart';
 import 'package:shorebird_cli/src/shorebird_env.dart';
@@ -69,6 +70,12 @@ of the Android app that is using this module.''',
         abbr: 'n',
         negatable: false,
         help: 'Validate but do not upload the patch.',
+      )
+      ..addMultiOption(
+        'target-platform',
+        help: 'The target platforms for which the app is compiled.',
+        defaultsTo: Arch.values.map((arch) => arch.targetPlatformCliArg),
+        allowed: Arch.values.map((arch) => arch.targetPlatformCliArg),
       );
   }
 
@@ -97,6 +104,12 @@ of the Android app that is using this module.''',
     final dryRun = results['dry-run'] == true;
     final allowAssetDiffs = results['allow-asset-diffs'] == true;
     final allowNativeDiffs = results['allow-native-diffs'] == true;
+    final architectures = (results['target-platform'] as List<String>)
+        .map(
+          (platform) => Arch.values
+              .firstWhere((arch) => arch.targetPlatformCliArg == platform),
+        )
+        .toSet();
 
     await cache.updateAll();
 
@@ -223,9 +236,8 @@ Please re-run the release command for this version or create a new release.''');
         }
 
         final archMetadata = patchArtifactBundles.keys.map((arch) {
-          final name = arch.name;
           final size = formatBytes(patchArtifactBundles[arch]!.size);
-          return '$name ($size)';
+          return '${arch.name} ($size)';
         });
 
         if (dryRun) {
@@ -308,11 +320,11 @@ ${summary.join('\n')}
 
     final createDiffProgress = logger.progress('Creating artifacts');
     for (final releaseArtifactPath in releaseArtifactPaths.entries) {
-      final archMetadata = architectures[releaseArtifactPath.key]!;
+      final arch = releaseArtifactPath.key;
       final artifactPath = p.join(
         extractedAarDirectory,
         'jni',
-        archMetadata.path,
+        arch.androidBuildPath,
         'libapp.so',
       );
       logger.detail('Creating artifact for $artifactPath');
@@ -323,8 +335,8 @@ ${summary.join('\n')}
           releaseArtifactPath: releaseArtifactPath.value,
           patchArtifactPath: artifactPath,
         );
-        patchArtifactBundles[releaseArtifactPath.key] = PatchArtifactBundle(
-          arch: archMetadata.arch,
+        patchArtifactBundles[arch] = PatchArtifactBundle(
+          arch: arch.arch,
           path: diffPath,
           hash: hash,
           size: await File(diffPath).length(),

@@ -23,7 +23,7 @@ import 'package:shorebird_cli/src/logger.dart';
 import 'package:shorebird_cli/src/os/operating_system_interface.dart';
 import 'package:shorebird_cli/src/patch_diff_checker.dart';
 import 'package:shorebird_cli/src/platform.dart';
-import 'package:shorebird_cli/src/shorebird_build_mixin.dart';
+import 'package:shorebird_cli/src/platform/platform.dart';
 import 'package:shorebird_cli/src/shorebird_env.dart';
 import 'package:shorebird_cli/src/shorebird_flutter.dart';
 import 'package:shorebird_cli/src/shorebird_process.dart';
@@ -157,8 +157,7 @@ flutter:
     }
 
     void setUpProjectRootArtifacts({String? flavor}) {
-      for (final archMetadata
-          in ShorebirdBuildMixin.allAndroidArchitectures.values) {
+      for (final archMetadata in Arch.values) {
         final artifactPath = p.join(
           projectRoot.path,
           'build',
@@ -168,7 +167,7 @@ flutter:
           flavor != null ? '${flavor}Release' : 'release',
           'out',
           'lib',
-          archMetadata.path,
+          archMetadata.androidBuildPath,
           'libapp.so',
         );
         File(artifactPath).createSync(recursive: true);
@@ -290,6 +289,8 @@ flutter:
       when(() => argResults['arch']).thenReturn(arch);
       when(() => argResults['staging']).thenReturn(false);
       when(() => argResults['dry-run']).thenReturn(false);
+      when(() => argResults['target-platform'])
+          .thenReturn(Arch.values.map((a) => a.targetPlatformCliArg).toList());
       when(() => argResults.rest).thenReturn([]);
       when(() => argResults.wasParsed(any())).thenReturn(true);
       when(() => auth.isAuthenticated).thenReturn(true);

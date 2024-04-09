@@ -13,7 +13,7 @@ import 'package:shorebird_cli/src/artifact_manager.dart';
 import 'package:shorebird_cli/src/auth/auth.dart';
 import 'package:shorebird_cli/src/deployment_track.dart';
 import 'package:shorebird_cli/src/logger.dart';
-import 'package:shorebird_cli/src/shorebird_build_mixin.dart';
+import 'package:shorebird_cli/src/platform/platform.dart';
 import 'package:shorebird_cli/src/shorebird_env.dart';
 import 'package:shorebird_cli/src/third_party/flutter_tools/lib/flutter_tools.dart';
 import 'package:shorebird_code_push_client/shorebird_code_push_client.dart';
@@ -268,7 +268,7 @@ Please create a release using "shorebird release" and try again.
   Future<Map<Arch, ReleaseArtifact>> getReleaseArtifacts({
     required String appId,
     required int releaseId,
-    required Map<Arch, ArchMetadata> architectures,
+    required Iterable<Arch> architectures,
     required ReleasePlatform platform,
   }) async {
     // TODO(bryanoltman): update this function to only make one call to
@@ -277,21 +277,21 @@ Please create a release using "shorebird release" and try again.
     final fetchReleaseArtifactProgress = logger.progress(
       'Fetching release artifacts',
     );
-    for (final entry in architectures.entries) {
+    for (final arch in architectures) {
       try {
         final artifacts = await codePushClient.getReleaseArtifacts(
           appId: appId,
           releaseId: releaseId,
-          arch: entry.value.arch,
+          arch: arch.arch,
           platform: platform,
         );
         if (artifacts.isEmpty) {
           throw CodePushNotFoundException(
             message:
-                '''No artifact found for architecture ${entry.value.arch} in release $releaseId''',
+                '''No artifact found for architecture ${arch.arch} in release $releaseId''',
           );
         }
-        releaseArtifacts[entry.key] = artifacts.first;
+        releaseArtifacts[arch] = artifacts.first;
       } catch (error) {
         _handleErrorAndExit(error, progress: fetchReleaseArtifactProgress);
       }
@@ -368,7 +368,7 @@ Please create a release using "shorebird release" and try again.
     required ReleasePlatform platform,
     required String projectRoot,
     required String aabPath,
-    required Map<Arch, ArchMetadata> architectures,
+    required Iterable<Arch> architectures,
     String? flavor,
   }) async {
     final createArtifactProgress = logger.progress('Creating artifacts');
@@ -395,10 +395,10 @@ Looked in:
       );
     }
 
-    for (final archMetadata in architectures.values) {
+    for (final arch in architectures) {
       final artifactPath = p.join(
         archsDir.path,
-        archMetadata.path,
+        arch.androidBuildPath,
         'libapp.so',
       );
       final artifact = File(artifactPath);
@@ -410,7 +410,7 @@ Looked in:
           appId: appId,
           releaseId: releaseId,
           artifactPath: artifact.path,
-          arch: archMetadata.arch,
+          arch: arch.arch,
           platform: platform,
           hash: hash,
           canSideload: false,
@@ -420,7 +420,7 @@ Looked in:
         logger.info(
           '''
 
-${archMetadata.arch} artifact already exists, continuing...''',
+${arch.arch} artifact already exists, continuing...''',
         );
       } catch (error) {
         _handleErrorAndExit(
@@ -466,15 +466,15 @@ aab artifact already exists, continuing...''',
     required ReleasePlatform platform,
     required String aarPath,
     required String extractedAarDir,
-    required Map<Arch, ArchMetadata> architectures,
+    required Iterable<Arch> architectures,
   }) async {
     final createArtifactProgress = logger.progress('Creating artifacts');
 
-    for (final archMetadata in architectures.values) {
+    for (final arch in architectures) {
       final artifactPath = p.join(
         extractedAarDir,
         'jni',
-        archMetadata.path,
+        arch.androidBuildPath,
         'libapp.so',
       );
       final artifact = File(artifactPath);
@@ -486,7 +486,7 @@ aab artifact already exists, continuing...''',
           appId: appId,
           releaseId: releaseId,
           artifactPath: artifact.path,
-          arch: archMetadata.arch,
+          arch: arch.arch,
           platform: platform,
           hash: hash,
           canSideload: false,
@@ -496,7 +496,7 @@ aab artifact already exists, continuing...''',
         logger.info(
           '''
 
-${archMetadata.arch} artifact already exists, continuing...''',
+${arch.arch} artifact already exists, continuing...''',
         );
       } catch (error) {
         _handleErrorAndExit(

@@ -11,6 +11,7 @@ import 'package:shorebird_cli/src/extensions/arg_results.dart';
 import 'package:shorebird_cli/src/extensions/string.dart';
 import 'package:shorebird_cli/src/logger.dart';
 import 'package:shorebird_cli/src/platform.dart';
+import 'package:shorebird_cli/src/platform/platform.dart';
 import 'package:shorebird_cli/src/shorebird_build_mixin.dart';
 import 'package:shorebird_cli/src/shorebird_env.dart';
 import 'package:shorebird_cli/src/shorebird_flutter.dart';
@@ -57,6 +58,12 @@ class ReleaseAndroidCommand extends ShorebirdCommand
             'To learn more, see: https://developer.android.com/studio/build/configure-apk-splits#configure-abi-split',
         hide: true,
         negatable: false,
+      )
+      ..addMultiOption(
+        'target-platform',
+        help: 'The target platforms for which the app is compiled.',
+        defaultsTo: Arch.values.map((arch) => arch.targetPlatformCliArg),
+        allowed: Arch.values.map((arch) => arch.targetPlatformCliArg),
       );
   }
 
@@ -88,6 +95,12 @@ make smaller updates to your app.
     final generateApk = results['artifact'] as String == 'apk';
     final splitApk = results['split-per-abi'] == true;
     final flutterVersion = results['flutter-version'] as String?;
+    final architectures = (results['target-platform'] as List<String>)
+        .map(
+          (platform) => AndroidArch.availableAndroidArchs
+              .firstWhere((arch) => arch.targetPlatformCliArg == platform),
+        )
+        .toSet();
 
     if (generateApk && splitApk) {
       logger
@@ -225,7 +238,7 @@ Use `shorebird flutter versions list` to list available versions.
           );
         }
 
-        final archNames = architectures.keys.map((arch) => arch.name);
+        final archNames = architectures.map((a) => a.arch);
         final summary = [
           '''📱 App: ${lightCyan.wrap(app.displayName)} ${lightCyan.wrap('(${app.appId})')}''',
           if (flavor != null) '🍧 Flavor: ${lightCyan.wrap(flavor)}',

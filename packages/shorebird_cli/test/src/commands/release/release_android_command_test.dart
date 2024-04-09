@@ -18,6 +18,7 @@ import 'package:shorebird_cli/src/executables/executables.dart';
 import 'package:shorebird_cli/src/logger.dart';
 import 'package:shorebird_cli/src/os/operating_system_interface.dart';
 import 'package:shorebird_cli/src/platform.dart';
+import 'package:shorebird_cli/src/platform/platform.dart';
 import 'package:shorebird_cli/src/shorebird_env.dart';
 import 'package:shorebird_cli/src/shorebird_flutter.dart';
 import 'package:shorebird_cli/src/shorebird_process.dart';
@@ -184,6 +185,8 @@ void main() {
       when(() => argResults['arch']).thenReturn(arch);
       when(() => argResults['platform']).thenReturn(releasePlatform);
       when(() => argResults['artifact']).thenReturn('aab');
+      when(() => argResults['target-platform'])
+          .thenReturn(Arch.values.map((a) => a.targetPlatformCliArg).toList());
       when(() => argResults.rest).thenReturn([]);
       when(() => argResults.wasParsed(any())).thenReturn(true);
       when(() => auth.isAuthenticated).thenReturn(true);
