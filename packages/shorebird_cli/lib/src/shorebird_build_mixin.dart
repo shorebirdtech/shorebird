@@ -1,32 +1,12 @@
 import 'dart:io';
 
-import 'package:collection/collection.dart';
 import 'package:mason_logger/mason_logger.dart';
 import 'package:shorebird_cli/src/command.dart';
-import 'package:shorebird_cli/src/engine_config.dart';
 import 'package:shorebird_cli/src/logger.dart';
 import 'package:shorebird_cli/src/os/operating_system_interface.dart';
 import 'package:shorebird_cli/src/platform/platform.dart';
 import 'package:shorebird_cli/src/shorebird_artifacts.dart';
 import 'package:shorebird_cli/src/shorebird_process.dart';
-
-enum Arch {
-  arm64,
-  arm32,
-  x86_64,
-}
-
-class ArchMetadata {
-  const ArchMetadata({
-    required this.path,
-    required this.arch,
-    required this.enginePath,
-  });
-
-  final String path;
-  final String arch;
-  final String enginePath;
-}
 
 /// Used to wrap code that invokes `flutter build` with Shorebird's fork of
 /// Flutter.
@@ -44,58 +24,21 @@ class BuildException implements Exception {
 }
 
 mixin ShorebirdBuildMixin on ShorebirdCommand {
-  // This exists only so tests can get the full list.
-  static const allAndroidArchitectures = <Arch, ArchMetadata>{
-    Arch.arm64: ArchMetadata(
-      path: 'arm64-v8a',
-      arch: 'aarch64',
-      enginePath: 'android_release_arm64',
-    ),
-    Arch.arm32: ArchMetadata(
-      path: 'armeabi-v7a',
-      arch: 'arm',
-      enginePath: 'android_release',
-    ),
-    Arch.x86_64: ArchMetadata(
-      path: 'x86_64',
-      arch: 'x86_64',
-      enginePath: 'android_release_x64',
-    ),
-  };
-
-  // TODO(felangel): extend to other platforms.
-  Map<Arch, ArchMetadata> get architectures {
-    // Flutter has a whole bunch of logic to parse the --local-engine flag.
-    // We probably need similar.
-    // It's a bit odd to grab off the shorebird process, but it's the easiest
-    // way to have a single source of truth for the engine config for now.
-    if (engineConfig.localEngine != null) {
-      final localEngineOutName = engineConfig.localEngine;
-      final metaDataEntry = allAndroidArchitectures.entries.firstWhereOrNull(
-        (entry) => localEngineOutName == entry.value.enginePath,
-      );
-      if (metaDataEntry == null) {
-        throw Exception(
-          'Unknown local engine architecture for '
-          '--local-engine=$localEngineOutName\n'
-          'Known values: '
-          '${allAndroidArchitectures.values.map((e) => e.enginePath)}',
-        );
-      }
-      return {metaDataEntry.key: metaDataEntry.value};
-    }
-    return allAndroidArchitectures;
-  }
-
-  Future<void> buildAppBundle({String? flavor, String? target}) async {
+  Future<void> buildAppBundle({
+    String? flavor,
+    String? target,
+    Iterable<Arch>? targetPlatforms,
+  }) async {
     return _runShorebirdBuildCommand(() async {
       const executable = 'flutter';
+      final targetPlatformArgs = targetPlatforms?.targetPlatformArg;
       final arguments = [
         'build',
         'appbundle',
         '--release',
         if (flavor != null) '--flavor=$flavor',
         if (target != null) '--target=$target',
+        if (targetPlatformArgs != null) '--target-platform=$targetPlatformArgs',
         ...results.rest,
       ];
 
@@ -116,15 +59,20 @@ mixin ShorebirdBuildMixin on ShorebirdCommand {
     });
   }
 
-  Future<void> buildAar({required String buildNumber}) async {
+  Future<void> buildAar({
+    required String buildNumber,
+    Iterable<Arch>? targetPlatforms,
+  }) async {
     return _runShorebirdBuildCommand(() async {
       const executable = 'flutter';
+      final targetPlatformArgs = targetPlatforms?.targetPlatformArg;
       final arguments = [
         'build',
         'aar',
         '--no-debug',
         '--no-profile',
         '--build-number=$buildNumber',
+        if (targetPlatformArgs != null) '--target-platform=$targetPlatformArgs',
         ...results.rest,
       ];
 
@@ -148,16 +96,19 @@ mixin ShorebirdBuildMixin on ShorebirdCommand {
   Future<void> buildApk({
     String? flavor,
     String? target,
+    Iterable<Arch>? targetPlatforms,
     bool splitPerAbi = false,
   }) async {
     return _runShorebirdBuildCommand(() async {
       const executable = 'flutter';
+      final targetPlatformArgs = targetPlatforms?.targetPlatformArg;
       final arguments = [
         'build',
         'apk',
         '--release',
         if (flavor != null) '--flavor=$flavor',
         if (target != null) '--target=$target',
+        if (targetPlatformArgs != null) '--target-platform=$targetPlatformArgs',
         // TODO(bryanoltman): reintroduce coverage when we can support this.
         // See https://github.com/shorebirdtech/shorebird/issues/1141.
         // coverage:ignore-start

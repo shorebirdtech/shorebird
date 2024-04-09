@@ -19,6 +19,7 @@ import 'package:shorebird_cli/src/formatters/file_size_formatter.dart';
 import 'package:shorebird_cli/src/logger.dart';
 import 'package:shorebird_cli/src/patch_diff_checker.dart';
 import 'package:shorebird_cli/src/platform.dart';
+import 'package:shorebird_cli/src/platform/platform.dart';
 import 'package:shorebird_cli/src/shorebird_artifact_mixin.dart';
 import 'package:shorebird_cli/src/shorebird_build_mixin.dart';
 import 'package:shorebird_cli/src/shorebird_env.dart';
@@ -143,7 +144,7 @@ Please re-run the release command for this version or create a new release.''');
     final releaseArtifacts = await codePushClientWrapper.getReleaseArtifacts(
       appId: appId,
       releaseId: release.id,
-      architectures: architectures,
+      architectures: AndroidArch.availableAndroidArchs,
       platform: releasePlatform,
     );
 
@@ -223,9 +224,8 @@ Please re-run the release command for this version or create a new release.''');
         }
 
         final archMetadata = patchArtifactBundles.keys.map((arch) {
-          final name = arch.name;
           final size = formatBytes(patchArtifactBundles[arch]!.size);
-          return '$name ($size)';
+          return '${arch.name} ($size)';
         });
 
         if (dryRun) {
@@ -308,11 +308,11 @@ ${summary.join('\n')}
 
     final createDiffProgress = logger.progress('Creating artifacts');
     for (final releaseArtifactPath in releaseArtifactPaths.entries) {
-      final archMetadata = architectures[releaseArtifactPath.key]!;
+      final arch = releaseArtifactPath.key;
       final artifactPath = p.join(
         extractedAarDirectory,
         'jni',
-        archMetadata.path,
+        arch.androidBuildPath,
         'libapp.so',
       );
       logger.detail('Creating artifact for $artifactPath');
@@ -323,8 +323,8 @@ ${summary.join('\n')}
           releaseArtifactPath: releaseArtifactPath.value,
           patchArtifactPath: artifactPath,
         );
-        patchArtifactBundles[releaseArtifactPath.key] = PatchArtifactBundle(
-          arch: archMetadata.arch,
+        patchArtifactBundles[arch] = PatchArtifactBundle(
+          arch: arch.arch,
           path: diffPath,
           hash: hash,
           size: await File(diffPath).length(),

@@ -8,6 +8,7 @@ import 'package:shorebird_cli/src/doctor.dart';
 import 'package:shorebird_cli/src/engine_config.dart';
 import 'package:shorebird_cli/src/logger.dart';
 import 'package:shorebird_cli/src/os/operating_system_interface.dart';
+import 'package:shorebird_cli/src/platform/platform.dart';
 import 'package:shorebird_cli/src/shorebird_env.dart';
 import 'package:shorebird_cli/src/shorebird_process.dart';
 import 'package:shorebird_cli/src/shorebird_validator.dart';
@@ -200,13 +201,13 @@ ${lightCyan.wrap(p.join('build', 'app', 'outputs', 'bundle', '${flavor}Release',
 
     test('local-engine and architectures', () async {
       expect(
-        runWithOverrides(() => command.architectures.length),
+        runWithOverrides(() => AndroidArch.availableAndroidArchs.length),
         greaterThan(1),
       );
 
       expect(
         runScoped(
-          () => command.architectures.length,
+          () => AndroidArch.availableAndroidArchs.length,
           values: {
             engineConfigRef.overrideWith(
               () => const EngineConfig(
@@ -223,7 +224,7 @@ ${lightCyan.wrap(p.join('build', 'app', 'outputs', 'bundle', '${flavor}Release',
       // We only support a few release configs for now.
       expect(
         () => runScoped(
-          () => command.architectures.length,
+          () => AndroidArch.availableAndroidArchs.length,
           values: {
             engineConfigRef.overrideWith(
               () => const EngineConfig(

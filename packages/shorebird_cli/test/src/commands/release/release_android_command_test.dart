@@ -18,6 +18,7 @@ import 'package:shorebird_cli/src/executables/executables.dart';
 import 'package:shorebird_cli/src/logger.dart';
 import 'package:shorebird_cli/src/os/operating_system_interface.dart';
 import 'package:shorebird_cli/src/platform.dart';
+import 'package:shorebird_cli/src/platform/platform.dart';
 import 'package:shorebird_cli/src/shorebird_env.dart';
 import 'package:shorebird_cli/src/shorebird_flutter.dart';
 import 'package:shorebird_cli/src/shorebird_process.dart';
@@ -184,6 +185,8 @@ void main() {
       when(() => argResults['arch']).thenReturn(arch);
       when(() => argResults['platform']).thenReturn(releasePlatform);
       when(() => argResults['artifact']).thenReturn('aab');
+      when(() => argResults['target-platform'])
+          .thenReturn(Arch.values.map((a) => a.targetPlatformCliArg).toList());
       when(() => argResults.rest).thenReturn([]);
       when(() => argResults.wasParsed(any())).thenReturn(true);
       when(() => auth.isAuthenticated).thenReturn(true);
@@ -307,6 +310,27 @@ void main() {
       final exitCode = await runWithOverrides(command.run);
 
       expect(exitCode, ExitCode.unavailable.code);
+    });
+
+    group('when target-platforms is specified', () {
+      setUp(() {
+        when(() => argResults['target-platform']).thenReturn(['android-arm']);
+      });
+
+      test('only creates artifcats for the specified archs', () async {
+        final exitCode = await runWithOverrides(command.run);
+        expect(exitCode, equals(ExitCode.success.code));
+        verify(
+          () => logger.info(
+            any(
+              that: contains(
+                '''
+🕹️  Platform: ${lightCyan.wrap('android')} ${lightCyan.wrap('(arm32)')}''',
+              ),
+            ),
+          ),
+        ).called(1);
+      });
     });
 
     group('when flutter-version is provided', () {
@@ -599,7 +623,12 @@ ${link(uri: Uri.parse('https://support.google.com/googleplay/android-developer/a
           ),
         ),
       ).called(1);
-      const buildApkArguments = ['build', 'apk', '--release'];
+      const buildApkArguments = [
+        'build',
+        'apk',
+        '--release',
+        '--target-platform=android-arm,android-arm64,android-x64',
+      ];
       verify(
         () => shorebirdProcess.run(
           'flutter',

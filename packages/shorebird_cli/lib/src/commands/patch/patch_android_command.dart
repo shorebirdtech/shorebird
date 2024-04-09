@@ -19,6 +19,7 @@ import 'package:shorebird_cli/src/formatters/formatters.dart';
 import 'package:shorebird_cli/src/logger.dart';
 import 'package:shorebird_cli/src/patch_diff_checker.dart';
 import 'package:shorebird_cli/src/platform.dart';
+import 'package:shorebird_cli/src/platform/platform.dart';
 import 'package:shorebird_cli/src/shorebird_build_mixin.dart';
 import 'package:shorebird_cli/src/shorebird_env.dart';
 import 'package:shorebird_cli/src/shorebird_flutter.dart';
@@ -239,7 +240,7 @@ Looked in:
             await codePushClientWrapper.getReleaseArtifacts(
           appId: app.appId,
           releaseId: release.id,
-          architectures: architectures,
+          architectures: AndroidArch.availableAndroidArchs,
           platform: releasePlatform,
         );
 
@@ -294,10 +295,10 @@ Looked in:
         final patchArtifactBundles = <Arch, PatchArtifactBundle>{};
         final createDiffProgress = logger.progress('Creating artifacts');
         for (final releaseArtifactPath in releaseArtifactPaths.entries) {
-          final archMetadata = architectures[releaseArtifactPath.key]!;
+          final arch = releaseArtifactPath.key;
           final patchArtifactPath = p.join(
             patchArchsBuildDir.path,
-            archMetadata.path,
+            arch.androidBuildPath,
             'libapp.so',
           );
           logger.detail('Creating artifact for $patchArtifactPath');
@@ -309,7 +310,7 @@ Looked in:
               patchArtifactPath: patchArtifactPath,
             );
             patchArtifactBundles[releaseArtifactPath.key] = PatchArtifactBundle(
-              arch: archMetadata.arch,
+              arch: arch.arch,
               path: diffPath,
               hash: hash,
               size: await File(diffPath).length(),
@@ -322,9 +323,8 @@ Looked in:
         createDiffProgress.complete();
 
         final archMetadata = patchArtifactBundles.keys.map((arch) {
-          final name = arch.name;
           final size = formatBytes(patchArtifactBundles[arch]!.size);
-          return '$name ($size)';
+          return '${arch.name} ($size)';
         });
 
         if (dryRun) {

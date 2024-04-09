@@ -9,7 +9,7 @@ import 'package:shorebird_cli/src/code_push_client_wrapper.dart';
 import 'package:shorebird_cli/src/deployment_track.dart';
 import 'package:shorebird_cli/src/logger.dart';
 import 'package:shorebird_cli/src/platform.dart';
-import 'package:shorebird_cli/src/shorebird_build_mixin.dart';
+import 'package:shorebird_cli/src/platform/platform.dart';
 import 'package:shorebird_cli/src/shorebird_env.dart';
 import 'package:shorebird_cli/src/third_party/flutter_tools/lib/flutter_tools.dart';
 import 'package:shorebird_code_push_client/shorebird_code_push_client.dart';
@@ -95,19 +95,13 @@ void main() {
       updatedAt: DateTime(2023),
     );
     final partchArtifactBundle = PatchArtifactBundle(
-      arch: arch.name,
+      arch: arch.arch,
       path: 'path',
       hash: '',
       size: 4,
     );
     final patchArtifactBundles = {arch: partchArtifactBundle};
-    const archMap = {
-      arch: ArchMetadata(
-        path: 'arm64-v8a',
-        arch: 'aarch64',
-        enginePath: 'android_release_arm64',
-      ),
-    };
+    const archs = [Arch.arm64];
     const releaseArtifact = ReleaseArtifact(
       id: 1,
       releaseId: releaseId,
@@ -769,7 +763,7 @@ Please bump your version number and try again.''',
               () => codePushClientWrapper.getReleaseArtifacts(
                 appId: app.appId,
                 releaseId: releaseId,
-                architectures: archMap,
+                architectures: archs,
                 platform: releasePlatform,
               ),
             ),
@@ -778,7 +772,7 @@ Please bump your version number and try again.''',
           verify(() => progress.fail(error)).called(1);
         });
 
-        test('exits with code 70 if release artifact does not exist', () async {
+        test('only returns release artifacts that exist', () async {
           when(
             () => codePushClient.getReleaseArtifacts(
               appId: any(named: 'appId'),
@@ -787,24 +781,26 @@ Please bump your version number and try again.''',
               platform: any(named: 'platform'),
             ),
           ).thenAnswer((_) async => []);
+          when(
+            () => codePushClient.getReleaseArtifacts(
+              appId: any(named: 'appId'),
+              releaseId: any(named: 'releaseId'),
+              arch: 'aarch64',
+              platform: any(named: 'platform'),
+            ),
+          ).thenAnswer((_) async => [releaseArtifact]);
 
-          await expectLater(
-            () async => runWithOverrides(
+          expect(
+            await runWithOverrides(
               () => codePushClientWrapper.getReleaseArtifacts(
                 appId: app.appId,
                 releaseId: releaseId,
-                architectures: archMap,
+                architectures: Arch.values,
                 platform: releasePlatform,
               ),
             ),
-            exitsWithCode(ExitCode.software),
+            equals({Arch.arm64: releaseArtifact}),
           );
-
-          verify(
-            () => progress.fail(
-              '''No artifact found for architecture aarch64 in release $releaseId''',
-            ),
-          ).called(1);
         });
 
         test('returns release artifacts when release artifacts exist',
@@ -822,7 +818,7 @@ Please bump your version number and try again.''',
             () => codePushClientWrapper.getReleaseArtifacts(
               appId: app.appId,
               releaseId: releaseId,
-              architectures: archMap,
+              architectures: archs,
               platform: releasePlatform,
             ),
           );
@@ -849,7 +845,7 @@ Please bump your version number and try again.''',
               () => codePushClientWrapper.getReleaseArtifact(
                 appId: app.appId,
                 releaseId: releaseId,
-                arch: arch.name,
+                arch: arch.arch,
                 platform: releasePlatform,
               ),
             ),
@@ -904,7 +900,7 @@ Please bump your version number and try again.''',
               () => codePushClientWrapper.getReleaseArtifact(
                 appId: app.appId,
                 releaseId: releaseId,
-                arch: arch.name,
+                arch: arch.arch,
                 platform: releasePlatform,
               ),
             );
@@ -932,7 +928,7 @@ Please bump your version number and try again.''',
               () => codePushClientWrapper.maybeGetReleaseArtifact(
                 appId: app.appId,
                 releaseId: releaseId,
-                arch: arch.name,
+                arch: arch.arch,
                 platform: releasePlatform,
               ),
             ),
@@ -956,7 +952,7 @@ Please bump your version number and try again.''',
             () => codePushClientWrapper.maybeGetReleaseArtifact(
               appId: app.appId,
               releaseId: releaseId,
-              arch: arch.name,
+              arch: arch.arch,
               platform: releasePlatform,
             ),
           );
@@ -981,7 +977,7 @@ Please bump your version number and try again.''',
               () => codePushClientWrapper.maybeGetReleaseArtifact(
                 appId: app.appId,
                 releaseId: releaseId,
-                arch: arch.name,
+                arch: arch.arch,
                 platform: releasePlatform,
               ),
             );
@@ -997,8 +993,7 @@ Please bump your version number and try again.''',
 
         void setUpProjectRoot({String? flavor}) {
           File(p.join(projectRoot.path, aabPath)).createSync(recursive: true);
-          for (final archMetadata
-              in ShorebirdBuildMixin.allAndroidArchitectures.values) {
+          for (final archMetadata in Arch.values) {
             final artifactPath = p.join(
               projectRoot.path,
               'build',
@@ -1008,7 +1003,7 @@ Please bump your version number and try again.''',
               flavor != null ? '${flavor}Release' : 'release',
               'out',
               'lib',
-              archMetadata.path,
+              archMetadata.androidBuildPath,
               'libapp.so',
             );
             File(artifactPath).createSync(recursive: true);
@@ -1038,7 +1033,7 @@ Please bump your version number and try again.''',
                 platform: releasePlatform,
                 projectRoot: projectRoot.path,
                 aabPath: p.join(projectRoot.path, aabPath),
-                architectures: ShorebirdBuildMixin.allAndroidArchitectures,
+                architectures: Arch.values,
               ),
             ),
             exitsWithCode(ExitCode.software),
@@ -1074,7 +1069,7 @@ Please bump your version number and try again.''',
                 platform: releasePlatform,
                 projectRoot: projectRoot.path,
                 aabPath: p.join(projectRoot.path, aabPath),
-                architectures: ShorebirdBuildMixin.allAndroidArchitectures,
+                architectures: Arch.values,
               ),
             ),
             exitsWithCode(ExitCode.software),
@@ -1106,7 +1101,7 @@ Please bump your version number and try again.''',
                 platform: releasePlatform,
                 projectRoot: projectRoot.path,
                 aabPath: p.join(projectRoot.path, aabPath),
-                architectures: ShorebirdBuildMixin.allAndroidArchitectures,
+                architectures: Arch.values,
               ),
             ),
             exitsWithCode(ExitCode.software),
@@ -1138,13 +1133,12 @@ Please bump your version number and try again.''',
               platform: releasePlatform,
               projectRoot: projectRoot.path,
               aabPath: p.join(projectRoot.path, aabPath),
-              architectures: ShorebirdBuildMixin.allAndroidArchitectures,
+              architectures: Arch.values,
             ),
           );
 
           // 1 for each arch, 1 for the aab
-          final numArtifactsUploaded =
-              ShorebirdBuildMixin.allAndroidArchitectures.values.length + 1;
+          final numArtifactsUploaded = Arch.values.length + 1;
           verify(
             () => logger.info(any(that: contains('already exists'))),
           ).called(numArtifactsUploaded);
@@ -1173,7 +1167,7 @@ Please bump your version number and try again.''',
               platform: releasePlatform,
               projectRoot: projectRoot.path,
               aabPath: p.join(projectRoot.path, aabPath),
-              architectures: ShorebirdBuildMixin.allAndroidArchitectures,
+              architectures: Arch.values,
             ),
           );
 
@@ -1206,7 +1200,7 @@ Please bump your version number and try again.''',
               platform: releasePlatform,
               projectRoot: projectRoot.path,
               aabPath: p.join(projectRoot.path, aabPath),
-              architectures: ShorebirdBuildMixin.allAndroidArchitectures,
+              architectures: Arch.values,
             ),
           );
 
@@ -1236,7 +1230,7 @@ Please bump your version number and try again.''',
               platform: releasePlatform,
               projectRoot: projectRoot.path,
               aabPath: p.join(projectRoot.path, aabPath),
-              architectures: ShorebirdBuildMixin.allAndroidArchitectures,
+              architectures: Arch.values,
               flavor: flavorName,
             ),
           );
@@ -1254,7 +1248,7 @@ Please bump your version number and try again.''',
               hash: any(named: 'hash'),
               canSideload: any(named: 'canSideload'),
             ),
-          ).called(ShorebirdBuildMixin.allAndroidArchitectures.length);
+          ).called(Arch.values.length);
           verify(() => progress.complete()).called(1);
           verifyNever(() => progress.fail(any()));
         });
@@ -1278,13 +1272,12 @@ Please bump your version number and try again.''',
         final extractedAarPath = p.join(aarDir, 'flutter_release-$buildNumber');
 
         void setUpProjectRoot({String? flavor}) {
-          for (final archMetadata
-              in ShorebirdBuildMixin.allAndroidArchitectures.values) {
+          for (final arch in Arch.values) {
             final artifactPath = p.join(
               projectRoot.path,
               extractedAarPath,
               'jni',
-              archMetadata.path,
+              arch.androidBuildPath,
               'libapp.so',
             );
             File(artifactPath).createSync(recursive: true);
@@ -1330,7 +1323,7 @@ Please bump your version number and try again.''',
                 platform: releasePlatform,
                 aarPath: p.join(projectRoot.path, aarPath),
                 extractedAarDir: p.join(projectRoot.path, extractedAarPath),
-                architectures: ShorebirdBuildMixin.allAndroidArchitectures,
+                architectures: Arch.values,
               ),
             ),
             exitsWithCode(ExitCode.software),
@@ -1363,7 +1356,7 @@ Please bump your version number and try again.''',
                 platform: releasePlatform,
                 aarPath: p.join(projectRoot.path, aarPath),
                 extractedAarDir: p.join(projectRoot.path, extractedAarPath),
-                architectures: ShorebirdBuildMixin.allAndroidArchitectures,
+                architectures: Arch.values,
               ),
             ),
             exitsWithCode(ExitCode.software),
@@ -1396,13 +1389,12 @@ Please bump your version number and try again.''',
               platform: releasePlatform,
               aarPath: p.join(projectRoot.path, aarPath),
               extractedAarDir: p.join(projectRoot.path, extractedAarPath),
-              architectures: ShorebirdBuildMixin.allAndroidArchitectures,
+              architectures: Arch.values,
             ),
           );
 
           // 1 for each arch, 1 for the aab
-          final numArtifactsUploaded =
-              ShorebirdBuildMixin.allAndroidArchitectures.values.length + 1;
+          final numArtifactsUploaded = Arch.values.length + 1;
           verify(
             () => logger.info(any(that: contains('already exists'))),
           ).called(numArtifactsUploaded);
@@ -1432,7 +1424,7 @@ Please bump your version number and try again.''',
               platform: releasePlatform,
               aarPath: p.join(projectRoot.path, aarPath),
               extractedAarDir: p.join(projectRoot.path, extractedAarPath),
-              architectures: ShorebirdBuildMixin.allAndroidArchitectures,
+              architectures: Arch.values,
             ),
           );
 
@@ -1466,7 +1458,7 @@ Please bump your version number and try again.''',
               platform: releasePlatform,
               aarPath: p.join(projectRoot.path, aarPath),
               extractedAarDir: p.join(projectRoot.path, extractedAarPath),
-              architectures: ShorebirdBuildMixin.allAndroidArchitectures,
+              architectures: Arch.values,
             ),
           );
 
@@ -1497,7 +1489,7 @@ Please bump your version number and try again.''',
               platform: releasePlatform,
               aarPath: p.join(projectRoot.path, aarPath),
               extractedAarDir: p.join(projectRoot.path, extractedAarPath),
-              architectures: ShorebirdBuildMixin.allAndroidArchitectures,
+              architectures: Arch.values,
             ),
           );
 
@@ -1511,7 +1503,7 @@ Please bump your version number and try again.''',
               hash: any(named: 'hash'),
               canSideload: any(named: 'canSideload'),
             ),
-          ).called(ShorebirdBuildMixin.allAndroidArchitectures.length + 1);
+          ).called(Arch.values.length + 1);
           verify(() => progress.complete()).called(1);
           verifyNever(() => progress.fail(any()));
         });
@@ -1951,7 +1943,7 @@ Please bump your version number and try again.''',
               appId: appId,
               artifactPath: partchArtifactBundle.path,
               patchId: patchId,
-              arch: arch.name,
+              arch: arch.arch,
               platform: releasePlatform,
               hash: partchArtifactBundle.hash,
             ),
@@ -2014,7 +2006,7 @@ Please bump your version number and try again.''',
               appId: appId,
               artifactPath: partchArtifactBundle.path,
               patchId: patchId,
-              arch: arch.name,
+              arch: arch.arch,
               platform: releasePlatform,
               hash: partchArtifactBundle.hash,
             ),
@@ -2070,7 +2062,7 @@ Please bump your version number and try again.''',
               appId: appId,
               artifactPath: partchArtifactBundle.path,
               patchId: patchId,
-              arch: arch.name,
+              arch: arch.arch,
               platform: releasePlatform,
               hash: partchArtifactBundle.hash,
             ),

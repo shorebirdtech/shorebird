@@ -16,7 +16,7 @@ import 'package:shorebird_cli/src/executables/executables.dart';
 import 'package:shorebird_cli/src/logger.dart';
 import 'package:shorebird_cli/src/os/operating_system_interface.dart';
 import 'package:shorebird_cli/src/platform.dart';
-import 'package:shorebird_cli/src/shorebird_build_mixin.dart';
+import 'package:shorebird_cli/src/platform/platform.dart';
 import 'package:shorebird_cli/src/shorebird_env.dart';
 import 'package:shorebird_cli/src/shorebird_flutter.dart';
 import 'package:shorebird_cli/src/shorebird_process.dart';
@@ -112,13 +112,12 @@ void main() {
         buildNumber,
       );
       final aarPath = p.join(aarDir, 'flutter_release-$buildNumber.aar');
-      for (final archMetadata
-          in ShorebirdBuildMixin.allAndroidArchitectures.values) {
+      for (final archMetadata in Arch.values) {
         final artifactPath = p.join(
           aarDir,
           'flutter_release-$buildNumber',
           'jni',
-          archMetadata.path,
+          archMetadata.androidBuildPath,
           'libapp.so',
         );
         File(artifactPath).createSync(recursive: true);
@@ -155,6 +154,8 @@ void main() {
       when(() => auth.client).thenReturn(httpClient);
       when(() => argResults['build-number']).thenReturn(buildNumber);
       when(() => argResults['release-version']).thenReturn(version);
+      when(() => argResults['target-platform'])
+          .thenReturn(Arch.values.map((a) => a.targetPlatformCliArg).toList());
       when(() => argResults.rest).thenReturn([]);
       when(() => auth.isAuthenticated).thenReturn(true);
       when(() => logger.confirm(any())).thenReturn(true);
@@ -308,6 +309,42 @@ void main() {
       expect(result, ExitCode.config.code);
     });
 
+    group('when target-platforms is specified', () {
+      setUp(() {
+        when(() => argResults['target-platform']).thenReturn(['android-arm']);
+      });
+
+      test('only creates artifcats for the specified archs', () async {
+        setUpProjectRootArtifacts();
+        final exitCode = await runWithOverrides(command.run);
+        expect(exitCode, equals(ExitCode.success.code));
+        verify(
+          () => logger.info(
+            any(
+              that: contains(
+                '''
+🕹️  Platform: ${lightCyan.wrap('android')} ${lightCyan.wrap('(arm32)')}''',
+              ),
+            ),
+          ),
+        ).called(1);
+        verify(
+          () => shorebirdProcess.run(
+            'flutter',
+            [
+              'build',
+              'aar',
+              '--no-debug',
+              '--no-profile',
+              '--build-number=$buildNumber',
+              '--target-platform=android-arm',
+            ],
+            runInShell: any(named: 'runInShell'),
+          ),
+        ).called(1);
+      });
+    });
+
     group('when flutter-version is provided', () {
       const flutterVersion = '3.16.3';
       setUp(() {
@@ -425,6 +462,7 @@ $exception''',
             '--no-debug',
             '--no-profile',
             '--build-number=$buildNumber',
+            '--target-platform=android-arm,android-arm64,android-x64',
           ],
           runInShell: any(named: 'runInShell'),
         ),

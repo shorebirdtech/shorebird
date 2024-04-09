@@ -21,7 +21,7 @@ import 'package:shorebird_cli/src/logger.dart';
 import 'package:shorebird_cli/src/os/operating_system_interface.dart';
 import 'package:shorebird_cli/src/patch_diff_checker.dart';
 import 'package:shorebird_cli/src/platform.dart';
-import 'package:shorebird_cli/src/shorebird_build_mixin.dart';
+import 'package:shorebird_cli/src/platform/platform.dart';
 import 'package:shorebird_cli/src/shorebird_env.dart';
 import 'package:shorebird_cli/src/shorebird_flutter.dart';
 import 'package:shorebird_cli/src/shorebird_process.dart';
@@ -144,13 +144,12 @@ void main() {
         buildNumber,
       );
       final aarPath = p.join(aarDir, 'flutter_release-$buildNumber.aar');
-      for (final archMetadata
-          in ShorebirdBuildMixin.allAndroidArchitectures.values) {
+      for (final archMetadata in Arch.values) {
         final artifactPath = p.join(
           aarDir,
           'flutter_release-$buildNumber',
           'jni',
-          archMetadata.path,
+          archMetadata.androidBuildPath,
           'libapp.so',
         );
         File(artifactPath).createSync(recursive: true);
@@ -861,7 +860,7 @@ Please re-run the release command for this version or create a new release.'''),
         () => codePushClientWrapper.getReleaseArtifacts(
           appId: appId,
           releaseId: release.id,
-          architectures: ShorebirdBuildMixin.allAndroidArchitectures,
+          architectures: Arch.values,
           platform: releasePlatform,
         ),
       ).called(1);
