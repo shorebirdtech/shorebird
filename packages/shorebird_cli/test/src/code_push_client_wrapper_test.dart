@@ -460,7 +460,10 @@ void main() {
               () => logger.err(
                 '''
 It looks like you have an existing ios release for version ${lightCyan.wrap(release.version)}.
-Please bump your version number and try again.''',
+Please bump your version number and try again.
+
+You can manage this release in the Shorebird Console at:
+https://console.shorebird.dev/apps/$appId/releases/$releaseId''',
               ),
             ).called(1);
           },

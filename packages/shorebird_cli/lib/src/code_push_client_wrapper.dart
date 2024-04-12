@@ -162,7 +162,10 @@ This app may not exist or you may not have permission to view it.''',
       logger.err(
         '''
 It looks like you have an existing ${platform.name} release for version ${lightCyan.wrap(release.version)}.
-Please bump your version number and try again.''',
+Please bump your version number and try again.
+
+You can manage this release in the Shorebird Console at:
+https://console.shorebird.dev/apps/${release.appId}/releases/${release.id}''',
       );
       exit(ExitCode.software.code);
     }
