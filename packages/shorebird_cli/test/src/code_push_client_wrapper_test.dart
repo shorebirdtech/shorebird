@@ -456,6 +456,10 @@ void main() {
               ),
               exitsWithCode(ExitCode.software),
             );
+            final uri = ShorebirdWebConsole.buildAppReleaseLink(
+              appId,
+              releaseId,
+            );
 
             verify(
               () => logger.err(
@@ -463,7 +467,7 @@ void main() {
 It looks like you have an existing ios release for version ${lightCyan.wrap(release.version)}.
 Please bump your version number and try again.
 
-You can manage this release in the ${ShorebirdWebConsole.linkToAppRelease(appId, releaseId, message: 'Shorebird Console')}''',
+You can manage this release in the ${link(uri: uri, message: 'Shorebird Console')}''',
               ),
             ).called(1);
           },

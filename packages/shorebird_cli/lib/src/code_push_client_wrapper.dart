@@ -160,12 +160,16 @@ This app may not exist or you may not have permission to view it.''',
     required ReleasePlatform platform,
   }) {
     if (release.platformStatuses[platform] == ReleaseStatus.active) {
+      final uri = ShorebirdWebConsole.buildAppReleaseLink(
+        release.appId,
+        release.id,
+      );
       logger.err(
         '''
 It looks like you have an existing ${platform.name} release for version ${lightCyan.wrap(release.version)}.
 Please bump your version number and try again.
 
-You can manage this release in the ${ShorebirdWebConsole.linkToAppRelease(release.appId, release.id, message: 'Shorebird Console')}''',
+You can manage this release in the ${link(uri: uri, message: 'Shorebird Console')}''',
       );
       exit(ExitCode.software.code);
     }

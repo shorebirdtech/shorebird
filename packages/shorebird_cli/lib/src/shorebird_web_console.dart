@@ -1,24 +1,14 @@
-import 'package:mason_logger/mason_logger.dart';
-
 class ShorebirdWebConsole {
-  static String linkTo(
-    String path, {
-    String? message,
-  }) {
-    return link(
-      uri: Uri.parse('https://console.shorebird.dev/$path'),
-      message: message,
-    );
+  static Uri buildLink(String path) {
+    return Uri.parse('https://console.shorebird.dev/$path');
   }
 
-  static String linkToAppRelease(
+  static Uri buildAppReleaseLink(
     String appId,
-    int releaseId, {
-    String? message,
-  }) {
-    return linkTo(
+    int releaseId,
+  ) {
+    return buildLink(
       'apps/$appId/releases/$releaseId',
-      message: message,
     );
   }
 }
