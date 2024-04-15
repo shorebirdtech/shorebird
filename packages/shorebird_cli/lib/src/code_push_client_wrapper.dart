@@ -15,6 +15,7 @@ import 'package:shorebird_cli/src/deployment_track.dart';
 import 'package:shorebird_cli/src/logger.dart';
 import 'package:shorebird_cli/src/platform/platform.dart';
 import 'package:shorebird_cli/src/shorebird_env.dart';
+import 'package:shorebird_cli/src/shorebird_web_console.dart';
 import 'package:shorebird_cli/src/third_party/flutter_tools/lib/flutter_tools.dart';
 import 'package:shorebird_code_push_client/shorebird_code_push_client.dart';
 
@@ -165,7 +166,7 @@ It looks like you have an existing ${platform.name} release for version ${lightC
 Please bump your version number and try again.
 
 You can manage this release in the Shorebird Console at:
-https://console.shorebird.dev/apps/${release.appId}/releases/${release.id}''',
+${ShorebirdWebConsole.linkToAppRelease(release.appId, release.id)}''',
       );
       exit(ExitCode.software.code);
     }
