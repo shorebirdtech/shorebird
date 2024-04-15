@@ -2,7 +2,7 @@ import 'package:shorebird_cli/src/shorebird_web_console.dart';
 import 'package:test/test.dart';
 
 void main() {
-  group('ShorebirdWebConsole', () {
+  group(ShorebirdWebConsole, () {
     test('uri returns the correct uri with the received path', () {
       expect(
         ShorebirdWebConsole.uri('path'),
