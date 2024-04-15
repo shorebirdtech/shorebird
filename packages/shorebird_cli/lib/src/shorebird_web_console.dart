@@ -11,10 +11,14 @@ class ShorebirdWebConsole {
     );
   }
 
-  static String linkToAppRelease(String appId, int releaseId) {
+  static String linkToAppRelease(
+    String appId,
+    int releaseId, {
+    String? message,
+  }) {
     return linkTo(
       'apps/$appId/releases/$releaseId',
-      message: 'Shorebird release',
+      message: message,
     );
   }
 }

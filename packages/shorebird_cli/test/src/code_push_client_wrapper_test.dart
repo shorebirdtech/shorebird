@@ -463,7 +463,7 @@ void main() {
 It looks like you have an existing ios release for version ${lightCyan.wrap(release.version)}.
 Please bump your version number and try again.
 
-You can manage your ${ShorebirdWebConsole.linkToAppRelease(appId, releaseId)} in the console.''',
+You can manage this release in the ${ShorebirdWebConsole.linkToAppRelease(appId, releaseId, message: 'Shorebird Console')}''',
               ),
             ).called(1);
           },
