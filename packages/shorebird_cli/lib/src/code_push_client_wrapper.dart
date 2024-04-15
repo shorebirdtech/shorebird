@@ -165,8 +165,7 @@ This app may not exist or you may not have permission to view it.''',
 It looks like you have an existing ${platform.name} release for version ${lightCyan.wrap(release.version)}.
 Please bump your version number and try again.
 
-You can manage this release in the Shorebird Console at:
-${ShorebirdWebConsole.linkToAppRelease(release.appId, release.id)}''',
+You can manage your ${ShorebirdWebConsole.linkToAppRelease(release.appId, release.id)} in the console.''',
       );
       exit(ExitCode.software.code);
     }
