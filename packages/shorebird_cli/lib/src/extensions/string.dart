@@ -9,7 +9,7 @@ extension Case on String {
     final exp = RegExp('(?<=[a-z])[A-Z]');
     return replaceAllMapped(exp, (m) => '-${m.group(0)}')
         .toLowerCase()
-        .replaceAll(" ", "-")
-        .replaceAll("_", "-");
+        .replaceAll(' ', '-')
+        .replaceAll('_', '-');
   }
 }
