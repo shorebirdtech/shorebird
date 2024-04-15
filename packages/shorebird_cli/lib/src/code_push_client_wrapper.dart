@@ -160,7 +160,7 @@ This app may not exist or you may not have permission to view it.''',
     required ReleasePlatform platform,
   }) {
     if (release.platformStatuses[platform] == ReleaseStatus.active) {
-      final uri = ShorebirdWebConsole.buildAppReleaseLink(
+      final uri = ShorebirdWebConsole.appReleaseUri(
         release.appId,
         release.id,
       );

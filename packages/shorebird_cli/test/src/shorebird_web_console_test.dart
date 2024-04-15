@@ -3,16 +3,16 @@ import 'package:test/test.dart';
 
 void main() {
   group('ShorebirdWebConsole', () {
-    test('linkTo returns the expected link to the root of the site', () {
+    test('uri returns the correct uri with the received path', () {
       expect(
-        ShorebirdWebConsole.buildLink('path'),
+        ShorebirdWebConsole.uri('path'),
         Uri.parse('https://console.shorebird.dev/path'),
       );
     });
 
-    test('linkToAppRelease returns the expected link to an app release', () {
+    test('appReleaseUri returns the correct uri to an app release', () {
       expect(
-        ShorebirdWebConsole.buildAppReleaseLink('appId', 123),
+        ShorebirdWebConsole.appReleaseUri('appId', 123),
         Uri.parse('https://console.shorebird.dev/apps/appId/releases/123'),
       );
     });

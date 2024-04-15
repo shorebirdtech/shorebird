@@ -1,13 +1,13 @@
 class ShorebirdWebConsole {
-  static Uri buildLink(String path) {
+  static Uri uri(String path) {
     return Uri.parse('https://console.shorebird.dev/$path');
   }
 
-  static Uri buildAppReleaseLink(
+  static Uri appReleaseUri(
     String appId,
     int releaseId,
   ) {
-    return buildLink(
+    return ShorebirdWebConsole.uri(
       'apps/$appId/releases/$releaseId',
     );
   }

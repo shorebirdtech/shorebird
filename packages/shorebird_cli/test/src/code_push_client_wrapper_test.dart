@@ -456,7 +456,7 @@ void main() {
               ),
               exitsWithCode(ExitCode.software),
             );
-            final uri = ShorebirdWebConsole.buildAppReleaseLink(
+            final uri = ShorebirdWebConsole.appReleaseUri(
               appId,
               releaseId,
             );
