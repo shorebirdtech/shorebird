@@ -8,6 +8,7 @@ import 'package:path/path.dart' as p;
 import 'package:scoped/scoped.dart';
 import 'package:shorebird_cli/src/code_push_client_wrapper.dart';
 import 'package:shorebird_cli/src/command.dart';
+import 'package:shorebird_cli/src/commands/release/release.dart';
 import 'package:shorebird_cli/src/config/config.dart';
 import 'package:shorebird_cli/src/logger.dart';
 import 'package:shorebird_cli/src/platform.dart';
@@ -306,6 +307,12 @@ dependencies {
   // ...
 }''')}
 ''');
+
+        ReleaseCommand.printPatchInstructions(
+          name: name,
+          releaseVersion: release.version,
+          requiresReleaseVersion: true,
+        );
 
         return ExitCode.success.code;
       },

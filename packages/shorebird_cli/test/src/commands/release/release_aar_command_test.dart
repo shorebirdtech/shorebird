@@ -564,6 +564,19 @@ $exception''',
           ),
         ),
       ).called(1);
+      verify(
+        () => logger.info(
+          '''To create a patch for this release, run ${lightCyan.wrap('shorebird patch aar --release-version=${release.version}')}''',
+        ),
+      ).called(1);
+      verifyNever(
+        () => logger.info(
+          '''
+
+Note: ${lightCyan.wrap('shorebird patch aar')} without the --release-version option will patch the current version of the app.
+''',
+        ),
+      );
     });
 
     test('copies aar library to a releases folder', () async {

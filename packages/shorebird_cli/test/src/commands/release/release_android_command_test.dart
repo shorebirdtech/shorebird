@@ -636,6 +636,19 @@ ${link(uri: Uri.parse('https://support.google.com/googleplay/android-developer/a
           runInShell: true,
         ),
       ).called(1);
+      verify(
+        () => logger.info(
+          '''To create a patch for this release, run ${lightCyan.wrap('shorebird patch android --release-version=${release.version}')}''',
+        ),
+      ).called(1);
+      verify(
+        () => logger.info(
+          '''
+
+Note: ${lightCyan.wrap('shorebird patch android')} without the --release-version option will patch the current version of the app.
+''',
+        ),
+      ).called(1);
       expect(exitCode, ExitCode.success.code);
     });
 
@@ -785,6 +798,19 @@ Either run `flutter pub get` manually, or follow the steps in ${link(uri: Uri.pa
           platform: releasePlatform,
           status: ReleaseStatus.active,
           metadata: any(named: 'metadata'),
+        ),
+      ).called(1);
+      verify(
+        () => logger.info(
+          '''To create a patch for this release, run ${lightCyan.wrap('shorebird patch android --flavor=$flavor --target=$target --release-version=${release.version}')}''',
+        ),
+      ).called(1);
+      verify(
+        () => logger.info(
+          '''
+
+Note: ${lightCyan.wrap('shorebird patch android --flavor=$flavor --target=$target')} without the --release-version option will patch the current version of the app.
+''',
         ),
       ).called(1);
       expect(exitCode, ExitCode.success.code);

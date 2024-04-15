@@ -952,6 +952,19 @@ error: exportArchive: No signing certificate "iOS Distribution" found
             ),
           ),
         ).called(1);
+        verify(
+          () => logger.info(
+            '''To create a patch for this release, run ${lightCyan.wrap('shorebird patch ios --release-version=${release.version}')}''',
+          ),
+        ).called(1);
+        verify(
+          () => logger.info(
+            '''
+
+Note: ${lightCyan.wrap('shorebird patch ios')} without the --release-version option will patch the current version of the app.
+''',
+          ),
+        ).called(1);
         expect(exitCode, ExitCode.success.code);
       });
 
@@ -1010,6 +1023,19 @@ flavors:
                 any(named: 'xcarchivePath', that: endsWith('.xcarchive')),
             runnerPath: any(named: 'runnerPath', that: endsWith('Runner.app')),
             isCodesigned: true,
+          ),
+        ).called(1);
+        verify(
+          () => logger.info(
+            '''To create a patch for this release, run ${lightCyan.wrap('shorebird patch ios --flavor=$flavor --target=$target --release-version=${release.version}')}''',
+          ),
+        ).called(1);
+        verify(
+          () => logger.info(
+            '''
+
+Note: ${lightCyan.wrap('shorebird patch ios --flavor=$flavor --target=$target')} without the --release-version option will patch the current version of the app.
+''',
           ),
         ).called(1);
         expect(exitCode, ExitCode.success.code);
