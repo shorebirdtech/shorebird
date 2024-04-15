@@ -571,6 +571,19 @@ $exception''',
             ),
           ),
         ).called(1);
+        verify(
+          () => logger.info(
+            '''To create a patch for this release, run ${lightCyan.wrap('shorebird patch ios-framework --release-version=${release.version}')}''',
+          ),
+        ).called(1);
+        verifyNever(
+          () => logger.info(
+            '''
+
+Note: ${lightCyan.wrap('shorebird patch ios-framework')} without the --release-version option will patch the current version of the app.
+''',
+          ),
+        );
         expect(exitCode, ExitCode.success.code);
       });
 

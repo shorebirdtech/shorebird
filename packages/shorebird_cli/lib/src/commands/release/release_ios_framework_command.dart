@@ -8,6 +8,7 @@ import 'package:pub_semver/pub_semver.dart';
 import 'package:scoped/scoped.dart';
 import 'package:shorebird_cli/src/code_push_client_wrapper.dart';
 import 'package:shorebird_cli/src/command.dart';
+import 'package:shorebird_cli/src/commands/release/release.dart';
 import 'package:shorebird_cli/src/config/config.dart';
 import 'package:shorebird_cli/src/doctor.dart';
 import 'package:shorebird_cli/src/executables/xcodebuild.dart';
@@ -252,6 +253,12 @@ To do this:
 
 Instructions for these steps can be found at https://docs.flutter.dev/add-to-app/ios/project-setup#option-b---embed-frameworks-in-xcode.
 ''');
+
+        ReleaseCommand.printPatchInstructions(
+          name: name,
+          releaseVersion: release.version,
+          requiresReleaseVersion: true,
+        );
 
         return ExitCode.success.code;
       },

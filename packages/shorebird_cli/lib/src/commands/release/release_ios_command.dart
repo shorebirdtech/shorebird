@@ -8,6 +8,7 @@ import 'package:scoped/scoped.dart';
 import 'package:shorebird_cli/src/archive_analysis/archive_analysis.dart';
 import 'package:shorebird_cli/src/code_push_client_wrapper.dart';
 import 'package:shorebird_cli/src/command.dart';
+import 'package:shorebird_cli/src/commands/release/release.dart';
 import 'package:shorebird_cli/src/config/config.dart';
 import 'package:shorebird_cli/src/doctor.dart';
 import 'package:shorebird_cli/src/executables/xcodebuild.dart';
@@ -359,6 +360,13 @@ You can open the archive in Xcode by running:
 ${styleBold.wrap('Make sure to uncheck "Manage Version and Build Number", or else shorebird will not work.')}
 ''');
         }
+
+        ReleaseCommand.printPatchInstructions(
+          name: name,
+          flavor: flavor,
+          target: target,
+          releaseVersion: release.version,
+        );
 
         return ExitCode.success.code;
       },
