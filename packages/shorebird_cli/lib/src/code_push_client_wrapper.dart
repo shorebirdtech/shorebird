@@ -15,6 +15,7 @@ import 'package:shorebird_cli/src/deployment_track.dart';
 import 'package:shorebird_cli/src/logger.dart';
 import 'package:shorebird_cli/src/platform/platform.dart';
 import 'package:shorebird_cli/src/shorebird_env.dart';
+import 'package:shorebird_cli/src/shorebird_web_console.dart';
 import 'package:shorebird_cli/src/third_party/flutter_tools/lib/flutter_tools.dart';
 import 'package:shorebird_code_push_client/shorebird_code_push_client.dart';
 
@@ -159,10 +160,16 @@ This app may not exist or you may not have permission to view it.''',
     required ReleasePlatform platform,
   }) {
     if (release.platformStatuses[platform] == ReleaseStatus.active) {
+      final uri = ShorebirdWebConsole.appReleaseUri(
+        release.appId,
+        release.id,
+      );
       logger.err(
         '''
 It looks like you have an existing ${platform.name} release for version ${lightCyan.wrap(release.version)}.
-Please bump your version number and try again.''',
+Please bump your version number and try again.
+
+You can manage this release in the ${link(uri: uri, message: 'Shorebird Console')}''',
       );
       exit(ExitCode.software.code);
     }

@@ -11,6 +11,7 @@ import 'package:shorebird_cli/src/logger.dart';
 import 'package:shorebird_cli/src/platform.dart';
 import 'package:shorebird_cli/src/platform/platform.dart';
 import 'package:shorebird_cli/src/shorebird_env.dart';
+import 'package:shorebird_cli/src/shorebird_web_console.dart';
 import 'package:shorebird_cli/src/third_party/flutter_tools/lib/flutter_tools.dart';
 import 'package:shorebird_code_push_client/shorebird_code_push_client.dart';
 import 'package:test/test.dart';
@@ -455,12 +456,18 @@ void main() {
               ),
               exitsWithCode(ExitCode.software),
             );
+            final uri = ShorebirdWebConsole.appReleaseUri(
+              appId,
+              releaseId,
+            );
 
             verify(
               () => logger.err(
                 '''
 It looks like you have an existing ios release for version ${lightCyan.wrap(release.version)}.
-Please bump your version number and try again.''',
+Please bump your version number and try again.
+
+You can manage this release in the ${link(uri: uri, message: 'Shorebird Console')}''',
               ),
             ).called(1);
           },
