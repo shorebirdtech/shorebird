@@ -12,6 +12,8 @@ This section contains past updates we've sent to customers via Discord.
 - 🚉 Support `--target-platforms` on android release and patch commands
 - 🍧 Fix `shorebird release android` with camelCase flavor names
 
+ℹ️ See [Shorebird Status](https://docs.shorebird.dev/status) up-to-date status.
+
 ## 1.0.0 (April 8, 2024)
 
 🎉🎉🎉🎉🎉🎉 It's here! 🎉🎉🎉🎉🎉🎉
