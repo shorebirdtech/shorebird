@@ -91,12 +91,12 @@ class CodePushClient {
     Map<String, String>? additionalRequestHeaders,
   })  : _httpClient = _CodePushHttpClient(
           httpClient ?? http.Client(),
-          {...baseHeaders, ...?additionalRequestHeaders},
+          {...standardHeaders, ...?additionalRequestHeaders},
         ),
         hostedUri = hostedUri ?? Uri.https('api.shorebird.dev');
 
   /// The standard headers applied to all requests.
-  static const baseHeaders = <String, String>{'x-version': packageVersion};
+  static const standardHeaders = <String, String>{'x-version': packageVersion};
 
   /// The default error message to use when an unknown error occurs.
   static const unknownErrorMessage = 'An unknown error occurred.';

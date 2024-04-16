@@ -23,7 +23,10 @@ void main() {
       details: 'test details',
     );
     const customHeaders = {'x-custom-header': 'custom-value'};
-    final expectedHeaders = {...CodePushClient.baseHeaders, ...customHeaders};
+    final expectedHeaders = {
+      ...CodePushClient.standardHeaders,
+      ...customHeaders,
+    };
 
     late http.Client httpClient;
     late CodePushClient codePushClient;
