@@ -105,10 +105,10 @@ version: 1.0.0
         expect(
           results.first,
           equals(
-            ValidationIssue(
+            const ValidationIssue(
               severity: ValidationIssueSeverity.error,
               message:
-                  '${p.join('pubspec.yaml')} is missing shorebird.yaml in assets',
+                  'No shorebird.yaml found in pubspec.yaml assets',
             ),
           ),
         );
@@ -125,10 +125,10 @@ version: 1.0.0
         expect(
           results.first,
           equals(
-            ValidationIssue(
+            const ValidationIssue(
               severity: ValidationIssueSeverity.error,
               message:
-                  '${p.join('pubspec.yaml')} is missing shorebird.yaml in assets',
+                  'No shorebird.yaml found in pubspec.yaml assets',
             ),
           ),
         );

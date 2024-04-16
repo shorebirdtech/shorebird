@@ -38,7 +38,7 @@ The command you are running must be run within a Flutter app project.''';
       return [
         ValidationIssue(
           severity: ValidationIssueSeverity.error,
-          message: '$pubspecYamlPath is missing shorebird.yaml in assets',
+          message: 'No shorebird.yaml found in pubspec.yaml assets',
           fix: () => _addShorebirdAssetToFile(pubspecYamlFile),
         ),
       ];
