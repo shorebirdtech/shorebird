@@ -5,6 +5,7 @@ import 'package:shorebird_cli/src/validators/validators.dart';
 import 'package:yaml/yaml.dart';
 import 'package:yaml_edit/yaml_edit.dart';
 
+/// Verifies that the shorebird.yaml is found in pubspec.yaml assets.
 class ShorebirdYamlAssetValidator extends Validator {
   final String pubspecYamlPath = 'pubspec.yaml';
 
