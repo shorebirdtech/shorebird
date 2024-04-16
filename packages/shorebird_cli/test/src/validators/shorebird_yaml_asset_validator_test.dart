@@ -108,7 +108,7 @@ version: 1.0.0
             ValidationIssue(
               severity: ValidationIssueSeverity.error,
               message:
-                  '${p.join('pubspec.yaml')} is missing shorebird.yaml in assets.',
+                  '${p.join('pubspec.yaml')} is missing shorebird.yaml in assets',
             ),
           ),
         );
@@ -128,7 +128,7 @@ version: 1.0.0
             ValidationIssue(
               severity: ValidationIssueSeverity.error,
               message:
-                  '${p.join('pubspec.yaml')} is missing shorebird.yaml in assets.',
+                  '${p.join('pubspec.yaml')} is missing shorebird.yaml in assets',
             ),
           ),
         );
