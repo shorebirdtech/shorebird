@@ -70,7 +70,8 @@ class _CodePushHttpClient extends http.BaseClient {
 
   @override
   Future<http.StreamedResponse> send(http.BaseRequest request) {
-    return _client.send(request..headers.addAll(_headers));
+    request.headers.addAll(_headers);
+    return _client.send(request);
   }
 
   @override

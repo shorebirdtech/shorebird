@@ -80,12 +80,13 @@ void main() {
         ),
       );
 
-      final captured = await runScoped(
+      final request = await runScoped(
         () async {
           // We don't care about the response of getApps, we just need to make a
           // request.
           await codePushClientWrapper.getApps();
-          return verify(() => httpClient.send(captureAny())).captured;
+          return verify(() => httpClient.send(captureAny())).captured.first
+              as http.BaseRequest;
         },
         values: {
           codePushClientWrapperRef,
@@ -96,7 +97,7 @@ void main() {
         },
       );
       expect(
-        (captured.first as http.BaseRequest).headers['x-cli-version'],
+        request.headers['x-cli-version'],
         equals(packageVersion),
       );
     });
