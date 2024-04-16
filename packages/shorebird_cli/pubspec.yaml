@@ -9,6 +9,7 @@ environment:
   sdk: ">=3.0.0 <4.0.0"
 
 dependencies:
+  # TODO(felangel): Use a published version on pub once a new release is published (>3.4.10).
   # We're using a specific commit because the latest published version (3.4.10)
   # does not include a sync close API for ZipFileEncoder.
   # https://github.com/brendan-duncan/archive/commit/94bf62410e9a073451bda0d851a07e8b8863bde4
