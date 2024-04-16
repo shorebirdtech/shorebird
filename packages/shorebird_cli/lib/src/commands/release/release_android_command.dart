@@ -245,6 +245,17 @@ Use `shorebird flutter versions list` to list available versions.
             release: existingRelease,
             platform: releasePlatform,
           );
+
+          // All artifacts associated with a given release must be built
+          // with the same Flutter revision.
+          if (existingRelease.flutterRevision != flutterRevisionForRelease) {
+            ReleaseCommand.printConflictingFlutterRevisionError(
+              existingFlutterRevision: existingRelease.flutterRevision,
+              currentFlutterRevision: flutterRevisionForRelease,
+              releaseVersion: releaseVersion,
+            );
+            return ExitCode.software.code;
+          }
         }
 
         final archNames = architectures.map((a) => a.name);
