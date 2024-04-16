@@ -17,6 +17,7 @@ import 'package:shorebird_cli/src/platform/platform.dart';
 import 'package:shorebird_cli/src/shorebird_env.dart';
 import 'package:shorebird_cli/src/shorebird_web_console.dart';
 import 'package:shorebird_cli/src/third_party/flutter_tools/lib/flutter_tools.dart';
+import 'package:shorebird_cli/src/version.dart';
 import 'package:shorebird_code_push_client/shorebird_code_push_client.dart';
 
 /// {@template patch_artifact_bundle}
@@ -50,6 +51,7 @@ ScopedRef<CodePushClientWrapper> codePushClientWrapperRef = create(() {
     codePushClient: CodePushClient(
       httpClient: auth.client,
       hostedUri: shorebirdEnv.hostedUri,
+      additionalRequestHeaders: {'x-cli-version': packageVersion},
     ),
   );
 });

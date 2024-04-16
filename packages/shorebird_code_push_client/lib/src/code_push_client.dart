@@ -62,13 +62,15 @@ class CodePushUpgradeRequiredException extends CodePushException {
 /// are consistent.
 /// For example, all requests include the standard `x-version` header.
 class _CodePushHttpClient extends http.BaseClient {
-  _CodePushHttpClient(this._client);
+  _CodePushHttpClient(this._client, this._headers);
 
   final http.Client _client;
 
+  final Map<String, String> _headers;
+
   @override
   Future<http.StreamedResponse> send(http.BaseRequest request) {
-    return _client.send(request..headers.addAll(CodePushClient.headers));
+    return _client.send(request..headers.addAll(_headers));
   }
 
   @override
@@ -86,11 +88,15 @@ class CodePushClient {
   CodePushClient({
     http.Client? httpClient,
     Uri? hostedUri,
-  })  : _httpClient = _CodePushHttpClient(httpClient ?? http.Client()),
+    Map<String, String>? additionalRequestHeaders,
+  })  : _httpClient = _CodePushHttpClient(
+          httpClient ?? http.Client(),
+          {...baseHeaders, ...?additionalRequestHeaders},
+        ),
         hostedUri = hostedUri ?? Uri.https('api.shorebird.dev');
 
   /// The standard headers applied to all requests.
-  static const headers = <String, String>{'x-version': packageVersion};
+  static const baseHeaders = <String, String>{'x-version': packageVersion};
 
   /// The default error message to use when an unknown error occurs.
   static const unknownErrorMessage = 'An unknown error occurred.';

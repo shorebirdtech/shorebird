@@ -1,3 +1,5 @@
+import 'dart:convert';
+
 import 'package:http/http.dart' as http;
 import 'package:mason_logger/mason_logger.dart';
 import 'package:mocktail/mocktail.dart';
@@ -13,32 +15,40 @@ import 'package:shorebird_cli/src/platform/platform.dart';
 import 'package:shorebird_cli/src/shorebird_env.dart';
 import 'package:shorebird_cli/src/shorebird_web_console.dart';
 import 'package:shorebird_cli/src/third_party/flutter_tools/lib/flutter_tools.dart';
+import 'package:shorebird_cli/src/version.dart';
 import 'package:shorebird_code_push_client/shorebird_code_push_client.dart';
 import 'package:test/test.dart';
 
+import 'fakes.dart';
 import 'mocks.dart';
 
 void main() {
   group('scoped', () {
     late Auth auth;
     late http.Client httpClient;
+    late Logger logger;
     late Platform platform;
+    late Progress progress;
     late ShorebirdEnv shorebirdEnv;
 
     setUpAll(() {
       registerFallbackValue(CreatePatchMetadata.forTest());
+      registerFallbackValue(FakeBaseRequest());
     });
 
     setUp(() {
       auth = MockAuth();
       httpClient = MockHttpClient();
+      logger = MockLogger();
       platform = MockPlatform();
+      progress = MockProgress();
       shorebirdEnv = MockShorebirdEnv();
 
       when(() => auth.client).thenReturn(httpClient);
       when(() => shorebirdEnv.hostedUri).thenReturn(
         Uri.parse('http://example.com'),
       );
+      when(() => logger.progress(any())).thenReturn(progress);
     });
 
     test('creates instance from scoped Auth and ShorebirdEnvironment', () {
@@ -56,6 +66,39 @@ void main() {
         Uri.parse('http://example.com'),
       );
       verify(() => auth.client).called(1);
+    });
+
+    test('includes x-cli-version in headers', () async {
+      when(() => httpClient.send(any())).thenAnswer(
+        (_) async => http.StreamedResponse(
+          Stream.value(
+            utf8.encode(
+              json.encode(const GetAppsResponse(apps: []).toJson()),
+            ),
+          ),
+          HttpStatus.ok,
+        ),
+      );
+
+      final captured = await runScoped(
+        () async {
+          // We don't care about the response of getApps, we just need to make a
+          // request.
+          await codePushClientWrapper.getApps();
+          return verify(() => httpClient.send(captureAny())).captured;
+        },
+        values: {
+          codePushClientWrapperRef,
+          authRef.overrideWith(() => auth),
+          loggerRef.overrideWith(() => logger),
+          platformRef.overrideWith(() => platform),
+          shorebirdEnvRef.overrideWith(() => shorebirdEnv),
+        },
+      );
+      expect(
+        (captured.first as http.BaseRequest).headers['x-cli-version'],
+        equals(packageVersion),
+      );
     });
   });
 
