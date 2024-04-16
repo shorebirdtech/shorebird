@@ -20,10 +20,11 @@ packages:
   archive:
     dependency: "direct main"
     description:
-      name: archive
-      sha256: "22600aa1e926be775fa5fe7e6894e7fb3df9efda8891c73f70fb3262399a432d"
-      url: "https://pub.dev"
-    source: hosted
+      path: "."
+      ref: "6b5bf69f76164c7dad164555491e18d5be683785"
+      resolved-ref: "6b5bf69f76164c7dad164555491e18d5be683785"
+      url: "https://github.com/brendan-duncan/archive"
+    source: git
     version: "3.4.10"
   args:
     dependency: "direct main"
