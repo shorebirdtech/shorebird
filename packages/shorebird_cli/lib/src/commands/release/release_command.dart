@@ -30,8 +30,8 @@ class ReleaseCommand extends ShorebirdCommand {
     logger.err(
       '''
 A release with version $releaseVersion already exists but was built using a different Flutter revision.
-  Existing release uses: $existingFlutterRevision
-  Current release uses: $currentFlutterRevision
+  Existing release built with: ${lightCyan.wrap(existingFlutterRevision)}
+  Current release built with: ${lightCyan.wrap(currentFlutterRevision)}
 
 ${styleBold.wrap('All releases for the given version must be built using the same Flutter version.')}
 
