@@ -1083,6 +1083,69 @@ Note: ${lightCyan.wrap('shorebird patch ios --flavor=$flavor --target=$target')}
         ).called(1);
       });
 
+      test(
+          'does not upload artifacts if an existing release is present '
+          'with a different flutter revision', () async {
+        when(
+          () => codePushClientWrapper.maybeGetRelease(
+            appId: any(named: 'appId'),
+            releaseVersion: any(named: 'releaseVersion'),
+          ),
+        ).thenAnswer(
+          (_) async => Release(
+            id: release.id,
+            appId: release.appId,
+            version: release.version,
+            flutterRevision: 'different-revision',
+            displayName: release.displayName,
+            createdAt: release.createdAt.add(const Duration(minutes: 1)),
+            updatedAt: release.createdAt.add(const Duration(minutes: 1)),
+            platformStatuses: release.platformStatuses,
+          ),
+        );
+        setUpProjectRoot();
+
+        final exitCode = await runWithOverrides(command.run);
+        expect(exitCode, ExitCode.software.code);
+
+        verify(
+          () => logger.err(
+            any(
+              that: contains(
+                '''All releases for the given version must be built using the same Flutter version.''',
+              ),
+            ),
+          ),
+        ).called(1);
+        verifyNever(
+          () => codePushClientWrapper.createRelease(
+            appId: any(named: 'appId'),
+            version: any(named: 'version'),
+            flutterRevision: any(named: 'flutterRevision'),
+            platform: any(named: 'platform'),
+          ),
+        );
+        verifyNever(
+          () => codePushClientWrapper.createIosReleaseArtifacts(
+            appId: any(named: 'appId'),
+            releaseId: any(named: 'releaseId'),
+            xcarchivePath:
+                any(named: 'xcarchivePath', that: endsWith('.xcarchive')),
+            runnerPath: any(named: 'runnerPath', that: endsWith('Runner.app')),
+            isCodesigned: any(named: 'isCodesigned'),
+          ),
+        );
+        verifyNever(
+          () => codePushClientWrapper.updateReleaseStatus(
+            appId: any(named: 'appId'),
+            releaseId: any(named: 'releaseId'),
+            platform: any(named: 'platform'),
+            status: any(named: 'status'),
+            metadata: any(named: 'metadata'),
+          ),
+        );
+      });
+
       test('does not provide export options when codesign is false', () async {
         when(() => argResults['codesign']).thenReturn(false);
         setUpProjectRoot();

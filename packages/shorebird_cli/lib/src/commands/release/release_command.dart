@@ -22,6 +22,27 @@ class ReleaseCommand extends ShorebirdCommand {
   @override
   String get name => 'release';
 
+  static void printConflictingFlutterRevisionError({
+    required String existingFlutterRevision,
+    required String currentFlutterRevision,
+    required String releaseVersion,
+  }) {
+    logger.err(
+      '''
+A release with version $releaseVersion already exists but was built using a Flutter revision.
+  Existing release uses: $existingFlutterRevision
+  Current release uses: $currentFlutterRevision
+
+${styleBold.wrap('All releases for the given version must be built using the same Flutter version.')}
+
+To resolve this issue, you can:
+  * Re-run the release command with (${lightCyan.wrap('--flutter-version=$existingFlutterRevision')})
+  * Delete the existing release and re-run the release command with the desired Flutter version.
+  * Bump the release version and re-run the release command with the desired Flutter version.
+''',
+    );
+  }
+
   static void printPatchInstructions({
     required String name,
     required String releaseVersion,

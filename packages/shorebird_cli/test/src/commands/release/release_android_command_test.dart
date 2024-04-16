@@ -836,6 +836,58 @@ Note: ${lightCyan.wrap('shorebird patch android --flavor=$flavor --target=$targe
       );
     });
 
+    test(
+        'does not upload artifacts if an existing release is present '
+        'with a different flutter revision', () async {
+      when(
+        () => codePushClientWrapper.maybeGetRelease(
+          appId: any(named: 'appId'),
+          releaseVersion: any(named: 'releaseVersion'),
+        ),
+      ).thenAnswer(
+        (_) async => Release(
+          id: release.id,
+          appId: release.appId,
+          version: release.version,
+          flutterRevision: 'different-revision',
+          displayName: release.displayName,
+          createdAt: release.createdAt.add(const Duration(minutes: 1)),
+          updatedAt: release.createdAt.add(const Duration(minutes: 1)),
+          platformStatuses: release.platformStatuses,
+        ),
+      );
+      final exitCode = await runWithOverrides(command.run);
+      expect(exitCode, ExitCode.software.code);
+      verify(
+        () => logger.err(
+          any(
+            that: contains(
+              '''All releases for the given version must be built using the same Flutter version.''',
+            ),
+          ),
+        ),
+      ).called(1);
+      verifyNever(
+        () => codePushClientWrapper.createRelease(
+          appId: any(named: 'appId'),
+          version: any(named: 'version'),
+          flutterRevision: any(named: 'flutterRevision'),
+          platform: any(named: 'platform'),
+        ),
+      );
+      verifyNever(
+        () => codePushClientWrapper.createAndroidReleaseArtifacts(
+          appId: any(named: 'appId'),
+          releaseId: any(named: 'releaseId'),
+          projectRoot: any(named: 'projectRoot'),
+          aabPath: any(named: 'aabPath'),
+          platform: any(named: 'platform'),
+          architectures: any(named: 'architectures'),
+          flavor: any(named: 'flavor'),
+        ),
+      );
+    });
+
     test('does not prompt if unable to accept user input', () async {
       when(() => shorebirdEnv.canAcceptUserInput).thenReturn(false);
 
