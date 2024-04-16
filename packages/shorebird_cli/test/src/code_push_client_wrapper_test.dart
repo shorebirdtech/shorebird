@@ -44,7 +44,7 @@ void main() {
       progress = MockProgress();
       shorebirdEnv = MockShorebirdEnv();
 
-      when(() => auth.client).thenReturn(httpClient);
+      when(() => auth.client).thenAnswer((_) => httpClient);
       when(() => shorebirdEnv.hostedUri).thenReturn(
         Uri.parse('http://example.com'),
       );
