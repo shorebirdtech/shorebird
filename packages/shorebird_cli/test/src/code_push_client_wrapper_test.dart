@@ -83,7 +83,7 @@ void main() {
       final request = await runScoped(
         () async {
           // We don't care about the response of getApps, we just need to make a
-          // request.
+          // request using the underlying codePushClient.
           await codePushClientWrapper.getApps();
           return verify(() => httpClient.send(captureAny())).captured.first
               as http.BaseRequest;
