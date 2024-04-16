@@ -34,7 +34,7 @@ ${styleBold.wrap(lightRed.wrap('A release with version $releaseVersion already e
   Existing release built with: ${lightCyan.wrap(existingFlutterRevision)}
   Current release built with: ${lightCyan.wrap(currentFlutterRevision)}
 
-${styleBold.wrap(lightRed.wrap('All releases for the given version must be built using the same Flutter version.'))}
+${styleBold.wrap(lightRed.wrap('All platforms for a given release must be built using the same Flutter revision.'))}
 
 To resolve this issue, you can:
   * Re-run the release command with ${lightCyan.wrap('--flutter-version=$existingFlutterRevision')}

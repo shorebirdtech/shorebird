@@ -1112,7 +1112,7 @@ Note: ${lightCyan.wrap('shorebird patch ios --flavor=$flavor --target=$target')}
           () => logger.err(
             any(
               that: contains(
-                '''All releases for the given version must be built using the same Flutter version.''',
+                '''All platforms for a given release must be built using the same Flutter revision.''',
               ),
             ),
           ),
