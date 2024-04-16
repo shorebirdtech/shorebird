@@ -2,6 +2,16 @@
 
 This section contains past updates we've sent to customers via Discord.
 
+## 1.0.1 (April 15, 2024)
+
+- 🚀 Improve link percentage by ~10-15% for all iOS patches
+- 🩹 Fix potentially incorrect behavior in optimized try/catch on iOS patches
+- 🥞 Fix potential crashes when using dwarf stack traces on iOS patches
+- 📝 Include patch instructions after all `release` commands
+- 🔗 Link to the Shorebird Console when a release already exists
+- 🚉 Support `--target-platforms` on android release and patch commands
+- 🍧 Fix `shorebird release android` with camelCase flavor names
+
 ## 1.0.0 (April 8, 2024)
 
 🎉🎉🎉🎉🎉🎉 It's here! 🎉🎉🎉🎉🎉🎉
