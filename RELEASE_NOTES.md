@@ -2,7 +2,7 @@
 
 This section contains past updates we've sent to customers via Discord.
 
-## 1.0.1 (April 15, 2024)
+## 1.0.1 (April 16, 2024)
 
 - 🚀 Improve link percentage by ~10-15% for all iOS patches
 - 🩹 Fix potentially incorrect behavior in optimized try/catch on iOS patches
