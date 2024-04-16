@@ -29,7 +29,7 @@ class ReleaseCommand extends ShorebirdCommand {
   }) {
     logger.err(
       '''
-A release with version $releaseVersion already exists but was built using a Flutter revision.
+A release with version $releaseVersion already exists but was built using a different Flutter revision.
   Existing release uses: $existingFlutterRevision
   Current release uses: $currentFlutterRevision
 
