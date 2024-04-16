@@ -28,7 +28,7 @@ class Doctor {
     ShorebirdFlutterValidator(),
     AndroidInternetPermissionValidator(),
     StorageAccessValidator(),
-    ShorebirdYAMLAssetValidator(),
+    ShorebirdYamlAssetValidator(),
   ];
 
   /// Run the provided [validators]. If [applyFixes] is `true`, any validation

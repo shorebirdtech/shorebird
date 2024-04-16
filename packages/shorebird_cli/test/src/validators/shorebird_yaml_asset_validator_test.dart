@@ -26,7 +26,7 @@ description: Command-line tool to interact with Shorebird's services.
 version: 1.0.0
 ''';
 
-  group(ShorebirdYAMLAssetValidator, () {
+  group(ShorebirdYamlAssetValidator, () {
     late Directory projectRoot;
     late ShorebirdEnv shorebirdEnv;
 
@@ -51,13 +51,13 @@ version: 1.0.0
     });
 
     test('has a non-empty description', () {
-      expect(ShorebirdYAMLAssetValidator().description, isNotEmpty);
+      expect(ShorebirdYamlAssetValidator().description, isNotEmpty);
     });
 
     group('canRunInContext', () {
       test('returns false if no pubspec.yaml file exists', () {
         final result = runWithOverrides(
-          () => ShorebirdYAMLAssetValidator().canRunInCurrentContext(),
+          () => ShorebirdYamlAssetValidator().canRunInCurrentContext(),
         );
         expect(result, isFalse);
       });
@@ -65,7 +65,7 @@ version: 1.0.0
       test('returns true if a pubspec.yaml file exists', () {
         writePubspecToPath(pubspecWithShorebirdAsset, projectRoot.path);
         final result = runWithOverrides(
-          () => ShorebirdYAMLAssetValidator().canRunInCurrentContext(),
+          () => ShorebirdYamlAssetValidator().canRunInCurrentContext(),
         );
         expect(result, isTrue);
       });
@@ -76,7 +76,7 @@ version: 1.0.0
       () async {
         writePubspecToPath(pubspecWithShorebirdAsset, projectRoot.path);
         final results = await runWithOverrides(
-          ShorebirdYAMLAssetValidator().validate,
+          ShorebirdYamlAssetValidator().validate,
         );
         expect(results.map((res) => res.severity), isEmpty);
       },
@@ -84,13 +84,13 @@ version: 1.0.0
 
     test('returns an error if pubspec.yaml file does not exist', () async {
       final results = await runWithOverrides(
-        ShorebirdYAMLAssetValidator().validate,
+        ShorebirdYamlAssetValidator().validate,
       );
       expect(results, hasLength(1));
       expect(results.first.severity, ValidationIssueSeverity.error);
       expect(
         results.first.message,
-        startsWith('No pubspec.yaml file found at'),
+        startsWith('No pubspec.yaml file found'),
       );
       expect(results.first.fix, isNull);
     });
@@ -99,7 +99,7 @@ version: 1.0.0
       test('returns error', () async {
         writePubspecToPath(pubspecWithoutShorebirdAsset, projectRoot.path);
         final results = await runWithOverrides(
-          ShorebirdYAMLAssetValidator().validate,
+          ShorebirdYamlAssetValidator().validate,
         );
         expect(results, hasLength(1));
         expect(
@@ -107,8 +107,7 @@ version: 1.0.0
           equals(
             const ValidationIssue(
               severity: ValidationIssueSeverity.error,
-              message:
-                  'No shorebird.yaml found in pubspec.yaml assets',
+              message: 'No shorebird.yaml found in pubspec.yaml assets',
             ),
           ),
         );
@@ -119,7 +118,7 @@ version: 1.0.0
       test('returns error', () async {
         writePubspecToPath(pubspecWithoutFlutterSection, projectRoot.path);
         final results = await runWithOverrides(
-          ShorebirdYAMLAssetValidator().validate,
+          ShorebirdYamlAssetValidator().validate,
         );
         expect(results, hasLength(1));
         expect(
@@ -127,8 +126,7 @@ version: 1.0.0
           equals(
             const ValidationIssue(
               severity: ValidationIssueSeverity.error,
-              message:
-                  'No shorebird.yaml found in pubspec.yaml assets',
+              message: 'No shorebird.yaml found in pubspec.yaml assets',
             ),
           ),
         );
@@ -139,13 +137,13 @@ version: 1.0.0
       test('adds shorebird.yaml to assets in pubspec.yaml', () async {
         writePubspecToPath(pubspecWithoutShorebirdAsset, projectRoot.path);
         var results = await runWithOverrides(
-          ShorebirdYAMLAssetValidator().validate,
+          ShorebirdYamlAssetValidator().validate,
         );
         expect(results, hasLength(1));
         expect(results.first.fix, isNotNull);
         await runWithOverrides(() => results.first.fix!());
         results = await runWithOverrides(
-          ShorebirdYAMLAssetValidator().validate,
+          ShorebirdYamlAssetValidator().validate,
         );
         expect(results, isEmpty);
       });
@@ -153,13 +151,13 @@ version: 1.0.0
       test('adds flutter section and assets if missing', () async {
         writePubspecToPath(pubspecWithoutFlutterSection, projectRoot.path);
         var results = await runWithOverrides(
-          ShorebirdYAMLAssetValidator().validate,
+          ShorebirdYamlAssetValidator().validate,
         );
         expect(results, hasLength(1));
         expect(results.first.fix, isNotNull);
         await runWithOverrides(() => results.first.fix!());
         results = await runWithOverrides(
-          ShorebirdYAMLAssetValidator().validate,
+          ShorebirdYamlAssetValidator().validate,
         );
         expect(results, isEmpty);
       });
