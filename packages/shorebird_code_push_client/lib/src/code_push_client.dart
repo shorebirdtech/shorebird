@@ -88,10 +88,10 @@ class CodePushClient {
   CodePushClient({
     http.Client? httpClient,
     Uri? hostedUri,
-    Map<String, String>? additionalRequestHeaders,
+    Map<String, String>? customHeaders,
   })  : _httpClient = _CodePushHttpClient(
           httpClient ?? http.Client(),
-          {...standardHeaders, ...?additionalRequestHeaders},
+          {...standardHeaders, ...?customHeaders},
         ),
         hostedUri = hostedUri ?? Uri.https('api.shorebird.dev');
 

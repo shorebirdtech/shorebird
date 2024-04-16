@@ -44,7 +44,7 @@ void main() {
       httpClient = _MockHttpClient();
       codePushClient = CodePushClient(
         httpClient: httpClient,
-        additionalRequestHeaders: customHeaders,
+        customHeaders: customHeaders,
       );
       when(() => httpClient.send(any())).thenAnswer(
         (_) async => http.StreamedResponse(Stream.empty(), HttpStatus.ok),

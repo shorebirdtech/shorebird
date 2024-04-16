@@ -51,7 +51,7 @@ ScopedRef<CodePushClientWrapper> codePushClientWrapperRef = create(() {
     codePushClient: CodePushClient(
       httpClient: auth.client,
       hostedUri: shorebirdEnv.hostedUri,
-      additionalRequestHeaders: {'x-cli-version': packageVersion},
+      customHeaders: {'x-cli-version': packageVersion},
     ),
   );
 });
