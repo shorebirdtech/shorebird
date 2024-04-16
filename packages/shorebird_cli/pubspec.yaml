@@ -9,7 +9,16 @@ environment:
   sdk: ">=3.0.0 <4.0.0"
 
 dependencies:
-  archive: ^3.3.6
+  # TODO(felangel): Use a published version on pub once a new release is published (>3.4.10).
+  # We're using a specific commit because the latest published version (3.4.10)
+  # does not include a sync close API for ZipFileEncoder.
+  # https://github.com/brendan-duncan/archive/commit/94bf62410e9a073451bda0d851a07e8b8863bde4
+  # This was causing a flaky test on windows when using `shorebird preview`
+  # https://github.com/shorebirdtech/shorebird/issues/1902
+  archive:
+    git:
+      url: https://github.com/brendan-duncan/archive
+      ref: 6b5bf69f76164c7dad164555491e18d5be683785
   args: ^2.3.1
   barbecue: ^0.5.0
   checked_yaml: ^2.0.2
