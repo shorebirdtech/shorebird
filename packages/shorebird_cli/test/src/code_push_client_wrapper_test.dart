@@ -51,23 +51,6 @@ void main() {
       when(() => logger.progress(any())).thenReturn(progress);
     });
 
-    test('creates instance from scoped Auth and ShorebirdEnvironment', () {
-      final instance = runScoped(
-        () => codePushClientWrapper,
-        values: {
-          codePushClientWrapperRef,
-          authRef.overrideWith(() => auth),
-          platformRef.overrideWith(() => platform),
-          shorebirdEnvRef.overrideWith(() => shorebirdEnv),
-        },
-      );
-      expect(
-        instance.codePushClient.hostedUri,
-        Uri.parse('http://example.com'),
-      );
-      verify(() => auth.client).called(1);
-    });
-
     test('includes x-cli-version in headers', () async {
       when(() => httpClient.send(any())).thenAnswer(
         (_) async => http.StreamedResponse(
@@ -85,6 +68,11 @@ void main() {
           // We don't care about the response of getApps, we just need to make a
           // request using the underlying codePushClient.
           await codePushClientWrapper.getApps();
+          expect(
+            codePushClientWrapper.codePushClient.hostedUri,
+            Uri.parse('http://example.com'),
+          );
+          verify(() => auth.client).called(1);
           return verify(() => httpClient.send(captureAny())).captured.first
               as http.BaseRequest;
         },
