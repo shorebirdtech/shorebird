@@ -1,9 +1,9 @@
 import 'dart:io';
 import 'package:path/path.dart' as p;
+import 'package:shorebird_cli/src/commands/init_command.dart';
 import 'package:shorebird_cli/src/shorebird_env.dart';
 import 'package:shorebird_cli/src/validators/validators.dart';
 import 'package:yaml/yaml.dart';
-import 'package:yaml_edit/yaml_edit.dart';
 
 /// Verifies that the shorebird.yaml is found in pubspec.yaml assets.
 class ShorebirdYamlAssetValidator extends Validator {
@@ -41,7 +41,8 @@ The command you are running must be run within a Flutter app project.''';
           ValidationIssue(
             severity: ValidationIssueSeverity.error,
             message: 'No shorebird.yaml found in pubspec.yaml assets',
-            fix: () => _addShorebirdAssetToFile(pubspecYamlFile),
+            fix: () =>
+                InitCommand.addShorebirdYamlToPubspecAssets(pubspecYamlFile),
           ),
         ];
       }
@@ -72,48 +73,5 @@ The command you are running must be run within a Flutter app project.''';
       }
     }
     return false;
-  }
-
-  void _addShorebirdAssetToFile(File pubspecYamlFile) {
-    final pubspecContent = pubspecYamlFile.readAsStringSync();
-    final yamlEditor = YamlEditor(pubspecContent);
-    final emptyYamlNode = wrapAsYamlNode(null);
-    final flutterNode =
-        yamlEditor.parseAt(['flutter'], orElse: () => emptyYamlNode);
-    if (flutterNode == emptyYamlNode) {
-      yamlEditor.update(
-        ['flutter'],
-        wrapAsYamlNode({
-          'assets': ['shorebird.yaml'],
-        }),
-      );
-    } else {
-      final assetsNode = yamlEditor
-          .parseAt(['flutter', 'assets'], orElse: () => emptyYamlNode);
-      if (assetsNode == emptyYamlNode) {
-        if (flutterNode is YamlMap) {
-          yamlEditor.update(['flutter', 'assets'], ['shorebird.yaml']);
-        } else {
-          yamlEditor.update(
-            ['flutter'],
-            wrapAsYamlNode({
-              'assets': ['shorebird.yaml'],
-            }),
-          );
-        }
-      } else {
-        final assetsList = assetsNode.value;
-        if (assetsList is YamlList) {
-          if (!assetsList.contains('shorebird.yaml')) {
-            final newAssetsList = [...assetsList, 'shorebird.yaml'];
-            yamlEditor.update(['flutter', 'assets'], newAssetsList);
-          }
-        } else {
-          yamlEditor.update(['flutter', 'assets'], ['shorebird.yaml']);
-        }
-      }
-    }
-
-    pubspecYamlFile.writeAsStringSync(yamlEditor.toString());
   }
 }

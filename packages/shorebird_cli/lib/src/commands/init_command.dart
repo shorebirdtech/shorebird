@@ -210,7 +210,7 @@ Please make sure you are running "shorebird init" from within your Flutter proje
     );
 
     if (!shorebirdEnv.pubspecContainsShorebirdYaml) {
-      _addShorebirdYamlToPubspecAssets(
+      addShorebirdYamlToPubspecAssets(
         shorebirdEnv.getPubspecYamlFile(cwd: projectRoot),
       );
     }
@@ -315,7 +315,7 @@ app_id:
     return ShorebirdYaml(appId: appId);
   }
 
-  void _addShorebirdYamlToPubspecAssets(File pubspecFile) {
+  static void addShorebirdYamlToPubspecAssets(File pubspecFile) {
     final pubspecContents = pubspecFile.readAsStringSync();
     final yaml = loadYaml(pubspecContents, sourceUrl: pubspecFile.uri) as Map;
     final editor = YamlEditor(pubspecContents);
