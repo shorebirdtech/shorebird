@@ -44,18 +44,14 @@ void main() {
       progress = MockProgress();
       shorebirdEnv = MockShorebirdEnv();
 
-      when(() => auth.client).thenAnswer((_) => httpClient);
+      when(() => auth.client).thenReturn(httpClient);
       when(() => shorebirdEnv.hostedUri).thenReturn(
         Uri.parse('http://example.com'),
       );
       when(() => logger.progress(any())).thenReturn(progress);
     });
 
-    // TODO: this is a consolidation of what should be two separate tests.
-    // Accessing the codePushClientWrapperRef more than once causes mock
-    // failures in all tests after the first. We should figure out why this is
-    // and fix it.
-    test('includes x-cli-version in headers', () async {
+    test('creates correct instance from environment', () async {
       when(() => httpClient.send(any())).thenAnswer(
         (_) async => http.StreamedResponse(
           Stream.value(
@@ -66,28 +62,30 @@ void main() {
           HttpStatus.ok,
         ),
       );
-
-      final request = await runScoped(
-        () async {
-          // We don't care about the response of getApps, we just need to make a
-          // request using the underlying codePushClient.
-          await codePushClientWrapper.getApps();
-          expect(
-            codePushClientWrapper.codePushClient.hostedUri,
-            Uri.parse('http://example.com'),
-          );
-          verify(() => auth.client).called(1);
-          return verify(() => httpClient.send(captureAny())).captured.first
-              as http.BaseRequest;
-        },
+      final instance = runScoped(
+        () => codePushClientWrapper,
         values: {
           codePushClientWrapperRef,
           authRef.overrideWith(() => auth),
-          loggerRef.overrideWith(() => logger),
           platformRef.overrideWith(() => platform),
           shorebirdEnvRef.overrideWith(() => shorebirdEnv),
         },
       );
+
+      expect(
+        instance.codePushClient.hostedUri,
+        Uri.parse('http://example.com'),
+      );
+      verify(() => auth.client).called(1);
+
+      await runScoped(
+        instance.getApps,
+        values: {loggerRef.overrideWith(() => logger)},
+      );
+
+      final request = verify(() => httpClient.send(captureAny())).captured.first
+          as http.BaseRequest;
+
       expect(
         request.headers['x-cli-version'],
         equals(packageVersion),
