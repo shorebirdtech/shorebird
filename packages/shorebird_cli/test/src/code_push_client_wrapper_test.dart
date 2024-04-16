@@ -51,6 +51,9 @@ void main() {
       when(() => logger.progress(any())).thenReturn(progress);
     });
 
+    // TODO: this is a consolidation of what should be two separate tests.
+    // Accessing the codePushClientWrapperRef more than once causes mock
+    // failures in all tests after the first.
     test('includes x-cli-version in headers', () async {
       when(() => httpClient.send(any())).thenAnswer(
         (_) async => http.StreamedResponse(
