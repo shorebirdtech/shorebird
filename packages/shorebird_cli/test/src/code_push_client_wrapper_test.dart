@@ -53,7 +53,8 @@ void main() {
 
     // TODO: this is a consolidation of what should be two separate tests.
     // Accessing the codePushClientWrapperRef more than once causes mock
-    // failures in all tests after the first.
+    // failures in all tests after the first. We should figure out why this is
+    // and fix it.
     test('includes x-cli-version in headers', () async {
       when(() => httpClient.send(any())).thenAnswer(
         (_) async => http.StreamedResponse(
