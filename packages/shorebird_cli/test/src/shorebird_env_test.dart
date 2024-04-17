@@ -263,6 +263,25 @@ void main() {
           isTrue,
         );
       });
+
+      test(
+          'returns true when pubspec.yaml exists and publish_to is invalid URL',
+          () {
+        final tempDir = Directory.systemTemp.createTempSync();
+        File(
+          p.join(tempDir.path, 'pubspec.yaml'),
+        ).writeAsStringSync('''
+name: kimoi
+publish_to: 'yon30c'
+        ''');
+        expect(
+          IOOverrides.runZoned(
+            () => runWithOverrides(() => shorebirdEnv.hasPubspecYaml),
+            getCurrentDirectory: () => tempDir,
+          ),
+          isTrue,
+        );
+      });
     });
 
     group('hasShorebirdYaml', () {
