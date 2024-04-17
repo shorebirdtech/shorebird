@@ -1,6 +1,7 @@
 import 'dart:io';
 import 'package:mocktail/mocktail.dart';
 import 'package:path/path.dart' as p;
+import 'package:pubspec_parse/pubspec_parse.dart';
 import 'package:scoped/scoped.dart';
 import 'package:shorebird_cli/src/shorebird_env.dart';
 import 'package:shorebird_cli/src/validators/validators.dart';
@@ -8,23 +9,28 @@ import 'package:test/test.dart';
 import '../mocks.dart';
 
 void main() {
-  const pubspecWithShorebirdAsset = '''
-flutter:
-  assets:
-    - shorebird.yaml
-''';
-
-  const pubspecWithoutShorebirdAsset = '''
-flutter:
-  assets:
-    - assets/image.png
-''';
-
   const pubspecWithoutFlutterSection = '''
 name: shorebird_cli
 description: Command-line tool to interact with Shorebird's services.
 version: 1.0.0
 ''';
+
+  const pubspecWithoutShorebirdAsset = '''
+$pubspecWithoutFlutterSection
+flutter:
+  assets:
+    - assets/image.png
+''';
+
+  late File pubspecYamlFile;
+
+  bool pubspecContainsShorebirdYaml() {
+    final pubspec = Pubspec.parse(pubspecYamlFile.readAsStringSync());
+    if (pubspec.flutter == null) return false;
+    if (pubspec.flutter!['assets'] == null) return false;
+    final assets = pubspec.flutter!['assets'] as List;
+    return assets.contains('shorebird.yaml');
+  }
 
   group(ShorebirdYamlAssetValidator, () {
     late Directory projectRoot;
@@ -46,8 +52,17 @@ version: 1.0.0
 
     setUp(() {
       projectRoot = Directory.systemTemp.createTempSync();
+      pubspecYamlFile = File(p.join(projectRoot.path, 'pubspec.yaml'));
       shorebirdEnv = MockShorebirdEnv();
+      writePubspecToPath(pubspecWithoutShorebirdAsset, projectRoot.path);
+
       when(() => shorebirdEnv.getFlutterProjectRoot()).thenReturn(projectRoot);
+      when(() => shorebirdEnv.getPubspecYamlFile(cwd: any(named: 'cwd')))
+          .thenReturn(pubspecYamlFile);
+    });
+
+    setUpAll(() {
+      registerFallbackValue(MockDirectory());
     });
 
     test('has a non-empty description', () {
@@ -56,6 +71,7 @@ version: 1.0.0
 
     group('canRunInContext', () {
       test('returns false if no pubspec.yaml file exists', () {
+        when(() => shorebirdEnv.hasPubspecYaml).thenReturn(false);
         final result = runWithOverrides(
           () => ShorebirdYamlAssetValidator().canRunInCurrentContext(),
         );
@@ -63,7 +79,7 @@ version: 1.0.0
       });
 
       test('returns true if a pubspec.yaml file exists', () {
-        writePubspecToPath(pubspecWithShorebirdAsset, projectRoot.path);
+        when(() => shorebirdEnv.hasPubspecYaml).thenReturn(true);
         final result = runWithOverrides(
           () => ShorebirdYamlAssetValidator().canRunInCurrentContext(),
         );
@@ -74,7 +90,8 @@ version: 1.0.0
     test(
       'returns successful result if pubspec.yaml has shorebird.yaml in assets',
       () async {
-        writePubspecToPath(pubspecWithShorebirdAsset, projectRoot.path);
+        when(() => shorebirdEnv.hasPubspecYaml).thenReturn(true);
+        when(() => shorebirdEnv.pubspecContainsShorebirdYaml).thenReturn(true);
         final results = await runWithOverrides(
           ShorebirdYamlAssetValidator().validate,
         );
@@ -83,6 +100,7 @@ version: 1.0.0
     );
 
     test('returns an error if pubspec.yaml file does not exist', () async {
+      when(() => shorebirdEnv.hasPubspecYaml).thenReturn(false);
       final results = await runWithOverrides(
         ShorebirdYamlAssetValidator().validate,
       );
@@ -97,26 +115,8 @@ version: 1.0.0
 
     group('when shorebird.yaml is missing from assets', () {
       test('returns error', () async {
-        writePubspecToPath(pubspecWithoutShorebirdAsset, projectRoot.path);
-        final results = await runWithOverrides(
-          ShorebirdYamlAssetValidator().validate,
-        );
-        expect(results, hasLength(1));
-        expect(
-          results.first,
-          equals(
-            const ValidationIssue(
-              severity: ValidationIssueSeverity.error,
-              message: 'No shorebird.yaml found in pubspec.yaml assets',
-            ),
-          ),
-        );
-      });
-    });
-
-    group('when flutter section is missing', () {
-      test('returns error', () async {
-        writePubspecToPath(pubspecWithoutFlutterSection, projectRoot.path);
+        when(() => shorebirdEnv.hasPubspecYaml).thenReturn(true);
+        when(() => shorebirdEnv.pubspecContainsShorebirdYaml).thenReturn(false);
         final results = await runWithOverrides(
           ShorebirdYamlAssetValidator().validate,
         );
@@ -136,12 +136,27 @@ version: 1.0.0
     group('fix', () {
       test('adds shorebird.yaml to assets in pubspec.yaml', () async {
         writePubspecToPath(pubspecWithoutShorebirdAsset, projectRoot.path);
+        when(
+          () => shorebirdEnv.getPubspecYaml(),
+        ).thenReturn(Pubspec.parse(pubspecYamlFile.readAsStringSync()));
+        when(() => shorebirdEnv.getPubspecYamlFile(cwd: any(named: 'cwd')))
+            .thenReturn(pubspecYamlFile);
+        when(() => shorebirdEnv.hasPubspecYaml).thenReturn(true);
+        final pubspecContainsShorebirdYamlBeforeFix =
+            pubspecContainsShorebirdYaml();
+        when(() => shorebirdEnv.pubspecContainsShorebirdYaml)
+            .thenReturn(pubspecContainsShorebirdYamlBeforeFix);
         var results = await runWithOverrides(
           ShorebirdYamlAssetValidator().validate,
         );
+
         expect(results, hasLength(1));
         expect(results.first.fix, isNotNull);
         await runWithOverrides(() => results.first.fix!());
+        final pubspecContainsShorebirdYamlAfterFix =
+            pubspecContainsShorebirdYaml();
+        when(() => shorebirdEnv.pubspecContainsShorebirdYaml)
+            .thenReturn(pubspecContainsShorebirdYamlAfterFix);
         results = await runWithOverrides(
           ShorebirdYamlAssetValidator().validate,
         );
@@ -150,12 +165,26 @@ version: 1.0.0
 
       test('adds flutter section and assets if missing', () async {
         writePubspecToPath(pubspecWithoutFlutterSection, projectRoot.path);
+        when(
+          () => shorebirdEnv.getPubspecYaml(),
+        ).thenReturn(Pubspec.parse(pubspecYamlFile.readAsStringSync()));
+        when(() => shorebirdEnv.getPubspecYamlFile(cwd: any(named: 'cwd')))
+            .thenReturn(pubspecYamlFile);
+        when(() => shorebirdEnv.hasPubspecYaml).thenReturn(true);
+        final pubspecContainsShorebirdYamlBeforeFix =
+            pubspecContainsShorebirdYaml();
+        when(() => shorebirdEnv.pubspecContainsShorebirdYaml)
+            .thenReturn(pubspecContainsShorebirdYamlBeforeFix);
         var results = await runWithOverrides(
           ShorebirdYamlAssetValidator().validate,
         );
         expect(results, hasLength(1));
         expect(results.first.fix, isNotNull);
         await runWithOverrides(() => results.first.fix!());
+        final pubspecContainsShorebirdYamlAfterFix =
+            pubspecContainsShorebirdYaml();
+        when(() => shorebirdEnv.pubspecContainsShorebirdYaml)
+            .thenReturn(pubspecContainsShorebirdYamlAfterFix);
         results = await runWithOverrides(
           ShorebirdYamlAssetValidator().validate,
         );
