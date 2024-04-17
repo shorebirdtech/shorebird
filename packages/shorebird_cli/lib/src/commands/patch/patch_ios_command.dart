@@ -479,7 +479,11 @@ ${summary.join('\n')}
     required String? target,
   }) async {
     final shouldCodesign = results['codesign'] == true;
-    final buildProgress = logger.progress('Building patch');
+    final flutterVersionString = await shorebirdFlutter.getVersionAndRevision();
+
+    final buildProgress = logger.progress(
+      'Building patch with Flutter $flutterVersionString',
+    );
     try {
       // If buildIpa is called with a different codesign value than the release
       // was, we will erroneously report native diffs.

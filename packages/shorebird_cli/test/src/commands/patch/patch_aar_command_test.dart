@@ -36,6 +36,7 @@ import '../../mocks.dart';
 void main() {
   group(PatchAarCommand, () {
     const flutterRevision = '83305b5088e6fe327fb3334a73ff190828d85713';
+    const flutterVersionAndRevision = '3.10.6 (83305b5088)';
     const appId = 'test-app-id';
     const shorebirdYaml = ShorebirdYaml(appId: appId);
     const buildNumber = '1.0';
@@ -321,6 +322,9 @@ void main() {
       when(
         () => cache.getArtifactDirectory(any()),
       ).thenReturn(Directory.systemTemp.createTempSync());
+      when(
+        () => shorebirdFlutter.getVersionAndRevision(),
+      ).thenAnswer((_) async => flutterVersionAndRevision);
       when(
         () => shorebirdFlutter.installRevision(
           revision: any(named: 'revision'),

@@ -41,6 +41,7 @@ import '../../mocks.dart';
 void main() {
   const preLinkerFlutterRevision = '83305b5088e6fe327fb3334a73ff190828d85713';
   const postLinkerFlutterRevision = 'deadbeefdeadbeefdeadbeefdeadbeefdeadbeef';
+  const flutterVersionAndRevision = '3.10.6 (83305b5088)';
   const appId = 'test-app-id';
   const shorebirdYaml = ShorebirdYaml(appId: appId);
   const versionName = '1.2.3';
@@ -462,6 +463,9 @@ flutter:
         when(() => shorebirdEnv.flutterRevision)
             .thenReturn(preLinkerFlutterRevision);
         when(() => shorebirdEnv.canAcceptUserInput).thenReturn(true);
+        when(
+          () => shorebirdFlutter.getVersionAndRevision(),
+        ).thenAnswer((_) async => flutterVersionAndRevision);
         when(
           () => shorebirdFlutter.installRevision(
             revision: any(named: 'revision'),
