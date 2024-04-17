@@ -1,19 +1,23 @@
 {
-    "cSpell.words": [
-        "aarch",
-        "androideabi",
-        "armv",
-        "calloc",
-        "cbindgen",
-        "dylib",
-        "libapp",
-        "libc",
-        "libflutter",
-        "repr",
-        "reqwest",
-        "rollouts",
-        "rustup",
-        "struct",
-        "tempdir"
-    ]
+  "dart.lineLength": 80,
+  "[dart]": {
+    "editor.rulers": [80]
+  },
+  "cSpell.words": [
+    "aarch",
+    "androideabi",
+    "armv",
+    "calloc",
+    "cbindgen",
+    "dylib",
+    "libapp",
+    "libc",
+    "libflutter",
+    "repr",
+    "reqwest",
+    "rollouts",
+    "rustup",
+    "struct",
+    "tempdir"
+  ]
 }

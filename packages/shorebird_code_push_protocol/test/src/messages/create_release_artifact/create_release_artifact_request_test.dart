@@ -10,6 +10,7 @@ void main() {
         hash: '1234',
         size: 9876,
         canSideload: true,
+        filename: 'test.apk',
       );
       expect(
         CreateReleaseArtifactRequest.fromJson(request.toJson()).toJson(),
