@@ -245,7 +245,7 @@ void main() {
           p.join(tempDir.path, 'pubspec.yaml'),
         ).writeAsStringSync('''
 name: test
-publish_to: 'yon30c'
+publish_to: yon30c
         ''');
         expect(
           IOOverrides.runZoned(
@@ -291,7 +291,7 @@ publish_to: 'yon30c'
           p.join(tempDir.path, 'pubspec.yaml'),
         ).writeAsStringSync('''
 name: test
-publish_to: 'yon30c'
+publish_to: yon30c
         ''');
         expect(
           IOOverrides.runZoned(
