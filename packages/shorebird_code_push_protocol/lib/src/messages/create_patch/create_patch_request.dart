@@ -12,8 +12,6 @@ class CreatePatchRequest {
   const CreatePatchRequest({
     required this.releaseId,
     required this.wasForced,
-    required this.hasAssetChanges,
-    required this.hasNativeChanges,
     required this.metadata,
   });
 
@@ -30,14 +28,6 @@ class CreatePatchRequest {
   /// Whether the user used the --force flag when authoring this patch.
   final bool? wasForced;
 
-  /// Whether the patch's assets were not the same as those of the release
-  // TODO(bryanoltman): remove this after metadata change is fully rolled out.
-  final bool? hasAssetChanges;
-
-  /// Whether the patch's native code is different than that of the release.
-  // TODO(bryanoltman): remove this after metadata change is fully rolled out.
-  final bool? hasNativeChanges;
-
   /// Additional information about the creation of the patch.
-  final CreatePatchMetadata? metadata;
+  final CreatePatchMetadata metadata;
 }
