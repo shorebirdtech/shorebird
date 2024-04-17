@@ -310,5 +310,24 @@ Run ${lightCyan.wrap('shorebird upgrade')} to upgrade.'''),
         expect(result, equals(ExitCode.success.code));
       });
     });
+
+    group('no stack trace without verbose', () {
+      test('output without stack trace on misspel', () async {
+        final result = await runWithOverrides(
+          () => commandRunner.run(['pach']),
+        );
+        verifyNever(() => logger.info(any(that: contains('#0'))));
+        expect(result, equals(ExitCode.software.code));
+      });
+
+      test('output with stack trace on misspel when using verbose', () async {
+        when(() => logger.level).thenReturn(Level.verbose);
+        final result = await runWithOverrides(
+          () => commandRunner.run(['pach', '-v']),
+        );
+        verify(() => logger.info(any(that: contains('#0')))).called(1);
+        expect(result, equals(ExitCode.software.code));
+      });
+    });
   });
 }
