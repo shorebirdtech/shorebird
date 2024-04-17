@@ -53,6 +53,7 @@ void main() {
           'deadbeefdeadbeefdeadbeefdeadbeefdeadbeef';
       const preLinkerFlutterRevision =
           '83305b5088e6fe327fb3334a73ff190828d85713';
+      const flutterVersionAndRevision = '3.10.6 (83305b5088)';
       const pubspecYamlContent = '''
 name: example
 version: $version
@@ -340,6 +341,9 @@ flutter:
             artifact: ShorebirdArtifact.analyzeSnapshot,
           ),
         ).thenReturn(analyzeSnapshotFile.path);
+        when(
+          () => shorebirdFlutter.getVersionAndRevision(),
+        ).thenAnswer((_) async => flutterVersionAndRevision);
         when(
           () => shorebirdFlutter.installRevision(
             revision: any(named: 'revision'),
