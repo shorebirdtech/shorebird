@@ -133,11 +133,9 @@ class ShorebirdCliCommandRunner extends CompletionCommandRunner<int> {
     } on FormatException catch (e, stackTrace) {
       // On format errors, show the commands error message, root usage and
       // exit with an error code
-      logger.err(e.message);
-      if (logger.level == Level.verbose) {
-        logger.info('$stackTrace');
-      }
       logger
+        ..err(e.message)
+        ..detail('$stackTrace')
         ..info('')
         ..info(usage);
       return ExitCode.usage.code;
@@ -210,10 +208,9 @@ Run ${lightCyan.wrap('shorebird upgrade')} to upgrade.''');
       try {
         exitCode = await super.runCommand(topLevelResults);
       } catch (error, stackTrace) {
-        logger.err('$error');
-        if (logger.level == Level.verbose) {
-          logger.info('$stackTrace');
-        }
+        logger
+          ..err('$error')
+          ..detail('$stackTrace');
         exitCode = ExitCode.software.code;
       }
     }

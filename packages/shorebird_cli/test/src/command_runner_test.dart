@@ -272,6 +272,18 @@ Run ${lightCyan.wrap('shorebird upgrade')} to upgrade.'''),
     });
 
     group('on command failure', () {
+      test('logs a stack trace using detail', () async {
+        // This will fail due to the release android command missing scoped
+        // dependencies.
+        // Note: the --verbose flag is here for illustrative purposes only.
+        // Because logger is a mock, setting the log level in code does
+        // nothing.
+        await runWithOverrides(
+          () => commandRunner.run(['release', 'android', '--verbose']),
+        );
+        verify(() => logger.detail(any(that: contains('#0')))).called(1);
+      });
+
       group('when running with --verbose', () {
         setUp(() {
           when(() => logger.level).thenReturn(Level.verbose);
@@ -308,25 +320,6 @@ Run ${lightCyan.wrap('shorebird upgrade')} to upgrade.'''),
           () => commandRunner.run(['completion']),
         );
         expect(result, equals(ExitCode.success.code));
-      });
-    });
-
-    group('no stack trace without verbose', () {
-      test('output without stack trace on misspel', () async {
-        final result = await runWithOverrides(
-          () => commandRunner.run(['pach']),
-        );
-        verifyNever(() => logger.info(any(that: contains('#0'))));
-        expect(result, equals(ExitCode.software.code));
-      });
-
-      test('output with stack trace on misspel when using verbose', () async {
-        when(() => logger.level).thenReturn(Level.verbose);
-        final result = await runWithOverrides(
-          () => commandRunner.run(['pach', '-v']),
-        );
-        verify(() => logger.info(any(that: contains('#0')))).called(1);
-        expect(result, equals(ExitCode.software.code));
       });
     });
   });
