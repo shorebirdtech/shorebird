@@ -192,7 +192,7 @@ flutter:
             .thenAnswer((invocation) {
           writePubspecToPath(pubspecWithShorebirdAsset, projectRoot.path);
         });
-        
+
         var results = await runWithOverrides(
           ShorebirdYamlAssetValidator().validate,
         );
