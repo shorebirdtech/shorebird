@@ -9,7 +9,6 @@ This section contains past updates we've sent to customers via Discord.
 - 🥞 Fix potential crashes when using dwarf stack traces on iOS patches
 - 🖇️ Fix potential errors on iOS patches due to link table alignment bug in the snapshot
 - 💥 Fix issue where patching a release with multiple platforms built with different flutter versions would crash.
-- 🔐 Ensure all release artifacts are built using the same Flutter revision
 - 🪵 Improve logs to only include stack traces when using `--verbose`
 - 🔍 Fix issue where `shorebird init` would not find a `pubspec.yaml` due to malformed values
 - ❅ Fix flaky failures when encoding archives (observed in `shorebird preview` on Windows)
@@ -18,12 +17,12 @@ This section contains past updates we've sent to customers via Discord.
 - 🚉 Support `--target-platforms` on android release and patch commands
 - 🍧 Fix `shorebird release android` with camelCase flavor names
 
-This release is a required upgrade for all users. Please upgrade using `shorebird upgrade`.
-
-This was done due to the issue present in all previous `shorebird` versions
-where it was possible to create invalid (crashing) patches if the same release
-number was used for multiple platforms but built with different Flutter
+This is a required upgrade due to the issue present in all previous `shorebird`
+versions where it was possible to create invalid (crashing) patches if the same
+release number was used for multiple platforms but built with different Flutter
 versions.
+
+Please upgrade using `shorebird upgrade`.
 
 ℹ️ [Shorebird Status](https://docs.shorebird.dev/status) tracks any known issues.
 
