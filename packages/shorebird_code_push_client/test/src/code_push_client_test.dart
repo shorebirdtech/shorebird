@@ -22,6 +22,11 @@ void main() {
       message: 'test message',
       details: 'test details',
     );
+    const customHeaders = {'x-custom-header': 'custom-value'};
+    final expectedHeaders = {
+      ...CodePushClient.standardHeaders,
+      ...customHeaders,
+    };
 
     late http.Client httpClient;
     late CodePushClient codePushClient;
@@ -37,7 +42,10 @@ void main() {
 
     setUp(() {
       httpClient = _MockHttpClient();
-      codePushClient = CodePushClient(httpClient: httpClient);
+      codePushClient = CodePushClient(
+        httpClient: httpClient,
+        customHeaders: customHeaders,
+      );
       when(() => httpClient.send(any())).thenAnswer(
         (_) async => http.StreamedResponse(Stream.empty(), HttpStatus.ok),
       );
@@ -102,7 +110,7 @@ void main() {
             .single as http.BaseRequest;
         expect(request.method, equals('GET'));
         expect(request.url, equals(v1('users/me')));
-        expect(request.hasStandardHeaders, isTrue);
+        expect(request.hasHeaders(expectedHeaders), isTrue);
       });
 
       test('returns null if reponse is a 404', () async {
@@ -182,7 +190,7 @@ void main() {
           request.url,
           equals(v1('apps/$appId/patches/$patchId/artifacts')),
         );
-        expect(request.hasStandardHeaders, isTrue);
+        expect(request.hasHeaders(expectedHeaders), isTrue);
       });
 
       test('throws an exception if the http request fails (unknown)', () async {
@@ -397,7 +405,7 @@ void main() {
           request.url,
           equals(v1('apps/$appId/releases/$releaseId/artifacts')),
         );
-        expect(request.hasStandardHeaders, isTrue);
+        expect(request.hasHeaders(expectedHeaders), isTrue);
       });
 
       test('throws an exception if the http request fails (unknown)', () async {
@@ -646,7 +654,7 @@ void main() {
             .single as http.BaseRequest;
         expect(request.method, equals('POST'));
         expect(request.url, equals(v1('apps')));
-        expect(request.hasStandardHeaders, isTrue);
+        expect(request.hasHeaders(expectedHeaders), isTrue);
       });
 
       test('throws an exception if the http request fails (unknown)', () async {
@@ -733,7 +741,7 @@ void main() {
             .single as http.BaseRequest;
         expect(request.method, equals('POST'));
         expect(request.url, equals(v1('apps/$appId/channels')));
-        expect(request.hasStandardHeaders, isTrue);
+        expect(request.hasHeaders(expectedHeaders), isTrue);
       });
 
       test('throws an exception if the http request fails (unknown)', () async {
@@ -832,7 +840,7 @@ void main() {
             .single as http.BaseRequest;
         expect(request.method, equals('POST'));
         expect(request.url, equals(v1('apps/$appId/patches')));
-        expect(request.hasStandardHeaders, isTrue);
+        expect(request.hasHeaders(expectedHeaders), isTrue);
       });
 
       test('throws an exception if the http request fails (unknown)', () async {
@@ -940,7 +948,7 @@ void main() {
             .single as http.BaseRequest;
         expect(request.method, equals('POST'));
         expect(request.url, equals(v1('apps/$appId/releases')));
-        expect(request.hasStandardHeaders, isTrue);
+        expect(request.hasHeaders(expectedHeaders), isTrue);
       });
 
       test('throws an exception if the http request fails (unknown)', () async {
@@ -1078,7 +1086,7 @@ void main() {
             .single as http.BaseRequest;
         expect(request.method, equals('PATCH'));
         expect(request.url, equals(v1('apps/$appId/releases/$releaseId')));
-        expect(request.hasStandardHeaders, isTrue);
+        expect(request.hasHeaders(expectedHeaders), isTrue);
       });
 
       test('throws an exception if the response is not a 204', () async {
@@ -1143,7 +1151,7 @@ void main() {
             .single as http.BaseRequest;
         expect(request.method, equals('POST'));
         expect(request.url, equals(v1('users')));
-        expect(request.hasStandardHeaders, isTrue);
+        expect(request.hasHeaders(expectedHeaders), isTrue);
       });
 
       test('throws an exception if the http request fails', () {
@@ -1188,7 +1196,7 @@ void main() {
             .single as http.BaseRequest;
         expect(request.method, equals('DELETE'));
         expect(request.url, equals(v1('apps/$appId')));
-        expect(request.hasStandardHeaders, isTrue);
+        expect(request.hasHeaders(expectedHeaders), isTrue);
       });
 
       test('throws an exception if the http request fails (unknown)', () async {
@@ -1262,7 +1270,7 @@ void main() {
             .single as http.BaseRequest;
         expect(request.method, equals('GET'));
         expect(request.url, equals(v1('apps')));
-        expect(request.hasStandardHeaders, isTrue);
+        expect(request.hasHeaders(expectedHeaders), isTrue);
       });
 
       test('throws an exception if the http request fails (unknown)', () async {
@@ -1360,7 +1368,7 @@ void main() {
             .single as http.BaseRequest;
         expect(request.method, equals('GET'));
         expect(request.url, equals(v1('apps/$appId/channels')));
-        expect(request.hasStandardHeaders, isTrue);
+        expect(request.hasHeaders(expectedHeaders), isTrue);
       });
 
       test('throws an exception if the http request fails (unknown)', () async {
@@ -1444,7 +1452,7 @@ void main() {
               .single as http.BaseRequest;
           expect(request.method, equals('GET'));
           expect(request.url, equals(v1('apps/$appId/releases')));
-          expect(request.hasStandardHeaders, isTrue);
+          expect(request.hasHeaders(expectedHeaders), isTrue);
         });
 
         test('when sideloadableOnly is true', () async {
@@ -1459,7 +1467,7 @@ void main() {
             request.url,
             equals(v1('apps/$appId/releases?sideloadable=true')),
           );
-          expect(request.hasStandardHeaders, isTrue);
+          expect(request.hasHeaders(expectedHeaders), isTrue);
         });
       });
 
@@ -1580,7 +1588,7 @@ void main() {
             v1('apps/$appId/releases/$releaseId/artifacts?arch=$arch&platform=${platform.name}'),
           ),
         );
-        expect(request.hasStandardHeaders, isTrue);
+        expect(request.hasHeaders(expectedHeaders), isTrue);
       });
 
       test('throws an exception if the http request fails (unknown)', () async {
@@ -1680,7 +1688,7 @@ void main() {
             .single as http.BaseRequest;
         expect(request.method, equals('POST'));
         expect(request.url, equals(v1('apps/$appId/patches/promote')));
-        expect(request.hasStandardHeaders, isTrue);
+        expect(request.hasHeaders(expectedHeaders), isTrue);
       });
 
       test('throws an exception if the http request fails (unknown)', () async {
@@ -1770,8 +1778,8 @@ void main() {
 }
 
 extension on http.BaseRequest {
-  bool get hasStandardHeaders {
-    return CodePushClient.headers.entries.every(
+  bool hasHeaders(Map<String, String> expectedHeaders) {
+    return headers.entries.every(
       (entry) => headers[entry.key] == entry.value,
     );
   }
