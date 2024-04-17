@@ -6,6 +6,7 @@ import 'package:http/http.dart' as http;
 import 'package:path/path.dart' as p;
 import 'package:platform/platform.dart';
 import 'package:scoped/scoped.dart';
+import 'package:shorebird_cli/src/artifact_manager.dart';
 import 'package:shorebird_cli/src/http_client/http_client.dart';
 import 'package:shorebird_cli/src/logger.dart';
 import 'package:shorebird_cli/src/platform.dart';
@@ -29,20 +30,6 @@ class CacheUpdateFailure implements Exception {
   String toString() => 'CacheUpdateFailure: $message';
 }
 
-typedef ArchiveExtractor = Future<void> Function(
-  String archivePath,
-  String outputPath,
-);
-
-Future<void> _defaultArchiveExtractor(String archivePath, String outputPath) {
-  return Isolate.run(() async {
-    final inputStream = InputFileStream(archivePath);
-    final archive = ZipDecoder().decodeBuffer(inputStream);
-    await extractArchiveToDisk(archive, outputPath);
-    await inputStream.close();
-  });
-}
-
 // A reference to a [Cache] instance.
 final cacheRef = create(Cache.new);
 
@@ -57,14 +44,12 @@ Cache get cache => read(cacheRef);
 /// [ShorebirdArtifacts] since uses the current Shorebird environment.
 /// {@endtemplate}
 class Cache {
-  Cache({this.extractArchive = _defaultArchiveExtractor}) {
+  Cache() {
     registerArtifact(PatchArtifact(cache: this, platform: platform));
     registerArtifact(BundleToolArtifact(cache: this, platform: platform));
     registerArtifact(AotToolsDillArtifact(cache: this, platform: platform));
     registerArtifact(AotToolsExeArtifact(cache: this, platform: platform));
   }
-
-  final ArchiveExtractor extractArchive;
 
   void registerArtifact(CachedArtifact artifact) => _artifacts.add(artifact);
 
@@ -277,7 +262,10 @@ class PatchArtifact extends CachedArtifact {
     final tempDir = Directory.systemTemp.createTempSync();
     final artifactPath = p.join(tempDir.path, '$name.zip');
     await stream.pipe(File(artifactPath).openWrite());
-    await cache.extractArchive(artifactPath, p.join(outputPath));
+    await artifactManager.extractZip(
+      zipFile: File(artifactPath),
+      outputDirectory: Directory(outputPath),
+    );
   }
 
   @override
