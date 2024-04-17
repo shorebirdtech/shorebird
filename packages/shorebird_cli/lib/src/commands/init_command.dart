@@ -209,9 +209,7 @@ Please make sure you are running "shorebird init" from within your Flutter proje
     );
 
     if (!shorebirdEnv.pubspecContainsShorebirdYaml) {
-      ShorebirdEnv.addShorebirdYamlToPubspecAssets(
-        shorebirdEnv.getPubspecYamlFile(cwd: projectRoot),
-      );
+      shorebirdEnv.addShorebirdYamlToPubspecAssets;
     }
 
     logger.info(

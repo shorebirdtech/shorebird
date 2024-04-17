@@ -29,19 +29,12 @@ The command you are running must be run within a Flutter app project.''';
       return [];
     }
 
-    final root = shorebirdEnv.getFlutterProjectRoot();
-    if (root != null) {
-      final pubspecYamlFile = shorebirdEnv.getPubspecYamlFile(cwd: root);
-      return [
-        ValidationIssue(
-          severity: ValidationIssueSeverity.error,
-          message: 'No shorebird.yaml found in pubspec.yaml assets',
-          fix: () =>
-              ShorebirdEnv.addShorebirdYamlToPubspecAssets(pubspecYamlFile),
-        ),
-      ];
-    }
-
-    return [];
+    return [
+      ValidationIssue(
+        severity: ValidationIssueSeverity.error,
+        message: 'No shorebird.yaml found in pubspec.yaml assets',
+        fix: () => shorebirdEnv.addShorebirdYamlToPubspecAssets,
+      ),
+    ];
   }
 }
