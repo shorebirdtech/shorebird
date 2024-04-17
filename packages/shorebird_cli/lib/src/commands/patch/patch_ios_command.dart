@@ -480,7 +480,6 @@ ${summary.join('\n')}
   }) async {
     final shouldCodesign = results['codesign'] == true;
     final flutterVersionString = await shorebirdFlutter.getVersionAndRevision();
-
     final buildProgress = logger.progress(
       'Building patch with Flutter $flutterVersionString',
     );

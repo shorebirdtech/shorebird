@@ -141,7 +141,6 @@ If this option is not provided, the version number will be determined from the p
       logger.detail('No release version provided. Determining from bundle.');
       final flutterVersionString =
           await shorebirdFlutter.getVersionAndRevision();
-
       final buildProgress = logger.progress(
         'Building patch with Flutter $flutterVersionString',
       );
