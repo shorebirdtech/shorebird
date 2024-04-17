@@ -22,6 +22,14 @@ flutter:
     - assets/image.png
 ''';
 
+  const pubspecWithShorebirdAsset = '''
+$pubspecWithoutFlutterSection
+flutter:
+  assets:
+    - assets/image.png
+    - shorebird.yaml
+''';
+
   late File pubspecYamlFile;
 
   bool pubspecContainsShorebirdYaml() {
@@ -146,6 +154,11 @@ flutter:
             pubspecContainsShorebirdYaml();
         when(() => shorebirdEnv.pubspecContainsShorebirdYaml)
             .thenReturn(pubspecContainsShorebirdYamlBeforeFix);
+        when(() => shorebirdEnv.addShorebirdYamlToPubspecAssets)
+            .thenAnswer((invocation) {
+          writePubspecToPath(pubspecWithShorebirdAsset, projectRoot.path);
+        });
+
         var results = await runWithOverrides(
           ShorebirdYamlAssetValidator().validate,
         );
@@ -175,6 +188,11 @@ flutter:
             pubspecContainsShorebirdYaml();
         when(() => shorebirdEnv.pubspecContainsShorebirdYaml)
             .thenReturn(pubspecContainsShorebirdYamlBeforeFix);
+        when(() => shorebirdEnv.addShorebirdYamlToPubspecAssets)
+            .thenAnswer((invocation) {
+          writePubspecToPath(pubspecWithShorebirdAsset, projectRoot.path);
+        });
+        
         var results = await runWithOverrides(
           ShorebirdYamlAssetValidator().validate,
         );
