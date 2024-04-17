@@ -10,6 +10,7 @@ This section contains past updates we've sent to customers via Discord.
 - 🖇️ Fix potential errors on iOS patches due to link table alignment bug in the snapshot
 - 🔐 Ensure all release artifacts are built using the same Flutter revision
 - 🪵 Improve logs to only include stack traces when using `--verbose`
+- 🔍 Fix issue where `shorebird init` would not find a `pubspec.yaml` due to malformed values
 - ❅ Fix flaky failures when encoding archives (observed in `shorebird preview` on Windows)
 - 📝 Include patch instructions after all `release` commands
 - 🔗 Link to the Shorebird Console when a release already exists
