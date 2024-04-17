@@ -264,14 +264,12 @@ void main() {
         );
       });
 
-      test(
-          'returns true when pubspec.yaml exists and publish_to is invalid URL',
-          () {
+      test('returns true when "publish_to" is an invalid URL', () {
         final tempDir = Directory.systemTemp.createTempSync();
         File(
           p.join(tempDir.path, 'pubspec.yaml'),
         ).writeAsStringSync('''
-name: kimoi
+name: test
 publish_to: 'yon30c'
         ''');
         expect(
