@@ -38,8 +38,7 @@ class CreateReleaseArtifactRequest {
   final String hash;
 
   /// The name of the file.
-  /// TODO(NEXT_API): make this non-nullable.
-  final String? filename;
+  final String filename;
 
   /// Whether the artifact can installed and run on a device/emulator as-is.
   @JsonKey(fromJson: _parseStringToBool, toJson: _parseBoolToString)
