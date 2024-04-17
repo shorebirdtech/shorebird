@@ -22,6 +22,20 @@ class ArtifactManager {
     required String releaseArtifactPath,
     required String patchArtifactPath,
   }) async {
+    if (!File(releaseArtifactPath).existsSync()) {
+      throw FileSystemException(
+        'Release artifact does not exist',
+        releaseArtifactPath,
+      );
+    }
+
+    if (!File(patchArtifactPath).existsSync()) {
+      throw FileSystemException(
+        'Patch artifact does not exist',
+        patchArtifactPath,
+      );
+    }
+
     final tempDir = await Directory.systemTemp.createTemp();
     final diffPath = p.join(tempDir.path, 'diff.patch');
     final diffExecutable = p.join(
