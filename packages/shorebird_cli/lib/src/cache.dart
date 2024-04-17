@@ -35,10 +35,11 @@ typedef ArchiveExtractor = Future<void> Function(
 );
 
 Future<void> _defaultArchiveExtractor(String archivePath, String outputPath) {
-  return Isolate.run(() {
+  return Isolate.run(() async {
     final inputStream = InputFileStream(archivePath);
     final archive = ZipDecoder().decodeBuffer(inputStream);
-    extractArchiveToDisk(archive, outputPath);
+    await extractArchiveToDisk(archive, outputPath);
+    await inputStream.close();
   });
 }
 
