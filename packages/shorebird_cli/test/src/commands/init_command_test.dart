@@ -910,7 +910,7 @@ flutter:
   assets:
     - shorebird.yaml
 ''';
-      when(() => shorebirdEnv.addShorebirdYamlToPubspecAssets)
+      when(() => shorebirdEnv.addShorebirdYamlToPubspecAssets())
           .thenAnswer((invocation) {
         pubspecYamlFile.writeAsStringSync(expectedPubspecContent);
       });
@@ -937,7 +937,7 @@ $pubspecYamlContent
 flutter:
 ''');
 
-      when(() => shorebirdEnv.addShorebirdYamlToPubspecAssets)
+      when(() => shorebirdEnv.addShorebirdYamlToPubspecAssets())
           .thenAnswer((invocation) {
         pubspecYamlFile.writeAsStringSync(expectedPubspecContent);
       });
@@ -966,7 +966,7 @@ flutter:
   uses-material-design: true
 ''');
 
-      when(() => shorebirdEnv.addShorebirdYamlToPubspecAssets)
+      when(() => shorebirdEnv.addShorebirdYamlToPubspecAssets())
           .thenAnswer((invocation) {
         pubspecYamlFile.writeAsStringSync(expectedPubspecContent);
       });
@@ -996,7 +996,7 @@ flutter:
     - some/asset.txt
 ''');
 
-      when(() => shorebirdEnv.addShorebirdYamlToPubspecAssets)
+      when(() => shorebirdEnv.addShorebirdYamlToPubspecAssets())
           .thenAnswer((invocation) {
         pubspecYamlFile.writeAsStringSync(expectedPubspecContent);
       });

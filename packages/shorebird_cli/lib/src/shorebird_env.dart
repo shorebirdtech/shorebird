@@ -242,7 +242,7 @@ class ShorebirdEnv {
       platform.environment.containsKey('TF_BUILD');
 
   /// Adds `shorebird.yaml` to the `assets` section of the `pubspec.yaml` file
-  void get addShorebirdYamlToPubspecAssets {
+  void addShorebirdYamlToPubspecAssets() {
     final root = shorebirdEnv.getFlutterProjectRoot();
     if (root == null) return;
     final pubspecFile = shorebirdEnv.getPubspecYamlFile(cwd: root);

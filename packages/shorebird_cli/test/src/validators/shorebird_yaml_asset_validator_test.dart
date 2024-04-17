@@ -154,7 +154,7 @@ flutter:
             pubspecContainsShorebirdYaml();
         when(() => shorebirdEnv.pubspecContainsShorebirdYaml)
             .thenReturn(pubspecContainsShorebirdYamlBeforeFix);
-        when(() => shorebirdEnv.addShorebirdYamlToPubspecAssets)
+        when(() => shorebirdEnv.addShorebirdYamlToPubspecAssets())
             .thenAnswer((invocation) {
           writePubspecToPath(pubspecWithShorebirdAsset, projectRoot.path);
         });
@@ -188,7 +188,7 @@ flutter:
             pubspecContainsShorebirdYaml();
         when(() => shorebirdEnv.pubspecContainsShorebirdYaml)
             .thenReturn(pubspecContainsShorebirdYamlBeforeFix);
-        when(() => shorebirdEnv.addShorebirdYamlToPubspecAssets)
+        when(() => shorebirdEnv.addShorebirdYamlToPubspecAssets())
             .thenAnswer((invocation) {
           writePubspecToPath(pubspecWithShorebirdAsset, projectRoot.path);
         });
