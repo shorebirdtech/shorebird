@@ -69,8 +69,64 @@ void main() {
     });
 
     group('createDiff', () {
-      const releaseArtifactPath = 'path/to/release_artifact';
-      const patchArtifactPath = 'path/to/patch_artifact';
+      late File releaseArtifactFile;
+      late File patchArtifactFile;
+
+      setUp(() {
+        final tmpDir = Directory.systemTemp.createTempSync();
+        releaseArtifactFile = File(p.join(tmpDir.path, 'release_artifact'))
+          ..createSync(recursive: true);
+        patchArtifactFile = File(p.join(tmpDir.path, 'patch_artifact'))
+          ..createSync(recursive: true);
+      });
+
+      test('throws error when release artifact file does not exist', () async {
+        await expectLater(
+          () => runWithOverrides(
+            () async => artifactManager.createDiff(
+              releaseArtifactPath: 'not/a/real/file',
+              patchArtifactPath: patchArtifactFile.path,
+            ),
+          ),
+          throwsA(
+            isA<FileSystemException>()
+                .having(
+                  (e) => e.message,
+                  'message',
+                  'Release artifact does not exist',
+                )
+                .having(
+                  (e) => e.path,
+                  'path',
+                  'not/a/real/file',
+                ),
+          ),
+        );
+      });
+
+      test('throws error when patch artfiact file does not exist', () async {
+        await expectLater(
+          () => runWithOverrides(
+            () async => artifactManager.createDiff(
+              releaseArtifactPath: releaseArtifactFile.path,
+              patchArtifactPath: 'not/a/real/file',
+            ),
+          ),
+          throwsA(
+            isA<FileSystemException>()
+                .having(
+                  (e) => e.message,
+                  'message',
+                  'Patch artifact does not exist',
+                )
+                .having(
+                  (e) => e.path,
+                  'path',
+                  'not/a/real/file',
+                ),
+          ),
+        );
+      });
 
       test('throws error when creating diff fails', () async {
         const stdout = 'uh oh';
@@ -82,8 +138,8 @@ void main() {
         await expectLater(
           () => runWithOverrides(
             () async => artifactManager.createDiff(
-              releaseArtifactPath: releaseArtifactPath,
-              patchArtifactPath: patchArtifactPath,
+              releaseArtifactPath: releaseArtifactFile.path,
+              patchArtifactPath: patchArtifactFile.path,
             ),
           ),
           throwsA(
@@ -101,8 +157,8 @@ void main() {
       test('returns diff path when creating diff succeeds', () async {
         final diffPath = await runWithOverrides(
           () => artifactManager.createDiff(
-            releaseArtifactPath: releaseArtifactPath,
-            patchArtifactPath: patchArtifactPath,
+            releaseArtifactPath: releaseArtifactFile.path,
+            patchArtifactPath: patchArtifactFile.path,
           ),
         );
 
@@ -112,8 +168,8 @@ void main() {
             p.join(cacheArtifactDirectory.path, 'patch'),
             any(
               that: containsAllInOrder([
-                releaseArtifactPath,
-                patchArtifactPath,
+                releaseArtifactFile.path,
+                patchArtifactFile.path,
                 endsWith('diff.patch'),
               ]),
             ),
