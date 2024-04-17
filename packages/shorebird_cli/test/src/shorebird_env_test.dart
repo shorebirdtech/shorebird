@@ -236,6 +236,27 @@ void main() {
           isA<Pubspec>().having((p) => p.name, 'name', 'test'),
         );
       });
+
+      test(
+          'returns value when pubspec.yaml exists '
+          'and contains a malformed value', () {
+        final tempDir = Directory.systemTemp.createTempSync();
+        File(
+          p.join(tempDir.path, 'pubspec.yaml'),
+        ).writeAsStringSync('''
+name: test
+publish_to: 'yon30c'
+        ''');
+        expect(
+          IOOverrides.runZoned(
+            () => runWithOverrides(() => shorebirdEnv.getPubspecYaml()),
+            getCurrentDirectory: () => tempDir,
+          ),
+          isA<Pubspec>()
+              .having((p) => p.name, 'name', 'test')
+              .having((p) => p.publishTo, 'publishTo', isNull),
+        );
+      });
     });
 
     group('hasPubspecYaml', () {
@@ -264,7 +285,7 @@ void main() {
         );
       });
 
-      test('returns true when "publish_to" is an invalid URL', () {
+      test('returns true even if pubspec.yaml contains malformed values', () {
         final tempDir = Directory.systemTemp.createTempSync();
         File(
           p.join(tempDir.path, 'pubspec.yaml'),
