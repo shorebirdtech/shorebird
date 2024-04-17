@@ -2,6 +2,7 @@
 import 'dart:convert';
 import 'dart:io';
 
+import 'package:collection/collection.dart';
 import 'package:http/http.dart' as http;
 import 'package:mocktail/mocktail.dart';
 import 'package:path/path.dart' as path;
@@ -416,8 +417,11 @@ void main() {
         );
         expect(request.hasHeaders(expectedHeaders), isTrue);
         expect(
-          request.fields.entries,
-          equals(expectedRequest.toJson().entries),
+          MapEquality<String, dynamic>().equals(
+            request.fields,
+            expectedRequest.toJson(),
+          ),
+          isTrue,
         );
       });
 
