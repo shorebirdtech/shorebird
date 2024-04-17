@@ -135,7 +135,7 @@ class ShorebirdCliCommandRunner extends CompletionCommandRunner<int> {
       // exit with an error code
       logger
         ..err(e.message)
-        ..err('$stackTrace')
+        ..detail('$stackTrace')
         ..info('')
         ..info(usage);
       return ExitCode.usage.code;
@@ -210,7 +210,7 @@ Run ${lightCyan.wrap('shorebird upgrade')} to upgrade.''');
       } catch (error, stackTrace) {
         logger
           ..err('$error')
-          ..info('$stackTrace');
+          ..detail('$stackTrace');
         exitCode = ExitCode.software.code;
       }
     }
