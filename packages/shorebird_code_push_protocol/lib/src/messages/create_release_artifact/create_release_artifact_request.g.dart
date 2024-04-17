@@ -23,7 +23,7 @@ CreateReleaseArtifactRequest _$CreateReleaseArtifactRequestFromJson(
               'size', (v) => CreateReleaseArtifactRequest._parseStringToInt(v)),
           canSideload: $checkedConvert('can_sideload',
               (v) => CreateReleaseArtifactRequest._parseStringToBool(v)),
-          filename: $checkedConvert('filename', (v) => v as String?),
+          filename: $checkedConvert('filename', (v) => v as String),
         );
         return val;
       },
