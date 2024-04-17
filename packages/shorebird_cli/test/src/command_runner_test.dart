@@ -272,6 +272,18 @@ Run ${lightCyan.wrap('shorebird upgrade')} to upgrade.'''),
     });
 
     group('on command failure', () {
+      test('logs a stack trace using detail', () async {
+        // This will fail due to the release android command missing scoped
+        // dependencies.
+        // Note: the --verbose flag is here for illustrative purposes only.
+        // Because logger is a mock, setting the log level in code does
+        // nothing.
+        await runWithOverrides(
+          () => commandRunner.run(['release', 'android', '--verbose']),
+        );
+        verify(() => logger.detail(any(that: contains('#0')))).called(1);
+      });
+
       group('when running with --verbose', () {
         setUp(() {
           when(() => logger.level).thenReturn(Level.verbose);
