@@ -7,6 +7,7 @@ import 'package:mocktail/mocktail.dart';
 import 'package:path/path.dart' as p;
 import 'package:platform/platform.dart';
 import 'package:scoped/scoped.dart';
+import 'package:shorebird_cli/src/artifact_manager.dart';
 import 'package:shorebird_cli/src/cache.dart';
 import 'package:shorebird_cli/src/http_client/http_client.dart';
 import 'package:shorebird_cli/src/logger.dart';
@@ -22,6 +23,7 @@ void main() {
   group(Cache, () {
     const shorebirdEngineRevision = 'test-revision';
 
+    late ArtifactManager artifactManager;
     late Directory shorebirdRoot;
     late http.Client httpClient;
     late Logger logger;
@@ -35,6 +37,7 @@ void main() {
       return runScoped(
         () => body(),
         values: {
+          artifactManagerRef.overrideWith(() => artifactManager),
           cacheRef.overrideWith(() => cache),
           httpClientRef.overrideWith(() => httpClient),
           loggerRef.overrideWith(() => logger),
@@ -59,10 +62,13 @@ void main() {
     }
 
     setUpAll(() {
+      registerFallbackValue(Directory(''));
+      registerFallbackValue(File(''));
       registerFallbackValue(FakeBaseRequest());
     });
 
     setUp(() {
+      artifactManager = MockArtifactManager();
       httpClient = MockHttpClient();
       logger = MockLogger();
       platform = MockPlatform();
@@ -71,6 +77,15 @@ void main() {
       shorebirdProcess = MockShorebirdProcess();
 
       shorebirdRoot = Directory.systemTemp.createTempSync();
+      when(
+        () => artifactManager.extractZip(
+          zipFile: any(named: 'zipFile'),
+          outputDirectory: any(named: 'outputDirectory'),
+        ),
+      ).thenAnswer((invocation) async {
+        (invocation.namedArguments[#outputDirectory] as Directory)
+            .createSync(recursive: true);
+      });
       when(
         () => shorebirdEnv.shorebirdEngineRevision,
       ).thenReturn(shorebirdEngineRevision);
