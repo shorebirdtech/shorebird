@@ -904,81 +904,108 @@ flutter:
     });
 
     test('creates flutter.assets and adds shorebird.yaml', () async {
-      await runWithOverrides(command.run);
-      verify(
-        () => pubspecYamlFile.writeAsStringSync(
-          any(
-            that: equals('''
+      const expectedPubspecContent = '''
 $pubspecYamlContent
 flutter:
   assets:
     - shorebird.yaml
-'''),
+''';
+      when(() => shorebirdEnv.addShorebirdYamlToPubspecAssets)
+          .thenAnswer((invocation) {
+        pubspecYamlFile.writeAsStringSync(expectedPubspecContent);
+      });
+
+      await runWithOverrides(command.run);
+      verify(
+        () => pubspecYamlFile.writeAsStringSync(
+          any(
+            that: equals(expectedPubspecContent),
           ),
         ),
       );
     });
 
     test('creates assets and adds shorebird.yaml (empty)', () async {
-      when(() => pubspecYamlFile.readAsStringSync()).thenReturn('''
-$pubspecYamlContent
-flutter:
-''');
-      await runWithOverrides(command.run);
-      verify(
-        () => pubspecYamlFile.writeAsStringSync(
-          any(
-            that: equals('''
+      const expectedPubspecContent = '''
 $pubspecYamlContent
 flutter:
   assets:
     - shorebird.yaml
-'''),
+''';
+      when(() => pubspecYamlFile.readAsStringSync()).thenReturn('''
+$pubspecYamlContent
+flutter:
+''');
+
+      when(() => shorebirdEnv.addShorebirdYamlToPubspecAssets)
+          .thenAnswer((invocation) {
+        pubspecYamlFile.writeAsStringSync(expectedPubspecContent);
+      });
+
+      await runWithOverrides(command.run);
+      verify(
+        () => pubspecYamlFile.writeAsStringSync(
+          any(
+            that: equals(expectedPubspecContent),
           ),
         ),
       );
     });
 
     test('creates assets and adds shorebird.yaml (non-empty)', () async {
-      when(() => pubspecYamlFile.readAsStringSync()).thenReturn('''
-$pubspecYamlContent
-flutter:
-  uses-material-design: true
-''');
-      await runWithOverrides(command.run);
-      verify(
-        () => pubspecYamlFile.writeAsStringSync(
-          any(
-            that: equals('''
+      const expectedPubspecContent = '''
 $pubspecYamlContent
 flutter:
   assets:
     - shorebird.yaml
   uses-material-design: true
-'''),
+''';
+      when(() => pubspecYamlFile.readAsStringSync()).thenReturn('''
+$pubspecYamlContent
+flutter:
+  uses-material-design: true
+''');
+
+      when(() => shorebirdEnv.addShorebirdYamlToPubspecAssets)
+          .thenAnswer((invocation) {
+        pubspecYamlFile.writeAsStringSync(expectedPubspecContent);
+      });
+
+      await runWithOverrides(command.run);
+      verify(
+        () => pubspecYamlFile.writeAsStringSync(
+          any(
+            that: equals(expectedPubspecContent),
           ),
         ),
       );
     });
 
     test('adds shorebird.yaml to assets', () async {
+      const expectedPubspecContent = '''
+$pubspecYamlContent
+flutter:
+  assets:
+    - some/asset.txt
+    - shorebird.yaml
+''';
       when(() => pubspecYamlFile.readAsStringSync()).thenReturn('''
 $pubspecYamlContent
 flutter:
   assets:
     - some/asset.txt
 ''');
+
+      when(() => shorebirdEnv.addShorebirdYamlToPubspecAssets)
+          .thenAnswer((invocation) {
+        pubspecYamlFile.writeAsStringSync(expectedPubspecContent);
+      });
+
       await runWithOverrides(command.run);
       verify(
         () => pubspecYamlFile.writeAsStringSync(
           any(
-            that: equals('''
-$pubspecYamlContent
-flutter:
-  assets:
-    - some/asset.txt
-    - shorebird.yaml
-'''),
+            that: equals(expectedPubspecContent),
           ),
         ),
       ).called(1);
