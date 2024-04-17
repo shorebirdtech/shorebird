@@ -2,6 +2,7 @@ import 'dart:convert';
 import 'dart:io';
 
 import 'package:http/http.dart' as http;
+import 'package:path/path.dart' as p;
 import 'package:shorebird_code_push_client/shorebird_code_push_client.dart';
 import 'package:shorebird_code_push_client/src/version.dart';
 import 'package:shorebird_code_push_protocol/shorebird_code_push_protocol.dart';
@@ -190,6 +191,7 @@ class CodePushClient {
       hash: hash,
       size: file.length,
       canSideload: canSideload,
+      filename: p.basename(artifactPath),
     ).toJson().map((key, value) => MapEntry(key, '$value'));
     request.fields.addAll(payload);
 

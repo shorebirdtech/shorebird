@@ -377,13 +377,22 @@ void main() {
       const arch = 'aarch64';
       const platform = ReleasePlatform.android;
       const hash = 'test-hash';
-      const size = 42;
+      const size = 5;
       const canSideload = true;
 
       test('makes the correct request', () async {
         final tempDir = Directory.systemTemp.createTempSync();
         final fixture = File(path.join(tempDir.path, 'release.txt'))
-          ..createSync();
+          ..createSync()
+          ..writeAsStringSync('hello');
+        final expectedRequest = CreateReleaseArtifactRequest(
+          arch: arch,
+          platform: platform,
+          hash: hash,
+          size: size,
+          canSideload: canSideload,
+          filename: 'release.txt',
+        );
 
         try {
           await codePushClient.createReleaseArtifact(
@@ -399,13 +408,17 @@ void main() {
 
         final request = verify(() => httpClient.send(captureAny()))
             .captured
-            .single as http.BaseRequest;
+            .single as http.MultipartRequest;
         expect(request.method, equals('POST'));
         expect(
           request.url,
           equals(v1('apps/$appId/releases/$releaseId/artifacts')),
         );
         expect(request.hasHeaders(expectedHeaders), isTrue);
+        expect(
+          request.fields.entries,
+          equals(expectedRequest.toJson().entries),
+        );
       });
 
       test('throws an exception if the http request fails (unknown)', () async {

@@ -23,6 +23,7 @@ CreateReleaseArtifactRequest _$CreateReleaseArtifactRequestFromJson(
               'size', (v) => CreateReleaseArtifactRequest._parseStringToInt(v)),
           canSideload: $checkedConvert('can_sideload',
               (v) => CreateReleaseArtifactRequest._parseStringToBool(v)),
+          filename: $checkedConvert('filename', (v) => v as String?),
         );
         return val;
       },
@@ -35,6 +36,7 @@ Map<String, dynamic> _$CreateReleaseArtifactRequestToJson(
       'arch': instance.arch,
       'platform': _$ReleasePlatformEnumMap[instance.platform]!,
       'hash': instance.hash,
+      'filename': instance.filename,
       'can_sideload':
           CreateReleaseArtifactRequest._parseBoolToString(instance.canSideload),
       'size': CreateReleaseArtifactRequest._parseIntToString(instance.size),
