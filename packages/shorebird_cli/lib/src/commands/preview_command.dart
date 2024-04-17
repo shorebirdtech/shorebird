@@ -511,7 +511,7 @@ class PreviewCommand extends ShorebirdCommand {
           );
         }
       }
-      encoder.close();
+      await encoder.close();
 
       // Replace the existing preview artifact with the updated one.
       tmpAabFile.copySync(aabFile.path);

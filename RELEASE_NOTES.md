@@ -2,6 +2,21 @@
 
 This section contains past updates we've sent to customers via Discord.
 
+## 1.0.1 (April 16, 2024)
+
+- 🚀 Improve link percentage by ~10-15% for all iOS patches
+- 🩹 Fix potentially incorrect behavior in optimized try/catch on iOS patches
+- 🥞 Fix potential crashes when using dwarf stack traces on iOS patches
+- 🖇️ Fix potential errors on iOS patches due to link table alignment bug in the snapshot
+- 🔐 Ensure all release artifacts are built using the same Flutter revision
+- ❅ Fix flaky failures when encoding archives (observed in `shorebird preview` on Windows)
+- 📝 Include patch instructions after all `release` commands
+- 🔗 Link to the Shorebird Console when a release already exists
+- 🚉 Support `--target-platforms` on android release and patch commands
+- 🍧 Fix `shorebird release android` with camelCase flavor names
+
+ℹ️ [Shorebird Status](https://docs.shorebird.dev/status) tracks any known issues.
+
 ## 1.0.0 (April 8, 2024)
 
 🎉🎉🎉🎉🎉🎉 It's here! 🎉🎉🎉🎉🎉🎉
