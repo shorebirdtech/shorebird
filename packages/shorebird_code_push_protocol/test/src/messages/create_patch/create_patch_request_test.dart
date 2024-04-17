@@ -7,8 +7,6 @@ void main() {
       const request = CreatePatchRequest(
         releaseId: 1234,
         wasForced: true,
-        hasAssetChanges: true,
-        hasNativeChanges: false,
         metadata: CreatePatchMetadata(
           releasePlatform: ReleasePlatform.android,
           usedIgnoreAssetChangesFlag: true,
@@ -31,12 +29,10 @@ void main() {
     });
 
     test('can be (de)serialized without metadata', () {
-      const request = CreatePatchRequest(
+      final request = CreatePatchRequest(
         releaseId: 1234,
         wasForced: true,
-        hasAssetChanges: true,
-        hasNativeChanges: false,
-        metadata: null,
+        metadata: CreatePatchMetadata.forTest(),
       );
       expect(
         CreatePatchRequest.fromJson(request.toJson()).toJson(),
