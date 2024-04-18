@@ -515,13 +515,7 @@ Please re-run the release command for this version or create a new release.'''),
       expect(exitCode, ExitCode.success.code);
       verify(
         () => logger.info(
-          any(
-            that: stringContainsInOrder([
-              '''The release you are trying to patch was built with a different version of Flutter.''',
-              'Release Flutter Revision: ${release.flutterRevision}',
-              'Current Flutter Revision: $otherRevision',
-            ]),
-          ),
+          'Release was built with Flutter revision ${release.flutterRevision}',
         ),
       ).called(1);
     });
