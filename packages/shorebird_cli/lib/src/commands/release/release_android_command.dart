@@ -9,7 +9,6 @@ import 'package:shorebird_cli/src/commands/release/release.dart';
 import 'package:shorebird_cli/src/config/shorebird_yaml.dart';
 import 'package:shorebird_cli/src/doctor.dart';
 import 'package:shorebird_cli/src/extensions/arg_results.dart';
-import 'package:shorebird_cli/src/extensions/string.dart';
 import 'package:shorebird_cli/src/logger.dart';
 import 'package:shorebird_cli/src/platform.dart';
 import 'package:shorebird_cli/src/platform/platform.dart';
@@ -215,7 +214,7 @@ Use `shorebird flutter versions list` to list available versions.
             ? p.join(
                 bundleDirPath,
                 '${flavor}Release',
-                'app-${flavor.toKebabCase}-release.aab',
+                'app-$flavor-release.aab',
               )
             : p.join(bundleDirPath, 'release', 'app-release.aab');
         final apkPath = flavor != null
@@ -223,7 +222,7 @@ Use `shorebird flutter versions list` to list available versions.
                 apkDirPath,
                 flavor,
                 'release',
-                'app-${flavor.toKebabCase}-release.apk',
+                'app-$flavor-release.apk',
               )
             : p.join(apkDirPath, 'release', 'app-release.apk');
 
