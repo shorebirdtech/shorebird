@@ -2,6 +2,13 @@
 
 This section contains past updates we've sent to customers via Discord.
 
+## 1.0.2 (April 18, 2024)
+
+- 🍢 Fix a kebab-casing issue with Android Flavors
+- 📝 Include Flutter version in patch command logs
+
+📚 Release notes can be found at https://github.com/shorebirdtech/shorebird/releases/tag/v1.0.2
+
 ## 1.0.1 (April 17, 2024)
 
 - 🚀 Improve link percentage by ~10-15% for all iOS patches
