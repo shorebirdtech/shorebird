@@ -6,6 +6,7 @@ import 'package:mason_logger/mason_logger.dart';
 import 'package:path/path.dart' as p;
 import 'package:platform/platform.dart';
 import 'package:scoped/scoped.dart';
+import 'package:shorebird_cli/src/archive/directory_archive.dart';
 import 'package:shorebird_cli/src/archive_analysis/archive_analysis.dart';
 import 'package:shorebird_cli/src/artifact_manager.dart';
 import 'package:shorebird_cli/src/code_push_client_wrapper.dart';
@@ -55,7 +56,7 @@ class PatchIosCommand extends ShorebirdCommand
         'release-version',
         help: '''
 The version of the release being patched (e.g. "1.0.0+1").
-        
+
 If this option is not provided, the version number will be determined from the patch artifact.''',
       )
       ..addFlag(
@@ -88,6 +89,11 @@ If this option is not provided, the version number will be determined from the p
         'staging',
         negatable: false,
         help: 'Whether to publish the patch to the staging environment.',
+      )
+      ..addFlag(
+        'debug-linker',
+        negatable: false,
+        help: 'Collects linker percentage data to help troubleshooting.',
       );
   }
 
@@ -138,6 +144,7 @@ https://docs.shorebird.dev/status#link-percentage-ios
     final allowNativeDiffs = results['allow-native-diffs'] == true;
     final dryRun = results['dry-run'] == true;
     final isStaging = results['staging'] == true;
+    final dumpDebugInfo = results['debug-linker'] == true;
 
     const arch = 'aarch64';
     const releasePlatform = ReleasePlatform.ios;
@@ -307,6 +314,7 @@ Please re-run the release command for this version or create a new release.''');
         if (useLinker) {
           final (:exitCode, :linkPercentage) = await _runLinker(
             releaseArtifact: releaseArtifactFile,
+            dumpDebugInfo: dumpDebugInfo,
           );
 
           if (exitCode != ExitCode.success.code) return exitCode;
@@ -444,6 +452,11 @@ ${summary.join('\n')}
         'out.vmcode',
       );
 
+  String get _debugInfoOutpath => p.join(
+        _buildDirectory,
+        'out.link_debug_info',
+      );
+
   String _readVersionFromPlist() {
     final archivePath = getXcarchiveDirectory()?.path;
     if (archivePath == null) {
@@ -509,7 +522,10 @@ ${summary.join('\n')}
     buildProgress.complete();
   }
 
-  Future<_LinkResult> _runLinker({required File releaseArtifact}) async {
+  Future<_LinkResult> _runLinker({
+    required File releaseArtifact,
+    required bool dumpDebugInfo,
+  }) async {
     final patch = File(_aotOutputPath);
 
     if (!patch.existsSync()) {
@@ -543,7 +559,18 @@ ${summary.join('\n')}
         outputPath: _vmcodeOutputPath,
         workingDirectory: _buildDirectory,
         kernel: newestAppDill().path,
+        dumpDebugInfoPath: dumpDebugInfo ? _debugInfoOutpath : null,
       );
+
+      if (dumpDebugInfo) {
+        final debugDirectory = Directory(_debugInfoOutpath)
+          ..createSync(
+            recursive: true,
+          );
+        final debugInfoZip = await debugDirectory.zipToTempFile();
+
+        logger.warn('Debug info written to ${debugInfoZip.absolute}');
+      }
     } catch (error) {
       linkProgress.fail('Failed to link AOT files: $error');
       return (exitCode: ExitCode.software.code, linkPercentage: null);
