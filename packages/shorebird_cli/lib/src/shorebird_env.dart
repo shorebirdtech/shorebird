@@ -243,9 +243,9 @@ class ShorebirdEnv {
 
   /// Adds shorebird.yaml to the assets section of the pubspec.yaml file.
   void addShorebirdYamlToPubspecAssets() {
-    final root = shorebirdEnv.getFlutterProjectRoot();
+    final root = getFlutterProjectRoot();
     if (root == null) return;
-    final pubspecFile = shorebirdEnv.getPubspecYamlFile(cwd: root);
+    final pubspecFile = getPubspecYamlFile(cwd: root);
     final pubspecContents = pubspecFile.readAsStringSync();
     final yaml = loadYaml(pubspecContents, sourceUrl: pubspecFile.uri) as Map;
     final editor = YamlEditor(pubspecContents);
