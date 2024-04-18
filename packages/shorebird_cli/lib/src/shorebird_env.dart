@@ -156,7 +156,7 @@ class ShorebirdEnv {
     if (root == null) return null;
     final yaml = getPubspecYamlFile(cwd: root).readAsStringSync();
     try {
-      return Pubspec.parse(yaml);
+      return Pubspec.parse(yaml, lenient: true);
     } catch (_) {
       return null;
     }

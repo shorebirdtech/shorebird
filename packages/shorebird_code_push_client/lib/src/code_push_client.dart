@@ -260,8 +260,6 @@ class CodePushClient {
     final request = CreatePatchRequest(
       releaseId: releaseId,
       wasForced: false,
-      hasAssetChanges: metadata.hasAssetChanges,
-      hasNativeChanges: metadata.hasNativeChanges,
       metadata: metadata,
     );
     final response = await _httpClient.post(

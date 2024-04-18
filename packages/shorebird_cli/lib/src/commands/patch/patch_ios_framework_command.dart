@@ -148,7 +148,11 @@ Please re-run the release command for this version or create a new release.''');
 
     return await runScoped(
       () async {
-        final buildProgress = logger.progress('Building patch');
+        final flutterVersionString =
+            await shorebirdFlutter.getVersionAndRevision();
+        final buildProgress = logger.progress(
+          'Building patch with Flutter $flutterVersionString',
+        );
         try {
           await buildIosFramework();
           buildProgress.complete();
