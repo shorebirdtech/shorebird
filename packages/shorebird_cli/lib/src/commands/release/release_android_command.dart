@@ -1,5 +1,6 @@
 import 'dart:io';
 
+import 'package:collection/collection.dart';
 import 'package:mason_logger/mason_logger.dart';
 import 'package:path/path.dart' as p;
 import 'package:scoped/scoped.dart';
@@ -97,9 +98,11 @@ make smaller updates to your app.
     final flutterVersion = results['flutter-version'] as String?;
     final architectures = (results['target-platform'] as List<String>)
         .map(
-          (platform) => AndroidArch.availableAndroidArchs
-              .firstWhere((arch) => arch.targetPlatformCliArg == platform),
+          (platform) => AndroidArch.availableAndroidArchs.firstWhereOrNull(
+            (arch) => arch.targetPlatformCliArg == platform,
+          ),
         )
+        .whereType<Arch>()
         .toSet();
 
     if (generateApk && splitApk) {
