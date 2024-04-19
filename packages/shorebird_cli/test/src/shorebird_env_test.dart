@@ -724,6 +724,7 @@ name: test
 version: 1.0.0
 environment:
  sdk: ">=2.19.0 <3.0.0"''';
+
       test('creates flutter.assets and adds shorebird.yaml', () {
         final tempDir = Directory.systemTemp.createTempSync();
         final pubspecFile = File(p.join(tempDir.path, 'pubspec.yaml'))
@@ -745,6 +746,7 @@ flutter:
 '''),
         );
       });
+
       test('creates assets and adds shorebird.yaml (empty)', () {
         final tempDir = Directory.systemTemp.createTempSync();
         final pubspecFile = File(p.join(tempDir.path, 'pubspec.yaml'))
@@ -769,6 +771,7 @@ flutter:
 '''),
         );
       });
+
       test('creates assets and adds shorebird.yaml (non-empty)', () {
         final tempDir = Directory.systemTemp.createTempSync();
         final pubspecFile = File(p.join(tempDir.path, 'pubspec.yaml'))
@@ -795,6 +798,7 @@ flutter:
 '''),
         );
       });
+      
       test('adds shorebird.yaml to assets', () {
         final tempDir = Directory.systemTemp.createTempSync();
         final pubspecFile = File(p.join(tempDir.path, 'pubspec.yaml'))
