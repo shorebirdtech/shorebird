@@ -95,34 +95,35 @@ flutter:
       });
     });
 
-    test(
-      'returns successful result if pubspec.yaml has shorebird.yaml in assets',
-      () async {
-        when(() => shorebirdEnv.hasPubspecYaml).thenReturn(true);
-        when(() => shorebirdEnv.pubspecContainsShorebirdYaml).thenReturn(true);
+    group('validate', () {
+      test(
+        'returns successful result if pubspec.yaml has shorebird.yaml in assets',
+        () async {
+          when(() => shorebirdEnv.hasPubspecYaml).thenReturn(true);
+          when(() => shorebirdEnv.pubspecContainsShorebirdYaml)
+              .thenReturn(true);
+          final results = await runWithOverrides(
+            ShorebirdYamlAssetValidator().validate,
+          );
+          expect(results.map((res) => res.severity), isEmpty);
+        },
+      );
+
+      test('returns an error if pubspec.yaml file does not exist', () async {
+        when(() => shorebirdEnv.hasPubspecYaml).thenReturn(false);
         final results = await runWithOverrides(
           ShorebirdYamlAssetValidator().validate,
         );
-        expect(results.map((res) => res.severity), isEmpty);
-      },
-    );
+        expect(results, hasLength(1));
+        expect(results.first.severity, ValidationIssueSeverity.error);
+        expect(
+          results.first.message,
+          startsWith('No pubspec.yaml file found'),
+        );
+        expect(results.first.fix, isNull);
+      });
 
-    test('returns an error if pubspec.yaml file does not exist', () async {
-      when(() => shorebirdEnv.hasPubspecYaml).thenReturn(false);
-      final results = await runWithOverrides(
-        ShorebirdYamlAssetValidator().validate,
-      );
-      expect(results, hasLength(1));
-      expect(results.first.severity, ValidationIssueSeverity.error);
-      expect(
-        results.first.message,
-        startsWith('No pubspec.yaml file found'),
-      );
-      expect(results.first.fix, isNull);
-    });
-
-    group('when shorebird.yaml is missing from assets', () {
-      test('returns error', () async {
+      test('returns error if shorebird.yaml is missing from assets', () async {
         when(() => shorebirdEnv.hasPubspecYaml).thenReturn(true);
         when(() => shorebirdEnv.pubspecContainsShorebirdYaml).thenReturn(false);
         final results = await runWithOverrides(
