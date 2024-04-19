@@ -731,9 +731,7 @@ environment:
           ..createSync()
           ..writeAsStringSync(pubspecContents);
         IOOverrides.runZoned(
-          () => runWithOverrides(
-            () => shorebirdEnv.addShorebirdYamlToPubspecAssets(),
-          ),
+          () => runWithOverrides(shorebirdEnv.addShorebirdYamlToPubspecAssets),
           getCurrentDirectory: () => tempDir,
         );
         expect(
@@ -756,9 +754,7 @@ $pubspecContents
 flutter:
 ''');
         IOOverrides.runZoned(
-          () => runWithOverrides(
-            () => shorebirdEnv.addShorebirdYamlToPubspecAssets(),
-          ),
+          () => runWithOverrides(shorebirdEnv.addShorebirdYamlToPubspecAssets),
           getCurrentDirectory: () => tempDir,
         );
         expect(
@@ -782,9 +778,7 @@ flutter:
  uses-material-design: true
 ''');
         IOOverrides.runZoned(
-          () => runWithOverrides(
-            () => shorebirdEnv.addShorebirdYamlToPubspecAssets(),
-          ),
+          () => runWithOverrides(shorebirdEnv.addShorebirdYamlToPubspecAssets),
           getCurrentDirectory: () => tempDir,
         );
         expect(
@@ -798,7 +792,7 @@ flutter:
 '''),
         );
       });
-      
+
       test('adds shorebird.yaml to assets', () {
         final tempDir = Directory.systemTemp.createTempSync();
         final pubspecFile = File(p.join(tempDir.path, 'pubspec.yaml'))
@@ -810,9 +804,7 @@ flutter:
   - some/asset.txt
 ''');
         IOOverrides.runZoned(
-          () => runWithOverrides(
-            () => shorebirdEnv.addShorebirdYamlToPubspecAssets(),
-          ),
+          () => runWithOverrides(shorebirdEnv.addShorebirdYamlToPubspecAssets),
           getCurrentDirectory: () => tempDir,
         );
         expect(
