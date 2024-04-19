@@ -184,13 +184,9 @@ Please re-run the release command for this version or create a new release.''');
 
     final currentFlutterRevision = shorebirdEnv.flutterRevision;
     if (release.flutterRevision != currentFlutterRevision) {
-      logger.info('''
-
-The release you are trying to patch was built with a different version of Flutter.
-
-Release Flutter Revision: ${release.flutterRevision}
-Current Flutter Revision: $currentFlutterRevision
-''');
+      logger.info(
+        'Release was built with Flutter revision ${release.flutterRevision}',
+      );
     }
 
     try {
