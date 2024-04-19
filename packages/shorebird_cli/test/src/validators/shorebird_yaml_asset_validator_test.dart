@@ -58,6 +58,10 @@ flutter:
       );
     }
 
+    setUpAll(() {
+      registerFallbackValue(MockDirectory());
+    });
+
     setUp(() {
       projectRoot = Directory.systemTemp.createTempSync();
       pubspecYamlFile = File(p.join(projectRoot.path, 'pubspec.yaml'));
@@ -67,10 +71,6 @@ flutter:
       when(() => shorebirdEnv.getFlutterProjectRoot()).thenReturn(projectRoot);
       when(() => shorebirdEnv.getPubspecYamlFile(cwd: any(named: 'cwd')))
           .thenReturn(pubspecYamlFile);
-    });
-
-    setUpAll(() {
-      registerFallbackValue(MockDirectory());
     });
 
     test('has a non-empty description', () {
