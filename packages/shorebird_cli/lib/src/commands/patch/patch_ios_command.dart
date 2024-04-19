@@ -93,7 +93,7 @@ If this option is not provided, the version number will be determined from the p
       ..addFlag(
         'debug-linker',
         negatable: false,
-        help: 'Collects linker percentage data to help troubleshooting.',
+        help: 'Collects linker diagnostic information to help troubleshoot low link percentages.',
       );
   }
 

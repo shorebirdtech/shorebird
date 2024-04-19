@@ -158,8 +158,7 @@ void main() {
       });
 
       group(
-        'when dumpDebugInfoPath is not null, forward the argument to the '
-        'executable',
+        'when --dump-debug-info is provided',
         () {
           const aotToolsPath = 'aot_tools';
 
@@ -171,7 +170,7 @@ void main() {
             ).thenReturn(aotToolsPath);
           });
 
-          test('links and exits with code 0', () async {
+          test('forwards the option to aot_tools', () async {
             when(
               () => process.run(
                 aotToolsPath,
