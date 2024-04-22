@@ -351,6 +351,7 @@ flutter:
             kernel: any(named: 'kernel'),
             workingDirectory: any(named: 'workingDirectory'),
             outputPath: any(named: 'outputPath'),
+            dumpDebugInfoPath: any(named: 'dumpDebugInfoPath'),
           ),
         ).thenAnswer((_) async => null);
         when(() => aotTools.isGeneratePatchDiffBaseSupported())
@@ -1295,6 +1296,31 @@ Please re-run the release command for this version or create a new release.'''),
               ),
             ).called(1);
           });
+        });
+
+        group('when debug-linker is true', () {
+          test(
+            'succeeds and create debug info zip',
+            () async {
+              when(() => argResults['debug-linker']).thenReturn(true);
+              setUpProjectRoot();
+              setUpProjectRootArtifacts();
+              final exitCode = await runWithOverrides(command.run);
+              expect(exitCode, ExitCode.success.code);
+              verify(
+                () => aotTools.link(
+                  base: any(named: 'base'),
+                  patch: any(named: 'patch'),
+                  analyzeSnapshot: any(named: 'analyzeSnapshot'),
+                  genSnapshot: any(named: 'genSnapshot'),
+                  kernel: any(named: 'kernel'),
+                  workingDirectory: any(named: 'workingDirectory'),
+                  outputPath: any(named: 'outputPath'),
+                  dumpDebugInfoPath: any(named: 'dumpDebugInfoPath'),
+                ),
+              ).called(1);
+            },
+          );
         });
       });
 

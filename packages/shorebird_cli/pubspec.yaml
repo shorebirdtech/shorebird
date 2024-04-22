@@ -6,7 +6,7 @@ repository: https://github.com/shorebirdtech/shorebird
 publish_to: none
 
 environment:
-  sdk: ">=3.0.0 <4.0.0"
+  sdk: ">=3.3.0 <4.0.0"
 
 dependencies:
   # TODO(felangel): Use a published version on pub once a new release is published (>3.4.10).
@@ -26,11 +26,7 @@ dependencies:
   cli_util: ^0.4.1
   collection: ^1.18.0
   crypto: ^3.0.3
-  googleapis_auth:
-    git:
-      url: https://github.com/shorebirdtech/googleapis.dart.git
-      path: googleapis_auth
-      ref: 647f96d5ffdae63e41aeea091c34acfffff533e7
+  googleapis_auth: ^1.6.0
   http: ^1.2.1
   intl: ^0.19.0
   io: ^1.0.4
@@ -38,7 +34,7 @@ dependencies:
   json_path: ^0.7.1
   jwt:
     path: ../jwt
-  mason_logger: ^0.2.12
+  mason_logger: ^0.2.15
   meta: ^1.14.0
   path: ^1.9.0
   platform: ^3.1.4
