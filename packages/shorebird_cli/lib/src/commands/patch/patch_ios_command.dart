@@ -93,8 +93,8 @@ If this option is not provided, the version number will be determined from the p
       ..addFlag(
         'debug-linker',
         negatable: false,
-        help:
-            'Collects linker diagnostic information to help troubleshoot low link percentages.',
+        help: 'Collects linker diagnostic information to help troubleshoot low '
+            'link percentages.',
       );
   }
 
@@ -378,6 +378,8 @@ Please re-run the release command for this version or create a new release.''');
             '🟢 Track: ${lightCyan.wrap('Production')}',
           if (percentLinked != null)
             '''🔗 Running ${lightCyan.wrap('${percentLinked.toStringAsFixed(1)}%')} on CPU''',
+          if (results['debug-linker'] == true)
+            '''🔍 Debug Info: ${lightCyan.wrap(_debugInfoOutpath)}''',
         ];
 
         logger.info(
@@ -567,14 +569,12 @@ ${summary.join('\n')}
 
       if (dumpDebugInfo) {
         final debugInfoZip = await tmpLinkerDiagnosticDirectory.zipToTempFile();
-        final zippedDiagnostic = debugInfoZip.copySync(
+        debugInfoZip.copySync(
           p.join(
             'build',
             _debugInfoOutpath,
           ),
         );
-
-        logger.warn('Debug info written to ${zippedDiagnostic.absolute}');
       }
     } catch (error) {
       linkProgress.fail('Failed to link AOT files: $error');
