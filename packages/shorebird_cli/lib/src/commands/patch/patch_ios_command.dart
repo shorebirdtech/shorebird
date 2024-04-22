@@ -552,8 +552,8 @@ ${summary.join('\n')}
     final linkProgress = logger.progress('Linking AOT files');
     double? linkPercentage;
     try {
-      late final tmpLinkerDiagnosticDirectory =
-          Directory.systemTemp.createTempSync();
+      final dumpDebugInfoDir =
+          dumpDebugInfo ? Directory.systemTemp.createTempSync() : null;
 
       linkPercentage = await aotTools.link(
         base: releaseArtifact.path,
@@ -563,12 +563,11 @@ ${summary.join('\n')}
         outputPath: _vmcodeOutputPath,
         workingDirectory: _buildDirectory,
         kernel: newestAppDill().path,
-        dumpDebugInfoPath:
-            dumpDebugInfo ? tmpLinkerDiagnosticDirectory.path : null,
+        dumpDebugInfoPath: dumpDebugInfoDir?.path,
       );
 
-      if (dumpDebugInfo) {
-        final debugInfoZip = await tmpLinkerDiagnosticDirectory.zipToTempFile();
+      if (dumpDebugInfo && dumpDebugInfoDir != null) {
+        final debugInfoZip = await dumpDebugInfoDir.zipToTempFile();
         debugInfoZip.copySync(
           p.join(
             'build',
