@@ -171,6 +171,7 @@ void main() {
           });
 
           test('forwards the option to aot_tools', () async {
+            const debugPath = 'my_debug_path';
             when(
               () => process.run(
                 aotToolsPath,
@@ -194,7 +195,7 @@ void main() {
                   kernel: kernel,
                   workingDirectory: workingDirectory.path,
                   outputPath: outputPath,
-                  dumpDebugInfoPath: 'my_debug_path',
+                  dumpDebugInfoPath: debugPath,
                 ),
               ),
               completes,
@@ -208,7 +209,7 @@ void main() {
                   '--patch=$patch',
                   '--analyze-snapshot=$analyzeSnapshot',
                   '--output=$outputPath',
-                  '--dump-debug-info=my_debug_path',
+                  '--dump-debug-info=$debugPath',
                 ],
                 workingDirectory: any(named: 'workingDirectory'),
               ),
