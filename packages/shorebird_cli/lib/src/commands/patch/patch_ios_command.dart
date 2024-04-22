@@ -93,7 +93,8 @@ If this option is not provided, the version number will be determined from the p
       ..addFlag(
         'debug-linker',
         negatable: false,
-        help: 'Collects linker diagnostic information to help troubleshoot low link percentages.',
+        help:
+            'Collects linker diagnostic information to help troubleshoot low link percentages.',
       );
   }
 
@@ -144,7 +145,6 @@ https://docs.shorebird.dev/status#link-percentage-ios
     final allowNativeDiffs = results['allow-native-diffs'] == true;
     final dryRun = results['dry-run'] == true;
     final isStaging = results['staging'] == true;
-    final dumpDebugInfo = results['debug-linker'] == true;
 
     const arch = 'aarch64';
     const releasePlatform = ReleasePlatform.ios;
@@ -314,7 +314,6 @@ Please re-run the release command for this version or create a new release.''');
         if (useLinker) {
           final (:exitCode, :linkPercentage) = await _runLinker(
             releaseArtifact: releaseArtifactFile,
-            dumpDebugInfo: dumpDebugInfo,
           );
 
           if (exitCode != ExitCode.success.code) return exitCode;
@@ -454,7 +453,7 @@ ${summary.join('\n')}
 
   String get _debugInfoOutpath => p.join(
         _buildDirectory,
-        'out.link_debug_info',
+        'linker_diagnostic.zip',
       );
 
   String _readVersionFromPlist() {
@@ -524,9 +523,9 @@ ${summary.join('\n')}
 
   Future<_LinkResult> _runLinker({
     required File releaseArtifact,
-    required bool dumpDebugInfo,
   }) async {
     final patch = File(_aotOutputPath);
+    final dumpDebugInfo = results['debug-linker'] == true;
 
     if (!patch.existsSync()) {
       logger.err('Unable to find patch AOT file at ${patch.path}');
@@ -551,6 +550,9 @@ ${summary.join('\n')}
     final linkProgress = logger.progress('Linking AOT files');
     double? linkPercentage;
     try {
+      late final tmpLinkerDiagnosticDirectory =
+          Directory.systemTemp.createTempSync();
+
       linkPercentage = await aotTools.link(
         base: releaseArtifact.path,
         patch: patch.path,
@@ -559,17 +561,20 @@ ${summary.join('\n')}
         outputPath: _vmcodeOutputPath,
         workingDirectory: _buildDirectory,
         kernel: newestAppDill().path,
-        dumpDebugInfoPath: dumpDebugInfo ? _debugInfoOutpath : null,
+        dumpDebugInfoPath:
+            dumpDebugInfo ? tmpLinkerDiagnosticDirectory.path : null,
       );
 
       if (dumpDebugInfo) {
-        final debugDirectory = Directory(_debugInfoOutpath)
-          ..createSync(
-            recursive: true,
-          );
-        final debugInfoZip = await debugDirectory.zipToTempFile();
+        final debugInfoZip = await tmpLinkerDiagnosticDirectory.zipToTempFile();
+        final zippedDiagnostic = debugInfoZip.copySync(
+          p.join(
+            'build',
+            _debugInfoOutpath,
+          ),
+        );
 
-        logger.warn('Debug info written to ${debugInfoZip.absolute}');
+        logger.warn('Debug info written to ${zippedDiagnostic.absolute}');
       }
     } catch (error) {
       linkProgress.fail('Failed to link AOT files: $error');
