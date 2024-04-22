@@ -157,6 +157,67 @@ void main() {
         });
       });
 
+      group(
+        'when --dump-debug-info is provided',
+        () {
+          const aotToolsPath = 'aot_tools';
+
+          setUp(() {
+            when(
+              () => shorebirdArtifacts.getArtifactPath(
+                artifact: ShorebirdArtifact.aotTools,
+              ),
+            ).thenReturn(aotToolsPath);
+          });
+
+          test('forwards the option to aot_tools', () async {
+            const debugPath = 'my_debug_path';
+            when(
+              () => process.run(
+                aotToolsPath,
+                any(),
+                workingDirectory: any(named: 'workingDirectory'),
+              ),
+            ).thenAnswer(
+              (_) async => const ShorebirdProcessResult(
+                exitCode: 0,
+                stdout: '',
+                stderr: '',
+              ),
+            );
+            await expectLater(
+              runWithOverrides(
+                () => aotTools.link(
+                  base: base,
+                  patch: patch,
+                  analyzeSnapshot: analyzeSnapshot,
+                  genSnapshot: genSnapshot,
+                  kernel: kernel,
+                  workingDirectory: workingDirectory.path,
+                  outputPath: outputPath,
+                  dumpDebugInfoPath: debugPath,
+                ),
+              ),
+              completes,
+            );
+            verify(
+              () => process.run(
+                aotToolsPath,
+                [
+                  'link',
+                  '--base=$base',
+                  '--patch=$patch',
+                  '--analyze-snapshot=$analyzeSnapshot',
+                  '--output=$outputPath',
+                  '--dump-debug-info=$debugPath',
+                ],
+                workingDirectory: any(named: 'workingDirectory'),
+              ),
+            ).called(1);
+          });
+        },
+      );
+
       group('when aot-tools is a kernel file', () {
         const aotToolsPath = 'aot_tools.dill';
 
