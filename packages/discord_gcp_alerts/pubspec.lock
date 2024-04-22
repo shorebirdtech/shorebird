@@ -477,10 +477,10 @@ packages:
     dependency: "direct dev"
     description:
       name: test
-      sha256: d87214d19fb311997d8128ec501a980f77cb240ac4e7e219accf452813ff473c
+      sha256: d72b538180efcf8413cd2e4e6fcc7ae99c7712e0909eb9223f9da6e6d0ef715f
       url: "https://pub.dev"
     source: hosted
-    version: "1.25.3"
+    version: "1.25.4"
   test_api:
     dependency: transitive
     description:
@@ -493,10 +493,10 @@ packages:
     dependency: transitive
     description:
       name: test_core
-      sha256: "2236f70be1e5ab405c675e88c36935a87dad9e05a506b57dd5c0f617f5aebcb2"
+      sha256: "4d070a6bc36c1c4e89f20d353bfd71dc30cdf2bd0e14349090af360a029ab292"
       url: "https://pub.dev"
     source: hosted
-    version: "0.6.1"
+    version: "0.6.2"
   timing:
     dependency: transitive
     description:
