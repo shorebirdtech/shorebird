@@ -38,7 +38,7 @@ dependencies:
   json_path: ^0.7.1
   jwt:
     path: ../jwt
-  mason_logger: ^0.2.12
+  mason_logger: ^0.2.15
   meta: ^1.14.0
   path: ^1.9.0
   platform: ^3.1.4
