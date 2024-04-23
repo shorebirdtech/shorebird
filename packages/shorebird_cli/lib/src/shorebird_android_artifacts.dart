@@ -3,7 +3,7 @@ import 'package:scoped/scoped.dart';
 import 'package:shorebird_cli/src/command.dart';
 import 'package:shorebird_cli/src/third_party/flutter_tools/lib/flutter_tools.dart';
 
-/// Throw when multiple artifacts are found in the build directory.
+/// Thrown when multiple artifacts are found in the build directory.
 class MultipleArtifactsFoundException implements Exception {
   MultipleArtifactsFoundException({
     required this.buildDir,
