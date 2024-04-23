@@ -110,7 +110,7 @@ class ShorebirdAndroidArtifacts {
     return candidates.first;
   }
 
-  /// Find the app bundle in the build directory.
+  /// Find the app bundle in the provided [project] [Directory].
   File findAppBundle({
     required Directory project,
     required String? flavor,
@@ -133,7 +133,7 @@ class ShorebirdAndroidArtifacts {
     );
   }
 
-  /// Find the apk in the build directory.
+  /// Find the apk in the provided [project] [Directory].
   File findApk({
     required Directory project,
     required String? flavor,
