@@ -51,8 +51,7 @@ void main() {
 
     group('validate', () {
       test(
-        'returns successful result '
-        'if pubspec.yaml has shorebird.yaml in assets',
+        'returns with no errors if pubspec.yaml has shorebird.yaml in assets',
         () async {
           when(() => shorebirdEnv.hasPubspecYaml).thenReturn(true);
           when(
@@ -105,11 +104,9 @@ void main() {
         when(
           () => pubspecEditor.addShorebirdYamlToPubspecAssets(),
         ).thenAnswer((_) {});
-
         final results = await runWithOverrides(
           ShorebirdYamlAssetValidator().validate,
         );
-
         expect(results, hasLength(1));
         expect(results.first.fix, isNotNull);
         await runWithOverrides(() => results.first.fix!());
