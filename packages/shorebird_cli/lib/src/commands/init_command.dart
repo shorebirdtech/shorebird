@@ -10,10 +10,10 @@ import 'package:shorebird_cli/src/doctor.dart';
 import 'package:shorebird_cli/src/executables/executables.dart';
 import 'package:shorebird_cli/src/logger.dart';
 import 'package:shorebird_cli/src/platform.dart';
+import 'package:shorebird_cli/src/pubspec_editor.dart';
 import 'package:shorebird_cli/src/shorebird_env.dart';
 import 'package:shorebird_cli/src/shorebird_validator.dart';
 import 'package:shorebird_code_push_client/shorebird_code_push_client.dart';
-import 'package:yaml/yaml.dart';
 import 'package:yaml_edit/yaml_edit.dart';
 
 /// {@template init_command}
@@ -210,9 +210,7 @@ Please make sure you are running "shorebird init" from within your Flutter proje
     );
 
     if (!shorebirdEnv.pubspecContainsShorebirdYaml) {
-      _addShorebirdYamlToPubspecAssets(
-        shorebirdEnv.getPubspecYamlFile(cwd: projectRoot),
-      );
+      pubspecEditor.addShorebirdYamlToPubspecAssets();
     }
 
     logger.info(
@@ -313,32 +311,5 @@ app_id:
         .writeAsStringSync(editor.toString());
 
     return ShorebirdYaml(appId: appId);
-  }
-
-  void _addShorebirdYamlToPubspecAssets(File pubspecFile) {
-    final pubspecContents = pubspecFile.readAsStringSync();
-    final yaml = loadYaml(pubspecContents, sourceUrl: pubspecFile.uri) as Map;
-    final editor = YamlEditor(pubspecContents);
-    if (!yaml.containsKey('flutter') || yaml['flutter'] == null) {
-      editor.update(
-        ['flutter'],
-        {
-          'assets': ['shorebird.yaml'],
-        },
-      );
-    } else {
-      if (!(yaml['flutter'] as Map).containsKey('assets')) {
-        editor.update(['flutter', 'assets'], ['shorebird.yaml']);
-      } else {
-        final assets = (yaml['flutter'] as Map)['assets'] as List;
-        if (!assets.contains('shorebird.yaml')) {
-          editor.update(['flutter', 'assets'], [...assets, 'shorebird.yaml']);
-        }
-      }
-    }
-
-    if (editor.edits.isEmpty) return;
-
-    pubspecFile.writeAsStringSync(editor.toString());
   }
 }

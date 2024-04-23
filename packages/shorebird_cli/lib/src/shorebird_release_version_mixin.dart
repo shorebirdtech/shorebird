@@ -1,4 +1,3 @@
-import 'package:shorebird_cli/src/cache.dart';
 import 'package:shorebird_cli/src/command.dart';
 import 'package:shorebird_cli/src/executables/executables.dart';
 
@@ -9,8 +8,6 @@ mixin ShorebirdReleaseVersionMixin on ShorebirdCommand {
   Future<String> extractReleaseVersionFromAppBundle(
     String appBundlePath,
   ) async {
-    await cache.updateAll();
-
     final results = await Future.wait([
       bundletool.getVersionName(appBundlePath),
       bundletool.getVersionCode(appBundlePath),

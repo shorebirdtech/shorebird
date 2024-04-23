@@ -3,6 +3,7 @@ import 'package:mason_logger/mason_logger.dart';
 import 'package:mocktail/mocktail.dart';
 import 'package:platform/platform.dart';
 import 'package:scoped/scoped.dart';
+import 'package:shorebird_cli/src/cache.dart';
 import 'package:shorebird_cli/src/command_runner.dart';
 import 'package:shorebird_cli/src/logger.dart' hide logger;
 import 'package:shorebird_cli/src/platform.dart';
@@ -20,6 +21,7 @@ void main() {
     const flutterRevision = 'test-flutter-revision';
     const flutterVersion = '1.2.3';
 
+    late Cache cache;
     late Logger logger;
     late Platform platform;
     late ShorebirdEnv shorebirdEnv;
@@ -31,6 +33,7 @@ void main() {
       return runScoped(
         body,
         values: {
+          cacheRef.overrideWith(() => cache),
           loggerRef.overrideWith(() => logger),
           platformRef.overrideWith(() => platform),
           shorebirdEnvRef.overrideWith(() => shorebirdEnv),
@@ -41,11 +44,13 @@ void main() {
     }
 
     setUp(() {
+      cache = MockCache();
       logger = MockLogger();
       platform = MockPlatform();
       shorebirdEnv = MockShorebirdEnv();
       shorebirdFlutter = MockShorebirdFlutter();
       shorebirdVersion = MockShorebirdVersion();
+      when(() => cache.updateAll()).thenAnswer((_) async {});
       when(() => logger.level).thenReturn(Level.info);
       when(
         () => shorebirdEnv.shorebirdEngineRevision,
@@ -272,6 +277,16 @@ Run ${lightCyan.wrap('shorebird upgrade')} to upgrade.'''),
     });
 
     group('on command failure', () {
+      test('updates cache artifacts', () async {
+        // This will fail due to the release android command missing scoped
+        // dependencies. Because the cache update should happen before the
+        // command runs, we verify that behavior here.
+        await runWithOverrides(
+          () => commandRunner.run(['release', 'android']),
+        );
+        verify(() => cache.updateAll()).called(1);
+      });
+
       test('logs a stack trace using detail', () async {
         // This will fail due to the release android command missing scoped
         // dependencies.

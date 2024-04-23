@@ -23,6 +23,7 @@ import 'package:shorebird_cli/src/executables/executables.dart';
 import 'package:shorebird_cli/src/os/os.dart';
 import 'package:shorebird_cli/src/patch_diff_checker.dart';
 import 'package:shorebird_cli/src/platform/platform.dart';
+import 'package:shorebird_cli/src/pubspec_editor.dart';
 import 'package:shorebird_cli/src/shorebird_android_artifacts.dart';
 import 'package:shorebird_cli/src/shorebird_artifacts.dart';
 import 'package:shorebird_cli/src/shorebird_env.dart';
@@ -117,6 +118,8 @@ class MockProcessWrapper extends Mock implements ProcessWrapper {}
 class MockProcess extends Mock implements Process {}
 
 class MockProgress extends Mock implements Progress {}
+
+class MockPubspecEditor extends Mock implements PubspecEditor {}
 
 class MockRelease extends Mock implements Release {}
 
