@@ -10,6 +10,7 @@ import 'package:shorebird_cli/src/doctor.dart';
 import 'package:shorebird_cli/src/executables/executables.dart';
 import 'package:shorebird_cli/src/logger.dart';
 import 'package:shorebird_cli/src/platform.dart';
+import 'package:shorebird_cli/src/pubspec_editor.dart';
 import 'package:shorebird_cli/src/shorebird_env.dart';
 import 'package:shorebird_cli/src/shorebird_validator.dart';
 import 'package:shorebird_code_push_client/shorebird_code_push_client.dart';
@@ -209,7 +210,7 @@ Please make sure you are running "shorebird init" from within your Flutter proje
     );
 
     if (!shorebirdEnv.pubspecContainsShorebirdYaml) {
-      shorebirdEnv.addShorebirdYamlToPubspecAssets();
+      pubspecEditor.addShorebirdYamlToPubspecAssets();
     }
 
     logger.info(

@@ -14,6 +14,7 @@ import 'package:shorebird_cli/src/doctor.dart';
 import 'package:shorebird_cli/src/executables/executables.dart';
 import 'package:shorebird_cli/src/logger.dart';
 import 'package:shorebird_cli/src/platform.dart';
+import 'package:shorebird_cli/src/pubspec_editor.dart';
 import 'package:shorebird_cli/src/shorebird_env.dart';
 import 'package:shorebird_cli/src/shorebird_process.dart';
 import 'package:shorebird_cli/src/shorebird_validator.dart';
@@ -45,6 +46,7 @@ environment:
     late Logger logger;
     late Platform platform;
     late Progress progress;
+    late PubspecEditor pubspecEditor;
     late ShorebirdEnv shorebirdEnv;
     late ShorebirdValidator shorebirdValidator;
     late XcodeBuild xcodeBuild;
@@ -60,6 +62,7 @@ environment:
           loggerRef.overrideWith(() => logger),
           platformRef.overrideWith(() => platform),
           processRef.overrideWith(() => process),
+          pubspecEditorRef.overrideWith(() => pubspecEditor),
           shorebirdEnvRef.overrideWith(() => shorebirdEnv),
           shorebirdValidatorRef.overrideWith(() => shorebirdValidator),
           xcodeBuildRef.overrideWith(() => xcodeBuild),
@@ -80,6 +83,7 @@ environment:
       shorebirdYamlFile = MockFile();
       pubspecYamlFile = MockFile();
       projectRoot = Directory.systemTemp.createTempSync();
+      pubspecEditor = MockPubspecEditor();
       logger = MockLogger();
       platform = MockPlatform();
       progress = MockProgress();
@@ -906,7 +910,7 @@ flutter:
     test('ensures that addShorebirdYamlToPubspecAssets is called', () async {
       when(() => shorebirdEnv.pubspecContainsShorebirdYaml).thenReturn(false);
       await runWithOverrides(command.run);
-      verify(() => shorebirdEnv.addShorebirdYamlToPubspecAssets()).called(1);
+      verify(pubspecEditor.addShorebirdYamlToPubspecAssets).called(1);
     });
 
     test('fixes fixable validation errors', () async {

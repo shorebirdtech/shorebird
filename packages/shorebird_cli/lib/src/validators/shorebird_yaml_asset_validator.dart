@@ -1,3 +1,4 @@
+import 'package:shorebird_cli/src/pubspec_editor.dart';
 import 'package:shorebird_cli/src/shorebird_env.dart';
 import 'package:shorebird_cli/src/validators/validators.dart';
 
@@ -33,7 +34,7 @@ The command you are running must be run within a Flutter app project.''';
       ValidationIssue(
         severity: ValidationIssueSeverity.error,
         message: 'No shorebird.yaml found in pubspec.yaml assets',
-        fix: () => shorebirdEnv.addShorebirdYamlToPubspecAssets(),
+        fix: () => pubspecEditor.addShorebirdYamlToPubspecAssets(),
       ),
     ];
   }

@@ -42,7 +42,7 @@ void main() {
       shorebirdEnv = runWithOverrides(ShorebirdEnv.new);
 
       when(() => platform.environment).thenReturn(const {});
-      when(() => platform.script).thenReturn(platformScript);
+      when(() => platform.script).thenReturn(platformScript);      
     });
 
     group('copyWith', () {
@@ -715,108 +715,6 @@ base_url: https://example.com''');
       test('returns false if no relevant environment variables are set', () {
         when(() => platform.environment).thenReturn({});
         expect(runWithOverrides(() => shorebirdEnv.isRunningOnCI), isFalse);
-      });
-    });
-
-    group('addShorebirdYamlToPubspecAssets', () {
-      const pubspecContents = '''
-name: test
-version: 1.0.0
-environment:
- sdk: ">=2.19.0 <3.0.0"''';
-
-      test('creates flutter.assets and adds shorebird.yaml', () {
-        final tempDir = Directory.systemTemp.createTempSync();
-        final pubspecFile = File(p.join(tempDir.path, 'pubspec.yaml'))
-          ..createSync()
-          ..writeAsStringSync(pubspecContents);
-        IOOverrides.runZoned(
-          () => runWithOverrides(shorebirdEnv.addShorebirdYamlToPubspecAssets),
-          getCurrentDirectory: () => tempDir,
-        );
-        expect(
-          pubspecFile.readAsStringSync(),
-          equals('''
-$pubspecContents
-flutter:
- assets:
-   - shorebird.yaml
-'''),
-        );
-      });
-
-      test('creates assets and adds shorebird.yaml (empty)', () {
-        final tempDir = Directory.systemTemp.createTempSync();
-        final pubspecFile = File(p.join(tempDir.path, 'pubspec.yaml'))
-          ..createSync()
-          ..writeAsStringSync('''
-$pubspecContents
-flutter:
-''');
-        IOOverrides.runZoned(
-          () => runWithOverrides(shorebirdEnv.addShorebirdYamlToPubspecAssets),
-          getCurrentDirectory: () => tempDir,
-        );
-        expect(
-          pubspecFile.readAsStringSync(),
-          equals('''
-$pubspecContents
-flutter:
- assets:
-   - shorebird.yaml
-'''),
-        );
-      });
-
-      test('creates assets and adds shorebird.yaml (non-empty)', () {
-        final tempDir = Directory.systemTemp.createTempSync();
-        final pubspecFile = File(p.join(tempDir.path, 'pubspec.yaml'))
-          ..createSync()
-          ..writeAsStringSync('''
-$pubspecContents
-flutter:
- uses-material-design: true
-''');
-        IOOverrides.runZoned(
-          () => runWithOverrides(shorebirdEnv.addShorebirdYamlToPubspecAssets),
-          getCurrentDirectory: () => tempDir,
-        );
-        expect(
-          pubspecFile.readAsStringSync(),
-          equals('''
-$pubspecContents
-flutter:
- assets:
-  - shorebird.yaml
- uses-material-design: true
-'''),
-        );
-      });
-
-      test('adds shorebird.yaml to assets', () {
-        final tempDir = Directory.systemTemp.createTempSync();
-        final pubspecFile = File(p.join(tempDir.path, 'pubspec.yaml'))
-          ..createSync()
-          ..writeAsStringSync('''
-$pubspecContents
-flutter:
- assets:
-  - some/asset.txt
-''');
-        IOOverrides.runZoned(
-          () => runWithOverrides(shorebirdEnv.addShorebirdYamlToPubspecAssets),
-          getCurrentDirectory: () => tempDir,
-        );
-        expect(
-          pubspecFile.readAsStringSync(),
-          equals('''
-$pubspecContents
-flutter:
- assets:
-  - some/asset.txt
-  - shorebird.yaml
-'''),
-        );
       });
     });
   });
