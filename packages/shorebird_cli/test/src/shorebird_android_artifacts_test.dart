@@ -14,23 +14,64 @@ void main() {
     });
 
     group('when cannot find artifacts', () {
-      test('throws ArtifactNotFoundException for aabs', () {
-        expect(
-          () => shorebirdAndroidArtifacts.findAppBundle(
-            project: project,
-            flavor: null,
-          ),
-          throwsA(isA<ArtifactNotFoundException>()),
-        );
+      group('when no build folder exists', () {
+        test('throws ArtifactNotFoundException for aabs', () {
+          expect(
+            () => shorebirdAndroidArtifacts.findAppBundle(
+              project: project,
+              flavor: null,
+            ),
+            throwsA(isA<ArtifactNotFoundException>()),
+          );
+        });
+        test('throws ArtifactNotFoundException for apks', () {
+          expect(
+            () => shorebirdAndroidArtifacts.findApk(
+              project: project,
+              flavor: null,
+            ),
+            throwsA(isA<ArtifactNotFoundException>()),
+          );
+        });
       });
-      test('throws ArtifactNotFoundException for apks', () {
-        expect(
-          () => shorebirdAndroidArtifacts.findApk(
-            project: project,
-            flavor: null,
-          ),
-          throwsA(isA<ArtifactNotFoundException>()),
-        );
+      group('when build folder exists but not the file', () {
+        test('throws ArtifactNotFoundException for aabs', () {
+          Directory(
+            path.join(
+              project.path,
+              'build',
+              'app',
+              'outputs',
+              'bundle',
+              'release',
+            ),
+          ).createSync(recursive: true);
+          expect(
+            () => shorebirdAndroidArtifacts.findAppBundle(
+              project: project,
+              flavor: null,
+            ),
+            throwsA(isA<ArtifactNotFoundException>()),
+          );
+        });
+        test('throws ArtifactNotFoundException for apks', () {
+          Directory(
+            path.join(
+              project.path,
+              'build',
+              'app',
+              'outputs',
+              'flutter-apk',
+            ),
+          ).createSync(recursive: true);
+          expect(
+            () => shorebirdAndroidArtifacts.findApk(
+              project: project,
+              flavor: null,
+            ),
+            throwsA(isA<ArtifactNotFoundException>()),
+          );
+        });
       });
     });
 

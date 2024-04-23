@@ -974,5 +974,25 @@ Note: ${lightCyan.wrap('shorebird patch android --flavor=$flavor --target=$targe
       ).called(1);
       expect(exitCode, ExitCode.software.code);
     });
+
+    test('error when multiple artifacts are found ', () async {
+      shorebirdAndroidArtifacts = MockShorebirdAndroidArtifacts();
+      when(
+        () => shorebirdAndroidArtifacts.findAppBundle(
+          project: any(named: 'project'),
+          flavor: any(named: 'flavor'),
+        ),
+      ).thenThrow(
+        MultipleArtifactsFoundException(
+          foundArtifacts: [File('a'), File('b')],
+          buildDir: 'buildDir',
+        ),
+      );
+      final exitCode = await runWithOverrides(command.run);
+      verify(
+        () => logger.err('Multiple artifacts found in buildDir: (a, b)'),
+      ).called(1);
+      expect(exitCode, ExitCode.software.code);
+    });
   });
 }
