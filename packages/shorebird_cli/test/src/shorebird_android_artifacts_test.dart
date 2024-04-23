@@ -33,7 +33,14 @@ void main() {
     });
 
     test('find the app bundle without any flavors', () {
-      const artifactPath = 'build/app/outputs/bundle/release/app-release.aab';
+      final artifactPath = path.join(
+        'build',
+        'app',
+        'outputs',
+        'bundle',
+        'release',
+        'app-release.aab',
+      );
       final artifact = File(
         path.join(projectPath.path, artifactPath),
       )..createSync(recursive: true);
@@ -47,7 +54,13 @@ void main() {
       );
     });
     test('find the apk bundle without any flavors', () {
-      const artifactPath = 'build/app/outputs/flutter-apk/app-release.apk';
+      final artifactPath = path.join(
+        'build',
+        'app',
+        'outputs',
+        'flutter-apk',
+        'app-release.apk',
+      );
       final artifact = File(
         path.join(projectPath.path, artifactPath),
       )..createSync(recursive: true);
@@ -62,8 +75,14 @@ void main() {
     });
 
     test('find the app bundle with an one dimensional flavor', () {
-      const artifactPath =
-          'build/app/outputs/bundle/internalRelease/app-internal-release.aab';
+      final artifactPath = path.join(
+        'build',
+        'app',
+        'outputs',
+        'bundle',
+        'internalRelease',
+        'app-internal-release.aab',
+      );
       final artifact = File(
         path.join(projectPath.path, artifactPath),
       )..createSync(recursive: true);
@@ -79,8 +98,13 @@ void main() {
       );
     });
     test('find the apk with an one dimensional flavor', () {
-      const artifactPath =
-          'build/app/outputs/flutter-apk/app-internal-release.apk';
+      final artifactPath = path.join(
+        'build',
+        'app',
+        'outputs',
+        'flutter-apk',
+        'app-internal-release.apk',
+      );
       final artifact = File(
         path.join(projectPath.path, artifactPath),
       )..createSync(recursive: true);
@@ -97,8 +121,14 @@ void main() {
     });
 
     test('find the app bundle with multi dimensional flavors', () {
-      const artifactPath =
-          'build/app/outputs/bundle/stableGlobalRelease/app-stable-global-release.aab';
+      final artifactPath = path.join(
+        'build',
+        'app',
+        'outputs',
+        'bundle',
+        'stableGlobalRelease',
+        'app-stable-global-release.aab',
+      );
       final artifact = File(
         path.join(projectPath.path, artifactPath),
       )..createSync(recursive: true);
@@ -114,8 +144,13 @@ void main() {
       );
     });
     test('find the apk with multi dimensional flavors', () {
-      const artifactPath =
-          'build/app/outputs/flutter-apk/app-stableglobal-release.apk';
+      final artifactPath = path.join(
+        'build',
+        'app',
+        'outputs',
+        'flutter-apk',
+        'app-stableglobal-release.apk',
+      );
       final artifact = File(
         path.join(projectPath.path, artifactPath),
       )..createSync(recursive: true);
@@ -134,8 +169,14 @@ void main() {
     test(
         'find the app bundle with multi dimensional flavors and multi '
         'word flavor name', () {
-      const artifactPath =
-          'build/app/outputs/bundle/stablePlayStoreRelease/app-stable-playStore-release.aab';
+      final artifactPath = path.join(
+        'build',
+        'app',
+        'outputs',
+        'bundle',
+        'stablePlayStoreRelease',
+        'app-stable-playStore-release.aab',
+      );
       final artifact = File(
         path.join(projectPath.path, artifactPath),
       )..createSync(recursive: true);
@@ -153,8 +194,13 @@ void main() {
     test(
         'find the apk with multi dimensional flavors and multi '
         'word flavor name', () {
-      const artifactPath =
-          'build/app/outputs/flutter-apk/app-stableplaystore-release.apk';
+      final artifactPath = path.join(
+        'build',
+        'app',
+        'outputs',
+        'flutter-apk',
+        'app-stableplaystore-release.apk',
+      );
       final artifact = File(
         path.join(projectPath.path, artifactPath),
       )..createSync(recursive: true);
@@ -171,8 +217,14 @@ void main() {
     });
 
     test('throws when finding multiple aab files', () {
-      const duplicatedArtifactPath =
-          'build/app/outputs/bundle/stablePlayStoreRelease/app---stable-playStore-release.aab';
+      final duplicatedArtifactPath = path.join(
+        'build',
+        'app',
+        'outputs',
+        'bundle',
+        'stablePlayStoreRelease',
+        'app---stable-playStore-release.aab',
+      );
       File(
         path.join(projectPath.path, duplicatedArtifactPath),
       ).createSync(recursive: true);
@@ -194,14 +246,24 @@ void main() {
       );
     });
     test('throws when finding multiple apk files', () {
-      const duplicatedArtifactPath =
-          'build/app/outputs/flutter-apk/app----stableplaystore-release.apk';
+      final duplicatedArtifactPath = path.join(
+        'build',
+        'app',
+        'outputs',
+        'flutter-apk',
+        'app----stableplaystore-release.apk',
+      );
       File(
         path.join(projectPath.path, duplicatedArtifactPath),
       ).createSync(recursive: true);
 
-      const artifactPath =
-          'build/app/outputs/flutter-apk/app-stableplaystore-release.apk';
+      final artifactPath = path.join(
+        'build',
+        'app',
+        'outputs',
+        'flutter-apk',
+        'app-stableplaystore-release.apk',
+      );
       File(
         path.join(projectPath.path, artifactPath),
       ).createSync(recursive: true);
