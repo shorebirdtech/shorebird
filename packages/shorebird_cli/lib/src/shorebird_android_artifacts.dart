@@ -36,7 +36,7 @@ class ArtifactNotFoundException implements Exception {
   }
 }
 
-/// When building android artifacts, gradlew name these artifacts in an
+/// When building android artifacts, gradlew names these artifacts in an
 /// inconsistent way.
 ///
 /// Example:

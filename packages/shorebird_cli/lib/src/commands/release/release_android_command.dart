@@ -195,8 +195,7 @@ Use `shorebird flutter versions list` to list available versions.
         final appId = shorebirdYaml.getAppId(flavor: flavor);
         final app = await codePushClientWrapper.getApp(appId: appId);
 
-        final File bundleFile;
-        final File apkFile;
+        final File apkFile, bundleFile;
         try {
           bundleFile = shorebirdAndroidArtifacts.findAppBundle(
             project: projectRoot,
