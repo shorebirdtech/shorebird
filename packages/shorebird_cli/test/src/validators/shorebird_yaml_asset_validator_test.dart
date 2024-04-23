@@ -10,20 +10,26 @@ import 'package:test/test.dart';
 import '../mocks.dart';
 
 void main() {
-  const pubspecWithoutFlutterSection = '''
+  group(ShorebirdYamlAssetValidator, () {
+    late Directory projectRoot;
+    late File pubspecYamlFile;
+    late ShorebirdEnv shorebirdEnv;
+    late PubspecEditor pubspecEditor;
+
+    const pubspecWithoutFlutterSection = '''
 name: shorebird_cli
 description: Command-line tool to interact with Shorebird's services.
 version: 1.0.0
 ''';
 
-  const pubspecWithoutShorebirdAsset = '''
+    const pubspecWithoutShorebirdAsset = '''
 $pubspecWithoutFlutterSection
 flutter:
   assets:
     - assets/image.png
 ''';
 
-  const pubspecWithShorebirdAsset = '''
+    const pubspecWithShorebirdAsset = '''
 $pubspecWithoutFlutterSection
 flutter:
   assets:
@@ -31,20 +37,13 @@ flutter:
     - shorebird.yaml
 ''';
 
-  late File pubspecYamlFile;
-
-  bool pubspecContainsShorebirdYaml() {
-    final pubspec = Pubspec.parse(pubspecYamlFile.readAsStringSync());
-    if (pubspec.flutter == null) return false;
-    if (pubspec.flutter!['assets'] == null) return false;
-    final assets = pubspec.flutter!['assets'] as List;
-    return assets.contains('shorebird.yaml');
-  }
-
-  group(ShorebirdYamlAssetValidator, () {
-    late Directory projectRoot;
-    late ShorebirdEnv shorebirdEnv;
-    late PubspecEditor pubspecEditor;
+    bool pubspecContainsShorebirdYaml() {
+      final pubspec = Pubspec.parse(pubspecYamlFile.readAsStringSync());
+      if (pubspec.flutter == null) return false;
+      if (pubspec.flutter!['assets'] == null) return false;
+      final assets = pubspec.flutter!['assets'] as List;
+      return assets.contains('shorebird.yaml');
+    }
 
     void writePubspecToPath(String pubspecContents, String path) {
       Directory(path).createSync(recursive: true);
