@@ -1,7 +1,6 @@
 import 'dart:io';
 
 import 'package:mason_logger/mason_logger.dart';
-import 'package:path/path.dart' as p;
 import 'package:scoped/scoped.dart';
 import 'package:shorebird_cli/src/code_push_client_wrapper.dart';
 import 'package:shorebird_cli/src/command.dart';
@@ -12,6 +11,7 @@ import 'package:shorebird_cli/src/extensions/arg_results.dart';
 import 'package:shorebird_cli/src/logger.dart';
 import 'package:shorebird_cli/src/platform.dart';
 import 'package:shorebird_cli/src/platform/platform.dart';
+import 'package:shorebird_cli/src/shorebird_android_artifacts.dart';
 import 'package:shorebird_cli/src/shorebird_build_mixin.dart';
 import 'package:shorebird_cli/src/shorebird_env.dart';
 import 'package:shorebird_cli/src/shorebird_flutter.dart';
@@ -195,36 +195,31 @@ Use `shorebird flutter versions list` to list available versions.
         final appId = shorebirdYaml.getAppId(flavor: flavor);
         final app = await codePushClientWrapper.getApp(appId: appId);
 
-        final bundleDirPath = p.join(
-          projectRoot.path,
-          'build',
-          'app',
-          'outputs',
-          'bundle',
-        );
+        String? bundlePath;
+        String? apkPath;
+        try {
+          bundlePath = shorebirdAndroidArtifacts.findAppBundle(
+            projectPath: projectRoot.path,
+            flavor: flavor,
+          );
+          apkPath = shorebirdAndroidArtifacts.findApk(
+            projectPath: projectRoot.path,
+            flavor: flavor,
+          );
 
-        final apkDirPath = p.join(
-          projectRoot.path,
-          'build',
-          'app',
-          'outputs',
-          'apk',
-        );
-        final bundlePath = flavor != null
-            ? p.join(
-                bundleDirPath,
-                '${flavor}Release',
-                'app-$flavor-release.aab',
-              )
-            : p.join(bundleDirPath, 'release', 'app-release.aab');
-        final apkPath = flavor != null
-            ? p.join(
-                apkDirPath,
-                flavor,
-                'release',
-                'app-$flavor-release.apk',
-              )
-            : p.join(apkDirPath, 'release', 'app-release.apk');
+          if (bundlePath == null) {
+            logger.err('Unable to find app bundle at ${projectRoot.path}.');
+            return ExitCode.software.code;
+          }
+
+          if (apkPath == null) {
+            logger.err('Unable to find apk at ${projectRoot.path}.');
+            return ExitCode.software.code;
+          }
+        } on MultipleArtifactsFoundException catch (error) {
+          logger.err(error.toString());
+          return ExitCode.software.code;
+        }
 
         final String releaseVersion;
         final detectReleaseVersionProgress = logger.progress(
