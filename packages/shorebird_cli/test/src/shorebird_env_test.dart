@@ -42,7 +42,7 @@ void main() {
       shorebirdEnv = runWithOverrides(ShorebirdEnv.new);
 
       when(() => platform.environment).thenReturn(const {});
-      when(() => platform.script).thenReturn(platformScript);      
+      when(() => platform.script).thenReturn(platformScript);
     });
 
     group('copyWith', () {
