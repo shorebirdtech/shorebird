@@ -58,9 +58,9 @@ class Cache {
         continue;
       }
 
-      final progress = logger.progress('Downloading ${artifact.name}');
+      final progress = logger.progress('Downloading ${artifact.name} artifact');
       await artifact.update();
-      progress.complete('Downloaded ${artifact.name}');
+      progress.complete('Downloaded ${artifact.name} artifact');
     }
   }
 
