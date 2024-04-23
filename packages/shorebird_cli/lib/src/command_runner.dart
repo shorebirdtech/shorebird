@@ -207,6 +207,10 @@ Run ${lightCyan.wrap('shorebird upgrade')} to upgrade.''');
       exitCode = ExitCode.success.code;
     } else {
       try {
+        // Most commands need shorebird artifacts, so we ensure the cache
+        // is up to date for all commands (even ones which don't need it).  We
+        // could make a Command subclass and move the cache onto that and
+        // only update in that case, but it didn't seem worth it at the time.
         // Ensure all cached artifacts are up-to-date before running the
         // command.
         await cache.updateAll();
