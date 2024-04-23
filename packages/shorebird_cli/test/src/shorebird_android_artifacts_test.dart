@@ -24,6 +24,7 @@ void main() {
             throwsA(isA<ArtifactNotFoundException>()),
           );
         });
+
         test('throws ArtifactNotFoundException for apks', () {
           expect(
             () => shorebirdAndroidArtifacts.findApk(
@@ -34,6 +35,7 @@ void main() {
           );
         });
       });
+
       group('when build folder exists but not the file', () {
         test('throws ArtifactNotFoundException for aabs', () {
           Directory(
@@ -54,6 +56,7 @@ void main() {
             throwsA(isA<ArtifactNotFoundException>()),
           );
         });
+
         test('throws ArtifactNotFoundException for apks', () {
           Directory(
             path.join(
@@ -99,6 +102,7 @@ void main() {
           equals(artifact.path),
         );
       });
+
       test('finds the apk', () {
         final artifactPath = path.join(
           'build',
@@ -149,6 +153,7 @@ void main() {
           equals(artifact.path),
         );
       });
+
       test('finds the apk', () {
         final artifactPath = path.join(
           'build',
@@ -201,6 +206,7 @@ void main() {
           equals(artifact.path),
         );
       });
+
       test('finds the apk with multi dimensional flavors', () {
         final artifactPath = path.join(
           'build',
@@ -253,6 +259,7 @@ void main() {
           equals(artifact.path),
         );
       });
+
       test('finds the apk', () {
         final artifactPath = path.join(
           'build',
@@ -309,6 +316,7 @@ void main() {
           throwsA(isA<MultipleArtifactsFoundException>()),
         );
       });
+
       test('throws when finding multiple apk files', () {
         final duplicatedArtifactPath = path.join(
           'build',
