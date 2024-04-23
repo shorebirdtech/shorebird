@@ -5,6 +5,7 @@ import 'package:args/command_runner.dart';
 import 'package:cli_completion/cli_completion.dart';
 import 'package:mason_logger/mason_logger.dart';
 import 'package:scoped/scoped.dart';
+import 'package:shorebird_cli/src/cache.dart';
 import 'package:shorebird_cli/src/commands/commands.dart';
 import 'package:shorebird_cli/src/engine_config.dart';
 import 'package:shorebird_cli/src/logger.dart';
@@ -206,6 +207,9 @@ Run ${lightCyan.wrap('shorebird upgrade')} to upgrade.''');
       exitCode = ExitCode.success.code;
     } else {
       try {
+        // Ensure all cached artifacts are up-to-date before running the
+        // command.
+        await cache.updateAll();
         exitCode = await super.runCommand(topLevelResults);
       } catch (error, stackTrace) {
         logger
