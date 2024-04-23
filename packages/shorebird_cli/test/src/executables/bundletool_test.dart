@@ -45,7 +45,6 @@ void main() {
       bundletool = Bundletool();
 
       when(() => androidSdk.path).thenReturn(androidSdkPath);
-      when(() => cache.updateAll()).thenAnswer((_) async {});
       when(
         () => cache.getArtifactDirectory(any()),
       ).thenReturn(workingDirectory);

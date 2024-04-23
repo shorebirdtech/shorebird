@@ -8,7 +8,6 @@ import 'package:path/path.dart' as p;
 import 'package:platform/platform.dart';
 import 'package:scoped/scoped.dart';
 import 'package:shorebird_cli/src/auth/auth.dart';
-import 'package:shorebird_cli/src/cache.dart';
 import 'package:shorebird_cli/src/code_push_client_wrapper.dart';
 import 'package:shorebird_cli/src/commands/commands.dart';
 import 'package:shorebird_cli/src/config/config.dart';
@@ -73,7 +72,6 @@ void main() {
     late Doctor doctor;
     late Platform platform;
     late Auth auth;
-    late Cache cache;
     late Java java;
     late Logger logger;
     late OperatingSystemInterface operatingSystemInterface;
@@ -93,7 +91,6 @@ void main() {
         values: {
           authRef.overrideWith(() => auth),
           bundletoolRef.overrideWith(() => bundletool),
-          cacheRef.overrideWith(() => cache),
           codePushClientWrapperRef.overrideWith(() => codePushClientWrapper),
           doctorRef.overrideWith(() => doctor),
           engineConfigRef.overrideWith(() => const EngineConfig.empty()),
@@ -127,7 +124,6 @@ void main() {
       shorebirdRoot = Directory.systemTemp.createTempSync();
       projectRoot = Directory.systemTemp.createTempSync();
       auth = MockAuth();
-      cache = MockCache();
       java = MockJava();
       progress = MockProgress();
       logger = MockLogger();
@@ -191,10 +187,6 @@ void main() {
       when(() => argResults.wasParsed(any())).thenReturn(true);
       when(() => auth.isAuthenticated).thenReturn(true);
       when(() => auth.client).thenReturn(httpClient);
-      when(() => cache.updateAll()).thenAnswer((_) async => {});
-      when(
-        () => cache.getArtifactDirectory(any()),
-      ).thenReturn(Directory.systemTemp.createTempSync());
       when(() => logger.progress(any())).thenReturn(progress);
       when(() => logger.confirm(any())).thenReturn(true);
       when(

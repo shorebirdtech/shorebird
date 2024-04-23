@@ -1,6 +1,7 @@
 import 'dart:io' hide Platform;
 
 import 'package:http/http.dart' as http;
+import 'package:meta/meta.dart';
 import 'package:path/path.dart' as p;
 import 'package:platform/platform.dart';
 import 'package:scoped/scoped.dart';
@@ -49,15 +50,17 @@ class Cache {
     registerArtifact(AotToolsExeArtifact(cache: this, platform: platform));
   }
 
-  void registerArtifact(CachedArtifact artifact) => _artifacts.add(artifact);
+  void registerArtifact(CachedArtifact artifact) => artifacts.add(artifact);
 
   Future<void> updateAll() async {
-    for (final artifact in _artifacts) {
+    for (final artifact in artifacts) {
       if (await artifact.isUpToDate()) {
         continue;
       }
 
+      final progress = logger.progress('Downloading ${artifact.name} artifact');
       await artifact.update();
+      progress.complete('Downloaded ${artifact.name} artifact');
     }
   }
 
@@ -98,7 +101,8 @@ class Cache {
     );
   }
 
-  final List<CachedArtifact> _artifacts = [];
+  @visibleForTesting
+  final List<CachedArtifact> artifacts = [];
 
   String get storageBaseUrl => 'https://storage.googleapis.com';
 
@@ -207,6 +211,14 @@ class AotToolsDillArtifact extends CachedArtifact {
 
 /// For a few revisions in Dec 2023, we distributed aot-tools as an executable.
 /// Should be removed sometime after June 2024.
+///
+/// The change to use a .dill file was made in
+/// https://github.com/shorebirdtech/_build_engine/commit/babbc37d93e7a2f36e62787e47eee5a3b5458901
+/// The Flutter versions that use this are:
+///  - 3.13.9 (a3d5f7c614aa1cc4d6cb1506e74fd1c81678e68e)
+///  - 3.16.3 (b9b23902966504a9778f4c07e3a3487fa84dcb2a)
+///  - 3.16.4 (7e92b034c5dddb727cf5e802c23cddd39b325a7f)
+///  - 3.16.5 (4e8a7c746ae6f10951f3e676f10b82b21d7300a5)
 class AotToolsExeArtifact extends CachedArtifact {
   AotToolsExeArtifact({required super.cache, required super.platform});
 
