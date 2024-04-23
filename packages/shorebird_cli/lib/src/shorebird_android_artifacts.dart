@@ -88,26 +88,26 @@ class ShorebirdAndroidArtifacts {
     }
 
     final allFiles = directory.listSync();
-    final candidates = allFiles.whereType<File>().where((file) {
+    final artifactCandidates = allFiles.whereType<File>().where((file) {
       final fileName = p.basename(file.path);
       return fileName.artifactId == artifactId;
     }).toList();
 
-    if (candidates.isEmpty) {
+    if (artifactCandidates.isEmpty) {
       throw ArtifactNotFoundException(
         artifactName: artifactName,
         buildDir: directory.path,
       );
     }
 
-    if (candidates.length > 1) {
+    if (artifactCandidates.length > 1) {
       throw MultipleArtifactsFoundException(
         buildDir: directory.path,
-        foundArtifacts: candidates,
+        foundArtifacts: artifactCandidates,
       );
     }
 
-    return candidates.first;
+    return artifactCandidates.first;
   }
 
   /// Find the app bundle in the provided [project] [Directory].
