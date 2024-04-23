@@ -195,15 +195,15 @@ Use `shorebird flutter versions list` to list available versions.
         final appId = shorebirdYaml.getAppId(flavor: flavor);
         final app = await codePushClientWrapper.getApp(appId: appId);
 
-        final String bundlePath;
-        final String apkPath;
+        final File bundleFile;
+        final File apkFile;
         try {
-          bundlePath = shorebirdAndroidArtifacts.findAppBundle(
-            projectPath: projectRoot.path,
+          bundleFile = shorebirdAndroidArtifacts.findAppBundle(
+            project: projectRoot,
             flavor: flavor,
           );
-          apkPath = shorebirdAndroidArtifacts.findApk(
-            projectPath: projectRoot.path,
+          apkFile = shorebirdAndroidArtifacts.findApk(
+            project: projectRoot,
             flavor: flavor,
           );
         } on ArtifactNotFoundException catch (error) {
@@ -219,7 +219,9 @@ Use `shorebird flutter versions list` to list available versions.
           'Detecting release version',
         );
         try {
-          releaseVersion = await extractReleaseVersionFromAppBundle(bundlePath);
+          releaseVersion = await extractReleaseVersionFromAppBundle(
+            bundleFile.path,
+          );
           detectReleaseVersionProgress.complete();
         } catch (error) {
           detectReleaseVersionProgress.fail('$error');
@@ -296,7 +298,7 @@ ${summary.join('\n')}
           appId: app.appId,
           releaseId: release.id,
           projectRoot: projectRoot.path,
-          aabPath: bundlePath,
+          aabPath: bundleFile.path,
           platform: releasePlatform,
           architectures: architectures,
           flavor: flavor,
@@ -326,7 +328,7 @@ ${summary.join('\n')}
             ? '''
 
 Or distribute the apk:
-${lightCyan.wrap(apkPath)}
+${lightCyan.wrap(apkFile.path)}
 '''
             : '';
 
@@ -335,7 +337,7 @@ ${lightCyan.wrap(apkPath)}
           ..info('''
 
 Your next step is to upload the app bundle to the Play Store:
-${lightCyan.wrap(bundlePath)}
+${lightCyan.wrap(bundleFile.path)}
 $apkText
 For information on uploading to the Play Store, see:
 ${link(uri: Uri.parse('https://support.google.com/googleplay/android-developer/answer/9859152?hl=en'))}

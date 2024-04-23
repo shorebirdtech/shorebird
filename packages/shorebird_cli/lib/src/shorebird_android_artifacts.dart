@@ -73,23 +73,22 @@ ShorebirdAndroidArtifacts get shorebirdAndroidArtifacts =>
 // to find the artifacts generated for android
 class ShorebirdAndroidArtifacts {
   /// Find the artifact in the build directory.
-  String _findArtifact({
+  File _findArtifact({
     required String artifactName,
-    required String buildDir,
+    required Directory directory,
   }) {
     // Remove all non characters and digits from the artifact name.
     final artifactId = artifactName.artifactId;
 
-    final directory = Directory(buildDir);
     if (!directory.existsSync()) {
       throw ArtifactNotFoundException(
         artifactName: artifactName,
-        buildDir: buildDir,
+        buildDir: directory.path,
       );
     }
 
     final allFiles = directory.listSync();
-    final candidates = allFiles.where((file) {
+    final candidates = allFiles.whereType<File>().where((file) {
       final fileName = p.basename(file.path);
       return fileName.artifactId == artifactId;
     }).toList();
@@ -97,27 +96,27 @@ class ShorebirdAndroidArtifacts {
     if (candidates.isEmpty) {
       throw ArtifactNotFoundException(
         artifactName: artifactName,
-        buildDir: buildDir,
+        buildDir: directory.path,
       );
     }
 
     if (candidates.length > 1) {
       throw MultipleArtifactsFoundException(
-        buildDir: buildDir,
+        buildDir: directory.path,
         foundArtifacts: candidates,
       );
     }
 
-    return candidates.first.path;
+    return candidates.first;
   }
 
   /// Find the app bundle in the build directory.
-  String findAppBundle({
-    required String projectPath,
+  File findAppBundle({
+    required Directory project,
     required String? flavor,
   }) {
     final buildDir = p.join(
-      projectPath,
+      project.path,
       'build',
       'app',
       'outputs',
@@ -129,18 +128,18 @@ class ShorebirdAndroidArtifacts {
         flavor == null ? 'app-release.aab' : 'app-$flavor-release.aab';
 
     return _findArtifact(
-      buildDir: buildDir,
+      directory: Directory(buildDir),
       artifactName: artifactName,
     );
   }
 
   /// Find the apk in the build directory.
-  String findApk({
-    required String projectPath,
+  File findApk({
+    required Directory project,
     required String? flavor,
   }) {
     final buildDir = p.join(
-      projectPath,
+      project.path,
       'build',
       'app',
       'outputs',
@@ -151,7 +150,7 @@ class ShorebirdAndroidArtifacts {
         flavor == null ? 'app-release.apk' : 'app-$flavor-release.apk';
 
     return _findArtifact(
-      buildDir: buildDir,
+      directory: Directory(buildDir),
       artifactName: artifaceName,
     );
   }

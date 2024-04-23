@@ -5,18 +5,18 @@ import 'package:test/test.dart';
 
 void main() {
   group(ShorebirdAndroidArtifacts, () {
-    late Directory projectPath;
+    late Directory project;
     late ShorebirdAndroidArtifacts shorebirdAndroidArtifacts;
 
     setUp(() {
-      projectPath = Directory.systemTemp.createTempSync();
+      project = Directory.systemTemp.createTempSync();
       shorebirdAndroidArtifacts = ShorebirdAndroidArtifacts();
     });
 
     test('throws ArtifactNotFoundException when cannot find the aab', () {
       expect(
         () => shorebirdAndroidArtifacts.findAppBundle(
-          projectPath: projectPath.path,
+          project: project,
           flavor: null,
         ),
         throwsA(isA<ArtifactNotFoundException>()),
@@ -25,7 +25,7 @@ void main() {
     test('throws ArtifactNotFoundException when cannot find the apk', () {
       expect(
         () => shorebirdAndroidArtifacts.findApk(
-          projectPath: projectPath.path,
+          project: project,
           flavor: null,
         ),
         throwsA(isA<ArtifactNotFoundException>()),
@@ -42,14 +42,16 @@ void main() {
         'app-release.aab',
       );
       final artifact = File(
-        path.join(projectPath.path, artifactPath),
+        path.join(project.path, artifactPath),
       )..createSync(recursive: true);
 
       expect(
-        shorebirdAndroidArtifacts.findAppBundle(
-          projectPath: projectPath.path,
-          flavor: null,
-        ),
+        shorebirdAndroidArtifacts
+            .findAppBundle(
+              project: project,
+              flavor: null,
+            )
+            .path,
         equals(artifact.path),
       );
     });
@@ -62,14 +64,16 @@ void main() {
         'app-release.apk',
       );
       final artifact = File(
-        path.join(projectPath.path, artifactPath),
+        path.join(project.path, artifactPath),
       )..createSync(recursive: true);
 
       expect(
-        shorebirdAndroidArtifacts.findApk(
-          projectPath: projectPath.path,
-          flavor: null,
-        ),
+        shorebirdAndroidArtifacts
+            .findApk(
+              project: project,
+              flavor: null,
+            )
+            .path,
         equals(artifact.path),
       );
     });
@@ -84,16 +88,18 @@ void main() {
         'app-internal-release.aab',
       );
       final artifact = File(
-        path.join(projectPath.path, artifactPath),
+        path.join(project.path, artifactPath),
       )..createSync(recursive: true);
 
       const flavor = 'internal';
 
       expect(
-        shorebirdAndroidArtifacts.findAppBundle(
-          projectPath: projectPath.path,
-          flavor: flavor,
-        ),
+        shorebirdAndroidArtifacts
+            .findAppBundle(
+              project: project,
+              flavor: flavor,
+            )
+            .path,
         equals(artifact.path),
       );
     });
@@ -106,16 +112,18 @@ void main() {
         'app-internal-release.apk',
       );
       final artifact = File(
-        path.join(projectPath.path, artifactPath),
+        path.join(project.path, artifactPath),
       )..createSync(recursive: true);
 
       const flavor = 'internal';
 
       expect(
-        shorebirdAndroidArtifacts.findApk(
-          projectPath: projectPath.path,
-          flavor: flavor,
-        ),
+        shorebirdAndroidArtifacts
+            .findApk(
+              project: project,
+              flavor: flavor,
+            )
+            .path,
         equals(artifact.path),
       );
     });
@@ -130,16 +138,18 @@ void main() {
         'app-stable-global-release.aab',
       );
       final artifact = File(
-        path.join(projectPath.path, artifactPath),
+        path.join(project.path, artifactPath),
       )..createSync(recursive: true);
 
       const flavor = 'stableGlobal';
 
       expect(
-        shorebirdAndroidArtifacts.findAppBundle(
-          projectPath: projectPath.path,
-          flavor: flavor,
-        ),
+        shorebirdAndroidArtifacts
+            .findAppBundle(
+              project: project,
+              flavor: flavor,
+            )
+            .path,
         equals(artifact.path),
       );
     });
@@ -152,16 +162,18 @@ void main() {
         'app-stableglobal-release.apk',
       );
       final artifact = File(
-        path.join(projectPath.path, artifactPath),
+        path.join(project.path, artifactPath),
       )..createSync(recursive: true);
 
       const flavor = 'stableGlobal';
 
       expect(
-        shorebirdAndroidArtifacts.findApk(
-          projectPath: projectPath.path,
-          flavor: flavor,
-        ),
+        shorebirdAndroidArtifacts
+            .findApk(
+              project: project,
+              flavor: flavor,
+            )
+            .path,
         equals(artifact.path),
       );
     });
@@ -178,16 +190,18 @@ void main() {
         'app-stable-playStore-release.aab',
       );
       final artifact = File(
-        path.join(projectPath.path, artifactPath),
+        path.join(project.path, artifactPath),
       )..createSync(recursive: true);
 
       const flavor = 'stablePlayStore';
 
       expect(
-        shorebirdAndroidArtifacts.findAppBundle(
-          projectPath: projectPath.path,
-          flavor: flavor,
-        ),
+        shorebirdAndroidArtifacts
+            .findAppBundle(
+              project: project,
+              flavor: flavor,
+            )
+            .path,
         equals(artifact.path),
       );
     });
@@ -202,16 +216,18 @@ void main() {
         'app-stableplaystore-release.apk',
       );
       final artifact = File(
-        path.join(projectPath.path, artifactPath),
+        path.join(project.path, artifactPath),
       )..createSync(recursive: true);
 
       const flavor = 'stablePlayStore';
 
       expect(
-        shorebirdAndroidArtifacts.findApk(
-          projectPath: projectPath.path,
-          flavor: flavor,
-        ),
+        shorebirdAndroidArtifacts
+            .findApk(
+              project: project,
+              flavor: flavor,
+            )
+            .path,
         equals(artifact.path),
       );
     });
@@ -226,20 +242,20 @@ void main() {
         'app---stable-playStore-release.aab',
       );
       File(
-        path.join(projectPath.path, duplicatedArtifactPath),
+        path.join(project.path, duplicatedArtifactPath),
       ).createSync(recursive: true);
 
       const artifactPath =
           'build/app/outputs/bundle/stablePlayStoreRelease/app-stable-playStore-release.aab';
       File(
-        path.join(projectPath.path, artifactPath),
+        path.join(project.path, artifactPath),
       ).createSync(recursive: true);
 
       const flavor = 'stablePlayStore';
 
       expect(
         () => shorebirdAndroidArtifacts.findAppBundle(
-          projectPath: projectPath.path,
+          project: project,
           flavor: flavor,
         ),
         throwsA(isA<MultipleArtifactsFoundException>()),
@@ -254,7 +270,7 @@ void main() {
         'app----stableplaystore-release.apk',
       );
       File(
-        path.join(projectPath.path, duplicatedArtifactPath),
+        path.join(project.path, duplicatedArtifactPath),
       ).createSync(recursive: true);
 
       final artifactPath = path.join(
@@ -265,14 +281,14 @@ void main() {
         'app-stableplaystore-release.apk',
       );
       File(
-        path.join(projectPath.path, artifactPath),
+        path.join(project.path, artifactPath),
       ).createSync(recursive: true);
 
       const flavor = 'stablePlayStore';
 
       expect(
         () => shorebirdAndroidArtifacts.findApk(
-          projectPath: projectPath.path,
+          project: project,
           flavor: flavor,
         ),
         throwsA(isA<MultipleArtifactsFoundException>()),

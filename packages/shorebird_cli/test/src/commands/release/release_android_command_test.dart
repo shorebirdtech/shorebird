@@ -121,6 +121,7 @@ void main() {
       registerFallbackValue(ReleaseStatus.draft);
       registerFallbackValue(FakeRelease());
       registerFallbackValue(FakeShorebirdProcess());
+      registerFallbackValue(Directory(''));
     });
 
     setUp(() {
@@ -945,7 +946,7 @@ Note: ${lightCyan.wrap('shorebird patch android --flavor=$flavor --target=$targe
       shorebirdAndroidArtifacts = MockShorebirdAndroidArtifacts();
       when(
         () => shorebirdAndroidArtifacts.findAppBundle(
-          projectPath: any(named: 'projectPath'),
+          project: any(named: 'project'),
           flavor: any(named: 'flavor'),
         ),
       ).thenThrow(
@@ -965,13 +966,13 @@ Note: ${lightCyan.wrap('shorebird patch android --flavor=$flavor --target=$targe
       shorebirdAndroidArtifacts = MockShorebirdAndroidArtifacts();
       when(
         () => shorebirdAndroidArtifacts.findAppBundle(
-          projectPath: any(named: 'projectPath'),
+          project: any(named: 'project'),
           flavor: any(named: 'flavor'),
         ),
-      ).thenReturn('app-release.aab');
+      ).thenReturn(File('app-release.aab'));
       when(
         () => shorebirdAndroidArtifacts.findApk(
-          projectPath: any(named: 'projectPath'),
+          project: any(named: 'project'),
           flavor: any(named: 'flavor'),
         ),
       ).thenThrow(
