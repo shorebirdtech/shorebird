@@ -125,6 +125,9 @@ class MockRelease extends Mock implements Release {}
 
 class MockReleaseArtifact extends Mock implements ReleaseArtifact {}
 
+class MockShorebirdAndroidArtifacts extends Mock
+    implements ShorebirdAndroidArtifacts {}
+
 class MockShorebirdArtifacts extends Mock implements ShorebirdArtifacts {}
 
 class MockShorebirdEnv extends Mock implements ShorebirdEnv {}
@@ -150,6 +153,3 @@ class MockStdin extends Mock implements Stdin {}
 class MockValidator extends Mock implements Validator {}
 
 class MockXcodeBuild extends Mock implements XcodeBuild {}
-
-class MockShorebirdAndroidArtifacts extends Mock
-    implements ShorebirdAndroidArtifacts {}
