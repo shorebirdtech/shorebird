@@ -304,19 +304,6 @@ void main() {
 
       command = runWithOverrides(ReleaseAndroidCommand.new)
         ..testArgResults = argResults;
-
-      //when(
-      //  () => shorebirdAndroidArtifacts.findAppBundle(
-      //    projectPath: any(named: 'projectPath'),
-      //    flavor: any(named: 'flavor'),
-      //  ),
-      //).thenReturn('app-release.aab');
-      //when(
-      //  () => shorebirdAndroidArtifacts.findApk(
-      //    projectPath: any(named: 'projectPath'),
-      //    flavor: any(named: 'flavor'),
-      //  ),
-      //).thenReturn('app-release.apk');
     });
 
     test('has a description', () {

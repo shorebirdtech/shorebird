@@ -22,6 +22,7 @@ void main() {
         throwsA(isA<ArtifactNotFoundException>()),
       );
     });
+
     test('throws ArtifactNotFoundException when cannot find the apk', () {
       expect(
         () => shorebirdAndroidArtifacts.findApk(
@@ -32,7 +33,7 @@ void main() {
       );
     });
 
-    test('find the app bundle without any flavors', () {
+    test('finds the app bundle without any flavors', () {
       final artifactPath = path.join(
         'build',
         'app',
