@@ -13,22 +13,22 @@ void main() {
       shorebirdAndroidArtifacts = ShorebirdAndroidArtifacts();
     });
 
-    test('returns null when cannot find the aab', () {
+    test('throws ArtifactNotFoundException when cannot find the aab', () {
       expect(
-        shorebirdAndroidArtifacts.findAppBundle(
+        () => shorebirdAndroidArtifacts.findAppBundle(
           projectPath: projectPath.path,
           flavor: null,
         ),
-        isNull,
+        throwsA(isA<ArtifactNotFoundException>()),
       );
     });
-    test('returns null when cannot find the apk', () {
+    test('throws ArtifactNotFoundException when cannot find the apk', () {
       expect(
-        shorebirdAndroidArtifacts.findApk(
+        () => shorebirdAndroidArtifacts.findApk(
           projectPath: projectPath.path,
           flavor: null,
         ),
-        isNull,
+        throwsA(isA<ArtifactNotFoundException>()),
       );
     });
 

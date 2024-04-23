@@ -195,8 +195,8 @@ Use `shorebird flutter versions list` to list available versions.
         final appId = shorebirdYaml.getAppId(flavor: flavor);
         final app = await codePushClientWrapper.getApp(appId: appId);
 
-        String? bundlePath;
-        String? apkPath;
+        final String bundlePath;
+        final String apkPath;
         try {
           bundlePath = shorebirdAndroidArtifacts.findAppBundle(
             projectPath: projectRoot.path,
@@ -206,16 +206,9 @@ Use `shorebird flutter versions list` to list available versions.
             projectPath: projectRoot.path,
             flavor: flavor,
           );
-
-          if (bundlePath == null) {
-            logger.err('Unable to find app bundle at ${projectRoot.path}.');
-            return ExitCode.software.code;
-          }
-
-          if (apkPath == null) {
-            logger.err('Unable to find apk at ${projectRoot.path}.');
-            return ExitCode.software.code;
-          }
+        } on ArtifactNotFoundException catch (error) {
+          logger.err(error.toString());
+          return ExitCode.software.code;
         } on MultipleArtifactsFoundException catch (error) {
           logger.err(error.toString());
           return ExitCode.software.code;

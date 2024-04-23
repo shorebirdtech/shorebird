@@ -940,5 +940,51 @@ Note: ${lightCyan.wrap('shorebird patch android --flavor=$flavor --target=$targe
       expect(exitCode, equals(ExitCode.success.code));
       verifyNever(() => logger.confirm(any()));
     });
+
+    test('error when the app bundle cannot be found ', () async {
+      shorebirdAndroidArtifacts = MockShorebirdAndroidArtifacts();
+      when(
+        () => shorebirdAndroidArtifacts.findAppBundle(
+          projectPath: any(named: 'projectPath'),
+          flavor: any(named: 'flavor'),
+        ),
+      ).thenThrow(
+        ArtifactNotFoundException(
+          artifactName: 'app-release.aab',
+          buildDir: 'buildDir',
+        ),
+      );
+      final exitCode = await runWithOverrides(command.run);
+      verify(
+        () => logger.err('Artifact app-release.aab not found in buildDir'),
+      ).called(1);
+      expect(exitCode, ExitCode.software.code);
+    });
+
+    test('error when the apk cannot be found ', () async {
+      shorebirdAndroidArtifacts = MockShorebirdAndroidArtifacts();
+      when(
+        () => shorebirdAndroidArtifacts.findAppBundle(
+          projectPath: any(named: 'projectPath'),
+          flavor: any(named: 'flavor'),
+        ),
+      ).thenReturn('app-release.aab');
+      when(
+        () => shorebirdAndroidArtifacts.findApk(
+          projectPath: any(named: 'projectPath'),
+          flavor: any(named: 'flavor'),
+        ),
+      ).thenThrow(
+        ArtifactNotFoundException(
+          artifactName: 'app-release.apk',
+          buildDir: 'buildDir',
+        ),
+      );
+      final exitCode = await runWithOverrides(command.run);
+      verify(
+        () => logger.err('Artifact app-release.apk not found in buildDir'),
+      ).called(1);
+      expect(exitCode, ExitCode.software.code);
+    });
   });
 }
