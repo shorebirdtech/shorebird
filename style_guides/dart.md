@@ -9,21 +9,16 @@ Dart, this guide takes precedence.
 
 ## AVOID mixins
 
-Mixins are a powerful feature of Dart, but they can make code harder to
-test. Mixins are effectively unmockable dependencies, and any code using them
-will need to fully mock out all of the mixin's dependencies. Prefer creating a
-new class as a `scoped` dependency instead.
+Mixins are a powerful feature of Dart, but they make code harder to test:
 
-## DO define one variable per line
+1. Mixins cannot be tested directly and must be tested through the classes they
+   are mixed into.
+2. Mixins are effectively unmockable dependencies of the classes they are mixed
+   into, meaning every class that uses the mixin will need to set up and mock
+   the mixin's dependencies in its own tests.
 
-```dart
-// BAD
-int a, b;
-
-// GOOD
-int a;
-int b;
-```
+Prefer creating a new class as a `scoped` dependency instead, or adding the code
+to an existing `scoped` dependency.
 
 ## PREFER nested `group`s for tests
 
