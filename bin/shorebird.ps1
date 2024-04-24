@@ -137,9 +137,14 @@ function Update-Shorebird {
 
     Write-Output "Compiling shorebird..."
 
+    # Compile our snapshot
+    # We invoke `$SNAPSHOT_PATH completion` to trigger the "completion" command, which
+    # avoids executing as much of our code as possible. We do this because running
+    # the script here (instead of from the compiled snapshot) invalidates a lot of
+    # assumptions we make about the cwd in the shorebird_cli tool.
     & $dart --verbosity=error --disable-dart-dev --snapshot="$snapshotPath" `
         --snapshot-kind="app-jit" --packages="$shorebirdCliDir/.dart_tool/package_config.json" `
-        --no-enable-mirrors "$shorebirdScript" > $null
+        --no-enable-mirrors "$shorebirdScript" completion > $null
 
     Write-Debug "writing $compileKey to $stampPath"
     Set-Content -Path $stampPath -Value $compileKey
