@@ -195,17 +195,19 @@ Use `shorebird flutter versions list` to list available versions.
         final appId = shorebirdYaml.getAppId(flavor: flavor);
         final app = await codePushClientWrapper.getApp(appId: appId);
 
-        final File apkFile;
+        late final File apkFile;
         final File aabFile;
         try {
           aabFile = shorebirdAndroidArtifacts.findAppBundle(
             project: projectRoot,
             flavor: flavor,
           );
-          apkFile = shorebirdAndroidArtifacts.findApk(
-            project: projectRoot,
-            flavor: flavor,
-          );
+          if (generateApk) {
+            apkFile = shorebirdAndroidArtifacts.findApk(
+              project: projectRoot,
+              flavor: flavor,
+            );
+          }
         } on ArtifactNotFoundException catch (error) {
           logger.err(error.toString());
           return ExitCode.software.code;

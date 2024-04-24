@@ -943,6 +943,7 @@ Note: ${lightCyan.wrap('shorebird patch android --flavor=$flavor --target=$targe
 
     test('error when the apk cannot be found', () async {
       shorebirdAndroidArtifacts = MockShorebirdAndroidArtifacts();
+      when(() => argResults['artifact']).thenReturn('apk');
       when(
         () => shorebirdAndroidArtifacts.findAppBundle(
           project: any(named: 'project'),
