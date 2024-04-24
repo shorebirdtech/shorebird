@@ -198,7 +198,7 @@ Use `shorebird flutter versions list` to list available versions.
         late final File apkFile;
         final File aabFile;
         try {
-          aabFile = shorebirdAndroidArtifacts.findAppBundle(
+          aabFile = shorebirdAndroidArtifacts.findAab(
             project: projectRoot,
             flavor: flavor,
           );

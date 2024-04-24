@@ -16,7 +16,7 @@ void main() {
     group('when no build folder exists', () {
       test('throws ArtifactNotFoundException for aabs', () {
         expect(
-          () => shorebirdAndroidArtifacts.findAppBundle(
+          () => shorebirdAndroidArtifacts.findAab(
             project: project,
             flavor: null,
           ),
@@ -48,7 +48,7 @@ void main() {
           ),
         ).createSync(recursive: true);
         expect(
-          () => shorebirdAndroidArtifacts.findAppBundle(
+          () => shorebirdAndroidArtifacts.findAab(
             project: project,
             flavor: null,
           ),
@@ -92,7 +92,7 @@ void main() {
 
         expect(
           shorebirdAndroidArtifacts
-              .findAppBundle(
+              .findAab(
                 project: project,
                 flavor: null,
               )
@@ -143,7 +143,7 @@ void main() {
 
         expect(
           shorebirdAndroidArtifacts
-              .findAppBundle(
+              .findAab(
                 project: project,
                 flavor: flavor,
               )
@@ -196,7 +196,7 @@ void main() {
 
         expect(
           shorebirdAndroidArtifacts
-              .findAppBundle(
+              .findAab(
                 project: project,
                 flavor: flavor,
               )
@@ -249,7 +249,7 @@ void main() {
 
         expect(
           shorebirdAndroidArtifacts
-              .findAppBundle(
+              .findAab(
                 project: project,
                 flavor: flavor,
               )
@@ -307,7 +307,7 @@ void main() {
         const flavor = 'stablePlayStore';
 
         expect(
-          () => shorebirdAndroidArtifacts.findAppBundle(
+          () => shorebirdAndroidArtifacts.findAab(
             project: project,
             flavor: flavor,
           ),

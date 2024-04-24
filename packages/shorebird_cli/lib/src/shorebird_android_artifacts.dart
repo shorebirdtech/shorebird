@@ -1,7 +1,8 @@
+import 'dart:io';
+
 import 'package:path/path.dart' as p;
 import 'package:scoped/scoped.dart';
 import 'package:shorebird_cli/src/command.dart';
-import 'package:shorebird_cli/src/third_party/flutter_tools/lib/flutter_tools.dart';
 
 /// Thrown when multiple artifacts are found in the build directory.
 class MultipleArtifactsFoundException implements Exception {
@@ -111,7 +112,7 @@ class ShorebirdAndroidArtifacts {
   }
 
   /// Find the app bundle in the provided [project] [Directory].
-  File findAppBundle({
+  File findAab({
     required Directory project,
     required String? flavor,
   }) {

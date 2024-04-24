@@ -924,7 +924,7 @@ Note: ${lightCyan.wrap('shorebird patch android --flavor=$flavor --target=$targe
     test('error when the app bundle cannot be found', () async {
       shorebirdAndroidArtifacts = MockShorebirdAndroidArtifacts();
       when(
-        () => shorebirdAndroidArtifacts.findAppBundle(
+        () => shorebirdAndroidArtifacts.findAab(
           project: any(named: 'project'),
           flavor: any(named: 'flavor'),
         ),
@@ -945,7 +945,7 @@ Note: ${lightCyan.wrap('shorebird patch android --flavor=$flavor --target=$targe
       shorebirdAndroidArtifacts = MockShorebirdAndroidArtifacts();
       when(() => argResults['artifact']).thenReturn('apk');
       when(
-        () => shorebirdAndroidArtifacts.findAppBundle(
+        () => shorebirdAndroidArtifacts.findAab(
           project: any(named: 'project'),
           flavor: any(named: 'flavor'),
         ),
@@ -971,7 +971,7 @@ Note: ${lightCyan.wrap('shorebird patch android --flavor=$flavor --target=$targe
     test('error when multiple artifacts are found', () async {
       shorebirdAndroidArtifacts = MockShorebirdAndroidArtifacts();
       when(
-        () => shorebirdAndroidArtifacts.findAppBundle(
+        () => shorebirdAndroidArtifacts.findAab(
           project: any(named: 'project'),
           flavor: any(named: 'flavor'),
         ),
