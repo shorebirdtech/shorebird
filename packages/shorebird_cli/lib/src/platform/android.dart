@@ -44,7 +44,7 @@ extension AndroidArch on Arch {
     if (engineConfig.localEngine != null) {
       final localEngineOutName = engineConfig.localEngine!;
       final arch = Arch.values.firstWhereOrNull(
-        (element) => localEngineOutName.contains(element.androidEnginePath),
+        (a) => localEngineOutName == a.androidEnginePath,
       );
       if (arch == null) {
         throw Exception(
