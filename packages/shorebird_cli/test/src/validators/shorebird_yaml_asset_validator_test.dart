@@ -31,6 +31,10 @@ void main() {
       expect(ShorebirdYamlAssetValidator().description, isNotEmpty);
     });
 
+    test('has a non-empty incorrectContextMessage', () {
+      expect(ShorebirdYamlAssetValidator().incorrectContextMessage, isNotEmpty);
+    });
+
     group('canRunInContext', () {
       test('returns false if no pubspec.yaml file exists', () {
         when(() => shorebirdEnv.hasPubspecYaml).thenReturn(false);
