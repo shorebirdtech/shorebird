@@ -411,48 +411,6 @@ flutter:
       expect(command.description, isNotEmpty);
     });
 
-    test('exits and error when no aab is not found', () async {
-      when(
-        () => shorebirdAndroidArtifacts.findAab(
-          project: any(named: 'project'),
-          flavor: any(named: 'flavor'),
-        ),
-      ).thenThrow(
-        ArtifactNotFoundException(
-          artifactName: 'artifact',
-          buildDir: 'buildDir',
-        ),
-      );
-      final exitCode = await runWithOverrides(command.run);
-
-      expect(exitCode, equals(ExitCode.software.code));
-      verify(() => logger.err('Artifact artifact not found in buildDir'))
-          .called(1);
-    });
-
-    test('exits and error when no multiple aabs are found', () async {
-      when(
-        () => shorebirdAndroidArtifacts.findAab(
-          project: any(named: 'project'),
-          flavor: any(named: 'flavor'),
-        ),
-      ).thenThrow(
-        MultipleArtifactsFoundException(
-          foundArtifacts: [File('artifact1'), File('artifact2')],
-          buildDir: 'buildDir',
-        ),
-      );
-      final exitCode = await runWithOverrides(command.run);
-
-      expect(exitCode, equals(ExitCode.software.code));
-      verify(
-        () => logger.err(
-          'Multiple artifacts found in '
-          'buildDir: (artifact1, artifact2)',
-        ),
-      ).called(1);
-    });
-
     test('exits when validation fails', () async {
       final exception = ValidationFailedException();
       when(
@@ -577,6 +535,52 @@ Please re-run the release command for this version or create a new release.'''),
     group('when release-version option is provided', () {
       setUp(() {
         when(() => argResults['release-version']).thenReturn(release.version);
+      });
+
+      test('exits and error when no aab is not found', () async {
+        setUpProjectRoot();
+        setUpProjectRootArtifacts();
+        when(
+          () => shorebirdAndroidArtifacts.findAab(
+            project: any(named: 'project'),
+            flavor: any(named: 'flavor'),
+          ),
+        ).thenThrow(
+          ArtifactNotFoundException(
+            artifactName: 'artifact',
+            buildDir: 'buildDir',
+          ),
+        );
+        final exitCode = await runWithOverrides(command.run);
+
+        expect(exitCode, equals(ExitCode.software.code));
+        verify(() => logger.err('Artifact artifact not found in buildDir'))
+            .called(1);
+      });
+
+      test('exits and error when no multiple aabs are found', () async {
+        setUpProjectRoot();
+        setUpProjectRootArtifacts();
+        when(
+          () => shorebirdAndroidArtifacts.findAab(
+            project: any(named: 'project'),
+            flavor: any(named: 'flavor'),
+          ),
+        ).thenThrow(
+          MultipleArtifactsFoundException(
+            foundArtifacts: [File('artifact1'), File('artifact2')],
+            buildDir: 'buildDir',
+          ),
+        );
+        final exitCode = await runWithOverrides(command.run);
+
+        expect(exitCode, equals(ExitCode.software.code));
+        verify(
+          () => logger.err(
+            'Multiple artifacts found in '
+            'buildDir: (artifact1, artifact2)',
+          ),
+        ).called(1);
       });
 
       test('does not extract release version from app bundle', () async {
