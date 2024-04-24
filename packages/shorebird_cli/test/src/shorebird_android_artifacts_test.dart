@@ -76,7 +76,7 @@ void main() {
       });
     });
 
-    group('with no flavors', () {
+    group('when using no flavors', () {
       test('finds the app bundle flavors', () {
         final artifactPath = path.join(
           'build',
@@ -125,7 +125,7 @@ void main() {
       });
     });
 
-    group('with one dimensional flavor', () {
+    group('when using single-dimensional flavor', () {
       test('finds the app bundle', () {
         final artifactPath = path.join(
           'build',
@@ -178,8 +178,8 @@ void main() {
       });
     });
 
-    group('when with multi dimensional flavors', () {
-      test('finds the app bundle with multi dimensional flavors', () {
+    group('when using multi-dimensional flavors', () {
+      test('finds the app bundle', () {
         final artifactPath = path.join(
           'build',
           'app',
@@ -205,7 +205,7 @@ void main() {
         );
       });
 
-      test('finds the apk with multi dimensional flavors', () {
+      test('finds the apk', () {
         final artifactPath = path.join(
           'build',
           'app',
@@ -231,7 +231,7 @@ void main() {
       });
     });
 
-    group('when with multi dimensional flavors and mult word flavor name', () {
+    group('when using multi-dimensional flavors and multi-word flavor name', () {
       test('finds the app bundle', () {
         final artifactPath = path.join(
           'build',
@@ -284,8 +284,8 @@ void main() {
       });
     });
 
-    group('when finding multiple files', () {
-      test('throws when finding multiple aab files', () {
+    group('when multiple files are found', () {
+      test('throws MultipleArtifactsFoundException when looking for aab', () {
         final duplicatedArtifactPath = path.join(
           'build',
           'app',
@@ -315,7 +315,7 @@ void main() {
         );
       });
 
-      test('throws when finding multiple apk files', () {
+      test('throws MultipleArtifactsFoundException when looking for apk', () {
         final duplicatedArtifactPath = path.join(
           'build',
           'app',
