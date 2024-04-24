@@ -1,7 +1,6 @@
 import 'dart:io';
 
 import 'package:mason_logger/mason_logger.dart';
-import 'package:path/path.dart' as p;
 import 'package:scoped/scoped.dart';
 import 'package:shorebird_cli/src/code_push_client_wrapper.dart';
 import 'package:shorebird_cli/src/command.dart';
@@ -12,6 +11,7 @@ import 'package:shorebird_cli/src/extensions/arg_results.dart';
 import 'package:shorebird_cli/src/logger.dart';
 import 'package:shorebird_cli/src/platform.dart';
 import 'package:shorebird_cli/src/platform/platform.dart';
+import 'package:shorebird_cli/src/shorebird_android_artifacts.dart';
 import 'package:shorebird_cli/src/shorebird_build_mixin.dart';
 import 'package:shorebird_cli/src/shorebird_env.dart';
 import 'package:shorebird_cli/src/shorebird_flutter.dart';
@@ -195,43 +195,35 @@ Use `shorebird flutter versions list` to list available versions.
         final appId = shorebirdYaml.getAppId(flavor: flavor);
         final app = await codePushClientWrapper.getApp(appId: appId);
 
-        final bundleDirPath = p.join(
-          projectRoot.path,
-          'build',
-          'app',
-          'outputs',
-          'bundle',
-        );
-
-        final apkDirPath = p.join(
-          projectRoot.path,
-          'build',
-          'app',
-          'outputs',
-          'apk',
-        );
-        final bundlePath = flavor != null
-            ? p.join(
-                bundleDirPath,
-                '${flavor}Release',
-                'app-$flavor-release.aab',
-              )
-            : p.join(bundleDirPath, 'release', 'app-release.aab');
-        final apkPath = flavor != null
-            ? p.join(
-                apkDirPath,
-                flavor,
-                'release',
-                'app-$flavor-release.apk',
-              )
-            : p.join(apkDirPath, 'release', 'app-release.apk');
+        late final File apkFile;
+        final File aabFile;
+        try {
+          aabFile = shorebirdAndroidArtifacts.findAab(
+            project: projectRoot,
+            flavor: flavor,
+          );
+          if (generateApk) {
+            apkFile = shorebirdAndroidArtifacts.findApk(
+              project: projectRoot,
+              flavor: flavor,
+            );
+          }
+        } on ArtifactNotFoundException catch (error) {
+          logger.err(error.toString());
+          return ExitCode.software.code;
+        } on MultipleArtifactsFoundException catch (error) {
+          logger.err(error.toString());
+          return ExitCode.software.code;
+        }
 
         final String releaseVersion;
         final detectReleaseVersionProgress = logger.progress(
           'Detecting release version',
         );
         try {
-          releaseVersion = await extractReleaseVersionFromAppBundle(bundlePath);
+          releaseVersion = await extractReleaseVersionFromAppBundle(
+            aabFile.path,
+          );
           detectReleaseVersionProgress.complete();
         } catch (error) {
           detectReleaseVersionProgress.fail('$error');
@@ -308,7 +300,7 @@ ${summary.join('\n')}
           appId: app.appId,
           releaseId: release.id,
           projectRoot: projectRoot.path,
-          aabPath: bundlePath,
+          aabPath: aabFile.path,
           platform: releasePlatform,
           architectures: architectures,
           flavor: flavor,
@@ -338,7 +330,7 @@ ${summary.join('\n')}
             ? '''
 
 Or distribute the apk:
-${lightCyan.wrap(apkPath)}
+${lightCyan.wrap(apkFile.path)}
 '''
             : '';
 
@@ -347,7 +339,7 @@ ${lightCyan.wrap(apkPath)}
           ..info('''
 
 Your next step is to upload the app bundle to the Play Store:
-${lightCyan.wrap(bundlePath)}
+${lightCyan.wrap(aabFile.path)}
 $apkText
 For information on uploading to the Play Store, see:
 ${link(uri: Uri.parse('https://support.google.com/googleplay/android-developer/answer/9859152?hl=en'))}
