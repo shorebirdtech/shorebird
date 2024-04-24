@@ -196,9 +196,9 @@ Use `shorebird flutter versions list` to list available versions.
         final app = await codePushClientWrapper.getApp(appId: appId);
 
         final File apkFile;
-        final File bundleFile;
+        final File aabFile;
         try {
-          bundleFile = shorebirdAndroidArtifacts.findAppBundle(
+          aabFile = shorebirdAndroidArtifacts.findAppBundle(
             project: projectRoot,
             flavor: flavor,
           );
@@ -220,7 +220,7 @@ Use `shorebird flutter versions list` to list available versions.
         );
         try {
           releaseVersion = await extractReleaseVersionFromAppBundle(
-            bundleFile.path,
+            aabFile.path,
           );
           detectReleaseVersionProgress.complete();
         } catch (error) {
@@ -298,7 +298,7 @@ ${summary.join('\n')}
           appId: app.appId,
           releaseId: release.id,
           projectRoot: projectRoot.path,
-          aabPath: bundleFile.path,
+          aabPath: aabFile.path,
           platform: releasePlatform,
           architectures: architectures,
           flavor: flavor,
@@ -337,7 +337,7 @@ ${lightCyan.wrap(apkFile.path)}
           ..info('''
 
 Your next step is to upload the app bundle to the Play Store:
-${lightCyan.wrap(bundleFile.path)}
+${lightCyan.wrap(aabFile.path)}
 $apkText
 For information on uploading to the Play Store, see:
 ${link(uri: Uri.parse('https://support.google.com/googleplay/android-developer/answer/9859152?hl=en'))}
