@@ -1,3 +1,5 @@
+import 'dart:io';
+
 import 'package:args/args.dart';
 import 'package:mason_logger/mason_logger.dart';
 import 'package:mocktail/mocktail.dart';
@@ -7,6 +9,7 @@ import 'package:shorebird_cli/src/commands/build/build.dart';
 import 'package:shorebird_cli/src/doctor.dart';
 import 'package:shorebird_cli/src/logger.dart';
 import 'package:shorebird_cli/src/os/operating_system_interface.dart';
+import 'package:shorebird_cli/src/shorebird_android_artifacts.dart';
 import 'package:shorebird_cli/src/shorebird_env.dart';
 import 'package:shorebird_cli/src/shorebird_process.dart';
 import 'package:shorebird_cli/src/shorebird_validator.dart';
@@ -29,6 +32,7 @@ void main() {
     late ShorebirdFlutterValidator flutterValidator;
     late ShorebirdProcess shorebirdProcess;
     late ShorebirdValidator shorebirdValidator;
+    late ShorebirdAndroidArtifacts shorebirdAndroidArtifacts;
 
     R runWithOverrides<R>(R Function() body) {
       return runScoped(
@@ -40,12 +44,15 @@ void main() {
           processRef.overrideWith(() => shorebirdProcess),
           shorebirdEnvRef.overrideWith(() => shorebirdEnv),
           shorebirdValidatorRef.overrideWith(() => shorebirdValidator),
+          shorebirdAndroidArtifactsRef
+              .overrideWith(() => shorebirdAndroidArtifacts),
         },
       );
     }
 
     setUpAll(() {
       registerFallbackValue(FakeShorebirdProcess());
+      registerFallbackValue(Directory(''));
     });
 
     setUp(() {
@@ -59,6 +66,7 @@ void main() {
       flutterValidator = MockShorebirdFlutterValidator();
       shorebirdEnv = MockShorebirdEnv();
       shorebirdValidator = MockShorebirdValidator();
+      shorebirdAndroidArtifacts = MockShorebirdAndroidArtifacts();
 
       when(
         () => shorebirdProcess.run(
@@ -83,6 +91,7 @@ void main() {
       when(() => operatingSystemInterface.which('flutter'))
           .thenReturn('/path/to/flutter');
       when(() => shorebirdEnv.flutterRevision).thenReturn('1234');
+      when(shorebirdEnv.getShorebirdProjectRoot).thenReturn(Directory(''));
 
       when(
         () => shorebirdValidator.validatePreconditions(
@@ -94,6 +103,15 @@ void main() {
       when(
         () => doctor.androidCommandValidators,
       ).thenReturn([flutterValidator]);
+
+      when(
+        () => shorebirdAndroidArtifacts.findApk(
+          project: any(named: 'project'),
+          flavor: any(
+            named: 'flavor',
+          ),
+        ),
+      ).thenReturn(File(''));
 
       command = runWithOverrides(BuildApkCommand.new)
         ..testArgResults = argResults;
