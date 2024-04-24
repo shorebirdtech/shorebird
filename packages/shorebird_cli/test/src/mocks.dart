@@ -24,6 +24,7 @@ import 'package:shorebird_cli/src/os/os.dart';
 import 'package:shorebird_cli/src/patch_diff_checker.dart';
 import 'package:shorebird_cli/src/platform/platform.dart';
 import 'package:shorebird_cli/src/pubspec_editor.dart';
+import 'package:shorebird_cli/src/shorebird_android_artifacts.dart';
 import 'package:shorebird_cli/src/shorebird_artifacts.dart';
 import 'package:shorebird_cli/src/shorebird_env.dart';
 import 'package:shorebird_cli/src/shorebird_flutter.dart';
@@ -123,6 +124,9 @@ class MockPubspecEditor extends Mock implements PubspecEditor {}
 class MockRelease extends Mock implements Release {}
 
 class MockReleaseArtifact extends Mock implements ReleaseArtifact {}
+
+class MockShorebirdAndroidArtifacts extends Mock
+    implements ShorebirdAndroidArtifacts {}
 
 class MockShorebirdArtifacts extends Mock implements ShorebirdArtifacts {}
 

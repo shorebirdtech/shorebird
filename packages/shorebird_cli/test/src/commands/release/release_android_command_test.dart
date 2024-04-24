@@ -18,6 +18,7 @@ import 'package:shorebird_cli/src/logger.dart';
 import 'package:shorebird_cli/src/os/operating_system_interface.dart';
 import 'package:shorebird_cli/src/platform.dart';
 import 'package:shorebird_cli/src/platform/platform.dart';
+import 'package:shorebird_cli/src/shorebird_android_artifacts.dart';
 import 'package:shorebird_cli/src/shorebird_env.dart';
 import 'package:shorebird_cli/src/shorebird_flutter.dart';
 import 'package:shorebird_cli/src/shorebird_process.dart';
@@ -83,7 +84,11 @@ void main() {
     late ShorebirdEnv shorebirdEnv;
     late ShorebirdFlutter shorebirdFlutter;
     late ShorebirdValidator shorebirdValidator;
+    late ShorebirdAndroidArtifacts shorebirdAndroidArtifacts;
     late ReleaseAndroidCommand command;
+
+    late String aabPath;
+    late String apkPath;
 
     R runWithOverrides<R>(R Function() body) {
       return runScoped(
@@ -102,6 +107,8 @@ void main() {
           shorebirdEnvRef.overrideWith(() => shorebirdEnv),
           shorebirdFlutterRef.overrideWith(() => shorebirdFlutter),
           shorebirdValidatorRef.overrideWith(() => shorebirdValidator),
+          shorebirdAndroidArtifactsRef
+              .overrideWith(() => shorebirdAndroidArtifacts),
         },
       );
     }
@@ -111,6 +118,7 @@ void main() {
       registerFallbackValue(ReleaseStatus.draft);
       registerFallbackValue(FakeRelease());
       registerFallbackValue(FakeShorebirdProcess());
+      registerFallbackValue(Directory(''));
     });
 
     setUp(() {
@@ -134,6 +142,28 @@ void main() {
       shorebirdEnv = MockShorebirdEnv();
       shorebirdFlutter = MockShorebirdFlutter();
       shorebirdValidator = MockShorebirdValidator();
+      shorebirdAndroidArtifacts = ShorebirdAndroidArtifacts();
+
+      aabPath = p.join(
+        projectRoot.path,
+        'build',
+        'app',
+        'outputs',
+        'bundle',
+        'release',
+        'app-release.aab',
+      );
+      apkPath = p.join(
+        projectRoot.path,
+        'build',
+        'app',
+        'outputs',
+        'flutter-apk',
+        'app-release.apk',
+      );
+
+      File(apkPath).createSync(recursive: true);
+      File(aabPath).createSync(recursive: true);
 
       when(() => shorebirdEnv.getShorebirdYaml()).thenReturn(shorebirdYaml);
       when(
@@ -555,24 +585,6 @@ ${link(uri: Uri.parse('https://support.google.com/googleplay/android-developer/a
       final exitCode = await runWithOverrides(command.run);
       verify(() => logger.success('\n✅ Published Release $version!')).called(1);
       // Verify info message does include apk instructions.
-      final aabPath = p.join(
-        projectRoot.path,
-        'build',
-        'app',
-        'outputs',
-        'bundle',
-        'release',
-        'app-release.aab',
-      );
-      final apkPath = p.join(
-        projectRoot.path,
-        'build',
-        'app',
-        'outputs',
-        'apk',
-        'release',
-        'app-release.apk',
-      );
       verify(
         () => logger.info('''
 
@@ -760,6 +772,26 @@ Either run `flutter pub get` manually, or follow the steps in ${link(uri: Uri.pa
     test(
         'succeeds when release is successful '
         'with flavors and target', () async {
+      aabPath = p.join(
+        projectRoot.path,
+        'build',
+        'app',
+        'outputs',
+        'bundle',
+        'developmentRelease',
+        'app-development-release.aab',
+      );
+      apkPath = p.join(
+        projectRoot.path,
+        'build',
+        'app',
+        'outputs',
+        'flutter-apk',
+        'app-development-release.apk',
+      );
+
+      File(apkPath).createSync(recursive: true);
+      File(aabPath).createSync(recursive: true);
       const flavor = 'development';
       final target = p.join('lib', 'main_development.dart');
       when(() => argResults['flavor']).thenReturn(flavor);
@@ -887,6 +919,73 @@ Note: ${lightCyan.wrap('shorebird patch android --flavor=$flavor --target=$targe
 
       expect(exitCode, equals(ExitCode.success.code));
       verifyNever(() => logger.confirm(any()));
+    });
+
+    test('errors when the app bundle cannot be found', () async {
+      shorebirdAndroidArtifacts = MockShorebirdAndroidArtifacts();
+      when(
+        () => shorebirdAndroidArtifacts.findAab(
+          project: any(named: 'project'),
+          flavor: any(named: 'flavor'),
+        ),
+      ).thenThrow(
+        ArtifactNotFoundException(
+          artifactName: 'app-release.aab',
+          buildDir: 'buildDir',
+        ),
+      );
+      final exitCode = await runWithOverrides(command.run);
+      verify(
+        () => logger.err('Artifact app-release.aab not found in buildDir'),
+      ).called(1);
+      expect(exitCode, ExitCode.software.code);
+    });
+
+    test('errors when the apk cannot be found', () async {
+      shorebirdAndroidArtifacts = MockShorebirdAndroidArtifacts();
+      when(() => argResults['artifact']).thenReturn('apk');
+      when(
+        () => shorebirdAndroidArtifacts.findAab(
+          project: any(named: 'project'),
+          flavor: any(named: 'flavor'),
+        ),
+      ).thenReturn(File('app-release.aab'));
+      when(
+        () => shorebirdAndroidArtifacts.findApk(
+          project: any(named: 'project'),
+          flavor: any(named: 'flavor'),
+        ),
+      ).thenThrow(
+        ArtifactNotFoundException(
+          artifactName: 'app-release.apk',
+          buildDir: 'buildDir',
+        ),
+      );
+      final exitCode = await runWithOverrides(command.run);
+      verify(
+        () => logger.err('Artifact app-release.apk not found in buildDir'),
+      ).called(1);
+      expect(exitCode, ExitCode.software.code);
+    });
+
+    test('errors when multiple artifacts are found', () async {
+      shorebirdAndroidArtifacts = MockShorebirdAndroidArtifacts();
+      when(
+        () => shorebirdAndroidArtifacts.findAab(
+          project: any(named: 'project'),
+          flavor: any(named: 'flavor'),
+        ),
+      ).thenThrow(
+        MultipleArtifactsFoundException(
+          foundArtifacts: [File('a'), File('b')],
+          buildDir: 'buildDir',
+        ),
+      );
+      final exitCode = await runWithOverrides(command.run);
+      verify(
+        () => logger.err('Multiple artifacts found in buildDir: (a, b)'),
+      ).called(1);
+      expect(exitCode, ExitCode.software.code);
     });
   });
 }
