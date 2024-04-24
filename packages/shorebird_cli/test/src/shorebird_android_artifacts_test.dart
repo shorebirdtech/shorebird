@@ -231,7 +231,8 @@ void main() {
       });
     });
 
-    group('when using multi-dimensional flavors and multi-word flavor name', () {
+    group('when using multi-dimensional flavors and multi-word flavor name',
+        () {
       test('finds the app bundle', () {
         final artifactPath = path.join(
           'build',
