@@ -24,6 +24,7 @@ import 'package:shorebird_cli/src/os/operating_system_interface.dart';
 import 'package:shorebird_cli/src/patch_diff_checker.dart';
 import 'package:shorebird_cli/src/platform.dart';
 import 'package:shorebird_cli/src/platform/platform.dart';
+import 'package:shorebird_cli/src/shorebird_android_artifacts.dart';
 import 'package:shorebird_cli/src/shorebird_env.dart';
 import 'package:shorebird_cli/src/shorebird_flutter.dart';
 import 'package:shorebird_cli/src/shorebird_process.dart';
@@ -112,6 +113,7 @@ flutter:
     late Platform platform;
     late Progress progress;
     late Logger logger;
+    late ShorebirdAndroidArtifacts shorebirdAndroidArtifacts;
     late ShorebirdEnv shorebirdEnv;
     late ShorebirdProcessResult flutterBuildProcessResult;
     late ShorebirdProcessResult flutterPubGetProcessResult;
@@ -144,6 +146,8 @@ flutter:
           processRef.overrideWith(() => shorebirdProcess),
           shorebirdFlutterRef.overrideWith(() => shorebirdFlutter),
           shorebirdValidatorRef.overrideWith(() => shorebirdValidator),
+          shorebirdAndroidArtifactsRef
+              .overrideWith(() => shorebirdAndroidArtifacts),
         },
       );
     }
@@ -393,10 +397,60 @@ flutter:
       when(() => platform.operatingSystemVersion)
           .thenReturn(operatingSystemVersion);
       when(() => shorebirdEnv.canAcceptUserInput).thenReturn(true);
+
+      shorebirdAndroidArtifacts = MockShorebirdAndroidArtifacts();
+      when(
+        () => shorebirdAndroidArtifacts.findAab(
+          project: any(named: 'project'),
+          flavor: any(named: 'flavor'),
+        ),
+      ).thenReturn(File(''));
     });
 
     test('has a description', () {
       expect(command.description, isNotEmpty);
+    });
+
+    test('exits and error when no aab is not found', () async {
+      when(
+        () => shorebirdAndroidArtifacts.findAab(
+          project: any(named: 'project'),
+          flavor: any(named: 'flavor'),
+        ),
+      ).thenThrow(
+        ArtifactNotFoundException(
+          artifactName: 'artifact',
+          buildDir: 'buildDir',
+        ),
+      );
+      final exitCode = await runWithOverrides(command.run);
+
+      expect(exitCode, equals(ExitCode.software.code));
+      verify(() => logger.err('Artifact artifact not found in buildDir'))
+          .called(1);
+    });
+
+    test('exits and error when no multiple aabs are found', () async {
+      when(
+        () => shorebirdAndroidArtifacts.findAab(
+          project: any(named: 'project'),
+          flavor: any(named: 'flavor'),
+        ),
+      ).thenThrow(
+        MultipleArtifactsFoundException(
+          foundArtifacts: [File('artifact1'), File('artifact2')],
+          buildDir: 'buildDir',
+        ),
+      );
+      final exitCode = await runWithOverrides(command.run);
+
+      expect(exitCode, equals(ExitCode.software.code));
+      verify(
+        () => logger.err(
+          'Multiple artifacts found in '
+          'buildDir: (artifact1, artifact2)',
+        ),
+      ).called(1);
     });
 
     test('exits when validation fails', () async {
