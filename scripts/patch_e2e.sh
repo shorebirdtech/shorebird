@@ -46,7 +46,7 @@ while IFS= read -r line; do
 done < <(shorebird preview --release-version 0.1.0+1 --app-id $APP_ID --platform android)
 
 # Replace lib/main.dart "hello world" to "hello shorebird"
-sed -i '' 's/hello world/hello shorebird/g' lib/main.dart
+sed -i 's/hello world/hello shorebird/g' lib/main.dart
 
 # Create a patch
 shorebird patch android -v
