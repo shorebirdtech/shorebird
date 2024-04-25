@@ -1,5 +1,6 @@
 import 'dart:io';
 
+import 'package:collection/collection.dart';
 import 'package:path/path.dart' as p;
 import 'package:scoped/scoped.dart';
 import 'package:shorebird_cli/src/command.dart';
@@ -16,8 +17,7 @@ class MultipleArtifactsFoundException implements Exception {
 
   @override
   String toString() {
-    final artifacts = List<FileSystemEntity>.from(foundArtifacts)
-      ..sort((a, b) => a.path.compareTo(b.path));
+    final artifacts = foundArtifacts.sortedBy((e) => e.path);
     return 'Multiple artifacts found in $buildDir: '
         '${artifacts.map((e) => e.path)}';
   }

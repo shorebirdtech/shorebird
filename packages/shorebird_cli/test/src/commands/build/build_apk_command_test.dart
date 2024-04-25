@@ -51,8 +51,8 @@ void main() {
     }
 
     setUpAll(() {
-      registerFallbackValue(FakeShorebirdProcess());
       registerFallbackValue(Directory(''));
+      registerFallbackValue(FakeShorebirdProcess());
     });
 
     setUp(() {

@@ -944,7 +944,7 @@ Note: ${lightCyan.wrap('shorebird patch android --flavor=$flavor --target=$targe
       final exitCode = await runWithOverrides(command.run);
       verify(
         () => progress.fail(
-          'Build success but it generated multiple APKs in the build '
+          'Build succeeded, but it generated multiple APKs in the build '
           'directory. (a, b)',
         ),
       ).called(1);
@@ -974,7 +974,7 @@ Note: ${lightCyan.wrap('shorebird patch android --flavor=$flavor --target=$targe
       final exitCode = await runWithOverrides(command.run);
       verify(
         () => progress.fail(
-          'Build success but could not find the APK in the build '
+          'Build succeeded, but could not find the APK in the build '
           'directory. Expected to find app-release.apk',
         ),
       ).called(1);
@@ -997,7 +997,7 @@ Note: ${lightCyan.wrap('shorebird patch android --flavor=$flavor --target=$targe
       final exitCode = await runWithOverrides(command.run);
       verify(
         () => progress
-            .fail('Build success but could not find the AAB in the build '
+            .fail('Build succeeded, but could not find the AAB in the build '
                 'directory. Expected to find app-release.aab'),
       ).called(1);
       expect(exitCode, ExitCode.software.code);
@@ -1019,7 +1019,7 @@ Note: ${lightCyan.wrap('shorebird patch android --flavor=$flavor --target=$targe
       final exitCode = await runWithOverrides(command.run);
       verify(
         () => progress.fail(
-          'Build success but it generated multiple AABs in the build '
+          'Build succeeded, but it generated multiple AABs in the build '
           'directory. (a, b)',
         ),
       ).called(1);
