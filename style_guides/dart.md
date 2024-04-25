@@ -28,9 +28,6 @@ less duplicated code for tests that rely on the same setup.
 ```dart
 // BAD
 group('myFunction', () {
-
-  setUp(() { ... });
-
   test('returns null when dep1.foo is true and dep2.bar is false', () {
     when(() => dep1.foo).thenReturn(true);
     when(() => dep2.bar).thenReturn(false);
