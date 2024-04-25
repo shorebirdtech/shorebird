@@ -54,7 +54,7 @@ group('myFunction', () {
 });
 ```
 
-## DO use multiline string literals for long strings
+## PREFER to use multiline string literals for long strings
 
 This makes the string easier to read, and reduces the chance of accidentally
 including too few or too many spaces in the string.
