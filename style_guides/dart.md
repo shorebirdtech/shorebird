@@ -53,3 +53,17 @@ group('myFunction', () {
   });
 });
 ```
+
+## DO use multiline string literals for long strings
+
+This makes the string easier to read, and reduces the chance of accidentally
+including too few or too many spaces in the string.
+
+```dart
+// BAD
+final longString = 'This is a string longer than the eighty character '
+  'limit that our lint rules enforce.';
+
+// GOOD
+final longString = '''This is a string longer than the eighty character limit that our lint rules enforce.'''
+```
