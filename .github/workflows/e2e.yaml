@@ -16,7 +16,7 @@ env:
 
 jobs:
   patch:
-    runs-on: macos-latest
+    runs-on: ubuntu-latest
 
     env:
       SHOREBIRD_HOSTED_URL: https://api-dev.shorebird.dev
