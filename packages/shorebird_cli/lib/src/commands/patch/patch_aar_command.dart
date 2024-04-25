@@ -9,6 +9,7 @@ import 'package:path/path.dart' as p;
 import 'package:scoped/scoped.dart';
 import 'package:shorebird_cli/src/archive_analysis/archive_analysis.dart';
 import 'package:shorebird_cli/src/artifact_manager.dart';
+import 'package:shorebird_cli/src/cache.dart';
 import 'package:shorebird_cli/src/code_push_client_wrapper.dart';
 import 'package:shorebird_cli/src/command.dart';
 import 'package:shorebird_cli/src/commands/patch/patch.dart';
@@ -97,6 +98,8 @@ of the Android app that is using this module.''',
     final dryRun = results['dry-run'] == true;
     final allowAssetDiffs = results['allow-asset-diffs'] == true;
     final allowNativeDiffs = results['allow-native-diffs'] == true;
+
+    await cache.updateAll();
 
     if (shorebirdEnv.androidPackageName == null) {
       logger.err('Could not find androidPackage in pubspec.yaml.');

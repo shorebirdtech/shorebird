@@ -4,6 +4,7 @@ import 'package:mason_logger/mason_logger.dart';
 import 'package:mocktail/mocktail.dart';
 import 'package:path/path.dart' as p;
 import 'package:scoped/scoped.dart';
+import 'package:shorebird_cli/src/cache.dart';
 import 'package:shorebird_cli/src/executables/executables.dart';
 import 'package:shorebird_cli/src/shorebird_artifacts.dart';
 import 'package:shorebird_cli/src/shorebird_env.dart';
@@ -14,6 +15,7 @@ import '../mocks.dart';
 
 void main() {
   group(AotTools, () {
+    late Cache cache;
     late ShorebirdArtifacts shorebirdArtifacts;
     late ShorebirdProcess process;
     late ShorebirdEnv shorebirdEnv;
@@ -25,6 +27,7 @@ void main() {
       return runScoped(
         body,
         values: {
+          cacheRef.overrideWith(() => cache),
           processRef.overrideWith(() => process),
           shorebirdArtifactsRef.overrideWith(() => shorebirdArtifacts),
           shorebirdEnvRef.overrideWith(() => shorebirdEnv),
@@ -33,6 +36,7 @@ void main() {
     }
 
     setUp(() {
+      cache = MockCache();
       process = MockShorebirdProcess();
       shorebirdArtifacts = MockShorebirdArtifacts();
       shorebirdEnv = MockShorebirdEnv();
@@ -40,6 +44,7 @@ void main() {
       workingDirectory = Directory('aot-tools test');
       aotTools = AotTools();
 
+      when(() => cache.updateAll()).thenAnswer((_) async {});
       when(() => shorebirdEnv.dartBinaryFile).thenReturn(dartBinaryFile);
       when(
         () => shorebirdArtifacts.getArtifactPath(
