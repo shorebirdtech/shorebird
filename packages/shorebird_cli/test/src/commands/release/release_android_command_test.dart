@@ -923,8 +923,15 @@ Note: ${lightCyan.wrap('shorebird patch android --flavor=$flavor --target=$targe
 
     test('errors when multiple apks are found', () async {
       shorebirdAndroidArtifacts = MockShorebirdAndroidArtifacts();
+      when(() => argResults['artifact']).thenReturn('apk');
       when(
         () => shorebirdAndroidArtifacts.findAab(
+          project: any(named: 'project'),
+          flavor: any(named: 'flavor'),
+        ),
+      ).thenReturn(File('app-release.aab'));
+      when(
+        () => shorebirdAndroidArtifacts.findApk(
           project: any(named: 'project'),
           flavor: any(named: 'flavor'),
         ),
@@ -937,7 +944,7 @@ Note: ${lightCyan.wrap('shorebird patch android --flavor=$flavor --target=$targe
       final exitCode = await runWithOverrides(command.run);
       verify(
         () => progress.fail(
-          'Build success but it generated multiple AABs in the build '
+          'Build success but it generated multiple APKs in the build '
           'directory. (a, b)',
         ),
       ).called(1);
