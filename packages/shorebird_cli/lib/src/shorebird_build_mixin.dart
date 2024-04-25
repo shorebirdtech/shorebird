@@ -65,12 +65,12 @@ mixin ShorebirdBuildMixin on ShorebirdCommand {
       );
     } on MultipleArtifactsFoundException catch (error) {
       throw BuildException(
-        'Build success but it generated multiple AABs in the '
+        'Build succeeded, but it generated multiple AABs in the '
         'build directory. ${error.foundArtifacts.map((e) => e.path)}',
       );
     } on ArtifactNotFoundException catch (error) {
       throw BuildException(
-        'Build success but could not find the AAB in the build directory. '
+        'Build succeeded, but could not find the AAB in the build directory. '
         'Expected to find ${error.artifactName}',
       );
     }
@@ -154,12 +154,12 @@ mixin ShorebirdBuildMixin on ShorebirdCommand {
       );
     } on MultipleArtifactsFoundException catch (error) {
       throw BuildException(
-        'Build success but it generated multiple APKs in the '
+        'Build succeeded, but it generated multiple APKs in the '
         'build directory. ${error.foundArtifacts.map((e) => e.path)}',
       );
     } on ArtifactNotFoundException catch (error) {
       throw BuildException(
-        'Build success but could not find the APK in the build directory. '
+        'Build succeeded, but could not find the APK in the build directory. '
         'Expected to find ${error.artifactName}',
       );
     }
