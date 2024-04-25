@@ -2,6 +2,16 @@
 
 This section contains past updates we've sent to customers via Discord.
 
+## 1.0.3 (April 25, 2024)
+
+- 🐦 Support for Flutter 3.19.6
+- 🖨️ Improve logging for patch commands to include Flutter version being used to build
+- 💾 Improve consistency of Shorebird artifact downloads
+- ✅ Add validation that shorebird.yaml is present in pubspec.yaml assets section
+- 🌌 Improved handling of multi-dimensional Android flavors
+
+📚 Release notes can be found at https://github.com/shorebirdtech/shorebird/releases/tag/v1.0.3
+
 ## 1.0.2 (April 18, 2024)
 
 - 🍢 Fix a kebab-casing issue with Android Flavors
