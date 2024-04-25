@@ -7,6 +7,9 @@ This guide is a supplement to
 read in the same way. If there is a conflict between this guide and Effective
 Dart, this guide takes precedence.
 
+This style guide only defines rules which are not enforced via lint rules. If
+possible, prefer using lint rules to enforce style.
+
 ## AVOID mixins
 
 Mixins are a powerful feature of Dart, but they make code harder to test:
