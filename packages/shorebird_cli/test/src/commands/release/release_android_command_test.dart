@@ -921,22 +921,32 @@ Note: ${lightCyan.wrap('shorebird patch android --flavor=$flavor --target=$targe
       verifyNever(() => logger.confirm(any()));
     });
 
-    test('errors when the app bundle cannot be found', () async {
+    test('errors when multiple apks are found', () async {
       shorebirdAndroidArtifacts = MockShorebirdAndroidArtifacts();
+      when(() => argResults['artifact']).thenReturn('apk');
       when(
         () => shorebirdAndroidArtifacts.findAab(
           project: any(named: 'project'),
           flavor: any(named: 'flavor'),
         ),
+      ).thenReturn(File('app-release.aab'));
+      when(
+        () => shorebirdAndroidArtifacts.findApk(
+          project: any(named: 'project'),
+          flavor: any(named: 'flavor'),
+        ),
       ).thenThrow(
-        ArtifactNotFoundException(
-          artifactName: 'app-release.aab',
+        MultipleArtifactsFoundException(
+          foundArtifacts: [File('a'), File('b')],
           buildDir: 'buildDir',
         ),
       );
       final exitCode = await runWithOverrides(command.run);
       verify(
-        () => logger.err('Artifact app-release.aab not found in buildDir'),
+        () => progress.fail(
+          'Build succeeded, but it generated multiple APKs in the build '
+          'directory. (a, b)',
+        ),
       ).called(1);
       expect(exitCode, ExitCode.software.code);
     });
@@ -963,12 +973,37 @@ Note: ${lightCyan.wrap('shorebird patch android --flavor=$flavor --target=$targe
       );
       final exitCode = await runWithOverrides(command.run);
       verify(
-        () => logger.err('Artifact app-release.apk not found in buildDir'),
+        () => progress.fail(
+          'Build succeeded, but could not find the APK in the build '
+          'directory. Expected to find app-release.apk',
+        ),
       ).called(1);
       expect(exitCode, ExitCode.software.code);
     });
 
-    test('errors when multiple artifacts are found', () async {
+    test('errors when the app bundle cannot be found', () async {
+      shorebirdAndroidArtifacts = MockShorebirdAndroidArtifacts();
+      when(
+        () => shorebirdAndroidArtifacts.findAab(
+          project: any(named: 'project'),
+          flavor: any(named: 'flavor'),
+        ),
+      ).thenThrow(
+        ArtifactNotFoundException(
+          artifactName: 'app-release.aab',
+          buildDir: 'buildDir',
+        ),
+      );
+      final exitCode = await runWithOverrides(command.run);
+      verify(
+        () => progress
+            .fail('Build succeeded, but could not find the AAB in the build '
+                'directory. Expected to find app-release.aab'),
+      ).called(1);
+      expect(exitCode, ExitCode.software.code);
+    });
+
+    test('errors when multiple aabs are found', () async {
       shorebirdAndroidArtifacts = MockShorebirdAndroidArtifacts();
       when(
         () => shorebirdAndroidArtifacts.findAab(
@@ -983,7 +1018,10 @@ Note: ${lightCyan.wrap('shorebird patch android --flavor=$flavor --target=$targe
       );
       final exitCode = await runWithOverrides(command.run);
       verify(
-        () => logger.err('Multiple artifacts found in buildDir: (a, b)'),
+        () => progress.fail(
+          'Build succeeded, but it generated multiple AABs in the build '
+          'directory. (a, b)',
+        ),
       ).called(1);
       expect(exitCode, ExitCode.software.code);
     });

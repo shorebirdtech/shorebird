@@ -5,7 +5,9 @@ import 'package:shorebird_cli/src/command.dart';
 import 'package:shorebird_cli/src/logger.dart';
 import 'package:shorebird_cli/src/os/operating_system_interface.dart';
 import 'package:shorebird_cli/src/platform/platform.dart';
+import 'package:shorebird_cli/src/shorebird_android_artifacts.dart';
 import 'package:shorebird_cli/src/shorebird_artifacts.dart';
+import 'package:shorebird_cli/src/shorebird_env.dart';
 import 'package:shorebird_cli/src/shorebird_process.dart';
 
 /// Used to wrap code that invokes `flutter build` with Shorebird's fork of
@@ -24,12 +26,12 @@ class BuildException implements Exception {
 }
 
 mixin ShorebirdBuildMixin on ShorebirdCommand {
-  Future<void> buildAppBundle({
+  Future<File> buildAppBundle({
     String? flavor,
     String? target,
     Iterable<Arch>? targetPlatforms,
   }) async {
-    return _runShorebirdBuildCommand(() async {
+    await _runShorebirdBuildCommand(() async {
       const executable = 'flutter';
       final targetPlatformArgs = targetPlatforms?.targetPlatformArg;
       final arguments = [
@@ -49,14 +51,29 @@ mixin ShorebirdBuildMixin on ShorebirdCommand {
       );
 
       if (result.exitCode != ExitCode.success.code) {
-        throw ProcessException(
-          'flutter',
-          arguments,
-          result.stderr.toString(),
-          result.exitCode,
+        throw BuildException(
+          'Failed to build: ${result.stderr}',
         );
       }
     });
+
+    final projectRoot = shorebirdEnv.getShorebirdProjectRoot()!;
+    try {
+      return shorebirdAndroidArtifacts.findAab(
+        project: projectRoot,
+        flavor: flavor,
+      );
+    } on MultipleArtifactsFoundException catch (error) {
+      throw BuildException(
+        'Build succeeded, but it generated multiple AABs in the '
+        'build directory. ${error.foundArtifacts.map((e) => e.path)}',
+      );
+    } on ArtifactNotFoundException catch (error) {
+      throw BuildException(
+        'Build succeeded, but could not find the AAB in the build directory. '
+        'Expected to find ${error.artifactName}',
+      );
+    }
   }
 
   Future<void> buildAar({
@@ -93,13 +110,13 @@ mixin ShorebirdBuildMixin on ShorebirdCommand {
     });
   }
 
-  Future<void> buildApk({
+  Future<File> buildApk({
     String? flavor,
     String? target,
     Iterable<Arch>? targetPlatforms,
     bool splitPerAbi = false,
   }) async {
-    return _runShorebirdBuildCommand(() async {
+    await _runShorebirdBuildCommand(() async {
       const executable = 'flutter';
       final targetPlatformArgs = targetPlatforms?.targetPlatformArg;
       final arguments = [
@@ -124,14 +141,28 @@ mixin ShorebirdBuildMixin on ShorebirdCommand {
       );
 
       if (result.exitCode != ExitCode.success.code) {
-        throw ProcessException(
-          'flutter',
-          arguments,
-          result.stderr.toString(),
-          result.exitCode,
+        throw BuildException(
+          'Failed to build: ${result.stderr}',
         );
       }
     });
+    final projectRoot = shorebirdEnv.getShorebirdProjectRoot()!;
+    try {
+      return shorebirdAndroidArtifacts.findApk(
+        project: projectRoot,
+        flavor: flavor,
+      );
+    } on MultipleArtifactsFoundException catch (error) {
+      throw BuildException(
+        'Build succeeded, but it generated multiple APKs in the '
+        'build directory. ${error.foundArtifacts.map((e) => e.path)}',
+      );
+    } on ArtifactNotFoundException catch (error) {
+      throw BuildException(
+        'Build succeeded, but could not find the APK in the build directory. '
+        'Expected to find ${error.artifactName}',
+      );
+    }
   }
 
   /// Calls `flutter build ipa`. If [codesign] is false, this will only build

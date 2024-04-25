@@ -25,19 +25,34 @@ void main() {
       });
 
       test('throws ArtifactNotFoundException for apks', () {
+        final buildDir = Directory(
+          path.join(
+            project.path,
+            'build',
+            'app',
+            'outputs',
+            'flutter-apk',
+          ),
+        );
         expect(
           () => shorebirdAndroidArtifacts.findApk(
             project: project,
             flavor: null,
           ),
-          throwsA(isA<ArtifactNotFoundException>()),
+          throwsA(
+            isA<ArtifactNotFoundException>().having(
+              (exception) => exception.toString(),
+              'message',
+              equals('Artifact app-release.apk not found in ${buildDir.path}'),
+            ),
+          ),
         );
       });
     });
 
     group('when build folder exists but not the file', () {
       test('throws ArtifactNotFoundException for aabs', () {
-        Directory(
+        final buildDir = Directory(
           path.join(
             project.path,
             'build',
@@ -46,13 +61,19 @@ void main() {
             'bundle',
             'release',
           ),
-        ).createSync(recursive: true);
+        )..createSync(recursive: true);
         expect(
           () => shorebirdAndroidArtifacts.findAab(
             project: project,
             flavor: null,
           ),
-          throwsA(isA<ArtifactNotFoundException>()),
+          throwsA(
+            isA<ArtifactNotFoundException>().having(
+              (exception) => exception.toString(),
+              'message',
+              equals('Artifact app-release.aab not found in ${buildDir.path}'),
+            ),
+          ),
         );
       });
 
@@ -287,20 +308,28 @@ void main() {
 
     group('when multiple files are found', () {
       test('throws MultipleArtifactsFoundException when looking for aab', () {
+        final buildDir = Directory(
+          path.join(
+            project.path,
+            'build',
+            'app',
+            'outputs',
+            'bundle',
+            'stablePlayStoreRelease',
+          ),
+        );
         final duplicatedArtifactPath = path.join(
-          'build',
-          'app',
-          'outputs',
-          'bundle',
-          'stablePlayStoreRelease',
+          buildDir.path,
           'app---stable-playStore-release.aab',
         );
         File(
           path.join(project.path, duplicatedArtifactPath),
         ).createSync(recursive: true);
 
-        const artifactPath =
-            'build/app/outputs/bundle/stablePlayStoreRelease/app-stable-playStore-release.aab';
+        final artifactPath = path.join(
+          buildDir.path,
+          'app-stable-playStore-release.aab',
+        );
         File(
           path.join(project.path, artifactPath),
         ).createSync(recursive: true);
@@ -312,16 +341,29 @@ void main() {
             project: project,
             flavor: flavor,
           ),
-          throwsA(isA<MultipleArtifactsFoundException>()),
+          throwsA(
+            isA<MultipleArtifactsFoundException>().having(
+              (exception) => exception.toString(),
+              'message',
+              equals('Multiple artifacts found in ${buildDir.path}: '
+                  '($duplicatedArtifactPath, $artifactPath)'),
+            ),
+          ),
         );
       });
 
       test('throws MultipleArtifactsFoundException when looking for apk', () {
+        final buildDir = Directory(
+          path.join(
+            project.path,
+            'build',
+            'app',
+            'outputs',
+            'flutter-apk',
+          ),
+        );
         final duplicatedArtifactPath = path.join(
-          'build',
-          'app',
-          'outputs',
-          'flutter-apk',
+          buildDir.path,
           'app----stableplaystore-release.apk',
         );
         File(
@@ -329,10 +371,7 @@ void main() {
         ).createSync(recursive: true);
 
         final artifactPath = path.join(
-          'build',
-          'app',
-          'outputs',
-          'flutter-apk',
+          buildDir.path,
           'app-stableplaystore-release.apk',
         );
         File(
@@ -346,7 +385,14 @@ void main() {
             project: project,
             flavor: flavor,
           ),
-          throwsA(isA<MultipleArtifactsFoundException>()),
+          throwsA(
+            isA<MultipleArtifactsFoundException>().having(
+              (exception) => exception.toString(),
+              'message',
+              equals('Multiple artifacts found in ${buildDir.path}: '
+                  '($duplicatedArtifactPath, $artifactPath)'),
+            ),
+          ),
         );
       });
     });

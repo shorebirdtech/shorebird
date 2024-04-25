@@ -24,6 +24,7 @@ import 'package:shorebird_cli/src/os/operating_system_interface.dart';
 import 'package:shorebird_cli/src/patch_diff_checker.dart';
 import 'package:shorebird_cli/src/platform.dart';
 import 'package:shorebird_cli/src/platform/platform.dart';
+import 'package:shorebird_cli/src/shorebird_android_artifacts.dart';
 import 'package:shorebird_cli/src/shorebird_env.dart';
 import 'package:shorebird_cli/src/shorebird_flutter.dart';
 import 'package:shorebird_cli/src/shorebird_process.dart';
@@ -121,6 +122,7 @@ flutter:
     late ShorebirdFlutterValidator flutterValidator;
     late ShorebirdProcess shorebirdProcess;
     late ShorebirdValidator shorebirdValidator;
+    late ShorebirdAndroidArtifacts shorebirdAndroidArtifacts;
     late PatchAndroidCommand command;
 
     R runWithOverrides<R>(R Function() body) {
@@ -144,6 +146,9 @@ flutter:
           processRef.overrideWith(() => shorebirdProcess),
           shorebirdFlutterRef.overrideWith(() => shorebirdFlutter),
           shorebirdValidatorRef.overrideWith(() => shorebirdValidator),
+          shorebirdAndroidArtifactsRef.overrideWith(
+            () => shorebirdAndroidArtifacts,
+          ),
         },
       );
     }
@@ -216,6 +221,7 @@ flutter:
       shorebirdProcess = MockShorebirdProcess();
       shorebirdFlutter = MockShorebirdFlutter();
       shorebirdValidator = MockShorebirdValidator();
+      shorebirdAndroidArtifacts = MockShorebirdAndroidArtifacts();
       command = runWithOverrides(
         () => PatchAndroidCommand(archiveDiffer: archiveDiffer),
       )..testArgResults = argResults;
@@ -393,6 +399,13 @@ flutter:
       when(() => platform.operatingSystemVersion)
           .thenReturn(operatingSystemVersion);
       when(() => shorebirdEnv.canAcceptUserInput).thenReturn(true);
+
+      when(
+        () => shorebirdAndroidArtifacts.findAab(
+          project: any(named: 'project'),
+          flavor: any(named: 'flavor'),
+        ),
+      ).thenReturn(File('release.aab'));
     });
 
     test('has a description', () {
