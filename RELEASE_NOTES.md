@@ -9,6 +9,7 @@ This section contains past updates we've sent to customers via Discord.
 - 💾 Improve consistency of Shorebird artifact downloads
 - ✅ Add validation that shorebird.yaml is present in pubspec.yaml assets section
 - 🌌 Improved handling of multi-dimensional Android flavors
+- 🔗 `--debug-linker` flag added to `patch ios` command to help debug low link percentages
 
 📚 Release notes can be found at https://github.com/shorebirdtech/shorebird/releases/tag/v1.0.3
 
