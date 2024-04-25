@@ -164,12 +164,8 @@ function upgrade_shorebird () (
       mv "$SNAPSHOT_PATH" "$SNAPSHOT_PATH_OLD"
     fi
 
-    # Compile our snapshot.
-    # We invoke `$SNAPSHOT_PATH completion` to trigger the "completion" command, which
-    # avoids executing as much of our code as possible. We do this because running
-    # the script here (instead of from the compiled snapshot) invalidates a lot of
-    # assumptions we make about the cwd in the shorebird_cli tool.
-    $DART_PATH --verbosity=error --disable-dart-dev --snapshot="$SNAPSHOT_PATH" --snapshot-kind="app-jit" --packages="$SHOREBIRD_CLI_DIR/.dart_tool/package_config.json" --no-enable-mirrors "$SCRIPT_PATH" completion > /dev/null
+    # Compile...
+    $DART_PATH --verbosity=error --disable-dart-dev --snapshot="$SNAPSHOT_PATH" --snapshot-kind="app-jit" --packages="$SHOREBIRD_CLI_DIR/.dart_tool/package_config.json" --no-enable-mirrors "$SCRIPT_PATH" > /dev/null
     echo "$compilekey" > "$STAMP_PATH"
 
     # Delete any temporary snapshot path.

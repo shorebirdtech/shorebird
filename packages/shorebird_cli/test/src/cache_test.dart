@@ -28,7 +28,6 @@ void main() {
     late http.Client httpClient;
     late Logger logger;
     late Platform platform;
-    late Progress progress;
     late Process chmodProcess;
     late ShorebirdEnv shorebirdEnv;
     late ShorebirdProcess shorebirdProcess;
@@ -73,7 +72,6 @@ void main() {
       httpClient = MockHttpClient();
       logger = MockLogger();
       platform = MockPlatform();
-      progress = MockProgress();
       chmodProcess = MockProcess();
       shorebirdEnv = MockShorebirdEnv();
       shorebirdProcess = MockShorebirdProcess();
@@ -88,7 +86,6 @@ void main() {
         (invocation.namedArguments[#outputDirectory] as Directory)
             .createSync(recursive: true);
       });
-      when(() => logger.progress(any())).thenReturn(progress);
       when(
         () => shorebirdEnv.shorebirdEngineRevision,
       ).thenReturn(shorebirdEngineRevision);
@@ -182,41 +179,6 @@ void main() {
     });
 
     group('updateAll', () {
-      group('progress', () {
-        group('when all artifacts are up-to-date', () {
-          setUp(() {
-            runWithOverrides(() {
-              for (final artifact in cache.artifacts) {
-                artifact.location.createSync(recursive: true);
-              }
-            });
-          });
-
-          test('does not print progress', () async {
-            await runWithOverrides(cache.updateAll);
-            verifyNever(() => logger.progress(any()));
-          });
-        });
-
-        group('when artifacts require updates', () {
-          test('prints progress', () async {
-            await runWithOverrides(cache.updateAll);
-
-            // We expect one fewer call to progress.complete than the number of
-            // artifacts. This is because [AotToolsDillArtifact] and
-            // [AotToolsExeArtifact] share a location. These artifacts will
-            // never both be present for the same engine revision. We
-            // temporarily used an precompiled executable for aot-tools before
-            // switching to a .dill file. This can be removed once we no longer
-            // need to support the precompiled executable case. See the
-            // [AotToolsExeArtifact] definition for more details.
-            final expectedUpdateCount = cache.artifacts.length - 1;
-            verify(() => logger.progress(any())).called(expectedUpdateCount);
-            verify(() => progress.complete(any())).called(expectedUpdateCount);
-          });
-        });
-      });
-
       group('patch', () {
         test('throws CacheUpdateFailure if a SocketException is thrown',
             () async {

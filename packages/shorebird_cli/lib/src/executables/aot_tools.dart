@@ -6,6 +6,7 @@ import 'package:mason_logger/mason_logger.dart';
 import 'package:path/path.dart' as p;
 import 'package:pub_semver/pub_semver.dart';
 import 'package:scoped/scoped.dart';
+import 'package:shorebird_cli/src/cache.dart';
 import 'package:shorebird_cli/src/engine_config.dart';
 import 'package:shorebird_cli/src/extensions/version.dart';
 import 'package:shorebird_cli/src/shorebird_artifacts.dart';
@@ -85,6 +86,8 @@ class AotTools {
     List<String> command, {
     String? workingDirectory,
   }) async {
+    await cache.updateAll();
+
     // This will be a path to either a kernel (.dill) file or a Dart script if
     // we're running with a local engine.
     final artifactPath = shorebirdArtifacts.getArtifactPath(

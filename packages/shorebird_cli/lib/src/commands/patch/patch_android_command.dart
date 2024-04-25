@@ -7,6 +7,7 @@ import 'package:scoped/scoped.dart';
 import 'package:shorebird_cli/src/archive_analysis/archive_analysis.dart';
 import 'package:shorebird_cli/src/archive_analysis/archive_differ.dart';
 import 'package:shorebird_cli/src/artifact_manager.dart';
+import 'package:shorebird_cli/src/cache.dart';
 import 'package:shorebird_cli/src/code_push_client_wrapper.dart';
 import 'package:shorebird_cli/src/command.dart';
 import 'package:shorebird_cli/src/commands/commands.dart';
@@ -106,6 +107,8 @@ If this option is not provided, the version number will be determined from the p
     final allowNativeDiffs = results['allow-native-diffs'] == true;
     final dryRun = results['dry-run'] == true;
     final isStaging = results['staging'] == true;
+
+    await cache.updateAll();
 
     const releasePlatform = ReleasePlatform.android;
     final flavor = results.findOption('flavor', argParser: argParser);

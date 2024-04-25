@@ -10,6 +10,7 @@ import 'package:scoped/scoped.dart';
 import 'package:shorebird_cli/src/archive_analysis/archive_analysis.dart';
 import 'package:shorebird_cli/src/artifact_manager.dart';
 import 'package:shorebird_cli/src/auth/auth.dart';
+import 'package:shorebird_cli/src/cache.dart' show Cache, cacheRef;
 import 'package:shorebird_cli/src/code_push_client_wrapper.dart';
 import 'package:shorebird_cli/src/commands/commands.dart';
 import 'package:shorebird_cli/src/config/config.dart';
@@ -101,6 +102,7 @@ void main() {
     late ShorebirdProcessResult flutterBuildProcessResult;
     late ShorebirdProcessResult flutterPubGetProcessResult;
     late http.Client httpClient;
+    late Cache cache;
     late ShorebirdEnv shorebirdEnv;
     late ShorebirdFlutter shorebirdFlutter;
     late ShorebirdProcess shorebirdProcess;
@@ -113,6 +115,7 @@ void main() {
         values: {
           artifactManagerRef.overrideWith(() => artifactManager),
           authRef.overrideWith(() => auth),
+          cacheRef.overrideWith(() => cache),
           codePushClientWrapperRef.overrideWith(() => codePushClientWrapper),
           engineConfigRef.overrideWith(() => const EngineConfig.empty()),
           httpClientRef.overrideWith(() => httpClient),
@@ -187,6 +190,7 @@ void main() {
       flutterBuildProcessResult = MockProcessResult();
       flutterPubGetProcessResult = MockProcessResult();
       httpClient = MockHttpClient();
+      cache = MockCache();
       shorebirdEnv = MockShorebirdEnv();
       shorebirdFlutter = MockShorebirdFlutter();
       shorebirdProcess = MockShorebirdProcess();
@@ -314,6 +318,10 @@ void main() {
           metadata: any(named: 'metadata'),
         ),
       ).thenAnswer((_) async {});
+      when(() => cache.updateAll()).thenAnswer((_) async => {});
+      when(
+        () => cache.getArtifactDirectory(any()),
+      ).thenReturn(Directory.systemTemp.createTempSync());
       when(
         () => shorebirdFlutter.getVersionAndRevision(),
       ).thenAnswer((_) async => flutterVersionAndRevision);
