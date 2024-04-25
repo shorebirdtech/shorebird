@@ -116,18 +116,9 @@ If this option is not provided, the version number will be determined from the p
     final app = await codePushClientWrapper.getApp(appId: appId);
 
     var hasBuiltWithActiveFlutter = false;
+    late File aabFile;
 
     final projectRoot = shorebirdEnv.getShorebirdProjectRoot()!;
-    final bundleDirPath = p.join(
-      projectRoot.path,
-      'build',
-      'app',
-      'outputs',
-      'bundle',
-    );
-    final bundlePath = flavor != null
-        ? p.join(bundleDirPath, '${flavor}Release', 'app-$flavor-release.aab')
-        : p.join(bundleDirPath, 'release', 'app-release.aab');
 
     final String releaseVersion;
     final argReleaseVersion = results['release-version'] as String?;
@@ -142,10 +133,10 @@ If this option is not provided, the version number will be determined from the p
         'Building patch with Flutter $flutterVersionString',
       );
       try {
-        await buildAppBundle(flavor: flavor, target: target);
+        aabFile = await buildAppBundle(flavor: flavor, target: target);
         buildProgress.complete();
-      } on ProcessException catch (error) {
-        buildProgress.fail('Failed to build: ${error.message}');
+      } on BuildException catch (error) {
+        buildProgress.fail(error.message);
         return ExitCode.software.code;
       }
 
@@ -156,7 +147,7 @@ If this option is not provided, the version number will be determined from the p
       );
 
       try {
-        releaseVersion = await extractReleaseVersionFromAppBundle(bundlePath);
+        releaseVersion = await extractReleaseVersionFromAppBundle(aabFile.path);
         detectReleaseVersionProgress.complete(
           'Detected release version $releaseVersion',
         );
@@ -202,10 +193,10 @@ Please re-run the release command for this version or create a new release.''');
             currentFlutterRevision != release.flutterRevision) {
           final buildProgress = logger.progress('Building patch');
           try {
-            await buildAppBundle(flavor: flavor, target: target);
+            aabFile = await buildAppBundle(flavor: flavor, target: target);
             buildProgress.complete();
-          } on ProcessException catch (error) {
-            buildProgress.fail('Failed to build: ${error.message}');
+          } on BuildException catch (error) {
+            buildProgress.fail(error.message);
             return ExitCode.software.code;
           }
         }
@@ -276,7 +267,7 @@ Looked in:
         try {
           diffStatus =
               await patchDiffChecker.confirmUnpatchableDiffsIfNecessary(
-            localArtifact: File(bundlePath),
+            localArtifact: aabFile,
             releaseArtifact: releaseAabArtifactFile,
             archiveDiffer: _archiveDiffer,
             allowAssetChanges: allowAssetDiffs,

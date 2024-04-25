@@ -11,7 +11,6 @@ import 'package:shorebird_cli/src/extensions/arg_results.dart';
 import 'package:shorebird_cli/src/logger.dart';
 import 'package:shorebird_cli/src/platform.dart';
 import 'package:shorebird_cli/src/platform/platform.dart';
-import 'package:shorebird_cli/src/shorebird_android_artifacts.dart';
 import 'package:shorebird_cli/src/shorebird_build_mixin.dart';
 import 'package:shorebird_cli/src/shorebird_env.dart';
 import 'package:shorebird_cli/src/shorebird_flutter.dart';
@@ -171,21 +170,24 @@ Use `shorebird flutter versions list` to list available versions.
           'Building release with Flutter $flutterVersionString',
         );
 
+        late final File apkFile;
+        final File aabFile;
+
         try {
-          await buildAppBundle(
+          aabFile = await buildAppBundle(
             flavor: flavor,
             target: target,
             targetPlatforms: architectures,
           );
           if (generateApk) {
-            await buildApk(
+            apkFile = await buildApk(
               flavor: flavor,
               target: target,
               targetPlatforms: architectures,
             );
           }
-        } on ProcessException catch (error) {
-          buildProgress.fail('Failed to build: ${error.message}');
+        } on BuildException catch (error) {
+          buildProgress.fail(error.message);
           return ExitCode.software.code;
         }
         buildProgress.complete();
@@ -194,27 +196,6 @@ Use `shorebird flutter versions list` to list available versions.
         final shorebirdYaml = shorebirdEnv.getShorebirdYaml()!;
         final appId = shorebirdYaml.getAppId(flavor: flavor);
         final app = await codePushClientWrapper.getApp(appId: appId);
-
-        late final File apkFile;
-        final File aabFile;
-        try {
-          aabFile = shorebirdAndroidArtifacts.findAab(
-            project: projectRoot,
-            flavor: flavor,
-          );
-          if (generateApk) {
-            apkFile = shorebirdAndroidArtifacts.findApk(
-              project: projectRoot,
-              flavor: flavor,
-            );
-          }
-        } on ArtifactNotFoundException catch (error) {
-          logger.err(error.toString());
-          return ExitCode.software.code;
-        } on MultipleArtifactsFoundException catch (error) {
-          logger.err(error.toString());
-          return ExitCode.software.code;
-        }
 
         final String releaseVersion;
         final detectReleaseVersionProgress = logger.progress(

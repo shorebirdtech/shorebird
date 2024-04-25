@@ -1,5 +1,3 @@
-import 'dart:io';
-
 import 'package:mason_logger/mason_logger.dart';
 import 'package:path/path.dart' as p;
 import 'package:shorebird_cli/src/command.dart';
@@ -51,8 +49,8 @@ class BuildApkCommand extends ShorebirdCommand with ShorebirdBuildMixin {
     final buildProgress = logger.progress('Building apk');
     try {
       await buildApk(flavor: flavor, target: target);
-    } on ProcessException catch (error) {
-      buildProgress.fail('Failed to build: ${error.message}');
+    } on BuildException catch (error) {
+      buildProgress.fail(error.message);
       return ExitCode.software.code;
     }
 
