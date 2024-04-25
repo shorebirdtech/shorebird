@@ -41,9 +41,6 @@ group('myFunction', () {
 
 // GOOD
 group('myFunction', () {
-
-  setUp(() { ... });
-
   group('when dep1.foo is true and dep2.bar is false', () {
     setUp(() {
       when(() => dep1.foo).thenReturn(true);
