@@ -2,6 +2,11 @@
 
 This section contains past updates we've sent to customers via Discord.
 
+## 1.0.4 (April 25, 2024)
+
+- 🩹 Revert "Improve consistency of Shorebird artifact downloads" from 1.0.3 ([#1958](https://github.com/shorebirdtech/shorebird/pull/1958))
+  - This introduced a bug which prevented customers from releasing/patching using older Flutter revisions.
+
 ## 1.0.3 (April 25, 2024)
 
 - 🐦 Support for Flutter 3.19.6
