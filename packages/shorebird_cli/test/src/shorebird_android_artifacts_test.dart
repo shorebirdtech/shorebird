@@ -390,7 +390,7 @@ void main() {
               (exception) => exception.toString(),
               'message',
               equals('Multiple artifacts found in ${buildDir.path}: '
-                  '($artifactPath, $duplicatedArtifactPath)'),
+                  '($duplicatedArtifactPath, $artifactPath)'),
             ),
           ),
         );

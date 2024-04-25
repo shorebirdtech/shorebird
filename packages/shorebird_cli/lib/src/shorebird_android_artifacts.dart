@@ -16,8 +16,10 @@ class MultipleArtifactsFoundException implements Exception {
 
   @override
   String toString() {
+    final artifacts = List<FileSystemEntity>.from(foundArtifacts)
+      ..sort((a, b) => a.path.compareTo(b.path));
     return 'Multiple artifacts found in $buildDir: '
-        '${foundArtifacts.map((e) => e.path)}';
+        '${artifacts.map((e) => e.path)}';
   }
 }
 
