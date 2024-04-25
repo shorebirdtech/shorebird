@@ -26,19 +26,13 @@ Smoke tests checklist for new version (x.x.x):
 
 - [ ] iOS Add to App release
 - [ ] iOS Add to App patch
-    - [ ] Auto detect version
-    - [ ] Explicit version
 
 - [ ] Android Add to App release
     - [ ] Win
     - [ ] Mac
 - [ ] Android Add to App patch
     - [ ] Win
-      - [ ] Auto detect version
-      - [ ] Explicit version
     - [ ] Mac
-      - [ ] Auto detect version
-      - [ ] Explicit version
  
 - [ ] iOS Flavors release
 - [ ] iOS Flavors patch
