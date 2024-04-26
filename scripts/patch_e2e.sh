@@ -75,7 +75,7 @@ while IFS= read line; do
         echo "✅ 'hello shorebird' was printed"
         break
     fi
-done < <(adb logcat -T '10.0')
+done < <(adb logcat -T '10.0' | grep flutter)
 
 echo "✅ All tests passed!"
 exit 0
