@@ -24,17 +24,6 @@ cd e2e_test
 # Replace the contents of "lib/main.dart" with a single print statement.
 echo "void main() { print('hello world'); }" >lib/main.dart
 
-echo "testing sed command"
-
-# Replace lib/main.dart "hello world" to "hello shorebird"
-sed -i 's/hello world/hello shorebird/g' lib/main.dart
-
-echo "lib/main.dart is now:"
-cat lib/main.dart
-
-# Replace the contents of "lib/main.dart" with a single print statement.
-echo "void main() { print('hello world'); }" >lib/main.dart
-
 # Initialize Shorebird
 shorebird init --force -v
 
@@ -74,14 +63,19 @@ while IFS= read line; do
     fi
 done < <(shorebird preview --release-version 0.1.0+1 --app-id $APP_ID --platform android)
 
-# Re-run the app on Android and ensure that the new print statement is printed.
+# Re-run the app, *not* using shorebird preview, as that installs the base release.
+adb shell monkey -p com.example.e2e_test -c android.intent.category.LAUNCHER 1
+
+# Re-run the app on Android and ensure that the new print statement is printed,
+# tailing adb logs and printing the last 10 seconds of logs in case the
+# "hello shorebird" statement was printed before entering the loop.
 while IFS= read line; do
     if [[ "$line" == *"I flutter : hello shorebird"* ]]; then
         adb kill-server
         echo "✅ 'hello shorebird' was printed"
         break
     fi
-done < <(shorebird preview --release-version 0.1.0+1 --app-id $APP_ID --platform android)
+done < <(adb logcat -T '10.0')
 
 echo "✅ All tests passed!"
 exit 0
