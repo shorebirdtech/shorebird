@@ -37,7 +37,7 @@ APP_ID=$(cat shorebird.yaml | grep 'app_id:' | awk '{print $2}')
 shorebird release android -v
 
 # Run the app on Android and ensure that the print statement is printed.
-while IFS= read -r line; do
+while IFS= read line; do
     if [[ "$line" == *"I flutter : hello world"* ]]; then
         adb kill-server
         echo "✅ 'hello world' was printed"
@@ -52,7 +52,7 @@ sed -i 's/hello world/hello shorebird/g' lib/main.dart
 shorebird patch android -v
 
 # Run the app on Android and ensure that the original print statement is printed.
-while IFS= read -r line; do
+while IFS= read line; do
     if [[ "$line" == *"I flutter : hello world"* ]]; then
         sleep 5 # Wait for the patch to be installed.
         adb kill-server
@@ -62,7 +62,7 @@ while IFS= read -r line; do
 done < <(shorebird preview --release-version 0.1.0+1 --app-id $APP_ID --platform android)
 
 # Re-run the app on Android and ensure that the new print statement is printed.
-while IFS= read -r line; do
+while IFS= read line; do
     if [[ "$line" == *"I flutter : hello shorebird"* ]]; then
         adb kill-server
         echo "✅ 'hello shorebird' was printed"
