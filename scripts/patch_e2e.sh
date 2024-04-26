@@ -24,6 +24,17 @@ cd e2e_test
 # Replace the contents of "lib/main.dart" with a single print statement.
 echo "void main() { print('hello world'); }" >lib/main.dart
 
+echo "testing sed command"
+
+# Replace lib/main.dart "hello world" to "hello shorebird"
+sed -i 's/hello world/hello shorebird/g' lib/main.dart
+
+echo "lib/main.dart is now:"
+cat lib/main.dart
+
+# Replace the contents of "lib/main.dart" with a single print statement.
+echo "void main() { print('hello world'); }" >lib/main.dart
+
 # Initialize Shorebird
 shorebird init --force -v
 
@@ -47,6 +58,9 @@ done < <(shorebird preview --release-version 0.1.0+1 --app-id $APP_ID --platform
 
 # Replace lib/main.dart "hello world" to "hello shorebird"
 sed -i 's/hello world/hello shorebird/g' lib/main.dart
+
+echo "lib/main.dart is now:"
+cat lib/main.dart
 
 # Create a patch
 shorebird patch android -v
