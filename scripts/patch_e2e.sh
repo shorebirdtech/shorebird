@@ -53,10 +53,9 @@ shorebird patch android -v
 
 # Run the app on Android and ensure that the original print statement is printed.
 while IFS= read line; do
-    if [[ "$line" == *"I flutter : hello world"* ]]; then
-        sleep 5 # Wait for the patch to be installed.
+    if [[ "$line" == *"Patch 1 successfully installed"* ]]; then
         adb kill-server
-        echo "✅ 'hello world' was printed"
+        echo "✅ Patch 1 successfully installed"
         break
     fi
 done < <(shorebird preview --release-version 0.1.0+1 --app-id $APP_ID --platform android)
