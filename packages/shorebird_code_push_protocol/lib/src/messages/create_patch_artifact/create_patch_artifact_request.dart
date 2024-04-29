@@ -14,6 +14,7 @@ class CreatePatchArtifactRequest {
     required this.platform,
     required this.hash,
     required this.size,
+    this.hashSignature,
   });
 
   /// Converts a Map<String, dynamic> to a [CreatePatchArtifactRequest]
@@ -31,6 +32,9 @@ class CreatePatchArtifactRequest {
 
   /// The hash of the artifact.
   final String hash;
+
+  /// The signature of the [hash].
+  final String? hashSignature;
 
   /// The size of the artifact in bytes.
   @JsonKey(fromJson: _parseStringToInt, toJson: _parseIntToString)

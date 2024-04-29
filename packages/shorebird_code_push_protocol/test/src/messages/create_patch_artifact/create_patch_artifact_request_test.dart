@@ -9,6 +9,7 @@ void main() {
         platform: ReleasePlatform.android,
         hash: '1234',
         size: 9876,
+        hashSignature: 'asd',
       );
       expect(
         CreatePatchArtifactRequest.fromJson(request.toJson()).toJson(),
