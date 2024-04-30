@@ -136,6 +136,41 @@ class ArtifactBuilder {
     }
   }
 
+  Future<void> buildAar({
+    required String buildNumber,
+    Iterable<Arch>? targetPlatforms,
+    List<String> argResultsRest = const [],
+  }) async {
+    return _runShorebirdBuildCommand(() async {
+      const executable = 'flutter';
+      final targetPlatformArgs = targetPlatforms?.targetPlatformArg;
+      final arguments = [
+        'build',
+        'aar',
+        '--no-debug',
+        '--no-profile',
+        '--build-number=$buildNumber',
+        if (targetPlatformArgs != null) '--target-platform=$targetPlatformArgs',
+        ...argResultsRest,
+      ];
+
+      final result = await process.run(
+        executable,
+        arguments,
+        runInShell: true,
+      );
+
+      if (result.exitCode != ExitCode.success.code) {
+        throw ProcessException(
+          'flutter',
+          arguments,
+          result.stderr.toString(),
+          result.exitCode,
+        );
+      }
+    });
+  }
+
   /// A wrapper around [command] (which runs a `flutter build` command with
   /// Shorebird's fork of Flutter) with a try/finally that runs
   /// `flutter pub get` with the system installation of Flutter to reset
