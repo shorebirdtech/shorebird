@@ -331,6 +331,8 @@ ${summary.join('\n')}
           arch: arch.arch,
           path: diffPath,
           hash: hash,
+          // Available only on Android for now
+          hashSignature: null,
           size: await File(diffPath).length(),
         );
       } catch (error) {

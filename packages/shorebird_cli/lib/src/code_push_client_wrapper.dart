@@ -29,6 +29,7 @@ class PatchArtifactBundle {
     required this.arch,
     required this.path,
     required this.hash,
+    required this.hashSignature,
     required this.size,
   });
 
@@ -40,6 +41,9 @@ class PatchArtifactBundle {
 
   /// The artifact hash.
   final String hash;
+
+  /// The signature of the [hash].
+  final String? hashSignature;
 
   /// The size in bytes of the artifact.
   final int size;
@@ -686,6 +690,7 @@ aar artifact already exists, continuing...''',
           arch: artifact.arch,
           platform: platform,
           hash: artifact.hash,
+          hashSignature: artifact.hashSignature,
         );
       } catch (error) {
         _handleErrorAndExit(error, progress: createArtifactProgress);

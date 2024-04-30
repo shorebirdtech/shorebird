@@ -326,6 +326,8 @@ ${summary.join('\n')}
               arch: arch,
               path: patchFile.path,
               hash: _hashFn(patchBuildFile.readAsBytesSync()),
+              // Available only on Android for now
+              hashSignature: null,
               size: patchFileSize,
             ),
           },

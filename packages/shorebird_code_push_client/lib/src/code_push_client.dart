@@ -95,7 +95,7 @@ class CodePushClient {
           httpClient ?? http.Client(),
           {...standardHeaders, ...?customHeaders},
         ),
-        hostedUri = hostedUri ?? Uri.https('api.shorebird.dev');
+        hostedUri = hostedUri ?? Uri.http('localhost:8080');
 
   /// The standard headers applied to all requests.
   static const standardHeaders = <String, String>{'x-version': packageVersion};
@@ -133,6 +133,7 @@ class CodePushClient {
     required String arch,
     required ReleasePlatform platform,
     required String hash,
+    String? hashSignature,
   }) async {
     final request = http.MultipartRequest(
       'POST',
@@ -143,6 +144,7 @@ class CodePushClient {
       'arch': arch,
       'platform': platform.name,
       'hash': hash,
+      if (hashSignature != null) 'hash_signature': hashSignature,
       'size': '${file.length}',
     });
     final response = await _httpClient.send(request);

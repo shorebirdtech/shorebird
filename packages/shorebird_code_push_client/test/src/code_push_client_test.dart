@@ -185,13 +185,62 @@ void main() {
 
         final request = verify(() => httpClient.send(captureAny()))
             .captured
-            .single as http.BaseRequest;
+            .single as http.MultipartRequest;
+
         expect(request.method, equals('POST'));
+        expect(request.fields['arch'], equals(arch));
+        expect(request.fields['platform'], equals(platform.name));
+        expect(request.fields['hash'], equals(hash));
+        expect(request.fields['size'], equals(fixture.lengthSync().toString()));
+        expect(request.fields.containsKey('hash_signature'), isFalse);
+
         expect(
           request.url,
           equals(v1('apps/$appId/patches/$patchId/artifacts')),
         );
         expect(request.hasHeaders(expectedHeaders), isTrue);
+      });
+
+      group('when a hash signature is informed', () {
+        const hashSignature = 'Shh';
+        test('makes the correct request', () async {
+          final tempDir = Directory.systemTemp.createTempSync();
+          final fixture = File(path.join(tempDir.path, 'release.txt'))
+            ..createSync();
+
+          try {
+            await codePushClient.createPatchArtifact(
+              appId: appId,
+              artifactPath: fixture.path,
+              patchId: patchId,
+              arch: arch,
+              platform: platform,
+              hash: hash,
+              hashSignature: hashSignature,
+            );
+          } catch (_) {}
+
+          final request = verify(() => httpClient.send(captureAny()))
+              .captured
+              .single as http.MultipartRequest;
+          expect(request.method, equals('POST'));
+
+          expect(request.fields['arch'], equals(arch));
+          expect(request.fields['platform'], equals(platform.name));
+          expect(request.fields['hash'], equals(hash));
+          expect(
+            request.fields['size'],
+            equals(
+              fixture.lengthSync().toString(),
+            ),
+          );
+          expect(request.fields['hash_signature'], equals(hashSignature));
+          expect(
+            request.url,
+            equals(v1('apps/$appId/patches/$patchId/artifacts')),
+          );
+          expect(request.hasHeaders(expectedHeaders), isTrue);
+        });
       });
 
       test('throws an exception if the http request fails (unknown)', () async {

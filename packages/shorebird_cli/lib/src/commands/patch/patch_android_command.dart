@@ -78,6 +78,10 @@ If this option is not provided, the version number will be determined from the p
         'staging',
         negatable: false,
         help: 'Whether to publish the patch to the staging environment.',
+      )
+      ..addOption(
+        'codesign-private-key',
+        hide: true,
       );
   }
 
@@ -107,6 +111,7 @@ If this option is not provided, the version number will be determined from the p
     final allowNativeDiffs = results['allow-native-diffs'] == true;
     final dryRun = results['dry-run'] == true;
     final isStaging = results['staging'] == true;
+    final codeSignPrivateKey = results['codesign-private-key'] as String?;
 
     await cache.updateAll();
 
@@ -300,10 +305,24 @@ Looked in:
               releaseArtifactPath: releaseArtifactPath.value,
               patchArtifactPath: patchArtifactPath,
             );
+
+            String? hashSignature;
+            if (codeSignPrivateKey != null) {
+              final result = Process.runSync(
+                'echo "$hash" | openssl dgst -sha256 -sign $codeSignPrivateKey /dev/stdin | base64',
+                [],
+                runInShell: true,
+              );
+
+              // TODO(erickzanardo): This is returning empty
+              hashSignature = result.stdout.toString();
+            }
+
             patchArtifactBundles[releaseArtifactPath.key] = PatchArtifactBundle(
               arch: arch.arch,
               path: diffPath,
               hash: hash,
+              hashSignature: hashSignature,
               size: await File(diffPath).length(),
             );
           } catch (error) {

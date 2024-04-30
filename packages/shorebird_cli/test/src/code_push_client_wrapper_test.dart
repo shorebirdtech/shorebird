@@ -133,6 +133,7 @@ void main() {
       arch: arch.arch,
       path: 'path',
       hash: '',
+      hashSignature: null,
       size: 4,
     );
     final patchArtifactBundles = {arch: partchArtifactBundle};
