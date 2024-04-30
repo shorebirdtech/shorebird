@@ -34,6 +34,10 @@ class CreatePatchArtifactRequest {
   final String hash;
 
   /// The signature of the [hash].
+  ///
+  /// Patch code signing is an opt in feature, introduced later in the life of
+  /// the product, so when this field is null, the patch does not uses code
+  /// signing.
   final String? hashSignature;
 
   /// The size of the artifact in bytes.
