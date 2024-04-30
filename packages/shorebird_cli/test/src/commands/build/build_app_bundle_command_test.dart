@@ -5,15 +5,12 @@ import 'package:mason_logger/mason_logger.dart';
 import 'package:mocktail/mocktail.dart';
 import 'package:path/path.dart' as p;
 import 'package:scoped/scoped.dart';
+import 'package:shorebird_cli/src/artifact_builder.dart';
 import 'package:shorebird_cli/src/commands/build/build.dart';
 import 'package:shorebird_cli/src/doctor.dart';
 import 'package:shorebird_cli/src/engine_config.dart';
 import 'package:shorebird_cli/src/logger.dart';
-import 'package:shorebird_cli/src/os/operating_system_interface.dart';
 import 'package:shorebird_cli/src/platform/platform.dart';
-import 'package:shorebird_cli/src/shorebird_android_artifacts.dart';
-import 'package:shorebird_cli/src/shorebird_env.dart';
-import 'package:shorebird_cli/src/shorebird_process.dart';
 import 'package:shorebird_cli/src/shorebird_validator.dart';
 import 'package:shorebird_cli/src/validators/validators.dart';
 import 'package:test/test.dart';
@@ -24,31 +21,22 @@ import '../../mocks.dart';
 void main() {
   group(BuildAppBundleCommand, () {
     late ArgResults argResults;
+    late ArtifactBuilder artifactBuilder;
     late Doctor doctor;
     late Logger logger;
-    late OperatingSystemInterface operatingSystemInterface;
-    late ShorebirdProcessResult flutterPubGetProcessResult;
-    late ShorebirdProcessResult buildProcessResult;
     late BuildAppBundleCommand command;
-    late ShorebirdEnv shorebirdEnv;
     late ShorebirdFlutterValidator flutterValidator;
-    late ShorebirdProcess shorebirdProcess;
     late ShorebirdValidator shorebirdValidator;
-    late ShorebirdAndroidArtifacts shorebirdAndroidArtifacts;
 
     R runWithOverrides<R>(R Function() body) {
       return runScoped(
         body,
         values: {
+          artifactBuilderRef.overrideWith(() => artifactBuilder),
           doctorRef.overrideWith(() => doctor),
           engineConfigRef.overrideWith(() => const EngineConfig.empty()),
           loggerRef.overrideWith(() => logger),
-          osInterfaceRef.overrideWith(() => operatingSystemInterface),
-          processRef.overrideWith(() => shorebirdProcess),
-          shorebirdEnvRef.overrideWith(() => shorebirdEnv),
           shorebirdValidatorRef.overrideWith(() => shorebirdValidator),
-          shorebirdAndroidArtifactsRef
-              .overrideWith(() => shorebirdAndroidArtifacts),
         },
       );
     }
@@ -60,44 +48,18 @@ void main() {
 
     setUp(() {
       argResults = MockArgResults();
+      artifactBuilder = MockArtifactBuilder();
       doctor = MockDoctor();
       logger = MockLogger();
-      operatingSystemInterface = MockOperatingSystemInterface();
-      buildProcessResult = MockProcessResult();
-      flutterPubGetProcessResult = MockProcessResult();
       flutterValidator = MockShorebirdFlutterValidator();
-      shorebirdEnv = MockShorebirdEnv();
-      shorebirdProcess = MockShorebirdProcess();
       shorebirdValidator = MockShorebirdValidator();
-      shorebirdAndroidArtifacts = MockShorebirdAndroidArtifacts();
 
-      when(
-        () => shorebirdProcess.run(
-          'flutter',
-          ['--no-version-check', 'pub', 'get', '--offline'],
-          runInShell: any(named: 'runInShell'),
-          useVendedFlutter: false,
-        ),
-      ).thenAnswer((_) async => flutterPubGetProcessResult);
-      when(() => flutterPubGetProcessResult.exitCode)
-          .thenReturn(ExitCode.success.code);
-      when(
-        () => shorebirdProcess.run(
-          any(),
-          any(),
-          runInShell: any(named: 'runInShell'),
-        ),
-      ).thenAnswer((_) async => buildProcessResult);
       when(() => argResults.rest).thenReturn([]);
       when(() => logger.progress(any())).thenReturn(MockProgress());
       when(() => logger.info(any())).thenReturn(null);
-      when(() => operatingSystemInterface.which('flutter'))
-          .thenReturn('/path/to/flutter');
       when(
         () => doctor.androidCommandValidators,
       ).thenReturn([flutterValidator]);
-      when(() => shorebirdEnv.flutterRevision).thenReturn('1234');
-      when(shorebirdEnv.getShorebirdProjectRoot).thenReturn(Directory(''));
       when(
         () => shorebirdValidator.validatePreconditions(
           checkUserIsAuthenticated: any(named: 'checkUserIsAuthenticated'),
@@ -106,11 +68,13 @@ void main() {
         ),
       ).thenAnswer((_) async {});
       when(
-        () => shorebirdAndroidArtifacts.findAab(
-          project: any(named: 'project'),
+        () => artifactBuilder.buildAppBundle(
           flavor: any(named: 'flavor'),
+          target: any(named: 'target'),
         ),
-      ).thenReturn(File('app-release.aab'));
+      ).thenAnswer(
+        (_) async => File(''),
+      );
 
       command = runWithOverrides(BuildAppBundleCommand.new)
         ..testArgResults = argResults;
@@ -143,33 +107,21 @@ void main() {
     });
 
     test('exits with code 70 when building appbundle fails', () async {
-      when(() => buildProcessResult.exitCode).thenReturn(1);
-      when(() => buildProcessResult.stderr).thenReturn('oops');
+      when(() => artifactBuilder.buildAppBundle()).thenThrow(
+        BuildException('Failed to build: oops'),
+      );
 
       final exitCode = await runWithOverrides(command.run);
 
       expect(exitCode, equals(ExitCode.software.code));
-      verify(
-        () => shorebirdProcess.run(
-          'flutter',
-          ['build', 'appbundle', '--release'],
-          runInShell: any(named: 'runInShell'),
-        ),
-      ).called(1);
+      verify(() => artifactBuilder.buildAppBundle()).called(1);
     });
 
     test('exits with code 0 when building appbundle succeeds', () async {
-      when(() => buildProcessResult.exitCode).thenReturn(ExitCode.success.code);
       final exitCode = await runWithOverrides(command.run);
 
       expect(exitCode, equals(ExitCode.success.code));
-      verify(
-        () => shorebirdProcess.run(
-          'flutter',
-          ['build', 'appbundle', '--release'],
-          runInShell: true,
-        ),
-      ).called(1);
+      verify(() => artifactBuilder.buildAppBundle()).called(1);
 
       verify(
         () => logger.info(
@@ -187,21 +139,13 @@ ${lightCyan.wrap(p.join('build', 'app', 'outputs', 'bundle', 'release', 'app-rel
       final target = p.join('lib', 'main_development.dart');
       when(() => argResults['flavor']).thenReturn(flavor);
       when(() => argResults['target']).thenReturn(target);
-      when(() => buildProcessResult.exitCode).thenReturn(ExitCode.success.code);
       final exitCode = await runWithOverrides(command.run);
 
       expect(exitCode, equals(ExitCode.success.code));
       verify(
-        () => shorebirdProcess.run(
-          'flutter',
-          [
-            'build',
-            'appbundle',
-            '--release',
-            '--flavor=$flavor',
-            '--target=$target',
-          ],
-          runInShell: true,
+        () => artifactBuilder.buildAppBundle(
+          flavor: flavor,
+          target: target,
         ),
       ).called(1);
 
@@ -252,22 +196,6 @@ ${lightCyan.wrap(p.join('build', 'app', 'outputs', 'bundle', '${flavor}Release',
         ),
         throwsException,
       );
-    });
-
-    test('runs flutter pub get with system flutter after successful build',
-        () async {
-      when(() => buildProcessResult.exitCode).thenReturn(ExitCode.success.code);
-
-      await runWithOverrides(command.run);
-
-      verify(
-        () => shorebirdProcess.run(
-          'flutter',
-          ['--no-version-check', 'pub', 'get', '--offline'],
-          runInShell: any(named: 'runInShell'),
-          useVendedFlutter: false,
-        ),
-      ).called(1);
     });
   });
 }
