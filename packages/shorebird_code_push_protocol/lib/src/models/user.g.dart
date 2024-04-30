@@ -13,7 +13,7 @@ User _$UserFromJson(Map<String, dynamic> json) => $checkedCreate(
       json,
       ($checkedConvert) {
         final val = User(
-          id: $checkedConvert('id', (v) => v as int),
+          id: $checkedConvert('id', (v) => (v as num).toInt()),
           email: $checkedConvert('email', (v) => v as String),
           jwtIssuer: $checkedConvert('jwt_issuer', (v) => v as String),
           hasActiveSubscription: $checkedConvert(
