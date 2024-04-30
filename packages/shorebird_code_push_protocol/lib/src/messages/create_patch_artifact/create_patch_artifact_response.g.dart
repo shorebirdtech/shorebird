@@ -15,13 +15,13 @@ CreatePatchArtifactResponse _$CreatePatchArtifactResponseFromJson(
       json,
       ($checkedConvert) {
         final val = CreatePatchArtifactResponse(
-          id: $checkedConvert('id', (v) => v as int),
-          patchId: $checkedConvert('patch_id', (v) => v as int),
+          id: $checkedConvert('id', (v) => (v as num).toInt()),
+          patchId: $checkedConvert('patch_id', (v) => (v as num).toInt()),
           arch: $checkedConvert('arch', (v) => v as String),
           platform: $checkedConvert(
               'platform', (v) => $enumDecode(_$ReleasePlatformEnumMap, v)),
           hash: $checkedConvert('hash', (v) => v as String),
-          size: $checkedConvert('size', (v) => v as int),
+          size: $checkedConvert('size', (v) => (v as num).toInt()),
           url: $checkedConvert('url', (v) => v as String),
         );
         return val;
