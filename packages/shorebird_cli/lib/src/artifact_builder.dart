@@ -80,51 +80,6 @@ class ArtifactBuilder {
     }
   }
 
-  /// A wrapper around [command] (which runs a `flutter build` command with
-  /// Shorebird's fork of Flutter) with a try/finally that runs
-  /// `flutter pub get` with the system installation of Flutter to reset
-  /// `.dart_tool/package_config.json` to the system Flutter.
-  Future<void> _runShorebirdBuildCommand(ShorebirdBuildCommand command) async {
-    try {
-      await command();
-    } finally {
-      await _systemFlutterPubGet();
-    }
-  }
-
-  /// This is a hack to reset `.dart_tool/package_config.json` to point to the
-  /// Flutter SDK on the user's PATH. This is necessary because Flutter commands
-  /// run by shorebird update the package_config.json file to point to
-  /// shorebird's version of Flutter, which confuses VS Code. See
-  /// https://github.com/shorebirdtech/shorebird/issues/1101 for more info.
-  Future<void> _systemFlutterPubGet() async {
-    const executable = 'flutter';
-    if (osInterface.which(executable) == null) {
-      // If the user doesn't have Flutter on their PATH, then we can't run
-      // `flutter pub get` with the system Flutter.
-      return;
-    }
-
-    final arguments = ['--no-version-check', 'pub', 'get', '--offline'];
-
-    final result = await process.run(
-      executable,
-      arguments,
-      runInShell: true,
-      useVendedFlutter: false,
-    );
-
-    if (result.exitCode != ExitCode.success.code) {
-      logger.warn(
-        '''
-Build was successful, but `flutter pub get` failed to run after the build completed. You may see unexpected behavior in VS Code.
-
-Either run `flutter pub get` manually, or follow the steps in ${link(uri: Uri.parse('https://docs.shorebird.dev/troubleshooting#i-installed-shorebird-and-now-i-cant-run-my-app-in-vs-code'))}.
-''',
-      );
-    }
-  }
-
   Future<File> buildApk({
     String? flavor,
     String? target,
@@ -177,6 +132,51 @@ Either run `flutter pub get` manually, or follow the steps in ${link(uri: Uri.pa
       throw BuildException(
         'Build succeeded, but could not find the APK in the build directory. '
         'Expected to find ${error.artifactName}',
+      );
+    }
+  }
+
+  /// A wrapper around [command] (which runs a `flutter build` command with
+  /// Shorebird's fork of Flutter) with a try/finally that runs
+  /// `flutter pub get` with the system installation of Flutter to reset
+  /// `.dart_tool/package_config.json` to the system Flutter.
+  Future<void> _runShorebirdBuildCommand(ShorebirdBuildCommand command) async {
+    try {
+      await command();
+    } finally {
+      await _systemFlutterPubGet();
+    }
+  }
+
+  /// This is a hack to reset `.dart_tool/package_config.json` to point to the
+  /// Flutter SDK on the user's PATH. This is necessary because Flutter commands
+  /// run by shorebird update the package_config.json file to point to
+  /// shorebird's version of Flutter, which confuses VS Code. See
+  /// https://github.com/shorebirdtech/shorebird/issues/1101 for more info.
+  Future<void> _systemFlutterPubGet() async {
+    const executable = 'flutter';
+    if (osInterface.which(executable) == null) {
+      // If the user doesn't have Flutter on their PATH, then we can't run
+      // `flutter pub get` with the system Flutter.
+      return;
+    }
+
+    final arguments = ['--no-version-check', 'pub', 'get', '--offline'];
+
+    final result = await process.run(
+      executable,
+      arguments,
+      runInShell: true,
+      useVendedFlutter: false,
+    );
+
+    if (result.exitCode != ExitCode.success.code) {
+      logger.warn(
+        '''
+Build was successful, but `flutter pub get` failed to run after the build completed. You may see unexpected behavior in VS Code.
+
+Either run `flutter pub get` manually, or follow the steps in ${link(uri: Uri.parse('https://docs.shorebird.dev/troubleshooting#i-installed-shorebird-and-now-i-cant-run-my-app-in-vs-code'))}.
+''',
       );
     }
   }
