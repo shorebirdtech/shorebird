@@ -1,9 +1,9 @@
 import 'package:mason_logger/mason_logger.dart';
 import 'package:path/path.dart' as p;
+import 'package:shorebird_cli/src/artifact_builder.dart';
 import 'package:shorebird_cli/src/command.dart';
 import 'package:shorebird_cli/src/doctor.dart';
 import 'package:shorebird_cli/src/logger.dart';
-import 'package:shorebird_cli/src/shorebird_build_mixin.dart';
 import 'package:shorebird_cli/src/shorebird_validator.dart';
 
 /// {@template build_apk_command}
@@ -11,7 +11,7 @@ import 'package:shorebird_cli/src/shorebird_validator.dart';
 /// `shorebird build apk`
 /// Build an Android APK file from your app.
 /// {@endtemplate}
-class BuildApkCommand extends ShorebirdCommand with ShorebirdBuildMixin {
+class BuildApkCommand extends ShorebirdCommand {
   /// {@macro build_apk_command}
   BuildApkCommand() {
     argParser
@@ -48,7 +48,7 @@ class BuildApkCommand extends ShorebirdCommand with ShorebirdBuildMixin {
     final target = results['target'] as String?;
     final buildProgress = logger.progress('Building apk');
     try {
-      await buildApk(flavor: flavor, target: target);
+      await artifactBuilder.buildApk(flavor: flavor, target: target);
     } on BuildException catch (error) {
       buildProgress.fail(error.message);
       return ExitCode.software.code;
