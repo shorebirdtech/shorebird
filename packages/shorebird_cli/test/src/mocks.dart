@@ -11,6 +11,7 @@ import 'package:shorebird_cli/src/android_sdk.dart';
 import 'package:shorebird_cli/src/android_studio.dart';
 import 'package:shorebird_cli/src/archive_analysis/archive_analysis.dart';
 import 'package:shorebird_cli/src/archive_analysis/archive_differ.dart';
+import 'package:shorebird_cli/src/artifact_builder.dart';
 import 'package:shorebird_cli/src/artifact_manager.dart';
 import 'package:shorebird_cli/src/auth/auth.dart';
 import 'package:shorebird_cli/src/cache.dart' show Cache;
@@ -53,6 +54,8 @@ class MockAppleDevice extends Mock implements AppleDevice {}
 class MockArchiveDiffer extends Mock implements ArchiveDiffer {}
 
 class MockArgResults extends Mock implements ArgResults {}
+
+class MockArtifactBuilder extends Mock implements ArtifactBuilder {}
 
 class MockArtifactManager extends Mock implements ArtifactManager {}
 
