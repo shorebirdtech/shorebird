@@ -804,6 +804,7 @@ Either run `flutter pub get` manually, or follow the steps in ${link(uri: Uri.pa
       final target = p.join('lib', 'main_development.dart');
       when(() => argResults['flavor']).thenReturn(flavor);
       when(() => argResults['target']).thenReturn(target);
+      when(() => argResults['artifact']).thenReturn('apk');
       const shorebirdYaml = ShorebirdYaml(
         appId: 'productionAppId',
         flavors: {flavor: appId},
