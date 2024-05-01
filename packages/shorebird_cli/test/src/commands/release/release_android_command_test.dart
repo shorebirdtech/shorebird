@@ -79,7 +79,8 @@ void main() {
     late Logger logger;
     late OperatingSystemInterface operatingSystemInterface;
     late Progress progress;
-    late ShorebirdProcessResult flutterBuildProcessResult;
+    late ShorebirdProcessResult flutterAppbundleBuildProcessResult;
+    late ShorebirdProcessResult flutterApkBuildProcessResult;
     late ShorebirdProcessResult flutterPubGetProcessResult;
     late ShorebirdFlutterValidator flutterValidator;
     late ShorebirdProcess shorebirdProcess;
@@ -139,7 +140,8 @@ void main() {
       java = MockJava();
       progress = MockProgress();
       logger = MockLogger();
-      flutterBuildProcessResult = MockProcessResult();
+      flutterAppbundleBuildProcessResult = MockProcessResult();
+      flutterApkBuildProcessResult = MockProcessResult();
       flutterPubGetProcessResult = MockProcessResult();
       flutterValidator = MockShorebirdFlutterValidator();
       shorebirdProcess = MockShorebirdProcess();
@@ -207,10 +209,17 @@ void main() {
       when(
         () => shorebirdProcess.run(
           'flutter',
-          any(),
+          any(that: contains('appbundle')),
           runInShell: any(named: 'runInShell'),
         ),
-      ).thenAnswer((_) async => flutterBuildProcessResult);
+      ).thenAnswer((_) async => flutterAppbundleBuildProcessResult);
+      when(
+        () => shorebirdProcess.run(
+          'flutter',
+          any(that: contains('apk')),
+          runInShell: any(named: 'runInShell'),
+        ),
+      ).thenAnswer((_) async => flutterApkBuildProcessResult);
 
       when(() => argResults['arch']).thenReturn(arch);
       when(() => argResults['platform']).thenReturn(releasePlatform);
@@ -234,7 +243,10 @@ void main() {
       when(() => platform.operatingSystemVersion)
           .thenReturn(operatingSystemVersion);
       when(
-        () => flutterBuildProcessResult.exitCode,
+        () => flutterAppbundleBuildProcessResult.exitCode,
+      ).thenReturn(ExitCode.success.code);
+      when(
+        () => flutterApkBuildProcessResult.exitCode,
       ).thenReturn(ExitCode.success.code);
       when(() => flutterPubGetProcessResult.exitCode)
           .thenReturn(ExitCode.success.code);
@@ -428,7 +440,7 @@ $exception''',
           ).thenAnswer((_) async {
             // Ensure we're using the correct flutter version.
             expect(shorebirdEnv.flutterRevision, equals(revision));
-            return flutterBuildProcessResult;
+            return flutterAppbundleBuildProcessResult;
           });
 
           await runWithOverrides(command.run);
@@ -485,9 +497,18 @@ $exception''',
       });
     });
 
-    test('exits with code 70 when building fails', () async {
-      when(() => flutterBuildProcessResult.exitCode).thenReturn(1);
-      when(() => flutterBuildProcessResult.stderr).thenReturn('oops');
+    test('exits with code 70 when building appbundle fails', () async {
+      when(() => argResults['artifact']).thenReturn('apk');
+      when(() => flutterAppbundleBuildProcessResult.exitCode).thenReturn(1);
+      when(() => flutterAppbundleBuildProcessResult.stderr).thenReturn('oops');
+      final exitCode = await runWithOverrides(command.run);
+      expect(exitCode, equals(ExitCode.software.code));
+    });
+
+    test('exits with code 70 when building apk fails', () async {
+      when(() => argResults['artifact']).thenReturn('apk');
+      when(() => flutterApkBuildProcessResult.exitCode).thenReturn(1);
+      when(() => flutterApkBuildProcessResult.stderr).thenReturn('oops');
       final exitCode = await runWithOverrides(command.run);
       expect(exitCode, equals(ExitCode.software.code));
     });
@@ -667,7 +688,7 @@ Note: ${lightCyan.wrap('shorebird patch android')} without the --release-version
     group('after a build', () {
       group('when the build is successful', () {
         setUp(() {
-          when(() => flutterBuildProcessResult.exitCode)
+          when(() => flutterAppbundleBuildProcessResult.exitCode)
               .thenReturn(ExitCode.success.code);
         });
 
@@ -714,7 +735,7 @@ Note: ${lightCyan.wrap('shorebird patch android')} without the --release-version
 
       group('when the build fails', () {
         setUp(() {
-          when(() => flutterBuildProcessResult.exitCode)
+          when(() => flutterAppbundleBuildProcessResult.exitCode)
               .thenReturn(ExitCode.software.code);
         });
 
