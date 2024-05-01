@@ -13,22 +13,30 @@ import 'package:shorebird_cli/src/shorebird_process.dart';
 /// Flutter.
 typedef ShorebirdBuildCommand = Future<void> Function();
 
-/// {@template build_exception}
+/// {@template artifact_build_exception}
 /// Thrown when a build fails.
 /// {@endtemplate}
-class BuildException implements Exception {
-  /// {@macro build_exception}
-  BuildException(this.message);
+class ArtifactBuildException implements Exception {
+  /// {@macro artifact_build_exception}
+  ArtifactBuildException(this.message);
 
   /// Information about the build failure.
   final String message;
 }
 
+/// A reference to a [ArtifactBuilder] instance.
 final artifactBuilderRef = create(ArtifactBuilder.new);
 
+/// The [ArtifactBuilder] instance available in the current zone.
 ArtifactBuilder get artifactBuilder => read(artifactBuilderRef);
 
+/// @{template artifact_builder}
+/// Builds aabs, ipas, and other artifacts produced by `flutter build`.
+/// @{endtemplate}
 class ArtifactBuilder {
+  /// Builds an aab using `flutter build appbundle`. Runs `flutter pub get` with
+  /// the system installation of Flutter to reset
+  /// `.dart_tool/package_config.json` after the build completes or fails.
   Future<File> buildAppBundle({
     String? flavor,
     String? target,
@@ -55,7 +63,7 @@ class ArtifactBuilder {
       );
 
       if (result.exitCode != ExitCode.success.code) {
-        throw BuildException(
+        throw ArtifactBuildException(
           'Failed to build: ${result.stderr}',
         );
       }
@@ -68,12 +76,12 @@ class ArtifactBuilder {
         flavor: flavor,
       );
     } on MultipleArtifactsFoundException catch (error) {
-      throw BuildException(
+      throw ArtifactBuildException(
         'Build succeeded, but it generated multiple AABs in the '
         'build directory. ${error.foundArtifacts.map((e) => e.path)}',
       );
     } on ArtifactNotFoundException catch (error) {
-      throw BuildException(
+      throw ArtifactBuildException(
         'Build succeeded, but could not find the AAB in the build directory. '
         'Expected to find ${error.artifactName}',
       );

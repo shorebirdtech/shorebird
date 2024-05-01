@@ -149,7 +149,7 @@ void main() {
           expect(
             () async => runWithOverrides(() => builder.buildAppBundle()),
             throwsA(
-              isA<BuildException>().having(
+              isA<ArtifactBuildException>().having(
                 (e) => e.message,
                 'message',
                 '''Build succeeded, but it generated multiple AABs in the build directory. (a, b)''',
@@ -178,7 +178,7 @@ void main() {
           expect(
             () async => runWithOverrides(() => builder.buildAppBundle()),
             throwsA(
-              isA<BuildException>().having(
+              isA<ArtifactBuildException>().having(
                 (e) => e.message,
                 'message',
                 '''Build succeeded, but could not find the AAB in the build directory. Expected to find app-release.aab''',
@@ -251,7 +251,7 @@ void main() {
             test('runs flutter pub get with system flutter', () async {
               await expectLater(
                 () async => runWithOverrides(() => builder.buildAppBundle()),
-                throwsA(isA<BuildException>()),
+                throwsA(isA<ArtifactBuildException>()),
               );
 
               verify(
@@ -270,7 +270,7 @@ void main() {
 
               await expectLater(
                 () async => runWithOverrides(() => builder.buildAppBundle()),
-                throwsA(isA<BuildException>()),
+                throwsA(isA<ArtifactBuildException>()),
               );
 
               verify(
@@ -294,7 +294,7 @@ Either run `flutter pub get` manually, or follow the steps in ${link(uri: Uri.pa
             test('does not attempt to run flutter pub get', () async {
               await expectLater(
                 () async => runWithOverrides(() => builder.buildAppBundle()),
-                throwsA(isA<BuildException>()),
+                throwsA(isA<ArtifactBuildException>()),
               );
 
               verifyNever(
