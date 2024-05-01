@@ -98,7 +98,7 @@ void main() {
     test('exits with code 70 when building aar fails', () async {
       when(
         () => artifactBuilder.buildAar(buildNumber: any(named: 'buildNumber')),
-      ).thenThrow(BuildException('Failed to build: error'));
+      ).thenThrow(ArtifactBuildException('Failed to build: error'));
 
       final result = await runWithOverrides(command.run);
 

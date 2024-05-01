@@ -491,7 +491,7 @@ Either run `flutter pub get` manually, or follow the steps in ${link(uri: Uri.pa
                 () async => runWithOverrides(
                   () => builder.buildAar(buildNumber: buildNumber),
                 ),
-                throwsA(isA<BuildException>()),
+                throwsA(isA<ArtifactBuildException>()),
               ),
             );
           });

@@ -169,7 +169,7 @@ class ArtifactBuilder {
       );
 
       if (result.exitCode != ExitCode.success.code) {
-        throw BuildException('Failed to build: ${result.stderr}');
+        throw ArtifactBuildException('Failed to build: ${result.stderr}');
       }
     });
   }
