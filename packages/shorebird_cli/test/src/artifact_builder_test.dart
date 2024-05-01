@@ -78,17 +78,80 @@ void main() {
           .thenReturn('/path/to/flutter');
       when(() => shorebirdEnv.flutterRevision).thenReturn('1234');
       when(shorebirdEnv.getShorebirdProjectRoot).thenReturn(Directory(''));
-      when(
-        () => shorebirdAndroidArtifacts.findAab(
-          project: any(named: 'project'),
-          flavor: any(named: 'flavor'),
-        ),
-      ).thenReturn(File('app-release.aab'));
 
       builder = ArtifactBuilder();
     });
 
+    void verifyCorrectFlutterPubGet(
+      Future<void> Function() testCall,
+    ) {
+      group('when flutter is installed', () {
+        setUp(() {
+          when(() => operatingSystemInterface.which('flutter'))
+              .thenReturn('/path/to/flutter');
+        });
+
+        test('runs flutter pub get with system flutter', () async {
+          await testCall();
+
+          verify(
+            () => shorebirdProcess.run(
+              'flutter',
+              ['--no-version-check', 'pub', 'get', '--offline'],
+              runInShell: any(named: 'runInShell'),
+              useVendedFlutter: false,
+            ),
+          ).called(1);
+        });
+
+        test('prints error message if system flutter pub get fails', () async {
+          when(() => pubGetProcessResult.exitCode).thenReturn(1);
+
+          await testCall();
+
+          verify(
+            () => logger.warn(
+              '''
+Build was successful, but `flutter pub get` failed to run after the build completed. You may see unexpected behavior in VS Code.
+
+Either run `flutter pub get` manually, or follow the steps in ${link(uri: Uri.parse('https://docs.shorebird.dev/troubleshooting#i-installed-shorebird-and-now-i-cant-run-my-app-in-vs-code'))}.
+''',
+            ),
+          ).called(1);
+        });
+      });
+
+      group('when flutter is not installed', () {
+        setUp(() {
+          when(() => operatingSystemInterface.which('flutter'))
+              .thenReturn(null);
+        });
+
+        test('does not attempt to run flutter pub get', () async {
+          await testCall();
+
+          verifyNever(
+            () => shorebirdProcess.run(
+              'flutter',
+              ['--no-version-check', 'pub', 'get', '--offline'],
+              runInShell: any(named: 'runInShell'),
+              useVendedFlutter: false,
+            ),
+          );
+        });
+      });
+    }
+
     group('buildAppBundle', () {
+      setUp(() {
+        when(
+          () => shorebirdAndroidArtifacts.findAab(
+            project: any(named: 'project'),
+            flavor: any(named: 'flavor'),
+          ),
+        ).thenReturn(File('app-release.aab'));
+      });
+
       test('invokes the correct flutter build command', () async {
         await runWithOverrides(() => builder.buildAppBundle());
 
@@ -145,9 +208,9 @@ void main() {
           );
         });
 
-        test('throws BuildException', () async {
+        test('throws BuildException', () {
           expect(
-            () async => runWithOverrides(() => builder.buildAppBundle()),
+            () => runWithOverrides(() => builder.buildAppBundle()),
             throwsA(
               isA<ArtifactBuildException>().having(
                 (e) => e.message,
@@ -174,9 +237,9 @@ void main() {
           );
         });
 
-        test('throws BuildException', () async {
+        test('throws BuildException', () {
           expect(
-            () async => runWithOverrides(() => builder.buildAppBundle()),
+            () => runWithOverrides(() => builder.buildAppBundle()),
             throwsA(
               isA<ArtifactBuildException>().having(
                 (e) => e.message,
@@ -195,117 +258,159 @@ void main() {
                 .thenReturn(ExitCode.success.code);
           });
 
-          group('when flutter is installed', () {
+          verifyCorrectFlutterPubGet(
+            () => runWithOverrides(() => builder.buildAppBundle()),
+          );
+
+          group('when the build fails', () {
             setUp(() {
-              when(() => operatingSystemInterface.which('flutter'))
-                  .thenReturn('/path/to/flutter');
+              when(() => buildProcessResult.exitCode)
+                  .thenReturn(ExitCode.software.code);
             });
 
-            test('runs flutter pub get with system flutter', () async {
-              await runWithOverrides(() => builder.buildAppBundle());
-
-              verify(
-                () => shorebirdProcess.run(
-                  'flutter',
-                  ['--no-version-check', 'pub', 'get', '--offline'],
-                  runInShell: any(named: 'runInShell'),
-                  useVendedFlutter: false,
-                ),
-              ).called(1);
-            });
-          });
-
-          group('when flutter is not installed', () {
-            setUp(() {
-              when(() => operatingSystemInterface.which('flutter'))
-                  .thenReturn(null);
-            });
-
-            test('does not attempt to run flutter pub get', () async {
-              await runWithOverrides(() => builder.buildAppBundle());
-
-              verifyNever(
-                () => shorebirdProcess.run(
-                  'flutter',
-                  ['--no-version-check', 'pub', 'get', '--offline'],
-                  runInShell: any(named: 'runInShell'),
-                  useVendedFlutter: false,
-                ),
-              );
-            });
+            verifyCorrectFlutterPubGet(
+              () => expectLater(
+                () => runWithOverrides(() => builder.buildAppBundle()),
+                throwsA(isA<ArtifactBuildException>()),
+              ),
+            );
           });
         });
+      });
+    });
 
-        group('when the build fails', () {
+    group('buildApk', () {
+      setUp(() {
+        when(
+          () => shorebirdAndroidArtifacts.findApk(
+            project: any(named: 'project'),
+            flavor: any(named: 'flavor'),
+          ),
+        ).thenReturn(File('app-release.apk'));
+      });
+
+      test('invokes the correct flutter build command', () async {
+        await runWithOverrides(() => builder.buildApk());
+
+        verify(
+          () => shorebirdProcess.run(
+            'flutter',
+            ['build', 'apk', '--release'],
+            runInShell: any(named: 'runInShell'),
+            environment: any(named: 'environment'),
+          ),
+        ).called(1);
+      });
+
+      test('forward arguments to flutter build', () async {
+        await runWithOverrides(
+          () => builder.buildApk(
+            flavor: 'flavor',
+            target: 'target',
+            targetPlatforms: [Arch.arm64],
+            argResultsRest: ['--foo', 'bar'],
+          ),
+        );
+
+        verify(
+          () => shorebirdProcess.run(
+            'flutter',
+            [
+              'build',
+              'apk',
+              '--release',
+              '--flavor=flavor',
+              '--target=target',
+              '--target-platform=android-arm64',
+              '--foo',
+              'bar',
+            ],
+            runInShell: any(named: 'runInShell'),
+          ),
+        ).called(1);
+      });
+
+      group('when multiple artifacts are found', () {
+        setUp(() {
+          when(
+            () => shorebirdAndroidArtifacts.findApk(
+              project: any(named: 'project'),
+              flavor: any(named: 'flavor'),
+            ),
+          ).thenThrow(
+            MultipleArtifactsFoundException(
+              foundArtifacts: [File('a'), File('b')],
+              buildDir: 'buildDir',
+            ),
+          );
+        });
+
+        test('throws BuildException', () {
+          expect(
+            () => runWithOverrides(() => builder.buildApk()),
+            throwsA(
+              isA<ArtifactBuildException>().having(
+                (e) => e.message,
+                'message',
+                '''Build succeeded, but it generated multiple APKs in the build directory. (a, b)''',
+              ),
+            ),
+          );
+        });
+      });
+
+      group('when no artifacts are found', () {
+        setUp(() {
+          when(
+            () => shorebirdAndroidArtifacts.findApk(
+              project: any(named: 'project'),
+              flavor: any(named: 'flavor'),
+            ),
+          ).thenThrow(
+            ArtifactNotFoundException(
+              artifactName: 'app-release.aab',
+              buildDir: 'buildDir',
+            ),
+          );
+        });
+
+        test('throws BuildException', () {
+          expect(
+            () => runWithOverrides(() => builder.buildApk()),
+            throwsA(
+              isA<ArtifactBuildException>().having(
+                (e) => e.message,
+                'message',
+                '''Build succeeded, but could not find the APK in the build directory. Expected to find app-release.aab''',
+              ),
+            ),
+          );
+        });
+      });
+
+      group('after a build', () {
+        group('when the build is successful', () {
           setUp(() {
             when(() => buildProcessResult.exitCode)
-                .thenReturn(ExitCode.software.code);
+                .thenReturn(ExitCode.success.code);
           });
 
-          group('when flutter is installed', () {
+          verifyCorrectFlutterPubGet(
+            () => runWithOverrides(() => builder.buildApk()),
+          );
+
+          group('when the build fails', () {
             setUp(() {
-              when(() => operatingSystemInterface.which('flutter'))
-                  .thenReturn('/path/to/flutter');
+              when(() => buildProcessResult.exitCode)
+                  .thenReturn(ExitCode.software.code);
             });
 
-            test('runs flutter pub get with system flutter', () async {
-              await expectLater(
-                () async => runWithOverrides(() => builder.buildAppBundle()),
+            verifyCorrectFlutterPubGet(
+              () => expectLater(
+                () => runWithOverrides(() => builder.buildApk()),
                 throwsA(isA<ArtifactBuildException>()),
-              );
-
-              verify(
-                () => shorebirdProcess.run(
-                  'flutter',
-                  ['--no-version-check', 'pub', 'get', '--offline'],
-                  runInShell: any(named: 'runInShell'),
-                  useVendedFlutter: false,
-                ),
-              ).called(1);
-            });
-
-            test('prints error message if system flutter pub get fails',
-                () async {
-              when(() => pubGetProcessResult.exitCode).thenReturn(1);
-
-              await expectLater(
-                () async => runWithOverrides(() => builder.buildAppBundle()),
-                throwsA(isA<ArtifactBuildException>()),
-              );
-
-              verify(
-                () => logger.warn(
-                  '''
-Build was successful, but `flutter pub get` failed to run after the build completed. You may see unexpected behavior in VS Code.
-
-Either run `flutter pub get` manually, or follow the steps in ${link(uri: Uri.parse('https://docs.shorebird.dev/troubleshooting#i-installed-shorebird-and-now-i-cant-run-my-app-in-vs-code'))}.
-''',
-                ),
-              ).called(1);
-            });
-          });
-
-          group('when flutter is not installed', () {
-            setUp(() {
-              when(() => operatingSystemInterface.which('flutter'))
-                  .thenReturn(null);
-            });
-
-            test('does not attempt to run flutter pub get', () async {
-              await expectLater(
-                () async => runWithOverrides(() => builder.buildAppBundle()),
-                throwsA(isA<ArtifactBuildException>()),
-              );
-
-              verifyNever(
-                () => shorebirdProcess.run(
-                  'flutter',
-                  ['--no-version-check', 'pub', 'get', '--offline'],
-                  runInShell: any(named: 'runInShell'),
-                  useVendedFlutter: false,
-                ),
-              );
-            });
+              ),
+            );
           });
         });
       });

@@ -88,6 +88,62 @@ class ArtifactBuilder {
     }
   }
 
+  Future<File> buildApk({
+    String? flavor,
+    String? target,
+    Iterable<Arch>? targetPlatforms,
+    bool splitPerAbi = false,
+    List<String> argResultsRest = const [],
+  }) async {
+    await _runShorebirdBuildCommand(() async {
+      const executable = 'flutter';
+      final targetPlatformArgs = targetPlatforms?.targetPlatformArg;
+      final arguments = [
+        'build',
+        'apk',
+        '--release',
+        if (flavor != null) '--flavor=$flavor',
+        if (target != null) '--target=$target',
+        if (targetPlatformArgs != null) '--target-platform=$targetPlatformArgs',
+        // TODO(bryanoltman): reintroduce coverage when we can support this.
+        // See https://github.com/shorebirdtech/shorebird/issues/1141.
+        // coverage:ignore-start
+        if (splitPerAbi) '--split-per-abi',
+        // coverage:ignore-end
+        ...argResultsRest,
+      ];
+
+      final result = await process.run(
+        executable,
+        arguments,
+        runInShell: true,
+      );
+
+      if (result.exitCode != ExitCode.success.code) {
+        throw ArtifactBuildException(
+          'Failed to build: ${result.stderr}',
+        );
+      }
+    });
+    final projectRoot = shorebirdEnv.getShorebirdProjectRoot()!;
+    try {
+      return shorebirdAndroidArtifacts.findApk(
+        project: projectRoot,
+        flavor: flavor,
+      );
+    } on MultipleArtifactsFoundException catch (error) {
+      throw ArtifactBuildException(
+        'Build succeeded, but it generated multiple APKs in the '
+        'build directory. ${error.foundArtifacts.map((e) => e.path)}',
+      );
+    } on ArtifactNotFoundException catch (error) {
+      throw ArtifactBuildException(
+        'Build succeeded, but could not find the APK in the build directory. '
+        'Expected to find ${error.artifactName}',
+      );
+    }
+  }
+
   /// A wrapper around [command] (which runs a `flutter build` command with
   /// Shorebird's fork of Flutter) with a try/finally that runs
   /// `flutter pub get` with the system installation of Flutter to reset
