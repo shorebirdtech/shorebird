@@ -212,7 +212,7 @@ Either run `flutter pub get` manually, or follow the steps in ${link(uri: Uri.pa
           expect(
             () async => runWithOverrides(() => builder.buildAppBundle()),
             throwsA(
-              isA<BuildException>().having(
+              isA<ArtifactBuildException>().having(
                 (e) => e.message,
                 'message',
                 '''Build succeeded, but it generated multiple AABs in the build directory. (a, b)''',
@@ -241,7 +241,7 @@ Either run `flutter pub get` manually, or follow the steps in ${link(uri: Uri.pa
           expect(
             () async => runWithOverrides(() => builder.buildAppBundle()),
             throwsA(
-              isA<BuildException>().having(
+              isA<ArtifactBuildException>().having(
                 (e) => e.message,
                 'message',
                 '''Build succeeded, but could not find the AAB in the build directory. Expected to find app-release.aab''',
@@ -271,7 +271,7 @@ Either run `flutter pub get` manually, or follow the steps in ${link(uri: Uri.pa
             verifyCorrectFlutterPubGet(
               () async => expectLater(
                 () async => runWithOverrides(() => builder.buildAppBundle()),
-                throwsA(isA<BuildException>()),
+                throwsA(isA<ArtifactBuildException>()),
               ),
             );
           });
@@ -349,7 +349,7 @@ Either run `flutter pub get` manually, or follow the steps in ${link(uri: Uri.pa
           expect(
             () async => runWithOverrides(() => builder.buildApk()),
             throwsA(
-              isA<BuildException>().having(
+              isA<ArtifactBuildException>().having(
                 (e) => e.message,
                 'message',
                 '''Build succeeded, but it generated multiple APKs in the build directory. (a, b)''',
@@ -378,7 +378,7 @@ Either run `flutter pub get` manually, or follow the steps in ${link(uri: Uri.pa
           expect(
             () async => runWithOverrides(() => builder.buildApk()),
             throwsA(
-              isA<BuildException>().having(
+              isA<ArtifactBuildException>().having(
                 (e) => e.message,
                 'message',
                 '''Build succeeded, but could not find the APK in the build directory. Expected to find app-release.aab''',
@@ -408,7 +408,7 @@ Either run `flutter pub get` manually, or follow the steps in ${link(uri: Uri.pa
             verifyCorrectFlutterPubGet(
               () async => expectLater(
                 () async => runWithOverrides(() => builder.buildApk()),
-                throwsA(isA<BuildException>()),
+                throwsA(isA<ArtifactBuildException>()),
               ),
             );
           });
