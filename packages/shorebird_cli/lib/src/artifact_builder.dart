@@ -161,12 +161,7 @@ class ArtifactBuilder {
       );
 
       if (result.exitCode != ExitCode.success.code) {
-        throw ProcessException(
-          'flutter',
-          arguments,
-          result.stderr.toString(),
-          result.exitCode,
-        );
+        throw BuildException('Failed to build: ${result.stderr}');
       }
     });
   }
