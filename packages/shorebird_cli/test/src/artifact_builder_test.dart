@@ -82,9 +82,9 @@ void main() {
       builder = ArtifactBuilder();
     });
 
-    Future<void> verifyCorrectFlutterPubGet(
+    void verifyCorrectFlutterPubGet(
       Future<void> Function() testCall,
-    ) async {
+    ) {
       group('when flutter is installed', () {
         setUp(() {
           when(() => operatingSystemInterface.which('flutter'))
@@ -208,9 +208,9 @@ Either run `flutter pub get` manually, or follow the steps in ${link(uri: Uri.pa
           );
         });
 
-        test('throws BuildException', () async {
+        test('throws BuildException', () {
           expect(
-            () async => runWithOverrides(() => builder.buildAppBundle()),
+            () => runWithOverrides(() => builder.buildAppBundle()),
             throwsA(
               isA<ArtifactBuildException>().having(
                 (e) => e.message,
@@ -237,9 +237,9 @@ Either run `flutter pub get` manually, or follow the steps in ${link(uri: Uri.pa
           );
         });
 
-        test('throws BuildException', () async {
+        test('throws BuildException', () {
           expect(
-            () async => runWithOverrides(() => builder.buildAppBundle()),
+            () => runWithOverrides(() => builder.buildAppBundle()),
             throwsA(
               isA<ArtifactBuildException>().having(
                 (e) => e.message,
@@ -259,7 +259,7 @@ Either run `flutter pub get` manually, or follow the steps in ${link(uri: Uri.pa
           });
 
           verifyCorrectFlutterPubGet(
-            () async => runWithOverrides(() => builder.buildAppBundle()),
+            () => runWithOverrides(() => builder.buildAppBundle()),
           );
 
           group('when the build fails', () {
@@ -269,8 +269,8 @@ Either run `flutter pub get` manually, or follow the steps in ${link(uri: Uri.pa
             });
 
             verifyCorrectFlutterPubGet(
-              () async => expectLater(
-                () async => runWithOverrides(() => builder.buildAppBundle()),
+              () => expectLater(
+                () => runWithOverrides(() => builder.buildAppBundle()),
                 throwsA(isA<ArtifactBuildException>()),
               ),
             );
@@ -345,9 +345,9 @@ Either run `flutter pub get` manually, or follow the steps in ${link(uri: Uri.pa
           );
         });
 
-        test('throws BuildException', () async {
+        test('throws BuildException', () {
           expect(
-            () async => runWithOverrides(() => builder.buildApk()),
+            () => runWithOverrides(() => builder.buildApk()),
             throwsA(
               isA<ArtifactBuildException>().having(
                 (e) => e.message,
@@ -374,9 +374,9 @@ Either run `flutter pub get` manually, or follow the steps in ${link(uri: Uri.pa
           );
         });
 
-        test('throws BuildException', () async {
+        test('throws BuildException', () {
           expect(
-            () async => runWithOverrides(() => builder.buildApk()),
+            () => runWithOverrides(() => builder.buildApk()),
             throwsA(
               isA<ArtifactBuildException>().having(
                 (e) => e.message,
@@ -396,7 +396,7 @@ Either run `flutter pub get` manually, or follow the steps in ${link(uri: Uri.pa
           });
 
           verifyCorrectFlutterPubGet(
-            () async => runWithOverrides(() => builder.buildApk()),
+            () => runWithOverrides(() => builder.buildApk()),
           );
 
           group('when the build fails', () {
@@ -406,8 +406,8 @@ Either run `flutter pub get` manually, or follow the steps in ${link(uri: Uri.pa
             });
 
             verifyCorrectFlutterPubGet(
-              () async => expectLater(
-                () async => runWithOverrides(() => builder.buildApk()),
+              () => expectLater(
+                () => runWithOverrides(() => builder.buildApk()),
                 throwsA(isA<ArtifactBuildException>()),
               ),
             );
