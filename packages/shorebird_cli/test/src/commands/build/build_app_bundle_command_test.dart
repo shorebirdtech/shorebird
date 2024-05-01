@@ -108,7 +108,7 @@ void main() {
 
     test('exits with code 70 when building appbundle fails', () async {
       when(() => artifactBuilder.buildAppBundle()).thenThrow(
-        BuildException('Failed to build: oops'),
+        ArtifactBuildException('Failed to build: oops'),
       );
 
       final exitCode = await runWithOverrides(command.run);

@@ -108,7 +108,7 @@ void main() {
           flavor: any(named: 'flavor'),
           target: any(named: 'target'),
         ),
-      ).thenThrow(BuildException('oops'));
+      ).thenThrow(ArtifactBuildException('oops'));
 
       final exitCode = await runWithOverrides(command.run);
 

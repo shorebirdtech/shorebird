@@ -49,7 +49,7 @@ class BuildApkCommand extends ShorebirdCommand {
     final buildProgress = logger.progress('Building apk');
     try {
       await artifactBuilder.buildApk(flavor: flavor, target: target);
-    } on BuildException catch (error) {
+    } on ArtifactBuildException catch (error) {
       buildProgress.fail(error.message);
       return ExitCode.software.code;
     }
