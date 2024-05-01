@@ -1,11 +1,10 @@
 import 'dart:async';
-import 'dart:io';
 
 import 'package:mason_logger/mason_logger.dart';
 import 'package:path/path.dart' as p;
+import 'package:shorebird_cli/src/artifact_builder.dart';
 import 'package:shorebird_cli/src/command.dart';
 import 'package:shorebird_cli/src/logger.dart';
-import 'package:shorebird_cli/src/shorebird_build_mixin.dart';
 import 'package:shorebird_cli/src/shorebird_env.dart';
 import 'package:shorebird_cli/src/shorebird_validator.dart';
 
@@ -14,7 +13,7 @@ import 'package:shorebird_cli/src/shorebird_validator.dart';
 /// `shorebird build aar`
 /// Build an Android aar file from your app.
 /// {@endtemplate}
-class BuildAarCommand extends ShorebirdCommand with ShorebirdBuildMixin {
+class BuildAarCommand extends ShorebirdCommand {
   BuildAarCommand() {
     // We would have a "target" option here, similar to what [BuildApkCommand]
     // and [BuildAabCommand] have, but target cannot currently be configured in
@@ -54,8 +53,8 @@ class BuildAarCommand extends ShorebirdCommand with ShorebirdBuildMixin {
     final buildNumber = results['build-number'] as String;
     final buildProgress = logger.progress('Building aar');
     try {
-      await buildAar(buildNumber: buildNumber);
-    } on ProcessException catch (error) {
+      await artifactBuilder.buildAar(buildNumber: buildNumber);
+    } on ArtifactBuildException catch (error) {
       buildProgress.fail('Failed to build: ${error.message}');
       return ExitCode.software.code;
     }

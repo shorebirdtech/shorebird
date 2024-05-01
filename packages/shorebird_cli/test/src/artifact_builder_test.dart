@@ -415,5 +415,88 @@ Either run `flutter pub get` manually, or follow the steps in ${link(uri: Uri.pa
         });
       });
     });
+
+    group('buildAar', () {
+      const buildNumber = '1.0';
+
+      test('invokes the correct flutter build command', () async {
+        await runWithOverrides(
+          () => builder.buildAar(buildNumber: buildNumber),
+        );
+
+        verify(
+          () => shorebirdProcess.run(
+            'flutter',
+            [
+              'build',
+              'aar',
+              '--no-debug',
+              '--no-profile',
+              '--build-number=1.0',
+            ],
+            runInShell: any(named: 'runInShell'),
+            environment: any(named: 'environment'),
+          ),
+        ).called(1);
+      });
+
+      test('forward arguments to flutter build', () async {
+        await runWithOverrides(
+          () => builder.buildAar(
+            buildNumber: buildNumber,
+            targetPlatforms: [Arch.arm64],
+            argResultsRest: ['--foo', 'bar'],
+          ),
+        );
+
+        verify(
+          () => shorebirdProcess.run(
+            'flutter',
+            [
+              'build',
+              'aar',
+              '--no-debug',
+              '--no-profile',
+              '--build-number=1.0',
+              '--target-platform=android-arm64',
+              '--foo',
+              'bar',
+            ],
+            runInShell: any(named: 'runInShell'),
+          ),
+        ).called(1);
+      });
+
+      group('after a build', () {
+        group('when the build is successful', () {
+          setUp(() {
+            when(() => buildProcessResult.exitCode)
+                .thenReturn(ExitCode.success.code);
+          });
+
+          verifyCorrectFlutterPubGet(
+            () async => runWithOverrides(
+              () => builder.buildAar(buildNumber: buildNumber),
+            ),
+          );
+
+          group('when the build fails', () {
+            setUp(() {
+              when(() => buildProcessResult.exitCode)
+                  .thenReturn(ExitCode.software.code);
+            });
+
+            verifyCorrectFlutterPubGet(
+              () async => expectLater(
+                () async => runWithOverrides(
+                  () => builder.buildAar(buildNumber: buildNumber),
+                ),
+                throwsA(isA<ArtifactBuildException>()),
+              ),
+            );
+          });
+        });
+      });
+    });
   });
 }
