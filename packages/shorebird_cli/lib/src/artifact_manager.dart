@@ -6,6 +6,7 @@ import 'package:http/http.dart' as http;
 import 'package:path/path.dart' as p;
 import 'package:scoped/scoped.dart';
 import 'package:shorebird_cli/src/cache.dart';
+import 'package:shorebird_cli/src/executables/bundletool.dart';
 import 'package:shorebird_cli/src/http_client/http_client.dart';
 import 'package:shorebird_cli/src/shorebird_process.dart';
 
@@ -16,6 +17,22 @@ final artifactManagerRef = create(ArtifactManager.new);
 ArtifactManager get artifactManager => read(artifactManagerRef);
 
 class ArtifactManager {
+  /// Extract the release version from an appbundle.
+  Future<String> extractReleaseVersionFromAppBundle(
+    String appBundlePath,
+  ) async {
+    await cache.updateAll();
+
+    final results = await Future.wait([
+      bundletool.getVersionName(appBundlePath),
+      bundletool.getVersionCode(appBundlePath),
+    ]);
+
+    final versionName = results[0];
+    final versionCode = results[1];
+    return '$versionName+$versionCode';
+  }
+
   /// Generates a binary diff between two files and returns the path to the
   /// output diff file.
   Future<String> createDiff({
