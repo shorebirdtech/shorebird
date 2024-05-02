@@ -21,7 +21,11 @@ import 'package:shorebird_code_push_client/shorebird_code_push_client.dart';
 /// {@endtemplate}
 class AndroidReleasePipline extends ReleasePipeline {
   /// {@macro android_release_pipeline}
-  AndroidReleasePipline({required super.argParser, required super.argResults});
+  AndroidReleasePipline({
+    required super.argResults,
+    required super.flavor,
+    required super.target,
+  });
 
   @override
   ReleaseType get releaseType => ReleaseType.android;
@@ -166,6 +170,7 @@ Please comment and upvote ${link(uri: Uri.parse('https://github.com/shorebirdtec
 
   @override
   Future<void> uploadReleaseArtifacts({
+    required String appId,
     required Release release,
   }) {
     final aabFile = shorebirdAndroidArtifacts.findAab(
@@ -186,7 +191,7 @@ Please comment and upvote ${link(uri: Uri.parse('https://github.com/shorebirdtec
   @override
   UpdateReleaseMetadata get releaseMetadata => UpdateReleaseMetadata(
         releasePlatform: releaseType.releasePlatform,
-        flutterVersionOverride: flutterVersionArg,
+        flutterVersionOverride: argResults['flutter-version'] as String?,
         generatedApks: generateApk,
         environment: BuildEnvironmentMetadata(
           operatingSystem: platform.operatingSystem,

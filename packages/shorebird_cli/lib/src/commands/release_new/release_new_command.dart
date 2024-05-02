@@ -1,12 +1,20 @@
 import 'dart:async';
+import 'dart:io';
 
 import 'package:mason_logger/mason_logger.dart';
+import 'package:scoped/scoped.dart';
+import 'package:shorebird_cli/src/code_push_client_wrapper.dart';
 import 'package:shorebird_cli/src/command.dart';
 import 'package:shorebird_cli/src/commands/release_new/android_release_pipeline.dart';
 import 'package:shorebird_cli/src/commands/release_new/release_pipeline.dart';
+import 'package:shorebird_cli/src/config/config.dart';
+import 'package:shorebird_cli/src/extensions/arg_results.dart';
 import 'package:shorebird_cli/src/logger.dart';
 import 'package:shorebird_cli/src/platform/platform.dart';
+import 'package:shorebird_cli/src/shorebird_env.dart';
+import 'package:shorebird_cli/src/shorebird_flutter.dart';
 import 'package:shorebird_code_push_client/shorebird_code_push_client.dart';
+import 'package:shorebird_code_push_protocol/shorebird_code_push_protocol.dart';
 
 /// The different types of shorebird releases that can be created.
 enum ReleaseType {
@@ -47,6 +55,20 @@ enum ReleaseType {
         return ReleasePlatform.ios;
       case ReleaseType.iosFramework:
         return ReleasePlatform.ios;
+    }
+  }
+
+  /// Whether --release-version must be specified to patch.
+  bool requiresReleaseVersionArg() {
+    switch (this) {
+      case ReleaseType.aar:
+        return true;
+      case ReleaseType.android:
+        return false;
+      case ReleaseType.ios:
+        return false;
+      case ReleaseType.iosFramework:
+        return true;
     }
   }
 }
@@ -126,7 +148,8 @@ of the iOS app that is using this module.''',
             (target) => target.cliName == platformArg,
           ),
         )
-        .map((target) => _getPipeline(target).run());
+        .map(_getPipeline)
+        .map(_createRelease);
 
     try {
       await Future.wait(pipelineFutures);
@@ -138,12 +161,13 @@ of the iOS app that is using this module.''',
     return ExitCode.success.code;
   }
 
-  ReleasePipeline _getPipeline(ReleaseType target) {
-    switch (target) {
+  ReleasePipeline _getPipeline(ReleaseType releaseType) {
+    switch (releaseType) {
       case ReleaseType.android:
         return AndroidReleasePipline(
-          argParser: argParser,
-          argResults: argResults!,
+          argResults: results,
+          flavor: flavor,
+          target: target,
         );
       case ReleaseType.ios:
         throw UnimplementedError();
@@ -154,6 +178,288 @@ of the iOS app that is using this module.''',
       case ReleaseType.aar:
         throw UnimplementedError();
       // return AarReleasePipeline(argResults: argResults);
+    }
+  }
+
+  /// Whether --release-version must be specified to patch. Currently only
+  /// required for add-to-app/hybrid releases (aar and ios-framework).
+  bool get requiresReleaseVersionArg => false;
+
+  /// The shorebird app ID for the current project.
+  String get appId => shorebirdEnv.getShorebirdYaml()!.getAppId(flavor: flavor);
+
+  /// The root directory of the current project.
+  Directory get projectRoot => shorebirdEnv.getShorebirdProjectRoot()!;
+
+  /// The build flavor, if provided.
+  late String? flavor = results.findOption('flavor', argParser: argParser);
+
+  /// The target script, if provided.
+  late String? target = results.findOption('target', argParser: argParser);
+
+  /// The flutter version specified by the user, if any.
+  late String? flutterVersionArg = results['flutter-version'] as String?;
+
+  /// The workflow to create a new release for a Shorebird app.
+  ///
+  /// Expectations for methods invoked by this command:
+  ///  - They perform their own logging. If an error occurs, they are
+  ///    responsible for properly logging the error, cleaning up running
+  ///    [Progress]es, etc.
+  ///  - They can only exit early by throwing a [BuildPipelineException]. They
+  ///    should otherwise return normally.
+  Future<void> _createRelease(ReleasePipeline pipeline) async {
+    await pipeline.validatePreconditions();
+    await pipeline.validateArgs();
+
+    // This command handles logging, we don't need to provide our own
+    // progress, error logs, etc.
+    final app = await codePushClientWrapper.getApp(appId: appId);
+    final targetFlutterVersion = await resolveTargetFlutterVersion();
+    await shorebirdFlutter.installRevision(revision: targetFlutterVersion);
+
+    final releaseFlutterShorebirdEnv = shorebirdEnv.copyWith(
+      flutterRevisionOverride: targetFlutterVersion,
+    );
+    return await runScoped(
+      () async {
+        final releaseArtifact = await pipeline.buildReleaseArtifacts();
+        final releaseVersion = await pipeline.getReleaseVersion(
+          releaseArtifactRoot: releaseArtifact,
+        );
+
+        // Ensure we can create a release from what we've built.
+        await validateVersionIsReleasable(
+          version: releaseVersion,
+          flutterVersion: targetFlutterVersion,
+          releasePlatform: pipeline.releaseType.releasePlatform,
+        );
+
+        // Ask the user to proceed (this is skipped when running via CI).
+        await confirmCreateRelease(
+          app: app,
+          releaseVersion: releaseVersion,
+          flutterVersion: targetFlutterVersion,
+          releasePlatform: pipeline.releaseType.releasePlatform,
+        );
+
+        final release = await getOrCreateRelease(
+          version: releaseVersion,
+          releasePlatform: pipeline.releaseType.releasePlatform,
+        );
+        await prepareRelease(release: release, pipeline: pipeline);
+        await pipeline.uploadReleaseArtifacts(release: release, appId: appId);
+        await finalizeRelease(release: release, pipeline: pipeline);
+
+        logger
+          ..success('✅ Published Release ${release.version}!')
+          ..info(pipeline.postReleaseInstructions);
+
+        printPatchInstructions(
+          releaseVersion: releaseVersion,
+          releaseType: pipeline.releaseType,
+        );
+      },
+      values: {
+        shorebirdEnvRef.overrideWith(() => releaseFlutterShorebirdEnv),
+      },
+    );
+  }
+
+  /// Determines which Flutter version to use for the release. This will be
+  /// either the version specified by the user or the version provided by
+  /// [shorebirdEnv]. A [BuildPipelineException] will be thrown if the version
+  /// specified by the user is not found/supported.
+  Future<String> resolveTargetFlutterVersion() async {
+    if (flutterVersionArg != null) {
+      final String? revision;
+      try {
+        revision = await shorebirdFlutter.getRevisionForVersion(
+          flutterVersionArg!,
+        );
+      } catch (error) {
+        throw BuildPipelineException(
+          message: '''
+Unable to determine revision for Flutter version: $flutterVersionArg.
+$error''',
+          exitCode: ExitCode.software,
+        );
+      }
+
+      if (revision == null) {
+        final openIssueLink = link(
+          uri: Uri.parse(
+            'https://github.com/shorebirdtech/shorebird/issues/new?assignees=&labels=feature&projects=&template=feature_request.md&title=feat%3A+',
+          ),
+          message: 'open an issue',
+        );
+        throw BuildPipelineException(
+          message: '''
+Version $flutterVersionArg not found. Please $openIssueLink to request a new version.
+Use `shorebird flutter versions list` to list available versions.
+''',
+          exitCode: ExitCode.software,
+        );
+      }
+
+      return revision;
+    }
+
+    return shorebirdEnv.flutterRevision;
+  }
+
+  /// Asserts that a release with version [version] can be released using
+  /// flutter version [flutterVersion]. If a release has already been published
+  /// with the given [version] for the platform [releasePlatform], or if a
+  /// release already exists with [version] but was compiled with a different
+  /// Flutter revision, an error will be thrown.
+  Future<void> validateVersionIsReleasable({
+    required String version,
+    required String flutterVersion,
+    required ReleasePlatform releasePlatform,
+  }) async {
+    final existingRelease = await codePushClientWrapper.maybeGetRelease(
+      appId: appId,
+      releaseVersion: version,
+    );
+
+    if (existingRelease != null) {
+      codePushClientWrapper.ensureReleaseIsNotActive(
+        release: existingRelease,
+        platform: releasePlatform,
+      );
+
+      // All artifacts associated with a given release must be built
+      // with the same Flutter revision.
+      final errorMessage = '''
+${styleBold.wrap(lightRed.wrap('A release with version $version already exists but was built using a different Flutter revision.'))}
+
+  Existing release built with: ${lightCyan.wrap(existingRelease.flutterRevision)}
+  Current release built with: ${lightCyan.wrap(flutterVersion)}
+
+${styleBold.wrap(lightRed.wrap('All platforms for a given release must be built using the same Flutter revision.'))}
+
+To resolve this issue, you can:
+  * Re-run the release command with "${lightCyan.wrap('--flutter-version=${existingRelease.flutterRevision}')}".
+  * Delete the existing release and re-run the release command with the desired Flutter version.
+  * Bump the release version and re-run the release command with the desired Flutter version.''';
+      throw BuildPipelineException(
+        message: errorMessage,
+        exitCode: ExitCode.software,
+      );
+    }
+  }
+
+  /// Prints a confirmation prompt with details about the release to be created.
+  /// If the user confirms, the release will be created. If the user cancels,
+  /// the command will exit with a success code. When running in a headless
+  /// or CI environment, this prompt will print but will not wait for user
+  /// confirmation.
+  Future<void> confirmCreateRelease({
+    required AppMetadata app,
+    required String releaseVersion,
+    required String flutterVersion,
+    required ReleasePlatform releasePlatform,
+  }) async {
+    final flutterVersionString = await shorebirdFlutter.getVersionAndRevision();
+    // TODO(bryanoltman): include archs in the summary for android
+    // (and other platforms?)
+    final summary = [
+      '''📱 App: ${lightCyan.wrap(app.displayName)} ${lightCyan.wrap('(${app.appId})')}''',
+      if (flavor != null) '🍧 Flavor: ${lightCyan.wrap(flavor)}',
+      '📦 Release Version: ${lightCyan.wrap(releaseVersion)}',
+      '🕹️  Platform: ${lightCyan.wrap(releasePlatform.name)}',
+      '🐦 Flutter Version: ${lightCyan.wrap(flutterVersionString)}',
+    ];
+
+    logger.info('''
+
+${styleBold.wrap(lightGreen.wrap('🚀 Ready to create a new release!'))}
+
+${summary.join('\n')}
+''');
+
+    if (shorebirdEnv.canAcceptUserInput) {
+      final confirm = logger.confirm('Would you like to continue?');
+
+      if (!confirm) {
+        throw BuildPipelineException(
+          message: 'Aborting.',
+          exitCode: ExitCode.success,
+        );
+      }
+    }
+  }
+
+  /// Fetches the release with version [version] from the server or creates a
+  /// new release if none exists.
+  Future<Release> getOrCreateRelease({
+    required String version,
+    required ReleasePlatform releasePlatform,
+  }) async {
+    return await codePushClientWrapper.maybeGetRelease(
+          appId: appId,
+          releaseVersion: version,
+        ) ??
+        await codePushClientWrapper.createRelease(
+          appId: appId,
+          version: version,
+          flutterRevision: shorebirdEnv.flutterRevision,
+          platform: releasePlatform,
+        );
+  }
+
+  /// Prepares the release by updating the release status to draft.
+  Future<void> prepareRelease({
+    required Release release,
+    required ReleasePipeline pipeline,
+  }) async {
+    await codePushClientWrapper.updateReleaseStatus(
+      appId: appId,
+      releaseId: release.id,
+      platform: pipeline.releaseType.releasePlatform,
+      status: ReleaseStatus.draft,
+    );
+  }
+
+  /// Finalizes the release by updating the release status to active.
+  Future<void> finalizeRelease({
+    required Release release,
+    required ReleasePipeline pipeline,
+  }) async {
+    await codePushClientWrapper.updateReleaseStatus(
+      appId: appId,
+      releaseId: release.id,
+      platform: pipeline.releaseType.releasePlatform,
+      status: ReleaseStatus.active,
+      metadata: pipeline.releaseMetadata,
+    );
+  }
+
+  /// Instructions explaining how to patch the release that was just creatd.
+  void printPatchInstructions({
+    required String releaseVersion,
+    required ReleaseType releaseType,
+    String? flavor,
+    String? target,
+  }) {
+    final baseCommand = [
+      'shorebird patch',
+      '--platform=${releaseType.cliName}',
+      if (flavor != null) '--flavor=$flavor',
+      if (target != null) '--target=$target',
+    ].join(' ');
+    logger.info(
+      '''To create a patch for this release, run ${lightCyan.wrap('$baseCommand --release-version=$releaseVersion')}''',
+    );
+
+    if (!requiresReleaseVersionArg) {
+      logger.info(
+        '''
+
+Note: ${lightCyan.wrap(baseCommand)} without the --release-version option will patch the current version of the app.
+''',
+      );
     }
   }
 }
