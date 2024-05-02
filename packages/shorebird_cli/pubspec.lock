@@ -366,10 +366,10 @@ packages:
     dependency: "direct main"
     description:
       name: json_annotation
-      sha256: "1ce844379ca14835a50d2f019a3099f419082cfdd231cd86a142af94dd5c6bb1"
+      sha256: b10a7b2ff83d83c777edba3c6a0f97045ddadd56c944e1a23a3fdf43a1bf4467
       url: "https://pub.dev"
     source: hosted
-    version: "4.9.0"
+    version: "4.8.1"
   json_path:
     dependency: "direct main"
     description:
@@ -382,10 +382,10 @@ packages:
     dependency: "direct dev"
     description:
       name: json_serializable
-      sha256: ea1432d167339ea9b5bb153f0571d0039607a873d6e04e0117af043f14a1fd4b
+      sha256: aa1f5a8912615733e0fdc7a02af03308933c93235bdc8d50d0b0c8a8ccb0b969
       url: "https://pub.dev"
     source: hosted
-    version: "6.8.0"
+    version: "6.7.1"
   jwt:
     dependency: "direct main"
     description:
@@ -802,10 +802,10 @@ packages:
     dependency: transitive
     description:
       name: win32
-      sha256: "0eaf06e3446824099858367950a813472af675116bf63f008a4c2a75ae13e9cb"
+      sha256: "0a989dc7ca2bb51eac91e8fd00851297cfffd641aa7538b165c62637ca0eaa4a"
       url: "https://pub.dev"
     source: hosted
-    version: "5.5.0"
+    version: "5.4.0"
   xml:
     dependency: "direct main"
     description:
