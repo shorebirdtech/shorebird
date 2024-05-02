@@ -23,6 +23,7 @@ import 'package:shorebird_cli/src/platform/platform.dart';
 import 'package:shorebird_cli/src/shorebird_build_mixin.dart';
 import 'package:shorebird_cli/src/shorebird_env.dart';
 import 'package:shorebird_cli/src/shorebird_flutter.dart';
+import 'package:shorebird_cli/src/shorebird_process.dart';
 import 'package:shorebird_cli/src/shorebird_release_version_mixin.dart';
 import 'package:shorebird_cli/src/shorebird_validator.dart';
 import 'package:shorebird_cli/src/version.dart';
@@ -320,12 +321,7 @@ Looked in:
 
             String? hashSignature;
             if (signPatch) {
-              logger
-                ..info('Signing hash')
-                ..info(
-                  'Looking for a sign_hash script in the current directory.',
-                );
-              final hasSignCommandResult = Process.runSync(
+              final hasSignCommandResult = process.runSync(
                 'ls',
                 ['sign_hash'],
                 runInShell: true,
@@ -337,7 +333,7 @@ Looked in:
                   '''no 'sign_hash' script found in the current folder, skipping signing. ''',
                 );
               } else {
-                final result = Process.runSync(
+                final result = process.runSync(
                   './sign_hash',
                   [hash],
                   runInShell: true,
@@ -347,7 +343,6 @@ Looked in:
                   logger
                     ..err('Failed to sign hash')
                     ..info(result.stderr.toString());
-                  return ExitCode.software.code;
                 }
 
                 hashSignature = result.stdout.toString();

@@ -1085,5 +1085,168 @@ flavors:
       expect(exitCode, equals(ExitCode.success.code));
       verifyNever(() => logger.confirm(any()));
     });
+
+    group('when --sign flag is passed', () {
+      test('succeeds and set the hash signature', () async {
+        when(() => argResults['sign']).thenReturn(true);
+
+        when(
+          () => shorebirdProcess.run(
+            'flutter',
+            any(),
+            runInShell: any(named: 'runInShell'),
+          ),
+        ).thenAnswer((_) async {
+          // Ensure we're building with the correct flutter revision.
+          expect(shorebirdEnv.flutterRevision, equals(release.flutterRevision));
+          return flutterBuildProcessResult;
+        });
+
+        final findSignHashResult = MockShorebirdProcessResult();
+        when(() => findSignHashResult.exitCode)
+            .thenReturn(ExitCode.success.code);
+        when(
+          () => shorebirdProcess.runSync(
+            'ls',
+            ['sign_hash'],
+            runInShell: true,
+          ),
+        ).thenReturn(findSignHashResult);
+
+        final signHashResult = MockProcessResult();
+        when(() => signHashResult.exitCode).thenReturn(ExitCode.success.code);
+        when(() => signHashResult.stdout).thenReturn('Signature');
+        when(
+          () => shorebirdProcess.runSync(
+            './sign_hash',
+            any(),
+            runInShell: true,
+          ),
+        ).thenReturn(signHashResult);
+
+        setUpProjectRoot();
+        setUpProjectRootArtifacts();
+
+        final exitCode = await runWithOverrides(command.run);
+        expect(exitCode, ExitCode.success.code);
+        final captured = verify(
+          () => codePushClientWrapper.publishPatch(
+            appId: appId,
+            releaseId: release.id,
+            platform: releasePlatform,
+            track: track,
+            patchArtifactBundles: captureAny(named: 'patchArtifactBundles'),
+            metadata: const CreatePatchMetadata(
+              releasePlatform: releasePlatform,
+              usedIgnoreAssetChangesFlag: false,
+              hasAssetChanges: false,
+              usedIgnoreNativeChangesFlag: false,
+              hasNativeChanges: false,
+              linkPercentage: null,
+              environment: BuildEnvironmentMetadata(
+                shorebirdVersion: packageVersion,
+                operatingSystem: operatingSystem,
+                operatingSystemVersion: operatingSystemVersion,
+                xcodeVersion: null,
+              ),
+            ),
+          ),
+        ).captured;
+
+        final bundles =
+            (captured.first as Map<Arch, PatchArtifactBundle>).values;
+        for (final bundle in bundles) {
+          expect(bundle.hashSignature, equals('Signature'));
+        }
+      });
+
+      test(
+        "don't break if no sign_hash command is found (do no harm)",
+        () async {
+          when(() => argResults['sign']).thenReturn(true);
+
+          when(
+            () => shorebirdProcess.run(
+              'flutter',
+              any(),
+              runInShell: any(named: 'runInShell'),
+            ),
+          ).thenAnswer((_) async {
+            // Ensure we're building with the correct flutter revision.
+            expect(
+              shorebirdEnv.flutterRevision,
+              equals(release.flutterRevision),
+            );
+            return flutterBuildProcessResult;
+          });
+
+          final findSignHashResult = MockShorebirdProcessResult();
+          when(() => findSignHashResult.exitCode)
+              .thenReturn(ExitCode.software.code);
+          when(
+            () => shorebirdProcess.runSync(
+              'ls',
+              ['sign_hash'],
+              runInShell: true,
+            ),
+          ).thenReturn(findSignHashResult);
+
+          setUpProjectRoot();
+          setUpProjectRootArtifacts();
+
+          final exitCode = await runWithOverrides(command.run);
+          expect(exitCode, ExitCode.success.code);
+          verify(
+            () => logger.err(
+              '''no 'sign_hash' script found in the current folder, skipping signing. ''',
+            ),
+          ).called(3);
+        },
+      );
+
+      test("don't break if no sign_hash fails (do no harm)", () async {
+        when(() => argResults['sign']).thenReturn(true);
+
+        when(
+          () => shorebirdProcess.run(
+            'flutter',
+            any(),
+            runInShell: any(named: 'runInShell'),
+          ),
+        ).thenAnswer((_) async {
+          // Ensure we're building with the correct flutter revision.
+          expect(shorebirdEnv.flutterRevision, equals(release.flutterRevision));
+          return flutterBuildProcessResult;
+        });
+
+        final findSignHashResult = MockShorebirdProcessResult();
+        when(() => findSignHashResult.exitCode)
+            .thenReturn(ExitCode.success.code);
+        when(
+          () => shorebirdProcess.runSync(
+            'ls',
+            ['sign_hash'],
+            runInShell: true,
+          ),
+        ).thenReturn(findSignHashResult);
+
+        final signHashResult = MockProcessResult();
+        when(() => signHashResult.exitCode).thenReturn(ExitCode.software.code);
+        when(
+          () => shorebirdProcess.runSync(
+            './sign_hash',
+            any(),
+            runInShell: true,
+          ),
+        ).thenReturn(signHashResult);
+
+        setUpProjectRoot();
+        setUpProjectRootArtifacts();
+
+        final exitCode = await runWithOverrides(command.run);
+        expect(exitCode, ExitCode.success.code);
+        verify(() => logger.err('Failed to sign hash')).called(3);
+      });
+    });
   });
 }
