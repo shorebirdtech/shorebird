@@ -325,9 +325,11 @@ ${summary.join('\n')}
             Arch.arm64: PatchArtifactBundle(
               arch: arch,
               path: patchFile.path,
-              hash: _hashFn(patchBuildFile.readAsBytesSync()),
-              // Available only on Android for now
-              hashSignature: null,
+              fingerprint: PatchArtifactFingerprint(
+                hash: _hashFn(patchFile.readAsBytesSync()),
+                // Available only on Android for now
+                hashSignature: null,
+              ),
               size: patchFileSize,
             ),
           },

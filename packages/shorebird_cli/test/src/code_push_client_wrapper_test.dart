@@ -132,8 +132,10 @@ void main() {
     final partchArtifactBundle = PatchArtifactBundle(
       arch: arch.arch,
       path: 'path',
-      hash: '',
-      hashSignature: null,
+      fingerprint: const PatchArtifactFingerprint(
+        hash: '',
+        hashSignature: null,
+      ),
       size: 4,
     );
     final patchArtifactBundles = {arch: partchArtifactBundle};
@@ -1987,7 +1989,7 @@ You can manage this release in the ${link(uri: uri, message: 'Shorebird Console'
               patchId: patchId,
               arch: arch.arch,
               platform: releasePlatform,
-              hash: partchArtifactBundle.hash,
+              hash: partchArtifactBundle.fingerprint.hash,
             ),
           ).called(1);
         });
@@ -2050,7 +2052,7 @@ You can manage this release in the ${link(uri: uri, message: 'Shorebird Console'
               patchId: patchId,
               arch: arch.arch,
               platform: releasePlatform,
-              hash: partchArtifactBundle.hash,
+              hash: partchArtifactBundle.fingerprint.hash,
             ),
           ).called(1);
           verify(() => codePushClient.getChannels(appId: appId)).called(1);
@@ -2106,7 +2108,7 @@ You can manage this release in the ${link(uri: uri, message: 'Shorebird Console'
               patchId: patchId,
               arch: arch.arch,
               platform: releasePlatform,
-              hash: partchArtifactBundle.hash,
+              hash: partchArtifactBundle.fingerprint.hash,
             ),
           ).called(1);
           verify(() => codePushClient.getChannels(appId: appId)).called(1);

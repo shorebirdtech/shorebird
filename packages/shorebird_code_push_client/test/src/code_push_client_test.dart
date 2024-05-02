@@ -201,7 +201,7 @@ void main() {
         expect(request.hasHeaders(expectedHeaders), isTrue);
       });
 
-      group('when a hash signature is informed', () {
+      group('when a hash signature is provided', () {
         const hashSignature = 'Shh';
         test('makes the correct request', () async {
           final tempDir = Directory.systemTemp.createTempSync();

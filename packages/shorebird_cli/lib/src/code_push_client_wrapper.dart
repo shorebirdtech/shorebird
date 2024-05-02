@@ -20,6 +20,24 @@ import 'package:shorebird_cli/src/third_party/flutter_tools/lib/flutter_tools.da
 import 'package:shorebird_cli/src/version.dart';
 import 'package:shorebird_code_push_client/shorebird_code_push_client.dart';
 
+/// {@template patch_artifact_fingerprint}
+///
+/// Patch artifact fingerprint that we are about to upload.
+///
+/// {@endtemplate}
+class PatchArtifactFingerprint {
+  const PatchArtifactFingerprint({
+    required this.hash,
+    required this.hashSignature,
+  });
+
+  /// The artifact hash.
+  final String hash;
+
+  /// The signature of the [hash].
+  final String? hashSignature;
+}
+
 /// {@template patch_artifact_bundle}
 /// Metadata about a patch artifact that we are about to upload.
 /// {@endtemplate}
@@ -28,8 +46,7 @@ class PatchArtifactBundle {
   const PatchArtifactBundle({
     required this.arch,
     required this.path,
-    required this.hash,
-    required this.hashSignature,
+    required this.fingerprint,
     required this.size,
   });
 
@@ -39,11 +56,8 @@ class PatchArtifactBundle {
   /// The path to the artifact.
   final String path;
 
-  /// The artifact hash.
-  final String hash;
-
-  /// The signature of the [hash].
-  final String? hashSignature;
+  /// The artifact fingerprint.
+  final PatchArtifactFingerprint fingerprint;
 
   /// The size in bytes of the artifact.
   final int size;
@@ -689,8 +703,8 @@ aar artifact already exists, continuing...''',
           artifactPath: artifact.path,
           arch: artifact.arch,
           platform: platform,
-          hash: artifact.hash,
-          hashSignature: artifact.hashSignature,
+          hash: artifact.fingerprint.hash,
+          hashSignature: artifact.fingerprint.hashSignature,
         );
       } catch (error) {
         _handleErrorAndExit(error, progress: createArtifactProgress);

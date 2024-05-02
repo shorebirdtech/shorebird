@@ -56,7 +56,7 @@ class PatchAndroidCommand extends ShorebirdCommand
         'release-version',
         help: '''
 The version of the release being patched (e.g. "1.0.0+1").
-        
+
 If this option is not provided, the version number will be determined from the patch artifact.''',
       )
       ..addFlag(
@@ -332,6 +332,7 @@ Looked in:
                 logger.err(
                   '''no 'sign_hash' script found in the current folder, skipping signing. ''',
                 );
+                return ExitCode.software.code;
               } else {
                 final result = process.runSync(
                   './sign_hash',
@@ -343,6 +344,7 @@ Looked in:
                   logger
                     ..err('Failed to sign hash')
                     ..info(result.stderr.toString());
+                  return ExitCode.software.code;
                 }
 
                 hashSignature = result.stdout.toString();
@@ -352,8 +354,10 @@ Looked in:
             patchArtifactBundles[releaseArtifactPath.key] = PatchArtifactBundle(
               arch: arch.arch,
               path: diffPath,
-              hash: hash,
-              hashSignature: hashSignature,
+              fingerprint: PatchArtifactFingerprint(
+                hash: hash,
+                hashSignature: hashSignature,
+              ),
               size: await File(diffPath).length(),
             );
           } catch (error) {

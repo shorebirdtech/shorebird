@@ -1156,12 +1156,12 @@ flavors:
         final bundles =
             (captured.first as Map<Arch, PatchArtifactBundle>).values;
         for (final bundle in bundles) {
-          expect(bundle.hashSignature, equals('Signature'));
+          expect(bundle.fingerprint.hashSignature, equals('Signature'));
         }
       });
 
       test(
-        "don't break if no sign_hash command is found (do no harm)",
+        'break if no sign_hash command is found',
         () async {
           when(() => argResults['sign']).thenReturn(true);
 
@@ -1195,16 +1195,16 @@ flavors:
           setUpProjectRootArtifacts();
 
           final exitCode = await runWithOverrides(command.run);
-          expect(exitCode, ExitCode.success.code);
+          expect(exitCode, ExitCode.software.code);
           verify(
             () => logger.err(
               '''no 'sign_hash' script found in the current folder, skipping signing. ''',
             ),
-          ).called(3);
+          ).called(1);
         },
       );
 
-      test("don't break if no sign_hash fails (do no harm)", () async {
+      test('break if no sign_hash fails', () async {
         when(() => argResults['sign']).thenReturn(true);
 
         when(
@@ -1244,8 +1244,8 @@ flavors:
         setUpProjectRootArtifacts();
 
         final exitCode = await runWithOverrides(command.run);
-        expect(exitCode, ExitCode.success.code);
-        verify(() => logger.err('Failed to sign hash')).called(3);
+        expect(exitCode, ExitCode.software.code);
+        verify(() => logger.err('Failed to sign hash')).called(1);
       });
     });
   });
