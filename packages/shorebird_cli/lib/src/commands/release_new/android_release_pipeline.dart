@@ -6,18 +6,25 @@ import 'package:shorebird_cli/src/commands/release_new/release_new_command.dart'
 import 'package:shorebird_cli/src/commands/release_new/release_pipeline.dart';
 import 'package:shorebird_cli/src/doctor.dart';
 import 'package:shorebird_cli/src/logger.dart';
+import 'package:shorebird_cli/src/platform.dart';
 import 'package:shorebird_cli/src/platform/platform.dart';
 import 'package:shorebird_cli/src/shorebird_android_artifacts.dart';
 import 'package:shorebird_cli/src/shorebird_env.dart';
+import 'package:shorebird_cli/src/shorebird_flutter.dart';
 import 'package:shorebird_cli/src/shorebird_validator.dart';
 import 'package:shorebird_cli/src/third_party/flutter_tools/lib/flutter_tools.dart';
+import 'package:shorebird_cli/src/version.dart';
 import 'package:shorebird_code_push_client/shorebird_code_push_client.dart';
 
+/// {@template android_release_pipeline}
+/// Functions to create an Android release.
+/// {@endtemplate}
 class AndroidReleasePipline extends ReleasePipeline {
+  /// {@macro android_release_pipeline}
   AndroidReleasePipline({required super.argParser, required super.argResults});
 
   @override
-  ReleaseTarget get releaseTarget => ReleaseTarget.android;
+  ReleaseType get releaseType => ReleaseType.android;
 
   Set<Arch> get architectures => (argResults['target-platform'] as List<String>)
       .map(
@@ -25,8 +32,9 @@ class AndroidReleasePipline extends ReleasePipeline {
             .firstWhere((arch) => arch.targetPlatformCliArg == platform),
       )
       .toSet();
-  late bool generateApk = argResults['artifact'] as String == 'apk';
-  late bool splitApk = argResults['split-pe-abi'] == true;
+
+  late bool generateApk = argResults['android-artifact'] as String == 'apk';
+  late bool splitApk = argResults['split-per-abi'] == true;
 
   @override
   Future<FileSystemEntity> buildReleaseArtifacts() async {
@@ -37,17 +45,26 @@ class AndroidReleasePipline extends ReleasePipeline {
         )
         .toSet();
 
+    final flutterVersionString = await shorebirdFlutter.getVersionAndRevision();
+
+    final buildAppBundleProgress = logger
+        .progress('Building app bundle with Flutter $flutterVersionString');
     await artifactBuilder.buildAppBundle(
       flavor: flavor,
       target: target,
       targetPlatforms: architectures,
     );
+    buildAppBundleProgress.complete();
+
     if (generateApk) {
+      final buildApkProgress =
+          logger.progress('Building APK with Flutter $flutterVersionString');
       await artifactBuilder.buildApk(
         flavor: flavor,
         target: target,
         targetPlatforms: architectures,
       );
+      buildApkProgress.complete();
     }
 
     final projectRoot = shorebirdEnv.getShorebirdProjectRoot()!;
@@ -70,7 +87,6 @@ class AndroidReleasePipline extends ReleasePipeline {
   }
 
   @override
-  // TODO: implement postReleaseInstructions
   String get postReleaseInstructions {
     final aabFile = shorebirdAndroidArtifacts.findAab(
       project: projectRoot,
@@ -105,9 +121,6 @@ ${link(uri: Uri.parse('https://support.google.com/googleplay/android-developer/a
   }
 
   @override
-  ReleasePlatform get releasePlatform => ReleasePlatform.android;
-
-  @override
   Future<void> validatePreconditions() async {
     try {
       await shorebirdValidator.validatePreconditions(
@@ -116,25 +129,23 @@ ${link(uri: Uri.parse('https://support.google.com/googleplay/android-developer/a
         validators: doctor.androidCommandValidators,
       );
     } on PreconditionFailedException catch (e) {
-      exit(e.exitCode.code);
+      throw BuildPipelineException(exitCode: e.exitCode, message: null);
     }
   }
 
   @override
   Future<void> validateArgs() async {
     if (generateApk && splitApk) {
-      logger
-        ..err(
-          'Shorebird does not support the split-per-abi option at this time',
-        )
-        ..info(
-          '''
+      throw BuildPipelineException(
+        exitCode: ExitCode.unavailable,
+        message: '''
+Shorebird does not support the split-per-abi option at this time.
+            
 Split APKs are each given a different release version than what is specified in the pubspec.yaml.
 
 See ${link(uri: Uri.parse('https://github.com/flutter/flutter/issues/39817'))} for more information about this issue.
 Please comment and upvote ${link(uri: Uri.parse('https://github.com/shorebirdtech/shorebird/issues/1141'))} if you would like shorebird to support this.''',
-        );
-      throw ExitCode.unavailable.code;
+      );
     }
   }
 
@@ -142,13 +153,15 @@ Please comment and upvote ${link(uri: Uri.parse('https://github.com/shorebirdtec
   Future<String> getReleaseVersion({
     required FileSystemEntity releaseArtifactRoot,
   }) async {
-    try {
-      return await artifactManager.extractReleaseVersionFromAppBundle(
-        releaseArtifactRoot.path,
-      );
-    } catch (error) {
-      throw ExitCode.software.code;
-    }
+    final releaseVersionProgress =
+        logger.progress('Determining release version');
+    final releaseVersion =
+        await artifactManager.extractReleaseVersionFromAppBundle(
+      releaseArtifactRoot.path,
+    );
+    releaseVersionProgress.complete('Release version: $releaseVersion');
+
+    return releaseVersion;
   }
 
   @override
@@ -164,9 +177,22 @@ Please comment and upvote ${link(uri: Uri.parse('https://github.com/shorebirdtec
       releaseId: release.id,
       projectRoot: projectRoot.path,
       aabPath: aabFile.path,
-      platform: releasePlatform,
+      platform: releaseType.releasePlatform,
       architectures: architectures,
       flavor: flavor,
     );
   }
+
+  @override
+  UpdateReleaseMetadata get releaseMetadata => UpdateReleaseMetadata(
+        releasePlatform: releaseType.releasePlatform,
+        flutterVersionOverride: flutterVersionArg,
+        generatedApks: generateApk,
+        environment: BuildEnvironmentMetadata(
+          operatingSystem: platform.operatingSystem,
+          operatingSystemVersion: platform.operatingSystemVersion,
+          shorebirdVersion: packageVersion,
+          xcodeVersion: null,
+        ),
+      );
 }

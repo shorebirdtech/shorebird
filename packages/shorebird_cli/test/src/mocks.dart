@@ -53,6 +53,8 @@ class MockAppleDevice extends Mock implements AppleDevice {}
 
 class MockArchiveDiffer extends Mock implements ArchiveDiffer {}
 
+class MockArgParser extends Mock implements ArgParser {}
+
 class MockArgResults extends Mock implements ArgResults {}
 
 class MockArtifactBuilder extends Mock implements ArtifactBuilder {}

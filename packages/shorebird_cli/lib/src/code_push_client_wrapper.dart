@@ -108,6 +108,7 @@ class CodePushClientWrapper {
 Could not find app with id: "$appId".
 This app may not exist or you may not have permission to view it.''',
       );
+
       exit(ExitCode.software.code);
     }
 

@@ -4,31 +4,55 @@ import 'package:mason_logger/mason_logger.dart';
 import 'package:shorebird_cli/src/command.dart';
 import 'package:shorebird_cli/src/commands/release_new/android_release_pipeline.dart';
 import 'package:shorebird_cli/src/commands/release_new/release_pipeline.dart';
+import 'package:shorebird_cli/src/logger.dart';
 import 'package:shorebird_cli/src/platform/platform.dart';
+import 'package:shorebird_code_push_client/shorebird_code_push_client.dart';
 
-///
-enum ReleaseTarget {
+/// The different types of shorebird releases that can be created.
+enum ReleaseType {
+  /// An Android archive used in a hybrid app.
+  aar,
+
+  /// A full Flutter Android app.
   android,
-  ios,
-  iosFramework,
-  aar;
 
+  /// A full Flutter iOS app.
+  ios,
+
+  /// An iOS framework used in a hybrid app.
+  iosFramework;
+
+  /// The CLI argument used to specify the release type(s).
   String get cliName {
     switch (this) {
-      case ReleaseTarget.android:
+      case ReleaseType.android:
         return 'android';
-      case ReleaseTarget.ios:
+      case ReleaseType.ios:
         return 'ios';
-      case ReleaseTarget.iosFramework:
+      case ReleaseType.iosFramework:
         return 'ios-framework';
-      case ReleaseTarget.aar:
+      case ReleaseType.aar:
         return 'aar';
+    }
+  }
+
+  /// The platform associated with the release type.
+  ReleasePlatform get releasePlatform {
+    switch (this) {
+      case ReleaseType.aar:
+        return ReleasePlatform.android;
+      case ReleaseType.android:
+        return ReleasePlatform.android;
+      case ReleaseType.ios:
+        return ReleasePlatform.ios;
+      case ReleaseType.iosFramework:
+        return ReleasePlatform.ios;
     }
   }
 }
 
 /// {@template release_command}
-/// Creates a new app releases for the specified platform(s).
+/// Creates a new app release for the specified platform(s).
 /// {@endtemplate}
 class ReleaseNewCommand extends ShorebirdCommand {
   /// {@macro release_command}
@@ -48,8 +72,9 @@ class ReleaseNewCommand extends ShorebirdCommand {
         help: 'The Flutter version to use when building the app (e.g: 3.16.3).',
       )
       ..addOption(
-        'artifact',
-        help: 'They type of artifact to generate.',
+        'android-artifact',
+        help:
+            '''The type of artifact to generate. Only relevant for Android releases.''',
         allowed: ['aab', 'apk'],
         defaultsTo: 'aab',
         allowedHelp: {
@@ -60,9 +85,10 @@ class ReleaseNewCommand extends ShorebirdCommand {
       ..addMultiOption(
         'platform',
         abbr: 'p',
-        help: 'TODO',
-        allowed: ReleaseTarget.values.map((e) => e.cliName).toList(),
-        // mandatory: true,
+        help: 'The platform(s) to to build this release for.',
+        allowed: ReleaseType.values.map((e) => e.cliName).toList(),
+        // TODO(bryanoltman): uncomment this once https://github.com/dart-lang/args/pull/273 lands
+        // mandatory: true.
       )
       ..addOption(
         'release-version',
@@ -96,32 +122,36 @@ of the iOS app that is using this module.''',
   Future<int> run() async {
     final pipelineFutures = (argResults!['platform'] as List<String>)
         .map(
-          (platformArg) => ReleaseTarget.values.firstWhere(
+          (platformArg) => ReleaseType.values.firstWhere(
             (target) => target.cliName == platformArg,
           ),
         )
-        .map(_getPipeline)
-        .map((pipeline) => pipeline.run());
+        .map((target) => _getPipeline(target).run());
 
-    await Future.wait(pipelineFutures);
+    try {
+      await Future.wait(pipelineFutures);
+    } on BuildPipelineException catch (e) {
+      logger.err(e.message);
+      return e.exitCode.code;
+    }
 
     return ExitCode.success.code;
   }
 
-  ReleasePipeline _getPipeline(ReleaseTarget target) {
+  ReleasePipeline _getPipeline(ReleaseType target) {
     switch (target) {
-      case ReleaseTarget.android:
+      case ReleaseType.android:
         return AndroidReleasePipline(
           argParser: argParser,
           argResults: argResults!,
         );
-      case ReleaseTarget.ios:
+      case ReleaseType.ios:
         throw UnimplementedError();
       // return IosReleasePipeline(argResults: argResults);
-      case ReleaseTarget.iosFramework:
+      case ReleaseType.iosFramework:
         throw UnimplementedError();
       // return IosFrameworkReleasePipeline(argResults: argResults);
-      case ReleaseTarget.aar:
+      case ReleaseType.aar:
         throw UnimplementedError();
       // return AarReleasePipeline(argResults: argResults);
     }
