@@ -1,12 +1,17 @@
 import 'dart:async';
 import 'dart:io';
 
+import 'package:args/command_runner.dart';
 import 'package:mason_logger/mason_logger.dart';
+import 'package:meta/meta.dart';
 import 'package:scoped/scoped.dart';
 import 'package:shorebird_cli/src/code_push_client_wrapper.dart';
 import 'package:shorebird_cli/src/command.dart';
+import 'package:shorebird_cli/src/command_pipeline/command_pipeline.dart';
+import 'package:shorebird_cli/src/command_pipeline/steps/validate_android_args_step.dart';
+import 'package:shorebird_cli/src/command_pipeline/steps/validate_android_preconditions_step.dart';
 import 'package:shorebird_cli/src/commands/release_new/android_release_pipeline.dart';
-import 'package:shorebird_cli/src/commands/release_new/release_pipeline.dart';
+import 'package:shorebird_cli/src/commands/release_new/release_pipeline_old.dart';
 import 'package:shorebird_cli/src/config/config.dart';
 import 'package:shorebird_cli/src/extensions/arg_results.dart';
 import 'package:shorebird_cli/src/logger.dart';
@@ -119,7 +124,7 @@ The version of the associated release (e.g. "1.0.0"). This should be the version
 of the iOS app that is using this module.''',
       )
       ..addMultiOption(
-        'target-platform',
+        'android-target-platform',
         help: 'The target platform(s) for which the app is compiled.',
         defaultsTo: Arch.values.map((arch) => arch.targetPlatformCliArg),
         allowed: Arch.values.map((arch) => arch.targetPlatformCliArg),
@@ -132,6 +137,7 @@ of the iOS app that is using this module.''',
 
   @override
   String get name => 'release-new';
+
   // Creating a release consists of the following steps:
   // 1. Verify preconditions
   // 2. Install the target flutter version if necessary
@@ -142,17 +148,8 @@ of the iOS app that is using this module.''',
   // 6. Create a new release in the database.
   @override
   Future<int> run() async {
-    final pipelineFutures = (argResults!['platform'] as List<String>)
-        .map(
-          (platformArg) => ReleaseType.values.firstWhere(
-            (target) => target.cliName == platformArg,
-          ),
-        )
-        .map(_getPipeline)
-        .map(_createRelease);
-
     try {
-      await Future.wait(pipelineFutures);
+      await Future.wait(pipelines.map((p) => p.run()));
     } on BuildPipelineException catch (e) {
       logger.err(e.message);
       return e.exitCode.code;
@@ -161,7 +158,38 @@ of the iOS app that is using this module.''',
     return ExitCode.success.code;
   }
 
-  ReleasePipeline _getPipeline(ReleaseType releaseType) {
+  @visibleForTesting
+  Iterable<CommandPipeline> get pipelines =>
+      (results['platform'] as List<String>)
+          .map(
+            (platformArg) => ReleaseType.values.firstWhere(
+              (target) => target.cliName == platformArg,
+            ),
+          )
+          .map(_getPipeline);
+
+  CommandPipeline _getPipeline(ReleaseType releaseType) {
+    switch (releaseType) {
+      case ReleaseType.android:
+        return CommandPipeline(
+          steps: [
+            ValidateAndroidArgsStep(),
+            ValidateAndroidPreconditionsStep(),
+          ],
+        );
+      case ReleaseType.ios:
+        throw UnimplementedError();
+      // return IosReleasePipeline(argResults: argResults);
+      case ReleaseType.iosFramework:
+        throw UnimplementedError();
+      // return IosFrameworkReleasePipeline(argResults: argResults);
+      case ReleaseType.aar:
+        throw UnimplementedError();
+      // return AarReleasePipeline(argResults: argResults);
+    }
+  }
+
+  ReleasePipelineOld _getPipelineOld(ReleaseType releaseType) {
     switch (releaseType) {
       case ReleaseType.android:
         return AndroidReleasePipline(
@@ -208,7 +236,7 @@ of the iOS app that is using this module.''',
   ///    [Progress]es, etc.
   ///  - They can only exit early by throwing a [BuildPipelineException]. They
   ///    should otherwise return normally.
-  Future<void> _createRelease(ReleasePipeline pipeline) async {
+  Future<void> createRelease(ReleasePipelineOld pipeline) async {
     await pipeline.validatePreconditions();
     await pipeline.validateArgs();
 
@@ -412,7 +440,7 @@ ${summary.join('\n')}
   /// Prepares the release by updating the release status to draft.
   Future<void> prepareRelease({
     required Release release,
-    required ReleasePipeline pipeline,
+    required ReleasePipelineOld pipeline,
   }) async {
     await codePushClientWrapper.updateReleaseStatus(
       appId: appId,
@@ -425,7 +453,7 @@ ${summary.join('\n')}
   /// Finalizes the release by updating the release status to active.
   Future<void> finalizeRelease({
     required Release release,
-    required ReleasePipeline pipeline,
+    required ReleasePipelineOld pipeline,
   }) async {
     await codePushClientWrapper.updateReleaseStatus(
       appId: appId,
