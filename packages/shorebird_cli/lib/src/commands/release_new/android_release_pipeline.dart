@@ -26,7 +26,7 @@ class AndroidReleasePipline extends ReleasePipeline {
       )
       .toSet();
   late bool generateApk = argResults['artifact'] as String == 'apk';
-  late bool splitApk = argResults['split-per-abi'] == true;
+  late bool splitApk = argResults['split-pe-abi'] == true;
 
   @override
   Future<FileSystemEntity> buildReleaseArtifacts() async {
@@ -76,17 +76,23 @@ class AndroidReleasePipline extends ReleasePipeline {
       project: projectRoot,
       flavor: flavor,
     );
-    final apkFile = shorebirdAndroidArtifacts.findApk(
-      project: projectRoot,
-      flavor: flavor,
-    );
-    final apkText = generateApk
-        ? '''
+
+    final String? apkText;
+    if (generateApk) {
+      final apkFile = shorebirdAndroidArtifacts.findApk(
+        project: projectRoot,
+        flavor: flavor,
+      );
+      apkText = generateApk
+          ? '''
 
 Or distribute the apk:
 ${lightCyan.wrap(apkFile.path)}
 '''
-        : '';
+          : '';
+    } else {
+      apkText = '';
+    }
 
     return '''
 
