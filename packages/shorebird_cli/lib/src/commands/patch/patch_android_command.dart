@@ -79,8 +79,20 @@ If this option is not provided, the version number will be determined from the p
         negatable: false,
         help: 'Whether to publish the patch to the staging environment.',
       )
-      ..addOption(
-        'codesign-private-key',
+      ..addFlag(
+        'sign',
+        help: r'''
+When true will sign allow the hash of the patch to be signed.
+
+The CLI will look for a script called sign_hash in the current directory, which
+is expected to receive the generated hash, and print the signed hash to stdout.
+
+A naive implementation of sign_hash in BASH might look like this:
+
+```bash
+echo $(echo "$1" | openssl dgst -sha256 -sign ./private.pem /dev/stdin | base64)
+```
+''',
         hide: true,
       );
   }
@@ -111,7 +123,7 @@ If this option is not provided, the version number will be determined from the p
     final allowNativeDiffs = results['allow-native-diffs'] == true;
     final dryRun = results['dry-run'] == true;
     final isStaging = results['staging'] == true;
-    final codeSignPrivateKey = results['codesign-private-key'] as String?;
+    final signPatch = results['sign'] == true;
 
     await cache.updateAll();
 
@@ -307,15 +319,39 @@ Looked in:
             );
 
             String? hashSignature;
-            if (codeSignPrivateKey != null) {
-              final result = Process.runSync(
-                'echo "$hash" | openssl dgst -sha256 -sign $codeSignPrivateKey /dev/stdin | base64',
-                [],
+            if (signPatch) {
+              logger
+                ..info('Signing hash')
+                ..info(
+                  'Looking for a sign_hash script in the current directory.',
+                );
+              final hasSignCommandResult = Process.runSync(
+                'ls',
+                ['sign_hash'],
                 runInShell: true,
               );
 
-              // TODO(erickzanardo): This is returning empty
-              hashSignature = result.stdout.toString();
+              logger.info(hasSignCommandResult.exitCode.toString());
+              if (hasSignCommandResult.exitCode != 0) {
+                logger.err(
+                  '''no 'sign_hash' script found in the current folder, skipping signing. ''',
+                );
+              } else {
+                final result = Process.runSync(
+                  './sign_hash',
+                  [hash],
+                  runInShell: true,
+                );
+
+                if (result.exitCode != 0) {
+                  logger
+                    ..err('Failed to sign hash')
+                    ..info(result.stderr.toString());
+                  return ExitCode.software.code;
+                }
+
+                hashSignature = result.stdout.toString();
+              }
             }
 
             patchArtifactBundles[releaseArtifactPath.key] = PatchArtifactBundle(
