@@ -411,7 +411,7 @@ ${summary.join('\n')}
               arch: arch,
               path: patchFile.path,
               fingerprint: PatchArtifactFingerprint(
-                hash: _hashFn(patchFile.readAsBytesSync()),
+                hash: _hashFn(patchBuildFile.readAsBytesSync()),
                 // Available only on Android for now
                 hashSignature: null,
               ),
