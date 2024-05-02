@@ -23,13 +23,11 @@ class ArtifactManager {
   ) async {
     await cache.updateAll();
 
-    final results = await Future.wait([
+    final [versionName, versionCode] = await Future.wait([
       bundletool.getVersionName(appBundlePath),
       bundletool.getVersionCode(appBundlePath),
     ]);
 
-    final versionName = results[0];
-    final versionCode = results[1];
     return '$versionName+$versionCode';
   }
 
