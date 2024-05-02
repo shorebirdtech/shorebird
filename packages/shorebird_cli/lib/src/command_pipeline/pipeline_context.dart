@@ -6,6 +6,12 @@ class PipelineContext {
   final Map<String, Object> _data;
 
   PipelineContext provide<T extends Object?>(T Function() create) {
+    final value = _data['$T'];
+    if (value != null) {
+      throw StateError(
+        'Attempting to provide $T on a context that already contains a $T.',
+      );
+    }
     return PipelineContext._({..._data, '$T': create});
   }
 
