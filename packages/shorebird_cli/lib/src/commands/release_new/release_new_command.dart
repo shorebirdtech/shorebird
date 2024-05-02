@@ -8,6 +8,7 @@ import 'package:scoped/scoped.dart';
 import 'package:shorebird_cli/src/code_push_client_wrapper.dart';
 import 'package:shorebird_cli/src/command.dart';
 import 'package:shorebird_cli/src/command_pipeline/command_pipeline.dart';
+import 'package:shorebird_cli/src/command_pipeline/command_pipelines.dart';
 import 'package:shorebird_cli/src/command_pipeline/steps/validate_android_args_step.dart';
 import 'package:shorebird_cli/src/command_pipeline/steps/validate_android_preconditions_step.dart';
 import 'package:shorebird_cli/src/commands/release_new/android_release_pipeline.dart';
@@ -169,9 +170,12 @@ of the iOS app that is using this module.''',
           .map(_getPipeline);
 
   CommandPipeline _getPipeline(ReleaseType releaseType) {
+    final context = PipelineContext()..provide(() => results);
+
     switch (releaseType) {
       case ReleaseType.android:
         return CommandPipeline(
+          context: context,
           steps: [
             ValidateAndroidArgsStep(),
             ValidateAndroidPreconditionsStep(),

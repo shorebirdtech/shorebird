@@ -1,10 +1,12 @@
 class PipelineContext {
-  PipelineContext(Map<String, Object> data) : _data = data;
+  PipelineContext() : _data = {};
+
+  PipelineContext._(Map<String, Object> data) : _data = data;
 
   final Map<String, Object> _data;
 
   PipelineContext provide<T extends Object?>(T Function() create) {
-    return PipelineContext({..._data, '$T': create});
+    return PipelineContext._({..._data, '$T': create});
   }
 
   T read<T>() {
