@@ -33,9 +33,9 @@ class BuildPipelineException implements Exception {
 /// {@template release_pipeline}
 /// A workflow to create a new release for a Shorebird app.
 /// {@endtemplate}
-abstract class ReleasePipelineOld {
+abstract class ReleasePipeline {
   /// {@macro release_pipeline}
-  ReleasePipelineOld({
+  ReleasePipeline({
     required this.argResults,
     required this.flavor,
     required this.target,

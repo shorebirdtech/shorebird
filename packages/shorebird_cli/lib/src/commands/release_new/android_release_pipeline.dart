@@ -19,7 +19,7 @@ import 'package:shorebird_code_push_client/shorebird_code_push_client.dart';
 /// {@template android_release_pipeline}
 /// Functions to create an Android release.
 /// {@endtemplate}
-class AndroidReleasePipline extends ReleasePipelineOld {
+class AndroidReleasePipline extends ReleasePipeline {
   /// {@macro android_release_pipeline}
   AndroidReleasePipline({
     required super.argResults,
@@ -30,19 +30,25 @@ class AndroidReleasePipline extends ReleasePipelineOld {
   @override
   ReleaseType get releaseType => ReleaseType.android;
 
-  Set<Arch> get architectures =>
-      (argResults['android-target-platform'] as List<String>)
-          .map(
-            (platform) => AndroidArch.availableAndroidArchs
-                .firstWhere((arch) => arch.targetPlatformCliArg == platform),
-          )
-          .toSet();
+  Set<Arch> get architectures => (argResults['target-platform'] as List<String>)
+      .map(
+        (platform) => AndroidArch.availableAndroidArchs
+            .firstWhere((arch) => arch.targetPlatformCliArg == platform),
+      )
+      .toSet();
 
   late bool generateApk = argResults['android-artifact'] as String == 'apk';
   late bool splitApk = argResults['split-per-abi'] == true;
 
   @override
   Future<FileSystemEntity> buildReleaseArtifacts() async {
+    final architectures = (argResults['target-platform'] as List<String>)
+        .map(
+          (platform) => AndroidArch.availableAndroidArchs
+              .firstWhere((arch) => arch.targetPlatformCliArg == platform),
+        )
+        .toSet();
+
     final flutterVersionString = await shorebirdFlutter.getVersionAndRevision();
 
     final buildAppBundleProgress = logger
