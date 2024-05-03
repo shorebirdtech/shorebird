@@ -258,10 +258,10 @@ Use `shorebird flutter versions list` to list available versions.
   }
 
   /// Asserts that a release with version [version] can be released using
-  /// flutter version [flutterVersion]. If a release has already been published
-  /// with the given [version] for the platform [releasePlatform], or if a
-  /// release already exists with [version] but was compiled with a different
-  /// Flutter revision, an error will be thrown.
+  /// flutter revision [flutterRevision]. If a release has already been
+  /// published with the given [version] for the platform [releasePlatform], or
+  /// if a release already exists with [version] but was compiled with a
+  /// different Flutter revision, an error will be thrown.
   Future<void> validateVersionIsReleasable({
     required String version,
     required String flutterRevision,
