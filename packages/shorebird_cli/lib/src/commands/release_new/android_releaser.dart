@@ -84,11 +84,17 @@ Please comment and upvote ${link(uri: Uri.parse('https://github.com/shorebirdtec
 
     final buildAppBundleProgress = logger
         .progress('Building app bundle with Flutter $flutterVersionString');
-    await artifactBuilder.buildAppBundle(
-      flavor: flavor,
-      target: target,
-      targetPlatforms: architectures,
-    );
+    try {
+      await artifactBuilder.buildAppBundle(
+        flavor: flavor,
+        target: target,
+        targetPlatforms: architectures,
+      );
+    } on ArtifactBuildException catch (e) {
+      logger.err(e.message);
+      exit(ExitCode.software.code);
+    }
+
     buildAppBundleProgress.complete();
 
     if (generateApk) {
@@ -102,25 +108,10 @@ Please comment and upvote ${link(uri: Uri.parse('https://github.com/shorebirdtec
       buildApkProgress.complete();
     }
 
-    final projectRoot = shorebirdEnv.getShorebirdProjectRoot()!;
-    try {
-      return shorebirdAndroidArtifacts.findAab(
-        project: projectRoot,
-        flavor: flavor,
-      );
-    } on MultipleArtifactsFoundException catch (error) {
-      logger.err(
-        'Build succeeded, but it generated multiple AABs in the '
-        'build directory. ${error.foundArtifacts.map((e) => e.path)}',
-      );
-      exit(ExitCode.software.code);
-    } on ArtifactNotFoundException catch (error) {
-      logger.err(
-        'Build succeeded, but could not find the AAB in the build directory. '
-        'Expected to find ${error.artifactName}',
-      );
-      exit(ExitCode.software.code);
-    }
+    return shorebirdAndroidArtifacts.findAab(
+      project: projectRoot,
+      flavor: flavor,
+    );
   }
 
   @override

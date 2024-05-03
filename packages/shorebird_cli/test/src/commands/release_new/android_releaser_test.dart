@@ -238,53 +238,18 @@ void main() {
         ).thenAnswer((_) async => flutterVersionAndRevision);
       });
 
-      test('errors when the app bundle cannot be found', () async {
+      test('errors when the build fails', () async {
         when(
-          () => shorebirdAndroidArtifacts.findAab(
-            project: any(named: 'project'),
+          () => artifactBuilder.buildAppBundle(
+            targetPlatforms: any(named: 'targetPlatforms'),
             flavor: any(named: 'flavor'),
           ),
-        ).thenThrow(
-          ArtifactNotFoundException(
-            artifactName: 'app-release.aab',
-            buildDir: 'buildDir',
-          ),
-        );
+        ).thenThrow(ArtifactBuildException('Uh oh'));
         await expectLater(
           () => runWithOverrides(androidReleaser.buildReleaseArtifacts),
           exitsWithCode(ExitCode.software),
         );
-        verify(
-          () => logger.err(
-            'Build succeeded, but could not find the AAB in the build '
-            'directory. Expected to find app-release.aab',
-          ),
-        ).called(1);
-      });
-
-      test('errors when multiple aabs are found', () async {
-        shorebirdAndroidArtifacts = MockShorebirdAndroidArtifacts();
-        when(
-          () => shorebirdAndroidArtifacts.findAab(
-            project: any(named: 'project'),
-            flavor: any(named: 'flavor'),
-          ),
-        ).thenThrow(
-          MultipleArtifactsFoundException(
-            foundArtifacts: [File('a'), File('b')],
-            buildDir: 'buildDir',
-          ),
-        );
-        await expectLater(
-          () => runWithOverrides(androidReleaser.buildReleaseArtifacts),
-          exitsWithCode(ExitCode.software),
-        );
-        verify(
-          () => logger.err(
-            'Build succeeded, but it generated multiple AABs in the build '
-            'directory. (a, b)',
-          ),
-        ).called(1);
+        verify(() => logger.err('Uh oh')).called(1);
       });
     });
 
