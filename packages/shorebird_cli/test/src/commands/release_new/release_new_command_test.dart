@@ -121,8 +121,8 @@ void main() {
       when(() => logger.progress(any())).thenReturn(progress);
       when(() => logger.confirm(any())).thenReturn(true);
 
-      when(() => releaser.validatePreconditions()).thenAnswer((_) async => {});
-      when(() => releaser.validateArgs()).thenAnswer((_) async => {});
+      when(() => releaser.assertPreconditions()).thenAnswer((_) async => {});
+      when(() => releaser.assertArgsAreValid()).thenAnswer((_) async => {});
       when(() => releaser.buildReleaseArtifacts())
           .thenAnswer((_) async => File(''));
       when(
@@ -200,8 +200,8 @@ void main() {
       expect(exitCode, equals(ExitCode.success.code));
 
       verifyInOrder([
-        releaser.validatePreconditions,
-        releaser.validateArgs,
+        releaser.assertPreconditions,
+        releaser.assertArgsAreValid,
         () => codePushClientWrapper.getApp(appId: appId),
         releaser.buildReleaseArtifacts,
         () => releaser.getReleaseVersion(
@@ -260,8 +260,8 @@ Note: ${lightCyan.wrap('shorebird patch --platform=android')} without the --rele
         expect(exitCode, equals(ExitCode.success.code));
 
         verifyInOrder([
-          releaser.validatePreconditions,
-          releaser.validateArgs,
+          releaser.assertPreconditions,
+          releaser.assertArgsAreValid,
           () => codePushClientWrapper.getApp(appId: appId),
           releaser.buildReleaseArtifacts,
           () => releaser.getReleaseVersion(

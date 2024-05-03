@@ -46,7 +46,7 @@ class AarReleaser extends Releaser {
   bool get requiresReleaseVersionArg => true;
 
   @override
-  Future<void> validatePreconditions() async {
+  Future<void> assertPreconditions() async {
     try {
       await shorebirdValidator.validatePreconditions(
         checkUserIsAuthenticated: true,
@@ -58,7 +58,7 @@ class AarReleaser extends Releaser {
   }
 
   @override
-  Future<void> validateArgs() async {
+  Future<void> assertArgsAreValid() async {
     if (!argResults.wasParsed('release-version')) {
       logger.err('Missing required argument: --release-version');
       exit(ExitCode.usage.code);

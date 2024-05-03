@@ -119,7 +119,7 @@ void main() {
       });
     });
 
-    group('validatePreconditions', () {
+    group('assertPreconditions', () {
       group('when validation succeeds', () {
         setUp(() {
           when(
@@ -136,7 +136,7 @@ void main() {
 
         test('returns normally', () async {
           await expectLater(
-            () => runWithOverrides(aarReleaser.validatePreconditions),
+            () => runWithOverrides(aarReleaser.assertPreconditions),
             returnsNormally,
           );
         });
@@ -166,7 +166,7 @@ void main() {
             ),
           ).thenThrow(exception);
           await expectLater(
-            () => runWithOverrides(aarReleaser.validatePreconditions),
+            () => runWithOverrides(aarReleaser.assertPreconditions),
             exitsWithCode(exception.exitCode),
           );
           verify(
@@ -179,7 +179,7 @@ void main() {
       });
     });
 
-    group('validateArgs', () {
+    group('assertArgsAreValid', () {
       group('when split-per-abi is true', () {
         setUp(() {
           when(() => argResults.wasParsed('release-version')).thenReturn(false);
@@ -187,7 +187,7 @@ void main() {
 
         test('exits with code 64', () async {
           await expectLater(
-            () => runWithOverrides(aarReleaser.validateArgs),
+            () => runWithOverrides(aarReleaser.assertArgsAreValid),
             exitsWithCode(ExitCode.usage),
           );
         });
@@ -200,7 +200,7 @@ void main() {
 
         test('returns normally', () {
           expect(
-            () => runWithOverrides(aarReleaser.validateArgs),
+            () => runWithOverrides(aarReleaser.assertArgsAreValid),
             returnsNormally,
           );
         });

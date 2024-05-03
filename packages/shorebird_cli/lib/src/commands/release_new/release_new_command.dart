@@ -154,8 +154,8 @@ of the iOS app that is using this module.''',
   ///    an error occurs *instead of* throwing an exception.
   @visibleForTesting
   Future<void> createRelease(Releaser releaser) async {
-    await releaser.validatePreconditions();
-    await releaser.validateArgs();
+    await releaser.assertPreconditions();
+    await releaser.assertArgsAreValid();
 
     // This command handles logging, we don't need to provide our own
     // progress, error logs, etc.

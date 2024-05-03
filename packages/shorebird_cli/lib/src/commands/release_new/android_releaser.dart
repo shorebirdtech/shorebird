@@ -45,7 +45,7 @@ class AndroidReleaser extends Releaser {
   late bool splitApk = argResults['split-per-abi'] == true;
 
   @override
-  Future<void> validatePreconditions() async {
+  Future<void> assertPreconditions() async {
     try {
       await shorebirdValidator.validatePreconditions(
         checkUserIsAuthenticated: true,
@@ -58,7 +58,7 @@ class AndroidReleaser extends Releaser {
   }
 
   @override
-  Future<void> validateArgs() async {
+  Future<void> assertArgsAreValid() async {
     if (generateApk && splitApk) {
       logger
         ..err(

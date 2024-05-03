@@ -119,7 +119,7 @@ void main() {
       });
     });
 
-    group('validatePreconditions', () {
+    group('assertPreconditions', () {
       group('when validation succeeds', () {
         setUp(() {
           when(
@@ -136,7 +136,7 @@ void main() {
 
         test('returns normally', () async {
           await expectLater(
-            () => runWithOverrides(androidReleaser.validatePreconditions),
+            () => runWithOverrides(androidReleaser.assertPreconditions),
             returnsNormally,
           );
         });
@@ -166,7 +166,7 @@ void main() {
             ),
           ).thenThrow(exception);
           await expectLater(
-            () => runWithOverrides(androidReleaser.validatePreconditions),
+            () => runWithOverrides(androidReleaser.assertPreconditions),
             exitsWithCode(exception.exitCode),
           );
           verify(
@@ -180,7 +180,7 @@ void main() {
       });
     });
 
-    group('validateArgs', () {
+    group('assertArgsAreValid', () {
       group('when split-per-abi is true', () {
         setUp(() {
           when(() => argResults['android-artifact']).thenReturn('apk');
@@ -189,7 +189,7 @@ void main() {
 
         test('exits with code 69', () async {
           await expectLater(
-            () => runWithOverrides(androidReleaser.validateArgs),
+            () => runWithOverrides(androidReleaser.assertArgsAreValid),
             exitsWithCode(ExitCode.unavailable),
           );
         });
@@ -203,7 +203,7 @@ void main() {
 
         test('returns normally', () {
           expect(
-            () => runWithOverrides(androidReleaser.validateArgs),
+            () => runWithOverrides(androidReleaser.assertArgsAreValid),
             returnsNormally,
           );
         });

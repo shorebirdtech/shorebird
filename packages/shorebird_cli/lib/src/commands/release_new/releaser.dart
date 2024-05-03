@@ -37,10 +37,10 @@ abstract class Releaser {
   Directory get projectRoot => shorebirdEnv.getShorebirdProjectRoot()!;
 
   /// Asserts that the command can be run.
-  Future<void> validatePreconditions();
+  Future<void> assertPreconditions();
 
   /// Asserts that the combination arguments passed to the command are valid.
-  Future<void> validateArgs();
+  Future<void> assertArgsAreValid();
 
   /// Builds the release artifacts for the given platform. Returns the "primary"
   /// artifact for the platform (e.g. the AAB for Android, the IPA for iOS).

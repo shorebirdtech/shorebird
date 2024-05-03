@@ -60,12 +60,12 @@ class FakeReleaser extends Releaser {
   }
 
   @override
-  Future<void> validateArgs() {
+  Future<void> assertArgsAreValid() {
     throw UnimplementedError();
   }
 
   @override
-  Future<void> validatePreconditions() {
+  Future<void> assertPreconditions() {
     throw UnimplementedError();
   }
 }
