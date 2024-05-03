@@ -93,7 +93,7 @@ class AarReleaser extends Releaser {
       targetLibraryDirectory.path,
     );
 
-    return Directory(aarLibraryPath);
+    return targetLibraryDirectory;
   }
 
   @override
