@@ -223,9 +223,7 @@ void main() {
             target: any(named: 'target'),
             targetPlatforms: any(named: 'targetPlatforms'),
           ),
-        ).thenAnswer(
-          (_) async => File(''),
-        );
+        ).thenAnswer((_) async => aabFile);
         when(
           () => artifactBuilder.buildApk(
             flavor: any(named: 'flavor'),
