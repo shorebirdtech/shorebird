@@ -88,8 +88,10 @@ Please comment and upvote ${link(uri: Uri.parse('https://github.com/shorebirdtec
 
     final buildAppBundleProgress = logger
         .progress('Building app bundle with Flutter $flutterVersionString');
+
+    final File aab;
     try {
-      await artifactBuilder.buildAppBundle(
+      aab = await artifactBuilder.buildAppBundle(
         flavor: flavor,
         target: target,
         targetPlatforms: architectures,
@@ -117,10 +119,7 @@ Please comment and upvote ${link(uri: Uri.parse('https://github.com/shorebirdtec
       buildApkProgress.complete();
     }
 
-    return shorebirdAndroidArtifacts.findAab(
-      project: projectRoot,
-      flavor: flavor,
-    );
+    return aab;
   }
 
   @override
