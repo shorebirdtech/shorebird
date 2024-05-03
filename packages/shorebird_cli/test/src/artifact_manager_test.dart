@@ -8,6 +8,7 @@ import 'package:scoped/scoped.dart';
 import 'package:shorebird_cli/src/artifact_manager.dart';
 import 'package:shorebird_cli/src/cache.dart';
 import 'package:shorebird_cli/src/http_client/http_client.dart';
+import 'package:shorebird_cli/src/shorebird_env.dart';
 import 'package:shorebird_cli/src/shorebird_process.dart';
 import 'package:test/test.dart';
 
@@ -18,7 +19,9 @@ void main() {
   group(ArtifactManager, () {
     late Cache cache;
     late Directory cacheArtifactDirectory;
+    late Directory projectRoot;
     late http.Client httpClient;
+    late ShorebirdEnv shorebirdEnv;
     late ShorebirdProcessResult patchProcessResult;
     late ShorebirdProcess shorebirdProcess;
     late ArtifactManager artifactManager;
@@ -30,6 +33,7 @@ void main() {
           cacheRef.overrideWith(() => cache),
           httpClientRef.overrideWith(() => httpClient),
           processRef.overrideWith(() => shorebirdProcess),
+          shorebirdEnvRef.overrideWith(() => shorebirdEnv),
         },
       );
     }
@@ -43,6 +47,8 @@ void main() {
       cache = MockCache();
       httpClient = MockHttpClient();
       patchProcessResult = MockProcessResult();
+      projectRoot = Directory.systemTemp.createTempSync();
+      shorebirdEnv = MockShorebirdEnv();
       shorebirdProcess = MockShorebirdProcess();
       artifactManager = ArtifactManager();
 
@@ -66,6 +72,81 @@ void main() {
         return patchProcessResult;
       });
       when(() => patchProcessResult.exitCode).thenReturn(ExitCode.success.code);
+
+      when(() => shorebirdEnv.getShorebirdProjectRoot())
+          .thenReturn(projectRoot);
+    });
+
+    group('aarLibraryPath', () {
+      test('returns path to AAR library', () {
+        expect(
+          runWithOverrides(() => ArtifactManager.aarLibraryPath),
+          equals(
+            p.join(
+              projectRoot.path,
+              'build',
+              'host',
+              'outputs',
+              'repo',
+            ),
+          ),
+        );
+      });
+    });
+
+    group('aarArtifactDirectory', () {
+      test('returns path to AAR artifact directory', () {
+        expect(
+          runWithOverrides(
+            () => ArtifactManager.aarArtifactDirectory(
+              buildNumber: '1',
+              packageName: 'com.example',
+            ),
+          ),
+          equals(
+            p.join(
+              projectRoot.path,
+              'build',
+              'host',
+              'outputs',
+              'repo',
+              'com',
+              'example',
+              'flutter_release',
+              '1',
+            ),
+          ),
+        );
+      });
+    });
+
+    group('aarArtifactPath', () {
+      test('returns path to AAR artifact', () {
+        final result = runWithOverrides(
+          () => ArtifactManager.aarArtifactPath(
+            packageName: 'com.example',
+            buildNumber: '1',
+          ),
+        );
+
+        expect(
+          result,
+          equals(
+            p.join(
+              projectRoot.path,
+              'build',
+              'host',
+              'outputs',
+              'repo',
+              'com',
+              'example',
+              'flutter_release',
+              '1',
+              'flutter_release-1.aar',
+            ),
+          ),
+        );
+      });
     });
 
     group('createDiff', () {
