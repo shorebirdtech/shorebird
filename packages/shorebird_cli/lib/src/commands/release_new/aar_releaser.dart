@@ -1,6 +1,7 @@
 import 'dart:io';
 
 import 'package:archive/archive_io.dart';
+import 'package:io/io.dart';
 import 'package:mason_logger/mason_logger.dart';
 import 'package:path/path.dart' as p;
 import 'package:shorebird_cli/src/artifact_builder.dart';
@@ -12,6 +13,7 @@ import 'package:shorebird_cli/src/logger.dart';
 import 'package:shorebird_cli/src/platform.dart';
 import 'package:shorebird_cli/src/platform/platform.dart';
 import 'package:shorebird_cli/src/shorebird_env.dart';
+import 'package:shorebird_cli/src/shorebird_flutter.dart';
 import 'package:shorebird_cli/src/shorebird_validator.dart';
 import 'package:shorebird_cli/src/version.dart';
 import 'package:shorebird_code_push_client/shorebird_code_push_client.dart';
@@ -67,9 +69,28 @@ class AarReleaser extends Releaser {
 
   @override
   Future<FileSystemEntity> buildReleaseArtifacts() async {
+    final flutterVersionString = await shorebirdFlutter.getVersionAndRevision();
+    final buildAppBundleProgress =
+        logger.progress('Building aar with Flutter $flutterVersionString');
+
     await artifactBuilder.buildAar(
       buildNumber: buildNumber,
       targetPlatforms: architectures,
+    );
+
+    buildAppBundleProgress.complete(
+      'Built aar with Flutter $flutterVersionString',
+    );
+
+    // Copy release AAR to a new directory to avoid overwriting with
+    // subsequent patch builds.
+    final sourceLibraryDirectory = Directory(aarLibraryPath);
+    final targetLibraryDirectory = Directory(
+      p.join(shorebirdEnv.getShorebirdProjectRoot()!.path, 'release'),
+    );
+    await copyPath(
+      sourceLibraryDirectory.path,
+      targetLibraryDirectory.path,
     );
 
     return Directory(aarLibraryPath);
