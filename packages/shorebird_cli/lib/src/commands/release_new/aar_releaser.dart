@@ -178,7 +178,7 @@ dependencies {
         packageName: shorebirdEnv.androidPackageName!,
         buildNumber: buildNumber,
       ),
-      extractedAarDir: extractedAarDir,
+      extractedAarDir: extractedAarDir.path,
       architectures: architectures,
     );
   }

@@ -226,7 +226,9 @@ Failed to create diff (exit code ${result.exitCode}).
     return archsDirectory.existsSync() ? archsDirectory : null;
   }
 
-  Future<String> extractAar({
+  /// Unzips the aar file for the given [packageName] and [buildNumber] to a
+  /// temporary directory and returns the directory.
+  Future<Directory> extractAar({
     required String packageName,
     required String buildNumber,
     required UnzipFn unzipFn,
@@ -252,6 +254,6 @@ Failed to create diff (exit code ${result.exitCode}).
     );
     // Unzip the .zip file to a directory so we can read the .so files
     await unzipFn(zipPath, extractedZipDir);
-    return extractedZipDir;
+    return Directory(extractedZipDir);
   }
 }
