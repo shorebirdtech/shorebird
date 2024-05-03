@@ -157,12 +157,12 @@ of the iOS app that is using this module.''',
         .map(_getPipeline)
         .map(_createRelease);
 
-    try {
-      await Future.wait(pipelineFutures);
-    } on ReleaserException catch (e) {
-      logger.err(e.message);
-      return e.exitCode.code;
-    }
+    // try {
+    await Future.wait(pipelineFutures);
+    // } on ReleaserException catch (e) {
+    //   logger.err(e.message);
+    //   return e.exitCode.code;
+    // }
 
     return ExitCode.success.code;
   }
@@ -287,12 +287,12 @@ of the iOS app that is using this module.''',
           flutterVersionArg!,
         );
       } catch (error) {
-        throw ReleaserException(
-          message: '''
+        logger.err(
+          '''
 Unable to determine revision for Flutter version: $flutterVersionArg.
 $error''',
-          exitCode: ExitCode.software,
         );
+        exit(ExitCode.software.code);
       }
 
       if (revision == null) {
@@ -302,13 +302,13 @@ $error''',
           ),
           message: 'open an issue',
         );
-        throw ReleaserException(
-          message: '''
+        logger.err(
+          '''
 Version $flutterVersionArg not found. Please $openIssueLink to request a new version.
 Use `shorebird flutter versions list` to list available versions.
 ''',
-          exitCode: ExitCode.software,
         );
+        exit(ExitCode.software.code);
       }
 
       return revision;
@@ -340,8 +340,11 @@ Use `shorebird flutter versions list` to list available versions.
 
       // All artifacts associated with a given release must be built
       // with the same Flutter revision.
-      final errorMessage = '''
+      logger
+        ..err('''
 ${styleBold.wrap(lightRed.wrap('A release with version $version already exists but was built using a different Flutter revision.'))}
+''')
+        ..info('''
 
   Existing release built with: ${lightCyan.wrap(existingRelease.flutterRevision)}
   Current release built with: ${lightCyan.wrap(flutterVersion)}
@@ -351,11 +354,8 @@ ${styleBold.wrap(lightRed.wrap('All platforms for a given release must be built 
 To resolve this issue, you can:
   * Re-run the release command with "${lightCyan.wrap('--flutter-version=${existingRelease.flutterRevision}')}".
   * Delete the existing release and re-run the release command with the desired Flutter version.
-  * Bump the release version and re-run the release command with the desired Flutter version.''';
-      throw ReleaserException(
-        message: errorMessage,
-        exitCode: ExitCode.software,
-      );
+  * Bump the release version and re-run the release command with the desired Flutter version.''');
+      exit(ExitCode.software.code);
     }
   }
 
@@ -392,10 +392,8 @@ ${summary.join('\n')}
       final confirm = logger.confirm('Would you like to continue?');
 
       if (!confirm) {
-        throw ReleaserException(
-          message: 'Aborting.',
-          exitCode: ExitCode.success,
-        );
+        logger.info('Aborting.');
+        exit(ExitCode.success.code);
       }
     }
   }

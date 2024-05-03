@@ -41,6 +41,37 @@ class AndroidReleaser extends Releaser {
   late bool splitApk = argResults['split-per-abi'] == true;
 
   @override
+  Future<void> validatePreconditions() async {
+    try {
+      await shorebirdValidator.validatePreconditions(
+        checkUserIsAuthenticated: true,
+        checkShorebirdInitialized: true,
+        validators: doctor.androidCommandValidators,
+      );
+    } on PreconditionFailedException catch (e) {
+      exit(e.exitCode.code);
+    }
+  }
+
+  @override
+  Future<void> validateArgs() async {
+    if (generateApk && splitApk) {
+      logger
+        ..err(
+          'Shorebird does not support the split-per-abi option at this time',
+        )
+        ..info(
+          '''
+Split APKs are each given a different release version than what is specified in the pubspec.yaml.
+
+See ${link(uri: Uri.parse('https://github.com/flutter/flutter/issues/39817'))} for more information about this issue.
+Please comment and upvote ${link(uri: Uri.parse('https://github.com/shorebirdtech/shorebird/issues/1141'))} if you would like shorebird to support this.''',
+        );
+      exit(ExitCode.unavailable.code);
+    }
+  }
+
+  @override
   Future<FileSystemEntity> buildReleaseArtifacts() async {
     final architectures = (argResults['target-platform'] as List<String>)
         .map(
@@ -86,69 +117,6 @@ class AndroidReleaser extends Releaser {
       throw ArtifactBuildException(
         'Build succeeded, but could not find the AAB in the build directory. '
         'Expected to find ${error.artifactName}',
-      );
-    }
-  }
-
-  @override
-  String get postReleaseInstructions {
-    final aabFile = shorebirdAndroidArtifacts.findAab(
-      project: projectRoot,
-      flavor: flavor,
-    );
-
-    final String? apkText;
-    if (generateApk) {
-      final apkFile = shorebirdAndroidArtifacts.findApk(
-        project: projectRoot,
-        flavor: flavor,
-      );
-      apkText = generateApk
-          ? '''
-
-Or distribute the apk:
-${lightCyan.wrap(apkFile.path)}
-'''
-          : '';
-    } else {
-      apkText = '';
-    }
-
-    return '''
-
-Your next step is to upload the app bundle to the Play Store:
-${lightCyan.wrap(aabFile.path)}
-$apkText
-For information on uploading to the Play Store, see:
-${link(uri: Uri.parse('https://support.google.com/googleplay/android-developer/answer/9859152?hl=en'))}
-''';
-  }
-
-  @override
-  Future<void> validatePreconditions() async {
-    try {
-      await shorebirdValidator.validatePreconditions(
-        checkUserIsAuthenticated: true,
-        checkShorebirdInitialized: true,
-        validators: doctor.androidCommandValidators,
-      );
-    } on PreconditionFailedException catch (e) {
-      throw ReleaserException(exitCode: e.exitCode, message: null);
-    }
-  }
-
-  @override
-  Future<void> validateArgs() async {
-    if (generateApk && splitApk) {
-      throw ReleaserException(
-        exitCode: ExitCode.unavailable,
-        message: '''
-Shorebird does not support the split-per-abi option at this time.
-            
-Split APKs are each given a different release version than what is specified in the pubspec.yaml.
-
-See ${link(uri: Uri.parse('https://github.com/flutter/flutter/issues/39817'))} for more information about this issue.
-Please comment and upvote ${link(uri: Uri.parse('https://github.com/shorebirdtech/shorebird/issues/1141'))} if you would like shorebird to support this.''',
       );
     }
   }
@@ -200,4 +168,38 @@ Please comment and upvote ${link(uri: Uri.parse('https://github.com/shorebirdtec
           xcodeVersion: null,
         ),
       );
+
+  @override
+  String get postReleaseInstructions {
+    final aabFile = shorebirdAndroidArtifacts.findAab(
+      project: projectRoot,
+      flavor: flavor,
+    );
+
+    final String? apkText;
+    if (generateApk) {
+      final apkFile = shorebirdAndroidArtifacts.findApk(
+        project: projectRoot,
+        flavor: flavor,
+      );
+      apkText = generateApk
+          ? '''
+
+Or distribute the apk:
+${lightCyan.wrap(apkFile.path)}
+'''
+          : '';
+    } else {
+      apkText = '';
+    }
+
+    return '''
+
+Your next step is to upload the app bundle to the Play Store:
+${lightCyan.wrap(aabFile.path)}
+$apkText
+For information on uploading to the Play Store, see:
+${link(uri: Uri.parse('https://support.google.com/googleplay/android-developer/answer/9859152?hl=en'))}
+''';
+  }
 }

@@ -1,34 +1,10 @@
 import 'dart:io';
 
 import 'package:args/args.dart';
-import 'package:mason_logger/mason_logger.dart';
 import 'package:shorebird_cli/src/commands/release_new/release_new_command.dart';
 import 'package:shorebird_cli/src/shorebird_env.dart';
 import 'package:shorebird_code_push_client/shorebird_code_push_client.dart';
 import 'package:shorebird_code_push_protocol/shorebird_code_push_protocol.dart';
-
-/// {@template build_pipeline_exception}
-/// An recoverable exception that occurs during the build pipeline. Will cause
-/// the command to exit early with [exitCode] after logging [message] to the
-/// console.
-/// {@endtemplate}
-class ReleaserException implements Exception {
-  /// {@macro build_pipeline_exception}
-  ReleaserException({
-    required this.exitCode,
-    required this.message,
-  });
-
-  /// The exit code to use when exiting the command.
-  final ExitCode exitCode;
-
-  /// The message to log to the console, if any.
-  final String? message;
-
-  @override
-  String toString() =>
-      'BuildPipelineException: $message (exit code: $exitCode)';
-}
 
 /// {@template release_pipeline}
 /// A workflow to create a new release for a Shorebird app.

@@ -56,7 +56,7 @@ class AarReleaser extends Releaser {
         checkShorebirdInitialized: true,
       );
     } on PreconditionFailedException catch (e) {
-      throw ReleaserException(exitCode: e.exitCode, message: null);
+      exit(e.exitCode.code);
     }
   }
 
