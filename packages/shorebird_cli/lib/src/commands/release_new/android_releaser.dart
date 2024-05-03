@@ -1,3 +1,4 @@
+import 'package:io/io.dart';
 import 'package:mason_logger/mason_logger.dart';
 import 'package:shorebird_cli/src/artifact_builder.dart';
 import 'package:shorebird_cli/src/artifact_manager.dart';
@@ -13,6 +14,7 @@ import 'package:shorebird_cli/src/shorebird_env.dart';
 import 'package:shorebird_cli/src/shorebird_flutter.dart';
 import 'package:shorebird_cli/src/shorebird_validator.dart';
 import 'package:shorebird_cli/src/third_party/flutter_tools/lib/flutter_tools.dart';
+import 'package:shorebird_cli/src/third_party/flutter_tools/lib/src/base/io.dart';
 import 'package:shorebird_cli/src/version.dart';
 import 'package:shorebird_code_push_client/shorebird_code_push_client.dart';
 
@@ -109,15 +111,17 @@ Please comment and upvote ${link(uri: Uri.parse('https://github.com/shorebirdtec
         flavor: flavor,
       );
     } on MultipleArtifactsFoundException catch (error) {
-      throw ArtifactBuildException(
+      logger.err(
         'Build succeeded, but it generated multiple AABs in the '
         'build directory. ${error.foundArtifacts.map((e) => e.path)}',
       );
+      exit(ExitCode.software.code);
     } on ArtifactNotFoundException catch (error) {
-      throw ArtifactBuildException(
+      logger.err(
         'Build succeeded, but could not find the AAB in the build directory. '
         'Expected to find ${error.artifactName}',
       );
+      exit(ExitCode.software.code);
     }
   }
 
@@ -127,11 +131,17 @@ Please comment and upvote ${link(uri: Uri.parse('https://github.com/shorebirdtec
   }) async {
     final releaseVersionProgress =
         logger.progress('Determining release version');
-    final releaseVersion =
-        await artifactManager.extractReleaseVersionFromAppBundle(
-      releaseArtifactRoot.path,
-    );
-    releaseVersionProgress.complete('Release version: $releaseVersion');
+    final String releaseVersion;
+
+    try {
+      releaseVersion = await artifactManager.extractReleaseVersionFromAppBundle(
+        releaseArtifactRoot.path,
+      );
+      releaseVersionProgress.complete('Release version: $releaseVersion');
+    } catch (error) {
+      releaseVersionProgress.fail('$error');
+      exit(ExitCode.software.code);
+    }
 
     return releaseVersion;
   }
