@@ -174,6 +174,10 @@ void main() {
         ..testArgResults = argResults;
     });
 
+    test('has description', () {
+      expect(command.description, isNotEmpty);
+    });
+
     group('getReleaser', () {
       test('maps the correct platform to the releaser', () async {
         expect(
@@ -195,7 +199,7 @@ void main() {
       });
     });
 
-    test('completes successfully', () async {
+    test('executes commands in order, completes successfully', () async {
       final exitCode = await runWithOverrides(command.run);
       expect(exitCode, equals(ExitCode.success.code));
 
@@ -255,7 +259,7 @@ Note: ${lightCyan.wrap('shorebird patch --platform=android')} without the --rele
         when(() => argResults['target']).thenReturn(target);
       });
 
-      test('completes successfully', () async {
+      test('executes commands in order, completes successfully', () async {
         final exitCode = await runWithOverrides(command.run);
         expect(exitCode, equals(ExitCode.success.code));
 
