@@ -203,7 +203,6 @@ ${lightCyan.wrap(apkFile.path)}
     }
 
     return '''
-
 Your next step is to upload the app bundle to the Play Store:
 ${lightCyan.wrap(aabFile.path)}
 $apkText

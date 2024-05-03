@@ -22,6 +22,7 @@ import 'package:shorebird_cli/src/shorebird_process.dart';
 import 'package:shorebird_cli/src/shorebird_validator.dart';
 import 'package:shorebird_cli/src/third_party/flutter_tools/lib/flutter_tools.dart';
 import 'package:shorebird_cli/src/validators/validators.dart';
+import 'package:shorebird_cli/src/version.dart';
 import 'package:shorebird_code_push_client/shorebird_code_push_client.dart';
 import 'package:test/test.dart';
 
@@ -389,6 +390,120 @@ void main() {
             flavor: androidReleaser.flavor,
           ),
         ).called(1);
+      });
+    });
+
+    group('releaseMetadata', () {
+      const operatingSystem = 'macos';
+      const operatingSystemVersion = '11.0.0';
+
+      setUp(() {
+        when(() => platform.operatingSystem).thenReturn(operatingSystem);
+        when(() => platform.operatingSystemVersion)
+            .thenReturn(operatingSystemVersion);
+      });
+
+      group('when an apk is generated', () {
+        setUp(() {
+          when(() => argResults['android-artifact']).thenReturn('apk');
+        });
+
+        test('returns expected metadata', () {
+          expect(
+            runWithOverrides(() => androidReleaser.releaseMetadata),
+            const UpdateReleaseMetadata(
+              releasePlatform: ReleasePlatform.android,
+              flutterVersionOverride: null,
+              generatedApks: true,
+              environment: BuildEnvironmentMetadata(
+                operatingSystem: operatingSystem,
+                operatingSystemVersion: operatingSystemVersion,
+                shorebirdVersion: packageVersion,
+                xcodeVersion: null,
+              ),
+            ),
+          );
+        });
+      });
+
+      group('when no apk is generated', () {
+        setUp(() {
+          when(() => argResults['android-artifact']).thenReturn('aab');
+        });
+
+        test('returns expected metadata', () {
+          expect(
+            runWithOverrides(() => androidReleaser.releaseMetadata),
+            const UpdateReleaseMetadata(
+              releasePlatform: ReleasePlatform.android,
+              flutterVersionOverride: null,
+              generatedApks: false,
+              environment: BuildEnvironmentMetadata(
+                operatingSystem: operatingSystem,
+                operatingSystemVersion: operatingSystemVersion,
+                shorebirdVersion: packageVersion,
+                xcodeVersion: null,
+              ),
+            ),
+          );
+        });
+      });
+    });
+
+    group('postReleaseInstructions', () {
+      const apkPath = 'path/to/app.apk';
+      const aabPath = 'path/to/app.aab';
+
+      setUp(() {
+        when(() => shorebirdAndroidArtifacts.findApk(
+              project: any(named: 'project'),
+              flavor: any(named: 'flavor'),
+            )).thenReturn(File(apkPath));
+        when(() => shorebirdAndroidArtifacts.findAab(
+              project: any(named: 'project'),
+              flavor: any(named: 'flavor'),
+            )).thenReturn(File(aabPath));
+      });
+
+      group('when an apk is generated', () {
+        setUp(() {
+          when(() => argResults['android-artifact']).thenReturn('apk');
+        });
+
+        test('returns expected instructions', () {
+          expect(
+            runWithOverrides(() => androidReleaser.postReleaseInstructions),
+            '''
+Your next step is to upload the app bundle to the Play Store:
+${lightCyan.wrap(aabPath)}
+
+Or distribute the apk:
+${lightCyan.wrap(apkPath)}
+
+For information on uploading to the Play Store, see:
+${link(uri: Uri.parse('https://support.google.com/googleplay/android-developer/answer/9859152?hl=en'))}
+''',
+          );
+        });
+      });
+
+      group('when no apk is generated', () {
+        setUp(() {
+          when(() => argResults['android-artifact']).thenReturn('aab');
+        });
+
+        test('returns expected instructions', () {
+          expect(
+            runWithOverrides(() => androidReleaser.postReleaseInstructions),
+            '''
+Your next step is to upload the app bundle to the Play Store:
+${lightCyan.wrap(aabPath)}
+
+For information on uploading to the Play Store, see:
+${link(uri: Uri.parse('https://support.google.com/googleplay/android-developer/answer/9859152?hl=en'))}
+''',
+          );
+        });
       });
     });
   });
