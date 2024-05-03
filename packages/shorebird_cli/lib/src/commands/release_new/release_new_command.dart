@@ -132,9 +132,6 @@ of the iOS app that is using this module.''',
   /// The shorebird app ID for the current project.
   String get appId => shorebirdEnv.getShorebirdYaml()!.getAppId(flavor: flavor);
 
-  /// The root directory of the current project.
-  Directory get projectRoot => shorebirdEnv.getShorebirdProjectRoot()!;
-
   /// The build flavor, if provided.
   late String? flavor = results.findOption('flavor', argParser: argParser);
 
