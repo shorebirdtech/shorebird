@@ -7,7 +7,7 @@ import 'package:shorebird_code_push_client/shorebird_code_push_client.dart';
 import 'package:shorebird_code_push_protocol/shorebird_code_push_protocol.dart';
 
 /// {@template releaser}
-/// A workflow to create a new release for a Shorebird app.
+/// Executes platform-specific functionality to create a release.
 /// {@endtemplate}
 abstract class Releaser {
   /// {@macro releaser}
@@ -20,7 +20,10 @@ abstract class Releaser {
   /// The arguments passed to the command.
   final ArgResults argResults;
 
+  /// The flavor of the release, if any.
   final String? flavor;
+
+  /// The target script to run, if any.
   final String? target;
 
   /// Whether --release-version must be specified to patch. Currently only

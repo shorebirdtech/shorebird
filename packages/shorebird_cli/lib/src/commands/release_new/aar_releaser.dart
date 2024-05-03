@@ -17,25 +17,20 @@ import 'package:shorebird_cli/src/third_party/flutter_tools/lib/flutter_tools.da
 import 'package:shorebird_cli/src/version.dart';
 import 'package:shorebird_code_push_client/shorebird_code_push_client.dart';
 
+/// {@template aar_releaser}
+/// Functions to create an aar release.
+/// {@endtemplate}
 class AarReleaser extends Releaser {
+  /// {@macro aar_releaser}
   AarReleaser({
     required super.argResults,
     required super.flavor,
     required super.target,
   });
 
+  /// The build number of the aar (1.0). Forwarded to the --build-number
+  /// argument of the flutter build aar command.
   String get buildNumber => argResults['build-number'] as String;
-
-  String get aarLibraryPath {
-    final projectRoot = shorebirdEnv.getShorebirdProjectRoot()!;
-    return p.joinAll([
-      projectRoot.path,
-      'build',
-      'host',
-      'outputs',
-      'repo',
-    ]);
-  }
 
   Set<Arch> get architectures => (argResults['target-platform'] as List<String>)
       .map(
@@ -92,7 +87,9 @@ class AarReleaser extends Releaser {
 
     // Copy release AAR to a new directory to avoid overwriting with
     // subsequent patch builds.
-    final sourceLibraryDirectory = Directory(aarLibraryPath);
+    final sourceLibraryDirectory = Directory(
+      ShorebirdAndroidArtifacts.aarLibraryPath,
+    );
     final targetLibraryDirectory = Directory(
       p.join(shorebirdEnv.getShorebirdProjectRoot()!.path, 'release'),
     );
@@ -110,6 +107,45 @@ class AarReleaser extends Releaser {
   }) async {
     return argResults['release-version'] as String;
   }
+
+  @override
+  Future<void> uploadReleaseArtifacts({
+    required Release release,
+    required String appId,
+  }) async {
+    final extractAarProgress = logger.progress('Creating artifacts');
+    final extractedAarDir = await shorebirdAndroidArtifacts.extractAar(
+      packageName: shorebirdEnv.androidPackageName!,
+      buildNumber: buildNumber,
+      unzipFn: extractFileToDisk,
+    );
+    extractAarProgress.complete();
+
+    await codePushClientWrapper.createAndroidArchiveReleaseArtifacts(
+      appId: appId,
+      releaseId: release.id,
+      platform: releaseType.releasePlatform,
+      aarPath: ShorebirdAndroidArtifacts.aarArtifactPath(
+        packageName: shorebirdEnv.androidPackageName!,
+        buildNumber: buildNumber,
+      ),
+      extractedAarDir: extractedAarDir.path,
+      architectures: architectures,
+    );
+  }
+
+  @override
+  UpdateReleaseMetadata get releaseMetadata => UpdateReleaseMetadata(
+        releasePlatform: releaseType.releasePlatform,
+        flutterVersionOverride: argResults['flutter-version'] as String?,
+        generatedApks: false,
+        environment: BuildEnvironmentMetadata(
+          operatingSystem: platform.operatingSystem,
+          operatingSystemVersion: platform.operatingSystemVersion,
+          shorebirdVersion: packageVersion,
+          xcodeVersion: null,
+        ),
+      );
 
   @override
   String get postReleaseInstructions {
@@ -150,44 +186,5 @@ dependencies {
   // ...
 }''')}
 ''';
-  }
-
-  @override
-  UpdateReleaseMetadata get releaseMetadata => UpdateReleaseMetadata(
-        releasePlatform: releaseType.releasePlatform,
-        flutterVersionOverride: argResults['flutter-version'] as String?,
-        generatedApks: false,
-        environment: BuildEnvironmentMetadata(
-          operatingSystem: platform.operatingSystem,
-          operatingSystemVersion: platform.operatingSystemVersion,
-          shorebirdVersion: packageVersion,
-          xcodeVersion: null,
-        ),
-      );
-
-  @override
-  Future<void> uploadReleaseArtifacts({
-    required Release release,
-    required String appId,
-  }) async {
-    final extractAarProgress = logger.progress('Creating artifacts');
-    final extractedAarDir = await shorebirdAndroidArtifacts.extractAar(
-      packageName: shorebirdEnv.androidPackageName!,
-      buildNumber: buildNumber,
-      unzipFn: extractFileToDisk,
-    );
-    extractAarProgress.complete();
-
-    await codePushClientWrapper.createAndroidArchiveReleaseArtifacts(
-      appId: appId,
-      releaseId: release.id,
-      platform: releaseType.releasePlatform,
-      aarPath: ShorebirdAndroidArtifacts.aarArtifactPath(
-        packageName: shorebirdEnv.androidPackageName!,
-        buildNumber: buildNumber,
-      ),
-      extractedAarDir: extractedAarDir.path,
-      architectures: architectures,
-    );
   }
 }
