@@ -6,11 +6,11 @@ import 'package:shorebird_cli/src/shorebird_env.dart';
 import 'package:shorebird_code_push_client/shorebird_code_push_client.dart';
 import 'package:shorebird_code_push_protocol/shorebird_code_push_protocol.dart';
 
-/// {@template release_pipeline}
+/// {@template releaser}
 /// A workflow to create a new release for a Shorebird app.
 /// {@endtemplate}
 abstract class Releaser {
-  /// {@macro release_pipeline}
+  /// {@macro releaser}
   Releaser({
     required this.argResults,
     required this.flavor,

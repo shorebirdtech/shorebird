@@ -7,6 +7,7 @@ import 'package:shorebird_cli/src/code_push_client_wrapper.dart';
 import 'package:shorebird_cli/src/commands/release_new/android_releaser.dart';
 import 'package:shorebird_cli/src/commands/release_new/release_new_command.dart';
 import 'package:shorebird_cli/src/doctor.dart';
+import 'package:shorebird_cli/src/logger.dart';
 import 'package:shorebird_cli/src/os/operating_system_interface.dart';
 import 'package:shorebird_cli/src/platform.dart';
 import 'package:shorebird_cli/src/shorebird_android_artifacts.dart';
@@ -47,6 +48,7 @@ void main() {
         values: {
           codePushClientWrapperRef.overrideWith(() => codePushClientWrapper),
           doctorRef.overrideWith(() => doctor),
+          loggerRef.overrideWith(() => logger),
           osInterfaceRef.overrideWith(() => operatingSystemInterface),
           platformRef.overrideWith(() => platform),
           processRef.overrideWith(() => shorebirdProcess),
@@ -159,7 +161,35 @@ void main() {
       });
     });
 
-    group('validateArgs', () {});
+    group('validateArgs', () {
+      group('when split-per-abi is true', () {
+        setUp(() {
+          when(() => argResults['android-artifact']).thenReturn('apk');
+          when(() => argResults['split-per-abi']).thenReturn(true);
+        });
+
+        test('exits with code 69', () async {
+          await expectLater(
+            () => runWithOverrides(androidReleaser.validateArgs),
+            exitsWithCode(ExitCode.unavailable),
+          );
+        });
+      });
+
+      group('when arguments are valid', () {
+        setUp(() {
+          when(() => argResults['android-artifact']).thenReturn('apk');
+          when(() => argResults['split-per-abi']).thenReturn(false);
+        });
+
+        test('returns normally', () {
+          expect(
+            () => runWithOverrides(androidReleaser.validateArgs),
+            returnsNormally,
+          );
+        });
+      });
+    });
 
     group('buildReleaseArtifacts', () {});
 
