@@ -12,9 +12,9 @@ import 'package:shorebird_code_push_protocol/shorebird_code_push_protocol.dart';
 /// the command to exit early with [exitCode] after logging [message] to the
 /// console.
 /// {@endtemplate}
-class BuildPipelineException implements Exception {
+class ReleaserException implements Exception {
   /// {@macro build_pipeline_exception}
-  BuildPipelineException({
+  ReleaserException({
     required this.exitCode,
     required this.message,
   });
@@ -33,9 +33,9 @@ class BuildPipelineException implements Exception {
 /// {@template release_pipeline}
 /// A workflow to create a new release for a Shorebird app.
 /// {@endtemplate}
-abstract class ReleasePipeline {
+abstract class Releaser {
   /// {@macro release_pipeline}
-  ReleasePipeline({
+  Releaser({
     required this.argResults,
     required this.flavor,
     required this.target,

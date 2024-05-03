@@ -5,8 +5,9 @@ import 'package:mason_logger/mason_logger.dart';
 import 'package:scoped/scoped.dart';
 import 'package:shorebird_cli/src/code_push_client_wrapper.dart';
 import 'package:shorebird_cli/src/command.dart';
-import 'package:shorebird_cli/src/commands/release_new/android_release_pipeline.dart';
-import 'package:shorebird_cli/src/commands/release_new/release_pipeline.dart';
+import 'package:shorebird_cli/src/commands/release_new/aar_releaser.dart';
+import 'package:shorebird_cli/src/commands/release_new/android_releaser.dart';
+import 'package:shorebird_cli/src/commands/release_new/releaser.dart';
 import 'package:shorebird_cli/src/config/config.dart';
 import 'package:shorebird_cli/src/extensions/arg_results.dart';
 import 'package:shorebird_cli/src/logger.dart';
@@ -90,6 +91,11 @@ class ReleaseNewCommand extends ShorebirdCommand {
         help: 'The product flavor to use when building the app.',
       )
       ..addOption(
+        'build-number',
+        help: 'The build number of the aar',
+        defaultsTo: '1.0',
+      )
+      ..addOption(
         'flutter-version',
         help: 'The Flutter version to use when building the app (e.g: 3.16.3).',
       )
@@ -153,7 +159,7 @@ of the iOS app that is using this module.''',
 
     try {
       await Future.wait(pipelineFutures);
-    } on BuildPipelineException catch (e) {
+    } on ReleaserException catch (e) {
       logger.err(e.message);
       return e.exitCode.code;
     }
@@ -161,10 +167,10 @@ of the iOS app that is using this module.''',
     return ExitCode.success.code;
   }
 
-  ReleasePipeline _getPipeline(ReleaseType releaseType) {
+  Releaser _getPipeline(ReleaseType releaseType) {
     switch (releaseType) {
       case ReleaseType.android:
-        return AndroidReleasePipline(
+        return AndroidReleaser(
           argResults: results,
           flavor: flavor,
           target: target,
@@ -176,8 +182,11 @@ of the iOS app that is using this module.''',
         throw UnimplementedError();
       // return IosFrameworkReleasePipeline(argResults: argResults);
       case ReleaseType.aar:
-        throw UnimplementedError();
-      // return AarReleasePipeline(argResults: argResults);
+        return AarReleaser(
+          argResults: results,
+          flavor: flavor,
+          target: target,
+        );
     }
   }
 
@@ -206,11 +215,11 @@ of the iOS app that is using this module.''',
   ///  - They perform their own logging. If an error occurs, they are
   ///    responsible for properly logging the error, cleaning up running
   ///    [Progress]es, etc.
-  ///  - They can only exit early by throwing a [BuildPipelineException]. They
+  ///  - They can only exit early by throwing a [ReleaserException]. They
   ///    should otherwise return normally.
-  Future<void> _createRelease(ReleasePipeline pipeline) async {
-    await pipeline.validatePreconditions();
-    await pipeline.validateArgs();
+  Future<void> _createRelease(Releaser releaser) async {
+    await releaser.validatePreconditions();
+    await releaser.validateArgs();
 
     // This command handles logging, we don't need to provide our own
     // progress, error logs, etc.
@@ -223,8 +232,8 @@ of the iOS app that is using this module.''',
     );
     return await runScoped(
       () async {
-        final releaseArtifact = await pipeline.buildReleaseArtifacts();
-        final releaseVersion = await pipeline.getReleaseVersion(
+        final releaseArtifact = await releaser.buildReleaseArtifacts();
+        final releaseVersion = await releaser.getReleaseVersion(
           releaseArtifactRoot: releaseArtifact,
         );
 
@@ -232,7 +241,7 @@ of the iOS app that is using this module.''',
         await validateVersionIsReleasable(
           version: releaseVersion,
           flutterVersion: targetFlutterVersion,
-          releasePlatform: pipeline.releaseType.releasePlatform,
+          releasePlatform: releaser.releaseType.releasePlatform,
         );
 
         // Ask the user to proceed (this is skipped when running via CI).
@@ -240,24 +249,24 @@ of the iOS app that is using this module.''',
           app: app,
           releaseVersion: releaseVersion,
           flutterVersion: targetFlutterVersion,
-          releasePlatform: pipeline.releaseType.releasePlatform,
+          releasePlatform: releaser.releaseType.releasePlatform,
         );
 
         final release = await getOrCreateRelease(
           version: releaseVersion,
-          releasePlatform: pipeline.releaseType.releasePlatform,
+          releasePlatform: releaser.releaseType.releasePlatform,
         );
-        await prepareRelease(release: release, pipeline: pipeline);
-        await pipeline.uploadReleaseArtifacts(release: release, appId: appId);
-        await finalizeRelease(release: release, pipeline: pipeline);
+        await prepareRelease(release: release, pipeline: releaser);
+        await releaser.uploadReleaseArtifacts(release: release, appId: appId);
+        await finalizeRelease(release: release, pipeline: releaser);
 
         logger
           ..success('✅ Published Release ${release.version}!')
-          ..info(pipeline.postReleaseInstructions);
+          ..info(releaser.postReleaseInstructions);
 
         printPatchInstructions(
           releaseVersion: releaseVersion,
-          releaseType: pipeline.releaseType,
+          releaseType: releaser.releaseType,
         );
       },
       values: {
@@ -268,7 +277,7 @@ of the iOS app that is using this module.''',
 
   /// Determines which Flutter version to use for the release. This will be
   /// either the version specified by the user or the version provided by
-  /// [shorebirdEnv]. A [BuildPipelineException] will be thrown if the version
+  /// [shorebirdEnv]. A [ReleaserException] will be thrown if the version
   /// specified by the user is not found/supported.
   Future<String> resolveTargetFlutterVersion() async {
     if (flutterVersionArg != null) {
@@ -278,7 +287,7 @@ of the iOS app that is using this module.''',
           flutterVersionArg!,
         );
       } catch (error) {
-        throw BuildPipelineException(
+        throw ReleaserException(
           message: '''
 Unable to determine revision for Flutter version: $flutterVersionArg.
 $error''',
@@ -293,7 +302,7 @@ $error''',
           ),
           message: 'open an issue',
         );
-        throw BuildPipelineException(
+        throw ReleaserException(
           message: '''
 Version $flutterVersionArg not found. Please $openIssueLink to request a new version.
 Use `shorebird flutter versions list` to list available versions.
@@ -343,7 +352,7 @@ To resolve this issue, you can:
   * Re-run the release command with "${lightCyan.wrap('--flutter-version=${existingRelease.flutterRevision}')}".
   * Delete the existing release and re-run the release command with the desired Flutter version.
   * Bump the release version and re-run the release command with the desired Flutter version.''';
-      throw BuildPipelineException(
+      throw ReleaserException(
         message: errorMessage,
         exitCode: ExitCode.software,
       );
@@ -383,7 +392,7 @@ ${summary.join('\n')}
       final confirm = logger.confirm('Would you like to continue?');
 
       if (!confirm) {
-        throw BuildPipelineException(
+        throw ReleaserException(
           message: 'Aborting.',
           exitCode: ExitCode.success,
         );
@@ -412,7 +421,7 @@ ${summary.join('\n')}
   /// Prepares the release by updating the release status to draft.
   Future<void> prepareRelease({
     required Release release,
-    required ReleasePipeline pipeline,
+    required Releaser pipeline,
   }) async {
     await codePushClientWrapper.updateReleaseStatus(
       appId: appId,
@@ -425,7 +434,7 @@ ${summary.join('\n')}
   /// Finalizes the release by updating the release status to active.
   Future<void> finalizeRelease({
     required Release release,
-    required ReleasePipeline pipeline,
+    required Releaser pipeline,
   }) async {
     await codePushClientWrapper.updateReleaseStatus(
       appId: appId,

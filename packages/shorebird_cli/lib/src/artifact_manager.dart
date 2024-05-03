@@ -6,8 +6,11 @@ import 'package:http/http.dart' as http;
 import 'package:path/path.dart' as p;
 import 'package:scoped/scoped.dart';
 import 'package:shorebird_cli/src/cache.dart';
+import 'package:shorebird_cli/src/command.dart';
 import 'package:shorebird_cli/src/executables/bundletool.dart';
 import 'package:shorebird_cli/src/http_client/http_client.dart';
+import 'package:shorebird_cli/src/logger.dart';
+import 'package:shorebird_cli/src/shorebird_env.dart';
 import 'package:shorebird_cli/src/shorebird_process.dart';
 
 /// A reference to a [ArtifactManager] instance.
@@ -17,6 +20,40 @@ final artifactManagerRef = create(ArtifactManager.new);
 ArtifactManager get artifactManager => read(artifactManagerRef);
 
 class ArtifactManager {
+  static String get aarLibraryPath {
+    final projectRoot = shorebirdEnv.getShorebirdProjectRoot()!;
+    return p.joinAll([
+      projectRoot.path,
+      'build',
+      'host',
+      'outputs',
+      'repo',
+    ]);
+  }
+
+  static String aarArtifactDirectory({
+    required String packageName,
+    required String buildNumber,
+  }) =>
+      p.joinAll([
+        aarLibraryPath,
+        ...packageName.split('.'),
+        'flutter_release',
+        buildNumber,
+      ]);
+
+  static String aarArtifactPath({
+    required String packageName,
+    required String buildNumber,
+  }) =>
+      p.join(
+        aarArtifactDirectory(
+          packageName: packageName,
+          buildNumber: buildNumber,
+        ),
+        'flutter_release-$buildNumber.aar',
+      );
+
   /// Extract the release version from an appbundle.
   Future<String> extractReleaseVersionFromAppBundle(
     String appBundlePath,
@@ -187,5 +224,34 @@ Failed to create diff (exit code ${result.exitCode}).
     }
 
     return archsDirectory.existsSync() ? archsDirectory : null;
+  }
+
+  Future<String> extractAar({
+    required String packageName,
+    required String buildNumber,
+    required UnzipFn unzipFn,
+  }) async {
+    final aarDirectory = aarArtifactDirectory(
+      packageName: packageName,
+      buildNumber: buildNumber,
+    );
+    final aarPath = aarArtifactPath(
+      packageName: packageName,
+      buildNumber: buildNumber,
+    );
+
+    final zipDir = Directory.systemTemp.createTempSync();
+    final zipPath = p.join(zipDir.path, 'flutter_release-$buildNumber.zip');
+    logger.detail('Extracting $aarPath to $zipPath');
+
+    // Copy the .aar file to a .zip file so package:archive knows how to read it
+    File(aarPath).copySync(zipPath);
+    final extractedZipDir = p.join(
+      aarDirectory,
+      'flutter_release-$buildNumber',
+    );
+    // Unzip the .zip file to a directory so we can read the .so files
+    await unzipFn(zipPath, extractedZipDir);
+    return extractedZipDir;
   }
 }

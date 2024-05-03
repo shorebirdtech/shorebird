@@ -3,7 +3,7 @@ import 'package:shorebird_cli/src/artifact_builder.dart';
 import 'package:shorebird_cli/src/artifact_manager.dart';
 import 'package:shorebird_cli/src/code_push_client_wrapper.dart';
 import 'package:shorebird_cli/src/commands/release_new/release_new_command.dart';
-import 'package:shorebird_cli/src/commands/release_new/release_pipeline.dart';
+import 'package:shorebird_cli/src/commands/release_new/releaser.dart';
 import 'package:shorebird_cli/src/doctor.dart';
 import 'package:shorebird_cli/src/logger.dart';
 import 'package:shorebird_cli/src/platform.dart';
@@ -16,12 +16,12 @@ import 'package:shorebird_cli/src/third_party/flutter_tools/lib/flutter_tools.da
 import 'package:shorebird_cli/src/version.dart';
 import 'package:shorebird_code_push_client/shorebird_code_push_client.dart';
 
-/// {@template android_release_pipeline}
+/// {@template android_releaser}
 /// Functions to create an Android release.
 /// {@endtemplate}
-class AndroidReleasePipline extends ReleasePipeline {
-  /// {@macro android_release_pipeline}
-  AndroidReleasePipline({
+class AndroidReleaser extends Releaser {
+  /// {@macro android_releaser}
+  AndroidReleaser({
     required super.argResults,
     required super.flavor,
     required super.target,
@@ -133,14 +133,14 @@ ${link(uri: Uri.parse('https://support.google.com/googleplay/android-developer/a
         validators: doctor.androidCommandValidators,
       );
     } on PreconditionFailedException catch (e) {
-      throw BuildPipelineException(exitCode: e.exitCode, message: null);
+      throw ReleaserException(exitCode: e.exitCode, message: null);
     }
   }
 
   @override
   Future<void> validateArgs() async {
     if (generateApk && splitApk) {
-      throw BuildPipelineException(
+      throw ReleaserException(
         exitCode: ExitCode.unavailable,
         message: '''
 Shorebird does not support the split-per-abi option at this time.
