@@ -1,20 +1,19 @@
-import 'dart:io';
-
 import 'package:archive/archive_io.dart';
 import 'package:io/io.dart';
 import 'package:mason_logger/mason_logger.dart';
 import 'package:path/path.dart' as p;
 import 'package:shorebird_cli/src/artifact_builder.dart';
-import 'package:shorebird_cli/src/artifact_manager.dart';
 import 'package:shorebird_cli/src/code_push_client_wrapper.dart';
 import 'package:shorebird_cli/src/commands/release_new/release_type.dart';
 import 'package:shorebird_cli/src/commands/release_new/releaser.dart';
 import 'package:shorebird_cli/src/logger.dart';
 import 'package:shorebird_cli/src/platform.dart';
 import 'package:shorebird_cli/src/platform/platform.dart';
+import 'package:shorebird_cli/src/shorebird_android_artifacts.dart';
 import 'package:shorebird_cli/src/shorebird_env.dart';
 import 'package:shorebird_cli/src/shorebird_flutter.dart';
 import 'package:shorebird_cli/src/shorebird_validator.dart';
+import 'package:shorebird_cli/src/third_party/flutter_tools/lib/flutter_tools.dart';
 import 'package:shorebird_cli/src/version.dart';
 import 'package:shorebird_code_push_client/shorebird_code_push_client.dart';
 
@@ -49,6 +48,9 @@ class AarReleaser extends Releaser {
   ReleaseType get releaseType => ReleaseType.aar;
 
   @override
+  bool get requiresReleaseVersionArg => true;
+
+  @override
   Future<void> validatePreconditions() async {
     try {
       await shorebirdValidator.validatePreconditions(
@@ -63,7 +65,8 @@ class AarReleaser extends Releaser {
   @override
   Future<void> validateArgs() async {
     if (!argResults.wasParsed('release-version')) {
-      throw ArgumentError('Missing required argument: --release-version');
+      logger.err('Missing required argument: --release-version');
+      exit(ExitCode.usage.code);
     }
   }
 
@@ -73,10 +76,15 @@ class AarReleaser extends Releaser {
     final buildAppBundleProgress =
         logger.progress('Building aar with Flutter $flutterVersionString');
 
-    await artifactBuilder.buildAar(
-      buildNumber: buildNumber,
-      targetPlatforms: architectures,
-    );
+    try {
+      await artifactBuilder.buildAar(
+        buildNumber: buildNumber,
+        targetPlatforms: architectures,
+      );
+    } catch (e) {
+      logger.err('Failed to build aar: $e');
+      exit(ExitCode.software.code);
+    }
 
     buildAppBundleProgress.complete(
       'Built aar with Flutter $flutterVersionString',
@@ -163,7 +171,7 @@ dependencies {
     required String appId,
   }) async {
     final extractAarProgress = logger.progress('Creating artifacts');
-    final extractedAarDir = await artifactManager.extractAar(
+    final extractedAarDir = await shorebirdAndroidArtifacts.extractAar(
       packageName: shorebirdEnv.androidPackageName!,
       buildNumber: buildNumber,
       unzipFn: extractFileToDisk,
@@ -174,7 +182,7 @@ dependencies {
       appId: appId,
       releaseId: release.id,
       platform: releaseType.releasePlatform,
-      aarPath: ArtifactManager.aarArtifactPath(
+      aarPath: ShorebirdAndroidArtifacts.aarArtifactPath(
         packageName: shorebirdEnv.androidPackageName!,
         buildNumber: buildNumber,
       ),

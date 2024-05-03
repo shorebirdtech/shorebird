@@ -1,6 +1,5 @@
 import 'dart:io';
 
-import 'package:archive/archive_io.dart';
 import 'package:http/http.dart' as http;
 import 'package:mason_logger/mason_logger.dart';
 import 'package:mocktail/mocktail.dart';
@@ -8,10 +7,7 @@ import 'package:path/path.dart' as p;
 import 'package:scoped/scoped.dart';
 import 'package:shorebird_cli/src/artifact_manager.dart';
 import 'package:shorebird_cli/src/cache.dart';
-import 'package:shorebird_cli/src/executables/bundletool.dart';
 import 'package:shorebird_cli/src/http_client/http_client.dart';
-import 'package:shorebird_cli/src/logger.dart';
-import 'package:shorebird_cli/src/shorebird_env.dart';
 import 'package:shorebird_cli/src/shorebird_process.dart';
 import 'package:test/test.dart';
 
@@ -20,13 +16,9 @@ import 'mocks.dart';
 
 void main() {
   group(ArtifactManager, () {
-    late Bundletool bundletool;
     late Cache cache;
     late Directory cacheArtifactDirectory;
-    late Directory projectRoot;
     late http.Client httpClient;
-    late Logger logger;
-    late ShorebirdEnv shorebirdEnv;
     late ShorebirdProcessResult patchProcessResult;
     late ShorebirdProcess shorebirdProcess;
     late ArtifactManager artifactManager;
@@ -35,12 +27,9 @@ void main() {
       return runScoped(
         body,
         values: {
-          bundletoolRef.overrideWith(() => bundletool),
           cacheRef.overrideWith(() => cache),
           httpClientRef.overrideWith(() => httpClient),
-          loggerRef.overrideWith(() => logger),
           processRef.overrideWith(() => shorebirdProcess),
-          shorebirdEnvRef.overrideWith(() => shorebirdEnv),
         },
       );
     }
@@ -50,14 +39,10 @@ void main() {
     });
 
     setUp(() {
-      bundletool = MockBundleTool();
       cacheArtifactDirectory = Directory.systemTemp.createTempSync();
       cache = MockCache();
       httpClient = MockHttpClient();
-      logger = MockLogger();
       patchProcessResult = MockProcessResult();
-      projectRoot = Directory.systemTemp.createTempSync();
-      shorebirdEnv = MockShorebirdEnv();
       shorebirdProcess = MockShorebirdProcess();
       artifactManager = ArtifactManager();
 
@@ -83,162 +68,6 @@ void main() {
         return patchProcessResult;
       });
       when(() => patchProcessResult.exitCode).thenReturn(ExitCode.success.code);
-
-      when(() => shorebirdEnv.getShorebirdProjectRoot())
-          .thenReturn(projectRoot);
-    });
-
-    group('aarLibraryPath', () {
-      test('returns path to AAR library', () {
-        expect(
-          runWithOverrides(() => ArtifactManager.aarLibraryPath),
-          equals(
-            p.join(
-              projectRoot.path,
-              'build',
-              'host',
-              'outputs',
-              'repo',
-            ),
-          ),
-        );
-      });
-    });
-
-    group('aarArtifactDirectory', () {
-      test('returns path to AAR artifact directory', () {
-        expect(
-          runWithOverrides(
-            () => ArtifactManager.aarArtifactDirectory(
-              buildNumber: '1',
-              packageName: 'com.example',
-            ),
-          ),
-          equals(
-            p.join(
-              projectRoot.path,
-              'build',
-              'host',
-              'outputs',
-              'repo',
-              'com',
-              'example',
-              'flutter_release',
-              '1',
-            ),
-          ),
-        );
-      });
-    });
-
-    group('aarArtifactPath', () {
-      test('returns path to AAR artifact', () {
-        final result = runWithOverrides(
-          () => ArtifactManager.aarArtifactPath(
-            packageName: 'com.example',
-            buildNumber: '1',
-          ),
-        );
-
-        expect(
-          result,
-          equals(
-            p.join(
-              projectRoot.path,
-              'build',
-              'host',
-              'outputs',
-              'repo',
-              'com',
-              'example',
-              'flutter_release',
-              '1',
-              'flutter_release-1.aar',
-            ),
-          ),
-        );
-      });
-    });
-
-    group('extractReleaseVersionFromAppBundle', () {
-      setUp(() {
-        when(() => bundletool.getVersionName(any()))
-            .thenAnswer((_) async => '1.2.3');
-        when(() => bundletool.getVersionCode(any()))
-            .thenAnswer((_) async => '4');
-      });
-
-      test('returns version name and code from app bundle', () async {
-        const appBundlePath = 'path/to/appbundle';
-        expect(
-          await runWithOverrides(
-            () => artifactManager
-                .extractReleaseVersionFromAppBundle(appBundlePath),
-          ),
-          equals('1.2.3+4'),
-        );
-        verify(() => cache.updateAll()).called(1);
-      });
-    });
-
-    group('extractAar', () {
-      const buildNumber = '1.0';
-      const packageName = 'com.example.my_flutter_module';
-      const zippedContents = 'foo';
-
-      void setUpProjectRootArtifacts() {
-        final aarDir = p.join(
-          projectRoot.path,
-          'build',
-          'host',
-          'outputs',
-          'repo',
-          'com',
-          'example',
-          'my_flutter_module',
-          'flutter_release',
-          buildNumber,
-        );
-        final aarPath = p.join(aarDir, 'flutter_release-$buildNumber.aar');
-        File(aarPath)
-          ..createSync(recursive: true)
-          ..writeAsStringSync(zippedContents);
-        createArchiveFromDirectory(Directory(aarDir));
-      }
-
-      setUp(setUpProjectRootArtifacts);
-
-      test('extracts aar', () async {
-        final outDir = await runWithOverrides(
-          () => artifactManager.extractAar(
-            packageName: packageName,
-            buildNumber: buildNumber,
-            unzipFn: (_, __) async {},
-          ),
-        );
-
-        expect(
-          outDir.path,
-          endsWith(
-            p.join(
-              'build',
-              'host',
-              'outputs',
-              'repo',
-              'com',
-              'example',
-              'my_flutter_module',
-              'flutter_release',
-              buildNumber,
-              'flutter_release-$buildNumber',
-            ),
-          ),
-        );
-        expect(
-          File('${outDir.path}.aar').readAsStringSync(),
-          equals(zippedContents),
-        );
-      });
     });
 
     group('createDiff', () {

@@ -5,7 +5,6 @@ import 'package:path/path.dart' as p;
 import 'package:platform/platform.dart';
 import 'package:scoped/scoped.dart';
 import 'package:shorebird_cli/src/artifact_builder.dart';
-import 'package:shorebird_cli/src/artifact_manager.dart';
 import 'package:shorebird_cli/src/code_push_client_wrapper.dart';
 import 'package:shorebird_cli/src/commands/release_new/android_releaser.dart';
 import 'package:shorebird_cli/src/commands/release_new/release_type.dart';
@@ -33,7 +32,6 @@ void main() {
   group(AndroidReleaser, () {
     late ArgResults argResults;
     late ArtifactBuilder artifactBuilder;
-    late ArtifactManager artifactManager;
     late CodePushClientWrapper codePushClientWrapper;
     late Doctor doctor;
     late Platform platform;
@@ -54,7 +52,6 @@ void main() {
         body,
         values: {
           artifactBuilderRef.overrideWith(() => artifactBuilder),
-          artifactManagerRef.overrideWith(() => artifactManager),
           codePushClientWrapperRef.overrideWith(() => codePushClientWrapper),
           doctorRef.overrideWith(() => doctor),
           engineConfigRef.overrideWith(() => const EngineConfig.empty()),
@@ -82,7 +79,6 @@ void main() {
     setUp(() {
       argResults = MockArgResults();
       artifactBuilder = MockArtifactBuilder();
-      artifactManager = MockArtifactManager();
       codePushClientWrapper = MockCodePushClientWrapper();
       doctor = MockDoctor();
       operatingSystemInterface = MockOperatingSystemInterface();
@@ -295,8 +291,11 @@ void main() {
     group('getReleaseVersion', () {
       const releaseVersion = '1.0.0';
       setUp(() {
-        when(() => artifactManager.extractReleaseVersionFromAppBundle(any()))
-            .thenAnswer((_) async => releaseVersion);
+        when(
+          () => shorebirdAndroidArtifacts.extractReleaseVersionFromAppBundle(
+            any(),
+          ),
+        ).thenAnswer((_) async => releaseVersion);
       });
 
       test('returns value from artifactManager', () async {
@@ -307,14 +306,18 @@ void main() {
         );
         expect(result, releaseVersion);
         verify(
-          () => artifactManager.extractReleaseVersionFromAppBundle(''),
+          () =>
+              shorebirdAndroidArtifacts.extractReleaseVersionFromAppBundle(''),
         ).called(1);
       });
 
       group('when artifactManager throws exception', () {
         setUp(() {
-          when(() => artifactManager.extractReleaseVersionFromAppBundle(any()))
-              .thenThrow(Exception('oops'));
+          when(
+            () => shorebirdAndroidArtifacts.extractReleaseVersionFromAppBundle(
+              any(),
+            ),
+          ).thenThrow(Exception('oops'));
         });
 
         test('logs error and exits with code 70', () async {
@@ -455,14 +458,18 @@ void main() {
       const aabPath = 'path/to/app.aab';
 
       setUp(() {
-        when(() => shorebirdAndroidArtifacts.findApk(
-              project: any(named: 'project'),
-              flavor: any(named: 'flavor'),
-            )).thenReturn(File(apkPath));
-        when(() => shorebirdAndroidArtifacts.findAab(
-              project: any(named: 'project'),
-              flavor: any(named: 'flavor'),
-            )).thenReturn(File(aabPath));
+        when(
+          () => shorebirdAndroidArtifacts.findApk(
+            project: any(named: 'project'),
+            flavor: any(named: 'flavor'),
+          ),
+        ).thenReturn(File(apkPath));
+        when(
+          () => shorebirdAndroidArtifacts.findAab(
+            project: any(named: 'project'),
+            flavor: any(named: 'flavor'),
+          ),
+        ).thenReturn(File(aabPath));
       });
 
       group('when an apk is generated', () {
