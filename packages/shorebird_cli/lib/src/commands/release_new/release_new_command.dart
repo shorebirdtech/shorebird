@@ -178,7 +178,7 @@ of the iOS app that is using this module.''',
         );
 
         // Ensure we can create a release from what we've built.
-        await validateVersionIsReleasable(
+        await assertVersionIsReleasable(
           version: releaseVersion,
           flutterRevision: targetFlutterRevision,
           releasePlatform: releaser.releaseType.releasePlatform,
@@ -265,7 +265,7 @@ Use `shorebird flutter versions list` to list available versions.
   /// published with the given [version] for the platform [releasePlatform], or
   /// if a release already exists with [version] but was compiled with a
   /// different Flutter revision, an error will be thrown.
-  Future<void> validateVersionIsReleasable({
+  Future<void> assertVersionIsReleasable({
     required String version,
     required String flutterRevision,
     required ReleasePlatform releasePlatform,
