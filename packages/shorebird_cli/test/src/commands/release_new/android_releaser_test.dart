@@ -40,9 +40,6 @@ void main() {
     late Logger logger;
     late OperatingSystemInterface operatingSystemInterface;
     late Progress progress;
-    late ShorebirdProcessResult flutterAppbundleBuildProcessResult;
-    late ShorebirdProcessResult flutterApkBuildProcessResult;
-    late ShorebirdProcessResult flutterPubGetProcessResult;
     late ShorebirdFlutterValidator flutterValidator;
     late ShorebirdProcess shorebirdProcess;
     late ShorebirdEnv shorebirdEnv;
@@ -92,9 +89,6 @@ void main() {
       progress = MockProgress();
       projectRoot = Directory.systemTemp.createTempSync();
       logger = MockLogger();
-      flutterAppbundleBuildProcessResult = MockProcessResult();
-      flutterApkBuildProcessResult = MockProcessResult();
-      flutterPubGetProcessResult = MockProcessResult();
       flutterValidator = MockShorebirdFlutterValidator();
       shorebirdProcess = MockShorebirdProcess();
       shorebirdEnv = MockShorebirdEnv();

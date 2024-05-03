@@ -1,7 +1,9 @@
 import 'dart:async';
-import 'dart:io';
+import 'dart:io' hide exit;
 
+import 'package:io/io.dart';
 import 'package:mason_logger/mason_logger.dart';
+import 'package:meta/meta.dart';
 import 'package:scoped/scoped.dart';
 import 'package:shorebird_cli/src/code_push_client_wrapper.dart';
 import 'package:shorebird_cli/src/command.dart';
@@ -14,6 +16,7 @@ import 'package:shorebird_cli/src/logger.dart';
 import 'package:shorebird_cli/src/platform/platform.dart';
 import 'package:shorebird_cli/src/shorebird_env.dart';
 import 'package:shorebird_cli/src/shorebird_flutter.dart';
+import 'package:shorebird_cli/src/third_party/flutter_tools/lib/flutter_tools.dart';
 import 'package:shorebird_code_push_client/shorebird_code_push_client.dart';
 import 'package:shorebird_code_push_protocol/shorebird_code_push_protocol.dart';
 
@@ -74,12 +77,15 @@ enum ReleaseType {
   }
 }
 
+typedef ResolveReleaser = Releaser Function(ReleaseType releaseType);
+
 /// {@template release_command}
 /// Creates a new app release for the specified platform(s).
 /// {@endtemplate}
 class ReleaseNewCommand extends ShorebirdCommand {
   /// {@macro release_command}
-  ReleaseNewCommand() {
+  ReleaseNewCommand({ResolveReleaser? resolveReleaser}) {
+    _resolveReleaser = resolveReleaser ?? getReleaser;
     argParser
       ..addOption(
         'target',
@@ -132,42 +138,33 @@ of the iOS app that is using this module.''',
       );
   }
 
+  late final ResolveReleaser _resolveReleaser;
+
   @override
   String get description =>
       'Creates a shorebird release for the provided target platforms';
 
   @override
   String get name => 'release-new';
-  // Creating a release consists of the following steps:
-  // 1. Verify preconditions
-  // 2. Install the target flutter version if necessary
-  // 3. Build the app for each target platform
-  // 4. Extract the release version from the compiled artifact OR use the
-  //    release version provided.
-  // 5. Verify the release does not conflict with an existing release.
-  // 6. Create a new release in the database.
+
   @override
   Future<int> run() async {
-    final pipelineFutures = (argResults!['platform'] as List<String>)
+    final releaserFutures = (results['platform'] as List<String>)
         .map(
           (platformArg) => ReleaseType.values.firstWhere(
             (target) => target.cliName == platformArg,
           ),
         )
-        .map(_getPipeline)
-        .map(_createRelease);
+        .map(_resolveReleaser)
+        .map(createRelease);
 
-    // try {
-    await Future.wait(pipelineFutures);
-    // } on ReleaserException catch (e) {
-    //   logger.err(e.message);
-    //   return e.exitCode.code;
-    // }
+    await Future.wait(releaserFutures);
 
     return ExitCode.success.code;
   }
 
-  Releaser _getPipeline(ReleaseType releaseType) {
+  @visibleForTesting
+  Releaser getReleaser(ReleaseType releaseType) {
     switch (releaseType) {
       case ReleaseType.android:
         return AndroidReleaser(
@@ -190,8 +187,8 @@ of the iOS app that is using this module.''',
     }
   }
 
-  /// Whether --release-version must be specified to patch. Currently only
-  /// required for add-to-app/hybrid releases (aar and ios-framework).
+  // /// Whether --release-version must be specified to patch. Currently only
+  // /// required for add-to-app/hybrid releases (aar and ios-framework).
   bool get requiresReleaseVersionArg => false;
 
   /// The shorebird app ID for the current project.
@@ -215,9 +212,10 @@ of the iOS app that is using this module.''',
   ///  - They perform their own logging. If an error occurs, they are
   ///    responsible for properly logging the error, cleaning up running
   ///    [Progress]es, etc.
-  ///  - They can only exit early by throwing a [ReleaserException]. They
-  ///    should otherwise return normally.
-  Future<void> _createRelease(Releaser releaser) async {
+  ///  - They handle their own exceptions and exit with a non-zero exit code if
+  ///    an error occurs *instead of* throwing an exception.
+  @visibleForTesting
+  Future<void> createRelease(Releaser releaser) async {
     await releaser.validatePreconditions();
     await releaser.validateArgs();
 
@@ -225,7 +223,11 @@ of the iOS app that is using this module.''',
     // progress, error logs, etc.
     final app = await codePushClientWrapper.getApp(appId: appId);
     final targetFlutterVersion = await resolveTargetFlutterVersion();
-    await shorebirdFlutter.installRevision(revision: targetFlutterVersion);
+    try {
+      await shorebirdFlutter.installRevision(revision: targetFlutterVersion);
+    } catch (_) {
+      exit(ExitCode.software.code);
+    }
 
     final releaseFlutterShorebirdEnv = shorebirdEnv.copyWith(
       flutterRevisionOverride: targetFlutterVersion,
@@ -277,8 +279,8 @@ of the iOS app that is using this module.''',
 
   /// Determines which Flutter version to use for the release. This will be
   /// either the version specified by the user or the version provided by
-  /// [shorebirdEnv]. A [ReleaserException] will be thrown if the version
-  /// specified by the user is not found/supported.
+  /// [shorebirdEnv]. Will exit with code 70 if the version specified by the
+  /// user is not found/supported.
   Future<String> resolveTargetFlutterVersion() async {
     if (flutterVersionArg != null) {
       final String? revision;
