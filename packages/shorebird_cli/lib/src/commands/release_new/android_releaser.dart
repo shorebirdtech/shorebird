@@ -95,7 +95,7 @@ Please comment and upvote ${link(uri: Uri.parse('https://github.com/shorebirdtec
         targetPlatforms: architectures,
       );
     } on ArtifactBuildException catch (e) {
-      logger.err(e.message);
+      buildAppBundleProgress.fail(e.message);
       exit(ExitCode.software.code);
     }
 
@@ -104,11 +104,16 @@ Please comment and upvote ${link(uri: Uri.parse('https://github.com/shorebirdtec
     if (generateApk) {
       final buildApkProgress =
           logger.progress('Building APK with Flutter $flutterVersionString');
-      await artifactBuilder.buildApk(
-        flavor: flavor,
-        target: target,
-        targetPlatforms: architectures,
-      );
+      try {
+        await artifactBuilder.buildApk(
+          flavor: flavor,
+          target: target,
+          targetPlatforms: architectures,
+        );
+      } on ArtifactBuildException catch (e) {
+        buildApkProgress.fail(e.message);
+        exit(ExitCode.software.code);
+      }
       buildApkProgress.complete();
     }
 

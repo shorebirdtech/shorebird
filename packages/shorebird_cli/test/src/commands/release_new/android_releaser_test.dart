@@ -212,9 +212,11 @@ void main() {
 
     group('buildReleaseArtifacts', () {
       const flutterVersionAndRevision = '3.10.6 (83305b5088)';
+      late File aabFile;
 
       setUp(() {
-        when(() => argResults['android-artifact']).thenReturn('apk');
+        aabFile = File('');
+        when(() => argResults['android-artifact']).thenReturn('aab');
         when(
           () => artifactBuilder.buildAppBundle(
             flavor: any(named: 'flavor'),
@@ -236,20 +238,115 @@ void main() {
         when(
           () => shorebirdFlutter.getVersionAndRevision(),
         ).thenAnswer((_) async => flutterVersionAndRevision);
-      });
-
-      test('errors when the build fails', () async {
         when(
-          () => artifactBuilder.buildAppBundle(
-            targetPlatforms: any(named: 'targetPlatforms'),
+          () => shorebirdAndroidArtifacts.findAab(
+            project: any(named: 'project'),
             flavor: any(named: 'flavor'),
           ),
-        ).thenThrow(ArtifactBuildException('Uh oh'));
-        await expectLater(
-          () => runWithOverrides(androidReleaser.buildReleaseArtifacts),
-          exitsWithCode(ExitCode.software),
-        );
-        verify(() => logger.err('Uh oh')).called(1);
+        ).thenReturn(aabFile);
+      });
+
+      group('when aab build fails', () {
+        setUp(() {
+          when(
+            () => artifactBuilder.buildAppBundle(
+              flavor: any(named: 'flavor'),
+              target: any(named: 'target'),
+              targetPlatforms: any(named: 'targetPlatforms'),
+            ),
+          ).thenThrow(ArtifactBuildException('Uh oh'));
+        });
+
+        test('logs error and exits with code 70', () async {
+          await expectLater(
+            () => runWithOverrides(androidReleaser.buildReleaseArtifacts),
+            exitsWithCode(ExitCode.software),
+          );
+          verify(() => progress.fail('Uh oh')).called(1);
+        });
+      });
+
+      group('when building apk', () {
+        setUp(() {
+          when(() => argResults['android-artifact']).thenReturn('apk');
+        });
+
+        group('when apk build fails', () {
+          setUp(() {
+            when(
+              () => artifactBuilder.buildApk(
+                flavor: any(named: 'flavor'),
+                target: any(named: 'target'),
+                targetPlatforms: any(named: 'targetPlatforms'),
+              ),
+            ).thenThrow(ArtifactBuildException('Uh oh'));
+          });
+
+          test('logs error and exits with code 70', () async {
+            await expectLater(
+              () => runWithOverrides(androidReleaser.buildReleaseArtifacts),
+              exitsWithCode(ExitCode.software),
+            );
+            verify(() => progress.fail('Uh oh')).called(1);
+          });
+        });
+      });
+
+      group('when the build succeeds', () {
+        test('returns the path to the aab', () async {
+          final result = await runWithOverrides(
+            () => androidReleaser.buildReleaseArtifacts(),
+          );
+          expect(result, aabFile);
+          verify(
+            () => artifactBuilder.buildAppBundle(targetPlatforms: Arch.values),
+          ).called(1);
+        });
+
+        test('does not built apk by default', () async {
+          await runWithOverrides(
+            () => androidReleaser.buildReleaseArtifacts(),
+          );
+          verifyNever(
+            () => artifactBuilder.buildApk(
+              flavor: any(named: 'flavor'),
+              target: any(named: 'target'),
+              targetPlatforms: any(named: 'targetPlatforms'),
+            ),
+          );
+        });
+      });
+
+      group('with flavor and target', () {
+        const flavor = 'my-flavor';
+        const target = 'my-target';
+
+        setUp(() {
+          when(() => argResults['android-artifact']).thenReturn('apk');
+          androidReleaser = AndroidReleaser(
+            argResults: argResults,
+            flavor: flavor,
+            target: target,
+          );
+        });
+
+        test('builds artifacts with flavor and target', () async {
+          await runWithOverrides(() => androidReleaser.buildReleaseArtifacts());
+          verify(
+            () => artifactBuilder.buildAppBundle(
+              flavor: flavor,
+              target: target,
+              targetPlatforms: Arch.values,
+            ),
+          ).called(1);
+          verify(
+            () => artifactBuilder.buildApk(
+              flavor: flavor,
+              target: target,
+              targetPlatforms: Arch.values,
+            ),
+          ).called(1);
+        });
       });
     });
 
