@@ -164,15 +164,15 @@ of the iOS app that is using this module.''',
     // This command handles logging, we don't need to provide our own
     // progress, error logs, etc.
     final app = await codePushClientWrapper.getApp(appId: appId);
-    final targetFlutterVersion = await resolveTargetFlutterVersion();
+    final targetFlutterRevision = await resolveTargetFlutterRevision();
     try {
-      await shorebirdFlutter.installRevision(revision: targetFlutterVersion);
+      await shorebirdFlutter.installRevision(revision: targetFlutterRevision);
     } catch (_) {
       exit(ExitCode.software.code);
     }
 
     final releaseFlutterShorebirdEnv = shorebirdEnv.copyWith(
-      flutterRevisionOverride: targetFlutterVersion,
+      flutterRevisionOverride: targetFlutterRevision,
     );
     return await runScoped(
       () async {
@@ -184,7 +184,7 @@ of the iOS app that is using this module.''',
         // Ensure we can create a release from what we've built.
         await validateVersionIsReleasable(
           version: releaseVersion,
-          flutterVersion: targetFlutterVersion,
+          flutterRevision: targetFlutterRevision,
           releasePlatform: releaser.releaseType.releasePlatform,
         );
 
@@ -192,7 +192,7 @@ of the iOS app that is using this module.''',
         await confirmCreateRelease(
           app: app,
           releaseVersion: releaseVersion,
-          flutterVersion: targetFlutterVersion,
+          flutterVersion: targetFlutterRevision,
           releasePlatform: releaser.releaseType.releasePlatform,
         );
 
@@ -223,7 +223,7 @@ of the iOS app that is using this module.''',
   /// either the version specified by the user or the version provided by
   /// [shorebirdEnv]. Will exit with code 70 if the version specified by the
   /// user is not found/supported.
-  Future<String> resolveTargetFlutterVersion() async {
+  Future<String> resolveTargetFlutterRevision() async {
     if (flutterVersionArg != null) {
       final String? revision;
       try {
@@ -268,7 +268,7 @@ Use `shorebird flutter versions list` to list available versions.
   /// Flutter revision, an error will be thrown.
   Future<void> validateVersionIsReleasable({
     required String version,
-    required String flutterVersion,
+    required String flutterRevision,
     required ReleasePlatform releasePlatform,
   }) async {
     final existingRelease = await codePushClientWrapper.maybeGetRelease(
@@ -284,14 +284,17 @@ Use `shorebird flutter versions list` to list available versions.
 
       // All artifacts associated with a given release must be built
       // with the same Flutter revision.
-      logger
-        ..err('''
+      if (existingRelease.flutterRevision != flutterRevision) {
+        // All artifacts associated with a given release must be built
+        // with the same Flutter revision.
+        logger
+          ..err('''
 ${styleBold.wrap(lightRed.wrap('A release with version $version already exists but was built using a different Flutter revision.'))}
 ''')
-        ..info('''
+          ..info('''
 
   Existing release built with: ${lightCyan.wrap(existingRelease.flutterRevision)}
-  Current release built with: ${lightCyan.wrap(flutterVersion)}
+  Current release built with: ${lightCyan.wrap(flutterRevision)}
 
 ${styleBold.wrap(lightRed.wrap('All platforms for a given release must be built using the same Flutter revision.'))}
 
@@ -299,7 +302,8 @@ To resolve this issue, you can:
   * Re-run the release command with "${lightCyan.wrap('--flutter-version=${existingRelease.flutterRevision}')}".
   * Delete the existing release and re-run the release command with the desired Flutter version.
   * Bump the release version and re-run the release command with the desired Flutter version.''');
-      exit(ExitCode.software.code);
+        exit(ExitCode.software.code);
+      }
     }
   }
 

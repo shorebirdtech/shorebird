@@ -199,6 +199,70 @@ void main() {
       expect(exitCode, equals(ExitCode.success.code));
     });
 
+    group('when there is an existing release with the same version', () {
+      late Release existingRelease;
+      setUp(() {
+        existingRelease = release;
+        when(
+          () => codePushClientWrapper.maybeGetRelease(
+            appId: appId,
+            releaseVersion: releaseVersion,
+          ),
+        ).thenAnswer((_) async => existingRelease);
+      });
+
+      group('when the release uses a different version of Flutter', () {
+        setUp(() {
+          existingRelease = Release(
+            id: 0,
+            appId: appId,
+            version: releaseVersion,
+            flutterRevision: 'different',
+            displayName: '1.2.3+1',
+            platformStatuses: {},
+            createdAt: DateTime(2023),
+            updatedAt: DateTime(2023),
+          );
+        });
+
+        test('logs error and exits with code 70', () async {
+          await expectLater(
+            () => runWithOverrides(command.run),
+            exitsWithCode(ExitCode.software),
+          );
+        });
+      });
+
+      group('when the release uses the same version of Flutter', () {
+        test('completes successfully', () async {
+          expect(
+            await runWithOverrides(command.run),
+            equals(ExitCode.success.code),
+          );
+          verify(
+            () => codePushClientWrapper.ensureReleaseIsNotActive(
+              release: any(named: 'release'),
+              platform: ReleasePlatform.android,
+            ),
+          ).called(1);
+        });
+      });
+    });
+
+    group('when the user does not confirm the release', () {
+      setUp(() {
+        when(() => logger.confirm(any())).thenReturn(false);
+      });
+
+      test('exits with code 0', () async {
+        await expectLater(
+          () => runWithOverrides(command.run),
+          exitsWithCode(ExitCode.success),
+        );
+        verify(() => logger.info('Aborting.')).called(1);
+      });
+    });
+
     group('when flutter-version is provided', () {
       const flutterVersion = '3.16.3';
       setUp(() {
