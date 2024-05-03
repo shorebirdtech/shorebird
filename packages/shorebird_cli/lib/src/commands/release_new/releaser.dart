@@ -23,6 +23,10 @@ abstract class Releaser {
   final String? flavor;
   final String? target;
 
+  /// Whether --release-version must be specified to patch. Currently only
+  /// required for add-to-app/hybrid releases (aar and ios-framework).
+  bool get requiresReleaseVersionArg => false;
+
   /// The type of artifact we are creating a release for.
   ReleaseType get releaseType;
 

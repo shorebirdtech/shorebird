@@ -129,10 +129,6 @@ of the iOS app that is using this module.''',
     }
   }
 
-  // /// Whether --release-version must be specified to patch. Currently only
-  // /// required for add-to-app/hybrid releases (aar and ios-framework).
-  bool get requiresReleaseVersionArg => false;
-
   /// The shorebird app ID for the current project.
   String get appId => shorebirdEnv.getShorebirdYaml()!.getAppId(flavor: flavor);
 
@@ -209,8 +205,11 @@ of the iOS app that is using this module.''',
           ..info(releaser.postReleaseInstructions);
 
         printPatchInstructions(
+          releaser: releaser,
           releaseVersion: releaseVersion,
           releaseType: releaser.releaseType,
+          flavor: flavor,
+          target: target,
         );
       },
       values: {
@@ -393,6 +392,7 @@ ${summary.join('\n')}
 
   /// Instructions explaining how to patch the release that was just creatd.
   void printPatchInstructions({
+    required Releaser releaser,
     required String releaseVersion,
     required ReleaseType releaseType,
     String? flavor,
@@ -408,7 +408,7 @@ ${summary.join('\n')}
       '''To create a patch for this release, run ${lightCyan.wrap('$baseCommand --release-version=$releaseVersion')}''',
     );
 
-    if (!requiresReleaseVersionArg) {
+    if (!releaser.requiresReleaseVersionArg) {
       logger.info(
         '''
 

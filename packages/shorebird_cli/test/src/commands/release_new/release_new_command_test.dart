@@ -141,6 +141,7 @@ void main() {
       when(() => releaser.releaseType).thenReturn(ReleaseType.android);
       when(() => releaser.releaseMetadata)
           .thenReturn(UpdateReleaseMetadata.forTest());
+      when(() => releaser.requiresReleaseVersionArg).thenReturn(false);
 
       when(() => shorebirdEnv.getShorebirdYaml()).thenReturn(shorebirdYaml);
       when(
@@ -194,9 +195,95 @@ void main() {
       });
     });
 
-    test('asdf', () async {
+    test('completes successfully', () async {
       final exitCode = await runWithOverrides(command.run);
       expect(exitCode, equals(ExitCode.success.code));
+
+      verifyInOrder([
+        releaser.validatePreconditions,
+        releaser.validateArgs,
+        () => codePushClientWrapper.getApp(appId: appId),
+        releaser.buildReleaseArtifacts,
+        () => releaser.getReleaseVersion(
+              releaseArtifactRoot: any(named: 'releaseArtifactRoot'),
+            ),
+        () => releaser.uploadReleaseArtifacts(
+              release: release,
+              appId: appId,
+            ),
+        () => logger.success('✅ Published Release ${release.version}!'),
+        () => logger.info(postReleaseInstructions),
+        () => logger.info(
+              '''To create a patch for this release, run ${lightCyan.wrap('shorebird patch --platform=android --release-version=${release.version}')}''',
+            ),
+        () => logger.info(
+              '''
+
+Note: ${lightCyan.wrap('shorebird patch --platform=android')} without the --release-version option will patch the current version of the app.
+''',
+            ),
+      ]);
+    });
+
+    group('when release version arg is required', () {
+      setUp(() {
+        when(() => releaser.requiresReleaseVersionArg).thenReturn(true);
+      });
+
+      test('does not print patch instructions for no release version',
+          () async {
+        final exitCode = await runWithOverrides(command.run);
+        expect(exitCode, equals(ExitCode.success.code));
+
+        verifyNever(
+          () => logger.info(
+            '''
+
+Note: ${lightCyan.wrap('shorebird patch --platform=android')} without the --release-version option will patch the current version of the app.
+''',
+          ),
+        );
+      });
+    });
+
+    group('when flavor and target are provided', () {
+      const flavor = 'test-flavor';
+      const target = 'test-target';
+
+      setUp(() {
+        when(() => argResults['flavor']).thenReturn(flavor);
+        when(() => argResults['target']).thenReturn(target);
+      });
+
+      test('completes successfully', () async {
+        final exitCode = await runWithOverrides(command.run);
+        expect(exitCode, equals(ExitCode.success.code));
+
+        verifyInOrder([
+          releaser.validatePreconditions,
+          releaser.validateArgs,
+          () => codePushClientWrapper.getApp(appId: appId),
+          releaser.buildReleaseArtifacts,
+          () => releaser.getReleaseVersion(
+                releaseArtifactRoot: any(named: 'releaseArtifactRoot'),
+              ),
+          () => releaser.uploadReleaseArtifacts(
+                release: release,
+                appId: appId,
+              ),
+          () => logger.success('✅ Published Release ${release.version}!'),
+          () => logger.info(postReleaseInstructions),
+          () => logger.info(
+                '''To create a patch for this release, run ${lightCyan.wrap('shorebird patch --platform=android --flavor=$flavor --target=$target --release-version=${release.version}')}''',
+              ),
+          () => logger.info(
+                '''
+
+Note: ${lightCyan.wrap('shorebird patch --platform=android --flavor=$flavor --target=$target')} without the --release-version option will patch the current version of the app.
+''',
+              ),
+        ]);
+      });
     });
 
     group('when there is an existing release with the same version', () {
