@@ -6,6 +6,7 @@ import 'package:shorebird_cli/src/code_push_client_wrapper.dart';
 import 'package:shorebird_cli/src/commands/release_new/aar_releaser.dart';
 import 'package:shorebird_cli/src/commands/release_new/android_releaser.dart';
 import 'package:shorebird_cli/src/commands/release_new/release_new_command.dart';
+import 'package:shorebird_cli/src/commands/release_new/release_type.dart';
 import 'package:shorebird_cli/src/commands/release_new/releaser.dart';
 import 'package:shorebird_cli/src/config/config.dart';
 import 'package:shorebird_cli/src/logger.dart';

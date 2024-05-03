@@ -7,6 +7,7 @@ import 'package:shorebird_cli/src/code_push_client_wrapper.dart';
 import 'package:shorebird_cli/src/command.dart';
 import 'package:shorebird_cli/src/commands/release_new/aar_releaser.dart';
 import 'package:shorebird_cli/src/commands/release_new/android_releaser.dart';
+import 'package:shorebird_cli/src/commands/release_new/release_type.dart';
 import 'package:shorebird_cli/src/commands/release_new/releaser.dart';
 import 'package:shorebird_cli/src/config/config.dart';
 import 'package:shorebird_cli/src/extensions/arg_results.dart';
@@ -17,63 +18,6 @@ import 'package:shorebird_cli/src/shorebird_flutter.dart';
 import 'package:shorebird_cli/src/third_party/flutter_tools/lib/flutter_tools.dart';
 import 'package:shorebird_code_push_client/shorebird_code_push_client.dart';
 import 'package:shorebird_code_push_protocol/shorebird_code_push_protocol.dart';
-
-/// The different types of shorebird releases that can be created.
-enum ReleaseType {
-  /// An Android archive used in a hybrid app.
-  aar,
-
-  /// A full Flutter Android app.
-  android,
-
-  /// A full Flutter iOS app.
-  ios,
-
-  /// An iOS framework used in a hybrid app.
-  iosFramework;
-
-  /// The CLI argument used to specify the release type(s).
-  String get cliName {
-    switch (this) {
-      case ReleaseType.android:
-        return 'android';
-      case ReleaseType.ios:
-        return 'ios';
-      case ReleaseType.iosFramework:
-        return 'ios-framework';
-      case ReleaseType.aar:
-        return 'aar';
-    }
-  }
-
-  /// The platform associated with the release type.
-  ReleasePlatform get releasePlatform {
-    switch (this) {
-      case ReleaseType.aar:
-        return ReleasePlatform.android;
-      case ReleaseType.android:
-        return ReleasePlatform.android;
-      case ReleaseType.ios:
-        return ReleasePlatform.ios;
-      case ReleaseType.iosFramework:
-        return ReleasePlatform.ios;
-    }
-  }
-
-  /// Whether --release-version must be specified to patch.
-  bool requiresReleaseVersionArg() {
-    switch (this) {
-      case ReleaseType.aar:
-        return true;
-      case ReleaseType.android:
-        return false;
-      case ReleaseType.ios:
-        return false;
-      case ReleaseType.iosFramework:
-        return true;
-    }
-  }
-}
 
 typedef ResolveReleaser = Releaser Function(ReleaseType releaseType);
 
