@@ -212,8 +212,8 @@ of the iOS app that is using this module.''',
 
         logger
           ..success('''
-          
-          ✅ Published Release ${release.version}!''')
+
+✅ Published Release ${release.version}!''')
           ..info(releaser.postReleaseInstructions);
 
         printPatchInstructions(

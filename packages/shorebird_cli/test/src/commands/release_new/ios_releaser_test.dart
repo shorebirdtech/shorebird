@@ -6,7 +6,6 @@ import 'package:platform/platform.dart';
 import 'package:scoped/scoped.dart';
 import 'package:shorebird_cli/src/artifact_builder.dart';
 import 'package:shorebird_cli/src/artifact_manager.dart';
-import 'package:shorebird_cli/src/auth/auth.dart';
 import 'package:shorebird_cli/src/code_push_client_wrapper.dart';
 import 'package:shorebird_cli/src/commands/release_new/ios_releaser.dart';
 import 'package:shorebird_cli/src/commands/release_new/release_type.dart';
@@ -37,7 +36,6 @@ void main() {
       late ArtifactBuilder artifactBuilder;
       late ArtifactManager artifactManager;
       late CodePushClientWrapper codePushClientWrapper;
-      late Directory shorebirdRoot;
       late Directory projectRoot;
       late Doctor doctor;
       late Platform platform;
@@ -45,8 +43,6 @@ void main() {
       late Logger logger;
       late Ios ios;
       late OperatingSystemInterface operatingSystemInterface;
-      late ShorebirdProcessResult flutterBuildProcessResult;
-      late ShorebirdProcessResult flutterPubGetProcessResult;
       late ShorebirdFlutterValidator flutterValidator;
       late ShorebirdProcess shorebirdProcess;
       late ShorebirdEnv shorebirdEnv;
@@ -91,14 +87,11 @@ void main() {
         codePushClientWrapper = MockCodePushClientWrapper();
         doctor = MockDoctor();
         platform = MockPlatform();
-        shorebirdRoot = Directory.systemTemp.createTempSync();
         projectRoot = Directory.systemTemp.createTempSync();
         operatingSystemInterface = MockOperatingSystemInterface();
         progress = MockProgress();
         logger = MockLogger();
         ios = MockIos();
-        flutterBuildProcessResult = MockProcessResult();
-        flutterPubGetProcessResult = MockProcessResult();
         flutterValidator = MockShorebirdFlutterValidator();
         shorebirdProcess = MockShorebirdProcess();
         shorebirdEnv = MockShorebirdEnv();
@@ -234,6 +227,8 @@ void main() {
       });
 
       group('buildReleaseArtifacts', () {
+        const flutterVersionAndRevision = '3.10.6 (83305b5088)';
+
         late Directory xcarchiveDirectory;
         late Directory iosAppDirectory;
 
@@ -262,6 +257,9 @@ void main() {
           ).thenReturn(File(''));
           when(() => shorebirdEnv.getShorebirdProjectRoot())
               .thenReturn(projectRoot);
+          when(
+            () => shorebirdFlutter.getVersionAndRevision(),
+          ).thenAnswer((_) async => flutterVersionAndRevision);
         });
 
         group('when not codesigning', () {
