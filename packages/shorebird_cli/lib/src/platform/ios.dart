@@ -47,6 +47,9 @@ class InvalidExportOptionsPlistException implements Exception {
   InvalidExportOptionsPlistException(this.message);
 
   final String message;
+
+  @override
+  String toString() => message;
 }
 
 /// The minimum allowed Flutter version for creating iOS releases.
