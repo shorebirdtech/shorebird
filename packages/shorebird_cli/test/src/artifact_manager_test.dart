@@ -20,6 +20,7 @@ void main() {
   group(ArtifactManager, () {
     late Cache cache;
     late Directory cacheArtifactDirectory;
+    late Directory projectRoot;
     late http.Client httpClient;
     late Directory projectRoot;
     late Logger logger;
@@ -52,8 +53,8 @@ void main() {
       logger = MockLogger();
       patchProcessResult = MockProcessResult();
       projectRoot = Directory.systemTemp.createTempSync();
-      shorebirdProcess = MockShorebirdProcess();
       shorebirdEnv = MockShorebirdEnv();
+      shorebirdProcess = MockShorebirdProcess();
 
       when(() => cache.getArtifactDirectory(any()))
           .thenReturn(cacheArtifactDirectory);
