@@ -54,7 +54,7 @@ abstract class Releaser {
 
   /// Metadata to attach to the release when creating it, used for debugging
   /// and support.
-  UpdateReleaseMetadata get releaseMetadata;
+  Future<UpdateReleaseMetadata> releaseMetadata();
 
   /// Instructions explaining next steps after running `shorebird release`. This
   /// could include how to upload the generated artifact to a store and how to

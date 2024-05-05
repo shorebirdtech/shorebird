@@ -7,6 +7,7 @@ import 'package:shorebird_cli/src/code_push_client_wrapper.dart';
 import 'package:shorebird_cli/src/command.dart';
 import 'package:shorebird_cli/src/commands/release_new/aar_releaser.dart';
 import 'package:shorebird_cli/src/commands/release_new/android_releaser.dart';
+import 'package:shorebird_cli/src/commands/release_new/ios_releaser.dart';
 import 'package:shorebird_cli/src/commands/release_new/release_type.dart';
 import 'package:shorebird_cli/src/commands/release_new/releaser.dart';
 import 'package:shorebird_cli/src/config/config.dart';
@@ -42,6 +43,16 @@ class ReleaseNewCommand extends ShorebirdCommand {
         'build-number',
         help: 'The build number of the aar',
         defaultsTo: '1.0',
+      )
+      ..addFlag(
+        'codesign',
+        help: 'Codesign the application bundle.',
+        defaultsTo: true,
+      )
+      ..addOption(
+        exportOptionsPlistArgName,
+        help:
+            '''Export an IPA with these options. See "xcodebuild -h" for available exportOptionsPlist keys.''',
       )
       ..addOption(
         'flutter-version',
@@ -118,8 +129,7 @@ of the iOS app that is using this module.''',
           target: target,
         );
       case ReleaseType.ios:
-        throw UnimplementedError();
-      // return IosReleasePipeline(argResults: argResults);
+        return IosReleaser(argResults: results, flavor: flavor, target: target);
       case ReleaseType.iosFramework:
         throw UnimplementedError();
       // return IosFrameworkReleasePipeline(argResults: argResults);
@@ -201,7 +211,9 @@ of the iOS app that is using this module.''',
         await finalizeRelease(release: release, pipeline: releaser);
 
         logger
-          ..success('✅ Published Release ${release.version}!')
+          ..success('''
+          
+          ✅ Published Release ${release.version}!''')
           ..info(releaser.postReleaseInstructions);
 
         printPatchInstructions(
@@ -386,7 +398,7 @@ ${summary.join('\n')}
       releaseId: release.id,
       platform: pipeline.releaseType.releasePlatform,
       status: ReleaseStatus.active,
-      metadata: pipeline.releaseMetadata,
+      metadata: await pipeline.releaseMetadata(),
     );
   }
 

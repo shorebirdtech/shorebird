@@ -295,4 +295,33 @@ Either run `flutter pub get` manually, or follow the steps in ${link(uri: Uri.pa
       );
     }
   }
+
+  String _failedToCreateIpaErrorMessage({required String stderr}) {
+    // The full error text consists of many repeated lines of the format:
+    // (newlines added for line length)
+    //
+    // [   +1 ms] Encountered error while creating the IPA:
+    // [        ] error: exportArchive: Team "Team" does not have permission to
+    //      create "iOS In House" provisioning profiles.
+    //    error: exportArchive: No profiles for 'com.example.dev' were found
+    //    error: exportArchive: No signing certificate "iOS Distribution" found
+    //    error: exportArchive: Communication with Apple failed
+    //    error: exportArchive: No signing certificate "iOS Distribution" found
+    //    error: exportArchive: Team "My Team" does not have permission to
+    //      create "iOS App Store" provisioning profiles.
+    //    error: exportArchive: No profiles for 'com.example.demo' were found
+    //    error: exportArchive: Communication with Apple failed
+    //    error: exportArchive: No signing certificate "iOS Distribution" found
+    //    error: exportArchive: Communication with Apple failed
+    final exportArchiveRegex = RegExp(r'error: exportArchive: (.+)$');
+
+    return stderr
+        .split('\n')
+        .map((l) => l.trim())
+        .toSet()
+        .map(exportArchiveRegex.firstMatch)
+        .whereType<Match>()
+        .map((m) => '    ${m.group(1)!}')
+        .join('\n');
+  }
 }

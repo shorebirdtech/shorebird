@@ -135,7 +135,8 @@ class AarReleaser extends Releaser {
   }
 
   @override
-  UpdateReleaseMetadata get releaseMetadata => UpdateReleaseMetadata(
+  Future<UpdateReleaseMetadata> releaseMetadata() async =>
+      UpdateReleaseMetadata(
         releasePlatform: releaseType.releasePlatform,
         flutterVersionOverride: argResults['flutter-version'] as String?,
         generatedApks: false,
