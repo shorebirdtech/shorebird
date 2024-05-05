@@ -22,7 +22,6 @@ void main() {
     late Directory cacheArtifactDirectory;
     late Directory projectRoot;
     late http.Client httpClient;
-    late Directory projectRoot;
     late Logger logger;
     late ShorebirdEnv shorebirdEnv;
     late ShorebirdProcessResult patchProcessResult;
