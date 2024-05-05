@@ -703,5 +703,79 @@ Failed to build:
       },
       testOn: 'mac-os',
     );
+
+    group(
+      'buildIosFramework',
+      () {
+        test('invokes the correct flutter build command', () async {
+          await runWithOverrides(builder.buildIosFramework);
+
+          verify(
+            () => shorebirdProcess.run(
+              'flutter',
+              [
+                'build',
+                'ios-framework',
+                '--no-debug',
+                '--no-profile',
+              ],
+              runInShell: true,
+              environment: any(named: 'environment'),
+            ),
+          ).called(1);
+        });
+
+        test('forward arguments to flutter build', () async {
+          await runWithOverrides(
+            () => builder.buildIosFramework(
+              argResultsRest: ['--foo', 'bar'],
+            ),
+          );
+
+          verify(
+            () => shorebirdProcess.run(
+              'flutter',
+              [
+                'build',
+                'ios-framework',
+                '--no-debug',
+                '--no-profile',
+                '--foo',
+                'bar',
+              ],
+              runInShell: true,
+            ),
+          ).called(1);
+        });
+
+        group('after a build', () {
+          group('when the build is successful', () {
+            setUp(() {
+              when(() => buildProcessResult.exitCode)
+                  .thenReturn(ExitCode.success.code);
+            });
+
+            verifyCorrectFlutterPubGet(
+              () => runWithOverrides(builder.buildIosFramework),
+            );
+
+            group('when the build fails', () {
+              setUp(() {
+                when(() => buildProcessResult.exitCode)
+                    .thenReturn(ExitCode.software.code);
+              });
+
+              verifyCorrectFlutterPubGet(
+                () => expectLater(
+                  () => runWithOverrides(builder.buildIosFramework),
+                  throwsA(isA<ArtifactBuildException>()),
+                ),
+              );
+            });
+          });
+        });
+      },
+      testOn: 'mac-os',
+    );
   });
 }
