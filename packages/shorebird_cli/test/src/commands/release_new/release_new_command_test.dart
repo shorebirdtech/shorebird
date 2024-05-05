@@ -5,6 +5,7 @@ import 'package:scoped/scoped.dart';
 import 'package:shorebird_cli/src/code_push_client_wrapper.dart';
 import 'package:shorebird_cli/src/commands/release_new/aar_releaser.dart';
 import 'package:shorebird_cli/src/commands/release_new/android_releaser.dart';
+import 'package:shorebird_cli/src/commands/release_new/ios_framework_releaser.dart';
 import 'package:shorebird_cli/src/commands/release_new/ios_releaser.dart';
 import 'package:shorebird_cli/src/commands/release_new/release_new_command.dart';
 import 'package:shorebird_cli/src/commands/release_new/release_type.dart';
@@ -194,8 +195,8 @@ void main() {
           isA<IosReleaser>(),
         );
         expect(
-          () => command.getReleaser(ReleaseType.iosFramework),
-          throwsA(isA<UnimplementedError>()),
+          command.getReleaser(ReleaseType.iosFramework),
+          isA<IosFrameworkReleaser>(),
         );
       });
     });
