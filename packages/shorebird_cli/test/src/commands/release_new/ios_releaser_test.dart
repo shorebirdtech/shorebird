@@ -147,8 +147,9 @@ void main() {
         });
 
         group('when validation fails', () {
+          final exception = ValidationFailedException();
+
           setUp(() {
-            final exception = ValidationFailedException();
             when(
               () => shorebirdValidator.validatePreconditions(
                 checkUserIsAuthenticated:
@@ -163,18 +164,6 @@ void main() {
           });
 
           test('exits with code 70', () async {
-            final exception = ValidationFailedException();
-            when(
-              () => shorebirdValidator.validatePreconditions(
-                checkUserIsAuthenticated:
-                    any(named: 'checkUserIsAuthenticated'),
-                checkShorebirdInitialized:
-                    any(named: 'checkShorebirdInitialized'),
-                validators: any(named: 'validators'),
-                supportedOperatingSystems:
-                    any(named: 'supportedOperatingSystems'),
-              ),
-            ).thenThrow(exception);
             await expectLater(
               () => runWithOverrides(iosReleaser.assertPreconditions),
               exitsWithCode(exception.exitCode),
