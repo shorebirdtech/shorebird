@@ -19,7 +19,7 @@ import 'package:shorebird_cli/src/version.dart';
 import 'package:shorebird_code_push_client/shorebird_code_push_client.dart';
 
 /// {@template ios_releaser}
-/// TODO
+/// Functions to build and publish an iOS release.
 /// {@endtemplate}
 class IosReleaser extends Releaser {
   /// {@macro ios_releaser}
