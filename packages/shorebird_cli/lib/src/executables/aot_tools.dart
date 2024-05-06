@@ -132,7 +132,7 @@ class AotTools {
   }
 
   Future<bool> isLinkDebugInfoSupported() async {
-    final result = await _exec(['link --help']);
+    final result = await _exec(['link', '--help']);
     return result.stdout.toString().contains('dump-debug-info');
   }
 

@@ -92,7 +92,6 @@ If this option is not provided, the version number will be determined from the p
       )
       ..addFlag(
         'debug-linker',
-        negatable: false,
         defaultsTo: true,
         help: 'Collects linker diagnostic information to help troubleshoot low '
             'link percentages. File is saved to build/$_debugInfoFileName.',
