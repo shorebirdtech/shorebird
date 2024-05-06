@@ -13,7 +13,7 @@ NSError _$NSErrorFromJson(Map<String, dynamic> json) => $checkedCreate(
       json,
       ($checkedConvert) {
         final val = NSError(
-          code: $checkedConvert('code', (v) => v as int),
+          code: $checkedConvert('code', (v) => (v as num).toInt()),
           domain: $checkedConvert('domain', (v) => v as String),
           userInfo: $checkedConvert(
               'userInfo', (v) => UserInfo.fromJson(v as Map<String, dynamic>)),
