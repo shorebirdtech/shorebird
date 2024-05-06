@@ -14,7 +14,7 @@
 #
 # Usage: ./patch_e2e.sh
 
-TEMP_DIR=$(mktemp -d)
+TEMP_DIR=$(mktemp -d -t 'shorebird workspace')
 cd $TEMP_DIR
 
 # Create a new empty flutter project
