@@ -14,6 +14,7 @@
 #
 # Usage: ./patch_e2e.sh
 
+# Intentionally including a space in the path.
 TEMP_DIR=$(mktemp -d -t 'shorebird workspace')
 cd $TEMP_DIR
 
