@@ -1,7 +1,8 @@
 ---
 name: Smoke Test Checklist
 about: Bootstrap a new version smoke test checklist
-title: "chore: "
+title: chore(smoke_test): <version>
+labels: chore
 ---
 
 Smoke tests checklist for new version (x.x.x):
