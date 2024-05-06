@@ -8,7 +8,7 @@ environment:
 
 dependencies:
   http: ^1.0.0
-  json_annotation: ^4.8.0
+  json_annotation: ^4.9.0
   shelf: ^1.4.0
   shelf_router: ^1.1.0
 
