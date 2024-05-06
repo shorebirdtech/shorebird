@@ -1,3 +1,9 @@
+---
+name: Smoke Test Checklist
+about: Bootstrap a new version smoke test checklist
+title: "chore: "
+---
+
 Smoke tests checklist for new version (x.x.x):
 
 - [ ] e2e tests (ADD_LINK_HERE_WHEN_DONE)
@@ -33,7 +39,7 @@ Smoke tests checklist for new version (x.x.x):
 - [ ] Android Add to App patch
     - [ ] Win
     - [ ] Mac
- 
+
 - [ ] iOS Flavors release
 - [ ] iOS Flavors patch
     - [ ] Auto detect version
