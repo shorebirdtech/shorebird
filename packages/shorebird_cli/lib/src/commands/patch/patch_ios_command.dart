@@ -530,7 +530,8 @@ ${summary.join('\n')}
     required File releaseArtifact,
   }) async {
     final patch = File(_aotOutputPath);
-    final dumpDebugInfo = results['debug-linker'] == true;
+    final dumpDebugInfo = results['debug-linker'] == true &&
+        (await aotTools.isLinkDebugInfoSupported());
 
     if (!patch.existsSync()) {
       logger.err('Unable to find patch AOT file at ${patch.path}');

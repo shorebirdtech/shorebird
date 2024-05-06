@@ -131,6 +131,11 @@ class AotTools {
     return tryParseVersion(version) ?? noVersion;
   }
 
+  Future<bool> isLinkDebugInfoSupported() async {
+    final result = await _exec(['link --help']);
+    return result.stdout.toString().contains('dump-debug-info');
+  }
+
   /// Generate a link vmcode file from two AOT snapshots.
   Future<double?> link({
     required String base,
