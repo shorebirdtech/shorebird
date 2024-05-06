@@ -93,8 +93,9 @@ If this option is not provided, the version number will be determined from the p
       ..addFlag(
         'debug-linker',
         negatable: false,
+        defaultsTo: true,
         help: 'Collects linker diagnostic information to help troubleshoot low '
-            'link percentages.',
+            'link percentages. File is saved to build/$_debugInfoFileName.',
       );
   }
 
@@ -378,8 +379,9 @@ Please re-run the release command for this version or create a new release.''');
             '🟢 Track: ${lightCyan.wrap('Production')}',
           if (percentLinked != null)
             '''🔗 Running ${lightCyan.wrap('${percentLinked.toStringAsFixed(1)}%')} on CPU''',
-          if (results['debug-linker'] == true)
-            '''🔍 Debug Info: ${lightCyan.wrap(_debugInfoOutpath)}''',
+          if (results['debug-linker'] == true &&
+              (percentLinked != null && percentLinked < minLinkPercentage))
+            '''🔍 Debug Info: ${lightCyan.wrap(_debugInfoOutputPath)}''',
         ];
 
         logger.info(
@@ -453,9 +455,10 @@ ${summary.join('\n')}
         'out.vmcode',
       );
 
-  String get _debugInfoOutpath => p.join(
+  static const _debugInfoFileName = 'linker_diagnostic.zip';
+  String get _debugInfoOutputPath => p.join(
         _buildDirectory,
-        'linker_diagnostic.zip',
+        _debugInfoFileName,
       );
 
   String _readVersionFromPlist() {
@@ -571,7 +574,7 @@ ${summary.join('\n')}
         debugInfoZip.copySync(
           p.join(
             'build',
-            _debugInfoOutpath,
+            _debugInfoOutputPath,
           ),
         );
       }

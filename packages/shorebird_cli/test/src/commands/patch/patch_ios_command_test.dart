@@ -1321,6 +1321,38 @@ Please re-run the release command for this version or create a new release.'''),
               ).called(1);
             },
           );
+
+          test(
+            'prints the file location when linking is less than the minimum',
+            () async {
+              when(
+                () => aotTools.link(
+                  base: any(named: 'base'),
+                  patch: any(named: 'patch'),
+                  analyzeSnapshot: any(named: 'analyzeSnapshot'),
+                  genSnapshot: any(named: 'genSnapshot'),
+                  kernel: any(named: 'kernel'),
+                  workingDirectory: any(named: 'workingDirectory'),
+                  outputPath: any(named: 'outputPath'),
+                  dumpDebugInfoPath: any(named: 'dumpDebugInfoPath'),
+                ),
+              ).thenAnswer(
+                (_) async => 20,
+              );
+              when(() => argResults['debug-linker']).thenReturn(true);
+              setUpProjectRoot();
+              setUpProjectRootArtifacts();
+              final exitCode = await runWithOverrides(command.run);
+              expect(exitCode, ExitCode.success.code);
+
+              final captured = verify(() => logger.info(captureAny())).captured
+                  as List<Object?>;
+              final contains = captured.whereType<String>().any(
+                    (element) => element.contains('Debug Info'),
+                  );
+              expect(contains, isTrue);
+            },
+          );
         });
       });
 
