@@ -57,7 +57,8 @@ shorebird patch android -v
 # Run the app on Android and ensure that the original print statement is printed.
 while IFS= read line; do
     if [[ "$line" == *"Patch 1 successfully installed"* ]]; then
-        adb kill-server
+        # Kill the app so we can boot the patch
+        adb shell am force-stop com.example.e2e_test
         echo "✅ Patch 1 successfully installed"
         break
     fi

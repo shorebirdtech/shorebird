@@ -14,13 +14,13 @@ ReleaseArtifact _$ReleaseArtifactFromJson(Map<String, dynamic> json) =>
       json,
       ($checkedConvert) {
         final val = ReleaseArtifact(
-          id: $checkedConvert('id', (v) => v as int),
-          releaseId: $checkedConvert('release_id', (v) => v as int),
+          id: $checkedConvert('id', (v) => (v as num).toInt()),
+          releaseId: $checkedConvert('release_id', (v) => (v as num).toInt()),
           arch: $checkedConvert('arch', (v) => v as String),
           platform: $checkedConvert(
               'platform', (v) => $enumDecode(_$ReleasePlatformEnumMap, v)),
           hash: $checkedConvert('hash', (v) => v as String),
-          size: $checkedConvert('size', (v) => v as int),
+          size: $checkedConvert('size', (v) => (v as num).toInt()),
           url: $checkedConvert('url', (v) => v as String),
         );
         return val;

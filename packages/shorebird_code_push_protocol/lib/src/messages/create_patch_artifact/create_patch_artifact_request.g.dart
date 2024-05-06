@@ -21,9 +21,11 @@ CreatePatchArtifactRequest _$CreatePatchArtifactRequestFromJson(
           hash: $checkedConvert('hash', (v) => v as String),
           size: $checkedConvert(
               'size', (v) => CreatePatchArtifactRequest._parseStringToInt(v)),
+          hashSignature: $checkedConvert('hash_signature', (v) => v as String?),
         );
         return val;
       },
+      fieldKeyMap: const {'hashSignature': 'hash_signature'},
     );
 
 Map<String, dynamic> _$CreatePatchArtifactRequestToJson(
@@ -32,6 +34,7 @@ Map<String, dynamic> _$CreatePatchArtifactRequestToJson(
       'arch': instance.arch,
       'platform': _$ReleasePlatformEnumMap[instance.platform]!,
       'hash': instance.hash,
+      'hash_signature': instance.hashSignature,
       'size': CreatePatchArtifactRequest._parseIntToString(instance.size),
     };
 
