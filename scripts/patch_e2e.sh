@@ -16,7 +16,7 @@
 
 # Intentionally including a space in the path.
 TEMP_DIR=$(mktemp -d -t 'shorebird workspace-XXXXX')
-cd $TEMP_DIR
+cd "$TEMP_DIR"
 
 # Create a new empty flutter project
 flutter create e2e_test --empty --platforms android
