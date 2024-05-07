@@ -122,6 +122,7 @@ Looked in:
 
     final patchArchsBuildDir = ArtifactManager.androidArchsDirectory(
       projectRoot: projectRoot,
+      flavor: flavor,
     );
     if (patchArchsBuildDir == null) {
       logger.err('Could not find patch artifacts');
