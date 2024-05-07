@@ -37,7 +37,7 @@ abstract class Patcher {
   Future<void> assertPreconditions();
 
   /// Asserts that the combination arguments passed to the command are valid.
-  Future<void> assertArgsAreValid();
+  Future<void> assertArgsAreValid() async {}
 
   /// Builds the release artifacts for the given platform. Returns the "primary"
   /// artifact for the platform (e.g. the AAB for Android, the IPA for iOS).

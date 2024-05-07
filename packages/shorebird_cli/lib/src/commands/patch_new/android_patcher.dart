@@ -33,11 +33,6 @@ class AndroidPatcher extends Patcher {
   ArchiveDiffer get archiveDiffer => AndroidArchiveDiffer();
 
   @override
-  Future<void> assertArgsAreValid() async {
-    // Nothing to do here
-  }
-
-  @override
   Future<void> assertPreconditions() async {
     try {
       await shorebirdValidator.validatePreconditions(
