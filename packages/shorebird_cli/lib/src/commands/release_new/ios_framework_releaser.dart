@@ -18,7 +18,11 @@ import 'package:shorebird_cli/src/third_party/flutter_tools/lib/flutter_tools.da
 import 'package:shorebird_cli/src/version.dart';
 import 'package:shorebird_code_push_client/shorebird_code_push_client.dart';
 
+/// {@template ios_framework_releaser}
+/// Functions to create an iOS framework release.
+/// {@endtemplate}
 class IosFrameworkReleaser extends Releaser {
+  /// {@macro ios_framework_releaser}
   IosFrameworkReleaser({
     required super.argResults,
     required super.flavor,
