@@ -2,6 +2,7 @@ import 'dart:io';
 
 import 'package:mason_logger/mason_logger.dart';
 import 'package:mocktail/mocktail.dart';
+import 'package:path/path.dart' as p;
 import 'package:scoped/scoped.dart';
 import 'package:shorebird_cli/src/artifact_builder.dart';
 import 'package:shorebird_cli/src/logger.dart';
@@ -17,6 +18,7 @@ import 'mocks.dart';
 
 void main() {
   group(ArtifactBuilder, () {
+    late Ios ios;
     late Logger logger;
     late OperatingSystemInterface operatingSystemInterface;
     late ShorebirdAndroidArtifacts shorebirdAndroidArtifacts;
@@ -30,6 +32,7 @@ void main() {
       return runScoped(
         body,
         values: {
+          iosRef.overrideWith(() => ios),
           loggerRef.overrideWith(() => logger),
           osInterfaceRef.overrideWith(() => operatingSystemInterface),
           processRef.overrideWith(() => shorebirdProcess),
@@ -47,6 +50,7 @@ void main() {
 
     setUp(() {
       buildProcessResult = MockProcessResult();
+      ios = MockIos();
       logger = MockLogger();
       operatingSystemInterface = MockOperatingSystemInterface();
       pubGetProcessResult = MockProcessResult();
@@ -498,5 +502,206 @@ Either run `flutter pub get` manually, or follow the steps in ${link(uri: Uri.pa
         });
       });
     });
+
+    group(
+      'buildIpa',
+      () {
+        late File exportOptionsPlist;
+
+        setUp(() {
+          final tempDir = Directory.systemTemp.createTempSync();
+          exportOptionsPlist =
+              File(p.join(tempDir.path, 'exportoptions.plist'));
+          when(ios.createExportOptionsPlist).thenReturn(
+            exportOptionsPlist,
+          );
+        });
+
+        group('with default arguments', () {
+          test('invokes flutter build with an export options plist', () async {
+            await runWithOverrides(builder.buildIpa);
+
+            verify(
+              () => shorebirdProcess.run(
+                'flutter',
+                [
+                  'build',
+                  'ipa',
+                  '--release',
+                  '--export-options-plist=${exportOptionsPlist.path}',
+                ],
+                runInShell: true,
+                environment: any(named: 'environment'),
+              ),
+            ).called(1);
+          });
+        });
+
+        group('when export options plist is provided', () {
+          test('forwards to flutter build', () async {
+            await runWithOverrides(
+              () => builder.buildIpa(
+                exportOptionsPlist: File('custom_exportoptions.plist'),
+              ),
+            );
+
+            verify(
+              () => shorebirdProcess.run(
+                'flutter',
+                [
+                  'build',
+                  'ipa',
+                  '--release',
+                  '--export-options-plist=custom_exportoptions.plist',
+                ],
+                runInShell: any(named: 'runInShell'),
+              ),
+            ).called(1);
+          });
+        });
+
+        test('does not provide export options plist without codesigning',
+            () async {
+          await runWithOverrides(
+            () => builder.buildIpa(
+              codesign: false,
+              exportOptionsPlist: File('exportOptionsPlist.plist'),
+            ),
+          );
+
+          verify(
+            () => shorebirdProcess.run(
+              'flutter',
+              [
+                'build',
+                'ipa',
+                '--release',
+                '--no-codesign',
+              ],
+              runInShell: any(named: 'runInShell'),
+              environment: any(named: 'environment'),
+            ),
+          ).called(1);
+        });
+
+        test('forwards extra arguments to flutter build', () async {
+          await runWithOverrides(
+            () => builder.buildIpa(
+              codesign: false,
+              exportOptionsPlist: File('exportOptionsPlist.plist'),
+              flavor: 'flavor',
+              target: 'target.dart',
+              argResultsRest: ['--foo', 'bar'],
+            ),
+          );
+
+          verify(
+            () => shorebirdProcess.run(
+              'flutter',
+              [
+                'build',
+                'ipa',
+                '--release',
+                '--flavor=flavor',
+                '--target=target.dart',
+                '--no-codesign',
+                '--foo',
+                'bar',
+              ],
+              runInShell: any(named: 'runInShell'),
+            ),
+          ).called(1);
+        });
+
+        group('when the build fails', () {
+          group('with non-zero exit code', () {
+            setUp(() {
+              when(() => buildProcessResult.exitCode)
+                  .thenReturn(ExitCode.software.code);
+            });
+
+            test('throws ArtifactBuildException', () {
+              expect(
+                () => runWithOverrides(() => builder.buildIpa(codesign: false)),
+                throwsA(isA<ArtifactBuildException>()),
+              );
+            });
+          });
+
+          group('with error message in stderr', () {
+            setUp(() {
+              when(() => buildProcessResult.exitCode)
+                  .thenReturn(ExitCode.success.code);
+              when(() => buildProcessResult.stderr).thenReturn(
+                '''
+Encountered error while creating the IPA:
+error: exportArchive: Communication with Apple failed
+error: exportArchive: No signing certificate "iOS Distribution" found
+error: exportArchive: Communication with Apple failed
+error: exportArchive: No signing certificate "iOS Distribution" found
+error: exportArchive: Team "My Team" does not have permission to create "iOS App Store" provisioning profiles.
+error: exportArchive: No profiles for 'com.example.co' were found
+error: exportArchive: Communication with Apple failed
+error: exportArchive: No signing certificate "iOS Distribution" found
+error: exportArchive: Communication with Apple failed
+error: exportArchive: No signing certificate "iOS Distribution" found
+error: exportArchive: Communication with Apple failed
+error: exportArchive: No signing certificate "iOS Distribution" found''',
+              );
+            });
+
+            test('throws ArtifactBuildException with error message', () {
+              expect(
+                () => runWithOverrides(() => builder.buildIpa(codesign: false)),
+                throwsA(
+                  isA<ArtifactBuildException>().having(
+                    (e) => e.message,
+                    'message',
+                    '''
+Failed to build:
+    Communication with Apple failed
+    No signing certificate "iOS Distribution" found
+    Team "My Team" does not have permission to create "iOS App Store" provisioning profiles.
+    No profiles for 'com.example.co' were found''',
+                  ),
+                ),
+              );
+            });
+          });
+        });
+
+        group('after a build', () {
+          group('when the build is successful', () {
+            setUp(() {
+              when(() => buildProcessResult.exitCode)
+                  .thenReturn(ExitCode.success.code);
+            });
+
+            verifyCorrectFlutterPubGet(
+              () async => runWithOverrides(
+                () => builder.buildIpa(codesign: false),
+              ),
+            );
+
+            group('when the build fails', () {
+              setUp(() {
+                when(() => buildProcessResult.exitCode)
+                    .thenReturn(ExitCode.software.code);
+              });
+
+              verifyCorrectFlutterPubGet(
+                () async => expectLater(
+                  () async => runWithOverrides(
+                    () => builder.buildIpa(codesign: false),
+                  ),
+                  throwsA(isA<ArtifactBuildException>()),
+                ),
+              );
+            });
+          });
+        });
+      },
+      testOn: 'mac-os',
+    );
   });
 }
