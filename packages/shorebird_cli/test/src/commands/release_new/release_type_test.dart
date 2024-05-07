@@ -17,12 +17,5 @@ void main() {
       expect(ReleaseType.iosFramework.releasePlatform, ReleasePlatform.ios);
       expect(ReleaseType.aar.releasePlatform, ReleasePlatform.android);
     });
-
-    test('requiresReleaseVersionArg', () {
-      expect(ReleaseType.android.requiresReleaseVersionArg(), false);
-      expect(ReleaseType.ios.requiresReleaseVersionArg(), false);
-      expect(ReleaseType.iosFramework.requiresReleaseVersionArg(), true);
-      expect(ReleaseType.aar.requiresReleaseVersionArg(), true);
-    });
   });
 }

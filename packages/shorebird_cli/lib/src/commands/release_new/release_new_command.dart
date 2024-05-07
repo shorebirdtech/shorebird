@@ -5,11 +5,8 @@ import 'package:meta/meta.dart';
 import 'package:scoped/scoped.dart';
 import 'package:shorebird_cli/src/code_push_client_wrapper.dart';
 import 'package:shorebird_cli/src/command.dart';
-import 'package:shorebird_cli/src/commands/release_new/aar_releaser.dart';
-import 'package:shorebird_cli/src/commands/release_new/android_releaser.dart';
-import 'package:shorebird_cli/src/commands/release_new/ios_releaser.dart';
+import 'package:shorebird_cli/src/commands/release_new/release_new.dart';
 import 'package:shorebird_cli/src/commands/release_new/release_type.dart';
-import 'package:shorebird_cli/src/commands/release_new/releaser.dart';
 import 'package:shorebird_cli/src/config/config.dart';
 import 'package:shorebird_cli/src/extensions/arg_results.dart';
 import 'package:shorebird_cli/src/logger.dart';
@@ -41,7 +38,12 @@ class ReleaseNewCommand extends ShorebirdCommand {
       )
       ..addOption(
         'build-number',
-        help: 'The build number of the aar',
+        help: '''
+An identifier used as an internal version number.
+Each build must have a unique identifier to differentiate it from previous builds.
+It is used to determine whether one build is more recent than another, with higher numbers indicating more recent build.
+On Android it is used as "versionCode".
+On Xcode builds it is used as "CFBundleVersion".''',
         defaultsTo: '1.0',
       )
       ..addFlag(
@@ -114,7 +116,9 @@ of the iOS app that is using this module.''',
         .map(_resolveReleaser)
         .map(createRelease);
 
-    await Future.wait(releaserFutures);
+    for (final future in releaserFutures) {
+      await future;
+    }
 
     return ExitCode.success.code;
   }
@@ -129,10 +133,17 @@ of the iOS app that is using this module.''',
           target: target,
         );
       case ReleaseType.ios:
-        return IosReleaser(argResults: results, flavor: flavor, target: target);
+        return IosReleaser(
+          argResults: results,
+          flavor: flavor,
+          target: target,
+        );
       case ReleaseType.iosFramework:
-        throw UnimplementedError();
-      // return IosFrameworkReleasePipeline(argResults: argResults);
+        return IosFrameworkReleaser(
+          argResults: results,
+          flavor: flavor,
+          target: target,
+        );
       case ReleaseType.aar:
         return AarReleaser(
           argResults: results,
@@ -188,7 +199,7 @@ of the iOS app that is using this module.''',
         );
 
         // Ensure we can create a release from what we've built.
-        await assertVersionIsReleasable(
+        await ensureVersionIsReleasable(
           version: releaseVersion,
           flutterRevision: targetFlutterRevision,
           releasePlatform: releaser.releaseType.releasePlatform,
@@ -206,9 +217,9 @@ of the iOS app that is using this module.''',
           version: releaseVersion,
           releasePlatform: releaser.releaseType.releasePlatform,
         );
-        await prepareRelease(release: release, pipeline: releaser);
+        await prepareRelease(release: release, releaser: releaser);
         await releaser.uploadReleaseArtifacts(release: release, appId: appId);
-        await finalizeRelease(release: release, pipeline: releaser);
+        await finalizeRelease(release: release, releaser: releaser);
 
         logger
           ..success('''
@@ -232,8 +243,8 @@ of the iOS app that is using this module.''',
 
   /// Determines which Flutter version to use for the release. This will be
   /// either the version specified by the user or the version provided by
-  /// [shorebirdEnv]. Will exit with code 70 if the version specified by the
-  /// user is not found/supported.
+  /// [shorebirdEnv]. Will exit with [ExitCode.software] if the version
+  /// specified by the user is not found/supported.
   Future<String> resolveTargetFlutterRevision() async {
     if (flutterVersionArg != null) {
       final String? revision;
@@ -277,7 +288,7 @@ Use `shorebird flutter versions list` to list available versions.
   /// published with the given [version] for the platform [releasePlatform], or
   /// if a release already exists with [version] but was compiled with a
   /// different Flutter revision, an error will be thrown.
-  Future<void> assertVersionIsReleasable({
+  Future<void> ensureVersionIsReleasable({
     required String version,
     required String flutterRevision,
     required ReleasePlatform releasePlatform,
@@ -296,8 +307,6 @@ Use `shorebird flutter versions list` to list available versions.
       // All artifacts associated with a given release must be built
       // with the same Flutter revision.
       if (existingRelease.flutterRevision != flutterRevision) {
-        // All artifacts associated with a given release must be built
-        // with the same Flutter revision.
         logger
           ..err('''
 ${styleBold.wrap(lightRed.wrap('A release with version $version already exists but was built using a different Flutter revision.'))}
@@ -378,27 +387,27 @@ ${summary.join('\n')}
   /// Prepares the release by updating the release status to draft.
   Future<void> prepareRelease({
     required Release release,
-    required Releaser pipeline,
+    required Releaser releaser,
   }) async {
     await codePushClientWrapper.updateReleaseStatus(
       appId: appId,
       releaseId: release.id,
-      platform: pipeline.releaseType.releasePlatform,
+      platform: releaser.releaseType.releasePlatform,
       status: ReleaseStatus.draft,
     );
   }
 
-  /// Finalizes the release by updating the release status to active.
+  /// Finalizes the release by updating the status to active.
   Future<void> finalizeRelease({
     required Release release,
-    required Releaser pipeline,
+    required Releaser releaser,
   }) async {
     await codePushClientWrapper.updateReleaseStatus(
       appId: appId,
       releaseId: release.id,
-      platform: pipeline.releaseType.releasePlatform,
+      platform: releaser.releaseType.releasePlatform,
       status: ReleaseStatus.active,
-      metadata: await pipeline.releaseMetadata(),
+      metadata: await releaser.releaseMetadata(),
     );
   }
 
