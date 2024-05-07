@@ -227,8 +227,8 @@ of the iOS app that is using this module.''',
 
   /// Determines which Flutter version to use for the release. This will be
   /// either the version specified by the user or the version provided by
-  /// [shorebirdEnv]. Will exit with code 70 if the version specified by the
-  /// user is not found/supported.
+  /// [shorebirdEnv]. Will exit with [ExitCode.software] if the version
+  /// specified by the user is not found/supported.
   Future<String> resolveTargetFlutterRevision() async {
     if (flutterVersionArg != null) {
       final String? revision;
