@@ -471,9 +471,9 @@ void main() {
           when(() => argResults['android-artifact']).thenReturn('apk');
         });
 
-        test('returns expected metadata', () {
+        test('returns expected metadata', () async {
           expect(
-            runWithOverrides(() => androidReleaser.releaseMetadata),
+            await runWithOverrides(() => androidReleaser.releaseMetadata()),
             const UpdateReleaseMetadata(
               releasePlatform: ReleasePlatform.android,
               flutterVersionOverride: null,
@@ -494,9 +494,9 @@ void main() {
           when(() => argResults['android-artifact']).thenReturn('aab');
         });
 
-        test('returns expected metadata', () {
+        test('returns expected metadata', () async {
           expect(
-            runWithOverrides(() => androidReleaser.releaseMetadata),
+            await runWithOverrides(() => androidReleaser.releaseMetadata()),
             const UpdateReleaseMetadata(
               releasePlatform: ReleasePlatform.android,
               flutterVersionOverride: null,

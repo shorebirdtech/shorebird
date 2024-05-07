@@ -408,18 +408,20 @@ void main() {
             .thenReturn(operatingSystemVersion);
       });
 
-      test('returns expected metadata', () {
+      test('returns expected metadata', () async {
         expect(
-          runWithOverrides(() => aarReleaser.releaseMetadata),
-          const UpdateReleaseMetadata(
-            releasePlatform: ReleasePlatform.android,
-            flutterVersionOverride: null,
-            generatedApks: false,
-            environment: BuildEnvironmentMetadata(
-              operatingSystem: operatingSystem,
-              operatingSystemVersion: operatingSystemVersion,
-              shorebirdVersion: packageVersion,
-              xcodeVersion: null,
+          await runWithOverrides(aarReleaser.releaseMetadata),
+          equals(
+            const UpdateReleaseMetadata(
+              releasePlatform: ReleasePlatform.android,
+              flutterVersionOverride: null,
+              generatedApks: false,
+              environment: BuildEnvironmentMetadata(
+                operatingSystem: operatingSystem,
+                operatingSystemVersion: operatingSystemVersion,
+                shorebirdVersion: packageVersion,
+                xcodeVersion: null,
+              ),
             ),
           ),
         );

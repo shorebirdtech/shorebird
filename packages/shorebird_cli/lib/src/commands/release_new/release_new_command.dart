@@ -7,6 +7,7 @@ import 'package:shorebird_cli/src/code_push_client_wrapper.dart';
 import 'package:shorebird_cli/src/command.dart';
 import 'package:shorebird_cli/src/commands/release_new/aar_releaser.dart';
 import 'package:shorebird_cli/src/commands/release_new/android_releaser.dart';
+import 'package:shorebird_cli/src/commands/release_new/ios_releaser.dart';
 import 'package:shorebird_cli/src/commands/release_new/release_type.dart';
 import 'package:shorebird_cli/src/commands/release_new/releaser.dart';
 import 'package:shorebird_cli/src/config/config.dart';
@@ -47,6 +48,16 @@ It is used to determine whether one build is more recent than another, with high
 On Android it is used as "versionCode".
 On Xcode builds it is used as "CFBundleVersion".''',
         defaultsTo: '1.0',
+      )
+      ..addFlag(
+        'codesign',
+        help: 'Codesign the application bundle.',
+        defaultsTo: true,
+      )
+      ..addOption(
+        exportOptionsPlistArgName,
+        help:
+            '''Export an IPA with these options. See "xcodebuild -h" for available exportOptionsPlist keys.''',
       )
       ..addOption(
         'flutter-version',
@@ -125,7 +136,7 @@ of the iOS app that is using this module.''',
           target: target,
         );
       case ReleaseType.ios:
-        throw UnimplementedError();
+        return IosReleaser(argResults: results, flavor: flavor, target: target);
       case ReleaseType.iosFramework:
         throw UnimplementedError();
       case ReleaseType.aar:
@@ -201,12 +212,14 @@ of the iOS app that is using this module.''',
           version: releaseVersion,
           releasePlatform: releaser.releaseType.releasePlatform,
         );
-        await prepareRelease(release: release, pipeline: releaser);
+        await prepareRelease(release: release, releaser: releaser);
         await releaser.uploadReleaseArtifacts(release: release, appId: appId);
-        await finalizeRelease(release: release, pipeline: releaser);
+        await finalizeRelease(release: release, releaser: releaser);
 
         logger
-          ..success('✅ Published Release ${release.version}!')
+          ..success('''
+
+✅ Published Release ${release.version}!''')
           ..info(releaser.postReleaseInstructions);
 
         printPatchInstructions(
@@ -369,12 +382,12 @@ ${summary.join('\n')}
   /// Prepares the release by updating the release status to draft.
   Future<void> prepareRelease({
     required Release release,
-    required Releaser pipeline,
+    required Releaser releaser,
   }) async {
     await codePushClientWrapper.updateReleaseStatus(
       appId: appId,
       releaseId: release.id,
-      platform: pipeline.releaseType.releasePlatform,
+      platform: releaser.releaseType.releasePlatform,
       status: ReleaseStatus.draft,
     );
   }
@@ -382,18 +395,18 @@ ${summary.join('\n')}
   /// Finalizes the release by updating the status to active.
   Future<void> finalizeRelease({
     required Release release,
-    required Releaser pipeline,
+    required Releaser releaser,
   }) async {
     await codePushClientWrapper.updateReleaseStatus(
       appId: appId,
       releaseId: release.id,
-      platform: pipeline.releaseType.releasePlatform,
+      platform: releaser.releaseType.releasePlatform,
       status: ReleaseStatus.active,
-      metadata: pipeline.releaseMetadata,
+      metadata: await releaser.releaseMetadata(),
     );
   }
 
-  /// Instructions explaining how to patch the release that was just created.
+  /// Instructions explaining how to patch the release that was just creatd.
   void printPatchInstructions({
     required Releaser releaser,
     required String releaseVersion,
