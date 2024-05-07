@@ -1,5 +1,3 @@
-import 'dart:io';
-
 import 'package:crypto/crypto.dart';
 import 'package:io/io.dart';
 import 'package:path/path.dart' as p;
@@ -16,6 +14,7 @@ import 'package:shorebird_cli/src/platform/platform.dart';
 import 'package:shorebird_cli/src/shorebird_android_artifacts.dart';
 import 'package:shorebird_cli/src/shorebird_flutter.dart';
 import 'package:shorebird_cli/src/shorebird_validator.dart';
+import 'package:shorebird_cli/src/third_party/flutter_tools/lib/flutter_tools.dart';
 
 /// {@template android_patcher}
 /// Functions to create an Android patch.
@@ -86,6 +85,7 @@ Looked in:
   - build/app/intermediates/stripped_native_libs/release/out/lib
   - build/app/intermediates/stripped_native_libs/{flavor}Release/out/lib''',
         );
+      exit(ExitCode.software.code);
     }
     return aabFile;
   }
