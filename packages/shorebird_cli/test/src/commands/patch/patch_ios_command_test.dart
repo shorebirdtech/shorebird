@@ -18,6 +18,7 @@ import 'package:shorebird_cli/src/deployment_track.dart';
 import 'package:shorebird_cli/src/doctor.dart';
 import 'package:shorebird_cli/src/engine_config.dart';
 import 'package:shorebird_cli/src/executables/aot_tools.dart';
+import 'package:shorebird_cli/src/executables/executables.dart';
 import 'package:shorebird_cli/src/executables/xcodebuild.dart';
 import 'package:shorebird_cli/src/logger.dart';
 import 'package:shorebird_cli/src/os/operating_system_interface.dart';
@@ -529,6 +530,8 @@ flutter:
         command = runWithOverrides(
           () => PatchIosCommand(archiveDiffer: archiveDiffer),
         )..testArgResults = argResults;
+
+        when(aotTools.isLinkDebugInfoSupported).thenAnswer((_) async => true);
       });
 
       test('supports alpha alias', () {
@@ -1321,6 +1324,67 @@ Please re-run the release command for this version or create a new release.'''),
               ).called(1);
             },
           );
+
+          test(
+            'prints the file location when linking is less than the minimum',
+            () async {
+              const notEnoughLinkPercentage = 60.0;
+              when(
+                () => aotTools.link(
+                  base: any(named: 'base'),
+                  patch: any(named: 'patch'),
+                  analyzeSnapshot: any(named: 'analyzeSnapshot'),
+                  genSnapshot: any(named: 'genSnapshot'),
+                  kernel: any(named: 'kernel'),
+                  workingDirectory: any(named: 'workingDirectory'),
+                  outputPath: any(named: 'outputPath'),
+                  dumpDebugInfoPath: any(named: 'dumpDebugInfoPath'),
+                ),
+              ).thenAnswer(
+                (_) async => notEnoughLinkPercentage,
+              );
+              when(() => argResults['debug-linker']).thenReturn(true);
+              setUpProjectRoot();
+              setUpProjectRootArtifacts();
+              final exitCode = await runWithOverrides(command.run);
+              expect(exitCode, ExitCode.success.code);
+
+              final captured = verify(() => logger.info(captureAny())).captured
+                  as List<Object?>;
+              final contains = captured.whereType<String>().any(
+                    (element) => element.contains('Debug Info'),
+                  );
+              expect(contains, isTrue);
+            },
+          );
+
+          group("when aot-tools don't support debugging the link command", () {
+            test(
+              "don't debug even when the flag is true",
+              () async {
+                when(() => argResults['debug-linker']).thenReturn(true);
+                when(aotTools.isLinkDebugInfoSupported).thenAnswer(
+                  (_) async => false,
+                );
+
+                setUpProjectRoot();
+                setUpProjectRootArtifacts();
+                final exitCode = await runWithOverrides(command.run);
+                expect(exitCode, ExitCode.success.code);
+                verify(
+                  () => aotTools.link(
+                    base: any(named: 'base'),
+                    patch: any(named: 'patch'),
+                    analyzeSnapshot: any(named: 'analyzeSnapshot'),
+                    genSnapshot: any(named: 'genSnapshot'),
+                    kernel: any(named: 'kernel'),
+                    workingDirectory: any(named: 'workingDirectory'),
+                    outputPath: any(named: 'outputPath'),
+                  ),
+                ).called(1);
+              },
+            );
+          });
         });
       });
 
