@@ -2,6 +2,7 @@ import 'package:mason_logger/mason_logger.dart';
 import 'package:meta/meta.dart';
 import 'package:scoped/scoped.dart';
 import 'package:shorebird_cli/src/archive_analysis/archive_differ.dart';
+import 'package:shorebird_cli/src/artifact_manager.dart';
 import 'package:shorebird_cli/src/code_push_client_wrapper.dart';
 import 'package:shorebird_cli/src/command.dart';
 import 'package:shorebird_cli/src/commands/patch_new/android_patcher.dart';
@@ -10,12 +11,14 @@ import 'package:shorebird_cli/src/commands/release_new/release_type.dart';
 import 'package:shorebird_cli/src/config/config.dart';
 import 'package:shorebird_cli/src/deployment_track.dart';
 import 'package:shorebird_cli/src/extensions/arg_results.dart';
+import 'package:shorebird_cli/src/formatters/formatters.dart';
 import 'package:shorebird_cli/src/logger.dart';
 import 'package:shorebird_cli/src/patch_diff_checker.dart';
+import 'package:shorebird_cli/src/platform.dart';
 import 'package:shorebird_cli/src/platform/platform.dart';
 import 'package:shorebird_cli/src/shorebird_env.dart';
-import 'package:shorebird_cli/src/shorebird_flutter.dart';
 import 'package:shorebird_cli/src/third_party/flutter_tools/lib/flutter_tools.dart';
+import 'package:shorebird_cli/src/version.dart';
 import 'package:shorebird_code_push_client/shorebird_code_push_client.dart';
 
 typedef ResolvePatcher = Patcher Function(ReleaseType releaseType);
@@ -35,6 +38,15 @@ class PatchNewCommand extends ShorebirdCommand {
         // mandatory: true.
       )
       ..addOption(
+        'target',
+        abbr: 't',
+        help: 'The main entrypoint file of the application.',
+      )
+      ..addOption(
+        'flavor',
+        help: 'The product flavor to use when building the app.',
+      )
+      ..addOption(
         'release-version',
         help: '''
 The version of the associated release (e.g. "1.0.0"). This should be the version
@@ -49,6 +61,11 @@ of the iOS app that is using this module.''',
         'allow-asset-diffs',
         help: allowAssetDiffsHelpText,
         negatable: false,
+      )
+      ..addFlag(
+        'staging',
+        negatable: false,
+        help: 'Whether to publish the patch to the staging environment.',
       );
   }
 
@@ -102,7 +119,7 @@ NOTE: this is ${styleBold.wrap('not')} recommended. Asset changes cannot be incl
   Patcher getPatcher(ReleaseType releaseType) {
     switch (releaseType) {
       case ReleaseType.android:
-        return AndroidPatcher();
+        return AndroidPatcher(flavor: flavor, target: target);
       case ReleaseType.ios:
         throw UnimplementedError();
       case ReleaseType.iosFramework:
@@ -120,42 +137,59 @@ NOTE: this is ${styleBold.wrap('not')} recommended. Asset changes cannot be incl
     await patcher.assertPreconditions();
     await patcher.assertArgsAreValid();
 
-    final releaseVersion = await patcher.getReleaseVersion();
-    final release = await patcher.getRelease();
-    final releaseArtifact = await patcher.getReleaseArtifact();
-
-    await patcher.assertReleaseIsPatchable();
-
-    // This command handles logging, we don't need to provide our own
-    // progress, error logs, etc.
     final app = await codePushClientWrapper.getApp(appId: appId);
-
-    try {
-      await shorebirdFlutter.installRevision(revision: release.flutterRevision);
-    } catch (_) {
-      exit(ExitCode.software.code);
-    }
+    final releaseVersion = await getReleaseVersion(patcher: patcher);
+    final release = await getRelease(
+      releaseVersion: releaseVersion,
+      patcher: patcher,
+    );
+    final releaseArtifact = await downloadPrimaryReleaseArtifact(
+      release: release,
+      patcher: patcher,
+    );
 
     final releaseFlutterShorebirdEnv = shorebirdEnv.copyWith(
       flutterRevisionOverride: release.flutterRevision,
     );
 
-    final patchArtifactBundles = <Arch, PatchArtifactBundle>{};
-
-    final patchArtifact = await patcher.buildPatchArtifacts();
-
-    await assertUnpatchableDiffs(
-      releaseArtifact: releaseArtifact,
-      patchArtifact: patchArtifact,
-      archiveDiffer: patcher.archiveDiffer,
-    );
-
     return await runScoped(
       () async {
+        final patchArtifact = await patcher.buildPatchArtifact(
+          flavor: flavor,
+          target: target,
+        );
+        final diffStatus = await assertUnpatchableDiffs(
+          releaseArtifact: releaseArtifact,
+          patchArtifact: patchArtifact,
+          archiveDiffer: patcher.archiveDiffer,
+        );
+        final patchArtifactBundles = await patcher.createPatchArtifacts(
+          appId: appId,
+          releaseId: release.id,
+        );
+        await confirmCreatePatch(
+          app: app,
+          releaseVersion: releaseVersion,
+          patcher: patcher,
+          patchArtifactBundles: patchArtifactBundles,
+        );
         await codePushClientWrapper.publishPatch(
           appId: appId,
           releaseId: release.id,
-          metadata: await patcher.patchMetadata(),
+          metadata: CreatePatchMetadata(
+            releasePlatform: patcher.releaseType.releasePlatform,
+            usedIgnoreAssetChangesFlag: allowAssetDiffs,
+            hasAssetChanges: diffStatus.hasAssetChanges,
+            usedIgnoreNativeChangesFlag: allowNativeDiffs,
+            hasNativeChanges: diffStatus.hasNativeChanges,
+            linkPercentage: null,
+            environment: BuildEnvironmentMetadata(
+              operatingSystem: platform.operatingSystem,
+              operatingSystemVersion: platform.operatingSystemVersion,
+              shorebirdVersion: packageVersion,
+              xcodeVersion: null,
+            ),
+          ),
           platform: patcher.releaseType.releasePlatform,
           track:
               isStaging ? DeploymentTrack.staging : DeploymentTrack.production,
@@ -187,5 +221,82 @@ NOTE: this is ${styleBold.wrap('not')} recommended. Asset changes cannot be incl
       logger.info('Exiting.');
       exit(ExitCode.software.code);
     }
+  }
+
+  Future<String> getReleaseVersion({required Patcher patcher}) async {
+    if (results.wasParsed('release-version')) {
+      return results['release-version'] as String;
+    }
+
+    return patcher.buildAppAndGetReleaseVersion();
+  }
+
+  Future<void> confirmCreatePatch({
+    required AppMetadata app,
+    required String releaseVersion,
+    required Patcher patcher,
+    required Map<Arch, PatchArtifactBundle> patchArtifactBundles,
+  }) async {
+    final archMetadata = patchArtifactBundles.keys.map((arch) {
+      final size = formatBytes(patchArtifactBundles[arch]!.size);
+      return '${arch.name} ($size)';
+    });
+    final summary = [
+      '''📱 App: ${lightCyan.wrap(app.displayName)} ${lightCyan.wrap('(${app.appId})')}''',
+      if (flavor != null) '🍧 Flavor: ${lightCyan.wrap(flavor)}',
+      '📦 Release Version: ${lightCyan.wrap(releaseVersion)}',
+      '''🕹️  Platform: ${lightCyan.wrap(patcher.releaseType.releasePlatform.name)} ${lightCyan.wrap('[${archMetadata.join(', ')}]')}''',
+      if (isStaging)
+        '🟠 Track: ${lightCyan.wrap('Staging')}'
+      else
+        '🟢 Track: ${lightCyan.wrap('Production')}',
+    ];
+
+    logger.info(
+      '''
+
+${styleBold.wrap(lightGreen.wrap('🚀 Ready to publish a new patch!'))}
+
+${summary.join('\n')}
+''',
+    );
+  }
+
+  Future<Release> getRelease({
+    required String releaseVersion,
+    required Patcher patcher,
+  }) async {
+    final release = await codePushClientWrapper.maybeGetRelease(
+      appId: appId,
+      releaseVersion: releaseVersion,
+    );
+    if (release == null) {
+      logger.err('No release found for version $releaseVersion.');
+      exit(ExitCode.software.code);
+    }
+
+    final releaseStatus =
+        release.platformStatuses[patcher.releaseType.releasePlatform];
+    if (releaseStatus != ReleaseStatus.active) {
+      logger.err('''
+Release ${release.version} is in an incomplete state. It's possible that the original release was terminated or failed to complete.
+Please re-run the release command for this version or create a new release.''');
+      exit(ExitCode.software.code);
+    }
+
+    return release;
+  }
+
+  Future<File> downloadPrimaryReleaseArtifact({
+    required Release release,
+    required Patcher patcher,
+  }) async {
+    final artifact = await codePushClientWrapper.getReleaseArtifact(
+      appId: appId,
+      releaseId: release.id,
+      arch: patcher.primaryReleaseArtifactArch,
+      platform: patcher.releaseType.releasePlatform,
+    );
+    return artifactManager.downloadFile(Uri.parse(artifact.url));
   }
 }

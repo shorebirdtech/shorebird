@@ -6,6 +6,7 @@ import 'package:cli_completion/cli_completion.dart';
 import 'package:mason_logger/mason_logger.dart';
 import 'package:scoped/scoped.dart';
 import 'package:shorebird_cli/src/commands/commands.dart';
+import 'package:shorebird_cli/src/commands/patch_new/patch_new_command.dart';
 import 'package:shorebird_cli/src/commands/release_new/release_new_command.dart';
 import 'package:shorebird_cli/src/engine_config.dart';
 import 'package:shorebird_cli/src/logger.dart';
@@ -74,6 +75,7 @@ class ShorebirdCliCommandRunner extends CompletionCommandRunner<int> {
     addCommand(LoginCiCommand());
     addCommand(LogoutCommand());
     addCommand(PatchCommand());
+    addCommand(PatchNewCommand());
     addCommand(PreviewCommand());
     addCommand(ReleaseCommand());
     addCommand(ReleaseNewCommand());
