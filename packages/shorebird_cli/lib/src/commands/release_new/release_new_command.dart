@@ -393,7 +393,7 @@ ${summary.join('\n')}
     );
   }
 
-  /// Instructions explaining how to patch the release that was just creatd.
+  /// Instructions explaining how to patch the release that was just created.
   void printPatchInstructions({
     required Releaser releaser,
     required String releaseVersion,
