@@ -126,7 +126,6 @@ of the iOS app that is using this module.''',
         );
       case ReleaseType.ios:
         throw UnimplementedError();
-      // return IosReleasePipeline(argResults: argResults);
       case ReleaseType.iosFramework:
         throw UnimplementedError();
       case ReleaseType.aar:
