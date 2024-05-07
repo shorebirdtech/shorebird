@@ -177,10 +177,7 @@ NOTE: this is ${styleBold.wrap('not')} recommended. Asset changes cannot be incl
       () async {
         // Don't built the patch artifact twice with the same Flutter revision.
         if (lastBuiltFlutterRevision != release.flutterRevision) {
-          patchArtifact = await patcher.buildPatchArtifact(
-            flavor: flavor,
-            target: target,
-          );
+          patchArtifact = await patcher.buildPatchArtifact();
         }
 
         final diffStatus = await assertUnpatchableDiffs(

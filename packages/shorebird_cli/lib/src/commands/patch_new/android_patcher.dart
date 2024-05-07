@@ -52,10 +52,7 @@ class AndroidPatcher extends Patcher {
   }
 
   @override
-  Future<File> buildPatchArtifact({
-    required String? flavor,
-    required String? target,
-  }) async {
+  Future<File> buildPatchArtifact() async {
     final File aabFile;
     final flutterVersionString = await shorebirdFlutter.getVersionAndRevision();
     final buildProgress =
@@ -125,7 +122,6 @@ Looked in:
 
     final patchArchsBuildDir = ArtifactManager.androidArchsDirectory(
       projectRoot: projectRoot,
-      flavor: flavor,
     );
     if (patchArchsBuildDir == null) {
       logger.err('Could not find patch artifacts');

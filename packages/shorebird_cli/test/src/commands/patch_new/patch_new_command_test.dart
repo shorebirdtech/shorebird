@@ -200,12 +200,8 @@ void main() {
       when(() => patcher.assertPreconditions()).thenAnswer((_) async {});
       when(() => patcher.extractReleaseVersionFromArtifact(any()))
           .thenAnswer((_) async => releaseVersion);
-      when(
-        () => patcher.buildPatchArtifact(
-          flavor: any(named: 'flavor'),
-          target: any(named: 'target'),
-        ),
-      ).thenAnswer((_) async => File(''));
+      when(() => patcher.buildPatchArtifact())
+          .thenAnswer((_) async => File(''));
       when(() => patcher.releaseType).thenReturn(ReleaseType.android);
       when(() => patcher.primaryReleaseArtifactArch).thenReturn('aab');
       when(
@@ -292,7 +288,7 @@ void main() {
                 arch: patcher.primaryReleaseArtifactArch,
                 platform: releasePlatform,
               ),
-          () => patcher.buildPatchArtifact(flavor: null, target: null),
+          () => patcher.buildPatchArtifact(),
           () => patchDiffChecker.confirmUnpatchableDiffsIfNecessary(
                 allowAssetChanges: false,
                 allowNativeChanges: false,
@@ -332,7 +328,7 @@ void main() {
           () => patcher.assertPreconditions(),
           () => patcher.assertArgsAreValid(),
           () => codePushClientWrapper.getApp(appId: appId),
-          () => patcher.buildPatchArtifact(flavor: null, target: null),
+          () => patcher.buildPatchArtifact(),
           () => patcher.extractReleaseVersionFromArtifact(any()),
           () => codePushClientWrapper.getRelease(
                 appId: appId,
@@ -396,11 +392,11 @@ void main() {
           expect(exitCode, equals(ExitCode.success.code));
 
           verifyInOrder([
-            () => patcher.buildPatchArtifact(flavor: null, target: null),
+            () => patcher.buildPatchArtifact(),
             () => shorebirdEnv.copyWith(
                   flutterRevisionOverride: releaseFlutterRevision,
                 ),
-            () => patcher.buildPatchArtifact(flavor: null, target: null),
+            () => patcher.buildPatchArtifact(),
           ]);
         });
       });

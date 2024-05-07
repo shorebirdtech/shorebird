@@ -41,10 +41,7 @@ abstract class Patcher {
 
   /// Builds the release artifacts for the given platform. Returns the "primary"
   /// artifact for the platform (e.g. the AAB for Android, the IPA for iOS).
-  Future<File> buildPatchArtifact({
-    required String? flavor,
-    required String? target,
-  });
+  Future<File> buildPatchArtifact();
 
   /// Determines the release version from the provided app artifact.
   Future<String> extractReleaseVersionFromArtifact(File artifact);
