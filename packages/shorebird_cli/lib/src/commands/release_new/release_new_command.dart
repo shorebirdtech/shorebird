@@ -212,9 +212,9 @@ of the iOS app that is using this module.''',
           version: releaseVersion,
           releasePlatform: releaser.releaseType.releasePlatform,
         );
-        await prepareRelease(release: release, pipeline: releaser);
+        await prepareRelease(release: release, releaser: releaser);
         await releaser.uploadReleaseArtifacts(release: release, appId: appId);
-        await finalizeRelease(release: release, pipeline: releaser);
+        await finalizeRelease(release: release, releaser: releaser);
 
         logger
           ..success('''
@@ -382,12 +382,12 @@ ${summary.join('\n')}
   /// Prepares the release by updating the release status to draft.
   Future<void> prepareRelease({
     required Release release,
-    required Releaser pipeline,
+    required Releaser releaser,
   }) async {
     await codePushClientWrapper.updateReleaseStatus(
       appId: appId,
       releaseId: release.id,
-      platform: pipeline.releaseType.releasePlatform,
+      platform: releaser.releaseType.releasePlatform,
       status: ReleaseStatus.draft,
     );
   }
@@ -395,14 +395,14 @@ ${summary.join('\n')}
   /// Finalizes the release by updating the status to active.
   Future<void> finalizeRelease({
     required Release release,
-    required Releaser pipeline,
+    required Releaser releaser,
   }) async {
     await codePushClientWrapper.updateReleaseStatus(
       appId: appId,
       releaseId: release.id,
-      platform: pipeline.releaseType.releasePlatform,
+      platform: releaser.releaseType.releasePlatform,
       status: ReleaseStatus.active,
-      metadata: await pipeline.releaseMetadata(),
+      metadata: await releaser.releaseMetadata(),
     );
   }
 
