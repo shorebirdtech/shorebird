@@ -526,5 +526,27 @@ Please re-run the release command for this version or create a new release.''',
         });
       });
     });
+
+    group('when patching to the staging track', () {
+      setUp(() {
+        when(() => argResults['staging']).thenReturn(true);
+      });
+
+      test('publishes to the staging track', () async {
+        final exitCode = await runWithOverrides(command.run);
+        expect(exitCode, equals(ExitCode.success.code));
+
+        verify(
+          () => codePushClientWrapper.publishPatch(
+            appId: appId,
+            releaseId: release.id,
+            metadata: any(named: 'metadata'),
+            platform: releasePlatform,
+            patchArtifactBundles: any(named: 'patchArtifactBundles'),
+            track: DeploymentTrack.staging,
+          ),
+        ).called(1);
+      });
+    });
   });
 }
