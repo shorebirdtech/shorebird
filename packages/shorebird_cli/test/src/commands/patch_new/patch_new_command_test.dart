@@ -74,8 +74,6 @@ void main() {
     late ArtifactBuilder artifactBuilder;
     late ArtifactManager artifactManager;
     late CodePushClientWrapper codePushClientWrapper;
-    late Directory shorebirdRoot;
-    late Directory projectRoot;
     late Logger logger;
     late PatchDiffChecker patchDiffChecker;
     late Patcher patcher;
@@ -123,8 +121,6 @@ void main() {
       progress = MockProgress();
       patchDiffChecker = MockPatchDiffChecker();
       patcher = MockPatcher();
-      shorebirdRoot = Directory.systemTemp.createTempSync();
-      projectRoot = Directory.systemTemp.createTempSync();
       shorebirdEnv = MockShorebirdEnv();
       shorebirdFlutter = MockShorebirdFlutter();
 
