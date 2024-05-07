@@ -68,7 +68,6 @@ void main() {
       size: 42,
       url: 'https://example.com/release.aab',
     );
-    final metadata = CreatePatchMetadata.forTest();
 
     late ArchiveDiffer archiveDiffer;
     late ArgResults argResults;
@@ -130,6 +129,7 @@ void main() {
       shorebirdFlutter = MockShorebirdFlutter();
 
       when(() => argResults['platform']).thenReturn(['android']);
+      when(() => argResults['release-version']).thenReturn(releaseVersion);
       when(() => argResults.wasParsed(any())).thenReturn(true);
 
       when(() => artifactManager.downloadFile(any()))
@@ -398,6 +398,135 @@ void main() {
                 ),
             () => patcher.buildPatchArtifact(),
           ]);
+        });
+      });
+    });
+
+    group('when running on CI', () {
+      test('does not prompt for confirmation', () async {
+        when(() => shorebirdEnv.canAcceptUserInput).thenReturn(false);
+
+        final exitCode = await runWithOverrides(command.run);
+        expect(exitCode, equals(ExitCode.success.code));
+
+        verifyNever(() => logger.confirm(any()));
+      });
+    });
+
+    group('when user declines to continue', () {
+      setUp(() {
+        when(() => logger.confirm(any())).thenReturn(false);
+      });
+
+      test('exits with message and success code', () async {
+        await expectLater(
+          () => runWithOverrides(command.run),
+          exitsWithCode(ExitCode.success),
+        );
+        verify(() => logger.info('Aborting.')).called(1);
+      });
+    });
+
+    group('when the target release is in a draft state', () {
+      setUp(() {
+        when(
+          () => codePushClientWrapper.getRelease(
+            appId: any(named: 'appId'),
+            releaseVersion: any(named: 'releaseVersion'),
+          ),
+        ).thenAnswer(
+          (_) async => Release(
+            id: 0,
+            appId: appId,
+            version: releaseVersion,
+            flutterRevision: flutterRevision,
+            displayName: '1.2.3+1',
+            platformStatuses: {releasePlatform: ReleaseStatus.draft},
+            createdAt: DateTime(2023),
+            updatedAt: DateTime(2023),
+          ),
+        );
+      });
+
+      test('logs error and exits with code 70', () async {
+        await expectLater(
+          () => runWithOverrides(command.run),
+          exitsWithCode(ExitCode.software),
+        );
+
+        verify(
+          () => logger.err(
+            '''
+Release ${release.version} is in an incomplete state. It's possible that the original release was terminated or failed to complete.
+Please re-run the release command for this version or create a new release.''',
+          ),
+        ).called(1);
+      });
+    });
+
+    group('when primary release artifact fails to download', () {
+      final error = Exception('Failed to download primary release artifact.');
+
+      setUp(() {
+        when(() => artifactManager.downloadFile(any())).thenThrow(error);
+      });
+
+      test('logs error and exits with code 70', () async {
+        await expectLater(
+          () => runWithOverrides(command.run),
+          exitsWithCode(ExitCode.software),
+        );
+
+        verify(
+          () => progress.fail(
+            'Exception: Failed to download primary release artifact.',
+          ),
+        ).called(1);
+      });
+    });
+
+    group('when unpatchable diffs exist', () {
+      group('when user cancels', () {
+        setUp(() {
+          when(
+            () => patchDiffChecker.confirmUnpatchableDiffsIfNecessary(
+              allowAssetChanges: any(named: 'allowAssetChanges'),
+              allowNativeChanges: any(named: 'allowNativeChanges'),
+              archiveDiffer: archiveDiffer,
+              localArtifact: any(named: 'localArtifact'),
+              releaseArtifact: any(named: 'releaseArtifact'),
+            ),
+          ).thenThrow(UserCancelledException());
+        });
+
+        test('exits with code 0', () async {
+          await expectLater(
+            () => runWithOverrides(command.run),
+            exitsWithCode(ExitCode.success),
+          );
+        });
+      });
+
+      group('when UnpatchableChangeException is thrown', () {
+        setUp(() {
+          when(
+            () => patchDiffChecker.confirmUnpatchableDiffsIfNecessary(
+              allowAssetChanges: any(named: 'allowAssetChanges'),
+              allowNativeChanges: any(named: 'allowNativeChanges'),
+              archiveDiffer: archiveDiffer,
+              localArtifact: any(named: 'localArtifact'),
+              releaseArtifact: any(named: 'releaseArtifact'),
+            ),
+          ).thenThrow(UnpatchableChangeException());
+        });
+
+        test('logs and exits with code 70', () async {
+          await expectLater(
+            () => runWithOverrides(command.run),
+            exitsWithCode(ExitCode.software),
+          );
+
+          verify(() => logger.info('Exiting.')).called(1);
         });
       });
     });

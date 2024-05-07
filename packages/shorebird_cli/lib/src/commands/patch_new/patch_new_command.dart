@@ -150,10 +150,7 @@ NOTE: this is ${styleBold.wrap('not')} recommended. Asset changes cannot be incl
     if (results.wasParsed('release-version')) {
       releaseVersion = results['release-version'] as String;
     } else {
-      patchArtifact = await patcher.buildPatchArtifact(
-        flavor: flavor,
-        target: target,
-      );
+      patchArtifact = await patcher.buildPatchArtifact();
       lastBuiltFlutterRevision = shorebirdEnv.flutterRevision;
       releaseVersion = await patcher.extractReleaseVersionFromArtifact(
         patchArtifact,
