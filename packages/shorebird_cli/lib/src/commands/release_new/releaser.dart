@@ -26,7 +26,7 @@ abstract class Releaser {
   /// The target script to run, if any.
   final String? target;
 
-  /// Whether --release-version must be specified to patch. Currently only
+  /// Whether --release-version must be specified to release. Currently only
   /// required for add-to-app/hybrid releases (aar and ios-framework).
   bool get requiresReleaseVersionArg => false;
 
