@@ -1,3 +1,4 @@
+import 'package:io/io.dart';
 import 'package:mason_logger/mason_logger.dart';
 import 'package:meta/meta.dart';
 import 'package:scoped/scoped.dart';
@@ -111,7 +112,10 @@ NOTE: this is ${styleBold.wrap('not')} recommended. Asset changes cannot be incl
         .map(_resolvePatcher)
         .map(createPatch);
 
-    await Future.wait(patcherFutures);
+    for (final patcherFuture in patcherFutures) {
+      await patcherFuture;
+    }
+
     return ExitCode.success.code;
   }
 
@@ -132,13 +136,30 @@ NOTE: this is ${styleBold.wrap('not')} recommended. Asset changes cannot be incl
   bool get allowAssetDiffs => results['allow-asset-diffs'] == true;
   bool get allowNativeDiffs => results['allow-native-diffs'] == true;
 
+  String? lastBuiltFlutterRevision;
+
   @visibleForTesting
   Future<void> createPatch(Patcher patcher) async {
     await patcher.assertPreconditions();
     await patcher.assertArgsAreValid();
 
     final app = await codePushClientWrapper.getApp(appId: appId);
-    final releaseVersion = await getReleaseVersion(patcher: patcher);
+
+    File? patchArtifact;
+    final String releaseVersion;
+    if (results.wasParsed('release-version')) {
+      releaseVersion = results['release-version'] as String;
+    } else {
+      patchArtifact = await patcher.buildPatchArtifact(
+        flavor: flavor,
+        target: target,
+      );
+      lastBuiltFlutterRevision = shorebirdEnv.flutterRevision;
+      releaseVersion = await patcher.extractReleaseVersionFromArtifact(
+        patchArtifact,
+      );
+    }
+
     final release = await getRelease(
       releaseVersion: releaseVersion,
       patcher: patcher,
@@ -154,13 +175,17 @@ NOTE: this is ${styleBold.wrap('not')} recommended. Asset changes cannot be incl
 
     return await runScoped(
       () async {
-        final patchArtifact = await patcher.buildPatchArtifact(
-          flavor: flavor,
-          target: target,
-        );
+        // Don't built the patch artifact twice with the same Flutter revision.
+        if (lastBuiltFlutterRevision != release.flutterRevision) {
+          patchArtifact = await patcher.buildPatchArtifact(
+            flavor: flavor,
+            target: target,
+          );
+        }
+
         final diffStatus = await assertUnpatchableDiffs(
           releaseArtifact: releaseArtifact,
-          patchArtifact: patchArtifact,
+          patchArtifact: patchArtifact!,
           archiveDiffer: patcher.archiveDiffer,
         );
         final patchArtifactBundles = await patcher.createPatchArtifacts(
@@ -223,14 +248,6 @@ NOTE: this is ${styleBold.wrap('not')} recommended. Asset changes cannot be incl
     }
   }
 
-  Future<String> getReleaseVersion({required Patcher patcher}) async {
-    if (results.wasParsed('release-version')) {
-      return results['release-version'] as String;
-    }
-
-    return patcher.buildAppAndGetReleaseVersion();
-  }
-
   Future<void> confirmCreatePatch({
     required AppMetadata app,
     required String releaseVersion,
@@ -260,20 +277,25 @@ ${styleBold.wrap(lightGreen.wrap('🚀 Ready to publish a new patch!'))}
 ${summary.join('\n')}
 ''',
     );
+
+    if (shorebirdEnv.canAcceptUserInput) {
+      final confirm = logger.confirm('Would you like to continue?');
+
+      if (!confirm) {
+        logger.info('Aborting.');
+        exit(ExitCode.success.code);
+      }
+    }
   }
 
   Future<Release> getRelease({
     required String releaseVersion,
     required Patcher patcher,
   }) async {
-    final release = await codePushClientWrapper.maybeGetRelease(
+    final release = await codePushClientWrapper.getRelease(
       appId: appId,
       releaseVersion: releaseVersion,
     );
-    if (release == null) {
-      logger.err('No release found for version $releaseVersion.');
-      exit(ExitCode.software.code);
-    }
 
     final releaseStatus =
         release.platformStatuses[patcher.releaseType.releasePlatform];
@@ -297,6 +319,19 @@ Please re-run the release command for this version or create a new release.''');
       arch: patcher.primaryReleaseArtifactArch,
       platform: patcher.releaseType.releasePlatform,
     );
-    return artifactManager.downloadFile(Uri.parse(artifact.url));
+
+    final downloadProgress =
+        logger.progress('Downloading ${patcher.primaryReleaseArtifactArch}');
+    final File artifactFile;
+    try {
+      artifactFile =
+          await artifactManager.downloadFile(Uri.parse(artifact.url));
+    } catch (e) {
+      downloadProgress.fail(e.toString());
+      exit(ExitCode.software.code);
+    }
+
+    downloadProgress.complete();
+    return artifactFile;
   }
 }

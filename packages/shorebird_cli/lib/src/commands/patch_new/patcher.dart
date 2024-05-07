@@ -39,15 +39,15 @@ abstract class Patcher {
   /// Asserts that the combination arguments passed to the command are valid.
   Future<void> assertArgsAreValid();
 
-  /// Get the release version. Builds the app to determine
-  Future<String> buildAppAndGetReleaseVersion();
-
   /// Builds the release artifacts for the given platform. Returns the "primary"
   /// artifact for the platform (e.g. the AAB for Android, the IPA for iOS).
   Future<File> buildPatchArtifact({
     required String? flavor,
     required String? target,
   });
+
+  /// Determines the release version from the provided app artifact.
+  Future<String> extractReleaseVersionFromArtifact(File artifact);
 
   /// The artifact to compare against the release to determine whether the patch
   /// contains unpatchable changes.

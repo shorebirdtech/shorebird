@@ -14,6 +14,7 @@ import 'package:shorebird_cli/src/doctor.dart';
 import 'package:shorebird_cli/src/logger.dart';
 import 'package:shorebird_cli/src/platform/platform.dart';
 import 'package:shorebird_cli/src/shorebird_android_artifacts.dart';
+import 'package:shorebird_cli/src/shorebird_flutter.dart';
 import 'package:shorebird_cli/src/shorebird_validator.dart';
 
 /// {@template android_patcher}
@@ -56,7 +57,10 @@ class AndroidPatcher extends Patcher {
     required String? target,
   }) async {
     final File aabFile;
-    final buildProgress = logger.progress('Building patch');
+    final flutterVersionString = await shorebirdFlutter.getVersionAndRevision();
+    final buildProgress =
+        logger.progress('Building patch with Flutter $flutterVersionString');
+
     try {
       aabFile =
           await artifactBuilder.buildAppBundle(flavor: flavor, target: target);
@@ -117,6 +121,8 @@ Looked in:
       }
     }
 
+    downloadReleaseArtifactProgress.complete();
+
     final patchArchsBuildDir = ArtifactManager.androidArchsDirectory(
       projectRoot: projectRoot,
       flavor: flavor,
@@ -127,7 +133,7 @@ Looked in:
     }
 
     final patchArtifactBundles = <Arch, PatchArtifactBundle>{};
-    final createDiffProgress = logger.progress('Creating artifacts');
+    final createDiffProgress = logger.progress('Creating patch artifacts');
     for (final releaseArtifactPath in releaseArtifactPaths.entries) {
       final arch = releaseArtifactPath.key;
       final patchArtifactPath = p.join(
@@ -159,16 +165,10 @@ Looked in:
   }
 
   @override
-  Future<String> buildAppAndGetReleaseVersion() async {
-    final builtApp = await buildPatchArtifact(flavor: flavor, target: target);
-    try {
-      return await shorebirdAndroidArtifacts.extractReleaseVersionFromAppBundle(
-        builtApp.path,
-      );
-    } catch (error) {
-      logger.err('$error');
-      exit(ExitCode.software.code);
-    }
+  Future<String> extractReleaseVersionFromArtifact(File artifact) async {
+    return shorebirdAndroidArtifacts.extractReleaseVersionFromAppBundle(
+      artifact.path,
+    );
   }
 
   @override
