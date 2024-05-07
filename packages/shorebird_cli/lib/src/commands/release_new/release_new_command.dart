@@ -103,7 +103,9 @@ of the iOS app that is using this module.''',
         .map(_resolveReleaser)
         .map(createRelease);
 
-    await Future.wait(releaserFutures);
+    for (final future in releaserFutures) {
+      await future;
+    }
 
     return ExitCode.success.code;
   }
