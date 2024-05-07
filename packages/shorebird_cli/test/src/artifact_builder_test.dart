@@ -512,7 +512,7 @@ Either run `flutter pub get` manually, or follow the steps in ${link(uri: Uri.pa
           final tempDir = Directory.systemTemp.createTempSync();
           exportOptionsPlist =
               File(p.join(tempDir.path, 'exportoptions.plist'));
-          when(() => ios.createExportOptionsPlist()).thenReturn(
+          when(ios.createExportOptionsPlist).thenReturn(
             exportOptionsPlist,
           );
         });
