@@ -243,6 +243,10 @@ void main() {
         ..testArgResults = argResults;
     });
 
+    test('has non-empty description', () {
+      expect(command.description, isNotEmpty);
+    });
+
     group('hidden', () {
       test('is true', () {
         expect(command.hidden, true);
