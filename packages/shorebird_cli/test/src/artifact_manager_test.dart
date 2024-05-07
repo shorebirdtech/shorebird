@@ -48,6 +48,8 @@ void main() {
 
       when(() => cache.getArtifactDirectory(any()))
           .thenReturn(cacheArtifactDirectory);
+      when(() => cache.updateAll()).thenAnswer((_) async {});
+
       when(() => httpClient.send(any())).thenAnswer(
         (_) async => http.StreamedResponse(const Stream.empty(), HttpStatus.ok),
       );

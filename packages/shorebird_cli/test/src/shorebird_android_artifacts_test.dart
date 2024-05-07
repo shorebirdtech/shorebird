@@ -1,15 +1,50 @@
-import 'package:path/path.dart' as path;
+import 'package:archive/archive_io.dart';
+import 'package:mason_logger/mason_logger.dart';
+import 'package:mocktail/mocktail.dart';
+import 'package:path/path.dart' as p;
+import 'package:scoped/scoped.dart';
+import 'package:shorebird_cli/src/cache.dart';
+import 'package:shorebird_cli/src/executables/bundletool.dart';
+import 'package:shorebird_cli/src/logger.dart';
 import 'package:shorebird_cli/src/shorebird_android_artifacts.dart';
+import 'package:shorebird_cli/src/shorebird_env.dart';
 import 'package:shorebird_cli/src/third_party/flutter_tools/lib/flutter_tools.dart';
 import 'package:test/test.dart';
 
+import 'mocks.dart';
+
 void main() {
   group(ShorebirdAndroidArtifacts, () {
-    late Directory project;
+    late Directory projectRoot;
+    late Bundletool bundletool;
+    late Cache cache;
+    late Logger logger;
+    late ShorebirdEnv shorebirdEnv;
     late ShorebirdAndroidArtifacts shorebirdAndroidArtifacts;
 
+    R runWithOverrides<R>(R Function() body) {
+      return runScoped(
+        body,
+        values: {
+          bundletoolRef.overrideWith(() => bundletool),
+          cacheRef.overrideWith(() => cache),
+          loggerRef.overrideWith(() => logger),
+          shorebirdEnvRef.overrideWith(() => shorebirdEnv),
+        },
+      );
+    }
+
     setUp(() {
-      project = Directory.systemTemp.createTempSync();
+      bundletool = MockBundleTool();
+      cache = MockCache();
+      logger = MockLogger();
+      projectRoot = Directory.systemTemp.createTempSync();
+      shorebirdEnv = MockShorebirdEnv();
+
+      when(() => cache.updateAll()).thenAnswer((_) async {});
+      when(() => shorebirdEnv.getShorebirdProjectRoot())
+          .thenReturn(projectRoot);
+
       shorebirdAndroidArtifacts = ShorebirdAndroidArtifacts();
     });
 
@@ -17,7 +52,7 @@ void main() {
       test('throws ArtifactNotFoundException for aabs', () {
         expect(
           () => shorebirdAndroidArtifacts.findAab(
-            project: project,
+            project: projectRoot,
             flavor: null,
           ),
           throwsA(isA<ArtifactNotFoundException>()),
@@ -26,8 +61,8 @@ void main() {
 
       test('throws ArtifactNotFoundException for apks', () {
         final buildDir = Directory(
-          path.join(
-            project.path,
+          p.join(
+            projectRoot.path,
             'build',
             'app',
             'outputs',
@@ -36,7 +71,7 @@ void main() {
         );
         expect(
           () => shorebirdAndroidArtifacts.findApk(
-            project: project,
+            project: projectRoot,
             flavor: null,
           ),
           throwsA(
@@ -53,8 +88,8 @@ void main() {
     group('when build folder exists but not the file', () {
       test('throws ArtifactNotFoundException for aabs', () {
         final buildDir = Directory(
-          path.join(
-            project.path,
+          p.join(
+            projectRoot.path,
             'build',
             'app',
             'outputs',
@@ -64,7 +99,7 @@ void main() {
         )..createSync(recursive: true);
         expect(
           () => shorebirdAndroidArtifacts.findAab(
-            project: project,
+            project: projectRoot,
             flavor: null,
           ),
           throwsA(
@@ -79,8 +114,8 @@ void main() {
 
       test('throws ArtifactNotFoundException for apks', () {
         Directory(
-          path.join(
-            project.path,
+          p.join(
+            projectRoot.path,
             'build',
             'app',
             'outputs',
@@ -89,7 +124,7 @@ void main() {
         ).createSync(recursive: true);
         expect(
           () => shorebirdAndroidArtifacts.findApk(
-            project: project,
+            project: projectRoot,
             flavor: null,
           ),
           throwsA(isA<ArtifactNotFoundException>()),
@@ -99,7 +134,7 @@ void main() {
 
     group('when using no flavors', () {
       test('finds the app bundle flavors', () {
-        final artifactPath = path.join(
+        final artifactPath = p.join(
           'build',
           'app',
           'outputs',
@@ -108,13 +143,13 @@ void main() {
           'app-release.aab',
         );
         final artifact = File(
-          path.join(project.path, artifactPath),
+          p.join(projectRoot.path, artifactPath),
         )..createSync(recursive: true);
 
         expect(
           shorebirdAndroidArtifacts
               .findAab(
-                project: project,
+                project: projectRoot,
                 flavor: null,
               )
               .path,
@@ -123,7 +158,7 @@ void main() {
       });
 
       test('finds the apk', () {
-        final artifactPath = path.join(
+        final artifactPath = p.join(
           'build',
           'app',
           'outputs',
@@ -131,13 +166,13 @@ void main() {
           'app-release.apk',
         );
         final artifact = File(
-          path.join(project.path, artifactPath),
+          p.join(projectRoot.path, artifactPath),
         )..createSync(recursive: true);
 
         expect(
           shorebirdAndroidArtifacts
               .findApk(
-                project: project,
+                project: projectRoot,
                 flavor: null,
               )
               .path,
@@ -148,7 +183,7 @@ void main() {
 
     group('when using single-dimensional flavor', () {
       test('finds the app bundle', () {
-        final artifactPath = path.join(
+        final artifactPath = p.join(
           'build',
           'app',
           'outputs',
@@ -157,7 +192,7 @@ void main() {
           'app-internal-release.aab',
         );
         final artifact = File(
-          path.join(project.path, artifactPath),
+          p.join(projectRoot.path, artifactPath),
         )..createSync(recursive: true);
 
         const flavor = 'internal';
@@ -165,7 +200,7 @@ void main() {
         expect(
           shorebirdAndroidArtifacts
               .findAab(
-                project: project,
+                project: projectRoot,
                 flavor: flavor,
               )
               .path,
@@ -174,7 +209,7 @@ void main() {
       });
 
       test('finds the apk', () {
-        final artifactPath = path.join(
+        final artifactPath = p.join(
           'build',
           'app',
           'outputs',
@@ -182,7 +217,7 @@ void main() {
           'app-internal-release.apk',
         );
         final artifact = File(
-          path.join(project.path, artifactPath),
+          p.join(projectRoot.path, artifactPath),
         )..createSync(recursive: true);
 
         const flavor = 'internal';
@@ -190,7 +225,7 @@ void main() {
         expect(
           shorebirdAndroidArtifacts
               .findApk(
-                project: project,
+                project: projectRoot,
                 flavor: flavor,
               )
               .path,
@@ -201,7 +236,7 @@ void main() {
 
     group('when using multi-dimensional flavors', () {
       test('finds the app bundle', () {
-        final artifactPath = path.join(
+        final artifactPath = p.join(
           'build',
           'app',
           'outputs',
@@ -210,7 +245,7 @@ void main() {
           'app-stable-global-release.aab',
         );
         final artifact = File(
-          path.join(project.path, artifactPath),
+          p.join(projectRoot.path, artifactPath),
         )..createSync(recursive: true);
 
         const flavor = 'stableGlobal';
@@ -218,7 +253,7 @@ void main() {
         expect(
           shorebirdAndroidArtifacts
               .findAab(
-                project: project,
+                project: projectRoot,
                 flavor: flavor,
               )
               .path,
@@ -227,7 +262,7 @@ void main() {
       });
 
       test('finds the apk', () {
-        final artifactPath = path.join(
+        final artifactPath = p.join(
           'build',
           'app',
           'outputs',
@@ -235,7 +270,7 @@ void main() {
           'app-stableglobal-release.apk',
         );
         final artifact = File(
-          path.join(project.path, artifactPath),
+          p.join(projectRoot.path, artifactPath),
         )..createSync(recursive: true);
 
         const flavor = 'stableGlobal';
@@ -243,7 +278,7 @@ void main() {
         expect(
           shorebirdAndroidArtifacts
               .findApk(
-                project: project,
+                project: projectRoot,
                 flavor: flavor,
               )
               .path,
@@ -255,7 +290,7 @@ void main() {
     group('when using multi-dimensional flavors and multi-word flavor name',
         () {
       test('finds the app bundle', () {
-        final artifactPath = path.join(
+        final artifactPath = p.join(
           'build',
           'app',
           'outputs',
@@ -264,7 +299,7 @@ void main() {
           'app-stable-playStore-release.aab',
         );
         final artifact = File(
-          path.join(project.path, artifactPath),
+          p.join(projectRoot.path, artifactPath),
         )..createSync(recursive: true);
 
         const flavor = 'stablePlayStore';
@@ -272,7 +307,7 @@ void main() {
         expect(
           shorebirdAndroidArtifacts
               .findAab(
-                project: project,
+                project: projectRoot,
                 flavor: flavor,
               )
               .path,
@@ -281,7 +316,7 @@ void main() {
       });
 
       test('finds the apk', () {
-        final artifactPath = path.join(
+        final artifactPath = p.join(
           'build',
           'app',
           'outputs',
@@ -289,7 +324,7 @@ void main() {
           'app-stableplaystore-release.apk',
         );
         final artifact = File(
-          path.join(project.path, artifactPath),
+          p.join(projectRoot.path, artifactPath),
         )..createSync(recursive: true);
 
         const flavor = 'stablePlayStore';
@@ -297,7 +332,7 @@ void main() {
         expect(
           shorebirdAndroidArtifacts
               .findApk(
-                project: project,
+                project: projectRoot,
                 flavor: flavor,
               )
               .path,
@@ -309,8 +344,8 @@ void main() {
     group('when multiple files are found', () {
       test('throws MultipleArtifactsFoundException when looking for aab', () {
         final buildDir = Directory(
-          path.join(
-            project.path,
+          p.join(
+            projectRoot.path,
             'build',
             'app',
             'outputs',
@@ -318,27 +353,27 @@ void main() {
             'stablePlayStoreRelease',
           ),
         );
-        final duplicatedArtifactPath = path.join(
+        final duplicatedArtifactPath = p.join(
           buildDir.path,
           'app---stable-playStore-release.aab',
         );
         File(
-          path.join(project.path, duplicatedArtifactPath),
+          p.join(projectRoot.path, duplicatedArtifactPath),
         ).createSync(recursive: true);
 
-        final artifactPath = path.join(
+        final artifactPath = p.join(
           buildDir.path,
           'app-stable-playStore-release.aab',
         );
         File(
-          path.join(project.path, artifactPath),
+          p.join(projectRoot.path, artifactPath),
         ).createSync(recursive: true);
 
         const flavor = 'stablePlayStore';
 
         expect(
           () => shorebirdAndroidArtifacts.findAab(
-            project: project,
+            project: projectRoot,
             flavor: flavor,
           ),
           throwsA(
@@ -354,35 +389,35 @@ void main() {
 
       test('throws MultipleArtifactsFoundException when looking for apk', () {
         final buildDir = Directory(
-          path.join(
-            project.path,
+          p.join(
+            projectRoot.path,
             'build',
             'app',
             'outputs',
             'flutter-apk',
           ),
         );
-        final duplicatedArtifactPath = path.join(
+        final duplicatedArtifactPath = p.join(
           buildDir.path,
           'app----stableplaystore-release.apk',
         );
         File(
-          path.join(project.path, duplicatedArtifactPath),
+          p.join(projectRoot.path, duplicatedArtifactPath),
         ).createSync(recursive: true);
 
-        final artifactPath = path.join(
+        final artifactPath = p.join(
           buildDir.path,
           'app-stableplaystore-release.apk',
         );
         File(
-          path.join(project.path, artifactPath),
+          p.join(projectRoot.path, artifactPath),
         ).createSync(recursive: true);
 
         const flavor = 'stablePlayStore';
 
         expect(
           () => shorebirdAndroidArtifacts.findApk(
-            project: project,
+            project: projectRoot,
             flavor: flavor,
           ),
           throwsA(
@@ -393,6 +428,159 @@ void main() {
                   '($duplicatedArtifactPath, $artifactPath)'),
             ),
           ),
+        );
+      });
+    });
+
+    group('aarLibraryPath', () {
+      test('returns path to AAR library', () {
+        expect(
+          runWithOverrides(() => ShorebirdAndroidArtifacts.aarLibraryPath),
+          equals(
+            p.join(
+              projectRoot.path,
+              'build',
+              'host',
+              'outputs',
+              'repo',
+            ),
+          ),
+        );
+      });
+    });
+
+    group('aarArtifactDirectory', () {
+      test('returns path to AAR artifact directory', () {
+        expect(
+          runWithOverrides(
+            () => ShorebirdAndroidArtifacts.aarArtifactDirectory(
+              buildNumber: '1',
+              packageName: 'com.example',
+            ),
+          ),
+          equals(
+            p.join(
+              projectRoot.path,
+              'build',
+              'host',
+              'outputs',
+              'repo',
+              'com',
+              'example',
+              'flutter_release',
+              '1',
+            ),
+          ),
+        );
+      });
+    });
+
+    group('aarArtifactPath', () {
+      test('returns path to AAR artifact', () {
+        final result = runWithOverrides(
+          () => ShorebirdAndroidArtifacts.aarArtifactPath(
+            packageName: 'com.example',
+            buildNumber: '1',
+          ),
+        );
+
+        expect(
+          result,
+          equals(
+            p.join(
+              projectRoot.path,
+              'build',
+              'host',
+              'outputs',
+              'repo',
+              'com',
+              'example',
+              'flutter_release',
+              '1',
+              'flutter_release-1.aar',
+            ),
+          ),
+        );
+      });
+    });
+
+    group('extractReleaseVersionFromAppBundle', () {
+      setUp(() {
+        when(() => bundletool.getVersionName(any()))
+            .thenAnswer((_) async => '1.2.3');
+        when(() => bundletool.getVersionCode(any()))
+            .thenAnswer((_) async => '4');
+      });
+
+      test('returns version name and code from app bundle', () async {
+        const appBundlePath = 'path/to/appbundle';
+        expect(
+          await runWithOverrides(
+            () => shorebirdAndroidArtifacts
+                .extractReleaseVersionFromAppBundle(appBundlePath),
+          ),
+          equals('1.2.3+4'),
+        );
+        verify(() => cache.updateAll()).called(1);
+      });
+    });
+
+    group('extractAar', () {
+      const buildNumber = '1.0';
+      const packageName = 'com.example.my_flutter_module';
+      const zippedContents = 'foo';
+
+      void setUpProjectRootArtifacts() {
+        final aarDir = p.join(
+          projectRoot.path,
+          'build',
+          'host',
+          'outputs',
+          'repo',
+          'com',
+          'example',
+          'my_flutter_module',
+          'flutter_release',
+          buildNumber,
+        );
+        final aarPath = p.join(aarDir, 'flutter_release-$buildNumber.aar');
+        File(aarPath)
+          ..createSync(recursive: true)
+          ..writeAsStringSync(zippedContents);
+        createArchiveFromDirectory(Directory(aarDir));
+      }
+
+      setUp(setUpProjectRootArtifacts);
+
+      test('extracts aar', () async {
+        final outDir = await runWithOverrides(
+          () => shorebirdAndroidArtifacts.extractAar(
+            packageName: packageName,
+            buildNumber: buildNumber,
+            unzipFn: (_, __) async {},
+          ),
+        );
+
+        expect(
+          outDir.path,
+          endsWith(
+            p.join(
+              'build',
+              'host',
+              'outputs',
+              'repo',
+              'com',
+              'example',
+              'my_flutter_module',
+              'flutter_release',
+              buildNumber,
+              'flutter_release-$buildNumber',
+            ),
+          ),
+        );
+        expect(
+          File('${outDir.path}.aar').readAsStringSync(),
+          equals(zippedContents),
         );
       });
     });

@@ -20,6 +20,7 @@ import 'package:shorebird_code_push_client/shorebird_code_push_client.dart';
 import 'package:test/test.dart';
 
 import 'fakes.dart';
+import 'matchers.dart';
 import 'mocks.dart';
 
 void main() {
@@ -94,13 +95,6 @@ void main() {
   });
 
   group(CodePushClientWrapper, () {
-    Matcher exitsWithCode(ExitCode exitcode) => throwsA(
-          isA<ProcessExit>().having(
-            (e) => e.exitCode,
-            'exitCode',
-            exitcode.code,
-          ),
-        );
     const appId = 'test-app-id';
     final app = AppMetadata(
       appId: appId,
@@ -240,9 +234,7 @@ void main() {
           when(() => codePushClient.getApps()).thenThrow(error);
 
           await expectLater(
-            () async => runWithOverrides(
-              () => codePushClientWrapper.getApps(),
-            ),
+            () => runWithOverrides(codePushClientWrapper.getApps),
             exitsWithCode(ExitCode.software),
           );
           verify(() => progress.fail(error)).called(1);

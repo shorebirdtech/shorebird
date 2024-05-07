@@ -16,6 +16,7 @@ import 'package:shorebird_cli/src/artifact_manager.dart';
 import 'package:shorebird_cli/src/auth/auth.dart';
 import 'package:shorebird_cli/src/cache.dart' show Cache;
 import 'package:shorebird_cli/src/code_push_client_wrapper.dart';
+import 'package:shorebird_cli/src/commands/release_new/releaser.dart';
 import 'package:shorebird_cli/src/config/config.dart';
 import 'package:shorebird_cli/src/doctor.dart';
 import 'package:shorebird_cli/src/engine_config.dart';
@@ -125,6 +126,8 @@ class MockProgress extends Mock implements Progress {}
 class MockPubspecEditor extends Mock implements PubspecEditor {}
 
 class MockRelease extends Mock implements Release {}
+
+class MockReleaser extends Mock implements Releaser {}
 
 class MockReleaseArtifact extends Mock implements ReleaseArtifact {}
 
