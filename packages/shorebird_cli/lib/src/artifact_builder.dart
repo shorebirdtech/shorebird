@@ -225,7 +225,7 @@ $errorMessage''');
   /// Builds a release iOS framework (.xcframework) for the current project.
   Future<void> buildIosFramework({
     List<String> argResultsRest = const [],
-  }) async {
+  }) {
     return _runShorebirdBuildCommand(() async {
       const executable = 'flutter';
       final arguments = [
