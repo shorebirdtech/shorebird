@@ -41,18 +41,4 @@ enum ReleaseType {
         return ReleasePlatform.ios;
     }
   }
-
-  /// Whether --release-version must be specified to patch.
-  bool requiresReleaseVersionArg() {
-    switch (this) {
-      case ReleaseType.aar:
-        return true;
-      case ReleaseType.android:
-        return false;
-      case ReleaseType.ios:
-        return false;
-      case ReleaseType.iosFramework:
-        return true;
-    }
-  }
 }

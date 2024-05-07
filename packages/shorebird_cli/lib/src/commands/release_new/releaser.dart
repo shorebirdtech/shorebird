@@ -20,13 +20,15 @@ abstract class Releaser {
   /// The arguments passed to the command.
   final ArgResults argResults;
 
-  /// The flavor of the release, if any.
+  /// The flavor of the release, if any. This is the --flavor argument passed to
+  /// the release command.
   final String? flavor;
 
-  /// The target script to run, if any.
+  /// The target script to run, if any. This is the --target argument passed to
+  /// the release command.
   final String? target;
 
-  /// Whether --release-version must be specified to patch. Currently only
+  /// Whether --release-version must be specified to release. Currently only
   /// required for add-to-app/hybrid releases (aar and ios-framework).
   bool get requiresReleaseVersionArg => false;
 
