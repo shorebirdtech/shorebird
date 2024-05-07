@@ -190,8 +190,8 @@ void main() {
           isA<IosReleaser>(),
         );
         expect(
-          () => command.getReleaser(ReleaseType.iosFramework),
-          throwsA(isA<UnimplementedError>()),
+          command.getReleaser(ReleaseType.iosFramework),
+          isA<IosFrameworkReleaser>(),
         );
       });
     });

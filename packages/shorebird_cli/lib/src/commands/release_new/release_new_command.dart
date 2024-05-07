@@ -5,11 +5,8 @@ import 'package:meta/meta.dart';
 import 'package:scoped/scoped.dart';
 import 'package:shorebird_cli/src/code_push_client_wrapper.dart';
 import 'package:shorebird_cli/src/command.dart';
-import 'package:shorebird_cli/src/commands/release_new/aar_releaser.dart';
-import 'package:shorebird_cli/src/commands/release_new/android_releaser.dart';
-import 'package:shorebird_cli/src/commands/release_new/ios_releaser.dart';
+import 'package:shorebird_cli/src/commands/release_new/release_new.dart';
 import 'package:shorebird_cli/src/commands/release_new/release_type.dart';
-import 'package:shorebird_cli/src/commands/release_new/releaser.dart';
 import 'package:shorebird_cli/src/config/config.dart';
 import 'package:shorebird_cli/src/extensions/arg_results.dart';
 import 'package:shorebird_cli/src/logger.dart';
@@ -136,9 +133,17 @@ of the iOS app that is using this module.''',
           target: target,
         );
       case ReleaseType.ios:
-        return IosReleaser(argResults: results, flavor: flavor, target: target);
+        return IosReleaser(
+          argResults: results,
+          flavor: flavor,
+          target: target,
+        );
       case ReleaseType.iosFramework:
-        throw UnimplementedError();
+        return IosFrameworkReleaser(
+          argResults: results,
+          flavor: flavor,
+          target: target,
+        );
       case ReleaseType.aar:
         return AarReleaser(
           argResults: results,
