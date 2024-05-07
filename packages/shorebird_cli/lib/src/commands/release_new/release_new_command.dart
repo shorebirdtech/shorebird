@@ -380,7 +380,7 @@ ${summary.join('\n')}
     );
   }
 
-  /// Finalizes the release by updating the release status to active.
+  /// Finalizes the release by updating the status to active.
   Future<void> finalizeRelease({
     required Release release,
     required Releaser pipeline,
