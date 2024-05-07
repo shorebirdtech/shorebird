@@ -40,7 +40,12 @@ class ReleaseNewCommand extends ShorebirdCommand {
       )
       ..addOption(
         'build-number',
-        help: 'The build number of the aar',
+        help: '''
+An identifier used as an internal version number.
+Each build must have a unique identifier to differentiate it from previous builds.
+It is used to determine whether one build is more recent than another, with higher numbers indicating more recent build.
+On Android it is used as "versionCode".
+On Xcode builds it is used as "CFBundleVersion".''',
         defaultsTo: '1.0',
       )
       ..addOption(
@@ -103,7 +108,9 @@ of the iOS app that is using this module.''',
         .map(_resolveReleaser)
         .map(createRelease);
 
-    await Future.wait(releaserFutures);
+    for (final future in releaserFutures) {
+      await future;
+    }
 
     return ExitCode.success.code;
   }
@@ -119,10 +126,8 @@ of the iOS app that is using this module.''',
         );
       case ReleaseType.ios:
         throw UnimplementedError();
-      // return IosReleasePipeline(argResults: argResults);
       case ReleaseType.iosFramework:
         throw UnimplementedError();
-      // return IosFrameworkReleasePipeline(argResults: argResults);
       case ReleaseType.aar:
         return AarReleaser(
           argResults: results,
@@ -178,7 +183,7 @@ of the iOS app that is using this module.''',
         );
 
         // Ensure we can create a release from what we've built.
-        await assertVersionIsReleasable(
+        await ensureVersionIsReleasable(
           version: releaseVersion,
           flutterRevision: targetFlutterRevision,
           releasePlatform: releaser.releaseType.releasePlatform,
@@ -220,8 +225,8 @@ of the iOS app that is using this module.''',
 
   /// Determines which Flutter version to use for the release. This will be
   /// either the version specified by the user or the version provided by
-  /// [shorebirdEnv]. Will exit with code 70 if the version specified by the
-  /// user is not found/supported.
+  /// [shorebirdEnv]. Will exit with [ExitCode.software] if the version
+  /// specified by the user is not found/supported.
   Future<String> resolveTargetFlutterRevision() async {
     if (flutterVersionArg != null) {
       final String? revision;
@@ -265,7 +270,7 @@ Use `shorebird flutter versions list` to list available versions.
   /// published with the given [version] for the platform [releasePlatform], or
   /// if a release already exists with [version] but was compiled with a
   /// different Flutter revision, an error will be thrown.
-  Future<void> assertVersionIsReleasable({
+  Future<void> ensureVersionIsReleasable({
     required String version,
     required String flutterRevision,
     required ReleasePlatform releasePlatform,
@@ -284,8 +289,6 @@ Use `shorebird flutter versions list` to list available versions.
       // All artifacts associated with a given release must be built
       // with the same Flutter revision.
       if (existingRelease.flutterRevision != flutterRevision) {
-        // All artifacts associated with a given release must be built
-        // with the same Flutter revision.
         logger
           ..err('''
 ${styleBold.wrap(lightRed.wrap('A release with version $version already exists but was built using a different Flutter revision.'))}
@@ -376,7 +379,7 @@ ${summary.join('\n')}
     );
   }
 
-  /// Finalizes the release by updating the release status to active.
+  /// Finalizes the release by updating the status to active.
   Future<void> finalizeRelease({
     required Release release,
     required Releaser pipeline,
@@ -390,7 +393,7 @@ ${summary.join('\n')}
     );
   }
 
-  /// Instructions explaining how to patch the release that was just creatd.
+  /// Instructions explaining how to patch the release that was just created.
   void printPatchInstructions({
     required Releaser releaser,
     required String releaseVersion,

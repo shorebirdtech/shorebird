@@ -140,6 +140,23 @@ void main() {
             returnsNormally,
           );
         });
+
+        group('when androidPackageName is null', () {
+          setUp(() {
+            when(() => shorebirdEnv.androidPackageName).thenReturn(null);
+          });
+
+          test('logs error and exits with code 64', () async {
+            await expectLater(
+              () => runWithOverrides(aarReleaser.assertPreconditions),
+              exitsWithCode(ExitCode.config),
+            );
+            verify(
+              () =>
+                  logger.err('Could not find androidPackage in pubspec.yaml.'),
+            ).called(1);
+          });
+        });
       });
 
       group('when validation fails', () {

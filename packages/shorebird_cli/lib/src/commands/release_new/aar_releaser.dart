@@ -55,6 +55,11 @@ class AarReleaser extends Releaser {
     } on PreconditionFailedException catch (e) {
       exit(e.exitCode.code);
     }
+
+    if (shorebirdEnv.androidPackageName == null) {
+      logger.err('Could not find androidPackage in pubspec.yaml.');
+      exit(ExitCode.config.code);
+    }
   }
 
   @override
