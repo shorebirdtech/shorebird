@@ -1328,6 +1328,7 @@ Please re-run the release command for this version or create a new release.'''),
           test(
             'prints the file location when linking is less than the minimum',
             () async {
+              const notEnoughLinkPercentage = 60.0;
               when(
                 () => aotTools.link(
                   base: any(named: 'base'),
@@ -1340,7 +1341,7 @@ Please re-run the release command for this version or create a new release.'''),
                   dumpDebugInfoPath: any(named: 'dumpDebugInfoPath'),
                 ),
               ).thenAnswer(
-                (_) async => 20,
+                (_) async => notEnoughLinkPercentage,
               );
               when(() => argResults['debug-linker']).thenReturn(true);
               setUpProjectRoot();

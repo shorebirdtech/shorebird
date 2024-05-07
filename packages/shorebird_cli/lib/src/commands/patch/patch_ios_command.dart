@@ -94,7 +94,7 @@ If this option is not provided, the version number will be determined from the p
         'debug-linker',
         defaultsTo: true,
         help: 'Collects linker diagnostic information to help troubleshoot low '
-            'link percentages. File is saved to build/$_debugInfoFileName.',
+            'link percentages. File is saved to build/$_linkDebugInfoFileName.',
       );
   }
 
@@ -454,10 +454,10 @@ ${summary.join('\n')}
         'out.vmcode',
       );
 
-  static const _debugInfoFileName = 'linker_diagnostic.zip';
+  static const _linkDebugInfoFileName = 'linker_diagnostic.zip';
   String get _debugInfoOutputPath => p.join(
         _buildDirectory,
-        _debugInfoFileName,
+        _linkDebugInfoFileName,
       );
 
   String _readVersionFromPlist() {
