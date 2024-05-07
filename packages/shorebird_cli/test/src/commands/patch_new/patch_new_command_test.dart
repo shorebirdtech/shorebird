@@ -205,7 +205,16 @@ void main() {
           appId: any(named: 'appId'),
           releaseId: any(named: 'releaseId'),
         ),
-      ).thenAnswer((_) async => {});
+      ).thenAnswer(
+        (_) async => {
+          Arch.arm32: const PatchArtifactBundle(
+            arch: 'arm32',
+            hash: '#',
+            size: 42,
+            path: '',
+          ),
+        },
+      );
 
       when(() => shorebirdEnv.getShorebirdYaml()).thenReturn(shorebirdYaml);
       when(() => shorebirdEnv.flutterRevision).thenReturn(flutterRevision);
