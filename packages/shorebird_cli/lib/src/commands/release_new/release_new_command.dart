@@ -40,7 +40,12 @@ class ReleaseNewCommand extends ShorebirdCommand {
       )
       ..addOption(
         'build-number',
-        help: 'The build number of the aar',
+        help: '''
+An identifier used as an internal version number.
+Each build must have a unique identifier to differentiate it from previous builds.
+It is used to determine whether one build is more recent than another, with higher numbers indicating more recent build.
+On Android it is used as "versionCode".
+On Xcode builds it is used as "CFBundleVersion".''',
         defaultsTo: '1.0',
       )
       ..addOption(
