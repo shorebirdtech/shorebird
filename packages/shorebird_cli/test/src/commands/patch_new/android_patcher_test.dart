@@ -439,13 +439,6 @@ Looked in:
           ),
         ).thenReturn(aabFile);
       });
-
-      test('returns value of shorebirdAndroidArtifacts.findAab', () async {
-        expect(
-          await runWithOverrides(patcher.patchArtifactForDiffCheck),
-          equals(aabFile),
-        );
-      });
     });
   });
 }

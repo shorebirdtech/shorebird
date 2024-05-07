@@ -167,12 +167,4 @@ Looked in:
       artifact.path,
     );
   }
-
-  @override
-  Future<File> patchArtifactForDiffCheck() async {
-    return shorebirdAndroidArtifacts.findAab(
-      project: projectRoot,
-      flavor: flavor,
-    );
-  }
 }

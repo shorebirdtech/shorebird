@@ -46,10 +46,6 @@ abstract class Patcher {
   /// Determines the release version from the provided app artifact.
   Future<String> extractReleaseVersionFromArtifact(File artifact);
 
-  /// The artifact to compare against the release to determine whether the patch
-  /// contains unpatchable changes.
-  Future<File> patchArtifactForDiffCheck();
-
   /// Creates the patch artifacts required to apply a patch to a release.
   Future<Map<Arch, PatchArtifactBundle>> createPatchArtifacts({
     required String appId,
