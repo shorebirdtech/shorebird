@@ -11,7 +11,7 @@ dependencies:
   checked_yaml: ^2.0.2
   collection: ^1.17.1
   http: ^1.0.0
-  json_annotation: ^4.8.0
+  json_annotation: ^4.9.0
   quiver: ^3.2.1
   shelf: ^1.4.0
   shelf_hotreload: ^1.5.0
