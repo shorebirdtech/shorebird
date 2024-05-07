@@ -474,6 +474,92 @@ void main() {
           ).called(1);
         });
       });
+
+      group('isLinkDebugInfoSupported', () {
+        test('returns true when the argument is present in the help', () async {
+          final result = MockShorebirdProcessResult();
+          when(() => result.exitCode).thenReturn(ExitCode.success.code);
+          when(() => result.stdout).thenReturn('''
+Link two aot snapshots.
+
+Usage: aot_tools link [arguments]
+-h, --help                            Print this usage information.
+    --base (mandatory)                Path to the base snapshot to link against.
+    --patch (mandatory)               Path to the patch snapshot to link.
+    --analyze-snapshot (mandatory)    Path to analyze_snapshot binary.
+    --gen-snapshot (mandatory)        Path to gen_snapshot binary.
+    --kernel (mandatory)              Path to the patch kernel (.dill) file.
+    --output (mandatory)              Path to the output vmcode file.
+    --enable-asserts                  Whether to enable asserts.
+    --linker-overrides                Path to the linker overrides json file.
+    --dump-debug-info                 When specified, debug information will be generated and written to the provided path.
+    --reporter                        Set how to print link results.
+
+          [json]                      Prints the results in json format.
+          [pretty] (default)          Prints the results in a human readable format.
+
+    --redirect-to                     Redirect output to a file.
+
+Run "aot_tools help" to see global options.
+''');
+
+          when(
+            () => process.run(
+              any(),
+              any(),
+              workingDirectory: any(named: 'workingDirectory'),
+            ),
+          ).thenAnswer((_) async => result);
+
+          await expectLater(
+            runWithOverrides(() => aotTools.isLinkDebugInfoSupported()),
+            completion(isTrue),
+          );
+        });
+
+        test(
+          'returns false when the argument is not present in the help',
+          () async {
+            final result = MockShorebirdProcessResult();
+            when(() => result.exitCode).thenReturn(ExitCode.success.code);
+            when(() => result.stdout).thenReturn('''
+Link two aot snapshots.
+
+Usage: aot_tools link [arguments]
+-h, --help                            Print this usage information.
+    --base (mandatory)                Path to the base snapshot to link against.
+    --patch (mandatory)               Path to the patch snapshot to link.
+    --analyze-snapshot (mandatory)    Path to analyze_snapshot binary.
+    --gen-snapshot (mandatory)        Path to gen_snapshot binary.
+    --kernel (mandatory)              Path to the patch kernel (.dill) file.
+    --output (mandatory)              Path to the output vmcode file.
+    --enable-asserts                  Whether to enable asserts.
+    --linker-overrides                Path to the linker overrides json file.
+    --reporter                        Set how to print link results.
+
+          [json]                      Prints the results in json format.
+          [pretty] (default)          Prints the results in a human readable format.
+
+    --redirect-to                     Redirect output to a file.
+
+Run "aot_tools help" to see global options.
+''');
+
+            when(
+              () => process.run(
+                any(),
+                any(),
+                workingDirectory: any(named: 'workingDirectory'),
+              ),
+            ).thenAnswer((_) async => result);
+
+            await expectLater(
+              runWithOverrides(() => aotTools.isLinkDebugInfoSupported()),
+              completion(isFalse),
+            );
+          },
+        );
+      });
     });
 
     group('isGeneratePatchDiffBaseSupported', () {

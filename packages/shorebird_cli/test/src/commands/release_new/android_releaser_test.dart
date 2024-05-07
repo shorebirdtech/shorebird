@@ -96,6 +96,10 @@ void main() {
       when(() => argResults['target-platform'])
           .thenReturn(Arch.values.map((a) => a.targetPlatformCliArg).toList());
 
+      when(() => doctor.androidCommandValidators)
+          .thenReturn([flutterValidator]);
+      when(flutterValidator.validate).thenAnswer((_) async => []);
+
       when(() => logger.progress(any())).thenReturn(progress);
 
       when(
@@ -116,12 +120,6 @@ void main() {
     });
 
     group('assertPreconditions', () {
-      setUp(() {
-        when(() => doctor.androidCommandValidators)
-            .thenReturn([flutterValidator]);
-        when(flutterValidator.validate).thenAnswer((_) async => []);
-      });
-
       group('when validation succeeds', () {
         setUp(() {
           when(
