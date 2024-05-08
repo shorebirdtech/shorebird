@@ -221,14 +221,20 @@ Run ${lightCyan.wrap('shorebird upgrade')} to upgrade.''');
     }
 
     if (exitCode == ExitCode.software.code && logger.level != Level.verbose) {
+      final fileAnIssue = link(
+        uri: Uri.parse(
+          'https://github.com/shorebirdtech/shorebird/issues/new/choose',
+        ),
+        message: 'file an issue',
+      );
       logger.info(
         '''
 
-If you aren't sure why this command failed, its output were logged to:
+If you aren't sure why this command failed, re-run with the ${lightCyan.wrap('--verbose')} flag to see more information.
 
+You can also $fileAnIssue if you think this is a bug. Please include the following log file in your report:
 ${shorebirdLogger.logFile.absolute.path}
-
-You can also re-run with the ${lightCyan.wrap('--verbose')} flag to see more information.''',
+''',
       );
     }
 
