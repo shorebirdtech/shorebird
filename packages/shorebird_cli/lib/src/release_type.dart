@@ -1,3 +1,5 @@
+import 'package:args/args.dart';
+import 'package:collection/collection.dart';
 import 'package:shorebird_code_push_client/shorebird_code_push_client.dart';
 
 /// The different types of shorebird releases that can be created.
@@ -40,5 +42,26 @@ enum ReleaseType {
       case ReleaseType.iosFramework:
         return ReleasePlatform.ios;
     }
+  }
+}
+
+extension ReleaseTypeArgs on ArgResults {
+  Iterable<ReleaseType> get releaseTypes {
+    final List<String> releaseTypeCliNames;
+    if (wasParsed('platform')) {
+      releaseTypeCliNames = this['platform'] as List<String>;
+    } else {
+      final platformCliName = arguments.first;
+      if (ReleaseType.values
+          .none((target) => target.cliName == platformCliName)) {
+        throw ArgumentError('Invalid platform: $platformCliName');
+      }
+      releaseTypeCliNames = [platformCliName];
+    }
+
+    return releaseTypeCliNames.map(
+      (cliName) =>
+          ReleaseType.values.firstWhere((target) => target.cliName == cliName),
+    );
   }
 }

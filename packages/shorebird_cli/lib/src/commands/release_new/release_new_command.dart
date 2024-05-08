@@ -6,7 +6,7 @@ import 'package:scoped/scoped.dart';
 import 'package:shorebird_cli/src/code_push_client_wrapper.dart';
 import 'package:shorebird_cli/src/command.dart';
 import 'package:shorebird_cli/src/commands/release_new/release_new.dart';
-import 'package:shorebird_cli/src/commands/release_new/release_type.dart';
+import 'package:shorebird_cli/src/release_type.dart';
 import 'package:shorebird_cli/src/config/config.dart';
 import 'package:shorebird_cli/src/extensions/arg_results.dart';
 import 'package:shorebird_cli/src/logger.dart';
@@ -107,14 +107,8 @@ of the iOS app that is using this module.''',
 
   @override
   Future<int> run() async {
-    final releaserFutures = (results['platform'] as List<String>)
-        .map(
-          (platformArg) => ReleaseType.values.firstWhere(
-            (target) => target.cliName == platformArg,
-          ),
-        )
-        .map(_resolveReleaser)
-        .map(createRelease);
+    final releaserFutures =
+        results.releaseTypes.map(_resolveReleaser).map(createRelease);
 
     for (final future in releaserFutures) {
       await future;

@@ -1,7 +1,7 @@
 import 'dart:io';
 
-import 'package:shorebird_cli/src/commands/release_new/release_type.dart';
 import 'package:shorebird_cli/src/commands/release_new/releaser.dart';
+import 'package:shorebird_cli/src/release_type.dart';
 import 'package:shorebird_code_push_protocol/src/models/release.dart';
 import 'package:shorebird_code_push_protocol/src/models/update_release_metadata.dart';
 import 'package:test/test.dart';
