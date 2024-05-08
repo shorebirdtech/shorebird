@@ -18,7 +18,7 @@ void main() {
     late ArgResults results;
     late Auth auth;
     late http.Client httpClient;
-    late Logger logger;
+    late ShorebirdLogger logger;
     late LoginCiCommand command;
 
     R runWithOverrides<R>(R Function() body) {
@@ -38,7 +38,7 @@ void main() {
     setUp(() {
       auth = MockAuth();
       httpClient = MockHttpClient();
-      logger = MockLogger();
+      logger = MockShorebirdLogger();
       results = MockArgResults();
 
       when(() => results.wasParsed('provider')).thenReturn(false);

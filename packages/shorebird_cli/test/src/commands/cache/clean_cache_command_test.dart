@@ -16,7 +16,7 @@ import '../../mocks.dart';
 void main() {
   group('cache clean', () {
     late Cache cache;
-    late Logger logger;
+    late ShorebirdLogger logger;
     late Platform platform;
     late Progress progress;
     late ShorebirdEnv shorebirdEnv;
@@ -36,7 +36,7 @@ void main() {
 
     setUp(() {
       cache = MockCache();
-      logger = MockLogger();
+      logger = MockShorebirdLogger();
       platform = MockPlatform();
       progress = MockProgress();
       shorebirdEnv = MockShorebirdEnv();

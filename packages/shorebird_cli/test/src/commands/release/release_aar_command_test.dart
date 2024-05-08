@@ -70,7 +70,7 @@ void main() {
     late OperatingSystemInterface operatingSystemInterface;
     late Platform platform;
     late Progress progress;
-    late Logger logger;
+    late ShorebirdLogger logger;
     late ShorebirdProcessResult flutterBuildProcessResult;
     late ShorebirdProcessResult flutterPubGetProcessResult;
     late ShorebirdEnv shorebirdEnv;
@@ -141,7 +141,7 @@ void main() {
       operatingSystemInterface = MockOperatingSystemInterface();
       platform = MockPlatform();
       progress = MockProgress();
-      logger = MockLogger();
+      logger = MockShorebirdLogger();
       flutterBuildProcessResult = MockProcessResult();
       flutterPubGetProcessResult = MockProcessResult();
       shorebirdProcess = MockShorebirdProcess();

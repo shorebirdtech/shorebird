@@ -38,7 +38,7 @@ void main() {
     late Doctor doctor;
     late Platform platform;
     late Directory projectRoot;
-    late Logger logger;
+    late ShorebirdLogger logger;
     late Progress progress;
     late ShorebirdFlutterValidator flutterValidator;
     late ShorebirdProcess shorebirdProcess;
@@ -106,7 +106,7 @@ void main() {
       platform = MockPlatform();
       progress = MockProgress();
       projectRoot = Directory.systemTemp.createTempSync();
-      logger = MockLogger();
+      logger = MockShorebirdLogger();
       flutterValidator = MockShorebirdFlutterValidator();
       shorebirdProcess = MockShorebirdProcess();
       shorebirdEnv = MockShorebirdEnv();

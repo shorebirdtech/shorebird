@@ -19,7 +19,7 @@ void main() {
 
     late ArgResults argResults;
     late ArtifactBuilder artifactBuilder;
-    late Logger logger;
+    late ShorebirdLogger logger;
     late Progress progress;
     late ShorebirdEnv shorebirdEnv;
     late ShorebirdValidator shorebirdValidator;
@@ -40,7 +40,7 @@ void main() {
     setUp(() {
       argResults = MockArgResults();
       artifactBuilder = MockArtifactBuilder();
-      logger = MockLogger();
+      logger = MockShorebirdLogger();
       progress = MockProgress();
       shorebirdEnv = MockShorebirdEnv();
       shorebirdValidator = MockShorebirdValidator();

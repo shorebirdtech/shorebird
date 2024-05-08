@@ -36,7 +36,7 @@ void main() {
     late CodePushClientWrapper codePushClientWrapper;
     late Platform platform;
     late Directory projectRoot;
-    late Logger logger;
+    late ShorebirdLogger logger;
     late OperatingSystemInterface operatingSystemInterface;
     late Progress progress;
     late ShorebirdProcess shorebirdProcess;
@@ -82,7 +82,7 @@ void main() {
       platform = MockPlatform();
       progress = MockProgress();
       projectRoot = Directory.systemTemp.createTempSync();
-      logger = MockLogger();
+      logger = MockShorebirdLogger();
       shorebirdProcess = MockShorebirdProcess();
       shorebirdEnv = MockShorebirdEnv();
       shorebirdFlutter = MockShorebirdFlutter();

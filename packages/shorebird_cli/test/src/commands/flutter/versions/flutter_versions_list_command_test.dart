@@ -13,7 +13,7 @@ import '../../../mocks.dart';
 void main() {
   group(FlutterVersionsListCommand, () {
     late Progress progress;
-    late Logger logger;
+    late ShorebirdLogger logger;
     late ShorebirdFlutter shorebirdFlutter;
     late FlutterVersionsListCommand command;
 
@@ -29,7 +29,7 @@ void main() {
 
     setUp(() {
       progress = MockProgress();
-      logger = MockLogger();
+      logger = MockShorebirdLogger();
       shorebirdFlutter = MockShorebirdFlutter();
       command = runWithOverrides(FlutterVersionsListCommand.new);
 

@@ -20,7 +20,7 @@ void main() {
     const flutterRevision = 'test-flutter-revision';
     const flutterVersion = '1.2.3';
 
-    late Logger logger;
+    late ShorebirdLogger logger;
     late Platform platform;
     late ShorebirdEnv shorebirdEnv;
     late ShorebirdFlutter shorebirdFlutter;
@@ -41,12 +41,16 @@ void main() {
     }
 
     setUp(() {
-      logger = MockLogger();
+      logger = MockShorebirdLogger();
       platform = MockPlatform();
       shorebirdEnv = MockShorebirdEnv();
       shorebirdFlutter = MockShorebirdFlutter();
       shorebirdVersion = MockShorebirdVersion();
       when(() => logger.level).thenReturn(Level.info);
+      final logFile = MockFile();
+      when(() => logger.logFile).thenReturn(logFile);
+      when(() => logFile.absolute).thenReturn(logFile);
+      when(() => logFile.path).thenReturn('test.log');
       when(
         () => shorebirdEnv.shorebirdEngineRevision,
       ).thenReturn(shorebirdEngineRevision);

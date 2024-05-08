@@ -119,7 +119,7 @@ flutter:
       late Platform platform;
       late Auth auth;
       late OperatingSystemInterface operatingSystemInterface;
-      late Logger logger;
+      late ShorebirdLogger logger;
       late Progress progress;
       late ShorebirdProcessResult aotBuildProcessResult;
       late ShorebirdProcessResult flutterBuildProcessResult;
@@ -251,7 +251,7 @@ flutter:
         )..createSync(recursive: true);
         auth = MockAuth();
         progress = MockProgress();
-        logger = MockLogger();
+        logger = MockShorebirdLogger();
         aotBuildProcessResult = MockProcessResult();
         flutterBuildProcessResult = MockProcessResult();
         flutterPubGetProcessResult = MockProcessResult();
