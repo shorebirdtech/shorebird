@@ -12,13 +12,6 @@ final loggerRef = create(ShorebirdLogger.new);
 ShorebirdLogger get logger => read(loggerRef);
 
 class ShorebirdLogger extends Logger {
-  /// {@macro shorebird_logger}
-  ShorebirdLogger({
-    Logger? logger,
-  }) : _logger = logger ?? Logger();
-
-  final Logger _logger;
-
   static const _logFileName = 'shorebird.log';
 
   late final File logFile = (() {
@@ -50,61 +43,61 @@ class ShorebirdLogger extends Logger {
 
   @override
   void info(String? message, {LogStyle? style}) {
-    _logger.info(message, style: style);
+    super.info(message, style: style);
     _logToFile(
       'INFO',
       message ?? '',
-      style: style ?? _logger.theme.info,
+      style: style ?? theme.info,
     );
   }
 
   @override
   void detail(String? message, {LogStyle? style}) {
-    _logger.detail(message, style: style);
+    super.detail(message, style: style);
     _logToFile(
       'DETAIL',
       message ?? '',
-      style: style ?? _logger.theme.detail,
+      style: style ?? theme.detail,
     );
   }
 
   @override
   void warn(String? message, {String tag = 'WARN', LogStyle? style}) {
-    _logger.warn(message, tag: tag, style: style);
+    super.warn(message, tag: tag, style: style);
     _logToFile(
       'WARN',
       message ?? '',
-      style: style ?? _logger.theme.warn,
+      style: style ?? theme.warn,
     );
   }
 
   @override
   void success(String? message, {LogStyle? style}) {
-    _logger.success(message, style: style);
+    super.success(message, style: style);
     _logToFile(
       'SUCCESS',
       message ?? '',
-      style: style ?? _logger.theme.success,
+      style: style ?? theme.success,
     );
   }
 
   @override
   void alert(String? message, {LogStyle? style}) {
-    _logger.alert(message, style: style);
+    super.alert(message, style: style);
     _logToFile(
       'ALERT',
       message ?? '',
-      style: style ?? _logger.theme.alert,
+      style: style ?? theme.alert,
     );
   }
 
   @override
   void err(String? message, {LogStyle? style}) {
-    _logger.err(message, style: style);
+    super.err(message, style: style);
     _logToFile(
       'ERROR',
       message ?? '',
-      style: style ?? _logger.theme.err,
+      style: style ?? theme.err,
     );
   }
 }

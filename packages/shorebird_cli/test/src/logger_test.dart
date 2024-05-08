@@ -1,6 +1,5 @@
 import 'dart:io';
 
-import 'package:mason_logger/mason_logger.dart';
 import 'package:mocktail/mocktail.dart';
 import 'package:path/path.dart' as p;
 import 'package:scoped/scoped.dart';
@@ -14,7 +13,6 @@ void main() {
   group('ShorebirdLogger', () {
     late Directory shorebirdRootDir;
     late ShorebirdEnv shorebirdEnv;
-    late Logger logger;
     late ShorebirdLogger shorebirdLogger;
 
     setUp(() {
@@ -23,9 +21,7 @@ void main() {
       shorebirdEnv = MockShorebirdEnv();
       when(() => shorebirdEnv.shorebirdRoot).thenReturn(shorebirdRootDir);
 
-      logger = MockShorebirdLogger();
-      when(() => logger.theme).thenReturn(const LogTheme());
-      shorebirdLogger = ShorebirdLogger(logger: logger);
+      shorebirdLogger = ShorebirdLogger();
     });
 
     String readLogFile() {
@@ -46,8 +42,6 @@ void main() {
       runScoped(
         () {
           shorebirdLogger.info('message');
-          verify(() => logger.info('message', style: any(named: 'style')))
-              .called(1);
           expect(readLogFile(), contains('[INFO]'));
           expect(readLogFile(), contains('message'));
         },
@@ -64,8 +58,6 @@ void main() {
             'message',
             style: (message) => message?.toUpperCase(),
           );
-          verify(() => logger.info('message', style: any(named: 'style')))
-              .called(1);
           expect(readLogFile(), contains('[INFO]'));
           expect(readLogFile(), contains('MESSAGE'));
         },
@@ -79,8 +71,6 @@ void main() {
       runScoped(
         () {
           shorebirdLogger.detail('message');
-          verify(() => logger.detail('message', style: any(named: 'style')))
-              .called(1);
           expect(readLogFile(), contains('[DETAIL]'));
           expect(readLogFile(), contains('message'));
         },
@@ -97,8 +87,6 @@ void main() {
             'message',
             style: (message) => message?.toUpperCase(),
           );
-          verify(() => logger.detail('message', style: any(named: 'style')))
-              .called(1);
           expect(readLogFile(), contains('[DETAIL]'));
           expect(readLogFile(), contains('MESSAGE'));
         },
@@ -112,8 +100,6 @@ void main() {
       runScoped(
         () {
           shorebirdLogger.warn('message');
-          verify(() => logger.warn('message', style: any(named: 'style')))
-              .called(1);
           expect(readLogFile(), contains('[WARN]'));
           expect(readLogFile(), contains('message'));
         },
@@ -130,8 +116,6 @@ void main() {
             'message',
             style: (message) => message?.toUpperCase(),
           );
-          verify(() => logger.warn('message', style: any(named: 'style')))
-              .called(1);
           expect(readLogFile(), contains('[WARN]'));
           expect(readLogFile(), contains('MESSAGE'));
         },
@@ -145,8 +129,6 @@ void main() {
       runScoped(
         () {
           shorebirdLogger.success('message');
-          verify(() => logger.success('message', style: any(named: 'style')))
-              .called(1);
           expect(readLogFile(), contains('[SUCCESS]'));
           expect(readLogFile(), contains('message'));
         },
@@ -163,8 +145,6 @@ void main() {
             'message',
             style: (message) => message?.toUpperCase(),
           );
-          verify(() => logger.success('message', style: any(named: 'style')))
-              .called(1);
           expect(readLogFile(), contains('[SUCCESS]'));
           expect(readLogFile(), contains('MESSAGE'));
         },
@@ -178,8 +158,6 @@ void main() {
       runScoped(
         () {
           shorebirdLogger.alert('message');
-          verify(() => logger.alert('message', style: any(named: 'style')))
-              .called(1);
           expect(readLogFile(), contains('[ALERT]'));
           expect(readLogFile(), contains('message'));
         },
@@ -196,8 +174,6 @@ void main() {
             'message',
             style: (message) => message?.toUpperCase(),
           );
-          verify(() => logger.alert('message', style: any(named: 'style')))
-              .called(1);
           expect(readLogFile(), contains('[ALERT]'));
           expect(readLogFile(), contains('MESSAGE'));
         },
@@ -211,8 +187,6 @@ void main() {
       runScoped(
         () {
           shorebirdLogger.err('message');
-          verify(() => logger.err('message', style: any(named: 'style')))
-              .called(1);
           expect(readLogFile(), contains('[ERROR]'));
           expect(readLogFile(), contains('message'));
         },
@@ -229,8 +203,6 @@ void main() {
             'message',
             style: (message) => message?.toUpperCase(),
           );
-          verify(() => logger.err('message', style: any(named: 'style')))
-              .called(1);
           expect(readLogFile(), contains('[ERROR]'));
           expect(readLogFile(), contains('MESSAGE'));
         },
