@@ -35,8 +35,8 @@ class ShorebirdLogger {
       ),
     );
 
-    if (!file.parent.existsSync()) {
-      file.parent.createSync(recursive: true);
+    if (!file.existsSync()) {
+      file.createSync(recursive: true);
     }
 
     return file;
