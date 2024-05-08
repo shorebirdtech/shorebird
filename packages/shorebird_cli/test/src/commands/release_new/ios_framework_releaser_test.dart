@@ -256,7 +256,6 @@ void main() {
                 'ios',
                 'framework',
                 'Release',
-                'Flutter.xcframework',
               ),
             ),
           );

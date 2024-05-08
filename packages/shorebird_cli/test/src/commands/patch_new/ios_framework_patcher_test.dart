@@ -672,6 +672,10 @@ void main() {
           setUp(() {
             when(() => shorebirdEnv.flutterRevision)
                 .thenReturn(preLinkerFlutterRevision);
+            when(() => aotTools.isGeneratePatchDiffBaseSupported())
+                .thenAnswer((_) async => false);
+
+            setUpProjectRootArtifacts();
           });
 
           test('returns base patch artifact in patch bundle', () async {
