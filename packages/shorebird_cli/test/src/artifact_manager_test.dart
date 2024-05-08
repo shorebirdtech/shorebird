@@ -616,7 +616,7 @@ void main() {
         final result = runWithOverrides(artifactManager.newestAppDill);
 
         expect(result, isNotNull);
-        expect(result!.path, equals(appDill2.path));
+        expect(result.path, equals(appDill2.path));
       });
     });
   });
