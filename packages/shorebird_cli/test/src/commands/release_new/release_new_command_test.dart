@@ -3,11 +3,8 @@ import 'package:mason_logger/mason_logger.dart';
 import 'package:mocktail/mocktail.dart';
 import 'package:scoped/scoped.dart';
 import 'package:shorebird_cli/src/code_push_client_wrapper.dart';
-import 'package:shorebird_cli/src/commands/release_new/aar_releaser.dart';
-import 'package:shorebird_cli/src/commands/release_new/android_releaser.dart';
-import 'package:shorebird_cli/src/commands/release_new/release_new_command.dart';
-import 'package:shorebird_cli/src/commands/release_new/release_type.dart';
-import 'package:shorebird_cli/src/commands/release_new/releaser.dart';
+import 'package:shorebird_cli/src/commands/release_new/release_new.dart';
+import 'package:shorebird_cli/src/release_type.dart';
 import 'package:shorebird_cli/src/config/config.dart';
 import 'package:shorebird_cli/src/logger.dart';
 import 'package:shorebird_cli/src/shorebird_env.dart';
@@ -139,8 +136,8 @@ void main() {
       when(() => releaser.postReleaseInstructions)
           .thenReturn(postReleaseInstructions);
       when(() => releaser.releaseType).thenReturn(ReleaseType.android);
-      when(() => releaser.releaseMetadata)
-          .thenReturn(UpdateReleaseMetadata.forTest());
+      when(() => releaser.releaseMetadata())
+          .thenAnswer((_) async => UpdateReleaseMetadata.forTest());
       when(() => releaser.requiresReleaseVersionArg).thenReturn(false);
 
       when(() => shorebirdEnv.getShorebirdYaml()).thenReturn(shorebirdYaml);
@@ -174,7 +171,7 @@ void main() {
         ..testArgResults = argResults;
     });
 
-    test('has description', () {
+    test('has non-empty description', () {
       expect(command.description, isNotEmpty);
     });
 
@@ -189,12 +186,12 @@ void main() {
           isA<AarReleaser>(),
         );
         expect(
-          () => command.getReleaser(ReleaseType.ios),
-          throwsA(isA<UnimplementedError>()),
+          command.getReleaser(ReleaseType.ios),
+          isA<IosReleaser>(),
         );
         expect(
-          () => command.getReleaser(ReleaseType.iosFramework),
-          throwsA(isA<UnimplementedError>()),
+          command.getReleaser(ReleaseType.iosFramework),
+          isA<IosFrameworkReleaser>(),
         );
       });
     });
@@ -215,7 +212,9 @@ void main() {
               release: release,
               appId: appId,
             ),
-        () => logger.success('✅ Published Release ${release.version}!'),
+        () => logger.success('''
+
+✅ Published Release ${release.version}!'''),
         () => logger.info(postReleaseInstructions),
         () => logger.info(
               '''To create a patch for this release, run ${lightCyan.wrap('shorebird patch --platform=android --release-version=${release.version}')}''',
@@ -275,7 +274,11 @@ Note: ${lightCyan.wrap('shorebird patch --platform=android')} without the --rele
                 release: release,
                 appId: appId,
               ),
-          () => logger.success('✅ Published Release ${release.version}!'),
+          () => logger.success(
+                '''
+
+✅ Published Release ${release.version}!''',
+              ),
           () => logger.info(postReleaseInstructions),
           () => logger.info(
                 '''To create a patch for this release, run ${lightCyan.wrap('shorebird patch --platform=android --flavor=$flavor --target=$target --release-version=${release.version}')}''',

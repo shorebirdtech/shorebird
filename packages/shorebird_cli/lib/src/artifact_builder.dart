@@ -222,6 +222,32 @@ $errorMessage''');
     });
   }
 
+  /// Builds a release iOS framework (.xcframework) for the current project.
+  Future<void> buildIosFramework({
+    List<String> argResultsRest = const [],
+  }) {
+    return _runShorebirdBuildCommand(() async {
+      const executable = 'flutter';
+      final arguments = [
+        'build',
+        'ios-framework',
+        '--no-debug',
+        '--no-profile',
+        ...argResultsRest,
+      ];
+
+      final result = await process.run(
+        executable,
+        arguments,
+        runInShell: true,
+      );
+
+      if (result.exitCode != ExitCode.success.code) {
+        throw ArtifactBuildException('Failed to build: ${result.stderr}');
+      }
+    });
+  }
+
   String _failedToCreateIpaErrorMessage({required String stderr}) {
     // The full error text consists of many repeated lines of the format:
     // (newlines added for line length)

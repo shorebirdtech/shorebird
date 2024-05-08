@@ -1,7 +1,7 @@
 import 'package:mason_logger/mason_logger.dart';
 import 'package:shorebird_cli/src/artifact_builder.dart';
 import 'package:shorebird_cli/src/code_push_client_wrapper.dart';
-import 'package:shorebird_cli/src/commands/release_new/release_type.dart';
+import 'package:shorebird_cli/src/release_type.dart';
 import 'package:shorebird_cli/src/commands/release_new/releaser.dart';
 import 'package:shorebird_cli/src/doctor.dart';
 import 'package:shorebird_cli/src/logger.dart';
@@ -164,7 +164,8 @@ Please comment and upvote ${link(uri: Uri.parse('https://github.com/shorebirdtec
   }
 
   @override
-  UpdateReleaseMetadata get releaseMetadata => UpdateReleaseMetadata(
+  Future<UpdateReleaseMetadata> releaseMetadata() async =>
+      UpdateReleaseMetadata(
         releasePlatform: releaseType.releasePlatform,
         flutterVersionOverride: argResults['flutter-version'] as String?,
         generatedApks: generateApk,

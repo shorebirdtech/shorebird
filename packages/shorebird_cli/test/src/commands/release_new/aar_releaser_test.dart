@@ -7,7 +7,7 @@ import 'package:scoped/scoped.dart';
 import 'package:shorebird_cli/src/artifact_builder.dart';
 import 'package:shorebird_cli/src/code_push_client_wrapper.dart';
 import 'package:shorebird_cli/src/commands/release_new/aar_releaser.dart';
-import 'package:shorebird_cli/src/commands/release_new/release_type.dart';
+import 'package:shorebird_cli/src/release_type.dart';
 import 'package:shorebird_cli/src/engine_config.dart';
 import 'package:shorebird_cli/src/logger.dart';
 import 'package:shorebird_cli/src/os/operating_system_interface.dart';
@@ -408,18 +408,20 @@ void main() {
             .thenReturn(operatingSystemVersion);
       });
 
-      test('returns expected metadata', () {
+      test('returns expected metadata', () async {
         expect(
-          runWithOverrides(() => aarReleaser.releaseMetadata),
-          const UpdateReleaseMetadata(
-            releasePlatform: ReleasePlatform.android,
-            flutterVersionOverride: null,
-            generatedApks: false,
-            environment: BuildEnvironmentMetadata(
-              operatingSystem: operatingSystem,
-              operatingSystemVersion: operatingSystemVersion,
-              shorebirdVersion: packageVersion,
-              xcodeVersion: null,
+          await runWithOverrides(aarReleaser.releaseMetadata),
+          equals(
+            const UpdateReleaseMetadata(
+              releasePlatform: ReleasePlatform.android,
+              flutterVersionOverride: null,
+              generatedApks: false,
+              environment: BuildEnvironmentMetadata(
+                operatingSystem: operatingSystem,
+                operatingSystemVersion: operatingSystemVersion,
+                shorebirdVersion: packageVersion,
+                xcodeVersion: null,
+              ),
             ),
           ),
         );

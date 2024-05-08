@@ -1,7 +1,7 @@
 import 'dart:io';
 
 import 'package:args/args.dart';
-import 'package:shorebird_cli/src/commands/release_new/release_type.dart';
+import 'package:shorebird_cli/src/release_type.dart';
 import 'package:shorebird_cli/src/shorebird_env.dart';
 import 'package:shorebird_code_push_client/shorebird_code_push_client.dart';
 import 'package:shorebird_code_push_protocol/shorebird_code_push_protocol.dart';
@@ -56,7 +56,7 @@ abstract class Releaser {
 
   /// Metadata to attach to the release when creating it, used for debugging
   /// and support.
-  UpdateReleaseMetadata get releaseMetadata;
+  Future<UpdateReleaseMetadata> releaseMetadata();
 
   /// Instructions explaining next steps after running `shorebird release`. This
   /// could include how to upload the generated artifact to a store and how to

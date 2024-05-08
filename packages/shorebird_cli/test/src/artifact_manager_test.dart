@@ -559,5 +559,40 @@ void main() {
         });
       });
     });
+
+    group('getAppXcframeworkPath', () {
+      test('returns path to App.xcframework', () {
+        expect(
+          runWithOverrides(artifactManager.getAppXcframeworkPath),
+          equals(
+            p.join(
+              projectRoot.path,
+              'build',
+              'ios',
+              'framework',
+              'Release',
+              ArtifactManager.appXcframeworkName,
+            ),
+          ),
+        );
+      });
+    });
+
+    group('getAppXcframeworkDirectory', () {
+      test('returns directory containing App.xcframework', () {
+        expect(
+          runWithOverrides(artifactManager.getAppXcframeworkDirectory).path,
+          equals(
+            p.join(
+              projectRoot.path,
+              'build',
+              'ios',
+              'framework',
+              'Release',
+            ),
+          ),
+        );
+      });
+    });
   });
 }

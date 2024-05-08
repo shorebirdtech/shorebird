@@ -7,13 +7,13 @@ import 'package:scoped/scoped.dart';
 import 'package:shorebird_cli/src/artifact_builder.dart';
 import 'package:shorebird_cli/src/code_push_client_wrapper.dart';
 import 'package:shorebird_cli/src/commands/release_new/android_releaser.dart';
-import 'package:shorebird_cli/src/commands/release_new/release_type.dart';
 import 'package:shorebird_cli/src/doctor.dart';
 import 'package:shorebird_cli/src/engine_config.dart';
 import 'package:shorebird_cli/src/logger.dart';
 import 'package:shorebird_cli/src/os/operating_system_interface.dart';
 import 'package:shorebird_cli/src/platform.dart';
 import 'package:shorebird_cli/src/platform/platform.dart';
+import 'package:shorebird_cli/src/release_type.dart';
 import 'package:shorebird_cli/src/shorebird_android_artifacts.dart';
 import 'package:shorebird_cli/src/shorebird_env.dart';
 import 'package:shorebird_cli/src/shorebird_flutter.dart';
@@ -96,10 +96,6 @@ void main() {
       when(() => argResults['target-platform'])
           .thenReturn(Arch.values.map((a) => a.targetPlatformCliArg).toList());
 
-      when(() => doctor.androidCommandValidators)
-          .thenReturn([flutterValidator]);
-      when(flutterValidator.validate).thenAnswer((_) async => []);
-
       when(() => logger.progress(any())).thenReturn(progress);
 
       when(
@@ -120,6 +116,12 @@ void main() {
     });
 
     group('assertPreconditions', () {
+      setUp(() {
+        when(() => doctor.androidCommandValidators)
+            .thenReturn([flutterValidator]);
+        when(flutterValidator.validate).thenAnswer((_) async => []);
+      });
+
       group('when validation succeeds', () {
         setUp(() {
           when(
@@ -471,9 +473,9 @@ void main() {
           when(() => argResults['android-artifact']).thenReturn('apk');
         });
 
-        test('returns expected metadata', () {
+        test('returns expected metadata', () async {
           expect(
-            runWithOverrides(() => androidReleaser.releaseMetadata),
+            await runWithOverrides(() => androidReleaser.releaseMetadata()),
             const UpdateReleaseMetadata(
               releasePlatform: ReleasePlatform.android,
               flutterVersionOverride: null,
@@ -494,9 +496,9 @@ void main() {
           when(() => argResults['android-artifact']).thenReturn('aab');
         });
 
-        test('returns expected metadata', () {
+        test('returns expected metadata', () async {
           expect(
-            runWithOverrides(() => androidReleaser.releaseMetadata),
+            await runWithOverrides(() => androidReleaser.releaseMetadata()),
             const UpdateReleaseMetadata(
               releasePlatform: ReleasePlatform.android,
               flutterVersionOverride: null,
