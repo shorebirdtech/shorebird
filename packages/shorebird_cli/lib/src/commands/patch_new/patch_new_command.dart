@@ -5,9 +5,7 @@ import 'package:shorebird_cli/src/archive_analysis/archive_differ.dart';
 import 'package:shorebird_cli/src/artifact_manager.dart';
 import 'package:shorebird_cli/src/code_push_client_wrapper.dart';
 import 'package:shorebird_cli/src/command.dart';
-import 'package:shorebird_cli/src/commands/patch_new/android_patcher.dart';
-import 'package:shorebird_cli/src/commands/patch_new/patcher.dart';
-import 'package:shorebird_cli/src/commands/release_new/release_type.dart';
+import 'package:shorebird_cli/src/commands/patch_new/patch_new.dart';
 import 'package:shorebird_cli/src/config/config.dart';
 import 'package:shorebird_cli/src/deployment_track.dart';
 import 'package:shorebird_cli/src/extensions/arg_results.dart';
@@ -16,6 +14,7 @@ import 'package:shorebird_cli/src/logger.dart';
 import 'package:shorebird_cli/src/patch_diff_checker.dart';
 import 'package:shorebird_cli/src/platform.dart';
 import 'package:shorebird_cli/src/platform/platform.dart';
+import 'package:shorebird_cli/src/release_type.dart';
 import 'package:shorebird_cli/src/shorebird_env.dart';
 import 'package:shorebird_cli/src/third_party/flutter_tools/lib/flutter_tools.dart';
 import 'package:shorebird_cli/src/version.dart';
@@ -102,14 +101,8 @@ NOTE: this is ${styleBold.wrap('not')} recommended. Asset changes cannot be incl
 
   @override
   Future<int> run() async {
-    final patcherFutures = (results['platform'] as List<String>)
-        .map(
-          (platformArg) => ReleaseType.values.firstWhere(
-            (target) => target.cliName == platformArg,
-          ),
-        )
-        .map(_resolvePatcher)
-        .map(createPatch);
+    final patcherFutures =
+        results.releaseTypes.map(_resolvePatcher).map(createPatch);
 
     for (final patcherFuture in patcherFutures) {
       await patcherFuture;
