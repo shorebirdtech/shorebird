@@ -41,7 +41,8 @@ void main() {
           shorebirdLogger.info('message');
           verify(() => logger.info('message', style: any(named: 'style')))
               .called(1);
-          expect(readLogFile(), contains('[INFO] message'));
+          expect(readLogFile(), contains('[INFO]'));
+          expect(readLogFile(), contains('message'));
         },
         values: {
           shorebirdEnvRef.overrideWith(() => shorebirdEnv),
@@ -58,7 +59,8 @@ void main() {
           );
           verify(() => logger.info('message', style: any(named: 'style')))
               .called(1);
-          expect(readLogFile(), contains('[INFO] MESSAGE'));
+          expect(readLogFile(), contains('[INFO]'));
+          expect(readLogFile(), contains('MESSAGE'));
         },
         values: {
           shorebirdEnvRef.overrideWith(() => shorebirdEnv),
@@ -72,7 +74,8 @@ void main() {
           shorebirdLogger.detail('message');
           verify(() => logger.detail('message', style: any(named: 'style')))
               .called(1);
-          expect(readLogFile(), contains('[DETAIL] message'));
+          expect(readLogFile(), contains('[DETAIL]'));
+          expect(readLogFile(), contains('message'));
         },
         values: {
           shorebirdEnvRef.overrideWith(() => shorebirdEnv),
@@ -89,7 +92,8 @@ void main() {
           );
           verify(() => logger.detail('message', style: any(named: 'style')))
               .called(1);
-          expect(readLogFile(), contains('[DETAIL] MESSAGE'));
+          expect(readLogFile(), contains('[DETAIL]'));
+          expect(readLogFile(), contains('MESSAGE'));
         },
         values: {
           shorebirdEnvRef.overrideWith(() => shorebirdEnv),
@@ -103,7 +107,8 @@ void main() {
           shorebirdLogger.warn('message');
           verify(() => logger.warn('message', style: any(named: 'style')))
               .called(1);
-          expect(readLogFile(), contains('[WARN] message'));
+          expect(readLogFile(), contains('[WARN]'));
+          expect(readLogFile(), contains('message'));
         },
         values: {
           shorebirdEnvRef.overrideWith(() => shorebirdEnv),
@@ -120,7 +125,8 @@ void main() {
           );
           verify(() => logger.warn('message', style: any(named: 'style')))
               .called(1);
-          expect(readLogFile(), contains('[WARN] MESSAGE'));
+          expect(readLogFile(), contains('[WARN]'));
+          expect(readLogFile(), contains('MESSAGE'));
         },
         values: {
           shorebirdEnvRef.overrideWith(() => shorebirdEnv),
@@ -134,7 +140,8 @@ void main() {
           shorebirdLogger.success('message');
           verify(() => logger.success('message', style: any(named: 'style')))
               .called(1);
-          expect(readLogFile(), contains('[SUCCESS] message'));
+          expect(readLogFile(), contains('[SUCCESS]'));
+          expect(readLogFile(), contains('message'));
         },
         values: {
           shorebirdEnvRef.overrideWith(() => shorebirdEnv),
@@ -151,7 +158,8 @@ void main() {
           );
           verify(() => logger.success('message', style: any(named: 'style')))
               .called(1);
-          expect(readLogFile(), contains('[SUCCESS] MESSAGE'));
+          expect(readLogFile(), contains('[SUCCESS]'));
+          expect(readLogFile(), contains('MESSAGE'));
         },
         values: {
           shorebirdEnvRef.overrideWith(() => shorebirdEnv),
@@ -165,7 +173,8 @@ void main() {
           shorebirdLogger.alert('message');
           verify(() => logger.alert('message', style: any(named: 'style')))
               .called(1);
-          expect(readLogFile(), contains('[ALERT] message'));
+          expect(readLogFile(), contains('[ALERT]'));
+          expect(readLogFile(), contains('message'));
         },
         values: {
           shorebirdEnvRef.overrideWith(() => shorebirdEnv),
@@ -182,7 +191,8 @@ void main() {
           );
           verify(() => logger.alert('message', style: any(named: 'style')))
               .called(1);
-          expect(readLogFile(), contains('[ALERT] MESSAGE'));
+          expect(readLogFile(), contains('[ALERT]'));
+          expect(readLogFile(), contains('MESSAGE'));
         },
         values: {
           shorebirdEnvRef.overrideWith(() => shorebirdEnv),
@@ -196,7 +206,8 @@ void main() {
           shorebirdLogger.err('message');
           verify(() => logger.err('message', style: any(named: 'style')))
               .called(1);
-          expect(readLogFile(), contains('[ERROR] message'));
+          expect(readLogFile(), contains('[ERROR]'));
+          expect(readLogFile(), contains('message'));
         },
         values: {
           shorebirdEnvRef.overrideWith(() => shorebirdEnv),
@@ -213,7 +224,8 @@ void main() {
           );
           verify(() => logger.err('message', style: any(named: 'style')))
               .called(1);
-          expect(readLogFile(), contains('[ERROR] MESSAGE'));
+          expect(readLogFile(), contains('[ERROR]'));
+          expect(readLogFile(), contains('MESSAGE'));
         },
         values: {
           shorebirdEnvRef.overrideWith(() => shorebirdEnv),

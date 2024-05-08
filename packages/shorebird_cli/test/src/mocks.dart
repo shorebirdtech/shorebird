@@ -30,6 +30,7 @@ import 'package:shorebird_cli/src/shorebird_android_artifacts.dart';
 import 'package:shorebird_cli/src/shorebird_artifacts.dart';
 import 'package:shorebird_cli/src/shorebird_env.dart';
 import 'package:shorebird_cli/src/shorebird_flutter.dart';
+import 'package:shorebird_cli/src/shorebird_logger.dart';
 import 'package:shorebird_cli/src/shorebird_process.dart';
 import 'package:shorebird_cli/src/shorebird_validator.dart';
 import 'package:shorebird_cli/src/shorebird_version.dart';
@@ -142,6 +143,8 @@ class MockShorebirdFlutter extends Mock implements ShorebirdFlutter {}
 
 class MockShorebirdFlutterValidator extends Mock
     implements ShorebirdFlutterValidator {}
+
+class MockShorebirdLogger extends Mock implements ShorebirdLogger {}
 
 class MockShorebirdProcess extends Mock implements ShorebirdProcess {}
 

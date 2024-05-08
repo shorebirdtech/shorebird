@@ -8,6 +8,7 @@ import 'package:shorebird_cli/src/logger.dart' hide logger;
 import 'package:shorebird_cli/src/platform.dart';
 import 'package:shorebird_cli/src/shorebird_env.dart';
 import 'package:shorebird_cli/src/shorebird_flutter.dart';
+import 'package:shorebird_cli/src/shorebird_logger.dart';
 import 'package:shorebird_cli/src/shorebird_version.dart';
 import 'package:shorebird_cli/src/version.dart';
 import 'package:test/test.dart';
@@ -23,6 +24,7 @@ void main() {
     late Logger logger;
     late Platform platform;
     late ShorebirdEnv shorebirdEnv;
+    late ShorebirdLogger shorebirdLogger;
     late ShorebirdFlutter shorebirdFlutter;
     late ShorebirdVersion shorebirdVersion;
     late ShorebirdCliCommandRunner commandRunner;
@@ -36,6 +38,7 @@ void main() {
           shorebirdEnvRef.overrideWith(() => shorebirdEnv),
           shorebirdFlutterRef.overrideWith(() => shorebirdFlutter),
           shorebirdVersionRef.overrideWith(() => shorebirdVersion),
+          shorebirdLoggerRef.overrideWith(() => shorebirdLogger),
         },
       );
     }
@@ -57,6 +60,11 @@ void main() {
       ).thenAnswer((_) async => flutterVersion);
       when(() => shorebirdVersion.isLatest()).thenAnswer((_) async => true);
       commandRunner = runWithOverrides(ShorebirdCliCommandRunner.new);
+      shorebirdLogger = MockShorebirdLogger();
+      final logFile = MockFile();
+      when(() => shorebirdLogger.logFile).thenReturn(logFile);
+      when(() => logFile.absolute).thenReturn(logFile);
+      when(() => logFile.path).thenReturn('test.log');
     });
 
     test('handles FormatException', () async {
@@ -281,7 +289,8 @@ Run ${lightCyan.wrap('shorebird upgrade')} to upgrade.'''),
         await runWithOverrides(
           () => commandRunner.run(['release', 'android', '--verbose']),
         );
-        verify(() => logger.detail(any(that: contains('#0')))).called(1);
+        verify(() => shorebirdLogger.detail(any(that: contains('#0'))))
+            .called(1);
       });
 
       group('when running with --verbose', () {

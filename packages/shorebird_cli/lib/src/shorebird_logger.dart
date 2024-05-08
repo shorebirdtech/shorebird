@@ -1,5 +1,6 @@
 import 'dart:io';
 
+import 'package:intl/intl.dart';
 import 'package:mason_logger/mason_logger.dart';
 import 'package:path/path.dart' as p;
 import 'package:scoped/scoped.dart';
@@ -24,12 +25,14 @@ class ShorebirdLogger {
 
   static const _logFileName = 'shorebird.log';
 
-  late final File _logFile = (() {
+  late final File logFile = (() {
+    final timestamp = DateTime.now().millisecondsSinceEpoch;
+
     final file = File(
       p.join(
         shorebirdEnv.shorebirdRoot.path,
         'logs',
-        '${DateTime.now().toIso8601String()}_$_logFileName',
+        '${timestamp}_$_logFileName',
       ),
     );
 
@@ -43,7 +46,7 @@ class ShorebirdLogger {
   void _logToFile(String level, String message, {required LogStyle style}) {
     final styledMessage = style(message);
 
-    _logFile.writeAsStringSync(
+    logFile.writeAsStringSync(
       '${DateTime.now().toIso8601String()} [$level] $styledMessage\n',
       mode: FileMode.append,
     );
