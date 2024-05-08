@@ -9,6 +9,7 @@ import 'package:shorebird_cli/src/logger.dart';
 import 'package:shorebird_cli/src/os/operating_system_interface.dart';
 import 'package:shorebird_cli/src/platform/platform.dart';
 import 'package:shorebird_cli/src/shorebird_android_artifacts.dart';
+import 'package:shorebird_cli/src/shorebird_artifacts.dart';
 import 'package:shorebird_cli/src/shorebird_env.dart';
 import 'package:shorebird_cli/src/shorebird_process.dart';
 import 'package:test/test.dart';
@@ -22,6 +23,7 @@ void main() {
     late ShorebirdLogger logger;
     late OperatingSystemInterface operatingSystemInterface;
     late ShorebirdAndroidArtifacts shorebirdAndroidArtifacts;
+    late ShorebirdArtifacts shorebirdArtifacts;
     late ShorebirdEnv shorebirdEnv;
     late ShorebirdProcess shorebirdProcess;
     late ShorebirdProcessResult buildProcessResult;
@@ -36,6 +38,7 @@ void main() {
           loggerRef.overrideWith(() => logger),
           osInterfaceRef.overrideWith(() => operatingSystemInterface),
           processRef.overrideWith(() => shorebirdProcess),
+          shorebirdArtifactsRef.overrideWith(() => shorebirdArtifacts),
           shorebirdEnvRef.overrideWith(() => shorebirdEnv),
           shorebirdAndroidArtifactsRef
               .overrideWith(() => shorebirdAndroidArtifacts),
@@ -55,6 +58,7 @@ void main() {
       operatingSystemInterface = MockOperatingSystemInterface();
       pubGetProcessResult = MockProcessResult();
       shorebirdAndroidArtifacts = MockShorebirdAndroidArtifacts();
+      shorebirdArtifacts = MockShorebirdArtifacts();
       shorebirdEnv = MockShorebirdEnv();
       shorebirdProcess = MockShorebirdProcess();
 
@@ -769,6 +773,48 @@ Failed to build:
                   throwsA(isA<ArtifactBuildException>()),
                 ),
               );
+            });
+          });
+        });
+
+        group('buildElfAotSnapshot', () {
+          setUp(() {
+            when(
+              () => shorebirdArtifacts.getArtifactPath(
+                artifact: ShorebirdArtifact.genSnapshot,
+              ),
+            ).thenReturn('gen_snapshot');
+          });
+
+          group('when build fails', () {
+            setUp(() {
+              when(() => buildProcessResult.exitCode)
+                  .thenReturn(ExitCode.software.code);
+            });
+
+            test('throws ArtifactBuildException', () {
+              expect(
+                () => runWithOverrides(
+                  () => builder.buildElfAotSnapshot(
+                    appDillPath: 'asdf',
+                    outFilePath: 'asdf',
+                  ),
+                ),
+                throwsA(isA<ArtifactBuildException>()),
+              );
+            });
+          });
+
+          group('when build succeeds', () {
+            test('returns outFile', () async {
+              final outFile = await runWithOverrides(
+                () => builder.buildElfAotSnapshot(
+                  appDillPath: '/app/dill/path',
+                  outFilePath: '/path/to/out',
+                ),
+              );
+
+              expect(outFile.path, '/path/to/out');
             });
           });
         });

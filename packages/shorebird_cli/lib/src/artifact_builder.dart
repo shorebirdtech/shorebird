@@ -344,7 +344,9 @@ Either run `flutter pub get` manually, or follow the steps in ${link(uri: Uri.pa
     );
 
     if (result.exitCode != ExitCode.success.code) {
-      throw Exception('Failed to create snapshot: ${result.stderr}');
+      throw ArtifactBuildException(
+        'Failed to create snapshot: ${result.stderr}',
+      );
     }
 
     return File(outFilePath);
