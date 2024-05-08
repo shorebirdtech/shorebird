@@ -132,9 +132,6 @@ class IosFrameworkPatcher extends Patcher {
       releaseArtifactZipFile = await artifactManager.downloadFile(
         Uri.parse(releaseArtifact.url),
       );
-      if (!releaseArtifactZipFile.existsSync()) {
-        throw Exception('Failed to download release artifact');
-      }
     } catch (error) {
       downloadProgress.fail('$error');
       exit(ExitCode.software.code);
