@@ -51,6 +51,12 @@ On Xcode builds it is used as "CFBundleVersion".''',
         help: 'Codesign the application bundle.',
         defaultsTo: true,
       )
+      ..addFlag(
+        'dry-run',
+        abbr: 'n',
+        negatable: false,
+        help: 'Validate but do not upload the release.',
+      )
       ..addOption(
         exportOptionsPlistArgName,
         help:
@@ -198,6 +204,14 @@ of the iOS app that is using this module.''',
           flutterRevision: targetFlutterRevision,
           releasePlatform: releaser.releaseType.releasePlatform,
         );
+
+        final dryRun = results['dry-run'] == true;
+        if (dryRun) {
+          logger
+            ..info('No issues detected.')
+            ..info('The server may enforce additional checks.');
+          exit(ExitCode.success.code);
+        }
 
         // Ask the user to proceed (this is skipped when running via CI).
         await confirmCreateRelease(
