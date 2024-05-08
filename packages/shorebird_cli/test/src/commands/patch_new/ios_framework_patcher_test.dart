@@ -25,7 +25,6 @@ import 'package:shorebird_cli/src/shorebird_validator.dart';
 import 'package:shorebird_cli/src/third_party/flutter_tools/lib/flutter_tools.dart';
 import 'package:shorebird_cli/src/validators/validators.dart';
 import 'package:shorebird_code_push_client/shorebird_code_push_client.dart';
-import 'package:test/expect.dart';
 import 'package:test/test.dart';
 
 import '../../matchers.dart';
@@ -42,7 +41,6 @@ void main() {
       late CodePushClientWrapper codePushClientWrapper;
       late Doctor doctor;
       late EngineConfig engineConfig;
-      late Platform platform;
       late Directory flutterDirectory;
       late Directory projectRoot;
       late Logger logger;
@@ -69,7 +67,6 @@ void main() {
             engineConfigRef.overrideWith(() => engineConfig),
             loggerRef.overrideWith(() => logger),
             osInterfaceRef.overrideWith(() => operatingSystemInterface),
-            // platformRef.overrideWith(() => platform),
             processRef.overrideWith(() => shorebirdProcess),
             shorebirdArtifactsRef.overrideWith(() => shorebirdArtifacts),
             shorebirdEnvRef.overrideWith(() => shorebirdEnv),
@@ -99,7 +96,6 @@ void main() {
         doctor = MockDoctor();
         engineConfig = MockEngineConfig();
         operatingSystemInterface = MockOperatingSystemInterface();
-        // platform = MockPlatform();
         progress = MockProgress();
         projectRoot = Directory.systemTemp.createTempSync();
         logger = MockLogger();
