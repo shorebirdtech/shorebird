@@ -1,3 +1,4 @@
+import 'package:args/args.dart';
 import 'package:mason_logger/mason_logger.dart';
 import 'package:mocktail/mocktail.dart';
 import 'package:path/path.dart' as p;
@@ -28,6 +29,7 @@ import '../../mocks.dart';
 
 void main() {
   group(AndroidPatcher, () {
+    late ArgResults argResults;
     late ArtifactBuilder artifactBuilder;
     late ArtifactManager artifactManager;
     late CodePushClientWrapper codePushClientWrapper;
@@ -94,6 +96,7 @@ void main() {
     tearDownAll(restoreExitFunction);
 
     setUp(() {
+      argResults = MockArgResults();
       artifactBuilder = MockArtifactBuilder();
       artifactManager = MockArtifactManager();
       codePushClientWrapper = MockCodePushClientWrapper();
@@ -115,7 +118,11 @@ void main() {
         () => shorebirdEnv.getShorebirdProjectRoot(),
       ).thenReturn(projectRoot);
 
-      patcher = AndroidPatcher(flavor: null, target: null);
+      patcher = AndroidPatcher(
+        argResults: argResults,
+        flavor: null,
+        target: null,
+      );
     });
 
     group('archiveDiffer', () {

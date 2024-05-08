@@ -122,7 +122,11 @@ NOTE: this is ${styleBold.wrap('not')} recommended. Asset changes cannot be incl
   Patcher getPatcher(ReleaseType releaseType) {
     switch (releaseType) {
       case ReleaseType.android:
-        return AndroidPatcher(flavor: flavor, target: target);
+        return AndroidPatcher(
+          argResults: results,
+          flavor: flavor,
+          target: target,
+        );
       case ReleaseType.ios:
         throw UnimplementedError();
       case ReleaseType.iosFramework:

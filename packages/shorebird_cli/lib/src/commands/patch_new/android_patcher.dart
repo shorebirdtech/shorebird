@@ -7,10 +7,10 @@ import 'package:shorebird_cli/src/artifact_builder.dart';
 import 'package:shorebird_cli/src/artifact_manager.dart';
 import 'package:shorebird_cli/src/code_push_client_wrapper.dart';
 import 'package:shorebird_cli/src/commands/patch_new/patcher.dart';
-import 'package:shorebird_cli/src/commands/release_new/release_type.dart';
 import 'package:shorebird_cli/src/doctor.dart';
 import 'package:shorebird_cli/src/logger.dart';
 import 'package:shorebird_cli/src/platform/platform.dart';
+import 'package:shorebird_cli/src/release_type.dart';
 import 'package:shorebird_cli/src/shorebird_android_artifacts.dart';
 import 'package:shorebird_cli/src/shorebird_flutter.dart';
 import 'package:shorebird_cli/src/shorebird_validator.dart';
@@ -21,7 +21,11 @@ import 'package:shorebird_cli/src/third_party/flutter_tools/lib/flutter_tools.da
 /// {@endtemplate}
 class AndroidPatcher extends Patcher {
   /// {@macro android_patcher}
-  AndroidPatcher({required super.flavor, required super.target});
+  AndroidPatcher({
+    required super.argResults,
+    required super.flavor,
+    required super.target,
+  });
 
   @override
   ReleaseType get releaseType => ReleaseType.android;

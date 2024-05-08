@@ -1,5 +1,6 @@
 import 'dart:io';
 
+import 'package:args/args.dart';
 import 'package:shorebird_cli/src/archive_analysis/archive_differ.dart';
 import 'package:shorebird_cli/src/code_push_client_wrapper.dart';
 import 'package:shorebird_cli/src/commands/release_new/release_type.dart';
@@ -11,7 +12,14 @@ import 'package:shorebird_cli/src/shorebird_env.dart';
 /// {@endtemplate}
 abstract class Patcher {
   /// {@macro patcher}
-  Patcher({required this.flavor, required this.target});
+  Patcher({
+    required this.argResults,
+    required this.flavor,
+    required this.target,
+  });
+
+  /// The arguments passed to the command.
+  final ArgResults argResults;
 
   /// The flavor of the release, if any.
   final String? flavor;
