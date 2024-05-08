@@ -12,6 +12,7 @@ import 'package:shorebird_cli/src/commands/patch_new/patch_new.dart';
 import 'package:shorebird_cli/src/doctor.dart';
 import 'package:shorebird_cli/src/engine_config.dart';
 import 'package:shorebird_cli/src/logger.dart';
+import 'package:shorebird_cli/src/patch_diff_checker.dart';
 import 'package:shorebird_cli/src/platform.dart';
 import 'package:shorebird_cli/src/platform/platform.dart';
 import 'package:shorebird_cli/src/shorebird_android_artifacts.dart';
@@ -21,6 +22,7 @@ import 'package:shorebird_cli/src/shorebird_process.dart';
 import 'package:shorebird_cli/src/shorebird_validator.dart';
 import 'package:shorebird_cli/src/third_party/flutter_tools/lib/flutter_tools.dart';
 import 'package:shorebird_cli/src/validators/validators.dart';
+import 'package:shorebird_cli/src/version.dart';
 import 'package:shorebird_code_push_client/shorebird_code_push_client.dart';
 import 'package:test/test.dart';
 
@@ -445,6 +447,55 @@ Looked in:
             flavor: any(named: 'flavor'),
           ),
         ).thenReturn(aabFile);
+      });
+    });
+
+    group('createPatchMetadata', () {
+      const allowAssetDiffs = false;
+      const allowNativeDiffs = true;
+      const operatingSystem = 'Mac OS X';
+      const operatingSystemVersion = '10.15.7';
+
+      setUp(() {
+        when(() => argResults['allow-asset-diffs']).thenReturn(allowAssetDiffs);
+        when(
+          () => argResults['allow-native-diffs'],
+        ).thenReturn(allowNativeDiffs);
+        when(() => platform.operatingSystem).thenReturn(operatingSystem);
+        when(
+          () => platform.operatingSystemVersion,
+        ).thenReturn(operatingSystemVersion);
+      });
+
+      test('returns correct metadata', () async {
+        final diffStatus = DiffStatus(
+          hasAssetChanges: false,
+          hasNativeChanges: false,
+        );
+
+        final metadata = await runWithOverrides(
+          () => patcher.createPatchMetadata(diffStatus),
+        );
+
+        expect(
+          metadata,
+          equals(
+            CreatePatchMetadata(
+              releasePlatform: ReleasePlatform.android,
+              usedIgnoreAssetChangesFlag: allowAssetDiffs,
+              hasAssetChanges: diffStatus.hasAssetChanges,
+              usedIgnoreNativeChangesFlag: allowNativeDiffs,
+              hasNativeChanges: diffStatus.hasNativeChanges,
+              linkPercentage: null,
+              environment: const BuildEnvironmentMetadata(
+                operatingSystem: operatingSystem,
+                operatingSystemVersion: operatingSystemVersion,
+                shorebirdVersion: packageVersion,
+                xcodeVersion: null,
+              ),
+            ),
+          ),
+        );
       });
     });
   });

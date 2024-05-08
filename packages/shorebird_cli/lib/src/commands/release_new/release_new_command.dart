@@ -6,11 +6,11 @@ import 'package:scoped/scoped.dart';
 import 'package:shorebird_cli/src/code_push_client_wrapper.dart';
 import 'package:shorebird_cli/src/command.dart';
 import 'package:shorebird_cli/src/commands/release_new/release_new.dart';
-import 'package:shorebird_cli/src/release_type.dart';
 import 'package:shorebird_cli/src/config/config.dart';
 import 'package:shorebird_cli/src/extensions/arg_results.dart';
 import 'package:shorebird_cli/src/logger.dart';
 import 'package:shorebird_cli/src/platform/platform.dart';
+import 'package:shorebird_cli/src/release_type.dart';
 import 'package:shorebird_cli/src/shorebird_env.dart';
 import 'package:shorebird_cli/src/shorebird_flutter.dart';
 import 'package:shorebird_cli/src/third_party/flutter_tools/lib/flutter_tools.dart';
@@ -50,6 +50,12 @@ On Xcode builds it is used as "CFBundleVersion".''',
         'codesign',
         help: 'Codesign the application bundle.',
         defaultsTo: true,
+      )
+      ..addFlag(
+        'dry-run',
+        abbr: 'n',
+        negatable: false,
+        help: 'Validate but do not upload the release.',
       )
       ..addOption(
         exportOptionsPlistArgName,
@@ -198,6 +204,14 @@ of the iOS app that is using this module.''',
           flutterRevision: targetFlutterRevision,
           releasePlatform: releaser.releaseType.releasePlatform,
         );
+
+        final dryRun = results['dry-run'] == true;
+        if (dryRun) {
+          logger
+            ..info('No issues detected.')
+            ..info('The server may enforce additional checks.');
+          exit(ExitCode.success.code);
+        }
 
         // Ask the user to proceed (this is skipped when running via CI).
         await confirmCreateRelease(
