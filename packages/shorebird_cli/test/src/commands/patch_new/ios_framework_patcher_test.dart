@@ -43,7 +43,7 @@ void main() {
       late EngineConfig engineConfig;
       late Directory flutterDirectory;
       late Directory projectRoot;
-      late Logger logger;
+      late ShorebirdLogger logger;
       late OperatingSystemInterface operatingSystemInterface;
       late Progress progress;
       late ShorebirdArtifacts shorebirdArtifacts;
@@ -98,7 +98,7 @@ void main() {
         operatingSystemInterface = MockOperatingSystemInterface();
         progress = MockProgress();
         projectRoot = Directory.systemTemp.createTempSync();
-        logger = MockLogger();
+        logger = MockShorebirdLogger();
         shorebirdArtifacts = MockShorebirdArtifacts();
         shorebirdProcess = MockShorebirdProcess();
         shorebirdEnv = MockShorebirdEnv();
