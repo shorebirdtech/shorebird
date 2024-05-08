@@ -15,7 +15,7 @@ import 'mocks.dart';
 void main() {
   group(ShorebirdValidator, () {
     late Auth auth;
-    late Logger logger;
+    late ShorebirdLogger logger;
     late Platform platform;
     late Validator validator;
     late ShorebirdEnv shorebirdEnv;
@@ -35,7 +35,7 @@ void main() {
 
     setUp(() {
       auth = MockAuth();
-      logger = MockLogger();
+      logger = MockShorebirdLogger();
       platform = MockPlatform();
       shorebirdEnv = MockShorebirdEnv();
       validator = MockValidator();

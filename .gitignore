@@ -2,3 +2,4 @@
 bin/cache/
 # Coverage directories used by Flutter & Dart tests
 coverage/
+logs/

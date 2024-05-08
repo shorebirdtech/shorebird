@@ -12,7 +12,7 @@ import '../mocks.dart';
 void main() {
   group(LogoutCommand, () {
     late Auth auth;
-    late Logger logger;
+    late ShorebirdLogger logger;
     late http.Client httpClient;
     late LogoutCommand command;
 
@@ -29,7 +29,7 @@ void main() {
     setUp(() {
       auth = MockAuth();
       httpClient = MockHttpClient();
-      logger = MockLogger();
+      logger = MockShorebirdLogger();
 
       when(() => auth.client).thenReturn(httpClient);
       when(() => logger.progress(any())).thenReturn(MockProgress());

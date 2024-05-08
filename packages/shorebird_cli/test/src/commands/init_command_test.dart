@@ -43,7 +43,7 @@ environment:
     late ShorebirdYaml shorebirdYaml;
     late Directory projectRoot;
     late File pubspecYamlFile;
-    late Logger logger;
+    late ShorebirdLogger logger;
     late Platform platform;
     late Progress progress;
     late PubspecEditor pubspecEditor;
@@ -84,7 +84,7 @@ environment:
       pubspecYamlFile = MockFile();
       projectRoot = Directory.systemTemp.createTempSync();
       pubspecEditor = MockPubspecEditor();
-      logger = MockLogger();
+      logger = MockShorebirdLogger();
       platform = MockPlatform();
       progress = MockProgress();
       shorebirdEnv = MockShorebirdEnv();

@@ -20,7 +20,7 @@ void main() {
   group(RunCommand, () {
     late ArgResults argResults;
     late Doctor doctor;
-    late Logger logger;
+    late ShorebirdLogger logger;
     late Process process;
     late ShorebirdProcess shorebirdProcess;
     late IOSink ioSink;
@@ -47,7 +47,7 @@ void main() {
     setUp(() {
       argResults = MockArgResults();
       doctor = MockDoctor();
-      logger = MockLogger();
+      logger = MockShorebirdLogger();
       process = MockProcess();
       shorebirdProcess = MockShorebirdProcess();
       ioSink = MockIOSink();

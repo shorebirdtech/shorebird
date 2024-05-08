@@ -26,7 +26,7 @@ void main() {
     late ArtifactManager artifactManager;
     late Directory shorebirdRoot;
     late http.Client httpClient;
-    late Logger logger;
+    late ShorebirdLogger logger;
     late Platform platform;
     late Process chmodProcess;
     late ShorebirdEnv shorebirdEnv;
@@ -70,7 +70,7 @@ void main() {
     setUp(() {
       artifactManager = MockArtifactManager();
       httpClient = MockHttpClient();
-      logger = MockLogger();
+      logger = MockShorebirdLogger();
       platform = MockPlatform();
       chmodProcess = MockProcess();
       shorebirdEnv = MockShorebirdEnv();

@@ -1,5 +1,4 @@
 import 'package:archive/archive_io.dart';
-import 'package:mason_logger/mason_logger.dart';
 import 'package:mocktail/mocktail.dart';
 import 'package:path/path.dart' as p;
 import 'package:scoped/scoped.dart';
@@ -18,7 +17,7 @@ void main() {
     late Directory projectRoot;
     late Bundletool bundletool;
     late Cache cache;
-    late Logger logger;
+    late ShorebirdLogger logger;
     late ShorebirdEnv shorebirdEnv;
     late ShorebirdAndroidArtifacts shorebirdAndroidArtifacts;
 
@@ -37,7 +36,7 @@ void main() {
     setUp(() {
       bundletool = MockBundleTool();
       cache = MockCache();
-      logger = MockLogger();
+      logger = MockShorebirdLogger();
       projectRoot = Directory.systemTemp.createTempSync();
       shorebirdEnv = MockShorebirdEnv();
 

@@ -21,7 +21,7 @@ void main() {
     late ArgResults argResults;
     late ArtifactBuilder artifactBuilder;
     late Doctor doctor;
-    late Logger logger;
+    late ShorebirdLogger logger;
     late ShorebirdFlutterValidator flutterValidator;
     late ShorebirdValidator shorebirdValidator;
     late BuildApkCommand command;
@@ -47,7 +47,7 @@ void main() {
       argResults = MockArgResults();
       artifactBuilder = MockArtifactBuilder();
       doctor = MockDoctor();
-      logger = MockLogger();
+      logger = MockShorebirdLogger();
       flutterValidator = MockShorebirdFlutterValidator();
       shorebirdValidator = MockShorebirdValidator();
 

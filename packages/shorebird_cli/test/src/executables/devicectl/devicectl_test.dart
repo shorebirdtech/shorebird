@@ -309,7 +309,7 @@ void main() {
 
     group('installAndLaunchApp', () {
       late IDeviceSysLog idevicesyslog;
-      late Logger logger;
+      late ShorebirdLogger logger;
       late Progress progress;
 
       late String deviceListJsonOutput;
@@ -329,7 +329,7 @@ void main() {
 
       setUp(() {
         idevicesyslog = MockIDeviceSysLog();
-        logger = MockLogger();
+        logger = MockShorebirdLogger();
         progress = MockProgress();
 
         when(() => idevicesyslog.startLogger(device: any(named: 'device')))

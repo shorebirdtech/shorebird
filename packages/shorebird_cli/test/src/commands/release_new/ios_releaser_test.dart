@@ -40,7 +40,7 @@ void main() {
       late Doctor doctor;
       late Platform platform;
       late Progress progress;
-      late Logger logger;
+      late ShorebirdLogger logger;
       late Ios ios;
       late OperatingSystemInterface operatingSystemInterface;
       late ShorebirdFlutterValidator flutterValidator;
@@ -90,7 +90,7 @@ void main() {
         projectRoot = Directory.systemTemp.createTempSync();
         operatingSystemInterface = MockOperatingSystemInterface();
         progress = MockProgress();
-        logger = MockLogger();
+        logger = MockShorebirdLogger();
         ios = MockIos();
         flutterValidator = MockShorebirdFlutterValidator();
         shorebirdProcess = MockShorebirdProcess();

@@ -43,7 +43,7 @@ void main() {
     late Auth auth;
     late Cache cache;
     late CodePushClientWrapper codePushClientWrapper;
-    late Logger logger;
+    late ShorebirdLogger logger;
     late Directory previewDirectory;
     late Platform platform;
     late Progress progress;
@@ -102,7 +102,7 @@ void main() {
       auth = MockAuth();
       cache = MockCache();
       codePushClientWrapper = MockCodePushClientWrapper();
-      logger = MockLogger();
+      logger = MockShorebirdLogger();
       platform = MockPlatform();
       previewDirectory = Directory.systemTemp.createTempSync();
       progress = MockProgress();
