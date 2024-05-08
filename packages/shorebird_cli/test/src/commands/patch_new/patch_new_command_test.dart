@@ -260,8 +260,8 @@ void main() {
           isA<AndroidPatcher>(),
         );
         expect(
-          () => command.getPatcher(ReleaseType.aar),
-          throwsA(isA<UnimplementedError>()),
+          command.getPatcher(ReleaseType.aar),
+          isA<AarPatcher>(),
         );
         expect(
           () => command.getPatcher(ReleaseType.ios),
