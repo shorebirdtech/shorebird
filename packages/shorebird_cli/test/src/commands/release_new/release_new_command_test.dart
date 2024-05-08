@@ -171,7 +171,7 @@ void main() {
         ..testArgResults = argResults;
     });
 
-    test('has description', () {
+    test('has non-empty description', () {
       expect(command.description, isNotEmpty);
     });
 
