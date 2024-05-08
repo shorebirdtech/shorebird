@@ -8,6 +8,8 @@ import 'package:scoped/scoped.dart';
 import 'package:shorebird_cli/src/artifact_manager.dart';
 import 'package:shorebird_cli/src/cache.dart';
 import 'package:shorebird_cli/src/http_client/http_client.dart';
+import 'package:shorebird_cli/src/logger.dart';
+import 'package:shorebird_cli/src/shorebird_env.dart';
 import 'package:shorebird_cli/src/shorebird_process.dart';
 import 'package:test/test.dart';
 
@@ -19,6 +21,9 @@ void main() {
     late Cache cache;
     late Directory cacheArtifactDirectory;
     late http.Client httpClient;
+    late Directory projectRoot;
+    late Logger logger;
+    late ShorebirdEnv shorebirdEnv;
     late ShorebirdProcessResult patchProcessResult;
     late ShorebirdProcess shorebirdProcess;
     late ArtifactManager artifactManager;
@@ -29,7 +34,9 @@ void main() {
         values: {
           cacheRef.overrideWith(() => cache),
           httpClientRef.overrideWith(() => httpClient),
+          loggerRef.overrideWith(() => logger),
           processRef.overrideWith(() => shorebirdProcess),
+          shorebirdEnvRef.overrideWith(() => shorebirdEnv),
         },
       );
     }
@@ -42,15 +49,23 @@ void main() {
       cacheArtifactDirectory = Directory.systemTemp.createTempSync();
       cache = MockCache();
       httpClient = MockHttpClient();
+      logger = MockLogger();
       patchProcessResult = MockProcessResult();
+      projectRoot = Directory.systemTemp.createTempSync();
       shorebirdProcess = MockShorebirdProcess();
-      artifactManager = ArtifactManager();
+      shorebirdEnv = MockShorebirdEnv();
 
       when(() => cache.getArtifactDirectory(any()))
           .thenReturn(cacheArtifactDirectory);
+      when(() => cache.updateAll()).thenAnswer((_) async {});
+
       when(() => httpClient.send(any())).thenAnswer(
         (_) async => http.StreamedResponse(const Stream.empty(), HttpStatus.ok),
       );
+
+      when(() => shorebirdEnv.getShorebirdProjectRoot())
+          .thenReturn(projectRoot);
+
       when(
         () => shorebirdProcess.run(
           any(that: endsWith('patch')),
@@ -66,6 +81,8 @@ void main() {
         return patchProcessResult;
       });
       when(() => patchProcessResult.exitCode).thenReturn(ExitCode.success.code);
+
+      artifactManager = ArtifactManager();
     });
 
     group('createDiff', () {
@@ -395,6 +412,186 @@ void main() {
           expect(result, isNotNull);
           expect(result!.path, equals(noStripReleaseDebugSymbolsPath.path));
         });
+      });
+    });
+
+    group('getXcarchiveDirectory', () {
+      group('when archive directory exists', () {
+        late Directory archiveDirectory;
+
+        setUp(() {
+          archiveDirectory = Directory(
+            p.join(
+              projectRoot.path,
+              'build',
+              'ios',
+              'archive',
+              'Runner.xcarchive',
+            ),
+          )..createSync(recursive: true);
+        });
+
+        test('returns path to archive directory', () async {
+          final result = runWithOverrides(
+            () => artifactManager.getXcarchiveDirectory(),
+          );
+
+          expect(result, isNotNull);
+          expect(result!.path, equals(archiveDirectory.path));
+        });
+      });
+
+      group('when archive directory does not exist', () {
+        test('returns null', () {
+          expect(
+            runWithOverrides(artifactManager.getXcarchiveDirectory),
+            isNull,
+          );
+        });
+      });
+    });
+
+    group('getIosAppDirectory', () {
+      group('when applications directory does not exist', () {
+        test('returns null', () {
+          final xcarchiveDirectory = Directory.systemTemp.createTempSync();
+          expect(
+            runWithOverrides(
+              () => artifactManager.getIosAppDirectory(
+                xcarchiveDirectory: xcarchiveDirectory,
+              ),
+            ),
+            isNull,
+          );
+        });
+      });
+
+      group('when applications directory exists', () {
+        late Directory applicationsDirectory;
+        late Directory xcarchiveDirectory;
+
+        setUp(() {
+          xcarchiveDirectory = Directory.systemTemp.createTempSync();
+          applicationsDirectory = Directory(
+            p.join(
+              xcarchiveDirectory.path,
+              'Products',
+              'Applications',
+              'Runner.app',
+            ),
+          )..createSync(recursive: true);
+        });
+
+        test('returns path to applications directory', () {
+          final result = runWithOverrides(
+            () => artifactManager.getIosAppDirectory(
+              xcarchiveDirectory: xcarchiveDirectory,
+            ),
+          );
+
+          expect(result, isNotNull);
+          expect(result!.path, equals(applicationsDirectory.path));
+        });
+      });
+    });
+
+    group('getIpa', () {
+      group('when ipa build directory does not exist', () {
+        test('returns null', () {
+          expect(
+            runWithOverrides(artifactManager.getIpa),
+            isNull,
+          );
+        });
+      });
+
+      group('when ipa build directory exists', () {
+        late Directory ipaBuildDirectory;
+        late File ipaFile;
+
+        setUp(() {
+          ipaBuildDirectory = Directory(
+            p.join(
+              projectRoot.path,
+              'build',
+              'ios',
+              'ipa',
+            ),
+          )..createSync(recursive: true);
+          ipaFile = File(p.join(ipaBuildDirectory.path, 'Runner.ipa'))
+            ..createSync();
+        });
+
+        test('returns path to ipa file', () {
+          final result = runWithOverrides(artifactManager.getIpa);
+
+          expect(result, isNotNull);
+          expect(result!.path, equals(ipaFile.path));
+        });
+
+        test('returns null when multiple ipa files exist', () {
+          File(p.join(ipaBuildDirectory.path, 'Runner2.ipa')).createSync();
+
+          expect(
+            runWithOverrides(artifactManager.getIpa),
+            isNull,
+          );
+          verify(
+            () => logger.detail(
+              'More than one .ipa file found in ${ipaBuildDirectory.path}',
+            ),
+          );
+        });
+
+        test('returns null when no ipa files exist', () {
+          ipaFile.deleteSync();
+
+          expect(
+            runWithOverrides(artifactManager.getIpa),
+            isNull,
+          );
+
+          verify(
+            () => logger.detail(
+              'No .ipa files found in ${ipaBuildDirectory.path}',
+            ),
+          );
+        });
+      });
+    });
+
+    group('getAppXcframeworkPath', () {
+      test('returns path to App.xcframework', () {
+        expect(
+          runWithOverrides(artifactManager.getAppXcframeworkPath),
+          equals(
+            p.join(
+              projectRoot.path,
+              'build',
+              'ios',
+              'framework',
+              'Release',
+              ArtifactManager.appXcframeworkName,
+            ),
+          ),
+        );
+      });
+    });
+
+    group('getAppXcframeworkDirectory', () {
+      test('returns directory containing App.xcframework', () {
+        expect(
+          runWithOverrides(artifactManager.getAppXcframeworkDirectory).path,
+          equals(
+            p.join(
+              projectRoot.path,
+              'build',
+              'ios',
+              'framework',
+              'Release',
+            ),
+          ),
+        );
       });
     });
   });

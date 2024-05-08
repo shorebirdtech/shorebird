@@ -174,6 +174,109 @@ class ArtifactBuilder {
     });
   }
 
+  /// Calls `flutter build ipa`. If [codesign] is false, this will only build
+  /// an .xcarchive and _not_ an .ipa.
+  Future<void> buildIpa({
+    bool codesign = true,
+    File? exportOptionsPlist,
+    String? flavor,
+    String? target,
+    List<String> argResultsRest = const [],
+  }) async {
+    return _runShorebirdBuildCommand(() async {
+      const executable = 'flutter';
+      final exportOptionsPlistPath =
+          (exportOptionsPlist ?? ios.createExportOptionsPlist()).path;
+      final arguments = [
+        'build',
+        'ipa',
+        '--release',
+        if (flavor != null) '--flavor=$flavor',
+        if (target != null) '--target=$target',
+        if (!codesign) '--no-codesign',
+        if (codesign) '''--export-options-plist=$exportOptionsPlistPath''',
+        ...argResultsRest,
+      ];
+
+      final result = await process.run(
+        executable,
+        arguments,
+        runInShell: true,
+      );
+
+      if (result.exitCode != ExitCode.success.code) {
+        throw ArtifactBuildException('Failed to build: ${result.stderr}');
+      }
+
+      if (result.stderr
+          .toString()
+          .contains('Encountered error while creating the IPA')) {
+        final errorMessage = _failedToCreateIpaErrorMessage(
+          stderr: result.stderr.toString(),
+        );
+
+        throw ArtifactBuildException('''
+Failed to build:
+$errorMessage''');
+      }
+    });
+  }
+
+  /// Builds a release iOS framework (.xcframework) for the current project.
+  Future<void> buildIosFramework({
+    List<String> argResultsRest = const [],
+  }) {
+    return _runShorebirdBuildCommand(() async {
+      const executable = 'flutter';
+      final arguments = [
+        'build',
+        'ios-framework',
+        '--no-debug',
+        '--no-profile',
+        ...argResultsRest,
+      ];
+
+      final result = await process.run(
+        executable,
+        arguments,
+        runInShell: true,
+      );
+
+      if (result.exitCode != ExitCode.success.code) {
+        throw ArtifactBuildException('Failed to build: ${result.stderr}');
+      }
+    });
+  }
+
+  String _failedToCreateIpaErrorMessage({required String stderr}) {
+    // The full error text consists of many repeated lines of the format:
+    // (newlines added for line length)
+    //
+    // [   +1 ms] Encountered error while creating the IPA:
+    // [        ] error: exportArchive: Team "Team" does not have permission to
+    //      create "iOS In House" provisioning profiles.
+    //    error: exportArchive: No profiles for 'com.example.dev' were found
+    //    error: exportArchive: No signing certificate "iOS Distribution" found
+    //    error: exportArchive: Communication with Apple failed
+    //    error: exportArchive: No signing certificate "iOS Distribution" found
+    //    error: exportArchive: Team "My Team" does not have permission to
+    //      create "iOS App Store" provisioning profiles.
+    //    error: exportArchive: No profiles for 'com.example.demo' were found
+    //    error: exportArchive: Communication with Apple failed
+    //    error: exportArchive: No signing certificate "iOS Distribution" found
+    //    error: exportArchive: Communication with Apple failed
+    final exportArchiveRegex = RegExp(r'error: exportArchive: (.+)$');
+
+    return stderr
+        .split('\n')
+        .map((l) => l.trim())
+        .toSet()
+        .map(exportArchiveRegex.firstMatch)
+        .whereType<Match>()
+        .map((m) => '    ${m.group(1)!}')
+        .join('\n');
+  }
+
   /// A wrapper around [command] (which runs a `flutter build` command with
   /// Shorebird's fork of Flutter) with a try/finally that runs
   /// `flutter pub get` with the system installation of Flutter to reset

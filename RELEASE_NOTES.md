@@ -2,6 +2,10 @@
 
 This section contains past updates we've sent to customers via Discord.
 
+## 1.0.5 (May 6, 2024)
+
+- 🔗 Improve iOS patch speed when adding/removing classes
+
 ## 1.0.4 (April 25, 2024)
 
 - 🩹 Revert "Improve consistency of Shorebird artifact downloads" from 1.0.3 ([#1958](https://github.com/shorebirdtech/shorebird/pull/1958))
