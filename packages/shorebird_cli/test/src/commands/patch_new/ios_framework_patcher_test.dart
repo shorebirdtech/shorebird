@@ -15,6 +15,8 @@ import 'package:shorebird_cli/src/executables/aot_tools.dart';
 import 'package:shorebird_cli/src/executables/xcodebuild.dart';
 import 'package:shorebird_cli/src/logger.dart';
 import 'package:shorebird_cli/src/os/operating_system_interface.dart';
+import 'package:shorebird_cli/src/patch_diff_checker.dart';
+import 'package:shorebird_cli/src/platform.dart';
 import 'package:shorebird_cli/src/platform/platform.dart';
 import 'package:shorebird_cli/src/release_type.dart';
 import 'package:shorebird_cli/src/shorebird_artifacts.dart';
@@ -24,6 +26,7 @@ import 'package:shorebird_cli/src/shorebird_process.dart';
 import 'package:shorebird_cli/src/shorebird_validator.dart';
 import 'package:shorebird_cli/src/third_party/flutter_tools/lib/flutter_tools.dart';
 import 'package:shorebird_cli/src/validators/validators.dart';
+import 'package:shorebird_cli/src/version.dart';
 import 'package:shorebird_code_push_client/shorebird_code_push_client.dart';
 import 'package:test/test.dart';
 
@@ -45,6 +48,7 @@ void main() {
       late Directory projectRoot;
       late ShorebirdLogger logger;
       late OperatingSystemInterface operatingSystemInterface;
+      late Platform platform;
       late Progress progress;
       late ShorebirdArtifacts shorebirdArtifacts;
       late ShorebirdFlutterValidator flutterValidator;
@@ -67,6 +71,7 @@ void main() {
             engineConfigRef.overrideWith(() => engineConfig),
             loggerRef.overrideWith(() => logger),
             osInterfaceRef.overrideWith(() => operatingSystemInterface),
+            platformRef.overrideWith(() => platform),
             processRef.overrideWith(() => shorebirdProcess),
             shorebirdArtifactsRef.overrideWith(() => shorebirdArtifacts),
             shorebirdEnvRef.overrideWith(() => shorebirdEnv),
@@ -96,6 +101,7 @@ void main() {
         doctor = MockDoctor();
         engineConfig = MockEngineConfig();
         operatingSystemInterface = MockOperatingSystemInterface();
+        platform = MockPlatform();
         progress = MockProgress();
         projectRoot = Directory.systemTemp.createTempSync();
         logger = MockShorebirdLogger();
@@ -706,6 +712,60 @@ void main() {
           expect(
             () => patcher.extractReleaseVersionFromArtifact(File('')),
             throwsUnimplementedError,
+          );
+        });
+      });
+
+      group('createPatchMetadata', () {
+        const allowAssetDiffs = false;
+        const allowNativeDiffs = true;
+        const operatingSystem = 'Mac OS X';
+        const operatingSystemVersion = '10.15.7';
+        const xcodeVersion = '11';
+
+        setUp(() {
+          when(() => argResults['allow-asset-diffs'])
+              .thenReturn(allowAssetDiffs);
+          when(
+            () => argResults['allow-native-diffs'],
+          ).thenReturn(allowNativeDiffs);
+          when(() => platform.operatingSystem).thenReturn(operatingSystem);
+          when(
+            () => platform.operatingSystemVersion,
+          ).thenReturn(operatingSystemVersion);
+
+          when(() => xcodeBuild.version())
+              .thenAnswer((_) async => xcodeVersion);
+        });
+
+        test('returns correct metadata', () async {
+          final diffStatus = DiffStatus(
+            hasAssetChanges: false,
+            hasNativeChanges: false,
+          );
+
+          final metadata = await runWithOverrides(
+            () => patcher.createPatchMetadata(diffStatus),
+          );
+
+          expect(
+            metadata,
+            equals(
+              CreatePatchMetadata(
+                releasePlatform: ReleasePlatform.ios,
+                usedIgnoreAssetChangesFlag: allowAssetDiffs,
+                hasAssetChanges: diffStatus.hasAssetChanges,
+                usedIgnoreNativeChangesFlag: allowNativeDiffs,
+                hasNativeChanges: diffStatus.hasNativeChanges,
+                linkPercentage: null,
+                environment: const BuildEnvironmentMetadata(
+                  operatingSystem: operatingSystem,
+                  operatingSystemVersion: operatingSystemVersion,
+                  shorebirdVersion: packageVersion,
+                  xcodeVersion: xcodeVersion,
+                ),
+              ),
+            ),
           );
         });
       });
