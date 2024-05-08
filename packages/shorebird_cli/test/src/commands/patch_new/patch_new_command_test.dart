@@ -124,6 +124,7 @@ void main() {
       shorebirdEnv = MockShorebirdEnv();
       shorebirdFlutter = MockShorebirdFlutter();
 
+      when(() => argResults['dry-run']).thenReturn(false);
       when(() => argResults['platform']).thenReturn(['android']);
       when(() => argResults['release-version']).thenReturn(releaseVersion);
       when(() => argResults.wasParsed(any())).thenReturn(true);
@@ -408,6 +409,28 @@ void main() {
             () => patcher.buildPatchArtifact(),
           ]);
         });
+      });
+    });
+
+    group('when dry-run is specified', () {
+      setUp(() {
+        when(() => argResults['dry-run']).thenReturn(true);
+      });
+
+      test('does not publish patch', () async {
+        expect(runWithOverrides(command.run), exitsWithCode(ExitCode.success));
+
+        verifyNever(() => logger.confirm(any()));
+        verifyNever(
+          () => codePushClientWrapper.publishPatch(
+            appId: appId,
+            releaseId: release.id,
+            metadata: any(named: 'metadata'),
+            platform: releasePlatform,
+            patchArtifactBundles: any(named: 'patchArtifactBundles'),
+            track: DeploymentTrack.production,
+          ),
+        );
       });
     });
 

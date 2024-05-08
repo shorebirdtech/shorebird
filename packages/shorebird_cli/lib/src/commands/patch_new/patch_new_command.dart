@@ -75,6 +75,12 @@ of the iOS app that is using this module.''',
         'staging',
         negatable: false,
         help: 'Whether to publish the patch to the staging environment.',
+      )
+      ..addFlag(
+        'dry-run',
+        abbr: 'n',
+        negatable: false,
+        help: 'Validate but do not upload the patch.',
       );
   }
 
@@ -131,7 +137,11 @@ NOTE: this is ${styleBold.wrap('not')} recommended. Asset changes cannot be incl
           target: target,
         );
       case ReleaseType.ios:
-        throw UnimplementedError();
+        return IosPatcher(
+          argResults: results,
+          flavor: flavor,
+          target: target,
+        );
       case ReleaseType.iosFramework:
         throw UnimplementedError();
       case ReleaseType.aar:
@@ -196,6 +206,15 @@ NOTE: this is ${styleBold.wrap('not')} recommended. Asset changes cannot be incl
           appId: appId,
           releaseId: release.id,
         );
+
+        final dryRun = results['dry-run'] == true;
+        if (dryRun) {
+          logger
+            ..info('No issues detected.')
+            ..info('The server may enforce additional checks.');
+          exit(ExitCode.success.code);
+        }
+
         await confirmCreatePatch(
           app: app,
           releaseVersion: releaseVersion,
