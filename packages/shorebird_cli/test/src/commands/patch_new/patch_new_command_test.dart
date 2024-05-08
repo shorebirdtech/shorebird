@@ -21,6 +21,7 @@ import 'package:shorebird_code_push_client/shorebird_code_push_client.dart';
 import 'package:shorebird_code_push_protocol/shorebird_code_push_protocol.dart';
 import 'package:test/test.dart';
 
+import '../../fakes.dart';
 import '../../matchers.dart';
 import '../../mocks.dart';
 
@@ -33,6 +34,7 @@ void main() {
     const releasePlatform = ReleasePlatform.android;
     const releaseVersion = '1.2.3+1';
     const shorebirdYaml = ShorebirdYaml(appId: appId);
+    final patchMetadata = CreatePatchMetadata.forTest();
 
     final appMetadata = AppMetadata(
       appId: appId,
@@ -101,6 +103,7 @@ void main() {
     setUpAll(() {
       registerFallbackValue(CreatePatchMetadata.forTest());
       registerFallbackValue(DeploymentTrack.production);
+      registerFallbackValue(FakeDiffStatus());
       registerFallbackValue(Directory(''));
       registerFallbackValue(File(''));
       registerFallbackValue(FileSetDiff.empty());
@@ -129,8 +132,9 @@ void main() {
       when(() => argResults['release-version']).thenReturn(releaseVersion);
       when(() => argResults.wasParsed(any())).thenReturn(true);
 
-      when(() => artifactManager.downloadFile(any()))
-          .thenAnswer((_) async => File(''));
+      when(
+        () => artifactManager.downloadFile(any()),
+      ).thenAnswer((_) async => File(''));
 
       when(() => codePushClientWrapper.getApp(appId: any(named: 'appId')))
           .thenAnswer((_) async => appMetadata);
@@ -195,10 +199,12 @@ void main() {
       when(() => patcher.archiveDiffer).thenReturn(archiveDiffer);
       when(() => patcher.assertArgsAreValid()).thenAnswer((_) async {});
       when(() => patcher.assertPreconditions()).thenAnswer((_) async {});
-      when(() => patcher.extractReleaseVersionFromArtifact(any()))
-          .thenAnswer((_) async => releaseVersion);
-      when(() => patcher.buildPatchArtifact())
-          .thenAnswer((_) async => File(''));
+      when(
+        () => patcher.extractReleaseVersionFromArtifact(any()),
+      ).thenAnswer((_) async => releaseVersion);
+      when(
+        () => patcher.buildPatchArtifact(),
+      ).thenAnswer((_) async => File(''));
       when(() => patcher.releaseType).thenReturn(ReleaseType.android);
       when(() => patcher.primaryReleaseArtifactArch).thenReturn('aab');
       when(
@@ -216,6 +222,9 @@ void main() {
           ),
         },
       );
+      when(
+        () => patcher.createPatchMetadata(any()),
+      ).thenAnswer((_) async => patchMetadata);
 
       when(() => shorebirdEnv.getShorebirdYaml()).thenReturn(shorebirdYaml);
       when(() => shorebirdEnv.flutterRevision).thenReturn(flutterRevision);
@@ -311,10 +320,11 @@ void main() {
                 releaseId: release.id,
               ),
           () => logger.confirm('Would you like to continue?'),
+          () => patcher.createPatchMetadata(any()),
           () => codePushClientWrapper.publishPatch(
                 appId: appId,
                 releaseId: release.id,
-                metadata: any(named: 'metadata'),
+                metadata: patchMetadata,
                 platform: releasePlatform,
                 patchArtifactBundles: any(named: 'patchArtifactBundles'),
                 track: DeploymentTrack.production,
