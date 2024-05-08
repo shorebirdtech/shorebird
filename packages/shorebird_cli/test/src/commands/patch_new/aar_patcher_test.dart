@@ -2,6 +2,7 @@ import 'package:args/args.dart';
 import 'package:mason_logger/mason_logger.dart';
 import 'package:mocktail/mocktail.dart';
 import 'package:path/path.dart' as p;
+import 'package:platform/platform.dart';
 import 'package:scoped/scoped.dart';
 import 'package:shorebird_cli/src/archive_analysis/archive_analysis.dart';
 import 'package:shorebird_cli/src/artifact_builder.dart';
@@ -10,6 +11,8 @@ import 'package:shorebird_cli/src/code_push_client_wrapper.dart';
 import 'package:shorebird_cli/src/commands/patch_new/patch_new.dart';
 import 'package:shorebird_cli/src/engine_config.dart';
 import 'package:shorebird_cli/src/logger.dart';
+import 'package:shorebird_cli/src/patch_diff_checker.dart';
+import 'package:shorebird_cli/src/platform.dart';
 import 'package:shorebird_cli/src/platform/platform.dart';
 import 'package:shorebird_cli/src/release_type.dart';
 import 'package:shorebird_cli/src/shorebird_android_artifacts.dart';
@@ -17,6 +20,7 @@ import 'package:shorebird_cli/src/shorebird_env.dart';
 import 'package:shorebird_cli/src/shorebird_flutter.dart';
 import 'package:shorebird_cli/src/shorebird_validator.dart';
 import 'package:shorebird_cli/src/third_party/flutter_tools/lib/flutter_tools.dart';
+import 'package:shorebird_cli/src/version.dart';
 import 'package:shorebird_code_push_client/shorebird_code_push_client.dart';
 import 'package:test/test.dart';
 
@@ -34,6 +38,7 @@ void main() {
     late CodePushClientWrapper codePushClientWrapper;
     late Directory projectRoot;
     late Logger logger;
+    late Platform platform;
     late Progress progress;
     late ShorebirdEnv shorebirdEnv;
     late ShorebirdFlutter shorebirdFlutter;
@@ -51,11 +56,13 @@ void main() {
           codePushClientWrapperRef.overrideWith(() => codePushClientWrapper),
           engineConfigRef.overrideWith(() => const EngineConfig.empty()),
           loggerRef.overrideWith(() => logger),
+          platformRef.overrideWith(() => platform),
           shorebirdEnvRef.overrideWith(() => shorebirdEnv),
           shorebirdFlutterRef.overrideWith(() => shorebirdFlutter),
           shorebirdValidatorRef.overrideWith(() => shorebirdValidator),
-          shorebirdAndroidArtifactsRef
-              .overrideWith(() => shorebirdAndroidArtifacts),
+          shorebirdAndroidArtifactsRef.overrideWith(
+            () => shorebirdAndroidArtifacts,
+          ),
         },
       );
     }
@@ -86,7 +93,7 @@ void main() {
       artifactBuilder = MockArtifactBuilder();
       artifactManager = MockArtifactManager();
       codePushClientWrapper = MockCodePushClientWrapper();
-      // platform = MockPlatform();
+      platform = MockPlatform();
       progress = MockProgress();
       projectRoot = Directory.systemTemp.createTempSync();
       logger = MockLogger();
@@ -413,6 +420,55 @@ void main() {
         expect(
           () => patcher.extractReleaseVersionFromArtifact(File('')),
           throwsUnimplementedError,
+        );
+      });
+    });
+
+    group('createPatchMetadata', () {
+      const allowAssetDiffs = false;
+      const allowNativeDiffs = true;
+      const operatingSystem = 'Mac OS X';
+      const operatingSystemVersion = '10.15.7';
+
+      setUp(() {
+        when(() => argResults['allow-asset-diffs']).thenReturn(allowAssetDiffs);
+        when(
+          () => argResults['allow-native-diffs'],
+        ).thenReturn(allowNativeDiffs);
+        when(() => platform.operatingSystem).thenReturn(operatingSystem);
+        when(
+          () => platform.operatingSystemVersion,
+        ).thenReturn(operatingSystemVersion);
+      });
+
+      test('returns correct metadata', () async {
+        final diffStatus = DiffStatus(
+          hasAssetChanges: false,
+          hasNativeChanges: false,
+        );
+
+        final metadata = await runWithOverrides(
+          () => patcher.createPatchMetadata(diffStatus),
+        );
+
+        expect(
+          metadata,
+          equals(
+            CreatePatchMetadata(
+              releasePlatform: ReleasePlatform.android,
+              usedIgnoreAssetChangesFlag: allowAssetDiffs,
+              hasAssetChanges: diffStatus.hasAssetChanges,
+              usedIgnoreNativeChangesFlag: allowNativeDiffs,
+              hasNativeChanges: diffStatus.hasNativeChanges,
+              linkPercentage: null,
+              environment: const BuildEnvironmentMetadata(
+                operatingSystem: operatingSystem,
+                operatingSystemVersion: operatingSystemVersion,
+                shorebirdVersion: packageVersion,
+                xcodeVersion: null,
+              ),
+            ),
+          ),
         );
       });
     });

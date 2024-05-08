@@ -12,12 +12,10 @@ import 'package:shorebird_cli/src/extensions/arg_results.dart';
 import 'package:shorebird_cli/src/formatters/formatters.dart';
 import 'package:shorebird_cli/src/logger.dart';
 import 'package:shorebird_cli/src/patch_diff_checker.dart';
-import 'package:shorebird_cli/src/platform.dart';
 import 'package:shorebird_cli/src/platform/platform.dart';
 import 'package:shorebird_cli/src/release_type.dart';
 import 'package:shorebird_cli/src/shorebird_env.dart';
 import 'package:shorebird_cli/src/third_party/flutter_tools/lib/flutter_tools.dart';
-import 'package:shorebird_cli/src/version.dart';
 import 'package:shorebird_code_push_client/shorebird_code_push_client.dart';
 
 typedef ResolvePatcher = Patcher Function(ReleaseType releaseType);
@@ -220,20 +218,7 @@ NOTE: this is ${styleBold.wrap('not')} recommended. Asset changes cannot be incl
         await codePushClientWrapper.publishPatch(
           appId: appId,
           releaseId: release.id,
-          metadata: CreatePatchMetadata(
-            releasePlatform: patcher.releaseType.releasePlatform,
-            usedIgnoreAssetChangesFlag: allowAssetDiffs,
-            hasAssetChanges: diffStatus.hasAssetChanges,
-            usedIgnoreNativeChangesFlag: allowNativeDiffs,
-            hasNativeChanges: diffStatus.hasNativeChanges,
-            linkPercentage: null,
-            environment: BuildEnvironmentMetadata(
-              operatingSystem: platform.operatingSystem,
-              operatingSystemVersion: platform.operatingSystemVersion,
-              shorebirdVersion: packageVersion,
-              xcodeVersion: null,
-            ),
-          ),
+          metadata: await patcher.createPatchMetadata(diffStatus),
           platform: patcher.releaseType.releasePlatform,
           track:
               isStaging ? DeploymentTrack.staging : DeploymentTrack.production,

@@ -137,8 +137,9 @@ void main() {
 
         group('when arguments are valid', () {
           setUp(() {
-            when(() => argResults.wasParsed('release-version'))
-                .thenReturn(true);
+            when(
+              () => argResults.wasParsed('release-version'),
+            ).thenReturn(true);
           });
 
           test('returns normally', () {
@@ -152,8 +153,9 @@ void main() {
 
       group('assertPreconditions', () {
         setUp(() {
-          when(() => doctor.iosCommandValidators)
-              .thenReturn([flutterValidator]);
+          when(
+            () => doctor.iosCommandValidators,
+          ).thenReturn([flutterValidator]);
           when(flutterValidator.validate).thenAnswer((_) async => []);
         });
 
@@ -161,13 +163,16 @@ void main() {
           setUp(() {
             when(
               () => shorebirdValidator.validatePreconditions(
-                checkUserIsAuthenticated:
-                    any(named: 'checkUserIsAuthenticated'),
-                checkShorebirdInitialized:
-                    any(named: 'checkShorebirdInitialized'),
+                checkUserIsAuthenticated: any(
+                  named: 'checkUserIsAuthenticated',
+                ),
+                checkShorebirdInitialized: any(
+                  named: 'checkShorebirdInitialized',
+                ),
                 validators: any(named: 'validators'),
-                supportedOperatingSystems:
-                    any(named: 'supportedOperatingSystems'),
+                supportedOperatingSystems: any(
+                  named: 'supportedOperatingSystems',
+                ),
               ),
             ).thenAnswer((_) async {});
           });
@@ -186,13 +191,16 @@ void main() {
           setUp(() {
             when(
               () => shorebirdValidator.validatePreconditions(
-                checkUserIsAuthenticated:
-                    any(named: 'checkUserIsAuthenticated'),
-                checkShorebirdInitialized:
-                    any(named: 'checkShorebirdInitialized'),
+                checkUserIsAuthenticated: any(
+                  named: 'checkUserIsAuthenticated',
+                ),
+                checkShorebirdInitialized: any(
+                  named: 'checkShorebirdInitialized',
+                ),
                 validators: any(named: 'validators'),
-                supportedOperatingSystems:
-                    any(named: 'supportedOperatingSystems'),
+                supportedOperatingSystems: any(
+                  named: 'supportedOperatingSystems',
+                ),
               ),
             ).thenThrow(exception);
           });
@@ -260,7 +268,7 @@ void main() {
         });
 
         group('when build succeeds', () {
-          test('produces aar in release directory', () async {
+          test('produces xcframework in release directory', () async {
             final xcframework = await runWithOverrides(
               iosFrameworkReleaser.buildReleaseArtifacts,
             );
