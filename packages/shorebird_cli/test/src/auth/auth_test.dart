@@ -142,7 +142,7 @@ void main() {
     late String credentialsDir;
     late http.Client httpClient;
     late CodePushClient codePushClient;
-    late Logger logger;
+    late ShorebirdLogger logger;
     late Auth auth;
     late Platform platform;
 
@@ -198,7 +198,7 @@ void main() {
       credentialsDir = Directory.systemTemp.createTempSync().path;
       httpClient = MockHttpClient();
       codePushClient = MockCodePushClient();
-      logger = MockLogger();
+      logger = MockShorebirdLogger();
       platform = MockPlatform();
 
       when(() => codePushClient.getCurrentUser()).thenAnswer((_) async => user);

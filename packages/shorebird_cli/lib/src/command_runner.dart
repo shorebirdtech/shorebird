@@ -14,7 +14,6 @@ import 'package:shorebird_cli/src/platform.dart';
 import 'package:shorebird_cli/src/shorebird_artifacts.dart';
 import 'package:shorebird_cli/src/shorebird_env.dart';
 import 'package:shorebird_cli/src/shorebird_flutter.dart';
-import 'package:shorebird_cli/src/shorebird_logger.dart';
 import 'package:shorebird_cli/src/shorebird_process.dart';
 import 'package:shorebird_cli/src/shorebird_version.dart';
 import 'package:shorebird_cli/src/version.dart';
@@ -213,7 +212,7 @@ Run ${lightCyan.wrap('shorebird upgrade')} to upgrade.''');
       try {
         exitCode = await super.runCommand(topLevelResults);
       } catch (error, stackTrace) {
-        shorebirdLogger
+        logger
           ..err('$error')
           ..detail('$stackTrace');
         exitCode = ExitCode.software.code;
@@ -233,7 +232,7 @@ Run ${lightCyan.wrap('shorebird upgrade')} to upgrade.''');
 If you aren't sure why this command failed, re-run with the ${lightCyan.wrap('--verbose')} flag to see more information.
 
 You can also $fileAnIssue if you think this is a bug. Please include the following log file in your report:
-${shorebirdLogger.logFile.absolute.path}
+${logger.logFile.absolute.path}
 ''',
       );
     }

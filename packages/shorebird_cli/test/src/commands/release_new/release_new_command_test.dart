@@ -45,7 +45,7 @@ void main() {
     late CodePushClientWrapper codePushClientWrapper;
     late Directory shorebirdRoot;
     late Directory projectRoot;
-    late Logger logger;
+    late ShorebirdLogger logger;
     late Progress progress;
     late Releaser releaser;
     late ShorebirdEnv shorebirdEnv;
@@ -78,7 +78,7 @@ void main() {
     setUp(() {
       argResults = MockArgResults();
       codePushClientWrapper = MockCodePushClientWrapper();
-      logger = MockLogger();
+      logger = MockShorebirdLogger();
       progress = MockProgress();
       releaser = MockReleaser();
       shorebirdRoot = Directory.systemTemp.createTempSync();

@@ -19,7 +19,7 @@ void main() {
       message: 'error',
     );
 
-    late Logger logger;
+    late ShorebirdLogger logger;
     late Progress progress;
     late Validator noIssuesValidator;
     late Validator warningValidator;
@@ -36,7 +36,7 @@ void main() {
     }
 
     setUp(() {
-      logger = MockLogger();
+      logger = MockShorebirdLogger();
       progress = MockProgress();
       noIssuesValidator = MockValidator();
       warningValidator = MockValidator();

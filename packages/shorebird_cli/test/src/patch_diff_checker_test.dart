@@ -27,7 +27,7 @@ void main() {
     late FileSetDiff assetsFileSetDiff;
     late FileSetDiff nativeFileSetDiff;
     late http.Client httpClient;
-    late Logger logger;
+    late ShorebirdLogger logger;
     late Progress progress;
     late ShorebirdEnv shorebirdEnv;
     late PatchDiffChecker patchDiffChecker;
@@ -53,7 +53,7 @@ void main() {
       assetsFileSetDiff = MockFileSetDiff();
       nativeFileSetDiff = MockFileSetDiff();
       httpClient = MockHttpClient();
-      logger = MockLogger();
+      logger = MockShorebirdLogger();
       progress = MockProgress();
       shorebirdEnv = MockShorebirdEnv();
       patchDiffChecker = PatchDiffChecker();

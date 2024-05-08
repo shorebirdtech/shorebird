@@ -76,7 +76,7 @@ void main() {
     late Auth auth;
     late Cache cache;
     late Java java;
-    late Logger logger;
+    late ShorebirdLogger logger;
     late OperatingSystemInterface operatingSystemInterface;
     late Progress progress;
     late ShorebirdProcessResult flutterAppbundleBuildProcessResult;
@@ -139,7 +139,7 @@ void main() {
       cache = MockCache();
       java = MockJava();
       progress = MockProgress();
-      logger = MockLogger();
+      logger = MockShorebirdLogger();
       flutterAppbundleBuildProcessResult = MockProcessResult();
       flutterApkBuildProcessResult = MockProcessResult();
       flutterPubGetProcessResult = MockProcessResult();

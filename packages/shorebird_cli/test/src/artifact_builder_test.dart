@@ -19,7 +19,7 @@ import 'mocks.dart';
 void main() {
   group(ArtifactBuilder, () {
     late Ios ios;
-    late Logger logger;
+    late ShorebirdLogger logger;
     late OperatingSystemInterface operatingSystemInterface;
     late ShorebirdAndroidArtifacts shorebirdAndroidArtifacts;
     late ShorebirdEnv shorebirdEnv;
@@ -51,7 +51,7 @@ void main() {
     setUp(() {
       buildProcessResult = MockProcessResult();
       ios = MockIos();
-      logger = MockLogger();
+      logger = MockShorebirdLogger();
       operatingSystemInterface = MockOperatingSystemInterface();
       pubGetProcessResult = MockProcessResult();
       shorebirdAndroidArtifacts = MockShorebirdAndroidArtifacts();

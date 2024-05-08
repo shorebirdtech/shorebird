@@ -19,7 +19,7 @@ void main() {
     };
 
     late EngineConfig engineConfig;
-    late Logger logger;
+    late ShorebirdLogger logger;
     late ProcessWrapper processWrapper;
     late Process startProcess;
     late ShorebirdProcessResult runProcessResult;
@@ -39,7 +39,7 @@ void main() {
 
     setUp(() {
       engineConfig = const EngineConfig.empty();
-      logger = MockLogger();
+      logger = MockShorebirdLogger();
       processWrapper = MockProcessWrapper();
       runProcessResult = MockProcessResult();
       startProcess = MockProcess();

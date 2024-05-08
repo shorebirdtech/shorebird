@@ -15,7 +15,7 @@ void main() {
   const newerShorebirdRevision = 'revision-2';
 
   group('upgrade', () {
-    late Logger logger;
+    late ShorebirdLogger logger;
     late ShorebirdVersion shorebirdVersion;
     late UpgradeCommand command;
 
@@ -33,7 +33,7 @@ void main() {
       final progress = MockProgress();
       final progressLogs = <String>[];
 
-      logger = MockLogger();
+      logger = MockShorebirdLogger();
       shorebirdVersion = MockShorebirdVersion();
       command = runWithOverrides(UpgradeCommand.new);
 

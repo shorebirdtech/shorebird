@@ -163,7 +163,7 @@ flutter:
       late Ios ios;
       late IosArchiveDiffer archiveDiffer;
       late Progress progress;
-      late Logger logger;
+      late ShorebirdLogger logger;
       late OperatingSystemInterface operatingSystemInterface;
       late PatchDiffChecker patchDiffChecker;
       late Platform platform;
@@ -318,7 +318,7 @@ flutter:
               ..createSync(recursive: true);
         archiveDiffer = MockIosArchiveDiffer();
         progress = MockProgress();
-        logger = MockLogger();
+        logger = MockShorebirdLogger();
         platform = MockPlatform();
         aotBuildProcessResult = MockProcessResult();
         flutterBuildProcessResult = MockProcessResult();

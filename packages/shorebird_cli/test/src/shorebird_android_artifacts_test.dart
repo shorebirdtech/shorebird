@@ -18,7 +18,7 @@ void main() {
     late Directory projectRoot;
     late Bundletool bundletool;
     late Cache cache;
-    late Logger logger;
+    late ShorebirdLogger logger;
     late ShorebirdEnv shorebirdEnv;
     late ShorebirdAndroidArtifacts shorebirdAndroidArtifacts;
 
@@ -37,7 +37,7 @@ void main() {
     setUp(() {
       bundletool = MockBundleTool();
       cache = MockCache();
-      logger = MockLogger();
+      logger = MockShorebirdLogger();
       projectRoot = Directory.systemTemp.createTempSync();
       shorebirdEnv = MockShorebirdEnv();
 

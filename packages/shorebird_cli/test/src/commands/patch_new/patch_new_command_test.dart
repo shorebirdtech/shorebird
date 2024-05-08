@@ -74,7 +74,7 @@ void main() {
     late ArtifactBuilder artifactBuilder;
     late ArtifactManager artifactManager;
     late CodePushClientWrapper codePushClientWrapper;
-    late Logger logger;
+    late ShorebirdLogger logger;
     late PatchDiffChecker patchDiffChecker;
     late Patcher patcher;
     late Progress progress;
@@ -117,7 +117,7 @@ void main() {
       artifactBuilder = MockArtifactBuilder();
       artifactManager = MockArtifactManager();
       codePushClientWrapper = MockCodePushClientWrapper();
-      logger = MockLogger();
+      logger = MockShorebirdLogger();
       progress = MockProgress();
       patchDiffChecker = MockPatchDiffChecker();
       patcher = MockPatcher();

@@ -1,7 +1,6 @@
 import 'dart:io';
 
 import 'package:http/http.dart' as http;
-import 'package:mason_logger/mason_logger.dart';
 import 'package:mocktail/mocktail.dart';
 import 'package:scoped/scoped.dart';
 import 'package:shorebird_cli/src/http_client/http_client.dart';
@@ -14,7 +13,7 @@ import '../mocks.dart';
 void main() {
   group(LoggingClient, () {
     late http.Client httpClient;
-    late Logger logger;
+    late ShorebirdLogger logger;
     late LoggingClient loggingClient;
 
     R runWithOverrides<R>(R Function() body) {
@@ -32,7 +31,7 @@ void main() {
 
     setUp(() {
       httpClient = MockHttpClient();
-      logger = MockLogger();
+      logger = MockShorebirdLogger();
       loggingClient = LoggingClient(httpClient: httpClient);
 
       when(() => httpClient.send(any())).thenAnswer(

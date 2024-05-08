@@ -22,7 +22,7 @@ void main() {
     late Directory cacheArtifactDirectory;
     late http.Client httpClient;
     late Directory projectRoot;
-    late Logger logger;
+    late ShorebirdLogger logger;
     late ShorebirdEnv shorebirdEnv;
     late ShorebirdProcessResult patchProcessResult;
     late ShorebirdProcess shorebirdProcess;
@@ -49,7 +49,7 @@ void main() {
       cacheArtifactDirectory = Directory.systemTemp.createTempSync();
       cache = MockCache();
       httpClient = MockHttpClient();
-      logger = MockLogger();
+      logger = MockShorebirdLogger();
       patchProcessResult = MockProcessResult();
       projectRoot = Directory.systemTemp.createTempSync();
       shorebirdProcess = MockShorebirdProcess();

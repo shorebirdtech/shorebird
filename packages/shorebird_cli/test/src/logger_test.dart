@@ -4,8 +4,8 @@ import 'package:mason_logger/mason_logger.dart';
 import 'package:mocktail/mocktail.dart';
 import 'package:path/path.dart' as p;
 import 'package:scoped/scoped.dart';
+import 'package:shorebird_cli/src/logger.dart';
 import 'package:shorebird_cli/src/shorebird_env.dart';
-import 'package:shorebird_cli/src/shorebird_logger.dart';
 import 'package:test/test.dart';
 
 import 'mocks.dart';
@@ -23,7 +23,7 @@ void main() {
       shorebirdEnv = MockShorebirdEnv();
       when(() => shorebirdEnv.shorebirdRoot).thenReturn(shorebirdRootDir);
 
-      logger = MockLogger();
+      logger = MockShorebirdLogger();
       when(() => logger.theme).thenReturn(const LogTheme());
       shorebirdLogger = ShorebirdLogger(logger: logger);
     });

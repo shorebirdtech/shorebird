@@ -22,7 +22,7 @@ void main() {
     late Directory flutterDirectory;
     late ShorebirdEnv shorebirdEnv;
     late ShorebirdProcess process;
-    late Logger logger;
+    late ShorebirdLogger logger;
     late Process loggerProcess;
     late String idevicesyslogPath;
     late IDeviceSysLog idevicesyslog;
@@ -44,7 +44,7 @@ void main() {
       device = MockAppleDevice();
       flutterDirectory = Directory.systemTemp.createTempSync();
       process = MockShorebirdProcess();
-      logger = MockLogger();
+      logger = MockShorebirdLogger();
       loggerProcess = MockProcess();
       shorebirdEnv = MockShorebirdEnv();
       idevicesyslog = IDeviceSysLog();
