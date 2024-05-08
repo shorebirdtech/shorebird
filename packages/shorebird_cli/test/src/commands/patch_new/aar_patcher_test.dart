@@ -129,6 +129,12 @@ void main() {
       });
     });
 
+    group('primaryReleaseArtifactArch', () {
+      test('is aar', () {
+        expect(patcher.primaryReleaseArtifactArch, equals('aar'));
+      });
+    });
+
     group('assertPreconditions', () {
       group('when validation succeeds', () {
         setUp(() {
