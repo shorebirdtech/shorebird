@@ -137,11 +137,7 @@ NOTE: this is ${styleBold.wrap('not')} recommended. Asset changes cannot be incl
           target: target,
         );
       case ReleaseType.ios:
-        return IosPatcher(
-          argResults: results,
-          flavor: flavor,
-          target: target,
-        );
+        throw UnimplementedError();
       case ReleaseType.iosFramework:
         throw UnimplementedError();
       case ReleaseType.aar:
