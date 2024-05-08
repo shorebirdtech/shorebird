@@ -21,7 +21,11 @@ import 'package:shorebird_cli/src/third_party/flutter_tools/lib/flutter_tools.da
 /// {@endtemplate}
 class AndroidPatcher extends Patcher {
   /// {@macro android_patcher}
-  AndroidPatcher({required super.flavor, required super.target});
+  AndroidPatcher({
+    required super.argResults,
+    required super.flavor,
+    required super.target,
+  });
 
   @override
   ReleaseType get releaseType => ReleaseType.android;
