@@ -418,7 +418,12 @@ void main() {
       });
 
       test('does not publish patch', () async {
-        expect(runWithOverrides(command.run), exitsWithCode(ExitCode.success));
+        await expectLater(
+          runWithOverrides(command.run),
+          exitsWithCode(ExitCode.success),
+        );
+
+        verify(() => logger.info('No issues detected.')).called(1);
 
         verifyNever(() => logger.confirm(any()));
         verifyNever(
