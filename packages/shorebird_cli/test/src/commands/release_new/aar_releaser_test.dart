@@ -197,7 +197,7 @@ void main() {
     });
 
     group('assertArgsAreValid', () {
-      group('when split-per-abi is true', () {
+      group('when release-version was not provided', () {
         setUp(() {
           when(() => argResults.wasParsed('release-version')).thenReturn(false);
         });

@@ -63,10 +63,13 @@ class IosFrameworkPatcher extends Patcher {
     } on PreconditionFailedException catch (e) {
       exit(e.exitCode.code);
     }
+  }
 
-    if (shorebirdEnv.androidPackageName == null) {
-      logger.err('Could not find androidPackage in pubspec.yaml.');
-      exit(ExitCode.config.code);
+  @override
+  Future<void> assertArgsAreValid() async {
+    if (!argResults.wasParsed('release-version')) {
+      logger.err('Missing required argument: --release-version');
+      exit(ExitCode.usage.code);
     }
   }
 
@@ -162,13 +165,10 @@ class IosFrameworkPatcher extends Patcher {
     );
     final useLinker = AotTools.usesLinker(shorebirdEnv.flutterRevision);
     if (useLinker) {
-      final exitCode = await _runLinker(
+      await _runLinker(
         aotSnapshot: aotSnapshotFile,
         releaseArtifact: releaseArtifactFile,
       );
-      if (exitCode != ExitCode.success.code) {
-        exit(exitCode);
-      }
     }
 
     final patchBuildFile =
@@ -222,13 +222,13 @@ class IosFrameworkPatcher extends Patcher {
     );
   }
 
-  Future<int> _runLinker({
+  Future<void> _runLinker({
     required File aotSnapshot,
     required File releaseArtifact,
   }) async {
     if (!aotSnapshot.existsSync()) {
       logger.err('Unable to find patch AOT file at ${aotSnapshot.path}');
-      return ExitCode.software.code;
+      exit(ExitCode.software.code);
     }
 
     final analyzeSnapshot = File(
@@ -239,7 +239,7 @@ class IosFrameworkPatcher extends Patcher {
 
     if (!analyzeSnapshot.existsSync()) {
       logger.err('Unable to find analyze_snapshot at ${analyzeSnapshot.path}');
-      return ExitCode.software.code;
+      exit(ExitCode.software.code);
     }
 
     final genSnapshot = shorebirdArtifacts.getArtifactPath(
@@ -259,10 +259,9 @@ class IosFrameworkPatcher extends Patcher {
       );
     } catch (error) {
       linkProgress.fail('Failed to link AOT files: $error');
-      return ExitCode.software.code;
+      exit(ExitCode.software.code);
     }
 
     linkProgress.complete();
-    return ExitCode.success.code;
   }
 }
