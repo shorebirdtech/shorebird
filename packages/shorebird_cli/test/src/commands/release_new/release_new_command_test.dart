@@ -4,9 +4,9 @@ import 'package:mocktail/mocktail.dart';
 import 'package:scoped/scoped.dart';
 import 'package:shorebird_cli/src/code_push_client_wrapper.dart';
 import 'package:shorebird_cli/src/commands/release_new/release_new.dart';
-import 'package:shorebird_cli/src/release_type.dart';
 import 'package:shorebird_cli/src/config/config.dart';
 import 'package:shorebird_cli/src/logger.dart';
+import 'package:shorebird_cli/src/release_type.dart';
 import 'package:shorebird_cli/src/shorebird_env.dart';
 import 'package:shorebird_cli/src/shorebird_flutter.dart';
 import 'package:shorebird_cli/src/third_party/flutter_tools/lib/flutter_tools.dart';
@@ -86,6 +86,7 @@ void main() {
       shorebirdEnv = MockShorebirdEnv();
       shorebirdFlutter = MockShorebirdFlutter();
 
+      when(() => argResults['dry-run']).thenReturn(false);
       when(() => argResults['platform']).thenReturn(['android']);
       when(() => argResults.wasParsed(any())).thenReturn(true);
 
@@ -226,6 +227,31 @@ Note: ${lightCyan.wrap('shorebird patch --platform=android')} without the --rele
 ''',
             ),
       ]);
+    });
+
+    group('when dry-run is specified', () {
+      setUp(() {
+        when(() => argResults['dry-run']).thenReturn(true);
+      });
+
+      test('does not publish release', () async {
+        await expectLater(
+          runWithOverrides(command.run),
+          exitsWithCode(ExitCode.success),
+        );
+
+        verify(() => logger.info('No issues detected.')).called(1);
+
+        verifyNever(() => logger.confirm(any()));
+        verifyNever(
+          () => codePushClientWrapper.createRelease(
+            appId: appId,
+            version: any(named: 'version'),
+            flutterRevision: any(named: 'flutterRevision'),
+            platform: any(named: 'platform'),
+          ),
+        );
+      });
     });
 
     group('when release version arg is required', () {
