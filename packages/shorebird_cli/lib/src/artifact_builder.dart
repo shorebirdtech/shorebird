@@ -6,6 +6,7 @@ import 'package:shorebird_cli/src/logger.dart';
 import 'package:shorebird_cli/src/os/operating_system_interface.dart';
 import 'package:shorebird_cli/src/platform/platform.dart';
 import 'package:shorebird_cli/src/shorebird_android_artifacts.dart';
+import 'package:shorebird_cli/src/shorebird_artifacts.dart';
 import 'package:shorebird_cli/src/shorebird_env.dart';
 import 'package:shorebird_cli/src/shorebird_process.dart';
 
@@ -320,5 +321,32 @@ Either run `flutter pub get` manually, or follow the steps in ${link(uri: Uri.pa
 ''',
       );
     }
+  }
+
+  /// Creates an AOT snapshot of the given [appDillPath] at [outFilePath] and
+  /// returns the resulting file.
+  Future<File> buildElfAotSnapshot({
+    required String appDillPath,
+    required String outFilePath,
+  }) async {
+    final arguments = [
+      '--deterministic',
+      '--snapshot-kind=app-aot-elf',
+      '--elf=$outFilePath',
+      appDillPath,
+    ];
+
+    final result = await process.run(
+      shorebirdArtifacts.getArtifactPath(
+        artifact: ShorebirdArtifact.genSnapshot,
+      ),
+      arguments,
+    );
+
+    if (result.exitCode != ExitCode.success.code) {
+      throw Exception('Failed to create snapshot: ${result.stderr}');
+    }
+
+    return File(outFilePath);
   }
 }
