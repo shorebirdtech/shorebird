@@ -6,7 +6,6 @@ import 'package:googleapis_auth/auth_io.dart';
 import 'package:googleapis_auth/googleapis_auth.dart' as oauth2;
 import 'package:http/http.dart' as http;
 import 'package:jwt/jwt.dart' show Jwt, JwtPayload;
-import 'package:mason_logger/mason_logger.dart';
 import 'package:mocktail/mocktail.dart';
 import 'package:path/path.dart' as p;
 import 'package:platform/platform.dart';

@@ -1,5 +1,4 @@
 import 'package:archive/archive_io.dart';
-import 'package:mason_logger/mason_logger.dart';
 import 'package:mocktail/mocktail.dart';
 import 'package:path/path.dart' as p;
 import 'package:scoped/scoped.dart';
