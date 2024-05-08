@@ -1,9 +1,12 @@
 import 'package:http/http.dart' as http;
 import 'package:mocktail/mocktail.dart';
+import 'package:shorebird_cli/src/patch_diff_checker.dart';
 import 'package:shorebird_cli/src/shorebird_process.dart';
 import 'package:shorebird_code_push_client/shorebird_code_push_client.dart';
 
 class FakeBaseRequest extends Fake implements http.BaseRequest {}
+
+class FakeDiffStatus extends Fake implements DiffStatus {}
 
 class FakeRelease extends Fake implements Release {}
 

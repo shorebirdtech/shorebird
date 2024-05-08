@@ -3,9 +3,11 @@ import 'dart:io';
 import 'package:args/args.dart';
 import 'package:shorebird_cli/src/archive_analysis/archive_differ.dart';
 import 'package:shorebird_cli/src/code_push_client_wrapper.dart';
+import 'package:shorebird_cli/src/patch_diff_checker.dart';
 import 'package:shorebird_cli/src/platform/platform.dart';
 import 'package:shorebird_cli/src/release_type.dart';
 import 'package:shorebird_cli/src/shorebird_env.dart';
+import 'package:shorebird_code_push_client/shorebird_code_push_client.dart';
 
 /// {@template patcher}
 /// Platform-specific functionality to create a patch.
@@ -59,4 +61,8 @@ abstract class Patcher {
     required String appId,
     required int releaseId,
   });
+
+  /// Metadata to attach to the patch when creating it, used for debugging
+  /// and support.
+  Future<CreatePatchMetadata> createPatchMetadata(DiffStatus diffStatus);
 }
