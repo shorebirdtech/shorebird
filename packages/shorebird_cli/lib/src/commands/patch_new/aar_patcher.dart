@@ -166,9 +166,6 @@ class AarPatcher extends Patcher {
 
   @override
   Future<CreatePatchMetadata> createPatchMetadata(DiffStatus diffStatus) async {
-    final allowAssetDiffs = argResults['allow-asset-diffs'] == true;
-    final allowNativeDiffs = argResults['allow-native-diffs'] == true;
-
     return CreatePatchMetadata(
       releasePlatform: releaseType.releasePlatform,
       usedIgnoreAssetChangesFlag: allowAssetDiffs,

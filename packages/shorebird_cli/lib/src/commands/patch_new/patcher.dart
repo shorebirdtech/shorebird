@@ -65,4 +65,10 @@ abstract class Patcher {
   /// Metadata to attach to the patch when creating it, used for debugging
   /// and support.
   Future<CreatePatchMetadata> createPatchMetadata(DiffStatus diffStatus);
+
+  /// Whether to allow changes in assets (--allow-asset-diffs).
+  bool get allowAssetDiffs => argResults['allow-asset-diffs'] == true;
+
+  /// Whether to allow changes in native code (--allow-native-diffs).
+  bool get allowNativeDiffs => argResults['allow-native-diffs'] == true;
 }
