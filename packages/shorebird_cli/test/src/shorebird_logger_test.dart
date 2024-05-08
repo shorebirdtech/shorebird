@@ -35,6 +35,13 @@ void main() {
       return File(logFile.path).readAsStringSync();
     }
 
+    test('can be instantiated', () {
+      expect(
+        ShorebirdLogger.new,
+        returnsNormally,
+      );
+    });
+
     test('info', () {
       runScoped(
         () {
