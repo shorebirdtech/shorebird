@@ -594,5 +594,69 @@ void main() {
         );
       });
     });
+
+    group('getAppDirectory', () {
+      late Directory xcarchiveDirectory;
+
+      setUp(() {
+        xcarchiveDirectory = Directory.systemTemp.createTempSync();
+      });
+
+      group('when applications directory does not exist', () {
+        test('returns null', () {
+          expect(
+            runWithOverrides(
+              () => artifactManager.getAppDirectory(
+                xcarchiveDirectory: xcarchiveDirectory,
+              ),
+            ),
+            isNull,
+          );
+        });
+      });
+
+      group('when applications directory does exist', () {
+        late Directory applicationsDirectory;
+
+        setUp(() {
+          applicationsDirectory = Directory(
+            p.join(xcarchiveDirectory.path, 'Products', 'Applications'),
+          )..createSync(recursive: true);
+        });
+
+        test('returns null', () {
+          expect(
+            runWithOverrides(
+              () => artifactManager.getAppDirectory(
+                xcarchiveDirectory: xcarchiveDirectory,
+              ),
+            ),
+            isNull,
+          );
+        });
+
+        group('when a .app directory exists', () {
+          late Directory appDirectory;
+
+          setUp(() {
+            appDirectory = Directory(
+              p.join(applicationsDirectory.path, 'Runner.app'),
+            )..createSync(recursive: true);
+          });
+
+          test('returns path to .app directory', () {
+            expect(
+              runWithOverrides(
+                () => artifactManager.getAppDirectory(
+                  xcarchiveDirectory: xcarchiveDirectory,
+                ),
+              )!
+                  .path,
+              equals(appDirectory.path),
+            );
+          });
+        });
+      });
+    });
   });
 }
