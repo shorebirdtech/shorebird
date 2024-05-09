@@ -16,7 +16,6 @@ void main() {
     late File dartBinaryFile;
     late Directory flutterDirectory;
     late Directory tempDir;
-    late ShorebirdTools shorebirdTools;
     late ShorebirdLogger logger;
     late ShorebirdEnv shorebirdEnv;
     late ShorebirdProcess process;
@@ -29,6 +28,7 @@ void main() {
           processRef.overrideWith(() => process),
           shorebirdEnvRef.overrideWith(() => shorebirdEnv),
           loggerRef.overrideWith(() => logger),
+          shorebirdToolsRef,
         },
       );
     }
@@ -41,7 +41,6 @@ void main() {
 
       dartBinaryFile = File(p.join(tempDir.path, 'dart'))..createSync();
 
-      shorebirdTools = ShorebirdTools();
       processResult = MockProcessResult();
       when(() => processResult.exitCode).thenReturn(0);
       when(() => processResult.stdout).thenReturn('');
