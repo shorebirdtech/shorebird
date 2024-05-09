@@ -111,6 +111,8 @@ class MockOperatingSystemInterface extends Mock
 
 class MockPatchDiffChecker extends Mock implements PatchDiffChecker {}
 
+class MockPatchExecutable extends Mock implements PatchExecutable {}
+
 class MockPatcher extends Mock implements Patcher {}
 
 class MockPlatform extends Mock implements Platform {}

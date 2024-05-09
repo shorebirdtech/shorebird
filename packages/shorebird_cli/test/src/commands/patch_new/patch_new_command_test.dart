@@ -302,6 +302,7 @@ void main() {
         verifyInOrder([
           () => patcher.assertPreconditions(),
           () => patcher.assertArgsAreValid(),
+          () => cache.updateAll(),
           () => codePushClientWrapper.getApp(appId: appId),
           () => codePushClientWrapper.getRelease(
                 appId: appId,
@@ -353,6 +354,7 @@ void main() {
         verifyInOrder([
           () => patcher.assertPreconditions(),
           () => patcher.assertArgsAreValid(),
+          () => cache.updateAll(),
           () => codePushClientWrapper.getApp(appId: appId),
           () => patcher.buildPatchArtifact(),
           () => patcher.extractReleaseVersionFromArtifact(any()),
@@ -423,6 +425,19 @@ void main() {
                   flutterRevisionOverride: releaseFlutterRevision,
                 ),
             () => patcher.buildPatchArtifact(),
+          ]);
+        });
+
+        test('updates cache with both default and release Flutter revisions',
+            () async {
+          await runWithOverrides(command.run);
+
+          verifyInOrder([
+            cache.updateAll,
+            () => shorebirdEnv.copyWith(
+                  flutterRevisionOverride: releaseFlutterRevision,
+                ),
+            cache.updateAll,
           ]);
         });
       });

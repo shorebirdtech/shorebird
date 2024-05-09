@@ -54,6 +54,7 @@ Future<void> main(List<String> args) async {
         javaRef,
         loggerRef,
         osInterfaceRef,
+        patchExecutableRef,
         patchDiffCheckerRef,
         platformRef,
         processRef,

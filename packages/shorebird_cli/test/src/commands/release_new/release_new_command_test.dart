@@ -2,6 +2,7 @@ import 'package:args/args.dart';
 import 'package:mason_logger/mason_logger.dart';
 import 'package:mocktail/mocktail.dart';
 import 'package:scoped/scoped.dart';
+import 'package:shorebird_cli/src/cache.dart';
 import 'package:shorebird_cli/src/code_push_client_wrapper.dart';
 import 'package:shorebird_cli/src/commands/release_new/release_new.dart';
 import 'package:shorebird_cli/src/config/config.dart';
@@ -42,6 +43,7 @@ void main() {
     );
 
     late ArgResults argResults;
+    late Cache cache;
     late CodePushClientWrapper codePushClientWrapper;
     late Directory shorebirdRoot;
     late Directory projectRoot;
@@ -57,6 +59,7 @@ void main() {
       return runScoped(
         body,
         values: {
+          cacheRef.overrideWith(() => cache),
           codePushClientWrapperRef.overrideWith(() => codePushClientWrapper),
           loggerRef.overrideWith(() => logger),
           shorebirdEnvRef.overrideWith(() => shorebirdEnv),
@@ -77,6 +80,7 @@ void main() {
 
     setUp(() {
       argResults = MockArgResults();
+      cache = MockCache();
       codePushClientWrapper = MockCodePushClientWrapper();
       logger = MockShorebirdLogger();
       progress = MockProgress();
@@ -89,6 +93,8 @@ void main() {
       when(() => argResults['dry-run']).thenReturn(false);
       when(() => argResults['platform']).thenReturn(['android']);
       when(() => argResults.wasParsed(any())).thenReturn(true);
+
+      when(cache.updateAll).thenAnswer((_) async => {});
 
       when(() => codePushClientWrapper.getApp(appId: any(named: 'appId')))
           .thenAnswer((_) async => appMetadata);
@@ -204,6 +210,7 @@ void main() {
       verifyInOrder([
         releaser.assertPreconditions,
         releaser.assertArgsAreValid,
+        cache.updateAll,
         () => codePushClientWrapper.getApp(appId: appId),
         releaser.buildReleaseArtifacts,
         () => releaser.getReleaseVersion(
@@ -291,6 +298,7 @@ Note: ${lightCyan.wrap('shorebird patch --platform=android')} without the --rele
         verifyInOrder([
           releaser.assertPreconditions,
           releaser.assertArgsAreValid,
+          cache.updateAll,
           () => codePushClientWrapper.getApp(appId: appId),
           releaser.buildReleaseArtifacts,
           () => releaser.getReleaseVersion(
