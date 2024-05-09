@@ -260,7 +260,36 @@ void main() {
           });
         });
 
-        group('when build fails', () {
+        group('when build fails with ProcessException', () {
+          setUp(() {
+            when(
+              () => artifactBuilder.buildIpa(
+                exportOptionsPlist: any(named: 'exportOptionsPlist'),
+                codesign: any(named: 'codesign'),
+                argResultsRest: any(named: 'argResultsRest'),
+                flavor: any(named: 'flavor'),
+                target: any(named: 'target'),
+              ),
+            ).thenThrow(
+              const ProcessException(
+                'flutter',
+                ['build', 'ipa'],
+                'Build failed',
+              ),
+            );
+          });
+
+          test('exits with code 70', () async {
+            await expectLater(
+              () => runWithOverrides(patcher.buildPatchArtifact),
+              exitsWithCode(ExitCode.software),
+            );
+
+            verify(() => progress.fail('Failed to build: Build failed'));
+          });
+        });
+
+        group('when build fails with ArtifactBuildException', () {
           setUp(() {
             when(
               () => artifactBuilder.buildIpa(
@@ -505,6 +534,31 @@ void main() {
           });
         });
 
+        group('when release artifact does not exist', () {
+          setUp(() {
+            when(
+              () => artifactManager.downloadFile(any()),
+            ).thenAnswer((_) async => File(''));
+          });
+
+          test('logs error and exits with code 70', () async {
+            await expectLater(
+              () => runWithOverrides(
+                () => patcher.createPatchArtifacts(
+                  appId: appId,
+                  releaseId: releaseId,
+                ),
+              ),
+              exitsWithCode(ExitCode.software),
+            );
+            verify(
+              () => progress.fail(
+                'Exception: Failed to download release artifact',
+              ),
+            );
+          });
+        });
+
         group('when uses linker', () {
           const linkPercentage = 50.0;
           late File analyzeSnapshotFile;
@@ -547,6 +601,7 @@ void main() {
                 kernel: any(named: 'kernel'),
                 outputPath: any(named: 'outputPath'),
                 workingDirectory: any(named: 'workingDirectory'),
+                dumpDebugInfoPath: any(named: 'dumpDebugInfoPath'),
               ),
             ).thenAnswer((_) async => linkPercentage);
             when(() => artifactManager.newestAppDill()).thenReturn(File(''));
@@ -686,6 +741,7 @@ void main() {
                     kernel: any(named: 'kernel'),
                     outputPath: any(named: 'outputPath'),
                     workingDirectory: any(named: 'workingDirectory'),
+                    dumpDebugInfoPath: any(named: 'dumpDebugInfoPath'),
                   ),
                 ).thenThrow(Exception('oops'));
 
@@ -782,6 +838,36 @@ void main() {
                     endsWith(diffPath),
                   ),
                 );
+              });
+
+              group('when isLinkDebugInfoSupported', () {
+                setUp(() {
+                  when(() => argResults['debug-linker']).thenReturn(true);
+                  when(
+                    aotTools.isLinkDebugInfoSupported,
+                  ).thenAnswer((_) async => true);
+                });
+
+                test('dumps debug info', () async {
+                  await runWithOverrides(
+                    () => patcher.createPatchArtifacts(
+                      appId: appId,
+                      releaseId: releaseId,
+                    ),
+                  );
+                  verify(
+                    () => aotTools.link(
+                      base: any(named: 'base'),
+                      patch: any(named: 'patch'),
+                      analyzeSnapshot: any(named: 'analyzeSnapshot'),
+                      genSnapshot: any(named: 'genSnapshot'),
+                      kernel: any(named: 'kernel'),
+                      outputPath: any(named: 'outputPath'),
+                      workingDirectory: any(named: 'workingDirectory'),
+                      dumpDebugInfoPath: any(named: 'dumpDebugInfoPath'),
+                    ),
+                  ).called(1);
+                });
               });
             });
           });
@@ -907,6 +993,46 @@ void main() {
               ),
               exitsWithCode(ExitCode.software),
             );
+          });
+        });
+
+        group('when empty Info.plist does exist', () {
+          setUp(() {
+            File(
+              p.join(
+                projectRoot.path,
+                'build',
+                'ios',
+                'framework',
+                'Release',
+                'App.xcframework',
+                'Info.plist',
+              ),
+            )
+              ..createSync(recursive: true)
+              ..writeAsStringSync('''
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+<plist version="1.0">
+<dict></dict>
+</plist>
+''');
+          });
+
+          test('exits with code 70 and logs error', () async {
+            await expectLater(
+              runWithOverrides(
+                () => patcher.extractReleaseVersionFromArtifact(File('')),
+              ),
+              exitsWithCode(ExitCode.software),
+            );
+            verify(
+              () => logger.err(
+                any(
+                  that: startsWith('Failed to determine release version'),
+                ),
+              ),
+            ).called(1);
           });
         });
 
