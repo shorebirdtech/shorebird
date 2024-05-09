@@ -1,5 +1,6 @@
 import 'package:crypto/crypto.dart';
 import 'package:mason_logger/mason_logger.dart';
+import 'package:meta/meta.dart';
 import 'package:path/path.dart' as p;
 import 'package:platform/platform.dart';
 import 'package:shorebird_cli/src/archive/directory_archive.dart';
@@ -54,6 +55,9 @@ class IosFrameworkPatcher extends Patcher {
 
   @override
   ReleaseType get releaseType => ReleaseType.iosFramework;
+
+  @visibleForTesting
+  double? lastBuildLinkPercentage;
 
   @override
   Future<void> assertPreconditions() async {
@@ -249,7 +253,7 @@ class IosFrameworkPatcher extends Patcher {
 
     final linkProgress = logger.progress('Linking AOT files');
     try {
-      await aotTools.link(
+      lastBuildLinkPercentage = await aotTools.link(
         base: releaseArtifact.path,
         patch: aotSnapshot.path,
         analyzeSnapshot: analyzeSnapshot.path,
@@ -274,7 +278,7 @@ class IosFrameworkPatcher extends Patcher {
       hasAssetChanges: diffStatus.hasAssetChanges,
       usedIgnoreNativeChangesFlag: allowNativeDiffs,
       hasNativeChanges: diffStatus.hasNativeChanges,
-      linkPercentage: null,
+      linkPercentage: lastBuildLinkPercentage,
       environment: BuildEnvironmentMetadata(
         operatingSystem: platform.operatingSystem,
         operatingSystemVersion: platform.operatingSystemVersion,

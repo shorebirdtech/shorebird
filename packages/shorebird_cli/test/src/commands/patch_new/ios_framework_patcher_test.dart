@@ -738,35 +738,76 @@ void main() {
               .thenAnswer((_) async => xcodeVersion);
         });
 
-        test('returns correct metadata', () async {
-          final diffStatus = DiffStatus(
-            hasAssetChanges: false,
-            hasNativeChanges: false,
-          );
+        group('when linker is not enabled', () {
+          test('returns correct metadata', () async {
+            final diffStatus = DiffStatus(
+              hasAssetChanges: false,
+              hasNativeChanges: false,
+            );
 
-          final metadata = await runWithOverrides(
-            () => patcher.createPatchMetadata(diffStatus),
-          );
+            final metadata = await runWithOverrides(
+              () => patcher.createPatchMetadata(diffStatus),
+            );
 
-          expect(
-            metadata,
-            equals(
-              CreatePatchMetadata(
-                releasePlatform: ReleasePlatform.ios,
-                usedIgnoreAssetChangesFlag: allowAssetDiffs,
-                hasAssetChanges: diffStatus.hasAssetChanges,
-                usedIgnoreNativeChangesFlag: allowNativeDiffs,
-                hasNativeChanges: diffStatus.hasNativeChanges,
-                linkPercentage: null,
-                environment: const BuildEnvironmentMetadata(
-                  operatingSystem: operatingSystem,
-                  operatingSystemVersion: operatingSystemVersion,
-                  shorebirdVersion: packageVersion,
-                  xcodeVersion: xcodeVersion,
+            expect(
+              metadata,
+              equals(
+                CreatePatchMetadata(
+                  releasePlatform: ReleasePlatform.ios,
+                  usedIgnoreAssetChangesFlag: allowAssetDiffs,
+                  hasAssetChanges: diffStatus.hasAssetChanges,
+                  usedIgnoreNativeChangesFlag: allowNativeDiffs,
+                  hasNativeChanges: diffStatus.hasNativeChanges,
+                  linkPercentage: null,
+                  environment: const BuildEnvironmentMetadata(
+                    operatingSystem: operatingSystem,
+                    operatingSystemVersion: operatingSystemVersion,
+                    shorebirdVersion: packageVersion,
+                    xcodeVersion: xcodeVersion,
+                  ),
                 ),
               ),
-            ),
-          );
+            );
+          });
+        });
+
+        group('when linker is enabled', () {
+          const linkPercentage = 100.0;
+
+          setUp(() {
+            patcher.lastBuildLinkPercentage = linkPercentage;
+          });
+
+          test('returns correct metadata', () async {
+            final diffStatus = DiffStatus(
+              hasAssetChanges: false,
+              hasNativeChanges: false,
+            );
+
+            final metadata = await runWithOverrides(
+              () => patcher.createPatchMetadata(diffStatus),
+            );
+
+            expect(
+              metadata,
+              equals(
+                CreatePatchMetadata(
+                  releasePlatform: ReleasePlatform.ios,
+                  usedIgnoreAssetChangesFlag: allowAssetDiffs,
+                  hasAssetChanges: diffStatus.hasAssetChanges,
+                  usedIgnoreNativeChangesFlag: allowNativeDiffs,
+                  hasNativeChanges: diffStatus.hasNativeChanges,
+                  linkPercentage: linkPercentage,
+                  environment: const BuildEnvironmentMetadata(
+                    operatingSystem: operatingSystem,
+                    operatingSystemVersion: operatingSystemVersion,
+                    shorebirdVersion: packageVersion,
+                    xcodeVersion: xcodeVersion,
+                  ),
+                ),
+              ),
+            );
+          });
         });
       });
     },
