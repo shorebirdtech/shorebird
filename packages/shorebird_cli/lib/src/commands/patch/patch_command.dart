@@ -28,7 +28,7 @@ class PatchCommand extends ShorebirdCommand {
     _resolvePatcher = resolvePatcher ?? getPatcher;
     argParser
       ..addMultiOption(
-        'platform',
+        'platforms',
         abbr: 'p',
         help: 'The platform(s) to to build this release for.',
         allowed: ReleaseType.values.map((e) => e.cliName).toList(),

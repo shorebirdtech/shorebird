@@ -79,7 +79,7 @@ On Xcode builds it is used as "CFBundleVersion".''',
         },
       )
       ..addMultiOption(
-        'platform',
+        'platforms',
         abbr: 'p',
         help: 'The platform(s) to to build this release for.',
         allowed: ReleaseType.values.map((e) => e.cliName).toList(),
