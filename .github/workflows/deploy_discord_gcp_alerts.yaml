@@ -68,3 +68,6 @@ jobs:
 
       - name: 👀 Show Output
         run: echo ${{ steps.deploy.outputs.url }}
+
+      - name: 🏓 Ping
+        run: curl "${{ steps.deploy.outputs.url }}"
