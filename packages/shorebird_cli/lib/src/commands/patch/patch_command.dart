@@ -75,6 +75,16 @@ of the iOS app that is using this module.''',
         negatable: false,
         help: 'Whether to publish the patch to the staging environment.',
       )
+      ..addOption(
+        exportOptionsPlistArgName,
+        help:
+            '''Export an IPA with these options. See "xcodebuild -h" for available exportOptionsPlist keys.''',
+      )
+      ..addFlag(
+        'codesign',
+        help: 'Codesign the application bundle.',
+        defaultsTo: true,
+      )
       ..addFlag(
         'dry-run',
         abbr: 'n',
@@ -160,8 +170,11 @@ NOTE: this is ${styleBold.wrap('not')} recommended. Asset changes cannot be incl
 
   @visibleForTesting
   Future<void> createPatch(Patcher patcher) async {
+    print('in createPatch');
     await patcher.assertPreconditions();
+    print('assertPreconditions done');
     await patcher.assertArgsAreValid();
+    print('assertArgsAreValid done');
 
     await cache.updateAll();
 
@@ -172,7 +185,9 @@ NOTE: this is ${styleBold.wrap('not')} recommended. Asset changes cannot be incl
     if (results.wasParsed('release-version')) {
       releaseVersion = results['release-version'] as String;
     } else {
+      print('building patch artifact');
       patchArtifact = await patcher.buildPatchArtifact();
+      print('built patch artifact');
       lastBuiltFlutterRevision = shorebirdEnv.flutterRevision;
       releaseVersion = await patcher.extractReleaseVersionFromArtifact(
         patchArtifact,

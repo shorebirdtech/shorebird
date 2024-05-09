@@ -49,7 +49,7 @@ On Xcode builds it is used as "CFBundleVersion".''',
       )
       ..addFlag(
         'codesign',
-        help: 'Codesign the application bundle.',
+        help: 'Codesign the application bundle (iOS only).',
         defaultsTo: true,
       )
       ..addFlag(
