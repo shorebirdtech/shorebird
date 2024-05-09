@@ -114,77 +114,51 @@ void main() {
               .thenReturn(preLinkerFlutterRevision);
         });
 
-        test('returns the patch build file', () async {
-          final releaseArtifact = File('release_artifact');
-          final patchBuildFile = File('patch_build_file');
+        group('when generating a patch diff is supported', () {
+          setUp(() {
+            when(() => aotTools.isGeneratePatchDiffBaseSupported())
+                .thenAnswer((_) async => true);
+          });
+        });
 
-          final result = await runWithOverrides(
-            () => shorebirdLinker.linkPatchArtifactIfPossible(
-              releaseArtifact: releaseArtifact,
-              patchBuildFile: patchBuildFile,
-            ),
-          );
+        group('when generating a patch diff is not supported', () {
+          setUp(() {
+            when(() => aotTools.isGeneratePatchDiffBaseSupported())
+                .thenAnswer((_) async => false);
+          });
 
-          expect(result.patchBuildFile, equals(patchBuildFile));
-          expect(result.linkPercentage, isNull);
+          test('returns the patch build file', () async {
+            final releaseArtifact = File('release_artifact');
+            final patchBuildFile = File('patch_build_file');
 
-          verifyNever(
-            () => aotTools.link(
-              base: any(named: 'base'),
-              patch: any(named: 'patch'),
-              analyzeSnapshot: any(named: 'analyzeSnapshot'),
-              genSnapshot: any(named: 'genSnapshot'),
-              kernel: any(named: 'kernel'),
-              outputPath: any(named: 'outputPath'),
-              workingDirectory: any(named: 'workingDirectory'),
-            ),
-          );
+            final result = await runWithOverrides(
+              () => shorebirdLinker.linkPatchArtifactIfPossible(
+                releaseArtifact: releaseArtifact,
+                patchSnapshotFile: patchBuildFile,
+              ),
+            );
+
+            expect(result.patchBuildFile, equals(patchBuildFile));
+            expect(result.linkPercentage, isNull);
+
+            verifyNever(
+              () => aotTools.link(
+                base: any(named: 'base'),
+                patch: any(named: 'patch'),
+                analyzeSnapshot: any(named: 'analyzeSnapshot'),
+                genSnapshot: any(named: 'genSnapshot'),
+                kernel: any(named: 'kernel'),
+                outputPath: any(named: 'outputPath'),
+                workingDirectory: any(named: 'workingDirectory'),
+              ),
+            );
+          });
         });
       });
 
-      group('when linker is used without generating a diff', () {
+      group('when linker is used', () {
         const linkPercentage = 0.5;
-
-        setUp(() {
-          when(
-            () => aotTools.link(
-              base: any(named: 'base'),
-              patch: any(named: 'patch'),
-              analyzeSnapshot: any(named: 'analyzeSnapshot'),
-              genSnapshot: any(named: 'genSnapshot'),
-              kernel: any(named: 'kernel'),
-              outputPath: any(named: 'outputPath'),
-              workingDirectory: any(named: 'workingDirectory'),
-            ),
-          ).thenAnswer((_) async => linkPercentage);
-          when(() => aotTools.isGeneratePatchDiffBaseSupported())
-              .thenAnswer((_) async => false);
-          when(() => shorebirdEnv.flutterRevision)
-              .thenReturn(postLinkerFlutterRevision);
-        });
-
-        test('returns the linked patch build file', () async {
-          final releaseArtifact = File('release_artifact');
-          final patchBuildFile = File('patch_build_file');
-
-          final result = await runWithOverrides(
-            () => shorebirdLinker.linkPatchArtifactIfPossible(
-              releaseArtifact: releaseArtifact,
-              patchBuildFile: patchBuildFile,
-            ),
-          );
-
-          expect(result.patchBuildFile, isA<File>());
-          expect(result.linkPercentage, equals(linkPercentage));
-          verifyNever(
-            () => artifactManager.createDiff(
-              releaseArtifactPath: any(named: 'releaseArtifactPath'),
-              patchArtifactPath: any(named: 'patchArtifactPath'),
-            ),
-          );
-        });
-
-        group('when linking fails', () {
+        group('when no diff is generated', () {
           setUp(() {
             when(
               () => aotTools.link(
@@ -196,85 +170,126 @@ void main() {
                 outputPath: any(named: 'outputPath'),
                 workingDirectory: any(named: 'workingDirectory'),
               ),
-            ).thenThrow(Exception('oops'));
+            ).thenAnswer((_) async => linkPercentage);
+            when(() => aotTools.isGeneratePatchDiffBaseSupported())
+                .thenAnswer((_) async => false);
+            when(() => shorebirdEnv.flutterRevision)
+                .thenReturn(postLinkerFlutterRevision);
           });
 
-          test('throws a LinkFailureException', () async {
+          test('returns the linked patch build file', () async {
             final releaseArtifact = File('release_artifact');
             final patchBuildFile = File('patch_build_file');
 
-            expect(
-              () => runWithOverrides(
-                () => shorebirdLinker.linkPatchArtifactIfPossible(
-                  releaseArtifact: releaseArtifact,
-                  patchBuildFile: patchBuildFile,
-                ),
+            final result = await runWithOverrides(
+              () => shorebirdLinker.linkPatchArtifactIfPossible(
+                releaseArtifact: releaseArtifact,
+                patchSnapshotFile: patchBuildFile,
               ),
-              throwsA(
-                isA<LinkFailureException>().having(
-                  (e) => e.toString(),
-                  'toString',
-                  '''LinkFailureException: Exception: oops''',
-                ),
+            );
+
+            expect(result.patchBuildFile, isA<File>());
+            expect(result.linkPercentage, equals(linkPercentage));
+            verifyNever(
+              () => artifactManager.createDiff(
+                releaseArtifactPath: any(named: 'releaseArtifactPath'),
+                patchArtifactPath: any(named: 'patchArtifactPath'),
               ),
             );
           });
+
+          group('when linking fails', () {
+            setUp(() {
+              when(
+                () => aotTools.link(
+                  base: any(named: 'base'),
+                  patch: any(named: 'patch'),
+                  analyzeSnapshot: any(named: 'analyzeSnapshot'),
+                  genSnapshot: any(named: 'genSnapshot'),
+                  kernel: any(named: 'kernel'),
+                  outputPath: any(named: 'outputPath'),
+                  workingDirectory: any(named: 'workingDirectory'),
+                ),
+              ).thenThrow(Exception('oops'));
+            });
+
+            test('throws a LinkFailureException', () async {
+              final releaseArtifact = File('release_artifact');
+              final patchBuildFile = File('patch_build_file');
+
+              expect(
+                () => runWithOverrides(
+                  () => shorebirdLinker.linkPatchArtifactIfPossible(
+                    releaseArtifact: releaseArtifact,
+                    patchSnapshotFile: patchBuildFile,
+                  ),
+                ),
+                throwsA(
+                  isA<LinkFailureException>().having(
+                    (e) => e.toString(),
+                    'toString',
+                    '''LinkFailureException: Exception: oops''',
+                  ),
+                ),
+              );
+            });
+          });
         });
-      });
 
-      group('when linker is used and a diff is generated', () {
-        const linkPercentage = 0.75;
+        group('when a diff is generated', () {
+          const linkPercentage = 0.75;
 
-        setUp(() {
-          when(
-            () => aotTools.link(
-              base: any(named: 'base'),
-              patch: any(named: 'patch'),
-              analyzeSnapshot: any(named: 'analyzeSnapshot'),
-              genSnapshot: any(named: 'genSnapshot'),
-              kernel: any(named: 'kernel'),
-              outputPath: any(named: 'outputPath'),
-              workingDirectory: any(named: 'workingDirectory'),
-            ),
-          ).thenAnswer((_) async => linkPercentage);
-          when(() => aotTools.isGeneratePatchDiffBaseSupported())
-              .thenAnswer((_) async => true);
-          when(
-            () => aotTools.generatePatchDiffBase(
-              analyzeSnapshotPath: any(named: 'analyzeSnapshotPath'),
-              releaseSnapshot: any(named: 'releaseSnapshot'),
-            ),
-          ).thenAnswer((_) async => File('patch_base_file'));
-          when(
-            () => artifactManager.createDiff(
-              releaseArtifactPath: any(named: 'releaseArtifactPath'),
-              patchArtifactPath: any(named: 'patchArtifactPath'),
-            ),
-          ).thenAnswer((_) async => 'diff.patch');
-          when(() => shorebirdEnv.flutterRevision)
-              .thenReturn(postLinkerFlutterRevision);
-        });
+          setUp(() {
+            when(
+              () => aotTools.link(
+                base: any(named: 'base'),
+                patch: any(named: 'patch'),
+                analyzeSnapshot: any(named: 'analyzeSnapshot'),
+                genSnapshot: any(named: 'genSnapshot'),
+                kernel: any(named: 'kernel'),
+                outputPath: any(named: 'outputPath'),
+                workingDirectory: any(named: 'workingDirectory'),
+              ),
+            ).thenAnswer((_) async => linkPercentage);
+            when(() => aotTools.isGeneratePatchDiffBaseSupported())
+                .thenAnswer((_) async => true);
+            when(
+              () => aotTools.generatePatchDiffBase(
+                analyzeSnapshotPath: any(named: 'analyzeSnapshotPath'),
+                releaseSnapshot: any(named: 'releaseSnapshot'),
+              ),
+            ).thenAnswer((_) async => File('patch_base_file'));
+            when(
+              () => artifactManager.createDiff(
+                releaseArtifactPath: any(named: 'releaseArtifactPath'),
+                patchArtifactPath: any(named: 'patchArtifactPath'),
+              ),
+            ).thenAnswer((_) async => 'diff.patch');
+            when(() => shorebirdEnv.flutterRevision)
+                .thenReturn(postLinkerFlutterRevision);
+          });
 
-        test('returns the linked patch build file', () async {
-          final releaseArtifact = File('release_artifact');
-          final patchBuildFile = File('patch_build_file');
+          test('returns the linked patch build file', () async {
+            final releaseArtifact = File('release_artifact');
+            final patchBuildFile = File('patch_build_file');
 
-          final result = await runWithOverrides(
-            () => shorebirdLinker.linkPatchArtifactIfPossible(
-              releaseArtifact: releaseArtifact,
-              patchBuildFile: patchBuildFile,
-            ),
-          );
+            final result = await runWithOverrides(
+              () => shorebirdLinker.linkPatchArtifactIfPossible(
+                releaseArtifact: releaseArtifact,
+                patchSnapshotFile: patchBuildFile,
+              ),
+            );
 
-          expect(result.patchBuildFile, isA<File>());
-          expect(result.patchBuildFile.path, equals('diff.patch'));
-          expect(result.linkPercentage, equals(linkPercentage));
-          verify(
-            () => artifactManager.createDiff(
-              releaseArtifactPath: any(named: 'releaseArtifactPath'),
-              patchArtifactPath: any(named: 'patchArtifactPath'),
-            ),
-          ).called(1);
+            expect(result.patchBuildFile, isA<File>());
+            expect(result.patchBuildFile.path, equals('diff.patch'));
+            expect(result.linkPercentage, equals(linkPercentage));
+            verify(
+              () => artifactManager.createDiff(
+                releaseArtifactPath: any(named: 'releaseArtifactPath'),
+                patchArtifactPath: any(named: 'patchArtifactPath'),
+              ),
+            ).called(1);
+          });
         });
       });
     });

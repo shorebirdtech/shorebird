@@ -402,7 +402,7 @@ void main() {
             when(
               () => shorebirdLinker.linkPatchArtifactIfPossible(
                 releaseArtifact: any(named: 'releaseArtifact'),
-                patchBuildFile: any(named: 'patchBuildFile'),
+                patchSnapshotFile: any(named: 'patchBuildFile'),
               ),
             ).thenThrow(const LinkFailureException('oops'));
           });
@@ -429,7 +429,7 @@ void main() {
             when(
               () => shorebirdLinker.linkPatchArtifactIfPossible(
                 releaseArtifact: any(named: 'releaseArtifact'),
-                patchBuildFile: any(named: 'patchBuildFile'),
+                patchSnapshotFile: any(named: 'patchBuildFile'),
               ),
             ).thenAnswer(
               (_) async => LinkResult(

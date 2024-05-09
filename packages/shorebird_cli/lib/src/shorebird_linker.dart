@@ -1,5 +1,6 @@
 import 'dart:io';
 
+import 'package:crypto/crypto.dart';
 import 'package:path/path.dart' as p;
 import 'package:scoped/scoped.dart';
 import 'package:shorebird_cli/src/artifact_manager.dart';
@@ -20,11 +21,15 @@ class LinkResult {
   /// {@macro link_result}
   const LinkResult({
     required this.patchBuildFile,
+    required this.patchHash,
     required this.linkPercentage,
   });
 
   /// The linked patch build file.
   final File patchBuildFile;
+
+  /// The hash of full (non-diff) patch file.
+  final String patchHash;
 
   /// The link percentage, if reported.
   final double? linkPercentage;
@@ -52,14 +57,54 @@ class ShorebirdLinker {
   /// supported by the Flutter revision reported by [ShorebirdEnv].
   Future<LinkResult> linkPatchArtifactIfPossible({
     required File releaseArtifact,
-    required File patchBuildFile,
+    required File patchSnapshotFile,
   }) async {
-    if (!AotTools.usesLinker(shorebirdEnv.flutterRevision)) {
-      // If the linker is not used for the current Flutter revision, there is
-      // nothing for us to do.
+    final File maybeLinkedFile;
+    final double? linkPercentage;
+
+    if (AotTools.usesLinker(shorebirdEnv.flutterRevision)) {
+      final analyzeSnapshot = File(
+        shorebirdArtifacts.getArtifactPath(
+          artifact: ShorebirdArtifact.analyzeSnapshot,
+        ),
+      );
+      final genSnapshot = shorebirdArtifacts.getArtifactPath(
+        artifact: ShorebirdArtifact.genSnapshot,
+      );
+
+      final buildDirectory = Directory(
+        p.join(
+          shorebirdEnv.getShorebirdProjectRoot()!.path,
+          'build',
+        ),
+      );
+
+      maybeLinkedFile = File(
+        p.join(buildDirectory.path, 'out.vmcode'),
+      );
+      try {
+        linkPercentage = await aotTools.link(
+          base: releaseArtifact.path,
+          patch: patchSnapshotFile.path,
+          analyzeSnapshot: analyzeSnapshot.path,
+          genSnapshot: genSnapshot,
+          kernel: artifactManager.newestAppDill().path,
+          outputPath: maybeLinkedFile.path,
+          workingDirectory: buildDirectory.path,
+        );
+      } catch (error) {
+        throw LinkFailureException('$error');
+      }
+    } else {
+      maybeLinkedFile = patchSnapshotFile;
+      linkPercentage = null;
+    }
+
+    if (!await aotTools.isGeneratePatchDiffBaseSupported()) {
       return LinkResult(
-        patchBuildFile: patchBuildFile,
-        linkPercentage: null,
+        patchBuildFile: maybeLinkedFile,
+        patchHash: sha256.convert(maybeLinkedFile.readAsBytesSync()).toString(),
+        linkPercentage: linkPercentage,
       );
     }
 
@@ -68,42 +113,6 @@ class ShorebirdLinker {
         artifact: ShorebirdArtifact.analyzeSnapshot,
       ),
     );
-
-    final genSnapshot = shorebirdArtifacts.getArtifactPath(
-      artifact: ShorebirdArtifact.genSnapshot,
-    );
-
-    final double? linkPercentage;
-    final buildDirectory = Directory(
-      p.join(
-        shorebirdEnv.getShorebirdProjectRoot()!.path,
-        'build',
-      ),
-    );
-    final vmcodeFile = File(
-      p.join(buildDirectory.path, 'out.vmcode'),
-    );
-
-    try {
-      linkPercentage = await aotTools.link(
-        base: releaseArtifact.path,
-        patch: patchBuildFile.path,
-        analyzeSnapshot: analyzeSnapshot.path,
-        genSnapshot: genSnapshot,
-        kernel: artifactManager.newestAppDill().path,
-        outputPath: vmcodeFile.path,
-        workingDirectory: buildDirectory.path,
-      );
-    } catch (error) {
-      throw LinkFailureException('$error');
-    }
-
-    if (!await aotTools.isGeneratePatchDiffBaseSupported()) {
-      return LinkResult(
-        patchBuildFile: vmcodeFile,
-        linkPercentage: linkPercentage,
-      );
-    }
 
     // If the aot_tools executable supports the dump_blobs command, we
     // can generate a stable diff base and use that to create a patch.
@@ -114,12 +123,13 @@ class ShorebirdLinker {
     final patchFile = File(
       await artifactManager.createDiff(
         releaseArtifactPath: patchBaseFile.path,
-        patchArtifactPath: patchBuildFile.path,
+        patchArtifactPath: maybeLinkedFile.path,
       ),
     );
 
     return LinkResult(
       patchBuildFile: patchFile,
+      patchHash: sha256.convert(maybeLinkedFile.readAsBytesSync()).toString(),
       linkPercentage: linkPercentage,
     );
   }

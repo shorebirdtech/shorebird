@@ -166,7 +166,7 @@ class IosFrameworkPatcher extends Patcher {
     try {
       linkResult = await shorebirdLinker.linkPatchArtifactIfPossible(
         releaseArtifact: releaseArtifactFile,
-        patchBuildFile: File(
+        patchSnapshotFile: File(
           p.join(
             shorebirdEnv.getShorebirdProjectRoot()!.path,
             'build',
@@ -186,9 +186,7 @@ class IosFrameworkPatcher extends Patcher {
       Arch.arm64: PatchArtifactBundle(
         arch: 'aarch64',
         path: linkResult.patchBuildFile.path,
-        hash: sha256
-            .convert(linkResult.patchBuildFile.readAsBytesSync())
-            .toString(),
+        hash: linkResult.patchHash,
         size: linkResult.patchBuildFile.statSync().size,
       ),
     };
