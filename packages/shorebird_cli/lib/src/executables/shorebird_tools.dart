@@ -7,11 +7,11 @@ import 'package:shorebird_cli/src/logger.dart';
 import 'package:shorebird_cli/src/shorebird_env.dart';
 import 'package:shorebird_cli/src/shorebird_process.dart';
 
-/// A reference to a [ShorebirdTool] instance.
-final shorebirdToolRef = create(ShorebirdTool.new);
+/// A reference to a [ShorebirdTools] instance.
+final shorebirdToolsRef = create(ShorebirdTools.new);
 
-/// The [ShorebirdTool] instance available in the current zone.
-ShorebirdTool get shorebirdTool => read(shorebirdToolRef);
+/// The [ShorebirdTools] instance available in the current zone.
+ShorebirdTools get shorebirdTools => read(shorebirdToolsRef);
 
 /// {@template package_failed_exception}
 /// An exception thrown when a package fails.
@@ -29,16 +29,16 @@ class PackageFailedException implements Exception {
 /// A wrapper around the `shorebird_tools` executable.
 ///
 /// Used to access many commands related to Shorebird's flutter tooling.
-class ShorebirdTool {
+class ShorebirdTools {
   /// Returns if the the current flutter version supports this tool.
   ///
   /// This should be used to check if the tool is supported before running
   /// any commands.
   bool isSupported() {
-    return shorebirdToolDirectory.existsSync();
+    return shorebirdToolsDirectory.existsSync();
   }
 
-  Directory get shorebirdToolDirectory {
+  Directory get shorebirdToolsDirectory {
     final dir = Directory(
       p.join(
         shorebirdEnv.flutterDirectory.path,
@@ -59,7 +59,7 @@ class ShorebirdTool {
         'package',
         ...args,
       ],
-      workingDirectory: shorebirdToolDirectory.path,
+      workingDirectory: shorebirdToolsDirectory.path,
     );
   }
 

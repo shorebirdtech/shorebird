@@ -12,11 +12,11 @@ import 'package:test/test.dart';
 import '../mocks.dart';
 
 void main() {
-  group('ShorebirdTool', () {
+  group('ShorebirdTools', () {
     late File dartBinaryFile;
     late Directory flutterDirectory;
     late Directory tempDir;
-    late ShorebirdTool shorebirdTool;
+    late ShorebirdTools shorebirdTools;
     late ShorebirdLogger logger;
     late ShorebirdEnv shorebirdEnv;
     late ShorebirdProcess process;
@@ -41,7 +41,7 @@ void main() {
 
       dartBinaryFile = File(p.join(tempDir.path, 'dart'))..createSync();
 
-      shorebirdTool = ShorebirdTool();
+      shorebirdTools = ShorebirdTools();
       processResult = MockProcessResult();
       when(() => processResult.exitCode).thenReturn(0);
       when(() => processResult.stdout).thenReturn('');
@@ -63,9 +63,16 @@ void main() {
       logger = MockShorebirdLogger();
     });
 
+    test('have access a reference to shorebird tool', () {
+      expect(
+        runScoped(() => shorebirdTools, values: {shorebirdToolsRef}),
+        isA<ShorebirdTools>(),
+      );
+    });
+
     test('makes the correct cli call', () async {
       await runWithOverrides(
-        () => shorebirdTool.package(
+        () => shorebirdTools.package(
           patchPath: 'patchPath',
           outputPath: 'outputPath',
         ),
@@ -106,7 +113,7 @@ void main() {
       test('throws a PackageFailedException', () {
         expect(
           () => runWithOverrides(
-            () => shorebirdTool.package(
+            () => shorebirdTools.package(
               patchPath: 'patchPath',
               outputPath: 'outputPath',
             ),
@@ -130,7 +137,7 @@ Failed to create package (exit code ${processResult.exitCode}).
         Directory(p.join(flutterDirectory.path, 'packages', 'shorebird_tools'))
             .createSync(recursive: true);
         final isSupported = runWithOverrides(
-          () => shorebirdTool.isSupported(),
+          () => shorebirdTools.isSupported(),
         );
         expect(isSupported, isTrue);
       });
@@ -139,7 +146,7 @@ Failed to create package (exit code ${processResult.exitCode}).
     group('when the shorebird tools directory doest not exists', () {
       test('isSupported return true', () {
         final isSupported = runWithOverrides(
-          () => shorebirdTool.isSupported(),
+          () => shorebirdTools.isSupported(),
         );
         expect(isSupported, isFalse);
       });

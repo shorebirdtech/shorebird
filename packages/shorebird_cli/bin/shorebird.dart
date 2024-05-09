@@ -63,7 +63,7 @@ Future<void> main(List<String> args) async {
         shorebirdArtifactsRef,
         shorebirdEnvRef,
         shorebirdFlutterRef,
-        shorebirdToolRef,
+        shorebirdToolsRef,
         shorebirdValidatorRef,
         shorebirdVersionRef,
         xcodeBuildRef,
