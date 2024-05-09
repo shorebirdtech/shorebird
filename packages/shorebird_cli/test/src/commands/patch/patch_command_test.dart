@@ -384,7 +384,7 @@ void main() {
 
         group('when has debug info', () {
           final debugInfoFile = File('debug-info.txt');
-          
+
           setUp(() {
             when(() => argResults['debug-linker']).thenReturn(true);
             when(() => patcher.debugInfoFile).thenReturn(debugInfoFile);
