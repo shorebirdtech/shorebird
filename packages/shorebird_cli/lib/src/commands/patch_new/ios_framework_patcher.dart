@@ -227,6 +227,24 @@ class IosFrameworkPatcher extends Patcher {
     );
   }
 
+  @override
+  Future<CreatePatchMetadata> createPatchMetadata(DiffStatus diffStatus) async {
+    return CreatePatchMetadata(
+      releasePlatform: releaseType.releasePlatform,
+      usedIgnoreAssetChangesFlag: allowAssetDiffs,
+      hasAssetChanges: diffStatus.hasAssetChanges,
+      usedIgnoreNativeChangesFlag: allowNativeDiffs,
+      hasNativeChanges: diffStatus.hasNativeChanges,
+      linkPercentage: lastBuildLinkPercentage,
+      environment: BuildEnvironmentMetadata(
+        operatingSystem: platform.operatingSystem,
+        operatingSystemVersion: platform.operatingSystemVersion,
+        shorebirdVersion: packageVersion,
+        xcodeVersion: await xcodeBuild.version(),
+      ),
+    );
+  }
+
   Future<void> _runLinker({
     required File aotSnapshot,
     required File releaseArtifact,
@@ -268,23 +286,5 @@ class IosFrameworkPatcher extends Patcher {
     }
 
     linkProgress.complete();
-  }
-
-  @override
-  Future<CreatePatchMetadata> createPatchMetadata(DiffStatus diffStatus) async {
-    return CreatePatchMetadata(
-      releasePlatform: releaseType.releasePlatform,
-      usedIgnoreAssetChangesFlag: allowAssetDiffs,
-      hasAssetChanges: diffStatus.hasAssetChanges,
-      usedIgnoreNativeChangesFlag: allowNativeDiffs,
-      hasNativeChanges: diffStatus.hasNativeChanges,
-      linkPercentage: lastBuildLinkPercentage,
-      environment: BuildEnvironmentMetadata(
-        operatingSystem: platform.operatingSystem,
-        operatingSystemVersion: platform.operatingSystemVersion,
-        shorebirdVersion: packageVersion,
-        xcodeVersion: await xcodeBuild.version(),
-      ),
-    );
   }
 }
