@@ -1,9 +1,11 @@
 import 'dart:io' hide Platform;
 
 import 'package:checked_yaml/checked_yaml.dart';
+import 'package:cli_util/cli_util.dart';
 import 'package:path/path.dart' as p;
 import 'package:pubspec_parse/pubspec_parse.dart';
 import 'package:scoped/scoped.dart';
+import 'package:shorebird_cli/src/command_runner.dart';
 import 'package:shorebird_cli/src/config/shorebird_yaml.dart';
 import 'package:shorebird_cli/src/platform.dart';
 import 'package:shorebird_code_push_client/shorebird_code_push_client.dart';
@@ -28,6 +30,16 @@ class ShorebirdEnv {
       );
 
   final String? _flutterRevisionOverride;
+
+  /// The application config directory for the Shorebird CLI.
+  Directory get configDirectory {
+    return Directory(applicationConfigHome(executableName));
+  }
+
+  /// The directory where shorebird logs are stored.
+  Directory get logsDirectory {
+    return Directory(p.join(configDirectory.path, 'logs'));
+  }
 
   /// The root directory of the Shorebird install.
   ///

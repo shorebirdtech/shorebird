@@ -18,11 +18,9 @@ class ShorebirdLogger extends Logger {
 
   late final File logFile = (() {
     final timestamp = DateTime.now().millisecondsSinceEpoch;
-
     final file = File(
       p.join(
-        shorebirdEnv.shorebirdRoot.path,
-        'logs',
+        shorebirdEnv.logsDirectory.path,
         '${timestamp}_$_logFileName',
       ),
     );
