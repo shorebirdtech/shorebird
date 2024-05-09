@@ -2,7 +2,6 @@ import 'dart:io';
 
 import 'package:mason_logger/mason_logger.dart';
 import 'package:scoped/scoped.dart';
-import 'package:shorebird_cli/src/archive/archive.dart';
 import 'package:shorebird_cli/src/archive_analysis/archive_differ.dart';
 import 'package:shorebird_cli/src/logger.dart';
 import 'package:shorebird_cli/src/shorebird_env.dart';
