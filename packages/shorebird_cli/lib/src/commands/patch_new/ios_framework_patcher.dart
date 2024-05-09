@@ -1,4 +1,3 @@
-import 'package:crypto/crypto.dart';
 import 'package:mason_logger/mason_logger.dart';
 import 'package:meta/meta.dart';
 import 'package:path/path.dart' as p;
@@ -35,16 +34,6 @@ class IosFrameworkPatcher extends Patcher {
     required super.flavor,
     required super.target,
   });
-
-  String get _buildDirectory => p.join(
-        shorebirdEnv.getShorebirdProjectRoot()!.path,
-        'build',
-      );
-
-  String get _vmcodeOutputPath => p.join(
-        _buildDirectory,
-        'out.vmcode',
-      );
 
   @override
   ArchiveDiffer get archiveDiffer => IosArchiveDiffer();
