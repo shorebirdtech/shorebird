@@ -12,34 +12,29 @@ import 'mocks.dart';
 
 void main() {
   group('ShorebirdLogger', () {
-    late Directory shorebirdConfigDir;
+    late Directory logsDirectory;
     late ShorebirdEnv shorebirdEnv;
     late ShorebirdLogger shorebirdLogger;
 
     setUp(() {
-      shorebirdConfigDir = Directory.systemTemp.createTempSync(
-        'shorebird_config',
+      logsDirectory = Directory.systemTemp.createTempSync(
+        'shorebird_logs',
       );
 
       shorebirdEnv = MockShorebirdEnv();
-      when(() => shorebirdEnv.configDirectory).thenReturn(shorebirdConfigDir);
+      when(() => shorebirdEnv.logsDirectory).thenReturn(logsDirectory);
 
       // Setting to quiet so we don't spam the stdout/stderr while testing
       shorebirdLogger = ShorebirdLogger(level: Level.quiet);
     });
 
     String readLogFile() {
-      final logFile = Directory(
-        p.join(shorebirdConfigDir.path, 'logs'),
-      ).listSync().first;
+      final logFile = Directory(p.join(logsDirectory.path)).listSync().first;
       return File(logFile.path).readAsStringSync();
     }
 
     test('can be instantiated', () {
-      expect(
-        ShorebirdLogger.new,
-        returnsNormally,
-      );
+      expect(ShorebirdLogger.new, returnsNormally);
     });
 
     test('info', () {

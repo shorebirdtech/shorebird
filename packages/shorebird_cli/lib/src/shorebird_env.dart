@@ -36,6 +36,11 @@ class ShorebirdEnv {
     return Directory(applicationConfigHome(executableName));
   }
 
+  /// The directory where shorebird logs are stored.
+  Directory get logsDirectory {
+    return Directory(p.join(configDirectory.path, 'logs'));
+  }
+
   /// The root directory of the Shorebird install.
   ///
   /// Assumes we are running from $ROOT/bin/cache.

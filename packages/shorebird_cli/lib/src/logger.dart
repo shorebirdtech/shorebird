@@ -20,8 +20,7 @@ class ShorebirdLogger extends Logger {
     final timestamp = DateTime.now().millisecondsSinceEpoch;
     final file = File(
       p.join(
-        shorebirdEnv.configDirectory.path,
-        'logs',
+        shorebirdEnv.logsDirectory.path,
         '${timestamp}_$_logFileName',
       ),
     );

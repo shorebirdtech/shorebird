@@ -74,6 +74,15 @@ void main() {
       });
     });
 
+    group('logsDirectory', () {
+      test('returns correct directory', () {
+        expect(
+          runWithOverrides(() => shorebirdEnv.logsDirectory.path),
+          endsWith(p.join(executableName, 'logs')),
+        );
+      });
+    });
+
     group('getShorebirdYamlFile', () {
       test('returns correct file', () {
         final tempDir = Directory.systemTemp.createTempSync();
