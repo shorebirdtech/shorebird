@@ -142,8 +142,8 @@ void main() {
       });
 
       group('primaryReleaseArtifactArch', () {
-        test('is "ipa"', () {
-          expect(patcher.primaryReleaseArtifactArch, 'ipa');
+        test('is "xcarchive"', () {
+          expect(patcher.primaryReleaseArtifactArch, 'xcarchive');
         });
       });
 
