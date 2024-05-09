@@ -25,6 +25,8 @@ import 'package:shorebird_cli/src/third_party/flutter_tools/lib/flutter_tools.da
 import 'package:shorebird_cli/src/version.dart';
 import 'package:shorebird_code_push_client/shorebird_code_push_client.dart';
 
+const linkDebugInfoFileName = 'linker_diagnostic.zip';
+
 typedef _LinkResult = ({int exitCode, double? linkPercentage});
 
 /// {@template ios_patcher}
@@ -70,10 +72,9 @@ https://docs.shorebird.dev/status#link-percentage-ios
         'out.vmcode',
       );
 
-  static const _linkDebugInfoFileName = 'linker_diagnostic.zip';
   String get _debugInfoOutputPath => p.join(
         _buildDirectory,
-        _linkDebugInfoFileName,
+        linkDebugInfoFileName,
       );
 
   @visibleForTesting
@@ -83,7 +84,7 @@ https://docs.shorebird.dev/status#link-percentage-ios
   ReleaseType get releaseType => ReleaseType.ios;
 
   @override
-  String get primaryReleaseArtifactArch => 'ipa';
+  String get primaryReleaseArtifactArch => 'xcarchive';
 
   @override
   ArchiveDiffer get archiveDiffer => IosArchiveDiffer();
