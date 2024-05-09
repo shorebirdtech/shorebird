@@ -8,9 +8,11 @@ This section contains past updates we've sent to customers via Discord.
   specify which platforms to release or patch. This allows you to release or
   patch multiple platforms in a single command. For example, `shorebird release
   --platforms android,ios` will release both Android and iOS platforms.
+- 🪲 `shorebird` commands now save a file with debug info which can be manually
+  / optionally sent to our team for help debugging any issue you encounter.
 
-This required an extensive re-write of the release and patch commands. If you
-encounter any issues, please let us know!
+Multiple platform support required an extensive re-write of the release and
+patch commands. If you encounter any issues, please let us know!
 
 ## 1.0.5 (May 6, 2024)
 
