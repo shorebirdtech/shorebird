@@ -170,11 +170,8 @@ NOTE: this is ${styleBold.wrap('not')} recommended. Asset changes cannot be incl
 
   @visibleForTesting
   Future<void> createPatch(Patcher patcher) async {
-    print('in createPatch');
     await patcher.assertPreconditions();
-    print('assertPreconditions done');
     await patcher.assertArgsAreValid();
-    print('assertArgsAreValid done');
 
     await cache.updateAll();
 
@@ -185,9 +182,7 @@ NOTE: this is ${styleBold.wrap('not')} recommended. Asset changes cannot be incl
     if (results.wasParsed('release-version')) {
       releaseVersion = results['release-version'] as String;
     } else {
-      print('building patch artifact');
       patchArtifact = await patcher.buildPatchArtifact();
-      print('built patch artifact');
       lastBuiltFlutterRevision = shorebirdEnv.flutterRevision;
       releaseVersion = await patcher.extractReleaseVersionFromArtifact(
         patchArtifact,
