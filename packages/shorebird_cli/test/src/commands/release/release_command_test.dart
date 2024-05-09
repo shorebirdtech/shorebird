@@ -4,7 +4,7 @@ import 'package:mocktail/mocktail.dart';
 import 'package:scoped/scoped.dart';
 import 'package:shorebird_cli/src/cache.dart';
 import 'package:shorebird_cli/src/code_push_client_wrapper.dart';
-import 'package:shorebird_cli/src/commands/release_new/release_new.dart';
+import 'package:shorebird_cli/src/commands/release/release.dart';
 import 'package:shorebird_cli/src/config/config.dart';
 import 'package:shorebird_cli/src/logger.dart';
 import 'package:shorebird_cli/src/release_type.dart';
@@ -18,7 +18,7 @@ import '../../matchers.dart';
 import '../../mocks.dart';
 
 void main() {
-  group(ReleaseNewCommand, () {
+  group(ReleaseCommand, () {
     const appId = 'test-app-id';
     const appDisplayName = 'Test App';
     const flutterRevision = '83305b5088e6fe327fb3334a73ff190828d85713';
@@ -53,7 +53,7 @@ void main() {
     late ShorebirdEnv shorebirdEnv;
     late ShorebirdFlutter shorebirdFlutter;
 
-    late ReleaseNewCommand command;
+    late ReleaseCommand command;
 
     R runWithOverrides<R>(R Function() body) {
       return runScoped(
@@ -174,7 +174,7 @@ void main() {
         ),
       ).thenAnswer((_) async => {});
 
-      command = ReleaseNewCommand(resolveReleaser: (_) => releaser)
+      command = ReleaseCommand(resolveReleaser: (_) => releaser)
         ..testArgResults = argResults;
     });
 

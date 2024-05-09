@@ -1,5 +1,6 @@
-export 'release_aar_command.dart';
-export 'release_android_command.dart';
+export 'aar_releaser.dart';
+export 'android_releaser.dart';
+export 'ios_framework_releaser.dart';
+export 'ios_releaser.dart';
 export 'release_command.dart';
-export 'release_ios_command.dart';
-export 'release_ios_framework_command.dart';
+export 'releaser.dart';

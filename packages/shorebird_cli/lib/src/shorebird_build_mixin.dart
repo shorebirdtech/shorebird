@@ -10,6 +10,7 @@ import 'package:shorebird_cli/src/shorebird_artifacts.dart';
 import 'package:shorebird_cli/src/shorebird_env.dart';
 import 'package:shorebird_cli/src/shorebird_process.dart';
 
+// coverage:ignore-start
 /// Used to wrap code that invokes `flutter build` with Shorebird's fork of
 /// Flutter.
 typedef ShorebirdBuildCommand = Future<void> Function();
@@ -128,9 +129,7 @@ mixin ShorebirdBuildMixin on ShorebirdCommand {
         if (targetPlatformArgs != null) '--target-platform=$targetPlatformArgs',
         // TODO(bryanoltman): reintroduce coverage when we can support this.
         // See https://github.com/shorebirdtech/shorebird/issues/1141.
-        // coverage:ignore-start
         if (splitPerAbi) '--split-per-abi',
-        // coverage:ignore-end
         ...results.rest,
       ];
 
@@ -345,3 +344,5 @@ Either run `flutter pub get` manually, or follow the steps in ${link(uri: Uri.pa
     return File(outFilePath);
   }
 }
+
+// coverage:ignore-end
