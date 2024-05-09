@@ -5,19 +5,19 @@ import 'package:mocktail/mocktail.dart';
 import 'package:path/path.dart' as p;
 import 'package:scoped/scoped.dart';
 import 'package:shorebird_cli/src/cache.dart';
-import 'package:shorebird_cli/src/executables/patch.dart';
+import 'package:shorebird_cli/src/executables/executables.dart';
 import 'package:shorebird_cli/src/shorebird_process.dart';
 import 'package:test/test.dart';
 
 import '../mocks.dart';
 
 void main() {
-  group('PatchProgram', () {
+  group('PatchExecutable', () {
     late Cache cache;
     late Directory cacheArtifactDirectory;
     late ShorebirdProcess shorebirdProcess;
     late ShorebirdProcessResult patchProcessResult;
-    late PatchProgram patchProgram;
+    late PatchExecutable patchExecutable;
 
     R runWithOverrides<R>(R Function() body) {
       return runScoped(
@@ -25,13 +25,13 @@ void main() {
         values: {
           cacheRef.overrideWith(() => cache),
           processRef.overrideWith(() => shorebirdProcess),
-          patchProgramRef.overrideWith(() => patchProgram),
+          patchExecutableRef.overrideWith(() => patchExecutable),
         },
       );
     }
 
     setUp(() {
-      patchProgram = PatchProgram();
+      patchExecutable = PatchExecutable();
       shorebirdProcess = MockShorebirdProcess();
       when(
         () => shorebirdProcess.run(
@@ -68,7 +68,7 @@ void main() {
         ..createSync(recursive: true);
 
       await runWithOverrides(
-        () => patchProgram.run(
+        () => patchExecutable.run(
           releaseArtifactPath: releaseArtifactFile.path,
           patchArtifactPath: patchArtifactFile.path,
           diffPath: p.join(tmpDir.path, 'diff.patch'),
@@ -98,7 +98,7 @@ void main() {
 
       await expectLater(
         () => runWithOverrides(
-          () => patchProgram.run(
+          () => patchExecutable.run(
             releaseArtifactPath: 'release',
             patchArtifactPath: 'patch',
             diffPath: 'diff',

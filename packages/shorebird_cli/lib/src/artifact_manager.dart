@@ -6,7 +6,7 @@ import 'package:collection/collection.dart';
 import 'package:http/http.dart' as http;
 import 'package:path/path.dart' as p;
 import 'package:scoped/scoped.dart';
-import 'package:shorebird_cli/src/executables/patch.dart';
+import 'package:shorebird_cli/src/executables/executables.dart';
 import 'package:shorebird_cli/src/http_client/http_client.dart';
 import 'package:shorebird_cli/src/logger.dart';
 import 'package:shorebird_cli/src/shorebird_env.dart';
@@ -41,7 +41,7 @@ class ArtifactManager {
     final tempDir = await Directory.systemTemp.createTemp();
     final diffPath = p.join(tempDir.path, 'diff.patch');
 
-    await patchProgram.run(
+    await patchExecutable.run(
       releaseArtifactPath: releaseArtifactPath,
       patchArtifactPath: patchArtifactPath,
       diffPath: diffPath,

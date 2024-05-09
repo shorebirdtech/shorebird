@@ -6,7 +6,7 @@ import 'package:path/path.dart' as p;
 import 'package:scoped/scoped.dart';
 import 'package:shorebird_cli/src/artifact_manager.dart';
 import 'package:shorebird_cli/src/cache.dart';
-import 'package:shorebird_cli/src/executables/patch.dart';
+import 'package:shorebird_cli/src/executables/executables.dart';
 import 'package:shorebird_cli/src/http_client/http_client.dart';
 import 'package:shorebird_cli/src/logger.dart';
 import 'package:shorebird_cli/src/shorebird_env.dart';
@@ -23,7 +23,7 @@ void main() {
     late Directory cacheArtifactDirectory;
     late http.Client httpClient;
     late Directory projectRoot;
-    late PatchProgram patchProgram;
+    late PatchExecutable patchExecutable;
     late ShorebirdLogger logger;
     late ShorebirdEnv shorebirdEnv;
     late ShorebirdProcess shorebirdProcess;
@@ -35,7 +35,7 @@ void main() {
           cacheRef.overrideWith(() => cache),
           httpClientRef.overrideWith(() => httpClient),
           loggerRef.overrideWith(() => logger),
-          patchProgramRef.overrideWith(() => patchProgram),
+          patchExecutableRef.overrideWith(() => patchExecutable),
           processRef.overrideWith(() => shorebirdProcess),
           shorebirdEnvRef.overrideWith(() => shorebirdEnv),
         },
@@ -68,9 +68,9 @@ void main() {
 
       artifactManager = ArtifactManager();
 
-      patchProgram = MockPatchProgram();
+      patchExecutable = MockPatchExecutable();
       when(
-        () => patchProgram.run(
+        () => patchExecutable.run(
           releaseArtifactPath: any(
             named: 'releaseArtifactPath',
           ),
@@ -148,7 +148,7 @@ void main() {
 
       test('throws error when creating diff fails', () async {
         when(
-          () => patchProgram.run(
+          () => patchExecutable.run(
             releaseArtifactPath: releaseArtifactFile.path,
             patchArtifactPath: patchArtifactFile.path,
             diffPath: any(named: 'diffPath'),
@@ -184,7 +184,7 @@ void main() {
 
         expect(diffPath, endsWith('diff.patch'));
         verify(
-          () => patchProgram.run(
+          () => patchExecutable.run(
             releaseArtifactPath: releaseArtifactFile.path,
             patchArtifactPath: patchArtifactFile.path,
             diffPath: any(named: 'diffPath', that: endsWith('diff.patch')),

@@ -1,13 +1,14 @@
+import 'package:mason_logger/mason_logger.dart';
 import 'package:path/path.dart' as p;
 import 'package:scoped/scoped.dart';
 import 'package:shorebird_cli/src/cache.dart';
 import 'package:shorebird_cli/src/shorebird_process.dart';
 
-/// A reference to a [PatchProgram] instance.
-final patchProgramRef = create(PatchProgram.new);
+/// A reference to a [PatchExecutable] instance.
+final patchExecutableRef = create(PatchExecutable.new);
 
-/// The [PatchProgram] instance available in the current zone.
-PatchProgram get patchProgram => read(patchProgramRef);
+/// The [PatchExecutable] instance available in the current zone.
+PatchExecutable get patchExecutable => read(patchExecutableRef);
 
 /// {@template patch_failed_exception}
 /// An exception thrown when a patch fails.
@@ -27,7 +28,7 @@ class PatchFailedException implements Exception {
 /// Used to create diffs between files.
 ///
 /// Throws [PatchFailedException] if the patch command exits with non-zero code.
-class PatchProgram {
+class PatchExecutable {
   Future<void> run({
     required String releaseArtifactPath,
     required String patchArtifactPath,
