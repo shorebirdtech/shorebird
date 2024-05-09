@@ -1,5 +1,6 @@
 import 'package:crypto/crypto.dart';
 import 'package:mason_logger/mason_logger.dart';
+import 'package:meta/meta.dart';
 import 'package:path/path.dart' as p;
 import 'package:platform/platform.dart';
 import 'package:shorebird_cli/src/archive/archive.dart';
@@ -54,7 +55,8 @@ https://docs.shorebird.dev/status#link-percentage-ios
 ''';
   }
 
-  double? _linkPercentage;
+  @visibleForTesting
+  double? lastBuildLinkPercentage;
 
   @override
   ReleaseType get releaseType => ReleaseType.ios;
@@ -205,7 +207,7 @@ https://docs.shorebird.dev/status#link-percentage-ios
       if (linkPercentage != null && linkPercentage < minLinkPercentage) {
         logger.warn(lowLinkPercentageWarning(linkPercentage));
       }
-      _linkPercentage = linkPercentage;
+      lastBuildLinkPercentage = linkPercentage;
     }
 
     final patchBuildFile = File(useLinker ? _vmcodeOutputPath : _aotOutputPath);
@@ -285,7 +287,7 @@ https://docs.shorebird.dev/status#link-percentage-ios
       hasAssetChanges: diffStatus.hasAssetChanges,
       usedIgnoreNativeChangesFlag: allowNativeDiffs,
       hasNativeChanges: diffStatus.hasNativeChanges,
-      linkPercentage: _linkPercentage,
+      linkPercentage: lastBuildLinkPercentage,
       environment: BuildEnvironmentMetadata(
         operatingSystem: platform.operatingSystem,
         operatingSystemVersion: platform.operatingSystemVersion,
