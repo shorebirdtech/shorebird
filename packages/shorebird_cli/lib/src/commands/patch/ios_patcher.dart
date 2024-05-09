@@ -311,9 +311,7 @@ class IosPatcher extends Patcher {
     final linkProgress = logger.progress('Linking AOT files');
     double? linkPercentage;
     try {
-      final dumpDebugInfoDir =
-          dumpDebugInfo ? Directory.systemTemp.createTempSync() : null;
-
+      final dumpDebugInfoDir = Directory.systemTemp.createTempSync();
       linkPercentage = await aotTools.link(
         base: releaseArtifact.path,
         patch: patch.path,
@@ -322,10 +320,10 @@ class IosPatcher extends Patcher {
         outputPath: _vmcodeOutputPath,
         workingDirectory: buildDirectory.path,
         kernel: artifactManager.newestAppDill().path,
-        dumpDebugInfoPath: dumpDebugInfoDir?.path,
+        dumpDebugInfoPath: dumpDebugInfoDir.path,
       );
 
-      if (dumpDebugInfo && dumpDebugInfoDir != null) {
+      if (dumpDebugInfo) {
         final debugInfoZip = await dumpDebugInfoDir.zipToTempFile();
         debugInfoZip.copySync(p.join('build', debugInfoFile.path));
       }
