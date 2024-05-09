@@ -483,8 +483,9 @@ void main() {
             final zipFile = invocation.namedArguments[#zipFile] as File;
             final outDir =
                 invocation.namedArguments[#outputDirectory] as Directory;
-            File(p.join(outDir.path, '${p.basename(zipFile.path)}.zip'))
-                .createSync();
+            File(
+              p.join(outDir.path, '${p.basename(zipFile.path)}.zip'),
+            ).createSync();
           });
           when(() => artifactManager.getXcarchiveDirectory()).thenReturn(
             Directory(
