@@ -25,7 +25,7 @@ void main() {
 
     late ArtifactManager artifactManager;
     late Directory shorebirdRoot;
-    late Directory configDirectory;
+    late Directory logsDirectory;
     late http.Client httpClient;
     late ShorebirdLogger logger;
     late Platform platform;
@@ -78,7 +78,7 @@ void main() {
       shorebirdProcess = MockShorebirdProcess();
 
       shorebirdRoot = Directory.systemTemp.createTempSync();
-      configDirectory = Directory.systemTemp.createTempSync();
+      logsDirectory = Directory.systemTemp.createTempSync();
       when(
         () => artifactManager.extractZip(
           zipFile: any(named: 'zipFile'),
@@ -92,7 +92,7 @@ void main() {
         () => shorebirdEnv.shorebirdEngineRevision,
       ).thenReturn(shorebirdEngineRevision);
       when(() => shorebirdEnv.shorebirdRoot).thenReturn(shorebirdRoot);
-      when(() => shorebirdEnv.configDirectory).thenReturn(configDirectory);
+      when(() => shorebirdEnv.logsDirectory).thenReturn(logsDirectory);
 
       when(() => platform.environment).thenReturn({});
       setMockPlatform(Platform.macOS);
