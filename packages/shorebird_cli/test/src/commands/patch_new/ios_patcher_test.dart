@@ -357,6 +357,18 @@ void main() {
                 target: any(named: 'target'),
               ),
             ).thenAnswer((_) async {});
+            when(() => artifactManager.getXcarchiveDirectory()).thenReturn(
+              Directory(
+                p.join(
+                  projectRoot.path,
+                  'build',
+                  'ios',
+                  'framework',
+                  'Release',
+                  'App.xcframework',
+                ),
+              )..createSync(recursive: true),
+            );
             when(() => artifactManager.newestAppDill()).thenReturn(File(''));
             when(
               () => artifactBuilder.buildElfAotSnapshot(
@@ -370,9 +382,9 @@ void main() {
             );
           });
 
-          test('returns out.aot', () async {
+          test('returns xcarchive zip', () async {
             final artifact = await runWithOverrides(patcher.buildPatchArtifact);
-            expect(p.basename(artifact.path), equals('out.aot'));
+            expect(p.basename(artifact.path), endsWith('.zip'));
           });
         });
       });

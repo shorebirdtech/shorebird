@@ -112,12 +112,6 @@ https://docs.shorebird.dev/status#link-percentage-ios
       return exit(ExitCode.usage.code);
     }
 
-    final buildDirectory = p.join(
-      shorebirdEnv.getShorebirdProjectRoot()!.path,
-      'build',
-    );
-    final aotFile = File(p.join(buildDirectory, 'out.aot'));
-
     try {
       final shouldCodesign = argResults['codesign'] == true;
       final flutterVersionString =
@@ -147,7 +141,7 @@ https://docs.shorebird.dev/status#link-percentage-ios
         final newestDillFile = artifactManager.newestAppDill();
         await artifactBuilder.buildElfAotSnapshot(
           appDillPath: newestDillFile.path,
-          outFilePath: aotFile.path,
+          outFilePath: _aotOutputPath,
         );
       } catch (error) {
         buildProgress.fail('$error');
@@ -159,7 +153,7 @@ https://docs.shorebird.dev/status#link-percentage-ios
       return exit(ExitCode.software.code);
     }
 
-    return aotFile;
+    return artifactManager.getXcarchiveDirectory()!.zipToTempFile();
   }
 
   @override

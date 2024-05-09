@@ -148,21 +148,25 @@ void main() {
 
       group('assertPreconditions', () {
         setUp(() {
-          when(() => doctor.iosCommandValidators)
-              .thenReturn([flutterValidator]);
+          when(
+            () => doctor.iosCommandValidators,
+          ).thenReturn([flutterValidator]);
         });
 
         group('when validation succeeds', () {
           setUp(() {
             when(
               () => shorebirdValidator.validatePreconditions(
-                checkUserIsAuthenticated:
-                    any(named: 'checkUserIsAuthenticated'),
-                checkShorebirdInitialized:
-                    any(named: 'checkShorebirdInitialized'),
+                checkUserIsAuthenticated: any(
+                  named: 'checkUserIsAuthenticated',
+                ),
+                checkShorebirdInitialized: any(
+                  named: 'checkShorebirdInitialized',
+                ),
                 validators: any(named: 'validators'),
-                supportedOperatingSystems:
-                    any(named: 'supportedOperatingSystems'),
+                supportedOperatingSystems: any(
+                  named: 'supportedOperatingSystems',
+                ),
               ),
             ).thenAnswer((_) async {});
           });
@@ -180,10 +184,12 @@ void main() {
             final exception = ValidationFailedException();
             when(
               () => shorebirdValidator.validatePreconditions(
-                checkUserIsAuthenticated:
-                    any(named: 'checkUserIsAuthenticated'),
-                checkShorebirdInitialized:
-                    any(named: 'checkShorebirdInitialized'),
+                checkUserIsAuthenticated: any(
+                  named: 'checkUserIsAuthenticated',
+                ),
+                checkShorebirdInitialized: any(
+                  named: 'checkShorebirdInitialized',
+                ),
                 validators: any(named: 'validators'),
               ),
             ).thenThrow(exception);
@@ -520,7 +526,8 @@ void main() {
               setUp(() {
                 when(
                   () => shorebirdArtifacts.getArtifactPath(
-                      artifact: ShorebirdArtifact.analyzeSnapshot),
+                    artifact: ShorebirdArtifact.analyzeSnapshot,
+                  ),
                 ).thenReturn('');
                 setUpProjectRootArtifacts();
               });
@@ -581,8 +588,9 @@ void main() {
 
           group('when generate patch diff base is supported', () {
             setUp(() {
-              when(() => aotTools.isGeneratePatchDiffBaseSupported())
-                  .thenAnswer((_) async => true);
+              when(
+                () => aotTools.isGeneratePatchDiffBaseSupported(),
+              ).thenAnswer((_) async => true);
               when(
                 () => aotTools.generatePatchDiffBase(
                   analyzeSnapshotPath: any(named: 'analyzeSnapshotPath'),
@@ -642,8 +650,11 @@ void main() {
                 expect(patchBundle, hasLength(1));
                 expect(
                   patchBundle[Arch.arm64],
-                  isA<PatchArtifactBundle>()
-                      .having((b) => b.path, 'path', endsWith(diffPath)),
+                  isA<PatchArtifactBundle>().having(
+                    (b) => b.path,
+                    'path',
+                    endsWith(diffPath),
+                  ),
                 );
               });
             });
@@ -651,8 +662,9 @@ void main() {
 
           group('when generate patch diff base is not supported', () {
             setUp(() {
-              when(aotTools.isGeneratePatchDiffBaseSupported)
-                  .thenAnswer((_) async => false);
+              when(
+                aotTools.isGeneratePatchDiffBaseSupported,
+              ).thenAnswer((_) async => false);
               setUpProjectRootArtifacts();
             });
 
@@ -667,8 +679,11 @@ void main() {
               expect(patchBundle, hasLength(1));
               expect(
                 patchBundle[Arch.arm64],
-                isA<PatchArtifactBundle>()
-                    .having((b) => b.path, 'path', endsWith('out.vmcode')),
+                isA<PatchArtifactBundle>().having(
+                  (b) => b.path,
+                  'path',
+                  endsWith('out.vmcode'),
+                ),
               );
             });
           });
@@ -676,10 +691,12 @@ void main() {
 
         group('when does not use linker', () {
           setUp(() {
-            when(() => shorebirdEnv.flutterRevision)
-                .thenReturn(preLinkerFlutterRevision);
-            when(() => aotTools.isGeneratePatchDiffBaseSupported())
-                .thenAnswer((_) async => false);
+            when(
+              () => shorebirdEnv.flutterRevision,
+            ).thenReturn(preLinkerFlutterRevision);
+            when(
+              () => aotTools.isGeneratePatchDiffBaseSupported(),
+            ).thenAnswer((_) async => false);
 
             setUpProjectRootArtifacts();
           });
@@ -724,8 +741,9 @@ void main() {
         const xcodeVersion = '11';
 
         setUp(() {
-          when(() => argResults['allow-asset-diffs'])
-              .thenReturn(allowAssetDiffs);
+          when(
+            () => argResults['allow-asset-diffs'],
+          ).thenReturn(allowAssetDiffs);
           when(
             () => argResults['allow-native-diffs'],
           ).thenReturn(allowNativeDiffs);
@@ -734,8 +752,9 @@ void main() {
             () => platform.operatingSystemVersion,
           ).thenReturn(operatingSystemVersion);
 
-          when(() => xcodeBuild.version())
-              .thenAnswer((_) async => xcodeVersion);
+          when(
+            () => xcodeBuild.version(),
+          ).thenAnswer((_) async => xcodeVersion);
         });
 
         group('when linker is not enabled', () {
