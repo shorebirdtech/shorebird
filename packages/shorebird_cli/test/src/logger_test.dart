@@ -1,5 +1,6 @@
 import 'dart:io';
 
+import 'package:mason_logger/mason_logger.dart';
 import 'package:mocktail/mocktail.dart';
 import 'package:path/path.dart' as p;
 import 'package:scoped/scoped.dart';
@@ -21,7 +22,8 @@ void main() {
       shorebirdEnv = MockShorebirdEnv();
       when(() => shorebirdEnv.shorebirdRoot).thenReturn(shorebirdRootDir);
 
-      shorebirdLogger = ShorebirdLogger();
+      // Setting to quiet so we don't spam the stdout/stderr while testing
+      shorebirdLogger = ShorebirdLogger(level: Level.quiet);
     });
 
     String readLogFile() {
