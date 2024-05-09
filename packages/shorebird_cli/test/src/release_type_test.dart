@@ -40,7 +40,10 @@ void main() {
             [ReleaseType.ios],
           );
           expect(
-            parser.parse(['--platforms', 'ios-framework']).releaseTypes.toList(),
+            parser
+                .parse(['--platforms', 'ios-framework'])
+                .releaseTypes
+                .toList(),
             [ReleaseType.iosFramework],
           );
           expect(
