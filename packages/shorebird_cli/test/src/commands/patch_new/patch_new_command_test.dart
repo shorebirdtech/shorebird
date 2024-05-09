@@ -280,8 +280,8 @@ void main() {
           isA<AarPatcher>(),
         );
         expect(
-          () => command.getPatcher(ReleaseType.ios),
-          throwsA(isA<UnimplementedError>()),
+          command.getPatcher(ReleaseType.ios),
+          isA<IosPatcher>(),
         );
         expect(
           command.getPatcher(ReleaseType.iosFramework),

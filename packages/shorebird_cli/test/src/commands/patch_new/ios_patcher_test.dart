@@ -30,12 +30,13 @@ import 'package:shorebird_cli/src/version.dart';
 import 'package:shorebird_code_push_client/shorebird_code_push_client.dart';
 import 'package:test/test.dart';
 
+import '../../fakes.dart';
 import '../../matchers.dart';
 import '../../mocks.dart';
 
 void main() {
   group(
-    IosFrameworkPatcher,
+    IosPatcher,
     () {
       late AotTools aotTools;
       late ArgResults argResults;
@@ -57,7 +58,8 @@ void main() {
       late ShorebirdFlutter shorebirdFlutter;
       late ShorebirdValidator shorebirdValidator;
       late XcodeBuild xcodeBuild;
-      late IosFrameworkPatcher patcher;
+      late Ios ios;
+      late IosPatcher patcher;
 
       R runWithOverrides<R>(R Function() body) {
         return runScoped(
@@ -69,6 +71,7 @@ void main() {
             codePushClientWrapperRef.overrideWith(() => codePushClientWrapper),
             doctorRef.overrideWith(() => doctor),
             engineConfigRef.overrideWith(() => engineConfig),
+            iosRef.overrideWith(() => ios),
             loggerRef.overrideWith(() => logger),
             osInterfaceRef.overrideWith(() => operatingSystemInterface),
             platformRef.overrideWith(() => platform),
@@ -83,6 +86,7 @@ void main() {
       }
 
       setUpAll(() {
+        registerFallbackValue(FakeArgResults());
         registerFallbackValue(Directory(''));
         registerFallbackValue(File(''));
         registerFallbackValue(ReleasePlatform.ios);
@@ -100,6 +104,7 @@ void main() {
         codePushClientWrapper = MockCodePushClientWrapper();
         doctor = MockDoctor();
         engineConfig = MockEngineConfig();
+        ios = MockIos();
         operatingSystemInterface = MockOperatingSystemInterface();
         platform = MockPlatform();
         progress = MockProgress();
@@ -121,7 +126,9 @@ void main() {
           () => shorebirdEnv.getShorebirdProjectRoot(),
         ).thenReturn(projectRoot);
 
-        patcher = IosFrameworkPatcher(
+        when(() => ios.exportOptionsPlistFromArgs(any())).thenReturn(File(''));
+
+        patcher = IosPatcher(
           argResults: argResults,
           flavor: null,
           target: null,
@@ -135,14 +142,14 @@ void main() {
       });
 
       group('primaryReleaseArtifactArch', () {
-        test('is "xcframework"', () {
-          expect(patcher.primaryReleaseArtifactArch, 'xcframework');
+        test('is "ipa"', () {
+          expect(patcher.primaryReleaseArtifactArch, 'ipa');
         });
       });
 
       group('releaseType', () {
-        test('is ReleaseType.iosFramework', () {
-          expect(patcher.releaseType, ReleaseType.iosFramework);
+        test('is ReleaseType.ios', () {
+          expect(patcher.releaseType, ReleaseType.ios);
         });
       });
 
@@ -190,7 +197,9 @@ void main() {
                 checkShorebirdInitialized: any(
                   named: 'checkShorebirdInitialized',
                 ),
-                validators: any(named: 'validators'),
+                validators: any(
+                  named: 'validators',
+                ),
               ),
             ).thenThrow(exception);
           });
@@ -199,13 +208,16 @@ void main() {
             final exception = ValidationFailedException();
             when(
               () => shorebirdValidator.validatePreconditions(
-                checkUserIsAuthenticated:
-                    any(named: 'checkUserIsAuthenticated'),
-                checkShorebirdInitialized:
-                    any(named: 'checkShorebirdInitialized'),
+                checkUserIsAuthenticated: any(
+                  named: 'checkUserIsAuthenticated',
+                ),
+                checkShorebirdInitialized: any(
+                  named: 'checkShorebirdInitialized',
+                ),
                 validators: any(named: 'validators'),
-                supportedOperatingSystems:
-                    any(named: 'supportedOperatingSystems'),
+                supportedOperatingSystems: any(
+                  named: 'supportedOperatingSystems',
+                ),
               ),
             ).thenThrow(exception);
             await expectLater(
@@ -224,36 +236,6 @@ void main() {
         });
       });
 
-      group('assertArgsAreValid', () {
-        group('when release-version is not provided', () {
-          setUp(() {
-            when(() => argResults.wasParsed('release-version'))
-                .thenReturn(false);
-          });
-
-          test('exits with code 64', () async {
-            await expectLater(
-              () => runWithOverrides(patcher.assertArgsAreValid),
-              exitsWithCode(ExitCode.usage),
-            );
-          });
-        });
-
-        group('when arguments are valid', () {
-          setUp(() {
-            when(() => argResults.wasParsed('release-version'))
-                .thenReturn(true);
-          });
-
-          test('returns normally', () {
-            expect(
-              () => runWithOverrides(patcher.assertArgsAreValid),
-              returnsNormally,
-            );
-          });
-        });
-      });
-
       group('buildPatchArtifact', () {
         const flutterVersionAndRevision = '3.10.6 (83305b5088)';
 
@@ -263,9 +245,61 @@ void main() {
           ).thenAnswer((_) async => flutterVersionAndRevision);
         });
 
-        group('when build fails', () {
+        group('when exportOptionsPlist fails', () {
           setUp(() {
-            when(() => artifactBuilder.buildIosFramework()).thenThrow(
+            when(() => ios.exportOptionsPlistFromArgs(any())).thenThrow(
+              const FileSystemException('error'),
+            );
+          });
+
+          test('logs error and exits with code 70', () async {
+            await expectLater(
+              () => runWithOverrides(patcher.buildPatchArtifact),
+              exitsWithCode(ExitCode.usage),
+            );
+          });
+        });
+
+        group('when build fails with ProcessException', () {
+          setUp(() {
+            when(
+              () => artifactBuilder.buildIpa(
+                exportOptionsPlist: any(named: 'exportOptionsPlist'),
+                codesign: any(named: 'codesign'),
+                argResultsRest: any(named: 'argResultsRest'),
+                flavor: any(named: 'flavor'),
+                target: any(named: 'target'),
+              ),
+            ).thenThrow(
+              const ProcessException(
+                'flutter',
+                ['build', 'ipa'],
+                'Build failed',
+              ),
+            );
+          });
+
+          test('exits with code 70', () async {
+            await expectLater(
+              () => runWithOverrides(patcher.buildPatchArtifact),
+              exitsWithCode(ExitCode.software),
+            );
+
+            verify(() => progress.fail('Failed to build: Build failed'));
+          });
+        });
+
+        group('when build fails with ArtifactBuildException', () {
+          setUp(() {
+            when(
+              () => artifactBuilder.buildIpa(
+                exportOptionsPlist: any(named: 'exportOptionsPlist'),
+                codesign: any(named: 'codesign'),
+                argResultsRest: any(named: 'argResultsRest'),
+                flavor: any(named: 'flavor'),
+                target: any(named: 'target'),
+              ),
+            ).thenThrow(
               ArtifactBuildException('Build failed'),
             );
           });
@@ -276,15 +310,21 @@ void main() {
               exitsWithCode(ExitCode.software),
             );
 
-            verify(() => progress.fail('Build failed'));
+            verify(() => progress.fail('Failed to build IPA'));
           });
         });
 
         group('when elf aot snapshot build fails', () {
           setUp(() {
-            when(() => artifactBuilder.buildIosFramework()).thenAnswer(
-              (_) async {},
-            );
+            when(
+              () => artifactBuilder.buildIpa(
+                exportOptionsPlist: any(named: 'exportOptionsPlist'),
+                codesign: any(named: 'codesign'),
+                argResultsRest: any(named: 'argResultsRest'),
+                flavor: any(named: 'flavor'),
+                target: any(named: 'target'),
+              ),
+            ).thenAnswer((_) async {});
             when(() => artifactManager.newestAppDill()).thenReturn(File(''));
             when(
               () => artifactBuilder.buildElfAotSnapshot(
@@ -308,8 +348,26 @@ void main() {
 
         group('when build succeeds', () {
           setUp(() {
-            when(() => artifactBuilder.buildIosFramework()).thenAnswer(
-              (_) async {},
+            when(
+              () => artifactBuilder.buildIpa(
+                exportOptionsPlist: any(named: 'exportOptionsPlist'),
+                codesign: any(named: 'codesign'),
+                argResultsRest: any(named: 'argResultsRest'),
+                flavor: any(named: 'flavor'),
+                target: any(named: 'target'),
+              ),
+            ).thenAnswer((_) async {});
+            when(() => artifactManager.getXcarchiveDirectory()).thenReturn(
+              Directory(
+                p.join(
+                  projectRoot.path,
+                  'build',
+                  'ios',
+                  'framework',
+                  'Release',
+                  'App.xcframework',
+                ),
+              )..createSync(recursive: true),
             );
             when(() => artifactManager.newestAppDill()).thenReturn(File(''));
             when(
@@ -322,17 +380,11 @@ void main() {
                   File(invocation.namedArguments[#outFilePath] as String)
                     ..createSync(recursive: true),
             );
-
-            Directory(
-              p.join(projectRoot.path, ArtifactManager.appXcframeworkName),
-            ).createSync(recursive: true);
-            when(() => artifactManager.getAppXcframeworkDirectory())
-                .thenReturn(projectRoot);
           });
 
-          test('returns zipped xcframework', () async {
+          test('returns xcarchive zip', () async {
             final artifact = await runWithOverrides(patcher.buildPatchArtifact);
-            expect(p.basename(artifact.path), equals('App.xcframework.zip'));
+            expect(p.basename(artifact.path), endsWith('.zip'));
           });
         });
       });
@@ -387,6 +439,21 @@ void main() {
           ).createSync(
             recursive: true,
           );
+          Directory(
+            p.join(
+              projectRoot.path,
+              'build',
+              'ios',
+              'framework',
+              'Release',
+              'App.xcframework',
+              'Products',
+              'Applications',
+              'Runner.app',
+            ),
+          ).createSync(
+            recursive: true,
+          );
           File(
             p.join(projectRoot.path, 'build', linkFileName),
           ).createSync(recursive: true);
@@ -419,7 +486,44 @@ void main() {
             File(p.join(outDir.path, '${p.basename(zipFile.path)}.zip'))
                 .createSync();
           });
+          when(() => artifactManager.getXcarchiveDirectory()).thenReturn(
+            Directory(
+              p.join(
+                projectRoot.path,
+                'build',
+                'ios',
+                'framework',
+                'Release',
+                'App.xcframework',
+              ),
+            ),
+          );
+          when(
+            () => artifactManager.getIosAppDirectory(
+              xcarchiveDirectory: any(named: 'xcarchiveDirectory'),
+            ),
+          ).thenReturn(projectRoot);
           when(() => engineConfig.localEngine).thenReturn(null);
+        });
+
+        group('when xcarchive does not exist', () {
+          setUp(() {
+            when(
+              () => artifactManager.getXcarchiveDirectory(),
+            ).thenReturn(null);
+          });
+
+          test('logs error and exits with code 70', () async {
+            await expectLater(
+              () => runWithOverrides(
+                () => patcher.createPatchArtifacts(
+                  appId: appId,
+                  releaseId: releaseId,
+                ),
+              ),
+              exitsWithCode(ExitCode.software),
+            );
+          });
         });
 
         group('when release artifact download fails', () {
@@ -438,6 +542,31 @@ void main() {
                 ),
               ),
               exitsWithCode(ExitCode.software),
+            );
+          });
+        });
+
+        group('when release artifact does not exist', () {
+          setUp(() {
+            when(
+              () => artifactManager.downloadFile(any()),
+            ).thenAnswer((_) async => File(''));
+          });
+
+          test('logs error and exits with code 70', () async {
+            await expectLater(
+              () => runWithOverrides(
+                () => patcher.createPatchArtifacts(
+                  appId: appId,
+                  releaseId: releaseId,
+                ),
+              ),
+              exitsWithCode(ExitCode.software),
+            );
+            verify(
+              () => progress.fail(
+                'Exception: Failed to download release artifact',
+              ),
             );
           });
         });
@@ -484,9 +613,41 @@ void main() {
                 kernel: any(named: 'kernel'),
                 outputPath: any(named: 'outputPath'),
                 workingDirectory: any(named: 'workingDirectory'),
+                dumpDebugInfoPath: any(named: 'dumpDebugInfoPath'),
               ),
             ).thenAnswer((_) async => linkPercentage);
             when(() => artifactManager.newestAppDill()).thenReturn(File(''));
+            when(
+              () => artifactManager.getIosAppDirectory(
+                xcarchiveDirectory: any(named: 'xcarchiveDirectory'),
+              ),
+            ).thenReturn(
+              Directory(p.join(projectRoot.path, 'build', 'ios')),
+            );
+            when(
+              () => artifactManager.getIosAppDirectory(
+                xcarchiveDirectory: any(named: 'xcarchiveDirectory'),
+              ),
+            ).thenReturn(Directory(p.join(projectRoot.path, 'build', 'ios')));
+            when(
+              () => artifactManager.getIosAppDirectory(
+                xcarchiveDirectory: any(named: 'xcarchiveDirectory'),
+              ),
+            ).thenReturn(
+              Directory(
+                p.join(
+                  projectRoot.path,
+                  'build',
+                  'ios',
+                  'framework',
+                  'Release',
+                  'App.xcframework',
+                  'Products',
+                  'Applications',
+                  'Runner.app',
+                ),
+              ),
+            );
             when(() => shorebirdEnv.flutterRevision)
                 .thenReturn(postLinkerFlutterRevision);
             when(
@@ -502,6 +663,38 @@ void main() {
           });
 
           group('when linking fails', () {
+            group('when .app does not exist', () {
+              setUp(() {
+                when(
+                  () => artifactManager.getIosAppDirectory(
+                    xcarchiveDirectory: any(named: 'xcarchiveDirectory'),
+                  ),
+                ).thenReturn(null);
+              });
+
+              test('logs error and exits with code 70', () async {
+                await expectLater(
+                  () => runWithOverrides(
+                    () => patcher.createPatchArtifacts(
+                      appId: appId,
+                      releaseId: releaseId,
+                    ),
+                  ),
+                  exitsWithCode(ExitCode.software),
+                );
+
+                verify(
+                  () => logger.err(
+                    any(
+                      that: startsWith(
+                        'Unable to find release artifact .app directory',
+                      ),
+                    ),
+                  ),
+                ).called(1);
+              });
+            });
+
             group('when aot snapshot does not exist', () {
               test('logs error and exits with code 70', () async {
                 await expectLater(
@@ -560,6 +753,7 @@ void main() {
                     kernel: any(named: 'kernel'),
                     outputPath: any(named: 'outputPath'),
                     workingDirectory: any(named: 'workingDirectory'),
+                    dumpDebugInfoPath: any(named: 'dumpDebugInfoPath'),
                   ),
                 ).thenThrow(Exception('oops'));
 
@@ -657,6 +851,36 @@ void main() {
                   ),
                 );
               });
+
+              group('when isLinkDebugInfoSupported', () {
+                setUp(() {
+                  when(() => argResults['debug-linker']).thenReturn(true);
+                  when(
+                    aotTools.isLinkDebugInfoSupported,
+                  ).thenAnswer((_) async => true);
+                });
+
+                test('dumps debug info', () async {
+                  await runWithOverrides(
+                    () => patcher.createPatchArtifacts(
+                      appId: appId,
+                      releaseId: releaseId,
+                    ),
+                  );
+                  verify(
+                    () => aotTools.link(
+                      base: any(named: 'base'),
+                      patch: any(named: 'patch'),
+                      analyzeSnapshot: any(named: 'analyzeSnapshot'),
+                      genSnapshot: any(named: 'genSnapshot'),
+                      kernel: any(named: 'kernel'),
+                      outputPath: any(named: 'outputPath'),
+                      workingDirectory: any(named: 'workingDirectory'),
+                      dumpDebugInfoPath: any(named: 'dumpDebugInfoPath'),
+                    ),
+                  ).called(1);
+                });
+              });
             });
           });
 
@@ -725,11 +949,158 @@ void main() {
       });
 
       group('extractReleaseVersionFromArtifact', () {
-        test('throws UnimplementedError', () {
-          expect(
-            () => patcher.extractReleaseVersionFromArtifact(File('')),
-            throwsUnimplementedError,
+        setUp(() {
+          when(() => artifactManager.getXcarchiveDirectory()).thenReturn(
+            Directory(
+              p.join(
+                projectRoot.path,
+                'build',
+                'ios',
+                'framework',
+                'Release',
+                'App.xcframework',
+              ),
+            ),
           );
+        });
+
+        group('when xcarchive directory does not exist', () {
+          setUp(() {
+            when(
+              () => artifactManager.getXcarchiveDirectory(),
+            ).thenReturn(null);
+          });
+
+          test('exit with code 70', () async {
+            await expectLater(
+              () => runWithOverrides(
+                () => patcher.extractReleaseVersionFromArtifact(File('')),
+              ),
+              exitsWithCode(ExitCode.software),
+            );
+          });
+        });
+
+        group('when Info.plist does not exist', () {
+          setUp(() {
+            try {
+              File(
+                p.join(
+                  projectRoot.path,
+                  'build',
+                  'ios',
+                  'framework',
+                  'Release',
+                  'App.xcframework',
+                  'Info.plist',
+                ),
+              ).deleteSync(recursive: true);
+            } catch (_) {}
+          });
+
+          test('exit with code 70', () async {
+            await expectLater(
+              () => runWithOverrides(
+                () => patcher.extractReleaseVersionFromArtifact(File('')),
+              ),
+              exitsWithCode(ExitCode.software),
+            );
+          });
+        });
+
+        group('when empty Info.plist does exist', () {
+          setUp(() {
+            File(
+              p.join(
+                projectRoot.path,
+                'build',
+                'ios',
+                'framework',
+                'Release',
+                'App.xcframework',
+                'Info.plist',
+              ),
+            )
+              ..createSync(recursive: true)
+              ..writeAsStringSync('''
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+<plist version="1.0">
+<dict></dict>
+</plist>
+''');
+          });
+
+          test('exits with code 70 and logs error', () async {
+            await expectLater(
+              runWithOverrides(
+                () => patcher.extractReleaseVersionFromArtifact(File('')),
+              ),
+              exitsWithCode(ExitCode.software),
+            );
+            verify(
+              () => logger.err(
+                any(
+                  that: startsWith('Failed to determine release version'),
+                ),
+              ),
+            ).called(1);
+          });
+        });
+
+        group('when Info.plist does exist', () {
+          setUp(() {
+            File(
+              p.join(
+                projectRoot.path,
+                'build',
+                'ios',
+                'framework',
+                'Release',
+                'App.xcframework',
+                'Info.plist',
+              ),
+            )
+              ..createSync(recursive: true)
+              ..writeAsStringSync('''
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+<plist version="1.0">
+<dict>
+	<key>ApplicationProperties</key>
+	<dict>
+		<key>ApplicationPath</key>
+		<string>Applications/Runner.app</string>
+		<key>Architectures</key>
+		<array>
+			<string>arm64</string>
+		</array>
+		<key>CFBundleIdentifier</key>
+		<string>com.shorebird.timeShift</string>
+		<key>CFBundleShortVersionString</key>
+		<string>1.2.3</string>
+		<key>CFBundleVersion</key>
+		<string>1</string>
+	</dict>
+	<key>ArchiveVersion</key>
+	<integer>2</integer>
+	<key>Name</key>
+	<string>Runner</string>
+	<key>SchemeName</key>
+	<string>Runner</string>
+</dict>
+</plist>
+''');
+          });
+
+          test('returns correct version', () async {
+            await expectLater(
+              runWithOverrides(
+                () => patcher.extractReleaseVersionFromArtifact(File('')),
+              ),
+              completion('1.2.3+1'),
+            );
+          });
         });
       });
 
