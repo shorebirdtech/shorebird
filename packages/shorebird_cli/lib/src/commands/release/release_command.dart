@@ -103,9 +103,6 @@ of the iOS app that is using this module.''',
   late final ResolveReleaser _resolveReleaser;
 
   @override
-  bool get hidden => true;
-
-  @override
   String get description =>
       'Creates a shorebird release for the provided target platforms';
 
