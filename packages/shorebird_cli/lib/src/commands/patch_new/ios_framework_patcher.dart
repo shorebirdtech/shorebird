@@ -11,16 +11,15 @@ import 'package:shorebird_cli/src/artifact_manager.dart';
 import 'package:shorebird_cli/src/code_push_client_wrapper.dart';
 import 'package:shorebird_cli/src/commands/patch_new/patch_new.dart';
 import 'package:shorebird_cli/src/doctor.dart';
-import 'package:shorebird_cli/src/executables/aot_tools.dart';
 import 'package:shorebird_cli/src/executables/xcodebuild.dart';
 import 'package:shorebird_cli/src/logger.dart';
 import 'package:shorebird_cli/src/patch_diff_checker.dart';
 import 'package:shorebird_cli/src/platform.dart';
 import 'package:shorebird_cli/src/platform/platform.dart';
 import 'package:shorebird_cli/src/release_type.dart';
-import 'package:shorebird_cli/src/shorebird_artifacts.dart';
 import 'package:shorebird_cli/src/shorebird_env.dart';
 import 'package:shorebird_cli/src/shorebird_flutter.dart';
+import 'package:shorebird_cli/src/shorebird_linker.dart';
 import 'package:shorebird_cli/src/shorebird_validator.dart';
 import 'package:shorebird_cli/src/third_party/flutter_tools/lib/flutter_tools.dart';
 import 'package:shorebird_cli/src/version.dart';
@@ -161,60 +160,35 @@ class IosFrameworkPatcher extends Patcher {
       ),
     );
 
-    final aotSnapshotFile = File(
-      p.join(
-        shorebirdEnv.getShorebirdProjectRoot()!.path,
-        'build',
-        'out.aot',
-      ),
-    );
-    final useLinker = AotTools.usesLinker(shorebirdEnv.flutterRevision);
-    if (useLinker) {
-      await _runLinker(
-        aotSnapshot: aotSnapshotFile,
+    final LinkResult linkResult;
+
+    final linkProgress = logger.progress('Linking patch artifact');
+    try {
+      linkResult = await shorebirdLinker.linkPatchArtifactIfPossible(
         releaseArtifact: releaseArtifactFile,
-      );
-    }
-
-    final patchBuildFile =
-        useLinker ? File(_vmcodeOutputPath) : aotSnapshotFile;
-    final File patchFile;
-    if (await aotTools.isGeneratePatchDiffBaseSupported()) {
-      final patchBaseProgress = logger.progress('Generating patch diff base');
-      final analyzeSnapshotPath = shorebirdArtifacts.getArtifactPath(
-        artifact: ShorebirdArtifact.analyzeSnapshot,
-      );
-
-      final File patchBaseFile;
-      try {
-        // If the aot_tools executable supports the dump_blobs command, we
-        // can generate a stable diff base and use that to create a patch.
-        patchBaseFile = await aotTools.generatePatchDiffBase(
-          analyzeSnapshotPath: analyzeSnapshotPath,
-          releaseSnapshot: releaseArtifactFile,
-        );
-        patchBaseProgress.complete();
-      } catch (error) {
-        patchBaseProgress.fail('$error');
-        exit(ExitCode.software.code);
-      }
-
-      patchFile = File(
-        await artifactManager.createDiff(
-          releaseArtifactPath: patchBaseFile.path,
-          patchArtifactPath: patchBuildFile.path,
+        patchBuildFile: File(
+          p.join(
+            shorebirdEnv.getShorebirdProjectRoot()!.path,
+            'build',
+            'out.aot',
+          ),
         ),
       );
-    } else {
-      patchFile = patchBuildFile;
+    } catch (e) {
+      linkProgress.fail('$e');
+      exit(ExitCode.software.code);
     }
+
+    lastBuildLinkPercentage = linkResult.linkPercentage;
 
     return {
       Arch.arm64: PatchArtifactBundle(
         arch: 'aarch64',
-        path: patchFile.path,
-        hash: sha256.convert(patchBuildFile.readAsBytesSync()).toString(),
-        size: patchFile.statSync().size,
+        path: linkResult.patchBuildFile.path,
+        hash: sha256
+            .convert(linkResult.patchBuildFile.readAsBytesSync())
+            .toString(),
+        size: linkResult.patchBuildFile.statSync().size,
       ),
     };
   }
@@ -243,48 +217,5 @@ class IosFrameworkPatcher extends Patcher {
         xcodeVersion: await xcodeBuild.version(),
       ),
     );
-  }
-
-  Future<void> _runLinker({
-    required File aotSnapshot,
-    required File releaseArtifact,
-  }) async {
-    if (!aotSnapshot.existsSync()) {
-      logger.err('Unable to find patch AOT file at ${aotSnapshot.path}');
-      exit(ExitCode.software.code);
-    }
-
-    final analyzeSnapshot = File(
-      shorebirdArtifacts.getArtifactPath(
-        artifact: ShorebirdArtifact.analyzeSnapshot,
-      ),
-    );
-
-    if (!analyzeSnapshot.existsSync()) {
-      logger.err('Unable to find analyze_snapshot at ${analyzeSnapshot.path}');
-      exit(ExitCode.software.code);
-    }
-
-    final genSnapshot = shorebirdArtifacts.getArtifactPath(
-      artifact: ShorebirdArtifact.genSnapshot,
-    );
-
-    final linkProgress = logger.progress('Linking AOT files');
-    try {
-      lastBuildLinkPercentage = await aotTools.link(
-        base: releaseArtifact.path,
-        patch: aotSnapshot.path,
-        analyzeSnapshot: analyzeSnapshot.path,
-        genSnapshot: genSnapshot,
-        kernel: artifactManager.newestAppDill().path,
-        outputPath: _vmcodeOutputPath,
-        workingDirectory: _buildDirectory,
-      );
-    } catch (error) {
-      linkProgress.fail('Failed to link AOT files: $error');
-      exit(ExitCode.software.code);
-    }
-
-    linkProgress.complete();
   }
 }

@@ -1,6 +1,5 @@
 import 'dart:io';
 
-import 'package:mason_logger/mason_logger.dart';
 import 'package:path/path.dart' as p;
 import 'package:scoped/scoped.dart';
 import 'package:shorebird_cli/src/artifact_manager.dart';
@@ -31,20 +30,24 @@ class LinkResult {
   final double? linkPercentage;
 }
 
+/// {@template link_failure_exception}
+/// An exception thrown when linking fails.
+/// {@endtemplate}
+class LinkFailureException implements Exception {
+  /// {@macro link_failure_exception}
+  const LinkFailureException(this.message);
+
+  /// The message describing the failure.
+  final String message;
+
+  @override
+  String toString() => 'LinkFailureException: $message';
+}
+
 /// {@template shorebird_linker}
 /// Functions to link AOT files.
 /// {@endtemplate}
 class ShorebirdLinker {
-  String get _buildDirectory => p.join(
-        shorebirdEnv.getShorebirdProjectRoot()!.path,
-        'build',
-      );
-
-  String get _vmcodeOutputPath => p.join(
-        _buildDirectory,
-        'out.vmcode',
-      );
-
   /// Uses the aot_tools executable to link the release and patch artifacts, if
   /// supported by the Flutter revision reported by [ShorebirdEnv].
   Future<LinkResult> linkPatchArtifactIfPossible({
@@ -70,8 +73,17 @@ class ShorebirdLinker {
       artifact: ShorebirdArtifact.genSnapshot,
     );
 
-    // final linkProgress = logger.progress('Linking AOT files');
     final double? linkPercentage;
+    final buildDirectory = Directory(
+      p.join(
+        shorebirdEnv.getShorebirdProjectRoot()!.path,
+        'build',
+      ),
+    );
+    final vmcodeFile = File(
+      p.join(buildDirectory.path, 'out.vmcode'),
+    );
+
     try {
       linkPercentage = await aotTools.link(
         base: releaseArtifact.path,
@@ -79,19 +91,16 @@ class ShorebirdLinker {
         analyzeSnapshot: analyzeSnapshot.path,
         genSnapshot: genSnapshot,
         kernel: artifactManager.newestAppDill().path,
-        outputPath: _vmcodeOutputPath,
-        workingDirectory: _buildDirectory,
+        outputPath: vmcodeFile.path,
+        workingDirectory: buildDirectory.path,
       );
     } catch (error) {
-      // linkProgress.fail('Failed to link AOT files: $error');
-      exit(ExitCode.software.code);
+      throw LinkFailureException('$error');
     }
-
-    // linkProgress.complete();
 
     if (!await aotTools.isGeneratePatchDiffBaseSupported()) {
       return LinkResult(
-        patchBuildFile: File(_vmcodeOutputPath),
+        patchBuildFile: vmcodeFile,
         linkPercentage: linkPercentage,
       );
     }
