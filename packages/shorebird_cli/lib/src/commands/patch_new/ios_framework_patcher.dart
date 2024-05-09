@@ -95,7 +95,7 @@ class IosFrameworkPatcher extends Patcher {
     }
     try {
       final newestDillFile = artifactManager.newestAppDill();
-      final _ = await artifactBuilder.buildElfAotSnapshot(
+      await artifactBuilder.buildElfAotSnapshot(
         appDillPath: newestDillFile.path,
         outFilePath: p.join(
           shorebirdEnv.getShorebirdProjectRoot()!.path,
