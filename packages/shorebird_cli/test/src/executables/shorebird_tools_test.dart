@@ -35,22 +35,21 @@ void main() {
 
     setUp(() {
       tempDir = Directory.systemTemp.createTempSync();
-
       flutterDirectory = Directory(p.join(tempDir.path, 'flutter'))
         ..createSync();
-
       dartBinaryFile = File(p.join(tempDir.path, 'dart'))..createSync();
-
       processResult = MockProcessResult();
+      shorebirdEnv = MockShorebirdEnv();
+      process = MockShorebirdProcess();
+      logger = MockShorebirdLogger();
+
       when(() => processResult.exitCode).thenReturn(0);
       when(() => processResult.stdout).thenReturn('');
       when(() => processResult.stderr).thenReturn('');
 
-      shorebirdEnv = MockShorebirdEnv();
       when(() => shorebirdEnv.flutterDirectory).thenReturn(flutterDirectory);
       when(() => shorebirdEnv.dartBinaryFile).thenReturn(dartBinaryFile);
 
-      process = MockShorebirdProcess();
       when(
         () => process.run(
           any(),
@@ -58,8 +57,6 @@ void main() {
           workingDirectory: any(named: 'workingDirectory'),
         ),
       ).thenAnswer((_) async => processResult);
-
-      logger = MockShorebirdLogger();
     });
 
     test('have access a reference to shorebird tool', () {

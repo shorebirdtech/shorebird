@@ -63,6 +63,9 @@ class ShorebirdTools {
     );
   }
 
+  /// Creates a package with the [patchPath] on the [outputPath].
+  ///
+  /// Packages contains all the information needed by Shorebird for an update.
   Future<void> package({
     required String patchPath,
     required String outputPath,
