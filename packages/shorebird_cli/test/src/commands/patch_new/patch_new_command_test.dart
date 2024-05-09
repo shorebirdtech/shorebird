@@ -6,6 +6,7 @@ import 'package:shorebird_cli/src/archive_analysis/archive_analysis.dart';
 import 'package:shorebird_cli/src/archive_analysis/archive_differ.dart';
 import 'package:shorebird_cli/src/artifact_builder.dart';
 import 'package:shorebird_cli/src/artifact_manager.dart';
+import 'package:shorebird_cli/src/cache.dart';
 import 'package:shorebird_cli/src/code_push_client_wrapper.dart';
 import 'package:shorebird_cli/src/commands/patch_new/patch_new.dart';
 import 'package:shorebird_cli/src/config/config.dart';
@@ -75,6 +76,7 @@ void main() {
     late ArgResults argResults;
     late ArtifactBuilder artifactBuilder;
     late ArtifactManager artifactManager;
+    late Cache cache;
     late CodePushClientWrapper codePushClientWrapper;
     late ShorebirdLogger logger;
     late PatchDiffChecker patchDiffChecker;
@@ -91,6 +93,7 @@ void main() {
         values: {
           artifactBuilderRef.overrideWith(() => artifactBuilder),
           artifactManagerRef.overrideWith(() => artifactManager),
+          cacheRef.overrideWith(() => cache),
           codePushClientWrapperRef.overrideWith(() => codePushClientWrapper),
           loggerRef.overrideWith(() => logger),
           patchDiffCheckerRef.overrideWith(() => patchDiffChecker),
@@ -119,6 +122,7 @@ void main() {
       argResults = MockArgResults();
       artifactBuilder = MockArtifactBuilder();
       artifactManager = MockArtifactManager();
+      cache = MockCache();
       codePushClientWrapper = MockCodePushClientWrapper();
       logger = MockShorebirdLogger();
       progress = MockProgress();
@@ -135,6 +139,8 @@ void main() {
       when(
         () => artifactManager.downloadFile(any()),
       ).thenAnswer((_) async => File(''));
+
+      when(() => cache.updateAll()).thenAnswer((_) async => {});
 
       when(() => codePushClientWrapper.getApp(appId: any(named: 'appId')))
           .thenAnswer((_) async => appMetadata);
@@ -278,8 +284,8 @@ void main() {
           throwsA(isA<UnimplementedError>()),
         );
         expect(
-          () => command.getPatcher(ReleaseType.iosFramework),
-          throwsA(isA<UnimplementedError>()),
+          command.getPatcher(ReleaseType.iosFramework),
+          isA<IosFrameworkPatcher>(),
         );
       });
     });
@@ -296,6 +302,7 @@ void main() {
         verifyInOrder([
           () => patcher.assertPreconditions(),
           () => patcher.assertArgsAreValid(),
+          () => cache.updateAll(),
           () => codePushClientWrapper.getApp(appId: appId),
           () => codePushClientWrapper.getRelease(
                 appId: appId,
@@ -347,6 +354,7 @@ void main() {
         verifyInOrder([
           () => patcher.assertPreconditions(),
           () => patcher.assertArgsAreValid(),
+          () => cache.updateAll(),
           () => codePushClientWrapper.getApp(appId: appId),
           () => patcher.buildPatchArtifact(),
           () => patcher.extractReleaseVersionFromArtifact(any()),
@@ -417,6 +425,19 @@ void main() {
                   flutterRevisionOverride: releaseFlutterRevision,
                 ),
             () => patcher.buildPatchArtifact(),
+          ]);
+        });
+
+        test('updates cache with both default and release Flutter revisions',
+            () async {
+          await runWithOverrides(command.run);
+
+          verifyInOrder([
+            cache.updateAll,
+            () => shorebirdEnv.copyWith(
+                  flutterRevisionOverride: releaseFlutterRevision,
+                ),
+            cache.updateAll,
           ]);
         });
       });

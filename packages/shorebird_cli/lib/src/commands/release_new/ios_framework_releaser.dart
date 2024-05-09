@@ -5,12 +5,12 @@ import 'package:platform/platform.dart';
 import 'package:shorebird_cli/src/artifact_builder.dart';
 import 'package:shorebird_cli/src/artifact_manager.dart';
 import 'package:shorebird_cli/src/code_push_client_wrapper.dart';
-import 'package:shorebird_cli/src/release_type.dart';
 import 'package:shorebird_cli/src/commands/release_new/releaser.dart';
 import 'package:shorebird_cli/src/doctor.dart';
 import 'package:shorebird_cli/src/executables/xcodebuild.dart';
 import 'package:shorebird_cli/src/logger.dart';
 import 'package:shorebird_cli/src/platform.dart';
+import 'package:shorebird_cli/src/release_type.dart';
 import 'package:shorebird_cli/src/shorebird_env.dart';
 import 'package:shorebird_cli/src/shorebird_flutter.dart';
 import 'package:shorebird_cli/src/shorebird_validator.dart';
@@ -90,6 +90,20 @@ class IosFrameworkReleaser extends Releaser {
     await copyPath(
       sourceLibraryDirectory.path,
       targetLibraryDirectory.path,
+    );
+
+    // Rename Flutter.xcframework to ShorebirdFlutter.xcframework to avoid
+    // Xcode warning users about the .xcframework signature changing.
+    Directory(
+      p.join(
+        targetLibraryDirectory.path,
+        'Flutter.xcframework',
+      ),
+    ).renameSync(
+      p.join(
+        targetLibraryDirectory.path,
+        'ShorebirdFlutter.xcframework',
+      ),
     );
 
     return targetLibraryDirectory;

@@ -3,6 +3,7 @@ import 'package:meta/meta.dart';
 import 'package:scoped/scoped.dart';
 import 'package:shorebird_cli/src/archive_analysis/archive_differ.dart';
 import 'package:shorebird_cli/src/artifact_manager.dart';
+import 'package:shorebird_cli/src/cache.dart';
 import 'package:shorebird_cli/src/code_push_client_wrapper.dart';
 import 'package:shorebird_cli/src/command.dart';
 import 'package:shorebird_cli/src/commands/patch_new/patch_new.dart';
@@ -137,7 +138,11 @@ NOTE: this is ${styleBold.wrap('not')} recommended. Asset changes cannot be incl
       case ReleaseType.ios:
         throw UnimplementedError();
       case ReleaseType.iosFramework:
-        throw UnimplementedError();
+        return IosFrameworkPatcher(
+          argResults: results,
+          flavor: flavor,
+          target: target,
+        );
       case ReleaseType.aar:
         return AarPatcher(
           argResults: results,
@@ -156,6 +161,8 @@ NOTE: this is ${styleBold.wrap('not')} recommended. Asset changes cannot be incl
   Future<void> createPatch(Patcher patcher) async {
     await patcher.assertPreconditions();
     await patcher.assertArgsAreValid();
+
+    await cache.updateAll();
 
     final app = await codePushClientWrapper.getApp(appId: appId);
 
@@ -186,6 +193,8 @@ NOTE: this is ${styleBold.wrap('not')} recommended. Asset changes cannot be incl
 
     return await runScoped(
       () async {
+        await cache.updateAll();
+
         // Don't built the patch artifact twice with the same Flutter revision.
         if (lastBuiltFlutterRevision != release.flutterRevision) {
           patchArtifact = await patcher.buildPatchArtifact();

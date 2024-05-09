@@ -3,6 +3,7 @@ import 'dart:async';
 import 'package:mason_logger/mason_logger.dart';
 import 'package:meta/meta.dart';
 import 'package:scoped/scoped.dart';
+import 'package:shorebird_cli/src/cache.dart';
 import 'package:shorebird_cli/src/code_push_client_wrapper.dart';
 import 'package:shorebird_cli/src/command.dart';
 import 'package:shorebird_cli/src/commands/release_new/release_new.dart';
@@ -178,6 +179,8 @@ of the iOS app that is using this module.''',
     await releaser.assertPreconditions();
     await releaser.assertArgsAreValid();
 
+    await cache.updateAll();
+
     // This command handles logging, we don't need to provide our own
     // progress, error logs, etc.
     final app = await codePushClientWrapper.getApp(appId: appId);
@@ -193,6 +196,8 @@ of the iOS app that is using this module.''',
     );
     return await runScoped(
       () async {
+        await cache.updateAll();
+
         final releaseArtifact = await releaser.buildReleaseArtifacts();
         final releaseVersion = await releaser.getReleaseVersion(
           releaseArtifactRoot: releaseArtifact,

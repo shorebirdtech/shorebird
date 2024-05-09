@@ -270,4 +270,27 @@ class ArtifactManager {
       ),
     );
   }
+
+  /// Finds the most recently-edited app.dill file in the .dart_tool directory.
+  // TODO(bryanoltman): This is an enormous hack – we don't know that this is
+  // the correct file.
+  File newestAppDill() {
+    final projectRoot = shorebirdEnv.getShorebirdProjectRoot()!;
+    final dartToolBuildDir = Directory(
+      p.join(
+        projectRoot.path,
+        '.dart_tool',
+        'flutter_build',
+      ),
+    );
+
+    return dartToolBuildDir
+        .listSync(recursive: true)
+        .whereType<File>()
+        .where((f) => p.basename(f.path) == 'app.dill')
+        .reduce(
+          (a, b) =>
+              a.statSync().modified.isAfter(b.statSync().modified) ? a : b,
+        );
+  }
 }
