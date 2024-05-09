@@ -7,6 +7,7 @@ env:
   PROJECT_ID: code-push-prod
   SERVICE: artifact-proxy
   REGION: us-central1
+  CONTAINER_REGISTRY: us-docker.pkg.dev
 
 jobs:
   deploy:
@@ -24,35 +25,40 @@ jobs:
         with:
           submodules: recursive
 
-      - uses: dart-lang/setup-dart@v1
+      - name: 🎯 Setup Dart
+        uses: dart-lang/setup-dart@v1
 
-      - name: GCloud Auth
-        uses: "google-github-actions/auth@v2"
+      - name: 🔐 GCloud Auth
+        uses: google-github-actions/auth@v2
         with:
           project_id: ${{ env.PROJECT_ID }}
           credentials_json: ${{ secrets.CLOUD_RUN_SA_PROD }}
           export_environment_variables: true
 
-      - name: Setup Cloud SDK
+      - name: ☁️ Setup GCloud SDK
         uses: google-github-actions/setup-gcloud@v2.1.0
         with:
           project_id: ${{ env.PROJECT_ID }}
 
-      - name: Authorize Docker Push
-        run: gcloud auth configure-docker
+      - name: 🔓 Login to Artifact Registry
+        uses: docker/login-action@v3
+        with:
+          registry: ${{ env.CONTAINER_REGISTRY }}
+          username: _json_key
+          password: ${{ secrets.CLOUD_RUN_SA_PROD }}
 
-      - name: Build and Push Container
+      - name: 🐳 Build and Push Container
         run: |-
-          docker build -t gcr.io/${{ env.PROJECT_ID }}/${{ env.SERVICE }}:${{ github.sha }} .
-          docker push gcr.io/${{ env.PROJECT_ID }}/${{ env.SERVICE }}:${{ github.sha }}
+          docker build -t ${{ env.CONTAINER_REGISTRY }}/${{ env.PROJECT_ID }}/us.gcr.io/${{ env.SERVICE }}:${{ github.sha }} .
+          docker push ${{ env.CONTAINER_REGISTRY }}/${{ env.PROJECT_ID }}/us.gcr.io/${{ env.SERVICE }}:${{ github.sha }}
 
-      - name: Deploy to Cloud Run
+      - name: 🚀 Deploy to Cloud Run
         id: deploy
-        uses: google-github-actions/deploy-cloudrun@v2.4.1
+        uses: google-github-actions/deploy-cloudrun@v2.3.0
         with:
           service: ${{ env.SERVICE }}
-          image: gcr.io/${{ env.PROJECT_ID }}/${{ env.SERVICE }}:${{ github.sha }}
+          image: ${{ env.CONTAINER_REGISTRY }}/${{ env.PROJECT_ID }}/us.gcr.io/${{ env.SERVICE }}:${{ github.sha }}
           region: ${{ env.REGION }}
 
-      - name: Show Output
+      - name: 👀 Show Output
         run: echo ${{ steps.deploy.outputs.url }}
