@@ -129,9 +129,7 @@ mixin ShorebirdBuildMixin on ShorebirdCommand {
         if (targetPlatformArgs != null) '--target-platform=$targetPlatformArgs',
         // TODO(bryanoltman): reintroduce coverage when we can support this.
         // See https://github.com/shorebirdtech/shorebird/issues/1141.
-        // coverage:ignore-start
         if (splitPerAbi) '--split-per-abi',
-        // coverage:ignore-end
         ...results.rest,
       ];
 
