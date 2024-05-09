@@ -26,7 +26,7 @@ class PatchFailedException implements Exception {
 ///
 /// Used to create diffs between files.
 ///
-/// thorw PatchFailedException if the patch fails.
+/// Throws [PatchFailedException] if the patch command exits with non-zero code.
 class PatchProgram {
   Future<void> run({
     required String releaseArtifactPath,
@@ -45,7 +45,7 @@ class PatchProgram {
 
     final result = await process.run(diffExecutable, diffArguments);
 
-    if (result.exitCode != 0) {
+    if (result.exitCode != ExitCode.success.code) {
       throw PatchFailedException(
         '''
 Failed to create diff (exit code ${result.exitCode}).
