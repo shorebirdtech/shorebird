@@ -27,7 +27,7 @@ import '../../matchers.dart';
 import '../../mocks.dart';
 
 void main() {
-  group('PatchNewCommand', () {
+  group(PatchCommand, () {
     const appId = 'test-app-id';
     const appDisplayName = 'Test App';
     const arch = 'aarch64';
@@ -132,7 +132,7 @@ void main() {
       shorebirdFlutter = MockShorebirdFlutter();
 
       when(() => argResults['dry-run']).thenReturn(false);
-      when(() => argResults['platform']).thenReturn(['android']);
+      when(() => argResults['platforms']).thenReturn(['android']);
       when(() => argResults['release-version']).thenReturn(releaseVersion);
       when(() => argResults.wasParsed(any())).thenReturn(true);
 

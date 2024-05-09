@@ -91,7 +91,7 @@ void main() {
       shorebirdFlutter = MockShorebirdFlutter();
 
       when(() => argResults['dry-run']).thenReturn(false);
-      when(() => argResults['platform']).thenReturn(['android']);
+      when(() => argResults['platforms']).thenReturn(['android']);
       when(() => argResults.wasParsed(any())).thenReturn(true);
 
       when(cache.updateAll).thenAnswer((_) async => {});

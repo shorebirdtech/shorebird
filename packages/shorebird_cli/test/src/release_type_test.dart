@@ -24,32 +24,35 @@ void main() {
       setUp(() {
         parser = ArgParser()
           ..addMultiOption(
-            'platform',
+            'platforms',
             allowed: ReleaseType.values.map((e) => e.cliName),
           );
       });
 
-      group('when the platform argument is provided', () {
+      group('when the platforms argument is provided', () {
         test('parses the release types', () {
           expect(
-            parser.parse(['--platform', 'android']).releaseTypes.toList(),
+            parser.parse(['--platforms', 'android']).releaseTypes.toList(),
             [ReleaseType.android],
           );
           expect(
-            parser.parse(['--platform', 'ios']).releaseTypes.toList(),
+            parser.parse(['--platforms', 'ios']).releaseTypes.toList(),
             [ReleaseType.ios],
           );
           expect(
-            parser.parse(['--platform', 'ios-framework']).releaseTypes.toList(),
+            parser
+                .parse(['--platforms', 'ios-framework'])
+                .releaseTypes
+                .toList(),
             [ReleaseType.iosFramework],
           );
           expect(
-            parser.parse(['--platform', 'aar']).releaseTypes.toList(),
+            parser.parse(['--platforms', 'aar']).releaseTypes.toList(),
             [ReleaseType.aar],
           );
         });
 
-        group('when the platform is provided as a raw arg', () {
+        group('when the platforms is provided as a raw arg', () {
           test('throws an ArgumentError if the platform is invalid', () {
             expect(
               () => parser.parse(['foo']).releaseTypes.toList(),
