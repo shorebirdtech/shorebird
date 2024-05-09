@@ -263,7 +263,7 @@ NOTE: this is ${styleBold.wrap('not')} recommended. Asset changes cannot be incl
     required ArchiveDiffer archiveDiffer,
   }) async {
     try {
-      return patchDiffChecker.confirmUnpatchableDiffsIfNecessary(
+      return await patchDiffChecker.confirmUnpatchableDiffsIfNecessary(
         localArtifact: patchArtifact,
         releaseArtifact: releaseArtifact,
         archiveDiffer: archiveDiffer,
