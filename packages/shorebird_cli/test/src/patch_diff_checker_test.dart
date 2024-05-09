@@ -84,28 +84,6 @@ void main() {
           .thenReturn(nativeDiffPrettyString);
     });
 
-    group('zipAndConfirmUnpatchableDiffsIfNecessary', () {
-      test('zips directory and forwards to confirmUnpatchableDiffsIfNecessary',
-          () async {
-        final tempDir = Directory.systemTemp.createTempSync();
-        final localArtifactDirectory = Directory(
-          p.join(tempDir.path, 'artifact'),
-        )..createSync();
-
-        await runWithOverrides(
-          () => patchDiffChecker.zipAndConfirmUnpatchableDiffsIfNecessary(
-            localArtifactDirectory: localArtifactDirectory,
-            releaseArtifact: releaseArtifact,
-            archiveDiffer: archiveDiffer,
-            allowAssetChanges: false,
-            allowNativeChanges: false,
-          ),
-        );
-
-        verify(() => archiveDiffer.changedFiles(any(), any())).called(1);
-      });
-    });
-
     group('confirmUnpatchableDiffsIfNecessary', () {
       group('when native diffs are detected', () {
         setUp(() {

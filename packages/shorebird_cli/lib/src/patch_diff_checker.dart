@@ -42,28 +42,6 @@ PatchDiffChecker get patchDiffChecker => read(patchDiffCheckerRef);
 /// Verifies that a patch can successfully be applied to a release artifact.
 /// {@endtemplate}
 class PatchDiffChecker {
-  /// Zips the contents of [localArtifactDirectory] to a temporary file and
-  /// forwards to [confirmUnpatchableDiffsIfNecessary].
-  Future<DiffStatus> zipAndConfirmUnpatchableDiffsIfNecessary({
-    required Directory localArtifactDirectory,
-    required File releaseArtifact,
-    required ArchiveDiffer archiveDiffer,
-    required bool allowAssetChanges,
-    required bool allowNativeChanges,
-  }) async {
-    final zipProgress = logger.progress('Compressing archive');
-    final zippedFile = await localArtifactDirectory.zipToTempFile();
-    zipProgress.complete();
-
-    return confirmUnpatchableDiffsIfNecessary(
-      localArtifact: zippedFile,
-      releaseArtifact: releaseArtifact,
-      archiveDiffer: archiveDiffer,
-      allowAssetChanges: allowAssetChanges,
-      allowNativeChanges: allowNativeChanges,
-    );
-  }
-
   /// Checks for differences that could cause issues when applying the
   /// [localArtifact] patch to the [releaseArtifact].
   Future<DiffStatus> confirmUnpatchableDiffsIfNecessary({
