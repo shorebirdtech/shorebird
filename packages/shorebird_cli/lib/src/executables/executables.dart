@@ -7,4 +7,5 @@ export 'gradlew.dart';
 export 'idevicesyslog.dart';
 export 'ios_deploy.dart';
 export 'java.dart';
+export 'patch_executable.dart';
 export 'xcodebuild.dart';
