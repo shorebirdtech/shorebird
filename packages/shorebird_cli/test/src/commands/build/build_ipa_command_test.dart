@@ -5,13 +5,13 @@ import 'package:mason_logger/mason_logger.dart';
 import 'package:mocktail/mocktail.dart';
 import 'package:path/path.dart' as p;
 import 'package:scoped/scoped.dart';
+import 'package:shorebird_cli/src/artifact_builder.dart';
 import 'package:shorebird_cli/src/commands/build/build.dart';
 import 'package:shorebird_cli/src/doctor.dart';
 import 'package:shorebird_cli/src/logger.dart';
 import 'package:shorebird_cli/src/os/operating_system_interface.dart';
 import 'package:shorebird_cli/src/platform/platform.dart';
 import 'package:shorebird_cli/src/shorebird_env.dart';
-import 'package:shorebird_cli/src/shorebird_process.dart';
 import 'package:shorebird_cli/src/shorebird_validator.dart';
 import 'package:shorebird_cli/src/validators/validators.dart';
 import 'package:test/test.dart';
@@ -22,27 +22,25 @@ import '../../mocks.dart';
 void main() {
   group(BuildIpaCommand, () {
     late ArgResults argResults;
+    late ArtifactBuilder artifactBuilder;
     late Doctor doctor;
     late Ios ios;
     late ShorebirdLogger logger;
     late OperatingSystemInterface operatingSystemInterface;
-    late ShorebirdProcessResult buildProcessResult;
-    late ShorebirdProcessResult flutterPubGetProcessResult;
     late BuildIpaCommand command;
     late ShorebirdEnv shorebirdEnv;
     late ShorebirdFlutterValidator flutterValidator;
-    late ShorebirdProcess shorebirdProcess;
     late ShorebirdValidator shorebirdValidator;
 
     R runWithOverrides<R>(R Function() body) {
       return runScoped(
         body,
         values: {
+          artifactBuilderRef.overrideWith(() => artifactBuilder),
           doctorRef.overrideWith(() => doctor),
           iosRef.overrideWith(() => ios),
           loggerRef.overrideWith(() => logger),
           osInterfaceRef.overrideWith(() => operatingSystemInterface),
-          processRef.overrideWith(() => shorebirdProcess),
           shorebirdEnvRef.overrideWith(() => shorebirdEnv),
           shorebirdValidatorRef.overrideWith(() => shorebirdValidator),
         },
@@ -54,37 +52,25 @@ void main() {
     });
 
     setUp(() {
+      artifactBuilder = MockArtifactBuilder();
       argResults = MockArgResults();
       doctor = MockDoctor();
       ios = MockIos();
       logger = MockShorebirdLogger();
       operatingSystemInterface = MockOperatingSystemInterface();
-      shorebirdProcess = MockShorebirdProcess();
-      buildProcessResult = MockProcessResult();
-      flutterPubGetProcessResult = MockProcessResult();
       flutterValidator = MockShorebirdFlutterValidator();
       shorebirdEnv = MockShorebirdEnv();
       shorebirdValidator = MockShorebirdValidator();
 
-      when(
-        () => shorebirdProcess.run(
-          'flutter',
-          ['--no-version-check', 'pub', 'get', '--offline'],
-          runInShell: any(named: 'runInShell'),
-          useVendedFlutter: false,
-        ),
-      ).thenAnswer((_) async => flutterPubGetProcessResult);
-      when(() => flutterPubGetProcessResult.exitCode)
-          .thenReturn(ExitCode.success.code);
-      when(
-        () => shorebirdProcess.run(
-          any(),
-          any(),
-          runInShell: any(named: 'runInShell'),
-        ),
-      ).thenAnswer((_) async => buildProcessResult);
       when(() => argResults['codesign']).thenReturn(true);
       when(() => argResults.rest).thenReturn([]);
+      when(
+        () => artifactBuilder.buildIpa(
+          flavor: any(named: 'flavor'),
+          target: any(named: 'target'),
+          codesign: any(named: 'codesign'),
+        ),
+      ).thenAnswer((_) async => File(''));
       when(() => ios.createExportOptionsPlist()).thenReturn(File('.'));
       when(() => logger.progress(any())).thenReturn(MockProgress());
       when(() => logger.info(any())).thenReturn(null);
@@ -131,42 +117,26 @@ void main() {
     });
 
     test('exits with code 70 when building ipa fails', () async {
-      when(() => buildProcessResult.exitCode).thenReturn(1);
-      when(() => buildProcessResult.stderr).thenReturn('oops');
+      when(
+        () => artifactBuilder.buildIpa(
+          flavor: any(named: 'flavor'),
+          target: any(named: 'target'),
+          codesign: any(named: 'codesign'),
+        ),
+      ).thenThrow(ArtifactBuildException('oops'));
 
       final exitCode = await runWithOverrides(command.run);
 
       expect(exitCode, equals(ExitCode.software.code));
-      verify(
-        () => shorebirdProcess.run(
-          'flutter',
-          any(
-            that: containsAll(
-              ['build', 'ipa', '--release'],
-            ),
-          ),
-          runInShell: any(named: 'runInShell'),
-        ),
-      ).called(1);
+      verify(() => artifactBuilder.buildIpa()).called(1);
     });
 
     test('exits with code 0 when building ipa succeeds', () async {
-      when(() => buildProcessResult.exitCode).thenReturn(ExitCode.success.code);
       final exitCode = await runWithOverrides(command.run);
 
       expect(exitCode, equals(ExitCode.success.code));
 
-      verify(
-        () => shorebirdProcess.run(
-          'flutter',
-          any(
-            that: containsAll(
-              ['build', 'ipa', '--release'],
-            ),
-          ),
-          runInShell: true,
-        ),
-      ).called(1);
+      verify(() => artifactBuilder.buildIpa()).called(1);
 
       verifyInOrder([
         () => logger.info(
@@ -182,22 +152,6 @@ ${lightCyan.wrap(p.join('build', 'ios', 'ipa', 'Runner.ipa'))}''',
       ]);
     });
 
-    test('runs flutter pub get with system flutter after successful build',
-        () async {
-      when(() => buildProcessResult.exitCode).thenReturn(ExitCode.success.code);
-
-      await runWithOverrides(command.run);
-
-      verify(
-        () => shorebirdProcess.run(
-          'flutter',
-          ['--no-version-check', 'pub', 'get', '--offline'],
-          runInShell: any(named: 'runInShell'),
-          useVendedFlutter: false,
-        ),
-      ).called(1);
-    });
-
     test(
         'exits with code 0 when building ipa succeeds '
         'with flavor and target', () async {
@@ -205,27 +159,12 @@ ${lightCyan.wrap(p.join('build', 'ios', 'ipa', 'Runner.ipa'))}''',
       final target = p.join('lib', 'main_development.dart');
       when(() => argResults['flavor']).thenReturn(flavor);
       when(() => argResults['target']).thenReturn(target);
-      when(() => buildProcessResult.exitCode).thenReturn(ExitCode.success.code);
       final exitCode = await runWithOverrides(command.run);
 
       expect(exitCode, equals(ExitCode.success.code));
 
       verify(
-        () => shorebirdProcess.run(
-          'flutter',
-          any(
-            that: containsAll(
-              [
-                'build',
-                'ipa',
-                '--release',
-                '--flavor=$flavor',
-                '--target=$target',
-              ],
-            ),
-          ),
-          runInShell: true,
-        ),
+        () => artifactBuilder.buildIpa(flavor: flavor, target: target),
       ).called(1);
 
       verifyInOrder([
@@ -246,19 +185,12 @@ ${lightCyan.wrap(p.join('build', 'ios', 'ipa', 'Runner.ipa'))}''',
         'exits with code 0 when building ipa succeeds '
         'with --no-codesign', () async {
       when(() => argResults['codesign']).thenReturn(false);
-      when(() => buildProcessResult.exitCode).thenReturn(ExitCode.success.code);
       final exitCode = await runWithOverrides(command.run);
 
       expect(exitCode, equals(ExitCode.success.code));
 
       verify(
-        () => shorebirdProcess.run(
-          'flutter',
-          any(
-            that: containsAll(['build', 'ipa', '--release', '--no-codesign']),
-          ),
-          runInShell: true,
-        ),
+        () => artifactBuilder.buildIpa(codesign: false),
       ).called(1);
 
       verify(

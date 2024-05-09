@@ -8,7 +8,7 @@ import 'package:shorebird_cli/src/artifact_builder.dart';
 import 'package:shorebird_cli/src/artifact_manager.dart';
 import 'package:shorebird_cli/src/cache.dart';
 import 'package:shorebird_cli/src/code_push_client_wrapper.dart';
-import 'package:shorebird_cli/src/commands/patch_new/patch_new.dart';
+import 'package:shorebird_cli/src/commands/patch/patch.dart';
 import 'package:shorebird_cli/src/config/config.dart';
 import 'package:shorebird_cli/src/deployment_track.dart';
 import 'package:shorebird_cli/src/logger.dart';
@@ -85,7 +85,7 @@ void main() {
     late ShorebirdEnv shorebirdEnv;
     late ShorebirdFlutter shorebirdFlutter;
 
-    late PatchNewCommand command;
+    late PatchCommand command;
 
     R runWithOverrides<R>(R Function() body) {
       return runScoped(
@@ -255,18 +255,12 @@ void main() {
         ),
       ).thenAnswer((_) async => {});
 
-      command = PatchNewCommand(resolvePatcher: (_) => patcher)
+      command = PatchCommand(resolvePatcher: (_) => patcher)
         ..testArgResults = argResults;
     });
 
     test('has non-empty description', () {
       expect(command.description, isNotEmpty);
-    });
-
-    group('hidden', () {
-      test('is true', () {
-        expect(command.hidden, true);
-      });
     });
 
     group('getPatcher', () {

@@ -49,7 +49,7 @@ On Xcode builds it is used as "CFBundleVersion".''',
       )
       ..addFlag(
         'codesign',
-        help: 'Codesign the application bundle.',
+        help: 'Codesign the application bundle (iOS only).',
         defaultsTo: true,
       )
       ..addFlag(
@@ -61,7 +61,7 @@ On Xcode builds it is used as "CFBundleVersion".''',
       ..addOption(
         exportOptionsPlistArgName,
         help:
-            '''Export an IPA with these options. See "xcodebuild -h" for available exportOptionsPlist keys.''',
+            '''Export an IPA with these options. See "xcodebuild -h" for available exportOptionsPlist keys (iOS only).''',
       )
       ..addOption(
         'flutter-version',
@@ -101,9 +101,6 @@ of the iOS app that is using this module.''',
   }
 
   late final ResolveReleaser _resolveReleaser;
-
-  @override
-  bool get hidden => true;
 
   @override
   String get description =>

@@ -1,11 +1,9 @@
-import 'dart:io';
-
 import 'package:mason_logger/mason_logger.dart';
 import 'package:path/path.dart' as p;
+import 'package:shorebird_cli/src/artifact_builder.dart';
 import 'package:shorebird_cli/src/command.dart';
 import 'package:shorebird_cli/src/doctor.dart';
 import 'package:shorebird_cli/src/logger.dart';
-import 'package:shorebird_cli/src/shorebird_build_mixin.dart';
 import 'package:shorebird_cli/src/shorebird_validator.dart';
 
 /// {@template build_ipa_command}
@@ -13,7 +11,7 @@ import 'package:shorebird_cli/src/shorebird_validator.dart';
 /// Builds an .xcarchive and optionally .ipa for an iOS app to be generated for
 /// App Store submission.
 /// {@endtemplate}
-class BuildIpaCommand extends ShorebirdCommand with ShorebirdBuildMixin {
+class BuildIpaCommand extends ShorebirdCommand {
   /// {@macro build_ipa_command}
   BuildIpaCommand() {
     argParser
@@ -63,12 +61,12 @@ Codesigning is disabled. You must manually codesign before deploying to devices.
 
     final buildProgress = logger.progress('Building ipa');
     try {
-      await buildIpa(
+      await artifactBuilder.buildIpa(
         flavor: flavor,
         target: target,
         codesign: codesign,
       );
-    } on ProcessException catch (error) {
+    } on ArtifactBuildException catch (error) {
       buildProgress.fail('Failed to build: ${error.message}');
       return ExitCode.software.code;
     }
