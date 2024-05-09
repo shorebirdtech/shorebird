@@ -166,28 +166,28 @@ void main() {
         final shorebirdCacheDirectory = runWithOverrides(
           () => Cache.shorebirdCacheDirectory,
         )..createSync(recursive: true);
-        final configDirectory = runWithOverrides(
-          () => shorebirdEnv.configDirectory,
+        final logsDirectory = runWithOverrides(
+          () => shorebirdEnv.logsDirectory,
         )..createSync(recursive: true);
         expect(shorebirdCacheDirectory.existsSync(), isTrue);
-        expect(configDirectory.existsSync(), isTrue);
+        expect(logsDirectory.existsSync(), isTrue);
         runWithOverrides(cache.clear);
         expect(shorebirdCacheDirectory.existsSync(), isFalse);
-        expect(configDirectory.existsSync(), isFalse);
+        expect(logsDirectory.existsSync(), isFalse);
       });
 
       test('does nothing if directory does not exist', () {
         final shorebirdCacheDirectory = runWithOverrides(
           () => Cache.shorebirdCacheDirectory,
         );
-        final configDirectory = runWithOverrides(
-          () => shorebirdEnv.configDirectory,
+        final logsDirectory = runWithOverrides(
+          () => shorebirdEnv.logsDirectory,
         )..deleteSync(recursive: true);
         expect(shorebirdCacheDirectory.existsSync(), isFalse);
-        expect(configDirectory.existsSync(), isFalse);
+        expect(logsDirectory.existsSync(), isFalse);
         runWithOverrides(cache.clear);
         expect(shorebirdCacheDirectory.existsSync(), isFalse);
-        expect(configDirectory.existsSync(), isFalse);
+        expect(logsDirectory.existsSync(), isFalse);
       });
     });
 

@@ -25,7 +25,9 @@ class ShorebirdLogger extends Logger {
       ),
     );
 
-    if (!file.existsSync()) file.createSync(recursive: true);
+    if (!file.existsSync()) {
+      file.createSync(recursive: true);
+    }
 
     return file;
   })();
