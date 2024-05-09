@@ -11,6 +11,7 @@ import 'package:shorebird_cli/src/code_push_client_wrapper.dart';
 import 'package:shorebird_cli/src/commands/patch/patch.dart';
 import 'package:shorebird_cli/src/config/config.dart';
 import 'package:shorebird_cli/src/deployment_track.dart';
+import 'package:shorebird_cli/src/executables/executables.dart';
 import 'package:shorebird_cli/src/logger.dart';
 import 'package:shorebird_cli/src/patch_diff_checker.dart';
 import 'package:shorebird_cli/src/platform/platform.dart';
@@ -80,6 +81,7 @@ void main() {
       url: 'https://example.com/release.aab',
     );
 
+    late AotTools aotTools;
     late ArchiveDiffer archiveDiffer;
     late ArgResults argResults;
     late ArtifactBuilder artifactBuilder;
@@ -99,6 +101,7 @@ void main() {
       return runScoped(
         body,
         values: {
+          aotToolsRef.overrideWith(() => aotTools),
           artifactBuilderRef.overrideWith(() => artifactBuilder),
           artifactManagerRef.overrideWith(() => artifactManager),
           cacheRef.overrideWith(() => cache),
@@ -126,6 +129,7 @@ void main() {
     tearDownAll(restoreExitFunction);
 
     setUp(() {
+      aotTools = MockAotTools();
       archiveDiffer = MockAndroidArchiveDiffer();
       argResults = MockArgResults();
       artifactBuilder = MockArtifactBuilder();
@@ -139,11 +143,12 @@ void main() {
       shorebirdEnv = MockShorebirdEnv();
       shorebirdFlutter = MockShorebirdFlutter();
 
-      when(() => argResults['debug-linker']).thenReturn(false);
       when(() => argResults['dry-run']).thenReturn(false);
       when(() => argResults['platforms']).thenReturn(['android']);
       when(() => argResults['release-version']).thenReturn(releaseVersion);
       when(() => argResults.wasParsed(any())).thenReturn(true);
+
+      when(aotTools.isLinkDebugInfoSupported).thenAnswer((_) async => true);
 
       when(
         () => artifactManager.downloadFile(any()),
@@ -351,9 +356,11 @@ void main() {
 
       group('when has link percentage', () {
         const linkPercentage = 42.1337;
+        final debugInfoFile = File('debug-info.txt');
 
         setUp(() {
           when(() => patcher.linkPercentage).thenReturn(linkPercentage);
+          when(() => patcher.debugInfoFile).thenReturn(debugInfoFile);
         });
 
         test('logs correct summary', () async {
@@ -363,6 +370,7 @@ void main() {
             '''🕹️  Platform: ${lightCyan.wrap(patcher.releaseType.releasePlatform.name)} ${lightCyan.wrap('[arm32 (42 B)]')}''',
             '🟢 Track: ${lightCyan.wrap('Production')}',
             '''🔗 Running ${lightCyan.wrap('${patcher.linkPercentage!.toStringAsFixed(1)}%')} on CPU''',
+            '''🔍 Debug Info: ${lightCyan.wrap(patcher.debugInfoFile.path)}''',
           ];
           await expectLater(
             runWithOverrides(
@@ -380,42 +388,6 @@ void main() {
               any(that: contains(expectedSummary.join('\n'))),
             ),
           ).called(1);
-        });
-
-        group('when has debug info', () {
-          final debugInfoFile = File('debug-info.txt');
-
-          setUp(() {
-            when(() => argResults['debug-linker']).thenReturn(true);
-            when(() => patcher.debugInfoFile).thenReturn(debugInfoFile);
-          });
-
-          test('logs correct summary', () async {
-            final expectedSummary = [
-              '''📱 App: ${lightCyan.wrap(appDisplayName)} ${lightCyan.wrap('($appId)')}''',
-              '📦 Release Version: ${lightCyan.wrap(releaseVersion)}',
-              '''🕹️  Platform: ${lightCyan.wrap(patcher.releaseType.releasePlatform.name)} ${lightCyan.wrap('[arm32 (42 B)]')}''',
-              '🟢 Track: ${lightCyan.wrap('Production')}',
-              '''🔗 Running ${lightCyan.wrap('${patcher.linkPercentage!.toStringAsFixed(1)}%')} on CPU''',
-              '''🔍 Debug Info: ${lightCyan.wrap(patcher.debugInfoFile.path)}''',
-            ];
-            await expectLater(
-              runWithOverrides(
-                () => command.confirmCreatePatch(
-                  app: appMetadata,
-                  releaseVersion: releaseVersion,
-                  patcher: patcher,
-                  patchArtifactBundles: patchArtifactBundles,
-                ),
-              ),
-              completes,
-            );
-            verify(
-              () => logger.info(
-                any(that: contains(expectedSummary.join('\n'))),
-              ),
-            ).called(1);
-          });
         });
       });
     });

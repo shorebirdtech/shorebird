@@ -86,12 +86,6 @@ of the iOS app that is using this module.''',
         defaultsTo: true,
       )
       ..addFlag(
-        'debug-linker',
-        defaultsTo: true,
-        help: 'Collects linker diagnostic information to help troubleshoot low '
-            'link percentages (iOS only.)',
-      )
-      ..addFlag(
         'dry-run',
         abbr: 'n',
         negatable: false,
@@ -299,9 +293,8 @@ NOTE: this is ${styleBold.wrap('not')} recommended. Asset changes cannot be incl
         '🟢 Track: ${lightCyan.wrap('Production')}',
       if (patcher.linkPercentage != null)
         '''🔗 Running ${lightCyan.wrap('${patcher.linkPercentage!.toStringAsFixed(1)}%')} on CPU''',
-      if (results['debug-linker'] == true &&
-          (patcher.linkPercentage != null &&
-              patcher.linkPercentage! < Patcher.minLinkPercentage))
+      if (patcher.linkPercentage != null &&
+          patcher.linkPercentage! < Patcher.minLinkPercentage)
         '''🔍 Debug Info: ${lightCyan.wrap(patcher.debugInfoFile.path)}''',
     ];
 

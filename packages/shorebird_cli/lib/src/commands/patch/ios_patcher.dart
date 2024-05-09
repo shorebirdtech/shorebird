@@ -286,8 +286,7 @@ class IosPatcher extends Patcher {
     required File releaseArtifact,
   }) async {
     final patch = File(_aotOutputPath);
-    final dumpDebugInfo = argResults['debug-linker'] == true &&
-        (await aotTools.isLinkDebugInfoSupported());
+    final dumpDebugInfo = await aotTools.isLinkDebugInfoSupported();
 
     if (!patch.existsSync()) {
       logger.err('Unable to find patch AOT file at ${patch.path}');

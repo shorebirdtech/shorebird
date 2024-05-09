@@ -128,6 +128,8 @@ void main() {
 
         when(() => ios.exportOptionsPlistFromArgs(any())).thenReturn(File(''));
 
+        when(aotTools.isLinkDebugInfoSupported).thenAnswer((_) async => false);
+
         patcher = IosPatcher(
           argResults: argResults,
           flavor: null,
@@ -875,7 +877,6 @@ void main() {
 
               group('when isLinkDebugInfoSupported', () {
                 setUp(() {
-                  when(() => argResults['debug-linker']).thenReturn(true);
                   when(
                     aotTools.isLinkDebugInfoSupported,
                   ).thenAnswer((_) async => true);
