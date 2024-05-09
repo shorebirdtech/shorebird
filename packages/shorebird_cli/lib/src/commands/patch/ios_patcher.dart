@@ -25,8 +25,6 @@ import 'package:shorebird_cli/src/third_party/flutter_tools/lib/flutter_tools.da
 import 'package:shorebird_cli/src/version.dart';
 import 'package:shorebird_code_push_client/shorebird_code_push_client.dart';
 
-const linkDebugInfoFileName = 'linker_diagnostic.zip';
-
 typedef _LinkResult = ({int exitCode, double? linkPercentage});
 
 /// {@template ios_patcher}
@@ -40,45 +38,15 @@ class IosPatcher extends Patcher {
     required super.target,
   });
 
-  // Link percentage that is considered the minimum before a user might notice.
-  // Our early testing has shown that about:
-  // - 1/3rd of patches link at 99%
-  // - 1/3rd of patches link between 20% and 99%
-  // - 1/3rd of patches link below 20%
-  // Most lowering is likely due to:
-  // https://github.com/shorebirdtech/shorebird/issues/1825
-  static const double minLinkPercentage = 75;
+  String get _aotOutputPath => p.join(buildDirectory.path, 'out.aot');
 
-  static String lowLinkPercentageWarning(double linkPercentage) {
-    return '''
-${lightCyan.wrap('shorebird patch')} was only able to share ${linkPercentage.toStringAsFixed(1)}% of Dart code with the released app.
-This means the patched code may execute slower than expected.
-https://docs.shorebird.dev/status#link-percentage-ios
-''';
-  }
-
-  String get _buildDirectory => p.join(
-        shorebirdEnv.getShorebirdProjectRoot()!.path,
-        'build',
-      );
-
-  String get _aotOutputPath => p.join(
-        _buildDirectory,
-        'out.aot',
-      );
-
-  String get _vmcodeOutputPath => p.join(
-        _buildDirectory,
-        'out.vmcode',
-      );
-
-  String get _debugInfoOutputPath => p.join(
-        _buildDirectory,
-        linkDebugInfoFileName,
-      );
+  String get _vmcodeOutputPath => p.join(buildDirectory.path, 'out.vmcode');
 
   @visibleForTesting
   double? lastBuildLinkPercentage;
+
+  @override
+  double? get linkPercentage => lastBuildLinkPercentage;
 
   @override
   ReleaseType get releaseType => ReleaseType.ios;
@@ -220,8 +188,9 @@ https://docs.shorebird.dev/status#link-percentage-ios
         releaseArtifact: releaseArtifactFile,
       );
       if (exitCode != ExitCode.success.code) return exit(exitCode);
-      if (linkPercentage != null && linkPercentage < minLinkPercentage) {
-        logger.warn(lowLinkPercentageWarning(linkPercentage));
+      if (linkPercentage != null &&
+          linkPercentage < Patcher.minLinkPercentage) {
+        logger.warn(Patcher.lowLinkPercentageWarning(linkPercentage));
       }
       lastBuildLinkPercentage = linkPercentage;
     }
@@ -352,19 +321,14 @@ https://docs.shorebird.dev/status#link-percentage-ios
         analyzeSnapshot: analyzeSnapshot.path,
         genSnapshot: genSnapshot,
         outputPath: _vmcodeOutputPath,
-        workingDirectory: _buildDirectory,
+        workingDirectory: buildDirectory.path,
         kernel: artifactManager.newestAppDill().path,
         dumpDebugInfoPath: dumpDebugInfoDir?.path,
       );
 
       if (dumpDebugInfo && dumpDebugInfoDir != null) {
         final debugInfoZip = await dumpDebugInfoDir.zipToTempFile();
-        debugInfoZip.copySync(
-          p.join(
-            'build',
-            _debugInfoOutputPath,
-          ),
-        );
+        debugInfoZip.copySync(p.join('build', debugInfoFile.path));
       }
     } catch (error) {
       linkProgress.fail('Failed to link AOT files: $error');

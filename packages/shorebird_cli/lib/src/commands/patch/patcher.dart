@@ -1,6 +1,8 @@
 import 'dart:io';
 
 import 'package:args/args.dart';
+import 'package:mason_logger/mason_logger.dart';
+import 'package:path/path.dart' as p;
 import 'package:shorebird_cli/src/archive_analysis/archive_differ.dart';
 import 'package:shorebird_cli/src/code_push_client_wrapper.dart';
 import 'package:shorebird_cli/src/patch_diff_checker.dart';
@@ -71,4 +73,38 @@ abstract class Patcher {
 
   /// Whether to allow changes in native code (--allow-native-diffs).
   bool get allowNativeDiffs => argResults['allow-native-diffs'] == true;
+
+  /// The link percentage for the generated patch artifact if applicable.
+  /// Returns `null` if the platform does not use a linker or if the linking
+  /// step has not yet been run.
+  double? get linkPercentage => null;
+
+  /// The build directory of the respective shorebird project.
+  Directory get buildDirectory => Directory(
+        p.join(
+          shorebirdEnv.getShorebirdProjectRoot()!.path,
+          'build',
+        ),
+      );
+
+  /// The path to the output file for the debug info.
+  File get debugInfoFile =>
+      File(p.join(buildDirectory.path, 'patch-debug.zip'));
+
+  // Link percentage that is considered the minimum before a user might notice.
+  // Our early testing has shown that about:
+  // - 1/3rd of patches link at 99%
+  // - 1/3rd of patches link between 20% and 99%
+  // - 1/3rd of patches link below 20%
+  // Most lowering is likely due to:
+  // https://github.com/shorebirdtech/shorebird/issues/1825
+  static const double minLinkPercentage = 75;
+
+  static String lowLinkPercentageWarning(double linkPercentage) {
+    return '''
+${lightCyan.wrap('shorebird patch')} was only able to share ${linkPercentage.toStringAsFixed(1)}% of Dart code with the released app.
+This means the patched code may execute slower than expected.
+https://docs.shorebird.dev/status#link-percentage-ios
+''';
+  }
 }
