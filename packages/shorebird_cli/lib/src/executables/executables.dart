@@ -8,5 +8,4 @@ export 'idevicesyslog.dart';
 export 'ios_deploy.dart';
 export 'java.dart';
 export 'patch_executable.dart';
-export 'shorebird_tool.dart';
 export 'xcodebuild.dart';
