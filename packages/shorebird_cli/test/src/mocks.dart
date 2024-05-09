@@ -23,6 +23,7 @@ import 'package:shorebird_cli/src/doctor.dart';
 import 'package:shorebird_cli/src/engine_config.dart';
 import 'package:shorebird_cli/src/executables/devicectl/apple_device.dart';
 import 'package:shorebird_cli/src/executables/executables.dart';
+import 'package:shorebird_cli/src/executables/patch.dart';
 import 'package:shorebird_cli/src/logger.dart';
 import 'package:shorebird_cli/src/os/os.dart';
 import 'package:shorebird_cli/src/patch_diff_checker.dart';
@@ -110,6 +111,8 @@ class MockOperatingSystemInterface extends Mock
     implements OperatingSystemInterface {}
 
 class MockPatchDiffChecker extends Mock implements PatchDiffChecker {}
+
+class MockPatchProgram extends Mock implements PatchProgram {}
 
 class MockPatcher extends Mock implements Patcher {}
 

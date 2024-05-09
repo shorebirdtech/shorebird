@@ -1,12 +1,12 @@
 import 'dart:io';
 
 import 'package:http/http.dart' as http;
-import 'package:mason_logger/mason_logger.dart';
 import 'package:mocktail/mocktail.dart';
 import 'package:path/path.dart' as p;
 import 'package:scoped/scoped.dart';
 import 'package:shorebird_cli/src/artifact_manager.dart';
 import 'package:shorebird_cli/src/cache.dart';
+import 'package:shorebird_cli/src/executables/patch.dart';
 import 'package:shorebird_cli/src/http_client/http_client.dart';
 import 'package:shorebird_cli/src/logger.dart';
 import 'package:shorebird_cli/src/shorebird_env.dart';
@@ -18,15 +18,15 @@ import 'mocks.dart';
 
 void main() {
   group(ArtifactManager, () {
+    late ArtifactManager artifactManager;
     late Cache cache;
     late Directory cacheArtifactDirectory;
     late http.Client httpClient;
     late Directory projectRoot;
+    late PatchProgram patchProgram;
     late ShorebirdLogger logger;
     late ShorebirdEnv shorebirdEnv;
-    late ShorebirdProcessResult patchProcessResult;
     late ShorebirdProcess shorebirdProcess;
-    late ArtifactManager artifactManager;
 
     R runWithOverrides<R>(R Function() body) {
       return runScoped(
@@ -35,6 +35,7 @@ void main() {
           cacheRef.overrideWith(() => cache),
           httpClientRef.overrideWith(() => httpClient),
           loggerRef.overrideWith(() => logger),
+          patchProgramRef.overrideWith(() => patchProgram),
           processRef.overrideWith(() => shorebirdProcess),
           shorebirdEnvRef.overrideWith(() => shorebirdEnv),
         },
@@ -50,7 +51,6 @@ void main() {
       cache = MockCache();
       httpClient = MockHttpClient();
       logger = MockShorebirdLogger();
-      patchProcessResult = MockProcessResult();
       projectRoot = Directory.systemTemp.createTempSync();
       shorebirdProcess = MockShorebirdProcess();
       shorebirdEnv = MockShorebirdEnv();
@@ -66,23 +66,24 @@ void main() {
       when(() => shorebirdEnv.getShorebirdProjectRoot())
           .thenReturn(projectRoot);
 
-      when(
-        () => shorebirdProcess.run(
-          any(that: endsWith('patch')),
-          any(),
-          runInShell: any(named: 'runInShell'),
-        ),
-      ).thenAnswer((invocation) async {
-        final args = invocation.positionalArguments[1] as List<String>;
-        final diffPath = args[2];
-        File(diffPath)
-          ..createSync(recursive: true)
-          ..writeAsStringSync('diff');
-        return patchProcessResult;
-      });
-      when(() => patchProcessResult.exitCode).thenReturn(ExitCode.success.code);
-
       artifactManager = ArtifactManager();
+
+      patchProgram = MockPatchProgram();
+      when(
+        () => patchProgram.run(
+          releaseArtifactPath: any(
+            named: 'releaseArtifactPath',
+          ),
+          patchArtifactPath: any(
+            named: 'patchArtifactPath',
+          ),
+          diffPath: any(
+            named: 'diffPath',
+          ),
+        ),
+      ).thenAnswer(
+        (_) async {},
+      );
     });
 
     group('createDiff', () {
@@ -146,11 +147,15 @@ void main() {
       });
 
       test('throws error when creating diff fails', () async {
-        const stdout = 'uh oh';
-        const stderr = 'oops something went wrong';
-        when(() => patchProcessResult.exitCode).thenReturn(1);
-        when(() => patchProcessResult.stderr).thenReturn(stderr);
-        when(() => patchProcessResult.stdout).thenReturn(stdout);
+        when(
+          () => patchProgram.run(
+            releaseArtifactPath: releaseArtifactFile.path,
+            patchArtifactPath: patchArtifactFile.path,
+            diffPath: any(named: 'diffPath'),
+          ),
+        ).thenThrow(
+          PatchFailedException('error'),
+        );
 
         await expectLater(
           () => runWithOverrides(
@@ -163,9 +168,7 @@ void main() {
             isA<Exception>().having(
               (e) => e.toString(),
               'exception',
-              'Exception: Failed to create diff (exit code 1).\n'
-                  '  stdout: $stdout\n'
-                  '  stderr: $stderr',
+              'error',
             ),
           ),
         );
@@ -181,15 +184,10 @@ void main() {
 
         expect(diffPath, endsWith('diff.patch'));
         verify(
-          () => shorebirdProcess.run(
-            p.join(cacheArtifactDirectory.path, 'patch'),
-            any(
-              that: containsAllInOrder([
-                releaseArtifactFile.path,
-                patchArtifactFile.path,
-                endsWith('diff.patch'),
-              ]),
-            ),
+          () => patchProgram.run(
+            releaseArtifactPath: releaseArtifactFile.path,
+            patchArtifactPath: patchArtifactFile.path,
+            diffPath: any(named: 'diffPath', that: endsWith('diff.patch')),
           ),
         ).called(1);
       });

@@ -12,6 +12,7 @@ import 'package:shorebird_cli/src/command_runner.dart';
 import 'package:shorebird_cli/src/doctor.dart';
 import 'package:shorebird_cli/src/engine_config.dart';
 import 'package:shorebird_cli/src/executables/executables.dart';
+import 'package:shorebird_cli/src/executables/patch.dart';
 import 'package:shorebird_cli/src/http_client/http_client.dart';
 import 'package:shorebird_cli/src/logger.dart';
 import 'package:shorebird_cli/src/os/os.dart';
@@ -54,6 +55,7 @@ Future<void> main(List<String> args) async {
         javaRef,
         loggerRef,
         osInterfaceRef,
+        patchProgramRef,
         patchDiffCheckerRef,
         platformRef,
         processRef,
