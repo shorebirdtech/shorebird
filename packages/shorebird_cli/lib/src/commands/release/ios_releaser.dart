@@ -1,6 +1,7 @@
 import 'package:mason_logger/mason_logger.dart';
 import 'package:path/path.dart' as p;
 import 'package:platform/platform.dart';
+import 'package:pub_semver/pub_semver.dart';
 import 'package:shorebird_cli/src/archive_analysis/plist.dart';
 import 'package:shorebird_cli/src/artifact_builder.dart';
 import 'package:shorebird_cli/src/artifact_manager.dart';
@@ -12,6 +13,7 @@ import 'package:shorebird_cli/src/logger.dart';
 import 'package:shorebird_cli/src/platform.dart';
 import 'package:shorebird_cli/src/platform/ios.dart';
 import 'package:shorebird_cli/src/release_type.dart';
+import 'package:shorebird_cli/src/shorebird_env.dart';
 import 'package:shorebird_cli/src/shorebird_flutter.dart';
 import 'package:shorebird_cli/src/shorebird_validator.dart';
 import 'package:shorebird_cli/src/third_party/flutter_tools/lib/flutter_tools.dart';
@@ -60,6 +62,17 @@ class IosReleaser extends Releaser {
       );
     } on PreconditionFailedException catch (e) {
       exit(e.exitCode.code);
+    }
+
+    final flutterVersionArg = argResults['flutter-version'] as String?;
+    if (flutterVersionArg != null) {
+      if (Version.parse(flutterVersionArg) <
+          minimumSupportedIosFlutterVersion) {
+        logger.err(
+          '''iOS releases are not supported with Flutter versions older than $minimumSupportedIosFlutterVersion.''',
+        );
+        exit(ExitCode.usage.code);
+      }
     }
   }
 
