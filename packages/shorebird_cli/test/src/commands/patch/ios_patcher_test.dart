@@ -168,7 +168,7 @@ void main() {
           });
 
           test('returns correct link percentage', () {
-            expect(patcher.linkPercentage, linkPercentage);
+            expect(patcher.linkPercentage, equals(linkPercentage));
           });
         });
       });
