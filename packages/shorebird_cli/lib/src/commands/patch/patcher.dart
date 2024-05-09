@@ -22,6 +22,24 @@ abstract class Patcher {
     required this.target,
   });
 
+  // Link percentage that is considered the minimum before a user might notice.
+  // Our early testing has shown that about:
+  // - 1/3rd of patches link at 99%
+  // - 1/3rd of patches link between 20% and 99%
+  // - 1/3rd of patches link below 20%
+  // Most lowering is likely due to:
+  // https://github.com/shorebirdtech/shorebird/issues/1825
+  static const double minLinkPercentage = 75;
+
+  /// The standard link percentage warning.
+  static String lowLinkPercentageWarning(double linkPercentage) {
+    return '''
+${lightCyan.wrap('shorebird patch')} was only able to share ${linkPercentage.toStringAsFixed(1)}% of Dart code with the released app.
+This means the patched code may execute slower than expected.
+https://docs.shorebird.dev/status#link-percentage-ios
+''';
+  }
+
   /// The arguments passed to the command.
   final ArgResults argResults;
 
@@ -80,31 +98,14 @@ abstract class Patcher {
   double? get linkPercentage => null;
 
   /// The build directory of the respective shorebird project.
-  Directory get buildDirectory => Directory(
-        p.join(
-          shorebirdEnv.getShorebirdProjectRoot()!.path,
-          'build',
-        ),
-      );
+  Directory get buildDirectory {
+    return Directory(
+      p.join(shorebirdEnv.getShorebirdProjectRoot()!.path, 'build'),
+    );
+  }
 
   /// The path to the output file for the debug info.
-  File get debugInfoFile =>
-      File(p.join(buildDirectory.path, 'patch-debug.zip'));
-
-  // Link percentage that is considered the minimum before a user might notice.
-  // Our early testing has shown that about:
-  // - 1/3rd of patches link at 99%
-  // - 1/3rd of patches link between 20% and 99%
-  // - 1/3rd of patches link below 20%
-  // Most lowering is likely due to:
-  // https://github.com/shorebirdtech/shorebird/issues/1825
-  static const double minLinkPercentage = 75;
-
-  static String lowLinkPercentageWarning(double linkPercentage) {
-    return '''
-${lightCyan.wrap('shorebird patch')} was only able to share ${linkPercentage.toStringAsFixed(1)}% of Dart code with the released app.
-This means the patched code may execute slower than expected.
-https://docs.shorebird.dev/status#link-percentage-ios
-''';
+  File get debugInfoFile {
+    return File(p.join(buildDirectory.path, 'patch-debug.zip'));
   }
 }

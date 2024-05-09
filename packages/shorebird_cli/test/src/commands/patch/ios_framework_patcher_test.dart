@@ -146,6 +146,26 @@ void main() {
         });
       });
 
+      group('linkPercentage', () {
+        group('when linking has not occurred', () {
+          test('returns null', () {
+            expect(patcher.linkPercentage, isNull);
+          });
+        });
+
+        group('when linking has occurred', () {
+          const linkPercentage = 42.1337;
+
+          setUp(() {
+            patcher.lastBuildLinkPercentage = linkPercentage;
+          });
+
+          test('returns correct link percentage', () {
+            expect(patcher.linkPercentage, linkPercentage);
+          });
+        });
+      });
+
       group('assertPreconditions', () {
         setUp(() {
           when(
