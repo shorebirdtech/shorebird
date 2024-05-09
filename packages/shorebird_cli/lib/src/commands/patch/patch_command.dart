@@ -82,7 +82,7 @@ of the iOS app that is using this module.''',
       )
       ..addFlag(
         'codesign',
-        help: 'Codesign the application bundle.',
+        help: 'Codesign the application bundle (iOS only).',
         defaultsTo: true,
       )
       ..addFlag(
