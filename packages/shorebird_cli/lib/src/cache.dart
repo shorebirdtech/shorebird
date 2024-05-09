@@ -109,6 +109,10 @@ class Cache {
     if (cacheDir.existsSync()) {
       cacheDir.deleteSync(recursive: true);
     }
+    final configDirectory = shorebirdEnv.configDirectory;
+    if (configDirectory.existsSync()) {
+      configDirectory.deleteSync(recursive: true);
+    }
   }
 }
 
