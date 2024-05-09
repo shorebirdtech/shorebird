@@ -174,6 +174,7 @@ class IosFrameworkPatcher extends Patcher {
           ),
         ),
       );
+      linkProgress.complete();
     } catch (e) {
       linkProgress.fail('$e');
       exit(ExitCode.software.code);
