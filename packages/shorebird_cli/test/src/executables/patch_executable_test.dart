@@ -54,8 +54,9 @@ void main() {
 
       cacheArtifactDirectory = Directory.systemTemp.createTempSync();
       cache = MockCache();
-      when(() => cache.getArtifactDirectory(any()))
-          .thenReturn(cacheArtifactDirectory);
+      when(
+        () => cache.getArtifactDirectory(any()),
+      ).thenReturn(cacheArtifactDirectory);
       when(() => cache.updateAll()).thenAnswer((_) async {});
     });
 
@@ -64,8 +65,9 @@ void main() {
       final releaseArtifactFile = File(
         p.join(tmpDir.path, 'release_artifact'),
       )..createSync(recursive: true);
-      final patchArtifactFile = File(p.join(tmpDir.path, 'patch_artifact'))
-        ..createSync(recursive: true);
+      final patchArtifactFile = File(
+        p.join(tmpDir.path, 'patch_artifact'),
+      )..createSync(recursive: true);
 
       await runWithOverrides(
         () => patchExecutable.run(
@@ -95,6 +97,14 @@ void main() {
       when(() => patchProcessResult.exitCode).thenReturn(1);
       when(() => patchProcessResult.stderr).thenReturn(stderr);
       when(() => patchProcessResult.stdout).thenReturn(stdout);
+
+      when(
+        () => shorebirdProcess.run(
+          any(that: endsWith('patch')),
+          any(),
+          runInShell: any(named: 'runInShell'),
+        ),
+      ).thenAnswer((_) async => patchProcessResult);
 
       await expectLater(
         () => runWithOverrides(
