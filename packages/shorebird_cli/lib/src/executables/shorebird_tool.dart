@@ -3,6 +3,7 @@ import 'dart:io';
 import 'package:mason_logger/mason_logger.dart';
 import 'package:path/path.dart' as p;
 import 'package:scoped/scoped.dart';
+import 'package:shorebird_cli/src/logger.dart';
 import 'package:shorebird_cli/src/shorebird_env.dart';
 import 'package:shorebird_cli/src/shorebird_process.dart';
 
@@ -29,7 +30,6 @@ class PackageFailedException implements Exception {
 ///
 /// Used to access many commands related to Shorebird's flutter tooling.
 class ShorebirdTool {
-
   /// Returns if the the current flutter version supports this tool.
   ///
   /// This should be used to check if the tool is supported before running
@@ -39,13 +39,15 @@ class ShorebirdTool {
   }
 
   Directory get shorebirdToolDirectory {
-    return Directory(
+    final dir = Directory(
       p.join(
         shorebirdEnv.flutterDirectory.path,
         'packages',
         'shorebird_tools',
       ),
     );
+    logger.info(dir.path);
+    return dir;
   }
 
   Future<ShorebirdProcessResult> _run(List<String> args) {
@@ -54,6 +56,7 @@ class ShorebirdTool {
       [
         'run',
         'shorebird_tools',
+        'package',
         ...args,
       ],
       workingDirectory: shorebirdToolDirectory.path,
@@ -65,8 +68,10 @@ class ShorebirdTool {
     required String outputPath,
   }) async {
     final packageArguments = [
-      '-p', patchPath,
-      '-o', outputPath,
+      '-p',
+      patchPath,
+      '-o',
+      outputPath,
     ];
 
     final result = await _run(packageArguments);
