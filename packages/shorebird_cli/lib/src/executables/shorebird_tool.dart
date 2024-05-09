@@ -50,7 +50,7 @@ class ShorebirdTool {
 
   Future<ShorebirdProcessResult> _run(List<String> args) {
     return process.run(
-      'dart',
+      shorebirdEnv.dartBinaryFile.path,
       [
         'run',
         'shorebird_tools',

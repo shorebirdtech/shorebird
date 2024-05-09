@@ -8,6 +8,7 @@ import 'package:shorebird_cli/src/artifact_manager.dart';
 import 'package:shorebird_cli/src/code_push_client_wrapper.dart';
 import 'package:shorebird_cli/src/commands/patch/patcher.dart';
 import 'package:shorebird_cli/src/doctor.dart';
+import 'package:shorebird_cli/src/executables/executables.dart';
 import 'package:shorebird_cli/src/logger.dart';
 import 'package:shorebird_cli/src/patch_diff_checker.dart';
 import 'package:shorebird_cli/src/platform.dart';
@@ -90,6 +91,7 @@ Looked in:
         );
       exit(ExitCode.software.code);
     }
+
     return aabFile;
   }
 
@@ -149,6 +151,23 @@ Looked in:
           releaseArtifactPath: releaseArtifactPath.value,
           patchArtifactPath: patchArtifactPath,
         );
+
+        // TODO(erickzanardo): We probably should hook this in release command
+        // pipeline, so it would apply to all platforms.
+        //
+        // But for now we are just testing  on android, so hooking it up here
+        // to test the feature.
+        if (shorebirdTool.isSupported()) {
+          final packagePath = '$diffPath.package.zip';
+          await shorebirdTool.package(
+            patchPath: diffPath,
+            outputPath: packagePath,
+          );
+          logger.info('Package created at $packagePath');
+        } else {
+          logger.info('Not supported');
+        }
+
         patchArtifactBundles[releaseArtifactPath.key] = PatchArtifactBundle(
           arch: arch.arch,
           path: diffPath,
