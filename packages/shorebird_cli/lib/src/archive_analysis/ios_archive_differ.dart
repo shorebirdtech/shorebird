@@ -138,9 +138,6 @@ class IosArchiveDiffer extends ArchiveDiffer {
 
     if (Platform.isMacOS) {
       Process.runSync('assetutil', ['--info', outPath, '-o', assetInfoPath]);
-    } else {
-      // This is just for testing
-      File(assetInfoPath).createSync(recursive: true);
     }
 
     // Remove the timestamp line from the json file
