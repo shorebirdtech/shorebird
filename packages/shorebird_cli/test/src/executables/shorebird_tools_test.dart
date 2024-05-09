@@ -102,7 +102,7 @@ void main() {
       ).called(1);
     });
 
-    group('when the command fails for some reason', () {
+    group('when the command fails', () {
       setUp(() {
         when(() => processResult.exitCode).thenReturn(1);
         when(() => processResult.stdout).thenReturn('stdout');
@@ -132,7 +132,7 @@ Failed to create package (exit code ${processResult.exitCode}).
     });
 
     group('when the shorebird tools directory exists', () {
-      test('isSupported return true', () {
+      test('isSupported returns true', () {
         Directory(p.join(flutterDirectory.path, 'packages', 'shorebird_tools'))
             .createSync(recursive: true);
         final isSupported = runWithOverrides(
@@ -143,7 +143,7 @@ Failed to create package (exit code ${processResult.exitCode}).
     });
 
     group('when the shorebird tools directory doest not exists', () {
-      test('isSupported return true', () {
+      test('isSupported returns false', () {
         final isSupported = runWithOverrides(
           () => shorebirdTools.isSupported(),
         );
