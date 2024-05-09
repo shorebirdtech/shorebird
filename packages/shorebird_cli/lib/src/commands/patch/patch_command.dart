@@ -86,6 +86,13 @@ of the iOS app that is using this module.''',
         defaultsTo: true,
       )
       ..addFlag(
+        'debug-linker',
+        defaultsTo: true,
+        help: 'Collects linker diagnostic information to help troubleshoot low '
+            'link percentages. File is saved to build/$linkDebugInfoFileName. '
+            'iOS only.',
+      )
+      ..addFlag(
         'dry-run',
         abbr: 'n',
         negatable: false,
