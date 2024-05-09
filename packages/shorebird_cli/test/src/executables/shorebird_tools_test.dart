@@ -119,7 +119,7 @@ void main() {
           ),
           throwsA(
             isA<PackageFailedException>().having(
-              (e) => e.message,
+              (e) => e.toString(),
               'message',
               '''
 Failed to create package (exit code ${processResult.exitCode}).
