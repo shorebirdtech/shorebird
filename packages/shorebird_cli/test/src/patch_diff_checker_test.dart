@@ -3,7 +3,6 @@ import 'dart:io';
 import 'package:http/http.dart' as http;
 import 'package:mason_logger/mason_logger.dart';
 import 'package:mocktail/mocktail.dart';
-import 'package:path/path.dart' as p;
 import 'package:scoped/scoped.dart';
 import 'package:shorebird_cli/src/archive_analysis/archive_analysis.dart';
 import 'package:shorebird_cli/src/archive_analysis/archive_differ.dart';
@@ -82,28 +81,6 @@ void main() {
           .thenReturn(assetsDiffPrettyString);
       when(() => nativeFileSetDiff.prettyString)
           .thenReturn(nativeDiffPrettyString);
-    });
-
-    group('zipAndConfirmUnpatchableDiffsIfNecessary', () {
-      test('zips directory and forwards to confirmUnpatchableDiffsIfNecessary',
-          () async {
-        final tempDir = Directory.systemTemp.createTempSync();
-        final localArtifactDirectory = Directory(
-          p.join(tempDir.path, 'artifact'),
-        )..createSync();
-
-        await runWithOverrides(
-          () => patchDiffChecker.zipAndConfirmUnpatchableDiffsIfNecessary(
-            localArtifactDirectory: localArtifactDirectory,
-            releaseArtifact: releaseArtifact,
-            archiveDiffer: archiveDiffer,
-            allowAssetChanges: false,
-            allowNativeChanges: false,
-          ),
-        );
-
-        verify(() => archiveDiffer.changedFiles(any(), any())).called(1);
-      });
     });
 
     group('confirmUnpatchableDiffsIfNecessary', () {
