@@ -7,7 +7,8 @@ This section contains past updates we've sent to customers via Discord.
 - ♊ `shorebird release` and `shorebird patch` now accept `--platforms` to
   specify which platforms to release or patch. This allows you to release or
   patch multiple platforms in a single command. For example, `shorebird release
-  --platforms android,ios` will release both Android and iOS platforms.
+  --platforms android,ios` will release to both Android and iOS platforms.
+- 🏜️ `shorebird release` now supports `--dry-run` like `shorebird patch`.
 - 🪲 `shorebird` commands now save a file with debug info which can be manually
   / optionally sent to our team for help debugging any issue you encounter.
 
