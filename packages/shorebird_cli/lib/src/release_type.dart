@@ -48,8 +48,8 @@ enum ReleaseType {
 extension ReleaseTypeArgs on ArgResults {
   Iterable<ReleaseType> get releaseTypes {
     final List<String> releaseTypeCliNames;
-    if (wasParsed('platform')) {
-      releaseTypeCliNames = this['platform'] as List<String>;
+    if (wasParsed('platforms')) {
+      releaseTypeCliNames = this['platforms'] as List<String>;
     } else {
       final platformCliName = arguments.first;
       if (ReleaseType.values
