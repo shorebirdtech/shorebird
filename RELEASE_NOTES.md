@@ -2,6 +2,16 @@
 
 This section contains past updates we've sent to customers via Discord.
 
+## 1.0.6 (May 9, 2024)
+
+- ♊ `shorebird release` and `shorebird patch` now accept `--platforms` to
+  specify which platforms to release or patch. This allows you to release or
+  patch multiple platforms in a single command. For example, `shorebird release
+  --platforms android,ios` will release both Android and iOS platforms.
+
+This required an extensive re-write of the release and patch commands. If you
+encounter any issues, please let us know!
+
 ## 1.0.5 (May 6, 2024)
 
 - 🔗 Improve iOS patch speed when adding/removing classes
