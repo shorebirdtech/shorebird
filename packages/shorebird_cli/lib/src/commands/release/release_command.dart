@@ -431,7 +431,7 @@ ${summary.join('\n')}
   }) {
     final baseCommand = [
       'shorebird patch',
-      '--platform=${releaseType.cliName}',
+      '--platforms=${releaseType.cliName}',
       if (flavor != null) '--flavor=$flavor',
       if (target != null) '--target=$target',
     ].join(' ');
