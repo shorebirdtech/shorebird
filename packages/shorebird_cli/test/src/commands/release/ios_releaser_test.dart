@@ -7,7 +7,7 @@ import 'package:scoped/scoped.dart';
 import 'package:shorebird_cli/src/artifact_builder.dart';
 import 'package:shorebird_cli/src/artifact_manager.dart';
 import 'package:shorebird_cli/src/code_push_client_wrapper.dart';
-import 'package:shorebird_cli/src/commands/release_new/ios_releaser.dart';
+import 'package:shorebird_cli/src/commands/release/ios_releaser.dart';
 import 'package:shorebird_cli/src/doctor.dart';
 import 'package:shorebird_cli/src/executables/xcodebuild.dart';
 import 'package:shorebird_cli/src/logger.dart';
@@ -174,6 +174,36 @@ void main() {
                 checkShorebirdInitialized: true,
                 validators: [flutterValidator],
                 supportedOperatingSystems: {Platform.macOS},
+              ),
+            ).called(1);
+          });
+        });
+
+        group('when specified flutter version is less than minimum', () {
+          setUp(() {
+            when(
+              () => shorebirdValidator.validatePreconditions(
+                checkUserIsAuthenticated:
+                    any(named: 'checkUserIsAuthenticated'),
+                checkShorebirdInitialized:
+                    any(named: 'checkShorebirdInitialized'),
+                validators: any(named: 'validators'),
+                supportedOperatingSystems:
+                    any(named: 'supportedOperatingSystems'),
+              ),
+            ).thenAnswer((_) async {});
+            when(() => argResults['flutter-version']).thenReturn('3.0.0');
+          });
+
+          test('logs error and exits with code 64', () async {
+            await expectLater(
+              () => runWithOverrides(iosReleaser.assertPreconditions),
+              exitsWithCode(ExitCode.usage),
+            );
+
+            verify(
+              () => logger.err(
+                '''iOS releases are not supported with Flutter versions older than $minimumSupportedIosFlutterVersion.''',
               ),
             ).called(1);
           });

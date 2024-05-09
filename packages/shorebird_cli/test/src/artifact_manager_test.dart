@@ -604,10 +604,11 @@ void main() {
         )..createSync(recursive: true);
         File(p.join(flutterBuildDir.path, 'app1', 'app.dill'))
           ..createSync(recursive: true)
-          ..setLastModified(DateTime.now().subtract(const Duration(days: 1)));
+          ..setLastModifiedSync(
+            DateTime.now().subtract(const Duration(days: 1)),
+          );
         appDill2 = File(p.join(flutterBuildDir.path, 'app2', 'app.dill'))
-          ..createSync(recursive: true)
-          ..setLastModified(DateTime.now());
+          ..createSync(recursive: true);
       });
 
       test('selects the most recently edited .app.dill file', () {

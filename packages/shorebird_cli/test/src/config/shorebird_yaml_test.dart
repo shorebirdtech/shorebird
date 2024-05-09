@@ -66,5 +66,37 @@ auto_update: true
       expect(shorebirdYaml.baseUrl, isNull);
       expect(shorebirdYaml.autoUpdate, isTrue);
     });
+
+    group('AppIdExtension', () {
+      test('getAppId returns base app id when no flavor is provided', () {
+        const shorebirdYaml = ShorebirdYaml(
+          appId: 'test_app_id',
+        );
+        expect(shorebirdYaml.getAppId(), 'test_app_id');
+      });
+
+      test('getAppId returns base app id when flavor is not found', () {
+        const shorebirdYaml = ShorebirdYaml(
+          appId: 'test_app_id',
+          flavors: {
+            'development': 'test_app_id1',
+            'production': 'test_app_id2',
+          },
+        );
+        expect(shorebirdYaml.getAppId(flavor: 'staging'), 'test_app_id');
+      });
+
+      test('getAppId returns app id for flavor', () {
+        const shorebirdYaml = ShorebirdYaml(
+          appId: 'test_app_id',
+          flavors: {
+            'development': 'test_app_id1',
+            'production': 'test_app_id2',
+          },
+        );
+        expect(shorebirdYaml.getAppId(flavor: 'development'), 'test_app_id1');
+        expect(shorebirdYaml.getAppId(flavor: 'production'), 'test_app_id2');
+      });
+    });
   });
 }

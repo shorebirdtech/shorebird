@@ -272,5 +272,6 @@ void main() {
         });
       });
     },
+    testOn: 'mac-os',
   );
 }
