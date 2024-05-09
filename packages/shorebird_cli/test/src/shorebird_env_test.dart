@@ -5,6 +5,7 @@ import 'package:path/path.dart' as p;
 import 'package:platform/platform.dart';
 import 'package:pubspec_parse/pubspec_parse.dart';
 import 'package:scoped/scoped.dart';
+import 'package:shorebird_cli/src/command_runner.dart';
 import 'package:shorebird_cli/src/platform.dart';
 import 'package:shorebird_cli/src/shorebird_env.dart';
 import 'package:test/test.dart';
@@ -60,6 +61,15 @@ void main() {
         expect(
           runWithOverrides(() => newEnv.flutterRevision),
           equals(flutterRevision),
+        );
+      });
+    });
+
+    group('configDirectory', () {
+      test('returns correct directory', () {
+        expect(
+          runWithOverrides(() => shorebirdEnv.configDirectory.path),
+          endsWith(executableName),
         );
       });
     });

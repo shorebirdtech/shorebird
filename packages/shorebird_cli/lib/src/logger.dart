@@ -18,18 +18,15 @@ class ShorebirdLogger extends Logger {
 
   late final File logFile = (() {
     final timestamp = DateTime.now().millisecondsSinceEpoch;
-
     final file = File(
       p.join(
-        shorebirdEnv.shorebirdRoot.path,
+        shorebirdEnv.configDirectory.path,
         'logs',
         '${timestamp}_$_logFileName',
       ),
     );
 
-    if (!file.existsSync()) {
-      file.createSync(recursive: true);
-    }
+    if (!file.existsSync()) file.createSync(recursive: true);
 
     return file;
   })();
