@@ -6,11 +6,10 @@ import 'package:collection/collection.dart';
 import 'package:http/http.dart' as http;
 import 'package:path/path.dart' as p;
 import 'package:scoped/scoped.dart';
-import 'package:shorebird_cli/src/cache.dart';
+import 'package:shorebird_cli/src/executables/executables.dart';
 import 'package:shorebird_cli/src/http_client/http_client.dart';
 import 'package:shorebird_cli/src/logger.dart';
 import 'package:shorebird_cli/src/shorebird_env.dart';
-import 'package:shorebird_cli/src/shorebird_process.dart';
 
 /// A reference to a [ArtifactManager] instance.
 final artifactManagerRef = create(ArtifactManager.new);
@@ -41,26 +40,12 @@ class ArtifactManager {
 
     final tempDir = await Directory.systemTemp.createTemp();
     final diffPath = p.join(tempDir.path, 'diff.patch');
-    final diffExecutable = p.join(
-      cache.getArtifactDirectory('patch').path,
-      'patch',
+
+    await patchExecutable.run(
+      releaseArtifactPath: releaseArtifactPath,
+      patchArtifactPath: patchArtifactPath,
+      diffPath: diffPath,
     );
-    final diffArguments = [
-      releaseArtifactPath,
-      patchArtifactPath,
-      diffPath,
-    ];
-
-    final result = await process.run(diffExecutable, diffArguments);
-
-    if (result.exitCode != 0) {
-      throw Exception(
-        '''
-Failed to create diff (exit code ${result.exitCode}).
-  stdout: ${result.stdout}
-  stderr: ${result.stderr}''',
-      );
-    }
 
     return diffPath;
   }
