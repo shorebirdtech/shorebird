@@ -78,7 +78,7 @@ of the iOS app that is using this module.''',
       ..addOption(
         exportOptionsPlistArgName,
         help:
-            '''Export an IPA with these options. See "xcodebuild -h" for available exportOptionsPlist keys.''',
+            '''Export an IPA with these options. See "xcodebuild -h" for available exportOptionsPlist keys (iOS only).''',
       )
       ..addFlag(
         'codesign',

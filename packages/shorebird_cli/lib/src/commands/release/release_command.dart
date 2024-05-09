@@ -61,7 +61,7 @@ On Xcode builds it is used as "CFBundleVersion".''',
       ..addOption(
         exportOptionsPlistArgName,
         help:
-            '''Export an IPA with these options. See "xcodebuild -h" for available exportOptionsPlist keys.''',
+            '''Export an IPA with these options. See "xcodebuild -h" for available exportOptionsPlist keys (iOS only).''',
       )
       ..addOption(
         'flutter-version',
