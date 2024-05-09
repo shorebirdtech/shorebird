@@ -25,6 +25,7 @@ void main() {
 
     late ArtifactManager artifactManager;
     late Directory shorebirdRoot;
+    late Directory logsDirectory;
     late http.Client httpClient;
     late ShorebirdLogger logger;
     late Platform platform;
@@ -77,6 +78,7 @@ void main() {
       shorebirdProcess = MockShorebirdProcess();
 
       shorebirdRoot = Directory.systemTemp.createTempSync();
+      logsDirectory = Directory.systemTemp.createTempSync();
       when(
         () => artifactManager.extractZip(
           zipFile: any(named: 'zipFile'),
@@ -90,6 +92,7 @@ void main() {
         () => shorebirdEnv.shorebirdEngineRevision,
       ).thenReturn(shorebirdEngineRevision);
       when(() => shorebirdEnv.shorebirdRoot).thenReturn(shorebirdRoot);
+      when(() => shorebirdEnv.logsDirectory).thenReturn(logsDirectory);
 
       when(() => platform.environment).thenReturn({});
       setMockPlatform(Platform.macOS);
@@ -163,18 +166,28 @@ void main() {
         final shorebirdCacheDirectory = runWithOverrides(
           () => Cache.shorebirdCacheDirectory,
         )..createSync(recursive: true);
+        final logsDirectory = runWithOverrides(
+          () => shorebirdEnv.logsDirectory,
+        )..createSync(recursive: true);
         expect(shorebirdCacheDirectory.existsSync(), isTrue);
+        expect(logsDirectory.existsSync(), isTrue);
         runWithOverrides(cache.clear);
         expect(shorebirdCacheDirectory.existsSync(), isFalse);
+        expect(logsDirectory.existsSync(), isFalse);
       });
 
       test('does nothing if directory does not exist', () {
         final shorebirdCacheDirectory = runWithOverrides(
           () => Cache.shorebirdCacheDirectory,
         );
+        final logsDirectory = runWithOverrides(
+          () => shorebirdEnv.logsDirectory,
+        )..deleteSync(recursive: true);
         expect(shorebirdCacheDirectory.existsSync(), isFalse);
+        expect(logsDirectory.existsSync(), isFalse);
         runWithOverrides(cache.clear);
         expect(shorebirdCacheDirectory.existsSync(), isFalse);
+        expect(logsDirectory.existsSync(), isFalse);
       });
     });
 

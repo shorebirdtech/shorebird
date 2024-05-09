@@ -34,6 +34,7 @@ class CleanCacheCommand extends ShorebirdCommand {
       progress.fail(
         '''Failed to delete cache directory $cachePath: $error''',
       );
+
       if (!platform.isWindows) {
         return ExitCode.software.code;
       }

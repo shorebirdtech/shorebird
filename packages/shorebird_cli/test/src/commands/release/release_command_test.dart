@@ -96,8 +96,9 @@ void main() {
 
       when(cache.updateAll).thenAnswer((_) async => {});
 
-      when(() => codePushClientWrapper.getApp(appId: any(named: 'appId')))
-          .thenAnswer((_) async => appMetadata);
+      when(
+        () => codePushClientWrapper.getApp(appId: any(named: 'appId')),
+      ).thenAnswer((_) async => appMetadata);
       when(
         () => codePushClientWrapper.maybeGetRelease(
           appId: any(named: 'appId'),
@@ -127,8 +128,9 @@ void main() {
 
       when(() => releaser.assertPreconditions()).thenAnswer((_) async => {});
       when(() => releaser.assertArgsAreValid()).thenAnswer((_) async => {});
-      when(() => releaser.buildReleaseArtifacts())
-          .thenAnswer((_) async => File(''));
+      when(
+        () => releaser.buildReleaseArtifacts(),
+      ).thenAnswer((_) async => File(''));
       when(
         () => releaser.getReleaseVersion(
           releaseArtifactRoot: any(named: 'releaseArtifactRoot'),
@@ -140,11 +142,13 @@ void main() {
           appId: any(named: 'appId'),
         ),
       ).thenAnswer((_) async => {});
-      when(() => releaser.postReleaseInstructions)
-          .thenReturn(postReleaseInstructions);
+      when(
+        () => releaser.postReleaseInstructions,
+      ).thenReturn(postReleaseInstructions);
       when(() => releaser.releaseType).thenReturn(ReleaseType.android);
-      when(() => releaser.releaseMetadata())
-          .thenAnswer((_) async => UpdateReleaseMetadata.forTest());
+      when(
+        () => releaser.releaseMetadata(),
+      ).thenAnswer((_) async => UpdateReleaseMetadata.forTest());
       when(() => releaser.requiresReleaseVersionArg).thenReturn(false);
 
       when(() => shorebirdEnv.getShorebirdYaml()).thenReturn(shorebirdYaml);
