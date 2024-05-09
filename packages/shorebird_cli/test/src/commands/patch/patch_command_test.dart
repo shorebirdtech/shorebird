@@ -34,6 +34,14 @@ void main() {
     const flutterRevision = '83305b5088e6fe327fb3334a73ff190828d85713';
     const releasePlatform = ReleasePlatform.android;
     const releaseVersion = '1.2.3+1';
+    const patchArtifactBundles = {
+      Arch.arm32: PatchArtifactBundle(
+        arch: 'arm32',
+        hash: '#',
+        size: 42,
+        path: '',
+      ),
+    };
     const shorebirdYaml = ShorebirdYaml(appId: appId);
     final patchMetadata = CreatePatchMetadata.forTest();
 
@@ -131,6 +139,7 @@ void main() {
       shorebirdEnv = MockShorebirdEnv();
       shorebirdFlutter = MockShorebirdFlutter();
 
+      when(() => argResults['debug-linker']).thenReturn(false);
       when(() => argResults['dry-run']).thenReturn(false);
       when(() => argResults['platforms']).thenReturn(['android']);
       when(() => argResults['release-version']).thenReturn(releaseVersion);
@@ -218,16 +227,7 @@ void main() {
           appId: any(named: 'appId'),
           releaseId: any(named: 'releaseId'),
         ),
-      ).thenAnswer(
-        (_) async => {
-          Arch.arm32: const PatchArtifactBundle(
-            arch: 'arm32',
-            hash: '#',
-            size: 42,
-            path: '',
-          ),
-        },
-      );
+      ).thenAnswer((_) async => patchArtifactBundles);
       when(
         () => patcher.createPatchMetadata(any()),
       ).thenAnswer((_) async => patchMetadata);
@@ -281,6 +281,142 @@ void main() {
           command.getPatcher(ReleaseType.iosFramework),
           isA<IosFrameworkPatcher>(),
         );
+      });
+    });
+
+    group('confirmCreatePatch', () {
+      group('when has flavors', () {
+        const flavor = 'development';
+        setUp(() {
+          when(() => argResults['flavor']).thenReturn(flavor);
+        });
+
+        test('logs correct summary', () async {
+          final expectedSummary = [
+            '''📱 App: ${lightCyan.wrap(appDisplayName)} ${lightCyan.wrap('($appId)')}''',
+            '🍧 Flavor: ${lightCyan.wrap(flavor)}',
+            '📦 Release Version: ${lightCyan.wrap(releaseVersion)}',
+            '''🕹️  Platform: ${lightCyan.wrap(patcher.releaseType.releasePlatform.name)} ${lightCyan.wrap('[arm32 (42 B)]')}''',
+            '🟢 Track: ${lightCyan.wrap('Production')}',
+          ];
+          await expectLater(
+            runWithOverrides(
+              () => command.confirmCreatePatch(
+                app: appMetadata,
+                releaseVersion: releaseVersion,
+                patcher: patcher,
+                patchArtifactBundles: patchArtifactBundles,
+              ),
+            ),
+            completes,
+          );
+          verify(
+            () => logger.info(
+              any(that: contains(expectedSummary.join('\n'))),
+            ),
+          ).called(1);
+        });
+      });
+
+      group('when is staging', () {
+        setUp(() {
+          when(() => argResults['staging']).thenReturn(true);
+        });
+
+        test('logs correct summary', () async {
+          final expectedSummary = [
+            '''📱 App: ${lightCyan.wrap(appDisplayName)} ${lightCyan.wrap('($appId)')}''',
+            '📦 Release Version: ${lightCyan.wrap(releaseVersion)}',
+            '''🕹️  Platform: ${lightCyan.wrap(patcher.releaseType.releasePlatform.name)} ${lightCyan.wrap('[arm32 (42 B)]')}''',
+            '🟠 Track: ${lightCyan.wrap('Staging')}',
+          ];
+          await expectLater(
+            runWithOverrides(
+              () => command.confirmCreatePatch(
+                app: appMetadata,
+                releaseVersion: releaseVersion,
+                patcher: patcher,
+                patchArtifactBundles: patchArtifactBundles,
+              ),
+            ),
+            completes,
+          );
+          verify(
+            () => logger.info(
+              any(that: contains(expectedSummary.join('\n'))),
+            ),
+          ).called(1);
+        });
+      });
+
+      group('when has link percentage', () {
+        const linkPercentage = 42.1337;
+
+        setUp(() {
+          when(() => patcher.linkPercentage).thenReturn(linkPercentage);
+        });
+
+        test('logs correct summary', () async {
+          final expectedSummary = [
+            '''📱 App: ${lightCyan.wrap(appDisplayName)} ${lightCyan.wrap('($appId)')}''',
+            '📦 Release Version: ${lightCyan.wrap(releaseVersion)}',
+            '''🕹️  Platform: ${lightCyan.wrap(patcher.releaseType.releasePlatform.name)} ${lightCyan.wrap('[arm32 (42 B)]')}''',
+            '🟢 Track: ${lightCyan.wrap('Production')}',
+            '''🔗 Running ${lightCyan.wrap('${patcher.linkPercentage!.toStringAsFixed(1)}%')} on CPU''',
+          ];
+          await expectLater(
+            runWithOverrides(
+              () => command.confirmCreatePatch(
+                app: appMetadata,
+                releaseVersion: releaseVersion,
+                patcher: patcher,
+                patchArtifactBundles: patchArtifactBundles,
+              ),
+            ),
+            completes,
+          );
+          verify(
+            () => logger.info(
+              any(that: contains(expectedSummary.join('\n'))),
+            ),
+          ).called(1);
+        });
+
+        group('when has debug info', () {
+          final debugInfoFile = File('debug-info.txt');
+
+          setUp(() {
+            when(() => argResults['debug-linker']).thenReturn(true);
+            when(() => patcher.debugInfoFile).thenReturn(debugInfoFile);
+          });
+
+          test('logs correct summary', () async {
+            final expectedSummary = [
+              '''📱 App: ${lightCyan.wrap(appDisplayName)} ${lightCyan.wrap('($appId)')}''',
+              '📦 Release Version: ${lightCyan.wrap(releaseVersion)}',
+              '''🕹️  Platform: ${lightCyan.wrap(patcher.releaseType.releasePlatform.name)} ${lightCyan.wrap('[arm32 (42 B)]')}''',
+              '🟢 Track: ${lightCyan.wrap('Production')}',
+              '''🔗 Running ${lightCyan.wrap('${patcher.linkPercentage!.toStringAsFixed(1)}%')} on CPU''',
+              '''🔍 Debug Info: ${lightCyan.wrap(patcher.debugInfoFile.path)}''',
+            ];
+            await expectLater(
+              runWithOverrides(
+                () => command.confirmCreatePatch(
+                  app: appMetadata,
+                  releaseVersion: releaseVersion,
+                  patcher: patcher,
+                  patchArtifactBundles: patchArtifactBundles,
+                ),
+              ),
+              completes,
+            );
+            verify(
+              () => logger.info(
+                any(that: contains(expectedSummary.join('\n'))),
+              ),
+            ).called(1);
+          });
+        });
       });
     });
 
