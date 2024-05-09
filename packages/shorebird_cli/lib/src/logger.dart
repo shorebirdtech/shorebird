@@ -12,7 +12,7 @@ final loggerRef = create(ShorebirdLogger.new);
 ShorebirdLogger get logger => read(loggerRef);
 
 class ShorebirdLogger extends Logger {
-  ShorebirdLogger({ super.level });
+  ShorebirdLogger({super.level});
 
   static const _logFileName = 'shorebird.log';
 
