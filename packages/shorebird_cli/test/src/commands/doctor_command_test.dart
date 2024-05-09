@@ -26,7 +26,7 @@ void main() {
     late AndroidSdk androidSdk;
     late Doctor doctor;
     late Java java;
-    late Logger logger;
+    late ShorebirdLogger logger;
     late ShorebirdEnv shorebirdEnv;
     late ShorebirdFlutter shorebirdFlutter;
     late Validator validator;
@@ -53,7 +53,7 @@ void main() {
       androidSdk = MockAndroidSdk();
       doctor = MockDoctor();
       java = MockJava();
-      logger = MockLogger();
+      logger = MockShorebirdLogger();
       shorebirdEnv = MockShorebirdEnv();
       shorebirdFlutter = MockShorebirdFlutter();
       validator = MockValidator();

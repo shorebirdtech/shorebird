@@ -22,7 +22,7 @@ void main() {
     late Auth auth;
     late http.Client httpClient;
     late Directory applicationConfigHome;
-    late Logger logger;
+    late ShorebirdLogger logger;
     late LoginCommand command;
 
     R runWithOverrides<R>(R Function() body) {
@@ -44,7 +44,7 @@ void main() {
       results = MockArgResults();
       auth = MockAuth();
       httpClient = MockHttpClient();
-      logger = MockLogger();
+      logger = MockShorebirdLogger();
 
       when(() => results.wasParsed('provider')).thenReturn(false);
       when(() => results['provider']).thenReturn(null);

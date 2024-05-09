@@ -27,7 +27,7 @@ void main() {
   group('scoped', () {
     late Auth auth;
     late http.Client httpClient;
-    late Logger logger;
+    late ShorebirdLogger logger;
     late Platform platform;
     late Progress progress;
     late ShorebirdEnv shorebirdEnv;
@@ -40,7 +40,7 @@ void main() {
     setUp(() {
       auth = MockAuth();
       httpClient = MockHttpClient();
-      logger = MockLogger();
+      logger = MockShorebirdLogger();
       platform = MockPlatform();
       progress = MockProgress();
       shorebirdEnv = MockShorebirdEnv();
@@ -142,7 +142,7 @@ void main() {
     );
 
     late CodePushClient codePushClient;
-    late Logger logger;
+    late ShorebirdLogger logger;
     late Progress progress;
     late CodePushClientWrapper codePushClientWrapper;
     late Platform platform;
@@ -168,7 +168,7 @@ void main() {
 
     setUp(() {
       codePushClient = MockCodePushClient();
-      logger = MockLogger();
+      logger = MockShorebirdLogger();
       platform = MockPlatform();
       progress = MockProgress();
       projectRoot = Directory.systemTemp.createTempSync();

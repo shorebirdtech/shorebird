@@ -112,7 +112,7 @@ flutter:
     late PatchDiffChecker patchDiffChecker;
     late Platform platform;
     late Progress progress;
-    late Logger logger;
+    late ShorebirdLogger logger;
     late ShorebirdEnv shorebirdEnv;
     late ShorebirdProcessResult flutterBuildProcessResult;
     late ShorebirdProcessResult flutterPubGetProcessResult;
@@ -210,7 +210,7 @@ flutter:
       patchDiffChecker = MockPatchDiffChecker();
       platform = MockPlatform();
       progress = MockProgress();
-      logger = MockLogger();
+      logger = MockShorebirdLogger();
       flutterBuildProcessResult = MockProcessResult();
       flutterPubGetProcessResult = MockProcessResult();
       httpClient = MockHttpClient();

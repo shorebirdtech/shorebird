@@ -20,7 +20,7 @@ void main() {
     late Directory shorebirdRoot;
     late Directory flutterDirectory;
     late Git git;
-    late Logger logger;
+    late ShorebirdLogger logger;
     late Progress progress;
     late ShorebirdEnv shorebirdEnv;
     late ShorebirdProcess process;
@@ -43,7 +43,7 @@ void main() {
       shorebirdRoot = Directory.systemTemp.createTempSync();
       flutterDirectory = Directory(p.join(shorebirdRoot.path, 'flutter'));
       git = MockGit();
-      logger = MockLogger();
+      logger = MockShorebirdLogger();
       progress = MockProgress();
       shorebirdEnv = MockShorebirdEnv();
       process = MockShorebirdProcess();

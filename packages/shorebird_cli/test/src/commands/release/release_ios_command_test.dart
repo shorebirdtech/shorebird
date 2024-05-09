@@ -120,7 +120,7 @@ flutter:
       late Platform platform;
       late Auth auth;
       late Progress progress;
-      late Logger logger;
+      late ShorebirdLogger logger;
       late Ios ios;
       late OperatingSystemInterface operatingSystemInterface;
       late ShorebirdProcessResult flutterBuildProcessResult;
@@ -205,7 +205,7 @@ flutter:
         auth = MockAuth();
         operatingSystemInterface = MockOperatingSystemInterface();
         progress = MockProgress();
-        logger = MockLogger();
+        logger = MockShorebirdLogger();
         ios = MockIos();
         flutterBuildProcessResult = MockProcessResult();
         flutterPubGetProcessResult = MockProcessResult();

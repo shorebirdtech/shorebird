@@ -18,7 +18,7 @@ import '../mocks.dart';
 
 void main() {
   group(IOSDeploy, () {
-    late Logger logger;
+    late ShorebirdLogger logger;
     late Platform platform;
     late Progress progress;
     late ShorebirdProcess shorebirdProcess;
@@ -40,7 +40,7 @@ void main() {
     }
 
     setUp(() {
-      logger = MockLogger();
+      logger = MockShorebirdLogger();
       platform = MockPlatform();
       shorebirdProcess = MockShorebirdProcess();
       process = MockProcess();

@@ -1,5 +1,6 @@
 import 'package:crypto/crypto.dart';
 import 'package:mason_logger/mason_logger.dart';
+import 'package:meta/meta.dart';
 import 'package:path/path.dart' as p;
 import 'package:platform/platform.dart';
 import 'package:shorebird_cli/src/archive/directory_archive.dart';
@@ -55,6 +56,9 @@ class IosFrameworkPatcher extends Patcher {
   @override
   ReleaseType get releaseType => ReleaseType.iosFramework;
 
+  @visibleForTesting
+  double? lastBuildLinkPercentage;
+
   @override
   Future<void> assertPreconditions() async {
     try {
@@ -91,7 +95,7 @@ class IosFrameworkPatcher extends Patcher {
     }
     try {
       final newestDillFile = artifactManager.newestAppDill();
-      final _ = await artifactBuilder.buildElfAotSnapshot(
+      await artifactBuilder.buildElfAotSnapshot(
         appDillPath: newestDillFile.path,
         outFilePath: p.join(
           shorebirdEnv.getShorebirdProjectRoot()!.path,
@@ -132,9 +136,6 @@ class IosFrameworkPatcher extends Patcher {
       releaseArtifactZipFile = await artifactManager.downloadFile(
         Uri.parse(releaseArtifact.url),
       );
-      if (!releaseArtifactZipFile.existsSync()) {
-        throw Exception('Failed to download release artifact');
-      }
     } catch (error) {
       downloadProgress.fail('$error');
       exit(ExitCode.software.code);
@@ -226,6 +227,24 @@ class IosFrameworkPatcher extends Patcher {
     );
   }
 
+  @override
+  Future<CreatePatchMetadata> createPatchMetadata(DiffStatus diffStatus) async {
+    return CreatePatchMetadata(
+      releasePlatform: releaseType.releasePlatform,
+      usedIgnoreAssetChangesFlag: allowAssetDiffs,
+      hasAssetChanges: diffStatus.hasAssetChanges,
+      usedIgnoreNativeChangesFlag: allowNativeDiffs,
+      hasNativeChanges: diffStatus.hasNativeChanges,
+      linkPercentage: lastBuildLinkPercentage,
+      environment: BuildEnvironmentMetadata(
+        operatingSystem: platform.operatingSystem,
+        operatingSystemVersion: platform.operatingSystemVersion,
+        shorebirdVersion: packageVersion,
+        xcodeVersion: await xcodeBuild.version(),
+      ),
+    );
+  }
+
   Future<void> _runLinker({
     required File aotSnapshot,
     required File releaseArtifact,
@@ -252,7 +271,7 @@ class IosFrameworkPatcher extends Patcher {
 
     final linkProgress = logger.progress('Linking AOT files');
     try {
-      await aotTools.link(
+      lastBuildLinkPercentage = await aotTools.link(
         base: releaseArtifact.path,
         patch: aotSnapshot.path,
         analyzeSnapshot: analyzeSnapshot.path,
@@ -267,23 +286,5 @@ class IosFrameworkPatcher extends Patcher {
     }
 
     linkProgress.complete();
-  }
-
-  @override
-  Future<CreatePatchMetadata> createPatchMetadata(DiffStatus diffStatus) async {
-    return CreatePatchMetadata(
-      releasePlatform: releaseType.releasePlatform,
-      usedIgnoreAssetChangesFlag: allowAssetDiffs,
-      hasAssetChanges: diffStatus.hasAssetChanges,
-      usedIgnoreNativeChangesFlag: allowNativeDiffs,
-      hasNativeChanges: diffStatus.hasNativeChanges,
-      linkPercentage: null,
-      environment: BuildEnvironmentMetadata(
-        operatingSystem: platform.operatingSystem,
-        operatingSystemVersion: platform.operatingSystemVersion,
-        shorebirdVersion: packageVersion,
-        xcodeVersion: await xcodeBuild.version(),
-      ),
-    );
   }
 }

@@ -24,7 +24,7 @@ void main() {
     late ArgResults argResults;
     late Doctor doctor;
     late Ios ios;
-    late Logger logger;
+    late ShorebirdLogger logger;
     late OperatingSystemInterface operatingSystemInterface;
     late ShorebirdProcessResult buildProcessResult;
     late ShorebirdProcessResult flutterPubGetProcessResult;
@@ -57,7 +57,7 @@ void main() {
       argResults = MockArgResults();
       doctor = MockDoctor();
       ios = MockIos();
-      logger = MockLogger();
+      logger = MockShorebirdLogger();
       operatingSystemInterface = MockOperatingSystemInterface();
       shorebirdProcess = MockShorebirdProcess();
       buildProcessResult = MockProcessResult();
