@@ -55,6 +55,27 @@ https://docs.shorebird.dev/status#link-percentage-ios
 ''';
   }
 
+  String get _buildDirectory => p.join(
+        shorebirdEnv.getShorebirdProjectRoot()!.path,
+        'build',
+      );
+
+  String get _aotOutputPath => p.join(
+        _buildDirectory,
+        'out.aot',
+      );
+
+  String get _vmcodeOutputPath => p.join(
+        _buildDirectory,
+        'out.vmcode',
+      );
+
+  static const _linkDebugInfoFileName = 'linker_diagnostic.zip';
+  String get _debugInfoOutputPath => p.join(
+        _buildDirectory,
+        _linkDebugInfoFileName,
+      );
+
   @visibleForTesting
   double? lastBuildLinkPercentage;
 
@@ -357,25 +378,4 @@ https://docs.shorebird.dev/status#link-percentage-ios
     linkProgress.complete();
     return (exitCode: ExitCode.success.code, linkPercentage: linkPercentage);
   }
-
-  String get _buildDirectory => p.join(
-        shorebirdEnv.getShorebirdProjectRoot()!.path,
-        'build',
-      );
-
-  String get _aotOutputPath => p.join(
-        _buildDirectory,
-        'out.aot',
-      );
-
-  String get _vmcodeOutputPath => p.join(
-        _buildDirectory,
-        'out.vmcode',
-      );
-
-  static const _linkDebugInfoFileName = 'linker_diagnostic.zip';
-  String get _debugInfoOutputPath => p.join(
-        _buildDirectory,
-        _linkDebugInfoFileName,
-      );
 }
