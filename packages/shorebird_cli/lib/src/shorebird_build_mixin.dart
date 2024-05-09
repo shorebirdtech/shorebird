@@ -10,6 +10,7 @@ import 'package:shorebird_cli/src/shorebird_artifacts.dart';
 import 'package:shorebird_cli/src/shorebird_env.dart';
 import 'package:shorebird_cli/src/shorebird_process.dart';
 
+// coverage:ignore-start
 /// Used to wrap code that invokes `flutter build` with Shorebird's fork of
 /// Flutter.
 typedef ShorebirdBuildCommand = Future<void> Function();
@@ -345,3 +346,5 @@ Either run `flutter pub get` manually, or follow the steps in ${link(uri: Uri.pa
     return File(outFilePath);
   }
 }
+
+// coverage:ignore-end
