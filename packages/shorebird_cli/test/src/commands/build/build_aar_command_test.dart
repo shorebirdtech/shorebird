@@ -50,8 +50,8 @@ void main() {
       when(() => logger.progress(any())).thenReturn(progress);
       when(
         () => artifactBuilder.buildAar(
-          argResultsRest: any(named: 'argResultsRest'),
           buildNumber: any(named: 'buildNumber'),
+          argResultsRest: any(named: 'argResultsRest'),
         ),
       ).thenAnswer((_) async => {});
       when(
@@ -101,8 +101,8 @@ void main() {
     test('exits with code 70 when building aar fails', () async {
       when(
         () => artifactBuilder.buildAar(
-          argResultsRest: any(named: 'argResultsRest'),
           buildNumber: any(named: 'buildNumber'),
+          argResultsRest: any(named: 'argResultsRest'),
         ),
       ).thenThrow(ArtifactBuildException('Failed to build: error'));
 
@@ -127,8 +127,8 @@ void main() {
 
       verify(
         () => artifactBuilder.buildAar(
-          argResultsRest: [],
           buildNumber: buildNumber,
+          argResultsRest: [],
         ),
       ).called(1);
       verify(
