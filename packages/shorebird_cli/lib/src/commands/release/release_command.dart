@@ -68,7 +68,7 @@ On Xcode builds it is used as "CFBundleVersion".''',
         help: 'The Flutter version to use when building the app (e.g: 3.16.3).',
       )
       ..addOption(
-        'android-artifact',
+        'artifact',
         help:
             '''The type of artifact to generate. Only relevant for Android releases.''',
         allowed: ['aab', 'apk'],

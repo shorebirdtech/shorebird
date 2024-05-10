@@ -255,7 +255,7 @@ void main() {
       }
 
       setUp(() {
-        when(() => argResults['android-artifact']).thenReturn('apk');
+        when(() => argResults['artifact']).thenReturn('apk');
         when(
           () => artifactBuilder.buildAar(
             buildNumber: any(named: 'buildNumber'),

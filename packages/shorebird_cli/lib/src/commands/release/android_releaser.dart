@@ -38,7 +38,7 @@ class AndroidReleaser extends Releaser {
       .toSet();
 
   /// Whether to generate an APK in addition to the AAB.
-  late bool generateApk = argResults['android-artifact'] as String == 'apk';
+  late bool generateApk = argResults['artifact'] as String == 'apk';
 
   /// Whether to split the APK per ABI. This is not something we support, but
   /// we check for this to provide a more helpful error message.
