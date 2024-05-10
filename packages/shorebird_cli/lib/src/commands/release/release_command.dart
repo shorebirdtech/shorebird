@@ -64,6 +64,16 @@ On Xcode builds it is used as "CFBundleVersion".''',
             '''Export an IPA with these options. See "xcodebuild -h" for available exportOptionsPlist keys (iOS only).''',
       )
       ..addOption(
+        exportMethodArgName,
+        defaultsTo: ExportMethod.appStore.argName,
+        allowed: ExportMethod.values.map((e) => e.argName),
+        help: 'Specify how the IPA will be distributed.',
+        allowedHelp: {
+          for (final method in ExportMethod.values)
+            method.argName: method.description,
+        },
+      )
+      ..addOption(
         'flutter-version',
         help: 'The Flutter version to use when building the app (e.g: 3.16.3).',
       )
