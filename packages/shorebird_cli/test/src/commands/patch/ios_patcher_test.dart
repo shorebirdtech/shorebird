@@ -128,6 +128,8 @@ void main() {
 
         when(() => ios.exportOptionsPlistFromArgs(any())).thenReturn(File(''));
 
+        when(aotTools.isLinkDebugInfoSupported).thenAnswer((_) async => false);
+
         patcher = IosPatcher(
           argResults: argResults,
           flavor: null,
@@ -150,6 +152,26 @@ void main() {
       group('releaseType', () {
         test('is ReleaseType.ios', () {
           expect(patcher.releaseType, ReleaseType.ios);
+        });
+      });
+
+      group('linkPercentage', () {
+        group('when linking has not occurred', () {
+          test('returns null', () {
+            expect(patcher.linkPercentage, isNull);
+          });
+        });
+
+        group('when linking has occurred', () {
+          const linkPercentage = 42.1337;
+
+          setUp(() {
+            patcher.lastBuildLinkPercentage = linkPercentage;
+          });
+
+          test('returns correct link percentage', () {
+            expect(patcher.linkPercentage, equals(linkPercentage));
+          });
         });
       });
 
@@ -855,7 +877,6 @@ void main() {
 
               group('when isLinkDebugInfoSupported', () {
                 setUp(() {
-                  when(() => argResults['debug-linker']).thenReturn(true);
                   when(
                     aotTools.isLinkDebugInfoSupported,
                   ).thenAnswer((_) async => true);

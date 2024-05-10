@@ -64,11 +64,21 @@ On Xcode builds it is used as "CFBundleVersion".''',
             '''Export an IPA with these options. See "xcodebuild -h" for available exportOptionsPlist keys (iOS only).''',
       )
       ..addOption(
+        exportMethodArgName,
+        defaultsTo: ExportMethod.appStore.argName,
+        allowed: ExportMethod.values.map((e) => e.argName),
+        help: 'Specify how the IPA will be distributed.',
+        allowedHelp: {
+          for (final method in ExportMethod.values)
+            method.argName: method.description,
+        },
+      )
+      ..addOption(
         'flutter-version',
         help: 'The Flutter version to use when building the app (e.g: 3.16.3).',
       )
       ..addOption(
-        'android-artifact',
+        'artifact',
         help:
             '''The type of artifact to generate. Only relevant for Android releases.''',
         allowed: ['aab', 'apk'],
@@ -85,6 +95,13 @@ On Xcode builds it is used as "CFBundleVersion".''',
         allowed: ReleaseType.values.map((e) => e.cliName).toList(),
         // TODO(bryanoltman): uncomment this once https://github.com/dart-lang/args/pull/273 lands
         // mandatory: true.
+      )
+      ..addFlag(
+        'split-per-abi',
+        help: 'Whether to split the APKs per ABIs (Android only). '
+            'To learn more, see: https://developer.android.com/studio/build/configure-apk-splits#configure-abi-split',
+        hide: true,
+        negatable: false,
       )
       ..addOption(
         'release-version',

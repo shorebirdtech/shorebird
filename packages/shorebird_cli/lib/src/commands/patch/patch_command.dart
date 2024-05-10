@@ -86,13 +86,6 @@ of the iOS app that is using this module.''',
         defaultsTo: true,
       )
       ..addFlag(
-        'debug-linker',
-        defaultsTo: true,
-        help: 'Collects linker diagnostic information to help troubleshoot low '
-            'link percentages. File is saved to build/$linkDebugInfoFileName. '
-            'iOS only.',
-      )
-      ..addFlag(
         'dry-run',
         abbr: 'n',
         negatable: false,
@@ -264,7 +257,7 @@ NOTE: this is ${styleBold.wrap('not')} recommended. Asset changes cannot be incl
     required ArchiveDiffer archiveDiffer,
   }) async {
     try {
-      return patchDiffChecker.confirmUnpatchableDiffsIfNecessary(
+      return await patchDiffChecker.confirmUnpatchableDiffsIfNecessary(
         localArtifact: patchArtifact,
         releaseArtifact: releaseArtifact,
         archiveDiffer: archiveDiffer,
@@ -298,6 +291,11 @@ NOTE: this is ${styleBold.wrap('not')} recommended. Asset changes cannot be incl
         '🟠 Track: ${lightCyan.wrap('Staging')}'
       else
         '🟢 Track: ${lightCyan.wrap('Production')}',
+      if (patcher.linkPercentage != null)
+        '''🔗 Running ${lightCyan.wrap('${patcher.linkPercentage!.toStringAsFixed(1)}%')} on CPU''',
+      if (patcher.linkPercentage != null &&
+          patcher.linkPercentage! < Patcher.minLinkPercentage)
+        '''🔍 Debug Info: ${lightCyan.wrap(patcher.debugInfoFile.path)}''',
     ];
 
     logger.info(

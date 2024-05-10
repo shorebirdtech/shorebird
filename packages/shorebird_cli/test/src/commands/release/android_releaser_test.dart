@@ -185,7 +185,7 @@ void main() {
     group('assertArgsAreValid', () {
       group('when split-per-abi is true', () {
         setUp(() {
-          when(() => argResults['android-artifact']).thenReturn('apk');
+          when(() => argResults['artifact']).thenReturn('apk');
           when(() => argResults['split-per-abi']).thenReturn(true);
         });
 
@@ -199,7 +199,7 @@ void main() {
 
       group('when arguments are valid', () {
         setUp(() {
-          when(() => argResults['android-artifact']).thenReturn('apk');
+          when(() => argResults['artifact']).thenReturn('apk');
           when(() => argResults['split-per-abi']).thenReturn(false);
         });
 
@@ -218,7 +218,7 @@ void main() {
 
       setUp(() {
         aabFile = File('');
-        when(() => argResults['android-artifact']).thenReturn('aab');
+        when(() => argResults['artifact']).thenReturn('aab');
         when(
           () => artifactBuilder.buildAppBundle(
             flavor: any(named: 'flavor'),
@@ -268,7 +268,7 @@ void main() {
 
       group('when building apk', () {
         setUp(() {
-          when(() => argResults['android-artifact']).thenReturn('apk');
+          when(() => argResults['artifact']).thenReturn('apk');
         });
 
         group('when apk build fails', () {
@@ -322,7 +322,7 @@ void main() {
         const target = 'my-target';
 
         setUp(() {
-          when(() => argResults['android-artifact']).thenReturn('apk');
+          when(() => argResults['artifact']).thenReturn('apk');
           androidReleaser = AndroidReleaser(
             argResults: argResults,
             flavor: flavor,
@@ -470,7 +470,7 @@ void main() {
 
       group('when an apk is generated', () {
         setUp(() {
-          when(() => argResults['android-artifact']).thenReturn('apk');
+          when(() => argResults['artifact']).thenReturn('apk');
         });
 
         test('returns expected metadata', () async {
@@ -493,7 +493,7 @@ void main() {
 
       group('when no apk is generated', () {
         setUp(() {
-          when(() => argResults['android-artifact']).thenReturn('aab');
+          when(() => argResults['artifact']).thenReturn('aab');
         });
 
         test('returns expected metadata', () async {
@@ -536,7 +536,7 @@ void main() {
 
       group('when an apk is generated', () {
         setUp(() {
-          when(() => argResults['android-artifact']).thenReturn('apk');
+          when(() => argResults['artifact']).thenReturn('apk');
         });
 
         test('returns expected instructions', () {
@@ -558,7 +558,7 @@ ${link(uri: Uri.parse('https://support.google.com/googleplay/android-developer/a
 
       group('when no apk is generated', () {
         setUp(() {
-          when(() => argResults['android-artifact']).thenReturn('aab');
+          when(() => argResults['artifact']).thenReturn('aab');
         });
 
         test('returns expected instructions', () {

@@ -2,7 +2,10 @@
 
 This section contains past updates we've sent to customers via Discord.
 
-## 1.0.6 (May 9, 2024)
+## 1.1.1 (May 10, 2024)
+- 🩹 Fix `shorebird release` to support `--artifact` and `--export-method`.
+
+## 1.1.0 (May 9, 2024)
 
 - ♊ `shorebird release` and `shorebird patch` now accept `--platforms` to
   specify which platforms to release or patch. This allows you to release or

@@ -37,15 +37,7 @@ class IosFrameworkPatcher extends Patcher {
     required super.target,
   });
 
-  String get _buildDirectory => p.join(
-        shorebirdEnv.getShorebirdProjectRoot()!.path,
-        'build',
-      );
-
-  String get _vmcodeOutputPath => p.join(
-        _buildDirectory,
-        'out.vmcode',
-      );
+  String get _vmcodeOutputPath => p.join(buildDirectory.path, 'out.vmcode');
 
   @override
   ArchiveDiffer get archiveDiffer => IosArchiveDiffer();
@@ -55,6 +47,9 @@ class IosFrameworkPatcher extends Patcher {
 
   @override
   ReleaseType get releaseType => ReleaseType.iosFramework;
+
+  @override
+  double? get linkPercentage => lastBuildLinkPercentage;
 
   @visibleForTesting
   double? lastBuildLinkPercentage;
@@ -278,7 +273,7 @@ class IosFrameworkPatcher extends Patcher {
         genSnapshot: genSnapshot,
         kernel: artifactManager.newestAppDill().path,
         outputPath: _vmcodeOutputPath,
-        workingDirectory: _buildDirectory,
+        workingDirectory: buildDirectory.path,
       );
     } catch (error) {
       linkProgress.fail('Failed to link AOT files: $error');
