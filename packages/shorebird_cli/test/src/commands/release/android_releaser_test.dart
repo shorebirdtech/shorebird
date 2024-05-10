@@ -95,6 +95,7 @@ void main() {
 
       when(() => argResults['target-platform'])
           .thenReturn(Arch.values.map((a) => a.targetPlatformCliArg).toList());
+      when(() => argResults.rest).thenReturn([]);
 
       when(() => logger.progress(any())).thenReturn(progress);
 
@@ -224,6 +225,7 @@ void main() {
             flavor: any(named: 'flavor'),
             target: any(named: 'target'),
             targetPlatforms: any(named: 'targetPlatforms'),
+            argResultsRest: any(named: 'argResultsRest'),
           ),
         ).thenAnswer((_) async => aabFile);
         when(
@@ -231,6 +233,7 @@ void main() {
             flavor: any(named: 'flavor'),
             target: any(named: 'target'),
             targetPlatforms: any(named: 'targetPlatforms'),
+            argResultsRest: any(named: 'argResultsRest'),
           ),
         ).thenAnswer(
           (_) async => File(''),
@@ -253,6 +256,7 @@ void main() {
               flavor: any(named: 'flavor'),
               target: any(named: 'target'),
               targetPlatforms: any(named: 'targetPlatforms'),
+              argResultsRest: any(named: 'argResultsRest'),
             ),
           ).thenThrow(ArtifactBuildException('Uh oh'));
         });
@@ -278,6 +282,7 @@ void main() {
                 flavor: any(named: 'flavor'),
                 target: any(named: 'target'),
                 targetPlatforms: any(named: 'targetPlatforms'),
+                argResultsRest: any(named: 'argResultsRest'),
               ),
             ).thenThrow(ArtifactBuildException('Uh oh'));
           });
@@ -299,7 +304,10 @@ void main() {
           );
           expect(result, aabFile);
           verify(
-            () => artifactBuilder.buildAppBundle(targetPlatforms: Arch.values),
+            () => artifactBuilder.buildAppBundle(
+              targetPlatforms: Arch.values,
+              argResultsRest: [],
+            ),
           ).called(1);
         });
 
@@ -312,6 +320,7 @@ void main() {
               flavor: any(named: 'flavor'),
               target: any(named: 'target'),
               targetPlatforms: any(named: 'targetPlatforms'),
+              argResultsRest: any(named: 'argResultsRest'),
             ),
           );
         });
@@ -337,6 +346,7 @@ void main() {
               flavor: flavor,
               target: target,
               targetPlatforms: Arch.values,
+              argResultsRest: [],
             ),
           ).called(1);
           verify(
@@ -344,6 +354,7 @@ void main() {
               flavor: flavor,
               target: target,
               targetPlatforms: Arch.values,
+              argResultsRest: [],
             ),
           ).called(1);
         });

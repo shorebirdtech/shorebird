@@ -80,6 +80,7 @@ class AarReleaser extends Releaser {
       await artifactBuilder.buildAar(
         buildNumber: buildNumber,
         targetPlatforms: architectures,
+        argResultsRest: argResults.rest,
       );
     } catch (e) {
       logger.err('Failed to build aar: $e');

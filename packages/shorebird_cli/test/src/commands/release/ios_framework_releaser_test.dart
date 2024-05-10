@@ -95,6 +95,8 @@ void main() {
         shorebirdValidator = MockShorebirdValidator();
         xcodeBuild = MockXcodeBuild();
 
+        when(() => argResults.rest).thenReturn([]);
+
         when(() => logger.progress(any())).thenReturn(progress);
 
         when(
@@ -244,7 +246,9 @@ void main() {
 
         setUp(() {
           when(
-            () => artifactBuilder.buildIosFramework(),
+            () => artifactBuilder.buildIosFramework(
+              argResultsRest: any(named: 'argResultsRest'),
+            ),
           ).thenAnswer(
             (_) async => File(''),
           );
@@ -273,14 +277,18 @@ void main() {
             );
 
             expect(xcframework.path, p.join(projectRoot.path, 'release'));
-            verify(artifactBuilder.buildIosFramework).called(1);
+            verify(
+              () => artifactBuilder.buildIosFramework(argResultsRest: []),
+            ).called(1);
           });
         });
 
         group('when build fails', () {
           setUp(() {
             when(
-              () => artifactBuilder.buildIosFramework(),
+              () => artifactBuilder.buildIosFramework(
+                argResultsRest: any(named: 'argResultsRest'),
+              ),
             ).thenThrow(Exception('build failed'));
           });
 

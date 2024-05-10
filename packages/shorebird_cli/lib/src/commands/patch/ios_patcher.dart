@@ -92,6 +92,7 @@ class IosPatcher extends Patcher {
         // If buildIpa is called with a different codesign value than the
         // release was, we will erroneously report native diffs.
         await artifactBuilder.buildIpa(
+          argResultsRest: argResults.rest,
           codesign: shouldCodesign,
           exportOptionsPlist: exportOptionsPlist,
           flavor: flavor,

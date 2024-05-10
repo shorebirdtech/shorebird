@@ -83,7 +83,9 @@ class IosFrameworkPatcher extends Patcher {
       'Building patch with Flutter $flutterVersionString',
     );
     try {
-      await artifactBuilder.buildIosFramework();
+      await artifactBuilder.buildIosFramework(
+        argResultsRest: argResults.rest,
+      );
     } on ArtifactBuildException catch (error) {
       buildProgress.fail(error.message);
       exit(ExitCode.software.code);

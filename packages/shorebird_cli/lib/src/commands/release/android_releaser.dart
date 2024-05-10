@@ -95,6 +95,7 @@ Please comment and upvote ${link(uri: Uri.parse('https://github.com/shorebirdtec
         flavor: flavor,
         target: target,
         targetPlatforms: architectures,
+        argResultsRest: argResults.rest,
       );
     } on ArtifactBuildException catch (e) {
       buildAppBundleProgress.fail(e.message);
@@ -111,6 +112,7 @@ Please comment and upvote ${link(uri: Uri.parse('https://github.com/shorebirdtec
           flavor: flavor,
           target: target,
           targetPlatforms: architectures,
+          argResultsRest: argResults.rest,
         );
       } on ArtifactBuildException catch (e) {
         buildApkProgress.fail(e.message);

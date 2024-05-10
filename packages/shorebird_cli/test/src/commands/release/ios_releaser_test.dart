@@ -261,6 +261,7 @@ void main() {
               exportOptionsPlist: any(named: 'exportOptionsPlist'),
               flavor: any(named: 'flavor'),
               target: any(named: 'target'),
+              argResultsRest: any(named: 'argResultsRest'),
             ),
           ).thenAnswer((_) async => {});
 
@@ -330,6 +331,7 @@ void main() {
                 exportOptionsPlist: any(named: 'exportOptionsPlist'),
                 flavor: any(named: 'flavor'),
                 target: any(named: 'target'),
+                argResultsRest: any(named: 'argResultsRest'),
               ),
             ).thenThrow(ArtifactBuildException('Failed to build'));
           });

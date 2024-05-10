@@ -48,7 +48,11 @@ class BuildAppBundleCommand extends ShorebirdCommand {
     final target = results['target'] as String?;
     final buildProgress = logger.progress('Building appbundle');
     try {
-      await artifactBuilder.buildAppBundle(flavor: flavor, target: target);
+      await artifactBuilder.buildAppBundle(
+        flavor: flavor,
+        target: target,
+        argResultsRest: results.rest,
+      );
     } on ArtifactBuildException catch (error) {
       buildProgress.fail(error.message);
       return ExitCode.software.code;

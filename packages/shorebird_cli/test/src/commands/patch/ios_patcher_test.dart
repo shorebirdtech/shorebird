@@ -119,6 +119,7 @@ void main() {
         xcodeBuild = MockXcodeBuild();
 
         when(() => argResults['build-number']).thenReturn('1.0');
+        when(() => argResults.rest).thenReturn([]);
 
         when(() => logger.progress(any())).thenReturn(progress);
 

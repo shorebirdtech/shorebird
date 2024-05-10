@@ -92,6 +92,7 @@ void main() {
       when(() => argResults['build-number']).thenReturn(buildNumber);
       when(() => argResults['target-platform'])
           .thenReturn(Arch.values.map((a) => a.targetPlatformCliArg).toList());
+      when(() => argResults.rest).thenReturn([]);
 
       when(() => logger.progress(any())).thenReturn(progress);
 
@@ -260,6 +261,7 @@ void main() {
           () => artifactBuilder.buildAar(
             buildNumber: any(named: 'buildNumber'),
             targetPlatforms: any(named: 'targetPlatforms'),
+            argResultsRest: any(named: 'argResultsRest'),
           ),
         ).thenAnswer(
           (_) async => File(''),
@@ -282,6 +284,7 @@ void main() {
             () => artifactBuilder.buildAar(
               buildNumber: buildNumber,
               targetPlatforms: Arch.values.toSet(),
+              argResultsRest: [],
             ),
           ).called(1);
         });
@@ -293,6 +296,7 @@ void main() {
             () => artifactBuilder.buildAar(
               buildNumber: any(named: 'buildNumber'),
               targetPlatforms: any(named: 'targetPlatforms'),
+              argResultsRest: any(named: 'argResultsRest'),
             ),
           ).thenThrow(Exception('build failed'));
         });
