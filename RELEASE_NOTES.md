@@ -2,7 +2,12 @@
 
 This section contains past updates we've sent to customers via Discord.
 
+## 1.1.2 (May 10, 2024)
+
+- 🩹 Fix `shorebird release` not forwarding args after `--` to `Flutter`.
+
 ## 1.1.1 (May 10, 2024)
+
 - 🩹 Fix `shorebird release` to support `--artifact` and `--export-method`.
 
 ## 1.1.0 (May 9, 2024)
@@ -10,7 +15,7 @@ This section contains past updates we've sent to customers via Discord.
 - ♊ `shorebird release` and `shorebird patch` now accept `--platforms` to
   specify which platforms to release or patch. This allows you to release or
   patch multiple platforms in a single command. For example, `shorebird release
-  --platforms android,ios` will release to both Android and iOS platforms.
+--platforms android,ios` will release to both Android and iOS platforms.
 - 🏜️ `shorebird release` now supports `--dry-run` like `shorebird patch`.
 - 🪲 `shorebird` commands now save a file with debug info which can be manually
   / optionally sent to our team for help debugging any issue you encounter.
