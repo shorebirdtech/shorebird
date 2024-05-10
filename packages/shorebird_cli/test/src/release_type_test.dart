@@ -81,5 +81,40 @@ void main() {
         });
       });
     });
+
+    group('forwardedArgs', () {
+      late ArgParser parser;
+      setUp(() {
+        parser = ArgParser()
+          ..addMultiOption(
+            'platforms',
+            allowed: ReleaseType.values.map((e) => e.cliName),
+          );
+      });
+
+      test('returns an empty list when rest is empty', () {
+        final args = <String>[];
+        final result = parser.parse(args);
+        expect(result.forwardedArgs, isEmpty);
+      });
+
+      test('forwards args when a platform is specified via rest', () {
+        final args = <String>['android', '--', '--verbose'];
+        final result = parser.parse(args);
+        expect(result.forwardedArgs, ['--verbose']);
+      });
+
+      test('forwards args when a platform is specified via option', () {
+        final args = <String>['--platforms', 'android', '--', '--verbose'];
+        final result = parser.parse(args);
+        expect(result.forwardedArgs, ['--verbose']);
+      });
+
+      test('forwards args when no platforms are specified', () {
+        final args = <String>['--', '--verbose'];
+        final result = parser.parse(args);
+        expect(result.forwardedArgs, ['--verbose']);
+      });
+    });
   });
 }
