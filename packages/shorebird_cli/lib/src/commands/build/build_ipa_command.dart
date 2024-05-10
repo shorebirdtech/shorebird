@@ -65,6 +65,7 @@ Codesigning is disabled. You must manually codesign before deploying to devices.
         flavor: flavor,
         target: target,
         codesign: codesign,
+        argResultsRest: results.rest,
       );
     } on ArtifactBuildException catch (error) {
       buildProgress.fail('Failed to build: ${error.message}');

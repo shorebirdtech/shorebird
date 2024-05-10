@@ -71,6 +71,7 @@ void main() {
         () => artifactBuilder.buildAppBundle(
           flavor: any(named: 'flavor'),
           target: any(named: 'target'),
+          argResultsRest: any(named: 'argResultsRest'),
         ),
       ).thenAnswer(
         (_) async => File(''),
@@ -107,21 +108,33 @@ void main() {
     });
 
     test('exits with code 70 when building appbundle fails', () async {
-      when(() => artifactBuilder.buildAppBundle()).thenThrow(
+      when(
+        () => artifactBuilder.buildAppBundle(
+          argResultsRest: any(named: 'argResultsRest'),
+        ),
+      ).thenThrow(
         ArtifactBuildException('Failed to build: oops'),
       );
 
       final exitCode = await runWithOverrides(command.run);
 
       expect(exitCode, equals(ExitCode.software.code));
-      verify(() => artifactBuilder.buildAppBundle()).called(1);
+      verify(
+        () => artifactBuilder.buildAppBundle(
+          argResultsRest: [],
+        ),
+      ).called(1);
     });
 
     test('exits with code 0 when building appbundle succeeds', () async {
       final exitCode = await runWithOverrides(command.run);
 
       expect(exitCode, equals(ExitCode.success.code));
-      verify(() => artifactBuilder.buildAppBundle()).called(1);
+      verify(
+        () => artifactBuilder.buildAppBundle(
+          argResultsRest: [],
+        ),
+      ).called(1);
 
       verify(
         () => logger.info(
@@ -146,6 +159,7 @@ ${lightCyan.wrap(p.join('build', 'app', 'outputs', 'bundle', 'release', 'app-rel
         () => artifactBuilder.buildAppBundle(
           flavor: flavor,
           target: target,
+          argResultsRest: [],
         ),
       ).called(1);
 

@@ -53,7 +53,10 @@ class BuildAarCommand extends ShorebirdCommand {
     final buildNumber = results['build-number'] as String;
     final buildProgress = logger.progress('Building aar');
     try {
-      await artifactBuilder.buildAar(buildNumber: buildNumber);
+      await artifactBuilder.buildAar(
+        buildNumber: buildNumber,
+        argResultsRest: results.rest,
+      );
     } on ArtifactBuildException catch (error) {
       buildProgress.fail('Failed to build: ${error.message}');
       return ExitCode.software.code;

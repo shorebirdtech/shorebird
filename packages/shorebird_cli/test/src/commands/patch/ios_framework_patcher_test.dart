@@ -114,6 +114,7 @@ void main() {
         xcodeBuild = MockXcodeBuild();
 
         when(() => argResults['build-number']).thenReturn('1.0');
+        when(() => argResults.rest).thenReturn([]);
 
         when(() => logger.progress(any())).thenReturn(progress);
 
@@ -285,7 +286,11 @@ void main() {
 
         group('when build fails', () {
           setUp(() {
-            when(() => artifactBuilder.buildIosFramework()).thenThrow(
+            when(
+              () => artifactBuilder.buildIosFramework(
+                argResultsRest: any(named: 'argResultsRest'),
+              ),
+            ).thenThrow(
               ArtifactBuildException('Build failed'),
             );
           });
@@ -302,7 +307,11 @@ void main() {
 
         group('when elf aot snapshot build fails', () {
           setUp(() {
-            when(() => artifactBuilder.buildIosFramework()).thenAnswer(
+            when(
+              () => artifactBuilder.buildIosFramework(
+                argResultsRest: any(named: 'argResultsRest'),
+              ),
+            ).thenAnswer(
               (_) async {},
             );
             when(() => artifactManager.newestAppDill()).thenReturn(File(''));
@@ -328,7 +337,11 @@ void main() {
 
         group('when build succeeds', () {
           setUp(() {
-            when(() => artifactBuilder.buildIosFramework()).thenAnswer(
+            when(
+              () => artifactBuilder.buildIosFramework(
+                argResultsRest: any(named: 'argResultsRest'),
+              ),
+            ).thenAnswer(
               (_) async {},
             );
             when(() => artifactManager.newestAppDill()).thenReturn(File(''));

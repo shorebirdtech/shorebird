@@ -48,7 +48,11 @@ class BuildApkCommand extends ShorebirdCommand {
     final target = results['target'] as String?;
     final buildProgress = logger.progress('Building apk');
     try {
-      await artifactBuilder.buildApk(flavor: flavor, target: target);
+      await artifactBuilder.buildApk(
+        flavor: flavor,
+        target: target,
+        argResultsRest: results.rest,
+      );
     } on ArtifactBuildException catch (error) {
       buildProgress.fail(error.message);
       return ExitCode.software.code;

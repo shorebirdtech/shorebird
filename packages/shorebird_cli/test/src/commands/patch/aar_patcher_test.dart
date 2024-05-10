@@ -103,6 +103,7 @@ void main() {
       shorebirdAndroidArtifacts = MockShorebirdAndroidArtifacts();
 
       when(() => argResults['build-number']).thenReturn('1.0');
+      when(() => argResults.rest).thenReturn([]);
 
       when(() => logger.progress(any())).thenReturn(progress);
 
@@ -235,6 +236,7 @@ void main() {
           when(
             () => artifactBuilder.buildAar(
               buildNumber: any(named: 'buildNumber'),
+              argResultsRest: any(named: 'argResultsRest'),
             ),
           ).thenThrow(exception);
         });
@@ -254,6 +256,7 @@ void main() {
           when(
             () => artifactBuilder.buildAar(
               buildNumber: any(named: 'buildNumber'),
+              argResultsRest: any(named: 'argResultsRest'),
             ),
           ).thenAnswer((_) async => {});
         });
@@ -280,8 +283,12 @@ void main() {
             ),
           );
 
-          verify(() => artifactBuilder.buildAar(buildNumber: buildNumber))
-              .called(1);
+          verify(
+            () => artifactBuilder.buildAar(
+              buildNumber: buildNumber,
+              argResultsRest: any(named: 'argResultsRest'),
+            ),
+          ).called(1);
         });
       });
     });

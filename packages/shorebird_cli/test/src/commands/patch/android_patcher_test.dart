@@ -114,6 +114,8 @@ void main() {
       shorebirdValidator = MockShorebirdValidator();
       shorebirdAndroidArtifacts = MockShorebirdAndroidArtifacts();
 
+      when(() => argResults.rest).thenReturn([]);
+
       when(() => logger.progress(any())).thenReturn(progress);
 
       when(
@@ -226,6 +228,7 @@ void main() {
             flavor: any(named: 'flavor'),
             target: any(named: 'target'),
             targetPlatforms: any(named: 'targetPlatforms'),
+            argResultsRest: any(named: 'argResultsRest'),
           ),
         ).thenAnswer((_) async => aabFile);
       });
@@ -238,6 +241,7 @@ void main() {
             () => artifactBuilder.buildAppBundle(
               flavor: any(named: 'flavor'),
               target: any(named: 'target'),
+              argResultsRest: any(named: 'argResultsRest'),
             ),
           ).thenThrow(exception);
           when(() => logger.progress(any())).thenReturn(progress);

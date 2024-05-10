@@ -61,8 +61,11 @@ class AndroidPatcher extends Patcher {
         logger.progress('Building patch with Flutter $flutterVersionString');
 
     try {
-      aabFile =
-          await artifactBuilder.buildAppBundle(flavor: flavor, target: target);
+      aabFile = await artifactBuilder.buildAppBundle(
+        flavor: flavor,
+        target: target,
+        argResultsRest: argResults.rest,
+      );
       buildProgress.complete();
     } on ArtifactBuildException catch (error) {
       buildProgress.fail(error.message);

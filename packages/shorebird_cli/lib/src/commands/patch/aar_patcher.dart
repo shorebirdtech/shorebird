@@ -70,7 +70,10 @@ class AarPatcher extends Patcher {
         logger.progress('Building patch with Flutter $flutterVersionString');
 
     try {
-      await artifactBuilder.buildAar(buildNumber: buildNumber);
+      await artifactBuilder.buildAar(
+        buildNumber: buildNumber,
+        argResultsRest: argResults.rest,
+      );
       buildProgress.complete();
     } on ArtifactBuildException catch (error) {
       buildProgress.fail('Failed to build: ${error.message}');

@@ -69,6 +69,7 @@ void main() {
         () => artifactBuilder.buildApk(
           flavor: any(named: 'flavor'),
           target: any(named: 'target'),
+          argResultsRest: any(named: 'argResultsRest'),
         ),
       ).thenAnswer((_) async => File(''));
 
@@ -107,13 +108,18 @@ void main() {
         () => artifactBuilder.buildApk(
           flavor: any(named: 'flavor'),
           target: any(named: 'target'),
+          argResultsRest: any(named: 'argResultsRest'),
         ),
       ).thenThrow(ArtifactBuildException('oops'));
 
       final exitCode = await runWithOverrides(command.run);
 
       expect(exitCode, equals(ExitCode.software.code));
-      verify(() => artifactBuilder.buildApk()).called(1);
+      verify(
+        () => artifactBuilder.buildApk(
+          argResultsRest: [],
+        ),
+      ).called(1);
     });
 
     test('exits with code 0 when building apk succeeds', () async {
@@ -121,7 +127,11 @@ void main() {
 
       expect(exitCode, equals(ExitCode.success.code));
 
-      verify(() => artifactBuilder.buildApk()).called(1);
+      verify(
+        () => artifactBuilder.buildApk(
+          argResultsRest: [],
+        ),
+      ).called(1);
       verify(
         () => logger.info(
           '''
@@ -146,6 +156,7 @@ ${lightCyan.wrap(p.join('build', 'app', 'outputs', 'apk', 'release', 'app-releas
         () => artifactBuilder.buildApk(
           flavor: flavor,
           target: target,
+          argResultsRest: [],
         ),
       ).called(1);
       verify(

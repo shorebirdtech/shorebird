@@ -69,6 +69,7 @@ void main() {
           flavor: any(named: 'flavor'),
           target: any(named: 'target'),
           codesign: any(named: 'codesign'),
+          argResultsRest: any(named: 'argResultsRest'),
         ),
       ).thenAnswer((_) async => File(''));
       when(() => ios.createExportOptionsPlist()).thenReturn(File('.'));
@@ -122,13 +123,18 @@ void main() {
           flavor: any(named: 'flavor'),
           target: any(named: 'target'),
           codesign: any(named: 'codesign'),
+          argResultsRest: any(named: 'argResultsRest'),
         ),
       ).thenThrow(ArtifactBuildException('oops'));
 
       final exitCode = await runWithOverrides(command.run);
 
       expect(exitCode, equals(ExitCode.software.code));
-      verify(() => artifactBuilder.buildIpa()).called(1);
+      verify(
+        () => artifactBuilder.buildIpa(
+          argResultsRest: [],
+        ),
+      ).called(1);
     });
 
     test('exits with code 0 when building ipa succeeds', () async {
@@ -136,7 +142,7 @@ void main() {
 
       expect(exitCode, equals(ExitCode.success.code));
 
-      verify(() => artifactBuilder.buildIpa()).called(1);
+      verify(() => artifactBuilder.buildIpa(argResultsRest: [])).called(1);
 
       verifyInOrder([
         () => logger.info(
@@ -164,7 +170,11 @@ ${lightCyan.wrap(p.join('build', 'ios', 'ipa', 'Runner.ipa'))}''',
       expect(exitCode, equals(ExitCode.success.code));
 
       verify(
-        () => artifactBuilder.buildIpa(flavor: flavor, target: target),
+        () => artifactBuilder.buildIpa(
+          flavor: flavor,
+          target: target,
+          argResultsRest: [],
+        ),
       ).called(1);
 
       verifyInOrder([
@@ -190,7 +200,7 @@ ${lightCyan.wrap(p.join('build', 'ios', 'ipa', 'Runner.ipa'))}''',
       expect(exitCode, equals(ExitCode.success.code));
 
       verify(
-        () => artifactBuilder.buildIpa(codesign: false),
+        () => artifactBuilder.buildIpa(codesign: false, argResultsRest: []),
       ).called(1);
 
       verify(

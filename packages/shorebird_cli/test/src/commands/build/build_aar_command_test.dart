@@ -49,7 +49,10 @@ void main() {
       when(() => argResults.rest).thenReturn([]);
       when(() => logger.progress(any())).thenReturn(progress);
       when(
-        () => artifactBuilder.buildAar(buildNumber: any(named: 'buildNumber')),
+        () => artifactBuilder.buildAar(
+          buildNumber: any(named: 'buildNumber'),
+          argResultsRest: any(named: 'argResultsRest'),
+        ),
       ).thenAnswer((_) async => {});
       when(
         () => shorebirdEnv.androidPackageName,
@@ -97,14 +100,21 @@ void main() {
 
     test('exits with code 70 when building aar fails', () async {
       when(
-        () => artifactBuilder.buildAar(buildNumber: any(named: 'buildNumber')),
+        () => artifactBuilder.buildAar(
+          buildNumber: any(named: 'buildNumber'),
+          argResultsRest: any(named: 'argResultsRest'),
+        ),
       ).thenThrow(ArtifactBuildException('Failed to build: error'));
 
       final result = await runWithOverrides(command.run);
 
       expect(result, equals(ExitCode.software.code));
-      verify(() => artifactBuilder.buildAar(buildNumber: buildNumber))
-          .called(1);
+      verify(
+        () => artifactBuilder.buildAar(
+          buildNumber: buildNumber,
+          argResultsRest: [],
+        ),
+      ).called(1);
       verify(
         () => progress.fail(any(that: contains('Failed to build'))),
       ).called(1);
@@ -115,8 +125,12 @@ void main() {
 
       expect(result, equals(ExitCode.success.code));
 
-      verify(() => artifactBuilder.buildAar(buildNumber: buildNumber))
-          .called(1);
+      verify(
+        () => artifactBuilder.buildAar(
+          buildNumber: buildNumber,
+          argResultsRest: [],
+        ),
+      ).called(1);
       verify(
         () => logger.info(
           '''

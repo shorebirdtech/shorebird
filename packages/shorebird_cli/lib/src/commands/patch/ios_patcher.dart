@@ -96,6 +96,7 @@ class IosPatcher extends Patcher {
           exportOptionsPlist: exportOptionsPlist,
           flavor: flavor,
           target: target,
+          argResultsRest: argResults.rest,
         );
       } on ProcessException catch (error) {
         buildProgress.fail('Failed to build: ${error.message}');
