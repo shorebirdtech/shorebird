@@ -14,7 +14,7 @@ final shorebirdToolsRef = create(ShorebirdTools.new);
 ShorebirdTools get shorebirdTools => read(shorebirdToolsRef);
 
 /// {@template package_failed_exception}
-/// An exception thrown when a package fails.
+/// An exception thrown when packaging a patch fails.
 /// {@endtemplate}
 class PackageFailedException implements Exception {
   /// {@macro package_failed_exception}
@@ -30,7 +30,7 @@ class PackageFailedException implements Exception {
 ///
 /// Used to access many commands related to Shorebird's flutter tooling.
 class ShorebirdTools {
-  /// Returns if the the current flutter version supports this tool.
+  /// Returns whether the current flutter version supports this tool.
   ///
   /// This should be used to check if the tool is supported before running
   /// any commands.
@@ -46,7 +46,6 @@ class ShorebirdTools {
         'shorebird_tools',
       ),
     );
-    logger.info(dir.path);
     return dir;
   }
 
@@ -63,7 +62,7 @@ class ShorebirdTools {
     );
   }
 
-  /// Creates a package with the [patchPath] on the [outputPath].
+  /// Creates a package with the [patchPath] and writes it to [outputPath].
   ///
   /// Packages contains all the information needed by Shorebird for an update.
   Future<void> package({

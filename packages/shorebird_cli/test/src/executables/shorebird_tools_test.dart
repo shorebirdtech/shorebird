@@ -139,7 +139,7 @@ Failed to create package (exit code ${processResult.exitCode}).
       });
     });
 
-    group('when the shorebird tools directory doest not exists', () {
+    group('when the shorebird tools directory does not exist', () {
       test('isSupported returns false', () {
         final isSupported = runWithOverrides(
           () => shorebirdTools.isSupported(),
