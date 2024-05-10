@@ -86,6 +86,13 @@ On Xcode builds it is used as "CFBundleVersion".''',
         // TODO(bryanoltman): uncomment this once https://github.com/dart-lang/args/pull/273 lands
         // mandatory: true.
       )
+      ..addFlag(
+        'split-per-abi',
+        help: 'Whether to split the APKs per ABIs (Android only). '
+            'To learn more, see: https://developer.android.com/studio/build/configure-apk-splits#configure-abi-split',
+        hide: true,
+        negatable: false,
+      )
       ..addOption(
         'release-version',
         help: '''
