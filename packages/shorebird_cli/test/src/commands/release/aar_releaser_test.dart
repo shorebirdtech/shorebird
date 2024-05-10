@@ -261,7 +261,7 @@ void main() {
           () => artifactBuilder.buildAar(
             buildNumber: any(named: 'buildNumber'),
             targetPlatforms: any(named: 'targetPlatforms'),
-            argResultsRest: any(named: 'argResultsRest'),
+            args: any(named: 'args'),
           ),
         ).thenAnswer(
           (_) async => File(''),
@@ -274,6 +274,27 @@ void main() {
       });
 
       group('when build succeeds', () {
+        group('when platform was specified via arg results rest', () {
+          setUp(() {
+            when(() => argResults.rest).thenReturn(['android', '--verbose']);
+          });
+
+          test('produces aar in release directory', () async {
+            final aar = await runWithOverrides(
+              () => aarReleaser.buildReleaseArtifacts(),
+            );
+
+            expect(aar.path, p.join(projectRoot.path, 'release'));
+            verify(
+              () => artifactBuilder.buildAar(
+                buildNumber: buildNumber,
+                targetPlatforms: Arch.values.toSet(),
+                args: ['--verbose'],
+              ),
+            ).called(1);
+          });
+        });
+
         test('produces aar in release directory', () async {
           final aar = await runWithOverrides(
             () => aarReleaser.buildReleaseArtifacts(),
@@ -284,7 +305,7 @@ void main() {
             () => artifactBuilder.buildAar(
               buildNumber: buildNumber,
               targetPlatforms: Arch.values.toSet(),
-              argResultsRest: [],
+              args: [],
             ),
           ).called(1);
         });
@@ -296,7 +317,7 @@ void main() {
             () => artifactBuilder.buildAar(
               buildNumber: any(named: 'buildNumber'),
               targetPlatforms: any(named: 'targetPlatforms'),
-              argResultsRest: any(named: 'argResultsRest'),
+              args: any(named: 'args'),
             ),
           ).thenThrow(Exception('build failed'));
         });

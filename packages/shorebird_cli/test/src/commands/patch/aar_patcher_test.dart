@@ -236,7 +236,7 @@ void main() {
           when(
             () => artifactBuilder.buildAar(
               buildNumber: any(named: 'buildNumber'),
-              argResultsRest: any(named: 'argResultsRest'),
+              args: any(named: 'args'),
             ),
           ).thenThrow(exception);
         });
@@ -256,9 +256,45 @@ void main() {
           when(
             () => artifactBuilder.buildAar(
               buildNumber: any(named: 'buildNumber'),
-              argResultsRest: any(named: 'argResultsRest'),
+              args: any(named: 'args'),
             ),
           ).thenAnswer((_) async => {});
+        });
+
+        group('when platform was specified via arg results rest', () {
+          setUp(() {
+            when(() => argResults.rest).thenReturn(['android', '--verbose']);
+          });
+
+          test('returns the aar artifact file', () async {
+            final artifact = await runWithOverrides(patcher.buildPatchArtifact);
+
+            expect(artifact, isA<File>());
+            expect(
+              artifact.path,
+              endsWith(
+                p.join(
+                  'build',
+                  'host',
+                  'outputs',
+                  'repo',
+                  'com',
+                  'example',
+                  'my_flutter_module',
+                  'flutter_release',
+                  buildNumber,
+                  'flutter_release-$buildNumber.aar',
+                ),
+              ),
+            );
+
+            verify(
+              () => artifactBuilder.buildAar(
+                buildNumber: buildNumber,
+                args: ['--verbose'],
+              ),
+            ).called(1);
+          });
         });
 
         test('returns the aar artifact file', () async {
@@ -286,7 +322,7 @@ void main() {
           verify(
             () => artifactBuilder.buildAar(
               buildNumber: buildNumber,
-              argResultsRest: any(named: 'argResultsRest'),
+              args: any(named: 'args'),
             ),
           ).called(1);
         });

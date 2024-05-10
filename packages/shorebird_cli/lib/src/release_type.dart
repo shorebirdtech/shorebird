@@ -45,6 +45,9 @@ enum ReleaseType {
   }
 }
 
+bool _isPlatform(String platform) =>
+    ReleaseType.values.any((target) => target.cliName == platform);
+
 extension ReleaseTypeArgs on ArgResults {
   Iterable<ReleaseType> get releaseTypes {
     final List<String> releaseTypeCliNames;
@@ -63,5 +66,11 @@ extension ReleaseTypeArgs on ArgResults {
       (cliName) =>
           ReleaseType.values.firstWhere((target) => target.cliName == cliName),
     );
+  }
+
+  List<String> get forwardedArgs {
+    if (rest.isEmpty) return [];
+    if (_isPlatform(rest.first)) return rest.skip(1).toList();
+    return rest;
   }
 }

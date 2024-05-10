@@ -104,7 +104,7 @@ class IosReleaser extends Releaser {
         exportOptionsPlist: exportOptionsPlist,
         flavor: flavor,
         target: target,
-        argResultsRest: argResults.rest,
+        args: argResults.forwardedArgs,
       );
       buildProgress.complete();
     } on ArtifactBuildException catch (error) {

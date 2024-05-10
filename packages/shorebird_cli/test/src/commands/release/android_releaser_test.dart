@@ -225,7 +225,7 @@ void main() {
             flavor: any(named: 'flavor'),
             target: any(named: 'target'),
             targetPlatforms: any(named: 'targetPlatforms'),
-            argResultsRest: any(named: 'argResultsRest'),
+            args: any(named: 'args'),
           ),
         ).thenAnswer((_) async => aabFile);
         when(
@@ -233,7 +233,7 @@ void main() {
             flavor: any(named: 'flavor'),
             target: any(named: 'target'),
             targetPlatforms: any(named: 'targetPlatforms'),
-            argResultsRest: any(named: 'argResultsRest'),
+            args: any(named: 'args'),
           ),
         ).thenAnswer(
           (_) async => File(''),
@@ -256,7 +256,7 @@ void main() {
               flavor: any(named: 'flavor'),
               target: any(named: 'target'),
               targetPlatforms: any(named: 'targetPlatforms'),
-              argResultsRest: any(named: 'argResultsRest'),
+              args: any(named: 'args'),
             ),
           ).thenThrow(ArtifactBuildException('Uh oh'));
         });
@@ -282,7 +282,7 @@ void main() {
                 flavor: any(named: 'flavor'),
                 target: any(named: 'target'),
                 targetPlatforms: any(named: 'targetPlatforms'),
-                argResultsRest: any(named: 'argResultsRest'),
+                args: any(named: 'args'),
               ),
             ).thenThrow(ArtifactBuildException('Uh oh'));
           });
@@ -298,6 +298,25 @@ void main() {
       });
 
       group('when the build succeeds', () {
+        group('when platform was specified via arg results rest', () {
+          setUp(() {
+            when(() => argResults.rest).thenReturn(['android', '--verbose']);
+          });
+
+          test('returns the path to the aab', () async {
+            final result = await runWithOverrides(
+              () => androidReleaser.buildReleaseArtifacts(),
+            );
+            expect(result, aabFile);
+            verify(
+              () => artifactBuilder.buildAppBundle(
+                targetPlatforms: Arch.values,
+                args: ['--verbose'],
+              ),
+            ).called(1);
+          });
+        });
+
         test('returns the path to the aab', () async {
           final result = await runWithOverrides(
             () => androidReleaser.buildReleaseArtifacts(),
@@ -306,7 +325,7 @@ void main() {
           verify(
             () => artifactBuilder.buildAppBundle(
               targetPlatforms: Arch.values,
-              argResultsRest: [],
+              args: [],
             ),
           ).called(1);
         });
@@ -320,7 +339,7 @@ void main() {
               flavor: any(named: 'flavor'),
               target: any(named: 'target'),
               targetPlatforms: any(named: 'targetPlatforms'),
-              argResultsRest: any(named: 'argResultsRest'),
+              args: any(named: 'args'),
             ),
           );
         });
@@ -346,7 +365,7 @@ void main() {
               flavor: flavor,
               target: target,
               targetPlatforms: Arch.values,
-              argResultsRest: [],
+              args: [],
             ),
           ).called(1);
           verify(
@@ -354,7 +373,7 @@ void main() {
               flavor: flavor,
               target: target,
               targetPlatforms: Arch.values,
-              argResultsRest: [],
+              args: [],
             ),
           ).called(1);
         });

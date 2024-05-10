@@ -69,7 +69,7 @@ void main() {
           flavor: any(named: 'flavor'),
           target: any(named: 'target'),
           codesign: any(named: 'codesign'),
-          argResultsRest: any(named: 'argResultsRest'),
+          args: any(named: 'args'),
         ),
       ).thenAnswer((_) async => File(''));
       when(() => ios.createExportOptionsPlist()).thenReturn(File('.'));
@@ -123,7 +123,7 @@ void main() {
           flavor: any(named: 'flavor'),
           target: any(named: 'target'),
           codesign: any(named: 'codesign'),
-          argResultsRest: any(named: 'argResultsRest'),
+          args: any(named: 'args'),
         ),
       ).thenThrow(ArtifactBuildException('oops'));
 
@@ -132,9 +132,38 @@ void main() {
       expect(exitCode, equals(ExitCode.software.code));
       verify(
         () => artifactBuilder.buildIpa(
-          argResultsRest: [],
+          args: [],
         ),
       ).called(1);
+    });
+
+    group('when platform was specified via arg results rest', () {
+      setUp(() {
+        when(() => argResults.rest).thenReturn(['ios', '--verbose']);
+      });
+
+      test('exits with code 0 when building ipa succeeds', () async {
+        final exitCode = await runWithOverrides(command.run);
+
+        expect(exitCode, equals(ExitCode.success.code));
+
+        verify(
+          () => artifactBuilder.buildIpa(args: ['--verbose']),
+        ).called(1);
+
+        verifyInOrder([
+          () => logger.info(
+                '''
+📦 Generated an xcode archive at:
+${lightCyan.wrap(p.join('build', 'ios', 'archive', 'Runner.xcarchive'))}''',
+              ),
+          () => logger.info(
+                '''
+📦 Generated an ipa at:
+${lightCyan.wrap(p.join('build', 'ios', 'ipa', 'Runner.ipa'))}''',
+              ),
+        ]);
+      });
     });
 
     test('exits with code 0 when building ipa succeeds', () async {
@@ -142,7 +171,7 @@ void main() {
 
       expect(exitCode, equals(ExitCode.success.code));
 
-      verify(() => artifactBuilder.buildIpa(argResultsRest: [])).called(1);
+      verify(() => artifactBuilder.buildIpa(args: [])).called(1);
 
       verifyInOrder([
         () => logger.info(
@@ -173,7 +202,7 @@ ${lightCyan.wrap(p.join('build', 'ios', 'ipa', 'Runner.ipa'))}''',
         () => artifactBuilder.buildIpa(
           flavor: flavor,
           target: target,
-          argResultsRest: [],
+          args: [],
         ),
       ).called(1);
 
@@ -200,7 +229,7 @@ ${lightCyan.wrap(p.join('build', 'ios', 'ipa', 'Runner.ipa'))}''',
       expect(exitCode, equals(ExitCode.success.code));
 
       verify(
-        () => artifactBuilder.buildIpa(codesign: false, argResultsRest: []),
+        () => artifactBuilder.buildIpa(codesign: false, args: []),
       ).called(1);
 
       verify(

@@ -64,7 +64,7 @@ class AndroidPatcher extends Patcher {
       aabFile = await artifactBuilder.buildAppBundle(
         flavor: flavor,
         target: target,
-        argResultsRest: argResults.rest,
+        args: argResults.forwardedArgs,
       );
       buildProgress.complete();
     } on ArtifactBuildException catch (error) {
