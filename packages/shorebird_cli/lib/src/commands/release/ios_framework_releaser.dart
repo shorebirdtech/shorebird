@@ -70,9 +70,7 @@ class IosFrameworkReleaser extends Releaser {
     );
 
     try {
-      await artifactBuilder.buildIosFramework(
-        argResultsRest: argResults.rest,
-      );
+      await artifactBuilder.buildIosFramework(args: argResults.forwardedArgs);
     } catch (error) {
       buildProgress.fail('Failed to build iOS framework: $error');
       exit(ExitCode.software.code);

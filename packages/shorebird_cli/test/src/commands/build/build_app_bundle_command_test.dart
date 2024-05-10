@@ -71,11 +71,9 @@ void main() {
         () => artifactBuilder.buildAppBundle(
           flavor: any(named: 'flavor'),
           target: any(named: 'target'),
-          argResultsRest: any(named: 'argResultsRest'),
+          args: any(named: 'args'),
         ),
-      ).thenAnswer(
-        (_) async => File(''),
-      );
+      ).thenAnswer((_) async => File(''));
 
       command = runWithOverrides(BuildAppBundleCommand.new)
         ..testArgResults = argResults;
@@ -110,7 +108,7 @@ void main() {
     test('exits with code 70 when building appbundle fails', () async {
       when(
         () => artifactBuilder.buildAppBundle(
-          argResultsRest: any(named: 'argResultsRest'),
+          args: any(named: 'args'),
         ),
       ).thenThrow(
         ArtifactBuildException('Failed to build: oops'),
@@ -120,10 +118,33 @@ void main() {
 
       expect(exitCode, equals(ExitCode.software.code));
       verify(
-        () => artifactBuilder.buildAppBundle(
-          argResultsRest: [],
-        ),
+        () => artifactBuilder.buildAppBundle(args: []),
       ).called(1);
+    });
+
+    group('when platform was specified via arg results rest', () {
+      setUp(() {
+        when(() => argResults.rest).thenReturn(['android', '--verbose']);
+      });
+
+      test('exits with code 0 when building appbundle succeeds', () async {
+        final exitCode = await runWithOverrides(command.run);
+
+        expect(exitCode, equals(ExitCode.success.code));
+        verify(
+          () => artifactBuilder.buildAppBundle(
+            args: ['--verbose'],
+          ),
+        ).called(1);
+
+        verify(
+          () => logger.info(
+            '''
+📦 Generated an app bundle at:
+${lightCyan.wrap(p.join('build', 'app', 'outputs', 'bundle', 'release', 'app-release.aab'))}''',
+          ),
+        ).called(1);
+      });
     });
 
     test('exits with code 0 when building appbundle succeeds', () async {
@@ -132,7 +153,7 @@ void main() {
       expect(exitCode, equals(ExitCode.success.code));
       verify(
         () => artifactBuilder.buildAppBundle(
-          argResultsRest: [],
+          args: [],
         ),
       ).called(1);
 
@@ -159,7 +180,7 @@ ${lightCyan.wrap(p.join('build', 'app', 'outputs', 'bundle', 'release', 'app-rel
         () => artifactBuilder.buildAppBundle(
           flavor: flavor,
           target: target,
-          argResultsRest: [],
+          args: [],
         ),
       ).called(1);
 

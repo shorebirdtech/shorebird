@@ -246,9 +246,7 @@ void main() {
 
         setUp(() {
           when(
-            () => artifactBuilder.buildIosFramework(
-              argResultsRest: any(named: 'argResultsRest'),
-            ),
+            () => artifactBuilder.buildIosFramework(args: any(named: 'args')),
           ).thenAnswer(
             (_) async => File(''),
           );
@@ -271,6 +269,23 @@ void main() {
         });
 
         group('when build succeeds', () {
+          group('when platform was specified via arg results rest', () {
+            setUp(() {
+              when(() => argResults.rest).thenReturn(['ios', '--verbose']);
+            });
+
+            test('produces xcframework in release directory', () async {
+              final xcframework = await runWithOverrides(
+                iosFrameworkReleaser.buildReleaseArtifacts,
+              );
+
+              expect(xcframework.path, p.join(projectRoot.path, 'release'));
+              verify(
+                () => artifactBuilder.buildIosFramework(args: ['--verbose']),
+              ).called(1);
+            });
+          });
+
           test('produces xcframework in release directory', () async {
             final xcframework = await runWithOverrides(
               iosFrameworkReleaser.buildReleaseArtifacts,
@@ -278,7 +293,7 @@ void main() {
 
             expect(xcframework.path, p.join(projectRoot.path, 'release'));
             verify(
-              () => artifactBuilder.buildIosFramework(argResultsRest: []),
+              () => artifactBuilder.buildIosFramework(args: []),
             ).called(1);
           });
         });
@@ -286,9 +301,7 @@ void main() {
         group('when build fails', () {
           setUp(() {
             when(
-              () => artifactBuilder.buildIosFramework(
-                argResultsRest: any(named: 'argResultsRest'),
-              ),
+              () => artifactBuilder.buildIosFramework(args: any(named: 'args')),
             ).thenThrow(Exception('build failed'));
           });
 

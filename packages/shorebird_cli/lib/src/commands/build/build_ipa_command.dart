@@ -4,6 +4,7 @@ import 'package:shorebird_cli/src/artifact_builder.dart';
 import 'package:shorebird_cli/src/command.dart';
 import 'package:shorebird_cli/src/doctor.dart';
 import 'package:shorebird_cli/src/logger.dart';
+import 'package:shorebird_cli/src/release_type.dart';
 import 'package:shorebird_cli/src/shorebird_validator.dart';
 
 /// {@template build_ipa_command}
@@ -65,7 +66,7 @@ Codesigning is disabled. You must manually codesign before deploying to devices.
         flavor: flavor,
         target: target,
         codesign: codesign,
-        argResultsRest: results.rest,
+        args: results.forwardedArgs,
       );
     } on ArtifactBuildException catch (error) {
       buildProgress.fail('Failed to build: ${error.message}');

@@ -42,7 +42,7 @@ class ArtifactBuilder {
     String? flavor,
     String? target,
     Iterable<Arch>? targetPlatforms,
-    List<String> argResultsRest = const [],
+    List<String> args = const [],
   }) async {
     await _runShorebirdBuildCommand(() async {
       const executable = 'flutter';
@@ -54,7 +54,7 @@ class ArtifactBuilder {
         if (flavor != null) '--flavor=$flavor',
         if (target != null) '--target=$target',
         if (targetPlatformArgs != null) '--target-platform=$targetPlatformArgs',
-        ...argResultsRest,
+        ...args,
       ];
 
       final result = await process.run(
@@ -94,7 +94,7 @@ class ArtifactBuilder {
     String? target,
     Iterable<Arch>? targetPlatforms,
     bool splitPerAbi = false,
-    List<String> argResultsRest = const [],
+    List<String> args = const [],
   }) async {
     await _runShorebirdBuildCommand(() async {
       const executable = 'flutter';
@@ -111,7 +111,7 @@ class ArtifactBuilder {
         // coverage:ignore-start
         if (splitPerAbi) '--split-per-abi',
         // coverage:ignore-end
-        ...argResultsRest,
+        ...args,
       ];
 
       final result = await process.run(
@@ -148,7 +148,7 @@ class ArtifactBuilder {
   Future<void> buildAar({
     required String buildNumber,
     Iterable<Arch>? targetPlatforms,
-    List<String> argResultsRest = const [],
+    List<String> args = const [],
   }) async {
     return _runShorebirdBuildCommand(() async {
       const executable = 'flutter';
@@ -160,7 +160,7 @@ class ArtifactBuilder {
         '--no-profile',
         '--build-number=$buildNumber',
         if (targetPlatformArgs != null) '--target-platform=$targetPlatformArgs',
-        ...argResultsRest,
+        ...args,
       ];
 
       final result = await process.run(
@@ -182,7 +182,7 @@ class ArtifactBuilder {
     File? exportOptionsPlist,
     String? flavor,
     String? target,
-    List<String> argResultsRest = const [],
+    List<String> args = const [],
   }) async {
     return _runShorebirdBuildCommand(() async {
       const executable = 'flutter';
@@ -196,7 +196,7 @@ class ArtifactBuilder {
         if (target != null) '--target=$target',
         if (!codesign) '--no-codesign',
         if (codesign) '''--export-options-plist=$exportOptionsPlistPath''',
-        ...argResultsRest,
+        ...args,
       ];
 
       final result = await process.run(
@@ -225,7 +225,7 @@ $errorMessage''');
 
   /// Builds a release iOS framework (.xcframework) for the current project.
   Future<void> buildIosFramework({
-    List<String> argResultsRest = const [],
+    List<String> args = const [],
   }) {
     return _runShorebirdBuildCommand(() async {
       const executable = 'flutter';
@@ -234,7 +234,7 @@ $errorMessage''');
         'ios-framework',
         '--no-debug',
         '--no-profile',
-        ...argResultsRest,
+        ...args,
       ];
 
       final result = await process.run(

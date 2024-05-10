@@ -72,7 +72,7 @@ class AarPatcher extends Patcher {
     try {
       await artifactBuilder.buildAar(
         buildNumber: buildNumber,
-        argResultsRest: argResults.rest,
+        args: argResults.forwardedArgs,
       );
       buildProgress.complete();
     } on ArtifactBuildException catch (error) {

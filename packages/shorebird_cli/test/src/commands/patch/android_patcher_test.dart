@@ -228,7 +228,7 @@ void main() {
             flavor: any(named: 'flavor'),
             target: any(named: 'target'),
             targetPlatforms: any(named: 'targetPlatforms'),
-            argResultsRest: any(named: 'argResultsRest'),
+            args: any(named: 'args'),
           ),
         ).thenAnswer((_) async => aabFile);
       });
@@ -241,7 +241,7 @@ void main() {
             () => artifactBuilder.buildAppBundle(
               flavor: any(named: 'flavor'),
               target: any(named: 'target'),
-              argResultsRest: any(named: 'argResultsRest'),
+              args: any(named: 'args'),
             ),
           ).thenThrow(exception);
           when(() => logger.progress(any())).thenReturn(progress);
@@ -285,6 +285,22 @@ Looked in:
 
       group('when build succeeds', () {
         setUp(setUpProjectRootArtifacts);
+
+        group('when platform was specified via arg results rest', () {
+          setUp(() {
+            when(() => argResults.rest).thenReturn(['android', '--verbose']);
+          });
+
+          test('returns the aab file', () async {
+            final result = await runWithOverrides(patcher.buildPatchArtifact);
+            expect(result, equals(aabFile));
+            verify(
+              () => artifactBuilder.buildAppBundle(
+                args: ['--verbose'],
+              ),
+            ).called(1);
+          });
+        });
 
         test('returns the aab file', () async {
           final result = await runWithOverrides(patcher.buildPatchArtifact);

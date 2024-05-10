@@ -51,7 +51,7 @@ void main() {
       when(
         () => artifactBuilder.buildAar(
           buildNumber: any(named: 'buildNumber'),
-          argResultsRest: any(named: 'argResultsRest'),
+          args: any(named: 'args'),
         ),
       ).thenAnswer((_) async => {});
       when(
@@ -102,7 +102,7 @@ void main() {
       when(
         () => artifactBuilder.buildAar(
           buildNumber: any(named: 'buildNumber'),
-          argResultsRest: any(named: 'argResultsRest'),
+          args: any(named: 'args'),
         ),
       ).thenThrow(ArtifactBuildException('Failed to build: error'));
 
@@ -110,14 +110,50 @@ void main() {
 
       expect(result, equals(ExitCode.software.code));
       verify(
-        () => artifactBuilder.buildAar(
-          buildNumber: buildNumber,
-          argResultsRest: [],
-        ),
+        () => artifactBuilder.buildAar(buildNumber: buildNumber, args: []),
       ).called(1);
       verify(
         () => progress.fail(any(that: contains('Failed to build'))),
       ).called(1);
+    });
+
+    group('when platform was specified via arg results rest', () {
+      setUp(() {
+        when(() => argResults.rest).thenReturn(['android', '--verbose']);
+      });
+
+      test('exits with code 0 when building aar succeeds', () async {
+        final result = await runWithOverrides(command.run);
+
+        expect(result, equals(ExitCode.success.code));
+
+        verify(
+          () => artifactBuilder.buildAar(
+            buildNumber: buildNumber,
+            args: ['--verbose'],
+          ),
+        ).called(1);
+        verify(
+          () => logger.info(
+            '''
+📦 Generated an aar at:
+${lightCyan.wrap(
+              p.join(
+                'build',
+                'host',
+                'outputs',
+                'repo',
+                'com',
+                'example',
+                'my_flutter_module',
+                'flutter_release',
+                buildNumber,
+                'flutter_release-$buildNumber.aar',
+              ),
+            )}''',
+          ),
+        ).called(1);
+      });
     });
 
     test('exits with code 0 when building aar succeeds', () async {
@@ -126,10 +162,7 @@ void main() {
       expect(result, equals(ExitCode.success.code));
 
       verify(
-        () => artifactBuilder.buildAar(
-          buildNumber: buildNumber,
-          argResultsRest: [],
-        ),
+        () => artifactBuilder.buildAar(buildNumber: buildNumber, args: []),
       ).called(1);
       verify(
         () => logger.info(

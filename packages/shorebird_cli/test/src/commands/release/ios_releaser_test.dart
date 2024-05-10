@@ -261,7 +261,7 @@ void main() {
               exportOptionsPlist: any(named: 'exportOptionsPlist'),
               flavor: any(named: 'flavor'),
               target: any(named: 'target'),
-              argResultsRest: any(named: 'argResultsRest'),
+              args: any(named: 'args'),
             ),
           ).thenAnswer((_) async => {});
 
@@ -331,7 +331,7 @@ void main() {
                 exportOptionsPlist: any(named: 'exportOptionsPlist'),
                 flavor: any(named: 'flavor'),
                 target: any(named: 'target'),
-                argResultsRest: any(named: 'argResultsRest'),
+                args: any(named: 'args'),
               ),
             ).thenThrow(ArtifactBuildException('Failed to build'));
           });
@@ -349,6 +349,35 @@ void main() {
         });
 
         group('when build succeeds', () {
+          group('when build succeeds', () {
+            group('when platform was specified via arg results rest', () {
+              setUp(() {
+                when(() => argResults.rest).thenReturn(['ios', '--verbose']);
+              });
+
+              test('verifies artifacts exist and returns xcarchive path',
+                  () async {
+                expect(
+                  await runWithOverrides(iosReleaser.buildReleaseArtifacts),
+                  equals(xcarchiveDirectory),
+                );
+
+                verify(() => artifactManager.getXcarchiveDirectory()).called(1);
+                verify(
+                  () => artifactManager.getIosAppDirectory(
+                    xcarchiveDirectory: xcarchiveDirectory,
+                  ),
+                ).called(1);
+                verify(
+                  () => artifactBuilder.buildIpa(
+                    exportOptionsPlist: any(named: 'exportOptionsPlist'),
+                    args: ['--verbose'],
+                  ),
+                ).called(1);
+              });
+            });
+          });
+
           test('verifies artifacts exist and returns xcarchive path', () async {
             expect(
               await runWithOverrides(iosReleaser.buildReleaseArtifacts),

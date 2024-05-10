@@ -289,7 +289,7 @@ void main() {
               () => artifactBuilder.buildIpa(
                 exportOptionsPlist: any(named: 'exportOptionsPlist'),
                 codesign: any(named: 'codesign'),
-                argResultsRest: any(named: 'argResultsRest'),
+                args: any(named: 'args'),
                 flavor: any(named: 'flavor'),
                 target: any(named: 'target'),
               ),
@@ -318,7 +318,7 @@ void main() {
               () => artifactBuilder.buildIpa(
                 exportOptionsPlist: any(named: 'exportOptionsPlist'),
                 codesign: any(named: 'codesign'),
-                argResultsRest: any(named: 'argResultsRest'),
+                args: any(named: 'args'),
                 flavor: any(named: 'flavor'),
                 target: any(named: 'target'),
               ),
@@ -343,7 +343,7 @@ void main() {
               () => artifactBuilder.buildIpa(
                 exportOptionsPlist: any(named: 'exportOptionsPlist'),
                 codesign: any(named: 'codesign'),
-                argResultsRest: any(named: 'argResultsRest'),
+                args: any(named: 'args'),
                 flavor: any(named: 'flavor'),
                 target: any(named: 'target'),
               ),
@@ -375,7 +375,7 @@ void main() {
               () => artifactBuilder.buildIpa(
                 exportOptionsPlist: any(named: 'exportOptionsPlist'),
                 codesign: any(named: 'codesign'),
-                argResultsRest: any(named: 'argResultsRest'),
+                args: any(named: 'args'),
                 flavor: any(named: 'flavor'),
                 target: any(named: 'target'),
               ),
@@ -403,6 +403,26 @@ void main() {
                   File(invocation.namedArguments[#outFilePath] as String)
                     ..createSync(recursive: true),
             );
+          });
+
+          group('when platform was specified via arg results rest', () {
+            setUp(() {
+              when(() => argResults.rest).thenReturn(['ios', '--verbose']);
+            });
+
+            test('returns xcarchive zip', () async {
+              final artifact = await runWithOverrides(
+                patcher.buildPatchArtifact,
+              );
+              expect(p.basename(artifact.path), endsWith('.zip'));
+              verify(
+                () => artifactBuilder.buildIpa(
+                  exportOptionsPlist: any(named: 'exportOptionsPlist'),
+                  codesign: any(named: 'codesign'),
+                  args: ['--verbose'],
+                ),
+              ).called(1);
+            });
           });
 
           test('returns xcarchive zip', () async {

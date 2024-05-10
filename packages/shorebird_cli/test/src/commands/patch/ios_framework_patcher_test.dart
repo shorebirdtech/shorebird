@@ -287,9 +287,7 @@ void main() {
         group('when build fails', () {
           setUp(() {
             when(
-              () => artifactBuilder.buildIosFramework(
-                argResultsRest: any(named: 'argResultsRest'),
-              ),
+              () => artifactBuilder.buildIosFramework(args: any(named: 'args')),
             ).thenThrow(
               ArtifactBuildException('Build failed'),
             );
@@ -308,9 +306,7 @@ void main() {
         group('when elf aot snapshot build fails', () {
           setUp(() {
             when(
-              () => artifactBuilder.buildIosFramework(
-                argResultsRest: any(named: 'argResultsRest'),
-              ),
+              () => artifactBuilder.buildIosFramework(args: any(named: 'args')),
             ).thenAnswer(
               (_) async {},
             );
@@ -338,9 +334,7 @@ void main() {
         group('when build succeeds', () {
           setUp(() {
             when(
-              () => artifactBuilder.buildIosFramework(
-                argResultsRest: any(named: 'argResultsRest'),
-              ),
+              () => artifactBuilder.buildIosFramework(args: any(named: 'args')),
             ).thenAnswer(
               (_) async {},
             );
@@ -361,6 +355,24 @@ void main() {
             ).createSync(recursive: true);
             when(() => artifactManager.getAppXcframeworkDirectory())
                 .thenReturn(projectRoot);
+          });
+
+          group('when platform was specified via arg results rest', () {
+            setUp(() {
+              when(() => argResults.rest).thenReturn(['ios', '--verbose']);
+            });
+
+            test('returns zipped xcframework', () async {
+              final artifact = await runWithOverrides(
+                patcher.buildPatchArtifact,
+              );
+              expect(p.basename(artifact.path), equals('App.xcframework.zip'));
+              verify(
+                () => artifactBuilder.buildIosFramework(
+                  args: ['--verbose'],
+                ),
+              ).called(1);
+            });
           });
 
           test('returns zipped xcframework', () async {

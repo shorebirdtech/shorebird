@@ -69,7 +69,7 @@ void main() {
         () => artifactBuilder.buildApk(
           flavor: any(named: 'flavor'),
           target: any(named: 'target'),
-          argResultsRest: any(named: 'argResultsRest'),
+          args: any(named: 'args'),
         ),
       ).thenAnswer((_) async => File(''));
 
@@ -108,7 +108,7 @@ void main() {
         () => artifactBuilder.buildApk(
           flavor: any(named: 'flavor'),
           target: any(named: 'target'),
-          argResultsRest: any(named: 'argResultsRest'),
+          args: any(named: 'args'),
         ),
       ).thenThrow(ArtifactBuildException('oops'));
 
@@ -116,10 +116,31 @@ void main() {
 
       expect(exitCode, equals(ExitCode.software.code));
       verify(
-        () => artifactBuilder.buildApk(
-          argResultsRest: [],
-        ),
+        () => artifactBuilder.buildApk(args: []),
       ).called(1);
+    });
+
+    group('when platform was specified via arg results rest', () {
+      setUp(() {
+        when(() => argResults.rest).thenReturn(['android', '--verbose']);
+      });
+
+      test('exits with code 0 when building apk succeeds', () async {
+        final exitCode = await runWithOverrides(command.run);
+
+        expect(exitCode, equals(ExitCode.success.code));
+
+        verify(
+          () => artifactBuilder.buildApk(args: ['--verbose']),
+        ).called(1);
+        verify(
+          () => logger.info(
+            '''
+📦 Generated an apk at:
+${lightCyan.wrap(p.join('build', 'app', 'outputs', 'apk', 'release', 'app-release.apk'))}''',
+          ),
+        ).called(1);
+      });
     });
 
     test('exits with code 0 when building apk succeeds', () async {
@@ -128,9 +149,7 @@ void main() {
       expect(exitCode, equals(ExitCode.success.code));
 
       verify(
-        () => artifactBuilder.buildApk(
-          argResultsRest: [],
-        ),
+        () => artifactBuilder.buildApk(args: []),
       ).called(1);
       verify(
         () => logger.info(
@@ -156,7 +175,7 @@ ${lightCyan.wrap(p.join('build', 'app', 'outputs', 'apk', 'release', 'app-releas
         () => artifactBuilder.buildApk(
           flavor: flavor,
           target: target,
-          argResultsRest: [],
+          args: [],
         ),
       ).called(1);
       verify(

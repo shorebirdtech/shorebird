@@ -179,7 +179,7 @@ Either run `flutter pub get` manually, or follow the steps in ${link(uri: Uri.pa
             flavor: 'flavor',
             target: 'target',
             targetPlatforms: [Arch.arm64],
-            argResultsRest: ['--foo', 'bar'],
+            args: ['--foo', 'bar'],
           ),
         );
 
@@ -316,7 +316,7 @@ Either run `flutter pub get` manually, or follow the steps in ${link(uri: Uri.pa
             flavor: 'flavor',
             target: 'target',
             targetPlatforms: [Arch.arm64],
-            argResultsRest: ['--foo', 'bar'],
+            args: ['--foo', 'bar'],
           ),
         );
 
@@ -453,7 +453,7 @@ Either run `flutter pub get` manually, or follow the steps in ${link(uri: Uri.pa
           () => builder.buildAar(
             buildNumber: buildNumber,
             targetPlatforms: [Arch.arm64],
-            argResultsRest: ['--foo', 'bar'],
+            args: ['--foo', 'bar'],
           ),
         );
 
@@ -593,7 +593,7 @@ Either run `flutter pub get` manually, or follow the steps in ${link(uri: Uri.pa
               exportOptionsPlist: File('exportOptionsPlist.plist'),
               flavor: 'flavor',
               target: 'target.dart',
-              argResultsRest: ['--foo', 'bar'],
+              args: ['--foo', 'bar'],
             ),
           );
 
@@ -729,9 +729,7 @@ Failed to build:
 
         test('forward arguments to flutter build', () async {
           await runWithOverrides(
-            () => builder.buildIosFramework(
-              argResultsRest: ['--foo', 'bar'],
-            ),
+            () => builder.buildIosFramework(args: ['--foo', 'bar']),
           );
 
           verify(

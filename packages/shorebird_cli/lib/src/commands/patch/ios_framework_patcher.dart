@@ -84,7 +84,7 @@ class IosFrameworkPatcher extends Patcher {
     );
     try {
       await artifactBuilder.buildIosFramework(
-        argResultsRest: argResults.rest,
+        args: argResults.forwardedArgs,
       );
     } on ArtifactBuildException catch (error) {
       buildProgress.fail(error.message);
