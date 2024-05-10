@@ -150,7 +150,6 @@ Looked in:
           releaseArtifactPath: releaseArtifactPath.value,
           patchArtifactPath: patchArtifactPath,
         );
-
         patchArtifactBundles[releaseArtifactPath.key] = PatchArtifactBundle(
           arch: arch.arch,
           path: diffPath,
