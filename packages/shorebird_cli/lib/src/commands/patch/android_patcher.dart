@@ -90,7 +90,6 @@ Looked in:
         );
       exit(ExitCode.software.code);
     }
-
     return aabFile;
   }
 
