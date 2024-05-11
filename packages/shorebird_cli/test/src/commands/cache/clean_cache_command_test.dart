@@ -48,11 +48,12 @@ void main() {
       );
     });
 
-    test('has a description', () {
+    test('has a non-empty description', () {
       expect(command.description, isNotEmpty);
     });
 
     test('clears the cache', () async {
+      when(cache.clear).thenAnswer((_) async {});
       final result = await runWithOverrides(command.run);
       expect(result, equals(ExitCode.success.code));
       verify(() => progress.complete('Cleared cache')).called(1);
@@ -75,7 +76,18 @@ void main() {
 
           expect(result, equals(ExitCode.software.code));
           verify(() => progress.fail(any())).called(1);
-          verify(() => logger.info(any())).called(1);
+          verify(
+            () => logger.info(
+              any(
+                that: stringContainsInOrder(
+                  [
+                    '''This could be because a program is using a file in the cache directory. To find and stop such a program, see''',
+                    'https://superuser.com/questions/1333118/cant-delete-empty-folder-because-it-is-used',
+                  ],
+                ),
+              ),
+            ),
+          ).called(1);
         });
       });
 

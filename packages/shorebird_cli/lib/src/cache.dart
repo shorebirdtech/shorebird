@@ -104,15 +104,15 @@ class Cache {
 
   String get storageBucket => 'download.shorebird.dev';
 
-  void clear() {
+  Future<void> clear() async {
     final cacheDir = shorebirdCacheDirectory;
     if (cacheDir.existsSync()) {
-      cacheDir.deleteSync(recursive: true);
+      await cacheDir.delete(recursive: true);
     }
 
     final logsDirectory = shorebirdEnv.logsDirectory;
     if (logsDirectory.existsSync()) {
-      logsDirectory.deleteSync(recursive: true);
+      await logsDirectory.delete(recursive: true);
     }
   }
 }
