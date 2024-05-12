@@ -171,7 +171,7 @@ void main() {
         )..createSync(recursive: true);
         expect(shorebirdCacheDirectory.existsSync(), isTrue);
         expect(logsDirectory.existsSync(), isTrue);
-        runWithOverrides(cache.clear);
+        await runWithOverrides(cache.clear);
         expect(shorebirdCacheDirectory.existsSync(), isFalse);
         expect(logsDirectory.existsSync(), isFalse);
       });
