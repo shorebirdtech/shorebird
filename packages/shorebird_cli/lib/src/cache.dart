@@ -106,14 +106,11 @@ class Cache {
 
   Future<void> clear() async {
     final cacheDir = shorebirdCacheDirectory;
-    if (cacheDir.existsSync()) {
-      await cacheDir.delete(recursive: true);
-    }
-
     final logsDirectory = shorebirdEnv.logsDirectory;
-    if (logsDirectory.existsSync()) {
-      await logsDirectory.delete(recursive: true);
-    }
+    await Future.wait([
+      if (cacheDir.existsSync()) cacheDir.delete(recursive: true),
+      if (logsDirectory.existsSync()) logsDirectory.delete(recursive: true),
+    ]);
   }
 }
 
