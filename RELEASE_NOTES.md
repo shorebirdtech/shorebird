@@ -2,6 +2,10 @@
 
 This section contains past updates we've sent to customers via Discord.
 
+## 1.1.3 (May 13, 2024)
+
+- 🩹 Fix `shorebird patch` not always installing required Flutter version.
+
 ## 1.1.2 (May 10, 2024)
 
 - 🩹 Fix `shorebird release` not forwarding args after `--` to `Flutter`.
