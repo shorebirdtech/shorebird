@@ -16,6 +16,7 @@ import 'package:shorebird_cli/src/patch_diff_checker.dart';
 import 'package:shorebird_cli/src/platform/platform.dart';
 import 'package:shorebird_cli/src/release_type.dart';
 import 'package:shorebird_cli/src/shorebird_env.dart';
+import 'package:shorebird_cli/src/shorebird_flutter.dart';
 import 'package:shorebird_cli/src/third_party/flutter_tools/lib/flutter_tools.dart';
 import 'package:shorebird_code_push_client/shorebird_code_push_client.dart';
 
@@ -193,6 +194,13 @@ NOTE: this is ${styleBold.wrap('not')} recommended. Asset changes cannot be incl
       releaseVersion: releaseVersion,
       patcher: patcher,
     );
+
+    try {
+      await shorebirdFlutter.installRevision(revision: release.flutterRevision);
+    } catch (_) {
+      exit(ExitCode.software.code);
+    }
+
     final releaseArtifact = await downloadPrimaryReleaseArtifact(
       release: release,
       patcher: patcher,

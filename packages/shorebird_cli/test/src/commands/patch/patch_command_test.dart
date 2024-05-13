@@ -523,6 +523,9 @@ void main() {
 
           verifyInOrder([
             () => patcher.buildPatchArtifact(),
+            () => shorebirdFlutter.installRevision(
+                  revision: releaseFlutterRevision,
+                ),
             () => shorebirdEnv.copyWith(
                   flutterRevisionOverride: releaseFlutterRevision,
                 ),
