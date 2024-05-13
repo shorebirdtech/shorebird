@@ -392,6 +392,25 @@ void main() {
       });
     });
 
+    group('when flutter install fails', () {
+      final error = Exception('Failed to install Flutter revision.');
+
+      setUp(() {
+        when(
+          () => shorebirdFlutter.installRevision(
+            revision: any(named: 'revision'),
+          ),
+        ).thenThrow(error);
+      });
+
+      test('exits with code 70', () async {
+        await expectLater(
+          () => runWithOverrides(command.run),
+          exitsWithCode(ExitCode.software),
+        );
+      });
+    });
+
     group('when release version is specified', () {
       setUp(() {
         when(() => argResults['release-version']).thenReturn(releaseVersion);
