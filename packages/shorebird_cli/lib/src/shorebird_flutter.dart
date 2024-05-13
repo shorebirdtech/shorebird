@@ -1,11 +1,13 @@
 import 'dart:convert';
 import 'dart:io';
 
+import 'package:mason_logger/mason_logger.dart';
 import 'package:path/path.dart' as p;
 import 'package:pub_semver/pub_semver.dart';
 import 'package:scoped/scoped.dart';
 import 'package:shorebird_cli/src/executables/executables.dart';
 import 'package:shorebird_cli/src/logger.dart';
+import 'package:shorebird_cli/src/platform.dart';
 import 'package:shorebird_cli/src/shorebird_env.dart';
 import 'package:shorebird_cli/src/shorebird_process.dart';
 
@@ -25,6 +27,12 @@ class ShorebirdFlutter {
   static const executable = 'flutter';
   static const String flutterGitUrl =
       'https://github.com/shorebirdtech/flutter.git';
+
+  /// Arguments to pass to `flutter precache`.
+  List<String> get precacheArgs => [
+        '--android',
+        if (platform.isMacOS) '--ios',
+      ];
 
   String _workingDirectory({String? revision}) {
     revision ??= shorebirdEnv.flutterRevision;
@@ -54,6 +62,7 @@ class ShorebirdFlutter {
 
       // Checkout the correct revision.
       await git.checkout(directory: targetDirectory.path, revision: revision);
+      installProgress.complete();
     } catch (error) {
       installProgress.fail(
         'Failed to install Flutter $version (${shortRevisionString(revision)})',
@@ -62,7 +71,24 @@ class ShorebirdFlutter {
       rethrow;
     }
 
-    installProgress.complete();
+    final precacheProgress = logger.progress(
+      'Running ${lightCyan.wrap('flutter precache')}',
+    );
+
+    try {
+      await process.run(
+        executable,
+        ['precache', ...precacheArgs],
+        workingDirectory: targetDirectory.path,
+        runInShell: true,
+      );
+      precacheProgress.complete();
+    } catch (_) {
+      precacheProgress.fail('Failed to precache Flutter $version');
+      logger.info(
+        '''This is not a critical error, but your next build make take longer than usual.''',
+      );
+    }
   }
 
   /// Whether the current revision is unmodified.

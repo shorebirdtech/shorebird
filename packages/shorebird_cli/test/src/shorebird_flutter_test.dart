@@ -3,10 +3,12 @@ import 'dart:io';
 import 'package:mason_logger/mason_logger.dart';
 import 'package:mocktail/mocktail.dart';
 import 'package:path/path.dart' as p;
+import 'package:platform/platform.dart';
 import 'package:pub_semver/pub_semver.dart';
 import 'package:scoped/scoped.dart';
 import 'package:shorebird_cli/src/executables/executables.dart';
 import 'package:shorebird_cli/src/logger.dart';
+import 'package:shorebird_cli/src/platform.dart';
 import 'package:shorebird_cli/src/shorebird_env.dart';
 import 'package:shorebird_cli/src/shorebird_flutter.dart';
 import 'package:shorebird_cli/src/shorebird_process.dart';
@@ -21,10 +23,12 @@ void main() {
     late Directory flutterDirectory;
     late Git git;
     late ShorebirdLogger logger;
+    late Platform platform;
     late Progress progress;
     late ShorebirdEnv shorebirdEnv;
     late ShorebirdProcess process;
-    late ShorebirdProcessResult processResult;
+    late ShorebirdProcessResult versionProcessResult;
+    late ShorebirdProcessResult precacheProcessResult;
     late ShorebirdFlutter shorebirdFlutter;
 
     R runWithOverrides<R>(R Function() body) {
@@ -33,6 +37,7 @@ void main() {
         values: {
           gitRef.overrideWith(() => git),
           loggerRef.overrideWith(() => logger),
+          platformRef.overrideWith(() => platform),
           processRef.overrideWith(() => process),
           shorebirdEnvRef.overrideWith(() => shorebirdEnv),
         },
@@ -46,8 +51,10 @@ void main() {
       logger = MockShorebirdLogger();
       progress = MockProgress();
       shorebirdEnv = MockShorebirdEnv();
+      platform = MockPlatform();
       process = MockShorebirdProcess();
-      processResult = MockShorebirdProcessResult();
+      versionProcessResult = MockShorebirdProcessResult();
+      precacheProcessResult = MockShorebirdProcessResult();
       shorebirdFlutter = runWithOverrides(ShorebirdFlutter.new);
 
       when(
@@ -84,6 +91,7 @@ void main() {
         ),
       ).thenAnswer((_) async => 'origin/flutter_release/3.10.6');
       when(() => logger.progress(any())).thenReturn(progress);
+      when(() => platform.isMacOS).thenReturn(false);
       when(() => shorebirdEnv.flutterDirectory).thenReturn(flutterDirectory);
       when(() => shorebirdEnv.flutterRevision).thenReturn(flutterRevision);
       when(
@@ -93,16 +101,54 @@ void main() {
           runInShell: true,
           useVendedFlutter: false,
         ),
-      ).thenAnswer((_) async => processResult);
-      when(() => processResult.exitCode).thenReturn(0);
+      ).thenAnswer((_) async => versionProcessResult);
+      when(() => versionProcessResult.exitCode).thenReturn(0);
+      when(
+        () => process.run(
+          'flutter',
+          any(that: contains('precache')),
+          runInShell: true,
+          workingDirectory: any(named: 'workingDirectory'),
+        ),
+      ).thenAnswer((_) async => precacheProcessResult);
+      when(() => versionProcessResult.exitCode).thenReturn(0);
+    });
+
+    group('precacheArgs', () {
+      group('when running on macOS', () {
+        setUp(() {
+          when(() => platform.isMacOS).thenReturn(true);
+        });
+
+        test('includes ios in platform list', () async {
+          expect(
+            runWithOverrides(() => shorebirdFlutter.precacheArgs),
+            contains('--ios'),
+          );
+        });
+      });
+
+      group('when not running on macOS', () {
+        setUp(() {
+          when(() => platform.isMacOS).thenReturn(false);
+        });
+
+        test('does not include ios in platform list', () {
+          expect(
+            runWithOverrides(() => shorebirdFlutter.precacheArgs),
+            isNot(contains('--ios')),
+          );
+        });
+      });
     });
 
     group('getSystemVersion', () {
       test('throws ProcessException when process exits with non-zero code',
           () async {
         const error = 'oops';
-        when(() => processResult.exitCode).thenReturn(ExitCode.software.code);
-        when(() => processResult.stderr).thenReturn(error);
+        when(() => versionProcessResult.exitCode)
+            .thenReturn(ExitCode.software.code);
+        when(() => versionProcessResult.stderr).thenReturn(error);
         await expectLater(
           runWithOverrides(shorebirdFlutter.getSystemVersion),
           throwsA(isA<ProcessException>()),
@@ -118,7 +164,7 @@ void main() {
       });
 
       test('returns null when cannot parse version', () async {
-        when(() => processResult.stdout).thenReturn('');
+        when(() => versionProcessResult.stdout).thenReturn('');
         await expectLater(
           runWithOverrides(shorebirdFlutter.getSystemVersion),
           completion(isNull),
@@ -134,7 +180,7 @@ void main() {
       });
 
       test('returns version when able to parse the string', () async {
-        when(() => processResult.stdout).thenReturn('''
+        when(() => versionProcessResult.stdout).thenReturn('''
 Flutter 3.10.6 • channel stable • git@github.com:flutter/flutter.git
 Framework • revision f468f3366c (4 weeks ago) • 2023-07-12 15:19:05 -0700
 Engine • revision cdbeda788a
@@ -479,6 +525,7 @@ origin/flutter_release/3.10.6''';
 
     group('installRevision', () {
       const revision = 'test-revision';
+
       test('does nothing if the revision is already installed', () async {
         Directory(
           p.join(flutterDirectory.parent.path, revision),
@@ -493,6 +540,13 @@ origin/flutter_release/3.10.6''';
             url: any(named: 'url'),
             outputDirectory: any(named: 'outputDirectory'),
             args: any(named: 'args'),
+          ),
+        );
+        verifyNever(
+          () => process.run(
+            'flutter',
+            any(that: contains('precache')),
+            runInShell: any(named: 'runInShell'),
           ),
         );
       });
@@ -521,6 +575,13 @@ origin/flutter_release/3.10.6''';
             args: ['--filter=tree:0', '--no-checkout'],
           ),
         ).called(1);
+        verifyNever(
+          () => process.run(
+            'flutter',
+            any(that: contains('precache')),
+            runInShell: any(named: 'runInShell'),
+          ),
+        );
       });
 
       test('throws exception if unable to checkout revision', () async {
@@ -563,19 +624,81 @@ origin/flutter_release/3.10.6''';
         ).called(1);
       });
 
-      test('completes when clone and checkout succeed', () async {
-        await expectLater(
-          runWithOverrides(
-            () => shorebirdFlutter.installRevision(revision: revision),
-          ),
-          completes,
-        );
-        verify(
-          () => logger.progress(
-            'Installing Flutter 3.10.6 (test-revis)',
-          ),
-        ).called(1);
-        verify(() => progress.complete()).called(1);
+      group('when unable to precache', () {
+        setUp(() {
+          when(
+            () => process.run(
+              'flutter',
+              any(that: contains('precache')),
+              workingDirectory: any(named: 'workingDirectory'),
+              runInShell: any(named: 'runInShell'),
+            ),
+          ).thenThrow(Exception('oh no!'));
+        });
+
+        test('logs error and continues', () async {
+          await expectLater(
+            runWithOverrides(
+              () => shorebirdFlutter.installRevision(revision: revision),
+            ),
+            completes,
+          );
+          verify(
+            () => process.run(
+              'flutter',
+              [
+                'precache',
+                ...runWithOverrides(() => shorebirdFlutter.precacheArgs),
+              ],
+              workingDirectory: p.join(
+                flutterDirectory.parent.path,
+                revision,
+              ),
+              runInShell: true,
+            ),
+          ).called(1);
+
+          verify(
+            () => progress.fail('Failed to precache Flutter 3.10.6'),
+          ).called(1);
+          verify(
+            () => logger.info(
+              '''This is not a critical error, but your next build make take longer than usual.''',
+            ),
+          ).called(1);
+        });
+      });
+
+      group('when clone and checkout succeed', () {
+        test('completes successfully', () async {
+          await expectLater(
+            runWithOverrides(
+              () => shorebirdFlutter.installRevision(revision: revision),
+            ),
+            completes,
+          );
+          verify(
+            () => process.run(
+              'flutter',
+              [
+                'precache',
+                ...runWithOverrides(() => shorebirdFlutter.precacheArgs),
+              ],
+              workingDirectory: p.join(
+                flutterDirectory.parent.path,
+                revision,
+              ),
+              runInShell: true,
+            ),
+          ).called(1);
+          verify(
+            () => logger.progress(
+              'Installing Flutter 3.10.6 (test-revis)',
+            ),
+          ).called(1);
+          // Once for the installation and once for the precache.
+          verify(progress.complete).called(2);
+        });
       });
     });
 
