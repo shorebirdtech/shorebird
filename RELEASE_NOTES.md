@@ -2,6 +2,10 @@
 
 This section contains past updates we've sent to customers via Discord.
 
+## 1.1.4 (May 14, 2024)
+
+- 🩹 Fixes `Could not find an option named "dump-debug-info"` for older versions of Flutter.
+
 ## 1.1.3 (May 13, 2024)
 
 - 🩹 Fix `shorebird patch` not always installing required Flutter version.
