@@ -23,6 +23,9 @@ class ArtifactBuildException implements Exception {
 
   /// Information about the build failure.
   final String message;
+
+  @override
+  String toString() => message;
 }
 
 /// A reference to a [ArtifactBuilder] instance.
