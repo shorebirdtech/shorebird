@@ -896,7 +896,7 @@ void main() {
                 );
               });
 
-              group('when isLinkDebugInfoSupported', () {
+              group('when isLinkDebugInfoSupported is true', () {
                 setUp(() {
                   when(
                     aotTools.isLinkDebugInfoSupported,
@@ -919,7 +919,40 @@ void main() {
                       kernel: any(named: 'kernel'),
                       outputPath: any(named: 'outputPath'),
                       workingDirectory: any(named: 'workingDirectory'),
-                      dumpDebugInfoPath: any(named: 'dumpDebugInfoPath'),
+                      dumpDebugInfoPath: any(
+                        named: 'dumpDebugInfoPath',
+                        that: isNotNull,
+                      ),
+                    ),
+                  ).called(1);
+                });
+              });
+
+              group('when isLinkDebugInfoSupported is false', () {
+                setUp(() {
+                  when(aotTools.isLinkDebugInfoSupported)
+                      .thenAnswer((_) async => false);
+                });
+
+                test('does not pass dumpDebugInfoPath to aotTools.link',
+                    () async {
+                  await runWithOverrides(
+                    () => patcher.createPatchArtifacts(
+                      appId: appId,
+                      releaseId: releaseId,
+                    ),
+                  );
+                  verify(
+                    () => aotTools.link(
+                      base: any(named: 'base'),
+                      patch: any(named: 'patch'),
+                      analyzeSnapshot: any(named: 'analyzeSnapshot'),
+                      genSnapshot: any(named: 'genSnapshot'),
+                      kernel: any(named: 'kernel'),
+                      outputPath: any(named: 'outputPath'),
+                      workingDirectory: any(named: 'workingDirectory'),
+                      // ignore: avoid_redundant_argument_values
+                      dumpDebugInfoPath: null,
                     ),
                   ).called(1);
                 });
