@@ -18,6 +18,15 @@ import 'fakes.dart';
 import 'mocks.dart';
 
 void main() {
+  group(ArtifactBuildException, () {
+    test('toString is message', () {
+      expect(
+        ArtifactBuildException('my message').toString(),
+        equals('my message'),
+      );
+    });
+  });
+
   group(ArtifactBuilder, () {
     late Ios ios;
     late ShorebirdLogger logger;
