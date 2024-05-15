@@ -1,5 +1,5 @@
 // ignore_for_file: prefer_const_constructors
-import 'package:scoped/scoped.dart';
+import 'package:scoped_deps/scoped_deps.dart';
 import 'package:test/test.dart';
 
 void main() {

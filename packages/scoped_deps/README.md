@@ -1,5 +1,11 @@
-// ignore_for_file: avoid_print
-import 'package:scoped/scoped.dart';
+# Scoped
+
+A simple dependency injection library built on Zones.
+
+## Quick Start
+
+```dart
+import 'package:scoped_deps/scoped_deps.dart';
 
 final value = create(() => 42);
 
@@ -15,3 +21,4 @@ void scopeA() {
 void scopeB() {
   print(read(value)); // 0
 }
+```

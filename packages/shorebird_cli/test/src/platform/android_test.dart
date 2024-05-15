@@ -1,5 +1,5 @@
 import 'package:mocktail/mocktail.dart';
-import 'package:scoped/scoped.dart';
+import 'package:scoped_deps/scoped_deps.dart';
 import 'package:shorebird_cli/src/engine_config.dart';
 import 'package:shorebird_cli/src/platform/platform.dart';
 import 'package:test/test.dart';

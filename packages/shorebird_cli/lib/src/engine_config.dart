@@ -1,4 +1,4 @@
-import 'package:scoped/scoped.dart';
+import 'package:scoped_deps/scoped_deps.dart';
 
 // A reference to a [EngineConfig] instance.
 final engineConfigRef = create(() => const EngineConfig.empty());

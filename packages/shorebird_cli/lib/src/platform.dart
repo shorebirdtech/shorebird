@@ -1,5 +1,5 @@
 import 'package:platform/platform.dart';
-import 'package:scoped/scoped.dart';
+import 'package:scoped_deps/scoped_deps.dart';
 
 // A reference to a [Platform] instance.
 ScopedRef<Platform> platformRef = create(() => const LocalPlatform());

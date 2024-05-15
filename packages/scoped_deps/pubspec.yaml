@@ -1,4 +1,4 @@
-name: scoped
+name: scoped_deps
 description: A simple dependency injection library built on Zones
 version: 0.1.0+1
 publish_to: none

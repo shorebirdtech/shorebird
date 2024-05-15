@@ -1,7 +1,7 @@
 import 'package:archive/archive_io.dart';
 import 'package:mocktail/mocktail.dart';
 import 'package:path/path.dart' as p;
-import 'package:scoped/scoped.dart';
+import 'package:scoped_deps/scoped_deps.dart';
 import 'package:shorebird_cli/src/cache.dart';
 import 'package:shorebird_cli/src/executables/bundletool.dart';
 import 'package:shorebird_cli/src/logger.dart';

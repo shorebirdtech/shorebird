@@ -1,4 +1,4 @@
 /// A simple dependency injection library built on Zones
-library scoped;
+library scoped_deps;
 
-export 'src/scoped.dart';
+export 'src/scoped_deps.dart';
