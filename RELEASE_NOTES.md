@@ -2,6 +2,10 @@
 
 This section contains past updates we've sent to customers via Discord.
 
+## 1.1.6 (May 15, 2024)
+
+- 🩹 Reverts a windows powershell fix for exporting `FLUTTER_STORAGE_BASE_URL`
+
 ## 1.1.5 (May 15, 2024)
 
 - 🐦 Upgrade to Flutter 3.22.0 and Dart 3.4.0
