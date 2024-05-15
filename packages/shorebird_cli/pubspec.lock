@@ -557,10 +557,10 @@ packages:
       url: "https://pub.dev"
     source: hosted
     version: "2.1.0"
-  scoped:
+  scoped_deps:
     dependency: "direct main"
     description:
-      path: "../scoped"
+      path: "../scoped_deps"
       relative: true
     source: path
     version: "0.1.0+1"
