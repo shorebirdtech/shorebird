@@ -1,4 +1,4 @@
-# Scoped
+# Scoped Deps
 
 A simple dependency injection library built on Zones.
 
