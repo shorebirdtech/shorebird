@@ -2,6 +2,12 @@
 
 This section contains past updates we've sent to customers via Discord.
 
+## 1.1.5 (May 15, 2024)
+
+- 🐦 Upgrade to Flutter 3.22.0 and Dart 3.4.0
+- 💾 Precache Flutter assets when switching revisions
+- 🪵 Improvements to exception logs
+
 ## 1.1.4 (May 14, 2024)
 
 - 🩹 Fixes `Could not find an option named "dump-debug-info"` for older versions of Flutter.
