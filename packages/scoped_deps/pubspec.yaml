@@ -1,6 +1,6 @@
 name: scoped_deps
-description: A simple dependency injection library built on Zones
-version: 0.1.0+1
+description: A simple Dart library for managing scoped dependencies built on top of Zones from dart:async.
+version: 0.1.0+2
 homepage: https://shorebird.dev
 repository: https://github.com/shorebirdtech/shorebird/tree/main/packages/scoped_deps
 
