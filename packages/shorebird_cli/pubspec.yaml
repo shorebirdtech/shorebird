@@ -32,8 +32,7 @@ dependencies:
   propertylistserialization: ^1.3.0
   pub_semver: ^2.1.4
   pubspec_parse: ^1.2.3
-  scoped:
-    path: ../scoped
+  scoped_deps: ^0.1.0
   shorebird_code_push_client:
     path: ../shorebird_code_push_client
   shorebird_code_push_protocol:

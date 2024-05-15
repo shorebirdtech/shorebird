@@ -74,11 +74,11 @@ jobs:
               - ./.github/workflows/main.yaml
               - ./.github/actions/dart_package/action.yaml
               - packages/jwt/**
-            scoped:
+            scoped_deps:
               - ./.github/codecov.yml
               - ./.github/workflows/main.yaml
               - ./.github/actions/dart_package/action.yaml
-              - packages/scoped/**
+              - packages/scoped_deps/**
 
       - uses: dorny/paths-filter@v3
         name: Redis Detection

@@ -1,5 +1,5 @@
 import 'package:http/http.dart' as http;
-import 'package:scoped/scoped.dart';
+import 'package:scoped_deps/scoped_deps.dart';
 import 'package:shorebird_cli/src/http_client/logging_client.dart';
 import 'package:shorebird_cli/src/http_client/retrying_client.dart';
 

@@ -1,7 +1,8 @@
-name: scoped
+name: scoped_deps
 description: A simple dependency injection library built on Zones
 version: 0.1.0+1
-publish_to: none
+homepage: https://shorebird.dev
+repository: https://github.com/shorebirdtech/shorebird/tree/main/packages/scoped_deps
 
 environment:
   sdk: ">=3.0.0 <4.0.0"
