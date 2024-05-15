@@ -117,9 +117,13 @@ function Update-Flutter {
 
     # Set FLUTTER_STORAGE_BASE_URL=https://download.shorebird.dev and execute
     # a `flutter` command to trigger a download of Dart, etc.
-    $env:FLUTTER_STORAGE_BASE_URL = 'https://download.shorebird.dev';
-    & $flutter --version
-    Remove-Item Env:\FLUTTER_STORAGE_BASE_URL
+    # 
+    # This is invoked in a subshell to avoid polluting the environment if the 
+    # flutter command fails. See https://stackoverflow.com/a/69758192 for
+    # subshell suggestion and
+    # https://learn.microsoft.com/en-us/powershell/module/microsoft.powershell.core/about/about_pwsh?view=powershell-7.4
+    # for official documentation on pwsh.
+    pwsh -Command { $env:FLUTTER_STORAGE_BASE_URL="https://download.shorebird.dev"; & $args[0] --version } -args $flutter
 }
 
 function Update-Shorebird {
