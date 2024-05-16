@@ -52,6 +52,7 @@ class _TestPatcher extends Patcher {
   Future<Map<Arch, PatchArtifactBundle>> createPatchArtifacts({
     required String appId,
     required int releaseId,
+    required File releaseArtifact,
   }) {
     throw UnimplementedError();
   }

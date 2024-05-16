@@ -401,6 +401,7 @@ void main() {
           size: 42,
           url: 'https://example.com',
         );
+        late File releaseArtifactFile;
 
         void setUpProjectRootArtifacts() {
           // Create a second app.dill for coverage of newestAppDill file.
@@ -438,6 +439,13 @@ void main() {
         }
 
         setUp(() {
+          releaseArtifactFile = File(
+            p.join(
+              Directory.systemTemp.createTempSync().path,
+              'release.xcframework',
+            ),
+          )..createSync(recursive: true);
+
           when(
             () => codePushClientWrapper.getReleaseArtifact(
               appId: any(named: 'appId'),
@@ -465,26 +473,6 @@ void main() {
                 .createSync();
           });
           when(() => engineConfig.localEngine).thenReturn(null);
-        });
-
-        group('when release artifact download fails', () {
-          setUp(() {
-            when(
-              () => artifactManager.downloadFile(any()),
-            ).thenThrow(Exception('Failed to download release artifact'));
-          });
-
-          test('logs error and exits with code 70', () async {
-            await expectLater(
-              () => runWithOverrides(
-                () => patcher.createPatchArtifacts(
-                  appId: appId,
-                  releaseId: releaseId,
-                ),
-              ),
-              exitsWithCode(ExitCode.software),
-            );
-          });
         });
 
         group('when uses linker', () {
@@ -554,6 +542,7 @@ void main() {
                     () => patcher.createPatchArtifacts(
                       appId: appId,
                       releaseId: releaseId,
+                      releaseArtifact: releaseArtifactFile,
                     ),
                   ),
                   exitsWithCode(ExitCode.software),
@@ -583,6 +572,7 @@ void main() {
                     () => patcher.createPatchArtifacts(
                       appId: appId,
                       releaseId: releaseId,
+                      releaseArtifact: releaseArtifactFile,
                     ),
                   ),
                   exitsWithCode(ExitCode.software),
@@ -617,6 +607,7 @@ void main() {
                     () => patcher.createPatchArtifacts(
                       appId: appId,
                       releaseId: releaseId,
+                      releaseArtifact: releaseArtifactFile,
                     ),
                   ),
                   exitsWithCode(ExitCode.software),
@@ -662,6 +653,7 @@ void main() {
                     () => patcher.createPatchArtifacts(
                       appId: appId,
                       releaseId: releaseId,
+                      releaseArtifact: releaseArtifactFile,
                     ),
                   ),
                   exitsWithCode(ExitCode.software),
@@ -689,6 +681,7 @@ void main() {
                   () => patcher.createPatchArtifacts(
                     appId: appId,
                     releaseId: releaseId,
+                    releaseArtifact: releaseArtifactFile,
                   ),
                 );
 
@@ -718,6 +711,7 @@ void main() {
                 () => patcher.createPatchArtifacts(
                   appId: appId,
                   releaseId: releaseId,
+                  releaseArtifact: releaseArtifactFile,
                 ),
               );
 
@@ -751,6 +745,7 @@ void main() {
               () => patcher.createPatchArtifacts(
                 appId: appId,
                 releaseId: releaseId,
+                releaseArtifact: releaseArtifactFile,
               ),
             );
 

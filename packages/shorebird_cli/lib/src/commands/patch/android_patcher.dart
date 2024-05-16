@@ -100,6 +100,7 @@ Looked in:
   Future<Map<Arch, PatchArtifactBundle>> createPatchArtifacts({
     required String appId,
     required int releaseId,
+    required File releaseArtifact,
   }) async {
     final releaseArtifacts = await codePushClientWrapper.getReleaseArtifacts(
       appId: appId,

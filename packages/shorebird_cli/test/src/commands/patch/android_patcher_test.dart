@@ -353,6 +353,7 @@ Looked in:
               () => patcher.createPatchArtifacts(
                 appId: 'appId',
                 releaseId: 0,
+                releaseArtifact: File('release.aab'),
               ),
             ),
             exitsWithCode(ExitCode.software),
@@ -369,6 +370,7 @@ Looked in:
               () => patcher.createPatchArtifacts(
                 appId: 'appId',
                 releaseId: 0,
+                releaseArtifact: File('release.aab'),
               ),
             ),
             exitsWithCode(ExitCode.software),
@@ -396,6 +398,7 @@ Looked in:
               () => patcher.createPatchArtifacts(
                 appId: 'appId',
                 releaseId: 0,
+                releaseArtifact: File('release.aab'),
               ),
             ),
             exitsWithCode(ExitCode.software),
@@ -428,6 +431,7 @@ Looked in:
             () => patcher.createPatchArtifacts(
               appId: 'appId',
               releaseId: 0,
+              releaseArtifact: File('release.aab'),
             ),
           );
 

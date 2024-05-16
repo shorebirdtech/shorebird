@@ -231,6 +231,7 @@ void main() {
         () => patcher.createPatchArtifacts(
           appId: any(named: 'appId'),
           releaseId: any(named: 'releaseId'),
+          releaseArtifact: any(named: 'releaseArtifact'),
         ),
       ).thenAnswer((_) async => patchArtifactBundles);
       when(
@@ -446,6 +447,7 @@ void main() {
           () => patcher.createPatchArtifacts(
                 appId: appId,
                 releaseId: release.id,
+                releaseArtifact: any(named: 'releaseArtifact'),
               ),
           () => logger.confirm('Would you like to continue?'),
           () => patcher.createPatchMetadata(any()),
@@ -499,6 +501,7 @@ void main() {
           () => patcher.createPatchArtifacts(
                 appId: appId,
                 releaseId: release.id,
+                releaseArtifact: any(named: 'releaseArtifact'),
               ),
           () => logger.confirm('Would you like to continue?'),
           () => codePushClientWrapper.publishPatch(

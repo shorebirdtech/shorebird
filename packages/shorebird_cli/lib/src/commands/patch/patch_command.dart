@@ -227,6 +227,7 @@ NOTE: this is ${styleBold.wrap('not')} recommended. Asset changes cannot be incl
         final patchArtifactBundles = await patcher.createPatchArtifacts(
           appId: appId,
           releaseId: release.id,
+          releaseArtifact: releaseArtifact,
         );
 
         final dryRun = results['dry-run'] == true;
