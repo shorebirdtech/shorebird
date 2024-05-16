@@ -130,38 +130,18 @@ class IosPatcher extends Patcher {
   Future<Map<Arch, PatchArtifactBundle>> createPatchArtifacts({
     required String appId,
     required int releaseId,
+    required File releaseArtifact,
   }) async {
-    final archivePath = artifactManager.getXcarchiveDirectory()?.path;
-    if (archivePath == null) {
+    // Verify that we have built a patch .xcarchive
+    if (artifactManager.getXcarchiveDirectory()?.path == null) {
       logger.err('Unable to find .xcarchive directory');
       return exit(ExitCode.software.code);
     }
-    final releaseArtifact = await codePushClientWrapper.getReleaseArtifact(
-      appId: appId,
-      releaseId: releaseId,
-      arch: 'xcarchive',
-      platform: ReleasePlatform.ios,
-    );
-
-    final downloadProgress = logger.progress('Downloading release artifact');
-    final File releaseArtifactZipFile;
-    try {
-      releaseArtifactZipFile = await artifactManager.downloadFile(
-        Uri.parse(releaseArtifact.url),
-      );
-      if (!releaseArtifactZipFile.existsSync()) {
-        throw Exception('Failed to download release artifact');
-      }
-    } catch (error) {
-      downloadProgress.fail('$error');
-      return exit(ExitCode.software.code);
-    }
-    downloadProgress.complete();
 
     final unzipProgress = logger.progress('Extracting release artifact');
     final tempDir = Directory.systemTemp.createTempSync();
     await artifactManager.extractZip(
-      zipFile: releaseArtifactZipFile,
+      zipFile: releaseArtifact,
       outputDirectory: tempDir,
     );
     final releaseXcarchivePath = tempDir.path;

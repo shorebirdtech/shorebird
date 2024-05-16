@@ -119,30 +119,12 @@ class IosFrameworkPatcher extends Patcher {
   Future<Map<Arch, PatchArtifactBundle>> createPatchArtifacts({
     required String appId,
     required int releaseId,
+    required File releaseArtifact,
   }) async {
-    final releaseArtifact = await codePushClientWrapper.getReleaseArtifact(
-      appId: appId,
-      releaseId: releaseId,
-      arch: 'xcframework',
-      platform: ReleasePlatform.ios,
-    );
-
-    final downloadProgress = logger.progress('Downloading release artifact');
-    final File releaseArtifactZipFile;
-    try {
-      releaseArtifactZipFile = await artifactManager.downloadFile(
-        Uri.parse(releaseArtifact.url),
-      );
-    } catch (error) {
-      downloadProgress.fail('$error');
-      exit(ExitCode.software.code);
-    }
-    downloadProgress.complete();
-
     final unzipProgress = logger.progress('Extracting release artifact');
     final tempDir = Directory.systemTemp.createTempSync();
     await artifactManager.extractZip(
-      zipFile: releaseArtifactZipFile,
+      zipFile: releaseArtifact,
       outputDirectory: tempDir,
     );
     final releaseXcframeworkPath = tempDir.path;

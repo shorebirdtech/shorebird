@@ -80,6 +80,7 @@ https://docs.shorebird.dev/status#link-percentage-ios
   Future<Map<Arch, PatchArtifactBundle>> createPatchArtifacts({
     required String appId,
     required int releaseId,
+    required File releaseArtifact,
   });
 
   /// Metadata to attach to the patch when creating it, used for debugging

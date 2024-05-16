@@ -402,6 +402,7 @@ void main() {
               () => patcher.createPatchArtifacts(
                 appId: appId,
                 releaseId: releaseId,
+                releaseArtifact: releaseArtifactFile,
               ),
             ),
             exitsWithCode(ExitCode.software),
@@ -427,6 +428,7 @@ void main() {
               () => patcher.createPatchArtifacts(
                 appId: appId,
                 releaseId: releaseId,
+                releaseArtifact: releaseArtifactFile,
               ),
             ),
             exitsWithCode(ExitCode.software),
@@ -442,6 +444,7 @@ void main() {
             () => patcher.createPatchArtifacts(
               appId: appId,
               releaseId: releaseId,
+              releaseArtifact: releaseArtifactFile,
             ),
           );
 
