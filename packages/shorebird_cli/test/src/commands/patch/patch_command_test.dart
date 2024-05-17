@@ -441,10 +441,6 @@ void main() {
                 appId: appId,
                 releaseVersion: releaseVersion,
               ),
-          () => codePushClientWrapper.ensureReleaseIsNotActive(
-                release: any(named: 'release'),
-                platform: releasePlatform,
-              ),
           () => codePushClientWrapper.getReleaseArtifact(
                 appId: appId,
                 releaseId: release.id,
@@ -498,10 +494,6 @@ void main() {
                 'Which release would you like to patch?',
                 choices: any(named: 'choices'),
                 display: captureAny(named: 'display'),
-              ),
-          () => codePushClientWrapper.ensureReleaseIsNotActive(
-                release: any(named: 'release'),
-                platform: releasePlatform,
               ),
           () => codePushClientWrapper.getReleaseArtifact(
                 appId: appId,
@@ -581,10 +573,6 @@ void main() {
                   ),
               () => patcher.buildPatchArtifact(),
               () => patcher.extractReleaseVersionFromArtifact(any()),
-              () => codePushClientWrapper.ensureReleaseIsNotActive(
-                    release: any(named: 'release'),
-                    platform: releasePlatform,
-                  ),
               () => shorebirdFlutter.installRevision(
                     revision: releaseFlutterRevision,
                   ),
@@ -660,6 +648,43 @@ void main() {
           exitsWithCode(ExitCode.success),
         );
         verify(() => logger.info('Aborting.')).called(1);
+      });
+    });
+
+    group('when the target release is in a draft state', () {
+      setUp(() {
+        when(
+          () => codePushClientWrapper.getRelease(
+            appId: any(named: 'appId'),
+            releaseVersion: any(named: 'releaseVersion'),
+          ),
+        ).thenAnswer(
+          (_) async => Release(
+            id: 0,
+            appId: appId,
+            version: releaseVersion,
+            flutterRevision: flutterRevision,
+            displayName: '1.2.3+1',
+            platformStatuses: {releasePlatform: ReleaseStatus.draft},
+            createdAt: DateTime(2023),
+            updatedAt: DateTime(2023),
+          ),
+        );
+      });
+
+      test('logs error and exits with code 70', () async {
+        await expectLater(
+          () => runWithOverrides(command.run),
+          exitsWithCode(ExitCode.software),
+        );
+
+        verify(
+          () => logger.err(
+            '''
+Release ${release.version} is in an incomplete state. It's possible that the original release was terminated or failed to complete.
+Please re-run the release command for this version or create a new release.''',
+          ),
+        ).called(1);
       });
     });
 

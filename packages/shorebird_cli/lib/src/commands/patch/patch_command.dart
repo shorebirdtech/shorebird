@@ -204,10 +204,7 @@ NOTE: this is ${styleBold.wrap('not')} recommended. Asset changes cannot be incl
       );
     }
 
-    codePushClientWrapper.ensureReleaseIsNotActive(
-      release: release,
-      platform: patcher.releaseType.releasePlatform,
-    );
+    assertReleaseIsActive(release: release, patcher: patcher);
 
     try {
       await shorebirdFlutter.installRevision(revision: release.flutterRevision);
@@ -283,6 +280,20 @@ NOTE: this is ${styleBold.wrap('not')} recommended. Asset changes cannot be incl
       choices: releases.sortedBy((r) => r.createdAt).reversed.toList(),
       display: (r) => r.version,
     );
+  }
+
+  void assertReleaseIsActive({
+    required Release release,
+    required Patcher patcher,
+  }) {
+    final releaseStatus =
+        release.platformStatuses[patcher.releaseType.releasePlatform];
+    if (releaseStatus != ReleaseStatus.active) {
+      logger.err('''
+Release ${release.version} is in an incomplete state. It's possible that the original release was terminated or failed to complete.
+Please re-run the release command for this version or create a new release.''');
+      exit(ExitCode.software.code);
+    }
   }
 
   Future<DiffStatus> assertUnpatchableDiffs({
