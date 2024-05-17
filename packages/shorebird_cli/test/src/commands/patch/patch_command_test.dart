@@ -1,4 +1,5 @@
 import 'package:args/args.dart';
+import 'package:collection/collection.dart';
 import 'package:mason_logger/mason_logger.dart';
 import 'package:mocktail/mocktail.dart';
 import 'package:scoped_deps/scoped_deps.dart';
@@ -121,6 +122,7 @@ void main() {
       registerFallbackValue(Directory(''));
       registerFallbackValue(File(''));
       registerFallbackValue(FileSetDiff.empty());
+      registerFallbackValue(release);
       registerFallbackValue(ReleasePlatform.android);
       registerFallbackValue(Uri.parse('https://example.com'));
       setExitFunctionForTests();
@@ -164,6 +166,8 @@ void main() {
           releaseVersion: any(named: 'releaseVersion'),
         ),
       ).thenAnswer((_) async => release);
+      when(() => codePushClientWrapper.getReleases(appId: any(named: 'appId')))
+          .thenAnswer((_) async => [release]);
       when(
         () => codePushClientWrapper.publishPatch(
           appId: any(named: 'appId'),
@@ -198,6 +202,13 @@ void main() {
         ),
       ).thenAnswer((_) async => aabArtifact);
 
+      when(
+        () => logger.chooseOne<Release>(
+          any(),
+          choices: any(named: 'choices'),
+          display: any(named: 'display'),
+        ),
+      ).thenReturn(release);
       when(() => logger.confirm(any())).thenReturn(true);
       when(() => logger.progress(any())).thenReturn(progress);
 
@@ -430,6 +441,10 @@ void main() {
                 appId: appId,
                 releaseVersion: releaseVersion,
               ),
+          () => codePushClientWrapper.ensureReleaseIsNotActive(
+                release: any(named: 'release'),
+                platform: releasePlatform,
+              ),
           () => codePushClientWrapper.getReleaseArtifact(
                 appId: appId,
                 releaseId: release.id,
@@ -468,22 +483,25 @@ void main() {
         when(() => argResults.wasParsed('release-version')).thenReturn(false);
       });
 
-      test(
-          'executes commands in order, builds app to determine release version',
+      test('executes commands in order, prompts to determine release version',
           () async {
         final exitCode = await runWithOverrides(command.run);
         expect(exitCode, equals(ExitCode.success.code));
 
-        verifyInOrder([
+        final verificationResult = verifyInOrder([
           () => patcher.assertPreconditions(),
           () => patcher.assertArgsAreValid(),
           () => cache.updateAll(),
           () => codePushClientWrapper.getApp(appId: appId),
-          () => patcher.buildPatchArtifact(),
-          () => patcher.extractReleaseVersionFromArtifact(any()),
-          () => codePushClientWrapper.getRelease(
-                appId: appId,
-                releaseVersion: releaseVersion,
+          () => codePushClientWrapper.getReleases(appId: appId),
+          () => logger.chooseOne<Release>(
+                'Which release would you like to patch?',
+                choices: any(named: 'choices'),
+                display: captureAny(named: 'display'),
+              ),
+          () => codePushClientWrapper.ensureReleaseIsNotActive(
+                release: any(named: 'release'),
+                platform: releasePlatform,
               ),
           () => codePushClientWrapper.getReleaseArtifact(
                 appId: appId,
@@ -513,59 +531,82 @@ void main() {
                 track: DeploymentTrack.production,
               ),
         ]);
+
+        // Verify that the logger.chooseOne<Release> display function is correct
+        final displayFunctionCapture = verificationResult.captured.flattened
+            .whereType<String Function(Release)>()
+            .first;
+        expect(
+          displayFunctionCapture(release),
+          equals(release.version),
+        );
       });
 
-      group('when release Flutter version is not default', () {
-        const releaseFlutterRevision = 'different-revision';
-
+      group('when running on CI', () {
         setUp(() {
-          when(
-            () => codePushClientWrapper.getRelease(
-              appId: any(named: 'appId'),
-              releaseVersion: any(named: 'releaseVersion'),
-            ),
-          ).thenAnswer(
-            (_) async => Release(
-              id: 0,
-              appId: appId,
-              version: releaseVersion,
-              flutterRevision: releaseFlutterRevision,
-              displayName: '1.2.3+1',
-              platformStatuses: {releasePlatform: ReleaseStatus.active},
-              createdAt: DateTime(2023),
-              updatedAt: DateTime(2023),
-            ),
-          );
+          when(() => shorebirdEnv.canAcceptUserInput).thenReturn(false);
         });
 
-        test('builds app twice if release flutter version is not default',
-            () async {
-          final exitCode = await runWithOverrides(command.run);
-          expect(exitCode, equals(ExitCode.success.code));
+        group('when release Flutter version is not default', () {
+          const releaseFlutterRevision = 'different-revision';
 
-          verifyInOrder([
-            () => patcher.buildPatchArtifact(),
-            () => shorebirdFlutter.installRevision(
-                  revision: releaseFlutterRevision,
-                ),
-            () => shorebirdEnv.copyWith(
-                  flutterRevisionOverride: releaseFlutterRevision,
-                ),
-            () => patcher.buildPatchArtifact(),
-          ]);
-        });
+          setUp(() {
+            when(
+              () => codePushClientWrapper.getRelease(
+                appId: any(named: 'appId'),
+                releaseVersion: any(named: 'releaseVersion'),
+              ),
+            ).thenAnswer(
+              (_) async => Release(
+                id: 0,
+                appId: appId,
+                version: releaseVersion,
+                flutterRevision: releaseFlutterRevision,
+                displayName: '1.2.3+1',
+                platformStatuses: {releasePlatform: ReleaseStatus.active},
+                createdAt: DateTime(2023),
+                updatedAt: DateTime(2023),
+              ),
+            );
+          });
 
-        test('updates cache with both default and release Flutter revisions',
-            () async {
-          await runWithOverrides(command.run);
+          test('builds app twice if release flutter version is not default',
+              () async {
+            final exitCode = await runWithOverrides(command.run);
+            expect(exitCode, equals(ExitCode.success.code));
 
-          verifyInOrder([
-            cache.updateAll,
-            () => shorebirdEnv.copyWith(
-                  flutterRevisionOverride: releaseFlutterRevision,
-                ),
-            cache.updateAll,
-          ]);
+            verifyInOrder([
+              () => logger.info(
+                    '''Tip: make your patches build faster by specifying --release-version''',
+                  ),
+              () => patcher.buildPatchArtifact(),
+              () => patcher.extractReleaseVersionFromArtifact(any()),
+              () => codePushClientWrapper.ensureReleaseIsNotActive(
+                    release: any(named: 'release'),
+                    platform: releasePlatform,
+                  ),
+              () => shorebirdFlutter.installRevision(
+                    revision: releaseFlutterRevision,
+                  ),
+              () => shorebirdEnv.copyWith(
+                    flutterRevisionOverride: releaseFlutterRevision,
+                  ),
+              () => patcher.buildPatchArtifact(),
+            ]);
+          });
+
+          test('updates cache with both default and release Flutter revisions',
+              () async {
+            await runWithOverrides(command.run);
+
+            verifyInOrder([
+              cache.updateAll,
+              () => shorebirdEnv.copyWith(
+                    flutterRevisionOverride: releaseFlutterRevision,
+                  ),
+              cache.updateAll,
+            ]);
+          });
         });
       });
     });
@@ -619,43 +660,6 @@ void main() {
           exitsWithCode(ExitCode.success),
         );
         verify(() => logger.info('Aborting.')).called(1);
-      });
-    });
-
-    group('when the target release is in a draft state', () {
-      setUp(() {
-        when(
-          () => codePushClientWrapper.getRelease(
-            appId: any(named: 'appId'),
-            releaseVersion: any(named: 'releaseVersion'),
-          ),
-        ).thenAnswer(
-          (_) async => Release(
-            id: 0,
-            appId: appId,
-            version: releaseVersion,
-            flutterRevision: flutterRevision,
-            displayName: '1.2.3+1',
-            platformStatuses: {releasePlatform: ReleaseStatus.draft},
-            createdAt: DateTime(2023),
-            updatedAt: DateTime(2023),
-          ),
-        );
-      });
-
-      test('logs error and exits with code 70', () async {
-        await expectLater(
-          () => runWithOverrides(command.run),
-          exitsWithCode(ExitCode.software),
-        );
-
-        verify(
-          () => logger.err(
-            '''
-Release ${release.version} is in an incomplete state. It's possible that the original release was terminated or failed to complete.
-Please re-run the release command for this version or create a new release.''',
-          ),
-        ).called(1);
       });
     });
 

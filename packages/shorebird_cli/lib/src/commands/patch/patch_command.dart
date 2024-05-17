@@ -1,3 +1,4 @@
+import 'package:collection/collection.dart';
 import 'package:mason_logger/mason_logger.dart';
 import 'package:meta/meta.dart';
 import 'package:scoped_deps/scoped_deps.dart';
@@ -179,20 +180,33 @@ NOTE: this is ${styleBold.wrap('not')} recommended. Asset changes cannot be incl
     final app = await codePushClientWrapper.getApp(appId: appId);
 
     File? patchArtifact;
-    final String releaseVersion;
+    final Release release;
     if (results.wasParsed('release-version')) {
-      releaseVersion = results['release-version'] as String;
+      final releaseVersion = results['release-version'] as String;
+      release = await codePushClientWrapper.getRelease(
+        appId: appId,
+        releaseVersion: releaseVersion,
+      );
+    } else if (shorebirdEnv.canAcceptUserInput) {
+      release = await promptForRelease();
     } else {
+      logger.info(
+        '''Tip: make your patches build faster by specifying --release-version''',
+      );
       patchArtifact = await patcher.buildPatchArtifact();
       lastBuiltFlutterRevision = shorebirdEnv.flutterRevision;
-      releaseVersion = await patcher.extractReleaseVersionFromArtifact(
+      final releaseVersion = await patcher.extractReleaseVersionFromArtifact(
         patchArtifact,
+      );
+      release = await codePushClientWrapper.getRelease(
+        appId: appId,
+        releaseVersion: releaseVersion,
       );
     }
 
-    final release = await getRelease(
-      releaseVersion: releaseVersion,
-      patcher: patcher,
+    codePushClientWrapper.ensureReleaseIsNotActive(
+      release: release,
+      platform: patcher.releaseType.releasePlatform,
     );
 
     try {
@@ -240,7 +254,7 @@ NOTE: this is ${styleBold.wrap('not')} recommended. Asset changes cannot be incl
 
         await confirmCreatePatch(
           app: app,
-          releaseVersion: releaseVersion,
+          releaseVersion: release.version,
           patcher: patcher,
           patchArtifactBundles: patchArtifactBundles,
         );
@@ -257,6 +271,17 @@ NOTE: this is ${styleBold.wrap('not')} recommended. Asset changes cannot be incl
       values: {
         shorebirdEnvRef.overrideWith(() => releaseFlutterShorebirdEnv),
       },
+    );
+  }
+
+  Future<Release> promptForRelease() async {
+    final releases = await codePushClientWrapper.getReleases(
+      appId: appId,
+    );
+    return logger.chooseOne<Release>(
+      'Which release would you like to patch?',
+      choices: releases.sortedBy((r) => r.createdAt).reversed.toList(),
+      display: (r) => r.version,
     );
   }
 
@@ -324,27 +349,6 @@ ${summary.join('\n')}
         exit(ExitCode.success.code);
       }
     }
-  }
-
-  Future<Release> getRelease({
-    required String releaseVersion,
-    required Patcher patcher,
-  }) async {
-    final release = await codePushClientWrapper.getRelease(
-      appId: appId,
-      releaseVersion: releaseVersion,
-    );
-
-    final releaseStatus =
-        release.platformStatuses[patcher.releaseType.releasePlatform];
-    if (releaseStatus != ReleaseStatus.active) {
-      logger.err('''
-Release ${release.version} is in an incomplete state. It's possible that the original release was terminated or failed to complete.
-Please re-run the release command for this version or create a new release.''');
-      exit(ExitCode.software.code);
-    }
-
-    return release;
   }
 
   Future<File> downloadPrimaryReleaseArtifact({
