@@ -515,6 +515,23 @@ void main() {
         ]);
       });
 
+      group('when not running in a terminal', () {
+        setUp(() {
+          when(() => shorebirdEnv.canAcceptUserInput).thenReturn(false);
+        });
+
+        test('logs error exits with code 64', () async {
+          await expectLater(
+            () => runWithOverrides(command.run),
+            exitsWithCode(ExitCode.usage),
+          );
+
+          verify(
+            () => logger.err('A release version must be specified.'),
+          ).called(1);
+        });
+      });
+
       group('when release Flutter version is not default', () {
         const releaseFlutterRevision = 'different-revision';
 

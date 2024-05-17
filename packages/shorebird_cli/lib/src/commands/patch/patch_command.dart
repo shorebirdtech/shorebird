@@ -250,6 +250,11 @@ NOTE: this is ${styleBold.wrap('not')} recommended. Asset changes cannot be incl
   }
 
   Future<Release> promptForRelease() async {
+    if (!shorebirdEnv.canAcceptUserInput) {
+      logger.err('A release version must be specified.');
+      exit(ExitCode.usage.code);
+    }
+
     final releases = await codePushClientWrapper.getReleases(
       appId: appId,
     );
