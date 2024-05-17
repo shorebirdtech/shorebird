@@ -319,12 +319,10 @@ class UpdaterToolsArtifact extends CachedArtifact {
 
   @override
   Directory get location => Directory(
-        // TODO remove this
-        '/Users/bryanoltman/shorebirdtech/engine/src/third_party/updater/updater_tools/bin',
-        // p.join(
-        //   cache.getArtifactDirectory(name).path,
-        //   shorebirdEnv.shorebirdEngineRevision,
-        // ),
+        p.join(
+          cache.getArtifactDirectory(name).path,
+          shorebirdEnv.shorebirdEngineRevision,
+        ),
       );
 
   @override

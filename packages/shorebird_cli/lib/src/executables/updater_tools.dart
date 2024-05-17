@@ -30,24 +30,36 @@ class UpdaterTools {
     );
   }
 
-  Future<Directory> packagePatch({
-    required String archiveType,
-    required File releaseArchive,
-    required File patchArchive,
+  /// Create a binary diff between a release artifact and a patch artifact.
+  Future<void> createDiff({
+    required String releaseArtifactPath,
+    required String patchArtifactPath,
+    required String diffPath,
   }) async {
-    final outDir = Directory.systemTemp.createTempSync('shorebird_patch');
+    if (!File(releaseArtifactPath).existsSync()) {
+      throw FileSystemException(
+        'Release artifact does not exist',
+        releaseArtifactPath,
+      );
+    }
+
+    if (!File(patchArtifactPath).existsSync()) {
+      throw FileSystemException(
+        'Patch artifact does not exist',
+        patchArtifactPath,
+      );
+    }
+
     final result = await _exec([
-      '--archive-type=$archiveType',
-      '--release=${releaseArchive.path}',
-      '--patch=${patchArchive.path}',
+      'diff',
+      '--release=$releaseArtifactPath',
+      '--patch=$patchArtifactPath',
       '--patch-executable=${patchExecutable.path}',
-      '--output=${outDir.path}',
+      '--output=$diffPath',
     ]);
 
     if (result.exitCode != ExitCode.success.code) {
-      throw Exception('Failed to package patch: ${result.stderr}');
+      throw Exception('Failed to create diff: ${result.stderr}');
     }
-
-    return outDir;
   }
 }

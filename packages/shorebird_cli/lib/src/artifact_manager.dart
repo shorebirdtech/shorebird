@@ -40,12 +40,19 @@ class ArtifactManager {
 
     final tempDir = await Directory.systemTemp.createTemp();
     final diffPath = p.join(tempDir.path, 'diff.patch');
-
-    await patchExecutable.run(
-      releaseArtifactPath: releaseArtifactPath,
-      patchArtifactPath: patchArtifactPath,
-      diffPath: diffPath,
-    );
+    if (File(updaterTools.path).existsSync()) {
+      await updaterTools.createDiff(
+        releaseArtifactPath: releaseArtifactPath,
+        patchArtifactPath: patchArtifactPath,
+        diffPath: diffPath,
+      );
+    } else {
+      await patchExecutable.run(
+        releaseArtifactPath: releaseArtifactPath,
+        patchArtifactPath: patchArtifactPath,
+        diffPath: diffPath,
+      );
+    }
 
     return diffPath;
   }
