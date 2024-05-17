@@ -29,22 +29,24 @@ class PatchFailedException implements Exception {
 ///
 /// Throws [PatchFailedException] if the patch command exits with non-zero code.
 class PatchExecutable {
+  /// The path to the `patch` executable.
+  String get path => p.join(
+        cache.getArtifactDirectory('patch').path,
+        'patch',
+      );
+
   Future<void> run({
     required String releaseArtifactPath,
     required String patchArtifactPath,
     required String diffPath,
   }) async {
-    final diffExecutable = p.join(
-      cache.getArtifactDirectory('patch').path,
-      'patch',
-    );
     final diffArguments = [
       releaseArtifactPath,
       patchArtifactPath,
       diffPath,
     ];
 
-    final result = await process.run(diffExecutable, diffArguments);
+    final result = await process.run(path, diffArguments);
 
     if (result.exitCode != ExitCode.success.code) {
       throw PatchFailedException(

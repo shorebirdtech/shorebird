@@ -18,6 +18,9 @@ enum ShorebirdArtifact {
 
   /// The gen_snapshot executable.
   genSnapshot,
+
+  /// TODO
+  updaterTools,
 }
 
 /// A reference to a [ShorebirdArtifacts] instance.

@@ -8,6 +8,7 @@ import 'package:shorebird_cli/src/artifact_manager.dart';
 import 'package:shorebird_cli/src/code_push_client_wrapper.dart';
 import 'package:shorebird_cli/src/commands/patch/patcher.dart';
 import 'package:shorebird_cli/src/doctor.dart';
+import 'package:shorebird_cli/src/executables/executables.dart';
 import 'package:shorebird_cli/src/logger.dart';
 import 'package:shorebird_cli/src/patch_diff_checker.dart';
 import 'package:shorebird_cli/src/platform.dart';
@@ -102,68 +103,79 @@ Looked in:
     required int releaseId,
     required File releaseArtifact,
   }) async {
-    final releaseArtifacts = await codePushClientWrapper.getReleaseArtifacts(
-      appId: appId,
-      releaseId: releaseId,
-      architectures: AndroidArch.availableAndroidArchs,
-      platform: releaseType.releasePlatform,
-    );
-    final releaseArtifactPaths = <Arch, String>{};
-    final downloadReleaseArtifactProgress = logger.progress(
-      'Downloading release artifacts',
-    );
+    // final releaseArtifacts = await codePushClientWrapper.getReleaseArtifacts(
+    //   appId: appId,
+    //   releaseId: releaseId,
+    //   architectures: AndroidArch.availableAndroidArchs,
+    //   platform: releaseType.releasePlatform,
+    // );
+    // final releaseArtifactPaths = <Arch, String>{};
+    // final downloadReleaseArtifactProgress = logger.progress(
+    //   'Downloading release artifacts',
+    // );
 
-    for (final releaseArtifact in releaseArtifacts.entries) {
-      try {
-        final releaseArtifactFile = await artifactManager.downloadFile(
-          Uri.parse(releaseArtifact.value.url),
-        );
-        releaseArtifactPaths[releaseArtifact.key] = releaseArtifactFile.path;
-      } catch (error) {
-        downloadReleaseArtifactProgress.fail('$error');
-        exit(ExitCode.software.code);
-      }
-    }
+    // for (final releaseArtifact in releaseArtifacts.entries) {
+    //   try {
+    //     final releaseArtifactFile = await artifactManager.downloadFile(
+    //       Uri.parse(releaseArtifact.value.url),
+    //     );
+    //     releaseArtifactPaths[releaseArtifact.key] = releaseArtifactFile.path;
+    //   } catch (error) {
+    //     downloadReleaseArtifactProgress.fail('$error');
+    //     exit(ExitCode.software.code);
+    //   }
+    // }
 
-    downloadReleaseArtifactProgress.complete();
+    // downloadReleaseArtifactProgress.complete();
 
-    final patchArchsBuildDir = ArtifactManager.androidArchsDirectory(
-      projectRoot: projectRoot,
+    // final patchArchsBuildDir = ArtifactManager.androidArchsDirectory(
+    //   projectRoot: projectRoot,
+    //   flavor: flavor,
+    // );
+    // if (patchArchsBuildDir == null) {
+    //   logger.err('Could not find patch artifacts');
+    //   exit(ExitCode.software.code);
+    // }
+
+    final patchArchive = shorebirdAndroidArtifacts.findAab(
+      project: projectRoot,
       flavor: flavor,
     );
-    if (patchArchsBuildDir == null) {
-      logger.err('Could not find patch artifacts');
-      exit(ExitCode.software.code);
-    }
-
     final patchArtifactBundles = <Arch, PatchArtifactBundle>{};
     final createDiffProgress = logger.progress('Creating patch artifacts');
-    for (final releaseArtifactPath in releaseArtifactPaths.entries) {
-      final arch = releaseArtifactPath.key;
-      final patchArtifactPath = p.join(
-        patchArchsBuildDir.path,
-        arch.androidBuildPath,
-        'libapp.so',
-      );
-      logger.detail('Creating artifact for $patchArtifactPath');
-      final patchArtifact = File(patchArtifactPath);
-      final hash = sha256.convert(await patchArtifact.readAsBytes()).toString();
-      try {
-        final diffPath = await artifactManager.createDiff(
-          releaseArtifactPath: releaseArtifactPath.value,
-          patchArtifactPath: patchArtifactPath,
-        );
-        patchArtifactBundles[releaseArtifactPath.key] = PatchArtifactBundle(
-          arch: arch.arch,
-          path: diffPath,
-          hash: hash,
-          size: await File(diffPath).length(),
-        );
-      } catch (error) {
-        createDiffProgress.fail('$error');
-        exit(ExitCode.software.code);
-      }
-    }
+
+    final patchDirectory = await updaterTools.packagePatch(
+      archiveType: primaryReleaseArtifactArch,
+      releaseArchive: releaseArtifact,
+      patchArchive: patchArchive,
+    );
+
+    // for (final releaseArtifactPath in releaseArtifactPaths.entries) {
+    //   final arch = releaseArtifactPath.key;
+    //   final patchArtifactPath = p.join(
+    //     patchArchsBuildDir.path,
+    //     arch.androidBuildPath,
+    //     'libapp.so',
+    //   );
+    //   logger.detail('Creating artifact for $patchArtifactPath');
+    //   final patchArtifact = File(patchArtifactPath);
+    //   final hash = sha256.convert(await patchArtifact.readAsBytes()).toString();
+    //   try {
+    //     final diffPath = await artifactManager.createDiff(
+    //       releaseArtifactPath: releaseArtifactPath.value,
+    //       patchArtifactPath: patchArtifactPath,
+    //     );
+    //     patchArtifactBundles[releaseArtifactPath.key] = PatchArtifactBundle(
+    //       arch: arch.arch,
+    //       path: diffPath,
+    //       hash: hash,
+    //       size: await File(diffPath).length(),
+    //     );
+    //   } catch (error) {
+    //     createDiffProgress.fail('$error');
+    //     exit(ExitCode.software.code);
+    //   }
+    // }
     createDiffProgress.complete();
     return patchArtifactBundles;
   }

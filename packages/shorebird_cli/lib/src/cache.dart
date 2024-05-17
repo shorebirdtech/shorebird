@@ -47,6 +47,7 @@ class Cache {
     registerArtifact(BundleToolArtifact(cache: this, platform: platform));
     registerArtifact(AotToolsDillArtifact(cache: this, platform: platform));
     registerArtifact(AotToolsExeArtifact(cache: this, platform: platform));
+    registerArtifact(UpdaterToolsArtifact(cache: this, platform: platform));
   }
 
   void registerArtifact(CachedArtifact artifact) => _artifacts.add(artifact);
@@ -296,4 +297,37 @@ class BundleToolArtifact extends CachedArtifact {
   String get storageUrl {
     return 'https://github.com/google/bundletool/releases/download/1.15.6/bundletool-all-1.15.6.jar';
   }
+}
+
+/// {@template updater_tools_artifact}
+/// Tools used to package patch artifacts for use by the Updater.
+/// {@endtemplate}
+class UpdaterToolsArtifact extends CachedArtifact {
+  /// {@macro updater_tools_artifact}
+  UpdaterToolsArtifact({required super.cache, required super.platform});
+
+  @override
+  String get name => 'updater-tools.dill';
+
+  @override
+  bool get isExecutable => false;
+
+  // TODO(bryanoltman): update to correct version and add engine rev and flutter version once this is nailed down
+  /// Updater tools was introduced in release 1.1.7.
+  @override
+  bool get required => false;
+
+  @override
+  Directory get location => Directory(
+        // TODO remove this
+        '/Users/bryanoltman/shorebirdtech/engine/src/third_party/updater/updater_tools/bin',
+        // p.join(
+        //   cache.getArtifactDirectory(name).path,
+        //   shorebirdEnv.shorebirdEngineRevision,
+        // ),
+      );
+
+  @override
+  String get storageUrl =>
+      '${cache.storageBaseUrl}/${cache.storageBucket}/shorebird/${shorebirdEnv.shorebirdEngineRevision}/$name';
 }
