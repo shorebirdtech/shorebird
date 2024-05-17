@@ -158,6 +158,8 @@ void main() {
 
       when(() => codePushClientWrapper.getApp(appId: any(named: 'appId')))
           .thenAnswer((_) async => appMetadata);
+      when(() => codePushClientWrapper.getReleases(appId: any(named: 'appId')))
+          .thenAnswer((_) async => [release]);
       when(
         () => codePushClientWrapper.getRelease(
           appId: any(named: 'appId'),
@@ -198,6 +200,13 @@ void main() {
         ),
       ).thenAnswer((_) async => aabArtifact);
 
+      when(
+        () => logger.chooseOne<Release>(
+          any(),
+          choices: any(named: 'choices'),
+          display: any(named: 'display'),
+        ),
+      ).thenReturn(release);
       when(() => logger.confirm(any())).thenReturn(true);
       when(() => logger.progress(any())).thenReturn(progress);
 
@@ -220,9 +229,6 @@ void main() {
       when(() => patcher.assertArgsAreValid()).thenAnswer((_) async {});
       when(() => patcher.assertPreconditions()).thenAnswer((_) async {});
       when(
-        () => patcher.extractReleaseVersionFromArtifact(any()),
-      ).thenAnswer((_) async => releaseVersion);
-      when(
         () => patcher.buildPatchArtifact(),
       ).thenAnswer((_) async => File(''));
       when(() => patcher.releaseType).thenReturn(ReleaseType.android);
@@ -239,15 +245,15 @@ void main() {
       ).thenAnswer((_) async => patchMetadata);
 
       when(() => shorebirdEnv.getShorebirdYaml()).thenReturn(shorebirdYaml);
-      when(() => shorebirdEnv.flutterRevision).thenReturn(flutterRevision);
+      // when(() => shorebirdEnv.flutterRevision).thenReturn(flutterRevision);
       when(
         () => shorebirdEnv.copyWith(
           flutterRevisionOverride: any(named: 'flutterRevisionOverride'),
         ),
       ).thenAnswer((invocation) {
-        when(() => shorebirdEnv.flutterRevision).thenReturn(
-          invocation.namedArguments[#flutterRevisionOverride] as String,
-        );
+        // when(() => shorebirdEnv.flutterRevision).thenReturn(
+        //   invocation.namedArguments[#flutterRevisionOverride] as String,
+        // );
         return shorebirdEnv;
       });
       when(() => shorebirdEnv.canAcceptUserInput).thenReturn(true);
@@ -479,11 +485,11 @@ void main() {
           () => patcher.assertArgsAreValid(),
           () => cache.updateAll(),
           () => codePushClientWrapper.getApp(appId: appId),
-          () => patcher.buildPatchArtifact(),
-          () => patcher.extractReleaseVersionFromArtifact(any()),
-          () => codePushClientWrapper.getRelease(
-                appId: appId,
-                releaseVersion: releaseVersion,
+          () => codePushClientWrapper.getReleases(appId: appId),
+          () => logger.chooseOne<Release>(
+                'Which release would you like to patch?',
+                choices: any(named: 'choices'),
+                display: any(named: 'display'),
               ),
           () => codePushClientWrapper.getReleaseArtifact(
                 appId: appId,
@@ -520,12 +526,13 @@ void main() {
 
         setUp(() {
           when(
-            () => codePushClientWrapper.getRelease(
-              appId: any(named: 'appId'),
-              releaseVersion: any(named: 'releaseVersion'),
+            () => logger.chooseOne<Release>(
+              'Which release would you like to patch?',
+              choices: any(named: 'choices'),
+              display: any(named: 'display'),
             ),
-          ).thenAnswer(
-            (_) async => Release(
+          ).thenReturn(
+            Release(
               id: 0,
               appId: appId,
               version: releaseVersion,
@@ -536,23 +543,6 @@ void main() {
               updatedAt: DateTime(2023),
             ),
           );
-        });
-
-        test('builds app twice if release flutter version is not default',
-            () async {
-          final exitCode = await runWithOverrides(command.run);
-          expect(exitCode, equals(ExitCode.success.code));
-
-          verifyInOrder([
-            () => patcher.buildPatchArtifact(),
-            () => shorebirdFlutter.installRevision(
-                  revision: releaseFlutterRevision,
-                ),
-            () => shorebirdEnv.copyWith(
-                  flutterRevisionOverride: releaseFlutterRevision,
-                ),
-            () => patcher.buildPatchArtifact(),
-          ]);
         });
 
         test('updates cache with both default and release Flutter revisions',

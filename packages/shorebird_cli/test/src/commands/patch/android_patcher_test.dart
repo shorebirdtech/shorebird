@@ -440,27 +440,6 @@ Looked in:
       });
     });
 
-    group('extractReleaseVersionFromArtifact', () {
-      setUp(() {
-        when(
-          () => shorebirdAndroidArtifacts.extractReleaseVersionFromAppBundle(
-            any(),
-          ),
-        ).thenAnswer((_) async => '1.0.0');
-      });
-
-      test(
-          '''returns value of shorebirdAndroidArtifacts.extractReleaseVersionFromAppBundle''',
-          () async {
-        expect(
-          await runWithOverrides(
-            () => patcher.extractReleaseVersionFromArtifact(File('')),
-          ),
-          equals('1.0.0'),
-        );
-      });
-    });
-
     group('patchArtifactForDiffCheck', () {
       late File aabFile;
       setUp(() {

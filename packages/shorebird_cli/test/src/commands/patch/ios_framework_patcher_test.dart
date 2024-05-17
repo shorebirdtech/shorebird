@@ -764,15 +764,6 @@ void main() {
         });
       });
 
-      group('extractReleaseVersionFromArtifact', () {
-        test('throws UnimplementedError', () {
-          expect(
-            () => patcher.extractReleaseVersionFromArtifact(File('')),
-            throwsUnimplementedError,
-          );
-        });
-      });
-
       group('createPatchMetadata', () {
         const allowAssetDiffs = false;
         const allowNativeDiffs = true;

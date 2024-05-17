@@ -73,9 +73,6 @@ https://docs.shorebird.dev/status#link-percentage-ios
   /// artifact for the platform (e.g. the AAB for Android, the IPA for iOS).
   Future<File> buildPatchArtifact();
 
-  /// Determines the release version from the provided app artifact.
-  Future<String> extractReleaseVersionFromArtifact(File artifact);
-
   /// Creates the patch artifacts required to apply a patch to a release.
   Future<Map<Arch, PatchArtifactBundle>> createPatchArtifacts({
     required String appId,

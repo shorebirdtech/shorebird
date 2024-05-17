@@ -63,11 +63,6 @@ class _TestPatcher extends Patcher {
   }
 
   @override
-  Future<String> extractReleaseVersionFromArtifact(File artifact) {
-    throw UnimplementedError();
-  }
-
-  @override
   String get primaryReleaseArtifactArch => throw UnimplementedError();
 
   @override

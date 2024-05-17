@@ -199,14 +199,6 @@ class IosFrameworkPatcher extends Patcher {
   }
 
   @override
-  Future<String> extractReleaseVersionFromArtifact(File artifact) {
-    // Not implemented - release verison must be specified by the user.
-    throw UnimplementedError(
-      'Release version must be specified using --release-version.',
-    );
-  }
-
-  @override
   Future<CreatePatchMetadata> createPatchMetadata(DiffStatus diffStatus) async {
     return CreatePatchMetadata(
       releasePlatform: releaseType.releasePlatform,

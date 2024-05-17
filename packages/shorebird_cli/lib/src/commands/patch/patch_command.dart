@@ -167,8 +167,6 @@ NOTE: this is ${styleBold.wrap('not')} recommended. Asset changes cannot be incl
   bool get allowAssetDiffs => results['allow-asset-diffs'] == true;
   bool get allowNativeDiffs => results['allow-native-diffs'] == true;
 
-  String? lastBuiltFlutterRevision;
-
   @visibleForTesting
   Future<void> createPatch(Patcher patcher) async {
     await patcher.assertPreconditions();
@@ -178,22 +176,16 @@ NOTE: this is ${styleBold.wrap('not')} recommended. Asset changes cannot be incl
 
     final app = await codePushClientWrapper.getApp(appId: appId);
 
-    File? patchArtifact;
-    final String releaseVersion;
+    final Release release;
     if (results.wasParsed('release-version')) {
-      releaseVersion = results['release-version'] as String;
-    } else {
-      patchArtifact = await patcher.buildPatchArtifact();
-      lastBuiltFlutterRevision = shorebirdEnv.flutterRevision;
-      releaseVersion = await patcher.extractReleaseVersionFromArtifact(
-        patchArtifact,
+      final releaseVersion = results['release-version'] as String;
+      release = await getRelease(
+        releaseVersion: releaseVersion,
+        patcher: patcher,
       );
+    } else {
+      release = await promptForRelease();
     }
-
-    final release = await getRelease(
-      releaseVersion: releaseVersion,
-      patcher: patcher,
-    );
 
     try {
       await shorebirdFlutter.installRevision(revision: release.flutterRevision);
@@ -214,14 +206,11 @@ NOTE: this is ${styleBold.wrap('not')} recommended. Asset changes cannot be incl
       () async {
         await cache.updateAll();
 
-        // Don't built the patch artifact twice with the same Flutter revision.
-        if (lastBuiltFlutterRevision != release.flutterRevision) {
-          patchArtifact = await patcher.buildPatchArtifact();
-        }
+        final patchArtifact = await patcher.buildPatchArtifact();
 
         final diffStatus = await assertUnpatchableDiffs(
           releaseArtifact: releaseArtifact,
-          patchArtifact: patchArtifact!,
+          patchArtifact: patchArtifact,
           archiveDiffer: patcher.archiveDiffer,
         );
         final patchArtifactBundles = await patcher.createPatchArtifacts(
@@ -240,7 +229,7 @@ NOTE: this is ${styleBold.wrap('not')} recommended. Asset changes cannot be incl
 
         await confirmCreatePatch(
           app: app,
-          releaseVersion: releaseVersion,
+          releaseVersion: release.version,
           patcher: patcher,
           patchArtifactBundles: patchArtifactBundles,
         );
@@ -257,6 +246,17 @@ NOTE: this is ${styleBold.wrap('not')} recommended. Asset changes cannot be incl
       values: {
         shorebirdEnvRef.overrideWith(() => releaseFlutterShorebirdEnv),
       },
+    );
+  }
+
+  Future<Release> promptForRelease() async {
+    final releases = await codePushClientWrapper.getReleases(
+      appId: appId,
+    );
+    return logger.chooseOne<Release>(
+      'Which release would you like to patch?',
+      choices: releases,
+      display: (r) => r.version,
     );
   }
 

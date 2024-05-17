@@ -221,31 +221,6 @@ class IosPatcher extends Patcher {
   }
 
   @override
-  Future<String> extractReleaseVersionFromArtifact(File artifact) async {
-    final archivePath = artifactManager.getXcarchiveDirectory()?.path;
-    if (archivePath == null) {
-      logger.err('Unable to find .xcarchive directory');
-      exit(ExitCode.software.code);
-    }
-
-    final plistFile = File(p.join(archivePath, 'Info.plist'));
-    if (!plistFile.existsSync()) {
-      logger.err('No Info.plist file found at ${plistFile.path}.');
-      exit(ExitCode.software.code);
-    }
-
-    final plist = Plist(file: plistFile);
-    try {
-      return plist.versionNumber;
-    } catch (error) {
-      logger.err(
-        'Failed to determine release version from ${plistFile.path}: $error',
-      );
-      exit(ExitCode.software.code);
-    }
-  }
-
-  @override
   Future<CreatePatchMetadata> createPatchMetadata(DiffStatus diffStatus) async {
     return CreatePatchMetadata(
       releasePlatform: releaseType.releasePlatform,
