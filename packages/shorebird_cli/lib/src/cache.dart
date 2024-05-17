@@ -312,8 +312,8 @@ class UpdaterToolsArtifact extends CachedArtifact {
   @override
   bool get isExecutable => false;
 
-  // TODO(bryanoltman): update to correct version and add engine rev and flutter version once this is nailed down
   /// Updater tools was introduced in release 1.1.7.
+  // TODO(bryanoltman): add engine rev and flutter version once this is nailed down
   @override
   bool get required => false;
 
