@@ -1,3 +1,4 @@
+import 'package:collection/collection.dart';
 import 'package:mason_logger/mason_logger.dart';
 import 'package:meta/meta.dart';
 import 'package:scoped_deps/scoped_deps.dart';
@@ -279,7 +280,7 @@ NOTE: this is ${styleBold.wrap('not')} recommended. Asset changes cannot be incl
     );
     return logger.chooseOne<Release>(
       'Which release would you like to patch?',
-      choices: releases,
+      choices: releases.sortedBy((r) => r.createdAt).reversed.toList(),
       display: (r) => r.version,
     );
   }
