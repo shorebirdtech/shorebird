@@ -245,17 +245,11 @@ void main() {
       ).thenAnswer((_) async => patchMetadata);
 
       when(() => shorebirdEnv.getShorebirdYaml()).thenReturn(shorebirdYaml);
-      // when(() => shorebirdEnv.flutterRevision).thenReturn(flutterRevision);
       when(
         () => shorebirdEnv.copyWith(
           flutterRevisionOverride: any(named: 'flutterRevisionOverride'),
         ),
-      ).thenAnswer((invocation) {
-        // when(() => shorebirdEnv.flutterRevision).thenReturn(
-        //   invocation.namedArguments[#flutterRevisionOverride] as String,
-        // );
-        return shorebirdEnv;
-      });
+      ).thenReturn(shorebirdEnv);
       when(() => shorebirdEnv.canAcceptUserInput).thenReturn(true);
 
       when(
