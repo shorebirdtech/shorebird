@@ -350,27 +350,6 @@ ${summary.join('\n')}
     }
   }
 
-  Future<Release> getRelease({
-    required String releaseVersion,
-    required Patcher patcher,
-  }) async {
-    final release = await codePushClientWrapper.getRelease(
-      appId: appId,
-      releaseVersion: releaseVersion,
-    );
-
-    final releaseStatus =
-        release.platformStatuses[patcher.releaseType.releasePlatform];
-    if (releaseStatus != ReleaseStatus.active) {
-      logger.err('''
-Release ${release.version} is in an incomplete state. It's possible that the original release was terminated or failed to complete.
-Please re-run the release command for this version or create a new release.''');
-      exit(ExitCode.software.code);
-    }
-
-    return release;
-  }
-
   Future<File> downloadPrimaryReleaseArtifact({
     required Release release,
     required Patcher patcher,
