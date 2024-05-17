@@ -179,20 +179,33 @@ NOTE: this is ${styleBold.wrap('not')} recommended. Asset changes cannot be incl
     final app = await codePushClientWrapper.getApp(appId: appId);
 
     File? patchArtifact;
-    final String releaseVersion;
+    final Release release;
     if (results.wasParsed('release-version')) {
-      releaseVersion = results['release-version'] as String;
+      final releaseVersion = results['release-version'] as String;
+      release = await codePushClientWrapper.getRelease(
+        appId: appId,
+        releaseVersion: releaseVersion,
+      );
+    } else if (shorebirdEnv.canAcceptUserInput) {
+      release = await promptForRelease();
     } else {
+      logger.info(
+        '''Tip: make your patches build faster by specifying --release-version''',
+      );
       patchArtifact = await patcher.buildPatchArtifact();
       lastBuiltFlutterRevision = shorebirdEnv.flutterRevision;
-      releaseVersion = await patcher.extractReleaseVersionFromArtifact(
+      final releaseVersion = await patcher.extractReleaseVersionFromArtifact(
         patchArtifact,
+      );
+      release = await codePushClientWrapper.getRelease(
+        appId: appId,
+        releaseVersion: releaseVersion,
       );
     }
 
-    final release = await getRelease(
-      releaseVersion: releaseVersion,
-      patcher: patcher,
+    codePushClientWrapper.ensureReleaseIsNotActive(
+      release: release,
+      platform: patcher.releaseType.releasePlatform,
     );
 
     try {
@@ -240,7 +253,7 @@ NOTE: this is ${styleBold.wrap('not')} recommended. Asset changes cannot be incl
 
         await confirmCreatePatch(
           app: app,
-          releaseVersion: releaseVersion,
+          releaseVersion: release.version,
           patcher: patcher,
           patchArtifactBundles: patchArtifactBundles,
         );
@@ -257,6 +270,17 @@ NOTE: this is ${styleBold.wrap('not')} recommended. Asset changes cannot be incl
       values: {
         shorebirdEnvRef.overrideWith(() => releaseFlutterShorebirdEnv),
       },
+    );
+  }
+
+  Future<Release> promptForRelease() async {
+    final releases = await codePushClientWrapper.getReleases(
+      appId: appId,
+    );
+    return logger.chooseOne<Release>(
+      'Which release would you like to patch?',
+      choices: releases,
+      display: (r) => r.version,
     );
   }
 
