@@ -18,7 +18,6 @@ import 'mocks.dart';
 
 void main() {
   group(ArtifactManager, () {
-    late ArtifactManager artifactManager;
     late Cache cache;
     late Directory cacheArtifactDirectory;
     late http.Client httpClient;
@@ -27,6 +26,8 @@ void main() {
     late ShorebirdLogger logger;
     late ShorebirdEnv shorebirdEnv;
     late ShorebirdProcess shorebirdProcess;
+    late UpdaterTools updaterTools;
+    late ArtifactManager artifactManager;
 
     R runWithOverrides<R>(R Function() body) {
       return runScoped(
@@ -38,6 +39,7 @@ void main() {
           patchExecutableRef.overrideWith(() => patchExecutable),
           processRef.overrideWith(() => shorebirdProcess),
           shorebirdEnvRef.overrideWith(() => shorebirdEnv),
+          updaterToolsRef.overrideWith(() => updaterTools),
         },
       );
     }
@@ -51,9 +53,11 @@ void main() {
       cache = MockCache();
       httpClient = MockHttpClient();
       logger = MockShorebirdLogger();
+      patchExecutable = MockPatchExecutable();
       projectRoot = Directory.systemTemp.createTempSync();
       shorebirdProcess = MockShorebirdProcess();
       shorebirdEnv = MockShorebirdEnv();
+      updaterTools = MockUpdaterTools();
 
       when(() => cache.getArtifactDirectory(any()))
           .thenReturn(cacheArtifactDirectory);
@@ -63,12 +67,6 @@ void main() {
         (_) async => http.StreamedResponse(const Stream.empty(), HttpStatus.ok),
       );
 
-      when(() => shorebirdEnv.getShorebirdProjectRoot())
-          .thenReturn(projectRoot);
-
-      artifactManager = ArtifactManager();
-
-      patchExecutable = MockPatchExecutable();
       when(
         () => patchExecutable.run(
           releaseArtifactPath: any(
@@ -84,6 +82,13 @@ void main() {
       ).thenAnswer(
         (_) async {},
       );
+
+      when(() => shorebirdEnv.getShorebirdProjectRoot())
+          .thenReturn(projectRoot);
+
+      when(() => updaterTools.path).thenReturn('updater_tools');
+
+      artifactManager = ArtifactManager();
     });
 
     group('createDiff', () {
