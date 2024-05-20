@@ -32,30 +32,30 @@ class UpdaterTools {
 
   /// Create a binary diff between a release artifact and a patch artifact.
   Future<void> createDiff({
-    required String releaseArtifactPath,
-    required String patchArtifactPath,
-    required String diffPath,
+    required File releaseArtifact,
+    required File patchArtifact,
+    required File outputFile,
   }) async {
-    if (!File(releaseArtifactPath).existsSync()) {
+    if (!releaseArtifact.existsSync()) {
       throw FileSystemException(
         'Release artifact does not exist',
-        releaseArtifactPath,
+        releaseArtifact.path,
       );
     }
 
-    if (!File(patchArtifactPath).existsSync()) {
+    if (!patchArtifact.existsSync()) {
       throw FileSystemException(
         'Patch artifact does not exist',
-        patchArtifactPath,
+        patchArtifact.path,
       );
     }
 
     final result = await _exec([
       'diff',
-      '--release=$releaseArtifactPath',
-      '--patch=$patchArtifactPath',
+      '--release=${releaseArtifact.path}',
+      '--patch=${patchArtifact.path}',
       '--patch-executable=${patchExecutable.path}',
-      '--output=$diffPath',
+      '--output=${outputFile.path}',
     ]);
 
     if (result.exitCode != ExitCode.success.code) {

@@ -107,8 +107,8 @@ void main() {
         await expectLater(
           () => runWithOverrides(
             () async => artifactManager.createDiff(
-              releaseArtifactPath: 'not/a/real/file',
-              patchArtifactPath: patchArtifactFile.path,
+              releaseArtifact: File('not/a/real/file'),
+              patchArtifact: patchArtifactFile,
             ),
           ),
           throwsA(
@@ -131,8 +131,8 @@ void main() {
         await expectLater(
           () => runWithOverrides(
             () async => artifactManager.createDiff(
-              releaseArtifactPath: releaseArtifactFile.path,
-              patchArtifactPath: 'not/a/real/file',
+              releaseArtifact: releaseArtifactFile,
+              patchArtifact: File('not/a/real/file'),
             ),
           ),
           throwsA(
@@ -165,8 +165,8 @@ void main() {
         await expectLater(
           () => runWithOverrides(
             () async => artifactManager.createDiff(
-              releaseArtifactPath: releaseArtifactFile.path,
-              patchArtifactPath: patchArtifactFile.path,
+              releaseArtifact: releaseArtifactFile,
+              patchArtifact: patchArtifactFile,
             ),
           ),
           throwsA(
@@ -182,8 +182,8 @@ void main() {
       test('returns diff path when creating diff succeeds', () async {
         final diffPath = await runWithOverrides(
           () => artifactManager.createDiff(
-            releaseArtifactPath: releaseArtifactFile.path,
-            patchArtifactPath: patchArtifactFile.path,
+            releaseArtifact: releaseArtifactFile,
+            patchArtifact: patchArtifactFile,
           ),
         );
 
