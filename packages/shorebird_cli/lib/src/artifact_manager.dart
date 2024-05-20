@@ -41,6 +41,23 @@ class ArtifactManager {
     final tempDir = await Directory.systemTemp.createTemp();
     final outputFile = File(p.join(tempDir.path, 'diff.patch'));
     final updaterToolsFile = File(updaterTools.path);
+
+    final isUpdatedToolsAvailable = updaterToolsFile.existsSync();
+    //TODO(erickzanardo): We will probably want to add additional conditions here
+    final isPatchPackageSupported = isUpdatedToolsAvailable;
+
+    if (isPatchPackageSupported) {
+      await updaterTools.createPatchPackage(
+        releaseArtifact: releaseArtifact,
+        patchArtifact: patchArtifact,
+        // TODO(erickzanardo): Where should this come from?
+        archiveType: 'aab',
+        outputFile: outputFile,
+      );
+
+      return outputFile.path;
+    }
+
     if (updaterToolsFile.existsSync()) {
       await updaterTools.createDiff(
         releaseArtifact: releaseArtifact,

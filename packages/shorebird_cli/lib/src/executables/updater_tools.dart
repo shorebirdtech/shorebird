@@ -62,4 +62,39 @@ class UpdaterTools {
       throw Exception('Failed to create diff: ${result.stderr}');
     }
   }
+
+  /// Create a patch package
+  Future<void> createPatchPackage({
+    required File releaseArtifact,
+    required File patchArtifact,
+    required String archiveType,
+    required File outputFile,
+  }) async {
+    if (!releaseArtifact.existsSync()) {
+      throw FileSystemException(
+        'Release artifact does not exist',
+        releaseArtifact.path,
+      );
+    }
+
+    if (!patchArtifact.existsSync()) {
+      throw FileSystemException(
+        'Patch artifact does not exist',
+        patchArtifact.path,
+      );
+    }
+
+    final result = await _exec([
+      'package_patch',
+      '--release=${releaseArtifact.path}',
+      '--patch=${patchArtifact.path}',
+      '--patch-executable=${patchExecutable.path}',
+      '--archive-type=$archiveType',
+      '--output=${outputFile.path}',
+    ]);
+
+    if (result.exitCode != ExitCode.success.code) {
+      throw Exception('Failed to create an package: ${result.stderr}');
+    }
+  }
 }
