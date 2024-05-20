@@ -45,6 +45,7 @@ void main() {
     }
 
     setUpAll(() {
+      registerFallbackValue(File(''));
       registerFallbackValue(FakeBaseRequest());
     });
 
@@ -101,6 +102,14 @@ void main() {
           ..createSync(recursive: true);
         patchArtifactFile = File(p.join(tmpDir.path, 'patch_artifact'))
           ..createSync(recursive: true);
+
+        when(
+          () => updaterTools.createDiff(
+            releaseArtifact: any(named: 'releaseArtifact'),
+            patchArtifact: any(named: 'patchArtifact'),
+            outputFile: any(named: 'outputFile'),
+          ),
+        ).thenAnswer((_) async => {});
       });
 
       test('throws error when release artifact file does not exist', () async {
@@ -195,6 +204,40 @@ void main() {
             diffPath: any(named: 'diffPath', that: endsWith('diff.patch')),
           ),
         ).called(1);
+      });
+
+      group('when updater-tools is present', () {
+        setUp(() {
+          final tempDir = Directory.systemTemp.createTempSync();
+          final updaterToolsFile = File(p.join(tempDir.path, 'updater_tools'))
+            ..createSync();
+          when(() => updaterTools.path).thenReturn(updaterToolsFile.path);
+        });
+
+        test('uses updater-tools instead of patch to create diff', () async {
+          await runWithOverrides(
+            () => artifactManager.createDiff(
+              releaseArtifact: releaseArtifactFile,
+              patchArtifact: patchArtifactFile,
+            ),
+          );
+
+          verify(
+            () => updaterTools.createDiff(
+              releaseArtifact: releaseArtifactFile,
+              patchArtifact: patchArtifactFile,
+              outputFile: any(named: 'outputFile'),
+            ),
+          ).called(1);
+
+          verifyNever(
+            () => patchExecutable.run(
+              releaseArtifactPath: any(named: 'releaseArtifactPath'),
+              patchArtifactPath: any(named: 'patchArtifactPath'),
+              diffPath: any(named: 'diffPath'),
+            ),
+          );
+        });
       });
     });
 
