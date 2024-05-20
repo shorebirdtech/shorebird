@@ -40,7 +40,8 @@ class ArtifactManager {
 
     final tempDir = await Directory.systemTemp.createTemp();
     final outputFile = File(p.join(tempDir.path, 'diff.patch'));
-    if (File(updaterTools.path).existsSync()) {
+    final updaterToolsFile = File(updaterTools.path);
+    if (updaterToolsFile.existsSync()) {
       await updaterTools.createDiff(
         releaseArtifact: releaseArtifact,
         patchArtifact: patchArtifact,
