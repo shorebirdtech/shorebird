@@ -1,3 +1,5 @@
+import 'dart:convert';
+
 import 'package:mason_logger/mason_logger.dart';
 import 'package:shorebird_cli/src/artifact_builder.dart';
 import 'package:shorebird_cli/src/code_push_client_wrapper.dart';
@@ -90,12 +92,25 @@ Please comment and upvote ${link(uri: Uri.parse('https://github.com/shorebirdtec
         .progress('Building app bundle with Flutter $flutterVersionString');
 
     final File aab;
+
+    final patchSigningKeyPath =
+        argResults['patch-signing-public-key-path'] as String?;
+
+    String? encodedPatchSigningPublicKey;
+    if (patchSigningKeyPath != null) {
+      final patchSigningPublicKeyFile = File(patchSigningKeyPath);
+      final rawPatchSigningPublicKey =
+          patchSigningPublicKeyFile.readAsBytesSync();
+
+      encodedPatchSigningPublicKey = base64Encode(rawPatchSigningPublicKey);
+    }
     try {
       aab = await artifactBuilder.buildAppBundle(
         flavor: flavor,
         target: target,
         targetPlatforms: architectures,
         args: argResults.forwardedArgs,
+        encodedPatchSigningPublicKey: encodedPatchSigningPublicKey,
       );
     } on ArtifactBuildException catch (e) {
       buildAppBundleProgress.fail(e.message);
@@ -113,6 +128,7 @@ Please comment and upvote ${link(uri: Uri.parse('https://github.com/shorebirdtec
           target: target,
           targetPlatforms: architectures,
           args: argResults.forwardedArgs,
+          encodedPatchSigningPublicKey: encodedPatchSigningPublicKey,
         );
       } on ArtifactBuildException catch (e) {
         buildApkProgress.fail(e.message);
