@@ -21,41 +21,33 @@ class ArtifactManager {
   /// Generates a binary diff between two files and returns the path to the
   /// output diff file.
   Future<String> createDiff({
-    required File releaseArtifact,
-    required File patchArtifact,
+    required String releaseArtifactPath,
+    required String patchArtifactPath,
   }) async {
-    if (!releaseArtifact.existsSync()) {
+    if (!File(releaseArtifactPath).existsSync()) {
       throw FileSystemException(
         'Release artifact does not exist',
-        releaseArtifact.path,
+        releaseArtifactPath,
       );
     }
 
-    if (!patchArtifact.existsSync()) {
+    if (!File(patchArtifactPath).existsSync()) {
       throw FileSystemException(
         'Patch artifact does not exist',
-        patchArtifact.path,
+        patchArtifactPath,
       );
     }
 
     final tempDir = await Directory.systemTemp.createTemp();
-    final outputFile = File(p.join(tempDir.path, 'diff.patch'));
-    final updaterToolsFile = File(updaterTools.path);
-    if (updaterToolsFile.existsSync()) {
-      await updaterTools.createDiff(
-        releaseArtifact: releaseArtifact,
-        patchArtifact: patchArtifact,
-        outputFile: outputFile,
-      );
-    } else {
-      await patchExecutable.run(
-        releaseArtifactPath: releaseArtifact.path,
-        patchArtifactPath: patchArtifact.path,
-        diffPath: outputFile.path,
-      );
-    }
+    final diffPath = p.join(tempDir.path, 'diff.patch');
 
-    return outputFile.path;
+    await patchExecutable.run(
+      releaseArtifactPath: releaseArtifactPath,
+      patchArtifactPath: patchArtifactPath,
+      diffPath: diffPath,
+    );
+
+    return diffPath;
   }
 
   /// Downloads the file at the given [uri] to a temporary directory and returns

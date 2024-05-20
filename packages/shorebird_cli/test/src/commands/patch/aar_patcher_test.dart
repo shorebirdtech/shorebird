@@ -81,7 +81,6 @@ void main() {
 
     setUpAll(() {
       registerFallbackValue(Directory(''));
-      registerFallbackValue(File(''));
       registerFallbackValue(ReleasePlatform.android);
       registerFallbackValue(Uri.parse('https://example.com'));
       setExitFunctionForTests();
@@ -380,8 +379,8 @@ void main() {
 
         when(
           () => artifactManager.createDiff(
-            patchArtifact: any(named: 'patchArtifact'),
-            releaseArtifact: any(named: 'releaseArtifact'),
+            patchArtifactPath: any(named: 'patchArtifactPath'),
+            releaseArtifactPath: any(named: 'releaseArtifactPath'),
           ),
         ).thenAnswer((_) async {
           final diffPath =
@@ -417,8 +416,8 @@ void main() {
         setUp(() {
           when(
             () => artifactManager.createDiff(
-              releaseArtifact: any(named: 'releaseArtifact'),
-              patchArtifact: any(named: 'patchArtifact'),
+              releaseArtifactPath: any(named: 'releaseArtifactPath'),
+              patchArtifactPath: any(named: 'patchArtifactPath'),
             ),
           ).thenThrow(Exception('error'));
         });

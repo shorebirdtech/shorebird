@@ -201,8 +201,8 @@ class IosPatcher extends Patcher {
 
       patchFile = File(
         await artifactManager.createDiff(
-          releaseArtifact: patchBaseFile,
-          patchArtifact: patchBuildFile,
+          releaseArtifactPath: patchBaseFile.path,
+          patchArtifactPath: patchBuildFile.path,
         ),
       );
     } else {
