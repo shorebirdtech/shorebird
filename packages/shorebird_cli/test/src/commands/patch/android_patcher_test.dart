@@ -90,7 +90,6 @@ void main() {
 
     setUpAll(() {
       registerFallbackValue(Directory(''));
-      registerFallbackValue(File(''));
       registerFallbackValue(ReleasePlatform.android);
       registerFallbackValue(Uri.parse('https://example.com'));
       setExitFunctionForTests();
@@ -387,8 +386,8 @@ Looked in:
 
           when(
             () => artifactManager.createDiff(
-              releaseArtifact: any(named: 'releaseArtifact'),
-              patchArtifact: any(named: 'patchArtifact'),
+              releaseArtifactPath: any(named: 'releaseArtifactPath'),
+              patchArtifactPath: any(named: 'patchArtifactPath'),
             ),
           ).thenThrow(Exception('error'));
         });
@@ -414,8 +413,8 @@ Looked in:
           setUpProjectRootArtifacts();
           when(
             () => artifactManager.createDiff(
-              releaseArtifact: any(named: 'releaseArtifact'),
-              patchArtifact: any(named: 'patchArtifact'),
+              releaseArtifactPath: any(named: 'releaseArtifactPath'),
+              patchArtifactPath: any(named: 'patchArtifactPath'),
             ),
           ).thenAnswer((_) async {
             final tempDir = Directory.systemTemp.createTempSync();

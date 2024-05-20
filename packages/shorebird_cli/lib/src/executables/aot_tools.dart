@@ -169,7 +169,7 @@ class AotTools {
       workingDirectory: workingDirectory,
     );
 
-    if (result.exitCode != ExitCode.success.code) {
+    if (result.exitCode != 0) {
       throw Exception('Failed to link: ${result.stderr}');
     }
 

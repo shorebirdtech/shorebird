@@ -235,8 +235,7 @@ void main() {
               final request =
                   invocation.positionalArguments.first as http.BaseRequest;
               final fileName = p.basename(request.url.path);
-              if (fileName.startsWith('aot-tools') ||
-                  fileName.startsWith('updater-tools')) {
+              if (fileName.startsWith('aot-tools')) {
                 return http.StreamedResponse(
                   const Stream.empty(),
                   HttpStatus.notFound,
@@ -261,11 +260,6 @@ void main() {
           verify(
             () => logger.detail(
               '''[cache] optional artifact: "aot-tools" was not found, skipping...''',
-            ),
-          ).called(1);
-          verify(
-            () => logger.detail(
-              '''[cache] optional artifact: "updater-tools.dill" was not found, skipping...''',
             ),
           ).called(1);
         });
@@ -297,7 +291,6 @@ void main() {
             perEngine('patch-darwin-x64.zip'),
             'https://github.com/google/bundletool/releases/download/1.15.6/bundletool-all-1.15.6.jar',
             perEngine('aot-tools.dill'),
-            perEngine('updater-tools.dill'),
           ].map(Uri.parse).toList();
 
           expect(requests, equals(expected));
@@ -342,7 +335,6 @@ void main() {
             // Requests the .dill, fails and falls back to executable:
             perEngine('aot-tools.dill'),
             perEngine('aot-tools-darwin-x64'),
-            perEngine('updater-tools.dill'),
           ].map(Uri.parse).toList();
 
           expect(requests, equals(expected));
@@ -393,7 +385,6 @@ void main() {
             perEngine('patch-windows-x64.zip'),
             'https://github.com/google/bundletool/releases/download/1.15.6/bundletool-all-1.15.6.jar',
             perEngine('aot-tools.dill'),
-            perEngine('updater-tools.dill'),
           ].map(Uri.parse).toList();
 
           expect(requests, equals(expected));
@@ -417,7 +408,6 @@ void main() {
             perEngine('patch-linux-x64.zip'),
             'https://github.com/google/bundletool/releases/download/1.15.6/bundletool-all-1.15.6.jar',
             perEngine('aot-tools.dill'),
-            perEngine('updater-tools.dill'),
           ].map(Uri.parse).toList();
 
           expect(requests, equals(expected));
