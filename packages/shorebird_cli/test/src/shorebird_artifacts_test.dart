@@ -104,46 +104,69 @@ void main() {
         });
       });
 
-      test('returns correct path for gen_snapshot', () {
-        expect(
-          runWithOverrides(
-            () => artifacts.getArtifactPath(
-              artifact: ShorebirdArtifact.genSnapshot,
+      group('gen_snapshot', () {
+        test('returns correct path', () {
+          expect(
+            runWithOverrides(
+              () => artifacts.getArtifactPath(
+                artifact: ShorebirdArtifact.genSnapshot,
+              ),
             ),
-          ),
-          equals(
-            p.join(
-              flutterDirectory.path,
-              'bin',
-              'cache',
-              'artifacts',
-              'engine',
-              'ios-release',
-              'gen_snapshot_arm64',
+            equals(
+              p.join(
+                flutterDirectory.path,
+                'bin',
+                'cache',
+                'artifacts',
+                'engine',
+                'ios-release',
+                'gen_snapshot_arm64',
+              ),
             ),
-          ),
-        );
+          );
+        });
       });
 
-      test('returns correct path for analyze_snapshot', () {
-        expect(
-          runWithOverrides(
-            () => artifacts.getArtifactPath(
-              artifact: ShorebirdArtifact.analyzeSnapshot,
+      group('analyze_snapshot', () {
+        test('returns correct path', () {
+          expect(
+            runWithOverrides(
+              () => artifacts.getArtifactPath(
+                artifact: ShorebirdArtifact.analyzeSnapshot,
+              ),
             ),
-          ),
-          equals(
-            p.join(
-              flutterDirectory.path,
-              'bin',
-              'cache',
-              'artifacts',
-              'engine',
-              'ios-release',
-              'analyze_snapshot_arm64',
+            equals(
+              p.join(
+                flutterDirectory.path,
+                'bin',
+                'cache',
+                'artifacts',
+                'engine',
+                'ios-release',
+                'analyze_snapshot_arm64',
+              ),
             ),
-          ),
-        );
+          );
+        });
+      });
+
+      group('updater_tools', () {
+        test('returns correct path', () {
+          expect(
+            runWithOverrides(
+              () => artifacts.getArtifactPath(
+                artifact: ShorebirdArtifact.updaterTools,
+              ),
+            ),
+            equals(
+              p.join(
+                artifactDirectory.path,
+                engineRevision,
+                'updater-tools.dill',
+              ),
+            ),
+          );
+        });
       });
     });
   });
@@ -178,63 +201,91 @@ void main() {
     });
 
     group('getArtifactPath', () {
-      test('returns correct path for aot tools', () {
-        expect(
-          runWithOverrides(
-            () => artifacts.getArtifactPath(
-              artifact: ShorebirdArtifact.aotTools,
+      group('aot-tools', () {
+        test('returns correct path', () {
+          expect(
+            runWithOverrides(
+              () => artifacts.getArtifactPath(
+                artifact: ShorebirdArtifact.aotTools,
+              ),
             ),
-          ),
-          equals(
-            p.join(
-              localEngineSrcPath,
-              'third_party',
-              'dart',
-              'pkg',
-              'aot_tools',
-              'bin',
-              'aot_tools.dart',
+            equals(
+              p.join(
+                localEngineSrcPath,
+                'third_party',
+                'dart',
+                'pkg',
+                'aot_tools',
+                'bin',
+                'aot_tools.dart',
+              ),
             ),
-          ),
-        );
+          );
+        });
       });
 
-      test('returns correct path for gen_snapshot', () {
-        expect(
-          runWithOverrides(
-            () => artifacts.getArtifactPath(
-              artifact: ShorebirdArtifact.genSnapshot,
+      group('gen_snapshot', () {
+        test('returns correct path', () {
+          expect(
+            runWithOverrides(
+              () => artifacts.getArtifactPath(
+                artifact: ShorebirdArtifact.genSnapshot,
+              ),
             ),
-          ),
-          equals(
-            p.join(
-              localEngineSrcPath,
-              'out',
-              localEngine,
-              'clang_x64',
-              'gen_snapshot_arm64',
+            equals(
+              p.join(
+                localEngineSrcPath,
+                'out',
+                localEngine,
+                'clang_x64',
+                'gen_snapshot_arm64',
+              ),
             ),
-          ),
-        );
+          );
+        });
       });
 
-      test('returns correct path for analyze_snapshot', () {
-        expect(
-          runWithOverrides(
-            () => artifacts.getArtifactPath(
-              artifact: ShorebirdArtifact.analyzeSnapshot,
+      group('analyze_snapshot', () {
+        test('returns correct path', () {
+          expect(
+            runWithOverrides(
+              () => artifacts.getArtifactPath(
+                artifact: ShorebirdArtifact.analyzeSnapshot,
+              ),
             ),
-          ),
-          equals(
-            p.join(
-              localEngineSrcPath,
-              'out',
-              localEngine,
-              'clang_x64',
-              'analyze_snapshot_arm64',
+            equals(
+              p.join(
+                localEngineSrcPath,
+                'out',
+                localEngine,
+                'clang_x64',
+                'analyze_snapshot_arm64',
+              ),
             ),
-          ),
-        );
+          );
+        });
+
+        group('updater-tools', () {
+          test('returns correct path', () {
+            expect(
+              runWithOverrides(
+                () => artifacts.getArtifactPath(
+                  artifact: ShorebirdArtifact.updaterTools,
+                ),
+              ),
+              equals(
+                p.join(
+                  localEngineSrcPath,
+                  'third_party',
+                  'updater',
+                  'updater_tools',
+                  'bin',
+                  'updater_tools.dart',
+                ),
+              ),
+            );
+          });
+        });
       });
     });
   });
