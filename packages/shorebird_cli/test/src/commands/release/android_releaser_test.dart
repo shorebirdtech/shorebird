@@ -1,3 +1,5 @@
+import 'dart:convert';
+
 import 'package:args/args.dart';
 import 'package:mason_logger/mason_logger.dart';
 import 'package:mocktail/mocktail.dart';
@@ -376,6 +378,105 @@ void main() {
               args: [],
             ),
           ).called(1);
+        });
+      });
+
+      group('when a patch signing key path is provided', () {
+        late File patchSigningPublicKeyFile;
+
+        setUp(() {
+          patchSigningPublicKeyFile = File(
+            p.join(
+              Directory.systemTemp.createTempSync().path,
+              'patch-signing-public-key.pem',
+            ),
+          )
+            ..createSync()
+            ..writeAsStringSync('public key');
+          when(() => argResults['patch-signing-public-key-path'])
+              .thenReturn(patchSigningPublicKeyFile.path);
+
+          when(
+            () => artifactBuilder.buildAppBundle(
+              flavor: any(named: 'flavor'),
+              target: any(named: 'target'),
+              targetPlatforms: any(named: 'targetPlatforms'),
+              args: any(named: 'args'),
+              encodedPatchSigningPublicKey:
+                  any(named: 'encodedPatchSigningPublicKey'),
+            ),
+          ).thenAnswer((_) async => aabFile);
+
+          when(
+            () => artifactBuilder.buildApk(
+              flavor: any(named: 'flavor'),
+              target: any(named: 'target'),
+              targetPlatforms: any(named: 'targetPlatforms'),
+              args: any(named: 'args'),
+              encodedPatchSigningPublicKey:
+                  any(named: 'encodedPatchSigningPublicKey'),
+            ),
+          ).thenAnswer((_) async => File(''));
+        });
+
+        test(
+          'encodes the patch signing public key and forward it to buildAab',
+          () async {
+            await runWithOverrides(
+              () => androidReleaser.buildReleaseArtifacts(),
+            );
+
+            verify(
+              () => artifactBuilder.buildAppBundle(
+                flavor: any(named: 'flavor'),
+                target: any(named: 'target'),
+                targetPlatforms: any(named: 'targetPlatforms'),
+                args: any(named: 'args'),
+                encodedPatchSigningPublicKey: base64Encode(
+                  patchSigningPublicKeyFile.readAsBytesSync(),
+                ),
+              ),
+            ).called(1);
+          },
+        );
+
+        group('when building apk', () {
+          setUp(() {
+            when(() => argResults['artifact']).thenReturn('apk');
+          });
+
+          test(
+            'encodes the patch signing public key and forward it to buildApk',
+            () async {
+              await runWithOverrides(
+                () => androidReleaser.buildReleaseArtifacts(),
+              );
+
+              verify(
+                () => artifactBuilder.buildAppBundle(
+                  flavor: any(named: 'flavor'),
+                  target: any(named: 'target'),
+                  targetPlatforms: any(named: 'targetPlatforms'),
+                  args: any(named: 'args'),
+                  encodedPatchSigningPublicKey: base64Encode(
+                    patchSigningPublicKeyFile.readAsBytesSync(),
+                  ),
+                ),
+              ).called(1);
+
+              verify(
+                () => artifactBuilder.buildApk(
+                  flavor: any(named: 'flavor'),
+                  target: any(named: 'target'),
+                  targetPlatforms: any(named: 'targetPlatforms'),
+                  args: any(named: 'args'),
+                  encodedPatchSigningPublicKey: base64Encode(
+                    patchSigningPublicKeyFile.readAsBytesSync(),
+                  ),
+                ),
+              ).called(1);
+            },
+          );
         });
       });
     });

@@ -1,6 +1,7 @@
 import 'package:args/args.dart';
 import 'package:mason_logger/mason_logger.dart';
 import 'package:mocktail/mocktail.dart';
+import 'package:path/path.dart' as p;
 import 'package:scoped_deps/scoped_deps.dart';
 import 'package:shorebird_cli/src/cache.dart';
 import 'package:shorebird_cli/src/code_push_client_wrapper.dart';
@@ -485,6 +486,48 @@ $exception''',
               () => shorebirdFlutter.installRevision(revision: revision),
             ).called(1);
           });
+        });
+      });
+    });
+
+    group('when a patch signing public key is provided', () {
+      const keyName = 'test-key-path.pem';
+      group('when the key exists', () {
+        setUp(() {
+          final file = File(
+            p.join(
+              Directory.systemTemp.createTempSync().path,
+              keyName,
+            ),
+          )..writeAsStringSync('KEY');
+          when(() => argResults['patch-signing-public-key-path'])
+              .thenReturn(file.path);
+        });
+
+        test('completes successfully', () async {
+          final exitCode = await runWithOverrides(command.run);
+          expect(exitCode, equals(ExitCode.success.code));
+        });
+      });
+
+      group('when the key does not exists', () {
+        setUp(() {
+          when(() => argResults['patch-signing-public-key-path'])
+              .thenReturn('non-existent-key.pem');
+        });
+
+        test('returns error', () async {
+          await expectLater(
+            () => runWithOverrides(command.run),
+            exitsWithCode(ExitCode.software),
+          );
+
+          verify(
+            () => logger.err(
+              'Received a patch signing key path, but no files exists for '
+              'it: non-existent-key.pem',
+            ),
+          ).called(1);
         });
       });
     });
