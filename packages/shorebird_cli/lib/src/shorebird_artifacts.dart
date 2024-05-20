@@ -19,7 +19,7 @@ enum ShorebirdArtifact {
   /// The gen_snapshot executable.
   genSnapshot,
 
-  /// TODO
+  /// The updater_tools kernel file.
   updaterTools,
 }
 
