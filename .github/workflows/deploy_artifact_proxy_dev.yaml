@@ -60,7 +60,7 @@ jobs:
 
       - name: 🚀 Deploy to Cloud Run
         id: deploy
-        uses: google-github-actions/deploy-cloudrun@v2.5.0
+        uses: google-github-actions/deploy-cloudrun@v2.6.0
         with:
           service: ${{ env.SERVICE }}
           image: ${{ env.CONTAINER_REGISTRY }}/${{ env.PROJECT_ID }}/us.gcr.io/${{ env.SERVICE }}:${{ github.sha }}
