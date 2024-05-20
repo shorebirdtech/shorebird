@@ -561,10 +561,10 @@ packages:
     dependency: "direct main"
     description:
       name: scoped_deps
-      sha256: "7416a9026f3b457dda634a8e83c8e47d7ece33bef360ffba114c2d89255166ae"
+      sha256: bc54cece4fed785157dc53b7554d31107f574897f4b2d1196db905a38c084e31
       url: "https://pub.dev"
     source: hosted
-    version: "0.1.0+1"
+    version: "0.1.0+2"
   shelf:
     dependency: transitive
     description:

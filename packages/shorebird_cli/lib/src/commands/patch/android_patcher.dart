@@ -150,8 +150,8 @@ Looked in:
       final hash = sha256.convert(await patchArtifact.readAsBytes()).toString();
       try {
         final diffPath = await artifactManager.createDiff(
-          releaseArtifactPath: releaseArtifactPath.value,
-          patchArtifactPath: patchArtifactPath,
+          releaseArtifact: File(releaseArtifactPath.value),
+          patchArtifact: patchArtifact,
         );
         patchArtifactBundles[releaseArtifactPath.key] = PatchArtifactBundle(
           arch: arch.arch,

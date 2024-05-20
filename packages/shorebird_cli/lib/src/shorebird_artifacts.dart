@@ -18,6 +18,9 @@ enum ShorebirdArtifact {
 
   /// The gen_snapshot executable.
   genSnapshot,
+
+  /// The updater_tools kernel file.
+  updaterTools,
 }
 
 /// A reference to a [ShorebirdArtifacts] instance.
@@ -54,6 +57,8 @@ class ShorebirdCachedArtifacts implements ShorebirdArtifacts {
         return _aotToolsFile.path;
       case ShorebirdArtifact.genSnapshot:
         return _genSnapshotFile.path;
+      case ShorebirdArtifact.updaterTools:
+        return _updaterToolsFile.path;
     }
   }
 
@@ -108,6 +113,16 @@ class ShorebirdCachedArtifacts implements ShorebirdArtifacts {
       ),
     );
   }
+
+  File get _updaterToolsFile {
+    return File(
+      p.join(
+        cache.getArtifactDirectory('updater-tools').path,
+        shorebirdEnv.shorebirdEngineRevision,
+        'updater-tools.dill',
+      ),
+    );
+  }
 }
 
 /// {@template shorebird_local_engine_artifacts}
@@ -126,6 +141,8 @@ class ShorebirdLocalEngineArtifacts implements ShorebirdArtifacts {
         return _aotToolsFile.path;
       case ShorebirdArtifact.genSnapshot:
         return _genSnapshotFile.path;
+      case ShorebirdArtifact.updaterTools:
+        return _updaterToolsFile.path;
     }
   }
 
@@ -163,6 +180,19 @@ class ShorebirdLocalEngineArtifacts implements ShorebirdArtifacts {
         engineConfig.localEngine,
         'clang_x64',
         'gen_snapshot_arm64',
+      ),
+    );
+  }
+
+  File get _updaterToolsFile {
+    return File(
+      p.join(
+        engineConfig.localEngineSrcPath!,
+        'third_party',
+        'updater',
+        'updater_tools',
+        'bin',
+        'updater_tools.dart',
       ),
     );
   }

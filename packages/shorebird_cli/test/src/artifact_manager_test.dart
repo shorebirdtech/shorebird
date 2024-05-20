@@ -18,7 +18,6 @@ import 'mocks.dart';
 
 void main() {
   group(ArtifactManager, () {
-    late ArtifactManager artifactManager;
     late Cache cache;
     late Directory cacheArtifactDirectory;
     late http.Client httpClient;
@@ -27,6 +26,8 @@ void main() {
     late ShorebirdLogger logger;
     late ShorebirdEnv shorebirdEnv;
     late ShorebirdProcess shorebirdProcess;
+    late UpdaterTools updaterTools;
+    late ArtifactManager artifactManager;
 
     R runWithOverrides<R>(R Function() body) {
       return runScoped(
@@ -38,11 +39,13 @@ void main() {
           patchExecutableRef.overrideWith(() => patchExecutable),
           processRef.overrideWith(() => shorebirdProcess),
           shorebirdEnvRef.overrideWith(() => shorebirdEnv),
+          updaterToolsRef.overrideWith(() => updaterTools),
         },
       );
     }
 
     setUpAll(() {
+      registerFallbackValue(File(''));
       registerFallbackValue(FakeBaseRequest());
     });
 
@@ -51,9 +54,11 @@ void main() {
       cache = MockCache();
       httpClient = MockHttpClient();
       logger = MockShorebirdLogger();
+      patchExecutable = MockPatchExecutable();
       projectRoot = Directory.systemTemp.createTempSync();
       shorebirdProcess = MockShorebirdProcess();
       shorebirdEnv = MockShorebirdEnv();
+      updaterTools = MockUpdaterTools();
 
       when(() => cache.getArtifactDirectory(any()))
           .thenReturn(cacheArtifactDirectory);
@@ -63,12 +68,6 @@ void main() {
         (_) async => http.StreamedResponse(const Stream.empty(), HttpStatus.ok),
       );
 
-      when(() => shorebirdEnv.getShorebirdProjectRoot())
-          .thenReturn(projectRoot);
-
-      artifactManager = ArtifactManager();
-
-      patchExecutable = MockPatchExecutable();
       when(
         () => patchExecutable.run(
           releaseArtifactPath: any(
@@ -84,6 +83,13 @@ void main() {
       ).thenAnswer(
         (_) async {},
       );
+
+      when(() => shorebirdEnv.getShorebirdProjectRoot())
+          .thenReturn(projectRoot);
+
+      when(() => updaterTools.path).thenReturn('updater_tools');
+
+      artifactManager = ArtifactManager();
     });
 
     group('createDiff', () {
@@ -96,14 +102,22 @@ void main() {
           ..createSync(recursive: true);
         patchArtifactFile = File(p.join(tmpDir.path, 'patch_artifact'))
           ..createSync(recursive: true);
+
+        when(
+          () => updaterTools.createDiff(
+            releaseArtifact: any(named: 'releaseArtifact'),
+            patchArtifact: any(named: 'patchArtifact'),
+            outputFile: any(named: 'outputFile'),
+          ),
+        ).thenAnswer((_) async => {});
       });
 
       test('throws error when release artifact file does not exist', () async {
         await expectLater(
           () => runWithOverrides(
             () async => artifactManager.createDiff(
-              releaseArtifactPath: 'not/a/real/file',
-              patchArtifactPath: patchArtifactFile.path,
+              releaseArtifact: File('not/a/real/file'),
+              patchArtifact: patchArtifactFile,
             ),
           ),
           throwsA(
@@ -126,8 +140,8 @@ void main() {
         await expectLater(
           () => runWithOverrides(
             () async => artifactManager.createDiff(
-              releaseArtifactPath: releaseArtifactFile.path,
-              patchArtifactPath: 'not/a/real/file',
+              releaseArtifact: releaseArtifactFile,
+              patchArtifact: File('not/a/real/file'),
             ),
           ),
           throwsA(
@@ -160,8 +174,8 @@ void main() {
         await expectLater(
           () => runWithOverrides(
             () async => artifactManager.createDiff(
-              releaseArtifactPath: releaseArtifactFile.path,
-              patchArtifactPath: patchArtifactFile.path,
+              releaseArtifact: releaseArtifactFile,
+              patchArtifact: patchArtifactFile,
             ),
           ),
           throwsA(
@@ -177,8 +191,8 @@ void main() {
       test('returns diff path when creating diff succeeds', () async {
         final diffPath = await runWithOverrides(
           () => artifactManager.createDiff(
-            releaseArtifactPath: releaseArtifactFile.path,
-            patchArtifactPath: patchArtifactFile.path,
+            releaseArtifact: releaseArtifactFile,
+            patchArtifact: patchArtifactFile,
           ),
         );
 
@@ -190,6 +204,40 @@ void main() {
             diffPath: any(named: 'diffPath', that: endsWith('diff.patch')),
           ),
         ).called(1);
+      });
+
+      group('when updater-tools is present', () {
+        setUp(() {
+          final tempDir = Directory.systemTemp.createTempSync();
+          final updaterToolsFile = File(p.join(tempDir.path, 'updater_tools'))
+            ..createSync();
+          when(() => updaterTools.path).thenReturn(updaterToolsFile.path);
+        });
+
+        test('uses updater-tools instead of patch to create diff', () async {
+          await runWithOverrides(
+            () => artifactManager.createDiff(
+              releaseArtifact: releaseArtifactFile,
+              patchArtifact: patchArtifactFile,
+            ),
+          );
+
+          verify(
+            () => updaterTools.createDiff(
+              releaseArtifact: releaseArtifactFile,
+              patchArtifact: patchArtifactFile,
+              outputFile: any(named: 'outputFile'),
+            ),
+          ).called(1);
+
+          verifyNever(
+            () => patchExecutable.run(
+              releaseArtifactPath: any(named: 'releaseArtifactPath'),
+              patchArtifactPath: any(named: 'patchArtifactPath'),
+              diffPath: any(named: 'diffPath'),
+            ),
+          );
+        });
       });
     });
 

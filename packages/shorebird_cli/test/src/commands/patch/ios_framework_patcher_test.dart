@@ -669,8 +669,8 @@ void main() {
               setUp(() {
                 when(
                   () => artifactManager.createDiff(
-                    releaseArtifactPath: any(named: 'releaseArtifactPath'),
-                    patchArtifactPath: any(named: 'patchArtifactPath'),
+                    releaseArtifact: any(named: 'releaseArtifact'),
+                    patchArtifact: any(named: 'patchArtifact'),
                   ),
                 ).thenAnswer((_) async => diffPath);
                 setUpProjectRootArtifacts();
