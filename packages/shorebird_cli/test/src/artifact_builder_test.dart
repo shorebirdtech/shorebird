@@ -210,6 +210,59 @@ Either run `flutter pub get` manually, or follow the steps in ${link(uri: Uri.pa
         ).called(1);
       });
 
+      group('when base64PublicKey is not null', () {
+        const base64PublicKey = 'base64PublicKey';
+
+        setUp(() {
+          when(
+            () => shorebirdProcess.run(
+              'flutter',
+              [
+                'build',
+                'appbundle',
+                '--release',
+                '--flavor=flavor',
+                '--target=target',
+                '--target-platform=android-arm64',
+              ],
+              runInShell: any(named: 'runInShell'),
+              environment: {
+                'SHOREBIRD_PUBLIC_KEY': base64PublicKey,
+              },
+            ),
+          ).thenAnswer((_) async => buildProcessResult);
+        });
+
+        test('adds the SHOREBIRD_PUBLIC_KEY to the environment', () async {
+          await runWithOverrides(
+            () => builder.buildAppBundle(
+              flavor: 'flavor',
+              target: 'target',
+              targetPlatforms: [Arch.arm64],
+              base64PublicKey: 'base64PublicKey',
+            ),
+          );
+
+          verify(
+            () => shorebirdProcess.run(
+              'flutter',
+              [
+                'build',
+                'appbundle',
+                '--release',
+                '--flavor=flavor',
+                '--target=target',
+                '--target-platform=android-arm64',
+              ],
+              runInShell: any(named: 'runInShell'),
+              environment: {
+                'SHOREBIRD_PUBLIC_KEY': base64PublicKey,
+              },
+            ),
+          ).called(1);
+        });
+      });
+
       group('when multiple artifacts are found', () {
         setUp(() {
           when(
@@ -345,6 +398,59 @@ Either run `flutter pub get` manually, or follow the steps in ${link(uri: Uri.pa
             runInShell: any(named: 'runInShell'),
           ),
         ).called(1);
+      });
+
+      group('when base64PublicKey is not null', () {
+        const base64PublicKey = 'base64PublicKey';
+
+        setUp(() {
+          when(
+            () => shorebirdProcess.run(
+              'flutter',
+              [
+                'build',
+                'apk',
+                '--release',
+                '--flavor=flavor',
+                '--target=target',
+                '--target-platform=android-arm64',
+              ],
+              runInShell: any(named: 'runInShell'),
+              environment: {
+                'SHOREBIRD_PUBLIC_KEY': base64PublicKey,
+              },
+            ),
+          ).thenAnswer((_) async => buildProcessResult);
+        });
+
+        test('adds the SHOREBIRD_PUBLIC_KEY to the environment', () async {
+          await runWithOverrides(
+            () => builder.buildApk(
+              flavor: 'flavor',
+              target: 'target',
+              targetPlatforms: [Arch.arm64],
+              base64PublicKey: 'base64PublicKey',
+            ),
+          );
+
+          verify(
+            () => shorebirdProcess.run(
+              'flutter',
+              [
+                'build',
+                'apk',
+                '--release',
+                '--flavor=flavor',
+                '--target=target',
+                '--target-platform=android-arm64',
+              ],
+              runInShell: any(named: 'runInShell'),
+              environment: {
+                'SHOREBIRD_PUBLIC_KEY': base64PublicKey,
+              },
+            ),
+          ).called(1);
+        });
       });
 
       group('when multiple artifacts are found', () {
