@@ -6,6 +6,8 @@ import 'package:shorebird_cli/src/code_push_client_wrapper.dart';
 import 'package:shorebird_cli/src/commands/release/release.dart';
 import 'package:shorebird_cli/src/commands/release/releaser.dart';
 import 'package:shorebird_cli/src/doctor.dart';
+import 'package:shorebird_cli/src/extensions/arg_results.dart';
+import 'package:shorebird_cli/src/extensions/file.dart';
 import 'package:shorebird_cli/src/logger.dart';
 import 'package:shorebird_cli/src/platform.dart';
 import 'package:shorebird_cli/src/platform/platform.dart';
@@ -61,7 +63,7 @@ class AndroidReleaser extends Releaser {
 
   @override
   Future<void> assertArgsAreValid() async {
-    assertPublicKeyArg();
+    argResults.file('public-key-path')?.assertExists();
     if (generateApk && splitApk) {
       logger
         ..err(

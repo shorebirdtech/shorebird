@@ -74,18 +74,4 @@ abstract class Releaser {
   Future<String> getReleaseVersion({
     required FileSystemEntity releaseArtifactRoot,
   });
-
-  /// Method for validating a public key argument, which will check, when
-  /// provided, that the file exists.
-  ///
-  /// This method should be called in [assertArgsAreValid] from releasers that
-  /// require a public key argument.
-  void assertPublicKeyArg() {
-    if (!argResults.wasParsedAndFileExists('public-key-path')) {
-      logger.err(
-        'No file found at ${argResults['public-key-path']}',
-      );
-      exit(ExitCode.software.code);
-    }
-  }
 }
