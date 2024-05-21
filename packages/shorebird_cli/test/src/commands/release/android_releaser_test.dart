@@ -222,9 +222,7 @@ void main() {
               Directory.systemTemp.createTempSync().path,
               'public-key.pem',
             ),
-          )
-            ..createSync()
-            ..writeAsStringSync('public key');
+          )..writeAsStringSync('public key');
           when(() => argResults['public-key-path'])
               .thenReturn(publicKeyFile.path);
         });
@@ -426,9 +424,7 @@ void main() {
               Directory.systemTemp.createTempSync().path,
               'patch-signing-public-key.pem',
             ),
-          )
-            ..createSync()
-            ..writeAsStringSync('public key');
+          )..writeAsStringSync('public key');
           when(() => argResults['public-key-path'])
               .thenReturn(patchSigningPublicKeyFile.path);
 
