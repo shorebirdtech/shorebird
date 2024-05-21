@@ -1,9 +1,13 @@
+import 'dart:convert';
+
 import 'package:mason_logger/mason_logger.dart';
 import 'package:shorebird_cli/src/artifact_builder.dart';
 import 'package:shorebird_cli/src/code_push_client_wrapper.dart';
 import 'package:shorebird_cli/src/commands/release/release.dart';
 import 'package:shorebird_cli/src/commands/release/releaser.dart';
 import 'package:shorebird_cli/src/doctor.dart';
+import 'package:shorebird_cli/src/extensions/arg_results.dart';
+import 'package:shorebird_cli/src/extensions/file.dart';
 import 'package:shorebird_cli/src/logger.dart';
 import 'package:shorebird_cli/src/platform.dart';
 import 'package:shorebird_cli/src/platform/platform.dart';
@@ -59,6 +63,7 @@ class AndroidReleaser extends Releaser {
 
   @override
   Future<void> assertArgsAreValid() async {
+    argResults.file('public-key-path')?.assertExists();
     if (generateApk && splitApk) {
       logger
         ..err(
@@ -90,12 +95,23 @@ Please comment and upvote ${link(uri: Uri.parse('https://github.com/shorebirdtec
         .progress('Building app bundle with Flutter $flutterVersionString');
 
     final File aab;
+
+    final publicKeyPath = argResults['public-key-path'] as String?;
+
+    String? base64PublicKey;
+    if (publicKeyPath != null) {
+      final publicKeyFile = File(publicKeyPath);
+      final rawPublicKey = publicKeyFile.readAsBytesSync();
+
+      base64PublicKey = base64Encode(rawPublicKey);
+    }
     try {
       aab = await artifactBuilder.buildAppBundle(
         flavor: flavor,
         target: target,
         targetPlatforms: architectures,
         args: argResults.forwardedArgs,
+        base64PublicKey: base64PublicKey,
       );
     } on ArtifactBuildException catch (e) {
       buildAppBundleProgress.fail(e.message);
@@ -113,6 +129,7 @@ Please comment and upvote ${link(uri: Uri.parse('https://github.com/shorebirdtec
           target: target,
           targetPlatforms: architectures,
           args: argResults.forwardedArgs,
+          base64PublicKey: base64PublicKey,
         );
       } on ArtifactBuildException catch (e) {
         buildApkProgress.fail(e.message);

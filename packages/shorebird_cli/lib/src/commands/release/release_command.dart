@@ -114,6 +114,13 @@ of the iOS app that is using this module.''',
         help: 'The target platform(s) for which the app is compiled.',
         defaultsTo: Arch.values.map((arch) => arch.targetPlatformCliArg),
         allowed: Arch.values.map((arch) => arch.targetPlatformCliArg),
+      )
+      ..addOption(
+        'public-key-path',
+        hide: true,
+        help: '''
+The path for a public key file that will be used to validate patch signatures.
+''',
       );
   }
 
