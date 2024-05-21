@@ -438,7 +438,7 @@ void main() {
               target: any(named: 'target'),
               targetPlatforms: any(named: 'targetPlatforms'),
               args: any(named: 'args'),
-              encodedPublicKey: any(named: 'encodedPublicKey'),
+              base64PublicKey: any(named: 'base64PublicKey'),
             ),
           ).thenAnswer((_) async => aabFile);
 
@@ -448,7 +448,7 @@ void main() {
               target: any(named: 'target'),
               targetPlatforms: any(named: 'targetPlatforms'),
               args: any(named: 'args'),
-              encodedPublicKey: any(named: 'encodedPublicKey'),
+              base64PublicKey: any(named: 'base64PublicKey'),
             ),
           ).thenAnswer((_) async => File(''));
         });
@@ -466,7 +466,7 @@ void main() {
                 target: any(named: 'target'),
                 targetPlatforms: any(named: 'targetPlatforms'),
                 args: any(named: 'args'),
-                encodedPublicKey: base64Encode(
+                base64PublicKey: base64Encode(
                   patchSigningPublicKeyFile.readAsBytesSync(),
                 ),
               ),
@@ -492,7 +492,7 @@ void main() {
                   target: any(named: 'target'),
                   targetPlatforms: any(named: 'targetPlatforms'),
                   args: any(named: 'args'),
-                  encodedPublicKey: base64Encode(
+                  base64PublicKey: base64Encode(
                     patchSigningPublicKeyFile.readAsBytesSync(),
                   ),
                 ),
@@ -504,7 +504,7 @@ void main() {
                   target: any(named: 'target'),
                   targetPlatforms: any(named: 'targetPlatforms'),
                   args: any(named: 'args'),
-                  encodedPublicKey: base64Encode(
+                  base64PublicKey: base64Encode(
                     patchSigningPublicKeyFile.readAsBytesSync(),
                   ),
                 ),

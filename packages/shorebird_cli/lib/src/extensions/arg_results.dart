@@ -1,3 +1,5 @@
+import 'dart:io';
+
 import 'package:args/args.dart';
 import 'package:collection/collection.dart';
 
@@ -37,5 +39,19 @@ extension OptionFinder on ArgResults {
     }
 
     return null;
+  }
+}
+
+/// Extension on [ArgResults] to provide file validation.
+extension FileValidation on ArgResults {
+  /// Checks if an option is a path that points to an existing file.
+  ///
+  /// This method will only return false when the argument with [name] is
+  /// provided and the file does not exist.
+  bool wasParsedAndFileExists(String name) {
+    final filePath = this[name] as String?;
+    if (filePath == null) return true;
+    final file = File(this[name] as String);
+    return file.existsSync();
   }
 }

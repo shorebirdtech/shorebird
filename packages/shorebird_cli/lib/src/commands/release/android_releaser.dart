@@ -96,12 +96,12 @@ Please comment and upvote ${link(uri: Uri.parse('https://github.com/shorebirdtec
 
     final publicKeyPath = argResults['public-key-path'] as String?;
 
-    String? encodedPublicKey;
+    String? base64PublicKey;
     if (publicKeyPath != null) {
       final publicKeyFile = File(publicKeyPath);
       final rawPublicKey = publicKeyFile.readAsBytesSync();
 
-      encodedPublicKey = base64Encode(rawPublicKey);
+      base64PublicKey = base64Encode(rawPublicKey);
     }
     try {
       aab = await artifactBuilder.buildAppBundle(
@@ -109,7 +109,7 @@ Please comment and upvote ${link(uri: Uri.parse('https://github.com/shorebirdtec
         target: target,
         targetPlatforms: architectures,
         args: argResults.forwardedArgs,
-        encodedPublicKey: encodedPublicKey,
+        base64PublicKey: base64PublicKey,
       );
     } on ArtifactBuildException catch (e) {
       buildAppBundleProgress.fail(e.message);
@@ -127,7 +127,7 @@ Please comment and upvote ${link(uri: Uri.parse('https://github.com/shorebirdtec
           target: target,
           targetPlatforms: architectures,
           args: argResults.forwardedArgs,
-          encodedPublicKey: encodedPublicKey,
+          base64PublicKey: base64PublicKey,
         );
       } on ArtifactBuildException catch (e) {
         buildApkProgress.fail(e.message);

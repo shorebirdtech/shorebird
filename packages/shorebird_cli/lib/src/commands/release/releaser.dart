@@ -2,6 +2,7 @@ import 'dart:io';
 
 import 'package:args/args.dart';
 import 'package:mason_logger/mason_logger.dart';
+import 'package:shorebird_cli/src/extensions/arg_results.dart';
 import 'package:shorebird_cli/src/logger.dart';
 import 'package:shorebird_cli/src/release_type.dart';
 import 'package:shorebird_cli/src/shorebird_env.dart';
@@ -80,15 +81,11 @@ abstract class Releaser {
   /// This method should be called in [assertArgsAreValid] from releasers that
   /// require a public key argument.
   void assertPublicKeyArg() {
-    final patchSignKeyPath = argResults['public-key-path'] as String?;
-    if (patchSignKeyPath != null) {
-      final file = File(patchSignKeyPath);
-      if (!file.existsSync()) {
-        logger.err(
-          'No file found at $patchSignKeyPath',
-        );
-        exit(ExitCode.software.code);
-      }
+    if (!argResults.wasParsedAndFileExists('public-key-path')) {
+      logger.err(
+        'No file found at ${argResults['public-key-path']}',
+      );
+      exit(ExitCode.software.code);
     }
   }
 }
