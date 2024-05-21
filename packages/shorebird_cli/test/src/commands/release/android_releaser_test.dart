@@ -226,6 +226,7 @@ void main() {
           when(() => argResults['public-key-path'])
               .thenReturn(publicKeyFile.path);
         });
+
         test('returns normally', () async {
           expect(
             () => runWithOverrides(androidReleaser.assertArgsAreValid),
@@ -240,6 +241,7 @@ void main() {
           when(() => argResults['public-key-path'])
               .thenReturn('non-existing-key.pem');
         });
+
         test('logs and exits with usage err', () async {
           await expectLater(
             () => runWithOverrides(androidReleaser.assertArgsAreValid),
