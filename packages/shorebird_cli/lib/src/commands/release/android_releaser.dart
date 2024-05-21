@@ -61,6 +61,7 @@ class AndroidReleaser extends Releaser {
 
   @override
   Future<void> assertArgsAreValid() async {
+    assertPublicKeyArg();
     if (generateApk && splitApk) {
       logger
         ..err(
@@ -93,16 +94,14 @@ Please comment and upvote ${link(uri: Uri.parse('https://github.com/shorebirdtec
 
     final File aab;
 
-    final patchSigningKeyPath =
-        argResults['patch-signing-public-key-path'] as String?;
+    final publicKeyPath = argResults['public-key-path'] as String?;
 
-    String? encodedPatchSigningPublicKey;
-    if (patchSigningKeyPath != null) {
-      final patchSigningPublicKeyFile = File(patchSigningKeyPath);
-      final rawPatchSigningPublicKey =
-          patchSigningPublicKeyFile.readAsBytesSync();
+    String? encodedPublicKey;
+    if (publicKeyPath != null) {
+      final publicKeyFile = File(publicKeyPath);
+      final rawPublicKey = publicKeyFile.readAsBytesSync();
 
-      encodedPatchSigningPublicKey = base64Encode(rawPatchSigningPublicKey);
+      encodedPublicKey = base64Encode(rawPublicKey);
     }
     try {
       aab = await artifactBuilder.buildAppBundle(
@@ -110,7 +109,7 @@ Please comment and upvote ${link(uri: Uri.parse('https://github.com/shorebirdtec
         target: target,
         targetPlatforms: architectures,
         args: argResults.forwardedArgs,
-        encodedPatchSigningPublicKey: encodedPatchSigningPublicKey,
+        encodedPublicKey: encodedPublicKey,
       );
     } on ArtifactBuildException catch (e) {
       buildAppBundleProgress.fail(e.message);
@@ -128,7 +127,7 @@ Please comment and upvote ${link(uri: Uri.parse('https://github.com/shorebirdtec
           target: target,
           targetPlatforms: architectures,
           args: argResults.forwardedArgs,
-          encodedPatchSigningPublicKey: encodedPatchSigningPublicKey,
+          encodedPublicKey: encodedPublicKey,
         );
       } on ArtifactBuildException catch (e) {
         buildApkProgress.fail(e.message);

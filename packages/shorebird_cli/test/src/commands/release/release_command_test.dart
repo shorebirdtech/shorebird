@@ -500,34 +500,12 @@ $exception''',
               keyName,
             ),
           )..writeAsStringSync('KEY');
-          when(() => argResults['patch-signing-public-key-path'])
-              .thenReturn(file.path);
+          when(() => argResults['public-key-path']).thenReturn(file.path);
         });
 
         test('completes successfully', () async {
           final exitCode = await runWithOverrides(command.run);
           expect(exitCode, equals(ExitCode.success.code));
-        });
-      });
-
-      group('when the key does not exists', () {
-        setUp(() {
-          when(() => argResults['patch-signing-public-key-path'])
-              .thenReturn('non-existent-key.pem');
-        });
-
-        test('returns error', () async {
-          await expectLater(
-            () => runWithOverrides(command.run),
-            exitsWithCode(ExitCode.software),
-          );
-
-          verify(
-            () => logger.err(
-              'Received a patch signing key path, but no files exists for '
-              'it: non-existent-key.pem',
-            ),
-          ).called(1);
         });
       });
     });

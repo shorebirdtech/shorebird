@@ -213,6 +213,42 @@ void main() {
           );
         });
       });
+
+      group('when a public key is provided and it exists', () {
+        setUp(() {
+          when(() => argResults['artifact']).thenReturn('apk');
+          final publicKeyFile = File(
+            p.join(
+              Directory.systemTemp.createTempSync().path,
+              'public-key.pem',
+            ),
+          )
+            ..createSync()
+            ..writeAsStringSync('public key');
+          when(() => argResults['public-key-path'])
+              .thenReturn(publicKeyFile.path);
+        });
+        test('returns normally ', () async {
+          expect(
+            () => runWithOverrides(androidReleaser.assertArgsAreValid),
+            returnsNormally,
+          );
+        });
+      });
+
+      group('when a public key is provided but it does not exists', () {
+        setUp(() {
+          when(() => argResults['artifact']).thenReturn('apk');
+          when(() => argResults['public-key-path'])
+              .thenReturn('non-existing-key.pem');
+        });
+        test('returns normally ', () async {
+          await expectLater(
+            () => runWithOverrides(androidReleaser.assertArgsAreValid),
+            exitsWithCode(ExitCode.software),
+          );
+        });
+      });
     });
 
     group('buildReleaseArtifacts', () {
@@ -393,7 +429,7 @@ void main() {
           )
             ..createSync()
             ..writeAsStringSync('public key');
-          when(() => argResults['patch-signing-public-key-path'])
+          when(() => argResults['public-key-path'])
               .thenReturn(patchSigningPublicKeyFile.path);
 
           when(
@@ -402,8 +438,7 @@ void main() {
               target: any(named: 'target'),
               targetPlatforms: any(named: 'targetPlatforms'),
               args: any(named: 'args'),
-              encodedPatchSigningPublicKey:
-                  any(named: 'encodedPatchSigningPublicKey'),
+              encodedPublicKey: any(named: 'encodedPublicKey'),
             ),
           ).thenAnswer((_) async => aabFile);
 
@@ -413,8 +448,7 @@ void main() {
               target: any(named: 'target'),
               targetPlatforms: any(named: 'targetPlatforms'),
               args: any(named: 'args'),
-              encodedPatchSigningPublicKey:
-                  any(named: 'encodedPatchSigningPublicKey'),
+              encodedPublicKey: any(named: 'encodedPublicKey'),
             ),
           ).thenAnswer((_) async => File(''));
         });
@@ -432,7 +466,7 @@ void main() {
                 target: any(named: 'target'),
                 targetPlatforms: any(named: 'targetPlatforms'),
                 args: any(named: 'args'),
-                encodedPatchSigningPublicKey: base64Encode(
+                encodedPublicKey: base64Encode(
                   patchSigningPublicKeyFile.readAsBytesSync(),
                 ),
               ),
@@ -458,7 +492,7 @@ void main() {
                   target: any(named: 'target'),
                   targetPlatforms: any(named: 'targetPlatforms'),
                   args: any(named: 'args'),
-                  encodedPatchSigningPublicKey: base64Encode(
+                  encodedPublicKey: base64Encode(
                     patchSigningPublicKeyFile.readAsBytesSync(),
                   ),
                 ),
@@ -470,7 +504,7 @@ void main() {
                   target: any(named: 'target'),
                   targetPlatforms: any(named: 'targetPlatforms'),
                   args: any(named: 'args'),
-                  encodedPatchSigningPublicKey: base64Encode(
+                  encodedPublicKey: base64Encode(
                     patchSigningPublicKeyFile.readAsBytesSync(),
                   ),
                 ),

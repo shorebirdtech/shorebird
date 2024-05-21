@@ -46,7 +46,7 @@ class ArtifactBuilder {
     String? target,
     Iterable<Arch>? targetPlatforms,
     List<String> args = const [],
-    String? encodedPatchSigningPublicKey,
+    String? encodedPublicKey,
   }) async {
     await _runShorebirdBuildCommand(() async {
       const executable = 'flutter';
@@ -65,8 +65,8 @@ class ArtifactBuilder {
         executable,
         arguments,
         runInShell: true,
-        environment: encodedPatchSigningPublicKey != null
-            ? {'SHOREBIRD_PUBLIC_KEY': encodedPatchSigningPublicKey}
+        environment: encodedPublicKey != null
+            ? {'SHOREBIRD_PUBLIC_KEY': encodedPublicKey}
             : null,
       );
 
@@ -102,7 +102,7 @@ class ArtifactBuilder {
     Iterable<Arch>? targetPlatforms,
     bool splitPerAbi = false,
     List<String> args = const [],
-    String? encodedPatchSigningPublicKey,
+    String? encodedPublicKey,
   }) async {
     await _runShorebirdBuildCommand(() async {
       const executable = 'flutter';
@@ -126,8 +126,8 @@ class ArtifactBuilder {
         executable,
         arguments,
         runInShell: true,
-        environment: encodedPatchSigningPublicKey != null
-            ? {'SHOREBIRD_PUBLIC_KEY': encodedPatchSigningPublicKey}
+        environment: encodedPublicKey != null
+            ? {'SHOREBIRD_PUBLIC_KEY': encodedPublicKey}
             : null,
       );
 

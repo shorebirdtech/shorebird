@@ -1,6 +1,8 @@
 import 'dart:io';
 
 import 'package:args/args.dart';
+import 'package:mason_logger/mason_logger.dart';
+import 'package:shorebird_cli/src/logger.dart';
 import 'package:shorebird_cli/src/release_type.dart';
 import 'package:shorebird_cli/src/shorebird_env.dart';
 import 'package:shorebird_code_push_client/shorebird_code_push_client.dart';
@@ -71,4 +73,22 @@ abstract class Releaser {
   Future<String> getReleaseVersion({
     required FileSystemEntity releaseArtifactRoot,
   });
+
+  /// Method for validating a public key argument, which will check, when
+  /// provided, that the file exists.
+  ///
+  /// This method should be called in [assertArgsAreValid] from releasers that
+  /// require a public key argument.
+  void assertPublicKeyArg() {
+    final patchSignKeyPath = argResults['public-key-path'] as String?;
+    if (patchSignKeyPath != null) {
+      final file = File(patchSignKeyPath);
+      if (!file.existsSync()) {
+        logger.err(
+          'No file found at $patchSignKeyPath',
+        );
+        exit(ExitCode.software.code);
+      }
+    }
+  }
 }

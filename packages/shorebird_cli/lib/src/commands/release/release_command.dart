@@ -116,7 +116,7 @@ of the iOS app that is using this module.''',
         allowed: Arch.values.map((arch) => arch.targetPlatformCliArg),
       )
       ..addOption(
-        'patch-signing-public-key-path',
+        'public-key-path',
         hide: true,
         help: '''
 The path for a public key file that will be used to validate patch signatures.
@@ -133,24 +133,8 @@ The path for a public key file that will be used to validate patch signatures.
   @override
   String get name => 'release';
 
-  void _assertArgs() {
-    final patchSignKeyPath =
-        results['patch-signing-public-key-path'] as String?;
-    if (patchSignKeyPath != null) {
-      final file = File(patchSignKeyPath);
-      if (!file.existsSync()) {
-        logger.err(
-          'Received a patch signing key path, but no files exists for '
-          'it: $patchSignKeyPath',
-        );
-        exit(ExitCode.software.code);
-      }
-    }
-  }
-
   @override
   Future<int> run() async {
-    _assertArgs();
     final releaserFutures =
         results.releaseTypes.map(_resolveReleaser).map(createRelease);
 
