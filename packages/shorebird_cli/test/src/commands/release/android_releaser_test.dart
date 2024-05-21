@@ -226,7 +226,7 @@ void main() {
           when(() => argResults['public-key-path'])
               .thenReturn(publicKeyFile.path);
         });
-        test('returns normally ', () async {
+        test('returns normally', () async {
           expect(
             () => runWithOverrides(androidReleaser.assertArgsAreValid),
             returnsNormally,
@@ -240,11 +240,14 @@ void main() {
           when(() => argResults['public-key-path'])
               .thenReturn('non-existing-key.pem');
         });
-        test('returns normally ', () async {
+        test('logs and exits with usage err', () async {
           await expectLater(
             () => runWithOverrides(androidReleaser.assertArgsAreValid),
-            exitsWithCode(ExitCode.software),
+            exitsWithCode(ExitCode.usage),
           );
+
+          verify(() => logger.err('No file found at non-existing-key.pem'))
+              .called(1);
         });
       });
     });
