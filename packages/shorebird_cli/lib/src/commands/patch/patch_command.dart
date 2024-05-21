@@ -92,6 +92,13 @@ of the iOS app that is using this module.''',
         abbr: 'n',
         negatable: false,
         help: 'Validate but do not upload the patch.',
+      )
+      ..addOption(
+        'private-key-path',
+        hide: true,
+        help: '''
+The path for a private key file that will be used to sign the patch artifact.
+''',
       );
   }
 

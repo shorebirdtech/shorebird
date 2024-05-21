@@ -30,6 +30,7 @@ class PatchArtifactBundle {
     required this.path,
     required this.hash,
     required this.size,
+    this.hashSignature,
   });
 
   /// The corresponding architecture.
@@ -43,6 +44,9 @@ class PatchArtifactBundle {
 
   /// The size in bytes of the artifact.
   final int size;
+
+  /// The signature of the artifact hash.
+  final String? hashSignature;
 }
 
 // A reference to a [CodePushClientWrapper] instance.
@@ -687,6 +691,7 @@ aar artifact already exists, continuing...''',
           arch: artifact.arch,
           platform: platform,
           hash: artifact.hash,
+          hashSignature: artifact.hashSignature,
         );
       } catch (error) {
         _handleErrorAndExit(error, progress: createArtifactProgress);

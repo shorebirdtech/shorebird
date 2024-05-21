@@ -133,6 +133,7 @@ class CodePushClient {
     required String arch,
     required ReleasePlatform platform,
     required String hash,
+    String? hashSignature,
   }) async {
     final request = http.MultipartRequest(
       'POST',
@@ -144,6 +145,8 @@ class CodePushClient {
       'platform': platform.name,
       'hash': hash,
       'size': '${file.length}',
+      if (hashSignature != null)
+        'hash_signature': hashSignature,
     });
     final response = await _httpClient.send(request);
     final body = await response.stream.bytesToString();

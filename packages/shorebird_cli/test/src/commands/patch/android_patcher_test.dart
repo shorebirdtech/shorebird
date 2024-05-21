@@ -436,6 +436,77 @@ Looked in:
           );
 
           expect(result, hasLength(Arch.values.length));
+          for (final bundle in result.values) {
+            expect(bundle.hashSignature, isNull);
+          }
+        });
+
+        group('when a private key is provided', () {
+          const testPrivateKeyContent = '''
+-----BEGIN PRIVATE KEY-----
+MIIEvQIBADANBgkqhkiG9w0BAQEFAASCBKcwggSjAgEAAoIBAQC7dlJZ1VAkZVhA
+eqkr7HUUPdwvnMDAUWJxb4Rcf8KfcjcCjSwOu5KvjcOGhq5XaOecXiincBpGoEx0
+KkX/6l4aiKFxq1dqdoLluXRnXfOMEBym+QNEU7Jbh/imUE2ikFvcbDEf0b3xVBc1
+BIXazI9/teTD9073tp5SVjSKRpVyHotl1WdNxJFRnKj7stgpJDi7FWQmqDYr2w3v
+W1QePxjxWqztQrhC+p5mhQ8BVqctaPJzUq70PXpIAHebXhMhDfYHZQmngY0ipwLC
+A73aUs5RPaHAX4sKSaic6xjsA1fo1h9nL+Fn/Bhu2Ykkl4dXbMJAmmjcPuhnCUZ+
+HdoUNqGZAgMBAAECggEAPZWfdDepvms01On3DaD+zYmM/m9Gu2eBKbbzCthF/c+t
+1r6+DJD+nYG7DETOnZSvEiW0wV0IpM8gjsEcgfhiteDQ+ODLNQR9+C422YZ57jeU
+0h3YPugoHf3LaAfVmWRHaWB5uvRSrCduAFLeDoVJVzFQWDi0zphF5tK/K/YIPpbN
+tOJXoQ3P1jsrPlBCXbssskOOdZniciBDdGIFZab1gFnU4IrEtznYDOZi1cg4lzW8
+4e8Ah/fwWLuwD76cUIRkgduKKTzLvPns+dOWv7IwMZeaGh8ORkne/dd8fKEB2Zaq
+WePF2W0NFw/GCvn2ye5Ykow9RH32JAqqj26FnWrdqQKBgQDwLwo70kPQCBtHtPYU
+OoDd1BFxNSgXEQUOGs9PSPkmqWZ4jDV+dgA5gVWu37HC2PC+p97FzUi7l2wZMHB3
+JvxZ0yT2XzkjIXhBp38trNhk5BNLOCJoq/DzP95w6VCD6CQJl+/HA6Cud+2KmUgt
+BfJO44EWEXq96CTkpsIoksfeGwKBgQDHzoOtwrumP3U7+G7mJx92O7IcWw8pi2HD
+j+Xprels7Tz7oj0tOIIScD/0MEG4vx9VHZGz2RGED+qQjebUwHy04rSZ0yCeBBBp
+HiAzlXXY47cHWHMQeCuzM+1DAyHzMi1joy7jkCaLCtDrLX6n0jCtPEWU5NbTjZpS
+W9oNTNLqWwKBgQDWoPKAKpE2oUffeDI+OVlW4V8Ezv+YPTlLNWHz873RcqeDKafT
+7hadTJoIvxTWjY30kYZdM+i+2b1bdRHLKCdxDWGGV+lzH0GbSdY4NrDY14b2PJ9i
+8eNLO9PHCndMqHErsX4vVWqM/dZjeD4rHZk+Lcb4tX39nij5upreLuwz6QKBgAZB
+jRXvtvhpnD4YdUB3kSCeleEVaNAgMRtycfxzGY/zjalDVy8HSetR4G7A5A3ozg5Y
+Mquy7D16Uhncl5GpxT3Uq1r1pVvNPMZNzyxOTbZQyvZL6q5lVNjzk0Y53uJCe/FW
+tq0hYlOQLyJt9j1C84s5C+SxlZhiIqbZgWZRNXlpAoGAa4QMZ3Oh1LuGZZw7tmh5
+9u5R4XkBT1qA1Rcs13LW78OseBTeEuFf60iW2RR7F++wLj3Ab1qFIIp2N4fiA+GL
+LirrX00cYQ78wxBU9ssdcB3Hd30ldGLu32O1++d4rFKGIxjA0quBseUfuXogRDSb
+GdoVu5jMWQ9F15r/po9RSk8=
+-----END PRIVATE KEY-----
+''';
+
+          late File privateKey;
+
+          setUp(() {
+            privateKey = File(
+              p.join(
+                Directory.systemTemp.createTempSync().path,
+                'test-private.pem',
+              ),
+            )..writeAsStringSync(testPrivateKeyContent);
+
+            when(() => argResults['private-key-path'])
+                .thenReturn(privateKey.path);
+          });
+
+          test('returns patch artifact bundles with proper hash signatures',
+              () async {
+            final result = await runWithOverrides(
+              () => patcher.createPatchArtifacts(
+                appId: 'appId',
+                releaseId: 0,
+                releaseArtifact: File('release.aab'),
+              ),
+            );
+
+            const expectedSignatures = [
+              'WmH5nujxcAwu3gy0VHmAG8ezx6hemJIWBe6RcSS9S7LHa+kVv6NtZZ48m0777LVjqYQT/EBYx9vVchgQtQSpm9Lr+IsfSYzcHqIwi8BfGls+4FzVCSDbH7Fdpug8KfWrcRdBa3hGueqf0mIbpfS3GebW+2bmkZAv6GSHiit0qNkCub5/B7JJyOVpZ4z7NTK9K6XRTmU3X8kWFPiMMYxh8asc6NWQC1vsbYDEraKuCAPAZs+uBpefnq29/HN1ZbwaRHDXvZVA8Q1m6vFz4Lu8S/2WToBhUv4YQQjHv8ZMoWGwGV83VUkFNkwBvp9ouZBOL0jT3740coCJeUU/Zx2sKw==',
+              'WmH5nujxcAwu3gy0VHmAG8ezx6hemJIWBe6RcSS9S7LHa+kVv6NtZZ48m0777LVjqYQT/EBYx9vVchgQtQSpm9Lr+IsfSYzcHqIwi8BfGls+4FzVCSDbH7Fdpug8KfWrcRdBa3hGueqf0mIbpfS3GebW+2bmkZAv6GSHiit0qNkCub5/B7JJyOVpZ4z7NTK9K6XRTmU3X8kWFPiMMYxh8asc6NWQC1vsbYDEraKuCAPAZs+uBpefnq29/HN1ZbwaRHDXvZVA8Q1m6vFz4Lu8S/2WToBhUv4YQQjHv8ZMoWGwGV83VUkFNkwBvp9ouZBOL0jT3740coCJeUU/Zx2sKw==',
+              'WmH5nujxcAwu3gy0VHmAG8ezx6hemJIWBe6RcSS9S7LHa+kVv6NtZZ48m0777LVjqYQT/EBYx9vVchgQtQSpm9Lr+IsfSYzcHqIwi8BfGls+4FzVCSDbH7Fdpug8KfWrcRdBa3hGueqf0mIbpfS3GebW+2bmkZAv6GSHiit0qNkCub5/B7JJyOVpZ4z7NTK9K6XRTmU3X8kWFPiMMYxh8asc6NWQC1vsbYDEraKuCAPAZs+uBpefnq29/HN1ZbwaRHDXvZVA8Q1m6vFz4Lu8S/2WToBhUv4YQQjHv8ZMoWGwGV83VUkFNkwBvp9ouZBOL0jT3740coCJeUU/Zx2sKw==',
+            ];
+
+            final signatures =
+                result.values.map((bundle) => bundle.hashSignature).toList();
+            expect(signatures, equals(expectedSignatures));
+          });
         });
       });
     });
