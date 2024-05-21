@@ -44,7 +44,7 @@ extension OptionFinder on ArgResults {
 
 /// Extension on [ArgResults] to provide file related extensions.
 extension FileArgs on ArgResults {
-  /// Returns a [File] from the argument [name].
+  /// Returns a [File] from the argument [name] or null if the argument was not provided.
   File? file(String name) {
     final path = this[name] as String?;
     if (path == null) {

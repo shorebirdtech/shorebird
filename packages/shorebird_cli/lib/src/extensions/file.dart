@@ -5,9 +5,7 @@ import 'package:shorebird_cli/src/logger.dart';
 
 /// Extension methods for validating [File]s.
 extension FileValidations on File {
-  /// Asserts that the file exists.
-  ///
-  /// When it doesn't, logs an error and exits with [ExitCode.usage].
+  /// Logs an error and exits with [ExitCode.usage] if this file does not exist.
   void assertExists() {
     if (!existsSync()) {
       logger.err(
