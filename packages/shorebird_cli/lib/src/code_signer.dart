@@ -22,7 +22,7 @@ class CodeSigner {
   /// This is the equivalent of:
   ///   $ openssl dgst -sha256 -sign privateKey.pem -out signature message
   String sign({required String message, required File privateKeyPemFile}) {
-    final privateKeyData = _privateKeyBytes(pemFile: privateKeyPemFile);
+    final privateKeyData = privateKeyBytes(pemFile: privateKeyPemFile);
     final privateKey = RSAPrivateKeyFromInt.from(privateKeyData);
 
     final signer = Signer('SHA-256/RSA')
@@ -33,10 +33,19 @@ class CodeSigner {
     return base64.encode(signature.bytes);
   }
 
-  /// Decodes a PEM file containing a private and returns its contents as bytes.
-  List<int> _privateKeyBytes({required File pemFile}) {
+  /// Decodes a PEM file containing a private key and returns its contents as
+  /// bytes.
+  List<int> privateKeyBytes({required File pemFile}) {
     final privateKeyString = pemFile.readAsStringSync();
     final pemCodec = PemCodec(PemLabel.privateKey);
+    return pemCodec.decode(privateKeyString);
+  }
+
+  /// Decodes a PEM file containing a public key and returns its contents as
+  /// bytes.
+  List<int> publicKeyBytes({required File pemFile}) {
+    final privateKeyString = pemFile.readAsStringSync();
+    final pemCodec = PemCodec(PemLabel.publicKey);
     return pemCodec.decode(privateKeyString);
   }
 }

@@ -3,6 +3,7 @@ import 'dart:convert';
 import 'package:mason_logger/mason_logger.dart';
 import 'package:shorebird_cli/src/artifact_builder.dart';
 import 'package:shorebird_cli/src/code_push_client_wrapper.dart';
+import 'package:shorebird_cli/src/code_signer.dart';
 import 'package:shorebird_cli/src/commands/release/release.dart';
 import 'package:shorebird_cli/src/commands/release/releaser.dart';
 import 'package:shorebird_cli/src/doctor.dart';
@@ -96,15 +97,11 @@ Please comment and upvote ${link(uri: Uri.parse('https://github.com/shorebirdtec
 
     final File aab;
 
-    final publicKeyPath = argResults['public-key-path'] as String?;
+    final publicKeyFile = argResults.file('public-key-path');
+    final base64PublicKey = publicKeyFile != null
+        ? base64Encode(codeSigner.publicKeyBytes(pemFile: publicKeyFile))
+        : null;
 
-    String? base64PublicKey;
-    if (publicKeyPath != null) {
-      final publicKeyFile = File(publicKeyPath);
-      final rawPublicKey = publicKeyFile.readAsBytesSync();
-
-      base64PublicKey = base64Encode(rawPublicKey);
-    }
     try {
       aab = await artifactBuilder.buildAppBundle(
         flavor: flavor,
