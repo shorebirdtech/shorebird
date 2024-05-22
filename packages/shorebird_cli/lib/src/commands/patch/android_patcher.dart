@@ -1,5 +1,3 @@
-import 'dart:convert';
-
 import 'package:crypto/crypto.dart';
 import 'package:io/io.dart';
 import 'package:path/path.dart' as p;
@@ -160,15 +158,12 @@ Looked in:
       final hash = sha256.convert(await patchArtifact.readAsBytes()).toString();
 
       final privateKeyFile = argResults.file('private-key-path');
-      final String? hashSignature;
-      if (privateKeyFile != null) {
-        hashSignature = codeSigner.sign(
-          message: hash,
-          privateKeyPemFile: privateKeyFile,
-        );
-      } else {
-        hashSignature = null;
-      }
+      final hashSignature = privateKeyFile != null
+          ? codeSigner.sign(
+              message: hash,
+              privateKeyPemFile: privateKeyFile,
+            )
+          : null;
 
       try {
         final diffPath = await artifactManager.createDiff(
