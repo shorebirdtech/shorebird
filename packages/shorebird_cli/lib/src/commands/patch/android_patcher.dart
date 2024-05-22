@@ -8,6 +8,7 @@ import 'package:shorebird_cli/src/archive_analysis/archive_differ.dart';
 import 'package:shorebird_cli/src/artifact_builder.dart';
 import 'package:shorebird_cli/src/artifact_manager.dart';
 import 'package:shorebird_cli/src/code_push_client_wrapper.dart';
+import 'package:shorebird_cli/src/code_signer.dart';
 import 'package:shorebird_cli/src/commands/patch/patcher.dart';
 import 'package:shorebird_cli/src/doctor.dart';
 import 'package:shorebird_cli/src/extensions/arg_results.dart';
@@ -158,17 +159,15 @@ Looked in:
       final patchArtifact = File(patchArtifactPath);
       final hash = sha256.convert(await patchArtifact.readAsBytes()).toString();
 
-      print('sign this: $hash');
-
-      // TODO(erickzanardo): Extract this signing logic to somewhere else?
-      // maybe [ArtifactManager].
       final privateKeyFile = argResults.file('private-key-path');
-      String? hashSignature;
+      final String? hashSignature;
       if (privateKeyFile != null) {
-        final privateKey = privateKeyFile.readAsBytesSync();
-        final hashBytes = utf8.encode(hash);
-        final hmacSha256 = Hmac(sha256, privateKey);
-        hashSignature = base64Encode(hmacSha256.convert(hashBytes).bytes);
+        hashSignature = codeSigner.sign(
+          message: hash,
+          privateKeyPemFile: privateKeyFile,
+        );
+      } else {
+        hashSignature = null;
       }
 
       try {

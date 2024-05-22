@@ -28,7 +28,9 @@ dependencies:
   mason_logger: ^0.2.15
   meta: ^1.14.0
   path: ^1.9.0
+  pem: ^2.0.5
   platform: ^3.1.4
+  pointycastle: ^3.9.1
   propertylistserialization: ^1.3.0
   pub_semver: ^2.1.4
   pubspec_parse: ^1.2.3

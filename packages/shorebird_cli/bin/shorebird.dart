@@ -8,6 +8,7 @@ import 'package:shorebird_cli/src/artifact_manager.dart';
 import 'package:shorebird_cli/src/auth/auth.dart';
 import 'package:shorebird_cli/src/cache.dart';
 import 'package:shorebird_cli/src/code_push_client_wrapper.dart';
+import 'package:shorebird_cli/src/code_signer.dart';
 import 'package:shorebird_cli/src/command_runner.dart';
 import 'package:shorebird_cli/src/doctor.dart';
 import 'package:shorebird_cli/src/engine_config.dart';
@@ -42,6 +43,7 @@ Future<void> main(List<String> args) async {
         bundletoolRef,
         cacheRef,
         codePushClientWrapperRef,
+        codeSignerRef,
         devicectlRef,
         doctorRef,
         engineConfigRef,
