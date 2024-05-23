@@ -1,3 +1,5 @@
+import 'dart:convert';
+
 import 'package:args/args.dart';
 import 'package:mason_logger/mason_logger.dart';
 import 'package:mocktail/mocktail.dart';
@@ -280,6 +282,54 @@ void main() {
           when(
             () => shorebirdFlutter.getVersionAndRevision(),
           ).thenAnswer((_) async => flutterVersionAndRevision);
+        });
+
+        group('when a patch signing key path is provided', () {
+          late File patchSigningPublicKeyFile;
+
+          setUp(() {
+            patchSigningPublicKeyFile = File(
+              p.join(
+                Directory.systemTemp.createTempSync().path,
+                'patch-signing-public-key.pem',
+              ),
+            )..writeAsStringSync('public key');
+            when(() => argResults['public-key-path'])
+                .thenReturn(patchSigningPublicKeyFile.path);
+
+            when(
+              () => artifactBuilder.buildIpa(
+                codesign: any(named: 'codesign'),
+                exportOptionsPlist: any(named: 'exportOptionsPlist'),
+                flavor: any(named: 'flavor'),
+                target: any(named: 'target'),
+                args: any(named: 'args'),
+                base64PublicKey: any(named: 'base64PublicKey'),
+              ),
+            ).thenAnswer((_) async => File(''));
+          });
+
+          test(
+            'encodes the patch signing public key and forward it to buildAab',
+            () async {
+              await runWithOverrides(
+                () => iosReleaser.buildReleaseArtifacts(),
+              );
+
+              verify(
+                () => artifactBuilder.buildIpa(
+                  codesign: any(named: 'codesign'),
+                  exportOptionsPlist: any(named: 'exportOptionsPlist'),
+                  flavor: any(named: 'flavor'),
+                  target: any(named: 'target'),
+                  args: any(named: 'args'),
+                  base64PublicKey: base64Encode(
+                    patchSigningPublicKeyFile.readAsBytesSync(),
+                  ),
+                ),
+              ).called(1);
+            },
+          );
         });
 
         group('when not codesigning', () {

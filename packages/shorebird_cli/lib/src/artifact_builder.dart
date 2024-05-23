@@ -34,6 +34,10 @@ final artifactBuilderRef = create(ArtifactBuilder.new);
 /// The [ArtifactBuilder] instance available in the current zone.
 ArtifactBuilder get artifactBuilder => read(artifactBuilderRef);
 
+extension on String {
+  Map<String, String> toPublicKeyEnv() => {'SHOREBIRD_PUBLIC_KEY': this};
+}
+
 /// @{template artifact_builder}
 /// Builds aabs, ipas, and other artifacts produced by `flutter build`.
 /// @{endtemplate}
@@ -65,9 +69,7 @@ class ArtifactBuilder {
         executable,
         arguments,
         runInShell: true,
-        environment: base64PublicKey != null
-            ? {'SHOREBIRD_PUBLIC_KEY': base64PublicKey}
-            : null,
+        environment: base64PublicKey?.toPublicKeyEnv(),
       );
 
       if (result.exitCode != ExitCode.success.code) {
@@ -126,9 +128,7 @@ class ArtifactBuilder {
         executable,
         arguments,
         runInShell: true,
-        environment: base64PublicKey != null
-            ? {'SHOREBIRD_PUBLIC_KEY': base64PublicKey}
-            : null,
+        environment: base64PublicKey?.toPublicKeyEnv(),
       );
 
       if (result.exitCode != ExitCode.success.code) {
@@ -194,6 +194,7 @@ class ArtifactBuilder {
     String? flavor,
     String? target,
     List<String> args = const [],
+    String? base64PublicKey,
   }) async {
     return _runShorebirdBuildCommand(() async {
       const executable = 'flutter';
@@ -214,6 +215,7 @@ class ArtifactBuilder {
         executable,
         arguments,
         runInShell: true,
+        environment: base64PublicKey?.toPublicKeyEnv(),
       );
 
       if (result.exitCode != ExitCode.success.code) {

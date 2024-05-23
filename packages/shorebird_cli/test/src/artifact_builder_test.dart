@@ -654,6 +654,52 @@ Either run `flutter pub get` manually, or follow the steps in ${link(uri: Uri.pa
           });
         });
 
+        group('when base64PublicKey is not null', () {
+          const base64PublicKey = 'base64PublicKey';
+
+          setUp(() {
+            when(
+              () => shorebirdProcess.run(
+                'flutter',
+                [
+                  'build',
+                  'ipa',
+                  '--release',
+                  '--export-options-plist=${exportOptionsPlist.path}',
+                ],
+                runInShell: any(named: 'runInShell'),
+                environment: {
+                  'SHOREBIRD_PUBLIC_KEY': base64PublicKey,
+                },
+              ),
+            ).thenAnswer((_) async => buildProcessResult);
+          });
+
+          test('adds the SHOREBIRD_PUBLIC_KEY to the environment', () async {
+            await runWithOverrides(
+              () => builder.buildIpa(
+                base64PublicKey: base64PublicKey,
+              ),
+            );
+
+            verify(
+              () => shorebirdProcess.run(
+                'flutter',
+                [
+                  'build',
+                  'ipa',
+                  '--release',
+                  '--export-options-plist=${exportOptionsPlist.path}',
+                ],
+                runInShell: any(named: 'runInShell'),
+                environment: {
+                  'SHOREBIRD_PUBLIC_KEY': base64PublicKey,
+                },
+              ),
+            ).called(1);
+          });
+        });
+
         group('when export options plist is provided', () {
           test('forwards to flutter build', () async {
             await runWithOverrides(
