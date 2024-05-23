@@ -12,8 +12,7 @@ void main() {
       final cryptoFixturesBasePath = p.join('test', 'fixtures', 'crypto');
       final privateKeyFile =
           File(p.join(cryptoFixturesBasePath, 'private.pem'));
-      final publicKeyFile =
-          File(p.join(cryptoFixturesBasePath, 'public.pem'));
+      final publicKeyFile = File(p.join(cryptoFixturesBasePath, 'public.pem'));
 
       late CodeSigner codeSigner;
 
