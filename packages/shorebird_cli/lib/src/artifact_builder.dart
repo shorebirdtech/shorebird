@@ -35,6 +35,14 @@ final artifactBuilderRef = create(ArtifactBuilder.new);
 ArtifactBuilder get artifactBuilder => read(artifactBuilderRef);
 
 extension on String {
+  /// Helper method to convert a String value that is supposed
+  /// to represent a public key, into a map of environment variables
+  /// containing itself.
+  ///
+  /// SHOREBIRD_PUBLIC_KEY is the name expected by the Shorebird's Flutter tool
+  ///
+  /// This allow us to just call var?.toPublicKeyEnv() instead of doing
+  /// a ternary operation to check if the value is null.
   Map<String, String> toPublicKeyEnv() => {'SHOREBIRD_PUBLIC_KEY': this};
 }
 

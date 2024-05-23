@@ -39,7 +39,7 @@ class IosReleaser extends Releaser {
 
   @override
   Future<void> assertArgsAreValid() async {
-    argResults.assertPublicKey();
+    argResults.assertAbsentOrValidPublicKey();
     if (argResults.rest.contains('--obfuscate')) {
       // Obfuscated releases break patching, so we don't support them.
       // See https://github.com/shorebirdtech/shorebird/issues/1619

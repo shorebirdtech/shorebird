@@ -49,7 +49,7 @@ const _publicKeyArgName = 'public-key-path';
 extension CodeSign on ArgResults {
   /// Asserts that either there is no public key argument
   /// or that the path received exists.
-  void assertPublicKey() {
+  void assertAbsentOrValidPublicKey() {
     file(_publicKeyArgName)?.assertExists();
   }
 

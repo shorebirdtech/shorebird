@@ -60,7 +60,7 @@ class AndroidReleaser extends Releaser {
 
   @override
   Future<void> assertArgsAreValid() async {
-    argResults.assertPublicKey();
+    argResults.assertAbsentOrValidPublicKey();
     if (generateApk && splitApk) {
       logger
         ..err(

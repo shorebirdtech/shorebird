@@ -245,6 +245,43 @@ void main() {
             );
           });
         });
+
+        group('when a public key is provided and it exists', () {
+          setUp(() {
+            final publicKeyFile = File(
+              p.join(
+                Directory.systemTemp.createTempSync().path,
+                'public-key.der',
+              ),
+            )..writeAsStringSync('public key');
+            when(() => argResults['public-key-path'])
+                .thenReturn(publicKeyFile.path);
+          });
+
+          test('returns normally', () async {
+            expect(
+              () => runWithOverrides(iosReleaser.assertArgsAreValid),
+              returnsNormally,
+            );
+          });
+        });
+
+        group('when a public key is provided but it does not exists', () {
+          setUp(() {
+            when(() => argResults['public-key-path'])
+                .thenReturn('non-existing-key.der');
+          });
+
+          test('logs and exits with usage err', () async {
+            await expectLater(
+              () => runWithOverrides(iosReleaser.assertArgsAreValid),
+              exitsWithCode(ExitCode.usage),
+            );
+
+            verify(() => logger.err('No file found at non-existing-key.der'))
+                .called(1);
+          });
+        });
       });
 
       group('buildReleaseArtifacts', () {
@@ -291,7 +328,7 @@ void main() {
             patchSigningPublicKeyFile = File(
               p.join(
                 Directory.systemTemp.createTempSync().path,
-                'patch-signing-public-key.pem',
+                'patch-signing-public-key.der',
               ),
             )..writeAsStringSync('public key');
             when(() => argResults['public-key-path'])
