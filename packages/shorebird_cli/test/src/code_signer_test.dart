@@ -12,6 +12,8 @@ void main() {
       final cryptoFixturesBasePath = p.join('test', 'fixtures', 'crypto');
       final privateKeyFile =
           File(p.join(cryptoFixturesBasePath, 'private.pem'));
+      final publicKeyFile =
+          File(p.join(cryptoFixturesBasePath, 'public.pem'));
 
       late CodeSigner codeSigner;
 
@@ -44,6 +46,24 @@ void main() {
             privateKeyPemFile: privateKeyFile,
           );
           expect(actualSignature, equals(expectedSignature));
+        });
+      });
+
+      group('privateKeyBytes', () {
+        test('can read a private key', () {
+          final privateKeyBytes = codeSigner.privateKeyBytes(
+            pemFile: privateKeyFile,
+          );
+          expect(privateKeyBytes, isNotEmpty);
+        });
+      });
+
+      group('publicKeyBytes', () {
+        test('can read a public key', () {
+          final publicKeyBytes = codeSigner.publicKeyBytes(
+            pemFile: publicKeyFile,
+          );
+          expect(publicKeyBytes, isNotEmpty);
         });
       });
     },
