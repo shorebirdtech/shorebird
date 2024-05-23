@@ -1,4 +1,5 @@
 import 'package:args/args.dart';
+import 'package:crypto/crypto.dart';
 import 'package:mason_logger/mason_logger.dart';
 import 'package:mocktail/mocktail.dart';
 import 'package:path/path.dart' as p;
@@ -51,9 +52,12 @@ void main() {
 
     late AndroidPatcher patcher;
 
-    void setUpProjectRootArtifacts({String? flavor}) {
-      for (final archMetadata in Arch.values) {
-        final artifactPath = p.join(
+    File patchArtifactForArch(
+      Arch arch, {
+      String? flavor,
+    }) {
+      return File(
+        p.join(
           projectRoot.path,
           'build',
           'app',
@@ -62,10 +66,17 @@ void main() {
           flavor != null ? '${flavor}Release' : 'release',
           'out',
           'lib',
-          archMetadata.androidBuildPath,
+          arch.androidBuildPath,
           'libapp.so',
-        );
-        File(artifactPath).createSync(recursive: true);
+        ),
+      );
+    }
+
+    void setUpProjectRootArtifacts({String? flavor}) {
+      for (final arch in Arch.values) {
+        patchArtifactForArch(arch, flavor: flavor)
+          ..createSync(recursive: true)
+          ..writeAsStringSync(arch.arch);
       }
     }
 
@@ -447,12 +458,8 @@ Looked in:
         });
 
         group('when a private key is provided', () {
-          const mockSignature = 'mock-signature';
-
-          late File privateKey;
-
           setUp(() {
-            privateKey = File(
+            final privateKey = File(
               p.join(
                 Directory.systemTemp.createTempSync().path,
                 'test-private.pem',
@@ -467,7 +474,10 @@ Looked in:
                 message: any(named: 'message'),
                 privateKeyPemFile: any(named: 'privateKeyPemFile'),
               ),
-            ).thenReturn(mockSignature);
+            ).thenAnswer((invocation) {
+              final message = invocation.namedArguments[#message] as String;
+              return '$message-signature';
+            });
           });
 
           test('returns patch artifact bundles with proper hash signatures',
@@ -480,11 +490,13 @@ Looked in:
               ),
             );
 
-            const expectedSignatures = [
-              mockSignature,
-              mockSignature,
-              mockSignature,
-            ];
+            // Hash the patch artifacts and append '-signature' to get the
+            // expected signatures, per the mock of [codeSigner.sign] above.
+            final expectedSignatures = Arch.values
+                .map(patchArtifactForArch)
+                .map((f) => sha256.convert(f.readAsBytesSync()).toString())
+                .map((hash) => '$hash-signature')
+                .toList();
 
             final signatures =
                 result.values.map((bundle) => bundle.hashSignature).toList();
