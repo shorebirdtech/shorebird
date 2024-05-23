@@ -16,6 +16,7 @@ abstract class ArchiveDiffer {
     'AssetManifest.bin',
     'AssetManifest.json',
     'NOTICES.Z',
+    'shorebird.yaml',
   };
 
   /// Whether there are asset differences between the archives that may cause
