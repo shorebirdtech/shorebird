@@ -61,6 +61,9 @@ extension CodeSign on ArgResults {
         ? base64Encode(publicKeyFile.readAsBytesSync())
         : null;
   }
+
+  /// Gets a File reference to private from the args if any.
+  File? get privateKeyFile => file('private-key-path');
 }
 
 /// Extension on [ArgResults] to provide file related extensions.
