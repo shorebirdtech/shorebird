@@ -1,5 +1,3 @@
-import 'dart:convert';
-
 import 'package:mason_logger/mason_logger.dart';
 import 'package:path/path.dart' as p;
 import 'package:platform/platform.dart';
@@ -12,7 +10,6 @@ import 'package:shorebird_cli/src/commands/release/releaser.dart';
 import 'package:shorebird_cli/src/doctor.dart';
 import 'package:shorebird_cli/src/executables/xcodebuild.dart';
 import 'package:shorebird_cli/src/extensions/arg_results.dart';
-import 'package:shorebird_cli/src/extensions/file.dart';
 import 'package:shorebird_cli/src/logger.dart';
 import 'package:shorebird_cli/src/platform.dart';
 import 'package:shorebird_cli/src/platform/ios.dart';
@@ -42,7 +39,7 @@ class IosReleaser extends Releaser {
 
   @override
   Future<void> assertArgsAreValid() async {
-    argResults.file('public-key-path')?.assertExists();
+    argResults.assertPublicKey();
     if (argResults.rest.contains('--obfuscate')) {
       // Obfuscated releases break patching, so we don't support them.
       // See https://github.com/shorebirdtech/shorebird/issues/1619
@@ -103,11 +100,6 @@ class IosReleaser extends Releaser {
     final flutterVersionString = await shorebirdFlutter.getVersionAndRevision();
     final buildProgress =
         logger.progress('Building ipa with Flutter $flutterVersionString');
-    final publicKeyFile = argResults.file('public-key-path');
-
-    final base64PublicKey = publicKeyFile != null
-        ? base64Encode(publicKeyFile.readAsBytesSync())
-        : null;
 
     try {
       await artifactBuilder.buildIpa(
@@ -116,7 +108,7 @@ class IosReleaser extends Releaser {
         flavor: flavor,
         target: target,
         args: argResults.forwardedArgs,
-        base64PublicKey: base64PublicKey,
+        base64PublicKey: argResults.encodedPublicKey,
       );
       buildProgress.complete();
     } on ArtifactBuildException catch (error) {
