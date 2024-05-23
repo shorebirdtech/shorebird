@@ -72,4 +72,9 @@ class _TestPatcher extends Patcher {
 
   @override
   ReleaseType get releaseType => throw UnimplementedError();
+
+  @override
+  Future<void> assertArgsAreValid() {
+    throw UnimplementedError();
+  }
 }

@@ -47,6 +47,9 @@ class AarPatcher extends Patcher {
   ReleaseType get releaseType => ReleaseType.aar;
 
   @override
+  Future<void> assertArgsAreValid() async {}
+
+  @override
   Future<void> assertPreconditions() async {
     try {
       await shorebirdValidator.validatePreconditions(
