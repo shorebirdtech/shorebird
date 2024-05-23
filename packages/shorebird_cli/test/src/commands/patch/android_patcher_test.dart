@@ -447,11 +447,6 @@ Looked in:
         });
 
         group('when a private key is provided', () {
-          const testPrivateKeyContent = '''
------BEGIN PRIVATE KEY-----
-key
------END PRIVATE KEY-----
-''';
           const mockSignature = 'mock-signature';
 
           late File privateKey;
@@ -462,7 +457,7 @@ key
                 Directory.systemTemp.createTempSync().path,
                 'test-private.pem',
               ),
-            )..writeAsStringSync(testPrivateKeyContent);
+            )..createSync();
 
             when(() => argResults['private-key-path'])
                 .thenReturn(privateKey.path);
