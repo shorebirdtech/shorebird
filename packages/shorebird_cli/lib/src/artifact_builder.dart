@@ -35,9 +35,8 @@ final artifactBuilderRef = create(ArtifactBuilder.new);
 ArtifactBuilder get artifactBuilder => read(artifactBuilderRef);
 
 extension on String {
-  /// Helper method to convert a String value that is supposed
-  /// to represent a public key, into a map of environment variables
-  /// containing itself.
+  /// Converts this base64-encoded public key into the Map<String, String>:
+  ///   {'SHOREBIRD_PUBLIC_KEY': this}
   ///
   /// SHOREBIRD_PUBLIC_KEY is the name expected by the Shorebird's Flutter tool
   ///

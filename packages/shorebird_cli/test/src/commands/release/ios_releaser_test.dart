@@ -266,7 +266,7 @@ void main() {
           });
         });
 
-        group('when a public key is provided but it does not exists', () {
+        group('when the provided public key is a nonexistent file', () {
           setUp(() {
             when(() => argResults['public-key-path'])
                 .thenReturn('non-existing-key.der');
@@ -347,7 +347,7 @@ void main() {
           });
 
           test(
-            'encodes the patch signing public key and forward it to buildAab',
+            'encodes the patch signing public key and forward it to buildIpa',
             () async {
               await runWithOverrides(
                 () => iosReleaser.buildReleaseArtifacts(),
