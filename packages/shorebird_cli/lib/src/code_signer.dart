@@ -40,14 +40,6 @@ class CodeSigner {
     final pemCodec = PemCodec(PemLabel.privateKey);
     return pemCodec.decode(privateKeyString);
   }
-
-  /// Decodes a PEM file containing a public key and returns its contents as
-  /// bytes.
-  List<int> publicKeyBytes({required File pemFile}) {
-    final privateKeyString = pemFile.readAsStringSync();
-    final pemCodec = PemCodec(PemLabel.publicKey);
-    return pemCodec.decode(privateKeyString);
-  }
 }
 
 extension RSAPrivateKeyFromInt on RSAPrivateKey {

@@ -462,13 +462,6 @@ void main() {
         test(
           'encodes the patch signing public key and forward it to buildAab',
           () async {
-            when(
-              () => codeSigner.publicKeyBytes(
-                pemFile: any(named: 'pemFile'),
-              ),
-            ).thenReturn(
-              patchSigningPublicKeyFile.readAsBytesSync(),
-            );
             await runWithOverrides(
               () => androidReleaser.buildReleaseArtifacts(),
             );
@@ -495,13 +488,6 @@ void main() {
           test(
             'encodes the patch signing public key and forward it to buildApk',
             () async {
-              when(
-                () => codeSigner.publicKeyBytes(
-                  pemFile: any(named: 'pemFile'),
-                ),
-              ).thenReturn(
-                patchSigningPublicKeyFile.readAsBytesSync(),
-              );
               await runWithOverrides(
                 () => androidReleaser.buildReleaseArtifacts(),
               );

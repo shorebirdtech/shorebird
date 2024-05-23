@@ -3,7 +3,6 @@ import 'dart:convert';
 import 'package:mason_logger/mason_logger.dart';
 import 'package:shorebird_cli/src/artifact_builder.dart';
 import 'package:shorebird_cli/src/code_push_client_wrapper.dart';
-import 'package:shorebird_cli/src/code_signer.dart';
 import 'package:shorebird_cli/src/commands/release/release.dart';
 import 'package:shorebird_cli/src/commands/release/releaser.dart';
 import 'package:shorebird_cli/src/doctor.dart';
@@ -99,7 +98,7 @@ Please comment and upvote ${link(uri: Uri.parse('https://github.com/shorebirdtec
 
     final publicKeyFile = argResults.file('public-key-path');
     final base64PublicKey = publicKeyFile != null
-        ? base64Encode(codeSigner.publicKeyBytes(pemFile: publicKeyFile))
+        ? base64Encode(publicKeyFile.readAsBytesSync())
         : null;
 
     try {

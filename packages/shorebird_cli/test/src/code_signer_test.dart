@@ -10,9 +10,9 @@ void main() {
     CodeSigner,
     () {
       final cryptoFixturesBasePath = p.join('test', 'fixtures', 'crypto');
-      final privateKeyFile =
-          File(p.join(cryptoFixturesBasePath, 'private.pem'));
-      final publicKeyFile = File(p.join(cryptoFixturesBasePath, 'public.pem'));
+      final privateKeyFile = File(
+        p.join(cryptoFixturesBasePath, 'private.pem'),
+      );
 
       late CodeSigner codeSigner;
 
@@ -23,6 +23,7 @@ void main() {
       group('sign', () {
         const message =
             '6b86b273ff34fce19d6b804eff5a3f5747ada4eaa22f1d49c01e52ddb7875b4b';
+
         test('signature matches openssl output', () async {
           final outputDir = Directory.systemTemp.createTempSync();
           final messageFile = File(p.join(outputDir.path, 'message'))
@@ -54,15 +55,6 @@ void main() {
             pemFile: privateKeyFile,
           );
           expect(privateKeyBytes, isNotEmpty);
-        });
-      });
-
-      group('publicKeyBytes', () {
-        test('can read a public key', () {
-          final publicKeyBytes = codeSigner.publicKeyBytes(
-            pemFile: publicKeyFile,
-          );
-          expect(publicKeyBytes, isNotEmpty);
         });
       });
     },
