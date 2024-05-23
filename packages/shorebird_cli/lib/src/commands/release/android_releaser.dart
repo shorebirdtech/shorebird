@@ -96,15 +96,11 @@ Please comment and upvote ${link(uri: Uri.parse('https://github.com/shorebirdtec
 
     final File aab;
 
-    final publicKeyPath = argResults['public-key-path'] as String?;
+    final publicKeyFile = argResults.file('public-key-path');
+    final base64PublicKey = publicKeyFile != null
+        ? base64Encode(publicKeyFile.readAsBytesSync())
+        : null;
 
-    String? base64PublicKey;
-    if (publicKeyPath != null) {
-      final publicKeyFile = File(publicKeyPath);
-      final rawPublicKey = publicKeyFile.readAsBytesSync();
-
-      base64PublicKey = base64Encode(rawPublicKey);
-    }
     try {
       aab = await artifactBuilder.buildAppBundle(
         flavor: flavor,

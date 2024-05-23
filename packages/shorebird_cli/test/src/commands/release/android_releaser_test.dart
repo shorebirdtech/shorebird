@@ -8,6 +8,7 @@ import 'package:platform/platform.dart';
 import 'package:scoped_deps/scoped_deps.dart';
 import 'package:shorebird_cli/src/artifact_builder.dart';
 import 'package:shorebird_cli/src/code_push_client_wrapper.dart';
+import 'package:shorebird_cli/src/code_signer.dart';
 import 'package:shorebird_cli/src/commands/release/android_releaser.dart';
 import 'package:shorebird_cli/src/doctor.dart';
 import 'package:shorebird_cli/src/engine_config.dart';
@@ -35,6 +36,7 @@ void main() {
     late ArgResults argResults;
     late ArtifactBuilder artifactBuilder;
     late CodePushClientWrapper codePushClientWrapper;
+    late CodeSigner codeSigner;
     late Doctor doctor;
     late Platform platform;
     late Directory projectRoot;
@@ -55,6 +57,7 @@ void main() {
         values: {
           artifactBuilderRef.overrideWith(() => artifactBuilder),
           codePushClientWrapperRef.overrideWith(() => codePushClientWrapper),
+          codeSignerRef.overrideWith(() => codeSigner),
           doctorRef.overrideWith(() => doctor),
           engineConfigRef.overrideWith(() => const EngineConfig.empty()),
           loggerRef.overrideWith(() => logger),
@@ -72,6 +75,7 @@ void main() {
 
     setUpAll(() {
       registerFallbackValue(Directory(''));
+      registerFallbackValue(File(''));
       registerFallbackValue(ReleasePlatform.android);
       setExitFunctionForTests();
     });
@@ -82,6 +86,7 @@ void main() {
       argResults = MockArgResults();
       artifactBuilder = MockArtifactBuilder();
       codePushClientWrapper = MockCodePushClientWrapper();
+      codeSigner = MockCodeSigner();
       doctor = MockDoctor();
       operatingSystemInterface = MockOperatingSystemInterface();
       platform = MockPlatform();

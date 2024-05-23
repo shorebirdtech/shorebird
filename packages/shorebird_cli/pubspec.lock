@@ -26,10 +26,10 @@ packages:
     dependency: "direct main"
     description:
       name: archive
-      sha256: ecf4273855368121b1caed0d10d4513c7241dfc813f7d3c8933b36622ae9b265
+      sha256: "6bd38d335f0954f5fad9c79e614604fbf03a0e5b975923dd001b6ea965ef5b4b"
       url: "https://pub.dev"
     source: hosted
-    version: "3.5.1"
+    version: "3.6.0"
   args:
     dependency: "direct main"
     description:
@@ -485,6 +485,14 @@ packages:
       url: "https://pub.dev"
     source: hosted
     version: "1.9.0"
+  pem:
+    dependency: "direct main"
+    description:
+      name: pem
+      sha256: "3dfb24524f805ad694ba3cdbb6387ab31ab661fdb8ea873052ed88487fcfef86"
+      url: "https://pub.dev"
+    source: hosted
+    version: "2.0.5"
   petitparser:
     dependency: transitive
     description:
@@ -502,7 +510,7 @@ packages:
     source: hosted
     version: "3.1.4"
   pointycastle:
-    dependency: transitive
+    dependency: "direct main"
     description:
       name: pointycastle
       sha256: "4be0097fcf3fd3e8449e53730c631200ebc7b88016acecab2b0da2f0149222fe"
@@ -561,10 +569,10 @@ packages:
     dependency: "direct main"
     description:
       name: scoped_deps
-      sha256: "7416a9026f3b457dda634a8e83c8e47d7ece33bef360ffba114c2d89255166ae"
+      sha256: bc54cece4fed785157dc53b7554d31107f574897f4b2d1196db905a38c084e31
       url: "https://pub.dev"
     source: hosted
-    version: "0.1.0+1"
+    version: "0.1.0+2"
   shelf:
     dependency: transitive
     description:
@@ -695,10 +703,10 @@ packages:
     dependency: transitive
     description:
       name: string_validator
-      sha256: "54d4f42cd6878ae72793a58a529d9a18ebfdfbfebd9793bbe55c9b28935e8543"
+      sha256: a278d038104aa2df15d0e09c47cb39a49f907260732067d0034dc2f2e4e2ac94
       url: "https://pub.dev"
     source: hosted
-    version: "1.0.2"
+    version: "1.1.0"
   term_glyph:
     dependency: transitive
     description:
@@ -799,10 +807,10 @@ packages:
     dependency: transitive
     description:
       name: web_socket
-      sha256: bfe704c186c6e32a46f6607f94d079cd0b747b9a489fceeecc93cd3adb98edd5
+      sha256: "217f49b5213796cb508d6a942a5dc604ce1cb6a0a6b3d8cb3f0c314f0ecea712"
       url: "https://pub.dev"
     source: hosted
-    version: "0.1.3"
+    version: "0.1.4"
   web_socket_channel:
     dependency: transitive
     description:

@@ -6,8 +6,11 @@ import 'package:shorebird_cli/src/archive_analysis/archive_differ.dart';
 import 'package:shorebird_cli/src/artifact_builder.dart';
 import 'package:shorebird_cli/src/artifact_manager.dart';
 import 'package:shorebird_cli/src/code_push_client_wrapper.dart';
+import 'package:shorebird_cli/src/code_signer.dart';
 import 'package:shorebird_cli/src/commands/patch/patcher.dart';
 import 'package:shorebird_cli/src/doctor.dart';
+import 'package:shorebird_cli/src/extensions/arg_results.dart';
+import 'package:shorebird_cli/src/extensions/file.dart';
 import 'package:shorebird_cli/src/logger.dart';
 import 'package:shorebird_cli/src/patch_diff_checker.dart';
 import 'package:shorebird_cli/src/platform.dart';
@@ -30,6 +33,11 @@ class AndroidPatcher extends Patcher {
     required super.flavor,
     required super.target,
   });
+
+  @override
+  Future<void> assertArgsAreValid() async {
+    argResults.file('private-key-path')?.assertExists();
+  }
 
   @override
   ReleaseType get releaseType => ReleaseType.android;
@@ -148,6 +156,15 @@ Looked in:
       logger.detail('Creating artifact for $patchArtifactPath');
       final patchArtifact = File(patchArtifactPath);
       final hash = sha256.convert(await patchArtifact.readAsBytes()).toString();
+
+      final privateKeyFile = argResults.file('private-key-path');
+      final hashSignature = privateKeyFile != null
+          ? codeSigner.sign(
+              message: hash,
+              privateKeyPemFile: privateKeyFile,
+            )
+          : null;
+
       try {
         final diffPath = await artifactManager.createDiff(
           releaseArtifactPath: releaseArtifactPath.value,
@@ -158,6 +175,7 @@ Looked in:
           path: diffPath,
           hash: hash,
           size: await File(diffPath).length(),
+          hashSignature: hashSignature,
         );
       } catch (error) {
         createDiffProgress.fail('$error');

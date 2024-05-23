@@ -16,6 +16,7 @@ import 'package:shorebird_cli/src/artifact_manager.dart';
 import 'package:shorebird_cli/src/auth/auth.dart';
 import 'package:shorebird_cli/src/cache.dart' show Cache;
 import 'package:shorebird_cli/src/code_push_client_wrapper.dart';
+import 'package:shorebird_cli/src/code_signer.dart';
 import 'package:shorebird_cli/src/commands/patch/patch.dart';
 import 'package:shorebird_cli/src/commands/release/releaser.dart';
 import 'package:shorebird_cli/src/config/config.dart';
@@ -71,6 +72,8 @@ class MockCache extends Mock implements Cache {}
 class MockCodePushClient extends Mock implements CodePushClient {}
 
 class MockCodePushClientWrapper extends Mock implements CodePushClientWrapper {}
+
+class MockCodeSigner extends Mock implements CodeSigner {}
 
 class MockDevicectl extends Mock implements Devicectl {}
 
