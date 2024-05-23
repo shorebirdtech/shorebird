@@ -48,15 +48,6 @@ void main() {
           expect(actualSignature, equals(expectedSignature));
         });
       });
-
-      group('privateKeyBytes', () {
-        test('can read a private key', () {
-          final privateKeyBytes = codeSigner.privateKeyBytes(
-            pemFile: privateKeyFile,
-          );
-          expect(privateKeyBytes, isNotEmpty);
-        });
-      });
     },
     onPlatform: {
       'windows': const Skip('Does not have openssl installed by default'),
