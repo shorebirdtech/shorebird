@@ -1,3 +1,5 @@
+import 'dart:convert';
+
 import 'package:args/args.dart';
 import 'package:mason_logger/mason_logger.dart';
 import 'package:mocktail/mocktail.dart';
@@ -243,6 +245,43 @@ void main() {
             );
           });
         });
+
+        group('when a public key is provided and it exists', () {
+          setUp(() {
+            final publicKeyFile = File(
+              p.join(
+                Directory.systemTemp.createTempSync().path,
+                'public-key.der',
+              ),
+            )..writeAsStringSync('public key');
+            when(() => argResults['public-key-path'])
+                .thenReturn(publicKeyFile.path);
+          });
+
+          test('returns normally', () async {
+            expect(
+              () => runWithOverrides(iosReleaser.assertArgsAreValid),
+              returnsNormally,
+            );
+          });
+        });
+
+        group('when the provided public key is a nonexistent file', () {
+          setUp(() {
+            when(() => argResults['public-key-path'])
+                .thenReturn('non-existing-key.der');
+          });
+
+          test('logs and exits with usage err', () async {
+            await expectLater(
+              () => runWithOverrides(iosReleaser.assertArgsAreValid),
+              exitsWithCode(ExitCode.usage),
+            );
+
+            verify(() => logger.err('No file found at non-existing-key.der'))
+                .called(1);
+          });
+        });
       });
 
       group('buildReleaseArtifacts', () {
@@ -280,6 +319,54 @@ void main() {
           when(
             () => shorebirdFlutter.getVersionAndRevision(),
           ).thenAnswer((_) async => flutterVersionAndRevision);
+        });
+
+        group('when a patch signing key path is provided', () {
+          late File patchSigningPublicKeyFile;
+
+          setUp(() {
+            patchSigningPublicKeyFile = File(
+              p.join(
+                Directory.systemTemp.createTempSync().path,
+                'patch-signing-public-key.der',
+              ),
+            )..writeAsStringSync('public key');
+            when(() => argResults['public-key-path'])
+                .thenReturn(patchSigningPublicKeyFile.path);
+
+            when(
+              () => artifactBuilder.buildIpa(
+                codesign: any(named: 'codesign'),
+                exportOptionsPlist: any(named: 'exportOptionsPlist'),
+                flavor: any(named: 'flavor'),
+                target: any(named: 'target'),
+                args: any(named: 'args'),
+                base64PublicKey: any(named: 'base64PublicKey'),
+              ),
+            ).thenAnswer((_) async => File(''));
+          });
+
+          test(
+            'encodes the patch signing public key and forward it to buildIpa',
+            () async {
+              await runWithOverrides(
+                () => iosReleaser.buildReleaseArtifacts(),
+              );
+
+              verify(
+                () => artifactBuilder.buildIpa(
+                  codesign: any(named: 'codesign'),
+                  exportOptionsPlist: any(named: 'exportOptionsPlist'),
+                  flavor: any(named: 'flavor'),
+                  target: any(named: 'target'),
+                  args: any(named: 'args'),
+                  base64PublicKey: base64Encode(
+                    patchSigningPublicKeyFile.readAsBytesSync(),
+                  ),
+                ),
+              ).called(1);
+            },
+          );
         });
 
         group('when not codesigning', () {

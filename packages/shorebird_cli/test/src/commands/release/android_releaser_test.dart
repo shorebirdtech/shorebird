@@ -225,7 +225,7 @@ void main() {
           final publicKeyFile = File(
             p.join(
               Directory.systemTemp.createTempSync().path,
-              'public-key.pem',
+              'public-key.der',
             ),
           )..writeAsStringSync('public key');
           when(() => argResults['public-key-path'])
@@ -244,7 +244,7 @@ void main() {
         setUp(() {
           when(() => argResults['artifact']).thenReturn('apk');
           when(() => argResults['public-key-path'])
-              .thenReturn('non-existing-key.pem');
+              .thenReturn('non-existing-key.der');
         });
 
         test('logs and exits with usage err', () async {
@@ -253,7 +253,7 @@ void main() {
             exitsWithCode(ExitCode.usage),
           );
 
-          verify(() => logger.err('No file found at non-existing-key.pem'))
+          verify(() => logger.err('No file found at non-existing-key.der'))
               .called(1);
         });
       });
@@ -432,7 +432,7 @@ void main() {
           patchSigningPublicKeyFile = File(
             p.join(
               Directory.systemTemp.createTempSync().path,
-              'patch-signing-public-key.pem',
+              'patch-signing-public-key.der',
             ),
           )..writeAsStringSync('public key');
           when(() => argResults['public-key-path'])

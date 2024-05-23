@@ -1,5 +1,3 @@
-import 'dart:convert';
-
 import 'package:mason_logger/mason_logger.dart';
 import 'package:shorebird_cli/src/artifact_builder.dart';
 import 'package:shorebird_cli/src/code_push_client_wrapper.dart';
@@ -7,7 +5,6 @@ import 'package:shorebird_cli/src/commands/release/release.dart';
 import 'package:shorebird_cli/src/commands/release/releaser.dart';
 import 'package:shorebird_cli/src/doctor.dart';
 import 'package:shorebird_cli/src/extensions/arg_results.dart';
-import 'package:shorebird_cli/src/extensions/file.dart';
 import 'package:shorebird_cli/src/logger.dart';
 import 'package:shorebird_cli/src/platform.dart';
 import 'package:shorebird_cli/src/platform/platform.dart';
@@ -63,7 +60,7 @@ class AndroidReleaser extends Releaser {
 
   @override
   Future<void> assertArgsAreValid() async {
-    argResults.file('public-key-path')?.assertExists();
+    argResults.assertAbsentOrValidPublicKey();
     if (generateApk && splitApk) {
       logger
         ..err(
@@ -96,10 +93,7 @@ Please comment and upvote ${link(uri: Uri.parse('https://github.com/shorebirdtec
 
     final File aab;
 
-    final publicKeyFile = argResults.file('public-key-path');
-    final base64PublicKey = publicKeyFile != null
-        ? base64Encode(publicKeyFile.readAsBytesSync())
-        : null;
+    final base64PublicKey = argResults.encodedPublicKey;
 
     try {
       aab = await artifactBuilder.buildAppBundle(
