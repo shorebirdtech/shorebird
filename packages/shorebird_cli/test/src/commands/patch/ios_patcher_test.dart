@@ -138,6 +138,12 @@ void main() {
         );
       });
 
+      group('assertArgsAreValid', () {
+        test('has no specific validations', () {
+          expect(patcher.assertArgsAreValid, returnsNormally);
+        });
+      });
+
       group('archiveDiffer', () {
         test('is an IosArchiveDiffer', () {
           expect(patcher.archiveDiffer, isA<IosArchiveDiffer>());

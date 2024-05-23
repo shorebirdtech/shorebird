@@ -115,6 +115,12 @@ void main() {
       patcher = AarPatcher(argResults: argResults, flavor: null, target: null);
     });
 
+    group('assertArgsAreValid', () {
+      test('has no specific validations', () {
+        expect(patcher.assertArgsAreValid, returnsNormally);
+      });
+    });
+
     group('buildNumber', () {
       setUp(() {
         when(() => argResults['build-number']).thenReturn(buildNumber);
