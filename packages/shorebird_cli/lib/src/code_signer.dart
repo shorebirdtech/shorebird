@@ -22,7 +22,10 @@ class CodeSigner {
   /// This is the equivalent of:
   ///   $ openssl dgst -sha256 -sign privateKey.pem -out signature message
   String sign({required String message, required File privateKeyPemFile}) {
-    final privateKeyData = _privateKeyBytes(pemFile: privateKeyPemFile);
+    final privateKeyData = _pemBytes(
+      pemFile: privateKeyPemFile,
+      type: PemLabel.privateKey,
+    );
     final privateKey = RSAPrivateKeyFromInt.from(privateKeyData);
 
     final signer = Signer('SHA-256/RSA')
@@ -33,12 +36,27 @@ class CodeSigner {
     return base64.encode(signature.bytes);
   }
 
-  /// Decodes a PEM file containing a private key and returns its contents as
-  /// bytes.
-  List<int> _privateKeyBytes({required File pemFile}) {
+  /// Reads a PEM file containing a key of type [type] and returns its contents
+  /// as bytes.
+  List<int> _pemBytes({required File pemFile, required PemLabel type}) {
     final privateKeyString = pemFile.readAsStringSync();
-    final pemCodec = PemCodec(PemLabel.privateKey);
+    final pemCodec = PemCodec(type);
     return pemCodec.decode(privateKeyString);
+  }
+
+  /// Extracts the base64 encoded DER from a public key PEM file. The DER is
+  /// simply the modulus and exponent of the public key, without information
+  /// about the algorithm or or ASN1 object type identifier.
+  String base64DerFromPemFile(File publicKeyPemFile) {
+    final publicKey = RSAPublicKeyFromBytes.rsaPublicKeyFromBytes(
+      _pemBytes(pemFile: publicKeyPemFile, type: PemLabel.publicKey),
+    );
+
+    final publicKeySeq = ASN1Sequence()
+      ..add(ASN1Integer(publicKey.modulus))
+      ..add(ASN1Integer(publicKey.exponent))
+      ..encode();
+    return base64.encode(publicKeySeq.encodedBytes!);
   }
 }
 
@@ -65,5 +83,28 @@ extension RSAPrivateKeyFromInt on RSAPrivateKey {
       p.integer,
       q.integer,
     );
+  }
+}
+
+extension RSAPublicKeyFromBytes on RSAPublicKey {
+  /// Convert a DER encoded public key to a pointycastle [RSAPublicKey].
+  /// From https://github.com/Ephenodrom/Dart-Basic-Utils/blob/45ed0a3087b2051004f17b39eb5289874b9c0390/lib/src/CryptoUtils.dart#L525-L547
+  static RSAPublicKey rsaPublicKeyFromBytes(List<int> bytes) {
+    final asn1Parser = ASN1Parser(Uint8List.fromList(bytes));
+    final topLevelSeq = asn1Parser.nextObject() as ASN1Sequence;
+    final ASN1Sequence publicKeySeq;
+    if (topLevelSeq.elements![1].runtimeType == ASN1BitString) {
+      final publicKeyBitString = topLevelSeq.elements![1] as ASN1BitString;
+      final publicKeyAsn =
+          ASN1Parser(publicKeyBitString.stringValues as Uint8List?);
+      publicKeySeq = publicKeyAsn.nextObject() as ASN1Sequence;
+    } else {
+      publicKeySeq = topLevelSeq;
+    }
+    final modulus = publicKeySeq.elements![0] as ASN1Integer;
+    final exponent = publicKeySeq.elements![1] as ASN1Integer;
+
+    final rsaPublicKey = RSAPublicKey(modulus.integer!, exponent.integer!);
+    return rsaPublicKey;
   }
 }
