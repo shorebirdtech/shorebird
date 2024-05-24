@@ -443,7 +443,7 @@ void main() {
                 () => argResults.wasParsed(CommonArguments.publicKeyArg.name),
               ).thenReturn(true);
 
-              final key = createTempFile('public.der')
+              final key = createTempFile('public.pem')
                 ..writeAsStringSync('public_key');
 
               when(() => argResults[CommonArguments.publicKeyArg.name])
