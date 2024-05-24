@@ -219,7 +219,7 @@ class IosPatcher extends Patcher {
     }
 
     final patchFileSize = patchFile.statSync().size;
-    final privateKeyFile = argResults.file(CommonArguments.privateKeyArgName);
+    final privateKeyFile = argResults.file(CommonArguments.privateKeyArg.name);
     final hash = sha256.convert(patchBuildFile.readAsBytesSync()).toString();
     final hashSignature = privateKeyFile != null
         ? codeSigner.sign(

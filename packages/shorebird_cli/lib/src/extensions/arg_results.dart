@@ -51,16 +51,16 @@ extension CodeSign on ArgResults {
   /// Asserts that either there is no public key argument
   /// or that the path received exists.
   void assertAbsentOrValidPublicKey() {
-    file(CommonArguments.publicKeyArgName)?.assertExists();
+    file(CommonArguments.publicKeyArg.name)?.assertExists();
   }
 
   void assertAbsentOrValidPrivateKey() {
-    file(CommonArguments.privateKeyArgName)?.assertExists();
+    file(CommonArguments.privateKeyArg.name)?.assertExists();
   }
 
   void assertAbsentOrValidKeyPair() {
-    final public = wasParsed(CommonArguments.publicKeyArgName);
-    final private = wasParsed(CommonArguments.privateKeyArgName);
+    final public = wasParsed(CommonArguments.publicKeyArg.name);
+    final private = wasParsed(CommonArguments.privateKeyArg.name);
 
     if (public == private) {
       assertAbsentOrValidPublicKey();
@@ -73,7 +73,7 @@ extension CodeSign on ArgResults {
 
   /// Read the public key file and encode it to base64 if any.
   String? get encodedPublicKey {
-    final publicKeyFile = file(CommonArguments.publicKeyArgName);
+    final publicKeyFile = file(CommonArguments.publicKeyArg.name);
 
     return publicKeyFile != null
         ? codeSigner.base64PublicKey(publicKeyFile)

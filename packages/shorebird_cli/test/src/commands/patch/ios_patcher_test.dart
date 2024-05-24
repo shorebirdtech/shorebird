@@ -136,13 +136,13 @@ void main() {
         when(() => argResults.rest).thenReturn([]);
         when(
           () => argResults.wasParsed(
-            CommonArguments.privateKeyArgName,
+            CommonArguments.privateKeyArg.name,
           ),
         ).thenReturn(false);
 
         when(
           () => argResults.wasParsed(
-            CommonArguments.publicKeyArgName,
+            CommonArguments.publicKeyArg.name,
           ),
         ).thenReturn(false);
 
@@ -178,13 +178,14 @@ void main() {
           () {
             test('is valid', () async {
               when(
-                () => argResults.wasParsed(CommonArguments.privateKeyArgName),
+                () => argResults.wasParsed(CommonArguments.privateKeyArg.name),
               ).thenReturn(true);
-              when(() => argResults.wasParsed(CommonArguments.publicKeyArgName))
-                  .thenReturn(true);
-              when(() => argResults[CommonArguments.privateKeyArgName])
+              when(
+                () => argResults.wasParsed(CommonArguments.publicKeyArg.name),
+              ).thenReturn(true);
+              when(() => argResults[CommonArguments.privateKeyArg.name])
                   .thenReturn(createFakeKey('private.pem').path);
-              when(() => argResults[CommonArguments.publicKeyArgName])
+              when(() => argResults[CommonArguments.publicKeyArg.name])
                   .thenReturn(createFakeKey('public.pem').path);
 
               expect(
@@ -200,11 +201,12 @@ void main() {
           () {
             test('fails and logs the err', () async {
               when(
-                () => argResults.wasParsed(CommonArguments.privateKeyArgName),
+                () => argResults.wasParsed(CommonArguments.privateKeyArg.name),
               ).thenReturn(true);
-              when(() => argResults.wasParsed(CommonArguments.publicKeyArgName))
-                  .thenReturn(false);
-              when(() => argResults[CommonArguments.privateKeyArgName])
+              when(
+                () => argResults.wasParsed(CommonArguments.publicKeyArg.name),
+              ).thenReturn(false);
+              when(() => argResults[CommonArguments.privateKeyArg.name])
                   .thenReturn(createFakeKey('private.pem').path);
 
               await expectLater(
@@ -225,11 +227,12 @@ void main() {
           () {
             test('fails and logs the err', () async {
               when(
-                () => argResults.wasParsed(CommonArguments.privateKeyArgName),
+                () => argResults.wasParsed(CommonArguments.privateKeyArg.name),
               ).thenReturn(false);
-              when(() => argResults.wasParsed(CommonArguments.publicKeyArgName))
-                  .thenReturn(true);
-              when(() => argResults[CommonArguments.publicKeyArgName])
+              when(
+                () => argResults.wasParsed(CommonArguments.publicKeyArg.name),
+              ).thenReturn(true);
+              when(() => argResults[CommonArguments.publicKeyArg.name])
                   .thenReturn(createFakeKey('public.pem').path);
 
               await expectLater(
@@ -541,15 +544,16 @@ void main() {
             });
 
             test('calls the buildIpa passing the key', () async {
-              when(() => argResults.wasParsed(CommonArguments.publicKeyArgName))
-                  .thenReturn(true);
+              when(
+                () => argResults.wasParsed(CommonArguments.publicKeyArg.name),
+              ).thenReturn(true);
 
               final key = createFakeKey('public.der')
                 ..writeAsStringSync('public_key');
 
-              when(() => argResults[CommonArguments.publicKeyArgName])
+              when(() => argResults[CommonArguments.publicKeyArg.name])
                   .thenReturn(key.path);
-              when(() => argResults[CommonArguments.publicKeyArgName])
+              when(() => argResults[CommonArguments.publicKeyArg.name])
                   .thenReturn(key.path);
               await runWithOverrides(
                 patcher.buildPatchArtifact,
@@ -1082,7 +1086,7 @@ void main() {
                     ),
                   )..createSync();
 
-                  when(() => argResults[CommonArguments.privateKeyArgName])
+                  when(() => argResults[CommonArguments.privateKeyArg.name])
                       .thenReturn(privateKey.path);
 
                   when(

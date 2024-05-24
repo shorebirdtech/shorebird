@@ -158,7 +158,9 @@ Looked in:
       final patchArtifact = File(patchArtifactPath);
       final hash = sha256.convert(await patchArtifact.readAsBytes()).toString();
 
-      final privateKeyFile = argResults.file(CommonArguments.privateKeyArgName);
+      final privateKeyFile = argResults.file(
+        CommonArguments.privateKeyArg.name,
+      );
       final hashSignature = privateKeyFile != null
           ? codeSigner.sign(
               message: hash,
