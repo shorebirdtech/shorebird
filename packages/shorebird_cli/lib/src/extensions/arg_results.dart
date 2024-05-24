@@ -1,10 +1,12 @@
-import 'dart:io';
-
 import 'package:args/args.dart';
 import 'package:collection/collection.dart';
+import 'package:mason_logger/mason_logger.dart';
 import 'package:shorebird_cli/src/code_signer.dart';
 import 'package:shorebird_cli/src/common_arguments.dart';
 import 'package:shorebird_cli/src/extensions/file.dart';
+import 'package:shorebird_cli/src/logger.dart';
+
+import 'package:shorebird_cli/src/third_party/flutter_tools/lib/src/base/io.dart';
 
 extension OptionFinder on ArgResults {
   /// // Detects flags even when passed to underlying commands via a `--`
@@ -49,12 +51,33 @@ extension CodeSign on ArgResults {
   /// Asserts that either there is no public key argument
   /// or that the path received exists.
   void assertAbsentOrValidPublicKey() {
-    file(CommonArguments.publicKeyArgName)?.assertExists();
+    file(CommonArguments.publicKeyArg.name)?.assertExists();
+  }
+
+  /// Asserts that either there is no private key argument
+  /// or that the path received exists.
+  void assertAbsentOrValidPrivateKey() {
+    file(CommonArguments.privateKeyArg.name)?.assertExists();
+  }
+
+  /// Asserts that both public and private keys are either absent or
+  /// when provided, that both of them are pointing to existing files.
+  void assertAbsentOrValidKeyPair() {
+    final publicKeyWasParsed = wasParsed(CommonArguments.publicKeyArg.name);
+    final privateKeyWasParsed = wasParsed(CommonArguments.privateKeyArg.name);
+
+    if (publicKeyWasParsed == privateKeyWasParsed) {
+      assertAbsentOrValidPublicKey();
+      assertAbsentOrValidPrivateKey();
+    } else {
+      logger.err('Both public and private keys must be provided or absent.');
+      exit(ExitCode.usage.code);
+    }
   }
 
   /// Read the public key file and encode it to base64 if any.
   String? get encodedPublicKey {
-    final publicKeyFile = file(CommonArguments.publicKeyArgName);
+    final publicKeyFile = file(CommonArguments.publicKeyArg.name);
 
     return publicKeyFile != null
         ? codeSigner.base64PublicKey(publicKeyFile)

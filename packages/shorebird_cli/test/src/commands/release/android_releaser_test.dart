@@ -227,7 +227,7 @@ void main() {
               'public-key.pem',
             ),
           )..writeAsStringSync('public key');
-          when(() => argResults[CommonArguments.publicKeyArgName])
+          when(() => argResults[CommonArguments.publicKeyArg.name])
               .thenReturn(publicKeyFile.path);
         });
 
@@ -242,7 +242,7 @@ void main() {
       group('when a public key is provided but does not exist', () {
         setUp(() {
           when(() => argResults['artifact']).thenReturn('apk');
-          when(() => argResults[CommonArguments.publicKeyArgName])
+          when(() => argResults[CommonArguments.publicKeyArg.name])
               .thenReturn('non-existing-key.pem');
         });
 
@@ -434,7 +434,7 @@ void main() {
               'patch-signing-public-key.pem',
             ),
           )..createSync(recursive: true);
-          when(() => argResults[CommonArguments.publicKeyArgName])
+          when(() => argResults[CommonArguments.publicKeyArg.name])
               .thenReturn(patchSigningPublicKeyFile.path);
 
           when(

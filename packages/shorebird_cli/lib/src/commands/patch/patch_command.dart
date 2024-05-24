@@ -95,11 +95,14 @@ of the iOS app that is using this module.''',
         help: 'Validate but do not upload the patch.',
       )
       ..addOption(
-        CommonArguments.privateKeyArgName,
+        CommonArguments.privateKeyArg.name,
         hide: true,
-        help: '''
-The path for a private key file that will be used to sign the patch artifact.
-''',
+        help: CommonArguments.privateKeyArg.description,
+      )
+      ..addOption(
+        CommonArguments.publicKeyArg.name,
+        hide: true,
+        help: CommonArguments.publicKeyArg.description,
       );
   }
 

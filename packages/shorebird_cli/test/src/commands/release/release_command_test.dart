@@ -501,7 +501,7 @@ $exception''',
               keyName,
             ),
           )..writeAsStringSync('KEY');
-          when(() => argResults[CommonArguments.publicKeyArgName])
+          when(() => argResults[CommonArguments.publicKeyArg.name])
               .thenReturn(file.path);
         });
 

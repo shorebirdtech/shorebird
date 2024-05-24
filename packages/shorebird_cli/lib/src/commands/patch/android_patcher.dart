@@ -11,7 +11,6 @@ import 'package:shorebird_cli/src/commands/patch/patcher.dart';
 import 'package:shorebird_cli/src/common_arguments.dart';
 import 'package:shorebird_cli/src/doctor.dart';
 import 'package:shorebird_cli/src/extensions/arg_results.dart';
-import 'package:shorebird_cli/src/extensions/file.dart';
 import 'package:shorebird_cli/src/logger.dart';
 import 'package:shorebird_cli/src/patch_diff_checker.dart';
 import 'package:shorebird_cli/src/platform.dart';
@@ -34,11 +33,6 @@ class AndroidPatcher extends Patcher {
     required super.flavor,
     required super.target,
   });
-
-  @override
-  Future<void> assertArgsAreValid() async {
-    argResults.file(CommonArguments.privateKeyArgName)?.assertExists();
-  }
 
   @override
   ReleaseType get releaseType => ReleaseType.android;
@@ -74,6 +68,7 @@ class AndroidPatcher extends Patcher {
         flavor: flavor,
         target: target,
         args: argResults.forwardedArgs,
+        base64PublicKey: argResults.encodedPublicKey,
       );
       buildProgress.complete();
     } on ArtifactBuildException catch (error) {
@@ -158,7 +153,9 @@ Looked in:
       final patchArtifact = File(patchArtifactPath);
       final hash = sha256.convert(await patchArtifact.readAsBytes()).toString();
 
-      final privateKeyFile = argResults.file(CommonArguments.privateKeyArgName);
+      final privateKeyFile = argResults.file(
+        CommonArguments.privateKeyArg.name,
+      );
       final hashSignature = privateKeyFile != null
           ? codeSigner.sign(
               message: hash,
