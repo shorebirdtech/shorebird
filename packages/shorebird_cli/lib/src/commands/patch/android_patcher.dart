@@ -6,12 +6,12 @@ import 'package:shorebird_cli/src/archive_analysis/archive_differ.dart';
 import 'package:shorebird_cli/src/artifact_builder.dart';
 import 'package:shorebird_cli/src/artifact_manager.dart';
 import 'package:shorebird_cli/src/code_push_client_wrapper.dart';
+import 'package:shorebird_cli/src/code_signer.dart';
 import 'package:shorebird_cli/src/commands/patch/patcher.dart';
 import 'package:shorebird_cli/src/common_arguments.dart';
 import 'package:shorebird_cli/src/doctor.dart';
 import 'package:shorebird_cli/src/extensions/arg_results.dart';
 import 'package:shorebird_cli/src/extensions/file.dart';
-import 'package:shorebird_cli/src/extensions/string.dart';
 import 'package:shorebird_cli/src/logger.dart';
 import 'package:shorebird_cli/src/patch_diff_checker.dart';
 import 'package:shorebird_cli/src/platform.dart';
@@ -159,7 +159,12 @@ Looked in:
       final hash = sha256.convert(await patchArtifact.readAsBytes()).toString();
 
       final privateKeyFile = argResults.file(CommonArguments.privateKeyArgName);
-      final hashSignature = (hash, privateKeyFile).signature;
+      final hashSignature = privateKeyFile != null
+          ? codeSigner.sign(
+              message: hash,
+              privateKeyPemFile: privateKeyFile,
+            )
+          : null;
 
       try {
         final diffPath = await artifactManager.createDiff(
