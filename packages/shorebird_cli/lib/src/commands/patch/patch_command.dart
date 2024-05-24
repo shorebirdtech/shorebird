@@ -8,6 +8,7 @@ import 'package:shorebird_cli/src/cache.dart';
 import 'package:shorebird_cli/src/code_push_client_wrapper.dart';
 import 'package:shorebird_cli/src/command.dart';
 import 'package:shorebird_cli/src/commands/patch/patch.dart';
+import 'package:shorebird_cli/src/common_arguments.dart';
 import 'package:shorebird_cli/src/config/config.dart';
 import 'package:shorebird_cli/src/deployment_track.dart';
 import 'package:shorebird_cli/src/extensions/arg_results.dart';
@@ -94,7 +95,7 @@ of the iOS app that is using this module.''',
         help: 'Validate but do not upload the patch.',
       )
       ..addOption(
-        'private-key-path',
+        CommonArguments.privateKeyArgName,
         hide: true,
         help: '''
 The path for a private key file that will be used to sign the patch artifact.

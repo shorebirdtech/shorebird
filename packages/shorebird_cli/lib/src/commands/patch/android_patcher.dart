@@ -8,6 +8,7 @@ import 'package:shorebird_cli/src/artifact_manager.dart';
 import 'package:shorebird_cli/src/code_push_client_wrapper.dart';
 import 'package:shorebird_cli/src/code_signer.dart';
 import 'package:shorebird_cli/src/commands/patch/patcher.dart';
+import 'package:shorebird_cli/src/common_arguments.dart';
 import 'package:shorebird_cli/src/doctor.dart';
 import 'package:shorebird_cli/src/extensions/arg_results.dart';
 import 'package:shorebird_cli/src/extensions/file.dart';
@@ -36,7 +37,7 @@ class AndroidPatcher extends Patcher {
 
   @override
   Future<void> assertArgsAreValid() async {
-    argResults.file('private-key-path')?.assertExists();
+    argResults.file(CommonArguments.privateKeyArgName)?.assertExists();
   }
 
   @override
@@ -157,7 +158,7 @@ Looked in:
       final patchArtifact = File(patchArtifactPath);
       final hash = sha256.convert(await patchArtifact.readAsBytes()).toString();
 
-      final privateKeyFile = argResults.file('private-key-path');
+      final privateKeyFile = argResults.file(CommonArguments.privateKeyArgName);
       final hashSignature = privateKeyFile != null
           ? codeSigner.sign(
               message: hash,

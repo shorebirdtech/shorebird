@@ -11,6 +11,7 @@ import 'package:shorebird_cli/src/artifact_manager.dart';
 import 'package:shorebird_cli/src/code_push_client_wrapper.dart';
 import 'package:shorebird_cli/src/code_signer.dart';
 import 'package:shorebird_cli/src/commands/patch/patch.dart';
+import 'package:shorebird_cli/src/common_arguments.dart';
 import 'package:shorebird_cli/src/doctor.dart';
 import 'package:shorebird_cli/src/engine_config.dart';
 import 'package:shorebird_cli/src/logger.dart';
@@ -466,7 +467,7 @@ Looked in:
               ),
             )..createSync();
 
-            when(() => argResults['private-key-path'])
+            when(() => argResults[CommonArguments.privateKeyArgName])
                 .thenReturn(privateKey.path);
 
             when(

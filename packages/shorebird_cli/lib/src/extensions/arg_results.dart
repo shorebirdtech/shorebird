@@ -3,6 +3,7 @@ import 'dart:io';
 
 import 'package:args/args.dart';
 import 'package:collection/collection.dart';
+import 'package:shorebird_cli/src/common_arguments.dart';
 import 'package:shorebird_cli/src/extensions/file.dart';
 
 extension OptionFinder on ArgResults {
@@ -44,18 +45,16 @@ extension OptionFinder on ArgResults {
   }
 }
 
-const _publicKeyArgName = 'public-key-path';
-
 extension CodeSign on ArgResults {
   /// Asserts that either there is no public key argument
   /// or that the path received exists.
   void assertAbsentOrValidPublicKey() {
-    file(_publicKeyArgName)?.assertExists();
+    file(CommonArguments.publicKeyArgName)?.assertExists();
   }
 
   /// Read the public key file and encode it to base64 if any.
   String? get encodedPublicKey {
-    final publicKeyFile = file(_publicKeyArgName);
+    final publicKeyFile = file(CommonArguments.publicKeyArgName);
 
     return publicKeyFile != null
         ? base64Encode(publicKeyFile.readAsBytesSync())

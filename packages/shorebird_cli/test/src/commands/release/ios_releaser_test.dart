@@ -10,6 +10,7 @@ import 'package:shorebird_cli/src/artifact_builder.dart';
 import 'package:shorebird_cli/src/artifact_manager.dart';
 import 'package:shorebird_cli/src/code_push_client_wrapper.dart';
 import 'package:shorebird_cli/src/commands/release/ios_releaser.dart';
+import 'package:shorebird_cli/src/common_arguments.dart';
 import 'package:shorebird_cli/src/doctor.dart';
 import 'package:shorebird_cli/src/executables/xcodebuild.dart';
 import 'package:shorebird_cli/src/logger.dart';
@@ -254,7 +255,7 @@ void main() {
                 'public-key.der',
               ),
             )..writeAsStringSync('public key');
-            when(() => argResults['public-key-path'])
+            when(() => argResults[CommonArguments.publicKeyArgName])
                 .thenReturn(publicKeyFile.path);
           });
 
@@ -268,7 +269,7 @@ void main() {
 
         group('when the provided public key is a nonexistent file', () {
           setUp(() {
-            when(() => argResults['public-key-path'])
+            when(() => argResults[CommonArguments.publicKeyArgName])
                 .thenReturn('non-existing-key.der');
           });
 
@@ -331,7 +332,7 @@ void main() {
                 'patch-signing-public-key.der',
               ),
             )..writeAsStringSync('public key');
-            when(() => argResults['public-key-path'])
+            when(() => argResults[CommonArguments.publicKeyArgName])
                 .thenReturn(patchSigningPublicKeyFile.path);
 
             when(

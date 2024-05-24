@@ -8,7 +8,9 @@ import 'package:shorebird_cli/src/archive_analysis/archive_analysis.dart';
 import 'package:shorebird_cli/src/artifact_builder.dart';
 import 'package:shorebird_cli/src/artifact_manager.dart';
 import 'package:shorebird_cli/src/code_push_client_wrapper.dart';
+import 'package:shorebird_cli/src/code_signer.dart';
 import 'package:shorebird_cli/src/commands/patch/patch.dart';
+import 'package:shorebird_cli/src/common_arguments.dart';
 import 'package:shorebird_cli/src/doctor.dart';
 import 'package:shorebird_cli/src/engine_config.dart';
 import 'package:shorebird_cli/src/executables/aot_tools.dart';
@@ -43,6 +45,7 @@ void main() {
       late ArtifactBuilder artifactBuilder;
       late ArtifactManager artifactManager;
       late CodePushClientWrapper codePushClientWrapper;
+      late CodeSigner codeSigner;
       late Doctor doctor;
       late EngineConfig engineConfig;
       late Directory flutterDirectory;
@@ -69,6 +72,7 @@ void main() {
             artifactBuilderRef.overrideWith(() => artifactBuilder),
             artifactManagerRef.overrideWith(() => artifactManager),
             codePushClientWrapperRef.overrideWith(() => codePushClientWrapper),
+            codeSignerRef.overrideWith(() => codeSigner),
             doctorRef.overrideWith(() => doctor),
             engineConfigRef.overrideWith(() => engineConfig),
             iosRef.overrideWith(() => ios),
@@ -102,6 +106,7 @@ void main() {
         artifactBuilder = MockArtifactBuilder();
         artifactManager = MockArtifactManager();
         codePushClientWrapper = MockCodePushClientWrapper();
+        codeSigner = MockCodeSigner();
         doctor = MockDoctor();
         engineConfig = MockEngineConfig();
         ios = MockIos();
@@ -933,6 +938,56 @@ void main() {
                       dumpDebugInfoPath: null,
                     ),
                   ).called(1);
+                });
+              });
+
+              group('when a private key is provided', () {
+                setUp(() {
+                  final privateKey = File(
+                    p.join(
+                      Directory.systemTemp.createTempSync().path,
+                      'test-private.pem',
+                    ),
+                  )..createSync();
+
+                  when(() => argResults[CommonArguments.privateKeyArgName])
+                      .thenReturn(privateKey.path);
+
+                  when(
+                    () => codeSigner.sign(
+                      message: any(named: 'message'),
+                      privateKeyPemFile: any(named: 'privateKeyPemFile'),
+                    ),
+                  ).thenAnswer((invocation) {
+                    final message =
+                        invocation.namedArguments[#message] as String;
+                    return '$message-signature';
+                  });
+                });
+
+                test(
+                    '''returns patch artifact bundles with proper hash signatures''',
+                    () async {
+                  final result = await runWithOverrides(
+                    () => patcher.createPatchArtifacts(
+                      appId: appId,
+                      releaseId: releaseId,
+                      releaseArtifact: releaseArtifactFile,
+                    ),
+                  );
+
+                  // Hash the patch artifacts and append '-signature' to get the
+                  // expected signatures, per the mock of [codeSigner.sign]
+                  // above.
+                  const expectedSignature =
+                      '''e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855-signature''';
+
+                  expect(
+                    result.values.first.hashSignature,
+                    equals(
+                      expectedSignature,
+                    ),
+                  );
                 });
               });
             });
