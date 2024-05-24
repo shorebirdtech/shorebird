@@ -183,7 +183,7 @@ void main() {
       });
 
       group(
-        'when the private key is provided, it exists, so does the public',
+        'when given existing private and public key files',
         () {
           test('is valid', () async {
             when(
@@ -205,9 +205,9 @@ void main() {
       );
 
       group(
-        'when the private key is provided, it exists, but not the public',
+        'when given an existing private key and nonexistent public key',
         () {
-          test('fails and logs the err', () async {
+          test('logs error and exits with usage code', () async {
             when(
               () => argResults.wasParsed(CommonArguments.privateKeyArg.name),
             ).thenReturn(true);
@@ -230,7 +230,7 @@ void main() {
       );
 
       group(
-        'when the public key is provided, it exists, but not the private',
+        'when given an existing public key and nonexistent private key',
         () {
           test('fails and logs the err', () async {
             when(
@@ -417,7 +417,7 @@ Looked in:
                 .thenReturn('public_key_encoded');
           });
 
-          test('calls the buildIpa passing the key', () async {
+          test('calls buildIpa with the provided key', () async {
             when(() => argResults.wasParsed(CommonArguments.publicKeyArg.name))
                 .thenReturn(true);
 

@@ -59,10 +59,10 @@ extension CodeSign on ArgResults {
   }
 
   void assertAbsentOrValidKeyPair() {
-    final public = wasParsed(CommonArguments.publicKeyArg.name);
-    final private = wasParsed(CommonArguments.privateKeyArg.name);
+    final publicKeyWasParsed = wasParsed(CommonArguments.publicKeyArg.name);
+    final publicKeyWasParsed = wasParsed(CommonArguments.privateKeyArg.name);
 
-    if (public == private) {
+    if (publicKeyWasParsed == publicKeyWasParsed) {
       assertAbsentOrValidPublicKey();
       assertAbsentOrValidPrivateKey();
     } else {
