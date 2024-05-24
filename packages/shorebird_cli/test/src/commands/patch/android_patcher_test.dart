@@ -414,6 +414,11 @@ Looked in:
         });
 
         group('when the key pair is provided', () {
+          setUp(() {
+            when(() => codeSigner.base64PublicKey(any()))
+                .thenReturn('public_key_encoded');
+          });
+
           test('calls the buildIpa passing the key', () async {
             when(() => argResults.wasParsed(CommonArguments.publicKeyArgName))
                 .thenReturn(true);
@@ -434,7 +439,7 @@ Looked in:
                 args: any(named: 'args'),
                 flavor: any(named: 'flavor'),
                 target: any(named: 'target'),
-                base64PublicKey: base64Encode(utf8.encode('public_key')),
+                base64PublicKey: 'public_key_encoded',
               ),
             ).called(1);
           });
