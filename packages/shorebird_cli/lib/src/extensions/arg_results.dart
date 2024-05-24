@@ -1,10 +1,13 @@
 import 'dart:convert';
-import 'dart:io';
 
 import 'package:args/args.dart';
 import 'package:collection/collection.dart';
+import 'package:mason_logger/mason_logger.dart';
 import 'package:shorebird_cli/src/common_arguments.dart';
 import 'package:shorebird_cli/src/extensions/file.dart';
+import 'package:shorebird_cli/src/logger.dart';
+
+import 'package:shorebird_cli/src/third_party/flutter_tools/lib/src/base/io.dart';
 
 extension OptionFinder on ArgResults {
   /// // Detects flags even when passed to underlying commands via a `--`
@@ -50,6 +53,23 @@ extension CodeSign on ArgResults {
   /// or that the path received exists.
   void assertAbsentOrValidPublicKey() {
     file(CommonArguments.publicKeyArgName)?.assertExists();
+  }
+
+  void assertAbsentOrValidPrivateKey() {
+    file(CommonArguments.privateKeyArgName)?.assertExists();
+  }
+
+  void assertAbsentOrValidKeyPair() {
+    final public = wasParsed(CommonArguments.publicKeyArgName);
+    final private = wasParsed(CommonArguments.privateKeyArgName);
+
+    if (public == private) {
+      assertAbsentOrValidPublicKey();
+      assertAbsentOrValidPrivateKey();
+    } else {
+      logger.err('Both public and private keys must be provided or absent.');
+      exit(ExitCode.usage.code);
+    }
   }
 
   /// Read the public key file and encode it to base64 if any.

@@ -1,3 +1,5 @@
+import 'dart:convert';
+
 import 'package:args/args.dart';
 import 'package:crypto/crypto.dart';
 import 'package:mason_logger/mason_logger.dart';
@@ -113,6 +115,15 @@ void main() {
 
     tearDownAll(restoreExitFunction);
 
+    File createFakeKey(String name) {
+      return File(
+        p.join(
+          Directory.systemTemp.createTempSync().path,
+          name,
+        ),
+      )..createSync();
+    }
+
     setUp(() {
       argResults = MockArgResults();
       artifactBuilder = MockArtifactBuilder();
@@ -132,6 +143,11 @@ void main() {
       shorebirdAndroidArtifacts = MockShorebirdAndroidArtifacts();
 
       when(() => argResults.rest).thenReturn([]);
+      when(() => argResults.wasParsed(CommonArguments.publicKeyArgName))
+          .thenReturn(false);
+
+      when(() => argResults.wasParsed(CommonArguments.privateKeyArgName))
+          .thenReturn(false);
 
       when(() => logger.progress(any())).thenReturn(progress);
 
@@ -159,9 +175,86 @@ void main() {
     });
 
     group('assertArgsAreValid', () {
-      test('does nothing', () async {
-        await expectLater(patcher.assertArgsAreValid(), completes);
+      group('when no key pair is provided', () {
+        test('is valid', () {
+          expect(
+            runWithOverrides(patcher.assertArgsAreValid),
+            completes,
+          );
+        });
       });
+
+      group(
+        'when the private key is provided, it exists, so does the public',
+        () {
+          test('is valid', () async {
+            when(
+              () => argResults.wasParsed(CommonArguments.privateKeyArgName),
+            ).thenReturn(true);
+            when(() => argResults.wasParsed(CommonArguments.publicKeyArgName))
+                .thenReturn(true);
+            when(() => argResults[CommonArguments.privateKeyArgName])
+                .thenReturn(createFakeKey('private.pem').path);
+            when(() => argResults[CommonArguments.publicKeyArgName])
+                .thenReturn(createFakeKey('public.pem').path);
+
+            expect(
+              runWithOverrides(patcher.assertArgsAreValid),
+              completes,
+            );
+          });
+        },
+      );
+
+      group(
+        'when the private key is provided, it exists, but not the public',
+        () {
+          test('fails and logs the err', () async {
+            when(
+              () => argResults.wasParsed(CommonArguments.privateKeyArgName),
+            ).thenReturn(true);
+            when(() => argResults.wasParsed(CommonArguments.publicKeyArgName))
+                .thenReturn(false);
+            when(() => argResults[CommonArguments.privateKeyArgName])
+                .thenReturn(createFakeKey('private.pem').path);
+
+            await expectLater(
+              () => runWithOverrides(patcher.assertArgsAreValid),
+              exitsWithCode(ExitCode.usage),
+            );
+            verify(
+              () => logger.err(
+                'Both public and private keys must be provided or absent.',
+              ),
+            ).called(1);
+          });
+        },
+      );
+
+      group(
+        'when the public key is provided, it exists, but not the private',
+        () {
+          test('fails and logs the err', () async {
+            when(
+              () => argResults.wasParsed(CommonArguments.privateKeyArgName),
+            ).thenReturn(false);
+            when(() => argResults.wasParsed(CommonArguments.publicKeyArgName))
+                .thenReturn(true);
+            when(() => argResults[CommonArguments.publicKeyArgName])
+                .thenReturn(createFakeKey('public.pem').path);
+
+            await expectLater(
+              () => runWithOverrides(patcher.assertArgsAreValid),
+              exitsWithCode(ExitCode.usage),
+            );
+            verify(
+              () => logger.err(
+                'Both public and private keys must be provided or absent.',
+              ),
+            ).called(1);
+          });
+        },
+      );
     });
 
     group('assertPreconditions', () {
@@ -246,6 +339,7 @@ void main() {
             target: any(named: 'target'),
             targetPlatforms: any(named: 'targetPlatforms'),
             args: any(named: 'args'),
+            base64PublicKey: any(named: 'base64PublicKey'),
           ),
         ).thenAnswer((_) async => aabFile);
       });
@@ -314,6 +408,33 @@ Looked in:
             verify(
               () => artifactBuilder.buildAppBundle(
                 args: ['--verbose'],
+              ),
+            ).called(1);
+          });
+        });
+
+        group('when the key pair is provided', () {
+          test('calls the buildIpa passing the key', () async {
+            when(() => argResults.wasParsed(CommonArguments.publicKeyArgName))
+                .thenReturn(true);
+
+            final key = createFakeKey('public.der')
+              ..writeAsStringSync('public_key');
+
+            when(() => argResults[CommonArguments.publicKeyArgName])
+                .thenReturn(key.path);
+            when(() => argResults[CommonArguments.publicKeyArgName])
+                .thenReturn(key.path);
+            await runWithOverrides(
+              patcher.buildPatchArtifact,
+            );
+
+            verify(
+              () => artifactBuilder.buildAppBundle(
+                args: any(named: 'args'),
+                flavor: any(named: 'flavor'),
+                target: any(named: 'target'),
+                base64PublicKey: base64Encode(utf8.encode('public_key')),
               ),
             ).called(1);
           });

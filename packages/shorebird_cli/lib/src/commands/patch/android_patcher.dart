@@ -11,7 +11,6 @@ import 'package:shorebird_cli/src/commands/patch/patcher.dart';
 import 'package:shorebird_cli/src/common_arguments.dart';
 import 'package:shorebird_cli/src/doctor.dart';
 import 'package:shorebird_cli/src/extensions/arg_results.dart';
-import 'package:shorebird_cli/src/extensions/file.dart';
 import 'package:shorebird_cli/src/logger.dart';
 import 'package:shorebird_cli/src/patch_diff_checker.dart';
 import 'package:shorebird_cli/src/platform.dart';
@@ -37,7 +36,7 @@ class AndroidPatcher extends Patcher {
 
   @override
   Future<void> assertArgsAreValid() async {
-    argResults.file(CommonArguments.privateKeyArgName)?.assertExists();
+    argResults.assertAbsentOrValidKeyPair();
   }
 
   @override
@@ -74,6 +73,7 @@ class AndroidPatcher extends Patcher {
         flavor: flavor,
         target: target,
         args: argResults.forwardedArgs,
+        base64PublicKey: argResults.encodedPublicKey,
       );
       buildProgress.complete();
     } on ArtifactBuildException catch (error) {

@@ -61,6 +61,11 @@ class IosPatcher extends Patcher {
   ArchiveDiffer get archiveDiffer => IosArchiveDiffer();
 
   @override
+  Future<void> assertArgsAreValid() async {
+    argResults.assertAbsentOrValidKeyPair();
+  }
+
+  @override
   Future<void> assertPreconditions() async {
     try {
       await shorebirdValidator.validatePreconditions(
@@ -100,6 +105,7 @@ class IosPatcher extends Patcher {
           flavor: flavor,
           target: target,
           args: argResults.forwardedArgs,
+          base64PublicKey: argResults.encodedPublicKey,
         );
       } on ProcessException catch (error) {
         buildProgress.fail('Failed to build: ${error.message}');
