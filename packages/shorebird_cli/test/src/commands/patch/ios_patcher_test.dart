@@ -33,6 +33,7 @@ import 'package:shorebird_code_push_client/shorebird_code_push_client.dart';
 import 'package:test/test.dart';
 
 import '../../fakes.dart';
+import '../../helpers.dart';
 import '../../matchers.dart';
 import '../../mocks.dart';
 
@@ -141,12 +142,6 @@ void main() {
           flavor: null,
           target: null,
         );
-      });
-
-      group('assertArgsAreValid', () {
-        test('has no specific validations', () {
-          expect(patcher.assertArgsAreValid, returnsNormally);
-        });
       });
 
       group('archiveDiffer', () {
@@ -389,6 +384,7 @@ void main() {
                 args: any(named: 'args'),
                 flavor: any(named: 'flavor'),
                 target: any(named: 'target'),
+                base64PublicKey: any(named: 'base64PublicKey'),
               ),
             ).thenAnswer((_) async {});
             when(() => artifactManager.getXcarchiveDirectory()).thenReturn(
@@ -431,6 +427,41 @@ void main() {
                   exportOptionsPlist: any(named: 'exportOptionsPlist'),
                   codesign: any(named: 'codesign'),
                   args: ['--verbose'],
+                ),
+              ).called(1);
+            });
+          });
+
+          group('when the key pair is provided', () {
+            setUp(() {
+              when(() => codeSigner.base64PublicKey(any()))
+                  .thenReturn('public_key_encoded');
+            });
+
+            test('calls the buildIpa passing the key', () async {
+              when(
+                () => argResults.wasParsed(CommonArguments.publicKeyArg.name),
+              ).thenReturn(true);
+
+              final key = createTempFile('public.pem')
+                ..writeAsStringSync('public_key');
+
+              when(() => argResults[CommonArguments.publicKeyArg.name])
+                  .thenReturn(key.path);
+              when(() => argResults[CommonArguments.publicKeyArg.name])
+                  .thenReturn(key.path);
+              await runWithOverrides(
+                patcher.buildPatchArtifact,
+              );
+
+              verify(
+                () => artifactBuilder.buildIpa(
+                  exportOptionsPlist: any(named: 'exportOptionsPlist'),
+                  codesign: any(named: 'codesign'),
+                  args: any(named: 'args'),
+                  flavor: any(named: 'flavor'),
+                  target: any(named: 'target'),
+                  base64PublicKey: 'public_key_encoded',
                 ),
               ).called(1);
             });
@@ -941,7 +972,7 @@ void main() {
                 });
               });
 
-              group('when a private key is provided', () {
+              group('when code signing the patch', () {
                 setUp(() {
                   final privateKey = File(
                     p.join(
@@ -950,7 +981,7 @@ void main() {
                     ),
                   )..createSync();
 
-                  when(() => argResults[CommonArguments.privateKeyArgName])
+                  when(() => argResults[CommonArguments.privateKeyArg.name])
                       .thenReturn(privateKey.path);
 
                   when(

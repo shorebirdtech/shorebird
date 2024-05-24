@@ -117,11 +117,9 @@ of the iOS app that is using this module.''',
         allowed: Arch.values.map((arch) => arch.targetPlatformCliArg),
       )
       ..addOption(
-        CommonArguments.publicKeyArgName,
+        CommonArguments.publicKeyArg.name,
         hide: true,
-        help: '''
-The path for a public key file that will be used to validate patch signatures.
-''',
+        help: CommonArguments.publicKeyArg.description,
       );
   }
 

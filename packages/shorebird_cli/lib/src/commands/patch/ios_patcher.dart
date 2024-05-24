@@ -100,6 +100,7 @@ class IosPatcher extends Patcher {
           flavor: flavor,
           target: target,
           args: argResults.forwardedArgs,
+          base64PublicKey: argResults.encodedPublicKey,
         );
       } on ProcessException catch (error) {
         buildProgress.fail('Failed to build: ${error.message}');
@@ -213,7 +214,7 @@ class IosPatcher extends Patcher {
     }
 
     final patchFileSize = patchFile.statSync().size;
-    final privateKeyFile = argResults.file(CommonArguments.privateKeyArgName);
+    final privateKeyFile = argResults.file(CommonArguments.privateKeyArg.name);
     final hash = sha256.convert(patchBuildFile.readAsBytesSync()).toString();
     final hashSignature = privateKeyFile != null
         ? codeSigner.sign(

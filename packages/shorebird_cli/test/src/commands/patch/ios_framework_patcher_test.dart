@@ -9,6 +9,7 @@ import 'package:shorebird_cli/src/artifact_builder.dart';
 import 'package:shorebird_cli/src/artifact_manager.dart';
 import 'package:shorebird_cli/src/code_push_client_wrapper.dart';
 import 'package:shorebird_cli/src/commands/patch/patch.dart';
+import 'package:shorebird_cli/src/common_arguments.dart';
 import 'package:shorebird_cli/src/doctor.dart';
 import 'package:shorebird_cli/src/engine_config.dart';
 import 'package:shorebird_cli/src/executables/aot_tools.dart';
@@ -115,6 +116,10 @@ void main() {
 
         when(() => argResults['build-number']).thenReturn('1.0');
         when(() => argResults.rest).thenReturn([]);
+        when(() => argResults.wasParsed(CommonArguments.privateKeyArg.name))
+            .thenReturn(false);
+        when(() => argResults.wasParsed(CommonArguments.publicKeyArg.name))
+            .thenReturn(false);
 
         when(() => logger.progress(any())).thenReturn(progress);
 

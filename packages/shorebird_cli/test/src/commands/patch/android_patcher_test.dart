@@ -29,6 +29,7 @@ import 'package:shorebird_cli/src/version.dart';
 import 'package:shorebird_code_push_client/shorebird_code_push_client.dart';
 import 'package:test/test.dart';
 
+import '../../helpers.dart';
 import '../../matchers.dart';
 import '../../mocks.dart';
 
@@ -158,12 +159,6 @@ void main() {
       });
     });
 
-    group('assertArgsAreValid', () {
-      test('does nothing', () async {
-        await expectLater(patcher.assertArgsAreValid(), completes);
-      });
-    });
-
     group('assertPreconditions', () {
       setUp(() {
         when(() => doctor.androidCommandValidators)
@@ -246,6 +241,7 @@ void main() {
             target: any(named: 'target'),
             targetPlatforms: any(named: 'targetPlatforms'),
             args: any(named: 'args'),
+            base64PublicKey: any(named: 'base64PublicKey'),
           ),
         ).thenAnswer((_) async => aabFile);
       });
@@ -314,6 +310,38 @@ Looked in:
             verify(
               () => artifactBuilder.buildAppBundle(
                 args: ['--verbose'],
+              ),
+            ).called(1);
+          });
+        });
+
+        group('when the key pair is provided', () {
+          setUp(() {
+            when(() => codeSigner.base64PublicKey(any()))
+                .thenReturn('public_key_encoded');
+          });
+
+          test('calls buildIpa with the provided key', () async {
+            when(() => argResults.wasParsed(CommonArguments.publicKeyArg.name))
+                .thenReturn(true);
+
+            final key = createTempFile('public.der')
+              ..writeAsStringSync('public_key');
+
+            when(() => argResults[CommonArguments.publicKeyArg.name])
+                .thenReturn(key.path);
+            when(() => argResults[CommonArguments.publicKeyArg.name])
+                .thenReturn(key.path);
+            await runWithOverrides(
+              patcher.buildPatchArtifact,
+            );
+
+            verify(
+              () => artifactBuilder.buildAppBundle(
+                args: any(named: 'args'),
+                flavor: any(named: 'flavor'),
+                target: any(named: 'target'),
+                base64PublicKey: 'public_key_encoded',
               ),
             ).called(1);
           });
@@ -467,7 +495,7 @@ Looked in:
               ),
             )..createSync();
 
-            when(() => argResults[CommonArguments.privateKeyArgName])
+            when(() => argResults[CommonArguments.privateKeyArg.name])
                 .thenReturn(privateKey.path);
 
             when(
