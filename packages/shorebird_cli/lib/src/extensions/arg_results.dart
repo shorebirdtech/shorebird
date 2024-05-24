@@ -60,9 +60,9 @@ extension CodeSign on ArgResults {
 
   void assertAbsentOrValidKeyPair() {
     final publicKeyWasParsed = wasParsed(CommonArguments.publicKeyArg.name);
-    final publicKeyWasParsed = wasParsed(CommonArguments.privateKeyArg.name);
+    final privateKeyWasParsed = wasParsed(CommonArguments.privateKeyArg.name);
 
-    if (publicKeyWasParsed == publicKeyWasParsed) {
+    if (publicKeyWasParsed == privateKeyWasParsed) {
       assertAbsentOrValidPublicKey();
       assertAbsentOrValidPrivateKey();
     } else {
