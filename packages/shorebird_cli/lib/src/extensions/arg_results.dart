@@ -54,10 +54,14 @@ extension CodeSign on ArgResults {
     file(CommonArguments.publicKeyArg.name)?.assertExists();
   }
 
+  /// Asserts that either there is no private key argument
+  /// or that the path received exists.
   void assertAbsentOrValidPrivateKey() {
     file(CommonArguments.privateKeyArg.name)?.assertExists();
   }
 
+  /// Asserts that both public and private keys are either absent or
+  /// when provided, that both of them are pointing to existing files.
   void assertAbsentOrValidKeyPair() {
     final publicKeyWasParsed = wasParsed(CommonArguments.publicKeyArg.name);
     final privateKeyWasParsed = wasParsed(CommonArguments.privateKeyArg.name);

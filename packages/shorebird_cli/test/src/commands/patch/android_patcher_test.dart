@@ -29,6 +29,7 @@ import 'package:shorebird_cli/src/version.dart';
 import 'package:shorebird_code_push_client/shorebird_code_push_client.dart';
 import 'package:test/test.dart';
 
+import '../../helpers.dart';
 import '../../matchers.dart';
 import '../../mocks.dart';
 
@@ -113,15 +114,6 @@ void main() {
 
     tearDownAll(restoreExitFunction);
 
-    File createFakeKey(String name) {
-      return File(
-        p.join(
-          Directory.systemTemp.createTempSync().path,
-          name,
-        ),
-      )..createSync();
-    }
-
     setUp(() {
       argResults = MockArgResults();
       artifactBuilder = MockArtifactBuilder();
@@ -192,9 +184,9 @@ void main() {
             when(() => argResults.wasParsed(CommonArguments.publicKeyArg.name))
                 .thenReturn(true);
             when(() => argResults[CommonArguments.privateKeyArg.name])
-                .thenReturn(createFakeKey('private.pem').path);
+                .thenReturn(createTempFile('private.pem').path);
             when(() => argResults[CommonArguments.publicKeyArg.name])
-                .thenReturn(createFakeKey('public.pem').path);
+                .thenReturn(createTempFile('public.pem').path);
 
             expect(
               runWithOverrides(patcher.assertArgsAreValid),
@@ -214,7 +206,7 @@ void main() {
             when(() => argResults.wasParsed(CommonArguments.publicKeyArg.name))
                 .thenReturn(false);
             when(() => argResults[CommonArguments.privateKeyArg.name])
-                .thenReturn(createFakeKey('private.pem').path);
+                .thenReturn(createTempFile('private.pem').path);
 
             await expectLater(
               () => runWithOverrides(patcher.assertArgsAreValid),
@@ -239,7 +231,7 @@ void main() {
             when(() => argResults.wasParsed(CommonArguments.publicKeyArg.name))
                 .thenReturn(true);
             when(() => argResults[CommonArguments.publicKeyArg.name])
-                .thenReturn(createFakeKey('public.pem').path);
+                .thenReturn(createTempFile('public.pem').path);
 
             await expectLater(
               () => runWithOverrides(patcher.assertArgsAreValid),
@@ -421,7 +413,7 @@ Looked in:
             when(() => argResults.wasParsed(CommonArguments.publicKeyArg.name))
                 .thenReturn(true);
 
-            final key = createFakeKey('public.der')
+            final key = createTempFile('public.der')
               ..writeAsStringSync('public_key');
 
             when(() => argResults[CommonArguments.publicKeyArg.name])

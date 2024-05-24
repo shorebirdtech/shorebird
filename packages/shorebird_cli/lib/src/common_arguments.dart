@@ -1,10 +1,16 @@
+/// {@template argument_describer}
+/// A class that describes an argument from a command/sub command.
+/// {@endtemplate}
 class ArgumentDescriber {
   const ArgumentDescriber({
     required this.name,
     required this.description,
   });
 
+  /// Argument name as how the user writes it.
   final String name;
+
+  /// Argument description that will be shown in the help of the command.
   final String description;
 }
 
