@@ -77,7 +77,7 @@ extension CodeSign on ArgResults {
     final publicKeyFile = file(CommonArguments.publicKeyArgName);
 
     return publicKeyFile != null
-        ? base64Encode(publicKeyFile.readAsBytesSync())
+        ? codeSigner.base64PublicKey(publicKeyFile)
         : null;
   }
 }

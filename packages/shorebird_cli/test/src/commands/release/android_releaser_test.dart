@@ -1,5 +1,3 @@
-import 'dart:convert';
-
 import 'package:args/args.dart';
 import 'package:mason_logger/mason_logger.dart';
 import 'package:mocktail/mocktail.dart';
@@ -226,7 +224,7 @@ void main() {
           final publicKeyFile = File(
             p.join(
               Directory.systemTemp.createTempSync().path,
-              'public-key.der',
+              'public-key.pem',
             ),
           )..writeAsStringSync('public key');
           when(() => argResults[CommonArguments.publicKeyArgName])
@@ -241,11 +239,11 @@ void main() {
         });
       });
 
-      group('when a public key is provided but it does not exists', () {
+      group('when a public key is provided but does not exist', () {
         setUp(() {
           when(() => argResults['artifact']).thenReturn('apk');
           when(() => argResults[CommonArguments.publicKeyArgName])
-              .thenReturn('non-existing-key.der');
+              .thenReturn('non-existing-key.pem');
         });
 
         test('logs and exits with usage err', () async {
@@ -254,7 +252,7 @@ void main() {
             exitsWithCode(ExitCode.usage),
           );
 
-          verify(() => logger.err('No file found at non-existing-key.der'))
+          verify(() => logger.err('No file found at non-existing-key.pem'))
               .called(1);
         });
       });
@@ -427,15 +425,15 @@ void main() {
       });
 
       group('when a patch signing key path is provided', () {
-        late File patchSigningPublicKeyFile;
+        const base64PublicKey = 'base64PublicKey';
 
         setUp(() {
-          patchSigningPublicKeyFile = File(
+          final patchSigningPublicKeyFile = File(
             p.join(
               Directory.systemTemp.createTempSync().path,
-              'patch-signing-public-key.der',
+              'patch-signing-public-key.pem',
             ),
-          )..writeAsStringSync('public key');
+          )..createSync(recursive: true);
           when(() => argResults[CommonArguments.publicKeyArgName])
               .thenReturn(patchSigningPublicKeyFile.path);
 
@@ -448,7 +446,6 @@ void main() {
               base64PublicKey: any(named: 'base64PublicKey'),
             ),
           ).thenAnswer((_) async => aabFile);
-
           when(
             () => artifactBuilder.buildApk(
               flavor: any(named: 'flavor'),
@@ -458,6 +455,9 @@ void main() {
               base64PublicKey: any(named: 'base64PublicKey'),
             ),
           ).thenAnswer((_) async => File(''));
+
+          when(() => codeSigner.base64PublicKey(any()))
+              .thenReturn(base64PublicKey);
         });
 
         test(
@@ -473,9 +473,7 @@ void main() {
                 target: any(named: 'target'),
                 targetPlatforms: any(named: 'targetPlatforms'),
                 args: any(named: 'args'),
-                base64PublicKey: base64Encode(
-                  patchSigningPublicKeyFile.readAsBytesSync(),
-                ),
+                base64PublicKey: base64PublicKey,
               ),
             ).called(1);
           },
@@ -499,9 +497,7 @@ void main() {
                   target: any(named: 'target'),
                   targetPlatforms: any(named: 'targetPlatforms'),
                   args: any(named: 'args'),
-                  base64PublicKey: base64Encode(
-                    patchSigningPublicKeyFile.readAsBytesSync(),
-                  ),
+                  base64PublicKey: base64PublicKey,
                 ),
               ).called(1);
 
@@ -511,9 +507,7 @@ void main() {
                   target: any(named: 'target'),
                   targetPlatforms: any(named: 'targetPlatforms'),
                   args: any(named: 'args'),
-                  base64PublicKey: base64Encode(
-                    patchSigningPublicKeyFile.readAsBytesSync(),
-                  ),
+                  base64PublicKey: base64PublicKey,
                 ),
               ).called(1);
             },
