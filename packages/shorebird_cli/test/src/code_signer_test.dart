@@ -13,6 +13,9 @@ void main() {
       final privateKeyFile = File(
         p.join(cryptoFixturesBasePath, 'private.pem'),
       );
+      final publicKeyFile = File(
+        p.join(cryptoFixturesBasePath, 'public.pem'),
+      );
 
       late CodeSigner codeSigner;
 
@@ -46,6 +49,33 @@ void main() {
             privateKeyPemFile: privateKeyFile,
           );
           expect(actualSignature, equals(expectedSignature));
+        });
+      });
+
+      group('base64PublicKey', () {
+        test('output matches equivalent openssl command', () async {
+          final tempDir = Directory.systemTemp.createTempSync();
+          final expectedDerFile = File(p.join(tempDir.path, 'public.der'));
+          await Process.run(
+            'openssl',
+            [
+              'rsa',
+              '-pubin',
+              '-in',
+              publicKeyFile.path,
+              '-inform',
+              'PEM',
+              '-RSAPublicKey_out',
+              '-outform',
+              'DER',
+              '-out',
+              expectedDerFile.path,
+            ],
+          );
+          expect(
+            codeSigner.base64PublicKey(publicKeyFile),
+            equals(base64Encode(expectedDerFile.readAsBytesSync())),
+          );
         });
       });
     },

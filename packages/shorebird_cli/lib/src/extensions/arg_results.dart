@@ -1,8 +1,8 @@
-import 'dart:convert';
 import 'dart:io';
 
 import 'package:args/args.dart';
 import 'package:collection/collection.dart';
+import 'package:shorebird_cli/src/code_signer.dart';
 import 'package:shorebird_cli/src/common_arguments.dart';
 import 'package:shorebird_cli/src/extensions/file.dart';
 
@@ -57,7 +57,7 @@ extension CodeSign on ArgResults {
     final publicKeyFile = file(CommonArguments.publicKeyArgName);
 
     return publicKeyFile != null
-        ? base64Encode(publicKeyFile.readAsBytesSync())
+        ? codeSigner.base64PublicKey(publicKeyFile)
         : null;
   }
 }
