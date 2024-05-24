@@ -1,5 +1,3 @@
-import 'dart:convert';
-
 import 'package:args/args.dart';
 import 'package:mason_logger/mason_logger.dart';
 import 'package:mocktail/mocktail.dart';
@@ -9,6 +7,7 @@ import 'package:scoped_deps/scoped_deps.dart';
 import 'package:shorebird_cli/src/artifact_builder.dart';
 import 'package:shorebird_cli/src/artifact_manager.dart';
 import 'package:shorebird_cli/src/code_push_client_wrapper.dart';
+import 'package:shorebird_cli/src/code_signer.dart';
 import 'package:shorebird_cli/src/commands/release/ios_releaser.dart';
 import 'package:shorebird_cli/src/common_arguments.dart';
 import 'package:shorebird_cli/src/doctor.dart';
@@ -39,6 +38,7 @@ void main() {
       late ArtifactBuilder artifactBuilder;
       late ArtifactManager artifactManager;
       late CodePushClientWrapper codePushClientWrapper;
+      late CodeSigner codeSigner;
       late Directory projectRoot;
       late Doctor doctor;
       late Platform platform;
@@ -61,6 +61,7 @@ void main() {
             artifactBuilderRef.overrideWith(() => artifactBuilder),
             artifactManagerRef.overrideWith(() => artifactManager),
             codePushClientWrapperRef.overrideWith(() => codePushClientWrapper),
+            codeSignerRef.overrideWith(() => codeSigner),
             doctorRef.overrideWith(() => doctor),
             iosRef.overrideWith(() => ios),
             loggerRef.overrideWith(() => logger),
@@ -77,6 +78,7 @@ void main() {
 
       setUpAll(() {
         registerFallbackValue(Directory(''));
+        registerFallbackValue(File(''));
         registerFallbackValue(ReleasePlatform.android);
         setExitFunctionForTests();
       });
@@ -88,6 +90,7 @@ void main() {
         artifactBuilder = MockArtifactBuilder();
         artifactManager = MockArtifactManager();
         codePushClientWrapper = MockCodePushClientWrapper();
+        codeSigner = MockCodeSigner();
         doctor = MockDoctor();
         platform = MockPlatform();
         projectRoot = Directory.systemTemp.createTempSync();
@@ -252,7 +255,7 @@ void main() {
             final publicKeyFile = File(
               p.join(
                 Directory.systemTemp.createTempSync().path,
-                'public-key.der',
+                'public-key.pem',
               ),
             )..writeAsStringSync('public key');
             when(() => argResults[CommonArguments.publicKeyArgName])
@@ -270,7 +273,7 @@ void main() {
         group('when the provided public key is a nonexistent file', () {
           setUp(() {
             when(() => argResults[CommonArguments.publicKeyArgName])
-                .thenReturn('non-existing-key.der');
+                .thenReturn('non-existing-key.pem');
           });
 
           test('logs and exits with usage err', () async {
@@ -279,7 +282,7 @@ void main() {
               exitsWithCode(ExitCode.usage),
             );
 
-            verify(() => logger.err('No file found at non-existing-key.der'))
+            verify(() => logger.err('No file found at non-existing-key.pem'))
                 .called(1);
           });
         });
@@ -287,6 +290,7 @@ void main() {
 
       group('buildReleaseArtifacts', () {
         const flutterVersionAndRevision = '3.10.6 (83305b5088)';
+        const base64PublicKey = 'base64PublicKey';
 
         late Directory xcarchiveDirectory;
         late Directory iosAppDirectory;
@@ -312,9 +316,14 @@ void main() {
           ).thenReturn(iosAppDirectory);
           when(() => artifactManager.getXcarchiveDirectory())
               .thenReturn(xcarchiveDirectory);
+
+          when(() => codeSigner.base64PublicKey(any()))
+              .thenReturn(base64PublicKey);
+
           when(
             () => ios.exportOptionsPlistFromArgs(argResults),
           ).thenReturn(File(''));
+
           when(() => shorebirdEnv.getShorebirdProjectRoot())
               .thenReturn(projectRoot);
           when(
@@ -323,15 +332,13 @@ void main() {
         });
 
         group('when a patch signing key path is provided', () {
-          late File patchSigningPublicKeyFile;
-
           setUp(() {
-            patchSigningPublicKeyFile = File(
+            final patchSigningPublicKeyFile = File(
               p.join(
                 Directory.systemTemp.createTempSync().path,
-                'patch-signing-public-key.der',
+                'patch-signing-public-key.pem',
               ),
-            )..writeAsStringSync('public key');
+            )..createSync(recursive: true);
             when(() => argResults[CommonArguments.publicKeyArgName])
                 .thenReturn(patchSigningPublicKeyFile.path);
 
@@ -361,9 +368,7 @@ void main() {
                   flavor: any(named: 'flavor'),
                   target: any(named: 'target'),
                   args: any(named: 'args'),
-                  base64PublicKey: base64Encode(
-                    patchSigningPublicKeyFile.readAsBytesSync(),
-                  ),
+                  base64PublicKey: base64PublicKey,
                 ),
               ).called(1);
             },
