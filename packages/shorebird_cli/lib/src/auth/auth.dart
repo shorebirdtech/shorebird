@@ -224,8 +224,9 @@ class Auth {
     AuthProvider authProvider, {
     required void Function(String) prompt,
   }) async {
-    if (_credentials != null) {
-      throw UserAlreadyLoggedInException(email: _credentials!.email!);
+    final email = _credentials?.email;
+    if (email != null) {
+      throw UserAlreadyLoggedInException(email: email);
     }
 
     final client = http.Client();
