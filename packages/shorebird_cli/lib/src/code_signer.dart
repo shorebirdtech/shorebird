@@ -87,7 +87,8 @@ extension _RSAPrivateKeyFromBytes on RSAPrivateKey {
 
 extension _RSAPublicKeyFromBytes on RSAPublicKey {
   /// Converts an RSA public key to a pointycastle [RSAPublicKey].
-  /// From https://github.com/Ephenodrom/Dart-Basic-Utils/blob/45ed0a3087b2051004f17b39eb5289874b9c0390/lib/src/CryptoUtils.dart#L525-L547
+  ///
+  /// Based on https://github.com/Ephenodrom/Dart-Basic-Utils/blob/45ed0a3087b2051004f17b39eb5289874b9c0390/lib/src/CryptoUtils.dart#L525-L547
   static RSAPublicKey rsaPublicKeyFromBytes(List<int> bytes) {
     final asn1Parser = ASN1Parser(Uint8List.fromList(bytes));
     final topLevelSeq = asn1Parser.nextObject() as ASN1Sequence;
