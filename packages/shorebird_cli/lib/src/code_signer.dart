@@ -26,7 +26,7 @@ class CodeSigner {
       pemFile: privateKeyPemFile,
       type: PemLabel.privateKey,
     );
-    final privateKey = RSAPrivateKeyFromInt.from(privateKeyData);
+    final privateKey = _RSAPrivateKeyFromBytes.from(privateKeyData);
 
     final signer = Signer('SHA-256/RSA')
       ..init(true, PrivateKeyParameter<RSAPrivateKey>(privateKey));
@@ -36,19 +36,11 @@ class CodeSigner {
     return base64.encode(signature.bytes);
   }
 
-  /// Reads a PEM file containing a key of type [type] and returns its contents
-  /// as bytes.
-  List<int> _pemBytes({required File pemFile, required PemLabel type}) {
-    final privateKeyString = pemFile.readAsStringSync();
-    final pemCodec = PemCodec(type);
-    return pemCodec.decode(privateKeyString);
-  }
-
   /// Extracts the base64 encoded DER from a public key PEM file. The DER is
   /// simply the modulus and exponent of the public key, without information
   /// about the algorithm or or ASN1 object type identifier.
-  String base64DerFromPemFile(File publicKeyPemFile) {
-    final publicKey = RSAPublicKeyFromBytes.rsaPublicKeyFromBytes(
+  String base64PublicKey(File publicKeyPemFile) {
+    final publicKey = _RSAPublicKeyFromBytes.rsaPublicKeyFromBytes(
       _pemBytes(pemFile: publicKeyPemFile, type: PemLabel.publicKey),
     );
 
@@ -58,9 +50,16 @@ class CodeSigner {
       ..encode();
     return base64.encode(publicKeySeq.encodedBytes!);
   }
+
+  /// Reads a PEM file containing a key of type [type] and returns its contents
+  /// as bytes.
+  List<int> _pemBytes({required File pemFile, required PemLabel type}) {
+    final privateKeyString = pemFile.readAsStringSync();
+    return PemCodec(type).decode(privateKeyString);
+  }
 }
 
-extension RSAPrivateKeyFromInt on RSAPrivateKey {
+extension _RSAPrivateKeyFromBytes on RSAPrivateKey {
   /// Converts an RSA private key bytes to a pointycastle [RSAPrivateKey].
   ///
   /// Based on https://github.com/konstantinullrich/crypton/blob/trunk/lib/src/rsa/private_key.dart
@@ -86,25 +85,19 @@ extension RSAPrivateKeyFromInt on RSAPrivateKey {
   }
 }
 
-extension RSAPublicKeyFromBytes on RSAPublicKey {
-  /// Convert a DER encoded public key to a pointycastle [RSAPublicKey].
+extension _RSAPublicKeyFromBytes on RSAPublicKey {
+  /// Converts an RSA public key to a pointycastle [RSAPublicKey].
   /// From https://github.com/Ephenodrom/Dart-Basic-Utils/blob/45ed0a3087b2051004f17b39eb5289874b9c0390/lib/src/CryptoUtils.dart#L525-L547
   static RSAPublicKey rsaPublicKeyFromBytes(List<int> bytes) {
     final asn1Parser = ASN1Parser(Uint8List.fromList(bytes));
     final topLevelSeq = asn1Parser.nextObject() as ASN1Sequence;
-    final ASN1Sequence publicKeySeq;
-    if (topLevelSeq.elements![1].runtimeType == ASN1BitString) {
-      final publicKeyBitString = topLevelSeq.elements![1] as ASN1BitString;
-      final publicKeyAsn =
-          ASN1Parser(publicKeyBitString.stringValues as Uint8List?);
-      publicKeySeq = publicKeyAsn.nextObject() as ASN1Sequence;
-    } else {
-      publicKeySeq = topLevelSeq;
-    }
+    final publicKeyBitString = topLevelSeq.elements![1] as ASN1BitString;
+    final publicKeyAsn =
+        ASN1Parser(publicKeyBitString.stringValues as Uint8List?);
+    final publicKeySeq = publicKeyAsn.nextObject() as ASN1Sequence;
     final modulus = publicKeySeq.elements![0] as ASN1Integer;
     final exponent = publicKeySeq.elements![1] as ASN1Integer;
 
-    final rsaPublicKey = RSAPublicKey(modulus.integer!, exponent.integer!);
-    return rsaPublicKey;
+    return RSAPublicKey(modulus.integer!, exponent.integer!);
   }
 }

@@ -52,7 +52,7 @@ void main() {
         });
       });
 
-      group('base64DerFromFile', () {
+      group('base64PublicKey', () {
         test('output matches equivalent openssl command', () async {
           final tempDir = Directory.systemTemp.createTempSync();
           final expectedDerFile = File(p.join(tempDir.path, 'public.der'));
@@ -73,7 +73,7 @@ void main() {
             ],
           );
           expect(
-            codeSigner.base64DerFromPemFile(publicKeyFile),
+            codeSigner.base64PublicKey(publicKeyFile),
             equals(base64Encode(expectedDerFile.readAsBytesSync())),
           );
         });
