@@ -35,11 +35,6 @@ class AndroidPatcher extends Patcher {
   });
 
   @override
-  Future<void> assertArgsAreValid() async {
-    argResults.assertAbsentOrValidKeyPair();
-  }
-
-  @override
   ReleaseType get releaseType => ReleaseType.android;
 
   @override

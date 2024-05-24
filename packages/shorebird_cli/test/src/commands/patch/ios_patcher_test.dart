@@ -126,17 +126,6 @@ void main() {
 
         when(() => argResults['build-number']).thenReturn('1.0');
         when(() => argResults.rest).thenReturn([]);
-        when(
-          () => argResults.wasParsed(
-            CommonArguments.privateKeyArg.name,
-          ),
-        ).thenReturn(false);
-
-        when(
-          () => argResults.wasParsed(
-            CommonArguments.publicKeyArg.name,
-          ),
-        ).thenReturn(false);
 
         when(() => logger.progress(any())).thenReturn(progress);
 
@@ -152,92 +141,6 @@ void main() {
           argResults: argResults,
           flavor: null,
           target: null,
-        );
-      });
-
-      group('assertArgsAreValid', () {
-        group('when no key pair is provided', () {
-          test('is valid', () {
-            expect(
-              runWithOverrides(patcher.assertArgsAreValid),
-              completes,
-            );
-          });
-        });
-
-        group(
-          'when the private key is provided, it exists, so does the public',
-          () {
-            test('is valid', () async {
-              when(
-                () => argResults.wasParsed(CommonArguments.privateKeyArg.name),
-              ).thenReturn(true);
-              when(
-                () => argResults.wasParsed(CommonArguments.publicKeyArg.name),
-              ).thenReturn(true);
-              when(() => argResults[CommonArguments.privateKeyArg.name])
-                  .thenReturn(createTempFile('private.pem').path);
-              when(() => argResults[CommonArguments.publicKeyArg.name])
-                  .thenReturn(createTempFile('public.pem').path);
-
-              expect(
-                runWithOverrides(patcher.assertArgsAreValid),
-                completes,
-              );
-            });
-          },
-        );
-
-        group(
-          'when the private key is provided, it exists, but not the public',
-          () {
-            test('fails and logs the err', () async {
-              when(
-                () => argResults.wasParsed(CommonArguments.privateKeyArg.name),
-              ).thenReturn(true);
-              when(
-                () => argResults.wasParsed(CommonArguments.publicKeyArg.name),
-              ).thenReturn(false);
-              when(() => argResults[CommonArguments.privateKeyArg.name])
-                  .thenReturn(createTempFile('private.pem').path);
-
-              await expectLater(
-                () => runWithOverrides(patcher.assertArgsAreValid),
-                exitsWithCode(ExitCode.usage),
-              );
-              verify(
-                () => logger.err(
-                  'Both public and private keys must be provided or absent.',
-                ),
-              ).called(1);
-            });
-          },
-        );
-
-        group(
-          'when the public key is provided, it exists, but not the private',
-          () {
-            test('fails and logs the err', () async {
-              when(
-                () => argResults.wasParsed(CommonArguments.privateKeyArg.name),
-              ).thenReturn(false);
-              when(
-                () => argResults.wasParsed(CommonArguments.publicKeyArg.name),
-              ).thenReturn(true);
-              when(() => argResults[CommonArguments.publicKeyArg.name])
-                  .thenReturn(createTempFile('public.pem').path);
-
-              await expectLater(
-                () => runWithOverrides(patcher.assertArgsAreValid),
-                exitsWithCode(ExitCode.usage),
-              );
-              verify(
-                () => logger.err(
-                  'Both public and private keys must be provided or absent.',
-                ),
-              ).called(1);
-            });
-          },
         );
       });
 

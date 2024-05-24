@@ -5,6 +5,7 @@ import 'package:mason_logger/mason_logger.dart';
 import 'package:path/path.dart' as p;
 import 'package:shorebird_cli/src/archive_analysis/archive_differ.dart';
 import 'package:shorebird_cli/src/code_push_client_wrapper.dart';
+import 'package:shorebird_cli/src/extensions/arg_results.dart';
 import 'package:shorebird_cli/src/patch_diff_checker.dart';
 import 'package:shorebird_cli/src/platform/platform.dart';
 import 'package:shorebird_cli/src/release_type.dart';
@@ -67,7 +68,9 @@ https://docs.shorebird.dev/status#link-percentage-ios
   Future<void> assertPreconditions();
 
   /// Asserts that the combination arguments passed to the command are valid.
-  Future<void> assertArgsAreValid() async {}
+  Future<void> assertArgsAreValid() async {
+    argResults.assertAbsentOrValidKeyPair();
+  }
 
   /// Builds the release artifacts for the given platform. Returns the "primary"
   /// artifact for the platform (e.g. the AAB for Android, the IPA for iOS).

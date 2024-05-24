@@ -61,11 +61,6 @@ class IosPatcher extends Patcher {
   ArchiveDiffer get archiveDiffer => IosArchiveDiffer();
 
   @override
-  Future<void> assertArgsAreValid() async {
-    argResults.assertAbsentOrValidKeyPair();
-  }
-
-  @override
   Future<void> assertPreconditions() async {
     try {
       await shorebirdValidator.validatePreconditions(

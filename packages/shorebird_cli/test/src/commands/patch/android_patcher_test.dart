@@ -133,11 +133,6 @@ void main() {
       shorebirdAndroidArtifacts = MockShorebirdAndroidArtifacts();
 
       when(() => argResults.rest).thenReturn([]);
-      when(() => argResults.wasParsed(CommonArguments.publicKeyArg.name))
-          .thenReturn(false);
-
-      when(() => argResults.wasParsed(CommonArguments.privateKeyArg.name))
-          .thenReturn(false);
 
       when(() => logger.progress(any())).thenReturn(progress);
 
@@ -162,89 +157,6 @@ void main() {
       test('is "aab"', () {
         expect(patcher.primaryReleaseArtifactArch, equals('aab'));
       });
-    });
-
-    group('assertArgsAreValid', () {
-      group('when no key pair is provided', () {
-        test('is valid', () {
-          expect(
-            runWithOverrides(patcher.assertArgsAreValid),
-            completes,
-          );
-        });
-      });
-
-      group(
-        'when given existing private and public key files',
-        () {
-          test('is valid', () async {
-            when(
-              () => argResults.wasParsed(CommonArguments.privateKeyArg.name),
-            ).thenReturn(true);
-            when(() => argResults.wasParsed(CommonArguments.publicKeyArg.name))
-                .thenReturn(true);
-            when(() => argResults[CommonArguments.privateKeyArg.name])
-                .thenReturn(createTempFile('private.pem').path);
-            when(() => argResults[CommonArguments.publicKeyArg.name])
-                .thenReturn(createTempFile('public.pem').path);
-
-            expect(
-              runWithOverrides(patcher.assertArgsAreValid),
-              completes,
-            );
-          });
-        },
-      );
-
-      group(
-        'when given an existing private key and nonexistent public key',
-        () {
-          test('logs error and exits with usage code', () async {
-            when(
-              () => argResults.wasParsed(CommonArguments.privateKeyArg.name),
-            ).thenReturn(true);
-            when(() => argResults.wasParsed(CommonArguments.publicKeyArg.name))
-                .thenReturn(false);
-            when(() => argResults[CommonArguments.privateKeyArg.name])
-                .thenReturn(createTempFile('private.pem').path);
-
-            await expectLater(
-              () => runWithOverrides(patcher.assertArgsAreValid),
-              exitsWithCode(ExitCode.usage),
-            );
-            verify(
-              () => logger.err(
-                'Both public and private keys must be provided or absent.',
-              ),
-            ).called(1);
-          });
-        },
-      );
-
-      group(
-        'when given an existing public key and nonexistent private key',
-        () {
-          test('fails and logs the err', () async {
-            when(
-              () => argResults.wasParsed(CommonArguments.privateKeyArg.name),
-            ).thenReturn(false);
-            when(() => argResults.wasParsed(CommonArguments.publicKeyArg.name))
-                .thenReturn(true);
-            when(() => argResults[CommonArguments.publicKeyArg.name])
-                .thenReturn(createTempFile('public.pem').path);
-
-            await expectLater(
-              () => runWithOverrides(patcher.assertArgsAreValid),
-              exitsWithCode(ExitCode.usage),
-            );
-            verify(
-              () => logger.err(
-                'Both public and private keys must be provided or absent.',
-              ),
-            ).called(1);
-          });
-        },
-      );
     });
 
     group('assertPreconditions', () {
