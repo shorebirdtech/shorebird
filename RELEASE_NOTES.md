@@ -2,6 +2,11 @@
 
 This section contains past updates we've sent to customers via Discord.
 
+## 1.1.7 (May 24, 2024)
+
+- Updates patch command to prompt for release version.
+- Adds the ability to sign patches. Read more at https://docs.shorebird.dev/patch-signing
+
 ## 1.1.6 (May 15, 2024)
 
 - 🩹 Reverts a windows powershell fix for exporting `FLUTTER_STORAGE_BASE_URL`
