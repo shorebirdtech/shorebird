@@ -490,6 +490,26 @@ Run `shorebird login:ci` to obtain a new token.'''),
         expect(auth.isAuthenticated, isTrue);
       });
 
+      group('when login credentials are corrupted', () {
+        setUp(() {
+          accessCredentials = oauth2.AccessCredentials(
+            accessToken,
+            refreshToken,
+            scopes,
+            idToken: 'not a valid jwt',
+          );
+          writeCredentials();
+          auth = buildAuth();
+        });
+
+        test('proceeds with login', () async {
+          expect(auth.email, isNull);
+          await auth.login(AuthProvider.google, prompt: (_) {});
+          expect(auth.email, equals(email));
+          expect(auth.isAuthenticated, isTrue);
+        });
+      });
+
       test('should not set the email when user does not exist', () async {
         when(() => codePushClient.getCurrentUser())
             .thenAnswer((_) async => null);

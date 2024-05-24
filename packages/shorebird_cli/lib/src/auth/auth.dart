@@ -224,8 +224,11 @@ class Auth {
     AuthProvider authProvider, {
     required void Function(String) prompt,
   }) async {
-    if (_credentials != null) {
-      throw UserAlreadyLoggedInException(email: _credentials!.email!);
+    if (isAuthenticated) {
+      // Because isAuthenticated is checks for the presence of either an email
+      // or a CI token, and because this method is for logging in without a CI
+      // token, we can safely assume that _email is not null.
+      throw UserAlreadyLoggedInException(email: _email!);
     }
 
     final client = http.Client();
