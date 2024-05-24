@@ -225,6 +225,9 @@ class Auth {
     required void Function(String) prompt,
   }) async {
     if (isAuthenticated) {
+      // Because isAuthenticated is checks for the presence of either an email
+      // or a CI token, and because this method is for logging in without a CI
+      // token, we can safely assume that _email is not null.
       throw UserAlreadyLoggedInException(email: _email!);
     }
 
