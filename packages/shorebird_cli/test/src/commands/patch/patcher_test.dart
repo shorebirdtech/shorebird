@@ -24,6 +24,19 @@ void main() {
         );
       });
     });
+
+    group('assertArgsAreValid', () {
+      test('has no validations by default', () {
+        expect(
+          _TestPatcher(
+            argResults: MockArgResults(),
+            flavor: null,
+            target: null,
+          ).assertArgsAreValid,
+          returnsNormally,
+        );
+      });
+    });
   });
 }
 
