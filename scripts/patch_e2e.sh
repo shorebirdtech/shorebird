@@ -14,8 +14,8 @@
 #
 # Usage: ./patch_e2e.sh
 
-# Intentionally including a space in the path.
-TEMP_DIR=$(mktemp -d -t 'shorebird workspace-XXXXX')
+# Intentionally including a space and a non ascii char in the path.
+TEMP_DIR=$(mktemp -d -t 'shorebird workspace-XXXXX 木')
 cd "$TEMP_DIR"
 
 # Create a new empty flutter project
