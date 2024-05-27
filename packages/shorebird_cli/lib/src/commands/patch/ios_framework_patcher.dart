@@ -70,7 +70,6 @@ class IosFrameworkPatcher extends Patcher {
 
   @override
   Future<void> assertArgsAreValid() async {
-    await super.assertArgsAreValid();
     if (!argResults.wasParsed('release-version')) {
       logger.err('Missing required argument: --release-version');
       exit(ExitCode.usage.code);
