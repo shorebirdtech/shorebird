@@ -287,7 +287,7 @@ void main() {
     });
 
     group('createPatch', () {
-      test('publish the patch', () async {
+      test('publishes the patch', () async {
         await runWithOverrides(() => command.createPatch(patcher));
 
         verify(
