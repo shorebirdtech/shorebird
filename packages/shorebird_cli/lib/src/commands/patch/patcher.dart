@@ -2,11 +2,9 @@ import 'dart:io';
 
 import 'package:args/args.dart';
 import 'package:mason_logger/mason_logger.dart';
-import 'package:meta/meta.dart';
 import 'package:path/path.dart' as p;
 import 'package:shorebird_cli/src/archive_analysis/archive_differ.dart';
 import 'package:shorebird_cli/src/code_push_client_wrapper.dart';
-import 'package:shorebird_cli/src/extensions/arg_results.dart';
 import 'package:shorebird_cli/src/patch_diff_checker.dart';
 import 'package:shorebird_cli/src/platform/platform.dart';
 import 'package:shorebird_cli/src/release_type.dart';
@@ -68,14 +66,8 @@ https://docs.shorebird.dev/status#link-percentage-ios
   /// Asserts that the command can be run.
   Future<void> assertPreconditions();
 
-  @mustCallSuper
-
   /// Asserts that the combination arguments passed to the command are valid.
-  Future<void> assertArgsAreValid() async {
-    // TODO(erickzanardo): Move this call to the patch_command so we don't need
-    // to required sub classes to call super.
-    argResults.assertAbsentOrValidKeyPair();
-  }
+  Future<void> assertArgsAreValid() async {}
 
   /// Builds the release artifacts for the given platform. Returns the "primary"
   /// artifact for the platform (e.g. the AAB for Android, the IPA for iOS).

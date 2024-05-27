@@ -10,6 +10,7 @@ import 'package:shorebird_cli/src/artifact_manager.dart';
 import 'package:shorebird_cli/src/cache.dart';
 import 'package:shorebird_cli/src/code_push_client_wrapper.dart';
 import 'package:shorebird_cli/src/commands/patch/patch.dart';
+import 'package:shorebird_cli/src/common_arguments.dart';
 import 'package:shorebird_cli/src/config/config.dart';
 import 'package:shorebird_cli/src/deployment_track.dart';
 import 'package:shorebird_cli/src/executables/executables.dart';
@@ -25,6 +26,7 @@ import 'package:shorebird_code_push_protocol/shorebird_code_push_protocol.dart';
 import 'package:test/test.dart';
 
 import '../../fakes.dart';
+import '../../helpers.dart';
 import '../../matchers.dart';
 import '../../mocks.dart';
 
@@ -149,6 +151,10 @@ void main() {
       when(() => argResults['platforms']).thenReturn(['android']);
       when(() => argResults['release-version']).thenReturn(releaseVersion);
       when(() => argResults.wasParsed(any())).thenReturn(true);
+      when(() => argResults.wasParsed(CommonArguments.privateKeyArg.name))
+          .thenReturn(false);
+      when(() => argResults.wasParsed(CommonArguments.publicKeyArg.name))
+          .thenReturn(false);
 
       when(aotTools.isLinkDebugInfoSupported).thenAnswer((_) async => true);
 
@@ -278,6 +284,109 @@ void main() {
 
     test('has non-empty description', () {
       expect(command.description, isNotEmpty);
+    });
+
+    group('createPatch', () {
+      test('publishes the patch', () async {
+        await runWithOverrides(() => command.createPatch(patcher));
+
+        verify(
+          () => codePushClientWrapper.publishPatch(
+            appId: appId,
+            releaseId: any(named: 'releaseId'),
+            metadata: any(named: 'metadata'),
+            platform: any(named: 'platform'),
+            track: any(named: 'track'),
+            patchArtifactBundles: patchArtifactBundles,
+          ),
+        ).called(1);
+      });
+
+      group('correctly validates key pair', () {
+        group('when no key pair is provided', () {
+          test('is valid', () async {
+            await expectLater(
+              runWithOverrides(() => command.createPatch(patcher)),
+              completes,
+            );
+          });
+        });
+
+        group(
+          'when given existing private and public key files',
+          () {
+            test('is valid', () async {
+              when(
+                () => argResults.wasParsed(CommonArguments.privateKeyArg.name),
+              ).thenReturn(true);
+              when(
+                () => argResults.wasParsed(CommonArguments.publicKeyArg.name),
+              ).thenReturn(true);
+              when(() => argResults[CommonArguments.privateKeyArg.name])
+                  .thenReturn(createTempFile('private.pem').path);
+              when(() => argResults[CommonArguments.publicKeyArg.name])
+                  .thenReturn(createTempFile('public.pem').path);
+
+              await expectLater(
+                runWithOverrides(() => command.createPatch(patcher)),
+                completes,
+              );
+            });
+          },
+        );
+
+        group(
+          'when given an existing private key and nonexistent public key',
+          () {
+            test('logs error and exits with usage code', () async {
+              when(
+                () => argResults.wasParsed(CommonArguments.privateKeyArg.name),
+              ).thenReturn(true);
+              when(
+                () => argResults.wasParsed(CommonArguments.publicKeyArg.name),
+              ).thenReturn(false);
+              when(() => argResults[CommonArguments.privateKeyArg.name])
+                  .thenReturn(createTempFile('private.pem').path);
+
+              await expectLater(
+                runWithOverrides(() => command.createPatch(patcher)),
+                exitsWithCode(ExitCode.usage),
+              );
+              verify(
+                () => logger.err(
+                  'Both public and private keys must be provided or absent.',
+                ),
+              ).called(1);
+            });
+          },
+        );
+
+        group(
+          'when given an existing public key and nonexistent private key',
+          () {
+            test('fails and logs the err', () async {
+              when(
+                () => argResults.wasParsed(CommonArguments.privateKeyArg.name),
+              ).thenReturn(false);
+              when(
+                () => argResults.wasParsed(CommonArguments.publicKeyArg.name),
+              ).thenReturn(true);
+              when(() => argResults[CommonArguments.publicKeyArg.name])
+                  .thenReturn(createTempFile('public.pem').path);
+
+              await expectLater(
+                runWithOverrides(() => command.createPatch(patcher)),
+                exitsWithCode(ExitCode.usage),
+              );
+              verify(
+                () => logger.err(
+                  'Both public and private keys must be provided or absent.',
+                ),
+              ).called(1);
+            });
+          },
+        );
+      });
     });
 
     group('getPatcher', () {
