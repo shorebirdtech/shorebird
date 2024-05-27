@@ -184,6 +184,8 @@ NOTE: this is ${styleBold.wrap('not')} recommended. Asset changes cannot be incl
   @visibleForTesting
   Future<void> createPatch(Patcher patcher) async {
     await patcher.assertPreconditions();
+
+    results.assertAbsentOrValidKeyPair();
     await patcher.assertArgsAreValid();
 
     await cache.updateAll();
