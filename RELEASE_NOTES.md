@@ -2,10 +2,10 @@
 
 This section contains past updates we've sent to customers via Discord.
 
-## 1.1.7 (May 24, 2024)
+## 1.1.7 (May 28, 2024)
 
 - Updates patch command to prompt for release version.
-- Adds the ability to sign patches. Read more at https://docs.shorebird.dev/patch-signing
+- Adds the ability to sign patches. Read more at https://docs.shorebird.dev/guides/patch-signing
 
 ## 1.1.6 (May 15, 2024)
 
