@@ -70,7 +70,7 @@ extension CodeSign on ArgResults {
       assertAbsentOrValidPublicKey();
       assertAbsentOrValidPrivateKey();
     } else {
-      logger.err('Both public and private keys must be provided or absent.');
+      logger.err('Both public and private keys must be provided.');
       exit(ExitCode.usage.code);
     }
   }
