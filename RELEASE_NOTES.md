@@ -2,6 +2,10 @@
 
 This section contains past updates we've sent to customers via Discord.
 
+## 1.1.8 (May 28, 2024)
+
+- 🐦 Support for Flutter 3.22.1
+
 ## 1.1.7 (May 28, 2024)
 
 - Updates patch command to prompt for release version.
