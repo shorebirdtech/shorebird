@@ -18,9 +18,11 @@ import 'dart:io';
 
 void main() {
   // Intentionally including a space and a non ascii char in the path.
-  final dir = Directory.systemTemp.createTempSync(
-    'shorebird workspace-XXXXX 木',
-  );
+  final dir = Directory(
+    joinPath([Directory.systemTemp.path, 'shorebird workspace-XXXXX 木']),
+  )..createSync();
+
+  stdout.writeln('Directory created: ${dir.path}');
 
   const projectName = 'e2e_test';
   final projectCreationResult = Process.runSync(
