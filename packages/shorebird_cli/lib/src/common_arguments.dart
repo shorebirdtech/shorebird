@@ -20,14 +20,14 @@ class CommonArguments {
   static const publicKeyArg = ArgumentDescriber(
     name: 'public-key-path',
     description: '''
-The path for a public key file that will be used to validate patch signatures.
+The path for a public key .pem file that will be used to validate patch signatures.
 ''',
   );
 
   static const privateKeyArg = ArgumentDescriber(
     name: 'private-key-path',
     description: '''
-The path for a private key file that will be used to sign the patch artifact.
+The path for a private key .pem file that will be used to sign the patch artifact.
 ''',
   );
 }

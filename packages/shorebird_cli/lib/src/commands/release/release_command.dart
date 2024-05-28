@@ -118,7 +118,6 @@ of the iOS app that is using this module.''',
       )
       ..addOption(
         CommonArguments.publicKeyArg.name,
-        hide: true,
         help: CommonArguments.publicKeyArg.description,
       );
   }
