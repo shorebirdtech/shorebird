@@ -354,7 +354,7 @@ void main() {
               );
               verify(
                 () => logger.err(
-                  'Both public and private keys must be provided or absent.',
+                  'Both public and private keys must be provided.',
                 ),
               ).called(1);
             });
@@ -380,7 +380,7 @@ void main() {
               );
               verify(
                 () => logger.err(
-                  'Both public and private keys must be provided or absent.',
+                  'Both public and private keys must be provided.',
                 ),
               ).called(1);
             });
