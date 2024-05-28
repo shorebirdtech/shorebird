@@ -96,12 +96,10 @@ of the iOS app that is using this module.''',
       )
       ..addOption(
         CommonArguments.privateKeyArg.name,
-        hide: true,
         help: CommonArguments.privateKeyArg.description,
       )
       ..addOption(
         CommonArguments.publicKeyArg.name,
-        hide: true,
         help: CommonArguments.publicKeyArg.description,
       );
   }
