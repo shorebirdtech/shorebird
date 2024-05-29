@@ -311,7 +311,7 @@ class IosPatcher extends Patcher {
 
       if (dumpDebugInfoDir != null) {
         logger.detail(
-          '''Dumping link debug info to temporary location: ${dumpDebugInfoDir.path}''',
+          '''Dumping link debug info to ${dumpDebugInfoDir.path}''',
         );
       }
 
@@ -330,7 +330,7 @@ class IosPatcher extends Patcher {
         final debugInfoZip = await dumpDebugInfoDir.zipToTempFile();
         debugInfoZip.copySync(p.join('build', debugInfoFile.path));
         logger.detail(
-          'Temporary Link debug info saved to: ${debugInfoFile.path}',
+          'Link debug info saved to ${debugInfoFile.path}',
         );
       }
     } catch (error) {
