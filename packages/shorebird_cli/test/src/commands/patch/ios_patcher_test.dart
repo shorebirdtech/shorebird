@@ -938,6 +938,24 @@ void main() {
                       ),
                     ),
                   ).called(1);
+                  verify(
+                    () => logger.detail(
+                      any(
+                        that: contains(
+                          'Dumping link debug info to temporary location:',
+                        ),
+                      ),
+                    ),
+                  ).called(1);
+                  verify(
+                    () => logger.detail(
+                      any(
+                        that: contains(
+                          'Temporary Link debug info saved to:',
+                        ),
+                      ),
+                    ),
+                  ).called(1);
                 });
               });
 
