@@ -47,10 +47,10 @@ class Doctor {
       }
 
       final failedFixes = <ValidationIssue, dynamic>{};
-      final progress = logger.progress(validator.description);
+      final validatorProgress = logger.progress(validator.description);
       final issues = await validator.validate();
       if (issues.isEmpty) {
-        progress.complete();
+        validatorProgress.complete();
         continue;
       }
 
@@ -58,7 +58,7 @@ class Doctor {
       var unresolvedIssues = issues;
       if (fixableIssues.isNotEmpty) {
         if (applyFixes) {
-          progress.update('Fixing');
+          validatorProgress.update('Fixing');
           for (final issue in fixableIssues) {
             try {
               await issue.fix!();
@@ -74,7 +74,7 @@ class Doctor {
             numIssuesFixed += issues.length - unresolvedIssues.length;
             final fixAppliedMessage =
                 '''($numIssuesFixed fix${numIssuesFixed == 1 ? '' : 'es'} applied)''';
-            progress.complete(
+            validatorProgress.complete(
               '''${validator.description} ${green.wrap(fixAppliedMessage)}''',
             );
             continue;
@@ -84,7 +84,14 @@ class Doctor {
         }
       }
 
-      progress.fail(validator.description);
+      // The validator should only fail if there are errors (warnings don't
+      // cause failure).
+      final unresolvedErrors = unresolvedIssues.where(
+        (issue) => issue.severity == ValidationIssueSeverity.error,
+      );
+      unresolvedErrors.isEmpty
+          ? validatorProgress.complete()
+          : validatorProgress.fail();
 
       for (final issue in failedFixes.keys) {
         logger.err(
