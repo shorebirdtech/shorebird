@@ -1,5 +1,5 @@
 import 'package:json_annotation/json_annotation.dart';
-import 'package:shorebird_code_push_protocol/src/models/create_patch_metadata.dart';
+import 'package:shorebird_code_push_protocol/shorebird_code_push_protocol.dart';
 
 part 'create_patch_request.g.dart';
 
@@ -28,6 +28,7 @@ class CreatePatchRequest {
   /// Whether the user used the --force flag when authoring this patch.
   final bool? wasForced;
 
-  /// Additional information about the creation of the patch.
-  final CreatePatchMetadata metadata;
+  /// Additional information about the command that was run to create the patch
+  /// and the environment in which it was run.
+  final Json metadata;
 }

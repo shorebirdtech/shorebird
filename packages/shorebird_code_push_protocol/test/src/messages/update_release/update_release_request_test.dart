@@ -4,10 +4,10 @@ import 'package:test/test.dart';
 void main() {
   group(UpdateReleaseRequest, () {
     test('can be (de)serialized', () {
-      const request = UpdateReleaseRequest(
+      final request = UpdateReleaseRequest(
         platform: ReleasePlatform.android,
         status: ReleaseStatus.active,
-        metadata: UpdateReleaseMetadata(
+        metadata: const UpdateReleaseMetadata(
           releasePlatform: ReleasePlatform.ios,
           flutterVersionOverride: null,
           generatedApks: null,
@@ -17,7 +17,7 @@ void main() {
             shorebirdVersion: '1.2.3',
             xcodeVersion: '15.3',
           ),
-        ),
+        ).toJson(),
       );
       expect(
         UpdateReleaseRequest.fromJson(request.toJson()).toJson(),

@@ -2031,7 +2031,7 @@ You can manage this release in the ${link(uri: uri, message: 'Shorebird Console'
             () => codePushClient.createPatch(
               appId: appId,
               releaseId: releaseId,
-              metadata: CreatePatchMetadata.forTest(),
+              metadata: CreatePatchMetadata.forTest().toJson(),
             ),
           ).called(1);
           verify(
@@ -2087,7 +2087,7 @@ You can manage this release in the ${link(uri: uri, message: 'Shorebird Console'
             () => codePushClient.createPatch(
               appId: appId,
               releaseId: releaseId,
-              metadata: CreatePatchMetadata.forTest(),
+              metadata: CreatePatchMetadata.forTest().toJson(),
             ),
           ).called(1);
           verify(
