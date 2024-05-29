@@ -17,7 +17,13 @@ class FlutterValidationException implements Exception {
 
 class CommandNotFoundException implements Exception {}
 
+/// {@template shorebird_flutter_validator}
+/// Compares the version of Flutter that Shorebird includes with the version
+/// of Flutter on the user's path. Will error if no system Flutter is found, and
+/// will warn if major or minor versions differ.
+/// {@endtemplate}
 class ShorebirdFlutterValidator extends Validator {
+  /// {@macro shorebird_flutter_validator}
   ShorebirdFlutterValidator();
 
   @override
@@ -28,8 +34,8 @@ class ShorebirdFlutterValidator extends Validator {
     final issues = <ValidationIssue>[];
 
     if (!shorebirdEnv.flutterDirectory.existsSync()) {
-      final message = 'No Flutter directory found at '
-          '${shorebirdEnv.flutterDirectory}';
+      final message =
+          'No Flutter directory found at ${shorebirdEnv.flutterDirectory}';
       issues.add(
         ValidationIssue(
           severity: ValidationIssueSeverity.error,
@@ -42,8 +48,7 @@ class ShorebirdFlutterValidator extends Validator {
       issues.add(
         ValidationIssue(
           severity: ValidationIssueSeverity.warning,
-          message: '${shorebirdEnv.flutterDirectory} has local '
-              'modifications',
+          message: '${shorebirdEnv.flutterDirectory} has local modifications',
         ),
       );
     }
