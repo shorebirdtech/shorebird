@@ -22,12 +22,21 @@ enum ValidationIssueSeverity {
 
 /// Display helpers for printing [ValidationIssue]s.
 extension Display on ValidationIssueSeverity {
-  String get leading {
+  String get rawLeading {
     switch (this) {
       case ValidationIssueSeverity.error:
-        return red.wrap('[✗]')!;
+        return '[✗]';
       case ValidationIssueSeverity.warning:
-        return yellow.wrap('[!]')!;
+        return '[!]';
+    }
+  }
+
+  String get displayLeading {
+    switch (this) {
+      case ValidationIssueSeverity.error:
+        return red.wrap(rawLeading)!;
+      case ValidationIssueSeverity.warning:
+        return yellow.wrap(rawLeading)!;
     }
   }
 }
@@ -52,7 +61,7 @@ class ValidationIssue {
 
   /// A console-friendly description of this issue.
   String? get displayMessage {
-    return '${severity.leading} $message';
+    return '${severity.displayLeading} $message';
   }
 
   // coverage:ignore-start

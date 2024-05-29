@@ -1,3 +1,5 @@
+import 'dart:convert';
+
 import 'package:mason_logger/mason_logger.dart';
 import 'package:scoped_deps/scoped_deps.dart';
 import 'package:shorebird_cli/src/logger.dart';
@@ -100,7 +102,20 @@ class Doctor {
       }
 
       for (final issue in unresolvedIssues) {
-        logger.info('  ${issue.displayMessage}');
+        if (issue.displayMessage == null) {
+          continue;
+        }
+
+        final lines = const LineSplitter().convert(issue.displayMessage!);
+        for (final (i, line) in lines.indexed) {
+          var leadingPaddingSpaceCount = 2;
+          if (i > 0) {
+            // Indent subsequent lines to align with the first line after the
+            // leading string and the space following it.
+            leadingPaddingSpaceCount += issue.severity.rawLeading.length + 1;
+          }
+          logger.info('${' ' * leadingPaddingSpaceCount}$line');
+        }
       }
 
       allIssues.addAll(unresolvedIssues);
