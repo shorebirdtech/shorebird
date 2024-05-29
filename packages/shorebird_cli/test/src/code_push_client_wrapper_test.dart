@@ -1823,6 +1823,43 @@ You can manage this release in the ${link(uri: uri, message: 'Shorebird Console'
         ).called(1);
         verify(() => progress.complete()).called(1);
       });
+
+      group('when metadata is provided', () {
+        setUp(() {
+          when(
+            () => codePushClient.updateReleaseStatus(
+              appId: any(named: 'appId'),
+              releaseId: any(named: 'releaseId'),
+              platform: any(named: 'platform'),
+              status: any(named: 'status'),
+              metadata: any(named: 'metadata'),
+            ),
+          ).thenAnswer((_) async {});
+        });
+
+        test('updates release status with metadata as json', () async {
+          await runWithOverrides(
+            () => codePushClientWrapper.updateReleaseStatus(
+              appId: app.appId,
+              releaseId: releaseId,
+              platform: releasePlatform,
+              status: ReleaseStatus.active,
+              metadata: UpdateReleaseMetadata.forTest(),
+            ),
+          );
+
+          verify(
+            () => codePushClient.updateReleaseStatus(
+              appId: app.appId,
+              releaseId: releaseId,
+              platform: releasePlatform,
+              status: ReleaseStatus.active,
+              metadata: UpdateReleaseMetadata.forTest().toJson(),
+            ),
+          ).called(1);
+          verify(() => progress.complete()).called(1);
+        });
+      });
     });
 
     group('patch', () {
