@@ -221,6 +221,47 @@ Make sure you have run "flutter build apk" at least once.''',
           ),
         ).called(1);
       });
+
+      group('when flavors are all upper case', () {
+        test('extracts flavors', () async {
+          when(() => platform.isLinux).thenReturn(true);
+          when(() => platform.isMacOS).thenReturn(false);
+          when(() => platform.isWindows).thenReturn(false);
+          final tempDir = setUpAppTempDir();
+          File(
+            p.join(tempDir.path, 'android', 'gradlew'),
+          ).createSync(recursive: true);
+          const javaHome = 'test_java_home';
+          when(() => platform.environment).thenReturn({'JAVA_HOME': javaHome});
+          when(() => result.stdout).thenReturn(
+            File(
+              p.join(
+                'test',
+                'fixtures',
+                'gradle_app_tasks_upper_case_flavors.txt',
+              ),
+            ).readAsStringSync(),
+          );
+          await expectLater(
+            runWithOverrides(() => gradlew.productFlavors(tempDir.path)),
+            completion(
+              equals({
+                'SP',
+                'RJ',
+              }),
+            ),
+          );
+          verify(
+            () => process.run(
+              p.join(tempDir.path, 'android', 'gradlew'),
+              ['app:tasks', '--all', '--console=auto'],
+              runInShell: true,
+              workingDirectory: p.join(tempDir.path, 'android'),
+              environment: {'JAVA_HOME': javaHome},
+            ),
+          ).called(1);
+        });
+      });
     });
   });
 }

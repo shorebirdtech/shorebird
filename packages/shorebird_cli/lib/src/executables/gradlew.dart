@@ -93,7 +93,11 @@ class Gradlew {
       if (match != null) {
         final variant = match.group(1)!;
         if (!variant.toLowerCase().endsWith('test')) {
-          variants.add(variant[0].toLowerCase() + variant.substring(1));
+          if (variant.isAcronymPrefixed) {
+            variants.add(variant);
+          } else {
+            variants.add(variant[0].toLowerCase() + variant.substring(1));
+          }
         }
       }
     }
@@ -111,5 +115,18 @@ class Gradlew {
       if (match != null) productFlavors.add(variant);
     }
     return productFlavors;
+  }
+}
+
+extension on String {
+  bool get isAcronymPrefixed {
+    if (length >= 2) {
+      return this[0].isUpperCase() && this[1].isUpperCase();
+    }
+    return false;
+  }
+
+  bool isUpperCase() {
+    return this == toUpperCase();
   }
 }
