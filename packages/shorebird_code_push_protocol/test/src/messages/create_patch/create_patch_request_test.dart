@@ -4,10 +4,10 @@ import 'package:test/test.dart';
 void main() {
   group(CreatePatchRequest, () {
     test('can be (de)serialized', () {
-      const request = CreatePatchRequest(
+      final request = CreatePatchRequest(
         releaseId: 1234,
         wasForced: true,
-        metadata: CreatePatchMetadata(
+        metadata: const CreatePatchMetadata(
           releasePlatform: ReleasePlatform.android,
           usedIgnoreAssetChangesFlag: true,
           usedIgnoreNativeChangesFlag: false,
@@ -20,7 +20,7 @@ void main() {
             shorebirdVersion: '1.2.3',
             xcodeVersion: null,
           ),
-        ),
+        ).toJson(),
       );
       expect(
         CreatePatchRequest.fromJson(request.toJson()).toJson(),
@@ -32,7 +32,7 @@ void main() {
       final request = CreatePatchRequest(
         releaseId: 1234,
         wasForced: true,
-        metadata: CreatePatchMetadata.forTest(),
+        metadata: CreatePatchMetadata.forTest().toJson(),
       );
       expect(
         CreatePatchRequest.fromJson(request.toJson()).toJson(),

@@ -257,7 +257,7 @@ class CodePushClient {
   Future<Patch> createPatch({
     required String appId,
     required int releaseId,
-    required CreatePatchMetadata metadata,
+    required Json metadata,
   }) async {
     final request = CreatePatchRequest(
       releaseId: releaseId,
@@ -307,7 +307,7 @@ class CodePushClient {
     required int releaseId,
     required ReleasePlatform platform,
     required ReleaseStatus status,
-    UpdateReleaseMetadata? metadata,
+    Json? metadata,
   }) async {
     final response = await _httpClient.patch(
       Uri.parse('$_v1/apps/$appId/releases/$releaseId'),
