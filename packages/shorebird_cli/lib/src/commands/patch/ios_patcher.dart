@@ -309,6 +309,12 @@ class IosPatcher extends Patcher {
           ? Directory.systemTemp.createTempSync()
           : null;
 
+      if (dumpDebugInfoDir != null) {
+        logger.detail(
+          'Dumping link debug info to ${dumpDebugInfoDir.path}',
+        );
+      }
+
       linkPercentage = await aotTools.link(
         base: releaseArtifact.path,
         patch: patch.path,
@@ -323,6 +329,9 @@ class IosPatcher extends Patcher {
       if (dumpDebugInfoDir != null) {
         final debugInfoZip = await dumpDebugInfoDir.zipToTempFile();
         debugInfoZip.copySync(p.join('build', debugInfoFile.path));
+        logger.detail(
+          'Link debug info saved to ${debugInfoFile.path}',
+        );
       }
     } catch (error) {
       linkProgress.fail('Failed to link AOT files: $error');
