@@ -942,7 +942,7 @@ void main() {
                     () => logger.detail(
                       any(
                         that: contains(
-                          'Dumping link debug info to temporary location:',
+                          'Dumping link debug info to',
                         ),
                       ),
                     ),
@@ -951,7 +951,7 @@ void main() {
                     () => logger.detail(
                       any(
                         that: contains(
-                          'Temporary Link debug info saved to:',
+                          'Link debug info saved to',
                         ),
                       ),
                     ),

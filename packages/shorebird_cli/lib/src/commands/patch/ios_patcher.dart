@@ -311,7 +311,7 @@ class IosPatcher extends Patcher {
 
       if (dumpDebugInfoDir != null) {
         logger.detail(
-          '''Dumping link debug info to ${dumpDebugInfoDir.path}''',
+          'Dumping link debug info to ${dumpDebugInfoDir.path}',
         );
       }
 
