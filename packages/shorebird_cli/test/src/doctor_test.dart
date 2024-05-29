@@ -12,7 +12,9 @@ void main() {
   group(Doctor, () {
     const validationWarning = ValidationIssue(
       severity: ValidationIssueSeverity.warning,
-      message: 'warning',
+      message: '''
+warning
+with multiple lines''',
     );
     const validationError = ValidationIssue(
       severity: ValidationIssueSeverity.error,
@@ -75,18 +77,10 @@ void main() {
           verify(validator.validate).called(1);
         }
 
-        verify(
-          () =>
-              logger.info(any(that: stringContainsInOrder(['[!]', 'warning']))),
-        ).called(1);
-
-        verify(
-          () => logger.info(any(that: stringContainsInOrder(['[✗]', 'error']))),
-        ).called(1);
-
-        verify(
-          () => logger.info(any(that: contains('2 issues detected.'))),
-        ).called(1);
+        verify(() => logger.info('  ${yellow.wrap('[!]')} warning')).called(1);
+        verify(() => logger.info('      with multiple lines')).called(1);
+        verify(() => logger.info('  ${red.wrap('[✗]')} error')).called(1);
+        verify(() => logger.info('2 issues detected.')).called(1);
       });
 
       group('when validators only yield warnings', () {
