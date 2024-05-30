@@ -1,3 +1,5 @@
+import 'dart:io';
+
 import 'package:mason_logger/mason_logger.dart';
 import 'package:shorebird_cli/src/android_sdk.dart';
 import 'package:shorebird_cli/src/android_studio.dart';
@@ -7,6 +9,7 @@ import 'package:shorebird_cli/src/executables/executables.dart';
 import 'package:shorebird_cli/src/logger.dart';
 import 'package:shorebird_cli/src/shorebird_env.dart';
 import 'package:shorebird_cli/src/shorebird_flutter.dart';
+import 'package:shorebird_cli/src/shorebird_process.dart';
 import 'package:shorebird_cli/src/version.dart';
 
 /// {@template doctor_command}
@@ -45,6 +48,7 @@ class DoctorCommand extends ShorebirdCommand {
     final flutterVersion = await _tryGetFlutterVersion();
     final output = StringBuffer();
     final shorebirdFlutterPrefix = StringBuffer('Flutter');
+
     if (flutterVersion != null) {
       shorebirdFlutterPrefix.write(' $flutterVersion');
     }
@@ -57,13 +61,28 @@ Engine • revision ${shorebirdEnv.shorebirdEngineRevision}''',
 
     if (verbose) {
       final notDetected = red.wrap('not detected');
+      var javaVersion = notDetected;
+
+      final javaExe = java.executable;
+      if (javaExe != null) {
+        final javaVersionProcessResult = process.runSync(javaExe, ['-version']);
+        if (javaVersionProcessResult.exitCode == ExitCode.success.code) {
+          // The version string is printed to stderr for some reason.
+          javaVersion = javaVersionProcessResult.stderr
+              .toString()
+              .split(Platform.lineTerminator)
+              .join('${Platform.lineTerminator}                  ');
+        }
+      }
       output.writeln('''
 
 Android Toolchain
   • Android Studio: ${androidStudio.path ?? notDetected}
   • Android SDK: ${androidSdk.path ?? notDetected}
   • ADB: ${androidSdk.adbPath ?? notDetected}
-  • JAVA_HOME: ${java.home ?? notDetected}''');
+  • JAVA_HOME: ${java.home ?? notDetected}
+  • JAVA_EXECUTABLE: ${javaExe ?? notDetected}
+  • JAVA_VERSION: $javaVersion''');
     }
 
     logger.info(output.toString());

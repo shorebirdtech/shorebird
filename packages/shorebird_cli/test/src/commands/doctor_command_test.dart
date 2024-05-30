@@ -10,6 +10,7 @@ import 'package:shorebird_cli/src/executables/executables.dart';
 import 'package:shorebird_cli/src/logger.dart';
 import 'package:shorebird_cli/src/shorebird_env.dart';
 import 'package:shorebird_cli/src/shorebird_flutter.dart';
+import 'package:shorebird_cli/src/shorebird_process.dart';
 import 'package:shorebird_cli/src/validators/validators.dart';
 import 'package:shorebird_cli/src/version.dart';
 import 'package:test/test.dart';
@@ -28,6 +29,7 @@ void main() {
     late Java java;
     late ShorebirdLogger logger;
     late ShorebirdEnv shorebirdEnv;
+    late ShorebirdProcess shorebirdProcess;
     late ShorebirdFlutter shorebirdFlutter;
     late Validator validator;
     late DoctorCommand command;
@@ -43,6 +45,7 @@ void main() {
           loggerRef.overrideWith(() => logger),
           shorebirdEnvRef.overrideWith(() => shorebirdEnv),
           shorebirdFlutterRef.overrideWith(() => shorebirdFlutter),
+          processRef.overrideWith(() => shorebirdProcess),
         },
       );
     }
@@ -56,6 +59,7 @@ void main() {
       logger = MockShorebirdLogger();
       shorebirdEnv = MockShorebirdEnv();
       shorebirdFlutter = MockShorebirdFlutter();
+      shorebirdProcess = MockShorebirdProcess();
       validator = MockValidator();
 
       when(() => argResults['verbose']).thenReturn(false);
@@ -119,10 +123,13 @@ Engine • revision $shorebirdEngineRevision
         await runWithOverrides(command.run);
 
         final notDetectedText = red.wrap('not detected');
-        verify(
-          () => logger.info('''
+        final msg =
+            verify(() => logger.info(captureAny())).captured.first as String;
 
-Shorebird v$packageVersion • git@github.com:shorebirdtech/shorebird.git
+        expect(
+          msg,
+          equals('''
+Shorebird $packageVersion • git@github.com:shorebirdtech/shorebird.git
 Flutter • revision ${shorebirdEnv.flutterRevision}
 Engine • revision $shorebirdEngineRevision
 
@@ -130,8 +137,11 @@ Android Toolchain
   • Android Studio: $notDetectedText
   • Android SDK: $notDetectedText
   • ADB: $notDetectedText
-  • JAVA_HOME: $notDetectedText'''),
-        ).called(1);
+  • JAVA_HOME: $notDetectedText
+  • JAVA_EXECUTABLE: $notDetectedText
+  • JAVA_VERSION: $notDetectedText
+'''),
+        );
       });
 
       test('prints additional information (detected)', () async {
@@ -140,12 +150,29 @@ Android Toolchain
         when(() => androidSdk.path).thenReturn('test-sdk-path');
         when(() => androidSdk.adbPath).thenReturn('test-adb-path');
         when(() => java.home).thenReturn('test-java-home');
+        when(() => java.executable).thenReturn('test-java-executable');
+
+        final result = MockShorebirdProcessResult();
+        when(() => result.exitCode).thenReturn(ExitCode.success.code);
+        when(() => result.stderr).thenReturn('''
+openjdk version "17.0.9" 2023-10-17
+OpenJDK Runtime Environment (build 17.0.9+0-17.0.9b1087.7-11185874)
+OpenJDK 64-Bit Server VM (build 17.0.9+0-17.0.9b1087.7-11185874, mixed mode)''');
+        when(
+          () => shorebirdProcess.runSync(
+            'test-java-executable',
+            ['-version'],
+          ),
+        ).thenReturn(result);
         await runWithOverrides(command.run);
 
-        verify(
-          () => logger.info('''
+        final msg =
+            verify(() => logger.info(captureAny())).captured.first as String;
 
-Shorebird v$packageVersion • git@github.com:shorebirdtech/shorebird.git
+        expect(
+          msg,
+          equals('''
+Shorebird $packageVersion • git@github.com:shorebirdtech/shorebird.git
 Flutter • revision ${shorebirdEnv.flutterRevision}
 Engine • revision $shorebirdEngineRevision
 
@@ -153,8 +180,13 @@ Android Toolchain
   • Android Studio: test-studio-path
   • Android SDK: test-sdk-path
   • ADB: test-adb-path
-  • JAVA_HOME: test-java-home'''),
-        ).called(1);
+  • JAVA_HOME: test-java-home
+  • JAVA_EXECUTABLE: test-java-executable
+  • JAVA_VERSION: openjdk version "17.0.9" 2023-10-17
+                  OpenJDK Runtime Environment (build 17.0.9+0-17.0.9b1087.7-11185874)
+                  OpenJDK 64-Bit Server VM (build 17.0.9+0-17.0.9b1087.7-11185874, mixed mode)
+'''),
+        );
       });
     });
 
