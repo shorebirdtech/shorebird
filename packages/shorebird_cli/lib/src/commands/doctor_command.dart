@@ -9,7 +9,6 @@ import 'package:shorebird_cli/src/executables/executables.dart';
 import 'package:shorebird_cli/src/logger.dart';
 import 'package:shorebird_cli/src/shorebird_env.dart';
 import 'package:shorebird_cli/src/shorebird_flutter.dart';
-import 'package:shorebird_cli/src/shorebird_process.dart';
 import 'package:shorebird_cli/src/version.dart';
 
 /// {@template doctor_command}
@@ -65,12 +64,12 @@ Engine • revision ${shorebirdEnv.shorebirdEngineRevision}''',
 
       final javaExe = java.executable;
       if (javaExe != null) {
-        final javaVersionProcessResult = process.runSync(javaExe, ['-version']);
-        if (javaVersionProcessResult.exitCode == ExitCode.success.code) {
-          // The version string is printed to stderr for some reason.
-          javaVersion = javaVersionProcessResult.stderr
-              .toString()
+        final result = java.version;
+        if (result != null) {
+          javaVersion = result
               .split(Platform.lineTerminator)
+              // Adds empty space to the version will be padded with the
+              // JAVA_VERSION label.
               .join('${Platform.lineTerminator}                  ');
         }
       }

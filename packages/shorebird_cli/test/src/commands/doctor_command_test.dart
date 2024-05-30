@@ -10,7 +10,6 @@ import 'package:shorebird_cli/src/executables/executables.dart';
 import 'package:shorebird_cli/src/logger.dart';
 import 'package:shorebird_cli/src/shorebird_env.dart';
 import 'package:shorebird_cli/src/shorebird_flutter.dart';
-import 'package:shorebird_cli/src/shorebird_process.dart';
 import 'package:shorebird_cli/src/third_party/flutter_tools/lib/flutter_tools.dart';
 import 'package:shorebird_cli/src/validators/validators.dart';
 import 'package:shorebird_cli/src/version.dart';
@@ -31,7 +30,6 @@ void main() {
     late Java java;
     late ShorebirdLogger logger;
     late ShorebirdEnv shorebirdEnv;
-    late ShorebirdProcess shorebirdProcess;
     late ShorebirdFlutter shorebirdFlutter;
     late Validator validator;
     late DoctorCommand command;
@@ -47,7 +45,6 @@ void main() {
           loggerRef.overrideWith(() => logger),
           shorebirdEnvRef.overrideWith(() => shorebirdEnv),
           shorebirdFlutterRef.overrideWith(() => shorebirdFlutter),
-          processRef.overrideWith(() => shorebirdProcess),
         },
       );
     }
@@ -62,7 +59,6 @@ void main() {
       logger = MockShorebirdLogger();
       shorebirdEnv = MockShorebirdEnv();
       shorebirdFlutter = MockShorebirdFlutter();
-      shorebirdProcess = MockShorebirdProcess();
       validator = MockValidator();
 
       when(() => argResults['verbose']).thenReturn(false);
@@ -157,21 +153,13 @@ Android Toolchain
         when(() => java.home).thenReturn('test-java-home');
         when(() => java.executable).thenReturn('test-java-executable');
 
-        final result = MockShorebirdProcessResult();
-        when(() => result.exitCode).thenReturn(ExitCode.success.code);
-        when(() => result.stderr).thenReturn(
+        when(() => java.version).thenReturn(
           '''
 openjdk version "17.0.9" 2023-10-17
 OpenJDK Runtime Environment (build 17.0.9+0-17.0.9b1087.7-11185874)
 OpenJDK 64-Bit Server VM (build 17.0.9+0-17.0.9b1087.7-11185874, mixed mode)'''
               .replaceAll('\n', Platform.lineTerminator),
         );
-        when(
-          () => shorebirdProcess.runSync(
-            'test-java-executable',
-            ['-version'],
-          ),
-        ).thenReturn(result);
         await runWithOverrides(command.run);
 
         final msg =
