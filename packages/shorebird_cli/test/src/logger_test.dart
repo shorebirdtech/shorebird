@@ -136,9 +136,13 @@ void main() {
     });
 
     test('addError with stack trace forwards to baseStdout, logs to file', () {
-      loggingStdout.addError('error');
-      verify(() => baseStdout.addError('error')).called(1);
+      loggingStdout.addError('error', StackTrace.current);
+      verify(() => baseStdout.addError('error', any())).called(1);
       expect(logFile.readAsStringSync(), contains('error'));
+      expect(
+        logFile.readAsStringSync(),
+        contains('#0      main.<anonymous closure>.<anonymous closure>'),
+      );
     });
 
     test('forwards write to baseStdout, logs to file', () {
