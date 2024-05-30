@@ -50,4 +50,13 @@ void main() {
       expect('test'.removeAnsiEscapes(), equals('test'));
     });
   });
+
+  group('IsUpperCase', () async {
+    test('returns true if a string contains only uppercase characters',
+        () async {
+      expect('TEST'.isUpperCase(), isTrue);
+      expect('test'.isUpperCase(), isFalse);
+      expect('Test'.isUpperCase(), isFalse);
+    });
+  });
 }

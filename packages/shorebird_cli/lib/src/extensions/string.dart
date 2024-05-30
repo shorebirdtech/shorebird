@@ -26,3 +26,8 @@ extension AnsiEscapes on String {
     ).replaceAll(ansiEscapeRegex, '');
   }
 }
+
+extension IsUpperCase on String {
+  /// Returns `true` if this string is in uppercase.
+  bool isUpperCase() => this == toUpperCase();
+}
