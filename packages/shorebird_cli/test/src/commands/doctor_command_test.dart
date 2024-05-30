@@ -159,10 +159,13 @@ Android Toolchain
 
         final result = MockShorebirdProcessResult();
         when(() => result.exitCode).thenReturn(ExitCode.success.code);
-        when(() => result.stderr).thenReturn('''
+        when(() => result.stderr).thenReturn(
+          '''
 openjdk version "17.0.9" 2023-10-17
 OpenJDK Runtime Environment (build 17.0.9+0-17.0.9b1087.7-11185874)
-OpenJDK 64-Bit Server VM (build 17.0.9+0-17.0.9b1087.7-11185874, mixed mode)''');
+OpenJDK 64-Bit Server VM (build 17.0.9+0-17.0.9b1087.7-11185874, mixed mode)'''
+              .replaceAll('\n', Platform.lineTerminator),
+        );
         when(
           () => shorebirdProcess.runSync(
             'test-java-executable',
