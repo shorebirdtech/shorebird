@@ -96,9 +96,11 @@ class LoggingStdout implements Stdout {
   @override
   void addError(Object error, [StackTrace? stackTrace]) {
     baseStdOut.addError(error, stackTrace);
-    _logToFile(error);
-    if (stackTrace != null) {
-      _logToFile(stackTrace);
+
+    if (stackTrace == null) {
+      _logToFile(error);
+    } else {
+      _logToFile('$error\n$stackTrace');
     }
   }
 
