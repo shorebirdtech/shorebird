@@ -11,6 +11,7 @@ import 'package:shorebird_cli/src/logger.dart';
 import 'package:shorebird_cli/src/shorebird_env.dart';
 import 'package:shorebird_cli/src/shorebird_flutter.dart';
 import 'package:shorebird_cli/src/shorebird_process.dart';
+import 'package:shorebird_cli/src/third_party/flutter_tools/lib/flutter_tools.dart';
 import 'package:shorebird_cli/src/validators/validators.dart';
 import 'package:shorebird_cli/src/version.dart';
 import 'package:test/test.dart';
@@ -25,6 +26,7 @@ void main() {
     late ArgResults argResults;
     late AndroidStudio androidStudio;
     late AndroidSdk androidSdk;
+    late Directory logsDirectory;
     late Doctor doctor;
     late Java java;
     late ShorebirdLogger logger;
@@ -55,6 +57,7 @@ void main() {
       androidStudio = MockAndroidStudio();
       androidSdk = MockAndroidSdk();
       doctor = MockDoctor();
+      logsDirectory = Directory.systemTemp.createTempSync('shorebird_logs');
       java = MockJava();
       logger = MockShorebirdLogger();
       shorebirdEnv = MockShorebirdEnv();
@@ -74,6 +77,7 @@ void main() {
       when(
         () => shorebirdEnv.flutterRevision,
       ).thenReturn(shorebirdFlutterRevision);
+      when(() => shorebirdEnv.logsDirectory).thenReturn(logsDirectory);
       when(() => doctor.allValidators).thenReturn([validator]);
       when(
         () => doctor.runValidators(any(), applyFixes: any(named: 'applyFixes')),
@@ -133,6 +137,7 @@ Shorebird $packageVersion • git@github.com:shorebirdtech/shorebird.git
 Flutter • revision ${shorebirdEnv.flutterRevision}
 Engine • revision $shorebirdEngineRevision
 
+Logs: ${logsDirectory.path}
 Android Toolchain
   • Android Studio: $notDetectedText
   • Android SDK: $notDetectedText
