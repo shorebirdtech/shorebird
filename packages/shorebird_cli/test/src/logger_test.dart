@@ -69,8 +69,15 @@ void main() {
       loggingStdout = LoggingStdout(baseStdOut: baseStdout, logFile: logFile);
     });
 
-    test('forwards encoding from baseStdOut', () {
+    test('encoding forwards to baseStdOut', () {
       expect(loggingStdout.encoding, equals(utf8Encoding));
+      verify(() => baseStdout.encoding).called(1);
+    });
+
+    test('set encoding forwards to baseStdout', () {
+      final asciiEncoding = Encoding.getByName('ascii')!;
+      loggingStdout.encoding = asciiEncoding;
+      verify(() => baseStdout.encoding = asciiEncoding).called(1);
     });
 
     test('addStream forwards to baseStdout', () async {
@@ -102,6 +109,11 @@ void main() {
     test('lineTerminator forwards to baseStdout', () {
       expect(loggingStdout.lineTerminator, equals('\n'));
       verify(() => baseStdout.lineTerminator).called(1);
+    });
+
+    test('set lineTerminator forwards to baseStdout', () {
+      loggingStdout.lineTerminator = '\r\n';
+      verify(() => baseStdout.lineTerminator = '\r\n').called(1);
     });
 
     test('nonBlocking forwards to baseStdout', () {
@@ -146,25 +158,25 @@ void main() {
       );
     });
 
-    test('forwards write to baseStdout, logs to file', () {
+    test('write forwards to baseStdout, logs to file', () {
       loggingStdout.write('message');
       verify(() => baseStdout.write('message')).called(1);
       expect(logFile.readAsStringSync(), contains('message'));
     });
 
-    test('forwards writeln to baseStdout, logs to file', () {
+    test('writeln forwards to baseStdout, logs to file', () {
       loggingStdout.writeln('message');
       verify(() => baseStdout.writeln('message')).called(1);
       expect(logFile.readAsStringSync(), contains('message'));
     });
 
-    test('forwards writeAll to baseStdout, logs to file', () {
+    test('writeAll forwards to baseStdout, logs to file', () {
       loggingStdout.writeAll(['message']);
       verify(() => baseStdout.writeAll(['message'])).called(1);
       expect(logFile.readAsStringSync(), contains('message'));
     });
 
-    test('forwards writeCharCode to baseStdout, logs as string to file', () {
+    test('writeCharCode forwards to baseStdout, logs as string to file', () {
       loggingStdout.writeCharCode(0);
       verify(() => baseStdout.writeCharCode(0)).called(1);
       expect(logFile.readAsStringSync(), contains('\x00'));
