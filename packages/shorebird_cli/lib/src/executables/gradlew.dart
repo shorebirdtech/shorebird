@@ -93,7 +93,7 @@ class Gradlew {
       if (match != null) {
         final variant = match.group(1)!;
         if (!variant.toLowerCase().endsWith('test')) {
-          if (variant.isAcronymPrefixed) {
+          if (variant.startsWithUpperCaseLetters) {
             variants.add(variant);
           } else {
             variants.add(variant[0].toLowerCase() + variant.substring(1));
@@ -119,14 +119,10 @@ class Gradlew {
 }
 
 extension on String {
-  bool get isAcronymPrefixed {
+  bool get startsWithUpperCaseLetters {
     if (length >= 2) {
       return this[0].isUpperCase() && this[1].isUpperCase();
     }
     return false;
-  }
-
-  bool isUpperCase() {
-    return this == toUpperCase();
   }
 }

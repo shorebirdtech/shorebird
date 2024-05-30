@@ -195,7 +195,7 @@ Make sure you have run "flutter build apk" at least once.''',
         when(() => platform.environment).thenReturn({'JAVA_HOME': javaHome});
         when(() => result.stdout).thenReturn(
           File(
-            p.join('test', 'fixtures', 'gradle_app_tasks.txt'),
+            p.join('test', 'fixtures', 'gradle', 'gradle_app_tasks.txt'),
           ).readAsStringSync(),
         );
         await expectLater(
@@ -238,6 +238,7 @@ Make sure you have run "flutter build apk" at least once.''',
               p.join(
                 'test',
                 'fixtures',
+                'gradle',
                 'gradle_app_tasks_upper_case_flavors.txt',
               ),
             ).readAsStringSync(),
