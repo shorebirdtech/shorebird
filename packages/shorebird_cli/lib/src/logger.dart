@@ -15,7 +15,10 @@ ShorebirdLogger get logger => read(loggerRef);
 
 const _logFileName = 'shorebird.log';
 
-final File logFile = (() {
+/// Where logs are written for the current Shorebird CLI run. A new file will
+/// be created for every run of the Shorebird CLI, and will have the name
+/// `timestamp_shorebird.log`.
+final File currentRunLogFile = (() {
   // TODO(bryanoltman): use package:clock to test that we use the correct timestamp
   final timestamp = DateTime.now().millisecondsSinceEpoch;
   final file = File(
@@ -31,6 +34,21 @@ final File logFile = (() {
 
   return file;
 })();
+
+/// Writes the given [message] to the [logFile] on its own line, prefixed with
+/// the current timestamp.
+void _writeToLogFile(Object? message, {required File logFile}) {
+  if (message == null) {
+    return;
+  }
+
+  final timestampString = DateTime.now().toIso8601String();
+  final messageString = message.toString().removeAnsiEscapes();
+  logFile.writeAsStringSync(
+    '$timestampString $messageString\n',
+    mode: FileMode.append,
+  );
+}
 
 /// {@template logging_stdout}
 /// A [Stdout] implementation that logs output to a file after forwarding
@@ -90,7 +108,7 @@ class LoggingStdout implements Stdout {
   @override
   void add(List<int> data) {
     baseStdOut.add(data);
-    _logToFile(String.fromCharCodes(data));
+    _writeLog(String.fromCharCodes(data));
   }
 
   @override
@@ -98,9 +116,9 @@ class LoggingStdout implements Stdout {
     baseStdOut.addError(error, stackTrace);
 
     if (stackTrace == null) {
-      _logToFile(error);
+      _writeLog(error);
     } else {
-      _logToFile('$error\n$stackTrace');
+      _writeLog('$error\n$stackTrace');
     }
   }
 
@@ -117,40 +135,47 @@ class LoggingStdout implements Stdout {
   @override
   void write(Object? object) {
     baseStdOut.write(object);
-    _logToFile(object);
+    _writeLog(object);
   }
 
   @override
   void writeAll(Iterable<dynamic> objects, [String sep = '']) {
     baseStdOut.writeAll(objects, sep);
-    _logToFile(objects);
+    _writeLog(objects);
   }
 
   @override
   void writeCharCode(int charCode) {
     baseStdOut.writeCharCode(charCode);
-    _logToFile(String.fromCharCode(charCode));
+    _writeLog(String.fromCharCode(charCode));
   }
 
   @override
   void writeln([Object? object = '']) {
     baseStdOut.writeln(object);
-    _logToFile(object);
+    _writeLog(object);
   }
 
-  void _logToFile(Object? message) {
-    if (message == null) {
-      return;
-    }
-
-    final timestampString = DateTime.now().toIso8601String();
-    final messageString = message.toString().removeAnsiEscapes();
-    logFile.writeAsStringSync(
-      '$timestampString $messageString\n',
-      mode: FileMode.append,
-    );
+  void _writeLog(Object? object) {
+    _writeToLogFile(object, logFile: logFile);
   }
 }
 
-// TODO(bryanoltman): remove this in a future PR
-typedef ShorebirdLogger = Logger;
+/// {@template shorebird_logger}
+/// A [Logger] that
+/// {@endtemplate}
+class ShorebirdLogger extends Logger {
+  /// {@macro shorebird_logger}
+  ShorebirdLogger({super.level});
+
+  @override
+  void detail(String? message, {LogStyle? style}) {
+    super.detail(message, style: style);
+    if (level.index > Level.debug.index) {
+      // We only need to write the message to the log file if this will not
+      // be written to stdout. If it is written to stdout, [LoggingStdout] will
+      // written to the log file.
+      _writeToLogFile(message ?? '', logFile: currentRunLogFile);
+    }
+  }
+}

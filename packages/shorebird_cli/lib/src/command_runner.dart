@@ -228,7 +228,7 @@ Run ${lightCyan.wrap('shorebird upgrade')} to upgrade.''');
 If you aren't sure why this command failed, re-run with the ${lightCyan.wrap('--verbose')} flag to see more information.
 
 You can also $fileAnIssue if you think this is a bug. Please include the following log file in your report:
-${logFile.absolute.path}
+${currentRunLogFile.absolute.path}
 ''',
       );
     }

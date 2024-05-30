@@ -30,7 +30,7 @@ import 'package:shorebird_cli/src/shorebird_version.dart';
 
 Future<void> main(List<String> args) async {
   final loggingStdout = runScoped(
-    () => LoggingStdout(baseStdOut: stdout, logFile: logFile),
+    () => LoggingStdout(baseStdOut: stdout, logFile: currentRunLogFile),
     values: {shorebirdEnvRef},
   );
 
