@@ -5,9 +5,7 @@ import 'package:path/path.dart' as p;
 import 'package:pub_semver/pub_semver.dart';
 import 'package:scoped_deps/scoped_deps.dart';
 import 'package:shorebird_cli/src/archive_analysis/archive_analysis.dart';
-
-const exportMethodArgName = 'export-method';
-const exportOptionsPlistArgName = 'export-options-plist';
+import 'package:shorebird_cli/src/common_arguments.dart';
 
 /// {@template export_method}
 /// The method used to export the IPA.
@@ -64,13 +62,15 @@ Ios get ios => read(iosRef);
 
 class Ios {
   File exportOptionsPlistFromArgs(ArgResults results) {
-    final exportPlistArg = results[exportOptionsPlistArgName] as String?;
-    final exportMethodArgExists = results.options.contains(exportMethodArgName);
+    final exportPlistArg =
+        results[CommonArguments.exportOptionsPlistArg.name] as String?;
+    final exportMethodArgExists =
+        results.options.contains(CommonArguments.exportMethodArg.name);
     if (exportPlistArg != null &&
         exportMethodArgExists &&
-        results.wasParsed(exportMethodArgName)) {
+        results.wasParsed(CommonArguments.exportMethodArg.name)) {
       throw ArgumentError(
-        '''Cannot specify both --$exportMethodArgName and --$exportOptionsPlistArgName.''',
+        '''Cannot specify both --${CommonArguments.exportMethodArg.name} and --${CommonArguments.exportOptionsPlistArg.name}.''',
       );
     }
 
@@ -82,9 +82,12 @@ class Ios {
     }
 
     final ExportMethod? exportMethod;
-    if (exportMethodArgExists && results.wasParsed(exportMethodArgName)) {
+    if (exportMethodArgExists &&
+        results.wasParsed(CommonArguments.exportMethodArg.name)) {
       exportMethod = ExportMethod.values.firstWhere(
-        (element) => element.argName == results[exportMethodArgName] as String,
+        (element) =>
+            element.argName ==
+            results[CommonArguments.exportMethodArg.name] as String,
       );
     } else {
       exportMethod = null;
