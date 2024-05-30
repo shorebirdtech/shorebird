@@ -119,6 +119,18 @@ class Gradlew {
 }
 
 extension on String {
+  /// Returns true when the string starts with at least two upper case letters
+  ///
+  /// Gradle flavors that are not capital case will not be transformed
+  /// to camel case and should be used as is. So this method helps to identify
+  /// those cases.
+  ///
+  /// Example:
+  /// ```dart
+  /// 'Test'.startsWithUpperCaseLetters; // false
+  /// 'TEST'.startsWithUpperCaseLetters; // true
+  /// 'TESTING'.startsWithUpperCaseLetters; // true
+  /// ```
   bool get startsWithUpperCaseLetters {
     if (length >= 2) {
       return this[0].isUpperCase() && this[1].isUpperCase();

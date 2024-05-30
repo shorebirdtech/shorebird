@@ -1,0 +1,808 @@
+> Task :gradle:compileJava NO-SOURCE
+> Task :gradle:compileGroovy UP-TO-DATE
+> Task :gradle:pluginDescriptors UP-TO-DATE
+> Task :gradle:processResources UP-TO-DATE
+> Task :gradle:classes UP-TO-DATE
+> Task :gradle:jar UP-TO-DATE
+
+> Task :app:tasks
+
+------------------------------------------------------------
+Tasks runnable from project ':app'
+------------------------------------------------------------
+
+Android tasks
+-------------
+androidDependencies - Displays the Android dependencies of the project.
+signingReport - Displays the signing info for the base and test modules
+sourceSets - Prints out all the source sets defined in this project.
+
+Build tasks
+-----------
+assemble - Assemble main outputs for all the variants.
+assembleAndroidTest - Assembles all the Test applications.
+assembleDebug - Assembles main outputs for all Debug variants.
+assembleProfile - Assembles main outputs for all Profile variants.
+assembleRelease - Assembles main outputs for all Release variants.
+assembleRJaneiro - Assembles main outputs for all RJaneiro variants.
+assembleSPaulo - Assembles main outputs for all SPaulo variants.
+build - Assembles and tests this project.
+buildDependents - Assembles and tests this project and all projects that depend on it.
+buildKotlinToolingMetadata - Build metadata json file containing information about the used Kotlin tooling
+buildNeeded - Assembles and tests this project and all projects it depends on.
+bundle - Assemble bundles for all the variants.
+bundleDebug - Assembles bundles for all Debug variants.
+bundleProfile - Assembles bundles for all Profile variants.
+bundleRelease - Assembles bundles for all Release variants.
+bundleRJaneiro - Assembles bundles for all RJaneiro variants.
+bundleSPaulo - Assembles bundles for all SPaulo variants.
+clean - Deletes the build directory.
+compileRJaneiroDebugAndroidTestSources
+compileRJaneiroDebugSources
+compileRJaneiroDebugUnitTestSources
+compileRJaneiroProfileSources
+compileRJaneiroProfileUnitTestSources
+compileRJaneiroReleaseSources
+compileRJaneiroReleaseUnitTestSources
+compileSPauloDebugAndroidTestSources
+compileSPauloDebugSources
+compileSPauloDebugUnitTestSources
+compileSPauloProfileSources
+compileSPauloProfileUnitTestSources
+compileSPauloReleaseSources
+compileSPauloReleaseUnitTestSources
+
+Help tasks
+----------
+buildEnvironment - Displays all buildscript dependencies declared in project ':app'.
+dependencies - Displays all dependencies declared in project ':app'.
+dependencyInsight - Displays the insight into a specific dependency in project ':app'.
+help - Displays a help message.
+javaToolchains - Displays the detected java toolchains.
+kotlinDslAccessorsReport - Prints the Kotlin code for accessing the currently available project extensions and conventions.
+outgoingVariants - Displays the outgoing variants of project ':app'.
+projects - Displays the sub-projects of project ':app'.
+properties - Displays the properties of project ':app'.
+resolvableConfigurations - Displays the configurations that can be resolved in project ':app'.
+tasks - Displays the tasks runnable from project ':app'.
+
+Install tasks
+-------------
+installRJaneiroDebug - Installs the DebugRJaneiroDebug build.
+installRJaneiroDebugAndroidTest - Installs the android (on device) tests for the RJaneiroDebug build.
+installRJaneiroProfile - Installs the ProfileRJaneiroProfile build.
+installRJaneiroRelease - Installs the ReleaseRJaneiroRelease build.
+installSPauloDebug - Installs the DebugSPauloDebug build.
+installSPauloDebugAndroidTest - Installs the android (on device) tests for the SPauloDebug build.
+installSPauloProfile - Installs the ProfileSPauloProfile build.
+installSPauloRelease - Installs the ReleaseSPauloRelease build.
+uninstallAll - Uninstall all applications.
+uninstallRJaneiroDebug - Uninstalls the DebugRJaneiroDebug build.
+uninstallRJaneiroDebugAndroidTest - Uninstalls the android (on device) tests for the RJaneiroDebug build.
+uninstallRJaneiroProfile - Uninstalls the ProfileRJaneiroProfile build.
+uninstallRJaneiroRelease - Uninstalls the ReleaseRJaneiroRelease build.
+uninstallSPauloDebug - Uninstalls the DebugSPauloDebug build.
+uninstallSPauloDebugAndroidTest - Uninstalls the android (on device) tests for the SPauloDebug build.
+uninstallSPauloProfile - Uninstalls the ProfileSPauloProfile build.
+uninstallSPauloRelease - Uninstalls the ReleaseSPauloRelease build.
+
+Verification tasks
+------------------
+check - Runs all checks.
+checkJetifier - Checks whether Jetifier is needed for the current project
+connectedAndroidTest - Installs and runs instrumentation tests for all flavors on connected devices.
+connectedCheck - Runs all device checks on currently connected devices.
+connectedRJaneiroDebugAndroidTest - Installs and runs the tests for RJaneiroDebug on connected devices.
+connectedSPauloDebugAndroidTest - Installs and runs the tests for SPauloDebug on connected devices.
+deviceAndroidTest - Installs and runs instrumentation tests using all Device Providers.
+deviceCheck - Runs all device checks using Device Providers and Test Servers.
+lint - Runs lint on the default variant.
+lintAnalyzeRJaneiroDebug - Run lint analysis on the RJaneiroDebug variant
+lintAnalyzeRJaneiroProfile - Run lint analysis on the RJaneiroProfile variant
+lintAnalyzeRJaneiroRelease - Run lint analysis on the RJaneiroRelease variant
+lintAnalyzeSPauloDebug - Run lint analysis on the SPauloDebug variant
+lintAnalyzeSPauloProfile - Run lint analysis on the SPauloProfile variant
+lintAnalyzeSPauloRelease - Run lint analysis on the SPauloRelease variant
+lintFix - Runs lint on the default variant and applies any safe suggestions to the source code.
+lintFixRJaneiroDebug - Fix lint on the RJaneiroDebug variant
+lintFixRJaneiroProfile - Fix lint on the RJaneiroProfile variant
+lintFixRJaneiroRelease - Fix lint on the RJaneiroRelease variant
+lintFixSPauloDebug - Fix lint on the SPauloDebug variant
+lintFixSPauloProfile - Fix lint on the SPauloProfile variant
+lintFixSPauloRelease - Fix lint on the SPauloRelease variant
+lintReportRJaneiroDebug - Run lint on the RJaneiroDebug variant
+lintReportRJaneiroProfile - Run lint on the RJaneiroProfile variant
+lintReportRJaneiroRelease - Run lint on the RJaneiroRelease variant
+lintReportSPauloDebug - Run lint on the SPauloDebug variant
+lintReportSPauloProfile - Run lint on the SPauloProfile variant
+lintReportSPauloRelease - Run lint on the SPauloRelease variant
+lintRJaneiroDebug - Print text output from the corresponding lint report task
+lintRJaneiroProfile - Print text output from the corresponding lint report task
+lintRJaneiroRelease - Print text output from the corresponding lint report task
+lintSPauloDebug - Print text output from the corresponding lint report task
+lintSPauloProfile - Print text output from the corresponding lint report task
+lintSPauloRelease - Print text output from the corresponding lint report task
+lintVitalAnalyzeRJaneiroRelease - Run lint analysis with only the fatal issues enabled on the RJaneiroRelease variant
+lintVitalAnalyzeSPauloRelease - Run lint analysis with only the fatal issues enabled on the SPauloRelease variant
+lintVitalReportRJaneiroRelease - Run lint with only the fatal issues enabled on the RJaneiroRelease variant
+lintVitalReportSPauloRelease - Run lint with only the fatal issues enabled on the SPauloRelease variant
+lintVitalRJaneiroRelease - Print text output from the corresponding lint report task
+lintVitalSPauloRelease - Print text output from the corresponding lint report task
+test - Run unit tests for all variants.
+testRJaneiroDebugUnitTest - Run unit tests for the RJaneiroDebug build.
+testRJaneiroProfileUnitTest - Run unit tests for the RJaneiroProfile build.
+testRJaneiroReleaseUnitTest - Run unit tests for the RJaneiroRelease build.
+testSPauloDebugUnitTest - Run unit tests for the SPauloDebug build.
+testSPauloProfileUnitTest - Run unit tests for the SPauloProfile build.
+testSPauloReleaseUnitTest - Run unit tests for the SPauloRelease build.
+updateLintBaseline - Updates the lint baseline using the default variant.
+updateLintBaselineRJaneiroDebug - Update the lint baseline using the RJaneiroDebug variant
+updateLintBaselineRJaneiroProfile - Update the lint baseline using the RJaneiroProfile variant
+updateLintBaselineRJaneiroRelease - Update the lint baseline using the RJaneiroRelease variant
+updateLintBaselineSPauloDebug - Update the lint baseline using the SPauloDebug variant
+updateLintBaselineSPauloProfile - Update the lint baseline using the SPauloProfile variant
+updateLintBaselineSPauloRelease - Update the lint baseline using the SPauloRelease variant
+
+Other tasks
+-----------
+analyticsRecordingRJaneiroRelease
+analyticsRecordingSPauloRelease
+analyzeRJaneiroDebugAndroidTestDependencies
+analyzeRJaneiroDebugDependencies
+analyzeRJaneiroDebugUnitTestDependencies
+analyzeRJaneiroProfileDependencies
+analyzeRJaneiroProfileUnitTestDependencies
+analyzeRJaneiroReleaseDependencies
+analyzeRJaneiroReleaseUnitTestDependencies
+analyzeSPauloDebugAndroidTestDependencies
+analyzeSPauloDebugDependencies
+analyzeSPauloDebugUnitTestDependencies
+analyzeSPauloProfileDependencies
+analyzeSPauloProfileUnitTestDependencies
+analyzeSPauloReleaseDependencies
+analyzeSPauloReleaseUnitTestDependencies
+appIdListTask
+assembleRJaneiroDebug - Assembles main output for variant RJaneiroDebug
+assembleRJaneiroDebugAndroidTest - Assembles main output for variant RJaneiroDebugAndroidTest
+assembleRJaneiroDebugUnitTest - Assembles main output for variant RJaneiroDebugUnitTest
+assembleRJaneiroProfile - Assembles main output for variant RJaneiroProfile
+assembleRJaneiroProfileUnitTest - Assembles main output for variant RJaneiroProfileUnitTest
+assembleRJaneiroRelease - Assembles main output for variant RJaneiroRelease
+assembleRJaneiroReleaseUnitTest - Assembles main output for variant RJaneiroReleaseUnitTest
+assembleSPauloDebug - Assembles main output for variant SPauloDebug
+assembleSPauloDebugAndroidTest - Assembles main output for variant SPauloDebugAndroidTest
+assembleSPauloDebugUnitTest - Assembles main output for variant SPauloDebugUnitTest
+assembleSPauloProfile - Assembles main output for variant SPauloProfile
+assembleSPauloProfileUnitTest - Assembles main output for variant SPauloProfileUnitTest
+assembleSPauloRelease - Assembles main output for variant SPauloRelease
+assembleSPauloReleaseUnitTest - Assembles main output for variant SPauloReleaseUnitTest
+buildRJaneiroDebugPreBundle
+buildRJaneiroProfilePreBundle
+buildRJaneiroReleasePreBundle
+buildSPauloDebugPreBundle
+buildSPauloProfilePreBundle
+buildSPauloReleasePreBundle
+bundleRJaneiroDebug - Assembles bundle for variant RJaneiroDebug
+bundleRJaneiroDebugAndroidTestClassesToCompileJar
+bundleRJaneiroDebugAndroidTestClassesToRuntimeJar
+bundleRJaneiroDebugClassesToCompileJar
+bundleRJaneiroDebugClassesToRuntimeJar
+bundleRJaneiroDebugResources
+bundleRJaneiroDebugUnitTestClassesToCompileJar
+bundleRJaneiroDebugUnitTestClassesToRuntimeJar
+bundleRJaneiroProfile - Assembles bundle for variant RJaneiroProfile
+bundleRJaneiroProfileClassesToCompileJar
+bundleRJaneiroProfileClassesToRuntimeJar
+bundleRJaneiroProfileResources
+bundleRJaneiroProfileUnitTestClassesToCompileJar
+bundleRJaneiroProfileUnitTestClassesToRuntimeJar
+bundleRJaneiroRelease - Assembles bundle for variant RJaneiroRelease
+bundleRJaneiroReleaseClassesToCompileJar
+bundleRJaneiroReleaseClassesToRuntimeJar
+bundleRJaneiroReleaseResources
+bundleRJaneiroReleaseUnitTestClassesToCompileJar
+bundleRJaneiroReleaseUnitTestClassesToRuntimeJar
+bundleSPauloDebug - Assembles bundle for variant SPauloDebug
+bundleSPauloDebugAndroidTestClassesToCompileJar
+bundleSPauloDebugAndroidTestClassesToRuntimeJar
+bundleSPauloDebugClassesToCompileJar
+bundleSPauloDebugClassesToRuntimeJar
+bundleSPauloDebugResources
+bundleSPauloDebugUnitTestClassesToCompileJar
+bundleSPauloDebugUnitTestClassesToRuntimeJar
+bundleSPauloProfile - Assembles bundle for variant SPauloProfile
+bundleSPauloProfileClassesToCompileJar
+bundleSPauloProfileClassesToRuntimeJar
+bundleSPauloProfileResources
+bundleSPauloProfileUnitTestClassesToCompileJar
+bundleSPauloProfileUnitTestClassesToRuntimeJar
+bundleSPauloRelease - Assembles bundle for variant SPauloRelease
+bundleSPauloReleaseClassesToCompileJar
+bundleSPauloReleaseClassesToRuntimeJar
+bundleSPauloReleaseResources
+bundleSPauloReleaseUnitTestClassesToCompileJar
+bundleSPauloReleaseUnitTestClassesToRuntimeJar
+checkRJaneiroDebugAarMetadata
+checkRJaneiroDebugAndroidTestAarMetadata
+checkRJaneiroDebugAndroidTestDuplicateClasses
+checkRJaneiroDebugDuplicateClasses
+checkRJaneiroDebugManifest
+checkRJaneiroProfileAarMetadata
+checkRJaneiroProfileDuplicateClasses
+checkRJaneiroProfileManifest
+checkRJaneiroReleaseAarMetadata
+checkRJaneiroReleaseDuplicateClasses
+checkRJaneiroReleaseManifest
+checkSPauloDebugAarMetadata
+checkSPauloDebugAndroidTestAarMetadata
+checkSPauloDebugAndroidTestDuplicateClasses
+checkSPauloDebugDuplicateClasses
+checkSPauloDebugManifest
+checkSPauloProfileAarMetadata
+checkSPauloProfileDuplicateClasses
+checkSPauloProfileManifest
+checkSPauloReleaseAarMetadata
+checkSPauloReleaseDuplicateClasses
+checkSPauloReleaseManifest
+collectRJaneiroReleaseDependencies
+collectSPauloReleaseDependencies
+compileFlutterBuildRJaneiroDebug
+compileFlutterBuildRJaneiroProfile
+compileFlutterBuildRJaneiroRelease
+compileFlutterBuildSPauloDebug
+compileFlutterBuildSPauloProfile
+compileFlutterBuildSPauloRelease
+compileLint
+compileLintChecks
+compileRJaneiroDebugAidl
+compileRJaneiroDebugAndroidTestAidl
+compileRJaneiroDebugAndroidTestJavaWithJavac
+compileRJaneiroDebugAndroidTestKotlin - Compiles the RJaneiroDebugAndroidTest kotlin.
+compileRJaneiroDebugAndroidTestRenderscript
+compileRJaneiroDebugAndroidTestShaders
+compileRJaneiroDebugArtProfile
+compileRJaneiroDebugJavaWithJavac
+compileRJaneiroDebugKotlin - Compiles the RJaneiroDebug kotlin.
+compileRJaneiroDebugRenderscript
+compileRJaneiroDebugShaders
+compileRJaneiroDebugUnitTestJavaWithJavac
+compileRJaneiroDebugUnitTestKotlin - Compiles the RJaneiroDebugUnitTest kotlin.
+compileRJaneiroProfileAidl
+compileRJaneiroProfileArtProfile
+compileRJaneiroProfileJavaWithJavac
+compileRJaneiroProfileKotlin - Compiles the RJaneiroProfile kotlin.
+compileRJaneiroProfileRenderscript
+compileRJaneiroProfileShaders
+compileRJaneiroProfileUnitTestJavaWithJavac
+compileRJaneiroProfileUnitTestKotlin - Compiles the RJaneiroProfileUnitTest kotlin.
+compileRJaneiroReleaseAidl
+compileRJaneiroReleaseArtProfile
+compileRJaneiroReleaseJavaWithJavac
+compileRJaneiroReleaseKotlin - Compiles the RJaneiroRelease kotlin.
+compileRJaneiroReleaseRenderscript
+compileRJaneiroReleaseShaders
+compileRJaneiroReleaseUnitTestJavaWithJavac
+compileRJaneiroReleaseUnitTestKotlin - Compiles the RJaneiroReleaseUnitTest kotlin.
+compileSPauloDebugAidl
+compileSPauloDebugAndroidTestAidl
+compileSPauloDebugAndroidTestJavaWithJavac
+compileSPauloDebugAndroidTestKotlin - Compiles the SPauloDebugAndroidTest kotlin.
+compileSPauloDebugAndroidTestRenderscript
+compileSPauloDebugAndroidTestShaders
+compileSPauloDebugArtProfile
+compileSPauloDebugJavaWithJavac
+compileSPauloDebugKotlin - Compiles the SPauloDebug kotlin.
+compileSPauloDebugRenderscript
+compileSPauloDebugShaders
+compileSPauloDebugUnitTestJavaWithJavac
+compileSPauloDebugUnitTestKotlin - Compiles the SPauloDebugUnitTest kotlin.
+compileSPauloProfileAidl
+compileSPauloProfileArtProfile
+compileSPauloProfileJavaWithJavac
+compileSPauloProfileKotlin - Compiles the SPauloProfile kotlin.
+compileSPauloProfileRenderscript
+compileSPauloProfileShaders
+compileSPauloProfileUnitTestJavaWithJavac
+compileSPauloProfileUnitTestKotlin - Compiles the SPauloProfileUnitTest kotlin.
+compileSPauloReleaseAidl
+compileSPauloReleaseArtProfile
+compileSPauloReleaseJavaWithJavac
+compileSPauloReleaseKotlin - Compiles the SPauloRelease kotlin.
+compileSPauloReleaseRenderscript
+compileSPauloReleaseShaders
+compileSPauloReleaseUnitTestJavaWithJavac
+compileSPauloReleaseUnitTestKotlin - Compiles the SPauloReleaseUnitTest kotlin.
+components - Displays the components produced by project ':app'. [deprecated]
+compressRJaneiroDebugAndroidTestAssets
+compressRJaneiroDebugAssets
+compressRJaneiroProfileAssets
+compressRJaneiroReleaseAssets
+compressSPauloDebugAndroidTestAssets
+compressSPauloDebugAssets
+compressSPauloProfileAssets
+compressSPauloReleaseAssets
+configureRJaneiroReleaseDependencies
+configureSPauloReleaseDependencies
+consumeConfigAttr
+copyFlutterAssetsRJaneiroDebug
+copyFlutterAssetsRJaneiroProfile
+copyFlutterAssetsRJaneiroRelease
+copyFlutterAssetsSPauloDebug
+copyFlutterAssetsSPauloProfile
+copyFlutterAssetsSPauloRelease
+createMockableJar
+createRJaneiroDebugAndroidTestApkListingFileRedirect
+createRJaneiroDebugApkListingFileRedirect
+createRJaneiroDebugApksFromBundleListingFileRedirect
+createRJaneiroDebugBundleListingFileRedirect
+createRJaneiroDebugCompatibleScreenManifests
+createRJaneiroDebugVariantModel
+createRJaneiroProfileApkListingFileRedirect
+createRJaneiroProfileApksFromBundleListingFileRedirect
+createRJaneiroProfileBundleListingFileRedirect
+createRJaneiroProfileCompatibleScreenManifests
+createRJaneiroProfileVariantModel
+createRJaneiroReleaseApkListingFileRedirect
+createRJaneiroReleaseApksFromBundleListingFileRedirect
+createRJaneiroReleaseBundleListingFileRedirect
+createRJaneiroReleaseCompatibleScreenManifests
+createRJaneiroReleaseVariantModel
+createSPauloDebugAndroidTestApkListingFileRedirect
+createSPauloDebugApkListingFileRedirect
+createSPauloDebugApksFromBundleListingFileRedirect
+createSPauloDebugBundleListingFileRedirect
+createSPauloDebugCompatibleScreenManifests
+createSPauloDebugVariantModel
+createSPauloProfileApkListingFileRedirect
+createSPauloProfileApksFromBundleListingFileRedirect
+createSPauloProfileBundleListingFileRedirect
+createSPauloProfileCompatibleScreenManifests
+createSPauloProfileVariantModel
+createSPauloReleaseApkListingFileRedirect
+createSPauloReleaseApksFromBundleListingFileRedirect
+createSPauloReleaseBundleListingFileRedirect
+createSPauloReleaseCompatibleScreenManifests
+createSPauloReleaseVariantModel
+dependentComponents - Displays the dependent components of components in project ':app'. [deprecated]
+desugarRJaneiroDebugAndroidTestFileDependencies
+desugarRJaneiroDebugFileDependencies
+desugarRJaneiroProfileFileDependencies
+desugarSPauloDebugAndroidTestFileDependencies
+desugarSPauloDebugFileDependencies
+desugarSPauloProfileFileDependencies
+dexBuilderRJaneiroDebug
+dexBuilderRJaneiroDebugAndroidTest
+dexBuilderRJaneiroProfile
+dexBuilderSPauloDebug
+dexBuilderSPauloDebugAndroidTest
+dexBuilderSPauloProfile
+extractApksForRJaneiroDebug
+extractApksForRJaneiroProfile
+extractApksForRJaneiroRelease
+extractApksForSPauloDebug
+extractApksForSPauloProfile
+extractApksForSPauloRelease
+extractApksFromBundleForRJaneiroDebug
+extractApksFromBundleForRJaneiroProfile
+extractApksFromBundleForRJaneiroRelease
+extractApksFromBundleForSPauloDebug
+extractApksFromBundleForSPauloProfile
+extractApksFromBundleForSPauloRelease
+extractDeepLinksRJaneiroDebug
+extractDeepLinksRJaneiroProfile
+extractDeepLinksRJaneiroRelease
+extractDeepLinksSPauloDebug
+extractDeepLinksSPauloProfile
+extractDeepLinksSPauloRelease
+extractProguardFiles
+extractRJaneiroDebugNativeDebugMetadata
+extractRJaneiroDebugNativeSymbolTables
+extractRJaneiroProfileNativeDebugMetadata
+extractRJaneiroProfileNativeSymbolTables
+extractRJaneiroReleaseNativeDebugMetadata
+extractRJaneiroReleaseNativeSymbolTables
+extractSPauloDebugNativeDebugMetadata
+extractSPauloDebugNativeSymbolTables
+extractSPauloProfileNativeDebugMetadata
+extractSPauloProfileNativeSymbolTables
+extractSPauloReleaseNativeDebugMetadata
+extractSPauloReleaseNativeSymbolTables
+generateRJaneiroDebugAndroidTestAssets
+generateRJaneiroDebugAndroidTestBuildConfig
+generateRJaneiroDebugAndroidTestResources
+generateRJaneiroDebugAndroidTestResValues
+generateRJaneiroDebugAndroidTestSources
+generateRJaneiroDebugAssets
+generateRJaneiroDebugBuildConfig
+generateRJaneiroDebugFeatureMetadata
+generateRJaneiroDebugFeatureTransitiveDeps
+generateRJaneiroDebugLintModel
+generateRJaneiroDebugManifestClass
+generateRJaneiroDebugResources
+generateRJaneiroDebugResValues
+generateRJaneiroDebugSources
+generateRJaneiroDebugUnitTestAssets
+generateRJaneiroDebugUnitTestResources
+generateRJaneiroDebugUnitTestSources
+generateRJaneiroProfileAssets
+generateRJaneiroProfileBuildConfig
+generateRJaneiroProfileFeatureMetadata
+generateRJaneiroProfileFeatureTransitiveDeps
+generateRJaneiroProfileLintModel
+generateRJaneiroProfileManifestClass
+generateRJaneiroProfileResources
+generateRJaneiroProfileResValues
+generateRJaneiroProfileSources
+generateRJaneiroProfileUnitTestAssets
+generateRJaneiroProfileUnitTestResources
+generateRJaneiroProfileUnitTestSources
+generateRJaneiroReleaseAssets
+generateRJaneiroReleaseBuildConfig
+generateRJaneiroReleaseFeatureMetadata
+generateRJaneiroReleaseFeatureTransitiveDeps
+generateRJaneiroReleaseLintModel
+generateRJaneiroReleaseManifestClass
+generateRJaneiroReleaseResources
+generateRJaneiroReleaseResValues
+generateRJaneiroReleaseSources
+generateRJaneiroReleaseUnitTestAssets
+generateRJaneiroReleaseUnitTestResources
+generateRJaneiroReleaseUnitTestSources
+generateSPauloDebugAndroidTestAssets
+generateSPauloDebugAndroidTestBuildConfig
+generateSPauloDebugAndroidTestResources
+generateSPauloDebugAndroidTestResValues
+generateSPauloDebugAndroidTestSources
+generateSPauloDebugAssets
+generateSPauloDebugBuildConfig
+generateSPauloDebugFeatureMetadata
+generateSPauloDebugFeatureTransitiveDeps
+generateSPauloDebugLintModel
+generateSPauloDebugManifestClass
+generateSPauloDebugResources
+generateSPauloDebugResValues
+generateSPauloDebugSources
+generateSPauloDebugUnitTestAssets
+generateSPauloDebugUnitTestResources
+generateSPauloDebugUnitTestSources
+generateSPauloProfileAssets
+generateSPauloProfileBuildConfig
+generateSPauloProfileFeatureMetadata
+generateSPauloProfileFeatureTransitiveDeps
+generateSPauloProfileLintModel
+generateSPauloProfileManifestClass
+generateSPauloProfileResources
+generateSPauloProfileResValues
+generateSPauloProfileSources
+generateSPauloProfileUnitTestAssets
+generateSPauloProfileUnitTestResources
+generateSPauloProfileUnitTestSources
+generateSPauloReleaseAssets
+generateSPauloReleaseBuildConfig
+generateSPauloReleaseFeatureMetadata
+generateSPauloReleaseFeatureTransitiveDeps
+generateSPauloReleaseLintModel
+generateSPauloReleaseManifestClass
+generateSPauloReleaseResources
+generateSPauloReleaseResValues
+generateSPauloReleaseSources
+generateSPauloReleaseUnitTestAssets
+generateSPauloReleaseUnitTestResources
+generateSPauloReleaseUnitTestSources
+javaPreCompileRJaneiroDebug
+javaPreCompileRJaneiroDebugAndroidTest
+javaPreCompileRJaneiroDebugUnitTest
+javaPreCompileRJaneiroProfile
+javaPreCompileRJaneiroProfileUnitTest
+javaPreCompileRJaneiroRelease
+javaPreCompileRJaneiroReleaseUnitTest
+javaPreCompileSPauloDebug
+javaPreCompileSPauloDebugAndroidTest
+javaPreCompileSPauloDebugUnitTest
+javaPreCompileSPauloProfile
+javaPreCompileSPauloProfileUnitTest
+javaPreCompileSPauloRelease
+javaPreCompileSPauloReleaseUnitTest
+javaVersion - Print the current java version used by gradle. 
+makeApkFromBundleForRJaneiroDebug
+makeApkFromBundleForRJaneiroProfile
+makeApkFromBundleForRJaneiroRelease
+makeApkFromBundleForSPauloDebug
+makeApkFromBundleForSPauloProfile
+makeApkFromBundleForSPauloRelease
+mapRJaneiroDebugAndroidTestSourceSetPaths
+mapRJaneiroDebugSourceSetPaths
+mapRJaneiroProfileSourceSetPaths
+mapRJaneiroReleaseSourceSetPaths
+mapSPauloDebugAndroidTestSourceSetPaths
+mapSPauloDebugSourceSetPaths
+mapSPauloProfileSourceSetPaths
+mapSPauloReleaseSourceSetPaths
+mergeExtDexRJaneiroDebug
+mergeExtDexRJaneiroDebugAndroidTest
+mergeExtDexRJaneiroProfile
+mergeExtDexSPauloDebug
+mergeExtDexSPauloDebugAndroidTest
+mergeExtDexSPauloProfile
+mergeLibDexRJaneiroDebug
+mergeLibDexRJaneiroDebugAndroidTest
+mergeLibDexRJaneiroProfile
+mergeLibDexSPauloDebug
+mergeLibDexSPauloDebugAndroidTest
+mergeLibDexSPauloProfile
+mergeProjectDexRJaneiroDebug
+mergeProjectDexRJaneiroDebugAndroidTest
+mergeProjectDexRJaneiroProfile
+mergeProjectDexSPauloDebug
+mergeProjectDexSPauloDebugAndroidTest
+mergeProjectDexSPauloProfile
+mergeRJaneiroDebugAndroidTestAssets
+mergeRJaneiroDebugAndroidTestGeneratedProguardFiles
+mergeRJaneiroDebugAndroidTestJavaResource
+mergeRJaneiroDebugAndroidTestJniLibFolders
+mergeRJaneiroDebugAndroidTestNativeLibs
+mergeRJaneiroDebugAndroidTestResources
+mergeRJaneiroDebugAndroidTestShaders
+mergeRJaneiroDebugArtProfile
+mergeRJaneiroDebugAssets
+mergeRJaneiroDebugGeneratedProguardFiles
+mergeRJaneiroDebugJavaResource
+mergeRJaneiroDebugJniLibFolders
+mergeRJaneiroDebugNativeDebugMetadata
+mergeRJaneiroDebugNativeLibs
+mergeRJaneiroDebugResources
+mergeRJaneiroDebugShaders
+mergeRJaneiroProfileArtProfile
+mergeRJaneiroProfileAssets
+mergeRJaneiroProfileGeneratedProguardFiles
+mergeRJaneiroProfileJavaResource
+mergeRJaneiroProfileJniLibFolders
+mergeRJaneiroProfileNativeDebugMetadata
+mergeRJaneiroProfileNativeLibs
+mergeRJaneiroProfileResources
+mergeRJaneiroProfileShaders
+mergeRJaneiroReleaseArtProfile
+mergeRJaneiroReleaseAssets
+mergeRJaneiroReleaseGeneratedProguardFiles
+mergeRJaneiroReleaseJavaResource
+mergeRJaneiroReleaseJniLibFolders
+mergeRJaneiroReleaseNativeDebugMetadata
+mergeRJaneiroReleaseNativeLibs
+mergeRJaneiroReleaseResources
+mergeRJaneiroReleaseShaders
+mergeSPauloDebugAndroidTestAssets
+mergeSPauloDebugAndroidTestGeneratedProguardFiles
+mergeSPauloDebugAndroidTestJavaResource
+mergeSPauloDebugAndroidTestJniLibFolders
+mergeSPauloDebugAndroidTestNativeLibs
+mergeSPauloDebugAndroidTestResources
+mergeSPauloDebugAndroidTestShaders
+mergeSPauloDebugArtProfile
+mergeSPauloDebugAssets
+mergeSPauloDebugGeneratedProguardFiles
+mergeSPauloDebugJavaResource
+mergeSPauloDebugJniLibFolders
+mergeSPauloDebugNativeDebugMetadata
+mergeSPauloDebugNativeLibs
+mergeSPauloDebugResources
+mergeSPauloDebugShaders
+mergeSPauloProfileArtProfile
+mergeSPauloProfileAssets
+mergeSPauloProfileGeneratedProguardFiles
+mergeSPauloProfileJavaResource
+mergeSPauloProfileJniLibFolders
+mergeSPauloProfileNativeDebugMetadata
+mergeSPauloProfileNativeLibs
+mergeSPauloProfileResources
+mergeSPauloProfileShaders
+mergeSPauloReleaseArtProfile
+mergeSPauloReleaseAssets
+mergeSPauloReleaseGeneratedProguardFiles
+mergeSPauloReleaseJavaResource
+mergeSPauloReleaseJniLibFolders
+mergeSPauloReleaseNativeDebugMetadata
+mergeSPauloReleaseNativeLibs
+mergeSPauloReleaseResources
+mergeSPauloReleaseShaders
+minifyRJaneiroReleaseWithR8
+minifySPauloReleaseWithR8
+model - Displays the configuration model of project ':app'. [deprecated]
+optimizeRJaneiroReleaseResources
+optimizeSPauloReleaseResources
+outputRJaneiroDebugAppLinkSettings - stores app links settings for the given build variant of this Android project into a json file.
+outputRJaneiroProfileAppLinkSettings - stores app links settings for the given build variant of this Android project into a json file.
+outputRJaneiroReleaseAppLinkSettings - stores app links settings for the given build variant of this Android project into a json file.
+outputSPauloDebugAppLinkSettings - stores app links settings for the given build variant of this Android project into a json file.
+outputSPauloProfileAppLinkSettings - stores app links settings for the given build variant of this Android project into a json file.
+outputSPauloReleaseAppLinkSettings - stores app links settings for the given build variant of this Android project into a json file.
+packageRJaneiroDebug
+packageRJaneiroDebugAndroidTest
+packageRJaneiroDebugBundle
+packageRJaneiroDebugUniversalApk
+packageRJaneiroProfile
+packageRJaneiroProfileBundle
+packageRJaneiroProfileUniversalApk
+packageRJaneiroRelease
+packageRJaneiroReleaseBundle
+packageRJaneiroReleaseUniversalApk
+packageSPauloDebug
+packageSPauloDebugAndroidTest
+packageSPauloDebugBundle
+packageSPauloDebugUniversalApk
+packageSPauloProfile
+packageSPauloProfileBundle
+packageSPauloProfileUniversalApk
+packageSPauloRelease
+packageSPauloReleaseBundle
+packageSPauloReleaseUniversalApk
+packJniLibsflutterBuildRJaneiroDebug
+packJniLibsflutterBuildRJaneiroProfile
+packJniLibsflutterBuildRJaneiroRelease
+packJniLibsflutterBuildSPauloDebug
+packJniLibsflutterBuildSPauloProfile
+packJniLibsflutterBuildSPauloRelease
+parseRJaneiroDebugIntegrityConfig
+parseRJaneiroProfileIntegrityConfig
+parseRJaneiroReleaseIntegrityConfig
+parseSPauloDebugIntegrityConfig
+parseSPauloProfileIntegrityConfig
+parseSPauloReleaseIntegrityConfig
+preBuild
+prepareLintJarForPublish
+preRJaneiroDebugAndroidTestBuild
+preRJaneiroDebugBuild
+preRJaneiroDebugUnitTestBuild
+preRJaneiroProfileBuild
+preRJaneiroProfileUnitTestBuild
+preRJaneiroReleaseBuild
+preRJaneiroReleaseUnitTestBuild
+preSPauloDebugAndroidTestBuild
+preSPauloDebugBuild
+preSPauloDebugUnitTestBuild
+preSPauloProfileBuild
+preSPauloProfileUnitTestBuild
+preSPauloReleaseBuild
+preSPauloReleaseUnitTestBuild
+printBuildVariants - Prints out all build variants for this Android project
+processApplicationManifestRJaneiroDebugForBundle
+processApplicationManifestRJaneiroProfileForBundle
+processApplicationManifestRJaneiroReleaseForBundle
+processApplicationManifestSPauloDebugForBundle
+processApplicationManifestSPauloProfileForBundle
+processApplicationManifestSPauloReleaseForBundle
+processManifestRJaneiroDebugForFeature
+processManifestRJaneiroProfileForFeature
+processManifestRJaneiroReleaseForFeature
+processManifestSPauloDebugForFeature
+processManifestSPauloProfileForFeature
+processManifestSPauloReleaseForFeature
+processRJaneiroDebugAndroidTestJavaRes
+processRJaneiroDebugAndroidTestManifest
+processRJaneiroDebugAndroidTestResources
+processRJaneiroDebugJavaRes
+processRJaneiroDebugMainManifest
+processRJaneiroDebugManifest
+processRJaneiroDebugManifestForInstantApp
+processRJaneiroDebugManifestForPackage
+processRJaneiroDebugResources
+processRJaneiroDebugUnitTestJavaRes
+processRJaneiroProfileJavaRes
+processRJaneiroProfileMainManifest
+processRJaneiroProfileManifest
+processRJaneiroProfileManifestForInstantApp
+processRJaneiroProfileManifestForPackage
+processRJaneiroProfileResources
+processRJaneiroProfileUnitTestJavaRes
+processRJaneiroReleaseJavaRes
+processRJaneiroReleaseMainManifest
+processRJaneiroReleaseManifest
+processRJaneiroReleaseManifestForInstantApp
+processRJaneiroReleaseManifestForPackage
+processRJaneiroReleaseResources
+processRJaneiroReleaseUnitTestJavaRes
+processSPauloDebugAndroidTestJavaRes
+processSPauloDebugAndroidTestManifest
+processSPauloDebugAndroidTestResources
+processSPauloDebugJavaRes
+processSPauloDebugMainManifest
+processSPauloDebugManifest
+processSPauloDebugManifestForInstantApp
+processSPauloDebugManifestForPackage
+processSPauloDebugResources
+processSPauloDebugUnitTestJavaRes
+processSPauloProfileJavaRes
+processSPauloProfileMainManifest
+processSPauloProfileManifest
+processSPauloProfileManifestForInstantApp
+processSPauloProfileManifestForPackage
+processSPauloProfileResources
+processSPauloProfileUnitTestJavaRes
+processSPauloReleaseJavaRes
+processSPauloReleaseMainManifest
+processSPauloReleaseManifest
+processSPauloReleaseManifestForInstantApp
+processSPauloReleaseManifestForPackage
+processSPauloReleaseResources
+processSPauloReleaseUnitTestJavaRes
+produceRJaneiroDebugBundleIdeListingFile
+produceRJaneiroProfileBundleIdeListingFile
+produceRJaneiroReleaseBundleIdeListingFile
+produceSPauloDebugBundleIdeListingFile
+produceSPauloProfileBundleIdeListingFile
+produceSPauloReleaseBundleIdeListingFile
+resolveConfigAttr
+sdkRJaneiroReleaseDependencyData
+sdkSPauloReleaseDependencyData
+shrinkBundleRJaneiroReleaseResources
+shrinkBundleSPauloReleaseResources
+shrinkRJaneiroReleaseRes
+shrinkSPauloReleaseRes
+signingConfigWriterRJaneiroDebug
+signingConfigWriterRJaneiroDebugAndroidTest
+signingConfigWriterRJaneiroProfile
+signingConfigWriterRJaneiroRelease
+signingConfigWriterSPauloDebug
+signingConfigWriterSPauloDebugAndroidTest
+signingConfigWriterSPauloProfile
+signingConfigWriterSPauloRelease
+signRJaneiroDebugBundle
+signRJaneiroProfileBundle
+signRJaneiroReleaseBundle
+signSPauloDebugBundle
+signSPauloProfileBundle
+signSPauloReleaseBundle
+stripRJaneiroDebugDebugSymbols
+stripRJaneiroProfileDebugSymbols
+stripRJaneiroReleaseDebugSymbols
+stripSPauloDebugDebugSymbols
+stripSPauloProfileDebugSymbols
+stripSPauloReleaseDebugSymbols
+validateSigningRJaneiroDebug
+validateSigningRJaneiroDebugAndroidTest
+validateSigningRJaneiroProfile
+validateSigningRJaneiroRelease
+validateSigningSPauloDebug
+validateSigningSPauloDebugAndroidTest
+validateSigningSPauloProfile
+validateSigningSPauloRelease
+writeRJaneiroDebugAndroidTestSigningConfigVersions
+writeRJaneiroDebugApplicationId
+writeRJaneiroDebugAppMetadata
+writeRJaneiroDebugModuleMetadata
+writeRJaneiroDebugSigningConfigVersions
+writeRJaneiroProfileApplicationId
+writeRJaneiroProfileAppMetadata
+writeRJaneiroProfileModuleMetadata
+writeRJaneiroProfileSigningConfigVersions
+writeRJaneiroReleaseApplicationId
+writeRJaneiroReleaseAppMetadata
+writeRJaneiroReleaseModuleMetadata
+writeRJaneiroReleaseSigningConfigVersions
+writeSPauloDebugAndroidTestSigningConfigVersions
+writeSPauloDebugApplicationId
+writeSPauloDebugAppMetadata
+writeSPauloDebugModuleMetadata
+writeSPauloDebugSigningConfigVersions
+writeSPauloProfileApplicationId
+writeSPauloProfileAppMetadata
+writeSPauloProfileModuleMetadata
+writeSPauloProfileSigningConfigVersions
+writeSPauloReleaseApplicationId
+writeSPauloReleaseAppMetadata
+writeSPauloReleaseModuleMetadata
+writeSPauloReleaseSigningConfigVersions
+zipApksForRJaneiroDebug
+zipApksForRJaneiroProfile
+zipApksForRJaneiroRelease
+zipApksForSPauloDebug
+zipApksForSPauloProfile
+zipApksForSPauloRelease
+
+Rules
+-----
+Pattern: clean<TaskName>: Cleans the output files of a task.
+Pattern: build<ConfigurationName>: Assembles the artifacts of a configuration.
+
+BUILD SUCCESSFUL in 766ms
+5 actionable tasks: 1 executed, 4 up-to-date
+
