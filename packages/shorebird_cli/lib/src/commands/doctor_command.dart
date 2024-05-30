@@ -59,6 +59,7 @@ Engine • revision ${shorebirdEnv.shorebirdEngineRevision}''',
       final notDetected = red.wrap('not detected');
       output.writeln('''
 
+Logs: ${shorebirdEnv.logsDirectory.path}
 Android Toolchain
   • Android Studio: ${androidStudio.path ?? notDetected}
   • Android SDK: ${androidSdk.path ?? notDetected}
