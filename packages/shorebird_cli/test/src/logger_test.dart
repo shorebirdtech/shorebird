@@ -55,8 +55,10 @@ void main() {
 
       when(() => baseStdout.addStream(any())).thenAnswer((_) async {});
       when(() => baseStdout.close()).thenAnswer((_) async {});
-      when(() => baseStdout.flush()).thenAnswer((_) async {});
+      when(() => baseStdout.done).thenAnswer((_) async {});
       when(() => baseStdout.encoding).thenReturn(utf8Encoding);
+      when(() => baseStdout.flush()).thenAnswer((_) async {});
+      when(() => baseStdout.hasTerminal).thenReturn(true);
       when(() => baseStdout.lineTerminator).thenReturn('\n');
       when(() => baseStdout.nonBlocking).thenReturn(FakeIOSink());
       when(() => baseStdout.supportsAnsiEscapes).thenReturn(false);
@@ -81,9 +83,19 @@ void main() {
       verify(() => baseStdout.close()).called(1);
     });
 
+    test('done forwards to baseStdout', () async {
+      await loggingStdout.done;
+      verify(() => baseStdout.done).called(1);
+    });
+
     test('flush forwards to baseStdout', () async {
       await loggingStdout.flush();
       verify(() => baseStdout.flush()).called(1);
+    });
+
+    test('hasTerminal forwards to baseStdout', () {
+      expect(loggingStdout.hasTerminal, isTrue);
+      verify(() => baseStdout.hasTerminal).called(1);
     });
 
     test('lineTerminator forwards to baseStdout', () {
