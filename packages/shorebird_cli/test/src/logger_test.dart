@@ -8,6 +8,7 @@ import 'package:shorebird_cli/src/logger.dart';
 import 'package:shorebird_cli/src/shorebird_env.dart';
 import 'package:test/test.dart';
 
+import 'fakes.dart';
 import 'mocks.dart';
 
 void main() {
@@ -56,6 +57,11 @@ void main() {
       when(() => baseStdout.close()).thenAnswer((_) async {});
       when(() => baseStdout.flush()).thenAnswer((_) async {});
       when(() => baseStdout.encoding).thenReturn(utf8Encoding);
+      when(() => baseStdout.lineTerminator).thenReturn('\n');
+      when(() => baseStdout.nonBlocking).thenReturn(FakeIOSink());
+      when(() => baseStdout.supportsAnsiEscapes).thenReturn(false);
+      when(() => baseStdout.terminalColumns).thenReturn(80);
+      when(() => baseStdout.terminalLines).thenReturn(40);
 
       loggingStdout = LoggingStdout(baseStdOut: baseStdout, logFile: logFile);
     });
@@ -78,6 +84,49 @@ void main() {
     test('flush forwards to baseStdout', () async {
       await loggingStdout.flush();
       verify(() => baseStdout.flush()).called(1);
+    });
+
+    test('lineTerminator forwards to baseStdout', () {
+      expect(loggingStdout.lineTerminator, equals('\n'));
+      verify(() => baseStdout.lineTerminator).called(1);
+    });
+
+    test('nonBlocking forwards to baseStdout', () {
+      expect(loggingStdout.nonBlocking, isA<FakeIOSink>());
+      verify(() => baseStdout.nonBlocking).called(1);
+    });
+
+    test('supportsAnsiEscapes forwards to baseStdout', () {
+      expect(loggingStdout.supportsAnsiEscapes, isFalse);
+      verify(() => baseStdout.supportsAnsiEscapes).called(1);
+    });
+
+    test('terminalColumns forwards to baseStdout', () {
+      expect(loggingStdout.terminalColumns, equals(80));
+      verify(() => baseStdout.terminalColumns).called(1);
+    });
+
+    test('terminalLines forwards to baseStdout', () {
+      expect(loggingStdout.terminalLines, equals(40));
+      verify(() => baseStdout.terminalLines).called(1);
+    });
+
+    test('add forwards to baseStdout, logs to file', () {
+      loggingStdout.add('message'.codeUnits);
+      verify(() => baseStdout.add('message'.codeUnits)).called(1);
+      expect(logFile.readAsStringSync(), contains('message'));
+    });
+
+    test('addError forwards to baseStdout, logs to file', () {
+      loggingStdout.addError('error');
+      verify(() => baseStdout.addError('error')).called(1);
+      expect(logFile.readAsStringSync(), contains('error'));
+    });
+
+    test('addError with stack trace forwards to baseStdout, logs to file', () {
+      loggingStdout.addError('error');
+      verify(() => baseStdout.addError('error')).called(1);
+      expect(logFile.readAsStringSync(), contains('error'));
     });
 
     test('forwards write to baseStdout, logs to file', () {

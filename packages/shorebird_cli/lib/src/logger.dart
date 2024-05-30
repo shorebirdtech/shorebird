@@ -88,11 +88,18 @@ class LoggingStdout implements Stdout {
   int get terminalLines => baseStdOut.terminalLines;
 
   @override
-  void add(List<int> data) => baseStdOut.add(data);
+  void add(List<int> data) {
+    baseStdOut.add(data);
+    _logToFile(String.fromCharCodes(data));
+  }
 
   @override
   void addError(Object error, [StackTrace? stackTrace]) {
     baseStdOut.addError(error, stackTrace);
+    _logToFile(error);
+    if (stackTrace != null) {
+      _logToFile(stackTrace);
+    }
   }
 
   @override
