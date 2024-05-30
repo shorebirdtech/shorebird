@@ -79,9 +79,18 @@ of the iOS app that is using this module.''',
         help: 'Whether to publish the patch to the staging environment.',
       )
       ..addOption(
-        exportOptionsPlistArgName,
-        help:
-            '''Export an IPA with these options. See "xcodebuild -h" for available exportOptionsPlist keys (iOS only).''',
+        CommonArguments.exportOptionsPlistArg.name,
+        help: CommonArguments.exportOptionsPlistArg.description,
+      )
+      ..addOption(
+        CommonArguments.exportMethodArg.name,
+        defaultsTo: ExportMethod.appStore.argName,
+        allowed: ExportMethod.values.map((e) => e.argName),
+        help: CommonArguments.exportMethodArg.description,
+        allowedHelp: {
+          for (final method in ExportMethod.values)
+            method.argName: method.description,
+        },
       )
       ..addFlag(
         'codesign',

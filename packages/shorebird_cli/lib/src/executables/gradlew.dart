@@ -95,8 +95,8 @@ class Gradlew {
         if (!variant.toLowerCase().endsWith('test')) {
           // Gradle flavor name transformation seems to work with the following
           // rules:
-          //  - If the flavor starts with at least two capital letters, use as
-          // is
+          //  - If the flavor starts with at least two capital letters, use
+          //    as-is
           //  - Otherwise, transform to camel case
           //
           // Example:
