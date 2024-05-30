@@ -60,15 +60,14 @@ On Xcode builds it is used as "CFBundleVersion".''',
         help: 'Validate but do not upload the release.',
       )
       ..addOption(
-        exportOptionsPlistArgName,
-        help:
-            '''Export an IPA with these options. See "xcodebuild -h" for available exportOptionsPlist keys (iOS only).''',
+        CommonArguments.exportOptionsPlistArg.name,
+        help: CommonArguments.exportOptionsPlistArg.description,
       )
       ..addOption(
-        exportMethodArgName,
+        CommonArguments.exportMethodArg.name,
         defaultsTo: ExportMethod.appStore.argName,
         allowed: ExportMethod.values.map((e) => e.argName),
-        help: 'Specify how the IPA will be distributed.',
+        help: CommonArguments.exportMethodArg.description,
         allowedHelp: {
           for (final method in ExportMethod.values)
             method.argName: method.description,
