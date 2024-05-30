@@ -8,6 +8,7 @@ import 'package:shorebird_cli/src/android_studio.dart';
 import 'package:shorebird_cli/src/executables/executables.dart';
 import 'package:shorebird_cli/src/os/os.dart';
 import 'package:shorebird_cli/src/platform.dart';
+import 'package:shorebird_cli/src/shorebird_process.dart';
 import 'package:test/test.dart';
 
 import '../mocks.dart';
@@ -17,6 +18,7 @@ void main() {
     late AndroidStudio androidStudio;
     late OperatingSystemInterface osInterface;
     late Platform platform;
+    late ShorebirdProcess shorebirdProcess;
     late Java java;
 
     R runWithOverrides<R>(R Function() body) {
@@ -25,6 +27,7 @@ void main() {
         values: {
           androidStudioRef.overrideWith(() => androidStudio),
           osInterfaceRef.overrideWith(() => osInterface),
+          processRef.overrideWith(() => shorebirdProcess),
           platformRef.overrideWith(() => platform),
         },
       );
@@ -40,6 +43,7 @@ void main() {
       androidStudio = MockAndroidStudio();
       osInterface = MockOperatingSystemInterface();
       platform = MockPlatform();
+      shorebirdProcess = MockShorebirdProcess();
       java = Java();
 
       when(() => platform.environment).thenReturn({});
@@ -48,6 +52,52 @@ void main() {
       when(() => platform.isLinux).thenReturn(false);
 
       when(() => osInterface.which(any())).thenReturn(null);
+    });
+
+    group('version', () {
+      setUp(() {
+        const javaHome = '/path/to/jdk';
+        when(() => platform.isWindows).thenReturn(false);
+        when(() => platform.environment).thenReturn({'JAVA_HOME': javaHome});
+
+        final processResult = MockShorebirdProcessResult();
+        when(() => shorebirdProcess.runSync(any(), any())).thenReturn(
+          processResult,
+        );
+        when(() => processResult.exitCode).thenReturn(0);
+        when(() => processResult.stderr).thenReturn('java version "11.0.1"');
+      });
+
+      test('calls java -version and return the stderr', () {
+        expect(
+          runWithOverrides(() => java.version),
+          equals('java version "11.0.1"'),
+        );
+      });
+
+      group('when the command fails', () {
+        setUp(() {
+          final processResult = MockShorebirdProcessResult();
+          when(() => shorebirdProcess.runSync(any(), any())).thenReturn(
+            processResult,
+          );
+          when(() => processResult.exitCode).thenReturn(1);
+        });
+
+        test('returns null', () {
+          expect(runWithOverrides(() => java.version), isNull);
+        });
+      });
+
+      group('when no jdk is found', () {
+        setUp(() {
+          when(() => platform.environment).thenReturn({});
+        });
+
+        test('returns null', () {
+          expect(runWithOverrides(() => java.version), isNull);
+        });
+      });
     });
 
     group('executable', () {

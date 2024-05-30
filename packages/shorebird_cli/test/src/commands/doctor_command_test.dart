@@ -123,10 +123,13 @@ Engine • revision $shorebirdEngineRevision
         await runWithOverrides(command.run);
 
         final notDetectedText = red.wrap('not detected');
-        verify(
-          () => logger.info('''
+        final msg =
+            verify(() => logger.info(captureAny())).captured.first as String;
 
-Shorebird v$packageVersion • git@github.com:shorebirdtech/shorebird.git
+        expect(
+          msg,
+          equals('''
+Shorebird $packageVersion • git@github.com:shorebirdtech/shorebird.git
 Flutter • revision ${shorebirdEnv.flutterRevision}
 Engine • revision $shorebirdEngineRevision
 
@@ -135,8 +138,11 @@ Android Toolchain
   • Android Studio: $notDetectedText
   • Android SDK: $notDetectedText
   • ADB: $notDetectedText
-  • JAVA_HOME: $notDetectedText'''),
-        ).called(1);
+  • JAVA_HOME: $notDetectedText
+  • JAVA_EXECUTABLE: $notDetectedText
+  • JAVA_VERSION: $notDetectedText
+'''),
+        );
       });
 
       test('prints additional information (detected)', () async {
@@ -145,21 +151,44 @@ Android Toolchain
         when(() => androidSdk.path).thenReturn('test-sdk-path');
         when(() => androidSdk.adbPath).thenReturn('test-adb-path');
         when(() => java.home).thenReturn('test-java-home');
+        when(() => java.executable).thenReturn('test-java-executable');
+
+        when(() => java.version).thenReturn(
+          '''
+openjdk version "17.0.9" 2023-10-17
+OpenJDK Runtime Environment (build 17.0.9+0-17.0.9b1087.7-11185874)
+OpenJDK 64-Bit Server VM (build 17.0.9+0-17.0.9b1087.7-11185874, mixed mode)'''
+              .replaceAll('\n', Platform.lineTerminator),
+        );
         await runWithOverrides(command.run);
 
-        verify(
-          () => logger.info('''
+        final msg =
+            verify(() => logger.info(captureAny())).captured.first as String;
 
-Shorebird v$packageVersion • git@github.com:shorebirdtech/shorebird.git
+        expect(
+          msg.replaceAll(
+            Platform.lineTerminator,
+            '\n',
+          ),
+          equals(
+            '''
+Shorebird $packageVersion • git@github.com:shorebirdtech/shorebird.git
 Flutter • revision ${shorebirdEnv.flutterRevision}
 Engine • revision $shorebirdEngineRevision
 
+Logs: ${logsDirectory.path}
 Android Toolchain
   • Android Studio: test-studio-path
   • Android SDK: test-sdk-path
   • ADB: test-adb-path
-  • JAVA_HOME: test-java-home'''),
-        ).called(1);
+  • JAVA_HOME: test-java-home
+  • JAVA_EXECUTABLE: test-java-executable
+  • JAVA_VERSION: openjdk version "17.0.9" 2023-10-17
+                  OpenJDK Runtime Environment (build 17.0.9+0-17.0.9b1087.7-11185874)
+                  OpenJDK 64-Bit Server VM (build 17.0.9+0-17.0.9b1087.7-11185874, mixed mode)
+''',
+          ),
+        );
       });
     });
 
