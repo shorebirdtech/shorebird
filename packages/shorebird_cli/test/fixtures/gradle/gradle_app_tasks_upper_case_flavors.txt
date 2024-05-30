@@ -1,0 +1,807 @@
+> Task :gradle:compileJava NO-SOURCE
+> Task :gradle:compileGroovy UP-TO-DATE
+> Task :gradle:pluginDescriptors UP-TO-DATE
+> Task :gradle:processResources UP-TO-DATE
+> Task :gradle:classes UP-TO-DATE
+> Task :gradle:jar UP-TO-DATE
+
+> Task :app:tasks
+
+------------------------------------------------------------
+Tasks runnable from project ':app'
+------------------------------------------------------------
+
+Android tasks
+-------------
+androidDependencies - Displays the Android dependencies of the project.
+signingReport - Displays the signing info for the base and test modules
+sourceSets - Prints out all the source sets defined in this project.
+
+Build tasks
+-----------
+assemble - Assemble main outputs for all the variants.
+assembleAndroidTest - Assembles all the Test applications.
+assembleDebug - Assembles main outputs for all Debug variants.
+assembleProfile - Assembles main outputs for all Profile variants.
+assembleRelease - Assembles main outputs for all Release variants.
+assembleRJ - Assembles main outputs for all RJ variants.
+assembleSP - Assembles main outputs for all SP variants.
+build - Assembles and tests this project.
+buildDependents - Assembles and tests this project and all projects that depend on it.
+buildKotlinToolingMetadata - Build metadata json file containing information about the used Kotlin tooling
+buildNeeded - Assembles and tests this project and all projects it depends on.
+bundle - Assemble bundles for all the variants.
+bundleDebug - Assembles bundles for all Debug variants.
+bundleProfile - Assembles bundles for all Profile variants.
+bundleRelease - Assembles bundles for all Release variants.
+bundleRJ - Assembles bundles for all RJ variants.
+bundleSP - Assembles bundles for all SP variants.
+clean - Deletes the build directory.
+compileRJDebugAndroidTestSources
+compileRJDebugSources
+compileRJDebugUnitTestSources
+compileRJProfileSources
+compileRJProfileUnitTestSources
+compileRJReleaseSources
+compileRJReleaseUnitTestSources
+compileSPDebugAndroidTestSources
+compileSPDebugSources
+compileSPDebugUnitTestSources
+compileSPProfileSources
+compileSPProfileUnitTestSources
+compileSPReleaseSources
+compileSPReleaseUnitTestSources
+
+Help tasks
+----------
+buildEnvironment - Displays all buildscript dependencies declared in project ':app'.
+dependencies - Displays all dependencies declared in project ':app'.
+dependencyInsight - Displays the insight into a specific dependency in project ':app'.
+help - Displays a help message.
+javaToolchains - Displays the detected java toolchains.
+kotlinDslAccessorsReport - Prints the Kotlin code for accessing the currently available project extensions and conventions.
+outgoingVariants - Displays the outgoing variants of project ':app'.
+projects - Displays the sub-projects of project ':app'.
+properties - Displays the properties of project ':app'.
+resolvableConfigurations - Displays the configurations that can be resolved in project ':app'.
+tasks - Displays the tasks runnable from project ':app'.
+
+Install tasks
+-------------
+installRJDebug - Installs the DebugRJDebug build.
+installRJDebugAndroidTest - Installs the android (on device) tests for the RJDebug build.
+installRJProfile - Installs the ProfileRJProfile build.
+installRJRelease - Installs the ReleaseRJRelease build.
+installSPDebug - Installs the DebugSPDebug build.
+installSPDebugAndroidTest - Installs the android (on device) tests for the SPDebug build.
+installSPProfile - Installs the ProfileSPProfile build.
+installSPRelease - Installs the ReleaseSPRelease build.
+uninstallAll - Uninstall all applications.
+uninstallRJDebug - Uninstalls the DebugRJDebug build.
+uninstallRJDebugAndroidTest - Uninstalls the android (on device) tests for the RJDebug build.
+uninstallRJProfile - Uninstalls the ProfileRJProfile build.
+uninstallRJRelease - Uninstalls the ReleaseRJRelease build.
+uninstallSPDebug - Uninstalls the DebugSPDebug build.
+uninstallSPDebugAndroidTest - Uninstalls the android (on device) tests for the SPDebug build.
+uninstallSPProfile - Uninstalls the ProfileSPProfile build.
+uninstallSPRelease - Uninstalls the ReleaseSPRelease build.
+
+Verification tasks
+------------------
+check - Runs all checks.
+checkJetifier - Checks whether Jetifier is needed for the current project
+connectedAndroidTest - Installs and runs instrumentation tests for all flavors on connected devices.
+connectedCheck - Runs all device checks on currently connected devices.
+connectedRJDebugAndroidTest - Installs and runs the tests for RJDebug on connected devices.
+connectedSPDebugAndroidTest - Installs and runs the tests for SPDebug on connected devices.
+deviceAndroidTest - Installs and runs instrumentation tests using all Device Providers.
+deviceCheck - Runs all device checks using Device Providers and Test Servers.
+lint - Runs lint on the default variant.
+lintAnalyzeRJDebug - Run lint analysis on the RJDebug variant
+lintAnalyzeRJProfile - Run lint analysis on the RJProfile variant
+lintAnalyzeRJRelease - Run lint analysis on the RJRelease variant
+lintAnalyzeSPDebug - Run lint analysis on the SPDebug variant
+lintAnalyzeSPProfile - Run lint analysis on the SPProfile variant
+lintAnalyzeSPRelease - Run lint analysis on the SPRelease variant
+lintFix - Runs lint on the default variant and applies any safe suggestions to the source code.
+lintFixRJDebug - Fix lint on the RJDebug variant
+lintFixRJProfile - Fix lint on the RJProfile variant
+lintFixRJRelease - Fix lint on the RJRelease variant
+lintFixSPDebug - Fix lint on the SPDebug variant
+lintFixSPProfile - Fix lint on the SPProfile variant
+lintFixSPRelease - Fix lint on the SPRelease variant
+lintReportRJDebug - Run lint on the RJDebug variant
+lintReportRJProfile - Run lint on the RJProfile variant
+lintReportRJRelease - Run lint on the RJRelease variant
+lintReportSPDebug - Run lint on the SPDebug variant
+lintReportSPProfile - Run lint on the SPProfile variant
+lintReportSPRelease - Run lint on the SPRelease variant
+lintRJDebug - Print text output from the corresponding lint report task
+lintRJProfile - Print text output from the corresponding lint report task
+lintRJRelease - Print text output from the corresponding lint report task
+lintSPDebug - Print text output from the corresponding lint report task
+lintSPProfile - Print text output from the corresponding lint report task
+lintSPRelease - Print text output from the corresponding lint report task
+lintVitalAnalyzeRJRelease - Run lint analysis with only the fatal issues enabled on the RJRelease variant
+lintVitalAnalyzeSPRelease - Run lint analysis with only the fatal issues enabled on the SPRelease variant
+lintVitalReportRJRelease - Run lint with only the fatal issues enabled on the RJRelease variant
+lintVitalReportSPRelease - Run lint with only the fatal issues enabled on the SPRelease variant
+lintVitalRJRelease - Print text output from the corresponding lint report task
+lintVitalSPRelease - Print text output from the corresponding lint report task
+test - Run unit tests for all variants.
+testRJDebugUnitTest - Run unit tests for the RJDebug build.
+testRJProfileUnitTest - Run unit tests for the RJProfile build.
+testRJReleaseUnitTest - Run unit tests for the RJRelease build.
+testSPDebugUnitTest - Run unit tests for the SPDebug build.
+testSPProfileUnitTest - Run unit tests for the SPProfile build.
+testSPReleaseUnitTest - Run unit tests for the SPRelease build.
+updateLintBaseline - Updates the lint baseline using the default variant.
+updateLintBaselineRJDebug - Update the lint baseline using the RJDebug variant
+updateLintBaselineRJProfile - Update the lint baseline using the RJProfile variant
+updateLintBaselineRJRelease - Update the lint baseline using the RJRelease variant
+updateLintBaselineSPDebug - Update the lint baseline using the SPDebug variant
+updateLintBaselineSPProfile - Update the lint baseline using the SPProfile variant
+updateLintBaselineSPRelease - Update the lint baseline using the SPRelease variant
+
+Other tasks
+-----------
+analyticsRecordingRJRelease
+analyticsRecordingSPRelease
+analyzeRJDebugAndroidTestDependencies
+analyzeRJDebugDependencies
+analyzeRJDebugUnitTestDependencies
+analyzeRJProfileDependencies
+analyzeRJProfileUnitTestDependencies
+analyzeRJReleaseDependencies
+analyzeRJReleaseUnitTestDependencies
+analyzeSPDebugAndroidTestDependencies
+analyzeSPDebugDependencies
+analyzeSPDebugUnitTestDependencies
+analyzeSPProfileDependencies
+analyzeSPProfileUnitTestDependencies
+analyzeSPReleaseDependencies
+analyzeSPReleaseUnitTestDependencies
+appIdListTask
+assembleRJDebug - Assembles main output for variant RJDebug
+assembleRJDebugAndroidTest - Assembles main output for variant RJDebugAndroidTest
+assembleRJDebugUnitTest - Assembles main output for variant RJDebugUnitTest
+assembleRJProfile - Assembles main output for variant RJProfile
+assembleRJProfileUnitTest - Assembles main output for variant RJProfileUnitTest
+assembleRJRelease - Assembles main output for variant RJRelease
+assembleRJReleaseUnitTest - Assembles main output for variant RJReleaseUnitTest
+assembleSPDebug - Assembles main output for variant SPDebug
+assembleSPDebugAndroidTest - Assembles main output for variant SPDebugAndroidTest
+assembleSPDebugUnitTest - Assembles main output for variant SPDebugUnitTest
+assembleSPProfile - Assembles main output for variant SPProfile
+assembleSPProfileUnitTest - Assembles main output for variant SPProfileUnitTest
+assembleSPRelease - Assembles main output for variant SPRelease
+assembleSPReleaseUnitTest - Assembles main output for variant SPReleaseUnitTest
+buildRJDebugPreBundle
+buildRJProfilePreBundle
+buildRJReleasePreBundle
+buildSPDebugPreBundle
+buildSPProfilePreBundle
+buildSPReleasePreBundle
+bundleRJDebug - Assembles bundle for variant RJDebug
+bundleRJDebugAndroidTestClassesToCompileJar
+bundleRJDebugAndroidTestClassesToRuntimeJar
+bundleRJDebugClassesToCompileJar
+bundleRJDebugClassesToRuntimeJar
+bundleRJDebugResources
+bundleRJDebugUnitTestClassesToCompileJar
+bundleRJDebugUnitTestClassesToRuntimeJar
+bundleRJProfile - Assembles bundle for variant RJProfile
+bundleRJProfileClassesToCompileJar
+bundleRJProfileClassesToRuntimeJar
+bundleRJProfileResources
+bundleRJProfileUnitTestClassesToCompileJar
+bundleRJProfileUnitTestClassesToRuntimeJar
+bundleRJRelease - Assembles bundle for variant RJRelease
+bundleRJReleaseClassesToCompileJar
+bundleRJReleaseClassesToRuntimeJar
+bundleRJReleaseResources
+bundleRJReleaseUnitTestClassesToCompileJar
+bundleRJReleaseUnitTestClassesToRuntimeJar
+bundleSPDebug - Assembles bundle for variant SPDebug
+bundleSPDebugAndroidTestClassesToCompileJar
+bundleSPDebugAndroidTestClassesToRuntimeJar
+bundleSPDebugClassesToCompileJar
+bundleSPDebugClassesToRuntimeJar
+bundleSPDebugResources
+bundleSPDebugUnitTestClassesToCompileJar
+bundleSPDebugUnitTestClassesToRuntimeJar
+bundleSPProfile - Assembles bundle for variant SPProfile
+bundleSPProfileClassesToCompileJar
+bundleSPProfileClassesToRuntimeJar
+bundleSPProfileResources
+bundleSPProfileUnitTestClassesToCompileJar
+bundleSPProfileUnitTestClassesToRuntimeJar
+bundleSPRelease - Assembles bundle for variant SPRelease
+bundleSPReleaseClassesToCompileJar
+bundleSPReleaseClassesToRuntimeJar
+bundleSPReleaseResources
+bundleSPReleaseUnitTestClassesToCompileJar
+bundleSPReleaseUnitTestClassesToRuntimeJar
+checkRJDebugAarMetadata
+checkRJDebugAndroidTestAarMetadata
+checkRJDebugAndroidTestDuplicateClasses
+checkRJDebugDuplicateClasses
+checkRJDebugManifest
+checkRJProfileAarMetadata
+checkRJProfileDuplicateClasses
+checkRJProfileManifest
+checkRJReleaseAarMetadata
+checkRJReleaseDuplicateClasses
+checkRJReleaseManifest
+checkSPDebugAarMetadata
+checkSPDebugAndroidTestAarMetadata
+checkSPDebugAndroidTestDuplicateClasses
+checkSPDebugDuplicateClasses
+checkSPDebugManifest
+checkSPProfileAarMetadata
+checkSPProfileDuplicateClasses
+checkSPProfileManifest
+checkSPReleaseAarMetadata
+checkSPReleaseDuplicateClasses
+checkSPReleaseManifest
+collectRJReleaseDependencies
+collectSPReleaseDependencies
+compileFlutterBuildRJDebug
+compileFlutterBuildRJProfile
+compileFlutterBuildRJRelease
+compileFlutterBuildSPDebug
+compileFlutterBuildSPProfile
+compileFlutterBuildSPRelease
+compileLint
+compileLintChecks
+compileRJDebugAidl
+compileRJDebugAndroidTestAidl
+compileRJDebugAndroidTestJavaWithJavac
+compileRJDebugAndroidTestKotlin - Compiles the RJDebugAndroidTest kotlin.
+compileRJDebugAndroidTestRenderscript
+compileRJDebugAndroidTestShaders
+compileRJDebugArtProfile
+compileRJDebugJavaWithJavac
+compileRJDebugKotlin - Compiles the RJDebug kotlin.
+compileRJDebugRenderscript
+compileRJDebugShaders
+compileRJDebugUnitTestJavaWithJavac
+compileRJDebugUnitTestKotlin - Compiles the RJDebugUnitTest kotlin.
+compileRJProfileAidl
+compileRJProfileArtProfile
+compileRJProfileJavaWithJavac
+compileRJProfileKotlin - Compiles the RJProfile kotlin.
+compileRJProfileRenderscript
+compileRJProfileShaders
+compileRJProfileUnitTestJavaWithJavac
+compileRJProfileUnitTestKotlin - Compiles the RJProfileUnitTest kotlin.
+compileRJReleaseAidl
+compileRJReleaseArtProfile
+compileRJReleaseJavaWithJavac
+compileRJReleaseKotlin - Compiles the RJRelease kotlin.
+compileRJReleaseRenderscript
+compileRJReleaseShaders
+compileRJReleaseUnitTestJavaWithJavac
+compileRJReleaseUnitTestKotlin - Compiles the RJReleaseUnitTest kotlin.
+compileSPDebugAidl
+compileSPDebugAndroidTestAidl
+compileSPDebugAndroidTestJavaWithJavac
+compileSPDebugAndroidTestKotlin - Compiles the SPDebugAndroidTest kotlin.
+compileSPDebugAndroidTestRenderscript
+compileSPDebugAndroidTestShaders
+compileSPDebugArtProfile
+compileSPDebugJavaWithJavac
+compileSPDebugKotlin - Compiles the SPDebug kotlin.
+compileSPDebugRenderscript
+compileSPDebugShaders
+compileSPDebugUnitTestJavaWithJavac
+compileSPDebugUnitTestKotlin - Compiles the SPDebugUnitTest kotlin.
+compileSPProfileAidl
+compileSPProfileArtProfile
+compileSPProfileJavaWithJavac
+compileSPProfileKotlin - Compiles the SPProfile kotlin.
+compileSPProfileRenderscript
+compileSPProfileShaders
+compileSPProfileUnitTestJavaWithJavac
+compileSPProfileUnitTestKotlin - Compiles the SPProfileUnitTest kotlin.
+compileSPReleaseAidl
+compileSPReleaseArtProfile
+compileSPReleaseJavaWithJavac
+compileSPReleaseKotlin - Compiles the SPRelease kotlin.
+compileSPReleaseRenderscript
+compileSPReleaseShaders
+compileSPReleaseUnitTestJavaWithJavac
+compileSPReleaseUnitTestKotlin - Compiles the SPReleaseUnitTest kotlin.
+components - Displays the components produced by project ':app'. [deprecated]
+compressRJDebugAndroidTestAssets
+compressRJDebugAssets
+compressRJProfileAssets
+compressRJReleaseAssets
+compressSPDebugAndroidTestAssets
+compressSPDebugAssets
+compressSPProfileAssets
+compressSPReleaseAssets
+configureRJReleaseDependencies
+configureSPReleaseDependencies
+consumeConfigAttr
+copyFlutterAssetsRJDebug
+copyFlutterAssetsRJProfile
+copyFlutterAssetsRJRelease
+copyFlutterAssetsSPDebug
+copyFlutterAssetsSPProfile
+copyFlutterAssetsSPRelease
+createMockableJar
+createRJDebugAndroidTestApkListingFileRedirect
+createRJDebugApkListingFileRedirect
+createRJDebugApksFromBundleListingFileRedirect
+createRJDebugBundleListingFileRedirect
+createRJDebugCompatibleScreenManifests
+createRJDebugVariantModel
+createRJProfileApkListingFileRedirect
+createRJProfileApksFromBundleListingFileRedirect
+createRJProfileBundleListingFileRedirect
+createRJProfileCompatibleScreenManifests
+createRJProfileVariantModel
+createRJReleaseApkListingFileRedirect
+createRJReleaseApksFromBundleListingFileRedirect
+createRJReleaseBundleListingFileRedirect
+createRJReleaseCompatibleScreenManifests
+createRJReleaseVariantModel
+createSPDebugAndroidTestApkListingFileRedirect
+createSPDebugApkListingFileRedirect
+createSPDebugApksFromBundleListingFileRedirect
+createSPDebugBundleListingFileRedirect
+createSPDebugCompatibleScreenManifests
+createSPDebugVariantModel
+createSPProfileApkListingFileRedirect
+createSPProfileApksFromBundleListingFileRedirect
+createSPProfileBundleListingFileRedirect
+createSPProfileCompatibleScreenManifests
+createSPProfileVariantModel
+createSPReleaseApkListingFileRedirect
+createSPReleaseApksFromBundleListingFileRedirect
+createSPReleaseBundleListingFileRedirect
+createSPReleaseCompatibleScreenManifests
+createSPReleaseVariantModel
+dependentComponents - Displays the dependent components of components in project ':app'. [deprecated]
+desugarRJDebugAndroidTestFileDependencies
+desugarRJDebugFileDependencies
+desugarRJProfileFileDependencies
+desugarSPDebugAndroidTestFileDependencies
+desugarSPDebugFileDependencies
+desugarSPProfileFileDependencies
+dexBuilderRJDebug
+dexBuilderRJDebugAndroidTest
+dexBuilderRJProfile
+dexBuilderSPDebug
+dexBuilderSPDebugAndroidTest
+dexBuilderSPProfile
+extractApksForRJDebug
+extractApksForRJProfile
+extractApksForRJRelease
+extractApksForSPDebug
+extractApksForSPProfile
+extractApksForSPRelease
+extractApksFromBundleForRJDebug
+extractApksFromBundleForRJProfile
+extractApksFromBundleForRJRelease
+extractApksFromBundleForSPDebug
+extractApksFromBundleForSPProfile
+extractApksFromBundleForSPRelease
+extractDeepLinksRJDebug
+extractDeepLinksRJProfile
+extractDeepLinksRJRelease
+extractDeepLinksSPDebug
+extractDeepLinksSPProfile
+extractDeepLinksSPRelease
+extractProguardFiles
+extractRJDebugNativeDebugMetadata
+extractRJDebugNativeSymbolTables
+extractRJProfileNativeDebugMetadata
+extractRJProfileNativeSymbolTables
+extractRJReleaseNativeDebugMetadata
+extractRJReleaseNativeSymbolTables
+extractSPDebugNativeDebugMetadata
+extractSPDebugNativeSymbolTables
+extractSPProfileNativeDebugMetadata
+extractSPProfileNativeSymbolTables
+extractSPReleaseNativeDebugMetadata
+extractSPReleaseNativeSymbolTables
+generateRJDebugAndroidTestAssets
+generateRJDebugAndroidTestBuildConfig
+generateRJDebugAndroidTestResources
+generateRJDebugAndroidTestResValues
+generateRJDebugAndroidTestSources
+generateRJDebugAssets
+generateRJDebugBuildConfig
+generateRJDebugFeatureMetadata
+generateRJDebugFeatureTransitiveDeps
+generateRJDebugLintModel
+generateRJDebugManifestClass
+generateRJDebugResources
+generateRJDebugResValues
+generateRJDebugSources
+generateRJDebugUnitTestAssets
+generateRJDebugUnitTestResources
+generateRJDebugUnitTestSources
+generateRJProfileAssets
+generateRJProfileBuildConfig
+generateRJProfileFeatureMetadata
+generateRJProfileFeatureTransitiveDeps
+generateRJProfileLintModel
+generateRJProfileManifestClass
+generateRJProfileResources
+generateRJProfileResValues
+generateRJProfileSources
+generateRJProfileUnitTestAssets
+generateRJProfileUnitTestResources
+generateRJProfileUnitTestSources
+generateRJReleaseAssets
+generateRJReleaseBuildConfig
+generateRJReleaseFeatureMetadata
+generateRJReleaseFeatureTransitiveDeps
+generateRJReleaseLintModel
+generateRJReleaseManifestClass
+generateRJReleaseResources
+generateRJReleaseResValues
+generateRJReleaseSources
+generateRJReleaseUnitTestAssets
+generateRJReleaseUnitTestResources
+generateRJReleaseUnitTestSources
+generateSPDebugAndroidTestAssets
+generateSPDebugAndroidTestBuildConfig
+generateSPDebugAndroidTestResources
+generateSPDebugAndroidTestResValues
+generateSPDebugAndroidTestSources
+generateSPDebugAssets
+generateSPDebugBuildConfig
+generateSPDebugFeatureMetadata
+generateSPDebugFeatureTransitiveDeps
+generateSPDebugLintModel
+generateSPDebugManifestClass
+generateSPDebugResources
+generateSPDebugResValues
+generateSPDebugSources
+generateSPDebugUnitTestAssets
+generateSPDebugUnitTestResources
+generateSPDebugUnitTestSources
+generateSPProfileAssets
+generateSPProfileBuildConfig
+generateSPProfileFeatureMetadata
+generateSPProfileFeatureTransitiveDeps
+generateSPProfileLintModel
+generateSPProfileManifestClass
+generateSPProfileResources
+generateSPProfileResValues
+generateSPProfileSources
+generateSPProfileUnitTestAssets
+generateSPProfileUnitTestResources
+generateSPProfileUnitTestSources
+generateSPReleaseAssets
+generateSPReleaseBuildConfig
+generateSPReleaseFeatureMetadata
+generateSPReleaseFeatureTransitiveDeps
+generateSPReleaseLintModel
+generateSPReleaseManifestClass
+generateSPReleaseResources
+generateSPReleaseResValues
+generateSPReleaseSources
+generateSPReleaseUnitTestAssets
+generateSPReleaseUnitTestResources
+generateSPReleaseUnitTestSources
+javaPreCompileRJDebug
+javaPreCompileRJDebugAndroidTest
+javaPreCompileRJDebugUnitTest
+javaPreCompileRJProfile
+javaPreCompileRJProfileUnitTest
+javaPreCompileRJRelease
+javaPreCompileRJReleaseUnitTest
+javaPreCompileSPDebug
+javaPreCompileSPDebugAndroidTest
+javaPreCompileSPDebugUnitTest
+javaPreCompileSPProfile
+javaPreCompileSPProfileUnitTest
+javaPreCompileSPRelease
+javaPreCompileSPReleaseUnitTest
+javaVersion - Print the current java version used by gradle. 
+makeApkFromBundleForRJDebug
+makeApkFromBundleForRJProfile
+makeApkFromBundleForRJRelease
+makeApkFromBundleForSPDebug
+makeApkFromBundleForSPProfile
+makeApkFromBundleForSPRelease
+mapRJDebugAndroidTestSourceSetPaths
+mapRJDebugSourceSetPaths
+mapRJProfileSourceSetPaths
+mapRJReleaseSourceSetPaths
+mapSPDebugAndroidTestSourceSetPaths
+mapSPDebugSourceSetPaths
+mapSPProfileSourceSetPaths
+mapSPReleaseSourceSetPaths
+mergeExtDexRJDebug
+mergeExtDexRJDebugAndroidTest
+mergeExtDexRJProfile
+mergeExtDexSPDebug
+mergeExtDexSPDebugAndroidTest
+mergeExtDexSPProfile
+mergeLibDexRJDebug
+mergeLibDexRJDebugAndroidTest
+mergeLibDexRJProfile
+mergeLibDexSPDebug
+mergeLibDexSPDebugAndroidTest
+mergeLibDexSPProfile
+mergeProjectDexRJDebug
+mergeProjectDexRJDebugAndroidTest
+mergeProjectDexRJProfile
+mergeProjectDexSPDebug
+mergeProjectDexSPDebugAndroidTest
+mergeProjectDexSPProfile
+mergeRJDebugAndroidTestAssets
+mergeRJDebugAndroidTestGeneratedProguardFiles
+mergeRJDebugAndroidTestJavaResource
+mergeRJDebugAndroidTestJniLibFolders
+mergeRJDebugAndroidTestNativeLibs
+mergeRJDebugAndroidTestResources
+mergeRJDebugAndroidTestShaders
+mergeRJDebugArtProfile
+mergeRJDebugAssets
+mergeRJDebugGeneratedProguardFiles
+mergeRJDebugJavaResource
+mergeRJDebugJniLibFolders
+mergeRJDebugNativeDebugMetadata
+mergeRJDebugNativeLibs
+mergeRJDebugResources
+mergeRJDebugShaders
+mergeRJProfileArtProfile
+mergeRJProfileAssets
+mergeRJProfileGeneratedProguardFiles
+mergeRJProfileJavaResource
+mergeRJProfileJniLibFolders
+mergeRJProfileNativeDebugMetadata
+mergeRJProfileNativeLibs
+mergeRJProfileResources
+mergeRJProfileShaders
+mergeRJReleaseArtProfile
+mergeRJReleaseAssets
+mergeRJReleaseGeneratedProguardFiles
+mergeRJReleaseJavaResource
+mergeRJReleaseJniLibFolders
+mergeRJReleaseNativeDebugMetadata
+mergeRJReleaseNativeLibs
+mergeRJReleaseResources
+mergeRJReleaseShaders
+mergeSPDebugAndroidTestAssets
+mergeSPDebugAndroidTestGeneratedProguardFiles
+mergeSPDebugAndroidTestJavaResource
+mergeSPDebugAndroidTestJniLibFolders
+mergeSPDebugAndroidTestNativeLibs
+mergeSPDebugAndroidTestResources
+mergeSPDebugAndroidTestShaders
+mergeSPDebugArtProfile
+mergeSPDebugAssets
+mergeSPDebugGeneratedProguardFiles
+mergeSPDebugJavaResource
+mergeSPDebugJniLibFolders
+mergeSPDebugNativeDebugMetadata
+mergeSPDebugNativeLibs
+mergeSPDebugResources
+mergeSPDebugShaders
+mergeSPProfileArtProfile
+mergeSPProfileAssets
+mergeSPProfileGeneratedProguardFiles
+mergeSPProfileJavaResource
+mergeSPProfileJniLibFolders
+mergeSPProfileNativeDebugMetadata
+mergeSPProfileNativeLibs
+mergeSPProfileResources
+mergeSPProfileShaders
+mergeSPReleaseArtProfile
+mergeSPReleaseAssets
+mergeSPReleaseGeneratedProguardFiles
+mergeSPReleaseJavaResource
+mergeSPReleaseJniLibFolders
+mergeSPReleaseNativeDebugMetadata
+mergeSPReleaseNativeLibs
+mergeSPReleaseResources
+mergeSPReleaseShaders
+minifyRJReleaseWithR8
+minifySPReleaseWithR8
+model - Displays the configuration model of project ':app'. [deprecated]
+optimizeRJReleaseResources
+optimizeSPReleaseResources
+outputRJDebugAppLinkSettings - stores app links settings for the given build variant of this Android project into a json file.
+outputRJProfileAppLinkSettings - stores app links settings for the given build variant of this Android project into a json file.
+outputRJReleaseAppLinkSettings - stores app links settings for the given build variant of this Android project into a json file.
+outputSPDebugAppLinkSettings - stores app links settings for the given build variant of this Android project into a json file.
+outputSPProfileAppLinkSettings - stores app links settings for the given build variant of this Android project into a json file.
+outputSPReleaseAppLinkSettings - stores app links settings for the given build variant of this Android project into a json file.
+packageRJDebug
+packageRJDebugAndroidTest
+packageRJDebugBundle
+packageRJDebugUniversalApk
+packageRJProfile
+packageRJProfileBundle
+packageRJProfileUniversalApk
+packageRJRelease
+packageRJReleaseBundle
+packageRJReleaseUniversalApk
+packageSPDebug
+packageSPDebugAndroidTest
+packageSPDebugBundle
+packageSPDebugUniversalApk
+packageSPProfile
+packageSPProfileBundle
+packageSPProfileUniversalApk
+packageSPRelease
+packageSPReleaseBundle
+packageSPReleaseUniversalApk
+packJniLibsflutterBuildRJDebug
+packJniLibsflutterBuildRJProfile
+packJniLibsflutterBuildRJRelease
+packJniLibsflutterBuildSPDebug
+packJniLibsflutterBuildSPProfile
+packJniLibsflutterBuildSPRelease
+parseRJDebugIntegrityConfig
+parseRJProfileIntegrityConfig
+parseRJReleaseIntegrityConfig
+parseSPDebugIntegrityConfig
+parseSPProfileIntegrityConfig
+parseSPReleaseIntegrityConfig
+preBuild
+prepareLintJarForPublish
+preRJDebugAndroidTestBuild
+preRJDebugBuild
+preRJDebugUnitTestBuild
+preRJProfileBuild
+preRJProfileUnitTestBuild
+preRJReleaseBuild
+preRJReleaseUnitTestBuild
+preSPDebugAndroidTestBuild
+preSPDebugBuild
+preSPDebugUnitTestBuild
+preSPProfileBuild
+preSPProfileUnitTestBuild
+preSPReleaseBuild
+preSPReleaseUnitTestBuild
+printBuildVariants - Prints out all build variants for this Android project
+processApplicationManifestRJDebugForBundle
+processApplicationManifestRJProfileForBundle
+processApplicationManifestRJReleaseForBundle
+processApplicationManifestSPDebugForBundle
+processApplicationManifestSPProfileForBundle
+processApplicationManifestSPReleaseForBundle
+processManifestRJDebugForFeature
+processManifestRJProfileForFeature
+processManifestRJReleaseForFeature
+processManifestSPDebugForFeature
+processManifestSPProfileForFeature
+processManifestSPReleaseForFeature
+processRJDebugAndroidTestJavaRes
+processRJDebugAndroidTestManifest
+processRJDebugAndroidTestResources
+processRJDebugJavaRes
+processRJDebugMainManifest
+processRJDebugManifest
+processRJDebugManifestForInstantApp
+processRJDebugManifestForPackage
+processRJDebugResources
+processRJDebugUnitTestJavaRes
+processRJProfileJavaRes
+processRJProfileMainManifest
+processRJProfileManifest
+processRJProfileManifestForInstantApp
+processRJProfileManifestForPackage
+processRJProfileResources
+processRJProfileUnitTestJavaRes
+processRJReleaseJavaRes
+processRJReleaseMainManifest
+processRJReleaseManifest
+processRJReleaseManifestForInstantApp
+processRJReleaseManifestForPackage
+processRJReleaseResources
+processRJReleaseUnitTestJavaRes
+processSPDebugAndroidTestJavaRes
+processSPDebugAndroidTestManifest
+processSPDebugAndroidTestResources
+processSPDebugJavaRes
+processSPDebugMainManifest
+processSPDebugManifest
+processSPDebugManifestForInstantApp
+processSPDebugManifestForPackage
+processSPDebugResources
+processSPDebugUnitTestJavaRes
+processSPProfileJavaRes
+processSPProfileMainManifest
+processSPProfileManifest
+processSPProfileManifestForInstantApp
+processSPProfileManifestForPackage
+processSPProfileResources
+processSPProfileUnitTestJavaRes
+processSPReleaseJavaRes
+processSPReleaseMainManifest
+processSPReleaseManifest
+processSPReleaseManifestForInstantApp
+processSPReleaseManifestForPackage
+processSPReleaseResources
+processSPReleaseUnitTestJavaRes
+produceRJDebugBundleIdeListingFile
+produceRJProfileBundleIdeListingFile
+produceRJReleaseBundleIdeListingFile
+produceSPDebugBundleIdeListingFile
+produceSPProfileBundleIdeListingFile
+produceSPReleaseBundleIdeListingFile
+resolveConfigAttr
+sdkRJReleaseDependencyData
+sdkSPReleaseDependencyData
+shrinkBundleRJReleaseResources
+shrinkBundleSPReleaseResources
+shrinkRJReleaseRes
+shrinkSPReleaseRes
+signingConfigWriterRJDebug
+signingConfigWriterRJDebugAndroidTest
+signingConfigWriterRJProfile
+signingConfigWriterRJRelease
+signingConfigWriterSPDebug
+signingConfigWriterSPDebugAndroidTest
+signingConfigWriterSPProfile
+signingConfigWriterSPRelease
+signRJDebugBundle
+signRJProfileBundle
+signRJReleaseBundle
+signSPDebugBundle
+signSPProfileBundle
+signSPReleaseBundle
+stripRJDebugDebugSymbols
+stripRJProfileDebugSymbols
+stripRJReleaseDebugSymbols
+stripSPDebugDebugSymbols
+stripSPProfileDebugSymbols
+stripSPReleaseDebugSymbols
+validateSigningRJDebug
+validateSigningRJDebugAndroidTest
+validateSigningRJProfile
+validateSigningRJRelease
+validateSigningSPDebug
+validateSigningSPDebugAndroidTest
+validateSigningSPProfile
+validateSigningSPRelease
+writeRJDebugAndroidTestSigningConfigVersions
+writeRJDebugApplicationId
+writeRJDebugAppMetadata
+writeRJDebugModuleMetadata
+writeRJDebugSigningConfigVersions
+writeRJProfileApplicationId
+writeRJProfileAppMetadata
+writeRJProfileModuleMetadata
+writeRJProfileSigningConfigVersions
+writeRJReleaseApplicationId
+writeRJReleaseAppMetadata
+writeRJReleaseModuleMetadata
+writeRJReleaseSigningConfigVersions
+writeSPDebugAndroidTestSigningConfigVersions
+writeSPDebugApplicationId
+writeSPDebugAppMetadata
+writeSPDebugModuleMetadata
+writeSPDebugSigningConfigVersions
+writeSPProfileApplicationId
+writeSPProfileAppMetadata
+writeSPProfileModuleMetadata
+writeSPProfileSigningConfigVersions
+writeSPReleaseApplicationId
+writeSPReleaseAppMetadata
+writeSPReleaseModuleMetadata
+writeSPReleaseSigningConfigVersions
+zipApksForRJDebug
+zipApksForRJProfile
+zipApksForRJRelease
+zipApksForSPDebug
+zipApksForSPProfile
+zipApksForSPRelease
+
+Rules
+-----
+Pattern: clean<TaskName>: Cleans the output files of a task.
+Pattern: build<ConfigurationName>: Assembles the artifacts of a configuration.
+
+BUILD SUCCESSFUL in 503ms
+5 actionable tasks: 1 executed, 4 up-to-date

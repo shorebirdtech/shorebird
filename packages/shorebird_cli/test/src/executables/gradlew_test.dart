@@ -195,7 +195,7 @@ Make sure you have run "flutter build apk" at least once.''',
         when(() => platform.environment).thenReturn({'JAVA_HOME': javaHome});
         when(() => result.stdout).thenReturn(
           File(
-            p.join('test', 'fixtures', 'gradle_app_tasks.txt'),
+            p.join('test', 'fixtures', 'gradle', 'gradle_app_tasks.txt'),
           ).readAsStringSync(),
         );
         await expectLater(
@@ -221,6 +221,113 @@ Make sure you have run "flutter build apk" at least once.''',
           ),
         ).called(1);
       });
+
+      group('when flavors are all upper case', () {
+        test('extracts flavors', () async {
+          when(() => platform.isLinux).thenReturn(true);
+          when(() => platform.isMacOS).thenReturn(false);
+          when(() => platform.isWindows).thenReturn(false);
+          final tempDir = setUpAppTempDir();
+          File(
+            p.join(tempDir.path, 'android', 'gradlew'),
+          ).createSync(recursive: true);
+          const javaHome = 'test_java_home';
+          when(() => platform.environment).thenReturn({'JAVA_HOME': javaHome});
+          when(() => result.stdout).thenReturn(
+            File(
+              p.join(
+                'test',
+                'fixtures',
+                'gradle',
+                'gradle_app_tasks_upper_case_flavors.txt',
+              ),
+            ).readAsStringSync(),
+          );
+          await expectLater(
+            runWithOverrides(() => gradlew.productFlavors(tempDir.path)),
+            completion(
+              equals({
+                'SP',
+                'RJ',
+              }),
+            ),
+          );
+        });
+      });
+
+      group(
+        'when flavors are mixed, starting with upper case, finishin with camel',
+        () {
+          test('extracts flavors', () async {
+            when(() => platform.isLinux).thenReturn(true);
+            when(() => platform.isMacOS).thenReturn(false);
+            when(() => platform.isWindows).thenReturn(false);
+            final tempDir = setUpAppTempDir();
+            File(
+              p.join(tempDir.path, 'android', 'gradlew'),
+            ).createSync(recursive: true);
+            const javaHome = 'test_java_home';
+            when(() => platform.environment)
+                .thenReturn({'JAVA_HOME': javaHome});
+            when(() => result.stdout).thenReturn(
+              File(
+                p.join(
+                  'test',
+                  'fixtures',
+                  'gradle',
+                  'gradle_app_tasks_mixed_case_flavors.txt',
+                ),
+              ).readAsStringSync(),
+            );
+            await expectLater(
+              runWithOverrides(() => gradlew.productFlavors(tempDir.path)),
+              completion(
+                equals({
+                  'SPaulo',
+                  'RJaneiro',
+                }),
+              ),
+            );
+          });
+        },
+      );
+
+      group(
+        'when flavors starts with upper case, finishing with numbers',
+        () {
+          test('extracts flavors', () async {
+            when(() => platform.isLinux).thenReturn(true);
+            when(() => platform.isMacOS).thenReturn(false);
+            when(() => platform.isWindows).thenReturn(false);
+            final tempDir = setUpAppTempDir();
+            File(
+              p.join(tempDir.path, 'android', 'gradlew'),
+            ).createSync(recursive: true);
+            const javaHome = 'test_java_home';
+            when(() => platform.environment)
+                .thenReturn({'JAVA_HOME': javaHome});
+            when(() => result.stdout).thenReturn(
+              File(
+                p.join(
+                  'test',
+                  'fixtures',
+                  'gradle',
+                  'gradle_app_tasks_numbers_upper_case_flavors.txt',
+                ),
+              ).readAsStringSync(),
+            );
+            await expectLater(
+              runWithOverrides(() => gradlew.productFlavors(tempDir.path)),
+              completion(
+                equals({
+                  'CB500',
+                  'NX700',
+                }),
+              ),
+            );
+          });
+        },
+      );
     });
   });
 }
