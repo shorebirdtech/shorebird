@@ -52,8 +52,7 @@ void main() {
   });
 
   group('IsUpperCase', () {
-    test('returns true if a string contains only uppercase characters',
-        () async {
+    test('returns true if a string contains only uppercase characters', () {
       expect('TEST'.isUpperCase(), isTrue);
       expect('test'.isUpperCase(), isFalse);
       expect('Test'.isUpperCase(), isFalse);
