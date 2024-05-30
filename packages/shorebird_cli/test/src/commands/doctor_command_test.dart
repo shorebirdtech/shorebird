@@ -181,6 +181,7 @@ Shorebird $packageVersion • git@github.com:shorebirdtech/shorebird.git
 Flutter • revision ${shorebirdEnv.flutterRevision}
 Engine • revision $shorebirdEngineRevision
 
+Logs: ${logsDirectory.path}
 Android Toolchain
   • Android Studio: test-studio-path
   • Android SDK: test-sdk-path
