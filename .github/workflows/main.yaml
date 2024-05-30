@@ -15,6 +15,10 @@ jobs:
     name: ✅ Semantic Pull Request
     uses: VeryGoodOpenSource/very_good_workflows/.github/workflows/semantic_pull_request.yml@v1
 
+  check_licenses:
+    name: 🧑‍⚖️ Check Licenses
+    uses: VeryGoodOpenSource/very_good_workflows/.github/workflows/license_check.yml@v1
+
   changes:
     runs-on: ubuntu-latest
 
