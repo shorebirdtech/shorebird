@@ -165,6 +165,8 @@ class MockShorebirdYaml extends Mock implements ShorebirdYaml {}
 
 class MockStdin extends Mock implements Stdin {}
 
+class MockStdout extends Mock implements Stdout {}
+
 class MockValidator extends Mock implements Validator {}
 
 class MockXcodeBuild extends Mock implements XcodeBuild {}

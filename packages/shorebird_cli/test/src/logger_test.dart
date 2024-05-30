@@ -1,6 +1,6 @@
+import 'dart:convert';
 import 'dart:io';
 
-import 'package:mason_logger/mason_logger.dart';
 import 'package:mocktail/mocktail.dart';
 import 'package:path/path.dart' as p;
 import 'package:scoped_deps/scoped_deps.dart';
@@ -11,204 +11,97 @@ import 'package:test/test.dart';
 import 'mocks.dart';
 
 void main() {
-  group('ShorebirdLogger', () {
+  group('logFile', () {
     late Directory logsDirectory;
     late ShorebirdEnv shorebirdEnv;
-    late ShorebirdLogger shorebirdLogger;
 
-    setUp(() {
-      logsDirectory = Directory.systemTemp.createTempSync(
-        'shorebird_logs',
+    R runWithOverrides<R>(R Function() body) {
+      return runScoped(
+        body,
+        values: {
+          shorebirdEnvRef.overrideWith(() => shorebirdEnv),
+        },
       );
-
-      shorebirdEnv = MockShorebirdEnv();
-      when(() => shorebirdEnv.logsDirectory).thenReturn(logsDirectory);
-
-      // Setting to quiet so we don't spam the stdout/stderr while testing
-      shorebirdLogger = ShorebirdLogger(level: Level.quiet);
-    });
-
-    String readLogFile() {
-      final logFile = Directory(p.join(logsDirectory.path)).listSync().first;
-      return File(logFile.path).readAsStringSync();
     }
 
-    test('can be instantiated', () {
-      expect(ShorebirdLogger.new, returnsNormally);
+    setUp(() {
+      logsDirectory = Directory.systemTemp.createTempSync('shorebird_logs');
+      shorebirdEnv = MockShorebirdEnv();
+      when(() => shorebirdEnv.logsDirectory).thenReturn(logsDirectory);
     });
 
-    test('info', () {
-      runScoped(
-        () {
-          shorebirdLogger.info('message');
-          expect(readLogFile(), contains('[INFO]'));
-          expect(readLogFile(), contains('message'));
-        },
-        values: {
-          shorebirdEnvRef.overrideWith(() => shorebirdEnv),
-        },
-      );
+    test('creates a log file in the logs directory', () {
+      final file = runWithOverrides(() => logFile);
+      expect(file.existsSync(), isTrue);
+      expect(file.path, startsWith(logsDirectory.path));
+    });
+  });
+
+  group(LoggingStdout, () {
+    final utf8Encoding = Encoding.getByName('utf-8')!;
+    late File logFile;
+    late LoggingStdout loggingStdout;
+    late Stdout baseStdout;
+
+    setUpAll(() {
+      registerFallbackValue(const Stream<List<int>>.empty());
     });
 
-    test('info with style', () {
-      runScoped(
-        () {
-          shorebirdLogger.info(
-            'message',
-            style: (message) => message?.toUpperCase(),
-          );
-          expect(readLogFile(), contains('[INFO]'));
-          expect(readLogFile(), contains('MESSAGE'));
-        },
-        values: {
-          shorebirdEnvRef.overrideWith(() => shorebirdEnv),
-        },
-      );
+    setUp(() {
+      final tempDir = Directory.systemTemp.createTempSync('shorebird_logs');
+      logFile = File(p.join(tempDir.path, 'shorebird.log'));
+      baseStdout = MockStdout();
+
+      when(() => baseStdout.addStream(any())).thenAnswer((_) async {});
+      when(() => baseStdout.close()).thenAnswer((_) async {});
+      when(() => baseStdout.flush()).thenAnswer((_) async {});
+      when(() => baseStdout.encoding).thenReturn(utf8Encoding);
+
+      loggingStdout = LoggingStdout(baseStdOut: baseStdout, logFile: logFile);
     });
 
-    test('detail', () {
-      runScoped(
-        () {
-          shorebirdLogger.detail('message');
-          expect(readLogFile(), contains('[DETAIL]'));
-          expect(readLogFile(), contains('message'));
-        },
-        values: {
-          shorebirdEnvRef.overrideWith(() => shorebirdEnv),
-        },
-      );
+    test('forwards encoding from baseStdOut', () {
+      expect(loggingStdout.encoding, equals(utf8Encoding));
     });
 
-    test('detail with style', () {
-      runScoped(
-        () {
-          shorebirdLogger.detail(
-            'message',
-            style: (message) => message?.toUpperCase(),
-          );
-          expect(readLogFile(), contains('[DETAIL]'));
-          expect(readLogFile(), contains('MESSAGE'));
-        },
-        values: {
-          shorebirdEnvRef.overrideWith(() => shorebirdEnv),
-        },
-      );
+    test('addStream forwards to baseStdout', () async {
+      final stream = Stream.fromIterable(['message'.codeUnits]);
+      await loggingStdout.addStream(stream);
+      verify(() => baseStdout.addStream(stream)).called(1);
     });
 
-    test('warn', () {
-      runScoped(
-        () {
-          shorebirdLogger.warn('message');
-          expect(readLogFile(), contains('[WARN]'));
-          expect(readLogFile(), contains('message'));
-        },
-        values: {
-          shorebirdEnvRef.overrideWith(() => shorebirdEnv),
-        },
-      );
+    test('close forwards to baseStdout', () async {
+      await loggingStdout.close();
+      verify(() => baseStdout.close()).called(1);
     });
 
-    test('warn with style', () {
-      runScoped(
-        () {
-          shorebirdLogger.warn(
-            'message',
-            style: (message) => message?.toUpperCase(),
-          );
-          expect(readLogFile(), contains('[WARN]'));
-          expect(readLogFile(), contains('MESSAGE'));
-        },
-        values: {
-          shorebirdEnvRef.overrideWith(() => shorebirdEnv),
-        },
-      );
+    test('flush forwards to baseStdout', () async {
+      await loggingStdout.flush();
+      verify(() => baseStdout.flush()).called(1);
     });
 
-    test('success', () {
-      runScoped(
-        () {
-          shorebirdLogger.success('message');
-          expect(readLogFile(), contains('[SUCCESS]'));
-          expect(readLogFile(), contains('message'));
-        },
-        values: {
-          shorebirdEnvRef.overrideWith(() => shorebirdEnv),
-        },
-      );
+    test('forwards write to baseStdout, logs to file', () {
+      loggingStdout.write('message');
+      verify(() => baseStdout.write('message')).called(1);
+      expect(logFile.readAsStringSync(), contains('message'));
     });
 
-    test('success with style', () {
-      runScoped(
-        () {
-          shorebirdLogger.success(
-            'message',
-            style: (message) => message?.toUpperCase(),
-          );
-          expect(readLogFile(), contains('[SUCCESS]'));
-          expect(readLogFile(), contains('MESSAGE'));
-        },
-        values: {
-          shorebirdEnvRef.overrideWith(() => shorebirdEnv),
-        },
-      );
+    test('forwards writeln to baseStdout, logs to file', () {
+      loggingStdout.writeln('message');
+      verify(() => baseStdout.writeln('message')).called(1);
+      expect(logFile.readAsStringSync(), contains('message'));
     });
 
-    test('alert', () {
-      runScoped(
-        () {
-          shorebirdLogger.alert('message');
-          expect(readLogFile(), contains('[ALERT]'));
-          expect(readLogFile(), contains('message'));
-        },
-        values: {
-          shorebirdEnvRef.overrideWith(() => shorebirdEnv),
-        },
-      );
+    test('forwards writeAll to baseStdout, logs to file', () {
+      loggingStdout.writeAll(['message']);
+      verify(() => baseStdout.writeAll(['message'])).called(1);
+      expect(logFile.readAsStringSync(), contains('message'));
     });
 
-    test('alert with style', () {
-      runScoped(
-        () {
-          shorebirdLogger.alert(
-            'message',
-            style: (message) => message?.toUpperCase(),
-          );
-          expect(readLogFile(), contains('[ALERT]'));
-          expect(readLogFile(), contains('MESSAGE'));
-        },
-        values: {
-          shorebirdEnvRef.overrideWith(() => shorebirdEnv),
-        },
-      );
-    });
-
-    test('err', () {
-      runScoped(
-        () {
-          shorebirdLogger.err('message');
-          expect(readLogFile(), contains('[ERROR]'));
-          expect(readLogFile(), contains('message'));
-        },
-        values: {
-          shorebirdEnvRef.overrideWith(() => shorebirdEnv),
-        },
-      );
-    });
-
-    test('err with style', () {
-      runScoped(
-        () {
-          shorebirdLogger.err(
-            'message',
-            style: (message) => message?.toUpperCase(),
-          );
-          expect(readLogFile(), contains('[ERROR]'));
-          expect(readLogFile(), contains('MESSAGE'));
-        },
-        values: {
-          shorebirdEnvRef.overrideWith(() => shorebirdEnv),
-        },
-      );
+    test('forwards writeCharCode to baseStdout, logs as string to file', () {
+      loggingStdout.writeCharCode(0);
+      verify(() => baseStdout.writeCharCode(0)).called(1);
+      expect(logFile.readAsStringSync(), contains('\x00'));
     });
   });
 }

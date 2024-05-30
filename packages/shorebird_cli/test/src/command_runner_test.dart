@@ -9,6 +9,7 @@ import 'package:shorebird_cli/src/platform.dart';
 import 'package:shorebird_cli/src/shorebird_env.dart';
 import 'package:shorebird_cli/src/shorebird_flutter.dart';
 import 'package:shorebird_cli/src/shorebird_version.dart';
+import 'package:shorebird_cli/src/third_party/flutter_tools/lib/flutter_tools.dart';
 import 'package:shorebird_cli/src/version.dart';
 import 'package:test/test.dart';
 
@@ -48,7 +49,9 @@ void main() {
       shorebirdVersion = MockShorebirdVersion();
       when(() => logger.level).thenReturn(Level.info);
       final logFile = MockFile();
-      when(() => logger.logFile).thenReturn(logFile);
+      when(() => shorebirdEnv.logsDirectory).thenReturn(
+        Directory.systemTemp.createTempSync(),
+      );
       when(() => logFile.absolute).thenReturn(logFile);
       when(() => logFile.path).thenReturn('test.log');
       when(
