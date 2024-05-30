@@ -93,7 +93,22 @@ class Gradlew {
       if (match != null) {
         final variant = match.group(1)!;
         if (!variant.toLowerCase().endsWith('test')) {
-          if (variant.startsWithUpperCaseLetters) {
+          // Gradle flavor name transformation seems to work following these two
+          // conditions:
+          //  - Flavor starts with at least two capital latter, use as is
+          //  - Otherwise, transform in camel case
+          //
+          // Example:
+          // development -> development
+          // developmentWithAnotherContext -> developmentWithAnotherContext
+          //
+          // Development -> development
+          // DevelopmentWithAnotherContext -> developmentWithAnotherContext
+          //
+          // QA -> QA
+          // QAInBrazil -> QAInBrazil
+          // QAOver9000 -> QAOver9000
+          if (variant.areFirstTwoLetterUppercase) {
             variants.add(variant);
           } else {
             variants.add(variant[0].toLowerCase() + variant.substring(1));
@@ -131,7 +146,7 @@ extension on String {
   /// 'TEST'.startsWithUpperCaseLetters; // true
   /// 'TESTING'.startsWithUpperCaseLetters; // true
   /// ```
-  bool get startsWithUpperCaseLetters {
+  bool get areFirstTwoLetterUppercase {
     if (length >= 2) {
       return this[0].isUpperCase() && this[1].isUpperCase();
     }
