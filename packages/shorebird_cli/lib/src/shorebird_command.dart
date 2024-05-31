@@ -4,7 +4,7 @@ import 'package:args/args.dart';
 import 'package:args/command_runner.dart';
 import 'package:http/http.dart' as http;
 import 'package:meta/meta.dart';
-import 'package:shorebird_cli/src/command_runner.dart';
+import 'package:shorebird_cli/src/shorebird_cli_command_runner.dart';
 import 'package:shorebird_code_push_client/shorebird_code_push_client.dart';
 
 /// Signature for a function which takes a list of bytes and returns a hash.

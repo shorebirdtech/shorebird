@@ -1,5 +1,5 @@
-import 'package:shorebird_cli/src/command.dart';
 import 'package:shorebird_cli/src/commands/build/build.dart';
+import 'package:shorebird_cli/src/shorebird_command.dart';
 
 /// {@template build_command}
 /// `shorebird build`
