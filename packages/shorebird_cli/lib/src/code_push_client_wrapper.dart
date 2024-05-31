@@ -271,7 +271,7 @@ Please create a release using "shorebird release" and try again.
         releaseId: releaseId,
         platform: platform,
         status: status,
-        metadata: metadata,
+        metadata: metadata?.toJson(),
       );
       updateStatusProgress.complete();
     } catch (error) {
@@ -665,7 +665,7 @@ aar artifact already exists, continuing...''',
       final patch = await codePushClient.createPatch(
         appId: appId,
         releaseId: releaseId,
-        metadata: metadata,
+        metadata: metadata.toJson(),
       );
       createPatchProgress.complete();
       return patch;

@@ -5,6 +5,7 @@ import 'package:mocktail/mocktail.dart';
 import 'package:path/path.dart' as p;
 import 'package:propertylistserialization/propertylistserialization.dart';
 import 'package:shorebird_cli/src/archive_analysis/archive_analysis.dart';
+import 'package:shorebird_cli/src/common_arguments.dart';
 import 'package:shorebird_cli/src/platform/platform.dart';
 import 'package:test/test.dart';
 
@@ -33,8 +34,8 @@ void main() {
 
         when(() => argResults.wasParsed(any())).thenReturn(false);
         when(() => argResults.options).thenReturn([
-          exportMethodArgName,
-          exportOptionsPlistArgName,
+          CommonArguments.exportMethodArg.name,
+          CommonArguments.exportOptionsPlistArg.name,
         ]);
       });
 
@@ -42,10 +43,10 @@ void main() {
           () {
         setUp(() {
           when(
-            () => argResults.wasParsed(exportMethodArgName),
+            () => argResults.wasParsed(CommonArguments.exportMethodArg.name),
           ).thenReturn(true);
           when(
-            () => argResults[exportOptionsPlistArgName],
+            () => argResults[CommonArguments.exportOptionsPlistArg.name],
           ).thenReturn('/path/to/export.plist');
         });
 
@@ -59,11 +60,12 @@ void main() {
 
       group('when export-method is provided', () {
         setUp(() {
-          when(() => argResults.wasParsed(exportMethodArgName))
+          when(() => argResults.wasParsed(CommonArguments.exportMethodArg.name))
               .thenReturn(true);
-          when(() => argResults[exportMethodArgName])
+          when(() => argResults[CommonArguments.exportMethodArg.name])
               .thenReturn(ExportMethod.adHoc.argName);
-          when(() => argResults[exportOptionsPlistArgName]).thenReturn(null);
+          when(() => argResults[CommonArguments.exportOptionsPlistArg.name])
+              .thenReturn(null);
         });
 
         test('generates an export options plist with that export method',
@@ -83,7 +85,7 @@ void main() {
         group('when file does not exist', () {
           setUp(() {
             when(
-              () => argResults[exportOptionsPlistArgName],
+              () => argResults[CommonArguments.exportOptionsPlistArg.name],
             ).thenReturn('/does/not/exist');
           });
 
@@ -117,7 +119,7 @@ void main() {
               p.join(tmpDir.path, 'export.plist'),
             )..writeAsStringSync(exportPlistContent);
             when(
-              () => argResults[exportOptionsPlistArgName],
+              () => argResults[CommonArguments.exportOptionsPlistArg.name],
             ).thenReturn(exportPlistFile.path);
             expect(
               () => ios.exportOptionsPlistFromArgs(argResults),
@@ -136,9 +138,10 @@ void main() {
       group('when neither export-method nor export-options-plist is provided',
           () {
         setUp(() {
-          when(() => argResults.wasParsed(exportMethodArgName))
+          when(() => argResults.wasParsed(CommonArguments.exportMethodArg.name))
               .thenReturn(false);
-          when(() => argResults[exportOptionsPlistArgName]).thenReturn(null);
+          when(() => argResults[CommonArguments.exportOptionsPlistArg.name])
+              .thenReturn(null);
         });
 
         test('generates an export options plist with app-store export method',
@@ -168,12 +171,14 @@ void main() {
       group('when export-method option does not exist', () {
         setUp(() {
           when(() => argResults.options)
-              .thenReturn([exportOptionsPlistArgName]);
+              .thenReturn([CommonArguments.exportOptionsPlistArg.name]);
         });
 
         test('does not check whether export-method was parsed', () {
           ios.exportOptionsPlistFromArgs(argResults);
-          verifyNever(() => argResults.wasParsed(exportMethodArgName));
+          verifyNever(
+            () => argResults.wasParsed(CommonArguments.exportMethodArg.name),
+          );
         });
       });
     });

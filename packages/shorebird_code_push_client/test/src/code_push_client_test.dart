@@ -899,7 +899,7 @@ void main() {
             .createPatch(
               appId: appId,
               releaseId: releaseId,
-              metadata: CreatePatchMetadata.forTest(),
+              metadata: CreatePatchMetadata.forTest().toJson(),
             )
             .ignore();
         final request = verify(() => httpClient.send(captureAny()))
@@ -922,7 +922,7 @@ void main() {
           codePushClient.createPatch(
             appId: appId,
             releaseId: releaseId,
-            metadata: CreatePatchMetadata.forTest(),
+            metadata: CreatePatchMetadata.forTest().toJson(),
           ),
           throwsA(
             isA<CodePushException>().having(
@@ -946,7 +946,7 @@ void main() {
           codePushClient.createPatch(
             appId: appId,
             releaseId: releaseId,
-            metadata: CreatePatchMetadata.forTest(),
+            metadata: CreatePatchMetadata.forTest().toJson(),
           ),
           throwsA(
             isA<CodePushException>().having(
@@ -976,7 +976,7 @@ void main() {
           codePushClient.createPatch(
             appId: appId,
             releaseId: releaseId,
-            metadata: CreatePatchMetadata.forTest(),
+            metadata: CreatePatchMetadata.forTest().toJson(),
           ),
           completion(
             equals(

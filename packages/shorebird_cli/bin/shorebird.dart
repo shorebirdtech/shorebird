@@ -9,7 +9,6 @@ import 'package:shorebird_cli/src/auth/auth.dart';
 import 'package:shorebird_cli/src/cache.dart';
 import 'package:shorebird_cli/src/code_push_client_wrapper.dart';
 import 'package:shorebird_cli/src/code_signer.dart';
-import 'package:shorebird_cli/src/command_runner.dart';
 import 'package:shorebird_cli/src/doctor.dart';
 import 'package:shorebird_cli/src/engine_config.dart';
 import 'package:shorebird_cli/src/executables/executables.dart';
@@ -22,6 +21,7 @@ import 'package:shorebird_cli/src/platform/platform.dart';
 import 'package:shorebird_cli/src/pubspec_editor.dart';
 import 'package:shorebird_cli/src/shorebird_android_artifacts.dart';
 import 'package:shorebird_cli/src/shorebird_artifacts.dart';
+import 'package:shorebird_cli/src/shorebird_cli_command_runner.dart';
 import 'package:shorebird_cli/src/shorebird_env.dart';
 import 'package:shorebird_cli/src/shorebird_flutter.dart';
 import 'package:shorebird_cli/src/shorebird_process.dart';
@@ -29,48 +29,57 @@ import 'package:shorebird_cli/src/shorebird_validator.dart';
 import 'package:shorebird_cli/src/shorebird_version.dart';
 
 Future<void> main(List<String> args) async {
-  await _flushThenExit(
-    await runScoped(
-      () async => ShorebirdCliCommandRunner().run(args),
-      values: {
-        adbRef,
-        androidSdkRef,
-        androidStudioRef,
-        aotToolsRef,
-        artifactBuilderRef,
-        artifactManagerRef,
-        authRef,
-        bundletoolRef,
-        cacheRef,
-        codePushClientWrapperRef,
-        codeSignerRef,
-        devicectlRef,
-        doctorRef,
-        engineConfigRef,
-        gitRef,
-        gradlewRef,
-        httpClientRef,
-        idevicesyslogRef,
-        iosDeployRef,
-        iosRef,
-        javaRef,
-        loggerRef,
-        osInterfaceRef,
-        patchExecutableRef,
-        patchDiffCheckerRef,
-        platformRef,
-        processRef,
-        pubspecEditorRef,
-        shorebirdAndroidArtifactsRef,
-        shorebirdArtifactsRef,
-        shorebirdEnvRef,
-        shorebirdFlutterRef,
-        shorebirdToolsRef,
-        shorebirdValidatorRef,
-        shorebirdVersionRef,
-        xcodeBuildRef,
-      },
+  final loggingStdout = runScoped(
+    () => LoggingStdout(baseStdOut: stdout, logFile: currentRunLogFile),
+    values: {shorebirdEnvRef},
+  );
+
+  await IOOverrides.runZoned(
+    () async => _flushThenExit(
+      await runScoped(
+        () async => ShorebirdCliCommandRunner().run(args),
+        values: {
+          adbRef,
+          androidSdkRef,
+          androidStudioRef,
+          aotToolsRef,
+          artifactBuilderRef,
+          artifactManagerRef,
+          authRef,
+          bundletoolRef,
+          cacheRef,
+          codePushClientWrapperRef,
+          codeSignerRef,
+          devicectlRef,
+          doctorRef,
+          engineConfigRef,
+          gitRef,
+          gradlewRef,
+          httpClientRef,
+          idevicesyslogRef,
+          iosDeployRef,
+          iosRef,
+          javaRef,
+          loggerRef,
+          osInterfaceRef,
+          patchExecutableRef,
+          patchDiffCheckerRef,
+          platformRef,
+          processRef,
+          pubspecEditorRef,
+          shorebirdAndroidArtifactsRef,
+          shorebirdArtifactsRef,
+          shorebirdEnvRef,
+          shorebirdFlutterRef,
+          shorebirdToolsRef,
+          shorebirdValidatorRef,
+          shorebirdVersionRef,
+          xcodeBuildRef,
+        },
+      ),
     ),
+    stdout: () => loggingStdout,
+    stderr: () => loggingStdout,
   );
 }
 

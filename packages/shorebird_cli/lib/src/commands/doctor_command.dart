@@ -1,10 +1,12 @@
+import 'dart:io';
+
 import 'package:mason_logger/mason_logger.dart';
 import 'package:shorebird_cli/src/android_sdk.dart';
 import 'package:shorebird_cli/src/android_studio.dart';
-import 'package:shorebird_cli/src/command.dart';
 import 'package:shorebird_cli/src/doctor.dart';
 import 'package:shorebird_cli/src/executables/executables.dart';
 import 'package:shorebird_cli/src/logger.dart';
+import 'package:shorebird_cli/src/shorebird_command.dart';
 import 'package:shorebird_cli/src/shorebird_env.dart';
 import 'package:shorebird_cli/src/shorebird_flutter.dart';
 import 'package:shorebird_cli/src/version.dart';
@@ -45,6 +47,7 @@ class DoctorCommand extends ShorebirdCommand {
     final flutterVersion = await _tryGetFlutterVersion();
     final output = StringBuffer();
     final shorebirdFlutterPrefix = StringBuffer('Flutter');
+
     if (flutterVersion != null) {
       shorebirdFlutterPrefix.write(' $flutterVersion');
     }
@@ -57,13 +60,29 @@ Engine • revision ${shorebirdEnv.shorebirdEngineRevision}''',
 
     if (verbose) {
       final notDetected = red.wrap('not detected');
+      var javaVersion = notDetected;
+
+      final javaExe = java.executable;
+      if (javaExe != null) {
+        final result = java.version;
+        if (result != null) {
+          javaVersion = result
+              .split(Platform.lineTerminator)
+              // Adds empty space to the version will be padded with the
+              // JAVA_VERSION label.
+              .join('${Platform.lineTerminator}                  ');
+        }
+      }
       output.writeln('''
 
+Logs: ${shorebirdEnv.logsDirectory.path}
 Android Toolchain
   • Android Studio: ${androidStudio.path ?? notDetected}
   • Android SDK: ${androidSdk.path ?? notDetected}
   • ADB: ${androidSdk.adbPath ?? notDetected}
-  • JAVA_HOME: ${java.home ?? notDetected}''');
+  • JAVA_HOME: ${java.home ?? notDetected}
+  • JAVA_EXECUTABLE: ${javaExe ?? notDetected}
+  • JAVA_VERSION: $javaVersion''');
     }
 
     logger.info(output.toString());

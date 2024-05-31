@@ -6,7 +6,6 @@ import 'package:shorebird_cli/src/archive_analysis/archive_differ.dart';
 import 'package:shorebird_cli/src/artifact_manager.dart';
 import 'package:shorebird_cli/src/cache.dart';
 import 'package:shorebird_cli/src/code_push_client_wrapper.dart';
-import 'package:shorebird_cli/src/command.dart';
 import 'package:shorebird_cli/src/commands/patch/patch.dart';
 import 'package:shorebird_cli/src/common_arguments.dart';
 import 'package:shorebird_cli/src/config/config.dart';
@@ -17,6 +16,7 @@ import 'package:shorebird_cli/src/logger.dart';
 import 'package:shorebird_cli/src/patch_diff_checker.dart';
 import 'package:shorebird_cli/src/platform/platform.dart';
 import 'package:shorebird_cli/src/release_type.dart';
+import 'package:shorebird_cli/src/shorebird_command.dart';
 import 'package:shorebird_cli/src/shorebird_env.dart';
 import 'package:shorebird_cli/src/shorebird_flutter.dart';
 import 'package:shorebird_cli/src/third_party/flutter_tools/lib/flutter_tools.dart';
@@ -79,9 +79,18 @@ of the iOS app that is using this module.''',
         help: 'Whether to publish the patch to the staging environment.',
       )
       ..addOption(
-        exportOptionsPlistArgName,
-        help:
-            '''Export an IPA with these options. See "xcodebuild -h" for available exportOptionsPlist keys (iOS only).''',
+        CommonArguments.exportOptionsPlistArg.name,
+        help: CommonArguments.exportOptionsPlistArg.description,
+      )
+      ..addOption(
+        CommonArguments.exportMethodArg.name,
+        defaultsTo: ExportMethod.appStore.argName,
+        allowed: ExportMethod.values.map((e) => e.argName),
+        help: CommonArguments.exportMethodArg.description,
+        allowedHelp: {
+          for (final method in ExportMethod.values)
+            method.argName: method.description,
+        },
       )
       ..addFlag(
         'codesign',

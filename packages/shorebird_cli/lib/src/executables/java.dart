@@ -1,12 +1,14 @@
 import 'dart:io' hide Platform;
 
 import 'package:collection/collection.dart';
+import 'package:mason_logger/mason_logger.dart';
 import 'package:path/path.dart' as p;
 import 'package:scoped_deps/scoped_deps.dart';
 import 'package:shorebird_cli/src/android_studio.dart';
 import 'package:shorebird_cli/src/extensions/string.dart';
 import 'package:shorebird_cli/src/os/os.dart';
 import 'package:shorebird_cli/src/platform.dart';
+import 'package:shorebird_cli/src/shorebird_process.dart';
 
 /// A reference to a [Java] instance.
 final javaRef = create(Java.new);
@@ -45,6 +47,19 @@ class Java {
     final environmentJava = platform.environment['JAVA_HOME'];
     if (!environmentJava.isNullOrEmpty) {
       return environmentJava;
+    }
+
+    return null;
+  }
+
+  /// Returns the version of the user's Java installation, if one is found.
+  String? get version {
+    final javaExe = executable;
+    if (javaExe == null) return null;
+    final javaVersionProcessResult = process.runSync(javaExe, ['-version']);
+    if (javaVersionProcessResult.exitCode == ExitCode.success.code) {
+      // The version string is printed to stderr for some reason.
+      return javaVersionProcessResult.stderr.toString();
     }
 
     return null;

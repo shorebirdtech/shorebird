@@ -5,9 +5,9 @@ import 'package:cli_util/cli_util.dart';
 import 'package:path/path.dart' as p;
 import 'package:pubspec_parse/pubspec_parse.dart';
 import 'package:scoped_deps/scoped_deps.dart';
-import 'package:shorebird_cli/src/command_runner.dart';
 import 'package:shorebird_cli/src/config/shorebird_yaml.dart';
 import 'package:shorebird_cli/src/platform.dart';
+import 'package:shorebird_cli/src/shorebird_cli_command_runner.dart';
 import 'package:shorebird_code_push_client/shorebird_code_push_client.dart';
 
 /// A reference to a [ShorebirdEnv] instance.

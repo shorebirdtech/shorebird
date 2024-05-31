@@ -56,7 +56,7 @@ Future<void> main() async {
         shorebirdVersion: '1.2.3',
         xcodeVersion: null,
       ),
-    ),
+    ).toJson(),
   );
 
   // Create a patch artifact.

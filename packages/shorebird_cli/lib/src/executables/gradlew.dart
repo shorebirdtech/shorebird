@@ -93,7 +93,27 @@ class Gradlew {
       if (match != null) {
         final variant = match.group(1)!;
         if (!variant.toLowerCase().endsWith('test')) {
-          variants.add(variant[0].toLowerCase() + variant.substring(1));
+          // Gradle flavor name transformation seems to work with the following
+          // rules:
+          //  - If the flavor starts with at least two capital letters, use
+          //    as-is
+          //  - Otherwise, transform to camel case
+          //
+          // Example:
+          // development -> development
+          // developmentWithAnotherContext -> developmentWithAnotherContext
+          //
+          // Development -> development
+          // DevelopmentWithAnotherContext -> developmentWithAnotherContext
+          //
+          // QA -> QA
+          // QAInBrazil -> QAInBrazil
+          // QAOver9000 -> QAOver9000
+          if (variant.areFirstTwoLetterUppercase) {
+            variants.add(variant);
+          } else {
+            variants.add(variant[0].toLowerCase() + variant.substring(1));
+          }
         }
       }
     }
@@ -111,5 +131,26 @@ class Gradlew {
       if (match != null) productFlavors.add(variant);
     }
     return productFlavors;
+  }
+}
+
+extension on String {
+  /// Returns true when the string starts with at least two upper case letters
+  ///
+  /// Gradle flavors that are not capital case will not be transformed
+  /// to camel case and should be used as is. So this method helps to identify
+  /// those cases.
+  ///
+  /// Example:
+  /// ```dart
+  /// 'Test'.startsWithUpperCaseLetters; // false
+  /// 'TEST'.startsWithUpperCaseLetters; // true
+  /// 'TESTING'.startsWithUpperCaseLetters; // true
+  /// ```
+  bool get areFirstTwoLetterUppercase {
+    if (length >= 2) {
+      return this[0].isUpperCase() && this[1].isUpperCase();
+    }
+    return false;
   }
 }

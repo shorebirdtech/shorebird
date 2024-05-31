@@ -1,3 +1,5 @@
+import 'dart:io';
+
 import 'package:args/args.dart';
 import 'package:http/http.dart' as http;
 import 'package:mocktail/mocktail.dart';
@@ -10,6 +12,8 @@ class FakeArgResults extends Fake implements ArgResults {}
 class FakeBaseRequest extends Fake implements http.BaseRequest {}
 
 class FakeDiffStatus extends Fake implements DiffStatus {}
+
+class FakeIOSink extends Fake implements IOSink {}
 
 class FakeRelease extends Fake implements Release {}
 

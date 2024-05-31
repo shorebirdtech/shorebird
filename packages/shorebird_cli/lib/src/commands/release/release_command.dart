@@ -5,7 +5,6 @@ import 'package:meta/meta.dart';
 import 'package:scoped_deps/scoped_deps.dart';
 import 'package:shorebird_cli/src/cache.dart';
 import 'package:shorebird_cli/src/code_push_client_wrapper.dart';
-import 'package:shorebird_cli/src/command.dart';
 import 'package:shorebird_cli/src/commands/release/release.dart';
 import 'package:shorebird_cli/src/common_arguments.dart';
 import 'package:shorebird_cli/src/config/config.dart';
@@ -13,6 +12,7 @@ import 'package:shorebird_cli/src/extensions/arg_results.dart';
 import 'package:shorebird_cli/src/logger.dart';
 import 'package:shorebird_cli/src/platform/platform.dart';
 import 'package:shorebird_cli/src/release_type.dart';
+import 'package:shorebird_cli/src/shorebird_command.dart';
 import 'package:shorebird_cli/src/shorebird_env.dart';
 import 'package:shorebird_cli/src/shorebird_flutter.dart';
 import 'package:shorebird_cli/src/third_party/flutter_tools/lib/flutter_tools.dart';
@@ -60,15 +60,14 @@ On Xcode builds it is used as "CFBundleVersion".''',
         help: 'Validate but do not upload the release.',
       )
       ..addOption(
-        exportOptionsPlistArgName,
-        help:
-            '''Export an IPA with these options. See "xcodebuild -h" for available exportOptionsPlist keys (iOS only).''',
+        CommonArguments.exportOptionsPlistArg.name,
+        help: CommonArguments.exportOptionsPlistArg.description,
       )
       ..addOption(
-        exportMethodArgName,
+        CommonArguments.exportMethodArg.name,
         defaultsTo: ExportMethod.appStore.argName,
         allowed: ExportMethod.values.map((e) => e.argName),
-        help: 'Specify how the IPA will be distributed.',
+        help: CommonArguments.exportMethodArg.description,
         allowedHelp: {
           for (final method in ExportMethod.values)
             method.argName: method.description,
