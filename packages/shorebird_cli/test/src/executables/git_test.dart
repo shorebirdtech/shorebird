@@ -460,5 +460,61 @@ origin/flutter_release/3.10.6''';
         );
       });
     });
+
+    group('symbolicRef', () {
+      setUp(() {
+        when(() => processResult.exitCode).thenReturn(ExitCode.success.code);
+        when(() => processResult.stdout).thenReturn('refs/heads/main');
+      });
+
+      test('executes correct command', () async {
+        final directory = Directory.current;
+        await expectLater(
+          runWithOverrides(
+            () => git.symbolicRef(directory: directory, revision: '1234'),
+          ),
+          completion(equals('refs/heads/main')),
+        );
+        verify(
+          () => process.run(
+            'git',
+            ['symbolic-ref', '1234'],
+            workingDirectory: directory.path,
+          ),
+        ).called(1);
+      });
+
+      test('defaults to HEAD if no revision is provided', () async {
+        final directory = Directory.current;
+        await expectLater(
+          runWithOverrides(() => git.symbolicRef(directory: directory)),
+          completion(equals('refs/heads/main')),
+        );
+        verify(
+          () => process.run(
+            'git',
+            ['symbolic-ref', 'HEAD'],
+            workingDirectory: directory.path,
+          ),
+        ).called(1);
+      });
+    });
+
+    group('currentBranch', () {
+      setUp(() {
+        when(() => processResult.exitCode).thenReturn(ExitCode.success.code);
+        when(() => processResult.stdout).thenReturn('''
+refs/heads/main
+''');
+      });
+
+      test('removes refs/heads from branch name', () async {
+        final directory = Directory.current;
+        await expectLater(
+          runWithOverrides(() => git.currentBranch(directory: directory)),
+          completion(equals('main')),
+        );
+      });
+    });
   });
 }

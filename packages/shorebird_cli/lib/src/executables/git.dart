@@ -132,4 +132,24 @@ class Git {
     final result = await git(['status', ...?args], workingDirectory: directory);
     return '${result.stdout}'.trim();
   }
+
+  /// The output of `git symbolic-ref [revision]` for the git repository located
+  /// in [directory]. If not provided, [revision] defaults to 'HEAD'.
+  Future<String> symbolicRef({
+    required Directory directory,
+    String revision = 'HEAD',
+  }) async {
+    final result = await git(
+      ['symbolic-ref', revision],
+      workingDirectory: directory.path,
+    );
+    return '${result.stdout}'.trim();
+  }
+
+  /// Returns the name of the branch the git repository located at [directory]
+  /// is currently on.
+  Future<String> currentBranch({required Directory directory}) async {
+    return (await symbolicRef(directory: directory))
+        .replaceAll('refs/heads/', '');
+  }
 }

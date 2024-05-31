@@ -63,6 +63,9 @@ void main() {
         () => shorebirdFlutter.getVersionString(),
       ).thenAnswer((_) async => flutterVersion);
       when(() => shorebirdVersion.isLatest()).thenAnswer((_) async => true);
+      when(
+        () => shorebirdVersion.isTrackingStable(),
+      ).thenAnswer((_) async => true);
       commandRunner = runWithOverrides(ShorebirdCliCommandRunner.new);
     });
 
@@ -176,59 +179,6 @@ Engine • revision $shorebirdEngineRevision''',
           ),
         ).called(1);
       });
-
-      test('gracefully handles case when flutter version cannot be determined',
-          () async {
-        when(() => shorebirdFlutter.getVersionString()).thenThrow('error');
-        final result = await runWithOverrides(
-          () => commandRunner.run(['--version']),
-        );
-        expect(result, equals(ExitCode.success.code));
-        verify(
-          () => logger.info(
-            '''
-Shorebird $packageVersion • git@github.com:shorebirdtech/shorebird.git
-Flutter • revision $flutterRevision
-Engine • revision $shorebirdEngineRevision''',
-          ),
-        ).called(1);
-        verify(
-          () => logger.detail('Unable to determine Flutter version.\nerror'),
-        ).called(1);
-      });
-
-      test('gracefully handles case when latest version cannot be determined',
-          () async {
-        when(() => shorebirdVersion.isLatest()).thenThrow('error');
-        final result = await runWithOverrides(
-          () => commandRunner.run(['--version']),
-        );
-        expect(result, equals(ExitCode.success.code));
-        verify(
-          () => logger.info(
-            '''
-Shorebird $packageVersion • git@github.com:shorebirdtech/shorebird.git
-Flutter $flutterVersion • revision $flutterRevision
-Engine • revision $shorebirdEngineRevision''',
-          ),
-        ).called(1);
-        verify(
-          () => logger.detail('Unable to check for updates.\nerror'),
-        ).called(1);
-      });
-
-      test('logs update message when update is available', () async {
-        when(() => shorebirdVersion.isLatest()).thenAnswer((_) async => false);
-        final result = await runWithOverrides(
-          () => commandRunner.run(['--version']),
-        );
-        expect(result, equals(ExitCode.success.code));
-        verify(
-          () => logger.info('''
-A new version of shorebird is available!
-Run ${lightCyan.wrap('shorebird upgrade')} to upgrade.'''),
-        ).called(1);
-      });
     });
 
     group('--verbose', () {
@@ -327,6 +277,114 @@ Run ${lightCyan.wrap('shorebird upgrade')} to upgrade.'''),
           () => commandRunner.run(['completion']),
         );
         expect(result, equals(ExitCode.success.code));
+      });
+    });
+
+    group('update check', () {
+      group('when running upgrade command', () {
+        setUp(() {
+          when(() => logger.progress(any())).thenReturn(MockProgress());
+          when(() => shorebirdVersion.fetchCurrentGitHash())
+              .thenAnswer((_) async => 'current');
+          when(() => shorebirdVersion.fetchLatestGitHash())
+              .thenAnswer((_) async => 'current');
+        });
+        test('does not check for update', () async {
+          final result = await runWithOverrides(
+            () => commandRunner.run(['upgrade']),
+          );
+          expect(result, equals(ExitCode.success.code));
+          verifyNever(() => shorebirdVersion.isTrackingStable());
+          verifyNever(() => shorebirdVersion.isLatest());
+        });
+      });
+
+      group('when tracking the stable branch', () {
+        setUp(() {
+          when(
+            () => shorebirdVersion.isTrackingStable(),
+          ).thenAnswer((_) async => true);
+        });
+
+        test('gracefully handles case when latest version cannot be determined',
+            () async {
+          when(() => shorebirdVersion.isLatest()).thenThrow('error');
+          final result = await runWithOverrides(
+            () => commandRunner.run(['--version']),
+          );
+          expect(result, equals(ExitCode.success.code));
+          verify(
+            () => logger.detail('Unable to check for updates.\nerror'),
+          ).called(1);
+        });
+
+        group('when update is available', () {
+          test('logs update message', () async {
+            when(() => shorebirdVersion.isLatest())
+                .thenAnswer((_) async => false);
+            final result = await runWithOverrides(
+              () => commandRunner.run(['--version']),
+            );
+            verify(
+              () => logger.info('A new version of shorebird is available!'),
+            ).called(1);
+            verify(
+              () => logger.info(
+                  'Run ${lightCyan.wrap('shorebird upgrade')} to upgrade.'),
+            ).called(1);
+
+            expect(result, equals(ExitCode.success.code));
+          });
+        });
+
+        group('when no update is available', () {
+          setUp(() {});
+
+          test('does not log update message', () async {
+            when(() => shorebirdVersion.isLatest())
+                .thenAnswer((_) async => false);
+            final result = await runWithOverrides(
+              () => commandRunner.run(['--version']),
+            );
+            expect(result, equals(ExitCode.success.code));
+          });
+        });
+
+        test(
+            'gracefully handles case when flutter version cannot be determined',
+            () async {
+          when(() => shorebirdFlutter.getVersionString()).thenThrow('error');
+          final result = await runWithOverrides(
+            () => commandRunner.run(['--version']),
+          );
+          expect(result, equals(ExitCode.success.code));
+          verify(
+            () => logger.detail('Unable to determine Flutter version.\nerror'),
+          ).called(1);
+        });
+      });
+
+      group('when not tracking the stable branch', () {
+        setUp(() {
+          when(
+            () => shorebirdVersion.isTrackingStable(),
+          ).thenAnswer((_) async => false);
+          when(
+            () => shorebirdVersion.isLatest(),
+          ).thenAnswer((_) async => false);
+        });
+
+        test('does not check for updates or print update message', () async {
+          final result = await runWithOverrides(
+            () => commandRunner.run(['--version']),
+          );
+          expect(result, equals(ExitCode.success.code));
+
+          verifyNever(() => shorebirdVersion.isLatest());
+          verifyNever(
+            () => logger.info('A new version of shorebird is available!'),
+          );
+        });
       });
     });
   });
