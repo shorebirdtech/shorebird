@@ -3,7 +3,7 @@ import 'package:shorebird_cli/src/extensions/string.dart';
 import 'package:test/test.dart';
 
 void main() {
-  group('IsNullOrEmpty', () {
+  group('NullOrEmpty', () {
     group('when string is null', () {
       test('returns true', () {
         expect(null.isNullOrEmpty, true);
