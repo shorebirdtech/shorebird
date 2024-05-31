@@ -4,9 +4,9 @@ import 'package:collection/collection.dart';
 import 'package:path/path.dart' as p;
 import 'package:scoped_deps/scoped_deps.dart';
 import 'package:shorebird_cli/src/cache.dart';
-import 'package:shorebird_cli/src/command.dart';
 import 'package:shorebird_cli/src/executables/bundletool.dart';
 import 'package:shorebird_cli/src/logger.dart';
+import 'package:shorebird_cli/src/shorebird_command.dart';
 import 'package:shorebird_cli/src/shorebird_env.dart';
 
 /// Thrown when multiple artifacts are found in the build directory.
