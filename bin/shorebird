@@ -14,7 +14,7 @@ OS="$(uname -s)"
 (
   cd $BIN_DIR
   BRANCH_NAME=$(git symbolic-ref HEAD | sed -e 's|refs/heads/||')
-  if [ "$BRANCH_NAME" == "stable" ]; then
+  if [ "$BRANCH_NAME" == "bo/auto-update" ]; then
     # Update to the latest stable version
     git remote prune origin
     git fetch --tags 
