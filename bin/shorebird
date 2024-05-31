@@ -12,6 +12,18 @@ OS="$(uname -s)"
 FLUTTER_VERSION=`cat "$BIN_DIR/internal/flutter.version"`
 source "$BIN_DIR/../third_party/flutter/bin/internal/shared.sh"
 
+# Update shorebird in a subshell if needed
+(
+  cd $BIN_DIR
+  BRANCH_NAME=$(git symbolic-ref HEAD | sed -e 's|refs/heads/||')
+  if [ "$BRANCH_NAME" == "bo/auto-update" ]; then
+    # Update to the latest stable version
+    git remote prune origin
+    git fetch --tags 
+    git reset --hard origin/stable
+  fi
+)
+
 # We currently depend on a forked (3.7.8 stable) Flutter shared.sh script
 # under third_party. Eventually we'll re-write it ourselves.
 shared::execute "$@"
