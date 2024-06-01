@@ -338,22 +338,25 @@ Engine • revision $shorebirdEngineRevision''',
         });
 
         group('when no update is available', () {
-          setUp(() {});
+          setUp(() {
+            when(shorebirdVersion.isLatest).thenAnswer((_) async => true);
+          });
 
           test('does not log update message', () async {
-            when(() => shorebirdVersion.isLatest())
-                .thenAnswer((_) async => false);
             final result = await runWithOverrides(
               () => commandRunner.run(['--version']),
             );
             expect(result, equals(ExitCode.success.code));
+            verifyNever(
+              () => logger.info('A new version of shorebird is available!'),
+            );
           });
         });
 
         test(
             'gracefully handles case when flutter version cannot be determined',
             () async {
-          when(() => shorebirdFlutter.getVersionString()).thenThrow('error');
+          when(shorebirdFlutter.getVersionString).thenThrow('error');
           final result = await runWithOverrides(
             () => commandRunner.run(['--version']),
           );
@@ -366,12 +369,9 @@ Engine • revision $shorebirdEngineRevision''',
 
       group('when not tracking the stable branch', () {
         setUp(() {
-          when(
-            () => shorebirdVersion.isTrackingStable(),
-          ).thenAnswer((_) async => false);
-          when(
-            () => shorebirdVersion.isLatest(),
-          ).thenAnswer((_) async => false);
+          when(shorebirdVersion.isTrackingStable)
+              .thenAnswer((_) async => false);
+          when(shorebirdVersion.isLatest).thenAnswer((_) async => false);
         });
 
         test('does not check for updates or print update message', () async {
@@ -380,7 +380,7 @@ Engine • revision $shorebirdEngineRevision''',
           );
           expect(result, equals(ExitCode.success.code));
 
-          verifyNever(() => shorebirdVersion.isLatest());
+          verifyNever(shorebirdVersion.isLatest);
           verifyNever(
             () => logger.info('A new version of shorebird is available!'),
           );
