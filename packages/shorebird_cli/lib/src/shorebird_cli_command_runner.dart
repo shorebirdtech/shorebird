@@ -242,10 +242,10 @@ ${currentRunLogFile.absolute.path}
   /// user telling them to run `shorebird upgrade`.
   Future<void> _checkForUpdates() async {
     try {
-      if (
-          // await shorebirdVersion.isTrackingStable() &&
+      if (await shorebirdVersion.isTrackingStable() &&
           !await shorebirdVersion.isLatest()) {
         logger
+          ..info('')
           ..info('A new version of shorebird is available!')
           ..info('Run ${lightCyan.wrap('shorebird upgrade')} to upgrade.');
       }
