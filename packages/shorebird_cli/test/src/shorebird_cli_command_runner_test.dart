@@ -62,10 +62,8 @@ void main() {
       when(
         () => shorebirdFlutter.getVersionString(),
       ).thenAnswer((_) async => flutterVersion);
-      when(() => shorebirdVersion.isLatest()).thenAnswer((_) async => true);
-      when(
-        () => shorebirdVersion.isTrackingStable(),
-      ).thenAnswer((_) async => true);
+      when(shorebirdVersion.isLatest).thenAnswer((_) async => true);
+      when(shorebirdVersion.isTrackingStable).thenAnswer((_) async => true);
       commandRunner = runWithOverrides(ShorebirdCliCommandRunner.new);
     });
 
@@ -284,9 +282,9 @@ Engine • revision $shorebirdEngineRevision''',
       group('when running upgrade command', () {
         setUp(() {
           when(() => logger.progress(any())).thenReturn(MockProgress());
-          when(() => shorebirdVersion.fetchCurrentGitHash())
+          when(shorebirdVersion.fetchCurrentGitHash)
               .thenAnswer((_) async => 'current');
-          when(() => shorebirdVersion.fetchLatestGitHash())
+          when(shorebirdVersion.fetchLatestGitHash)
               .thenAnswer((_) async => 'current');
         });
         test('does not check for update', () async {
@@ -301,14 +299,12 @@ Engine • revision $shorebirdEngineRevision''',
 
       group('when tracking the stable branch', () {
         setUp(() {
-          when(
-            () => shorebirdVersion.isTrackingStable(),
-          ).thenAnswer((_) async => true);
+          when(shorebirdVersion.isTrackingStable).thenAnswer((_) async => true);
         });
 
         test('gracefully handles case when latest version cannot be determined',
             () async {
-          when(() => shorebirdVersion.isLatest()).thenThrow('error');
+          when(shorebirdVersion.isLatest).thenThrow('error');
           final result = await runWithOverrides(
             () => commandRunner.run(['--version']),
           );
@@ -320,8 +316,7 @@ Engine • revision $shorebirdEngineRevision''',
 
         group('when update is available', () {
           test('logs update message', () async {
-            when(() => shorebirdVersion.isLatest())
-                .thenAnswer((_) async => false);
+            when(shorebirdVersion.isLatest).thenAnswer((_) async => false);
             final result = await runWithOverrides(
               () => commandRunner.run(['--version']),
             );
