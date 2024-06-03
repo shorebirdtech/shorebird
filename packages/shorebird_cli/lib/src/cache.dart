@@ -66,11 +66,11 @@ class Cache {
           await artifact.update();
           break;
         } catch (e) {
-          if (attempts + 1 < _maxAttempts) {
+          attempts++;
+          if (attempts < _maxAttempts) {
             logger
               ..err('Failed to update ${artifact.name}, retrying...')
               ..detail(e.toString());
-            attempts++;
           } else {
             rethrow;
           }
