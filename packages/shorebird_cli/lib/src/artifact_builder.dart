@@ -271,7 +271,10 @@ $errorMessage''');
     });
 
     if (appDillPath == null) {
-      throw ArtifactBuildException('Unable to find app.dill file');
+      throw ArtifactBuildException('''
+Unable to find app.dill file.
+Please file a bug at https://github.com/shorebirdtech/shorebird/issues/new with the logs for this command.
+''');
     }
 
     return IpaBuildResult(kernelFile: File(appDillPath!));
@@ -306,7 +309,10 @@ $errorMessage''');
     });
 
     if (appDillPath == null) {
-      throw ArtifactBuildException('Unable to find app.dill file');
+      throw ArtifactBuildException('''
+Unable to find app.dill file.
+Please file a bug at https://github.com/shorebirdtech/shorebird/issues/new with the logs for this command.
+''');
     }
 
     return IosFrameworkBuildResult(kernelFile: File(appDillPath!));

@@ -853,7 +853,10 @@ Failed to build:
                 isA<ArtifactBuildException>().having(
                   (e) => e.message,
                   'message',
-                  'Unable to find app.dill file',
+                  '''
+Unable to find app.dill file.
+Please file a bug at https://github.com/shorebirdtech/shorebird/issues/new with the logs for this command.
+''',
                 ),
               ),
             );
@@ -960,7 +963,10 @@ Failed to build:
                     isA<ArtifactBuildException>().having(
                       (e) => e.message,
                       'message',
-                      'Unable to find app.dill file',
+                      '''
+Unable to find app.dill file.
+Please file a bug at https://github.com/shorebirdtech/shorebird/issues/new with the logs for this command.
+''',
                     ),
                   ),
                 );
