@@ -89,6 +89,13 @@ void main() {
         ),
       ).thenAnswer((_) async => buildProcessResult);
       when(() => buildProcessResult.exitCode).thenReturn(ExitCode.success.code);
+      when(() => buildProcessResult.stdout).thenReturn(
+        '''
+           [        ] Will strip AOT snapshot manually after build and dSYM generation.
+           [        ] executing: /bin/cache/artifacts/engine/ios-release/gen_snapshot_arm64 --deterministic --snapshot_kind=app-aot-assembly --assembly=snapshot_assembly.S /path/to/app.dill
+           [+3688 ms] executing: sysctl hw.optional.arm64
+''',
+      );
       when(() => logger.progress(any())).thenReturn(MockProgress());
       when(() => logger.info(any())).thenReturn(null);
       when(() => operatingSystemInterface.which('flutter'))
@@ -636,7 +643,7 @@ Either run `flutter pub get` manually, or follow the steps in ${link(uri: Uri.pa
 
         group('with default arguments', () {
           test('invokes flutter build with an export options plist', () async {
-            await runWithOverrides(builder.buildIpa);
+            final result = await runWithOverrides(builder.buildIpa);
 
             verify(
               () => shorebirdProcess.run(
@@ -651,6 +658,7 @@ Either run `flutter pub get` manually, or follow the steps in ${link(uri: Uri.pa
                 environment: any(named: 'environment'),
               ),
             ).called(1);
+            expect(result.kernelFile.path, equals('/path/to/app.dill'));
           });
         });
 
@@ -833,6 +841,25 @@ Failed to build:
           });
         });
 
+        group('when an app.dill file is not found in build stdout', () {
+          setUp(() {
+            when(() => buildProcessResult.stdout).thenReturn('no app.dill');
+          });
+
+          test('throws ArtifactBuildException', () {
+            expect(
+              () => runWithOverrides(() => builder.buildIpa(codesign: false)),
+              throwsA(
+                isA<ArtifactBuildException>().having(
+                  (e) => e.message,
+                  'message',
+                  'Unable to find app.dill file',
+                ),
+              ),
+            );
+          });
+        });
+
         group('after a build', () {
           group('when the build is successful', () {
             setUp(() {
@@ -871,7 +898,7 @@ Failed to build:
       'buildIosFramework',
       () {
         test('invokes the correct flutter build command', () async {
-          await runWithOverrides(builder.buildIosFramework);
+          final result = await runWithOverrides(builder.buildIosFramework);
 
           verify(
             () => shorebirdProcess.run(
@@ -886,6 +913,7 @@ Failed to build:
               environment: any(named: 'environment'),
             ),
           ).called(1);
+          expect(result.kernelFile.path, equals('/path/to/app.dill'));
         });
 
         test('forward arguments to flutter build', () async {
@@ -919,6 +947,25 @@ Failed to build:
             verifyCorrectFlutterPubGet(
               () => runWithOverrides(builder.buildIosFramework),
             );
+
+            group('when no app.dill file is found in build stdout', () {
+              setUp(() {
+                when(() => buildProcessResult.stdout).thenReturn('no app.dill');
+              });
+
+              test('throws ArtifactBuildException', () {
+                expect(
+                  () => runWithOverrides(builder.buildIosFramework),
+                  throwsA(
+                    isA<ArtifactBuildException>().having(
+                      (e) => e.message,
+                      'message',
+                      'Unable to find app.dill file',
+                    ),
+                  ),
+                );
+              });
+            });
 
             group('when the build fails', () {
               setUp(() {

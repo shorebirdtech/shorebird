@@ -72,7 +72,7 @@ void main() {
           codesign: any(named: 'codesign'),
           args: any(named: 'args'),
         ),
-      ).thenAnswer((_) async => File(''));
+      ).thenAnswer((_) async => IpaBuildResult(kernelFile: File('')));
       when(() => ios.createExportOptionsPlist()).thenReturn(File('.'));
       when(() => logger.progress(any())).thenReturn(MockProgress());
       when(() => logger.info(any())).thenReturn(null);

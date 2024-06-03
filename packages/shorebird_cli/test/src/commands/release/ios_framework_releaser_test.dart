@@ -249,7 +249,9 @@ void main() {
           when(
             () => artifactBuilder.buildIosFramework(args: any(named: 'args')),
           ).thenAnswer(
-            (_) async => File(''),
+            (_) async => IosFrameworkBuildResult(
+              kernelFile: File('/path/to/app.dill'),
+            ),
           );
           when(() => artifactManager.getAppXcframeworkDirectory()).thenReturn(
             Directory(

@@ -354,8 +354,10 @@ void main() {
                 flavor: any(named: 'flavor'),
                 target: any(named: 'target'),
               ),
-            ).thenAnswer((_) async {});
-            when(() => artifactManager.newestAppDill()).thenReturn(File(''));
+            ).thenAnswer(
+              (_) async =>
+                  IpaBuildResult(kernelFile: File('/path/to/app.dill')),
+            );
             when(
               () => artifactBuilder.buildElfAotSnapshot(
                 appDillPath: any(named: 'appDillPath'),
@@ -377,7 +379,11 @@ void main() {
         });
 
         group('when build succeeds', () {
+          late File kernelFile;
           setUp(() {
+            kernelFile = File(
+              p.join(Directory.systemTemp.createTempSync().path, 'app.dill'),
+            )..createSync(recursive: true);
             when(
               () => artifactBuilder.buildIpa(
                 exportOptionsPlist: any(named: 'exportOptionsPlist'),
@@ -387,7 +393,9 @@ void main() {
                 target: any(named: 'target'),
                 base64PublicKey: any(named: 'base64PublicKey'),
               ),
-            ).thenAnswer((_) async {});
+            ).thenAnswer(
+              (_) async => IpaBuildResult(kernelFile: kernelFile),
+            );
             when(() => artifactManager.getXcarchiveDirectory()).thenReturn(
               Directory(
                 p.join(
@@ -400,7 +408,6 @@ void main() {
                 ),
               )..createSync(recursive: true),
             );
-            when(() => artifactManager.newestAppDill()).thenReturn(File(''));
             when(
               () => artifactBuilder.buildElfAotSnapshot(
                 appDillPath: any(named: 'appDillPath'),
@@ -472,6 +479,19 @@ void main() {
             final artifact = await runWithOverrides(patcher.buildPatchArtifact);
             expect(p.basename(artifact.path), endsWith('.zip'));
           });
+
+          test('copies app.dill to build directory', () async {
+            final copiedKernelFile = File(
+              p.join(
+                projectRoot.path,
+                'build',
+                'app.dill',
+              ),
+            );
+            expect(copiedKernelFile.existsSync(), isFalse);
+            await runWithOverrides(patcher.buildPatchArtifact);
+            expect(copiedKernelFile.existsSync(), isTrue);
+          });
         });
       });
 
@@ -497,19 +517,6 @@ void main() {
         late File releaseArtifactFile;
 
         void setUpProjectRootArtifacts() {
-          // Create a second app.dill for coverage of newestAppDill file.
-          File(
-            p.join(
-              projectRoot.path,
-              '.dart_tool',
-              'flutter_build',
-              'subdir',
-              'app.dill',
-            ),
-          ).createSync(recursive: true);
-          File(
-            p.join(projectRoot.path, '.dart_tool', 'flutter_build', 'app.dill'),
-          ).createSync(recursive: true);
           File(p.join(projectRoot.path, 'build', elfAotSnapshotFileName))
               .createSync(
             recursive: true,
@@ -667,7 +674,6 @@ void main() {
                 dumpDebugInfoPath: any(named: 'dumpDebugInfoPath'),
               ),
             ).thenAnswer((_) async => linkPercentage);
-            when(() => artifactManager.newestAppDill()).thenReturn(File(''));
             when(
               () => artifactManager.getIosAppDirectory(
                 xcarchiveDirectory: any(named: 'xcarchiveDirectory'),

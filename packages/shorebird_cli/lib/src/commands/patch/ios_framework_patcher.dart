@@ -40,6 +40,8 @@ class IosFrameworkPatcher extends Patcher {
 
   String get _vmcodeOutputPath => p.join(buildDirectory.path, 'out.vmcode');
 
+  String get _appDillCopyPath => p.join(buildDirectory.path, 'app.dill');
+
   @override
   ArchiveDiffer get archiveDiffer => IosArchiveDiffer();
 
@@ -83,8 +85,10 @@ class IosFrameworkPatcher extends Patcher {
     final buildProgress = logger.progress(
       'Building patch with Flutter $flutterVersionString',
     );
+
+    final IosFrameworkBuildResult buildResult;
     try {
-      await artifactBuilder.buildIosFramework(
+      buildResult = await artifactBuilder.buildIosFramework(
         args: argResults.forwardedArgs,
       );
     } on ArtifactBuildException catch (error) {
@@ -92,9 +96,8 @@ class IosFrameworkPatcher extends Patcher {
       exit(ExitCode.software.code);
     }
     try {
-      final newestDillFile = artifactManager.newestAppDill();
       await artifactBuilder.buildElfAotSnapshot(
-        appDillPath: newestDillFile.path,
+        appDillPath: buildResult.kernelFile.path,
         outFilePath: p.join(
           shorebirdEnv.getShorebirdProjectRoot()!.path,
           'build',
@@ -107,6 +110,10 @@ class IosFrameworkPatcher extends Patcher {
     }
 
     buildProgress.complete();
+
+    // Copy the kernel file to the build directory so that it can be used
+    // to generate a patch.
+    buildResult.kernelFile.copySync(_appDillCopyPath);
 
     return Directory(
       p.join(
@@ -256,7 +263,7 @@ class IosFrameworkPatcher extends Patcher {
         patch: aotSnapshot.path,
         analyzeSnapshot: analyzeSnapshot.path,
         genSnapshot: genSnapshot,
-        kernel: artifactManager.newestAppDill().path,
+        kernel: _appDillCopyPath,
         outputPath: _vmcodeOutputPath,
         workingDirectory: buildDirectory.path,
       );

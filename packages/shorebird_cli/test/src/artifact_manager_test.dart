@@ -592,31 +592,5 @@ void main() {
         );
       });
     });
-
-    group('newestAppDill', () {
-      late File appDill2;
-
-      setUp(() {
-        final tempDir = Directory.systemTemp.createTempSync();
-        when(() => shorebirdEnv.getShorebirdProjectRoot()).thenReturn(tempDir);
-        final flutterBuildDir = Directory(
-          p.join(tempDir.path, '.dart_tool', 'flutter_build'),
-        )..createSync(recursive: true);
-        File(p.join(flutterBuildDir.path, 'app1', 'app.dill'))
-          ..createSync(recursive: true)
-          ..setLastModifiedSync(
-            DateTime.now().subtract(const Duration(days: 1)),
-          );
-        appDill2 = File(p.join(flutterBuildDir.path, 'app2', 'app.dill'))
-          ..createSync(recursive: true);
-      });
-
-      test('selects the most recently edited .app.dill file', () {
-        final result = runWithOverrides(artifactManager.newestAppDill);
-
-        expect(result, isNotNull);
-        expect(result.path, equals(appDill2.path));
-      });
-    });
   });
 }
