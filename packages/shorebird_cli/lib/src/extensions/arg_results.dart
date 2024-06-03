@@ -114,7 +114,7 @@ extension ForwardedArgs on ArgResults {
     if (wasParsed(CommonArguments.dartDefineArg.name)) {
       forwarded.addAll(
         (this[CommonArguments.dartDefineArg.name] as List<String>).map(
-          (a) => '--dart-define=$a',
+          (a) => '--${CommonArguments.dartDefineArg.name}=$a',
         ),
       );
     }
@@ -122,7 +122,7 @@ extension ForwardedArgs on ArgResults {
     if (wasParsed(CommonArguments.dartDefineFromFileArg.name)) {
       forwarded.addAll(
         (this[CommonArguments.dartDefineFromFileArg.name] as List<String>)
-            .map((a) => '--dart-define-from-file=$a'),
+            .map((a) => '--${CommonArguments.dartDefineFromFileArg.name}=$a'),
       );
     }
 
