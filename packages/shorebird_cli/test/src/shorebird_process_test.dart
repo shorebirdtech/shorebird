@@ -52,8 +52,8 @@ void main() {
         () => shorebirdEnv.flutterBinaryFile,
       ).thenReturn(File(p.join('bin', 'cache', 'flutter', 'bin', 'flutter')));
 
-      when(() => runProcessResult.stderr).thenReturn('');
-      when(() => runProcessResult.stdout).thenReturn('');
+      when(() => runProcessResult.stderr).thenReturn('stderr');
+      when(() => runProcessResult.stdout).thenReturn('stdout');
       when(() => runProcessResult.exitCode).thenReturn(ExitCode.success.code);
 
       when(() => logger.level).thenReturn(Level.info);
@@ -117,7 +117,7 @@ void main() {
                 p.join('bin', 'cache', 'flutter', 'bin', 'flutter'),
               ),
             ),
-            ['--version'],
+            ['--version', '--verbose'],
             runInShell: true,
             environment: flutterStorageBaseUrlEnv,
             workingDirectory: '~',
@@ -141,7 +141,7 @@ void main() {
         verify(
           () => processWrapper.run(
             'flutter',
-            ['--version'],
+            ['--version', '--verbose'],
             runInShell: true,
             environment: {},
             workingDirectory: '~',
@@ -164,7 +164,7 @@ void main() {
         verify(
           () => processWrapper.run(
             'flutter',
-            ['--version'],
+            ['--version', '--verbose'],
             runInShell: true,
             workingDirectory: '~',
             environment: {'ENV_VAR': 'asdfasdf'},
@@ -189,7 +189,7 @@ void main() {
           verify(
             () => processWrapper.run(
               'flutter',
-              ['--version'],
+              ['--version', '--verbose'],
               runInShell: true,
               workingDirectory: '~',
               environment: {'ENV_VAR': 'asdfasdf'},
@@ -218,6 +218,7 @@ void main() {
               '--local-engine-src-path=$localEngineSrcPath',
               '--local-engine=android_release_arm64',
               '--local-engine-host=host_release',
+              '--verbose',
             ],
             runInShell: any(named: 'runInShell'),
             environment: any(named: 'environment'),
@@ -226,64 +227,15 @@ void main() {
         ).called(1);
       });
 
-      group('when log level is verbose', () {
-        setUp(() {
-          when(() => logger.level).thenReturn(Level.verbose);
-        });
+      test('logs stdout and stderr', () async {
+        await runWithOverrides(() => shorebirdProcess.run('flutter', []));
 
-        test('passes --verbose to flutter executable', () async {
-          await runWithOverrides(
-            () => shorebirdProcess.run('flutter', []),
-          );
-
-          verify(
-            () => processWrapper.run(
-              any(),
-              ['--verbose'],
-              runInShell: any(named: 'runInShell'),
-              environment: any(named: 'environment'),
-              workingDirectory: any(named: 'workingDirectory'),
-            ),
-          ).called(1);
-        });
-
-        group('when result has 0 exit code', () {
-          setUp(() {
-            when(() => runProcessResult.exitCode).thenReturn(0);
-            when(() => runProcessResult.stdout).thenReturn('out');
-            when(() => runProcessResult.stderr).thenReturn('err');
-          });
-
-          test('logs stdout and stderr if present', () async {
-            await runWithOverrides(() => shorebirdProcess.run('flutter', []));
-
-            verify(
-              () => logger.detail(any(that: contains('stdout'))),
-            ).called(1);
-            verify(
-              () => logger.detail(any(that: contains('stderr'))),
-            ).called(1);
-          });
-        });
-
-        group('when result has non-zero exit code', () {
-          setUp(() {
-            when(() => runProcessResult.exitCode).thenReturn(1);
-            when(() => runProcessResult.stdout).thenReturn('out');
-            when(() => runProcessResult.stderr).thenReturn('err');
-          });
-
-          test('logs stdout and stderr if present', () async {
-            await runWithOverrides(() => shorebirdProcess.run('flutter', []));
-
-            verify(
-              () => logger.detail(any(that: contains('stdout'))),
-            ).called(1);
-            verify(
-              () => logger.detail(any(that: contains('stderr'))),
-            ).called(1);
-          });
-        });
+        verify(
+          () => logger.detail(any(that: contains('stdout'))),
+        ).called(1);
+        verify(
+          () => logger.detail(any(that: contains('stderr'))),
+        ).called(1);
       });
     });
 
@@ -338,7 +290,7 @@ void main() {
                 p.join('bin', 'cache', 'flutter', 'bin', 'flutter'),
               ),
             ),
-            ['--version'],
+            ['--version', '--verbose'],
             runInShell: true,
             environment: flutterStorageBaseUrlEnv,
             workingDirectory: '~',
@@ -362,7 +314,7 @@ void main() {
         verify(
           () => processWrapper.runSync(
             'flutter',
-            ['--version'],
+            ['--version', '--verbose'],
             runInShell: true,
             environment: {},
             workingDirectory: '~',
@@ -385,7 +337,7 @@ void main() {
         verify(
           () => processWrapper.runSync(
             'flutter',
-            ['--version'],
+            ['--version', '--verbose'],
             runInShell: true,
             workingDirectory: '~',
             environment: {'ENV_VAR': 'asdfasdf'},
@@ -410,7 +362,7 @@ void main() {
           verify(
             () => processWrapper.runSync(
               'flutter',
-              ['--version'],
+              ['--version', '--verbose'],
               runInShell: true,
               workingDirectory: '~',
               environment: {'ENV_VAR': 'asdfasdf'},
@@ -502,7 +454,7 @@ void main() {
                 p.join('bin', 'cache', 'flutter', 'bin', 'flutter'),
               ),
             ),
-            ['run'],
+            ['run', '--verbose'],
             runInShell: true,
             environment: flutterStorageBaseUrlEnv,
           ),
@@ -524,7 +476,7 @@ void main() {
         verify(
           () => processWrapper.start(
             'flutter',
-            ['--version'],
+            ['--version', '--verbose'],
             runInShell: true,
             environment: {},
           ),
@@ -547,7 +499,7 @@ void main() {
                 p.join('bin', 'cache', 'flutter', 'bin', 'flutter'),
               ),
             ),
-            ['--version'],
+            ['--version', '--verbose'],
             runInShell: true,
             environment: {
               'ENV_VAR': 'asdfasdf',
@@ -573,7 +525,7 @@ void main() {
           verify(
             () => processWrapper.start(
               'flutter',
-              ['--version'],
+              ['--version', '--verbose'],
               runInShell: true,
               environment: {'hello': 'world'},
             ),

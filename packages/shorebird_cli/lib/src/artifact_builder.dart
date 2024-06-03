@@ -2,6 +2,7 @@ import 'dart:io';
 
 import 'package:mason_logger/mason_logger.dart';
 import 'package:scoped_deps/scoped_deps.dart';
+import 'package:shorebird_cli/src/extensions/shorebird_process_result.dart';
 import 'package:shorebird_cli/src/logger.dart';
 import 'package:shorebird_cli/src/os/operating_system_interface.dart';
 import 'package:shorebird_cli/src/platform/platform.dart';
@@ -13,6 +14,30 @@ import 'package:shorebird_cli/src/shorebird_process.dart';
 /// Used to wrap code that invokes `flutter build` with Shorebird's fork of
 /// Flutter.
 typedef ShorebirdBuildCommand = Future<void> Function();
+
+/// {@template ipa_build_result}
+/// Metadata about the result of a `flutter build ipa` invocation.
+/// {@endtemplate}
+class IpaBuildResult {
+  /// {@macro ipa_build_result}
+  IpaBuildResult({required this.kernelFile});
+
+  /// The app.dill file produced by this invocation of `flutter build ipa`.
+  final File kernelFile;
+}
+
+/// {@template ios_framework_build_result}
+/// Metadata about the result of a `flutter build ios-framework` invocation.
+/// {@endtemplate}
+class IosFrameworkBuildResult {
+  /// {@macro ios_framework_build_result}
+  IosFrameworkBuildResult({
+    required this.kernelFile,
+  });
+
+  /// The app.dill file produced by this invocation of `flutter build ipa`.
+  final File kernelFile;
+}
 
 /// {@template artifact_build_exception}
 /// Thrown when a build fails.
@@ -195,7 +220,7 @@ class ArtifactBuilder {
 
   /// Calls `flutter build ipa`. If [codesign] is false, this will only build
   /// an .xcarchive and _not_ an .ipa.
-  Future<void> buildIpa({
+  Future<IpaBuildResult> buildIpa({
     bool codesign = true,
     File? exportOptionsPlist,
     String? flavor,
@@ -203,7 +228,8 @@ class ArtifactBuilder {
     List<String> args = const [],
     String? base64PublicKey,
   }) async {
-    return _runShorebirdBuildCommand(() async {
+    String? appDillPath;
+    await _runShorebirdBuildCommand(() async {
       const executable = 'flutter';
       final exportOptionsPlistPath =
           (exportOptionsPlist ?? ios.createExportOptionsPlist()).path;
@@ -240,14 +266,26 @@ class ArtifactBuilder {
 Failed to build:
 $errorMessage''');
       }
+
+      appDillPath = result.findAppDill();
     });
+
+    if (appDillPath == null) {
+      throw ArtifactBuildException('''
+Unable to find app.dill file.
+Please file a bug at https://github.com/shorebirdtech/shorebird/issues/new with the logs for this command.
+''');
+    }
+
+    return IpaBuildResult(kernelFile: File(appDillPath!));
   }
 
   /// Builds a release iOS framework (.xcframework) for the current project.
-  Future<void> buildIosFramework({
+  Future<IosFrameworkBuildResult> buildIosFramework({
     List<String> args = const [],
-  }) {
-    return _runShorebirdBuildCommand(() async {
+  }) async {
+    String? appDillPath;
+    await _runShorebirdBuildCommand(() async {
       const executable = 'flutter';
       final arguments = [
         'build',
@@ -266,7 +304,18 @@ $errorMessage''');
       if (result.exitCode != ExitCode.success.code) {
         throw ArtifactBuildException('Failed to build: ${result.stderr}');
       }
+
+      appDillPath = result.findAppDill();
     });
+
+    if (appDillPath == null) {
+      throw ArtifactBuildException('''
+Unable to find app.dill file.
+Please file a bug at https://github.com/shorebirdtech/shorebird/issues/new with the logs for this command.
+''');
+    }
+
+    return IosFrameworkBuildResult(kernelFile: File(appDillPath!));
   }
 
   String _failedToCreateIpaErrorMessage({required String stderr}) {
