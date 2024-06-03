@@ -9,6 +9,7 @@ import 'package:platform/platform.dart';
 import 'package:scoped_deps/scoped_deps.dart';
 import 'package:shorebird_cli/src/artifact_manager.dart';
 import 'package:shorebird_cli/src/cache.dart';
+import 'package:shorebird_cli/src/checksum_checker.dart';
 import 'package:shorebird_cli/src/http_client/http_client.dart';
 import 'package:shorebird_cli/src/logger.dart';
 import 'package:shorebird_cli/src/platform.dart';
@@ -24,6 +25,8 @@ void main() {
     const shorebirdEngineRevision = 'test-revision';
 
     late ArtifactManager artifactManager;
+    late Cache cache;
+    late ChecksumChecker checksumChecker;
     late Directory shorebirdRoot;
     late Directory logsDirectory;
     late http.Client httpClient;
@@ -32,7 +35,6 @@ void main() {
     late Process chmodProcess;
     late ShorebirdEnv shorebirdEnv;
     late ShorebirdProcess shorebirdProcess;
-    late Cache cache;
 
     R runWithOverrides<R>(R Function() body) {
       return runScoped(
@@ -40,6 +42,7 @@ void main() {
         values: {
           artifactManagerRef.overrideWith(() => artifactManager),
           cacheRef.overrideWith(() => cache),
+          checksumCheckerRef.overrideWith(() => checksumChecker),
           httpClientRef.overrideWith(() => httpClient),
           loggerRef.overrideWith(() => logger),
           platformRef.overrideWith(() => platform),
@@ -70,10 +73,11 @@ void main() {
 
     setUp(() {
       artifactManager = MockArtifactManager();
+      chmodProcess = MockProcess();
+      checksumChecker = MockChecksumChecker();
       httpClient = MockHttpClient();
       logger = MockShorebirdLogger();
       platform = MockPlatform();
-      chmodProcess = MockProcess();
       shorebirdEnv = MockShorebirdEnv();
       shorebirdProcess = MockShorebirdProcess();
 
@@ -108,6 +112,7 @@ void main() {
           HttpStatus.ok,
         ),
       );
+      when(() => checksumChecker.checkFile(any(), any())).thenReturn(true);
 
       cache = runWithOverrides(Cache.new);
     });

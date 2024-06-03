@@ -15,6 +15,7 @@ import 'package:shorebird_cli/src/artifact_builder.dart';
 import 'package:shorebird_cli/src/artifact_manager.dart';
 import 'package:shorebird_cli/src/auth/auth.dart';
 import 'package:shorebird_cli/src/cache.dart' show Cache;
+import 'package:shorebird_cli/src/checksum_checker.dart';
 import 'package:shorebird_cli/src/code_push_client_wrapper.dart';
 import 'package:shorebird_cli/src/code_signer.dart';
 import 'package:shorebird_cli/src/commands/patch/patch.dart';
@@ -68,6 +69,8 @@ class MockAuth extends Mock implements Auth {}
 class MockBundleTool extends Mock implements Bundletool {}
 
 class MockCache extends Mock implements Cache {}
+
+class MockChecksumChecker extends Mock implements ChecksumChecker {}
 
 class MockCodePushClient extends Mock implements CodePushClient {}
 
