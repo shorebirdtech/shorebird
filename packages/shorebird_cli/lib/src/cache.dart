@@ -64,7 +64,7 @@ class Cache {
         maxAttempts: 3,
         onRetry: (e) {
           logger
-            ..err('Failed to update ${artifact.name}, retrying...')
+            ..detail('Failed to update ${artifact.name}, retrying...')
             ..detail(e.toString());
         },
       );

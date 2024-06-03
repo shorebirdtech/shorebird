@@ -225,7 +225,7 @@ void main() {
               ),
             );
 
-            verify(() => logger.err('Failed to update patch, retrying...'))
+            verify(() => logger.detail('Failed to update patch, retrying...'))
                 .called(2);
           });
         });
