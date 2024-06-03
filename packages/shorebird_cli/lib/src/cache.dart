@@ -3,6 +3,7 @@ import 'dart:io' hide Platform;
 import 'package:http/http.dart' as http;
 import 'package:path/path.dart' as p;
 import 'package:platform/platform.dart';
+import 'package:retry/retry.dart';
 import 'package:scoped_deps/scoped_deps.dart';
 import 'package:shorebird_cli/src/artifact_manager.dart';
 import 'package:shorebird_cli/src/checksum_checker.dart';
@@ -58,7 +59,15 @@ class Cache {
         continue;
       }
 
-      await artifact.update();
+      await retry(
+        artifact.update,
+        maxAttempts: 3,
+        onRetry: (e) {
+          logger
+            ..detail('Failed to update ${artifact.name}, retrying...')
+            ..detail(e.toString());
+        },
+      );
     }
   }
 
@@ -186,7 +195,6 @@ allowed to access $storageUrl.''',
         // Delete the location, so if the download is retried, it will be
         // re-downloaded.
         location.deleteSync(recursive: true);
-        // TODO(erickzanardo): Automatically retry the download.
         throw CacheUpdateFailure(
           '''Failed to download $name: checksum mismatch''',
         );
