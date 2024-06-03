@@ -183,8 +183,10 @@ allowed to access $storageUrl.''',
       final artifactFile = File(p.join(location.path, name));
 
       if (!checksumChecker.checkFile(artifactFile, expectedChecksum)) {
-        // TODO(erickzanardo): Automatically retry the download.
+        // Delete the location, so if the download is retried, it will be
+        // re-downloaded.
         location.deleteSync(recursive: true);
+        // TODO(erickzanardo): Automatically retry the download.
         throw CacheUpdateFailure(
           '''Failed to download $name: checksum mismatch''',
         );
