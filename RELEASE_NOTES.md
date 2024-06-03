@@ -2,6 +2,16 @@
 
 This section contains past updates we've sent to customers via Discord.
 
+## 1.1.9 (June 3, 2024)
+
+- 🧑‍⚕️ Adds logs directory path and more info about Java version to `shorebird doctor` output
+- 🍧 Support Android flavors that start with multiple uppercase letters
+- 🩺 Improves `shorebird doctor` messaging when system Flutter version is different than Shorebird Flutter version
+- 🪵 Improves quality of log output
+- ⏫ Tells you when new versions of Shorebird are available
+- 🎯 Better handling of `--dart-define` and `--dart-define-from-file` (both work before and after -- now)
+- 🥒 Better locating app.dill when patching iOS releases
+
 ## 1.1.8 (May 28, 2024)
 
 - 🐦 Support for Flutter 3.22.1
