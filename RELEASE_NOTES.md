@@ -11,6 +11,7 @@ This section contains past updates we've sent to customers via Discord.
 - ⏫ Tells you when new versions of Shorebird are available
 - 🎯 Better handling of `--dart-define` and `--dart-define-from-file` (both work before and after -- now)
 - 🥒 Better locating app.dill when patching iOS releases
+- 🔗 Improve iOS patch speed
 
 ## 1.1.8 (May 28, 2024)
 
