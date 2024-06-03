@@ -41,7 +41,8 @@ inputs:
 runs:
   using: "composite"
   steps:
-    - uses: dart-lang/setup-dart@v1
+    - name: 🎯 Setup Dart
+      uses: dart-lang/setup-dart@v1
       with:
         sdk: ${{inputs.dart_sdk}}
 
