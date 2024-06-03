@@ -9,7 +9,7 @@ import 'package:shorebird_cli/src/logger.dart';
 import 'package:shorebird_cli/src/third_party/flutter_tools/lib/src/base/io.dart';
 
 extension OptionFinder on ArgResults {
-  /// // Detects flags even when passed to underlying commands via a `--`
+  /// Detects flags even when passed to underlying commands via a `--`
   /// separator.
   String? findOption(
     String name, {
