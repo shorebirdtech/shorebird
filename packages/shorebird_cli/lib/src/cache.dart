@@ -52,7 +52,7 @@ class Cache {
 
   void registerArtifact(CachedArtifact artifact) => _artifacts.add(artifact);
 
-  static const _maxAttempts = 3;
+  static const _maxRetryAttempts = 3;
 
   Future<void> updateAll() async {
     for (final artifact in _artifacts) {
@@ -60,14 +60,14 @@ class Cache {
         continue;
       }
 
-      var attempts = 0;
-      while (attempts < _maxAttempts) {
+      var retryAttempts = 0;
+      while (retryAttempts < _maxRetryAttempts) {
         try {
           await artifact.update();
           break;
         } catch (e) {
-          attempts++;
-          if (attempts < _maxAttempts) {
+          retryAttempts++;
+          if (retryAttempts < _maxRetryAttempts) {
             logger
               ..err('Failed to update ${artifact.name}, retrying...')
               ..detail(e.toString());
