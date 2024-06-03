@@ -64,6 +64,7 @@ void main() {
 
       when(() => argResults['codesign']).thenReturn(true);
       when(() => argResults.rest).thenReturn([]);
+      when(() => argResults.wasParsed(any())).thenReturn(false);
       when(
         () => artifactBuilder.buildIpa(
           flavor: any(named: 'flavor'),

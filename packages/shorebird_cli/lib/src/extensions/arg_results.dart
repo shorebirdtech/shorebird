@@ -5,6 +5,7 @@ import 'package:shorebird_cli/src/code_signer.dart';
 import 'package:shorebird_cli/src/common_arguments.dart';
 import 'package:shorebird_cli/src/extensions/file.dart';
 import 'package:shorebird_cli/src/logger.dart';
+import 'package:shorebird_cli/src/release_type.dart';
 
 import 'package:shorebird_cli/src/third_party/flutter_tools/lib/src/base/io.dart';
 
@@ -95,5 +96,36 @@ extension FileArgs on ArgResults {
       return null;
     }
     return File(path);
+  }
+}
+
+extension ForwardedArgs on ArgResults {
+  bool _isPositionalArgPlatform(String arg) =>
+      ReleaseType.values.any((target) => target.cliName == arg);
+
+  List<String> get forwardedArgs {
+    final List<String> forwarded;
+    if (rest.isNotEmpty && _isPositionalArgPlatform(rest.first)) {
+      forwarded = rest.skip(1).toList();
+    } else {
+      forwarded = rest.toList();
+    }
+
+    if (wasParsed(CommonArguments.dartDefineArg.name)) {
+      forwarded.addAll(
+        (this[CommonArguments.dartDefineArg.name] as List<String>).map(
+          (a) => '--${CommonArguments.dartDefineArg.name}=$a',
+        ),
+      );
+    }
+
+    if (wasParsed(CommonArguments.dartDefineFromFileArg.name)) {
+      forwarded.addAll(
+        (this[CommonArguments.dartDefineFromFileArg.name] as List<String>)
+            .map((a) => '--${CommonArguments.dartDefineFromFileArg.name}=$a'),
+      );
+    }
+
+    return forwarded;
   }
 }

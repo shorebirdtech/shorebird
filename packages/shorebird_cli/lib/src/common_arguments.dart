@@ -19,6 +19,26 @@ class ArgumentDescriber {
 /// A class that houses the name of arguments that are shared between different
 /// commands and layers.
 class CommonArguments {
+  /// A multioption argument that defines constants for the built application.
+  /// These are forwarded to Flutter.
+  static const dartDefineArg = ArgumentDescriber(
+    name: 'dart-define',
+    description: '''
+Additional key-value pairs that will be available as constants from the String.fromEnvironment, bool.fromEnvironment, and int.fromEnvironment constructors.
+Multiple defines can be passed by repeating "--dart-define" multiple times.''',
+  );
+
+  /// A multioption argument that specifies a file containing constants for the
+  /// built application. These are forwarded to Flutter.
+  static const dartDefineFromFileArg = ArgumentDescriber(
+    name: 'dart-define-from-file',
+    description: '''
+The path of a .json or .env file containing key-value pairs that will be available as environment variables.
+These can be accessed using the String.fromEnvironment, bool.fromEnvironment, and int.fromEnvironment constructors.
+Multiple defines can be passed by repeating "--dart-define-from-file" multiple times.
+Entries from "--dart-define" with identical keys take precedence over entries from these files.''',
+  );
+
   /// A multioption argument that allows the user to specify an [ExportMethod].
   static const exportMethodArg = ArgumentDescriber(
     name: 'export-method',
