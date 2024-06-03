@@ -278,6 +278,27 @@ void main() {
           expect(patchArtifactDirectory.existsSync(), isTrue);
         });
 
+        group('when checksum validation fails', () {
+          setUp(() {
+            when(() => checksumChecker.checkFile(any(), any()))
+                .thenReturn(false);
+          });
+          test('fails with the correct message', () async {
+            await expectLater(
+              () => runWithOverrides(cache.updateAll),
+              throwsA(
+                isA<CacheUpdateFailure>().having(
+                  (e) => e.message,
+                  'message',
+                  contains(
+                    'Failed to download bundletool.jar: checksum mismatch',
+                  ),
+                ),
+              ),
+            );
+          });
+        });
+
         test('pull correct artifact for MacOS', () async {
           setMockPlatform(Platform.macOS);
 

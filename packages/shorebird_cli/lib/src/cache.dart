@@ -147,8 +147,7 @@ abstract class CachedArtifact {
 
   Directory get location => cache.getArtifactDirectory(name);
 
-  Future<bool> isUpToDate() async =>
-      File(p.join(location.path, name)).existsSync();
+  Future<bool> isUpToDate() async => location.existsSync();
 
   Future<void> update() async {
     final request = http.Request('GET', Uri.parse(storageUrl));
@@ -185,7 +184,7 @@ allowed to access $storageUrl.''',
 
       if (!checksumChecker.checkFile(artifactFile, expectedChecksum)) {
         // TODO(erickzanardo): Automatically retry the download.
-        artifactFile.deleteSync();
+        location.deleteSync(recursive: true);
         throw CacheUpdateFailure(
           '''Failed to download $name: checksum mismatch''',
         );

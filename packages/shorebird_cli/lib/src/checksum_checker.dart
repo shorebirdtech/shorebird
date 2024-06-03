@@ -15,7 +15,7 @@ ChecksumChecker get checksumChecker => read(checksumCheckerRef);
 class ChecksumChecker {
   /// Checks if the [file] hash matches the received [checksum].
   bool checkFile(File file, String checksum) {
-      final fileSha256 = sha256.convert(file.readAsBytesSync());
-      return fileSha256.toString() == checksum;
+    final fileSha256 = sha256.convert(file.readAsBytesSync());
+    return fileSha256.toString() == checksum;
   }
 }
