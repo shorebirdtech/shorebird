@@ -31,6 +31,14 @@ class PatchCommand extends ShorebirdCommand {
     _resolvePatcher = resolvePatcher ?? getPatcher;
     argParser
       ..addMultiOption(
+        CommonArguments.dartDefineArg.name,
+        help: CommonArguments.dartDefineArg.description,
+      )
+      ..addMultiOption(
+        CommonArguments.dartDefineFromFileArg.name,
+        help: CommonArguments.dartDefineFromFileArg.description,
+      )
+      ..addMultiOption(
         'platforms',
         abbr: 'p',
         help: 'The platform(s) to to build this release for.',

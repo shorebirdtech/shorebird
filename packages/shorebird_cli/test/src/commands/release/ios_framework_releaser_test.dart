@@ -96,6 +96,7 @@ void main() {
         xcodeBuild = MockXcodeBuild();
 
         when(() => argResults.rest).thenReturn([]);
+        when(() => argResults.wasParsed(any())).thenReturn(false);
 
         when(() => logger.progress(any())).thenReturn(progress);
 

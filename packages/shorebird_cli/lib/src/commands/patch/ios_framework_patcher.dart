@@ -13,6 +13,7 @@ import 'package:shorebird_cli/src/commands/patch/patch.dart';
 import 'package:shorebird_cli/src/doctor.dart';
 import 'package:shorebird_cli/src/executables/aot_tools.dart';
 import 'package:shorebird_cli/src/executables/xcodebuild.dart';
+import 'package:shorebird_cli/src/extensions/arg_results.dart';
 import 'package:shorebird_cli/src/logger.dart';
 import 'package:shorebird_cli/src/patch_diff_checker.dart';
 import 'package:shorebird_cli/src/platform.dart';

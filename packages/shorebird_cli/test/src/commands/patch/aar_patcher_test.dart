@@ -104,6 +104,7 @@ void main() {
 
       when(() => argResults['build-number']).thenReturn('1.0');
       when(() => argResults.rest).thenReturn([]);
+      when(() => argResults.wasParsed(any())).thenReturn(false);
 
       when(() => logger.progress(any())).thenReturn(progress);
 
