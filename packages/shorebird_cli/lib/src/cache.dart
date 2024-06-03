@@ -3,6 +3,7 @@ import 'dart:io' hide Platform;
 import 'package:http/http.dart' as http;
 import 'package:path/path.dart' as p;
 import 'package:platform/platform.dart';
+import 'package:retry/retry.dart';
 import 'package:scoped_deps/scoped_deps.dart';
 import 'package:shorebird_cli/src/artifact_manager.dart';
 import 'package:shorebird_cli/src/checksum_checker.dart';
@@ -52,30 +53,21 @@ class Cache {
 
   void registerArtifact(CachedArtifact artifact) => _artifacts.add(artifact);
 
-  static const _maxRetryAttempts = 3;
-
   Future<void> updateAll() async {
     for (final artifact in _artifacts) {
       if (await artifact.isUpToDate()) {
         continue;
       }
 
-      var retryAttempts = 0;
-      while (retryAttempts < _maxRetryAttempts) {
-        try {
-          await artifact.update();
-          break;
-        } catch (e) {
-          retryAttempts++;
-          if (retryAttempts < _maxRetryAttempts) {
-            logger
-              ..err('Failed to update ${artifact.name}, retrying...')
-              ..detail(e.toString());
-          } else {
-            rethrow;
-          }
-        }
-      }
+      await retry(
+        artifact.update,
+        maxAttempts: 3,
+        onRetry: (e) {
+          logger
+            ..err('Failed to update ${artifact.name}, retrying...')
+            ..detail(e.toString());
+        },
+      );
     }
   }
 
