@@ -41,26 +41,34 @@ inputs:
 runs:
   using: "composite"
   steps:
-    - uses: dart-lang/setup-dart@v1
+    - name: 🎯 Setup Dart
+      uses: dart-lang/setup-dart@v1
       with:
         sdk: ${{inputs.dart_sdk}}
 
-    - name: Install Dependencies
+    - name: 📦 Install Dependencies
       working-directory: ${{ inputs.working_directory }}
       shell: ${{ inputs.shell }}
       run: dart pub get
 
-    - name: Format
+    - name: ✨ Format
       working-directory: ${{ inputs.working_directory }}
       shell: ${{ inputs.shell }}
       run: dart format --set-exit-if-changed .
 
-    - name: Analyze
+    - name: 🔍 Analyze
       working-directory: ${{ inputs.working_directory }}
       shell: ${{ inputs.shell }}
       run: dart analyze --fatal-warnings ${{inputs.analyze_directories}}
 
-    - name: Test
+    - name: 📄 License Check
+      working-directory: ${{ inputs.working_directory }}
+      shell: ${{ inputs.shell }}
+      run: |
+        dart pub global activate very_good_cli
+        very_good packages check licenses --allowed="MIT,BSD-3-Clause,BSD-2-Clause,Apache-2.0"
+
+    - name: 🧪 Test
       working-directory: ${{ inputs.working_directory }}
       shell: ${{ inputs.shell }}
       run: |
@@ -68,14 +76,14 @@ runs:
         dart test -j ${{inputs.concurrency}} --coverage=coverage --platform=${{inputs.platform}} && dart pub global run coverage:format_coverage --lcov --in=coverage --out=coverage/lcov.info --packages=.dart_tool/package_config.json --report-on=${{inputs.report_on}} --check-ignore
 
     # Per https://stackoverflow.com/questions/73402042/github-action-expressions-split-string
-    - name: Split package name
+    - name: 🔗 Split package name
       env:
         PACKAGE_PATH: ${{ inputs.working_directory}}
       id: split
       shell: ${{ inputs.shell }}
       run: echo "package_name=${PACKAGE_PATH##*/}" >> $GITHUB_OUTPUT
 
-    - name: Upload Coverage
+    - name: 📊 Upload Coverage
       uses: codecov/codecov-action@v3
       with:
         flags: ${{ steps.split.outputs.package_name }}
