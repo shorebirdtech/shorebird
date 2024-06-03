@@ -52,13 +52,30 @@ class Cache {
 
   void registerArtifact(CachedArtifact artifact) => _artifacts.add(artifact);
 
+  static const _maxAttempts = 3;
+
   Future<void> updateAll() async {
     for (final artifact in _artifacts) {
       if (await artifact.isUpToDate()) {
         continue;
       }
 
-      await artifact.update();
+      var attempts = 0;
+      while (attempts < _maxAttempts) {
+        try {
+          await artifact.update();
+          break;
+        } catch (e) {
+          if (attempts + 1 < _maxAttempts) {
+            logger
+              ..err('Failed to update ${artifact.name}, retrying...')
+              ..detail(e.toString());
+            attempts++;
+          } else {
+            rethrow;
+          }
+        }
+      }
     }
   }
 
@@ -186,7 +203,6 @@ allowed to access $storageUrl.''',
         // Delete the location, so if the download is retried, it will be
         // re-downloaded.
         location.deleteSync(recursive: true);
-        // TODO(erickzanardo): Automatically retry the download.
         throw CacheUpdateFailure(
           '''Failed to download $name: checksum mismatch''',
         );

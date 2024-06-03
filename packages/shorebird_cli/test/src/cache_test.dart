@@ -198,20 +198,36 @@ void main() {
 
     group('updateAll', () {
       group('patch', () {
-        test('throws CacheUpdateFailure if a SocketException is thrown',
-            () async {
-          const exception = SocketException('test');
-          when(() => httpClient.send(any())).thenThrow(exception);
-          await expectLater(
-            runWithOverrides(cache.updateAll),
-            throwsA(
-              isA<CacheUpdateFailure>().having(
-                (e) => e.message,
-                'message',
-                contains('Failed to download patch: $exception'),
+        group('when an exception happens', () {
+          test('throws CacheUpdateFailure', () async {
+            const exception = SocketException('test');
+            when(() => httpClient.send(any())).thenThrow(exception);
+            await expectLater(
+              runWithOverrides(cache.updateAll),
+              throwsA(
+                isA<CacheUpdateFailure>().having(
+                  (e) => e.message,
+                  'message',
+                  contains('Failed to download patch: $exception'),
+                ),
               ),
-            ),
-          );
+            );
+          });
+
+          test('retries and log', () async {
+            const exception = SocketException('test');
+            when(() => httpClient.send(any())).thenThrow(exception);
+
+            await expectLater(
+              runWithOverrides(cache.updateAll),
+              throwsA(
+                isA<CacheUpdateFailure>(),
+              ),
+            );
+
+            verify(() => logger.err('Failed to update patch, retrying...'))
+                .called(2);
+          });
         });
 
         test('throws CacheUpdateFailure if a non-200 is returned', () async {
