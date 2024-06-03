@@ -57,4 +57,12 @@ class ShorebirdVersion {
       args: ['--hard'],
     );
   }
+
+  /// Whether the current version of shorebird is tracking the stable branch. If
+  /// we are not tracking stable, we should not check for newer versions of
+  /// shorebird or try to auto-update.
+  Future<bool> isTrackingStable() async {
+    return (await git.currentBranch(directory: Directory(_workingDirectory))) ==
+        'stable';
+  }
 }

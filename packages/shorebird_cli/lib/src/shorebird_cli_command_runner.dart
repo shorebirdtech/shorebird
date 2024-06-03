@@ -192,18 +192,6 @@ ${lightCyan.wrap('shorebird release android -- --no-pub lib/main.dart')}''';
 Shorebird $packageVersion • git@github.com:shorebirdtech/shorebird.git
 $shorebirdFlutterPrefix • revision ${shorebirdEnv.flutterRevision}
 Engine • revision ${shorebirdEnv.shorebirdEngineRevision}''');
-
-      try {
-        final isUpToDate = await shorebirdVersion.isLatest();
-        if (!isUpToDate) {
-          logger.info('''
-A new version of shorebird is available!
-Run ${lightCyan.wrap('shorebird upgrade')} to upgrade.''');
-        }
-      } catch (error) {
-        logger.detail('Unable to check for updates.\n$error');
-      }
-      exitCode = ExitCode.success.code;
     } else {
       try {
         exitCode = await super.runCommand(topLevelResults);
@@ -233,6 +221,10 @@ ${currentRunLogFile.absolute.path}
       );
     }
 
+    if (topLevelResults.command?.name != UpgradeCommand.commandName) {
+      await _checkForUpdates();
+    }
+
     return exitCode;
   }
 
@@ -242,6 +234,23 @@ ${currentRunLogFile.absolute.path}
     } catch (error) {
       logger.detail('Unable to determine Flutter version.\n$error');
       return null;
+    }
+  }
+
+  /// If this version of shorebird is on the `stable` branch, checks to see if
+  /// there are newer commits available. If there are, prints a message to the
+  /// user telling them to run `shorebird upgrade`.
+  Future<void> _checkForUpdates() async {
+    try {
+      if (await shorebirdVersion.isTrackingStable() &&
+          !await shorebirdVersion.isLatest()) {
+        logger
+          ..info('')
+          ..info('A new version of shorebird is available!')
+          ..info('Run ${lightCyan.wrap('shorebird upgrade')} to upgrade.');
+      }
+    } catch (error) {
+      logger.detail('Unable to check for updates.\n$error');
     }
   }
 }
