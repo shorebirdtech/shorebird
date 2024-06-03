@@ -7,6 +7,7 @@ import 'package:shorebird_cli/src/artifact_builder.dart';
 import 'package:shorebird_cli/src/artifact_manager.dart';
 import 'package:shorebird_cli/src/auth/auth.dart';
 import 'package:shorebird_cli/src/cache.dart';
+import 'package:shorebird_cli/src/checksum_checker.dart';
 import 'package:shorebird_cli/src/code_push_client_wrapper.dart';
 import 'package:shorebird_cli/src/code_signer.dart';
 import 'package:shorebird_cli/src/doctor.dart';
@@ -48,6 +49,7 @@ Future<void> main(List<String> args) async {
           authRef,
           bundletoolRef,
           cacheRef,
+          checksumCheckerRef,
           codePushClientWrapperRef,
           codeSignerRef,
           devicectlRef,

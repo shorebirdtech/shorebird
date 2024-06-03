@@ -5,6 +5,7 @@ import 'package:path/path.dart' as p;
 import 'package:platform/platform.dart';
 import 'package:scoped_deps/scoped_deps.dart';
 import 'package:shorebird_cli/src/artifact_manager.dart';
+import 'package:shorebird_cli/src/checksum_checker.dart';
 import 'package:shorebird_cli/src/http_client/http_client.dart';
 import 'package:shorebird_cli/src/logger.dart';
 import 'package:shorebird_cli/src/platform.dart';
@@ -133,6 +134,12 @@ abstract class CachedArtifact {
   /// If we fail to fetch it we will exit with an error.
   bool get required => true;
 
+  /// The SHA256 checksum of the artifact binary.
+  ///
+  /// When null, the checksum is not verified and the downloaded artifact
+  /// is assumed to be correct.
+  String? get checksum;
+
   Future<void> extractArtifact(http.ByteStream stream, String outputPath) {
     final file = File(p.join(outputPath, name))..createSync(recursive: true);
     return stream.pipe(file.openWrite());
@@ -171,6 +178,25 @@ allowed to access $storageUrl.''',
 
     await extractArtifact(response.stream, location.path);
 
+    final expectedChecksum = checksum;
+    if (expectedChecksum != null) {
+      final artifactFile = File(p.join(location.path, name));
+
+      if (!checksumChecker.checkFile(artifactFile, expectedChecksum)) {
+        // Delete the location, so if the download is retried, it will be
+        // re-downloaded.
+        location.deleteSync(recursive: true);
+        // TODO(erickzanardo): Automatically retry the download.
+        throw CacheUpdateFailure(
+          '''Failed to download $name: checksum mismatch''',
+        );
+      } else {
+        logger.detail(
+          'No checksum provided for $name, skipping file corruption validation',
+        );
+      }
+    }
+
     if (!platform.isWindows && isExecutable) {
       final result = await process.start(
         'chmod',
@@ -205,6 +231,9 @@ class AotToolsDillArtifact extends CachedArtifact {
   @override
   String get storageUrl =>
       '${cache.storageBaseUrl}/${cache.storageBucket}/shorebird/${shorebirdEnv.shorebirdEngineRevision}/$name';
+
+  @override
+  String? get checksum => null;
 }
 
 /// For a few revisions in Dec 2023, we distributed aot-tools as an executable.
@@ -243,6 +272,9 @@ class AotToolsExeArtifact extends CachedArtifact {
 
     return '${cache.storageBaseUrl}/${cache.storageBucket}/shorebird/${shorebirdEnv.shorebirdEngineRevision}/$artifactName';
   }
+
+  @override
+  String? get checksum => null;
 }
 
 class PatchArtifact extends CachedArtifact {
@@ -281,6 +313,9 @@ class PatchArtifact extends CachedArtifact {
 
     return '${cache.storageBaseUrl}/${cache.storageBucket}/shorebird/${shorebirdEnv.shorebirdEngineRevision}/$artifactName';
   }
+
+  @override
+  String? get checksum => null;
 }
 
 class BundleToolArtifact extends CachedArtifact {
@@ -296,4 +331,14 @@ class BundleToolArtifact extends CachedArtifact {
   String get storageUrl {
     return 'https://github.com/google/bundletool/releases/download/1.15.6/bundletool-all-1.15.6.jar';
   }
+
+  @override
+  String? get checksum =>
+      // SHA-256 checksum of the bundletool.jar file.
+      // When updating the bundletool version, be sure to update this checksum.
+      // This can be done by running the following command:
+      // ```shell
+      // shasum --algorithm 256 /path/to/file
+      // ```
+      '''38ae8a10bcdacef07ecce8211188c5c92b376be96da38ff3ee1f2cf4895b2cb8''';
 }
