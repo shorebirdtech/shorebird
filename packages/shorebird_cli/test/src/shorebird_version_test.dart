@@ -26,6 +26,10 @@ void main() {
       );
     }
 
+    setUpAll(() {
+      registerFallbackValue(Directory(''));
+    });
+
     setUp(() {
       git = MockGit();
       shorebirdVersionManager = ShorebirdVersion();
@@ -194,6 +198,36 @@ void main() {
             ),
           ),
         );
+      });
+    });
+
+    group('isTrackingStable', () {
+      group('when on the stable branch', () {
+        setUp(() {
+          when(() => git.currentBranch(directory: any(named: 'directory')))
+              .thenAnswer((_) async => 'stable');
+        });
+
+        test('returns true', () async {
+          expect(
+            await runWithOverrides(shorebirdVersionManager.isTrackingStable),
+            isTrue,
+          );
+        });
+      });
+
+      group('when on a branch other than stable', () {
+        setUp(() {
+          when(() => git.currentBranch(directory: any(named: 'directory')))
+              .thenAnswer((_) async => 'main');
+        });
+
+        test('returns false', () async {
+          expect(
+            await runWithOverrides(shorebirdVersionManager.isTrackingStable),
+            isFalse,
+          );
+        });
       });
     });
   });
