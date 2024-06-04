@@ -975,7 +975,7 @@ void main() {
                     ).thenThrow(Exception('oops'));
                   });
 
-                  test('dumps debug info and warns', () async {
+                  test('dumps debug info and logs', () async {
                     await expectLater(
                       () => runWithOverrides(
                         () => patcher.createPatchArtifacts(
@@ -987,7 +987,7 @@ void main() {
                       exitsWithCode(ExitCode.software),
                     );
                     verify(
-                      () => logger.warn(
+                      () => logger.detail(
                         any(
                           that: contains(
                             'Link debug info saved to',

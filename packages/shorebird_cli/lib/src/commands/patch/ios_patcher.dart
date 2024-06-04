@@ -318,17 +318,12 @@ class IosPatcher extends Patcher {
         ? Directory.systemTemp.createTempSync()
         : null;
 
-    Future<void> consolidateDebugInfo({bool warn = false}) async {
+    Future<void> dumpDebugInfo() async {
       if (dumpDebugInfoDir == null) return;
 
       final debugInfoZip = await dumpDebugInfoDir.zipToTempFile();
       debugInfoZip.copySync(p.join('build', debugInfoFile.path));
-      final msg = 'Link debug info saved to ${debugInfoFile.path}';
-      if (warn) {
-        logger.warn(msg);
-      } else {
-        logger.detail(msg);
-      }
+      logger.detail('Link debug info saved to ${debugInfoFile.path}');
     }
 
     try {
@@ -342,12 +337,11 @@ class IosPatcher extends Patcher {
         kernel: kernelFile.path,
         dumpDebugInfoPath: dumpDebugInfoDir?.path,
       );
-
-      await consolidateDebugInfo();
     } catch (error) {
       linkProgress.fail('Failed to link AOT files: $error');
-      await consolidateDebugInfo(warn: true);
       return (exitCode: ExitCode.software.code, linkPercentage: null);
+    } finally {
+      await dumpDebugInfo();
     }
     linkProgress.complete();
     return (exitCode: ExitCode.success.code, linkPercentage: linkPercentage);
