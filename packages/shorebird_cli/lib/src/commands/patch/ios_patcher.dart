@@ -1,3 +1,5 @@
+import 'dart:async';
+
 import 'package:crypto/crypto.dart';
 import 'package:mason_logger/mason_logger.dart';
 import 'package:meta/meta.dart';
@@ -312,17 +314,19 @@ class IosPatcher extends Patcher {
 
     final linkProgress = logger.progress('Linking AOT files');
     double? linkPercentage;
+    final dumpDebugInfoDir = await aotTools.isLinkDebugInfoSupported()
+        ? Directory.systemTemp.createTempSync()
+        : null;
+
+    Future<void> dumpDebugInfo() async {
+      if (dumpDebugInfoDir == null) return;
+
+      final debugInfoZip = await dumpDebugInfoDir.zipToTempFile();
+      debugInfoZip.copySync(p.join('build', debugInfoFile.path));
+      logger.detail('Link debug info saved to ${debugInfoFile.path}');
+    }
+
     try {
-      final dumpDebugInfoDir = await aotTools.isLinkDebugInfoSupported()
-          ? Directory.systemTemp.createTempSync()
-          : null;
-
-      if (dumpDebugInfoDir != null) {
-        logger.detail(
-          'Dumping link debug info to ${dumpDebugInfoDir.path}',
-        );
-      }
-
       linkPercentage = await aotTools.link(
         base: releaseArtifact.path,
         patch: patch.path,
@@ -333,17 +337,11 @@ class IosPatcher extends Patcher {
         kernel: kernelFile.path,
         dumpDebugInfoPath: dumpDebugInfoDir?.path,
       );
-
-      if (dumpDebugInfoDir != null) {
-        final debugInfoZip = await dumpDebugInfoDir.zipToTempFile();
-        debugInfoZip.copySync(p.join('build', debugInfoFile.path));
-        logger.detail(
-          'Link debug info saved to ${debugInfoFile.path}',
-        );
-      }
     } catch (error) {
       linkProgress.fail('Failed to link AOT files: $error');
       return (exitCode: ExitCode.software.code, linkPercentage: null);
+    } finally {
+      await dumpDebugInfo();
     }
     linkProgress.complete();
     return (exitCode: ExitCode.success.code, linkPercentage: linkPercentage);

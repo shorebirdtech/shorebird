@@ -949,20 +949,53 @@ void main() {
                     () => logger.detail(
                       any(
                         that: contains(
-                          'Dumping link debug info to',
-                        ),
-                      ),
-                    ),
-                  ).called(1);
-                  verify(
-                    () => logger.detail(
-                      any(
-                        that: contains(
                           'Link debug info saved to',
                         ),
                       ),
                     ),
                   ).called(1);
+                });
+
+                group('when aot_tools link fails', () {
+                  setUp(() {
+                    when(
+                      () => aotTools.link(
+                        base: any(named: 'base'),
+                        patch: any(named: 'patch'),
+                        analyzeSnapshot: any(named: 'analyzeSnapshot'),
+                        genSnapshot: any(named: 'genSnapshot'),
+                        kernel: any(named: 'kernel'),
+                        outputPath: any(named: 'outputPath'),
+                        workingDirectory: any(named: 'workingDirectory'),
+                        dumpDebugInfoPath: any(
+                          named: 'dumpDebugInfoPath',
+                          that: isNotNull,
+                        ),
+                      ),
+                    ).thenThrow(Exception('oops'));
+                  });
+
+                  test('dumps debug info and logs', () async {
+                    await expectLater(
+                      () => runWithOverrides(
+                        () => patcher.createPatchArtifacts(
+                          appId: appId,
+                          releaseId: releaseId,
+                          releaseArtifact: releaseArtifactFile,
+                        ),
+                      ),
+                      exitsWithCode(ExitCode.software),
+                    );
+                    verify(
+                      () => logger.detail(
+                        any(
+                          that: contains(
+                            'Link debug info saved to',
+                          ),
+                        ),
+                      ),
+                    ).called(1);
+                  });
                 });
               });
 
