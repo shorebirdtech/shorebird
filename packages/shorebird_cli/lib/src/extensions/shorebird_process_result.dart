@@ -11,8 +11,7 @@ extension FindAppDill on ShorebirdProcessResult {
   /// Returns null if no matching line is found.
   String? findAppDill() {
     final appDillLine = stdout.toString().split('\n').firstWhereOrNull(
-          (l) =>
-              l.contains('ios-release/gen_snapshot') && l.endsWith('app.dill'),
+          (l) => l.contains('gen_snapshot') && l.endsWith('app.dill'),
         );
     return appDillLine?.split(' ').last;
   }
