@@ -1,5 +1,3 @@
-import 'dart:async';
-
 import 'package:args/args.dart';
 import 'package:mason_logger/mason_logger.dart';
 import 'package:mocktail/mocktail.dart';
@@ -138,9 +136,6 @@ void main() {
         when(() => ios.exportOptionsPlistFromArgs(any())).thenReturn(File(''));
 
         when(aotTools.isLinkDebugInfoSupported).thenAnswer((_) async => false);
-
-        when(() => shorebirdProcess.interrupts)
-            .thenAnswer((_) => const Stream.empty());
 
         patcher = IosPatcher(
           argResults: argResults,
@@ -989,44 +984,6 @@ void main() {
                         any(
                           that: contains(
                             'Link debug info saved to',
-                          ),
-                        ),
-                      ),
-                    ).called(1);
-                  });
-                });
-
-                group('when the process is interrupted', () {
-                  late StreamController<ProcessSignal> interrupts;
-                  setUp(() {
-                    interrupts = StreamController();
-                    when(
-                      () => shorebirdProcess.interrupts,
-                    ).thenAnswer((_) {
-                      Future.microtask(() {
-                        interrupts.add(ProcessSignal.sigint);
-                      });
-                      return interrupts.stream;
-                    });
-                  });
-
-                  test('warns the user', () async {
-                    final future = runWithOverrides(
-                      () => patcher.createPatchArtifacts(
-                        appId: appId,
-                        releaseId: releaseId,
-                        releaseArtifact: releaseArtifactFile,
-                      ),
-                    );
-
-                    await Future.microtask(() {});
-
-                    await future;
-                    verify(
-                      () => logger.warn(
-                        any(
-                          that: contains(
-                            'Linking interrupted',
                           ),
                         ),
                       ),

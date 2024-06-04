@@ -21,12 +21,9 @@ ShorebirdProcess get process => read(processRef);
 class ShorebirdProcess {
   ShorebirdProcess({
     ProcessWrapper? processWrapper, // For mocking ShorebirdProcess.
-    ProcessSignal? interruptSignal, // For mocking ShorebirdProcess.
-  })  : processWrapper = processWrapper ?? ProcessWrapper(),
-        _interruptSignal = interruptSignal ?? ProcessSignal.sigint;
+  }) : processWrapper = processWrapper ?? ProcessWrapper();
 
   final ProcessWrapper processWrapper;
-  final ProcessSignal _interruptSignal;
 
   Future<ShorebirdProcessResult> run(
     String executable,
@@ -140,9 +137,6 @@ class ShorebirdProcess {
       environment: resolvedEnvironment,
     );
   }
-
-  /// A stream of [ProcessSignal] events for the interrupt signal.
-  Stream<ProcessSignal> get interrupts => _interruptSignal.watch();
 
   Map<String, String> _resolveEnvironment(
     Map<String, String>? baseEnvironment, {

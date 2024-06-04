@@ -25,7 +25,6 @@ import 'package:shorebird_cli/src/release_type.dart';
 import 'package:shorebird_cli/src/shorebird_artifacts.dart';
 import 'package:shorebird_cli/src/shorebird_env.dart';
 import 'package:shorebird_cli/src/shorebird_flutter.dart';
-import 'package:shorebird_cli/src/shorebird_process.dart';
 import 'package:shorebird_cli/src/shorebird_validator.dart';
 import 'package:shorebird_cli/src/third_party/flutter_tools/lib/flutter_tools.dart';
 import 'package:shorebird_cli/src/version.dart';
@@ -311,24 +310,6 @@ class IosPatcher extends Patcher {
         ? Directory.systemTemp.createTempSync()
         : null;
 
-    // The linking process can take a while and there might be cases where it
-    // hangs (https://github.com/shorebirdtech/shorebird/issues/2160).
-    //
-    // If the user interrupts the process, we will loose all the logs
-    // that might already be created by `aot_tools link` command.
-    //
-    // So, to at least be able to get the logging data that were already
-    // created up until the point that the user interrupted the command, we
-    // hook this process to the interrupt signals and do nothing other than
-    // log a message.
-    //
-    // The interrupt signal will then propagate to the link command and fail,
-    // triggering the catch block which will make sure that the data is properly
-    // consolidated and warning in the console.
-    final interruptionSubscription = process.interrupts.listen((_) {
-      logger.warn('Linking interrupted');
-    });
-
     Future<void> consolidateDebugInfo({bool warn = false}) async {
       if (dumpDebugInfoDir == null) return;
 
@@ -361,7 +342,6 @@ class IosPatcher extends Patcher {
       return (exitCode: ExitCode.software.code, linkPercentage: null);
     }
     linkProgress.complete();
-    await interruptionSubscription.cancel();
     return (exitCode: ExitCode.success.code, linkPercentage: linkPercentage);
   }
 }
