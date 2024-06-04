@@ -47,6 +47,7 @@ void main() {
 
       when(() => argResults['build-number']).thenReturn(buildNumber);
       when(() => argResults.rest).thenReturn([]);
+      when(() => argResults.wasParsed(any())).thenReturn(false);
       when(() => logger.progress(any())).thenReturn(progress);
       when(
         () => artifactBuilder.buildAar(

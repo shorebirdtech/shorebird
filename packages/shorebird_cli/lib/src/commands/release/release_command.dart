@@ -29,6 +29,14 @@ class ReleaseCommand extends ShorebirdCommand {
   ReleaseCommand({ResolveReleaser? resolveReleaser}) {
     _resolveReleaser = resolveReleaser ?? getReleaser;
     argParser
+      ..addMultiOption(
+        CommonArguments.dartDefineArg.name,
+        help: CommonArguments.dartDefineArg.description,
+      )
+      ..addMultiOption(
+        CommonArguments.dartDefineFromFileArg.name,
+        help: CommonArguments.dartDefineFromFileArg.description,
+      )
       ..addOption(
         'target',
         abbr: 't',

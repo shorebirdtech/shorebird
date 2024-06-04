@@ -133,6 +133,7 @@ void main() {
       shorebirdAndroidArtifacts = MockShorebirdAndroidArtifacts();
 
       when(() => argResults.rest).thenReturn([]);
+      when(() => argResults.wasParsed(any())).thenReturn(false);
 
       when(() => logger.progress(any())).thenReturn(progress);
 

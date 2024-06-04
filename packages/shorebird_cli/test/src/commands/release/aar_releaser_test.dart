@@ -93,6 +93,7 @@ void main() {
       when(() => argResults['target-platform'])
           .thenReturn(Arch.values.map((a) => a.targetPlatformCliArg).toList());
       when(() => argResults.rest).thenReturn([]);
+      when(() => argResults.wasParsed(any())).thenReturn(false);
 
       when(() => logger.progress(any())).thenReturn(progress);
 

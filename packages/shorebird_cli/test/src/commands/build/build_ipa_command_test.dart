@@ -64,6 +64,7 @@ void main() {
 
       when(() => argResults['codesign']).thenReturn(true);
       when(() => argResults.rest).thenReturn([]);
+      when(() => argResults.wasParsed(any())).thenReturn(false);
       when(
         () => artifactBuilder.buildIpa(
           flavor: any(named: 'flavor'),
@@ -71,7 +72,7 @@ void main() {
           codesign: any(named: 'codesign'),
           args: any(named: 'args'),
         ),
-      ).thenAnswer((_) async => File(''));
+      ).thenAnswer((_) async => IpaBuildResult(kernelFile: File('')));
       when(() => ios.createExportOptionsPlist()).thenReturn(File('.'));
       when(() => logger.progress(any())).thenReturn(MockProgress());
       when(() => logger.info(any())).thenReturn(null);

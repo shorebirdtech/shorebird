@@ -106,6 +106,7 @@ void main() {
         xcodeBuild = MockXcodeBuild();
 
         when(() => argResults.rest).thenReturn([]);
+        when(() => argResults.wasParsed(any())).thenReturn(false);
 
         when(() => logger.progress(any())).thenReturn(progress);
 
@@ -307,7 +308,11 @@ void main() {
               target: any(named: 'target'),
               args: any(named: 'args'),
             ),
-          ).thenAnswer((_) async => {});
+          ).thenAnswer(
+            (_) async => IpaBuildResult(
+              kernelFile: File('/path/to/app.dill'),
+            ),
+          );
 
           when(
             () => artifactManager.getIosAppDirectory(
@@ -351,7 +356,11 @@ void main() {
                 args: any(named: 'args'),
                 base64PublicKey: any(named: 'base64PublicKey'),
               ),
-            ).thenAnswer((_) async => File(''));
+            ).thenAnswer(
+              (_) async => IpaBuildResult(
+                kernelFile: File('/path/to/app.dill'),
+              ),
+            );
           });
 
           test(

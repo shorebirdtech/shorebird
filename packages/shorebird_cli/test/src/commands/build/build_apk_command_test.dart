@@ -52,6 +52,7 @@ void main() {
       shorebirdValidator = MockShorebirdValidator();
 
       when(() => argResults.rest).thenReturn([]);
+      when(() => argResults.wasParsed(any())).thenReturn(false);
       when(() => logger.progress(any())).thenReturn(MockProgress());
       when(() => logger.info(any())).thenReturn(null);
       when(

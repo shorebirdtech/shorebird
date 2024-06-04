@@ -96,6 +96,7 @@ void main() {
         xcodeBuild = MockXcodeBuild();
 
         when(() => argResults.rest).thenReturn([]);
+        when(() => argResults.wasParsed(any())).thenReturn(false);
 
         when(() => logger.progress(any())).thenReturn(progress);
 
@@ -248,7 +249,9 @@ void main() {
           when(
             () => artifactBuilder.buildIosFramework(args: any(named: 'args')),
           ).thenAnswer(
-            (_) async => File(''),
+            (_) async => IosFrameworkBuildResult(
+              kernelFile: File('/path/to/app.dill'),
+            ),
           );
           when(() => artifactManager.getAppXcframeworkDirectory()).thenReturn(
             Directory(

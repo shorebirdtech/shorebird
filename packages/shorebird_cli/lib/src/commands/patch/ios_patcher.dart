@@ -47,6 +47,8 @@ class IosPatcher extends Patcher {
 
   String get _vmcodeOutputPath => p.join(buildDirectory.path, 'out.vmcode');
 
+  String get _appDillCopyPath => p.join(buildDirectory.path, 'app.dill');
+
   @visibleForTesting
   double? lastBuildLinkPercentage;
 
@@ -93,10 +95,11 @@ class IosPatcher extends Patcher {
       final buildProgress = logger.progress(
         'Building patch with Flutter $flutterVersionString',
       );
+      final IpaBuildResult ipaBuildResult;
       try {
         // If buildIpa is called with a different codesign value than the
         // release was, we will erroneously report native diffs.
-        await artifactBuilder.buildIpa(
+        ipaBuildResult = await artifactBuilder.buildIpa(
           codesign: shouldCodesign,
           exportOptionsPlist: exportOptionsPlist,
           flavor: flavor,
@@ -114,15 +117,18 @@ class IosPatcher extends Patcher {
       }
 
       try {
-        final newestDillFile = artifactManager.newestAppDill();
         await artifactBuilder.buildElfAotSnapshot(
-          appDillPath: newestDillFile.path,
+          appDillPath: ipaBuildResult.kernelFile.path,
           outFilePath: _aotOutputPath,
         );
       } catch (error) {
         buildProgress.fail('$error');
         rethrow;
       }
+
+      // Copy the kernel file to the build directory so that it can be used
+      // to generate a patch.
+      ipaBuildResult.kernelFile.copySync(_appDillCopyPath);
 
       buildProgress.complete();
     } catch (_) {
@@ -173,6 +179,7 @@ class IosPatcher extends Patcher {
     if (useLinker) {
       final (:exitCode, :linkPercentage) = await _runLinker(
         releaseArtifact: releaseArtifactFile,
+        kernelFile: File(_appDillCopyPath),
       );
       if (exitCode != ExitCode.success.code) return exit(exitCode);
       if (linkPercentage != null &&
@@ -281,6 +288,7 @@ class IosPatcher extends Patcher {
 
   Future<_LinkResult> _runLinker({
     required File releaseArtifact,
+    required File kernelFile,
   }) async {
     final patch = File(_aotOutputPath);
 
@@ -331,7 +339,7 @@ class IosPatcher extends Patcher {
         genSnapshot: genSnapshot,
         outputPath: _vmcodeOutputPath,
         workingDirectory: buildDirectory.path,
-        kernel: artifactManager.newestAppDill().path,
+        kernel: kernelFile.path,
         dumpDebugInfoPath: dumpDebugInfoDir?.path,
       );
 
