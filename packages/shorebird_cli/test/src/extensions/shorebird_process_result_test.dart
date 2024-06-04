@@ -23,6 +23,25 @@ void main() {
           ),
         );
       });
+
+      test('returns the path to app.dill (local engine)', () {
+        const result = ShorebirdProcessResult(
+          stdout: '''
+          [        ] Will strip AOT snapshot manually after build and dSYM generation.
+          [        ] executing: /Users/felix/Development/github.com/shorebirdtech/engine/src/out/ios_release/clang_x64/gen_snapshot_arm64 --deterministic --snapshot_kind=app-aot-assembly --assembly=/Users/felix/Development/github.com/felangel/flutter_and_friends/.dart_tool/flutter_build/ae2d368b5940aefb0c55ff62186de056/arm64/snapshot_assembly.S /Users/felix/Development/github.com/felangel/flutter_and_friends/.dart_tool/flutter_build/ae2d368b5940aefb0c55ff62186de056/app.dill
+          [+5435 ms] executing: sysctl hw.optional.arm64
+''',
+          stderr: '',
+          exitCode: 0,
+        );
+
+        expect(
+          result.findAppDill(),
+          equals(
+            '/Users/felix/Development/github.com/felangel/flutter_and_friends/.dart_tool/flutter_build/ae2d368b5940aefb0c55ff62186de056/app.dill',
+          ),
+        );
+      });
     });
 
     group('when gen_snapshot is not invoked with app.dill', () {
