@@ -1,3 +1,5 @@
+import 'dart:async';
+
 import 'package:args/args.dart';
 import 'package:mason_logger/mason_logger.dart';
 import 'package:mocktail/mocktail.dart';
@@ -136,6 +138,9 @@ void main() {
         when(() => ios.exportOptionsPlistFromArgs(any())).thenReturn(File(''));
 
         when(aotTools.isLinkDebugInfoSupported).thenAnswer((_) async => false);
+
+        when(() => shorebirdProcess.interrupts)
+            .thenAnswer((_) => const Stream.empty());
 
         patcher = IosPatcher(
           argResults: argResults,
@@ -942,20 +947,91 @@ void main() {
                     () => logger.detail(
                       any(
                         that: contains(
-                          'Dumping link debug info to',
-                        ),
-                      ),
-                    ),
-                  ).called(1);
-                  verify(
-                    () => logger.detail(
-                      any(
-                        that: contains(
                           'Link debug info saved to',
                         ),
                       ),
                     ),
                   ).called(1);
+                });
+
+                group('when aot_tools link fails', () {
+                  setUp(() {
+                    when(
+                      () => aotTools.link(
+                        base: any(named: 'base'),
+                        patch: any(named: 'patch'),
+                        analyzeSnapshot: any(named: 'analyzeSnapshot'),
+                        genSnapshot: any(named: 'genSnapshot'),
+                        kernel: any(named: 'kernel'),
+                        outputPath: any(named: 'outputPath'),
+                        workingDirectory: any(named: 'workingDirectory'),
+                        dumpDebugInfoPath: any(
+                          named: 'dumpDebugInfoPath',
+                          that: isNotNull,
+                        ),
+                      ),
+                    ).thenThrow(Exception('oops'));
+                  });
+
+                  test('dumps debug info and warns', () async {
+                    await expectLater(
+                      () => runWithOverrides(
+                        () => patcher.createPatchArtifacts(
+                          appId: appId,
+                          releaseId: releaseId,
+                          releaseArtifact: releaseArtifactFile,
+                        ),
+                      ),
+                      exitsWithCode(ExitCode.software),
+                    );
+                    verify(
+                      () => logger.warn(
+                        any(
+                          that: contains(
+                            'Link debug info saved to',
+                          ),
+                        ),
+                      ),
+                    ).called(1);
+                  });
+                });
+
+                group('when the process is interrupted', () {
+                  late StreamController<ProcessSignal> interrupts;
+                  setUp(() {
+                    interrupts = StreamController();
+                    when(
+                      () => shorebirdProcess.interrupts,
+                    ).thenAnswer((_) {
+                      Future.microtask(() {
+                        interrupts.add(ProcessSignal.sigint);
+                      });
+                      return interrupts.stream;
+                    });
+                  });
+
+                  test('warns the user', () async {
+                    final future = runWithOverrides(
+                      () => patcher.createPatchArtifacts(
+                        appId: appId,
+                        releaseId: releaseId,
+                        releaseArtifact: releaseArtifactFile,
+                      ),
+                    );
+
+                    await Future.microtask(() {});
+
+                    await future;
+                    verify(
+                      () => logger.warn(
+                        any(
+                          that: contains(
+                            'Linking interrupted',
+                          ),
+                        ),
+                      ),
+                    ).called(1);
+                  });
                 });
               });
 
