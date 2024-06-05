@@ -18,7 +18,7 @@ class BuildCommand extends ShorebirdCommand {
   String get description => 'Build a new release of your application.';
 
   @override
-  String get name => 'build';
+  String get name => 'build-internal';
 
   @override
   bool get hidden => true;
