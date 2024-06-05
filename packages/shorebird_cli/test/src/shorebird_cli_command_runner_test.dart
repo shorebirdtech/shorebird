@@ -325,7 +325,8 @@ Engine • revision $shorebirdEngineRevision''',
             ).called(1);
             verify(
               () => logger.info(
-                  'Run ${lightCyan.wrap('shorebird upgrade')} to upgrade.'),
+                'Run ${lightCyan.wrap('shorebird upgrade')} to upgrade.',
+              ),
             ).called(1);
 
             expect(result, equals(ExitCode.success.code));
