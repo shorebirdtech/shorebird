@@ -15,10 +15,13 @@ class BuildCommand extends ShorebirdCommand {
   }
 
   @override
-  String get description => 'Build a new release of your application.';
+  String get description => '''
+Build a new release of your application.
+
+Builds created with this command will not be patchable. If you need to create a patchable build, use the `shorebird release` command instead.`''';
 
   @override
-  String get name => 'build';
+  String get name => 'build-internal';
 
   @override
   bool get hidden => true;
