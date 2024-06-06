@@ -2,6 +2,19 @@
 
 This section contains past updates we've sent to customers via Discord.
 
+## 1.1.10 (June 6, 2024)
+
+- 🔒 Support for signed patches (beta)
+- 🐦 Support for Flutter 3.22.2
+- ✍️ Write linker debug info when linking fails
+- 📈 Improve iOS patch performance
+
+Patch signing allows customers to configure Shorebird apps to require
+cryptographically signed patches.  This is another level of security
+for businesses which require such.  More information:
+https://shorebird.dev/blog/patch-signing-beta/
+https://docs.shorebird.dev/guides/patch-signing/
+
 ## 1.1.9 (June 3, 2024)
 
 - 🧑‍⚕️ Adds logs directory path and more info about Java version to `shorebird doctor` output
