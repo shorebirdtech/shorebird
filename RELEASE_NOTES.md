@@ -2,6 +2,12 @@
 
 This section contains past updates we've sent to customers via Discord.
 
+## 1.1.10 (June 6, 2024)
+
+- 🐦 Support for Flutter 3.22.2
+- ✍️ Write linker debug info when linking fails
+- 📈 Improve iOS patch performance
+
 ## 1.1.9 (June 3, 2024)
 
 - 🧑‍⚕️ Adds logs directory path and more info about Java version to `shorebird doctor` output
