@@ -16,7 +16,7 @@ effect Android.
 After careful evaluation we decided this try/catch issue was severe enough that
 we would be remiss to allow continued use of older versions of Flutter for iOS
 releases.  We have therefore decided to only support Flutter 3.22.2 and later
-for iOS releases.
+for iOS releases at this time.
 
 ## 1.1.10 (June 6, 2024)
 
