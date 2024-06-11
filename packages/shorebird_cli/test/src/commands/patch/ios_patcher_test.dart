@@ -273,6 +273,9 @@ void main() {
           when(
             () => shorebirdFlutter.getVersionAndRevision(),
           ).thenAnswer((_) async => flutterVersionAndRevision);
+          when(
+            () => shorebirdFlutter.getVersion(),
+          ).thenAnswer((_) async => Version(3, 22, 2));
         });
 
         group('when specified flutter version is less than minimum', () {
