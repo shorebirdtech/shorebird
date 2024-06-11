@@ -2,7 +2,7 @@
 
 This section contains past updates we've sent to customers.
 
-## 1.2.0 (June 11, 2024)
+## 1.1.11 (June 11, 2024)
 
 🫴 Fixes a bug in iOS where try/catch blocks could be ignored after patching.
 🏎️ Improves iOS patch performance by 10-15%.
