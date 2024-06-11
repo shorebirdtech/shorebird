@@ -307,7 +307,9 @@ void main() {
 
             verify(
               () => logger.err(
-                '''iOS patches are not supported with Flutter versions older than $minimumSupportedIosFlutterVersion.''',
+                '''
+iOS patches are not supported with Flutter versions older than $minimumSupportedIosFlutterVersion.
+For more information see: $supportedVersionsLink''',
               ),
             ).called(1);
           });

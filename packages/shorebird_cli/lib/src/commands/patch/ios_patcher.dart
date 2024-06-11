@@ -98,7 +98,9 @@ class IosPatcher extends Patcher {
       if ((flutterVersion ?? minimumSupportedIosFlutterVersion) <
           minimumSupportedIosFlutterVersion) {
         logger.err(
-          '''iOS patches are not supported with Flutter versions older than $minimumSupportedIosFlutterVersion.''',
+          '''
+iOS patches are not supported with Flutter versions older than $minimumSupportedIosFlutterVersion.
+For more information see: $supportedVersionsLink''',
         );
         exit(ExitCode.software.code);
       }
