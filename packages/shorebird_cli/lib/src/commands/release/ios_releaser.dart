@@ -70,7 +70,9 @@ class IosReleaser extends Releaser {
       if (Version.parse(flutterVersionArg) <
           minimumSupportedIosFlutterVersion) {
         logger.err(
-          '''iOS releases are not supported with Flutter versions older than $minimumSupportedIosFlutterVersion.''',
+          '''
+iOS releases are not supported with Flutter versions older than $minimumSupportedIosFlutterVersion.
+For more information see: $supportedVersionsLink''',
         );
         exit(ExitCode.usage.code);
       }

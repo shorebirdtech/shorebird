@@ -210,7 +210,9 @@ void main() {
 
             verify(
               () => logger.err(
-                '''iOS releases are not supported with Flutter versions older than $minimumSupportedIosFlutterVersion.''',
+                '''
+iOS releases are not supported with Flutter versions older than $minimumSupportedIosFlutterVersion.
+For more information see: $supportedVersionsLink''',
               ),
             ).called(1);
           });
