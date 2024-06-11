@@ -90,10 +90,21 @@ class IosPatcher extends Patcher {
 
     try {
       final shouldCodesign = argResults['codesign'] == true;
-      final flutterVersionString =
-          await shorebirdFlutter.getVersionAndRevision();
+      final (flutterVersionAndRevision, flutterVersion) = await (
+        shorebirdFlutter.getVersionAndRevision(),
+        shorebirdFlutter.getVersion(),
+      ).wait;
+
+      if ((flutterVersion ?? minimumSupportedIosFlutterVersion) <
+          minimumSupportedIosFlutterVersion) {
+        logger.err(
+          '''iOS patches are not supported with Flutter versions older than $minimumSupportedIosFlutterVersion.''',
+        );
+        exit(ExitCode.software.code);
+      }
+
       final buildProgress = logger.progress(
-        'Building patch with Flutter $flutterVersionString',
+        'Building patch with Flutter $flutterVersionAndRevision',
       );
       final IpaBuildResult ipaBuildResult;
       try {
