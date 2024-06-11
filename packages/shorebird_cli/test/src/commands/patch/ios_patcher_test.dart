@@ -3,6 +3,7 @@ import 'package:mason_logger/mason_logger.dart';
 import 'package:mocktail/mocktail.dart';
 import 'package:path/path.dart' as p;
 import 'package:platform/platform.dart';
+import 'package:pub_semver/pub_semver.dart';
 import 'package:scoped_deps/scoped_deps.dart';
 import 'package:shorebird_cli/src/archive_analysis/archive_analysis.dart';
 import 'package:shorebird_cli/src/artifact_builder.dart';
@@ -267,12 +268,46 @@ void main() {
       });
 
       group('buildPatchArtifact', () {
-        const flutterVersionAndRevision = '3.10.6 (83305b5088)';
-
+        const flutterVersionAndRevision = '3.22.2 (83305b5088)';
         setUp(() {
           when(
             () => shorebirdFlutter.getVersionAndRevision(),
           ).thenAnswer((_) async => flutterVersionAndRevision);
+        });
+
+        group('when specified flutter version is less than minimum', () {
+          setUp(() {
+            when(
+              () => shorebirdValidator.validatePreconditions(
+                checkUserIsAuthenticated: any(
+                  named: 'checkUserIsAuthenticated',
+                ),
+                checkShorebirdInitialized: any(
+                  named: 'checkShorebirdInitialized',
+                ),
+                validators: any(named: 'validators'),
+                supportedOperatingSystems: any(
+                  named: 'supportedOperatingSystems',
+                ),
+              ),
+            ).thenAnswer((_) async {});
+            when(
+              () => shorebirdFlutter.getVersion(),
+            ).thenAnswer((_) async => Version(3, 0, 0));
+          });
+
+          test('logs error and exits with code 70', () async {
+            await expectLater(
+              () => runWithOverrides(patcher.buildPatchArtifact),
+              exitsWithCode(ExitCode.software),
+            );
+
+            verify(
+              () => logger.err(
+                '''iOS patches are not supported with Flutter versions older than $minimumSupportedIosFlutterVersion.''',
+              ),
+            ).called(1);
+          });
         });
 
         group('when exportOptionsPlist fails', () {
