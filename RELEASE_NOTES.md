@@ -4,9 +4,9 @@ This section contains past updates we've sent to customers.
 
 ## 1.2.0 (June 11, 2024)
 
-- Fixes a bug in iOS where try/catch blocks could be ignored after patching.
-- Improves iOS patch performance by 10-15%.
-- Disable Flutter 3.22.1 and earlier for iOS.
+🫴 Fixes a bug in iOS where try/catch blocks could be ignored after patching.
+🏎️ Improves iOS patch performance by 10-15%.
+🚫 Disable Flutter 3.22.1 and earlier for iOS.
 
 We found and fixed a bug in the Dart runtime, whereby sometimes "catch" blocks
 would be ignored after applying a Shorebird patch.  This bug has been present in
