@@ -49,7 +49,7 @@ class ShorebirdYaml {
   final bool? autoUpdate;
 }
 
-/// Extension on Shorebird yaml to get the app id for a specific flavor.
+/// Extension on [ShorebirdYaml] to get the app id for a specific flavor.
 extension AppIdExtension on ShorebirdYaml {
   /// Returns the app id for the given flavor.
   String getAppId({String? flavor}) {
