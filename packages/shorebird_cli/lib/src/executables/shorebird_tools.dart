@@ -38,7 +38,7 @@ class ShorebirdTools {
     return shorebirdToolsDirectory.existsSync();
   }
 
-  /// The directory containing the shorebird_tools package.
+  /// The directory containing the `shorebird_tools` package.
   Directory get shorebirdToolsDirectory {
     final dir = Directory(
       p.join(
