@@ -118,6 +118,10 @@ of the iOS app that is using this module.''',
       ..addOption(
         CommonArguments.publicKeyArg.name,
         help: CommonArguments.publicKeyArg.description,
+      )
+      ..addFlag(
+        CommonArguments.overrideMinFlutterVersionArg.name,
+        help: CommonArguments.overrideMinFlutterVersionArg.description,
       );
   }
 

@@ -7,6 +7,7 @@ import 'package:shorebird_cli/src/artifact_builder.dart';
 import 'package:shorebird_cli/src/artifact_manager.dart';
 import 'package:shorebird_cli/src/code_push_client_wrapper.dart';
 import 'package:shorebird_cli/src/commands/release/releaser.dart';
+import 'package:shorebird_cli/src/common_arguments.dart';
 import 'package:shorebird_cli/src/doctor.dart';
 import 'package:shorebird_cli/src/executables/xcodebuild.dart';
 import 'package:shorebird_cli/src/extensions/arg_results.dart';
@@ -65,16 +66,23 @@ class IosReleaser extends Releaser {
       exit(e.exitCode.code);
     }
 
-    final flutterVersionArg = argResults['flutter-version'] as String?;
+    final flutterVersionArg = argResults.version('flutter-version');
     if (flutterVersionArg != null) {
-      if (Version.parse(flutterVersionArg) <
-          minimumSupportedIosFlutterVersion) {
-        logger.err(
-          '''
+      if (flutterVersionArg < minimumSupportedIosFlutterVersion) {
+        final overrideMinFlutterVersion =
+            argResults[CommonArguments.overrideMinFlutterVersionArg.name] ==
+                true;
+        if (!overrideMinFlutterVersion) {
+          logger.err(
+            '''
 iOS releases are not supported with Flutter versions older than $minimumSupportedIosFlutterVersion.
-For more information see: $supportedVersionsLink''',
-        );
-        exit(ExitCode.usage.code);
+For more information see: $supportedVersionsLink
+
+If you are certain about the compatibility of your Flutter version, you can bypass this check by passing the --override-min-flutter-version flag.
+''',
+          );
+          exit(ExitCode.usage.code);
+        }
       }
     }
   }

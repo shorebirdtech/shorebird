@@ -65,6 +65,25 @@ class IosPatcher extends Patcher {
   ArchiveDiffer get archiveDiffer => IosArchiveDiffer();
 
   @override
+  Future<void> assertArgsAreValid() async {
+    await super.assertArgsAreValid();
+
+    final isStaging = argResults['staging'] == true;
+    final overridingMinFlutterVersion =
+        argResults[CommonArguments.overrideMinFlutterVersionArg.name] == true;
+    if (overridingMinFlutterVersion && !isStaging) {
+      logger.err(
+        '''
+When overriding min Flutter Version, patches must be staged first.
+
+If you are really sure you want to proceed, add the --staging flag to the
+command and try again.''',
+      );
+      exit(ExitCode.usage.code);
+    }
+  }
+
+  @override
   Future<void> assertPreconditions() async {
     try {
       await shorebirdValidator.validatePreconditions(
@@ -97,12 +116,20 @@ class IosPatcher extends Patcher {
 
       if ((flutterVersion ?? minimumSupportedIosFlutterVersion) <
           minimumSupportedIosFlutterVersion) {
-        logger.err(
-          '''
+        final overrideMinFlutterVersion =
+            argResults[CommonArguments.overrideMinFlutterVersionArg.name] ==
+                true;
+        if (!overrideMinFlutterVersion) {
+          logger.err(
+            '''
 iOS patches are not supported with Flutter versions older than $minimumSupportedIosFlutterVersion.
-For more information see: $supportedVersionsLink''',
-        );
-        exit(ExitCode.software.code);
+For more information see: $supportedVersionsLink
+
+If you are certain about the compatibility of your Flutter version, you can bypass this check by passing the --override-min-flutter-version flag. Patches generated with the override flag must be sent to staging first, so make sure to also pass the --staging flag alongside.
+''',
+          );
+          exit(ExitCode.software.code);
+        }
       }
 
       final buildProgress = logger.progress(

@@ -66,4 +66,13 @@ The path for a public key .pem file that will be used to validate patch signatur
 The path for a private key .pem file that will be used to sign the patch artifact.
 ''',
   );
+
+  static const overrideMinFlutterVersionArg = ArgumentDescriber(
+    name: 'override-min-flutter-version',
+    description: '''
+When specified, will override the platform minimum Flutter version supported by Shorebird.
+
+This flag is dangerous and might cause unexpected issues, be sure to only use it when extremely necessary and always do a careful testing in the artifacts generated when this flag is provided.
+''',
+  );
 }

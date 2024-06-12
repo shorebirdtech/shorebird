@@ -1,6 +1,7 @@
 import 'package:args/args.dart';
 import 'package:collection/collection.dart';
 import 'package:mason_logger/mason_logger.dart';
+import 'package:pub_semver/pub_semver.dart';
 import 'package:shorebird_cli/src/code_signer.dart';
 import 'package:shorebird_cli/src/common_arguments.dart';
 import 'package:shorebird_cli/src/extensions/file.dart';
@@ -127,5 +128,18 @@ extension ForwardedArgs on ArgResults {
     }
 
     return forwarded;
+  }
+}
+
+/// Extension on [ArgResults] to provide [Version] releated extensions.
+extension VersionArgs on ArgResults {
+  /// Returns a [Version] from the argument [name] or null if the argument was
+  /// not provided.
+  Version? version(String name) {
+    final version = this[name] as String?;
+    if (version == null) {
+      return null;
+    }
+    return Version.parse(version);
   }
 }
