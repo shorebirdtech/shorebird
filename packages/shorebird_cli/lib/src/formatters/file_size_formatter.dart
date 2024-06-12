@@ -1,5 +1,6 @@
 import 'dart:math';
 
+/// Formats the given [bytes] into a human-readable string.
 String formatBytes(int bytes, {int decimals = 2}) {
   if (bytes <= 0) return '0 B';
   const suffixes = ['B', 'KB', 'MB', 'GB', 'TB', 'PB', 'EB'];

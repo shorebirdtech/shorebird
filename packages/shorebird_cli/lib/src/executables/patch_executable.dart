@@ -17,6 +17,7 @@ class PatchFailedException implements Exception {
   /// {@macro patch_failed_exception}
   PatchFailedException(this.message);
 
+  /// The error message.
   final String message;
 
   @override
@@ -29,6 +30,7 @@ class PatchFailedException implements Exception {
 ///
 /// Throws [PatchFailedException] if the patch command exits with non-zero code.
 class PatchExecutable {
+  /// Runs the `patch` executable.
   Future<void> run({
     required String releaseArtifactPath,
     required String patchArtifactPath,

@@ -1,3 +1,4 @@
+// cspell:words bundletool
 import 'package:path/path.dart' as p;
 import 'package:scoped_deps/scoped_deps.dart';
 import 'package:shorebird_cli/src/android_sdk.dart';
@@ -12,7 +13,9 @@ final bundletoolRef = create(Bundletool.new);
 /// The [Bundletool] instance available in the current zone.
 Bundletool get bundletool => read(bundletoolRef);
 
+/// A wrapper around the `bundletool` command.
 class Bundletool {
+  /// The name of the bundletool jar.
   static const jar = 'bundletool.jar';
 
   Future<ShorebirdProcessResult> _exec(List<String> command) async {

@@ -10,7 +10,8 @@ import 'package:xml/xml.dart';
 ///
 /// See https://github.com/shorebirdtech/shorebird/issues/160.
 class AndroidInternetPermissionValidator extends Validator {
-  final String mainAndroidManifestPath = p.join(
+  /// Path to the main AndroidManifest.xml file.
+  final String _mainAndroidManifestPath = p.join(
     'android',
     'app',
     'src',
@@ -55,7 +56,7 @@ The command you are running must be run within a Flutter app project that suppor
         ValidationIssue(
           severity: ValidationIssueSeverity.error,
           message:
-              '$mainAndroidManifestPath is missing the INTERNET permission.',
+              '$_mainAndroidManifestPath is missing the INTERNET permission.',
           fix: () => _addInternetPermissionToFile(manifestFilePath),
         ),
       ];

@@ -54,6 +54,7 @@ class IosFrameworkPatcher extends Patcher {
   @override
   double? get linkPercentage => lastBuildLinkPercentage;
 
+  /// The last build link percentage.
   @visibleForTesting
   double? lastBuildLinkPercentage;
 

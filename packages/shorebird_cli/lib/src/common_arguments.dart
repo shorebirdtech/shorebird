@@ -4,6 +4,7 @@ import 'package:shorebird_cli/src/platform/ios.dart';
 /// A class that describes an argument from a command/sub command.
 /// {@endtemplate}
 class ArgumentDescriber {
+  /// {@macro argument_describer}
   const ArgumentDescriber({
     required this.name,
     required this.description,
@@ -53,6 +54,8 @@ Entries from "--dart-define" with identical keys take precedence over entries fr
         '''Export an IPA with these options. See "xcodebuild -h" for available exportOptionsPlist keys (iOS only).''',
   );
 
+  /// An argument that allows the user to specify a public key file that will be
+  /// used to validate patch signatures.
   static const publicKeyArg = ArgumentDescriber(
     name: 'public-key-path',
     description: '''
@@ -60,6 +63,8 @@ The path for a public key .pem file that will be used to validate patch signatur
 ''',
   );
 
+  /// An argument that allows the user to specify a private key file that will
+  /// be used to sign the patch artifact.
   static const privateKeyArg = ArgumentDescriber(
     name: 'private-key-path',
     description: '''

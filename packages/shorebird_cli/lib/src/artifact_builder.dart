@@ -1,3 +1,5 @@
+// cspell:words endtemplate aabs ipas appbundle bryanoltman codesign xcarchive
+// cspell:words xcframework
 import 'dart:io';
 
 import 'package:mason_logger/mason_logger.dart';
@@ -130,6 +132,9 @@ class ArtifactBuilder {
     }
   }
 
+  /// Builds an APK using `flutter build apk`. Runs `flutter pub get` with the
+  /// system installation of Flutter to reset `.dart_tool/package_config.json`
+  /// after the build completes or fails.
   Future<File> buildApk({
     String? flavor,
     String? target,
@@ -188,6 +193,9 @@ class ArtifactBuilder {
     }
   }
 
+  /// Builds an AAR using `flutter build aar`. Runs `flutter pub get` with the
+  /// system installation of Flutter to reset `.dart_tool/package_config.json`
+  /// after the build completes or fails.
   Future<void> buildAar({
     required String buildNumber,
     Iterable<Arch>? targetPlatforms,

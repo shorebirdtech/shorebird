@@ -1,3 +1,5 @@
+// ignore_for_file: public_member_api_docs
+
 import 'dart:io';
 
 import 'package:collection/collection.dart';
@@ -11,12 +13,16 @@ import 'package:shorebird_cli/src/shorebird_env.dart';
 
 /// Thrown when multiple artifacts are found in the build directory.
 class MultipleArtifactsFoundException implements Exception {
+  /// Creates a [MultipleArtifactsFoundException].
   MultipleArtifactsFoundException({
     required this.buildDir,
     required this.foundArtifacts,
   });
 
+  /// The build directory where the artifacts were found.
   final String buildDir;
+
+  /// The list of found artifacts.
   final List<FileSystemEntity> foundArtifacts;
 
   @override

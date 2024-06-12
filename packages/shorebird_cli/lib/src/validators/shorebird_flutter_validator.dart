@@ -5,7 +5,9 @@ import 'package:shorebird_cli/src/shorebird_flutter.dart';
 import 'package:shorebird_cli/src/third_party/flutter_tools/lib/flutter_tools.dart';
 import 'package:shorebird_cli/src/validators/validators.dart';
 
+/// An exception thrown when a validation issue is found.
 class FlutterValidationException implements Exception {
+  /// Creates a new [FlutterValidationException] with the provided [message].
   const FlutterValidationException(this.message);
 
   /// The message associated with the exception.
@@ -15,6 +17,7 @@ class FlutterValidationException implements Exception {
   String toString() => 'FlutterValidationException: $message';
 }
 
+/// An exception thrown when a command is not found.
 class CommandNotFoundException implements Exception {}
 
 /// {@template shorebird_flutter_validator}

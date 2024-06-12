@@ -13,6 +13,7 @@ class MissingIOSProjectException implements Exception {
   /// {@macro missing_ios_project_exception}
   const MissingIOSProjectException(this.projectPath);
 
+  /// Expected path of the XCode project.
   final String projectPath;
 
   @override

@@ -11,17 +11,19 @@ export 'shorebird_yaml_asset_validator.dart';
 export 'storage_access_validator.dart';
 
 /// Severity level of a [ValidationIssue].
-///
-/// [error]s will prevent code push from working and block releases, builds,
-///   patches, etc.
-/// [warning]s should be fixed before releasing your app, but are not as urgent.
 enum ValidationIssueSeverity {
+  /// [error]s will prevent code push from working and block releases, builds,
+  /// patches, etc.
   error,
+
+  /// [warning]s should be fixed before releasing your app, but are not as
+  /// urgent.
   warning,
 }
 
 /// Display helpers for printing [ValidationIssue]s.
 extension Display on ValidationIssueSeverity {
+  /// The raw string representation of this severity.
   String get rawLeading {
     switch (this) {
       case ValidationIssueSeverity.error:
@@ -31,6 +33,7 @@ extension Display on ValidationIssueSeverity {
     }
   }
 
+  /// The colorized string representation of this severity.
   String get displayLeading {
     switch (this) {
       case ValidationIssueSeverity.error:
@@ -44,6 +47,7 @@ extension Display on ValidationIssueSeverity {
 /// A (potential) problem with the current Shorebird installation or project.
 @immutable
 class ValidationIssue {
+  /// Creates a new [ValidationIssue].
   const ValidationIssue({
     required this.severity,
     required this.message,

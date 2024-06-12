@@ -34,7 +34,7 @@ class UserCancelledException implements Exception {}
 /// A reference to a [PatchDiffChecker] instance.
 ScopedRef<PatchDiffChecker> patchDiffCheckerRef = create(PatchDiffChecker.new);
 
-// The [PatchVerifier] instance available in the current zone.
+/// The [PatchDiffChecker] instance available in the current zone.
 PatchDiffChecker get patchDiffChecker => read(patchDiffCheckerRef);
 
 /// {@template patch_verifier}

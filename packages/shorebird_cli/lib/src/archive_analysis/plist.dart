@@ -1,8 +1,12 @@
+// cspell:words propertylistserialization xcarchives
+
 import 'dart:io';
 
 import 'package:propertylistserialization/propertylistserialization.dart';
 
+/// A representation of an Info.plist file.
 class Plist {
+  /// Creates a new [Plist] from the contents of the provided [file].
   Plist({required File file}) {
     properties = PropertyListSerialization.propertyListWithString(
       file.readAsStringSync(),
@@ -29,8 +33,10 @@ class Plist {
   /// },
   static const applicationPropertiesKey = 'ApplicationProperties';
 
+  /// The properties contained in the Info.plist file.
   late final Map<String, Object> properties;
 
+  /// The version number of the application.
   String get versionNumber {
     final applicationProperties =
         properties[applicationPropertiesKey]! as Map<String, Object>;

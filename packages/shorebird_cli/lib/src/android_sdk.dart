@@ -1,3 +1,5 @@
+// cspell:words aapt USERPROFILE cmdline
+
 import 'dart:io';
 
 import 'package:collection/collection.dart';
@@ -7,7 +9,10 @@ import 'package:shorebird_cli/src/os/operating_system_interface.dart';
 import 'package:shorebird_cli/src/platform.dart';
 
 // https://developer.android.com/studio/command-line/variables.html#envar
+/// The environment variable name for the Android SDK home directory.
 const kAndroidHome = 'ANDROID_HOME';
+
+/// The environment variable name for the Android SDK root directory.
 const kAndroidSdkRoot = 'ANDROID_SDK_ROOT';
 
 /// A reference to a [AndroidSdk] instance.

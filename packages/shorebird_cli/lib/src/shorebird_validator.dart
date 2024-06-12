@@ -1,3 +1,5 @@
+// ignore_for_file: public_member_api_docs
+
 import 'package:collection/collection.dart';
 import 'package:mason_logger/mason_logger.dart';
 import 'package:scoped_deps/scoped_deps.dart';

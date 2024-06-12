@@ -1,3 +1,6 @@
+// ignore_for_file: public_member_api_docs
+// cspell:words googleapis bryanoltman endtemplate CLI tgvek orctktiabrek
+// cspell:words GOCSPX googleusercontent Pkkwp Entra
 import 'dart:convert';
 import 'dart:io';
 
@@ -19,10 +22,10 @@ import 'package:shorebird_code_push_client/shorebird_code_push_client.dart';
 
 export 'ci_token.dart';
 
-// A reference to a [Auth] instance.
+/// A reference to a [Auth] instance.
 final authRef = create(Auth.new);
 
-// The [Auth] instance available in the current zone.
+/// The [Auth] instance available in the current zone.
 Auth get auth => read(authRef);
 
 /// The JWT issuer field for Google-issued JWTs.
@@ -36,6 +39,7 @@ const microsoftJwtIssuerPrefix = 'https://login.microsoftonline.com/';
 /// The environment variable that holds the Shorebird CI token.
 const shorebirdTokenEnvVar = 'SHOREBIRD_TOKEN';
 
+/// Callback for obtaining access credentials.
 typedef ObtainAccessCredentials = Future<oauth2.AccessCredentials> Function(
   oauth2.ClientId clientId,
   List<String> scopes,
@@ -44,6 +48,7 @@ typedef ObtainAccessCredentials = Future<oauth2.AccessCredentials> Function(
   oauth2.AuthEndpoints authEndpoints,
 });
 
+/// Callback for refreshing access credentials.
 typedef RefreshCredentials = Future<oauth2.AccessCredentials> Function(
   oauth2.ClientId clientId,
   oauth2.AccessCredentials credentials,
@@ -51,11 +56,15 @@ typedef RefreshCredentials = Future<oauth2.AccessCredentials> Function(
   oauth2.AuthEndpoints authEndpoints,
 });
 
+/// Callback when credentials are refreshed.
 typedef OnRefreshCredentials = void Function(
   oauth2.AccessCredentials credentials,
 );
 
+/// A client that automatically refreshes OAuth 2.0 credentials.
 class AuthenticatedClient extends http.BaseClient {
+  /// Creates a new [AuthenticatedClient] with the given [httpClient] and
+  /// [credentials].
   AuthenticatedClient.credentials({
     required http.Client httpClient,
     required oauth2.AccessCredentials credentials,
@@ -68,6 +77,8 @@ class AuthenticatedClient extends http.BaseClient {
           refreshCredentials: refreshCredentials,
         );
 
+  /// Creates a new [AuthenticatedClient] with the given [httpClient] and
+  /// [token].
   AuthenticatedClient.token({
     required http.Client httpClient,
     required CiToken token,
@@ -137,7 +148,9 @@ class AuthenticatedClient extends http.BaseClient {
   }
 }
 
+/// An OAuth 2.0 authentication provider.
 class Auth {
+  /// Creates a new [Auth] instance.
   Auth({
     http.Client? httpClient,
     String? credentialsDir,
@@ -160,10 +173,12 @@ class Auth {
   final CodePushClientBuilder _buildCodePushClient;
   CiToken? _token;
 
+  /// The path to the credentials file.
   String get credentialsFilePath {
     return p.join(_credentialsDir, 'credentials.json');
   }
 
+  /// The underlying HTTP client.
   http.Client get client {
     if (_credentials == null && _token == null) {
       return _httpClient;
@@ -183,6 +198,7 @@ class Auth {
     );
   }
 
+  /// Gets a CI token for the current user.
   Future<CiToken> loginCI(
     AuthProvider authProvider, {
     required void Function(String) prompt,
@@ -220,6 +236,7 @@ class Auth {
     }
   }
 
+  /// Logs in the user.
   Future<void> login(
     AuthProvider authProvider, {
     required void Function(String) prompt,
@@ -255,14 +272,17 @@ class Auth {
     }
   }
 
+  /// Logs out the user.
   void logout() => _clearCredentials();
 
   oauth2.AccessCredentials? _credentials;
 
   String? _email;
 
+  /// The current user's email.
   String? get email => _email;
 
+  /// Whether the user is authenticated.
   bool get isAuthenticated => _email != null || _token != null;
 
   void _loadCredentials() {
@@ -312,12 +332,15 @@ Run `shorebird login:ci` to obtain a new token.''');
     }
   }
 
+  /// Closes the underlying HTTP client.
   void close() {
     _httpClient.close();
   }
 }
 
+/// Extensions on [oauth2.AccessCredentials] for working with JWT claims.
 extension JwtClaims on oauth2.AccessCredentials {
+  /// Get the email from the JWT claims.
   String? get email {
     final token = idToken;
 
@@ -356,7 +379,9 @@ class UserNotFoundException implements Exception {
   final String email;
 }
 
+/// Extensions on Jwt for working with OAuth 2.0 providers.
 extension OauthAuthProvider on Jwt {
+  /// Get the [AuthProvider] from the JWT issuer.
   AuthProvider get authProvider {
     if (payload.iss == googleJwtIssuer) {
       return AuthProvider.google;

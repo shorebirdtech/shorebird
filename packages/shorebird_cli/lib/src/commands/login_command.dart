@@ -10,6 +10,7 @@ import 'package:shorebird_code_push_protocol/shorebird_code_push_protocol.dart'
 /// Login as a new Shorebird user.
 /// {@endtemplate}
 class LoginCommand extends ShorebirdCommand {
+  /// {@macro login_command}
   LoginCommand() {
     argParser.addOption(
       'provider',
@@ -74,6 +75,7 @@ We could not find a Shorebird account for ${error.email}.''',
     return ExitCode.success.code;
   }
 
+  /// Prompt the user to log in.
   void prompt(String url) {
     logger.info('''
 The Shorebird CLI needs your authorization to manage apps, releases, and patches on your behalf.

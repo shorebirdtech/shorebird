@@ -1,3 +1,6 @@
+// ignore_for_file: public_member_api_docs
+// cspell:words devicectl endtemplate bryanoltman sideloadable previewable apks
+// cspell:words bundletool
 import 'dart:async';
 import 'dart:convert';
 import 'dart:isolate';
@@ -97,11 +100,11 @@ class PreviewCommand extends ShorebirdCommand {
       appId = shorebirdYaml.appId;
     } else if (shorebirdYaml != null && flavors != null) {
       final flavorOptions = flavors.keys.toList();
-      final choosenFlavor = logger.chooseOne<String>(
+      final chosenFlavor = logger.chooseOne<String>(
         'Which app flavor?',
         choices: flavorOptions,
       );
-      appId = flavors[choosenFlavor];
+      appId = flavors[chosenFlavor];
     } else {
       appId = await promptForApp();
     }

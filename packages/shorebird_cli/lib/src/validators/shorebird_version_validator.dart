@@ -5,6 +5,7 @@ import 'package:shorebird_cli/src/validators/validators.dart';
 
 /// Verifies that the currently installed version of Shorebird is the latest.
 class ShorebirdVersionValidator extends Validator {
+  /// Creates a new [ShorebirdVersionValidator].
   ShorebirdVersionValidator();
 
   @override

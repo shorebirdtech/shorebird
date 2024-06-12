@@ -1,3 +1,5 @@
+// ignore_for_file: public_member_api_docs
+
 import 'package:args/args.dart';
 import 'package:collection/collection.dart';
 import 'package:shorebird_code_push_client/shorebird_code_push_client.dart';
