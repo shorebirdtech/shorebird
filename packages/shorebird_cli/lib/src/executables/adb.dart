@@ -60,7 +60,7 @@ class Adb {
     }
   }
 
-  /// Runs adb logcat.
+  /// Runs `adb logcat`.
   Future<Process> logcat({
     String? filter,
     String? deviceId,
