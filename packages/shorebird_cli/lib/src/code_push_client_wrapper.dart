@@ -117,7 +117,7 @@ Could not find app with id: "$appId".
 This app may not exist or you may not have permission to view it.''',
       );
 
-      exit(ExitCode.software.code);
+      throw ProcessExit(ExitCode.software.code);
     }
 
     return app;
@@ -182,7 +182,7 @@ Please bump your version number and try again.
 
 You can manage this release in the ${link(uri: uri, message: 'Shorebird Console')}''',
       );
-      exit(ExitCode.software.code);
+      throw ProcessExit(ExitCode.software.code);
     }
   }
 
@@ -204,7 +204,7 @@ Patches can only be published for existing releases.
 Please create a release using "shorebird release" and try again.
 ''',
       );
-      exit(ExitCode.software.code);
+      throw ProcessExit(ExitCode.software.code);
     }
 
     return release;
@@ -779,6 +779,6 @@ aar artifact already exists, continuing...''',
       progress.fail(message ?? '$error');
     }
 
-    exit(ExitCode.software.code);
+    throw ProcessExit(ExitCode.software.code);
   }
 }

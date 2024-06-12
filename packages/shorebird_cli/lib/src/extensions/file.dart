@@ -1,6 +1,6 @@
 import 'package:mason_logger/mason_logger.dart';
 import 'package:shorebird_cli/src/logger.dart';
-import 'package:shorebird_cli/src/third_party/flutter_tools/lib/src/base/io.dart';
+import 'package:shorebird_cli/src/third_party/flutter_tools/lib/flutter_tools.dart';
 
 /// Extension methods for validating [File]s.
 extension FileValidations on File {
@@ -10,7 +10,7 @@ extension FileValidations on File {
       logger.err(
         'No file found at $path',
       );
-      exit(ExitCode.usage.code);
+      throw ProcessExit(ExitCode.usage.code);
     }
   }
 }

@@ -52,7 +52,7 @@ class AndroidPatcher extends Patcher {
         validators: doctor.androidCommandValidators,
       );
     } on PreconditionFailedException catch (e) {
-      exit(e.exitCode.code);
+      throw ProcessExit(e.exitCode.code);
     }
   }
 
@@ -73,7 +73,7 @@ class AndroidPatcher extends Patcher {
       buildProgress.complete();
     } on ArtifactBuildException catch (error) {
       buildProgress.fail(error.message);
-      exit(ExitCode.software.code);
+      throw ProcessExit(ExitCode.software.code);
     }
 
     final patchArchsBuildDir = ArtifactManager.androidArchsDirectory(
@@ -95,7 +95,7 @@ Looked in:
   - build/app/intermediates/stripped_native_libs/release/out/lib
   - build/app/intermediates/stripped_native_libs/{flavor}Release/out/lib''',
         );
-      exit(ExitCode.software.code);
+      throw ProcessExit(ExitCode.software.code);
     }
     return aabFile;
   }
@@ -125,7 +125,7 @@ Looked in:
         releaseArtifactPaths[releaseArtifact.key] = releaseArtifactFile.path;
       } catch (error) {
         downloadReleaseArtifactProgress.fail('$error');
-        exit(ExitCode.software.code);
+        throw ProcessExit(ExitCode.software.code);
       }
     }
 
@@ -137,7 +137,7 @@ Looked in:
     );
     if (patchArchsBuildDir == null) {
       logger.err('Could not find patch artifacts');
-      exit(ExitCode.software.code);
+      throw ProcessExit(ExitCode.software.code);
     }
 
     final patchArtifactBundles = <Arch, PatchArtifactBundle>{};
@@ -177,7 +177,7 @@ Looked in:
         );
       } catch (error) {
         createDiffProgress.fail('$error');
-        exit(ExitCode.software.code);
+        throw ProcessExit(ExitCode.software.code);
       }
     }
     createDiffProgress.complete();

@@ -216,7 +216,7 @@ of the iOS app that is using this module.''',
     try {
       await shorebirdFlutter.installRevision(revision: targetFlutterRevision);
     } catch (_) {
-      exit(ExitCode.software.code);
+      throw ProcessExit(ExitCode.software.code);
     }
 
     final releaseFlutterShorebirdEnv = shorebirdEnv.copyWith(
@@ -243,7 +243,7 @@ of the iOS app that is using this module.''',
           logger
             ..info('No issues detected.')
             ..info('The server may enforce additional checks.');
-          exit(ExitCode.success.code);
+          throw ProcessExit(ExitCode.success.code);
         }
 
         // Ask the user to proceed (this is skipped when running via CI).
@@ -299,7 +299,7 @@ of the iOS app that is using this module.''',
 Unable to determine revision for Flutter version: $flutterVersionArg.
 $error''',
         );
-        exit(ExitCode.software.code);
+        throw ProcessExit(ExitCode.software.code);
       }
 
       if (revision == null) {
@@ -315,7 +315,7 @@ Version $flutterVersionArg not found. Please $openIssueLink to request a new ver
 Use `shorebird flutter versions list` to list available versions.
 ''',
         );
-        exit(ExitCode.software.code);
+        throw ProcessExit(ExitCode.software.code);
       }
 
       return revision;
@@ -363,7 +363,7 @@ To resolve this issue, you can:
   * Re-run the release command with "${lightCyan.wrap('--flutter-version=${existingRelease.flutterRevision}')}".
   * Delete the existing release and re-run the release command with the desired Flutter version.
   * Bump the release version and re-run the release command with the desired Flutter version.''');
-        exit(ExitCode.software.code);
+        throw ProcessExit(ExitCode.software.code);
       }
     }
   }
@@ -402,7 +402,7 @@ ${summary.join('\n')}
 
       if (!confirm) {
         logger.info('Aborting.');
-        exit(ExitCode.success.code);
+        throw ProcessExit(ExitCode.success.code);
       }
     }
   }

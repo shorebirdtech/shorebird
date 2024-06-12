@@ -48,7 +48,7 @@ class IosReleaser extends Releaser {
         ..info(
           '''We hope to support obfuscation in the future. We are tracking this work at ${link(uri: Uri.parse('https://github.com/shorebirdtech/shorebird/issues/1619'))}.''',
         );
-      exit(ExitCode.unavailable.code);
+      throw ProcessExit(ExitCode.unavailable.code);
     }
   }
 
@@ -62,7 +62,7 @@ class IosReleaser extends Releaser {
         supportedOperatingSystems: {Platform.macOS},
       );
     } on PreconditionFailedException catch (e) {
-      exit(e.exitCode.code);
+      throw ProcessExit(e.exitCode.code);
     }
 
     final flutterVersionArg = argResults['flutter-version'] as String?;
@@ -74,7 +74,7 @@ class IosReleaser extends Releaser {
 iOS releases are not supported with Flutter versions older than $minimumSupportedIosFlutterVersion.
 For more information see: $supportedVersionsLink''',
         );
-        exit(ExitCode.usage.code);
+        throw ProcessExit(ExitCode.usage.code);
       }
     }
   }
@@ -96,7 +96,7 @@ For more information see: $supportedVersionsLink''',
       exportOptionsPlist = ios.exportOptionsPlistFromArgs(argResults);
     } catch (error) {
       logger.err('$error');
-      exit(ExitCode.usage.code);
+      throw ProcessExit(ExitCode.usage.code);
     }
 
     final flutterVersionString = await shorebirdFlutter.getVersionAndRevision();
@@ -115,13 +115,13 @@ For more information see: $supportedVersionsLink''',
       buildProgress.complete();
     } on ArtifactBuildException catch (error) {
       buildProgress.fail(error.message);
-      exit(ExitCode.software.code);
+      throw ProcessExit(ExitCode.software.code);
     }
 
     final xcarchiveDirectory = artifactManager.getXcarchiveDirectory();
     if (xcarchiveDirectory == null) {
       logger.err('Unable to find .xcarchive directory');
-      exit(ExitCode.software.code);
+      throw ProcessExit(ExitCode.software.code);
     }
 
     final appDirectory = artifactManager.getIosAppDirectory(
@@ -130,7 +130,7 @@ For more information see: $supportedVersionsLink''',
 
     if (appDirectory == null) {
       logger.err('Unable to find .app directory');
-      exit(ExitCode.software.code);
+      throw ProcessExit(ExitCode.software.code);
     }
 
     return xcarchiveDirectory;
@@ -143,7 +143,7 @@ For more information see: $supportedVersionsLink''',
     final plistFile = File(p.join(releaseArtifactRoot.path, 'Info.plist'));
     if (!plistFile.existsSync()) {
       logger.err('No Info.plist file found at ${plistFile.path}');
-      exit(ExitCode.software.code);
+      throw ProcessExit(ExitCode.software.code);
     }
 
     try {
@@ -152,7 +152,7 @@ For more information see: $supportedVersionsLink''',
       logger.err(
         '''Failed to determine release version from ${plistFile.path}: $error''',
       );
-      exit(ExitCode.software.code);
+      throw ProcessExit(ExitCode.software.code);
     }
   }
 
@@ -182,7 +182,7 @@ For more information see: $supportedVersionsLink''',
       final ipa = artifactManager.getIpa();
       if (ipa == null) {
         logger.err('Could not find ipa file');
-        exit(ExitCode.software.code);
+        throw ProcessExit(ExitCode.software.code);
       }
 
       final relativeIpaPath = p.relative(ipa.path);

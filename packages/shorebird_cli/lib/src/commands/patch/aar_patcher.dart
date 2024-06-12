@@ -55,12 +55,12 @@ class AarPatcher extends Patcher {
         checkShorebirdInitialized: true,
       );
     } on PreconditionFailedException catch (e) {
-      exit(e.exitCode.code);
+      throw ProcessExit(e.exitCode.code);
     }
 
     if (shorebirdEnv.androidPackageName == null) {
       logger.err('Could not find androidPackage in pubspec.yaml.');
-      exit(ExitCode.config.code);
+      throw ProcessExit(ExitCode.config.code);
     }
   }
 
@@ -78,7 +78,7 @@ class AarPatcher extends Patcher {
       buildProgress.complete();
     } on ArtifactBuildException catch (error) {
       buildProgress.fail('Failed to build: ${error.message}');
-      exit(ExitCode.software.code);
+      throw ProcessExit(ExitCode.software.code);
     }
 
     return File(
@@ -115,7 +115,7 @@ class AarPatcher extends Patcher {
         releaseArtifactPaths[releaseArtifact.key] = releaseArtifactFile.path;
       } catch (error) {
         downloadReleaseArtifactProgress.fail('$error');
-        exit(ExitCode.software.code);
+        throw ProcessExit(ExitCode.software.code);
       }
     }
 
@@ -153,7 +153,7 @@ class AarPatcher extends Patcher {
         );
       } catch (error) {
         createDiffProgress.fail('$error');
-        exit(ExitCode.software.code);
+        throw ProcessExit(ExitCode.software.code);
       }
     }
     createDiffProgress.complete();

@@ -36,7 +36,6 @@ import 'dart:async';
 import 'dart:io' as io show exit;
 
 import 'package:meta/meta.dart';
-import 'package:shorebird_cli/src/third_party/flutter_tools/lib/src/base/process.dart';
 
 export 'dart:io' hide exit;
 
@@ -71,6 +70,12 @@ ExitFunction get exit {
 bool _inUnitTest() {
   return Zone.current[#test.declarer] != null;
 }
+
+/// Thrown when [exit] is called unexpectedly in a test.
+class UnexpectExitCalled implements Exception {
+  /// Creates a new [UnexpectExitCalled] exception.
+  const UnexpectExitCalled();
+}
 // coverage:ignore-end
 
 /// Sets the [exit] function to a function that throws an exception rather
@@ -79,7 +84,7 @@ bool _inUnitTest() {
 void setExitFunctionForTests([ExitFunction? exitFunction]) {
   _exitFunction = exitFunction ??
       (int exitCode) {
-        throw ProcessExit(exitCode, immediate: true);
+        throw const UnexpectExitCalled();
       };
 }
 

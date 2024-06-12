@@ -7,7 +7,7 @@ import 'package:shorebird_cli/src/common_arguments.dart';
 import 'package:shorebird_cli/src/extensions/file.dart';
 import 'package:shorebird_cli/src/logger.dart';
 import 'package:shorebird_cli/src/release_type.dart';
-import 'package:shorebird_cli/src/third_party/flutter_tools/lib/src/base/io.dart';
+import 'package:shorebird_cli/src/third_party/flutter_tools/lib/flutter_tools.dart';
 
 extension OptionFinder on ArgResults {
   /// Detects flags even when passed to underlying commands via a `--`
@@ -72,7 +72,7 @@ extension CodeSign on ArgResults {
       assertAbsentOrValidPrivateKey();
     } else {
       logger.err('Both public and private keys must be provided.');
-      exit(ExitCode.usage.code);
+      throw ProcessExit(ExitCode.usage.code);
     }
   }
 

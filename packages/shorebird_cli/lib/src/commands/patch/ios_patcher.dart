@@ -76,7 +76,7 @@ class IosPatcher extends Patcher {
         supportedOperatingSystems: {Platform.macOS},
       );
     } on PreconditionFailedException catch (error) {
-      exit(error.exitCode.code);
+      throw ProcessExit(error.exitCode.code);
     }
   }
 
@@ -87,7 +87,7 @@ class IosPatcher extends Patcher {
       exportOptionsPlist = ios.exportOptionsPlistFromArgs(argResults);
     } catch (error) {
       logger.err('$error');
-      return exit(ExitCode.usage.code);
+      return throw ProcessExit(ExitCode.usage.code);
     }
 
     try {
@@ -104,7 +104,7 @@ class IosPatcher extends Patcher {
 iOS patches are not supported with Flutter versions older than $minimumSupportedIosFlutterVersion.
 For more information see: $supportedVersionsLink''',
         );
-        exit(ExitCode.software.code);
+        throw ProcessExit(ExitCode.software.code);
       }
 
       final buildProgress = logger.progress(
@@ -147,7 +147,7 @@ For more information see: $supportedVersionsLink''',
 
       buildProgress.complete();
     } catch (_) {
-      return exit(ExitCode.software.code);
+      return throw ProcessExit(ExitCode.software.code);
     }
 
     return artifactManager.getXcarchiveDirectory()!.zipToTempFile();
@@ -162,7 +162,7 @@ For more information see: $supportedVersionsLink''',
     // Verify that we have built a patch .xcarchive
     if (artifactManager.getXcarchiveDirectory()?.path == null) {
       logger.err('Unable to find .xcarchive directory');
-      return exit(ExitCode.software.code);
+      return throw ProcessExit(ExitCode.software.code);
     }
 
     final unzipProgress = logger.progress('Extracting release artifact');
@@ -179,7 +179,7 @@ For more information see: $supportedVersionsLink''',
     );
     if (appDirectory == null) {
       logger.err('Unable to find release artifact .app directory');
-      return exit(ExitCode.software.code);
+      return throw ProcessExit(ExitCode.software.code);
     }
     final releaseArtifactFile = File(
       p.join(
@@ -196,7 +196,7 @@ For more information see: $supportedVersionsLink''',
         releaseArtifact: releaseArtifactFile,
         kernelFile: File(_appDillCopyPath),
       );
-      if (exitCode != ExitCode.success.code) return exit(exitCode);
+      if (exitCode != ExitCode.success.code) return throw ProcessExit(exitCode);
       if (linkPercentage != null &&
           linkPercentage < Patcher.minLinkPercentage) {
         logger.warn(Patcher.lowLinkPercentageWarning(linkPercentage));
@@ -224,7 +224,7 @@ For more information see: $supportedVersionsLink''',
         patchBaseProgress.complete();
       } catch (error) {
         patchBaseProgress.fail('$error');
-        return exit(ExitCode.software.code);
+        return throw ProcessExit(ExitCode.software.code);
       }
 
       patchFile = File(
@@ -263,13 +263,13 @@ For more information see: $supportedVersionsLink''',
     final archivePath = artifactManager.getXcarchiveDirectory()?.path;
     if (archivePath == null) {
       logger.err('Unable to find .xcarchive directory');
-      exit(ExitCode.software.code);
+      throw ProcessExit(ExitCode.software.code);
     }
 
     final plistFile = File(p.join(archivePath, 'Info.plist'));
     if (!plistFile.existsSync()) {
       logger.err('No Info.plist file found at ${plistFile.path}.');
-      exit(ExitCode.software.code);
+      throw ProcessExit(ExitCode.software.code);
     }
 
     final plist = Plist(file: plistFile);
@@ -279,7 +279,7 @@ For more information see: $supportedVersionsLink''',
       logger.err(
         'Failed to determine release version from ${plistFile.path}: $error',
       );
-      exit(ExitCode.software.code);
+      throw ProcessExit(ExitCode.software.code);
     }
   }
 

@@ -45,7 +45,7 @@ class IosFrameworkReleaser extends Releaser {
   Future<void> assertArgsAreValid() async {
     if (!argResults.wasParsed('release-version')) {
       logger.err('Missing required argument: --release-version');
-      exit(ExitCode.usage.code);
+      throw ProcessExit(ExitCode.usage.code);
     }
   }
 
@@ -59,7 +59,7 @@ class IosFrameworkReleaser extends Releaser {
         validators: doctor.iosCommandValidators,
       );
     } on PreconditionFailedException catch (e) {
-      exit(e.exitCode.code);
+      throw ProcessExit(e.exitCode.code);
     }
   }
 
@@ -75,7 +75,7 @@ class IosFrameworkReleaser extends Releaser {
       await artifactBuilder.buildIosFramework(args: argResults.forwardedArgs);
     } catch (error) {
       buildProgress.fail('Failed to build iOS framework: $error');
-      exit(ExitCode.software.code);
+      throw ProcessExit(ExitCode.software.code);
     }
 
     buildProgress.complete();
