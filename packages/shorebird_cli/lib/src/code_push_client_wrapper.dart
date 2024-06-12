@@ -2,6 +2,7 @@
 // cspell:words endtemplate pubspec sideloadable bryanoltman archs sideload
 // cspell:words xcarchive codesigned xcframework
 
+import 'dart:io';
 import 'dart:isolate';
 
 import 'package:archive/archive_io.dart';

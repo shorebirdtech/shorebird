@@ -1,6 +1,7 @@
 // ignore_for_file: public_member_api_docs
 
 import 'dart:async';
+import 'dart:io';
 
 import 'package:crypto/crypto.dart';
 import 'package:mason_logger/mason_logger.dart';

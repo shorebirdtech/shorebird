@@ -1,3 +1,5 @@
+import 'dart:io';
+
 import 'package:mason_logger/mason_logger.dart';
 import 'package:shorebird_cli/src/artifact_builder.dart';
 import 'package:shorebird_cli/src/code_push_client_wrapper.dart';

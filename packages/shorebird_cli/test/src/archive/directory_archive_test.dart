@@ -1,7 +1,8 @@
+import 'dart:io';
+
 import 'package:archive/archive_io.dart';
 import 'package:path/path.dart' as p;
 import 'package:shorebird_cli/src/archive/directory_archive.dart';
-import 'package:shorebird_cli/src/third_party/flutter_tools/lib/flutter_tools.dart';
 import 'package:test/test.dart';
 
 void main() {

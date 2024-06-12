@@ -1,3 +1,5 @@
+import 'dart:io';
+
 import 'package:io/io.dart';
 import 'package:mason_logger/mason_logger.dart';
 import 'package:path/path.dart' as p;

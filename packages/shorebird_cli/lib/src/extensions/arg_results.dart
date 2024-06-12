@@ -1,4 +1,6 @@
 // ignore_for_file: public_member_api_docs
+import 'dart:io';
+
 import 'package:args/args.dart';
 import 'package:collection/collection.dart';
 import 'package:mason_logger/mason_logger.dart';

@@ -1,6 +1,7 @@
 // ignore_for_file: public_member_api_docs
 import 'dart:async';
 import 'dart:convert';
+import 'dart:io';
 
 import 'package:collection/collection.dart';
 import 'package:io/io.dart';
@@ -12,7 +13,6 @@ import 'package:shorebird_cli/src/executables/devicectl/nserror.dart';
 import 'package:shorebird_cli/src/executables/idevicesyslog.dart';
 import 'package:shorebird_cli/src/logger.dart';
 import 'package:shorebird_cli/src/shorebird_process.dart';
-import 'package:shorebird_cli/src/third_party/flutter_tools/lib/flutter_tools.dart';
 import 'package:shorebird_code_push_client/shorebird_code_push_client.dart';
 
 typedef BundleId = String;

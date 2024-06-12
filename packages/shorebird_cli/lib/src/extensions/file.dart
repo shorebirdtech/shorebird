@@ -1,3 +1,5 @@
+import 'dart:io';
+
 import 'package:mason_logger/mason_logger.dart';
 import 'package:shorebird_cli/src/logger.dart';
 import 'package:shorebird_cli/src/third_party/flutter_tools/lib/flutter_tools.dart';
