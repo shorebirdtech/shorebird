@@ -83,7 +83,7 @@ void main() {
       registerFallbackValue(Directory(''));
       registerFallbackValue(ReleasePlatform.android);
       registerFallbackValue(Uri.parse('https://example.com'));
-      setExitFunctionForTests();
+      setExitFunction();
     });
 
     tearDownAll(restoreExitFunction);

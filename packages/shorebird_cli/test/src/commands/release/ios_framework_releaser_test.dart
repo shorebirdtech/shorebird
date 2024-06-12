@@ -72,7 +72,7 @@ void main() {
       setUpAll(() {
         registerFallbackValue(Directory(''));
         registerFallbackValue(ReleasePlatform.ios);
-        setExitFunctionForTests();
+        setExitFunction();
       });
 
       tearDownAll(restoreExitFunction);

@@ -69,7 +69,7 @@ void main() {
     setUpAll(() {
       registerFallbackValue(Directory(''));
       registerFallbackValue(ReleasePlatform.android);
-      setExitFunctionForTests();
+      setExitFunction();
     });
 
     tearDownAll(restoreExitFunction);

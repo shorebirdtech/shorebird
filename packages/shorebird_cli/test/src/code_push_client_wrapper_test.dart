@@ -161,7 +161,7 @@ void main() {
     setUpAll(() {
       registerFallbackValue(ReleasePlatform.android);
       registerFallbackValue(ReleaseStatus.draft);
-      setExitFunctionForTests();
+      setExitFunction();
     });
 
     tearDownAll(restoreExitFunction);

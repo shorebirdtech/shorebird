@@ -76,7 +76,7 @@ void main() {
       registerFallbackValue(Directory(''));
       registerFallbackValue(File(''));
       registerFallbackValue(ReleasePlatform.android);
-      setExitFunctionForTests();
+      setExitFunction();
     });
 
     tearDownAll(restoreExitFunction);

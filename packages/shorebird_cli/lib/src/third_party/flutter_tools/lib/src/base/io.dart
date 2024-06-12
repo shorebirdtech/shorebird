@@ -35,7 +35,6 @@ library;
 import 'dart:async';
 import 'dart:io' as io show exit;
 
-import 'package:meta/meta.dart';
 import 'package:shorebird_cli/src/third_party/flutter_tools/lib/src/base/process.dart';
 
 export 'dart:io' hide exit;
@@ -55,7 +54,7 @@ ExitFunction _exitFunction = _defaultExitFunction;
 ///
 /// This is analogous to the `exit` function in `dart:io`, except that this
 /// function may be set to a testing-friendly value by calling
-/// [setExitFunctionForTests] (and then restored to its default implementation
+/// [setExitFunction] (and then restored to its default implementation
 /// with [restoreExitFunction]). The default implementation delegates to
 /// `dart:io`.
 ExitFunction get exit {
@@ -75,8 +74,9 @@ bool _inUnitTest() {
 
 /// Sets the [exit] function to a function that throws an exception rather
 /// than exiting the process; this is intended for testing purposes.
-@visibleForTesting
-void setExitFunctionForTests([ExitFunction? exitFunction]) {
+/// And being able to capture a full log of all commands to save their output
+/// To a crash file.
+void setExitFunction([ExitFunction? exitFunction]) {
   _exitFunction = exitFunction ??
       (int exitCode) {
         throw ProcessExit(exitCode, immediate: true);
@@ -84,7 +84,6 @@ void setExitFunctionForTests([ExitFunction? exitFunction]) {
 }
 
 /// Restores the [exit] function to the `dart:io` implementation.
-@visibleForTesting
 void restoreExitFunction() {
   _exitFunction = _defaultExitFunction;
 }

@@ -109,7 +109,7 @@ void main() {
       registerFallbackValue(File(''));
       registerFallbackValue(ReleasePlatform.android);
       registerFallbackValue(Uri.parse('https://example.com'));
-      setExitFunctionForTests();
+      setExitFunction();
     });
 
     tearDownAll(restoreExitFunction);

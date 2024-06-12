@@ -14,6 +14,7 @@ import 'package:shorebird_cli/src/shorebird_env.dart';
 import 'package:shorebird_cli/src/shorebird_flutter.dart';
 import 'package:shorebird_cli/src/shorebird_process.dart';
 import 'package:shorebird_cli/src/shorebird_version.dart';
+import 'package:shorebird_cli/src/third_party/flutter_tools/lib/flutter_tools.dart';
 import 'package:shorebird_cli/src/version.dart';
 
 const executableName = 'shorebird';
@@ -180,6 +181,8 @@ ${lightCyan.wrap('shorebird release android -- --no-pub lib/main.dart')}''';
       return ExitCode.success.code;
     }
 
+    logger.detail('Executing: $executableName ${topLevelResults.arguments}');
+
     // Run the command or show version
     int? exitCode;
     if (topLevelResults['version'] == true) {
@@ -194,7 +197,11 @@ $shorebirdFlutterPrefix • revision ${shorebirdEnv.flutterRevision}
 Engine • revision ${shorebirdEnv.shorebirdEngineRevision}''');
     } else {
       try {
+        setExitFunction((int exitCode) {
+          throw ProcessExit(exitCode, immediate: true);
+        });
         exitCode = await super.runCommand(topLevelResults);
+        restoreExitFunction();
       } catch (error, stackTrace) {
         logger
           ..err('$error')
@@ -203,7 +210,7 @@ Engine • revision ${shorebirdEnv.shorebirdEngineRevision}''');
       }
     }
 
-    if (exitCode == ExitCode.software.code && logger.level != Level.verbose) {
+    if (exitCode != ExitCode.success.code && logger.level != Level.verbose) {
       final fileAnIssue = link(
         uri: Uri.parse(
           'https://github.com/shorebirdtech/shorebird/issues/new/choose',

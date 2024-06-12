@@ -88,7 +88,7 @@ void main() {
         registerFallbackValue(File(''));
         registerFallbackValue(ReleasePlatform.ios);
         registerFallbackValue(Uri.parse('https://example.com'));
-        setExitFunctionForTests();
+        setExitFunction();
       });
 
       tearDownAll(restoreExitFunction);
