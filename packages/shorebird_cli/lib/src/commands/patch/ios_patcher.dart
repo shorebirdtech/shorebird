@@ -88,7 +88,7 @@ class IosPatcher extends Patcher {
       exportOptionsPlist = ios.exportOptionsPlistFromArgs(argResults);
     } catch (error) {
       logger.err('$error');
-      return throw ProcessExit(ExitCode.usage.code);
+      throw ProcessExit(ExitCode.usage.code);
     }
 
     try {
@@ -148,7 +148,7 @@ For more information see: $supportedVersionsLink''',
 
       buildProgress.complete();
     } catch (_) {
-      return throw ProcessExit(ExitCode.software.code);
+      throw ProcessExit(ExitCode.software.code);
     }
 
     return artifactManager.getXcarchiveDirectory()!.zipToTempFile();
@@ -163,7 +163,7 @@ For more information see: $supportedVersionsLink''',
     // Verify that we have built a patch .xcarchive
     if (artifactManager.getXcarchiveDirectory()?.path == null) {
       logger.err('Unable to find .xcarchive directory');
-      return throw ProcessExit(ExitCode.software.code);
+      throw ProcessExit(ExitCode.software.code);
     }
 
     final unzipProgress = logger.progress('Extracting release artifact');
@@ -180,7 +180,7 @@ For more information see: $supportedVersionsLink''',
     );
     if (appDirectory == null) {
       logger.err('Unable to find release artifact .app directory');
-      return throw ProcessExit(ExitCode.software.code);
+      throw ProcessExit(ExitCode.software.code);
     }
     final releaseArtifactFile = File(
       p.join(
@@ -197,7 +197,7 @@ For more information see: $supportedVersionsLink''',
         releaseArtifact: releaseArtifactFile,
         kernelFile: File(_appDillCopyPath),
       );
-      if (exitCode != ExitCode.success.code) return throw ProcessExit(exitCode);
+      if (exitCode != ExitCode.success.code) throw ProcessExit(exitCode);
       if (linkPercentage != null &&
           linkPercentage < Patcher.minLinkPercentage) {
         logger.warn(Patcher.lowLinkPercentageWarning(linkPercentage));
@@ -225,7 +225,7 @@ For more information see: $supportedVersionsLink''',
         patchBaseProgress.complete();
       } catch (error) {
         patchBaseProgress.fail('$error');
-        return throw ProcessExit(ExitCode.software.code);
+        throw ProcessExit(ExitCode.software.code);
       }
 
       patchFile = File(
