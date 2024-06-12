@@ -1,5 +1,3 @@
-// ignore_for_file: public_member_api_docs
-
 import 'dart:io';
 
 import 'package:meta/meta.dart';
@@ -27,6 +25,7 @@ class ShorebirdProcess {
   /// The underlying process wrapper.
   final ProcessWrapper processWrapper;
 
+  /// Runs the process and returns the result.
   Future<ShorebirdProcessResult> run(
     String executable,
     List<String> arguments, {
@@ -66,6 +65,7 @@ class ShorebirdProcess {
     return result;
   }
 
+  /// Runs the process synchronously and returns the result.
   ShorebirdProcessResult runSync(
     String executable,
     List<String> arguments, {
@@ -105,6 +105,7 @@ class ShorebirdProcess {
     return result;
   }
 
+  /// Starts a new process running the executable with the specified arguments.
   Future<Process> start(
     String executable,
     List<String> arguments, {
@@ -226,21 +227,30 @@ $stderr''');
   }
 }
 
+/// Result from running a process.
 class ShorebirdProcessResult {
+  /// Creates a new [ShorebirdProcessResult].
   const ShorebirdProcessResult({
     required this.exitCode,
     required this.stdout,
     required this.stderr,
   });
 
+  /// The exit code of the process.
   final int exitCode;
+
+  /// The standard output of the process.
   final dynamic stdout;
+
+  /// The standard error of the process.
   final dynamic stderr;
 }
 
+/// A wrapper around [Process] that can be mocked for testing.
 // coverage:ignore-start
 @visibleForTesting
 class ProcessWrapper {
+  /// Runs the process and returns the result.
   Future<ShorebirdProcessResult> run(
     String executable,
     List<String> arguments, {
