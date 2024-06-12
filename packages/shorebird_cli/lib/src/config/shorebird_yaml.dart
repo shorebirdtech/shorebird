@@ -19,6 +19,7 @@ class ShorebirdYaml {
     this.autoUpdate,
   });
 
+  /// Creates a [ShorebirdYaml] from a JSON map.
   factory ShorebirdYaml.fromJson(Map<dynamic, dynamic> json) =>
       _$ShorebirdYamlFromJson(json);
 
@@ -48,7 +49,9 @@ class ShorebirdYaml {
   final bool? autoUpdate;
 }
 
+/// Extension on [ShorebirdYaml] to get the app id for a specific flavor.
 extension AppIdExtension on ShorebirdYaml {
+  /// Returns the app id for the given flavor.
   String getAppId({String? flavor}) {
     if (flavor == null || flavors == null) return appId;
     return flavors![flavor] ?? appId;

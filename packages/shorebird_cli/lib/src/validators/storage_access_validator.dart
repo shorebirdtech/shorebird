@@ -1,7 +1,9 @@
+// cspell:words googleapis
 import 'package:shorebird_cli/src/http_client/http_client.dart';
 import 'package:shorebird_cli/src/third_party/flutter_tools/lib/flutter_tools.dart';
 import 'package:shorebird_cli/src/validators/validators.dart';
 
+/// Verifies that the user has access to storage.googleapis.com.
 class StorageAccessValidator extends Validator {
   @override
   String get description => 'Has access to storage.googleapis.com';

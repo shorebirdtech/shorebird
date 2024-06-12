@@ -1,5 +1,9 @@
 # Release Notes
 
+<!-- 
+cspell:words pubspec erickzanardo xcframeworks Cupertino codesign codecov rkishan appbundle proto tlsv
+ -->
+
 This section contains past updates we've sent to customers.
 
 ## 1.1.11 (June 11, 2024)
@@ -58,7 +62,7 @@ https://docs.shorebird.dev/guides/patch-signing/
 ## 1.1.5 (May 15, 2024)
 
 - 🐦 Upgrade to Flutter 3.22.0 and Dart 3.4.0
-- 💾 Precache Flutter assets when switching revisions
+- 💾 Pre-cache Flutter assets when switching revisions
 - 🪵 Improvements to exception logs
 
 ## 1.1.4 (May 14, 2024)
@@ -754,7 +758,7 @@ We've just released Shorebird v0.14.9 🎉
 
 - 🍎 `shorebird release ios-alpha` supports `--no-codesign`
 - 🍧 automatically add new flavors if detected by `shorebird init`
-- 👀 only list previewable releases when running `shorebird preview`
+- 👀 only list preview-able releases when running `shorebird preview`
 
 📚 Release notes can be found at https://github.com/shorebirdtech/shorebird/releases/tag/v0.14.9
 

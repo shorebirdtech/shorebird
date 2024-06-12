@@ -1,3 +1,5 @@
+// cspell:words bundletool devicectl gradlew idevicesyslog xcodebuild
+
 export 'adb.dart';
 export 'aot_tools.dart';
 export 'bundletool.dart';

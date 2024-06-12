@@ -1,3 +1,5 @@
+// ignore_for_file: public_member_api_docs
+
 import 'package:json_annotation/json_annotation.dart';
 import 'package:pub_semver/pub_semver.dart';
 import 'package:shorebird_cli/src/extensions/version.dart';

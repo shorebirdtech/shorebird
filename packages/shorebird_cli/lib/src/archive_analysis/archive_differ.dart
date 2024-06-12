@@ -85,6 +85,7 @@ abstract class ArchiveDiffer {
     );
   }
 
+  /// Returns a map of file paths to their respective checksums.
   Future<PathHashes> fileHashes(File archive) async {
     return Isolate.run(() {
       final zipDirectory = ZipDirectory.read(InputFileStream(archive.path));

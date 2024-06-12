@@ -1,3 +1,5 @@
+// ignore_for_file: public_member_api_docs
+
 import 'dart:io' hide Platform;
 
 import 'package:checked_yaml/checked_yaml.dart';

@@ -1,3 +1,4 @@
+// cspell:words xcarchive xcarchives xcframeworks xcframework
 import 'package:path/path.dart' as p;
 import 'package:shorebird_cli/src/archive_analysis/archive_analysis.dart';
 import 'package:shorebird_cli/src/platform.dart';

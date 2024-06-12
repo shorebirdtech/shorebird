@@ -6,10 +6,10 @@ import 'package:shorebird_cli/src/engine_config.dart';
 import 'package:shorebird_cli/src/logger.dart';
 import 'package:shorebird_cli/src/shorebird_env.dart';
 
-// A reference to a [ShorebirdProcess] instance.
+/// A reference to a [ShorebirdProcess] instance.
 final processRef = create(ShorebirdProcess.new);
 
-// The [ShorebirdProcess] instance available in the current zone.
+/// The [ShorebirdProcess] instance available in the current zone.
 ShorebirdProcess get process => read(processRef);
 
 /// A wrapper around [Process] that replaces executables to Shorebird-vended
@@ -17,12 +17,15 @@ ShorebirdProcess get process => read(processRef);
 // This may need a better name, since it returns "Process" it's more a
 // "ProcessFactory" than a "Process".
 class ShorebirdProcess {
+  /// Creates a ShorebirdProcess.
   ShorebirdProcess({
     ProcessWrapper? processWrapper, // For mocking ShorebirdProcess.
   }) : processWrapper = processWrapper ?? ProcessWrapper();
 
+  /// The underlying process wrapper.
   final ProcessWrapper processWrapper;
 
+  /// Runs the process and returns the result.
   Future<ShorebirdProcessResult> run(
     String executable,
     List<String> arguments, {
@@ -62,6 +65,7 @@ class ShorebirdProcess {
     return result;
   }
 
+  /// Runs the process synchronously and returns the result.
   ShorebirdProcessResult runSync(
     String executable,
     List<String> arguments, {
@@ -101,6 +105,7 @@ class ShorebirdProcess {
     return result;
   }
 
+  /// Starts a new process running the executable with the specified arguments.
   Future<Process> start(
     String executable,
     List<String> arguments, {
@@ -222,21 +227,30 @@ $stderr''');
   }
 }
 
+/// Result from running a process.
 class ShorebirdProcessResult {
+  /// Creates a new [ShorebirdProcessResult].
   const ShorebirdProcessResult({
     required this.exitCode,
     required this.stdout,
     required this.stderr,
   });
 
+  /// The exit code of the process.
   final int exitCode;
+
+  /// The standard output of the process.
   final dynamic stdout;
+
+  /// The standard error of the process.
   final dynamic stderr;
 }
 
+/// A wrapper around [Process] that can be mocked for testing.
 // coverage:ignore-start
 @visibleForTesting
 class ProcessWrapper {
+  /// Runs the process and returns the result.
   Future<ShorebirdProcessResult> run(
     String executable,
     List<String> arguments, {
@@ -258,6 +272,7 @@ class ProcessWrapper {
     );
   }
 
+  /// Runs the process synchronously and returns the result.
   ShorebirdProcessResult runSync(
     String executable,
     List<String> arguments, {
@@ -279,6 +294,7 @@ class ProcessWrapper {
     );
   }
 
+  /// Starts a new process running the executable with the specified arguments.
   Future<Process> start(
     String executable,
     List<String> arguments, {

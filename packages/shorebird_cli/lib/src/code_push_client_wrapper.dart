@@ -1,3 +1,7 @@
+// ignore_for_file: public_member_api_docs
+// cspell:words endtemplate pubspec sideloadable bryanoltman archs sideload
+// cspell:words xcarchive codesigned xcframework
+
 import 'dart:isolate';
 
 import 'package:archive/archive_io.dart';

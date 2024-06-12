@@ -131,6 +131,8 @@ class AotTools {
     return tryParseVersion(version) ?? noVersion;
   }
 
+  /// Whether the current analyze_snapshot executable supports the
+  /// `--dump-debug-info` flag.
   Future<bool> isLinkDebugInfoSupported() async {
     final result = await _exec(['link', '--help']);
     return result.stdout.toString().contains('dump-debug-info');

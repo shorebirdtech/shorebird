@@ -1,8 +1,8 @@
 import 'dart:io';
 import 'dart:typed_data';
 
-const machOHeaderSize = 32;
-const uuidLoadCommandType = 0x1b;
+const _machOHeaderSize = 32;
+const _uuidLoadCommandType = 0x1b;
 
 /// Utilities for interacting with Mach-O files.
 /// See https://en.wikipedia.org/wiki/Mach-O.
@@ -38,12 +38,12 @@ class MachO {
     final numberOfLoadCommands = _readInt32(bytes, 16);
 
     // The load commands are immediately after the header.
-    var offset = machOHeaderSize;
+    var offset = _machOHeaderSize;
     for (var i = 0; i < numberOfLoadCommands; i++) {
       final commandType = _readInt32(bytes, offset);
       final commandLength = _readInt32(bytes, offset + 4);
 
-      if (commandType == uuidLoadCommandType) {
+      if (commandType == _uuidLoadCommandType) {
         // Zero out the UUID bytes.
         final loadCommandStart = offset + 8;
         for (var j = loadCommandStart; j < offset + commandLength; j++) {

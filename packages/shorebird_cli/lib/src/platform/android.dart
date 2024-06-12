@@ -2,6 +2,7 @@ import 'package:collection/collection.dart';
 import 'package:shorebird_cli/src/engine_config.dart';
 import 'package:shorebird_cli/src/platform/platform.dart';
 
+/// Extensions for working with Android architectures.
 extension AndroidArch on Arch {
   /// The name of the architecture as expected by the --target-platforms flag.
   String get targetPlatformCliArg {
@@ -40,6 +41,7 @@ extension AndroidArch on Arch {
     }
   }
 
+  /// Returns the available Android architectures.
   static Iterable<Arch> get availableAndroidArchs {
     if (engineConfig.localEngine != null) {
       final localEngineOutName = engineConfig.localEngine!;
@@ -61,6 +63,7 @@ extension AndroidArch on Arch {
   }
 }
 
+/// Extensions for working with Android target platforms.
 extension TargetPlatformArgs on Iterable<Arch> {
   /// The value to pass to the --target-platforms flag.
   String get targetPlatformArg => map((e) => e.targetPlatformCliArg).join(',');

@@ -4,6 +4,7 @@ import 'package:archive/archive_io.dart';
 import 'package:path/path.dart' as p;
 import 'package:shorebird_cli/src/third_party/flutter_tools/lib/flutter_tools.dart';
 
+/// A wrapper around a directory that can be zipped.
 extension DirectoryArchive on Directory {
   /// Copies this directory to a temporary directory and zips it.
   Future<File> zipToTempFile() async {

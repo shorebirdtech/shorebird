@@ -1,3 +1,5 @@
+// ignore_for_file: public_member_api_docs
+
 import 'dart:io';
 
 import 'package:collection/collection.dart';
@@ -16,6 +18,7 @@ class MissingAndroidProjectException implements Exception {
   /// {@macro missing_android_project_exception}
   const MissingAndroidProjectException(this.projectPath);
 
+  /// Expected path for the Android project.
   final String projectPath;
 
   @override

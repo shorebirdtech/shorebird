@@ -19,6 +19,7 @@ class PackageFailedException implements Exception {
   /// {@macro package_failed_exception}
   PackageFailedException(this.message);
 
+  /// The error message.
   final String message;
 
   @override
@@ -37,6 +38,7 @@ class ShorebirdTools {
     return shorebirdToolsDirectory.existsSync();
   }
 
+  /// The directory containing the `shorebird_tools` package.
   Directory get shorebirdToolsDirectory {
     final dir = Directory(
       p.join(

@@ -11,6 +11,7 @@ Git get git => read(gitRef);
 
 /// A wrapper around all git related functionality.
 class Git {
+  /// Name of the git executable.
   static const executable = 'git';
 
   /// Execute a git command with the provided [arguments].

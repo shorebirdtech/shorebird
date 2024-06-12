@@ -19,7 +19,7 @@ const _logFileName = 'shorebird.log';
 /// be created for every run of the Shorebird CLI, and will have the name
 /// `timestamp_shorebird.log`.
 final File currentRunLogFile = (() {
-  // TODO(bryanoltman): use package:clock to test that we use the correct timestamp
+  // TODO(bryanoltman): use package:clock to test for the correct timestamp
   final timestamp = DateTime.now().millisecondsSinceEpoch;
   final file = File(
     p.join(

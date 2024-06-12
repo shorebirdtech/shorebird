@@ -5,6 +5,7 @@ typedef PathHashes = Map<String, String>;
 
 /// Sets of [PathHashes] that represent changes between two sets of files.
 class FileSetDiff {
+  /// Creates a [FileSetDiff] showing added, changed, and removed file sets.
   FileSetDiff({
     required this.addedPaths,
     required this.removedPaths,
@@ -28,6 +29,7 @@ class FileSetDiff {
     );
   }
 
+  /// Creates an empty FileSetDiff.
   FileSetDiff.empty()
       : addedPaths = {},
         removedPaths = {},

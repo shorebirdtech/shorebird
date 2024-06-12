@@ -1,3 +1,4 @@
+// cspell:words xcframeworks xcasset unsign codesign assetutil pubspec xcassets
 import 'dart:io';
 import 'dart:isolate';
 import 'dart:typed_data';
@@ -23,16 +24,18 @@ import 'package:shorebird_cli/src/archive_analysis/macho.dart';
 class IosArchiveDiffer extends ArchiveDiffer {
   String _hash(List<int> bytes) => sha256.convert(bytes).toString();
 
-  static final binaryFilePatterns = {
+  static final _binaryFilePatterns = {
     RegExp(r'App.framework/App$'),
     RegExp(r'Flutter.framework/Flutter$'),
   };
-  static RegExp appRegex = RegExp(
+
+  /// The regex pattern for identifying app files within an archive.
+  static final RegExp appRegex = RegExp(
     r'^Products/Applications/[\w\-. ]+.app/[\w\- ]+$',
   );
 
   /// Files that have been added, removed, or that have changed between the
-  /// archives at the two provided paths. This method will also unisgn mach-o
+  /// archives at the two provided paths. This method will also unsign mach-o
   /// binaries in the archives before computing the diff.
   @override
   Future<FileSetDiff> changedFiles(
@@ -85,7 +88,7 @@ class IosArchiveDiffer extends ArchiveDiffer {
         .where((file) => file.isFile)
         .where(
           (file) =>
-              binaryFilePatterns
+              _binaryFilePatterns
                   .any((pattern) => pattern.hasMatch(file.name)) ||
               appRegex.hasMatch(file.name),
         )
@@ -125,7 +128,7 @@ class IosArchiveDiffer extends ArchiveDiffer {
   }
 
   /// Uses assetutil to write a json description of a .car file to disk and
-  /// diffs the contents of that file, less a timestamp line that chnages based
+  /// diffs the contents of that file, less a timestamp line that changes based
   /// on when the .car file was created.
   Future<String> _carFileHash(ArchiveFile file) async {
     final tempDir = Directory.systemTemp.createTempSync();

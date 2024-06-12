@@ -1,9 +1,11 @@
+// ignore_for_file: public_member_api_docs
+
 import 'package:scoped_deps/scoped_deps.dart';
 
-// A reference to a [EngineConfig] instance.
+/// A reference to an [EngineConfig] instance.
 final engineConfigRef = create(() => const EngineConfig.empty());
 
-// The [EngineConfig] instance available in the current zone.
+/// The [EngineConfig] instance available in the current zone.
 EngineConfig get engineConfig => read(engineConfigRef);
 
 class EngineConfig {

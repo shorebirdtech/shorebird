@@ -19,6 +19,7 @@ import 'package:shorebird_cli/src/third_party/flutter_tools/lib/flutter_tools.da
 import 'package:shorebird_code_push_client/shorebird_code_push_client.dart';
 import 'package:shorebird_code_push_protocol/shorebird_code_push_protocol.dart';
 
+/// A function that resolves a [Releaser] for a given [ReleaseType].
 typedef ResolveReleaser = Releaser Function(ReleaseType releaseType);
 
 /// {@template release_command}
@@ -150,6 +151,7 @@ of the iOS app that is using this module.''',
     return ExitCode.success.code;
   }
 
+  /// Returns a [Releaser] for the given [ReleaseType].
   @visibleForTesting
   Releaser getReleaser(ReleaseType releaseType) {
     switch (releaseType) {
