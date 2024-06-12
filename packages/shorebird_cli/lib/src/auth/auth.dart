@@ -22,7 +22,7 @@ import 'package:shorebird_code_push_client/shorebird_code_push_client.dart';
 
 export 'ci_token.dart';
 
-/// A reference to a [Auth] instance.
+/// A reference to an [Auth] instance.
 final authRef = create(Auth.new);
 
 /// The [Auth] instance available in the current zone.
