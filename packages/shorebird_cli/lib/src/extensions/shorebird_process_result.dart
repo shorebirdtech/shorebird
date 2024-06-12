@@ -1,7 +1,7 @@
 import 'package:collection/collection.dart';
 import 'package:shorebird_cli/src/shorebird_process.dart';
 
-/// Extensions for finding app.dill in a [ShorebirdProcessResult].
+/// Extensions for finding `app.dill` in a [ShorebirdProcessResult].
 extension FindAppDill on ShorebirdProcessResult {
   /// Finds a line in stdout that invokes gen_snapshot with app.dill as an
   /// argument. The path to the app.dill file is the last argument in the line.
