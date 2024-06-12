@@ -57,6 +57,7 @@ ExitFunction _exitFunction = _defaultExitFunction;
 /// [setExitFunctionForTests] (and then restored to its default implementation
 /// with [restoreExitFunction]). The default implementation delegates to
 /// `dart:io`.
+// coverage:ignore-start
 ExitFunction get exit {
   assert(
     _exitFunction != io.exit || !_inUnitTest(),
@@ -65,16 +66,9 @@ ExitFunction get exit {
   return _exitFunction;
 }
 
-// coverage:ignore-start
 // Whether the tool is executing in a unit test.
 bool _inUnitTest() {
   return Zone.current[#test.declarer] != null;
-}
-
-/// Thrown when [exit] is called unexpectedly in a test.
-class UnexpectExitCalled implements Exception {
-  /// Creates a new [UnexpectExitCalled] exception.
-  const UnexpectExitCalled();
 }
 // coverage:ignore-end
 
@@ -84,7 +78,9 @@ class UnexpectExitCalled implements Exception {
 void setExitFunctionForTests([ExitFunction? exitFunction]) {
   _exitFunction = exitFunction ??
       (int exitCode) {
-        throw const UnexpectExitCalled();
+        throw UnsupportedError(
+          'exit calls should not be called in the CLI code',
+        );
       };
 }
 
