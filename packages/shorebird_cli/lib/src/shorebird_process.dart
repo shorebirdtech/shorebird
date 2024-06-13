@@ -112,6 +112,7 @@ class ShorebirdProcess {
     Map<String, String>? environment,
     bool runInShell = false,
     bool useVendedFlutter = true,
+    String? workingDirectory,
   }) {
     final resolvedEnvironment = environment ?? {};
     if (useVendedFlutter) {
@@ -130,7 +131,7 @@ class ShorebirdProcess {
       useVendedFlutter: useVendedFlutter,
     );
     logger.detail(
-      '[Process.start] $resolvedExecutable ${resolvedArguments.join(' ')}',
+      '''[Process.start] $resolvedExecutable ${resolvedArguments.join(' ')}${workingDirectory == null ? '' : ' (in $workingDirectory)'}''',
     );
 
     return processWrapper.start(
@@ -138,6 +139,7 @@ class ShorebirdProcess {
       resolvedArguments,
       runInShell: runInShell,
       environment: resolvedEnvironment,
+      workingDirectory: workingDirectory,
     );
   }
 
@@ -300,12 +302,14 @@ class ProcessWrapper {
     List<String> arguments, {
     bool runInShell = false,
     Map<String, String>? environment,
+    String? workingDirectory,
   }) {
     return Process.start(
       executable,
       arguments,
       runInShell: runInShell,
       environment: environment,
+      workingDirectory: workingDirectory,
     );
   }
 }
