@@ -83,15 +83,16 @@ class AotTools {
     return !_preLinkerFlutterRevisions.contains(flutterRevision);
   }
 
-  Future<ShorebirdProcessResult> _prepareAndRun(
+  Future<ShorebirdProcessResult> _exec(
     List<String> command, {
-    required Future<ShorebirdProcessResult> Function(
-      String exe,
-      List<String> args, {
+    Future<ShorebirdProcessResult> Function(
+      String,
+      List<String>, {
       String? workingDirectory,
-    }) runFn,
+    })? runCommand,
     String? workingDirectory,
   }) async {
+    final runFn = runCommand ?? process.run;
     await cache.updateAll();
 
     // This will be a path to either a kernel (.dill) file or a Dart script if
@@ -119,59 +120,47 @@ class AotTools {
     );
   }
 
-  Future<ShorebirdProcessResult> _exec(
-    List<String> command, {
-    String? workingDirectory,
-  }) async =>
-      _prepareAndRun(
-        command,
-        runFn: process.run,
-        workingDirectory: workingDirectory,
-      );
-
   Future<ShorebirdProcessResult> _spawn(
     List<String> command, {
     String? workingDirectory,
-  }) async {
-    Future<ShorebirdProcessResult> startWrapper(
-      String exe,
-      List<String> args, {
-      String? workingDirectory,
-    }) async {
-      final spawnedProcess = await process.start(
-        exe,
-        args,
-        workingDirectory: workingDirectory,
-      );
-
-      final stdout = StringBuffer();
-      final stderr = StringBuffer();
-
-      final stdoutSub = spawnedProcess.stdout.map(utf8.decode).listen((data) {
-        logger.detail(data);
-        stdout.write(data);
-      });
-
-      final stderrSub = spawnedProcess.stderr.map(utf8.decode).listen((data) {
-        logger.err(data);
-        stderr.write(data);
-      });
-
-      final exitCode = await spawnedProcess.exitCode;
-
-      await stdoutSub.cancel();
-      await stderrSub.cancel();
-
-      return ShorebirdProcessResult(
-        exitCode: exitCode,
-        stdout: stdout.toString(),
-        stderr: stderr.toString(),
-      );
-    }
-
-    return _prepareAndRun(
+  }) {
+    return _exec(
       command,
-      runFn: startWrapper,
+      runCommand: (
+        String exe,
+        List<String> args, {
+        String? workingDirectory,
+      }) async {
+        final spawnedProcess = await process.start(
+          exe,
+          args,
+          workingDirectory: workingDirectory,
+        );
+
+        final stdout = StringBuffer();
+        final stderr = StringBuffer();
+
+        final stdoutSub = spawnedProcess.stdout.map(utf8.decode).listen((data) {
+          logger.detail(data);
+          stdout.write(data);
+        });
+
+        final stderrSub = spawnedProcess.stderr.map(utf8.decode).listen((data) {
+          logger.err(data);
+          stderr.write(data);
+        });
+
+        final exitCode = await spawnedProcess.exitCode;
+
+        await stdoutSub.cancel();
+        await stderrSub.cancel();
+
+        return ShorebirdProcessResult(
+          exitCode: exitCode,
+          stdout: stdout.toString(),
+          stderr: stderr.toString(),
+        );
+      },
       workingDirectory: workingDirectory,
     );
   }
