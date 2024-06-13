@@ -1,3 +1,5 @@
+import 'dart:io';
+
 import 'package:archive/archive_io.dart';
 import 'package:io/io.dart';
 import 'package:mason_logger/mason_logger.dart';
@@ -55,12 +57,12 @@ class AarReleaser extends Releaser {
         checkShorebirdInitialized: true,
       );
     } on PreconditionFailedException catch (e) {
-      exit(e.exitCode.code);
+      throw ProcessExit(e.exitCode.code);
     }
 
     if (shorebirdEnv.androidPackageName == null) {
       logger.err('Could not find androidPackage in pubspec.yaml.');
-      exit(ExitCode.config.code);
+      throw ProcessExit(ExitCode.config.code);
     }
   }
 
@@ -68,7 +70,7 @@ class AarReleaser extends Releaser {
   Future<void> assertArgsAreValid() async {
     if (!argResults.wasParsed('release-version')) {
       logger.err('Missing required argument: --release-version');
-      exit(ExitCode.usage.code);
+      throw ProcessExit(ExitCode.usage.code);
     }
   }
 
@@ -86,7 +88,7 @@ class AarReleaser extends Releaser {
       );
     } catch (e) {
       logger.err('Failed to build aar: $e');
-      exit(ExitCode.software.code);
+      throw ProcessExit(ExitCode.software.code);
     }
 
     buildAppBundleProgress.complete(

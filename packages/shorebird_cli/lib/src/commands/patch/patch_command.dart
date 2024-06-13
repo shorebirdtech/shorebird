@@ -1,5 +1,7 @@
 // ignore_for_file: public_member_api_docs
 
+import 'dart:io';
+
 import 'package:collection/collection.dart';
 import 'package:mason_logger/mason_logger.dart';
 import 'package:meta/meta.dart';
@@ -239,7 +241,7 @@ NOTE: this is ${styleBold.wrap('not')} recommended. Asset changes cannot be incl
     try {
       await shorebirdFlutter.installRevision(revision: release.flutterRevision);
     } catch (_) {
-      exit(ExitCode.software.code);
+      throw ProcessExit(ExitCode.software.code);
     }
 
     final releaseArtifact = await downloadPrimaryReleaseArtifact(
@@ -276,7 +278,7 @@ NOTE: this is ${styleBold.wrap('not')} recommended. Asset changes cannot be incl
           logger
             ..info('No issues detected.')
             ..info('The server may enforce additional checks.');
-          exit(ExitCode.success.code);
+          throw ProcessExit(ExitCode.success.code);
         }
 
         await confirmCreatePatch(
@@ -322,7 +324,7 @@ NOTE: this is ${styleBold.wrap('not')} recommended. Asset changes cannot be incl
       logger.err('''
 Release ${release.version} is in an incomplete state. It's possible that the original release was terminated or failed to complete.
 Please re-run the release command for this version or create a new release.''');
-      exit(ExitCode.software.code);
+      throw ProcessExit(ExitCode.software.code);
     }
   }
 
@@ -340,10 +342,10 @@ Please re-run the release command for this version or create a new release.''');
         allowNativeChanges: allowNativeDiffs,
       );
     } on UserCancelledException {
-      exit(ExitCode.success.code);
+      throw ProcessExit(ExitCode.success.code);
     } on UnpatchableChangeException {
       logger.info('Exiting.');
-      exit(ExitCode.software.code);
+      throw ProcessExit(ExitCode.software.code);
     }
   }
 
@@ -387,7 +389,7 @@ ${summary.join('\n')}
 
       if (!confirm) {
         logger.info('Aborting.');
-        exit(ExitCode.success.code);
+        throw ProcessExit(ExitCode.success.code);
       }
     }
   }
@@ -411,7 +413,7 @@ ${summary.join('\n')}
           await artifactManager.downloadFile(Uri.parse(artifact.url));
     } catch (e) {
       downloadProgress.fail(e.toString());
-      exit(ExitCode.software.code);
+      throw ProcessExit(ExitCode.software.code);
     }
 
     downloadProgress.complete();

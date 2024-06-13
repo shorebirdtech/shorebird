@@ -1,3 +1,5 @@
+import 'dart:io';
+
 import 'package:crypto/crypto.dart';
 import 'package:mason_logger/mason_logger.dart';
 import 'package:meta/meta.dart';
@@ -68,7 +70,7 @@ class IosFrameworkPatcher extends Patcher {
         supportedOperatingSystems: {Platform.macOS},
       );
     } on PreconditionFailedException catch (e) {
-      exit(e.exitCode.code);
+      throw ProcessExit(e.exitCode.code);
     }
   }
 
@@ -76,7 +78,7 @@ class IosFrameworkPatcher extends Patcher {
   Future<void> assertArgsAreValid() async {
     if (!argResults.wasParsed('release-version')) {
       logger.err('Missing required argument: --release-version');
-      exit(ExitCode.usage.code);
+      throw ProcessExit(ExitCode.usage.code);
     }
   }
 
@@ -94,7 +96,7 @@ class IosFrameworkPatcher extends Patcher {
       );
     } on ArtifactBuildException catch (error) {
       buildProgress.fail(error.message);
-      exit(ExitCode.software.code);
+      throw ProcessExit(ExitCode.software.code);
     }
     try {
       await artifactBuilder.buildElfAotSnapshot(
@@ -107,7 +109,7 @@ class IosFrameworkPatcher extends Patcher {
       );
     } catch (error) {
       buildProgress.fail('$error');
-      exit(ExitCode.software.code);
+      throw ProcessExit(ExitCode.software.code);
     }
 
     buildProgress.complete();
@@ -184,7 +186,7 @@ class IosFrameworkPatcher extends Patcher {
         patchBaseProgress.complete();
       } catch (error) {
         patchBaseProgress.fail('$error');
-        exit(ExitCode.software.code);
+        throw ProcessExit(ExitCode.software.code);
       }
 
       patchFile = File(
@@ -239,7 +241,7 @@ class IosFrameworkPatcher extends Patcher {
   }) async {
     if (!aotSnapshot.existsSync()) {
       logger.err('Unable to find patch AOT file at ${aotSnapshot.path}');
-      exit(ExitCode.software.code);
+      throw ProcessExit(ExitCode.software.code);
     }
 
     final analyzeSnapshot = File(
@@ -250,7 +252,7 @@ class IosFrameworkPatcher extends Patcher {
 
     if (!analyzeSnapshot.existsSync()) {
       logger.err('Unable to find analyze_snapshot at ${analyzeSnapshot.path}');
-      exit(ExitCode.software.code);
+      throw ProcessExit(ExitCode.software.code);
     }
 
     final genSnapshot = shorebirdArtifacts.getArtifactPath(
@@ -270,7 +272,7 @@ class IosFrameworkPatcher extends Patcher {
       );
     } catch (error) {
       linkProgress.fail('Failed to link AOT files: $error');
-      exit(ExitCode.software.code);
+      throw ProcessExit(ExitCode.software.code);
     }
 
     linkProgress.complete();

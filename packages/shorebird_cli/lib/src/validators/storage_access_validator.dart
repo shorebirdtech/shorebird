@@ -1,6 +1,7 @@
 // cspell:words googleapis
+import 'dart:io';
+
 import 'package:shorebird_cli/src/http_client/http_client.dart';
-import 'package:shorebird_cli/src/third_party/flutter_tools/lib/flutter_tools.dart';
 import 'package:shorebird_cli/src/validators/validators.dart';
 
 /// Verifies that the user has access to storage.googleapis.com.

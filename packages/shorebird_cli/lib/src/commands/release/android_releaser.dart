@@ -1,3 +1,5 @@
+import 'dart:io';
+
 import 'package:mason_logger/mason_logger.dart';
 import 'package:shorebird_cli/src/artifact_builder.dart';
 import 'package:shorebird_cli/src/code_push_client_wrapper.dart';
@@ -54,7 +56,7 @@ class AndroidReleaser extends Releaser {
         validators: doctor.androidCommandValidators,
       );
     } on PreconditionFailedException catch (e) {
-      exit(e.exitCode.code);
+      throw ProcessExit(e.exitCode.code);
     }
   }
 
@@ -73,7 +75,7 @@ Split APKs are each given a different release version than what is specified in 
 See ${link(uri: Uri.parse('https://github.com/flutter/flutter/issues/39817'))} for more information about this issue.
 Please comment and upvote ${link(uri: Uri.parse('https://github.com/shorebirdtech/shorebird/issues/1141'))} if you would like shorebird to support this.''',
         );
-      exit(ExitCode.unavailable.code);
+      throw ProcessExit(ExitCode.unavailable.code);
     }
   }
 
@@ -105,7 +107,7 @@ Please comment and upvote ${link(uri: Uri.parse('https://github.com/shorebirdtec
       );
     } on ArtifactBuildException catch (e) {
       buildAppBundleProgress.fail(e.message);
-      exit(ExitCode.software.code);
+      throw ProcessExit(ExitCode.software.code);
     }
 
     buildAppBundleProgress.complete();
@@ -123,7 +125,7 @@ Please comment and upvote ${link(uri: Uri.parse('https://github.com/shorebirdtec
         );
       } on ArtifactBuildException catch (e) {
         buildApkProgress.fail(e.message);
-        exit(ExitCode.software.code);
+        throw ProcessExit(ExitCode.software.code);
       }
       buildApkProgress.complete();
     }
@@ -147,7 +149,7 @@ Please comment and upvote ${link(uri: Uri.parse('https://github.com/shorebirdtec
       releaseVersionProgress.complete('Release version: $releaseVersion');
     } catch (error) {
       releaseVersionProgress.fail('$error');
-      exit(ExitCode.software.code);
+      throw ProcessExit(ExitCode.software.code);
     }
 
     return releaseVersion;
