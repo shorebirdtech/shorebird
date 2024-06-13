@@ -133,7 +133,7 @@ class AotTools {
     List<String> command, {
     String? workingDirectory,
   }) async {
-    Future<ShorebirdProcessResult> _startWrapper(
+    Future<ShorebirdProcessResult> startWrapper(
       String exe,
       List<String> args, {
       String? workingDirectory,
@@ -171,7 +171,7 @@ class AotTools {
 
     return _prepareAndRun(
       command,
-      runFn: _startWrapper,
+      runFn: startWrapper,
       workingDirectory: workingDirectory,
     );
   }
@@ -223,6 +223,7 @@ class AotTools {
         '--patch=$patch',
         '--analyze-snapshot=$analyzeSnapshot',
         '--output=$outputPath',
+        '--verbose',
         if (linkerUsesGenSnapshot) ...[
           '--gen-snapshot=$genSnapshot',
           '--kernel=$kernel',
