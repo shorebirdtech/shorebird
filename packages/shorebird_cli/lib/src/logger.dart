@@ -42,6 +42,11 @@ void _writeToLogFile(Object? message, {required File logFile}) {
     return;
   }
 
+  // Making sure the log file exists before writing to it.
+  // This is necessary because the log file may be deleted by a cache
+  // clear command.
+  if (!logFile.existsSync()) return;
+
   final timestampString = DateTime.now().toIso8601String();
   final messageString = message.toString().removeAnsiEscapes();
   logFile.writeAsStringSync(

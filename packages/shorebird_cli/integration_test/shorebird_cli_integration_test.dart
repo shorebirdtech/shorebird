@@ -16,6 +16,8 @@ import 'package:shorebird_code_push_client/shorebird_code_push_client.dart';
 import 'package:test/test.dart';
 import 'package:uuid/uuid.dart';
 
+import 'helpers.dart';
+
 R runWithOverrides<R>(R Function() body) {
   return runScoped(
     body,
@@ -37,22 +39,6 @@ void main() {
       hostedUri: Uri.parse(Platform.environment['SHOREBIRD_HOSTED_URL']!),
     ),
   );
-
-  ProcessResult runCommand(
-    String command, {
-    required String workingDirectory,
-  }) {
-    final parts = command.split(' ');
-    final executable = parts.first;
-    final arguments = parts.skip(1).toList();
-    logger.info('running $command in $workingDirectory');
-    return Process.runSync(
-      executable,
-      arguments,
-      runInShell: true,
-      workingDirectory: workingDirectory,
-    );
-  }
 
   test('--version', () {
     final result = runCommand('shorebird --version', workingDirectory: '.');
