@@ -9,6 +9,7 @@ import 'package:scoped_deps/scoped_deps.dart';
 import 'package:shorebird_cli/src/cache.dart';
 import 'package:shorebird_cli/src/engine_config.dart';
 import 'package:shorebird_cli/src/extensions/version.dart';
+import 'package:shorebird_cli/src/logger.dart';
 import 'package:shorebird_cli/src/shorebird_artifacts.dart';
 import 'package:shorebird_cli/src/shorebird_env.dart';
 import 'package:shorebird_cli/src/shorebird_process.dart';
@@ -82,10 +83,20 @@ class AotTools {
     return !_preLinkerFlutterRevisions.contains(flutterRevision);
   }
 
+  /// Runs the `aot-tools` executable with the given [command] and await for
+  /// its completion.
+  ///
+  /// If no [runCommand] is provided, [ShorebirdProcess.run] is used.
   Future<ShorebirdProcessResult> _exec(
     List<String> command, {
+    Future<ShorebirdProcessResult> Function(
+      String,
+      List<String>, {
+      String? workingDirectory,
+    })? runCommand,
     String? workingDirectory,
   }) async {
+    final runFn = runCommand ?? process.run;
     await cache.updateAll();
 
     // This will be a path to either a kernel (.dill) file or a Dart script if
@@ -98,7 +109,7 @@ class AotTools {
     // distributed as an executable.
     final extension = p.extension(artifactPath);
     if (extension != '.dill' && extension != '.dart') {
-      return process.run(
+      return runFn(
         artifactPath,
         command,
         workingDirectory: workingDirectory,
@@ -106,9 +117,54 @@ class AotTools {
     }
 
     // local engine versions use .dart and we distribute aot-tools as a .dill
-    return process.run(
+    return runFn(
       shorebirdEnv.dartBinaryFile.path,
       ['run', artifactPath, ...command],
+      workingDirectory: workingDirectory,
+    );
+  }
+
+  /// Similar to [_exec], but logs the sub process stdout and stderr
+  /// as they are emitted.
+  Future<ShorebirdProcessResult> _execWithLiveLogs(
+    List<String> command, {
+    String? workingDirectory,
+  }) {
+    return _exec(
+      command,
+      runCommand: (
+        String exe,
+        List<String> args, {
+        String? workingDirectory,
+      }) async {
+        final spawnedProcess = await process.start(
+          exe,
+          args,
+          workingDirectory: workingDirectory,
+        );
+
+        final stdout = StringBuffer();
+        final stderr = StringBuffer();
+
+        final stdoutSub = spawnedProcess.stdout.map(utf8.decode).listen((data) {
+          logger.detail(data);
+          stdout.write(data);
+        });
+
+        final stderrSub =
+            spawnedProcess.stderr.map(utf8.decode).listen(stderr.write);
+
+        final exitCode = await spawnedProcess.exitCode;
+
+        await stdoutSub.cancel();
+        await stderrSub.cancel();
+
+        return ShorebirdProcessResult(
+          exitCode: exitCode,
+          stdout: stdout.toString(),
+          stderr: stderr.toString(),
+        );
+      },
       workingDirectory: workingDirectory,
     );
   }
@@ -153,13 +209,14 @@ class AotTools {
     const linkJson = 'link.jsonl';
     final outputDir = p.dirname(outputPath);
     final linkerUsesGenSnapshot = await _linkerUsesGenSnapshot();
-    final result = await _exec(
+    final result = await _execWithLiveLogs(
       [
         'link',
         '--base=$base',
         '--patch=$patch',
         '--analyze-snapshot=$analyzeSnapshot',
         '--output=$outputPath',
+        '--verbose',
         if (linkerUsesGenSnapshot) ...[
           '--gen-snapshot=$genSnapshot',
           '--kernel=$kernel',
