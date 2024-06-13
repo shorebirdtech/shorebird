@@ -125,7 +125,7 @@ class AotTools {
   }
 
   /// Similar to [_exec], but logs the sub process stdout and stderr
-  /// as they are emmited.
+  /// as they are emitted.
   Future<ShorebirdProcessResult> _execWithLiveLogs(
     List<String> command, {
     String? workingDirectory,
