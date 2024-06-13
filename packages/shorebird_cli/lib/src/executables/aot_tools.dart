@@ -83,6 +83,10 @@ class AotTools {
     return !_preLinkerFlutterRevisions.contains(flutterRevision);
   }
 
+  /// Runs the `aot-tools` executable with the given [command] and await for
+  /// its completion.
+  ///
+  /// If no [runCommand] is provided, [ShorebirdProcess.run] is used.
   Future<ShorebirdProcessResult> _exec(
     List<String> command, {
     Future<ShorebirdProcessResult> Function(
@@ -120,7 +124,9 @@ class AotTools {
     );
   }
 
-  Future<ShorebirdProcessResult> _spawn(
+  /// Similar to [_exec], but logs the sub process stdout and stderr
+  /// as they are emmited.
+  Future<ShorebirdProcessResult> _execWithLiveLogs(
     List<String> command, {
     String? workingDirectory,
   }) {
@@ -205,7 +211,7 @@ class AotTools {
     const linkJson = 'link.jsonl';
     final outputDir = p.dirname(outputPath);
     final linkerUsesGenSnapshot = await _linkerUsesGenSnapshot();
-    final result = await _spawn(
+    final result = await _execWithLiveLogs(
       [
         'link',
         '--base=$base',
