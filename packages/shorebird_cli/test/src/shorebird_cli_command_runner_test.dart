@@ -8,9 +8,11 @@ import 'package:scoped_deps/scoped_deps.dart';
 import 'package:shorebird_cli/src/logger.dart' hide logger;
 import 'package:shorebird_cli/src/platform.dart';
 import 'package:shorebird_cli/src/shorebird_cli_command_runner.dart';
+import 'package:shorebird_cli/src/shorebird_command.dart';
 import 'package:shorebird_cli/src/shorebird_env.dart';
 import 'package:shorebird_cli/src/shorebird_flutter.dart';
 import 'package:shorebird_cli/src/shorebird_version.dart';
+import 'package:shorebird_cli/src/third_party/flutter_tools/lib/flutter_tools.dart';
 import 'package:shorebird_cli/src/version.dart';
 import 'package:test/test.dart';
 
@@ -66,6 +68,31 @@ void main() {
       when(shorebirdVersion.isLatest).thenAnswer((_) async => true);
       when(shorebirdVersion.isTrackingStable).thenAnswer((_) async => true);
       commandRunner = runWithOverrides(ShorebirdCliCommandRunner.new);
+    });
+
+    group('handles ProcessExit', () {
+      test('does nothing when exit code is 0', () async {
+        commandRunner.addCommand(_TestCommand(ExitCode.success));
+        final result = await runWithOverrides(
+          () => commandRunner.run(['test']),
+        );
+        expect(result, equals(ExitCode.success.code));
+      });
+
+      test('exits with the correct code', () async {
+        commandRunner.addCommand(_TestCommand(ExitCode.unavailable));
+        final result = await runWithOverrides(
+          () => commandRunner.run(['test']),
+        );
+        expect(result, equals(ExitCode.unavailable.code));
+        verify(
+          () => logger.info(
+            any(
+              that: contains('''If you aren't sure why this command failed'''),
+            ),
+          ),
+        ).called(1);
+      });
     });
 
     test('handles FormatException', () async {
@@ -385,4 +412,21 @@ Engine • revision $shorebirdEngineRevision''',
       });
     });
   });
+}
+
+class _TestCommand extends ShorebirdCommand {
+  _TestCommand(this.code);
+
+  final ExitCode code;
+
+  @override
+  String get name => 'test';
+
+  @override
+  String get description => 'Test command';
+
+  @override
+  Future<int> run() async {
+    throw ProcessExit(code.code);
+  }
 }
