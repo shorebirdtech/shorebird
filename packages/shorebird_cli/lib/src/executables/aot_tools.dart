@@ -151,10 +151,8 @@ class AotTools {
           stdout.write(data);
         });
 
-        final stderrSub = spawnedProcess.stderr.map(utf8.decode).listen((data) {
-          logger.err(data);
-          stderr.write(data);
-        });
+        final stderrSub =
+            spawnedProcess.stderr.map(utf8.decode).listen(stderr.write);
 
         final exitCode = await spawnedProcess.exitCode;
 
