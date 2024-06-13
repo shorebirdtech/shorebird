@@ -18,6 +18,8 @@ import 'package:shorebird_cli/src/shorebird_process.dart';
 import 'package:shorebird_cli/src/shorebird_version.dart';
 import 'package:shorebird_cli/src/version.dart';
 
+import 'third_party/flutter_tools/lib/flutter_tools.dart';
+
 const executableName = 'shorebird';
 const packageName = 'shorebird_cli';
 const description = 'The shorebird command-line tool';
@@ -197,6 +199,13 @@ Engine • revision ${shorebirdEnv.shorebirdEngineRevision}''');
     } else {
       try {
         exitCode = await super.runCommand(topLevelResults);
+      } on ProcessExit catch (error, stackTrace) {
+        if (error.exitCode != ExitCode.success.code) {
+          logger
+            ..err('$error')
+            ..detail('$stackTrace');
+        }
+        exitCode = error.exitCode;
       } catch (error, stackTrace) {
         logger
           ..err('$error')
@@ -205,7 +214,7 @@ Engine • revision ${shorebirdEnv.shorebirdEngineRevision}''');
       }
     }
 
-    if (exitCode == ExitCode.software.code && logger.level != Level.verbose) {
+    if (exitCode != ExitCode.success.code && logger.level != Level.verbose) {
       final fileAnIssue = link(
         uri: Uri.parse(
           'https://github.com/shorebirdtech/shorebird/issues/new/choose',
