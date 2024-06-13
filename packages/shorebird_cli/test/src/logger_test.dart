@@ -51,7 +51,7 @@ void main() {
 
     setUp(() {
       final tempDir = Directory.systemTemp.createTempSync('shorebird_logs');
-      logFile = File(p.join(tempDir.path, 'shorebird.log'));
+      logFile = File(p.join(tempDir.path, 'shorebird.log'))..createSync();
       baseStdout = MockStdout();
 
       when(() => baseStdout.addStream(any())).thenAnswer((_) async {});
