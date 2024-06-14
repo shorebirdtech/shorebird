@@ -683,12 +683,12 @@ void main() {
           when(
             () => codePushClientWrapper.getReleases(appId: any(named: 'appId')),
           ).thenAnswer((_) async => []);
-        }); 
+        });
 
         test('warns and exits', () async {
           await expectLater(
             () => runWithOverrides(command.run),
-            exitsWithCode(ExitCode.success),
+            exitsWithCode(ExitCode.usage),
           );
 
           verify(

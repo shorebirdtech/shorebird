@@ -313,7 +313,7 @@ NOTE: this is ${styleBold.wrap('not')} recommended. Asset changes cannot be incl
       logger.warn(
         '''No releases found for app $appId. You need to make first a release before you can create a patch.''',
       );
-      throw ProcessExit(ExitCode.success.code);
+      throw ProcessExit(ExitCode.usage.code);
     }
 
     return logger.chooseOne<Release>(
