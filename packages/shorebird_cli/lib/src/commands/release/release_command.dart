@@ -117,7 +117,7 @@ On Xcode builds it is used as "CFBundleVersion".''',
         'release-version',
         help: '''
 The version of the associated release (e.g. "1.0.0"). This should be the version
-of the iOS app that is using this module.''',
+of the iOS app that is using this module. (aar and ios-framework only)''',
       )
       ..addMultiOption(
         'target-platform',
