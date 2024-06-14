@@ -415,9 +415,9 @@ Engine • revision $shorebirdEngineRevision''',
 }
 
 class _TestCommand extends ShorebirdCommand {
-  _TestCommand(this.code);
+  _TestCommand(this.exitCode);
 
-  final ExitCode code;
+  final ExitCode exitCode;
 
   @override
   String get name => 'test';
@@ -427,6 +427,6 @@ class _TestCommand extends ShorebirdCommand {
 
   @override
   Future<int> run() async {
-    throw ProcessExit(code.code);
+    throw ProcessExit(exitCode.code);
   }
 }

@@ -16,9 +16,8 @@ import 'package:shorebird_cli/src/shorebird_env.dart';
 import 'package:shorebird_cli/src/shorebird_flutter.dart';
 import 'package:shorebird_cli/src/shorebird_process.dart';
 import 'package:shorebird_cli/src/shorebird_version.dart';
+import 'package:shorebird_cli/src/third_party/flutter_tools/lib/flutter_tools.dart';
 import 'package:shorebird_cli/src/version.dart';
-
-import 'third_party/flutter_tools/lib/flutter_tools.dart';
 
 const executableName = 'shorebird';
 const packageName = 'shorebird_cli';
@@ -199,12 +198,7 @@ Engine • revision ${shorebirdEnv.shorebirdEngineRevision}''');
     } else {
       try {
         exitCode = await super.runCommand(topLevelResults);
-      } on ProcessExit catch (error, stackTrace) {
-        if (error.exitCode != ExitCode.success.code) {
-          logger
-            ..err('$error')
-            ..detail('$stackTrace');
-        }
+      } on ProcessExit catch (error) {
         exitCode = error.exitCode;
       } catch (error, stackTrace) {
         logger
