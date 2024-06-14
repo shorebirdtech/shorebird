@@ -308,6 +308,14 @@ NOTE: this is ${styleBold.wrap('not')} recommended. Asset changes cannot be incl
     final releases = await codePushClientWrapper.getReleases(
       appId: appId,
     );
+
+    if (releases.isEmpty) {
+      logger.warn(
+        '''No releases found for app $appId. You need to make first a release before you can create a patch.''',
+      );
+      throw ProcessExit(ExitCode.usage.code);
+    }
+
     return logger.chooseOne<Release>(
       'Which release would you like to patch?',
       choices: releases.sortedBy((r) => r.createdAt).reversed.toList(),

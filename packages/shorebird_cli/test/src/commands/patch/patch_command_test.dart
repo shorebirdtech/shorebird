@@ -678,6 +678,27 @@ void main() {
         );
       });
 
+      group('when prompting for releases, but there is none', () {
+        setUp(() {
+          when(
+            () => codePushClientWrapper.getReleases(appId: any(named: 'appId')),
+          ).thenAnswer((_) async => []);
+        });
+
+        test('warns and exits', () async {
+          await expectLater(
+            () => runWithOverrides(command.run),
+            exitsWithCode(ExitCode.usage),
+          );
+
+          verify(
+            () => logger.warn(
+              '''No releases found for app $appId. You need to make first a release before you can create a patch.''',
+            ),
+          ).called(1);
+        });
+      });
+
       group('when running on CI', () {
         setUp(() {
           when(() => shorebirdEnv.canAcceptUserInput).thenReturn(false);
