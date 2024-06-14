@@ -189,6 +189,28 @@ void main() {
     });
 
     group('assertArgsAreValid', () {
+      group('when release-version is passed', () {
+        setUp(() {
+          when(() => argResults.wasParsed('release-version')).thenReturn(true);
+        });
+
+        test('logs error and exits with usage err', () async {
+          await expectLater(
+            () => runWithOverrides(androidReleaser.assertArgsAreValid),
+            exitsWithCode(ExitCode.usage),
+          );
+
+          verify(
+            () => logger.err(
+              '''
+The "--release-version" flag is only supported for aar and ios-framework releases.
+        
+To change the version of this release, change your app's version in your pubspec.yaml.''',
+            ),
+          ).called(1);
+        });
+      });
+
       group('when split-per-abi is true', () {
         setUp(() {
           when(() => argResults['artifact']).thenReturn('apk');

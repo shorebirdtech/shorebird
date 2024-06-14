@@ -3,6 +3,7 @@ import 'package:mocktail/mocktail.dart';
 import 'package:platform/platform.dart';
 import 'package:scoped_deps/scoped_deps.dart';
 import 'package:shorebird_cli/src/auth/auth.dart';
+import 'package:shorebird_cli/src/config/config.dart';
 import 'package:shorebird_cli/src/logger.dart';
 import 'package:shorebird_cli/src/platform.dart';
 import 'package:shorebird_cli/src/shorebird_env.dart';
@@ -208,6 +209,39 @@ To fix, update your pubspec.yaml to include the following:
           throwsA(isA<UnsupportedContextException>()),
         );
         verify(() => logger.err(errorMessage)).called(1);
+      });
+    });
+
+    group('validateFlavors', () {
+      const shorebirdYaml = ShorebirdYaml(
+        appId: 'test',
+        flavors: {'flavorA': 'flavorA'},
+      );
+
+      setUp(() {
+        when(() => shorebirdEnv.getShorebirdYaml()).thenReturn(shorebirdYaml);
+      });
+
+      group('when validation fails', () {
+        test('throws ValidationException', () async {
+          await expectLater(
+            runWithOverrides(
+              () => shorebirdValidator.validateFlavors(flavorArg: null),
+            ),
+            throwsA(isA<ValidationFailedException>()),
+          );
+        });
+      });
+
+      group('when validation succeeds', () {
+        test('completes normally', () async {
+          await expectLater(
+            runWithOverrides(
+              () => shorebirdValidator.validateFlavors(flavorArg: 'flavorA'),
+            ),
+            completes,
+          );
+        });
       });
     });
   });

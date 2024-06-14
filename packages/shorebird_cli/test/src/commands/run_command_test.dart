@@ -62,7 +62,7 @@ void main() {
         ),
       ).thenAnswer((_) async => process);
       when(() => argResults.rest).thenReturn([]);
-      when(() => doctor.allValidators).thenReturn([validator]);
+      when(() => doctor.generalValidators).thenReturn([validator]);
       when(() => logger.progress(any())).thenReturn(MockProgress());
       when(() => ioSink.addStream(any())).thenAnswer((_) async {});
       when(

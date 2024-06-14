@@ -63,7 +63,7 @@ Please use "shorebird preview" instead.''',
     try {
       await shorebirdValidator.validatePreconditions(
         checkUserIsAuthenticated: true,
-        validators: doctor.allValidators,
+        validators: doctor.generalValidators,
       );
     } on PreconditionFailedException catch (e) {
       return e.exitCode.code;

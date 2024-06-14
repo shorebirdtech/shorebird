@@ -23,6 +23,7 @@ import 'package:shorebird_cli/src/release_type.dart';
 import 'package:shorebird_cli/src/shorebird_command.dart';
 import 'package:shorebird_cli/src/shorebird_env.dart';
 import 'package:shorebird_cli/src/shorebird_flutter.dart';
+import 'package:shorebird_cli/src/shorebird_validator.dart';
 import 'package:shorebird_cli/src/third_party/flutter_tools/lib/flutter_tools.dart';
 import 'package:shorebird_code_push_client/shorebird_code_push_client.dart';
 
@@ -203,9 +204,9 @@ NOTE: this is ${styleBold.wrap('not')} recommended. Asset changes cannot be incl
   @visibleForTesting
   Future<void> createPatch(Patcher patcher) async {
     await patcher.assertPreconditions();
-
-    results.assertAbsentOrValidKeyPair();
     await patcher.assertArgsAreValid();
+    results.assertAbsentOrValidKeyPair();
+    await shorebirdValidator.validateFlavors(flavorArg: flavor);
 
     await cache.updateAll();
 

@@ -142,6 +142,20 @@ To fix, update your pubspec.yaml to include the following:
     return validationIssues;
   }
 
+  /// Runs [FlavorValidator] and throws a [ValidationFailedException] if any
+  /// issues are found.
+  Future<void> validateFlavors({required String? flavorArg}) async {
+    final flavorValidator = FlavorValidator(flavorArg: flavorArg);
+    final issues = await flavorValidator.validate();
+    if (validationIssuesContainsError(issues)) {
+      for (final issue in issues) {
+        logger.err(issue.message);
+      }
+
+      throw ValidationFailedException();
+    }
+  }
+
   /// Whether any [ValidationIssue]s have a severity of
   /// [ValidationIssueSeverity.error].
   bool validationIssuesContainsError(List<ValidationIssue> issues) =>

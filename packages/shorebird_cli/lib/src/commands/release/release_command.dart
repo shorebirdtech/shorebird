@@ -15,6 +15,7 @@ import 'package:shorebird_cli/src/release_type.dart';
 import 'package:shorebird_cli/src/shorebird_command.dart';
 import 'package:shorebird_cli/src/shorebird_env.dart';
 import 'package:shorebird_cli/src/shorebird_flutter.dart';
+import 'package:shorebird_cli/src/shorebird_validator.dart';
 import 'package:shorebird_cli/src/third_party/flutter_tools/lib/flutter_tools.dart';
 import 'package:shorebird_code_push_client/shorebird_code_push_client.dart';
 import 'package:shorebird_code_push_protocol/shorebird_code_push_protocol.dart';
@@ -116,7 +117,7 @@ On Xcode builds it is used as "CFBundleVersion".''',
         'release-version',
         help: '''
 The version of the associated release (e.g. "1.0.0"). This should be the version
-of the iOS app that is using this module.''',
+of the iOS app that is using this module. (aar and ios-framework only)''',
       )
       ..addMultiOption(
         'target-platform',
@@ -206,6 +207,8 @@ of the iOS app that is using this module.''',
   Future<void> createRelease(Releaser releaser) async {
     await releaser.assertPreconditions();
     await releaser.assertArgsAreValid();
+
+    await shorebirdValidator.validateFlavors(flavorArg: flavor);
 
     await cache.updateAll();
 

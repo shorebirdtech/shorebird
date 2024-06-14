@@ -63,6 +63,17 @@ class AndroidReleaser extends Releaser {
   @override
   Future<void> assertArgsAreValid() async {
     argResults.assertAbsentOrValidPublicKey();
+
+    if (argResults.wasParsed('release-version')) {
+      logger.err(
+        '''
+The "--release-version" flag is only supported for aar and ios-framework releases.
+        
+To change the version of this release, change your app's version in your pubspec.yaml.''',
+      );
+      throw ProcessExit(ExitCode.usage.code);
+    }
+
     if (generateApk && splitApk) {
       logger
         ..err(

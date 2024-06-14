@@ -40,18 +40,12 @@ class ShorebirdFlutterValidator extends Validator {
     if (!shorebirdEnv.flutterDirectory.existsSync()) {
       final message =
           'No Flutter directory found at ${shorebirdEnv.flutterDirectory}';
-      issues.add(
-        ValidationIssue(
-          severity: ValidationIssueSeverity.error,
-          message: message,
-        ),
-      );
+      issues.add(ValidationIssue.error(message: message));
     }
 
     if (!await shorebirdFlutter.isUnmodified()) {
       issues.add(
-        ValidationIssue(
-          severity: ValidationIssueSeverity.warning,
+        ValidationIssue.warning(
           message: '${shorebirdEnv.flutterDirectory} has local modifications',
         ),
       );
@@ -62,8 +56,7 @@ class ShorebirdFlutterValidator extends Validator {
       shorebirdFlutterVersionString = await _getFlutterVersion();
     } catch (error) {
       issues.add(
-        ValidationIssue(
-          severity: ValidationIssueSeverity.error,
+        ValidationIssue.error(
           message: 'Failed to determine Shorebird Flutter version. $error',
         ),
       );
@@ -78,8 +71,7 @@ class ShorebirdFlutterValidator extends Validator {
       // If there is no system Flutter, we don't throw a validation exception.
     } catch (error) {
       issues.add(
-        ValidationIssue(
-          severity: ValidationIssueSeverity.error,
+        ValidationIssue.error(
           message: 'Failed to determine path Flutter version. $error',
         ),
       );
@@ -98,12 +90,7 @@ The version of Flutter that Shorebird includes and the Flutter on your path are 
 \tSystem Flutter:    $pathFlutterVersionString
 This can cause unexpected behavior if you are switching between the tools and the version gap is wide. If you have any trouble, please let us know on Shorebird discord.''';
 
-        issues.add(
-          ValidationIssue(
-            severity: ValidationIssueSeverity.warning,
-            message: message,
-          ),
-        );
+        issues.add(ValidationIssue.warning(message: message));
       }
     }
 
@@ -112,8 +99,7 @@ This can cause unexpected behavior if you are switching between the tools and th
     if (flutterStorageEnvironmentValue != null &&
         flutterStorageEnvironmentValue.isNotEmpty) {
       issues.add(
-        const ValidationIssue(
-          severity: ValidationIssueSeverity.warning,
+        ValidationIssue.warning(
           message: 'Shorebird does not respect the FLUTTER_STORAGE_BASE_URL '
               'environment variable at this time',
         ),
