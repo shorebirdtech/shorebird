@@ -9,6 +9,7 @@ import 'package:googleapis_auth/auth_io.dart' as oauth2;
 import 'package:googleapis_auth/googleapis_auth.dart';
 import 'package:http/http.dart' as http;
 import 'package:jwt/jwt.dart';
+import 'package:mason_logger/mason_logger.dart';
 import 'package:path/path.dart' as p;
 import 'package:scoped_deps/scoped_deps.dart';
 import 'package:shorebird_cli/src/auth/ci_token.dart';
@@ -18,6 +19,7 @@ import 'package:shorebird_cli/src/logger.dart';
 import 'package:shorebird_cli/src/platform.dart';
 import 'package:shorebird_cli/src/shorebird_cli_command_runner.dart';
 import 'package:shorebird_cli/src/shorebird_command.dart';
+import 'package:shorebird_cli/src/third_party/flutter_tools/lib/flutter_tools.dart';
 import 'package:shorebird_code_push_client/shorebird_code_push_client.dart';
 
 export 'ci_token.dart';
@@ -115,7 +117,7 @@ class AuthenticatedClient extends http.BaseClient {
 
     if (credentials == null) {
       final token = _token!;
-      credentials = _credentials = await _refreshCredentials(
+      credentials = _credentials = await _refresh(
         token.authProvider.clientId,
         oauth2.AccessCredentials(
           // This isn't relevant for a refresh operation.
@@ -133,7 +135,7 @@ class AuthenticatedClient extends http.BaseClient {
       final jwt = Jwt.parse(credentials.idToken!);
       final authProvider = jwt.authProvider;
 
-      credentials = _credentials = await _refreshCredentials(
+      credentials = _credentials = await _refresh(
         authProvider.clientId,
         credentials,
         _baseClient,
@@ -145,6 +147,32 @@ class AuthenticatedClient extends http.BaseClient {
     final token = credentials.idToken;
     request.headers['Authorization'] = 'Bearer $token';
     return _baseClient.send(request);
+  }
+
+  Future<oauth2.AccessCredentials> _refresh(
+    oauth2.ClientId clientId,
+    oauth2.AccessCredentials credentials,
+    http.Client client, {
+    required oauth2.AuthEndpoints authEndpoints,
+  }) async {
+    try {
+      return await _refreshCredentials(
+        clientId,
+        credentials,
+        client,
+        authEndpoints: authEndpoints,
+      );
+    } catch (e, s) {
+      logger
+        ..err('Failed to refresh credentials.')
+        ..info(
+          '''Try logging out with ${lightBlue.wrap('shorebird logout')} and logging in again.''',
+        )
+        ..detail(e.toString())
+        ..detail(s.toString());
+
+      throw ProcessExit(ExitCode.software.code);
+    }
   }
 }
 

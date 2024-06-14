@@ -6,6 +6,7 @@ import 'package:googleapis_auth/auth_io.dart';
 import 'package:googleapis_auth/googleapis_auth.dart' as oauth2;
 import 'package:http/http.dart' as http;
 import 'package:jwt/jwt.dart' show Jwt, JwtPayload;
+import 'package:mason_logger/mason_logger.dart';
 import 'package:mocktail/mocktail.dart';
 import 'package:path/path.dart' as p;
 import 'package:platform/platform.dart';
@@ -19,6 +20,7 @@ import 'package:shorebird_code_push_client/shorebird_code_push_client.dart';
 import 'package:test/test.dart';
 
 import '../fakes.dart';
+import '../matchers.dart';
 import '../mocks.dart';
 
 const googleJwtIssuer = 'https://accounts.google.com';
@@ -266,6 +268,49 @@ void main() {
           expect(request.headers['Authorization'], equals('Bearer $idToken'));
         });
 
+        group('when refreshing the token fails', () {
+          test('exits and logs correctly', () async {
+            when(() => httpClient.send(any())).thenAnswer(
+              (_) async => http.StreamedResponse(
+                const Stream.empty(),
+                HttpStatus.badRequest,
+              ),
+            );
+
+            final onRefreshCredentialsCalls = <oauth2.AccessCredentials>[];
+
+            final client = AuthenticatedClient.token(
+              token: ciToken,
+              httpClient: httpClient,
+              onRefreshCredentials: onRefreshCredentialsCalls.add,
+              refreshCredentials: (
+                clientId,
+                credentials,
+                client, {
+                AuthEndpoints authEndpoints = const GoogleAuthEndpoints(),
+              }) async =>
+                  throw Exception('error.'),
+            );
+
+            await expectLater(
+              () => runWithOverrides(
+                () => client.get(Uri.parse('https://example.com')),
+              ),
+              exitsWithCode(ExitCode.software),
+            );
+            verify(() => logger.err('Failed to refresh credentials.'))
+                .called(1);
+            verify(
+              () => logger.info(
+                '''Try logging out with ${lightBlue.wrap('shorebird logout')} and logging in again.''',
+              ),
+            ).called(1);
+            verify(
+              () => logger.detail('Exception: error.'),
+            ).called(1);
+          });
+        });
+
         test('uses valid token when credentials valid.', () async {
           when(() => httpClient.send(any())).thenAnswer(
             (_) async => http.StreamedResponse(
@@ -356,6 +401,61 @@ void main() {
           expect(captured, hasLength(1));
           final request = captured.first as http.BaseRequest;
           expect(request.headers['Authorization'], equals('Bearer $idToken'));
+        });
+
+        group('when refreshing the token fails', () {
+          test('exits and logs correctly', () async {
+            when(() => httpClient.send(any())).thenAnswer(
+              (_) async => http.StreamedResponse(
+                const Stream.empty(),
+                HttpStatus.badRequest,
+              ),
+            );
+
+            const expiredIdToken =
+                '''eyJhbGciOiJIUzI1NiIsImtpZCI6IjEyMzQiLCJ0eXAiOiJKV1QifQ.eyJpc3MiOiJodHRwczovL2FjY291bnRzLmdvb2dsZS5jb20iLCJhenAiOiI1MjMzMDIyMzMyOTMtZWlhNWFudG0wdGd2ZWsyNDB0NDZvcmN0a3RpYWJyZWsuYXBwcy5nb29nbGV1c2VyY29udGVudC5jb20iLCJhdWQiOiI1MjMzMDIyMzMyOTMtZWlhNWFudG0wdGd2ZWsyNDB0NDZvcmN0a3RpYWJyZWsuYXBwcy5nb29nbGV1c2VyY29udGVudC5jb20iLCJzdWIiOiIxMjM0NSIsImhkIjoic2hvcmViaXJkLmRldiIsImVtYWlsIjoidGVzdEBlbWFpbC5jb20iLCJlbWFpbF92ZXJpZmllZCI6dHJ1ZSwiaWF0IjoxMjM0LCJleHAiOjY3ODl9.MYbITALvKsGYTYjw1o7AQ0ObkqRWVBSr9cFYJrvA46g''';
+            final onRefreshCredentialsCalls = <oauth2.AccessCredentials>[];
+            final expiredCredentials = oauth2.AccessCredentials(
+              oauth2.AccessToken(
+                'Bearer',
+                'accessToken',
+                DateTime.now().subtract(const Duration(minutes: 1)).toUtc(),
+              ),
+              '',
+              [],
+              idToken: expiredIdToken,
+            );
+
+            final client = AuthenticatedClient.credentials(
+              credentials: expiredCredentials,
+              httpClient: httpClient,
+              onRefreshCredentials: onRefreshCredentialsCalls.add,
+              refreshCredentials: (
+                clientId,
+                credentials,
+                client, {
+                AuthEndpoints authEndpoints = const GoogleAuthEndpoints(),
+              }) async =>
+                  throw Exception('error.'),
+            );
+
+            await expectLater(
+              () => runWithOverrides(
+                () => client.get(Uri.parse('https://example.com')),
+              ),
+              exitsWithCode(ExitCode.software),
+            );
+            verify(() => logger.err('Failed to refresh credentials.'))
+                .called(1);
+            verify(
+              () => logger.info(
+                '''Try logging out with ${lightBlue.wrap('shorebird logout')} and logging in again.''',
+              ),
+            ).called(1);
+            verify(
+              () => logger.detail('Exception: error.'),
+            ).called(1);
+          });
         });
 
         test('uses valid token when credentials valid.', () async {
