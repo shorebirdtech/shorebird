@@ -146,7 +146,7 @@ To fix, update your pubspec.yaml to include the following:
   /// issues are found.
   Future<void> validateFlavors({required String? flavorArg}) async {
     final flavorValidator = FlavorValidator(flavorArg: flavorArg);
-    final issues = await runValidators([flavorValidator]);
+    final issues = await flavorValidator.validate();
     if (validationIssuesContainsError(issues)) {
       for (final issue in issues) {
         logger.info(issue.message);
