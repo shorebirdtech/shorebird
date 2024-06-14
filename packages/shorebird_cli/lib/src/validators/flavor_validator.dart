@@ -34,7 +34,6 @@ class FlavorValidator extends Validator {
     }
 
     if (projectFlavors != null && flavorArg == null) {
-      print('oh no!');
       return [
         ValidationIssue.error(
           message:
