@@ -99,6 +99,14 @@ void main() {
       when(() => argResults.wasParsed(any())).thenReturn(true);
 
       when(cache.updateAll).thenAnswer((_) async => {});
+      when(
+        () => cache.getPreviewArtifactPath(
+          appId: any(named: 'appId'),
+          releaseVersion: any(named: 'releaseVersion'),
+          platformName: any(named: 'platformName'),
+          extension: any(named: 'extension'),
+        ),
+      ).thenReturn('non-existent-file');
 
       when(
         () => codePushClientWrapper.getApp(appId: any(named: 'appId')),
@@ -249,6 +257,36 @@ Note: ${lightCyan.wrap('shorebird patch --platforms=android')} without the --rel
 ''',
             ),
       ]);
+    });
+
+    group('when there is a preview cached for the release', () {
+      late final File fakePreviewArtifact;
+
+      setUp(() {
+        fakePreviewArtifact = File(
+          p.join(Directory.systemTemp.createTempSync().path, 'fake-preview'),
+        )..createSync();
+        when(
+          () => cache.getPreviewArtifactPath(
+            appId: any(named: 'appId'),
+            releaseVersion: any(named: 'releaseVersion'),
+            platformName: any(named: 'platformName'),
+            extension: any(named: 'extension'),
+          ),
+        ).thenReturn(fakePreviewArtifact.path);
+      });
+
+      test('deletes the outdated preview, completes successfully', () async {
+        // Just making sure the file exists.
+        expect(fakePreviewArtifact.existsSync(), isTrue);
+
+        final exitCode = await runWithOverrides(command.run);
+        expect(exitCode, equals(ExitCode.success.code));
+
+        expect(fakePreviewArtifact.existsSync(), isFalse);
+        verify(() => logger.info('🧹 Deleted outdated preview artifact.'))
+            .called(1);
+      });
     });
 
     group('when dry-run is specified', () {

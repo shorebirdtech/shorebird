@@ -334,6 +334,22 @@ void main() {
           ReleasePlatform.android: ReleaseStatus.active,
           ReleasePlatform.ios: ReleaseStatus.active,
         });
+        when(
+          () => cache.getPreviewArtifactPath(
+            appId: any(named: 'appId'),
+            releaseVersion: any(named: 'releaseVersion'),
+            platformName: any(named: 'platformName'),
+            extension: 'aab',
+          ),
+        ).thenReturn(aabPath());
+        when(
+          () => cache.getPreviewArtifactPath(
+            appId: any(named: 'appId'),
+            releaseVersion: any(named: 'releaseVersion'),
+            platformName: any(named: 'platformName'),
+            extension: 'apks',
+          ),
+        ).thenReturn(apksPath());
       });
 
       // This should probably be outside of the android group, but because
@@ -990,6 +1006,14 @@ channel: ${track.channel}
         });
         when(() => releaseArtifact.url).thenReturn(releaseArtifactUrl);
         when(() => platform.isMacOS).thenReturn(true);
+        when(
+          () => cache.getPreviewArtifactPath(
+            appId: any(named: 'appId'),
+            releaseVersion: any(named: 'releaseVersion'),
+            platformName: any(named: 'platformName'),
+            extension: 'app',
+          ),
+        ).thenReturn(runnerPath());
       });
 
       File setupShorebirdYaml() => File(

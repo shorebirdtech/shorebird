@@ -1,4 +1,5 @@
 import 'dart:async';
+import 'dart:io';
 
 import 'package:mason_logger/mason_logger.dart';
 import 'package:meta/meta.dart';
@@ -264,6 +265,24 @@ of the iOS app that is using this module. (aar and ios-framework only)''',
         await prepareRelease(release: release, releaser: releaser);
         await releaser.uploadReleaseArtifacts(release: release, appId: appId);
         await finalizeRelease(release: release, releaser: releaser);
+
+        final releasePlatform = releaser.releaseType.releasePlatform;
+
+        final previewPath = cache.getPreviewArtifactPath(
+          appId: appId,
+          releaseVersion: releaseVersion,
+          platformName: releasePlatform.name,
+          extension: releasePlatform.extension,
+        );
+
+        final previewArtifact = releasePlatform == ReleasePlatform.android
+            ? File(previewPath)
+            : Directory(previewPath);
+
+        if (previewArtifact.existsSync()) {
+          previewArtifact.deleteSync(recursive: true);
+          logger.info('🧹 Deleted outdated preview artifact.');
+        }
 
         logger
           ..success('''

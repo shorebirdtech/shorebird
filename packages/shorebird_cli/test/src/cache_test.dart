@@ -163,6 +163,32 @@ void main() {
       });
     });
 
+    group('getPreviewArtifactPath', () {
+      test('returns correct path', () {
+        final path = runWithOverrides(
+          () => cache.getPreviewArtifactPath(
+            appId: '123',
+            releaseVersion: '1.0.0',
+            platformName: 'ios',
+            extension: 'app',
+          ),
+        );
+
+        expect(
+          path.endsWith(
+            p.join(
+              'bin',
+              'cache',
+              'previews',
+              '123',
+              'ios_1.0.0.app',
+            ),
+          ),
+          isTrue,
+        );
+      });
+    });
+
     group('clear', () {
       test('deletes the cache directory', () async {
         final shorebirdCacheDirectory = runWithOverrides(

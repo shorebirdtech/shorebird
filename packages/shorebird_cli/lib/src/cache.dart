@@ -89,6 +89,19 @@ class Cache {
     );
   }
 
+  String getPreviewArtifactPath({
+    required String appId,
+    required String releaseVersion,
+    required String platformName,
+    required String extension,
+  }) {
+    final previewDirectory = cache.getPreviewDirectory(appId);
+    return p.join(
+      previewDirectory.path,
+      '${platformName}_$releaseVersion.$extension',
+    );
+  }
+
   /// The Shorebird cache directory.
   static Directory get shorebirdCacheDirectory {
     return Directory(

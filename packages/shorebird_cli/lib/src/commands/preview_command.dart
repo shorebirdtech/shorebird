@@ -415,13 +415,13 @@ class PreviewCommand extends ShorebirdCommand {
     required Release release,
     required ReleasePlatform platform,
     required String extension,
-  }) {
-    final previewDirectory = cache.getPreviewDirectory(appId);
-    return p.join(
-      previewDirectory.path,
-      '${platform.name}_${release.version}.$extension',
-    );
-  }
+  }) =>
+      cache.getPreviewArtifactPath(
+        appId: appId,
+        releaseVersion: release.version,
+        platformName: platform.name,
+        extension: extension,
+      );
 
   /// Sets the channel property in the shorebird.yaml file inside the Runner.app
   Future<void> setChannelOnRunner({
