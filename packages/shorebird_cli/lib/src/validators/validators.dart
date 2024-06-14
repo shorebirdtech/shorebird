@@ -5,6 +5,7 @@ import 'package:meta/meta.dart';
 import 'package:shorebird_cli/src/shorebird_process.dart';
 
 export 'android_internet_permission_validator.dart';
+export 'flavor_validator.dart';
 export 'shorebird_flutter_validator.dart';
 export 'shorebird_version_validator.dart';
 export 'shorebird_yaml_asset_validator.dart';
@@ -53,6 +54,20 @@ class ValidationIssue {
     required this.message,
     this.fix,
   });
+
+  /// Creates a new [ValidationIssue] with a severity of
+  /// [ValidationIssueSeverity.error].
+  factory ValidationIssue.error({required String message}) => ValidationIssue(
+        severity: ValidationIssueSeverity.error,
+        message: message,
+      );
+
+  /// Creates a new [ValidationIssue] with a severity of
+  /// [ValidationIssueSeverity.warning].
+  factory ValidationIssue.warning({required String message}) => ValidationIssue(
+        severity: ValidationIssueSeverity.warning,
+        message: message,
+      );
 
   /// How important it is to fix this issue.
   final ValidationIssueSeverity severity;

@@ -14,6 +14,7 @@ import 'package:shorebird_cli/src/logger.dart';
 import 'package:shorebird_cli/src/release_type.dart';
 import 'package:shorebird_cli/src/shorebird_env.dart';
 import 'package:shorebird_cli/src/shorebird_flutter.dart';
+import 'package:shorebird_cli/src/shorebird_validator.dart';
 import 'package:shorebird_code_push_client/shorebird_code_push_client.dart';
 import 'package:test/test.dart';
 
@@ -55,6 +56,7 @@ void main() {
     late Releaser releaser;
     late ShorebirdEnv shorebirdEnv;
     late ShorebirdFlutter shorebirdFlutter;
+    late ShorebirdValidator shorebirdValidator;
 
     late ReleaseCommand command;
 
@@ -67,6 +69,7 @@ void main() {
           loggerRef.overrideWith(() => logger),
           shorebirdEnvRef.overrideWith(() => shorebirdEnv),
           shorebirdFlutterRef.overrideWith(() => shorebirdFlutter),
+          shorebirdValidatorRef.overrideWith(() => shorebirdValidator),
         },
       );
     }
@@ -89,6 +92,7 @@ void main() {
       projectRoot = Directory.systemTemp.createTempSync();
       shorebirdEnv = MockShorebirdEnv();
       shorebirdFlutter = MockShorebirdFlutter();
+      shorebirdValidator = MockShorebirdValidator();
 
       when(() => argResults['dry-run']).thenReturn(false);
       when(() => argResults['platforms']).thenReturn(['android']);
@@ -178,6 +182,12 @@ void main() {
         ),
       ).thenAnswer((_) async => {});
 
+      when(
+        () => shorebirdValidator.validateFlavors(
+          flavorArg: any(named: 'flavorArg'),
+        ),
+      ).thenAnswer((_) async => {});
+
       command = ReleaseCommand(resolveReleaser: (_) => releaser)
         ..testArgResults = argResults;
     });
@@ -214,6 +224,7 @@ void main() {
       verifyInOrder([
         releaser.assertPreconditions,
         releaser.assertArgsAreValid,
+        () => shorebirdValidator.validateFlavors(flavorArg: null),
         cache.updateAll,
         () => codePushClientWrapper.getApp(appId: appId),
         releaser.buildReleaseArtifacts,
@@ -302,6 +313,7 @@ Note: ${lightCyan.wrap('shorebird patch --platforms=android')} without the --rel
         verifyInOrder([
           releaser.assertPreconditions,
           releaser.assertArgsAreValid,
+          () => shorebirdValidator.validateFlavors(flavorArg: flavor),
           cache.updateAll,
           () => codePushClientWrapper.getApp(appId: appId),
           releaser.buildReleaseArtifacts,
