@@ -149,7 +149,7 @@ To fix, update your pubspec.yaml to include the following:
     final issues = await flavorValidator.validate();
     if (validationIssuesContainsError(issues)) {
       for (final issue in issues) {
-        logger.info(issue.message);
+        logger.err(issue.message);
       }
 
       throw ValidationFailedException();
