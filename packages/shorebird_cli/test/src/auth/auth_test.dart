@@ -269,7 +269,8 @@ void main() {
         });
 
         group('when refreshing the token fails', () {
-          test('exits and logs correctly', () async {
+          late AuthenticatedClient client;
+          setUp(() {
             when(() => httpClient.send(any())).thenAnswer(
               (_) async => http.StreamedResponse(
                 const Stream.empty(),
@@ -279,7 +280,7 @@ void main() {
 
             final onRefreshCredentialsCalls = <oauth2.AccessCredentials>[];
 
-            final client = AuthenticatedClient.token(
+            client = AuthenticatedClient.token(
               token: ciToken,
               httpClient: httpClient,
               onRefreshCredentials: onRefreshCredentialsCalls.add,
@@ -291,7 +292,9 @@ void main() {
               }) async =>
                   throw Exception('error.'),
             );
+          });
 
+          test('exits and logs correctly', () async {
             await expectLater(
               () => runWithOverrides(
                 () => client.get(Uri.parse('https://example.com')),
@@ -404,7 +407,8 @@ void main() {
         });
 
         group('when refreshing the token fails', () {
-          test('exits and logs correctly', () async {
+          late AuthenticatedClient client;
+          setUp(() {
             when(() => httpClient.send(any())).thenAnswer(
               (_) async => http.StreamedResponse(
                 const Stream.empty(),
@@ -426,7 +430,7 @@ void main() {
               idToken: expiredIdToken,
             );
 
-            final client = AuthenticatedClient.credentials(
+            client = AuthenticatedClient.credentials(
               credentials: expiredCredentials,
               httpClient: httpClient,
               onRefreshCredentials: onRefreshCredentialsCalls.add,
@@ -438,7 +442,9 @@ void main() {
               }) async =>
                   throw Exception('error.'),
             );
+          });
 
+          test('exits and logs correctly', () async {
             await expectLater(
               () => runWithOverrides(
                 () => client.get(Uri.parse('https://example.com')),

@@ -117,7 +117,7 @@ class AuthenticatedClient extends http.BaseClient {
 
     if (credentials == null) {
       final token = _token!;
-      credentials = _credentials = await _refresh(
+      credentials = _credentials = await _tryRefreshCredentials(
         token.authProvider.clientId,
         oauth2.AccessCredentials(
           // This isn't relevant for a refresh operation.
@@ -135,7 +135,7 @@ class AuthenticatedClient extends http.BaseClient {
       final jwt = Jwt.parse(credentials.idToken!);
       final authProvider = jwt.authProvider;
 
-      credentials = _credentials = await _refresh(
+      credentials = _credentials = await _tryRefreshCredentials(
         authProvider.clientId,
         credentials,
         _baseClient,
@@ -149,7 +149,7 @@ class AuthenticatedClient extends http.BaseClient {
     return _baseClient.send(request);
   }
 
-  Future<oauth2.AccessCredentials> _refresh(
+  Future<oauth2.AccessCredentials> _tryRefreshCredentials(
     oauth2.ClientId clientId,
     oauth2.AccessCredentials credentials,
     http.Client client, {
